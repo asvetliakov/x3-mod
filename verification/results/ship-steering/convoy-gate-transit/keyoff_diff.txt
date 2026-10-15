@@ -1,4 +1,4 @@
-# keyoff_diff.py vs 9f764d69 (the pre-lane fixture), after binary with X3M_LANE_OFF=1 (final review fixes, 2026-10-14)
+# keyoff_diff.py vs 9f764d69 (the pre-lane fixture), after binary with X3M_LANE_OFF=1 (lane fix round 1, 2026-10-15)
 ## full: lines before 1162 after 1162 differing 0
 ## cap: lines before 991 after 991 differing 0
 ## seqoff: lines before 1162 after 1162 differing 0

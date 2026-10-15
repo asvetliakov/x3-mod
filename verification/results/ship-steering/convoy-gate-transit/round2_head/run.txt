@@ -1,0 +1,60 @@
+== HEAD 77f9e88e core, the round-2 fixture (--lane)
+      1 FAIL lane units
+      3 join_block tf10: 1r2 a path that does not clear is not suppressed
+      3 join_block tf1: 1r2 a path that does not clear is not suppressed
+      3 join_block tf6: 1r2 a path that does not clear is not suppressed
+      3 join_field tf10: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 join_field tf1: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 join_field tf6: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 m7_cross tf10: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 m7_cross tf10: 1r2 the station / the M7 beside the lane path: no 0x12
+      3 m7_cross tf1: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 m7_cross tf1: 1r2 the station / the M7 beside the lane path: no 0x12
+      3 m7_cross tf6: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 m7_cross tf6: 1r2 the station / the M7 beside the lane path: no 0x12
+      1 parked tf1: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 retarget tf10: 2r2 no stop, no loop
+      3 retarget tf10: 3 no holding
+      3 retarget tf1: 2r2 no stop, no loop
+      3 retarget tf1: 3 no holding
+      1 retarget tf1: 5 the escort gate
+      3 retarget tf6: 2r2 no stop, no loop
+      3 retarget tf6: 3 no holding
+      1 retarget tf6: 5 the escort gate
+      3 station tf10: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 station tf10: 1r2 the station / the M7 beside the lane path: no 0x12
+      3 station tf1: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 station tf1: 1r2 the station / the M7 beside the lane path: no 0x12
+      3 station tf6: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 station tf6: 1r2 the station / the M7 beside the lane path: no 0x12
+      3 terran tf10: 3 no holding
+      3 terran tf10: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      3 terran tf10: 7b no own-gate 0x12
+      3 terran tf1: 3 no holding
+      3 terran tf1: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      3 terran tf1: 6 the short final
+      3 terran tf1: 7b no own-gate 0x12
+      3 terran tf1: 8 the span
+      3 terran tf1: every ship launched
+      3 terran tf6: 3 no holding
+      3 terran tf6: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      3 terran tf6: 7b no own-gate 0x12
+      3 terran_abreast tf10: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      1 terran_abreast tf10: 5 the escort gate
+      3 terran_abreast tf10: 7b no own-gate 0x12
+      3 terran_abreast tf1: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      1 terran_abreast tf1: 5 the escort gate
+      3 terran_abreast tf1: 6 the short final
+      3 terran_abreast tf1: 7b no own-gate 0x12
+      3 terran_abreast tf1: 8 the span
+      3 terran_abreast tf1: every ship launched
+      3 terran_abreast tf6: 4r2 no hull reaches the gate's ring on an order the pair filter does not exempt
+      1 terran_abreast tf6: 5 the escort gate
+      3 terran_abreast tf6: 7b no own-gate 0x12
+ship_steering_host checks=2841 failures=142 slip_gaps=0
+checks FAIL
+parked: obst warns 0 unsup 0 x12 0 (d 0) why 0/0/0 lane_sup 0 (detour 0) clear 1050 avoidable 0 unsafe 0 sup_slack 0 
+station: obst warns 11004 unsup 11004 x12 3 (d 4226) why 11004/0/0 lane_sup 0 (detour 0) clear 2121 avoidable 3 unsafe 0 sup_slack 0 
+join_field: obst warns 1857 unsup 1857 x12 2 (d 2296) why 1857/0/0 lane_sup 0 (detour 0) clear 171 avoidable 1 unsafe 0 sup_slack 0 
+join_block: obst warns 1351 unsup 1351 x12 1 (d 3001) why 1351/0/0 lane_sup 0 (detour 0) clear 387 avoidable 0 unsafe 0 sup_slack 0 
+m7_cross: obst warns 19 unsup 19 x12 1 (d 2630) why 19/0/0 lane_sup 0 (detour 0) clear 1031 avoidable 1 unsafe 0 sup_slack 0 

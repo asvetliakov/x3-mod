@@ -1,0 +1,14 @@
+== 5d5c5e69 core, the round-2 closing fixture (--lane)
+      3 overshoot_near tf10: 7 safety
+      3 overshoot_near tf1: 7 safety
+      3 overshoot_near tf6: 7 safety
+      2 p2_miss tf6: 3d ctl_x_wait_s accrues from the refusal
+      1 p2_miss tf6: 3d2 no brief stop beyond T_stop + the step
+      3 p2_miss_near tf10: 7 safety
+      2 p2_miss_near tf1: 3d2 no brief stop beyond T_stop + the step
+      3 p2_miss_near tf1: 3d2 the queue hold ends with the refusal
+      3 p2_miss_near tf1: 7 safety
+      2 p2_miss_near tf6: 3d ctl_x_wait_s accrues from the refusal
+      1 p2_miss_near tf6: 7 safety
+ship_steering_host checks=3337 failures=26 slip_gaps=0
+checks FAIL

@@ -2680,6 +2680,128 @@ restore wrote a stamp 4934 ms in the future; an escort's L_i after a load not ad
 * `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
   -mincoming-stack-boundary=2 -fno-exceptions`: clean **[m]**. No DLL built, no Wine.
 
+### Lane fix round 1 (Run173) (2026-10-15, Opus 5.5; changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Lane fix round 1")
+
+Run173 A (`run173-triage/`): the join flew the ships ~20° off the axis from 45–76 km, the engine's own 0x12 against the gate at
+6.85–6.98 km (6 evictions), E1's overshoot ranked behind E2, site B's 12.2 m/s latch through a 116 s refusal; span 785 game s. Five
+items: (1) the join a tangent parabola onto Λ (merge point 15 / 8 km or the join's end), the blend ending the hull's settling distance
+before d_end; (2) site E's own-gate row for lane members (the segment to Λ's d_end point and, beyond 6 r_gate, the fresh rollout clear of
+the gate's sphere-and-slab bound; the hand-over on its final); (3) site B's hand-over never latching a speed P2 did not keep (the lane
+speed under the refusal's brake bound, refused the stop at d_end), `ctl_x_wait_s` from the refusal; (4) an overshoot never ranked
+behind a ship farther from the gate, its turn point within its settling distance + R, the law's stop bounded by T_stop + the step
+unless a block, the re-commit hysteresis (2 s + the step); (5) rows `ship_gate_ctl_defer`, `warn_pre ... gate_row=`, the lane summary's
+gate frames and `ctl_recommit_held`. The fixture's engine model gained the engine's own warn against the gate; finding: a lane member
+on Λ is inside that warn's cone at ~7 km whatever its join (§11), so item 2 removes the 0x12 and item 1 the off-axis approach.
+
+* Each item fails on the reviewed dd07e95e **[m]** (`convoy-gate-transit/round1_head/run.sh` → `run.txt`, the round-1 fixture built
+  on the dd07e95e core): 165 failures of 1896 checks; item 1 `1b` (cast `run173`, the nose 22.5° off F at 7 km), item 2 `7b` (all 17
+  asserted casts; `run173` 0x12 at 6.86–6.98 km, `gate_row=stage`), item 3 `3c` / `3d` (cast `p2_miss`: the latched 12.2 m/s through the
+  refusal, `ctl_x_wait_s` 0 at the grant), item 4 `4b` / `4c` (cast `overshoot`: ranked behind, the outbound leg beyond its bound).
+* `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp -o /tmp/ssh_lane5`: `--lane` 1902 checks,
+  full run 12423, `--capital` 6765, `X3M_SEQ_OFF=1` 12333, `--b9` 45; 0 functional failures **[m]**. The bench check (lane cost: the
+  24-member frame's third-worst controller block under 1 ms) failed in the first `--lane` (1081 µs), full (1143 / 1159 µs) and
+  `X3M_SEQ_OFF=1` (1645 µs) runs while another process held a core at 100 %; rerun on the quiet host (load 0.3–2.0) with the same
+  binary: `--lane` 1902/0, full 12423/0, `X3M_SEQ_OFF=1` 12333/0 (bench24 third-worst 162 µs at tf 1, 402 µs at tf 10; these runs'
+  stdout is `ship_steering_host.txt` and `convoy-gate-transit/ship_steering_host_lane.txt`). The pre-change and round-1 binaries
+  alternated on the same host: bench24 mean 12.1–12.4 vs 12.6 µs at tf 1, 144–152 vs 150–161 µs at tf 10; single frames of
+  1.0–11.8 ms in either **[m]**.
+* Key-off (`X3M_LANE_OFF=1`) stdout against 9f764d69: 0 differing lines of 1162, 991, 1162, 201 (`convoy-gate-transit/round1_head/keyoff.sh`
+  → `keyoff_diff.txt`) **[m]**. Control: the pre-lane core fails the span assertion in 33 of 33 runs **[m]**.
+* Scenario C, 18 casts × 3 seeds × tf 1/6/10 (`scenario_c.txt`, `ship_steering_host_lane.txt`) **[m]**: 0 own-gate 0x12 but cast
+  `parked` (1–2 per run at 2.12–2.40 km, a detoured ship off its final, left to the engine); P2's nose ≤ 8° but `parked`; `run173`'s
+  nose at 7 km 0.4–1.0°, 0x12 0, P2 0.0–0.2°, spans 488.5 / 470.8–471.8 / 471.5–472.6 s at tf 1 / 6 / 10, at the lane floor
+  (488.4 s at tf 1; the escorts 24 and 32 km behind the leader at its 15 km; flown 785 s); `overshoot` head from its first frame,
+  outermost 5.74–5.90 km against 6.12 km, P2 2.4–5.8°; `p2_miss` stopped ≤ 1 m/s 30 s into a 112–122 s refusal. Spans of the
+  existing casts within 1.5 s of the fourth implementer's but abreast 1+4 (−3 s at tf 1, −4 s under SETA) and crossing (+6 s); the
+  table in §11.
+* Constants, one changed value each (`scenario_c.py`, 1902 checks per build) **[m]**: g_req 400 m → 8 failures; τ_m 8 s → 2 (1 the
+  bench); τ_f 5 s → 8; T_stop 10 s → 3; λ_max 10 s → 35; crawl 0 → 13; drift 100 m → 5; d_end 1.8 km → 162 (the lane row's slab bound
+  needs d_end ≥ 0.66 r_gate + r_A + 0.25 r_gate, 2.1 km for an M2); escort join k 0 → 0 (was 14), 0.5 → 1 (the bench).
+* `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_ship_trace_format verification.analysis.test_config_schema`: 37 tests OK **[m]**.
+* `ship_steering.cpp` under i686 MinGW `-fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+  -mincoming-stack-boundary=2 -fno-exceptions`: clean **[m]**. No DLL built, no Wine, no game.
+
+### Lane fix round 2 (2026-10-15, Opus 5.5; changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Lane fix round 2")
+
+Items 1–3 user-decided, 4–6 from the independent review of round 1 (77f9e88e). Each item fails on 77f9e88e
+(`convoy-gate-transit/round2_head/run.sh` → `run.txt`: the round-2 fixture built on the 77f9e88e core with `-DX3M_LANE_HEAD`).
+
+* Item 1, site E's lane obstacle row (`gc::lane_obst_why`, `suppress_lane_obst`, `obst_row=`): on 77f9e88e 56 failures of 2,256 checks
+  (`station` 3 0x12 from 4.2 km in every run, `m7_cross` 1 at 2.6 km, `join_field` an avoidable 0x12) **[m]**; on the tree `--lane` 2,263
+  checks, 0 failures; full 12,784, `--capital` 7,126, `X3M_SEQ_OFF=1` 12,694, `--b9` 45: 0 failures; key-off stdout against 9f764d69 0
+  differing lines of 1,162 / 991 / 1,162 / 201 (`round1_head/keyoff.sh`) **[m]**. Figures in §11 item 1.
+* Item 2, an escort handed to another leader leaves the lane as a member (`exit_ms`, `keep_point`): on 77f9e88e cast `retarget` fails in
+  every run (the escort's turn 105–119° beyond the bearing: its sphere avoidance dived it 2.2 km below Λ against its own convoy) **[m]**;
+  on the tree `--lane` 2,850 checks, full 13,371, `--capital` 7,713, `X3M_SEQ_OFF=1` 13,281, `--b9` 45: 0 failures; key-off 0 differing
+  lines **[m]** (`round2_head/run.txt`: 142 failures of 2,841 on the 77f9e88e core with items 1, 2 and 4). Figures in §11 item 2.
+* Items 3 / 5 in part (a real overshoot only, `front_seen`; the return zone decided when it begins, `over_ahead_of`; the overshoot's block
+  bounded by its predicted return; no release into a predecessor flying back; the follow gap behind a final g_req + the own stop): the
+  existing casts green (`--lane` 2,851 checks, 0 failures); the three casts for these items are parked with their findings (§11 Open).
+  Not done: 3c, 3d, item 6.
+* Final acceptance (the tree at the items-3/5 commit) **[m]**: `c++ -std=c++17 -O2 -Wall -Wextra -Werror ship_steering_host.cpp -o
+  /tmp/ssh_lane6`: full 13,372, `--capital` 7,714, `X3M_SEQ_OFF=1` 13,282, `--b9` 45, `--lane` 2,851: 0 failures (the `X3M_SEQ_OFF=1`
+  bench check failed once at 1,027 µs third-worst, 524 µs on rerun on the quiet host, load 1.0); key-off 0 differing lines of 1,162 / 991 /
+  1,162 / 201 (`round2_head/keyoff_diff.txt`, produced by `round1_head/keyoff.sh`); the 77f9e88e core 142 failures of 2,841
+  (`round2_head/run.txt`); `scenario_c.py` → `scenario_c.txt` (11 builds). Host stdout: `ship_steering_host.txt`,
+  `convoy-gate-transit/ship_steering_host_{lane,capital}.txt`.
+* Item 4, one geometric clearance test for every own-gate lane suppression (the gate's solid by its TGates row, d_end per gate: 4,147 m
+  on the installed Terran ring, l_c inside a ring's hole, the live velocity and nose, two-sided rollout freshness): on 77f9e88e 122
+  failures of 2,688 checks (`terran`: 1 of 3 launched at tf 1, own-gate 0x12 from 3.4 to 11.1 km, a hull 340 m into the ring) **[m]**; on
+  the tree `--lane` 2,696 checks, full 13,217, `--capital` 7,559, `X3M_SEQ_OFF=1` 13,127, `--b9` 45: 0 failures; key-off 0 differing lines
+  of 1,162 / 991 / 1,162 / 201 **[m]**. Figures in §11 item 4.
+* Closing items (seventh implementer, 2026-10-15, Opus 5.5; commits aac589c7 item 3d, 5bee7e1f item 3c, 209ca671 item 6 in part and
+  `behind_start` parked; figures in §11 "Lane fix round 2" items 5–8, open remainder in §11 Open). Each new check fails on the WIP
+  5d5c5e69 core (`convoy-gate-transit/round2_close/run.sh` → `run.txt`): 26 failures of 3,337 checks **[m]** (`p2_miss_near` 7 safety 7,
+  `3d2` 5; `p2_miss` `3d2` 1; `overshoot_near` 7 safety 9; the per-ship `3d` 4 in `p2_miss` / `p2_miss_near` at tf 6; nothing else; the
+  item-3d commit message's "15 failures (3d2 8)" miscounted: 12 in `p2_miss_near`, 7 safety 7 and `3d2` 5).
+  * Item 3d, the queue hold: `p2_miss_near` 0 episodes, 0 uncertified frames, capsule ≥ 468 m, the hold 77.4–102.6 s inside its
+    112–122 s refusal, its stop write ending 0–17 ms after the grant; `p2_miss` brief stops 0 **[m]**.
+  * Item 3c: `overshoot_near` 0 episodes, 0 uncertified, P2 2.5–5.7° kept **[m]**; the out-leg's settling distance is all needed
+    (`round2_close/out_leg.sh` → `out_leg.txt`: 0.5 × settle P2 6.8–11.1°, 22–24 failed checks) **[m]**.
+  * `behind_start` not closed (parked; the attempt `round2_close/behind_start_attempt.diff`: capsule ≥ 258 m but 2–11 member
+    episodes) **[m]**. Follow-up (the coordinator's exclusion rule, `round2_close/behind_start_exclusion.diff`, not committed to the
+    core): the ship held out of the lane while behind the plane: 0 member episodes, never a member behind the plane, all launched, but
+    capsule −11 / −340 / −260 m at tf 1 and the Titan's P2 not kept in 9 of 9 runs; the cast stays parked (§11 item 7) **[m]**. On the
+    parked tree (the fixture's `Cb` checks and row fields only): `--lane` 3,337, full 13,858, `--capital` 8,200, 0 failures **[m]**; the
+    core is unchanged since acb605f8 (its key-off, `X3M_SEQ_OFF=1`, `--b9`, unittest and i686 results stand).
+  * Item 6 in part: the nose at 7 km asserted in every cast (5° or the cast's bound), the parked cast bounded (own-gate 0x12 ≤ 3, P2
+    ≤ 33°), the refusal's wait per ship, `lane_join_loss` with R, the lane summary and warn_pre rows in `test_ship_trace_format`.
+  * Acceptance on 209ca671 **[m]**: `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp`: `--lane`
+    3,337, full 13,858, `--capital` 8,200, `X3M_SEQ_OFF=1` 13,768, `--b9` 45: 0 failures; key-off stdout against 9f764d69 0 differing
+    lines of 1,162 / 991 / 1,162 / 201 (`round1_head/keyoff.sh`'s procedure); bench24 11.4 / 136.8 µs mean, third-worst 179 / 551 µs
+    at tf 1 / 10 (`--lane`). `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_ship_trace_format
+    verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads verification.analysis.test_config_schema`:
+    38 tests OK. `i686-w64-mingw32-g++ -fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign
+    -mincoming-stack-boundary=2 -fno-exceptions src/proxy/ship_steering.cpp`: clean. No DLL built, no Wine, no game.
+
+### Lane fix round 2 review fixes (2026-10-15, Opus 5.5; changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Lane fix round 2 review fixes")
+
+The Opus and Fable reviews of the round (77f9e88e..63b181c4) found no blocker; 11 source and fixture items, 4 documentation items.
+Each source item with a check fails on 63b181c4 where one is possible (`convoy-gate-transit/round2_review/run.sh` → `run.txt`: 5 failures
+of 3,342 checks, the units of items 1, 2, 5, 6, 8) **[m]**; item 4's source test fails on 63b181c4's `ship_steering.cpp` **[m]**; items 3
+and 7 are pinned by units of the new core functions; item 9 tightens a waiver (passes on both cores).
+
+* Core: the overshoot's return re-taken after a backward clock jump; `exit_*` cleared on eviction and re-entry, honoured only for an
+  escort; `obst_hull` (L never w); the refused bound + the step; `solid_gap_seg` fails closed on a non-finite leg and caps its samples
+  at 256; `lane_path_exists` on gates without a solid (2 ns against 1,853 ns host); `solid_gap_sweep` (the hand-over hull along the nose,
+  swept along the velocity: 0.56 / 2.9 µs host). DLL: site E's obstacle row never takes the player's ship as B.
+* Fixture: check 5's Terran waiver bounded (escort stop at d_end ≤ 2.2 s `terran`, 5.4 s `terran_abreast`, + the step; measured 1.70 /
+  4.90 s); the engine's box corners in the warn model (`m7_cross` 1,684 warns at tf 1, all `lane`; `parked` 1–3 avoidable 0x12 per run
+  from the row's 30 s horizon, bounded at 3; §11 Open) **[m]**.
+* Roster (`round2_review/long_hulls.py` → `long_hulls.txt`, read-only from the installed CATs): 40 of 131 installed capitals exceed
+  kLaneHullMaxM 1,300 m (M2 to 2,998 m, M1 to 4,583 m); d_end 4,147 m unchanged, long hulls guarded (eviction), not suppressed **[m]**.
+* Acceptance **[m]**: `c++ -std=c++17 -O2 -Wall -Wextra -Werror verification/probe/ship_steering_host.cpp`: `--lane` 3,344, full 13,865,
+  `--capital` 8,207, `X3M_SEQ_OFF=1` 13,775, `--b9` 45: 0 failures (the bench24 third-worst frame failed at 1.1–1.2 ms with nine runs in
+  parallel; `--lane` and full rerun alone: 0 failures, 189 / 492 µs third-worst at tf 1 / 10); key-off stdout against 9f764d69 0
+  differing lines of 1,162 / 991 / 1,162 / 201 (`round2_review/keyoff_diff.txt`); `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_ship_trace_format verification.analysis.test_ship_steering verification.analysis.test_ctl_boundary_reads
+  verification.analysis.test_config_schema`: 39 tests OK; `i686-w64-mingw32-g++ -fsyntax-only -std=c++17 -Wall -Wextra -Werror -msse2
+  -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -fno-exceptions src/proxy/ship_steering.cpp`: clean; x87 per function of
+  `ship_steering.cpp` (i686 `-O2`) unchanged against 63b181c4: 5 functions, 42 instructions (`round2_review/x87_per_fn.py`).
+  `scenario_c.py` → `scenario_c.txt` refreshed. Host stdout: `ship_steering_host.txt`, `convoy-gate-transit/ship_steering_host_{lane,capital}.txt`.
+  No DLL built, no Wine, no game.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

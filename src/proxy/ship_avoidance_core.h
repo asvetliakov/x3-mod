@@ -177,6 +177,7 @@ struct ShipAvoid {
     float L = 0;           // the last lookahead, m
     float v_emergency = 0; // m/s, 0 = none (the braking ramp when no detour exists)
     std::uint32_t obstacle = 0; // the current detour's obstacle (0 = no detour on the last call; the trace row carries it)
+    float P[3] = {0, 0, 0};     // lane fix round 2 item 1: that detour's point (valid with obstacle != 0; site E's lane obstacle row)
     bool unresolved = false;
     bool in_conflict = false; // a conflict was seen on the last call (episode counting: an edge is one episode)
 };
@@ -787,6 +788,7 @@ enum class EVerdict : std::uint8_t {
     pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, suppress_lane,
     suppress_ctl, pass_ctl, suppress_arrival_gate, // the gate traffic controller (D.1, D.4; ship_steering_gates_traffic)
     suppress_dock, pass_dock_parts, pass_dock_path, pass_dock_ray, pass_dock_zone, // amendment 18 (ship_steering_dock)
+    suppress_lane_obst, // lane fix round 2 item 1: a lane member's path clears a non-member obstacle (ctl::lane_obst_why)
     count
 };
 inline const char* e_verdict_name(EVerdict v) noexcept {
@@ -795,13 +797,13 @@ inline const char* e_verdict_name(EVerdict v) noexcept {
         "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
         "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship", "suppress_lane",
         "suppress_ctl", "pass_ctl", "suppress_arrival_gate", "suppress_dock", "pass_dock_parts", "pass_dock_path", "pass_dock_ray",
-        "pass_dock_zone"};
+        "pass_dock_zone", "suppress_lane_obst"};
     return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
 }
 inline bool e_suppresses(EVerdict v) noexcept {
     return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
            v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved || v == EVerdict::suppress_lane ||
-           v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock;
+           v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock || v == EVerdict::suppress_lane_obst;
 }
 inline EVerdict dock_e_verdict(DockE v) noexcept {
     switch (v) {
@@ -878,6 +880,10 @@ struct SiteE {
     // Amendment 18 (ship_steering_dock): A on order 4 and B its container (dock_container), the row's verdict from the DLL's reads
     // (dock_verdict); none = key off or not A's container (today's rules)
     DockE dock = DockE::none;
+    // Lane fix round 2 item 1 (ship_steering_gates_lane): A is a lane member whose path as site A flies it clears B (a station, an
+    // asteroid or a ship that is not its board partner) by the sweep margin (ctl::lane_obst_why: its own freshness bounds, never the
+    // player's ship); false = today's rules
+    bool lane_obst = false;
 };
 // The capital small-ship row (section 15.1, amendment 17 item 4) for a small B (small_pair holds): the exceptions, else suppress_small.
 __attribute__((always_inline)) inline EVerdict small_row_verdict(const SiteE& in) noexcept {
@@ -896,6 +902,7 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     if (in.b_gate && in.arrival_gate) return EVerdict::suppress_arrival_gate;
     if (in.b_gate && in.ctl_gate) return EVerdict::suppress_gate; // B.2 item 3: the stage-B member against its own gate
     if (in.b_ship && in.ctl_pair) return in.ctl_certified ? EVerdict::suppress_ctl : EVerdict::pass_ctl;
+    if (in.lane_obst && !in.b_gate) return EVerdict::suppress_lane_obst; // (its own freshness: the order-0 gaps have no decision of A)
     if (!in.a_in_table && !in.a_arrival) return EVerdict::pass_not_fresh;
     // B.4: under the capital key the small-ship row comes before every freshness requirement (a capital ignores any ship under r/3
     // whatever its order, its own decision's age included); a fresh A gets the verdict the row below gives (dock and lane rows excluded).
@@ -1371,6 +1378,9 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         if (ok) {
             res.adjusted = true;
             state.obstacle = o.ptr;
+            state.P[0] = Pp[0];
+            state.P[1] = Pp[1];
+            state.P[2] = Pp[2];
             res.side = side;
             res.dir[0] = ddir[0];
             res.dir[1] = ddir[1];

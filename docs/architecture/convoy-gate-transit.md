@@ -469,8 +469,10 @@ and the short final (fixture and a SETA-off flight segment), the lane floors in 
 
 ## 11. Implementation (stage 1)
 
-State 2026-10-14 (fourth implementer, the final review's items 1–6, "Final review fixes" below): scenario C green (`--lane` 1122
-checks, 0 failures; 14 casts and the parked cast's key-off baseline), included in the full and `--capital` runs. Before that (third
+State 2026-10-15 (sixth implementer, lane fix round 2, "Lane fix round 2" below: items 1, 2, 4 done, 3 / 5 in part, 6 open; `--lane` 2,851 checks, 0 failures). Before that (fifth implementer, lane fix round 1 after Run173, "Lane fix round 1" below): scenario C green (`--lane` 1902
+checks, 0 functional failures; 18 casts with the engine's own gate warn in the engine model), included in the full and `--capital`
+runs. Before that (fourth implementer, the final review's items 1–6, "Final review fixes" below): `--lane` 1122 checks, 0 failures;
+14 casts and the parked cast's key-off baseline. Before that (third
 implementer, the two reviews' items 1–10, "Review fixes" below): `--lane` 1114 checks, 0 failures. Before that (second implementer): `--lane` 830 checks, 0 failures;
 the arrival fan (§6.7) is deferred to a later stage by the orchestrator (not implemented). Code: `src/proxy/ship_gate_ctl_core.h` (lane constants, geometry and laws after
 `line_of`; `Plan::lane` rollout; `lane_frame`, `lane_site_b` after `sb_frame`; `lane_steer` before `sb_steer`, which dispatches to it
@@ -496,7 +498,8 @@ skips it for that comparison, `keyoff_diff.py`).
 * **τ_m = 4 s** (design 8 s): a level M1 (a = 5 m/s²) behind a Titan opens 2.37 km in no less than ≈ 44 s (decelerate 18 s, 8 s at
   the floor, accelerate 18 s) **[i]**; τ_m 4 s merges in 42.7 s, 8 s in 50.3 s, spans equal **[m]**. §6.11 item 2's 40 s is below that
   limit; the fixture's bound is max(40 s, the yielder's bang-bang minimum for the opening at the merge start + 5 s).
-* **Join angle** 20° (kLaneJoinK 2.75), steeper when needed so it completes 1.5 km before d_end, at most 45°.
+* (superseded: Lane fix round 1 item 1, the tangent join) **Join angle** 20° (kLaneJoinK 2.75), steeper when needed so it completes
+  1.5 km before d_end, at most 45°.
 * **A merge behind a still-merging ship** starts (the 40 s bound, the merge row) when the ship ahead settles.
 * **Holding yielder lateral**: closes to w_P + w_Y + 300 m (never into the passer's footprint) while gap < g_req − 100 m, onto Λ
   after; merge point (`lane_on`) = within 100 m of Λ with the nose within 3°.
@@ -705,35 +708,438 @@ the 69d5b2ee core and on the tree), `ship_steering_host_lane.txt` (units, the pa
    engine, Review fixes item 8) **[i]**.
    §1.2 of ship-navigation-ai.md now marks the 15 SA cases that write `f+0x210` at issue (§10.13); it listed 0x1c and 0x119 only.
 
+### Lane fix round 1 (Run173; fifth implementer, 2026-10-15; each item with a check that fails on dd07e95e)
+
+Run173 (one convoy, M2 leader, M1 and M2 escorts, SETA share 1.0) measured a span of 785 game s against 185–235 s: the join flew every
+ship ~20° off the axis from 45–76 km, the engine's own 0x12 against the gate fired 6.85–6.98 km out (6 evictions, turn-aways up to
+172°), E1 overshot the plane and was ranked behind E2, and site B held 12.2 m/s through a 116 s refusal after a P2 that did not keep
+(`verification/results/ship-steering/run173-triage/`). Evidence under `verification/results/ship-steering/convoy-gate-transit/`:
+`round1_head/run.sh` → `run.txt` (the round-1 fixture on the dd07e95e core: 165 failures of 1896 checks; the round-1 units need the
+new core and are left out of that build), `round1_head/keyoff.sh` → `keyoff_diff.txt`, `scenario_c.py` → `scenario_c.txt`,
+`ship_steering_host_lane.txt`.
+
+**The engine model** (fixture, all casts): the engine's warn against the gate, `gate_warn_cone` (ship-navigation-ai.md §3.1: the
+reach b + L + 2 (r_A + r_gate), the cone of the gate's sphere inflated by 40 m from the braking point; class 18 takes the cone, not
+the mesh test), for a committed member on order 4, 0 or 0x1f before order 5 (the KC's ignore mode starts with order 5), with site E's
+own-gate row as the DLL calls it (`gc::e_gate_row`); a run of unsuppressed frames counts as one own-gate 0x12 (counted, not flown).
+On dd07e95e it reproduces the flight: cast `run173` own-gate 0x12 at 6.86–6.98 km (`gate_row=stage`), and check `7b` fails in all
+17 asserted casts, 45 of their 51 cast × time-factor groups, on joiners at 6.81–6.98 km (`stage`) and at the hand-over 2.47 km out
+(`guard`: the short final puts P2 inside the stage-B guard's sphere for an M2) **[m]** (`round1_head/run.txt`; distances from the seed-1
+rows).
+
+**A finding that orders the fixes:** a lane member warns against its own gate at ~7 km whatever its join. Flying parallel to F on Λ
+(0.93–1.0 km below the axis) at d = 6.9 km its heading is sin θ = ℓ / d ≈ 0.14 off the gate's centre against the cone's
+(r_A + r_gate + 40 m) / (d − b) ≈ 0.35, inside the reach of 7.09 km (Titan) / 6.88 km (M1) **[i]** (the §3.1 formula) **[m]** (the
+fixture: every lane member's approach shows the warn). The join of item 1 does not remove the 0x12 by itself; the lane row of item 2
+does. Item 1 removes the 20° approach and puts the members on Λ (stage funnel) well before the warn's reach.
+
+1. **The join is a tangent onto Λ** (`lane_join_span`, `lane_carrot`; the rollout flies the same function). The reference path from
+   the ship (s, y) is the parabola y_ref(s') = y ((s_m − s') / (s_m − s))², tangent to Λ at its merge point s_m; the carrot lies on it
+   a pursuit look-ahead ahead (`pursuit_look`: max(0.75 v, 2 v / W, 0.3 r_gate), sized by the hull's turn radius and speed). The span
+   D = s_m − s needs D ≥ 2 y / tan 30° (the steepest angle, at the start, 30°) and D ≥ √(2 y R) (the vertex within the turn radius
+   R = v / W). s_m is Λ's far end (15 km) where that fits, else 8 km, else the join's end with the room it leaves (at most 45° at the
+   start), past it the room to d_end. The parabola through any later point of itself with the same s_m is the same curve, so the
+   stateless rule re-planned every frame flies one path; a ship far out and wide starts on the join's end and moves to 8 or 15 km
+   once that fits (a step of a few degrees). `lane_join_loss` is the parabola's arc length less its span (y (m/3 − m³/20 + m⁵/56),
+   m = 2 y / D). Measured **[m]**: cast `run173` (Run173's ships from their first rows, 45–76 km out at ~20°): the nose off F at the
+   7 km crossing 0.4–1.0° (dd07e95e: 22.5°; check `1b`, ≤ 5°); every ship on Λ before the warn's reach, 0 own-gate 0x12 with item 2.
+   The l_c → Q blend now ends the hull's settling distance (`lane_blend_settle`, the pursuit look-ahead at the lane speed: 1.1–1.3 km
+   for M1/M2) before d_end (item 3).
+2. **Site E's own-gate row for lane members** (`lane_gate_why` under `sb_gate_why`, `Board::lane` and the member's `ln`; key off:
+   stage B's row unchanged). The gate's solid lies within its bounding sphere and within `kRingZR` = 0.66 r_gate of the plane
+   (gate_hole.txt: the deepest front extent of the measured ring bodies 0.651 r; the installed ordinary gates have no collision body,
+   §10.9): a point's clearance is the larger of |p − G| − r_gate and −s − 0.66 r_gate. Joining or on Λ (inbound / funnel; order 4 or the
+   script's order-0 gap) at any distance: the segment from x to its Λ point at d_end clears by r_A + 0.25 r_gate (the stage-B guard's
+   margin), and beyond 6 r_gate the member's rollout, fresh within the row's state bound, clears to d_end (else `roll`, a pass; for
+   hulls up to 1.29 km every point before d_end clears the slab, so this reduces to the rollout's freshness). On its final past d_end
+   (the hand-over, and an order-4 / order-0 frame before P2's tick): within 200 m of its final line with the nose within 8° of F, the
+   lane geometry's own path to order 5 (the final's window certifies the ring's hole). Else the stage-B guard. The suppression
+   reports `gate_row=lane` (`roll` for the rollout pass). Measured **[m]**: 0 own-gate 0x12 in every cast but `parked` (dd07e95e: all 17
+   asserted casts), whose detoured ships reach d_end 26–27° off their final (P2 not kept) and are left to the engine by design (1–2
+   episodes per run at 2.12–2.40 km, `why=guard`; the cast asserts launches, the passer and safety only). Units: 6.9 km out without a rollout
+   `roll`, with a clear one `lane`, a stale one `roll`, key off `stage`; the hand-over on its final `lane`, 300 m off it `guard`.
+3. **Site B's hand-over** (`lane_site_b`; `Member::p2_kept` written by the DLL's P2 hook and the fixture's P2). P2 kept: the live
+   speed stands (the refusal's brake bound), as before. P2 not kept: never the live speed; the lane speed under the refusal's brake
+   bound (`lane_refused_hold`) until the board flags the refusal (5 s + the step), then the brake to a stop at d_end (0 past it);
+   `LaneWrite::unkept` (`w=unkept`). The blend ends before d_end (item 1's last line). `ctl_x_wait_s` accrues every frame from the
+   refusal (`lane_x_wait`, the wait beyond 3 s, what is counted kept in `x_acc_ms`), the rest at order 5. Measured **[m]**: P2's nose
+   ≤ 8° in every cast but `parked` (check `6b`; `scenario_c.txt`'s p2_nose_max); cast `p2_miss` (Run173's leader: P2 forced not kept
+   with 12.2 m/s left, a refusal of 112–122 s unknown to the board; Run173: 116 s): 30 s into the refusal the leader's speed ≤ 1 m/s
+   (dd07e95e: the latched
+   12.2 m/s; check `3c`), `ctl_x_wait_s` at the grant within a frame of the wait beyond 3 s (dd07e95e: 0 until order 5; check `3d`).
+   Units: kept 12.2 m/s, not kept 100 m/s (`unkept`), refused 0, refused 500 m before d_end the brake curve √(2 a 450 m); a 20 s
+   refusal without order 5 accrues 16.8–17.0 s.
+4. **The overshoot, the stop law, the re-commit hysteresis.** A lane member past the plane without launching (`Member::over`, until
+   back on Λ) never ranks behind a member farther from the gate (`lane_frame`: moved before the first one, O(n) per overshoot; its own
+   leader still first, §6.2). It turns back as a re-departure with its own geometry: the turn point d_end + its settling distance + R
+   (R = v / W), the out-leg 2.5 R below Λ (the U-turn's measured lateral extent: it then ends on Λ; with 2 R it ended R / 2 above and
+   P2 came 8.5° off F in 2 of 9 runs), the out-leg carrot R beyond the turn point; its follower's gap is taken to the U-turn's apex
+   (`kLaneOverApexR` = 3 R beyond the turn point; measured 1.53–1.69 km for an M1, 2.4–2.7 R) and an overshoot turning back is a block
+   (the follower stops at spacing behind the apex until it has turned in). The law's stop (`lane_law`) ends after T_stop + the step and
+   releases to the floor unless the ship ahead is physically stopped or an overshoot turning back (a block: the design's stop at
+   spacing); a stop episode (ending 2 s + the step after its condition) counts in `lane_stops` (`ctl_merge_stop`). Re-commit
+   hysteresis: a ship that left on `Why::target` re-commits at most once per 2 s + the step (`note_target_leave`, `recommit_ok`; the
+   DLL's `ctl_commit`, counted `ctl_recommit_held`). Measured **[m]**: cast `overshoot` (Run173's E1 state at f 18901, s = +703 m,
+   3.8 km off the axis, the nose 80° off F; a Titan on Λ 11 km out): the overshoot is the head from its first lane frame, 0 frames
+   ranked behind a ship farther from the gate (dd07e95e: ranked behind; check `4b`), its outermost s 5.74–5.90 km against the bound
+   d_end + settle + 4 R = 6.12 km (dd07e95e: beyond; check `4c`), P2 2.4–5.8° kept, 0 episodes; the Titan waits 15.0–21.5 s (a
+   block), all launched (9 runs). Law stops beyond T_stop + the step behind a ship that is not stopped: 0 in every cast (check `2b`). Units: the stop
+   law 0, after T_stop + the step the floor (`merge`), a block 0; re-commit 1 s after a target leave refused, after 2 s + the step
+   allowed, a member's refresh never held.
+5. **Rows.** `ship_gate_ctl_defer` (per ship: `order`, `kind=defer|restore|rewrite`, `f210_read`, `f210_written`, `ahead_ms`; a
+   deferral episode's first write, then one per ship per game second, every restore); `ship_avoid_engine_warn_pre ... gate_row=` (the
+   own-gate row's reason of the first gate entry's last site E verdict; `EVerdictSeen::gate_row`); `ship_steering_lane_summary ...
+   ctl_recommit_held= gates_gate:F:G:r=<gate>:<F>:<G>:<r_gate>|...` (each lane gate's frame); `ship_gate_ctl_lane w=unkept`.
+   `ship_trace_rows.py` and `test_ship_trace_format` extended.
+
+Cost **[m]** (host x86-64 -O2, `X3M_C_ONLY=none --lane`, the pre-change binary and the round-1 binary alternated twice on the same
+host): bench24 mean 12.1–12.4 vs 12.6 µs at tf 1, 144–152 vs 150–161 µs at tf 10; worst and third-worst frames within the host's
+noise (another process at 100 % CPU on the host: single frames of 1.0–11.8 ms in either binary). The bench check (third-worst under
+1 ms) failed in the full, `X3M_SEQ_OFF=1` and `--lane` acceptance runs during that load and passed on rerun (ledger).
+
+### Lane fix round 2 (sixth implementer, 2026-10-15; each item with a check that fails on 77f9e88e)
+
+User-decided scope (items 1–3) and the independent review of round 1 (items 4–6). Evidence under
+`verification/results/ship-steering/convoy-gate-transit/round2_head/` (`run.sh` → `run.txt`: the round-2 fixture built on the 77f9e88e
+core with `-DX3M_LANE_HEAD`, which leaves out the lines that need the new core).
+
+1. **Site E's lane obstacle row** (`gc::lane_obst_why`, `gc::e_obst_row`; the DLL's `ctl_e_obst`; `av::EVerdict::suppress_lane_obst`).
+   The engine's own warn (ship-navigation-ai.md §3.1) fires on a lane member beside a station whose bounding sphere is far wider than
+   its parts (the close-range rule d ≤ 1.2 (r_A + r_B) holds for any station), on asteroids its join passes (the cone), on a mid-size
+   ship (an M7 beside an M2: the box test 0x0044d9c0), and on the order-0 frames of the script's gaps where A has no fresh decision
+   (`pass_not_fresh`); the resolved set covers a detour only once the velocity has swung clear. The row suppresses that warn when the
+   member's path as site A flies it clears the obstacle's bound by the sweep margin (kMarginM + k (t + the rollout's age); a moving
+   ship's extrapolation charged k t again, its centre swept over the leg's time ± 0.5 s + 10 %):
+   * **The path** (`gc::lane_path`): the live position and velocity (E's reads of A), the live velocity up to the board's rollout's first
+     sample at or after now, the rollout. With a fresh avoidance detour (A's `ShipAvoid` call within the state bound, its new field
+     `P`: the detour point) the turn site A's leaf flies onto it instead (`gc::lane_turn`: one frame step and a think tick straight, then
+     every 0.5 s the heading turned toward P_d at the hull's W reached at alpha and braked on √(2 alpha angle), until P_d or its closest
+     approach), P_d, then the rollout from P_d's lateral offset / tan 30° beyond it along F (the join's steepest angle). The horizon
+     reaches at least 1 s + v / a (a shorter path runs on straight along its last leg): the engine's own warn looks no further than its
+     braking distance, so when a conflict enters the horizon later the row passes and the engine's warn still has its room. **Its bound
+     is the rollout's horizon, 30 s** (61 samples at 0.5 s): the row certifies clearance over those 30 s only; a conflict near its end
+     refuses the suppression (`roll`) however early the warn comes (the `parked` cast, review fixes item 11).
+   * **The bound** (`gc::ObstBound`): a station's part spheres from the walk's part cache when they lie within its live bounding sphere
+     (else the sphere), an asteroid's sphere, a ship's hull capsule (the type widths; its velocity from its flight basis and slip). A's
+     hull: its capsule along each leg (the leg extended by L − w, radius w).
+   * **Fail closed**: not a lane member (`Board::lane`, `ln`), committed or escort; the player's ship or manual control (`[obj+0x40]`
+   0x2 / 0x40000, or no autopilot bit); an order the lane does not fly (only 4 to its gate, 0, 0x1f, 0x14 / 0x15 to its leader); the
+   live state or the rollout older than 1 s + the step + 100 ms or from the future (two-sided); the read out of the state's reach:
+   `obst_row=no` (today's rows decide). A path that does not clear: `roll` (today's rows: the engine's warn as before).
+   * **Rows**: `ship_avoid_e_verdict ... verdict=suppress_lane_obst obst_row=no|lane|roll`, `warn_pre ... obst_row=`, the lane summary's
+   `e_lane_obst=` / `e_lane_obst_roll=`. B.5: E reads A and B (the engine's pointers of the call) and their flight and physics blocks,
+   the type table, the module's part cache and A's avoidance state; no other object.
+   * **The engine model** (fixture, every lane cast): the warn of a lane member against the world's statics and a parked ship on the
+   orders CollisionWarn acts on (not 0x12, not order 5's ignore mode, not 8): the close-range rule, the box test for a station or a
+   capital-type ship (0x0044d9c0, measured in ship-navigation-ai.md §11.2: per part an oriented box of half-extents 1.2 (e_i + r_A),
+   hit with A inside it or within |v_A| + b of it on A's forward ray; modelled as the part's sphere within 1.2 (r_part + √3 r_A) +
+   |v_A| + b, which holds the box's corners, without the ray's condition: review fixes item 11), the cone; site E's verdict as the DLL
+   computes it (`c_obst_e`); an unsuppressed run of frames counts one 0x12 (counted, not flown). **The oracle**: the flown path over the
+   30 s after each warn frame (the 0x12 is not flown, so it is the lane plan and its detours) against the row's capsule and margin: an
+   eviction is *avoidable* when the flown path cleared by the margin + 200 m + the run's longest step at 100 m/s (the row flies one step
+   straight before a turn); a suppression is *unsafe* when the flown path touched the bound.
+   * **Casts**: `station` (a station 3 km beside Λ at 12 km, bounding sphere 2.5 km, four 300 m parts), `join_field` (an M1 joining
+   from 5 km off Λ 30 km out past four asteroids 1.5 km beside its join), `join_block` (one asteroid dead ahead of that M1: its path runs
+   through it until the detour), `m7_cross` (an M7 at 143 m/s crossing Λ 2.6 km ahead of the leader). Asserted in every obstacle cast
+   (and `parked`): 0 avoidable evictions, 0 unsafe suppressions, no contact; `station` and `m7_cross` 0 evictions (with suppressions);
+   `join_block` the path through the asteroid passes (row `roll`, a 0x12 counted). Measured **[m]** (seed 1, tf 1 / 6 / 10; the committed
+   `ship_steering_host_lane.txt` of the review fixes): `station` 11,009 / 853 / 539 warns, all `lane`, 0 0x12, closest 2,121 m (77f9e88e:
+   all passed, 3 0x12 from 4.2 km, 3 avoidable); `m7_cross` 1,684 / 137 / 80 warns with the box's corners (19 / 2 / 1 without), all
+   `lane` (77f9e88e: a 0x12 at 2.6 km, avoidable); `join_field` tf 1: 1,857 warns, 970 `lane` (all on a detour),
+   887 `roll`, 3 0x12 at 1.09–1.10 km where the flown path came within 170 m of the asteroid's surface (slack −91..+33 m against the
+   margin: not avoidable; 77f9e88e: 1 avoidable); `join_block` 1,351 warns, 1,062 `lane`, 289 `roll`, 2 0x12; `parked` 12,898 / 1,024 /
+   637 warns against the parked M7 with the box's corners (0 / 135 / 75 without, all `lane`), 2 / 2 / 3 avoidable 0x12 (1–3 per run over
+   9 runs, bounded there at 3: review fixes item 11). 0 unsafe in every run, 0 avoidable in every other cast (`--lane` 3,344 checks, 0
+   failures). Units: a station's
+   parts 3 km beside Λ `lane`, its bounding sphere over Λ `roll`; an asteroid 4 km ahead `roll`, its detour 2.6 km up `lane`, the same
+   detour onto a second asteroid `roll`; a stale or future rollout `roll`; manual, 0x12, order 5, the key off `no`; order 0 `lane`; an M7
+   crossing Λ 2 km ahead when the member gets there `roll`, crossed behind it `lane`. Cost **[m]** (host x86-64 -O2): 2.3 µs per call (a
+   station's four parts over the 61-sample rollout, or a detour turn), only on the engine's warn calls of a lane member.
+
+
+2. **An escort handed to another leader leaves the lane as a member** (Run167/168 `why=leader`; `Member::exit_ms`, `exit_tgt`,
+   `exit_clear`, `kLaneExitMs` 60 s; `validity`, `lane_frame`, `lane_steer`'s `SbSteer::keep_point`, `plan_of`). On 77f9e88e the board
+   dropped the escort at the hand: its sphere avoidance then met its own convoy ahead (no longer a certified pair) and dived 2.2 km below
+   Λ, so its turn to the new leader came to 105–119° beyond the bearing, a loop (cast `retarget`). Now the escort stays a member while it
+   leaves: validity keeps it on 0x14 / 0x15 to the new target until it is clear of Λ's footprint (its lateral ≥ kLaneOffM + w),
+   kLaneExitMs + the step after the hand, or its target changes again (key off: it leaves at once, as before); lane_frame keeps its place in
+   the order (its moment frozen at the hand), so the ship behind keeps following it, and its laws run as before; site A flies the engine's
+   leg to the new leader (lane_steer returns only the law's speed, `keep_point`; the DLL's and the fixture's callers keep the order's point);
+   its rollout drifts at that speed (`Plan::drift`), so its pairs keep their certificates and no sphere avoidance acts on its convoy.
+   Measured **[m]** (cast `retarget`: the formed convoy's M1, 11–12 km out, handed at 70 s to a Titan 20 km away flying out at 40 m/s; 9
+   runs): it leaves the lane 43.2–44.3 s after the hand, its lowest speed on 0x14 86.0–90.0 m/s, its turn 2.8–3.4° beyond the 42.8°
+   bearing, it closes to 2.86 km of the new leader (its formation slot), 0 member 0x12 episodes; its follower, one follow-law time
+   constant + the step after the leave, follows the ship ahead and its law's speed is not below its speed at the leave. Units: the hand
+   kept (not yet stamped, stamped and not clear), released when clear, past the bound, handed again, key off; lane_steer speed only.
+3. / 5. **The overshoot, the follow gap, the release** (items 3a, 3b, 3d with review 2, 3, 8, 9; partly: see Open). Core changes, all
+   green on the existing casts:
+   * **A real overshoot only** (review 3; `Member::front_seen`): `over` needs the member seen in front of the plane since it entered (an
+     evicted member's slot keeps it 30 s, so Run173's E1, which crossed the plane as a member before its 0x12, is one); a ship that
+     commits from behind the gate is a re-departure, not an overshoot ranked as the head. The fixture's `overshoot` cast marks its ship
+     as seen in front (E1's history).
+   * **The return zone** (3a, review 2): when an overshoot begins (`over_new`), the members inside its return zone, nearer the gate than
+     its U-turn's apex less g_req, both half-lengths and that member's own stop, are stamped `over_ahead_of` and stay ahead of it in the
+     lane order (decided once: a member braking toward the apex would otherwise flip in and out); the others rank behind it as before. An
+     overshoot behind such a member runs its law from its apex (`s_self`). The overshoot's insertion now re-places it in either direction.
+   * **The block bounded** (review 8; `over_ret_ms`): an overshoot turning back blocks its follower until its predicted return (the out-leg
+     to its turn point, a U-turn of π R and the rejoin to its apex at the lane speed, taken when it begins) + T_stop + the step; past it the
+     law's stop is bounded by T_stop as any non-block.
+   * **No release into a closing predecessor** (review 9; `LaneCtx::closing`): a predecessor flying back toward the follower along F
+     (below −kLaneStopV, not an overshoot inside its bounded block) inside g_req is a stop with no release to the floor.
+   * **The follow gap behind a final** (3b; `LaneCtx::pred_final`): behind a predecessor inside its final (past d_end − its settling
+     distance, or in the hand-over) the follow law holds g_req + the follower's own stop at its current speed (v² / 2a: 1 km for an M1 at
+     100 m/s), so a P2 that drops the speed at d_end leaves a pair the follower can resolve.
+   Units: the follow law at 600 m behind a final 10 m/s (100 m/s otherwise), a predecessor flying back inside g_req past T_stop a stop.
+   Measured **[m]**: `--lane` 2,851 checks, 0 failures; `overshoot` passes with the seen-in-front history (4b, 4c, safety). 3d and 3c:
+   items 5 and 6 below; the cast `behind_start`: item 7.
+4. **One geometric clearance test for every own-gate lane suppression** (review 1, 4, 5, 6, 7, 10; `gc::gate_solid`, `gc::lane_end`,
+   `lane_gate_why`). The round-1 row assumed the gate's solid inside its bounding sphere (the Terran ring's outer radius is 1.026 r),
+   never discriminated before d_end, returned `guard` on the Terran ring (Λ's d_end point inside the sphere) and certified the hand-over
+   200 m off its final with the board's up to 1.1 s old nose and no clearance test. Now:
+   * **The solid** by the gate's TGates row (gate_hole.txt, ship-navigation-ai.md §10.9): the installed Terran rows 21–24 a ring, radial
+     [0.663, 1.026] r over z [−0.498, +0.179] r; the installed ordinary rows 0–20 none (no collision body: a ship can never touch them);
+     an unknown row (`0xffff`) the most conservative measured ring (hole 0.605 r, outer 1.026 r, z −0.651..+0.655 r). Distance: the 2-D
+     distance in (radial, axial) to that rectangle; the hull capsule swept along a leg sampled every 50 m (less 25 m).
+   * **d_end per gate** (`lane_end`, `Member::d_end`, `dend`; every lane function takes it): kLaneEndM (2.3 km) on a gate without a solid;
+     on a ring its front + the longest hull (1.3 km) + a hand-over's stop run-out at the lane speed (100 m/s at 5 m/s², 1 s: 1.1 km) +
+     150 m: **4,147 m on the installed Terran ring** (r 3,207.5 m; L_i's depth d_end − 0.75 r = 1,741 m). A ship before d_end cannot reach
+     the ring within a stop whatever its heading **if its half-length is at most 1.3 km**. That is the design hull, not the installed
+     roster's longest (review fixes item 10; `round2_review/long_hulls.py` → `long_hulls.txt` **[m]**): 40 of the 131 installed capitals
+     exceed 1,300 m in radius or hull half-extent (M2 to 2,998 m, Forseti at 139 m/s; M1 to 4,583 m; TL 1,837 m; M7 1,431 m; medians
+     M1 / TL 1,135 m, M2 1,337 m); covering the longest flyable hull would put d_end at 5.8 km (6.8 km for the 4,583 m M1). d_end stays:
+     the row tests each member's own hull (L, w) against the solid on its path and over the hand-over's run-out, so on the Terran ring a
+     long hull is **guarded** where its own geometry reaches the ring (the engine's warn and its 0x12: an eviction from the lane), never
+     suppressed into it; the casts' hulls are within 1.3 km. **Λ's lateral on a ring**: l_c is the middle of the finals, not clamped to 0.75 r + 100 m
+     below the axis (that clamp kept escorts out of the grid's spheres; on the ring it put them 2.5 km below the axis, outside the
+     2,127 m hole, and their hand-over and launch through the ring's body: measured in development, ring contact −542 m at tf 6); the
+     grid's first row lies at 2 (r + r_s) ≈ 8.6 km, beyond d_end, and site B's tick deferral covers an order 4's first tick.
+     `lane_point_lc_env` takes the row: on a ring L_i's envelope is inside the hole.
+   * **The row**: before d_end (inbound / funnel) the member's path (`lane_path`: E's live position and velocity, the avoidance's detour,
+     the rollout, two-sided fresh, else `roll`) clears the solid by the sweep margin on every leg of its horizon, past d_end included
+     (`guard` otherwise; the legs past d_end, the hand-over and the launch about Q, are where it discriminates; order 5 is exempt from
+     contact by the engine's pair filter, §10.9 Q2). The hand-over: within 200 m of its final with the **live** direction of travel (the
+     velocity, or the live nose below 1 m/s; the slip included) within 8° of F, and its hull, a capsule along the **live nose**, swept
+     along that direction over its stop's run-out clear of the solid by kMarginM (`solid_gap_sweep`, review fixes item 8); no solid: the
+     window alone. The path's bound is the rollout's 30 s horizon, as item 1's. E passes A's live velocity, nose and fresh detour (`e_live_motion`, `e_detour`).
+   * **Freshness** (review 7): `roll_fresh` is two-sided (a stamp ahead of the clock is stale); lane_frame's clock reset clears `roll_ms` and
+     the samples.
+   * **Casts** `terran` (formed M2/M1/M2) and `terran_abreast` on the installed Terran ring (row 21, r 3,207.5 m), every assertion as the
+     1105 m casts (the slot reference T_slot,ref 50 s there, measured 43.2–49.3 s at tf 1; the cadence floor of every pair is now the slot
+     reference too: 21 s on the 1105 m gates, which an M7 pair's 20.4 s spacing fell under) but the escort's stop at d_end (reported:
+     on the ring the escort waits for its order 4 behind the leader's longer slot and its 200 m crawl runs out); the fixture's own ring
+     oracle (`ring_gap`, independent of the core) asserts no hull reaches the ring on any order but 5 in every cast. Measured **[m]**
+     (`--lane` 2,696 checks, 0 failures): `terran` 0 own-gate 0x12 (7,643 / 558 / 403 warns at tf 1 / 6 / 10 in the committed output of the
+     review fixes, all `lane`), P2 kept 3/3,
+     P2's nose ≤ 1.5°, the closest hull to the ring 550 m, spans 260.0–266.2 / 191.9–201.8 / 174.8–176.4 s; `terran_abreast` 0 own-gate
+     0x12, P2 ≤ 5.2°, ring ≥ 550 m, spans 227.9–240.2 / 163.3–174.7 / 143.6–147.0 s; an escort's stop at d_end 72 and 285 frames at tf 1
+     (seed 1). On 77f9e88e (`round2_head/run.txt`): `terran` 1 of 3 launched at tf 1, own-gate 0x12 from 3.4 to 11.1 km, a hull 340 m
+     into the ring (47,473 frames), 122 failures in all. The 1105 m casts: unchanged (d_end, l_c and the row's suppressions there are as
+     before: no solid). Units: Terran d_end 4,147 m; before d_end inside the hole `lane`, the same path 2.3 km below the axis through the
+     ring past d_end `guard`, on an ordinary row `lane`, an unknown row `guard`; the hand-over inside the hole `lane`, outside `guard`, with
+     the board's nose along F but the live velocity 20° off `guard`. The sample test's cost is bounded by its far-before-the-front reject
+     (a leg more than 1 km + w before the ring's front is not sampled).
+
+5. **Item 3d, the queue hold behind a refused leader** (seventh implementer, 2026-10-15; checks `3d2` and `3d` fail on 5d5c5e69,
+   `round2_close/run.sh` → `run.txt`). **The finding [m]**: the 0x12 in `p2_miss_near` came from the leader's rollout: a hand-over
+   member's rollout ran one plant step of its lane law before its hand-over branch, so the refused leader, stopped at d_end, crept
+   2.5 m/s in its rollout; the follower's rollout on the follow law's 10 m/s floor (v_pred above kLaneStopV: no block) ran into it at the
+   horizon's end (t_c 57–60), the pair was unresolved, the yield's cap 0 (the car-merge brief stop) lapsed at T_stop + the step (21 s)
+   and the engine's warn fired (1 episode in 6 of 9 runs). The refused leader also left the board at kHandoverMaxMs, 120 s after P2,
+   before its grant (refusals 112–122 s): its escort's hold ended with it 3 s before the grant and it flew the engine's 0x14 at the
+   stopped leader. **The law**: a follower queued behind a predecessor stopped in its hand-over is a queue hold at spacing (the law's
+   stop, a block), not the brief stop: it may last the refusal; the predecessor's grant (order 5 or 8 seen, `Sb::dock` / `launch`) ends
+   the block and the stop rule at once (`LaneCtx::granted`), so site B's stop write ends within the step of the grant (the rollout keeps
+   the stop: a granted predecessor's rollout shows its run, and at a SETA trigger order 8's lane rollout holds its point). The hand-over's
+   rollout flies site B's write from the state: P2 kept the held speed (the refusal's brake bound), not kept the lane speed under that
+   bound, refused the brake to a stop at d_end, reached at a_lin. A refused hand-over stays a member up to `kLaneRefusedMaxMs` = 300 s
+   after P2 under the lane key (`kHandoverMaxMs`, shared with the capital gate row and the key-off board, unchanged). **Check `3d2`**
+   (the p2_miss casts): site B's stop-write episodes behind a predecessor that reached P2 last at most its refusal (P2 to the grant) +
+   the step, and the law's stop ends within the step of the grant; no brief stop beyond T_stop + the step. Measured **[m]**
+   (`p2_miss_near`, 9 runs): 0 episodes, 0 uncertified frames, capsule ≥ 468 m; the queue hold 77.4–102.6 s (0.25–0.67 s shorter than
+   the refusal measured from P2), its last stop write 0–17 ms after the grant (one frame at tf 1); brief stops ≤ 2.7 s (the pair's
+   yield when the leader drops its speed at P2). `p2_miss`: brief stops 0 (were up to 35.0 s at tf 6). 5d5c5e69: 12 failures in
+   `p2_miss_near` (7 safety 7, `3d2` 5), 1 in `p2_miss` (`3d2`) and 4 of the per-ship `3d` (item 6).
+6. **Item 3c, the overshoot's rollout and out-leg** (check: `overshoot_near`'s `7 safety` fails on 5d5c5e69, 9 runs). **The finding
+   [m]**: the overshoot's rollout took the hand-over's straight run past d_end (x ≥ 0 after its first plant step), so it flew straight off
+   at its velocity while the ship turned back: 10–443 uncertified frames and 1 episode; as the head behind the Titan in its hand-over its
+   law ran from its own s past d_end, where the pacing's stop at d_end held it 19 s with the nose −F. **Now**: an overshoot that has not
+   turned in (`Member::over_in`, set when its re-departure's turn is done) rolls out its re-departure (the out-leg below Λ and the U-turn
+   as `lane_steer` flies them; never the hand-over's branch while re-departing) and its law runs from its U-turn's apex until it turns
+   in, the head's too. **The out-leg's length**: kept at d_end + settle + R; P2's nose needs all of the settling distance **[m]**
+   (`round2_close/out_leg.sh` → `out_leg.txt`, both overshoot casts, 9 runs each): 0.5 × settle 6.8–11.1° and 22–24 failed checks,
+   0 × settle 13.8–21.1°, 27–36 failed checks; 1 × settle 2.4–5.8°, 0. **Fixture**: a cast's ship on an order 4 already in flight
+   (issued before the run) has its first tick after the board's first frame (1 s) when it starts inside its grid slot's sphere (the
+   Titan of `overshoot_near` P2'd at 4.6 km at t = 0 in seeds 7 / 1234567); the overshoot is seen in front before its first lane frame (on
+   its second frame it ranked behind the Titan once). Measured **[m]**: `overshoot_near` 0 episodes, 0 uncertified frames, P2 2.5–5.7°
+   kept, capsule ≥ 943 m, every short-final check; `overshoot` P2 2.4–5.8°, outermost 5.74–5.89 km (as before).
+7. **Item C, cast `behind_start` (review 3): not closed, parked.** Two attempts, neither committed to the core. (a) Geometry
+   (`round2_close/behind_start_attempt.diff`): the overshoot's re-departure for the ship, see Open. (b) **Exclusion**
+   (`round2_close/behind_start_exclusion.diff`, the coordinator's rule): a ship whose commit is attempted while it is behind the plane is
+   no lane member (`gc::lane_entry_ok` in the DLL's and the fixture's `ctl_commit`: no rewrite, no own-gate or obstacle suppression, no
+   lane law; the engine's own order 4 and the module's non-member path) until it is in front of the plane by its stop run-out
+   (v² / 2a) + its half-length and its lateral from the gate's axis is at least r_gate + w + 50 m; a committed member's refresh is never
+   held. Measured **[m]** (9 runs; cast flags `back`, checks `Cb`): the held ship is never a member behind the plane (0 frames), 0 member
+   0x12 episodes, all launched (spans 185.3–185.6 / 159.8–166.5 / 145.0–148.7 s), but **a contact at tf 1** (capsule −11 / −340 /
+   −260 m, box −349..−639 m; under SETA 737–1013 m) and **the Titan's P2 not kept in 9 of 9 runs**: the Titan's sphere avoidance
+   detours it 160–260 m off Λ (nose 27° off F at 10 s) against the head-on non-member; the held ship, slowed near the plane by its own
+   avoidance (s ≈ +20 m, 200 m above Λ at 30–40 s), sits in the Titan's order-5 / launch path; its own P2 (reported) comes at the KC's
+   grid point 3.5 km out with the nose 140–174° off F, then 0x1f's rotation. The cast stays parked with these numbers (`Cb`'s checks
+   kept in the fixture for its re-enable).
+8. **Item 6, assertions and metrics** (`1b6`, `7b6`, `3d`): **the nose at 7 km in every cast** (`1b6`; measured only on the inbound
+   crossing of a ship that starts outside 7 km, each such ship once): 5°, or the cast's bound where its geometry cannot reach 5° (the
+   measured maximum over 9 runs + ~1.5°) **[m]**: formed, formed_m7, stragglers, partner_block, formed_stage2, leader_killed,
+   small_escort, station, m7_cross, p2_miss / p2_miss_near, retarget, redeparture's convoy, overshoot's Titan ≤ 0.2°, terran 0.8°,
+   run173 1.8–4.4° (5°); abreast3 14.4–17.7° (19.5°), abreast5 27.6–36.2° (38°), terran_abreast 16.6–17.4° (19°), crossing
+   12.8–14.3° (16°), slow_hull 11.2–11.6° (13°): a merging yielder holds its lateral while level with its predecessor (the car-merge
+   rule), still joining at 7 km; stragglers_far 6.5–8.4° (10°), run173_15km 12.9–16.8° (18.5°): a join from far out and wide starts at
+   the steepest 45° and merges at its join's end inside 7 km (run173_15km's leader 5.3 km off Λ 15.9 km out: the parabola itself
+   13° at 7 km **[i]**; an 8 km merge point at 45° tried in development: no cast under 5°, run173_15km 11.6–16.4°); parked
+   14.3–23.5° (25°), join_field 19.5–24.8° (27.5°), join_block 7.5–10.7° (12.5°): the obstacle detours. **Item 6's 5° target is met
+   only by the formed casts** (the list above to run173); the abreast, crossing, slow-hull, far-join, join and parked casts reach
+   6.5–36.2° at 7 km, and their per-cast bounds are regression guards at the measured maximum, not the target (Run173's complaint was
+   ~20° at 7 km). **The parked cast** (`7b6`):
+   own-gate 0x12 ≤ 3 per run and P2's nose ≤ 33° (measured 1–3 at 2.08–2.39 km, `gate_row=guard`, and 26.2–32.1°): the detour around
+   the non-member on Λ (§6.6, left to the engine's warn and the sphere avoidance) brings the ships to d_end off their final. **The per-ship
+   wait** (`3d`): a ship's own counted wait (`x_acc_ms`) against its refusal at the grant, not the run's sum over every ship (fails on
+   5d5c5e69 in 4 runs: the refused leader left the board at 120 s). **`lane_join_loss` takes R** (`lane_turn_r`, as `lane_carrot`'s span):
+   no measured change (the turn term binds below R / 6 ≈ 106 m of lateral, where the loss is 0 under kLaneOnM). **Rows**:
+   `test_ship_trace_format` parses `ship_steering_lane_summary` (the round-1/2 counters, `gates_gate:F:G:r`) and
+   `ship_avoid_engine_warn_pre` (`entries_…`, `gate_row=`, `obst_row=`); `ship_trace_rows.py` takes both (a vector list item a tuple).
+   Not done (Open): the 15/8 km merge-point hysteresis, the before-checks for the blend's end, the stop law's release, the re-commit
+   hysteresis and the unkept write, the 3c/3d comment.
+
+**Round 2 spans** **[m]** (15 km → last launch, 3 seeds; `ship_steering_host_lane.txt`, `scenario_c.txt`; — : launches asserted, no span):
+against round 1 the existing casts are 0–6 s longer at tf 1 (abreast 1+4 +6 s, formed +6 s, partner block +4–6 s, slow hull +6–10 s):
+item 3b's follow gap behind a predecessor inside its final (g_req + the own stop) spaces the last pairs further apart. Constants, one changed
+value each (2,851 checks per build): g_req 400 m → 14 failures, τ_m 8 s → 11, τ_f 5 s → 5, T_stop 10 s → 0, λ_max 10 s → 39, crawl 0 → 10,
+drift 100 m → 2, d_end 1.8 km → 5 (round 1: 162; the lane row's before-d_end test no longer rests on d_end on a gate without a solid),
+escort join k 0 → 1, 0.5 → 0. Cost **[m]** (bench24, the 24-member frame's controller block): 10.8–11.0 µs mean at tf 1, 133–134 µs at
+tf 10 (round 1 12.1–12.4 / 144–152); the bench check failed once (1,027 µs third-worst at tf 10, `X3M_SEQ_OFF=1`) and passed on rerun
+(524 µs).
+
+| Cast | tf 1 (s) | tf 6 (s) | tf 10 (s) |
+| --- | --- | --- | --- |
+| abreast3 | 179.1–187.6 | 158.3–158.7 | 159.3–159.4 |
+| abreast5 | 230.9–238.1 | 213.4–213.6 | 207.4–207.8 |
+| formed | 209.3–217.0 | 188.8–189.3 | 189.9–192.1 |
+| formed_m7 | 198.5–210.4 | 183.5–185.0 | 177.4–179.0 |
+| stragglers | 200.6–209.7 | 188.0–188.2 | 181.7–184.9 |
+| stragglers_far | 307.5–307.9 | 295.6–295.9 | 289.5–290.4 |
+| redeparture | 235.2–240.4 | 218.2–220.0 | 212.4–212.8 |
+| crossing | 335.7–340.9 | 323.7–325.1 | 317.3–317.5 |
+| partner_block | 241.5–244.2 | 222.5–223.7 | 223.0–226.0 |
+| formed_stage2 | 209.2–209.2 | 188.8–189.1 | 189.7–192.1 |
+| slow_hull | 284.8–292.5 | 253.6–254.8 | 253.0–253.4 |
+| parked | — | — | — |
+| leader_killed | — | — | — |
+| small_escort | 200.7–212.1 | 187.4–187.9 | 182.4–183.9 |
+| run173 | 487.5–487.7 | 470.4–471.5 | 470.1–471.6 |
+| run173_15km | 487.0–487.1 | 469.2–471.7 | 469.6–471.0 |
+| overshoot | 186.5–187.1 | 163.0–163.9 | 164.7–166.7 |
+| p2_miss | 296.9–299.6 | 273.3–285.9 | 274.3–275.7 |
+| station | 209.3–217.0 | 188.8–189.3 | 189.9–192.1 |
+| join_field | 320.7–322.6 | 301.9–304.0 | 301.5–303.2 |
+| join_block | 306.3–306.3 | 287.4–287.7 | 287.0–288.2 |
+| m7_cross | 209.3–217.0 | 188.8–189.3 | 189.9–192.1 |
+| terran | 259.7–266.1 | 193.9–201.6 | 178.7–179.4 |
+| terran_abreast | 227.8–240.0 | 164.5–173.9 | 148.0–150.5 |
+| retarget | — | — | — |
+| p2_miss_near | 297.0–299.5 | 273.3–285.9 | 274.0–275.7 |
+| overshoot_near | 155.0–155.2 | 133.1–134.8 | 134.6–139.0 |
+
+Closing items (items 5–8, `scenario_c.txt` refreshed on 209ca671, 3,337 checks per build) **[m]**: the rows above are unchanged but
+`overshoot` (26 s shorter at tf 1 and under SETA; with item 6's rollout and law from the apex **[i]**, the cause not traced), `p2_miss` (tf 6's upper
+end 13 s shorter: no brief stops) and the two re-enabled casts. Constants, one changed value each: g_req 400 m → 14 failures, τ_m 8 s →
+28, τ_f 5 s → 5, T_stop 10 s → 0, λ_max 10 s → 41, crawl 0 → 10, drift 100 m → 3, d_end 1.8 km → 9, escort join k 0 → 5, 0.5 → 7.
+
+### Lane fix round 2 review fixes (2026-10-15; each with a check that fails on 63b181c4 where one is possible)
+
+Two independent reviews of the round (Opus, Fable) found no blocker. Evidence under
+`verification/results/ship-steering/convoy-gate-transit/round2_review/` (`run.sh` → `run.txt`: this fixture on the 63b181c4 core with
+`-DX3M_LANE_63B1`, which leaves out the units of the new core functions, items 3 and 7: 5 failures of 3,342 checks, the units of items 1,
+2, 5, 6 and 8 **[m]**). Units: `lane round 2 review units (item N)` in `ship_steering_host_lane.txt`.
+
+1. **The overshoot's return across a backward clock jump**: lane_frame's clock reset clears `over_ret_ms`, restamps `over_ms` and sets
+   `over_new` for an overshoot, so its return (and its zone) is re-taken on the new clock; before, `now − over_ret_ms` stayed negative and
+   the follower's block held for the rest of the out-leg (63b181c4: the old 200 s stamp kept at 5 s).
+2. **A hand to another leader ends with the escort membership**: `exit_ms` / `exit_tgt` / `exit_clear` are cleared on eviction and on a
+   re-entry in another role (`enter`), and honoured only while the role is escort (`plan_of`'s `Plan::drift`, the frozen lane order,
+   `exit_clear`, lane_frame clears a non-escort's). 63b181c4: kept across the eviction and the re-commit; the committed member flew `drift`.
+3. **A ship obstacle's hull** (`gc::obst_hull`, the DLL's `ctl_e_obst`): L = the census half-length when it exceeds w, else r (as
+   `hull_from`); never w, which made a stopped ship whose half-length exceeds its radius a sphere of radius w < r. DLL-only before: the
+   unit pins the helper (r 700, w 200: l 900 → 900, l 500 → 500, l 150 → 700).
+4. **Never the player's ship as B** in site E's obstacle row (`[b+0x40] & kFlagPlayerObject`, the member exclusion's test, before any
+   bound): `test_ctl_boundary_reads.test_e_obst_never_the_player_ship` (fails on 63b181c4's source).
+5. **The refused hand-over's bound** is `kLaneRefusedMaxMs` + the step (`validity`): kept at 300 s + 16 ms with a 33 ms step (63b181c4:
+   `target`), ended at + 34 ms.
+6. **The solid test's leg** (`solid_gap_seg`): a non-finite length returns −1 (fail closed; 63b181c4: NaN for a NaN end), at most 256
+   samples (`kSolidMaxN`), the wider spacing charged: a 1,000 km leg 4,656 m against 6,609 m exact (63b181c4: 20,001 samples, 6,584 m).
+7. **No path built on a gate without a solid** (`lane_path_exists`: lane_path's fail-closed tests, two-sided freshness, a sample left,
+   a finite speed, a detour's turn rate and finite reach): agrees with `lane_path` in 8 of 8 cases; host cost 2 ns against 1,853 ns
+   for the path with a detour **[m]**. The casts' rows are unchanged.
+8. **The hand-over's hull along the nose** (`solid_gap_sweep`): the capsule along the live nose swept along the live direction of travel
+   (the window's 8° is the velocity's); lines along the travel through the hull at a spacing that keeps the charged gap ≤ 25 m (≤ 32
+   lines). A 2,998 m hull on its Terran final at 100 m/s along F: nose along F `lane`, 5° off `lane`, 20° off `guard` (its front 2,404 m
+   from the axis; 63b181c4: `lane`). Host cost 0.56 µs (nose along the velocity, one line) / 2.9 µs (20° off) per call, only on a ring's
+   hand-over window **[m]**. The `terran` casts' rows are unchanged.
+9. **Check 5's Terran waiver bounded**: the escort's stop at d_end is summed in game time (`dend_stop_ms`) and bounded by the measured
+   maximum + ~0.5 s + the step (`terran` 1.70 s → 2.2 s, `terran_abreast` 4.90 s → 5.4 s, seed 1 at tf 1; 0 under SETA); every other cast
+   0. Passes on both cores (no failing-before witness: it tightens a waiver).
+10. **kLaneHullMaxM** is the design hull, not the roster's longest (item 4 above, `round2_review/long_hulls.txt`); d_end unchanged.
+11. **The engine model's box corners**: the part sphere's reach 1.2 (r_part + √3 r_A) + |v_A| + b holds the inflated box's corners
+   (ship-navigation-ai.md §11.2, measured). `m7_cross` 19 → 1,684 warns at tf 1, all `lane`; `parked` 0–268 → 12,603–12,898 at tf 1
+   with 1–3 avoidable 0x12 per run (9 runs; the row's horizon, Open), bounded at 3 for that cast; station, join_field, join_block
+   unchanged **[m]**.
+
+Acceptance **[m]**: `c++ -std=c++17 -O2 -Wall -Wextra -Werror`: `--lane` 3,344, full 13,865, `--capital` 8,207, `X3M_SEQ_OFF=1` 13,775,
+`--b9` 45: 0 failures (`--lane` and full rerun alone after the bench24 third-worst frame reached 1.1–1.2 ms with nine runs in parallel);
+key-off 0 differing lines of 1,162 / 991 / 1,162 / 201 (`round2_review/keyoff_diff.txt`; `round1_head/keyoff.sh` now takes the label);
+the four unittest modules 39 tests OK; i686 MinGW `-fsyntax-only` clean; x87 per function in `ship_steering.cpp` unchanged, 5
+functions, 42 instructions (`round2_review/x87_per_fn.py`). `scenario_c.txt` refreshed (3,344 checks per build): the constants as at
+209ca671 but λ_max 10 s → 45 failures (41) and crawl 0 → 15 (10), the new failures item 9's Terran d_end stop bound; escort join k 0 →
+8 (5), the new ones `parked`'s avoidable bound (item 11) **[m]**.
+
 ### Measured (scenario C, 3 seeds × SETA tf 1/6/10; scenario_c.txt, ship_steering_host_lane.txt) [m]
 
-After the review fixes (λ drawn from 4.1–16.9 s, the KC's slot rule with held slots, merges completing on the raw gap; the second
-implementer's figures are in the ledger), refreshed after the final review fixes (the strict order moved abreast 1+4 tf 1 from
-234.6 to 235.0 s at most; every other figure unchanged; the constants' failure counts below unchanged):
+Refreshed after lane fix round 1 (the fourth implementer's table is in the ledger, "Lane stage 1"; against it: abreast 1+4 3 s
+shorter at tf 1 and 4 s under SETA, crossing 6 s longer, the rest within 1.5 s):
 
-| Variant | tf 1 (s) | tf 6 (s) | tf 10 (s) | merge completion max (s) | closest capsule (m) |
-| --- | --- | --- | --- | --- | --- |
-| abreast 1+2 | 173.3–187.8 | 153.4–157.1 | 154.3–154.6 | 81.4 | 509 |
-| abreast 1+4 | 227.0–235.0 | 214.0–214.1 | 208.0–208.2 | 87.2 | 454 |
-| formed M2/M1/M2 | 203.0–216.6 | 184.9–186.2 | 185.4–185.6 | — | 511 |
-| formed M1/M7/M7 | 198.9–210.0 | 180.1–181.7 | 174.4 | 7.0 | 349 |
-| stragglers | 200.9–209.9 | 186.7–186.8 | 181.0–182.2 | 42.7 | 512 |
-| stragglers far | 307.9 | 295.8–295.9 | 289.9–291.4 | — | 4024 |
-| re-departure | 237.1–240.2 | 212.2–213.2 | 207.2–210.4 | 7.0 | 349 |
-| crossing | 329.6–333.2 | 317.8–317.9 | 311.4–311.6 | 124.9 | 515 |
-| partner block | 235.8–240.3 | 218.9–221.7 | 216.9–220.7 | — | 454 |
-| formed, stage 2 | 201.9 | 184.7–186.2 | 185.4–185.6 | — | 647 |
-| slow hull | 279.0–282.4 | 246.2–247.2 | 247.0–248.1 | 147.1 | 216 |
-| small escort | 201.5–210.7 | 183.7–185.0 | 179.0–179.4 | 9.0 | 327 |
-| parked (all launched) | — | — | — | — | 465 |
-| leader killed (all launched) | — | — | — | — | 682 |
+| Variant | tf 1 (s) | tf 6 (s) | tf 10 (s) | merge completion max (s) | closest capsule (m) | nose at 7 km max (°) |
+| --- | --- | --- | --- | --- | --- | --- |
+| abreast 1+2 | 172.9–188.1 | 151.6–153.4 | 152.3–153.5 | 79.7 | 448 | 17.7 |
+| abreast 1+4 | 224.0–234.9 | 209.6–210.0 | 203.8–204.0 | 91.1 | 448 | 28.4 |
+| formed M2/M1/M2 | 203.0–216.6 | 184.9–186.0 | 185.4–185.6 | — | 511 | 0.1 |
+| formed M1/M7/M7 | 199.6–209.7 | 180.1–181.7 | 174.4 | 7.0 | 349 | 0.1 |
+| stragglers | 200.2–209.2 | 186.2–186.8 | 180.4 | 28.7 | 510 | 0.2 |
+| stragglers far | 307.3–307.6 | 295.4–295.5 | 289.2–290.4 | — | 4260 | 0.5 |
+| re-departure | 234.0–239.2 | 210.8–211.3 | 205.1–207.0 | 7.0 | 349 | — |
+| crossing | 335.4–340.9 | 323.7–325.1 | 317.3–317.5 | 189.7 | 515 | 14.3 |
+| partner block | 235.9–240.4 | 218.9–221.7 | 216.9–220.7 | — | 454 | 0.1 |
+| formed, stage 2 | 201.9 | 184.7–186.0 | 185.4–185.6 | — | 646 | 0.1 |
+| slow hull | 279.0–282.4 | 246.4–247.4 | 247.0–248.1 | 116.5 | 216 | 11.6 |
+| small escort | 200.5–210.7 | 183.7–185.0 | 179.0–179.4 | 7.7 | 327 | 0.1 |
+| Run173 (45–76 km) | 488.5 | 470.8–471.8 | 471.5–472.6 | — | 4928 | 1.0 |
+| Run173 at 15 km | 491.2 | 473.7–473.8 | 474.3–475.8 | — | 5191 | 11.8 |
+| overshoot | 212.4–212.9 | 189.5–190.4 | 191.4–193.7 | — | 1030 | — |
+| P2 not kept, refused | 297.1–299.7 | 274.1–298.7 | 274.7–276.0 | — | 535 | 0.1 |
+| parked (all launched) | — | — | — | — | 506 | 23.0 |
+| leader killed (all launched) | — | — | — | — | 678 | 0.1 |
 
-Spans are 15 km → last launch. 0 member 0x12 episodes, 0 uncertified frames, 0 brief stops in 126 runs; T_slot 16.7–31.4 s at tf 1,
-1.4–14.6 s under SETA; the pre-lane core fails the span assertion in 27 of 27 control runs. Against the second implementer the tf 1 spans
-grew by up to 16 s (the λ draw up to 16.9 s and the reserve: item 1), abreast 1+4 under SETA by 8 s (item 6). Constants, one changed
-value each (`scenario_c.py`, 1114 checks per build): g_req 400 m → 13 failures (6 member 0x12 episodes); τ_m 8 s → 1; τ_f 5 s → 4;
-T_stop 10 s → 0 (no brief stop occurs); λ_max 10 s (the hold's horizon) → 29; crawl 0 → 12 (stops at d_end); drift bound 100 m → 6
-(the order-0 hold slows); d_end 1.8 km → 3; escort join k 0 → 14, 0.5 → 10.
+Spans are 15 km → last launch (the Run173 casts at their lane floor: the escorts 24 and 32 km behind the leader at its 15 km; flown
+785 s). 0 member 0x12 episodes, 0 uncertified frames in 162 runs; 0 own-gate 0x12 but `parked` (11 in its 9 runs); P2's nose
+≤ 5.8° but `parked` (32.1°); brief stops only in `p2_miss` (10, up to 35.0 s at tf 6 behind the refused leader: Open); law stops in
+`overshoot` (9, ≤ 21.5 s, behind the overshoot's turn back, a block), `re-departure` (9, ≤ 9.0 s), `partner block` (3, ≤ 0.3 s);
+T_slot 17.6–31.4 s at tf 1, 1.4–36.5 s under SETA (the 36.5 s: `p2_miss`'s refusal); the pre-lane core fails the span assertion in 33
+of 33 control runs. The nose at 7 km is asserted for `run173` only (≤ 5°); the abreast casts' escorts start 12 km out and 2.6–5 km
+off Λ, a merging yielder holds its lateral, so they are still joining at 7 km. Constants, one changed value each (`scenario_c.py`, 1902
+checks per build): g_req 400 m → 8 failures (the passer capped, the escort gate); τ_m 8 s → 2 (1 the bench under host load); τ_f 5 s → 8
+(`p2_miss` safety 6); T_stop 10 s → 3 (`p2_miss` safety); λ_max 10 s → 35; crawl 0 → 13; drift bound 100 m → 5; d_end 1.8 km → 162
+(the lane row's slab bound needs d_end ≥ 0.66 r_gate + r_A + 0.25 r_gate, 2.1 km for an M2: every lane cast's own-gate 0x12 returns);
+escort join k 0 → 0 (fourth implementer: 14; the tangent join completes on Λ before the lost-leader wait), 0.5 → 1 (the bench).
+
+Fourth implementer, for comparison: 0 member 0x12 episodes, 0 uncertified frames, 0 brief stops in 126 runs; constants g_req 400 m → 13
+failures, τ_m 8 s → 1, τ_f 5 s → 4, T_stop 10 s → 0, λ_max 10 s → 29, crawl 0 → 12, drift 100 m → 6, d_end 1.8 km → 3, escort join
+k 0 → 14, 0.5 → 10 (1114 checks per build; the engine's own gate warn was not modelled).
 
 Second implementer, for comparison (its spans are in the ledger): 0 member 0x12 episodes, 0 uncertified frames, 0 brief stops in 90 runs. T_slot 16.8–21.1 s at tf 1,
 1.4–10.0 s under SETA. The pre-lane core fails the span assertion in 24 of 24 control runs. Constants, one changed value each
@@ -756,5 +1162,39 @@ controller block): lane 2.1 µs mean / 44–52 µs worst frame at tf 1, 21.9–2
 * The order-0 straight-run hold relies on §10.11 Q4 (remainder consumed, then straight); the fixture's plant models it, the flight's
   `ship_gate_ctl_lane` rows on order 0 should confirm the held speed and lateral.
 * Crossing tf 6 passes with 1.9 s of margin against the floor + 10 s.
-* The brief stop (T_stop) never occurs in scenario C; its law is covered by the units only.
+* (lane fix round 1) The own-gate row's hand-over branch trusts the final's window through a ring's hole (q_point's Terran case); the
+  installed ordinary gates have no collision body (§10.9), the stock rings (0.605 r hole, Argon) are not certified for an M2 final.
+  The engine-model warn covers committed members on order 4 / 0 / 0x1f; whether `CollisionWarn` acts on escort orders 0x14 / 0x15 is
+  not modelled (Run173: no own-gate 0x12 on 0x14).
+* (lane fix round 1) The bench check (third-worst frame under 1 ms) is host-timing; it failed under another process's load (ledger).
+* (lane fix round 2) **A lane entry from behind the plane stays a later item** (cast `behind_start` parked: §11 item 7). A ship
+  committed 2 km behind the plane on Λ (nose −F) while a Titan departs: as a member (the tree) its law stops it at +1.0 km until the
+  Titan launched, then it flies Λ through its own order point's sphere (P2 653 m out, nose 172°, capsule −825 m at tf 1); with the
+  overshoot's geometry (`behind_start_attempt.diff`) no contact but 2–11 member episodes (an M1's pitch builds slowly: ~1 km of
+  descent in 30 s, while the departing Titan's rollout occupies the corridor within ~1.5 km of its final); held out of the lane
+  (`behind_start_exclusion.diff`) 0 member episodes but a contact at tf 1 and the Titan's P2 not kept (its avoidance against the
+  head-on non-member). Next: a hold for such a ship well clear of the corridor (behind the gate ≥ ~3 km, or ≥ 1.5 km off it) before it
+  crosses, with the departing member's avoidance aware of it (the cross-board certificate).
+* (lane fix round 2) **Item 6 remainder**: the 15/8 km merge-point hysteresis (the merge point is stateless; a ship near a candidate's
+  boundary can step between 15 and 8 km), the before-checks for round 1's blend end, stop-law release, re-commit hysteresis and unkept
+  write (their round-1 units need the round-1 core; a scenario check failing on dd07e95e exists only for the unkept write, `3c`), and
+  the 3c/3d comment. The nose at 7 km is bounded per cast above 5° where the geometry cannot reach it (item 8).
+* (lane fix round 2) The escort's stop at d_end on the Terran ring (item 4: the crawl's 200 m budget behind the leader's 43–49 s slot) is
+  bounded at the measured maximum (review fixes item 9), not removed; the order-5 leg from the Terran d_end (4,147 m) costs ~25 s per
+  launch against the 1105 m gates.
+* (lane fix round 2) The obstacle row (item 1) against the engine's box test 0x0044d9c0 (measured, ship-navigation-ai.md §11.2) is
+  modelled with the box's corners (review fixes item 11); the flight's `ship_avoid_e_verdict ... obst_row=` rows and `e_lane_obst` should
+  show stations and asteroids beside the lane suppressed and none of `roll` turning into a contact.
+* (round 2 review fixes) **The row's 30 s horizon refuses early warns against a parked non-member on Λ**: with the box's corners the
+  `parked` cast's members are warned from ~3.2 km, where the row's path (the detour, then the rollout back onto Λ beside the parked ship)
+  misses its margin near the horizon's end (−20 m against 335 m at 28 s) while the flown, re-planned path clears by 0.8–1.5 km: 1–3
+  avoidable 0x12 per run, bounded at 3. A horizon cut at the engine's warn reach, or a lane-aware detour for non-members (above), is a
+  later design item.
+* (round 2 review fixes) **Long hulls on the Terran ring** (review fixes item 10): d_end's 1.3 km hull is exceeded by 40 of 131 installed
+  capitals (to 2,998 m for a flyable M2); such a member is guarded (an eviction), not suppressed. A per-member d_end or a cast with a
+  2–3 km hull on the ring is a later item.
+* (round 2 review fixes) Later casts and checks, not done: a refusal longer than 300 s (`kLaneRefusedMaxMs`); the leader killed during the
+  queue hold; an exit member stopped until the 60 s bound (`kLaneExitMs`); check 2r2 asserting `exit_clear`; a cast with a non-member
+  ship changing course. Cost: a per-ship per-frame path cache at site E (the obstacle row builds the member's path on every warn call:
+  1.9 µs host for a detour turn).
 * Next: the arrival fan (§6.7), the cross-board certificate (§6.6).

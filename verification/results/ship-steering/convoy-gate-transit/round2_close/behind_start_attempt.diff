@@ -1,0 +1,200 @@
+diff --git a/src/proxy/ship_gate_ctl_core.h b/src/proxy/ship_gate_ctl_core.h
+index f913ed8a..a30ad570 100644
+--- a/src/proxy/ship_gate_ctl_core.h
++++ b/src/proxy/ship_gate_ctl_core.h
+@@ -253,6 +253,11 @@ struct Member {
+     // member that crossed the plane is an overshoot, not one that committed from behind the gate); the overshoot's start (game ms)
+     std::uint8_t front_seen = 0, over_new = 0;
+     std::uint8_t over_in = 0; // lane fix round 2 item 3c: the overshoot has turned in (its re-departure's turn done; its law from its own s)
++    // lane fix round 2 item 5 (cast behind_start): committed from behind the gate's plane (never seen in front since it entered): its
++    // re-departure takes the overshoot's geometry (the out-leg 2.5 R below Lambda to d_end + settle + R, the U-turn, its law from the apex),
++    // and it crosses the plane already on that out-leg's lateral (lane_carrot's back branch), not along Lambda through its own order point's
++    // sphere and head-on into the trail; it is not ranked as the head (no overshoot); until it is back on Lambda or out of the lane stages
++    std::uint8_t back = 0;
+     std::uint32_t over_ms = 0, over_ret_ms = 0; // (over_ret_ms: its predicted return to its apex, set when it begins)
+     std::uint32_t over_ahead_of = 0; // items 3a / 5: the overshoot this member was inside the return zone of when it began (it stays ahead)
+     std::uint32_t lstop_ms = 0, lstop_last_ms = 0, x_acc_ms = 0; // (lstop_last_ms: the episode's last frame with the stop's condition)
+@@ -1753,10 +1758,28 @@ inline LaneHold lane_hold_o0(const Gate& g, const Member& m, const float x[3], c
+ // Lambda at s (>= 0), hold_lat (a merging yielder still level with its predecessor: its lateral closes to y_clear = w_P + w_Y + kLaneSideM
+ // at most, the ship ahead's lane footprint never entered; the join onto Lambda once gap >= g_req - 100 m), redep (out along -F to the turn
+ // point on Lambda: the arrival came out on +U, Lambda lies on -U, so the turn is on the departure side). Returns the carrot (sc, yc).
++// Lane fix round 2 item 5: the carrot's look-ahead fraction of a member committed from behind the plane (lane_carrot's back_k), from what is
++// left of its out-leg's offset below Lambda (rem, m) of the offset (side, m): abeam (0) until the last quarter, then ahead (1 at the offset):
++// a capital's pitch acceleration is slow (an M1 at 100 m/s descended 56 m in its first 9 s toward a carrot a look-ahead ahead), so it
++// turns down first and crosses the plane on the out-leg's lateral, clear of its own order point's sphere and of the trail's final
++// Abeam, the carrot lies this far toward the out-leg's lateral from the ship (not at it): the cornering cap (omega d / 2 sin theta) slows
++// the turn down to ~24 m/s for an M1, so it turns within ~130 m along F instead of its turn radius at the lane speed (637 m), then
++// descends at the lane speed with the nose along -U
++constexpr float kLaneBackAbeamM = 300.0f;
++__attribute__((always_inline)) inline float lane_back_k(float rem, float side) noexcept {
++    if (!(side > 1.0f)) return 1.0f;
++    const float q = 0.25f * side, r = rem > 0.0f ? rem : 0.0f;
++    return r >= q ? 0.0f : 1.0f - r / q;
++}
+ __attribute__((always_inline)) inline void lane_carrot(float s, float y, float v, float W, float r_gate, bool hold_lat, bool redep, float* sc_out,
+                                                        float* yc, float y_clear = 0.0f, float join_end = kLaneEndM + kLaneJoinEndM,
+-                                                       float out_m = kLaneRedepM, float out_r = 0.0f, float d_end = kLaneEndM) noexcept {
++                                                       float out_m = kLaneRedepM, float out_r = 0.0f, float d_end = kLaneEndM, float back_k = -1.0f) noexcept {
+     const float look = pursuit_look(v, W, r_gate);
++    if (redep && back_k >= 0.0f && s > 0.0f) { // lane fix round 2 item 5: committed from behind the plane: the carrot on the out-leg's lateral
++        *sc_out = s - look * (back_k < 1.0f ? back_k : 1.0f); // (y_clear), back_k of a look-ahead ahead (0: abeam, the descent first, while
++        *yc = y_clear;                                         // the ship is still far from that lateral), so it crosses the plane there
++        return;
++    }
+     if (redep && s > -(d_end + out_m)) { // out to the turn point (out_m: Member::redep_out), kLaneRedepSideM below Lambda (y_clear:
+         // its lateral in the caller's plane); the carrot kLaneBlendM beyond it, an overshoot's (out_r: its turn radius) one radius beyond
+         *sc_out = -(d_end + out_m) - (out_r > 0.0f ? out_r : kLaneBlendM);
+@@ -1871,6 +1894,13 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
+                 lat0[1] = latE[1];
+             }
+         }
++        // (lane fix round 2 item 5: a re-departure on the overshoot's geometry that is still on Lambda (a ship committed from behind the plane
++        // along it) rolls out in the plane of F and U, where its out-leg below Lambda lies: the line kLaneOnM above it; on Lambda itself
++        // line_plane's plane is the nose's, which for a nose along -F is R's, and the out-leg below Lambda was rolled out along Lambda)
++        if ((m.over || m.back) && !m.over_in) {
++            const float oR = sc::dot3(d0v, g.R) - lat0[0], oU = sc::dot3(d0v, g.U) - lat0[1];
++            if (oR * oR + oU * oU < kLaneOnM * kLaneOnM) lat0[1] += kLaneOnM;
++        }
+         for (unsigned i = 0; i < 3; ++i) LX[i] = g.G[i] + lat0[0] * g.R[i] + lat0[1] * g.U[i] - dend(m) * g.F[i];
+         sc::JoinPlane st;
+         if (!line_plane(m, LX, g.F, &st, nn)) break;
+@@ -1924,7 +1954,8 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
+         // (lane fix round 2 item 3c: an overshoot that has not turned in flies its re-departure in the rollout, the out-leg to its turn point
+         // and the U-turn, as lane_steer flies it, never the hand-over's straight run past d_end; its law runs from its U-turn's apex, where
+         // it rejoins, as lane_frame's)
+-        bool redep = m.redep != 0 || (m.over && !m.over_in), past = false, merged = cx.merged;
++        const bool ovg = m.over || m.back; // (item 5: a member committed from behind the plane flies the overshoot's re-departure)
++        bool redep = m.redep != 0 || (ovg && !m.over_in), past = false, merged = cx.merged;
+         const float s_ov_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
+         const bool escort = m.role == Role::escort;
+         const float join_end = lane_join_end(m);
+@@ -1992,7 +2023,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
+                     sc::sincos_f(psi, &sp_, &cp_);
+                     if (cp_ >= 0.0f) redep = false;
+                 }
+-                if (m.over && redep && cx.s > s_ov_ap) cx.s = s_ov_ap; // (item 3c: the law's s; the carrot below flies from s_act)
++                if (ovg && redep && cx.s > s_ov_ap) cx.s = s_ov_ap; // (item 3c: the law's s; the carrot below flies from s_act)
+                 if (P) {
+                     const std::int32_t j = koff + std::int32_t(k) - 1;
+                     const float sp = p_along(j), sp1 = p_along(j + 1);
+@@ -2008,8 +2039,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
+                     cx.block = (cx.v_pred < kLaneStopV && cx.v_pred > -kLaneStopV) || (P->over && P->redep);
+                     if (cx.v_pred < 0.0f) cx.v_pred = 0.0f;
+                     // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that)
+-                    const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = P->over && sp > s_rj ? s_rj : sp;
+-                    cx.gap = (spp + (P->over && sp > s_rj ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
++                    const bool pov = (P->over || P->back) && !P->over_in;
++                    const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = pov && sp > s_rj ? s_rj : sp;
++                    cx.gap = (spp + (pov && sp > s_rj ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
+                 }
+                 cx.merged = merged;
+                 cx.t_free_s = cx.head ? float(std::int32_t(m.lane_free_ms - m.st.ms)) * 0.001f - ts : 0.0f;
+@@ -2021,11 +2053,23 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
+                 if (v_cmd == 0.0f && ts < stop_rest) vd = 0.0f;
+                 const bool hold_lat = !merged && cx.gap < kLaneGapM - 100.0f && !(cx.y <= kLaneOnM);
+                 float sc_c, yc;
+-                lane_carrot(s_act, cx.y, v, m.params.W, m.params.r_gate, hold_lat, redep, &sc_c, &yc,
++                // (lane fix round 2 item 5: a re-departure's carrot lateral is the plane's signed coordinate, -U's or +U's in this plane:
++                // never mirrored by the side of Lambda the ship is on, which for a ship on Lambda is a coin flip; behind the plane a ship
++                // committed from there flies abeam toward the out-leg's lateral first, ahead as it nears it: back_k, as lane_steer's)
++                float back_k = -1.0f;
++                if (m.back && redep && s_act > 0.0f) {
++                    const float yt = -m.redep_side * sc::dot3(g.U, nn), sg = yt >= 0.0f ? 1.0f : -1.0f, rem = (yt - y_rel) * sg;
++                    back_k = lane_back_k(rem, m.redep_side);
++                }
++                lane_carrot(s_act, redep ? y_rel : cx.y, v, m.params.W, m.params.r_gate, hold_lat, redep, &sc_c, &yc,
+                             redep ? (s_act > -(dend(m) + m.redep_out) ? -m.redep_side : kLaneTurnM) * sc::dot3(g.U, nn)
+                                   : P ? P->w + m.w + kLaneSideM : 0.0f,
+-                            join_end, m.redep_out, m.redep_r, dend(m));
+-                float ta = sc_c + dend(m), tb = y_lane(sc_c) + (y_rel < 0.0f ? -yc : yc);
++                            join_end, m.redep_out, m.redep_r, dend(m), back_k);
++                float ta = sc_c + dend(m), tb = y_lane(sc_c) + (redep || y_rel >= 0.0f ? yc : -yc);
++                if (back_k == 0.0f) { // (item 5: abeam, kLaneBackAbeamM toward the out-leg's lateral, as lane_steer's)
++                    ta = x;
++                    tb = y + (-m.redep_side * sc::dot3(g.U, nn) >= 0.0f ? kLaneBackAbeamM : -kLaneBackAbeamM);
++                }
+                 const bool coast = o0 && ts < hold.t_s; // review item 5: the order-0 hold's straight coast (no leaf on order 0)
+                 if (coast) {
+                     float sp_, cp_;
+@@ -4583,16 +4627,31 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
+                 m.over = 1;
+             } else if (m.lane_on || !m.front_seen)
+                 m.over = 0;
++            if (m.lane_s > 0.0f && !m.front_seen && !m.back) { // (item 5: committed from behind the plane)
++                m.back = 1;
++                m.over_in = 0;
++            } else if (m.lane_on)
++                m.back = 0;
+         } else
+-            m.over = 0;
++            m.over = m.back = 0;
+         // (its out-leg runs 2.5 R below Lambda, the U-turn's measured lateral extent, so the U-turn ends on Lambda heading +F: with 2 R it
+         // ended about R / 2 above it and P2 came 8.5 deg off F in 2 of 9 runs)
+-        m.redep_r = m.over && m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
+-        m.redep_out = m.over ? lane_blend_settle(g, m) + m.redep_r : kLaneRedepM;
+-        m.redep_side = m.over ? 2.5f * m.redep_r : kLaneRedepSideM;
++        // (lane fix round 2 item 5: a member committed from behind the plane flies the same geometry; on a gate with a solid its out-leg's
++        // offset is held inside the ring's hole while it is behind the plane, where it crosses)
++        const bool ovg = m.over || m.back;
++        m.redep_r = ovg && m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
++        m.redep_out = ovg ? lane_blend_settle(g, m) + m.redep_r : kLaneRedepM;
++        m.redep_side = ovg ? 2.5f * m.redep_r : kLaneRedepSideM;
++        if (m.back && m.lane_s > 0.0f) {
++            const GateSolid gs = gate_solid(g.type, g.r_gate);
++            if (gs.solid) {
++                const float room = gs.h - m.w - kMarginM - sc::sqrt_ss(g.lane_c[0] * g.lane_c[0] + g.lane_c[1] * g.lane_c[1]);
++                if (m.redep_side > room) m.redep_side = room > 0.0f ? room : 0.0f;
++            }
++        }
+         if (m.redep && m.lane_s < -(dend(m) + m.redep_out) && fF >= 0.0f) { // turned in: the join from here
+             m.redep = 0;
+-            if (m.over) m.over_in = 1; // (item 3c: an overshoot's law runs from its own s from here)
++            if (ovg) m.over_in = 1; // (item 3c: an overshoot's law runs from its own s from here)
+         }
+         if (!m.lane_on && fF < 0.0f && m.lane_s > -(dend(m) + m.redep_out)) m.redep = 1; // nose away inside the turn point: out first
+         if (m.lane_on) m.redep = 0;
+@@ -4783,7 +4842,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
+         // (lane fix round 2 item 3c: the head too, until it has turned in: its pacing and its follow law measured from where it rejoins, not
+         // from its position past d_end, where the pacing's stop at d_end held it 19 s in its turn back)
+         const float s_self_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
+-        const float s_self = m.over && !m.over_in && m.lane_s > s_self_ap ? s_self_ap : m.lane_s;
++        const float s_self = (m.over || m.back) && !m.over_in && m.lane_s > s_self_ap ? s_self_ap : m.lane_s;
+         cx.s = s_self;
+         cx.v_lane = lane_vmax(m);
+         cx.a = m.params.a_lin;
+@@ -4796,10 +4855,11 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
+         if (P) {
+             // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that along F;
+             // until it has turned in it is a block, its follower stops at spacing behind the apex)
+-            const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), sp = k && P->over && !P->over_in && P->lane_s > s_rj ? s_rj : P->lane_s;
++            const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r);
++            const float sp = k && (P->over || P->back) && !P->over_in && P->lane_s > s_rj ? s_rj : P->lane_s;
+             gap = (sp - P->L) - (s_self + m.L);
+             float vp = sc::dot3(P->st.u, g.F);
+-            cx.closing = vp < -kLaneStopV && !(k && P->over); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
++            cx.closing = vp < -kLaneStopV && !(k && (P->over || P->back)); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
+                                                                // its block, bounded below)
+             if (P->v_sb >= 0.0f && P->v_sb < vp) vp = P->v_sb;
+             cx.pred = true;
+@@ -5041,13 +5101,20 @@ inline bool lane_steer(const Gate& g, const Member& m, const float x[3], float v
+         const bool hold_lat = !m.merged && m.lane_gap < kLaneGapM - 100.0f && y > kLaneOnM;
+         const int pi = hold_lat && m.lane_pred ? find(g, m.lane_pred) : -1;
+         float sc_c, yc;
++        float back_k = -1.0f; // (lane fix round 2 item 5: committed from behind the plane: abeam toward the out-leg's lateral first)
++        if (m.back && m.redep && s > 0.0f) {
++            const float rem = m.redep_side + eu; // (what is left of the out-leg's offset below Lambda)
++            back_k = lane_back_k(rem, m.redep_side);
++        }
+         lane_carrot(s, y, v_now, m.params.W, rg, hold_lat, m.redep != 0, &sc_c, &yc, pi >= 0 ? g.m[pi].w + m.w + kLaneSideM : 0.0f,
+-                    lane_join_end(m), m.redep_out, m.redep_r, dend(m));
++                    lane_join_end(m), m.redep_out, m.redep_r, dend(m), back_k);
+         float latc[2];
+         lane_lat_at(g, m, sc_c, latc);
+         const float k = y > 1.0f ? yc / y : 0.0f;
+         if (m.redep && s <= -(dend(m) + m.redep_out)) // the turn: ahead (+F) and above (+U) of the ship, onto Lambda
+             for (unsigned i = 0; i < 3; ++i) out->P[i] = x[i] + kLaneTurnM * (g.F[i] + g.U[i]);
++        else if (back_k == 0.0f) // (lane fix round 2 item 5: abeam, kLaneBackAbeamM below the ship: the cornering cap turns it down slowly)
++            for (unsigned i = 0; i < 3; ++i) out->P[i] = x[i] - kLaneBackAbeamM * g.U[i];
+         else {
+             const float side = m.redep ? m.redep_side : 0.0f; // out: the turn point below Lambda
+             for (unsigned i = 0; i < 3; ++i)

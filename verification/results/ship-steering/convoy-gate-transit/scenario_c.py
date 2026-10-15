@@ -2,7 +2,8 @@
 at the design constants and at one changed value of each (the X3M_LANE_* build macros of ship_gate_ctl_core.h), runs `--lane` with
 every seed printed, and summarises per build: the failed checks, per variant the 15 km -> last launch span (min..max over seeds and
 SETA steps 1, 6, 10), and the figures each constant acts on (merge duration, brief stops, the closest capsule gap, member 0x12
-episodes, T_slot, launch gaps). No Wine, no game. Usage: python3 scenario_c.py [--quick] > scenario_c.txt (--quick: the design build
+episodes, T_slot, launch gaps; lane fix round 1: the engine's own-gate 0x12 episodes left unsuppressed, the nose off F at 7 km, P2's
+nose, the law's stops and their longest). No Wine, no game. Usage: python3 scenario_c.py [--quick] > scenario_c.txt (--quick: the design build
 only)."""
 import os, re, subprocess, sys, tempfile
 from collections import defaultdict
@@ -55,6 +56,8 @@ def summarise(name, out, err):
         spans = defaultdict(list)
         mmax = stops = stopmax = episodes = uncert = 0.0
         caps, tslot, gaps = [], [], []
+        gx12 = lstops = 0.0
+        n7, p2n, lsmax = [], [], []
         for tf, l in rows:
             spans[tf].append(num(r'span (-?[\d.]+) s', l))
             mmax = max(mmax, num(r'merges \d+ done \d+ max ([\d.]+) s', l, 0))
@@ -65,11 +68,17 @@ def summarise(name, out, err):
             caps.append(num(r'capsule (-?[\d.]+)', l))
             tslot.append((tf, num(r'T_slot ([\d.]+)\.\.', l), num(r'T_slot [\d.]+\.\.([\d.]+)', l)))
             gaps.append(num(r'launch gaps -?[\d.]+\.\.([\d.]+)', l))
+            gx12 += num(r'gate warns \d+ unsup \d+ x12 (\d+)', l, 0)
+            n7.append(num(r'nose7 ([\d.]+) deg', l, 0))
+            p2n.append(num(r'p2_nose ([\d.]+) deg', l, 0))
+            lstops += num(r'law stops (\d+)', l, 0)
+            lsmax.append(num(r'law stops \d+ max ([\d.]+) s', l, 0))
         sp = ' '.join('tf%d %.1f..%.1f' % (tf, min(v), max(v)) for tf, v in sorted(spans.items()))
         ts = ' '.join('tf%d %.1f..%.1f' % (tf, min(a for t, a, _ in tslot if t == tf), max(b for t, _, b in tslot if t == tf))
                       for tf in sorted(spans))
         print('  %-15s span %s | T_slot %s | merge_max %.1f s stops %d (max %.1f s) capsule_min %.0f m episodes %d uncert %d gap_max %.1f s'
-              % (tag, sp, ts, mmax, stops, stopmax, min(caps), episodes, uncert, max(gaps)))
+              ' | own-gate 0x12 %d nose7_max %.1f deg p2_nose_max %.1f deg law_stops %d (max %.1f s)'
+              % (tag, sp, ts, mmax, stops, stopmax, min(caps), episodes, uncert, max(gaps), gx12, max(n7), max(p2n), lstops, max(lsmax)))
     for l in out.splitlines():
         if l.startswith('lane cost'):
             print('  ' + l)

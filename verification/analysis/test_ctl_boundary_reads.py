@@ -45,6 +45,14 @@ class BoundaryReads(unittest.TestCase):
         self.assertEqual(hits(span), [])
         self.assertEqual(hits(function_body(src, '\nvoid frame_boundary(')), [])
 
+    def test_e_obst_never_the_player_ship(self):
+        # lane fix round 2 review item 4: site E's lane obstacle row returns before any bound when B is the player's ship (the member
+        # exclusion's flag test, [obj+0x40] & kFlagPlayerObject), not only for A
+        body = strip_comments(function_body((PROXY / 'ship_steering.cpp').read_text(), '\ninline void ctl_e_obst('))
+        test = re.search(r'if \(cls_b == sites::kClassShip && \(rd32\(b \+ sites::kObjFlags\) & sites::kFlagPlayerObject\)\) return;', body)
+        self.assertIsNotNone(test)
+        self.assertLess(test.start(), body.index('gc::ObstBound o;'))
+
     def test_core_headers_read_nothing(self):
         for name in ('ship_gate_ctl_core.h', 'ship_gate_ctl_live_core.h'):
             self.assertEqual(hits((PROXY / name).read_text()), [], name)

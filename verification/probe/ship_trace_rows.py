@@ -123,18 +123,36 @@ def by_ship(rows):
 # Lane stage 1 (convoy-gate-transit.md section 6.9; ship_steering_gates_lane, --debug): after each member row of a lane gate
 #   ship_gate_ctl_lane frame= t_ms= gate= ship= lane_s= (along F, m) rank= (the lane order, 0 the head; 255 none) gap_m= (tail of the ship
 #     ahead - own nose, m; na none) law=none|join|lane|merge|follow|stop|pace|gate|hold lat_m= (lateral distance from Lambda, m)
-#     lc_m=<R>,<U> (Lambda's l_c, m) v_law= (the law's speed, m/s) v_w= (site B's last lane write, m/s; na none) w=none|stop|kept|hold
-#     (that write's kind: a stop, P2's kept speed, the order-0 hold) on=0|1 (on Lambda) merged=0|1   (review item 9)
+#     lc_m=<R>,<U> (Lambda's l_c, m) v_law= (the law's speed, m/s) v_w= (site B's last lane write, m/s; na none)
+#     w=none|stop|kept|hold|unkept (that write's kind: a stop, P2's kept speed, the order-0 hold, the hand-over P2 did not keep: the lane
+#     speed under the refusal's brake bound, the stop at d_end once refused; lane fix round 1 item 3) on=0|1 (on Lambda) merged=0|1
 #   ship_gate_ctl_merge frame= t_ms= gate= ship= pred= event=start|finish gap_m= law= dur_ms= (finish: since the start)
 #   ship_gate_ctl_rewrite frame= t_ms= gate= ship= site=a|b|adopt|miss slot= (the KC grid slot the field held; -1 none) from_m=<R>,<U>,<F>
 #     to_m=<R>,<U>,<F> (the order-4 field before and after, gate frame, m): a: site A's rewrite of a grid point to L_i; b: site B's on a
 #     deferred first tick; adopt: a field equal to the hull's own L_i taken as ours without a lane member (a load, a slot reset); miss: a
 #     lane member's field that is neither a grid point nor ours (once per value)   (review items 2, 4, 9)
+#   ship_gate_ctl_defer frame= t_ms= gate= ship= order= kind=defer|restore|rewrite f210_read= f210_written= ahead_ms= (the tick
+#     deferral per ship: an order-0 write of f+0x210 = now + the deferral, the episode's first and then one per game second; the next
+#     order's first frame putting it back, with the grid point rewritten to L_i; lane fix round 1 item 5)
 #   ship_steering_lane_summary ... ctl_grid_miss= ctl_point_adopts= ctl_lane_defers= ctl_defer_rewrites= (totals since install)
+#     ctl_recommit_held= (commits held by the re-commit hysteresis, item 4) gates_gate:F:G:r=<gate>:<F>:<G>:<r_gate>|... (each lane gate's
+#     frame: F the axis the lane's s runs along, G, r; '-' none; item 5)
+#   ship_avoid_engine_warn_pre ... gate_row= (the own-gate row's reason, gc::GateRow, of the first gate entry's last site E verdict: lane
+#     = suppressed by the lane row, roll = its rollout stale or not clear beyond 6 r_gate, ...; '-' none; item 5)
 #   (ship_gate_ctl_pair cause= also takes merge (a lane yielder cleared on the 10 m/s floor) and stop (on the brief stop))
+# Lane fix round 2 (convoy-gate-transit.md section 11 "Lane fix round 2"):
+#   ship_avoid_e_verdict ... verdict=suppress_lane_obst (a lane member's path clears a non-member obstacle) obst_row=no|lane|roll
+#     step_ms= (the lane obstacle row's reason for B = a station, an asteroid or a ship that is not a board partner: no = not a lane
+#     member on a lane order or the player's ship, lane = suppressed, roll = the path does not clear by the sweep margin or its rollout is
+#     stale; item 1)
+#   ship_avoid_engine_warn_pre ... obst_row= (the lane obstacle row's reason of the first non-gate entry's last verdict; '-' none)
+#   ship_steering_lane_summary ... e_lane_obst= e_lane_obst_roll= (site E's lane obstacle row: suppressions, passes on roll)
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
-           'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite')
-LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap')
+           'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
+           'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre')
+LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap',
+               'gates_gate:F:G:r', 'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict')  # (lane fix round 2 item 6: the summary's
+#                gate frames, a vector item a tuple; the warn pre-row's entries)
 _KV = re.compile(r'(\S+?)=(\S*)')
 _INT = re.compile(r'-?\d+')
 _FLOAT = re.compile(r'-?\d+\.\d*|-?\d*\.\d+')
@@ -154,7 +172,7 @@ def _kv_value(key, text):
     if key in LIST_FIELDS:
         if text == '-':
             return []
-        return [tuple(_scalar(p) for p in item.split(':')) for item in text.split('|')]
+        return [tuple(tuple(_scalar(t) for t in p.split(',')) if ',' in p else _scalar(p) for p in item.split(':')) for item in text.split('|')]
     if ',' in text:
         return tuple(_scalar(t) for t in text.split(','))
     return _scalar(text)

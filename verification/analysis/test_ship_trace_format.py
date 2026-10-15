@@ -171,6 +171,8 @@ CTL_ROWS = [
     'ship_gate_ctl_rewrite frame=908 t_ms=23274000 gate=0x8e051030 ship=0x8e049da0 site=b slot=5 from_m=0,-666,-4394 to_m=0,-929,-1471',
     'ship_gate_ctl_rewrite frame=909 t_ms=23275000 gate=0x8e051030 ship=0x8e1d0090 site=miss slot=-1 from_m=310,-80,-3900 to_m=310,-80,-3900',
     'ship_gate_ctl_merge frame=906 t_ms=23280000 gate=0x8e051030 ship=0x8e049da0 pred=0x8e1d0090 event=finish gap_m=455 law=merge dur_ms=27400',
+    'ship_gate_ctl_defer frame=910 t_ms=23281000 gate=0x8e051030 ship=0x8e049da0 order=0x0 kind=defer f210_read=23281000 f210_written=23283517 '
+    'ahead_ms=2517',
 ]
 
 
@@ -215,7 +217,50 @@ class GateTrafficRows(unittest.TestCase):
         self.assertEqual((miss['site'], miss['slot'], miss['from_m'] == miss['to_m']), ('miss', -1, True))
         me = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_merge')[0]  # lane stage 1: a merge's completion
         self.assertEqual((me['pred'], me['event'], me['gap_m'], me['law'], me['dur_ms']), (0x8e1d0090, 'finish', 455, 'merge', 27400))
-        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 12)
+        df = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_defer')[0]  # lane fix round 1 item 5: the tick deferral per ship
+        self.assertEqual((df['ship'], df['order'], df['kind'], df['f210_read'], df['f210_written'], df['ahead_ms']),
+                         (0x8e049da0, 0, 'defer', 23281000, 23283517, 2517))
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 13)
+
+
+# Lane fix round 2 item 6: the lane summary (ship_steering.cpp's 1 Hz report under the lane key) and the engine warn's pre-row, copied from
+# the DLL's formats with synthetic values: the round-1 / round-2 counters, each lane gate's frame, the own-gate and obstacle rows' reasons.
+LANE_ROWS = [
+    'ship_steering_lane_summary frame=9100 lane=active ctl_merge_yield=3 ctl_merge_stop=1 ctl_point_rewrites=7 ctl_lane_writes=812 '
+    'ctl_x_refused=2 ctl_x_wait_s=113 ctl_grid_miss=0 ctl_point_adopts=1 ctl_lane_defers=4 ctl_defer_rewrites=2 ctl_recommit_held=5 '
+    'e_lane_obst=640 e_lane_obst_roll=12 gates_gate:F:G:r=0x8e1edfb0:0.0000,0.0000,1.0000:1200,-300,56000:1105|0x8e51c010:0.7071,0.0000,0.7071:-9000,0,4000:3208',
+    'ship_steering_lane_summary frame=9200 lane=off ctl_merge_yield=0 ctl_merge_stop=0 ctl_point_rewrites=0 ctl_lane_writes=0 ctl_x_refused=0 '
+    'ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=0 ctl_defer_rewrites=0 ctl_recommit_held=0 e_lane_obst=0 '
+    'e_lane_obst_roll=0 gates_gate:F:G:r=-',
+    'ship_avoid_engine_warn_pre frame=9101 obj=0x8e049da0 order=0x4 tgt=0x8e1edfb0 count=2 '
+    'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x8e1edfb0:18:-:0x0:0x00000000:0x00000000:6900:1105:suppress_gate|'
+    '0x9a00c000:5:station:0x0:0x00000000:0x00000000:3100:2500:suppress_lane_obst gate_row=lane obst_row=lane',
+    'ship_avoid_engine_warn_pre frame=9102 obj=0x8e049da0 order=0x0 tgt=0x00000000 count=0 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=- '
+    'gate_row=- obst_row=-',
+]
+
+
+class LaneRows(unittest.TestCase):
+    def test_lane_summary_and_warn_pre_rows(self):
+        s, s0 = st.parse_kv_rows(LANE_ROWS, 'ship_steering_lane_summary')
+        self.assertEqual((s['frame'], s['lane'], s['ctl_merge_yield'], s['ctl_merge_stop'], s['ctl_point_rewrites'], s['ctl_lane_writes']),
+                         (9100, 'active', 3, 1, 7, 812))
+        self.assertEqual((s['ctl_x_refused'], s['ctl_x_wait_s'], s['ctl_grid_miss'], s['ctl_point_adopts'], s['ctl_lane_defers'],
+                          s['ctl_defer_rewrites']), (2, 113, 0, 1, 4, 2))
+        # round 1 item 4 (the re-commit hysteresis), round 2 item 1 (the lane obstacle row)
+        self.assertEqual((s['ctl_recommit_held'], s['e_lane_obst'], s['e_lane_obst_roll']), (5, 640, 12))
+        g = s['gates_gate:F:G:r']  # round 1 item 5: each lane gate's frame (gate, F, G, r_gate)
+        self.assertEqual(g[0], (0x8e1edfb0, (0.0, 0.0, 1.0), (1200, -300, 56000), 1105))
+        self.assertEqual((g[1][0], g[1][1], g[1][3]), (0x8e51c010, (0.7071, 0.0, 0.7071), 3208))
+        self.assertEqual(s0['gates_gate:F:G:r'], [])
+        w, w0 = st.parse_kv_rows(LANE_ROWS, 'ship_avoid_engine_warn_pre')
+        self.assertEqual((w['obj'], w['order'], w['tgt'], w['count']), (0x8e049da0, 4, 0x8e1edfb0, 2))
+        e = w['entries_other:class:code:order:leader:member:d_m:r_m:e_verdict']
+        self.assertEqual(e[0], (0x8e1edfb0, 18, '-', 0, 0, 0, 6900, 1105, 'suppress_gate'))
+        self.assertEqual((e[1][2], e[1][8]), ('station', 'suppress_lane_obst'))
+        # round 1 item 5 (gate_row=: the own-gate row's reason), round 2 item 1 (obst_row=: the lane obstacle row's)
+        self.assertEqual((w['gate_row'], w['obst_row']), ('lane', 'lane'))
+        self.assertEqual((w0['entries_other:class:code:order:leader:member:d_m:r_m:e_verdict'], w0['gate_row'], w0['obst_row']), ([], '-', '-'))
 
 
 # The docking approach (amendment 18, docking-approach.md): the 1 Hz own-container row.

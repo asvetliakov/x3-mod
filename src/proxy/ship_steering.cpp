@@ -387,6 +387,7 @@ struct EVerdictRow { // ship_avoid_e_verdict (trace slot 0 as A)
     std::uint8_t gate_row;    // B.3 item 6: gc::GateRow of the own-gate row for a member A (0xff: not evaluated)
     std::int32_t gate_age_ms; // ... A's member state age then (-1: none)
     std::uint32_t step_ms;    // ... the frame's game-time step ([root+0x714], unclamped)
+    std::uint8_t obst_row;    // lane fix round 2 item 1: gc::ObstRow of the lane obstacle row (0xff: not evaluated)
 };
 // amendment 17 (section 17 item 5) with review F4: E rows for every capital A as well: at most kERows rows per frame, one per pair
 // per game second through a kELogged pair table; a new pair finding the table full (kELogged pairs logged within the last second) or
@@ -397,11 +398,14 @@ constexpr unsigned kERows = 32, kELogged = 128, kELast = 64;
 EVerdictRow e_rows_[kERows];
 std::uint8_t e_gate_why_ = 0xff;  // B.3 item 6: the own-gate row's reason of the current e_verdict call (ctl_e_fields), for e_record
 std::int32_t e_gate_age_ = -1;
+std::uint8_t e_obst_why_ = 0xff; // lane fix round 2 item 1: the lane obstacle row's reason of the current e_verdict call (gc::ObstRow)
 std::atomic<std::uint32_t> e_row_write_{0};
 std::uint32_t e_row_read_ = 0;
 struct EVerdictSeen { // the per-pair dedup (one row per pair per second of game time) and the last verdict per traced pair
     std::uint32_t a, b, ms;
     std::uint8_t verdict;
+    std::uint8_t gate_row = 0xff; // lane fix round 1 item 5: the own-gate row's reason of that verdict (gc::GateRow; 0xff not evaluated)
+    std::uint8_t obst_row = 0xff; // lane fix round 2 item 1: the lane obstacle row's reason of that verdict (gc::ObstRow; 0xff not evaluated)
 };
 EVerdictSeen e_logged_[kELogged];
 EVerdictSeen e_last_[kELast];
@@ -411,6 +415,8 @@ struct WarnPreRow { // ship_avoid_engine_warn_pre
     std::uint32_t other[5], cls[5], code[5], o_order[5], leader[5], member[5];
     float d[5], r[5];
     std::uint8_t verdict[5];
+    std::uint8_t gate_row; // lane fix round 1 item 5: the own-gate row's reason of the first gate entry's last verdict (0xff none)
+    std::uint8_t obst_row; // lane fix round 2 item 1: the lane obstacle row's reason of the first other entry's last verdict (0xff none)
 };
 WarnPreRow warn_pre_[8];
 std::atomic<std::uint32_t> warn_pre_write_{0};
@@ -769,6 +775,8 @@ Counter ctl_merge_yield_, ctl_merge_stop_, ctl_point_rewrites_, ctl_lane_writes_
 // review item 4: fields adopted as the hull's own L_i without a lane member, and grid misses (a lane member's field neither a KC grid
 // point nor ours)
 Counter ctl_lane_defers_, ctl_defer_rewrites_, ctl_point_adopts_, ctl_grid_miss_;
+Counter ctl_recommit_held_; // lane fix round 1 item 4: commits held by the re-commit hysteresis
+Counter e_lane_obst_, e_lane_obst_roll_; // lane fix round 2 item 1: site E's lane obstacle row (suppressed; passed: the path does not clear)
 Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
                                                     // that is not on its board)
 Counter ctl_evict_ignored_gate_, ctl_budget_cut_; // B.3: 0x12 episodes kept through (item 2); frames cut at the 1 ms ceiling
@@ -875,6 +883,19 @@ struct RewriteRow {
 RewriteRow rewrite_rows_[8];
 std::atomic<std::uint32_t> rewrite_row_write_{0};
 std::uint32_t rewrite_row_read_ = 0;
+// Lane fix round 1 item 5 (--debug): the tick deferral per ship (ship_gate_ctl_defer): the order, f+0x210 as read and the stamp written;
+// kind defer (an order-0 frame's write: the episode's first, then at most one row per ship per game second), restore (the next order's
+// first frame put the stamp back), rewrite (... and rewrote a grid point to L_i)
+struct DeferRow {
+    std::uint32_t gate, ship, t_ms, read, written;
+    std::uint16_t order;
+    std::uint8_t kind; // 0 defer, 1 restore, 2 rewrite
+};
+DeferRow defer_rows_[8];
+std::atomic<std::uint32_t> defer_row_write_{0};
+std::uint32_t defer_row_read_ = 0;
+std::uint32_t defer_logged_ship_[8] = {}, defer_logged_ms_[8] = {}; // the last defer row per ship (one per game second)
+unsigned defer_logged_next_ = 0;
 // B.4 item 2: ship_gate_ctl_member (--debug): one row per board member (pair role) per game second, traced or not (ring 32; drops
 // count as ctl, as the seq rows). The position and the nose are the member's last state read (site B), in the gate frame (R, U, F; m).
 struct MemberRow {
@@ -917,6 +938,31 @@ inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::R
     ctl_rows_[w & 31] = CtlRow{g.gate, m.ship, m.id, m.seq, now, m.key, m.st.order, std::uint8_t(from), std::uint8_t(to), std::uint8_t(why),
                                std::uint8_t(gc::rank(m)), std::uint8_t(m.sb), std::uint8_t(m.sb), m.petal, 0};
     ctl_row_write_.store(w + 1, std::memory_order_release);
+}
+// A ship_gate_ctl_defer row (lane fix round 1 item 5; --debug).
+inline void lane_defer_row(const gc::Gate& g, std::uint32_t ship, std::uint16_t order, std::uint32_t read, std::uint32_t written, unsigned kind,
+                           std::uint32_t now) noexcept {
+    if (!debug_) return;
+    if (kind == 0) { // (a defer write: the episode's first, then one per ship per game second)
+        unsigned k = 0;
+        while (k < 8 && defer_logged_ship_[k] != ship) ++k;
+        if (k < 8 && now - defer_logged_ms_[k] < 1000) return;
+        if (k == 8) {
+            k = defer_logged_next_;
+            defer_logged_next_ = (defer_logged_next_ + 1) & 7;
+            defer_logged_ship_[k] = ship;
+        }
+        defer_logged_ms_[k] = now;
+    } else
+        for (unsigned k = 0; k < 8; ++k)
+            if (defer_logged_ship_[k] == ship) defer_logged_ship_[k] = 0; // (the next episode's first write is logged)
+    const std::uint32_t w = defer_row_write_.load(std::memory_order_relaxed);
+    if (w - defer_row_read_ >= 8) {
+        row_dropped(Drop::ctl);
+        return;
+    }
+    defer_rows_[w & 7] = DeferRow{g.gate, ship, now, read, written, order, std::uint8_t(kind)};
+    defer_row_write_.store(w + 1, std::memory_order_release);
 }
 // A ship_gate_ctl_rewrite row (review item 9; --debug): the field before (cur) and after (to; the same for adopt / miss), units.
 inline void lane_rewrite_row(const gc::Gate& g, std::uint32_t ship, float r_s, const std::int32_t cur[3], const std::int32_t to[3], unsigned site,
@@ -964,6 +1010,7 @@ inline void ctl_leave(gc::Gate& g, unsigned i, bool evict, gc::Why why, std::uin
     const gc::Member before = g.m[i]; // the row carries the member as it was (a none leave clears the slot)
     if (before.role == gc::Role::none) return;
     gc::leave(g, i, evict, now);
+    if (why == gc::Why::target && g.lane) gc::note_target_leave(ctl_, before.ship, now); // lane fix round 1 item 4 (lane boards only)
     if (evict) ctl_evicted_.add();
     else ctl_left_.add();
     ctl_row(g, before, before.role, evict ? gc::Role::evicted : gc::Role::none, why, now);
@@ -1730,6 +1777,12 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in, 
     width_ensure(g, obj, g.join_code, dyn.r_own, now);
     gc::Gate* cg = gc::acquire_gate(ctl_, gate, now, G, R, U, F, r_gate, rd16(gate + sites::kObjType));
     if (!cg) return nullptr;
+    // lane fix round 1 item 4 (Run173: E1 re-committed 15 times in 1.7 s, why=target): a ship that left on Why::target re-commits at most
+    // once per kRecommitMs + the step (a committed member's refresh is never held); lane boards only (the key off: stage B unchanged)
+    if (cg->lane && !gc::recommit_ok(ctl_, *cg, obj, now)) {
+        ctl_recommit_held_.add();
+        return nullptr;
+    }
     gc::Member* m = ctl_enter(*cg, obj, g.id, gc::Role::committed, gc::Why::commit, now);
     if (!m) return nullptr;
     gc::commit_fill(*m, in, dyn, geo, g.w, g.w_src == std::uint8_t(ln::WidthSrc::lod) ? g.w_len : 0.0f, r_gate, gate, now);
@@ -1930,14 +1983,15 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                     const gc::Gate* bg = gc::gate_of(ctl_, gate_tgt);
                     const float* lc = bg && bg->lane_c_ok ? bg->lane_c : nullptr;
                     adopt = gc::lane_adopt_memo(gs->lane_noadopt, cur, type_width_gen_, lc != nullptr, [&]() -> bool {
-                        if (!lc && gc::lane_point_lc_env(G, row0, row1, row2, r_gate, cp)) return true;
+                        const std::uint16_t gtype = rd16(gate_tgt + sites::kObjType); // (lane fix round 2 item 4: d_end by the gate's row)
+                        if (!lc && gc::lane_point_lc_env(G, row0, row1, row2, r_gate, cp, gtype)) return true;
                         float w = 0.0f, l = 0.0f;
                         if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l)) w = l = 0.0f;
                         gc::Member hull{};
                         gc::hull_from(hull, dyn.r_own, w, l);
                         gc::params_from(hull.params, dyn, r_gate);
-                        return gc::lane_point_own(G, row0, row1, row2, r_gate, hull.r, hull.w, hull.L, hull.params.v_max,
-                                                  gc::gate_terran(rd16(gate_tgt + sites::kObjType)), lc, cp);
+                        return gc::lane_point_own(G, row0, row1, row2, r_gate, hull.r, hull.w, hull.L, hull.params.v_max, gc::gate_terran(gtype), lc,
+                                                  cp, gtype);
                     });
                     lane_ours = adopt;
                 }
@@ -2333,7 +2387,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                 sb_on = gc::sb_steer(*cg, cm, in.x, in.v, order, rd32(fl + sites::kFlightTarget), &sbs);
         }
         if (sb_on) {
-            if (!in.detour) {
+            if (!in.detour && !sbs.keep_point) { // (keep_point: lane fix round 2 item 2, the speed only)
                 std::int32_t units[3];
                 for (unsigned i = 0; i < 3; ++i) {
                     in.P[i] = sbs.P[i];
@@ -2644,6 +2698,8 @@ void push_warn_pre(std::uint32_t obj, std::uint32_t fl, std::uint16_t order_now,
     if (pw - warn_pre_read_ < 8) {
         WarnPreRow& p = warn_pre_[pw & 7];
         p = WarnPreRow{};
+        p.gate_row = 0xff;
+        p.obst_row = 0xff;
         p.obj = obj;
         p.order = order_now;
         p.tgt = rd32(fl + sites::kFlightTarget);
@@ -2673,7 +2729,11 @@ void push_warn_pre(std::uint32_t obj, std::uint32_t fl, std::uint16_t order_now,
                 else if (members_.current(obj, o, own_id, rd32(o + sites::kObjId), now)) p.member[i] = o;
             }
             for (unsigned k = 0; k < kELast; ++k)
-                if (e_last_[k].a == obj && e_last_[k].b == o && now - e_last_[k].ms <= 1000) p.verdict[i] = e_last_[k].verdict;
+                if (e_last_[k].a == obj && e_last_[k].b == o && now - e_last_[k].ms <= 1000) {
+                    p.verdict[i] = e_last_[k].verdict;
+                    if (p.gate_row == 0xff && p.cls[i] == sites::kClassGate) p.gate_row = e_last_[k].gate_row;
+                    if (p.obst_row == 0xff && p.cls[i] != sites::kClassGate) p.obst_row = e_last_[k].obst_row;
+                }
         }
         warn_pre_write_.store(pw + 1, std::memory_order_release);
     } else
@@ -2925,6 +2985,22 @@ inline void ctl_pass_row(const gc::Gate& g, unsigned i, unsigned j, std::uint32_
                                         gc::pair_gap(g, i, j)};
     ctl_pair_write_.store(w + 1, std::memory_order_release);
 }
+// Lane fix round 2 items 1 and 4: A's live velocity (speed x the flight basis' row 2 + the slip) and nose (E's reads of A, the engine's
+// pointer of the call), and its avoidance's detour point while that call is within the lane rows' state bound (the module's own state).
+inline void e_live_motion(std::uint32_t a, std::uint32_t fl, float u[3], float f[3]) noexcept {
+    const float va = float(rds32(a + sites::kObjSpeed)) / core::kUnitsPerMetre;
+    for (unsigned i = 0; i < 3; ++i) {
+        f[i] = fixed16(rds32(fl + sites::kFlightBasis + 0x20 + 4 * i));
+        u[i] = va * f[i] + float(rds32(a + sites::kObjSlip + 4 * i)) / core::kUnitsPerMetre;
+    }
+}
+inline const float* e_detour(std::uint32_t a, const core::Ship* s, std::uint32_t now) noexcept {
+    if (!s) return nullptr;
+    const av::ShipAvoid& st = avoid_[unsigned(s - table_.entries)];
+    const std::int32_t age = std::int32_t(now - st.stamp_ms);
+    return st.obj == a && st.obstacle && st.stamp_ms && age >= 0 && age <= std::int32_t(gc::kStateMaxAgeMs + gc::kStateMs + frame_step_ms()) ? st.P
+                                                                                                                                           : nullptr;
+}
 // Site E's controller fields (D.1, D.4): the arrival-gate row for B = A's arrival gate; for B = a ship, whether A and B are live
 // members of one board (the controller owns the pair: certified or handed back), and whether A is a capital arrival (the small-ship
 // row takes it as fresh).
@@ -2938,7 +3014,10 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
                 for (unsigned i = 0; i < 3; ++i) x[i] = float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
             gc::note_step(ctl_, now, frame_step_ms()); // B.3 item 1: E may run before site B in a frame
             gc::GateRow why = gc::GateRow::not_member;
-            in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now, &why);
+            float u[3], f[3]; // lane fix round 2 item 4: the lane row's live velocity and nose, A's fresh detour
+            e_live_motion(a, fl, u, f);
+            in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now, &why, u, f,
+                                         e_detour(a, table_.find(a), now));
             if (trace_on_) { // the E row's fields (e_record runs only with the trace on)
                 e_gate_why_ = std::uint8_t(why);
                 int mi = -1;
@@ -3019,8 +3098,8 @@ inline void lane_clamp(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) no
         const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
         float p[3];
         for (unsigned i = 0; i < 3; ++i) p[i] = float(cur[i]) / core::kUnitsPerMetre;
-        const std::uint32_t target = rd32(fl + sites::kFlightTarget);
-        const gc::LaneDefer d = gc::lane_defer_step(*g, g->m[ci], order, target, rd32(fl + sites::kFlightReplan), now, p);
+        const std::uint32_t target = rd32(fl + sites::kFlightTarget), f210 = rd32(fl + sites::kFlightReplan);
+        const gc::LaneDefer d = gc::lane_defer_step(*g, g->m[ci], order, target, f210, now, p);
         if (d.rewrite) {
             std::int32_t units[3];
             bool ok = true;
@@ -3057,6 +3136,7 @@ inline void lane_clamp(std::uint32_t obj, std::uint32_t fl, std::uint32_t ph) no
         if (d.write210) {
             wr32(fl + sites::kFlightReplan, std::int32_t(d.v210));
             if (order == core::kOrderNone) ctl_lane_defers_.add();
+            lane_defer_row(*g, obj, order, f210, d.v210, order == core::kOrderNone ? 0u : d.rewrite ? 2u : 1u, now); // (item 5)
         }
     }
     float x[3], f[3];
@@ -3304,6 +3384,7 @@ extern "C" void __cdecl x3m_ship_gate_stop_a(std::uint32_t obj) {
                 if (cg && cg->gate == g->gate && cg->m[ci].role == gc::Role::committed && cg->m[ci].id == rd32(obj + sites::kObjId)) {
                     const std::uint32_t t = game_time_ms();
                     cg->m[ci].handover_ms = t ? t : 1;
+                    cg->m[ci].p2_kept = cap_keep ? 1 : 0; // lane fix round 1 item 3: site B never latches a speed P2 did not keep
                     ctl_row(*cg, cg->m[ci], gc::Role::committed, gc::Role::committed, gc::Why::handover, t);
                 }
             }
@@ -3587,7 +3668,7 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
             k = e_last_next_;
             e_last_next_ = (e_last_next_ + 1) & (kELast - 1);
         }
-        e_last_[k] = EVerdictSeen{a, b, now, std::uint8_t(v)};
+        e_last_[k] = EVerdictSeen{a, b, now, std::uint8_t(v), e_gate_why_, e_obst_why_};
     }
     if (!slot0 && !capital) return;
     if (v == EV::suppress_ctl || v == EV::pass_ctl) return; // D.7: member pairs log ship_gate_ctl_pair on a verdict change instead
@@ -3610,7 +3691,7 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
         row_dropped(Drop::e_ring);
         return;
     }
-    e_logged_[k] = EVerdictSeen{a, b, now, std::uint8_t(v)};
+    e_logged_[k] = EVerdictSeen{a, b, now, std::uint8_t(v), e_gate_why_, e_obst_why_};
     EVerdictRow& r = e_rows_[w & (kERows - 1)];
     r = EVerdictRow{};
     r.a = a;
@@ -3618,6 +3699,7 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
     r.verdict = std::uint8_t(v);
     r.gate_row = e_gate_why_;
     r.gate_age_ms = e_gate_age_;
+    r.obst_row = e_obst_why_;
     r.step_ms = frame_step_ms();
     const std::uint32_t fla = rd32(a + sites::kObjFlight);
     r.a_order = fla ? rd16(fla + sites::kFlightOrder) : 0;
@@ -3645,9 +3727,65 @@ void e_record(std::uint32_t a, std::uint32_t b, EV v, std::uint32_t now) noexcep
     }
     e_row_write_.store(w + 1, std::memory_order_release);
 }
+// Lane fix round 2 item 1 (gc::lane_obst_why): site E's lane obstacle row for a lane member A against B, a station (class 5 / 6, its part
+// spheres from the walk's part cache when they lie within B's live bounding sphere, else the sphere), an asteroid (its sphere) or a ship
+// that is not A's board partner (its hull capsule from the type widths, its velocity). Reads: A and B (the engine's pointers of this call)
+// and their flight and physics blocks, the type table, the module's own part cache and A's avoidance state (its fresh detour); never the
+// player's ship or a ship under manual control. B.5: no other object is read.
+inline void ctl_e_obst(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std::uint16_t cls_b, const core::Ship* s, std::uint32_t now,
+                       av::SiteE& in) noexcept {
+    if (!(cls_b == sites::kClassShip || cls_b == sites::kClassStationA || cls_b == sites::kClassStationB || cls_b == sites::kClassAsteroid)) return;
+    if (!ctl_ix_.maybe(a)) return;
+    // (round 2 review item 4: never the player's ship as B, the member exclusion's flag test)
+    if (cls_b == sites::kClassShip && (rd32(b + sites::kObjFlags) & sites::kFlagPlayerObject)) return;
+    const std::uint32_t flags = rd32(a + sites::kObjFlags);
+    const bool manual = (flags & (sites::kFlagPlayerObject | sites::kFlagPlayerControl)) || !(flags & sites::kFlagAutopilot);
+    const std::uint32_t pa = rd32(a + sites::kObjPhys), pb = rd32(b + sites::kObjPhys);
+    if (!pa || !pb) return;
+    float x[3], u[3], fa[3];
+    e_live_motion(a, fl, u, fa);
+    for (unsigned i = 0; i < 3; ++i) x[i] = float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+    gc::ObstBound o;
+    o.r = float(rds32(b + sites::kObjRadius)) / core::kUnitsPerMetre;
+    for (unsigned i = 0; i < 3; ++i) o.c[i] = float(rds32(pb + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+    if (cls_b == sites::kClassShip) {
+        const std::uint32_t flb = rd32(b + sites::kObjFlight);
+        if (!flb) return;
+        const float vb = float(rds32(b + sites::kObjSpeed)) / core::kUnitsPerMetre;
+        for (unsigned i = 0; i < 3; ++i) {
+            o.f[i] = fixed16(rds32(flb + sites::kFlightBasis + 0x20 + 4 * i));
+            o.v[i] = vb * o.f[i] + float(rds32(b + sites::kObjSlip + 4 * i)) / core::kUnitsPerMetre;
+        }
+        float w = 0.0f, l = 0.0f;
+        if (type_width_get(std::int16_t(rd16(b + sites::kObjType)), &w, &l)) gc::obst_hull(o, w, l); // (round 2 review item 3)
+    } else if (cls_b != sites::kClassAsteroid) { // a station: the walk's part spheres, only when they lie within its live sphere
+        for (unsigned k = 0; k < part_cache_.count; ++k) {
+            const av::PartSet& ps = part_cache_.sets[k];
+            if (ps.station != b || !ps.count) continue;
+            bool inside = true;
+            for (unsigned q = 0; q < ps.count && inside; ++q) {
+                const float d[3] = {ps.c[q][0] - o.c[0], ps.c[q][1] - o.c[1], ps.c[q][2] - o.c[2]};
+                const float lim = o.r * 1.01f + 1.0f - ps.r[q];
+                inside = lim > 0.0f && core::dot3(d, d) <= lim * lim;
+            }
+            if (inside) {
+                o.pc = ps.c;
+                o.pr = ps.r;
+                o.np = ps.count;
+            }
+            break;
+        }
+    }
+    const float* detour = e_detour(a, s, now); // (A's avoidance detour within the row's state bound, else the board's rollout alone)
+    gc::ObstRow why = gc::ObstRow::no;
+    in.lane_obst = gc::e_obst_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), in.a_order, in.a_target, x, u, true, o, detour, manual, now, &why);
+    e_obst_why_ = std::uint8_t(why);
+    if (why == gc::ObstRow::roll) e_lane_obst_roll_.add();
+}
 inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* out) noexcept {
     *out = EV::none;
     e_gate_why_ = 0xff;
+    e_obst_why_ = 0xff;
     if (!a || !b || rd16(a + sites::kObjClass) != sites::kClassShip) return 0;
     const std::uint32_t fl = rd32(a + sites::kObjFlight);
     if (!fl) return 0;
@@ -3669,6 +3807,15 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
             else if (v == EV::suppress_ctl) e_suppressed_ctl_.add();
             else if (v == EV::pass_ctl) e_pass_ctl_.add();
             return av::e_suppresses(v) ? 1 : 0;
+        }
+        if (lane_on_ && cls_b != sites::kClassGate) ctl_e_obst(a, fl, b, cls_b, s, now, in); // lane fix round 2 item 1
+        if (in.lane_obst) {
+            const EV v = av::site_e_verdict(in);
+            *out = v;
+            if (v == EV::suppress_lane_obst) {
+                e_lane_obst_.add();
+                return 1;
+            }
         }
     }
     if (!s && !in.a_arrival) {
@@ -4191,6 +4338,14 @@ void ctl_rows(unsigned long long frame) noexcept {
                  static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.e.ship),
                  static_cast<unsigned long>(r.e.pred), r.e.finish ? "finish" : "start", double(r.e.gap), gc::law_name(r.e.law),
                  static_cast<unsigned long>(r.e.ms));
+    }
+    for (std::uint32_t w = defer_row_write_.load(std::memory_order_acquire); defer_row_read_ != w; ++defer_row_read_) { // round 1 item 5
+        static const char* const kKind[3] = {"defer", "restore", "rewrite"};
+        const DeferRow& r = defer_rows_[defer_row_read_ & 7];
+        x3m::log("ship_gate_ctl_defer frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx order=0x%x kind=%s f210_read=%lu f210_written=%lu ahead_ms=%ld",
+                 frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship), unsigned(r.order),
+                 kKind[r.kind < 3 ? r.kind : 0], static_cast<unsigned long>(r.read), static_cast<unsigned long>(r.written),
+                 long(std::int32_t(r.written - r.t_ms)));
     }
     for (std::uint32_t w = rewrite_row_write_.load(std::memory_order_acquire); rewrite_row_read_ != w; ++rewrite_row_read_) { // item 9
         static const char* const kSite[4] = {"a", "b", "adopt", "miss"};
@@ -4807,10 +4962,13 @@ void frame_boundary(std::uint64_t frame) {
         for (std::uint32_t w = e_row_write_.load(std::memory_order_acquire); e_row_read_ != w; ++e_row_read_) {
             const EVerdictRow& r = e_rows_[e_row_read_ & (kERows - 1)];
             // B.3 item 6: an own-gate row of a member A carries why the row passed (gc::GateRow), A's state age and the game step
-            char gate_tail[96] = "";
+            char gate_tail[128] = "";
             if (r.gate_row != 0xff)
                 std::snprintf(gate_tail, sizeof gate_tail, " gate_row=%s ctl_age_ms=%ld step_ms=%lu", gc::gate_row_name(gc::GateRow(r.gate_row)),
                               long(r.gate_age_ms), static_cast<unsigned long>(r.step_ms));
+            else if (r.obst_row != 0xff) // lane fix round 2 item 1: the lane obstacle row's reason
+                std::snprintf(gate_tail, sizeof gate_tail, " obst_row=%s step_ms=%lu", gc::obst_row_name(gc::ObstRow(r.obst_row)),
+                              static_cast<unsigned long>(r.step_ms));
             log("ship_avoid_e_verdict frame=%llu A=0x%08lx A_order=0x%x B=0x%08lx B_class=%lu B_code=%s B_order=0x%x B_leader=0x%08lx B_flags=0x%08lx "
                 "member_leader=0x%08lx member_age_ms=%ld d_m=%.0f r_B=%.1f A_age_ms=%ld B_age_ms=%ld verdict=%s%s",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.a), unsigned(r.a_order), static_cast<unsigned long>(r.b),
@@ -4832,9 +4990,11 @@ void frame_boundary(std::uint64_t frame) {
                 if (m > 0 && n + m < int(sizeof entries)) n += m;
             }
             log("ship_avoid_engine_warn_pre frame=%llu obj=0x%08lx order=0x%lx tgt=0x%08lx count=%lu "
-                "entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=%s",
+                "entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=%s gate_row=%s obst_row=%s",
                 static_cast<unsigned long long>(frame), static_cast<unsigned long>(p.obj), static_cast<unsigned long>(p.order),
-                static_cast<unsigned long>(p.tgt), static_cast<unsigned long>(p.count), n ? entries : "-");
+                static_cast<unsigned long>(p.tgt), static_cast<unsigned long>(p.count), n ? entries : "-",
+                p.gate_row != 0xff ? gc::gate_row_name(gc::GateRow(p.gate_row)) : "-",
+                p.obst_row != 0xff ? gc::obst_row_name(gc::ObstRow(p.obst_row)) : "-");
         }
         for (std::uint32_t w = trace_write_.load(std::memory_order_acquire); trace_read_ != w; ++trace_read_) {
             const TraceRow& r = trace_ring_[trace_read_ & (kTraceRing - 1)];
@@ -5155,15 +5315,28 @@ void frame_boundary(std::uint64_t frame) {
         static_cast<unsigned long>(cstale - rep_clamp_stale_), static_cast<unsigned long>(redirected - rep_redirected_),
         static_cast<unsigned long>(total), clamped(0.5), clamped(0.99), us_max, orders,
         static_cast<unsigned long>(stuck_count_.load(std::memory_order_relaxed)), avoidance, gates, dock, trace);
-    if (lane_on_) // lane stage 1 (convoy-gate-transit.md section 6.9), totals since install: its own row (the summary's gates text is bounded)
+    if (lane_on_) { // lane stage 1 (convoy-gate-transit.md section 6.9), totals since install: its own row (the summary's gates text is bounded)
+        // lane fix round 1 item 5: each lane gate's frame (its F, the axis the lane's s and the rows' p_m F component run along; G; r)
+        char frames[4 * 112] = "-";
+        int nf = 0;
+        for (const gc::Gate& lg : ctl_.g) {
+            if (!lg.gate || !lg.lane) continue;
+            const int m = std::snprintf(frames + nf, sizeof frames - size_t(nf), "%s0x%08lx:%.4f,%.4f,%.4f:%.0f,%.0f,%.0f:%.0f", nf ? "|" : "",
+                                        static_cast<unsigned long>(lg.gate), double(lg.F[0]), double(lg.F[1]), double(lg.F[2]), double(lg.G[0]),
+                                        double(lg.G[1]), double(lg.G[2]), double(lg.r_gate));
+            if (m > 0 && nf + m < int(sizeof frames)) nf += m;
+        }
         log("ship_steering_lane_summary frame=%llu lane=%s ctl_merge_yield=%lu ctl_merge_stop=%lu ctl_point_rewrites=%lu ctl_lane_writes=%lu "
-            "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu",
+            "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu "
+            "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu gates_gate:F:G:r=%s",
             static_cast<unsigned long long>(frame), lane_state_, static_cast<unsigned long>(ctl_merge_yield_.get()),
             static_cast<unsigned long>(ctl_merge_stop_.get()), static_cast<unsigned long>(ctl_point_rewrites_.get()),
             static_cast<unsigned long>(ctl_lane_writes_.get()), static_cast<unsigned long>(ctl_x_refused_.get()),
             static_cast<unsigned long>(ctl_x_wait_ms_ / 1000u), static_cast<unsigned long>(ctl_grid_miss_.get()),
             static_cast<unsigned long>(ctl_point_adopts_.get()), static_cast<unsigned long>(ctl_lane_defers_.get()),
-            static_cast<unsigned long>(ctl_defer_rewrites_.get()));
+            static_cast<unsigned long>(ctl_defer_rewrites_.get()), static_cast<unsigned long>(ctl_recommit_held_.get()),
+            static_cast<unsigned long>(e_lane_obst_.get()), static_cast<unsigned long>(e_lane_obst_roll_.get()), frames);
+    }
     rep_calls_ = calls;
     rep_handled_ = handled;
     rep_clamp_calls_ = ccalls;

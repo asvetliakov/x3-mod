@@ -1,0 +1,13 @@
+== 63b181c4 core, the review-fix fixture (--lane)
+      1 FAIL lane round 2 review units (item 1)
+      1 FAIL lane round 2 review units (item 2)
+      1 FAIL lane round 2 review units (item 5)
+      1 FAIL lane round 2 review units (item 6)
+      1 FAIL lane round 2 review units (item 8)
+lane round 2 review units (item 1): an overshoot's return across a backward clock jump: over_ret_ms 200000 over_new 0 (was 200000 on the old clock, now 5000)
+lane round 2 review units (item 2): exit_ms after the eviction 1100, after the re-entry as committed 1100; a committed member with a stale exit_ms flies drift
+lane round 2 review units (item 5): a refused hand-over at 300 s + 16 ms (step 33 ms) target, + 34 ms target
+lane round 2 review units (item 6): a 1,000 km leg 6584 m (exact 6609, the 256-sample charge 4656); a NaN end nan, an infinite end -inf
+lane round 2 review units (item 8): the hand-over on the Terran ring, a 2,998 m hull at 100 m/s along F: the nose along F lane, 5 deg off lane, 20 deg off lane
+ship_steering_host checks=3342 failures=5 slip_gaps=0
+checks FAIL

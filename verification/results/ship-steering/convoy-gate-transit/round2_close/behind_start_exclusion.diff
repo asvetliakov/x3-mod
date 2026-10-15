@@ -1,0 +1,178 @@
+diff --git a/src/proxy/ship_gate_ctl_core.h b/src/proxy/ship_gate_ctl_core.h
+index c03406fd..7a85afcb 100644
+--- a/src/proxy/ship_gate_ctl_core.h
++++ b/src/proxy/ship_gate_ctl_core.h
+@@ -319,6 +319,10 @@ struct Board {
+     static constexpr unsigned kRecentLeaves = 8;
+     std::uint32_t tl_ship[kRecentLeaves] = {}, tl_ms[kRecentLeaves] = {};
+     unsigned tl_next = 0;
++    // lane fix round 2 item C (cast behind_start): ships held out of the lane after a commit attempt from behind a lane gate's plane
++    // (ship, gate, game ms of the last attempt; lane_entry_ok)
++    static constexpr unsigned kBackSlots = 8;
++    std::uint32_t bx_ship[kBackSlots] = {}, bx_gate[kBackSlots] = {}, bx_ms[kBackSlots] = {};
+     std::uint32_t step_now_ms = 0, step_cur_ms = 0, step_prev_ms = 0; // B.3 item 1: the frame (game ms) the steps belong to
+ };
+ // B.3 item 1 (Run163: the funnel's gate row failed closed on the two SETA frames whose game step was 2,000 and 1,540 ms, beyond the
+@@ -629,6 +633,49 @@ inline void note_target_leave(Board& b, std::uint32_t ship, std::uint32_t now) n
+     b.tl_ship[k] = ship;
+     b.tl_ms[k] = now ? now : 1;
+ }
++// Lane fix round 2 item C (cast behind_start: a capital committed 2 km behind the plane on Lambda, nose -F, while a Titan departs; as a
++// lane member its re-departure could not leave the departing corridor in time: member 0x12s, contact or P2 heading -F through its own
++// order point's sphere; section 11 item C): a ship whose commit is attempted while it is behind a lane gate's plane is no lane member
++// until it is in front of the plane by its own stop run-out (v^2 / 2a) + its half-length and outside the departing corridor (its lateral
++// from the gate's axis at least r_gate + its half-width + kMarginM). Until then the commit is refused: no lane order, no order-point
++// rewrite, no own-gate or obstacle suppression, no lane law; it flies the engine's own order 4 as a non-member (the members' rollouts and
++// site E treat it as any non-member ship). A committed member's refresh is never held (an overshoot keeps its membership); the hold
++// lapses kLaneBackKeepMs + the step after the last attempt. Key off: always true. O(kBackSlots) per commit attempt.
++constexpr std::uint32_t kLaneBackKeepMs = 60000;
++inline bool lane_entry_ok(Board& b, const Gate& g, std::uint32_t ship, const float x[3], float v, float a, float L, float w, std::uint32_t now) noexcept {
++    if (!g.lane || !ship) return true;
++    const int i = find(g, ship);
++    if (i >= 0 && g.m[i].role == Role::committed) return true;
++    std::uint32_t step = b.step_cur_ms > b.step_prev_ms ? b.step_cur_ms : b.step_prev_ms;
++    if (step > kStepClampMs) step = kStepClampMs;
++    int k = -1;
++    for (unsigned j = 0; j < Board::kBackSlots && k < 0; ++j)
++        if (b.bx_ship[j] == ship && b.bx_gate[j] == g.gate && b.bx_ms[j] && std::int32_t(now - b.bx_ms[j]) >= 0 &&
++            now - b.bx_ms[j] <= kLaneBackKeepMs + step)
++            k = int(j);
++    const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
++    const float s = sc::dot3(d, g.F);
++    if (!(s > 0.0f) && k < 0) return true;
++    if (!(s > 0.0f)) {
++        const float am = a > 0.1f ? a : 0.1f, vv = v > 0.0f ? v : 0.0f, run = vv * vv / (2.0f * am) + L;
++        const float e[3] = {d[0] - s * g.F[0], d[1] - s * g.F[1], d[2] - s * g.F[2]};
++        const float lat = sc::sqrt_ss(sc::dot3(e, e)), out = g.r_gate + w + kMarginM;
++        if (s <= -run && lat >= out) { // released: the commit proceeds
++            b.bx_ship[k] = b.bx_gate[k] = b.bx_ms[k] = 0;
++            return true;
++        }
++    }
++    if (k < 0) { // a free (or the oldest) slot
++        k = 0;
++        for (unsigned j = 1; j < Board::kBackSlots; ++j)
++            if (!b.bx_ms[k]) break;
++            else if (!b.bx_ms[j] || std::int32_t(b.bx_ms[j] - b.bx_ms[k]) < 0) k = int(j);
++    }
++    b.bx_ship[k] = ship;
++    b.bx_gate[k] = g.gate;
++    b.bx_ms[k] = now ? now : 1;
++    return false;
++}
+ inline bool recommit_ok(const Board& b, const Gate& g, std::uint32_t ship, std::uint32_t now) noexcept {
+     const int i = find(g, ship);
+     if (i >= 0 && g.m[i].role == Role::committed) return true; // (a committed member's refresh)
+diff --git a/src/proxy/ship_steering.cpp b/src/proxy/ship_steering.cpp
+index 2c889cea..887e68d8 100644
+--- a/src/proxy/ship_steering.cpp
++++ b/src/proxy/ship_steering.cpp
+@@ -1783,6 +1783,10 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in,
+         ctl_recommit_held_.add();
+         return nullptr;
+     }
++    { // lane fix round 2 item C: a commit from behind the plane waits until the ship is in front by its stop run-out, off the corridor
++        const float wb = g.w > 0.0f ? g.w : dyn.r_own, lb = g.w_src == std::uint8_t(ln::WidthSrc::lod) && g.w_len > dyn.r_own ? g.w_len : dyn.r_own;
++        if (!gc::lane_entry_ok(ctl_, *cg, obj, in.x, in.v, dyn.a_lin, lb, wb, now)) return nullptr;
++    }
+     gc::Member* m = ctl_enter(*cg, obj, g.id, gc::Role::committed, gc::Why::commit, now);
+     if (!m) return nullptr;
+     gc::commit_fill(*m, in, dyn, geo, g.w, g.w_src == std::uint8_t(ln::WidthSrc::lod) ? g.w_len : 0.0f, r_gate, gate, now);
+diff --git a/verification/probe/ship_steering_host.cpp b/verification/probe/ship_steering_host.cpp
+index f77cbeaa..ca89c9a3 100644
+--- a/verification/probe/ship_steering_host.cpp
++++ b/verification/probe/ship_steering_host.cpp
+@@ -842,6 +842,10 @@ struct Model {
+         }
+         gc::Gate* g = gc::acquire_gate(*ctl, gate_ptr, now, gate_G, R, U, F, gate_r, ctl_gate_type);
+         if (!g) return;
++#if !defined(X3M_LANE_HEAD) && !defined(X3M_LANE_5D5C)
++        // lane fix round 2 item C: the DLL's ctl_commit holds a commit from behind the plane (gc::lane_entry_ok)
++        if (!gc::lane_entry_ok(*ctl, *g, ptr, in.x, in.v, dyn.a_lin, std::fmax(hull_l, dyn.r_own), hull_w > 0.0f ? hull_w : dyn.r_own, now)) return;
++#endif
+         gc::Role before = gc::Role::count;
+         gc::Member* m = gc::enter(*ctl, *g, ptr, native_id(), gc::Role::committed, now, &before);
+         if (m) gc::commit_fill(*m, in, dyn, geo, hull_w, hull_l, gate_r, gate_ptr, now);
+@@ -14941,6 +14945,7 @@ struct CSetup {
+     long retarget_ms = -1; int retarget_ship = -1, retarget_to = -1; // lane fix round 2 item 2: the script hands this escort to that leader
+     double r_gate = 0;          // lane fix round 2 item 4: the gate's radius (0: kGateRM, the installed ordinary gates' 1105 m) ...
+     std::uint16_t gate_type = 0; // ... and its TGates row (21: the installed Terran ring, r 3207.5 m, hole 0.663 r)
++    bool back = false;           // lane fix round 2 item C: ship 0 starts behind the plane (held out of the lane): Cb's assertions
+ };
+ struct CResult {
+     bool lane = false;
+@@ -15017,6 +15022,10 @@ struct CResult {
+     // their count and longest (s), the most any lasted beyond the predecessor's refusal (P2 to its grant; ms) and the latest a stop write
+     // came after the predecessor's grant (ms; -1 none)
+     unsigned qh_n = 0;
++    // lane fix round 2 item C: P2 not kept by a ship that started in front of the plane; the largest P2 nose of a ship that started behind
++    // it (held out of the lane: reported); the frames such a ship was a lane member while behind the plane
++    unsigned p2_front_not_kept = 0, back_member_frames = 0;
++    double back_p2_nose_deg = -1;
+     double qh_max_s = 0;
+     long qh_over_ms = -1000000, qh_rel_ms = -1;
+     double refused_v_max = 0, x_wait_s = 0, x_wait_grant_short_s = 0; // item 3: a refused ship's speed 10 s into its refusal; the board's
+@@ -15794,6 +15803,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
+                         e.x_since = now_ms;
+                         ++res.p2;
+                         if (why != core::JoinKeep::kept) ++res.p2_not_kept;
++                        if (su.s[k].z > 0.0) res.back_p2_nose_deg = std::fmax(res.back_p2_nose_deg, err_F); // (item C)
++                        else if (why != core::JoinKeep::kept) ++res.p2_front_not_kept;
+                         const double err = std::fabs(-m.pos[2] / 500.0 - kLaneEndM);
+                         // (a P2 within 4 s of the end of a script re-issue gap on the leg is late by the gap: the test did not run on order 0)
+                         if (e.gap_end >= 0 && now_ms - e.gap_end < 4000) ++res.p2_after_gap;
+@@ -16246,6 +16257,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
+                 e.sw_law = e.wk_law;
+             } else if (e.sw_start >= 0)
+                 qh_close(e);
++            if (su.s[k].z > 0.0 && z > 0.0 && mm && mm->ln) ++res.back_member_frames; // (item C: a lane member behind the plane)
+             if (su.s[k].kind == kEsc && c.phase >= 10 && z > -kLaneEndM && departing) ++res.escort_past_dend; // 5 (not a handed escort)
+             if (departing && v < 1.0 && std::fabs(z + kLaneEndM) < 600.0 && !e.refusals) ++res.dend_stops;
+             if (!lane || !mm) continue;
+@@ -16768,9 +16780,9 @@ static const CSetup kCSetups[] = {
+     // lane fix round 2 item 3d: the escort at spacing behind the refused leader (the queue hold)
+     {"p2_miss_near", kP2MissNear, 2, 0, -1, false, 1000, false, false, -1.0, false, true, 100000, 250000},
+     {"overshoot_near", kOvershootNear, 2, 0, -1, false, 600, false, false, -1.0, true},
+-    // lane fix round 2 item 5: a capital committed from behind the gate (2 km past the plane, nose -F) and a Titan near d_end: parked
+-    // (convoy-gate-transit.md section 11 Open; round2_close/behind_start_attempt.diff)
+-    // {"behind_start", kBehindStart, 2, 0, -1, false, 600},
++    // lane fix round 2 item C: a capital committed from behind the gate (2 km past the plane, nose -F) and a Titan near d_end: the ship
++    // is held out of the lane until it is in front by its stop run-out and off the corridor (gc::lane_entry_ok)
++    {"behind_start", kBehindStart, 2, 0, -1, false, 600, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, true},
+ };
+ // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
+ // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
+@@ -16819,7 +16831,7 @@ static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, c
+                 "leader->escort over spacing max %.1f s | gate warns %u unsup %u x12 %u (d %.0f..%.0f m) why %u/%u/%u/%u/%u/%u/%u/%u/%u/%u | nose7 %.1f deg (%u) "
+                 "p2_nose %.1f deg | over behind %u head %u min_s %.0f bound %.0f | law stops %u max %.1f s long %u | "
+                 "obst warns %u unsup %u x12 %u (d %.0f) why %u/%u/%u lane_sup %u (detour %u) clear %.0f avoidable %u unsafe %u sup_slack %.0f | "
+-                "ring %.0f contact %u | rt leave %ld v_min %.1f turn+ %.1f (bearing %.1f) join %.0f follower stale %d v %.1f->%.1f | qhold %u max %.1f s over %ld rel %ld | pairs%s\n",
++                "ring %.0f contact %u | rt leave %ld v_min %.1f turn+ %.1f (bearing %.1f) join %.0f follower stale %d v %.1f->%.1f | qhold %u max %.1f s over %ld rel %ld | back p2_nose %.1f member_frames %u front_not_kept %u | pairs%s\n",
+                 tag, r.lane ? "lane" : "key-off", tf, fps, seed, r.launched, r.departures, r.span_s, r.bound_s, r.floor_s, r.t15_launch_s, r.cadence_s, r.gap_over_s,
+                 r.launch_gap_min_s < 1e17 ? r.launch_gap_min_s : -1.0, r.launch_gap_max_s, r.t_slot_min_s < 1e17 ? r.t_slot_min_s : -1.0, r.t_slot_max_s,
+                 r.rewrites, r.grid_miss, r.slot_max, r.deferrals, r.o4_in_sphere, r.merges, r.merges_done, r.merge_max_s, r.merge_late, r.merge_gap_min < 1e17 ? r.merge_gap_min : -1.0, r.stops,
+@@ -16835,7 +16847,8 @@ static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, c
+                 r.obst_detour_sup, r.obst_min_clear < 1e17 ? r.obst_min_clear : -1.0, r.obst_avoidable, r.obst_unsafe,
+                 r.obst_sup_slack_min < 1e17 ? r.obst_sup_slack_min : 0.0, r.ring_gap_min < 1e17 ? r.ring_gap_min : -1.0, r.ring_contact,
+                 r.rt_leave_ms, r.rt_v_min < 1e17 ? r.rt_v_min : -1.0, r.rt_turn_excess, r.rt_bearing, r.rt_join_d < 1e17 ? r.rt_join_d : -1.0, r.rt_f_pred_stale,
+-                r.rt_f_v0, r.rt_f_v1, r.qh_n, r.qh_max_s, r.qh_n ? r.qh_over_ms : 0L, r.qh_rel_ms, r.pairs);
++                r.rt_f_v0, r.rt_f_v1, r.qh_n, r.qh_max_s, r.qh_n ? r.qh_over_ms : 0L, r.qh_rel_ms, r.back_p2_nose_deg, r.back_member_frames,
++                r.p2_front_not_kept, r.pairs);
+ }
+ // Lane stage 1 units (section 6.11 item 9): the merge rank, the three laws, the lane geometry and pass windows, the section 6.4 guard
+ // against all 20 grid points and its re-application after a re-issue, the order-0 hold's brake bound.
+@@ -17967,6 +17980,14 @@ static void lane_c_scenarios() {
+                     ck(r.episodes == 0 && r.uncert_frames == 0 && r.min_capsule > 0.0 && r.min_box > 0.0, "7 safety");
+                     continue;
+                 }
++                if (su.back) { // lane fix round 2 item C: a ship committed from behind the plane is held out of the lane (gc::lane_entry_ok): the
++                               // members' safety and P2, the held ship's safety only (its P2 nose reported)
++                    ck(r.min_capsule >= 0.0 && r.min_box >= 0.0, "Cb no contact between any pair");
++                    ck(r.episodes == 0 && r.uncert_frames == 0, "Cb no member 0x12 episode");
++                    ck(r.p2_front_not_kept == 0, "Cb every member's P2 kept");
++                    ck(r.back_member_frames == 0, "Cb no lane membership behind the plane");
++                    continue;
++                }
+                 if (su.overshoot) { // item 4: the overshoot rejoins as the head, its outbound leg within its turn radius
+                     ck(r.over_head_frames > 0 && r.over_behind == 0, "4b an overshoot never ranks behind a ship farther from the gate");
+                     ck(r.over_min_s >= -r.over_out_bound, "4c the overshoot's outbound leg within its turn point (d_end + settle + R) + 3 R");

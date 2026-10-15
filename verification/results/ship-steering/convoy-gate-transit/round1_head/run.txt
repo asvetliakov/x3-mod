@@ -1,0 +1,67 @@
+== HEAD dd07e95e core, the round-1 fixture (--lane)
+      3 abreast3 tf10: 7b no own-gate 0x12
+      3 abreast3 tf6: 7b no own-gate 0x12
+      3 abreast5 tf10: 7b no own-gate 0x12
+      1 abreast5 tf1: 7b no own-gate 0x12
+      3 abreast5 tf6: 7b no own-gate 0x12
+      3 crossing tf10: 7b no own-gate 0x12
+      3 crossing tf1: 7b no own-gate 0x12
+      3 crossing tf6: 7b no own-gate 0x12
+      3 formed tf10: 7b no own-gate 0x12
+      2 formed tf1: 7b no own-gate 0x12
+      3 formed tf6: 7b no own-gate 0x12
+      3 formed_m7 tf10: 7b no own-gate 0x12
+      1 formed_m7 tf1: 7b no own-gate 0x12
+      1 formed_m7 tf6: 7b no own-gate 0x12
+      3 formed_stage2 tf10: 7b no own-gate 0x12
+      3 formed_stage2 tf6: 7b no own-gate 0x12
+      3 leader_killed tf10: 7b no own-gate 0x12
+      3 leader_killed tf6: 7b no own-gate 0x12
+      3 overshoot tf10: 4b an overshoot never ranks behind a ship farther from the gate
+      3 overshoot tf10: 4c the overshoot's outbound leg within its turn point
+      3 overshoot tf10: 7b no own-gate 0x12
+      3 overshoot tf1: 4b an overshoot never ranks behind a ship farther from the gate
+      3 overshoot tf1: 4c the overshoot's outbound leg within its turn point
+      3 overshoot tf6: 4b an overshoot never ranks behind a ship farther from the gate
+      3 overshoot tf6: 4c the overshoot's outbound leg within its turn point
+      3 overshoot tf6: 7b no own-gate 0x12
+      3 p2_miss tf10: 3c a refused hand-over P2 did not keep stops
+      3 p2_miss tf10: 3d ctl_x_wait_s accrues from the refusal
+      3 p2_miss tf10: 7b no own-gate 0x12
+      3 p2_miss tf1: 3c a refused hand-over P2 did not keep stops
+      3 p2_miss tf1: 3d ctl_x_wait_s accrues from the refusal
+      3 p2_miss tf1: 7b no own-gate 0x12
+      3 p2_miss tf6: 3c a refused hand-over P2 did not keep stops
+      3 p2_miss tf6: 3d ctl_x_wait_s accrues from the refusal
+      3 p2_miss tf6: 7b no own-gate 0x12
+      3 partner_block tf10: 7b no own-gate 0x12
+      3 partner_block tf6: 7b no own-gate 0x12
+      3 redeparture tf10: 7b no own-gate 0x12
+      3 redeparture tf1: 7b no own-gate 0x12
+      3 redeparture tf6: 7b no own-gate 0x12
+      3 run173 tf10: 1b the join: the nose along F by 7 km
+      3 run173 tf10: 7b no own-gate 0x12
+      3 run173 tf1: 1b the join: the nose along F by 7 km
+      3 run173 tf1: 7b no own-gate 0x12
+      3 run173 tf6: 1b the join: the nose along F by 7 km
+      3 run173 tf6: 7b no own-gate 0x12
+      3 run173_15km tf10: 7b no own-gate 0x12
+      3 run173_15km tf1: 7b no own-gate 0x12
+      3 run173_15km tf6: 7b no own-gate 0x12
+      3 slow_hull tf10: 7b no own-gate 0x12
+      3 slow_hull tf6: 7b no own-gate 0x12
+      3 small_escort tf10: 7b no own-gate 0x12
+      1 small_escort tf1: 7b no own-gate 0x12
+      3 small_escort tf6: 7b no own-gate 0x12
+      3 stragglers tf10: 7b no own-gate 0x12
+      1 stragglers tf1: 7b no own-gate 0x12
+      3 stragglers tf6: 7b no own-gate 0x12
+      3 stragglers_far tf10: 7b no own-gate 0x12
+      1 stragglers_far tf1: 7b no own-gate 0x12
+      1 stragglers_far tf6: 7b no own-gate 0x12
+ship_steering_host checks=1896 failures=165 slip_gaps=0
+checks FAIL
+formed: gate warns 5615 unsup 41 x12 1 (d 2472..2472 m) why 5574/0/0/0/0/0/0/41/0/0 | nose7 0.1 deg (3) p2_nose 1.5 deg 
+crossing: gate warns 8571 unsup 119 x12 2 (d 2472..6814 m) why 8452/0/0/0/0/118/0/1/0/0 | nose7 37.8 deg (5) p2_nose 1.1 deg 
+run173: gate warns 8214 unsup 569 x12 4 (d 2473..6981 m) why 7645/0/0/0/0/559/0/10/0/0 | nose7 22.5 deg (3) p2_nose 1.4 deg 
+run173_15km: gate warns 8192 unsup 352 x12 2 (d 6859..6981 m) why 7840/0/0/0/0/352/0/0/0/0 | nose7 22.3 deg (3) p2_nose 1.1 deg 

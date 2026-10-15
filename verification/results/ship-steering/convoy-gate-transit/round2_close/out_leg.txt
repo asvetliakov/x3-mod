@@ -1,0 +1,6 @@
+settle x 1.0f overshoot: p2_nose 2.4-5.8 deg, failed checks 0
+settle x 1.0f overshoot_near: p2_nose 2.5-5.7 deg, failed checks 0
+settle x 0.5f overshoot: p2_nose 7.8-11.0 deg, failed checks 24
+settle x 0.5f overshoot_near: p2_nose 6.8-11.1 deg, failed checks 22
+settle x 0.0f overshoot: p2_nose 15.8-21.1 deg, failed checks 36
+settle x 0.0f overshoot_near: p2_nose 13.8-20.6 deg, failed checks 27
