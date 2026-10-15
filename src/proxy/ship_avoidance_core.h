@@ -1,6 +1,69 @@
 #pragma once
 #include "ship_steering_core.h"
-#include "ship_capital_lane_core.h"
+
+// The survivors of the amendment-16 lane board (ship_capital_lane_core.h, deleted with stage B on 2026-10-15: its board, verdicts
+// and pass ran only under ship_steering_gates_traffic = 0): the hull width source and its retry, the yield cap that applies a
+// controller decision at site B (gate-traffic-controller.md A.1) and the gate path guards of site E. The namespace keeps its name.
+namespace x3m::ship_avoidance::lane {
+namespace sc = x3m::ship_steering::core;
+// The hull half-width's source (section 16.1 with the addendum: the LOD records of the hull parts, ship_avoidance_walk_core.h
+// hull_width; or w = r: unread = no read made, fail = a guard failed).
+enum class WidthSrc : std::uint8_t { unread = 0, lod, failed, count };
+inline const char* width_src_name(WidthSrc s) noexcept {
+    static const char* const names[unsigned(WidthSrc::count)] = {"unread", "lod", "fail"};
+    return unsigned(s) < unsigned(WidthSrc::count) ? names[unsigned(s)] : "?";
+}
+// Site B (review F2): the pass's cap (the (b) follow cap only since amendment 17) is in force on the module's own writes, and it
+// only ever lowers them. On the gate write (kShipFlagGate, both directions) it lowers v_ref when v_ref is a write (> 0); otherwise
+// nothing. On the lowering clamp path
+// (kShipFlagClamp without kShipFlagGate) it lowers the cornering term v_corner, so site B's own computation (the arrival ramp with
+// the amendment-14 v_slip, then v_corner, then the emergency ramp) runs unchanged under it, and kShipFlagLower drops only the final
+// 10 m/s floor (the cap may be 1 unit/s). Where the module writes nothing on this path (no clamp flag, or no cornering term and no
+// ramp: a capital outside its window on the engine's law) the cap is a lowering-only write of the engine's own speed (clamp_units
+// against the engine's desired value at site B): it never raises it. Returns whether the cap lowered the decision's value.
+inline bool apply_cap(sc::Ship& s, float cap) noexcept {
+    if (!(cap >= 0.0f) || !sc::finite_f(cap)) return false;
+    if (s.flags & sc::kShipFlagGate) {
+        if (!(s.v_ref > 0.0f) || !sc::finite_f(s.v_ref) || !(cap < s.v_ref)) return false;
+        s.v_ref = cap;
+        return true;
+    }
+    if (s.flags & sc::kShipFlagGateDock) return false; // order 5: no lane cap
+    if (!(s.flags & sc::kShipFlagClamp)) { // the engine's law, no module write: the cap alone, lowering only
+        s.flags = std::uint16_t(s.flags | sc::kShipFlagClamp);
+        s.v_corner = 0.0f;
+        s.v_slip = 0.0f;
+    }
+    if (s.v_corner > 0.0f && !(cap < s.v_corner)) return false;
+    s.v_corner = cap;
+    s.flags = std::uint16_t(s.flags | sc::kShipFlagLower);
+    return true;
+}
+// Review F4: a cached hull width is read again when the cache is for another radius generation or root node, or when the last read
+// failed and its retry is due (every kWidthRetryMs, at most kWidthRetries times; then w = r until the generation changes).
+constexpr std::uint32_t kWidthRetryMs = 5000;
+constexpr unsigned kWidthRetries = 3;
+__attribute__((always_inline)) inline bool width_reread(bool cached, std::uint8_t src, unsigned tries, std::uint32_t last_ms, std::uint32_t now) noexcept {
+    if (!cached) return true;
+    if (src != std::uint8_t(WidthSrc::failed)) return false;
+    return tries < kWidthRetries && now - last_ms >= kWidthRetryMs;
+}
+// Section 16.3 / 16.4 path guards: dist(G, segment[x, P]) >= r_gate + r_ship + k r_gate (k 0.25 capital to its grid point,
+// 0.1 small ship to its point A).
+__attribute__((always_inline)) inline float point_segment_dist3(const float p[3], const float a[3], const float b[3]) noexcept {
+    const float ab[3] = {b[0] - a[0], b[1] - a[1], b[2] - a[2]}, ap[3] = {p[0] - a[0], p[1] - a[1], p[2] - a[2]};
+    const float l2 = sc::dot3(ab, ab);
+    float t = l2 > 1e-6f ? sc::dot3(ap, ab) / l2 : 0.0f;
+    t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+    const float d[3] = {ap[0] - t * ab[0], ap[1] - t * ab[1], ap[2] - t * ab[2]};
+    return sc::sqrt_ss(sc::dot3(d, d));
+}
+constexpr float kCapitalGuardR = 0.25f, kSmallGuardR = 0.1f;
+inline bool path_guard(const float G[3], const float x[3], const float P[3], float r_gate, float r_ship, float k) noexcept {
+    const float d = point_segment_dist3(G, x, P);
+    return sc::finite_f(d) && sc::finite_f(r_gate) && sc::finite_f(r_ship) && d >= r_gate + r_ship + k * r_gate;
+}
+} // namespace x3m::ship_avoidance::lane
 
 // Portable core of the predictive collision avoidance (docs/architecture/
 // ship-steering-and-avoidance.md sections 3, 4 and 6; step 2). It sits in the
@@ -104,9 +167,6 @@ struct Self {
     bool capital;
     bool exclude_target;   // the order's target object is not an obstacle (orders 4/5/0x14/0x15/0x10/0x11/0x18)
     float L_leader;        // the leader's last lookahead (0 = none): the follower sees at least as far
-    // Amendment 16 (capital-gate-transit.md section 16.1) with 16b and the review fixes: this decision's lane pass (lane::run_pass:
-    // the verdicts from the stored board, the trailing caps site B applies); null = no lane rule, today's rules
-    const lane::Pass* lane = nullptr;
     // The gate traffic controller (gate-traffic-controller.md D.1, ship_steering_gates_traffic): the member partners of this capital
     // whose pair the controller owns (a clear verdict, fresh), by object and native id; dropped from the sphere avoidance in this
     // direction. n_ctl = 0: no controller pair (amendment 17's rules).
@@ -126,39 +186,6 @@ __attribute__((always_inline)) inline bool ctl_excluded(const Self& s, const Obs
     for (unsigned i = 0; i < s.n_ctl; ++i)
         if (s.ctl_ptr[i] == o.ptr && s.ctl_id[i] == o.id) return true;
     return false;
-}
-// Binds the lane rule for a deciding capital (ship_steering_gates_capital on) to this decision's pass, when the pass bound (its own
-// fresh entry on the deciding order, on the board of its live target: lane::run_pass). Otherwise unbound.
-inline void lane_bind(Self& s, const lane::Pass* pass) noexcept {
-    s.lane = pass && pass->self && s.capital && (s.order == sc::kOrderFlyBefore || s.order == sc::kOrderDock) ? pass : nullptr;
-}
-// The lane verdict for (s, o): the pass's (stored board, both directions), none unless o is also committed to s's gate by its live
-// order, f+0x224 and id from the snapshot. *apart (optional): the pair is on different lane points or has an order-5 leg.
-inline lane::Verdict lane_pair(const Self& s, const Obstacle& o, bool* apart = nullptr) noexcept {
-    if (apart) *apart = false;
-    if (!s.lane || o.kind != std::uint8_t(Kind::ship) || o.size != 1) return lane::Verdict::none;
-    unsigned i = 0;
-    const lane::Verdict v = lane::pass_verdict(*s.lane, o.ptr, &i);
-    if (v == lane::Verdict::none) return v;
-    const lane::Pass& p = *s.lane;
-    if (!lane::committed(p.g->e[i], p.now, p.fresh_ms, o.order, o.leader, p.g->gate, o.id)) return lane::Verdict::none;
-    if (apart) *apart = p.apart[i] != 0;
-    return v;
-}
-// The pairs the avoidance drops (in both directions): (a), (b) and (s), and since amendment 17 (section 17 item 2) every committed
-// pair on different lane points (or with an order-5 leg) whatever its verdict, with no corridor condition: the engine's own warn is
-// the protection between them, as in vanilla. A same-lane (c) pair keeps today's rules; the (b) trailer's cap comes from the same
-// pass (site B).
-__attribute__((always_inline)) inline bool lane_excludes(lane::Verdict v, bool apart) noexcept {
-    return v == lane::Verdict::exempt || v == lane::Verdict::follow || v == lane::Verdict::seq || (v != lane::Verdict::none && apart);
-}
-// The resolve's lane exclusion for one obstacle (the production path; *verdict the pair's lane verdict, *apart_out its lane points).
-__attribute__((always_inline)) inline bool lane_excluded(const Self& s, const Obstacle& o, lane::Verdict* verdict = nullptr, bool* apart_out = nullptr) noexcept {
-    bool apart = false;
-    const lane::Verdict v = lane_pair(s, o, &apart);
-    if (verdict) *verdict = v;
-    if (apart_out) *apart_out = apart;
-    return lane_excludes(v, apart);
 }
 struct SideMemory {
     std::uint32_t obstacle;
@@ -210,8 +237,6 @@ struct Result {
     unsigned excluded_followers = 0; // this ship's own escort/follow partners skipped as obstacles (amendment 10)
     unsigned skipped_small = 0;      // small ships a capital left to their own avoidance (amendment 11)
     unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
-    unsigned lane_exempt = 0, lane_follow = 0, lane_cross = 0, lane_seq = 0; // amendment 16 / 16b: capital pairs committed to this capital's gate, by verdict
-    unsigned lane_apart = 0; // amendment 17: (c) pairs on different lane points dropped (lane_cross: the same-lane (c) pairs kept)
     unsigned ctl_excluded = 0; // gate traffic controller: member pairs with a clear verdict dropped (the controller owns them)
     unsigned dock_kept = 0;    // amendment 18: the order's container kept as a part obstacle (0 or 1)
     std::uint32_t obstacle = 0;
@@ -785,7 +810,7 @@ inline bool dock_container(std::uint16_t order, std::uint16_t target_class, std:
 enum class EVerdict : std::uint8_t {
     none = 0, suppress_small, suppress_member, suppress_gate, suppress_gate_small, suppress_resolved, pass_no_autopilot,
     pass_not_steerable, pass_class, pass_b_dock_leg, pass_own_leader, pass_not_fresh, pass_unreadable, pass_not_member,
-    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship, suppress_lane,
+    pass_not_transient, pass_touching, pass_a_avoid, pass_not_resolved, pass_not_ship,
     suppress_ctl, pass_ctl, suppress_arrival_gate, // the gate traffic controller (D.1, D.4; ship_steering_gates_traffic)
     suppress_dock, pass_dock_parts, pass_dock_path, pass_dock_ray, pass_dock_zone, // amendment 18 (ship_steering_dock)
     suppress_lane_obst, // lane fix round 2 item 1: a lane member's path clears a non-member obstacle (ctl::lane_obst_why)
@@ -795,14 +820,14 @@ inline const char* e_verdict_name(EVerdict v) noexcept {
     static const char* const names[unsigned(EVerdict::count)] = {
         "-", "suppress_small", "suppress_member", "suppress_gate", "suppress_gate_small", "suppress_resolved", "pass_no_autopilot",
         "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
-        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship", "suppress_lane",
+        "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship",
         "suppress_ctl", "pass_ctl", "suppress_arrival_gate", "suppress_dock", "pass_dock_parts", "pass_dock_path", "pass_dock_ray",
         "pass_dock_zone", "suppress_lane_obst"};
     return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
 }
 inline bool e_suppresses(EVerdict v) noexcept {
     return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
-           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved || v == EVerdict::suppress_lane ||
+           v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved ||
            v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock || v == EVerdict::suppress_lane_obst;
 }
 inline EVerdict dock_e_verdict(DockE v) noexcept {
@@ -816,7 +841,6 @@ inline EVerdict dock_e_verdict(DockE v) noexcept {
     }
 }
 constexpr std::uint32_t kHandoverMaxMs = 120000; // the capital gate row's hand-over bound after P2 (the through-slot wait is 0-60 s)
-static_assert(kHandoverMaxMs == lane::kHandoverMaxMs, "the lane commitment and the gate row share the hand-over bound");
 // B.4 review: the any-age small-ship row's horizon on A's last decision (the formation memory's expiry)
 constexpr std::uint32_t kSmallAnyAgeMaxMs = kMemberExpiryMs;
 struct SiteE {
@@ -839,7 +863,6 @@ struct SiteE {
     std::uint32_t p2_age_ms = 0xffffffffu;
     std::uint32_t lead_age_ms = 0xffffffffu; // a non-capital's last order-4 call with the lead-in inside its window
     // amendment 16 (sections 16.3, 16.4); the defaults reproduce amendment 15
-    bool gate_slow_join = false;     // the capital's slow join
     bool gate_fallback = false;      // the capital's aim-at-A fallback (pred_none or past_x)
     bool gate_window_ok = true;      // s >= -6 r_gate along F from X at the last decision (mode `out` passes)
     bool gate_p2_seen = false;       // P2 on this approach, kept or not (the hand-over of section 16.3)
@@ -848,9 +871,6 @@ struct SiteE {
                                      // the order-4 decision (or the lead-in) is at most this old (the hand-over gap)
     bool gate_small_guard = false;   // a validated small approach decided on within the window with dist(G, segment[x, A]) >=
                                      // r_gate + r_ship + 0.1 r_gate (the G1 extension; ship_steering_gates)
-    // B = a capital committed to A's gate with A (section 16.1): the pair's lane verdict carries a geometric certificate (the footprint
-    // route of (a), or (s) by the lateral or along-axis route; review F1: a corridor-only (a) pair keeps the engine's warn)
-    bool lane_exempt = false;
     // B = a ship (class 7)
     bool b_ship = false;
     bool b_readable = false;         // B's record code < 16
@@ -909,16 +929,16 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
     // The table entry must be A's (its native id) and its decision within the formation memory's horizon (kSmallAnyAgeMaxMs; Run164's
     // gaps reached 2.9 s, the fixture's 8.5 s); else the freshness check below decides (pass_not_fresh for a stale A)
     if (in.small_any_age && (in.a_arrival || (in.a_in_table && in.a_id_ok && in.a_age_ms <= kSmallAnyAgeMaxMs)) && in.b_ship && in.a_capital &&
-        in.dock == DockE::none && !in.lane_exempt && in.codes_readable && in.b_readable && small_pair(true, in.r_a, true, in.b_capital_code, in.r_b))
+        in.dock == DockE::none && in.codes_readable && in.b_readable && small_pair(true, in.r_a, true, in.b_capital_code, in.r_b))
         return small_row_verdict(in);
     const std::uint32_t fresh = fresh_window_ms(kSteeredFreshMs, in.frame_ms, kSteeredReplanMs);
     // the gate rows: B is A's own target gate
     if (in.b_gate && in.gates_live && in.gate_state) {
         if (in.gate_capital) {
-            // amendment 16 (section 16.3): any validated approach on order 4 (join, slow join, fallback; inside the window extended
-            // past X) and the hand-over after P2 kept or not, under the path guard
+            // amendment 16 (section 16.3): any validated approach on order 4 (join, fallback; inside the window extended past X) and
+            // the hand-over after P2 kept or not, under the path guard
             const bool approach = in.a_order == sc::kOrderFlyBefore && in.a_age_ms <= fresh && in.gate_window_ok &&
-                                  (in.gate_join || in.gate_slow_join || in.gate_fallback);
+                                  (in.gate_join || in.gate_fallback);
             const bool hand = (in.a_order == sc::kOrderNone || in.a_order == sc::kOrderRotate) && (in.gate_handover || in.gate_p2_seen) &&
                               in.p2_age_ms <= kHandoverMaxMs;
             if (in.capital_policy && (approach || hand) && in.gate_path_ok) return EVerdict::suppress_gate;
@@ -928,9 +948,6 @@ inline EVerdict site_e_verdict(const SiteE& in) noexcept {
                  (in.lead_age_ms <= in.small_gap_ms || (in.gate_small_guard && in.a_age_ms <= in.small_gap_ms)))
             return EVerdict::suppress_gate_small; // Run161 item 5 (traffic key): order 0 in the hand-over gap, the gate state fresh
     }
-    // amendment 16 (section 16.1) / 16b: two capitals committed to A's gate whose pair carries a certificate (the commitment carries
-    // its own freshness: the hand-over has no decision)
-    if (in.b_ship && in.lane_exempt) return EVerdict::suppress_lane;
     if (in.a_age_ms > fresh && !in.a_arrival) return EVerdict::pass_not_fresh;
     const bool a_fresh = in.a_in_table && in.a_age_ms <= fresh; // false only for an arrival accepted by the small-ship row (D.4)
     // amendment 18: B is A's own container on order 4 (a station or a carrier): the row decides, nothing below applies
@@ -1045,17 +1062,6 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         if (s.n_ctl && ctl_excluded(s, o)) { // the gate traffic controller owns the pair (D.1)
             ++res.ctl_excluded;
             continue;
-        }
-        if (s.lane) { // amendment 16 / 16b / 17: (a), (b), (s) and different-lane pairs are not obstacles in either direction (lane_excludes)
-            lane::Verdict lv = lane::Verdict::none;
-            if (lane_excluded(s, o, &lv)) {
-                if (lv == lane::Verdict::exempt) ++res.lane_exempt;
-                else if (lv == lane::Verdict::follow) ++res.lane_follow;
-                else if (lv == lane::Verdict::seq) ++res.lane_seq;
-                else ++res.lane_apart;
-                continue;
-            }
-            if (lv == lane::Verdict::cross) ++res.lane_cross;
         }
         float dx[3];
         sub3(o.x, s.x, dx);

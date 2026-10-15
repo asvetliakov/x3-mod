@@ -1,0 +1,10 @@
+# python3 -I laneon_diff.py (2026-10-15; the deletion's commits 1-3 in the worktree; base 564b3df8; sequential runs)
+1 full run, before-core vs after: lines before 397 after 397 differing 0
+1 --lane, before-core vs after: lines before 170 after 170 differing 0
+2 --lane lane-on rows, 564b3df8 fixture+core vs after: lines before 118 after 118 differing 0
+before: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+after: ship_steering_host checks=10734 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+before--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+after--lane: ship_steering_host checks=3389 failures=0 slip_gaps=0; FAIL rows 0
+base--lane: ship_steering_host checks=3344 failures=0 slip_gaps=0; FAIL rows 0
+stdouts in a local scratch directory (untracked)

@@ -91,18 +91,16 @@ def by_ship(rows):
 #     h_m= (sqrt(len^2 + w^2), the h the rule uses) part_id= part_lod= o_x= o_y= e_x= e_y= (amendment 17: the widest part's body id,
 #     its widest LOD record, its lateral offset bound and half-extents, m)
 #     l_r= capsule_L_m= (the gate traffic controller: l / r and the capsule half-length max(r, l))
-# The gate traffic controller, stage A (gate-traffic-controller.md D.7, A.1; ship_steering_gates_traffic, --debug):
-#   ship_gate_ctl frame= t_ms= gate= ship= id= seq= order= from= to=none|committed|escort|arrival|evicted why= rank=   (role transitions)
-#     stage B: key= (the sequence key) stage=<from>><to> (none|hold|funnel|handover|dock|launch|inbound) petal= (-1 none); why= also
-#     hold|release|go_around|dock|launch|inbound|skip|rejoin (the stage transitions; B.2: skip = the head re-keyed with its escorts,
-#     rejoin = a re-commit past the funnel's last stretch kept in the funnel)
-#   ship_gate_ctl_seq frame= t_ms= gate= holders= inbound= cand= key= role= stage= ringed= busy_by= window=0|1|- timing=0|1|- free_ms=
-#     dx_m= v_feas= block_ms= skips= releases=   (B.2: the sequencer's state, one per gate per game second while a member holds)
-#   ship_gate_ctl_pair frame= t_ms= gate= a= b= seq=<a>,<b> rank=<a>,<b> verdict=none|clear|unresolved before= t_c_s= (-1: none)
-#     yielder=none|a|b cap_ms= (-1: none) d_m=   (a member pair's verdict change, at most once per pair per second)
-#     stage B: kind=verdict|e_pass|order0 why=- or the E reason none|unresolved|stale|starved|on_0x12|rows|order0|not_member
-#     (e_pass: site E passed the pair, at most once per pair per second; order0: every order-0 frame of a member, each partner
-#     within 5 km)
+# The gate traffic controller, stage A (gate-traffic-controller.md D.7, A.1; ship_steering_gates_traffic, --debug). The formats
+# below are the DLL's since the stage B deletion (2026-10-15). Parsing is by row name and key=value, so an older log still parses: the
+# deleted ship_gate_ctl_seq row (LEGACY_KV_ROWS) and the deleted member fields (petal= rho= s= stage_s= d_join= t_rel= ringed=) come
+# through as extra keys, and a field a row lacks is simply absent from its dict.
+#   ship_gate_ctl frame= t_ms= gate= ship= id= seq= key= order= from= to=none|committed|escort|arrival|evicted why= rank=
+#     stage=<s>><s> (the member's lane stage none|funnel|handover|dock|launch|inbound, the same on both sides: role transitions only)
+#   ship_gate_ctl_pair frame= t_ms= gate= a= b= seq=<a>,<b> rank=<a>,<b> kind=verdict|e_pass|order0 verdict=none|clear|unresolved
+#     before= why=- or the E reason none|unresolved|stale|starved|on_0x12|rows|order0|not_member t_c_s= (-1: none) yielder=none|a|b
+#     cap_ms= (-1: none) d_m=   (verdict: a member pair's verdict change, at most once per pair per second; e_pass: site E passed the
+#     pair, at most once per pair per second; order0: an order-0 frame of a member, each partner within 5 km)
 #     B.9: cause=nocert|cert|yield|contact|budget|stale|zero|noyield (the pair's last verdict write: no sweep / clear on both plans /
 #     clear after a yield / a conflict no yield candidate cleared / a conflict whose yield was not tried / rollouts too far apart or too
 #     short / a rollout without samples / a conflict whose yielder could not yield: no steered order or an empty ladder) trig=clock|plan
@@ -114,12 +112,10 @@ def by_ship(rows):
 #   ship_avoid_dock frame= t_ms= ship= cont= class= order= parts=0|1 n_parts= path_m= ray_m= (-1: no model) margin_m= (1.2 r + 50 m)
 #     reach_m= e=suppress_dock|pass_dock_parts|pass_dock_path|pass_dock_ray|pass_dock_zone|- (site E's row now; - off order 4 or within
 #     0.8 r of a carrier) zone=out|near|in|inner (> 2 r_C, > r_C, <= r_C, a carrier within 0.8 r_C) d_c_m= r_c_m= v_ms= kept= detour=
-#   ship_gate_ctl_member frame= t_ms= gate= ship= class= role= stage= order= target= p_m=<R>,<U>,<F> (the last state read, gate frame, m)
-#     nose_f= (the nose . F) v_ms= petal= (-1 none) key= traced=0|1 st_age_ms= dec_age_ms= (-1 none)   (B.4: one per board member per
-#     game second, traced or not; ring 32, drops in rows_dropped's ctl) live=0|1 (B.5: the member passed the liveness proof this frame;
-#     0: no engine field read, class=?) zx= (X along F, m) rho= (ring radius) s= (arc of the petal projection; -1 no petal) stage_s=
-#     (an escort's stage arc; -1 none) d_join= (m from its track point at s; -1 no petal) t_rel= (ms to the lap target at the last
-#     sequencer run, negative past; 0 none) ringed=0|1   (B.8: the petal frame from the board state, no engine read)
+#   ship_gate_ctl_member frame= t_ms= gate= ship= class= role= stage= (the lane stage, as above) order= target= p_m=<R>,<U>,<F> (the last
+#     state read, gate frame, m) nose_f= (the nose . F) v_ms= key= traced=0|1 st_age_ms= dec_age_ms= (-1 none)   (B.4: one per board
+#     member per game second, traced or not; ring 32, drops in rows_dropped's ctl) live=0|1 (B.5: the member passed the liveness proof
+#     this frame; 0: no engine field read, class=?) zx= (X along F, m)
 # Lane stage 1 (convoy-gate-transit.md section 6.9; ship_steering_gates_lane, --debug): after each member row of a lane gate
 #   ship_gate_ctl_lane frame= t_ms= gate= ship= lane_s= (along F, m) rank= (the lane order, 0 the head; 255 none) gap_m= (tail of the ship
 #     ahead - own nose, m; na none) law=none|join|lane|merge|follow|stop|pace|gate|hold lat_m= (lateral distance from Lambda, m)
@@ -147,9 +143,10 @@ def by_ship(rows):
 #     stale; item 1)
 #   ship_avoid_engine_warn_pre ... obst_row= (the lane obstacle row's reason of the first non-gate entry's last verdict; '-' none)
 #   ship_steering_lane_summary ... e_lane_obst= e_lane_obst_roll= (site E's lane obstacle row: suppressions, passes on roll)
+LEGACY_KV_ROWS = ('ship_gate_ctl_seq',)  # rows the DLL no longer prints (stage B's sequencer, deleted 2026-10-15); still parsed in old logs
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
-           'ship_avoid_dock', 'ship_gate_ctl_seq', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
-           'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre')
+           'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
+           'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre') + LEGACY_KV_ROWS
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap',
                'gates_gate:F:G:r', 'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict')  # (lane fix round 2 item 6: the summary's
 #                gate frames, a vector item a tuple; the warn pre-row's entries)

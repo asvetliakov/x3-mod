@@ -204,17 +204,20 @@ class ConfigSchema(unittest.TestCase):
         capital = schema.BY_KEY['ship_steering_gates_capital']
         self.assertEqual((capital['type'], capital['default'], capital['builtin'], capital['requires'], capital['launcher']),
                          ('bool', None, '1', ('ship_steering_gates',), '--ship-steering-gates-capital'))
-        # amendment 16b: the sequencing of capitals at one gate, on by default under the capital key
-        seq = schema.BY_KEY['ship_steering_gates_capital_seq']
-        self.assertEqual((seq['type'], seq['default'], seq['builtin'], seq['requires'], seq['launcher']),
-                         ('bool', None, '1', ('ship_steering_gates_capital',), None))
+        # amendment 16b's sequencing key was deleted with stage B (2026-10-15); the lane key stays, on by default since then (the
+        # resolver's default; the read site's own builtin with nothing resolved is off, the stage-A certificate only)
+        self.assertNotIn('ship_steering_gates_capital_seq', schema.BY_KEY)
+        lane = schema.BY_KEY['ship_steering_gates_lane']
+        self.assertEqual((lane['type'], lane['default'], lane['builtin'], lane['requires']),
+                         ('bool', '1', '0', ('ship_steering_gates_traffic',)))
         template = TEMPLATE.read_text()
         self.assertIn(';ship_steering = 0\n', template)
         self.assertIn(';ship_steering_classes =\n', template)
         self.assertIn(';ship_avoidance = 0\n', template)
         self.assertIn(';ship_steering_gates = 1\n', template)
         self.assertIn(';ship_steering_gates_capital = 1\n', template)
-        self.assertIn(';ship_steering_gates_capital_seq = 1\n', template)
+        self.assertNotIn('ship_steering_gates_capital_seq', template)
+        self.assertIn(';ship_steering_gates_lane = 1\n', template)
 
     def test_launcher_fields_are_registered_options(self):
         # (see also OptOuts below: the resolved values of every opt-out, default launch and player mode)

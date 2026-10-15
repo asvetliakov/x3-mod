@@ -73,6 +73,7 @@ EXPECTED_EMPTY = {
     'X3M_SHADOW_CASCADE_SIZES': '2048,4096,4096,4096,2048', 'X3M_SHADOW_CASTER_RETENTION': '1',
     'X3M_SHADOW_REPLAY_CANDIDATES': '1', 'X3M_SHADOW_REPLAY_DEPTH': '1',
     'X3M_SHADOW_SUN_POLL': '1',
+    'X3M_SHIP_STEERING_GATES_LANE': '1',  # the lane's schema default since 2026-10-15 (sent like the motion-cut defaults)
     'X3M_SUN_FLARE_FIX': 'on', 'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '1',
     'X3M_SUN_SHADOW_APPLY': '1', 'X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS': '20.97152', 'X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS': '0.2',
     'X3M_SUN_SHADOW_BIAS_UNITS': '0.53571875', 'X3M_SUN_SHADOW_LANE': '1', 'X3M_TAA': '1', 'X3M_TAA_BOX_RESOLUTION': 'half',
@@ -340,6 +341,9 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(self.env('--ship-steering')['X3M_SHIP_STEERING_GATES'], '1')
         self.assertEqual(self.env('--ship-steering', '--ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '1')
         self.assertEqual(self.env('--ship-steering', '--no-ship-steering-gates')['X3M_SHIP_STEERING_GATES'], '0')
+        # the departure lane (2026-10-15): the schema default 1 on every launch, an inherited value kept as the explicit choice
+        self.assertEqual(env['X3M_SHIP_STEERING_GATES_LANE'], '1')
+        self.assertEqual(self.env(inherited={'X3M_SHIP_STEERING_GATES_LANE': '0'})['X3M_SHIP_STEERING_GATES_LANE'], '0')
         # the capital half (amendment 13): explicit with the gates, never set without them (the DLL refuses it with a row)
         self.assertNotIn('X3M_SHIP_STEERING_GATES_CAPITAL', env)
         self.assertNotIn('X3M_SHIP_STEERING_GATES_CAPITAL', self.env(inherited={'X3M_SHIP_STEERING_GATES_CAPITAL': '1'}))

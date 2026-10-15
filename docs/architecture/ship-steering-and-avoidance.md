@@ -288,6 +288,23 @@ formation leader. The law makes no allocation, takes no lock and does no formatt
 violations).
 
 
+**Gate controller summary (2026-10-15, after the stage B deletion).** Amendments 15–18 have their own design notes:
+[capital-gate-transit.md](capital-gate-transit.md), [gate-traffic-controller.md](gate-traffic-controller.md),
+[convoy-gate-transit.md](convoy-gate-transit.md) and [docking-approach.md](docking-approach.md). Capitals at a gate now have three
+layers:
+
+1. **Amendments 13 and 15.** The capital lead-in to the validated grid point, the join predictor with its latched aim-at-A fallback,
+   and P2's keep verdict. They apply to every capital the controller does not fly.
+2. **The gate traffic controller's stage-A certificate** (`ship_steering_gates_traffic`, builtin 1). It has one board per gate, 30 s
+   rollouts and capsule sweeps, the speed yield, site E's capital–capital suppression, and the arrival placement at `0x00444606`.
+3. **The departure lane** (`ship_steering_gates_lane = 1`). It runs on top of the certificate. With the key at 0 the certificate
+   alone runs.
+
+Deleted on 2026-10-15 ([ship-steering-holistic-review.md](ship-steering-holistic-review.md) rank 2): stage B (the petals, the
+sequencer and the lap and hold laws), the amendment-16 lane board and `ship_steering_gates_capital_seq`, amendment 16's slow join and
+un-latch, and site W with the exit spread of amendment 8 (2), which the correction above showed never runs on a gate arrival. The
+gate group is now P2, P4 and P5.
+
 Claim the three steering-leaf entries (`0x0044ccc0`, `0x0044c620`, `0x0044c970`, site A) with one
 shared handler that, for class-7 ships under the autopilot flag and a point-steering order, computes a
 pursuit point (optionally moved by the avoidance layer), a shortest-arc rotation and a curvature-limited,

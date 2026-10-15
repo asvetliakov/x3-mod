@@ -659,3 +659,16 @@ and count); read once per device configuration; no in-flight key since 2026-10-0
 went, [comparison-hotkeys.md](comparison-hotkeys.md)). The launcher sends each only when
 given (the amplitude finite 0..4, as a plain decimal; the count 0..16); an inherited shell value is dropped, and all three
 are refused under `--vanilla`.
+
+## `ship_steering_gates_lane` (2026-10-14; the key-off meaning and the default changed 2026-10-15)
+
+Key `ship_steering_gates_lane`, environment `X3M_SHIP_STEERING_GATES_LANE`, no launcher option, default **1** (since 2026-10-15;
+`tools/manage.py launch` sends it on every launch with `setdefault`, like the motion-cut defaults, so the bare DLL equals the
+launcher flight; the read site's own builtin with nothing resolved stays 0, as under `X3M_CONFIG=bare`), requires
+`ship_steering_gates_traffic` ([convoy-gate-transit.md](convoy-gate-transit.md) §11). **1 = the departure lane (default), 0 = stage
+A certificate only.** With the traffic key at 0 the default 1 logs `ship_steering_gates_lane_refused reason=needs_traffic` and the
+lane stays off.
+Until 2026-10-15 the value 0 meant the traffic controller's stage B (holding petals). Stage B was deleted with
+[ship-steering-holistic-review.md](ship-steering-holistic-review.md) rank 2, together with the key `ship_steering_gates_capital_seq`
+(amendment 16b). A file that still sets that key gets the unknown-key row and nothing else. `ship_steering_gates_traffic` stays,
+builtin 1.

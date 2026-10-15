@@ -148,22 +148,21 @@ class CapitalCrowdRows(unittest.TestCase):
         self.assertEqual(st.parse_rows(KV_ROWS), [])  # and the kv rows are not trace rows
 
 
-# The gate traffic controller, stage A (gate-traffic-controller.md D.7): its three rows and the census row's capsule fields.
+# The gate traffic controller, stage A (gate-traffic-controller.md D.7): its rows as the DLL prints them since the stage B deletion
+# (2026-10-15; ship_steering.cpp ctl_rows) and the census row's capsule fields.
 CTL_ROWS = [
-    'ship_gate_ctl frame=900 t_ms=25503900 gate=0x8e1edfb0 ship=0xa908da10 id=4711 seq=6 order=0x14 from=none to=escort why=escort rank=5',
-    'ship_gate_ctl_pair frame=901 t_ms=25504000 gate=0x8e1edfb0 a=0x8e223c48 b=0xa908da10 seq=4,6 rank=3,5 verdict=unresolved before=clear '
-    't_c_s=12.5 yielder=b cap_ms=-1.0 d_m=2331 cause=contact trig=plan gap_m=-42',
+    'ship_gate_ctl frame=900 t_ms=25503900 gate=0x8e1edfb0 ship=0xa908da10 id=4711 seq=6 key=0 order=0x14 from=none to=escort why=escort rank=5 '
+    'stage=inbound>inbound',
+    'ship_gate_ctl_pair frame=901 t_ms=25504000 gate=0x8e1edfb0 a=0x8e223c48 b=0xa908da10 seq=4,6 rank=3,5 kind=verdict verdict=unresolved '
+    'before=clear why=- t_c_s=12.5 yielder=b cap_ms=-1.0 d_m=2331 cause=contact trig=plan gap_m=-42',
     'ship_gate_ctl_pair frame=905 t_ms=25504100 gate=0x8e1edfb0 a=0x8e223c48 b=0xa908da10 seq=4,6 rank=3,5 kind=e_pass verdict=none '
     'before=none why=stale t_c_s=-1.0 yielder=none cap_ms=-1.0 d_m=2310 cause=stale trig=clock gap_m=na',
     'ship_gate_launch frame=902 t_ms=24274300 ship=0x8e1d0090 gate=0x8e1ef948 class=M2 capital=1 slot=-1 gate_type=3 kind=capital_offset '
     'p_m=1200,7400,-56000 off_r_m=0 off_u_m=663 r_gate_m=1105 r_m=1092 w_m=583',
     'ship_capital_census frame=100 type=11 class=M2 r_m=1092 w_m=583 w_r=0.535 w_src=lod retries=0 l_m=1092 h_rw_m=1238 len_m=1092 '
     'h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169 l_r=1.000 capsule_L_m=1092',
-    'ship_gate_ctl_seq frame=903 t_ms=24470000 gate=0x8e4fbdb0 holders=3 inbound=1 cand=0x4b9cfd08 key=16 role=committed stage=hold ringed=1 '
-    'busy_by=0x00000000 window=1 timing=- free_ms=-1200 dx_m=8350 v_feas=100 block_ms=0 skips=0 releases=2',
-    'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=hold order=0x15 target=0x8e051030 '
-    'p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 zx=-1800 rho=2400 s=8950 '
-    'stage_s=1420 d_join=2310 t_rel=-35 ringed=0',
+    'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=funnel order=0x15 '
+    'target=0x8e051030 p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 zx=-1800',
     'ship_gate_ctl_lane frame=905 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9330 rank=1 gap_m=612 law=follow lat_m=140 '
     'lc_m=0,-929 v_law=92.5 v_w=na w=none on=0 merged=1',
     'ship_gate_ctl_lane frame=907 t_ms=23273598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9230 rank=1 gap_m=na law=gate lat_m=12 '
@@ -179,11 +178,12 @@ CTL_ROWS = [
 class GateTrafficRows(unittest.TestCase):
     def test_ctl_rows(self):
         c = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl')[0]
-        self.assertEqual((c['gate'], c['ship'], c['id'], c['seq'], c['order']), (0x8e1edfb0, 0xa908da10, 4711, 6, 0x14))
-        self.assertEqual((c['from'], c['to'], c['why'], c['rank']), ('none', 'escort', 'escort', 5))
+        self.assertEqual((c['gate'], c['ship'], c['id'], c['seq'], c['key'], c['order']), (0x8e1edfb0, 0xa908da10, 4711, 6, 0, 0x14))
+        self.assertEqual((c['from'], c['to'], c['why'], c['rank'], c['stage']), ('none', 'escort', 'escort', 5, 'inbound>inbound'))
         p = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_pair')[0]
         self.assertEqual((p['a'], p['b'], p['seq'], p['rank']), (0x8e223c48, 0xa908da10, (4, 6), (3, 5)))
         self.assertEqual((p['verdict'], p['before'], p['t_c_s'], p['yielder'], p['cap_ms'], p['d_m']), ('unresolved', 'clear', 12.5, 'b', -1.0, 2331))
+        self.assertEqual((p['kind'], p['why']), ('verdict', '-'))
         self.assertEqual((p['cause'], p['trig'], p['gap_m']), ('contact', 'plan', -42))  # B.9: the verdict's reason and the sweep's gap
         p2 = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_pair')[1]
         self.assertEqual((p2['kind'], p2['why'], p2['cause'], p2['trig'], p2['gap_m']), ('e_pass', 'stale', 'stale', 'clock', 'na'))
@@ -193,19 +193,15 @@ class GateTrafficRows(unittest.TestCase):
         self.assertEqual((lr['p_m'], lr['off_r_m'], lr['off_u_m'], lr['r_gate_m'], lr['w_m']), ((1200, 7400, -56000), 0, 663, 1105, 583))
         cen = st.parse_kv_rows(CTL_ROWS, 'ship_capital_census')[0]
         self.assertEqual((cen['l_r'], cen['capsule_L_m']), (1.0, 1092))
-        sq = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_seq')[0]  # B.2: the sequencer's state row
-        self.assertEqual((sq['gate'], sq['holders'], sq['inbound'], sq['cand'], sq['key'], sq['role'], sq['stage'], sq['ringed']),
-                         (0x8e4fbdb0, 3, 1, 0x4b9cfd08, 16, 'committed', 'hold', 1))
-        self.assertEqual((sq['busy_by'], sq['window'], sq['timing'], sq['free_ms'], sq['dx_m'], sq['v_feas'], sq['skips'], sq['releases']),
-                         (0, 1, '-', -1200, 8350, 100, 0, 2))
+        self.assertEqual(st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_seq'), [])  # the sequencer row was deleted with stage B
         mr = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_member')[0]  # B.4: one per board member per game second
         self.assertEqual((mr['gate'], mr['ship'], mr['class'], mr['role'], mr['stage'], mr['order'], mr['target']),
-                         (0x8e051030, 0x8e049da0, 'M2', 'escort', 'hold', 0x15, 0x8e051030))
-        self.assertEqual((mr['p_m'], mr['nose_f'], mr['v_ms'], mr['petal'], mr['key'], mr['traced'], mr['st_age_ms'], mr['dec_age_ms']),
-                         ((-1200, 450, -9330), 0.94, 60.0, 3, 49, 1, 50, 310))
-        self.assertEqual(mr['live'], 1)  # B.5: the liveness proof
-        self.assertEqual((mr['zx'], mr['rho'], mr['s'], mr['stage_s'], mr['d_join'], mr['t_rel'], mr['ringed']),
-                         (-1800, 2400, 8950, 1420, 2310, -35, 0))  # B.8: the petal frame and the join
+                         (0x8e051030, 0x8e049da0, 'M2', 'escort', 'funnel', 0x15, 0x8e051030))
+        self.assertEqual((mr['p_m'], mr['nose_f'], mr['v_ms'], mr['key'], mr['traced'], mr['st_age_ms'], mr['dec_age_ms']),
+                         ((-1200, 450, -9330), 0.94, 60.0, 49, 1, 50, 310))
+        self.assertEqual((mr['live'], mr['zx']), (1, -1800))  # B.5: the liveness proof; X along F
+        for gone in ('petal', 'rho', 's', 'stage_s', 'd_join', 't_rel', 'ringed'):  # stage B's petal frame, deleted 2026-10-15
+            self.assertNotIn(gone, mr)
         ln = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_lane')[0]  # lane stage 1: the lane fields of a member
         self.assertEqual((ln['ship'], ln['lane_s'], ln['rank'], ln['gap_m'], ln['law']), (0x8e049da0, -9330, 1, 612, 'follow'))
         # review item 9: the lateral, l_c, the law's and the written speed, the write's kind, on Lambda, merged
@@ -220,7 +216,28 @@ class GateTrafficRows(unittest.TestCase):
         df = st.parse_kv_rows(CTL_ROWS, 'ship_gate_ctl_defer')[0]  # lane fix round 1 item 5: the tick deferral per ship
         self.assertEqual((df['ship'], df['order'], df['kind'], df['f210_read'], df['f210_written'], df['ahead_ms']),
                          (0x8e049da0, 0, 'defer', 23281000, 23283517, 2517))
-        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 13)
+        self.assertEqual(len(st.parse_kv_rows(CTL_ROWS)), 12)
+
+    def test_rows_of_logs_before_the_stage_b_deletion_still_parse(self):
+        # Parsing is by row name and key=value: a log from before 2026-10-15 still parses. Its ship_gate_ctl_seq row (a legacy row
+        # name) and the member row's deleted petal-frame fields come through as keys, and the fields an old row lacks (key=, stage=,
+        # kind=) are simply absent, so a reader of old logs uses .get().
+        old = [
+            'ship_gate_ctl frame=900 t_ms=25503900 gate=0x8e1edfb0 ship=0xa908da10 id=4711 seq=6 order=0x14 from=none to=escort why=escort rank=5',
+            'ship_gate_ctl_seq frame=903 t_ms=24470000 gate=0x8e4fbdb0 holders=3 inbound=1 cand=0x4b9cfd08 key=16 role=committed stage=hold '
+            'ringed=1 busy_by=0x00000000 window=1 timing=- free_ms=-1200 dx_m=8350 v_feas=100 block_ms=0 skips=0 releases=2',
+            'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=hold order=0x15 '
+            'target=0x8e051030 p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 petal=3 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 '
+            'zx=-1800 rho=2400 s=8950 stage_s=1420 d_join=2310 t_rel=-35 ringed=0',
+        ]
+        self.assertIn('ship_gate_ctl_seq', st.LEGACY_KV_ROWS)
+        c = st.parse_kv_rows(old, 'ship_gate_ctl')[0]
+        self.assertEqual((c['why'], c['rank'], c.get('key'), c.get('stage')), ('escort', 5, None, None))
+        sq = st.parse_kv_rows(old, 'ship_gate_ctl_seq')[0]
+        self.assertEqual((sq['holders'], sq['cand'], sq['timing'], sq['free_ms'], sq['releases']), (3, 0x4b9cfd08, '-', -1200, 2))
+        mr = st.parse_kv_rows(old, 'ship_gate_ctl_member')[0]
+        self.assertEqual((mr['stage'], mr['zx'], mr['petal'], mr['rho'], mr['s'], mr['stage_s'], mr['d_join'], mr['t_rel'], mr['ringed']),
+                         ('hold', -1800, 3, 2400, 8950, 1420, 2310, -35, 0))
 
 
 # Lane fix round 2 item 6: the lane summary (ship_steering.cpp's 1 Hz report under the lane key) and the engine warn's pre-row, copied from

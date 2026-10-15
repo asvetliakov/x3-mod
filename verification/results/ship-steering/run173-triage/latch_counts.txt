@@ -1,0 +1,2 @@
+latch_rows 2 pred_none=2
+last_summary gate_capital_join=2 gate_capital_slow_join=0 gate_capital_unlatch=0 gate_capital_fallback_pred=2 gate_capital_fallback_past_x=10

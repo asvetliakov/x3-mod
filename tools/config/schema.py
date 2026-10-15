@@ -413,10 +413,6 @@ SETTINGS = [
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
           'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
-    entry('ship_steering_gates_capital_seq', 'bool', 'engine', 'When several capital ships join the same gate on different lanes, the '
-          'game\'s own collision warning between two of them is skipped while their hulls provably cannot touch; otherwise it stays on, '
-          'as in the unmodified game (needs ship_steering_gates_capital; 0 = the warning always stays on). 1 = on, 0 = off.', builtin='1',
-          requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('ship_steering_gates_traffic', 'bool', 'engine', 'Capital ships at the same gate are coordinated by one traffic controller per '
           'gate: it predicts every capital\'s path for the next 30 seconds, lets the game skip its own collision warning between two of '
           'them only while their hulls provably stay apart, slows the lower-priority ship when they would not, and places capital '
@@ -424,10 +420,10 @@ SETTINGS = [
           'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('ship_steering_gates_lane', 'bool', 'engine', 'Capital ships bound for the same gate fly one departure lane, one behind the '
-          'other at hull spacing, instead of holding patterns: a ship that would reach the lane level with another eases off (or stops '
-          'briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before the gate so '
-          'the next one does not wait for the previous jump (needs ship_steering_gates_traffic; 0 = the traffic controller\'s holding '
-          'patterns as before). 1 = on, 0 = off.', builtin='0', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
+          'other at hull spacing, instead of each approaching the gate on its own: a ship that would reach the lane level with another '
+          'eases off (or stops briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before '
+          'the gate so the next one does not wait for the previous jump (needs ship_steering_gates_traffic). 1 = the departure lane '
+          '(default), 0 = stage A certificate only.', '1', builtin='0', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
     entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
           'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '

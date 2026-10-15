@@ -35,6 +35,15 @@ class ShipSteeringSites(unittest.TestCase):
     def test_header_specs_match(self):
         self.assertEqual(probe.header_specs(probe.SITES_HEADER.read_text()), probe.expected_specs())
 
+    def test_site_w_removed(self):
+        # stage B deletion (2026-10-15): site W 0x00465bac is neither claimed by the header nor checked (the other sites unchanged)
+        text = probe.SITES_HEADER.read_text()
+        self.assertNotIn('ship_gate_warp_in', text)
+        self.assertIn('GateCount = 3', text)
+        self.assertNotIn(0x00465bac, [s.va for s in probe.SITES])
+        self.assertEqual([s.name for s in probe.SITES if s.name.startswith('ship_gate_')],
+                         ['ship_gate_stop_a', 'ship_gate_stop_b', 'ship_gate_launch', 'ship_gate_arrival_launch'])
+
     def test_all_spans_are_whole_and_plain(self):
         for spec in probe.SITES:
             with self.subTest(site=spec.name):

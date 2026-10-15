@@ -2802,6 +2802,102 @@ and 7 are pinned by units of the new core functions; item 9 tightens a waiver (p
   `scenario_c.py` → `scenario_c.txt` refreshed. Host stdout: `ship_steering_host.txt`, `convoy-gate-transit/ship_steering_host_{lane,capital}.txt`.
   No DLL built, no Wine, no game.
 
+### Stage B deletion (2026-10-15, Opus 5.5; [ship-steering-holistic-review.md](../architecture/ship-steering-holistic-review.md) rank 2, [gate-traffic-controller.md](../architecture/gate-traffic-controller.md) "Stage B removed")
+
+**What was deleted.** This removes the code the installed defaults bypass. Worktree `agent-a4ccf49ba6e6b9cc8` on main `71118dd7`,
+four commits:
+
+1. The amendment-16 lane board (`ship_capital_lane_core.h`, its pass, the verdicts, site E's `suppress_lane` and the rows), the
+   `ship_steering_gates_capital_seq` key, site W (`0x00465bac`, the exit spread), and amendment 16's slow join and un-latch.
+2. Stage B in `ship_gate_ctl_core.h`: the petals, the sequencer, the release window, the stage points, the lap and hold laws,
+   `Plan::petal`, `Sb::hold`, the 25 m/s petal floor of the yield ladder, 16 `Member` fields and 10 `Gate` fields. In the DLL: the
+   sequencer frame, the seq row, the member row's petal frame and the stage-B counters.
+3. The fixture: scenario T, scenario M, the amendment-16 units, the B.3/B.6–B.9 units and the site W checks.
+4. The docs.
+
+`ship_steering_gates_lane` now selects one of two paths: 1 = the lane, 0 = the stage-A certificate alone. The traffic key stays. Since
+this change the key's default is 1 (the schema default, which the resolver gives a bare DLL and `tools/manage.py launch` now sends
+with `setdefault`; the read site alone with nothing resolved stays off, unchanged), so a default install flies the lane. The installed `C:\X3\x3m.ini` already sets
+`ship_steering_gates_lane = 1` **[m]** (line 544), so the installed configuration does not change.
+
+**Lines** **[m]**: `git diff --numstat 71118dd7 <commit 3> -- src/proxy verification/probe/ship_steering_host.cpp`.
+
+| Part | Deleted | Added | Size before → after |
+| --- | --- | --- | --- |
+| Core (`src/proxy`) | 2,968 | 242 | `ship_gate_ctl_core.h` 5,346 → 4,084; `ship_capital_lane_core.h` 835 → 0; `ship_steering.cpp` 5,376 → 4,905; `ship_steering_core.h` 1,686 → 1,526; `ship_avoidance_core.h` 1,449 → 1,455 (the lane board's survivors moved in); `ship_steering_sites.h` −4 net |
+| Fixture | 7,407 | 193 | 18,447 → 11,233 |
+
+**Acceptance** **[m]** (no Wine, no game; host x86-64 `-O2`):
+
+* **Lane-on identity.** Producer
+  [`laneon_diff.py`](../../verification/results/ship-steering/convoy-gate-transit/laneon_diff.py) →
+  [`laneon_diff.txt`](../../verification/results/ship-steering/convoy-gate-transit/laneon_diff.txt).
+  * The new fixture against 564b3df8's core and against the new core: 0 differing lines of 397 (full run) and 0 of 170 (`--lane`).
+    This covers every lane cast and the key-off controls.
+  * 564b3df8's own fixture and core against the new ones, lane-on rows of `--lane`: 0 of 118.
+  * `keyoff_diff.py` is retired (the directory's README).
+  * Not identical everywhere with the key on: a capital the lane does not fly (a board refusal, a recommit hold, a fresh commit
+    before its first frame-end stage) loses amendment 16's slow join and un-latch and takes amendment 15's latched aim-at-A
+    fallback. No flown effect **[m]**: Run173's log counted `gate_capital_slow_join=0` and `gate_capital_unlatch=0` (2 `pred_none`
+    fallback rows; [`latch_counts.py`](../../verification/results/ship-steering/run173-triage/latch_counts.py) →
+    [`.txt`](../../verification/results/ship-steering/run173-triage/latch_counts.txt)).
+* **Fixture runs.** Full run 10,734 checks, `--lane` 3,389 and `--capital` 5,112, all with 0 failures. Before the deletion they were
+  13,865, 3,344 and 8,207.
+* **Site verifier.** `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS with 20 checks. With site W's items dropped,
+  every other path of the `--json` report is identical to 564b3df8's
+  ([`sites_w_diff.py`](../../verification/results/ship-steering/convoy-gate-transit/sites_w_diff.py) →
+  [`.txt`](../../verification/results/ship-steering/convoy-gate-transit/sites_w_diff.txt): 0 paths). Its unit test passes 7 tests.
+* **Build and audit.** The i686 MinGW clean build (RelWithDebInfo) has 0 warnings. `check_no_x87.py build/d3d9.dll` passes over 999
+  reachable functions (Run174: 1,018); the site W stub and handler left its root list. `tools/config/generate.py --check` passes
+  (273 settings, 123 in the template).
+* **Host suite.** `PYTHONPATH=verification/probe python3 verification/probe/run_host_suite.py`: 298 modules, 2,941 tests, 37 failing
+  modules. An archive export of 71118dd7 fails the same 37 (plus `test_proxy_identity`, which needs the repository), so none is new.
+  They fail on this WSL host's environment: the CrossOver bottle paths of `X3AP.exe` and `d3dx9_37.dll`, and untracked local
+  artifacts. `test_engine_effects` and `test_engine_ribbons` are among them. The deletion's own breaks are fixed:
+  `test_ctl_boundary_reads` now scans `lane_frame_all`, the renamed sequencer frame. `kSummaryGatesWorstCase` is now 3,532 characters
+  (3,652 after step 1, 4,239 before), so `summary_bound.py` passes. The focused modules `test_ship_steering`,
+  `test_ctl_boundary_reads`, `test_config_schema`, `test_ship_steering_sites`, `test_ship_trace_format` and `test_ship_trace_replay`
+  pass: 55 tests OK.
+* **Lane cost.** Producer [`bench_figures.py`](../../verification/results/ship-steering/convoy-gate-transit/bench_figures.py) →
+  [`bench_figures_stage_b_deletion.txt`](../../verification/results/ship-steering/convoy-gate-transit/bench_figures_stage_b_deletion.txt):
+
+  | bench24 | Before (564b3df8, `--lane`) | After (`--lane`) | After (full run) |
+  | --- | --- | --- | --- |
+  | tf 1, third-worst frame | 269 µs | 321 µs | 258 µs |
+  | tf 10, third-worst frame | 528 µs | 518 µs | 467 µs |
+
+  Each figure is one host run, all under the 1 ms ceiling. The lane's mean is unchanged: 11.4–11.7 µs at tf 1 and 135–139 µs at
+  tf 10. The key-off mean fell from 13.3 to 5.1 µs at tf 1: the stage-A certificate runs no sequencer.
+
+**The key-off path cast** **[m]**. These are scenario C's control casts, now on the stage-A certificate alone. 45 control runs, seed 1:
+
+* Every ship launched.
+* 660,747 member-pair frames were certified clear, with 0 capsule contact on them. This is A.1's soundness guarantee, now asserted
+  per run.
+* Spans were within the lane's bound in 14 of 45 runs.
+* There were 1,288 member 0x12 episodes in total, and the closest capsule was −1,119 m. The fixture does not fly the 0x12 evasion, so
+  these are reported and not asserted, as in A.1's scenario T table (24–149 episodes per departure run, −686 m).
+* Parked cast, key off, tf 1 / 6 / 10:
+
+  | | tf 1 | tf 6 | tf 10 |
+  | --- | --- | --- | --- |
+  | 0x12 episodes | 28 | 3 | 3 |
+  | Closest capsule | −922 m | −875 m | −915 m |
+  | Certified frames | 30,473 | 2,918 | 1,667 |
+  | Contact on certified frames | 0 | 0 | 0 |
+
+The controls' old assertions were stage B's: "the pre-lane core fails the span in every run", and safety with 0 episodes. They fail on
+the stage-A path: 14 of 45 spans pass, and the parked baseline has episodes and overlap. They are replaced by A.1's guarantee: every
+ship launched and no contact while certified. The key-off path protects capital pairs by the certificate where it can prove them clear,
+and leaves the rest to the engine's warn and 0x12, as A.1 shipped.
+
+**Behaviour off the lane** **[inferred from the code]**:
+
+* A capital the lane does not fly falls back to amendment 15's latched aim-at-A fallback in place of the slow join. This covers the
+  key at 0, a board refusal and a member outside a lane stage. The capital transit casts with an infeasible join now assert that
+  fallback in their main run, where it was the A/B run before. They pass.
+* With `ship_steering_gates_traffic` = 0 there is no lane board and no exit spread. On the defaults neither changes anything.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

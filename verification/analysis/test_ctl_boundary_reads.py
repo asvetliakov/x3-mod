@@ -40,7 +40,7 @@ class BoundaryReads(unittest.TestCase):
         start = src.index('\nvoid ctl_member_frame(')
         end_fn = function_body(src, '\nvoid ctl_rows(')
         span = src[start:src.index(end_fn) + len(end_fn)]
-        for name in ('ctl_member_frame', 'sb_frame_all', 'ctl_live_prove', 'ctl_live_leaves', 'ctl_frame', 'ctl_rows'):
+        for name in ('ctl_member_frame', 'lane_frame_all', 'ctl_live_prove', 'ctl_live_leaves', 'ctl_frame', 'ctl_rows'):
             self.assertIn('void %s(' % name, span)  # the scanned span holds the boundary's functions
         self.assertEqual(hits(span), [])
         self.assertEqual(hits(function_body(src, '\nvoid frame_boundary(')), [])

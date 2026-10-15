@@ -125,11 +125,8 @@
 //     `[gate+0x70]+0x60`, 0x40e780 scale, 0x40e720 add). The handler 0x0045533b then writes
 //     `phys+0x30 = f+0x240 + 1.665 t_left^2 x row 2` every frame (0x004553cb..) and `phys+0x30 = f+0x240` at the end
 //     (0x0045537c..0x004553a5): every position of the warp-in lies on the line through the ship's position at the
-//     call, along the gate axis. Site W `0x00465bac`: `mov ecx,[ebx+0x70]` | `mov edx,[ebx+0x50]` (6 B, two whole
-//     instructions, before the copy); EAX = target, EBX = obj, ECX/EDX dead (rewritten by the span), ESI dead
-//     (rewritten at 0x00465bb2), flags dead (`test eax,eax` follows before any read). The stub offsets `phys+0x30..`
-//     laterally in the gate's x-y plane for a non-capital ship and continues into the claim tail: the copy, the
-//     case's write and the handler's writes all carry the offset; nothing else reads the position before the copy.
+//     call, along the gate axis. Site W `0x00465bac` (the non-capital exit spread, claimed here from amendment 8) was deleted
+//     on 2026-10-15 with stage B: inert under the gate traffic controller since D.6, whose launch window (n) places arrivals.
 // (m) `SA_RotateToAngles` 0x004653d1 writes `f+0x240/+0x244` = its alpha/beta arguments (0x00465404..0x00465410;
 //     the KC passes `SA_GetRotAlpha/Beta(gate)`) and `+0x248` = gamma or 0x80000000; the handler 0x0045920e builds
 //     the rotation matrix of those angles (0x004f0270 at 0x0045923a), takes the ship's flight basis row 2
@@ -137,14 +134,13 @@
 //     cos 8.1 deg): the target heading is the gate's forward axis (row 2 of its frame; roll leaves it unchanged).
 namespace x3m::ship_steering::sites {
 enum Index : unsigned { LeafYawPitch = 0, LeafRollYaw = 1, LeafRollPitch = 2, LoopContinue = 3, Count = 4 };
-// Steps 3 and 4: the four gate sites, claimed as a group after the steering sites (all or nothing; the gate policy is
+// Steps 3 and 4: the three gate sites, claimed as a group after the steering sites (all or nothing; the gate policy is
 // off when any of them refuses, steering stays on).
-enum GateIndex : unsigned { GateStopA = 0, GateStopB = 1, GateLaunch = 2, GateWarpIn = 3, GateCount = 4 };
+enum GateIndex : unsigned { GateStopA = 0, GateStopB = 1, GateLaunch = 2, GateCount = 3 };
 constexpr engine_patch::SiteSpec kGateSites[GateCount] = {
     {"ship_gate_stop_a", 0x00454b91, {0x89, 0x43, 0x14, 0x89, 0x43, 0x10}, 6, 0, 0},
     {"ship_gate_stop_b", 0x00454700, {0x89, 0x43, 0x14, 0x89, 0x43, 0x10}, 6, 0, 0},
     {"ship_gate_launch", 0x0045526f, {0xb8, 0xe8, 0x67, 0x19, 0x00}, 5, 0, 0},
-    {"ship_gate_warp_in", 0x00465bac, {0x8b, 0x4b, 0x70, 0x8b, 0x53, 0x50}, 6, 0, 0},
 };
 constexpr std::uintptr_t kGateStopAResume = 0x00454b97, kGateStopBResume = 0x00454706, kGateLaunchResume = 0x00455281;
 // The gate traffic controller, stage A (docs/architecture/gate-traffic-controller.md D.4; ship-navigation-ai.md section 10.10),

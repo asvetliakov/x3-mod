@@ -4,6 +4,7 @@ Status: queued 2026-10-13 by user decision, to be designed after Run160 (amendme
 
 Level-1 design added 2026-10-13 after the Run160 crowd flight (§Level 1 design below), for ratification by the main session.
 Stage A implemented 2026-10-13 (§A.1), not flown and not installed; stage B not implemented.
+Stage B was deleted on 2026-10-15: see "Stage B removed (2026-10-15)" before §A.1.
 
 ## The problem it replaces
 
@@ -701,6 +702,25 @@ to an externally started order 5, both disassembled; and level 1's petals and fu
 | The forward half-extent l per installed capital | the census row with l (flight) and `capital_widths.py` extended (static) |
 | The i686 cost | the DLL's `join_eval_us_max` / `handler_us_p99` in the first flight |
 
+### Stage B removed (2026-10-15)
+
+Stage B was deleted on 2026-10-15 as rank 2 of the ratified plan in
+[ship-steering-holistic-review.md](ship-steering-holistic-review.md) (§2 a and e, §3, §5). The deleted code is the petals, the
+sequencer, the release window, the stage points, and the lap and hold laws. With it went the B.6–B.9 paths that served only them and
+their `Member` / `Gate` fields. The same change also removed the amendment-16 lane board (`ship_capital_lane_core.h`), the
+`ship_steering_gates_capital_seq` key, site W, and amendment 16's slow join and un-latch.
+
+`ship_steering_gates_lane` now selects one of two paths:
+
+| Value | Path |
+| --- | --- |
+| 1 | the lane ([convoy-gate-transit.md](convoy-gate-transit.md) §11), output-identical to Run174 for the ships it flies (below) |
+| 0 | stage A alone: this note's certificate (rollouts, sweeps, the speed yield), site E's capital–capital suppression, D.4 and D.5 |
+
+With the key at 0 the controller writes no steering and no stage speed. With either value, a capital the lane does not fly (a board refusal, a recommit hold, a fresh commit before its first frame-end stage) loses amendment 16's slow join and un-latch with the key on too and takes amendment 15's latched aim-at-A fallback. Run173's log counted `gate_capital_slow_join=0` and `gate_capital_unlatch=0` (2 `pred_none` fallback rows), so no flown effect ([`latch_counts.py`](../../verification/results/ship-steering/run173-triage/latch_counts.py)); with the key at 0 that is every capital. The sections below are kept as the record of what was built. B.1, B.6, B.7 and B.8 are historical in full, and B.2, B.3 and
+B.9 in part. B.5 (pointer liveness) and the own-gate row of B.2 item 3 are live, now under the lane. Evidence: the ledger
+[ship-steering.md](../verification/ship-steering.md) "Stage B deletion".
+
 ### A.1 Implementation (stage A)
 
 Built 2026-10-13 (Opus 5.5) on main `77ddda08`; not flown, not installed. Stage A as ratified: D.1 with the speed yield only,
@@ -982,7 +1002,7 @@ It finds 0 drops at the new sizes under the retry model: the worst E frame is 16
 128), and the warn watch 9 (cap 32). **[i]**: the log's drop counter counts retries, so the true demand is inferred, and
 the naive bound (every drop its own row) is printed beside it.
 
-### B.1 Implementation (stage B)
+### B.1 Implementation (stage B) (historical: deleted 2026-10-15)
 
 Built 2026-10-13 (Opus 5.5) on main `ad0e131a` (stage A + amendment 18, Run161) with `c604ed0a` merged; not flown, not installed.
 Stage B as ratified (D.2, D.3, D.5, D.6, D.8 with the D.12 corrections) plus the Run161 additions (items 1–5 below). Ledger:
@@ -1252,7 +1272,7 @@ Reported, not met:
 The knobs are the petal radius and spacing, the release lead (L_lead, the release window, the final-straight overlap of two funnels),
 and pipelining the escorts. Tune them against flown cadences, not the fixture alone.
 
-### B.2 Run162 fixes
+### B.2 Run162 fixes (historical in part: the own-gate row of item 3 is live under the lane)
 
 Built 2026-10-13 (Opus 5.5) on main `5b3b11ed`, with two review rounds folded in (B1, N1–N8; F1, F2); not flown, not installed.
 Triage and witnesses: [`run162-triage/`](../../verification/results/ship-steering/run162-triage/) (`sb_timeline.txt`, `sb_reasons.txt`,
@@ -1415,7 +1435,7 @@ the skip, the rejoin and the row live in the controller. Key-off identity agains
 0 / 60,000, steer set 0 / 65,536, site B 0 / 200,000, ship containers 0 / 100,000); fixture lines outside scenario T: 0 differing in all
 three modes (ledger).
 
-### B.3 Run163 fixes
+### B.3 Run163 fixes (historical in part: the SETA step slack and the keep-through of item 2 are live)
 
 Built 2026-10-13 (Opus 5.5) on main `f2c01be2`, with the orchestrator's decisions of the same day folded in (the 1 ms ceiling, the
 frame-step reader, the own-gate-only warn, one pass at the SETA TARGET rows, the escort bound); not reviewed, not flown, not installed.
@@ -1792,7 +1812,7 @@ call).
 Only one reader had no liveness guarantee: the member row, which is fixed and now reads nothing. One reader had a liveness
 guarantee but no identity check: `ctl_escort`, which is fixed. **Limitation:** one active sector per frame is assumed (above).
 
-### B.6 Span tuning (Run166)
+### B.6 Span tuning (Run166) (historical: deleted 2026-10-15)
 
 Run166 measured (`verification/results/ship-steering/run166-triage/`, `hold_wait.txt`, `window_phase.txt`, `q4_target.txt`,
 `escorts.txt`) 1,125 game s of petal holding across three convoys: 721 s escorts waiting for the script's order 4 (64 %), 239 s
@@ -1908,7 +1928,7 @@ final straight against an arrival of its own gate. Logged in `ship-steering-scen
   B.6 the fixture passed 0, so stage B never steered those escorts in scenario T.
 * `kEscortStageS` and `kReleaseWindowM` are removed (unused).
 
-### B.7 Escort staging inside the script's radius (Run167)
+### B.7 Escort staging inside the script's radius (Run167) (historical: deleted 2026-10-15)
 
 Run167 (`verification/results/ship-steering/run167-triage/escort_wait.txt`, `hold_totals.txt`) **[m]**: every escort received its
 order 4 at the first script pass with the escort within about 10 km of the gate (closest 9.8–10.2 km at the pass), and the script
@@ -1956,7 +1976,7 @@ capsule gaps stay green. Flight oracle (Run168): `escort_wait.py` order 4 at +5�
 **Open.** Release 3071 waited 6.4 s with its nose at 0.490–0.492 of F against the 0.5 threshold (cosmetic). The script re-targets
 waiting escorts to each newly arriving M1 (3725, 3947 lost a release each; script-owned).
 
-### B.8 The lap law counts the join distance (Run168)
+### B.8 The lap law counts the join distance (Run168) (historical: deleted 2026-10-15)
 
 Run168 (`verification/results/ship-steering/run168-triage/escort_wait.txt`, `stage_at_launch_design.txt`) **[m]**: B.7 changed
 nothing in flight because no escort was parked. Escorts arrive with their leader, switch from inbound to hold by distance to the
@@ -2021,7 +2041,10 @@ order 4 at +5…+15 s for every escort in hold at the launch; the member row's `
 * Scenario T no longer has any 0x15 approach frames after a launch. The B.6 aggregate coverage check therefore requires only the
   before-launch window frames and reports the approach frames. The approach's 60 m/s is still checked per run whenever it occurs.
 
-### B.9 Column evictions at hold entry (Run168)
+### B.9 Column evictions at hold entry (Run168) (historical in part: deleted 2026-10-15)
+
+Live (now under the lane): the pair row's `cause`, `trig` and `gap_m` (`gap_scan`, `overlap_min`), `cap_in_force`, the signed `plan_speed` age and the `k_in` plant step (`plant_step_to`, now the lane rollout's, whose one caller leaves `k_in` at
+1); the petal rollout, the inbound and hold laws and `rollout_target` are deleted.
 
 Run168 gate 6db0 (`run168-triage/x12_pairs.txt`) **[m]**: two escorts inbound in column at 100 m/s, 1.3–2.0 km apart (closer than the
 sum of their engine radii, 2,114 m), stayed "certified clear" for 16 s while the front one braked on the inbound profile (100 → 60 m/s

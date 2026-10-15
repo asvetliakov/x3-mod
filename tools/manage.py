@@ -2532,6 +2532,10 @@ def main():
             env.pop('X3M_SHIP_AVOIDANCE', None)
             env.pop('X3M_SHIP_STEERING_GATES', None)
             env.pop('X3M_SHIP_STEERING_GATES_CAPITAL', None)
+        # The departure lane (ship_steering_gates_lane; schema default 1 since 2026-10-15, no launcher option): sent on every launch
+        # like the motion-cut defaults so the bare DLL equals the launcher flight; the DLL reads it only under ship steering with the
+        # traffic controller live; an inherited value is kept as the explicit choice (0 = the stage-A certificate only).
+        env.setdefault('X3M_SHIP_STEERING_GATES_LANE', '1')
         # Field of view: always explicit on a modded launch (N = 90 unless --fov), so a stale
         # shell value cannot select another angle; dropped under --vanilla (refused above).
         if args.vanilla:

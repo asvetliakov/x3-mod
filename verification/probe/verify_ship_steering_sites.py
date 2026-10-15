@@ -93,9 +93,8 @@ P2_REMAINDER_FACTS = (
     ('rotate_first_frame_roll_only', 0x004592f4, bytes.fromhex('33c0' '894338' '6a01')),
     ('p2_speeds_then_wake', 0x00454b91, bytes.fromhex('894314' '894310' 'e8c4b90000')),
 )
-# Step 4: site W, the SA_WarpObjectIn case 0x00465b22 (order 0x21), decoded as the whole case; the stub continues into
-# the claim tail at 0x00465bb2 (the position copy). The capital alignment facts: SA_RotateToAngles and the 0x1f handler.
-W_VA, W_WINDOW, W_RESUME = 0x00465bac, (0x00465b22, 0x00465cac), 0x00465bb2
+# Step 4: the capital alignment facts (SA_RotateToAngles and the 0x1f handler). Site W (0x00465bac, the SA_WarpObjectIn exit spread)
+# was deleted with stage B on 2026-10-15 (inert under the traffic controller since D.6) and is no longer claimed or checked.
 GATE_FACTS = (
     # P2: ecx = flight; eax = 0; the result word; push 1; esi = obj; then the window; then the wake call and the jump to the loop continue
     ('p2_registers', 0x00454b81, bytes.fromhex('8b4b50' '33c0' '66898158020000' '6a01' '8bf3')),
@@ -120,16 +119,6 @@ GATE_FACTS = (
     # the order-5 facts the crossing heading targets (section 10.5): the 0.95 alignment test, the 500 units/s creep
     ('order5_aligned_0x95', 0x00454897, bytes.fromhex('3d33f30000' '7d1a')),
     ('order5_creep_500', 0x004548a5, bytes.fromhex('c74314f4010000')),
-    # step 4, site W (ship_steering_sites.h (l)): the class-7 test before the window, the window, the position copy with the
-    # flag-setting `test eax,eax` after it, the class-0x12 target test, the case's position write from the copy plus the
-    # scaled axis, the handler's final snap from the copy and its target test
-    ('w_class7_check', 0x00465b55, bytes.fromhex('66837b4807')),
-    ('w_window', W_VA, bytes.fromhex('8b4b708b5350')),
-    ('w_copy_then_test', 0x00465bb2, bytes.fromhex('8b7130' '83c130' '81c240020000' '85c0' '8932' '8b7104' '897204' '8b7108' '897208' '8b490c' '894a0c')),
-    ('w_target_class_0x12', 0x00465bd4, bytes.fromhex('0f84b7000000' '6683784812')),
-    ('w_case_position_write', 0x00465c6f, bytes.fromhex('8b4b70' '8b10' '83c130' '8911' '8b5004' '895104' '8b5008' '895108' '8b400c' '89410c')),
-    ('w_handler_final_snap', 0x0045537c, bytes.fromhex('8b4350' '8b4b70' '8b9040020000' '895130')),
-    ('w_handler_target_test', 0x004553cb, bytes.fromhex('83be2402000000')),
     # the capital alignment (ship_steering_sites.h (m)): the angles written by SA_RotateToAngles, read by the handler, the
     # 0xfd70 tolerance (untouched)
     ('rotate_angles_written', 0x00465404, bytes.fromhex('8b5306' '899140020000' '8b530b' '899144020000')),
@@ -168,10 +157,9 @@ SITES = (
     H('ship_gate_stop_a', P2_VA, STOP_BYTES, *P2_WINDOW),
     H('ship_gate_stop_b', P4_VA, STOP_BYTES, *P4_WINDOW),
     H('ship_gate_launch', P5_VA, bytes.fromhex('b8e8671900'), *P5_WINDOW),
-    H('ship_gate_warp_in', W_VA, bytes.fromhex('8b4b708b5350'), *W_WINDOW),
     H('ship_gate_arrival_launch', T_VA, bytes.fromhex('8b43708b4b50'), *T_WINDOW),
 )
-RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10, P2_VA: 0, P4_VA: 0, P5_VA: 0, W_VA: 0, T_VA: 0}
+RET_POP = {0x0044ccc0: 4, 0x0044c620: 4, 0x0044c970: 4, B_VA: 0, E_VA: 0x10, P2_VA: 0, P4_VA: 0, P5_VA: 0, T_VA: 0}
 # Getters: (va, first instruction bytes, the register that carries obj, the plain `ret` addresses).
 GETTERS = {
     'max_speed': (0x00450980, bytes.fromhex('83ec0853568bf0'), 'eax', (0x00450b20,)),            # sub esp,8; push ebx; push esi; mov esi,eax
@@ -377,30 +365,20 @@ def verify(exe=DEFAULT_EXE, whole_text=True):
                                                  'remainders; order 0 and a first-frame 0x1f leave yaw and pitch, so a kept stage-B hand-over '
                                                  'zeroes all three (ship_steering_sites.h (h))'}
     resumes = {}
-    for name, (lo, hi), resume, va in (('p2', P2_WINDOW, P2_RESUME, P2_VA), ('p4', P4_WINDOW, P4_RESUME, P4_VA), ('p5', P5_WINDOW, P5_RESUME, P5_VA),
-                                       ('w', W_WINDOW, W_RESUME, W_VA)):
+    for name, (lo, hi), resume, va in (('p2', P2_WINDOW, P2_RESUME, P2_VA), ('p4', P4_WINDOW, P4_RESUME, P4_VA), ('p5', P5_WINDOW, P5_RESUME, P5_VA)):
         listing = decoded[(lo, hi)]
         starts = {i.va for i in listing}
         span = [i for i in listing if va <= i.va < resume]
         resumes[name] = {'resume_is_instruction_start': resume in starts, 'window_instructions': [common._instruction_dict(i) for i in span],
                          'window_ends_at_resume': bool(span) and span[-1].end == resume}
-    # site W: between the window and the `test eax,eax` at 0x00465bbe no instruction reads the flags, and no branch targets
-    # the window interior or the copy (the stub's flag writes are dead); the case's only branches are the three listed
-    w_listing = decoded[W_WINDOW]
-    w_after = [i for i in w_listing if W_RESUME <= i.va < 0x00465bbe]
-    w_flags_dead = [i.mnemonic for i in w_after] == ['mov', 'add', 'add'] and next((i for i in w_listing if i.va == 0x00465bbe), None) is not None \
-        and next(i for i in w_listing if i.va == 0x00465bbe).mnemonic == 'test'
     p4_join_after = all(not (P4_VA < tgt < P4_RESUME) for _, _, tgt in (text_branches(exe) if whole_text else []))
     p4_join = [hex(at) for at, _, tgt in (text_branches(exe) if whole_text else []) if tgt == 0x00454710]
     checks['gate_sites'] = {'ok': all(gate_facts.values()) and all(r['resume_is_instruction_start'] and r['window_ends_at_resume'] for r in resumes.values())
                             and all([i['mnemonic'] for i in r['window_instructions']] == (['mov', 'mov'] if n != 'p5' else ['mov', 'mov', 'mov', 'imul', 'idiv'])
                                     for n, r in resumes.items())
-                            and w_flags_dead
                             and p4_join_after and (not whole_text or p4_join == ['0x459191']),
                             'facts': gate_facts, 'resumes': resumes, 'join_0x00454710_from': p4_join,
-                            'w_flags_dead_until_test': w_flags_dead,
-                            'pinned': 'P2/P4: EAX = 0, EBX = obj, ECX = flight, flags dead; P5: EAX = t ms, ECX = [esp+0x10] = t^2, EBX = obj; resume 0x00454b97 / 0x00454706 / 0x00455281; '
-                                      'W: EAX = target, EBX = obj, ECX/EDX/ESI dead, flags dead until test eax,eax at 0x00465bbe; the tail at 0x00465bb2'}
+                            'pinned': 'P2/P4: EAX = 0, EBX = obj, ECX = flight, flags dead; P5: EAX = t ms, ECX = [esp+0x10] = t^2, EBX = obj; resume 0x00454b97 / 0x00454706 / 0x00455281'}
     # 5a. the gate traffic controller's launch window (ship_steering_sites.h (n)): the two whole instructions at instruction starts of
     #      the launch's gap-free decode (check 1); the stub contract: EDI = the gate on both branches and not written again before the
     #      window or before its read at 0x00444651; P written to phys+0x30 on both branches before the window; EAX/ECX rewritten by the

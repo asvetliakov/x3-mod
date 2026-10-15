@@ -1,0 +1,27 @@
+# python3 -I bench_figures.py base_564b3df8_lane.txt beforecore_full.txt beforecore_lane.txt after_full.txt after_lane.txt (2026-10-15)
+# the stdouts of laneon_diff.py (local): base = 564b3df8 fixture + core (--lane), beforecore = the new fixture against 564b3df8's core,
+# after = the new fixture and core; host x86-64 -O2, one run each, sequential; the key-off half is stage B in base, stage A otherwise
+abreast5 tf 1 (5 rows): lane mean 2.4-2.7 us, worst 83-190 us, third-worst 59-77 us | key off mean 0.7-2.3, worst 37-224, third 22-127
+  base_564b3df8_lane.txt               lane 2.5 / 101 / 74  key off 2.3 / 224 / 127
+  beforecore_full.txt                  lane 2.5 / 119 / 67  key off 0.7 / 37 / 22
+  beforecore_lane.txt                  lane 2.5 / 190 / 63  key off 0.7 / 39 / 28
+  after_full.txt                       lane 2.7 / 158 / 77  key off 0.7 / 41 / 26
+  after_lane.txt                       lane 2.4 / 83 / 59  key off 0.7 / 222 / 22
+abreast5 tf 10 (5 rows): lane mean 25.8-31.8 us, worst 82-271 us, third-worst 61-102 us | key off mean 10.4-20.9, worst 45-214, third 38-96
+  base_564b3df8_lane.txt               lane 25.8 / 84 / 64  key off 20.9 / 214 / 96
+  beforecore_full.txt                  lane 26.2 / 82 / 74  key off 10.6 / 59 / 38
+  beforecore_lane.txt                  lane 26.8 / 271 / 83  key off 11.0 / 112 / 57
+  after_full.txt                       lane 26.1 / 145 / 61  key off 10.4 / 45 / 40
+  after_lane.txt                       lane 31.8 / 122 / 102  key off 12.2 / 192 / 56
+bench24 tf 1 (5 rows): lane mean 11.4-11.7 us, worst 402-787 us, third-worst 173-321 us | key off mean 5.1-13.3, worst 234-836, third 132-288
+  base_564b3df8_lane.txt               lane 11.7 / 768 / 269  key off 13.3 / 751 / 288
+  beforecore_full.txt                  lane 11.5 / 504 / 244  key off 5.1 / 697 / 224
+  beforecore_lane.txt                  lane 11.4 / 787 / 173  key off 5.2 / 836 / 262
+  after_full.txt                       lane 11.5 / 407 / 258  key off 5.1 / 714 / 132
+  after_lane.txt                       lane 11.4 / 402 / 321  key off 5.1 / 234 / 134
+bench24 tf 10 (5 rows): lane mean 135-138.6 us, worst 563-1248 us, third-worst 433-528 us | key off mean 116.9-159.9, worst 584-1125, third 381-562
+  base_564b3df8_lane.txt               lane 135.0 / 758 / 528  key off 159.9 / 1125 / 562
+  beforecore_full.txt                  lane 136.1 / 1108 / 433  key off 116.9 / 933 / 381
+  beforecore_lane.txt                  lane 135.6 / 563 / 499  key off 119.0 / 853 / 475
+  after_full.txt                       lane 138.6 / 698 / 467  key off 117.1 / 880 / 541
+  after_lane.txt                       lane 137.3 / 1248 / 518  key off 117.4 / 584 / 539
