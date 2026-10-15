@@ -232,7 +232,8 @@ struct EVerdictRow { // ship_avoid_e_verdict (trace slot 0 as A)
 // the frame's rows written is dropped and counted (gate_rows_dropped, rows_dropped e_table / e_ring); 64 last verdicts for the
 // warn_pre rows. The gate traffic controller (D.7): 32 rows per frame and a 128-pair table (Run160b: the ring sat at its cap of 8 in
 // 401 of 2,829 crowd frames); member pairs write no per-call row (the ship_gate_ctl_pair row on a verdict change instead).
-constexpr unsigned kERows = 32, kELogged = 128, kELast = 64;
+// (the arrival round item 6: Run174 dropped 34 E rows on the ring's cap of 32 rows per frame: 64)
+constexpr unsigned kERows = 64, kELogged = 128, kELast = 64;
 inline EVerdictRow e_rows_[kERows];
 inline std::atomic<std::uint32_t> e_row_write_{0};
 inline std::uint32_t e_row_read_ = 0;
@@ -247,6 +248,14 @@ struct WarnPreRow { // ship_avoid_engine_warn_pre
 inline WarnPreRow warn_pre_[8];
 inline std::atomic<std::uint32_t> warn_pre_write_{0};
 inline std::uint32_t warn_pre_read_ = 0;
+struct RingReadRow { // review of the arrival round item 1 (--debug): ship_gate_ring_read, the gate's collision-tree read, once per gate
+    std::uint32_t t_ms, gate, id, scene;
+    std::uint16_t type, nodes;
+    std::uint8_t state, why, seen, board;
+};
+inline RingReadRow ring_read_rows_[8];
+inline std::atomic<std::uint32_t> ring_read_write_{0};
+inline std::uint32_t ring_read_read_ = 0;
 using EV = av::EVerdict; // site E's verdicts (ship_avoidance_core.h site_e_verdict), the --debug rows
 struct WidthCensus { // ship_capital_census: one row per capital type (the record index [obj+0x4a])
     std::uint32_t type, code;

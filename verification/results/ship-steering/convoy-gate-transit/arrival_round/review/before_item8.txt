@@ -1,0 +1,15 @@
+scenario C terran_rim ring tf 1 seed 1: warn_nm 19042 sup 19042 (escort 0 arrival 0 other 19042) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 1 seed 7: warn_nm 19042 sup 19042 (escort 0 arrival 0 other 19042) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 1 seed 1234567: warn_nm 19042 sup 19042 (escort 0 arrival 0 other 19042) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 6 seed 1: warn_nm 1433 sup 1433 (escort 0 arrival 0 other 1433) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 6 seed 7: warn_nm 1381 sup 1381 (escort 0 arrival 0 other 1381) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 6 seed 1234567: warn_nm 1280 sup 1280 (escort 0 arrival 0 other 1280) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 10 seed 1: warn_nm 909 sup 909 (escort 0 arrival 0 other 909) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 10 seed 7: warn_nm 875 sup 875 (escort 0 arrival 0 other 875) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+scenario C terran_rim ring tf 10 seed 1234567: warn_nm 851 sup 851 (escort 0 arrival 0 other 851) refused 0 x12_nm 0 unsafe 0 | refused_hull oracle-confirmed 0 not 0 (largest oracle gap -1 m) ships 0x0 gap_min 25
+      3 terran_rim tf10: Nx the refused warn left to the engine
+      3 terran_rim tf10: Nx the rim ship's gate warns refused
+      3 terran_rim tf1: Nx the refused warn left to the engine
+      3 terran_rim tf1: Nx the rim ship's gate warns refused
+      3 terran_rim tf6: Nx the refused warn left to the engine
+      3 terran_rim tf6: Nx the rim ship's gate warns refused

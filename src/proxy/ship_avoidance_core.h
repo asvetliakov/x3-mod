@@ -144,6 +144,9 @@ constexpr std::uint8_t kObstacleAutopilot = 4;  // [obj+0x40] & 0x80000 at the w
 struct Snapshot {
     std::uint32_t sector = 0, epoch = 0;
     unsigned count = 0, overflow = 0;
+    // the arrival round item 6: the player's ship of the walk ([obj+0x40] & 0x2, SA_SetAsPlayerObject) and its position (m); 0 none
+    std::uint32_t player = 0;
+    float player_x[3] = {0, 0, 0};
     float max_r = 0;
     Obstacle items[kSnapshotCapacity];
 };
@@ -828,6 +831,8 @@ enum class EVerdict : std::uint8_t {
     suppress_ctl, pass_ctl, suppress_arrival_gate, // the gate traffic controller (D.1, D.4; ship_steering_gates_traffic)
     suppress_dock, pass_dock_parts, pass_dock_path, pass_dock_ray, pass_dock_zone, // amendment 18 (ship_steering_dock)
     suppress_lane_obst, // lane fix round 2 item 1: a lane member's path clears a non-member obstacle (ctl::lane_obst_why)
+    suppress_gate_ring, // the arrival round item 4: an AI ship's path clears its gate's solid (ctl::gate_ring_why), any order
+    pass_player, // review of the arrival round item 2: B is the player's ship ([B+0x40] & 2): no suppression row applies (the engine's warn)
     count
 };
 inline const char* e_verdict_name(EVerdict v) noexcept {
@@ -836,13 +841,14 @@ inline const char* e_verdict_name(EVerdict v) noexcept {
         "pass_not_steerable", "pass_class", "pass_b_dock_leg", "pass_own_leader", "pass_not_fresh", "pass_unreadable", "pass_not_member",
         "pass_not_transient", "pass_touching", "pass_a_avoid", "pass_not_resolved", "pass_not_ship",
         "suppress_ctl", "pass_ctl", "suppress_arrival_gate", "suppress_dock", "pass_dock_parts", "pass_dock_path", "pass_dock_ray",
-        "pass_dock_zone", "suppress_lane_obst"};
+        "pass_dock_zone", "suppress_lane_obst", "suppress_gate_ring", "pass_player"};
     return unsigned(v) < unsigned(EVerdict::count) ? names[unsigned(v)] : "?";
 }
 inline bool e_suppresses(EVerdict v) noexcept {
     return v == EVerdict::suppress_small || v == EVerdict::suppress_member || v == EVerdict::suppress_gate ||
            v == EVerdict::suppress_gate_small || v == EVerdict::suppress_resolved ||
-           v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock || v == EVerdict::suppress_lane_obst;
+           v == EVerdict::suppress_ctl || v == EVerdict::suppress_arrival_gate || v == EVerdict::suppress_dock || v == EVerdict::suppress_lane_obst ||
+           v == EVerdict::suppress_gate_ring;
 }
 inline EVerdict dock_e_verdict(DockE v) noexcept {
     switch (v) {
@@ -918,6 +924,12 @@ struct SiteE {
     // asteroid or a ship that is not its board partner) by the sweep margin (ctl::lane_obst_why: its own freshness bounds, never the
     // player's ship); false = today's rules
     bool lane_obst = false;
+    // The arrival round item 4 (ship_steering_gates_lane): B is a gate and A an AI ship (never the player's, never manual) whose predicted
+    // path with its hull clears the gate's solid (ctl::gate_ring_why: no solid without a collision tree), the member row not deciding
+    bool gate_ring = false;
+    // Review of the arrival round item 2: B is the player's ship (class 7, [B+0x40] & 2, SA_SetAsPlayerObject): every suppression row is
+    // skipped and the engine's warn stands (the resolved set, the small-ship and member rows included)
+    bool b_player = false;
 };
 // The capital small-ship row (section 15.1, amendment 17 item 4) for a small B (small_pair holds): the exceptions, else suppress_small.
 __attribute__((always_inline)) inline EVerdict small_row_verdict(const SiteE& in) noexcept {
@@ -932,9 +944,11 @@ __attribute__((always_inline)) inline EVerdict small_row_verdict(const SiteE& in
     }
 }
 inline EVerdict site_e_verdict(const SiteE& in) noexcept {
+    if (in.b_player) return EVerdict::pass_player; // (review of the arrival round item 2: never the player's ship as B)
     // the gate traffic controller first (its pairs need no steering decision of A: arrivals and hand-overs are on engine orders)
     if (in.b_gate && in.arrival_gate) return EVerdict::suppress_arrival_gate;
     if (in.b_gate && in.ctl_gate) return EVerdict::suppress_gate; // B.2 item 3: the stage-B member against its own gate
+    if (in.b_gate && in.gate_ring) return EVerdict::suppress_gate_ring; // the arrival round item 4 (its own freshness: the live reads)
     if (in.b_ship && in.ctl_pair) return in.ctl_certified ? EVerdict::suppress_ctl : EVerdict::pass_ctl;
     if (in.lane_obst && !in.b_gate) return EVerdict::suppress_lane_obst; // (its own freshness: the order-0 gaps have no decision of A)
     if (!in.a_in_table && !in.a_arrival) return EVerdict::pass_not_fresh;

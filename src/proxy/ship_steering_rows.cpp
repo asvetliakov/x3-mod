@@ -167,6 +167,18 @@ void frame_boundary(std::uint64_t frame) {
         }
     }
     if (debug_) { // amendment 16 (section 16.5): the width census per capital type
+        // review of the arrival round item 1: the gate's collision-tree read, once per gate (state none / tree / unknown, the first guard
+        // that failed, nodes visited, [gate+0x98] and whether a visited node carried it, the TGates row; verdict none = no solid (the ring
+        // row suppresses on the path alone), ring = the TGates row's ring (a tree, or unknown: fail closed))
+        for (std::uint32_t w = ring_read_write_.load(std::memory_order_acquire); ring_read_read_ != w; ++ring_read_read_) {
+            static const char* const kState[3] = {"unknown", "none", "tree"};
+            const RingReadRow& r = ring_read_rows_[ring_read_read_ & 7];
+            log("ship_gate_ring_read frame=%llu t_ms=%lu gate=0x%08lx id=%lu type=%u board=%u state=%s why=%s nodes=%u scene=%lu seen=%u verdict=%s",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate),
+                static_cast<unsigned long>(r.id), unsigned(r.type), unsigned(r.board), kState[r.state < 3 ? r.state : 0],
+                wk::tree_why_name(wk::TreeWhy(r.why)), unsigned(r.nodes), static_cast<unsigned long>(r.scene), unsigned(r.seen),
+                r.state == 1 ? "none" : "ring");
+        }
         for (std::uint32_t w = width_census_write_.load(std::memory_order_acquire); width_census_read_ != w; ++width_census_read_) {
             const WidthCensus& c = width_census_[width_census_read_ & 7];
             // amendment 16b: h_rw_m = sqrt(r^2 + w^2) (the note's h; l_m must not exceed it), len_m = max(r, l) and h_m = sqrt(len^2 + w^2),
@@ -573,14 +585,46 @@ void frame_boundary(std::uint64_t frame) {
         }
         log("ship_steering_lane_summary frame=%llu lane=%s ctl_merge_yield=%lu ctl_merge_stop=%lu ctl_point_rewrites=%lu ctl_lane_writes=%lu "
             "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu "
-            "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu gates_gate:F:G:r=%s",
+            "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu gates_gate:F:G:r=%s",
             static_cast<unsigned long long>(frame), lane_state_, static_cast<unsigned long>(ctl_merge_yield_.get()),
             static_cast<unsigned long>(ctl_merge_stop_.get()), static_cast<unsigned long>(ctl_point_rewrites_.get()),
             static_cast<unsigned long>(ctl_lane_writes_.get()), static_cast<unsigned long>(ctl_x_refused_.get()),
             static_cast<unsigned long>(ctl_x_wait_ms_ / 1000u), static_cast<unsigned long>(ctl_grid_miss_.get()),
             static_cast<unsigned long>(ctl_point_adopts_.get()), static_cast<unsigned long>(ctl_lane_defers_.get()),
             static_cast<unsigned long>(ctl_defer_rewrites_.get()), static_cast<unsigned long>(ctl_recommit_held_.get()),
-            static_cast<unsigned long>(e_lane_obst_.get()), static_cast<unsigned long>(e_lane_obst_roll_.get()), frames);
+            static_cast<unsigned long>(e_lane_obst_.get()), static_cast<unsigned long>(e_lane_obst_roll_.get()),
+            static_cast<unsigned long>(e_gate_ring_.get()), static_cast<unsigned long>(e_gate_ring_kept_.get()),
+            static_cast<unsigned long>(ctl_mouth_expired_.get()), frames);
+        // the arrival round item 6: the piloted ship within 15 km of a gate, once per report: its position (the freshest snapshot of the
+        // last 2 s of game time that holds it), the nearest gate of that snapshot and the nearest board member (its state), m
+        const std::uint32_t t_now = game_time_ms();
+        const av::Snapshot* ps = nullptr;
+        for (const av::Snapshot& sn : snaps_)
+            if (sn.player && std::int32_t(t_now - sn.epoch) >= 0 && t_now - sn.epoch <= 2000u && (!ps || std::int32_t(sn.epoch - ps->epoch) > 0)) ps = &sn;
+        if (ps) {
+            float dg = 3.4e38f, dm = 3.4e38f;
+            std::uint32_t gate = 0, member = 0;
+            for (unsigned i = 0; i < ps->count; ++i) {
+                const av::Obstacle& o = ps->items[i];
+                if (o.kind != std::uint8_t(av::Kind::gate)) continue;
+                const float d[3] = {o.x[0] - ps->player_x[0], o.x[1] - ps->player_x[1], o.x[2] - ps->player_x[2]}, dd = core::sqrt_ss(core::dot3(d, d));
+                if (dd < dg) dg = dd, gate = o.ptr;
+            }
+            if (gate && dg <= 15000.0f) {
+                for (const gc::Gate& lg : ctl_.g)
+                    for (unsigned i = 0; lg.gate && i < lg.n; ++i) {
+                        const gc::Member& m = lg.m[i];
+                        if (!m.ship || !gc::pair_role(m.role) || !m.st.ms) continue;
+                        const float d[3] = {m.st.x[0] - ps->player_x[0], m.st.x[1] - ps->player_x[1], m.st.x[2] - ps->player_x[2]};
+                        const float dd = core::sqrt_ss(core::dot3(d, d));
+                        if (dd < dm) dm = dd, member = m.ship;
+                    }
+                log("ship_player_pos frame=%llu t_ms=%lu obj=0x%08lx pos=%.0f,%.0f,%.0f gate=0x%08lx d_gate_m=%.0f member=0x%08lx d_member_m=%.0f",
+                    static_cast<unsigned long long>(frame), static_cast<unsigned long>(t_now), static_cast<unsigned long>(ps->player),
+                    double(ps->player_x[0]), double(ps->player_x[1]), double(ps->player_x[2]), static_cast<unsigned long>(gate), double(dg),
+                    static_cast<unsigned long>(member), member ? double(dm) : -1.0);
+            }
+        }
     }
     rep_calls_ = calls;
     rep_handled_ = handled;

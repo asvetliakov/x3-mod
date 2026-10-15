@@ -1514,6 +1514,143 @@ bound in 3 of 3 at tf 6 and the member at 2 m/s (`round_c/summary.txt`), identic
 e7a7120c and the tree three times): bench24 tf 10 mean 97.7–103.0 µs base against 98.8–101.5 µs, tf 1 9.1–9.3 against 9.3 µs. i686 cost not
 measured.
 
+### Arrival round (Run174) (2026-10-15, Opus 5.5; each item with a check that fails before it)
+
+Worktree `agent-ae8ea6bc11efe4dd2` on main 98a21d7c; commits b13adb92 (items 1, 2, 3, 5: the cast needs all four green) and ef1d829f (items 4,
+6). Units: `ship_gate_{board,geometry,lane,certificate}_core.h`, `ship_avoidance_core.h` / `ship_avoidance_walk_core.h` (the snapshot's player,
+the gate's collision tree), `ship_steering_decide.cpp` (site A's lane test), `ship_steering_warn.cpp` (site E's ring row),
+`ship_steering_rows.cpp` / `ship_steering_internal.h` (rows, the E ring), the fixture, `ship_trace_rows.py` and its test. Every figure **[m]**
+from [`arrival_round/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/arrival_round/run.sh) (`lane.txt`,
+`return_trip.txt`, `ring.txt`, `before_item*.txt`, `bench.txt`) unless marked **[i]**; 3 seeds x tf 1 / 6 / 10.
+
+1. **Cast `return_trip`** (eng 5). An arriving Colossus (0x21, 0x1e, order 0) whose script's next order, 7.9 s after its launch, is order 4
+   back through the same gate (slot 0's grid point on the axis, 4.25 km out); two M2 escorts (Run174's 755 m on the Boreas plant) arriving 80 s
+   and 195 s later (0x21, 0x1e, 6 s of order 0, then 0x14 to the leader; after its launch the lost-leader wait and order 4); the player's M6
+   parked 2 km beside the gate (never steered, never a member, never suppressed). The fixture now models the DLL's site-A board leave
+   (`Model::site_a_keep`: the lane test, `gate_geometry_capital`, the leave on Why::target, the re-commit guard, `GateState::lane_w`) and forces
+   one 3 s avoidance detour of the leader at 60 s (Run174's detour around its uncertified escort, as `x12_near` forces its eviction). The
+   derived bound per return trip: out to the turn point d_end + settle + R + D_need(100 m) (the diagonal onto the out-leg from its lateral, from
+   its speed at its acceleration), the pursuit U-turn (its apex 3 R past the turn point and back, a half circle across the offset between),
+   the straight run back at the lane speed; P2 against the later of that, the KC's through slot (a partner-side arrival refuses our side 60 s
+   from its release) and the predecessor's launch + its spacing; the launch against P2's bound + P2 to grant + kTSlotRefS + the step; 15 s
+   tolerance. Checks Rx (launched, no leave on Why::target, no member 0x12 against the gate, P2 kept within 8 deg, P2 and launch within the
+   bounds, no leader stop write beyond 20 s + the step, the escorts' stops end within the step of their predecessor's launch, no contact, the
+   player's ship never suppressed) and Rx4 (item 4).
+2. **Site A's lane test on the leaf's point.** `gate_decide` compared f+0x240 with `in.P`, the point after our own avoidance detour: a detour
+   made L_i look foreign, the field then failed the KC grid check and the member left the board (Why::target), its own-gate row fell away.
+   It now compares with `order_point` (the leaf's point as the engine handed it), `gc::lane_field_is_leaf`; `X3M_C_LEAVE_OLD=1` models the old
+   rule. Unit `arrival round units` item 2.
+3. **The lone re-departure.** A member about to re-depart (in front of the plane, inside the plain re-departure's turn point, nose away,
+   not on Lambda) with no member in its room (no overshoot ahead; no non-returning member reaching d_end within 1.5 x its turn-around + the
+   spacing) flies round C's loop on its own side, above Lambda too (an arrival at P is 1.5 km above it), the out-leg at max(2.5 R, 1.2 km) off
+   Lambda, the turn point d_end + settle + R + D_need(100 m), no kLaneRedepM floor; a member ahead on its join or on Lambda is the loop's own
+   case (loop_sp). A re-departer's law reads its turn point (the pacing's braking curve to d_end was 0 inside d_end: Run174's 8.6 s stop of the
+   lone leader). Decided once per re-departure, deferred while the statics are unknown or the ship is held (item 5). `-DX3M_LANE_RMIN=0`
+   builds the plain one.
+5. **The gate-mouth hold.** `lane_mouth_hold`: a re-departer at the gate mouth (inside d_end) behind a ship farther out that is not itself
+   returning holds at rest until that ship's launch (order 8 ended): the law's block, the rollout at rest over its horizon (the pair certifies
+   on P's path past it), no merge label or lateral band, its re-departure decided from there; a re-departing escort gets no escort-gate
+   reserve. `-DX3M_LANE_MOUTH=0` builds the lane before it.
+4. **The own-gate warn suppression as a property of the gate and the ship** (user decision 2026-10-15; section 12.6). Site E's ring row
+   (`gc::gate_ring_why`, the DLL's `e_gate_ring`) for any AI ship (never the player's, never manual, never on 0x12) against any gate on any
+   order where the member row does not decide (not_member, order, stage). The fixture's engine model now warns every ship against the gate on
+   every order the warn acts on (it warned committed members only), the 0x12 flown; `X3M_C_RING_OFF=1` is site E before. Units: the tree read
+   (none / tree / flagged off / no node: 1 2 1 0), the row (through the hole escort, clipping the rim refused_hull, no tree other, unknown read
+   refused_hull, NaN roll, a_lin 0 roll, a target across the rim refused_hull).
+6. **Rows.** `ship_player_pos` once per report while the piloted ship is within 15 km of a gate (its position from the snapshot walk, the
+   nearest gate, the nearest board member); `e_gate_ring` / `e_gate_ring_kept` on the lane summary; gate_row= kinds escort / arrival / other /
+   refused_hull (roll as before; member = suppress / lane); verdict `suppress_gate_ring`. Run174's 34 dropped E rows: the E ring raised from 32
+   to 64 rows per frame (the drop count per drop kind was already printed, `rows_dropped ... e_ring:`).
+
+**Fail-before and after [m]:**
+
+| Item | Before (switch) | After |
+| --- | --- | --- |
+| 1 `return_trip` (the controller before the round: `X3M_C_LEAVE_OLD=1 X3M_C_RING_OFF=1 -DX3M_LANE_RMIN=0 -DX3M_LANE_MOUTH=0`) | 6-7 Rx / 4a checks fail in each of 9 runs: 1 leave on Why::target per run, 3 non-member own-gate 0x12 per run, leader P2 144.0-152.3 s after its order 4 (43.6-52.0 s over the bound), a leader stop write 6.2-8.7 s, the escorts' stops 11.8-16.4 s past their predecessor's launch, escorts 22.2-60.8 s over their bound | 9 of 9 green: leader P2 133.8-136.6 s (derived turn-around 113.8-114.0 s; the KC's slot after escort 1's arrival binds, 133 s), at most 3.8 s over, launch 136.7-159.9 s (bound 154.0-156.2 s + 15 s), no leader stop write, escorts held 53.3-65.7 s at the mouth, their last stop write 18.2-19.5 s before their predecessor's launch at tf 1 and 0.10 s after it at tf 6 / 10, P2 nose 2.1-3.2 deg, closest pair 511-519 m, the player's ship at least 1,540 m away and never suppressed (figures corrected to `return_trip.txt` by the review, item 6) |
+| 2 lane test (`X3M_C_LEAVE_OLD=1`) | `--lane` 83 failures; a board leave on Why::target in 9 of 9 runs each of `parked`, `slow_hull`, `lane_fallback`, `return_trip` (`slow_hull` and `parked` fail their safety, holding and short-final checks) | 0; unit item 2 |
+| 3 lone re-departure (`-DX3M_LANE_RMIN=0`) | `return_trip` P2 over the turn-around and the escorts over their bound in 9 of 9 | 9 of 9 green |
+| 5 gate-mouth hold (`-DX3M_LANE_MOUTH=0`) | `return_trip`: member 0x12 episodes 9 of 9, contact 6 of 9, P2 not kept 6 of 9, 4 of 9 short of a launch, the player's ship suppressed (our avoidance's resolved set) in 7 of 9 | 9 of 9 green |
+| 4 ring row (`X3M_C_RING_OFF=1`) | `--lane` 1,347 failures; non-member own-gate 0x12 in 31 casts (781 episodes over seed 1 and the failing runs) | 0 failures; at seed 1 every cast's non-member gate warns suppressed (`ring.txt`: `return_trip` 703 escort / 1,104 arrival / 438 other at tf 1, the Terran casts 10.8k each), 0 refused, 0 unsafe against the fixture's own ring model, 0 x12 |
+| 6 rows | `test_ship_trace_format` without the fields | 23 tests OK |
+
+**Deviations.** (a) The brief released the escorts within the step of the leader's grant; released there, escort 1's loop out-leg dove toward
+Lambda across the leader's order-5 path (box -1 m, tf 1), so the hold lasts to the predecessor's launch (the brief's item 5 bound: the leader's
+launch + the step). (b) The lone test counts a member reaching d_end within 1.5 x the turn-around + the spacing (cast `redeparture`: a convoy
+16 km out, ETA 137 s against the loop's 135 s, met the loop's U-turn: 343 uncertified frames). (c) The loop's 2.5 R out-leg is calibrated on
+600 m-radius capitals; an M2 of R 297 m turns with the carrot's 1.2 km and overshot Lambda by 450 m: the lone out-leg at max(2.5 R, 1.2 km).
+(d) The derived bound carries the pursuit U-turn's measured extent (3 R past the turn point, round C's figure) and the KC's slot: a U-turn of
+pi R alone is about 40 s short at 100 m/s. (e) Items 1, 2, 3 and 5 share one commit: the cast is green only with all four.
+
+**Acceptance [m]** (host x86-64, `-std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 4,849 / 0, full 12,196 / 0, `--capital` 6,574 / 0;
+`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 23 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143
+roots, 1,010 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Cost (`bench.txt`, alternating 98a21d7c
+and the tree three times): bench24 tf 10 mean 102.1-105.9 us base against 100.5-104.8 us, tf 1 9.3-9.5 against 9.3-9.4 us (bench24 flies no
+re-departure; site E's ring row is outside the bench: O(1) on a gate without a tree, at most two hull sweeps of at most 256 samples per ship per
+game frame on a ringed one **[i]**, not measured). i686 cost not measured; not installed.
+
+### Arrival round review fixes (2026-10-15, Opus 5.5; review and disassembly findings on the arrival round)
+
+Worktree `agent-ae8ea6bc11efe4dd2` on 97f3804b. Units: `ship_avoidance_walk_core.h` (`gate_tree_read`, `ptr_ok`, `TreeWhy`),
+`ship_avoidance_core.h` (`SiteE::b_player`, `EVerdict::pass_player`), `ship_gate_lane_core.h` (`lane_mouth_hold` / `lane_mouth_on`, the hold's
+bound, the lone decision's predecessor, `gate_ring_why`'s step), `ship_gate_board_core.h` (`Member::mouth_pred` / `mouth_ms` / `mouth_exp`),
+`ship_gate_certificate_core.h`, `ship_steering_warn.cpp` (`gate_ring_state`, `ship_gate_ring_read`, `b_player`), `ship_steering_rows.cpp`,
+`ship_gate_ctl_glue.*` (`ctl_mouth_expired`), the fixture, `ship_trace_rows.py` and its test. Every figure **[m]** from
+[`arrival_round/review/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/arrival_round/review/run.sh) unless marked
+**[i]**; the RE facts are ship-navigation-ai.md §10.9 "Collision-tree read (2026-10-15)".
+
+1. **The tree read fails closed.** `wk::gate_tree_read` returns none only under §10.9's positive guard: class 0x12, `[gate+0x70]` and
+   `[gate+0x98]` non-zero, every visited child's `[c+0x18]` its parent, every chain ending exactly at its parent's sentinel `n+0x10`, a child
+   at the depth limit (3) childless (its list its own empty sentinel), the 64-node budget not exhausted, a visited node carrying
+   `[c+0x258]` = the scene id. Anything else is unknown, the ring of the TGates row. Every pointer (the gate, the root, each node) is checked
+   for the user range [0x10000, 0xFFFF0000) (X3AP.exe is large-address-aware) and 4-byte alignment before its first read, and the gate before
+   `gate_ring_state` reads its id. `--debug` adds one `ship_gate_ring_read` row per gate (state, the first failed guard, nodes visited, the
+   scene id and whether a node carried it, the TGates row, verdict none / ring; at most 64 gates). Units: installed bubble (one part at
+   depth 1) none, Terran ring tree, flagged off none, a chain to depth 3 none; foreign structure, broken back pointer, no scene id, stale scene
+   id, class 7, misaligned node, low root, a child below the depth limit, 65 parts, a chain ending elsewhere, a null gate: unknown.
+2. **The player's ship is never suppressed as B.** `site_e_verdict` returns `pass_player` first when B is a ship with `[B+0x40] & 2` (the
+   DLL's `e_verdict` sets `SiteE::b_player`): the resolved set, the small-ship and member rows, the dock and lane rows are all skipped and
+   the engine's warn stands. The small-ship casts (`small_gate`, `small_gate_m6`, `small_gate5`) carry the player's M6 parked on the TS
+   trader's order-4 path (1.8 km beside, 3.7 km below the axis, 7.2 km out), check Dx; `return_trip` keeps Rx.
+3. **The gate-mouth hold is bounded.** It applies only while P is on its final (past d_end, or on a lane stage heading in, its nose along
+   +F, not returning). Its bound is taken at the hold's start for that P: P's launch ETA + T_stop + the step. Before d_end the ETA is no
+   earlier than the through slot's known free time `t_free` (the KC's refusal after a partner-side arrival) + 1 s + the order-5 leg. On
+   expiry it is counted (`LaneStats::mouth_expired`, `ctl_mouth_expired=` on the lane summary) and over for that P. From there the law's stop
+   cap (T_stop + the step from the stop's start) applies again; a physical stop of P stays the queue hold's block. A P that never launches
+   ends the hold at the earlier of the bound and its membership: killed at once (not live); refused, at the bound, long before
+   `kLaneRefusedMaxMs` + the step ends its membership. The certificate's rollout reads the same predicate (`lane_mouth_on`).
+4. **One predecessor.** The lone decision tests the hold against `m.lane_pred`, the predecessor the block used. The lane order is built
+   after the stage pass, so this is the previous frame's predecessor. A decision taken on a frame whose own predecessor holds the member is
+   undone at the block (`loop_min_done` 2) and taken again once the hold is over.
+5. **The ring row's horizon** is 1 s + the frame's game step (clamped to 5 s) + v / a; the DLL reads `frame_step_ms()` through int.
+6. Section 11 item 1's "After" cell corrected to `return_trip.txt`.
+7. **`return_trip`'s tolerances, one per bound** (the shared 15 s split): P2 against the turn-around 6 s (measured 2.7-3.8 s); the slot's
+   occupancy (grant -> launch) against kTSlotRefS, now asserted (Rx7), 12 s (measured 9.3-9.5 s at tf 1, an M2 escort: its 70 m/s order-5
+   leg from d_end, 22 s against 11-12 s for the reference hulls **[i]**); the leader's launch 8 s (5.9 s); an escort's launch 14 s
+   (12.0-12.2 s: its P2 over plus the slot excess).
+8. **Cast `terran_rim`**: two non-member M1s (`kNewLead`, straight on at 100 m/s) through the Terran ring's hole, one with its hull's
+   capsule 25 m from the rim (inside kMarginM), one 400 m clear. The fixture's ring oracle (`ring_gap_at`, gate_hole.txt's numbers) is
+   independent of the core's `gate_solid`.
+
+**Fail-before and after [m]:**
+
+| Item | Before | After |
+| --- | --- | --- |
+| 1 (`item1_before.txt`: the unit images against 97f3804b's walk) | 8 of 11 cases read none (foreign, back pointer, no scene, stale scene, class, misaligned, below the depth limit, chain end) | 11 of 11 as specified |
+| 2 (`before_item2.txt`, `X3M_C_PLAYER_OLD=1`) | `return_trip` without the gate-mouth hold: the player suppressed as B in 7 of 9 runs (2-1,429 verdicts); the three small-ship casts 9 of 9 (2-87) | 0 in every run |
+| 3 (`item3_before.txt`: a leader whose launch never comes, 97f3804b's lane against the tree) | escort held to the end of the run (240 s) | held to 71.8 s (bound 71.9 s) at 100 ms steps, 73.0 s (73.3 s) at 1.5 s; killed leader: 29.9 / 29.5 s in both; `return_trip` 0 expiries in 9 runs |
+| 4 (`item4_before.txt`) | 95 of 101 frames undecided and not held (deferred by a member ranked behind, no block) | 0; decided on the first frame |
+| 5 (unit; `before_item5.txt`) | 4.5 km before the Terran ring's face the row cleared at step 0 | refused_hull at 2 s and at 9 s (clamped 5 s); the casts unchanged without the step (no unsafe suppression either way) |
+| 7 | the slot excess unasserted, 15 s on three bounds | Rx7 and the split bounds green in 9 of 9 |
+| 8 (`rim.txt`, `before_item8.txt`) | the tree read forced to none (`X3M_C_RING_NONE=1`): 18 of 18 Nx checks fail (no refusal, no 0x12 left to the engine) | the rim ship refused in every run (3,432 at tf 1; 147-262 at tf 6 / 10), 96.6-97.7 % with the oracle's gap under kMarginM, every refusal within 75 m (the row charges half its 50 m sample spacing), the clear ship never refused, 0 unsafe, no contact (gap 25 m) |
+
+`return_trip` is unchanged by the fixes (`review/return_trip.txt`, every figure the round's). The ring read and the bound are reachable only on a
+gate's first read and a hold's start. Bench24 (`review/bench.txt`, 97f3804b and the tree alternating three times): tf 1 mean 8.7-9.6 µs
+against 9.1-9.4 µs, tf 10 94.6-100.5 µs against 95.4-100.8 µs (host; noisy worst frames). Not installed.
+
+**Acceptance [m]** (host x86-64, `-std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 4,961 / 0, full 12,308 / 0, `--capital` 6,686 / 0;
+`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 24 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143
+roots, 1,010 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1580,6 +1717,15 @@ measured.
   candidate points away), the start-point refresh, the 0x0042fb20 speed map (taken as the cruise speed), the small escorts' formation slot,
   the lower arc's θ draw, a capital's hull box (w, w, L) as its first model record; the small ships' own-gate warn is not modelled; the
   key-off controls stay on the counted 0x12 (with flights `crossing` tf 10's key-off control launches 4 of 5 in 1000 s).
+
+* (arrival round) **The ring row's DLL read is untested in flight.** `wk::gate_tree_read` reads the gate's scene nodes under `[gate+0x70]`
+  (the layout is verified statically, ship-navigation-ai.md §10.9; never run on a live gate). Since the review it reads none only under the
+  positive guard, so a wrong layout reads unknown (the ring, the warn kept). The first flight's `--debug` `ship_gate_ring_read` rows should
+  show `state=none why=ok nodes=1 seen=1` on the bubble gates (rows 0-3), and `e_gate_ring` / `gate_row=` kinds suppressions and no
+  `refused_hull` at a Mayhem gate. Vanilla rows 0-3 (ringed) are untested (platform-portability.md).
+* (arrival round, resolved by the review) The player's ship as B: every suppression row skips it (`pass_player`); its warns reach the engine.
+* (arrival round) The forced detour in `return_trip` stands for Run174's uncertified escort pair; the fixture does not reproduce that first
+  uncertified pair on its own.
 
 ## 12. Engine-path fixes (design)
 
@@ -1912,6 +2058,35 @@ per gate), 0 member 0x12 against a static or an arrival, and the span against th
 or a flight row. (ii) Q5's hold times (a flight row). (iii) The part-walk failure of Mayhem's hollow bases (a part census). (iv) The arc-edge
 margins per census pair (the fixture). (v) The loop-back's span cost (the fixture). (vi) i686 cost of the static scan (the flight's
 `ctl_frame_us_max`).
+
+**The arrival round (2026-10-15; section 11 "Arrival round (Run174)").** Two rules join this section's design.
+
+* *The lone re-departure.* A member re-departing with no member in its room flies the minimal turn-around: round C's loop on its own side
+  (any side; an arrival comes out 1.5 km above Lambda), the out-leg at max(2.5 R, 1.2 km), the turn point d_end + settle + R + D_need(100 m)
+  with no 3 km floor, then the U-turn onto Lambda and the straight run. The plain out-leg (3 km out, 1 km below Lambda) remains for a member
+  whose room holds another member reaching d_end first, and a member held at the gate mouth behind a ship on its final waits there until that
+  ship's launch, at most until that ship's launch ETA at the hold's start (no earlier than the slot's known free time) + T_stop + the step
+  (review item 3; counted on expiry, then the law's stop cap applies). The lone decision and the block read the same predecessor.
+* *The own-gate warn suppression is a property of the gate and the ship*, not of lane membership or the order (decision with the user,
+  2026-10-15). (The player's ship is never suppressed as B either, by any row: review item 2.) For every AI ship (never the player's, never manual) on any order, site E suppresses the engine's warn against a gate when the
+  ship's predicted path with its hull clears the gate's solid; a hull that would reach it keeps the warn. **The solid is read at runtime**
+  (decision with the user, no config key): the gate's body carries a collision tree when a node below its root (`[gate+0x70]`'s children,
+  depth at most 3) has `[+0x12c] & 0x1000000` without `0x8000000` (ship-navigation-ai.md section 10.9 Q2; the root's test body is skipped),
+  read once per gate (`Gate::ring`, or an 8-entry cache for a gate without a board). "No tree" only under the positive guard of section
+  10.9 "Collision-tree read" (class 0x12, root and scene id, back pointers, sentinels, depth-limit nodes childless, budget, a node with the
+  gate's scene id; every pointer range- and alignment-checked); anything else is unknown (review item 1). **The cache keeps its first
+  verdict for the gate's life**: the tree is complete before the gate is linked into the sector, and no rebinding of a gate's scene or
+  re-parenting under a live gate root was found after creation (the only post-creation scene rebinding, `0x004506d0`, is class 6), so a later
+  change toward "tree" would be missed (section 10.9 "Still open"). No tree: no solid, the warn is vacuous (every placed gate
+  of the installed Mayhem map: rows 0-3, the blended bubble). A tree or an unknown read (fail closed): the ring of its TGates row, Terran 21-24
+  (hole 0.663 r, outer 1.026 r, z -0.498..+0.179 r, gate_hole.txt installed), catapult 5-8 (tube 0.127 r), destroyed 4 (no hole), every other
+  row the stock Argon / terraformer ring at its most conservative (0.605 r, 1.026 r, z -0.651..+0.655 r). Vanilla's ring numbers are untested
+  in flight (platform-portability.md); the fixture's Terran casts (`terran`, `terran_abreast`) cover the ring branch. The path: the live
+  position, velocity (the nose below 1 m/s) and nose, and when the order's target is known (0x14 / 0x15 the leader's position, order 4 the
+  order's point) the same run toward it, over 1 s + the frame's game step (clamped to 5 s; review item 5) + v / a (the warn's reach and the
+  ship's stop), the hull (L, w from the width read, else r)
+  swept with kMarginM; the reads are live (two-sided: the per-ship cache holds one game-time frame; a ship without a table entry has no a_lin
+  and fails closed on a ringed gate). The member row keeps its own verdicts (lane, guard, roll); the ring row runs where it does not decide.
 
 ### 12.7 Open after the review of rounds A–C (2026-10-15)
 

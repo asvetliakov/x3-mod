@@ -1,0 +1,144 @@
+== return_trip, -DX3M_LANE_MOUTH=0, X3M_C_PLAYER_OLD=1 (before)
+scenario C return_trip player tf 1 seed 1: suppressed as B 222
+scenario C return_trip player tf 1 seed 7: suppressed as B 0
+scenario C return_trip player tf 1 seed 1234567: suppressed as B 1429
+scenario C return_trip player tf 6 seed 1: suppressed as B 16
+scenario C return_trip player tf 6 seed 7: suppressed as B 23
+scenario C return_trip player tf 6 seed 1234567: suppressed as B 10
+scenario C return_trip player tf 10 seed 1: suppressed as B 0
+scenario C return_trip player tf 10 seed 7: suppressed as B 65
+scenario C return_trip player tf 10 seed 1234567: suppressed as B 2
+      1 FAIL review of the arrival round item 3: the gate-mouth hold ends at P's launch ETA + T_stop + the step
+      2 return_trip tf10: Ex no contact between the departing capitals
+      3 return_trip tf10: Ex no member 0x12 episode between members
+      2 return_trip tf10: Rx P2 kept within 8 deg of F
+      2 return_trip tf10: Rx P2 within the lone turn-around
+      1 return_trip tf10: Rx every return trip launched
+      2 return_trip tf10: Rx no contact
+      1 return_trip tf10: Rx the escorts launched within their own bound
+      2 return_trip tf10: Rx the leader launched within its bound
+      2 return_trip tf10: Rx the player's ship never suppressed as an obstacle
+      1 return_trip tf10: every ship launched
+      2 return_trip tf1: Ex no contact between the departing capitals
+      3 return_trip tf1: Ex no member 0x12 episode between members
+      2 return_trip tf1: Rx P2 kept within 8 deg of F
+      2 return_trip tf1: Rx P2 within the lone turn-around
+      2 return_trip tf1: Rx every return trip launched
+      3 return_trip tf1: Rx no contact
+      1 return_trip tf1: Rx the escorts launched within their own bound
+      3 return_trip tf1: Rx the leader launched within its bound
+      2 return_trip tf1: Rx the player's ship never suppressed as an obstacle
+      2 return_trip tf1: every ship launched
+      2 return_trip tf6: Ex no contact between the departing capitals
+      3 return_trip tf6: Ex no member 0x12 episode between members
+      2 return_trip tf6: Rx P2 kept within 8 deg of F
+      2 return_trip tf6: Rx P2 within the lone turn-around
+      1 return_trip tf6: Rx every return trip launched
+      3 return_trip tf6: Rx no contact
+      3 return_trip tf6: Rx the leader launched within its bound
+      3 return_trip tf6: Rx the player's ship never suppressed as an obstacle
+      1 return_trip tf6: every ship launched
+== return_trip, -DX3M_LANE_MOUTH=0 (after)
+scenario C return_trip player tf 1 seed 1: suppressed as B 0
+scenario C return_trip player tf 1 seed 7: suppressed as B 0
+scenario C return_trip player tf 1 seed 1234567: suppressed as B 0
+scenario C return_trip player tf 6 seed 1: suppressed as B 0
+scenario C return_trip player tf 6 seed 7: suppressed as B 0
+scenario C return_trip player tf 6 seed 1234567: suppressed as B 0
+scenario C return_trip player tf 10 seed 1: suppressed as B 0
+scenario C return_trip player tf 10 seed 7: suppressed as B 0
+scenario C return_trip player tf 10 seed 1234567: suppressed as B 0
+      1 FAIL review of the arrival round item 3: the gate-mouth hold ends at P's launch ETA + T_stop + the step
+      2 return_trip tf10: Ex no contact between the departing capitals
+      3 return_trip tf10: Ex no member 0x12 episode between members
+      2 return_trip tf10: Rx P2 kept within 8 deg of F
+      2 return_trip tf10: Rx P2 within the lone turn-around
+      2 return_trip tf10: Rx every return trip launched
+      2 return_trip tf10: Rx no contact
+      2 return_trip tf10: Rx the leader launched within its bound
+      2 return_trip tf10: every ship launched
+      3 return_trip tf1: Ex no contact between the departing capitals
+      3 return_trip tf1: Ex no member 0x12 episode between members
+      1 return_trip tf1: Rx P2 kept within 8 deg of F
+      1 return_trip tf1: Rx P2 within the lone turn-around
+      3 return_trip tf1: Rx every return trip launched
+      3 return_trip tf1: Rx no contact
+      3 return_trip tf1: Rx the leader launched within its bound
+      3 return_trip tf1: every ship launched
+      3 return_trip tf6: Ex no contact between the departing capitals
+      3 return_trip tf6: Ex no member 0x12 episode between members
+      1 return_trip tf6: Rx P2 kept within 8 deg of F
+      1 return_trip tf6: Rx P2 within the lone turn-around
+      2 return_trip tf6: Rx every return trip launched
+      3 return_trip tf6: Rx no contact
+      3 return_trip tf6: Rx the leader launched within its bound
+      2 return_trip tf6: every ship launched
+== small_gate, X3M_C_PLAYER_OLD=1 (before)
+scenario C small_gate player tf 1 seed 1: suppressed as B 87
+scenario C small_gate player tf 1 seed 7: suppressed as B 87
+scenario C small_gate player tf 1 seed 1234567: suppressed as B 87
+scenario C small_gate player tf 6 seed 1: suppressed as B 2
+scenario C small_gate player tf 6 seed 7: suppressed as B 9
+scenario C small_gate player tf 6 seed 1234567: suppressed as B 9
+scenario C small_gate player tf 10 seed 1: suppressed as B 5
+scenario C small_gate player tf 10 seed 7: suppressed as B 5
+scenario C small_gate player tf 10 seed 1234567: suppressed as B 5
+      3 small_gate tf10: Dx the player's ship never suppressed as B
+      3 small_gate tf1: Dx the player's ship never suppressed as B
+      3 small_gate tf6: Dx the player's ship never suppressed as B
+== small_gate (after)
+scenario C small_gate player tf 1 seed 1: suppressed as B 0
+scenario C small_gate player tf 1 seed 7: suppressed as B 0
+scenario C small_gate player tf 1 seed 1234567: suppressed as B 0
+scenario C small_gate player tf 6 seed 1: suppressed as B 0
+scenario C small_gate player tf 6 seed 7: suppressed as B 0
+scenario C small_gate player tf 6 seed 1234567: suppressed as B 0
+scenario C small_gate player tf 10 seed 1: suppressed as B 0
+scenario C small_gate player tf 10 seed 7: suppressed as B 0
+scenario C small_gate player tf 10 seed 1234567: suppressed as B 0
+== small_gate_m6, X3M_C_PLAYER_OLD=1 (before)
+scenario C small_gate_m6 player tf 1 seed 1: suppressed as B 87
+scenario C small_gate_m6 player tf 1 seed 7: suppressed as B 87
+scenario C small_gate_m6 player tf 1 seed 1234567: suppressed as B 87
+scenario C small_gate_m6 player tf 6 seed 1: suppressed as B 2
+scenario C small_gate_m6 player tf 6 seed 7: suppressed as B 9
+scenario C small_gate_m6 player tf 6 seed 1234567: suppressed as B 9
+scenario C small_gate_m6 player tf 10 seed 1: suppressed as B 5
+scenario C small_gate_m6 player tf 10 seed 7: suppressed as B 5
+scenario C small_gate_m6 player tf 10 seed 1234567: suppressed as B 5
+      3 small_gate_m6 tf10: Dx the player's ship never suppressed as B
+      3 small_gate_m6 tf1: Dx the player's ship never suppressed as B
+      3 small_gate_m6 tf6: Dx the player's ship never suppressed as B
+== small_gate_m6 (after)
+scenario C small_gate_m6 player tf 1 seed 1: suppressed as B 0
+scenario C small_gate_m6 player tf 1 seed 7: suppressed as B 0
+scenario C small_gate_m6 player tf 1 seed 1234567: suppressed as B 0
+scenario C small_gate_m6 player tf 6 seed 1: suppressed as B 0
+scenario C small_gate_m6 player tf 6 seed 7: suppressed as B 0
+scenario C small_gate_m6 player tf 6 seed 1234567: suppressed as B 0
+scenario C small_gate_m6 player tf 10 seed 1: suppressed as B 0
+scenario C small_gate_m6 player tf 10 seed 7: suppressed as B 0
+scenario C small_gate_m6 player tf 10 seed 1234567: suppressed as B 0
+== small_gate5, X3M_C_PLAYER_OLD=1 (before)
+scenario C small_gate5 player tf 1 seed 1: suppressed as B 87
+scenario C small_gate5 player tf 1 seed 7: suppressed as B 87
+scenario C small_gate5 player tf 1 seed 1234567: suppressed as B 87
+scenario C small_gate5 player tf 6 seed 1: suppressed as B 2
+scenario C small_gate5 player tf 6 seed 7: suppressed as B 9
+scenario C small_gate5 player tf 6 seed 1234567: suppressed as B 9
+scenario C small_gate5 player tf 10 seed 1: suppressed as B 5
+scenario C small_gate5 player tf 10 seed 7: suppressed as B 5
+scenario C small_gate5 player tf 10 seed 1234567: suppressed as B 5
+      3 small_gate5 tf10: Dx the player's ship never suppressed as B
+      3 small_gate5 tf1: Dx the player's ship never suppressed as B
+      3 small_gate5 tf6: Dx the player's ship never suppressed as B
+== small_gate5 (after)
+scenario C small_gate5 player tf 1 seed 1: suppressed as B 0
+scenario C small_gate5 player tf 1 seed 7: suppressed as B 0
+scenario C small_gate5 player tf 1 seed 1234567: suppressed as B 0
+scenario C small_gate5 player tf 6 seed 1: suppressed as B 0
+scenario C small_gate5 player tf 6 seed 7: suppressed as B 0
+scenario C small_gate5 player tf 6 seed 1234567: suppressed as B 0
+scenario C small_gate5 player tf 10 seed 1: suppressed as B 0
+scenario C small_gate5 player tf 10 seed 7: suppressed as B 0
+scenario C small_gate5 player tf 10 seed 1234567: suppressed as B 0

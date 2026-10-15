@@ -1,0 +1,26 @@
+== old (97f3804b)
+bubble       state 1 want 1 ok
+terran       state 2 want 2 ok
+foreign      state 1 want 0 FAIL
+back_ptr     state 1 want 0 FAIL
+no_scene     state 1 want 0 FAIL
+stale_scene  state 1 want 0 FAIL
+class        state 1 want 0 FAIL
+misaligned   state 1 want 0 FAIL
+depth4       state 1 want 0 FAIL
+budget       state 0 want 0 ok
+chain_end    state 1 want 0 FAIL
+RESULT 8 of 11 cases wrong
+== new (working tree)
+bubble       state 1 want 1 ok
+terran       state 2 want 2 ok
+foreign      state 0 want 0 ok
+back_ptr     state 0 want 0 ok
+no_scene     state 0 want 0 ok
+stale_scene  state 0 want 0 ok
+class        state 0 want 0 ok
+misaligned   state 0 want 0 ok
+depth4       state 0 want 0 ok
+budget       state 0 want 0 ok
+chain_end    state 0 want 0 ok
+RESULT 0 of 11 cases wrong

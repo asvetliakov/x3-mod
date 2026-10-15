@@ -89,6 +89,8 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- **Gate rings untested in flight (2026-10-15, the arrival round).** Site E's ring row reads a gate's collision tree at runtime (`wk::gate_tree_state`); the installed Mayhem gates have none, so the ring branch (vanilla's ringed rows 0-3, the stock ring numbers of ship-navigation-ai.md section 10.9) has only the fixture's Terran casts behind it, never a flight.
+
 - **Native install and build host (2026-10-11).** The user plays on native Windows 11 (`C:\X3`, RTX 5070 Ti, native
   `d3d9.dll` runtime, NVIDIA driver) and the repository is built under WSL2 (Ubuntu 26.04, MinGW GCC 16.2 from Ubuntu
   26.10, binutils 2.45.90, clang for the SEH object). Open: `tools/manage.py install/rollback/status` are bottle-only

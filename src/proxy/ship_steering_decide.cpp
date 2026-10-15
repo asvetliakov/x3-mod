@@ -275,8 +275,9 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
         const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
         float cp[3];
         for (unsigned i = 0; i < 3; ++i) cp[i] = float(cur[i]) / core::kUnitsPerMetre;
-        const float dd[3] = {cp[0] - in.P[0], cp[1] - in.P[1], cp[2] - in.P[2]};
-        if (core::dot3(dd, dd) <= 1.0f) {
+        // (the arrival round item 2: the leaf's point before our own avoidance detour, never in.P: a detour made the lane's own point
+        // look foreign and the member left the board on Why::target, Run174)
+        if (gc::lane_field_is_leaf(cp, order_point)) {
             if (gc::small_b_ours(gs->lane_w, cur)) {
                 lane_ours = true;
                 for (unsigned i = 0; i < 3; ++i) order_point[i] = gs->lane_grid[i];

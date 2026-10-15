@@ -1,0 +1,33 @@
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 148.7 s (over 56.4) launch 168.1 s bound 154.0 s stop_max 8.7 s | esc stop_max 119.1 s after_grant 0.02 s over 63.2 s | slot_over 8.8 s p2 not_kept 0 nose 3.0 | capsule 501 box 347 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 1: warn_nm 1351 sup 1351 (escort 124 arrival 1104 other 123) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 1 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 148.6 s (over 51.0) launch 167.9 s bound 154.0 s stop_max 8.7 s | esc stop_max 110.2 s after_grant 0.02 s over 59.2 s | slot_over 8.8 s p2 not_kept 0 nose 2.7 | capsule 501 box 334 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 7: warn_nm 1351 sup 1351 (escort 124 arrival 1104 other 123) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 1 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 148.8 s (over 53.6) launch 168.0 s bound 154.0 s stop_max 8.7 s | esc stop_max 117.2 s after_grant 0.02 s over 61.8 s | slot_over 9.0 s p2 not_kept 0 nose 2.9 | capsule 499 box 327 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 1234567: warn_nm 1351 sup 1351 (escort 124 arrival 1104 other 123) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 142.8 s (over 54.5) launch 145.6 s bound 154.3 s stop_max 8.0 s | esc stop_max 88.6 s after_grant 0.10 s over 43.5 s | slot_over -9.0 s p2 not_kept 0 nose 4.3 | capsule 480 box 273 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 1: warn_nm 109 sup 109 (escort 13 arrival 86 other 10) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 144.1 s (over 54.5) launch 146.9 s bound 156.1 s stop_max 8.2 s | esc stop_max 86.0 s after_grant 0.10 s over 42.3 s | slot_over -8.9 s p2 not_kept 0 nose 3.0 | capsule 493 box 301 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 7: warn_nm 104 sup 104 (escort 13 arrival 85 other 6) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 143.8 s (over 52.1) launch 146.6 s bound 154.9 s stop_max 8.6 s | esc stop_max 101.8 s after_grant 0.10 s over 39.9 s | slot_over -6.9 s p2 not_kept 0 nose 2.9 | capsule 512 box 371 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 1234567: warn_nm 100 sup 100 (escort 6 arrival 82 other 12) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 143.4 s (over 52.2) launch 146.1 s bound 156.0 s stop_max 7.7 s | esc stop_max 74.1 s after_grant 0.10 s over 30.9 s | slot_over -19.3 s p2 not_kept 0 nose 3.7 | capsule 520 box 342 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 1: warn_nm 71 sup 71 (escort 8 arrival 56 other 7) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 143.0 s (over 51.9) launch 145.7 s bound 155.7 s stop_max 7.7 s | esc stop_max 74.5 s after_grant 0.10 s over 30.6 s | slot_over -19.3 s p2 not_kept 0 nose 3.3 | capsule 495 box 239 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 7: warn_nm 67 sup 67 (escort 4 arrival 56 other 7) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 143.8 s (over 53.0) launch 146.5 s bound 156.2 s stop_max 6.2 s | esc stop_max 94.1 s after_grant 0.10 s over 32.3 s | slot_over -17.7 s p2 not_kept 0 nose 3.5 | capsule 488 box 332 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 1234567: warn_nm 65 sup 65 (escort 8 arrival 50 other 7) refused 0 x12_nm 0 unsafe 0
+      3 return_trip tf10: Rx P2 within the lone turn-around
+      3 return_trip tf10: Rx the escorts launched within their own bound
+      3 return_trip tf1: Rx P2 within the lone turn-around
+      3 return_trip tf1: Rx the escorts launched within their own bound
+      3 return_trip tf6: Rx P2 within the lone turn-around
+      3 return_trip tf6: Rx the escorts launched within their own bound
+scenario C redeparture ring tf 1 seed 1: warn_nm 3366 sup 3366 (escort 1942 arrival 0 other 1424) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 1 seed 7: warn_nm 3511 sup 3511 (escort 1916 arrival 0 other 1595) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 1 seed 1234567: warn_nm 3250 sup 3250 (escort 1862 arrival 0 other 1388) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 6 seed 1: warn_nm 116 sup 116 (escort 57 arrival 0 other 59) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 6 seed 7: warn_nm 96 sup 96 (escort 50 arrival 0 other 46) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 6 seed 1234567: warn_nm 92 sup 92 (escort 42 arrival 0 other 50) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 10 seed 1: warn_nm 61 sup 61 (escort 25 arrival 0 other 36) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 10 seed 7: warn_nm 58 sup 58 (escort 30 arrival 0 other 28) refused 0 x12_nm 0 unsafe 0
+scenario C redeparture ring tf 10 seed 1234567: warn_nm 75 sup 75 (escort 34 arrival 0 other 41) refused 0 x12_nm 0 unsafe 0

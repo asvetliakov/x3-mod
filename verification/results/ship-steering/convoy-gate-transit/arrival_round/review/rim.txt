@@ -1,0 +1,9 @@
+scenario C terran_rim ring tf 1 seed 1: warn_nm 19042 sup 15610 (escort 0 arrival 0 other 15610) refused 3432 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 3345 not 87 (largest oracle gap 75 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 1 seed 7: warn_nm 19042 sup 15610 (escort 0 arrival 0 other 15610) refused 3432 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 3345 not 87 (largest oracle gap 75 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 1 seed 1234567: warn_nm 19042 sup 15610 (escort 0 arrival 0 other 15610) refused 3432 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 3345 not 87 (largest oracle gap 75 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 6 seed 1: warn_nm 1433 sup 1177 (escort 0 arrival 0 other 1177) refused 256 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 250 not 6 (largest oracle gap 70 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 6 seed 7: warn_nm 1381 sup 1119 (escort 0 arrival 0 other 1119) refused 262 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 254 not 8 (largest oracle gap 73 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 6 seed 1234567: warn_nm 1280 sup 1072 (escort 0 arrival 0 other 1072) refused 208 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 201 not 7 (largest oracle gap 73 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 10 seed 1: warn_nm 909 sup 745 (escort 0 arrival 0 other 745) refused 164 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 160 not 4 (largest oracle gap 72 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 10 seed 7: warn_nm 875 sup 728 (escort 0 arrival 0 other 728) refused 147 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 143 not 4 (largest oracle gap 65 m) ships 0x1 gap_min 25
+scenario C terran_rim ring tf 10 seed 1234567: warn_nm 851 sup 695 (escort 0 arrival 0 other 695) refused 156 x12_nm 1 unsafe 0 | refused_hull oracle-confirmed 152 not 4 (largest oracle gap 70 m) ships 0x1 gap_min 25

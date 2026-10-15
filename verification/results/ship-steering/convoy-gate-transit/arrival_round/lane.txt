@@ -1,0 +1,5 @@
+ship_steering_host checks=4849 failures=0 slip_gaps=0
+arrival round units (item 4): tree states none 1 tree 2 flagged-off 1 unread 0
+arrival round units (item 4): through the hole escort, clipping the rim refused_hull, no tree other, unknown read refused_hull, NaN roll, a_lin 0 roll, target across the rim refused_hull
+lane cost (host) bench24 tf 1: lane 9.3 us mean, 781 us worst frame, 703 us third-worst (59681 decisions, 24/24 launched); key off 4.1 us mean, 657 us worst, 418 us third (53121 decisions, 24 launched); worst of 3 runs; ceiling 1000 us
+lane cost (host) bench24 tf 10: lane 102.1 us mean, 654 us worst frame, 401 us third-worst (31552 decisions, 24/24 launched); key off 49.6 us mean, 746 us worst, 206 us third (18687 decisions, 24 launched); worst of 3 runs; ceiling 1000 us

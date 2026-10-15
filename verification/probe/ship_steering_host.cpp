@@ -314,6 +314,12 @@ struct Model {
     unsigned prof_skip, prof_det; // section 12.3: statics left to the lane profile; detours against a body the profile listed (lane members)
     std::uint32_t watch_ptr = 0;   // review of rounds A-C item 5: the static whose detour frames are counted (watch_det)
     unsigned watch_det = 0;
+    // the arrival round (Run174) item 1: site A's board leave on Why::target (the DLL's gate_decide: the lane's order point did not test as
+    // ours, the order's point failed the grid check): the leaves and the commits the re-commit guard held (gc::recommit_ok)
+    unsigned target_leaves = 0, recommit_held = 0;
+    long force_det_until = -1;
+    bool lw_ours = false; // the arrival round: the field holds the DLL's last own rewrite (GateState::lane_w: gc::small_b_ours), set by the caller // the arrival round: a cast's forced avoidance detour (Run174's around its uncertified escort) until this t_ms
+    double force_det_P[3] = {0, 0, 0}; // ... its point (units)
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -413,6 +419,9 @@ struct Model {
         sm_hold_gate = nullptr;
         ctl_capped = ctl_excluded = 0;
         prof_skip = prof_det = 0;
+        target_leaves = recommit_held = 0;
+        force_det_until = -1;
+        lw_ours = false;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
         gate_G[0] = gate_G[1] = gate_G[2] = 0;
@@ -582,6 +591,8 @@ struct Model {
         float Pm[3] = {float(P[0] / 500.0), float(P[1] / 500.0), float(P[2] / 500.0)};
         const float Po[3] = {Pm[0], Pm[1], Pm[2]};
         if (avoid_on && snap && core::order_policy(order).avoidance) avoid_adjust(Pm);
+        if (force_det_until > t_ms && order == core::kOrderFlyBefore) // (the arrival round: a cast's forced detour, as avoid_adjust's)
+            for (int i = 0; i < 3; ++i) Pm[i] = float(force_det_P[i] / 500.0);
         if (Pm[0] != Po[0] || Pm[1] != Po[1] || Pm[2] != Po[2]) {
             in.d_order = float(dist() / 500.0);
             in.detour = true;
@@ -626,7 +637,8 @@ struct Model {
         gc::SbSteer sbs;
         sb_v_written = -1.0;
         if (ctl && capital) {
-            if (gate_mode && (order == core::kOrderFlyBefore || order == core::kOrderDock)) ctl_commit(in, order == core::kOrderFlyBefore ? &gate_geo : nullptr);
+            if (gate_mode && (order == core::kOrderFlyBefore || order == core::kOrderDock) && site_a_keep(Po, Pm, order))
+                ctl_commit(in, order == core::kOrderFlyBefore ? &gate_geo : nullptr);
             int mi = -1;
             if (gc::Gate* cg = gc::locate(*ctl, ptr, &mi)) {
                 const gc::Member& mm = cg->m[mi];
@@ -783,6 +795,50 @@ struct Model {
             }
         }
     }
+    // The arrival round (Run174) item 1: the DLL's gate_decide on an order-4 call of a capital to its gate under the lane key, before the
+    // commit: a field (f+0x240; the order's point Po here, the leaf's point as the engine handed it) that holds the lane's rewrite L_i is
+    // the order's geometry only when the lane test takes it as ours (|field - the test point| <= 1 m, then the member's own L_i or, without
+    // a member, the hull's own: gc::lane_point_ours / gc::lane_point_own); otherwise the field itself must validate as a KC grid point
+    // (core::gate_geometry_capital), and a committed member whose field does not leaves the board on Why::target (ctl_leave, the re-commit
+    // guard noted) and is not committed by this call. The test point (gc::lane_field_is_leaf) is the leaf's point before our own avoidance
+    // detour (Po; the arrival round item 2); X3M_C_LEAVE_OLD=1 models the DLL before it, the detour's point (Pm): a detour made the lane's
+    // own point look foreign (Run174 run174-triage/target_leaves.txt).
+    bool site_a_keep(const float Po[3], const float Pm[3], std::uint16_t o) {
+        if (o != core::kOrderFlyBefore || !ctl || !capital || !gate_ptr || !ctl->lane) return true;
+        static const bool old_rule = std::getenv("X3M_C_LEAVE_OLD") != nullptr; // (the DLL before the arrival round: the detour's point)
+        const float* test = old_rule ? Pm : Po;
+        float R[3], U[3], F[3];
+        for (int i = 0; i < 3; ++i) {
+            R[i] = gate_rows[0][i];
+            U[i] = gate_rows[1][i];
+            F[i] = gate_rows[2][i];
+        }
+        const std::uint32_t now = std::uint32_t(t_ms);
+        int mi = -1;
+        gc::Gate* cg = gc::locate(*ctl, ptr, &mi);
+        const bool member = cg && cg->gate == gate_ptr && mi >= 0 && cg->m[mi].ln && cg->m[mi].q_ok && cg->m[mi].id == native_id();
+        bool ours = false;
+        if (gc::lane_field_is_leaf(Po, test)) {
+            if (lw_ours) ours = true; // (gc::small_b_ours: the field still holds the last rewrite of site A or site B)
+            else if (member) ours = gc::lane_point_ours(*cg, cg->m[mi], Po);
+            else {
+                const gc::Gate* bg = gc::gate_of(*ctl, gate_ptr);
+                const float* lc = bg && bg->lane_c_ok ? bg->lane_c : nullptr;
+                ours = (!lc && gc::lane_point_lc_env(gate_G, R, U, F, gate_r, Po, ctl_gate_type)) ||
+                       gc::lane_point_own(gate_G, R, U, F, gate_r, dyn.r_own, hull_w, hull_l > 0.0f ? hull_l : float(r_units / 500.0),
+                                          dyn.v_max, gc::gate_terran(ctl_gate_type), lc, Po, ctl_gate_type);
+            }
+        }
+        if (ours) return true;
+        core::GateGeometry gg;
+        if (core::gate_geometry_capital(Po, gate_G, R, U, F, gate_r, dyn.r_own, &gg)) return true;
+        if (cg && mi >= 0 && cg->gate == gate_ptr && cg->m[mi].role == gc::Role::committed) {
+            gc::leave(*cg, unsigned(mi), false, now); // (the DLL's ctl_leave on Why::target: the re-commit guard noted, lane boards only)
+            gc::note_target_leave(*ctl, ptr, now);
+            ++target_leaves;
+        }
+        return false;
+    }
     // The DLL's ctl_commit: the committed member of the gate's board (validated grid geometry: the caller's gate_mode).
     void ctl_commit(const core::Inputs& in, const core::GateGeometry* geo) {
         if (!ctl || !capital || !gate_ptr) return;
@@ -795,6 +851,10 @@ struct Model {
         }
         gc::Gate* g = gc::acquire_gate(*ctl, gate_ptr, now, gate_G, R, U, F, gate_r, ctl_gate_type);
         if (!g) return;
+        if (g->lane && !gc::recommit_ok(*ctl, *g, ptr, now)) { // (the DLL's lane fix round 1 item 4 guard)
+            ++recommit_held;
+            return;
+        }
         gc::Role before = gc::Role::count;
         gc::Member* m = gc::enter(*ctl, *g, ptr, native_id(), gc::Role::committed, now, &before);
         if (m) gc::commit_fill(*m, in, dyn, geo, hull_w, hull_l, gate_r, gate_ptr, now);
@@ -7828,12 +7888,16 @@ constexpr double kLoopO0M = 3.0 * 100.0;
 // The nose's angle off the gate axis F = +z (deg).
 static double err_of(const Model& m) { return std::acos(std::fmin(1.0, std::fmax(-1.0, double(m.row[2][2])))) * 180.0 / M_PI; }
 namespace lanec {
-enum Kind { kLead = 0, kEsc, kRedep, kPark, kNewLead, kSmEsc, kSmTrade, kArrive }; // kPark: a capital parked on Lambda, never a member
+enum Kind { kLead = 0, kEsc, kRedep, kPark, kNewLead, kSmEsc, kSmTrade, kArrive, kArrRet, kPlayer }; // kPark: a capital parked on Lambda, never a member
                                                         // (section 6.11; review item 7); kNewLead: a capital flying straight, never a member
                                                         // (lane fix round 2 item 2); fixture engine paths: kSmEsc a small (non-capital)
                                                         // ship escorting `leader` on 0x14, then its own order 4 / 5 to the gate (item D);
                                                         // kSmTrade a small ship on order 4 / 5 to the gate from t0 (item D); kArrive a
-                                                        // capital arriving through the gate at t0: 0x21, 0x1e, order 0 for hold_ms (item E)
+                                                        // capital arriving through the gate at t0: 0x21, 0x1e, order 0 for hold_ms (item E);
+                                                        // the arrival round (Run174): kArrRet an arrival whose script's next order is the
+                                                        // return trip (leader < 0: order 4 back through the same gate; else 0x14 to that
+                                                        // leader, its lost-leader order 0 and order 4), kPlayer the player's ship parked
+                                                        // (never steered, never a member, never suppressed as A or as B)
 struct CStart {
     const ShipType* t;
     double w_r;
@@ -7871,6 +7935,8 @@ struct CSetup {
     double fx12_d = 1e9; // ... at the first order-4 frame at or after fx12_ms within this distance of G (m)
     double span_max_s = -1.0; // round C (section 12.4): the measured largest span (15 km -> the last launch) over 3 seeds x tf 1/6/10;
                               // asserted + 5 s + the step (< 0: not asserted)
+    long fdet_ms = -1; // the arrival round: ship 0's avoidance detour forced for 3 s from its first order-4 frame at or after this game time
+                       // (Run174: the leader detoured around its uncertified escort on order 4; run174-triage/target_leaves.txt)
 };
 struct CResult {
     bool lane = false;
@@ -8004,6 +8070,27 @@ struct CResult {
     // that ship's grant -> launch time (s; < 0 none) and the longest of the kept ships' (the reference T_slot; < 0 none)
     unsigned p2_unkept_writes = 0;
     double unkept_slot_s = -1, t_slot_kept_max_s = -1;
+    // the arrival round (Run174), cast return_trip: site A's board leaves on Why::target (the fixture's model of the DLL's gate_decide) and the
+    // commits the re-commit guard held; per return-trip ship (an arrival whose next order is order 4 back through the same gate): order 4
+    // -> P2 against the derived lone turn-around (rt_turn_s: out to the turn point, a U-turn of pi R, the run back to d_end at the lane speed),
+    // the worst excess (s); the leader's order 4 -> launch, its derived bound (the turn-around + its P2 -> grant + kTSlotRefS + the step), its
+    // longest stop-write episode before its grant (s); the escorts' latest stop write after their leader's grant (ms; -1e9 none) and their
+    // longest stop-write episode (s); the escorts' order 4 -> launch against their own bound (worst excess, s); the closest any hull came to
+    // the player's ship and the warns against it our rows suppressed (must be 0)
+    unsigned target_leaves = 0, recommit_held = 0, rt_n = 0, rt_launched = 0, rt_player_sup = 0;
+    double rt_turn_over_s = -1e18, rt_lead_launch_s = -1, rt_lead_bound_s = -1, rt_lead_stop_max_s = 0, rt_esc_stop_max_s = 0;
+    double rt_esc_over_s = -1e18, rt_lead_turn_s = -1, rt_lead_p2_s = -1, rt_player_gap = 1e18, rt_slot_over_s = -1e18;
+    long rt_esc_stop_after_ms = -1000000000L;
+    unsigned mouth_expired = 0; // review of the arrival round item 3: gate-mouth holds ended by their bound (LaneStats::mouth_expired)
+    // review of the arrival round item 8: the ring row's refusals the independent oracle confirms (the hull's path over the row's horizon
+    // comes within kMarginM of the ring in the fixture's own ring model), those it does not, and which ships were refused (bit k)
+    unsigned ring_refused_ok = 0, ring_refused_miss = 0, ring_refused_mask = 0;
+    double ring_refused_gap_max = -1e18;
+    // the arrival round item 4: the engine's own warn against the gate of every ship on every order the warn acts on (not only committed
+    // members): the frames of the ships the member row does not decide, site E's ring row (gc::gate_ring_why) suppressing them by kind,
+    // refusing (the hull reaches the solid, or unknown), the unsuppressed 0x12 episodes, and the ring suppressions whose straight path over
+    // 1 s + v / a reaches the gate's ring in the fixture's own model (ring_gap_at: unsafe)
+    unsigned gate_warn_nm = 0, ring_sup = 0, ring_sup_esc = 0, ring_sup_arr = 0, ring_sup_oth = 0, ring_refused = 0, gate_x12_nm = 0, ring_unsafe = 0;
 };
 constexpr unsigned kCMax = 24; // the largest cast (the 24-member cost bench)
 static long launch_ms_of[kCMax], tslot_ms_of[kCMax];
@@ -8013,6 +8100,19 @@ constexpr double kLamLoS = 4.1, kLamHiS = 16.9;
 // The through-slot occupancy from d_end at tf 1 (grant -> order 8 end), measured 16.8-21.1 s in scenario C before review item 1: the
 // reference of the assertion 4/8 bound of an escort behind its launched leader (a constant, not the run's own T_slot; review item 7)
 constexpr double kTSlotRefS = 21.0;
+// The arrival round (cast return_trip): the tolerances of its bounds, one per bound (review of the arrival round item 7: the shared 15 s
+// split and narrowed; every figure measured over 3 seeds x tf 1 / 6 / 10 in arrival_round/return_trip.txt and review/return_trip.txt):
+// P2 against the derived lone turn-around: the U-turn's pursuit lag and slip beyond pi R and the residual join's arc, measured 2.7-3.8 s
+constexpr double kRtTurnTolS = 6.0;
+// the through slot's occupancy (grant -> order 8's end) against kTSlotRefS (21 s, the convoy hulls' at 100-113 m/s): the Boreas plant's
+// 70 m/s order-5 leg from d_end (1.54 km: 22 s at its v_max against 11-12 s for the reference hulls [i]) costs more, measured 9.3-9.5 s
+// over at tf 1 (an M2 escort; the leader 2.3-2.6 s), below the reference at tf 6 / 10
+constexpr double kRtSlotTolS = 12.0;
+// the leader's order 4 -> launch against its bound (the turn-around or the slot's free time, P2 -> grant, kTSlotRefS, the step): its P2 over
+// the turn-around plus its slot excess, measured 5.9 s at tf 1 (P2 3.3-3.6 s over, grant -> launch 23.3-23.6 s), under the bound at tf 6 / 10
+constexpr double kRtLaunchTolS = 8.0;
+// an escort's order 4 -> launch against its own bound: its P2 over plus the M2's slot excess (kRtSlotTolS), measured 12.0-12.2 s at tf 1
+constexpr double kRtEscTolS = 14.0;
 // Lane fix round 2 item 4: on the installed Terran ring (r 3207.5 m, d_end 4,147 m: the order-5 leg from d_end is 1.8 km longer and the
 // vanilla order-5 ramp slows inside r) the same reference measured in cast terran at tf 1 before the assertion used it: 43.2-49.3 s
 constexpr double kTSlotRefTerranS = 50.0;
@@ -8032,6 +8132,31 @@ static double ring_gap(const TShip& c, double rg, std::uint16_t type) {
         best = std::fmin(best, std::sqrt(dr * dr + dz * dz));
     }
     return best - c.w;
+}
+// ... the same for a hull at p with the nose f (the ring row's oracle along a predicted path)
+static double ring_gap_at(const double p0[3], const double f[3], double L, double w, double rg, std::uint16_t type) {
+    if (!(type >= 21 && type <= 24)) return 1e18;
+    const double h = 0.663 * rg, ro = 1.026 * rg, z0 = -0.498 * rg, z1 = 0.179 * rg, half = std::fmax(0.0, L - w);
+    double best = 1e18;
+    for (int k = -40; k <= 40; ++k) {
+        const double t = half * double(k) / 40.0;
+        double p[3];
+        for (int i = 0; i < 3; ++i) p[i] = p0[i] + f[i] * t;
+        const double rho = std::sqrt(p[0] * p[0] + p[1] * p[1]), z = p[2];
+        const double dr = std::fmax(0.0, std::fmax(h - rho, rho - ro)), dz = std::fmax(0.0, std::fmax(z0 - z, z - z1));
+        best = std::fmin(best, std::sqrt(dr * dr + dz * dz));
+    }
+    return best - w;
+}
+// X3M_C_RING_NOSTEP=1: the ring row's horizon without the frame's step (before the review of the arrival round item 5)
+static bool c_ring_nostep() {
+    static const int v = std::getenv("X3M_C_RING_NOSTEP") ? 1 : 0;
+    return v != 0;
+}
+// X3M_C_RING_OFF=1: site E without the arrival round's ring row (the DLL before item 4)
+static bool c_ring_off() {
+    static const int v = std::getenv("X3M_C_RING_OFF") ? 1 : 0;
+    return v != 0;
 }
 struct TrackPt {
     long t;
@@ -8197,6 +8322,11 @@ static double obst_clear_now(const TShip& c, const av::Obstacle& o, const av::Pa
     }
     return obst_clear_at(ca, fa, c.L, c.w, o, ps, wb, lb, fb);
 }
+// X3M_C_PLAYER_OLD=1: site E before the review of the arrival round item 2 (the player's ship as B went through every row)
+static bool c_player_old() {
+    static const int v = std::getenv("X3M_C_PLAYER_OLD") ? 1 : 0;
+    return v != 0;
+}
 // Site E for a lane member A against a non-member obstacle B, as the DLL's e_verdict computes it (ctl_e_obst: the lane obstacle row on
 // A's live position and velocity, its avoidance's detour while that call is within the row's state bound; then today's rows: the
 // small-ship and member rows for a ship, the resolved set).
@@ -8209,7 +8339,7 @@ constexpr av::EVerdict kVSupObst = av::EVerdict::suppress_lane_obst;
 constexpr av::EVerdict kVSupObst = av::EVerdict::count;
 #endif
 static av::EVerdict c_obst_e(gc::Board& board, const gc::Index& ix, const TShip& A, const av::Obstacle& o, const av::PartSet* ps, double wb, double lb,
-                             const double fb[3], std::uint32_t now, std::uint32_t frame_ms, unsigned* why_out) {
+                             const double fb[3], std::uint32_t now, std::uint32_t frame_ms, unsigned* why_out, bool b_player = false) {
     av::SiteE in;
     *why_out = 0;
 #ifndef X3M_LANE_HEAD
@@ -8239,7 +8369,8 @@ static av::EVerdict c_obst_e(gc::Board& board, const gc::Index& ix, const TShip&
     const float* detour = st.obj == A.m.ptr && st.obstacle && st.stamp_ms && age >= 0 &&
                                   age <= std::int32_t(gc::kStateMaxAgeMs + gc::kStateMs + frame_ms) ? st.P : nullptr;
     gc::ObstRow wr = gc::ObstRow::no, *why = &wr;
-    in.lane_obst = gc::e_obst_row(board, ix, A.m.ptr, A.m.native_id(), A.m.order, A.target, x, u, true, ob, detour, false, now, why);
+    // (the arrival round: the DLL's ctl_e_obst never takes the player's ship as B)
+    in.lane_obst = !b_player && gc::e_obst_row(board, ix, A.m.ptr, A.m.native_id(), A.m.order, A.target, x, u, true, ob, detour, false, now, why);
     *why_out = unsigned(wr);
     if (std::getenv("X3M_C_OBSTDBG") && why && *why == gc::ObstRow::roll) { // an iteration aid: the path and its first failing leg
         int mi = -1;
@@ -8278,6 +8409,7 @@ static av::EVerdict c_obst_e(gc::Board& board, const gc::Index& ix, const TShip&
         in.b_order = o.order;
     }
     in.b_resolved = A.m.order != core::kOrderAvoid && av::suppressed(A.m.astate, A.m.ptr, o.ptr, now, av::fresh_window_ms(av::kResolvedAgeMs, frame_ms));
+    in.b_player = b_player && !c_player_old(); // (review of the arrival round item 2: the DLL's e_verdict reads [B+0x40] & 2)
     return av::site_e_verdict(in);
 }
 // ---- Fixture engine paths (holistic review section 4 items 1, 3, 4, 6; ship-navigation-ai.md section 10.14) -------------------------
@@ -8529,7 +8661,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         double z_prev = -1e18;                 // lane fix round 1: the previous frame's depth (the 7 km crossing)
         bool obst_ep = false; // lane fix round 2 item 1: an unsuppressed obstacle warn on the previous frame
         bool p2_unkept = false; // round A: this ship's P2 did not keep (its hand-over gets no lane write)
-        bool gate_ep = false, past_plane = false, past_seen = false; // ... an unsuppressed own-gate warn on the previous frame; past the
+        bool gate_ep = false, past_plane = false, past_seen = false, gate_ep_nm = false; // ... an unsuppressed own-gate warn on the previous frame; past the
                                                                      // plane (not yet back on Lambda), ever
         bool loop_now = false, loop_track = false; // round C: the loop in force on the last frame; its outermost s tracked (to Lambda)
         long law_stop_start = -1, law_stop_last = -1;
@@ -8550,6 +8682,9 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         std::uint32_t merge_stamp = 0;
         double merge_y0 = 0, merge_tan = 0;
         long merge_bound_ms = 40000;
+        long rt_o4_ms = -1, rt_ss = -1;
+        int rt_pq = -1; // ... the episode's last predecessor (a cast index) // the arrival round: a return trip's order-4 issue; its current stop-write episode's start
+        double rt_turn_s = 0;            // ... its derived lone turn-around (s) at that issue
     };
     static Extra ex[kCMax];
     int lead_rt[kCMax]; // the escorts' live leader (lane fix round 2 item 2: the script's hand to a new leader)
@@ -8611,9 +8746,19 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             }
             continue;
         }
-        if (cs.kind == kArrive) { // item E: pending until t0 and the through slot (the partner side's request)
+        if (cs.kind == kArrive || cs.kind == kArrRet) { // item E: pending until t0 and the through slot (the partner side's request)
             m.speed = m.desired = 0;
             arr_try[k] = cs.t0_ms;
+            continue;
+        }
+        if (cs.kind == kPlayer) { // the arrival round: the player's ship, parked (order 0, speed 0); no member, no steering
+            c.phase = 20;
+            c.alive = true;
+            c.pending = false;
+            m.order = core::kOrderNone;
+            m.speed = m.desired = 0;
+            m.capital = false;
+            m.ctl = nullptr;
             continue;
         }
         if (cs.kind == kNewLead) { // lane fix round 2 item 2: flying straight at its speed, never a member
@@ -8795,6 +8940,144 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         e.sw_pred >= 0 ? double(ex[e.sw_pred].grant_ms) / 1000.0 : -1.0);
         e.sw_start = e.sw_last = -1;
     };
+    // the arrival round (Run174) item 1: a return trip's order-4 issue and its derived lone turn-around from that state (convoy-gate-transit.md
+    // section 11 "Arrival round"): R = v_lane / W, the out-leg max(2.5 R, 1.2 km) off Lambda's l_c on its own side (the U-turn's measured
+    // lateral extent: a U-turn from there ends on Lambda), out to the turn point s_t = d_end + settle + R + D_need(kLaneOnM, R) (settle: the hull's pursuit
+    // look at the lane speed, P2's nose within 8 deg), the diagonal onto that leg from its lateral y0, the pursuit U-turn (its apex
+    // kOverApexR R past the turn point and back, a half circle across the offset between), the straight run back from s_t to d_end at the lane
+    // speed; the out-leg from its present speed at its acceleration up to the lane speed
+    long arr_rel_ms = -1; // (the latest partner-side arrival's through-slot release, the KC's 60 s refusal of our side from there)
+    auto rt_o4 = [&](unsigned k, long now_ms) {
+        const Model& m = ships[k].m;
+        Extra& e = ex[k];
+        e.rt_o4_ms = now_ms;
+        ++res.rt_n;
+        core::JoinParams jp;
+        gc::params_from(jp, m.dyn, float(kGateRM));
+        const double vl = double(core::gate_speed(jp.v_max, m.dyn.large, 0.0f)), W = double(jp.W), R = W > 1e-4 ? vl / W : 0.0;
+        const double settle = double(gc::pursuit_look(float(vl), float(W), float(kGateRM)));
+        double lc[2] = {0.0, -0.75 * kGateRM - double(gc::kLaneGridClearM)};
+        if (const gc::Gate* lg = gc::gate_of(board, kLaneGate); lg && lg->lane_c_ok) lc[0] = double(lg->lane_c[0]), lc[1] = double(lg->lane_c[1]);
+        const double y0 = std::hypot(m.pos[0] / 500.0 - lc[0], m.pos[1] / 500.0 - lc[1]), s0 = -m.pos[2] / 500.0;
+        const double s_t = kLaneEndM + settle + R + double(gc::lane_join_need(gc::kLaneOnM, float(R))), d_out = std::fmax(0.0, s_t - s0);
+        const double side = std::fmax(2.5 * R, double(gc::kLaneMinSideK * gc::kLaneTurnM)); // (the out-leg's offset, lane_frame's)
+        const double d_leg = std::hypot(d_out, y0 - side);
+        const double v0 = std::fmin(vl, std::fmax(0.0, double(m.speed) / 500.0)), a = std::fmax(0.1, double(jp.a_lin));
+        const double d_acc = (vl * vl - v0 * v0) / (2.0 * a);
+        const double t_out = d_leg >= d_acc ? (vl - v0) / a + (d_leg - d_acc) / vl : (std::sqrt(v0 * v0 + 2.0 * a * d_leg) - v0) / a;
+        e.rt_turn_s = t_out + (2.0 * kOverApexR * R + 0.5 * M_PI * side) / vl + (s_t - kLaneEndM) / vl;
+        if (su.s[k].leader < 0) res.rt_lead_turn_s = e.rt_turn_s;
+        if (std::getenv("X3M_C_TRACE"))
+            std::printf("  tc %s rto4 t=%.1f ship %u s0 %.0f y0 %.0f v0 %.1f R %.0f settle %.0f s_t %.0f leg %.0f turn %.1f s\n", su.tag,
+                        double(now_ms) / 1000.0, k, s0, y0, v0, R, settle, s_t, d_leg, e.rt_turn_s);
+    };
+    // ... at its launch: P2 against the turn-around, order 4 -> launch against the bound (the leader), the escorts' own excess
+    auto rt_launch = [&](unsigned k, long now_ms) {
+        const Extra& e = ex[k];
+        if (e.rt_o4_ms < 0) return;
+        ++res.rt_launched;
+        // (the KC's through slot: a partner-side arrival refuses our side 60 s from its release; the lane paces a lone head to d_end no
+        // earlier than that, the car-merge rule: P2 against the later of the turn-around and the slot's free time)
+        double free_s = arr_rel_ms >= 0 ? double(arr_rel_ms + 60000 - e.rt_o4_ms) / 1000.0 : 0.0;
+        // (and an escort behind the return trip ahead of it, k - 1: its P2 the spacing after that one's, g_req and both half-lengths at the
+        // lane speed, the car-merge rule)
+        // (a ship held at the gate mouth behind the return trip ahead of it until that one's launch, gc::lane_mouth_hold, flies its
+        // turn-around from there)
+        double t0_s = 0.0;
+        if (k > 0 && su.s[k - 1].kind == kArrRet && ex[k - 1].x_since >= 0) {
+            const double vl = std::fmin(100.0, su.s[k].t->v_ms);
+            free_s = std::fmax(free_s, double(ex[k - 1].x_since - e.rt_o4_ms) / 1000.0 + (double(gc::kLaneGapM) + ships[k].L + ships[k - 1].L) / vl);
+            if (launch_ms_of[k - 1] > e.rt_o4_ms) t0_s = double(launch_ms_of[k - 1] - e.rt_o4_ms) / 1000.0;
+        }
+        const double step = double(res.step_max) / 1000.0, p2 = e.x_since >= 0 ? double(e.x_since - e.rt_o4_ms) / 1000.0 : 1e9;
+        res.rt_turn_over_s = std::fmax(res.rt_turn_over_s, p2 - std::fmax(t0_s + e.rt_turn_s, free_s));
+        if (e.grant_ms >= 0) res.rt_slot_over_s = std::fmax(res.rt_slot_over_s, double(now_ms - e.grant_ms) / 1000.0 - kTSlotRefS);
+        const double hand = e.grant_ms >= 0 && e.x_since >= 0 ? double(e.grant_ms - e.x_since) / 1000.0 : 0.0;
+        const double bound = std::fmax(t0_s + e.rt_turn_s, free_s) + hand + kTSlotRefS + step, took = double(now_ms - e.rt_o4_ms) / 1000.0;
+        if (std::getenv("X3M_C_TRACE"))
+            std::printf("  tc %s rtlaunch t=%.1f ship %u o4 %.1f turn %.1f t0 %.1f free %.1f p2 %.1f hand %.1f grant->launch %.1f took %.1f bound %.1f\n", su.tag,
+                        double(now_ms) / 1000.0, k, double(e.rt_o4_ms) / 1000.0, e.rt_turn_s, t0_s, free_s, p2, hand,
+                        e.grant_ms >= 0 ? double(now_ms - e.grant_ms) / 1000.0 : -1.0, took, bound);
+        if (su.s[k].leader < 0) {
+            res.rt_lead_launch_s = took;
+            res.rt_lead_bound_s = bound;
+            res.rt_lead_p2_s = p2;
+        } else
+            res.rt_esc_over_s = std::fmax(res.rt_esc_over_s, took - bound);
+    };
+    // the arrival round item 4: site E's ring row for ship k against the gate (the DLL's e_gate_ring: its live position, velocity and nose,
+    // its order's target, its hull, its a_lin; the gate's collision tree: the installed ordinary rows none, the Terran rows a ring); the
+    // oracle on the straight path over 1 s + v / a in the fixture's own ring model
+    auto ring_row = [&](unsigned k, long step_ms) -> bool {
+        if (c_ring_off()) return false;
+        const TShip& c = ships[k];
+        gc::GateFrame fr = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+        float x[3], u[3], f[3], tp[3];
+        for (int i = 0; i < 3; ++i) {
+            x[i] = float(c.m.pos[i] / 500.0);
+            u[i] = float((c.m.row[2][i] * double(c.m.speed) + double(c.m.slip[i])) / 500.0);
+            f[i] = float(c.m.row[2][i]);
+        }
+        const float* tgt = nullptr;
+        const bool esc = c.m.order == core::kOrderEscort || c.m.order == core::kOrderFollow;
+        if (esc)
+            for (unsigned q = 0; q < su.n; ++q)
+                if (ships[q].alive && ships[q].m.ptr == c.m.leader_ptr) {
+                    for (int i = 0; i < 3; ++i) tp[i] = float(ships[q].m.pos[i] / 500.0);
+                    tgt = tp;
+                }
+        if (c.m.order == core::kOrderFlyBefore) {
+            for (int i = 0; i < 3; ++i) tp[i] = float(c.m.P[i] / 500.0);
+            tgt = tp;
+        }
+        const int kk = su.s[k].kind;
+        const bool arr = (kk == kArrive || kk == kArrRet) && c.phase >= 51 && c.phase <= 54;
+        const gc::GateRow kind = esc ? gc::GateRow::escort : arr ? gc::GateRow::arrival : gc::GateRow::other;
+        // (X3M_C_RING_NONE=1: the tree read wrong toward none on every gate, the failure the review's item 1 guards against; the rim cast's
+        // oracle must catch it)
+        const unsigned ring = su.gate_type >= 21 && su.gate_type <= 24 && !std::getenv("X3M_C_RING_NONE") ? gc::kGateRingTree : gc::kGateRingNone;
+        const float step_s = c_ring_nostep() ? 0.0f : float(step_ms) * 0.001f; // (review of the arrival round item 5)
+        const gc::GateRow why = gc::gate_ring_why(fr, float(kGateRM), su.gate_type, ring, kind, x, u, f, tgt, float(c.L), float(c.w), c.m.dyn.a_lin, step_s);
+        if (!gc::gate_row_suppresses(why)) {
+            ++res.ring_refused;
+            if (why == gc::GateRow::refused_hull) { // (review item 8: the oracle on the same straight path over the row's horizon)
+                const double v = double(c.m.speed) / 500.0, a = std::fmax(0.1, double(c.m.dyn.a_lin));
+                const double T = 1.0 + std::fmin(5.0, double(step_ms) / 1000.0) + v / a;
+                double gmin = 1e18;
+                for (int j = 0; j <= 40; ++j) {
+                    double p[3], fn[3];
+                    for (int i = 0; i < 3; ++i) {
+                        p[i] = c.m.pos[i] / 500.0 + double(u[i]) * T * double(j) / 40.0;
+                        fn[i] = c.m.row[2][i];
+                    }
+                    gmin = std::fmin(gmin, ring_gap_at(p, fn, c.L, c.w, kGateRM, su.gate_type));
+                }
+                if (gmin < double(gc::kMarginM)) ++res.ring_refused_ok;
+                else ++res.ring_refused_miss;
+                res.ring_refused_gap_max = std::fmax(res.ring_refused_gap_max, gmin);
+                res.ring_refused_mask |= 1u << (k & 31u);
+            }
+            return false;
+        }
+        ++res.ring_sup;
+        if (why == gc::GateRow::escort) ++res.ring_sup_esc;
+        else if (why == gc::GateRow::arrival) ++res.ring_sup_arr;
+        else ++res.ring_sup_oth;
+        // (the oracle's horizon: 1 s + the frame's game step + v / a, the row's own; the step at most 5 s)
+        const double v = double(c.m.speed) / 500.0, a = std::fmax(0.1, double(c.m.dyn.a_lin)), T = 1.0 + std::fmin(5.0, double(step_ms) / 1000.0) + v / a;
+        for (int j = 0; j <= 10; ++j) {
+            double p[3], fn[3];
+            for (int i = 0; i < 3; ++i) {
+                p[i] = c.m.pos[i] / 500.0 + double(u[i]) * T * double(j) / 10.0;
+                fn[i] = c.m.row[2][i];
+            }
+            if (ring_gap_at(p, fn, c.L, c.w, kGateRM, su.gate_type) < 0.0) {
+                ++res.ring_unsafe;
+                break;
+            }
+        }
+        return true;
+    };
     Clock clock;
     long sim_ms = 0;
     unsigned cursor = 0;
@@ -8842,7 +9125,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         for (unsigned k = 0; k < su.n; ++k) {
             TShip& c = ships[k];
             if (!c.pending) continue;
-            if (su.s[k].kind == kArrive) { // item E: the partner side's capital through the gate (sections 10.10, 10.14 Q4/Q5)
+            if (su.s[k].kind == kArrive || su.s[k].kind == kArrRet) { // item E: the partner side's capital through the gate (sections 10.10, 10.14 Q4/Q5)
                 if (now_ms < arr_try[k]) continue;
                 if (holder >= 0 || (last_dir == 1 && now_ms - release_ms < 60000)) { // the through slot (its request polls every 1-11 s)
                     arr_try[k] = now_ms + 1000 + long(c.m.rng.next()) * 10000 / 32768;
@@ -9348,6 +9631,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         if (holder == int(k)) { // the transfer is over: the through slot frees (the direction cooldown runs from here)
                             holder = -1;
                             release_ms = now_ms;
+                            arr_rel_ms = now_ms;
                         }
                         c.phase = 51;
                         c.phase_t = now_ms;
@@ -9387,6 +9671,34 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     double dp[3];
                     for (int i = 0; i < 3; ++i) dp[i] = m.pos[i] / 500.0 - arr_P[k][i];
                     res.arr_hold_out_m = std::fmax(res.arr_hold_out_m, norm3d(dp));
+                    if (now_ms - c.phase_t >= su.s[k].hold_ms && su.s[k].kind == kArrRet) { // the arrival round: the script's return trip
+                        const int lk = su.s[k].leader;
+                        e.z_prev = m.pos[2] / 500.0;
+                        ++res.departures;
+                        if (lk < 0) { // the leader: order 4 back through the arrival gate (the KC's grid slot), Run174's ~8 s after the launch
+                            start_order4(c, now_ms);
+                            rt_o4(k, now_ms);
+                        } else if (ships[lk].launched || ships[lk].gone) { // the leader is gone: the lost-leader wait, then order 4
+                            c.phase = 12;
+                            c.leader_launch = ships[lk].launch_ms;
+                            e.lam = uni(lam_lo, lam_hi);
+                            c.order4_at = now_ms + long(e.lam * 1000.0);
+                            e.in10 = dB / 500.0 <= 10000.0;
+                            m.order = core::kOrderNone;
+                            m.leader_ptr = 0;
+                            c.target = 0;
+                        } else { // 0x14 to its leader (the escort template, its 30-34 s order-0 waits)
+                            c.phase = 10;
+                            lead_rt[k] = lk;
+                            m.order = core::kOrderEscort;
+                            m.leader_ptr = ships[lk].m.ptr;
+                            c.target = m.leader_ptr;
+                            c.gap_next = now_ms + 30000 + long(m.rng.next()) * 4000 / 32768;
+                        }
+                        m.next_think = now_ms;
+                        m.done = false;
+                        continue;
+                    }
                     if (now_ms - c.phase_t >= su.s[k].hold_ms) { // MovePos 9 km out, about 10 deg off -F, the side alternating (scenario T's)
                         c.phase = 54;
                         c.phase_t = now_ms;
@@ -9489,6 +9801,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         if (dB / 500.0 <= 10000.0) {
                             start_order4(c, now_ms);
                             e.o4_ms = now_ms;
+                            if (su.s[k].kind == kArrRet) rt_o4(k, now_ms); // (the arrival round: an arriving escort's return trip)
                             // the issue frame's tick tests the KC's grid point (the P2 test below; review item 2): inside its sphere the order
                             // would end on this tick unless the tick is deferred
                             for (int i = 0; i < 3; ++i) dA_v[i] = c.A[i] - m.pos[i];
@@ -9527,6 +9840,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     c.launch_ms = now_ms;
                     launch_ms_of[k] = now_ms;
                     ++res.launched;
+                    if (su.s[k].kind == kArrRet) rt_launch(k, now_ms);
                     if (std::getenv("X3M_C_TRACE")) std::printf("  tc %s ev t=%.1f ship %u launch\n", su.tag, double(now_ms) / 1000.0, k);
                     e.release_at = now_ms + 1; // the next frame
                     if (e.grant_ms >= 0) {
@@ -9595,6 +9909,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         }
                     }
                 }
+                if (k == 0 && su.fdet_ms >= 0 && now_ms >= su.fdet_ms && m.force_det_until < 0 && m.order == core::kOrderFlyBefore) {
+                    m.force_det_until = m.t_ms + 3000; // (the arrival round: the forced detour, 1.5 km to its side of the order's point)
+                    for (int i = 0; i < 3; ++i) m.force_det_P[i] = m.P[i] + 1500.0 * 500.0 * m.row[0][i];
+                }
+                m.lw_ours = e.lw_ok && c.A[0] == e.lw[0] && c.A[1] == e.lw[1] && c.A[2] == e.lw[2]; // (the DLL's GateState::lane_w)
                 m.steer_call(c.obj, true, 0);
                 if (std::getenv("X3M_C_TRACE")) {
                     int qi = -1;
@@ -9784,6 +10103,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 res.x_wait_s += double(ls.x_wait_ms) / 1000.0;
                 res.merges += ls.merges;
                 res.merges_done += ls.merges_done;
+                res.mouth_expired += ls.mouth_expired; // (review of the arrival round item 3)
                 for (unsigned q = 0; q < ls.n_ev; ++q)
                     if (ls.ev[q].finish) {
                         res.merge_max_s = std::fmax(res.merge_max_s, double(ls.ev[q].ms) / 1000.0);
@@ -9886,8 +10206,9 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         const std::int32_t sage = std::int32_t(now_end - sta.stamp_ms);
                         const float* det = sta.obj == c.m.ptr && sta.obstacle && sta.stamp_ms && sage >= 0 &&
                                                    sage <= std::int32_t(gc::kStateMaxAgeMs + gc::kStateMs + std::uint32_t(dt)) ? sta.P : nullptr;
-                        const bool sup = gc::e_gate_row(board, c_ix, c.m.ptr, c.m.native_id(), kLaneGate, c.m.order, c.target, x, true, now_end, &why, u_l,
-                                                        f_l, det);
+                        bool sup = gc::e_gate_row(board, c_ix, c.m.ptr, c.m.native_id(), kLaneGate, c.m.order, c.target, x, true, now_end, &why, u_l,
+                                                  f_l, det);
+                        if (!sup && (why == gc::GateRow::not_member || why == gc::GateRow::order || why == gc::GateRow::stage)) sup = ring_row(k, dt);
 #else
                         const bool sup = gc::e_gate_row(board, c_ix, c.m.ptr, c.m.native_id(), kLaneGate, c.m.order, c.target, x, true, now_end, &why);
 #endif
@@ -9907,6 +10228,32 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         }
                     }
                 }
+#ifndef X3M_LANE_HEAD
+                // the arrival round item 4: every other ship on every order the warn acts on (not 0x12, 0x21 / 0x1e, order 5 / 8, a parked or
+                // the player's ship at rest: their warn has no speed), its gate warn left to the ring row (the member row first, as the DLL)
+                bool unsup_nm = false;
+                const bool nm_ph = (c.phase == 0 || (c.phase >= 10 && c.phase <= 13) || c.phase == 21 || c.phase == 40 || c.phase == 41 ||
+                                    c.phase == 46 || c.phase == 53 || c.phase == 54) && su.s[k].kind != kPlayer;
+                if (!(o_ok && ph_ok && g && mi >= 0 && g->m[mi].role == gc::Role::committed) && nm_ph &&
+                    eng_warn(c.m, su.s[k].t->r_m, c.m.capital, gate_b, false, false).warn) {
+                    ++res.gate_warn_nm;
+                    const float x[3] = {float(c.m.pos[0] / 500.0), float(c.m.pos[1] / 500.0), float(c.m.pos[2] / 500.0)};
+                    gc::GateRow why = gc::GateRow::not_member;
+                    bool sup = g && mi >= 0 && gc::e_gate_row(board, c_ix, c.m.ptr, c.m.native_id(), kLaneGate, c.m.order, c.target, x, true, now_end, &why);
+                    if (!sup && (why == gc::GateRow::not_member || why == gc::GateRow::order || why == gc::GateRow::stage)) sup = ring_row(k, dt);
+                    if (!sup) {
+                        unsup_nm = true;
+                        if (!e.gate_ep_nm) {
+                            ++res.gate_x12_nm;
+                            if (std::getenv("X3M_C_TRACE"))
+                                std::printf("  tc %s gatewarn_nm t=%.1f ship %u ph %d o 0x%x pos %.0f,%.0f,%.0f v %.1f why %s\n", su.tag, double(now_ms) / 1000.0,
+                                            k, c.phase, c.m.order, x[0], x[1], x[2], double(c.m.speed) / 500.0, gc::gate_row_name(why));
+                            if (c.phase == 0 || c.phase == 10 || c.phase == 13 || c.phase == 40 || c.phase == 41) x12_now = x12_gate = true;
+                        }
+                    }
+                }
+                e.gate_ep_nm = unsup_nm;
+#endif
                 if (unsup && !e.gate_ep) ++res.gate_x12;
                 if (unsup && !e.gate_ep && c.phase == 0 && c.m.order == core::kOrderFlyBefore) x12_now = x12_gate = true; // (item B: flown)
                 // item B: the forced eviction (the engine's own-gate warn on this frame, site E's suppression overruled: the KC's CollisionWarn
@@ -9943,12 +10290,12 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             const unsigned q = j - w.n_static;
                             const int kq = su.s[q].kind;
                             bool arr_off = false; // (an arrival no longer a live board member: the engine's warn and the lane row as for any ship)
-                            if (kq == kArrive && ships[q].alive && ships[q].phase >= 51) {
+                            if ((kq == kArrive || (kq == kArrRet && ships[q].phase <= 53)) && ships[q].alive && ships[q].phase >= 51) {
                                 int ai = -1;
                                 const gc::Gate* ag = gc::locate(board, ships[q].m.ptr, &ai);
                                 arr_off = !(ag && ai >= 0 && gc::live(*ag, ag->m[ai], now_end));
                             }
-                            if (!ships[q].alive || !(kq == kPark || kq == kSmEsc || kq == kSmTrade || arr_off)) continue;
+                            if (!ships[q].alive || !(kq == kPark || kq == kSmEsc || kq == kSmTrade || kq == kPlayer || arr_off)) continue;
                             const TShip& P = ships[q];
                             tmp = av::Obstacle{};
                             for (int i = 0; i < 3; ++i) {
@@ -9975,7 +10322,9 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         if (sm_b) ++res.mem_sm_warns;
                         ++res.obst_warn_frames;
                         unsigned why = 0;
-                        const av::EVerdict v = c_obst_e(board, c_ix, c, *o, ps, wb, lb, fb, now_end, std::uint32_t(dt), &why);
+                        const bool player_b = j >= w.n_static && su.s[j - w.n_static].kind == kPlayer;
+                        const av::EVerdict v = c_obst_e(board, c_ix, c, *o, ps, wb, lb, fb, now_end, std::uint32_t(dt), &why, player_b);
+                        if (player_b && av::e_suppresses(v)) ++res.rt_player_sup; // (the arrival round: never suppressed as B)
                         ++res.obst_why[why < 4u ? why : 3u];
                         if (v == kVSupObst) {
                             ++res.obst_lane_sup;
@@ -10048,7 +10397,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         in.b_is_a_leader = c.m.leader_ptr == Y.ptr;
                         in.b_resolved = c.m.order != core::kOrderAvoid &&
                                         av::suppressed(c.m.astate, c.m.ptr, Y.ptr, now_end, av::fresh_window_ms(av::kResolvedAgeMs, std::uint32_t(dt)));
-                        if (!av::e_suppresses(av::site_e_verdict(in))) {
+                        const bool player_b = su.s[q].kind == kPlayer; // (review of the arrival round item 2)
+                        in.b_player = player_b && !c_player_old();
+                        const av::EVerdict sv = av::site_e_verdict(in);
+                        if (player_b && av::e_suppresses(sv)) ++res.rt_player_sup;
+                        if (!av::e_suppresses(sv)) {
                             if (!sm_unsup && !e.obst_ep && std::getenv("X3M_C_TRACE"))
                                 std::printf("  tc %s smwarn t=%.1f ship %u (ph %d o 0x%x %.0f,%.0f,%.0f nose %.2f,%.2f,%.2f) vs %u (o 0x%x %.0f,%.0f,%.0f)\n", su.tag,
                                             double(now_ms) / 1000.0, k, c.phase, c.m.order, c.m.pos[0] / 500.0, c.m.pos[1] / 500.0, c.m.pos[2] / 500.0,
@@ -10249,6 +10602,31 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 e.sw_law = e.wk_law;
             } else if (e.sw_start >= 0)
                 qh_close(e);
+            // the arrival round: site B's stop writes on a return trip: the leader's episodes before its grant; an escort's episodes and how
+            // late after its leader's grant (or launch) one came
+            if (su.s[k].kind == kArrRet && e.wk_stop && lane && mm) {
+                if (e.rt_ss < 0) e.rt_ss = now_ms;
+                const double ep = double(now_ms - e.rt_ss) / 1000.0;
+                const int lk = su.s[k].leader;
+                if (lk < 0) {
+                    if (e.grant_ms < 0) res.rt_lead_stop_max_s = std::fmax(res.rt_lead_stop_max_s, ep);
+                } else { // (the queue hold at the gate mouth lasts to its predecessor's order 8, gc::lane_mouth_hold: a stop write later than
+                         // that order 8's start + the step, or one with no predecessor beyond T_stop + the step, is over)
+                    res.rt_esc_stop_max_s = std::fmax(res.rt_esc_stop_max_s, ep);
+                    int pq = -1;
+                    for (unsigned q = 0; q < su.n; ++q)
+                        if (q != k && ships[q].m.ptr == mm->lane_pred) pq = int(q);
+                    if (pq >= 0) e.rt_pq = pq;
+                    else pq = e.rt_pq; // (the predecessor gone: the one the hold was behind)
+                    const long rel = pq >= 0 ? (ships[pq].phase == 4 ? now_ms - (ships[pq].phase_t + 900) : ships[pq].gone ? now_ms - ships[pq].launch_ms
+                                                                                                                   : -1000000000L)
+                                             : long(ep * 1000.0) - long(gc::kLaneStopMs);
+                    res.rt_esc_stop_after_ms = std::max(res.rt_esc_stop_after_ms, rel);
+                }
+            } else if (su.s[k].kind == kArrRet) {
+                e.rt_ss = -1;
+                e.rt_pq = -1;
+            }
             if (su.s[k].z > 0.0 && z > 0.0 && mm && mm->ln) ++res.back_member_frames; // (item C: a lane member behind the plane)
             if (su.s[k].kind == kEsc && c.phase >= 10 && z > -kLaneEndM && departing) ++res.escort_past_dend; // 5 (not a handed escort)
             if (departing && v < 1.0 && std::fabs(z + kLaneEndM) < 600.0 && !e.refusals) {
@@ -10412,6 +10790,14 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                         gc::pair_name(gc::PairV(g->v[mi][pi])), gc::pair_why_name(g->why[mi][pi]), unsigned(g->tc[mi][pi]), gc::law_name(mm->law),
                                         double(mm->v_sb), double(mm->cap), double(mm->lane_gap), double(mm->lane_lat), unsigned(mm->band),
                                         gc::plan_name(gc::plan_of(*mm)), gc::plan_name(gc::plan_of(P)), gc::law_name(P.law), double(P.v_sb));
+                        if (std::getenv("X3M_C_TRACE") && now_ms / 1000 != (now_ms - dt) / 1000 && std::getenv("X3M_C_DUMP")) {
+                            std::printf("    mouth %d redep %u loop %u Pn %u Psb %s Pstage s %.0f self s %.0f roll:", int(gc::lane_mouth_on(*g, *mm, P, now_end)), unsigned(mm->redep),
+                                        unsigned(mm->loop), unsigned(P.n), gc::sb_name(P.sb), double(P.lane_s), double(mm->lane_s));
+                            for (unsigned s2 = 0; s2 < mm->n; s2 += 6) std::printf(" %u:%.0f,%.0f,%.0f", s2, double(mm->s[s2].c[0]), double(mm->s[s2].c[1]), double(mm->s[s2].c[2]));
+                            std::printf(" | P:");
+                            for (unsigned s2 = 0; s2 < P.n; s2 += 6) std::printf(" %u:%.0f,%.0f,%.0f", s2, double(P.s[s2].c[0]), double(P.s[s2].c[1]), double(P.s[s2].c[2]));
+                            std::printf("\n");
+                        }
                     }
                     if (e.cert_until >= 0 && now_ms > e.cert_until) e.cert_on = false;
                 }
@@ -10434,8 +10820,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     res.min_box = std::fmin(res.min_box, bx);
                 }
                 { // fixture engine paths: the departing capitals' pairs alone; small ships against anything; the arrivals (item E)
-                    auto dep = [&](unsigned q) { return su.s[q].kind == kLead || su.s[q].kind == kEsc || su.s[q].kind == kRedep; };
+                    auto dep = [&](unsigned q) {
+                        return su.s[q].kind == kLead || su.s[q].kind == kEsc || su.s[q].kind == kRedep || (su.s[q].kind == kArrRet && ships[q].phase < 50);
+                    };
                     const double gap = t_capsule(A, B);
+                    if (su.s[a].kind == kPlayer || su.s[b].kind == kPlayer) res.rt_player_gap = std::fmin(res.rt_player_gap, gap);
                     if (dep(a) && dep(b)) res.mem_capsule = std::fmin(res.mem_capsule, gap);
                     if (!A.m.capital || !B.m.capital) {
                         if (gap < 0.0 && res.sm_capsule >= 0.0 && std::getenv("X3M_C_TRACE"))
@@ -10446,7 +10835,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                         B.m.row[2][1], B.m.row[2][2]);
                         res.sm_capsule = std::fmin(res.sm_capsule, gap);
                     }
-                    const bool aa = su.s[a].kind == kArrive && A.phase >= 51, ab = su.s[b].kind == kArrive && B.phase >= 51;
+                    const bool aa = (su.s[a].kind == kArrive || (su.s[a].kind == kArrRet && A.phase <= 53)) && A.phase >= 51,
+                               ab = (su.s[b].kind == kArrive || (su.s[b].kind == kArrRet && B.phase <= 53)) && B.phase >= 51;
                     if (aa && ab) {
                         res.arr_arr_gap = std::fmin(res.arr_arr_gap, gap);
                         if (gap < 0.0) ++res.arr_overlap;
@@ -10625,6 +11015,10 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
     }
     for (unsigned k = 0; k < su.n; ++k)
         if (ex[k].sw_start >= 0) qh_close(ex[k]); // (lane fix round 2 item 3d: an episode still open at the run's end)
+    for (unsigned k = 0; k < su.n; ++k) { // the arrival round: site A's board leaves on Why::target, the held re-commits
+        res.target_leaves += ships[k].m.target_leaves;
+        res.recommit_held += ships[k].m.recommit_held;
+    }
     // 4, 5, 8: the launches
     long last_l = -1;
     int last_k = -1;
@@ -10896,17 +11290,18 @@ static const CStart kX12Far[2] = {
 // the leader and its capital escorts), and a
 // TS trader on order 4 / 5 to the same gate from t0 = 100 s (9 km out, below and beside Lambda); (m6) the second TS escort an M6 (the
 // members' warn tests it: section 10.14 Q2)
-static const CStart kSmallGate[6] = {
+static const CStart kSmallGate[7] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
     {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
     {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
     {&kShips[3], 0.5, kSmEsc, 0, 1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmEsc, 0, -1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmTrade, -1, 2000, -4000, -8000, 0, 100, 100000, true},
+    {&kShips[2], 0.5, kPlayer, -1, 1800, -3700, -7200, 0, 0, 0}, // (review of the arrival round item 2: the player's M6 parked on the trader's path)
 };
 // Review of rounds A-C item 4: small_gate with a five-capital convoy (Titan, M1, Titan, M1, Titan) and the through slot refused for 60 s
 // 140-160 s (the column still passing when the 60 s hold bound ends)
-static const CStart kSmallGate5[8] = {
+static const CStart kSmallGate5[9] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
     {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
     {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
@@ -10915,14 +11310,16 @@ static const CStart kSmallGate5[8] = {
     {&kShips[3], 0.5, kSmEsc, 0, 1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmEsc, 0, -1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmTrade, -1, 2000, -4000, -8000, 0, 100, 100000, true},
+    {&kShips[2], 0.5, kPlayer, -1, 1800, -3700, -7200, 0, 0, 0}, // (review of the arrival round item 2: the player's M6 parked on the trader's path)
 };
-static const CStart kSmallGateM6[6] = {
+static const CStart kSmallGateM6[7] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
     {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
     {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
     {&kShips[3], 0.5, kSmEsc, 0, 1400, -830, -17400, 0, 100, 0},
     {&kShips[2], 0.5, kSmEsc, 0, -1400, -830, -17400, 0, 100, 0},
     {&kShips[3], 0.5, kSmTrade, -1, 2000, -4000, -8000, 0, 100, 100000, true},
+    {&kShips[2], 0.5, kPlayer, -1, 1800, -3700, -7200, 0, 0, 0}, // (review of the arrival round item 2: the player's M6 parked on the trader's path)
 };
 // Item E: the formed convoy departing while capitals arrive from the partner side: (parked) an M1 of r_s 1135 m > 0.99 r_gate at 100 s
 // (its 0x1e ends on its first frame at speed 0: it rests at P; a script parks it there 300 s), a Titan 60 s later into the occupied P;
@@ -10956,6 +11353,25 @@ static const CStart kArrPass2[5] = {
 static const CStart kArrCross[2] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, 3500, -9500, 0, 100, 80000, true},
     {&kCrowdTitan, 0.53, kArrive, -1, 0, 0, 0, 0, 0, 100000, false, 40000},
+};
+// The arrival round (Run174, run174-triage/order_leader2.txt, leader_alone.txt, warn_chain.txt): a Colossus arrives through the gate (0x21,
+// 0x1e, order 0) and its script's next order, ~8 s after the launch, is order 4 back through the same gate (the KC's slot-0 grid point on
+// the axis, 4.25 km out); two M2 escorts arrive 80 s and 195 s later (0x21, 0x1e, ~6 s of order 0), then 0x14 to the leader and, after
+// its launch, their lost-leader wait and order 4; the player's ship (an M6: in the large set, the capitals' warn tests it) parked 2 km
+// beside the gate, never steered, never a member, never suppressed. The M2 is Run174's (r 755 m) on the Boreas plant
+static const ShipType kRtM2 = {"M2", "Boreas-class M2 (755 m)", 70.0, 15.0, 13.5, 755.0, 5, true};
+static const CStart kReturnTrip[4] = {
+    {&kCrowdM1, 0.53, kArrRet, -1, 0, 0, 0, 0, 0, 20000, false, 6400},
+    {&kRtM2, 0.53, kArrRet, 0, 0, 0, 0, 0, 0, 100000, false, 6000},
+    {&kRtM2, 0.53, kArrRet, 0, 0, 0, 0, 0, 0, 215000, false, 6000},
+    {&kShips[2], 0.5, kPlayer, -1, 2000, 0, -400, 0, 0, 0},
+};
+// Review of the arrival round item 8: two non-members (never on a lane order: kNewLead, order 3 straight on at 100 m/s) through the Terran
+// ring's hole (r 3207.5 m, hole 0.663 r = 2,126.6 m; an M1 of w 542 m): ship 0 clips the rim, its hull's capsule 25 m from the hole's edge
+// (inside the ring row's kMarginM: refused_hull, the engine's warn kept); ship 1 400 m clear of it (suppressed)
+static const CStart kTerranRim[2] = {
+    {&kCrowdM1, 0.53, kNewLead, -1, 0, -1560, -15000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kNewLead, -1, 0, 1185, -15000, 0, 100, 0},
 };
 static const CSetup kCSetups[] = {
     {"abreast3", kAbreast3, 3, 1},
@@ -11025,12 +11441,12 @@ static const CSetup kCSetups[] = {
     // (item D, two TS escorts + a TS trader; parked until round B with small ships in contact in 4 of 9 runs, to -506 m: a TS on its
     // order-5 lower-arc leg against a capital on order 5, a TS 0x12 into the M1, D.5 never mirroring; convoy-gate-transit.md section 12.2:
     // the side lead-in, D.5's edge and the hold; section 11 "Round B")
-    {"small_gate", kSmallGate, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
+    {"small_gate", kSmallGate, 7, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
     // (item D with an M6 escort: as small_gate, parked until round B with contacts in 4 of 9 runs, to -501 m; the members' warns against
     // the M6 all suppressed by site E's small-ship row, 0 member 0x12)
-    {"small_gate_m6", kSmallGateM6, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
+    {"small_gate_m6", kSmallGateM6, 7, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
     // review of rounds A-C item 4: five capitals, the through slot refused 140-160 s (unknown to the board)
-    {"small_gate5", kSmallGate5, 8, 0, -1, false, 1200, false, false, -1.0, false, false, 140000, 160000, 0, -1, -1, -1, 0, 0, false, 3},
+    {"small_gate5", kSmallGate5, 9, 0, -1, false, 1200, false, false, -1.0, false, false, 140000, 160000, 0, -1, -1, -1, 0, 0, false, 3},
     // PARKED (item E, an M1 of r_s 1135 m resting at P, a Titan 60 s later): the two arrivals overlap (capsule -1180 m: no arrival fan,
     // section 6.7); the departing leader near d_end is warned by the arriving hull's box, the pair uncertified, the eviction flown, then the
     // members collide (to -1120 m); 5 of 9 runs launch fewer than 3 in 1000 s
@@ -11043,6 +11459,9 @@ static const CSetup kCSetups[] = {
     // X3M_C_ARR_PARAMS0=1)
     {"arrival_pass2", kArrPass2, 5, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
     {"arrival_cross", kArrCross, 2, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 4},
+    // the arrival round (Run174): an arriving capital's return trip with its arriving escorts (convoy-gate-transit.md section 11 "Arrival round")
+    {"return_trip", kReturnTrip, 4, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 5, -1, 1e9, -1.0, 60000},
+    {"terran_rim", kTerranRim, 2, 0, -1, false, 400, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 3207.5, 21, false, 6},
 };
 // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
 // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
@@ -11110,6 +11529,18 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
                 r.prof_builds, r.prof_shifted, r.prof_max_m, r.prof_clear_min < 1e17 ? r.prof_clear_min : -1.0, r.prof_us_max,
                 r.prof_builds ? r.prof_us_sum / double(r.prof_builds) : 0.0, r.prof_skipped, r.prof_det, r.obst_avoidable, r.obst_x12, r.loops,
                 r.loop_min_s < 1e17 ? r.loop_min_s : 0.0, r.loop_bound, r.loop_turn_lat_max, r.fol_v_min < 1e17 ? r.fol_v_min : -1.0);
+}
+// The arrival round (cast return_trip): the figures its checks read, one row per run
+static void lane_c_print_rt(const char* tag, int tf, std::uint32_t seed, const lanec::CResult& r) {
+    std::printf("scenario C %s return tf %d seed %u: launched %u/%u rt %u/%u target_leaves %u recommit_held %u gate_x12 %u x12 %u | lead turn %.1f s p2 %.1f s "
+                "(over %.1f) launch %.1f s bound %.1f s stop_max %.1f s | esc stop_max %.1f s after_grant %.2f s over %.1f s | slot_over %.1f s p2 not_kept %u "
+                "nose %.1f | capsule %.0f box %.0f player gap %.0f sup %u | episodes %u uncert %u | mouth_exp %u\n",
+                tag, tf, seed, r.launched, r.departures, r.rt_launched, r.rt_n, r.target_leaves, r.recommit_held, r.gate_x12, r.x12_flown, r.rt_lead_turn_s,
+                r.rt_lead_p2_s, r.rt_turn_over_s, r.rt_lead_launch_s, r.rt_lead_bound_s, r.rt_lead_stop_max_s, r.rt_esc_stop_max_s,
+                r.rt_esc_stop_after_ms > -1000000 ? double(r.rt_esc_stop_after_ms) / 1000.0 : -1.0, r.rt_esc_over_s > -1e17 ? r.rt_esc_over_s : 0.0,
+                r.rt_slot_over_s > -1e17 ? r.rt_slot_over_s : 0.0, r.p2_not_kept, r.p2_nose_max_deg, r.min_capsule < 1e17 ? r.min_capsule : -1.0,
+                r.min_box < 1e17 ? r.min_box : -1.0, r.rt_player_gap < 1e17 ? r.rt_player_gap : -1.0, r.rt_player_sup, r.episodes, r.uncert_frames,
+                r.mouth_expired);
 }
 // Review of rounds A-C: the figures its checks read, one row per run of an engine cast
 static void lane_c_print_rev(const char* tag, int tf, std::uint32_t seed, const lanec::CResult& r) {
@@ -12596,6 +13027,256 @@ static void round_b_prof_units() {
     check(belt_ok && up8_ok && up7_ok && fb_ok && fs_ok && fs_off_ok && off_ok, why);
     std::printf("%s\n", why);
 }
+// The arrival round (Run174; convoy-gate-transit.md section 11 "Arrival round"): the units of its items
+static void arrival_round_units() {
+    // item 2: site A's lane test reads the leaf's point before our own avoidance detour: a field holding L_i with the leaf's point L_i is
+    // the lane's whatever the detour (the rule before: the detour's point, 1.5 km off, failed the test and the member left on Why::target)
+    {
+        const float L[3] = {0.0f, -928.0f, -1472.0f}, leaf[3] = {0.0f, -928.0f, -1472.0f}, detour[3] = {1500.0f, -928.0f, -1472.0f};
+        const float near[3] = {0.0f, -928.4f, -1472.5f};
+        check(gc::lane_field_is_leaf(L, leaf) && gc::lane_field_is_leaf(L, near) && !gc::lane_field_is_leaf(L, detour),
+              "arrival round units: item 2 the lane test on the leaf's point (within 1 m), never the detour's");
+    }
+    // review of the arrival round item 3: the gate-mouth hold's game-time bound (review/item3_cases.cpp is the same case against 97f3804b:
+    // held to the end of the run). A re-departing escort at the mouth (1.5 km out, 600 m above Lambda, nose away) behind its leader on
+    // Lambda 6 km out heading in at 100 m/s whose launch never comes (its state frozen there; a physical stop is the queue hold's block,
+    // bounded by the leader's membership); killed: the leader leaves the board at 30 s. The hold ends at the leader's launch ETA at its
+    // start + T_stop + the step, counted once; with the leader gone at once
+    {
+        auto run = [](bool kill, std::uint32_t step, double* bound_s, unsigned* expired) {
+            static gc::Board b;
+            b = gc::Board{};
+            b.lane = 1;
+            gc::Gate* g = ctl_gate(b, 1000);
+            auto mk = [&](unsigned i, std::uint32_t ship, gc::Role role, float y, float z, float nose, std::uint32_t leader) {
+                gc::Member& m = g->m[i];
+                m.ship = m.id = ship;
+                m.role = role;
+                m.seq = i + 1;
+                m.r = 1000.0f;
+                m.w = 530.0f;
+                m.L = 1000.0f;
+                m.params.v_max = 110.0f;
+                m.params.W = 0.1f;
+                m.params.alpha = 0.05f;
+                m.params.a_lin = 5.0f;
+                m.large = 1;
+                m.leader = leader;
+                m.proven = 1;
+                m.line_ok = 1;
+                m.st.order = role == gc::Role::escort ? core::kOrderEscort : core::kOrderFlyBefore;
+                m.st.target = role == gc::Role::escort ? leader : 0x4000u;
+                m.st.x[1] = y;
+                m.st.x[2] = z;
+                m.st.rows[2][2] = nose;
+                m.st.f_ok = 1;
+                if (nose > 0.0f) {
+                    m.st.v = 100.0f;
+                    m.st.u[2] = 100.0f;
+                }
+                if (i + 1 > g->n) g->n = i + 1;
+            };
+            mk(0, 0x9000, gc::Role::committed, -929.0f, -6000.0f, 1.0f, 0);
+            mk(1, 0x9100, gc::Role::escort, 600.0f, -1500.0f, -1.0f, 0x9000);
+            double last = -1.0;
+            *expired = 0;
+            *bound_s = -1.0;
+            for (std::uint32_t t = 1000; t <= 240000; t += step) {
+                gc::LaneStats ls;
+                g->step_ms = step;
+                for (unsigned i = 0; i < g->n; ++i)
+                    g->m[i].st.ms = g->m[i].live_ms = g->m[i].decided_ms = g->m[i].commit_ms = g->m[i].steered_ms = t;
+                if (kill && t >= 30000) g->m[0].role = gc::Role::none;
+                gc::lane_frame(*g, t, &ls);
+                *expired += ls.mouth_expired;
+                const gc::Member& m = g->m[1];
+                if (m.mouth_ms && *bound_s < 0.0) *bound_s = double(m.mouth_ms) / 1000.0;
+                if (m.redep && m.law == gc::Law::stop && m.v_sb == 0.0f) last = double(t) / 1000.0;
+            }
+            return last;
+        };
+        bool ok = true;
+        for (std::uint32_t step : {100u, 1500u}) {
+            double bound = 0, bound_k = 0;
+            unsigned exp = 0, exp_k = 0;
+            const double held = run(false, step, &bound, &exp), held_k = run(true, step, &bound_k, &exp_k);
+            ok = ok && bound > 60.0 && held >= bound - 0.5 && held <= bound + double(step) / 1000.0 && exp == 1 && held_k < 30.0 + double(step) / 1000.0;
+            std::printf("arrival round units (review item 3): step %u ms: the stuck leader's escort held to %.1f s (bound %.1f s, expired %u), the "
+                        "killed leader's to %.1f s\n", step, held, bound, exp, held_k);
+        }
+        check(ok, "review of the arrival round item 3: the gate-mouth hold ends at P's launch ETA + T_stop + the step (counted), or with P's membership");
+    }
+    // review of the arrival round item 4: the lone decision reads the block's predecessor (review/item4_cases.cpp against 97f3804b: 95 of
+    // 101 frames undecided and not held). A member re-departing at the mouth behind the member at the hand-over 1 km out (nearer the
+    // gate: no hold); a member on Lambda 30 km out heading in, ranked behind it, would have held it under the any-member test
+    {
+        static gc::Board b;
+        b = gc::Board{};
+        b.lane = 1;
+        gc::Gate* g = ctl_gate(b, 1000);
+        auto mk = [&](unsigned i, std::uint32_t ship, float y, float z, float nose) {
+            gc::Member& m = g->m[i];
+            m.ship = m.id = ship;
+            m.role = gc::Role::committed;
+            m.seq = i + 1;
+            m.r = 1000.0f;
+            m.w = 530.0f;
+            m.L = 1000.0f;
+            m.params.v_max = 110.0f;
+            m.params.W = 0.1f;
+            m.params.alpha = 0.05f;
+            m.params.a_lin = 5.0f;
+            m.large = 1;
+            m.proven = 1;
+            m.line_ok = 1;
+            m.st.order = core::kOrderFlyBefore;
+            m.st.target = 0x4000u;
+            m.st.x[1] = y;
+            m.st.x[2] = z;
+            m.st.rows[2][2] = nose;
+            m.st.f_ok = 1;
+            if (nose > 0.0f) {
+                m.st.v = 100.0f;
+                m.st.u[2] = 100.0f;
+            }
+            if (i + 1 > g->n) g->n = i + 1;
+        };
+        mk(0, 0x9000, -929.0f, -1000.0f, 1.0f);
+        mk(1, 0x9100, 600.0f, -1500.0f, -1.0f);
+        mk(2, 0x9200, -929.0f, -30000.0f, 1.0f);
+        unsigned bad = 0;
+        for (std::uint32_t t = 1000; t <= 11000; t += 100) {
+            g->step_ms = 100;
+            for (unsigned i = 0; i < g->n; ++i) g->m[i].st.ms = g->m[i].live_ms = g->m[i].decided_ms = g->m[i].commit_ms = g->m[i].steered_ms = t;
+            g->m[0].sb = gc::Sb::handover;
+            g->m[0].handover_ms = 1000;
+            gc::LaneStats ls;
+            gc::lane_frame(*g, t, &ls);
+            const gc::Member& m = g->m[1];
+            if (t > 1500 && m.redep && !m.loop_min_done && !(m.law == gc::Law::stop && m.v_sb == 0.0f)) ++bad;
+        }
+        std::printf("arrival round units (review item 4): pred 0x%x decided %u, %u frames undecided and not held\n", g->m[1].lane_pred,
+                    unsigned(g->m[1].loop_min_done), bad);
+        check(bad == 0 && g->m[1].loop_min_done == 1 && g->m[1].lane_pred == 0x9000,
+              "review of the arrival round item 4: the lone decision and the gate-mouth block read the same predecessor");
+    }
+    // item 4 (review of the arrival round item 1): the gate's collision tree from its scene nodes under the positive guard of
+    // ship-navigation-ai.md section 10.9: a synthetic image in the engine's layout (GateImg: the gate object, its root [+0x70] with its test
+    // body, part nodes linked as 0x00489f20 links them: [c] the next sibling or the parent's sentinel parent + 0x10, [c+0x18] the parent,
+    // [c+0x258] the scene id, an empty list's head its own sentinel); "none" only when the guard holds, anything else unknown (0)
+    {
+        struct GateImg {
+            FakeMem mem;
+            std::uint32_t gate = 0x01004000, root = 0x01005000, next = 0x01010000, scene = 0x2a7;
+            std::uint32_t tail[64] = {}; // (per node slot: its last child, 0 none)
+            GateImg() {
+                mem.put(gate + 0x48, 0x12);
+                mem.put(gate + 0x70, root);
+                mem.put(gate + 0x98, scene);
+                empty(root);
+                mem.put(root + 0x12c, 0x1000000); // (the root's test body: collidable at the origin, never the gate's solid)
+            }
+            void empty(std::uint32_t n) { mem.put(n + 0xc, n + 0x10); }
+            std::uint32_t add(std::uint32_t parent, std::uint32_t flags, std::uint32_t scene_id) { // the engine's link at the tail
+                const std::uint32_t c = next;
+                next += 0x400;
+                empty(c);
+                mem.put(c + 0x18, parent);
+                mem.put(c + 0x258, scene_id);
+                mem.put(c + 0x12c, flags);
+                mem.put(c, parent + 0x10);
+                std::uint32_t& t = tail[((parent - 0x01005000u) / 0x400u) & 63u];
+                if (t) mem.put(t, c);
+                else mem.put(parent + 0xc, c);
+                t = c;
+                return c;
+            }
+            std::uint32_t add(std::uint32_t parent, std::uint32_t flags = 0) { return add(parent, flags, scene); }
+        };
+        auto rd = [](GateImg& g) { return wk::gate_tree_read(g.mem, g.gate); };
+        GateImg bubble; // the installed bubble gate (rows 0-3): one part node at depth 1 (terraformer_gate_effect), no tree
+        bubble.add(bubble.root);
+        GateImg terran; // the Terran ring (rows 21-24): three part nodes at depth 1, patch20\terran_gate's with the tree
+        terran.add(terran.root);
+        terran.add(terran.root);
+        terran.add(terran.root, 0x1000000);
+        GateImg off; // a part whose body slot was out of range (0x8000000 with the tree bit): no tree
+        off.add(off.root, 0x1000000 | 0x8000000);
+        GateImg foreign; // a foreign structure: [root+0xc] points at a dword 0 that is not the root's sentinel (the read before: none)
+        foreign.mem.put(foreign.root + 0xc, 0x02000000);
+        GateImg back; // a broken back pointer: the part's [c+0x18] is not the root
+        back.mem.put(back.add(back.root) + 0x18, 0x01009000);
+        GateImg noscene; // the scene failed to attach: [gate+0x98] 0 (0x00450690 zeroes it), no part node
+        noscene.mem.put(noscene.gate + 0x98, 0);
+        GateImg stale; // part nodes that carry another scene's id (a stale or foreign tree)
+        stale.add(stale.root, 0, stale.scene + 1);
+        GateImg cls; // not a gate object (class 7)
+        cls.add(cls.root);
+        cls.mem.put(cls.gate + 0x48, 7);
+        GateImg unal; // a misaligned part pointer
+        unal.add(unal.root);
+        unal.mem.put(unal.root + 0xc, unal.mem.u32(unal.root + 0xc) + 2);
+        GateImg low; // a root below the user range
+        low.mem.put(low.gate + 0x70, 0x8000);
+        GateImg deep3; // a part chain to depth 3, childless there: the whole tree seen
+        deep3.add(deep3.add(deep3.add(deep3.root)));
+        GateImg deep4; // ... with a child below the depth limit: not seen, unknown
+        deep4.add(deep4.add(deep4.add(deep4.add(deep4.root))));
+        GateImg wide; // 65 parts: the budget exhausted
+        for (int i = 0; i < 65; ++i) wide.add(wide.root);
+        GateImg chain; // a chain ending at another node's sentinel
+        chain.mem.put(chain.add(chain.root), 0x01009010);
+        const wk::GateTreeRead r_b = rd(bubble), r_t = rd(terran), r_o = rd(off), r_f = rd(foreign), r_bk = rd(back), r_n = rd(noscene);
+        const wk::GateTreeRead r_s = rd(stale), r_c = rd(cls), r_u = rd(unal), r_l = rd(low), r_d3 = rd(deep3), r_d4 = rd(deep4), r_w = rd(wide);
+        const wk::GateTreeRead r_ch = rd(chain);
+        const wk::GateTreeRead r_null = wk::gate_tree_read(bubble.mem, 0);
+        check(r_b.state == gc::kGateRingNone && r_b.nodes == 1 && r_b.seen && r_t.state == gc::kGateRingTree && r_o.state == gc::kGateRingNone &&
+                  r_d3.state == gc::kGateRingNone && r_d3.nodes == 3,
+              "arrival round units: item 4 the gate's collision tree (installed bubble at depth 1 none, Terran ring tree, flagged off none, depth 3 none)");
+        check(r_f.state == 0 && r_f.why == wk::TreeWhy::chain && r_bk.state == 0 && r_bk.why == wk::TreeWhy::parent && r_n.state == 0 &&
+                  r_n.why == wk::TreeWhy::scene && r_s.state == 0 && r_s.why == wk::TreeWhy::no_scene_node && r_c.state == 0 &&
+                  r_c.why == wk::TreeWhy::cls && r_u.state == 0 && r_u.why == wk::TreeWhy::node_ptr && r_l.state == 0 &&
+                  r_l.why == wk::TreeWhy::root && r_d4.state == 0 && r_d4.why == wk::TreeWhy::depth && r_w.state == 0 &&
+                  r_w.why == wk::TreeWhy::budget && r_ch.state == 0 && r_ch.why == wk::TreeWhy::chain && r_null.state == 0,
+              "review of the arrival round item 1: none only under the positive guard (foreign, back pointer, no scene, stale scene, class, "
+              "misaligned, low root, below the depth limit, budget, chain end, null: unknown)");
+        std::printf("arrival round units (item 4, review item 1): tree states bubble %u (%u nodes, seen %u) terran %u off %u depth3 %u | foreign %u/%s "
+                    "back %u/%s noscene %u/%s stale %u/%s class %u/%s misaligned %u/%s low %u/%s depth4 %u/%s budget %u/%s chain %u/%s null %u/%s\n",
+                    r_b.state, unsigned(r_b.nodes), unsigned(r_b.seen), r_t.state, r_o.state, r_d3.state, r_f.state, wk::tree_why_name(r_f.why),
+                    r_bk.state, wk::tree_why_name(r_bk.why), r_n.state, wk::tree_why_name(r_n.why), r_s.state, wk::tree_why_name(r_s.why), r_c.state,
+                    wk::tree_why_name(r_c.why), r_u.state, wk::tree_why_name(r_u.why), r_l.state, wk::tree_why_name(r_l.why), r_d4.state,
+                    wk::tree_why_name(r_d4.why), r_w.state, wk::tree_why_name(r_w.why), r_ch.state, wk::tree_why_name(r_ch.why), r_null.state,
+                    wk::tree_why_name(r_null.why));
+        const gc::GateFrame fr = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+        const float u[3] = {0, 0, 100}, f[3] = {0, 0, 1}, xin[3] = {0, -900, -3000}, xrim[3] = {0, -1900, -3000}, xnan[3] = {0, NAN, -3000};
+        const float xo[3] = {0, -900, -2000}; // (the 1,104.5 m gate: its 1 s + v / a run of 2.1 km reaches the ring's band)
+        const gc::GateRow w_in = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::escort, xin, u, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_rim = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::escort, xrim, u, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_none = gc::gate_ring_why(fr, 1104.5f, 0, gc::kGateRingNone, gc::GateRow::other, xo, u, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_unk = gc::gate_ring_why(fr, 1104.5f, 0, 3, gc::GateRow::other, xo, u, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_nan = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::arrival, xnan, u, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_a0 = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::arrival, xin, u, f, nullptr, 600, 300, 0, 0.0f);
+        // (a target across the rim from inside the hole: the turn toward it is tested too; out of 1 s + v / a the rim is not reached)
+        const float tgt[3] = {0, -2600, -500};
+        const gc::GateRow w_tgt = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::escort, xin, u, f, tgt, 600, 300, 5, 0.0f);
+        check(w_in == gc::GateRow::escort && w_rim == gc::GateRow::refused_hull && w_none == gc::GateRow::other && w_unk == gc::GateRow::refused_hull &&
+                  w_nan == gc::GateRow::roll && w_a0 == gc::GateRow::roll && w_tgt == gc::GateRow::refused_hull,
+              "arrival round units: item 4 the ring row (hole / rim / no tree / unknown / unreadable / no a_lin / target across the rim)");
+        // review of the arrival round item 5: the horizon carries the frame's game step: 4.5 km before the Terran ring's face, below the hole's
+        // rim at 100 m/s, a_lin 5, the path clears the face within 1 s + v / a and reaches it within 1 s + 2 s + v / a
+        const float xs[3] = {0, -2700, -4500}, us[3] = {0, 0, 100};
+        const gc::GateRow w_s0 = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::other, xs, us, f, nullptr, 600, 300, 5, 0.0f);
+        const gc::GateRow w_s2 = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::other, xs, us, f, nullptr, 600, 300, 5, 2.0f);
+        const gc::GateRow w_s9 = gc::gate_ring_why(fr, 3207.5f, 21, gc::kGateRingTree, gc::GateRow::other, xs, us, f, nullptr, 600, 300, 5, 9.0f);
+        check(w_s0 == gc::GateRow::other && w_s2 == gc::GateRow::refused_hull && w_s9 == gc::GateRow::refused_hull,
+              "review of the arrival round item 5: the ring row's horizon carries the clamped game step (step 0 clears, 2 s and 9 s reach the face)");
+        std::printf("arrival round units (review item 5): ring row 4.5 km before the face at step 0 %s, 2 s %s, 9 s (clamped 5 s) %s\n",
+                    gc::gate_row_name(w_s0), gc::gate_row_name(w_s2), gc::gate_row_name(w_s9));
+        std::printf("arrival round units (item 4): through the hole %s, clipping the rim %s, no tree %s, unknown read %s, NaN %s, a_lin 0 %s, target across "
+                    "the rim %s\n", gc::gate_row_name(w_in), gc::gate_row_name(w_rim), gc::gate_row_name(w_none), gc::gate_row_name(w_unk),
+                    gc::gate_row_name(w_nan), gc::gate_row_name(w_a0), gc::gate_row_name(w_tgt));
+    }
+}
 static void lane_cost_bench() {
     // (review item 8: the worst frame of 3 runs, not the best; the 1+4 cast and a 24-member board)
     struct Cast {
@@ -12795,6 +13476,7 @@ static void lane_c_scenarios() {
     lane_r2_units();
     round_b_small_units();
     round_b_prof_units();
+    arrival_round_units();
     lane_cost_bench();
     char why[512];
     const bool all = std::getenv("X3M_C_ALL") != nullptr; // every seed of every combination printed
@@ -12816,6 +13498,17 @@ static void lane_c_scenarios() {
                 if ((all || seed == kSeeds[0]) && (su.eng || r.x12_flown)) lane_c_print_eng(su.tag, tf, seed, r);
                 if (std::getenv("X3M_C_ENGALL") && seed != kSeeds[0] && (su.eng || r.x12_flown)) lane_c_print_eng(su.tag, tf, seed, r);
                 if (su.eng) lane_c_print_rev(su.tag, tf, seed, r);
+                if (su.eng == 5) lane_c_print_rt(su.tag, tf, seed, r);
+                if (all || seed == kSeeds[0] || r.gate_x12_nm || r.ring_unsafe) // (the arrival round item 4: the gate warn of every ship, the ring row)
+                    std::printf("scenario C %s ring tf %d seed %u: warn_nm %u sup %u (escort %u arrival %u other %u) refused %u x12_nm %u unsafe %u | "
+                                "refused_hull oracle-confirmed %u not %u (largest oracle gap %.0f m) ships 0x%x gap_min %.0f\n", su.tag,
+                                tf, seed, r.gate_warn_nm, r.ring_sup, r.ring_sup_esc, r.ring_sup_arr, r.ring_sup_oth, r.ring_refused, r.gate_x12_nm, r.ring_unsafe,
+                                r.ring_refused_ok, r.ring_refused_miss, r.ring_refused_gap_max > -1e17 ? r.ring_refused_gap_max : -1.0, r.ring_refused_mask,
+                                r.ring_gap_min < 1e17 ? r.ring_gap_min : -1.0);
+                if (r.rt_player_sup || ((all || seed == kSeeds[0]) && (su.eng == 3 || su.eng == 5))) // (review of the arrival round item 2)
+                    std::printf("scenario C %s player tf %d seed %u: suppressed as B %u\n", su.tag, tf, seed, r.rt_player_sup);
+                if (r.target_leaves || r.recommit_held) // (the arrival round: site A's board leaves on Why::target, X3M_C_LEAVE_OLD=1's count)
+                    std::printf("scenario C %s leaves tf %d seed %u: target_leaves %u recommit_held %u\n", su.tag, tf, seed, r.target_leaves, r.recommit_held);
                 span_lo[tf] = std::fmin(span_lo[tf], r.span_s);
                 span_hi[tf] = std::fmax(span_hi[tf], r.span_s);
                 auto ck = [&](bool ok, const char* what) {
@@ -12823,6 +13516,10 @@ static void lane_c_scenarios() {
                     check(ok, why);
                 };
                 ck(!r.nan && r.launched == r.departures, "every ship launched");
+                // the arrival round item 4: no own-gate 0x12 of a ship the member row does not decide, no ring suppression whose path reaches
+                // the ring (the fixture's own ring model)
+                // (review item 8: the rim cast's refused warns reach the KC by design, its own block below)
+                ck((su.eng == 6 || r.gate_x12_nm == 0) && r.ring_unsafe == 0, "4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression");
                 if (su.eng) { // fixture engine paths (convoy-gate-transit.md section 11 "Fixture engine paths"): each item's own assertions
                     ck(r.mem_capsule > 0.0 && r.min_box > -1e17, "Ex no contact between the departing capitals");
                     ck(r.episodes == 0 && r.uncert_frames == 0, "Ex no member 0x12 episode between members");
@@ -12856,6 +13553,7 @@ static void lane_c_scenarios() {
                         ck(r.span_ok, "Dx the members' span (the formed bound)");
                         ck(r.sm_capsule > 0.0, "Dx no contact with a small ship");
                         ck(r.mem_sm_x12 == 0, "Dx no member 0x12 against a small ship");
+                        ck(r.rt_player_sup == 0, "Dx the player's ship never suppressed as B (review of the arrival round item 2)");
                         // round B (section 12.2): the side lead-in flown, every small ship launched, D.5 never left both sides taken on the
                         // lane, every hold within 60 s + the step (game time; the trace's held time also counts the frame it ends on)
                         ck(r.sm_side > 0 && r.sm_launched == r.sm_n, "Dx2 the side lead-in flown, every small ship launched");
@@ -12888,6 +13586,34 @@ static void lane_c_scenarios() {
                         // review of rounds A-C item 2: every yield-stop episode site B writes ends within the bound its yield stored + the step,
                         // and no stored bound exceeds the arrival window + the step from the stop's start (a run of arrivals included)
                         ck(r.ystop_over == 0 && r.ystop_bound_over == 0, "Ex2 no member stop beyond its stored bound + the step (<= 60 s + the step)");
+                    } else if (su.eng == 6) { // review of the arrival round item 8: a non-member clipping the Terran ring's rim
+                        // (the row samples its swept hull every kSolidStepM (50 m) along the path and charges half of it against the gap
+                        // (solid_gap_seg): it refuses where the true gap is under kMarginM + 25 m or more on a long sweep, on the approach
+                        // to the ring's face before the oracle's 40 samples see the hull within kMarginM; measured at most 75 m: every
+                        // refusal within 2 kMarginM of the ring, fail closed)
+                        ck(r.ring_refused_ok > 0 && r.ring_refused_gap_max < 2.0 * double(gc::kMarginM) && r.ring_refused_mask == 1u,
+                           "Nx the rim ship's gate warns refused (refused_hull), confirmed by the independent ring oracle (its gap under kMarginM, "
+                           "every refusal within 2 kMarginM); the clear ship never refused");
+                        ck(r.ring_sup_oth > 0 && r.ring_unsafe == 0, "Nx the clear ship's gate warns suppressed, none unsafe");
+                        ck(r.gate_x12_nm > 0, "Nx the refused warn left to the engine (its 0x12 issued)");
+                        ck(r.ring_contact == 0, "Nx no hull reaches the ring");
+                    } else if (su.eng == 5) { // the arrival round (Run174): the return trip of an arriving leader and its arriving escorts
+                        const double step = double(r.step_max) / 1000.0;
+                        ck(r.rt_n == 3 && r.rt_launched == 3, "Rx every return trip launched");
+                        ck(r.target_leaves == 0, "Rx no board leave on Why::target (site A's lane test on the order's point, never our own detour)");
+                        ck(r.gate_x12 == 0, "Rx no member 0x12 against the gate");
+                        ck(r.p2_not_kept == 0 && r.p2_nose_max_deg <= 8.0, "Rx P2 kept within 8 deg of F");
+                        ck(r.rt_turn_over_s <= lanec::kRtTurnTolS + step, "Rx P2 within the lone turn-around (out, pi R, the run back) + the tolerance + the step");
+                        ck(r.rt_lead_launch_s >= 0.0 && r.rt_lead_launch_s <= r.rt_lead_bound_s + lanec::kRtLaunchTolS,
+                           "Rx the leader launched within its bound (the turn-around, its P2 -> grant, the slot, the step)");
+                        ck(r.rt_lead_stop_max_s <= double(gc::kLaneStopMs) / 1000.0 + step, "Rx no stop write on the leader beyond 20 s + the step");
+                        ck(r.rt_esc_stop_after_ms <= r.step_max, "Rx the escorts' stops end within the step of their predecessor's launch (the queue hold at the gate mouth)");
+                        ck(r.rt_esc_over_s <= lanec::kRtEscTolS, "Rx the escorts launched within their own bound");
+                        ck(r.rt_slot_over_s <= lanec::kRtSlotTolS + step, "Rx7 every return trip's slot occupancy (grant -> launch) within kTSlotRefS + its tolerance + the step");
+                        ck(r.min_capsule > 0.0 && r.min_box > 0.0, "Rx no contact");
+                        ck(r.rt_player_sup == 0, "Rx the player's ship never suppressed as an obstacle");
+                        // item 4: the escorts' and the arrivals' own-gate warns suppressed by the ring row (none of them unsafe: 4a above)
+                        ck(r.ring_sup_esc > 0 && r.ring_sup_arr > 0 && r.ring_refused == 0, "Rx4 the escorts' and arrivals' gate warns suppressed by the ring row");
                     }
                     continue;
                 }

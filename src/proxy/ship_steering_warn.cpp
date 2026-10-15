@@ -5,6 +5,23 @@ namespace {
 std::uint8_t e_gate_why_ = 0xff;  // B.3 item 6: the own-gate row's reason of the current e_verdict call (ctl_e_fields), for e_record
 std::int32_t e_gate_age_ = -1;
 std::uint8_t e_obst_why_ = 0xff; // lane fix round 2 item 1: the lane obstacle row's reason of the current e_verdict call (gc::ObstRow)
+std::uint8_t e_gate_member_why_ = 0xff; // the arrival round item 4: the member row's reason of this call (any trace state)
+// The arrival round item 4: the ring row's verdict per ship per game-time frame (two-sided: an entry of another frame, older or newer,
+// is not this frame's), and the collision-tree read of gates without a board
+struct RingSeen {
+    std::uint32_t a = 0, b = 0, now = 0;
+    std::uint8_t why = 0;
+};
+RingSeen ring_seen_[32];
+struct RingTree {
+    std::uint32_t gate = 0, id = 0;
+    std::uint8_t state = 0;
+};
+RingTree ring_tree_[8];
+unsigned ring_tree_next_ = 0;
+constexpr unsigned kRingLogged = 64; // (--debug: the gates with a ship_gate_ring_read row, once per gate)
+std::uint32_t ring_logged_[kRingLogged];
+unsigned ring_logged_n_ = 0;
 struct EVerdictSeen { // the per-pair dedup (one row per pair per second of game time) and the last verdict per traced pair
     std::uint32_t a, b, ms;
     std::uint8_t verdict;
@@ -123,6 +140,7 @@ inline void ctl_e_fields(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std
             e_live_motion(a, fl, u, f);
             in.ctl_gate = gc::e_gate_row(ctl_, ctl_ix_, a, rd32(a + sites::kObjId), b, in.a_order, in.a_target, x, pa != 0, now, &why, u, f,
                                          e_detour(a, table_.find(a), now));
+            e_gate_member_why_ = std::uint8_t(why);
             if (trace_on_) { // the E row's fields (e_record runs only with the trace on)
                 e_gate_why_ = std::uint8_t(why);
                 int mi = -1;
@@ -337,10 +355,109 @@ inline void ctl_e_obst(std::uint32_t a, std::uint32_t fl, std::uint32_t b, std::
     e_obst_why_ = std::uint8_t(why);
     if (why == gc::ObstRow::roll) e_lane_obst_roll_.add();
 }
+// The arrival round item 4 (convoy-gate-transit.md section 12.6): the gate's collision tree, once per gate (its board's Gate::ring, else
+// the small cache by pointer and id): kGateRingNone, kGateRingTree, or 3 (read, unknown: fails closed to the ring). The first verdict is
+// kept for the gate's life (ship-navigation-ai.md section 10.9: the tree is complete before the gate is linked; no rebinding of a gate's
+// scene after creation was found, 0x004506d0 is class 6 only). B is range- and alignment-checked before its id is read (wk::ptr_ok; the
+// walk checks every node). --debug: one ship_gate_ring_read row per gate (the read's state, its guard, the nodes visited, the scene id
+// seen, the TGates row), at most kRingLogged gates per session.
+inline void ring_read_row(std::uint32_t b, std::uint32_t id, const wk::GateTreeRead& rd, bool board) noexcept {
+    for (unsigned k = 0; k < ring_logged_n_; ++k)
+        if (ring_logged_[k] == b) return;
+    if (ring_logged_n_ >= kRingLogged) return;
+    ring_logged_[ring_logged_n_++] = b;
+    const std::uint32_t w = ring_read_write_.load(std::memory_order_relaxed);
+    if (w - ring_read_read_ >= 8) {
+        row_dropped(Drop::e_ring);
+        return;
+    }
+    RingReadRow& r = ring_read_rows_[w & 7];
+    r = RingReadRow{game_time_ms(), b, id, rd.scene, rd16(b + sites::kObjType), rd.nodes, rd.state, std::uint8_t(rd.why), rd.seen,
+                    std::uint8_t(board ? 1 : 0)};
+    ring_read_write_.store(w + 1, std::memory_order_release);
+}
+inline unsigned gate_ring_state(std::uint32_t b) noexcept {
+    if (!wk::ptr_ok(b, wk::kGateObjBytes)) return 3u;
+    if (gc::Gate* g = gc::gate_of(ctl_, b)) {
+        if (!g->ring) {
+            RawMem mem;
+            const wk::GateTreeRead rd = wk::gate_tree_read(mem, b);
+            g->ring = std::uint8_t(rd.state ? rd.state : 3u);
+            if (debug_) ring_read_row(b, rd32(b + sites::kObjId), rd, true);
+        }
+        return g->ring;
+    }
+    const std::uint32_t id = rd32(b + sites::kObjId);
+    for (const RingTree& t : ring_tree_)
+        if (t.gate == b && t.id == id) return t.state;
+    RawMem mem;
+    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b);
+    RingTree& t = ring_tree_[ring_tree_next_++ & 7u];
+    t = RingTree{b, id, std::uint8_t(rd.state ? rd.state : 3u)};
+    if (debug_) ring_read_row(b, id, rd, false);
+    return t.state;
+}
+// The ring row (gc::gate_ring_why) for A against the gate B on any order: never the player's ship or a ship under manual control, never A
+// on the engine's own avoid order; a committed member only where its own row did not decide (not_member, order, stage). Reads: A's
+// position, velocity, nose, type and radius, its order's target (the leader's position on 0x14 / 0x15, f+0x240 on order 4 to B), B's frame,
+// row and scene nodes; A's a_lin from its table entry (none: fail closed on a gate with a solid). Cached per ship per game-time frame.
+inline void e_gate_ring(std::uint32_t a, std::uint32_t fl, std::uint32_t b, const core::Ship* s, std::uint32_t now, av::SiteE& in) noexcept {
+    const std::uint32_t flags = rd32(a + sites::kObjFlags);
+    if ((flags & (sites::kFlagPlayerObject | sites::kFlagPlayerControl)) || !(flags & sites::kFlagAutopilot) || in.a_order == core::kOrderAvoid) return;
+    const std::uint8_t mw = e_gate_member_why_;
+    if (mw != 0xff && !(mw == std::uint8_t(gc::GateRow::not_member) || mw == std::uint8_t(gc::GateRow::order) || mw == std::uint8_t(gc::GateRow::stage)))
+        return;
+    RingSeen& c = ring_seen_[(a >> 4) & 31u];
+    gc::GateRow why = gc::GateRow::roll;
+    if (c.a == a && c.b == b && c.now == now)
+        why = gc::GateRow(c.why);
+    else {
+        const std::uint32_t pa = rd32(a + sites::kObjPhys);
+        float G[3], R[3], U[3], F[3], r_gate = 0.0f;
+        if (pa && gate_frame(b, G, R, U, F, &r_gate)) {
+            gc::GateFrame fr;
+            for (unsigned i = 0; i < 3; ++i) {
+                fr.G[i] = G[i];
+                fr.R[i] = R[i];
+                fr.U[i] = U[i];
+                fr.F[i] = F[i];
+            }
+            float x[3], u[3], f[3], tp[3];
+            for (unsigned i = 0; i < 3; ++i) x[i] = float(rds32(pa + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+            e_live_motion(a, fl, u, f);
+            const float* tgt = nullptr;
+            const bool esc = in.a_order == core::kOrderEscort || in.a_order == core::kOrderFollow;
+            if (esc && in.a_target) {
+                const std::uint32_t pt = rd32(in.a_target + sites::kObjPhys);
+                if (pt) {
+                    for (unsigned i = 0; i < 3; ++i) tp[i] = float(rds32(pt + sites::kPhysPosition + 4 * i)) / core::kUnitsPerMetre;
+                    tgt = tp;
+                }
+            } else if (in.a_order == core::kOrderFlyBefore && in.a_target == b) {
+                for (unsigned i = 0; i < 3; ++i) tp[i] = float(rds32(fl + sites::kFlightPoint + 4 * i)) / core::kUnitsPerMetre;
+                tgt = tp;
+            }
+            const float r_a = float(rds32(a + sites::kObjRadius)) / core::kUnitsPerMetre;
+            float w = 0.0f, l = 0.0f;
+            if (!type_width_get(std::int16_t(rd16(a + sites::kObjType)), &w, &l)) w = l = 0.0f;
+            const float LA = l > r_a ? l : r_a, wA = w > 0.0f && w <= r_a ? w : r_a;
+            const bool arr = arr_ix_.maybe(a) && gc::find_arrival(arrivals_, a, now) != nullptr;
+            const gc::GateRow kind = esc ? gc::GateRow::escort : arr ? gc::GateRow::arrival : gc::GateRow::other;
+            const float step_s = float(std::int32_t(frame_step_ms())) * 0.001f; // (review item 5: the clamped game step; via int, x87 audit)
+            why = gc::gate_ring_why(fr, r_gate, rd16(b + sites::kObjType), gate_ring_state(b), kind, x, u, f, tgt, LA, wA, s ? s->a_lin : 0.0f, step_s);
+        }
+        c = RingSeen{a, b, now, std::uint8_t(why)};
+    }
+    e_gate_why_ = std::uint8_t(why);
+    in.gate_ring = gc::gate_row_suppresses(why);
+    if (in.gate_ring) e_gate_ring_.add();
+    else e_gate_ring_kept_.add();
+}
 inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* out) noexcept {
     *out = EV::none;
     e_gate_why_ = 0xff;
     e_obst_why_ = 0xff;
+    e_gate_member_why_ = 0xff;
     if (!a || !b || rd16(a + sites::kObjClass) != sites::kClassShip) return 0;
     const std::uint32_t fl = rd32(a + sites::kObjFlight);
     if (!fl) return 0;
@@ -350,9 +467,12 @@ inline int e_verdict(std::uint32_t a, std::uint32_t b, std::uint32_t now, EV* ou
     const core::Ship* s = table_.find(a);
     in.a_in_table = s != nullptr;
     const std::uint16_t cls_b = rd16(b + sites::kObjClass);
+    // review of the arrival round item 2: the player's ship as B is never suppressed (every row; the engine's warn stands)
+    in.b_player = cls_b == sites::kClassShip && (rd32(b + sites::kObjFlags) & sites::kFlagPlayerObject) != 0;
     if (traffic_live_.load(std::memory_order_relaxed)) { // the gate traffic controller's pairs need no steering decision of A
         ctl_e_fields(a, fl, b, cls_b, now, in);
-        if (((in.arrival_gate || in.ctl_gate) && cls_b == sites::kClassGate) || (in.ctl_pair && cls_b == sites::kClassShip)) {
+        if (lane_on_ && cls_b == sites::kClassGate && !in.arrival_gate && !in.ctl_gate) e_gate_ring(a, fl, b, s, now, in); // the arrival round item 4
+        if (((in.arrival_gate || in.ctl_gate || in.gate_ring) && cls_b == sites::kClassGate) || (in.ctl_pair && cls_b == sites::kClassShip)) {
             in.b_gate = cls_b == sites::kClassGate;
             in.b_ship = cls_b == sites::kClassShip;
             const EV v = av::site_e_verdict(in);

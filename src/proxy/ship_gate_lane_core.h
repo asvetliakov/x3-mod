@@ -489,13 +489,19 @@ inline ObstRow lane_obst_why(const Gate& g, const Member& m, std::uint16_t order
 }
 // Lane fix round 1 item 2: lane (suppressed by the lane row below), roll (the lane row passed: the member's rollout is stale); lane fix
 // round 2 item 4: guard also when the lane row's path or the hand-over reaches the gate's solid
-enum class GateRow : std::uint8_t { suppress = 0, not_member, stale, unreadable, reach, stage, order, guard, lane, roll, count };
+// The arrival round item 4 (gate_ring_why, any AI ship against any gate): escort / arrival / other the ring row's suppression by the
+// ship's kind (escort: on 0x14 / 0x15; arrival: a launch-hook arrival), refused_hull its hull would reach the gate's solid on the path
+// (the warn kept); roll there unreadable or unknown (fail closed). The member row's suppress / lane are the kind member.
+enum class GateRow : std::uint8_t { suppress = 0, not_member, stale, unreadable, reach, stage, order, guard, lane, roll, escort, arrival, other,
+                                    refused_hull, count };
 inline const char* gate_row_name(GateRow w) noexcept {
     static const char* const n[unsigned(GateRow::count)] = {"suppress", "not_member", "stale", "unreadable", "reach", "stage", "order", "guard",
-                                                            "lane", "roll"};
+                                                            "lane", "roll", "escort", "arrival", "other", "refused_hull"};
     return unsigned(w) < unsigned(GateRow::count) ? n[unsigned(w)] : "?";
 }
-__attribute__((always_inline)) inline bool gate_row_suppresses(GateRow w) noexcept { return w == GateRow::suppress || w == GateRow::lane; }
+__attribute__((always_inline)) inline bool gate_row_suppresses(GateRow w) noexcept {
+    return w == GateRow::suppress || w == GateRow::lane || w == GateRow::escort || w == GateRow::arrival || w == GateRow::other;
+}
 // Lane fix round 1 item 2 (Run173: the engine's own 0x12 against the gate fired at 6.85-6.98 km on joiners) with lane fix round 2 item 4
 // (the review of round 1: the sphere-and-slab bound assumed the solid inside the bounding sphere (the Terran ring's outer radius is
 // 1.026 r), never discriminated before d_end (every point there cleared the slab), returned guard on the Terran ring (its d_end point
@@ -522,7 +528,11 @@ constexpr unsigned kSolidMaxN = 256;  // round 2 review item 6: at most this man
 constexpr unsigned kSolidMaxLines = 32; // round 2 review item 8: at most this many swept lines across a hull (solid_gap_sweep)
 // The solid's distance from a point (the 2-D distance in (radial, axial) to the ring's rectangle [h, r_out] x [z0, z1]; 0 inside).
 // (Always inlined: an out-of-line float return would travel through st(0) on i386, the x87 audit.)
-__attribute__((always_inline)) inline float solid_dist(const Gate& g, const GateSolid& gs, const float p[3]) noexcept {
+// (Fr: a Gate, or a GateFrame for a gate without a board: the ring row of the arrival round's item 4; only G, R, U, F are read)
+struct GateFrame {
+    float G[3], R[3], U[3], F[3];
+};
+template <class Fr> __attribute__((always_inline)) inline float solid_dist(const Fr& g, const GateSolid& gs, const float p[3]) noexcept {
     const float d[3] = {p[0] - g.G[0], p[1] - g.G[1], p[2] - g.G[2]};
     const float z = sc::dot3(d, g.F), a = sc::dot3(d, g.R), b = sc::dot3(d, g.U), rho = sc::sqrt_ss(a * a + b * b);
     float dr = gs.h - rho, dz = gs.z0 - z;
@@ -536,7 +546,8 @@ __attribute__((always_inline)) inline float solid_dist(const Gate& g, const Gate
 // kSolidStepM apart, less half the spacing and w (< 0: it reaches the solid). A segment entirely before the ring's front by more than its
 // reach is not sampled. (Round 2 review item 6: a non-finite length fails closed, -1; at most kSolidMaxN + 1 samples, the wider spacing
 // charged by the same half-spacing term.)
-__attribute__((always_inline)) inline float solid_gap_seg(const Gate& g, const GateSolid& gs, const float a[3], const float b[3], float LA,
+template <class Fr>
+__attribute__((always_inline)) inline float solid_gap_seg(const Fr& g, const GateSolid& gs, const float a[3], const float b[3], float LA,
                                                           float wA) noexcept {
     const float d[3] = {b[0] - a[0], b[1] - a[1], b[2] - a[2]};
     const float dl = sc::sqrt_ss(sc::dot3(d, d)), h = LA > wA ? LA - wA : 0.0f;
@@ -568,7 +579,8 @@ __attribute__((always_inline)) inline float solid_gap_seg(const Gate& g, const G
 // point of the parallelogram lies within (s / 2) sin(theta) of one (theta: f to dir), which is charged; n = 2 h sin(theta) / kSolidStepM
 // + 1 (at most kSolidMaxLines) keeps the charge under half the sample spacing. The nose along dir: one line, the capsule along dir as
 // before. An unusable nose (|f| outside [0.5, 2] or not finite): the sphere LA swept along dir.
-__attribute__((always_inline)) inline float solid_gap_sweep(const Gate& g, const GateSolid& gs, const float x[3], const float f[3],
+template <class Fr>
+__attribute__((always_inline)) inline float solid_gap_sweep(const Fr& g, const GateSolid& gs, const float x[3], const float f[3],
                                                             const float dir[3], float run, float LA, float wA) noexcept {
     const float fl = sc::sqrt_ss(sc::dot3(f, f));
     if (!(fl >= 0.5f && fl <= 2.0f)) {
@@ -625,6 +637,69 @@ inline GateRow lane_gate_why(const Gate& g, const Member& m, const float x[3], c
     }
     return GateRow::lane;
 }
+// ---- The arrival round item 4: the own-gate warn suppression as a property of the gate and the ship (decision with the user,
+// 2026-10-15; convoy-gate-transit.md section 12.6) -------------------------------------------------------------------------------
+// The gate's solid is decided at runtime by whether its body carries a collision tree (Gate::ring / the glue's read of the gate's scene
+// nodes, [node+0x12c] & 0x1000000 without 0x8000000 below the root's test body, ship-navigation-ai.md section 10.9): none, no solid (the
+// installed Mayhem gates: every placed gate is TGates rows 0-3, the blended bubble without a tree): the warn is vacuous for every AI
+// ship on any order; a tree, or an unknown read (fail closed), the ring of its TGates row (gate_ring): rows 21-24 the Terran ring
+// (gate_hole.txt, installed), 5-8 the stock catapult's tube, 4 the stock destroyed gate (no hole), every other row the stock Argon /
+// terraformer ring at its most conservative (hole 0.605 r, outer 1.026 r, z -0.651..+0.655 r; vanilla's ring numbers are untested in
+// flight: platform-portability.md). The ship's predicted path over 1 s + v / a (the engine's warn reach and the ship's stop): its live
+// velocity (the nose when slower than 1 m/s) and, when the order's target is known (0x14 / 0x15: the leader; order 4: the order's
+// point), the same run toward it; its hull (L, w) swept along both (solid_gap_sweep) must clear the solid by kMarginM, else refused_hull
+// (the warn kept). Unreadable or non-finite reads: roll (kept).
+constexpr unsigned kGateRingNone = 1, kGateRingTree = 2; // Gate::ring (0: not read / unknown)
+inline GateSolid gate_ring(std::uint16_t type, float r_gate) noexcept {
+    GateSolid s;
+    if (!(r_gate > 0.0f)) return s;
+    s.solid = true;
+    float h = 0.605f, ro = 1.026f, z0 = -0.651f, z1 = 0.655f;
+    if (gate_terran(type)) h = 0.663f, z0 = -0.498f, z1 = 0.179f;
+    else if (type >= 5 && type <= 8) h = 0.127f, ro = 0.169f, z0 = -0.001f, z1 = 0.539f;
+    else if (type == 4) h = 0.0f, ro = 1.013f, z0 = -0.411f, z1 = 0.246f;
+    s.h = h * r_gate;
+    s.r_out = ro * r_gate;
+    s.z0 = z0 * r_gate;
+    s.z1 = z1 * r_gate;
+    return s;
+}
+constexpr float kGateRingHorizonS = 1.0f; // + the frame's game step (clamped, kStepClampMs; review of the arrival round item 5: a SETA frame
+                                          // moves the ship a whole step before the next warn) + v / a: the path's horizon
+// Whether the segment x + dir t, 0 <= t <= run, stays farther than rc from G (the ring's bounding sphere + the hull + the margin)
+__attribute__((always_inline)) inline bool ring_far(const float G[3], const float x[3], const float dir[3], float run, float rc) noexcept {
+    const float d[3] = {G[0] - x[0], G[1] - x[1], G[2] - x[2]};
+    float t = sc::dot3(d, dir);
+    t = t < 0.0f ? 0.0f : t > run ? run : t;
+    const float e[3] = {d[0] - dir[0] * t, d[1] - dir[1] * t, d[2] - dir[2] * t};
+    return sc::dot3(e, e) > rc * rc;
+}
+inline GateRow gate_ring_why(const GateFrame& fr, float r_gate, std::uint16_t type, unsigned ring, GateRow kind, const float x[3], const float u[3],
+                             const float f[3], const float* tgt, float LA, float wA, float a_lin, float step_s) noexcept {
+    for (unsigned i = 0; i < 3; ++i)
+        if (!sc::finite_f(x[i]) || !sc::finite_f(u[i]) || !sc::finite_f(f[i])) return GateRow::roll;
+    if (!(r_gate > 0.0f) || !(LA > 0.0f) || !(wA > 0.0f)) return GateRow::roll;
+    if (ring == kGateRingNone) return kind; // (no collision tree: nothing to touch)
+    if (!(a_lin > 0.0f) || !sc::finite_f(a_lin)) return GateRow::roll;
+    const GateSolid gs = gate_ring(type, r_gate);
+    const float st = step_s > 0.0f ? (step_s < float(kStepClampMs) * 0.001f ? step_s : float(kStepClampMs) * 0.001f) : 0.0f;
+    const float v = sc::sqrt_ss(sc::dot3(u, u)), run = v * (kGateRingHorizonS + st + v / (a_lin > 0.1f ? a_lin : 0.1f));
+    float dir[3];
+    const float fl = sc::sqrt_ss(sc::dot3(f, f));
+    for (unsigned i = 0; i < 3; ++i) dir[i] = v >= 1.0f ? u[i] / v : fl > 0.5f ? f[i] / fl : 0.0f;
+    const float zc = -gs.z0 > gs.z1 ? -gs.z0 : gs.z1, rc = sc::sqrt_ss(gs.r_out * gs.r_out + zc * zc) + LA + kMarginM;
+    if (!ring_far(fr.G, x, dir, run + 1.0f, rc) && !(solid_gap_sweep(fr, gs, x, f, dir, run, LA, wA) - kMarginM >= 0.0f)) return GateRow::refused_hull;
+    if (tgt) {
+        if (!sc::finite_f(tgt[0]) || !sc::finite_f(tgt[1]) || !sc::finite_f(tgt[2])) return GateRow::roll;
+        const float d[3] = {tgt[0] - x[0], tgt[1] - x[1], tgt[2] - x[2]}, dl = sc::sqrt_ss(sc::dot3(d, d));
+        if (dl > 1.0f) {
+            const float d2[3] = {d[0] / dl, d[1] / dl, d[2] / dl}, run2 = run < dl ? run : dl;
+            if (!ring_far(fr.G, x, d2, run2 + 1.0f, rc) && !(solid_gap_sweep(fr, gs, x, f, d2, run2, LA, wA) - kMarginM >= 0.0f))
+                return GateRow::refused_hull;
+        }
+    }
+    return kind;
+}
 // ---- the predicted launch of a released member (lane_frame's escort gate and pace law; stage B's sequencer was deleted on
 // 2026-10-15) --------------------------------------------------------------------------------------------------------------
 // The order-5 leg from a centre distance d_gate at speed v0 to the end of order 8 (s): the distance to the trigger at the aligned
@@ -668,6 +743,7 @@ struct LaneEvent {
 constexpr unsigned kLaneEvents = 16;
 struct LaneStats {
     unsigned merges = 0, merges_done = 0, x_refused = 0, clock_resets = 0, members = 0;
+    unsigned mouth_expired = 0; // review of the arrival round item 3: gate-mouth holds ended by their bound (lane_frame's block)
     std::uint32_t x_wait_ms = 0;
     unsigned n_ev = 0, ev_dropped = 0;
     LaneEvent ev[kLaneEvents];
@@ -706,7 +782,21 @@ __attribute__((always_inline)) inline float lane_apex_s(const Member& m) noexcep
 }
 // Section 12.4 (round C): a loop's out distance beyond d_end before the spacing behind the ship ahead: d_end + settle + R +
 // D_need(kLaneLoopResR R) (kLaneRedepM at least), pushed out while the ship is not yet on its out-leg (loop_out)
+// The arrival round item 3 (Run174: a lone arriving Colossus given the 3 km out-leg 1 km below Lambda, 150 deg away to 6.5 km): a lone
+// re-departure (loop_min) flies the loop's geometry with the residual of its U-turn from the out-leg (2.5 R off Lambda, the U-turn's
+// measured extent: it ends on Lambda) taken as the lane's on-band (kLaneOnM) and no kLaneRedepM floor: out to d_end + settle + R +
+// D_need(kLaneOnM), what P2 kept within 8 deg needs (without the R an M2 at 70 m/s reached P2 6.3 deg off F with its velocity outside the
+// keep tolerance in 1 of 9 runs) (X3M_LANE_RMIN=0 builds the plain re-departure's out-leg instead)
+#ifndef X3M_LANE_RMIN
+#define X3M_LANE_RMIN 1
+#endif
+#ifndef X3M_LANE_MOUTH // (item 5's gate-mouth hold, lane_mouth_hold; 0 builds the lane before it)
+#define X3M_LANE_MOUTH 1
+#endif
+constexpr float kLaneMinSideK = 1.2f; // the lone out-leg's offset at least this x kLaneTurnM (lane_frame)
+constexpr float kLaneMinEtaK = 1.5f;  // a member reaching d_end within this x the lone turn-around (+ the spacing) is in its room
 __attribute__((always_inline)) inline float lane_loop_base(const Gate& g, const Member& m, float R) noexcept {
+    if (m.loop_min) return lane_blend_settle(g, m) + R + lane_join_need(kLaneOnM, R);
     const float out = lane_blend_settle(g, m) + R + lane_join_need(kLaneLoopResR * R, R);
     return out > kLaneRedepM ? out : kLaneRedepM;
 }
@@ -737,6 +827,30 @@ __attribute__((always_inline)) inline unsigned lane_loop_state(const Member& m) 
 inline const char* lane_loop_name(unsigned k) noexcept {
     static const char* const n[4] = {"none", "leg", "out", "turn"};
     return k < 4 ? n[k] : "?";
+}
+// The arrival round item 5: whether member m, re-departing at the gate mouth (inside d_end, its nose away: the caller's test), holds behind o: o is live, on
+// a lane stage, the hand-over, order 5 or order 8 (to its end: the pair's rollout then has no hold to model), not itself returning (re-departing, an overshoot or a loop), and farther out
+// than m along F (m is nearer the gate: o passes it on its final). Out of o's path it is at rest (an arrival's exit
+// point, 1.5 km above Lambda, or its order-0 stop), the pair certifies on the rest, and nothing it could fly meanwhile is shorter (its own
+// re-departure crosses o's final). Bounded by o's launch (+ the step at site B).
+// Review of the arrival round item 3: only while o is on its final: past d_end (the hand-over, order 5, order 8 to its end), or on a lane
+// stage (joining or on Lambda) heading in (its nose along +F) and not returning; bounded in game time (the block in lane_frame): its launch
+// ETA at the hold's start + T_stop + the step; past it the hold is over for that o (counted, LaneStats::mouth_expired) and the law's stop
+// cap (T_stop + the step from the stop's start) applies again. An o that never launches ends the hold with its membership (killed: not
+// live; refused beyond kLaneRefusedMaxMs + the step: no longer a member), or earlier at the bound.
+__attribute__((always_inline)) inline bool lane_mouth_hold(const Gate& g, const Member& m, const Member& o, std::uint32_t now) noexcept {
+    if (!X3M_LANE_MOUTH || m.over || !(m.lane_s > -dend(m)) || !o.ship || !live(g, o, now) || !pair_role(o.role)) return false;
+    if (o.redep || o.over || o.loop) return false;
+    if (!(o.sb == Sb::handover || o.sb == Sb::dock || o.sb == Sb::launch || ((o.sb == Sb::inbound || o.sb == Sb::funnel) && sc::dot3(o.st.rows[2], g.F) > 0.0f)))
+        return false;
+    const float d[3] = {o.st.x[0] - g.G[0], o.st.x[1] - g.G[1], o.st.x[2] - g.G[2]};
+    return sc::dot3(d, g.F) < m.lane_s;
+}
+// ... and in force: its bound for this o not passed (read-only: site A's lone decision and the law's block read the same answer for the same
+// o, review item 4)
+__attribute__((always_inline)) inline bool lane_mouth_on(const Gate& g, const Member& m, const Member& o, std::uint32_t now) noexcept {
+    if (!lane_mouth_hold(g, m, o, now)) return false;
+    return !(m.mouth_pred == o.ship && (m.mouth_exp || (m.mouth_ms && std::int32_t(now - m.mouth_ms) > 0)));
 }
 // The ETA to d_end the lane order ranks by (s, at the lane speed): along Lambda when on it; the straight join plus the rest when joining;
 // out to the turn point and back (with a half turn at the hull's rate) when re-departing.
@@ -805,6 +919,8 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             m.defer_w = 0;      // final review item 2 (ship-navigation-ai.md section 10.13 item 4): no deferral survives a load
             m.lane_ord_ok = 0; // final review item 1: the sticky order moments are of the old clock
             m.roll_ms = 0;     // lane fix round 2 item 4 (review 7): a rollout of the old clock is no certificate
+            m.mouth_pred = m.mouth_ms = 0; // (review of the arrival round item 3: a hold's bound of the old clock; re-taken from here)
+            m.mouth_exp = 0;
             m.n = 0;
             if (m.exit_ms) m.exit_ms = now ? now : 1; // (item 2: the exit's bound restarts on the new clock)
             // (round 2 review item 1: an overshoot's predicted return is of the old clock: now - over_ret_ms would stay negative and
@@ -998,6 +1114,64 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
                 m.loop_n[1] = nl > 1.0f ? nu / nl : -1.0f;
             }
         }
+        // the arrival round item 3: the lone re-departure. A member about to re-depart (in front of the plane, inside the plain re-departure's
+        // turn point, the nose away from F, not on Lambda, not an overshoot or a loop) with no other member in its join room (any live member
+        // in front of the plane nearer the gate than its U-turn's apex + the spacing that is an overshoot; one on order 5 / 8 leaves along F,
+        // one joining, on Lambda or looping the loop turns in behind, as round C's) flies
+        // the minimal turn-around: the loop's out-leg on its own side (above Lambda too: an arrival at P is 1.5 km above it, its out-leg at
+        // 2.5 R is its own line), the U-turn at R onto Lambda, the straight run (lane_loop_base: no kLaneRedepM floor). Decided once; with a
+        // member in its room, the plain re-departure (kLaneRedepM out, kLaneRedepSideM below Lambda). The corridor as the loop's
+        // the corridor as the loop's; statics not yet known (no fresh profile): decided at a later frame, the plain re-departure meanwhile
+        if (X3M_LANE_RMIN && !m.loop && !m.over && !m.loop_min_done && lane_stage && !m.lane_on && fF < 0.0f && m.lane_s < 0.0f &&
+            m.lane_s > -(dend(m) + kLaneRedepM) && m.params.W > 1e-3f) {
+            const float Rl = lane_vmax(m) / m.params.W;
+            // (item 5: at the gate mouth (inside d_end) a re-departure behind a ship farther out that is not itself returning holds until
+            // that ship's launch, lane_mouth_hold; its own re-departure is decided from there. Review of the arrival round item 4: the
+            // predecessor the law's block reads, m.lane_pred (the lane order is built after this pass: the previous frame's; a decision
+            // taken here while this frame's predecessor holds is undone at the block, loop_min_done 2)
+            bool held = false;
+            if (m.lane_pred) {
+                const int pj = find(g, m.lane_pred);
+                held = pj >= 0 && &g.m[pj] != &m && lane_mouth_on(g, m, g.m[pj], now);
+            }
+            m.loop_min = held ? 0 : 1; // (lane_loop_base's minimal turn point for the room and the corridor below)
+            const float base = lane_loop_base(g, m, Rl), s_room = -(dend(m) + base + kLaneOverApexR * Rl + kLaneGapM + m.L);
+            // (the minimal turn-around's time to d_end at the lane speed: out to the turn point, the pursuit U-turn, back; a member whose
+            // ETA to d_end is under kLaneMinEtaK of it plus the spacing is in its room by time: it goes first, the plain re-departure merges
+            // behind it. Measured in cast redeparture: a convoy 16 km out, ETA 137 s against the loop's 135 s with the spacing, reached the
+            // loop's U-turn as it ended, the pair uncertified 343 frames)
+            const float vl = lane_vmax(m) > kYieldFloorMs ? lane_vmax(m) : kYieldFloorMs, s_t = -(dend(m) + base);
+            const float side = 2.5f * Rl > kLaneMinSideK * kLaneTurnM ? 2.5f * Rl : kLaneMinSideK * kLaneTurnM;
+            const float t_min = ((m.lane_s > s_t ? m.lane_s - s_t : 0.0f) + 2.0f * kLaneOverApexR * Rl + 0.5f * sc::kPi * side + base) / vl;
+            bool lone = true;
+            for (unsigned j = 0; j < g.n && lone; ++j) {
+                const Member& o = g.m[j];
+                if (&o == &m || !o.ship || !live(g, o, now) || !(pair_role(o.role)) || o.sb == Sb::dock || o.sb == Sb::launch) continue;
+                const float d2[3] = {o.st.x[0] - g.G[0], o.st.x[1] - g.G[1], o.st.x[2] - g.G[2]}, so = sc::dot3(d2, g.F);
+                if (so < 0.0f && so > s_room - o.L && o.over) lone = false; // (a ship ahead on its join, on Lambda or on its own
+                // loop is the loop's own case: its turn point moves out until the U-turn ends g_req behind it, loop_sp; an overshoot ranks
+                // as the head wherever it is)
+                if (!o.redep && !o.over && !o.loop && (o.sb == Sb::inbound || o.sb == Sb::funnel) && so < s_room - o.L &&
+                    o.lane_eta < kLaneMinEtaK * t_min + (kLaneGapM + m.L + o.L) / vl)
+                    lone = false;
+            }
+            const float cap = lone && !held ? lane_loop_cap(g, m, Rl, now) : 0.0f;
+            if (held)
+                ; // (decided at a later frame; the plain re-departure's state meanwhile, the hold below)
+            else if (lone && cap >= base) {
+                m.loop = 1;
+                m.loop_min_done = 2; // (decided on this frame: the block confirms it, review item 4)
+                m.loop_conv = 0;
+                m.loop_out = m.loop_sp = 0.0f;
+                m.over_ret_ms = 0;
+                const float nl = sc::sqrt_ss(er * er + eu * eu);
+                m.loop_n[0] = nl > 1.0f ? er / nl : 0.0f;
+                m.loop_n[1] = nl > 1.0f ? eu / nl : -1.0f;
+            } else {
+                m.loop_min = 0;
+                if (!lone || cap >= 0.0f) m.loop_min_done = 2; // (a member in its room, or a static on the corridor: the plain one)
+            }
+        }
         if (m.loop && (m.lane_on || !lane_stage)) m.loop = 0;
         if (m.loop) { // the corridor every frame: a static onto it (the 1 Hz scan) or the statics no longer known: today's join from here
             const float Rc = m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
@@ -1008,6 +1182,9 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         m.redep_r = (m.over || m.loop) && m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
         m.redep_out = m.over ? lane_blend_settle(g, m) + m.redep_r : kLaneRedepM;
         m.redep_side = m.over || m.loop ? 2.5f * m.redep_r : kLaneRedepSideM;
+        // (the arrival round item 3: the pursuit U-turn's lateral extent is the turn carrot's (kLaneTurnM ahead at 45 deg) for a tight
+        // hull: measured 1.19 km for an M2 of R 297 m at 70 m/s, which overshot Lambda by 450 m from a 2.5 R out-leg and reached P2 off F)
+        if (m.loop && m.loop_min && m.redep_side < kLaneMinSideK * kLaneTurnM) m.redep_side = kLaneMinSideK * kLaneTurnM;
         if (m.loop) { // the out-leg 2.5 R off Lambda on its side (loop_n), its turn point
             const float R = m.redep_r, oR = er - m.redep_side * m.loop_n[0], oU = eu - m.redep_side * m.loop_n[1];
             const float dl = sc::sqrt_ss(oR * oR + oU * oU); // (to the out-leg's line)
@@ -1039,8 +1216,14 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             if (m.over) m.over_in = 1; // (item 3c: an overshoot's law runs from its own s from here)
             m.loop = 0;
         }
+        if (!m.loop) m.loop_min = 0;
         if (!m.lane_on && fF < 0.0f && m.lane_s > -(dend(m) + m.redep_out)) m.redep = 1; // nose away inside the turn point: out first
         if (m.lane_on) m.redep = 0;
+        if (!m.redep && !m.loop) m.loop_min_done = 0; // (the arrival round item 3: a later re-departure decides anew)
+        if (!m.redep) { // (review of the arrival round item 3: the gate-mouth hold's bound belongs to this re-departure)
+            m.mouth_pred = m.mouth_ms = 0;
+            m.mouth_exp = 0;
+        }
         if (m.sb == Sb::inbound || m.sb == Sb::funnel) m.sb = m.lane_on ? Sb::funnel : Sb::inbound;
         m.lane_eta = lane_eta(m);
         (void)before;
@@ -1229,7 +1412,44 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // from its position past d_end, where the pacing's stop at d_end held it 19 s in its turn back)
         const float s_self_ap = lane_apex_s(m);
         // (section 12.4, round C: a loop the same until it has turned in: it rejoins at its U-turn)
-        const float s_self = ((m.over && !m.over_in) || m.loop) && m.lane_s > s_self_ap ? s_self_ap : m.lane_s;
+        // (the arrival round items 3 / 5: a plain re-departure the same from its turn point, where it turns in: before, its s inside d_end
+        // gave the pacing and the escort gate a braking curve to d_end of 0 (Run174's 8.6 s stop of the lone leader, the escorts held at the
+        // gate mouth past their leader's grant))
+        const float s_rd = -(dend(m) + m.redep_out);
+        // (item 5: held, its gap from where it is; review of the arrival round item 3: the hold's game-time bound, taken at its start for
+        // this P: P's launch ETA (lane_launch_eta; before d_end no earlier than the through slot's known free time t_free, the KC's
+        // refusal after a partner-side arrival included, + the hand-over and the order-5 leg) + T_stop + the step; on expiry counted and
+        // over for this P, the law's stop cap from there)
+        if (m.redep && P && lane_mouth_hold(g, m, *P, now)) {
+            if (m.mouth_pred != P->ship) {
+                std::uint32_t eta = lane_launch_eta(g, *P, now);
+                if (t_free && (P->sb == Sb::inbound || P->sb == Sb::funnel)) {
+                    const float vl = lane_vmax(*P) > kYieldFloorMs ? lane_vmax(*P) : kYieldFloorMs;
+                    const std::uint32_t e2 = t_free + std::uint32_t(std::int32_t(1000.0f * (1.0f + leg5_s(*P, dend(*P), vl))));
+                    if (std::int32_t(e2 - eta) > 0) eta = e2;
+                }
+                m.mouth_pred = P->ship;
+                m.mouth_ms = eta + kLaneStopMs + g.step_ms;
+                if (!m.mouth_ms) m.mouth_ms = 1;
+                m.mouth_exp = 0;
+            } else if (!m.mouth_exp && std::int32_t(now - m.mouth_ms) > 0) {
+                m.mouth_exp = 1;
+                if (st) ++st->mouth_expired;
+            }
+        }
+        const bool mouth = m.redep && P && lane_mouth_on(g, m, *P, now);
+        if (m.loop_min_done == 2) { // (review item 4: the lone decision of this frame read the previous frame's predecessor; this P holds it:
+                                    // undone, decided once the hold is over)
+            if (mouth) {
+                m.loop = m.loop_min = m.loop_min_done = m.loop_conv = 0;
+                m.loop_out = m.loop_sp = 0.0f;
+                m.over_ret_ms = 0;
+                m.redep_out = kLaneRedepM;
+            } else
+                m.loop_min_done = 1;
+        }
+        const float s_self = ((m.over && !m.over_in) || m.loop) && m.lane_s > s_self_ap ? s_self_ap
+                             : X3M_LANE_RMIN && m.redep && !mouth && m.lane_s > s_rd ? s_rd : m.lane_s;
         cx.s = s_self;
         cx.v_lane = lane_vmax(m);
         cx.a = m.params.a_lin;
@@ -1261,6 +1481,14 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             // its grant, order 5 or 8 seen, releases it at once, not once its speed passes kLaneStopV: the follower's stop ends within the step)
             cx.granted = P->sb == Sb::dock || P->sb == Sb::launch;
             cx.block = (sc::dot3(P->st.u, P->st.u) < kLaneStopV * kLaneStopV && !cx.granted) || over_block;
+            // the arrival round item 5 (Run174: escorts arriving while their leader re-departed, held 274 s at the gate mouth on 0x14 and
+            // evicted against it): a re-departing member at the gate mouth behind its predecessor (lane_mouth_hold: an escort that arrived
+            // in trail of its leader, a ship ranked behind one on its final) holds where it is, the queue hold, until the predecessor's
+            // launch (order 8 seen: the stop ends within the step of it), then flies its own re-departure (the loop, item 3)
+            if (mouth) {
+                cx.block = true;
+                cx.closing = true;
+            }
             cx.pred_final = P->sb == Sb::handover || P->lane_s > -(dend(*P) + lane_blend_settle(g, *P));
             // (round A: before its P2 on its final, the room to g_req behind its tail at d_end: the stop-room bound)
             if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k && (P->over || P->loop)) && P->lane_s < -dend(*P))
@@ -1284,8 +1512,9 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         }
         if (m.lane_pred != (P ? P->ship : 0u)) { // a new pair: a merge (the row label and its bound) when the raw gap is short
             m.lane_pred = P ? P->ship : 0u;
-            m.merge_done = !P || gap >= kLaneGapM - 50.0f ? 1 : 0;
-            m.band = P && gap < kLaneGapM - 100.0f ? 1 : 0; // (the lateral rule: the band until the raw gap is g_req - 100 m)
+            // (the arrival round item 5: a ship held at the gate mouth behind P does not merge onto Lambda: no merge, no lateral band)
+            m.merge_done = !P || mouth || gap >= kLaneGapM - 50.0f ? 1 : 0;
+            m.band = P && !mouth && gap < kLaneGapM - 100.0f ? 1 : 0; // (the lateral rule: the band until the raw gap is g_req - 100 m)
             m.merge_ms = 0;
             if (!m.merge_done) {
                 m.merge_ms = now ? now : 1;
@@ -1311,7 +1540,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             else if (li >= 0 && g.m[li].role == Role::committed) t_l = lane_launch_eta(g, g.m[li], now);
             m.lane_gate_ms = t_l + kLaneLambdaMaxMs + g.step_ms + kLaneCrawlSlackMs;
             if (!m.lane_gate_ms) m.lane_gate_ms = 1;
-            cx.gate = true;
+            cx.gate = !(X3M_LANE_MOUTH && m.redep); // (the arrival round item 5: a re-departing escort flies away from d_end, no braking reserve)
             cx.t_gate_s = float(std::int32_t(m.lane_gate_ms - now)) * 0.001f;
             cx.dt = float(g.step_ms > kStepClampMs ? kStepClampMs : g.step_ms) * 0.001f;
         }

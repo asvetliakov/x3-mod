@@ -1,0 +1,6 @@
+== old (97f3804b)
+step  100 ms: stuck leader: escort held until 240.0 s; killed at 30 s: held until 29.9 s
+step 1500 ms: stuck leader: escort held until 239.5 s; killed at 30 s: held until 29.5 s
+== new (working tree)
+step  100 ms: stuck leader: escort held until 71.8 s; killed at 30 s: held until 29.9 s
+step 1500 ms: stuck leader: escort held until 73.0 s; killed at 30 s: held until 29.5 s

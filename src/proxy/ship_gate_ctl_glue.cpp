@@ -442,6 +442,7 @@ void lane_frame_gate(gc::Gate& g, std::uint32_t now) noexcept {
     if (g.lane_stops != stops0) ctl_merge_stop_.add(g.lane_stops - stops0);
     if (st.x_refused) ctl_x_refused_.add(st.x_refused);
     if (st.clock_resets) ctl_clock_resets_.add(st.clock_resets);
+    if (st.mouth_expired) ctl_mouth_expired_.add(st.mouth_expired);
     ctl_x_wait_ms_ += st.x_wait_ms;
     if (st.ev_dropped) for (unsigned k = 0; k < st.ev_dropped; ++k) row_dropped(Drop::ctl);
     if (!debug_) return;

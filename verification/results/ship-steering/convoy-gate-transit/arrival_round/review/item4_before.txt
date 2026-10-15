@@ -1,0 +1,4 @@
+== old (97f3804b)
+redep 1 rank 1 pred 0x9000 loop 0 loop_min 0 decided 0 law join: 95 of 101 frames undecided and not held (want 0)
+== new (working tree)
+redep 1 rank 1 pred 0x9000 loop 0 loop_min 0 decided 1 law join: 0 of 101 frames undecided and not held (want 0)

@@ -145,10 +145,25 @@ def by_ship(rows):
 #     stale; item 1)
 #   ship_avoid_engine_warn_pre ... obst_row= (the lane obstacle row's reason of the first non-gate entry's last verdict; '-' none)
 #   ship_steering_lane_summary ... e_lane_obst= e_lane_obst_roll= (site E's lane obstacle row: suppressions, passes on roll)
+# The arrival round (convoy-gate-transit.md section 11 "Arrival round (Run174)"):
+#   ship_avoid_e_verdict / ship_avoid_engine_warn_pre ... gate_row= also escort|arrival|other (site E's ring row suppressed the engine's
+#     warn of an AI ship against a gate on any order: its predicted path with its hull clears the gate's solid; none without a collision
+#     tree), refused_hull (the hull would reach the solid on the path: the warn kept), roll (unreadable or unknown: kept); verdict=
+#     suppress_gate_ring (item 4); the member row's own kinds as before (suppress / lane = member)
+#   ship_steering_lane_summary ... e_gate_ring= e_gate_ring_kept= (the ring row's suppressions and kept warns since install; item 4)
+#   ship_player_pos frame= t_ms= obj= pos=<x>,<y>,<z> gate= d_gate_m= member= d_member_m= (once per report while the piloted ship is
+#     within 15 km of a gate: its position, the nearest gate, the nearest board member, m; -1 none; item 6)
+# Review of the arrival round (convoy-gate-transit.md section 11 "Arrival round review fixes"):
+#   ship_gate_ring_read frame= t_ms= gate= id= type= board= state=unknown|none|tree why= nodes= scene= seen= verdict=none|ring (--debug,
+#     once per gate: site E's collision-tree read under the positive guard; why = the first guard that failed (ok, gate_ptr, class, root,
+#     scene, node_ptr, parent, chain, depth, budget, no_scene_node); verdict none = no solid, ring = the TGates row's ring; item 1)
+#   ship_steering_lane_summary ... ctl_mouth_expired= (gate-mouth holds ended by their game-time bound; item 3)
+#   ship_avoid_e_verdict ... verdict=pass_player (B is the player's ship: no suppression row; item 2)
 LEGACY_KV_ROWS = ('ship_gate_ctl_seq',)  # rows the DLL no longer prints (stage B's sequencer, deleted 2026-10-15); still parsed in old logs
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
            'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
-           'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre') + LEGACY_KV_ROWS
+           'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre', 'ship_player_pos',
+           'ship_gate_ring_read') + LEGACY_KV_ROWS
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap',
                'gates_gate:F:G:r', 'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict')  # (lane fix round 2 item 6: the summary's
 #                gate frames, a vector item a tuple; the warn pre-row's entries)

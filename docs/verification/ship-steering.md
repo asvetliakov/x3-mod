@@ -3154,6 +3154,63 @@ roots, 1,007 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt
 three times): bench24 tf 10 mean 97.7–103.0 µs e7a7120c against 98.8–101.5 µs, tf 1 9.1–9.3 against 9.3 µs. Not installed; i686 cost not measured.
 Evidence: [`review_abc/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/review_abc/run.sh) → `summary.py` → `summary.txt`.
 
+### Arrival round: the Run174 return trip (2026-10-15, Opus 5.5; changes, deviations and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Arrival round (Run174)", design §12.6)
+
+**What changed.** Worktree `agent-ae8ea6bc11efe4dd2` on main 98a21d7c, commits b13adb92 (items 1, 2, 3, 5) and ef1d829f (items 4, 6). Cast
+`return_trip` (an arriving Colossus whose next order is order 4 back through the arrival gate, two M2 escorts arriving 80 s / 195 s later,
+the player's M6 parked beside the gate; the fixture models the DLL's site-A board leave and forces Run174's detour); site A's lane test on the
+leaf's point before our own detour (`gc::lane_field_is_leaf`); the lone re-departure (round C's loop on the ship's own side, no 3 km floor);
+the gate-mouth hold (`lane_mouth_hold`: at rest behind a ship on its final until that ship's launch); site E's ring row for every AI ship on
+any order with the gate's solid read at runtime from its collision tree (`gc::gate_ring_why`, `wk::gate_tree_state`); `ship_player_pos`,
+`e_gate_ring` / `e_gate_ring_kept`, gate_row= kinds escort / arrival / other / refused_hull, the E ring 32 → 64 rows.
+
+**Fail-before → after [m]** (3 seeds × tf 1/6/10; `arrival_round/before_item*.txt` through the switches `X3M_C_LEAVE_OLD`, `X3M_C_RING_OFF`,
+`-DX3M_LANE_RMIN=0`, `-DX3M_LANE_MOUTH=0`):
+
+| Item | Before | After |
+| --- | --- | --- |
+| 1 `return_trip` (all four off) | 6–7 checks fail in 9 of 9: 1 leave on Why::target and 3 non-member own-gate 0x12 per run, leader P2 43.6–52.0 s over its bound, escorts' stops 11.8–16.4 s past their predecessor's launch | 9 of 9 green; leader P2 133.8–136.6 s after its order 4, at most 3.8 s over max(turn-around 114 s, the KC's slot 133 s) |
+| 2 lane test | `--lane` 83 failures; leaves on Why::target 9 of 9 in `parked`, `slow_hull`, `lane_fallback`, `return_trip` | 0; unit |
+| 3 lone re-departure | `return_trip` P2 / escort bounds 9 of 9 | green |
+| 5 gate-mouth hold | `return_trip` member 0x12 9 of 9, contact 6 of 9, 4 of 9 short of a launch | green |
+| 4 ring row | `--lane` 1,347 failures; non-member own-gate 0x12 in 31 casts | 0; every non-member gate warn suppressed, 0 refused, 0 unsafe (fixture ring model) |
+| 6 rows | — | `test_ship_trace_format` 23 tests OK (the DLL formats bound) |
+
+**Acceptance [m]**: `--lane` 4,849 / 0, full 12,196 / 0, `--capital` 6,574 / 0; `test_ship_trace_format`, `test_ctl_boundary_reads`,
+`test_ship_steering` 23 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,010 reachable, 0 violations),
+`verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Cost (`bench.txt`, alternating three times): bench24 tf 10 mean
+102.1–105.9 µs base against 100.5–104.8 µs, tf 1 9.3–9.5 against 9.3–9.4 µs; site E's ring row not benched **[i]**. Not installed. Open: the
+DLL's collision-tree read on a gate object is untested in flight (a wrong layout suppresses only if it reads as "none"); vanilla rings
+untested; the resolved set can suppress a warn against the player's ship (measured with the mouth hold off). Evidence:
+[`arrival_round/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/arrival_round/run.sh).
+
+### Arrival round review fixes (2026-10-15, Opus 5.5; changes and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Arrival round review fixes", design §12.6)
+
+**What changed.** Worktree `agent-ae8ea6bc11efe4dd2` on 97f3804b. (1) `wk::gate_tree_read`: "none" only under the positive guard of
+ship-navigation-ai.md §10.9 "Collision-tree read" (copied into this branch), every node pointer range- and alignment-checked; `--debug`
+`ship_gate_ring_read` once per gate. (2) `EVerdict::pass_player`: the player's ship is never suppressed as B. (3) The gate-mouth hold only
+while P is on its final, bounded by P's launch ETA at the hold's start (slot-aware) + T_stop + the step, counted (`ctl_mouth_expired=`).
+(4) The lone decision reads the block's predecessor. (5) The ring row's horizon + the clamped step. (6) §11 item 1's "After" figures.
+(7) `return_trip`'s 15 s tolerance split per bound and the slot occupancy asserted. (8) Cast `terran_rim` with the fixture's own ring oracle.
+
+**Fail-before → after [m]** (`arrival_round/review/`):
+
+| Item | Before | After |
+| --- | --- | --- |
+| 1 tree read (`item1_before.txt`) | 97f3804b reads none on 8 of 11 unit images | 11 of 11 |
+| 2 player as B (`before_item2.txt`) | `return_trip` without the mouth hold 7 of 9 runs; `small_gate`, `small_gate_m6`, `small_gate5` 9 of 9 each | 0 |
+| 3 hold bound (`item3_before.txt`) | held 240 s (run end) behind a leader that never launches | 71.8 s at 100 ms steps (bound 71.9 s), 73.0 s at 1.5 s (73.3 s) |
+| 4 one predecessor (`item4_before.txt`) | 95 of 101 frames undecided and not held | 0 |
+| 5 ring horizon (unit) | the face 4.5 km ahead cleared at step 0 | refused at 2 s and 9 s (clamped); casts unchanged without the step |
+| 7 tolerances | slot excess unasserted | Rx7 green, bounds 6 / 12 / 8 / 14 s against measured 3.8 / 9.5 / 5.9 / 12.2 s |
+| 8 rim cast (`rim.txt`, `before_item8.txt`) | tree read forced to none: 18 of 18 Nx checks fail | refused_hull in 9 of 9, 96.6-97.7 % oracle-confirmed under kMarginM, all within 75 m; clear ship never refused; 0 unsafe; no contact |
+
+**Acceptance [m]**: `--lane` 4,961 / 0, full 12,308 / 0, `--capital` 6,686 / 0; `test_ship_trace_format`, `test_ctl_boundary_reads`,
+`test_ship_steering` 24 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,010 reachable, 0 violations),
+`verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. `return_trip` unchanged (every figure the round's; 0 hold expiries).
+Bench24 alternating 97f3804b / tree three times: tf 1 mean 8.7–9.6 against 9.1–9.4 µs, tf 10 94.6–100.5 against 95.4–100.8 µs. Not
+installed; i686 cost not measured. Evidence: [`arrival_round/review/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/arrival_round/review/run.sh).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

@@ -1,0 +1,46 @@
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 152.1 s (over 52.0) launch 171.4 s bound 154.0 s stop_max 8.7 s | esc stop_max 101.9 s after_grant 12.42 s over 60.8 s | slot_over 8.8 s p2 not_kept 0 nose 2.6 | capsule 429 box 291 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 1: warn_nm 1351 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 1 seed 1: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 1 seed 7: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 151.7 s (over 51.0) launch 170.9 s bound 154.0 s stop_max 8.7 s | esc stop_max 103.8 s after_grant 14.73 s over 59.7 s | slot_over 8.8 s p2 not_kept 0 nose 2.5 | capsule 430 box 292 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 7: warn_nm 1351 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 1 seed 7: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 1 seed 1234567: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 152.3 s (over 43.7) launch 171.6 s bound 154.0 s stop_max 8.7 s | esc stop_max 101.5 s after_grant 11.80 s over 51.9 s | slot_over 8.8 s p2 not_kept 0 nose 2.5 | capsule 434 box 296 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 1 seed 1234567: warn_nm 1351 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 1 seed 1234567: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 146.0 s (over 44.9) launch 148.8 s bound 154.3 s stop_max 8.0 s | esc stop_max 78.7 s after_grant 11.95 s over 32.7 s | slot_over -7.4 s p2 not_kept 0 nose 4.2 | capsule 440 box 302 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 1: warn_nm 109 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 6 seed 1: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 146.7 s (over 47.7) launch 149.3 s bound 156.1 s stop_max 8.2 s | esc stop_max 78.6 s after_grant 11.70 s over 35.5 s | slot_over -9.0 s p2 not_kept 0 nose 3.0 | capsule 444 box 306 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 7: warn_nm 104 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 6 seed 7: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 144.0 s (over 45.0) launch 148.3 s bound 154.9 s stop_max 8.6 s | esc stop_max 80.8 s after_grant 16.42 s over 34.0 s | slot_over -8.9 s p2 not_kept 0 nose 3.1 | capsule 436 box 296 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 6 seed 1234567: warn_nm 100 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 6 seed 1234567: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 147.1 s (over 43.6) launch 149.8 s bound 156.0 s stop_max 7.7 s | esc stop_max 80.9 s after_grant 13.52 s over 22.2 s | slot_over -19.3 s p2 not_kept 0 nose 2.3 | capsule 447 box 308 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 1: warn_nm 71 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 10 seed 1: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 145.7 s (over 43.6) launch 148.4 s bound 155.7 s stop_max 7.7 s | esc stop_max 76.6 s after_grant 11.76 s over 22.3 s | slot_over -19.3 s p2 not_kept 0 nose 3.0 | capsule 443 box 304 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 7: warn_nm 67 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 10 seed 7: target_leaves 1 recommit_held 0
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 1 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 147.5 s (over 49.8) launch 152.7 s bound 157.7 s stop_max 6.2 s | esc stop_max 81.8 s after_grant 13.04 s over 28.5 s | slot_over -18.3 s p2 not_kept 0 nose 3.1 | capsule 445 box 310 player gap 1540 sup 0 | episodes 0 uncert 0
+scenario C return_trip ring tf 10 seed 1234567: warn_nm 67 sup 0 (escort 0 arrival 0 other 0) refused 0 x12_nm 3 unsafe 0
+scenario C return_trip leaves tf 10 seed 1234567: target_leaves 1 recommit_held 0
+      3 return_trip tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf10: Rx P2 within the lone turn-around
+      3 return_trip tf10: Rx no board leave on Why::target
+      3 return_trip tf10: Rx the escorts launched within their own bound
+      3 return_trip tf10: Rx the escorts' stops end within the step of their predecessor's launch
+      3 return_trip tf10: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf1: Rx P2 within the lone turn-around
+      3 return_trip tf1: Rx no board leave on Why::target
+      3 return_trip tf1: Rx the escorts launched within their own bound
+      3 return_trip tf1: Rx the escorts' stops end within the step of their predecessor's launch
+      3 return_trip tf1: Rx the leader launched within its bound
+      3 return_trip tf1: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf6: Rx P2 within the lone turn-around
+      3 return_trip tf6: Rx no board leave on Why::target
+      3 return_trip tf6: Rx the escorts launched within their own bound
+      3 return_trip tf6: Rx the escorts' stops end within the step of their predecessor's launch
+      3 return_trip tf6: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row

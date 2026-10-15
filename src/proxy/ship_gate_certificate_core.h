@@ -264,6 +264,8 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         // (signed: the predecessor's state may be a few ms newer than this member's; live() on m.st.ms would wrap)
         const Member* P = pi >= 0 && pair_role(g.m[pi].role) && g.m[pi].st.ms && g.m[pi].n > 1 &&
                                   std::int32_t(m.st.ms - g.m[pi].st.ms) <= std::int32_t(age_bound(g, kStateMaxAgeMs)) ? &g.m[pi] : nullptr;
+        // (the arrival round item 5: held at the gate mouth behind P, lane_mouth_hold: at rest; review item 3: within the hold's bound)
+        const bool mouth = P && m.redep && lane_mouth_on(g, m, *P, m.st.ms);
         std::int32_t koff = 0;
         if (P) {
             const std::int32_t dms = std::int32_t(m.st.ms - P->roll_ms);
@@ -384,6 +386,8 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                 float vd = lane_law(cx, &law, nullptr, &settle);
                 if (v_cmd > 0.0f && v_cmd < vd) vd = v_cmd;
                 if (v_cmd == 0.0f && ts < stop_rest) vd = 0.0f;
+                if (mouth) vd = 0.0f; // (held at rest over the horizon: its release re-plans from the next state; at rest the pair certifies
+                                      // on P's path past it)
                 if (band && lane_band_free(cx.gap, settle)) band = false; // (the lateral rule's release, as lane_frame)
                 const bool hold_lat = band && !(cx.y <= kLaneOnM);
                 float sc_c, yc;

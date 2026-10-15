@@ -1,0 +1,9 @@
+lane: ship_steering_host checks=4961 failures=0 slip_gaps=0
+full: ship_steering_host checks=12308 failures=0 slip_gaps=0 vanilla_notes=2
+cap: ship_steering_host checks=6686 failures=0 slip_gaps=0
+arrival round units (review item 3): step 100 ms: the stuck leader's escort held to 71.8 s (bound 71.9 s, expired 1), the killed leader's to 29.9 s
+arrival round units (review item 3): step 1500 ms: the stuck leader's escort held to 73.0 s (bound 73.3 s, expired 1), the killed leader's to 29.5 s
+arrival round units (review item 4): pred 0x9000 decided 1, 0 frames undecided and not held
+arrival round units (item 4, review item 1): tree states bubble 1 (1 nodes, seen 1) terran 2 off 1 depth3 1 | foreign 0/chain back 0/parent noscene 0/scene stale 0/no_scene_node class 0/class misaligned 0/node_ptr low 0/root depth4 0/depth budget 0/budget chain 0/chain null 0/gate_ptr
+arrival round units (review item 5): ring row 4.5 km before the face at step 0 other, 2 s refused_hull, 9 s (clamped 5 s) refused_hull
+arrival round units (item 4): through the hole escort, clipping the rim refused_hull, no tree other, unknown read refused_hull, NaN roll, a_lin 0 roll, target across the rim refused_hull

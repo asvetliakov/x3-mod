@@ -33,6 +33,7 @@ constexpr std::uint32_t kSectorBuckets = 0x50, kBucketStride = 0xc;
 constexpr std::uint32_t kObjFlags = 0x40, kObjFlags2 = 0x44, kObjClass = 0x48, kObjFlight = 0x50, kObjPhys = 0x70, kObjRadius = 0xa4,
                         kObjDocked = 0xf8;
 constexpr std::uint32_t kFlagDeleted = 0x8000000, kFlagAttached = 0x200, kFlags2NoPair = 0x20000;
+constexpr std::uint32_t kFlagPlayerShip = 0x2; // [obj+0x40]: SA_SetAsPlayerObject (ship_steering_sites.h kFlagPlayerObject)
 constexpr std::uint32_t kFlightTarget = 0x224, kFlightOrder = 0x258;
 constexpr std::uint32_t kObjId = 0x08; // the engine's native object id (SA_GetEventObject 0x004607f4 resolves it through the registry)
 constexpr std::uint32_t kObjType = 0x4a, kShipTypeTableSlot = 0x00606fd4, kRecordStride = 0xdb8, kRecordClassCode = 0x14;
@@ -272,6 +273,7 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
     s.sector = sector;
     s.epoch = now;
     s.count = 0;
+    s.player = 0;
     s.overflow = 0;
     s.max_r = 0;
     stats = Stats{};
@@ -310,6 +312,10 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
             for (unsigned c = 0; c < 3; ++c) it.x[c] = float(mem.s32(ph + kPhysPosition + 4 * c)) / kUnits;
             it.r = float(mem.s32(o + kObjRadius)) / kUnits;
             it.ptr = o;
+            if (cls == kClassShip && (flags & kFlagPlayerShip)) { // (the arrival round item 6: ship_player_pos)
+                s.player = o;
+                for (unsigned c = 0; c < 3; ++c) s.player_x[c] = it.x[c];
+            }
             if (cls == kClassShip) {
                 it.kind = std::uint8_t(av::Kind::ship);
                 // the actual velocity p+0x100 + obj+0x60 (amendment 14: the slip term moves the ship too; three more reads per ship)
@@ -362,6 +368,114 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
     }
     if (census) census->overflow = s.overflow;
     if (members && member_stats && !s.overflow) av::update_members(s, *members, now, *member_stats); // amendment 15
+}
+// ---- The arrival round item 4: whether a gate's body carries a collision tree (convoy-gate-transit.md section 12.6) -------------------
+// The gate's root scene node [gate+0x70] (the station walk's layout, ship-navigation-ai.md section 10.9 "Collision-tree read": children
+// head [n+0xc], sentinel n+0x10 whose first dword is 0, sibling link [c], parent [c+0x18], scene id [c+0x258]) and the nodes below it
+// (depth <= kGateTreeDepth, at most kRadiusBudget nodes, a sibling chain at most kChildLimit): one with [c+0x12c] & 0x1000000 (the part
+// builder's collision tree) and without 0x8000000 is the solid ("tree": the fail-closed side, no guard). "None" only under the positive
+// guard of section 10.9 (review of the arrival round item 1): the object is a gate (class 0x12) with a root and a scene id; every visited
+// child's [c+0x18] is its parent; every chain ends exactly at its parent's sentinel; a child at the depth limit has no children; the
+// budget is not exhausted; at least one visited node carries the gate's scene id. Anything else is unknown (the caller fails closed to the
+// ring of the gate's TGates row). Every pointer is range- and alignment-checked before its first read (the DLL's reads are plain loads:
+// a wrong layout must not fault). Read-only, no engine call; once per gate (the board's Gate::ring, the glue's small cache).
+constexpr std::uint32_t kNodeFlagNoTree = 0x8000000; // (the body slot out of range: no tree, 0x0047ece8)
+constexpr std::uint32_t kNodeFlagTree = 0x1000000, kNodeSentinel = 0x10, kNodeParent = 0x18, kNodeSceneId = 0x258, kNodeBytes = 0x270;
+constexpr std::uint32_t kObjScene = 0x98; // [gate+0x98]: the TGates +0x44 scene id (0x00441686..0x004416a1)
+constexpr std::uint32_t kGateObjBytes = 0x100;
+constexpr unsigned kGateTreeDepth = 3;
+// A user-mode pointer of a 32-bit process, 4-aligned, with span bytes readable in range: [0x10000, 0xFFFF0000) covers a large-address-aware
+// process on 64-bit Windows (X3AP.exe has IMAGE_FILE_LARGE_ADDRESS_AWARE); the range is a plausibility test, not a mapping test
+constexpr std::uint32_t kPtrLo = 0x10000u, kPtrHi = 0xffff0000u;
+__attribute__((always_inline)) inline bool ptr_ok(std::uint32_t p, std::uint32_t span) noexcept {
+    return p >= kPtrLo && p < kPtrHi && span <= kPtrHi - p && !(p & 3u);
+}
+enum class TreeWhy : std::uint8_t { ok = 0, gate_ptr, cls, root, scene, node_ptr, parent, chain, depth, budget, no_scene_node, count };
+inline const char* tree_why_name(TreeWhy w) noexcept {
+    static const char* const n[unsigned(TreeWhy::count)] = {"ok", "gate_ptr", "class", "root", "scene", "node_ptr", "parent", "chain", "depth",
+                                                            "budget", "no_scene_node"};
+    return unsigned(w) < unsigned(TreeWhy::count) ? n[unsigned(w)] : "?";
+}
+struct GateTreeRead {
+    std::uint8_t state = 0;   // 2 a tree, 1 none (the guard held), 0 unknown
+    TreeWhy why = TreeWhy::ok; // the first guard that failed (ok: none or tree)
+    std::uint8_t seen = 0;    // a visited node carried the gate's scene id
+    std::uint16_t nodes = 0;  // nodes visited
+    std::uint32_t scene = 0;  // [gate+0x98]
+};
+// 1 a tree, 0 the subtree below n consistent and without one, -1 a guard failed (rd.why)
+template <class Mem>
+inline int gate_tree_walk(Mem& mem, std::uint32_t n, unsigned depth, unsigned& budget, GateTreeRead& rd) noexcept {
+    std::uint32_t c = mem.u32(n + kNodeChildren);
+    for (unsigned k = 0;; ++k) {
+        if (c == n + kNodeSentinel) { // the chain's end is its parent's own sentinel, whose first dword is 0
+            if (mem.u32(c) != 0) break;
+            return 0;
+        }
+        if (!ptr_ok(c, kNodeBytes)) {
+            rd.why = TreeWhy::node_ptr;
+            return -1;
+        }
+        const std::uint32_t next = mem.u32(c);
+        if (!next) break; // (a chain ending anywhere but n + 0x10)
+        if (k >= kChildLimit || !budget) {
+            rd.why = TreeWhy::budget;
+            return -1;
+        }
+        --budget;
+        ++rd.nodes;
+        if (mem.u32(c + kNodeParent) != n) {
+            rd.why = TreeWhy::parent;
+            return -1;
+        }
+        if (mem.u32(c + kNodeSceneId) == rd.scene) rd.seen = 1;
+        const std::uint32_t fl = mem.u32(c + kNodeFlags);
+        if ((fl & kNodeFlagTree) && !(fl & kNodeFlagNoTree)) return 1;
+        if (depth + 1 < kGateTreeDepth) {
+            const int r = gate_tree_walk(mem, c, depth + 1, budget, rd);
+            if (r) return r;
+        } else if (mem.u32(c + kNodeChildren) != c + kNodeSentinel || mem.u32(c + kNodeSentinel) != 0) { // (the depth limit: no children)
+            rd.why = TreeWhy::depth;
+            return -1;
+        }
+        c = next;
+    }
+    rd.why = TreeWhy::chain;
+    return -1;
+}
+template <class Mem>
+inline GateTreeRead gate_tree_read(Mem& mem, std::uint32_t gate) noexcept {
+    GateTreeRead rd;
+    if (!ptr_ok(gate, kGateObjBytes)) {
+        rd.why = TreeWhy::gate_ptr;
+        return rd;
+    }
+    if (mem.u16(gate + kObjClass) != kClassGate) {
+        rd.why = TreeWhy::cls;
+        return rd;
+    }
+    const std::uint32_t root = mem.u32(gate + kObjPhys);
+    rd.scene = mem.u32(gate + kObjScene);
+    if (!ptr_ok(root, kNodeBytes)) {
+        rd.why = TreeWhy::root;
+        return rd;
+    }
+    if (!rd.scene) {
+        rd.why = TreeWhy::scene;
+        return rd;
+    }
+    unsigned budget = kRadiusBudget;
+    const int r = gate_tree_walk(mem, root, 0, budget, rd);
+    if (r > 0) rd.state = 2;
+    else if (r == 0) {
+        if (rd.seen) rd.state = 1;
+        else rd.why = TreeWhy::no_scene_node;
+    }
+    return rd;
+}
+template <class Mem>
+inline unsigned gate_tree_state(Mem& mem, std::uint32_t gate) noexcept {
+    return gate_tree_read(mem, gate).state;
 }
 // ---- Amendment 16 (capital-gate-transit.md section 16.1, ratification addendum 2026-10-13 (5)): the hull's lateral half-width ---
 // render-node-bounds.md section 6.1. The ship's root node [obj+0x70] carries `testbody`; the hull and every other part are its

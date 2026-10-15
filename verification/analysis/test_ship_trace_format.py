@@ -293,6 +293,67 @@ DOCK_ROWS = [
 ]
 
 
+# The arrival round (convoy-gate-transit.md section 11 "Arrival round (Run174)"): the lane summary's ring-row counters (item 4), the
+# warn pre-row's ring kinds (item 4), the piloted ship's row (item 6), copied from the DLL's formats with synthetic values.
+ARRIVAL_ROWS = [
+    'ship_steering_lane_summary frame=9300 lane=active ctl_merge_yield=0 ctl_merge_stop=0 ctl_point_rewrites=3 ctl_lane_writes=90 ctl_x_refused=0 '
+    'ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=1 ctl_defer_rewrites=1 ctl_recommit_held=0 e_lane_obst=2 '
+    'e_lane_obst_roll=0 e_gate_ring=4418 e_gate_ring_kept=3 ctl_mouth_expired=1 gates_gate:F:G:r=-',
+    'ship_avoid_engine_warn_pre frame=9301 obj=0x90448e28 order=0x14 tgt=0x39e43950 count=1 '
+    'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90429090:18:-:0x0:0x00000000:0x00000000:6900:1105:suppress_gate_ring '
+    'gate_row=escort obst_row=-',
+    'ship_player_pos frame=9302 t_ms=24005000 obj=0x2f0c1000 pos=-5498,10774,-57969 gate=0x90429090 d_gate_m=2040 member=0x39e43950 d_member_m=5120',
+    'ship_player_pos frame=9303 t_ms=24006000 obj=0x2f0c1000 pos=-5498,10774,-57969 gate=0x90429090 d_gate_m=2040 member=0x00000000 d_member_m=-1',
+]
+
+
+# Review of the arrival round (convoy-gate-transit.md section 11 "Arrival round review fixes"): the gate's collision-tree read (item 1)
+# and the player's verdict (item 2), copied from the DLL's formats with synthetic values.
+RING_READ_ROWS = [
+    'ship_gate_ring_read frame=9400 t_ms=24100000 gate=0x90429090 id=4711 type=2 board=1 state=none why=ok nodes=1 scene=679 seen=1 verdict=none',
+    'ship_gate_ring_read frame=9401 t_ms=24100500 gate=0x9042a000 id=4712 type=0 board=0 state=unknown why=parent nodes=1 scene=679 seen=0 '
+    'verdict=ring',
+]
+
+
+class ArrivalReviewRows(unittest.TestCase):
+    def test_ring_read_row(self):
+        a, b = st.parse_kv_rows(RING_READ_ROWS, 'ship_gate_ring_read')
+        self.assertEqual((a['gate'], a['id'], a['type'], a['board'], a['state'], a['why'], a['nodes'], a['scene'], a['seen'], a['verdict']),
+                         (0x90429090, 4711, 2, 1, 'none', 'ok', 1, 679, 1, 'none'))
+        self.assertEqual((b['state'], b['why'], b['seen'], b['verdict']), ('unknown', 'parent', 0, 'ring'))
+        root = Path(__file__).resolve().parents[2] / 'src/proxy'
+        rows = (root / 'ship_steering_rows.cpp').read_text()
+        self.assertIn('ship_gate_ring_read frame=%llu t_ms=%lu gate=0x%08lx id=%lu type=%u board=%u state=%s why=%s nodes=%u scene=%lu '
+                      'seen=%u verdict=%s', rows)
+        walk = (root / 'ship_avoidance_walk_core.h').read_text()
+        for why in ('"ok"', '"gate_ptr"', '"class"', '"root"', '"scene"', '"node_ptr"', '"parent"', '"chain"', '"depth"', '"budget"',
+                    '"no_scene_node"'):
+            self.assertIn(why, walk)
+        self.assertIn('"pass_player"', (root / 'ship_avoidance_core.h').read_text())
+
+
+class ArrivalRoundRows(unittest.TestCase):
+    def test_ring_row_and_player_rows(self):
+        s = st.parse_kv_rows(ARRIVAL_ROWS, 'ship_steering_lane_summary')[0]
+        self.assertEqual((s['e_gate_ring'], s['e_gate_ring_kept'], s['ctl_mouth_expired'], s['gates_gate:F:G:r']), (4418, 3, 1, []))
+        w = st.parse_kv_rows(ARRIVAL_ROWS, 'ship_avoid_engine_warn_pre')[0]
+        e = w['entries_other:class:code:order:leader:member:d_m:r_m:e_verdict']
+        self.assertEqual((e[0][1], e[0][8], w['gate_row'], w['order']), (18, 'suppress_gate_ring', 'escort', 0x14))
+        p, p0 = st.parse_kv_rows(ARRIVAL_ROWS, 'ship_player_pos')
+        self.assertEqual((p['obj'], p['pos'], p['gate'], p['d_gate_m'], p['member'], p['d_member_m']),
+                         (0x2f0c1000, (-5498, 10774, -57969), 0x90429090, 2040, 0x39e43950, 5120))
+        self.assertEqual((p0['member'], p0['d_member_m']), (0, -1))
+        root = Path(__file__).resolve().parents[2] / 'src/proxy'
+        rows = (root / 'ship_steering_rows.cpp').read_text()  # (the DLL's formats carry them)
+        self.assertIn('e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu gates_gate:F:G:r=%s', rows)
+        self.assertIn('ship_player_pos frame=%llu t_ms=%lu obj=0x%08lx pos=%.0f,%.0f,%.0f gate=0x%08lx d_gate_m=%.0f member=0x%08lx d_member_m=%.0f', rows)
+        lane = (root / 'ship_gate_lane_core.h').read_text()
+        for kind in ('"escort"', '"arrival"', '"other"', '"refused_hull"'):
+            self.assertIn(kind, lane)
+        self.assertIn('"suppress_gate_ring"', (root / 'ship_avoidance_core.h').read_text())
+
+
 class DockRows(unittest.TestCase):
     def test_dock_rows(self):
         a, b = st.parse_kv_rows(DOCK_ROWS, 'ship_avoid_dock')

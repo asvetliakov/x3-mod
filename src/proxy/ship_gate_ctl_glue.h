@@ -33,6 +33,8 @@ inline Counter ctl_merge_yield_, ctl_merge_stop_, ctl_point_rewrites_, ctl_lane_
 // point nor ours)
 inline Counter ctl_lane_defers_, ctl_defer_rewrites_, ctl_point_adopts_, ctl_grid_miss_;
 inline Counter ctl_recommit_held_; // lane fix round 1 item 4: commits held by the re-commit hysteresis
+inline Counter ctl_mouth_expired_; // review of the arrival round item 3: gate-mouth holds ended by their game-time bound
+inline Counter e_gate_ring_, e_gate_ring_kept_; // the arrival round item 4: site E's ring row (suppressed; kept: refused_hull / roll)
 inline Counter e_lane_obst_, e_lane_obst_roll_; // lane fix round 2 item 1: site E's lane obstacle row (suppressed; passed: the path does not clear)
 inline Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
                                                     // that is not on its board)

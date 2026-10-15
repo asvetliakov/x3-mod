@@ -336,6 +336,15 @@ inline int kc_grid_slot(const float G[3], const float R[3], const float U[3], co
     static const int col[5] = {4, 2, 0, 1, 3}; // a = -2, -1, 0, 1, 2 (the KC's column order 0, 1, -1, 2, -2)
     return -b * 5 + col[a + 2];
 }
+// The arrival round (Run174) item 2: site A's lane test (decide()'s gate_decide) compares the order field f+0x240 with the leaf's point as
+// the engine handed it (decide()'s order_point, before our own avoidance detour moves in.P), within kLaneGridTolM: our own detour never
+// makes the lane's point look foreign. (Run174, run174-triage/target_leaves.txt: the test read the detour's point, the field L_i then
+// failed the KC grid check, the member left the board on Why::target, its own-gate suppression fell away and the engine warned against
+// the gate 2-40 frames later.)
+__attribute__((always_inline)) inline bool lane_field_is_leaf(const float field[3], const float leaf[3]) noexcept {
+    const float d[3] = {field[0] - leaf[0], field[1] - leaf[1], field[2] - leaf[2]};
+    return sc::dot3(d, d) <= kLaneGridTolM * kLaneGridTolM;
+}
 // Whether p (world, m) is a lane point L_i of a hull with the final q (R, U; m) at this gate: its depth within the flight validator's
 // 10 % of L_i's depth (sc::kGateGridDepthTol; a KC grid point lies at 2 (r_gate + r_s), never there) and its lateral within its 20 m
 // (sc::kGateGridTolM) of q or, when lc is given, of Lambda's l_c (an escort's final; l_c moves at most kLaneShiftMs, so a written point

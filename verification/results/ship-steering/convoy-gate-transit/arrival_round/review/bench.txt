@@ -1,0 +1,12 @@
+base_bin run 1: lane cost (host) bench24 tf 1: lane 9.6 us mean, 734 us worst frame, 309 us third-worst (59681 decisions, 24/24 launched); key off 4.1 us mean, 693 us worst, 374 us third (53121 decisi
+base_bin run 1: lane cost (host) bench24 tf 10: lane 98.6 us mean, 628 us worst frame, 459 us third-worst (31552 decisions, 24/24 launched); key off 48.9 us mean, 403 us worst, 208 us third (18687 dec
+host run 1: lane cost (host) bench24 tf 1: lane 9.4 us mean, 980 us worst frame, 700 us third-worst (59681 decisions, 24/24 launched); key off 4.1 us mean, 579 us worst, 288 us third (53121 decisions,
+host run 1: lane cost (host) bench24 tf 10: lane 99.9 us mean, 667 us worst frame, 572 us third-worst (31552 decisions, 24/24 launched); key off 49.8 us mean, 784 us worst, 184 us third (18687 decisio
+base_bin run 2: lane cost (host) bench24 tf 1: lane 9.4 us mean, 711 us worst frame, 362 us third-worst (59681 decisions, 24/24 launched); key off 4.1 us mean, 411 us worst, 290 us third (53121 decisi
+base_bin run 2: lane cost (host) bench24 tf 10: lane 100.5 us mean, 433 us worst frame, 328 us third-worst (31552 decisions, 24/24 launched); key off 47.9 us mean, 214 us worst, 196 us third (18687 de
+host run 2: lane cost (host) bench24 tf 1: lane 9.2 us mean, 136 us worst frame, 109 us third-worst (59681 decisions, 24/24 launched); key off 3.9 us mean, 84 us worst, 54 us third (53121 decisions, 2
+host run 2: lane cost (host) bench24 tf 10: lane 95.4 us mean, 1668 us worst frame, 329 us third-worst (31552 decisions, 24/24 launched); key off 46.8 us mean, 440 us worst, 164 us third (18687 decisi
+base_bin run 3: lane cost (host) bench24 tf 1: lane 8.7 us mean, 126 us worst frame, 88 us third-worst (59681 decisions, 24/24 launched); key off 3.9 us mean, 102 us worst, 59 us third (53121 decision
+base_bin run 3: lane cost (host) bench24 tf 10: lane 94.6 us mean, 348 us worst frame, 296 us third-worst (31552 decisions, 24/24 launched); key off 46.3 us mean, 153 us worst, 146 us third (18687 dec
+host run 3: lane cost (host) bench24 tf 1: lane 9.1 us mean, 645 us worst frame, 100 us third-worst (59681 decisions, 24/24 launched); key off 7.2 us mean, 10721 us worst, 8668 us third (53121 decisio
+host run 3: lane cost (host) bench24 tf 10: lane 100.8 us mean, 1040 us worst frame, 505 us third-worst (31552 decisions, 24/24 launched); key off 52.2 us mean, 264 us worst, 209 us third (18687 decis

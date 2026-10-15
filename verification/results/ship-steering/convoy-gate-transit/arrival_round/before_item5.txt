@@ -1,0 +1,47 @@
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 4 | lead turn 114.0 s p2 333.6 s (over 85.6) launch 366.6 s bound 272.3 s stop_max 0.0 s | esc stop_max 8.2 s after_grant -1.00 s over 18.6 s | slot_over 9.0 s p2 not_kept 2 nose 37.1 | capsule 13 box -387 player gap 1540 sup 222 | episodes 4 uncert 52
+scenario C return_trip ring tf 1 seed 1: warn_nm 5703 sup 5703 (escort 4066 arrival 1104 other 533) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 1 seed 7: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 14 | lead turn 114.0 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 57.0 s after_grant -1.00 s over 0.0 s | slot_over 0.0 s p2 not_kept 0 nose 0.0 | capsule -125 box -340 player gap 1349 sup 0 | episodes 15 uncert 3645
+scenario C return_trip ring tf 1 seed 7: warn_nm 16123 sup 16123 (escort 14346 arrival 1104 other 673) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 1 seed 1234567: launched 2/3 rt 2/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 12 | lead turn 114.0 s p2 658.6 s (over 410.6) launch 691.8 s bound 279.1 s stop_max 0.0 s | esc stop_max 87.5 s after_grant -1.00 s over -73.5 s | slot_over 10.1 s p2 not_kept 2 nose 36.6 | capsule -433 box -714 player gap 211 sup 1429 | episodes 12 uncert 4251
+scenario C return_trip ring tf 1 seed 1234567: warn_nm 11515 sup 11515 (escort 9981 arrival 1104 other 430) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 4 | lead turn 113.9 s p2 436.0 s (over 190.2) launch 447.4 s bound 278.8 s stop_max 0.0 s | esc stop_max 4.8 s after_grant -1.00 s over -2.1 s | slot_over -7.9 s p2 not_kept 1 nose 32.3 | capsule -247 box -343 player gap 1390 sup 16 | episodes 4 uncert 26
+scenario C return_trip ring tf 6 seed 1: warn_nm 636 sup 636 (escort 502 arrival 86 other 48) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 2 | lead turn 113.9 s p2 547.6 s (over 300.4) launch 565.0 s bound 277.1 s stop_max 0.0 s | esc stop_max 133.4 s after_grant -1.00 s over -22.7 s | slot_over -4.5 s p2 not_kept 3 nose 162.7 | capsule -302 box -546 player gap 1032 sup 23 | episodes 2 uncert 1
+scenario C return_trip ring tf 6 seed 7: warn_nm 1700 sup 1700 (escort 1573 arrival 93 other 34) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 6 seed 1234567: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 6 | lead turn 114.0 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 52.5 s after_grant -1.00 s over 0.0 s | slot_over 0.0 s p2 not_kept 0 nose 0.0 | capsule -651 box -855 player gap 1064 sup 10 | episodes 6 uncert 119
+scenario C return_trip ring tf 6 seed 1234567: warn_nm 1361 sup 1361 (escort 1212 arrival 82 other 67) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 113.8 s p2 152.8 s (over 20.8) launch 172.2 s bound 172.7 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -3.5 s | slot_over -17.9 s p2 not_kept 1 nose 18.7 | capsule 498 box 185 player gap 1540 sup 0 | episodes 1 uncert 1
+scenario C return_trip ring tf 10 seed 1: warn_nm 137 sup 137 (escort 74 arrival 56 other 7) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 5 | lead turn 113.8 s p2 658.6 s (over 411.8) launch 663.9 s bound 273.4 s stop_max 0.0 s | esc stop_max 20.3 s after_grant -1.00 s over 29.4 s | slot_over -19.3 s p2 not_kept 1 nose 13.8 | capsule -817 box -963 player gap 768 sup 65 | episodes 7 uncert 32
+scenario C return_trip ring tf 10 seed 7: warn_nm 271 sup 271 (escort 213 arrival 56 other 2) refused 0 x12_nm 0 unsafe 0
+scenario C return_trip return tf 10 seed 1234567: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 4 | lead turn 113.8 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 56.4 s after_grant -1.00 s over 0.0 s | slot_over 0.0 s p2 not_kept 0 nose 0.0 | capsule -698 box -907 player gap 929 sup 2 | episodes 4 uncert 187
+scenario C return_trip ring tf 10 seed 1234567: warn_nm 529 sup 529 (escort 463 arrival 54 other 12) refused 0 x12_nm 0 unsafe 0
+      2 return_trip tf10: Ex no contact between the departing capitals
+      3 return_trip tf10: Ex no member 0x12 episode between members
+      2 return_trip tf10: Rx P2 kept within 8 deg of F
+      2 return_trip tf10: Rx P2 within the lone turn-around
+      1 return_trip tf10: Rx every return trip launched
+      2 return_trip tf10: Rx no contact
+      1 return_trip tf10: Rx the escorts launched within their own bound
+      2 return_trip tf10: Rx the leader launched within its bound
+      2 return_trip tf10: Rx the player's ship never suppressed as an obstacle
+      1 return_trip tf10: every ship launched
+      2 return_trip tf1: Ex no contact between the departing capitals
+      3 return_trip tf1: Ex no member 0x12 episode between members
+      2 return_trip tf1: Rx P2 kept within 8 deg of F
+      2 return_trip tf1: Rx P2 within the lone turn-around
+      2 return_trip tf1: Rx every return trip launched
+      3 return_trip tf1: Rx no contact
+      1 return_trip tf1: Rx the escorts launched within their own bound
+      3 return_trip tf1: Rx the leader launched within its bound
+      2 return_trip tf1: Rx the player's ship never suppressed as an obstacle
+      2 return_trip tf1: every ship launched
+      2 return_trip tf6: Ex no contact between the departing capitals
+      3 return_trip tf6: Ex no member 0x12 episode between members
+      2 return_trip tf6: Rx P2 kept within 8 deg of F
+      2 return_trip tf6: Rx P2 within the lone turn-around
+      1 return_trip tf6: Rx every return trip launched
+      3 return_trip tf6: Rx no contact
+      3 return_trip tf6: Rx the leader launched within its bound
+      3 return_trip tf6: Rx the player's ship never suppressed as an obstacle
+      1 return_trip tf6: every ship launched

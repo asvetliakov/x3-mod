@@ -1,0 +1,42 @@
+ship_steering_host checks=4849 failures=83 slip_gaps=0
+      9 lane_fallback runs (seed 1 or failing) with a board leave on Why::target
+      9 parked runs (seed 1 or failing) with a board leave on Why::target
+      9 return_trip runs (seed 1 or failing) with a board leave on Why::target
+      9 slow_hull runs (seed 1 or failing) with a board leave on Why::target
+      2 parked tf10: 1b6 the join: the nose along F by 7 km
+      1 parked tf10: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 parked tf10: 7 safety
+      2 parked tf10: 7b6 the parked cast: own-gate 0x12 <= 3, P2's nose <= 33 deg
+      1 parked tf1: 1b6 the join: the nose along F by 7 km
+      1 parked tf1: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 parked tf1: 7 safety
+      2 parked tf6: 1b6 the join: the nose along F by 7 km
+      3 parked tf6: 7 safety
+      1 return_trip tf10: Rx P2 kept within 8 deg of F
+      3 return_trip tf10: Rx no board leave on Why::target
+      3 return_trip tf1: Rx no board leave on Why::target
+      3 return_trip tf6: Rx no board leave on Why::target
+      1 slow_hull tf10: 1 the passer is never capped
+      3 slow_hull tf10: 1b6 the join: the nose along F by 7 km
+      1 slow_hull tf10: 2b the law's stop within T_stop + the step
+      3 slow_hull tf10: 3 no holding
+      3 slow_hull tf10: 5 the escort gate
+      2 slow_hull tf10: 6 the short final
+      2 slow_hull tf10: 6b P2's nose within 8 deg of F
+      3 slow_hull tf10: 7 safety
+      3 slow_hull tf1: 1b6 the join: the nose along F by 7 km
+      2 slow_hull tf1: 2 the yielder
+      3 slow_hull tf1: 2b the law's stop within T_stop + the step
+      3 slow_hull tf1: 3 no holding
+      3 slow_hull tf1: 5 the escort gate
+      1 slow_hull tf1: 6 the short final
+      1 slow_hull tf1: 6b P2's nose within 8 deg of F
+      3 slow_hull tf1: 7 safety
+      1 slow_hull tf6: 1 the passer is never capped
+      3 slow_hull tf6: 1b6 the join: the nose along F by 7 km
+      1 slow_hull tf6: 2b the law's stop within T_stop + the step
+      3 slow_hull tf6: 3 no holding
+      3 slow_hull tf6: 5 the escort gate
+      2 slow_hull tf6: 6 the short final
+      2 slow_hull tf6: 6b P2's nose within 8 deg of F
+      3 slow_hull tf6: 7 safety

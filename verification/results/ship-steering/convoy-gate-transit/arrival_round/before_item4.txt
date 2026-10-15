@@ -1,0 +1,553 @@
+ship_steering_host checks=4849 failures=1347 slip_gaps=0
+abreast3 x12_nm 10
+abreast5 x12_nm 11
+arrival_cross x12_nm 18
+arrival_pass x12_nm 37
+arrival_pass2 x12_nm 39
+crossing x12_nm 17
+formed x12_nm 9
+formed_m7 x12_nm 11
+formed_stage2 x12_nm 9
+join_block x12_nm 6
+join_field x12_nm 5
+lane_fallback x12_nm 9
+leader_killed x12_nm 9
+m7_cross x12_nm 9
+overshoot x12_nm 0
+overshoot_near x12_nm 0
+p2_miss x12_nm 10
+p2_miss_near x12_nm 18
+parked x12_nm 10
+partner_block x12_nm 15
+redeparture x12_nm 42
+retarget x12_nm 3
+return_trip x12_nm 30
+run173 x12_nm 0
+run173_15km x12_nm 0
+slow_hull x12_nm 9
+small_escort x12_nm 9
+small_gate x12_nm 93
+small_gate5 x12_nm 147
+small_gate_m6 x12_nm 117
+station x12_nm 9
+stragglers x12_nm 9
+stragglers_far x12_nm 0
+terran x12_nm 27
+terran_abreast x12_nm 25
+x12_far x12_nm 0
+x12_near x12_nm 9
+      2 abreast3 tf10: 1b6 the join: the nose along F by 7 km
+      2 abreast3 tf10: 3 no holding
+      2 abreast3 tf10: 4 the order
+      3 abreast3 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 abreast3 tf10: 5 the escort gate
+      2 abreast3 tf10: 6 the short final
+      2 abreast3 tf10: 6b P2's nose within 8 deg of F
+      2 abreast3 tf10: 7 safety
+      2 abreast3 tf10: 8 the span
+      2 abreast3 tf1: 1b6 the join: the nose along F by 7 km
+      3 abreast3 tf1: 3 no holding
+      3 abreast3 tf1: 4 the order
+      3 abreast3 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 abreast3 tf1: 5 the escort gate
+      2 abreast3 tf1: 6 the short final
+      2 abreast3 tf1: 6b P2's nose within 8 deg of F
+      3 abreast3 tf1: 7 safety
+      3 abreast3 tf1: 8 the span
+      3 abreast3 tf6: 1b6 the join: the nose along F by 7 km
+      3 abreast3 tf6: 3 no holding
+      3 abreast3 tf6: 4 the order
+      3 abreast3 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 abreast3 tf6: 5 the escort gate
+      1 abreast3 tf6: 6 the short final
+      1 abreast3 tf6: 6b P2's nose within 8 deg of F
+      3 abreast3 tf6: 7 safety
+      3 abreast3 tf6: 8 the span
+      3 abreast5 tf10: 1b6 the join: the nose along F by 7 km
+      3 abreast5 tf10: 3 no holding
+      3 abreast5 tf10: 4 the order
+      3 abreast5 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 abreast5 tf10: 5 the escort gate
+      3 abreast5 tf10: 7 safety
+      1 abreast5 tf10: 7b no own-gate 0x12
+      3 abreast5 tf10: 8 the span
+      3 abreast5 tf1: 1b6 the join: the nose along F by 7 km
+      1 abreast5 tf1: 2 the yielder
+      3 abreast5 tf1: 3 no holding
+      3 abreast5 tf1: 4 the order
+      3 abreast5 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 abreast5 tf1: 5 the escort gate
+      2 abreast5 tf1: 6 the short final
+      2 abreast5 tf1: 6b P2's nose within 8 deg of F
+      3 abreast5 tf1: 7 safety
+      2 abreast5 tf1: 8 the span
+      3 abreast5 tf6: 1b6 the join: the nose along F by 7 km
+      3 abreast5 tf6: 3 no holding
+      3 abreast5 tf6: 4 the order
+      3 abreast5 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 abreast5 tf6: 5 the escort gate
+      2 abreast5 tf6: 6 the short final
+      2 abreast5 tf6: 6b P2's nose within 8 deg of F
+      3 abreast5 tf6: 7 safety
+      3 abreast5 tf6: 8 the span
+      3 arrival_cross tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_cross tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_cross tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_pass tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 arrival_pass tf10: Ex no contact between the departing capitals
+      3 arrival_pass tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_pass tf1: Ex no contact between the departing capitals
+      3 arrival_pass tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 arrival_pass tf6: Ex no contact between the departing capitals
+      3 arrival_pass2 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_pass2 tf10: Ex no contact between the departing capitals
+      3 arrival_pass2 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_pass2 tf1: Ex no contact between the departing capitals
+      1 arrival_pass2 tf1: Ex no member 0x12 episode between members
+      1 arrival_pass2 tf1: every ship launched
+      3 arrival_pass2 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 arrival_pass2 tf6: Ex no contact between the departing capitals
+      1 arrival_pass2 tf6: Ex no member 0x12 episode between members
+      3 crossing tf10: 1b6 the join: the nose along F by 7 km
+      3 crossing tf10: 2 the yielder
+      1 crossing tf10: 2b the law's stop within T_stop + the step
+      3 crossing tf10: 3 no holding
+      3 crossing tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 crossing tf10: 5 the escort gate
+      1 crossing tf10: 6 the short final
+      1 crossing tf10: 6b P2's nose within 8 deg of F
+      3 crossing tf10: 7 safety
+      2 crossing tf10: 7b no own-gate 0x12
+      3 crossing tf10: 8 the span
+      1 crossing tf1: 1b6 the join: the nose along F by 7 km
+      3 crossing tf1: 3 no holding
+      3 crossing tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 crossing tf1: 5 the escort gate
+      3 crossing tf1: 7 safety
+      3 crossing tf1: 8 the span
+      3 crossing tf6: 1b6 the join: the nose along F by 7 km
+      3 crossing tf6: 3 no holding
+      3 crossing tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 crossing tf6: 5 the escort gate
+      3 crossing tf6: 7 safety
+      3 crossing tf6: 8 the span
+      3 formed tf10: 1b6 the join: the nose along F by 7 km
+      3 formed tf10: 3 no holding
+      3 formed tf10: 4 the order
+      3 formed tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 formed tf10: 5 the escort gate
+      2 formed tf10: 6 the short final
+      2 formed tf10: 6b P2's nose within 8 deg of F
+      3 formed tf10: 7 safety
+      3 formed tf10: 8 the span
+      3 formed tf1: 1b6 the join: the nose along F by 7 km
+      3 formed tf1: 3 no holding
+      3 formed tf1: 4 the order
+      3 formed tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 formed tf1: 5 the escort gate
+      3 formed tf1: 7 safety
+      3 formed tf1: 8 the span
+      3 formed tf6: 1b6 the join: the nose along F by 7 km
+      3 formed tf6: 3 no holding
+      3 formed tf6: 4 the order
+      3 formed tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 formed tf6: 5 the escort gate
+      3 formed tf6: 6 the short final
+      3 formed tf6: 6b P2's nose within 8 deg of F
+      3 formed tf6: 7 safety
+      3 formed tf6: 8 the span
+      3 formed_m7 tf10: 1b6 the join: the nose along F by 7 km
+      2 formed_m7 tf10: 2 the yielder
+      3 formed_m7 tf10: 3 no holding
+      3 formed_m7 tf10: 4 the order
+      3 formed_m7 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 formed_m7 tf10: 5 the escort gate
+      2 formed_m7 tf10: 6 the short final
+      2 formed_m7 tf10: 6b P2's nose within 8 deg of F
+      3 formed_m7 tf10: 7 safety
+      3 formed_m7 tf10: 8 the span
+      3 formed_m7 tf1: 1b6 the join: the nose along F by 7 km
+      3 formed_m7 tf1: 3 no holding
+      3 formed_m7 tf1: 4 the order
+      3 formed_m7 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 formed_m7 tf1: 5 the escort gate
+      2 formed_m7 tf1: 6 the short final
+      2 formed_m7 tf1: 6b P2's nose within 8 deg of F
+      3 formed_m7 tf1: 7 safety
+      3 formed_m7 tf1: 8 the span
+      3 formed_m7 tf6: 1b6 the join: the nose along F by 7 km
+      3 formed_m7 tf6: 3 no holding
+      3 formed_m7 tf6: 4 the order
+      3 formed_m7 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 formed_m7 tf6: 5 the escort gate
+      3 formed_m7 tf6: 6 the short final
+      3 formed_m7 tf6: 6b P2's nose within 8 deg of F
+      3 formed_m7 tf6: 7 safety
+      3 formed_m7 tf6: 8 the span
+      3 formed_stage2 tf10: 1b6 the join: the nose along F by 7 km
+      3 formed_stage2 tf10: 3 no holding
+      3 formed_stage2 tf10: 4 the order
+      3 formed_stage2 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 formed_stage2 tf10: 5 the escort gate
+      1 formed_stage2 tf10: 6 the short final
+      1 formed_stage2 tf10: 6b P2's nose within 8 deg of F
+      3 formed_stage2 tf10: 7 safety
+      3 formed_stage2 tf10: 8 the span
+      3 formed_stage2 tf1: 1b6 the join: the nose along F by 7 km
+      3 formed_stage2 tf1: 3 no holding
+      3 formed_stage2 tf1: 4 the order
+      3 formed_stage2 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 formed_stage2 tf1: 5 the escort gate
+      3 formed_stage2 tf1: 7 safety
+      3 formed_stage2 tf1: 8 the span
+      3 formed_stage2 tf6: 1b6 the join: the nose along F by 7 km
+      3 formed_stage2 tf6: 3 no holding
+      3 formed_stage2 tf6: 4 the order
+      3 formed_stage2 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 formed_stage2 tf6: 5 the escort gate
+      3 formed_stage2 tf6: 7 safety
+      3 formed_stage2 tf6: 8 the span
+      1 join_block tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 join_block tf1: 1b6 the join: the nose along F by 7 km
+      3 join_block tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 join_block tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 join_field tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 join_field tf1: 1b6 the join: the nose along F by 7 km
+      3 join_field tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 lane_fallback tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 lane_fallback tf10: Cx the span
+      2 lane_fallback tf10: Cx2 P2 kept within 8 deg of F
+      3 lane_fallback tf10: Ex no contact between the departing capitals
+      3 lane_fallback tf10: Ex no member 0x12 episode between members
+      3 lane_fallback tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 lane_fallback tf1: Cx the span
+      3 lane_fallback tf1: Ex no contact between the departing capitals
+      3 lane_fallback tf1: Ex no member 0x12 episode between members
+      3 lane_fallback tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 lane_fallback tf6: Cx the span
+      3 lane_fallback tf6: Cx2 P2 kept within 8 deg of F
+      2 lane_fallback tf6: Ex no contact between the departing capitals
+      3 lane_fallback tf6: Ex no member 0x12 episode between members
+      3 leader_killed tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 leader_killed tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 leader_killed tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 m7_cross tf10: 1b6 the join: the nose along F by 7 km
+      3 m7_cross tf10: 3 no holding
+      3 m7_cross tf10: 4 the order
+      3 m7_cross tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 m7_cross tf10: 5 the escort gate
+      2 m7_cross tf10: 6 the short final
+      2 m7_cross tf10: 6b P2's nose within 8 deg of F
+      3 m7_cross tf10: 7 safety
+      3 m7_cross tf10: 8 the span
+      3 m7_cross tf1: 1b6 the join: the nose along F by 7 km
+      3 m7_cross tf1: 3 no holding
+      3 m7_cross tf1: 4 the order
+      3 m7_cross tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 m7_cross tf1: 5 the escort gate
+      3 m7_cross tf1: 7 safety
+      3 m7_cross tf1: 8 the span
+      3 m7_cross tf6: 1b6 the join: the nose along F by 7 km
+      3 m7_cross tf6: 3 no holding
+      3 m7_cross tf6: 4 the order
+      3 m7_cross tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 m7_cross tf6: 5 the escort gate
+      3 m7_cross tf6: 6 the short final
+      3 m7_cross tf6: 6b P2's nose within 8 deg of F
+      3 m7_cross tf6: 7 safety
+      3 m7_cross tf6: 8 the span
+      3 p2_miss tf10: 1b6 the join: the nose along F by 7 km
+      3 p2_miss tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 p2_miss tf1: 1b6 the join: the nose along F by 7 km
+      1 p2_miss tf1: 3e order 5 from rest: the launch within T_slot + 25 s + the step of the grant
+      3 p2_miss tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 p2_miss tf6: 1b6 the join: the nose along F by 7 km
+      3 p2_miss tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 p2_miss_near tf10: 1b6 the join: the nose along F by 7 km
+      3 p2_miss_near tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 p2_miss_near tf1: 1b6 the join: the nose along F by 7 km
+      3 p2_miss_near tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 p2_miss_near tf6: 1b6 the join: the nose along F by 7 km
+      1 p2_miss_near tf6: 3e order 5 from rest: the launch within T_slot + 25 s + the step of the grant
+      3 p2_miss_near tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 parked tf10: 1b6 the join: the nose along F by 7 km
+      1 parked tf10: 1r2 no 0x12 against a non-member obstacle whose flown path cleared; no suppression whose path touched it; no contact
+      3 parked tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 parked tf10: 7 safety
+      1 parked tf10: 7b6 the parked cast: own-gate 0x12 <= 3, P2's nose <= 33 deg
+      1 parked tf1: 1b6 the join: the nose along F by 7 km
+      3 parked tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 parked tf1: 7 safety
+      2 parked tf1: every ship launched
+      3 parked tf6: 1b6 the join: the nose along F by 7 km
+      3 parked tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 parked tf6: 7 safety
+      1 parked tf6: 7b6 the parked cast: own-gate 0x12 <= 3, P2's nose <= 33 deg
+      3 partner_block tf10: 1b6 the join: the nose along F by 7 km
+      3 partner_block tf10: 3 no holding
+      3 partner_block tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 partner_block tf10: 5 the escort gate
+      2 partner_block tf10: 6 the short final
+      2 partner_block tf10: 6b P2's nose within 8 deg of F
+      3 partner_block tf10: 7 safety
+      1 partner_block tf10: 7b no own-gate 0x12
+      3 partner_block tf1: 1b6 the join: the nose along F by 7 km
+      2 partner_block tf1: 2 the yielder
+      2 partner_block tf1: 2b the law's stop within T_stop + the step
+      3 partner_block tf1: 3 no holding
+      3 partner_block tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 partner_block tf1: 5 the escort gate
+      3 partner_block tf1: 6 the short final
+      3 partner_block tf1: 6b P2's nose within 8 deg of F
+      3 partner_block tf1: 7 safety
+      3 partner_block tf6: 1b6 the join: the nose along F by 7 km
+      1 partner_block tf6: 2 the yielder
+      3 partner_block tf6: 3 no holding
+      3 partner_block tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 partner_block tf6: 5 the escort gate
+      2 partner_block tf6: 6 the short final
+      2 partner_block tf6: 6b P2's nose within 8 deg of F
+      3 partner_block tf6: 7 safety
+      1 redeparture tf10: 1 the passer is never capped
+      3 redeparture tf10: 1b6 the join: the nose along F by 7 km
+      1 redeparture tf10: 2 the yielder
+      3 redeparture tf10: 3 no holding
+      3 redeparture tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 redeparture tf10: 5 the escort gate
+      3 redeparture tf10: 6 the short final
+      3 redeparture tf10: 6b P2's nose within 8 deg of F
+      3 redeparture tf10: 7 safety
+      1 redeparture tf1: 1 the passer is never capped
+      3 redeparture tf1: 1b6 the join: the nose along F by 7 km
+      2 redeparture tf1: 2 the yielder
+      3 redeparture tf1: 3 no holding
+      3 redeparture tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 redeparture tf1: 5 the escort gate
+      3 redeparture tf1: 6 the short final
+      3 redeparture tf1: 6b P2's nose within 8 deg of F
+      3 redeparture tf1: 7 safety
+      1 redeparture tf1: 8 the span
+      1 redeparture tf1: every ship launched
+      3 redeparture tf6: 1b6 the join: the nose along F by 7 km
+      2 redeparture tf6: 2 the yielder
+      3 redeparture tf6: 3 no holding
+      3 redeparture tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 redeparture tf6: 5 the escort gate
+      3 redeparture tf6: 6 the short final
+      3 redeparture tf6: 6b P2's nose within 8 deg of F
+      3 redeparture tf6: 7 safety
+      3 retarget tf1: 3 no holding
+      3 retarget tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 retarget tf1: 5 the escort gate
+      3 retarget tf1: 6 the short final
+      3 retarget tf1: 6b P2's nose within 8 deg of F
+      3 retarget tf1: 8 the span
+      3 retarget tf1: every ship launched
+      3 return_trip tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf10: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf1: Ex no member 0x12 episode between members
+      1 return_trip tf1: Rx P2 within the lone turn-around
+      1 return_trip tf1: Rx the escorts launched within their own bound
+      3 return_trip tf1: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 return_trip tf6: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 slow_hull tf10: 3 no holding
+      3 slow_hull tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 slow_hull tf10: 5 the escort gate
+      1 slow_hull tf10: 6 the short final
+      1 slow_hull tf10: 6b P2's nose within 8 deg of F
+      2 slow_hull tf1: 1b6 the join: the nose along F by 7 km
+      2 slow_hull tf1: 3 no holding
+      3 slow_hull tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 slow_hull tf6: 3 no holding
+      3 slow_hull tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 slow_hull tf6: 5 the escort gate
+      3 slow_hull tf6: 6 the short final
+      3 slow_hull tf6: 6b P2's nose within 8 deg of F
+      3 small_escort tf10: 1b6 the join: the nose along F by 7 km
+      3 small_escort tf10: 3 no holding
+      3 small_escort tf10: 4 the order
+      3 small_escort tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 small_escort tf10: 5 the escort gate
+      3 small_escort tf10: 6 the short final
+      3 small_escort tf10: 6b P2's nose within 8 deg of F
+      3 small_escort tf10: 7 safety
+      3 small_escort tf10: 8 the span
+      2 small_escort tf1: 1b6 the join: the nose along F by 7 km
+      3 small_escort tf1: 3 no holding
+      3 small_escort tf1: 4 the order
+      3 small_escort tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 small_escort tf1: 5 the escort gate
+      2 small_escort tf1: 6 the short final
+      2 small_escort tf1: 6b P2's nose within 8 deg of F
+      3 small_escort tf1: 7 safety
+      3 small_escort tf1: 8 the span
+      3 small_escort tf6: 1b6 the join: the nose along F by 7 km
+      3 small_escort tf6: 3 no holding
+      3 small_escort tf6: 4 the order
+      3 small_escort tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 small_escort tf6: 5 the escort gate
+      3 small_escort tf6: 6 the short final
+      3 small_escort tf6: 6b P2's nose within 8 deg of F
+      3 small_escort tf6: 7 safety
+      3 small_escort tf6: 8 the span
+      3 small_gate tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 small_gate tf10: Dx no contact with a small ship
+      3 small_gate tf10: Dx the members' span
+      3 small_gate tf10: Ex no contact between the departing capitals
+      3 small_gate tf10: Ex no member 0x12 episode between members
+      3 small_gate tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 small_gate tf1: Dx no contact with a small ship
+      3 small_gate tf1: Dx the members' span
+      1 small_gate tf1: Dx3 no held small ship inside a capital's warn zone or its path margin
+      3 small_gate tf1: Ex no contact between the departing capitals
+      3 small_gate tf1: Ex no member 0x12 episode between members
+      3 small_gate tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 small_gate tf6: Dx no contact with a small ship
+      3 small_gate tf6: Dx the members' span
+      3 small_gate tf6: Dx3 no held small ship inside a capital's warn zone or its path margin
+      3 small_gate tf6: Ex no contact between the departing capitals
+      3 small_gate tf6: Ex no member 0x12 episode between members
+      3 small_gate5 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 small_gate5 tf10: Dx no contact with a small ship
+      2 small_gate5 tf10: Dx3 no held small ship inside a capital's warn zone or its path margin
+      3 small_gate5 tf10: Ex no contact between the departing capitals
+      3 small_gate5 tf10: Ex no member 0x12 episode between members
+      3 small_gate5 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 small_gate5 tf1: Dx no contact with a small ship
+      1 small_gate5 tf1: Dx3 no held small ship inside a capital's warn zone or its path margin
+      3 small_gate5 tf1: Ex no contact between the departing capitals
+      3 small_gate5 tf1: Ex no member 0x12 episode between members
+      3 small_gate5 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 small_gate5 tf6: Dx no contact with a small ship
+      2 small_gate5 tf6: Dx3 no held small ship inside a capital's warn zone or its path margin
+      3 small_gate5 tf6: Ex no member 0x12 episode between members
+      3 small_gate_m6 tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 small_gate_m6 tf10: Dx no contact with a small ship
+      3 small_gate_m6 tf10: Dx the members' span
+      2 small_gate_m6 tf10: Dx3 no held small ship inside a capital's warn zone or its path margin
+      1 small_gate_m6 tf10: Ex no contact between the departing capitals
+      2 small_gate_m6 tf10: Ex no member 0x12 episode between members
+      3 small_gate_m6 tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 small_gate_m6 tf1: Dx the members' span
+      2 small_gate_m6 tf1: Dx3 no held small ship inside a capital's warn zone or its path margin
+      1 small_gate_m6 tf1: Ex no contact between the departing capitals
+      3 small_gate_m6 tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 small_gate_m6 tf6: Dx no contact with a small ship
+      2 small_gate_m6 tf6: Dx the members' span
+      3 small_gate_m6 tf6: Dx3 no held small ship inside a capital's warn zone or its path margin
+      1 small_gate_m6 tf6: Ex no member 0x12 episode between members
+      3 station tf10: 1b6 the join: the nose along F by 7 km
+      3 station tf10: 3 no holding
+      3 station tf10: 4 the order
+      3 station tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 station tf10: 5 the escort gate
+      2 station tf10: 6 the short final
+      2 station tf10: 6b P2's nose within 8 deg of F
+      3 station tf10: 7 safety
+      3 station tf10: 8 the span
+      3 station tf1: 1b6 the join: the nose along F by 7 km
+      3 station tf1: 3 no holding
+      3 station tf1: 4 the order
+      3 station tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 station tf1: 5 the escort gate
+      3 station tf1: 7 safety
+      3 station tf1: 8 the span
+      3 station tf6: 1b6 the join: the nose along F by 7 km
+      3 station tf6: 3 no holding
+      3 station tf6: 4 the order
+      3 station tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 station tf6: 5 the escort gate
+      3 station tf6: 6 the short final
+      3 station tf6: 6b P2's nose within 8 deg of F
+      3 station tf6: 7 safety
+      3 station tf6: 8 the span
+      3 stragglers tf10: 1b6 the join: the nose along F by 7 km
+      3 stragglers tf10: 3 no holding
+      3 stragglers tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 stragglers tf10: 5 the escort gate
+      1 stragglers tf10: 6 the short final
+      1 stragglers tf10: 6b P2's nose within 8 deg of F
+      3 stragglers tf10: 7 safety
+      3 stragglers tf10: 8 the span
+      3 stragglers tf1: 1b6 the join: the nose along F by 7 km
+      3 stragglers tf1: 3 no holding
+      3 stragglers tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 stragglers tf1: 5 the escort gate
+      1 stragglers tf1: 6 the short final
+      1 stragglers tf1: 6b P2's nose within 8 deg of F
+      3 stragglers tf1: 7 safety
+      3 stragglers tf1: 8 the span
+      3 stragglers tf6: 1b6 the join: the nose along F by 7 km
+      3 stragglers tf6: 3 no holding
+      3 stragglers tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 stragglers tf6: 5 the escort gate
+      3 stragglers tf6: 7 safety
+      3 stragglers tf6: 8 the span
+      3 terran tf10: 1b6 the join: the nose along F by 7 km
+      3 terran tf10: 3 no holding
+      3 terran tf10: 4 the order
+      3 terran tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 terran tf10: 5 the escort gate
+      2 terran tf10: 6 the short final
+      2 terran tf10: 6b P2's nose within 8 deg of F
+      2 terran tf10: 7 safety
+      3 terran tf10: 8 the span
+      3 terran tf1: 1b6 the join: the nose along F by 7 km
+      3 terran tf1: 3 no holding
+      3 terran tf1: 4 the order
+      3 terran tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 terran tf1: 5 the escort gate
+      3 terran tf1: 6 the short final
+      3 terran tf1: 6b P2's nose within 8 deg of F
+      3 terran tf1: 7 safety
+      3 terran tf1: 8 the span
+      2 terran tf6: 1b6 the join: the nose along F by 7 km
+      3 terran tf6: 3 no holding
+      3 terran tf6: 4 the order
+      3 terran tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 terran tf6: 5 the escort gate
+      1 terran tf6: 6 the short final
+      1 terran tf6: 6b P2's nose within 8 deg of F
+      3 terran tf6: 7 safety
+      3 terran tf6: 8 the span
+      3 terran_abreast tf10: 1b6 the join: the nose along F by 7 km
+      3 terran_abreast tf10: 3 no holding
+      3 terran_abreast tf10: 4 the order
+      3 terran_abreast tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 terran_abreast tf10: 5 the escort gate
+      2 terran_abreast tf10: 7 safety
+      3 terran_abreast tf10: 8 the span
+      3 terran_abreast tf1: 1b6 the join: the nose along F by 7 km
+      3 terran_abreast tf1: 3 no holding
+      2 terran_abreast tf1: 4 the order
+      3 terran_abreast tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      1 terran_abreast tf1: 5 the escort gate
+      2 terran_abreast tf1: 6 the short final
+      2 terran_abreast tf1: 6b P2's nose within 8 deg of F
+      3 terran_abreast tf1: 7 safety
+      2 terran_abreast tf1: 8 the span
+      3 terran_abreast tf6: 1b6 the join: the nose along F by 7 km
+      1 terran_abreast tf6: 2 the yielder
+      3 terran_abreast tf6: 3 no holding
+      3 terran_abreast tf6: 4 the order
+      3 terran_abreast tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 terran_abreast tf6: 5 the escort gate
+      3 terran_abreast tf6: 6 the short final
+      3 terran_abreast tf6: 6b P2's nose within 8 deg of F
+      2 terran_abreast tf6: 7 safety
+      3 terran_abreast tf6: 8 the span
+      3 x12_near tf10: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 x12_near tf10: Bx no further eviction after the re-issue
+      3 x12_near tf10: Bx2 the span within the measured maximum + 5 s + the step
+      3 x12_near tf1: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      3 x12_near tf1: Bx P2 kept within 8 deg of F after the re-merge
+      3 x12_near tf1: Bx no further eviction after the re-issue
+      3 x12_near tf1: Bx2 the loop-back join flown
+      3 x12_near tf1: Bx2 the span within the measured maximum + 5 s + the step
+      3 x12_near tf6: 4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression
+      2 x12_near tf6: Bx P2 kept within 8 deg of F after the re-merge
+      3 x12_near tf6: Bx no further eviction after the re-issue
+      3 x12_near tf6: Bx2 the loop-back join flown
+      3 x12_near tf6: Bx2 the span within the measured maximum + 5 s + the step

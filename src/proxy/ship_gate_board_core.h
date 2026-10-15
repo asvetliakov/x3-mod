@@ -223,9 +223,16 @@ struct Member {
     // loop's out distance beyond d_end while it is pushed ahead of the ship, and its lead (m: the path to the turn point with the nose's turn
     // onto it; lane_eta / lane_score rank by the ETA that includes the loop)
     // (the out-leg's side: a unit lateral (R, U) from Lambda, the ship's own side at the re-commit, never above Lambda)
-    std::uint8_t x12_rc = 0, loop = 0, loop_conv = 0;
+    // (the arrival round item 3: loop_min, the lone re-departure flown as a loop on the ship's own side, above Lambda too, with the minimal
+    // turn point: lane_frame's decision once when a plain re-departure would start; lane_loop_base)
+    std::uint8_t x12_rc = 0, loop = 0, loop_conv = 0, loop_min = 0, loop_min_done = 0; // (loop_min_done: decided for this re-departure)
     float loop_out = 0.0f, loop_lead = 0.0f, loop_n[2] = {0.0f, -1.0f};
     float loop_sp = 0.0f; // (the out distance that ends the U-turn g_req behind the ship ahead: re-taken every frame until it is reached)
+    // review of the arrival round item 3: the gate-mouth hold's bound (lane_frame's block): the predecessor it was taken for (its ship), the
+    // bound (game ms: P's launch ETA at the hold's start + T_stop + the step; 0 none) and whether it expired (no hold behind that P again
+    // during this re-departure)
+    std::uint32_t mouth_pred = 0, mouth_ms = 0;
+    std::uint8_t mouth_exp = 0;
     std::uint32_t lstop_ms = 0, lstop_last_ms = 0, x_acc_ms = 0; // (lstop_last_ms: the episode's last frame with the stop's condition)
     std::uint8_t merge_done = 1; // review item 6: the merge's completion, the raw gap >= g_req - 50 m (the merge row's label, no law state)
     Law law = Law::none;
@@ -264,6 +271,7 @@ struct LaneProfile {
 struct Gate {
     std::uint32_t gate = 0, stamp_ms = 0;
     std::uint16_t type = 0xffff; // [gate+0x4a]: the TGates row (no collision mesh: 0..3, 5..14; Terran ring: 21..24)
+    std::uint8_t ring = 0; // the arrival round item 4: its body's collision tree (kGateRingNone / kGateRingTree; 0 not read, unknown)
     float r_gate = 0;
     float G[3] = {0, 0, 0}, R[3] = {1, 0, 0}, U[3] = {0, 1, 0}, F[3] = {0, 0, 1};
     unsigned n = 0;              // members in use (highest index + 1)
@@ -570,7 +578,9 @@ inline Member* enter(Board& b, Gate& g, std::uint32_t ship, std::uint32_t id, Ro
         // keep is the sequence number's, not the 0x12's: the flown episodes last 17-33 s in the fixture and the record of one that lapsed
         // still says evicted)
         m.x12_rc = m.role == Role::evicted ? 1 : 0;
-        m.loop = m.loop_conv = 0;
+        m.loop = m.loop_conv = m.loop_min = m.loop_min_done = 0;
+        m.mouth_pred = m.mouth_ms = 0; // (review of the arrival round item 3)
+        m.mouth_exp = 0;
         m.enter_ms = now ? now : 1;
         // (round 2 review item 2: a hand to another leader belongs to the escort membership it was stamped in: a ship re-entering in
         // another role, after an eviction within 30 s or as a committed member, flies no Plan::drift and keeps no frozen lane order)
