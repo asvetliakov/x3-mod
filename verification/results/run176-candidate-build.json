@@ -1,0 +1,21 @@
+{
+ "dll": "detached worktree /tmp/x3-run176-candidate of 88eca37a, build/d3d9.dll (clean configure + build)",
+ "sha256": "ea328f117724d062c40d4da79aae6b4d05018b5abebeb43ccf27dd19a8efb9ed",
+ "bytes": 61908971,
+ "commit": "88eca37a",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 1013, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); engine discover modules: 2 known Wine record-hash failures, 6 skipped; fixture on main 88eca37a: --lane 5760/0, full 13107/0, --capital 7485/0"
+ },
+ "trigger": "Run175 flights (two sessions): grid-miss steering, the escort width fallback, lane laws along F on far-off escorts, the loop block on a far follower -> the Run175 round (section 12.8)",
+ "producer": "main session (Fable 5.1), 2026-10-15",
+ "changes_since_run175": [
+  "91421101 statics not a flown case",
+  "a01815d4 Run175 triage",
+  "88eca37a Run175 round (+ review fixes)"
+ ]
+}
