@@ -5,6 +5,12 @@ namespace {
 unsigned census_logged_count_ = 0;
 std::int32_t target_ring_[4][3];  // the step-2 seam: a redirected EDX points here, never at the caller's buffer
 unsigned target_depth_ = 0;
+// Run175 round item 6 (--debug): the handler call under way (its object and order once read), and whether snapshot_for walked the sector
+// in it and that walk's ticks (ship_steering_handler_slow)
+std::uint32_t hs_obj_ = 0;
+std::uint16_t hs_order_ = 0;
+std::uint8_t hs_snap_walk_ = 0;
+std::uint64_t hs_snap_ticks_ = 0;
 inline void record_time(std::uint64_t ticks) noexcept {
     const std::uint32_t t = ticks > 0xffffffffull ? 0xffffffffu : std::uint32_t(ticks);
     const unsigned bucket = t ? 31u - unsigned(__builtin_clz(t)) : 0u;
@@ -50,7 +56,12 @@ const av::Snapshot* snapshot_for(std::uint32_t sector, std::uint32_t now) noexce
     }
     RawMem mem;
     wk::Stats stats;
+    const std::uint64_t tw = debug_ && timing_ ? qpc() : 0;
     wk::fill_snapshot(mem, sector, now, s, part_cache_, stats, census, &members_, &member_stats_); // amendment 15: the membership pass
+    if (tw) {
+        hs_snap_walk_ = 1;
+        hs_snap_ticks_ += qpc() - tw;
+    }
     // B.5: the walk is this frame's update handing the sector's objects over: its ships enter the live set (the frame boundary proves
     // board members from it without reading engine memory)
     if (traffic_live_.load(std::memory_order_relaxed)) live_set_.add_snapshot(s, ctl_any_member());
@@ -253,6 +264,15 @@ inline std::uint8_t grid_slot_of(const float A_local_r[3], float r_gate) noexcep
     if (a < -2 || a > 2 || b < -3 || b > 0) return 255;
     return std::uint8_t(-b * 5 + col[a + 2]);
 }
+// Run175 round item 1: the size the KC's GetSize (0x00488170) reads for the grid point, the render root's cached subtree radius
+// [[obj+0x70]+0xa4] (m; -1: no root, unreadable, or the cache dirty). Read-only, range- and alignment-checked (wk::ptr_ok). always_inline:
+// a float return out of line goes through st(0) on i686, which the x87 audit refuses on the hook paths.
+__attribute__((always_inline)) inline float kc_size_m(std::uint32_t obj) noexcept {
+    const std::uint32_t root = rd32(obj + sites::kObjPhys);
+    if (!wk::ptr_ok(root, wk::kNodeBytes)) return -1.0f;
+    const std::int32_t r = rds32(root + wk::kNodeRadius);
+    return r >= 0 ? float(r) / core::kUnitsPerMetre : -1.0f;
+}
 // Site A's gate branch (decide() below, between the gate frame and the arrival parameters; extracted on 2026-10-15 by the source
 // split, docs/architecture/ship-steering-holistic-review.md rank 3): the lane's order-4 point (lane stage 1), the order-4 approach to
 // a gate (step 3 P1; amendments 8-16 for a capital, the commit to the traffic controller) and order 5 to a gate. The locals it shares
@@ -407,18 +427,25 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
             // lane flies it); the key off, a ship the board refuses or one outside a lane stage keeps the amendment-15 join
             bool sb_member = false;
             if (capital && traffic_on_ && !player) {
-                const gc::Member* cm = ctl_commit(*gs, obj, in, dyn, &g, G, row0, row1, row2, r_gate, gate_tgt, now);
+                gc::Member* cm = ctl_commit(*gs, obj, in, dyn, &g, G, row0, row1, row2, r_gate, gate_tgt, now);
                 sb_member = cm && gc::sb_managed(*cm); // review F8: else the stage-A / amendment-17 join
                 // lane stage 1 (section 6.4): a lane member's f+0x240 on one of the KC's 20 grid points (within 1 m; the closed form of
                 // section 10.2 with this hull's radius) becomes its lane point L_i, d_end - 0.75 r_gate before the plane on its final; the
                 // engine's next re-plan tick (0-49 ms) tests and steers at it (section 10.12 item 2). A KC re-issue writes a grid point
                 // again and is caught again; a field holding our write is left alone. One 12-byte store.
-                if (lane_on_ && cm && cm->ln && cm->q_ok && cm->role == gc::Role::committed && !lane_ours && !in.detour) {
+                // Run175 round item 1: a script gate point of any plausible size is recognised by its shape (gc::kc_grid_slot_any); a field
+                // that is neither such a point nor ours is kept as the member's lane lateral (gc::lane_point_fallback: the module's lead-in
+                // flies the axis through it, the lane never steers it off the point), and the miss row carries the hull's size, the size the
+                // depth implies and the KC's size source (the render root's cached subtree radius [[obj+0x70]+0xa4], 0x00488170; read-only)
+                // (review: the block runs whatever pt_ok, so a KC point re-issued after a foreign field clears the fallback below)
+                if (lane_on_ && cm && cm->ln && cm->w_ok && cm->funnel && cm->q_ok && cm->role == gc::Role::committed && !lane_ours && !in.detour) {
                     const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
                     float cp[3];
                     for (unsigned i = 0; i < 3; ++i) cp[i] = float(cur[i]) / core::kUnitsPerMetre;
                     const gc::Gate* cg = gc::gate_of(ctl_, gate_tgt);
-                    if (cg && gc::kc_grid_slot(G, row0, row1, row2, r_gate, dyn.r_own, cp) >= 0) {
+                    float implied = -1.0f;
+                    if (cg && gc::kc_grid_slot_any(G, row0, row1, row2, r_gate, dyn.r_own, cp, &implied) >= 0) {
+                        cm->pt_ok = 0;
                         float L[3];
                         gc::lane_order_point(*cg, *cm, L);
                         std::int32_t units[3];
@@ -435,13 +462,14 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
                             }
                             gs->lane_w.ok = 1;
                             ctl_point_rewrites_.add();
-                            lane_rewrite_row(*cg, obj, dyn.r_own, cur, units, 0, now);
+                            lane_rewrite_row(*cg, obj, dyn.r_own, cur, units, 0, now, implied, kc_size_m(obj));
                         }
                     } else if (cg && !gc::small_b_ours(gs->lane_miss, cur)) { // review item 4: neither a grid point nor ours, once per value
                         for (unsigned i = 0; i < 3; ++i) gs->lane_miss.w[i] = cur[i];
                         gs->lane_miss.ok = 1;
+                        gc::lane_point_fallback(*cg, *cm, cp);
                         ctl_grid_miss_.add();
-                        lane_rewrite_row(*cg, obj, dyn.r_own, cur, cur, 3, now);
+                        lane_rewrite_row(*cg, obj, dyn.r_own, cur, cur, 3, now, implied, kc_size_m(obj));
                     }
                 }
             }
@@ -656,6 +684,7 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
 // ---- the steering decision -------------------------------------------
 core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::uint32_t obj = f->obj;
+    if (debug_) hs_obj_ = obj;
     if (!obj || rd16(obj + sites::kObjClass) != sites::kClassShip) return core::Reason::not_ship;
     const std::uint32_t flags = rd32(obj + sites::kObjFlags);
     const bool player = (flags & sites::kFlagPlayerObject) != 0; // stage B: the player's own ship is never on a board, sequenced or steered
@@ -666,6 +695,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     const std::uint32_t ph = rd32(obj + sites::kObjPhys);
     if (!ph) return core::Reason::no_phys;
     const std::uint16_t order = rd16(fl + sites::kFlightOrder);
+    if (debug_) hs_order_ = order;
     const core::OrderPolicy policy = core::order_policy(order);
     if (!policy.steered) return core::Reason::order_not_steered;
     const std::int32_t type = std::int16_t(rd16(obj + sites::kObjType));
@@ -945,7 +975,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (traffic_on_ && capital && !player) {
         if (order == core::kOrderEscort || order == core::kOrderFollow) {
             const std::uint32_t leader = rd32(fl + sites::kFlightTarget);
-            if (leader && ctl_ix_.maybe(leader)) ctl_escort(obj, leader, in, dyn, now);
+            if (leader && ctl_ix_.maybe(leader)) ctl_escort(gate_[slot], obj, code, leader, in, dyn, now);
         }
         int ci = -1;
         if (gc::Gate* cg = ctl_lookup(obj, &ci)) {
@@ -1052,6 +1082,19 @@ extern "C" int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf) {
     // A site that stayed chained after a failed rollback passes through (the original leaf runs).
     if (!installed_.load(std::memory_order_relaxed)) return 0;
     Envelope env;
+    // Run175 round item 6 (--debug with timing): the thread's cycle count beside QPC (QueryThreadCycleTime: documented Win32, kernel32; a
+    // preempted call shows a QPC delta its cycles do not cover) and the sector walk's share of a slow call. The cycle read comes before
+    // t0 (the histogram does not carry it); its return is checked (0 cycles on the row when it failed)
+    const bool slow_on = timing_ && debug_;
+    ULONG64 cyc0 = 0;
+    bool cyc_ok = false;
+    if (slow_on) {
+        cyc_ok = QueryThreadCycleTime(GetCurrentThread(), &cyc0) != 0;
+        hs_obj_ = 0;
+        hs_order_ = 0;
+        hs_snap_walk_ = 0;
+        hs_snap_ticks_ = 0;
+    }
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     const core::Reason r = decide(frame, unsigned(leaf) < 3 ? unsigned(leaf) : 0u);
     calls_.add();
@@ -1060,6 +1103,20 @@ extern "C" int __cdecl x3m_ship_steering_enter(sites::Frame* frame, int leaf) {
         handled_.add();
     else
         reasons_[unsigned(r) < core::kReasonCount ? unsigned(r) : 0u].add();
-    if (timing_) record_time(qpc() - t0);
+    if (timing_) {
+        const std::uint64_t dt = qpc() - t0;
+        record_time(dt);
+        if (slow_on && qpc_frequency_ && dt * 1000000ull > std::uint64_t(kHandlerSlowUs) * qpc_frequency_) {
+            ULONG64 cyc1 = 0;
+            const bool ok1 = cyc_ok && QueryThreadCycleTime(GetCurrentThread(), &cyc1) != 0;
+            const std::uint32_t w = handler_slow_write_.load(std::memory_order_relaxed);
+            if (w - handler_slow_read_ < 8) {
+                handler_slow_rows_[w & 7] = HandlerSlowRow{game_time_ms(), hs_obj_, std::uint32_t(dt * 1000000ull / qpc_frequency_),
+                                                           std::uint32_t(hs_snap_ticks_ * 1000000ull / qpc_frequency_), ok1 ? std::uint64_t(cyc1 - cyc0) : 0ull,
+                                                           hs_order_, std::uint8_t(unsigned(leaf) < 3 ? unsigned(leaf) : 0u), hs_snap_walk_};
+                handler_slow_write_.store(w + 1, std::memory_order_release);
+            }
+        }
+    }
     return r == core::Reason::handled ? 1 : 0;
 }

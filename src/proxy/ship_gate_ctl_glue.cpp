@@ -57,6 +57,9 @@ struct MemberRow {
     float lat, lc[2], v_law, v_w;
     std::uint8_t w_kind, on, merged;
     std::uint8_t loop; // review of rounds A-C item 9: the loop-back join (gc::lane_loop_state: none, leg, out, turn)
+    float w;           // Run175 round item 2: the hull's lateral half-width (m) and whether it came from a read; item 3: inside the join funnel
+    std::uint8_t w_ok, funnel;
+    std::uint8_t pt, own; // item 1: the member stands on an unrewritten script point (its lateral the lane's); the lane owns it (lane_laws)
 };
 MemberRow member_rows_[32];
 std::atomic<std::uint32_t> member_row_write_{0};
@@ -184,13 +187,19 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in, 
     }
     gc::Member* m = ctl_enter(*cg, obj, g.id, gc::Role::committed, gc::Why::commit, now);
     if (!m) return nullptr;
-    gc::commit_fill(*m, in, dyn, geo, g.w, g.w_src == std::uint8_t(ln::WidthSrc::lod) ? g.w_len : 0.0f, r_gate, gate, now);
+    // (review of the Run175 round: w = r after a failed read is no read: 0 unless the source is the LOD read, so a committed member whose
+    // width is unread is a body, never w = r as a member)
+    const bool w_read = g.w_src == std::uint8_t(ln::WidthSrc::lod);
+    gc::commit_fill(*m, in, dyn, geo, w_read ? g.w : 0.0f, w_read ? g.w_len : 0.0f, r_gate, gate, now);
     return m;
 }
 // An escort (D.1): a capital on 0x14 / 0x15 whose leader is a committed member; it joins the leader's board (role escort). On order 0
-// it stays through the formation memory (the 3 s order-0 gaps): ctl_observe. Its hull from the last width read of its type (w = r
-// when the type was never read).
-void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in, const core::Dynamics& dyn, std::uint32_t now) noexcept {
+// it stays through the formation memory (the 3 s order-0 gaps): ctl_observe. Run175 round item 2: its hull from its own width read at
+// entry (width_ensure, the commit path's reader; Run175: the type's width was never read before the escort's entry, w = r = 755 m against
+// 454 m made the certificate see contact with the leader's lane 1.6 km away, the pair stayed unresolved and the engine's warn stood);
+// until the read succeeds the width is unread (w_ok 0: a body for the sweep with its sphere, no lane law or steer), never w = r as a member.
+void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32_t leader, const core::Inputs& in, const core::Dynamics& dyn,
+                std::uint32_t now) noexcept {
     int li = -1;
     gc::Gate* cg = ctl_lookup(leader, &li);
     if (!cg || cg->m[li].role != gc::Role::committed || !gc::live(*cg, cg->m[li], now)) return;
@@ -203,7 +212,15 @@ void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in,
     gc::Member* m = ctl_enter(*cg, obj, rd32(obj + sites::kObjId), gc::Role::escort, gc::Why::escort, now);
     if (!m) return;
     float w = 0.0f, l = 0.0f;
-    if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l)) w = l = 0.0f;
+    if (X3M_LANE_W_ENTRY) {
+        width_ensure(g, obj, code, dyn.r_own, now);
+        if (g.w_src == std::uint8_t(ln::WidthSrc::lod)) {
+            w = g.w;
+            l = g.w_len;
+        } else if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l)) // (a read that failed: the type's last read)
+            w = l = 0.0f;
+    } else if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l))
+        w = l = 0.0f;
     gc::escort_fill(*m, leader, in, dyn, w, l, cg->r_gate, now);
 }
 } // namespace x3m_ship_steering_rt
@@ -240,12 +257,23 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
     const std::uint32_t code = table && stype >= 0 ? rd32(table + std::uint32_t(stype) * sites::kRecordStride + sites::kRecordClassCode) : 0xffffffffu;
     const bool capital = code < core::kClassCount && ((core::kCapitalMask >> code) & 1u);
     const float r = float(rds32(obj + sites::kObjRadius)) / core::kUnitsPerMetre;
-    float w = r, l = r;
+    float w = r, w_mem = 0.0f, l_mem = 0.0f; // (w: the placement's, r unread; w_mem, l_mem: the member's, 0 unread)
     if (capital) {
         float tw = 0.0f, tl = 0.0f;
         if (type_width_get(stype, &tw, &tl) && tw > 0.0f && tw <= r) {
-            w = tw;
-            l = tl > r ? tl : r;
+            w = w_mem = tw;
+            l_mem = tl > r ? tl : r;
+        } else if (X3M_LANE_W_ENTRY) { // Run175 round item 2: the width read at the arrival's entry (the commit path's reader, once;
+                                       // a failed read leaves the member's width unread: a body for the sweep, no lane law)
+            ln::WidthSrc src = ln::WidthSrc::unread;
+            float len = 0.0f;
+            wk::HullWidth hw;
+            const float rw = capital_half_width(obj, r, &src, &len, &hw);
+            if (src == ln::WidthSrc::lod && rw > 0.0f && core::finite_f(rw) && rw <= r) {
+                w = w_mem = rw;
+                l_mem = len > r ? len : r;
+                if (traffic_on_) type_width_put(stype, rw, len);
+            }
         }
     }
     float P[3];
@@ -320,7 +348,7 @@ extern "C" void __cdecl x3m_ship_gate_arrival(std::uint32_t obj, std::uint32_t g
             const std::int32_t rot_pct = table && stype >= 0 ? rds32(table + std::uint32_t(stype) * sites::kRecordStride + sites::kRecordRotAccel) : 0;
             read_dynamics(obj, rd32(obj + sites::kObjFlight), rot_pct, code, dyn);
             dyn.r_own = r;
-            gc::arrival_fill(*m, dyn, w, l, r_gate, P, P, R, U, F, gate, now);
+            gc::arrival_fill(*m, dyn, w_mem, l_mem, r_gate, P, P, R, U, F, gate, now);
             // round A (convoy-gate-transit.md section 12.1a): the arrival's first decision at the launch itself (its rollout on 0x21 and the
             // sweeps against the board), so a departing member's site E verdict against it on the launch frame finds the pair certified
             // or handed back, never without a rollout (cause=zero: measured at a SETA step in the fixture's arrival_pass, the leader's
@@ -429,6 +457,11 @@ void ctl_member_frame(const gc::Gate& g, unsigned gi, std::uint32_t now) noexcep
         r.on = m.lane_on;
         r.merged = m.merge_done;
         r.loop = std::uint8_t(gc::lane_loop_state(m));
+        r.w = m.w;
+        r.w_ok = m.w_ok;
+        r.funnel = m.funnel;
+        r.pt = m.pt_ok;
+        r.own = gc::lane_laws(m) ? 1 : 0;
         member_row_write_.store(w + 1, std::memory_order_release);
     }
 }
@@ -647,21 +680,22 @@ void ctl_rows(unsigned long long frame) noexcept {
     for (std::uint32_t w = member_row_write_.load(std::memory_order_acquire); member_row_read_ != w; ++member_row_read_) { // B.4 item 2
         const MemberRow& r = member_rows_[member_row_read_ & 31];
         x3m::log("ship_gate_ctl_member frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx class=%s role=%s stage=%s order=0x%x target=0x%08lx "
-            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld live=%u zx=%.0f",
+            "p_m=%.0f,%.0f,%.0f nose_f=%.3f v_ms=%.1f key=%lu traced=%u st_age_ms=%ld dec_age_ms=%ld live=%u zx=%.0f w_m=%.0f w_ok=%u funnel=%u",
             frame, static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
             r.code < core::kClassCount ? core::kClassNames[r.code] : "?", gc::role_name(gc::Role(r.role)), gc::sb_name(gc::Sb(r.stage)),
             unsigned(r.order), static_cast<unsigned long>(r.target), double(r.p[0]), double(r.p[1]), double(r.p[2]), double(r.nose_f),
             double(r.v), static_cast<unsigned long>(r.key), unsigned(r.traced), static_cast<long>(r.st_age_ms),
-            static_cast<long>(r.dec_age_ms), unsigned(r.live), double(r.zx));
+            static_cast<long>(r.dec_age_ms), unsigned(r.live), double(r.zx), double(r.w), unsigned(r.w_ok), unsigned(r.funnel));
         if (r.lane) { // lane stage 1: the lane's own fields (a separate row)
             char gap[16] = "na", vw[16] = "na";
             if (r.gap > -1e30f) std::snprintf(gap, sizeof gap, "%.0f", double(r.gap));
             if (r.v_w >= 0.0f) std::snprintf(vw, sizeof vw, "%.1f", double(r.v_w));
             x3m::log("ship_gate_ctl_lane frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx lane_s=%.0f rank=%u gap_m=%s law=%s lat_m=%.0f "
-                     "lc_m=%.0f,%.0f v_law=%.1f v_w=%s w=%s on=%u merged=%u loop=%s", frame,
+                     "lc_m=%.0f,%.0f v_law=%.1f v_w=%s w=%s on=%u merged=%u loop=%s pt=%s own=%u", frame,
                      static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship), double(r.lane_s),
                      unsigned(r.rank), gap, gc::law_name(gc::Law(r.law)), double(r.lat), double(r.lc[0]), double(r.lc[1]), double(r.v_law), vw,
-                     gc::lane_write_name(gc::LaneWrite(r.w_kind)), unsigned(r.on), unsigned(r.merged), gc::lane_loop_name(r.loop));
+                     gc::lane_write_name(gc::LaneWrite(r.w_kind)), unsigned(r.on), unsigned(r.merged), gc::lane_loop_name(r.loop),
+                     r.pt ? "point" : "lane", unsigned(r.own));
         }
     }
     for (std::uint32_t w = merge_row_write_.load(std::memory_order_acquire); merge_row_read_ != w; ++merge_row_read_) { // lane stage 1
@@ -682,10 +716,11 @@ void ctl_rows(unsigned long long frame) noexcept {
     for (std::uint32_t w = rewrite_row_write_.load(std::memory_order_acquire); rewrite_row_read_ != w; ++rewrite_row_read_) { // item 9
         static const char* const kSite[4] = {"a", "b", "adopt", "miss"};
         const RewriteRow& r = rewrite_rows_[rewrite_row_read_ & 7];
-        x3m::log("ship_gate_ctl_rewrite frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx site=%s slot=%d from_m=%.0f,%.0f,%.0f to_m=%.0f,%.0f,%.0f", frame,
+        x3m::log("ship_gate_ctl_rewrite frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx site=%s slot=%d from_m=%.0f,%.0f,%.0f to_m=%.0f,%.0f,%.0f "
+                 "r_m=%.0f implied_m=%.0f kc_m=%.0f", frame,
                  static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
                  kSite[r.site < 4 ? r.site : 3], int(r.slot), double(r.from[0]), double(r.from[1]), double(r.from[2]), double(r.to[0]),
-                 double(r.to[1]), double(r.to[2]));
+                 double(r.to[1]), double(r.to[2]), double(r.r), double(r.implied), double(r.kc));
     }
     for (std::uint32_t w = launch_row_write_.load(std::memory_order_acquire); launch_row_read_ != w; ++launch_row_read_) {
         const LaunchRow& r = launch_rows_[launch_row_read_ & 7];

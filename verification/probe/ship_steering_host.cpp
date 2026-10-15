@@ -857,7 +857,7 @@ struct Model {
         }
         gc::Role before = gc::Role::count;
         gc::Member* m = gc::enter(*ctl, *g, ptr, native_id(), gc::Role::committed, now, &before);
-        if (m) gc::commit_fill(*m, in, dyn, geo, hull_w, hull_l, gate_r, gate_ptr, now);
+        if (m) gc::commit_fill(*m, in, dyn, geo, entry_w(hull_w), entry_w(hull_l), gate_r, gate_ptr, now); // (review: the commit path's read too)
     }
     // The DLL's ctl_escort: a capital on 0x14 / 0x15 behind a committed live leader joins the leader's board.
     void ctl_escort(const core::Inputs& in) {
@@ -867,7 +867,16 @@ struct Model {
         if (!g || g->m[li].role != gc::Role::committed || !gc::live(*g, g->m[li], now)) return;
         gc::Role before = gc::Role::count;
         gc::Member* m = gc::enter(*ctl, *g, ptr, native_id(), gc::Role::escort, now, &before);
-        if (m) gc::escort_fill(*m, leader_ptr, in, dyn, hull_w, hull_l, g->r_gate, now);
+        if (m) gc::escort_fill(*m, leader_ptr, in, dyn, entry_w(hull_w), entry_w(hull_l), g->r_gate, now);
+    }
+    // Run175 round item 2: the width the DLL's entry gives a member. X3M_C_W_UNREAD=1: the type's width was never read before the entry
+    // (Run175's M2 escorts): the DLL before the round took w = r as a member (-DX3M_LANE_W_ENTRY=0 builds it), the DLL after it reads the
+    // width at entry (the hull's); X3M_C_W_FAIL=1: the entry read fails (a body not in the cache): the width stays unread, a body for the
+    // sweep only until a later read
+    static float entry_w(float w) {
+        static const bool unread = std::getenv("X3M_C_W_UNREAD") != nullptr, fail = std::getenv("X3M_C_W_FAIL") != nullptr;
+        if (fail) return 0.0f;
+        return unread && !X3M_LANE_W_ENTRY ? 0.0f : w;
     }
     // Site B: the clamp from the stored decision at the current position.
     void clamp(std::uint32_t obj_id) {
@@ -4003,10 +4012,11 @@ static void place_heading(Model& m, const double u_in[3]) { // the basis from a 
 }
 // The capital's grid point for a slot (KC GetWarpInPos) and the lead-in geometry the DLL derives (gate_geometry_capital).
 static void capital_grid(const ShipType& t, int slot, const GateFrame& F, double a_error_r, double A[3], float Af[3], core::GateGeometry* geo, bool* valid,
-                         double kGateRM = ::kGateRM) { // (lane fix round 2 item 4: the gate's radius, a Terran ring's 3207.5 m)
+                         double kGateRM = ::kGateRM, double r_script = 0.0) { // (lane fix round 2 item 4: the gate's radius, a Terran ring's 3207.5 m;
+                                                                            // Run175 round item 1: the script's size for the depth, 0 the hull's)
     const double ru = kGateRM * 500;
     const int grid_a[5] = {0, 1, -1, 2, -2};
-    const double A_l[3] = {grid_a[slot % 5] * 666.0 * 500, -(slot / 5) * 666.0 * 500, -2.0 * (kGateRM + t.r_m) * 500};
+    const double A_l[3] = {grid_a[slot % 5] * 666.0 * 500, -(slot / 5) * 666.0 * 500, -2.0 * (kGateRM + (r_script > 0.0 ? r_script : t.r_m)) * 500};
     local_to_world(F, A_l, A);
     float G[3] = {0, 0, 0}, row0[3], row1[3], row2[3];
     for (int k = 0; k < 3; ++k) {
@@ -7907,6 +7917,7 @@ struct CStart {
     bool aim = false; // lane fix round 1: the nose toward the gate (psi_deg ignored; Run173's ships flew their order 4 at the gate)
     long hold_ms = 0; // fixture engine paths item E: an arrival's order-0 hold after its 0x1e (its script's next order)
     double nose[3] = {0, 0, 0}; // ... item B: an explicit start nose (gate frame; 0: psi_deg / aim)
+    double script_r = 0;        // Run175 round item 1: the size the script's GetSize reads for this ship's grid point (m; 0: the hull's r_m)
 };
 struct CSetup {
     const char* tag;
@@ -8044,6 +8055,12 @@ struct CResult {
     // lane v_min (item C's) of the members that flew no 0x12 (the follower)
     unsigned loops = 0;
     double loop_min_s = 1e18, loop_bound = 0, loop_turn_lat_max = 0, fol_v_min = 1e18;
+    unsigned o4_cross = 0; // Run175 round item 1: plane crossings on order 4 (the hand-over's point stood beside the lane's path)
+    // Run175 round item 3: the most swaps of one ship's ordered predecessor (both still ranked), the frames a member outside the join funnel
+    // spent under a lane stop or a stop write, at or under the floor beyond 3 km of its leader, its lowest speed there; item 5: the pairs
+    // handed back unresolved over the run's decisions
+    unsigned rank_swaps_max = 0, out_law_frames = 0, out_stop_frames = 0, unresolved = 0;
+    double out_v_min = 1e18, last_launch_s = -1; // (last_launch_s: the run's last launch from t = 0, s)
     // item D: the small ships (count, launched, D.5 mirrors), their engine warns against other ships and those site E left (stops), the
     // members' warns against a small ship and their 0x12 (E left them)
     unsigned sm_n = 0, sm_launched = 0, sm_mirrored = 0, sm_warns = 0, sm_stops = 0, mem_sm_warns = 0, mem_sm_x12 = 0;
@@ -8682,6 +8699,9 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         std::uint32_t merge_stamp = 0;
         double merge_y0 = 0, merge_tan = 0;
         long merge_bound_ms = 40000;
+        std::uint32_t ordp_prev = 0; // Run175 round item 3: the ship ahead in the lane order on the last frame (0 none), its swaps
+        unsigned swaps = 0;
+        bool ordp_ok = false, funnel_prev = true;
         long rt_o4_ms = -1, rt_ss = -1;
         int rt_pq = -1; // ... the episode's last predecessor (a cast index) // the arrival round: a return trip's order-4 issue; its current stop-write episode's start
         double rt_turn_s = 0;            // ... its derived lone turn-around (s) at that issue
@@ -8816,7 +8836,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         float Af[3];
         core::GateGeometry geo;
         bool valid = false;
-        capital_grid(*su.s[&c - ships].t, c.slot, kGateIdentity, 0.0, c.A, Af, &geo, &valid, kGateRM);
+        capital_grid(*su.s[&c - ships].t, c.slot, kGateIdentity, 0.0, c.A, Af, &geo, &valid, kGateRM, su.s[&c - ships].script_r);
         for (int i = 0; i < 3; ++i) c.X[i] = c.A[i] - 0.75 * ru * F[i];
         m.gate_mode = valid;
         m.gate_geo = geo;
@@ -9165,7 +9185,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         ad.r_own = float(r_s);
                         const float xs[3] = {float(st[0]), float(st[1]), float(st[2])}, Ps[3] = {float(arr_P[k][0]), float(arr_P[k][1]), float(arr_P[k][2])};
                         const float gR[3] = {1, 0, 0}, gU[3] = {0, 1, 0}, gF[3] = {float(F[0]), float(F[1]), float(F[2])};
-                        gc::arrival_fill(*mb, ad, float(c.w), float(c.L), float(kGateRM), xs, Ps, gR, gU, gF, kLaneGate, now);
+                        gc::arrival_fill(*mb, ad, Model::entry_w(float(c.w)), Model::entry_w(float(c.L)), float(kGateRM), xs, Ps, gR, gU, gF, kLaneGate, now);
                         if (std::getenv("X3M_C_ARR_PARAMS0")) {
                             mb->params = core::JoinParams{};
                             mb->params.r_gate = float(kGateRM);
@@ -9251,6 +9271,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         e.lw[i] = c.A[i];
                     }
                     e.lw_ok = true;
+                    mg->m[mi].pt_ok = 0;
                     ++res.rewrites;
                 }
                 if (d.write210) {
@@ -9881,7 +9902,10 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             if (c.phase == 0) {
                 // site A's f+0x240 rewrite (section 6.4) at a tick, site B's on the frames of a deferred tick (review item 2): a lane
                 // member's order point on a KC grid point becomes its lane point L_i (the P2 test below uses dA from before it)
-                if (lane && mg && gc::pair_role(mg->m[mi].role) && mg->m[mi].ln && mg->m[mi].q_ok) {
+                // (Run175 round item 1: the DLL's site A recognises a script point of any plausible size, gc::kc_grid_slot_any through
+                // gc::lane_site_b_point; a field that is neither such a point nor ours stands as the member's lane lateral,
+                // gc::lane_point_fallback, and the lane does not steer it)
+                if (lane && mg && gc::pair_role(mg->m[mi].role) && gc::lane_laws(mg->m[mi]) && mg->m[mi].q_ok) {
                     const float a_m[3] = {float(c.A[0] / 500.0), float(c.A[1] / 500.0), float(c.A[2] / 500.0)};
                     // the DLL's memory of its last write (a field still holding it is ours; any other value is the KC's)
                     const bool ours = e.lw_ok && c.A[0] == e.lw[0] && c.A[1] == e.lw[1] && c.A[2] == e.lw[2];
@@ -9894,9 +9918,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             e.lw[i] = c.A[i];
                         }
                         e.lw_ok = true;
+                        mg->m[mi].pt_ok = 0;
                         ++res.rewrites;
                     } else if (!ours) {
-                        ++res.grid_miss;
+                        if (!mg->m[mi].pt_ok) ++res.grid_miss;
+                        gc::lane_point_fallback(*mg, mg->m[mi], a_m);
                         if (std::getenv("X3M_C_TRACE"))
                             std::printf("  tc %s gridmiss t=%.1f ship %u o 0x%x A %.0f,%.0f,%.0f lw %d q %.0f,%.0f lc %.0f,%.0f\n", su.tag, double(now_ms) / 1000.0, k,
                                         m.order, c.A[0] / 500.0, c.A[1] / 500.0, c.A[2] / 500.0, int(e.lw_ok), double(mg->m[mi].q[0]), double(mg->m[mi].q[1]),
@@ -10122,6 +10148,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 const unsigned k = dorder[q];
                 gc::DecideStats st;
                 gc::decide(board.g[k / gc::kMembers], k % gc::kMembers, now_end, &st, nullptr, nullptr);
+                res.unresolved += st.unresolved; // (Run175 round item 5: the pairs handed back)
                 if (std::getenv("X3M_C_TRACE") && st.yields) { // (round A: every yield of this decision: the yielder, its cap, its law)
                     const gc::Gate& dg = board.g[k / gc::kMembers];
                     for (unsigned q2 = 0; q2 < dg.n; ++q2) {
@@ -10422,6 +10449,45 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     slow_ms[k] = v <= 15.0 ? slow_ms[k] + dt : 0;
                     res.lane_slow_s_max = std::fmax(res.lane_slow_s_max, double(slow_ms[k]) / 1000.0);
                 }
+                // Run175 round item 3: the lane order's swaps (the ship ahead in the order changed while both stay ranked: a launch or a
+                // leave is none) and the laws on a member outside the join funnel (none by construction; its speed is the engine's leg's:
+                // measured beyond 3 km of its leader, where an escort slows into its slot)
+                if (lane && mm && g && gc::pair_role(mm->role) && mm->lane_rank != 0xff) {
+                    const std::uint32_t pred = mm->lane_rank > 0 ? g->lane_ord[mm->lane_rank - 1] : 0u;
+                    if (e.ordp_ok && pred != e.ordp_prev && pred && e.ordp_prev) {
+                        const int ip = gc::find(*g, e.ordp_prev);
+                        if (ip >= 0 && g->m[ip].lane_rank != 0xff) {
+                            ++e.swaps;
+                            res.rank_swaps_max = std::max(res.rank_swaps_max, e.swaps);
+                            if (std::getenv("X3M_C_TRACE"))
+                                std::printf("  tc %s swap t=%.1f ship %u rank %u pred %x -> %x funnel %u lat %.0f\n", su.tag, double(now_ms) / 1000.0, k,
+                                            unsigned(mm->lane_rank), e.ordp_prev, pred, unsigned(mm->funnel), double(mm->lane_lat));
+                        }
+                    }
+                    e.ordp_prev = pred;
+                    e.ordp_ok = true;
+                    if (std::getenv("X3M_C_TRACE") && (mm->funnel != 0) != e.funnel_prev) {
+                        std::printf("  tc %s funnel t=%.1f ship %u funnel %u lat %.0f s %.0f yf %.0f on %u law %s v %.1f\n", su.tag, double(now_ms) / 1000.0, k,
+                                    unsigned(mm->funnel), double(mm->lane_lat), double(mm->lane_s), double(gc::lane_funnel_y(*mm, mm->lane_s)), unsigned(mm->lane_on),
+                                    gc::law_name(mm->law), v);
+                        e.funnel_prev = mm->funnel != 0;
+                    }
+                    const bool steered = c.phase == 0 ? c.m.order == core::kOrderFlyBefore : c.phase == 10 || c.phase == 13;
+                    if (!mm->funnel && steered && (c.phase == 0 || lead_rt[k] >= 0)) {
+                        double dl = 1e18;
+                        if (c.phase != 0) {
+                            const TShip& L = ships[lead_rt[k]];
+                            const double dv[3] = {c.m.pos[0] - L.m.pos[0], c.m.pos[1] - L.m.pos[1], c.m.pos[2] - L.m.pos[2]};
+                            dl = L.alive ? norm3d(dv) / 500.0 : 1e18;
+                        }
+                        if (mm->law == gc::Law::stop || e.wk_stop) ++res.out_law_frames;
+                        if (dl > 3000.0 && (c.phase != 13 || now_ms - c.order4_at > -4000)) { // (a 0x15 leg's first second: the previous leg's speed)
+                            res.out_v_min = std::fmin(res.out_v_min, v);
+                            if (v < double(gc::kYieldFloorMs)) ++res.out_stop_frames;
+                        }
+                    }
+                } else
+                    e.ordp_ok = false;
                 // item B: the capital re-issued its order 4 after a flown 0x12: a lane member again (the board's re-commit) before its launch
                 if (x12[k].reissue_ms >= 0 && !x12[k].remerged && mm && mm->ln) {
                     x12[k].remerged = true;
@@ -10444,6 +10510,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     track[k].push_back(tp);
                 }
                 // the nose off F at 7 km (each ship's first frame at or past s = -7 km on its way in)
+                // Run175 round item 1: a member crossing the plane on its order 4 (its hand-over never came: the point stood beside its path)
+                if (departing && c.phase == 0 && c.m.order == core::kOrderFlyBefore && e.z_prev < 0.0 && z >= 0.0 && e.z_prev > -1e17) ++res.o4_cross;
                 if (departing && e.z_prev < -7000.0 && z >= -7000.0 && su.s[k].z < -7000.0) { // (round 2 item 6: a join from outside 7 km)
                     res.nose7_max_deg = std::fmax(res.nose7_max_deg, err_of(c.m));
                     ++res.nose7_n;
@@ -11103,6 +11171,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
     }
     (void)last_k;
     res.gap_over_s = gap_over;
+    res.last_launch_s = last_l > 0 ? double(last_l) / 1000.0 : -1.0; // (Run175 round item 3: the funnel casts' bound runs from t = 0)
     // 8: the span from the (first) leader's 15 km
     if (ex[0].t15 >= 0 && launch_ms_of[0] >= 0) {
         t15_lead = double(ex[0].t15) / 1000.0;
@@ -11161,6 +11230,28 @@ static const CStart kFormed[3] = {
     {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
     {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0},
     {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+};
+// Run175 round item 1: the formed convoy with the M1 escort's script size 7 % above its hull (the KC's GetSize reads the render root's
+// subtree radius: Run175's M7 at 831 m against 778 m), off the 1 m grid of the hull's size; and one 70 % above it, outside the shape
+// rule's band (the unrewritten point stands: the axis through it, no lane steer)
+static const CStart kFormedSize[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0, false, 0, {0, 0, 0}, 1022.0 * 1.07},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+};
+static const CStart kFormedSize2[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
+    {&kCrowdM1, 0.53, kEsc, 0, 0, -830, -18800, 0, 100, 0, false, 0, {0, 0, 0}, 1022.0 * 1.7},
+    {&kCrowdTitan, 0.53, kEsc, 0, 0, -830, -21600, 0, 100, 0},
+};
+// Run175 round item 3: a 1+2 convoy committing 15-19 km beside the gate's axis 22-25 km out (outside the join funnel; Run175's C3 escorts
+// 18-45 km to the side on the script's 5 s 0x15 legs), and a return trip (return_trip's arriving M1) whose two M2 escorts wait 45 km to
+// the side at s -3 / -5 km on 0x14 to it (the flight: the leader's loop passed them along F, the closing-predecessor stop and the braking
+// reserve measured along F held them 100-300 s)
+static const CStart kSideCommit[3] = {
+    {&kCrowdTitan, 0.53, kLead, -1, 17000, -830, -22000, 0, 100, 0, true},
+    {&kCrowdM1, 0.53, kEsc, 0, 19000, 500, -25000, 0, 100, 0, true},
+    {&kCrowdTitan, 0.53, kEsc, 0, 15000, -2000, -24000, 0, 100, 0, true},
 };
 static const CStart kFormedM7[3] = {
     {&kCrowdM1, 0.53, kLead, -1, 0, -830, -16000, 0, 100, 0},
@@ -11280,6 +11371,13 @@ static const CStart kX12Near[2] = {
     {&kCrowdM1, 0.53, kLead, -1, -1840, -2186, -1662, 0, 100, 0, false, 0, {0.171, 0.203, 0.964}},
     {&kCrowdTitan, 0.53, kLead, -1, 717, -505, -8424, 0, 100, 0, false, 0, {-0.545, -0.761, 0.354}},
 };
+// Run175 round item 4: x12_near with a third capital on its own order 4, 4 km beside Lambda 9 km out (inside the join funnel, outside the
+// loop's swept footprint): the loop block held Run175's follower 107 s at spacing behind the apex of a loop 6 km away while 10 km beside
+static const CStart kX12NearSide[3] = {
+    {&kCrowdM1, 0.53, kLead, -1, -1840, -2186, -1662, 0, 100, 0, false, 0, {0.171, 0.203, 0.964}},
+    {&kCrowdTitan, 0.53, kLead, -1, 717, -505, -8424, 0, 100, 0, false, 0, {-0.545, -0.761, 0.354}},
+    {&kCrowdTitan, 0.53, kLead, -1, 4000, -830, -9000, 0, 100, 0, true},
+};
 // ... Run173's first evictions (f 15537: E1 7.8 km out, 0.9 km off Lambda, the nose 22 deg off F at 100 m/s; E2 15.6 km out, f 15466): the
 // warn at 6.95 km (Run173: 6.85-6.98 km, six evictions, turn-aways to 172 deg) left to the KC
 static const CStart kX12Far[2] = {
@@ -11360,6 +11458,12 @@ static const CStart kArrCross[2] = {
 // its launch, their lost-leader wait and order 4; the player's ship (an M6: in the large set, the capitals' warn tests it) parked 2 km
 // beside the gate, never steered, never a member, never suppressed. The M2 is Run174's (r 755 m) on the Boreas plant
 static const ShipType kRtM2 = {"M2", "Boreas-class M2 (755 m)", 70.0, 15.0, 13.5, 755.0, 5, true};
+static const CStart kReturnPass[4] = {
+    {&kCrowdM1, 0.53, kArrRet, -1, 0, 0, 0, 0, 0, 20000, false, 6400},
+    {&kRtM2, 0.53, kEsc, 0, 45000, 0, -3000, 0, 100, 0, true},
+    {&kRtM2, 0.53, kEsc, 0, -45000, 0, -5000, 0, 100, 0, true},
+    {&kShips[2], 0.5, kPlayer, -1, 2000, 0, -400, 0, 0, 0},
+};
 static const CStart kReturnTrip[4] = {
     {&kCrowdM1, 0.53, kArrRet, -1, 0, 0, 0, 0, 0, 20000, false, 6400},
     {&kRtM2, 0.53, kArrRet, 0, 0, 0, 0, 0, 0, 100000, false, 6000},
@@ -11378,6 +11482,12 @@ static const CSetup kCSetups[] = {
     {"abreast5", kAbreast5, 5, 1},
     {"formed", kFormed, 3, 1},
     {"formed_m7", kFormedM7, 3, 1},
+    {"formed_size", kFormedSize, 3, 1},
+    // PARKED (Run175 round item 1: a script size 70 % above the hull, outside the shape rule's band 0.6-1.6 r): the unrewritten point stands
+    // (the fallback is unit-checked: no lane steer, no law) and the module's capital lead-in flies the escort to it, but at its slow entry
+    // (P2 at 21 m/s, err 2577 m, not kept) with the follower stopped behind it and the engine's 0x12 flown 1-3 times per run; spans
+    // 343-584 s against the formed bound; run175_round/parked_formed_size2.txt
+    // PARKED: {"formed_size2", kFormedSize2, 3, 1},
     {"stragglers", kStraggle, 3, 2},
     {"stragglers_far", kStraggleFar, 3, 2},
     {"redeparture", kRedepart, 4, 0},
@@ -11415,6 +11525,8 @@ static const CSetup kCSetups[] = {
     // was on its out-leg, ended 1.2 km off Lambda 3 km before d_end. Round C (section 12.4): the loop-back join on the ship's own side, the
     // U-turn from the out-leg, the room for the tangent join; round_c/x12_near.txt)
     {"x12_near", kX12Near, 2, 0, -1, false, 700, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 1000, 1e9, 223.8},
+    // Run175 round item 4: the loop block bounded to the loop's swept footprint (gc::lane_loop_zone); -DX3M_LANE_LOOP_ZONE=0 builds the block before
+    {"x12_near_side", kX12NearSide, 3, 0, -1, false, 700, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 1000, 1e9, -1.0},
     // (item B, Run173 E1 at 6.95 km: turn 98-128 deg, 25-33 s; parked until round C with P2 not kept or beyond 8 deg in 5 of 9 runs on
     // d2871285 (to 27.6 deg), the follower at 0-27.5 m/s: the re-issued ship joined 1-3.5 km off Lambda across its follower's path. Round C:
     // the loop, ranked by its ETA with the spacing behind the follower nearer in time, turns in behind it; round_c/x12_far.txt)
@@ -11462,6 +11574,10 @@ static const CSetup kCSetups[] = {
     // the arrival round (Run174): an arriving capital's return trip with its arriving escorts (convoy-gate-transit.md section 11 "Arrival round")
     {"return_trip", kReturnTrip, 4, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 5, -1, 1e9, -1.0, 60000},
     {"terran_rim", kTerranRim, 2, 0, -1, false, 400, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 3207.5, 21, false, 6},
+    // Run175 round item 3: joiners outside the join funnel (the laws, the steer and the rewrite only inside it; outside, the engine's legs
+    // and the rank by ETA with the hysteresis)
+    {"side_commit", kSideCommit, 3, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 7},
+    {"return_pass", kReturnPass, 4, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 7},
 };
 // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
 // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
@@ -11479,6 +11595,27 @@ static const Nose7Bound kNose7Bounds[] = {
     {"run173_15km", 18.5}, {"parked", 27.0}, {"join_field", 27.5}, {"join_block", 24.0}, // (join_block: its 0x12 flown since the fixture
                                                                                          // engine paths round, 6.7-22.3 deg; counted 7.5-10.7)
 };
+// Run175 round item 3: the span bound of the funnel casts, derived: the farthest member's straight distance from its start to Lambda's d_end
+// point at its v_max (the engine's 0x15 legs fly straight at the gate), the order-4 leg's hand-over and the order-5 leg from d_end at the
+// lane speed for every member in turn (n x (kTSlotRefS + 10 s)), a return trip's lone turn-around (return_trip's measured 114 s) when the
+// leader arrives, + 15 s + the step
+static double fx_span_bound(const CSetup& su, const CResult& r) {
+    double far_s = 0.0;
+    unsigned n = 0;
+    bool rt = false;
+    for (unsigned k = 0; k < su.n; ++k) {
+        const CStart& c = su.s[k];
+        if (c.kind == kPlayer) continue;
+        ++n;
+        if (c.kind == kArrRet) {
+            rt = true;
+            continue;
+        }
+        const double d = std::sqrt(c.x * c.x + c.y * c.y + (c.z + double(gc::kLaneEndM)) * (c.z + double(gc::kLaneEndM)));
+        far_s = std::fmax(far_s, d / c.t->v_ms);
+    }
+    return far_s + double(n) * (kTSlotRefS + 10.0) + (rt ? 114.0 + 20.0 : 0.0) + 15.0 + double(r.step_max) / 1000.0;
+}
 static double nose7_bound(const char* tag) {
     for (const Nose7Bound& b : kNose7Bounds)
         if (!std::strcmp(b.tag, tag)) return b.deg;
@@ -11560,7 +11697,7 @@ static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, c
                 "leader->escort over spacing max %.1f s | gate warns %u unsup %u x12 %u (d %.0f..%.0f m) why %u/%u/%u/%u/%u/%u/%u/%u/%u/%u | nose7 %.1f deg (%u) "
                 "p2_nose %.1f deg | over behind %u head %u min_s %.0f bound %.0f | law stops %u max %.1f s long %u | "
                 "obst warns %u unsup %u x12 %u (d %.0f) why %u/%u/%u lane_sup %u (detour %u) clear %.0f avoidable %u unsafe %u sup_slack %.0f | "
-                "ring %.0f contact %u | rt leave %ld v_min %.1f turn+ %.1f (bearing %.1f) join %.0f follower stale %d v %.1f->%.1f | qhold %u max %.1f s over %ld rel %ld | back p2_nose %.1f member_frames %u front_not_kept %u | pairs%s\n",
+                "ring %.0f contact %u | rt leave %ld v_min %.1f turn+ %.1f (bearing %.1f) join %.0f follower stale %d v %.1f->%.1f | qhold %u max %.1f s over %ld rel %ld | back p2_nose %.1f member_frames %u front_not_kept %u | o4_cross %u | rank_swaps %u out_law %u out_stop %u out_vmin %.1f unresolved %u | pairs%s\n",
                 tag, r.lane ? "lane" : "key-off", tf, fps, seed, r.launched, r.departures, r.span_s, r.bound_s, r.floor_s, r.t15_launch_s, r.cadence_s, r.gap_over_s,
                 r.launch_gap_min_s < 1e17 ? r.launch_gap_min_s : -1.0, r.launch_gap_max_s, r.t_slot_min_s < 1e17 ? r.t_slot_min_s : -1.0, r.t_slot_max_s,
                 r.rewrites, r.grid_miss, r.slot_max, r.deferrals, r.o4_in_sphere, r.merges, r.merges_done, r.merge_max_s, r.merge_late, r.merge_gap_min < 1e17 ? r.merge_gap_min : -1.0, r.stops,
@@ -11577,7 +11714,8 @@ static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, c
                 r.obst_sup_slack_min < 1e17 ? r.obst_sup_slack_min : 0.0, r.ring_gap_min < 1e17 ? r.ring_gap_min : -1.0, r.ring_contact,
                 r.rt_leave_ms, r.rt_v_min < 1e17 ? r.rt_v_min : -1.0, r.rt_turn_excess, r.rt_bearing, r.rt_join_d < 1e17 ? r.rt_join_d : -1.0, r.rt_f_pred_stale,
                 r.rt_f_v0, r.rt_f_v1, r.qh_n, r.qh_max_s, r.qh_n ? r.qh_over_ms : 0L, r.qh_rel_ms, r.back_p2_nose_deg, r.back_member_frames,
-                r.p2_front_not_kept, r.pairs);
+                r.p2_front_not_kept, r.o4_cross, r.rank_swaps_max, r.out_law_frames, r.out_stop_frames, r.out_v_min < 1e17 ? r.out_v_min : -1.0, r.unresolved,
+                r.pairs);
 }
 // Lane stage 1 units (section 6.11 item 9): the merge rank, the three laws, the lane geometry and pass windows, the section 6.4 guard
 // against all 20 grid points and its re-application after a re-issue, the order-0 hold's brake bound.
@@ -13028,6 +13166,68 @@ static void round_b_prof_units() {
     std::printf("%s\n", why);
 }
 // The arrival round (Run174; convoy-gate-transit.md section 11 "Arrival round"): the units of its items
+// Run175 round units (convoy-gate-transit.md section 11 "Run175 round"): item 1 the grid shape rule and the fallback
+static void run175_units() {
+    const float G[3] = {0, 0, 0}, R[3] = {1, 0, 0}, U[3] = {0, 1, 0}, F[3] = {0, 0, 1};
+    const float rg = float(kGateRM), rs = 778.0f;
+    float imp = -1.0f;
+    const float p107[3] = {0.0f, 0.0f, -2.0f * (rg + 831.0f)}, p20[3] = {666.0f, -666.0f, -2.0f * (rg + 2.0f * rs)};
+    const float off[3] = {300.0f, 0.0f, -2.0f * (rg + rs)}, own[3] = {0.0f, -928.0f, -1472.0f};
+    const int s107 = gc::kc_grid_slot_any(G, R, U, F, rg, rs, p107, &imp);
+    const bool a = s107 == 0 && std::fabs(imp - 831.0f) < 0.5f && gc::kc_grid_slot(G, R, U, F, rg, rs, p107) < 0;
+    const bool b = gc::kc_grid_slot_any(G, R, U, F, rg, rs, p20, &imp) < 0 && std::fabs(imp - 2.0f * rs) < 0.5f;
+    const bool c = gc::kc_grid_slot_any(G, R, U, F, rg, rs, off, &imp) < 0 && imp < 0.0f;
+    const bool d = gc::kc_grid_slot_any(G, R, U, F, rg, rs, own, &imp) < 0;
+    check(a && b && c && d, "Run175 units: item 1 a script point at 1.07 r is slot 0 by shape (the 1 m grid misses it), 2.0 r and an off-pattern lateral are not, L_i is not");
+    gc::Gate g;
+    for (int i = 0; i < 3; ++i) {
+        g.G[i] = G[i];
+        g.R[i] = R[i];
+        g.U[i] = U[i];
+        g.F[i] = F[i];
+    }
+    g.gate = 0x4000;
+    g.r_gate = rg;
+    g.lane = g.lane_c_ok = 1;
+    g.lane_c[0] = 0.0f;
+    g.lane_c[1] = -928.0f;
+    gc::Member m;
+    m.ln = m.w_ok = m.funnel = m.q_ok = 1;
+    m.role = gc::Role::committed;
+    m.r = m.L = rs;
+    m.w = 352.0f;
+    m.q[0] = 0.0f;
+    m.q[1] = -700.0f;
+    float lat[2];
+    gc::lane_lat_at(g, m, -9000.0f, lat);
+    const bool e = std::fabs(lat[1] + 928.0f) < 1.0f && gc::lane_steers(m);
+    gc::lane_point_fallback(g, m, p20);
+    gc::lane_lat_at(g, m, -9000.0f, lat);
+    const bool f = m.pt_ok && std::fabs(lat[0] - 666.0f) < 0.5f && std::fabs(lat[1] + 666.0f) < 0.5f && !gc::lane_steers(m) && !gc::lane_laws(m) &&
+                   gc::plan_of(m) != gc::Plan::lane;
+    check(e && f, "Run175 units: item 1 the unrewritten point's lateral is the member's lane lateral at every s; the lane neither steers it nor lays a law on it");
+    // review: a KC grid point re-issued after the foreign field is rewritten and returns the member to the lane (the fallback cleared);
+    // before, the rewrite's test required the lane's ownership, which the fallback had taken away for the membership's life
+    float Lr[3];
+    const float grid0[3] = {0.0f, 0.0f, -2.0f * (rg + rs)};
+    m.st.order = core::kOrderFlyBefore;
+    m.st.target = g.gate;
+    const bool h = gc::lane_site_b_point(g, m, core::kOrderFlyBefore, g.gate, grid0, Lr) && !m.pt_ok && gc::lane_laws(m) && gc::lane_steers(m);
+    check(h, "Run175 units (review): a KC grid point re-issued after a foreign field is rewritten and the fallback cleared (the member back on the lane)");
+    // item 4: the loop's swept footprint: a follower within the band (the out-leg's offset + R + both half-widths + the margin) of Lambda is
+    // blocked behind the loop's apex, one beyond it is not (the loop is transparent: the next member ahead is its predecessor)
+    gc::Member P, Fn, Ff;
+    P.loop = P.redep = 1;
+    P.redep_side = 2.5f * 566.0f;
+    P.redep_r = 566.0f;
+    P.w = 583.0f;
+    Fn.w = Ff.w = 546.0f;
+    Fn.lane_lat = 2000.0f;
+    Ff.lane_lat = 4000.0f;
+    const float band = P.redep_side + P.redep_r + P.w + Fn.w + gc::kMarginM;
+    check(gc::lane_loop_zone(g, P, Fn) && !gc::lane_loop_zone(g, P, Ff) && band > 3000.0f && band < 3500.0f,
+          "Run175 units: item 4 a follower 2 km beside Lambda is inside a Titan loop's footprint (band 3.0-3.5 km), one 4 km beside is not");
+}
 static void arrival_round_units() {
     // item 2: site A's lane test reads the leaf's point before our own avoidance detour: a field holding L_i with the leaf's point L_i is
     // the lane's whatever the detour (the rule before: the detour's point, 1.5 km off, failed the test and the member left on Why::target)
@@ -13477,6 +13677,7 @@ static void lane_c_scenarios() {
     round_b_small_units();
     round_b_prof_units();
     arrival_round_units();
+    run175_units();
     lane_cost_bench();
     char why[512];
     const bool all = std::getenv("X3M_C_ALL") != nullptr; // every seed of every combination printed
@@ -13516,13 +13717,15 @@ static void lane_c_scenarios() {
                     check(ok, why);
                 };
                 ck(!r.nan && r.launched == r.departures, "every ship launched");
+                ck(r.o4_cross == 0, "1x no plane crossing on order 4 (Run175 round item 1: the lane never steers a member off an unrewritten point)");
                 // the arrival round item 4: no own-gate 0x12 of a ship the member row does not decide, no ring suppression whose path reaches
                 // the ring (the fixture's own ring model)
                 // (review item 8: the rim cast's refused warns reach the KC by design, its own block below)
                 ck((su.eng == 6 || r.gate_x12_nm == 0) && r.ring_unsafe == 0, "4a no own-gate 0x12 of any AI ship on any order; no unsafe ring suppression");
                 if (su.eng) { // fixture engine paths (convoy-gate-transit.md section 11 "Fixture engine paths"): each item's own assertions
                     ck(r.mem_capsule > 0.0 && r.min_box > -1e17, "Ex no contact between the departing capitals");
-                    ck(r.episodes == 0 && r.uncert_frames == 0, "Ex no member 0x12 episode between members");
+                    // (Run175 round item 5: a body's pair fails closed by design, so the funnel casts tolerate uncertified frames, not an episode)
+                    ck(r.episodes == 0 && (su.eng == 7 || r.uncert_frames == 0), "Ex no member 0x12 episode between members");
                     if (su.eng == 1) { // item B: the eviction flown, the KC's re-issue, the re-merge, the overshoot's bound
                         ck(r.x12_forced == 1 && r.x12_reissue >= 1, "Bx the eviction flown and order 4 re-issued");
                         ck(r.x12_remerged == r.x12_reissue, "Bx every re-issued member back on the lane before its launch");
@@ -13586,6 +13789,14 @@ static void lane_c_scenarios() {
                         // review of rounds A-C item 2: every yield-stop episode site B writes ends within the bound its yield stored + the step,
                         // and no stored bound exceeds the arrival window + the step from the stop's start (a run of arrivals included)
                         ck(r.ystop_over == 0 && r.ystop_bound_over == 0, "Ex2 no member stop beyond its stored bound + the step (<= 60 s + the step)");
+                    } else if (su.eng == 7) { // Run175 round item 3: members outside the join funnel are joiners the lane does not own
+                        ck(r.out_law_frames == 0, "Fx no lane stop or stop write on a member outside the join funnel");
+                        ck(r.out_stop_frames == 0 && (r.out_v_min > 1e17 || r.out_v_min >= double(gc::kYieldFloorMs)),
+                           "Fx no crawl at the floor outside the funnel (beyond 3 km of the leader)");
+                        ck(r.rank_swaps_max <= 2, "Fx at most 2 swaps of the ship ahead per member");
+                        ck(r.launched == r.departures, "Fx every member launched");
+                        ck(r.last_launch_s >= 0.0 && r.last_launch_s <= fx_span_bound(su, r),
+                           "Fx the last launch within the derived bound (the farthest start to d_end at v_max, the slots and legs in turn, the turn-around, the step)");
                     } else if (su.eng == 6) { // review of the arrival round item 8: a non-member clipping the Terran ring's rim
                         // (the row samples its swept hull every kSolidStepM (50 m) along the path and charges half of it against the gap
                         // (solid_gap_seg): it refuses where the true gap is under kMarginM + 25 m or more on a long sweep, on the approach

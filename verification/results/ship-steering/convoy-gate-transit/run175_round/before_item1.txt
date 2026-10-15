@@ -1,0 +1,33 @@
+== formed_size (b1)
+scenario C formed_size lane tf 1 60 fps seed 1: launched 3/3 span 751.7 s launch gaps 71.0..534.7 s rewrites 2 grid_miss 29241 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 16369 turn 1252.3 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 4295 low 1 drop 100.0 | p2 3 not_kep
+scenario C formed_size lane tf 1 60 fps seed 7: launched 2/3 span -1.0 s launch gaps 69.9..69.9 s rewrites 2 grid_miss 46270 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 24936 turn 1892.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.3 s late 0 dend_stops 0 (0.0 s) o0 4649 low 30 drop 100.0 | p2 2 not_kept
+scenario C formed_size lane tf 1 60 fps seed 1234567: launched 3/3 span 391.9 s launch gaps 63.8..182.1 s rewrites 2 grid_miss 9537 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 5786 turn 410.9 deg | order 0 | esc_past_dend 0 esc_o4 2 max 6.7 s late 0 dend_stops 0 (0.0 s) o0 2856 low 0 drop 0.0 | p2 3 not_kep
+scenario C formed_size lane tf 6 30 fps seed 1: launched 3/3 span 357.6 s launch gaps 60.4..166.9 s rewrites 2 grid_miss 724 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 376 turn 399.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 260 low 0 drop 0.0 | p2 3 not_kept 1 far 
+scenario C formed_size lane tf 6 30 fps seed 7: launched 3/3 span 363.1 s launch gaps 62.1..172.3 s rewrites 2 grid_miss 667 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 383 turn 369.8 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.3 s late 0 dend_stops 0 (0.0 s) o0 240 low 0 drop 0.0 | p2 3 not_kept 1 far 
+scenario C formed_size lane tf 6 30 fps seed 1234567: launched 3/3 span 724.2 s launch gaps 61.8..533.6 s rewrites 2 grid_miss 2092 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1202 turn 1280.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 261 low 0 drop 0.0 | p2 3 not_ke
+scenario C formed_size lane tf 10 30 fps seed 1: launched 3/3 span 350.9 s launch gaps 62.2..159.0 s rewrites 2 grid_miss 456 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 249 turn 393.9 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.5 s late 0 dend_stops 0 (0.0 s) o0 167 low 0 drop 0.0 | p2 3 not_kept 1 far
+scenario C formed_size lane tf 10 30 fps seed 7: launched 3/3 span 715.8 s launch gaps 61.0..524.1 s rewrites 2 grid_miss 1363 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 758 turn 1282.8 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.2 s late 0 dend_stops 0 (0.0 s) o0 173 low 0 drop 0.0 | p2 3 not_kept 1 f
+scenario C formed_size lane tf 10 30 fps seed 1234567: launched 3/3 span 716.8 s launch gaps 63.8..523.4 s rewrites 2 grid_miss 1320 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 738 turn 1280.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 161 low 0 drop 0.0 | p2 3 not_ke
+FAIL rows (key off excluded): 58
+      1 FAIL Run175 units: item 1 a script point at 1.07 r is slot 0 by shape
+      1 FAIL Run175 units: item 1 the unrewritten point's lateral is the member's lane lateral at every s; the lane neither steers it nor lays a law on it
+      3 formed_size tf10: 1x no plane crossing on order 4
+      3 formed_size tf10: 3 no holding
+      3 formed_size tf10: 4 the order
+      3 formed_size tf10: 6 the short final
+      3 formed_size tf10: 6b P2's nose within 8 deg of F
+      3 formed_size tf10: 8 the span
+      3 formed_size tf1: 1x no plane crossing on order 4
+      3 formed_size tf1: 3 no holding
+      3 formed_size tf1: 4 the order
+      2 formed_size tf1: 5 the escort gate
+      3 formed_size tf1: 6 the short final
+      2 formed_size tf1: 6b P2's nose within 8 deg of F
+      3 formed_size tf1: 8 the span
+      1 formed_size tf1: every ship launched
+      3 formed_size tf6: 1x no plane crossing on order 4
+      3 formed_size tf6: 3 no holding
+      3 formed_size tf6: 4 the order
+      3 formed_size tf6: 6 the short final
+      3 formed_size tf6: 6b P2's nose within 8 deg of F
+      3 formed_size tf6: 8 the span

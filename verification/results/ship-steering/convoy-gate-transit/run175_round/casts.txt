@@ -1,0 +1,160 @@
+== formed_size (fs)
+scenario C formed_size lane tf 1 60 fps seed 1: launched 3/3 span 216.9 s launch gaps 29.2..41.7 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.2 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 3476 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C formed_size lane tf 1 60 fps seed 7: launched 3/3 span 215.9 s launch gaps 29.3..40.5 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.1 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.3 s late 0 dend_stops 0 (0.0 s) o0 3276 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C formed_size lane tf 1 60 fps seed 1234567: launched 3/3 span 209.8 s launch gaps 29.8..33.9 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.1 deg | order 0 | esc_past_dend 0 esc_o4 2 max 6.7 s late 0 dend_stops 0 (0.0 s) o0 2687 low 0 drop 0.0 | p2 3 not_kept 0 far 0
+scenario C formed_size lane tf 6 30 fps seed 1: launched 3/3 span 189.5 s launch gaps 28.2..30.9 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 237 low 0 drop 0.0 | p2 3 not_kept 0 far 0 after
+scenario C formed_size lane tf 6 30 fps seed 7: launched 3/3 span 189.6 s launch gaps 28.3..32.6 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.3 s late 0 dend_stops 0 (0.0 s) o0 227 low 0 drop 0.0 | p2 3 not_kept 0 far 0 after
+scenario C formed_size lane tf 6 30 fps seed 1234567: launched 3/3 span 189.4 s launch gaps 27.9..32.7 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.6 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 194 low 0 drop 0.0 | p2 3 not_kept 0 far 0
+scenario C formed_size lane tf 10 30 fps seed 1: launched 3/3 span 190.5 s launch gaps 29.4..31.5 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.5 s late 0 dend_stops 0 (0.0 s) o0 150 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C formed_size lane tf 10 30 fps seed 7: launched 3/3 span 190.7 s launch gaps 29.3..30.7 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.2 s late 0 dend_stops 0 (0.0 s) o0 135 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C formed_size lane tf 10 30 fps seed 1234567: launched 3/3 span 192.7 s launch gaps 29.6..33.5 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 129 low 0 drop 0.0 | p2 3 not_kept 0 far 
+FAIL rows (key off excluded): 0
+== return_trip (rt_unread)
+scenario C return_trip lane tf 1 60 fps seed 1: launched 3/3 span -1.0 s launch gaps 99.0..154.8 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 17895 turn 30.9 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 492 (8.2 s) o0 961 low 178 drop 100.0 | p2 3 not_kept 0 f
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.6 s (over 3.6) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.6 s after_grant -19.47 s over 12.0 s | slot_over 9.3 s p2 not_kept 0 nose 3.1 | capsule 511 box 276 player gap 154
+scenario C return_trip lane tf 1 60 fps seed 7: launched 3/3 span -1.0 s launch gaps 98.6..155.8 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 17870 turn 23.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 633 (10.6 s) o0 946 low 169 drop 100.0 | p2 3 not_kept 0 
+scenario C return_trip return tf 1 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.2 s (over 3.3) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.6 s after_grant -19.47 s over 12.2 s | slot_over 9.5 s p2 not_kept 0 nose 3.2 | capsule 511 box 280 player gap 154
+scenario C return_trip lane tf 1 60 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 96.3..164.8 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 17699 turn 29.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 537 (8.9 s) o0 914 low 133 drop 100.0 | p2 3 not_ke
+scenario C return_trip return tf 1 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.3 s (over 3.3) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.7 s after_grant -18.20 s over 12.2 s | slot_over 9.5 s p2 not_kept 0 nose 3.2 | capsule 513 box 285 player g
+scenario C return_trip lane tf 6 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 95.3..138.4 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1270 turn 29.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 249 (57.9 s) o0 60 low 9 drop 100.0 | p2 3 not_kept 0 far 
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 133.8 s (over 3.0) launch 139.6 s bound 154.3 s stop_max 0.0 s | esc stop_max 57.7 s after_grant 0.10 s over -8.4 s | slot_over -8.6 s p2 not_kept 0 nose 2.2 | capsule 517 box 291 player gap 1540
+scenario C return_trip lane tf 6 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 101.0..141.1 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1273 turn 29.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 50 low 11 drop 100.0 | p2 3 not_kept 0 far 0
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 135.5 s (over 3.0) launch 141.5 s bound 156.1 s stop_max 0.0 s | esc stop_max 59.2 s after_grant 0.10 s over -7.9 s | slot_over -7.8 s p2 not_kept 0 nose 2.2 | capsule 518 box 303 player gap 1540
+scenario C return_trip lane tf 6 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 98.5..142.6 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1225 turn 31.2 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 68 low 4 drop 100.0 | p2 3 not_kept 0 f
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 135.0 s (over 3.7) launch 141.6 s bound 154.9 s stop_max 0.0 s | esc stop_max 59.3 s after_grant 0.10 s over -9.7 s | slot_over -8.2 s p2 not_kept 0 nose 2.4 | capsule 517 box 309 player ga
+scenario C return_trip lane tf 10 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 93.7..133.0 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 797 turn 28.2 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 50 low 9 drop 100.0 | p2 3 not_kept 0 far 0 a
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 135.8 s (over 3.8) launch 138.4 s bound 156.0 s stop_max 0.0 s | esc stop_max 56.1 s after_grant 0.10 s over -16.5 s | slot_over -17.8 s p2 not_kept 0 nose 2.6 | capsule 516 box 302 player gap 1
+scenario C return_trip lane tf 10 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 92.3..135.3 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 780 turn 37.4 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 39 low 10 drop 100.0 | p2 3 not_kept 0 far 0 
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 134.0 s (over 2.7) launch 136.7 s bound 155.7 s stop_max 0.0 s | esc stop_max 53.3 s after_grant 0.10 s over -18.6 s | slot_over -19.3 s p2 not_kept 0 nose 2.1 | capsule 519 box 320 player gap 1
+scenario C return_trip lane tf 10 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 92.4..127.7 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 733 turn 2.9 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 35 low 5 drop 100.0 | p2 3 not_kept 0 fa
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 135.3 s (over 3.1) launch 137.9 s bound 156.2 s stop_max 0.0 s | esc stop_max 55.1 s after_grant 0.10 s over -19.2 s | slot_over -19.3 s p2 not_kept 0 nose 2.2 | capsule 518 box 295 player
+  tf 1 seed 1: x12 flown 0, lane v_min 31.3 m/s slow 0.0 s
+  tf 1 seed 7: x12 flown 0, lane v_min 28.4 m/s slow 0.0 s
+  tf 1 seed 1234567: x12 flown 0, lane v_min 21.4 m/s slow 0.0 s
+  tf 6 seed 1: x12 flown 0, lane v_min 25.7 m/s slow 0.0 s
+  tf 6 seed 7: x12 flown 0, lane v_min 36.3 m/s slow 0.0 s
+  tf 6 seed 1234567: x12 flown 0, lane v_min 28.0 m/s slow 0.0 s
+  tf 10 seed 1: x12 flown 0, lane v_min 29.9 m/s slow 0.0 s
+  tf 10 seed 7: x12 flown 0, lane v_min 34.9 m/s slow 0.0 s
+  tf 10 seed 1234567: x12 flown 0, lane v_min 26.4 m/s slow 0.0 s
+FAIL rows (key off excluded): 0
+== return_trip (rt_fail)
+scenario C return_trip lane tf 1 60 fps seed 1: launched 3/3 span -1.0 s launch gaps 101.8..205.2 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 6590 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 3 afte
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 114.0 s p2 23.8 s (over 56.7) launch 100.5 s bound 177.3 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over 87.7 s | slot_over 31.1 s p2 not_kept 3 nose 153.9 | capsule -783 box -878 player gap 
+scenario C return_trip lane tf 1 60 fps seed 7: launched 3/3 span -1.0 s launch gaps 99.6..177.9 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 7743 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 140 low 140 drop 70.0 | p2 3 not_kept 3 far 3 
+scenario C return_trip return tf 1 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 3 | lead turn 114.0 s p2 28.2 s (over -29.0) launch 171.6 s bound 260.8 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -4.2 s | slot_over 30.2 s p2 not_kept 3 nose 125.8 | capsule -150 box -438 player gap
+scenario C return_trip lane tf 1 60 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 100.3..190.8 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 8174 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 
+scenario C return_trip return tf 1 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 114.0 s p2 34.6 s (over -56.3) launch 172.2 s bound 252.8 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -33.1 s | slot_over 23.2 s p2 not_kept 3 nose 124.9 | capsule 392 box -112 play
+scenario C return_trip lane tf 6 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 41.7..206.7 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 528 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 2 after_
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 113.9 s p2 23.6 s (over 3.4) launch 86.7 s bound 176.8 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over 15.5 s | slot_over 14.1 s p2 not_kept 3 nose 155.1 | capsule -455 box -631 player gap 15
+scenario C return_trip lane tf 6 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 88.7..205.1 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 491 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 2 after_
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 2 | lead turn 113.9 s p2 25.2 s (over -41.9) launch 92.7 s bound 179.0 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -31.9 s | slot_over 14.4 s p2 not_kept 3 nose 128.4 | capsule -118 box -347 player gap
+scenario C return_trip lane tf 6 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 134.9..162.8 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 675 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 1
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 3 | lead turn 114.0 s p2 33.1 s (over -32.4) launch 159.3 s bound 253.1 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -14.2 s | slot_over 20.2 s p2 not_kept 3 nose 112.8 | capsule 387 box -117 play
+scenario C return_trip lane tf 10 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 69.0..192.9 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 224 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 3 after
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 113.8 s p2 23.7 s (over -77.2) launch 74.3 s bound 177.1 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -83.6 s | slot_over -3.6 s p2 not_kept 3 nose 158.5 | capsule -382 box -537 player ga
+scenario C return_trip lane tf 10 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 83.3..178.6 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 305 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 3 after
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 1 | lead turn 113.8 s p2 26.3 s (over -59.4) launch 84.1 s bound 178.8 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -58.2 s | slot_over 3.1 s p2 not_kept 3 nose 128.4 | capsule -19 box -208 player gap 
+scenario C return_trip lane tf 10 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 80.1..151.6 s rewrites 0 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 434 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 0 low 0 drop 0.0 | p2 3 not_kept 3 far 1
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 2 | lead turn 113.8 s p2 32.9 s (over -69.4) launch 154.0 s bound 258.3 s stop_max 0.0 s | esc stop_max 0.0 s after_grant -1.00 s over -73.2 s | slot_over 1.5 s p2 not_kept 3 nose 140.7 | capsule 390 box -114 play
+  tf 1 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 11.4 s
+  tf 1 seed 7: x12 flown 3, lane v_min 10.0 m/s slow 6.0 s
+  tf 1 seed 1234567: x12 flown 1, lane v_min 0.3 m/s slow 1.0 s
+  tf 6 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 8.9 s
+  tf 6 seed 7: x12 flown 2, lane v_min 10.0 m/s slow 9.6 s
+  tf 6 seed 1234567: x12 flown 3, lane v_min 3.0 m/s slow 1.0 s
+  tf 10 seed 1: x12 flown 1, lane v_min 22.7 m/s slow 0.0 s
+  tf 10 seed 7: x12 flown 1, lane v_min 19.5 m/s slow 0.0 s
+  tf 10 seed 1234567: x12 flown 2, lane v_min 5.0 m/s slow 1.0 s
+FAIL rows (key off excluded): 47
+      2 return_trip tf10: Ex no contact between the departing capitals
+      3 return_trip tf10: Ex no member 0x12 episode between members
+      3 return_trip tf10: Rx P2 kept within 8 deg of F
+      3 return_trip tf10: Rx no contact
+      2 return_trip tf10: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      2 return_trip tf1: Ex no contact between the departing capitals
+      3 return_trip tf1: Ex no member 0x12 episode between members
+      3 return_trip tf1: Rx P2 kept within 8 deg of F
+      1 return_trip tf1: Rx P2 within the lone turn-around
+      3 return_trip tf1: Rx no contact
+      1 return_trip tf1: Rx the escorts launched within their own bound
+      1 return_trip tf1: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf1: Rx7 every return trip's slot occupancy
+      2 return_trip tf6: Ex no contact between the departing capitals
+      3 return_trip tf6: Ex no member 0x12 episode between members
+      3 return_trip tf6: Rx P2 kept within 8 deg of F
+      3 return_trip tf6: Rx no contact
+      1 return_trip tf6: Rx the escorts launched within their own bound
+      2 return_trip tf6: Rx4 the escorts' and arrivals' gate warns suppressed by the ring row
+      3 return_trip tf6: Rx7 every return trip's slot occupancy
+== side_commit (sc)
+scenario C side_commit lane tf 1 60 fps seed 1: launched 3/3 span 219.9 s launch gaps 33.7..34.1 s rewrites 3 grid_miss 0 merges 2| merge_frames 5538 ahead_capped 0 head_capped 0 | nose_away 0 turn 0.5 deg | order 0 | esc_past_dend 0 esc_o4 2 max 11.8 s late 0 dend_stops 0 (0.0 s) o0 4636 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C side_commit lane tf 1 60 fps seed 7: launched 3/3 span 221.3 s launch gaps 33.2..36.0 s rewrites 3 grid_miss 0 merges 2| merge_frames 5645 ahead_capped 0 head_capped 0 | nose_away 0 turn 0.0 deg | order 0 | esc_past_dend 0 esc_o4 2 max 13.2 s late 0 dend_stops 0 (0.0 s) o0 4884 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C side_commit lane tf 1 60 fps seed 1234567: launched 3/3 span 224.5 s launch gaps 32.7..39.7 s rewrites 3 grid_miss 0 merges 2| merge_frames 5663 ahead_capped 0 head_capped 0 | nose_away 0 turn 0.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.6 s late 0 dend_stops 0 (0.0 s) o0 5395 low 0 drop 0.0 | p2 3 not_kept 0 f
+scenario C side_commit lane tf 6 30 fps seed 1: launched 3/3 span 198.6 s launch gaps 31.5..33.4 s rewrites 3 grid_miss 0 merges 2| merge_frames 437 ahead_capped 0 head_capped 0 | nose_away 0 turn 2.1 deg | order 0 | esc_past_dend 0 esc_o4 2 max 8.4 s late 0 dend_stops 0 (0.0 s) o0 351 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C side_commit lane tf 6 30 fps seed 7: launched 3/3 span 200.6 s launch gaps 30.7..35.1 s rewrites 3 grid_miss 0 merges 2| merge_frames 422 ahead_capped 0 head_capped 0 | nose_away 0 turn 1.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 5.4 s late 0 dend_stops 0 (0.0 s) o0 322 low 0 drop 0.0 | p2 3 not_kept 0 far 0 afte
+scenario C side_commit lane tf 6 30 fps seed 1234567: launched 3/3 span 199.7 s launch gaps 30.7..34.2 s rewrites 3 grid_miss 0 merges 2| merge_frames 369 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.6 deg | order 0 | esc_past_dend 0 esc_o4 2 max 12.3 s late 0 dend_stops 0 (0.0 s) o0 343 low 0 drop 0.0 | p2 3 not_kept 0 far
+scenario C side_commit lane tf 10 30 fps seed 1: launched 3/3 span 199.8 s launch gaps 32.2..32.2 s rewrites 3 grid_miss 0 merges 2| merge_frames 266 ahead_capped 0 head_capped 0 | nose_away 0 turn 2.6 deg | order 0 | esc_past_dend 0 esc_o4 2 max 8.7 s late 0 dend_stops 0 (0.0 s) o0 221 low 0 drop 0.0 | p2 3 not_kept 0 far 0 aft
+scenario C side_commit lane tf 10 30 fps seed 7: launched 3/3 span 199.5 s launch gaps 30.7..33.2 s rewrites 3 grid_miss 0 merges 2| merge_frames 260 ahead_capped 0 head_capped 0 | nose_away 0 turn 1.6 deg | order 0 | esc_past_dend 0 esc_o4 2 max 5.7 s late 0 dend_stops 0 (0.0 s) o0 199 low 0 drop 0.0 | p2 3 not_kept 0 far 0 aft
+scenario C side_commit lane tf 10 30 fps seed 1234567: launched 3/3 span 200.0 s launch gaps 31.9..33.3 s rewrites 3 grid_miss 0 merges 2| merge_frames 236 ahead_capped 0 head_capped 0 | nose_away 0 turn 4.3 deg | order 0 | esc_past_dend 0 esc_o4 2 max 12.4 s late 0 dend_stops 0 (0.0 s) o0 215 low 0 drop 0.0 | p2 3 not_kept 0 fa
+  tf 1 seed 1: x12 flown 0, lane v_min 56.5 m/s slow 0.0 s
+  tf 1 seed 7: x12 flown 0, lane v_min 51.4 m/s slow 0.0 s
+  tf 1 seed 1234567: x12 flown 0, lane v_min 39.0 m/s slow 0.0 s
+  tf 6 seed 1: x12 flown 0, lane v_min 68.7 m/s slow 0.0 s
+  tf 6 seed 7: x12 flown 0, lane v_min 75.5 m/s slow 0.0 s
+  tf 6 seed 1234567: x12 flown 0, lane v_min 70.2 m/s slow 0.0 s
+  tf 10 seed 1: x12 flown 0, lane v_min 68.8 m/s slow 0.0 s
+  tf 10 seed 7: x12 flown 0, lane v_min 68.7 m/s slow 0.0 s
+  tf 10 seed 1234567: x12 flown 0, lane v_min 70.2 m/s slow 0.0 s
+FAIL rows (key off excluded): 0
+== return_pass (rp)
+scenario C return_pass lane tf 1 60 fps seed 1: launched 3/3 span -1.0 s launch gaps 53.9..654.7 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 33460 turn 3.1 deg | order 0 | esc_past_dend 19738 esc_o4 2 max 376.3 s late 0 dend_stops 0 (0.0 s) o0 1029 low 156 drop 100.0 | p2 3 not_kept
+scenario C return_pass lane tf 1 60 fps seed 7: launched 3/3 span -1.0 s launch gaps 56.6..639.2 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 32268 turn 9.7 deg | order 0 | esc_past_dend 19865 esc_o4 2 max 375.4 s late 0 dend_stops 0 (0.0 s) o0 832 low 133 drop 100.0 | p2 3 not_kept 
+scenario C return_pass lane tf 1 60 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 55.8..642.0 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 32583 turn 3.2 deg | order 0 | esc_past_dend 19803 esc_o4 2 max 368.9 s late 0 dend_stops 0 (0.0 s) o0 819 low 127 drop 100.0 | p2 3 not
+scenario C return_pass lane tf 6 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 51.9..587.2 s rewrites 2 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1999 turn 8.9 deg | order 0 | esc_past_dend 1597 esc_o4 2 max 391.9 s late 0 dend_stops 0 (0.0 s) o0 35 low 8 drop 100.0 | p2 3 not_kept 1 far
+scenario C return_pass lane tf 6 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 57.0..640.9 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 2295 turn 9.9 deg | order 0 | esc_past_dend 1545 esc_o4 2 max 392.2 s late 0 dend_stops 0 (0.0 s) o0 49 low 9 drop 100.0 | p2 3 not_kept 0 far
+scenario C return_pass lane tf 6 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 57.1..650.5 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 2388 turn 5.3 deg | order 0 | esc_past_dend 1518 esc_o4 2 max 393.5 s late 0 dend_stops 0 (0.0 s) o0 60 low 4 drop 100.0 | p2 3 not_kept
+scenario C return_pass lane tf 10 30 fps seed 1: launched 3/3 span -1.0 s launch gaps 52.0..639.2 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1577 turn 3.1 deg | order 0 | esc_past_dend 997 esc_o4 2 max 386.1 s late 0 dend_stops 0 (0.0 s) o0 48 low 8 drop 100.0 | p2 3 not_kept 0 far
+scenario C return_pass lane tf 10 30 fps seed 7: launched 3/3 span -1.0 s launch gaps 57.9..640.0 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1484 turn 9.4 deg | order 0 | esc_past_dend 1024 esc_o4 2 max 395.2 s late 0 dend_stops 0 (0.0 s) o0 37 low 7 drop 100.0 | p2 3 not_kept 0 fa
+scenario C return_pass lane tf 10 30 fps seed 1234567: launched 3/3 span -1.0 s launch gaps 57.3..637.0 s rewrites 3 grid_miss 0 merges 1| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 1486 turn 7.1 deg | order 0 | esc_past_dend 1015 esc_o4 2 max 394.2 s late 0 dend_stops 0 (0.0 s) o0 34 low 5 drop 100.0 | p2 3 not_kep
+  tf 1 seed 1: x12 flown 0, lane v_min 10.0 m/s slow 10.1 s
+  tf 1 seed 7: x12 flown 0, lane v_min 25.9 m/s slow 0.0 s
+  tf 1 seed 1234567: x12 flown 0, lane v_min 26.6 m/s slow 0.0 s
+  tf 6 seed 1: x12 flown 0, lane v_min 10.0 m/s slow 3.4 s
+  tf 6 seed 7: x12 flown 0, lane v_min 26.4 m/s slow 0.0 s
+  tf 6 seed 1234567: x12 flown 0, lane v_min 26.4 m/s slow 0.0 s
+  tf 10 seed 1: x12 flown 0, lane v_min 0.0 m/s slow 9.2 s
+  tf 10 seed 7: x12 flown 0, lane v_min 29.9 m/s slow 0.0 s
+  tf 10 seed 1234567: x12 flown 0, lane v_min 26.6 m/s slow 0.0 s
+FAIL rows (key off excluded): 0
+== x12_near_side (xs)
+scenario C x12_near_side lane tf 1 60 fps seed 1: launched 3/3 span 224.1 s launch gaps 33.2..103.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 3246 ahead_capped 0 head_capped 0 | nose_away 6546 turn 2.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 977 low 0 drop 0.0 | p2 3 not_kept 0 far
+scenario C x12_near_side lane tf 1 60 fps seed 7: launched 3/3 span 218.9 s launch gaps 32.9..98.6 s rewrites 4 grid_miss 0 merges 2| merge_frames 3265 ahead_capped 0 head_capped 0 | nose_away 6367 turn 2.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 936 low 47 drop 100.0 | p2 3 not_kept 0 f
+scenario C x12_near_side lane tf 1 60 fps seed 1234567: launched 3/3 span 217.9 s launch gaps 32.9..97.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 3249 ahead_capped 0 head_capped 0 | nose_away 6366 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 1047 low 0 drop 0.0 | p2 3 not_kept
+scenario C x12_near_side lane tf 6 30 fps seed 1: launched 3/3 span 197.9 s launch gaps 34.3..93.1 s rewrites 4 grid_miss 0 merges 2| merge_frames 244 ahead_capped 0 head_capped 0 | nose_away 478 turn 2.5 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 91 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C x12_near_side lane tf 6 30 fps seed 7: launched 3/3 span 194.1 s launch gaps 32.8..89.2 s rewrites 4 grid_miss 0 merges 2| merge_frames 253 ahead_capped 0 head_capped 0 | nose_away 438 turn 2.4 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 76 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C x12_near_side lane tf 6 30 fps seed 1234567: launched 3/3 span 203.2 s launch gaps 31.1..100.2 s rewrites 4 grid_miss 0 merges 2| merge_frames 199 ahead_capped 0 head_capped 0 | nose_away 429 turn 2.8 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 80 low 0 drop 0.0 | p2 3 not_kept 0 
+scenario C x12_near_side lane tf 10 30 fps seed 1: launched 3/3 span 196.2 s launch gaps 34.3..90.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 150 ahead_capped 0 head_capped 0 | nose_away 301 turn 2.5 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 58 low 0 drop 0.0 | p2 3 not_kept 0 far 0 
+scenario C x12_near_side lane tf 10 30 fps seed 7: launched 3/3 span 197.0 s launch gaps 31.9..93.0 s rewrites 4 grid_miss 0 merges 2| merge_frames 155 ahead_capped 0 head_capped 0 | nose_away 285 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 45 low 0 drop 0.0 | p2 3 not_kept 0 far 0 
+scenario C x12_near_side lane tf 10 30 fps seed 1234567: launched 3/3 span 198.3 s launch gaps 34.3..91.4 s rewrites 4 grid_miss 0 merges 2| merge_frames 128 ahead_capped 0 head_capped 0 | nose_away 283 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 48 low 0 drop 0.0 | p2 3 not_kept 0 
+  tf 1 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 1 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 1 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 6 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 6 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 6 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 10 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.7 s
+  tf 10 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.7 s
+  tf 10 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 6.7 s
+FAIL rows (key off excluded): 0
+== parked (pk)
+scenario C parked lane tf 1 60 fps seed 1: launched 3/3 span 256.1 s launch gaps 26.7..54.2 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 215.5 deg | order 0 | esc_past_dend 0 esc_o4 2 max 11.5 s late 0 dend_stops 0 (0.0 s) o0 2980 low 225 drop 100.0 | p2 3 not_kept 2 far 1 aft
+scenario C parked lane tf 1 60 fps seed 7: launched 3/3 span 255.1 s launch gaps 31.9..47.9 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 217.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 13.8 s late 0 dend_stops 0 (0.0 s) o0 3398 low 274 drop 100.0 | p2 3 not_kept 3 far 1 aft
+scenario C parked lane tf 1 60 fps seed 1234567: launched 3/3 span 254.7 s launch gaps 28.0..51.1 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 227.0 deg | order 0 | esc_past_dend 0 esc_o4 2 max 10.3 s late 0 dend_stops 0 (0.0 s) o0 3195 low 90 drop 100.0 | p2 3 not_kept 2 far 
+scenario C parked lane tf 6 30 fps seed 1: launched 3/3 span 247.2 s launch gaps 42.9..47.6 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 206.5 deg | order 0 | esc_past_dend 0 esc_o4 2 max 17.7 s late 0 dend_stops 0 (0.0 s) o0 228 low 8 drop 100.0 | p2 3 not_kept 2 far 1 after_
+scenario C parked lane tf 6 30 fps seed 7: launched 3/3 span 247.1 s launch gaps 40.2..46.9 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 210.6 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.4 s late 0 dend_stops 0 (0.0 s) o0 237 low 43 drop 100.0 | p2 3 not_kept 2 far 1 after
+scenario C parked lane tf 6 30 fps seed 1234567: launched 3/3 span 241.2 s launch gaps 38.5..45.4 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 194.0 deg | order 0 | esc_past_dend 0 esc_o4 2 max 6.8 s late 0 dend_stops 0 (0.0 s) o0 192 low 34 drop 100.0 | p2 3 not_kept 1 far 1 
+scenario C parked lane tf 10 30 fps seed 1: launched 3/3 span 241.0 s launch gaps 40.4..43.1 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 213.2 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 139 low 2 drop 96.0 | p2 3 not_kept 2 far 1 after_
+scenario C parked lane tf 10 30 fps seed 7: launched 3/3 span 237.0 s launch gaps 39.3..39.6 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 200.0 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.3 s late 0 dend_stops 0 (0.0 s) o0 152 low 24 drop 100.0 | p2 3 not_kept 1 far 1 afte
+scenario C parked lane tf 10 30 fps seed 1234567: launched 3/3 span 237.3 s launch gaps 36.0..42.4 s rewrites 3 grid_miss 0 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 0 turn 184.1 deg | order 0 | esc_past_dend 0 esc_o4 2 max 6.8 s late 0 dend_stops 0 (0.0 s) o0 114 low 19 drop 100.0 | p2 3 not_kept 2 far 1
+FAIL rows (key off excluded): 0

@@ -333,6 +333,51 @@ class ArrivalReviewRows(unittest.TestCase):
         self.assertIn('"pass_player"', (root / 'ship_avoidance_core.h').read_text())
 
 
+RUN175_ROWS = [
+    'ship_gate_ctl_member frame=904 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 class=M2 role=escort stage=inbound order=0x15 '
+    'target=0x8e051030 p_m=-1200,450,-9330 nose_f=0.940 v_ms=60.0 key=49 traced=1 st_age_ms=50 dec_age_ms=310 live=1 zx=-1800 w_m=454 '
+    'w_ok=1 funnel=0',
+    'ship_gate_ctl_lane frame=905 t_ms=23272598 gate=0x8e051030 ship=0x8e049da0 lane_s=-9330 rank=1 gap_m=na law=join lat_m=19508 '
+    'lc_m=0,-929 v_law=100.0 v_w=na w=none on=0 merged=1 loop=none pt=lane own=0',
+    'ship_gate_ctl_rewrite frame=908 t_ms=23274000 gate=0x8e051030 ship=0x8e049da0 site=a slot=0 from_m=0,0,-3871 to_m=0,-929,-1471 '
+    'r_m=778 implied_m=831 kc_m=831',
+    'ship_gate_ctl_rewrite frame=909 t_ms=23275000 gate=0x8e051030 ship=0x8e1d0090 site=miss slot=-1 from_m=310,-80,-3900 to_m=310,-80,-3900 '
+    'r_m=778 implied_m=-1 kc_m=-1',
+    'ship_gate_ring_node frame=785 t_ms=22669000 gate=0x916fd518 i=0 depth=1 scene=50252 f25c=0x00000000 f140=0x00000001 flags=0x00000002',
+    'ship_gate_ring_reread frame=4900 t_ms=22730017 gate=0x916fd518 id=24209 nodes_before=33 nodes=33 state_before=none state=none changed=0',
+    'ship_steering_handler_slow frame=31626 t_ms=23500000 site=A obj=0x9127ebb8 leaf=0 order=0x4 us=4375 cycles=12345678 snap_walk=1 snap_us=120',
+]
+
+
+class Run175RoundRows(unittest.TestCase):
+    def test_member_lane_and_rewrite_fields(self):
+        mr = st.parse_kv_rows(RUN175_ROWS, 'ship_gate_ctl_member')[0]
+        self.assertEqual((mr['w_m'], mr['w_ok'], mr['funnel']), (454, 1, 0))  # item 2: the width and its read; item 3: the funnel
+        ln = st.parse_kv_rows(RUN175_ROWS, 'ship_gate_ctl_lane')[0]
+        self.assertEqual((ln['pt'], ln['own'], ln['lat_m']), ('lane', 0, 19508))  # item 1 / 3: the point stands, the lane does not own it
+        a, miss = st.parse_kv_rows(RUN175_ROWS, 'ship_gate_ctl_rewrite')
+        self.assertEqual((a['site'], a['slot'], a['r_m'], a['implied_m'], a['kc_m']), ('a', 0, 778, 831, 831))  # item 1: a script point by shape
+        self.assertEqual((miss['site'], miss['implied_m'], miss['kc_m']), ('miss', -1, -1))
+        glue = (Path(__file__).resolve().parents[2] / 'src/proxy/ship_gate_ctl_glue.cpp').read_text()
+        self.assertIn('live=%u zx=%.0f w_m=%.0f w_ok=%u funnel=%u', glue)
+        self.assertIn('merged=%u loop=%s pt=%s own=%u', glue)
+        self.assertIn('r_m=%.0f implied_m=%.0f kc_m=%.0f', glue)
+
+    def test_ring_node_reread_and_handler_rows(self):
+        nd = st.parse_kv_rows(RUN175_ROWS, 'ship_gate_ring_node')[0]
+        self.assertEqual((nd['gate'], nd['i'], nd['depth'], nd['scene'], nd['f25c'], nd['f140'], nd['flags']), (0x916fd518, 0, 1, 50252, 0, 1, 2))
+        rr = st.parse_kv_rows(RUN175_ROWS, 'ship_gate_ring_reread')[0]
+        self.assertEqual((rr['nodes_before'], rr['nodes'], rr['state_before'], rr['state'], rr['changed']), (33, 33, 'none', 'none', 0))
+        hs = st.parse_kv_rows(RUN175_ROWS, 'ship_steering_handler_slow')[0]
+        self.assertEqual((hs['site'], hs['obj'], hs['leaf'], hs['order'], hs['us'], hs['cycles'], hs['snap_walk'], hs['snap_us']),
+                         ('A', 0x9127ebb8, 0, 4, 4375, 12345678, 1, 120))
+        rows = (Path(__file__).resolve().parents[2] / 'src/proxy/ship_steering_rows.cpp').read_text()
+        self.assertIn('ship_gate_ring_node frame=%llu t_ms=%lu gate=0x%08lx i=%u depth=%u scene=%lu f25c=0x%08lx f140=0x%08lx flags=0x%08lx', rows)
+        self.assertIn('ship_gate_ring_reread frame=%llu t_ms=%lu gate=0x%08lx id=%lu nodes_before=%u nodes=%u state_before=%s state=%s changed=%u', rows)
+        self.assertIn('ship_steering_handler_slow frame=%llu t_ms=%lu site=A obj=0x%08lx leaf=%u order=0x%x us=%lu cycles=%llu snap_walk=%u snap_us=%lu', rows)
+        self.assertEqual(len(st.parse_kv_rows(RUN175_ROWS)), 7)
+
+
 class ArrivalRoundRows(unittest.TestCase):
     def test_ring_row_and_player_rows(self):
         s = st.parse_kv_rows(ARRIVAL_ROWS, 'ship_steering_lane_summary')[0]

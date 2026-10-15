@@ -101,6 +101,7 @@ struct RewriteRow {
     std::int8_t slot;
     std::uint8_t site; // 0 a, 1 b, 2 adopt, 3 miss
     float from[3], to[3];
+    float r, implied, kc; // Run175 round item 1: the hull's radius, the size the field's depth implies (-1: off the pattern), the KC's size
 };
 inline RewriteRow rewrite_rows_[8];
 inline std::atomic<std::uint32_t> rewrite_row_write_{0};
@@ -129,7 +130,7 @@ inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::R
 }
 // A ship_gate_ctl_rewrite row (review item 9; --debug): the field before (cur) and after (to; the same for adopt / miss), units.
 inline void lane_rewrite_row(const gc::Gate& g, std::uint32_t ship, float r_s, const std::int32_t cur[3], const std::int32_t to[3], unsigned site,
-                             std::uint32_t now) noexcept {
+                             std::uint32_t now, float implied = -1.0f, float kc = -1.0f) noexcept {
     if (!debug_) return;
     const std::uint32_t w = rewrite_row_write_.load(std::memory_order_relaxed);
     if (w - rewrite_row_read_ >= 8) {
@@ -141,12 +142,15 @@ inline void lane_rewrite_row(const gc::Gate& g, std::uint32_t ship, float r_s, c
     r.ship = ship;
     r.t_ms = now;
     r.site = std::uint8_t(site);
+    r.r = r_s;
+    r.implied = implied;
+    r.kc = kc;
     float pc[3], pt[3];
     for (unsigned i = 0; i < 3; ++i) {
         pc[i] = float(cur[i]) / core::kUnitsPerMetre;
         pt[i] = float(to[i]) / core::kUnitsPerMetre;
     }
-    r.slot = std::int8_t(gc::kc_grid_slot(g.G, g.R, g.U, g.F, g.r_gate, r_s, pc));
+    r.slot = std::int8_t(gc::kc_grid_slot_any(g.G, g.R, g.U, g.F, g.r_gate, r_s, pc)); // (Run175 round item 1: a script point of any size)
     const float dc[3] = {pc[0] - g.G[0], pc[1] - g.G[1], pc[2] - g.G[2]}, dt[3] = {pt[0] - g.G[0], pt[1] - g.G[1], pt[2] - g.G[2]};
     r.from[0] = core::dot3(dc, g.R);
     r.from[1] = core::dot3(dc, g.U);

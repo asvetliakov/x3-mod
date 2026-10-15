@@ -14,7 +14,8 @@ struct RingSeen {
 };
 RingSeen ring_seen_[32];
 struct RingTree {
-    std::uint32_t gate = 0, id = 0;
+    std::uint32_t gate = 0, id = 0, ms = 0;
+    std::uint16_t nodes = 0;
     std::uint8_t state = 0;
 };
 RingTree ring_tree_[8];
@@ -371,30 +372,77 @@ inline void ring_read_row(std::uint32_t b, std::uint32_t id, const wk::GateTreeR
         row_dropped(Drop::e_ring);
         return;
     }
+    const std::uint32_t t = game_time_ms();
     RingReadRow& r = ring_read_rows_[w & 7];
-    r = RingReadRow{game_time_ms(), b, id, rd.scene, rd16(b + sites::kObjType), rd.nodes, rd.state, std::uint8_t(rd.why), rd.seen,
+    r = RingReadRow{t, b, id, rd.scene, rd16(b + sites::kObjType), rd.nodes, rd.state, std::uint8_t(rd.why), rd.seen,
                     std::uint8_t(board ? 1 : 0)};
     ring_read_write_.store(w + 1, std::memory_order_release);
+    // Run175 round item 6: the visited nodes' fields, once per gate with more than kRingNodeRowsMin nodes (the ring holds one read)
+    if (rd.out && rd.nodes > kRingNodeRowsMin) {
+        const unsigned n = rd.nodes < rd.cap ? rd.nodes : rd.cap;
+        std::uint32_t wn = ring_node_write_.load(std::memory_order_relaxed);
+        for (unsigned i = 0; i < n; ++i, ++wn) {
+            if (wn - ring_node_read_ >= kRingNodeRows) {
+                row_dropped(Drop::e_ring);
+                break;
+            }
+            const wk::GateTreeNode& nd = rd.out[i];
+            ring_node_rows_[wn % kRingNodeRows] = RingNodeRow{t, b, nd.scene, nd.f25c, nd.f140, nd.flags, std::uint16_t(i), nd.depth};
+        }
+        ring_node_write_.store(wn, std::memory_order_release);
+    }
+}
+// Run175 round item 6: a gate's tree re-read every kRingRereadMs + the step (on the warn path, the live gate pointer): the node count
+// before and after and a row; the verdict stays the first one unless a tree appears (then the ring: fail closed). Returns the state to keep.
+inline std::uint8_t ring_reread(std::uint32_t b, std::uint32_t id, std::uint8_t state, std::uint16_t* nodes, std::uint32_t* ms, std::uint32_t now) noexcept {
+    if (std::int32_t(now - *ms) < std::int32_t(kRingRereadMs + frame_step_ms())) return state;
+    *ms = now ? now : 1;
+    RawMem mem;
+    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b);
+    // (review: a tree or an unknown read supersedes a first "none", fail closed; a "none" never lifts a first tree or unknown)
+    const std::uint8_t st = rd.state ? rd.state : 3u, keep = st == std::uint8_t(gc::kGateRingNone) ? state : st;
+    const std::uint8_t changed = rd.nodes != *nodes || st != state ? 1 : 0;
+    if (debug_) {
+        const std::uint32_t w = ring_reread_write_.load(std::memory_order_relaxed);
+        if (w - ring_reread_read_ < 8) {
+            ring_reread_rows_[w & 7] = RingRereadRow{now, b, id, *nodes, rd.nodes, state, st, changed};
+            ring_reread_write_.store(w + 1, std::memory_order_release);
+        } else
+            row_dropped(Drop::e_ring);
+    }
+    *nodes = rd.nodes;
+    return keep;
+}
+inline wk::GateTreeRead ring_first_read(std::uint32_t b, bool board, std::uint32_t id) noexcept { // (the node records under --debug)
+    RawMem mem;
+    if (!debug_) return wk::gate_tree_read(mem, b);
+    wk::GateTreeNode nodes[kRingNodeRows];
+    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b, nodes, kRingNodeRows);
+    ring_read_row(b, id, rd, board);
+    return rd;
 }
 inline unsigned gate_ring_state(std::uint32_t b) noexcept {
     if (!wk::ptr_ok(b, wk::kGateObjBytes)) return 3u;
+    const std::uint32_t now = game_time_ms();
     if (gc::Gate* g = gc::gate_of(ctl_, b)) {
         if (!g->ring) {
-            RawMem mem;
-            const wk::GateTreeRead rd = wk::gate_tree_read(mem, b);
+            const wk::GateTreeRead rd = ring_first_read(b, true, rd32(b + sites::kObjId));
             g->ring = std::uint8_t(rd.state ? rd.state : 3u);
-            if (debug_) ring_read_row(b, rd32(b + sites::kObjId), rd, true);
-        }
+            g->ring_nodes = rd.nodes;
+            g->ring_ms = now ? now : 1;
+        } else
+            g->ring = ring_reread(b, rd32(b + sites::kObjId), g->ring, &g->ring_nodes, &g->ring_ms, now); // (item 6: every 60 s + the step)
         return g->ring;
     }
     const std::uint32_t id = rd32(b + sites::kObjId);
-    for (const RingTree& t : ring_tree_)
-        if (t.gate == b && t.id == id) return t.state;
-    RawMem mem;
-    const wk::GateTreeRead rd = wk::gate_tree_read(mem, b);
+    for (RingTree& t : ring_tree_)
+        if (t.gate == b && t.id == id) {
+            t.state = ring_reread(b, id, t.state, &t.nodes, &t.ms, now);
+            return t.state;
+        }
+    const wk::GateTreeRead rd = ring_first_read(b, false, id);
     RingTree& t = ring_tree_[ring_tree_next_++ & 7u];
-    t = RingTree{b, id, std::uint8_t(rd.state ? rd.state : 3u)};
-    if (debug_) ring_read_row(b, id, rd, false);
+    t = RingTree{b, id, now ? now : 1, rd.nodes, std::uint8_t(rd.state ? rd.state : 3u)};
     return t.state;
 }
 // The ring row (gc::gate_ring_why) for A against the gate B on any order: never the player's ship or a ship under manual control, never A

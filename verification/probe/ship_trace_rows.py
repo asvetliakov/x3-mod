@@ -159,11 +159,26 @@ def by_ship(rows):
 #     scene, node_ptr, parent, chain, depth, budget, no_scene_node); verdict none = no solid, ring = the TGates row's ring; item 1)
 #   ship_steering_lane_summary ... ctl_mouth_expired= (gate-mouth holds ended by their game-time bound; item 3)
 #   ship_avoid_e_verdict ... verdict=pass_player (B is the player's ship: no suppression row; item 2)
+# Run175 round (convoy-gate-transit.md section 11 "Run175 round"):
+#   ship_gate_ctl_member ... w_m= (the hull's lateral half-width, m) w_ok=0|1 (it came from a read; 0: unread, a body for the sweep only)
+#     funnel=0|1 (inside the join funnel; item 3)
+#   ship_gate_ctl_lane ... pt=lane|point (point: the member stands on an unrewritten script point, its lateral the member's lane lateral,
+#     no lane steer; item 1) own=0|1 (the lane owns the member: its laws, writes and point apply; 0 outside the funnel, width unread, or
+#     on an unrewritten point)
+#   ship_gate_ctl_rewrite ... r_m= (the hull's radius) implied_m= (the size the field's depth implies, 2 (r_gate + r'); -1 off the
+#     20-slot lateral pattern) kc_m= (the size the KC's GetSize reads, the render root's cached subtree radius [[obj+0x70]+0xa4]; -1
+#     unreadable or dirty)   (item 1: a script point of any size within 0.6-1.6 r is rewritten; a miss row carries the three)
+#   ship_gate_ring_node frame= t_ms= gate= i= depth= scene= f25c= f140= flags= (--debug, once per gate whose first read visited more than
+#     3 nodes: each visited node's depth and fields [c+0x258], [c+0x25c], [c+0x140], [c+0x12c]; item 6)
+#   ship_gate_ring_reread frame= t_ms= gate= id= nodes_before= nodes= state_before= state= changed=0|1 (every 60 s + the step per gate on
+#     the warn path: the node count before and after; the verdict stays the first one unless a tree appears; item 6)
+#   ship_steering_handler_slow frame= t_ms= site=A obj= leaf= order= us= cycles= snap_walk=0|1 snap_us= (--debug with timing: a handler
+#     call beyond 500 us: its QPC delta, its QueryThreadCycleTime delta, whether snapshot_for walked the sector and that walk's us; item 6)
 LEGACY_KV_ROWS = ('ship_gate_ctl_seq',)  # rows the DLL no longer prints (stage B's sequencer, deleted 2026-10-15); still parsed in old logs
 KV_ROWS = ('ship_capital_lane', 'ship_gate_capital_latch', 'ship_capital_census', 'ship_gate_ctl', 'ship_gate_ctl_pair', 'ship_gate_launch',
            'ship_avoid_dock', 'ship_gate_ctl_member', 'ship_gate_ctl_lane', 'ship_gate_ctl_merge', 'ship_gate_ctl_rewrite',
            'ship_gate_ctl_defer', 'ship_steering_lane_summary', 'ship_avoid_engine_warn_pre', 'ship_player_pos',
-           'ship_gate_ring_read') + LEGACY_KV_ROWS
+           'ship_gate_ring_read', 'ship_gate_ring_node', 'ship_gate_ring_reread', 'ship_steering_handler_slow') + LEGACY_KV_ROWS
 LIST_FIELDS = ('cands_v:grade:nose:vel:e:over:e_max:reached', 'cands_v:grade:nose:vel:e:over:e_max:reached:steps', 'lanes_other:verdict:gap',
                'gates_gate:F:G:r', 'entries_other:class:code:order:leader:member:d_m:r_m:e_verdict')  # (lane fix round 2 item 6: the summary's
 #                gate frames, a vector item a tuple; the warn pre-row's entries)

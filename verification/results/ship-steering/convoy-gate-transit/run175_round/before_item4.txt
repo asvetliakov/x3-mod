@@ -1,0 +1,21 @@
+== x12_near_side (b4)
+scenario C x12_near_side lane tf 1 60 fps seed 1: launched 3/3 span 224.1 s launch gaps 33.2..103.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 3246 ahead_capped 0 head_capped 0 | nose_away 6546 turn 2.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 977 low 0 drop 0.0 | p2 3 not_kept 0 far
+scenario C x12_near_side lane tf 1 60 fps seed 7: launched 3/3 span 218.9 s launch gaps 32.9..98.6 s rewrites 4 grid_miss 0 merges 2| merge_frames 3265 ahead_capped 0 head_capped 0 | nose_away 6367 turn 2.6 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 936 low 47 drop 100.0 | p2 3 not_kept 0 f
+scenario C x12_near_side lane tf 1 60 fps seed 1234567: launched 3/3 span 217.9 s launch gaps 32.9..97.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 3249 ahead_capped 0 head_capped 0 | nose_away 6366 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 1047 low 0 drop 0.0 | p2 3 not_kept
+scenario C x12_near_side lane tf 6 30 fps seed 1: launched 3/3 span 197.9 s launch gaps 34.3..93.1 s rewrites 4 grid_miss 0 merges 2| merge_frames 244 ahead_capped 0 head_capped 0 | nose_away 478 turn 2.5 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 91 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C x12_near_side lane tf 6 30 fps seed 7: launched 3/3 span 194.1 s launch gaps 32.8..89.2 s rewrites 4 grid_miss 0 merges 2| merge_frames 253 ahead_capped 0 head_capped 0 | nose_away 438 turn 2.4 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 76 low 0 drop 0.0 | p2 3 not_kept 0 far 0 a
+scenario C x12_near_side lane tf 6 30 fps seed 1234567: launched 3/3 span 203.2 s launch gaps 31.1..100.2 s rewrites 4 grid_miss 0 merges 2| merge_frames 199 ahead_capped 0 head_capped 0 | nose_away 429 turn 2.8 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 80 low 0 drop 0.0 | p2 3 not_kept 0 
+scenario C x12_near_side lane tf 10 30 fps seed 1: launched 3/3 span 196.2 s launch gaps 34.3..90.5 s rewrites 4 grid_miss 0 merges 2| merge_frames 150 ahead_capped 0 head_capped 0 | nose_away 301 turn 2.5 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 58 low 0 drop 0.0 | p2 3 not_kept 0 far 0 
+scenario C x12_near_side lane tf 10 30 fps seed 7: launched 3/3 span 197.0 s launch gaps 31.9..93.0 s rewrites 4 grid_miss 0 merges 2| merge_frames 155 ahead_capped 0 head_capped 0 | nose_away 285 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 45 low 0 drop 0.0 | p2 3 not_kept 0 far 0 
+scenario C x12_near_side lane tf 10 30 fps seed 1234567: launched 3/3 span 198.3 s launch gaps 34.3..91.4 s rewrites 4 grid_miss 0 merges 2| merge_frames 128 ahead_capped 0 head_capped 0 | nose_away 283 turn 2.7 deg | order 0 | esc_past_dend 0 esc_o4 0 max 0.0 s late 0 dend_stops 0 (0.0 s) o0 48 low 0 drop 0.0 | p2 3 not_kept 0 
+  tf 1 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 1 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 1 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 5.3 s
+  tf 6 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 6 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 6 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 5.6 s
+  tf 10 seed 1: x12 flown 1, lane v_min 10.0 m/s slow 5.7 s
+  tf 10 seed 7: x12 flown 1, lane v_min 10.0 m/s slow 5.7 s
+  tf 10 seed 1234567: x12 flown 1, lane v_min 10.0 m/s slow 6.7 s
+FAIL rows (key off excluded): 1
+      1 FAIL Run175 units: item 4 a follower 2 km beside Lambda is inside a Titan loop's footprint

@@ -36,6 +36,9 @@ struct LaneCtx {
     // lane fix round 2 item 3d: the ship ahead has its grant (order 5 or 8 seen): it leaves along F, so its standstill is no stop at
     // spacing (the queue hold behind a refused leader ends within the step of its grant, not once its speed passes kLaneStopV)
     bool granted = false;
+    // Run175 round item 3: the path still to fly to d_end through the member's join point (m; lane_path_len; 0: along F, or the straight
+    // join when y is set): every pacing law's distance, never the F component alone
+    float path = 0.0f;
 };
 // The escort gate's braking reserve (section 6.5, review item 1): the highest speed at dist (m along F to d_end) from which a ship at a
 // (m/s^2) still stops kLaneStopShortM short of d_end: an escort without its order 4 never passes d_end whatever the script's latency.
@@ -108,10 +111,11 @@ __attribute__((always_inline)) inline float lane_law(const LaneCtx& c, Law* law,
         }
     }
     const float dist = -c.d_end - c.s; // to d_end along F
-    // the path still to fly to d_end (the pacing laws): a joining ship flies the straight join, not the along-track distance (lane_eta's)
-    const float path = c.y > kLaneOnM && dist > 0.0f ? sc::sqrt_ss(dist * dist + c.y * c.y) : dist;
+    // the path still to fly to d_end (every pacing law, Run175 round item 3): through the join point (c.path, lane_path_len), else the
+    // straight join, never the along-track distance of a joining ship (lane_eta's)
+    const float path = c.path > 0.0f ? c.path : c.y > kLaneOnM && dist > 0.0f ? sc::sqrt_ss(dist * dist + c.y * c.y) : dist;
     const float a = c.a > 0.1f ? c.a : 0.1f;
-    const float vb = dist > 50.0f ? sc::sqrt_ss(2.0f * a * (dist - 50.0f)) : 0.0f; // the braking curve to a stop at d_end
+    const float vb = path > 50.0f ? sc::sqrt_ss(2.0f * a * (path - 50.0f)) : 0.0f; // the braking curve to a stop at d_end
     if (c.head && c.t_free_s > 0.0f && v > 0.0f) { // head pacing: at d_end no earlier than the slot's free time, then the stop there
         float vp = dist > 0.0f ? path / c.t_free_s : 0.0f;
         if (vp < kYieldFloorMs) vp = kYieldFloorMs;
@@ -124,7 +128,7 @@ __attribute__((always_inline)) inline float lane_law(const LaneCtx& c, Law* law,
     // the escort gate (section 6.5, review item 1): an escort without its order 4 flies the braking reserve to d_end (lane_reserve),
     // whatever its leader's launch and the script's latency; no pacing on a predicted moment
     if (c.gate && v > 0.0f) {
-        const float vg = lane_reserve(dist, a, c.v_self, c.t_gate_s, c.dt);
+        const float vg = lane_reserve(path, a, c.v_self, c.t_gate_s, c.dt);
         if (vg < v) {
             v = vg;
             *law = v > 0.0f ? Law::gate : Law::stop;
@@ -893,6 +897,18 @@ inline std::uint32_t lane_launch_eta(const Gate& g, const Member& m, std::uint32
     }
     return eta_launch(g, m, now);
 }
+// Run175 round item 4: whether follower m's path crosses the swept footprint of the loop P flies (P's out-leg 2.5 R beside Lambda, its
+// U-turn R beyond, its rejoin at the apex): m within the loop's lateral band (P's offset + its turn radius + both half-widths + the margin)
+// of Lambda. Outside it the loop is transparent to m (its predecessor is the next member ahead); Run175: a follower 10 km beside Lambda
+// was held 107 s at spacing behind the apex of a loop 6 km away.
+#ifndef X3M_LANE_LOOP_ZONE
+#define X3M_LANE_LOOP_ZONE 1
+#endif
+__attribute__((always_inline)) inline bool lane_loop_zone(const Gate& g, const Member& P, const Member& m) noexcept {
+    if (!X3M_LANE_LOOP_ZONE) return true;
+    (void)g;
+    return m.lane_lat <= P.redep_side + P.redep_r + P.w + m.w + kMarginM;
+}
 // Lane fix round 1 item 3: a hand-over's wait beyond 3 s (ctl_x_wait_s), accrued up to now (x_acc_ms: what is counted already).
 __attribute__((always_inline)) inline void lane_x_wait(Member& m, std::uint32_t now, LaneStats* st) noexcept {
     const std::uint32_t w = now - m.x_ms > 3000u ? now - m.x_ms - 3000u : 0u;
@@ -904,7 +920,7 @@ __attribute__((always_inline)) inline void lane_x_wait(Member& m, std::uint32_t 
 inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
     if (!g.gate || !(g.r_gate > 0.0f)) return;
     if (g.sb_last_ms && std::int32_t(now - g.sb_last_ms) < 0) { // a backward game-clock jump (a load): stamps from the future are void
-        g.slot_block_ms = g.funnel_end_ms = g.last_arrival_seen = 0;
+        g.slot_block_ms = g.funnel_end_ms = g.last_arrival_seen = g.ord_retake_ms = 0;
         g.lane_n = 0;
         for (unsigned i = 0; i < g.n; ++i) {
             Member& m = g.m[i];
@@ -1073,6 +1089,16 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             if (m.lane_lat > kLaneOffM || fF < 0.0f) m.lane_on = 0;
         } else if (m.lane_lat <= kLaneOnM && fF >= kLaneOnCos)
             m.lane_on = 1;
+        // Run175 round item 3: the join funnel (lane_funnel_y, with hysteresis) decides whether the lane owns the member on a lane stage;
+        // on Lambda, re-departing (the overshoot, the loop, the gate mouth) or past the lane stages the ownership stands
+        if (!X3M_LANE_FUNNEL || m.lane_on || m.over || m.loop || !(m.sb == Sb::inbound || m.sb == Sb::funnel)) m.funnel = 1;
+        else {
+            const float yf = lane_funnel_y(m, m.lane_s), yo = yf + kLaneOffM > kLaneFunnelHyst * yf ? yf + kLaneOffM : kLaneFunnelHyst * yf;
+            if (m.funnel) {
+                if (m.lane_lat > yo) m.funnel = 0;
+            } else if (m.lane_lat <= yf)
+                m.funnel = 1;
+        }
         // lane fix round 1 item 4 (Run173: E1 past the plane at s = +703 m after an 0x12 flew out 6 km, the re-departure's leg, to turn):
         // a member past the plane without launching is an overshoot until it is back on Lambda; its turn point lies its settling distance
         // + its turn radius R = v / W beyond d_end (the U-turn ends near it heading +F, then the settling run to P2: without the radius the
@@ -1099,7 +1125,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // is on Lambda). Its out-leg lies on the ship's own side of Lambda (never above it: the arrivals' side): an out-leg on the fixed
         // -U side crossed Lambda and the join of a follower coming up from below (x12_far: contact, two further evictions)
         const bool lane_stage = m.sb == Sb::inbound || m.sb == Sb::funnel;
-        if (m.x12_rc) {
+        if (m.x12_rc && lane_laws(m)) { // (Run175 round: a body decides nothing; its flag waits)
             m.x12_rc = 0;
             const float yy = m.lane_lat, Rj = lane_turn_r(m), need = lane_join_need(yy, Rj);
             const bool fits = -kLaneFarM - m.lane_s >= need || -kLaneMergeM - m.lane_s >= need || -lane_join_end(m) - m.lane_s >= 2.0f * yy;
@@ -1122,7 +1148,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // 2.5 R is its own line), the U-turn at R onto Lambda, the straight run (lane_loop_base: no kLaneRedepM floor). Decided once; with a
         // member in its room, the plain re-departure (kLaneRedepM out, kLaneRedepSideM below Lambda). The corridor as the loop's
         // the corridor as the loop's; statics not yet known (no fresh profile): decided at a later frame, the plain re-departure meanwhile
-        if (X3M_LANE_RMIN && !m.loop && !m.over && !m.loop_min_done && lane_stage && !m.lane_on && fF < 0.0f && m.lane_s < 0.0f &&
+        if (X3M_LANE_RMIN && lane_laws(m) && !m.loop && !m.over && !m.loop_min_done && lane_stage && !m.lane_on && fF < 0.0f && m.lane_s < 0.0f &&
             m.lane_s > -(dend(m) + kLaneRedepM) && m.params.W > 1e-3f) {
             const float Rl = lane_vmax(m) / m.params.W;
             // (item 5: at the gate mouth (inside d_end) a re-departure behind a ship farther out that is not itself returning holds until
@@ -1217,7 +1243,11 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             m.loop = 0;
         }
         if (!m.loop) m.loop_min = 0;
-        if (!m.lane_on && fF < 0.0f && m.lane_s > -(dend(m) + m.redep_out)) m.redep = 1; // nose away inside the turn point: out first
+        if (!m.lane_on && fF < 0.0f && m.lane_s > -(dend(m) + m.redep_out) && m.funnel) m.redep = 1; // nose away inside the turn point: out
+                                                                                                   // first (Run175 round item 3: inside the
+                                                                                                   // funnel; an escort 39 km beside the gate
+                                                                                                   // flying at its leader is no re-departure)
+        if (m.redep && !m.funnel && !m.over && !m.loop) m.redep = 0;
         if (m.lane_on) m.redep = 0;
         if (!m.redep && !m.loop) m.loop_min_done = 0; // (the arrival round item 3: a later re-departure decides anew)
         if (!m.redep) { // (review of the arrival round item 3: the gate-mouth hold's bound belongs to this re-departure)
@@ -1257,6 +1287,11 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         ++cnt;
     };
     constexpr std::int32_t kKeepHalfMs = std::int32_t(kLaneKeepS * 500.0f);
+    // (Run175 round item 3: the joiners outside the funnel re-take their sticky moments together, on the gate's clock every kLaneKeepS + the
+    // step: a consistent snapshot, so two far-off joiners change order only when their live ETAs cross at one; two near-equal ones are a tie
+    // cluster, the lower key first)
+    const bool retake = !g.ord_retake_ms || std::int32_t(now - g.ord_retake_ms) >= 2 * kKeepHalfMs + std::int32_t(g.step_ms);
+    if (retake) g.ord_retake_ms = now ? now : 1;
     for (unsigned i = 0; i < g.n; ++i) {
         Member& m = g.m[i];
         onf[i] = m.ship && (m.role == Role::committed || m.role == Role::escort) && live(g, m, now) && m.q_ok &&
@@ -1288,6 +1323,8 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         if (m.lane_on || !m.lane_ord_ok) {
             m.lane_ord_ms = t;
             m.lane_ord_ok = 1;
+        } else if (!m.funnel) { // (Run175 round item 3: outside the funnel, on the gate's clock)
+            if (retake) m.lane_ord_ms = t;
         } else {
             const std::int32_t drift = std::int32_t(t - m.lane_ord_ms);
             if (drift > kKeepHalfMs || drift < -kKeepHalfMs) m.lane_ord_ms = t;
@@ -1397,11 +1434,36 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
     }
     // the laws, front first (the follower reads its predecessor's speed of this frame)
     g.lane_n = n;
+    bool head_done = false;
     for (unsigned k = 0; k < n; ++k) {
         Member& m = g.m[idx[k]];
         g.lane_ord[k] = m.ship;
         m.lane_rank = std::uint8_t(k);
-        const Member* P = k ? &g.m[idx[k - 1]] : gp >= 0 ? &g.m[gp] : nullptr;
+        // Run175 round (items 1-3, 5): a member the lane does not own (its width unread, outside the join funnel, on an unrewritten script
+        // point) is a body for the certificate's sweep only: no law, no predecessor or follower, no pacing, no gate, no hold; it keeps
+        // its rank (the row) and the module's own legs fly it
+        if (!lane_laws(m)) {
+            m.lane_pred = 0;
+            m.merge_done = 1;
+            m.band = 0;
+            m.lane_free_ms = m.lane_gate_ms = 0;
+            m.lstop_ms = m.lstop_last_ms = 0;
+            m.mouth_pred = m.mouth_ms = 0;
+            m.mouth_exp = 0;
+            m.law = Law::join;
+            m.v_sb = lane_vmax(m);
+            m.lane_gap = 3.4e38f;
+            continue;
+        }
+        // the predecessor: the nearest member ahead in the order that the lane owns (item 4: a loop whose zone this member's path does not
+        // cross is transparent, lane_loop_zone), else the head's predecessor past d_end
+        const Member* P = nullptr;
+        for (unsigned kp = k; kp > 0 && !P;) {
+            const Member& c = g.m[idx[--kp]];
+            if (lane_laws(c) && !(c.loop && c.redep && !lane_loop_zone(g, c, m))) P = &c;
+        }
+        const bool k_has_p = P != nullptr; // (a ranked predecessor, not the head's one past d_end)
+        if (!P && gp >= 0) P = &g.m[gp];
         // lane fix round 2 item 2: leaving (handed to another leader): its laws as before (lane_steer: their speed on the engine's leg to
         // the new leader); clear once its hull is a lane footprint (kLaneOffM) off Lambda
         if (m.exit_ms && m.role == Role::escort) m.exit_clear = m.lane_lat >= kLaneOffM + m.w ? 1 : 0;
@@ -1457,16 +1519,17 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         cx.y = m.lane_on ? 0.0f : m.lane_lat;
         float gap = 3.4e38f;
         cx.d_end = dend(m);
+        cx.path = lane_path_len(s_self, cx.y, lane_turn_r(m), lane_join_end(m), dend(m)); // (item 3: the pacing laws' distance)
         cx.loss = lane_join_loss(m.lane_s, cx.y, lane_join_end(m), dend(m), lane_turn_r(m));
-        if (P && k) cx.loss -= lane_join_loss(P->lane_s, P->lane_on ? 0.0f : P->lane_lat, lane_join_end(*P), dend(*P), lane_turn_r(*P));
+        if (P && k_has_p) cx.loss -= lane_join_loss(P->lane_s, P->lane_on ? 0.0f : P->lane_lat, lane_join_end(*P), dend(*P), lane_turn_r(*P));
         if (P) {
             // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that along F;
             // until it has turned in it is a block, its follower stops at spacing behind the apex)
-            const bool p_ret = k && ((P->over && !P->over_in) || P->loop); // (round C: a loop ahead as an overshoot)
+            const bool p_ret = k_has_p && ((P->over && !P->over_in) || P->loop); // (round C: a loop ahead as an overshoot)
             const float s_rj = lane_apex_s(*P), sp = p_ret && P->lane_s > s_rj ? s_rj : P->lane_s;
             gap = (sp - P->L) - (s_self + m.L);
             float vp = sc::dot3(P->st.u, g.F);
-            cx.closing = vp < -kLaneStopV && !(k && (P->over || P->loop)); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
+            cx.closing = vp < -kLaneStopV && !(k_has_p && (P->over || P->loop)); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
                                                                // its block, bounded below)
             if (P->v_sb >= 0.0f && P->v_sb < vp) vp = P->v_sb;
             cx.pred = true;
@@ -1475,7 +1538,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             // (a block: stopped, or an overshoot turning back; lane fix round 2 item 5: the overshoot's block lasts its predicted return,
             // the out-leg to its turn point, a U-turn of pi R and the rejoin to its apex at the lane speed, + kLaneStopMs + the step; past
             // it the pair is the certificate's and the law's stop is bounded by T_stop as for any non-block)
-            const bool over_block = k && (P->over || P->loop) && P->redep && P->over_ret_ms &&
+            const bool over_block = k_has_p && (P->over || P->loop) && P->redep && P->over_ret_ms &&
                                     std::int32_t(now - P->over_ret_ms) <= std::int32_t(kLaneStopMs + g.step_ms);
             // (lane fix round 2 item 3d: a predecessor stopped at d_end on a slot refusal is the queue hold's block, which lasts the refusal;
             // its grant, order 5 or 8 seen, releases it at once, not once its speed passes kLaneStopV: the follower's stop ends within the step)
@@ -1491,7 +1554,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             }
             cx.pred_final = P->sb == Sb::handover || P->lane_s > -(dend(*P) + lane_blend_settle(g, *P));
             // (round A: before its P2 on its final, the room to g_req behind its tail at d_end: the stop-room bound)
-            if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k && (P->over || P->loop)) && P->lane_s < -dend(*P))
+            if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k_has_p && (P->over || P->loop)) && P->lane_s < -dend(*P))
                 cx.stop_room = (-dend(*P) - P->L - kLaneGapM) - (s_self + m.L);
             // section 12.4 (round C): a loop behind P turns where its U-turn ends g_req behind P's tail, P at its along-F speed over the
             // out-leg and the U-turn: s_t (1 + v_P / v) <= s_P + v_P (s + pi R) / v - g_req - L - L_P. The turn point only moves out, and only
@@ -1528,7 +1591,8 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // follower's 40 s bound of section 6.11 item 2 runs from there): the start is re-stamped meanwhile
         if (!m.merge_done && m.merge_ms && P && P->lane_rank != 0xff && !P->merge_done && P->merge_ms) m.merge_ms = now ? now : 1;
         if (!P) m.merge_done = 1;
-        m.lane_free_ms = k == 0 ? t_free : 0u;
+        m.lane_free_ms = !head_done ? t_free : 0u; // (the head: the first member the lane owns)
+        head_done = true;
         cx.head = m.lane_free_ms != 0;
         cx.t_free_s = cx.head ? float(std::int32_t(m.lane_free_ms - now)) * 0.001f : 0.0f;
         m.lane_gate_ms = 0;
@@ -1586,7 +1650,7 @@ inline const char* lane_write_name(LaneWrite w) noexcept {
 inline bool lane_site_b(const Gate& g, const Member& m, std::uint16_t order, const float x[3], const float f[3], float v_now, std::uint32_t now,
                         float* v, LaneWrite* kind = nullptr) noexcept {
     if (kind) *kind = LaneWrite::none;
-    if (!m.ln || !(m.role == Role::committed || m.role == Role::escort)) return false;
+    if (!lane_laws(m) || !(m.role == Role::committed || m.role == Role::escort)) return false; // (Run175 round: no write on a body)
     const bool steered = (m.role == Role::committed && order == sc::kOrderFlyBefore) ||
                          (m.role == Role::escort && (order == sc::kOrderEscort || order == sc::kOrderFollow));
     const bool lane = m.sb == Sb::inbound || m.sb == Sb::funnel;
@@ -1630,16 +1694,21 @@ inline bool lane_site_b(const Gate& g, const Member& m, std::uint16_t order, con
 // (the ship coasts at site B's last write meanwhile). 0: no deferral.
 constexpr std::uint32_t kLaneDeferMs = 2500;
 inline std::uint32_t lane_defer_ms(const Gate& g, const Member& m, std::uint16_t order) noexcept {
-    if (order != sc::kOrderNone || !m.ln || !m.q_ok || m.role != Role::escort || !m.res_until || !(m.sb == Sb::inbound || m.sb == Sb::funnel))
+    if (order != sc::kOrderNone || !lane_laws(m) || !m.q_ok || m.role != Role::escort || !m.res_until || !(m.sb == Sb::inbound || m.sb == Sb::funnel))
         return 0;
     return kLaneDeferMs + (g.step_ms < kStepClampMs ? g.step_ms : kStepClampMs);
 }
 // Site B's order-4 point rewrite (review item 2; site A's rule at the frame of a deferred tick; lane_defer_step): a lane member (an escort just given its
 // order 4, or a committed member) on order 4 to this gate whose f+0x240 (p, world m) is one of the KC's 20 grid points for its radius
 // gets L_i in *L. False: leave the field.
-inline bool lane_site_b_point(const Gate& g, const Member& m, std::uint16_t order, std::uint32_t target, const float p[3], float L[3]) noexcept {
-    if (order != sc::kOrderFlyBefore || target != g.gate || !m.ln || !m.q_ok || !(m.role == Role::escort || m.role == Role::committed)) return false;
-    if (kc_grid_slot(g.G, g.R, g.U, g.F, g.r_gate, m.r, p) < 0) return false;
+// (Review of the Run175 round: the test runs whatever pt_ok, and a grid point clears the fallback: a KC point re-issued after a foreign
+// field returns the member to the lane.)
+inline bool lane_site_b_point(const Gate& g, Member& m, std::uint16_t order, std::uint32_t target, const float p[3], float L[3]) noexcept {
+    if (order != sc::kOrderFlyBefore || target != g.gate || !m.ln || !m.w_ok || !m.funnel || !m.q_ok ||
+        !(m.role == Role::escort || m.role == Role::committed))
+        return false;
+    if (kc_grid_slot_any(g.G, g.R, g.U, g.F, g.r_gate, m.r, p) < 0) return false; // (Run175 round item 1: a script point of any size)
+    m.pt_ok = 0;
     lane_order_point(g, m, L);
     return true;
 }
@@ -1715,6 +1784,7 @@ inline bool lane_steer(const Gate& g, const Member& m, const float x[3], float v
     } else if (order == sc::kOrderFollow) {
         if (target != m.leader && !(m.res_until && target == g.gate)) return false;
     }
+    if (!lane_steers(m)) return false; // Run175 round: no lane point outside the funnel, with the width unread, or on an unrewritten script point
     const bool o4 = m.role == Role::committed && order == sc::kOrderFlyBefore;
     if ((o4 || (m.role == Role::escort && (order == sc::kOrderEscort || order == sc::kOrderFollow))) && (m.sb == Sb::inbound || m.sb == Sb::funnel)) {
         const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
@@ -1767,18 +1837,18 @@ inline bool sb_steer(const Gate& g, const Member& m, const float x[3], float v_n
 // Lane stage 1: a lane member on its final (on Lambda, or still converging onto it: the keep verdict's nose and velocity tolerances
 // decide) is the funnel's equivalent.
 __attribute__((always_inline)) inline bool sb_funnel(const Member& m) noexcept {
-    return m.role == Role::committed && (m.sb == Sb::funnel || (m.ln && m.sb == Sb::inbound));
+    return m.role == Role::committed && (m.sb == Sb::funnel || (lane_steers(m) && m.sb == Sb::inbound));
 }
 // Lane stage 1 (section 6.4): P2's coast bound (stop before the inflated trigger on a refusal) is replaced for a lane member by site B's
 // hold with the brake bound from P2 (lane_hand_bound): its speed bound is open, the nose and velocity tolerances stay.
 __attribute__((always_inline)) inline float lane_p2_bound(const Member& m, float bound) noexcept {
-    return m.role == Role::committed && m.ln && (m.sb == Sb::funnel || m.sb == Sb::inbound) ? 3.4e38f : bound;
+    return m.role == Role::committed && lane_steers(m) && (m.sb == Sb::funnel || m.sb == Sb::inbound) ? 3.4e38f : bound;
 }
 // Whether the lane owns a committed member's gate legs (review F8): Q known and a lane stage. Otherwise the member keeps the stage-A /
 // amendment-15 join (join on, P2 kept when aligned), never "join off + vanilla stop".
 __attribute__((always_inline)) inline bool sb_managed(const Member& m) noexcept {
     if (m.role != Role::committed || !m.q_ok) return false;
-    if (m.ln) return m.sb == Sb::inbound || m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch; // the lane
+    if (m.ln) return lane_steers(m) && (m.sb == Sb::inbound || m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch); // the lane
     return m.sb == Sb::funnel || m.sb == Sb::handover || m.sb == Sb::dock || m.sb == Sb::launch;
 }
 } // namespace x3m::ship_avoidance::ctl

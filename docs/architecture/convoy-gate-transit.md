@@ -1651,7 +1651,138 @@ against 9.1-9.4 µs, tf 10 94.6-100.5 µs against 95.4-100.8 µs (host; noisy wo
 `test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 24 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143
 roots, 1,010 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20.
 
+### Run175 round (2026-10-15, Fable 5.1; the four lane defects of Run 175 A, each with a cast that fails on a01815d4)
+
+Worktree `agent-a4e7d95ad5bf8038d` on main a01815d4, one commit per item. Units: `ship_gate_geometry_core.h` (`kc_grid_slot_any`,
+`lane_point_fallback`, `lane_laws` / `lane_steers`, `lane_funnel_y`, `lane_path_len`), `ship_gate_board_core.h` (`Member::pt_ok`, `pt_lat`,
+`w_ok`, `funnel`; `Gate::ord_retake_ms`, `ring_ms`, `ring_nodes`; `hull_from`), `ship_gate_lane_core.h` (`LaneCtx::path`, `lane_loop_zone`,
+the ownership gate of `lane_frame`'s laws, order and re-departure decisions, `lane_site_b`, `lane_steer`, `sb_managed`),
+`ship_gate_certificate_core.h` (`plan_of`), `ship_steering_decide.cpp` (site A's shape rule and fallback, `kc_size_m`, the handler row),
+`ship_gate_ctl_glue.cpp` / `.h` (the width read at entry, the rows), `ship_steering_warn.cpp` (the first read's node records, the 60 s
+re-read), `ship_avoidance_walk_core.h` (`GateTreeNode`), `ship_steering_rows.cpp`, the fixture, `ship_trace_rows.py` and its test. Every
+figure **[m]** from [`run175_round/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/run175_round/run.sh) (`lane.txt`,
+`casts.txt`, `before_item*.txt`, `parked_formed_size2.txt`, `bench.txt`) unless marked **[i]**; 3 seeds x tf 1 / 6 / 10.
+
+1. **Grid miss steering (the script's size).** A script gate point is recognised by its shape (`gc::kc_grid_slot_any`): its lateral on
+   the KC's 20-slot pattern within kLaneGridTolM and its depth 2 (r_gate + r') for any r' within 0.6-1.6 of the hull's radius (the KC's
+   GetSize, 0x00488170, reads the render root's cached subtree radius `[[obj+0x70]+0xa4]`, which differs from `[obj+0xa4]`: Run175's M7
+   at 831 against 778 m), and rewritten at site A and at site B's deferred tick as before. A field that is neither such a point nor ours
+   stands: `gc::lane_point_fallback` keeps its lateral as the member's lane lateral (`lane_lat_at`), the lane neither steers it nor lays a
+   law on it (`lane_laws` false: the module's capital lead-in flies the axis through the point, where the engine's hand-over expects it),
+   and the member is a body for the sweep (item 5). The invariant (section 12.8): the lane never steers a member laterally off an order
+   point it did not rewrite. The `ship_gate_ctl_rewrite` row carries `r_m=` (the hull), `implied_m=` (the depth's size; -1 off the
+   pattern) and `kc_m=` (the KC's size source, read-only, range- and alignment-checked); the lane row `pt=lane|point`. Cast
+   `formed_size` (`CStart::script_r`: the M1 escort's script size 1.07 x its hull): before (`-DX3M_LANE_GRID_ANY=0`) 9 of 9 runs with
+   1-5 plane crossings on order 4 (`o4_cross`), spans 351-752 s and one run short of a launch; after 9 of 9 green, spans 189-217 s,
+   `grid_miss` 0, 3 rewrites per run. The generic check `1x no plane crossing on order 4` now guards every cast. `formed_size2`
+   (1.7 x, outside the band: the fallback) is parked: the escort launches on the axis in 9 of 9 but at the lead-in's slow entry (P2 at
+   21 m/s, err 2.6 km, not kept) with the follower stopped behind it and the engine's 0x12 flown 1-3 times per run, spans 343-584 s
+   (`parked_formed_size2.txt`); the fallback itself is unit-checked (`Run175 units`).
+2. **The escort width fallback.** `ctl_escort` reads the hull width at entry through `width_ensure` (the commit path's reader, cached per
+   ship with the radius bits and the root node, retried every 5 s at most 3 times) and the arrival hook reads it once (`capital_half_width`,
+   the type cache filled); `gc::hull_from` records whether the width came from a read (`Member::w_ok`). Until it does, the member is a
+   body for the certificate's sweep with its sphere (w = r = L) and no lane law, steer, hold or write applies (`lane_laws`): never w = r as
+   a member. The member row carries `w_m= w_ok= funnel=`. Cast `return_trip` with `X3M_C_W_UNREAD=1` (the type never read before the
+   escorts' entry, Run175's M2 type 252): before (`-DX3M_LANE_W_ENTRY=0`: w = r as a member) 9 of 9 runs fail, x12 2-11 per run, launches
+   0-3 of 3, contact in 9 of 9 (the triage's `cast_width.sh` found the same 9 of 9); after 9 of 9 green, x12 0, P2 133.8-136.6 s, every
+   figure the arrival round's. `X3M_C_W_FAIL=1` (every read failing for good, the commit path's too since the review fix): launches 3/3
+   in 9 of 9, x12 1-3 per run, P2 not kept in 9 of 9, contact in 6 of 9 (capsule to -783 m), 2-150 pairs handed back per run (the
+   module's sphere avoidance against a 755 m sphere, fail closed; the DLL's retries end it within 15 s). With the commit path still
+   filling the true hull (843ad759) it read x12 1-8 with plane crossings on order 4 in 2 runs and departing contact in 2.
+3. **Lane laws along F on far-off escorts (the join funnel).** `gc::lane_funnel_y(m, s)`: the largest lateral from which the join from
+   s still completes by the join's end: the 30 deg tangent join with its turn term reaching Lambda's far end or the 8 km merge point
+   (need(y) <= D), or the residual join (flown as a pursuit a 45 deg line) reaching the join's end (room >= y), at least kLaneOffM;
+   hysteresis: inside until the lateral exceeds max(1.25 y_f, y_f + kLaneOffM) (the module's detour around `parked`'s M7 carried a joiner
+   2.7 km off Lambda 5.9 km out). On Lambda, an overshoot, a loop or a member past the lane stages is inside. A lane-stage member outside
+   it (`Member::funnel` 0) is a joiner the lane does not own: no law (no closing stop, braking reserve, follow / merge floor, pacing, loop
+   block or gate-mouth hold), no steer, rewrite or re-departure decision, a body for the sweep; the engine's own legs fly it (0x14 / 0x15
+   at its leader or the gate, order 4 at its grid point) and its rank stands by its ETA, the sticky moment re-taken on the gate's common
+   clock every kLaneKeepS + the step (`Gate::ord_retake_ms`: staggered re-takes of two far-off joiners swapped them every 16 s, twice
+   each time). Inside, every pacing law's distance is the path to d_end through the join point (`LaneCtx::path`, `lane_path_len`: the
+   braking curve to d_end, the head's pacing, the escort gate's reserve); the gap law's join cost (`loss`) already carried the join. Casts
+   (`eng 7`, checks Fx: no lane stop or write outside the funnel, no crawl at the floor beyond 3 km of the leader, at most 2 swaps of the
+   ship ahead per member, every member launched, the last launch within the derived bound): `return_pass` (return_trip's arriving M1 with
+   two M2 escorts waiting 45 km beside the gate at s -3 / -5 km on 0x14 to it): before (`-DX3M_LANE_FUNNEL=0`) the escorts never launch
+   in 9 of 9 (the lane's residual join from 45 km beside heads behind the plane; law stops 2-3 per run); after 9 of 9 green: launched
+   3/3, 0 swaps, 0 lane writes and 0 stops outside the funnel, 0 member 0x12, the escorts enter the funnel at 645-660 s and launch at
+   848-861 s against the derived bound 885 s (the farthest start to Lambda's d_end point at v_max 643 s + 3 x (kTSlotRefS + 10 s) + the
+   turn-around 114 s + 20 s + 15 s + the step). `side_commit` (a 1+2 convoy 15-19 km beside the axis 22-25 km out): inside the funnel
+   by this definition (room 18-21 km against laterals 15-19 km) and green on both builds, spans 199-225 s, 0 stops, 0 swaps: the lane's
+   join from there works, so the deviation from the brief's "outside" is the funnel's width, measured. The flight's stopped escorts
+   (18-45 km beside at s -2.4 to -5.4 km, room under 3 km) are outside.
+4. **The loop block on a far follower.** `gc::lane_loop_zone`: a follower farther from Lambda than the loop's out-leg offset + its turn
+   radius + both half-widths + kMarginM (a Titan loop: 3.0-3.5 km) is not blocked behind the loop's apex; the loop is transparent to it
+   (its predecessor is the next owned member ahead), in `lane_frame` and so in the rollout (`lane_pred`). Run175's follower (10 km
+   beside, behind the plane) is a body under item 3. **No fail-before in the fixture**: the lane ranks a follower within spacing of the
+   apex by its ETA at the common speed, so one laterally outside the footprint ranks ahead of the loop and is never its follower, and a
+   lane-steered follower inside the funnel converges into the footprint before it is within spacing; cast `x12_near_side` (x12_near with
+   a third capital 4 km beside Lambda 9 km out) is a guard, green on both builds (fol_v_min 10.0 m/s: the yield floor), and the band is
+   unit-checked.
+5. **Unresolved pairs beside / behind the plane.** With item 3 in place a member outside the funnel is a body for the certificate: its
+   own plan is rolled out (`plan_of`: its line, its leader, its brake; never the lane), it is swept, the lane lays no law on it (the
+   stage-A yield may still cap it at the floor as the lower-priority ship of a conflict: not fail-open) and an unresolved conflict is
+   handed back (the engine's warn stands; `Ex` tolerates uncertified frames on the funnel casts, never an episode). The pairs
+   handed back are counted per cast (`unresolved=` on the lane summary line): `return_pass` 0 in 8 of 9 runs and 20 at tf 6 seed 1 (15
+   uncertified frames, no episode), `side_commit` 0, `formed_size` 0, `return_trip` 0.
+6. **Diagnostics (`--debug`).** `ship_steering_handler_slow` (a handler call beyond kHandlerSlowUs 500 us: frame, site A, the object
+   and order read, the leaf, the QPC delta beside the `QueryThreadCycleTime` delta of the game thread (documented Win32, kernel32; a
+   preempted call shows a QPC delta its cycles do not cover), whether `snapshot_for` walked the sector in it and that walk's us; the cycle
+   counter is read only under `--debug` with timing); `ship_gate_ring_node` (once per gate whose first read visited more than 3 nodes:
+   each node's depth, `[c+0x258]`, `[c+0x25c]`, `[c+0x140]`, `[c+0x12c]`, at most 64; the records are taken only when a buffer is handed
+   to `wk::gate_tree_read`); `ship_gate_ring_reread` (every gate on the warn path re-read every 60 s + the step: the node count before and
+   after, `changed=`; the verdict stays the first one unless a tree appears, then the ring); the member row's `w_m=` (item 2).
+7. **Rows and docs.** `ship_trace_rows.py` and `test_ship_trace_format` (18 tests, `Run175RoundRows` bound to the DLL's format strings);
+   this section, section 12.8, Open, the ledger.
+
+**Review fixes (2026-10-15, Opus review; each with a check that fails on 843ad759 where one is possible) [m].** (1) Site A's rewrite
+test and `lane_site_b_point` ran only under the lane's ownership, which the fallback had taken away: once a foreign field was seen the
+member stayed off the lane, the Lambda_5 dock steer and `sb_managed` for its whole membership, a KC grid point re-issued later never
+cleared it. The test now runs whatever `pt_ok` (ln, w_ok, funnel), a grid point clears the fallback, `commit_fill` clears it on a new
+target and `escort_fill` always; unit `Run175 units (review)` (a KC point after a foreign field: rewritten, the fallback cleared, the
+member owned again) fails on 843ad759's core and passes. The fallback itself is reachable only for a field the KC validator accepts
+(10 % of the depth, 20 m lateral) that misses the 1 m pattern: a guard. (2) `ctl_commit` passed `g.w` (= r after a failed read) to
+`commit_fill`, which `hull_from` took as read: a committed member with its width unread was owned with w = r, the Run175 defect on the
+escort's own order 4. The commit path now passes 0 unless the source is the LOD read; the fixture's commit path goes through the same
+entry width, so `X3M_C_W_FAIL=1` shows the body behaviour on every leg (item 2's figures). (3) A gate's re-read that reads unknown after
+a first "none" falls to the ring (fail closed); a "none" never lifts a first tree or unknown. (4) The handler row checks
+`QueryThreadCycleTime`'s return (0 cycles on failure) and takes t0 after it, so the histogram does not carry the call.
+
+**Fail-before and after [m]:**
+
+| Item | Before (switch) | After |
+| --- | --- | --- |
+| 1 `formed_size` (`-DX3M_LANE_GRID_ANY=0`) | 9 of 9: 1-5 plane crossings on order 4, spans 351-752 s, 1 run short of a launch | 9 of 9 green, spans 189-217 s, 0 misses |
+| 2 `return_trip` + `X3M_C_W_UNREAD=1` (`-DX3M_LANE_W_ENTRY=0`) | 9 of 9: x12 2-11, launches 0-3 of 3, contact | 9 of 9 green, x12 0, the arrival round's figures |
+| 3 `return_pass` (`-DX3M_LANE_FUNNEL=0`) | 9 of 9: the escorts never launch | 9 of 9 green, 0 swaps, 0 stops, last launch 848-861 s (bound 885 s) |
+| 3 `side_commit` | green (inside the funnel) | green, spans 199-225 s |
+| 4 `x12_near_side` (`-DX3M_LANE_LOOP_ZONE=0`) | green (the zone rule cannot bind in the fixture) | green |
+| hysteresis `parked` | 3 of 9 nose7 over 27 deg and 1 safety with the first hysteresis (1.25 x) | green |
+
+**Acceptance [m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`; `lane.txt`, re-taken after the review fixes): `--lane` 5,760 / 0, full 13,107 / 0, `--capital` 7,485 / 0 (a01815d4: 4,961 / 12,308 / 6,686; the new casts, checks and units); `test_ship_trace_format` (18, with `Run175RoundRows`), `test_ctl_boundary_reads`, `test_ship_steering` OK alone (the host-timing bench check fails under the load of a concurrent build); i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,013 reachable, 0 violations; `kc_size_m` always_inline), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Bench24 alternating a01815d4 and the tree three times (`bench.txt`): tf 1 mean 9.2-10.1 against 9.2-9.8 us, tf 10 mean 98-117.3 against 100.3-110.5 us (third-worst frames 298-2202 against 308-518 us: host timing, noisy). The `return_pass` lane line's `esc_past_dend` counts the escorts 45 km beside the gate at s -3 / -5 km (a metric along F); not a reserve question. Not installed; i686 cost not measured.
+
 ### Open
+* (Run175 round) **A body's pair fails closed.** A member the lane does not own (outside the join funnel, its width unread, on an
+  unrewritten script point) is swept but never yielded for: a conflict with it is handed back and the engine's warn stands (the module's
+  sphere avoidance the backstop). Measured: `return_pass` 0 unresolved in 8 of 9 runs and 20 (15 uncertified frames, no episode) in one;
+  `X3M_C_W_FAIL=1` (the entry read failing for good) contact in 9 of 9 with x12 1-4 per run, as before the round; `formed_size2`
+  (a script size 70 % above the hull) parked: the lead-in's slow entry and the follower's 0x12. A yield candidate for the owned partner
+  against a body's sphere, or the width read's retry budget beyond 3 x 5 s, is the later item.
+* (Run175 round) **The funnel's width is the lane's join geometry, not the brief's 15-20 km.** A convoy 15-19 km beside the axis 22-25 km
+  out is inside (room 18-21 km) and joins on the laws (`side_commit` 199-225 s); the flight's stopped escorts (18-45 km beside at
+  s -2.4 to -5.4 km) are outside. A member outside is flown by the engine's own legs (the lane's residual join from 45 km beside never
+  launched in 9 of 9); whether the engine's 0x14 / 0x15 legs from 10-20 km beside the gate reach the funnel before the grid point in
+  flight is the first flight's question (`funnel=` on the member rows, `own=` on the lane rows).
+* (Run175 round) **The loop zone rule has no fixture witness** (section 11 "Run175 round" item 4): a follower outside the footprint ranks
+  ahead of the loop by ETA; the rule is a unit-checked guard. It tests the follower's current lateral, not its path (no cast).
+* (Run175 round) **The funnel past the join's end is kLaneOffM (1.5 km; 3 km with the hysteresis).** An escort in formation more than
+  3 km beside Lambda near d_end is outside and loses the braking reserve (the engine's leg then); whether that happens in flight is the
+  first flight's question (`funnel=` on the member rows, `esc_past_dend` in the triage).
+* (Run175 round) **A stale re-commit flag.** `x12_rc` set at a re-commit waits while the member is a body and decides the loop-back join
+  once ownership returns, from wherever the member then is (`lane_frame`'s decision); a later item is to drop it when the member leaves
+  the funnel.
+* (Run175 round) The diagnostics are untested in flight: `ship_steering_handler_slow` needs `--debug` with timing (the cycle counter is
+  read only then), `ship_gate_ring_node` rows come once per gate with more than 3 nodes (Run175's two 33-node gates), `ship_gate_ring_reread`
+  once per 60 s + the step per gate on the warn path.
 * **Statics on Λ are not a flown case** (the user, 2026-10-15): the installed map has no stations and the user sees no rocks on gate approaches either; `lane_station`, `lane_belt` and `lane_fb_small` stay parked at the bottom of the list (the one large asteroid 2.4 km from the gate in sector (12,1) is the only candidate; checked if a convoy ever stalls there).
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -2131,3 +2262,28 @@ taken at its 60 s bound; a convoy whose pass from the small ship's first hold ta
 still releases it toward a lead-in end inside a passing capital's zone (**[m]**, the trace of `small_gate5` at tf 1 with a 120 s bound: the trader held from 143.5 s, the column's last launch at 283.7 s, released
 at 263.5 s with the fifth capital 2.4 km out, its lead-in end inside that capital's zone; 150 s covers the cast's 140–143 s). A side line outside the column's warn zone (X_s at 0.68 r lies 757 m
 from Λ against a Titan's 891 m zone) or a re-route to the free side at the bound is the later item.
+
+### 12.8 Invariants of the Run175 round (2026-10-15)
+
+**The join funnel.** The lane's laws (the closing-predecessor stop, the braking reserve, the follow / merge law and its floor, the
+head's pacing, the loop block, the gate-mouth hold), its point (the carrot, the order-4 rewrite) and its re-departure decisions apply to a
+lane-stage member only inside the join funnel: the lateral from which the join from its s still completes by the join's end
+(`gc::lane_funnel_y`: the 30 deg tangent join with its turn term to Lambda's far end or the 8 km merge point, the residual 45 deg join to
+the join's end, at least kLaneOffM; a member inside stays inside to max(1.25, + kLaneOffM) of it; on Lambda, an overshoot, a loop or a
+member past the lane stages is inside). Outside it the member is a joiner the lane does not own: the engine's own legs fly it, its rank
+stands by its ETA with the order re-taken on the gate's common clock every kLaneKeepS + the step, and it is a body for the certificate
+(swept, its own plan rolled out; the stage-A yield may still cap it at the floor as the lower-priority ship of a conflict, not
+fail-open; an unresolved conflict handed back). Every distance a pacing law uses inside is the path to
+d_end through the member's join point, never the F component alone. Measured (section 11 "Run175 round"): escorts 45 km beside the gate
+launch (before, never); a convoy 15-19 km beside the axis 22-25 km out is inside and joins on the laws in 199-225 s.
+
+**No steer off an unrewritten point.** The lane never steers a member laterally off an order point it did not rewrite. A script gate
+point is recognised by its shape for any plausible size (0.6-1.6 x the hull's radius: the KC's GetSize reads the render root's cached
+subtree radius, not `[obj+0xa4]`) and rewritten; a field that is neither such a point nor ours keeps its lateral as the member's lane
+lateral and the member is left to the module's lead-in along the axis through it, with no lane law (a body for the sweep). Measured: the
+formed cast with a script size 7 % above the hull crossed the plane 1-5 times per run before, never after.
+
+**The width is read before entry.** A member's hull half-width comes from its own read (the escort's entry, the arrival hook, the commit
+path: each passes a width only when the LOD read gave it); unread, the member is a body with its sphere and no lane law, hold or write
+applies, never w = r as a member on any leg. Measured: the return trip with the escorts' type unread at entry failed 9 of 9 (x12 2-11)
+and is green with the read; with every read failing it stays a body on every leg (x12 1-3, P2 not kept, contact in 6 of 9: fail closed).

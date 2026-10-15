@@ -40,8 +40,9 @@ inline Plan plan_of(const Member& m) noexcept {
     if (o == sc::kOrderWarpIn) return Plan::warp_in;
     if (o == sc::kOrderUndock) return Plan::exit;
     if (o == sc::kOrderWarpAway) return Plan::launch;
-    if (m.ln) { // lane stage 1: order 4 toward Lambda or on it, the hand-over at the held speed (P2 keeps it, site B holds it on 0 / 0x1f),
-                // an escort's 0x14 / 0x15 (the module's lane leaf); the order-0 gap below resumes the lane
+    if (lane_laws(m)) { // lane stage 1: order 4 toward Lambda or on it, the hand-over at the held speed (P2 keeps it, site B holds it on 0 / 0x1f),
+                // an escort's 0x14 / 0x15 (the module's lane leaf); the order-0 gap below resumes the lane (Run175 round: a member the lane
+                // does not own rolls out the module's own legs: its line, its leader, its brake)
         if (m.exit_ms && m.role == Role::escort) return Plan::drift; // lane fix round 2 item 2: handed to another leader, it flies the
                                                                      // engine's leg to it (round 2 review item 2: an escort's hand only)
         if (m.role == Role::committed && o == sc::kOrderFlyBefore && (m.sb == Sb::inbound || m.sb == Sb::funnel)) return Plan::lane;
@@ -338,6 +339,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                 const float yl = y_lane(cx.s), y_rel = y - yl;
                 cx.y = y_rel > 0.0f ? y_rel : -y_rel;
                 cx.loss = lane_join_loss(x - dend(m), cx.y, join_end, dend(m), lane_turn_r(m));
+                cx.path = lane_path_len(cx.s, cx.y, lane_turn_r(m), join_end, dend(m)); // (Run175 round item 3: as lane_frame's)
                 {
                     float su_, cu_;
                     sc::sincos_f(upsi, &su_, &cu_);

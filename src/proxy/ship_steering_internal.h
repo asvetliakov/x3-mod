@@ -256,6 +256,38 @@ struct RingReadRow { // review of the arrival round item 1 (--debug): ship_gate_
 inline RingReadRow ring_read_rows_[8];
 inline std::atomic<std::uint32_t> ring_read_write_{0};
 inline std::uint32_t ring_read_read_ = 0;
+// Run175 round item 6 (--debug): ship_gate_ring_node, one row per visited node of a gate's first read when it visited more than
+// kRingNodeRowsMin nodes (at most kRingNodeRows per read; the ring holds one read); ship_gate_ring_reread, a gate's re-read every
+// kRingRereadMs + the step with the node count before and after; ship_steering_handler_slow, a handler call beyond kHandlerSlowUs (its
+// QPC and QueryThreadCycleTime deltas, whether snapshot_for walked the sector and that walk's ticks)
+constexpr unsigned kRingNodeRows = 64, kRingNodeRowsMin = 3;
+constexpr std::uint32_t kRingRereadMs = 60000;
+constexpr std::uint32_t kHandlerSlowUs = 500;
+struct RingNodeRow {
+    std::uint32_t t_ms, gate, scene, f25c, f140, flags;
+    std::uint16_t i;
+    std::uint8_t depth;
+};
+inline RingNodeRow ring_node_rows_[kRingNodeRows];
+inline std::atomic<std::uint32_t> ring_node_write_{0};
+inline std::uint32_t ring_node_read_ = 0;
+struct RingRereadRow {
+    std::uint32_t t_ms, gate, id;
+    std::uint16_t nodes_before, nodes;
+    std::uint8_t state_before, state, changed;
+};
+inline RingRereadRow ring_reread_rows_[8];
+inline std::atomic<std::uint32_t> ring_reread_write_{0};
+inline std::uint32_t ring_reread_read_ = 0;
+struct HandlerSlowRow {
+    std::uint32_t t_ms, obj, us, snap_us;
+    std::uint64_t cycles;
+    std::uint16_t order;
+    std::uint8_t leaf, snap_walk;
+};
+inline HandlerSlowRow handler_slow_rows_[8];
+inline std::atomic<std::uint32_t> handler_slow_write_{0};
+inline std::uint32_t handler_slow_read_ = 0;
 using EV = av::EVerdict; // site E's verdicts (ship_avoidance_core.h site_e_verdict), the --debug rows
 struct WidthCensus { // ship_capital_census: one row per capital type (the record index [obj+0x4a])
     std::uint32_t type, code;
@@ -549,7 +581,8 @@ inline void join_row(const GateState& g, std::uint32_t obj, std::uint32_t now, b
     r.cross_v = cross_v;
     join_row_write_.store(w + 1, std::memory_order_release);
 }
-void ctl_escort(std::uint32_t obj, std::uint32_t leader, const core::Inputs& in, const core::Dynamics& dyn, std::uint32_t now) noexcept;
+void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32_t leader, const core::Inputs& in, const core::Dynamics& dyn,
+                std::uint32_t now) noexcept;
 void push_warn_pre(std::uint32_t obj, std::uint32_t fl, std::uint16_t order_now, std::uint32_t now) noexcept;
 void push_engine_warn(std::uint32_t obj, std::uint32_t fl) noexcept;
 // A class-7 ship with a capital record code (0x0043fd50's table: [type table + type * stride + class code]); unreadable = not capital.

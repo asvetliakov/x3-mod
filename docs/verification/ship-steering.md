@@ -3211,6 +3211,31 @@ while P is on its final, bounded by P's launch ETA at the hold's start (slot-awa
 Bench24 alternating 97f3804b / tree three times: tf 1 mean 8.7–9.6 against 9.1–9.4 µs, tf 10 94.6–100.5 against 95.4–100.8 µs. Not
 installed; i686 cost not measured. Evidence: [`arrival_round/review/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/arrival_round/review/run.sh).
 
+### Run175 round: the four lane defects (2026-10-15, Fable 5.1; changes, deviations and figures [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §11 "Run175 round", invariants §12.8)
+
+**What changed.** Worktree `agent-a4e7d95ad5bf8038d` on a01815d4, one commit per item. (1) A script gate point of any plausible size
+(0.6-1.6 x the hull's radius) is recognised by its shape and rewritten (`gc::kc_grid_slot_any`); a field that is neither a grid point
+nor ours stands (`gc::lane_point_fallback`: its lateral the member's, no lane steer or law); the miss row carries `r_m= implied_m=
+kc_m=` (the KC's size source `[[obj+0x70]+0xa4]`, read-only). (2) The hull width is read at the escort's entry and at the arrival hook;
+unread, the member is a body for the sweep (`Member::w_ok`), never w = r as a member; the member row's `w_m= w_ok= funnel=`. (3) The
+join funnel (`gc::lane_funnel_y`, `Member::funnel`): the laws, the point and the re-departure decisions only inside it; outside, the
+engine's legs, the rank by ETA re-taken on the gate's clock; every pacing law's distance the path through the join point
+(`LaneCtx::path`). (4) The loop block bounded to the loop's swept footprint (`gc::lane_loop_zone`). (5) A body's pair is swept (the stage-A
+yield may still cap it), an unresolved conflict handed back; `unresolved=` per cast. (6) `ship_steering_handler_slow`,
+`ship_gate_ring_node`, `ship_gate_ring_reread`. (7) `ship_trace_rows.py`, `test_ship_trace_format` (`Run175RoundRows`, 18 tests).
+Review fixes (§11 "Review fixes"): the rewrite test runs whatever the fallback (a KC point after a foreign field returns the member to
+the lane: unit fails on 843ad759, passes), the commit path passes a width only from the LOD read (never w = r as a member on any leg;
+the fixture's commit path through the entry width: `X3M_C_W_FAIL=1` x12 1-3, P2 not kept 9 of 9, contact 6 of 9), an unknown re-read
+falls to the ring, the cycle counter's return checked and t0 after it.
+
+**Fail-before → after [m]** (`run175_round/`): item 1 `formed_size` 9 of 9 with 1-5 plane crossings on order 4 (spans 351-752 s) → 9 of 9
+green (189-217 s); item 2 `return_trip` with the type unread at entry 9 of 9 (x12 2-11, launches 0-3 of 3) → 9 of 9 green (x12 0);
+item 3 `return_pass` 9 of 9 with the escorts never launching → 9 of 9 green (0 swaps, 0 stops, last launch 848-861 s within the derived
+885 s), `side_commit` green on both (inside the funnel, 199-225 s); item 4 `x12_near_side` green on both (a guard: the zone rule cannot
+bind in the fixture); `parked` kept green by the funnel's + kLaneOffM hysteresis.
+
+**Acceptance [m]** (after the review fixes): `--lane` 5,760 / 0, full 13,107 / 0, `--capital` 7,485 / 0; `test_ship_trace_format` (18), `test_ctl_boundary_reads`, `test_ship_steering` OK alone; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (143 roots, 1,013 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Bench24 alternating a01815d4 and the tree three times (`bench.txt`): tf 1 mean 9.2-10.1 against 9.2-9.8 us, tf 10 mean 98-117.3 against 100.3-110.5 us (third-worst frames 298-2202 against 308-518 us: host timing, noisy). Not installed; i686 cost not measured. Evidence: [`run175_round/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/run175_round/run.sh).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

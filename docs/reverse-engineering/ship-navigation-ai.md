@@ -239,8 +239,10 @@ turn rates (`0x00458f8e`). `CollisionWarn` treats the ship as AI (§3.2). Manual
   and constants 17408, 31000, 94208, 65535, ±(`SE_Random(100)` − 30/50)·20 and ×4/×8 multiples **[m]**;
   the per-type geometry was not decoded.
 * Spacing unit: `GetFormationDist = 4 × GetSize()` (stock `0xab2f6`: `01 87 GetSize 05 04 50 83`).
-  `GetSize` = `SA_GetTotalSize(ship)`, else 10000. That is `0x00488170`, i.e. `[obj+0xa4]`, the collision
-  radius, computed lazily from the child bounds.
+  `GetSize` = `SA_GetTotalSize(ship)`, else 10000. That is `0x00488170(root)` on the render root `[obj+0x70]`: the cached subtree
+  radius `[[obj+0x70]+0xa4]`, computed lazily from the child bounds (callers `0x4140d9`, `0x4491b8`, `0x454cef`, `0x461531`); it can
+  differ from the object's `[obj+0xa4]` (Run175: an M7's script gate point implied 831 m against 778 m, convoy-gate-transit.md §11
+  "Run175 round" item 1).
 * Formation speed: `GetMaxFormationSpeed` = the slowest follower's `GetAllowedMaxSpeed` (followers below
   5000 ignored) × 98 / 100 (`0xab38c` `05 62`, `0xab38f` `05 64`). `CheckSpeedLimit` applies it as the
   leader's `SA_SetSpeedLimit`.
@@ -1677,7 +1679,7 @@ point. **[s]** = a site byte string re-read by the script, **[m]** = read from t
 | point | port < 0: `[esp+0x360] = f+0x240..+0x24c`, rebuilt from the live field at every tick; nothing else holds it | `0x00454a20` [s], `0x00454a86` [s], `0x00454a99` [s] |
 | distance | `d = \|P − S\|` (`0x412490`, length `0x469b80`, xyz only) into `[esp+0x2c8]` | `0x00454acf` [s], `0x00454b02` [s] |
 | arrival | class-0x12 target: radius `3r/4`; `d ≤ radius` → P2: port −1, order 0, `[obj+0x14] = [obj+0x10] = 0`, wake 1 | `0x00454b09` [s], `0x00454b1a` [s], `0x00454b70` [s], `0x00454b91` [s] |
-| detour | conditions a–e of §11.1 with `r_C` = `0x488170(gate)` = `[gate+0xa4]` when ≥ 0. The replacement `P'` goes to `[esp+0x360]` only; `d` is recomputed for the speed law | `0x00454c2c`…`0x00454d0a` [s], `0x00454ed5` [s], `0x00454efc` [s], `0x00488176` [s] |
+| detour | conditions a–e of §11.1 with `r_C` = `0x488170([gate+0x70])` = `[[gate+0x70]+0xa4]` (the render root's cached subtree radius) when ≥ 0. The replacement `P'` goes to `[esp+0x360]` only; `d` is recomputed for the speed law | `0x00454c2c`…`0x00454d0a` [s], `0x00454ed5` [s], `0x00454efc` [s], `0x00488176` [s] |
 | leaf | `0x44d020(obj, &[esp+0x360])` (site A below it), after the arrival test | `0x00454f81` [s] |
 
 * **When a rewrite takes effect.** Site A runs inside the leaf call, after that tick's arrival test. A rewrite of

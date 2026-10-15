@@ -396,12 +396,20 @@ inline const char* tree_why_name(TreeWhy w) noexcept {
                                                             "budget", "no_scene_node"};
     return unsigned(w) < unsigned(TreeWhy::count) ? n[unsigned(w)] : "?";
 }
+// Run175 round item 6 (--debug): one record per visited node when the caller hands gate_tree_read a buffer: its depth, [c+0x258] (the
+// scene id), [c+0x25c], [c+0x140] and its flags [c+0x12c] (the fields ship-navigation-ai.md section 10.9 reads the tree verdict from)
+struct GateTreeNode {
+    std::uint32_t scene, f25c, f140, flags;
+    std::uint8_t depth;
+};
 struct GateTreeRead {
     std::uint8_t state = 0;   // 2 a tree, 1 none (the guard held), 0 unknown
     TreeWhy why = TreeWhy::ok; // the first guard that failed (ok: none or tree)
     std::uint8_t seen = 0;    // a visited node carried the gate's scene id
     std::uint16_t nodes = 0;  // nodes visited
     std::uint32_t scene = 0;  // [gate+0x98]
+    GateTreeNode* out = nullptr; // (item 6: the node records, at most cap; nullptr: none)
+    unsigned cap = 0;
 };
 // 1 a tree, 0 the subtree below n consistent and without one, -1 a guard failed (rd.why)
 template <class Mem>
@@ -430,6 +438,8 @@ inline int gate_tree_walk(Mem& mem, std::uint32_t n, unsigned depth, unsigned& b
         }
         if (mem.u32(c + kNodeSceneId) == rd.scene) rd.seen = 1;
         const std::uint32_t fl = mem.u32(c + kNodeFlags);
+        if (rd.out && rd.nodes <= rd.cap) // (item 6: the record; the reads are plain loads inside the node's checked span)
+            rd.out[rd.nodes - 1] = GateTreeNode{mem.u32(c + kNodeSceneId), mem.u32(c + kNodeSceneId + 4), mem.u32(c + 0x140), fl, std::uint8_t(depth + 1)};
         if ((fl & kNodeFlagTree) && !(fl & kNodeFlagNoTree)) return 1;
         if (depth + 1 < kGateTreeDepth) {
             const int r = gate_tree_walk(mem, c, depth + 1, budget, rd);
@@ -444,8 +454,10 @@ inline int gate_tree_walk(Mem& mem, std::uint32_t n, unsigned depth, unsigned& b
     return -1;
 }
 template <class Mem>
-inline GateTreeRead gate_tree_read(Mem& mem, std::uint32_t gate) noexcept {
+inline GateTreeRead gate_tree_read(Mem& mem, std::uint32_t gate, GateTreeNode* out = nullptr, unsigned cap = 0) noexcept {
     GateTreeRead rd;
+    rd.out = out;
+    rd.cap = out ? cap : 0;
     if (!ptr_ok(gate, kGateObjBytes)) {
         rd.why = TreeWhy::gate_ptr;
         return rd;

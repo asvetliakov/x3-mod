@@ -1,0 +1,47 @@
+== formed_size2 (fs2)
+scenario C formed_size2 lane tf 1 60 fps seed 1: launched 3/3 span 429.1 s launch gaps 47.1..235.9 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 6 | nose_away 10261 turn 483.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 3973 low 289 drop 100.0 | p2 3 not_kept 
+scenario C formed_size2 lane tf 1 60 fps seed 7: launched 3/3 span 417.2 s launch gaps 48.0..223.1 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 12 | nose_away 8972 turn 397.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.3 s late 0 dend_stops 0 (0.0 s) o0 3765 low 140 drop 100.0 | p2 3 not_kept 
+scenario C formed_size2 lane tf 1 60 fps seed 1234567: launched 3/3 span 413.9 s launch gaps 44.8..223.0 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 51 | nose_away 9109 turn 393.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 6.7 s late 0 dend_stops 0 (0.0 s) o0 3116 low 124 drop 100.0 | p2 3 not_
+scenario C formed_size2 lane tf 6 30 fps seed 1: launched 3/3 span 368.6 s launch gaps 61.0..177.3 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 577 turn 459.7 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.3 s late 0 dend_stops 0 (0.0 s) o0 259 low 0 drop 0.0 | p2 3 not_kept 1 far 1
+scenario C formed_size2 lane tf 6 30 fps seed 7: launched 3/3 span 382.2 s launch gaps 42.5..210.9 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 5 | nose_away 678 turn 477.8 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.3 s late 0 dend_stops 0 (0.0 s) o0 255 low 14 drop 100.0 | p2 3 not_kept 1 fa
+scenario C formed_size2 lane tf 6 30 fps seed 1234567: launched 3/3 span 381.1 s launch gaps 40.6..211.7 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 5 | nose_away 707 turn 506.3 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 221 low 5 drop 100.0 | p2 3 not_kept
+scenario C formed_size2 lane tf 10 30 fps seed 1: launched 3/3 span 409.3 s launch gaps 126.6..153.0 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 0 | nose_away 410 turn 594.2 deg | order 0 | esc_past_dend 0 esc_o4 2 max 16.5 s late 0 dend_stops 0 (0.0 s) o0 166 low 0 drop 0.0 | p2 3 not_kept 1 far
+scenario C formed_size2 lane tf 10 30 fps seed 7: launched 3/3 span 386.6 s launch gaps 53.4..202.5 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 4 | nose_away 451 turn 426.4 deg | order 0 | esc_past_dend 0 esc_o4 2 max 14.2 s late 0 dend_stops 0 (0.0 s) o0 158 low 6 drop 100.0 | p2 3 not_kept 1 fa
+scenario C formed_size2 lane tf 10 30 fps seed 1234567: launched 3/3 span 384.7 s launch gaps 53.3..201.8 s rewrites 3 grid_miss 1 merges 0| merge_frames 0 ahead_capped 0 head_capped 4 | nose_away 427 turn 500.8 deg | order 0 | esc_past_dend 0 esc_o4 2 max 15.0 s late 0 dend_stops 0 (0.0 s) o0 149 low 8 drop 100.0 | p2 3 not_kep
+  tf 1 seed 1: x12 flown 1, lane v_min 0.0 m/s slow 17.4 s
+  tf 1 seed 7: x12 flown 1, lane v_min 0.0 m/s slow 37.4 s
+  tf 1 seed 1234567: x12 flown 1, lane v_min 0.0 m/s slow 43.8 s
+  tf 6 seed 1: x12 flown 1, lane v_min 1.0 m/s slow 25.0 s
+  tf 6 seed 7: x12 flown 1, lane v_min 0.0 m/s slow 15.7 s
+  tf 6 seed 1234567: x12 flown 1, lane v_min 1.0 m/s slow 17.3 s
+  tf 10 seed 1: x12 flown 1, lane v_min 1.0 m/s slow 10.9 s
+  tf 10 seed 7: x12 flown 1, lane v_min 0.0 m/s slow 18.3 s
+  tf 10 seed 1234567: x12 flown 1, lane v_min 0.0 m/s slow 16.8 s
+FAIL rows (key off excluded): 77
+      2 formed_size2 tf10: 1 the passer is never capped
+      3 formed_size2 tf10: 1b6 the join: the nose along F by 7 km
+      3 formed_size2 tf10: 3 no holding
+      3 formed_size2 tf10: 4 the order
+      2 formed_size2 tf10: 5 the escort gate
+      3 formed_size2 tf10: 6 the short final
+      3 formed_size2 tf10: 6b P2's nose within 8 deg of F
+      3 formed_size2 tf10: 7 safety
+      3 formed_size2 tf10: 8 the span
+      3 formed_size2 tf1: 1 the passer is never capped
+      3 formed_size2 tf1: 1b6 the join: the nose along F by 7 km
+      3 formed_size2 tf1: 3 no holding
+      3 formed_size2 tf1: 4 the order
+      3 formed_size2 tf1: 5 the escort gate
+      3 formed_size2 tf1: 6 the short final
+      3 formed_size2 tf1: 6b P2's nose within 8 deg of F
+      3 formed_size2 tf1: 7 safety
+      3 formed_size2 tf1: 8 the span
+      2 formed_size2 tf6: 1 the passer is never capped
+      3 formed_size2 tf6: 1b6 the join: the nose along F by 7 km
+      3 formed_size2 tf6: 3 no holding
+      3 formed_size2 tf6: 4 the order
+      2 formed_size2 tf6: 5 the escort gate
+      3 formed_size2 tf6: 6 the short final
+      3 formed_size2 tf6: 6b P2's nose within 8 deg of F
+      3 formed_size2 tf6: 7 safety
+      3 formed_size2 tf6: 8 the span

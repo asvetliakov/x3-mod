@@ -239,6 +239,12 @@ inline float lane_end(float r_gate, std::uint16_t type) noexcept {
 }
 // A member's d_end (Member::d_end, lane_frame's copy of its gate's lane_end; 0 before: kLaneEndM)
 __attribute__((always_inline)) inline float dend(const Member& m) noexcept { return m.d_end > 0.0f ? m.d_end : kLaneEndM; }
+// Run175 round: whether the lane owns member m (lane_frame's laws, site B's writes, the lane rollout and the lane's point: a lane member
+// whose hull width was read, inside the join funnel, and not on an unrewritten script point; items 1-3). Otherwise it is a body for the
+// certificate's sweep only (its own plan rolled out, no yield asked of it) and the module's own legs fly it. lane_steers names the
+// point's sites (lane_steer, the rewrite, sb_managed); the two are one predicate.
+__attribute__((always_inline)) inline bool lane_laws(const Member& m) noexcept { return m.ln && m.w_ok && m.funnel && !m.pt_ok; }
+__attribute__((always_inline)) inline bool lane_steers(const Member& m) noexcept { return lane_laws(m); }
 constexpr float kLaneFarM = 15000.0f;              // Lambda's far end
 constexpr float kLaneBlendM = 2000.0f;             // the finals' lateral change from l_c to Q (<= 500 m over >= 2 km)
 constexpr float kLaneOnM = 100.0f, kLaneOffM = 1500.0f; // on Lambda (its merge point M_i passed) within kLaneOnM laterally with the nose
@@ -295,6 +301,11 @@ __attribute__((always_inline)) inline void lane_prof_delta(const LaneProfile& p,
 }
 // (section 12.3, round B: plus the lane's lateral profile delta(s) for statics on Lambda, 0 from the blend's start on)
 __attribute__((always_inline)) inline void lane_lat_at(const Gate& g, const Member& m, float s, float lat[2]) noexcept {
+    if (m.pt_ok) { // Run175 round item 1: an unrewritten script point: its lateral, the member's whole lane (no blend, no profile)
+        lat[0] = m.pt_lat[0];
+        lat[1] = m.pt_lat[1];
+        return;
+    }
     float k = (s + dend(m) + lane_blend_settle(g, m) + kLaneBlendM) / kLaneBlendM;
     k = m.role == Role::escort || m.lane_esc ? 0.0f : k < 0.0f ? 0.0f : k > 1.0f ? 1.0f : k;
     lat[0] = g.lane_c[0] + k * (m.q[0] - g.lane_c[0]);
@@ -335,6 +346,45 @@ inline int kc_grid_slot(const float G[3], const float R[3], const float U[3], co
     if (sc::fabs_f(x - float(a) * pitch) > kLaneGridTolM || sc::fabs_f(y - float(b) * pitch) > kLaneGridTolM) return -1;
     static const int col[5] = {4, 2, 0, 1, 3}; // a = -2, -1, 0, 1, 2 (the KC's column order 0, 1, -1, 2, -2)
     return -b * 5 + col[a + 2];
+}
+// Run175 round item 1 (Run175: an M7 escort's script gate point lay at 2 (r_gate + 831 m) against its hull's 778 m, off the 1 m grid; site A
+// logged site=miss, never rewrote the field, and the lane steered the ship 928 m beside the point: three plane crossings over 350 s before
+// the engine's 829 m hand-over caught). A script gate point is recognised by its shape: its lateral on the KC's 20-slot pattern (within
+// kLaneGridTolM) and its depth 2 (r_gate + r') for any size r' within kLaneGridSizeLo..kLaneGridSizeHi of the hull's radius (the KC's
+// GetSize, 0x00488170, reads the render root's cached subtree radius, which can differ from [obj+0xa4]). Returns the slot (0..19) or -1;
+// *implied (optional): the size the depth implies (m) whenever the lateral is on the pattern, else -1.
+constexpr float kLaneGridSizeLo = 0.6f, kLaneGridSizeHi = 1.6f;
+#ifndef X3M_LANE_GRID_ANY
+#define X3M_LANE_GRID_ANY 1 // (0: the controller before the round: the 1 m grid of the hull's size only, no fallback)
+#endif
+inline int kc_grid_slot_any(const float G[3], const float R[3], const float U[3], const float F[3], float r_gate, float r_s, const float p[3],
+                            float* implied = nullptr) noexcept {
+    if (implied) *implied = -1.0f;
+    if (!X3M_LANE_GRID_ANY) return kc_grid_slot(G, R, U, F, r_gate, r_s, p);
+    if (!(r_gate > 0.0f) || !(r_s > 0.0f) || !sc::finite_f(p[0]) || !sc::finite_f(p[1]) || !sc::finite_f(p[2])) return -1;
+    const float d[3] = {p[0] - G[0], p[1] - G[1], p[2] - G[2]};
+    const float x = sc::dot3(d, R), y = sc::dot3(d, U), z = sc::dot3(d, F);
+    const float pitch = sc::kGateGridPitchM;
+    const float af = x / pitch, bf = y / pitch;
+    if (!(af > -2.5f && af < 2.5f && bf > -3.5f && bf < 0.5f)) return -1;
+    const int a = int(af + (af >= 0.0f ? 0.5f : -0.5f)), b = int(bf + (bf >= 0.0f ? 0.5f : -0.5f));
+    if (sc::fabs_f(x - float(a) * pitch) > kLaneGridTolM || sc::fabs_f(y - float(b) * pitch) > kLaneGridTolM) return -1;
+    const float r_impl = -0.5f * z - r_gate;
+    if (implied) *implied = r_impl;
+    if (!(r_impl >= kLaneGridSizeLo * r_s && r_impl <= kLaneGridSizeHi * r_s)) return -1;
+    static const int col[5] = {4, 2, 0, 1, 3};
+    return -b * 5 + col[a + 2];
+}
+// ... and a field that is neither a grid point of any size nor ours (the rewrite refused): the member keeps the point's lateral as its
+// lane lateral (lane_lat_at) and is not steered by the lane (lane_steers): the module's lead-in flies it along the axis through the point,
+// where the engine's hand-over expects it. The invariant: the lane never steers a member laterally off an order point it did not rewrite.
+inline void lane_point_fallback(const Gate& g, Member& m, const float p[3]) noexcept {
+    if (!X3M_LANE_GRID_ANY) return;
+    if (!(m.role == Role::committed || m.role == Role::escort)) return;
+    const float d[3] = {p[0] - g.G[0], p[1] - g.G[1], p[2] - g.G[2]};
+    m.pt_lat[0] = sc::dot3(d, g.R);
+    m.pt_lat[1] = sc::dot3(d, g.U);
+    m.pt_ok = sc::finite_f(m.pt_lat[0]) && sc::finite_f(m.pt_lat[1]) ? 1 : 0;
 }
 // The arrival round (Run174) item 2: site A's lane test (decide()'s gate_decide) compares the order field f+0x240 with the leaf's point as
 // the engine handed it (decide()'s order_point, before our own avoidance detour moves in.P), within kLaneGridTolM: our own detour never
@@ -435,6 +485,47 @@ __attribute__((always_inline)) inline float lane_join_span(float s, float y, flo
     if (-kLaneMergeM - s >= need) return -kLaneMergeM - s;
     const float room = -join_end - s, room_end = -d_end - s;
     return room >= 2.0f * yy ? room : room_end >= 2.0f * yy ? room_end : 2.0f * yy;
+}
+// Run175 round item 3: the join funnel. The largest lateral from which the join from s still completes by the join's end: the 30 deg
+// tangent join with its turn term reaching Lambda's far end or the 8 km merge point (need(y) <= D: y <= D tan30 / 2 and y <= D^2 / 2R),
+// or the residual join (lane_join_span's last branch, flown as a pursuit it is a 45 deg line that reaches Lambda y along F from its start)
+// reaching the join's end (room >= y; measured in side_commit: a convoy 15-19 km beside the axis 22-25 km out joins and launches in
+// 199-224 s on the laws, so it is inside). A member outside the funnel is a joiner the lane does not own (lane_laws): no law, no steer,
+// a body for the sweep; the engine's own legs fly it (0x14 / 0x15 at its leader or the gate, order 4 at its grid point: measured in
+// return_pass, the lane's residual join from 45 km beside at s -3 km never launched in 9 of 9) and its rank stands (its ETA, with the
+// hysteresis). Inside, every pacing law's distance is the path to d_end through the join point (lane_path_len), never the F component
+// alone. (Run175: escorts 18-45 km beside the lane 3-20 km out, still on the script's 5 s 0x15 legs, were stopped by the
+// closing-predecessor stop and the braking reserve measured along F and crawled at the floor 100-300 s while their leader passed them
+// along F.)
+constexpr float kLaneFunnelHyst = 1.25f; // a member inside stays inside to this x the funnel's lateral, and at least kLaneOffM beyond it
+                                         // (the module's detour around a parked ship carried a joiner 2.7 km off Lambda 5.9 km out: cast parked)
+#ifndef X3M_LANE_FUNNEL
+#define X3M_LANE_FUNNEL 1 // (0: the controller before the round: every lane-stage member owned, the laws along F)
+#endif
+__attribute__((always_inline)) inline float lane_funnel_y30(float D, float R) noexcept {
+    if (!(D > 0.0f)) return 0.0f;
+    float y = 0.5f * D * kLaneJoinTan;
+    if (R > 0.0f && y * 2.0f * R > D * D) y = D * D / (2.0f * R);
+    return y;
+}
+__attribute__((always_inline)) inline float lane_funnel_y(const Member& m, float s) noexcept {
+    const float R = lane_turn_r(m);
+    float y = lane_funnel_y30(-kLaneFarM - s, R);
+    const float y8 = lane_funnel_y30(-kLaneMergeM - s, R), ye = -lane_join_end(m) - s;
+    if (y8 > y) y = y8;
+    if (ye > y) y = ye;
+    if (y < kLaneOffM) y = kLaneOffM; // (a member within the lane's own off-lane band is inside wherever it is along F: a late joiner
+                                      // 600 m off Lambda 4.3 km out left the funnel at the join's end and lost its laws, side_commit)
+    return y;
+}
+// The path from (s, y) to d_end through the join point (m): the straight to the merge point s_m = s + D (lane_join_span; no farther than
+// d_end), then Lambda to d_end; on Lambda (y within kLaneOnM) the along distance
+__attribute__((always_inline)) inline float lane_path_len(float s, float y, float R, float join_end, float d_end) noexcept {
+    const float dist = -d_end - s;
+    if (!(y > kLaneOnM) || !(dist > 0.0f)) return dist;
+    float D = lane_join_span(s, y, R, join_end, d_end);
+    if (D > dist) D = dist;
+    return sc::sqrt_ss(D * D + y * y) + (dist - D);
 }
 // The along-track distance a member at s with the lateral y still to join loses against a ship on Lambda at the same speed: the
 // parabola's arc length less its span, D f(m) with m = 2 y / D its start slope, f(m) = (m sqrt(1 + m^2) + asinh m) / m^2 - 1 =

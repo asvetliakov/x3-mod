@@ -249,6 +249,13 @@ struct Member {
     // review item 9 (the lane row): site B's last lane write (m/s; < 0 none) and its kind (LaneWrite)
     float sb_wv = -1.0f;
     std::uint8_t sb_wk = 0;
+    // Run175 round (convoy-gate-transit.md section 11 "Run175 round"): item 1, an unrewritten script gate point (neither a KC grid point of
+    // any size nor ours): its lateral (R, U; m) is the member's lane lateral and the lane does not steer it (lane_point_fallback,
+    // lane_steers); item 2, the hull half-width came from a read (w_ok 0: unread, the sphere w = r = L stands for the sweep only and no
+    // lane law or steer applies: never w = r as a member); item 3, inside the join funnel (lane_frame; the laws and the steer apply only
+    // there; outside, the sticky lane order is re-taken on the gate's common clock, Gate::ord_retake_ms)
+    std::uint8_t pt_ok = 0, w_ok = 1, funnel = 1; // (w_ok and funnel hold until hull_from and lane_frame say otherwise)
+    float pt_lat[2] = {0, 0};
     Sample s[kSamples];
 };
 // Convoy-gate-transit.md section 12.3 (round B): the lane's lateral profile for statics on Lambda, delta(s) (R, U; m) added to Lambda's
@@ -272,6 +279,8 @@ struct Gate {
     std::uint32_t gate = 0, stamp_ms = 0;
     std::uint16_t type = 0xffff; // [gate+0x4a]: the TGates row (no collision mesh: 0..3, 5..14; Terran ring: 21..24)
     std::uint8_t ring = 0; // the arrival round item 4: its body's collision tree (kGateRingNone / kGateRingTree; 0 not read, unknown)
+    std::uint16_t ring_nodes = 0;  // Run175 round item 6: the nodes the last read visited and the read's game ms (re-read every
+    std::uint32_t ring_ms = 0;     // kRingRereadMs + the step; the first verdict stands unless a tree appears: then the ring)
     float r_gate = 0;
     float G[3] = {0, 0, 0}, R[3] = {1, 0, 0}, U[3] = {0, 1, 0}, F[3] = {0, 0, 1};
     unsigned n = 0;              // members in use (highest index + 1)
@@ -301,6 +310,8 @@ struct Gate {
     float lane_c[2] = {0, 0};
     std::uint32_t lane_ord[kMembers] = {};
     unsigned lane_n = 0, lane_merges = 0, lane_stops = 0;
+    std::uint32_t ord_retake_ms = 0; // Run175 round item 3: the joiners outside the funnel re-take their order moments together, every
+                                     // kLaneKeepS + the step (staggered re-takes of two far-off joiners swapped them every 16 s, twice)
     LaneProfile prof; // section 12.3 (round B)
 };
 struct Board {
@@ -674,9 +685,16 @@ inline void params_from(sc::JoinParams& p, const sc::Dynamics& dyn, float r_gate
     p.r_gate = r_gate;
 }
 // The hull of a member: w (the width read's lateral half-width; w = r when unread or implausible) and L = max(r, l).
+// Run175 round item 2: w_ok records whether the width came from a read; unread, the member is a body for the sweep only (its sphere) and
+// no lane law or steer applies (lane_laws). -DX3M_LANE_W_ENTRY=0 builds the controller before it (w = r as a member).
+#ifndef X3M_LANE_W_ENTRY
+#define X3M_LANE_W_ENTRY 1
+#endif
 inline void hull_from(Member& m, float r, float w, float l) noexcept {
     m.r = r;
-    m.w = w > 0.0f && w <= r && sc::finite_f(w) ? w : r;
+    const bool ok = w > 0.0f && w <= r && sc::finite_f(w);
+    m.w = ok ? w : r;
+    m.w_ok = ok || !X3M_LANE_W_ENTRY ? 1 : 0;
     m.L = sc::finite_f(l) && l > r ? l : r;
 }
 // A committed member's refresh (the lane board's commit test passed: an order-4/5 decision on the validated grid geometry of its
@@ -700,6 +718,7 @@ inline void commit_fill(Member& m, const sc::Inputs& in, const sc::Dynamics& dyn
             }
     }
     m.leader = 0;
+    if (m.st.target != gate) m.pt_ok = 0; // (review of the Run175 round: a new target: the fallback belongs to the old approach)
     state_from(m.st, in, gate, now);
 }
 // An escort member's refresh (D.1: a capital on 0x14 / 0x15 behind a committed leader on this board).
@@ -710,6 +729,7 @@ inline void escort_fill(Member& m, std::uint32_t leader, const sc::Inputs& in, c
     m.large = dyn.large ? 1 : 0;
     params_from(m.params, dyn, r_gate);
     m.line_ok = 0;
+    m.pt_ok = 0; // (review of the Run175 round: an escort's leg has no order-4 field)
     if (!m.st.ms) state_from(m.st, in, leader, now);
 }
 // An arrival member's fill at the launch hook (D.4; round A, section 12.1a): the hull, the plant parameters of its type (params_from, as

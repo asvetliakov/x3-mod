@@ -179,6 +179,29 @@ void frame_boundary(std::uint64_t frame) {
                 wk::tree_why_name(wk::TreeWhy(r.why)), unsigned(r.nodes), static_cast<unsigned long>(r.scene), unsigned(r.seen),
                 r.state == 1 ? "none" : "ring");
         }
+        // Run175 round item 6: the visited nodes of a gate's first read (more than 3 nodes), the 60 s re-reads, the slow handler calls
+        for (std::uint32_t w = ring_node_write_.load(std::memory_order_acquire); ring_node_read_ != w; ++ring_node_read_) {
+            const RingNodeRow& r = ring_node_rows_[ring_node_read_ % kRingNodeRows];
+            log("ship_gate_ring_node frame=%llu t_ms=%lu gate=0x%08lx i=%u depth=%u scene=%lu f25c=0x%08lx f140=0x%08lx flags=0x%08lx",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), unsigned(r.i),
+                unsigned(r.depth), static_cast<unsigned long>(r.scene), static_cast<unsigned long>(r.f25c), static_cast<unsigned long>(r.f140),
+                static_cast<unsigned long>(r.flags));
+        }
+        for (std::uint32_t w = ring_reread_write_.load(std::memory_order_acquire); ring_reread_read_ != w; ++ring_reread_read_) {
+            static const char* const kState[4] = {"unknown", "none", "tree", "unknown"};
+            const RingRereadRow& r = ring_reread_rows_[ring_reread_read_ & 7];
+            log("ship_gate_ring_reread frame=%llu t_ms=%lu gate=0x%08lx id=%lu nodes_before=%u nodes=%u state_before=%s state=%s changed=%u",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate),
+                static_cast<unsigned long>(r.id), unsigned(r.nodes_before), unsigned(r.nodes), kState[r.state_before & 3u], kState[r.state & 3u],
+                unsigned(r.changed));
+        }
+        for (std::uint32_t w = handler_slow_write_.load(std::memory_order_acquire); handler_slow_read_ != w; ++handler_slow_read_) {
+            const HandlerSlowRow& r = handler_slow_rows_[handler_slow_read_ & 7];
+            log("ship_steering_handler_slow frame=%llu t_ms=%lu site=A obj=0x%08lx leaf=%u order=0x%x us=%lu cycles=%llu snap_walk=%u snap_us=%lu",
+                static_cast<unsigned long long>(frame), static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.obj), unsigned(r.leaf),
+                unsigned(r.order), static_cast<unsigned long>(r.us), static_cast<unsigned long long>(r.cycles), unsigned(r.snap_walk),
+                static_cast<unsigned long>(r.snap_us));
+        }
         for (std::uint32_t w = width_census_write_.load(std::memory_order_acquire); width_census_read_ != w; ++width_census_read_) {
             const WidthCensus& c = width_census_[width_census_read_ & 7];
             // amendment 16b: h_rw_m = sqrt(r^2 + w^2) (the note's h; l_m must not exceed it), len_m = max(r, l) and h_m = sqrt(len^2 + w^2),
