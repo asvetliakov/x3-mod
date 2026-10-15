@@ -1,0 +1,40 @@
+f=45800 g=25167.7 order=0x14 tgt=0x90598ca8 src=trace
+   (0x14 for 3.1 s game, 44 frames)
+f=45844 g=25170.8 order=0x0 tgt=0x90598ca8 src=trace
+   (0x0 for 2.4 s game, 32 frames)
+f=45876 g=25173.2 order=0x14 tgt=0x90598ca8 src=trace
+   (0x14 for 3.6 s game, 47 frames)
+f=45923 g=25176.9 order=0x0 tgt=0x00000000 src=trace
+   (0x0 for 3.1 s game, 44 frames)
+f=45967 g=25179.9 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 79 frames)
+f=46046 g=25184.9 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=46048 g=25185.1 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 76 frames)
+f=46124 g=25190.1 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=46126 g=25190.2 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 70 frames)
+f=46196 g=25195.2 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=46198 g=25195.3 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 79 frames)
+f=46277 g=25200.4 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=46279 g=25200.5 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 73 frames)
+f=46352 g=25205.5 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.2 s game, 2 frames)
+f=46354 g=25205.7 order=0x15 tgt=0x90a18038 src=trace
+   (0x15 for 5.0 s game, 72 frames)
+f=46426 g=25210.7 order=0x0 tgt=0x90a18038 src=trace
+   (0x0 for 0.2 s game, 4 frames)
+f=46430 g=25211.0 order=0x4 tgt=0x90a18038 src=trace
+   (0x4 for 48.4 s game, 766 frames)
+f=47196 g=25259.4 order=0x0 tgt=0x00000000 src=trace
+   (0x0 for 10.6 s game, 139 frames)
+f=47335 g=25270.0 order=0x14 tgt=0xa9042380 src=member
+   (0x14 for 33.7 s game, 428 frames)
+f=47763 g=25303.7 order=0x0 tgt=0xa9042380 src=trace
+   (0x0 to f=50892 g=25436.3)

@@ -1,0 +1,76 @@
+== C1 departure 178e8 gate 0x90a178e8
+ 0x905a50e0 L 15km=23003.7 launch=23130.3 15km->launch=126.7 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x905ac718 E 15km=23274.8 launch=23402.0 15km->launch=127.2 | +271.7 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23328.5 (+198.2 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x90a14e40 E 15km=23348.1 launch=23474.9 15km->launch=126.8 | +344.6 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23401.4 (+271.0 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 471.2 s game
+== C2 arrival 178e8 -> 18038 gate 0x90a18038
+ 0x90598ca8 L 15km=24991.3 launch=25176.8 15km->launch=185.5 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x39fcdc10 E 15km=25138.6 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 4 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 25211.1 (+34.4 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["25288.3-25434.4 ['0x0', '0x14'] ['pace/hold']"]
+ 0x90a39150 E 15km=25232.6 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 5 starts, 1 finishes ['25337.8 finish follow 37.8']
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["25287.1-25434.4 ['0x0', '0x14'] ['lane/hold']"]
+ span leader 15 km (or arrival) -> last launch: 185.5 s game
+== C3 return 178e8 -> 178e8 gate 0x90a178e8
+ 0x905b2760 L 15km=24304.7 launch=24793.9 15km->launch=489.2 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 3 ['24405.6:M2(eff8)pass_ctl', '24551.3:M1(cf60)pass_ctl', '24661.4:M1(cf60)pass_ctl']
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x30edeff8 E 15km=24367.0 launch=24833.2 15km->launch=466.2 | +39.2 s after leader launch
+    stops(v<15,>=3s): 4 ['24379.5+101.3', '24497.5+31.4', '24704.4+72.0', '24785.7+9.1']
+    lane w=stop rows: 45; merges: 1 starts, 1 finishes ['24792.3 finish stop 95.4']
+    0x12 warn episodes: 3 ['24409.6:M2(2760)pass_not_member', '24563.8:M1(cf60)pass_not_member', '24667.3:M1(cf60)pass_not_member']
+    first order 4 to the gate: 24797.9 (+4.0 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0xa89ccf60 E 15km=24434.5 launch=24880.5 15km->launch=446.0 | +86.5 s after leader launch
+    stops(v<15,>=3s): 1 ['24632.5+13.4']
+    lane w=stop rows: 2; merges: 1 starts, 1 finishes ['24596.2 finish join 0.1']
+    0x12 warn episodes: 3 ['24442.6:M2(eff8)?', '24551.2:M2(2760)pass_ctl', '24661.3:M2(2760)pass_ctl']
+    first order 4 to the gate: 24801.0 (+7.0 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 575.7 s game
+== C4 return 18038 -> 1c340 (no launch by log end) gate 0x90a1c340
+ 0xa9042380 L 15km=25259.4 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x39fcdc10 E 15km=23975.3 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 2 ['25270.0+28.2', '25330.2+54.7']
+    lane w=stop rows: 2; merges: 4 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["24815.1-25277.7 ['0x0', '0x14', '0x15', '0x4'] ['-/-', 'merge/none', 'stop/none', 'stop/stop']"]
+ 0x90a39150 E 15km=24069.6 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 1 ['25272.9+112.0']
+    lane w=stop rows: 4; merges: 5 starts, 1 finishes ['25337.8 finish follow 37.8']
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["24909.1-25275.3 ['0x0', '0x14', '0x15'] ['-/-', 'merge/none', 'stop/none', 'stop/stop']"]
+Traceback (most recent call last):
+  File "/home/asvetl/x3-mod/verification/results/ship-steering/run176-triage/../run175-triage/b_convoy_spans.py", line 100, in <module>
+    last = max(v for v in launches.values() if v)
+ValueError: max() iterable argument is empty

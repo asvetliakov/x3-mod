@@ -1,0 +1,207 @@
+ship_gate_ctl frame=847 t_ms=22669152 gate=0x90a178e8 ship=0x905a50e0 id=24965 seq=1 key=0 order=0x0 from=none to=committed why=commit rank=2 stage=none>none
+ship_gate_ring_read frame=847 t_ms=22669152 gate=0x90a1c340 id=24209 type=2 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+ship_gate_ring_read frame=847 t_ms=22669152 gate=0x90a18038 id=24188 type=0 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+ship_steering_handler_slow frame=847 t_ms=22669152 site=A obj=0x39fba068 leaf=0 order=0x19 us=506 cycles=560710 snap_walk=1 snap_us=140
+ship_avoid_engine_warn_pre frame=847 obj=0x39fbc8a0 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:3700:4610:- gate_row=- obst_row=-
+ship_gate_ctl_rewrite frame=848 t_ms=22669352 gate=0x90a178e8 ship=0x905a50e0 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+ship_gate_ctl frame=918 t_ms=22669772 gate=0x90a178e8 ship=0x905ac718 id=25287 seq=2 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl frame=1272 t_ms=22671591 gate=0x90a178e8 ship=0x90a14e40 id=25763 seq=3 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ring_read frame=4538 t_ms=22695747 gate=0x90a178e8 id=24167 type=1 board=1 state=none why=ok nodes=1 scene=50252 seen=1 verdict=none
+ship_avoid_engine_warn_pre frame=4601 obj=0x39fc2198 order=0x5 tgt=0x90a20648 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a20648:6:-:0x0:0x00000000:0x00000000:904:904:pass_not_resolved gate_row=- obst_row=-
+ship_steering_handler_slow frame=4863 t_ms=22716147 site=A obj=0x905a7090 leaf=0 order=0x5 us=4626 cycles=18786370 snap_walk=0 snap_us=0
+ship_avoid_engine_warn_pre frame=5204 obj=0x39fba068 order=0x5 tgt=0x90a26b70 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a26b70:6:-:0x0:0x00000000:0x00000000:781:828:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=5436 obj=0x39fbbc70 order=0x5 tgt=0x90a0d6d0 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a0d6d0:6:-:0x0:0x00000000:0x00000000:881:2030:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=6259 obj=0x39fc1f28 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:4734:4610:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=6903 t_ms=22827440 gate=0x90a1c340 id=24209 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_steering_handler_slow frame=8278 t_ms=22885824 site=A obj=0x90a31638 leaf=0 order=0x15 us=4087 cycles=18826320 snap_walk=0 snap_us=0
+ship_steering_handler_slow frame=8817 t_ms=22916554 site=A obj=0x90a36a50 leaf=0 order=0x19 us=4091 cycles=18839480 snap_walk=0 snap_us=0
+ship_gate_ring_reread frame=9012 t_ms=22927704 gate=0x90a178e8 id=24167 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=9075 t_ms=22931154 gate=0x90a18038 id=24188 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_steering_handler_slow frame=9194 t_ms=22938064 site=A obj=0x90a30ee8 leaf=0 order=0x15 us=974 cycles=442270 snap_walk=0 snap_us=0
+ship_gate_ring_reread frame=10962 t_ms=22987834 gate=0x90a178e8 id=24167 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=11341 t_ms=23011854 gate=0x90a18038 id=24188 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=12252 t_ms=23072764 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ctl frame=13121 t_ms=23129234 gate=0x90a178e8 ship=0x905a50e0 id=24965 seq=1 key=16 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=13139 t_ms=23130314 gate=0x90a178e8 ship=0x905a50e0 id=24965 seq=1 key=16 order=0x8 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_gate_ring_reread frame=13183 t_ms=23132824 gate=0x90a178e8 id=24167 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_avoid_engine_warn_pre frame=13272 obj=0x39fcf818 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc6230:7:M6:0x4:0x90a178e8:0x00000000:371:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=13589 obj=0x39fcf818 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fbe100:7:M6:0x5:0x90a178e8:0x00000000:1044:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=13591 obj=0x39fbe100 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcf818:7:M6:0x5:0x90a178e8:0x00000000:1004:81:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=13716 obj=0x39fc3b30 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcf818:7:M6:0x5:0x90a178e8:0x00000000:948:81:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=13716 obj=0x39fcf818 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc3b30:7:M6:0x0:0x00000000:0x00000000:948:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=13758 obj=0x905aaff0 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc3b30:7:M6:0x12:0x00000000:0x00000000:783:64:- gate_row=- obst_row=-
+ship_gate_ring_reread frame=13804 t_ms=23168064 gate=0x90a18038 id=24188 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=13940 obj=0x39fc1088 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc9560:7:M6:0x5:0x90a178e8:0x00000000:916:81:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=14009 obj=0x39fc1088 order=0x5 tgt=0x90a178e8 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc9560:7:M6:0x5:0x90a178e8:0x00000000:601:81:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=14235 t_ms=23192894 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=14820 obj=0x905a5e48 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:4707:4610:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=14928 t_ms=23231224 gate=0x90a18038 id=24188 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ctl_rewrite frame=16532 t_ms=23327724 gate=0x90a178e8 ship=0x905ac718 site=b slot=0 from_m=0,0,-4253 to_m=0,-962,-1472 r_m=1022 implied_m=-1 kc_m=-1
+ship_gate_ctl frame=16533 t_ms=23327784 gate=0x90a178e8 ship=0x905ac718 id=25287 seq=2 key=17 order=0x0 from=escort to=committed why=commit rank=2 stage=inbound>inbound
+ship_gate_ring_reread frame=16913 t_ms=23351964 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ctl_rewrite frame=17678 t_ms=23400474 gate=0x90a178e8 ship=0x90a14e40 site=b slot=1 from_m=666,0,-4392 to_m=0,-962,-1472 r_m=1092 implied_m=-1 kc_m=-1
+ship_gate_ctl frame=17679 t_ms=23400534 gate=0x90a178e8 ship=0x90a14e40 id=25763 seq=3 key=18 order=0x4 from=escort to=committed why=commit rank=3 stage=inbound>inbound
+ship_gate_ctl frame=17685 t_ms=23400894 gate=0x90a178e8 ship=0x905ac718 id=25287 seq=2 key=17 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=17702 t_ms=23401994 gate=0x90a178e8 ship=0x905ac718 id=25287 seq=2 key=17 order=0x8 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_gate_ring_reread frame=18436 t_ms=23446104 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=18489 t_ms=23448804 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=18733 obj=0x90a36a50 order=0x5 tgt=0x90a21fe0 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a21fe0:6:-:0x0:0x00000000:0x00000000:1309:822:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=18849 obj=0x90a36a50 order=0x5 tgt=0x90a21fe0 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a21fe0:6:-:0x0:0x00000000:0x00000000:861:822:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ctl frame=18966 t_ms=23473834 gate=0x90a178e8 ship=0x90a14e40 id=25763 seq=3 key=18 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=18986 t_ms=23474884 gate=0x90a178e8 ship=0x90a14e40 id=25763 seq=3 key=18 order=0x0 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_avoid_engine_warn_pre frame=19761 obj=0x39fc1f28 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:4749:4610:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=20564 t_ms=23561654 gate=0x90a178e8 id=24167 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=21872 obj=0x90a29640 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:4701:4610:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=22291 t_ms=23630529 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ring_reread frame=23396 t_ms=23690589 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_steering_handler_slow frame=23550 t_ms=23698969 site=A obj=0x905b4e60 leaf=0 order=0x14 us=4621 cycles=18830550 snap_walk=0 snap_us=0
+ship_avoid_engine_warn_pre frame=23670 obj=0x90a3cd08 order=0x5 tgt=0x90a0d6d0 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a0d6d0:6:-:0x0:0x00000000:0x00000000:855:2030:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=24484 t_ms=23750659 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ring_reread frame=24692 t_ms=23762129 gate=0x90a1c340 id=24209 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=24752 t_ms=23765499 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=25107 obj=0x905aee18 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x905ac718:7:TS:0x15:0x90a178e8:0x00000000:746:62:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ctl frame=25577 t_ms=23810979 gate=0x90a178e8 ship=0x90598ca8 id=2715 seq=1 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ctl frame=25588 t_ms=23812849 gate=0x90a18038 ship=0x90598ca8 id=2715 seq=1 key=0 order=0x0 from=none to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl_rewrite frame=25589 t_ms=23812899 gate=0x90a18038 ship=0x90598ca8 site=a slot=0 from_m=0,0,-4253 to_m=0,-928,-1472 r_m=1022 implied_m=1022 kc_m=1022
+ship_gate_ring_reread frame=25932 t_ms=23834429 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=26474 obj=0x90a3c210 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcb648:7:M6:0x14:0x90598ca8:0x00000000:881:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=26595 obj=0x905aee18 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a3e430:7:TS:0x15:0x90a178e8:0x00000000:773:64:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=26739 t_ms=23885819 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=26854 obj=0x905aee18 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a28ef0:7:TS:0x15:0x90a178e8:0x00000000:485:39:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ctl frame=28233 t_ms=23975329 gate=0x90a178e8 ship=0x39fcdc10 id=3509 seq=2 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ring_reread frame=28300 t_ms=23982369 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ctl frame=28332 t_ms=23984719 gate=0x90a178e8 ship=0x39fcdc10 id=3509 seq=2 key=0 order=0x0 from=arrival to=none why=leader rank=1 stage=none>none
+ship_gate_ctl frame=28332 t_ms=23984719 gate=0x90a18038 ship=0x39fcdc10 id=3509 seq=2 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ring_reread frame=28339 t_ms=23985279 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ring_reread frame=29120 t_ms=24042429 gate=0x90a1c340 id=24209 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=29160 t_ms=24045359 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=29253 t_ms=24052259 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl frame=29480 t_ms=24069579 gate=0x90a178e8 ship=0x90a39150 id=3825 seq=3 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ctl frame=29585 t_ms=24078669 gate=0x90a178e8 ship=0x90a39150 id=3825 seq=3 key=0 order=0x0 from=arrival to=none why=leader rank=1 stage=none>none
+ship_gate_ctl frame=29585 t_ms=24078669 gate=0x90a18038 ship=0x90a39150 id=3825 seq=3 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_steering_handler_slow frame=29585 t_ms=24078669 site=A obj=0x90a39150 leaf=0 order=0x14 us=4230 cycles=18887890 snap_walk=0 snap_us=0
+ship_avoid_engine_warn_pre frame=29614 obj=0x39fc2198 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:4750:4610:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=29913 t_ms=24105489 gate=0x90a178e8 id=24167 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=29998 t_ms=24112369 gate=0x90a18038 id=24188 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=30200 t_ms=24129529 gate=0x90a1c340 id=24209 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_avoid_engine_warn_pre frame=31115 obj=0x905ac5e0 order=0x5 tgt=0x90a21620 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a21620:6:-:0x0:0x00000000:0x00000000:1033:1354:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=31530 t_ms=24231249 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_steering_handler_slow frame=31691 t_ms=24243209 site=A obj=0x90a15800 leaf=0 order=0x15 us=1254 cycles=448850 snap_walk=0 snap_us=0
+ship_gate_ring_reread frame=31828 t_ms=24253619 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=31949 t_ms=24262149 gate=0x90a18038 id=24188 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ctl frame=32518 t_ms=24304709 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=1 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ctl frame=32614 t_ms=24313239 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=1 key=0 order=0x0 from=arrival to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl_rewrite frame=32615 t_ms=24313349 gate=0x90a178e8 ship=0x905b2760 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+ship_gate_ring_reread frame=33216 t_ms=24365069 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ctl frame=33239 t_ms=24367009 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=2 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ctl frame=33309 t_ms=24373499 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=2 key=0 order=0x0 from=arrival to=escort why=escort rank=5 stage=none>none
+ship_avoid_engine_warn_pre frame=33667 obj=0x905b2760 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x30edeff8:7:M2:0x0:0x905b2760:0x00000000:2602:1092:pass_ctl gate_row=- obst_row=-
+ship_gate_ctl frame=33669 t_ms=24405729 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=1 key=16 order=0x0 from=committed to=evicted why=evict rank=2 stage=inbound>inbound
+ship_gate_ctl frame=33669 t_ms=24405729 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=2 key=17 order=0x0 from=escort to=none why=leader rank=5 stage=inbound>inbound
+ship_avoid_engine_warn_pre frame=33711 obj=0x30edeff8 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x905b2760:7:M2:0x12:0x00000000:0x00000000:2449:1092:pass_not_member gate_row=- obst_row=-
+ship_gate_ring_reread frame=33730 t_ms=24411229 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl frame=33951 t_ms=24431199 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=1 key=16 order=0x0 from=evicted to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl_rewrite frame=33951 t_ms=24431199 gate=0x90a178e8 ship=0x905b2760 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+ship_gate_ctl frame=33989 t_ms=24434489 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=3 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_avoid_engine_warn_pre frame=34007 obj=0xa89ccf60 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x30edeff8:7:M2:0x12:0x00000000:0x00000000:811:1092:pass_not_fresh gate_row=- obst_row=no
+ship_gate_ctl frame=34080 t_ms=24442659 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=3 key=0 order=0x0 from=arrival to=evicted why=evict rank=1 stage=none>none
+ship_gate_ring_reread frame=34427 t_ms=24471319 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl frame=34530 t_ms=24479729 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=4 key=0 order=0x0 from=evicted to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl frame=34544 t_ms=24480849 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=5 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ring_reread frame=35161 t_ms=24531499 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=35403 obj=0xa89ccf60 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x905b2760:7:M2:0x4:0x90a178e8:0x00000000:1676:1092:pass_ctl gate_row=- obst_row=-
+ship_gate_ctl frame=35404 t_ms=24551239 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=4 key=17 order=0x0 from=escort to=evicted why=evict rank=5 stage=inbound>inbound
+ship_avoid_engine_warn_pre frame=35404 obj=0x905b2760 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa89ccf60:7:M1:0x12:0x00000000:0x00000000:1670:1022:pass_ctl gate_row=- obst_row=-
+ship_gate_ctl frame=35405 t_ms=24551339 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=1 key=16 order=0x0 from=committed to=evicted why=evict rank=2 stage=funnel>funnel
+ship_gate_ctl frame=35405 t_ms=24551339 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=5 key=18 order=0x14 from=escort to=none why=leader rank=5 stage=inbound>inbound
+ship_avoid_engine_warn_pre frame=35550 obj=0x30edeff8 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa89ccf60:7:M1:0x12:0x00000000:0x00000000:2637:1022:pass_not_member gate_row=- obst_row=-
+ship_gate_ring_reread frame=35731 t_ms=24578629 gate=0x90a1c340 id=24209 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ctl frame=35805 t_ms=24584619 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=6 key=16 order=0x0 from=evicted to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl_rewrite frame=35805 t_ms=24584619 gate=0x90a178e8 ship=0x905b2760 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+ship_gate_ring_reread frame=35889 t_ms=24591609 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl frame=35905 t_ms=24592989 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=7 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl frame=35944 t_ms=24596139 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=8 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl_merge frame=35944 t_ms=24596139 gate=0x90a178e8 ship=0xa89ccf60 pred=0x905b2760 event=start gap_m=-2314 law=merge dur_ms=0
+ship_gate_ctl_merge frame=35945 t_ms=24596219 gate=0x90a178e8 ship=0xa89ccf60 pred=0x905b2760 event=finish gap_m=2704 law=join dur_ms=80
+ship_gate_ring_reread frame=36146 t_ms=24612869 gate=0x90a18038 id=24188 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=36469 t_ms=24638749 gate=0x90a1c340 id=24209 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=36631 t_ms=24651779 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_avoid_engine_warn_pre frame=36736 obj=0xa89ccf60 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x905b2760:7:M2:0x4:0x90a178e8:0x00000000:2523:1092:pass_ctl gate_row=- obst_row=-
+ship_gate_ctl frame=36737 t_ms=24661299 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=8 key=18 order=0x0 from=escort to=evicted why=evict rank=5 stage=inbound>inbound
+ship_avoid_engine_warn_pre frame=36737 obj=0x905b2760 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa89ccf60:7:M1:0x12:0x00000000:0x00000000:2508:1022:pass_ctl gate_row=- obst_row=-
+ship_gate_ctl frame=36739 t_ms=24661469 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=6 key=16 order=0x0 from=committed to=evicted why=evict rank=2 stage=inbound>inbound
+ship_gate_ctl frame=36739 t_ms=24661469 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=7 key=17 order=0x14 from=escort to=none why=leader rank=5 stage=inbound>inbound
+ship_avoid_engine_warn_pre frame=36807 obj=0x30edeff8 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa89ccf60:7:M1:0x12:0x00000000:0x00000000:2485:1022:pass_not_member gate_row=- obst_row=-
+ship_gate_ctl frame=37074 t_ms=24692309 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=9 key=16 order=0x0 from=evicted to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl_rewrite frame=37074 t_ms=24692309 gate=0x90a178e8 ship=0x905b2760 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+ship_gate_ctl frame=37104 t_ms=24696899 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=10 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl_merge frame=37104 t_ms=24696899 gate=0x90a178e8 ship=0x30edeff8 pred=0x905b2760 event=start gap_m=-5706 law=merge dur_ms=0
+ship_gate_ctl frame=37109 t_ms=24697629 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=11 key=18 order=0x0 from=evicted to=escort why=escort rank=5 stage=none>none
+ship_gate_ring_reread frame=37241 t_ms=24711909 gate=0x90a178e8 id=24167 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=37304 t_ms=24719749 gate=0x90a18038 id=24188 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ring_reread frame=37880 t_ms=24772039 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ctl_merge frame=38119 t_ms=24792309 gate=0x90a178e8 ship=0x30edeff8 pred=0x905b2760 event=finish gap_m=452 law=stop dur_ms=95410
+ship_gate_ctl frame=38125 t_ms=24792779 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=9 key=16 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=38140 t_ms=24793939 gate=0x90a178e8 ship=0x905b2760 id=4418 seq=9 key=16 order=0x8 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_gate_ctl_rewrite frame=38186 t_ms=24797159 gate=0x90a178e8 ship=0x30edeff8 site=b slot=1 from_m=666,0,-4392 to_m=0,-962,-1472 r_m=1092 implied_m=-1 kc_m=-1
+ship_gate_ctl frame=38187 t_ms=24797229 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=10 key=17 order=0x0 from=escort to=committed why=commit rank=2 stage=inbound>inbound
+ship_gate_ctl_rewrite frame=38233 t_ms=24800619 gate=0x90a178e8 ship=0xa89ccf60 site=b slot=2 from_m=-666,0,-4253 to_m=0,-962,-1472 r_m=1022 implied_m=-1 kc_m=-1
+ship_gate_ctl frame=38234 t_ms=24800689 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=11 key=18 order=0x4 from=escort to=committed why=commit rank=3 stage=inbound>inbound
+ship_gate_ctl frame=38640 t_ms=24830519 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=10 key=17 order=0x4 from=committed to=committed why=handover rank=3 stage=inbound>inbound
+ship_gate_ring_reread frame=38663 t_ms=24832199 gate=0x90a178e8 id=24167 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ctl frame=38676 t_ms=24833179 gate=0x90a178e8 ship=0x30edeff8 id=4743 seq=10 key=17 order=0x8 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_gate_ring_reread frame=40741 t_ms=24879215 gate=0x90a1c340 id=24209 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ctl frame=40742 t_ms=24879295 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=11 key=18 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=40756 t_ms=24880455 gate=0x90a178e8 ship=0xa89ccf60 id=4975 seq=11 key=18 order=0x0 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_gate_ring_reread frame=40802 t_ms=24883625 gate=0x90a18038 id=24188 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=42257 t_ms=24934952 gate=0x90a178e8 id=24167 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ring_reread frame=42625 t_ms=24960462 gate=0x90a18038 id=24188 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=43467 t_ms=25020582 gate=0x90a18038 id=24188 nodes_before=1 nodes=5 state_before=none state=none changed=1
+ship_gate_ring_reread frame=43935 t_ms=25037950 gate=0x90a178e8 id=24167 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=44406 t_ms=25067240 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=44804 t_ms=25096620 gate=0x90a18038 id=24188 nodes_before=5 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=44824 t_ms=25098030 gate=0x90a178e8 id=24167 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=45552 t_ms=25149800 gate=0x90a1c340 id=24209 nodes_before=1 nodes=1 state_before=none state=none changed=0
+ship_gate_ring_reread frame=45649 t_ms=25156700 gate=0x90a18038 id=24188 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_gate_ctl frame=45904 t_ms=25175640 gate=0x90a18038 ship=0x90598ca8 id=2715 seq=1 key=16 order=0x4 from=committed to=committed why=handover rank=3 stage=funnel>funnel
+ship_gate_ctl frame=45922 t_ms=25176770 gate=0x90a18038 ship=0x90598ca8 id=2715 seq=1 key=16 order=0x8 from=committed to=none why=gone rank=2 stage=launch>launch
+ship_avoid_engine_warn_pre frame=46326 obj=0x39fcb648 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcdad8:7:M6:0x0:0x90a18038:0x00000000:1020:81:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=46326 obj=0x39fcdad8 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcb648:7:M6:0x5:0x90a18038:0x00000000:1020:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=46329 obj=0x39fc2dc8 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcb648:7:M6:0x5:0x90a18038:0x00000000:556:64:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=46352 obj=0x39fc9de8 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcf950:7:M6:0x5:0x90a18038:0x00000000:475:85:pass_not_resolved gate_row=- obst_row=-
+ship_avoid_engine_warn_pre frame=46381 obj=0x39fcf950 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fcdad8:7:M6:0x12:0x00000000:0x00000000:822:81:- gate_row=- obst_row=-
+ship_gate_ctl_rewrite frame=46428 t_ms=25210840 gate=0x90a18038 ship=0x39fcdc10 site=b slot=1 from_m=666,0,-3719 to_m=0,-928,-1472 r_m=755 implied_m=-1 kc_m=-1
+ship_gate_ctl frame=46429 t_ms=25210900 gate=0x90a18038 ship=0x39fcdc10 id=3509 seq=2 key=17 order=0x4 from=escort to=committed why=commit rank=3 stage=funnel>funnel
+ship_avoid_engine_warn_pre frame=46464 obj=0x39fc7e38 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc4b08:7:M6:0x12:0x00000000:0x00000000:965:64:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=46523 t_ms=25216800 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=46524 obj=0x39fc7e38 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x39fc9de8:7:M6:0x5:0x90a18038:0x00000000:869:64:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ctl frame=47196 t_ms=25259380 gate=0x90a18038 ship=0xa9042380 id=7327 seq=4 key=0 order=0x0 from=none to=arrival why=arrival rank=1 stage=none>none
+ship_gate_ctl frame=47254 t_ms=25264480 gate=0x90a18038 ship=0x39fcdc10 id=3509 seq=2 key=17 order=0x0 from=committed to=none why=target rank=2 stage=funnel>funnel
+ship_avoid_engine_warn_pre frame=47264 obj=0xa9035cd8 order=0x5 tgt=0x90a20648 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a20648:6:-:0x0:0x00000000:0x00000000:865:904:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ctl frame=47302 t_ms=25267710 gate=0x90a1c340 ship=0xa9042380 id=7327 seq=1 key=0 order=0x0 from=none to=committed why=commit rank=2 stage=none>none
+ship_gate_ctl frame=47314 t_ms=25268580 gate=0x90a18038 ship=0x90a39150 id=3825 seq=3 key=18 order=0x0 from=escort to=none why=leader rank=5 stage=funnel>funnel
+ship_gate_ctl frame=47314 t_ms=25268580 gate=0x90a1c340 ship=0x90a39150 id=3825 seq=2 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl_merge frame=47314 t_ms=25268580 gate=0x90a1c340 ship=0x90a39150 pred=0xa9042380 event=start gap_m=-1809 law=merge dur_ms=0
+ship_gate_ctl frame=47335 t_ms=25270000 gate=0x90a1c340 ship=0x39fcdc10 id=3509 seq=3 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+ship_gate_ctl_merge frame=47335 t_ms=25270000 gate=0x90a1c340 ship=0x39fcdc10 pred=0xa9042380 event=start gap_m=-1786 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47335 t_ms=25270000 gate=0x90a1c340 ship=0x90a39150 pred=0x39fcdc10 event=start gap_m=-1550 law=merge dur_ms=0
+ship_gate_ctl_rewrite frame=47335 t_ms=25270000 gate=0x90a1c340 ship=0xa9042380 site=a slot=0 from_m=0,0,-4253 to_m=0,-928,-1472 r_m=1022 implied_m=1022 kc_m=1022
+ship_gate_ring_reread frame=47431 t_ms=25276900 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl_merge frame=47680 t_ms=25296660 gate=0x90a1c340 ship=0x90a39150 pred=0xa9042380 event=start gap_m=-1249 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47680 t_ms=25296660 gate=0x90a1c340 ship=0x39fcdc10 pred=0x90a39150 event=start gap_m=-1494 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47706 t_ms=25298430 gate=0x90a1c340 ship=0x39fcdc10 pred=0xa9042380 event=start gap_m=-1161 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47706 t_ms=25298430 gate=0x90a1c340 ship=0x90a39150 pred=0x39fcdc10 event=start gap_m=-1543 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47727 t_ms=25299980 gate=0x90a1c340 ship=0x90a39150 pred=0xa9042380 event=start gap_m=-1115 law=merge dur_ms=0
+ship_gate_ctl_merge frame=47727 t_ms=25299980 gate=0x90a1c340 ship=0x39fcdc10 pred=0x90a39150 event=start gap_m=-1529 law=merge dur_ms=0
+ship_steering_handler_slow frame=47832 t_ms=25308620 site=A obj=0xa9060758 leaf=0 order=0x14 us=5720 cycles=18815040 snap_walk=0 snap_us=0
+ship_avoid_engine_warn_pre frame=47951 obj=0xa9034208 order=0x5 tgt=0x90a18038 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa89c4338:7:TS:0x5:0x90a18038:0x00000000:354:62:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=48010 t_ms=25321750 gate=0x90a1c340 id=24209 nodes_before=1 nodes=33 state_before=none state=none changed=1
+ship_avoid_engine_warn_pre frame=48125 obj=0xa89cafb0 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a37f08:7:TM:0x12:0x00000000:0x00000000:231:77:pass_not_resolved gate_row=- obst_row=-
+ship_steering_handler_slow frame=48148 t_ms=25332210 site=A obj=0xa9040298 leaf=0 order=0x15 us=4365 cycles=18724330 snap_walk=0 snap_us=0
+ship_gate_ring_reread frame=48209 t_ms=25336970 gate=0x90a18038 id=24188 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_gate_ctl_merge frame=48220 t_ms=25337810 gate=0x90a1c340 ship=0x90a39150 pred=0xa9042380 event=finish gap_m=450 law=follow dur_ms=37830
+ship_gate_ring_reread frame=48821 t_ms=25381870 gate=0x90a1c340 id=24209 nodes_before=33 nodes=33 state_before=none state=none changed=0
+ship_avoid_engine_warn_pre frame=49086 obj=0xa905bd00 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa905b340:7:M6:0x14:0xa9042380:0x00000000:310:85:pass_not_resolved gate_row=- obst_row=-
+ship_gate_ring_reread frame=49200 t_ms=25408900 gate=0x90a18038 id=24188 nodes_before=33 nodes=1 state_before=none state=none changed=1
+ship_gate_ring_reread frame=49309 t_ms=25416950 gate=0x90a178e8 id=24167 nodes_before=1 nodes=21 state_before=none state=none changed=1
+ship_avoid_engine_warn_pre frame=49350 obj=0xa905bd00 order=0x0 tgt=0x00000000 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0xa905b340:7:M6:0x14:0xa9042380:0x00000000:392:85:pass_not_resolved gate_row=- obst_row=-

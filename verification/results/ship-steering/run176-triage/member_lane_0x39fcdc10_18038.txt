@@ -1,0 +1,17 @@
+f=44860 g=25100.7 escort/funnel ord=0x14 |p|=17593 p=-23,-872,-17571 nose_f=0.999 v=70.0 rank=1 gap=8345 law=lane lat=60 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=44874 g=25101.7 escort/funnel ord=0x0 |p|=17517 p=-21,-875,-17495 nose_f=0.999 v=70.0 rank=1 gap=8336 law=lane lat=57 v_law=70.0 v_w=70.0 w=hold on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=44916 g=25104.8 escort/funnel ord=0x14 |p|=17301 p=-18,-884,-17278 nose_f=0.999 v=70.0 rank=1 gap=8337 law=lane lat=48 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45206 g=25125.2 escort/funnel ord=0x14 |p|=15876 p=-4,-920,-15849 nose_f=1.000 v=70.0 rank=1 gap=8309 law=lane lat=9 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45356 g=25135.6 escort/funnel ord=0x0 |p|=15152 p=-1,-926,-15124 nose_f=1.000 v=70.0 rank=1 gap=8289 law=lane lat=2 v_law=70.0 v_w=70.0 w=hold on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45384 g=25137.6 escort/funnel ord=0x14 |p|=15010 p=-1,-927,-14981 nose_f=1.000 v=70.0 rank=1 gap=8286 law=lane lat=2 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45670 g=25158.2 escort/funnel ord=0x14 |p|=13574 p=-1,-927,-13542 nose_f=1.000 v=70.0 rank=1 gap=8262 law=lane lat=1 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45847 g=25171.1 escort/funnel ord=0x0 |p|=12674 p=-1,-927,-12640 nose_f=1.000 v=70.0 rank=1 gap=8240 law=lane lat=1 v_law=70.0 v_w=70.0 w=hold on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45888 g=25174.2 escort/funnel ord=0x14 |p|=12458 p=-1,-927,-12423 nose_f=1.000 v=70.0 rank=1 gap=8235 law=lane lat=1 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45913 g=25176.2 escort/funnel ord=0x14 |p|=12313 p=-1,-927,-12278 nose_f=1.000 v=70.0 rank=0 gap=8688 law=lane lat=1 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45928 g=25177.2 escort/funnel ord=0x0 |p|=12246 p=-1,-927,-12211 nose_f=1.000 v=70.0 rank=0 gap=na law=lane lat=1 v_law=70.0 v_w=70.0 w=hold on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=45973 g=25180.3 escort/funnel ord=0x15 |p|=12034 p=-1,-928,-11998 nose_f=1.000 v=70.0 rank=0 gap=na law=lane lat=1 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=46283 g=25200.7 escort/funnel ord=0x15 |p|=10598 p=-1,-840,-10565 nose_f=0.997 v=70.0 rank=0 gap=na law=lane lat=88 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=46433 g=25211.1 committed/funnel ord=0x4 |p|=9870 p=-1,-783,-9839 nose_f=0.997 v=70.0 rank=0 gap=na law=lane lat=145 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=46755 g=25231.6 committed/funnel ord=0x4 |p|=8466 p=-0,-895,-8419 nose_f=0.998 v=70.0 rank=0 gap=na law=lane lat=33 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=47080 g=25252.0 committed/funnel ord=0x4 |p|=7052 p=-0,-924,-6991 nose_f=1.000 v=70.0 rank=0 gap=na law=lane lat=4 v_law=70.0 v_w=na w=none on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1
+f=47198 g=25260.2 committed/funnel ord=0x0 |p|=6493 p=-0,-926,-6427 nose_f=1.000 v=68.5 rank=0 gap=na law=pace lat=2 v_law=68.6 v_w=69.1 w=hold on=1 mg=1 loop=none w_m=454 w_ok=1 fun=1 pt=lane own=1

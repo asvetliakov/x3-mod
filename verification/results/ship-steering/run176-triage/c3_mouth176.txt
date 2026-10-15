@@ -1,0 +1,129 @@
+33644 eff8 0x14 B 78e8 0x0 d 1952 suppress_arrival_gate not_member 
+33649 2760 0x4 B 78e8 0x0 d 4024 suppress_gate lane 
+33670 2760 0x12 B eff8 0x0 d 2586 pass_a_avoid  no
+33670 eff8 0x0 B 2760 0x12 d 2586 pass_not_fresh  
+33691 eff8 0x0 B 78e8 0x0 d 1952 suppress_arrival_gate  
+33696 2760 0x12 B 78e8 0x0 d 3783 pass_a_avoid not_member 
+33712 2760 0x12 B eff8 0x12 d 2446 pass_a_avoid  no
+33718 eff8 0x12 B 2760 0x12 d 2430 pass_a_avoid  
+33736 eff8 0x12 B 78e8 0x0 d 1985 suppress_arrival_gate  
+33742 2760 0x12 B 78e8 0x0 d 3674 pass_a_avoid not_member 
+33759 2760 0x12 B eff8 0x12 d 2324 pass_a_avoid  no
+33765 eff8 0x12 B 2760 0x12 d 2319 pass_a_avoid  
+33785 eff8 0x12 B 78e8 0x0 d 2016 suppress_arrival_gate  
+33790 2760 0x12 B 78e8 0x0 d 3608 pass_a_avoid not_member 
+33805 2760 0x12 B eff8 0x12 d 2321 pass_a_avoid  no
+33811 eff8 0x12 B 2760 0x12 d 2332 pass_a_avoid  
+33832 eff8 0x12 B 78e8 0x0 d 2022 suppress_arrival_gate  
+33837 2760 0x12 B 78e8 0x0 d 3594 pass_a_avoid not_member 
+33853 2760 0x12 B eff8 0x12 d 2519 pass_a_avoid  no
+33858 eff8 0x12 B 2760 0x12 d 2555 pass_a_avoid  
+33876 eff8 0x12 B 78e8 0x0 d 2024 suppress_arrival_gate  
+33882 2760 0x12 B 78e8 0x0 d 3786 pass_a_avoid not_member 
+33896 2760 0x12 B eff8 0x12 d 2901 pass_a_avoid  no
+33903 eff8 0x12 B 2760 0x12 d 2965 pass_a_avoid  
+33921 eff8 0x12 B 78e8 0x0 d 2023 pass_a_avoid  
+33929 2760 0x12 B 78e8 0x0 d 4119 pass_a_avoid not_member 
+33942 2760 0x12 B eff8 0x12 d 3342 pass_a_avoid  no
+33950 eff8 0x12 B 2760 0x4 d 3415 pass_a_avoid  
+33968 eff8 0x12 B 78e8 0x0 d 2023 pass_a_avoid  
+33976 2760 0x4 B 78e8 0x0 d 4484 suppress_gate lane 
+33990 2760 0x4 B eff8 0x12 d 3760 suppress_lane_obst  lane
+33996 eff8 0x12 B 2760 0x4 d 3828 pass_a_avoid  
+33999 eff8 0x12 B cf60 0x1e d 895 pass_a_avoid  
+34007 cf60 0x0 B eff8 0x12 d 811 pass_not_fresh  no
+34007 cf60 0x0 B 78e8 0x0 d 1310 suppress_arrival_gate not_member 
+34014 eff8 0x12 B 78e8 0x0 d 2021 pass_a_avoid  
+34021 2760 0x4 B 78e8 0x0 d 4814 suppress_gate lane 
+34036 2760 0x4 B eff8 0x12 d 4121 suppress_lane_obst  lane
+34044 eff8 0x12 B 2760 0x4 d 4176 pass_a_avoid  
+34045 eff8 0x12 B cf60 0x0 d 434 pass_a_avoid  
+34053 cf60 0x0 B eff8 0x12 d 367 pass_not_fresh  no
+34053 cf60 0x0 B 78e8 0x0 d 1710 suppress_arrival_gate not_member 
+34060 eff8 0x12 B 78e8 0x0 d 2021 pass_a_avoid  
+34069 2760 0x4 B 78e8 0x0 d 5151 suppress_gate lane 
+34081 2760 0x4 B cf60 0x12 d 4540 pass_not_member  roll
+34081 cf60 0x12 B 2760 0x4 d 4540 pass_a_avoid  no
+34084 2760 0x4 B eff8 0x12 d 4457 suppress_lane_obst  lane
+34094 eff8 0x12 B 2760 0x4 d 4520 pass_a_avoid  
+34095 eff8 0x12 B cf60 0x12 d 108 pass_a_avoid  
+34103 cf60 0x12 B eff8 0x12 d 100 pass_a_avoid  no
+34103 cf60 0x12 B 78e8 0x0 d 2047 suppress_arrival_gate not_member 
+34109 eff8 0x12 B 78e8 0x0 d 2036 pass_a_avoid  
+34117 2760 0x4 B 78e8 0x0 d 5527 suppress_gate lane 
+34130 2760 0x4 B cf60 0x12 d 4685 pass_not_member  roll
+34130 cf60 0x12 B 2760 0x4 d 4685 pass_a_avoid  no
+34133 2760 0x4 B eff8 0x12 d 4771 suppress_lane_obst  lane
+34142 eff8 0x12 B 2760 0x4 d 4818 pass_a_avoid  
+34143 eff8 0x12 B cf60 0x12 d 240 pass_a_avoid  
+34151 cf60 0x12 B eff8 0x12 d 269 pass_a_avoid  no
+34151 cf60 0x12 B 78e8 0x0 d 2321 suppress_arrival_gate not_member 
+34156 eff8 0x12 B 78e8 0x0 d 2176 pass_a_avoid  
+34166 2760 0x4 B 78e8 0x0 d 5866 suppress_gate lane 
+34178 2760 0x4 B cf60 0x12 d 4758 suppress_lane_obst  lane
+34178 cf60 0x12 B 2760 0x4 d 4758 pass_a_avoid  no
+34182 2760 0x4 B eff8 0x12 d 4926 suppress_lane_obst  lane
+34190 eff8 0x12 B 2760 0x4 d 4930 pass_a_avoid  
+34193 eff8 0x12 B cf60 0x12 d 441 pass_a_avoid  
+34202 cf60 0x12 B eff8 0x12 d 488 pass_a_avoid  no
+34202 cf60 0x12 B 78e8 0x0 d 2606 suppress_arrival_gate not_member 
+34207 eff8 0x12 B 78e8 0x0 d 2501 pass_a_avoid  
+34216 2760 0x4 B 78e8 0x0 d 6114 suppress_gate lane 
+34228 2760 0x4 B cf60 0x12 d 4763 suppress_lane_obst  lane
+34228 cf60 0x12 B 2760 0x4 d 4763 pass_a_avoid  no
+34233 2760 0x4 B eff8 0x12 d 4862 pass_not_member  roll
+34241 eff8 0x12 B 2760 0x4 d 4840 pass_a_avoid  
+34244 eff8 0x12 B cf60 0x12 d 776 pass_a_avoid  
+34253 cf60 0x12 B eff8 0x12 d 848 pass_a_avoid  no
+34253 cf60 0x12 B 78e8 0x0 d 2922 suppress_arrival_gate not_member 
+34258 eff8 0x12 B 78e8 0x0 d 2900 pass_a_avoid  
+34266 2760 0x4 B 78e8 0x0 d 6309 suppress_gate lane 
+34278 2760 0x4 B cf60 0x12 d 4785 suppress_lane_obst  lane
+34278 cf60 0x12 B 2760 0x4 d 4785 pass_a_avoid  no
+34283 2760 0x4 B eff8 0x12 d 4738 suppress_lane_obst  lane
+34290 eff8 0x12 B 2760 0x4 d 4725 pass_a_avoid  
+34294 eff8 0x12 B cf60 0x12 d 1229 pass_a_avoid  
+34302 cf60 0x12 B eff8 0x12 d 1304 pass_a_avoid  no
+34302 cf60 0x12 B 78e8 0x0 d 3261 suppress_arrival_gate not_member 
+34308 eff8 0x12 B 78e8 0x0 d 3149 pass_a_avoid  
+34316 2760 0x4 B 78e8 0x0 d 6509 suppress_gate lane 
+34328 2760 0x4 B cf60 0x12 d 4899 suppress_lane_obst  lane
+34328 cf60 0x12 B 2760 0x4 d 4899 pass_a_avoid  no
+34334 2760 0x4 B eff8 0x12 d 4704 suppress_lane_obst  lane
+34341 eff8 0x12 B 2760 0x4 d 4708 pass_a_avoid  
+34344 eff8 0x12 B cf60 0x12 d 1729 pass_a_avoid  
+34353 cf60 0x12 B eff8 0x12 d 1830 pass_a_avoid  no
+34353 cf60 0x12 B 78e8 0x0 d 3606 suppress_arrival_gate not_member 
+34360 eff8 0x12 B 78e8 0x0 d 3356 pass_a_avoid  
+34367 2760 0x4 B 78e8 0x0 d 6759 suppress_gate lane 
+34374 2760 0x4 B eff8 0x12 d 4765 suppress_lane_obst  lane
+34380 2760 0x4 B cf60 0x12 d 5115 suppress_lane_obst  lane
+34380 cf60 0x12 B 2760 0x4 d 5115 pass_a_avoid  no
+34384 eff8 0x12 B cf60 0x12 d 2233 pass_a_avoid  
+34392 eff8 0x12 B 2760 0x4 d 4831 pass_a_avoid  
+34405 cf60 0x12 B eff8 0x12 d 2551 pass_a_avoid  no
+34405 cf60 0x12 B 78e8 0x0 d 3976 suppress_arrival_gate not_member 
+34411 eff8 0x12 B 78e8 0x0 d 3613 pass_a_avoid  
+34417 2760 0x4 B 78e8 0x0 d 7070 suppress_gate lane 
+34424 2760 0x4 B eff8 0x12 d 5018 suppress_lane_obst  lane
+34430 2760 0x4 B cf60 0x12 d 5416 suppress_lane_obst  lane
+34430 cf60 0x12 B 2760 0x4 d 5416 pass_a_avoid  no
+34435 eff8 0x12 B cf60 0x12 d 3021 pass_a_avoid  
+34443 eff8 0x12 B 2760 0x4 d 5148 pass_a_avoid  
+34455 cf60 0x12 B eff8 0x12 d 3353 pass_a_avoid  no
+34455 cf60 0x12 B 78e8 0x0 d 4358 suppress_arrival_gate not_member 
+34462 eff8 0x12 B 78e8 0x0 d 3840 pass_a_avoid  
+34467 2760 0x4 B 78e8 0x0 d 7420 suppress_gate lane 
+34474 2760 0x4 B eff8 0x12 d 5429 suppress_lane_obst  lane
+34480 2760 0x4 B cf60 0x12 d 5781 suppress_lane_obst  lane
+34480 cf60 0x12 B 2760 0x4 d 5781 pass_a_avoid  no
+34484 eff8 0x12 B cf60 0x12 d 3834 pass_a_avoid  
+34492 eff8 0x12 B 2760 0x4 d 5600 pass_a_avoid  
+34504 cf60 0x0 B eff8 0x12 d 4166 pass_not_fresh  no
+34504 cf60 0x0 B 78e8 0x0 d 4752 suppress_arrival_gate not_member 
+34512 eff8 0x0 B 78e8 0x0 d 4044 suppress_gate_ring other 
+34525 2760 0x4 B eff8 0x0 d 5937 suppress_lane_obst  lane
+34535 eff8 0x0 B cf60 0x14 d 4622 pass_not_fresh  
+34544 eff8 0x14 B 2760 0x4 d 6112 pass_not_fresh  
+34544 cf60 0x14 B eff8 0x14 d 4739 suppress_lane_obst  lane
+34544 cf60 0x14 B 78e8 0x0 d 5032 suppress_arrival_gate not_member 
