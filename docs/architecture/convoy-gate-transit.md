@@ -2287,3 +2287,222 @@ formed cast with a script size 7 % above the hull crossed the plane 1-5 times pe
 path: each passes a width only when the LOD read gave it); unread, the member is a body with its sphere and no lane law, hold or write
 applies, never w = r as a member on any leg. Measured: the return trip with the escorts' type unread at entry failed 9 of 9 (x12 2-11)
 and is green with the read; with every read failing it stays a body on every leg (x12 1-3, P2 not kept, contact in 6 of 9: fail closed).
+
+## 13. The minimal arrival mode (design, 2026-10-15, Fable 5.1; for ratification)
+
+Ratified (the user, 2026-10-15: "i follow your recommendation here and i will love simplicity"): the minimal arrival mode as designed, with (c) = the module's capital lead-in kept for mode members; the funnel far bound; the casts of §13.8; the kill criterion of §13.0 applied on the Run177 flight (a mode member's 0x12 preceded within 30 s + step by a site-B write of ours fails the mode: the certificate's yields go too and the lane is departure-only for good).
+
+**Recommendation.** A per-member flag (`Member::arr_mode`) that makes every arrival-side capital a *body* of the Run175 round's kind
+for its whole membership: no rewrite, no lane law, no steer, no re-departure, no gate-mouth hold, not ranked; it keeps the own-gate
+and obstacle rows (a), the certificate with the stage-A yield ladder extended by the brief stop (b), and the module's pre-lane capital
+lead-in through the KC's own grid point (the key-off path, `ship_steering_gates_capital`). Its escorts inherit the flag. The join
+funnel gains a far bound so the laws never reach a ship 20 km out or 5 km off a residual join. The departure side is byte-identical
+(`laneon_diff.py`). The mode's flight has one kill criterion (13.8): if an arrival-side episode is preceded by a write of ours, (b)
+goes too and the lane is departure-only for good.
+
+### 13.0 Why a mode and not a fourth round [m]
+
+| Flight | Our rule at the start of the collapse | Fixed by | The next flight found |
+| --- | --- | --- | --- |
+| Run174 | the plain re-departure out-leg on a lone arrival (a stop 8.6 s, 150° away to 6.5 km); a board leave on our own detour (`why=target`) | the lone loop, the leaf-point lane test | Run175's two |
+| Run175 | the escort width fallback w = r at the mouth (contact seen 1.6 km away); a script point off the grid steered beside (Cerberus, 3 plane crossings); far escorts stopped by laws along F | width at entry, grid-any, the funnel, the loop zone | Run176's two |
+| Run176 | the gate-mouth hold's rest point 1,683 m beside the leader's lane line: two 583 m half-widths leave 517 m, which the sweep's drift (10 m/s per second of horizon) eats: `unresolved cause=contact yielder=none` 24383.5–24405.5 (22 s), the engine's warn stood (`pass_ctl`), the leader evicted at 24405.6 / 24551.3 / 24661.4, a new loop after each (`loop=out/turn/leg` 37 / 58 / 78 rows), the re-entered escorts' 0x14 legs into it, escort 2 exiting into escort 1 at 100 m; the return trip 575.7 s against the departure's 471.2 s | — | — |
+
+Nine member 0x12 in Run176, every one an engine warn let stand (`pass_ctl` 6, `pass_not_member` 3), our detour started none, ≈ 228k
+warns suppressed (`e_lane_obst` 115,654 + the ring rows). Six arrival-side rules in three rounds (the lone loop, the mouth hold, grid-any,
+width at entry, the funnel, the loop zone), each modelled by the fixture one flight late, and each round's cast green 9 of 9 before the
+flight failed on the next rule. The departure side needs none of them: it comes in formation along one line and the laws order it. A
+return trip starts at rest at P facing −F, its escorts materialise at the same P 60–200 s later, and the KC's through slot is blocked 60 s
+after each arrival (§6.6): nothing of "ETA order on Λ" describes it. The user accepted the pre-lane arrival side (the module's capital
+lead-in, D.4's placement, the arrival-gate row; §6.1's 591 s nose-away re-departure under stage B is the pre-lane cost of this case).
+
+### 13.1 Mechanism
+
+**The flag.** `Member::arr_mode` (one byte), set
+
+1. at `ctl_commit` on gate X when the `Arrivals` table holds this ship's record with `gate == X` and
+   `now − launch_ms ≤ kArrModeMs + step`, **kArrModeMs = 300 s** (a leader's commit comes 7.9 s after its launch in the fixture, 8.5 s in
+   Run174, 9.3 s in Run176 [m]; an escort's own order 4 comes after its leader's launch, up to ≈ 135 s after its own arrival in Run176's
+   timing [m], and its escort entry may not exist when the leader launched before it arrived: 60 s would miss it). The table keeps a
+   record for kArrModeMs instead of kArrivalWindowMs (its reuse threshold; the row's own 60 s test unchanged; 64 slots = one launch per
+   4.7 s at a hub before an overwrite, counted as today);
+2. at `ctl_escort`: inherited from the leader's entry, or by rule 1 on its own record;
+3. kept through a re-entry of the same record (escort → committed on the same board, `Why::reenter`/`commit`).
+
+Cleared only with the record: `ctl_leave` on any `Why`, the launch, the frame boundary's expiry. **Duration.** No bound of its own and no
+d_end or board-side end: the membership's own bounds are the mode's, each game time + the step (`Why::order` after kGapMs 5 s on order 0,
+`Why::target`, `Why::leader`, `Why::expire`, kLaneRefusedMaxMs 300 s). A mode member is never re-owned by the lane during that
+membership (a ship past d_end outbound on the engine's leg would otherwise be rewritten mid-final, Run175's Cerberus by another route); a
+later, fresh commit without a record is an ordinary departure. `-DX3M_LANE_ARR_MODE=0` builds the lane before it.
+
+**The effect.** `lane_laws(m)` (and so `lane_steers`) gains `&& !m.arr_mode`; the lane order skips mode members (`lane_rank` 0xff, never
+anyone's `lane_pred` / P, never a block for the loop or mouth tests); `m.ln` stays 1 so the obstacle row and the member rows keep working.
+Nothing else is new: the body state exists and is measured (`return_pass`, `X3M_C_W_FAIL`, `formed_size2`).
+
+| Rule (code) | Leader (committed, mode) | Escort (escort → committed, mode) | `Role::arrival` (launch → 60 s) |
+| --- | --- | --- | --- |
+| site A's rewrite to L_i (`kc_grid_slot_any`), site B's deferred rewrite (`lane_site_b_point`, `ctl_lane_defers`) | off: the KC grid point stands | off | n/a |
+| site B's lane writes: `Law` join / lane / merge / follow / stop / pace / gate / hold, the order-0 speed hold, the carrot `lane_steer`, the Λ_5 dock steer, `sb_managed` | off | off | off (already) |
+| `lane_frame`: rank, `lane_pred`, the ETA re-take, `lane_on`, `over`, `loop`, `loop_min`, `redep`, `x12_rc` | not ranked, no decision | same | same (already) |
+| the plain and lone re-departures, the loop-back join | off | off | — |
+| the gate-mouth hold (`lane_mouth_hold`) and its bound; nobody holds behind a mode member | off | off | — |
+| the escort gate (`Law::gate`, the λ reserve), the braking reserve, the closing-predecessor stop, the head's pacing, the loop zone | off | off | — |
+| 12.1's hull-fit fallback (a departing member's stop at d_end against an arrival, ≤ 60 s + step) | stays for departing members | — | as B: unchanged |
+| **kept (a)**: site E's ring row (`gate_ring_why`, any AI ship, never the player's), the arrival-gate row (60 s), the obstacle row (`lane_obst_why`; its path must be the body's `plan_of` rollout, open iii), the r/3 ignore for capitals | on | on | on |
+| **kept (b)**: `pair_role`, the sweep on `plan_of` (line / leader / brake; the axial drift of an arrival), the yield ladder: the floor cap (10 m/s) then the brief stop ≤ T_stop 20 s + step (new for bodies: `try_yield` gives a non-lane yielder the cap only today) | on; yields by rank | on; yields by rank | on; never yields |
+| **kept (c)**: the module's own capital approach on order 4: amendment 13's lead-in through the validated grid point inside its 6 r window, the engine's law outside (`gates_capital_on_`, the key-off path a board-refused capital takes today), and the module's detour on a standing engine warn (`ship_avoid_detour`, the r/3 rule), as for every non-member capital | on | on | — |
+
+(c) is what "the engine's own order 4" means in practice: the pre-lane capital approach the user accepted (Runs 156–169), not the
+amendment-10 raw engine, whose alignment creep (1 m/s beyond 45.6° off A, capital-gate-transit.md) would stall a ship starting 180° off.
+`formed_size2`'s slow entry (P2 21 m/s) was the lead-in on a *foreign* point; the KC grid point is its validated one. If the orchestrator
+prefers the raw engine for mode members, it is one more term in `capital_policy` and the fixture's control build already models it
+(13.8, level 0).
+
+### 13.2 The certificate for an arrival pair with no yield
+
+* `Role::arrival` (0x21, 0x1e, the order-0 brake) never yields: engine-moved (§6.2). Its partner is the yielder: the cap, then the stop ≤
+  T_stop + step; a departing member's stop at d_end is 12.1's (≤ 60 s + step). Unchanged.
+* Two mode members yield by rank (order 4: 3; order 0 / 0x1f: 2; escort: 5): the escort yields to its leader, the later sequence key between
+  escorts. Where no candidate clears (a static overlap at the gate, 13.4) the pair is **unresolved and handed back: the engine's warn
+  stands.** That is the recommended answer to the brief's question: the mode's claim is "no episode is started by a write of ours", not
+  "no episode"; a longer stop or a hold for the other member is the mouth hold again. The brief's alternative (the member yields its cap
+  since the arrival cannot) is already the rank rule once the arrival has committed; before that (≤ 10 s) the cap on a departing member
+  against a resting arrival is 12.1's bounded stop.
+
+### 13.3 The KC's own grid point for the return trip
+
+Suffices. With no rewrite there is no lane point to differ from, no leaf-point lane test to fail (Run174's `why=target`), and no steer
+beside a point the lane did not write (Run175's Cerberus cannot occur: the invariant of §12.8 holds trivially). The engine's hand-over at
+`dist ≤ 0.75 r_gate` of its grid point 2 (r_gate + r_s) out: for a Titan on a 1,105 m gate the sphere's near edge is ≈ 3.57 km from the
+plane [i]; order 5 from there is the pre-lane final, T_slot ≈ 41–45 s SETA off (§6.4) against the lane's 14 s. On a return trip the
+through slot is blocked 60 s after each arrival anyway, so the longer final costs nothing visible [i]. Nothing is written to the engine for
+a mode member on order 4; the serializer question does not arise.
+
+### 13.4 Expected flown behaviour, the Run176 geometry [i] (two 1,092 m hulls, w 583; the leader's order 4 at +9.3 s, escort 1 at +62.3 s, escort 2 at +129.8 s after the leader's launch [m])
+
+* **0–9 s**: 0x21 (0.9 s), 0x1e (ends on its first frame, r_s ≥ 0.99 r_gate), order 0 at rest at P = +663 m U facing −F.
+* **+9 s**: order 4 to slot 0's grid point (on the axis, 4.39 km out). The lead-in's window (6 r = 6.6 km before X) contains P; its carrot
+  look-ahead is at least the turn radius, so the 180° turn converges in ≈ 55 s (27–28 s per 90°, capital-gate-transit.md) and the ship is
+  heading in by ≈ +65 s, inside the 829 m sphere by ≈ +80 s, order 5 to the plane, its request at the plane ≈ +115 s.
+* **+62 s**: escort 1 materialises at P. The leader is 3–4 km out, heading in on the axis: the hulls overlap laterally by 503 m (663 m
+  against 1,166 m), so the pass is along F only. The through slot refuses the leader until escort 1's release + 60 s ≈ +123 s: the leader
+  waits at the plane ≈ 0.9 km in front of it (vanilla's order-5 end) with escort 1 at P: capsules overlap ≈ −1.3 km.
+  **The engine's warn**: the leader as A is stopped (speed and desired 0: no warn); escort 1 as A on order 0 at rest: no warn; on 0x14
+  toward its leader (after 6 s of order 0, Run176 [m]), closing within rr: the box test fires, the KC's default branch
+  `SA_StopObject` then `SA_AvoidObjectCollision` (0x12, end radius r_s + 100 m), then the escort order re-issued (§10.14 Q3 [m]). One
+  turn-away of ≈ 25 s (Run176's flown episodes [i] from the leader's rows), then 0x14 back until the leader's launch (≈ +123–130 s), then
+  the lost-leader wait and its own order 4. **Ours**: escort 1 (rank 5) yields: the cap and the stop at rest change nothing; unresolved,
+  handed back; its own-gate warn on 0x14 suppressed (a). No row of ours precedes the episode. That is vanilla, and the acceptance premise.
+* **+130 s**: escort 2 materialises at P. Escort 1 is on its 0x12 away from the gate or back near P on 0x14 / order 4: the overlap at P
+  (Run176: 100 m [m]) is vanilla's for Titans (§12.5: no fan separates them). Escort 2 stopped: no warn; escort 1 closing: its 0x12.
+  Expected: one or two engine episodes per escort pair at the gate, no loop, no hold, no plane crossing without a jump.
+* **Span bound** for the flight: last launch ≤ last own arrival + 120 s (the 180° lead-in + the final) + 60 s (the slot block after that
+  arrival) + 2 T_slot + the step, i.e. ≈ 250–330 s after the leader's arrival with SETA off, scaled by the game step under SETA [i].
+  Run176 flew 575.7 s with the lane, Run174 ≈ 840 s [m]; the pre-lane stage-B figure was 591 s (§6.1) [m].
+
+### 13.5 The departure side is untouched
+
+`arr_mode` is set only by an own-arrival record on the gate the ship commits to, or inherited from such a leader: a departing convoy (no
+record at its departure gate) has the flag 0 on every member and `lane_laws` is unchanged for it; the car-merge rule (§6.2–6.3), the
+short final, the escort gate and the hull-fit fallback stay as installed. Witness: `laneon_diff.py` (before-core vs after) over `--lane` and
+the full run, 0 differing lines for every cast except the arrival-side casts of 13.8 and the two far-joiner casts the funnel bound (13.6)
+touches, each named in the diff's expected list.
+
+### 13.6 The join funnel's far bound (the brief's item 2)
+
+Run176 C4 [m]: the leader arrived at 18038 and was ordered to 1c340 at +8.3 s; its escorts on 0x14 at |p| 60.0 km, s −57.3 km, lateral
+17.7 km were `fun=1 own=1`, `law=stop` then `merge` at the floor (v 10 m/s), stops of 28 + 55 s and 112 s. Cause: `lane_funnel_y`'s
+residual term `ye = −join_end − s` grows with distance (≈ 53 km at s = −57 km), so every lateral is "inside" far out, and the gap law then
+holds a yielder at the floor 57 km from the gate. **Bound**: ownership (`Member::funnel`) requires **−s ≤ kLaneOwnM = kLaneFarM + 5 km =
+20 km** (the commit sphere plus the join room: a 30° join from the 2.9 km lateral spans ≈ 5 km [i]) **and the residual term capped at
+kLaneResidMaxM = 5 km** (a 45° residual join longer than that is the engine's leg's job: 0x14 at the leader or 0x15 at the gate converges
+faster than a 10 m/s floor). Outside: rank by ETA with the common-clock re-take (exists), no law, steer, rewrite or re-departure, a body
+for the sweep; the hysteresis (1.25 ×, + kLaneOffM) as today. Expected on the casts: `return_pass` unchanged (already outside);
+`side_commit` (15–19 km beside at 22–25 km out, green on the laws in 199–225 s) becomes outside until 20 km and ≤ 5 km of residual: its
+span re-measured, the two constants tuned on it (the brief's intent, "the laws only within the 15 km commit sphere + the join room", is the
+20 km term); every departure cast has no member beyond either bound: identical rows. Cost: two compares per lane-stage member per frame.
+
+### 13.7 Cost, native Windows
+
+One byte per member; one 64-entry scan at each commit and escort entry (≤ 64 compares, once per entry, never per frame); one extra term
+where `lane_laws` is already evaluated; one branch per member in the lane order's build; the funnel's two compares. The stop candidate for
+a body: at most one more candidate rollout per unresolved conflict at the 200 ms cadence, inside kMaxYieldsPerDecision. Removed per frame
+for mode members: `lane_frame`'s laws and decisions, site B's law evaluation and writes (Run176: 5,624 lane writes, most on the return
+trip's escorts [m]), the rewrite rows. No allocation, lock, site or OS API: portable core (`ctl`), the same on native Windows as in the
+host fixture (the user's flights are native since 2026-10-11). Bench24 flies no arrival: the cost gate is `ctl_frame_us_max` in flight and
+`laneon_diff`'s identity on the departure casts.
+
+### 13.8 Casts, and the flight's kill criterion
+
+**Fixture.** The engine model already has the arrival (0x21, 0x1e, the order-0 brake, the rest at P), the KC's slot with the 60 s block
+after a partner-side arrival, the module's capital lead-in, the 0x14 / 0x15 legs and the warn on them, and the hook's launch-frame
+decision. Needed: the lead-in's 180° start at rest facing −F inside its window (the model has the lead-in; its convergence from that
+start is unmeasured: the first cast measures it), the refused request's wait at the plane under the key-off capital path (what the plant
+does between a refusal and the grant: D.2.6's stop at the trigger, to confirm against §10.2), and a control switch `X3M_C_ARR_VANILLA=1`
+(level 0: mode members are not board members, E passes, the lead-in off: the amendment-10 engine) so every mode cast has its vanilla
+twin in the same run.
+
+| Cast | Geometry | Checks (Mx) |
+| --- | --- | --- |
+| `return_trip` (re-targeted) | as today: an M1 (r_s 1,135) returning through slot 0 at +7.9 s, two 755 m M2s at +80 / +195 s, the player's M6 2 km beside (`kReturnTrip`) | M1 no lane write, rewrite, steer, hold or re-departure decision on a mode member (`ctl_lane_writes` 0 on them, `loop=none`, `mouth` 0, 0 `site=a/b` rewrites); M2 every mode member launched within 13.4's derived bound (+ 15 s + the step); M3 member 0x12 episodes and contacts ≤ the level-0 twin's, per seed and tf, and no episode preceded within 30 s + the step by a site-B write of ours on either ship of the pair; M4 the player's ship never suppressed (Rx kept); M5 no member 0x12 against the gate (the ring row) |
+| `rt_unread` | `return_trip` + `X3M_C_W_UNREAD=1` | identical to `return_trip` (the mode reads no width for laws; the sweep's sphere only) |
+| `rt_titan` (new) | the Run176 geometry: a Titan leader (r 1,092, w 583), two Titan escorts at +62 / +130 s, order 4 at +9 s, the escorts' 0x14 after 6 s of order 0, slot 0, a 1,105 m gate | Mx; reports the engine episodes per pair and the overlap at P (vanilla's: M3's ≤ rule) |
+| `rt_titan_rest` | `rt_titan` with escort 1 held at rest at P (`CStart::hold_ms`) until escort 2 materialises | Mx: the second arrival exiting into a resting ship; M3's ≤ rule is the check |
+| `third_gate` (new) | Run176 C4 on one gate: an M2 leader committed at s −57 km on the axis (order 4 at +8 s), two 454 m escorts on 0x14 at 17 and 24 km beside, s −57 km | Fx (no lane stop or write outside the funnel, no crawl at the floor beyond 3 km of the leader, every member launched within the derived bound: 57 km at v_max + the join + the slot chain) and M1 while −s > 20 km |
+| `rt_cross` (new) | `rt_titan` plus a departing 1+2 convoy from 15 km committed as the leader's order 4 starts | the departing convoy's formed bound (assertion 8) and Dx; the return trip's Mx; no eviction of a departing member on the controller's own choice (12.1) |
+| `laneon_diff.py` | before-core vs after, `--lane` and full | 0 differing lines except `return_trip`, `rt_unread`, `rt_titan*`, `third_gate`, `rt_cross`, `side_commit` (13.6) |
+
+Acceptance as every round's: `--lane` and the full host run at 0 failures over 3 seeds × tf 1 / 6 / 10, `test_ship_trace_format` with the
+new fields (`arr=` on the member row, `ctl_arr_mode=` on the lane summary), the x87 audit and the site verifier unchanged, bench24 within
+noise, i686 0 warnings.
+
+**The flight's kill criterion** (one convoy session with an arrival sent back through its gate, SETA as usual, `--debug`; the triage reads
+`ship_gate_ctl_member` rows with `arr=1`, `ship_gate_ctl_lane` `w=`, `ship_avoid_e_verdict` per episode, spans per convoy):
+
+* **Pass → the mode is the arrival side's final form.** Every mode member launches within 13.4's bound (game time + the step), and no
+  member 0x12 episode of a mode member is preceded within 30 s + the step by a site-B write of ours (a cap or a stop) on that ship or its
+  partner. Engine episodes with no write of ours before them (the Titan overlap at P, an escort's 0x12 against its waiting leader) are
+  vanilla's and do not fail it; the only later arrival-side work then is the arrival fan for M7-class convoys (§6.7), and only if the user
+  asks for it.
+* **Kill → (b) goes too; the lane is departure-only for good.** An episode of a mode member preceded by a write of ours, or a return trip
+  over the bound whose chain holds a write of ours. Then arrival-side ships are not board members at all (E's verdicts pass, no cap, no
+  stop; (a) stays, the player's ship untouched), the mode's rows and casts are kept as the record, and no further arrival-side rule is
+  added: the arrival side is accepted as vanilla with (a). A third outcome (a crash, an exception, a budget cut on the arrival path) is a
+  defect, not a verdict.
+
+### 13.9 Flight risk, and what stays open
+
+* **Risk.** (i) The Titan overlap at P and the escort's 0x12 at its waiting leader are vanilla and will be seen; the user is told so
+  before the flight. (ii) An own-arrival record evicted from the 64-slot table at a busy hub leaves that ship on the full lane as today
+  (counted: `arrivals_.overwritten`). (iii) An escort whose escort entry was dropped and whose own arrival is older than 300 s commits as
+  an ordinary member: today's behaviour. (iv) A departing convoy at the same gate during a return trip: pairs across the two sides are
+  certified by rank with bounded yields; a departing member may be capped or stopped ≤ 20 s + the step behind a mode member; a mode member
+  on order 4 (rank 3) against a departing member on order 4 ties on sequence. (v) The module's detour (c) on a mode member moves the leaf's
+  point; the arrival round's item 2 (the lane test on the leaf's point) does not apply to a body, so no board leave follows.
+* **Open.** (i) The lead-in's convergence from rest facing −F inside its 6 r window: the fixture (`rt_titan`), then the flight's
+  `ship_gate_ctl_member` rows (`arr=1`, the nose and speed over the first 60 s). (ii) The refused wait at the plane under the key-off capital
+  path (§10.2's 5 s retry; D.2.6): the fixture's plant against the flight's order rows at the plane. (iii) The obstacle row's path for a
+  body (`lane_obst_why` builds "the member's path": for a body it must be `plan_of`'s rollout, not a lane path): a unit before the round.
+  (iv) kLaneOwnM / kLaneResidMaxM on `side_commit`. (v) Whether the engine warns during 0x21 at all (12.1 open i) is unchanged and
+  unneeded here. (vi) The pre-lane 591 s (§6.1) was measured under stage B's sequencer, not the lead-in alone; the mode's bound (13.4) is
+  derived, not measured, until `rt_titan` runs.
+
+### 13.10 Alternatives considered
+
+* **Keep hunting rule by rule** (a Run176 round: a mouth rest point with a clearance test, w + w + kMarginM + the drift at the horizon,
+  or farther out). It fixes the fourth rule; three flights say the fifth is one flight away (the fixture modelled each arrival-side rule
+  after the flight that found it), and every rule added to the arrival side is one the departure side does not need. Loses on cost and on
+  the evidence; its one advantage, the short final (T_slot 14 s) on return trips, is hidden behind the KC's 60 s block per arrival.
+* **Disable avoidance near gates** (the user's question). "Avoidance" here is three things: the own-gate suppression (a), the certificate
+  (b), the lane. Dropping (a) lets ≈ 228k warns per session stand (Run176) and returns the pre-lane gate circling (Run173's 785 s span,
+  rejected); dropping (b) is level 0, which the kill criterion reaches only if (b) is shown to start an episode; dropping the lane is this
+  mode, on the arrival side only. Every Run174–176 episode was an engine warn, not a prediction of ours: switching prediction off adds
+  warns, it does not remove them.
+* **The arrival fan** (§6.7): separates only hulls with w_k + w_prev + 50 m ≤ 937 m (two M7s, an M7 beside an M2); not two Titans, and it
+  does not touch the leader's return trip at all. Later, for M7-class, after the mode's flight.
+* **Level 0 from the start** (mode members not board members, the raw engine on order 4): the simplest, but it discards (b), whose
+  arrival-pair sweep is the one piece with a measured benefit on this side (`arrival_pass` 9 of 9 after round A, the leader's eviction at
+  d_end gone), and the raw engine's alignment creep on a 180° start is a known pre-amendment-13 stall. It is the kill criterion's target,
+  reached by evidence rather than by default.
+* **A time-boxed mode** (the flag expires after N s and the lane takes over): re-ownership mid-leg is the Cerberus failure's shape (a
+  steer onto a point the lane then rewrites); the membership's own bounds already end the mode.
