@@ -1,0 +1,23 @@
+{
+ "dll": "detached worktree /tmp/x3-run177-candidate of 7ae40a13, build/d3d9.dll (clean configure + build)",
+ "sha256": "76252ce09afb12dcf94b289f0ae64979e36670a02ad472fd273a01863744631a",
+ "bytes": 61944279,
+ "commit": "7ae40a13",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 1014, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); engine discover modules: 2 known Wine record-hash failures, 6 skipped; fixture on main 7ae40a13: --lane 6544/0, full 13891/0, --capital 8269/0 (alone; the timing bench failed once under a concurrent run)"
+ },
+ "trigger": "Run176 flight: the return trip collapsed on the gate-mouth hold -> the minimal arrival mode (section 13, ratified by the user for simplicity) + the Run176 diagnostics",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run176": [
+  "4a50310d/d88128e0 Run176 triages",
+  "1c563443 section 13 design",
+  "bf8522c3 Run176 diagnostics",
+  "d4dcb32f minimal arrival mode (+ review fixes)",
+  "7ae40a13 summary bound"
+ ]
+}
