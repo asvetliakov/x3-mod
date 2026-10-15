@@ -1,0 +1,11 @@
+('0x39d49068', 'dd68') order-4 frames 20653, field still a grid point 2 (23844.9-23845.0) implied size ['1022'], point != field (>50 m) 18594
+('0x39d549a8', 'dd68') order-4 frames 2223, field still a grid point 0  implied size [], point != field (>50 m) 1759
+('0x9045a080', 'f0e8') order-4 frames 13543, field still a grid point 1 (22669.4-22669.4) implied size ['1091'], point != field (>50 m) 8606
+('0x9045f498', 'f0e8') order-4 frames 2213, field still a grid point 0  implied size [], point != field (>50 m) 2113
+('0x90462558', 'f0e8') order-4 frames 1208, field still a grid point 0  implied size [], point != field (>50 m) 1190
+('0x90468468', 'f0e8') order-4 frames 630, field still a grid point 0  implied size [], point != field (>50 m) 610
+('0x9046d268', '0948') order-4 frames 15839, field still a grid point 2 (25348.2-25348.3) implied size ['1091'], point != field (>50 m) 12784
+('0x90488bc0', 'f0e8') order-4 frames 1475, field still a grid point 0  implied size [], point != field (>50 m) 1404
+('0x9048a420', 'dd68') order-4 frames 2174, field still a grid point 0  implied size [], point != field (>50 m) 1879
+('0x904af840', 'dd68') order-4 frames 1239, field still a grid point 0  implied size [], point != field (>50 m) 1236
+('0xab8431e8', 'f0e8') order-4 frames 13602, field still a grid point 2 (26267.2-26267.2) implied size ['1091'], point != field (>50 m) 11519

@@ -1,0 +1,23 @@
+(a) ring reads 3
+   frame=785 gate=0x916fd518 id=24209 type=2 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+   frame=785 gate=0x916fae18 id=24188 type=0 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+   frame=2851 gate=0x916fcb58 id=24167 type=1 board=1 state=none why=ok nodes=1 scene=50252 seen=1 verdict=none
+(b) e_verdict verdicts {'suppress_lane_obst': 3178, 'suppress_small': 2240, 'suppress_gate': 909, 'pass_a_avoid': 518, 'pass_not_member': 451, 'suppress_gate_ring': 306, 'suppress_arrival_gate': 305, 'pass_not_resolved': 154, 'pass_not_fresh': 76, 'pass_not_transient': 11, 'suppress_resolved': 3}
+    gate_row {'-': 6536, 'lane': 925, 'not_member': 368, 'escort': 276, 'other': 30, 'suppress': 16}
+    obst_row {'-': 3147, 'lane': 3178, 'roll': 420, 'no': 1406}
+    warn_pre {'gate_row=-': 82, 'obst_row=-': 78, 'obst_row=no': 2, 'obst_row=roll': 2}
+    engine warns against a gate (class 18): 0 | lane summary: {'e_gate_ring': '143556', 'e_gate_ring_kept': '0', 'ctl_grid_miss': '2', 'ctl_point_rewrites': '9', 'ctl_point_adopts': '0', 'ctl_mouth_expired': '0'}
+(c) player_pos rows 238 obj 0x9127ebb8 gates {'0x916fcb58': 238} t 22908.9..24808.8 d_gate 6169..14749; rows with a member 109, nearest (5043.0, '0x91279188', 23098.78)
+    engine warns with other=player: 0; e_verdict rows with B=player: 0; pass_player verdicts: 0
+(d) order-4 field rewrites (site a|b|adopt|miss) and the KC size the field implies (r_gate 1104.5)
+   t=22669.4 ship=0x91279188 class=? r_m=? site=a slot=0 from=0,0,-4392 implied_GetSize(ship)=1092
+   t=23328.5 ship=0x91281db0 class=? r_m=? site=b slot=0 from=0,0,-4253 implied_GetSize(ship)=1022
+   t=23401.8 ship=0x916f6018 class=? r_m=? site=b slot=1 from=666,0,-4392 implied_GetSize(ship)=1092
+   t=24931.5 ship=0x91293870 class=M1 r_m=1022 site=a slot=0 from=0,0,-4253 implied_GetSize(ship)=1022
+   t=25248.1 ship=0x9171ba50 class=M7 r_m=760 site=b slot=1 from=666,0,-3728 implied_GetSize(ship)=760
+   t=25357.6 ship=0x91292280 class=M1 r_m=1022 site=a slot=0 from=0,0,-4253 implied_GetSize(ship)=1022
+   t=25398.2 ship=0x3a40dde0 class=M7 r_m=778 site=miss slot=-1 from=0,0,-3871 implied_GetSize(ship)=831
+   t=25523.6 ship=0x91292280 class=M1 r_m=1022 site=miss slot=-1 from=0,0,-4343 implied_GetSize(ship)=1067
+   t=25614.5 ship=0x91292280 class=M1 r_m=1022 site=a slot=0 from=0,0,-4253 implied_GetSize(ship)=1022
+   t=25739.4 ship=0x9170c2e8 class=M2 r_m=755 site=b slot=1 from=666,0,-3719 implied_GetSize(ship)=755
+   t=25742.4 ship=0x916f9348 class=M2 r_m=755 site=b slot=2 from=-666,0,-3719 implied_GetSize(ship)=755

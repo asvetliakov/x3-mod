@@ -1,0 +1,16 @@
+f=71947 g=26456.3 committed/inbound ord=0x4 |p|=19797 p=1407,19746,-190 nose_f=0.980 v=22.6 rank=0 gap=na law=join lat=20721 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=72267 g=26479.0 committed/inbound ord=0x4 |p|=19394 p=1593,19272,1471 nose_f=0.950 v=112.7 rank=0 gap=na law=join lat=20263 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=72668 g=26508.0 committed/inbound ord=0x4 |p|=17485 p=2018,17092,3087 nose_f=0.167 v=112.7 rank=0 gap=na law=join lat=18132 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=72937 g=26528.6 committed/inbound ord=0x4 |p|=15505 p=2146,15085,2873 nose_f=-0.397 v=100.0 rank=0 gap=na law=join lat=16156 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=73188 g=26548.6 committed/inbound ord=0x4 |p|=13558 p=1926,13259,2076 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=14317 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=73448 g=26569.4 committed/inbound ord=0x4 |p|=11563 p=1696,11370,1247 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=12414 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=73711 g=26590.1 committed/inbound ord=0x4 |p|=9611 p=1467,9489,422 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=10519 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=73981 g=26610.9 committed/inbound ord=0x4 |p|=7705 p=1236,7594,-409 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=8611 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=74287 g=26631.6 committed/inbound ord=0x4 |p|=5925 p=1005,5707,-1237 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=6710 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=74584 g=26652.2 committed/inbound ord=0x4 |p|=4416 p=777,3828,-2061 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=4819 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=74880 g=26672.8 committed/inbound ord=0x4 |p|=3526 p=548,1957,-2882 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=2937 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=75179 g=26693.5 committed/inbound ord=0x4 |p|=3723 p=317,74,-3709 nose_f=-0.399 v=100.0 rank=0 gap=na law=join lat=1051 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=76073 g=26714.0 committed/inbound ord=0x4 |p|=4832 p=85,-1806,-4481 nose_f=-0.069 v=100.0 rank=0 gap=na law=join lat=882 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=76340 g=26734.8 committed/inbound ord=0x4 |p|=4238 p=-157,-2765,-3208 nose_f=0.882 v=100.0 rank=0 gap=na law=join lat=1844 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=76575 g=26754.4 committed/handover ord=0x1f |p|=2404 p=-77,-1723,-1675 nose_f=0.855 v=0.0 rank=255 gap=na law=hold lat=799 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none
+f=76690 g=26763.6 committed/launch ord=0x8 |p|=1725 p=-77,-1720,98 nose_f=0.994 v=0.0 rank=255 gap=na law=none lat=796 v_law=100.0 v_w=na w=none on=0 mg=1 loop=none

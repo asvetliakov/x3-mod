@@ -1,0 +1,15 @@
+intervals 549 launch rows 156 transition rows 151 mesh_body rows 542
+top intervals by handler_us_max: frame_end_of_interval max_us calls launches transitions mesh_body_max_us(emitted) worst_slow(frame,dt_us,gap_pre_us)
+ 48253 1701.5 4124 L=2 T=0 mesh=96.3 slow=(48185, 57486, 52746)
+ 40704 171.3 3373 L=1 T=0 mesh=27158.3 slow=(40590, 81045, 75280)
+ 38565 121.5 2853 L=0 T=0 mesh=80.8 slow=(38461, 10913, 2361)
+ 59936 117.7 1862 L=0 T=0 mesh=90.9 slow=(59822, 9603, 3632)
+ 31231 111.2 2221 L=1 T=1 mesh=151.4 slow=(31227, 32095, 27033)
+ 20820 89.0 4303 L=0 T=1 mesh=144.4 slow=(20712, 8700, 5600)
+ 61253 69.1 5021 L=0 T=0 mesh=94.5 slow=(61130, 12427, 7627)
+ 34390 60.7 4047 L=0 T=1 mesh=142.6 slow=None
+ 52404 60.3 2718 L=5 T=0 mesh=8906.7 slow=(52403, 112805, 108695)
+ 804 58.2 1644 L=0 T=0 mesh=101.1 slow=(590, 30486, 12579)
+intervals with a launch: n=113 median max_us=16.1 p90=25.1 >1000us=1
+intervals without:       n=436 median max_us=15.8 p90=23.7 >1000us=0
+worst gap_pre frames overall (frame,dt_us,gap_pre_us): [(589, 7590727, 7332984), (14, 1567111, 1213374), (88061, 1267320, 1192799), (5, 569538, 552645), (88060, 516919, 474087), (45438, 1003386, 320749)]

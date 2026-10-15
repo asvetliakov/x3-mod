@@ -1,0 +1,77 @@
+gate 0x916fd518 F [-1.0, 0.0, 0.0] G [-53031.0, -11511.0, 2177.0] r_gate 1105.0 3r/4 828.75
+f=59582 g=25398.3 d_A=7853 s=-6062 v=100.0 fwd.F=0.63 A:s=-3871 e=0 point:s=-5553 e=7043 point!=given=1 obst=0x00000000
+f=59666 g=25403.3 d_A=7402 s=-5733 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-5224 e=6666 point!=given=1 obst=0x00000000
+f=59756 g=25408.3 d_A=6978 s=-5378 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-4868 e=6317 point!=given=1 obst=0x00000000
+f=59849 g=25413.4 d_A=6565 s=-5019 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-4510 e=5968 point!=given=1 obst=0x00000000
+f=59942 g=25418.4 d_A=6166 s=-4661 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-4152 e=5620 point!=given=1 obst=0x00000000
+f=60036 g=25423.4 d_A=5783 s=-4303 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-3793 e=5274 point!=given=1 obst=0x00000000
+f=60127 g=25428.4 d_A=5420 s=-3943 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-3434 e=4927 point!=given=1 obst=0x00000000
+f=60221 g=25433.4 d_A=5081 s=-3585 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-3076 e=4583 point!=given=1 obst=0x00000000
+f=60315 g=25438.5 d_A=4775 s=-3230 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-2720 e=4243 point!=given=1 obst=0x00000000
+f=60372 g=25443.5 d_A=4528 s=-2910 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-2401 e=3939 point!=given=1 obst=0x00000000
+f=60463 g=25448.5 d_A=4291 s=-2552 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-2042 e=3600 point!=given=1 obst=0x00000000
+f=60557 g=25453.5 d_A=4101 s=-2190 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-3871 e=0 point!=given=0 obst=0x00000000
+f=60642 g=25458.5 d_A=3966 s=-1829 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-1319 e=2925 point!=given=1 obst=0x00000000
+f=60736 g=25463.6 d_A=3893 s=-1468 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-958 e=2594 point!=given=1 obst=0x00000000
+f=60828 g=25468.6 d_A=3886 s=-1105 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-596 e=2268 point!=given=1 obst=0x00000000
+f=60919 g=25473.6 d_A=3944 s=-742 v=100.0 fwd.F=0.72 A:s=-3871 e=0 point:s=-232 e=1951 point!=given=1 obst=0x00000000
+f=61012 g=25478.6 d_A=4064 s=-379 v=100.0 fwd.F=0.69 A:s=-3871 e=0 point:s=0 e=1647 point!=given=1 obst=0x00000000
+f=61106 g=25483.7 d_A=4173 s=-71 v=100.0 fwd.F=0.28 A:s=-3871 e=0 point:s=0 e=1326 point!=given=1 obst=0x00000000
+f=61197 g=25488.7 d_A=4131 s=41 v=100.0 fwd.F=-0.22 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61288 g=25493.7 d_A=3889 s=-124 v=100.0 fwd.F=-0.82 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61380 g=25498.7 d_A=3490 s=-520 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61473 g=25503.7 d_A=3062 s=-979 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61570 g=25508.8 d_A=2653 s=-1445 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61661 g=25513.8 d_A=2282 s=-1911 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61754 g=25518.8 d_A=1970 s=-2378 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61845 g=25523.9 d_A=1750 s=-2846 v=100.0 fwd.F=-0.93 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=61938 g=25528.9 d_A=1655 s=-3314 v=100.0 fwd.F=-0.96 A:s=-3871 e=0 point:s=-2314 e=559 point!=given=1 obst=0x00000000
+f=62030 g=25534.0 d_A=1518 s=-3762 v=100.0 fwd.F=-0.36 A:s=-3871 e=0 point:s=-2762 e=526 point!=given=1 obst=0x00000000
+f=62121 g=25539.0 d_A=1133 s=-3857 v=100.0 fwd.F=0.71 A:s=-3871 e=0 point:s=-3348 e=1015 point!=given=1 obst=0x00000000
+f=62214 g=25544.0 d_A=924 s=-3519 v=100.0 fwd.F=0.96 A:s=-3871 e=0 point:s=-3009 e=897 point!=given=1 obst=0x00000000
+f=62307 g=25549.0 d_A=1175 s=-3050 v=100.0 fwd.F=0.97 A:s=-3871 e=0 point:s=-2540 e=919 point!=given=1 obst=0x00000000
+f=62397 g=25554.0 d_A=1595 s=-2558 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-2049 e=928 point!=given=1 obst=0x00000000
+f=62492 g=25559.0 d_A=2035 s=-2060 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-1551 e=928 point!=given=1 obst=0x00000000
+f=62586 g=25564.1 d_A=2494 s=-1557 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-1047 e=928 point!=given=1 obst=0x00000000
+f=62682 g=25569.1 d_A=2965 s=-1055 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-545 e=928 point!=given=1 obst=0x00000000
+f=62773 g=25574.1 d_A=3445 s=-554 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-45 e=928 point!=given=1 obst=0x00000000
+f=62863 g=25579.1 d_A=3927 s=-55 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=0 e=928 point!=given=1 obst=0x00000000
+f=62956 g=25584.2 d_A=4254 s=279 v=54.2 fwd.F=0.92 A:s=-3871 e=0 point:s=0 e=928 point!=given=1 obst=0x00000000
+f=63050 g=25589.2 d_A=4575 s=548 v=100.0 fwd.F=-0.30 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63146 g=25594.2 d_A=4523 s=373 v=100.0 fwd.F=-0.95 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63237 g=25599.2 d_A=4156 s=-78 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63332 g=25604.2 d_A=3711 s=-568 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63427 g=25609.2 d_A=3261 s=-1069 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63525 g=25614.2 d_A=2830 s=-1567 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63616 g=25619.2 d_A=2426 s=-2065 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63713 g=25624.2 d_A=2064 s=-2563 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63806 g=25629.2 d_A=1772 s=-3060 v=100.0 fwd.F=-1.00 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=63898 g=25634.3 d_A=1553 s=-3548 v=100.0 fwd.F=-0.76 A:s=-3871 e=0 point:s=-2548 e=521 point!=given=1 obst=0x00000000
+f=63988 g=25639.3 d_A=1217 s=-3837 v=100.0 fwd.F=0.26 A:s=-3871 e=0 point:s=-3871 e=0 point!=given=0 obst=0x00000000
+f=64080 g=25644.3 d_A=869 s=-3665 v=100.0 fwd.F=0.94 A:s=-3871 e=0 point:s=-3156 e=885 point!=given=1 obst=0x00000000
+f=64173 g=25649.3 d_A=964 s=-3228 v=100.0 fwd.F=0.91 A:s=-3871 e=0 point:s=-2719 e=882 point!=given=1 obst=0x00000000
+f=64271 g=25654.4 d_A=1379 s=-2768 v=100.0 fwd.F=0.96 A:s=-3871 e=0 point:s=-2259 e=928 point!=given=1 obst=0x00000000
+f=64367 g=25659.4 d_A=1842 s=-2278 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-1768 e=928 point!=given=1 obst=0x00000000
+f=64461 g=25664.4 d_A=2292 s=-1777 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-1268 e=928 point!=given=1 obst=0x00000000
+f=64551 g=25669.4 d_A=2750 s=-1284 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-774 e=928 point!=given=1 obst=0x00000000
+f=64644 g=25674.4 d_A=3231 s=-777 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=-268 e=928 point!=given=1 obst=0x00000000
+f=64737 g=25679.4 d_A=3713 s=-276 v=100.0 fwd.F=1.00 A:s=-3871 e=0 point:s=0 e=928 point!=given=1 obst=0x00000000
+f=64831 g=25684.5 d_A=4153 s=177 v=54.4 fwd.F=1.00 A:s=-3871 e=0 point:s=0 e=928 point!=given=1 obst=0x00000000
+f=64924 g=25689.5 d_A=4447 s=461 v=91.5 fwd.F=0.55 A:s=-3871 e=0 point:s=0 e=928 point!=given=1 obst=0x00000000
+f=65020 g=25694.5 d_A=4676 s=600 v=100.0 fwd.F=-0.66 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=65115 g=25699.6 d_A=4477 s=281 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=65880 g=25704.6 d_A=4066 s=-199 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3871 e=0 point!=given=0 obst=0x00000000
+f=66874 g=25709.6 d_A=3614 s=-693 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3871 e=0 point!=given=0 obst=0x00000000
+f=67325 g=25714.6 d_A=3170 s=-1186 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=67455 g=25719.6 d_A=2744 s=-1680 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3871 e=0 point!=given=0 obst=0x00000000
+f=67553 g=25724.6 d_A=2345 s=-2178 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=67632 g=25729.7 d_A=1995 s=-2673 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-3319 e=1565 point!=given=1 obst=0x00000000
+f=67706 g=25734.7 d_A=1720 s=-3171 v=100.0 fwd.F=-0.99 A:s=-3871 e=0 point:s=-2171 e=572 point!=given=1 obst=0x00000000
+f=67777 g=25739.8 d_A=1479 s=-3651 v=100.0 fwd.F=-0.57 A:s=-3871 e=0 point:s=-2651 e=463 point!=given=1 obst=0x00000000
+f=67853 g=25744.8 d_A=1061 s=-3841 v=100.0 fwd.F=0.54 A:s=-3871 e=0 point:s=-3332 e=988 point!=given=1 obst=0x00000000
+plane crossing on order 4 g=25485.7 (no jump: order 4 has no transfer)
+d_A local minimum g=25543.6 d_A=922 s=-3555 (arrival needs <= 829)
+plane crossing on order 4 g=25579.7 (no jump: order 4 has no transfer)
+d_A local minimum g=25645.8 d_A=840 s=-3541 (arrival needs <= 829)
+plane crossing on order 4 g=25682.2 (no jump: order 4 has no transfer)
+last order-4 frame g=25747.9 d_A=829

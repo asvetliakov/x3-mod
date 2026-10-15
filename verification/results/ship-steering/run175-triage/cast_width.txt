@@ -1,0 +1,76 @@
+== variant pair (escorts w = 0.53 r, as committed)
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.6 s (over 3.6) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.6 s after_grant -19.47 s
+    ship 1 pred 0 clear/cert e=certified mouth0: 12 s (first t=176)
+    ship 1 pred 0 clear/cert e=certified mouth1: 114 s (first t=110)
+scenario C return_trip return tf 1 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.2 s (over 3.3) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.6 s after_grant -19.47 s
+    ship 1 pred 0 clear/cert e=certified mouth0: 12 s (first t=176)
+    ship 1 pred 0 clear/cert e=certified mouth1: 114 s (first t=110)
+scenario C return_trip return tf 1 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 136.3 s (over 3.3) launch 159.9 s bound 154.0 s stop_max 0.0 s | esc stop_max 65.7 s after_grant -1
+    ship 1 pred 0 clear/cert e=certified mouth0: 12 s (first t=176)
+    ship 1 pred 0 clear/cert e=certified mouth1: 114 s (first t=110)
+scenario C return_trip return tf 6 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 133.8 s (over 3.0) launch 139.6 s bound 154.3 s stop_max 0.0 s | esc stop_max 57.7 s after_grant 0.10 s o
+    ship 1 pred 0 clear/cert e=certified mouth1: 55 s (first t=112)
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.9 s p2 135.5 s (over 3.0) launch 141.5 s bound 156.1 s stop_max 0.0 s | esc stop_max 59.2 s after_grant 0.10 s o
+    ship 1 pred 0 clear/cert e=certified mouth1: 57 s (first t=111)
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 114.0 s p2 135.0 s (over 3.7) launch 141.6 s bound 154.9 s stop_max 0.0 s | esc stop_max 59.3 s after_grant 0.
+    ship 1 pred 0 clear/cert e=certified mouth1: 53 s (first t=112)
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 135.8 s (over 3.8) launch 138.4 s bound 156.0 s stop_max 0.0 s | esc stop_max 56.1 s after_grant 0.10 s
+    ship 1 pred 0 clear/cert e=certified mouth1: 55 s (first t=111)
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 134.0 s (over 2.7) launch 136.7 s bound 155.7 s stop_max 0.0 s | esc stop_max 53.3 s after_grant 0.10 s
+    ship 1 pred 0 clear/cert e=certified mouth1: 49 s (first t=113)
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 0 | lead turn 113.8 s p2 135.3 s (over 3.1) launch 137.9 s bound 156.2 s stop_max 0.0 s | esc stop_max 55.1 s after_grant 0
+    ship 1 pred 0 clear/cert e=certified mouth1: 32 s (first t=112)
+  x12 rows: 0; first: 
+== variant wr (escorts w = r)
+scenario C return_trip return tf 1 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 8 | lead turn 114.0 s p2 518.9 s (over 270.9) launch 538.2 s bound 269.1 s stop_max 0.0 s | esc stop_max 30.1 s after_grant -1.00
+    ship 1 pred 0 clear/cert e=certified mouth0: 225 s (first t=179)
+    ship 1 pred 0 clear/cert e=certified mouth1: 38 s (first t=110)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 2 s (first t=129)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 20 s (first t=130)
+scenario C return_trip return tf 1 seed 7: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 12 | lead turn 114.0 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 62.8 s aft
+    ship 1 pred 0 clear/cert e=certified mouth0: 376 s (first t=179)
+    ship 1 pred 0 clear/cert e=certified mouth1: 38 s (first t=110)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 1 s (first t=129)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 21 s (first t=129)
+scenario C return_trip return tf 1 seed 1234567: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 13 | lead turn 114.0 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 55.2
+    ship 1 pred 0 clear/cert e=certified mouth0: 375 s (first t=178)
+    ship 1 pred 0 clear/cert e=certified mouth1: 38 s (first t=110)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 5 s (first t=129)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 18 s (first t=131)
+scenario C return_trip return tf 6 seed 1: launched 0/3 rt 0/1 target_leaves 0 recommit_held 0 gate_x12 0 x12 8 | lead turn 113.9 s p2 -1.0 s (over -1000000000000000000.0) launch -1.0 s bound -1.0 s stop_max 0.0 s | esc stop_max 29.7 s afte
+    ship 1 pred 0 clear/cert e=certified mouth0: 165 s (first t=206)
+    ship 1 pred 0 clear/cert e=certified mouth1: 15 s (first t=112)
+    ship 1 pred 0 clear/merge e=certified mouth0: 12 s (first t=211)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 3 s (first t=133)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 10 s (first t=128)
+scenario C return_trip return tf 6 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 3 | lead turn 113.9 s p2 280.6 s (over 33.3) launch 298.4 s bound 286.7 s stop_max 0.0 s | esc stop_max 53.7 s after_grant -1.00 s
+    ship 1 pred 0 clear/cert e=certified mouth0: 54 s (first t=179)
+    ship 1 pred 0 clear/cert e=certified mouth1: 17 s (first t=111)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 3 s (first t=130)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 10 s (first t=128)
+scenario C return_trip return tf 6 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 6 | lead turn 114.0 s p2 387.8 s (over 140.9) launch 403.2 s bound 273.9 s stop_max 0.0 s | esc stop_max 50.2 s after_grant
+    ship 1 pred 0 clear/cert e=certified mouth0: 82 s (first t=180)
+    ship 1 pred 0 clear/cert e=certified mouth1: 14 s (first t=112)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 2 s (first t=129)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth0: 26 s (first t=315)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 11 s (first t=130)
+scenario C return_trip return tf 10 seed 1: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 2 | lead turn 113.8 s p2 287.4 s (over 40.7) launch 300.8 s bound 281.4 s stop_max 0.0 s | esc stop_max 54.9 s after_grant -1.00
+    ship 1 pred 0 clear/cert e=certified mouth0: 50 s (first t=181)
+    ship 1 pred 0 clear/cert e=certified mouth1: 16 s (first t=111)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 4 s (first t=127)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 11 s (first t=130)
+scenario C return_trip return tf 10 seed 7: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 7 | lead turn 113.8 s p2 551.5 s (over 304.8) launch 561.2 s bound 277.7 s stop_max 0.0 s | esc stop_max 54.6 s after_grant -1.00
+    ship 1 pred 0 clear/cert e=certified mouth0: 110 s (first t=180)
+    ship 1 pred 0 clear/cert e=certified mouth1: 14 s (first t=113)
+    ship 1 pred 0 clear/merge e=certified mouth0: 11 s (first t=478)
+    ship 1 pred 0 clear/stop e=certified mouth0: 3 s (first t=481)
+    ship 1 pred 0 unresolved/contact e=order0 mouth0: 3 s (first t=492)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 4 s (first t=128)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth0: 12 s (first t=495)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 9 s (first t=131)
+scenario C return_trip return tf 10 seed 1234567: launched 3/3 rt 3/3 target_leaves 0 recommit_held 0 gate_x12 0 x12 6 | lead turn 113.8 s p2 498.8 s (over 249.6) launch 502.9 s bound 274.7 s stop_max 0.0 s | esc stop_max 56.2 s after_grant
+    ship 1 pred 0 clear/cert e=certified mouth0: 115 s (first t=180)
+    ship 1 pred 0 clear/cert e=certified mouth1: 16 s (first t=112)
+    ship 1 pred 0 unresolved/contact e=order0 mouth1: 2 s (first t=128)
+    ship 1 pred 0 unresolved/contact e=unresolved mouth1: 10 s (first t=131)
+  x12 rows: 65; first:   tc return_trip x12 t=139.8 ship 0 from 0 pos -8,-1050,-3345 v 49.7

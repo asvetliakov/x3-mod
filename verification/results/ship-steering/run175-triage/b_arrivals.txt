@@ -1,0 +1,70 @@
+== 0x39d49068 arrives f0e8 at 23836.1
+   orders(120 s): 23836.1:0x21(m) 23837.2:0x0(m) 23844.9:0x4(m)
+   ctl(120 s): ['23836.1 f0e8 none>arrival arrival 0x0', '23844.9 dd68 none>committed commit 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 57, 'suppress_gate_ring/other': 37}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 9}
+   traced frames 7876, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1240 m
+== 0x904af840 arrives f0e8 at 23962.1
+   orders(120 s): 23962.1:0x21(m) 23964.1:0x0(m) 23965.1:0x1e(m) 23966.3:0x0(t) 23972.1:0x14(m) 24004.1:0x0(t) 24006.5:0x14(e) 24039.8:0x0(t)
+   ctl(120 s): ['23962.1 f0e8 none>arrival arrival 0x0', '23972.1 f0e8 arrival>none leader 0x0', '23972.1 dd68 none>escort escort 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 53, 'suppress_gate_ring/escort': 26, 'suppress_gate_ring/other': 3}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 9}
+   traced frames 8276, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1305 m
+== 0x9048a420 arrives f0e8 at 24048.8
+   orders(120 s): 24048.8:0x21(m) 24049.7:0x0(t) 24050.8:0x1e(m) 24052.7:0x0(t) 24059.0:0x14(m) 24091.9:0x0(t) 24094.3:0x14(e) 24128.3:0x0(t)
+   ctl(120 s): ['24048.8 f0e8 none>arrival arrival 0x0', '24059.0 f0e8 arrival>none leader 0x0', '24059.0 dd68 none>escort escort 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 55, 'suppress_gate_ring/escort': 27, 'suppress_gate_ring/other': 3}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 10}
+   traced frames 8648, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1028 m
+== 0x9046d268 arrives f0e8 at 25339.8
+   orders(120 s): 25339.8:0x21(m) 25340.7:0x0(t) 25348.2:0x4(m)
+   ctl(120 s): ['25339.8 f0e8 none>arrival arrival 0x0', '25348.2 0948 none>committed commit 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 57, 'suppress_gate_ring/other': 25}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 9}
+   traced frames 12074, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1298 m
+== 0x9045f498 arrives f0e8 at 25404.6
+   orders(120 s): 25404.6:0x21(m) 25405.6:0x0(t) 25405.6:0x1e(m) 25405.7:0x0(t) 25411.6:0x14(e) 25445.0:0x0(t) 25447.6:0x14(e) 25479.7:0x0(t)
+   ctl(120 s): ['25404.6 f0e8 none>arrival arrival 0x0', '25411.6 f0e8 arrival>none leader 0x0', '25411.6 0948 none>escort escort 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 58, 'suppress_gate_ring/escort': 21, 'suppress_gate_ring/other': 2, 'suppress_gate/lane': 103, 'pass_not_fresh/guard': 41}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 8, 'merge/none': 277, 'stop/stop': 37, 'merge/hold': 19, 'join/none': 515, 'join/hold': 37, 'hold/none': 41}
+   traced frames 10650, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1298 m
+== 0x90468468 arrives f0e8 at 25470.7
+   orders(120 s): 25470.7:0x21(m) 25471.7:0x0(t) 25478.9:0x14(e) 25511.3:0x0(t) 25513.7:0x14(t) 25547.1:0x0(t) 25549.3:0x14(t) 25580.8:0x0(t)
+   ctl(120 s): ['25470.7 f0e8 none>arrival arrival 0x0', '25478.9 f0e8 arrival>none leader 0x0', '25478.9 0948 none>escort escort 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 57, 'suppress_gate_ring/escort': 25, 'suppress_gate_ring/other': 9, 'suppress_gate/lane': 35}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 9, 'merge/none': 167, 'merge/hold': 12, 'join/none': 529, 'join/hold': 46, 'follow/none': 27, 'follow/hold': 3}
+   traced frames 10109, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1240 m
+== 0x39d549a8 arrives f0e8 at 25657.0
+   orders(120 s): 25657.0:0x21(m) 25658.0:0x1e(m) 25658.6:0x0(e) 25662.6:0x19(e)
+   ctl(120 s): ['25657.0 f0e8 none>arrival arrival 0x0', '25717.1 f0e8 arrival>none window 0x19']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 51}
+   engine warn episodes by/against it (600 s): 3 ['26113.3 49a8->9ab8(cls 7)', '26149.1 49a8->9ab8(cls 7)', '26183.3 49a8->9ab8(cls 7)']
+   lane law/w at the arrival gate: {'none/none': 58}
+   traced frames 0, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate -1 m
+== 0xab849ab8 arrives f0e8 at 25720.9
+   orders(120 s): 25720.9:0x21(m) 25722.4:0x0(m) 25723.4:0x1e(m) 25724.4:0x0(m) 25731.1:0x14(e) 25763.1:0x0(e) 25766.3:0x14(e) 25799.7:0x0(e)
+   ctl(120 s): ['25720.9 f0e8 none>arrival arrival 0x0', '25780.9 f0e8 arrival>none window 0x14']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 39}
+   engine warn episodes by/against it (600 s): 4 ['26113.3 49a8->9ab8(cls 7)', '26149.1 49a8->9ab8(cls 7)', '26183.3 49a8->9ab8(cls 7)', '26287.6 49a8->9ab8(cls 7)']
+   lane law/w at the arrival gate: {'none/none': 58}
+   traced frames 0, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate -1 m
+== 0xab84e8b8 arrives f0e8 at 25782.8
+   orders(120 s): 25782.8:0x21(m) 25784.1:0x0(m) 25785.1:0x1e(m) 25786.1:0x0(m) 25791.8:0x14(e) 25824.8:0x0(m) 25827.9:0x14(e)
+   ctl(120 s): ['25782.8 f0e8 none>arrival arrival 0x0', '25842.9 f0e8 arrival>none window 0x14']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 51}
+   engine warn episodes by/against it (600 s): 0 []
+   lane law/w at the arrival gate: {'none/none': 58}
+   traced frames 0, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate -1 m
+== 0xab8431e8 arrives 0948 at 26266.0
+   orders(120 s): 26266.0:0x21(m) 26267.0:0x0(t) 26267.1:0x1e(m) 26267.2:0x4(e)
+   ctl(120 s): ['26266.0 0948 none>arrival arrival 0x0', '26267.2 f0e8 none>committed commit 0x0']
+   e_verdict vs its gate: {'suppress_arrival_gate/not_member': 58, 'suppress_gate_ring/other': 26}
+   engine warn episodes by/against it (600 s): 10 ['26396.9 e178->31e8(cls 7)', '26484.8 e178->31e8(cls 7)', '26535.1 e178->31e8(cls 7)', '26560.5 e178->31e8(cls 7)', '26642.0 e178->31e8(cls 7)', '26670.5 e178->31e8(cls 7)', '26730.8 e178->31e8(cls 7)', '26757.1 e178->31e8(cls 7)', '26813.5 e178->31e8(cls 7)', '26843.8 e178->31e8(cls 7)']
+   lane law/w at the arrival gate: {'none/none': 2}
+   traced frames 10975, plane crossings near the gate (lat < 3 r_gate) 0, min dist to its gate 1298 m

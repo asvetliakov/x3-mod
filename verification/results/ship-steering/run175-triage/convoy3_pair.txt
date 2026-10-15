@@ -1,0 +1,79 @@
+== pair rows (c2e8, 2280) 60300-61100
+ frame=60347 t_ms=25441716 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=4400 cause=cert gap_m=-71
+ frame=60378 t_ms=25443766 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3935 cause=cert gap_m=427
+ frame=60398 t_ms=25444806 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3779 cause=cert gap_m=420
+ frame=60416 t_ms=25445806 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3658 cause=cert gap_m=397
+ frame=60434 t_ms=25446826 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3550 cause=cert gap_m=372
+ frame=60452 t_ms=25447836 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3447 cause=cert gap_m=351
+ frame=60470 t_ms=25448836 a=0x9170c2e8 kind=order0 verdict=clear before=none why=certified t_c_s=-1.0 yielder=none d_m=3369 cause=cert gap_m=322
+ frame=60809 t_ms=25467606 a=0x9170c2e8 kind=verdict verdict=unresolved before=clear why=- t_c_s=30.0 yielder=none d_m=2646 cause=contact gap_m=-2
+ frame=60810 t_ms=25467646 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=30.0 yielder=none d_m=2646 cause=contact gap_m=-2
+ frame=60829 t_ms=25468646 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=30.0 yielder=none d_m=2613 cause=contact gap_m=-3
+ frame=60848 t_ms=25469746 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=29.5 yielder=none d_m=2580 cause=contact gap_m=-12
+ frame=60867 t_ms=25470786 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=29.0 yielder=none d_m=2545 cause=contact gap_m=-13
+ frame=60888 t_ms=25471826 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=29.0 yielder=none d_m=2512 cause=contact gap_m=-15
+ frame=60906 t_ms=25472826 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=29.0 yielder=none d_m=2480 cause=contact gap_m=-21
+ frame=60923 t_ms=25473836 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=28.5 yielder=none d_m=2450 cause=contact gap_m=-23
+ frame=60943 t_ms=25474856 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=28.5 yielder=none d_m=2418 cause=contact gap_m=-29
+ frame=60962 t_ms=25475886 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=28.0 yielder=none d_m=2387 cause=contact gap_m=-32
+ frame=60981 t_ms=25476886 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=27.5 yielder=none d_m=2357 cause=contact gap_m=-36
+ frame=61000 t_ms=25477906 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=27.0 yielder=none d_m=2326 cause=contact gap_m=-43
+ frame=61018 t_ms=25478936 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=27.0 yielder=none d_m=2296 cause=contact gap_m=-43
+ frame=61037 t_ms=25479956 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=26.5 yielder=none d_m=2267 cause=contact gap_m=-43
+ frame=61057 t_ms=25480976 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=26.5 yielder=none d_m=2237 cause=contact gap_m=-44
+ frame=61077 t_ms=25481986 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=unresolved t_c_s=26.0 yielder=none d_m=2209 cause=contact gap_m=-49
+ frame=61092 t_ms=25482886 a=0x9170c2e8 kind=order0 verdict=unresolved before=none why=order0 t_c_s=26.0 yielder=none d_m=2182 cause=contact gap_m=-45
+ frame=61093 t_ms=25482926 a=0x91292280 kind=e_pass verdict=unresolved before=none why=order0 t_c_s=26.0 yielder=none d_m=2182 cause=contact gap_m=-45
+ frame=61093 t_ms=25482926 a=0x91292280 kind=order0 verdict=unresolved before=none why=order0 t_c_s=26.0 yielder=none d_m=2182 cause=contact gap_m=-45
+ frame=61095 t_ms=25483096 a=0x9170c2e8 kind=e_pass verdict=unresolved before=none why=on_0x12 t_c_s=26.0 yielder=none d_m=2182 cause=contact gap_m=-45
+== 0x9170c2e8 w=stop episodes (first frame, first t, last t, rows)
+  60488 25449.8 -> 25482.6 33
+  64543 25669 -> 25671 3
+== 0x916f9348 w=stop episodes (first frame, first t, last t, rows)
+  63547 25615.5 -> 25633.9 19
+  64596 25671.8 -> 25689.4 18
+  65040 25695.6 -> 25695.6 1
+  67788 25740.5 -> 25741.5 2
+== controller transitions
+ship_gate_ctl frame=58473 t_ms=25331096 ship=0x91292280 order=0x0 from=none to=arrival why=arrival stage=none>none
+ship_gate_ctl frame=58865 t_ms=25357566 ship=0x91292280 order=0x0 from=arrival to=committed why=commit stage=none>none
+ship_gate_ctl_rewrite frame=58866 t_ms=25357646 ship=0x91292280 site=a from_m=0,0,-4253 to_m=0,-928,-1472
+ship_gate_ctl frame=60346 t_ms=25440106 ship=0x9170c2e8 order=0x0 from=none to=arrival why=arrival stage=none>none
+ship_gate_ctl frame=60482 t_ms=25449506 ship=0x9170c2e8 order=0x0 from=arrival to=escort why=escort stage=none>none
+ship_gate_ctl frame=61095 t_ms=25483096 ship=0x91292280 order=0x4 from=committed to=evicted why=evict stage=funnel>funnel
+ship_gate_ctl frame=61095 t_ms=25483096 ship=0x9170c2e8 order=0x0 from=escort to=none why=leader stage=inbound>inbound
+ship_gate_ctl frame=61518 t_ms=25506106 ship=0x916f9348 order=0x0 from=none to=arrival why=arrival stage=none>none
+ship_gate_ctl frame=61569 t_ms=25508706 ship=0x916f9348 order=0x1e from=arrival to=evicted why=evict stage=none>none
+ship_gate_ctl frame=61839 t_ms=25523566 ship=0x91292280 order=0x4 from=evicted to=committed why=commit stage=none>none
+ship_gate_ctl_rewrite frame=61839 t_ms=25523566 ship=0x91292280 site=miss from_m=0,0,-4343 to_m=0,0,-4343
+ship_gate_ctl frame=61955 t_ms=25529906 ship=0x9170c2e8 order=0x0 from=none to=escort why=escort stage=none>none
+ship_gate_ctl frame=62484 t_ms=25558616 ship=0x916f9348 order=0x1e from=evicted to=escort why=escort stage=none>none
+ship_gate_ctl frame=62708 t_ms=25570546 ship=0x916f9348 order=0x14 from=escort to=evicted why=evict stage=inbound>inbound
+ship_gate_ctl frame=62786 t_ms=25574806 ship=0x9170c2e8 order=0x14 from=escort to=evicted why=evict stage=inbound>inbound
+ship_gate_ctl frame=63129 t_ms=25593346 ship=0x91292280 order=0x4 from=committed to=evicted why=evict stage=inbound>inbound
+ship_gate_ctl frame=63530 t_ms=25614516 ship=0x91292280 order=0x4 from=evicted to=committed why=commit stage=none>none
+ship_gate_ctl frame=63530 t_ms=25614516 ship=0x916f9348 order=0x14 from=evicted to=escort why=escort stage=none>none
+ship_gate_ctl_rewrite frame=63530 t_ms=25614516 ship=0x91292280 site=a from_m=0,0,-4253 to_m=0,-928,-1472
+ship_gate_ctl frame=63744 t_ms=25625916 ship=0x9170c2e8 order=0x14 from=evicted to=escort why=escort stage=none>none
+ship_gate_ctl frame=67753 t_ms=25738092 ship=0x91292280 order=0x4 from=committed to=committed why=handover stage=funnel>funnel
+ship_gate_ctl frame=67769 t_ms=25739182 ship=0x91292280 order=0x0 from=committed to=none why=gone stage=launch>launch
+ship_gate_ctl_rewrite frame=67772 t_ms=25739442 ship=0x9170c2e8 site=b from_m=666,0,-3719 to_m=0,-928,-1472
+ship_gate_ctl frame=67773 t_ms=25739502 ship=0x9170c2e8 order=0x0 from=escort to=committed why=commit stage=inbound>inbound
+ship_gate_ctl_rewrite frame=67818 t_ms=25742412 ship=0x916f9348 site=b from_m=-666,0,-3719 to_m=0,-928,-1472
+ship_gate_ctl frame=67819 t_ms=25742472 ship=0x916f9348 order=0x0 from=escort to=committed why=commit stage=inbound>inbound
+ship_gate_ctl frame=69514 t_ms=25839543 ship=0x9170c2e8 order=0x4 from=committed to=committed why=handover stage=funnel>funnel
+ship_gate_ctl frame=69532 t_ms=25840663 ship=0x9170c2e8 order=0x8 from=committed to=none why=gone stage=launch>launch
+ship_gate_ctl frame=70460 t_ms=25892193 ship=0x916f9348 order=0x4 from=committed to=committed why=handover stage=funnel>funnel
+ship_gate_ctl frame=70480 t_ms=25893253 ship=0x916f9348 order=0x8 from=committed to=none why=gone stage=launch>launch
+== width census (types read) and capital arrival widths
+frame=785 type=11 r_m=1092 w_m=583 w_src=lod
+frame=19282 type=10 r_m=1022 w_m=546 w_src=lod
+frame=56486 type=313 r_m=760 w_m=382 w_src=lod
+frame=59581 type=28 r_m=778 w_m=352 w_src=lod
+frame=67773 type=252 r_m=755 w_m=454 w_src=lod
+ frame=39520 ship=0x91293870 class=M1 r_m=1022 w_m=546
+ frame=40574 ship=0x9171ba50 class=M7 r_m=760 w_m=760
+ frame=45069 ship=0x3a40dde0 class=M7 r_m=778 w_m=778
+ frame=58473 ship=0x91292280 class=M1 r_m=1022 w_m=546
+ frame=60346 ship=0x9170c2e8 class=M2 r_m=755 w_m=755
+ frame=61518 ship=0x916f9348 class=M2 r_m=755 w_m=755

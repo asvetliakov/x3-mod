@@ -1,0 +1,20 @@
+f=68932 g=26266.0 order=0x21 tgt=0x90490948 src=member
+   (0x21 for 0.9 s game, 13 frames)
+f=68945 g=26267.0 order=0x0 tgt=0x90490948 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=68947 g=26267.1 order=0x1e tgt=0x90490948 src=member
+   (0x1e for 0.0 s game, 0 frames)
+f=68947 g=26267.1 order=0x0 tgt=0x90490948 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=68948 g=26267.2 order=0x4 tgt=0x9048f0e8 src=member
+   (0x4 for 772.9 s game, 13602 frames)
+f=82550 g=27040.1 order=0x0 tgt=0x9048f0e8 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=82552 g=27040.2 order=0x5 tgt=? src=e_verdict
+   (0x5 for 0.0 s game, 0 frames)
+f=82552 g=27040.2 order=0x0 tgt=0x9048f0e8 src=trace
+   (0x0 for 0.1 s game, 2 frames)
+f=82554 g=27040.3 order=0x8 tgt=0x9048f0e8 src=trace
+   (0x8 for 0.8 s game, 12 frames)
+f=82566 g=27041.2 order=0x0 tgt=0x9048f0e8 src=trace
+   (0x0 to f=82566 g=27256.7)

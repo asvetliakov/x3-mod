@@ -1,0 +1,93 @@
+== C1 departure f0e8 gate 0x9048f0e8
+ 0x9045a080 L 15km=23003.1 launch=23130.4 15km->launch=127.3 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x90462558 E 15km=23275.0 launch=23402.0 15km->launch=127.0 | +271.6 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23327.2 (+196.8 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x90488bc0 E 15km=23348.8 launch=23476.0 15km->launch=127.2 | +345.6 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23399.9 (+269.5 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 472.9 s game
+== C2 arrival f0e8 -> dd68 gate 0x9048dd68
+ 0x39d49068 L 15km=25015.6 launch=25201.8 15km->launch=186.1 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x904af840 E 15km=25124.1 launch=25306.0 15km->launch=181.9 | +104.2 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 25205.9 (+4.1 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x9048a420 E 15km=25211.0 launch=25394.0 15km->launch=183.0 | +192.2 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 25284.0 (+82.2 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 378.3 s game
+== C3 arrival f0e8 -> 0948 gate 0x90490948
+ 0x9046d268 L 15km=26013.6 launch=26201.6 15km->launch=188.0 
+    stops(v<15,>=3s): 1 ['26197.8+3.1']
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["26155.7-26165.9 ['0x4'] ['join/none']"]
+ 0x9045f498 E 15km=- launch=- 15km->launch=- 
+    stops(v<15,>=3s): 2 ['26020.8+178.1', '26226.6+44.3']
+    lane w=stop rows: 103; merges: 34 starts, 2 finishes ['26201.4 finish gate 4.1', '27082.6 finish join 93.0']
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 2 ["26291.6-27171.8 ['0x0', '0x14', '0x15', '0x4'] ['stop/stop']", "27199.2-27223.8 ['0x0', '0x1f', '0x8'] ['stop/stop']"]
+ 0x90468468 E 15km=26246.8 launch=- 15km->launch=- 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 15 starts, 1 finishes ['26989.7 finish join 508.1']
+    0x12 warn episodes: 1 ['26088.4:M2(f498)pass_ctl']
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 2 ["26126.9-26142.6 ['0x14'] ['join/none']", "26293.9-27083.2 ['0x0', '0x14', '0x4', '0x8'] ['join/none']"]
+ span leader 15 km (or arrival) -> last launch: 188.0 s game
+== C3 return 0948 -> f0e8 (leader 0xab8431e8) gate 0x9048f0e8
+ 0xab8431e8 L 15km=26266.0 launch=27041.2 15km->launch=775.1 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x9045f498 E 15km=25404.6 launch=27223.8 15km->launch=1819.1 | +182.6 s after leader launch
+    stops(v<15,>=3s): 3 ['26271.2+278.5', '27078.3+6.1', '27181.3+41.9']
+    lane w=stop rows: 37; merges: 34 starts, 2 finishes ['26201.4 finish gate 4.1', '27082.6 finish join 93.0']
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 27070.2 (+29.0 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["25420.2-26285.7 ['0x0', '0x14', '0x15'] ['merge/none', 'none/none', 'stop/stop']"]
+ 0x90468468 E 15km=25470.7 launch=27083.2 15km->launch=1612.5 | +42.0 s after leader launch
+    stops(v<15,>=3s): 2 ['26288.2+95.6', '26457.3+24.7']
+    lane w=stop rows: 0; merges: 15 starts, 1 finishes ['26989.7 finish join 508.1']
+    0x12 warn episodes: 1 ['26088.4:M2(f498)pass_ctl']
+    first order 4 to the gate: 27046.7 (+5.5 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 2 ["25485.4-26088.5 ['0x0', '0x12', '0x14'] ['none/none']", "26147.1-26292.3 ['0x0', '0x14', '0x15'] ['merge/none', 'none/none']"]
+ span leader 15 km (or arrival) -> last launch: 957.7 s game
+== C4 arrival f0e8 -> dd68 gate 0x9048dd68
+ 0x39d549a8 L 15km=26533.8 launch=26763.8 15km->launch=230.1 
+    stops(v<15,>=3s): 1 ['26754.4+9.3']
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 8 ['26113.4:M7(9ab8)pass_not_transient', '26149.2:M7(9ab8)pass_not_transient', '26183.3:M7(9ab8)pass_not_transient', '26287.7:M7(9ab8)pass_not_transient', '26322.2:M7(9ab8)pass_not_transient', '26426.3:M7(9ab8)pass_not_transient', '26463.0:M7(9ab8)pass_ctl', '26495.7:M7(9ab8)pass_ctl']
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 1 ["26679.7-26718.6 ['0x4'] ['join/none']"]
+ 0xab849ab8 E 15km=26667.7 launch=27050.5 15km->launch=382.9 | +286.7 s after leader launch
+    stops(v<15,>=3s): 5 ['26457.3+21.7', '26487.2+20.8', '26512.1+125.7', '26769.8+113.9', '27040.6+8.1']
+    lane w=stop rows: 172; merges: 4 starts, 1 finishes ['26735.8 finish join 0.1']
+    0x12 warn episodes: 1 ['26714.3:M7(e8b8)pass_ctl']
+    first order 4 to the gate: 26767.7 (+3.9 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0xab84e8b8 E 15km=26587.2 launch=26931.4 15km->launch=344.2 | +167.6 s after leader launch
+    stops(v<15,>=3s): 1 ['26633.6+101.1']
+    lane w=stop rows: 65; merges: 1 starts, 0 finishes []
+    0x12 warn episodes: 1 ['26714.5:M7(9ab8)pass_not_member']
+    first order 4 to the gate: 26768.8 (+4.9 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 516.8 s game
