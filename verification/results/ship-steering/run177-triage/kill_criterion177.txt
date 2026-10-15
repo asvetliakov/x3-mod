@@ -1,0 +1,33 @@
+# rows177.txt; arrival-side ships inferred (no ship_gate_ctl_arr rows: an entry within 900 s of the own launch); 0 arrival-side (ship, gate, arrival) keys
+# ship_gate_ctl_arr rows 0, the last summary's ctl_arr_mode= 0
+gate 0x9253e330 departure 22669.2 members 3: span 15 km -> last launch 471.7 s, stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x9250bfe0 15km 23004.0 launch 23131.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x925123d0 15km 23275.8 launch 23402.7 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x925397a0 15km 23348.2 launch 23475.7 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x9253e330 departure 25047.9 members 3: span 15 km -> last launch 706.1 s, stops 2, turn-aways 3, lane stop writes 18, member 0x12 2 -> CHECK against the baseline
+     0xaa796490 15km 25948.8 launch 26137.2 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 1 ['25137.3:M2(cd48)']
+     0x92560ca8 15km 25988.6 launch 26186.0 | stops 1 ['25052.3+179.0'] | turn-aways 1 ['25052.3+18.4'] | lane stop writes 18 | 0x12 0 []
+     0x9250cd48 15km 26471.6 launch 26654.9 | stops 1 ['25055.9+80.7'] | turn-aways 2 ['25055.9+15.3', '25208.3+638.0'] | lane stop writes 0 | 0x12 1 ['25137.2:M1(6490)']
+gate 0x9253e330 departure 26728.8 members 2: span 15 km -> last launch open (0 of 2 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0xaa44f2d8 15km 27525.8 launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa7a5370 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x9253f440 departure 24318.8 members 3: span 15 km -> last launch 254.2 s, stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x92547f58 15km 25125.7 launch 25253.3 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x1f6a5d90 15km 25187.1 launch 25315.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa464338 15km 25251.5 launch 25379.9 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x9253f440 departure 24876.0 members 3: span 15 km -> last launch 267.3 s, stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x3d7b0588 15km 25686.9 launch 25814.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa78ac88 15km 25760.3 launch 25888.1 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa78bd98 15km 25826.7 launch 25954.2 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x925412b8 departure 23819.8 members 3: span 15 km -> last launch open (1 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 1 -> CHECK against the baseline
+     0x3d7bc3a8 15km 24740.9 launch 24958.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x9250cd48 15km 24923.6 launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 1 ['25137.2:M1(6490)']
+     0x92560ca8 15km 24995.5 launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x925412b8 departure 27236.7 members 3: span 15 km -> last launch open (0 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0xaa79d858 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa7939e8 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x9250d360 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0xaa794ea0 departure 27664.3 members 3: span 15 km -> last launch open (0 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0xaa451288 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa455320 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaa44fdd0 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []

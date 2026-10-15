@@ -1,0 +1,2 @@
+cd48 f=43552 g=0.0 other=0xaa796490 class=M1 d=1768.5 | pre: 0xaa796490:7:M1:0x4:0x9253e330:0x00000000:1773:1022:pass_ctl gate_row=- obst_row=- | last ctl: f-0 e330 escort>evicted evict | trace@ctl: no trace | trace@f-2: no trace
+6490 f=43553 g=25137.3 other=0x9250cd48 class=M2 d=1762.3 | pre: 0x9250cd48:7:M2:0x12:0x00000000:0x00000000:1768:755:pass_ctl gate_row=- obst_row=- | last ctl: f-3634 e330 none>committed commit | trace@ctl: no trace | trace@f-2: ord=0x4 obst=0x9250cd48 P!=given=1

@@ -1,0 +1,6 @@
+f=38000 g=24834.8 order=0x4 tgt=0x925412b8 src=trace
+   (0x4 for 121.9 s game, 951 frames)
+f=38951 g=24956.7 order=0x0 tgt=0x925412b8 src=trace
+   (0x0 for 0.7 s game, 6 frames)
+f=38957 g=24957.4 order=0x8 tgt=0x925412b8 src=member
+   (0x8 to f=38957 g=27848.6)

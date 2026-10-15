@@ -1,0 +1,127 @@
+0x9250bfe0 gate=0x9253e330 rows=447 t=22669.2..23130.3 roles={'committed/inbound': 373, 'committed/funnel': 73, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 447} law_in={'join': 373, 'lane': 73, 'none': 1} law_out={} w_out={}
+0x925123d0 gate=0x9253e330 rows=710 t=22669.8..23402.6 roles={'escort/inbound': 638, 'committed/inbound': 20, 'committed/funnel': 50, 'committed/handover': 1, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=1
+   loop={'none': 710} law_in={'join': 658, 'lane': 50, 'hold': 1, 'none': 1} law_out={} w_out={}
+0x925397a0 gate=0x9253e330 rows=778 t=22671.6..23474.8 roles={'escort/inbound': 704, 'committed/inbound': 31, 'committed/funnel': 42, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=2
+   loop={'none': 778} law_in={'join': 735, 'lane': 42, 'none': 1} law_out={} w_out={}
+0x3d7bc3a8 gate=0x9253e330 rows=2 t=23818.4..23819.6 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0x3d7bc3a8 gate=0x925412b8 rows=1089 t=23819.8..24957.4 roles={'committed/inbound': 1087, 'committed/funnel': 1, 'committed/launch': 1}
+   funnel=0 rows=939 (~977 game s, 23819.8..24797.1) toggles=1 w_ok=0 rows=0 own=0 rows=939 pt=point rows=0 rank changes=0
+   loop={'none': 1089} law_in={'join': 148, 'lane': 1, 'none': 1} law_out={'join': 939} w_out={}
+   outside: v 69..114 mean 69 m/s, lateral 6248..62919 m
+   enter funnel 24798.2 |p|=12080 lat=6172 s=-10385 v=68.6
+0x9250cd48 gate=0x9253e330 rows=1494 t=23974.0..26654.1 roles={'arrival/none': 10, 'escort/inbound': 1378, 'committed/inbound': 58, 'committed/funnel': 47, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=10 pt=point rows=0 rank changes=3
+   loop={'none': 875, 'leg': 596, 'out': 4, 'turn': 19} law_in={'none': 11, 'merge': 79, 'join': 1357, 'lane': 47} law_out={} w_out={}
+0x9250cd48 gate=0x925412b8 rows=1020 t=23984.3..25051.0 roles={'escort/inbound': 975, 'committed/inbound': 45}
+   funnel=0 rows=1020 (~1067 game s, 23984.3..25051.0) toggles=0 w_ok=0 rows=0 own=0 rows=1020 pt=point rows=0 rank changes=1
+   loop={'none': 1020} law_in={} law_out={'join': 1020} w_out={}
+   outside: v 0..70 mean 66 m/s, lateral 5205..62559 m
+0x92560ca8 gate=0x9253e330 rows=1056 t=24046.0..26185.2 roles={'arrival/none': 11, 'escort/inbound': 995, 'escort/funnel': 6, 'committed/funnel': 36, 'committed/dock': 7, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=11 pt=point rows=0 rank changes=3
+   loop={'none': 1056} law_in={'none': 19, 'merge': 678, 'stop': 18, 'join': 299, 'lane': 42} law_out={} w_out={}
+0x92560ca8 gate=0x925412b8 rows=952 t=24056.6..25052.0 roles={'escort/inbound': 952}
+   funnel=0 rows=952 (~995 game s, 24056.6..25052.0) toggles=0 w_ok=0 rows=0 own=0 rows=952 pt=point rows=0 rank changes=2
+   loop={'none': 952} law_in={} law_out={'join': 952} w_out={}
+   outside: v 0..70 mean 67 m/s, lateral 8844..62556 m
+0x92547f58 gate=0x9253e330 rows=8 t=24311.1..24318.4 roles={'arrival/none': 8}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=8 pt=point rows=0 rank changes=0
+   loop={'none': 8} law_in={'none': 8} law_out={} w_out={}
+0x92547f58 gate=0x9253f440 rows=892 t=24318.8..25252.6 roles={'committed/inbound': 739, 'committed/funnel': 152, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 892} law_in={'join': 739, 'lane': 152, 'none': 1} law_out={} w_out={}
+0x1f6a5d90 gate=0x9253e330 rows=7 t=24373.9..24380.0 roles={'arrival/none': 7}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=7 pt=point rows=0 rank changes=0
+   loop={'none': 7} law_in={'none': 7} law_out={} w_out={}
+0x1f6a5d90 gate=0x9253f440 rows=891 t=24381.0..25314.7 roles={'escort/inbound': 738, 'escort/funnel': 100, 'committed/funnel': 52, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=1
+   loop={'none': 891} law_in={'join': 738, 'lane': 152, 'none': 1} law_out={} w_out={}
+0xaa464338 gate=0x9253e330 rows=7 t=24437.7..24444.1 roles={'arrival/none': 7}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=7 pt=point rows=0 rank changes=0
+   loop={'none': 7} law_in={'none': 7} law_out={} w_out={}
+0xaa464338 gate=0x9253f440 rows=893 t=24444.2..25379.2 roles={'escort/inbound': 738, 'escort/funnel': 81, 'committed/funnel': 73, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=2
+   loop={'none': 893} law_in={'join': 738, 'lane': 154, 'none': 1} law_out={} w_out={}
+0x3d7b0588 gate=0x9253e330 rows=2 t=24874.1..24875.1 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0x3d7b0588 gate=0x9253f440 rows=902 t=24876.0..25813.3 roles={'committed/inbound': 749, 'committed/funnel': 152, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=3
+   loop={'none': 902} law_in={'join': 749, 'lane': 152, 'none': 1} law_out={} w_out={}
+0xaa78ac88 gate=0x9253e330 rows=9 t=24942.8..24952.1 roles={'arrival/none': 9}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=9 pt=point rows=0 rank changes=0
+   loop={'none': 9} law_in={'none': 9} law_out={} w_out={}
+0xaa78ac88 gate=0x9253f440 rows=902 t=24953.1..25887.3 roles={'escort/inbound': 746, 'escort/funnel': 87, 'committed/funnel': 68, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=4
+   loop={'none': 902} law_in={'join': 746, 'lane': 155, 'none': 1} law_out={} w_out={}
+0xaa78bd98 gate=0x9253e330 rows=9 t=25008.0..25016.8 roles={'arrival/none': 9}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=9 pt=point rows=0 rank changes=0
+   loop={'none': 9} law_in={'none': 9} law_out={} w_out={}
+0xaa78bd98 gate=0x9253f440 rows=908 t=25016.9..25953.9 roles={'escort/inbound': 748, 'escort/funnel': 88, 'committed/funnel': 71, 'committed/launch': 1}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=5
+   loop={'none': 908} law_in={'join': 748, 'lane': 159, 'none': 1} law_out={} w_out={}
+0xaa796490 gate=0x925412b8 rows=2 t=25046.3..25047.3 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0xaa796490 gate=0x9253e330 rows=1783 t=25047.9..27607.5 roles={'committed/inbound': 969, 'committed/funnel': 32, 'committed/launch': 1, 'escort/inbound': 737, 'escort/funnel': 44}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=1
+   loop={'none': 1783} law_in={'join': 1706, 'lane': 76, 'none': 1} law_out={} w_out={}
+0xaa44f2d8 gate=0x9253f440 rows=2 t=26727.6..26728.6 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0xaa44f2d8 gate=0x9253e330 rows=854 t=26728.8..27607.5 roles={'committed/inbound': 740, 'committed/funnel': 114}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 854} law_in={'join': 740, 'lane': 114} law_out={} w_out={}
+0xaa796490 gate=0x9253f440 rows=8 t=26796.3..26803.6 roles={'arrival/none': 8}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=8 pt=point rows=0 rank changes=0
+   loop={'none': 8} law_in={'none': 8} law_out={} w_out={}
+0xaa7a5370 gate=0x9253f440 rows=8 t=26857.6..26864.7 roles={'arrival/none': 8}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=8 pt=point rows=0 rank changes=0
+   loop={'none': 8} law_in={'none': 8} law_out={} w_out={}
+0xaa7a5370 gate=0x9253e330 rows=722 t=26864.8..27607.5 roles={'escort/inbound': 722}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 722} law_in={'join': 722} law_out={} w_out={}
+0xaa79d858 gate=0x9253f440 rows=2 t=27235.0..27236.0 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0xaa79d858 gate=0x925412b8 rows=361 t=27236.7..27607.5 roles={'committed/inbound': 361}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 361} law_in={'join': 361} law_out={} w_out={}
+0xaa7939e8 gate=0x9253f440 rows=11 t=27297.6..27308.0 roles={'arrival/none': 11}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=11 pt=point rows=0 rank changes=0
+   loop={'none': 11} law_in={'none': 11} law_out={} w_out={}
+0xaa7939e8 gate=0x925412b8 rows=292 t=27308.2..27607.5 roles={'escort/inbound': 292}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 292} law_in={'join': 292} law_out={} w_out={}
+0x9250d360 gate=0x9253f440 rows=10 t=27410.4..27419.6 roles={'arrival/none': 10}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=10 pt=point rows=0 rank changes=0
+   loop={'none': 10} law_in={'none': 10} law_out={} w_out={}
+0x9250d360 gate=0x925412b8 rows=184 t=27419.9..27607.9 roles={'escort/inbound': 184}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=0 pt=point rows=0 rank changes=0
+   loop={'none': 184} law_in={'join': 184} law_out={} w_out={}
+0xaa451288 gate=0xaa796f88 rows=2 t=27663.0..27664.1 roles={'arrival/none': 2}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=2 pt=point rows=0 rank changes=0
+   loop={'none': 2} law_in={'none': 2} law_out={} w_out={}
+0xaa451288 gate=0xaa794ea0 rows=179 t=27664.3..27848.6 roles={'committed/inbound': 179}
+   funnel=0 rows=179 (~184 game s, 27664.3..27848.6) toggles=0 w_ok=0 rows=0 own=0 rows=179 pt=point rows=0 rank changes=0
+   loop={'none': 179} law_in={} law_out={'join': 178, 'none': 1} w_out={}
+   outside: v 108..109 mean 108 m/s, lateral 34618..51954 m
+0xaa455320 gate=0xaa796f88 rows=7 t=27731.9..27738.2 roles={'arrival/none': 7}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=7 pt=point rows=0 rank changes=0
+   loop={'none': 7} law_in={'none': 7} law_out={} w_out={}
+0xaa455320 gate=0xaa794ea0 rows=107 t=27739.2..27848.6 roles={'escort/inbound': 107}
+   funnel=0 rows=107 (~109 game s, 27739.2..27848.6) toggles=0 w_ok=0 rows=0 own=0 rows=107 pt=point rows=0 rank changes=0
+   loop={'none': 107} law_in={} law_out={'join': 106, 'none': 1} w_out={}
+   outside: v 58..110 mean 107 m/s, lateral 42262..51532 m
+0xaa44fdd0 gate=0xaa796f88 rows=7 t=27793.6..27799.9 roles={'arrival/none': 7}
+   funnel=0 rows=0 (~0 game s, -) toggles=0 w_ok=0 rows=0 own=0 rows=7 pt=point rows=0 rank changes=0
+   loop={'none': 7} law_in={'none': 7} law_out={} w_out={}
+0xaa44fdd0 gate=0xaa794ea0 rows=47 t=27800.8..27848.2 roles={'escort/inbound': 47}
+   funnel=0 rows=47 (~47 game s, 27800.8..27848.2) toggles=0 w_ok=0 rows=0 own=0 rows=47 pt=point rows=0 rank changes=0
+   loop={'none': 47} law_in={} law_out={'join': 46, 'none': 1} w_out={}
+   outside: v 92..113 mean 111 m/s, lateral 46740..51483 m
