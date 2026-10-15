@@ -1,0 +1,70 @@
+Gate collision-tree read (owning note: docs/reverse-engineering/ship-navigation-ai.md section 10.9)
+EXE /mnt/c/X3/X3AP.exe sha256 fdbf3418d8f0a897
+  ok   0x004410f0 66 3b c3                         create: class [esp+0x160] vs 0 (3, 0x15, 0, 1 have own branches; 0x12 falls to 0x00441255)
+  ok   0x00441255 e8 b6 5a 04 00                   create: generic branch, root = 0x00486d10() (0x270-byte node)
+  ok   0x00441261 89 45 70                         ... [obj+0x70] = root
+  ok   0x00441280 e8 0b d9 03 00                   ... 0x0047eb90(root, 0): the root body tree (TGates column 0)
+  ok   0x00441686 0f bf 55 4a                      create: switch case 0x12 (jump table 0x00441db4/0x00441dec): type [obj+0x4a]
+  ok   0x0044168a a1 00 70 60 00                   ... class-0x12 type table [0x00607000] (= 0x00606fb8 + 4 * 0x12)
+  ok   0x00441695 8b 4c 02 44                      ... scene id = TGates record +0x44
+  ok   0x0044169b 89 8d 98 00 00 00                ... [obj+0x98] = scene id
+  ok   0x004416a1 e8 ea ef 00 00                   ... call 0x00450690 (scene parts under the root, synchronous)
+  ok   0x004506a6 e8 85 c7 fe ff                   0x00450690: 0x0043ce30(ctx, [obj+0x98], [obj+0x70], obj, 0)
+  ok   0x004506af 89 86 98 00 00 00                ... returns 0 (scene not found) -> [obj+0x98] = 0
+  ok   0x0043cf9e 83 f8 ff                         0x0043ce30: part body -1 -> no node
+  ok   0x0043cfb1 3b c1                            ... part body == non-zero root body -> the part is the root itself (no node)
+  ok   0x0043d3b6 e8 55 99 04 00                   0x0043d1d0: part node = 0x00486d10()
+  ok   0x0043d3dc e8 ef 9b 04 00                   ... parent = 0x00486fd0(root, scene, F) when part F >= 0, else the root
+  ok   0x0043d3e9 e8 32 cb 04 00                   ... 0x00489f20: link under the parent
+  ok   0x0043d3f5 e8 46 17 05 00                   ... 0x0048eb40: [c+0x258] = [scene+0] (scene id), [c+0x25c] = part index
+  ok   0x0048eb43 89 86 5c 02 00 00                0x0048eb40: [c+0x25c] = part index
+  ok   0x0048eb4c 89 8e 58 02 00 00                0x0048eb40: [c+0x258] = scene id
+  ok   0x004927f0 89 06                            scene load 0x00491b10: [scene+0] = its id (arg 1)
+  ok   0x00486ff0 8b 8e 58 02 00 00 3b 0f          0x00486fd0 (find part node): [c+0x258] == [scene+0]
+  ok   0x0043d7e7 83 7d 18 00                      0x0043d1d0: arg 5 != 0 -> no body, no tree (0x00450690 passes 0)
+  ok   0x0043d889 8b 83 2c 01 00 00                ... flags & 0x10004000, jet, dock/0x4a56 -> 0x8000000, no tree
+  ok   0x0043d8e6 e8 a5 12 04 00                   ... else 0x0047eb90(node, coarsest LOD | 1)
+  ok   0x00486d8b 8d 43 0c                         0x00486d10 init: list head at node+0xc ...
+  ok   0x00486d8e 89 40 08                         ... [node+0x14] (tail) = node+0xc
+  ok   0x00486d97 89 08                            ... [node+0xc] = node+0x10; [node+0x10] = 0 (sentinel)
+  ok   0x00489f4c 8d 47 10 89 06                   0x00489f20 link: [c] = parent+0x10 (the new last child points at the sentinel)
+  ok   0x00489f54 89 7e 18                         ... [c+0x18] = parent
+  ok   0x0048aa46 8b 7b 0c 83 3f 00                narrow phase 0x0048a890: c = [n+0xc]; while [c] != 0 (same walk as the station walk)
+  ok   0x0047ebae e8 0d 78 00 00                   0x0047eb90: model = 0x004863c0([node+0x140])
+  ok   0x0047ec27 39 6e 5c                         ... [model+0x5c] != 0 (tree exists for this body) -> only set the node flag
+  ok   0x0047ed0d e8 5e 3c 06 00                   ... 0x004e2970: new RAPID model (0x18 bytes) ...
+  ok   0x0047ed16 89 46 5c                         ... [model+0x5c] = it
+  ok   0x0047eec7 e8 b4 1d 06 00                   ... 0x004e0c80: build ([model+0x5c]) after every triangle is added
+  ok   0x0047eed0 81 8f 2c 01 00 00 00 00 00 01    ... then [node+0x12c] |= 0x1000000
+  ok   0x0047eeda 89 8f b4 01 00 00                ... and [node+0x1b4] = requested LOD
+  ok   0x0047ece8 e8 13 00 ff ff                   ... no colliding group: 0x0046ed00 marks the body slot -1 ...
+  ok   0x0047ecf5 81 8f 2c 01 00 00 00 00 00 08    ... and only if that failed (id out of slot range) node |= 0x8000000
+  ok   0x0048a92f f7 c1 00 00 00 01                narrow phase: both nodes 0x1000000 ...
+  ok   0x0048a96e e8 4d ba ff ff                   ... models via 0x004863c0 ...
+  ok   0x0047f1b4 8b 52 5c                         ... 0x0047f1b0 reads [model+0x5c] of both, returns 0 if either is null
+
+-- immediate writers of [node+0x12c] bits 0x1000000 / 0x8000000 (.text scan)
+  0x0043d109 or  0x08000000
+  0x0044193b or  0x08000000
+  0x00451504 or  0x08100000
+  0x00451534 and 0xf7efffff (clears 0x8000000)
+  0x0047ecf5 or  0x08000000
+  0x0047eed0 or  0x01000000
+  0x0047f086 or  0x01000000
+  0x0047f19e or  0x01000000
+  0x00487eea or  0x08100000
+
+-- TGates scenes: part nodes under the root (depth 1 = child of the root); the DLL walk sees depths 1..3
+  stock     rows 0,1,2,3        others\argon_gate_scene                  01.cat  nodes 2  max depth 1  max siblings 2  p0 d1 others\argon_gate; p1 d1 others\argon_gate_effect
+  stock     rows 4              others\argon_gate_destroyed_scene        01.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\argon_gate_destroyed
+  stock     rows 5,6,7,8        others\terran_catapult_gate_scene        01.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\terran_catapult_gate
+  stock     rows 9,10,11,12,13,14 others\terraformer_gate_active_scene     01.cat  nodes 2  max depth 1  max siblings 2  p0 d1 others\terraformer_gate; p1 d1 others\argon_gate_effect
+  stock     rows 15,16,17,18,19,20 others\terraformer_gate_inactive_scene   01.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\terraformer_gate
+  stock     rows 21,22,23,24    patch20\terran_gate_scene                07.cat  nodes 3  max depth 1  max siblings 3  p0 d1 100000; p1 d1 others\argon_gate_effect; p2 d1 patch20\terran_gate
+  installed rows 0,1,2,3,5,6,7,8,9,10,11,12,13,14 others\terraformer_gate_active_scene     addon/06.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\terraformer_gate_effect
+  installed rows 4              others\argon_gate_scene                  addon/06.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\argon_gate_effect
+  installed rows 15,16,17,18,19,20 others\terraformer_gate_inactive_scene   01.cat  nodes 1  max depth 1  max siblings 1  p0 d1 others\terraformer_gate
+  installed rows 21,22,23,24    patch20\terran_gate_scene                07.cat  nodes 3  max depth 1  max siblings 3  p0 d1 100000; p1 d1 others\argon_gate_effect; p2 d1 patch20\terran_gate
+
+max part depth over every TGates scene, both views: 1 (DLL walk depth 3: covered)
+RESULT PASS (42 byte strings)

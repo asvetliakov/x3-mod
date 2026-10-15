@@ -845,6 +845,7 @@ python3 -I verification/results/ship-navigation-ai/gates/check_sites.py     # RE
 python3 -I verification/results/ship-navigation-ai/gates/kc_gate_flow.py    # KC pseudo-statements, stock + Mayhem
 python3 -I verification/results/ship-navigation-ai/gates/gate_timeline.py   # model timings [i]
 python3 -I verification/results/ship-navigation-ai/gates/gate_hole.py       # §10.9, RESULT PASS (41 byte strings), ~40 s
+python3 -I verification/results/ship-navigation-ai/gates/gate_tree_read.py  # §10.9 collision-tree read, RESULT PASS (42 byte strings)
 ```
 
 ### 10.9 Gate hole geometry
@@ -1045,6 +1046,82 @@ All values in the table are **[m]**. Notes:
   inside the gate's radius (`0x0048a890` head uses the recursive node radius) **[i]**. A contact therefore needs a hull triangle to cross a
   0.19 m object at the gate centre on an order the pair filter does not exempt (not 5/0x1e to this gate) **[i]**. The
   contact response for such a hit was not traced.
+
+**Collision-tree read (2026-10-15).** Static check of the DLL's gate read at site E (arrival round item 4,
+`gate_tree_state` in `ship_avoidance_walk_core.h`, worktree `agent-ae8ea6bc11efe4dd2` at `97f3804b`) against the same
+`X3AP.exe`. [`gate_tree_read.py`](../../verification/results/ship-navigation-ai/gates/gate_tree_read.py) re-reads 42 EXE
+byte strings (`RESULT PASS`), lists the immediate writers of the two flag bits and measures the part tree of every
+TGates scene in both views. Output: [`gate_tree_read.txt`](../../verification/results/ship-navigation-ai/gates/gate_tree_read.txt).
+No Wine and no launch; the capstone listings stayed in the session scratchpad.
+
+* **The chain is the station walk's node layout [m].** Class 0x12 takes the generic create branch: `[gate+0x70]` =
+  a `0x00486d10` node (0x270 bytes, the allocator of every scene part node; light nodes from `0x004885a0` are 0x270 bytes too),
+  `0x00441255..0x00441261`. Its body is TGates column 0 and gets its tree at `0x00441280`. That root is also the
+  "phys block" the walk core reads positions from (`+0x30`, basis `+0x40`). The switch case for 0x12
+  (`0x00441686..0x004416a1`, table `0x00441db4`/`0x00441dec`) stores the TGates `+0x44` scene id in `[gate+0x98]`
+  and calls `0x00450690` → `0x0043ce30(ctx, [gate+0x98], root, gate, 0)`. That function makes one node per scene
+  part (`0x0043d3b6`), parents it to the root or to its `F` part's node (`0x0043d3dc`), links it (`0x0043d3e9`) and
+  stamps `[c+0x258]` = scene id and `[c+0x25c]` = part index (`0x0048eb40`, `0x0048eb43`/`0x0048eb4c`; the scene
+  record's `+0` is its id, `0x004927f0`). It then builds the part's tree from the coarsest LOD (`0x0043d8e6`). The
+  5th argument is 0, so the `0x0043d7e7` skip (no body, no tree) is not taken. Children list: head `[n+0xc]`,
+  sentinel `n+0x10` (its first dword is always 0), tail `[n+0x14]` (`0x00486d8b..0x00486d97`). Linking sets
+  `[c]` = parent + 0x10 for the new last child and `[c+0x18]` = parent (`0x00489f4c`, `0x00489f54`). The narrow
+  phase descends with the same `c = [n+0xc]; while [c] != 0` (`0x0048aa46`). So `gate_tree_walk` reads the right
+  structure, and `[c+0x12c]` on these nodes is the flag word the narrow phase tests (`0x0048a929..0x0048a95d`).
+* **Depth and width [m].** Every TGates scene, stock and installed, has 1–3 part nodes, all at depth 1 (no `F`
+  parent). The DLL's walk (depths 1–3, 64 nodes) covers them. The installed bubble scene (rows 0–3, 5–14) has one
+  node (`terraformer_gate_effect`), row 4 one (`argon_gate_effect`), rows 15–20 one (the stub `terraformer_gate`).
+  Rows 21–24 have three (`100000`, `argon_gate_effect`, `patch20\terran_gate`).
+* **Where the tree lives [m].** Not on the node. `0x0047eb90` looks up the body's model through `0x004863c0([node+0x140])`
+  (`0x0047ebae`). The tree is the model's `+0x5c`: a 0x18-byte RAPID object from `0x004e2970`, stored at
+  `0x0047ed16`, filled per triangle and built by `0x004e0c80` (`0x0047eec7`). Only after the build does the node get
+  `[+0x12c] |= 0x1000000` (`0x0047eed0`) and `[+0x1b4]` = the requested LOD. The tree is shared by every node with
+  that body: a later node finds `[model+0x5c]` ≠ 0 (`0x0047ec27`) and only gets the flag. The gate root's tree is
+  therefore body 0's (`testbody`), the same object every ship root uses. The narrow phase gets both models again and
+  `0x0047f1b0` returns 0 when either `+0x5c` is null (`0x0047f1b4`).
+* **A body without a tree [m].** When no group collides, `0x0046ed00` sets the body slot (`[[0x00608518]+0xbc] + 28·slot + 4`)
+  to −1 and the node is left without either bit. Only when the id is outside the slot range does it get `0x8000000`
+  (`0x0047ece8..0x0047ecf5`). A later node with that body leaves at the slot test (`0x0047ebed`). An unloadable body
+  (null model) or an id < 0 leaves without touching the node. `[model+0x5c]` stays 0. So "no tree" is the absence of
+  `0x1000000`, sometimes with `0x8000000`, never a stub value. The DLL's test (`0x1000000` and not `0x8000000`) is the
+  narrow phase's.
+* **Flag writers [m for the immediates].** `0x1000000` is set only at `0x0047eed0`, `0x0047f086` and `0x0047f19e` (the
+  three tree builders). No immediate `AND` on `+0x12c` clears it. The register `AND`s at `0x0042d28a`, `0x0045b080` and
+  `0x00488425` clear 0x100000. The render cull's whole-word stores (`0x0047d033`, `0x0047d195`, `0x0047d2e1`,
+  `0x0047d4fc`/`0x0047d513`, `0x0047c58a`) are read-modify-writes of bits 2, 0x80 and 0x100. `0x00451504`/`0x00451534`
+  set and clear `0x8100000` on an object's root `[obj+0x70]` only (the function around `0x004514c0`, not traced further). Not classified: the other register
+  `OR`s and the wholesale store at `0x00494a97`, which takes a value from a byte stream for a node found by id
+  (`0x00486eb0`) **[i]**.
+* **The current read does not fail closed on a wrong layout [i].** `gate_tree_walk` returns "none" when the loop ends
+  without a flagged node. That happens for any `[root+0xc]` that points at a dword 0, so a misread pointer or a foreign
+  structure reads as "no tree" and suppresses the ring. Two more paths read as "none" without seeing the whole tree:
+  the depth cut (children below depth 3 are never examined), and a gate whose scene failed to attach
+  (`0x00450690` zeroes `[gate+0x98]`; no part nodes).
+* **Guard that makes "none" positive [p].** Return "none" only when all of the following hold. Any other outcome is
+  unknown (fail closed to the ring):
+  1. `[gate+0x48]` (i16) = 0x12, root = `[gate+0x70]` ≠ 0, scene = `[gate+0x98]` ≠ 0.
+  2. For every visited child `c` of a node `n`, `[c+0x18]` = `n` (the link's back pointer).
+  3. Each chain ends exactly at `n + 0x10` (the loop's last `c`, whose `[c]` is 0, is the parent's sentinel).
+  4. A child at the depth limit has no children (`[[c+0xc]]` = 0).
+  5. The budget is not exhausted.
+  6. At least one visited node has `[c+0x258]` = scene (the gate's own part nodes are present).
+
+  Rules 2 and 3 are the engine's own list invariants. Rule 6 is an identity stamp that no foreign or stale structure
+  carries. Every installed gate scene has at least one part node, so rule 6 holds on all 600 placed gates.
+  "Tree" needs no guard: it is already the fail-closed side.
+* **Lifetime and thread [m for the order, i for the thread].** The whole chain is built synchronously inside
+  `0x0043ffa0`: root and root tree (`0x00441255..0x00441280`), then every part node and its tree (`0x004416a1`), with
+  each model load inline. Only after that does `0x0043f900` link the object into the parentless list and give it its
+  id (`0x0043f93b..0x0043f972`). The sector pass, and so site E, cannot see the gate before its tree is complete. Even
+  within `0x0047eb90` the flag is stored after `0x004e0c80` returns, so no reader of the flag sees a partly built
+  tree. The per-frame writers of `+0x12c` (render cull) and `+0xa4` (link) run on the same game thread as the sector
+  pass **[i]**. They preserve both bits. Site E's read calls no engine function and writes nothing, so it is
+  reentrancy-neutral. The DLL reads without a fault guard (`rd32` is a plain volatile load); rule 2 limits a wrong
+  pointer to one dereference per step.
+* **Still open.** Whether anything re-parents nodes under a live gate root or swaps a gate's scene after creation (the
+  only post-creation scene rebinding found, `0x004506d0`, is class 6 only). The cache keeps the first verdict per
+  gate, and a later change towards "tree" would be missed. No flight row yet shows `gate_tree_state` on a real gate.
+  A `--debug` row with the state and the visited-node count, once per gate, would confirm "none" on the bubble gates.
 
 **Q4: still inferred or open:**
 
