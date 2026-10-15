@@ -98,6 +98,29 @@ inline bool arr_record_mode(const Arrivals& t, std::uint32_t ship, std::uint32_t
         if (a.ship == ship && a.id == id && a.gate == gate && a.capital && now - a.launch_ms <= reach) return true;
     return false;
 }
+// Section 13.1, the distance condition (the user's decision of 2026-10-16): the time window alone is a crude proxy for "a ship still at the
+// gate that is sent back through it"; the order back counts as a return trip only while the ship is within the lane's 15 km commit sphere
+// (kLaneFarM) of its arrival gate's centre when it comes. The window (kArrModeMs + the step) stays as the cap. none: no record within the
+// window; vanilla: a return trip (the approach latched vanilla); beyond: the window matched, the ship is farther out (the lane's: latched
+// refused, so the approach's later calls inside the sphere never hand it back to vanilla). A non-finite distance takes vanilla (the path
+// without the condition). *d_m: the distance (m), -1 when none.
+enum class ArrTest : std::uint8_t { none = 0, vanilla, beyond };
+constexpr float kArrReturnM = kLaneFarM;
+#define X3M_GC_HAS_ARR_FAR 1 // (gc::arr_return_test exists: the host fixture's build switch)
+inline ArrTest arr_return_test(const Arrivals& t, std::uint32_t ship, std::uint32_t id, std::uint32_t gate, std::uint32_t now,
+                               std::uint32_t step_ms, const float x[3], const float G[3], float* d_m) noexcept {
+    *d_m = -1.0f;
+    if (!arr_record_mode(t, ship, id, gate, now, step_ms)) return ArrTest::none;
+    const float d[3] = {x[0] - G[0], x[1] - G[1], x[2] - G[2]};
+    const float d2 = sc::dot3(d, d);
+    if (!sc::finite_f(d2)) return ArrTest::vanilla;
+    if (d2 <= kArrReturnM * kArrReturnM) {
+        *d_m = sc::sqrt_ss(d2);
+        return ArrTest::vanilla;
+    }
+    *d_m = sc::sqrt_ss(d2);
+    return ArrTest::beyond;
+}
 // The arrival-gate row (D.4): A launched at B within 60 s, in front of the plane ((x - G) . F < 0) and not closing on it (u . F <= 0),
 // and the gate has no collision mesh (rows 0..3, 5..14), or the Terran ring with A's lateral offset + w <= h r - 50 m.
 inline bool arrival_gate_row(const Arrival& a, std::uint32_t gate, std::uint32_t now, const float x[3], const float u[3], const float G[3],

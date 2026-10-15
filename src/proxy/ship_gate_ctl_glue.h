@@ -47,6 +47,7 @@ inline Counter ctl_lane_defers_, ctl_defer_rewrites_, ctl_point_adopts_, ctl_gri
 inline Counter ctl_recommit_held_; // lane fix round 1 item 4: commits held by the re-commit hysteresis
 inline Counter ctl_mouth_expired_; // review of the arrival round item 3: gate-mouth holds ended by their game-time bound
 inline Counter ctl_arr_mode_;      // convoy-gate-transit.md section 13: arrival-side approaches latched vanilla (GateState::arr_vanilla)
+inline Counter ctl_arr_far_;       // ... section 13.1's distance condition: the window matched beyond the 15 km commit sphere (the lane's)
 inline Counter e_gate_ring_, e_gate_ring_kept_; // the arrival round item 4: site E's ring row (suppressed; kept: refused_hull / roll)
 inline Counter e_lane_obst_, e_lane_obst_roll_; // lane fix round 2 item 1: site E's lane obstacle row (suppressed; passed: the path does not clear)
 inline Counter e_pass_ctl_why_[unsigned(gc::EWhy::count)]; // Run161: why site E passed a member pair (not_member: a member against a capital
@@ -131,21 +132,26 @@ inline DeferRow defer_rows_[8];
 inline std::atomic<std::uint32_t> defer_row_write_{0};
 inline std::uint32_t defer_row_read_ = 0;
 // Convoy-gate-transit.md section 13 (--debug): ship_gate_ctl_arr, once per approach latched vanilla (an arrival-side capital's order 4 to
-// the gate it came through within kArrModeMs + the step: the engine and the script fly it), ring 8 (drops count as ctl).
+// the gate it came through within kArrModeMs + the step: the engine and the script fly it), ring 8 (drops count as ctl); d_gate_m= the
+// ship's distance from the gate's centre at the latch. ship_gate_ctl_arr_far, its refused counterpart (section 13.1's distance condition:
+// the window matched with the ship beyond the 15 km commit sphere; the lane flies it), the same fields.
 struct ArrRow {
     std::uint32_t gate, ship, id, t_ms, since_ms;
+    float d_m;
+    std::uint8_t beyond;
 };
 inline ArrRow arr_rows_[8];
 inline std::atomic<std::uint32_t> arr_row_write_{0};
 inline std::uint32_t arr_row_read_ = 0;
-inline void arr_vanilla_row(std::uint32_t gate, std::uint32_t ship, std::uint32_t id, std::uint32_t now, std::uint32_t since_ms) noexcept {
+inline void arr_vanilla_row(std::uint32_t gate, std::uint32_t ship, std::uint32_t id, std::uint32_t now, std::uint32_t since_ms, float d_m,
+                            bool beyond) noexcept {
     if (!debug_) return;
     const std::uint32_t w = arr_row_write_.load(std::memory_order_relaxed);
     if (w - arr_row_read_ >= 8) {
         row_dropped(Drop::ctl);
         return;
     }
-    arr_rows_[w & 7] = ArrRow{gate, ship, id, now, since_ms};
+    arr_rows_[w & 7] = ArrRow{gate, ship, id, now, since_ms, d_m, std::uint8_t(beyond ? 1 : 0)};
     arr_row_write_.store(w + 1, std::memory_order_release);
 }
 inline void ctl_row(const gc::Gate& g, const gc::Member& m, gc::Role from, gc::Role to, gc::Why why, std::uint32_t now) noexcept {

@@ -625,7 +625,7 @@ void frame_boundary(std::uint64_t frame) {
         log("ship_steering_lane_summary frame=%llu lane=%s ctl_merge_yield=%lu ctl_merge_stop=%lu ctl_point_rewrites=%lu ctl_lane_writes=%lu "
             "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_grid_miss=%lu ctl_point_adopts=%lu ctl_lane_defers=%lu ctl_defer_rewrites=%lu "
             "ctl_recommit_held=%lu e_lane_obst=%lu e_lane_obst_roll=%lu "
-            "e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s",
+            "e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu ctl_arr_far=%lu gates_gate:F:G:r=%s",
             static_cast<unsigned long long>(frame), lane_state_, static_cast<unsigned long>(ctl_merge_yield_.get()),
             static_cast<unsigned long>(ctl_merge_stop_.get()), static_cast<unsigned long>(ctl_point_rewrites_.get()),
             static_cast<unsigned long>(ctl_lane_writes_.get()), static_cast<unsigned long>(ctl_x_refused_.get()),
@@ -634,7 +634,7 @@ void frame_boundary(std::uint64_t frame) {
             static_cast<unsigned long>(ctl_defer_rewrites_.get()), static_cast<unsigned long>(ctl_recommit_held_.get()),
             static_cast<unsigned long>(e_lane_obst_.get()), static_cast<unsigned long>(e_lane_obst_roll_.get()),
             static_cast<unsigned long>(e_gate_ring_.get()), static_cast<unsigned long>(e_gate_ring_kept_.get()),
-            static_cast<unsigned long>(ctl_mouth_expired_.get()), static_cast<unsigned long>(ctl_arr_mode_.get()), frames);
+            static_cast<unsigned long>(ctl_mouth_expired_.get()), static_cast<unsigned long>(ctl_arr_mode_.get()), static_cast<unsigned long>(ctl_arr_far_.get()), frames);
         // the arrival round item 6: the piloted ship within 15 km of a gate, once per report: its position (the freshest snapshot of the
         // last 2 s of game time that holds it), the nearest gate of that snapshot and the nearest board member (its state), m
         const std::uint32_t t_now = game_time_ms();

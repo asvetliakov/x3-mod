@@ -157,6 +157,8 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     std::uint8_t arr_vanilla; // convoy-gate-transit.md section 13: this approach is an arrival-side one, flown vanilla (latched, decide())
     std::uint32_t esc_vanilla_gate; // ... an escort refused at this gate's board as arrival-side (latched, ctl_escort; carried into its own
                                     // order-4 approach to the same gate; cleared with the latch above)
+    std::uint32_t arr_far_gate;     // ... section 13.1's distance condition: the order back to this gate matched the window with the ship
+                                    // beyond the 15 km commit sphere (the lane's; latched for the approach, carried like esc_vanilla_gate)
     std::int32_t w_gen;        // the radius bits [obj+0xa4] the width was read with
     std::uint32_t w_root;      // and the root node [obj+0x70] (a regenerated model re-walks)
     float w;                   // the lateral half-width, m

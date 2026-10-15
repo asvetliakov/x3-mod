@@ -411,27 +411,34 @@ class Run176DiagnosticsRows(unittest.TestCase):
         self.assertIn('kRingNodeRowsPerRead = 8', (root / 'ship_steering_internal.h').read_text())
 
 # The arrival side is vanilla (convoy-gate-transit.md section 13, 2026-10-16): ship_gate_ctl_arr once per approach latched vanilla, the lane
-# summary's ctl_arr_mode= (such approaches); the member and lane rows carry no mode field
+# summary's ctl_arr_mode= (such approaches); the member and lane rows carry no mode field. Section 13.1's distance condition: d_gate_m= on
+# the row, its refused counterpart ship_gate_ctl_arr_far (the window matched beyond the 15 km commit sphere) and the summary's ctl_arr_far=
 ARR_MODE_ROWS = [
-    'ship_gate_ctl_arr frame=990 t_ms=24313239 gate=0x90a178e8 ship=0x905b2760 id=4418 since_launch_ms=8530',
+    'ship_gate_ctl_arr frame=990 t_ms=24313239 gate=0x90a178e8 ship=0x905b2760 id=4418 since_launch_ms=8530 d_gate_m=2211',
+    'ship_gate_ctl_arr_far frame=991 t_ms=24913239 gate=0x90a178e8 ship=0x905b2a10 id=4420 since_launch_ms=600017 d_gate_m=40505',
     'ship_steering_lane_summary frame=992 lane=active ctl_merge_yield=0 ctl_merge_stop=1 ctl_point_rewrites=0 ctl_lane_writes=4 ctl_x_refused=0 '
     'ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=0 ctl_defer_rewrites=0 ctl_recommit_held=0 e_lane_obst=2 '
-    'e_lane_obst_roll=0 e_gate_ring=10 e_gate_ring_kept=0 ctl_mouth_expired=0 ctl_arr_mode=3 gates_gate:F:G:r=-',
+    'e_lane_obst_roll=0 e_gate_ring=10 e_gate_ring_kept=0 ctl_mouth_expired=0 ctl_arr_mode=3 ctl_arr_far=1 gates_gate:F:G:r=-',
 ]
 
 
 class ArrModeRows(unittest.TestCase):
     def test_mode_fields(self):
-        ar = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_gate_ctl_arr')[0]
-        self.assertEqual((ar['ship'], ar['gate'], ar['id'], ar['since_launch_ms']), (0x905b2760, 0x90a178e8, 4418, 8530))
+        arr = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_gate_ctl_arr')
+        self.assertEqual(len(arr), 1)  # (the refused row is a row of its own)
+        ar = arr[0]
+        self.assertEqual((ar['ship'], ar['gate'], ar['id'], ar['since_launch_ms'], ar['d_gate_m']), (0x905b2760, 0x90a178e8, 4418, 8530, 2211))
+        af = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_gate_ctl_arr_far')[0]
+        self.assertEqual((af['ship'], af['gate'], af['id'], af['since_launch_ms'], af['d_gate_m']), (0x905b2a10, 0x90a178e8, 4420, 600017, 40505))
         s = st.parse_kv_rows(ARR_MODE_ROWS, 'ship_steering_lane_summary')[0]
-        self.assertEqual(s['ctl_arr_mode'], 3)
+        self.assertEqual((s['ctl_arr_mode'], s['ctl_arr_far']), (3, 1))
         root = Path(__file__).resolve().parents[2] / 'src/proxy'
         glue = (root / 'ship_gate_ctl_glue.cpp').read_text()
-        self.assertIn('"ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu"', glue)
+        self.assertIn('"ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu d_gate_m=%.0f"', glue)
+        self.assertIn('"ship_gate_ctl_arr_far frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu d_gate_m=%.0f"', glue)
         self.assertIn('w_m=%.0f w_ok=%u funnel=%u",', glue)  # (no arr= on the member row)
         self.assertIn('pt=%s own=%u", frame,', glue)  # (no mode= on the lane row)
-        self.assertIn('ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s', (root / 'ship_steering_rows.cpp').read_text())
+        self.assertIn('ctl_mouth_expired=%lu ctl_arr_mode=%lu ctl_arr_far=%lu gates_gate:F:G:r=%s', (root / 'ship_steering_rows.cpp').read_text())
 
 
 
@@ -448,7 +455,7 @@ class ArrivalRoundRows(unittest.TestCase):
         self.assertEqual((p0['member'], p0['d_member_m']), (0, -1))
         root = Path(__file__).resolve().parents[2] / 'src/proxy'
         rows = (root / 'ship_steering_rows.cpp').read_text()  # (the DLL's formats carry them)
-        self.assertIn('e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu gates_gate:F:G:r=%s', rows)
+        self.assertIn('e_gate_ring=%lu e_gate_ring_kept=%lu ctl_mouth_expired=%lu ctl_arr_mode=%lu ctl_arr_far=%lu gates_gate:F:G:r=%s', rows)
         self.assertIn('ship_player_pos frame=%llu t_ms=%lu obj=0x%08lx pos=%.0f,%.0f,%.0f gate=0x%08lx d_gate_m=%.0f member=0x%08lx d_member_m=%.0f', rows)
         lane = (root / 'ship_gate_lane_core.h').read_text()
         for kind in ('"escort"', '"arrival"', '"other"', '"refused_hull"'):

@@ -807,6 +807,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
         if (gs->obj != obj || gs->gate != gate_tgt || (capital && gates_capital_on_ && gs->id != obj_id)) {
             // (convoy-gate-transit.md section 13: an escort latched vanilla at this gate keeps it into its own approach to it)
             const bool esc_keep = gs->obj == obj && gs->id == obj_id && gs->esc_vanilla_gate == gate_tgt;
+            const bool far_keep = gs->obj == obj && gs->id == obj_id && gs->arr_far_gate == gate_tgt; // (section 13.1: refused far, the same)
             *gs = GateState{};
             gs->obj = obj;
             gs->gate = gate_tgt;
@@ -815,6 +816,7 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
                 gs->esc_vanilla_gate = gate_tgt;
                 gs->arr_vanilla = 1;
             }
+            if (far_keep) gs->arr_far_gate = gate_tgt;
         }
         gs->capital = capital ? 1 : 0;
         gs->r_gate = r_gate;
@@ -838,19 +840,31 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     if (!gph && (order == core::kOrderFlyBefore || order == core::kOrderDock) && gate_[slot].obj == obj) {
         gate_[slot].arr_vanilla = 0;
         gate_[slot].esc_vanilla_gate = 0;
+        gate_[slot].arr_far_gate = 0;
     }
     // Convoy-gate-transit.md section 13 (the orchestrator's decision of 2026-10-16: the arrival side is vanilla): a capital's order 4 to the
     // gate it came through within kArrModeMs + the step (its own launch record) latches this approach vanilla: no capital lead-in, so no
     // commit (and no escort entry, ctl_escort): the engine and the script fly it, as with ship_steering_gates_capital off; site E's ring row
     // stays. Latched for the approach (GateState: the same ship and gate), so the record's age never hands a running approach to the lane.
+    // Section 13.1's distance condition (2026-10-16): only while the ship is within the 15 km commit sphere of the gate when the order comes
+    // (gc::arr_return_test); farther out the window's match is refused, latched (arr_far_gate) and counted: the lane flies it.
     if (capital_gate && gs && X3M_LANE_ARR_MODE && traffic_on_ && gates_capital_on_ && !player && !gs->arr_vanilla &&
-        order == core::kOrderFlyBefore && arr_mode_ix_.maybe(obj) && gc::arr_record_mode(arrivals_, obj, gs->id, gate_tgt, now, frame_step_ms())) {
-        gs->arr_vanilla = 1;
-        ctl_arr_mode_.add();
-        std::uint32_t since = 0;
-        for (const gc::Arrival& a : arrivals_.a)
-            if (a.ship == obj && a.id == gs->id && a.gate == gate_tgt) since = now - a.launch_ms;
-        arr_vanilla_row(gate_tgt, obj, gs->id, now, since);
+        gs->arr_far_gate != gate_tgt && order == core::kOrderFlyBefore && arr_mode_ix_.maybe(obj)) {
+        float d_m = -1.0f;
+        const gc::ArrTest at = gc::arr_return_test(arrivals_, obj, gs->id, gate_tgt, now, frame_step_ms(), in.x, G, &d_m);
+        if (at != gc::ArrTest::none) {
+            if (at == gc::ArrTest::vanilla) {
+                gs->arr_vanilla = 1;
+                ctl_arr_mode_.add();
+            } else {
+                gs->arr_far_gate = gate_tgt;
+                ctl_arr_far_.add();
+            }
+            std::uint32_t since = 0;
+            for (const gc::Arrival& a : arrivals_.a)
+                if (a.ship == obj && a.id == gs->id && a.gate == gate_tgt) since = now - a.launch_ms;
+            arr_vanilla_row(gate_tgt, obj, gs->id, now, since, d_m, at == gc::ArrTest::beyond);
+        }
     }
     const bool capital_policy = capital_gate && gates_capital_on_ && !(gs && gs->arr_vanilla);
     bool capital_window = false; // this call's point came from the capital lead-in (inside its window): the site-B write

@@ -1,0 +1,26 @@
+== before (core 67db4e3d)
+scenario C rt_far rf tf 1 seed 1: far 0 vanilla 1 d_o4 40505 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 161.4 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 1 seed 7: far 0 vanilla 1 d_o4 40505 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 161.2 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 1 seed 1234567: far 0 vanilla 1 d_o4 40505 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 161.1 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 6 seed 1: far 0 vanilla 1 d_o4 40500 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 148.8 s, formed leader 130.3 s, bound 142.3 s
+scenario C rt_far rf tf 6 seed 7: far 0 vanilla 1 d_o4 40498 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 151.4 s, formed leader 128.7 s, bound 140.7 s
+scenario C rt_far rf tf 6 seed 1234567: far 0 vanilla 1 d_o4 40513 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 149.9 s, formed leader 128.8 s, bound 140.8 s
+scenario C rt_far rf tf 10 seed 1: far 0 vanilla 1 d_o4 40520 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 139.5 s, formed leader 129.7 s, bound 141.7 s
+scenario C rt_far rf tf 10 seed 7: far 0 vanilla 1 d_o4 40490 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 141.2 s, formed leader 130.7 s, bound 142.7 s
+scenario C rt_far rf tf 10 seed 1234567: far 0 vanilla 1 d_o4 40510 committed 0 laws 0 rewrites 0 steer 0 | 15 km -> launch 140.8 s, formed leader 129.6 s, bound 141.6 s
+      9 FAIL scenario C rt_far: Rf a lane member: committed, its point rewritten, under the lane's laws and steer
+      6 FAIL scenario C rt_far: Rf launched within the formed cast's span bound (its leader's 15 km -> launch + 10 s + the step)
+      9 FAIL scenario C rt_far: Rf the order back beyond the 15 km commit sphere refused as a return trip (gc::arr_return_test: ctl_arr_far), never latched vanilla
+ship_steering_host checks=175 failures=25
+== after (working tree core)
+scenario C rt_far rf tf 1 seed 1: far 1 vanilla 0 d_o4 40505 committed 26349 laws 26349 rewrites 1 steer 24338 | 15 km -> launch 145.9 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 1 seed 7: far 1 vanilla 0 d_o4 40505 committed 26349 laws 26349 rewrites 1 steer 24446 | 15 km -> launch 145.9 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 1 seed 1234567: far 1 vanilla 0 d_o4 40505 committed 26349 laws 26349 rewrites 1 steer 24466 | 15 km -> launch 145.9 s, formed leader 146.1 s, bound 156.1 s
+scenario C rt_far rf tf 6 seed 1: far 1 vanilla 0 d_o4 40500 committed 1771 laws 1771 rewrites 1 steer 1621 | 15 km -> launch 129.0 s, formed leader 130.3 s, bound 142.3 s
+scenario C rt_far rf tf 6 seed 7: far 1 vanilla 0 d_o4 40498 committed 1835 laws 1835 rewrites 1 steer 1707 | 15 km -> launch 128.7 s, formed leader 128.7 s, bound 140.7 s
+scenario C rt_far rf tf 6 seed 1234567: far 1 vanilla 0 d_o4 40513 committed 1843 laws 1843 rewrites 1 steer 1697 | 15 km -> launch 128.7 s, formed leader 128.8 s, bound 140.8 s
+scenario C rt_far rf tf 10 seed 1: far 1 vanilla 0 d_o4 40520 committed 1160 laws 1160 rewrites 1 steer 1064 | 15 km -> launch 129.6 s, formed leader 129.7 s, bound 141.7 s
+scenario C rt_far rf tf 10 seed 7: far 1 vanilla 0 d_o4 40490 committed 1144 laws 1144 rewrites 1 steer 1044 | 15 km -> launch 131.3 s, formed leader 130.7 s, bound 142.7 s
+scenario C rt_far rf tf 10 seed 1234567: far 1 vanilla 0 d_o4 40510 committed 1165 laws 1165 rewrites 1 steer FAIL scenario C: the key off (stage A): no contact on a certified frame in any control run
+ship_steering_host checks=175 failures=3
+(not rt_far's: the cast filter leaves the key-off control summary without runs, its check fails in both builds; the lane cost bench (host timing) may fail under load: in this run the after build's 3 = the key-off summary + the bench at tf 1 and tf 10, rerun alone: --lane 6,643 / 0)

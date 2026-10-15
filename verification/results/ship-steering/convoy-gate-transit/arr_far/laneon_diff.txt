@@ -1,0 +1,19 @@
+# python3 -I laneon_diff.py --base 67db4e3d --out DIR (exit 1: rt_far differs by design), then python3 -I arr_far/laneon_by_cast.py DIR
+# laneon_diff.py's comparison lines and per-run totals:
+1 full run, before-core vs after: lines before 996 after 992 differing 34
+1 --lane, before-core vs after: lines before 769 after 765 differing 32
+1c --capital, before-core vs after: lines before 825 after 821 differing 32
+2 --lane lane-on rows, 67db4e3d fixture+core vs after: lines before 687 after 709 differing 24
+before: ship_steering_host checks=13990 failures=24 slip_gaps=0 vanilla_notes=2; FAIL rows 24: FAIL scenario C rt_far tf 1 seed 1: Rf the order back beyond the 15 km commit sphere refused as a return trip (gc::arr_return_test: ctl_arr_far), never latched 
+after: ship_steering_host checks=13990 failures=0 slip_gaps=0 vanilla_notes=2; FAIL rows 0
+before--lane: ship_steering_host checks=6643 failures=24 slip_gaps=0; FAIL rows 24: FAIL scenario C rt_far tf 1 seed 1: Rf the order back beyond the 15 km commit sphere refused as a return trip (gc::arr_return_test: ctl_arr_far), never latched 
+after--lane: ship_steering_host checks=6643 failures=1 slip_gaps=0; FAIL rows 1: FAIL lane cost: the bench24 frame's third-worst controller block 1122 us under the 1 ms ceiling (tf 10)
+base--lane: ship_steering_host checks=6544 failures=0 slip_gaps=0; FAIL rows 0
+before--capital: ship_steering_host checks=8368 failures=24 slip_gaps=0; FAIL rows 24: FAIL scenario C rt_far tf 1 seed 1: Rf the order back beyond the 15 km commit sphere refused as a return trip (gc::arr_return_test: ctl_arr_far), never latched 
+after--capital: ship_steering_host checks=8368 failures=1 slip_gaps=0; FAIL rows 1: FAIL lane cost: the bench24 frame's third-worst controller block 1185 us under the 1 ms ceiling (tf 10)
+# by cast:
+before.txt vs after.txt: lines 996 / 992; expected differing {'checks': 2, 'rt_far': 30, 'ship_steering_host': 2}; every other cast differing 0
+before__lane.txt vs after__lane.txt: lines 769 / 765; expected differing {'rt_far': 30, 'ship_steering_host': 2}; every other cast differing 0
+before__capital.txt vs after__capital.txt: lines 825 / 821; expected differing {'rt_far': 30, 'ship_steering_host': 2}; every other cast differing 0
+base__lane.txt vs after__lane.txt: lines 687 / 709; expected differing {'checks': 2, 'rt_far': 22}; every other cast differing 0
+# exit 0

@@ -3286,6 +3286,24 @@ full 13,890 / 0, `--capital` 8,268 / 0; departure-side `laneon_diff` 0; 27 unit 
 runs in two sets, another project's jobs running: over 1 ms in 2 of 6 base and 2 of 6 head runs at tf 10); means base 9.8 / head 10.1 µs
 at tf 1, 107.3 / 110.5 µs at tf 10 (`arr_mode/bench_alt.txt`). It is not a gate on this change; rerun it on a quiet host before install.
 
+### Arrival side vanilla: the distance condition (2026-10-16, Opus 5.5; the user's decision; [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §13.1, figures §13.11 "The distance condition")
+
+**What changed.** On 67db4e3d. An order back to the arrival gate within the 900 s + step window counts as a return trip (vanilla for the
+approach) only while the ship is within the 15 km commit sphere (`kLaneFarM`) of that gate when the order comes (`gc::arr_return_test`);
+farther out the refusal is latched (`GateState::arr_far_gate`) and the lane flies it. Both latches (`decide()`'s order 4, `ctl_escort`'s
+leader order) take it. `ship_gate_ctl_arr` gains `d_gate_m=`; the refused counterpart `ship_gate_ctl_arr_far`, lane summary `ctl_arr_far=`.
+
+**Fail-before → after [m]** (`convoy-gate-transit/arr_far/`): new cast `rt_far` (a Titan 40.5 km out, ordered back 600 s after its
+launch): on 67db4e3d's core 24 failures, all `rt_far` (vanilla in 9 of 9 runs, no membership, span bound missed in 6 of 9), 0 now: one
+`ctl_arr_far`, committed, rewritten, under the laws and the lane steer, 15 km → launch 145.9 / 129.0 / 129.6 s at tf 1 / 6 / 10 against
+the formed leader's 146.1 / 130.3 / 129.7 s (`fail_before.txt`). `laneon_diff.py --base 67db4e3d` by cast: 0 differing lines on every cast
+but `rt_far` (and the totals) in the full, `--lane` and `--capital` runs, the arrival-side casts included (`laneon_diff.txt`).
+
+**Acceptance [m]**: `--lane` 6,643 / 0, full 13,990 / 0, `--capital` 8,368 / 0 (checks / failures); `test_ship_trace_format`,
+`test_ctl_boundary_reads`, `test_ship_steering` 28 tests OK (the bench check failed in two earlier `--lane` runs and on 67db4e3d's build
+between them: host timing); `summary_bound.py` PASS (3,831, unchanged: `ctl_arr_far=` is on the lane summary);
+i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014); `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Not flown.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

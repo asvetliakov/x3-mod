@@ -349,9 +349,11 @@ struct Model {
     bool arr_side = false;
     bool arr_vanilla = false; // the DLL's GateState::arr_vanilla: this approach's order 4 came within kArrModeMs + the step of its own launch here
     std::uint32_t esc_vanilla_gate = 0; // ... GateState::esc_vanilla_gate: refused as an escort at this gate (carried into its own approach)
+    std::uint32_t arr_far_gate = 0; // ... GateState::arr_far_gate: the window matched beyond the 15 km commit sphere (section 13.1: the lane's)
+    unsigned arr_far_n = 0;         // ... such refusals (the DLL's ctl_arr_far=)
     const gc::Arrivals* arrivals = nullptr;
     long cap_applied_ms = -1;
-    unsigned sb_on_calls = 0, sb_on_far = 0;
+    unsigned sb_on_calls = 0, sb_on_far = 0, sb_on_all = 0;
     unsigned cap_on_mode = 0; // (section 13: site B's applied caps on an arrival-side ship: 0 by construction)
     unsigned arr_pair_excl = 0; // (section 13: avoidance calls that excluded a partner while both were arrivals: 0 with gc::arrival_pair)
     bool lw_ours = false; // the arrival round: the field holds the DLL's last own rewrite (GateState::lane_w: gc::small_b_ours), set by the caller // the arrival round: a cast's forced avoidance detour (Run174's around its uncertified escort) until this t_ms
@@ -434,6 +436,8 @@ struct Model {
         gate_mode = gate_lead_used = gate_dock_mode = gate_dock_blocked = false;
         arr_vanilla = false;
         esc_vanilla_gate = 0;
+        arr_far_gate = 0;
+        arr_far_n = 0;
         capital_gate_leg = capital_window = capital_detour = false;
         obj_id = 0;
         autopilot = true;
@@ -679,9 +683,27 @@ struct Model {
         // convoy-gate-transit.md section 13 (the arrival side is vanilla): the DLL's decide() latches an order 4 to the gate this capital came
         // through within kArrModeMs + the step (gc::arr_record_mode); such an approach takes the vanilla path: no lead-in, no commit
 #ifdef X3M_GC_HAS_ARR_MODE
+#ifdef X3M_GC_HAS_ARR_FAR
+        // (section 13.1's distance condition: only within the 15 km commit sphere when the order comes; farther out refused and latched)
+        if (X3M_LANE_ARR_MODE && !arr_vanilla && ctl && capital && arrivals && gate_ptr && order == core::kOrderFlyBefore) {
+            if (esc_vanilla_gate == gate_ptr)
+                arr_vanilla = true;
+            else if (arr_far_gate != gate_ptr) {
+                float d_m = -1.0f;
+                const gc::ArrTest at = gc::arr_return_test(*arrivals, ptr, native_id(), gate_ptr, std::uint32_t(t_ms), std::uint32_t(frame_dt_ms), in.x,
+                                                           gate_G, &d_m);
+                if (at == gc::ArrTest::vanilla) arr_vanilla = true;
+                if (at == gc::ArrTest::beyond) {
+                    arr_far_gate = gate_ptr;
+                    ++arr_far_n;
+                }
+            }
+        }
+#else
         if (X3M_LANE_ARR_MODE && !arr_vanilla && ctl && capital && arrivals && gate_ptr && order == core::kOrderFlyBefore &&
             (esc_vanilla_gate == gate_ptr || gc::arr_record_mode(*arrivals, ptr, native_id(), gate_ptr, std::uint32_t(t_ms), std::uint32_t(frame_dt_ms))))
             arr_vanilla = true;
+#endif
 #endif
         const bool gmode = gate_mode && !arr_vanilla;
         if (ctl && capital) {
@@ -702,6 +724,7 @@ struct Model {
         }
         if (sb_on) { // (section 13.8: M1 counts these on an arrival-side ship; the far bound's check those beyond kFarOwnM along F)
             if (sb_m1) ++sb_on_calls;
+            ++sb_on_all; // (section 13.1: rt_far's lane steer)
             const float dg[3] = {in.x[0] - gate_G[0], in.x[1] - gate_G[1], in.x[2] - gate_G[2]};
             if (dg[0] * gate_rows[2][0] + dg[1] * gate_rows[2][1] + dg[2] * gate_rows[2][2] < -kFarOwnM) ++sb_on_far;
         }
@@ -933,10 +956,26 @@ struct Model {
 #ifdef X3M_GC_HAS_ARR_MODE
         // (section 13: the DLL's ctl_escort: an escort that came through the leader's gate within kArrModeMs + the step is no member, latched)
         if (X3M_LANE_ARR_MODE && esc_vanilla_gate == g->gate) return;
+#ifdef X3M_GC_HAS_ARR_FAR
+        // (section 13.1's distance condition: the escort within the 15 km commit sphere when its leader's order comes; farther out a lane escort)
+        if (X3M_LANE_ARR_MODE && arrivals && arr_far_gate != g->gate) {
+            float d_m = -1.0f;
+            const gc::ArrTest at = gc::arr_return_test(*arrivals, ptr, native_id(), g->gate, now, std::uint32_t(frame_dt_ms), in.x, g->G, &d_m);
+            if (at == gc::ArrTest::vanilla) {
+                esc_vanilla_gate = g->gate;
+                return;
+            }
+            if (at == gc::ArrTest::beyond) {
+                arr_far_gate = g->gate;
+                ++arr_far_n;
+            }
+        }
+#else
         if (X3M_LANE_ARR_MODE && arrivals && gc::arr_record_mode(*arrivals, ptr, native_id(), g->gate, now, std::uint32_t(frame_dt_ms))) {
             esc_vanilla_gate = g->gate;
             return;
         }
+#endif
 #endif
         gc::Role before = gc::Role::count;
         gc::Member* m = gc::enter(*ctl, *g, ptr, native_id(), gc::Role::escort, now, &before);
@@ -7976,7 +8015,7 @@ constexpr double kLoopO0M = 3.0 * 100.0;
 // The nose's angle off the gate axis F = +z (deg).
 static double err_of(const Model& m) { return std::acos(std::fmin(1.0, std::fmax(-1.0, double(m.row[2][2])))) * 180.0 / M_PI; }
 namespace lanec {
-enum Kind { kLead = 0, kEsc, kRedep, kPark, kNewLead, kSmEsc, kSmTrade, kArrive, kArrRet, kPlayer }; // kPark: a capital parked on Lambda, never a member
+enum Kind { kLead = 0, kEsc, kRedep, kPark, kNewLead, kSmEsc, kSmTrade, kArrive, kArrRet, kPlayer, kArrFar }; // kPark: a capital parked on Lambda, never a member
                                                         // (section 6.11; review item 7); kNewLead: a capital flying straight, never a member
                                                         // (lane fix round 2 item 2); fixture engine paths: kSmEsc a small (non-capital)
                                                         // ship escorting `leader` on 0x14, then its own order 4 / 5 to the gate (item D);
@@ -7985,7 +8024,10 @@ enum Kind { kLead = 0, kEsc, kRedep, kPark, kNewLead, kSmEsc, kSmTrade, kArrive,
                                                         // the arrival round (Run174): kArrRet an arrival whose script's next order is the
                                                         // return trip (leader < 0: order 4 back through the same gate; else 0x14 to that
                                                         // leader, its lost-leader order 0 and order 4), kPlayer the player's ship parked
-                                                        // (never steered, never a member, never suppressed as A or as B)
+                                                        // (never steered, never a member, never suppressed as A or as B); kArrFar
+                                                        // (section 13.1's distance condition) an arrival that flies out_m into the
+                                                        // sector after its hold (order 3, then order 0) and is ordered back (order 4)
+                                                        // ret_ms after its launch: a departure of the lane's, not an arrival-side ship
 struct CStart {
     const ShipType* t;
     double w_r;
@@ -7996,6 +8038,8 @@ struct CStart {
     long hold_ms = 0; // fixture engine paths item E: an arrival's order-0 hold after its 0x1e (its script's next order)
     double nose[3] = {0, 0, 0}; // ... item B: an explicit start nose (gate frame; 0: psi_deg / aim)
     double script_r = 0;        // Run175 round item 1: the size the script's GetSize reads for this ship's grid point (m; 0: the hull's r_m)
+    long ret_ms = 0;            // kArrFar: its order back this long after its launch
+    double out_m = 0;           // ... flown out to this distance from the gate along -F (order 3 at v), then order 0
 };
 struct CSetup {
     const char* tag;
@@ -8199,6 +8243,11 @@ struct CResult {
     unsigned m_w_mode = 0, m_e_sup = 0; // (section 13: site-B write frames and applied caps on an arrival-side ship; site E suppressions of its pairs)
     unsigned m1_member_frames = 0; // (the arrival side is vanilla: member-frames of an arrival-side ship as committed or escort, 0 by construction)
     unsigned arr_pair_excl = 0; // (section 13: avoidance calls that excluded a partner while both were arrivals)
+    // section 13.1's distance condition (cast rt_far, kind kArrFar): the order back's refusals as a return trip (the DLL's ctl_arr_far=) and
+    // its vanilla latches, the frames as a committed member and under the lane's laws (gc::lane_laws), the point rewrites, the steer calls,
+    // the distance from G at the order back (m), 15 km -> launch (s)
+    unsigned rf_far_n = 0, rf_vanilla = 0, rf_committed = 0, rf_laws = 0, rf_rewrites = 0, rf_steer = 0;
+    double rf_o4_d_m = -1, rf_t15_launch_s = -1;
     double m_capsule = 1e18, m_first_arr_s = -1, m_last_arr_s = -1, m_last_launch_s = -1, m_span_s = -1, m2_over_s = -1e18;
     // section 13.9 (i), (ii): the first arrival-side leader's order 4 -> its nose within 15 deg of F, -> P2; P2 -> its grant (the refused wait
     // at the plane under the key-off capital path) and its largest speed meanwhile
@@ -8888,7 +8937,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             }
             continue;
         }
-        if (cs.kind == kArrive || cs.kind == kArrRet) { // item E: pending until t0 and the through slot (the partner side's request)
+        if (cs.kind == kArrive || cs.kind == kArrRet || cs.kind == kArrFar) { // item E: pending until t0 and the through slot (the partner side's request)
             m.speed = m.desired = 0;
             arr_try[k] = cs.t0_ms;
             continue;
@@ -9174,7 +9223,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             tgt = tp;
         }
         const int kk = su.s[k].kind;
-        const bool arr = (kk == kArrive || kk == kArrRet) && c.phase >= 51 && c.phase <= 54;
+        const bool arr = (kk == kArrive || kk == kArrRet || kk == kArrFar) && c.phase >= 51 && c.phase <= 54;
         const gc::GateRow kind = esc ? gc::GateRow::escort : arr ? gc::GateRow::arrival : gc::GateRow::other;
         // (X3M_C_RING_NONE=1: the tree read wrong toward none on every gate, the failure the review's item 1 guards against; the rim cast's
         // oracle must catch it)
@@ -9268,7 +9317,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         for (unsigned k = 0; k < su.n; ++k) {
             TShip& c = ships[k];
             if (!c.pending) continue;
-            if (su.s[k].kind == kArrive || su.s[k].kind == kArrRet) { // item E: the partner side's capital through the gate (sections 10.10, 10.14 Q4/Q5)
+            if (su.s[k].kind == kArrive || su.s[k].kind == kArrRet || su.s[k].kind == kArrFar) { // item E: the partner side's capital through the gate (sections 10.10, 10.14 Q4/Q5)
                 if (now_ms < arr_try[k]) continue;
                 if (holder >= 0 || (last_dir == 1 && now_ms - release_ms < 60000)) { // the through slot (its request polls every 1-11 s)
                     arr_try[k] = now_ms + 1000 + long(c.m.rng.next()) * 10000 / 32768;
@@ -9411,6 +9460,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     e.lw_ok = true;
                     mg->m[mi].pt_ok = 0;
                     ++res.rewrites;
+                    if (su.s[k].kind == kArrFar) ++res.rf_rewrites;
                     if (m1_member(m.arr_side, mg->m[mi])) ++res.m1_rewrites;
                     if (m.pos[2] / 500.0 < -double(kFarOwnM)) ++res.far_rewrites;
                 }
@@ -9423,7 +9473,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             const double dB_v[3] = {-m.pos[0], -m.pos[1], -m.pos[2]};
             double dA = norm3d(dA_v);
             const double dB = norm3d(dB_v);
-            if (e.t15 < 0 && dB / 500.0 <= 15000.0) {
+            if (e.t15 < 0 && dB / 500.0 <= 15000.0 && (su.s[k].kind != kArrFar || c.phase == 0)) { // (kArrFar: on its order back)
                 e.t15 = now_ms;
                 gc::Gate* g15 = ctl_gate(board, now, su.gate_type, kGateRM);
                 const double lc0 = g15 && g15->lane_c_ok ? double(g15->lane_c[0]) : 0.0, lc1 = g15 && g15->lane_c_ok ? double(g15->lane_c[1]) : 0.0;
@@ -9438,6 +9488,27 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             if (c.phase == 20) { // parked (kPark): no order, no member, an obstacle on Lambda
                 m.desired = 0;
                 m.advance(dt);
+                continue;
+            }
+            if (c.phase == 22) { // kArrFar: order 3 straight out along -F at its speed to out_m, then order 0
+                m.desired = std::llround(std::fmin(su.s[k].v, su.s[k].t->v_ms) * 500.0);
+                m.advance(dt);
+                if (-m.pos[2] / 500.0 >= su.s[k].out_m) {
+                    c.phase = 23;
+                    c.phase_t = now_ms;
+                    m.order = core::kOrderNone;
+                    m.desired = 0;
+                }
+                continue;
+            }
+            if (c.phase == 23) { // ... order 0 until its order back (order 4 to the gate it came through), ret_ms after its launch
+                m.desired = 0;
+                m.advance(dt);
+                if (now_ms - c.launch_ms >= su.s[k].ret_ms) {
+                    ++res.departures;
+                    res.rf_o4_d_m = dB / 500.0;
+                    start_order4(c, now_ms);
+                }
                 continue;
             }
             if (c.phase == 21) { // kNewLead: straight on at its speed
@@ -9835,6 +9906,12 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     double dp[3];
                     for (int i = 0; i < 3; ++i) dp[i] = m.pos[i] / 500.0 - arr_P[k][i];
                     res.arr_hold_out_m = std::fmax(res.arr_hold_out_m, norm3d(dp));
+                    if (now_ms - c.phase_t >= su.s[k].hold_ms && su.s[k].kind == kArrFar) { // section 13.1: out into the sector (order 3)
+                        c.phase = 22;
+                        c.phase_t = now_ms;
+                        m.order = core::kOrderMovePos;
+                        continue;
+                    }
                     if (now_ms - c.phase_t >= su.s[k].hold_ms && su.s[k].kind == kArrRet) { // the arrival round: the script's return trip
                         const int lk = su.s[k].leader;
                         e.z_prev = m.pos[2] / 500.0;
@@ -10063,6 +10140,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         e.lw_ok = true;
                         mg->m[mi].pt_ok = 0;
                         ++res.rewrites;
+                        if (su.s[k].kind == kArrFar) ++res.rf_rewrites;
                         if (m1_member(m.arr_side, mg->m[mi])) ++res.m1_rewrites;
                         if (m.pos[2] / 500.0 < -double(kFarOwnM)) ++res.far_rewrites;
                     } else if (!ours) {
@@ -10359,6 +10437,10 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 if (mm->lane_rank != 0xff) ++res.m1_ranked;
                 if (mm->role == gc::Role::committed || mm->role == gc::Role::escort) ++res.m1_member_frames;
             }
+            if (su.s[k].kind == kArrFar && lane && mm) { // (section 13.1's distance condition: the far arrival a lane member)
+                if (mm->role == gc::Role::committed) ++res.rf_committed;
+                if (gc::lane_laws(*mm)) ++res.rf_laws;
+            }
             if (c.m.arr_side && (c.m.arr_vanilla || c.m.esc_vanilla_gate) && !e.mode_seen) {
                 e.mode_seen = true;
                 ++res.m_mode_n;
@@ -10428,7 +10510,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 // the arrival round item 4: every other ship on every order the warn acts on (not 0x12, 0x21 / 0x1e, order 5 / 8, a parked or
                 // the player's ship at rest: their warn has no speed), its gate warn left to the ring row (the member row first, as the DLL)
                 bool unsup_nm = false;
-                const bool nm_ph = (c.phase == 0 || (c.phase >= 10 && c.phase <= 13) || c.phase == 21 || c.phase == 40 || c.phase == 41 ||
+                const bool nm_ph = (c.phase == 0 || (c.phase >= 10 && c.phase <= 13) || c.phase == 21 || c.phase == 22 || c.phase == 40 || c.phase == 41 ||
                                     c.phase == 46 || c.phase == 53 || c.phase == 54) && su.s[k].kind != kPlayer;
                 if (!(o_ok && ph_ok && g && mi >= 0 && g->m[mi].role == gc::Role::committed) && nm_ph &&
                     eng_warn(c.m, su.s[k].t->r_m, c.m.capital, gate_b, false, false).warn) {
@@ -10486,7 +10568,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                             const unsigned q = j - w.n_static;
                             const int kq = su.s[q].kind;
                             bool arr_off = false; // (an arrival no longer a live board member: the engine's warn and the lane row as for any ship)
-                            if ((kq == kArrive || (kq == kArrRet && ships[q].phase <= 53)) && ships[q].alive && ships[q].phase >= 51) {
+                            if ((kq == kArrive || ((kq == kArrRet || kq == kArrFar) && ships[q].phase <= 53)) && ships[q].alive && ships[q].phase >= 51) {
                                 int ai = -1;
                                 const gc::Gate* ag = gc::locate(board, ships[q].m.ptr, &ai);
                                 arr_off = !(ag && ai >= 0 && gc::live(*ag, ag->m[ai], now_end));
@@ -11100,8 +11182,8 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                         B.m.row[2][1], B.m.row[2][2]);
                         res.sm_capsule = std::fmin(res.sm_capsule, gap);
                     }
-                    const bool aa = (su.s[a].kind == kArrive || (su.s[a].kind == kArrRet && A.phase <= 53)) && A.phase >= 51,
-                               ab = (su.s[b].kind == kArrive || (su.s[b].kind == kArrRet && B.phase <= 53)) && B.phase >= 51;
+                    const bool aa = (su.s[a].kind == kArrive || ((su.s[a].kind == kArrRet || su.s[a].kind == kArrFar) && A.phase <= 53)) && A.phase >= 51,
+                               ab = (su.s[b].kind == kArrive || ((su.s[b].kind == kArrRet || su.s[b].kind == kArrFar) && B.phase <= 53)) && B.phase >= 51;
                     if (aa && ab) {
                         res.arr_arr_gap = std::fmin(res.arr_arr_gap, gap);
                         if (gap < 0.0) ++res.arr_overlap;
@@ -11404,7 +11486,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         res.t15_launch_s = res.leader_launch - t15_lead;
     }
     unsigned n_dep = 0;
-    for (unsigned k = 0; k < su.n; ++k) n_dep += su.s[k].kind == kLead || su.s[k].kind == kEsc || su.s[k].kind == kRedep ? 1u : 0u;
+    for (unsigned k = 0; k < su.n; ++k) n_dep += su.s[k].kind == kLead || su.s[k].kind == kEsc || su.s[k].kind == kRedep || su.s[k].kind == kArrFar ? 1u : 0u;
     if (nl == n_dep && t15_lead >= 0) {
         res.span_s = double(last_l) / 1000.0 - t15_lead;
         // the lane floor (convoy_spans.py): each ship its 15 km + the leader's 15 km -> launch, no closer than c to the previous; a ship
@@ -11413,7 +11495,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         double arr[kCMax];
         unsigned na = 0;
         for (unsigned k = 0; k < su.n; ++k)
-            if (ex[k].t15 >= 0 && (su.s[k].kind == kLead || su.s[k].kind == kEsc || su.s[k].kind == kRedep))
+            if (ex[k].t15 >= 0 && (su.s[k].kind == kLead || su.s[k].kind == kEsc || su.s[k].kind == kRedep || su.s[k].kind == kArrFar))
                 arr[na++] = double(ex[k].t15) / 1000.0 + std::fmax(0.0, ex[k].p15_extra - ex[0].p15_extra) / 100.0;
         std::sort(arr, arr + na);
         double fl = -1, csum = 0;
@@ -11442,6 +11524,12 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         res.far_steer += c.m.sb_on_far;
         res.m_w_mode += c.m.cap_on_mode;
         res.arr_pair_excl += c.m.arr_pair_excl;
+        if (su.s[k].kind == kArrFar) {
+            res.rf_far_n += c.m.arr_far_n;
+            res.rf_vanilla += c.m.arr_vanilla || c.m.esc_vanilla_gate ? 1u : 0u;
+            res.rf_steer += c.m.sb_on_all;
+            if (ex[k].t15 >= 0 && launch_ms_of[k] >= 0) res.rf_t15_launch_s = double(launch_ms_of[k] - ex[k].t15) / 1000.0;
+        }
         if (c.m.arr_side) {
             res.m1_steer += c.m.sb_on_calls;
             if (ex[k].arr_ms >= 0) {
@@ -11773,6 +11861,13 @@ static const CStart kRtTrail[3] = {
     {&kRtM2, 0.53, kArrRet, 0, 0, 0, 0, 0, 0, 20000, false, 6000},
     {&kShips[2], 0.5, kPlayer, -1, 2000, 0, -400, 0, 0, 0},
 };
+// rt_far (section 13.1's distance condition, the user's decision of 2026-10-16): a Titan arrives through the gate, flies 40 km into the sector
+// (order 3 at 100 m/s, then order 0) and is ordered back through the same gate (order 4) 600 s after its launch, inside the 900 s window but
+// beyond the 15 km commit sphere: a lane departure (committed, rewritten, the laws), not a return trip; the player's M6 parked beside the gate
+static const CStart kRtFar[2] = {
+    {&kCrowdTitan, 0.534, kArrFar, -1, 0, 0, 0, 0, 100, 20000, false, 8300, {0, 0, 0}, 0, 600000, 40000},
+    {&kShips[2], 0.5, kPlayer, -1, 2000, 0, -400, 0, 0, 0},
+};
 static const CStart kRtHub[5] = {
     {&kCrowdTitan, 0.534, kArrRet, -1, 0, 0, 0, 0, 0, 20000, false, 8300},
     {&kRtM2, 0.53, kArrRet, -1, 0, 0, 0, 0, 0, 90000, false, 100000},
@@ -11902,6 +11997,8 @@ static const CSetup kCSetups[] = {
     // PARKED: {"rt_cross", kRtCross, 7, 0, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 8},
     {"rt_hub", kRtHub, 5, 0, -1, false, 1200, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 8},
     {"rt_trail", kRtTrail, 3, 0, -1, false, 1700, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 8},
+    // section 13.1's distance condition: an arrival 40 km out ordered back after 600 s is the lane's (checks Rf)
+    {"rt_far", kRtFar, 2, 1, -1, false, 1400, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 9},
 };
 // Lane fix round 2 item 6: the nose off F at the 7 km crossing, asserted in every cast: 5 deg, or the cast's own bound where its geometry
 // cannot reach 5 deg (the measured maximum over 3 seeds x tf 1/6/10 + about 1.5 deg; reasons in convoy-gate-transit.md section 11 "Lane fix
@@ -14210,6 +14307,24 @@ static void lane_c_scenarios() {
                         // section 13.6: the funnel's far bound (Fx2: no lane write, steer, rewrite or crawl at the floor more than 20 km out
                         // along F). PARKED (decision C, 2026-10-16): the far bound (-DX3M_LANE_FAR=1) clears the writes but fails Ex on
                         // side_commit and Fx's span on third_gate (arr_mode/far_bound_c.txt); the figures are printed on the "far" row, not asserted
+                    } else if (su.eng == 9) { // section 13.1's distance condition (rt_far): an arrival 40 km out ordered back after 600 s
+                        ck(r.rf_far_n == 1 && r.rf_vanilla == 0,
+                           "Rf the order back beyond the 15 km commit sphere refused as a return trip (gc::arr_return_test: ctl_arr_far), never latched vanilla");
+                        ck(r.rf_committed > 0 && r.rf_rewrites > 0 && r.rf_laws > 0 && r.rf_steer > 0,
+                           "Rf a lane member: committed, its point rewritten, under the lane's laws and steer");
+                        // the formed cast's span bound (span_form 1: 15 km -> launch + 10 s) with the formed cast's own leader, same tf and seed
+                        static lanec::CResult fr;
+                        for (const lanec::CSetup& fs : lanec::kCSetups)
+                            if (!std::strcmp(fs.tag, "formed")) fr = lanec::run_c(fs, fps, tf, seed, true);
+                        const double rf_bound = fr.t15_launch_s + 10.0 + double(r.step_max) / 1000.0;
+                        if (all || seed == kSeeds[0] || !(r.rf_t15_launch_s >= 0.0 && r.rf_t15_launch_s <= rf_bound))
+                            std::printf("scenario C %s rf tf %d seed %u: far %u vanilla %u d_o4 %.0f committed %u laws %u rewrites %u steer %u | "
+                                        "15 km -> launch %.1f s, formed leader %.1f s, bound %.1f s\n", su.tag, tf, seed, r.rf_far_n, r.rf_vanilla,
+                                        r.rf_o4_d_m, r.rf_committed, r.rf_laws, r.rf_rewrites, r.rf_steer, r.rf_t15_launch_s, fr.t15_launch_s, rf_bound);
+                        ck(r.launched == r.departures && r.span_ok && r.rf_t15_launch_s >= 0.0 && r.rf_t15_launch_s <= rf_bound,
+                           "Rf launched within the formed cast's span bound (its leader's 15 km -> launch + 10 s + the step)");
+                        ck(r.episodes == 0 && r.min_capsule > 0.0 && r.gate_x12 == 0, "Rf safety: no 0x12 episode, no contact, no own-gate 0x12");
+                        ck(r.rt_player_sup == 0, "Rf the player's ship never suppressed as an obstacle");
                     } else if (su.eng == 6) { // review of the arrival round item 8: a non-member clipping the Terran ring's rim
                         // (the row samples its swept hull every kSolidStepM (50 m) along the path and charges half of it against the gap
                         // (solid_gap_seg): it refuses where the true gap is under kMarginM + 25 m or more on a long sweep, on the approach

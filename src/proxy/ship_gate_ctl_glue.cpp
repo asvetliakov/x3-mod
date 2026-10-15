@@ -210,22 +210,34 @@ void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32
     // convoy-gate-transit.md section 13 (the arrival side is vanilla): an escort that came through the leader's gate within kArrModeMs + the
     // step is no member (its own launch record; the bitmap first, then at most 64 compares), latched in its GateState for that gate so the
     // record's age never hands a trailing escort to the lane (review: an escort trailing a departing leader for more than 905 s)
+    // Section 13.1's distance condition (2026-10-16): only an escort within the 15 km commit sphere of the gate when its leader's order comes
+    // (gc::arr_return_test); farther out the refusal is latched (arr_far_gate, carried into its own approach) and counted: a lane escort.
     if (X3M_LANE_ARR_MODE) {
         const std::uint32_t id = rd32(obj + sites::kObjId);
-        if (g.obj == obj && g.id == id && g.esc_vanilla_gate == cg->gate) return;
-        if (arr_mode_ix_.maybe(obj) && gc::arr_record_mode(arrivals_, obj, id, cg->gate, now, frame_step_ms())) {
-            if (g.obj != obj || g.id != id) { // (another ship's slot state, or none: this ship's, as decide() starts one)
+        const bool own = g.obj == obj && g.id == id;
+        if (own && g.esc_vanilla_gate == cg->gate) return;
+        float d_m = -1.0f;
+        gc::ArrTest at = gc::ArrTest::none;
+        if (!(own && g.arr_far_gate == cg->gate) && arr_mode_ix_.maybe(obj))
+            at = gc::arr_return_test(arrivals_, obj, id, cg->gate, now, frame_step_ms(), in.x, cg->G, &d_m);
+        if (at != gc::ArrTest::none) {
+            if (!own) { // (another ship's slot state, or none: this ship's, as decide() starts one)
                 g = GateState{};
                 g.obj = obj;
                 g.id = id;
             }
-            g.esc_vanilla_gate = cg->gate;
-            ctl_arr_mode_.add();
+            if (at == gc::ArrTest::vanilla) {
+                g.esc_vanilla_gate = cg->gate;
+                ctl_arr_mode_.add();
+            } else {
+                g.arr_far_gate = cg->gate;
+                ctl_arr_far_.add();
+            }
             std::uint32_t since = 0;
             for (const gc::Arrival& a : arrivals_.a)
                 if (a.ship == obj && a.id == id && a.gate == cg->gate) since = now - a.launch_ms;
-            arr_vanilla_row(cg->gate, obj, id, now, since);
-            return;
+            arr_vanilla_row(cg->gate, obj, id, now, since, d_m, at == gc::ArrTest::beyond);
+            if (at == gc::ArrTest::vanilla) return;
         }
     }
     int ei = -1;
@@ -694,9 +706,14 @@ void ctl_rows(unsigned long long frame) noexcept {
     }
     for (std::uint32_t w = arr_row_write_.load(std::memory_order_acquire); arr_row_read_ != w; ++arr_row_read_) { // section 13
         const ArrRow& r = arr_rows_[arr_row_read_ & 7];
-        x3m::log("ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu", frame,
-                 static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
-                 static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.since_ms));
+        if (r.beyond) // (section 13.1's distance condition: the window matched, the ship beyond the commit sphere: the lane's)
+            x3m::log("ship_gate_ctl_arr_far frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu d_gate_m=%.0f", frame,
+                     static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
+                     static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.since_ms), double(r.d_m));
+        else
+            x3m::log("ship_gate_ctl_arr frame=%llu t_ms=%lu gate=0x%08lx ship=0x%08lx id=%lu since_launch_ms=%lu d_gate_m=%.0f", frame,
+                     static_cast<unsigned long>(r.t_ms), static_cast<unsigned long>(r.gate), static_cast<unsigned long>(r.ship),
+                     static_cast<unsigned long>(r.id), static_cast<unsigned long>(r.since_ms), double(r.d_m));
     }
     for (std::uint32_t w = ctl_pair_write_.load(std::memory_order_acquire); ctl_pair_read_ != w; ++ctl_pair_read_) {
         const CtlPairRow& r = ctl_pair_rows_[ctl_pair_read_ & 63];

@@ -2386,6 +2386,19 @@ clear on an order 4 or 5 to a target that is no gate (the approach ended); two a
 avoidance either; `arr_overwritten_cap=` counts the capital records the full table overwrote; site E's pass reason for an arrival pair is
 `arrival_pair` (the ninth `e_pass_ctl_why=` field).
 
+**The distance condition (the user's decision, 2026-10-16).** The 900 s + step window alone is a crude proxy for "a ship still at the
+gate that is sent back through it": a capital that flew 40 km into the sector and is ordered back 600 s later was taken as a return trip
+and flown vanilla for the whole approach, although nothing of a return trip is left (it comes from far out like any departure, and the
+lane's join, laws and certificate are what a departure from there needs). So the order back counts as a return trip only while the ship
+is within the lane's 15 km commit sphere (`kArrReturnM = kLaneFarM`, the far end of Λ) of its arrival gate's centre when the order
+comes; the window stays as the cap. Both latches take it: `decide()`'s, on the capital's own order 4 (its position at that call), and
+`ctl_escort`'s, on the escort's position when its leader's commit is first seen (`gc::arr_return_test`: none, vanilla or beyond).
+Beyond the sphere the refusal is latched for the approach (`GateState::arr_far_gate`, carried like `esc_vanilla_gate` into an escort's
+own order-4 approach to that gate), so the approach's later calls inside the sphere never hand it to vanilla mid-flight. Escorts waiting
+at the gate for their leader stay inside the sphere (Run176's case: their order 4 comes at the gate; all arrival-side casts unchanged).
+A non-finite distance takes vanilla (the path without the condition). Rows: `ship_gate_ctl_arr` gains `d_gate_m=` (the distance at the
+latch); its refused counterpart `ship_gate_ctl_arr_far` (the same fields), counted on the lane summary as `ctl_arr_far=`.
+
 The design as ratified, superseded where the paragraph above differs (no `Member::arr_mode`, no (b), no (c)):
 
 **The flag.** `Member::arr_mode` (one byte), set
@@ -2685,6 +2698,26 @@ Acceptance after the fixes [m]: `--lane` 6,543 / 0, full 13,890 / 0, `--capital`
 bench check, 3,815 µs at tf 10 under the other job's load); `laneon_diff --base 1c563443` by cast: 0 differing lines on every
 departure-side cast, the six arrival-side casts (`rt_trail` new) differ (`arr_mode/laneon_diff.txt`); 27 unit tests OK; i686 0
 warnings, x87 PASS (1,014), sites PASS 20.
+
+**The distance condition (2026-10-16, Opus 5.5; the user's decision; §13.1) [m].** Commit on 67db4e3d. Code: `gc::arr_return_test`,
+`ArrTest`, `kArrReturnM = kLaneFarM` (`ship_gate_arrival_core.h`); `GateState::arr_far_gate` (`ship_steering_internal.h`); both latches
+(`decide()` in `ship_steering_decide.cpp`, `ctl_escort` in `ship_gate_ctl_glue.cpp`); `ship_gate_ctl_arr ... d_gate_m=`,
+`ship_gate_ctl_arr_far` and `ctl_arr_far=` (`ship_gate_ctl_glue.{h,cpp}`, `ship_steering_rows.cpp`). Cast `rt_far` (fixture kind `kArrFar`,
+checks Rf): a Titan arrives at +20 s, holds 8.3 s, flies 40 km out along −F at 100 m/s (order 3, then order 0) and is ordered back
+(order 4) 600 s after its launch, 40.5 km from G. Rf asserts the refusal (one `ctl_arr_far`, no vanilla latch), a lane member (committed,
+its point rewritten, the laws, the lane steer), its launch within the formed cast's span bound (the formed leader's 15 km → launch of the
+same tf and seed + 10 s + the step), safety and the player's ship. After: 9 of 9 runs pass; 15 km → launch 145.9 / 129.0 / 129.6 s at
+tf 1 / 6 / 10 seed 1 against the formed leader's 146.1 / 130.3 / 129.7 s. Fail before (the same fixture on 67db4e3d's core, which
+has no `arr_return_test`): 24 failures, all `rt_far` (vanilla latched in 9 of 9 runs, no membership in 9 of 9, the span bound missed in
+6 of 9: 15 km → launch 161.1-161.4 s at tf 1, 148.8-151.4 s at tf 6) (`arr_far/fail_before.txt`). Every other cast prints the same
+lines on 67db4e3d's core and this one in the full, `--lane` and `--capital` runs (`laneon_diff.py --base 67db4e3d` by cast,
+`arr_far/laneon_by_cast.py`, `arr_far/laneon_diff.txt`): the arrival-side casts' return orders all come inside the sphere, so their
+identity checks (M1, M3a, Mid) hold unchanged. Acceptance: `--lane` 6,643 / 0, full 13,990 / 0, `--capital` 8,368 / 0
+(checks / failures; 99 checks more than 67db4e3d's, `rt_far`'s; the host-timing bench check failed in two earlier `--lane` runs at
+1,029-1,304 µs and on 67db4e3d's own build between them at 1,069 µs, a host condition; decisions per run identical, 59,799 / 31,482).
+Unit modules `test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering`: 28 tests OK; i686 RelWithDebInfo 0 warnings,
+`check_no_x87.py` PASS (1,014 reachable functions), `verify_ship_steering_sites.py` PASS 20. Not covered by a cast: an escort beyond the sphere when its leader's order comes (the `ctl_escort` branch; the
+fixture models it, no cast flies it), and the row's text (DLL only).
 
 **Open.** (i) The flight's two judgements (§13.0). (ii) The far bound (§13.6): the lane still owns `third_gate`'s escorts 57 km out
 (6,942-7,129 write frames at tf 1, the floor crawl 42 frames). (iii) `rt_cross` (a departing convoy beside a return trip) stays parked on
