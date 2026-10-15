@@ -3070,6 +3070,30 @@ variant, runs `--lane` with every seed, the two arrival casts and `--traffic`; a
 `arrival_parked.txt`, `rows.txt`, `bench.txt`, and with a base stdout `spans_diff.md`; `summarise.py`, `rows.py`, `spans_diff.py` are the
 one-liners behind the figures above.
 
+### Round B: small ships, statics on Λ (2026-10-15, Opus 5.5; design [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §12.2 / §12.3, changes and figures §11 "Round B")
+
+**What changed.** Worktree `agent-ad06636d182ac36ce` on main 71b1536d (round A in parallel). §12.2: the small ships' side lead-in, D.5 on the lane
+(lateral path test, the edge, B on the ship's side) and the bounded hold (held where it is, 60 s + the step per approach), all behind the gate's lane
+key; rows `ctl_small=` (side lead-in decisions, edge rewrites, holds begun). §12.3: the lane's lateral profile (`LaneProfile`, `lane_profile_build`,
+`lane_bodies`, 1 Hz in `lane_profile_gate`), `lane_lat_at` reading it, the avoidance seam (`av::Self::skip_static`) and the enclosing-fallback rule;
+the shift is **off** (`gc::kLaneProfShiftOn`); rows `ctl_prof=`, `ctl_prof_us_max=`. The summary's worst case 3,532 → 3,658 characters (buffer 8,192).
+
+**Fail-before → after [m]** (3 seeds × tf 1/6/10; `round_b/summary.txt`, the base's `engine_paths/summary.txt`):
+
+| Cast | 71b1536d | Round B |
+| --- | --- | --- |
+| `small_gate` | small-ship contact 4 of 9 (to −506 m) | 0 of 9 (closest 154 m); small 0x12 0 per run; members' spans unchanged |
+| `small_gate_m6` | contact 4 of 9 (to −501 m) | 0 of 9 (closest 145 m); small 0x12 1–2 per run (1.4–11.6 s); member 0x12 0 |
+| `lane_fallback` | span 9 of 9, launches 2 of 9 | 9 of 9 green (P2 ≤ 1.1°, v_min 40.1–80.6 m/s) |
+| `lane_station` | span 2, member 0x12 2, contact 1 of 9 | parked: no feasible shift (§11 "Round B") |
+| `lane_belt` | span 1 of 9 | parked: the shift regresses it (with the shift on: rock touched 3 of 3 at tf 1, member 0x12 and contacts under SETA) |
+
+**Acceptance [m]** (host x86-64, `-std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 3,634 / 0, full 10,979 / 0, `--capital` 5,357 / 0; key-off control
+line identical to the base's (45 runs, contact on certified frames 0); unittests `test_ship_trace_format`, `test_ctl_boundary_reads`,
+`test_ship_steering` 21 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (999 reachable, 0 violations), `verify_ship_steering_sites.py`
+PASS 20. Cost (host): the profile build 5.6 µs for 64 bodies with the shift; `lane_lat_at` 1.1 ns / 3.0–5.4 ns with a profile; bench24 tf 10 mean
+130.7–139.9 µs, third-worst 497–689 µs over three runs (base 130.2 / 673 µs). i686 cost not measured. Evidence: [`round_b/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_b/run.sh).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

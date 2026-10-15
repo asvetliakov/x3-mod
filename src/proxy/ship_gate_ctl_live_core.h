@@ -258,4 +258,44 @@ inline void live_leaves(const Board& b, const LiveTrack& t, const LiveSet& s, st
 }
 // The member row's class: the record class code site B read in the update (Member.code), only for a member proven this frame.
 __attribute__((always_inline)) inline std::uint32_t member_code(const Member& m) noexcept { return m.proven ? m.code : 0xffffffffu; }
+// Convoy-gate-transit.md section 12.3 (round B): the statics near Lambda from the module's snapshot, as lane_profile_build takes them: a
+// station's parts from the part cache (the module's part walk), a station without parts as its fallback body (lav::fallback_radius, the
+// sphere kept for the enclosure test), a rock as its sphere; gates, ships and debris are not statics here. Near: the bounding sphere
+// within kLaneProfMaxM + 2 km (more than any hull's w + the margin) of Lambda's segment s in [-(kLaneFarM + the longest ramp), 0]; a part
+// within that of the segment too. More than cap: *overflow (no profile: fail closed to the sphere detour). Reads the snapshot only.
+inline unsigned lane_bodies(const Gate& g, const lav::Snapshot& snap, const lav::PartSet* parts, unsigned n_parts, LaneBody* out, unsigned cap,
+                            bool* overflow) noexcept {
+    unsigned n = 0;
+    *overflow = false;
+    const float s_lo = -(kLaneFarM + kLaneProfMaxM / kLaneProfTan), reach = kLaneProfMaxM + 2000.0f;
+    auto near = [&](const float c[3], float r) {
+        const float d[3] = {c[0] - g.G[0], c[1] - g.G[1], c[2] - g.G[2]};
+        const float s = sc::dot3(d, g.F), eR = sc::dot3(d, g.R) - g.lane_c[0], eU = sc::dot3(d, g.U) - g.lane_c[1];
+        return s + r >= s_lo && s - r <= 0.0f && eR * eR + eU * eU <= (r + reach) * (r + reach);
+    };
+    for (unsigned k = 0; k < snap.count; ++k) {
+        const lav::Obstacle& o = snap.items[k];
+        const bool station = o.kind == std::uint8_t(lav::Kind::station);
+        if (!station && o.kind != std::uint8_t(lav::Kind::asteroid)) continue;
+        if (!near(o.x, o.r)) continue;
+        if (station && (o.flags & 1) && o.parts < n_parts && parts[o.parts].station == o.ptr && parts[o.parts].count) {
+            const lav::PartSet& ps = parts[o.parts];
+            for (unsigned q = 0; q < ps.count; ++q) {
+                if (!near(ps.c[q], ps.r[q])) continue;
+                if (n >= cap) {
+                    *overflow = true;
+                    return n;
+                }
+                out[n++] = LaneBody{{ps.c[q][0], ps.c[q][1], ps.c[q][2]}, ps.r[q], 0.0f, o.ptr};
+            }
+            continue;
+        }
+        if (n >= cap) {
+            *overflow = true;
+            return n;
+        }
+        out[n++] = station ? LaneBody{{o.x[0], o.x[1], o.x[2]}, lav::fallback_radius(o.r), o.r, o.ptr} : LaneBody{{o.x[0], o.x[1], o.x[2]}, o.r, 0.0f, o.ptr};
+    }
+    return n;
+}
 } // namespace x3m::ship_avoidance::ctl

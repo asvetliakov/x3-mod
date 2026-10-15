@@ -173,6 +173,11 @@ struct GateState { // per table slot: the approach's last call, the crossing (se
     x3m::ship_avoidance::ctl::SmallBWrite lane_miss;
     // final review item 4: the last order-4 field of this ship with no lane member found not to be its lane point (gc::lane_adopt_memo)
     x3m::ship_avoidance::ctl::AdoptMemo lane_noadopt;
+    // convoy-gate-transit.md section 12.2 (round B): a small ship's bounded hold on this approach and this decision's speed cap from it
+    // (m/s; < 0 none), applied with the existing small-ship clamp (site B's gate / order-5 write)
+    x3m::ship_avoidance::ctl::SmallHold small_hold;
+    float small_cap;
+    std::int8_t small_side; // section 12.2: the side lead-in's side kept for this approach (0 none, +-1 along R)
 };
 struct GateTransition { // --debug: one row per order 4 -> 0 -> 5 transition at a gate (<= 8 per boundary)
     std::uint32_t obj, code, ms_since_p2;

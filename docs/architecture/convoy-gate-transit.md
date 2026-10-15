@@ -1322,6 +1322,54 @@ floor.
 **Fixture bounds re-taken.** `parked`'s nose at 7 km 25 → 27° (the engine's sphere detour around the M7 parked at the 7 km point:
 12.9–25.5° over 9 runs, 19.8–23.5° before). The stage-A unit `ctl decide: the lower-priority approach yields ... (cap = the floor)`.
 
+### Round B (small ships, statics on Λ) (2026-10-15, Opus 5.5; §12.2 and §12.3, each item with a check that fails on 71b1536d)
+
+Worktree `agent-ad06636d182ac36ce` on main 71b1536d, in parallel with round A. Units: `ship_gate_arrival_core.h` (§12.2), `ship_steering_decide.cpp`
+(the small-ship lead-in, D.5, the hold's clamp, the avoidance seam), `ship_gate_geometry_core.h` (`lane_lat_at`, the profile), `ship_gate_board_core.h`
+(`LaneProfile` in `Gate`), `ship_gate_ctl_live_core.h` (`lane_bodies`), `ship_gate_ctl_glue.cpp` (`lane_profile_gate`, 1 Hz), `ship_avoidance_core.h`
+(`Self::skip_static`), rows (`ctl_small=`, `ctl_prof=`, `ctl_prof_us_max=`). The key off is unchanged by construction (every new path tests the gate's
+lane key): the key-off control line of `--lane` is byte-identical to the base's (45 runs, 660,747 certified frames, contact on them 0).
+
+**Item 1, small ships (§12.2) [m].** `small_gate` and `small_gate_m6` un-parked: no small-ship contact in 9 of 9 each (71b1536d: 4 of 9 each, to −506 m),
+the closest small-ship pair 145–328 m; the members' launches 3/3 and spans unchanged to the decisecond (217.0 / 215.9 / 209.3 s at tf 1, 188.8–192.1 s
+under SETA), member 0x12 0, P2 nose ≤ 1.1°. The small ships' 0x12: 0 per run in `small_gate` (71b1536d: 1–3, 4–57 s), 1–2 per run and 1.4–11.6 s in
+`small_gate_m6` (71b1536d: 2–5, 10–84 s); D.5 `both_taken` 0 on the lane; holds 3 per run, the longest 55.2–60.0 s (the bound 60 s + the step; 61.8 s in one earlier run at tf 6).
+Unit checks: `round B small units` (the free side, the line's end ≤ 772 m from A against 829 m, ≥ 753 m from the column for every spread index,
+the latch, D.5's `hold` / `edge` / key-off `both_taken` / own-side mirror, the bound at the step 2 s, the stagger). Deviations from §12.2, each a fixture witness:
+
+| Design | Implemented | Why (fixture) |
+| --- | --- | --- |
+| side lead-in while the funnel is active | from any lane member of the gate (committed or escort), side latched per approach | a lead-in that went back to the spread line between two capitals ran the TS into the column |
+| X_s = A + 0.7 r R | A + 0.68 r R + one of four U levels (0.107 r apart, ≤ 0.16 r) | two TS on one side converged on one line, warned each other, their 0x12 met the column; 0.68 keeps the end 57 m inside the arrival sphere |
+| free side away from the capital's Q | the same off the axis; with Q on the axis (the lane's finals) the ship's own side | no column crossing (both halves are free) |
+| D.5: B, mirror, edge (points) | the lateral path from the ship to the point with a 200 m margin; the hull's front counted ((L + r + 50 m) / v before its passage) and unreleased lane members; B kept on the latched side | the order-5 leg's lag carried TS/M6 170–360 m inside; a capital whose centre was 1 km out was not counted |
+| hold: v ≤ d / (t_launch + 2.9 s − now), floor 10 m/s | held where it is at 1 m/s while X_s lies in a counted capital's warn zone (1.2 (w + r) + 150 m) or the order-5 path is taken; nose along the line; no sphere detour against the lane's capitals while held; ETA at v_max + the acceleration distance, a 3 s gap margin; release staggered 2.5 s by spread bit 2; 60 s + the step per approach | at 10 m/s a TS drifted 600 m past its line's end and turned into the column; paced to a park it circled, nose at the next capital (doubled closing term, 600 m reach), and its 0x12 met it; a slow M6 released 2 s ahead of a Titan's hull overshot 260 m |
+
+**Item 2, statics on Λ (§12.3) [m].** The profile is implemented and unit-checked, but its **shift is off** (`gc::kLaneProfShiftOn = false`); only the
+enclosing-fallback rule is active.
+
+* `lane_fallback` un-parked: 9 of 9 green (71b1536d: span 9 of 9, launches 2 of 9). Spans 209.3–217.0 s at tf 1, 188.8–192.1 s under SETA (the formed
+  bound), P2 kept (nose ≤ 1.1°), lane v_min 40.1–80.6 m/s, member 0x12 0, avoidable 0, launches 3/3. The 30 km fallback sphere encloses Λ's d_end point:
+  listed, neither shifted nor detoured; the engine's parts are 12 km off Λ (no warn).
+* `lane_station` stays parked: **no feasible shift** under §12.3's rules. The four 300 m parts on Λ need 929 m of clearance (w 579 + 300 + 50); a 15° ramp
+  tangent to the last part's clearance circle reaches 0 at s = −3,299 m against the blend's start at −5,432 m (−3,432 m even with the blend zone given up),
+  133 m short at the 50 m margin; at margin 0 it is 60 m inside. `X3M_C_PROFSHIFT=1` builds no shift there.
+* `lane_belt` stays parked: with the shift on (`X3M_C_PROFSHIFT=1`) the profile shifts −U 898–932 m at the 50 m margin (four knots, ramps at tan 15°,
+  0 from −5,432 m on) and **regresses** the cast: at tf 1 a member passes a rock at the 50 m margin and touches it (3 of 3), under SETA site E's suppression
+  of the profiled rocks fails closed (`pass_not_fresh`, and `pass_not_resolved` for escorts on 0x14 before the skip covered them), the members fly the
+  engine's 0x12 (2–6 per run in round_b/shift_lane_belt.txt) and meet each other (to −879 m). With the sphere detour (the shift off) the cast stays at 71b1536d's 1 of 9.
+* Cost **[m]**: one build of 64 bodies with the shift 5.6 µs host (the unit), 0.2–2.8 µs mean per build in the casts (max 17.6 µs, one host hitch);
+  `lane_lat_at` 1.1 ns without a profile, 3.0–5.4 ns with a four-knot one (host, 2 × 10⁶ calls). bench24 tf 10 (no statics): mean 130.7–139.9 µs,
+  third-worst 497–689 µs over three runs against 71b1536d's 130.2 µs / 673 µs (one run; within the run-to-run spread).
+
+**Item 3, the key off.** Unchanged by construction; the control line above is byte-identical to the base's. The fixture runs no key-off control for an
+engine cast (`su.eng`), as before.
+
+**Acceptance [m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 3,634 / 0, full 10,979 / 0, `--capital` 5,357 / 0;
+`test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 21 tests OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (999
+reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Evidence: [`round_b/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_b/run.sh)
+→ `lane.txt`, `<cast>.txt` (un-parked), `parked_<cast>.txt`, `shift_<cast>.txt`; `summary.py` → `summary.txt`.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1536,6 +1584,12 @@ arrival test still fires at 0.75 r from A. Small arrivals keep the upper fan and
 **Open.** The 20–100 m margins at the arc's edge are formula values; the fixture measures the closest approach per hull pair. The
 alternative of writing A itself to the side (below, 12.6) stays in reserve if the edge margins fail for Titan-wide capitals.
 
+**Implemented (round B, 2026-10-15; §11 "Round B").** The side lead-in, D.5's edge and the hold, with deviations each measured in the fixture: the
+lead-in starts with any lane member and keeps its side, ends 0.68 r beside A at one of four U levels; D.5 tests the ship's lateral path (200 m margin,
+the hull's front and unreleased lane members counted) and keeps B on the ship's side; the hold holds the ship where it is at 1 m/s (not the paced
+10 m/s) while a counted capital's warn zone covers X_s or its order-5 path is taken, nose along the line, no sphere detour against the lane's capitals,
+released in gaps and staggered, 60 s + the step per approach. `small_gate` / `small_gate_m6` 9 of 9 each.
+
 ### 12.3 Class 3: a station, a fallback body and a rock belt on Λ (`lane_station`, `lane_fallback`, `lane_belt`)
 
 **Mechanism [m]** (§10.14 Q1; ship-steering-and-avoidance.md §3.3–3.5). The engine warns a member against a station through the part
@@ -1585,6 +1639,13 @@ record) sits on the shifted line: the engine's warn → a 0x12, not a contact. A
 **Open.** Why the part walk fails for Mayhem's hollow bases (> 64 parts, or an unresolved root: audit row 19): a part census of those
 bases (the module's part-cache rows on a flight, or a static read of their scenes) decides whether raising the cap (64 → 256: ≤ 8 µs per
 candidate pair in the narrow phase) removes the fallback case altogether, which is the better fix than any rule above.
+
+**Implemented (round B, 2026-10-15; §11 "Round B"), the shift off.** The profile (one plateau, two ramps at tan 15° tangent to the clearance circles,
+−U first, +U refused within 6 km, 0 from the blend's start, the margin lowered from 50 m to 0 when the ramps do not fit, 1 Hz on the frame boundary,
+5.6 µs host for 64 bodies), the avoidance seam (`av::Self::skip_static`: no detour against a listed body, the cleared ones entered in the resolved set)
+and the enclosing-fallback rule are in; the shift itself is off (`gc::kLaneProfShiftOn`): `lane_station` has no feasible shift under these rules
+(133 m short of the blend), and with it `lane_belt` regressed (site E fails closed on SETA frames for the profiled rocks, the members' 0x12 meet;
+a rock touched at the 50 m margin at tf 1). `lane_fallback` 9 of 9 on the enclosing-fallback rule; `lane_station` and `lane_belt` stay parked.
 
 ### 12.4 Class 4: the flown 0x12 (`x12_near`, `x12_far`)
 

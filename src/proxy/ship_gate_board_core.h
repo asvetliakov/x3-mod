@@ -234,6 +234,19 @@ struct Member {
     std::uint8_t sb_wk = 0;
     Sample s[kSamples];
 };
+// Convoy-gate-transit.md section 12.3 (round B): the lane's lateral profile for statics on Lambda, delta(s) (R, U; m) added to Lambda's
+// lateral by lane_lat_at: piecewise linear over n knots (s ascending, delta 0 at the first and the last), 0 outside them and with n = 0;
+// built at 1 Hz of game time from the module's static snapshot (lane_profile_build, ship_gate_geometry_core.h). body[]: the statics a
+// lane member on Lambda does not detour around (the profile clears them, or a fallback sphere enclosing the lane: the engine's warn).
+constexpr unsigned kLaneProfKnots = 4, kLaneProfBodies = 16;
+struct LaneProfile {
+    std::uint8_t n = 0, nb = 0, ne = 0, overflow = 0; // ne: body[0, ne) are enclosing fallbacks, body[ne, nb) the bodies the shift clears
+    float s[kLaneProfKnots] = {};
+    float d[kLaneProfKnots][2] = {};
+    std::uint32_t body[kLaneProfBodies] = {};
+    float clear_m = 0.0f;           // the profile's clearance beyond w_max + r_body (m; the margin it could keep, kMarginM at best)
+    std::uint32_t built_ms = 0, bodies = 0; // the last build (game ms) and the bodies it scanned
+};
 struct Gate {
     std::uint32_t gate = 0, stamp_ms = 0;
     std::uint16_t type = 0xffff; // [gate+0x4a]: the TGates row (no collision mesh: 0..3, 5..14; Terran ring: 21..24)
@@ -266,6 +279,7 @@ struct Gate {
     float lane_c[2] = {0, 0};
     std::uint32_t lane_ord[kMembers] = {};
     unsigned lane_n = 0, lane_merges = 0, lane_stops = 0;
+    LaneProfile prof; // section 12.3 (round B)
 };
 struct Board {
     std::uint8_t lane = 0; // ship_steering_gates_lane (convoy-gate-transit.md stage 1): every gate acquired runs lane_frame (0: none)

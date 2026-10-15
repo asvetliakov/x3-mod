@@ -179,7 +179,20 @@ struct Self {
     const PartSet* dock_set = nullptr; // a carrier's hull parts (ship obstacles carry no part index); stations: the snapshot's model
     float dock_omega[3] = {0, 0, 0};   // the carrier's angular velocity (rad/s, world): its parts move at v + omega x (c - centre)
     bool dock_cap_P = false;           // order 4: the target's parts count only up to the order's point (the ship stops there)
+    // Convoy-gate-transit.md section 12.3 (round B): for a lane member, the statics its gate's lateral profile owns (gc::LaneProfile::body):
+    // no sphere detour against them. The first n_skip_enclose are fallback spheres enclosing the lane (left to the engine's warn: never
+    // resolved); the rest, the bodies the profile's shift clears (every lane member: a joiner flies to the shifted line), enter the
+    // resolved set as a detour's would (site E suppresses the engine's warn against them: the lane's shifted line is their resolution).
+    const std::uint32_t* skip_static = nullptr;
+    unsigned n_skip_static = 0, n_skip_enclose = 0;
 };
+// Section 12.3: whether a static obstacle is one the lane's profile owns for this ship.
+__attribute__((always_inline)) inline bool lane_skipped(const Self& s, const Obstacle& o) noexcept {
+    if (o.kind != std::uint8_t(Kind::station) && o.kind != std::uint8_t(Kind::asteroid)) return false;
+    for (unsigned i = 0; i < s.n_skip_static; ++i)
+        if (s.skip_static[i] == o.ptr) return true;
+    return false;
+}
 // The controller's exclusion for one obstacle: a capital-coded ship among the clear member partners (pointer and id).
 __attribute__((always_inline)) inline bool ctl_excluded(const Self& s, const Obstacle& o) noexcept {
     if (!s.n_ctl || o.kind != std::uint8_t(Kind::ship) || o.size != 1) return false;
@@ -239,6 +252,7 @@ struct Result {
     unsigned excluded_members = 0;   // formation members excluded through the membership memory alone (amendment 15)
     unsigned ctl_excluded = 0; // gate traffic controller: member pairs with a clear verdict dropped (the controller owns them)
     unsigned dock_kept = 0;    // amendment 18: the order's container kept as a part obstacle (0 or 1)
+    unsigned lane_skipped = 0; // convoy-gate-transit.md section 12.3: statics the lane's lateral profile clears, dropped for a lane member
     std::uint32_t obstacle = 0;
     std::uint32_t obstacle_leader = 0; // the obstacle's f+0x224 and f+0x258 (ships), for the detour row (amendment 11)
     std::uint16_t obstacle_order = 0;
@@ -1021,6 +1035,8 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     res.P[2] = P[2];
     state.unresolved = false;
     state.n_resolved = 0;
+    for (unsigned i = s.n_skip_enclose; i < s.n_skip_static; ++i) // section 12.3: the bodies the lane's profile clears (resolved by it)
+        if (state.n_resolved < kMaxResolved) state.resolved[state.n_resolved++] = s.skip_static[i];
     state.v_emergency = 0.0f;
     state.obstacle = 0;
     state.stamp_ms = now_ms;
@@ -1061,6 +1077,10 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
         }
         if (s.n_ctl && ctl_excluded(s, o)) { // the gate traffic controller owns the pair (D.1)
             ++res.ctl_excluded;
+            continue;
+        }
+        if (s.n_skip_static && lane_skipped(s, o)) { // the lane's lateral profile owns the body (section 12.3)
+            ++res.lane_skipped;
             continue;
         }
         float dx[3];

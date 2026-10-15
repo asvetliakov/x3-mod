@@ -308,7 +308,10 @@ struct Model {
     float sb_x_written[3]; // ... and the position sb_steer decided it from (m) ...
     bool sb_v_fresh;       // ... written by this frame's steer call (think ticks are up to 50 ms apart: the write stands until the next)
     double lane_force_ms;  // lane stage 1 (scenario C): the DLL's lane site-B write after the clamp (gc::lane_site_b; < 0 none)
+    double sm_cap;         // convoy-gate-transit.md section 12.2 (round B): a small ship's hold cap this decision (m/s; < 0 none; the DLL's gs->small_cap)
+    const gc::Gate* sm_hold_gate; // ... and its gate while its previous decision held (the DLL's avoid_adjust: the lane's capitals not avoided)
     unsigned ctl_capped, ctl_excluded;
+    unsigned prof_skip, prof_det; // section 12.3: statics left to the lane profile; detours against a body the profile listed (lane members)
     core::GateGeometry gate_geo;
     float last_aim_P[3], gate_G[3], gate_rows[3][3], gate_r;
     // section 13: order 5 to a port (the engine's port-roll match after the leaf, 0x0045474a..0x004547d6), the port's roll
@@ -404,7 +407,10 @@ struct Model {
         sb_x_written[0] = sb_x_written[1] = sb_x_written[2] = 0.0f;
         sb_v_fresh = false;
         lane_force_ms = -1.0;
+        sm_cap = -1.0;
+        sm_hold_gate = nullptr;
         ctl_capped = ctl_excluded = 0;
+        prof_skip = prof_det = 0;
         gate_geo = core::GateGeometry{};
         last_aim_P[0] = last_aim_P[1] = last_aim_P[2] = 0;
         gate_G[0] = gate_G[1] = gate_G[2] = 0;
@@ -474,6 +480,8 @@ struct Model {
         }
         self.L_leader = L_leader_m;
         std::uint32_t ctl_p[gc::kMembers], ctl_i[gc::kMembers];
+        const std::uint32_t* prof_list = nullptr;
+        unsigned prof_list_n = 0;
         if (ctl && capital) { // the DLL's avoid_adjust: the member partners with a clear verdict (<= kExcludeMaxAgeMs) are not obstacles
             int mi = -1;
             const gc::Gate* cg = gc::locate(*ctl, ptr, &mi);
@@ -486,10 +494,33 @@ struct Model {
                     }
             self.ctl_ptr = ctl_p;
             self.ctl_id = ctl_i;
+            // the DLL's avoid_adjust (section 12.3): a lane member leaves the statics its gate's profile owns to the profile
+            if (cg && cg->m[mi].id == native_id() && cg->lane && cg->m[mi].ln) {
+                prof_list = cg->prof.body;
+                prof_list_n = cg->prof.nb;
+                if (cg->prof.nb) { // (the enclosing fallbacks for every lane member, the cleared bodies on Lambda)
+                    self.skip_static = cg->prof.body;
+                    self.n_skip_static = cg->prof.nb;
+                    self.n_skip_enclose = cg->prof.ne;
+                }
+            }
+        } else if (!capital && sm_hold_gate) { // the DLL's avoid_adjust (section 12.2): a held small ship does not detour around the lane's capitals
+            for (unsigned j = 0; j < sm_hold_gate->n; ++j)
+                if (sm_hold_gate->m[j].ship && sm_hold_gate->m[j].ln &&
+                    (sm_hold_gate->m[j].role == gc::Role::committed || sm_hold_gate->m[j].role == gc::Role::escort)) {
+                    ctl_p[self.n_ctl] = sm_hold_gate->m[j].ship;
+                    ctl_i[self.n_ctl] = sm_hold_gate->m[j].id;
+                    ++self.n_ctl;
+                }
+            self.ctl_ptr = ctl_p;
+            self.ctl_id = ctl_i;
         }
         astate.obj = ptr;
         last_av = av::resolve(*snap, parts, n_parts, self, Pm, astate, std::uint32_t(t_ms));
         ctl_excluded += last_av.ctl_excluded;
+        prof_skip += last_av.lane_skipped; // (section 12.3: the statics left to the lane profile; a detour against one of its bodies counted)
+        for (unsigned i = 0; i < prof_list_n && last_av.adjusted; ++i)
+            if (prof_list[i] == last_av.obstacle) ++prof_det;
         if (last_av.unresolved) ++unresolved;
         excluded_followers += last_av.excluded_followers;
         skipped_small += last_av.skipped_small;
@@ -646,8 +677,10 @@ struct Model {
             if (in.d_order < 0 && cap_join) {
                 if (capital)
                     in_window = core::gate_lead_in_capital(gate_geo, in.x, in.v, std::fmin(dyn.W[0], dyn.W[1]), lead, &s_line);
-                else
+                else {
                     in_window = core::gate_lead_in(gate_geo, in.x, in.v, core::slower_axis_alpha(dyn), lead, &s_line); // the carrot by the nose's lag (amendment 14)
+                    if (in_window && sm_cap >= 0.0) gc::small_hold_carrot(gate_geo, in.x, lead); // (the DLL: section 12.2's hold)
+                }
             }
             if (in_window) {
                 for (int i = 0; i < 3; ++i) in.P[i] = lead[i];
@@ -724,6 +757,9 @@ struct Model {
             for (int i = 0; i < 3; ++i) sb_x_written[i] = in.x[i];
             sb_v_fresh = true;
         }
+        // the DLL's decide(): section 12.2's small-ship hold lowers the small-ship clamp's speed (order 4's gate write, order 5's)
+        if (!capital && sm_cap >= 0.0 && (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) && float(sm_cap) < s->v_ref)
+            s->v_ref = float(sm_cap);
         last_steer_order = order;
         // amendment 14: the formation law's |N| rides in the cornering slot (no ramp: site B returns it floored); the closing-speed
         // correction applies to the ramp/cornering schedule only (not on the gate approach, whose speed is the cap)
@@ -7862,10 +7898,18 @@ struct CResult {
     double x12_turn_max = 0, x12_dur_max_s = 0, x12_out_max_m = 0, x12_remerge_max_s = 0, x12_small_s = 0;
     // item C: lane members on order 4 before d_end - 500 m: the lowest speed, the longest time any spent at or below 15 m/s (s)
     double lane_v_min = 1e18, lane_slow_s_max = 0;
+    // section 12.3 (round B): the lane profile's builds, those with a shift, the largest shift (m), the margin kept (m, the lowest of the
+    // shifted builds), the longest build (us, host), every build's time summed; the members' module detours against a body the profile
+    // listed (none expected) and the statics their avoidance left to the profile
+    unsigned prof_builds = 0, prof_shifted = 0, prof_det = 0, prof_skipped = 0;
+    double prof_max_m = 0, prof_clear_min = 1e18, prof_us_max = 0, prof_us_sum = 0;
     // item D: the small ships (count, launched, D.5 mirrors), their engine warns against other ships and those site E left (stops), the
     // members' warns against a small ship and their 0x12 (E left them)
     unsigned sm_n = 0, sm_launched = 0, sm_mirrored = 0, sm_warns = 0, sm_stops = 0, mem_sm_warns = 0, mem_sm_x12 = 0;
-    unsigned sm_bv[8] = {}; // gc::SmallB verdicts on the small ships' order-5 frames (no_funnel, near, not_arc, clear, mirrored, both_taken)
+    unsigned sm_bv[8] = {}; // gc::SmallB verdicts on the small ships' order-5 frames (no_funnel, near, not_arc, clear, mirrored, both_taken,
+                            // edge, hold: section 12.2)
+    unsigned sm_side = 0, sm_held = 0; // section 12.2: order-4 frames on the side lead-in; small ships held (any frame under the hold cap)
+    double sm_hold_s_max = 0;          // ... the longest held time of one small ship (s)
     // item E: arrivals launched, those resting at P (0x1e ended on its first frame), the 0x1e exit speed (m/s), the closest a departing
     // hull on order 8 came to a parked arrival (capsule, m), a departing hull on 4 / 0 / 0x1f / 5 to it, two arrivals to each other
     unsigned arr_n = 0, arr_rest = 0, arr_dep8_close = 0, arr_overlap = 0;
@@ -8339,6 +8383,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
     for (X12& x : x12) x = X12{};
     Lcg x12_rng{seed * 2654435761u + 4242u};
     static double sm_B[kCMax][3], arr_P[kCMax][3];
+    static double sm_X0[kCMax][3], sm_sp[kCMax][3]; // (section 12.2: a small ship's lead-in origin X without the spread, and the spread)
+    static gc::SmallHold sm_hold[kCMax];
+    static long sm_hold_ms[kCMax];
+    static std::int8_t sm_latch[kCMax];
+    static bool sm_was[kCMax]; // (the trace's hold state)
     static long sm_o4_at[kCMax], arr_try[kCMax], slow_ms[kCMax];
     static bool sm_bw_ok[kCMax], forced_done;
     forced_done = false;
@@ -8346,6 +8395,10 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         sm_o4_at[k] = arr_try[k] = -1;
         slow_ms[k] = 0;
         sm_bw_ok[k] = false;
+        sm_hold[k] = gc::SmallHold{};
+        sm_hold_ms[k] = 0;
+        sm_latch[k] = 0;
+        sm_was[k] = false;
     }
     static std::vector<TrackPt> track[kCMax]; // lane fix round 2 item 1: the flown path of each ship (the oracle below)
     for (auto& tv : track) tv.clear();
@@ -8585,8 +8638,13 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         if (m.gate_mode) {
             float off[3];
             core::gate_spread_offset(core::gate_spread_index(c.obj), core::kGateSpreadR * m.gate_geo.r, row0, row1, off);
-            for (int i = 0; i < 3; ++i) m.gate_geo.X[i] += off[i];
+            for (int i = 0; i < 3; ++i) {
+                sm_X0[k][i] = double(m.gate_geo.X[i]);
+                sm_sp[k][i] = double(off[i]);
+                m.gate_geo.X[i] += off[i];
+            }
         }
+        // (sm_hold / sm_latch: per approach, as the DLL's GateState: a re-issued order 4 after a 0x12 keeps them)
         m.capital_gate_leg = false;
         m.gate_ptr = kLaneGate;
         m.leader_ptr = 0;
@@ -8996,6 +9054,40 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             }
             if (c.phase >= 41 && c.phase <= 45) { // item D: a small ship's gate legs (run_gate's sequence; the D.5 mirror at site A)
                 if (c.phase == 41) { // order 4: the leaf every frame, the arrival test and the speed law at the think tick (section 10.3)
+                    // the DLL's gate_decide (section 12.2, round B): the side lead-in while the lane gate's funnel is active (else the
+                    // spread), and the hold when even the free side's arc edge is taken
+                    m.sm_cap = -1.0;
+                    m.sm_hold_gate = sm_hold[k].active ? gc::gate_of(board, kLaneGate) : nullptr; // (the previous decision's, as the DLL)
+                    if (m.gate_mode) {
+                        float soff[3], side = 0.0f;
+                        const gc::Gate* sg = gc::gate_of(board, kLaneGate);
+                        const bool sl = sg && gc::small_side_lead(*sg, float(m.pos[0] / 500.0), core::gate_spread_index(c.obj), &sm_latch[k], soff, &side);
+                        for (int i = 0; i < 3; ++i) m.gate_geo.X[i] = float(sm_X0[k][i] + (sl ? double(soff[i]) : sm_sp[k][i]));
+                        if (sl) {
+                            ++res.sm_side;
+                            const double dg = norm3d(m.pos) / 500.0, v_eta = std::fmax(double(m.speed), double(m.vmax)) / 500.0;
+                            const double dv = std::fmax(0.0, double(m.vmax - m.speed)) / 500.0, acc = double(m.accel) / 500.0;
+                            const double d_eta = dg + (acc > 0.1 ? dv * dv / (2.0 * acc) : 0.0);
+                            double d_along = 0.0;
+                            for (int i = 0; i < 3; ++i) d_along += (c.A[i] - m.pos[i]) / 500.0 * double(m.gate_geo.h[i]);
+                            std::uint32_t t_l = 0;
+                            const float xl4[2] = {float(m.pos[0] / 500.0), float(m.pos[1] / 500.0)};
+                            const bool hold = (sm_hold[k].active || (d_along > double(gc::kSmallParkBackM) && d_along < double(gc::kSmallHoldRangeR) * kGateRM)) &&
+                                              gc::small_zone_hold(*sg, now, side, xl4, float(d_eta), float(v_eta), float(su.s[k].t->r_m), &t_l);
+                            m.sm_cap = gc::small_hold_cap(sm_hold[k], *sg, now, hold, t_l, core::gate_spread_index(c.obj));
+                        }
+                    }
+                    if (m.sm_cap >= 0.0) sm_hold_ms[k] += dt;
+                    if (std::getenv("X3M_C_TRACE") && (m.sm_cap >= 0.0) != sm_was[k]) {
+                        sm_was[k] = m.sm_cap >= 0.0;
+                        std::printf("  tc %s smhold t=%.1f ship %u ph %d %s pos %.0f,%.0f,%.0f v %.0f total %.1f\n", su.tag, double(now_ms) / 1000.0, k, c.phase,
+                                    sm_was[k] ? "on" : "off", m.pos[0] / 500.0, m.pos[1] / 500.0, m.pos[2] / 500.0, double(m.speed) / 500.0,
+                                    double(sm_hold_ms[k]) / 1000.0);
+                    }
+                    if (std::getenv("X3M_C_TRACE") && now_ms / 2000 != (now_ms - dt) / 2000)
+                        std::printf("  tc %s sm4 t=%.1f ship %u pos %.0f,%.0f,%.0f v %.0f cap %.0f latch %d X %.0f,%.0f\n", su.tag, double(now_ms) / 1000.0, k,
+                                    m.pos[0] / 500.0, m.pos[1] / 500.0, m.pos[2] / 500.0, double(m.speed) / 500.0, m.sm_cap, int(sm_latch[k]),
+                                    double(m.gate_geo.X[0]), double(m.gate_geo.X[1]));
                     m.steer_call(c.obj, true, 0);
                     if (m.t_ms >= m.next_think) {
                         m.next_think = m.t_ms + m.rng.next() * 50 / 32768;
@@ -9026,7 +9118,9 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 } else if (c.phase == 43) {
                     // site A (the DLL's small_b_decide on order 5): B mirrored into the free half of the lower arc while a capital is in the
                     // funnel and would pass first (D.5); once written the field is ours
-                    if (lane && !sm_bw_ok[k]) {
+                    m.sm_cap = -1.0;
+                    m.sm_hold_gate = sm_hold[k].active ? gc::gate_of(board, kLaneGate) : nullptr;
+                    if (lane) {
                         if (gc::Gate* g = ctl_gate(board, now, su.gate_type, kGateRM)) {
                             float bl[3], o[3];
                             double db[3];
@@ -9034,16 +9128,35 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                                 bl[i] = float(sm_B[k][i] / 500.0);
                                 db[i] = sm_B[k][i] - m.pos[i];
                             }
-                            const gc::SmallB bv = gc::small_b_decide(*g, now, bl, float(norm3d(db) / 500.0), float(double(m.speed) / 500.0),
-                                                                     float(su.s[k].t->r_m), o);
-                            ++res.sm_bv[unsigned(bv) < 8u ? unsigned(bv) : 7u];
-                            if (bv == gc::SmallB::mirrored) {
+                            std::uint32_t t_l = 0;
+                            float f_in = 1.0f;
+                            const float xl[2] = {float(m.pos[0] / 500.0), float(m.pos[1] / 500.0)}, d_b = float(norm3d(db) / 500.0),
+                                        vs = float(std::fmax(double(m.speed), double(m.vmax)) / 500.0), rs = float(su.s[k].t->r_m);
+                            // (section 12.2: the edge is written as the mirror is; the hold paces the ship through the small-ship clamp;
+                            // after the write the remaining path is re-tested on every decision)
+                            const bool ours = sm_bw_ok[k];
+                            const gc::SmallB bv = ours ? gc::SmallB::count : gc::small_b_decide(*g, now, bl, d_b, vs, rs, xl, sm_latch[k], o, &t_l, &f_in);
+                            if (!ours) ++res.sm_bv[unsigned(bv) < 8u ? unsigned(bv) : 7u];
+                            const bool hold = ours ? gc::small_path_hold(*g, now, xl, bl, d_b, vs, rs, &t_l, &f_in) : bv == gc::SmallB::hold;
+                            m.sm_cap = gc::small_hold_cap(sm_hold[k], *g, now, hold, t_l, core::gate_spread_index(c.obj));
+                            if (bv == gc::SmallB::mirrored || bv == gc::SmallB::edge || bv == gc::SmallB::hold) {
                                 for (int i = 0; i < 3; ++i) sm_B[k][i] = double(core::round_to_int(o[i] * core::kUnitsPerMetre));
                                 sm_bw_ok[k] = true;
                                 ++res.sm_mirrored;
                             }
                         }
                     }
+                    if (m.sm_cap >= 0.0) sm_hold_ms[k] += dt;
+                    if (std::getenv("X3M_C_TRACE") && (m.sm_cap >= 0.0) != sm_was[k]) {
+                        sm_was[k] = m.sm_cap >= 0.0;
+                        std::printf("  tc %s smhold t=%.1f ship %u ph %d %s pos %.0f,%.0f,%.0f v %.0f total %.1f\n", su.tag, double(now_ms) / 1000.0, k, c.phase,
+                                    sm_was[k] ? "on" : "off", m.pos[0] / 500.0, m.pos[1] / 500.0, m.pos[2] / 500.0, double(m.speed) / 500.0,
+                                    double(sm_hold_ms[k]) / 1000.0);
+                    }
+                    if (std::getenv("X3M_C_TRACE") && now_ms / 2000 != (now_ms - dt) / 2000)
+                        std::printf("  tc %s sm5 t=%.1f ship %u pos %.0f,%.0f,%.0f v %.0f cap %.0f B %.0f,%.0f ours %d\n", su.tag, double(now_ms) / 1000.0, k,
+                                    m.pos[0] / 500.0, m.pos[1] / 500.0, m.pos[2] / 500.0, double(m.speed) / 500.0, m.sm_cap, sm_B[k][0] / 500.0,
+                                    sm_B[k][1] / 500.0, int(sm_bw_ok[k]));
                     for (int i = 0; i < 3; ++i) m.P[i] = sm_B[k][i];
                     m.steer_call(c.obj, false, 0);
                     double db[3], cc = 0;
@@ -9497,6 +9610,28 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
 #endif
         for (gc::Gate& g : board.g) {
             if (!g.gate) continue;
+            if (g.lane && (!g.prof.built_ms || now_end - g.prof.built_ms >= gc::kLaneProfPeriodMs)) {
+                // the DLL's lane_profile_gate (section 12.3): the profile from the module's snapshot once per game second
+                const auto tp0 = std::chrono::steady_clock::now();
+                gc::LaneBody bodies[gc::kLaneProfScan];
+                bool overflow = false;
+                const unsigned nb = gc::lane_bodies(g, w.snap, w.parts, w.n_parts, bodies, gc::kLaneProfScan, &overflow);
+                static const bool shift = std::getenv("X3M_C_PROFSHIFT") != nullptr; // (the shift: off in round B, on for its measurement)
+                gc::lane_profile_build(g, bodies, nb, overflow, now_end, shift || gc::kLaneProfShiftOn);
+                const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - tp0).count();
+                ++res.prof_builds;
+                res.prof_us_max = std::fmax(res.prof_us_max, us);
+                res.prof_us_sum += us;
+                if (g.prof.n) {
+                    ++res.prof_shifted;
+                    res.prof_max_m = std::fmax(res.prof_max_m, std::hypot(double(g.prof.d[1][0]), double(g.prof.d[1][1])));
+                    res.prof_clear_min = std::fmin(res.prof_clear_min, double(g.prof.clear_m));
+                }
+                if (std::getenv("X3M_C_TRACE") && (g.prof.n || g.prof.nb) && res.prof_builds % 30 == 1)
+                    std::printf("  tc %s prof t=%.1f bodies %u n %u nb %u knots %.0f/%.0f/%.0f/%.0f d %.0f,%.0f clear %.0f\n", su.tag, double(now_end) / 1000.0,
+                                nb, unsigned(g.prof.n), unsigned(g.prof.nb), double(g.prof.s[0]), double(g.prof.s[1]), double(g.prof.s[2]), double(g.prof.s[3]),
+                                double(g.prof.d[1][0]), double(g.prof.d[1][1]), double(g.prof.clear_m));
+            }
             if (g.lane) {
                 gc::LaneStats ls;
                 gc::lane_frame(g, now_end, &ls);
@@ -9767,7 +9902,13 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                         in.b_is_a_leader = c.m.leader_ptr == Y.ptr;
                         in.b_resolved = c.m.order != core::kOrderAvoid &&
                                         av::suppressed(c.m.astate, c.m.ptr, Y.ptr, now_end, av::fresh_window_ms(av::kResolvedAgeMs, std::uint32_t(dt)));
-                        if (!av::e_suppresses(av::site_e_verdict(in))) sm_unsup = true;
+                        if (!av::e_suppresses(av::site_e_verdict(in))) {
+                            if (!sm_unsup && !e.obst_ep && std::getenv("X3M_C_TRACE"))
+                                std::printf("  tc %s smwarn t=%.1f ship %u (ph %d o 0x%x %.0f,%.0f,%.0f nose %.2f,%.2f,%.2f) vs %u (o 0x%x %.0f,%.0f,%.0f)\n", su.tag,
+                                            double(now_ms) / 1000.0, k, c.phase, c.m.order, c.m.pos[0] / 500.0, c.m.pos[1] / 500.0, c.m.pos[2] / 500.0,
+                                            c.m.row[2][0], c.m.row[2][1], c.m.row[2][2], q, Y.order, Y.pos[0] / 500.0, Y.pos[1] / 500.0, Y.pos[2] / 500.0);
+                            sm_unsup = true;
+                        }
                     }
                     if (sm_unsup && !e.obst_ep) {
                         ++res.sm_stops;
@@ -10114,9 +10255,11 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                     if (dep(a) && dep(b)) res.mem_capsule = std::fmin(res.mem_capsule, gap);
                     if (!A.m.capital || !B.m.capital) {
                         if (gap < 0.0 && res.sm_capsule >= 0.0 && std::getenv("X3M_C_TRACE"))
-                            std::printf("  tc %s smcontact t=%.1f %u(ph %d o 0x%x v %.0f) vs %u(ph %d o 0x%x v %.0f) gap %.0f z %.0f/%.0f\n", su.tag, double(now_ms) / 1000.0, a,
-                                        A.phase, A.m.order, double(A.m.speed) / 500.0, b, B.phase, B.m.order, double(B.m.speed) / 500.0, gap, A.m.pos[2] / 500.0,
-                                        B.m.pos[2] / 500.0);
+                            std::printf("  tc %s smcontact t=%.1f %u(ph %d o 0x%x v %.0f) vs %u(ph %d o 0x%x v %.0f) gap %.0f at %.0f,%.0f,%.0f nose %.2f,%.2f,%.2f / "
+                                        "%.0f,%.0f,%.0f nose %.2f,%.2f,%.2f\n", su.tag, double(now_ms) / 1000.0, a, A.phase, A.m.order, double(A.m.speed) / 500.0, b,
+                                        B.phase, B.m.order, double(B.m.speed) / 500.0, gap, A.m.pos[0] / 500.0, A.m.pos[1] / 500.0, A.m.pos[2] / 500.0,
+                                        A.m.row[2][0], A.m.row[2][1], A.m.row[2][2], B.m.pos[0] / 500.0, B.m.pos[1] / 500.0, B.m.pos[2] / 500.0, B.m.row[2][0],
+                                        B.m.row[2][1], B.m.row[2][2]);
                         res.sm_capsule = std::fmin(res.sm_capsule, gap);
                     }
                     const bool aa = su.s[a].kind == kArrive && A.phase >= 51, ab = su.s[b].kind == kArrive && B.phase >= 51;
@@ -10409,6 +10552,15 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         res.span_ok = su.span_form == 0 || res.span_s <= res.bound_s;
     } else
         res.span_ok = su.span_form == 0 && nl == res.departures;
+    for (unsigned k = 0; k < su.n; ++k) {
+        res.prof_skipped += ships[k].m.prof_skip;
+        res.prof_det += ships[k].m.prof_det;
+    }
+    for (unsigned k = 0; k < su.n; ++k)
+        if (sm_hold_ms[k] > 0) {
+            ++res.sm_held;
+            res.sm_hold_s_max = std::fmax(res.sm_hold_s_max, double(sm_hold_ms[k]) / 1000.0);
+        }
     return res;
 }
 // The casts (gate frame, m; Lambda lies about 830 m below the axis): Run169's M2 1092 + M1 1022 + M2 1092 and M1 + M7 760 + M7 778.
@@ -10636,22 +10788,25 @@ static const CSetup kCSetups[] = {
     // member 0x12 (the follower's pair uncertified while the re-issued ship rejoins ahead of it, flown: a second eviction)
     // PARKED: {"x12_far", kX12Far, 2, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 0, 6950.0},
     // PARKED (item C, a station on Lambda 8 km out): the module's sphere detour; the span exceeded in 2 of 9 runs (to 759.6 s); at tf 10 a
-    // member 0x12 cascade (8 flown, capitals in contact -918 m, P2 nose 165.8 deg); lane v_min 2-71.8 m/s
+    // member 0x12 cascade (8 flown, capitals in contact -918 m, P2 nose 165.8 deg); lane v_min 2-71.8 m/s. Round B (section 12.3): no
+    // feasible lateral profile (the 929 m clearance cannot ramp back at 15 deg before the blend: X3M_C_PROFSHIFT=1 builds no shift)
     // PARKED: {"lane_station", kFormed, 3, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 5, -1, -1, -1, 0, 0, false, 2},
-    // PARKED (item C, the 30 km fallback body enclosing Lambda): no brake (lane v_min 70-73 m/s) but the module's fallback-sphere detour carries
-    // the members up to ~5 km off Lambda: P2 not kept (19.7-31.3 deg) in every run, the span exceeded in 9 of 9, two runs at tf 1 never
-    // launch the M1 (order 5 past the plane outside its trigger, 2.1 km behind the gate at 10 m/s, its follower held at d_end)
-    // PARKED: {"lane_fallback", kFormed, 3, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 6, -1, -1, -1, 0, 0, false, 2},
+    // (item C, the 30 km fallback body enclosing Lambda; parked until round B: the module's fallback-sphere detour carried the members up to
+    // ~5 km off Lambda, P2 not kept 19.7-31.3 deg, the span exceeded in 9 of 9, two runs at tf 1 never launching the M1; section 12.3's
+    // enclosing-fallback rule: neither detoured nor shifted, the engine's warn the backstop)
+    {"lane_fallback", kFormed, 3, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 6, -1, -1, -1, 0, 0, false, 2},
     // PARKED (item C, a rock belt across the column 10 km out): one run of 9 over the span (tf 6, 245.8 s; a member at 2 m/s on Lambda);
-    // no contact, P2 kept 0.3-2.3 deg
+    // no contact, P2 kept 0.3-2.3 deg. Round B (section 12.3): the lateral profile (X3M_C_PROFSHIFT=1: -U 898-932 m at the 50 m margin)
+    // regresses it (site E's suppression of the profiled rocks fails closed on SETA frames, the members' 0x12 meet each other; a rock
+    // touched at tf 1): the shift is off (gc::kLaneProfShiftOn)
     // PARKED: {"lane_belt", kFormed, 3, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 7, -1, -1, -1, 0, 0, false, 2},
-    // PARKED (item D, two TS escorts + a TS trader): no member 0x12, the members' span kept; small ships in contact in 4 of 9 runs (to
-    // -506 m: a TS on its order-5 lower-arc leg against a capital on order 5, and a TS 0x12 into the M1); D.5 never mirrors (both sides
-    // taken or clear: the lane's final at l_c lies within w + r + 50 m of the lower arc's middle)
-    // PARKED: {"small_gate", kSmallGate, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
-    // PARKED (item D with an M6 escort): as small_gate (contacts in 4 of 9 runs, to -501 m); the members' warns against the M6 (663-18,282
-    // frames per run) all suppressed by site E's small-ship row, 0 member 0x12
-    // PARKED: {"small_gate_m6", kSmallGateM6, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
+    // (item D, two TS escorts + a TS trader; parked until round B with small ships in contact in 4 of 9 runs, to -506 m: a TS on its
+    // order-5 lower-arc leg against a capital on order 5, a TS 0x12 into the M1, D.5 never mirroring; convoy-gate-transit.md section 12.2:
+    // the side lead-in, D.5's edge and the hold; section 11 "Round B")
+    {"small_gate", kSmallGate, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
+    // (item D with an M6 escort: as small_gate, parked until round B with contacts in 4 of 9 runs, to -501 m; the members' warns against
+    // the M6 all suppressed by site E's small-ship row, 0 member 0x12)
+    {"small_gate_m6", kSmallGateM6, 6, 1, -1, false, 1000, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 3},
     // PARKED (item E, an M1 of r_s 1135 m resting at P, a Titan 60 s later): the two arrivals overlap (capsule -1180 m: no arrival fan,
     // section 6.7); the departing leader near d_end is warned by the arriving hull's box, the pair uncertified, the eviction flown, then the
     // members collide (to -1120 m); 5 of 9 runs launch fewer than 3 in 1000 s
@@ -10714,14 +10869,17 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
     std::printf("scenario C %s engine paths tf %d seed %u: x12 flown %u (cap %u small %u forced %u) turn %.0f deg dur %.1f s out %.0f m reissue %u "
                 "remerged %u (max %.1f s) | lane v_min %.1f m/s slow %.1f s | small %u launched %u mirrored %u warns %u stops %u x12_s %.1f "
                 "mem_warns %u mem_x12 %u capsule %.0f | arrivals %u rest %u exit_v %.1f hold_out %.0f dep8_gap %.0f close %u dep_gap %.0f "
-                "arr_gap %.0f overlap %u pair_contact %u | members capsule %.0f launched %u/%u span %.1f (bound %.1f) p2 not_kept %u nose %.1f | D.5 %u/%u/%u/%u/%u/%u\n",
+                "arr_gap %.0f overlap %u pair_contact %u | members capsule %.0f launched %u/%u span %.1f (bound %.1f) p2 not_kept %u nose %.1f | D.5 %u/%u/%u/%u/%u/%u/%u/%u side %u held %u hold_max %.1f s | "
+                "prof builds %u shifted %u max %.0f m clear %.0f us %.1f/%.2f skip %u det %u | obst avoidable %u x12 %u\n",
                 tag, tf, seed, r.x12_flown, r.x12_cap, r.x12_small, r.x12_forced, r.x12_turn_max, r.x12_dur_max_s, r.x12_out_max_m, r.x12_reissue,
                 r.x12_remerged, r.x12_remerge_max_s, r.lane_v_min < 1e17 ? r.lane_v_min : -1.0, r.lane_slow_s_max, r.sm_n, r.sm_launched,
                 r.sm_mirrored, r.sm_warns, r.sm_stops, r.x12_small_s, r.mem_sm_warns, r.mem_sm_x12, r.sm_capsule < 1e17 ? r.sm_capsule : -1.0,
                 r.arr_n, r.arr_rest, r.arr_exit_v, r.arr_hold_out_m, r.arr_dep8_gap < 1e17 ? r.arr_dep8_gap : -1.0, r.arr_dep8_close,
                 r.arr_dep_gap < 1e17 ? r.arr_dep_gap : -1.0, r.arr_arr_gap < 1e17 ? r.arr_arr_gap : -1.0, r.arr_overlap, r.arr_pair_contact,
                 r.mem_capsule < 1e17 ? r.mem_capsule : -1.0, r.launched, r.departures, r.span_s, r.bound_s, r.p2_not_kept, r.p2_nose_max_deg,
-                r.sm_bv[0], r.sm_bv[1], r.sm_bv[2], r.sm_bv[3], r.sm_bv[4], r.sm_bv[5]);
+                r.sm_bv[0], r.sm_bv[1], r.sm_bv[2], r.sm_bv[3], r.sm_bv[4], r.sm_bv[5], r.sm_bv[6], r.sm_bv[7], r.sm_side, r.sm_held, r.sm_hold_s_max,
+                r.prof_builds, r.prof_shifted, r.prof_max_m, r.prof_clear_min < 1e17 ? r.prof_clear_min : -1.0, r.prof_us_max,
+                r.prof_builds ? r.prof_us_sum / double(r.prof_builds) : 0.0, r.prof_skipped, r.prof_det, r.obst_avoidable, r.obst_x12);
 }
 static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, const lanec::CResult& r) {
     std::printf("scenario C %s %s tf %d %d fps seed %u: launched %u/%u span %.1f s (bound %.1f, floor %.1f, leader 15 km->launch %.1f, c %.1f, gap-c-5 %.1f) "
@@ -12013,6 +12171,157 @@ static void lane_r2_units() {
     (void)why;
 #endif
 }
+// Convoy-gate-transit.md section 12.2 (round B): the small ships' side lead-in, D.5's edge and the bounded hold, unit by unit
+static void round_b_small_units() {
+    char why[400];
+    static gc::Board b;
+    b = gc::Board{};
+    b.lane = 1;
+    gc::Gate* g = ctl_gate(b, 1000);
+    g->lane = 1;
+    const float r = g->r_gate;
+    // the free side: away from an off-axis Q, else the ship's own side
+    const bool side_ok = gc::small_free_side(0.0f, 500.0f) > 0.0f && gc::small_free_side(0.0f, -500.0f) < 0.0f &&
+                         gc::small_free_side(300.0f, 900.0f) < 0.0f && gc::small_free_side(-300.0f, -900.0f) > 0.0f;
+    // no lane member: no side lead-in; a Titan on order 5 (its Q on the axis, 998 m below): the line's end on the ship's own side, within
+    // A's 0.75 r arrival sphere for every spread index, at least 0.68 r from the column
+    std::int8_t latch = 0;
+    float off[3], side = 0.0f;
+    const bool none = !gc::small_side_lead(*g, 900.0f, 0, &latch, off, &side);
+    const float xt[3] = {0.0f, -998.0f, -1500.0f}, f[3] = {0.0f, 0.0f, 1.0f};
+    gc::Member* t = ctl_put(b, *g, 0x9100, gc::Role::committed, core::kOrderDock, xt, f, 100.0f, 1092.0f, 579.0f, 1000);
+    t->sb = gc::Sb::dock;
+    t->ln = 1;
+    t->q_ok = 1;
+    t->q[0] = 0.0f;
+    t->q[1] = -998.0f;
+    float worst_in = 0.0f, worst_col = 1e9f;
+    bool lead_ok = true;
+    for (unsigned k = 0; k < 8; ++k) {
+        std::int8_t lk = 0;
+        lead_ok = lead_ok && gc::small_side_lead(*g, 900.0f, k, &lk, off, &side) && side > 0.0f && lk == 1;
+        const float end[2] = {off[0], -0.8f * r + off[1]};
+        worst_in = std::fmax(worst_in, std::sqrt(off[0] * off[0] + off[1] * off[1]));
+        worst_col = std::fmin(worst_col, std::sqrt(end[0] * end[0] + (end[1] + 998.0f) * (end[1] + 998.0f)));
+    }
+    std::int8_t lk = -1; // a kept side stays
+    const bool kept = gc::small_side_lead(*g, 900.0f, 0, &lk, off, &side) && side < 0.0f;
+    // D.5 on the lane: B near the arc's middle taken; the Titan's edge path from X_s taken too (the path margin): hold, the edge written; a
+    // narrower capital (w 300 m): edge; B beyond the axis from the +R side with nothing counted: mirrored to the ship's side
+    const float bm[3] = {0.55f * r * 0.17365f, -0.55f * r * 0.98481f, -0.01f * r}, xs[2] = {0.68f * r, -0.8f * r}; // (B at theta = 10 deg)
+    float o[3] = {0, 0, 0}, f_in = 1.0f;
+    std::uint32_t tl = 0;
+    const gc::SmallB v_hold = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
+    const bool hold_ok = v_hold == gc::SmallB::hold && o[0] > 0.0f && std::fabs(o[0] - 0.55f * r * 0.70710678f) < 1.0f && tl > 1000u;
+    t->w = 300.0f;
+    const gc::SmallB v_edge = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
+    t->w = 579.0f;
+    g->lane = 0;
+    const gc::SmallB v_off = gc::small_b_decide(*g, 1000, bm, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
+    g->lane = 1;
+    t->sb = gc::Sb::none;
+    const float bfar[3] = {-0.3f * r, -0.46f * r, -0.01f * r};
+    const gc::SmallB v_own = gc::small_b_decide(*g, 1000, bfar, 1500.0f, 124.0f, 38.5f, xs, 1, o, &tl, &f_in);
+    const bool own_ok = v_own == gc::SmallB::mirrored && o[0] > 0.0f;
+    // the hold's bound: 60 s + the step from its first decision (the step 2 s: held at 61.9 s, released for good after 62 s); a stagger of
+    // 2.5 s after the way clears for a spread index with bit 2 set
+    gc::SmallHold h;
+    g->step_ms = 2000;
+    bool bound_ok = gc::small_hold_cap(h, *g, 1000, true, 200000, 0) == gc::kSmallHoldFloorMs;
+    bound_ok = bound_ok && gc::small_hold_cap(h, *g, 62900, true, 200000, 0) >= 0.0f && gc::small_hold_cap(h, *g, 63100, true, 200000, 0) < 0.0f && h.done;
+    gc::SmallHold s4;
+    gc::small_hold_cap(s4, *g, 1000, true, 200000, 4);
+    const bool stagger_ok = gc::small_hold_cap(s4, *g, 2000, false, 0, 4) >= 0.0f && gc::small_hold_cap(s4, *g, 3400, false, 0, 4) >= 0.0f &&
+                            gc::small_hold_cap(s4, *g, 4600, false, 0, 4) < 0.0f;
+    gc::SmallHold s0;
+    gc::small_hold_cap(s0, *g, 1000, true, 200000, 3);
+    const bool nostagger_ok = gc::small_hold_cap(s0, *g, 2000, false, 0, 3) < 0.0f;
+    std::snprintf(why, sizeof why, "round B small units: free side %d; no member no lead-in %d; lead-in end <= %.0f m from A (< 0.75 r = %.0f) and "
+                  ">= %.0f m from the column, side kept %d; D.5 lane: Titan %s, w 300 %s, key off %s, beyond the axis %s; hold bound %d, stagger %d/%d",
+                  int(side_ok), int(none), double(worst_in), double(0.75f * r), double(worst_col), int(kept), gc::small_b_name(v_hold),
+                  gc::small_b_name(v_edge), gc::small_b_name(v_off), gc::small_b_name(v_own), int(bound_ok), int(stagger_ok), int(nostagger_ok));
+    check(side_ok && none && lead_ok && worst_in < 0.75f * r - 50.0f && worst_col >= 0.68f * r && kept && hold_ok && v_edge == gc::SmallB::edge &&
+              v_off == gc::SmallB::both_taken && own_ok && bound_ok && stagger_ok && nostagger_ok,
+          why);
+    std::printf("%s\n", why);
+}
+// Convoy-gate-transit.md section 12.3 (round B): the lane profile's build (the shift run with shift = true; off in the DLL: kLaneProfShiftOn)
+static void round_b_prof_units() {
+    char why[640];
+    static gc::Board b;
+    b = gc::Board{};
+    b.lane = 1;
+    gc::Gate* g = ctl_gate(b, 1000);
+    g->lane = 1;
+    g->lane_c_ok = 1;
+    g->lane_c[0] = 0.0f;
+    g->lane_c[1] = -929.0f;
+    const float x[3] = {0.0f, -929.0f, -14000.0f}, f[3] = {0.0f, 0.0f, 1.0f};
+    gc::Member* m = ctl_put(b, *g, 0x9200, gc::Role::committed, core::kOrderFlyBefore, x, f, 100.0f, 1092.0f, 579.0f, 1000);
+    m->ln = 1;
+    m->d_end = 2300.0f;
+    m->lane_settle = 1132.0f;
+    const float s_fin = -(2300.0f + 1132.0f + gc::kLaneBlendM);
+    auto body = [](float r_, float u, float z, float r, float rs, std::uint32_t ptr) { return gc::LaneBody{{r_, u, z}, r, rs, ptr}; };
+    // the rock belt of cast lane_belt: -U first, the ramps at tan 15 deg, nothing from the blend on, the clearance kept
+    const gc::LaneBody belt[4] = {body(-2000, -529, -10000, 250, 0, 0x7700), body(-700, -1329, -10300, 250, 0, 0x7710),
+                                  body(600, -529, -9700, 250, 0, 0x7720), body(1900, -1329, -10000, 250, 0, 0x7730)};
+    gc::lane_profile_build(*g, belt, 4, false, 2000, true);
+    const gc::LaneProfile pb = g->prof;
+    float d_fin[2], worst = 1e9f;
+    gc::lane_prof_delta(pb, s_fin + 1.0f, d_fin);
+    for (const gc::LaneBody& bb : belt)
+        for (float sz = -16000.0f; sz <= -5000.0f; sz += 10.0f) {
+            float d[2];
+            gc::lane_prof_delta(pb, sz, d);
+            const float dr = bb.c[0] - g->lane_c[0] - d[0], du = bb.c[1] - g->lane_c[1] - d[1], ds = bb.c[2] - sz;
+            worst = std::fmin(worst, std::sqrt(dr * dr + du * du + ds * ds) - 579.0f - bb.r);
+        }
+    const float slope = pb.n == 4 ? std::fabs(pb.d[1][1]) / (pb.s[1] - pb.s[0]) : 1.0f;
+    const bool belt_ok = pb.n == 4 && pb.d[1][0] == 0.0f && pb.d[1][1] < 0.0f && slope <= gc::kLaneProfTan + 1e-4f && pb.s[3] <= s_fin &&
+                         d_fin[0] == 0.0f && d_fin[1] == 0.0f && worst >= pb.clear_m - 2.0f && pb.nb >= 2;
+    // a body below Lambda whose -U and +-R shifts do not fit: +U taken 8 km out, refused 7 km out (within 6 km of the gate at its ramp)
+    const gc::LaneBody up8 = body(0, -1529, -8000, 300, 0, 0x7800), up7 = body(0, -1529, -7000, 300, 0, 0x7810);
+    gc::lane_profile_build(*g, &up8, 1, false, 3000, true);
+    const bool up8_ok = g->prof.n == 4 && g->prof.d[1][1] > 0.0f && g->prof.s[3] <= -gc::kLaneProfNoUpM;
+    gc::lane_profile_build(*g, &up7, 1, false, 4000, true);
+    const bool up7_ok = g->prof.n == 0 && g->prof.nb == 0;
+    // the 30 km fallback body enclosing Lambda: listed (not detoured), never shifted; the shift off (the DLL's default): only that
+    const gc::LaneBody fb = body(0, -929, -8650, 5250, 15000, 0x7600);
+    gc::lane_profile_build(*g, &fb, 1, false, 5000, true);
+    const bool fb_ok = g->prof.n == 0 && g->prof.nb == 1 && g->prof.ne == 1 && g->prof.body[0] == 0x7600;
+    gc::lane_profile_build(*g, belt, 4, false, 6000);
+    const bool off_ok = !gc::kLaneProfShiftOn && g->prof.n == 0 && g->prof.nb == 0;
+    // the host cost of one build with the shift over 64 bodies (the belt repeated along Lambda)
+    gc::LaneBody many[gc::kLaneProfScan];
+    for (unsigned i = 0; i < gc::kLaneProfScan; ++i) {
+        many[i] = belt[i & 3];
+        many[i].c[2] -= 150.0f * float(i >> 2);
+    }
+    const auto t0 = std::chrono::steady_clock::now();
+    for (int rep = 0; rep < 200; ++rep) gc::lane_profile_build(*g, many, gc::kLaneProfScan, false, 7000 + unsigned(rep), true);
+    const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count() / 200.0;
+    // lane_lat_at's cost per call with the belt's 4-knot profile against none (host, 2 x 10^6 calls each over Lambda's 15 km)
+    double ns_lat[2] = {0, 0}, sink = 0;
+    for (int with = 0; with < 2; ++with) {
+        if (with) g->prof = pb;
+        else g->prof = gc::LaneProfile{};
+        const auto l0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < 2000000; ++i) {
+            float lat[2];
+            gc::lane_lat_at(*g, *m, -15000.0f + 0.0075f * float(i), lat);
+            sink += double(lat[1]);
+        }
+        ns_lat[with] = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - l0).count() / 2e6;
+    }
+    std::snprintf(why, sizeof why, "round B profile units: belt n %u d (%.0f, %.0f) m knots %.0f/%.0f/%.0f/%.0f slope %.3f (tan 15 %.3f) blend start %.0f, "
+                  "clearance %.0f m (margin kept %.0f), listed %u; +U 8 km %d, 7 km refused %d; enclosing fallback %d; shift off %d; one build of 64 "
+                  "bodies with the shift %.1f us (host); lane_lat_at %.2f ns without a profile, %.2f ns with (sink %.0f)", unsigned(pb.n), double(pb.d[1][0]), double(pb.d[1][1]), double(pb.s[0]), double(pb.s[1]),
+                  double(pb.s[2]), double(pb.s[3]), double(slope), double(gc::kLaneProfTan), double(s_fin), double(worst), double(pb.clear_m),
+                  unsigned(pb.nb), int(up8_ok), int(up7_ok), int(fb_ok), int(off_ok), us, ns_lat[0], ns_lat[1], sink > 0 ? 1.0 : 0.0);
+    check(belt_ok && up8_ok && up7_ok && fb_ok && off_ok, why);
+    std::printf("%s\n", why);
+}
 static void lane_cost_bench() {
     // (review item 8: the worst frame of 3 runs, not the best; the 1+4 cast and a 24-member board)
     struct Cast {
@@ -12047,6 +12356,8 @@ static void lane_cost_bench() {
 static void lane_c_scenarios() {
     lane_c_units();
     lane_r2_units();
+    round_b_small_units();
+    round_b_prof_units();
     lane_cost_bench();
     char why[512];
     const bool all = std::getenv("X3M_C_ALL") != nullptr; // every seed of every combination printed
@@ -12087,10 +12398,19 @@ static void lane_c_scenarios() {
                         ck(r.obst_min_clear > 0.0 && r.obst_unsafe == 0, "Cx no contact with the station or a rock; no unsafe suppression");
                         ck(r.span_ok, "Cx the span (the formed bound)");
                         ck(r.lane_slow_s_max <= 10.0 + double(r.step_max) / 1000.0, "Cx no lane braked: a member on Lambda at <= 15 m/s at most 10 s + the step");
+                        // round B (section 12.3): P2 kept, no avoidable eviction, no module detour against a body the profile clears
+                        ck(r.p2_not_kept == 0 && r.p2_nose_max_deg <= 8.0, "Cx2 P2 kept within 8 deg of F");
+                        ck(r.obst_avoidable == 0, "Cx2 no avoidable eviction");
+                        ck(r.prof_det == 0, "Cx2 no module detour against a body the lane profile clears");
                     } else if (su.eng == 3) { // item D: small ships at the gate
                         ck(r.span_ok, "Dx the members' span (the formed bound)");
                         ck(r.sm_capsule > 0.0, "Dx no contact with a small ship");
                         ck(r.mem_sm_x12 == 0, "Dx no member 0x12 against a small ship");
+                        // round B (section 12.2): the side lead-in flown, every small ship launched, D.5 never left both sides taken on the
+                        // lane, every hold within 60 s + the step (game time; the trace's held time also counts the frame it ends on)
+                        ck(r.sm_side > 0 && r.sm_launched == r.sm_n, "Dx2 the side lead-in flown, every small ship launched");
+                        ck(r.sm_bv[unsigned(gc::SmallB::both_taken)] == 0, "Dx2 no D.5 both_taken on the lane");
+                        ck(r.sm_hold_s_max <= 60.0 + 2.0 * double(r.step_max) / 1000.0, "Dx2 every hold within 60 s + the step");
                     } else if (su.eng == 4) { // item E: arrivals at P during the lane pass
                         ck(r.arr_n == 2, "Ex both arrivals launched");
                         ck(r.arr_dep8_close == 0, "Ex no departing hull on order 8 within 500 m of a parked arrival");

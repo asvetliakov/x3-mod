@@ -424,11 +424,46 @@ void lane_frame_gate(gc::Gate& g, std::uint32_t now) noexcept {
         merge_row_write_.store(w + 1, std::memory_order_release);
     }
 }
+// Convoy-gate-transit.md section 12.3 (round B): the lane's lateral profile for statics on Lambda, rebuilt once per game second
+// (gc::lane_profile_build) from the newest snapshot that lists the gate (this frame's walks; within kLaneProfMaxAgeMs + the step); with
+// none, a profile older than that is dropped (the members' sphere detour as before). Reads the module's snapshot and part cache only.
+void lane_profile_gate(gc::Gate& g, std::uint32_t now) noexcept {
+    if (g.prof.built_ms && now - g.prof.built_ms < gc::kLaneProfPeriodMs) return;
+    const av::Snapshot* snap = nullptr;
+    for (unsigned i = 0; i < sites::kSnapshotSlots; ++i) {
+        const av::Snapshot& s = snaps_[i];
+        if (!s.count || now - s.epoch > gc::age_bound(g, gc::kLaneProfMaxAgeMs) || (snap && s.epoch <= snap->epoch)) continue;
+        for (unsigned k = 0; k < s.count; ++k)
+            if (s.items[k].ptr == g.gate) {
+                snap = &s;
+                break;
+            }
+    }
+    if (!snap) {
+        if (g.prof.built_ms && now - g.prof.built_ms > gc::age_bound(g, gc::kLaneProfMaxAgeMs)) g.prof = gc::LaneProfile{};
+        return;
+    }
+    const std::uint64_t t0 = timing_ ? qpc() : 0;
+    gc::LaneBody bodies[gc::kLaneProfScan];
+    bool overflow = false;
+    const unsigned n = gc::lane_bodies(g, *snap, part_cache_.sets, part_cache_.count, bodies, gc::kLaneProfScan, &overflow);
+    gc::lane_profile_build(g, bodies, n, overflow, now);
+    ctl_prof_builds_.add();
+    if (g.prof.n) ctl_prof_shifted_.add();
+    if (timing_) {
+        const std::uint64_t dt = qpc() - t0;
+        const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);
+        if (ticks > ctl_prof_max_ticks_) ctl_prof_max_ticks_ = ticks;
+    }
+}
 void lane_frame_all(std::uint32_t now) noexcept {
     const std::uint64_t t0 = timing_ ? qpc() : 0;
     for (gc::Gate& g : ctl_.g) {
         if (!g.gate) continue;
-        if (g.lane) lane_frame_gate(g, now); // ship_steering_gates_lane; the key off: no stage frame (stage B was deleted on 2026-10-15)
+        if (g.lane) { // ship_steering_gates_lane; the key off: no stage frame (stage B was deleted on 2026-10-15)
+            lane_profile_gate(g, now);
+            lane_frame_gate(g, now);
+        }
     }
     if (timing_) {
         const std::uint64_t dt = qpc() - t0;

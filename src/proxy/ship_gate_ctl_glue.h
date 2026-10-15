@@ -46,6 +46,12 @@ inline gc::LiveSet live_set_;
 inline Counter ctl_live_gone_, ctl_live_launch_, ctl_sector_resets_, ctl_sector_dropped_, ctl_unproven_, ctl_live_overflow_;
 inline std::uint32_t ctl_live_max_ticks_ = 0;
 inline Counter e_gate_small_gap_, small_b_both_, ctl_clock_resets_;                         // Run161 item 5: the small-ship gate row on order 0 in the hand-over gap
+// convoy-gate-transit.md section 12.2 (round B): small-ship order-4 decisions on the side lead-in, D.5 edge rewrites, holds begun
+inline Counter ctl_small_side_, ctl_small_edge_, ctl_small_hold_;
+// section 12.3 (round B): the lane profile's builds, builds with a shift, the statics a member's sphere avoidance left to it, the longest
+// build (QPC ticks, timing tier)
+inline Counter ctl_prof_builds_, ctl_prof_shifted_, avoid_lane_skipped_;
+inline std::uint32_t ctl_prof_max_ticks_ = 0;
 inline std::uint32_t ctl_x_wait_ms_ = 0, ctl_sb_max_ticks_ = 0;
 // The widest-part read per capital type (the record index [obj+0x4a]) for the arrival placement: a launched capital has no gate
 // state yet; w and l from the last successful LOD read of a ship of that type (w = r, l = r when the type was never read).

@@ -131,7 +131,27 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
                 }
             self.ctl_ptr = ctl_ptr;
             self.ctl_id = ctl_id;
+            // convoy-gate-transit.md section 12.3 (round B): a lane member leaves the statics its gate's lateral profile owns to
+            // the profile (no sphere detour; the engine's warn stays the backstop)
+            if (cg->lane && cg->m[mi].ln && cg->prof.nb) { // (the enclosing fallbacks for every lane member, the cleared bodies on Lambda)
+                self.skip_static = cg->prof.body;
+                self.n_skip_static = cg->prof.nb;
+                self.n_skip_enclose = cg->prof.ne;
+            }
         }
+    } else if (!self.capital && traffic_live_.load(std::memory_order_relaxed) && gate_[slot].obj == obj && gate_[slot].small_hold.active) {
+        // convoy-gate-transit.md section 12.2 (round B): a small ship held beside the lane (its last decision) does not detour around
+        // the lane's capitals: the hold keeps it outside their warn zone, and a detour against a capital closing from behind turned
+        // its nose toward that capital (fixture: the engine's warn, a 0x12 into it)
+        if (const gc::Gate* cg = gc::gate_of(ctl_, self.target))
+            for (unsigned j = 0; j < cg->n; ++j)
+                if (cg->m[j].ship && cg->m[j].ln && (cg->m[j].role == gc::Role::committed || cg->m[j].role == gc::Role::escort)) {
+                    ctl_ptr[self.n_ctl] = cg->m[j].ship;
+                    ctl_id[self.n_ctl] = cg->m[j].id;
+                    ++self.n_ctl;
+                }
+        self.ctl_ptr = ctl_ptr;
+        self.ctl_id = ctl_id;
     }
     av::ShipAvoid& state = avoid_[slot];
     if (state.obj != obj) state = av::ShipAvoid{}; // the slot was another ship's: no stale sides or resolved set
@@ -153,6 +173,7 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
     if (r.skipped_small) avoid_skipped_small_.add(r.skipped_small);
     if (r.excluded_members) avoid_excluded_member_.add(r.excluded_members);
     if (r.ctl_excluded) avoid_ctl_excluded_.add(r.ctl_excluded);
+    if (r.lane_skipped) avoid_lane_skipped_.add(r.lane_skipped);
     if (r.dock_kept) {
         dock_part_obstacles_.add();
         if (r.adjusted && r.obstacle == self.dock_target) dock_detours_.add();
@@ -245,6 +266,7 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
                  bool& gate_lead, bool& gate_dock, GateState*& gs, const std::uint32_t gate_tgt, const std::uint32_t gph, float (&G)[3],
                  float (&row0)[3], float (&row1)[3], float (&row2)[3], float& r_gate, const bool capital_policy, bool& capital_window,
                  bool& capital_fb_write, bool& capital_detour, float& capital_fb_v, bool& lane_ours) noexcept {
+    if (gs) gs->small_cap = -1.0f; // (section 12.2: this decision's small-ship hold cap, set below)
     // Lane stage 1 (convoy-gate-transit.md section 6.4): the order-4 point. A field still holding the last rewrite (or, after a slot reset
     // or a load, this hull's lane point L_i) is ours: the order's grid geometry is the KC grid point it replaced (slot 0's after a reset),
     // so the validation, the commit and P2 below see the KC's grid as before; a call whose leaf point is not the field (the engine's
@@ -310,6 +332,32 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
                 // arrival test) is not moved
                 k = core::gate_spread_index(obj);
                 core::gate_spread_offset(k, core::kGateSpreadR * g.r, row0, row1, off);
+                // convoy-gate-transit.md section 12.2 (round B): while a lane gate's lane is in use the line ends on the free side's
+                // edge of A's arrival sphere instead (gc::small_side_lead; A is not written), and the ship is held where it is while
+                // that end lies in the warn zone of a capital that passes first (gc::small_zone_hold, gc::small_hold_cap)
+                if (traffic_on_ && !player) {
+                    const gc::Gate* cg = gc::gate_of(ctl_, gate_tgt);
+                    const float xg[3] = {in.x[0] - G[0], in.x[1] - G[1], in.x[2] - G[2]};
+                    float soff[3], side = 0.0f;
+                    if (cg && gc::small_side_lead(*cg, core::dot3(xg, row0), k, &gs->small_side, soff, &side)) {
+                        for (unsigned i = 0; i < 3; ++i) off[i] = soff[i];
+                        ctl_small_side_.add();
+                        // (the ETA's speed: the ship's maximum, which site B's gate write gives it once it goes: a ship at rest or held
+                        // counts only the capitals it would meet then, so it goes in a gap between two)
+                        const float d_g = core::sqrt_ss(core::dot3(xg, xg)), v_eta = core::fmax_f(in.v, dyn.v_max);
+                        const float dv = in.v < dyn.v_max ? dyn.v_max - in.v : 0.0f;
+                        const float d_eta = d_g + (dyn.a_lin > 0.1f ? dv * dv / (2.0f * dyn.a_lin) : 0.0f); // (the distance lost accelerating to v_max)
+                        const float dA4[3] = {order_point[0] - in.x[0], order_point[1] - in.x[1], order_point[2] - in.x[2]};
+                        const float d_along = core::dot3(dA4, g.h); // (to the line's end, along it)
+                        const float xl4[2] = {core::dot3(xg, row0), core::dot3(xg, row1)};
+                        std::uint32_t t_l = 0;
+                        const bool hold = (gs->small_hold.active || (d_along > gc::kSmallParkBackM && d_along < gc::kSmallHoldRangeR * r_gate)) &&
+                                          gc::small_zone_hold(*cg, now, side, xl4, d_eta, v_eta, dyn.r_own, &t_l);
+                        const bool was = gs->small_hold.start_ms != 0;
+                        gs->small_cap = gc::small_hold_cap(gs->small_hold, *cg, now, hold, t_l, core::gate_spread_index(obj));
+                        if (!was && gs->small_hold.start_ms) ctl_small_hold_.add();
+                    }
+                }
                 for (unsigned i = 0; i < 3; ++i) g.X[i] += off[i];
             }
         } else if (core::gate_geometry_capital(order_point, G, row0, row1, row2, r_gate, dyn.r_own, &g)) {
@@ -455,10 +503,12 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
             }
             if (!v_emergency_bits && in.d_order < 0.0f && cap_join) {
                 bool in_window;
-                if (capital) // the capital window (6 r, blended from 5 r) and the turning-radius look-ahead (amendment 13)
+                if (capital) { // the capital window (6 r, blended from 5 r) and the turning-radius look-ahead (amendment 13)
                     in_window = core::gate_lead_in_capital(g, in.x, in.v, omega, lead, &s_line);
-                else // the carrot by the nose's lag (amendment 14): alpha = the slower of yaw/pitch times k
+                } else { // the carrot by the nose's lag (amendment 14): alpha = the slower of yaw/pitch times k
                     in_window = core::gate_lead_in(g, in.x, in.v, core::slower_axis_alpha(dyn), lead, &s_line);
+                    if (in_window && gs->small_cap >= 0.0f) gc::small_hold_carrot(g, in.x, lead); // (section 12.2: held, the nose along the line)
+                }
                 if (in_window) {
                     if (!capital) gs->lead_ms = now ? now : 1; // audit G1: site E's gate row for the small ship's own target gate
                     else {
@@ -496,7 +546,7 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
         if (traffic_on_ && !player && !in.detour) {
             const gc::Gate* cg = gc::gate_of(ctl_, gate_tgt);
             const std::int32_t cur[3] = {rds32(fl + sites::kFlightPoint), rds32(fl + sites::kFlightPoint + 4), rds32(fl + sites::kFlightPoint + 8)};
-            if (cg && !gc::small_b_ours(gs->b_w, cur)) {
+            if (cg) {
                 float d[3], bl[3], o[3];
                 for (unsigned i = 0; i < 3; ++i) d[i] = float(cur[i]) / core::kUnitsPerMetre - G[i];
                 bl[0] = core::dot3(d, row0);
@@ -504,9 +554,23 @@ void gate_decide(sites::Frame*& f, const std::uint32_t obj, const bool player, c
                 bl[2] = core::dot3(d, row2);
                 const float dB[3] = {float(cur[0]) / core::kUnitsPerMetre - in.x[0], float(cur[1]) / core::kUnitsPerMetre - in.x[1],
                                      float(cur[2]) / core::kUnitsPerMetre - in.x[2]};
-                const gc::SmallB v = gc::small_b_decide(*cg, now, bl, core::sqrt_ss(core::dot3(dB, dB)), in.v, dyn.r_own, o);
+                const float xg[3] = {in.x[0] - G[0], in.x[1] - G[1], in.x[2] - G[2]};
+                const float d_b = core::sqrt_ss(core::dot3(dB, dB)), xl[2] = {core::dot3(xg, row0), core::dot3(xg, row1)};
+                std::uint32_t t_l = 0;
+                float f_in = 1.0f;
+                const bool ours = gc::small_b_ours(gs->b_w, cur);
+                // section 12.2 (round B, a lane gate): the edge is written as the mirror is; the hold paces the ship (the small-ship
+                // clamp below) so that it reaches the first taken point of its path after the capitals taking it have launched; after
+                // the write the remaining path is re-tested on every decision (gc::small_path_hold); bounded (gc::small_hold_cap)
+                const float v_eta = core::fmax_f(in.v, dyn.v_max); // (the ETA's speed: as on order 4)
+                const gc::SmallB v = ours ? gc::SmallB::count : gc::small_b_decide(*cg, now, bl, d_b, v_eta, dyn.r_own, xl, gs->small_side, o, &t_l, &f_in);
+                const bool hold = ours ? gc::small_path_hold(*cg, now, xl, bl, d_b, v_eta, dyn.r_own, &t_l, &f_in) : v == gc::SmallB::hold;
+                const bool was = gs->small_hold.start_ms != 0;
+                gs->small_cap = gc::small_hold_cap(gs->small_hold, *cg, now, hold, t_l, core::gate_spread_index(obj));
+                if (!was && gs->small_hold.start_ms) ctl_small_hold_.add();
                 if (v == gc::SmallB::both_taken) small_b_both_.add();
-                if (v == gc::SmallB::mirrored) {
+                if (v == gc::SmallB::edge) ctl_small_edge_.add();
+                if (v == gc::SmallB::mirrored || v == gc::SmallB::edge || v == gc::SmallB::hold) { // (hold: the edge written, the ship paced)
                     std::int32_t units[3];
                     bool ok = true;
                     for (unsigned i = 0; i < 3; ++i) {
@@ -869,6 +933,9 @@ core::Reason decide(sites::Frame* f, unsigned leaf) noexcept {
     }
     if (sb_on) // stage B: the controller's speed under the cornering cap and the large cap (review F3; an emergency lowers it at site B)
         s->v_ref = core::fmin_f(sbs.v, core::gate_speed(dyn.v_max, dyn.large, cmd.v_corner));
+    // section 12.2 (round B): a small ship's bounded hold lowers the small-ship clamp's speed (order 4's gate write, order 5's)
+    if (gs && !capital && gs->small_cap >= 0.0f && (speed_flags & (core::kShipFlagGate | core::kShipFlagGateDock)) && gs->small_cap < s->v_ref)
+        s->v_ref = gs->small_cap;
     if (order != core::kOrderFlyBefore && order != core::kOrderRotate && gate_[slot].obj == obj) {
         gate_[slot].handover = 0; // order 5 (or 0x12, any other handled order) ends the hand-over's gate row
         gate_[slot].p2_seen = 0;  // amendment 16: the extended hand-over too
