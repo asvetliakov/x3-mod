@@ -1,0 +1,69 @@
+ring_node gate 0x90a1c340 rows 33 depth=1 scene=50252 f25c=0x00000000 f140=0x00005f59 flags=0x00001002 x1 depth=1 scene=0 f25c=0x00000000 f140=0x000000c8 flags=0x00005000 x32
+ring_node gate 0x90a18038 rows 31 depth=1 scene=50252 f25c=0x00000000 f140=0x00005f59 flags=0x00001000 x1 depth=1 scene=0 f25c=0x00000000 f140=0x000000c8 flags=0x00005000 x30
+first read 0x90a1c340 nodes 33 state none frame 847
+first read 0x90a18038 nodes 33 state none frame 847
+first read 0x90a178e8 nodes 1 state none frame 4538
+reread frame=6903 t_ms=22827440 gate=0x90a1c340 nodes 33->1 changed=1 state=none gap_ms=-1 since_launch_ms=-1 launches_10s=0
+reread frame=9012 t_ms=22927704 gate=0x90a178e8 nodes 1->1 changed=0 state=none gap_ms=-1 since_launch_ms=43870 launches_10s=0
+reread frame=9075 t_ms=22931154 gate=0x90a18038 nodes 33->1 changed=1 state=none gap_ms=-1 since_launch_ms=-1 launches_10s=0
+reread frame=10962 t_ms=22987834 gate=0x90a178e8 nodes 1->33 changed=1 state=none gap_ms=60130 since_launch_ms=104000 launches_10s=0
+reread frame=11341 t_ms=23011854 gate=0x90a18038 nodes 1->1 changed=0 state=none gap_ms=80700 since_launch_ms=75700 launches_10s=0
+reread frame=12252 t_ms=23072764 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=84930 since_launch_ms=188930 launches_10s=0
+reread frame=13183 t_ms=23132824 gate=0x90a178e8 nodes 1->33 changed=1 state=none gap_ms=60060 since_launch_ms=39130 launches_10s=0
+reread frame=13804 t_ms=23168064 gate=0x90a18038 nodes 1->1 changed=0 state=none gap_ms=156210 since_launch_ms=231910 launches_10s=0
+reread frame=14235 t_ms=23192894 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=60070 since_launch_ms=99200 launches_10s=0
+reread frame=14928 t_ms=23231224 gate=0x90a18038 nodes 1->33 changed=1 state=none gap_ms=63160 since_launch_ms=6090 launches_10s=1
+reread frame=16913 t_ms=23351964 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=524524 since_launch_ms=358800 launches_10s=0
+reread frame=18436 t_ms=23446104 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=253210 since_launch_ms=125260 launches_10s=0
+reread frame=18489 t_ms=23448804 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=217580 since_launch_ms=15760 launches_10s=0
+reread frame=20564 t_ms=23561654 gate=0x90a178e8 nodes 1->1 changed=0 state=none gap_ms=115550 since_launch_ms=240810 launches_10s=0
+reread frame=22291 t_ms=23630529 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=181725 since_launch_ms=13140 launches_10s=0
+reread frame=23396 t_ms=23690589 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=60060 since_launch_ms=5560 launches_10s=1
+reread frame=24484 t_ms=23750659 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=60070 since_launch_ms=48380 launches_10s=0
+reread frame=24692 t_ms=23762129 gate=0x90a1c340 nodes 1->33 changed=1 state=none gap_ms=410165 since_launch_ms=15810 launches_10s=0
+reread frame=24752 t_ms=23765499 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=3370 since_launch_ms=19180 launches_10s=0
+reread frame=25932 t_ms=23834429 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=68930 since_launch_ms=88110 launches_10s=0
+reread frame=26739 t_ms=23885819 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=324165 since_launch_ms=28410 launches_10s=0
+reread frame=28300 t_ms=23982369 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=147940 since_launch_ms=236050 launches_10s=0
+reread frame=28339 t_ms=23985279 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=99460 since_launch_ms=9950 launches_10s=1
+reread frame=29120 t_ms=24042429 gate=0x90a1c340 nodes 1->33 changed=1 state=none gap_ms=60060 since_launch_ms=296110 launches_10s=0
+reread frame=29160 t_ms=24045359 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=60080 since_launch_ms=26820 launches_10s=0
+reread frame=29253 t_ms=24052259 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=301600 since_launch_ms=14430 launches_10s=0
+reread frame=29913 t_ms=24105489 gate=0x90a178e8 nodes 1->33 changed=1 state=none gap_ms=60130 since_launch_ms=35910 launches_10s=0
+reread frame=29998 t_ms=24112369 gate=0x90a18038 nodes 33->1 changed=1 state=none gap_ms=60110 since_launch_ms=53430 launches_10s=0
+reread frame=30200 t_ms=24129529 gate=0x90a1c340 nodes 33->1 changed=1 state=none gap_ms=87100 since_launch_ms=383210 launches_10s=0
+reread frame=31530 t_ms=24231249 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=125760 since_launch_ms=161670 launches_10s=0
+reread frame=31828 t_ms=24253619 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=124090 since_launch_ms=507300 launches_10s=0
+reread frame=31949 t_ms=24262149 gate=0x90a18038 nodes 1->33 changed=1 state=none gap_ms=149780 since_launch_ms=20080 launches_10s=0
+reread frame=33216 t_ms=24365069 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=111450 since_launch_ms=75170 launches_10s=0
+reread frame=33730 t_ms=24411229 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=179980 since_launch_ms=8600 launches_10s=1
+reread frame=34427 t_ms=24471319 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=60090 since_launch_ms=36830 launches_10s=0
+reread frame=35161 t_ms=24531499 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=60180 since_launch_ms=97010 launches_10s=0
+reread frame=35731 t_ms=24578629 gate=0x90a1c340 nodes 33->1 changed=1 state=none gap_ms=213560 since_launch_ms=177030 launches_10s=0
+reread frame=35889 t_ms=24591609 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=60110 since_launch_ms=157120 launches_10s=0
+reread frame=36146 t_ms=24612869 gate=0x90a18038 nodes 33->1 changed=1 state=none gap_ms=350720 since_launch_ms=165140 launches_10s=0
+reread frame=36469 t_ms=24638749 gate=0x90a1c340 nodes 1->33 changed=1 state=none gap_ms=60120 since_launch_ms=237150 launches_10s=0
+reread frame=36631 t_ms=24651779 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=60170 since_launch_ms=217290 launches_10s=0
+reread frame=37241 t_ms=24711909 gate=0x90a178e8 nodes 1->33 changed=1 state=none gap_ms=60130 since_launch_ms=800 launches_10s=4
+reread frame=37304 t_ms=24719749 gate=0x90a18038 nodes 1->33 changed=1 state=none gap_ms=106880 since_launch_ms=3940 launches_10s=1
+reread frame=37880 t_ms=24772039 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=60130 since_launch_ms=60930 launches_10s=0
+reread frame=38663 t_ms=24832199 gate=0x90a178e8 nodes 1->33 changed=1 state=none gap_ms=60160 since_launch_ms=121090 launches_10s=0
+reread frame=40741 t_ms=24879215 gate=0x90a1c340 nodes 33->1 changed=1 state=none gap_ms=240466 since_launch_ms=88136 launches_10s=0
+reread frame=40802 t_ms=24883625 gate=0x90a18038 nodes 33->1 changed=1 state=none gap_ms=163876 since_launch_ms=37257 launches_10s=0
+reread frame=42257 t_ms=24934952 gate=0x90a178e8 nodes 33->33 changed=0 state=none gap_ms=102753 since_launch_ms=14660 launches_10s=0
+reread frame=42625 t_ms=24960462 gate=0x90a18038 nodes 1->1 changed=0 state=none gap_ms=76837 since_launch_ms=56700 launches_10s=0
+reread frame=43467 t_ms=25020582 gate=0x90a18038 nodes 1->5 changed=1 state=none gap_ms=60120 since_launch_ms=116820 launches_10s=0
+reread frame=43935 t_ms=25037950 gate=0x90a178e8 nodes 33->1 changed=1 state=none gap_ms=102998 since_launch_ms=101538 launches_10s=0
+reread frame=44406 t_ms=25067240 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=188025 since_launch_ms=75008 launches_10s=0
+reread frame=44804 t_ms=25096620 gate=0x90a18038 nodes 5->1 changed=1 state=none gap_ms=76038 since_launch_ms=20640 launches_10s=0
+reread frame=44824 t_ms=25098030 gate=0x90a178e8 nodes 1->1 changed=0 state=none gap_ms=60080 since_launch_ms=161618 launches_10s=0
+reread frame=45552 t_ms=25149800 gate=0x90a1c340 nodes 1->1 changed=0 state=none gap_ms=82560 since_launch_ms=60020 launches_10s=0
+reread frame=45649 t_ms=25156700 gate=0x90a18038 nodes 1->33 changed=1 state=none gap_ms=60080 since_launch_ms=80720 launches_10s=0
+reread frame=46523 t_ms=25216800 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=60100 since_launch_ms=140820 launches_10s=0
+reread frame=47431 t_ms=25276900 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=60100 since_launch_ms=5330 launches_10s=1
+reread frame=48010 t_ms=25321750 gate=0x90a1c340 nodes 1->33 changed=1 state=none gap_ms=171950 since_launch_ms=8460 launches_10s=1
+reread frame=48209 t_ms=25336970 gate=0x90a18038 nodes 33->33 changed=0 state=none gap_ms=60070 since_launch_ms=6730 launches_10s=1
+reread frame=48821 t_ms=25381870 gate=0x90a1c340 nodes 33->33 changed=0 state=none gap_ms=60120 since_launch_ms=3430 launches_10s=1
+reread frame=49200 t_ms=25408900 gate=0x90a18038 nodes 33->1 changed=1 state=none gap_ms=71930 since_launch_ms=34260 launches_10s=0
+reread frame=49309 t_ms=25416950 gate=0x90a178e8 nodes 1->21 changed=1 state=none gap_ms=318920 since_launch_ms=850 launches_10s=1
+rereads per (gate, nodes): {('0x90a1c340', '1'): 12, ('0x90a178e8', '1'): 10, ('0x90a18038', '1'): 9, ('0x90a178e8', '33'): 13, ('0x90a18038', '33'): 12, ('0x90a1c340', '33'): 5, ('0x90a18038', '5'): 1, ('0x90a178e8', '21'): 1}

@@ -1,0 +1,150 @@
+SLOW event_frame=847 drain_frame=847 t_ms=22669152 us=506 cycles=560710 obj=0x39fba068 order=0x19 snap_walk=1 | since previous: real 0.0 s game 0.0 s
+--- context
+  frame 845 dt_ms=3 noisy={'engine_stage': 1, 'frame_end': 1}
+     taa_invalidate device=1 frame=845 site=not_resolved
+     music_trace_stop frame=845 seq=10 qpc=809893903818 caller=0x0040387d name=session_start
+  frame 846 dt_ms=127 noisy={'engine_stage': 1, 'frame_end': 1}
+     taa_invalidate device=1 frame=846 site=not_resolved
+     music_trace_stop frame=846 seq=11 qpc=809894689357 caller=0x00404cf2 name=load
+     media_cue_enter frame=846 qpc=809946509051 id=8037 kind=none caller=savegame flags=0xd0 attempt=1
+     media_cue_enter frame=846 qpc=809946537010 id=1 kind=none caller=savegame flags=0xc attempt=2
+     media_cue_enter frame=846 qpc=809954302512 id=144 kind=none caller=query flags=0x110 attempt=3
+     media_cue_enter frame=846 qpc=809954339560 id=244 kind=none caller=query flags=0x110 attempt=4
+     music_trace_play frame=846 seq=12 qpc=809980330745 id=8037 start_ms=0 caller=0x00499824 name=MOV_PlayMovie record=0x3e199ae0 flags=0xd0
+     music_keep_seek frame=846 seq=13 qpc=809980330796 record=0x3e199ae0 id=8037 start_ms=0 flags=0xd0 action=vanilla hold_id=0 pause_record=0x00000000 holds_before=0
+     media_cue frame=846 qpc=809946509051 id=8037 kind=none caller=savegame flags=0xd0 result=0x3e199ae0 us=2793 attempts_frame=1 cached=0
+     media_cue frame=846 qpc=809946537010 id=1 kind=none caller=savegame flags=0xc result=0x3e199c00 us=40989 attempts_frame=2 cached=0
+     media_cue frame=846 qpc=809954302512 id=144 kind=none caller=query flags=0x110 result=0x3ad17a68 us=3701 attempts_frame=3 cached=0
+     media_cue frame=846 qpc=809954339560 id=244 kind=none caller=query flags=0x110 result=0x3ad17b88 us=3005 attempts_frame=4 cached=0
+     frame_timing_slow frame=846 dt_us=127925 draws=1 present_us=519 prims=2 draw_us=13 draw_native_us=8 scene_us=338 state_us=-1 draw_calls=1 scene_calls=1 state_calls=3525 slow_call=present slow_call_us=338 gap_pre_us=84512 gap_draw_us=0 gap_post_us=42541
+     frame_phases_slow frame=846 dt_us=127893 pre_render_us=127373 prologue_us=0 scene_update_us=0 begin_scene_us=0 views_us=0 overlays_us=0 text_us=0 scene_end_us=0 present_us=520 view_setup_us=0 view_submit_us=0 views=0 complete=0
+  frame 847 dt_ms=8868 noisy={'volumetric_fog_prefill': 16, 'telemetry_summary': 4, 'engine_memory': 4, 'engine_stage': 1, 'frame_end': 1, 'ship_gate_ctl_member': 1, 'ship_gate_ctl_lane': 1, 'ship_avoid_dock': 3, 'ship_steering_decision': 1, 'ship_gate_ring_node': 64, 'ship_avoid_e_verdict': 2, 'ship_trace': 6}
+     volumetric_fog_sector device=1 frame=847 profile=0 reason=family_unsupported sector=4c1291e0 index=127 generation=1 density_scale=1.000
+     sector_background device=1 frame=847 status=ready registry=12dbb3d0 active_handle=7 cockpit=90a64008 sector=4c1291e0 class48=1 index=127 count=248 table=1db42020 R=1dbaeeac row_valid=1 name_ptr=4bcfbb28 name_valid=1 name="litcube105" dust=40 near=23184825 far=
+     shadow_retention_probe frame=847 now=7399 device=279 bloom=0 gpu_sync=0 retained=3 fired=0 id=1 rows=1
+     shadow_replay_sun_latch device=1 frame=847 event=latch register=4 program=ca6bfa4a6cca7e2a sun=-0.118804932,0.909866333,0.397491455
+     shadow_retention_probe frame=847 now=7409 device=282 bloom=0 gpu_sync=0 retained=9 fired=0 id=1 rows=2
+     emission_source_gain_pair device=1 frame=847 vs=d5e1c75351ed3f04 ps=8360f422de08b5bd gain=1 screen=0
+     shadow_replay_sun_source device=1 frame=847 source=point reason=point previous=none poll=ok
+     shadow_replay_sun_point device=1 frame=847 source=point reason=point poll=ok light=-1002870,7530530,3365130 native=-100287000,753053000,336513000 distance=8352017.67 checks=8 disagreements=0 agreement_deg=0.000688 rederived=5 carried=0 candidates=3 directional
+     shadow_cascade_footprint device=1 frame=847 px=8 m00=0.499997884 width=5120 cascades=5 active=31 min0=0.732421875 min1=2.19726562 min2=10.9863281 min3=54.9316406 min4=439.453125
+     shadow_replay_depth_target device=1 frame=847 size=4096 map_format=114 depth_format=77 allocations=1
+     engine_plumes_device device=1 frame=847 attached=1 reason=ok result=00000000 fp16_blending=00000000 vs_slots=12 ps_slots=924 max_ps_slots=4096 vb_bytes=622592 retry=reset
+     engine_ribbons_device device=1 frame=847 attached=1 reason=ok result=00000000 fp16_blending=00000000 vs_slots=8 ps_slots=34 max_vs_slots=4096 max_ps_slots=4096 vb_bytes=442368 pool=256 samples=16 retry=reset
+     engine_plumes_state device=1 frame=847 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+     engine_seta device=1 frame=847 event=read state=off read=ok valid=1 warp=1.000 mult=1.0000 rate=1.000 travel=0.000 reads=1 refused=0 invalid=0
+     motion_output_taa_box_resolution device=1 frame=847 drawn=half reason=half width=5120 height=1440 target_create=00000000
+     engine_shimmer_device device=1 frame=847 attached=1 reason=ok result=00000000 fp16_filter=00000000 ps_slots=1623 max_ps_slots=4096 retry=reset
+     bloom_prepare device=1 frame=847 ready=0 reason=invalid operation=80070057 restore=00000001 state_preserved=1 clamp=1 cpu_ticks=109 bytes=0
+     shadow_retention_probe frame=847 now=7503 device=357 bloom=13 gpu_sync=0 retained=9 fired=0 id=1 rows=3
+     occlusion_cull device=1 frame=847 candidates=0 tested=0 hidden=0 skipped=0 pool=512 ready=0 not_ready=0 ready_lag2=0 ready_age=0,0,0 errors=0 drawn_late=0 pool_truncated=0 unstable=0 no_hull=0 refused=0 failed=0 no_bounds=9 unbounded=0 state=0 retest_skipped=0
+     taa_invalidate device=1 frame=847 site=fog_transition
+     loading_phase name=menu_shown frame=847 elapsed_ms=23579 stall_ms=8867 device=1 qpc=809983368306
+     ui_scale_camera frame=847 excluded_camera=4bc50108 previous=00000000
+     ship_gate_ctl frame=847 t_ms=22669152 gate=0x90a178e8 ship=0x905a50e0 id=24965 seq=1 key=0 order=0x0 from=none to=committed why=commit rank=2 stage=none>none
+     ship_avoid_census frame=847 sector=0x4c1291e0 objects=152 overflow=0 classes=5:1,6:9,7:37,17:102,18:3 buckets=0,0,0,0,0,1,9,37,0,0,0,0,0,0,0,0,0,102,3,0,0,0,0,0,0,0,0,0,0,0,0,0
+     ship_avoid_station frame=847 sector=0x4c1291e0 obj=0x90a24818 root_r_m=4609.8 node_scale_0x70=0x000000a5 own_r_units=165 children=12 unfilled=12 scaled=0 extent_units=2304912 model=parts parts_offset_units:radius_units:cache_units:own_units:scale:flags=0,0,0:2
+     ship_gate_ring_read frame=847 t_ms=22669152 gate=0x90a1c340 id=24209 type=2 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+     ship_gate_ring_read frame=847 t_ms=22669152 gate=0x90a18038 id=24188 type=0 board=0 state=none why=ok nodes=33 scene=50252 seen=1 verdict=none
+     ship_steering_handler_slow frame=847 t_ms=22669152 site=A obj=0x39fba068 leaf=0 order=0x19 us=506 cycles=560710 snap_walk=1 snap_us=140
+     ship_capital_census frame=847 type=11 class=TL r_m=1092 w_m=583 w_r=0.535 w_src=lod retries=0 l_m=1092 h_rw_m=1238 len_m=1092 h_m=1238 part_id=20071 part_lod=0 o_x=145 o_y=324 e_x=169 e_y=169 l_r=1.000 capsule_L_m=1092
+     ship_avoid_engine_warn_pre frame=847 obj=0x39fbc8a0 order=0x5 tgt=0x90a24818 count=1 entries_other:class:code:order:leader:member:d_m:r_m:e_verdict=0x90a24818:5:-:0x0:0x00000000:0x00000000:3700:4610:- gate_row=- obst_row=-
+     ship_steering_summary frame=847 interval_ms=9156 claims=4 calls=29 handled=29 ships=29 calls_per_ship_s=0.1 leaf_calls=29,0,0 pass_not_ship=0 pass_no_autopilot=0 pass_deleted=0 pass_no_flight=0 pass_no_phys=0 pass_order_not_steered=0 pass_class_excluded=0 pass
+     ship_steering_lane_summary frame=847 lane=active ctl_merge_yield=0 ctl_merge_stop=0 ctl_point_rewrites=0 ctl_lane_writes=0 ctl_x_refused=0 ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=0 ctl_defer_rewrites=0 ctl_recommit_held=0 e_lane_obst=
+     frame_timing_slow frame=847 dt_us=8868031 draws=96 present_us=478 prims=442507 draw_us=31432 draw_native_us=29912 scene_us=220001 state_us=-1 draw_calls=96 scene_calls=11 state_calls=31071 slow_call=compositor_pre slow_call_us=219774 gap_pre_us=8589273 gap_dra
+     frame_phases_slow frame=847 dt_us=8867700 pre_render_us=8588225 prologue_us=15 scene_update_us=36 begin_scene_us=1142 views_us=277651 overlays_us=1 text_us=0 scene_end_us=151 present_us=479 view_setup_us=2105 view_submit_us=44483 views=9 complete=1
+  frame 848 dt_ms=37 noisy={'emission_source_gain_refused_state': 4, 'engine_stage': 1, 'frame_end': 1, 'ship_trace': 6}
+     bloom_prepare device=1 frame=848 ready=0 reason=invalid operation=80070057 restore=00000001 state_preserved=1 clamp=1 cpu_ticks=18 bytes=0
+     shadow_retention_probe frame=848 now=7559 device=360 bloom=13 gpu_sync=0 retained=9 fired=0 id=1 rows=4
+     ship_gate_ctl_rewrite frame=848 t_ms=22669352 gate=0x90a178e8 ship=0x905a50e0 site=a slot=0 from_m=0,0,-4392 to_m=0,-997,-1472 r_m=1092 implied_m=1091 kc_m=1092
+     shadow_cascade_set device=1 frame=848 reason=node own_node=3c15c390 own_status=0 own_radius=66.9380875 e0=250 texel0=0.244140625 depth_behind0=512 active_mask=31 apply_slots=0,1,2,3,4 slid=0 changed=0 extents=250,1500,7500,37500,150000 caps=128,512,1024,1024,1
+     frame_timing_slow frame=848 dt_us=37266 draws=47 present_us=390 prims=174249 draw_us=4793 draw_native_us=4396 scene_us=1580 state_us=-1 draw_calls=47 scene_calls=4 state_calls=2211 slow_call=draw_indexed slow_call_us=1394 gap_pre_us=12564 gap_draw_us=17673 gap
+     frame_phases_slow frame=848 dt_us=37566 pre_render_us=13355 prologue_us=10 scene_update_us=23 begin_scene_us=231 views_us=12726 overlays_us=10666 text_us=0 scene_end_us=164 present_us=391 view_setup_us=585 view_submit_us=3243 views=9 complete=1
+SLOW event_frame=4863 drain_frame=4863 t_ms=22716147 us=4626 cycles=18786370 obj=0x905a7090 order=0x5 snap_walk=0 | since previous: real 22.2 s game 47.0 s
+--- context
+  frame 4861 dt_ms=9 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 4862 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_e_verdict': 1, 'ship_trace': 8}
+  frame 4863 dt_ms=10 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=4863 t_ms=22716147 site=A obj=0x905a7090 leaf=0 order=0x5 us=4626 cycles=18786370 snap_walk=0 snap_us=0
+     ship_gate_transition frame=4863 obj=0x905a7090 class=TS capital=0 validated=matched crossed=1 last_dA_r=0.76 err_B_deg=20.4 v_ms=127.9 desired_ms=0.0 B_gate_r=-0.24,-0.49,-0.01 A_gate_r=0.00,-0.80,-1.00 dock_blocked=0 p2_pos_r=-0.68,-1.02,-1.23 p2_fwd=0.00,0.2
+     frame_timing_slow frame=4863 dt_us=10972 draws=236 present_us=137 prims=691288 draw_us=328 draw_native_us=77 scene_us=747 state_us=-1 draw_calls=236 scene_calls=4 state_calls=14150 slow_call=present slow_call_us=483 gap_pre_us=7463 gap_draw_us=1854 gap_post_us
+     frame_phases_slow frame=4863 dt_us=10966 pre_render_us=7831 prologue_us=4 scene_update_us=16 begin_scene_us=89 views_us=2517 overlays_us=1 text_us=0 scene_end_us=371 present_us=137 view_setup_us=607 view_submit_us=1540 views=8 complete=1
+  frame 4864 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+SLOW event_frame=8278 drain_frame=8278 t_ms=22885824 us=4087 cycles=18826320 obj=0x90a31638 order=0x15 snap_walk=0 | since previous: real 21.2 s game 169.7 s
+--- context
+  frame 8276 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 8277 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     shadow_replay_sun_point device=1 frame=8277 source=point reason=point poll=ok light=-1002870,7530530,3365130 native=-100287000,753053000,336513000 distance=8362470.18 checks=8 disagreements=0 agreement_deg=0.000763 rederived=1 carried=0 candidates=3 directiona
+  frame 8278 dt_ms=8 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     shadow_replay_sun_point device=1 frame=8278 source=point reason=point poll=ok light=-1002870,7530530,3365130 native=-100287000,753053000,336513000 distance=8362477.33 checks=8 disagreements=0 agreement_deg=0.000763 rederived=3 carried=0 candidates=3 directiona
+     ship_steering_handler_slow frame=8278 t_ms=22885824 site=A obj=0x90a31638 leaf=0 order=0x15 us=4087 cycles=18826320 snap_walk=0 snap_us=0
+  frame 8279 dt_ms=4 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+SLOW event_frame=8817 drain_frame=8817 t_ms=22916554 us=4091 cycles=18839480 obj=0x90a36a50 order=0x19 snap_walk=0 | since previous: real 3.1 s game 30.7 s
+--- context
+  frame 8815 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 8816 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 8817 dt_ms=10 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=8817 t_ms=22916554 site=A obj=0x90a36a50 leaf=0 order=0x19 us=4091 cycles=18839480 snap_walk=0 snap_us=0
+  frame 8818 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_dock': 1, 'ship_trace': 8}
+SLOW event_frame=9194 drain_frame=9194 t_ms=22938064 us=974 cycles=442270 obj=0x90a30ee8 order=0x15 snap_walk=0 | since previous: real 2.1 s game 21.5 s
+--- context
+  frame 9192 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 9193 dt_ms=4 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 9194 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=9194 t_ms=22938064 site=A obj=0x90a30ee8 leaf=0 order=0x15 us=974 cycles=442270 snap_walk=0 snap_us=0
+  frame 9195 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_dock': 1, 'ship_trace': 8}
+SLOW event_frame=23550 drain_frame=23550 t_ms=23698969 us=4621 cycles=18830550 obj=0x905b4e60 order=0x14 snap_walk=0 | since previous: real 83.5 s game 760.9 s
+--- context
+  frame 23548 dt_ms=4 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 5}
+  frame 23549 dt_ms=5 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 1, 'ship_trace': 5}
+  frame 23550 dt_ms=10 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 1, 'ship_trace': 5}
+     ship_steering_handler_slow frame=23550 t_ms=23698969 site=A obj=0x905b4e60 leaf=0 order=0x14 us=4621 cycles=18830550 snap_walk=0 snap_us=0
+  frame 23551 dt_ms=9 noisy={'engine_memory': 1, 'engine_stage': 1, 'frame_end': 1, 'ship_avoid_dock': 1, 'ship_avoid_detour': 1, 'ship_trace': 5}
+SLOW event_frame=29585 drain_frame=29585 t_ms=24078669 us=4230 cycles=18887890 obj=0x90a39150 order=0x14 snap_walk=0 | since previous: real 38.0 s game 379.7 s
+--- context
+  frame 29583 dt_ms=8 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_steering_decision': 1, 'ship_avoid_detour': 3, 'ship_trace': 8}
+     ship_steering_summary frame=29583 interval_ms=1000 claims=4 calls=3687 handled=3653 ships=32 calls_per_ship_s=115.2 leaf_calls=3687,0,0 pass_not_ship=0 pass_no_autopilot=0 pass_deleted=0 pass_no_flight=0 pass_no_phys=0 pass_order_not_steered=34 pass_class_excl
+     ship_steering_lane_summary frame=29583 lane=active ctl_merge_yield=0 ctl_merge_stop=0 ctl_point_rewrites=4 ctl_lane_writes=1688 ctl_x_refused=0 ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=342 ctl_defer_rewrites=2 ctl_recommit_held=0 e_lan
+  frame 29584 dt_ms=8 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 3, 'ship_trace': 8}
+  frame 29585 dt_ms=12 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_gate_ctl_member': 1, 'ship_gate_ctl_lane': 1, 'ship_avoid_detour': 3, 'ship_trace': 7}
+     ship_gate_ctl frame=29585 t_ms=24078669 gate=0x90a178e8 ship=0x90a39150 id=3825 seq=3 key=0 order=0x0 from=arrival to=none why=leader rank=1 stage=none>none
+     ship_gate_ctl frame=29585 t_ms=24078669 gate=0x90a18038 ship=0x90a39150 id=3825 seq=3 key=0 order=0x0 from=none to=escort why=escort rank=5 stage=none>none
+     ship_steering_handler_slow frame=29585 t_ms=24078669 site=A obj=0x90a39150 leaf=0 order=0x14 us=4230 cycles=18887890 snap_walk=0 snap_us=0
+  frame 29586 dt_ms=7 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 3, 'ship_trace': 8}
+SLOW event_frame=31691 drain_frame=31691 t_ms=24243209 us=1254 cycles=448850 obj=0x90a15800 order=0x15 snap_walk=0 | since previous: real 16.5 s game 164.5 s
+--- context
+  frame 31689 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_e_verdict': 1, 'ship_trace': 8}
+  frame 31690 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 1, 'ship_trace': 8}
+  frame 31691 dt_ms=7 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 1, 'ship_avoid_e_verdict': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=31691 t_ms=24243209 site=A obj=0x90a15800 leaf=0 order=0x15 us=1254 cycles=448850 snap_walk=0 snap_us=0
+  frame 31692 dt_ms=13 noisy={'telemetry_summary': 1, 'engine_memory': 1, 'engine_stage': 1, 'frame_end': 1, 'ship_avoid_detour': 1, 'ship_trace': 8}
+     frame_timing_slow frame=31692 dt_us=13818 draws=307 present_us=168 prims=680999 draw_us=576 draw_native_us=120 scene_us=887 state_us=-1 draw_calls=307 scene_calls=4 state_calls=21268 slow_call=present slow_call_us=588 gap_pre_us=9391 gap_draw_us=2318 gap_post_
+     frame_phases_slow frame=31692 dt_us=13834 pre_render_us=9891 prologue_us=7 scene_update_us=16 begin_scene_us=111 views_us=3249 overlays_us=1 text_us=0 scene_end_us=390 present_us=169 view_setup_us=499 view_submit_us=2359 views=8 complete=1
+SLOW event_frame=47832 drain_frame=47832 t_ms=25308620 us=5720 cycles=18815040 obj=0xa9060758 order=0x14 snap_walk=0 | since previous: real 119.2 s game 1065.4 s
+--- context
+  frame 47830 dt_ms=10 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 47831 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_gate_ctl_member': 3, 'ship_gate_ctl_lane': 3, 'ship_avoid_dock': 1, 'ship_avoid_e_verdict': 6, 'ship_trace': 8}
+  frame 47832 dt_ms=12 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=47832 t_ms=25308620 site=A obj=0xa9060758 leaf=0 order=0x14 us=5720 cycles=18815040 snap_walk=0 snap_us=0
+     frame_timing_slow frame=47832 dt_us=12119 draws=318 present_us=133 prims=584049 draw_us=306 draw_native_us=58 scene_us=774 state_us=-1 draw_calls=318 scene_calls=4 state_calls=20120 slow_call=present slow_call_us=536 gap_pre_us=8280 gap_draw_us=2236 gap_post_u
+     frame_phases_slow frame=47832 dt_us=12119 pre_render_us=8700 prologue_us=4 scene_update_us=19 begin_scene_us=107 views_us=2777 overlays_us=56 text_us=0 scene_end_us=323 present_us=133 view_setup_us=494 view_submit_us=1942 views=8 complete=1
+  frame 47833 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_avoid_e_verdict': 1, 'ship_trace': 8}
+SLOW event_frame=48148 drain_frame=48148 t_ms=25332210 us=4365 cycles=18724330 obj=0xa9040298 order=0x15 snap_walk=0 | since previous: real 2.4 s game 23.6 s
+--- context
+  frame 48146 dt_ms=6 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 48147 dt_ms=7 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+  frame 48148 dt_ms=11 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_trace': 8}
+     ship_steering_handler_slow frame=48148 t_ms=25332210 site=A obj=0xa9040298 leaf=0 order=0x15 us=4365 cycles=18724330 snap_walk=0 snap_us=0
+  frame 48149 dt_ms=10 noisy={'engine_stage': 1, 'frame_end': 1, 'ship_gate_ctl_member': 3, 'ship_gate_ctl_lane': 3, 'ship_avoid_dock': 1, 'ship_avoid_e_verdict': 5, 'ship_trace': 8}
+SUMMARY frame=847 prev_summary=None interval_ms=9156 handler_us_p99=506.40 handler_us_max=506.40 ctl_frame_us_max=106.6 ctl_decide_us_max=105.3 ctl_frame_decisions_max=1 ctl_budget_cut=0 ctl_prof_us_max=0.6 ctl_members=1
+SUMMARY frame=5001 prev_summary=4847 interval_ms=1000 handler_us_p99=6.40 handler_us_max=4626.80 ctl_frame_us_max=106.6 ctl_decide_us_max=105.3 ctl_frame_decisions_max=3 ctl_budget_cut=0 ctl_prof_us_max=0.7 ctl_members=3
+SUMMARY frame=8396 prev_summary=8215 interval_ms=1000 handler_us_p99=12.80 handler_us_max=4087.80 ctl_frame_us_max=106.6 ctl_decide_us_max=105.3 ctl_frame_decisions_max=3 ctl_budget_cut=0 ctl_prof_us_max=1.0 ctl_members=3
+SUMMARY frame=8921 prev_summary=8748 interval_ms=1000 handler_us_p99=12.80 handler_us_max=4091.90 ctl_frame_us_max=106.6 ctl_decide_us_max=105.3 ctl_frame_decisions_max=3 ctl_budget_cut=0 ctl_prof_us_max=1.2 ctl_members=3
+SUMMARY frame=9274 prev_summary=9097 interval_ms=1000 handler_us_p99=12.80 handler_us_max=974.80 ctl_frame_us_max=106.6 ctl_decide_us_max=105.3 ctl_frame_decisions_max=3 ctl_budget_cut=0 ctl_prof_us_max=1.3 ctl_members=3
+SUMMARY frame=11366 prev_summary=11212 interval_ms=1000 handler_us_p99=12.80 handler_us_max=21.00 ctl_frame_us_max=128.0 ctl_decide_us_max=109.0 ctl_frame_decisions_max=3 ctl_budget_cut=0 ctl_prof_us_max=1.3 ctl_members=3
+SUMMARY frame=13195 prev_summary=13030 interval_ms=1000 handler_us_p99=12.80 handler_us_max=20.60 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=3 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=2
+SUMMARY frame=23711 prev_summary=23538 interval_ms=1000 handler_us_p99=12.80 handler_us_max=4621.80 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=3 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=0
+SUMMARY frame=29703 prev_summary=29583 interval_ms=1000 handler_us_p99=12.80 handler_us_max=4230.30 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=3 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=3
+SUMMARY frame=31761 prev_summary=31625 interval_ms=1000 handler_us_p99=12.80 handler_us_max=1254.60 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=3 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=3
+SUMMARY frame=47886 prev_summary=47747 interval_ms=1000 handler_us_p99=12.80 handler_us_max=5720.50 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=6 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=3
+SUMMARY frame=48152 prev_summary=48020 interval_ms=1000 handler_us_p99=12.80 handler_us_max=4365.70 ctl_frame_us_max=4647.9 ctl_decide_us_max=4646.9 ctl_frame_decisions_max=6 ctl_budget_cut=1 ctl_prof_us_max=1.5 ctl_members=3

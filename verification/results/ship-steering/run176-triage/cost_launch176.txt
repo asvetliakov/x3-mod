@@ -1,0 +1,36 @@
+launch frame=8243 t_ms=22883834 ship=0x90a31638 class=TS gate=0x90a178e8 kind=vanilla -> slow frame=8278 +1990 ms (+35 frames) us=4087 cycles=18826320 order=0x15
+launch frame=8750 t_ms=22912584 ship=0x90a36a50 class=TS gate=0x90a1c340 kind=vanilla -> slow frame=8817 +3970 ms (+67 frames) us=4091 cycles=18839480 order=0x19
+launch frame=9164 t_ms=22936154 ship=0x90a30ee8 class=TS gate=0x90a18038 kind=vanilla -> slow frame=9194 +1910 ms (+30 frames) us=974 cycles=442270 order=0x15
+launch frame=23296 t_ms=23685029 ship=0x905b4e60 class=M6 gate=0x90a18038 kind=vanilla -> slow frame=23550 +13940 ms (+254 frames) us=4621 cycles=18830550 order=0x14
+launch frame=29480 t_ms=24069579 ship=0x90a39150 class=M2 gate=0x90a178e8 kind=capital_offset -> slow frame=29585 +9090 ms (+105 frames) us=4230 cycles=18887890 order=0x14
+launch frame=31662 t_ms=24241099 ship=0x90a15800 class=TS gate=0x90a18038 kind=vanilla -> slow frame=31691 +2110 ms (+29 frames) us=1254 cycles=448850 order=0x15
+launch frame=47612 t_ms=25291590 ship=0xa9060758 class=M6 gate=0x90a18038 kind=vanilla -> slow frame=47832 +17030 ms (+220 frames) us=5720 cycles=18815040 order=0x14
+launch frame=48123 t_ms=25330240 ship=0xa9040298 class=TS gate=0x90a18038 kind=vanilla -> slow frame=48148 +1970 ms (+25 frames) us=4365 cycles=18724330 order=0x15
+slow without a launch of the ship within 60 s before: frame=847 obj=0x39fba068 us=506 cycles=560710 order=0x19
+slow without a launch of the ship within 60 s before: frame=4863 obj=0x905a7090 us=4626 cycles=18786370 order=0x5
+launches 110
+gate=0x90a178e8 class=M1 kind=capital_offset slow_after=0 launches=2
+gate=0x90a178e8 class=M2 kind=capital_offset slow_after=0 launches=3
+gate=0x90a178e8 class=M2 kind=capital_offset slow_after=1 launches=1
+gate=0x90a178e8 class=M4 kind=vanilla slow_after=0 launches=10
+gate=0x90a178e8 class=M6 kind=vanilla slow_after=0 launches=16
+gate=0x90a178e8 class=M8 kind=vanilla slow_after=0 launches=2
+gate=0x90a178e8 class=TS kind=vanilla slow_after=0 launches=11
+gate=0x90a178e8 class=TS kind=vanilla slow_after=1 launches=1
+gate=0x90a18038 class=M1 kind=capital_offset slow_after=0 launches=1
+gate=0x90a18038 class=M3 kind=vanilla slow_after=0 launches=4
+gate=0x90a18038 class=M4 kind=vanilla slow_after=0 launches=4
+gate=0x90a18038 class=M6 kind=vanilla slow_after=0 launches=10
+gate=0x90a18038 class=M6 kind=vanilla slow_after=1 launches=2
+gate=0x90a18038 class=M8 kind=vanilla slow_after=0 launches=1
+gate=0x90a18038 class=TM kind=vanilla slow_after=0 launches=3
+gate=0x90a18038 class=TP kind=vanilla slow_after=0 launches=1
+gate=0x90a18038 class=TS kind=vanilla slow_after=0 launches=19
+gate=0x90a18038 class=TS kind=vanilla slow_after=1 launches=3
+gate=0x90a1c340 class=M4 kind=vanilla slow_after=0 launches=1
+gate=0x90a1c340 class=M6 kind=vanilla slow_after=0 launches=4
+gate=0x90a1c340 class=TS kind=vanilla slow_after=0 launches=10
+gate=0x90a1c340 class=TS kind=vanilla slow_after=1 launches=1
+gate 0x90a178e8 launch frames 8243 .. 49298 n 46
+gate 0x90a1c340 launch frames 8750 .. 48776 n 16
+gate 0x90a18038 launch frames 9164 .. 48722 n 48
