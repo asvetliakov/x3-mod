@@ -238,7 +238,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         // review item 5: Lambda's lateral moves from l_c to the member's Q over the blend (lane_lat_at, as lane_steer flies it live): in
         // the plane, Lambda lies at yL(s) = (lat(s) - lat0) . n (the out-of-plane part of the blend is not rolled out)
         const float nR = sc::dot3(nn, g.R), nU = sc::dot3(nn, g.U);
-        auto y_lane = [&](float s_abs) __attribute__((always_inline)) { // inline: a float return through st(0) out of line fails the x87 audit
+        // (always_inline: a float return out of line goes through st(0) on i686, which the x87 audit refuses; with round C's rollout
+        // body GCC 16 emitted this lambda as an .isra clone)
+        auto y_lane = [&](float s_abs) __attribute__((always_inline)) {
             float l[2];
             lane_lat_at(g, m, s_abs, l);
             return (l[0] - lat0[0]) * nR + (l[1] - lat0[1]) * nU;
@@ -280,6 +282,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
         const float s_ov_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
         const bool escort = m.role == Role::escort;
         const float join_end = lane_join_end(m);
+        const float loop_nn = m.loop ? m.loop_n[0] * nR + m.loop_n[1] * nU : 0.0f; // (round C: the loop's side in the rollout's plane)
         const float stop_rest = v_cmd == 0.0f ? float(std::int32_t(m.stop_ms ? m.stop_ms + kLaneStopMs + g.step_ms - m.st.ms : kLaneStopMs + g.step_ms)) * 0.001f : 0.0f;
         // (lane fix round 1 item 4: the law's stop episode, lane_frame's lstop_ms: what is left of T_stop + the step at the state)
         const float stop_left0 = float(std::int32_t((m.lstop_ms ? m.lstop_ms : m.st.ms) + kLaneStopMs + g.step_ms - m.st.ms)) * 0.001f;
@@ -336,7 +339,7 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                     sc::sincos_f(psi, &sp_, &cp_);
                     if (cp_ >= 0.0f) redep = false;
                 }
-                if (m.over && redep && cx.s > s_ov_ap) cx.s = s_ov_ap; // (item 3c: the law's s; the carrot below flies from s_act)
+                if ((m.over || m.loop) && redep && cx.s > s_ov_ap) cx.s = s_ov_ap; // (item 3c, round C's loop: the law's s; the carrot below flies from s_act)
                 if (P) {
                     const std::int32_t j = koff + std::int32_t(k) - 1;
                     const float sp = p_along(j), sp1 = p_along(j + 1);
@@ -349,20 +352,22 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                         cx.loss -= lane_join_loss(sp, sc::sqrt_ss(pr * pr + pu * pu), lane_join_end(*P), dend(*P), lane_turn_r(*P));
                     }
                     cx.v_pred = (sp1 - sp) / kSampleS;
-                    cx.block = (cx.v_pred < kLaneStopV && cx.v_pred > -kLaneStopV) || (P->over && P->redep);
+                    cx.block = (cx.v_pred < kLaneStopV && cx.v_pred > -kLaneStopV) || ((P->over || P->loop) && P->redep);
                     // (round A: the ship ahead before its P2 on its final: the stop-room bound, as lane_frame's, on its live stage, until its
                     // sample reaches d_end: its P2 there is rolled out as kept (a P2 not kept shows in the live state the next rollout
                     // starts from); measured in slow_hull, a bound kept past d_end rolled every follower of a ship in its final out to a
                     // stop at spacing, and the joiner behind them into a conflict)
-                    cx.stop_room = (P->sb == Sb::inbound || P->sb == Sb::funnel) && !P->over && sp > -(dend(*P) + lane_blend_settle(g, *P)) &&
+                    cx.stop_room = (P->sb == Sb::inbound || P->sb == Sb::funnel) && !P->over && !P->loop && sp > -(dend(*P) + lane_blend_settle(g, *P)) &&
                                            sp < -dend(*P)
                                        ? (-dend(*P) - P->L - kLaneGapM) - (cx.s + m.L)
                                        : 3.4e38f;
                     if (cx.v_pred < 0.0f) cx.v_pred = 0.0f;
                     // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that)
-                    const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = P->over && sp > s_rj ? s_rj : sp;
-                    cx.gap = (spp + (P->over && sp > s_rj ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
+                    const bool p_ret = (P->over || P->loop) && sp > -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r); // (round C: a loop too)
+                    const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), spp = p_ret ? s_rj : sp;
+                    cx.gap = (spp + (p_ret ? 0.0f : (sp1 - sp) * float(step) * 0.5f) - P->L) - (cx.s + m.L);
                 }
+                cx.pred = P != nullptr && !(m.loop && redep); // (round C: a loop flies its out-leg and U-turn at the lane speed, as lane_frame)
                 cx.t_free_s = cx.head ? float(std::int32_t(m.lane_free_ms - m.st.ms)) * 0.001f - ts : 0.0f;
                 cx.t_gate_s = cx.gate ? float(std::int32_t(m.lane_gate_ms - m.st.ms)) * 0.001f - ts : 0.0f;
                 cx.stop_left_s = stop_left0 - ts;
@@ -375,9 +380,9 @@ inline unsigned rollout(const Member& m, const Gate& g, float v_cmd, Sample* out
                 const bool hold_lat = band && !(cx.y <= kLaneOnM);
                 float sc_c, yc;
                 lane_carrot(s_act, cx.y, v, m.params.W, m.params.r_gate, hold_lat, redep, &sc_c, &yc,
-                            redep ? (s_act > -(dend(m) + m.redep_out) ? -m.redep_side : kLaneTurnM) * sc::dot3(g.U, nn)
+                            redep ? (s_act > -(dend(m) + m.redep_out) ? -m.redep_side : kLaneTurnM) * (m.loop ? -loop_nn : sc::dot3(g.U, nn))
                                   : P ? P->w + m.w + kLaneSideM : 0.0f,
-                            join_end, m.redep_out, m.redep_r, dend(m));
+                            join_end, m.redep_out, m.redep_r, dend(m), m.loop ? lane_blend_settle(g, m) : 0.0f);
                 float ta = sc_c + dend(m), tb = y_lane(sc_c) + (y_rel < 0.0f ? -yc : yc);
                 const bool coast = o0 && ts < hold.t_s; // review item 5: the order-0 hold's straight coast (no leaf on order 0)
                 if (coast) {

@@ -1,0 +1,22 @@
+== x12_near (span s, 15 km -> last launch: d2871285 -> round C)
+  tf1  seed 1        184.9 ->  223.8   +38.9
+  tf1  seed 7        187.9 ->  218.9   +31.0
+  tf1  seed 1234567  198.9 ->  217.1   +18.2
+  tf6  seed 1        169.8 ->  198.3   +28.5
+  tf6  seed 7        171.3 ->  197.6   +26.3
+  tf6  seed 1234567  162.9 ->  203.6   +40.7
+  tf10 seed 1        169.8 ->  197.2   +27.4
+  tf10 seed 7        166.0 ->  197.0   +31.0
+  tf10 seed 1234567  159.3 ->  198.6   +39.3
+  cost: mean +31.3 s, range +18.2..+40.7 s over 9 runs; largest span after 223.8 s
+== x12_far (span s, 15 km -> last launch: d2871285 -> round C)
+  tf1  seed 1        211.3 ->  212.2    +0.9
+  tf1  seed 7        178.3 ->  210.9   +32.6
+  tf1  seed 1234567  179.7 ->  214.8   +35.1
+  tf6  seed 1        155.6 ->  206.5   +50.9
+  tf6  seed 7        158.1 ->  197.0   +38.9
+  tf6  seed 1234567  158.7 ->  198.6   +39.9
+  tf10 seed 1        169.1 ->  195.2   +26.1
+  tf10 seed 7        160.4 ->  197.7   +37.3
+  tf10 seed 1234567  151.0 ->  195.3   +44.3
+  cost: mean +34.0 s, range +0.9..+50.9 s over 9 runs; largest span after 214.8 s

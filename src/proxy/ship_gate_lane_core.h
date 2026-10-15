@@ -690,14 +690,38 @@ __attribute__((always_inline)) inline bool lane_escort_of(const Member& e, const
     if (e.role == Role::escort && e.leader == L.ship) return true;
     return e.key_res && L.role == Role::committed && !L.key_res && L.key && (e.key & ~15u) == L.key && e.key != L.key;
 }
+// Section 12.4 (round C): a loop's out distance beyond d_end before the spacing behind the ship ahead: d_end + settle + R +
+// D_need(kLaneLoopResR R) (kLaneRedepM at least), pushed out while the ship is not yet on its out-leg (loop_out)
+__attribute__((always_inline)) inline float lane_loop_base(const Gate& g, const Member& m, float R) noexcept {
+    const float out = lane_blend_settle(g, m) + R + lane_join_need(kLaneLoopResR * R, R);
+    return out > kLaneRedepM ? out : kLaneRedepM;
+}
+__attribute__((always_inline)) inline float lane_loop_out(const Gate& g, const Member& m) noexcept {
+    const float out = lane_loop_base(g, m, m.redep_r);
+    return m.loop_out > out ? m.loop_out : out;
+}
+// ... and the largest it may fly (3.4e38: no bound; < 0: no loop): its U-turn's apex (kLaneOverApexR R beyond the turn point) stays the
+// hull's half-width + kMarginM short of the statics' envelope (the profile's 1 Hz scan) beyond the ship. Measured in lane_station: the
+// loop flew back out past the station on Lambda 8 km out that had evicted it and was evicted again (6 loops, 15 flown 0x12 in one run):
+// the design's "a static there is the sphere avoidance's" did not hold. Unknown statics (no fresh profile, kLaneProfMaxAgeMs + the step,
+// or the scan overflowed) and an envelope around the ship fail closed (no loop: today's join, the no-write hand-over behind it)
+__attribute__((always_inline)) inline float lane_loop_cap(const Gate& g, const Member& m, float R, std::uint32_t now) noexcept {
+    const LaneProfile& p = g.prof;
+    if (!p.built_ms || !p.st_ok || p.overflow || std::int32_t(now - p.built_ms) > std::int32_t(age_bound(g, kLaneProfMaxAgeMs))) return -1.0f;
+    if (!p.st_n) return 3.4e38f;
+    const float c = m.w + kMarginM, s = m.lane_s < 0.0f ? m.lane_s : 0.0f;
+    if (p.st_lo - c > s) return 3.4e38f; // every static between the ship and the gate: none on its loop
+    if (p.st_hi + c >= s) return -1.0f;  // the envelope reaches the ship
+    return -(p.st_hi + c) - dend(m) - kLaneOverApexR * R;
+}
 // The ETA to d_end the lane order ranks by (s, at the lane speed): along Lambda when on it; the straight join plus the rest when joining;
 // out to the turn point and back (with a half turn at the hull's rate) when re-departing.
 inline float lane_eta(const Member& m) noexcept {
     const float v = lane_vmax(m) > kYieldFloorMs ? lane_vmax(m) : kYieldFloorMs, s_end = -dend(m), s = m.lane_s;
     float path;
-    if (m.redep) {
+    if (m.redep) { // (section 12.4, round C: a loop's lead is its path to the turn point, the nose's turn onto it included)
         const float s_out = -(dend(m) + m.redep_out), W = m.params.W > 1e-3f ? m.params.W : 1e-3f;
-        path = (s > s_out ? s - s_out : 0.0f) + (s_end - s_out) + sc::kPi * v / W;
+        path = (m.loop ? m.loop_lead : s > s_out ? s - s_out : 0.0f) + (s_end - s_out) + sc::kPi * v / W;
     } else if (m.lane_on)
         path = s_end > s ? s_end - s : 0.0f;
     else {
@@ -712,7 +736,11 @@ inline float lane_score(const Member& m) noexcept {
     const float v = sc::kGateLargeCapMs, s_end = -dend(m), s = m.lane_s;
     if (m.redep) {
         const float s_out = -(dend(m) + m.redep_out), W = m.params.W > 1e-3f ? m.params.W : 1e-3f;
-        return ((s > s_out ? s - s_out : 0.0f) + (s_end - s_out) + sc::kPi * v / W) / v;
+        // (section 12.4, round C: a loop ranks ahead of a ship only when it reaches d_end earlier by the spacing, g_req and two of its
+        // hulls at the common speed: one nearer in time keeps its place and the loop turns in behind it, never a follower braked or
+        // stopped behind the loop's apex; measured in x12_far, a loop 9 s ahead stopped its follower 20 s)
+        return ((m.loop ? m.loop_lead : s > s_out ? s - s_out : 0.0f) + (s_end - s_out) + sc::kPi * v / W) / v +
+               (m.loop ? (kLaneGapM + 2.0f * m.L) / v : 0.0f);
     }
     if (m.lane_on) return (s_end - s) / v;
     const float rest = s_end - s;
@@ -925,14 +953,67 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
                 m.over = 0;
         } else
             m.over = 0;
+        // section 12.4 (round C, the loop-back join): decided once at the re-commit after an eviction: the join from here does not fit
+        // when lane_join_span takes its residual branch (neither Lambda's far end nor the 8 km merge point is in reach of the 30 deg join,
+        // and the room to the join's end is short of 2 y). The loop lasts until the member has turned in (or leaves the lane stages, or
+        // is on Lambda). Its out-leg lies on the ship's own side of Lambda (never above it: the arrivals' side): an out-leg on the fixed
+        // -U side crossed Lambda and the join of a follower coming up from below (x12_far: contact, two further evictions)
+        const bool lane_stage = m.sb == Sb::inbound || m.sb == Sb::funnel;
+        if (m.x12_rc) {
+            m.x12_rc = 0;
+            const float yy = m.lane_lat, Rj = lane_turn_r(m), need = lane_join_need(yy, Rj);
+            const bool fits = -kLaneFarM - m.lane_s >= need || -kLaneMergeM - m.lane_s >= need || -lane_join_end(m) - m.lane_s >= 2.0f * yy;
+            const float Rl = m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
+            if (lane_stage && !m.lane_on && !fits && lane_loop_cap(g, m, Rl, now) >= lane_loop_base(g, m, Rl)) { // (its corridor clear)
+                m.loop = 1;
+                m.loop_conv = 0;
+                m.loop_out = m.loop_sp = 0.0f;
+                m.over_ret_ms = 0;
+                const float nu = eu < 0.0f ? eu : 0.0f, nl = sc::sqrt_ss(er * er + nu * nu);
+                m.loop_n[0] = nl > 1.0f ? er / nl : 0.0f;
+                m.loop_n[1] = nl > 1.0f ? nu / nl : -1.0f;
+            }
+        }
+        if (m.loop && (m.lane_on || !lane_stage)) m.loop = 0;
+        if (m.loop) { // the corridor every frame: a static onto it (the 1 Hz scan) or the statics no longer known: today's join from here
+            const float Rc = m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
+            if (lane_loop_cap(g, m, Rc, now) < lane_loop_base(g, m, Rc)) m.loop = 0;
+        }
         // (its out-leg runs 2.5 R below Lambda, the U-turn's measured lateral extent, so the U-turn ends on Lambda heading +F: with 2 R it
-        // ended about R / 2 above it and P2 came 8.5 deg off F in 2 of 9 runs)
-        m.redep_r = m.over && m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
+        // ended about R / 2 above it and P2 came 8.5 deg off F in 2 of 9 runs; round C: a loop's the same on its own side)
+        m.redep_r = (m.over || m.loop) && m.params.W > 1e-3f ? lane_vmax(m) / m.params.W : 0.0f;
         m.redep_out = m.over ? lane_blend_settle(g, m) + m.redep_r : kLaneRedepM;
-        m.redep_side = m.over ? 2.5f * m.redep_r : kLaneRedepSideM;
+        m.redep_side = m.over || m.loop ? 2.5f * m.redep_r : kLaneRedepSideM;
+        if (m.loop) { // the out-leg 2.5 R off Lambda on its side (loop_n), its turn point
+            const float R = m.redep_r, oR = er - m.redep_side * m.loop_n[0], oU = eu - m.redep_side * m.loop_n[1];
+            const float dl = sc::sqrt_ss(oR * oR + oU * oU); // (to the out-leg's line)
+            if (!m.loop_conv && dl <= kLaneLoopConvR * R && fF <= -kLaneLoopConvCos) m.loop_conv = 1; // on the leg: the turn point stays
+            if (!m.loop_conv) { // not yet on the leg: the turn point R ahead of the ship (the U-turn from the leg only)
+                const float o = -m.lane_s - dend(m) + R;
+                if (o > m.loop_out) m.loop_out = o;
+            }
+            float out = lane_loop_out(g, m);
+            if (m.loop_sp > out) out = m.loop_sp;
+            const float cap = lane_loop_cap(g, m, R, now); // (>= the base: checked above)
+            if (out > cap) out = cap;
+            m.redep_out = out;
+            // its lead (lane_eta, lane_score): the straight to the turn point and the nose's turn onto it at R ((1 - cos) pi R / 2)
+            const float s_out = -(dend(m) + out), ds = m.lane_s > s_out ? m.lane_s - s_out : 0.0f, d2 = sc::sqrt_ss(ds * ds + dl * dl);
+            const float cs = d2 > 1.0f ? -(fF * ds + sc::dot3(m.st.rows[2], g.R) * oR + sc::dot3(m.st.rows[2], g.U) * oU) / d2 : 1.0f;
+            m.loop_lead = d2 + (1.0f - cs) * 0.5f * sc::kPi * R;
+            m.redep = 1;
+            if (!m.over && m.lane_s > -(dend(m) + out)) { // its return for a follower's block (as an overshoot's: the lead, the U-turn
+                                                           // and the rejoin to its apex at the lane speed), until it reaches its turn point
+                const float vl = lane_vmax(m) > kYieldFloorMs ? lane_vmax(m) : kYieldFloorMs;
+                const float t_ret = (m.loop_lead + (sc::kPi + kLaneOverApexR) * R) / vl;
+                m.over_ret_ms = now + std::uint32_t(int(1000.0f * t_ret));
+                if (!m.over_ret_ms) m.over_ret_ms = 1;
+            }
+        }
         if (m.redep && m.lane_s < -(dend(m) + m.redep_out) && fF >= 0.0f) { // turned in: the join from here
             m.redep = 0;
             if (m.over) m.over_in = 1; // (item 3c: an overshoot's law runs from its own s from here)
+            m.loop = 0;
         }
         if (!m.lane_on && fF < 0.0f && m.lane_s > -(dend(m) + m.redep_out)) m.redep = 1; // nose away inside the turn point: out first
         if (m.lane_on) m.redep = 0;
@@ -1123,7 +1204,8 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         // (lane fix round 2 item 3c: the head too, until it has turned in: its pacing and its follow law measured from where it rejoins, not
         // from its position past d_end, where the pacing's stop at d_end held it 19 s in its turn back)
         const float s_self_ap = -(dend(m) + m.redep_out + kLaneOverApexR * m.redep_r);
-        const float s_self = m.over && !m.over_in && m.lane_s > s_self_ap ? s_self_ap : m.lane_s;
+        // (section 12.4, round C: a loop the same until it has turned in: it rejoins at its U-turn)
+        const float s_self = ((m.over && !m.over_in) || m.loop) && m.lane_s > s_self_ap ? s_self_ap : m.lane_s;
         cx.s = s_self;
         cx.v_lane = lane_vmax(m);
         cx.a = m.params.a_lin;
@@ -1136,10 +1218,11 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
         if (P) {
             // (lane fix round 1 item 4: an overshoot ahead turns back no farther out than its U-turn's apex: no nearer than that along F;
             // until it has turned in it is a block, its follower stops at spacing behind the apex)
-            const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), sp = k && P->over && !P->over_in && P->lane_s > s_rj ? s_rj : P->lane_s;
+            const bool p_ret = k && ((P->over && !P->over_in) || P->loop); // (round C: a loop ahead as an overshoot)
+            const float s_rj = -(dend(*P) + P->redep_out + kLaneOverApexR * P->redep_r), sp = p_ret && P->lane_s > s_rj ? s_rj : P->lane_s;
             gap = (sp - P->L) - (s_self + m.L);
             float vp = sc::dot3(P->st.u, g.F);
-            cx.closing = vp < -kLaneStopV && !(k && P->over); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
+            cx.closing = vp < -kLaneStopV && !(k && (P->over || P->loop)); // (lane fix round 2 item 5: flying back toward it; an overshoot's out-leg is
                                                                // its block, bounded below)
             if (P->v_sb >= 0.0f && P->v_sb < vp) vp = P->v_sb;
             cx.pred = true;
@@ -1148,7 +1231,7 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             // (a block: stopped, or an overshoot turning back; lane fix round 2 item 5: the overshoot's block lasts its predicted return,
             // the out-leg to its turn point, a U-turn of pi R and the rejoin to its apex at the lane speed, + kLaneStopMs + the step; past
             // it the pair is the certificate's and the law's stop is bounded by T_stop as for any non-block)
-            const bool over_block = k && P->over && P->redep && P->over_ret_ms &&
+            const bool over_block = k && (P->over || P->loop) && P->redep && P->over_ret_ms &&
                                     std::int32_t(now - P->over_ret_ms) <= std::int32_t(kLaneStopMs + g.step_ms);
             // (lane fix round 2 item 3d: a predecessor stopped at d_end on a slot refusal is the queue hold's block, which lasts the refusal;
             // its grant, order 5 or 8 seen, releases it at once, not once its speed passes kLaneStopV: the follower's stop ends within the step)
@@ -1156,8 +1239,24 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             cx.block = (sc::dot3(P->st.u, P->st.u) < kLaneStopV * kLaneStopV && !cx.granted) || over_block;
             cx.pred_final = P->sb == Sb::handover || P->lane_s > -(dend(*P) + lane_blend_settle(g, *P));
             // (round A: before its P2 on its final, the room to g_req behind its tail at d_end: the stop-room bound)
-            if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k && P->over) && P->lane_s < -dend(*P))
+            if ((P->sb == Sb::inbound || P->sb == Sb::funnel) && cx.pred_final && !(k && (P->over || P->loop)) && P->lane_s < -dend(*P))
                 cx.stop_room = (-dend(*P) - P->L - kLaneGapM) - (s_self + m.L);
+            // section 12.4 (round C): a loop behind P turns where its U-turn ends g_req behind P's tail, P at its along-F speed over the
+            // out-leg and the U-turn: s_t (1 + v_P / v) <= s_P + v_P (s + pi R) / v - g_req - L - L_P. The turn point only moves out, and only
+            // before the ship has reached it; the loop flies at the lane speed (no gap law: at the law's floor beside Lambda the loop sat in
+            // its passer's path) until it has turned in, the law from P after the U-turn
+            if (m.loop) {
+                if (m.lane_s > -(dend(m) + m.redep_out)) {
+                    const float v = lane_vmax(m) > kYieldFloorMs ? lane_vmax(m) : kYieldFloorMs;
+                    const float s_t = (sp + cx.v_pred * (m.lane_s + sc::kPi * m.redep_r) / v - kLaneGapM - m.L - P->L) / (1.0f + cx.v_pred / v);
+                    const float o = -s_t - dend(m);
+                    m.loop_sp = o; // (re-taken: a ship ahead that stopped for a while does not carry the loop out for good)
+                    const float out = lane_loop_out(g, m), cap = lane_loop_cap(g, m, m.redep_r, now);
+                    m.redep_out = o > out ? o : out;
+                    if (m.redep_out > cap) m.redep_out = cap;
+                }
+                cx.pred = false;
+            }
         }
         if (m.lane_pred != (P ? P->ship : 0u)) { // a new pair: a merge (the row label and its bound) when the raw gap is short
             m.lane_pred = P ? P->ship : 0u;
@@ -1373,11 +1472,18 @@ inline bool lane_steer(const Gate& g, const Member& m, const float x[3], float v
         const int pi = hold_lat && m.lane_pred ? find(g, m.lane_pred) : -1;
         float sc_c, yc;
         lane_carrot(s, y, v_now, m.params.W, rg, hold_lat, m.redep != 0, &sc_c, &yc, pi >= 0 ? g.m[pi].w + m.w + kLaneSideM : 0.0f,
-                    lane_join_end(m), m.redep_out, m.redep_r, dend(m));
+                    lane_join_end(m), m.redep_out, m.redep_r, dend(m), m.loop ? lane_blend_settle(g, m) : 0.0f);
         float latc[2];
         lane_lat_at(g, m, sc_c, latc);
         const float k = y > 1.0f ? yc / y : 0.0f;
-        if (m.redep && s <= -(dend(m) + m.redep_out)) // the turn: ahead (+F) and above (+U) of the ship, onto Lambda
+        if (m.loop) { // section 12.4 (round C): the out-leg on the loop's side (loop_n), the turn back toward Lambda
+            const float nR = m.loop_n[0], nU = m.loop_n[1];
+            if (s <= -(dend(m) + m.redep_out))
+                for (unsigned i = 0; i < 3; ++i) out->P[i] = x[i] + kLaneTurnM * (g.F[i] - nR * g.R[i] - nU * g.U[i]);
+            else
+                for (unsigned i = 0; i < 3; ++i)
+                    out->P[i] = g.G[i] + (latc[0] + m.redep_side * nR) * g.R[i] + (latc[1] + m.redep_side * nU) * g.U[i] + sc_c * g.F[i];
+        } else if (m.redep && s <= -(dend(m) + m.redep_out)) // the turn: ahead (+F) and above (+U) of the ship, onto Lambda
             for (unsigned i = 0; i < 3; ++i) out->P[i] = x[i] + kLaneTurnM * (g.F[i] + g.U[i]);
         else {
             const float side = m.redep ? m.redep_side : 0.0f; // out: the turn point below Lambda

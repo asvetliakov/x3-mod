@@ -217,6 +217,15 @@ struct Member {
     std::uint8_t over_in = 0; // lane fix round 2 item 3c: the overshoot has turned in (its re-departure's turn done; its law from its own s)
     std::uint32_t over_ms = 0, over_ret_ms = 0; // (over_ret_ms: its predicted return to its apex, set when it begins)
     std::uint32_t over_ahead_of = 0; // items 3a / 5: the overshoot this member was inside the return zone of when it began (it stays ahead)
+    // convoy-gate-transit.md section 12.4 (round C, the loop-back join after a flown 0x12): re-committed after an eviction (enter; lane_frame
+    // decides once whether the join from there fits), the loop in force (the re-departure's out-leg 2.5 R off Lambda on the ship's side,
+    // entered at the current s, its U-turn, then the tangent join; until it has turned in), the out-leg reached (its push stops), the
+    // loop's out distance beyond d_end while it is pushed ahead of the ship, and its lead (m: the path to the turn point with the nose's turn
+    // onto it; lane_eta / lane_score rank by the ETA that includes the loop)
+    // (the out-leg's side: a unit lateral (R, U) from Lambda, the ship's own side at the re-commit, never above Lambda)
+    std::uint8_t x12_rc = 0, loop = 0, loop_conv = 0;
+    float loop_out = 0.0f, loop_lead = 0.0f, loop_n[2] = {0.0f, -1.0f};
+    float loop_sp = 0.0f; // (the out distance that ends the U-turn g_req behind the ship ahead: re-taken every frame until it is reached)
     std::uint32_t lstop_ms = 0, lstop_last_ms = 0, x_acc_ms = 0; // (lstop_last_ms: the episode's last frame with the stop's condition)
     std::uint8_t merge_done = 1; // review item 6: the merge's completion, the raw gap >= g_req - 50 m (the merge row's label, no law state)
     Law law = Law::none;
@@ -245,6 +254,10 @@ struct LaneProfile {
     float d[kLaneProfKnots][2] = {};
     std::uint32_t body[kLaneProfBodies] = {};
     float clear_m = 0.0f;           // the profile's clearance beyond w_max + r_body (m; the margin it could keep, kMarginM at best)
+    // section 12.4 (round C): the scanned statics' envelope along F (min s - r, max s + r; enclosing fallbacks excluded) and their count,
+    // valid when st_ok (the scan ran): the loop-back join's corridor test (lane_loop_cap)
+    float st_lo = 0.0f, st_hi = 0.0f;
+    std::uint8_t st_n = 0, st_ok = 0;
     std::uint32_t built_ms = 0, bodies = 0; // the last build (game ms) and the bodies it scanned
 };
 struct Gate {
@@ -552,6 +565,11 @@ inline Member* enter(Board& b, Gate& g, std::uint32_t ship, std::uint32_t id, Ro
         // a change between the pair roles keeps it
         const bool lapsed = m.role == Role::none || (m.role == Role::evicted && now - m.evict_ms > kEvictKeepMs);
         if (lapsed || !m.seq) m.seq = g.next_seq++;
+        // (section 12.4, round C: back after its eviction, the KC's order 4 re-issued at the held slot: lane_frame's loop test; the 30 s
+        // keep is the sequence number's, not the 0x12's: the flown episodes last 17-33 s in the fixture and the record of one that lapsed
+        // still says evicted)
+        m.x12_rc = m.role == Role::evicted ? 1 : 0;
+        m.loop = m.loop_conv = 0;
         m.enter_ms = now ? now : 1;
         // (round 2 review item 2: a hand to another leader belongs to the escort membership it was stamped in: a ship re-entering in
         // another role, after an eviction within 30 s or as a committed member, flies no Plan::drift and keeps no frozen lane order)

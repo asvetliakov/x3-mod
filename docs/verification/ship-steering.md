@@ -3094,6 +3094,32 @@ line identical to the base's (45 runs, contact on certified frames 0); unittests
 PASS 20. Cost (host): the profile build 5.6 µs for 64 bodies with the shift; `lane_lat_at` 1.1 ns / 3.0–5.4 ns with a profile; bench24 tf 10 mean
 130.7–139.9 µs, third-worst 497–689 µs over three runs (base 130.2 / 673 µs). i686 cost not measured. Evidence: [`round_b/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_b/run.sh).
 
+### Round C: the loop-back join after a flown 0x12 (2026-10-15, Opus 5.5; design [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) §12.4, changes, deviations and figures §11 "Round C (loop-back join)")
+
+**What changed.** Worktree `agent-a375a764280c139d2` on main d2871285. A member re-committed after an eviction whose join would take
+`lane_join_span`'s residual branch flies the loop: an out-leg 2.5 R off Λ on its own side, the U-turn back toward Λ, the tangent join; the
+turn point leaves room for the join from the U-turn's residual and, behind the ship ranked ahead, ends the U-turn g_req behind it; the loop
+flies at the lane speed and ranks by its whole path plus the spacing time; it is flown only with a fresh lane profile and its corridor clear
+of the statics' envelope (new `LaneProfile::st_*` from the 1 Hz scan). Rollout and `lane_steer` fly the same geometry. No row, site or hook
+changed; key off untouched.
+
+**Fail-before → after [m]** (3 seeds × tf 1/6/10; `round_c/summary.txt`, `before_<cast>.txt` = d2871285 with its PARKED lines re-enabled):
+
+| Cast | d2871285 | Round C |
+| --- | --- | --- |
+| `x12_near` | P2 not kept or > 8° in 4 of 9 (4.1–9.3°) | 9 of 9: P2 0.3–0.8°, 0 second evictions, 0 uncertified frames; span cost +31.3 s mean (+18.2…+40.7) |
+| `x12_far` | P2 not kept or > 8° in 5 of 9 (to 27.6°); lane v_min 0–27.5 m/s | 9 of 9: P2 0.1–0.5°, follower v_min 100 m/s, 0 second evictions, 0 uncertified frames; span cost +34.0 s mean (+0.9…+50.9) |
+| `lane_station`, `lane_belt` | parked | parked, identical rows (no loop: the corridor) |
+| `arrival_parked` | parked (28 failing check-runs, 4 of 9 short of a launch) | parked (27, 4 of 9; 2–4 loops per run) |
+
+**Acceptance [m]** (host x86-64, `-std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 3,971 / 0, full 11,316 / 0, `--capital` 5,694 / 0; the 31
+untouched casts' rows identical over every seed (`laneon_cmp.txt`), key-off control line identical; unittests `test_ship_trace_format`,
+`test_ctl_boundary_reads`, `test_ship_steering` 21 OK; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,005 reachable, 0 violations,
+after `y_lane` was made always_inline: it had gone out of line returning through st(0)), `verify_ship_steering_sites.py` PASS 20. Cost
+(host, `round_c/bench.txt`, alternating three times): bench24 tf 10 mean 99.9–103.4 µs base against 97.8–103.0 µs; bench24 now flies loops
+(decisions 30,596 → 31,561 at tf 10). i686 cost not measured. Evidence: [`round_c/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_c/run.sh),
+[`round_c/bench.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_c/bench.sh).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

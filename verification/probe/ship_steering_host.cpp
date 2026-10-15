@@ -7758,6 +7758,9 @@ constexpr double kOverApexR = double(gc::kLaneOverApexR);
 #else
 constexpr double kOverApexR = 3.0;
 #endif
+// round C (section 12.4): the script's order-0 re-issue gap (3 s at most, no leaf: the ship coasts straight) at the lane speed, which can
+// fall inside a loop's U-turn (x12_near tf 1: 66 m beyond its turn point + 3 R)
+constexpr double kLoopO0M = 3.0 * 100.0;
 // The nose's angle off the gate axis F = +z (deg).
 static double err_of(const Model& m) { return std::acos(std::fmin(1.0, std::fmax(-1.0, double(m.row[2][2])))) * 180.0 / M_PI; }
 namespace lanec {
@@ -7802,6 +7805,8 @@ struct CSetup {
     int eng = 0;
     long fx12_ms = -1;   // item B: the KC's CollisionWarn against the gate for ship 0 (site E's verdict overruled: the warn Run173 left)
     double fx12_d = 1e9; // ... at the first order-4 frame at or after fx12_ms within this distance of G (m)
+    double span_max_s = -1.0; // round C (section 12.4): the measured largest span (15 km -> the last launch) over 3 seeds x tf 1/6/10;
+                              // asserted + 5 s + the step (< 0: not asserted)
 };
 struct CResult {
     bool lane = false;
@@ -7903,6 +7908,11 @@ struct CResult {
     // listed (none expected) and the statics their avoidance left to the profile
     unsigned prof_builds = 0, prof_shifted = 0, prof_det = 0, prof_skipped = 0;
     double prof_max_m = 0, prof_clear_min = 1e18, prof_us_max = 0, prof_us_sum = 0;
+    // section 12.4 (round C): members that flew the loop-back join (Member::loop seen), the outermost s of a loop until it is back on
+    // Lambda or launched and its bound (the core's turn point + kLaneOverApexR R), the largest lateral off Lambda at the turn-in, the
+    // lane v_min (item C's) of the members that flew no 0x12 (the follower)
+    unsigned loops = 0;
+    double loop_min_s = 1e18, loop_bound = 0, loop_turn_lat_max = 0, fol_v_min = 1e18;
     // item D: the small ships (count, launched, D.5 mirrors), their engine warns against other ships and those site E left (stops), the
     // members' warns against a small ship and their 0x12 (E left them)
     unsigned sm_n = 0, sm_launched = 0, sm_mirrored = 0, sm_warns = 0, sm_stops = 0, mem_sm_warns = 0, mem_sm_x12 = 0;
@@ -8416,6 +8426,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
         bool p2_unkept = false; // round A: this ship's P2 did not keep (its hand-over gets no lane write)
         bool gate_ep = false, past_plane = false, past_seen = false; // ... an unsuppressed own-gate warn on the previous frame; past the
                                                                      // plane (not yet back on Lambda), ever
+        bool loop_now = false, loop_track = false; // round C: the loop in force on the last frame; its outermost s tracked (to Lambda)
         long law_stop_start = -1, law_stop_last = -1;
         bool law_stop_block = false;
         long x_since = -1; // item 3: the hand-over's start (P2), game ms
@@ -9919,6 +9930,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 // item C: a lane member on order 4 before d_end - 500 m: its lowest speed and the longest run at or below 15 m/s
                 if (mm && mm->ln && c.phase == 0 && c.m.order == core::kOrderFlyBefore && z < -(kLaneEndM + 500.0)) {
                     res.lane_v_min = std::fmin(res.lane_v_min, v);
+                    if (x12[k].reissue_ms < 0) res.fol_v_min = std::fmin(res.fol_v_min, v); // (round C: the members that flew no 0x12)
                     slow_ms[k] = v <= 15.0 ? slow_ms[k] + dt : 0;
                     res.lane_slow_s_max = std::fmax(res.lane_slow_s_max, double(slow_ms[k]) / 1000.0);
                 }
@@ -10037,6 +10049,19 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
                 const double settle = std::fmax(std::fmax(75.0, 200.0 / W), 0.3 * kGateRM);
                 // (its turn point d_end + settle + R, the U-turn's own extent beyond it gc::kLaneOverApexR R, R = v / W)
                 res.over_out_bound = std::fmax(res.over_out_bound, kLaneEndM + settle + (1.0 + kOverApexR) * 100.0 / W);
+                // (round C: an overshoot flying the loop-back join turns at the loop's turn point)
+                if (mm->loop) res.over_out_bound = std::fmax(res.over_out_bound, double(gc::dend(*mm) + mm->redep_out) + kOverApexR * double(mm->redep_r) + kLoopO0M);
+            }
+            if (lane && mm) { // round C (section 12.4): the loop-back join's extent
+                if (mm->loop && !e.loop_now) {
+                    if (!e.loop_track) ++res.loops;
+                    e.loop_track = true;
+                }
+                if (mm->loop) res.loop_bound = std::fmax(res.loop_bound, double(gc::dend(*mm) + mm->redep_out) + kOverApexR * double(mm->redep_r) + kLoopO0M);
+                if (e.loop_now && !mm->loop) res.loop_turn_lat_max = std::fmax(res.loop_turn_lat_max, double(mm->lane_lat));
+                e.loop_now = mm->loop != 0;
+                if (e.loop_track && (mm->lane_on || c.phase != 0)) e.loop_track = false;
+                if (e.loop_track) res.loop_min_s = std::fmin(res.loop_min_s, z);
             }
             if (lane && mm && e.past_plane && mm->lane_rank != 0xff) {
                 if (mm->lane_rank == 0) ++res.over_head_frames;
@@ -10780,13 +10805,15 @@ static const CSetup kCSetups[] = {
     // {"behind_start", kBehindStart, 2, 0, -1, false, 600, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, true},
     // fixture engine paths (holistic review section 4 items 1, 3, 4, 6; convoy-gate-transit.md section 11 "Fixture engine paths"): a cast
     // that fails on this controller is parked here commented out ("PARKED:", engine_paths/run.sh builds them) with its measured numbers
-    // PARKED (item B, Run173 E1 at 1.7 km): the flown eviction (turn 53-71 deg, 17-19 s, order 4 re-issued, re-committed at once); after it
-    // P2 is not kept or beyond 8 deg in 2 of 9 runs (P2 4.2-8.7 deg): the re-departure reaches its final short of the settling distance
-    // (engine_paths/x12_near.txt)
-    // PARKED: {"x12_near", kX12Near, 2, 0, -1, false, 700, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 1000, 1e9},
-    // PARKED (item B, Run173 E1 at 6.95 km): turn 98-128 deg, 25-33 s; P2 not kept or beyond 8 deg in 5 of 9 runs (to 27.6 deg) and in 2 a
-    // member 0x12 (the follower's pair uncertified while the re-issued ship rejoins ahead of it, flown: a second eviction)
-    // PARKED: {"x12_far", kX12Far, 2, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 0, 6950.0},
+    // (item B, Run173 E1 at 1.7 km: the flown eviction, turn 53-71 deg, 17-19 s, order 4 re-issued; parked until round C with P2 not kept or
+    // beyond 8 deg in 4 of 9 runs on d2871285 (to 9.3 deg): the 0x12 ends past the plane and the overshoot's U-turn, begun before the ship
+    // was on its out-leg, ended 1.2 km off Lambda 3 km before d_end. Round C (section 12.4): the loop-back join on the ship's own side, the
+    // U-turn from the out-leg, the room for the tangent join; round_c/x12_near.txt)
+    {"x12_near", kX12Near, 2, 0, -1, false, 700, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 1000, 1e9, 223.8},
+    // (item B, Run173 E1 at 6.95 km: turn 98-128 deg, 25-33 s; parked until round C with P2 not kept or beyond 8 deg in 5 of 9 runs on
+    // d2871285 (to 27.6 deg), the follower at 0-27.5 m/s: the re-issued ship joined 1-3.5 km off Lambda across its follower's path. Round C:
+    // the loop, ranked by its ETA with the spacing behind the follower nearer in time, turns in behind it; round_c/x12_far.txt)
+    {"x12_far", kX12Far, 2, 0, -1, false, 900, false, false, -1.0, false, false, -1, -1, 0, -1, -1, -1, 0, 0, false, 1, 0, 6950.0, 214.8},
     // PARKED (item C, a station on Lambda 8 km out): the module's sphere detour; the span exceeded in 2 of 9 runs (to 759.6 s); at tf 10 a
     // member 0x12 cascade (8 flown, capitals in contact -918 m, P2 nose 165.8 deg); lane v_min 2-71.8 m/s. Round B (section 12.3): no
     // feasible lateral profile (the 929 m clearance cannot ramp back at 15 deg before the blend: X3M_C_PROFSHIFT=1 builds no shift)
@@ -10870,7 +10897,8 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
                 "remerged %u (max %.1f s) | lane v_min %.1f m/s slow %.1f s | small %u launched %u mirrored %u warns %u stops %u x12_s %.1f "
                 "mem_warns %u mem_x12 %u capsule %.0f | arrivals %u rest %u exit_v %.1f hold_out %.0f dep8_gap %.0f close %u dep_gap %.0f "
                 "arr_gap %.0f overlap %u pair_contact %u | members capsule %.0f launched %u/%u span %.1f (bound %.1f) p2 not_kept %u nose %.1f | D.5 %u/%u/%u/%u/%u/%u/%u/%u side %u held %u hold_max %.1f s | "
-                "prof builds %u shifted %u max %.0f m clear %.0f us %.1f/%.2f skip %u det %u | obst avoidable %u x12 %u\n",
+                "prof builds %u shifted %u max %.0f m clear %.0f us %.1f/%.2f skip %u det %u | obst avoidable %u x12 %u | loop %u min_s %.0f bound %.0f "
+                "turn_lat %.0f fol_v_min %.1f\n",
                 tag, tf, seed, r.x12_flown, r.x12_cap, r.x12_small, r.x12_forced, r.x12_turn_max, r.x12_dur_max_s, r.x12_out_max_m, r.x12_reissue,
                 r.x12_remerged, r.x12_remerge_max_s, r.lane_v_min < 1e17 ? r.lane_v_min : -1.0, r.lane_slow_s_max, r.sm_n, r.sm_launched,
                 r.sm_mirrored, r.sm_warns, r.sm_stops, r.x12_small_s, r.mem_sm_warns, r.mem_sm_x12, r.sm_capsule < 1e17 ? r.sm_capsule : -1.0,
@@ -10879,7 +10907,8 @@ static void lane_c_print_eng(const char* tag, int tf, std::uint32_t seed, const 
                 r.mem_capsule < 1e17 ? r.mem_capsule : -1.0, r.launched, r.departures, r.span_s, r.bound_s, r.p2_not_kept, r.p2_nose_max_deg,
                 r.sm_bv[0], r.sm_bv[1], r.sm_bv[2], r.sm_bv[3], r.sm_bv[4], r.sm_bv[5], r.sm_bv[6], r.sm_bv[7], r.sm_side, r.sm_held, r.sm_hold_s_max,
                 r.prof_builds, r.prof_shifted, r.prof_max_m, r.prof_clear_min < 1e17 ? r.prof_clear_min : -1.0, r.prof_us_max,
-                r.prof_builds ? r.prof_us_sum / double(r.prof_builds) : 0.0, r.prof_skipped, r.prof_det, r.obst_avoidable, r.obst_x12);
+                r.prof_builds ? r.prof_us_sum / double(r.prof_builds) : 0.0, r.prof_skipped, r.prof_det, r.obst_avoidable, r.obst_x12, r.loops,
+                r.loop_min_s < 1e17 ? r.loop_min_s : 0.0, r.loop_bound, r.loop_turn_lat_max, r.fol_v_min < 1e17 ? r.fol_v_min : -1.0);
 }
 static void lane_c_print(const char* tag, int tf, int fps, std::uint32_t seed, const lanec::CResult& r) {
     std::printf("scenario C %s %s tf %d %d fps seed %u: launched %u/%u span %.1f s (bound %.1f, floor %.1f, leader 15 km->launch %.1f, c %.1f, gap-c-5 %.1f) "
@@ -12353,8 +12382,142 @@ static void lane_cost_bench() {
             check(third[1] < 1000.0, why);
         }
 }
+// Round C (convoy-gate-transit.md section 12.4): the loop-back join. A member re-committed after its eviction whose join does not fit
+// flies the loop on its own side and ranks by its ETA with the loop (+ the spacing); a re-commit whose join fits, or a commit that was no
+// eviction, does not loop.
+static void round_c_units() {
+#ifndef X3M_LANE_HEAD
+    char why[512];
+    gc::Board b{};
+    b.lane = 1;
+    gc::Gate* g = ctl_gate(b, 1000);
+    auto mk = [&](std::uint32_t ship, float x, float y, float z, float fx, float fz, float W, std::uint32_t now) {
+        gc::Role before = gc::Role::count;
+        gc::Member* m = gc::enter(b, *g, ship, ship ^ 0x5a000000u, gc::Role::committed, now, &before);
+        m->r = m->L = 1000.0f;
+        m->w = 530.0f;
+        m->params.v_max = 110.0f;
+        m->params.W = W;
+        m->params.alpha = W * 0.05f;
+        m->params.a_lin = 5.0f;
+        m->params.r_gate = float(kGateRM);
+        m->large = 1;
+        m->live_ms = now;
+        m->proven = 1;
+        m->decided_ms = m->commit_ms = m->steered_ms = now;
+        m->line_ok = 1;
+        m->st.ms = now;
+        m->st.order = core::kOrderFlyBefore;
+        m->st.target = 0x4000u;
+        const float n = std::sqrt(fx * fx + fz * fz);
+        m->st.x[0] = x;
+        m->st.x[1] = y;
+        m->st.x[2] = z;
+        m->st.rows[2][0] = fx / n;
+        m->st.rows[2][1] = 0.0f;
+        m->st.rows[2][2] = fz / n;
+        m->st.f_ok = 1;
+        m->st.v = 100.0f;
+        m->st.u[0] = 100.0f * fx / n;
+        m->st.u[1] = 0.0f;
+        m->st.u[2] = 100.0f * fz / n;
+        return m;
+    };
+    auto prof = [&](std::uint32_t now, unsigned n, float lo, float hi) { // the 1 Hz profile scan's statics envelope (fresh at now)
+        g->prof.built_ms = now;
+        g->prof.st_ok = 1;
+        g->prof.st_n = std::uint8_t(n);
+        g->prof.st_lo = lo;
+        g->prof.st_hi = hi;
+    };
+    auto evict_back = [&](std::uint32_t ship, std::uint32_t now) { // the flown 0x12, then the KC's order 4 re-issued at the held slot
+        const int i = gc::find(*g, ship);
+        if (i >= 0) gc::leave(*g, unsigned(i), true, now);
+    };
+    // (a) the design's unit: the re-issued M1 2 km off Lambda 7 km out, its nose turned away (+R, -F), a Titan on Lambda 8.4 km out
+    gc::Member* T = mk(0x9100, 0.0f, -929.0f, -8400.0f, 0.0f, 1.0f, 0.176f, 1000);
+    gc::Member* A = mk(0x9000, 2000.0f, -929.0f, -7000.0f, 0.9f, -0.44f, 0.157f, 1000);
+    evict_back(0x9000, 1000);
+    A = mk(0x9000, 2000.0f, -929.0f, -7000.0f, 0.9f, -0.44f, 0.157f, 31000); // (33 s later: beyond the sequence's 30 s keep)
+    T->st.ms = T->live_ms = T->decided_ms = T->steered_ms = 31000;
+    prof(31000, 0, 0.0f, 0.0f);
+    gc::LaneStats ls;
+    gc::lane_frame(*g, 31000, &ls);
+    gc::lane_frame(*g, 31100, &ls);
+    const float vl = gc::lane_vmax(*T), s_turn = -(gc::dend(*A) + A->redep_out);
+    std::snprintf(why, sizeof why, "round C units (a): the re-issued ship 2 km off at 7 km behind a Titan at 8.4 km: loop %u side %.2f,%.2f, ranks "
+                  "loop %u Titan %u (scores %.1f / %.1f s), Titan law %s %.1f m/s, loop %.1f m/s, turn point %.0f m", unsigned(A->loop),
+                  double(A->loop_n[0]), double(A->loop_n[1]), unsigned(A->lane_rank), unsigned(T->lane_rank), double(gc::lane_score(*A)),
+                  double(gc::lane_score(*T)), gc::law_name(T->law), double(T->v_sb), double(A->v_sb), double(s_turn));
+    std::printf("%s\n", why);
+    check(A->loop && A->redep && A->loop_n[0] > 0.99f && A->lane_rank == 1 && T->lane_rank == 0 && gc::lane_score(*A) > gc::lane_score(*T) &&
+              (T->law == gc::Law::lane || T->law == gc::Law::join) && std::fabs(T->v_sb - vl) < 1e-3f && std::fabs(A->v_sb - gc::lane_vmax(*A)) < 1e-3f,
+          why);
+    // ... its turn point: the U-turn ends g_req behind the Titan's tail (the Titan at 100 m/s over the out-leg and the U-turn)
+    {
+        const float v = gc::lane_vmax(*A), R = A->redep_r, sT = T->lane_s, s0 = A->lane_s;
+        const float t1 = (s0 - s_turn) / v + 3.14159265f * R / v, gap = (sT + 100.0f * t1 - T->L) - (s_turn + A->L);
+        std::snprintf(why, sizeof why, "round C units (a): the loop's U-turn ends %.0f m behind the Titan's tail (g_req %.0f m), turn point %.0f m >= "
+                      "d_end + settle + R + D_need(R) %.0f m", double(gap), double(gc::kLaneGapM), double(-s_turn), double(gc::dend(*A) + gc::lane_loop_out(*g, *A)));
+        check(gap >= gc::kLaneGapM - 1.0f && -s_turn >= gc::dend(*A) + gc::lane_loop_out(*g, *A) - 1.0f, why);
+    }
+    // (b) the same ship re-issued 12 km out: the join fits (the room to the join's end >= 2 y): no loop; (c) 1.8 km above Lambda 6 km out:
+    // the loop's side never above Lambda; (d) the ship of (a) committed without an eviction: no loop
+    b = gc::Board{};
+    b.lane = 1;
+    g = ctl_gate(b, 1000);
+    A = mk(0x9000, 2000.0f, -929.0f, -12000.0f, 0.9f, -0.44f, 0.157f, 1000);
+    evict_back(0x9000, 1000);
+    A = mk(0x9000, 2000.0f, -929.0f, -12000.0f, 0.9f, -0.44f, 0.157f, 20000);
+    prof(20000, 0, 0.0f, 0.0f);
+    gc::lane_frame(*g, 20000, &ls);
+    const unsigned loop_b = A->loop;
+    b = gc::Board{};
+    b.lane = 1;
+    g = ctl_gate(b, 1000);
+    A = mk(0x9000, 0.0f, -929.0f + 1800.0f, -6000.0f, 0.0f, -1.0f, 0.157f, 1000);
+    evict_back(0x9000, 1000);
+    A = mk(0x9000, 0.0f, -929.0f + 1800.0f, -6000.0f, 0.0f, -1.0f, 0.157f, 20000);
+    prof(20000, 0, 0.0f, 0.0f);
+    gc::lane_frame(*g, 20000, &ls);
+    const unsigned loop_c = A->loop;
+    const float side_c = A->loop_n[1];
+    b = gc::Board{};
+    b.lane = 1;
+    g = ctl_gate(b, 1000);
+    A = mk(0x9000, 2000.0f, -929.0f, -7000.0f, 0.9f, -0.44f, 0.157f, 1000);
+    prof(1000, 0, 0.0f, 0.0f);
+    gc::lane_frame(*g, 1000, &ls);
+    const unsigned loop_d = A->loop;
+    // (e) the ship of (a) re-issued with a station's parts on Lambda 8-9 km out (lane_station: the loop flew back out past it): no loop;
+    // statics between it and the gate only (5-6 km): the loop; no fresh profile (6 s + the step old): no loop (fail closed)
+    unsigned loop_e[3];
+    for (unsigned c = 0; c < 3; ++c) {
+        b = gc::Board{};
+        b.lane = 1;
+        g = ctl_gate(b, 1000);
+        A = mk(0x9000, 2000.0f, -929.0f, -7000.0f, 0.9f, -0.44f, 0.157f, 1000);
+        evict_back(0x9000, 1000);
+        A = mk(0x9000, 2000.0f, -929.0f, -7000.0f, 0.9f, -0.44f, 0.157f, 20000);
+        if (c == 0) prof(20000, 4, -9000.0f, -8000.0f);
+        else if (c == 1) prof(20000, 4, -6000.0f, -5000.0f);
+        else prof(20000 - 6000, 0, 0.0f, 0.0f);
+        gc::lane_frame(*g, 20000, &ls);
+        loop_e[c] = A->loop;
+    }
+    std::snprintf(why, sizeof why, "round C units (e): a static on the loop's corridor loop %u; statics toward the gate only loop %u; no fresh profile "
+                  "loop %u", loop_e[0], loop_e[1], loop_e[2]);
+    std::printf("%s\n", why);
+    check(!loop_e[0] && loop_e[1] && !loop_e[2], why);
+    std::snprintf(why, sizeof why, "round C units (b-d): re-issued 12 km out loop %u (join fits); 1.8 km above Lambda loop %u side U %.2f; no eviction "
+                  "loop %u", loop_b, loop_c, double(side_c), loop_d);
+    std::printf("%s\n", why);
+    check(!loop_b && loop_c && side_c <= 0.0f && !loop_d, why);
+#endif
+}
 static void lane_c_scenarios() {
     lane_c_units();
+    round_c_units();
     lane_r2_units();
     round_b_small_units();
     round_b_prof_units();
@@ -12392,8 +12555,17 @@ static void lane_c_scenarios() {
                         ck(r.x12_forced == 1 && r.x12_reissue >= 1, "Bx the eviction flown and order 4 re-issued");
                         ck(r.x12_remerged == r.x12_reissue, "Bx every re-issued member back on the lane before its launch");
                         ck(r.p2_not_kept == 0 && r.p2_nose_max_deg <= 8.0, "Bx P2 kept within 8 deg of F after the re-merge");
-                        ck(r.over_min_s > 1e17 || r.over_min_s >= -r.over_out_bound, "Bx an overshoot within its bound (d_end + settle + R + 3 R)");
+                        ck(r.over_min_s > 1e17 || r.over_min_s >= -(r.over_out_bound + 0.1 * double(r.step_max)),
+                           "Bx an overshoot within its bound (d_end + settle + R + 3 R; a loop's turn point + 3 R + an order-0 gap; + the step)");
                         ck(r.x12_flown == r.x12_forced, "Bx no further eviction after the re-issue");
+                        // round C (section 12.4): the loop-back join (the re-issued member's join did not fit), within its turn point + 3 R
+                        // + the script's order-0 gap (3 s at 100 m/s: no leaf, it fell inside a U-turn) + the step's travel; the follower
+                        // never slowed below the floor; the span within the measured maximum + 5 s + the step
+                        ck(r.loops >= 1, "Bx2 the loop-back join flown");
+                        ck(r.loop_min_s > 1e17 || r.loop_min_s >= -(r.loop_bound + 0.1 * double(r.step_max)), "Bx2 the loop within its turn point + 3 R + an order-0 gap + the step");
+                        ck(r.fol_v_min >= double(gc::kYieldFloorMs), "Bx2 the follower's lane v_min >= 10 m/s");
+                        ck(su.span_max_s < 0.0 || r.span_s <= su.span_max_s + 5.0 + double(r.step_max) / 1000.0,
+                           "Bx2 the span within the measured maximum + 5 s + the step");
                     } else if (su.eng == 2) { // item C: a station / the fallback body / a rock belt on Lambda
                         ck(r.obst_min_clear > 0.0 && r.obst_unsafe == 0, "Cx no contact with the station or a rock; no unsafe suppression");
                         ck(r.span_ok, "Cx the span (the formed bound)");

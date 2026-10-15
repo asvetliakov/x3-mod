@@ -403,6 +403,21 @@ __attribute__((always_inline)) inline float lane_turn_r(const Member& m) noexcep
     const float v = lane_vmax(m) > kYieldFloorMs ? lane_vmax(m) : kYieldFloorMs;
     return m.params.W > 1e-4f ? v / m.params.W : 0.0f;
 }
+// The span the tangent join from the lateral y needs (lane_join_span's D_need: the 30 deg start, the vertex within R).
+__attribute__((always_inline)) inline float lane_join_need(float y, float R) noexcept {
+    const float yy = y > 0.0f ? y : 0.0f;
+    float need = 2.0f * yy / kLaneJoinTan;
+    if (2.0f * yy * R > need * need) need = sc::sqrt_ss(2.0f * yy * R);
+    return need;
+}
+// Convoy-gate-transit.md section 12.4 (round C): the loop-back join after a flown 0x12. A member re-committed after its eviction whose
+// join from there does not fit (the room to d_end short of 2 y + its settling distance: lane_join_span's residual) flies the
+// re-departure's geometry from where it is: onto the out-leg 2.5 R below Lambda (pursued at its settling distance ahead, the turn point
+// kept R ahead of the ship until it is on the leg: within kLaneLoopConvR R of the line, the nose within 15 deg of -F), out to the turn
+// point, the U-turn up onto Lambda, then the tangent join with the room for a residual lateral of kLaneLoopResR R after the U-turn: the
+// turn point lies at least d_end + settle + R + D_need(kLaneLoopResR R) out (kLaneRedepM at least)
+constexpr float kLaneLoopResR = 1.0f, kLaneLoopConvR = 0.5f;
+constexpr float kLaneLoopConvCos = 0.96592583f; // cos 15 deg
 __attribute__((always_inline)) inline float lane_join_span(float s, float y, float R, float join_end, float d_end = kLaneEndM) noexcept {
     const float yy = y > 0.0f ? y : 0.0f;
     float need = 2.0f * yy / kLaneJoinTan;
@@ -432,11 +447,15 @@ __attribute__((always_inline)) inline float lane_join_loss(float s, float y, flo
 // point on Lambda: the arrival came out on +U, Lambda lies on -U, so the turn is on the departure side). Returns the carrot (sc, yc).
 __attribute__((always_inline)) inline void lane_carrot(float s, float y, float v, float W, float r_gate, bool hold_lat, bool redep, float* sc_out,
                                                        float* yc, float y_clear = 0.0f, float join_end = kLaneEndM + kLaneJoinEndM,
-                                                       float out_m = kLaneRedepM, float out_r = 0.0f, float d_end = kLaneEndM) noexcept {
+                                                       float out_m = kLaneRedepM, float out_r = 0.0f, float d_end = kLaneEndM,
+                                                       float out_look = 0.0f) noexcept {
     const float look = pursuit_look(v, W, r_gate);
     if (redep && s > -(d_end + out_m)) { // out to the turn point (out_m: Member::redep_out), kLaneRedepSideM below Lambda (y_clear:
-        // its lateral in the caller's plane); the carrot kLaneBlendM beyond it, an overshoot's (out_r: its turn radius) one radius beyond
-        *sc_out = -(d_end + out_m) - (out_r > 0.0f ? out_r : kLaneBlendM);
+        // its lateral in the caller's plane); the carrot kLaneBlendM beyond it, an overshoot's (out_r: its turn radius) one radius beyond;
+        // a loop's (out_look > 0, section 12.4) out_look ahead of the ship where that is nearer (its out-leg pursued onto the line)
+        float so = -(d_end + out_m) - (out_r > 0.0f ? out_r : kLaneBlendM);
+        if (out_look > 0.0f && s - out_look > so) so = s - out_look;
+        *sc_out = so;
         *yc = y_clear;
         return;
     }
@@ -510,6 +529,7 @@ inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool ov
     p.n = p.nb = p.ne = 0;
     p.overflow = overflow ? 1 : 0;
     p.clear_m = 0.0f;
+    p.st_ok = p.st_n = 0;
     if (!g.lane || !g.lane_c_ok || !(g.r_gate > 0.0f) || overflow) return;
     float w = 0.0f, fin = 0.0f;
     for (unsigned i = 0; i < g.n; ++i) {
@@ -524,6 +544,8 @@ inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool ov
     float sk[kLaneProfScan], ek[kLaneProfScan][2], rk[kLaneProfScan];
     std::uint32_t pk[kLaneProfScan];
     unsigned n = 0;
+    p.st_ok = 1; // (round C: the envelope below, from the same scan)
+    p.st_n = 0;
     for (unsigned k = 0; k < nb && n < kLaneProfScan; ++k) {
         const LaneBody& b = bd[k];
         const float d[3] = {b.c[0] - g.G[0], b.c[1] - g.G[1], b.c[2] - g.G[2]};
@@ -542,6 +564,9 @@ inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool ov
         rk[n] = b.r;
         pk[n] = b.ptr;
         ++n;
+        if (!p.st_n || s - b.r < p.st_lo) p.st_lo = s - b.r;
+        if (!p.st_n || s + b.r > p.st_hi) p.st_hi = s + b.r;
+        if (p.st_n < 0xff) ++p.st_n;
     }
     const unsigned nb_enclose = p.nb;
     p.ne = std::uint8_t(nb_enclose);

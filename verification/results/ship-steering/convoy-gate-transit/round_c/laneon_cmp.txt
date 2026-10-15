@@ -1,0 +1,3 @@
+identical (31): abreast3 abreast5 arrival_pass crossing formed formed_m7 formed_stage2 join_block join_field lane_fallback leader_killed m7_cross overshoot overshoot_near p2_miss p2_miss_near parked partner_block redeparture retarget run173 run173_15km slow_hull small_escort small_gate small_gate_m6 station stragglers stragglers_far terran terran_abreast
+in one run only (parked on one side): arrival_parked lane_belt lane_station
+differ (0): 

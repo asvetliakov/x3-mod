@@ -1,0 +1,9 @@
+ship_steering_host checks=3971 failures=0 slip_gaps=0
+round C units (a): the re-issued ship 2 km off at 7 km behind a Titan at 8.4 km: loop 1 side 1.00,-0.00, ranks loop 1 Titan 0 (scores 121.4 / 61.0 s), Titan law lane 100.0 m/s, loop 100.0 m/s, turn point -7949 m
+round C units (e): a static on the loop's corridor loop 0; statics toward the gate only loop 1; no fresh profile loop 0
+round C units (b-d): re-issued 12 km out loop 0 (join fits); 1.8 km above Lambda loop 1 side U -1.00; no eviction loop 0
+lane cost (host) abreast5 tf 1: lane 3.1 us mean, 3598 us worst frame, 125 us third-worst (4483 decisions, 5/5 launched); key off 0.7 us mean, 54 us worst, 25 us third (5189 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+lane cost (host) abreast5 tf 10: lane 32.9 us mean, 1433 us worst frame, 89 us third-worst (2291 decisions, 5/5 launched); key off 8.0 us mean, 51 us worst, 51 us third (2215 decisions, 5 launched); worst of 3 runs; ceiling 1000 us
+lane cost (host) bench24 tf 1: lane 10.3 us mean, 1624 us worst frame, 869 us third-worst (59681 decisions, 24/24 launched); key off 4.2 us mean, 1291 us worst, 904 us third (53121 decisions, 24 launched); worst of 3 runs; ceiling 1000 us
+lane cost (host) bench24 tf 10: lane 97.3 us mean, 1285 us worst frame, 809 us third-worst (31561 decisions, 24/24 launched); key off 51.3 us mean, 247 us worst, 192 us third (18687 decisions, 24 launched); worst of 3 runs; ceiling 1000 us
+scenario C control (key off, the stage-A certificate): span assertion failed in 32 of 45 runs; member 0x12 episodes 537, closest capsule -1120 m (reported: the engine's warn and 0x12 own what the certificate hands back); certified frames 662392, contact on them 0

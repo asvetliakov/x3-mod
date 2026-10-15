@@ -1370,6 +1370,71 @@ engine cast (`su.eng`), as before.
 reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Evidence: [`round_b/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_b/run.sh)
 → `lane.txt`, `<cast>.txt` (un-parked), `parked_<cast>.txt`, `shift_<cast>.txt`; `summary.py` → `summary.txt`.
 
+### Round C (loop-back join) (2026-10-15, Opus 5.5; §12.4, each item with a check that fails on d2871285)
+
+Worktree `agent-a375a764280c139d2` on main d2871285 (rounds A and B merged). Units: `ship_gate_board_core.h` (`Member::x12_rc`, `loop`,
+`loop_conv`, `loop_out`, `loop_sp`, `loop_lead`, `loop_n`; `LaneProfile::st_lo`, `st_hi`, `st_n`, `st_ok`; the re-commit flag in `enter`),
+`ship_gate_geometry_core.h` (`lane_join_need`, `kLaneLoopResR` / `kLaneLoopConvR` / `kLaneLoopConvCos`, `lane_carrot`'s `out_look`, the
+statics' envelope in `lane_profile_build`), `ship_gate_lane_core.h` (`lane_loop_base`, `lane_loop_out`, `lane_loop_cap`, the loop in
+`lane_frame`, the rank's spacing term in `lane_score`, `lane_eta`, the loop's side in `lane_steer`), `ship_gate_certificate_core.h` (the
+rollout: the loop's side, its law, a loop ahead as an overshoot; `y_lane` always_inline), the fixture. No row, site or hook changed; the key off
+is untouched (every new path is under `lane_frame`). Every figure **[m]** from [`round_c/run.sh`](../../verification/results/ship-steering/convoy-gate-transit/round_c/run.sh)
+(`summary.txt`, `span_cost.txt`, `laneon_cmp.txt`, `lane.txt`) and `round_c/bench.sh` (`bench.txt`) unless marked **[i]**.
+
+**The loop.** A member re-committed after an eviction (`enter` sets `x12_rc` for a record whose role was `evicted`) is tested once by
+`lane_frame`: when `lane_join_span` would take its residual branch (Λ's far end and the 8 km merge point out of the 30° join's reach, and
+the room to the join's end short of 2 y), it flies the loop: onto an out-leg 2.5 R off Λ on its own side, pursued `settle` ahead of the
+ship (`lane_carrot`'s `out_look`), the turn point kept R ahead of it until it is on the leg (within 0.5 R of the line, the nose within 15°
+of −F), then out to the turn point, the U-turn back toward Λ, and the tangent join. The turn point lies at least d_end + settle + R +
+D_need(R) out (`lane_loop_base`, kLaneRedepM at least) and, behind the ship ranked ahead of it, where its U-turn ends g_req behind that
+ship's tail with the ship ahead at its along-F speed over the out-leg and the U-turn (`loop_sp`, re-taken every frame until the turn
+point is reached). The loop flies at the lane speed until it has turned in (no gap law; the yield cap still applies); a follower behind a
+loop sees it as an overshoot (its apex, the block for its predicted return). It ranks by `lane_score` over its whole path (the lead to
+the turn point with the nose's turn onto the leg, πR, the run back) plus the spacing (g_req + 2 L at the common speed). Hot path: a few
+flops per loop member per frame in `lane_frame`; nothing for other members.
+
+**Deviations from §12.4**, each a fixture witness:
+
+| Design | Implemented | Why (fixture) |
+| --- | --- | --- |
+| loop when "room < 2y + settle" | `lane_join_span`'s residual branch exactly (room to the join's end < 2 y, the 15 / 8 km merges out of reach) | at x12_far's re-commit 1.0–1.1 km off, 2 y + settle missed the case by 0.2 km (3 of 9 runs no loop, P2 22.6°) |
+| re-commit within the 30 s keep | any re-entry of an `evicted` record | the flown 0x12 lasts 17–33 s; two runs past 30 s re-entered unflagged |
+| the out-leg 2.5 R below Λ (−U) | 2.5 R off Λ on the ship's own side, never above Λ (`loop_n`), the U-turn toward Λ | the −U leg crossed Λ and the join of the follower coming up from below: contact, two further evictions (x12_far tf 10) |
+| s_turn = −(d_end + settle + R + D_need(y_side)) | D_need of the U-turn's residual (R), and the turn point pushed R ahead of the ship until it is on the leg | from an unreached out-leg the U-turn ended 1.2 km off Λ 3 km before d_end (x12_near's base path); with D_need(1.7–2.0 km) the loop runs to 11–12 km |
+| rank by ETA including the loop | + the spacing time, so a loop goes ahead only when earlier by g_req and two hulls | x12_far: the loop's ETA was 9 s ahead of the Titan's; ranked first it stopped the Titan behind its apex 20 s, then the order flipped |
+| the law from the apex (as an overshoot) | the lane speed on the loop; the turn point carries the spacing (`loop_sp`) | at the law's floor beside Λ the loop sat in its passer's path: predicted contact, its stop, the Titan's sphere detour around it |
+| a static on the loop is the sphere avoidance's | the loop only with a fresh profile and its corridor (ship → U-turn apex + w + kMarginM) clear of the statics' envelope; a later static or a stale profile ends it | lane_station tf 10: the loop flew back out past the station that evicted it, 6 loops and 15 flown 0x12 in one run, launches missing |
+
+**Fail-before → after [m]** (3 seeds × tf 1 / 6 / 10; `before_<cast>.txt` is d2871285's fixture and core with the PARKED lines re-enabled):
+
+| Cast | d2871285 | Round C |
+| --- | --- | --- |
+| `x12_near` | P2 not kept or > 8° in 4 of 9 (nose 4.1–9.3°) | 9 of 9 green: loop 1 per run, P2 nose 0.3–0.8°, no second eviction, uncertified frames 0, follower (the Titan, ahead) never slowed |
+| `x12_far` | P2 not kept or > 8° in 5 of 9 (to 27.6°); lane v_min 0–27.5 m/s, slow up to 23.5 s | 9 of 9 green: loop 1 per run, P2 nose 0.1–0.5°, follower v_min 100 m/s, members' v_min 85.2–88.4 m/s, no second eviction, uncertified frames 0 |
+
+Both casts are un-parked with the checks `Bx2 the loop-back join flown`, `Bx2 the loop within its turn point + 3 R + an order-0 gap + the
+step`, `Bx2 the follower's lane v_min >= 10 m/s` and `Bx2 the span within the measured maximum + 5 s + the step` (223.8 / 214.8 s); the
+overshoot bound `Bx` takes the loop's turn point for a loop (the script's 2–3 s order-0 gap fell inside x12_near's U-turn at tf 1: 66 m past
+3 R). Unit `round C units` (a) the design's case, 2 km off at 7 km behind a Titan at 8.4 km: the loop, ranked behind (121.4 against 61.0 s),
+the Titan at its lane speed, the U-turn ending ≥ g_req behind the Titan; (b) re-issued 12 km out: no loop; (c) 1.8 km above Λ: the side −U;
+(d) no eviction: no loop; (e) a static on the corridor, none toward the gate only, a stale profile: no loop / loop / no loop.
+
+**The loop's span cost [m]** (`span_cost.txt`, paired by tf and seed): x12_near +31.3 s mean (+18.2 … +40.7 s), x12_far +34.0 s mean (+0.9 …
++50.9 s); spans 197.0–223.8 s and 195.2–214.8 s. Against §12.4's estimate of 80–90 s for the loop itself **[i]** the loop replaces a shorter,
+failing join; the outermost s 7.9–8.4 km (near) and 10.2–11.3 km (far).
+
+**Everything else [m].** The 31 casts round C does not touch print identical scenario C rows over every seed (`laneon_cmp.txt`); the key-off
+control line is identical. The parked casts keep their numbers: `lane_station` and `lane_belt` identical to d2871285 (no loop: the corridor);
+`arrival_parked` loops 2–4 times per run with the same failing checks (27 check-runs against 28), 4 of 9 runs short of a launch in both,
+63 flown 0x12 in both. bench24 flies loops too (decisions 59,318 → 59,681 at tf 1, 30,596 → 31,561 at tf 10; with the re-commit flag
+disabled the base's counts return); its cost alternating base / tree three times (`bench.txt`): tf 10 mean 103.1 / 103.4 / 99.9 against
+103.0 / 97.8 / 98.4 µs, tf 1 9.8–9.9 against 9.1–9.3 µs.
+
+**Acceptance [m]** (host x86-64, `c++ -std=c++17 -O2 -Wall -Wextra -Werror`): `--lane` 3,971 / 0, full 11,316 / 0, `--capital` 5,694 / 0
+(+220 each over d2871285); `test_ship_trace_format`, `test_ctl_boundary_reads`, `test_ship_steering` 21 tests OK; i686 RelWithDebInfo 0
+warnings, `check_no_x87.py` PASS (143 roots, 1,005 reachable, 0 violations; the rollout's `y_lane` lambda went out of line with a float
+return through st(0) until marked always_inline), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20.
+
 ### Open
 
 * The escort gate's cost at tf 1 (Review fixes item 1: a median 11.4 s per leader → escort pair over the hull spacing, up to 19.6 s
@@ -1422,7 +1487,10 @@ reachable, 0 violations), `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.ex
 * (fixture engine paths, "Fixture engine paths" above) **Nine parked casts, each a controller item** (`// PARKED:` in `kCSetups`, re-run by
   `engine_paths/run.sh`):
   * **B** (`x12_near`, `x12_far`): after a flown eviction the re-issued member's re-departure reaches its final off it (P2 not kept or above
-    8° in 2 and 5 of 9 runs), and its rejoin ahead of a follower leaves that pair uncertified (a second, member 0x12 in 2 of 9).
+    8° in 2 and 5 of 9 runs), and its rejoin ahead of a follower leaves that pair uncertified (a second, member 0x12 in 2 of 9). Un-parked
+    in round C (above). Left: the U-turn can exceed kLaneOverApexR R by the script's order-0 gap (66 m measured), which the law's apex and
+    a follower's s_rj do not count; no row names the loop (`ship_gate_ctl_lane` shows it only through lane_s / lat); without a fresh
+    profile (no snapshot of the sector) no loop is flown, today's join then.
   * **C** (`lane_station`, `lane_fallback`, `lane_belt`): the module's sphere detour (§1 rows 5 / 11 of the holistic review) — spans over the
     formed bound, a fallback body detouring the lane ~5 km off Λ with P2 never kept and an order-5 pass outside the trigger; the lane-aware
     lateral shift (holistic rank 7) is the fix to try.
@@ -1694,6 +1762,15 @@ own-gate row certifies from any distance. A 0x12 that ends with the ship **past*
 
 **Open.** The Run173 evictions were own-gate warns the lane row now suppresses; a flown 0x12 in the next flight should name a
 non-gate B (`x12_pairs.py`), else the row's reach is the first thing to check, not this geometry.
+
+**Implemented (round C, 2026-10-15; §11 "Round C (loop-back join)")**: `x12_near` and `x12_far` 9 of 9 (P2 nose ≤ 0.8°, no second eviction,
+0 uncertified frames, the follower never below 10 m/s), the loop's span cost +31 / +34 s mean. **Deviations** (each measured there): the
+entry is `lane_join_span`'s residual branch itself, for any re-entry of an evicted record (episodes outlast the 30 s keep); the out-leg lies
+on the ship's own side (never above Λ), pursued onto its line before the turn; the turn point carries D_need of the U-turn's residual (R),
+not of y_side, and the spacing behind the ship ranked ahead; the loop flies at the lane speed, ranks with its whole path plus the spacing
+time; it is entered only with a fresh profile and its corridor clear of the statics' envelope (lane_station's loop went back past the
+station). The near case of the casts ends its 0x12 past the plane, so the overshoot path carries the loop; the no-write hand-over was not
+needed in any run.
 
 ### 12.5 Class 5: rank 4 and the order; the arrival fan (1b)
 
