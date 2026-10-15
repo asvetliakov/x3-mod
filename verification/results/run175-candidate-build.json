@@ -1,0 +1,21 @@
+{
+ "dll": "detached worktree /tmp/x3-run175-candidate of 358c0f06, build/d3d9.dll (clean configure + build); NOT installed yet (Run174 stays for the user's flight; lane-on behaviour identical by laneon_diff)",
+ "sha256": "f965a6e2961d8c4e08e1503d231de4307fa8b5c76126cf4b59e181d922122f0e",
+ "bytes": 61534335,
+ "commit": "358c0f06",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 996, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe; site W removed, GateCount 3)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); fixture full 10734/0, --lane 3389/0, --capital 5112/0; laneon_diff 0 lines vs 564b3df8 (deletion) and vs bf12aaa2 (split)"
+ },
+ "trigger": "holistic review ranks 2-3: stage B deletion (bf12aaa2) and the source split (358c0f06); the DLL's lane default 1",
+ "producer": "main session (Fable 5.1), 2026-10-15, autonomous overnight run",
+ "changes_since_run174": [
+  "7cfd0fd6 ship-navigation-ai 10.14",
+  "bf12aaa2 stage B deletion",
+  "358c0f06 source split + lane default 1"
+ ]
+}
