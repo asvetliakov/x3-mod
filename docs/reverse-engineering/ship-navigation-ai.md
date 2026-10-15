@@ -281,7 +281,8 @@ Pair selection is in the sector collision pass `0x0045d250`, loop L2 ([sector-co
 `0x0044e450` (stdcall, `ret 0xc`):
 
 * Skips when `[A+0x44] & 0x10` or when the obstacle filter `0x0044d2f0` rejects B. Capital ships (type
-  codes TL, M0, M1, M2, TL_P, M7) ignore small ships; escort/follow partners of A are ignored.
+  codes TL, M0, M1, M2, TL_P, M7) ignore ships outside the large set (M6, TM, M8 are tested); a B escorting or following A
+  is ignored, A's own leader is not (§10.14 Q2).
 * While A is avoiding (order 0x12) it only refreshes the list. During undock (0x1e) it skips the carrier
   being left.
 * Otherwise it calls **`0x0044dd90(A, B, d, &out)`**. On true it sets `[A+0x40] |= 0x1000`
@@ -292,7 +293,7 @@ Pair selection is in the sector collision pass `0x0045d250`, loop L2 ([sector-co
 
 * Not moving (`[A+0x10] = [A+0x14] = 0`) or no acceleration → no warn.
 * **Close range:** when B is large relative to A (`rB >= 0.75·rA`), a station (class 5/6) or class
-  `0x11`, or A cannot move: warn if `d <= 1.2·(rA+rB)` (`0x0044ded9` `0x13333`). For the attack target
+  `0x11`, or B cannot move (corrected in §10.14; non-mesh B only, §11.2): warn if `d <= 1.2·(rA+rB)` (`0x0044ded9` `0x13333`). For the attack target
   the limit is `d <= rA+rB`.
 * **Margin** `L = clamp(rA + rB/10 (not attacking) + rA (avoiding), 15000, 500000) + (rA+rB)`
   (`0x0044df25`, `0x0044df34`; 30 m, 1 km). When B is ahead, `rA·cosθ` is added, where θ is the angle
@@ -1807,6 +1808,274 @@ the ship's own flight-block field, written only from the sector update and the s
 python3 -I verification/results/ship-navigation-ai/gates/replan_stamp_sites.py > replan_stamp_sites_out.txt   # RESULT PASS
 ```
 
+### 10.14 Engine facts behind the lane's warn suppressions and the fixture's engine model
+
+2026-10-15, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`), the Mayhem 4 `x3story.obj` (`addon/07.cat`) and the
+installed loose scripts, for the convoy lane's engine-warn suppressions (site E's obstacle row, the own-gate clearance) and
+the host fixture's engine model (`obst_warn_engine` in `verification/probe/ship_steering_host.cpp`). Two reviews had
+marked these facts **[i]**. Nothing was launched and no Wine command ran. Engine facts come from Ghidra 12.1.4 headless
+(`X3DecompileFunctions.java` on `0044d9c0 0044dd90 0044e450 0044d2f0 0043fd50 0045d250`, project `~/x3-ghidra-research`,
+`-readOnly -noanalysis`) and capstone listings; the raw output stayed in `~/x3-nav-study/lane/` (untracked).
+[`lane_engine_sites.py`](../../verification/results/ship-navigation-ai/lane/lane_engine_sites.py) re-decodes every
+instruction quoted below, decodes the four class tables, sweeps `SA_ClearObjectFromHangar` for speed writes and `.text` for callers of the box test, checks the KC
+statements and the MSCI lines with the scripts' SHA-256 (180 checks, `RESULT PASS`,
+[`lane_engine_sites_out.txt`](../../verification/results/ship-navigation-ai/lane/lane_engine_sites_out.txt)). Symbols as in
+§3.1: A = the ship warned, B = the obstacle, `d` = centre distance, `rr = r_A + r_B`, `b` = the braking term, units native
+(500 per metre).
+
+**Answer.**
+
+* **Q1.** The part-box test inflates **per axis**: `H_i = 1.2·(e_i·s + r_A)`, with `e` the extents `+0x20..+0x28` of the
+  **first** record of the part's model and `s` the part scale. It hits when A's centre is strictly inside the box, or when the
+  Euclidean distance from A's centre to the box is at most the reach `|v_A| + b`. The forward-ray slab test that follows is
+  **vacuous as compiled**: its per-axis interval is `[−|q|, +|q|]`, so it never rejects, except on an axis where the
+  ray's component in the part frame is exactly 0 and A lies outside that slab **[m]**. A sphere per part, centred on the
+  part's world origin, of radius `1.2·(r_part + √3·r_A) + R`, contains every hit point if `r_part ≥ |e·s|` and
+  `R ≥ |v_A| + b` **[m]** (triangle inequality on the box corner). The fixture's model breaks the second condition in two
+  places (Q1 table, "fixture").
+* **Q2.** A capital A (TL, M0, M1, M2, TL_P, M7) ignores a class-7 B outside the "large" set (TS, M3, M4, M5, TS_P, GO,
+  TP), the expendable KC classes (drone, mine and suit families **[i]** names) and class 10. It does **not** ignore M6, TM
+  and M8: they take the sphere cone path **[m]**. There is no size threshold. The only size rule is `r_B ≥ 0.75·r_A` in the
+  close-range test; the project's "under 33 % of hull" rule is not the engine's.
+* **Q3.** Yes. `CollisionWarn` acts on orders 0x14 and 0x15. L3 excludes only order 0x12. `__EscortObject` never sets
+  the ignore flag, and after the stop its loop issues `SA_AvoidObjectCollision(ship, size + 50000)` **[m]**. Escort pairs only
+  halve `b`, and only B escorting or following A is filtered out.
+* **Q4.** Yes for a gate target. `2004::JumpToSector` calls `__LeaveHyperspace(gate)`, the method `__FlyToNextSector`
+  uses, so a jump arrival at a gate takes the same `SA_StartInHangar` → launch `0x00444170` → order 0x21 → order 0x1e path
+  **[m]**. A sector or beacon target goes through `AddTo` + `SetPos` (`SA_SetSafePos`): no launch, no 0x21, no 0x1e. No NPC
+  path of the installed Mayhem scripts jumps (§10.11 Q3; one plot script jumps to a sector) **[m]**.
+* **Q5.** The 0x1e end writes no speed: order 0, wake with 1, site B. Order 0 then zeroes the desired speed every frame,
+  and the slew brakes the ship at its acceleration `a` from the 0x1e exit speed (about 120 m/s for the large set). It does so
+  until the KC's next order: order 0x12 when the warn flag is still set, else `Mayhem.Task.Move`'s next leg. In transit that
+  is order 0x15 to the next gate one scheduler pass later **[i]**, or order 4 within 10 km. At the destination it is a
+  1–2 s wait, plus for a squadron escort the template's 1–2 s and 2–3 s waits before order 0x14 **[m]** script, **[i]**
+  timing. A hull with `r_s > 0.99 r` ends 0x1e on its first frame at speed 0 and rests at P for the same time.
+* **Q6.** Two Mayhem paths move a squadron's escorts to another leader, plus one that moves a squadron leader to another
+  ship.
+  * `Mayhem.Squadron.SwitchLeader` rewrites every follower's `mayhem_squadronLeader` and `START`s the squadron command on
+    each. It is called from `Mayhem.Squadron.Add` when a joining ship (built and outfitted: `Mayhem.Task.TemplateWhenReady`)
+    has the formation's highest hull (`Mayhem.SelectNewLeader`).
+  * It is also called from `SwitchLeaderIfNeeded` (`Mayhem.Task.Squadron.TaskForce` every 3–4 s, `Mayhem.Task.Support`,
+    `ZH.Monitor`) and from `Mayhem.AssignNewLeader` on the leader's death or capture.
+  * `Mayhem.Task.Squadron.Escort` makes an idle escort-squadron leader pick, every 3–4 s, an unescorted freighter in its
+    sector bound for another sector, and follow it.
+  * Which of these produced Run169's three leaders is **[i]**.
+
+#### Q1: the part-box test `0x0044d9c0` and the warn test around it [m]
+
+`0x0044d9c0` is thiscall: ECX = A; stack: part, reach, out, scale (16.16), flag; `ret 0x14`. Its three outside callers
+all pass the scale 1.2 (`0x13333`). The two in the warn test (`0x0044e2b5`, `0x0044e3ad`) pass flag 0. The avoid order's
+re-score (`0x00456c9a`, §3.3) passes flag 1, which is the inside test only (a direct-call sweep of `.text`).
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| recursion | every child of the part's list `[part+0xc]` first, depth-first; the first hit returns 1 | `0x0044d9cf`, `0x0044d9f3` |
+| model | parts with model id `[part+0x140] ≥ 0` and a model from `0x004863c0`; extents `e` = `+0x20/+0x24/+0x28` of the **first** record `[[model+0xc]]` (not the maximum over records) | `0x0044da06`, `0x0044da15`, `0x0044da25..0x0044da2a` |
+| inflation | `H_i = round16(round16(e_i·s) + r_A)·1.2`, s = `[part+0x70]`; per axis, not radial | `0x0044da4d..0x0044db08` |
+| frame | `c = [A.body+0xb0] − [part+0xb0]` rotated into the part frame by `[part+0xc0]` (`0x004f0c00`); the box is centred on the part's origin | `0x0044db0c..0x0044db4d` |
+| inside | `\|c_i\| < H_i` on all three axes → hit (`out = part`) | `0x0044db52..0x0044db8e` |
+| distance | otherwise (flag 0) `Σ max(\|c_i\| − H_i, 0)² ≤ reach²`, else miss | `0x0044dba8..0x0044dc26` |
+| ray | `D` = A's nose (row 2 of `f+0x870`) × reach, into the part frame | `0x0044dc2c..0x0044dcb3` |
+| slab, `D_i = 0` | miss iff `\|c_i\| > H_i` | `0x0044dcd5`, `0x0044dce4` |
+| slab, `D_i ≠ 0` | integer `q = (\|c_i\| − H_i) / D_i` (`idiv`), interval `[−\|q\|, +\|q\|]`; running `t_min = max`, `t_max = min`; miss iff `t_max < t_min` or `t_max < 0` | `0x0044dd09..0x0044dd61` |
+| hit | after three axes: `out = part`, return 1 | `0x0044dd6f..0x0044dd7d` |
+
+* **The slab never rejects with `D_i ≠ 0`.** Every interval contains 0, so `t_min ≤ 0 ≤ t_max` on every axis. The heading
+  therefore drops out of the box decision. The x87 compare chain was traced instruction by instruction (`fcom`/`fnstsw`/
+  `test ah` parity tests). With `|q|` an integer that is 0 for `|c_i| − H_i < |D_i|`, the reading that it was meant as a slab
+  test is **[i]**.
+* **The only heading case.** `D_i` rounds to 0 only when the nose is perpendicular to that part axis to within about
+  `0.5/reach`. That happens on world-aligned parts with an exactly axial nose, e.g. the −F facing after a gate launch.
+* **Correction to §11.2.** The heading enters the mesh warn only through the cone, before the box. The box test itself is a
+  distance test.
+
+Where `0x0044dd90` calls it, and the flow around it:
+
+| Step | Rule | Site |
+| --- | --- | --- |
+| stopped | `[A+0x10] = 0` **and** `[A+0x14] = 0` → false; a ship at speed 0 with desired speed > 0 is still tested (reach = `b`) | `0x0044dda2`, `0x0044dda8` |
+| no acceleration | `a = 0x00450b80(A) = 0` → false | `0x0044ddb4` |
+| mesh B | class 5/6; capital B (`0x0043fd50`, EAX = B); class 0x14 subtypes 0x26..0x2a, 0x2d..0x2f, 0x7c, 0x7d | `0x0044ddc5..0x0044de18` |
+| close range | applies when `r_B ≥ 0.75·r_A`, B is class 5/6/0x11, or **B** cannot move (`0x00450980`, EAX = B; corrects §3.1's "A"). Attacking A (0x10, 0x11, or 0x12 with `f+0x264 > 0`) at its target: `d ≤ rr` → true. Otherwise `d ≤ 1.2·rr` → true only for non-mesh B | `0x0044de75..0x0044def6` |
+| margin | `L = clamp(r_A + r_B/10 (not attacking) + r_A (order 0x12), 15000, 500000) + rr` | `0x0044def8..0x0044df41` |
+| bearing | `u` = A→B normalised, or the nose when all `\|Δ\| ≤ 100`; `cos = u·nose` (16.16) | `0x0044dfa4..0x0044e04c` |
+| B behind | `d > rr`, `cos ≤ 0`, B speed 0 and B velocity `[B+0x60..0x68]` 0 → false | `0x0044e049..0x0044e06c` |
+| B term | when `[B+0x10] ≠ 0` and (`cos > 0.8`, or not attacking, B class 7, `[B+0x44] & 0x10` clear and `cos < −0.8`): `w = −\|[B+0x10]\|·(u·nose_B)`, B's scalar speed along its own nose toward A. **Doubled** when B is in the large set (`0x0043fd00`, EAX = B) and `w > 0` | `0x0044e07c..0x0044e168` |
+| braking | `cos > 0`: `L += r_A·cos`; if `\|v_A\| ≠ 0`: `b = (w + \|v_A\|·cos)² / a / 2`. Otherwise `b = w` (a speed used as a distance) or 0 | `0x0044e170..0x0044e1db` |
+| cap, halving | `b ≤ 300000`. Halved for A on 0x14 against B = its leader or a class-7 co-escort of the same leader, and for A on 0x15 against its target or a B on 0x15 following A | `0x0044e1df..0x0044e27e` |
+| mesh, `d ≤ rr` | box test only: `0x0044d9c0(B.body, \|v_A\| + b, out, 1.2, 0)` | `0x0044e282..0x0044e2b5` |
+| range gate | false if `d > b + L + rr` | `0x0044e2c9..0x0044e2d7` |
+| cone | when `d > b`: false if `cos < 0` or `cos² ≤ 1 − ((rr + 20000)/(d − b))²`; then non-mesh → true | `0x0044e3c8..0x0044e411` |
+| mesh, after the gate | box test with the same reach (also when `d ≤ b`) | `0x0044e3ad`, `0x0044e413..0x0044e431` |
+
+**Fixture.** The engine model in `verification/probe/ship_steering_host.cpp`, part spheres `1.2·(r_node + √3·r_A) + v + b`,
+no ray, no gate or cone for mesh B. Against the listing above:
+
+| Fixture premise | Engine | Superset? |
+| --- | --- | --- |
+| per-axis `r_A` inflation covered by `√3·r_A` | per axis, `H_i = 1.2·(e_i s + r_A)` | yes, with `r_node ≥ \|e·s\|` for the first model record; a maximum over all records also qualifies |
+| no ray condition | the slab never rejects (`D_i ≠ 0`) | yes; the engine has no heading condition to drop |
+| part centres | box centred on `[part+0xb0]`; every part with a model, root and nested children included, no `+0x12c` skip | yes if the part set holds every modelled node |
+| `b` with `vbt` only for `cos > 0.8` | B term doubled for a large approaching B; for `cos ≤ 0` (B closing within 36.9° of A's tail) `b = w` raw | **no**: reach short by `Δb` for a capital B closing head-on (e.g. v_A 50, v_B 20 m/s, a 10 m/s²: 245 m vs 405 m) and by up to `\|v_B\|`·1 s from behind; both vanish under the 600 m cap at high speed **[i]** numbers |
+| `v ≤ 0` → no warn | false only when speed **and** desired speed are 0 | **no** for a ship accelerating from rest next to a part box (reach `b`) |
+| close range `1.2·rr` → warn for stations and `r_B ≥ 0.75 r_A` | only for non-mesh B; mesh B gets the box test at `d ≤ rr` | yes (warns more) |
+| capital A ignores every non-capital ship | ignores only non-large and expendable ships (Q2) | **no** for M6, TM and M8 B (cone path) |
+
+#### Q2: which B a capital A ignores [m]
+
+`0x0044e450(A, B, d)` skips when `[A+0x44] & 0x10`, then calls the filter `0x0044d2f0` (EDI = A, `[esp+4]` = B, true =
+test B). During 0x1e at a **gate** it also skips every obstacle while the Chebyshev distance from A to its 0x1e start point
+`f+0x230` is ≤ 88800 (177.6 m) (`0x0044e4b8`, `0x0044e4bd`). The container rule of §11.2 (`0.8·r_C`) applies to class 5/6/7
+containers only.
+
+| Rule in `0x0044d2f0` | Applies to | Site |
+| --- | --- | --- |
+| A not class 7 → ignore | all | `0x0044d2f1` |
+| B class not in {3, 4, 5, 6, 7, 0x11, 0x12, 0x14, 0x15, 0x1d, 0x1e, 0x1f} → ignore | all | table `0x0044d494`, `0x0044d31f` |
+| B class 7 not in the large set {TL, M0, M1, M2, TL_P, M6, M7, TM, M8} → ignore | **capital A** only (`0x0043fd50` codes 0, 2, 3, 4, 8, 13) | `0x0044d336..0x0044d366` |
+| B class 10 → ignore (unreachable: class 10 is not in the switch) | capital A | `0x0044d36c` |
+| B expendable (`0x0043fe80`) → ignore | capital A | `0x0044d378` |
+| B on 0x14/0x15 with target A (A's own escorts and followers) → ignore; A escorting B is **not** filtered (corrects §3.1) | all | `0x0044d385..0x0044d3a5` |
+| A on 0x18 or 0x24 and B expendable → ignore; A on 0x24 and a class-0x11 B under `5·r_A` with a speed/cargo formula (`0x0044eb90`, `0x0044ecd0`, not traced) → ignore | all | `0x0044d3b6..0x0044d442` |
+| B class 10 with `[B+0x40] & 0x1000000` → ignore; B of ship type `0x113` unless A is type `0x113` → ignore | all | `0x0044d444..0x0044d46c` |
+
+* **Expendable `0x0043fe80`.** It covers:
+  * a class-7 ship whose type's KC class (`type[+0xc8]`) derives from 0x81f, 0x812, 0x80d, 0x7db, 0x816 or 0x810, unless it
+    is the object at `[*0x60850c+0x38]`. Method sets: 0x812 `BlowUp`/chain reaction, 0x7db the defend thread,
+    0x816 `CreateSwarm`/`CatchWare`, 0x810 marines and suits. The identities (drones, mines, suits) and the excepted object
+    (the player's ship) are **[i]**;
+  * classes 8, 9, 0xb..0x10;
+  * class 10 without bit 0 of `+0x43`;
+  * class 0x11 with `+0x58` set and subtype 9.
+* The "large" table `0x0043fd00` (codes 0, 2, 3, 4, 8, 11, 13, 14, 15) and the capital table `0x0043fd50` (0, 2, 3, 4, 8, 13)
+  are re-decoded from their byte and jump tables.
+* **No size threshold.** The filter is class-based. Size enters only through the close-range test (`r_B ≥ 0.75·r_A`, Q1).
+  For non-mesh B it also enters through the margin `r_B/10` and the cone half-angle `(rr + 20000)/(d − b)`.
+* The type `0x113` is not identified.
+
+#### Q3: `CollisionWarn` on the escort orders [m]
+
+* **Engine.**
+  * The pair loop calls `0x0044e450` for each class-7 side without `[obj+0x40] & 0x800` (`0x0045d844`, `0x0045d867`).
+    Neither it nor the filter tests A's order, except the 0x12 list refresh and the 0x1e container skips.
+  * L3 calls `CollisionWarn` for both warn bits set, any order except 0x12 (`0x0045e05a`), a script object, and no
+    `[obj+0x40] & 0x8000000` (`0x0045e06e`, `0x0045e089`).
+  * On 0x14/0x15 the warn test halves `b` against the partner (Q1). It does not exempt the partner.
+* **KC (Mayhem `2004::CollisionWarn` `d67f6`).** It reads `m47` (`& 0x80000` ignore, `& 0x40000` targeted against `m48`).
+  The 18 writers of `m47` in class 2004 are `__StartInHangar`, `__LandInHangar`, `__MoveToHangar`, `__EnterHyperspace`,
+  `__LeaveHyperspaceWarpIn`, `__stopCommand` and `CallbackStopThisScript`. Each method that sets a flag value also
+  writes 0 later in its body; that the 0 is reached on every exit path is **[i]**.
+  `__EscortObject` (`d10f7`) writes none.
+  * An NPC escort on 0x14 or 0x15 takes the default branch, `SA_StopObject(ship, 2)`.
+  * Its loop head then finds `SA_CollisionObject` true and issues `SA_AvoidObjectCollision(ship, GetSize() + 50000)`,
+    order 0x12 with an end radius of `r_s + 100 m`.
+  * After the avoid order it re-issues `SA_EscortObject` / `SA_FollowObject`.
+* **Exception.** A player-owned ship (`m43 == g9`) without the autopilot flag `0x80000` only gets the notification.
+* **Consequence.** An escort's own-gate or obstacle warn on 0x14 evicts exactly as on order 4. The lane's model should
+  include it. Run173's zero own-gate 0x12 on 0x14 is a geometry outcome, not an exemption **[i]**.
+
+#### Q4: the jump-drive arrival [m]
+
+MSCI `use jump drive` reaches `2004::JumpToSector(target, 0, 0, 0, 0)` (`702::__runScript` `588bf`, the only script
+call site; that this case is the `use jump drive` command is **[i]**); the player's menu
+calls it from `5006::ContextMenuReturn`. For every ship but `g10` (the player's ship **[i]**), Mayhem `d5f6c`:
+
+1. **A gate target and a capital (2019).** `target.RequestWarpThroughSlot(this)` on the **destination** gate, retried every
+   5 s. The jumper holds that gate's through slot until it leaves (`d6539..d6567`).
+2. `SA_SetDesiredSpeed(0)` and, unless `flags & 3`, `TI_Delay(16000)` (the charge). Then effect 46, `Remove()` and
+   `ReleaseFromSlot()` (`d6597..d6671`).
+3. **Gate target:** `__LeaveHyperspace(gate)` (`d668c`). It is the same method `__FlyToNextSector` calls (`cefe4`), so the
+   arrival is §10.10's: `SA_MoveObjectIntoContainer` + `SA_StartInHangar` → post-pass launch `0x00444170` at P (site
+   `0x00444606`) → order 0x21 for 900 ms → `__LeaveHyperspaceWarpIn` → order 0x1e. The launch window, the arrival fan and
+   the 0x1e exit apply unchanged.
+4. **Beacon target (2062):** `AddTo(beacon.GetSector())` + `SetPos(beacon pos)`. **Sector target:** `AddTo(sector)` +
+   `SetPos(x, y, z)`, with (0, 0, 0) from MSCI. `2004::SetPos` calls `SA_SetSafePos`. No launch, no 0x21 and no 0x1e: the
+   ship appears at a safe position on order 0.
+
+* **Installed scripts.** The only `use jump drive` line is `al.Revelation.JumpIn` (a sector target). NPC moves go through
+  `!move.jump` → `MoveThroughGates`. The Player/Phanon beacon jump is a `set position` teleport (§10.11 Q3), not a
+  `JumpToSector`.
+* **For the lane.** A jump-drive capital bound for a gate holds that gate's through slot for at least the 16 s charge,
+  with no ship at the gate. A departure queue at that gate sees a refused slot without a visible holder **[i]**: the slot
+  is per gate pair, §10.2.
+
+#### Q5: an arrived capital between its 0x1e and its next order [m] engine, [m] script text, [i] timing
+
+| Frame | Engine | Speed |
+| --- | --- | --- |
+| 0x1e frames | point on the ship's own axis-parallel line; `[obj+0x10] = 60000` (large set) or 120000, `[obj+0x14] = vmax` every frame | written, then slewed by ≤ `a·dt` toward `min(vmax, f+0x278)` (`0x004594ef..0x004595b1`) |
+| 0x1e end (`\|dz\| > r` large, `r/4` others) | `push 1; jmp 0x00455ad0`: order 0, wake, site B. **No speed write** | the previous frame's speed, slewing toward the previous desired |
+| order 0 (autopilot, §10.12 item 4) | `[obj+0x14] = 0` every frame, `f+0x224 = 0` | falls by `a·dt` per frame (slew step `a·dt_ms/1000`, `0x00459562..0x00459571`) |
+| first-frame end (`r_s > 0.99 r`) | 0x1e ends before its speed writes; order 0x21 had zeroed both | 0: at rest at P |
+
+KC and script after the wake, one scheduler pass later:
+
+1. `__LeaveHyperspaceWarpIn`: `m47 = 0`. If `SA_CollisionObject` (bit 0x1000 still set from the last pass), it issues
+   `SA_AvoidObjectCollision(ship, 0)`: order 0x12, radius `r_s + 300 m`. During 0x21/0x1e `m47 = 0x50004` (targeted at the
+   gate, `m48`), so a warn against another hull did not stop the 0x1e. This avoid order is how an arrival reacts to a hull
+   still at P. The 177.6 m Chebyshev skip above means a warn can only arise after the first 177.6 m of the 0x1e leg.
+2. Otherwise `__LeaveHyperspace` returns 3, `__FlyToNextSector` returns 3, and `__MoveToSector` either returns 4 (the
+   target sector) or starts the next `__FlyToNextSector` → `__EnterHyperspace` in the same pass.
+3. **`Mayhem.Task.Move`** (Mayhem's NPC mover, `fly to sector $nextSector` one sector per call): `goto Restart` →
+   `wait 1 ms` when the target is an object (line 71).
+   * **In transit:** next gate → `FlyThroughNextGate`: beyond 10 km `follow object $nextGate with precision 5000 m :
+     timeout 5000 ms` (order 0x15, lines 220–222), else `fly to sector` (order 4 to its warp-in point).
+   * **At the destination:** `wait randomly from 1000 to 2000 ms` (line 161). An escort's `!move.jump` (target = leader,
+     no precision) then returns, and the template waits 1–2 s (line 321) and 2–3 s (line 97) before `escort ship`
+     (order 0x14, line 270).
+
+* **What the ship holds.** It decelerates from the 0x1e exit speed (about 120 m/s for M2/M1/M7/TL; 240 m/s only outside the
+  large set) at its `a` (installed medians 10 m/s² M2/M1/TL, 15 M7; `ships_by_class.txt`). In transit that lasts 1–2
+  frames **[i]**. For a squadron escort at its destination it lasts about 4–7 s, enough for an M2 to fall to about 50–80 m/s
+  and cover 0.5–0.8 km out of the gate **[i]**. The hold point is not P, except for `r_s > 0.99 r`.
+
+#### Q6: the Mayhem escort re-target [m] script text, [i] trigger timing
+
+The only writers of a squadron leader (`mayhem_squadronLeader`) are `Mayhem.Squadron.Add` and `Mayhem.Squadron.SwitchLeader`
+(sweep of all 1,994 installed XML scripts).
+
+| Path | Trigger | Effect on a waiting escort |
+| --- | --- | --- |
+| `Mayhem.Squadron.Add` → `Mayhem.SelectNewLeader` → `SwitchLeader` | a ship joins: `Mayhem.Task.TemplateWhenReady` after building and outfitting (line 188 with the homebase, 239 with `Mayhem.Squadron.FindLeader`, the nearest squadron leader by jumps that still needs the class); `Mayhem.Task.Support` re-adding a support ship (line 222). `SelectNewLeader` takes the highest hull of the formation (raiders: the slowest ship; task force: a TM) | `SwitchLeader` sets every follower's leader and `START`s the squadron command on it (line 64). The follower's command (e.g. `Mayhem.Cmd.Squadron.Escort` → `Mayhem.Task.Squadron.Escort`: wait 3–4 s → `Mayhem.Task.Squadron.Follower` → `GetLeader` → `!move.follow` the new leader) restarts. In the template: wait 2–3 s; another sector → `!move.jump`; same sector → `escort ship` (0x14) |
+| `Mayhem.Squadron.SwitchLeaderIfNeeded` → `SwitchLeader` | periodic re-selection: `Mayhem.Task.Squadron.TaskForce` (every 3–4 s, non-TM leader), `Mayhem.Task.Support` (4–5 s in the active sector, 14–16 s out of it), `ZH.Monitor` (task-force leaders) | as above |
+| `!ship.signal.killed` / `captured` → `Mayhem.AssignNewLeader` → `SwitchLeader` | the leader dies or is captured | as above |
+| the template's `CheckLeader` (lines 303–305) | a follower running `Mayhem.Task.Squadron.Follower` whose `$leader` is no longer the squadron leader | `return null` ends the follow; `Follower` re-reads `GetLeader` on its next pass (within 3–4 s) |
+| `Mayhem.Task.Squadron.Escort`, leader branch (lines 15–51) | every 3–4 s while idle: the first `[Freighter]` of its owner in `[SECTOR]` whose destination is in another sector and that has no `mayhem_escortLeader` | the squadron leader follows that freighter (`!move.follow … stopWhenDocked`); its followers keep following the leader |
+
+* **The newly arriving M1 [i].** A joining M1 has the formation's highest hull, so a re-target to it fits the first row.
+  The switch fires when the M1 joins at its outpost (`TemplateWhenReady`), not when it enters the escorts' sector. The
+  escorts then fly to it through `!move.jump`. The second row also selects it once it is a member. Run169's rows do not
+  name the script.
+* **Latency [i].**
+  * `START` runs the command on task 0, assumed to replace the running script (MSCI semantics, not read in the engine).
+  * The first escort order to the new leader then comes after the command's 3–4 s wait plus the template's 2–3 s.
+  * Until then the engine keeps whatever order the killed script left. Whether `__stopCommand` / `CallbackStopThisScript`
+    (both write `m47 = 0`) also issue `SA_StopObject` was not read.
+
+**Corrections to earlier sections.**
+
+* §3.1:
+  * the close-range rule's "A cannot move" is **B** cannot move (`0x00450980` with EAX = B);
+  * "escort/follow partners of A are ignored" holds only for a B escorting or following A; A's own leader is tested
+    with `b` halved;
+  * "doubled for some types" means B in the large set and approaching.
+* §11.2: the slab test never rejects for a non-zero ray component, so the mesh test is a distance test. Only the first
+  model record's extents are used.
+
+**Still inferred or open.**
+
+* The ray's intent (a slab test with an integer quotient).
+* The identities of the expendable KC classes and of ship type `0x113`.
+* The script-to-run mapping of Run169's re-targets: a `ship_gate_ctl` row with the escort's leader before and after,
+  plus the squadron command name, would settle it.
+* `START`'s task-replacement semantics, and what the killed script's stop path writes.
+* Q5's timings in flight: a `ship_gate_launch` row and the member rows of §8 item 11 in
+  [convoy-gate-transit.md](../architecture/convoy-gate-transit.md).
+
+```sh
+python3 -I verification/results/ship-navigation-ai/lane/lane_engine_sites.py > lane_engine_sites_out.txt   # RESULT PASS (180 checks)
+```
+
 ## 11. Docking approach
 
 2026-10-13, static study of the same `X3AP.exe` (SHA-256 `fdbf3418…`) and both `x3story.obj` versions, for the
@@ -1842,7 +2111,8 @@ numbers use a 3 km station and the Mayhem TP medians (r_S 74 m, 160 m/s, 15 m/s�
 * **Why a TP on order 4 warns on its own station [m].** The warn test has no own-target exemption on orders 4 or 5. A
   station is a mesh obstacle: the warn needs (1) centre distance `<= b + clamp(rA + rB/10, 30 m, 1 km) + rA·cosθ +
   2(rA + rB)` (7.2 km for the TP at a 3 km station), (2) the cone (θ < 66° at d = 4 km), and (3) the part-box test of
-  `0x0044d9c0`: the ship is inside, or its forward ray hits, a part's model box inflated to `1.2·(half-extent + rA)`
+  `0x0044d9c0`: the ship is inside, or within the reach of, a part's model box inflated to `1.2·(half-extent + rA)`
+  (the forward ray never rejects, §10.14 Q1)
   within reach `|v| + b` (760 m at 160 m/s). During order 4 `m47 = 0`, so `CollisionWarn` stops the ship.
 * **Order 5 [m].** The engine still sets the warn flag, but the KC sets `m47 = 0xA0001` for the whole order-5 leg, so
   `CollisionWarn` takes no action. Within `2·r_S + 50 m` of the node the engine moves the ship kinematically: no leaf
@@ -1966,8 +2236,9 @@ re-plan and handed to `0x0044d020` (`0x00454f81`). It is a bounding-sphere detou
   `[body+0xc]`). Each part with a model (`[body+0x140] >= 0`, `0x004863c0`) yields an oriented box: half-extents =
   model box `[+0x20..+0x28]` × part scale `[body+0x70]`, plus `rA`, × 1.2. Its centre and rows are the part's world
   pose (`+0xb0`, world→local `0x4f0c00`). Hit if A's centre is inside a box. Otherwise the Euclidean distance to the
-  box must be within the reach `|vA| + b`, **and** a slab test of A's forward ray (`flight+0x870` row 2, t ≥ 0) must
-  meet the box. So the decision is part boxes, not the bounding sphere and not the collision mesh. The reach adds the
+  box must be within the reach `|vA| + b`. The slab test of A's forward ray (`flight+0x870` row 2) that follows never
+  rejects for a non-zero ray component (§10.14 Q1), so the decision is a distance to part boxes, not to the bounding
+  sphere and not to the collision mesh. The reach adds the
   speed in units/s to a distance, i.e. one second of travel **[i]** on intent.
 
 **Numbers, TP at a 3 km station [i]:**
@@ -1975,12 +2246,12 @@ re-plan and handed to `0x0044d020` (`0x00454f81`). It is a bounding-sphere detou
 * `b = min((160·cosθ)²/30, 600) m`.
 * Range gate: 7.2 km head-on.
 * Cone: 66° at d = 4 km, 45° at d = 5 km.
-* Mesh: forward ray within 760 m of a part box grown by `0.2·half-extent + 89 m`. For a part 2 km across that is
+* Mesh: A's centre within 760 m of a part box grown by `0.2·half-extent + 89 m` (the ray adds no condition, §10.14 Q1). For a part 2 km across that is
   289 m beyond the hull. `P`'s margin is `2·r_S + 500 m` = 648 m beyond the *sphere*. That covers the hull but not
-  every box corner, so a ray toward `P` that grazes the station can hit.
+  every box corner, so a path toward `P` that grazes the station can hit.
 
-**Which case fires in practice [i]:** order 4 aimed through or past the station (the far-side case of §11.1) gives a
-forward ray into a part box within 760 m. The ship then stops (`CollisionWarn` default branch, `m47 = 0` during order
+**Which case fires in practice [i]:** order 4 aimed through or past the station (the far-side case of §11.1) passes the
+cone and brings A within 760 m of a part box. The ship then stops (`CollisionWarn` default branch, `m47 = 0` during order
 4). While stopped on arrival (`[obj+0x10] = [obj+0x14] = 0`) the test returns false (`0x0044dda2`).
 
 ### 11.3 Q3: the avoid order against a container, and the KC resume [m]
@@ -2163,8 +2434,8 @@ The order-5 and 0x1e end tests read `f+0x240`/`f+0x230` and centre distances, no
 
 **Corrections to earlier sections.**
 * §3.1: the close-range return applies to non-mesh obstacles only; for stations and capitals `d <= rA + rB` goes to the
-  part-box test. `rA + rB` enters the range gate twice. The mesh test is per-part oriented boxes plus a forward ray,
-  not a collision mesh.
+  part-box test. `rA + rB` enters the range gate twice. The mesh test is a distance to per-part oriented boxes (the
+  forward ray never rejects, §10.14 Q1), not a collision mesh.
 * §3.4: the detour's operand roles are measured (table in §11.1). The 2·r_C bound is on the ship's distance to `P`.
 * §4 "AI docking": the holding slot exists for carriers only; stations use `__Idle` (order 0x1d). Order 5 at a
   plain port ends at 3 m from the node after a kinematic final zone.

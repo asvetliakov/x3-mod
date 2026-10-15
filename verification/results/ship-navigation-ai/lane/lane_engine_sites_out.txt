@@ -1,0 +1,274 @@
+== EXE /mnt/c/X3/X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+ok   EXE SHA-256 = fdbf3418…
+ok   0044d9cf mov edi, dword ptr [esi + 0xc]             box: child list of the part (recursion first)
+ok   0044d9f3 call 0x44d9c0                              box: recursive call per child
+ok   0044da06 mov eax, dword ptr [esi + 0x140]           box: model id of the part
+ok   0044da15 call 0x4863c0                              box: model lookup
+ok   0044da25 mov ecx, dword ptr [eax + 0xc]             box: model record list
+ok   0044da28 mov eax, dword ptr [ecx]                   box: first record only
+ok   0044da2a mov edx, dword ptr [eax + 0x20]            box: extent x (+0x24 y, +0x28 z)
+ok   0044da51 mov edx, dword ptr [esp + 0xc]             box: part scale [part+0x70] (16.16)
+ok   0044da63 mov edx, dword ptr [ebx + 0xa4]            box: + r_A per axis
+ok   0044da69 add edx, eax                               box: e_x*s + r_A
+ok   0044da73 mov edx, dword ptr [ebp + 0x14]            box: * scale argument (1.2 = 0x13333 from every caller)
+ok   0044db0f mov edx, dword ptr [eax + 0xb0]            box: A world position [A.body+0xb0]
+ok   0044db15 sub edx, dword ptr [esi + 0xb0]            box: minus the part world origin [part+0xb0]
+ok   0044db41 lea ecx, [esi + 0xc0]                      box: part rotation [part+0xc0]
+ok   0044db4d call 0x4f0c00                              box: world -> part frame
+ok   0044db5e cmp ecx, dword ptr [esp + 0x10]            box: inside test |c_x| < H_x (strict)
+ok   0044db9e cmp dword ptr [ebp + 0x18], 0              box: flag != 0 -> inside test only
+ok   0044dc1a fild dword ptr [ebp + 0xc]                 box: reach
+ok   0044dc1d fmul st(0), st(0)                          box: reach^2
+ok   0044dc1f fcompp                                     box: reach^2 vs squared distance to the inflated box
+ok   0044dc26 jnp 0x44dcf4                               box: miss when reach^2 < dist^2
+ok   0044dc36 add ebx, 0x870                             box: forward row of A flight+0x870
+ok   0044dc44 mov edx, dword ptr [ebx + 0x20]            box: row 2 x (nose)
+ok   0044dc4f mov edx, dword ptr [ebp + 0xc]             box: D = nose * reach
+ok   0044dcb3 call 0x4f0c00                              box: D into the part frame
+ok   0044dcd5 cmp eax, 1                                 slab: |D_i| < 1 (D_i == 0)
+ok   0044dce4 cmp eax, dword ptr [esp + ecx + 0x10]      slab: D_i == 0 -> miss iff |c_i| > H_i
+ok   0044dd09 sub eax, dword ptr [esp + ecx + 0x10]      slab: |c_i| - H_i
+ok   0044dd0e idiv esi                                   slab: integer quotient q = (|c_i| - H_i) / D_i
+ok   0044dd1a fchs                                       slab: interval [-|q|, +|q|] (symmetric: the sign of D_i is lost)
+ok   0044dd4f fcom st(1)                                 slab: t_max vs t_min
+ok   0044dd5a fcom st(2)                                 slab: t_max vs 0
+ok   0044dd7d lea eax, [edi + 1]                         box: hit -> out = part, return 1
+ok   00456c79 push 1                                     order 0x12 re-score: flag 1 (inside test only) ...
+ok   00456c80 push 0x13333                               ... scale 1.2 ...
+ok   00456c9a call 0x44d9c0                              ... the third outside caller of the box test
+ok   0044dda2 cmp dword ptr [edi + 0x10], 0              warn: A speed 0 ...
+ok   0044dda8 cmp dword ptr [edi + 0x14], 0              warn: ... and desired speed 0 -> false
+ok   0044ddb4 call 0x450b80                              warn: a = acceleration of A (0 -> false)
+ok   0044ddd7 call 0x43fd50                              warn: mesh B if capital (EAX = B), class 5/6, class 0x14 subtypes
+ok   0044de87 cmp eax, ecx                               warn: 0.75 r_A <= r_B
+ok   0044dea1 mov eax, ebx                               warn: vmax of B (EAX = B) ...
+ok   0044dea3 call 0x450980                              ... B cannot move -> close-range rule
+ok   0044ded9 mov edx, 0x13333                           warn: close range 1.2 (r_A + r_B)
+ok   0044def1 cmp dword ptr [esp + 0x18], 0              warn: close range true only for non-mesh B
+ok   0044dfa4 cmp edx, 0x64                              warn: centres within 100 units -> u = nose
+ok   0044dfe1 call 0x49c8b0                              warn: u = normalised A->B
+ok   0044e04c mov dword ptr [esp + 0x14], eax            warn: cos = u . nose (16.16)
+ok   0044e05c cmp dword ptr [ebx + 0x60], 0              warn: B behind, B speed 0, B velocity 0 -> false
+ok   0044e07c cmp eax, 0xcccc                            warn: B term when cos > 0.8 ...
+ok   0044e0a8 cmp eax, 0xffff3334                        ... or (not attacking, B class 7, no B+0x44 bit 0x10) cos < -0.8
+ok   0044e12e mov eax, dword ptr [ebx + 0x10]            warn: B term = -|v_B| (u . nose_B)
+ok   0044e159 call 0x43fd00                              warn: B "large" (EAX = B) ...
+ok   0044e166 add esi, esi                               ... and approaching -> B term doubled
+ok   0044e197 add dword ptr [esp + 0x20], eax            warn: L += r_A cos (cos > 0)
+ok   0044e1c2 add dword ptr [esp + 0xc], eax             warn: v_close = B term + |v_A| cos
+ok   0044e1d4 idiv ecx                                   warn: v_close^2 / a
+ok   0044e1d9 sar eax, 1                                 warn: b = v_close^2 / 2a
+ok   0044e1df mov eax, 0x493e0                           warn: b capped at 300000
+ok   0044e1f2 cmp edi, 0x14                              warn: A on 0x14 vs its leader or a co-escort -> b/2
+ok   0044e23c cmp edi, 0x15                              warn: A on 0x15 vs its target or its own follower -> b/2
+ok   0044e282 mov ecx, dword ptr [ebp + 0x10]            warn: d ...
+ok   0044e289 cmp ecx, eax                               ... <= r_A + r_B ...
+ok   0044e28d cmp dword ptr [esp + 0x18], 0              ... and mesh B -> box test only
+ok   0044e2a6 push 0x13333                               warn: box scale 1.2
+ok   0044e2ac add eax, edx                               warn: reach = |v_A| + b
+ok   0044e2b5 call 0x44d9c0                              warn: close-range box test
+ok   0044e2d5 cmp ecx, edx                               warn: range gate d <= b + L + r_A + r_B
+ok   0044e384 cmp eax, edx                               warn: d <= b -> no cone
+ok   0044e3ad call 0x44d9c0                              warn: box test after the gate (and the cone when d > b)
+ok   0044e3cc add ecx, 0x4e20                            cone: r_A + r_B + 20000
+ok   0044e3e8 fmul dword ptr [0x5654e0]                  cone: cos * 2^-16
+ok   0044e3f7 jp 0x44e436                                cone: cos < 0 -> false
+ok   0044e40a jne 0x44e43a                               cone: cos^2 <= 1 - k^2 -> false
+ok   0044e455 test byte ptr [ebx + 0x44], 0x10           pair: A flag skip
+ok   0044e471 call 0x44d2f0                              pair: obstacle filter
+ok   0044e4b8 call 0x419190                              pair: 0x1e at a gate: Chebyshev |A - f+0x230| ...
+ok   0044e4bd cmp eax, 0x15ae0                           ... <= 88800 -> skip every obstacle
+ok   0044d2f1 cmp word ptr [edi + 0x48], 7               filter: A must be class 7
+ok   0044d31f jmp dword ptr [eax*4 + 0x44d48c]           filter: B class switch 3..0x1f
+ok   0044d336 mov eax, dword ptr [ecx + edx + 0x14]      filter: A ship code
+ok   0044d355 jne 0x44d385                               filter: A not capital -> no class/size skip
+ok   0044d35f call 0x43fd00                              filter: capital A: B class 7 not large -> ignored
+ok   0044d36c cmp bx, 0xa                                filter: capital A: B class 10 -> ignored
+ok   0044d378 call 0x43fe80                              filter: capital A: expendable B -> ignored
+ok   0044d39f cmp dword ptr [eax + 0x224], edi           filter: B escorting/following A -> ignored
+ok   0044d3b6 cmp si, 0x18                               filter: A on 0x18 ignores expendable B
+ok   0044d3cb cmp si, 0x24                               filter: A on 0x24 ignores expendable B
+ok   0044d457 mov ecx, 0x113                             filter: B of ship type 0x113 ignored unless A is type 0x113
+ok   0043fec5 cmp eax, dword ptr [edx + 0x38]            expendable: never the object at [*0x60850c+0x38]
+ok   0043fef8 mov ecx, 0x81f                             expendable: KC class 0x81f
+ok   0043ff06 mov ecx, 0x812                             expendable: KC class 0x812
+ok   0043ff16 mov ecx, 0x80d                             expendable: KC class 0x80d
+ok   0043ff26 mov ecx, 0x7db                             expendable: KC class 0x7db
+ok   0043ff36 mov ecx, 0x816                             expendable: KC class 0x816
+ok   0043ff46 mov ecx, 0x810                             expendable: KC class 0x810
+ok   0045d844 call 0x44e450                              pair loop: A = first object
+ok   0045d867 call 0x44e450                              pair loop: A = second object
+ok   0045e05a cmp word ptr [edx + 0x258], 0x12           L3: the only order excluded is 0x12
+ok   0045e06e test ecx, 0x8000000                        L3: object flag 0x8000000 -> no call
+ok   0045e079 push 0x55fd74                              L3: "CollisionWarn"
+ok   0045e089 call 0x49f4c0                              L3: synchronous KC call
+ok   00457c8b jle 0x457c97                               order 0x1e: |dz| <= r (large) or r/4 -> continue
+ok   00457c90 push 1                                     order 0x1e end: result 1 ...
+ok   00457c92 jmp 0x455ad0                               ... shared end
+ok   00455ad2 mov word ptr [eax + 0x258], 0              shared end: order 0
+ok   00455adb call 0x460560                              shared end: wake the task
+ok   00455ae0 jmp 0x4593dd                               shared end: site B, no speed write
+ok   00457d45 mov dword ptr [ebx + 0x14], eax            order 0x1e: desired = vmax every frame
+ok   00457d48 mov dword ptr [ebx + 0x10], 0xea60         order 0x1e: speed 60000 (large)
+ok   00457d5c mov dword ptr [ebx + 0x10], 0x1d4c0        order 0x1e: speed 120000 (others)
+ok   004611f3 mov word ptr [ecx + 0x258], 0x1e           SA_ClearObjectFromHangar: order 0x1e
+ok   004594ef call 0x450980                              slew: desired capped at vmax
+ok   0045950d mov eax, dword ptr [ecx + 0x278]           slew: desired capped at f+0x278
+ok   00459562 call 0x450b80                              slew: step = a ...
+ok   00459569 imul ecx, ebx                              ... * dt (ms) ...
+ok   0045956c mov eax, 0x10624dd3                        ... / 1000
+ok   004595a3 mov dword ptr [esi + 0x10], edx            slew: speed down toward desired
+ok   004595b1 mov dword ptr [esi + 0x10], eax            slew: speed up toward desired
+
+== class tables
+ok   capital 0x0043fd50 (SG_SH code): true = ['0x0', '0x2', '0x3', '0x4', '0x8', '0xd']
+ok   large 0x0043fd00 (SG_SH code): true = ['0x0', '0x2', '0x3', '0x4', '0x8', '0xb', '0xd', '0xe', '0xf']
+ok   obstacle filter 0x0044d2f0 (B class): tested = ['0x3', '0x4', '0x5', '0x6', '0x7', '0x11', '0x12', '0x14', '0x15', '0x1d', '0x1e', '0x1f']
+ok   expendable 0x0043fe80 (class): ship: KC class = ['0x7']
+ok   expendable 0x0043fe80 (class): true = ['0x8', '0x9', '0xb', '0xc', '0xd', '0xe', '0xf', '0x10']
+ok   expendable 0x0043fe80 (class): class 10: not bit 0 of +0x43 = ['0xa']
+ok   expendable 0x0043fe80 (class): class 0x11: +0x58 and subtype 9 = ['0x11']
+
+== direct calls (E8 rel32) of 0x0044d9c0 in .text
+ok   callers ['0x44d9f3', '0x44e2b5', '0x44e3ad', '0x456c9a'] (recursion, warn x2, order 0x12)
+
+== SA_ClearObjectFromHangar 0x004611a5..0x00461265: writes to obj+0x10 / obj+0x14
+ok   no speed or desired-speed write at issue (0 writes)
+
+== KC addon/07.cat L/x3story.obj (Mayhem 4), CODE 1908859 B
+ok   2004::CollisionWarn d67f6: ignore = m47 & 0x80000, targeted = m47 & 0x40000 against m48, else SA_StopObject(ship, 2)
+ok   2004::CollisionWarn calls SA_StopObject(m3, 2)
+   m47 writer: 2004::__StartInHangar cf7a6 m47 = 327683
+   m47 writer: 2004::__StartInHangar cf7b4 m47 = 589826
+   m47 writer: 2004::__StartInHangar cf833 m47 = 0
+   m47 writer: 2004::__LandInHangar cfa07 m47 = 0
+   m47 writer: 2004::__LandInHangar cfd4b m47 = 655361
+   m47 writer: 2004::__LandInHangar cfd8c m47 = 0
+   m47 writer: 2004::__LandInHangar d004a m47 = 0
+   m47 writer: 2004::__MoveToHangar d02ad m47 = 0
+   m47 writer: 2004::__MoveToHangar d05f1 m47 = 655361
+   m47 writer: 2004::__MoveToHangar d0632 m47 = 0
+   m47 writer: 2004::__MoveToHangar d08f0 m47 = 0
+   m47 writer: 2004::__EnterHyperspace d5315 m47 = 0
+   m47 writer: 2004::__EnterHyperspace d5667 m47 = 655361
+   m47 writer: 2004::__EnterHyperspace d58d5 m47 = 0
+   m47 writer: 2004::__LeaveHyperspaceWarpIn d5e81 m47 = 327684
+   m47 writer: 2004::__LeaveHyperspaceWarpIn d5eee m47 = 0
+   m47 writer: 2004::__stopCommand d9b1a m47 = 0
+   m47 writer: 2004::CallbackStopThisScript e2246 m47 = 0
+ok   m47 writers in class 2004: the hangar, gate and stop methods only (18 writes); none in __EscortObject
+ok   2004::__EscortObject d10f7: every loop pass tests SA_CollisionObject, then SA_AvoidObjectCollision(size + 50000)
+ok   2004::__EscortObject issues SA_EscortObject (0x14) or SA_FollowObject (0x15) after that test
+ok   2004::JumpToSector d5f6c: gate target -> __LeaveHyperspace(gate), the gate-transit arrival
+ok   2004::JumpToSector: NPC 2019 to a gate requests the destination through slot, retry 5 s
+ok   2004::JumpToSector: desired speed 0 and a 16 s charge unless flags & 3
+ok   2004::JumpToSector: sector or beacon target -> AddTo + SetPos (no gate launch)
+ok   2004::SetPos c6c68 -> SA_SetSafePos
+   __LeaveHyperspace callers: 2004::__FlyToNextSector, 2004::__StartIntoSpace, 2004::JumpToSector, 2004::CanWarp, 402::WarpEnterSector, 308::DoWarpObject
+ok   JumpToSector and __FlyToNextSector share __LeaveHyperspace
+ok   2004::__LeaveHyperspaceWarpIn d5e3a: after 0x1e: m47 = 0; SA_CollisionObject -> SA_AvoidObjectCollision(m3, 0)
+ok   __LeaveHyperspaceWarpIn: m47 = 0x50004 (targeted, m48 = the gate) through 0x21/0x1e
+
+== MSCI loose scripts (/mnt/c/X3/addon/scripts)
+-- Mayhem.Task.TemplateWhenReady.xml 188243 B sha256 9d1ac36254f51af9c2a0c2d120696f85f78ced5aa298630a168960e535c4e37e
+ok   Mayhem.Task.TemplateWhenReady.xml /call script Mayhem\.Squadron\.Add/ at [188, 239]
+     188 = [NULL] -> call script Mayhem.Squadron.Add : argument1 = [THIS] argument2 = $squadronName argument3 = $assignedHomebase
+     239 = [NULL] -> call script Mayhem.Squadron.Add : argument1 = [THIS] argument2 = $squadronName argument3 = $leader
+ok   Mayhem.Task.TemplateWhenReady.xml /Mayhem\.Squadron\.FindLeader/ at [236]
+     236 $leader = [NULL] -> call script Mayhem.Squadron.FindLeader : argument1 = [THIS] argument2 = $squadronName
+-- Mayhem.Squadron.Add.xml 65767 B sha256 9dafc2ebc048b9cb5b2dd289ac34c400f14e3442fa09eab8284d07dca7ff00ac
+ok   Mayhem.Squadron.Add.xml /Mayhem\.SelectNewLeader/ at [50]
+      50 $newLeader = [NULL] -> call script Mayhem.SelectNewLeader : shipArray = $formation exclude = null
+ok   Mayhem.Squadron.Add.xml /Mayhem\.Squadron\.SwitchLeader/ at [55, 85]
+      55 = [NULL] -> call script Mayhem.Squadron.SwitchLeader : squadron = $leader newLeader = $newLeader
+      85 = [NULL] -> call script Mayhem.Squadron.SwitchLeader : squadron = $ship newLeader = $ship
+ok   Mayhem.Squadron.Add.xml /'mayhem_squadronLeader' value = \$leader/ at [22]
+      22 $ship -> set local variable : name = 'mayhem_squadronLeader' value = $leader
+-- Mayhem.SelectNewLeader.xml 25995 B sha256 4f663c34279e729d55c600d9e442b5e4d56defb0ce6075a07652a6fdbf5193d1
+ok   Mayhem.SelectNewLeader.xml /get hull$/ at [38]
+      38 $ship.hull = $ship -> get hull
+ok   Mayhem.SelectNewLeader.xml /\$ship\.hull > \$hull/ at [41]
+      41 if $ship.hull > $hull AND ( $squadronName != 'taskForce' OR ! $squadronName )
+ok   Mayhem.SelectNewLeader.xml /get max speed/ at [32]
+      32 $ship.speed = $ship -> get max speed
+ok   Mayhem.SelectNewLeader.xml /is of class \[TM\]/ at [20]
+      20 if $ship -> is of class [TM]
+-- Mayhem.Squadron.SwitchLeader.xml 52304 B sha256 aebfc94b911111f4e2dc58775641e6ff4e5fa28ee7cc3ce4d59f3e5d612ac236
+ok   Mayhem.Squadron.SwitchLeader.xml /'mayhem_squadronLeader' value = \$newLeader/ at [42, 51, 54]
+      42 $follower -> set local variable : name = 'mayhem_squadronLeader' value = $newLeader
+      51 $previousLeader -> set local variable : name = 'mayhem_squadronLeader' value = $newLeader
+      54 $newLeader -> set local variable : name = 'mayhem_squadronLeader' value = $newLeader
+ok   Mayhem.Squadron.SwitchLeader.xml /START \$follower -> call named script/ at [64]
+      64 START $follower -> call named script : script = $command , null , null , null , null , null
+-- Mayhem.Squadron.SwitchLeaderIfNeeded.xml 9105 B sha256 e52b6429f8c93f95b9da168d0a03db73945c7fdbcb22d9716b84e2628c622e56
+ok   Mayhem.Squadron.SwitchLeaderIfNeeded.xml /SelectNewLeader/ at [7]
+       7 $newLeader = [NULL] -> call script Mayhem.SelectNewLeader : shipArray = $formation exclude = null squadronName = $squadronName
+ok   Mayhem.Squadron.SwitchLeaderIfNeeded.xml /START .*SwitchLeader/ at [9]
+       9 START [NULL] -> call script Mayhem.Squadron.SwitchLeader : squadron = $leader newLeader = $newLeader
+-- Mayhem.Task.Squadron.TaskForce.xml 399320 B sha256 73e58bd01c42ae27be9622c995aed497693f18684be990e3e3567d9af5297d45
+ok   Mayhem.Task.Squadron.TaskForce.xml /wait randomly from 3000 to 4000/ at [22, 191, 569]
+      22 = wait randomly from 3000 to 4000 ms
+     191 = wait randomly from 3000 to 4000 ms
+     569 = wait randomly from 3000 to 4000 ms
+ok   Mayhem.Task.Squadron.TaskForce.xml /SwitchLeaderIfNeeded/ at [30]
+      30 do if [NULL] -> call script Mayhem.Squadron.SwitchLeaderIfNeeded : squadron = [THIS]
+-- Mayhem.Task.Support.xml 122245 B sha256 23529793000c411af3563ece09f8b2089054a34c9939941fd5ddd9a3ba9d23d1
+ok   Mayhem.Task.Support.xml /SwitchLeaderIfNeeded/ at [40]
+      40 do if [NULL] -> call script Mayhem.Squadron.SwitchLeaderIfNeeded : squadron = [THIS]
+ok   Mayhem.Task.Support.xml /ScriptName = 'Mayhem\.Squadron\.Add'/ at [222]
+     222 START [NULL] -> call script Lib.Gen.RunScriptWhenFinished : ScriptName = 'Mayhem.Squadron.Add' TaskWatch = 0 TaskRun = null ObjectWatch = [THIS] Objec
+-- ZH.Monitor.xml 1015973 B sha256 49c258ade2332dc768e2bc542c24ab1e2426acc8bd6f7da838fce8ba50130c49
+ok   ZH.Monitor.xml /SwitchLeaderIfNeeded/ at [585]
+     585 skip if [NULL] -> call script Mayhem.Squadron.SwitchLeaderIfNeeded : squadron = $ship
+-- Mayhem.AssignNewLeader.xml 77924 B sha256 9169901f179a59cf6169a14765fd9932f68f20861239737e39b539bb5d420a96
+ok   Mayhem.AssignNewLeader.xml /SwitchLeader/ at [117]
+     117 START [NULL] -> call script Mayhem.Squadron.SwitchLeader : squadron = $newLeader newLeader = $newLeader
+-- !ship.signal.killed.xml 378824 B sha256 fdb58bc7d57747622d8dfa94af02c4ad31fb68584722c5fe16d9f540846bab40
+ok   !ship.signal.killed.xml /Mayhem\.AssignNewLeader/ at [113]
+     113 $newLeader = [NULL] -> call script Mayhem.AssignNewLeader : ship = [THIS] killer = $killer cmd = $cmd cmdtarget = $cmdtarget cmdtarget2 = $cmdtarget2 
+-- Mayhem.Task.Squadron.Escort.xml 36918 B sha256 b0efa2c0a501e37bcbe364e55b3526f84c2ca38a3ca47a94fd141b299cdbc6b6
+ok   Mayhem.Task.Squadron.Escort.xml /wait randomly from 3000 to 4000/ at [15]
+      15 = wait randomly from 3000 to 4000 ms
+ok   Mayhem.Task.Squadron.Escort.xml /call script Mayhem\.Task\.Squadron\.Follower/ at [17]
+      17 do if [THIS] -> call script Mayhem.Task.Squadron.Follower :
+ok   Mayhem.Task.Squadron.Escort.xml /find ship : sector = \[SECTOR\] class or type = \[Freighter\]/ at [26]
+      26 $freighters = find ship : sector = [SECTOR] class or type = [Freighter] race = [OWNER] flags = [Find.Multiple] refobj = null maxdist = null maxnum = 9
+ok   Mayhem.Task.Squadron.Escort.xml /get destination/ at [32]
+      32 $destination = $freighter -> get destination
+ok   Mayhem.Task.Squadron.Escort.xml /mayhem_escortLeader/ at [39, 49, 51]
+      39 $escortLeader = $freighter -> get local variable : name = 'mayhem_escortLeader'
+      49 $vip -> set local variable : name = 'mayhem_escortLeader' value = [THIS]
+      51 $vip -> set local variable : name = 'mayhem_escortLeader' value = null
+ok   Mayhem.Task.Squadron.Escort.xml /!move\.follow : target = \$vip/ at [50]
+      50 = [THIS] -> call script !move.follow : target = $vip attackNearest = [FALSE] stopWhenDocked = [TRUE]
+-- Mayhem.Task.Squadron.Follower.xml 23620 B sha256 ac588c766e435199d20bf96b4134d7218a77635caf3fc557ac6d10ec39aa9cc6
+ok   Mayhem.Task.Squadron.Follower.xml /Mayhem\.Squadron\.GetLeader/ at [23]
+      23 $leader = [NULL] -> call script Mayhem.Squadron.GetLeader : squadron = [THIS]
+ok   Mayhem.Task.Squadron.Follower.xml /!move\.follow : target = \$leader/ at [26]
+      26 = [THIS] -> call script !move.follow : target = $leader attackNearest = [FALSE] stopWhenDocked = [FALSE]
+-- Mayhem.Squadron.GetLeader.xml 5912 B sha256 69d7e23abc5a989d478549d767aea3299b4080d7e5f030bfba8cbcd9f474c01b
+ok   Mayhem.Squadron.GetLeader.xml /'mayhem_squadronLeader'/ at [1]
+       1 $leader = $squadron -> get local variable : name = 'mayhem_squadronLeader'
+-- !move.follow.template.xml 198084 B sha256 024635783cfb8fbbf86d6e3308f48467275d10231f051d1088c3bf50fd3e30f6
+ok   !move.follow.template.xml /is script Mayhem\.Task\.Squadron\.Follower on stack/ at [303]
+     303 if [THIS] -> is script Mayhem.Task.Squadron.Follower on stack of task = 0
+ok   !move.follow.template.xml /Mayhem\.Squadron\.IsLeader : ship = \$leader/ at [304]
+     304 skip if [NULL] -> call script Mayhem.Squadron.IsLeader : ship = $leader
+ok   !move.follow.template.xml /escort ship \$target : timeout/ at [270]
+     270 = [THIS] -> escort ship $target : timeout = $timeout ms
+ok   !move.follow.template.xml /wait randomly from 2000 to 3000/ at [97]
+      97 = wait randomly from 2000 to 3000 ms
+-- Mayhem.Task.Move.xml 129428 B sha256 5881de9d2ea1eea88e373ecd71a6b2bc004ead71739da8caedb1f0bc9316b209
+ok   Mayhem.Task.Move.xml /^= wait 1 ms/ at [71]
+      71 = wait 1 ms
+ok   Mayhem.Task.Move.xml /wait randomly from 1000 to 2000/ at [161]
+     161 = wait randomly from 1000 to 2000 ms
+ok   Mayhem.Task.Move.xml /follow object \$nextGate/ at [222]
+     222 = [THIS] -> follow object $nextGate with precision 5000 m : timeout = 5000 ms
+ok   Mayhem.Task.Move.xml /fly to sector \$nextSector/ at [225]
+     225 $ret = [THIS] -> fly to sector $nextSector
+   writers of mayhem_squadronLeader: Mayhem.Squadron.Add.xml:22, Mayhem.Squadron.Add.xml:84, Mayhem.Squadron.Add.xml:88, Mayhem.Squadron.SwitchLeader.xml:42, Mayhem.Squadron.SwitchLeader.xml:51, Mayhem.Squadron.SwitchLeader.xml:54
+ok   only Mayhem.Squadron.Add and Mayhem.Squadron.SwitchLeader write a squadron leader
+
+checks 180, failures 0
+RESULT PASS
