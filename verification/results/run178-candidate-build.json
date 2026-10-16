@@ -1,0 +1,21 @@
+{
+ "dll": "detached worktree /tmp/x3-run178-candidate of 6a1ad525, build/d3d9.dll (clean configure + build)",
+ "sha256": "9d87fea223b09c2dca8f78d898851b319b557e55d7fa28ec10b0e9ed2c7d25e4",
+ "bytes": 61954626,
+ "commit": "6a1ad525",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 1014, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); engine discover modules: 2 known Wine record-hash failures, 6 skipped; fixture on main 6a1ad525: --lane 6643/0; full 13990 and --capital 8368 each with the single host-timing bench failure (third-worst controller block 1,044 us vs the 1 ms ceiling; a host condition seen on the base builds too), every behavioural check passing"
+ },
+ "trigger": "Run177 flight clean; the return-trip distance condition agreed with the user (15 km commit sphere); the Run177 far-out re-led case parked (its round not merged)",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run177": [
+  "b652e16c Run177 triage",
+  "bdeef915 return-trip distance condition",
+  "6a1ad525 the Run177 round parked"
+ ]
+}
