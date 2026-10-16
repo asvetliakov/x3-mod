@@ -281,6 +281,8 @@ class ConfigSchema(unittest.TestCase):
 
 
 OFF = (None, '0', 'off', 'vanilla', 'native', 'keep', 'legacy', 'identity')
+# Keys the DLL turns on when the variable is absent or empty (on by default since 2026-10-16): the opt-out must send an explicit 0.
+STRICT_ZERO = ('X3M_SHIP_STEERING', 'X3M_SHIP_AVOIDANCE')
 # Opt-outs and the variables that must end up off (docs/architecture/config-file.md; the reviewer's list of 2026-09-26 and
 # test_launcher_defaults.OPT_OUTS).
 OPT_OUTS = {
@@ -321,6 +323,9 @@ class OptOuts(unittest.TestCase):
             for name in names:
                 self.assertIn(resolve.value(dev_resolved, name), OFF, (args, name))
                 self.assertIn(resolve.value(player_resolved, name), OFF, (args, name, player.get(name)))
+                if name in STRICT_ZERO:  # the DLL's own default is on: only an explicit 0 switches it off (an unset value would not)
+                    self.assertEqual(developer.get(name), '0', (args, name))
+                    self.assertEqual(player.get(name), '0', (args, name, player.get(name)))
             # Player mode without a file == the developer launch, setting by setting (an empty value counts as unset).
             effective = lambda resolved: {k: resolve.value(resolved, k) for k in resolved if k not in ('X3M_CONFIG', *INSTALLATION)}
             a, b = effective(dev_resolved), effective(player_resolved)
