@@ -128,3 +128,13 @@ engine formation model collides) → parked (§11 Open). **Run178 installed** (`
 Run 178 A open): Run177 + the distance condition, otherwise byte-identical. Next: the user flies normally; a return trip at a gate
 exercises the arrival mode; the parked items wait for a flown reason (far-out re-led escorts; two arrivals overlapping; statics;
 behind_start; formed_size2; rt_cross). The host-timing bench (1 ms third-worst) flakes on this host for base builds too.
+
+## 2026-10-16 (final): Run178 accepted
+
+Run178 flown: the arrival mode's first real test: a 4-capital group sent straight back was flown vanilla (4 `ship_gate_ctl_arr`
+rows, 0 lane writes, 0 board entries, 0 plane crossings), all launched in 668.6 s with 10 engine 0x12 (the escorts' 0x14 legs
+closing on the leader at the gate at 2.2–2.9 km; no contact; our general avoidance's detours/emergency speed still act there,
+not shown causal). The user accepted the trade-off: **the lane is a departure-side system; arrivals that turn back are the game's.**
+Run 178 A completed; nothing in flight; the accepted state is Run178 (`fecd94ee`). Open only with a flown reason: the far-out
+re-led escorts (branch kept), pure certification without writes for arrival pairs (sweep: 1 converging, 2 clear-if-braking, 2
+clear, 5 undeterminable), the kill_criterion.py "open" artefact for arrival-side launches, the fixture's escort-formation model.
