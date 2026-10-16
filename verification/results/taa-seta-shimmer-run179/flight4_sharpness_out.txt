@@ -1,0 +1,72 @@
+== Run181 6149 plant 3c2b2e60 (gate hi 0.5)
+6149 px 643 present 1.2106 taa 0.9636 hdr 2.9235 taa/hdr 0.330
+6150 px 626 present 1.2094 taa 0.9126 hdr 2.9573 taa/hdr 0.309
+6151 px 644 present 1.2157 taa 0.9444 hdr 3.2663 taa/hdr 0.289
+6152 px 650 present 1.2425 taa 0.9463 hdr 3.6972 taa/hdr 0.256
+6153 px 620 present 1.1654 taa 0.8925 hdr 3.0719 taa/hdr 0.291
+6154 px 635 present 1.1190 taa 0.8633 hdr 3.0157 taa/hdr 0.286
+6155 px 620 present 1.2064 taa 0.9111 hdr 3.2716 taa/hdr 0.278
+6156 px 621 present 1.1927 taa 0.9216 hdr 2.9722 taa/hdr 0.310
+6157 px 646 present 1.1456 taa 0.9077 hdr 3.3786 taa/hdr 0.269
+6158 px 617 present 1.1268 taa 0.8712 hdr 3.5237 taa/hdr 0.247
+6159 px 644 present 0.8826 taa 0.6519 hdr 3.0832 taa/hdr 0.211
+6160 px 652 present 0.9616 taa 0.7094 hdr 3.2756 taa/hdr 0.217
+6161 px 659 present 0.6861 taa 0.4983 hdr 2.9767 taa/hdr 0.167
+6162 px 664 present 0.6410 taa 0.4434 hdr 3.2875 taa/hdr 0.135
+6163 px 687 present 0.7314 taa 0.5221 hdr 3.0694 taa/hdr 0.170
+6164 px 690 present 0.6039 taa 0.4194 hdr 3.2902 taa/hdr 0.127
+capture frames 6150-6164 median: present 1.1268 taa 0.8712 hdr 3.2663 taa/hdr 0.256
+== Run181 6149 factoryA 3c284630
+6149 px 400 present 1.5153 taa 1.3039 hdr 2.4799 taa/hdr 0.526
+6150 px 395 present 1.4239 taa 1.2573 hdr 2.7002 taa/hdr 0.466
+6151 px 410 present 1.3553 taa 1.2118 hdr 2.6559 taa/hdr 0.456
+6152 px 411 present 1.3281 taa 1.2231 hdr 2.4435 taa/hdr 0.501
+6153 px 439 present 1.2761 taa 1.1580 hdr 2.3838 taa/hdr 0.486
+6154 px 435 present 1.1183 taa 0.9958 hdr 2.7502 taa/hdr 0.362
+6155 px 439 present 0.9954 taa 0.8971 hdr 2.6821 taa/hdr 0.334
+6156 px 456 present 0.9591 taa 0.8548 hdr 2.6216 taa/hdr 0.326
+6157 px 492 present 0.9385 taa 0.8369 hdr 2.4923 taa/hdr 0.336
+6158 px 533 present 0.9480 taa 0.8608 hdr 2.3503 taa/hdr 0.366
+6159 px 513 present 1.0205 taa 0.9377 hdr 2.6474 taa/hdr 0.354
+6160 px 569 present 0.8507 taa 0.8043 hdr 2.6987 taa/hdr 0.298
+6161 px 541 present 0.9303 taa 0.8581 hdr 2.1298 taa/hdr 0.403
+6162 px 631 present 0.8603 taa 0.7896 hdr 2.2545 taa/hdr 0.350
+6163 px 654 present 0.8486 taa 0.7944 hdr 2.4086 taa/hdr 0.330
+6164 px 697 present 0.8670 taa 0.8012 hdr 2.3413 taa/hdr 0.342
+capture frames 6150-6164 median: present 0.9591 taa 0.8608 hdr 2.4923 taa/hdr 0.354
+== Run181 6149 plant by view z 80000-92000 (gate hi 0.5)
+6149 px 544 present 1.2612 taa 0.9680 hdr 2.9668 taa/hdr 0.326
+6150 px 476 present 1.2819 taa 0.9462 hdr 3.1809 taa/hdr 0.297
+6151 px 439 present 1.2223 taa 0.9740 hdr 3.3394 taa/hdr 0.292
+6152 px 429 present 1.2774 taa 0.9892 hdr 3.6882 taa/hdr 0.268
+6153 px 442 present 1.2273 taa 0.9332 hdr 3.2651 taa/hdr 0.286
+6154 px 438 present 1.0649 taa 0.8631 hdr 2.9874 taa/hdr 0.289
+6155 px 425 present 1.2261 taa 0.9380 hdr 3.5491 taa/hdr 0.264
+6156 px 446 present 1.2124 taa 0.9442 hdr 3.1999 taa/hdr 0.295
+6157 px 447 present 1.0562 taa 0.8807 hdr 3.7606 taa/hdr 0.234
+6158 px 436 present 1.1598 taa 0.8998 hdr 3.9010 taa/hdr 0.231
+6159 px 439 present 0.9177 taa 0.6830 hdr 3.2618 taa/hdr 0.209
+6160 px 478 present 1.0238 taa 0.7468 hdr 3.4464 taa/hdr 0.217
+6161 px 474 present 0.6774 taa 0.5023 hdr 3.1011 taa/hdr 0.162
+6162 px 477 present 0.6561 taa 0.4375 hdr 3.4366 taa/hdr 0.127
+6163 px 518 present 0.7833 taa 0.5534 hdr 3.3236 taa/hdr 0.167
+6164 px 509 present 0.6094 taa 0.4171 hdr 3.4942 taa/hdr 0.119
+capture frames 6150-6164 median: present 1.0649 taa 0.8807 hdr 3.3394 taa/hdr 0.234
+== Run179 flight 2 2927 plant by view z 80000-89000 (gate hi 0.25; log gone, z mode)
+2927 px 2 present 0.9035 taa 0.4453 hdr 4.4056 taa/hdr 0.101
+2928 px 2 present 1.4926 taa 0.9072 hdr 3.3641 taa/hdr 0.270
+2929 px 2 present 2.2867 taa 1.5496 hdr 4.2205 taa/hdr 0.367
+2930 px 10 present 6.9158 taa 4.2590 hdr 2.5967 taa/hdr 1.640
+2931 px 49 present 5.0039 taa 2.4274 hdr 2.5065 taa/hdr 0.968
+2932 px 110 present 2.4863 taa 1.2999 hdr 1.6520 taa/hdr 0.787
+2933 px 187 present 2.0466 taa 0.9413 hdr 0.4495 taa/hdr 2.094
+2934 px 292 present 1.5445 taa 0.6144 hdr 0.6216 taa/hdr 0.988
+2935 px 420 present 1.0568 taa 0.4381 hdr 1.0083 taa/hdr 0.434
+2936 px 545 present 0.8775 taa 0.3087 hdr 0.6505 taa/hdr 0.474
+2937 px 674 present 0.6653 taa 0.2299 hdr 0.5686 taa/hdr 0.404
+2938 px 935 present 0.5261 taa 0.2706 hdr 2.0828 taa/hdr 0.130
+2939 px 1046 present 0.4110 taa 0.2138 hdr 2.0736 taa/hdr 0.103
+2940 px 1103 present 0.4130 taa 0.2143 hdr 1.8339 taa/hdr 0.117
+2941 px 1190 present 0.4583 taa 0.2354 hdr 2.1596 taa/hdr 0.109
+2942 px 1329 present 0.4783 taa 0.2501 hdr 1.9944 taa/hdr 0.125
+capture frames 2928-2942 median: present 1.0568 taa 0.4381 hdr 1.9944 taa/hdr 0.404

@@ -43,3 +43,13 @@ Run179 reference: mid Titan 6.2 % / 0.170, far Titan 2.6-6.5 % / 0.10-0.11. Mid 
 All-hull presented flicker classes: 4905 .915|0|.045|.040  6323 .356|.608|.022|.015  11441 .897|.017|.015|.070  24922 .828|.121|.033|.019
 Lever reach (share of all-hull presented flicker): (a) gate open below 0.5 px/f in flight AND eligible (farw>0 or region) .087/.302/.325/.114;
   of the Titan's own flicker 0 (4905, turning) / .865 (6323) / .994 (11441). (b) band 20/24 adds .010/.105/0/.018, gate-open part +0/0/0/.018.
+--- Fourth flight (Run181, gate hi 0.25 -> 0.5) [M unless marked]
+6149 plant target, pan (in flight 0.81 px/f on the plant, z 83-92k; factory A 140k); 11893 Titan, camera still, z 33-40k, 0.10 px/f;
+17599 Titan, SETA, z 59-62k, 0.47 px/f.
+Titan 11893: presented flicker 4.8 %, gain 0.124 (Run 180 A mid Titan 6323: 4.7 % / 0.162 at z 23-30k; 4905 at 39-46k: 6.1 % / 0.130).
+  Capture frames: camera gate closed 100 % (capture-frame step 4.5 px/f). First (in-flight) frame: gate openC>0.5 1.000 (q 0/1),
+  expected openness 0.85; locked and open 0.227; eligible and open 0.573. Run 180 A 6323 first frame (hi 0.25, 0.16 px/f): openC>0.5 0.415,
+  locked and open 0.089. SETA first frames: 17599 openC>0.5 0.000 at 0.47 px/f; Run 180 A 11441 0.001 at 0.13 px/f (screen step).
+  Titan draws at this LOD: 3; 1 widened (ca6bfa4a), 1 held reason=alpha (5e0a10fe), 1 held reason=levels (32x32).
+Pan softness: plant detail (mean |Laplacian| / mean luma) in 6149 present 1.07-1.13, taa/hdr 0.23-0.26 (capture frames), 0.33 first frame;
+  Run179 2927 not comparable (plant enters the frame: 2 -> 1329 px). Both pans run above 0.5 px/f in flight, outside the changed band.

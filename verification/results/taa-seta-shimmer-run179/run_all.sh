@@ -25,3 +25,16 @@ for b in 4905 6323 11441; do python3 flicker.py $CAP $LOG3 $b 3 titan=44228190,s
 python3 flicker.py $CAP $LOG3 24922 3 plant=3a024500 > flight3_flicker_24922_out.txt
 python3 titan_lightmap.py $LOG3 44228190 4905 4920 6323 6338 11441 11456 > flight3_titan_lightmap_out.txt
 python3 titan_lightmap.py $LOG3 3a024500 24922 24937 > flight3_plant_lightmap_out.txt
+# Fourth flight (Run181 DLL; taa_far_stabiliser 6th value 0.25 -> 0.5): log x3m.log; Run 180 A is now x3m.prev.log.
+LOG4=/mnt/c/X3/x3m.log; LOG3P=/mnt/c/X3/x3m.prev.log
+python3 log_rows.py $LOG4 6149 11893 17599 > flight4_log_rows_out.txt
+python3 flicker.py $CAP $LOG4 6149 3 plant=3c2b2e60,titan=48d4e998,factoryA=3c284630 > flight4_flicker_6149_out.txt
+python3 flicker.py $CAP $LOG4 11893 3 titan=48d4e998,factoryA=3c284630 > flight4_flicker_11893_out.txt
+python3 flicker.py $CAP $LOG4 17599 3 titan=48d4e998 > flight4_flicker_17599_out.txt
+python3 titan_lightmap.py $LOG4 48d4e998 11893 11908 17599 17614 > flight4_titan_lightmap_out.txt
+{ python3 gate_first_frame.py $CAP $LOG4 11893 48d4e998; python3 gate_first_frame.py $CAP $LOG4 17599 48d4e998
+  python3 gate_first_frame.py $CAP $LOG3P 6323 44228190; python3 gate_first_frame.py $CAP $LOG3P 11441 44228190; } > flight4_gate_first_frame_out.txt
+{ echo "== Run181 6149 plant 3c2b2e60 (gate hi 0.5)"; python3 object_sharpness.py $CAP $LOG4 6149 3c2b2e60
+  echo "== Run181 6149 factoryA 3c284630"; python3 object_sharpness.py $CAP $LOG4 6149 3c284630
+  echo "== Run181 6149 plant by view z 80000-92000 (gate hi 0.5)"; python3 object_sharpness.py $CAP $LOG4 6149 z:80000:92000
+  echo "== Run179 flight 2 2927 plant by view z 80000-89000 (gate hi 0.25; log gone, z mode)"; python3 object_sharpness.py $CAP $LOG4 2927 z:80000:89000; } > flight4_sharpness_out.txt

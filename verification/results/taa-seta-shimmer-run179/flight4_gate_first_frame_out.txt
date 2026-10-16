@@ -1,0 +1,16 @@
+frame 11893 node 48d4e998: 3 draws, 17233 px, view z p50 38781; gate lo/hi 0.03/0.5
+  screen step px/f p50 0.100 p90 0.121; expected own openness at that step p50 0.85, >=0.5 1.000
+  age-dump camera openness bound: openC>0.5 1.000, =1 0.613, q hist [10571, 6662, 0, 0, 0]
+  farw>0 0.555; region hold>0 0.031; locked (t>0) 0.227; locked AND openC>0.5 0.227; (farw>0 or region) AND openC>0.5 0.573
+frame 17599 node 48d4e998: 3 draws, 4019 px, view z p50 74906; gate lo/hi 0.03/0.5
+  screen step px/f p50 0.468 p90 0.504; expected own openness at that step p50 0.07, >=0.5 0.000
+  age-dump camera openness bound: openC>0.5 0.000, =1 0.000, q hist [0, 0, 0, 977, 3042]
+  farw>0 1.000; region hold>0 0.047; locked (t>0) 0.566; locked AND openC>0.5 0.000; (farw>0 or region) AND openC>0.5 0.000
+frame 6323 node 44228190: 32 draws, 25302 px, view z p50 28047; gate lo/hi 0.03/0.25
+  screen step px/f p50 0.163 p90 0.201; expected own openness at that step p50 0.40, >=0.5 0.199
+  age-dump camera openness bound: openC>0.5 0.415, =1 0.000, q hist [0, 10510, 14792, 0, 0]
+  farw>0 0.000; region hold>0 0.518; locked (t>0) 0.252; locked AND openC>0.5 0.089; (farw>0 or region) AND openC>0.5 0.197
+frame 11441 node 44228190: 3 draws, 5127 px, view z p50 68044; gate lo/hi 0.03/0.25
+  screen step px/f p50 0.126 p90 0.148; expected own openness at that step p50 0.56, >=0.5 0.758
+  age-dump camera openness bound: openC>0.5 0.001, =1 0.000, q hist [0, 6, 633, 2786, 1702]
+  farw>0 1.000; region hold>0 0.042; locked (t>0) 0.598; locked AND openC>0.5 0.000; (farw>0 or region) AND openC>0.5 0.001
