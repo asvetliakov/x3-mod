@@ -1,0 +1,19 @@
+{
+ "dll": "detached worktree /tmp/x3-run182-candidate of 7fc522a3, build/d3d9.dll (clean configure + build)",
+ "sha256": "ac979820a6866b16488d49c77536b1deef783b67e94ee792f1c0f6933bcd889e",
+ "bytes": 61940588,
+ "commit": "7fc522a3",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0 (build.log)",
+  "x87_audit": "PASS, violations 0",
+  "site_verifier": "reused from run180 (EXE and hook sites unchanged)",
+  "native_shader_validator": "hull-widen-native-validator result-round3.json: gain/widen/swiden/sgain/swidenshare 16/16 each S_OK 0 messages; byte witness 48/48; twin_on_captures.json byte-equal 48/48, growth +138 DWORDs / +29 instructions / +37 slots 32/32",
+  "host_tests": "test_linear_material_constant_port test_native_validator_rules test_hull_emissive_widening test_hull_lightmap_gain test_engine_light OK (3 skipped: shader corpus absent); Wine fixture motion_output_lightmap_widen not run (no Wine)",
+  "review": "review agent (Opus 5.5): no blocker; F1 design text and F2 kept harness fixed before the commit"
+ },
+ "trigger": "Run 180 B held split: 20.3 of 27.3 held gain draws per frame alpha tested, among them the Titan's window parts; widen them with an unwidened alpha fetch",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run181": ["7fc522a3 widening on alpha-tested draws (two-fetch block), native alpha restored on opaque widened draws"]
+}
