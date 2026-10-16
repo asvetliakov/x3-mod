@@ -1,0 +1,15 @@
+{
+  "run": 183,
+  "what": "release 1.3.0 stripped DLL installed into native C:\\X3",
+  "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run182; cp /tmp/x3m-release-1.3.0/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+  "installed_at": "2026-10-16",
+  "commit": "0bb4facc",
+  "release_record": "verification/results/release-1.3.0.json",
+  "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "a5415ba37945de4fdfe8b34bbfb53b59432d408df8ca6518460711d1b923e8cd", "bytes": 42274188, "verified_bytes": true},
+  "previous": {"run": 182, "sha256": "ac979820a6866b16488d49c77536b1deef783b67e94ee792f1c0f6933bcd889e", "bytes": 61940588, "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run182"},
+  "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.3.0.zip (cmp-verified)",
+  "x3m_ini": "reset to the 1.3.0 template (assets/x3m.ini) with only hull_lightmap_gain = 2 set (user request); the debug-session keys (debug, perf, capture_frames, taa_debug) and the explicit ship_steering / ship_avoidance / ship_trace / ship_steering_gates_lane lines dropped (all defaults now); previous file kept as C:\\X3\\x3m.ini.run182",
+  "unchanged": ["X3AP.exe", "x3m-regenerate.exe (the 1.1.0 binary bb3ba27b…, reused; regenerate sources unchanged since 1.2.1)", "engine_bodies.json", "fog-families.bin/json"],
+  "game_running_check": "tasklist.exe | grep -i x3ap: none",
+  "producer": "main session"
+}
