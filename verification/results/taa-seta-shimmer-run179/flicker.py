@@ -86,7 +86,11 @@ for k in range(T - 1, -1, -1):
     sp[k] = bil(0.0722 * pr[..., 0] + 0.7152 * pr[..., 1] + 0.2126 * pr[..., 2], cx, cy); del pr
     lifes[k] = rd('taa_lock', f, np.uint8, 4)[iy, ix, 0] & 31
     locked[k] = lifes[k] > 0
-    if k == 0: break
+    if k == 0:
+        # The first burst frame follows an ordinary frame: its motion at the chain's world point is the in-flight step.
+        m0 = rd('motion', f, np.float32, 4)[iy, ix]
+        s0 = np.where(m0[:, 3] == 1, np.hypot(m0[:, 0] * W - (ix + 0.5) + JIT[f][0], m0[:, 1] * H - (iy + 0.5) + JIT[f][1]), np.nan)
+        break
     m = rd('motion', f, np.float32, 4)[iy, ix]
     ok &= m[:, 3] == 1
     cx = cx + (m[:, 0] * W - (ix + 0.5) + JIT[f][0]); cy = cy + (m[:, 1] * H - (iy + 0.5) + JIT[f][1])
@@ -141,6 +145,9 @@ def desc(sel, tag):
     app = ~closed & ~inel & (life[sel] > 0)
     print(f'      exclusive gate classes: camera gate closed {closed.mean():.3f} | open but ineligible (farw=0, no region) {inel.mean():.3f} | '
           f'eligible, not locked {unl.mean():.3f} | locked and open (hold applied) {app.mean():.3f}; display code p50 {np.median(sp[-1][sel]):.0f}')
+    s0s = s0[sel]
+    print(f'      in-flight step (first burst frame) p50 {np.nanmedian(s0s) if np.isfinite(s0s).any() else float("nan"):.3f} px/f; <0.25 {np.mean(s0s<0.25):.3f}, <0.5 {np.mean(s0s<0.5):.3f}; '
+          f'gate-closed class with in-flight step <0.5 (lever a reach) {np.mean(closed&(s0s<0.5)):.3f}, of those farw>0 or region {np.mean(closed&(s0s<0.5)&((farw[sel]>0)|(hold[sel]>0))):.3f}')
     print(f'      presented image: hp rms p50 {np.median(hr_p[sel]):.2f} display codes; present-flicker share {np.mean(flp[sel]):.3f}')
 print(f'  flickering (presented, display codes) px {flp.sum()} = {flp.sum()/max(ok.sum(),1):.4f} of valid hull; overlap with resolved set {(flp&fl).sum()}')
 print(f'  flickering (unsharpened display proxy) px {flu.sum()} = {flu.sum()/max(ok.sum(),1):.4f} of valid hull; '

@@ -22,6 +22,10 @@ for f in frames:
         kv = dict(re.findall(r'(\w+)=(\S+)', l))
         if kv['index'] in idx: routed[kv['routed']] += 1
     lm = {h: c for h, c in ps.items() if h in var}
+    wd = [dict(re.findall(r'(\w+)=(\S+)', l)) for l in g(f'^hull_lightmap_widen_draw device=1 frame={f} ')]
+    wo = [w for w in wd if w['index'] in idx]
+    print(f'frame {f}: widened draws of this node {len(wo)} of {len(idx)} (frame total {len(wd)}); c values {sorted({w["c"] for w in wo})}; '
+          f'sizes {dict(collections.Counter(w["size"] for w in wo))}; ps {dict(collections.Counter(w["ps"] for w in wo))}')
     fr = dict(re.findall(r'(\w+)=(\S+)', (g(f'^hull_lightmap_widen_frame device=1 frame={f} ') or [''])[0]))
     ff = dict(re.findall(r'(\w+)=(\S+)', (g(f'^hull_lightmap_far_fade_frame device=1 frame={f} ') or [''])[0]))
     print(f'frame {f}: node draws {len(idx)}, routed {dict(routed)}; ps {dict(ps)}; light-map programs among them {lm} '

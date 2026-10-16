@@ -1,0 +1,125 @@
+far band 30/34 u/px (eligible beyond view z 38400)
+burst 6323-6338: hull px (routed, valid depth) 189005; chain valid over 16 frames 184158 (0.974); THR 3.0 codes
+  screen speed px/frame p10/p50/p90 all hull [0.   0.   7.43]; rotation-only |d| p50 0.02
+  flickering (resolved) px 1033 = 0.0056 of valid hull; raw-input flicker share 0.1644
+  flickering (presented, display codes) px 4265 = 0.0232 of valid hull; overlap with resolved set 891
+  flickering (unsharpened display proxy) px 3935 = 0.0214 of valid hull; presented/proxy hp rms p50: all hull 1.22, present-flickering 1.07
+  far band 60/68 u/px (farw>0 beyond z 76800): present-flickering px beyond it 0.036; of those with the age-dump camera gate open 0.035
+  far band 30/34 u/px (farw>0 beyond z 38400): present-flickering px beyond it 0.038; of those with the age-dump camera gate open 0.036
+  far band 20/24 u/px (farw>0 beyond z 25600): present-flickering px beyond it 0.143; of those with the age-dump camera gate open 0.036
+  [all valid hull] px 184158; luma L p10/p50/p90 [0.038 0.133 0.461]; L>1 0.050; view z p10/p50/p90 [1.12000e+02 1.39000e+02 3.41005e+05]
+      hp rms out p50 0.21 codes, in p50 1.76, out/in p50 0.099; locked now 0.088, locked any chain frame 0.155, mean chain lock share 0.092
+      farw>0 0.137 (farw=1 0.129); thin vote 0.080; region hold>0 0.116 (flagged now 0.084); lane motion mode 0.308
+      speed p50 0.00 px/f; >0.25 0.308; >2 0.182; relative p50 0.02; motion cap<1 0.182 (cap=0.7 0.075)
+      camera gate (age dump) openC<=0.5 0.172, openC=0 0.172; locked now AND openC>0.5 (lock weight applied) 0.051; region AND openC>0.5 (thin weight applied) 0.024
+      lock lifetime transitions on locked chain frames 200918: frozen (creation gate closed) 78375, decrement 71459, refresh 14358; lock lost (t>0 -> 0) 52581 (expiry t=1 3666, killed t>1 48915)
+      exclusive gate classes: camera gate closed 0.172 | open but ineligible (farw=0, no region) 0.668 | eligible, not locked 0.110 | locked and open (hold applied) 0.050; display code p50 53
+      in-flight step (first burst frame) p50 0.001 px/f; <0.25 0.997, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.172, of those farw>0 or region 0.092
+      presented image: hp rms p50 0.60 display codes; present-flicker share 0.023
+  [present-flickering] px 4265; luma L p10/p50/p90 [0.096 0.21  0.458]; L>1 0.009; view z p10/p50/p90 [  113.   142. 27067.]
+      hp rms out p50 3.23 codes, in p50 30.91, out/in p50 0.094; locked now 0.170, locked any chain frame 0.324, mean chain lock share 0.196
+      farw>0 0.038 (farw=1 0.036); thin vote 0.209; region hold>0 0.302 (flagged now 0.211); lane motion mode 0.392
+      speed p50 0.00 px/f; >0.25 0.391; >2 0.356; relative p50 0.02; motion cap<1 0.356 (cap=0.7 0.240)
+      camera gate (age dump) openC<=0.5 0.356, openC=0 0.356; locked now AND openC>0.5 (lock weight applied) 0.015; region AND openC>0.5 (thin weight applied) 0.001
+      lock lifetime transitions on locked chain frames 10320: frozen (creation gate closed) 7699, decrement 636, refresh 393; lock lost (t>0 -> 0) 2325 (expiry t=1 66, killed t>1 2259)
+      exclusive gate classes: camera gate closed 0.356 | open but ineligible (farw=0, no region) 0.608 | eligible, not locked 0.022 | locked and open (hold applied) 0.015; display code p50 90
+      in-flight step (first burst frame) p50 0.002 px/f; <0.25 0.990, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.356, of those farw>0 or region 0.302
+      presented image: hp rms p50 8.23 display codes; present-flicker share 1.000
+  [present-flickering, L>1] px 39; luma L p10/p50/p90 [1.041 1.153 1.439]; L>1 1.000; view z p10/p50/p90 [22832. 26881. 27511.]
+      hp rms out p50 9.30 codes, in p50 64.05, out/in p50 0.145; locked now 0.231, locked any chain frame 0.846, mean chain lock share 0.396
+      farw>0 0.000 (farw=1 0.000); thin vote 1.000; region hold>0 1.000 (flagged now 1.000); lane motion mode 1.000
+      speed p50 7.03 px/f; >0.25 1.000; >2 1.000; relative p50 7.03; motion cap<1 1.000 (cap=0.7 0.359)
+      camera gate (age dump) openC<=0.5 1.000, openC=0 1.000; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 169: frozen (creation gate closed) 142, decrement 3, refresh 7; lock lost (t>0 -> 0) 69 (expiry t=1 4, killed t>1 65)
+      exclusive gate classes: camera gate closed 1.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 236
+      in-flight step (first burst frame) p50 0.151 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 1.000, of those farw>0 or region 1.000
+      presented image: hp rms p50 14.75 display codes; present-flicker share 1.000
+  [flickering] px 1033; luma L p10/p50/p90 [0.126 0.288 0.663]; L>1 0.028; view z p10/p50/p90 [  112. 22792. 26988.]
+      hp rms out p50 6.85 codes, in p50 55.84, out/in p50 0.129; locked now 0.258, locked any chain frame 0.492, mean chain lock share 0.299
+      farw>0 0.000 (farw=1 0.000); thin vote 0.349; region hold>0 0.507 (flagged now 0.350); lane motion mode 0.578
+      speed p50 6.92 px/f; >0.25 0.578; >2 0.578; relative p50 6.92; motion cap<1 0.578 (cap=0.7 0.409)
+      camera gate (age dump) openC<=0.5 0.578, openC=0 0.578; locked now AND openC>0.5 (lock weight applied) 0.001; region AND openC>0.5 (thin weight applied) 0.001
+      lock lifetime transitions on locked chain frames 3868: frozen (creation gate closed) 3138, decrement 111, refresh 135; lock lost (t>0 -> 0) 811 (expiry t=1 5, killed t>1 806)
+      exclusive gate classes: camera gate closed 0.578 | open but ineligible (farw=0, no region) 0.421 | eligible, not locked 0.000 | locked and open (hold applied) 0.001; display code p50 122
+      in-flight step (first burst frame) p50 0.149 px/f; <0.25 0.977, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.578, of those farw>0 or region 0.506
+      presented image: hp rms p50 15.50 display codes; present-flicker share 0.863
+  [flickering, L>1] px 29; luma L p10/p50/p90 [1.03  1.218 1.484]; L>1 1.000; view z p10/p50/p90 [  112. 25612. 27516.]
+      hp rms out p50 9.42 codes, in p50 73.74, out/in p50 0.128; locked now 0.276, locked any chain frame 0.724, mean chain lock share 0.392
+      farw>0 0.000 (farw=1 0.000); thin vote 0.862; region hold>0 0.862 (flagged now 0.862); lane motion mode 0.862
+      speed p50 7.95 px/f; >0.25 0.862; >2 0.862; relative p50 7.95; motion cap<1 0.862 (cap=0.7 0.345)
+      camera gate (age dump) openC<=0.5 0.862, openC=0 0.862; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 122: frozen (creation gate closed) 107, decrement 2, refresh 2; lock lost (t>0 -> 0) 52 (expiry t=1 0, killed t>1 52)
+      exclusive gate classes: camera gate closed 0.862 | open but ineligible (farw=0, no region) 0.138 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 239
+      in-flight step (first burst frame) p50 0.170 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.862, of those farw>0 or region 0.862
+      presented image: hp rms p50 14.93 display codes; present-flicker share 0.517
+  object titan node 44228190: 32 draws, 32427 hull px, chain-valid 31081, view z p10/p50/p90 [22858. 25802. 29505.], capture-frame speed p50 7.68
+  [titan all] px 31081; luma L p10/p50/p90 [0.041 0.062 0.211]; L>1 0.011; view z p10/p50/p90 [22862. 25799. 29496.]
+      hp rms out p50 0.55 codes, in p50 3.06, out/in p50 0.162; locked now 0.220, locked any chain frame 0.419, mean chain lock share 0.242
+      farw>0 0.000 (farw=1 0.000); thin vote 0.386; region hold>0 0.542 (flagged now 0.387); lane motion mode 1.000
+      speed p50 7.68 px/f; >0.25 1.000; >2 1.000; relative p50 7.68; motion cap<1 1.000 (cap=0.7 0.432)
+      camera gate (age dump) openC<=0.5 1.000, openC=0 1.000; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 87689: frozen (creation gate closed) 68681, decrement 1672, refresh 2449; lock lost (t>0 -> 0) 25594 (expiry t=1 1045, killed t>1 24549)
+      exclusive gate classes: camera gate closed 1.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 15
+      in-flight step (first burst frame) p50 0.164 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 1.000, of those farw>0 or region 0.542
+      presented image: hp rms p50 1.28 display codes; present-flicker share 0.047
+  [titan present-flickering] px 1465; luma L p10/p50/p90 [0.088 0.218 0.624]; L>1 0.027; view z p10/p50/p90 [22797. 23541. 28633.]
+      hp rms out p50 6.70 codes, in p50 42.64, out/in p50 0.158; locked now 0.449, locked any chain frame 0.845, mean chain lock share 0.523
+      farw>0 0.000 (farw=1 0.000); thin vote 0.610; region hold>0 0.865 (flagged now 0.614); lane motion mode 1.000
+      speed p50 8.99 px/f; >0.25 1.000; >2 1.000; relative p50 8.99; motion cap<1 1.000 (cap=0.7 0.670)
+      camera gate (age dump) openC<=0.5 1.000, openC=0 1.000; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 9584: frozen (creation gate closed) 7628, decrement 250, refresh 308; lock lost (t>0 -> 0) 2024 (expiry t=1 44, killed t>1 1980)
+      exclusive gate classes: camera gate closed 1.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 94
+      in-flight step (first burst frame) p50 0.189 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 1.000, of those farw>0 or region 0.865
+      presented image: hp rms p50 15.34 display codes; present-flicker share 1.000
+  [titan present-flickering, L>1] px 39; luma L p10/p50/p90 [1.041 1.153 1.439]; L>1 1.000; view z p10/p50/p90 [22832. 26881. 27511.]
+      hp rms out p50 9.30 codes, in p50 64.05, out/in p50 0.145; locked now 0.231, locked any chain frame 0.846, mean chain lock share 0.396
+      farw>0 0.000 (farw=1 0.000); thin vote 1.000; region hold>0 1.000 (flagged now 1.000); lane motion mode 1.000
+      speed p50 7.03 px/f; >0.25 1.000; >2 1.000; relative p50 7.03; motion cap<1 1.000 (cap=0.7 0.359)
+      camera gate (age dump) openC<=0.5 1.000, openC=0 1.000; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 169: frozen (creation gate closed) 142, decrement 3, refresh 7; lock lost (t>0 -> 0) 69 (expiry t=1 4, killed t>1 65)
+      exclusive gate classes: camera gate closed 1.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 236
+      in-flight step (first burst frame) p50 0.151 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 1.000, of those farw>0 or region 1.000
+      presented image: hp rms p50 14.75 display codes; present-flicker share 1.000
+  object station node 39ff7620: 3 draws, 2333 hull px, chain-valid 1750, view z p10/p50/p90 [42045. 43101. 44488.], capture-frame speed p50 3.27
+  [station all] px 1750; luma L p10/p50/p90 [0.041 0.08  0.189]; L>1 0.000; view z p10/p50/p90 [42055. 43096. 44434.]
+      hp rms out p50 1.80 codes, in p50 7.71, out/in p50 0.243; locked now 0.392, locked any chain frame 0.552, mean chain lock share 0.296
+      farw>0 1.000 (farw=1 0.204); thin vote 0.000; region hold>0 0.035 (flagged now 0.004); lane motion mode 0.939
+      speed p50 3.28 px/f; >0.25 1.000; >2 1.000; relative p50 3.27; motion cap<1 1.000 (cap=0.7 0.000)
+      camera gate (age dump) openC<=0.5 0.000, openC=0 0.000; locked now AND openC>0.5 (lock weight applied) 0.392; region AND openC>0.5 (thin weight applied) 0.035
+      lock lifetime transitions on locked chain frames 6536: frozen (creation gate closed) 509, decrement 3976, refresh 716; lock lost (t>0 -> 0) 1072 (expiry t=1 90, killed t>1 982)
+      exclusive gate classes: camera gate closed 0.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.608 | locked and open (hold applied) 0.392; display code p50 24
+      in-flight step (first burst frame) p50 0.001 px/f; <0.25 0.997, <0.5 0.997; gate-closed class with in-flight step <0.5 (lever a reach) 0.000, of those farw>0 or region 0.000
+      presented image: hp rms p50 3.80 display codes; present-flicker share 0.002
+  [station present-flickering] px 4; luma L p10/p50/p90 [0.149 0.177 0.255]; L>1 0.000; view z p10/p50/p90 [43134. 43156. 43217.]
+      hp rms out p50 5.79 codes, in p50 36.18, out/in p50 0.159; locked now 0.750, locked any chain frame 0.750, mean chain lock share 0.375
+      farw>0 1.000 (farw=1 0.000); thin vote 0.000; region hold>0 0.000 (flagged now 0.000); lane motion mode 1.000
+      speed p50 3.32 px/f; >0.25 1.000; >2 1.000; relative p50 3.31; motion cap<1 1.000 (cap=0.7 0.000)
+      camera gate (age dump) openC<=0.5 0.000, openC=0 0.000; locked now AND openC>0.5 (lock weight applied) 0.750; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 19: frozen (creation gate closed) 6, decrement 8, refresh 5; lock lost (t>0 -> 0) 2 (expiry t=1 0, killed t>1 2)
+      exclusive gate classes: camera gate closed 0.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.250 | locked and open (hold applied) 0.750; display code p50 76
+      in-flight step (first burst frame) p50 0.001 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.000, of those farw>0 or region 0.000
+      presented image: hp rms p50 14.94 display codes; present-flicker share 1.000
+  [station present-flickering, L>1] 0 px
+  [flickering z<300 (own ship)] px 436; luma L p10/p50/p90 [0.165 0.264 0.482]; L>1 0.009; view z p10/p50/p90 [110. 122. 150.]
+      hp rms out p50 4.84 codes, in p50 52.17, out/in p50 0.088; locked now 0.002, locked any chain frame 0.002, mean chain lock share 0.000
+      farw>0 0.000 (farw=1 0.000); thin vote 0.000; region hold>0 0.002 (flagged now 0.000); lane motion mode 0.000
+      speed p50 0.00 px/f; >0.25 0.000; >2 0.000; relative p50 0.02; motion cap<1 0.000 (cap=0.7 0.000)
+      camera gate (age dump) openC<=0.5 0.000, openC=0 0.000; locked now AND openC>0.5 (lock weight applied) 0.002; region AND openC>0.5 (thin weight applied) 0.002
+      lock lifetime transitions on locked chain frames 1: frozen (creation gate closed) 0, decrement 1, refresh 0; lock lost (t>0 -> 0) 0 (expiry t=1 0, killed t>1 0)
+      exclusive gate classes: camera gate closed 0.000 | open but ineligible (farw=0, no region) 0.998 | eligible, not locked 0.000 | locked and open (hold applied) 0.002; display code p50 114
+      in-flight step (first burst frame) p50 0.001 px/f; <0.25 1.000, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 0.000, of those farw>0 or region 0.000
+      presented image: hp rms p50 10.97 display codes; present-flicker share 0.904
+      share of valid hull in this z range that flickers: 0.0034 (valid px 127380)
+  [flickering 300..38400 (farw=0)] px 597; luma L p10/p50/p90 [0.117 0.312 0.772]; L>1 0.042; view z p10/p50/p90 [22769. 22949. 27251.]
+      hp rms out p50 9.73 codes, in p50 60.75, out/in p50 0.165; locked now 0.444, locked any chain frame 0.849, mean chain lock share 0.517
+      farw>0 0.000 (farw=1 0.000); thin vote 0.605; region hold>0 0.876 (flagged now 0.606); lane motion mode 1.000
+      speed p50 9.47 px/f; >0.25 1.000; >2 1.000; relative p50 9.47; motion cap<1 1.000 (cap=0.7 0.707)
+      camera gate (age dump) openC<=0.5 1.000, openC=0 1.000; locked now AND openC>0.5 (lock weight applied) 0.000; region AND openC>0.5 (thin weight applied) 0.000
+      lock lifetime transitions on locked chain frames 3867: frozen (creation gate closed) 3138, decrement 110, refresh 135; lock lost (t>0 -> 0) 811 (expiry t=1 5, killed t>1 806)
+      exclusive gate classes: camera gate closed 1.000 | open but ineligible (farw=0, no region) 0.000 | eligible, not locked 0.000 | locked and open (hold applied) 0.000; display code p50 130
+      in-flight step (first burst frame) p50 0.197 px/f; <0.25 0.960, <0.5 1.000; gate-closed class with in-flight step <0.5 (lever a reach) 1.000, of those farw>0 or region 0.876
+      presented image: hp rms p50 19.44 display codes; present-flicker share 0.832
+      share of valid hull in this z range that flickers: 0.0189 (valid px 31588)
+  [flickering far band] 0 px
+      share of valid hull in this z range that flickers: 0.0000 (valid px 25190)
+  top 128-px tiles (x0,y0: count, z p50, L p50): 1152,512: 282, 22887, 0.36; 2432,1152: 108, 114, 0.30; 1280,512: 91, 25089, 0.15; 2560,1024: 76, 124, 0.25; 2560,1152: 72, 118, 0.31; 2432,1024: 70, 123, 0.25; 1280,640: 55, 26985, 0.29; 1152,640: 45, 23839, 0.27

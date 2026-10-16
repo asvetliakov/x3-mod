@@ -32,3 +32,14 @@ Plant: flight 1 burst 4707 (z ~100k, band 60/68) out/in 0.057, presented flicker
 Light map: the Titan's draws (ps ca6bfa4a..., 5e0a10fe...) bind the gain-2 light-map variants; every widened variant failed creation with
   8876086c (D3DERR_INVALIDCALL), 16/16 in both flights; widened=0 of 1,422,361 admitted light-map draws (flight 2), 0 of 1,264,697 (flight 1).
   Far fade starts at 80 u/px (view z 102k); the mid Titan is at ~22 u/px: gain 2, no fade (faded=0, min_gain 2 at 6568/6575).
+--- Third flight (Run180 DLL, widened light-map variants created 16/16; far band 30/34) [M unless marked]
+burst  target  camera                     target view z         in-flight step  target presented flicker / gain / classes (closed|inel|unlocked|locked)
+4905   Titan   slight turn                39-46k (eligible)     0.83 px/f       6.1 % / 0.130 / 1.00|0|0|0 (capture frames)
+6323   Titan   straight, normal speed     23-30k (not)          0.16            4.7 % / 0.162 / 1.00|0|0|0
+11441  Titan   SETA, straight             52-55k (eligible)     0.13            8.9 % / 0.126 / 1.00|0|0|0
+24922  plant   slight turn                20-27k (not)          0.42            1.7 % / 0.106 / 0|0.72|0.19|0.10
+Run179 reference: mid Titan 6.2 % / 0.170, far Titan 2.6-6.5 % / 0.10-0.11. Mid Titan L>1 flickering px: Run179 58 (L p50 1.15, gain 0.164),
+  Run180 39 (L p50 1.15, gain 0.145). Widened draws (c=4): Titan 19/32 at mid range (ps ca6bfa4a only; 5e0a10fe 0/4), 1/3 far; plant 16/29.
+All-hull presented flicker classes: 4905 .915|0|.045|.040  6323 .356|.608|.022|.015  11441 .897|.017|.015|.070  24922 .828|.121|.033|.019
+Lever reach (share of all-hull presented flicker): (a) gate open below 0.5 px/f in flight AND eligible (farw>0 or region) .087/.302/.325/.114;
+  of the Titan's own flicker 0 (4905, turning) / .865 (6323) / .994 (11441). (b) band 20/24 adds .010/.105/0/.018, gate-open part +0/0/0/.018.
