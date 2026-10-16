@@ -115,3 +115,16 @@ open): the flight judges departures unchanged (kill_criterion.py) and whether va
 far bound (escorts far out governed by the lane: two bounding rules measured worse), rt_cross, statics, behind_start, formed_size2.
 Open diagnostics: the 4–5 ms handler chunk on a ship's first call after a gate (per-phase cycles now logged), the 1↔33 gate
 effect nodes (parts=/effects= now logged). Memory: prefer-simplicity.
+
+## 2026-10-16 (later): Runs 177–178
+
+Run177 flown: the user saw nothing wrong; departures unchanged (471.7 / 254 / 267 s, 0 stops/turn-aways); the arrival mode was
+not exercised (no return trip within the window); one far-out defect (escorts inherited by an arriving leader 75 km behind them,
+held at the floor by the leader-first rule; a 0x12 pair; a 615 s loop; launched in 706 s). The user asked whether 900 s is too
+long: agreed the distance condition (a return trip only while inside the gate's 15 km commit sphere) → merged (`bdeef915`).
+The Run177 far-out round was attempted twice on branch `worktree-agent-a4700e7f0d9b84b1b` (kept, not merged: a departure-side
+regression risk in bench24 and a fixture formation-model gap: the formed casts start escorts in a column beyond 15 km, which the
+engine formation model collides) → parked (§11 Open). **Run178 installed** (`1170bb01`, DLL `9d87fea2…`, rollback run177;
+Run 178 A open): Run177 + the distance condition, otherwise byte-identical. Next: the user flies normally; a return trip at a gate
+exercises the arrival mode; the parked items wait for a flown reason (far-out re-led escorts; two arrivals overlapping; statics;
+behind_start; formed_size2; rt_cross). The host-timing bench (1 ms third-worst) flakes on this host for base builds too.
