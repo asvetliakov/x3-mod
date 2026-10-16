@@ -3322,6 +3322,8 @@ behaviour changes.
 the previous entry; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014 reachable, 0 violations);
 `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Not flown (the installed ini already sets the keys on).
 
+Later (review of 9ecf712e, 2026-10-16): `ship_steering_install.cpp` logs `ship_steering_gates_traffic_refused reason=needs_avoidance` even when the traffic key is unset, so a `--no-ship-avoidance` launch gets that row and `lane_refused needs_traffic` on every start; set `tr_why` only for an explicit value, as the capital key does. The launcher/test items of that review (an explicit 0 for the on-by-default keys, no lane variable under `--vanilla`, the `--config` help) are applied in c8a09ddd.
+
 ### Cleanup 2026-10-16 (Opus 5.5; after Run178, output-identical; [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) "Current shape")
 
 Base 7d19e33e (Run178's accepted state); commits 25998745..d9ca3ac2 plus this entry. Lines deleted / added per group in
