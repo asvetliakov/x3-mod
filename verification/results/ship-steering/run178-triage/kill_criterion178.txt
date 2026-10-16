@@ -1,0 +1,19 @@
+# rows178.txt; arrival-side ships from ship_gate_ctl_arr rows (the vanilla latch); 4 arrival-side (ship, gate, arrival) keys
+# ship_gate_ctl_arr rows 4, the last summary's ctl_arr_mode= 4
+gate 0x902803b8 departure 25782.7 members 3: span 15 km -> last launch open (0 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x8fe719f8 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x902a0018 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaca45c70 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x902809d0 departure 22669.2 members 3: span 15 km -> last launch 472.0 s, stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x8fe65bd8 15km 23003.4 launch 23131.0 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x8fe6d0d8 15km 23275.6 launch 23402.6 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x9027b5b8 15km 23347.9 launch 23475.4 | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+gate 0x902809d0 return trip 24285.9 ships 4: span arrival -> last launch open, 0x12 10, plane crossings without a jump 0, lane writes 0, board entries as committed or escort 0
+     0x8fe612b8 arrived 24285.9 jump - | 0x12 0 [] | plane crossings 0 [] | traced rows 825 | lane writes 0, board entries 0
+     0x8fe58420 arrived 24347.2 jump - | 0x12 4 ['24354.5:M2(12b8)', '24491.7:M2(a520)', '24584.2:M2(a520)', '24734.2:M2(a520)'] | plane crossings 0 [] | traced rows 2361 | lane writes 0, board entries 0
+     0x39cfa520 arrived 24478.7 jump - | 0x12 3 ['24486.9:M2(8420)', '24567.7:M1(2180)', '24596.2:M2(8420)'] | plane crossings 0 [] | traced rows 2654 | lane writes 0, board entries 0
+     0x39cf2180 arrived 24540.6 jump - | 0x12 3 ['24548.6:M2(a520)', '24679.1:M2(a520)', '24748.1:M2(a520)'] | plane crossings 0 [] | traced rows 2544 | lane writes 0, board entries 0
+gate 0x90281258 departure 25930.5 members 3: span 15 km -> last launch open (0 of 3 launched), stops 0, turn-aways 0, lane stop writes 0, member 0x12 0
+     0x9027ae68 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0x36e24428 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []
+     0xaca4b568 15km - launch - | stops 0 [] | turn-aways 0 [] | lane stop writes 0 | 0x12 0 []

@@ -1,0 +1,14 @@
+8420 0x14 24488.5-24491.6 (3.1 s) d to leader 2484 -> 2212 | leader order at end 0x12 | then 0x12,0x14 | 0x12 within 3 s: yes
+8420 0x14 24515.7-24519.9 (4.2 s) d to leader 3322 -> 3667 | leader order at end 0x12 | then 0x0,0x14 | 0x12 within 3 s: no
+8420 0x14 24523.0-24553.1 (30.1 s) d to leader 3765 -> 2966 | leader order at end 0x4 | then 0x0,0x14 | 0x12 within 3 s: no
+8420 0x14 24556.2-24583.7 (27.5 s) d to leader 2970 -> 2734 | leader order at end 0x12 | then 0x12,0x0 | 0x12 within 3 s: yes
+8420 0x14 24623.6-24653.6 (30.0 s) d to leader 4547 -> 6839 | leader order at end 0x4 | then 0x0,0x14 | 0x12 within 3 s: no
+8420 0x14 24657.3-24690.0 (32.7 s) d to leader 6571 -> 3325 | leader order at end 0x4 | then 0x0,0x14 | 0x12 within 3 s: no
+8420 0x14 24692.6-24723.9 (31.3 s) d to leader 3234 -> 2744 | leader order at end 0x1f | then 0x0,0x14 | 0x12 within 3 s: no
+8420 0x14 24727.1-24734.1 (7.0 s) d to leader 2744 -> 2713 | leader order at end 0x1f | then 0x12,0x0 | 0x12 within 3 s: yes
+2180 0x14 24602.4-24634.5 (32.1 s) d to leader 3713 -> 4008 | leader order at end 0x12 | then 0x0,0x14 | 0x12 within 3 s: no
+2180 0x14 24638.7-24669.9 (31.2 s) d to leader 4152 -> 3157 | leader order at end 0x4 | then 0x0,0x14 | 0x12 within 3 s: no
+2180 0x14 24672.9-24679.0 (6.1 s) d to leader 2914 -> 2578 | leader order at end 0x4 | then 0x12,0x14 | 0x12 within 3 s: yes
+2180 0x14 24692.6-24703.3 (10.8 s) d to leader 3009 -> 3622 | leader order at end 0x4 | then 0x0,0x14 | 0x12 within 3 s: no
+2180 0x14 24706.5-24736.6 (30.2 s) d to leader 3723 -> 3486 | leader order at end 0x1f | then 0x0,0x14 | 0x12 within 3 s: no
+2180 0x14 24739.6-24747.7 (8.0 s) d to leader 3363 -> 2944 | leader order at end 0x5 | then 0x12,0x0 | 0x12 within 3 s: yes

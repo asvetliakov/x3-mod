@@ -1,0 +1,27 @@
+max ctl_arrival_us_max 14.3
+max ctl_budget_cut_max 0
+max ctl_decide_us_max 128.8
+max ctl_frame_us_max 152.9
+max ctl_live_us_max 32.1
+max ctl_members_max 6
+max ctl_sb_us_max 45.1
+max dock_e_us_max 26.2
+max handler_us_max 4300.4
+max handler_us_p99 651.1
+last summary rows_dropped gate_event:0,join:0,gate_trans:0,warn_pre:0,engine_warn:0,warn_watch:0,e_table:0,e_ring:0,ctl:0,ctl_pair:0,launch:0
+last summary ship_trace_dropped 0
+last summary ctl_evicted 3
+last summary ctl_budget_cut 0
+last summary ctl_x_refused 0
+last summary ctl_x_wait_s 0
+last summary stuck_total 0
+last summary emergency 0
+last summary e_pass_ctl_why 0,0,0,0,0,0,0,21320,0
+last lane summary ctl_merge_yield=0 ctl_merge_stop=0 ctl_point_rewrites=4 ctl_lane_writes=1805 ctl_x_refused=0 ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=303 ctl_defer_rewrites=2 ctl_recommit_held=0 e_lane_obst=62919 e_lane_obst_roll=2275 ctl_mouth_expired=0 ctl_arr_mode=4 ctl_arr_far=0
+session_end frames=61986 elapsed_ms=439879 devices=1 resets=0 exception=0 dropped=0 filter=ours
+all traced frames                            frames   713-61637 real  413.4 s game  3458.8 s game/real  8.37 seta share 0.845
+departure 0x902809d0 (frames 713..17839)     frames   713-17839 real  115.1 s game   806.2 s game/real  7.00 seta share 0.680
+return trip (frames 32888..41877)            frames 32888-41877 real   66.9 s game   669.5 s game/real 10.01 seta share 1.000
+open convoys (frames 55485..61637)           frames 55485-61637 real   58.5 s game   346.6 s game/real  5.93 seta share 0.570
+largest game step between consecutive traced frames (ms, frame): [(1030, 13428), (1200, 55840), (1210, 33324), (1570, 5424), (1810, 56382)]
+seta frames Counter({'1': 51510, '0': 10371})

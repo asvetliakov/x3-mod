@@ -1,0 +1,7 @@
+0x8fe58420 order=0x4 obst=0x39cf2180 g=24822.2-24829.1 (107 rows) | next 0x12 of this ship within 35 s: none
+0x39cfa520 order=0x4 obst=0x39cf2180 g=24541.8-24546.3 (52 rows) | next 0x12 of this ship within 35 s: 24567.7 vs 0x39cf2180 (+21.3 s)
+0x39cfa520 order=0x4 obst=0x39cf2180 g=24548.2-24560.5 (137 rows) | next 0x12 of this ship within 35 s: 24567.7 vs 0x39cf2180 (+7.2 s)
+0x39cfa520 order=0x4 obst=0x8fe58420 g=24587.7-24596.0 (104 rows) | next 0x12 of this ship within 35 s: 24596.2 vs 0x8fe58420 (+0.2 s)
+0x39cfa520 order=0x4 obst=0x8fe58420 g=24690.2-24692.4 (26 rows) | next 0x12 of this ship within 35 s: none
+0x39cf2180 order=0x4 obst=0x8fe58420 g=24822.4-24822.4 (1 rows) | next 0x12 of this ship within 35 s: none
+0x39cf2180 order=0x4 obst=0x8fe58420 g=24870.5-24870.6 (2 rows) | next 0x12 of this ship within 35 s: none

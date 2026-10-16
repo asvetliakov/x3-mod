@@ -1,0 +1,33 @@
+trace 0x39cf2180 order=0x0 rows 77 point!=given 0 obst!=0 0 {}
+trace 0x39cf2180 order=0x12 rows 1 point!=given 0 obst!=0 0 {}
+trace 0x39cf2180 order=0x1f rows 485 point!=given 0 obst!=0 0 {}
+trace 0x39cf2180 order=0x4 rows 1694 point!=given 3 obst!=0 3 {'0x8fe58420': 3}
+trace 0x39cf2180 order=0x5 rows 271 point!=given 0 obst!=0 0 {}
+trace 0x39cf2180 order=0x8 rows 16 point!=given 0 obst!=0 0 {}
+trace 0x39cfa520 order=0x0 rows 104 point!=given 0 obst!=0 1 {'0x8fe58420': 1}
+trace 0x39cfa520 order=0x12 rows 683 point!=given 160 obst!=0 0 {}
+trace 0x39cfa520 order=0x1f rows 361 point!=given 0 obst!=0 0 {}
+trace 0x39cfa520 order=0x4 rows 1426 point!=given 319 obst!=0 319 {'0x39cf2180': 189, '0x8fe58420': 130}
+trace 0x39cfa520 order=0x5 rows 69 point!=given 0 obst!=0 0 {}
+trace 0x39cfa520 order=0x8 rows 11 point!=given 0 obst!=0 0 {}
+trace 0x8fe58420 order=0x0 rows 212 point!=given 0 obst!=0 2 {'0x39cf2180': 2}
+trace 0x8fe58420 order=0x12 rows 2 point!=given 0 obst!=0 0 {}
+trace 0x8fe58420 order=0x1f rows 318 point!=given 0 obst!=0 318 {'0x39cf2180': 318}
+trace 0x8fe58420 order=0x4 rows 1531 point!=given 107 obst!=0 107 {'0x39cf2180': 107}
+trace 0x8fe58420 order=0x5 rows 285 point!=given 0 obst!=0 0 {}
+trace 0x8fe58420 order=0x8 rows 13 point!=given 0 obst!=0 0 {}
+trace 0x8fe612b8 order=0x0 rows 107 point!=given 0 obst!=0 0 {}
+trace 0x8fe612b8 order=0x1f rows 215 point!=given 0 obst!=0 0 {}
+trace 0x8fe612b8 order=0x4 rows 503 point!=given 0 obst!=0 0 {}
+detour obj=0x39cf2180 obstacle=0x8fe58420 order=0x4 rows 3 frames 39827-40550 g=24822.4-24870.6
+detour obj=0x39cf2180 obstacle=0x902809d0 order=0x14 rows 14 frames 37949-38351 g=24672.9-24706.7
+detour obj=0x39cfa520 obstacle=0x39cf2180 order=0x4 rows 25 frames 36375-36503 g=24541.8-24553.1
+detour obj=0x39cfa520 obstacle=0x8fe58420 order=0x4 rows 25 frames 36976-37000 g=24592.6-24594.5
+detour obj=0x8fe58420 obstacle=0x39cf2180 order=0x4 rows 38 frames 39824-39861 g=24822.2-24824.6
+e_verdict ('A', 'pass_a_avoid') 694
+e_verdict ('A', 'pass_not_fresh') 326
+e_verdict ('A', 'pass_not_member') 781
+e_verdict ('A', 'pass_not_transient') 6
+e_verdict ('A', 'suppress_arrival_gate') 178
+e_verdict ('A', 'suppress_gate_ring') 811
+e_verdict ('A', 'suppress_small') 4864

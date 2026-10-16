@@ -1,0 +1,11 @@
+8420 0x12 vs 12b8 from 24354.5: last 0x12 row 24440.1 (+85.6 s), next order 0x0 at 24441.1 (+86.6 s), rows 871
+8420 0x12 vs a520 from 24491.7: last 0x12 row 24515.6 (+24.0 s), next order 0x14 at 24515.7 (+24.0 s), rows 151
+8420 0x12 vs a520 from 24584.2: last 0x12 row 24621.0 (+36.8 s), next order 0x0 at 24621.5 (+37.4 s), rows 391
+8420 0x12 vs a520 from 24734.2: last 0x12 row 24757.6 (+23.5 s), next order 0x0 at 24758.4 (+24.2 s), rows 219
+a520 0x12 vs 8420 from 24486.9: last 0x12 row 24535.1 (+48.3 s), next order 0x4 at 24535.7 (+48.9 s), rows 228
+a520 0x12 vs 2180 from 24567.7: last 0x12 row 24585.3 (+17.6 s), next order 0x0 at 24585.4 (+17.7 s), rows 275
+a520 0x12 vs 8420 from 24596.2: last 0x12 row 24634.4 (+38.2 s), next order 0x0 at 24634.5 (+38.3 s), rows 583
+2180 0x12 vs a520 from 24548.6: last 0x12 row 24599.3 (+50.8 s), next order 0x0 at 24600.3 (+51.8 s), rows 580
+2180 0x12 vs a520 from 24679.1: last 0x12 row 24692.0 (+12.9 s), next order 0x14 at 24692.6 (+13.4 s), rows 146
+2180 0x12 vs a520 from 24748.1: last 0x12 row 24780.7 (+32.7 s), next order 0x0 at 24781.1 (+33.0 s), rows 349
+episodes 10, total 375.4 s

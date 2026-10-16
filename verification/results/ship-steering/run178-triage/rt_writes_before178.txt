@@ -1,0 +1,30 @@
+24354.5 A=8420 B=12b8
+   A 8420 traced 6.4 of 32 s (rows 80) | writes: none
+   B 12b8 traced 23.5 of 32 s (rows 323) | writes: none
+24486.9 A=a520 B=8420
+   A a520 traced 7.2 of 32 s (rows 97) | writes: none
+   B 8420 traced 32.0 of 32 s (rows 481) | writes: none
+24491.7 A=8420 B=a520
+   A 8420 traced 28.7 of 32 s (rows 424) | writes: none
+   B a520 traced 7.2 of 32 s (rows 97) | writes: none
+24548.6 A=2180 B=a520
+   A 2180 traced 7.0 of 32 s (rows 74) | writes: none
+   B a520 traced 12.8 of 32 s (rows 148) | writes: detour_row(obstacle 2180 kind 0, order 0x4) 24541.8-24543.5 (-5.1 s); point(obst 2180, order 0x4) 24541.8-24548.6 (-0.0 s)
+24567.7 A=a520 B=2180
+   A a520 traced 31.9 of 32 s (rows 366) | writes: detour_row(obstacle 2180 kind 0, order 0x4) 24541.8-24553.1 (-14.5 s); point(obst 2180, order 0x4) 24541.8-24560.5 (-7.2 s)
+   B 2180 traced 7.0 of 32 s (rows 74) | writes: none
+24584.2 A=8420 B=a520
+   A 8420 traced 0.0 of 32 s (rows 0) | writes: none
+   B a520 traced 31.9 of 32 s (rows 382) | writes: point(obst 2180, order 0x4) 24552.3-24560.5 (-23.7 s); detour_row(obstacle 2180 kind 0, order 0x4) 24552.5-24553.1 (-31.1 s)
+24596.2 A=a520 B=8420
+   A a520 traced 32.0 of 32 s (rows 390) | writes: point(obst 8420, order 0x4) 24587.7-24596.0 (-0.2 s); detour_row(obstacle 8420 kind 0, order 0x4) 24592.6-24594.5 (-1.8 s)
+   B 8420 traced 0.0 of 32 s (rows 0) | writes: none
+24679.1 A=2180 B=a520
+   A 2180 traced 0.0 of 32 s (rows 0) | writes: detour_row(obstacle 09d0 kind 3, order 0x14) 24672.9-24673.6 (-5.5 s)
+   B a520 traced 32.0 of 32 s (rows 391) | writes: emg speed des<des_engine (order 0x4) 24670.2-24672.9 (-6.3 s)
+24734.2 A=8420 B=a520
+   A 8420 traced 0.0 of 32 s (rows 0) | writes: none
+   B a520 traced 31.9 of 32 s (rows 342) | writes: none
+24748.1 A=2180 B=a520
+   A 2180 traced 0.0 of 32 s (rows 0) | writes: none
+   B a520 traced 32.0 of 32 s (rows 342) | writes: none

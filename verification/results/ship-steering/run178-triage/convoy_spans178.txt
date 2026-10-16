@@ -1,0 +1,19 @@
+== C1 departure 09d0 gate 0x902809d0
+ 0x8fe65bd8 L 15km=23003.4 launch=23131.0 15km->launch=127.6 
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 3 ['24440.8:M6(6808)pass_not_resolved', '24466.8:M6(13f0)pass_not_resolved', '24808.1:M6(0cb8)pass_not_resolved']
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x8fe6d0d8 E 15km=23275.6 launch=23402.6 15km->launch=127.0 | +271.6 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23329.3 (+198.3 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ 0x9027b5b8 E 15km=23347.9 launch=23475.4 15km->launch=127.5 | +344.4 s after leader launch
+    stops(v<15,>=3s): 0 []
+    lane w=stop rows: 0; merges: 0 starts, 0 finishes []
+    0x12 warn episodes: 0 []
+    first order 4 to the gate: 23398.5 (+267.5 s after the leader launch)
+    turn-away episodes (>90 deg, d>2.5 km, traced frames): 0 []
+ span leader 15 km (or arrival) -> last launch: 472.0 s game

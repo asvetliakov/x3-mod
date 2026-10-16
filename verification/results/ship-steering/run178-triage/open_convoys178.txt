@@ -1,0 +1,21 @@
+last traced game time 26128.0
+== gate 0x902803b8
+ 0x8fe719f8 ? role=committed stage=inbound order=0x4 target=0x902803b8 p_m=-7039,17320,-67783 |p|=70314 v=68.6 nose_f=0.855 (t 26129.4) | lane_s=-67783 rank=255 gap=na law=none w=none on=0 | warn rows 0
+   ctl: 25781.4 09d0 none>arrival arrival; 25782.7 03b8 none>committed commit
+   pairs: {'clear/certified': 21}
+ 0x902a0018 ? role=escort stage=inbound order=0x14 target=0x8fe719f8 p_m=-7852,19416,-71630 |p|=74629 v=70.0 nose_f=0.837 (t 26129.4) | lane_s=-71630 rank=255 gap=2062 law=none w=none on=0 | warn rows 0
+   ctl: 25846.1 09d0 none>arrival arrival; 25855.5 09d0 arrival>none leader; 25855.5 03b8 none>escort escort
+   pairs: {'clear/certified': 21}
+ 0xaca45c70 ? role=escort stage=inbound order=0x14 target=0x8fe719f8 p_m=-10792,27046,-83163 |p|=88114 v=70.0 nose_f=0.795 (t 26129.4) | lane_s=-83163 rank=255 gap=10006 law=none w=none on=0 | warn rows 0
+   ctl: 26048.0 09d0 none>arrival arrival; 26057.7 09d0 arrival>none leader; 26057.7 03b8 none>escort escort
+   pairs: {}
+== gate 0x90281258
+ 0x9027ae68 ? role=committed stage=inbound order=0x4 target=0x90281258 p_m=-41478,16688,-34332 |p|=56370 v=107.8 nose_f=0.556 (t 26129.4) | lane_s=-34332 rank=255 gap=na law=none w=none on=0 | warn rows 0
+   ctl: 25922.2 09d0 none>arrival arrival; 25930.5 1258 none>committed commit
+   pairs: {}
+ 0x36e24428 ? role=escort stage=inbound order=0x14 target=0x9027ae68 p_m=-46291,20238,-37255 |p|=62772 v=113.0 nose_f=0.575 (t 26129.4) | lane_s=-37255 rank=255 gap=na law=none w=none on=0 | warn rows 0
+   ctl: 25987.2 09d0 none>arrival arrival; 25995.4 09d0 arrival>none leader; 25995.4 1258 none>escort escort
+   pairs: {}
+ 0xaca4b568 ? role=escort stage=inbound order=0x14 target=0x9027ae68 p_m=-57030,22855,-45384 |p|=76384 v=110.0 nose_f=0.461 (t 26129.7) | lane_s=-45384 rank=255 gap=na law=none w=none on=0 | warn rows 0
+   ctl: 26110.6 09d0 none>arrival arrival; 26116.7 09d0 arrival>none leader; 26116.7 1258 none>escort escort
+   pairs: {}

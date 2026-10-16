@@ -1,0 +1,14 @@
+f=32888 g=24285.9 order=0x21 tgt=0x902809d0 src=member
+   (0x21 for 1.2 s game, 2 frames)
+f=32890 g=24287.1 order=0x0 tgt=0x902809d0 src=member
+   (0x0 for 6.9 s game, 106 frames)
+f=32996 g=24294.0 order=0x4 tgt=0x902809d0 src=trace
+   (0x4 for 37.0 s game, 503 frames)
+f=33499 g=24331.0 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=33500 g=24331.1 order=0x1f tgt=0x902809d0 src=trace
+   (0x1f for 37.7 s game, 507 frames)
+f=34007 g=24368.8 order=0x0 tgt=? src=e_verdict
+   (0x0 for 38.3 s game, 502 frames)
+f=34509 g=24407.1 order=0x5 tgt=0x902809d0 src=_engine_warn_pre
+   (0x5 to f=34551 g=26129.7)

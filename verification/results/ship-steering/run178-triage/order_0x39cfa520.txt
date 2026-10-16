@@ -1,0 +1,42 @@
+f=35573 g=24478.7 order=0x21 tgt=0x902809d0 src=member
+   (0x21 for 1.0 s game, 11 frames)
+f=35584 g=24479.7 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=35585 g=24479.7 order=0x1e tgt=0x902809d0 src=member
+   (0x1e for 0.1 s game, 1 frames)
+f=35586 g=24479.8 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 7.0 s game, 95 frames)
+f=35681 g=24486.9 order=0x12 tgt=? src=_engine_warn
+   (0x12 for 48.9 s game, 624 frames)
+f=36305 g=24535.7 order=0x4 tgt=? src=e_verdict
+   (0x4 for 31.8 s game, 364 frames)
+f=36669 g=24567.5 order=0x0 tgt=0x00000000 src=_engine_warn_pre
+   (0x0 for 0.2 s game, 1 frames)
+f=36670 g=24567.7 order=0x12 tgt=? src=_engine_warn
+   (0x12 for 17.7 s game, 218 frames)
+f=36888 g=24585.4 order=0x0 tgt=0x00000000 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=36889 g=24585.5 order=0x4 tgt=0x902809d0 src=trace
+   (0x4 for 10.6 s game, 131 frames)
+f=37020 g=24596.0 order=0x0 tgt=0x00000000 src=_engine_warn_pre
+   (0x0 for 0.1 s game, 1 frames)
+f=37021 g=24596.1 order=0x12 tgt=? src=_engine_warn
+   (0x12 for 38.4 s game, 464 frames)
+f=37485 g=24634.5 order=0x0 tgt=0x00000000 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=37486 g=24634.6 order=0x4 tgt=0x902809d0 src=trace
+   (0x4 for 77.9 s game, 931 frames)
+f=38417 g=24712.5 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=38418 g=24712.5 order=0x1f tgt=0x902809d0 src=trace
+   (0x1f for 34.0 s game, 361 frames)
+f=38779 g=24746.5 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 0.0 s game, 1 frames)
+f=38780 g=24746.5 order=0x5 tgt=? src=e_verdict
+   (0x5 for 5.8 s game, 69 frames)
+f=38849 g=24752.3 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 for 0.1 s game, 1 frames)
+f=38850 g=24752.4 order=0x8 tgt=0x902809d0 src=trace
+   (0x8 for 0.9 s game, 11 frames)
+f=38861 g=24753.3 order=0x0 tgt=0x902809d0 src=trace
+   (0x0 to f=38861 g=26129.7)

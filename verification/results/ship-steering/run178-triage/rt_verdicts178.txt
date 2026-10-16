@@ -1,0 +1,10 @@
+24354.5 A=8420 B=12b8 | warn_pre f=33745 (-77 frames) A order 0x0 B order 0x1f e_verdict pass_not_fresh obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 4}
+24486.9 A=a520 B=8420 | warn_pre f=35587 (-94 frames) A order 0x0 B order 0x0 e_verdict pass_not_fresh obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 5}
+24491.7 A=8420 B=a520 | warn_pre f=35732 (-1 frames) A order 0x0 B order 0x12 e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 2, 'pass_not_member': 3}
+24548.6 A=2180 B=a520 | warn_pre f=36391 (-61 frames) A order 0x0 B order 0x4 e_verdict pass_not_fresh obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 5}
+24567.7 A=a520 B=2180 | warn_pre f=36669 (-1 frames) A order 0x0 B order 0x12 e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 4, 'pass_a_avoid': 1}
+24584.2 A=8420 B=a520 | warn_pre f=36872 (-1 frames) A order 0x0 B order 0x12 e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}
+24596.2 A=a520 B=8420 | warn_pre f=37020 (-1 frames) A order 0x0 B order 0x12 e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}
+24679.1 A=2180 B=a520 | warn_pre f=38026 (-1 frames) A order 0x0 B order 0x4 e_verdict pass_not_member obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}
+24734.2 A=8420 B=a520 | warn_pre f=38643 (-1 frames) A order 0x0 B order 0x1f e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}
+24748.1 A=2180 B=a520 | warn_pre f=38796 (-1 frames) A order 0x0 B order 0x5 e_verdict pass_not_member obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 4}

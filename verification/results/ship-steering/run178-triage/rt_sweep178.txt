@@ -1,0 +1,19 @@
+episode | A order/speed, B order/speed (state age s) | centre d: reconstructed vs warn d_m | sweep at the warn: min gap - margin (m) at t | flown 30 s: min capsule gap (m) at t, frames compared | verdict
+24354.5 8420(pre 0x0, 63 m/s age 0.0) vs 12b8(pre 0x1f, 0 m/s age 8.5) | d 1998 vs 1997.9 | gap now 128; sweep min const-v -1112 at 30.0 s, braking -405 at 30.0 s | flown B untraced | const-v converging / braking converging
+24486.9 a520(pre 0x0, 53 m/s age 0.0) vs 8420(pre 0x0, 0 m/s age 0.0) | d 2558 vs 2558.4 | gap now 894; sweep min const-v -951 at 30.0 s, braking 402 at 30.0 s | flown 894 at +0.0 s (1 frames) | const-v converging / braking clear by sweep
+24491.7 8420(pre 0x0, 0 m/s age 3.3) vs a520(pre 0x12, 53 m/s age 4.8) | d 2313 vs 2212.1 | gap now 647; sweep min const-v -1134 at 30.0 s, braking -1134 at 30.0 s | flown B untraced | not determinable from the rows
+24548.6 2180(pre 0x0, 88 m/s age 0.0) vs a520(pre 0x4, 1 m/s age 0.0) | d 2790 vs 2789.8 | gap now 881; sweep min const-v -205 at 30.0 s, braking 272 at 30.0 s | flown 881 at +0.0 s (1 frames) | const-v converging / braking clear by sweep
+24567.7 a520(pre 0x0, 3 m/s age 0.0) vs 2180(pre 0x12, 88 m/s age 19.1) | d 1502 vs 2580.3 | gap now 84; sweep min const-v -143 at 15.5 s, braking -146 at 15.5 s | flown B untraced | not determinable from the rows
+24584.2 8420(pre 0x0, 0 m/s age 95.8) vs a520(pre 0x12, 110 m/s age 0.0) | d 2048 vs 2724.1 | gap now 82; sweep min const-v 32 at 0.0 s, braking 32 at 0.0 s | flown B untraced | not determinable from the rows
+24596.2 a520(pre 0x0, 8 m/s age 0.0) vs 8420(pre 0x0, 0 m/s age 107.9) | d 2602 vs 2226.9 | gap now 627; sweep min const-v 456 at 30.0 s, braking 280 at 30.0 s | flown B untraced | not determinable from the rows
+24679.1 2180(pre 0x0, 88 m/s age 130.6) vs a520(pre 0x4, 103 m/s age 0.0) | d 11189 vs 2575.5 | gap now 9125; sweep min const-v 8666 at 30.0 s, braking 6434 at 30.0 s | flown B untraced | not determinable from the rows
+24734.2 8420(pre 0x0, 0 m/s age 245.8) vs a520(pre 0x1f, 0 m/s age 0.0) | d 1854 vs 2713.1 | gap now 143; sweep min const-v -207 at 30.0 s, braking -207 at 30.0 s | flown B untraced | not determinable from the rows
+24748.1 2180(pre 0x0, 88 m/s age 199.5) vs a520(pre 0x5, 10 m/s age 0.0) | d 15624 vs 2944.4 | gap now 13521; sweep min const-v 13471 at 0.0 s, braking 13471 at 0.0 s | flown B untraced | not determinable from the rows
+closest centre distance per pair from site E verdict rows (A,B both of the four):
+  2180-a520 2237 m at f=36583 g=24560.3
+  2180-8420 2200 m at f=40522 g=24868.7
+  a520-8420 1869 m at f=35829 g=24498.7
+  8420-12b8 1806 m at f=34550 g=24410.3
+  traced together 2180-a520: 74 frames, min capsule gap 881 m at g=24548.6 (centre 2790 m)
+  traced together 2180-8420: 1148 frames, min capsule gap 785 m at g=24869.7 (centre 2167 m)
+  traced together a520-8420: 97 frames, min capsule gap 894 m at g=24486.9 (centre 2558 m)
