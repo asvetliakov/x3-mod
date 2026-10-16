@@ -1,0 +1,30 @@
+WRITEONLY? defer_base                       n=2 assigns=1 ship_gate_board_core.h
+DEFONLY funnel_active                    fn ship_gate_arrival_core.h
+DEFONLY gate_tree_state                  fn ship_avoidance_walk_core.h
+DEFONLY kBucketCount                     const ship_steering_sites.h
+DEFONLY kBucketTableSites                const ship_steering_sites.h
+DEFONLY kBucketWalkLimit                 const ship_steering_sites.h
+DEFONLY kCapitalPredicate                const ship_steering_sites.h
+DEFONLY kChildScaleSite                  const ship_steering_sites.h
+DEFONLY kChildWalkSites                  const ship_steering_sites.h
+DEFONLY kCommandPass                     const ship_steering_sites.h
+DEFONLY kGetterCallSites                 const ship_steering_sites.h
+DEFONLY kLargePredicate                  const ship_steering_sites.h
+DEFONLY kLeafYawPitchEnd                 const ship_steering_sites.h
+DEFONLY kLoopContinueJne                 const ship_steering_sites.h
+DEFONLY kObjNext                         const ship_steering_sites.h
+DEFONLY kOrderJumpTable                  const ship_steering_sites.h
+DEFONLY kQAxisDefault                    const ship_gate_geometry_core.h
+DEFONLY kWarnCallSites                   const ship_steering_sites.h
+DEFONLY kWarnCallerOutInit               const ship_steering_sites.h
+DEFONLY kWarnTestEnd                     const ship_steering_sites.h
+WRITEONLY? lane_merges                      n=2 assigns=1 ship_gate_board_core.h
+DEFONLY lane_point_at                    fn ship_gate_geometry_core.h
+WRITEONLY? next_seq                         n=3 assigns=2 ship_gate_board_core.h
+DEFONLY order_steered                    fn ship_steering_core.h
+WRITEONLY? part_path                        n=2 assigns=1 ship_avoidance_core.h
+WRITEONLY? part_ray                         n=2 assigns=1 ship_avoidance_core.h
+DEFONLY sb_gate_row                      fn ship_gate_certificate_core.h
+DEFONLY small_pair_name                  fn ship_avoidance_core.h
+DEFONLY to_local                         fn ship_gate_arrival_core.h
+DEFONLY to_world                         fn ship_gate_arrival_core.h

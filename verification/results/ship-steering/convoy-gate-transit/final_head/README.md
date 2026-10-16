@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `run.sh` builds the item units against the 69d5b2ee core and the working tree's headers of 2026-10-14 (`X3M_HEAD`, `ship_capital_lane_core.h`, the unsplit `ship_gate_ctl_core.h`); it is not maintained against main. `run.txt` stays as the evidence.

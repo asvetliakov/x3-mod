@@ -23,7 +23,6 @@ constexpr std::uint32_t kArrModeMs = 900000;
 #ifndef X3M_LANE_ARR_MODE
 #define X3M_LANE_ARR_MODE 1
 #endif
-#define X3M_GC_HAS_ARR_MODE 1 // (gc::arr_record_mode exists: the host fixture's build switch)
 constexpr std::uint32_t kEvictKeepMs = 30000;     // an evicted member's sequence number is kept 30 s (D.1)
 constexpr std::uint32_t kCertMaxAgeMs = 250;      // site E: the pair's clear verdict at most 250 ms old (D.1)
 constexpr std::uint32_t kDecisionMaxAgeMs = 1000; // ... and both members decided within 1 s (a starved decision loses its certificate)
@@ -256,9 +255,9 @@ struct Member {
     std::uint32_t stop_end_ms = 0; // review of rounds A-C item 2: the brief stop's end the yield stored (game ms; 0 none): rollout, site B
     std::uint32_t lane_free_ms = 0, lane_gate_ms = 0; // the head's slot free moment; an escort's gate moment (game ms, 0 none)
     float lane_s = 0, lane_gap = 3.4e38f, lane_eta = 0, lane_lat = 0;
-    // review item 2 (lane_defer_step): the game clock of the last deferral write and the deferred value site B wrote over f+0x210, the
-    // order's re-plan stamp (engine ms; defer_w 0: no deferral in force)
-    std::uint32_t defer_base = 0, defer_w = 0;
+    // review item 2 (lane_defer_step): the deferred value site B wrote over f+0x210, the order's re-plan stamp (engine ms; defer_w 0: no
+    // deferral in force)
+    std::uint32_t defer_w = 0;
     // review item 9 (the lane row): site B's last lane write (m/s; < 0 none) and its kind (LaneWrite)
     float sb_wv = -1.0f;
     std::uint8_t sb_wk = 0;
@@ -271,17 +270,13 @@ struct Member {
     float pt_lat[2] = {0, 0};
     Sample s[kSamples];
 };
-// Convoy-gate-transit.md section 12.3 (round B): the lane's lateral profile for statics on Lambda, delta(s) (R, U; m) added to Lambda's
-// lateral by lane_lat_at: piecewise linear over n knots (s ascending, delta 0 at the first and the last), 0 outside them and with n = 0;
-// built at 1 Hz of game time from the module's static snapshot (lane_profile_build, ship_gate_geometry_core.h). body[]: the statics a
-// lane member on Lambda does not detour around (the profile clears them, or a fallback sphere enclosing the lane: the engine's warn).
-constexpr unsigned kLaneProfKnots = 4, kLaneProfBodies = 16;
+// Convoy-gate-transit.md section 12.3 (round B): the gate's scan of the statics near Lambda, built at 1 Hz of game time from the module's
+// static snapshot (lane_profile_build, ship_gate_geometry_core.h). body[]: the fallback spheres enclosing the lane, which a lane member
+// does not detour around (the engine's warn). (The lateral shift this profile once carried was deleted on 2026-10-16.)
+constexpr unsigned kLaneProfBodies = 16;
 struct LaneProfile {
-    std::uint8_t n = 0, nb = 0, ne = 0, overflow = 0; // ne: body[0, ne) are enclosing fallbacks, body[ne, nb) the bodies the shift clears
-    float s[kLaneProfKnots] = {};
-    float d[kLaneProfKnots][2] = {};
+    std::uint8_t nb = 0, overflow = 0;
     std::uint32_t body[kLaneProfBodies] = {};
-    float clear_m = 0.0f;           // the profile's clearance beyond w_max + r_body (m; the margin it could keep, kMarginM at best)
     // section 12.4 (round C): the scanned statics' envelope along F (min s - r, max s + r; enclosing fallbacks excluded) and their count,
     // valid when st_ok (the scan ran): the loop-back join's corridor test (lane_loop_cap)
     float st_lo = 0.0f, st_hi = 0.0f;
@@ -318,11 +313,11 @@ struct Gate {
     // (clamped to kStepClampMs)
     std::uint32_t step_ms = 0;
     // Lane stage 1: the board's key at the gate's acquisition (Board::lane), Lambda's common lateral (R, U; m), the lane order (ships,
-    // front first; lane_n entries), the merges and brief stops started at this gate
+    // front first; lane_n entries), the brief stops started at this gate
     std::uint8_t lane = 0, lane_c_ok = 0;
     float lane_c[2] = {0, 0};
     std::uint32_t lane_ord[kMembers] = {};
-    unsigned lane_n = 0, lane_merges = 0, lane_stops = 0;
+    unsigned lane_n = 0, lane_stops = 0;
     std::uint32_t ord_retake_ms = 0; // Run175 round item 3: the joiners outside the funnel re-take their order moments together, every
                                      // kLaneKeepS + the step (staggered re-takes of two far-off joiners swapped them every 16 s, twice)
     LaneProfile prof; // section 12.3 (round B)

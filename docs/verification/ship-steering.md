@@ -3322,6 +3322,46 @@ behaviour changes.
 the previous entry; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014 reachable, 0 violations);
 `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Not flown (the installed ini already sets the keys on).
 
+### Cleanup 2026-10-16 (Opus 5.5; after Run178, output-identical; [convoy-gate-transit.md](../architecture/convoy-gate-transit.md) "Current shape")
+
+Base 7d19e33e (Run178's accepted state); commits 25998745..d9ca3ac2 plus this entry. Lines deleted / added per group in
+`src/proxy` + the fixture **[m]** (`git show --numstat`): 1 far bound −35 / +5; 2 lateral shift −288 / +71; 3 dead list −68 / +23;
+4 fixture switches and guards −123 / +17; total −514 / +116.
+
+1. **The far bound** (`-DX3M_LANE_FAR`, `kLaneOwnM`, `lane_far`, `lane_far_entry` and its two glue and two fixture calls) deleted; the
+   measurement stays in §13.6 / §13.11 and `arr_mode/far_bound_c.txt` (`arr_mode/far_bound_c.sh` historical). `kLaneResidMaxM` is not on main.
+2. **Round B's lateral shift** deleted; the 1 Hz build keeps the scan, which was separable: the enclosing-fallback list (the rule is
+   unchanged: a fallback body over 1.5 km enclosing Λ's d_end or the gate is left to the engine) and round C's statics envelope
+   (`lane_loop_cap`). Gone: `kLaneProfShiftOn` and the shift's search, `lane_prof_delta` and `lane_lat_at`'s profile term (0 with the
+   shift off), `LaneProfile::n/ne/s/d/clear_m`, `av::Self::n_skip_enclose` and the resolved-set loop it bounded (empty with the shift
+   off), `ctl_prof`'s shift column (`ctl_prof=builds,skipped`; `kSummaryGatesWorstCase` 3,831 → 3,820, `summary_bound.py` PASS), the
+   fixture's `X3M_C_PROFSHIFT`, the row's `shifted/max/clear` fields and the shift's belt / +U / cost units (the `round B profile
+   units` check stays, now on the scan: enclosing listed, a small one not, the belt unlisted with 4 in the envelope).
+3. **Dead list** (`cleanup/deadscan.py`: 13 entries on 7d19e33e besides the site constants, 1 heuristic false positive after):
+   `funnel_active`, `to_local` / `to_world`, `lane_point_at`, `kQAxisDefault` (q_axis itself stays: the Terran fallback),
+   `gate_tree_state`, `order_steered`, `sb_gate_row`, `small_pair_name`, `DockClear::part_path/part_ray`, `Member::defer_base`,
+   `Gate::lane_merges`, the never-used counter `ctl_deferred_`; `small_b_name` moved into the fixture (`small_b_label`, the DLL never
+   printed it). **`x12_rc` stays**: its branch is reachable on main (`cleanup/x12rc_probe.txt`: 137 decisions, 42 loops started in --lane).
+4. **Fixture switches**: the fail-before switches of merged fixes `X3M_C_LEAVE_OLD`, `X3M_C_RING_OFF`, `X3M_C_RING_NOSTEP`,
+   `X3M_C_PLAYER_OLD`, `X3M_C_ARR_PARAMS0`, `X3M_C_NODEFER` (unreferenced) deleted (`X3M_C_ARR_VANILLA` / `ARR_STRICT` do not exist on
+   main); kept: `ONLY`, `ALL`, `ENGALL`, `NOFLY`, `OLDWARN`, `RING_NONE`, `W_UNREAD`, `W_FAIL`, `TF`, `SEED(N)`, `SHIP`, the trace and dump
+   aids (`X3M_C_CTLENG` is not on main). The historical-core guards `X3M_LANE_HEAD`, `X3M_LANE_63B1`, `X3M_LANE_5D5C` and
+   `X3M_GC_HAS_ARR_MODE` / `ARR_FAR` (with their two core defines) deleted: 80 fixture lines.
+5. Historical scripts, one `README.md` each: `arr_mode`, `arr_far`, `arrival_round`, `arrival_round/review`, `review_abc`, `round_b`,
+   `round1_head`, `round2_head`, `round2_review`, `round2_close`, `review_head`, `final_head`; no result deleted.
+6. `docs/status.md`'s ship steering paragraph (38,236 characters) condensed to the accepted state (1,971); the history moved verbatim to
+   [status history 2026-10](../archive/status-history-2026-10.md).
+7. convoy-gate-transit.md "Current shape (2026-10-16)"; the holistic review's ranks carry a "Status (2026-10-16)" line.
+
+No check was deleted: the totals are unchanged. **Acceptance [m]** (`cleanup/laneon_diff.txt`, `laneon_diff.py --base 7d19e33e`, 296 s):
+full, `--lane`, `--capital` before-core vs after 0 / 992, 0 / 765, 0 / 821 differing lines, 7d19e33e's own fixture and core vs after
+(lane-on rows) 0 / 708; fixture totals before and after full 13,990 / 0, `--lane` 6,643 / 0, `--capital` 8,368 / 0 (checks / failures).
+The bench24 1 ms check failed in some intermediate runs, on 7d19e33e's own build too (1,004-1,302 µs idle or lightly loaded, 8,930 µs under a concurrent compile): host timing,
+which `laneon_diff.py` now discounts from the totals line while printing every FAIL row. `test_ship_trace_format`,
+`test_ctl_boundary_reads`, `test_ship_steering` 28 tests OK (a first run had 1 failure, not identified, the rerun OK); i686
+RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014 reachable, 0 violations), `verify_ship_steering_sites.py --exe
+/mnt/c/X3/X3AP.exe` PASS 20. Not installed, not flown.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

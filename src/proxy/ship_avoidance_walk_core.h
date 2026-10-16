@@ -492,10 +492,6 @@ inline GateTreeRead gate_tree_read(Mem& mem, std::uint32_t gate, GateTreeNode* o
     }
     return rd;
 }
-template <class Mem>
-inline unsigned gate_tree_state(Mem& mem, std::uint32_t gate) noexcept {
-    return gate_tree_read(mem, gate).state;
-}
 // ---- Amendment 16 (capital-gate-transit.md section 16.1, ratification addendum 2026-10-13 (5)): the hull's lateral half-width ---
 // render-node-bounds.md section 6.1. The ship's root node [obj+0x70] carries `testbody`; the hull and every other part are its
 // descendants (`c = [n+0xc]; while c && [c] != 0; c = [c]`, at most kHullDepth deep and kHullBudget nodes). Per node: body id

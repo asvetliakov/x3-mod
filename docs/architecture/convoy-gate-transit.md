@@ -1,5 +1,28 @@
 # Convoy gate transit: one departure lane, a car-merge rule, no holding
 
+## Current shape (2026-10-16)
+
+Installed as Run178 (main `6a1ad525`), accepted by the user; §0–§13 below are the record of how it got here.
+* **The lane (departure side).** With `ship_steering_gates_lane = 1` (default) each gate a capital commits to has one lane Λ, from
+  15 km out (the commit sphere) to a 2.3 km short final. Committed capitals merge onto Λ by ETA (one gap law of 500 m plus a lateral
+  band, one yield candidate), follow at hull spacing, and have their order-4 point rewritten onto Λ; escorts on 0x14 / 0x15 follow in
+  trail with a braking reserve until their own order 4. The lane's laws act only inside the join funnel (outside, the engine's legs
+  fly the ship, which keeps its rank by ETA); a point the lane did not write is never steered off. A flown 0x12 evicts the member;
+  back on its order 4 it re-commits, by the loop-back join when the plain join does not fit.
+* **Under it.** A pairwise certificate per gate: site E suppresses the engine's collision warn for a member pair only when our plans
+  are certified clear, plus the own-gate row for every AI ship, the lane obstacle row and the small-ship rows; the hand-over writes
+  nothing when P2 is not kept. Small ships take the free side of the gate with a bounded hold. The steering law and the module's
+  sphere avoidance (`ship_steering`, `ship_avoidance`) fly everything else.
+* **Vanilla (the game's).** An order back through the arrival gate within 900 s + the step while the ship is still inside the 15 km
+  commit sphere (§13.1, latched per ship and gate, its escorts likewise): arrivals that turn back are the game's. Also out-of-sector
+  ships, the player's ship (never suppressed by any row), and a fallback sphere over 1.5 km enclosing the lane (left to the engine's warn).
+* **Keys.** `ship_steering`, `ship_avoidance` (default 1 since `9ecf712e`; the user's `x3m.ini` sets them too); `ship_steering_gates`, `ship_steering_gates_capital`,
+  `ship_steering_gates_traffic`, `ship_steering_gates_lane` (default 1; lane 0 = the stage A certificate only).
+* **Parked** (§11 "Open", §13.11): the Run177 far-out re-led case (branch `worktree-agent-a4700e7f0d9b84b1b`), the funnel's far bound
+  (measured worse twice, §13.6 / §13.11), `rt_cross`, two arrivals overlapping (the arrival fan), a commit from behind the plane,
+  statics on Λ (not a flown case). Deleted on 2026-10-16 with no output change: the far bound's switch, round B's lateral shift and the
+  dead helpers ([ledger](../verification/ship-steering.md) "Cleanup 2026-10-16").
+
 Design note, ratified 2026-10-14. Merged from the two independent designs
 [convoy-gate-transit-fable.md](convoy-gate-transit-fable.md) (Fable 5.1, the base) and
 [convoy-gate-transit-opus.md](convoy-gate-transit-opus.md) (Opus 5.5); where they differ, §9 says which law was taken and

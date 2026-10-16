@@ -1,7 +1,7 @@
 #pragma once
 // The gate traffic controller: the arrival side. D.4's placement (capital_offset, small_side_spawn, capital_at_plane), the arrival
 // records and site E's arrival-gate row (Arrivals, arrival_gate_row), and D.5's small-ship pass point while a capital is in the funnel
-// (funnel_active, small_b_*).
+// (funnel_member, small_b_*).
 #include "ship_gate_lane_core.h"
 namespace x3m::ship_avoidance::ctl {
 // ---- D.4: the arrival placement ------------------------------------------------------------------------------------------------
@@ -42,16 +42,6 @@ inline bool capital_at_plane(const Gate& g, std::uint32_t now, float* w) noexcep
         if (g.cap_depart_w > *w) *w = g.cap_depart_w;
     }
     return at;
-}
-// The exit point P in the gate frame and back (world m; local = (R, U, F) components of P - G).
-__attribute__((always_inline)) inline void to_local(const Gate& g, const float p[3], float l[3]) noexcept {
-    const float d[3] = {p[0] - g.G[0], p[1] - g.G[1], p[2] - g.G[2]};
-    l[0] = sc::dot3(d, g.R);
-    l[1] = sc::dot3(d, g.U);
-    l[2] = sc::dot3(d, g.F);
-}
-__attribute__((always_inline)) inline void to_world(const Gate& g, const float l[3], float p[3]) noexcept {
-    for (unsigned i = 0; i < 3; ++i) p[i] = g.G[i] + l[0] * g.R[i] + l[1] * g.U[i] + l[2] * g.F[i];
 }
 
 // ---- D.4: the arrival records and site E's arrival-gate row ---------------------------------------------------------------------
@@ -106,7 +96,6 @@ inline bool arr_record_mode(const Arrivals& t, std::uint32_t ship, std::uint32_t
 // without the condition). *d_m: the distance (m), -1 when none.
 enum class ArrTest : std::uint8_t { none = 0, vanilla, beyond };
 constexpr float kArrReturnM = kLaneFarM;
-#define X3M_GC_HAS_ARR_FAR 1 // (gc::arr_return_test exists: the host fixture's build switch)
 inline ArrTest arr_return_test(const Arrivals& t, std::uint32_t ship, std::uint32_t id, std::uint32_t gate, std::uint32_t now,
                                std::uint32_t step_ms, const float x[3], const float G[3], float* d_m) noexcept {
     *d_m = -1.0f;
@@ -138,7 +127,7 @@ inline bool arrival_gate_row(const Arrival& a, std::uint32_t gate, std::uint32_t
 
 // ---- D.5 (with D.12): a small ship's order-5 pass point while a capital is in the funnel -------------------------------------------
 // The funnel is active (D.5: a member released and not yet launched: on its final, the hand-over, order 5 or 8); funnel_member: the
-// first such member; *side (funnel_active) = the side of that capital's Q along R (+1 when on the axis: the bias of q_point).
+// first such member.
 inline const Member* funnel_member(const Gate& g) noexcept {
     for (unsigned i = 0; i < g.n; ++i) {
         const Member& m = g.m[i];
@@ -147,12 +136,6 @@ inline const Member* funnel_member(const Gate& g) noexcept {
         return &m;
     }
     return nullptr;
-}
-inline bool funnel_active(const Gate& g, float* side) noexcept {
-    const Member* m = funnel_member(g);
-    if (!m) return false;
-    *side = m->q[0] < 0.0f ? -1.0f : 1.0f;
-    return true;
 }
 // Convoy-gate-transit.md section 12.2 (round B; a lane gate only, the key off keeps D.5 as it was): the lane's column runs through the
 // small ships' A, so while the lane is in use a small ship's order-4 lead-in ends on the free side's edge of A's arrival sphere,
@@ -231,10 +214,6 @@ inline bool small_b_mirror(float r_gate, const float b[3], float side, float out
 //   path is clear, else `hold` (the edge written all the same, *t_launch the latest predicted launch among the capitals taking it, *f_in
 //   the fraction of the path before the first taken point).
 enum class SmallB : std::uint8_t { no_funnel = 0, near, not_arc, clear, mirrored, both_taken, edge, hold, count };
-inline const char* small_b_name(SmallB v) noexcept {
-    static const char* const n[unsigned(SmallB::count)] = {"no_funnel", "near", "not_arc", "clear", "mirrored", "both_taken", "edge", "hold"};
-    return unsigned(v) < unsigned(SmallB::count) ? n[unsigned(v)] : "?";
-}
 constexpr float kSmallBNearR = 0.55f, kSmallBMarginM = 50.0f;
 // Section 12.2's lateral path test (the lane) takes a wider margin than D.5's point test: in the fixture a small ship reaches its order-5
 // leg still converging on the side line and its velocity's lag carries it 170-360 m further in while it turns toward B (an M6, a TS),

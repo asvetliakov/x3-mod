@@ -1315,12 +1315,8 @@ inline GateRow sb_gate_why(const Gate& g, const Member& m, std::uint32_t gate, s
     const float dist = sc::sqrt_ss(sc::dot3(d, d));
     return sc::finite_f(dist) && dist >= g.r_gate + r_a + kSbGateGuardR * g.r_gate ? GateRow::suppress : GateRow::guard;
 }
-inline bool sb_gate_row(const Gate& g, const Member& m, std::uint32_t gate, std::uint16_t order, std::uint32_t target, const float x[3],
-                        std::uint32_t now, const float* u = nullptr, const float* f = nullptr, const float* detour = nullptr) noexcept {
-    return gate_row_suppresses(sb_gate_why(g, m, gate, order, target, x, now, u, f, detour));
-}
 // Review N8: site E's own-gate row as the DLL's ctl_e_fields reads it (the fixture's own-gate model calls the same): the membership
-// bitmap, the board of A, B its gate, the object id; then sb_gate_row on the live position read (x_ok: the read succeeded).
+// bitmap, the board of A, B its gate, the object id; then sb_gate_why on the live position read (x_ok: the read succeeded).
 inline bool e_gate_row(Board& b, const Index& ix, std::uint32_t a, std::uint32_t id_a, std::uint32_t gate, std::uint16_t order,
                        std::uint32_t target, const float x[3], bool x_ok, std::uint32_t now, GateRow* why = nullptr, const float* u = nullptr,
                        const float* f = nullptr, const float* detour = nullptr) noexcept {

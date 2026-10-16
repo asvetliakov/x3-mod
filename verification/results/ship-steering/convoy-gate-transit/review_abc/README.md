@@ -1,0 +1,1 @@
+Historical in part since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `run.sh` step 3's `X3M_C_ARR_PARAMS0=1` (`before_arrival_cross.txt`) was deleted with the other fail-before switches of merged fixes; the `-DX3M_SMALL_HOLD_EXT_MS` and `-DX3M_LANE_ENCLOSE_MIN_M` builds still compile. The results stay as the review's evidence.

@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `run.sh` builds the fixture with `-DX3M_LANE_63B1` against the 63b181c4 core; the fixture's historical-core guards were deleted, so the script no longer compiles. The results stay as the evidence.

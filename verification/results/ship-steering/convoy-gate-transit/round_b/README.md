@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `run.sh` step 4 (`X3M_C_PROFSHIFT=1`, `shift_<cast>.txt`) and the `round B profile units` row it greps measure the lateral shift, deleted with its switch; the results stay as round B's evidence and the script no longer reproduces them.

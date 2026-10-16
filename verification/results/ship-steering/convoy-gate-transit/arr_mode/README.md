@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `far_bound_c.sh` builds `-DX3M_LANE_FAR=1`, a switch deleted with the far bound's code; its `far_bound_c.txt` stays as the measurement (convoy-gate-transit.md §13.11) and the script no longer reproduces the "on" build. The other scripts here still run against main.

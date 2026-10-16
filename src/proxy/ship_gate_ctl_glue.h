@@ -31,7 +31,7 @@ inline void ctl_decide_max_note(std::uint32_t ticks, std::uint64_t cyc0, const g
 }
 inline unsigned ctl_frame_max_decisions_ = 0;
 inline Counter ctl_decisions_, ctl_rollouts_, ctl_sweeps_, ctl_narrow_, ctl_conflicts_, ctl_yields_, ctl_unresolved_, ctl_released_;
-inline Counter ctl_entered_, ctl_left_, ctl_evicted_, ctl_capped_, ctl_deferred_;
+inline Counter ctl_entered_, ctl_left_, ctl_evicted_, ctl_capped_;
 inline Counter e_suppressed_ctl_, e_pass_ctl_, e_suppressed_arrival_gate_, avoid_ctl_excluded_;
 inline Counter arr_launches_, arr_offset_capital_, arr_small_side_, arr_small_unseparated_, arr_skipped_;
 // KC refusals at d_end (and their wait beyond 3 s), the decisions the lane flew, the P2 remainder zeroing, the small ships' f+0x240
@@ -66,7 +66,7 @@ inline Counter e_gate_small_gap_, small_b_both_, ctl_clock_resets_;             
 inline Counter ctl_small_side_, ctl_small_edge_, ctl_small_hold_;
 // section 12.3 (round B): the lane profile's builds, builds with a shift, the statics a member's sphere avoidance left to it, the longest
 // build (QPC ticks, timing tier)
-inline Counter ctl_prof_builds_, ctl_prof_shifted_, avoid_lane_skipped_;
+inline Counter ctl_prof_builds_, avoid_lane_skipped_;
 inline std::uint32_t ctl_prof_max_ticks_ = 0;
 inline std::uint32_t ctl_x_wait_ms_ = 0, ctl_sb_max_ticks_ = 0;
 // The widest-part read per capital type (the record index [obj+0x4a]) for the arrival placement: a launched capital has no gate

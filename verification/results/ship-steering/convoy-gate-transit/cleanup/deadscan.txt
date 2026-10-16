@@ -1,0 +1,17 @@
+DEFONLY kBucketCount                     const ship_steering_sites.h
+DEFONLY kBucketTableSites                const ship_steering_sites.h
+DEFONLY kBucketWalkLimit                 const ship_steering_sites.h
+DEFONLY kCapitalPredicate                const ship_steering_sites.h
+DEFONLY kChildScaleSite                  const ship_steering_sites.h
+DEFONLY kChildWalkSites                  const ship_steering_sites.h
+DEFONLY kCommandPass                     const ship_steering_sites.h
+DEFONLY kGetterCallSites                 const ship_steering_sites.h
+DEFONLY kLargePredicate                  const ship_steering_sites.h
+DEFONLY kLeafYawPitchEnd                 const ship_steering_sites.h
+DEFONLY kLoopContinueJne                 const ship_steering_sites.h
+DEFONLY kObjNext                         const ship_steering_sites.h
+DEFONLY kOrderJumpTable                  const ship_steering_sites.h
+DEFONLY kWarnCallSites                   const ship_steering_sites.h
+DEFONLY kWarnCallerOutInit               const ship_steering_sites.h
+DEFONLY kWarnTestEnd                     const ship_steering_sites.h
+WRITEONLY? next_seq                         n=3 assigns=2 ship_gate_board_core.h

@@ -182,14 +182,12 @@ struct Self {
     const PartSet* dock_set = nullptr; // a carrier's hull parts (ship obstacles carry no part index); stations: the snapshot's model
     float dock_omega[3] = {0, 0, 0};   // the carrier's angular velocity (rad/s, world): its parts move at v + omega x (c - centre)
     bool dock_cap_P = false;           // order 4: the target's parts count only up to the order's point (the ship stops there)
-    // Convoy-gate-transit.md section 12.3 (round B): for a lane member, the statics its gate's lateral profile owns (gc::LaneProfile::body):
-    // no sphere detour against them. The first n_skip_enclose are fallback spheres enclosing the lane (left to the engine's warn: never
-    // resolved); the rest, the bodies the profile's shift clears (every lane member: a joiner flies to the shifted line), enter the
-    // resolved set as a detour's would (site E suppresses the engine's warn against them: the lane's shifted line is their resolution).
+    // Convoy-gate-transit.md section 12.3 (round B): for a lane member, the fallback spheres enclosing its lane (gc::LaneProfile::body):
+    // no sphere detour against them, never resolved (left to the engine's warn).
     const std::uint32_t* skip_static = nullptr;
-    unsigned n_skip_static = 0, n_skip_enclose = 0;
+    unsigned n_skip_static = 0;
 };
-// Section 12.3: whether a static obstacle is one the lane's profile owns for this ship.
+// Section 12.3: whether a static obstacle is an enclosing fallback this lane member does not detour around.
 __attribute__((always_inline)) inline bool lane_skipped(const Self& s, const Obstacle& o) noexcept {
     if (o.kind != std::uint8_t(Kind::station) && o.kind != std::uint8_t(Kind::asteroid)) return false;
     for (unsigned i = 0; i < s.n_skip_static; ++i)
@@ -530,10 +528,6 @@ inline SmallPair small_pair_verdict(std::uint32_t b_flags, std::uint16_t b_order
     if (!dock_legs && (b_order == sc::kOrderDock || b_order == kOrderUndock || b_order == kOrderGlide)) return SmallPair::b_dock_leg;
     return SmallPair::suppress;
 }
-inline const char* small_pair_name(SmallPair v) noexcept {
-    static const char* const names[unsigned(SmallPair::count)] = {"suppress", "no_autopilot", "not_steerable", "class", "b_dock_leg", "own_leader"};
-    return unsigned(v) < unsigned(SmallPair::count) ? names[unsigned(v)] : "?";
-}
 // The decision-age window at site E (scenario audit G2, main-session decision): max(base, 4 x the current frame step). Under
 // SETA the game-time frame step is 60-70 ms and the 0x12 leaf runs every 200 ms, so a fixed 250 ms window lapses on the
 // re-plan cadence. The frame step is clamped to 250 ms (a load hitch must not stretch the window beyond 1 s). replan_ms > 0 adds
@@ -716,7 +710,6 @@ enum class DockE : std::uint8_t { none = 0, suppress, no_parts, path, ray, zone,
 struct DockClear {
     float path_m = 1e30f, ray_m = 1e30f; // the smallest (centre distance - r_part) over the parts, m
     float reach_m = 0.0f;
-    unsigned part_path = 0, part_ray = 0; // the parts that set them
 };
 // v_close: the braking term's speed (a station: |v|; a ship container: dock_closing_speed, never below |v|).
 inline float dock_reach_m(float v, float a, float v_close = -1.0f) noexcept {
@@ -785,14 +778,8 @@ inline DockClear dock_clearance(const PartSet& set, const float w[3], const floa
         }
         const float gp = dock_seg_dist(x, dp, ddp, set.c[p]) - set.r[p];
         const float gr = dock_seg_dist(x, dr, ddr, set.c[p]) - set.r[p];
-        if (gp < out.path_m) {
-            out.path_m = gp;
-            out.part_path = p;
-        }
-        if (gr < out.ray_m) {
-            out.ray_m = gr;
-            out.part_ray = p;
-        }
+        if (gp < out.path_m) out.path_m = gp;
+        if (gr < out.ray_m) out.ray_m = gr;
     }
     return out;
 }
@@ -916,7 +903,7 @@ struct SiteE {
     bool a_arrival = false;          // A is a capital arrival member (< 60 s): the small-ship row takes it as fresh (its path is the
                                      // engine's 0x21 / 0x1e line)
     bool ctl_gate = false;           // B.2 item 3: A is a stage-B member in funnel / handover / dock / launch against its own gate B, under
-                                     // the path guard (ctl::sb_gate_row; any order: 4, 0, 0x1f, 5)
+                                     // the path guard (ctl::e_gate_row; any order: 4, 0, 0x1f, 5)
     // Amendment 18 (ship_steering_dock): A on order 4 and B its container (dock_container), the row's verdict from the DLL's reads
     // (dock_verdict); none = key off or not A's container (today's rules)
     DockE dock = DockE::none;
@@ -1049,8 +1036,6 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
     res.P[2] = P[2];
     state.unresolved = false;
     state.n_resolved = 0;
-    for (unsigned i = s.n_skip_enclose; i < s.n_skip_static; ++i) // section 12.3: the bodies the lane's profile clears (resolved by it)
-        if (state.n_resolved < kMaxResolved) state.resolved[state.n_resolved++] = s.skip_static[i];
     state.v_emergency = 0.0f;
     state.obstacle = 0;
     state.stamp_ms = now_ms;
@@ -1093,7 +1078,7 @@ inline Result resolve(const Snapshot& snap, const PartSet* parts, unsigned part_
             ++res.ctl_excluded;
             continue;
         }
-        if (s.n_skip_static && lane_skipped(s, o)) { // the lane's lateral profile owns the body (section 12.3)
+        if (s.n_skip_static && lane_skipped(s, o)) { // a fallback sphere enclosing the lane (section 12.3)
             ++res.lane_skipped;
             continue;
         }

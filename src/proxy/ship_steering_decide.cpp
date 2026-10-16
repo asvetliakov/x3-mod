@@ -153,12 +153,11 @@ void avoid_adjust(std::uint32_t obj, std::uint32_t fl, const core::Inputs& in, c
                 }
             self.ctl_ptr = ctl_ptr;
             self.ctl_id = ctl_id;
-            // convoy-gate-transit.md section 12.3 (round B): a lane member leaves the statics its gate's lateral profile owns to
-            // the profile (no sphere detour; the engine's warn stays the backstop)
-            if (cg->lane && cg->m[mi].ln && cg->prof.nb) { // (the enclosing fallbacks for every lane member, the cleared bodies on Lambda)
+            // convoy-gate-transit.md section 12.3 (round B): a lane member does not detour around a fallback sphere enclosing its lane
+            // (the engine's warn stays the backstop)
+            if (cg->lane && cg->m[mi].ln && cg->prof.nb) {
                 self.skip_static = cg->prof.body;
                 self.n_skip_static = cg->prof.nb;
-                self.n_skip_enclose = cg->prof.ne;
             }
         }
     } else if (!self.capital && traffic_live_.load(std::memory_order_relaxed) && gate_[slot].obj == obj && gate_[slot].small_hold.active) {

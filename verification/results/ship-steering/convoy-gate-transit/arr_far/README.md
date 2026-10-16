@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `fail_before.sh` builds today's fixture against the 67db4e3d core through the fixture's `X3M_GC_HAS_ARR_FAR` guard, deleted with the other historical-core guards; the script no longer compiles that build. `fail_before.txt` stays as the measurement.

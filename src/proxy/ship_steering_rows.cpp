@@ -6,7 +6,7 @@ std::uint32_t join_eval_max_ticks_ = 0, join_evals_ = 0, join_predictions_ = 0;
 // The summary's gates text (frame boundary): its worst case, every conversion at its widest, as summary_bound.py computes it from
 // this file (the host test keeps the constant equal to the computed figure); the buffer must hold it. It held 4,096 B up to B.3,
 // below the 4,123-character worst case: the tail truncated.
-constexpr std::size_t kSummaryGatesWorstCase = 3831; // exact: the Run176 diagnostics + the arrival mode merged (summary_bound.py)
+constexpr std::size_t kSummaryGatesWorstCase = 3820; // exact: the Run176 diagnostics + the arrival mode merged, ctl_prof's shift column deleted (summary_bound.py)
 constexpr std::size_t kSummaryGatesBytes = 8192;
 static_assert(kSummaryGatesWorstCase < kSummaryGatesBytes, "the summary's gates text fits its buffer (summary_bound.py)");
 std::uint32_t rep_gate_[29] = {};
@@ -530,7 +530,7 @@ void frame_boundary(std::uint64_t frame) {
                           "arr_overwritten=%u arr_overwritten_cap=%u ctl_decide_us_max=%.1f ctl_frame_us_max=%.1f ctl_frame_decisions_max=%u ctl_arrival_us_max=%.1f "
                           "ctl_x_refused=%lu ctl_x_wait_s=%lu ctl_sb_steered=%lu "
                           "ctl_p2_zeroed=%lu small_b_rewrites=%lu ctl_sb_us_max=%.1f e_pass_ctl_why=%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu e_gate_small_gap=%lu "
-                          "ctl_misc=%lu,%lu ctl_small=%lu,%lu,%lu ctl_prof=%lu,%lu,%lu ctl_prof_us_max=%.1f ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu ctl_live=%lu,%lu,%lu,%lu,%lu,%lu "
+                          "ctl_misc=%lu,%lu ctl_small=%lu,%lu,%lu ctl_prof=%lu,%lu ctl_prof_us_max=%.1f ctl_evict_ignored_gate=%lu ctl_budget_cut=%lu ctl_live=%lu,%lu,%lu,%lu,%lu,%lu "
                           "ctl_live_us_max=%.1f ctl_decide_cyc_max=%llu ctl_decide_max_gate=0x%08lx ctl_decide_max_ship=0x%08lx ctl_decide_max_id=%lu",
                           traffic_state_, members, static_cast<unsigned long>(ctl_decisions_.get()), static_cast<unsigned long>(ctl_rollouts_.get()),
                           static_cast<unsigned long>(ctl_sweeps_.get()), static_cast<unsigned long>(ctl_narrow_.get()),
@@ -559,9 +559,10 @@ void frame_boundary(std::uint64_t frame) {
                           // section 12.2 ctl_small: order-4 decisions on the side lead-in, D.5 edge rewrites, holds begun
                           static_cast<unsigned long>(ctl_small_side_.get()), static_cast<unsigned long>(ctl_small_edge_.get()),
                           static_cast<unsigned long>(ctl_small_hold_.get()),
-                          // section 12.3 ctl_prof: lane profile builds, builds with a shift, statics a member's avoidance left to the profile;
+                          // section 12.3 ctl_prof: the statics scans, the enclosing fallbacks a member's avoidance left to the engine (the shift column
+                          // was deleted on 2026-10-16);
                           // the longest build
-                          static_cast<unsigned long>(ctl_prof_builds_.get()), static_cast<unsigned long>(ctl_prof_shifted_.get()),
+                          static_cast<unsigned long>(ctl_prof_builds_.get()),
                           static_cast<unsigned long>(avoid_lane_skipped_.get()), ticks_us(ctl_prof_max_ticks_),
                           // B.3: 0x12 episodes kept through (item 2), frames whose decisions stopped at the 1 ms ceiling
                           static_cast<unsigned long>(ctl_evict_ignored_gate_.get()), static_cast<unsigned long>(ctl_budget_cut_.get()),

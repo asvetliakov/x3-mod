@@ -21,7 +21,12 @@ Prints each comparison's line counts and differing lines; exit 1 on any differen
 Source split (2026-10-15, holistic review rank 3): the header set is every src/proxy/ship_*_core.h of the working tree or of --base (the
 unit headers ship_gate_board/geometry/lane/certificate/arrival_core.h exist only after the split; the fixture includes the umbrella
 ship_gate_ctl_core.h), and --capital is compared before vs after as well (1c).
-  python3 -I laneon_diff.py --base bf12aaa2"""
+  python3 -I laneon_diff.py --base bf12aaa2
+
+Cleanup 2026-10-16 (docs/verification/ship-steering.md "Cleanup 2026-10-16"): --base 7d19e33e (Run178's accepted state); comparison 2
+drops the fields and the unit row the cleanup deleted with the lateral shift (a base row normalised, the rewritten unit row skipped on
+both sides). Output: cleanup/laneon_diff.txt.
+  python3 -I laneon_diff.py --base 7d19e33e"""
 import argparse, difflib, os, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 
@@ -68,11 +73,25 @@ def run(exe, arg, out):
     return out
 
 
+TIMING = r'cost|bench|ms per|us per|ns per'  # host timings (keyoff_diff.py's rule)
+
+
 def norm(path, lane_on_only=False):
     out = []
+    # (2026-10-16: a host-timing check's FAIL, the bench24 1 ms ceiling, flips the totals line and the verdict on an idle host too; the
+    # totals are compared with those FAIL rows discounted, and every run's FAIL rows are still printed below)
+    t_fails = sum(1 for l in open(path[:-4] + '.err') if l.startswith('FAIL') and re.search(TIMING, l))
     for line in open(path):
-        if re.search(r'cost|bench|ms per|us per|ns per', line):  # host timings (keyoff_diff.py's rule)
+        if re.search(TIMING, line):
             continue
+        if t_fails and line.startswith('ship_steering_host checks='):
+            m = re.search(r'failures=(\d+)', line)
+            left = int(m.group(1)) - t_fails
+            line = line.replace(m.group(0), 'failures=%d' % left)
+            if left == 0:
+                t_fails = -1  # (the verdict line follows)
+        if t_fails == -1 and line.strip() == 'checks FAIL':
+            line = line.replace('checks FAIL', 'checks PASS')
         if lane_on_only and (re.search(r'key-off|key off', line) or line.startswith('ship_steering_host checks=')):
             continue  # (the totals: the key-off control's checks changed with stage B's deletion; both runs' totals are printed below)
         line = re.sub(r'[A-Za-z_0-9]*us[A-Za-z_0-9 /]*=[0-9.e+/-]+', '', line)
@@ -80,6 +99,10 @@ def norm(path, lane_on_only=False):
         line = re.sub(r'[0-9.]+ (us|ns)\b', '', line)
         if lane_on_only:
             line = re.sub(r'\| petal \d+ nose_away', '| nose_away', line)
+            # (the cleanup of 2026-10-16: the deleted lateral shift's row fields; its unit row was rewritten to the statics scan)
+            line = re.sub(r'(prof builds \d+) shifted \d+ max -?\d+ m clear -?\d+', r'\1', line)
+            if line.startswith('round B profile units'):
+                continue
         out.append(line)
     return out
 

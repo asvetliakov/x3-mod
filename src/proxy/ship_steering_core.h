@@ -103,9 +103,6 @@ inline OrderPolicy order_policy(std::uint16_t order) noexcept {
         return {false, false, false, false};
     }
 }
-inline bool order_steered(std::uint16_t order) noexcept {
-    return order_policy(order).steered;
-}
 inline bool order_has_arrival_ramp(std::uint16_t order) noexcept {
     return order_policy(order).arrival_ramp;
 }

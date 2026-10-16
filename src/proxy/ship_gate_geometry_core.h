@@ -1,6 +1,6 @@
 #pragma once
 // The gate traffic controller: the gate geometry. The pass point Q and the final lines (q_point, lambda4/5, line_carrot, dock_ramp),
-// the lane's design constants and geometry (lane_q, lane_lat_at / point_at / order_point, kc_grid_slot, lane_point_*), the join
+// the lane's design constants and geometry (lane_q, lane_lat_at / order_point, kc_grid_slot, lane_point_*), the join
 // (lane_join_*), the lane carrot and unit_row.
 #include "ship_gate_board_core.h"
 namespace x3m::ship_avoidance::ctl {
@@ -75,10 +75,9 @@ inline bool q_point(float r_s, float w, float L, float v_max, float r_gate, cons
     l4[1] = a_lat[1] + dy * k;
     return sc::finite_f(q[0]) && sc::finite_f(q[1]) && sc::finite_f(l4[0]) && sc::finite_f(l4[1]);
 }
-// The axis variant of the pass point (B.1, measured 2026-10-13 and rejected: about 2.6 s less cross -> launch per ship, about 80 s more
-// span in scenario T): Q on the axis (l = 0), Lambda_4 = A_lat + (Q - A_lat) within the chord limit, as q_point. Selected only with
-// kQAxisDefault (off) for a gate that is not Terran and a hull the side spawn can clear (w <= 0.68 r_gate); kept for a later experiment.
-constexpr bool kQAxisDefault = false;
+// The axis variant of the pass point: Q on the axis (l = 0), Lambda_4 = A_lat + (Q - A_lat) within the chord limit, as q_point; taken
+// by q_point for a Terran ring with no feasible l. (As the default for other gates it was measured 2026-10-13 and rejected, B.1: about
+// 2.6 s less cross -> launch per ship, about 80 s more span in scenario T; its unused switch kQAxisDefault was deleted 2026-10-16.)
 inline bool q_axis(float r_gate, const float a_lat[2], float q[2], float l4[2]) noexcept {
     if (!(r_gate > 0.0f) || !sc::finite_f(a_lat[0]) || !sc::finite_f(a_lat[1])) return false;
     q[0] = q[1] = 0.0f;
@@ -288,18 +287,6 @@ constexpr float kLaneGridClearM = 100.0f;
 __attribute__((always_inline)) inline float lane_blend_settle(const Gate& g, const Member& m) noexcept {
     return m.lane_settle > 0.0f ? m.lane_settle : pursuit_look(lane_vmax(m), m.params.W, g.r_gate);
 }
-// Section 12.3 (round B): the lane's lateral profile, delta(s) (R, U; m): 0 outside the knots; at most three compares and one division
-// (lane_lat_at, every rollout sample)
-__attribute__((always_inline)) inline void lane_prof_delta(const LaneProfile& p, float s, float d[2]) noexcept {
-    d[0] = d[1] = 0.0f;
-    if (!p.n || !(s > p.s[0]) || !(s < p.s[p.n - 1])) return;
-    unsigned i = 1;
-    while (i + 1 < p.n && !(s < p.s[i])) ++i;
-    const float span = p.s[i] - p.s[i - 1], t = span > 1.0f ? (s - p.s[i - 1]) / span : 1.0f;
-    d[0] = p.d[i - 1][0] + t * (p.d[i][0] - p.d[i - 1][0]);
-    d[1] = p.d[i - 1][1] + t * (p.d[i][1] - p.d[i - 1][1]);
-}
-// (section 12.3, round B: plus the lane's lateral profile delta(s) for statics on Lambda, 0 from the blend's start on)
 __attribute__((always_inline)) inline void lane_lat_at(const Gate& g, const Member& m, float s, float lat[2]) noexcept {
     if (m.pt_ok) { // Run175 round item 1: an unrewritten script point: its lateral, the member's whole lane (no blend, no profile)
         lat[0] = m.pt_lat[0];
@@ -310,17 +297,6 @@ __attribute__((always_inline)) inline void lane_lat_at(const Gate& g, const Memb
     k = m.role == Role::escort || m.lane_esc ? 0.0f : k < 0.0f ? 0.0f : k > 1.0f ? 1.0f : k;
     lat[0] = g.lane_c[0] + k * (m.q[0] - g.lane_c[0]);
     lat[1] = g.lane_c[1] + k * (m.q[1] - g.lane_c[1]);
-    if (g.prof.n) {
-        float d[2];
-        lane_prof_delta(g.prof, s, d);
-        lat[0] += d[0];
-        lat[1] += d[1];
-    }
-}
-__attribute__((always_inline)) inline void lane_point_at(const Gate& g, const Member& m, float s, float P[3]) noexcept {
-    float lat[2];
-    lane_lat_at(g, m, s, lat);
-    for (unsigned i = 0; i < 3; ++i) P[i] = g.G[i] + lat[0] * g.R[i] + lat[1] * g.U[i] + s * g.F[i];
 }
 // L_i (section 6.4): order 4's own test (dist <= 0.75 r_gate, 0x00454b1a) fires at d_end when its point lies d_end - 0.75 r_gate before
 // the plane on the hull's final (the note's "d_end + 0.75 r_gate" read as the arrival depth; Implementation section).
@@ -502,28 +478,8 @@ constexpr float kLaneFunnelHyst = 1.25f; // a member inside stays inside to this
 #ifndef X3M_LANE_FUNNEL
 #define X3M_LANE_FUNNEL 1 // (0: the controller before the round: every lane-stage member owned, the laws along F)
 #endif
-// Convoy-gate-transit.md section 13.6 (orchestrator decision C, 2026-10-16): the funnel's far bound. The lane's laws (the floor, the stop,
-// the reserves), its steer and its rewrites own a lane-stage member only inside the 15 km commit sphere plus its join room (kLaneOwnM along
-// F, kLaneFarM + 5 km: a 30 deg join from the 2.9 km lateral spans about 5 km); farther out it keeps its rank (the ETA, the common-clock
-// re-take) and is a body for the sweep, and the engine's legs fly it (Run176 C4: escorts on 0x14 57 km out stopped at the floor by the
-// gap law). Tested at the entry (lane_far_entry: site A's rewrite runs in the commit's own call) and on every lane_frame.
-// PARKED, off by default (-DX3M_LANE_FAR=1 builds it): measured 2026-10-16 (arr_mode/far_bound_c.sh) it removes every lane write, steer
-// and rewrite beyond 20 km, but side_commit's convoy then joins on the engine's legs and fails Ex (member 0x12 in 7 of 9 runs, contact in
-// 4) with spans of 233-588 s against 199-225 s owned, and third_gate's span grows from 246-293 s to 319-338 s (Fx's bound); third_gate's
-// floor crawl beyond 20 km is the same with and without it (42 / 3 / 2 frames at tf 1 / 6 / 10), side_commit's grows (610 -> 1,618 at
-// tf 1): an escort on 0x14 3-4 km from its leader with no cap and no write of ours (the module's own escort law).
-#ifndef X3M_LANE_FAR
-#define X3M_LANE_FAR 0
-#endif
-#define X3M_GC_HAS_LANE_FAR 1 // (gc::lane_far_entry exists: the host fixture's build switch)
-constexpr float kLaneOwnM = kLaneFarM + 5000.0f;
-__attribute__((always_inline)) inline bool lane_far(const Gate& g, const float x[3]) noexcept {
-    const float d[3] = {x[0] - g.G[0], x[1] - g.G[1], x[2] - g.G[2]};
-    return X3M_LANE_FUNNEL && X3M_LANE_FAR && sc::dot3(d, g.F) < -kLaneOwnM;
-}
-inline void lane_far_entry(const Gate& g, Member& m) noexcept {
-    if (lane_far(g, m.st.x)) m.funnel = 0;
-}
+// (Convoy-gate-transit.md section 13.6, decision C: the funnel's far bound beyond kLaneFarM + 5 km measured worse twice, section 11
+// "Run175 round" and section 13.11 (arr_mode/far_bound_c.txt); its build switch and code were deleted 2026-10-16.)
 __attribute__((always_inline)) inline float lane_funnel_y30(float D, float R) noexcept {
     if (!(D > 0.0f)) return 0.0f;
     float y = 0.5f * D * kLaneJoinTan;
@@ -604,45 +560,27 @@ __attribute__((always_inline)) inline bool unit_row(const float f[3]) noexcept {
     const float n2 = sc::dot3(f, f);
     return sc::finite_f(n2) && n2 >= 0.9f && n2 <= 1.1f;
 }
-// ---- Convoy-gate-transit.md section 12.3 (round B): the lateral profile for statics on Lambda --------------------------------------
-// Statics on Lambda (a station's parts, rocks, a fallback body that crosses the column) become a lateral shift delta(s) of the lane,
-// not a per-ship detour: every member, rollout and the obstacle row's path fly the same shifted line (lane_lat_at), lane_on measures
-// against it, the sweep certifies one plan, the lane speed is kept. Built once per game second at the frame boundary from the module's
-// static snapshot (lane_bodies, ship_gate_ctl_live_core.h):
-// * the line is the hull's centre line; a body is cleared when the curve (s, l_c + delta(s)) stays w_max + r_body + the margin from its
-//   centre (every point of a member's capsule rides on the line, so its half-length does not enter); the margin kMarginM, lowered in
-//   kLaneProfMarginStepM steps to 0 when the ramps do not fit (profile.clear_m records the margin kept);
-// * one plateau and two ramps (3 segments, 4 knots), the ramps at tan 15 deg tangent to the bodies' clearance circles; the direction -U
-//   first (the departure side), then +-R (the smaller shift first), +U only when the whole profile lies beyond kLaneProfNoUpM of the
-//   gate; at most kLaneProfMaxM;
-// * delta is 0 from the blend's start on (s >= -(d_end + settle + kLaneBlendM) of the members): the blend zone and the finals are never
-//   shifted; a body whose clearance the ramps cannot reach before it is left to the module's detour and the engine's warn as today;
-// * a fallback body (a station whose part walk failed: its sphere) that contains Lambda's d_end point or the gate (the lane runs inside
-//   it) is neither shifted nor detoured: the detour has nowhere to go (d < C everywhere) and the engine tests the real parts, a real part
-//   on Lambda then costing a vanilla 0x12 (ship-steering-and-avoidance.md section 3.5 item 3); one that only crosses the column is a body
-//   of the module's effective radius.
-// The bodies the profile clears and the enclosing fallbacks go to profile.body[]: a lane member on Lambda does not detour around them
-// (the avoidance seam, av::Self::skip_static); everything else keeps the sphere avoidance, and the engine's warn stays the backstop.
+// ---- Convoy-gate-transit.md section 12.3 (round B): the statics near Lambda, scanned once per game second ---------------------------
+// From the module's static snapshot (lane_bodies, ship_gate_ctl_live_core.h) at the frame boundary, two results:
+// * a fallback body (a station whose part walk failed: its sphere) larger than kLaneEncloseMinM that contains Lambda's d_end point or the
+//   gate (the lane runs inside it) goes to profile.body[]: a lane member does not detour around it (the avoidance seam,
+//   av::Self::skip_static), because the detour has nowhere to go (d < C everywhere) and the engine tests the real parts, a real part on
+//   Lambda then costing a vanilla 0x12 (ship-steering-and-avoidance.md section 3.5 item 3); every other body keeps the sphere avoidance,
+//   and the engine's warn stays the backstop;
+// * the envelope along F of the other bodies (section 12.4, round C: lane_loop_cap's corridor test).
+// (Round B's lateral shift of the lane around statics on Lambda measured worse and stayed off; its code was deleted on 2026-10-16:
+// convoy-gate-transit.md section 11 "Round B".)
 struct LaneBody {
     float c[3];        // the body's centre (world, m)
     float r;           // its radius (a part sphere, a rock; a fallback body: the module's effective radius)
     float rs;          // a fallback body's bounding sphere (m; 0: not a fallback body)
     std::uint32_t ptr; // the snapshot object (a station's parts share their station's)
 };
-constexpr float kLaneProfTan = 0.26794919f, kLaneProfCos = 0.96592583f; // tan / cos 15 deg: the ramps' slope
-constexpr float kLaneProfMaxM = 1500.0f;          // the largest shift (kLaneOffM)
-constexpr float kLaneProfNoUpM = 6000.0f;         // never +U within this of the gate
-constexpr float kLaneProfMarginStepM = 25.0f;     // the margin's steps from kMarginM down to 0
-constexpr float kLaneProfCheckM = 50.0f;          // the verification's sampling along Lambda
+constexpr float kLaneProfTan = 0.26794919f;      // tan 15 deg: the deleted shift's ramp slope (lane_bodies' scan reach still uses it)
+constexpr float kLaneProfMaxM = 1500.0f;          // the deleted shift's largest (kLaneOffM): the scan's reach, the enclosing rule's floor
 constexpr std::uint32_t kLaneProfPeriodMs = 1000; // the build's period (game time)
 constexpr std::uint32_t kLaneProfMaxAgeMs = 5000; // a profile not rebuilt for this long + the step is dropped (no snapshot of the sector)
 constexpr unsigned kLaneProfScan = 64;            // bodies one build takes (more near Lambda: overflow, no profile)
-// The shift is built only with shift (kLaneProfShiftOn, off in round B): the fixture's lane_belt regressed with it (a 898 m -U plateau at
-// the 50 m margin; on SETA frames site E's suppression of the profiled rocks fails closed (pass_not_fresh), the members fly the engine's
-// 0x12 and meet each other: 0 of 6 SETA runs green against 5 of 6 with the sphere detour; at tf 1 a member touches a rock at 50 m), and
-// lane_station has no feasible shift (its 929 m clearance cannot ramp back at 15 deg before the blend: 133 m short at the 50 m margin);
-// convoy-gate-transit.md section 11 "Round B". The enclosing-fallback rule is on.
-constexpr bool kLaneProfShiftOn = false;
 // Review of rounds A-C item 5: the enclosing-fallback rule takes only a fallback body the lane could not detour around within its largest
 // shift (the module's fallback sphere's radius above kLaneProfMaxM): a small station whose part walk failed and whose bounding sphere holds
 // d_end (a 700 m fallback body on the final) keeps the members' sphere detour (before: listed for every member, no detour, the engine's
@@ -651,14 +589,13 @@ constexpr bool kLaneProfShiftOn = false;
 #define X3M_LANE_ENCLOSE_MIN_M kLaneProfMaxM
 #endif
 constexpr float kLaneEncloseMinM = X3M_LANE_ENCLOSE_MIN_M;
-// The build (1 Hz). bd: the bodies near Lambda (overflow: more than the scan takes: no profile, fail closed to today's detour).
-inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool overflow, std::uint32_t now, bool shift = kLaneProfShiftOn) noexcept {
+// The scan (1 Hz). bd: the bodies near Lambda (overflow: more than the scan takes: nothing listed, no envelope; fail closed to the detour).
+inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool overflow, std::uint32_t now) noexcept {
     LaneProfile& p = g.prof;
     p.built_ms = now ? now : 1u;
     p.bodies = nb;
-    p.n = p.nb = p.ne = 0;
+    p.nb = 0;
     p.overflow = overflow ? 1 : 0;
-    p.clear_m = 0.0f;
     p.st_ok = p.st_n = 0;
     if (!g.lane || !g.lane_c_ok || !(g.r_gate > 0.0f) || overflow) return;
     float w = 0.0f, fin = 0.0f;
@@ -670,140 +607,25 @@ inline void lane_profile_build(Gate& g, const LaneBody* bd, unsigned nb, bool ov
         if (f > fin) fin = f;
     }
     if (!(w > 0.0f) || !sc::finite_f(fin)) return;
-    const float s_fin = -fin, d_end = lane_end(g.r_gate, g.type);
-    float sk[kLaneProfScan], ek[kLaneProfScan][2], rk[kLaneProfScan];
-    std::uint32_t pk[kLaneProfScan];
-    unsigned n = 0;
+    const float d_end = lane_end(g.r_gate, g.type);
     p.st_ok = 1; // (round C: the envelope below, from the same scan)
     p.st_n = 0;
-    for (unsigned k = 0; k < nb && n < kLaneProfScan; ++k) {
+    for (unsigned k = 0; k < nb && k < kLaneProfScan; ++k) {
         const LaneBody& b = bd[k];
         const float d[3] = {b.c[0] - g.G[0], b.c[1] - g.G[1], b.c[2] - g.G[2]};
         const float s = sc::dot3(d, g.F), eR = sc::dot3(d, g.R) - g.lane_c[0], eU = sc::dot3(d, g.U) - g.lane_c[1];
         if (!sc::finite_f(s) || !sc::finite_f(eR) || !sc::finite_f(eU) || !(b.r > 0.0f)) continue;
-        if (b.rs > 0.0f && b.r > kLaneEncloseMinM) { // a large fallback body containing Lambda's d_end point or the gate: neither shifted nor
-                                                    // detoured (review item 5: a small one keeps the detour)
+        if (b.rs > 0.0f && b.r > kLaneEncloseMinM) { // a large fallback body containing Lambda's d_end point or the gate: not detoured
+                                                    // (review item 5: a small one keeps the detour)
             const float sd = s + d_end, in_end = sd * sd + eR * eR + eU * eU;
             if (in_end < b.rs * b.rs || sc::dot3(d, d) < b.rs * b.rs) {
                 if (p.nb < kLaneProfBodies) p.body[p.nb++] = b.ptr;
                 continue;
             }
         }
-        sk[n] = s;
-        ek[n][0] = eR;
-        ek[n][1] = eU;
-        rk[n] = b.r;
-        pk[n] = b.ptr;
-        ++n;
         if (!p.st_n || s - b.r < p.st_lo) p.st_lo = s - b.r;
         if (!p.st_n || s + b.r > p.st_hi) p.st_hi = s + b.r;
         if (p.st_n < 0xff) ++p.st_n;
     }
-    const unsigned nb_enclose = p.nb;
-    p.ne = std::uint8_t(nb_enclose);
-    if (!shift) return;
-    // the bodies the unshifted line meets (before the blend; one in the blend or the finals is never shifted around)
-    auto meets = [&](unsigned k, float margin) {
-        const float need = w + rk[k] + margin;
-        return sk[k] - need < s_fin && ek[k][0] * ek[k][0] + ek[k][1] * ek[k][1] < need * need;
-    };
-    static constexpr float kDir[4][2] = {{0.0f, -1.0f}, {1.0f, 0.0f}, {-1.0f, 0.0f}, {0.0f, 1.0f}};
-    for (float margin = kMarginM; margin >= 0.0f; margin -= kLaneProfMarginStepM) {
-        bool any = false;
-        for (unsigned k = 0; k < n && !any; ++k) any = meets(k, margin);
-        if (!any) return; // (nothing on Lambda: no profile; at kMarginM the first pass)
-        // the shift per direction: the larger root of |e - t d| = need for every body the plateau line meets, iterated (a shift can
-        // carry the line into another body)
-        float tdir[4];
-        for (unsigned di = 0; di < 4; ++di) {
-            const float* dv = kDir[di];
-            float t = 0.0f;
-            for (unsigned it = 0; it <= n; ++it) {
-                float tn = t;
-                for (unsigned k = 0; k < n; ++k) {
-                    if (!(sk[k] - (w + rk[k] + margin) < s_fin)) continue;
-                    const float need = w + rk[k] + margin, lx = ek[k][0] - t * dv[0], ly = ek[k][1] - t * dv[1];
-                    if (lx * lx + ly * ly >= need * need) continue;
-                    const float ep = ek[k][0] * dv[0] + ek[k][1] * dv[1], e2 = ek[k][0] * ek[k][0] + ek[k][1] * ek[k][1];
-                    const float root = ep + sc::sqrt_ss(ep * ep - e2 + need * need);
-                    if (root > tn) tn = root;
-                }
-                if (!(tn > t)) break;
-                t = tn;
-            }
-            tdir[di] = t;
-        }
-        // the order: -U, then +-R (the smaller first), then +U
-        unsigned order[4] = {0, tdir[1] <= tdir[2] ? 1u : 2u, tdir[1] <= tdir[2] ? 2u : 1u, 3};
-        for (unsigned oi = 0; oi < 4; ++oi) {
-            const unsigned di = order[oi];
-            const float* dv = kDir[di];
-            const float t = tdir[di];
-            if (!(t > 0.0f) || t > kLaneProfMaxM) continue;
-            // the ramps tangent to each met body's clearance circle in (s, the shift): its centre (s_k, e . d), radius
-            // sqrt(need^2 - e_perp^2); a ramp of slope tan clears it when its line lies R / cos above the centre
-            float lo = 1e30f, hi = -1e30f;
-            for (unsigned k = 0; k < n; ++k) {
-                const float need = w + rk[k] + margin;
-                if (!(sk[k] - need < s_fin)) continue;
-                const float ep = ek[k][0] * dv[0] + ek[k][1] * dv[1], e2 = ek[k][0] * ek[k][0] + ek[k][1] * ek[k][1];
-                const float perp2 = e2 - ep * ep, R2 = need * need - perp2;
-                if (!(R2 > 0.0f)) continue; // beside the shift's plane: never met
-                const float lx = ek[k][0], ly = ek[k][1];
-                if (lx * lx + ly * ly >= need * need && !(ep > 0.0f)) continue; // clear at 0 and the shift moves away from it
-                if (ep - sc::sqrt_ss(R2) >= t) continue;                          // beyond the plateau: never met
-                const float a = (sc::sqrt_ss(R2) / kLaneProfCos + ep - t) / kLaneProfTan;
-                if (sk[k] + a > hi) hi = sk[k] + a;
-                if (sk[k] - a < lo) lo = sk[k] - a;
-            }
-            if (!(hi >= lo)) {
-                if (!(hi > -1e29f)) continue;
-                lo = hi = 0.5f * (lo + hi);
-            }
-            const float ramp = t / kLaneProfTan, s0 = lo - ramp, s3 = hi + ramp;
-            if (s3 > s_fin) continue;                       // the ramp reaches the blend: not this direction
-            if (di == 3 && s3 > -kLaneProfNoUpM) continue;  // +U within 6 km of the gate: never
-            // verify the curve against every body (sampled every kLaneProfCheckM about each body)
-            LaneProfile q;
-            q.n = 4;
-            q.s[0] = s0;
-            q.s[1] = lo;
-            q.s[2] = hi;
-            q.s[3] = s3 > hi + 1.0f ? s3 : hi + 1.0f;
-            q.d[1][0] = q.d[2][0] = t * dv[0];
-            q.d[1][1] = q.d[2][1] = t * dv[1];
-            bool ok = true;
-            for (unsigned k = 0; k < n && ok; ++k) {
-                const float need = w + rk[k] + margin;
-                for (float s = sk[k] - need; s <= sk[k] + need && ok; s += kLaneProfCheckM) {
-                    float dl[2];
-                    lane_prof_delta(q, s, dl);
-                    const float lx = ek[k][0] - dl[0], ly = ek[k][1] - dl[1], ds = s - sk[k];
-                    if (ds * ds + lx * lx + ly * ly < need * need * 0.998f) ok = false; // (0.1 % : the tangent's float slack)
-                }
-            }
-            if (!ok) continue;
-            for (unsigned i = 0; i < 4; ++i) {
-                p.s[i] = q.s[i];
-                p.d[i][0] = q.d[i][0];
-                p.d[i][1] = q.d[i][1];
-            }
-            p.n = 4;
-            p.clear_m = margin;
-            for (unsigned k = 0; k < n; ++k) { // the bodies the line met: cleared now (a station's parts share their station: once; not
-                                               // when one of its parts lies on the unshifted finals, which still need the detour)
-                if (!meets(k, margin)) continue;
-                bool listed = false;
-                for (unsigned j = 0; j < p.nb && !listed; ++j) listed = p.body[j] == pk[k];
-                for (unsigned j = 0; j < n && !listed; ++j) {
-                    const float nj = w + rk[j] + margin;
-                    listed = pk[j] == pk[k] && !(sk[j] - nj < s_fin) && ek[j][0] * ek[j][0] + ek[j][1] * ek[j][1] < nj * nj;
-                }
-                if (!listed && p.nb < kLaneProfBodies) p.body[p.nb++] = pk[k];
-            }
-            return;
-        }
-    }
-    p.nb = std::uint8_t(nb_enclose); // infeasible at every margin: no shift; the enclosing fallbacks stay listed
 }
 } // namespace x3m::ship_avoidance::ctl

@@ -191,7 +191,6 @@ gc::Member* ctl_commit(GateState& g, std::uint32_t obj, const core::Inputs& in, 
     // width is unread is a body, never w = r as a member)
     const bool w_read = g.w_src == std::uint8_t(ln::WidthSrc::lod);
     gc::commit_fill(*m, in, dyn, geo, w_read ? g.w : 0.0f, w_read ? g.w_len : 0.0f, r_gate, gate, now);
-    gc::lane_far_entry(*cg, *m); // (section 13.6: beyond the far bound site A's rewrite below does not run)
     return m;
 }
 // An escort (D.1): a capital on 0x14 / 0x15 whose leader is a committed member; it joins the leader's board (role escort). On order 0
@@ -256,7 +255,6 @@ void ctl_escort(GateState& g, std::uint32_t obj, std::uint32_t code, std::uint32
     } else if (!type_width_get(std::int16_t(rd16(obj + sites::kObjType)), &w, &l))
         w = l = 0.0f;
     gc::escort_fill(*m, leader, in, dyn, w, l, cg->r_gate, now);
-    gc::lane_far_entry(*cg, *m); // (section 13.6)
 }
 } // namespace x3m_ship_steering_rt
 // The gate traffic controller's launch window 0x00444606 (D.4; ship_steering_sites.h (n)): the exit point P (phys+0x30, already
@@ -526,9 +524,10 @@ void lane_frame_gate(gc::Gate& g, std::uint32_t now) noexcept {
         merge_row_write_.store(w + 1, std::memory_order_release);
     }
 }
-// Convoy-gate-transit.md section 12.3 (round B): the lane's lateral profile for statics on Lambda, rebuilt once per game second
-// (gc::lane_profile_build) from the newest snapshot that lists the gate (this frame's walks; within kLaneProfMaxAgeMs + the step); with
-// none, a profile older than that is dropped (the members' sphere detour as before). Reads the module's snapshot and part cache only.
+// Convoy-gate-transit.md section 12.3 (round B): the gate's scan of the statics near Lambda (the enclosing fallbacks, round C's envelope),
+// rebuilt once per game second (gc::lane_profile_build) from the newest snapshot that lists the gate (this frame's walks; within
+// kLaneProfMaxAgeMs + the step); with none, a scan older than that is dropped (the members' sphere detour as before). Reads the module's
+// snapshot and part cache only.
 void lane_profile_gate(gc::Gate& g, std::uint32_t now) noexcept {
     if (g.prof.built_ms && now - g.prof.built_ms < gc::kLaneProfPeriodMs) return;
     const av::Snapshot* snap = nullptr;
@@ -551,7 +550,6 @@ void lane_profile_gate(gc::Gate& g, std::uint32_t now) noexcept {
     const unsigned n = gc::lane_bodies(g, *snap, part_cache_.sets, part_cache_.count, bodies, gc::kLaneProfScan, &overflow);
     gc::lane_profile_build(g, bodies, n, overflow, now);
     ctl_prof_builds_.add();
-    if (g.prof.n) ctl_prof_shifted_.add();
     if (timing_) {
         const std::uint64_t dt = qpc() - t0;
         const std::uint32_t ticks = dt > 0xffffffffull ? 0xffffffffu : std::uint32_t(dt);

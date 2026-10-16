@@ -1,0 +1,1 @@
+Historical since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `run.sh` builds the fixture with `-DX3M_LANE_HEAD` (and `X3M_LANE_OFF` / `X3M_SEQ_OFF`, deleted earlier) against a pre-round-1 core; the fixture's historical-core guards were deleted, so the script no longer reproduces `run.txt`, which stays as the evidence.

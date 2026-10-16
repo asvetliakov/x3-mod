@@ -1,0 +1,1 @@
+Historical in part since 2026-10-16 (cleanup, docs/verification/ship-steering.md "Cleanup 2026-10-16"): `X3M_C_PLAYER_OLD=1` and `X3M_C_RING_NOSTEP=1` (`before_item2.txt`, `before_item5.txt`) were deleted with the other fail-before switches of merged fixes; `X3M_C_RING_NONE` (the tree read wrong toward none) is kept. The results stay as the review's evidence.

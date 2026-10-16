@@ -1091,10 +1091,8 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             m.lane_on = 1;
         // Run175 round item 3: the join funnel (lane_funnel_y, with hysteresis) decides whether the lane owns the member on a lane stage;
         // on Lambda, re-departing (the overshoot, the loop, the gate mouth) or past the lane stages the ownership stands
-        // (section 13.6, decision C: beyond kLaneOwnM along F a lane-stage member is not owned, whatever its lateral, Lambda or loop)
         const bool lane_stage_now = m.sb == Sb::inbound || m.sb == Sb::funnel;
-        if (X3M_LANE_FUNNEL && X3M_LANE_FAR && lane_stage_now && m.lane_s < -kLaneOwnM) m.funnel = 0;
-        else if (!X3M_LANE_FUNNEL || m.lane_on || m.over || m.loop || !lane_stage_now) m.funnel = 1;
+        if (!X3M_LANE_FUNNEL || m.lane_on || m.over || m.loop || !lane_stage_now) m.funnel = 1;
         else {
             const float yf = lane_funnel_y(m, m.lane_s), yo = yf + kLaneOffM > kLaneFunnelHyst * yf ? yf + kLaneOffM : kLaneFunnelHyst * yf;
             if (m.funnel) {
@@ -1584,7 +1582,6 @@ inline void lane_frame(Gate& g, std::uint32_t now, LaneStats* st) noexcept {
             m.merge_ms = 0;
             if (!m.merge_done) {
                 m.merge_ms = now ? now : 1;
-                ++g.lane_merges;
                 if (st) ++st->merges;
                 m.law = Law::merge;
                 lane_event(st, m, false, gap, 0);
@@ -1740,7 +1737,6 @@ inline LaneDefer lane_defer_step(const Gate& g, Member& m, std::uint16_t order, 
             m.defer_w = 0;
             return out;
         }
-        m.defer_base = now;
         m.defer_w = now + d ? now + d : 1u;
         out.write210 = true;
         out.v210 = m.defer_w;
