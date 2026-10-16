@@ -7566,6 +7566,13 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
 #endif
     const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && !route.alpha_tested &&
                             shadow_.hull_lightmap_stage && samplers_[shadow_.hull_lightmap_stage].levels > 1;
+    // The held diagnostic: the first failing widen condition (size, alpha, levels; 0 other), read only by a held
+    // gain draw's counter and capture row.
+    route.widen_held_reason =
+        !(lightmap_widen_draw_scale_[0] > 0.f)                                                       ? std::uint8_t(1)
+        : route.alpha_tested                                                                         ? std::uint8_t(2)
+        : !(shadow_.hull_lightmap_stage && samplers_[shadow_.hull_lightmap_stage].levels > 1) ? std::uint8_t(3)
+                                                                                              : std::uint8_t(0);
     // The block's axis-separated gate needs anisotropic minification on the light-map stage (an isotropic LOD is
     // the larger axis's and both coarse fetches collapse to one): at the two selection points below a stage
     // shadowed at anything else is raised to ANISOTROPIC for this draw (ensure_widen_filter, restored by undo);
@@ -9332,8 +9339,20 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
                     static_cast<unsigned long>(lightmap_widen_draw_size_[0]),
                     static_cast<unsigned long>(lightmap_widen_draw_size_[1]), double(lightmap_widen_k_),
                     double(lightmap_widen_draw_scale_[0]), double(lightmap_widen_draw_scale_[1]));
-        } else if (lightmap_widen_)
+        } else if (lightmap_widen_) {
             ++lightmap_widen_held_;
+            const unsigned reason = route.widen_held_reason & 3u;
+            ++lightmap_widen_held_reason_[reason];
+            // Capture frames: why this gain draw kept the un-widened variant.
+            if (capture_) {
+                static const char* const reason_names[4] = {"other", "size", "alpha", "levels"};
+                log("hull_lightmap_widen_held device=%llu frame=%llu index=%lu ps=%016llx stage=%u reason=%s levels=%u size=%lux%lu",
+                    id_, frame_, counters_.draws, shadow_.ps_hash, unsigned(shadow_.hull_lightmap_stage),
+                    reason_names[reason], unsigned(samplers_[shadow_.hull_lightmap_stage].levels),
+                    static_cast<unsigned long>(lightmap_widen_draw_size_[0]),
+                    static_cast<unsigned long>(lightmap_widen_draw_size_[1]));
+            }
+        }
         ++hull_lightmap_draws_;
     }
     if (route.source_gain) finish_source_gain(route);
@@ -10446,14 +10465,17 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_), double(lightmap_fade_floor_),
                 unsigned(lightmap_fade_m00_ > 0.f));
         if (family && lightmap_widen_)
-            log("hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u held=%u k=%g b=%g filter_sets=%u filter_reads=%u filter_failures=%u",
+            log("hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u held=%u k=%g b=%g filter_sets=%u filter_reads=%u filter_failures=%u held_size=%u held_alpha=%u held_levels=%u held_other=%u",
                 id_, frame_, hull_lightmap_draws_, lightmap_widen_draws_, lightmap_widen_held_,
                 double(lightmap_widen_k_), double(lightmap_widen_b_), lightmap_widen_filter_sets_,
-                lightmap_widen_filter_reads_, lightmap_widen_filter_failures_);
+                lightmap_widen_filter_reads_, lightmap_widen_filter_failures_, lightmap_widen_held_reason_[1],
+                lightmap_widen_held_reason_[2], lightmap_widen_held_reason_[3], lightmap_widen_held_reason_[0]);
         hull_lightmap_draws_ = 0;
         lightmap_fade_draws_ = 0;
         lightmap_widen_draws_ = 0;
         lightmap_widen_held_ = 0;
+        lightmap_widen_held_reason_[0] = lightmap_widen_held_reason_[1] = lightmap_widen_held_reason_[2] =
+            lightmap_widen_held_reason_[3] = 0;
         lightmap_widen_filter_sets_ = 0;
         lightmap_widen_filter_reads_ = 0;
         lightmap_widen_filter_failures_ = 0;

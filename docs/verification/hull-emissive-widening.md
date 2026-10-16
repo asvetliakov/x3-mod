@@ -496,3 +496,10 @@ producer's siblings (`sun_shadow_original_lightmap_variant` / `..._widen_variant
 the HEAD gained ones pass 16/16; the HEAD widened ones fail 16/16 with the same two id-584 messages; the checkout fix's
 widened ones pass 16/16 with 0 messages (and equal the byte-patched HEAD output 16/16). Sun-share HEAD variants were
 built from `git show HEAD:` copies of `src/renderer/` so the checkout was not touched.
+
+2026-10-16, held-reason diagnostic (source only, not yet flown): Run180 frames show ~40 % of gained draws held
+(`admitted=139 widened=83 held=56`). `hull_lightmap_widen_frame` now appends `held_size= held_alpha= held_levels=
+held_other=` (first failing condition at selection: light-map size unknown, alpha tested, no mip chain on the light-map
+stage, else other; the four sum to `held`; existing fields unchanged and in place), and capture frames log one
+`hull_lightmap_widen_held device= frame= index= ps= stage= reason=size|alpha|levels|other levels= size=WxH` row per held
+draw. The reason is a byte recorded in the route beside `widen_draw`.

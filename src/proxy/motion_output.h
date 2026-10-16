@@ -168,6 +168,8 @@ struct MotionRoute {
                                 // route).
     bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz)
                                       // selected instead of the gained one.
+    std::uint8_t widen_held_reason = 0; // Why widen_draw was false, first failing condition: 1 light-map size unknown,
+                                        // 2 alpha tested, 3 no mip chain on the light-map stage, 0 other (held row).
     // Engine light (motion_output_engine_light_inc.h): the scope node's parent (node+0x18, from the block sample_scope
     // read; 0 unknown), whether the node carries a light this frame (constants ready) and whether its twin was bound.
     std::uint32_t scope_parent = 0;
@@ -2785,6 +2787,8 @@ private:
     DWORD lightmap_widen_draw_size_[2] = {0, 0}; // this draw's light-map level-0 size (capture-frame draw line)
     std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_held_ = 0; // frame line: widened draws / gain draws that
                                                                        // kept the un-widened variant
+    std::uint32_t lightmap_widen_held_reason_[4] = {0, 0, 0, 0}; // frame line: held split by widen_held_reason
+                                                                 // (other, size, alpha, levels)
     std::uint32_t lightmap_widen_filter_sets_ = 0, lightmap_widen_filter_reads_ = 0,
                   lightmap_widen_filter_failures_ = 0; // frame line: MINFILTER raised / read / failed
     std::uint32_t lightmap_widen_session_filter_sets_ = 0;
