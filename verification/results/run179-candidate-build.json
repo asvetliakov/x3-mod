@@ -1,0 +1,21 @@
+{
+ "dll": "detached worktree /tmp/x3-run179-candidate of 43c9ea11, build/d3d9.dll (clean configure + build)",
+ "sha256": "f68d02bafed101bae5aa71e6f9de19ddc55011ff0f3b838193e23233f78a504f",
+ "bytes": 61938963,
+ "commit": "43c9ea11",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0",
+  "x87_audit": "PASS, reachable_functions 1014, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe)",
+  "host_tests": "test_ship_trace_format test_config_schema test_ship_steering_sites test_ctl_boundary_reads test_ship_steering test_check_no_x87 test_launcher_defaults OK (candidate tree); engine discover modules: 2 known Wine record-hash failures, 6 skipped; fixture on main 43c9ea11: --lane 6643/0, full 13990/0, --capital 8368 with only the host-timing bench failing (1,013 / 1,203 us vs 1 ms under load); laneon_diff 0 lines vs 7d19e33e (the cleanup is output-identical)"
+ },
+ "trigger": "the user's cleanup request: ship steering/avoidance/gate keys on by default (9ecf712e) and the dead-code/experiment cleanup (43c9ea11); behaviour identical to Run178",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run178": [
+  "fecd94ee/7d19e33e Run178 triage + handoff",
+  "9ecf712e defaults on",
+  "43c9ea11 cleanup"
+ ]
+}
