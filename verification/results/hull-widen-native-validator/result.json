@@ -1,0 +1,1525 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, no device)",
+ "parameters": "hull: fill 0.01, gain 2, depth 1, K 4, B 4 at HEAD d4ae9c5a; widen = far-fade dynamic gain, swiden = static gain; fixed/sfixed = patch_one_port.py applied; headsgain/headswidenshare = sun-share gained/widened at HEAD; wtswidenshare = sun-share widened from the uncommitted one-port fix in the checkout; additive/flag/flagfixed = screen emission ec1f5c4a2f4e1445 gain 2 (flagfixed = patch_screen_flag_oc1.py)",
+ "tally": [
+  {
+   "kind": "additive",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 1
+  },
+  {
+   "kind": "fixed",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "flag",
+   "end": "80004005",
+   "messages": 1,
+   "programs": 1
+  },
+  {
+   "kind": "flagfixed",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 1
+  },
+  {
+   "kind": "gain",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "headsgain",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "headswidenshare",
+   "end": "80004005",
+   "messages": 2,
+   "programs": 16
+  },
+  {
+   "kind": "sfixed",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "swiden",
+   "end": "80004005",
+   "messages": 2,
+   "programs": 16
+  },
+  {
+   "kind": "widen",
+   "end": "80004005",
+   "messages": 2,
+   "programs": 16
+  },
+  {
+   "kind": "wtswidenshare",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  }
+ ],
+ "rows": [
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "gain",
+   "words": 1577,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "gain",
+   "words": 1991,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "gain",
+   "words": 1565,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "gain",
+   "words": 1976,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "gain",
+   "words": 1503,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "gain",
+   "words": 1603,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "gain",
+   "words": 1965,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "gain",
+   "words": 1509,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "gain",
+   "words": 1471,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "gain",
+   "words": 1566,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "gain",
+   "words": 1592,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "gain",
+   "words": 1539,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "gain",
+   "words": 1885,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "gain",
+   "words": 1535,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "gain",
+   "words": 2002,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "gain",
+   "words": 1859,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "widen",
+   "words": 1708,
+   "messages": [
+    {
+     "instruction_call": 94,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 111,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "widen",
+   "words": 2122,
+   "messages": [
+    {
+     "instruction_call": 147,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 164,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "widen",
+   "words": 1696,
+   "messages": [
+    {
+     "instruction_call": 103,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 120,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "widen",
+   "words": 2107,
+   "messages": [
+    {
+     "instruction_call": 144,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 161,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "widen",
+   "words": 1634,
+   "messages": [
+    {
+     "instruction_call": 90,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 107,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "widen",
+   "words": 1734,
+   "messages": [
+    {
+     "instruction_call": 100,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 117,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "widen",
+   "words": 2096,
+   "messages": [
+    {
+     "instruction_call": 141,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 158,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "widen",
+   "words": 1640,
+   "messages": [
+    {
+     "instruction_call": 80,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 97,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "widen",
+   "words": 1602,
+   "messages": [
+    {
+     "instruction_call": 83,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 100,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "widen",
+   "words": 1697,
+   "messages": [
+    {
+     "instruction_call": 91,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 108,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "widen",
+   "words": 1723,
+   "messages": [
+    {
+     "instruction_call": 97,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 114,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "widen",
+   "words": 1670,
+   "messages": [
+    {
+     "instruction_call": 97,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 114,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "widen",
+   "words": 2016,
+   "messages": [
+    {
+     "instruction_call": 132,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 149,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "widen",
+   "words": 1666,
+   "messages": [
+    {
+     "instruction_call": 86,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 103,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "widen",
+   "words": 2133,
+   "messages": [
+    {
+     "instruction_call": 150,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 167,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "widen",
+   "words": 1990,
+   "messages": [
+    {
+     "instruction_call": 126,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 143,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "fixed",
+   "words": 1708,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "fixed",
+   "words": 2122,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "fixed",
+   "words": 1696,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "fixed",
+   "words": 2107,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "fixed",
+   "words": 1634,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "fixed",
+   "words": 1734,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "fixed",
+   "words": 2096,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "fixed",
+   "words": 1640,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "fixed",
+   "words": 1602,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "fixed",
+   "words": 1697,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "fixed",
+   "words": 1723,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "fixed",
+   "words": 1670,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "fixed",
+   "words": 2016,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "fixed",
+   "words": 1666,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "fixed",
+   "words": 2133,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "fixed",
+   "words": 1990,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "swiden",
+   "words": 1714,
+   "messages": [
+    {
+     "instruction_call": 95,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 112,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "swiden",
+   "words": 2128,
+   "messages": [
+    {
+     "instruction_call": 148,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 165,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "swiden",
+   "words": 1702,
+   "messages": [
+    {
+     "instruction_call": 104,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 121,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "swiden",
+   "words": 2113,
+   "messages": [
+    {
+     "instruction_call": 145,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 162,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "swiden",
+   "words": 1640,
+   "messages": [
+    {
+     "instruction_call": 91,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 108,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "swiden",
+   "words": 1740,
+   "messages": [
+    {
+     "instruction_call": 101,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 118,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "swiden",
+   "words": 2102,
+   "messages": [
+    {
+     "instruction_call": 142,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 159,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "swiden",
+   "words": 1646,
+   "messages": [
+    {
+     "instruction_call": 81,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 98,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "swiden",
+   "words": 1608,
+   "messages": [
+    {
+     "instruction_call": 84,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 101,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "swiden",
+   "words": 1703,
+   "messages": [
+    {
+     "instruction_call": 92,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 109,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "swiden",
+   "words": 1729,
+   "messages": [
+    {
+     "instruction_call": 98,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 115,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "swiden",
+   "words": 1676,
+   "messages": [
+    {
+     "instruction_call": 98,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 115,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "swiden",
+   "words": 2022,
+   "messages": [
+    {
+     "instruction_call": 133,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 150,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "swiden",
+   "words": 1672,
+   "messages": [
+    {
+     "instruction_call": 87,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 104,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "swiden",
+   "words": 2139,
+   "messages": [
+    {
+     "instruction_call": 151,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 168,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "swiden",
+   "words": 1996,
+   "messages": [
+    {
+     "instruction_call": 127,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 144,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "sfixed",
+   "words": 1714,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "sfixed",
+   "words": 2128,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "sfixed",
+   "words": 1702,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "sfixed",
+   "words": 2113,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "sfixed",
+   "words": 1640,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "sfixed",
+   "words": 1740,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "sfixed",
+   "words": 2102,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "sfixed",
+   "words": 1646,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "sfixed",
+   "words": 1608,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "sfixed",
+   "words": 1703,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "sfixed",
+   "words": 1729,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "sfixed",
+   "words": 1676,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "sfixed",
+   "words": 2022,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "sfixed",
+   "words": 1672,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "sfixed",
+   "words": 2139,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "sfixed",
+   "words": 1996,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "headsgain",
+   "words": 1813,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "headsgain",
+   "words": 2236,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "headsgain",
+   "words": 1801,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "headsgain",
+   "words": 2221,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "headsgain",
+   "words": 1733,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "headsgain",
+   "words": 1839,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "headsgain",
+   "words": 2210,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "headsgain",
+   "words": 1748,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "headsgain",
+   "words": 1701,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "headsgain",
+   "words": 1802,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "headsgain",
+   "words": 1828,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "headsgain",
+   "words": 1775,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "headsgain",
+   "words": 2130,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "headsgain",
+   "words": 1774,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "headsgain",
+   "words": 2247,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "headsgain",
+   "words": 2104,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "headswidenshare",
+   "words": 1944,
+   "messages": [
+    {
+     "instruction_call": 130,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 147,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "headswidenshare",
+   "words": 2367,
+   "messages": [
+    {
+     "instruction_call": 185,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 202,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "headswidenshare",
+   "words": 1932,
+   "messages": [
+    {
+     "instruction_call": 139,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 156,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "headswidenshare",
+   "words": 2352,
+   "messages": [
+    {
+     "instruction_call": 182,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 199,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "headswidenshare",
+   "words": 1864,
+   "messages": [
+    {
+     "instruction_call": 124,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 141,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "headswidenshare",
+   "words": 1970,
+   "messages": [
+    {
+     "instruction_call": 136,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 153,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "headswidenshare",
+   "words": 2341,
+   "messages": [
+    {
+     "instruction_call": 179,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 196,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "headswidenshare",
+   "words": 1879,
+   "messages": [
+    {
+     "instruction_call": 117,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 134,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "headswidenshare",
+   "words": 1832,
+   "messages": [
+    {
+     "instruction_call": 117,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 134,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "headswidenshare",
+   "words": 1933,
+   "messages": [
+    {
+     "instruction_call": 127,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 144,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "headswidenshare",
+   "words": 1959,
+   "messages": [
+    {
+     "instruction_call": 133,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 150,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "headswidenshare",
+   "words": 1906,
+   "messages": [
+    {
+     "instruction_call": 133,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 150,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "headswidenshare",
+   "words": 2261,
+   "messages": [
+    {
+     "instruction_call": 170,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 187,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "headswidenshare",
+   "words": 1905,
+   "messages": [
+    {
+     "instruction_call": 123,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 140,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "headswidenshare",
+   "words": 2378,
+   "messages": [
+    {
+     "instruction_call": 188,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 205,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "headswidenshare",
+   "words": 2235,
+   "messages": [
+    {
+     "instruction_call": 164,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    },
+    {
+     "instruction_call": 181,
+     "id": 584,
+     "text": "2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "wtswidenshare",
+   "words": 1944,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "wtswidenshare",
+   "words": 2367,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "wtswidenshare",
+   "words": 1932,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "wtswidenshare",
+   "words": 2352,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "wtswidenshare",
+   "words": 1864,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "wtswidenshare",
+   "words": 1970,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "wtswidenshare",
+   "words": 2341,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "wtswidenshare",
+   "words": 1879,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "wtswidenshare",
+   "words": 1832,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "wtswidenshare",
+   "words": 1933,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "wtswidenshare",
+   "words": 1959,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "wtswidenshare",
+   "words": 1906,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "wtswidenshare",
+   "words": 2261,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "wtswidenshare",
+   "words": 1905,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "wtswidenshare",
+   "words": 2378,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "wtswidenshare",
+   "words": 2235,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ec1f5c4a2f4e1445",
+   "kind": "additive",
+   "words": 73,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ec1f5c4a2f4e1445",
+   "kind": "flag",
+   "words": 88,
+   "messages": [
+    {
+     "instruction_call": -1,
+     "id": 573,
+     "text": "When a ps_2_0 shader writes to oCn, it must write to all of oC(n-1) down to oC0 (no gaps)."
+    }
+   ],
+   "end": "80004005"
+  },
+  {
+   "original": "ec1f5c4a2f4e1445",
+   "kind": "flagfixed",
+   "words": 91,
+   "messages": [],
+   "end": "00000000"
+  }
+ ]
+}

@@ -250,3 +250,25 @@ native Windows execution.
 ### 2026-10-09 Run 139 A (run20 engine / run21 off, DXVK, same build d48d2bab…): engine-side skip is a net loss
 
 Triage [run139-triage](../../verification/results/run139-triage/) (`run139.py`, measured). The stub installed (`status=patched reason=ok`) and ran in 97 % of in-flight frames: engine_skipped_parts p50 18 / p95 33 / max 47, engine_skipped_draws p50 19 / max 81, guards 0 model / 0 stamp / 22,709 position, engine_visits p50 198, view changes 0, no errors. Frame time binned by scene draws (app draws + engine-skipped draws): off is 1-2 ms faster per frame below ~200 draws (140: 12.7 vs 10.7 ms p50; 160: 12.9 vs 11.1), level at 200, and engine is only slightly better at 220-260 draws, mostly in p95 (240: 15.0/19.6 vs 15.1/20.5). Overall dt p50 13.53 vs 13.64 ms. The engine run carries the batched D3D cull as well (27 skipped draws p50), so the low-draw loss is the cull's own cost with little to skip; the gain where 30-46 draws were skipped is small. User impression confirmed ("off generally better except some close views"). Decision: `occlusion_cull` stays off by default, `engine` kept as an opt-in; the occlusion-cull line is closed on this backend (both the draw-level and the engine-side skip). Open: an isolated A/B (batched-only vs engine on one route) was not flown and is not planned.
+
+## 2026-10-16: native Windows `create_failed 8876086c` is the constants-mode vertex shader (vs_3_0 read port)
+
+Symptom (native host, `x3m.log` and `x3m.prev.log`, once each): `occlusion_cull_device device=1 attached=0
+reason=create_failed result=8876086c pool=1024`. The occlusion-query probe passed (the reason is not `unsupported`).
+
+**Cause (measured for the program, inferred for the call).** Production attaches in the `constants` buffer mode
+(`occlusion_cull_pass.h:80`, `default_buffer`), whose first create call is `CreateVertexShader(rect_mad_vs_words)`
+(`occlusion_cull_pass.cpp:137`). That program, `mad o0, v0, c253, c252` (`:60-64`, operand tokens `A0E400FD`,
+`A0E400FC`), reads two different constant registers; vs_3_0 also has one c# read port. The native validator
+(`Direct3DShaderValidatorCreate9`, SysWOW64 `d3d9.dll` 10.0.26100.9549, no device) rejects it: id 752 "2 different
+constant registers (c#) read by instruction. Max ... is 1". The other embedded programs pass with 0 messages:
+`rect_vs_words` (the buffer modes' VS) and the pixel program with 1, 2, 3 and 4 `mov oCt, c0` (every `targets_` value).
+CreateVertexShader returning D3DERR_INVALIDCALL is therefore the failing call; the declaration (FLOAT2 POSITION), the
+MANAGED unit-strip buffer and the 1024 queries are never reached (inferred from the call order `:137-145`). DXVK and
+wined3d, where the pass was qualified, do not enforce the read port.
+
+**Fix (validated by byte patch, source not edited).** Stage one constant in a temporary: `mov r0, c253` =
+`02000001 800F0000 A0E400FD`, then `mad o0, v0, r0, c252` = `04000004 E00F0000 90E40000 80E40000 A0E400FC` (13 -> 16
+DWORDs, one more VS instruction per test vertex). The native validator accepts the patched program with 0 messages.
+Evidence: `verification/results/hull-widen-native-validator/occlusion_programs.py` (writes the programs parsed from
+the source), `native_validate.cpp`, and the validator output `occlusion_native.txt` (project bytes, not game bytes). The fixture that qualified the pass would catch this only on native D3D9.

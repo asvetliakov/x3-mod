@@ -218,8 +218,9 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(
 // / 0.15), b = saturate(32 luma(rL) - 1) (no boost below luma 1/32, full from
 // 1/16), g = saturate(rho^2 / K - 1) (no boost while the widened fetch is still
 // magnified), rL.xyz *= 1 + (B - 1) t b g (the guarded thin-emitter boost). Three
-// shader-local DEFs: c210 = (1/K, 2^-8, B - 1, 1/0.15), c211 = (Rec.709 luma,
-// 9), c203 = (32, 1, 0, 0); all proven free of the original. The fetch must
+// shader-local DEFs: c210 = (1/K, 2^-8, B - 1, 1), c211 = (Rec.709 luma, 0),
+// c203 = (32, 1, 1/0.15, 9), packed so every instruction reads at most one c#
+// (the ps_3_0 constant read port); all proven free of the original. The fetch must
 // sit at flow-control depth 0 (FlowControl otherwise). No intensity rescale otherwise. K
 // finite in (1, 8], B finite in [1, K]; widen with G = 1 or out-of-range
 // K/B is InvalidConfig. widen_applied reports it (equal to gain_applied).

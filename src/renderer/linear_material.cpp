@@ -1307,10 +1307,10 @@ void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plat
 //   mul     rT, rT, c217.yzyz                 (1)  . ((W c)^2, (H c)^2): texels^2 per pixel^2, times c^2
 //   add     rT.xy, rT.xzxx, rT.ywxx           (1)  rho_x^2, rho_y^2
 //   max     rT.x, rT.x, rT.y                  (1)  rho_max^2
-//   mad_sat rU.w, rT.x, c210.x, -c203.y       (1)  g = saturate(rho^2 / K - 1) = saturate(K tau^2 - 1): the
-//   minification
-//                                                  gate of the boost (0 while the widened fetch is still magnified,
-//                                                  rho^2 < K; 1 from rho^2 >= 2 K); rU.w survives the .xyz fetch below
+//   mad_sat rU.w, rT.x, c210.x, -c210.w       (1)  g = saturate(rho^2 / K - 1) = saturate(K tau^2 - 1): the
+//                                                  minification gate of the boost (0 while the widened fetch
+//                                                  is still magnified, rho^2 < K; 1 from rho^2 >= 2 K); rU.w
+//                                                  survives the .xyz fetch below
 //   rsq     rT.x, rT.x                        (1)  1 / rho
 //   max_sat rT.x, rT.x, c210.x                (1)  1 / k = clamp(1 / rho, 1 / K, 1)
 //   rcp     rT.x, rT.x                        (1)  k
@@ -1331,14 +1331,18 @@ void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plat
 //   max     rT.w, rT.w, c210.y                (1)  max(luma(coarse), eps)
 //   rcp     rT.w, rT.w                        (1)
 //   mul     rT.x, rT.x, rT.w                  (1)  r
-//   mad_sat rT.x, rT.x, c210.w, -c211.w       (1)  t = saturate((r - 1.35) / 0.15) = saturate(r / 0.15 - 9)
+//   mad_sat rT.x, rT.x, c203.z, -c203.w       (1)  t = saturate((r - 1.35) / 0.15) = saturate(r / 0.15 - 9)
 //   mul     rT.x, rT.x, rT.y                  (1)  t b
 //   mul     rT.x, rT.x, rU.w                  (1)  t b g
 //   mul     rT.x, rT.x, c210.z                (1)  (B - 1) t b g
 //   mad     rL.xyz, rL, rT.x, rL              (1)  rL . (1 + (B - 1) t)
 // c217.yz are the per-draw lanes the route uploads ((W c)^2, (H c)^2 of the
 // bound light map; the motion fragment reads c217.x, the far fade c217.w);
-// c210/c211/c203 are shader-local DEFs (constant_free of the original). No
+// c210/c211/c203 are shader-local DEFs (constant_free of the original):
+// c210 = (1/K, 2^-8, B - 1, 1), c211 = (luma weights, 0), c203 = (32, 1,
+// 1/0.15, 9). ps_3_0 has one constant read port, so every instruction reads
+// at most one distinct c# (wined3d does not enforce this; native D3D9
+// CreatePixelShader refuses the program). No
 // intensity rescale otherwise (the mip chain conserves energy). Byte layout is
 // fixed: the block is regenerated once rG is known (lightmap_widen_patch).
 constexpr unsigned lightmap_widen_words = 117, lightmap_widen_fetch_offset = 41, lightmap_widen_before = 11,
@@ -1365,13 +1369,12 @@ bool lightmap_widen_coordinate(Word operand) noexcept {
 void lightmap_widen_definitions(Words& out, const HullLightmapWiden& w) {
     emit(out, def,
          {dst(constant, lightmap_widen_constant, xyzw), bits(1.0f / w.k), bits(lightmap_widen_epsilon),
-          bits(w.b - 1.0f), bits(lightmap_widen_gate_scale)});
+          bits(w.b - 1.0f), bits(1.0f)});
     emit(out, def,
-         {dst(constant, lightmap_widen_luma_constant, xyzw), bits(0.2126f), bits(0.7152f), bits(0.0722f),
-          bits(lightmap_widen_gate_offset)});
+         {dst(constant, lightmap_widen_luma_constant, xyzw), bits(0.2126f), bits(0.7152f), bits(0.0722f), bits(0.0f)});
     emit(out, def,
-         {dst(constant, lightmap_widen_gate_constant, xyzw), bits(lightmap_widen_floor_scale), bits(1.0f), bits(0.0f),
-          bits(0.0f)});
+         {dst(constant, lightmap_widen_gate_constant, xyzw), bits(lightmap_widen_floor_scale), bits(1.0f),
+          bits(lightmap_widen_gate_scale), bits(lightmap_widen_gate_offset)});
 }
 // fetch: the texld's four words (opcode, destination, coordinate, sampler); g: rG (rT = g + 1, rU = g + 2).
 void lightmap_widen_fetch(Words& out, const Word* fetch, unsigned g) {
@@ -1386,7 +1389,7 @@ void lightmap_widen_fetch(Words& out, const Word* fetch, unsigned g) {
     emit(out, max_op, {dst(temp, t, 1u), lane(temp, t, 0), lane(temp, t, 1)});
     emit(out, mad,
          {dst(temp, u, 8u) | sat, lane(temp, t, 0), lane(constant, lightmap_widen_constant, 0),
-          src(constant, lightmap_widen_gate_constant, 0x55, 1)});
+          src(constant, lightmap_widen_constant, 0xff, 1)});
     emit(out, rsq_op, {dst(temp, t, 1u), lane(temp, t, 0)});
     emit(out, max_op, {dst(temp, t, 1u) | sat, lane(temp, t, 0), lane(constant, lightmap_widen_constant, 0)});
     emit(out, rcp_op, {dst(temp, t, 1u), lane(temp, t, 0)});
@@ -1406,8 +1409,8 @@ void lightmap_widen_fetch(Words& out, const Word* fetch, unsigned g) {
     emit(out, rcp_op, {dst(temp, t, 8u), lane(temp, t, 3)});
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(temp, t, 3)});
     emit(out, mad,
-         {dst(temp, t, 1u) | sat, lane(temp, t, 0), lane(constant, lightmap_widen_constant, 3),
-          src(constant, lightmap_widen_luma_constant, 0xff, 1)});
+         {dst(temp, t, 1u) | sat, lane(temp, t, 0), lane(constant, lightmap_widen_gate_constant, 2),
+          src(constant, lightmap_widen_gate_constant, 0xff, 1)});
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(temp, t, 1)});
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(temp, u, 3)});
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(constant, lightmap_widen_constant, 2)});
@@ -2597,7 +2600,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             // exactly as often as the block itself references them (nothing
             // else touches them); c217 read only through the block's .yzyz
             // (once), the gain's .w and the motion fragment's .x; c210/c211/c203
-            // defined once each and read only by the block (5, 4 and 3 reads).
+            // defined once each and read only by the block (5, 3 and 4 reads).
             Words block;
             const Word fetch_words[4] = {0, combined[combined_site + 1], combined[combined_site + 2],
                                          combined[combined_site + 3]};
@@ -2640,9 +2643,9 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             constant_uses(combined.data(), final_structure, lightmap_widen_constant, definitions, reads);
             if (definitions != 1 || reads != 5) return LinearMaterialResult::ProfileMismatch;
             constant_uses(combined.data(), final_structure, lightmap_widen_luma_constant, definitions, reads);
-            if (definitions != 1 || reads != 4) return LinearMaterialResult::ProfileMismatch;
-            constant_uses(combined.data(), final_structure, lightmap_widen_gate_constant, definitions, reads);
             if (definitions != 1 || reads != 3) return LinearMaterialResult::ProfileMismatch;
+            constant_uses(combined.data(), final_structure, lightmap_widen_gate_constant, definitions, reads);
+            if (definitions != 1 || reads != 4) return LinearMaterialResult::ProfileMismatch;
         }
         if (lightmap_on) {
             // The emitted program re-proves the term: one DEF and one read of

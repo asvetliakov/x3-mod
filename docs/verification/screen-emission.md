@@ -84,3 +84,44 @@ default (`--cull-small-parts-projectiles`, `docs/reverse-engineering/lod-selecti
 **Source clamp 2026-09-29** (`--emission-source-clamp C`, `X3M_EMISSION_SOURCE_CLAMP`, key `emission_source_clamp`; opt-in, not flown; [linear-emission-cost.md](../architecture/linear-emission-cost.md), "Source clamp"): one MIN of the gained colour in both gain families (also at gain 1); C <= 1 keeps the effects screen draws on INVSRCCOLOR and draws the gained ONE/ONE hull cards with DESTBLEND INVSRCCOLOR (scene alpha law kept through separate alpha); C < 1 (8-bit, 0.7 -> 179/255) adds the t / C variant and SRCBLEND BLENDFACTOR so the screen law saturates at C. Bottle X3, measured: `run_linear_emission.py --mode source-gain` PASS 300 cases (source 0.8999: G 2 -> 1.7998, G 2 C 1 -> 1.0, G 1 C 0.5 -> 0.502; G 2 C 0.7 over the 0.902 disc: screen pair 0.7017, ONE/ONE effects pair 1.6035); `run_linear_material.py --hull-emission-gain` PASS runs (2,0) (4,0) (2,1) (2,0.7), program 7 card 0.8999: over the 1.0 disc the FP16 original-program draw (`disc_native`) 1.8994, gained 2.7988 uncapped, 1.0 at C 1; over the 0.902 disc at C 0.7 gained 0.7017; disc alpha bit-exact in every run; `run_sun_share_live.py --case hull_emission` PASS with the extended mode row. Results `verification/results/bottle-X3/linear-emission-source-gain-gpu.json` (`clamp`) and `hull-emission-gain-gpu.json` (`bright_red_sample`).
 
 **Defaults 2026-09-29 (user decision after Run 103 A, "working now, no issues"):** Run 103 A flew `emission_source_clamp 0.7` with `lens_flare_gain 0.5`; run365's `object_lifetime_stats peak_live=44913`, past the old 16,384 registry, confirmed the capacity cause of the earlier symptom (figure from the run triage, not re-read here). The exhausts were accepted at clamp 0.7; the user chose `emission_source_gain = 1`, `emission_source_clamp = 0.7` and `lens_flare_gain = 0.3` as the defaults, in the schema (bare DLL, `x3m.ini` template) and the launcher's default flight alike. With gain 1 the default clamp builds the clamp-only variants and caps the effects pairs and the hull guide-light cards at 179/255 without any gain (documented behaviour). Measured: `generate.py --check` PASS (242 settings, 94 in the template); `manage.py launch --bottle X3 --direct --dry-run` sends `X3M_EMISSION_SOURCE_GAIN=1.0`, `X3M_HULL_EMISSION_GAIN=1.0`, `X3M_EMISSION_SOURCE_CLAMP=0.7`, `X3M_LENS_FLARE_GAIN=0.3`; no fixture expectation changed (fixtures run `X3M_CONFIG=bare`), no Wine run.
+
+## 2026-10-16: native Windows refuses the bolt far-flag variant (ps_2_0 MRT gap)
+
+Symptom (native host, `/mnt/c/X3/x3m.log` and `x3m.prev.log`, 3 rows each): `screen_emission_additive_flag_variant
+original=ec1f5c4a2f4e1445 transform=0 create=8876086c words=88 gain=2 k=32`, while `screen_emission_additive_variant`
+of the same program is created (`create=00000000 words=73`).
+
+**Cause (measured).** The flag variant (`linear_emission_sm1_pixel_variant`, `AdditiveGain` + `far_flag`, ps_2_0) writes
+oC0 and oC2 and leaves oC1 unwritten (`src/renderer/linear_emission_sm1.cpp:263-265`, `written = flag ? 5u`; oC2 MOV at
+`:314`). The native validator (`Direct3DShaderValidatorCreate9` of `C:\Windows\SysWOW64\d3d9.dll` 10.0.26100.9549,
+no device) rejects it with one message, id 573, "When a ps_2_0 shader writes to oCn, it must write to all of oC(n-1)
+down to oC0 (no gaps)". wined3d does not enforce this. The route already binds RT1 for this draw with
+COLORWRITEENABLE1 = 0 (`motion_output.cpp:6722-6737`), so the gap rule is about the shader, not the binding: the open
+item "whether an RT1 gap is legal on native D3D9" of `docs/architecture/bolts-through-taa.md` ("Unknown") is answered
+for the shader side (it is not, for ps_2_0).
+
+**Fix (validated by byte patch, generator not edited).** Write oC1 too: after `mov oC0, r0` (`:306`) emit, for the flag,
+`mov oC1, r0` = `02000001 800F0801 80E40000` (the value is discarded by the 0 write mask); `written = flag ? 7u`
+(`:265`); the flag's expected arithmetic count `+1` (`:324`, 3/4 + 1 + 4 -> + 5); the comments at `:148-149`, `:263`
+and `linear_emission_sm1.h:28` ("oC1 unwritten"). `patch_screen_flag_oc1.py` inserts exactly that MOV (88 -> 91 DWORDs):
+the native validator then accepts it with 0 messages; the additive variant without the flag passes unchanged
+(measured, `verification/results/hull-widen-native-validator/result.json`, rows `additive` / `flag` / `flagfixed`;
+host rebuild `gen_screen_flag_variant.cpp` from the captured original, 73 and 88 DWORDs as in the log).
+
+**Native creation sweep of the generated variants in these two flights** (log `create=` per row, measured; host
+rebuild + native validator where the original is captured):
+
+| Row | Native create (per flight) | Host rebuild + validator |
+| --- | --- | --- |
+| `original_fill_variant`, `sun_shadow_original_variant` | 22 / 22 ok each | not needed |
+| `emission_source_gain_variant` | 6 / 6 ok | not needed |
+| `screen_emission_additive_variant` | 3 / 3 ok | 1 / 1 pass |
+| `screen_emission_additive_flag_variant` | 3 / 3 `8876086c` | fails (MRT gap); fixed by `mov oC1` |
+| `hull_lightmap_variant`, `sun_shadow_original_lightmap_variant` | 19 ok + 3 `80004005` each (the 3 programs without the light-map term, `gain_applied=0`: never created, not a failure) | 16 / 16 pass each |
+| `hull_lightmap_widen_variant`, `sun_shadow_original_lightmap_widen_variant` | 19 / 19 `8876086c` each | fail (c# read port); the one-port fix passes 16 / 16 each (`hull-emissive-widening.md`) |
+| `occlusion_cull_device` (embedded programs) | 1 `create_failed 8876086c` | `docs/verification/occlusion-cull.md`, 2026-10-16 |
+
+Rows the other `CreatePixelShader` sites log (`linear_material_variant`, `linear_material_xt_default_variant`,
+`linear_distance_fade_variant`, `motion_output_variant`, `linear_emission_variant`, `hull_emission_variant`,
+`screen_emission_variant`, `sun_shadow_lane_variant`) do not appear in either log: those paths were not exercised, so
+their native status is unknown here.

@@ -356,11 +356,11 @@ brightness floor, minification gate, flow-control and subroutine refusal, identi
 - **Block** (`linear_material.cpp`, `lightmap_widen_fetch`): the pinned `texld rL, v1, s` becomes 28 instructions,
   117 DWORDs, 36 weighted slots (+35 over the texld), three temporaries `rG` (gradients), `rT = rG + 1`, `rU = rG + 2`:
   `dsx rG.xy, v1 / dsy rG.zw, v1.xyxy / mul rT, rG, rG / mul rT, rT, c217.yzyz / add rT.xy, rT.xzxx, rT.ywxx /
-  max rT.x, rT.x, rT.y / mad_sat rU.w, rT.x, c210.x, -c203.y / rsq rT.x, rT.x / max_sat rT.x, rT.x, c210.x /
+  max rT.x, rT.x, rT.y / mad_sat rU.w, rT.x, c210.x, -c210.w / rsq rT.x, rT.x / max_sat rT.x, rT.x, c210.x /
   rcp rT.x, rT.x / mul rG, rG, rT.x / texldd rL, v1, s, rG.xy, rG.zw / add rT, rG, rG /
   texldd rU.xyz, v1, s, rT.xy, rG.zw / dp3 rU.x, rU, c211 / texldd rT.xyz, v1, s, rG.xy, rT.zw / dp3 rT.w, rT, c211 /
   min rT.w, rT.w, rU.x / dp3 rT.x, rL, c211 / mad_sat rT.y, rT.x, c203.x, -c203.y / max rT.w, rT.w, c210.y /
-  rcp rT.w, rT.w / mul rT.x, rT.x, rT.w / mad_sat rT.x, rT.x, c210.w, -c211.w / mul rT.x, rT.x, rT.y /
+  rcp rT.w, rT.w / mul rT.x, rT.x, rT.w / mad_sat rT.x, rT.x, c203.z, -c203.w / mul rT.x, rT.x, rT.y /
   mul rT.x, rT.x, rU.w / mul rT.x, rT.x, c210.z / mad rL.xyz, rL, rT.x, rL`, then the gain MUL as before. The
   **minification gate** `g = saturate(rho^2 / K - 1)` (in `rU.w`, kept across the `.xyz` coarse fetches) removes the
   boost while the widened fetch is still magnified (`rho^2 < K`, the transition band where a strip between `k` and
@@ -382,10 +382,12 @@ brightness floor, minification gate, flow-control and subroutine refusal, identi
   endloop/endrep/endif close; `LinearMaterialResult::FlowControl` otherwise, `Subroutine` when a label/call/callnz/ret
   precedes the fetch: dsx/dsy inside dynamic flow control are undefined; all 100 programs are at depth 0, the XT
   rep/if blocks close 26-30 DWORDs before the fetch).
-- **Constants**: three shader-local DEFs, `c210 = (1/K, 2^-8, B - 1, 1/0.15)`, `c211 = (0.2126, 0.7152, 0.0722, 9)`
-  and `c203 = (32, 1, 0, 0)`, emitted at the original's first `dcl` after the motion/fill/share DEFs; all proven
-  `constant_free` of the original and, in the emitted program, defined once and read exactly 5, 4 and 3 times (the
-  block's). c210/c211/c203 sit below this unit's c212-c223 reservation because c212-c222 are all taken (c212/c221
+- **Constants**: three shader-local DEFs, `c210 = (1/K, 2^-8, B - 1, 1)`, `c211 = (0.2126, 0.7152, 0.0722, 0)`
+  and `c203 = (32, 1, 1/0.15, 9)`, emitted at the original's first `dcl` after the motion/fill/share DEFs; all proven
+  `constant_free` of the original and, in the emitted program, defined once and read exactly 5, 3 and 4 times (the
+  block's). The lanes are packed so that every block instruction reads at most one distinct constant register: ps_3_0
+  has one constant read port, which wined3d does not enforce and the native D3D9 runtime does (`CreatePixelShader`
+  returns D3DERR_INVALIDCALL; the 2026-10-16 entry of `docs/verification/hull-emissive-widening.md`). c210/c211/c203 sit below this unit's c212-c223 reservation because c212-c222 are all taken (c212/c221
   share, c213/c214 other variant families, c215 fill, c216-c220 motion, c222 exposure) and c223 is the static gain.
   The per-draw lanes are `c217.y` (`(W K)^2`) and `c217.z` (`(H K)^2`); the emitted-program proof counts the block's
   `.yzyz` read once and refuses any other c217 read that is not a replicated `.x` (motion) or `.w` (far fade), which

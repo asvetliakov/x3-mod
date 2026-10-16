@@ -1,0 +1,362 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, no device)",
+ "parameters": "fill 0.01, gain 2, depth 1, K 4, B 4; widen = far-fade dynamic gain, swiden = static gain; fixed/sfixed = patch_one_port.py applied",
+ "tally": [
+  {
+   "kind": "gain",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "swiden",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "widen",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  }
+ ],
+ "rows": [
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "gain",
+   "words": 1577,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "swiden",
+   "words": 1714,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "widen",
+   "words": 1708,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "gain",
+   "words": 1991,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "swiden",
+   "words": 2128,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "widen",
+   "words": 2122,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "gain",
+   "words": 1565,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "swiden",
+   "words": 1702,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "widen",
+   "words": 1696,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "gain",
+   "words": 1976,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "swiden",
+   "words": 2113,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "widen",
+   "words": 2107,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "gain",
+   "words": 1503,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "swiden",
+   "words": 1640,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "widen",
+   "words": 1634,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "gain",
+   "words": 1603,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "swiden",
+   "words": 1740,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "widen",
+   "words": 1734,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "gain",
+   "words": 1965,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "swiden",
+   "words": 2102,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "widen",
+   "words": 2096,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "gain",
+   "words": 1509,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "swiden",
+   "words": 1646,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "widen",
+   "words": 1640,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "gain",
+   "words": 1471,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "swiden",
+   "words": 1608,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "widen",
+   "words": 1602,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "gain",
+   "words": 1566,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "swiden",
+   "words": 1703,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "widen",
+   "words": 1697,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "gain",
+   "words": 1592,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "swiden",
+   "words": 1729,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "widen",
+   "words": 1723,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "gain",
+   "words": 1539,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "swiden",
+   "words": 1676,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "widen",
+   "words": 1670,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "gain",
+   "words": 1885,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "swiden",
+   "words": 2022,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "widen",
+   "words": 2016,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "gain",
+   "words": 1535,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "swiden",
+   "words": 1672,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "widen",
+   "words": 1666,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "gain",
+   "words": 2002,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "swiden",
+   "words": 2139,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "widen",
+   "words": 2133,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "gain",
+   "words": 1859,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "swiden",
+   "words": 1996,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "widen",
+   "words": 1990,
+   "messages": [],
+   "end": "00000000"
+  }
+ ]
+}

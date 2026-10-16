@@ -8,8 +8,8 @@ per-pixel k = clamp(rho, 1, K) from the light map's own texel footprint through
 the per-draw lanes c217.yz, the minification gate g = saturate(rho^2 / K - 1),
 the widened texldd, the two axis-doubled coarse texldd, the larger axis luma
 ratio's gate, the brightness floor b = saturate(32 L_k - 1) and the boost B)
-plus three DEFs (c210 = (1/K, 2^-8, B-1, 1/0.15), c211 = (Rec.709 luma, 9),
-c203 = (32, 1, 0, 0)), rG, rT = rG + 1 and rU = rG + 2 above the program's
+plus three DEFs (c210 = (1/K, 2^-8, B-1, 1), c211 = (Rec.709 luma, 0),
+c203 = (32, 1, 1/0.15, 9)), rG, rT = rG + 1 and rU = rG + 2 above the program's
 highest temporary, nothing else changed (+131 DWORDs, +27 instructions, +35
 weighted slots). The
 byte-exact Python reference below rebuilds every widened variant from the
@@ -88,7 +88,7 @@ def widen_block(destination, coordinate, sampler, g):
             3 << 24 | MUL, dst(t, 15), src(t), src(c217, (1, 2, 1, 2)),
             3 << 24 | ADD, dst(t, 3), src(t, (0, 2, 0, 0)), src(t, (1, 3, 0, 0)),
             3 << 24 | MAX, dst(t, 1), lane(t, 0), lane(t, 1),
-            4 << 24 | MAD, dst(u, 8) | SAT, lane(t, 0), lane(c210, 0), lane(c203, 1) | 1 << 24,
+            4 << 24 | MAD, dst(u, 8) | SAT, lane(t, 0), lane(c210, 0), lane(c210, 3) | 1 << 24,
             2 << 24 | RSQ, dst(t, 1), lane(t, 0),
             3 << 24 | MAX, dst(t, 1) | SAT, lane(t, 0), lane(c210, 0),
             2 << 24 | RCP, dst(t, 1), lane(t, 0),
@@ -105,7 +105,7 @@ def widen_block(destination, coordinate, sampler, g):
             3 << 24 | MAX, dst(t, 8), lane(t, 3), lane(c210, 1),
             2 << 24 | RCP, dst(t, 8), lane(t, 3),
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(t, 3),
-            4 << 24 | MAD, dst(t, 1) | SAT, lane(t, 0), lane(c210, 3), lane(c211, 3) | 1 << 24,
+            4 << 24 | MAD, dst(t, 1) | SAT, lane(t, 0), lane(c203, 2), lane(c203, 3) | 1 << 24,
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(t, 1),
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(u, 3),
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(c210, 2),
@@ -113,9 +113,9 @@ def widen_block(destination, coordinate, sampler, g):
 
 
 def widen_definitions(k, b):
-    return [5 << 24 | DEF, dst(0x20000000 | WIDEN_CONSTANT, 15), f32(1.0 / k), f32(2.0 ** -8), f32(b - 1.0), f32(1.0 / 0.15),
-            5 << 24 | DEF, dst(0x20000000 | WIDEN_LUMA_CONSTANT, 15), f32(0.2126), f32(0.7152), f32(0.0722), f32(9.0),
-            5 << 24 | DEF, dst(0x20000000 | WIDEN_GATE_CONSTANT, 15), f32(32.0), f32(1.0), 0, 0]
+    return [5 << 24 | DEF, dst(0x20000000 | WIDEN_CONSTANT, 15), f32(1.0 / k), f32(2.0 ** -8), f32(b - 1.0), f32(1.0),
+            5 << 24 | DEF, dst(0x20000000 | WIDEN_LUMA_CONSTANT, 15), f32(0.2126), f32(0.7152), f32(0.0722), 0,
+            5 << 24 | DEF, dst(0x20000000 | WIDEN_GATE_CONSTANT, 15), f32(32.0), f32(1.0), f32(1.0 / 0.15), f32(9.0)]
 
 
 def expected_dynamic(words):
@@ -225,7 +225,7 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
     def test_free_lanes_and_constants(self):
         # The oracle's free-lane proof over every widened variant: c217 is read through .yzyz exactly once (the
         # block), otherwise only as replicated .x (the motion fragment) or .w (the far fade's gain); c210/c211 are
-        # defined once and read only by the block (4 and 3 reads); the gained variant never touches c210/c211 or
+        # defined once and read only by the block (5, 3 and 4 reads of c210/c211/c203); the gained variant never touches c210/c211 or
         # c217.yz, so the lanes were free before the block took them.
         lanes, reads = {}, {}
         for name in self.gained():
@@ -260,7 +260,7 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
                 self.assertEqual(seen['yzyz'], 1 if widened else 0, variant)
                 self.assertEqual(seen['wwww'], 1, (variant, 'the dynamic gain reads c217.w once'))
                 self.assertEqual(defs, {WIDEN_CONSTANT: 1 if widened else 0, WIDEN_LUMA_CONSTANT: 1 if widened else 0, WIDEN_GATE_CONSTANT: 1 if widened else 0}, variant)
-                self.assertEqual(uses, {WIDEN_CONSTANT: 5 if widened else 0, WIDEN_LUMA_CONSTANT: 4 if widened else 0, WIDEN_GATE_CONSTANT: 3 if widened else 0}, variant)
+                self.assertEqual(uses, {WIDEN_CONSTANT: 5 if widened else 0, WIDEN_LUMA_CONSTANT: 3 if widened else 0, WIDEN_GATE_CONSTANT: 4 if widened else 0}, variant)
                 lanes[seen['xxxx']] = lanes.get(seen['xxxx'], 0) + 1
                 reads[variant.split('-')[1]] = reads.get(variant.split('-')[1], 0) + 1
         self.assertEqual(sum(reads.values()), 400)
@@ -332,11 +332,11 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
             self.assertEqual(block[23]['words'][3] >> 24 & 0xf, 1, name)
             self.assertEqual(block[19]['words'][3] >> 24 & 0xf, 1, name)  # b = saturate(32 L_k - 1)
             self.assertEqual(block[6]['words'][3] >> 24 & 0xf, 1, name)   # g = saturate(rho^2 / K - 1)
-            # The DEFs carry K = 3, B = 3 (1/K, 2^-8, B - 1, 1/0.15; luma, 9).
+            # The DEFs carry K = 3, B = 3 (1/K, 2^-8, B - 1, 1; luma, 0; 32, 1, 1/0.15, 9).
             defs = {shader.register_of(item['words'][0])[1]: item['words'][1:] for item in items if item['opcode'] == DEF}
-            self.assertEqual(list(defs[WIDEN_CONSTANT]), [f32(1 / 3), f32(2 ** -8), f32(2.0), f32(1 / 0.15)], name)
-            self.assertEqual(list(defs[WIDEN_LUMA_CONSTANT]), [f32(0.2126), f32(0.7152), f32(0.0722), f32(9.0)], name)
-            self.assertEqual(list(defs[WIDEN_GATE_CONSTANT]), [f32(32.0), f32(1.0), 0, 0], name)
+            self.assertEqual(list(defs[WIDEN_CONSTANT]), [f32(1 / 3), f32(2 ** -8), f32(2.0), f32(1.0)], name)
+            self.assertEqual(list(defs[WIDEN_LUMA_CONSTANT]), [f32(0.2126), f32(0.7152), f32(0.0722), 0], name)
+            self.assertEqual(list(defs[WIDEN_GATE_CONSTANT]), [f32(32.0), f32(1.0), f32(1 / 0.15), f32(9.0)], name)
 
     def test_flow_control_depth_refusal(self):
         # Behavioural: the driver runs linear_material_flow_control_depth on synthetic ps_3_0 programs and reports the

@@ -1,0 +1,15 @@
+occl-ps1.bin words=11 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+occl-ps2.bin words=14 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+occl-ps3.bin words=17 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+occl-ps4.bin words=20 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+occl-rect_mad_vs_words.bin words=13 begin=00000000
+  msg instr=3 id=752: 2 different constant registers (c#) read by instruction.  Max. different constant registers readable per instruction is 1. 
+  end=80004005 messages=1 instruction_worst=00000000
+occl-rect_vs_words.bin words=11 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+occl-rect_mad_vs_fixed.bin words=16 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
