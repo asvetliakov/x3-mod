@@ -1,0 +1,17 @@
+{
+ "dll": "detached worktree /tmp/x3-run181-candidate of 3fe363a0, build/d3d9.dll (clean configure + build)",
+ "sha256": "690a4bbe392d24da8fed0680b707d906447ab50aaa2970e048ef45ba528f848a",
+ "bytes": 61940076,
+ "commit": "3fe363a0",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0 (build.log)",
+  "x87_audit": "PASS, violations 0",
+  "site_verifier": "reused from run180 (EXE and hook sites unchanged; the change is a log row)",
+  "host_tests": "test_hull_emissive_widening test_hull_lightmap_gain test_logging_tiers OK (2 skipped: shader corpus absent); Wine fixtures not run (no Wine)"
+ },
+ "trigger": "Run 180 A: ~40% of gained light-map draws held un-widened with no reason visible; the held-by-reason diagnostic",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run180": ["3fe363a0 held draws split by reason (frame row fields + capture row)"]
+}
