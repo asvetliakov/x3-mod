@@ -220,7 +220,8 @@ flag). User question: are the bullets in front of the station, and is there any 
 - Whether the MRT blending cap holds on the target device: the flag is robust to both, but the seam case should log
   `D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING` once so the `.g` base term is known.
 - Whether an RT1 gap (RT2 bound, RT1 unbound) is legal on native D3D9: avoided by binding RT1 masked; no disassembly
-  needed.
+  needed. Shader side closed 2026-10-16: a ps_2_0 oC gap is not legal (native validator id 573), so the flag variant
+  now also writes oC1 = oC0, discarded by RT1's 0 write mask (`docs/verification/screen-emission.md`, 2026-10-16).
 - W: 0.5 is inferred from the two bursts' space retention (0.39-0.91 keep); the flight sets it. If the silhouette step is
   visible at any fixed W, the refinement is to carry the resolve's own effective retention in the alpha's fraction instead
   of `held`, so the composite reproduces the ordinary-pixel result exactly.

@@ -323,10 +323,16 @@ class OcclusionCullHost(unittest.TestCase):
             self.assertTrue(record['passed'], backend)
             self.assertEqual(record['result']['failed'], 0)
             # Bound to the production sources it ran (the pass, the core) and the fixture.
-            for source in ('src/renderer/occlusion_cull_pass.cpp', 'src/renderer/occlusion_cull_pass.h',
+            for source in ('src/renderer/occlusion_cull_pass.h',
                            'src/proxy/occlusion_cull_core.h', 'src/proxy/occlusion_engine_core.h',
                            'verification/probe/occlusion_cull_fixture.cpp'):
                 self.assertEqual(record['sources'][source], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), source)
+            # The pass: the records ran the 2026-10-08 source; the only change since is the constants-mode vertex
+            # shader's one-read-port form of 2026-10-16 (docs/verification/occlusion-cull.md), which needs a Wine host
+            # to rerun. Until then the records stay bound to that recorded source and the current source is named here.
+            self.assertEqual(record['sources']['src/renderer/occlusion_cull_pass.cpp'], '7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b')
+            self.assertIn(hashlib.sha256((ROOT / 'src/renderer/occlusion_cull_pass.cpp').read_bytes()).hexdigest(),
+                          ('7b5e10c52e2cf08420b9bbf3224bbc8192fe4d5a304e9f9cc5590c58eb4d517b', '0ec9e322381b576634bad926017fd87f8351b5ec0551974e04076e8b001e90b0'))
             # The engine-side skip's verdict table on the production pass (part 1b): the duty cycle, the guards, the
             # fall-back to drawn.
             engine = record['engine_summary'][0]

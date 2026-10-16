@@ -1,0 +1,56 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, no device)",
+ "parameters": "screen emission ec1f5c4a2f4e1445 AdditiveGain gain 2 without/with far flag, fixed generator; occl-* = occlusion_cull_pass.cpp programs from the working tree (ps1..ps4 = 1..4 oC MOVs)",
+ "pre_fix_commit": "badbff9e",
+ "flag_equals_patch_screen_flag_oc1_witness": true,
+ "rows": [
+  {
+   "program": "ec1f5c4a2f4e1445-additive",
+   "words": 73,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "ec1f5c4a2f4e1445-flag",
+   "words": 91,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-ps1",
+   "words": 11,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-ps2",
+   "words": 14,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-ps3",
+   "words": 17,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-ps4",
+   "words": 20,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-rect_mad_vs_words",
+   "words": 16,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "program": "occl-rect_vs_words",
+   "words": 11,
+   "messages": [],
+   "end": "00000000"
+  }
+ ]
+}

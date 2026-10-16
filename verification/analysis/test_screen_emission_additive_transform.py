@@ -103,21 +103,24 @@ class AdditiveGainTransformTests(unittest.TestCase):
                 self.assertEqual(len([i for i in items if i['opcode'] == MUL]),
                                  len([i for i in native_items if i['opcode'] == MUL]) + 1, key)
 
-    def test_far_flag_variant_adds_one_oc2_write_and_the_k_constant(self):
+    def test_far_flag_variant_adds_oc1_and_oc2_writes_and_the_k_constant(self):
         """Bolts through the TAA (docs/architecture/bolts-through-taa.md): the AdditiveGain variant with far_flag, at
         gains 1 and 2, is the gained variant (the gain MUL at gain 1 too, since the original SM1 program cannot write
-        oC2) plus `max r2, r0.x, r0.y; max r2, r2, r0.z; mul r2, r2, c31.z; mov oC2, r2` after the oC0 MOV, with K = 32
-        in the DEF's z lane; oC1 is never written."""
+        oC2) plus `mov oC1, r0; max r2, r0.x, r0.y; max r2, r2, r0.z; mul r2, r2, c31.z; mov oC2, r2` after the oC0
+        MOV, with K = 32 in the DEF's z lane. oC1 repeats oC0 because ps_2_0 forbids an oC gap (native validator id 573);
+        RT1 is bound with write mask 0 for this draw."""
         for index, row in enumerate(self.rows):
             native, native_items, _ = self.program(index, 'native')
             for g, gain in enumerate((1.0, 2.0)):
                 words, items, _ = self.program(index, f'flag{g}')
                 key = (row['pixel'], gain)
                 self.assertEqual(words[0], 0xffff0200, key)
-                self.assertEqual(len(words), len(native) + 25, key)
+                self.assertEqual(len(words), len(native) + 28, key)
                 added = [item for item in items if span(words, item) not in {span(native, n) for n in native_items}]
-                self.assertEqual([item['opcode'] for item in added], [DEF, MUL, MAX, MAX, MUL, MOV], key)
-                definition, gain_mul, max_a, max_b, scale, out = added
+                self.assertEqual([item['opcode'] for item in added], [DEF, MUL, MOV, MAX, MAX, MUL, MOV], key)
+                definition, gain_mul, out1, max_a, max_b, scale, out = added
+                self.assertEqual((shader.register_of(out1['words'][0]), shader.mask_of(out1['words'][0])), ((8, 1), 'xyzw'), key)
+                self.assertEqual(shader.register_of(out1['words'][1]), (0, 0), key)
                 self.assertEqual(shader.register_of(definition['words'][0]), (2, 31), key)
                 self.assertEqual(struct.unpack('<4f', struct.pack('<4I', *definition['words'][1:])), (gain, 1., 32., 0.), key)
                 self.assertEqual((shader.register_of(gain_mul['words'][0]), shader.mask_of(gain_mul['words'][0])), ((0, 0), 'xyz'), key)
@@ -128,7 +131,7 @@ class AdditiveGainTransformTests(unittest.TestCase):
                 self.assertEqual((shader.register_of(out['words'][0]), shader.mask_of(out['words'][0])), ((8, 2), 'xyzw'), key)
                 self.assertEqual(shader.register_of(out['words'][1]), (0, 2), key)
                 outputs = sorted(shader.register_of(i['words'][0])[1] for i in items if i['opcode'] == MOV and shader.register_of(i['words'][0])[0] == 8)
-                self.assertEqual(outputs, [0, 2], key)
+                self.assertEqual(outputs, [0, 1, 2], key)
                 # The oC2 write is the last instruction: the oC0 MOV and the native path precede it.
                 self.assertEqual(items[-1]['opcode'], MOV, key)
                 self.assertEqual(shader.register_of(items[-1]['words'][0]), (8, 2), key)

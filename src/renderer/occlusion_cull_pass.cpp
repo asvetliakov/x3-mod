@@ -57,11 +57,13 @@ constexpr DWORD rect_vs_words[] = {0xfffe0300u, 0x0200001fu, 0x80000000u, 0x900f
 // test and leaves RT1/RT2 byte-identical, against 64-67 us for masking or unbinding them (render-pass splits).
 constexpr DWORD rect_ps_head[] = {0xffff0300u, 0x05000051u, 0xa00f0000u, 0x00000000u,
                                   0x00000000u, 0x00000000u, 0x00000000u};
-// The constants mode (no buffer write per frame): vs_3_0 dcl_position v0; dcl_position o0; mad o0, v0, c253, c252 over
-// a four-vertex MANAGED unit-square strip, the rectangle in c252 = (x0, y0, z, 1), c253 = (x1 - x0, y1 - y0, 0, 0).
-constexpr DWORD rect_mad_vs_words[] = {0xfffe0300u, 0x0200001fu, 0x80000000u, 0x900f0000u, 0x0200001fu,
-                                       0x80000000u, 0xe00f0000u, 0x04000004u, 0xe00f0000u, 0x90e40000u,
-                                       0xa0e400fdu, 0xa0e400fcu, 0x0000ffffu};
+// The constants mode (no buffer write per frame): vs_3_0 dcl_position v0; dcl_position o0; mov r0, c253;
+// mad o0, v0, r0, c252 over a four-vertex MANAGED unit-square strip, the rectangle in c252 = (x0, y0, z, 1),
+// c253 = (x1 - x0, y1 - y0, 0, 0). One c# per instruction: vs_3_0 has a single constant read port (the native
+// validator refuses a two-constant mad, docs/verification/occlusion-cull.md 2026-10-16; wined3d and DXVK do not).
+constexpr DWORD rect_mad_vs_words[] = {0xfffe0300u, 0x0200001fu, 0x80000000u, 0x900f0000u, 0x0200001fu, 0x80000000u,
+                                       0xe00f0000u, 0x02000001u, 0x800f0000u, 0xa0e400fdu, 0x04000004u, 0xe00f0000u,
+                                       0x90e40000u, 0x80e40000u, 0xa0e400fcu, 0x0000ffffu};
 constexpr D3DVERTEXELEMENT9 strip_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
 constexpr float unit_strip[8] = {0, 0, 1, 0, 0, 1, 1, 1};

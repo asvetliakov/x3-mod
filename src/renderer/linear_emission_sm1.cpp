@@ -146,7 +146,7 @@ struct Budget {
 // Bounded authored-PS2 validator: rejects unknown forms/resources, tracks
 // initialized temporary lanes and exactly one full MOV per requested output.
 // `written` is the set of outputs the program must write (bits 0..outputs-1;
-// the far flag writes oC0 and oC2 only, bits 0 and 2).
+// the far flag writes oC0, oC1 and oC2: ps_2_0 forbids gaps in oC writes).
 bool generated_shape(const Words& words, Budget& budget, unsigned outputs, unsigned written) noexcept {
     if (words.size() < 2 || words[0] != 0xffff0200u || outputs < 1 || outputs > 4) return false;
     unsigned live[4] = {}, defs = 0, decls = 0, color_mask = 0;
@@ -260,9 +260,9 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
     // AdditiveGain authors the one-output native path with a colour gain
     // (validated as one output below); its gain must be finite in [1, 8].
     const bool additive = config.outputs == LinearEmissionSm1Outputs::AdditiveGain;
-    const bool flag = additive && config.far_flag; // oC0 and oC2 (bolt_far.h); oC1 stays unwritten
+    const bool flag = additive && config.far_flag; // oC0..oC2 (bolt_far.h); oC1 written, masked off
     const unsigned outputs = flag ? 3u : additive ? 1u : static_cast<unsigned>(config.outputs);
-    const unsigned written = flag ? 5u : (1u << outputs) - 1;
+    const unsigned written = (1u << outputs) - 1;
     if (!std::isfinite(config.gain) || config.gain < 0 || config.gain > 16 || outputs < 1 || outputs > 4 ||
         (outputs == 4 && config.native_partial_precision))
         return LinearEmissionResult::InvalidConfig;
@@ -305,6 +305,9 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
             emit(result, mul, {dst(temporary, 0), src(temporary, 0), lane(constant, 31, 0)}); // colour lanes only
         if (outputs != 4) emit(result, mov, {dst(output, 0, 15), src(temporary, 0)});
         if (flag) {
+            // ps_2_0 requires oC writes without gaps (native validator id 573), so oC1 repeats oC0; the route binds
+            // RT1 with COLORWRITEENABLE1 = 0 for this draw, so the value is discarded.
+            emit(result, mov, {dst(output, 1, 15), src(temporary, 0)});
             // The coverage flag (bolt_far.h): K * max(rgb) after the gain into every lane of oC2; the draw's GREEN
             // mask on RT2 stores it in .g, its ONE/ONE blend adds it to the lane's base (or replaces it without MRT
             // post-pixel-shader blending); g > 1 exactly where max(rgb) > 2 / K = 0.0625.
@@ -321,7 +324,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original, std
         }
         result.push_back(end);
         Budget budget;
-        const unsigned expected = flag ? (profile->scalar ? 4u : 3u) + 1u + 4u // gain MUL; MAX, MAX, MUL, MOV oC2
+        const unsigned expected = flag ? (profile->scalar ? 4u : 3u) + 1u + 5u // gain MUL; MOV oC1, MAX, MAX, MUL, MOV oC2
                                   : outputs == 4 ? (profile->scalar ? 12u : 11u)
                                                  : (profile->scalar ? 4u : 3u) + (outputs > 1 ? 22u : 0u) +
                                                        (outputs == 3 ? 2u : 0u) + (additive ? 1u : 0u);

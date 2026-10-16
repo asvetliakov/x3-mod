@@ -125,3 +125,5 @@ Rows the other `CreatePixelShader` sites log (`linear_material_variant`, `linear
 `linear_distance_fade_variant`, `motion_output_variant`, `linear_emission_variant`, `hull_emission_variant`,
 `screen_emission_variant`, `sun_shadow_lane_variant`) do not appear in either log: those paths were not exercised, so
 their native status is unknown here.
+
+2026-10-16 (fix): `linear_emission_sm1.cpp` now emits `mov oC1, r0` after `mov oC0, r0` for the flag (`written` = 7, expected arithmetic + 5); RT1 stays bound with COLORWRITEENABLE1 = 0 (`motion_output.cpp:6730-6737`). Native validator, `verification/results/hull-widen-native-validator/rerun_round2.sh` -> `result-round2.json` (measured): flag variant of ec1f5c4a2f4e1445 at gain 2 91 DWORDs, byte-identical to the `patch_screen_flag_oc1.py` witness, 0 messages; additive variant 73 DWORDs, 0 messages. Host guard `test_native_validator_rules` (read ports per version, no oC gap): 23 SM1 variants from the one captured profile original, 0 breaching (2 with the pre-fix generator). Wine fixture not run on this host; a native flight must show `screen_emission_additive_flag_variant ... create=00000000`.

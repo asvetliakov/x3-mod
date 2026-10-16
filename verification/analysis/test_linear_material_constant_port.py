@@ -8,7 +8,8 @@ widened variant failed on native Windows until 2026-10-16
 variant the hull light-map transformers produce from the local originals
 (verification/probe/linear_material_constant_port_variants.cpp: gained and
 engine-light forms, fill, gain, depth, far fade, share, widening K/B 4/4, 3/3,
-8/1) and checks the rule on each, plus the v# and r# read ports.
+8/1) and checks the rule on each, plus the v# and r# read ports and the no-oC-gap
+rule (oc_gaps; test_native_validator_rules covers the other generators).
 
 Originals: the 137-program corpus under X3M_SHADER_PROGRAM_DIRECTORY
 (default /tmp/x3-shader-sweep/programs) and the native captures under
@@ -62,6 +63,25 @@ def port_violations(words):
     return rows
 
 
+def oc_gaps(words):
+    """oC indices left unwritten below the highest oC a pixel program writes (the ps_2_0 "no gaps" rule, id 573)."""
+    written, at = set(), 1
+    while at < len(words):
+        token = words[at]
+        if token == END:
+            break
+        opcode = token & 0xffff
+        if opcode == COMMENT:
+            at += ((token >> 16) & 0x7fff) + 1
+            continue
+        count = (token >> 24) & 15
+        if opcode not in (DCL, DEF, DEFI, DEFB) and opcode not in NO_DESTINATION and count:
+            if register_type(words[at + 1]) == 8:
+                written.add(words[at + 1] & 0x7ff)
+        at += count + 1
+    return [n for n in range(max(written, default=-1) + 1) if n not in written]
+
+
 def originals():
     folders = []
     for variable, default in (('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'),
@@ -113,7 +133,8 @@ class ConstantReadPortTests(unittest.TestCase):
             breaches = {}
             for path in sorted(output.glob('*.bin')):
                 data = path.read_bytes()
-                rows = port_violations(list(struct.unpack('<%dI' % (len(data) // 4), data)))
+                words = list(struct.unpack('<%dI' % (len(data) // 4), data))
+                rows = port_violations(words) + [('oC gap', gap) for gap in oc_gaps(words)]
                 if rows:
                     breaches[path.name] = rows[:4]
             self.assertEqual(len(list(output.glob('*.bin'))), variants)

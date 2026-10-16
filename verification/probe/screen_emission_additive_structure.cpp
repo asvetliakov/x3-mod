@@ -110,8 +110,9 @@ int main(int argc, char** argv) {
             }
             // The far flag (bolts-through-taa.md; LinearEmissionSm1Config::far_flag): the
             // AdditiveGain variant at gains 1 and 2 with oC2 = c31.z * max(rgb) after the
-            // gain MUL: one DEF (c31 = gain, 1, 32, 0), the gain MUL, two MAX, one MUL and the
-            // oC2 MOV over the native path (25 words); outputs oC0 and oC2, oC1 unwritten.
+            // gain MUL: one DEF (c31 = gain, 1, 32, 0), the gain MUL, the oC1 MOV, two MAX, one MUL
+            // and the oC2 MOV over the native path (28 words); outputs oC0..oC2 (ps_2_0 forbids an
+            // oC gap; oC1 repeats oC0 and is bound masked off).
             for (unsigned g = 0; g < 2; ++g) {
                 LinearEmissionSm1Config config{gains[g], LinearEmissionSm1Outputs::AdditiveGain, false};
                 config.far_flag = true;
@@ -120,10 +121,10 @@ int main(int argc, char** argv) {
                             LinearEmissionResult::Applied,
                         "far flag promotion");
                 require(original == saved, "far flag input mutated");
-                require(flagged.size() == native.size() + 25, "far flag: one DEF, one MUL, two MAX, one MUL, one MOV");
+                require(flagged.size() == native.size() + 28, "far flag: one DEF, one MUL, one MOV, two MAX, one MUL, one MOV");
                 Budget budget;
-                require(generated_shape(flagged, budget, 3, 5) && budget.outputs == 5 && budget.textures == 1,
-                        "authored oC0 + oC2 shape");
+                require(generated_shape(flagged, budget, 3, 7) && budget.outputs == 7 && budget.textures == 1,
+                        "authored oC0..oC2 shape");
                 max_arithmetic = std::max(max_arithmetic, budget.arithmetic);
                 write(std::string(argv[2]) + "/additive_" + std::to_string(index) + "-flag" + std::to_string(g) +
                           ".bin",
