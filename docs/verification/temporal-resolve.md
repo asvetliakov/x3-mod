@@ -3780,3 +3780,14 @@ Dry runs [M]: `--direct` sends `X3M_TAA_LUMA_LOCK=16,0.25,3` (128 variables, 127
 `--taa-far-stabiliser 0` omits it; `verification/results/logging-tiers/dry_run_tiers.py` and
 `verification/results/launcher-defaults/compare_dry_runs.py` re-recorded (all PASS). Needs a DLL rebuild
 (`src/config/config_schema_inc.h` changed); no shader change.
+
+## Far stabiliser band default 30/34 (2026-10-16, user decision after Run 179)
+
+Default `taa_far_stabiliser` / `--taa-far-stabiliser` changed from `0.985,0,60,68,0.03,0.25` to `0.985,0,30,34,0.03,0.25`
+(schema, generated header, template, launcher fill-in, DLL parse fallbacks in `capture.cpp` and `motion_output.h`): the
+luma lock becomes eligible from about 38.4k view units instead of 76.8k at 5120 px [I: F0 x 1280]. Why: with 60/68 a
+selected station or capital at 20-58k view units never reached the lock and its bright hull details flickered; flown on
+the ini value 30/34 the station was fine (user, 2026-10-16); the band would have reached 0.395 / 0.140 / 0.041 / 0.109 of
+the presented flicker in the four analysed frames [M] (`verification/results/taa-seta-shimmer-run179/summary.txt`).
+Weight, filter and speed gate unchanged. Needs a DLL rebuild; host tests updated (schema, launcher defaults, far clip,
+image defaults).

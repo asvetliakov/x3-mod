@@ -413,7 +413,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_FAR_CLIP_DEFAULT", "taa_far_clip_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 238},
     {"X3M_TAA_FAR_GATE", "taa_far_gate", Type::Enum, "camera", nullptr, 95, 0, 8, 0, 0, "camera|screen", 1, -1},
     {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 240},
-    {"X3M_TAA_FAR_STABILISER", "taa_far_stabiliser", Type::FloatList, "0.985,0,60,68,0.03,0.25", nullptr, 95, 0, 8, 6, 86, "", 0, -1},
+    {"X3M_TAA_FAR_STABILISER", "taa_far_stabiliser", Type::FloatList, "0.985,0,30,34,0.03,0.25", nullptr, 95, 0, 8, 6, 86, "", 0, -1},
     {"X3M_TAA_HISTORY_WEIGHT", "taa_history_weight", Type::Float, nullptr, nullptr, 101, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_LUMA_LOCK", "taa_luma_lock", Type::FloatList, "16,0.25,3", nullptr, 102, 0, 14, 3, 10, "", 0, -1},
     {"X3M_TAA_LUMA_LOCK_GATE", "taa_luma_lock_gate", Type::Enum, nullptr, nullptr, 105, 0, 17, 0, 0, "camera|screen|always", 1, -1},
@@ -559,7 +559,7 @@ constexpr bool taa = true;
 constexpr const char taa_box_resolution[] = "half";
 constexpr const char taa_far_clip[] = "7x7";
 constexpr const char taa_far_gate[] = "camera";
-constexpr const char taa_far_stabiliser[] = "0.985,0,60,68,0.03,0.25";
+constexpr const char taa_far_stabiliser[] = "0.985,0,30,34,0.03,0.25";
 constexpr const char taa_luma_lock[] = "16,0.25,3";
 constexpr float taa_mip_bias = -0.5f;
 constexpr const char taa_motion_weight[] = "0.7,2,8";

@@ -5,7 +5,8 @@ Design note, 2026-09-28. Status: default since 2026-09-28 after Run 100 A (user 
 and the thin region stay required inputs: with either at 0 the lock resolves off with its `motion_output_taa_luma_lock`
 row, the config is not refused, and the launcher's default then stays off). With the lock on, the far stabiliser's W
 applies only to locked pixels and its F0/F1 ramp is the lock's eligibility band; the far stabiliser is not disabled and
-the thin region stays. Ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
+the thin region stays. Since 2026-10-16 the far default is `0.985,0,30,34,0.03,0.25` (eligibility from about 38.4k
+view units; 60/68 before). Ratified 2026-09-28 (orchestrator; user chose the lock over the baker widening);
 implemented 2026-09-28 through section 12 (launcher `--taa-luma-lock`, default `16,0.25,3`,
 T 1..31; run354 flew sections 10 + 11); section 12 built with four implementer readings (unheld `ownC` as the camera gate,
 nearest-lock claim, motion creation only above the base weight's age, the sign bit only with the class): all 20
@@ -262,7 +263,8 @@ Schema first (`tools/config/schema.py`, then `generate --check` regenerates `con
 - `dev('taa_luma_lock_release', 'float', ...)`, the mean-luma kill ratio (0.75; changed in section 11: 0.65 against the
   running mean), and `dev('taa_luma_lock_gate', 'enum',
   choices=('screen', 'always'))` for the creation gate A/B in the fixture only.
-- The far stabiliser keeps its entry and default `0.985,0,60,68,0.03,0.25`: with the lock on, W is the locked pixel's
+- The far stabiliser keeps its entry and default `0.985,0,60,68,0.03,0.25` (default `0.985,0,30,34,0.03,0.25` since
+  2026-10-16, the lock eligible from about 38.4k view units; `docs/verification/temporal-resolve.md`): with the lock on, W is the locked pixel's
   weight, F0/F1 the eligibility ramp, LO/HI the creation gate; its description gains one sentence saying so. W = 0 with the
   lock on refuses the run at prepare (as invalid far settings do today), never a silent fallback.
 - First flight: opt-in, builtin '0', launcher `--taa-luma-lock 16`. After acceptance: builtin '16'; the far stabiliser's

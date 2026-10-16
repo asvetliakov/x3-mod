@@ -1,0 +1,34 @@
+Run179 flight 2026-10-16, native C:\X3, 5120x1440, luma_lock=16,0.25,3 gate=camera, far 0.985 60/68 u/px, thin 0.97, motion_weight 0.7,2,8,
+sharpen 0.75, hull_lightmap_gain 2. Scripts: run_all.sh. M = measured, I = inferred.
+Frame step: capture frames take 388-623 ms (frame_end dt_ms) and the game step is clamped, so every capture frame after the first carries
+7-35x the in-flight per-frame displacement; the first frame of each burst follows an ordinary frame (frame_step_out.txt) [M].
+Bursts [M]:
+  4707 straight flight, R constant, cam step 247 u/f (first frame 7.4); target solar plant, far band (engine d 8.65M, ~1e5 view z [I]).
+  7631 SETA on (engage 7085, release 7898), R constant, step 1237.5 u/f (first 198); Titan at view z 21-27k: 2.84 px/f in flight, 18-30 capture.
+  11391 pan: rotation path at screen centre 0.76 px/f in flight, 14.7-30 capture; own ship (chase view, z 110-150) 0.15 / 2-9.6 px/f.
+  13089 camera still (R, t constant); Titan at z ~43k: 0.08 px/f in flight, 2.2-2.9 capture.
+Flicker on chain-valid hull (16-frame motion chain, hp rms >= 3 codes, flips >= 50 %) [M]:
+  burst   resolved(q)   presented(display)  raw input   L>1 res/pres   out/in gain (all hull)
+  4707    373 0.23 %    2960 1.86 %         17.1 %      2 / 0          0.098
+  7631    1096 0.54 %   4812 2.36 %         15.3 %      27 / 46        0.112 (Titan group 0.174 = EMA 0.7)
+  11391   659 0.41 %    4686 2.89 %         12.6 %      53 / 56        0.172
+  13089   814 0.47 %    4380 2.55 %         18.0 %      13 / 18        0.094 (own ship 0.088 = EMA 0.85)
+Presented-flicker gate classes (camera gate closed | open, farw=0 and no region | eligible, unlocked | locked and open) [M]:
+  4707 0.007 | 0.888 | 0.058 | 0.047    7631 0.483 | 0.478 | 0.021 | 0.018
+  11391 0.861 | 0.051 | 0.033 | 0.055   13089 0.180 | 0.813 | 0.007 | 0.000
+  L>1 subsets: camera gate closed 0.78-1.00. Sharpen: presented/unsharpened-proxy hp rms 1.06-1.09 on the presented-flicker set.
+Far band 30/34 (eligible beyond z 38.4k): reaches 0.395 / 0.140 / 0.041 / 0.109 of presented flicker (13089 / 11391 / 7631 / 4707);
+  with the capture-frame camera gate open 0.215 / 0.020 / 0.036 / 0.104 [M]; in flight the 13089 Titan (0.08 px/f) is under the gate [I].
+--- Second flight (taa_far_stabiliser 0.985,0,30,34: eligible beyond view z 38,400) [M unless marked]
+burst  camera                         Titan view z (node 499e5b30)  Titan px/f in flight / capture
+2927   turning (centre 0.68 px/f)     ~102k (plant 84k; target plant) 0.69 / 11.5-32.6
+6560   straight, normal speed         28-31k (target Titan)          0.22 (p90 0.27) / 7.5-8.6
+9819   hard turn (centre 1.12)        92-96k (target Titan)          1.22 / 21-51
+10280  SETA, straight                 87k -> 74k (target Titan)      0.26 / 4.2-5.6
+Titan pixels' presented flicker share / out-in gain / locked now: 2927 4.3 % / 0.104 / 0.52; 6560 6.2 % / 0.170 / 0.23 (farw 0, region 0.60);
+  9819 6.5 % / 0.108 / 0.52; 10280 2.6 % / 0.107 / 0.67. Capture-frame camera gate closed on 100 % of Titan pixels in every burst.
+Plant: flight 1 burst 4707 (z ~100k, band 60/68) out/in 0.057, presented flicker 0 px; flight 2 burst 2927 (z ~84k) 0.115, 12 px (0.6 %).
+  Both inside either band: the band change did not alter the plant's eligibility in these bursts.
+Light map: the Titan's draws (ps ca6bfa4a..., 5e0a10fe...) bind the gain-2 light-map variants; every widened variant failed creation with
+  8876086c (D3DERR_INVALIDCALL), 16/16 in both flights; widened=0 of 1,422,361 admitted light-map draws (flight 2), 0 of 1,264,697 (flight 1).
+  Far fade starts at 80 u/px (view z 102k); the mid Titan is at ~22 u/px: gain 2, no fade (faded=0, min_gain 2 at 6568/6575).

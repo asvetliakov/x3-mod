@@ -141,7 +141,7 @@ float taa_mip_bias = 0.f;
 // temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
-float taa_far[6] = {0.f,  0.f, 60.f, 68.f,
+float taa_far[6] = {0.f,  0.f, 30.f, 34.f,
                     .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0
                                  // off), gate footprints, speed gate px/frame
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
@@ -4268,7 +4268,7 @@ void initialize_log(HMODULE module) {
         wchar_t far_setting[64];
         const DWORD length = taa_requested ? x3m::config::get(L"X3M_TAA_FAR_STABILISER", far_setting, 64) : 0;
         if (length > 0 && length < 64) {
-            float v[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f};
+            float v[6] = {0.f, 0.f, 30.f, 34.f, .03f, .25f};
             unsigned count = 0;
             wchar_t* cursor = far_setting;
             bool ok = true;

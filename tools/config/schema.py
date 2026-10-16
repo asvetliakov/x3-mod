@@ -97,7 +97,7 @@ SETTINGS = [
     entry('taa_far_stabiliser', 'float_list', 'graphics', 'Calms the shimmer of small distant details (antennas, struts). The first '
           'number is how strongly (0.5 to 0.99); the others tune when it applies. 0 = disabled. With taa_luma_lock on, the '
           'strength applies only to details the lock holds and the distance numbers set where the lock may hold; the lock '
-          'needs this on.', '0.985,0,60,68,0.03,0.25',
+          'needs this on.', '0.985,0,30,34,0.03,0.25',
           counts=(1, 2, 4, 6), elements=((0, 0.99), (0, 4), [R(0, 1e6, True)], [R(0, 1e6, True)], (0, 64), [R(0, 64, True)]),
           requires=('taa',), launcher='--taa-far-stabiliser'),
     entry('taa_thin_region', 'float_list', 'graphics', 'Calms the crawling of thin lattices and struts. The first number is how '

@@ -1,0 +1,7 @@
+frame=4715	 d=8645311	body=stations\station_scenes\others\argon_S_solarpowerplant
+frame=4715	 d=9468018	body=ships\argon\argon_m2_titan\hull
+frame=7640	 d=2419558	body=ships\argon\argon_m2_titan\hull
+frame=11400	 d=4459516	body=ships\argon\argon_m2_titan\hull
+frame=11400	 d=3678686	body=stations\station_scenes\others\argon_S_solarpowerplant
+frame=13095	 d=3592947	body=ships\argon\argon_m2_titan\hull
+frame=13095	 d=4831218	body=stations\station_scenes\others\argon_S_solarpowerplant

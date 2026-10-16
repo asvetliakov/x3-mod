@@ -3189,8 +3189,8 @@ private:
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f; // X3M_FIXTURE_TAA_K, seam only (negative: derived)
     float taa_sharpen_ = 0.f;     // X3M_TAA_SHARPEN (0: off)
-    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 60.f, taa_far_f1_ = 68.f, taa_far_lo_ = .03f,
-          taa_far_hi_ = .25f;                            // X3M_TAA_FAR_STABILISER (F0 / F1 80 / 130 before 2026-09-25)
+    float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 30.f, taa_far_f1_ = 34.f, taa_far_lo_ = .03f,
+          taa_far_hi_ = .25f;                            // X3M_TAA_FAR_STABILISER (F0/F1 30/34 from 2026-10-16)
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false;                  // camera gate, on with the thin region
     float taa_thin_emissive_ = 0.f;       // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region

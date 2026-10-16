@@ -1,0 +1,6 @@
+frame 11400: far routed px (z>1e5, every 2nd) 2737, screen |d| p50 38.77
+  v R1 R0^T (rows = axes): path |d| p50 38.48, |motion - path| p50 77.054 p90 123.535
+  v R1^T R0 (cols = axes): path |d| p50 39.96, |motion - path| p50 1.022 p90 2.988
+frame 11406: far routed px (z>1e5, every 2nd) 4122, screen |d| p50 44.46
+  v R1 R0^T (rows = axes): path |d| p50 43.38, |motion - path| p50 86.747 p90 139.682
+  v R1^T R0 (cols = axes): path |d| p50 43.77, |motion - path| p50 0.770 p90 2.261

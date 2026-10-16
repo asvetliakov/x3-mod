@@ -29,7 +29,7 @@ class FarClipLaunch(unittest.TestCase):
                 env = self.env(directory, *TAA, inherited=inherited)
                 self.assertEqual((env[self.NAME], env[self.MARKER]), ('7x7', '1'))
                 # The far ramp's new footprints travel in the far stabiliser's default value.
-                self.assertEqual(env['X3M_TAA_FAR_STABILISER'], '0.985,0,60,68,0.03,0.25')
+                self.assertEqual(env['X3M_TAA_FAR_STABILISER'], '0.985,0,30,34,0.03,0.25')
 
     def test_explicit_values_are_forwarded_with_marker_0(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -79,10 +79,10 @@ class FarClipSource(unittest.TestCase):
         self.assertIn('log("taa_far_clip_setting invalid=1");', capture)
         self.assertIn('configure_far_clip(taa_far_clip_7x7,taa_far_clip_given,taa_far_clip_default)', capture)
         # The far ramp's DLL defaults (unset, and the fields a shorter X3M_TAA_FAR_STABILISER leaves out).
-        self.assertIn('float taa_far[6] = {0.f, 0.f, 60.f, 68.f, .03f, .25f};', capture)
-        self.assertIn('float v[6]={0.f,0.f,60.f,68.f,.03f,.25f};', capture)
+        self.assertIn('float taa_far[6] = {0.f, 0.f, 30.f, 34.f, .03f, .25f};', capture)
+        self.assertIn('float v[6]={0.f,0.f,30.f,34.f,.03f,.25f};', capture)
         header = source_text(ROOT / 'src/proxy/motion_output.h')
-        self.assertIn('taa_far_f0_ = 60.f, taa_far_f1_ = 68.f', header)
+        self.assertIn('taa_far_f0_ = 30.f, taa_far_f1_ = 34.f', header)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('ps30_slots=%u far_gate=%s default=%u far_clip=%s far_clip_default=%u reason=%s"', motion)  # reason: initialize's refusal (2026-09-25)
         self.assertIn('far_clip ? "7x7" : "3x3", unsigned(far_clip && taa_far_clip_default_)', motion)
