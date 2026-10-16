@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-// Smooth ship steering (X3M_SHIP_STEERING=1, default off): the three
+// Smooth ship steering (X3M_SHIP_STEERING, default on since 2026-10-16; 0 = off): the three
 // steering-leaf entries A1-A3 and the per-object loop continue B of the
 // command pass claimed through engine_patch (docs/architecture/
 // ship-steering-and-avoidance.md, step 1). initialize() runs on the

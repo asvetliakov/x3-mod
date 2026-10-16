@@ -264,16 +264,17 @@ bool initialize() {
     }
     initialized_ = true;
     wchar_t text[8]{};
+    // Default on since 2026-10-16 (the schema's builtin and default 1): unset or empty = on, 0 = off.
     const DWORD length = x3m::config::get(L"X3M_SHIP_STEERING", text, 8);
-    bool on = false;
+    bool on = true;
     const char* reason = nullptr;
     char detail[64] = {};
-    if (length >= 8 || !core::parse_switch(text, length, &on))
+    if (length && (length >= 8 || !core::parse_switch(text, length, &on)))
         reason = "invalid_setting";
     else if (!on) {
         state_ = "off";
         SetLastError(error);
-        return false; // unset or 0: nothing claimed, no row
+        return false; // 0: nothing claimed, no row
     }
     wchar_t classes[sites::kSettingCapacity]{};
     const DWORD class_length = x3m::config::get(L"X3M_SHIP_STEERING_CLASSES", classes, sites::kSettingCapacity);
@@ -291,12 +292,12 @@ bool initialize() {
         SetLastError(error);
         return false;
     }
-    // Step 2: X3M_SHIP_AVOIDANCE=1 (requires the steering above). Site E is claimed separately; a refusal there
-    // leaves avoidance running without the suppression (the reactive loop stays as today).
+    // Step 2: X3M_SHIP_AVOIDANCE (default on since 2026-10-16: unset or empty = on, 0 = off; requires the steering above). Site E
+    // is claimed separately; a refusal there leaves avoidance running without the suppression (the reactive loop stays as today).
     wchar_t avoid_text[8]{};
     const DWORD avoid_length = x3m::config::get(L"X3M_SHIP_AVOIDANCE", avoid_text, 8);
-    bool avoid_on = false;
-    if (avoid_length >= 8 || !core::parse_switch(avoid_text, avoid_length, &avoid_on)) {
+    bool avoid_on = true;
+    if (avoid_length && (avoid_length >= 8 || !core::parse_switch(avoid_text, avoid_length, &avoid_on))) {
         avoid_on = false;
         log("ship_avoidance_refused reason=invalid_setting");
     }

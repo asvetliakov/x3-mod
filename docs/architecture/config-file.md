@@ -674,3 +674,17 @@ Until 2026-10-15 the value 0 meant the traffic controller's stage B (holding pet
 [ship-steering-holistic-review.md](ship-steering-holistic-review.md) rank 2, together with the key `ship_steering_gates_capital_seq`
 (amendment 16b). A file that still sets that key gets the unknown-key row and nothing else. `ship_steering_gates_traffic` stays,
 builtin 1.
+
+## `ship_steering`, `ship_avoidance` and the gate keys on by default (2026-10-16)
+
+User decision 2026-10-16: Run178's accepted state is the default. `ship_steering` and `ship_avoidance` have schema default
+**1** and builtin 1 (no longer "Experimental"); `ship_steering_gates` and `ship_steering_gates_capital` gain schema default 1
+(their builtin was already 1) because the launcher sends them on every modded launch and the bare-DLL test requires every sent
+variable to sit at its schema default. `ship_steering_gates_traffic` keeps no schema default (builtin 1, no launcher option);
+`ship_steering_gates_lane` is unchanged (default and builtin 1). The read sites in `src/proxy/ship_steering_install.cpp` treat
+an unset or empty `X3M_SHIP_STEERING` / `X3M_SHIP_AVOIDANCE` as on and only `0` as off, so a bare DLL (`X3M_CONFIG=bare`,
+nothing resolved) and a missing ini line both give the whole stack on. The `requires=` chains are unchanged. The launcher sends
+`X3M_SHIP_STEERING=1`, `X3M_SHIP_AVOIDANCE=1`, `X3M_SHIP_STEERING_GATES=1` and `X3M_SHIP_STEERING_GATES_CAPITAL=1` on every
+modded launch; `--no-ship-steering` sends `X3M_SHIP_STEERING=0` and nothing else of the stack, `--no-ship-avoidance` sends
+`X3M_SHIP_AVOIDANCE=0` (an explicit 0, since the DLL's own default is on; player mode keeps it as a non-default value). Under
+`--vanilla` nothing of the stack is sent. `ship_trace` and `ship_trace_max` stay diagnostics, builtin 0 and 8.

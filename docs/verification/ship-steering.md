@@ -3304,6 +3304,24 @@ but `rt_far` (and the totals) in the full, `--lane` and `--capital` runs, the ar
 between them: host timing); `summary_bound.py` PASS (3,831, unchanged: `ctl_arr_far=` is on the lane summary);
 i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014); `verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Not flown.
 
+### Defaults on (2026-10-16, Opus 5.5; the user's decision: Run178's accepted state is the default; [config-file.md](../architecture/config-file.md), last section)
+
+`ship_steering` and `ship_avoidance` are on by default: schema default and builtin `1`, "Experimental" dropped, the read sites in
+`ship_steering_install.cpp` take unset or empty as on and only `0` as off (the lane's and the traffic key's rule). `ship_steering_gates`
+and `ship_steering_gates_capital` gain schema default `1` (builtin already `1`) because the launcher sends them and the bare-DLL test
+wants every sent variable at its schema default. With no ini line and no environment all six keys (steering, avoidance, gates, capital,
+traffic, lane) resolve on, through the resolver's table or, under `X3M_CONFIG=bare`, through each read site's builtin. Launcher:
+`--ship-steering` / `--ship-avoidance` are promoted defaults sent as `1` on every modded launch; `--no-ship-steering` sends `0` and
+drops the rest of the stack; `--no-ship-avoidance` sends `0`; nothing under `--vanilla`. `ship_trace` / `ship_trace_max` unchanged
+(builtin 0 / 8). The host fixture sets its keys itself (it compiles the core headers, not the install path), so no fixture
+behaviour changes.
+
+**Acceptance [m]**: `generate.py --check` PASS (273 settings, 123 in the template); `test_config_schema`, `test_launcher_defaults`,
+`test_ship_trace_format` 49 tests OK (the resolver harness compiled from `config_schema_inc.h` resolves the five keys with a default to
+`1` with no file and all six to nothing under bare, where the builtins decide); `ship_steering_host --lane` 6,643 / 0, the count of
+the previous entry; i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014 reachable, 0 violations);
+`verify_ship_steering_sites.py --exe /mnt/c/X3/X3AP.exe` PASS 20. Not flown (the installed ini already sets the keys on).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

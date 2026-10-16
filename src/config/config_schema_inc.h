@@ -380,12 +380,12 @@ constexpr Entry entries[entry_count] = {
     {"X3M_SHADOW_SUN_POLL", "shadow_sun_poll", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 1, -1},
     {"X3M_SHADOW_SUN_TRACE", "shadow_sun_trace", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 1, -1},
     {"X3M_SHADOW_TIMING", "shadow_timing", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 1, -1},
-    {"X3M_SHIP_AVOIDANCE", "ship_avoidance", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
-    {"X3M_SHIP_STEERING", "ship_steering", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
+    {"X3M_SHIP_AVOIDANCE", "ship_avoidance", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 0, -1},
+    {"X3M_SHIP_STEERING", "ship_steering", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHIP_STEERING_CLASSES", "ship_steering_classes", Type::String, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHIP_STEERING_DOCK", "ship_steering_dock", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
-    {"X3M_SHIP_STEERING_GATES", "ship_steering_gates", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
-    {"X3M_SHIP_STEERING_GATES_CAPITAL", "ship_steering_gates_capital", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
+    {"X3M_SHIP_STEERING_GATES", "ship_steering_gates", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 0, -1},
+    {"X3M_SHIP_STEERING_GATES_CAPITAL", "ship_steering_gates_capital", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHIP_STEERING_GATES_LANE", "ship_steering_gates_lane", Type::Bool, "1", nullptr, 88, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHIP_STEERING_GATES_TRAFFIC", "ship_steering_gates_traffic", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHIP_TRACE", "ship_trace", Type::Bool, nullptr, nullptr, 88, 0, 8, 0, 0, "", 0, -1},
@@ -542,6 +542,10 @@ constexpr bool shadow_caster_retention = true;
 constexpr bool shadow_replay_candidates = true;
 constexpr bool shadow_replay_depth = true;
 constexpr bool shadow_sun_poll = true;
+constexpr bool ship_avoidance = true;
+constexpr bool ship_steering = true;
+constexpr bool ship_steering_gates = true;
+constexpr bool ship_steering_gates_capital = true;
 constexpr bool ship_steering_gates_lane = true;
 constexpr const char sun_flare_fix[] = "on";
 constexpr bool sun_occlusion = true;

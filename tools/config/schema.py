@@ -390,14 +390,14 @@ SETTINGS = [
           'would otherwise create a few dozen invisible objects every frame and never remove them. on or off.', 'on',
           choices=('on', 'off'), launcher='--dust-leak-fix'),
     entry('ship_steering', 'bool', 'engine', 'Smoother steering for computer-flown ships: turns follow one curve instead of '
-          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. Experimental. 1 = on, 0 = off.',
-          builtin='0', launcher='--ship-steering', since='2026-10-12'),
+          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off.', '1',
+          builtin='1', launcher='--ship-steering', since='2026-10-12'),
     entry('ship_steering_classes', 'string', 'engine', 'Ship classes the smoother steering leaves to the game, as a comma list '
           'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class.',
           builtin='', requires=('ship_steering',), launcher='--ship-steering-classes', since='2026-10-12'),
     entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
-          'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). Experimental. '
-          '1 = on, 0 = off.', builtin='0', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
+          'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). '
+          '1 = on (default), 0 = off.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
     entry('ship_trace', 'bool', 'logging', 'Diagnostic: follows a few computer-flown ships through a gate or dock approach and '
           'writes one ship_trace log row per frame for each (positions, heading, rates, speeds, the steering point given and '
           'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off.', builtin='0',
@@ -407,11 +407,11 @@ SETTINGS = [
     entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
           'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '
-          '1 = on, 0 = off.', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
+          '1 = on, 0 = off.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
     entry('ship_steering_gates_capital', 'bool', 'engine', 'Capital ships (M1, M2, TL and the like) fly the gate approach the same '
           'way: they line up with the gate axis on the way to their waiting point and, when they arrive facing the gate, keep '
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
-          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', builtin='1',
+          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', '1', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
     entry('ship_steering_gates_traffic', 'bool', 'engine', 'Capital ships at the same gate are coordinated by one traffic controller per '
           'gate: it predicts every capital\'s path for the next 30 seconds, lets the game skip its own collision warning between two of '

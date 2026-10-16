@@ -756,8 +756,10 @@ engine's `f+0x260`.
 
 ### 6.3 Kill switches and diagnostics
 
-* `ship_steering = on|off` (default **off** for the first release, on once Run A accepts it; `X3M_SHIP_STEERING`);
-  `ship_avoidance = on|off` (requires steering; default off in step 1); `ship_steering_classes` = list of
+* `ship_steering = 1|0` (`X3M_SHIP_STEERING`; default off until 2026-10-16, **on** since: schema default and the
+  read site's builtin 1, `--no-ship-steering` = off; [config-file.md](config-file.md), last section);
+  `ship_avoidance = 1|0` (requires steering; default **on** since 2026-10-16, `--no-ship-avoidance` = off; the gate
+  keys `ship_steering_gates`, `_capital`, `_traffic`, `_lane` are on by default too); `ship_steering_classes` = list of
   `SG_SH_*` names to exclude (e.g. `M1,M2,TL`), parsed once at load into a 16-bit mask over the record
   `+0x14` code. Off = no claim, bytes untouched; refused bytes = module off with one `always`-tier row.
 * Diagnostic rows under the existing tiers (`log_tiers.h`), emitted from the frame boundary out of a ring,

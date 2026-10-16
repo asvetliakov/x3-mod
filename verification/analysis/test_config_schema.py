@@ -187,23 +187,52 @@ class ConfigSchema(unittest.TestCase):
             self.assertEqual(launch_env(module, game, wine, '--config', '--emission-source-gain', '3')[hull], '3.0')
 
     def test_ship_steering_keys(self):
-        # docs/verification/ship-steering.md: an experimental opt-in with no schema default (the DLL's own built-in off),
-        # its class list a plain string that requires it; both in the template, commented at their defaults.
+        # docs/verification/ship-steering.md, "Defaults on" (2026-10-16): steering and avoidance on by default (the resolver's
+        # default and the read site's own builtin both 1), the gate approach and its capital half with a resolver default 1 too
+        # (the launcher sends them); the class list a plain string that requires the steering; all in the template at their defaults.
         steering, classes = schema.BY_KEY['ship_steering'], schema.BY_KEY['ship_steering_classes']
         self.assertEqual((steering['type'], steering['section'], steering['default'], steering['builtin'], steering['launcher']),
-                         ('bool', 'engine', None, '0', '--ship-steering'))
+                         ('bool', 'engine', '1', '1', '--ship-steering'))
+        self.assertNotIn('Experimental', steering['description'])
         self.assertEqual((classes['type'], classes['default'], classes['builtin'], classes['requires'], classes['launcher']),
                          ('string', None, '', ('ship_steering',), '--ship-steering-classes'))
         avoidance = schema.BY_KEY['ship_avoidance']
         self.assertEqual((avoidance['type'], avoidance['default'], avoidance['builtin'], avoidance['requires'], avoidance['launcher']),
-                         ('bool', None, '0', ('ship_steering',), '--ship-avoidance'))
+                         ('bool', '1', '1', ('ship_steering',), '--ship-avoidance'))
+        self.assertNotIn('Experimental', avoidance['description'])
         gates = schema.BY_KEY['ship_steering_gates']
         self.assertEqual((gates['type'], gates['default'], gates['builtin'], gates['requires'], gates['launcher']),
-                         ('bool', None, '1', ('ship_steering',), '--ship-steering-gates'))
+                         ('bool', '1', '1', ('ship_steering',), '--ship-steering-gates'))
         # amendment 13: the capital half of the gate approach, on by default, a kill switch under the gates
         capital = schema.BY_KEY['ship_steering_gates_capital']
         self.assertEqual((capital['type'], capital['default'], capital['builtin'], capital['requires'], capital['launcher']),
-                         ('bool', None, '1', ('ship_steering_gates',), '--ship-steering-gates-capital'))
+                         ('bool', '1', '1', ('ship_steering_gates',), '--ship-steering-gates-capital'))
+        traffic = schema.BY_KEY['ship_steering_gates_traffic']
+        self.assertEqual((traffic['builtin'], traffic['requires']), ('1', ('ship_steering_gates_capital',)))
+        # The six keys of Run178's accepted state resolve on with no environment and no file (the resolver's defaults), and the
+        # bare DLL (X3M_CONFIG=bare: no file, no defaults) takes each read site's own builtin, also 1: the read sites in
+        # ship_steering_install.cpp treat an unset or empty value as on.
+        six = ('ship_steering', 'ship_avoidance', 'ship_steering_gates', 'ship_steering_gates_capital', 'ship_steering_gates_traffic',
+               'ship_steering_gates_lane')
+        resolved = resolve.resolve({})
+        for key in six:
+            self.assertEqual(schema.BY_KEY[key]['builtin'], '1', key)
+            self.assertIn(resolve.value(resolved, schema.BY_KEY[key]['env']), ('1', None), key)
+        self.assertEqual({k: resolve.value(resolved, schema.BY_KEY[k]['env']) for k in six[:4]}, dict.fromkeys(six[:4], '1'))
+        install = (ROOT / 'src/proxy/ship_steering_install.cpp').read_text()
+        for name, flag, length in (('X3M_SHIP_STEERING', 'on', 'length'), ('X3M_SHIP_AVOIDANCE', 'avoid_on', 'avoid_length'),
+                                   ('X3M_SHIP_STEERING_GATES_TRAFFIC', 'tr_on', 'tr_length'),
+                                   ('X3M_SHIP_STEERING_GATES_LANE', 'ln_on', 'ln_length')):
+            site = install[install.index(f'x3m::config::get(L"{name}"'):]
+            site = site[:site.index('parse_switch')]
+            self.assertIn(f'bool {flag} = true;', site, name)
+            self.assertIn(f'if ({length} && (', site, name)
+        for name, flag, length in (('X3M_SHIP_STEERING_GATES', 'gates_on', 'gates_length'),
+                                   ('X3M_SHIP_STEERING_GATES_CAPITAL', 'cap_on', 'cap_length')):
+            site = install[install.index(f'x3m::config::get(L"{name}"'):]
+            site = site[:site.index('parse_switch')]
+            self.assertIn(f'bool {flag} = true;', site, name)
+            self.assertIn(f'if ({length} == 0)\n', site, name)
         # amendment 16b's sequencing key was deleted with stage B (2026-10-15); the lane key stays, on by default since then (the
         # resolver's default and, since the source split, the read site's own builtin with nothing resolved too)
         self.assertNotIn('ship_steering_gates_capital_seq', schema.BY_KEY)
@@ -211,9 +240,9 @@ class ConfigSchema(unittest.TestCase):
         self.assertEqual((lane['type'], lane['default'], lane['builtin'], lane['requires']),
                          ('bool', '1', '1', ('ship_steering_gates_traffic',)))
         template = TEMPLATE.read_text()
-        self.assertIn(';ship_steering = 0\n', template)
+        self.assertIn(';ship_steering = 1\n', template)
         self.assertIn(';ship_steering_classes =\n', template)
-        self.assertIn(';ship_avoidance = 0\n', template)
+        self.assertIn(';ship_avoidance = 1\n', template)
         self.assertIn(';ship_steering_gates = 1\n', template)
         self.assertIn(';ship_steering_gates_capital = 1\n', template)
         self.assertNotIn('ship_steering_gates_capital_seq', template)
@@ -266,6 +295,7 @@ OPT_OUTS = {
     ('--bolt-far-composite', 'off'): ('X3M_BOLT_FAR_COMPOSITE',),
     ('--no-shadow-cascade-adaptive-c0',): ('X3M_SHADOW_CASCADE_ADAPTIVE_C0',), ('--no-pause-key-only',): ('X3M_PAUSE_KEY_ONLY',),
     ('--no-window-monitor-rect',): ('X3M_WINDOW_MONITOR_RECT',), ('--no-light-map-far-fade',): ('X3M_LIGHT_MAP_FAR_FADE',),
+    ('--no-ship-steering',): ('X3M_SHIP_STEERING',), ('--no-ship-avoidance',): ('X3M_SHIP_AVOIDANCE',),  # on by default since 2026-10-16
 }
 
 
@@ -421,6 +451,13 @@ class ConfigParser(unittest.TestCase):
         self.assertEqual(self.resolved('taa_far_clip = 3x3\n', 'bare', {}, marker),          # (d) bare: nothing
                          {'X3M_TAA_FAR_CLIP': None, 'X3M_TAA_FAR_CLIP_DEFAULT': None})
         self.assertEqual(self.resolved('camera = vanilla\n', 'none', {}, ('X3M_CAMERA',)), {'X3M_CAMERA': ('chase', 'default')})
+        # The ship steering stack (2026-10-16): with no file the DLL's table gives 1 for the five keys with a default; the
+        # traffic key has none (its read site's builtin is on); bare resolves nothing, so every read site's own builtin (on) decides.
+        stack = ('X3M_SHIP_STEERING', 'X3M_SHIP_AVOIDANCE', 'X3M_SHIP_STEERING_GATES', 'X3M_SHIP_STEERING_GATES_CAPITAL',
+                 'X3M_SHIP_STEERING_GATES_TRAFFIC', 'X3M_SHIP_STEERING_GATES_LANE')
+        self.assertEqual(self.resolved('', 'file', {}, stack), {**{n: ('1', 'default') for n in stack}, 'X3M_SHIP_STEERING_GATES_TRAFFIC': None})
+        self.assertEqual(self.resolved('', 'bare', {}, stack), dict.fromkeys(stack))
+        self.assertEqual(self.resolved('ship_steering = 0\n', 'file', {}, stack[:1]), {'X3M_SHIP_STEERING': ('0', 'file')})
 
     def test_nul_byte_refuses_the_line(self):
         r = self.parse(b'taa_sharpen = 0.5\x00junk\ncamera = vanilla\n; a comment\x00\n')
