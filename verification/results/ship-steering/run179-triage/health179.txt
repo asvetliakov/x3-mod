@@ -1,0 +1,34 @@
+max ctl_arrival_us_max 155.7
+max ctl_budget_cut_max 0
+max ctl_decide_us_max 230.6
+max ctl_frame_us_max 236.1
+max ctl_live_us_max 150.2
+max ctl_members_max 6
+max ctl_sb_us_max 262.2
+max dock_e_us_max 127.4
+max handler_us_max 4117.6
+max handler_us_p99 730.4
+last summary rows_dropped gate_event:0,join:0,gate_trans:0,warn_pre:0,engine_warn:0,warn_watch:0,e_table:0,e_ring:0,ctl:0,ctl_pair:0,launch:0
+last summary ship_trace_dropped 0
+last summary ctl_evicted 3
+last summary ctl_budget_cut 0
+last summary ctl_x_refused 0
+last summary ctl_x_wait_s 0
+last summary stuck_total 0
+last summary emergency 0
+last summary e_pass_ctl_why 2,616,66,0,2,0,90,20004,0
+last lane summary ctl_merge_yield=10 ctl_merge_stop=4 ctl_point_rewrites=11 ctl_lane_writes=4503 ctl_x_refused=0 ctl_x_wait_s=0 ctl_grid_miss=0 ctl_point_adopts=0 ctl_lane_defers=442 ctl_defer_rewrites=6 ctl_recommit_held=0 e_lane_obst=220749 e_lane_obst_roll=21526 ctl_mouth_expired=0 ctl_arr_mode=3 ctl_arr_far=0
+session_end frames=118404 elapsed_ms=782207 devices=1 resets=0 exception=0 dropped=0 filter=ours
+all traced frames                            frames  1154-118058 real  724.6 s game  5897.0 s game/real  8.14 seta share 0.815
+departure 0x910d9130 22669 (frames 1154..16203) frames  1154-16203 real  100.3 s game   806.6 s game/real  8.04 seta share 0.769
+return trip 0x910d9130 (frames 25451..59674) frames 25451-59674 real  200.6 s game  2006.5 s game/real 10.00 seta share 1.000
+open dbf80 25950.9 (frames 59758..78112)     frames 59758-78112 real  125.5 s game  1131.7 s game/real  9.02 seta share 0.918
+flagged d9130 27156 (frames 79399..99394)    frames 79399-99394 real  150.5 s game  1212.2 s game/real  8.05 seta share 0.867
+flagged dbf80 27284.9 (frames 82054..94746)  frames 82054-94746 real  105.5 s game   879.0 s game/real  8.33 seta share 0.907
+largest game step between consecutive traced frames (ms, frame): [(1410, 25707), (1540, 4340), (1610, 88484), (1880, 26359), (2000, 82916)]
+seta frames Counter({'1': 95326, '0': 22481})
+largest step in departure 0x910d9130 22669 (frames 1154..16203): (1540, 4340)
+largest step in return trip 0x910d9130 (frames 25451..59674): (1880, 26359)
+largest step in open dbf80 25950.9 (frames 59758..78112): (1320, 60191)
+largest step in flagged d9130 27156 (frames 79399..99394): (2000, 82916)
+largest step in flagged dbf80 27284.9 (frames 82054..94746): (2000, 82916)

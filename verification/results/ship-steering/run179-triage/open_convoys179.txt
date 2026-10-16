@@ -1,0 +1,11 @@
+last traced game time 28390.2
+== gate 0x910dbf80
+ 0x90c626d0 M1 role=committed stage=launch order=0x8 target=0x910dbf80 p_m=-32,-906,-961 |p|=1321 v=0.0 nose_f=0.999 (t 27082.3) | lane_s=-961 rank=255 gap=na law=none w=none on=1 | warn rows 0
+   ctl: 25943.5 9130 none>arrival arrival; 25950.9 bf80 none>committed commit; 27081.4 bf80 committed>committed handover; 27082.6 bf80 committed>none gone
+   pairs: {'clear/certified': 3}
+ 0x1f8a8c08 M2 role=committed stage=inbound order=0x0 target=0x00000000 p_m=-398,-656,-3629 |p|=3709 v=24.9 nose_f=0.853 (t 27158.2) | lane_s=-3629 rank=0 gap=na law=pace w=hold on=0 | warn rows 0
+   ctl: 26007.2 9130 none>arrival arrival; 26017.4 9130 arrival>none leader; 26017.4 bf80 none>escort escort; 27086.0 bf80 escort>committed commit; 27159.1 bf80 committed>none target; 27163.0 9130 none>escort escort; 28295.5 9130 escort>committed commit; 28367.1 9130 committed>committed handover; 28368.2 9130 committed>none gone
+   pairs: {'clear/certified': 215, 'none/-': 2}
+ 0x1f8a7fd8 M2 role=committed stage=inbound order=0x0 target=0x00000000 p_m=-5262,1730,-6649 |p|=8654 v=0.0 nose_f=0.068 (t 27158.2) | lane_s=-6649 rank=1 gap=na law=join w=none on=0 | warn rows 0
+   ctl: 26094.5 9130 none>arrival arrival; 26103.8 9130 arrival>none leader; 26103.8 bf80 none>escort escort; 27121.2 bf80 escort>committed commit; 27159.1 bf80 committed>none target; 27165.0 9130 none>escort escort; 28295.1 9130 escort>committed commit; 28328.3 9130 committed>committed handover; 28330.5 9130 committed>none gone
+   pairs: {'unresolved/-': 1, 'unresolved/unresolved': 34, 'unresolved/order0': 9, 'clear/certified': 289, 'clear/-': 1, 'none/-': 2}

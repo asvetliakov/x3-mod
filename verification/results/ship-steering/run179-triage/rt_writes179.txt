@@ -1,0 +1,25 @@
+trace 0x38a08400 order=0x0 rows 116 point!=given 0 obst!=0 0 {}
+trace 0x38a08400 order=0x1f rows 15 point!=given 0 obst!=0 0 {}
+trace 0x38a08400 order=0x4 rows 679 point!=given 0 obst!=0 0 {}
+trace 0x90c63b88 order=0x0 rows 5 point!=given 0 obst!=0 0 {}
+trace 0x90c63b88 order=0x12 rows 1 point!=given 1 obst!=0 0 {}
+trace 0x90c63b88 order=0x1f rows 173 point!=given 0 obst!=0 0 {}
+trace 0x90c63b88 order=0x4 rows 718 point!=given 258 obst!=0 258 {'0x91102378': 258}
+trace 0x90c63b88 order=0x5 rows 288 point!=given 0 obst!=0 0 {}
+trace 0x90c63b88 order=0x8 rows 11 point!=given 0 obst!=0 0 {}
+trace 0x91102378 order=0x0 rows 6 point!=given 0 obst!=0 0 {}
+trace 0x91102378 order=0x12 rows 1 point!=given 1 obst!=0 0 {}
+trace 0x91102378 order=0x1f rows 371 point!=given 0 obst!=0 0 {}
+trace 0x91102378 order=0x4 rows 1300 point!=given 376 obst!=0 376 {'0x90c63b88': 376}
+trace 0x91102378 order=0x5 rows 259 point!=given 0 obst!=0 0 {}
+trace 0x91102378 order=0x8 rows 13 point!=given 0 obst!=0 0 {}
+detour obj=0x90c63b88 obstacle=0x91102378 order=0x14 rows 55 frames 27062-27228 g=24068.6-24086.4
+detour obj=0x90c63b88 obstacle=0x91102378 order=0x4 rows 52 frames 28071-28412 g=24174.7-24205.1
+detour obj=0x91102378 obstacle=0x90c63b88 order=0x4 rows 122 frames 28071-28809 g=24174.7-24236.2
+e_verdict ('A', 'pass_a_avoid') 316
+e_verdict ('A', 'pass_not_fresh') 281
+e_verdict ('A', 'pass_not_member') 213
+e_verdict ('A', 'suppress_arrival_gate') 128
+e_verdict ('A', 'suppress_gate_ring') 451
+e_verdict ('A', 'suppress_resolved') 50
+e_verdict ('A', 'suppress_small') 1853

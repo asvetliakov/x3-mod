@@ -1,0 +1,6 @@
+## member pair
+27669.7 A=c7d0 B=7fd8 | warn_pre f=87865 (-1 frames) A order 0x0 B order 0x14 e_verdict pass_not_member obst_row roll | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}
+## return trip
+24008.4 A=3b88 B=8400 | warn_pre f=26372 (-1 frames) A order 0x0 B order 0x1f e_verdict pass_not_fresh obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 1}
+24070.1 A=2378 B=8400 | warn_pre f=27074 (-1 frames) A order 0x0 B order 0x0 e_verdict pass_not_fresh obst_row no | site E verdicts on (A,B) in the 5 s before: {'pass_not_fresh': 1}
+24100.4 A=3b88 B=8400 | warn_pre f=27358 (-1 frames) A order 0x0 B order 0x0 e_verdict pass_not_member obst_row - | site E verdicts on (A,B) in the 5 s before: {'pass_not_member': 5}

@@ -1,0 +1,11 @@
+0x90c4c7d0 rows 779 27284.9..28115.3
+  turn  27900.2+77.8 |p| 11562->15144 s -10203->-15090 lat 5782->941 nose -0.03->-0.09 vmin 100.0 | {'committed/inbound': 76} | laws {'join': 76} | w {'none': 76} | ord {'0x4': 76} | v_law min 100.0 | rank 0 gap na->na own 1 fun 1 loop leg
+0x910f2fb8 rows 756 27359.0..28163.7
+  stop  27984.2+25.8 |p| 12620->12381 s -11588->-11405 lat 5414->5234 nose 0.71->0.71 vmin 10.0 | {'escort/inbound': 26} | laws {'merge': 25, 'join': 1} | w {'none': 24, 'hold': 2} | ord {'0x14': 24, '0x0': 2} | v_law min 10.0 | rank 1 gap -5284->1478 own 1 fun 1 loop none
+  stop  28056.5+12.4 |p| 10036->9896 s -9557->-9442 lat 3441->3335 nose 0.73->0.74 vmin 11.4 | {'escort/inbound': 13} | laws {'merge': 13} | w {'none': 10, 'hold': 3} | ord {'0x14': 10, '0x0': 3} | v_law min 11.4 | rank 2 gap 10->-2 own 1 fun 1 loop none
+  wstop 27979.0+1.0 |p| 12853->12768 s -11767->-11702 lat 5590->5526 nose 0.71->0.71 vmin 79.4 | {'escort/inbound': 2} | laws {'stop': 2} | w {'stop': 2} | ord {'0x14': 2} | v_law min 0.0 | rank 1 gap -5149->-5228 own 1 fun 1 loop none
+0x910d5578 rows 681 27419.6..28146.3
+  stop  27928.2+140.7 |p| 9132->7998 s -8922->-7903 lat 2674->1922 nose -0.17->0.83 vmin 0.0 | {'escort/inbound': 137} | laws {'stop': 12, 'merge': 125} | w {'stop': 12, 'none': 116, 'hold': 9} | ord {'0x14': 127, '0x0': 10} | v_law min 0.0 | rank 2 gap -6781->-781 own 1 fun 1 loop none
+  turn  27877.3+51.9 |p| 10151->9136 s -7234->-8927 lat 7598->2672 nose -0.03->-0.04 vmin 0.0 | {'escort/inbound': 51} | laws {'join': 42, 'stop': 9} | w {'none': 42, 'stop': 9} | ord {'0x14': 48, '0x0': 3} | v_law min 0.0 | rank 1 gap na->-6828 own 0 fun 0 loop none
+  wstop 27920.9+16.6 |p| 8955->9143 s -8651->-8934 lat 3016->2676 nose -0.61->0.64 vmin 0.0 | {'escort/inbound': 17} | laws {'stop': 17} | w {'stop': 17} | ord {'0x14': 15, '0x0': 2} | v_law min 0.0 | rank 1 gap -6711->-7322 own 1 fun 1 loop none
+  wstop 27979.0+1.0 |p| 8787->8784 s -8620->-8617 lat 2428->2426 nose 0.80->0.80 vmin 0.0 | {'escort/inbound': 2} | laws {'stop': 2} | w {'stop': 2} | ord {'0x14': 2} | v_law min 0.0 | rank 2 gap -4688->-4625 own 1 fun 1 loop none

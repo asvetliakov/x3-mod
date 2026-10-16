@@ -1,0 +1,4 @@
+0x1f8a7fd8 at 0x910d9130: floor/stop rows 155 27165.0-27323.8 | gap < -3 km: 98 rows 27165.0-27265.2
+0x1f8a8c08 at 0x910d9130: floor/stop rows 47 27163.0-27323.8
+0x910d5578 at 0x910dbf80: floor/stop rows 143 27920.9-28067.9 | gap < -3 km: 120 rows 27920.9-28044.2
+0x910f2fb8 at 0x910dbf80: floor/stop rows 30 27979.0-28008.9 | gap < -3 km: 30 rows 27979.0-28008.9

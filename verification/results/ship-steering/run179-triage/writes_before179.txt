@@ -1,0 +1,14 @@
+## member pair (window 30 s + 2.0 s step)
+27669.7 A=c7d0 B=7fd8
+   A c7d0 traced 0.0 of 32 s (rows 0) | writes: detour_row(obstacle b120 kind 0, order 0x4) 27641.9-27651.8 (-17.9 s); ship_gate_ctl_pair 27658.0-27669.7 (-0.0 s)
+   B 7fd8 traced 32.0 of 32 s (rows 291) | writes: ship_gate_ctl_pair 27644.2-27651.4 (-18.3 s)
+## return trip
+24008.4 A=3b88 B=8400
+   A 3b88 traced 0.1 of 32 s (rows 2) | writes: none
+   B 8400 traced 20.7 of 32 s (rows 302) | writes: none
+24070.1 A=2378 B=8400
+   A 2378 traced 1.8 of 32 s (rows 3) | writes: none
+   B 8400 traced 0.0 of 32 s (rows 0) | writes: none
+24100.4 A=3b88 B=8400
+   A 3b88 traced 0.0 of 32 s (rows 0) | writes: detour_row(obstacle 2378 kind 0, order 0x14) 24068.6-24086.4 (-14.0 s)
+   B 8400 traced 0.0 of 32 s (rows 0) | writes: none
