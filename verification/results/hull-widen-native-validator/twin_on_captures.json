@@ -1,0 +1,29 @@
+{
+ "captures": 16,
+ "parameters": {
+  "k4_widen_applied": 16,
+  "k3_widen_applied": 16
+ },
+ "twin": {
+  "k3_widen_equal": 16,
+  "k4_swidenshare_equal": 16,
+  "k4_widen_equal": 16
+ },
+ "block_shape_test_passed": 16,
+ "growth_over_gained": [
+  {
+   "variant": "swidenshare",
+   "dwords": 138,
+   "instructions": 29,
+   "slots": 37,
+   "programs": 16
+  },
+  {
+   "variant": "widen",
+   "dwords": 138,
+   "instructions": 29,
+   "slots": 37,
+   "programs": 16
+  }
+ ]
+}

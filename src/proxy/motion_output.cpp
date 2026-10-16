@@ -7554,23 +7554,24 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     bool lightmap = false; // a light-map gain variant (plain or share) selected: counted on the frame line
     // Hull emissive widening: the widened form of the selected gain variant
     // for every gain draw whose light-map size is known (evaluate_draw's
-    // uploaded footprint lanes; the block itself holds k = 1 near), that is
-    // not alpha tested (the opaque chain already refused blending; rL.w is
-    // widened too) and whose light-map stage holds a mip chain (the shadow's
-    // level count; a single-level placeholder would sample identically). No
-    // getter.
+    // uploaded footprint lanes; the block itself holds k = 1 near) and whose
+    // light-map stage holds a mip chain (the shadow's level count; a
+    // single-level placeholder would sample identically). Alpha-tested draws
+    // widen too: the block restores rL.w from the original point fetch, so the
+    // tested coverage is the gained variant's (the opaque chain already refused
+    // blending). No getter.
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     const bool widen_suppressed = fixture_configured_ && fixture_.suppress_lightmap_widen != 0;
 #else
     constexpr bool widen_suppressed = false;
 #endif
-    const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && !route.alpha_tested &&
-                            shadow_.hull_lightmap_stage && samplers_[shadow_.hull_lightmap_stage].levels > 1;
-    // The held diagnostic: the first failing widen condition (size, alpha, levels; 0 other), read only by a held
-    // gain draw's counter and capture row.
+    const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && shadow_.hull_lightmap_stage &&
+                            samplers_[shadow_.hull_lightmap_stage].levels > 1;
+    // The held diagnostic: the first failing widen condition (size, levels; 0 other), read only by a held gain
+    // draw's counter and capture row. Reason 2 (alpha tested) is unreachable since alpha-tested draws widen
+    // (2026-10-16); the slot stays so held_alpha= keeps its place on the frame line (always 0).
     route.widen_held_reason =
         !(lightmap_widen_draw_scale_[0] > 0.f)                                                       ? std::uint8_t(1)
-        : route.alpha_tested                                                                         ? std::uint8_t(2)
         : !(shadow_.hull_lightmap_stage && samplers_[shadow_.hull_lightmap_stage].levels > 1) ? std::uint8_t(3)
                                                                                               : std::uint8_t(0);
     // The block's axis-separated gate needs anisotropic minification on the light-map stage (an isotropic LOD is
@@ -8443,8 +8444,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     // A fade-arm row carries the arm's own test read (fade_tested; the chain above stopped at Z-write off before its
-    // test read): an owned alpha-tested cutout is alpha_tested, so the light-map widening (which rewrites rL.w and
-    // with it the tested coverage) and the replay W3 exclusion treat it like every other alpha-tested draw.
+    // test read): an owned alpha-tested cutout is alpha_tested, so the replay W3 exclusion treats it like every other
+    // alpha-tested draw (the light-map widening no longer reads the flag: its block keeps rL.w unwidened).
     route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0;
     // Under a configured bias an alpha-tested cutout pair can only be here through
     // the tested-opaque arm (cutout_draw_state refuses a nonzero bias) or, like

@@ -1,0 +1,665 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, no device)",
+ "parameters": "hull: fill 0.01, gain 2, depth 1, K 4, B 4, working tree with the unwidened-alpha block (texld rT, v1, s; mov rL.w, rT.w; 124 block words); widen = far-fade dynamic gain, swiden = static gain, sgain/swidenshare = sun-share gained/widened",
+ "pre_change_commit": "c7c56810",
+ "alpha_insertion_witness": "widened bytes = the pre-change generator bytes with exactly the texld/mov pair inserted",
+ "witness": [
+  {
+   "kind": "swiden",
+   "equal": true,
+   "programs": 16
+  },
+  {
+   "kind": "swidenshare",
+   "equal": true,
+   "programs": 16
+  },
+  {
+   "kind": "widen",
+   "equal": true,
+   "programs": 16
+  }
+ ],
+ "tally": [
+  {
+   "kind": "gain",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "sgain",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "swiden",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "swidenshare",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  },
+  {
+   "kind": "widen",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 16
+  }
+ ],
+ "rows": [
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "gain",
+   "words": 1577,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "sgain",
+   "words": 1813,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "swiden",
+   "words": 1721,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "swidenshare",
+   "words": 1951,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "0c1f3f0f440e4a0c",
+   "kind": "widen",
+   "words": 1715,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "gain",
+   "words": 1991,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "sgain",
+   "words": 2236,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "swiden",
+   "words": 2135,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "swidenshare",
+   "words": 2374,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "496049cec2066ed3",
+   "kind": "widen",
+   "words": 2129,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "gain",
+   "words": 1565,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "sgain",
+   "words": 1801,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "swiden",
+   "words": 1709,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "swidenshare",
+   "words": 1939,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5e0a10fe752b6140",
+   "kind": "widen",
+   "words": 1703,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "gain",
+   "words": 1976,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "sgain",
+   "words": 2221,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "swiden",
+   "words": 2120,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "swidenshare",
+   "words": 2359,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "5f82ecacd39529cd",
+   "kind": "widen",
+   "words": 2114,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "gain",
+   "words": 1503,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "sgain",
+   "words": 1733,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "swiden",
+   "words": 1647,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "swidenshare",
+   "words": 1871,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "63f96eba9eea7880",
+   "kind": "widen",
+   "words": 1641,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "gain",
+   "words": 1603,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "sgain",
+   "words": 1839,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "swiden",
+   "words": 1747,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "swidenshare",
+   "words": 1977,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "64bac8bb307eb896",
+   "kind": "widen",
+   "words": 1741,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "gain",
+   "words": 1965,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "sgain",
+   "words": 2210,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "swiden",
+   "words": 2109,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "swidenshare",
+   "words": 2348,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "6733b119142c8d42",
+   "kind": "widen",
+   "words": 2103,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "gain",
+   "words": 1509,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "sgain",
+   "words": 1748,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "swiden",
+   "words": 1653,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "swidenshare",
+   "words": 1886,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "7c83ed50c9894e44",
+   "kind": "widen",
+   "words": 1647,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "gain",
+   "words": 1471,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "sgain",
+   "words": 1701,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "swiden",
+   "words": 1615,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "swidenshare",
+   "words": 1839,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "8759c7838bbc86c2",
+   "kind": "widen",
+   "words": 1609,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "gain",
+   "words": 1566,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "sgain",
+   "words": 1802,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "swiden",
+   "words": 1710,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "swidenshare",
+   "words": 1940,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "99153c144030c396",
+   "kind": "widen",
+   "words": 1704,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "gain",
+   "words": 1592,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "sgain",
+   "words": 1828,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "swiden",
+   "words": 1736,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "swidenshare",
+   "words": 1966,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "c1452981fd0bff64",
+   "kind": "widen",
+   "words": 1730,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "gain",
+   "words": 1539,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "sgain",
+   "words": 1775,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "swiden",
+   "words": 1683,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "swidenshare",
+   "words": 1913,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "ca6bfa4a6cca7e2a",
+   "kind": "widen",
+   "words": 1677,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "gain",
+   "words": 1885,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "sgain",
+   "words": 2130,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "swiden",
+   "words": 2029,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "swidenshare",
+   "words": 2268,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e6794b6ec37ff71a",
+   "kind": "widen",
+   "words": 2023,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "gain",
+   "words": 1535,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "sgain",
+   "words": 1774,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "swiden",
+   "words": 1679,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "swidenshare",
+   "words": 1912,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "e70adc744a38ca59",
+   "kind": "widen",
+   "words": 1673,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "gain",
+   "words": 2002,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "sgain",
+   "words": 2247,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "swiden",
+   "words": 2146,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "swidenshare",
+   "words": 2385,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "f1b0e820c7b488c3",
+   "kind": "widen",
+   "words": 2140,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "gain",
+   "words": 1859,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "sgain",
+   "words": 2104,
+   "messages": [],
+   "end": "00000000"
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "swiden",
+   "words": 2003,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "swidenshare",
+   "words": 2242,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  },
+  {
+   "original": "fffdabd910793aba",
+   "kind": "widen",
+   "words": 1997,
+   "messages": [],
+   "end": "00000000",
+   "alpha_insertion_witness": true
+  }
+ ]
+}

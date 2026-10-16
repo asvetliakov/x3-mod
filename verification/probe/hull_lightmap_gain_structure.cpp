@@ -131,9 +131,9 @@ int main(int argc, char** argv) {
         const fs::path corpus = argv[1], out = argv[2];
         const float fills[] = {0.0f, 0.05f}, gain = 4.0f;
         // Hull emissive widening K = 3, B = 3 (docs/architecture/hull-emissive-widening.md 8.3): the block adds
-        // 131 DWORDs (113 in the block, 18 in three DEFs), 27 instructions and 35 weighted slots to the gained variant.
+        // 138 DWORDs (120 in the block, 18 in three DEFs), 29 instructions and 37 weighted slots to the gained variant.
         const HullLightmapWiden widen{3.0f, 3.0f};
-        constexpr unsigned widen_words = 131, widen_instructions = 27, widen_slots_added = 35; // 113 block words +
+        constexpr unsigned widen_words = 138, widen_instructions = 29, widen_slots_added = 37; // 120 block words +
                                                                                                // three 6-word DEFs
         // Flow-control depth at the light-map fetch (linear_material_flow_control_depth) on synthetic ps_3_0
         // programs: the fetch `texld r0, v1, s2` inside `if b0`, `rep i0` and `loop aL, i0` is at depth 1 (the
@@ -255,9 +255,9 @@ int main(int argc, char** argv) {
                         require(dynamic == (gain_applied ? expected_dynamic(result) : base),
                                 "dynamic gain: no DEF, the MUL reads c217.w; untouched programs stay the fill variant");
                         // Hull emissive widening on the dynamic-gain variant: the
-                        // same verdict as the gain, +131 DWORDs and +35 weighted
+                        // same verdict as the gain, +138 DWORDs and +37 weighted
                         // slots (the Python oracle rebuilds the bytes); the static
-                        // gain composes identically (+131 over the static variant).
+                        // gain composes identically (+138 over the static variant).
                         Words widened{0x12345678};
                         bool widen_fill = !fill_applied, widen_gain = !gain_applied, widen_applied = !gain_applied;
                         require(linear_material_hull_lightmap_gain_pixel_variant(
@@ -268,11 +268,11 @@ int main(int argc, char** argv) {
                                 "widening: the gain's verdict");
                         if (gain_applied) {
                             widen_applied_any = true;
-                            require(widened.size() == dynamic.size() + widen_words, "widening: +131 DWORDs");
+                            require(widened.size() == dynamic.size() + widen_words, "widening: +138 DWORDs");
                             const auto [instructions, slots] = weighted_slots(widened);
                             require(instructions == variant_instructions[f][depth] + widen_instructions &&
                                         slots == variant_slots[f][depth] + widen_slots_added && slots <= 512,
-                                    "widening: +27 instructions, +35 slots, within 512");
+                                    "widening: +29 instructions, +37 slots, within 512");
                             widen_slots[f][depth] = slots;
                             max_widen_slots = std::max(max_widen_slots, slots);
                             Words widened_static{0x12345678};
@@ -400,11 +400,11 @@ int main(int argc, char** argv) {
                                 widen_share && widen_gain == result_gain && widen_applied == result_gain,
                             "widened share: the gain's verdict");
                     if (result_gain) {
-                        require(widened.size() == dynamic.size() + widen_words, "widened share: +131 DWORDs");
+                        require(widened.size() == dynamic.size() + widen_words, "widened share: +138 DWORDs");
                         share_widen_slots[f] = weighted_slots(widened).second;
                         require(share_widen_slots[f] == share_variant_slots[f] + widen_slots_added &&
                                     share_widen_slots[f] <= 512,
-                                "widened share: +35 slots, within 512");
+                                "widened share: +37 slots, within 512");
                         max_widen_slots = std::max(max_widen_slots, share_widen_slots[f]);
                     } else
                         require(widened == share,

@@ -204,8 +204,8 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(
 // is byte for byte the program above.
 // widen (docs/architecture/hull-emissive-widening.md 8.3 R1/R2,
 // --hull-emissive-widening K[,B], both entry points): the gained variant's
-// light-map `texld rL, v1, s` is replaced by a 28-instruction block (117 DWORDs,
-// +35 weighted slots, three temporaries rG/rT/rU above the program's highest):
+// light-map `texld rL, v1, s` is replaced by a 30-instruction block (124 DWORDs,
+// +37 weighted slots, three temporaries rG/rT/rU above the program's highest):
 // dsx/dsy of v1 into rG; the light map's own texel footprint per pixel
 // rho^2 = max(|dUV/dx|^2, |dUV/dy|^2) . (W c, H c)^2 from the per-draw lanes
 // c217.yz (the caller MUST upload ((W c)^2, (H c)^2) of the bound light map
@@ -217,7 +217,9 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(
 // strip 2.0, a 1-D edge and a convex corner 1.33), t = saturate((r - 1.35)
 // / 0.15), b = saturate(32 luma(rL) - 1) (no boost below luma 1/32, full from
 // 1/16), g = saturate(rho^2 / K - 1) (no boost while the widened fetch is still
-// magnified), rL.xyz *= 1 + (B - 1) t b g (the guarded thin-emitter boost). Three
+// magnified), rL.xyz *= 1 + (B - 1) t b g (the guarded thin-emitter boost);
+// rL.w is the original texld's (`texld rT, v1, s`, `mov rL.w, rT.w`: the
+// alpha test's coverage is unwidened, so alpha-tested draws widen too). Three
 // shader-local DEFs: c210 = (1/K, 2^-8, B - 1, 1), c211 = (Rec.709 luma, 0),
 // c203 = (32, 1, 1/0.15, 9), packed so every instruction reads at most one c#
 // (the ps_3_0 constant read port); all proven free of the original. The fetch must

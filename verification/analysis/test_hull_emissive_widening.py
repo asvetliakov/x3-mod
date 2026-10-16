@@ -3,14 +3,15 @@ docs/architecture/hull-emissive-widening.md 8.3 R1/R2).
 
 Transformer (linear_material_hull_lightmap_gain_pixel_variant / the share entry
 point with widen = {K, B}): the gained variant with its light-map
-`texld rL, v1, s` replaced by the 28-instruction block (dsx/dsy of v1, the
+`texld rL, v1, s` replaced by the 30-instruction block (dsx/dsy of v1, the
 per-pixel k = clamp(rho, 1, K) from the light map's own texel footprint through
 the per-draw lanes c217.yz, the minification gate g = saturate(rho^2 / K - 1),
 the widened texldd, the two axis-doubled coarse texldd, the larger axis luma
-ratio's gate, the brightness floor b = saturate(32 L_k - 1) and the boost B)
+ratio's gate, the brightness floor b = saturate(32 L_k - 1), the boost B and
+rL.w restored from the original point fetch, texld rT / mov rL.w, rT.w)
 plus three DEFs (c210 = (1/K, 2^-8, B-1, 1), c211 = (Rec.709 luma, 0),
 c203 = (32, 1, 1/0.15, 9)), rG, rT = rG + 1 and rU = rG + 2 above the program's
-highest temporary, nothing else changed (+131 DWORDs, +27 instructions, +35
+highest temporary, nothing else changed (+138 DWORDs, +29 instructions, +37
 weighted slots). The
 byte-exact Python reference below rebuilds every widened variant from the
 gained one and compares. The coverage test walks the local archive manifest:
@@ -41,9 +42,9 @@ from verification.analysis.test_original_fill import families, launch
 from verification.analysis.test_hull_lightmap_gain import FILLS, UNTOUCHED
 from source_text import source_text
 
-DSX, DSY, TEXLDD, TEXLD, MUL, DEF, DCL = 91, 92, 93, 66, 5, 81, 31
+DSX, DSY, TEXLDD, TEXLD, MUL, DEF, DCL, MOV = 91, 92, 93, 66, 5, 81, 31, 1
 ADD, MAD, RCP, RSQ, DP3, MIN, MAX = 2, 4, 6, 7, 8, 10, 11
-SAT = 1 << 20
+SAT, PP = 1 << 20, 1 << 21
 WIDEN_K, WIDEN_B = 3.0, 3.0  # the driver's parameters
 WIDEN_CONSTANT, WIDEN_LUMA_CONSTANT, WIDEN_GATE_CONSTANT = 210, 211, 203
 PREREQUISITES = ['--motion-output', '--hdr']
@@ -51,7 +52,7 @@ COVERAGE = ROOT / 'verification/results/hull-emissive-widening-coverage.json'
 # SM3 light-map programs outside the reviewed originals, by design (hull-emissive-widening.md 2.5).
 EXCLUDED = {'ps_6aaaa2cb27e92cc8': 'moon (shader/3_0/moon_0000.fb, moon_0001.fb: coordinate v2, no motion row)'}
 LIGHTMAP_SAMPLER = 'LightMapTexSampler'
-WIDEN_SLOTS, WIDEN_WORDS, WIDEN_INSTRUCTIONS = 35, 131, 27
+WIDEN_SLOTS, WIDEN_WORDS, WIDEN_INSTRUCTIONS = 37, 138, 29
 
 
 def swizzle(x, y, z, w):
@@ -75,7 +76,8 @@ def lane(reg, component):
 
 
 def widen_block(destination, coordinate, sampler, g):
-    """The 117-word block of hull-emissive-widening.md 8.3 (R1 + R2, axis-separated gate, minification gate, brightness floor) with rG = g, rT = g + 1, rU = g + 2."""
+    """The 124-word block of hull-emissive-widening.md 8.3 (R1 + R2, axis-separated gate, minification gate, brightness floor, unwidened
+    alpha) with rG = g, rT = g + 1, rU = g + 2."""
     t, u = g + 1, g + 2
     rl = destination & 0x7ff
     c217 = 0x80000000 | 0x20000000 | 217
@@ -109,7 +111,10 @@ def widen_block(destination, coordinate, sampler, g):
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(t, 1),
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(u, 3),
             3 << 24 | MUL, dst(t, 1), lane(t, 0), lane(c210, 2),
-            4 << 24 | MAD, dst(rl, 7), src(rl), lane(t, 0), src(rl)]
+            4 << 24 | MAD, dst(rl, 7), src(rl), lane(t, 0), src(rl),
+            # rL.w from the original point fetch (the alpha test's coverage unwidened), the texld's _pp on both.
+            3 << 24 | TEXLD, dst(t, 15) | (destination & PP), coordinate, sampler,
+            2 << 24 | MOV, dst(rl, 8) | (destination & PP), lane(t, 3)]
 
 
 def widen_definitions(k, b):
@@ -135,7 +140,7 @@ def expected_dynamic(words):
 
 
 def reference_widened(gained, k=WIDEN_K, b=WIDEN_B):
-    """The widened variant of a gained (dynamic) variant: the last texld replaced by the 117-word block, rG = max
+    """The widened variant of a gained (dynamic) variant: the last texld replaced by the 124-word block, rG = max
     temp + 1 (rT = rG + 1, rU = rG + 2), the three DEFs before the first dcl."""
     words, items, _ = shader.instructions(struct.pack('<%dI' % len(gained), *gained))
     fetch = [item for item in items if item['opcode'] == TEXLD][-1]
@@ -293,26 +298,30 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
         self.assertLess(self.driver['max_widen_slots'], 512)
 
     def test_widened_block_shape(self):
-        # The 28-instruction block in place of the texld (the first texldd keeps the texld's destination word, mask
-        # and _pp; the coarse ones land in rU.xyz and rT.xyz), the gain MUL right after the block's final MAD, no DEF
-        # of c217/c223, the block's opcodes and slot weights (dsx/dsy 2, texldd 3, the rest 1: 36 weighted, 35 over the texld).
+        # The 30-instruction block in place of the texld (the first texldd keeps the texld's destination word, mask
+        # and _pp; the coarse ones land in rU.xyz and rT.xyz; the closing texld rT / mov rL.w restores the unwidened
+        # alpha), the gain MUL right after the block's final MOV, no DEF of c217/c223, the block's opcodes and slot
+        # weights (dsx/dsy 2, texldd 3, the rest 1: 38 weighted, 37 over the texld).
         weights = {DSX: 2, DSY: 2, TEXLDD: 3}
-        expected = [DSX, DSY, MUL, MUL, ADD, MAX, MAD, RSQ, MAX, RCP, MUL, TEXLDD, ADD, TEXLDD, DP3, TEXLDD, DP3, MIN, DP3, MAD, MAX, RCP, MUL, MAD, MUL, MUL, MUL, MAD]
+        expected = [DSX, DSY, MUL, MUL, ADD, MAX, MAD, RSQ, MAX, RCP, MUL, TEXLDD, ADD, TEXLDD, DP3, TEXLDD, DP3, MIN, DP3, MAD, MAX, RCP, MUL, MAD, MUL, MUL, MUL, MAD, TEXLD, MOV]
         for name in self.gained():
             words, items, _ = shader.instructions((self.directory / f'{name}-hlwiden-0-1.bin').read_bytes())
-            self.assertEqual([item['opcode'] for item in items if item['opcode'] == TEXLD][-1:], [TEXLD], name)  # earlier texture reads stay
+            texld = [item for item in items if item['opcode'] == TEXLD]
+            self.assertGreaterEqual(len(texld), 2, name)  # earlier texture reads stay, plus the block's alpha fetch
             texldd = [item for item in items if item['opcode'] == TEXLDD]
             self.assertEqual(len(texldd), 3, name)
             at = items.index(texldd[0])
-            block = items[at - 11:at + 17]
+            block = items[at - 11:at + 19]
             self.assertEqual([item['opcode'] for item in block], expected, name)
             self.assertEqual(sum(weights.get(op, 1) for op in expected), WIDEN_SLOTS + 1)
-            self.assertEqual(items[at + 17]['opcode'], MUL, name)
-            self.assertEqual(shader.register_of(items[at + 17]['words'][2]), (2, 217))
-            self.assertEqual(shader.swizzle_of(items[at + 17]['words'][2]), 'wwww')
+            self.assertEqual(items[at + 19]['opcode'], MUL, name)
+            self.assertEqual(shader.register_of(items[at + 19]['words'][2]), (2, 217))
+            self.assertEqual(shader.swizzle_of(items[at + 19]['words'][2]), 'wwww')
             self.assertEqual(shader.swizzle_of(block[3]['words'][2]), 'yzyz')
             self.assertEqual(shader.register_of(block[3]['words'][2]), (2, 217))
-            self.assertLess([item for item in items if item['opcode'] == TEXLD][-1]['dword'], texldd[0]['dword'], (name, 'the light-map fetch is the last texture read'))
+            self.assertLess(texld[-2]['dword'], texldd[0]['dword'], (name, 'the light-map fetch is the last texture read'))
+            self.assertIs(texld[-1], block[-2], name)  # the alpha fetch: the texld's coordinate and sampler into rT
+            self.assertEqual(texld[-1]['words'][1:], texldd[0]['words'][1:3], name)
             self.assertFalse(any(item['opcode'] == DEF and shader.register_of(item['words'][0]) in ((2, 217), (2, 223)) for item in items), name)
             # dsx/dsy source the coordinate register directly; the widened texldd keeps the texld's destination word.
             self.assertEqual(shader.register_of(block[0]['words'][1])[0], 1, name)
@@ -325,8 +334,11 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
             self.assertEqual((shader.register_of(texldd[2]['words'][3]), shader.register_of(texldd[2]['words'][4])), ((0, g), (0, g + 1)), name)
             self.assertEqual((shader.mask_of(texldd[1]['words'][0]), shader.mask_of(texldd[2]['words'][0])), ('xyz', 'xyz'), name)
             self.assertEqual((shader.register_of(block[6]['words'][0]), shader.mask_of(block[6]['words'][0])), ((0, g + 2), 'w'), name)  # g = saturate(rho^2 / K - 1)
-            self.assertEqual(shader.register_of(block[-1]['words'][0]), shader.register_of(texldd[0]['words'][0]), name)
-            self.assertEqual(shader.mask_of(block[-1]['words'][0]), 'xyz', name)
+            self.assertEqual(shader.register_of(block[-3]['words'][0]), shader.register_of(texldd[0]['words'][0]), name)
+            self.assertEqual(shader.mask_of(block[-3]['words'][0]), 'xyz', name)
+            self.assertEqual((shader.register_of(block[-2]['words'][0]), shader.mask_of(block[-2]['words'][0])), ((0, g + 1), 'xyzw'), name)
+            self.assertEqual((shader.register_of(block[-1]['words'][0]), shader.mask_of(block[-1]['words'][0])), (shader.register_of(texldd[0]['words'][0]), 'w'), name)
+            self.assertEqual((shader.register_of(block[-1]['words'][1]), shader.swizzle_of(block[-1]['words'][1])), ((0, g + 1), 'wwww'), name)
             # Saturate on the 1/k clamp and the gate, the negated gate offset.
             self.assertTrue(block[6]['words'][0] & SAT and block[8]['words'][0] & SAT and block[19]['words'][0] & SAT and block[23]['words'][0] & SAT, name)
             self.assertEqual(block[23]['words'][3] >> 24 & 0xf, 1, name)
@@ -402,7 +414,7 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
                 entry['max_share_slots'] = max(entry['max_share_slots'], r['widened_slots']['share'])
         COVERAGE.write_text(json.dumps(dict(
             description='Every ps_3_0 program of the local archive declaring LightMapTexSampler: widened (hull emissive widening R1 + R2) or excluded by design. '
-                        'Slots are the weighted SM3 totals of the widened variants (+35 over the gained ones); the moon program is out of scope.',
+                        'Slots are the weighted SM3 totals of the widened variants (+37 over the gained ones); the moon program is out of scope.',
             source_manifest_sha256=manifest.get('index_sha256'), programs=len(rows), transformed=sum(r['transformed'] for r in rows),
             excluded={k[3:]: v for k, v in EXCLUDED.items()}, slot_growth_per_variant=WIDEN_SLOTS, per_family=by_family, rows=rows), indent=1) + '\n')
 
@@ -530,11 +542,14 @@ class LauncherAndProxyTests(unittest.TestCase):
         law = extract_function(core, 'inline float lightmap_widen_scale(')
         for text in ('if (!size || !(k > 0.f)) return 0.f;', 'const float scaled = float(size) * k;', 'return scaled * scaled;'):
             self.assertIn(text, law)
-        # Selection: the widened variant over every selected gain variant with a known size, not alpha tested, a mip
-        # chain on the stage; no getter; the fixture may suppress it (the gained texld for the same-process baseline).
+        # Selection: the widened variant over every selected gain variant with a known size and a mip chain on the
+        # stage, alpha tested or not (the block keeps rL.w unwidened, 2026-10-16); no getter; the fixture may suppress
+        # it (the gained texld for the same-process baseline). The held reason keeps its alpha slot, never set.
         bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
-        self.assertIn('bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && !route.alpha_tested && shadow_.hull_lightmap_stage', bind)
-        self.assertIn('&& samplers_[shadow_.hull_lightmap_stage].levels > 1;', bind)
+        self.assertIn('bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && shadow_.hull_lightmap_stage &&', bind)
+        self.assertIn('samplers_[shadow_.hull_lightmap_stage].levels > 1;', bind)
+        self.assertNotIn('alpha_tested', bind)
+        self.assertIn('static const char* const reason_names[4] = {"other", "size", "alpha", "levels"};', motion)
         self.assertIn('if (widen_draw && shadow_.ps_hull_lightmap_widen && ensure_widen_filter(route)) { ps = shadow_.ps_hull_lightmap_widen; widen = true; }', bind)
         self.assertIn('const bool widened_original=gained_original&&widen_draw&&shadow_.ps_sun_original_lightmap_widen&&ensure_widen_filter(route);', bind)
         self.assertIn('if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;', bind)
@@ -563,7 +578,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertIn('case dsx: case dsy: operands=2; slots=2; return true;', source)
         self.assertIn('case texldd: operands=5; slots=3; return true;', source)
         self.assertIn('if (op==texldd) { if (dimension!=2) return false; }', source)
-        self.assertIn('constexpr unsigned lightmap_widen_words = 117, lightmap_widen_fetch_offset = 41,', source)
+        self.assertIn('constexpr unsigned lightmap_widen_words = 124, lightmap_widen_fetch_offset = 41,', source)
         self.assertIn('constexpr unsigned lightmap_widen_constant = 210, lightmap_widen_luma_constant = 211, lightmap_widen_gate_constant = 203;', source)
         self.assertIn('if (widen && (lightmap_gain==1.0f || !lightmap_widen_valid(*widen))) return LinearMaterialResult::InvalidConfig;', source)
         self.assertIn('return std::isfinite(w.k) && std::isfinite(w.b) && w.k>1.0f && w.k<=8.0f && w.b>=1.0f && w.b<=w.k;', source)

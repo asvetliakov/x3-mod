@@ -1215,7 +1215,7 @@ CASES += [case(ENGINE_LIGHT_SEAM_CASE, 'enginelight', camera=True, hdr=True, hdr
 LIGHTMAP_WIDEN_MAP = 64
 LIGHTMAP_WIDEN_PAIRS = 11
 LIGHTMAP_WIDEN_LIGHTMAP_PROGRAMS = 100
-LIGHTMAP_WIDEN_BLOCK_WORDS, LIGHTMAP_WIDEN_BLOCK_SLOTS = 131, 35
+LIGHTMAP_WIDEN_BLOCK_WORDS, LIGHTMAP_WIDEN_BLOCK_SLOTS = 138, 37  # +7 words, +2 slots since 2026-10-16: texld rT / mov rL.w (unwidened alpha)
 
 
 def lightmap_widen_profile(texels):

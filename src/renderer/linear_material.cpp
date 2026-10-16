@@ -1299,7 +1299,7 @@ void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plat
 }
 // Hull emissive widening (docs/architecture/hull-emissive-widening.md 8.3
 // R1/R2, --hull-emissive-widening K[,B]): the pinned `texld rL, v1, s` becomes
-// a 28-instruction block (117 DWORDs, 36 weighted slots) with three temporaries
+// a 30-instruction block (124 DWORDs, 38 weighted slots) with three temporaries
 // rG (gradients), rT = rG + 1 and rU = rG + 2 (scratch, the coarse fetches):
 //   dsx     rG.xy, v1                         (2)  screen-space UV gradients
 //   dsy     rG.zw, v1.xyxy                    (2)
@@ -1336,6 +1336,10 @@ void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plat
 //   mul     rT.x, rT.x, rU.w                  (1)  t b g
 //   mul     rT.x, rT.x, c210.z                (1)  (B - 1) t b g
 //   mad     rL.xyz, rL, rT.x, rL              (1)  rL . (1 + (B - 1) t)
+//   texld   rT{_pp}, v1, s                    (1)  the original point fetch of the same texel
+//   mov     rL.w{_pp}, rT.w                   (1)  rL.w unwidened: the hull programs' alpha (the
+//                                                  alpha test's coverage, `lrp ... rL.w` -> oC0.w) is
+//                                                  the texld's, so alpha-tested draws widen too
 // c217.yz are the per-draw lanes the route uploads ((W c)^2, (H c)^2 of the
 // bound light map; the motion fragment reads c217.x, the far fade c217.w);
 // c210/c211/c203 are shader-local DEFs (constant_free of the original):
@@ -1345,8 +1349,8 @@ void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic, bool plat
 // CreatePixelShader refuses the program). No
 // intensity rescale otherwise (the mip chain conserves energy). Byte layout is
 // fixed: the block is regenerated once rG is known (lightmap_widen_patch).
-constexpr unsigned lightmap_widen_words = 117, lightmap_widen_fetch_offset = 41, lightmap_widen_before = 11,
-                   lightmap_widen_after = 16;
+constexpr unsigned lightmap_widen_words = 124, lightmap_widen_fetch_offset = 41, lightmap_widen_before = 11,
+                   lightmap_widen_after = 18;
 constexpr unsigned lightmap_widen_constant = 210, lightmap_widen_luma_constant = 211,
                    lightmap_widen_gate_constant = 203;
 constexpr float lightmap_widen_floor_scale = 32.0f; // b = saturate(32 L_k - 1)
@@ -1415,6 +1419,10 @@ void lightmap_widen_fetch(Words& out, const Word* fetch, unsigned g) {
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(temp, u, 3)});
     emit(out, mul, {dst(temp, t, 1u), lane(temp, t, 0), lane(constant, lightmap_widen_constant, 2)});
     emit(out, mad, {dst(temp, reg), src(temp, reg), lane(temp, t, 0), src(temp, reg)});
+    // The unwidened alpha: the texld's own fetch into the free scratch rT, its .w into rL.w (both with the
+    // texld's _pp, the only modifier its destination may carry).
+    emit(out, texld, {dst(temp, t, xyzw) | (destination & pp), coordinate, sampler});
+    emit(out, mov, {dst(temp, reg, 8u) | (destination & pp), lane(temp, t, 3)});
 }
 void lightmap_widen_patch(Word* block, unsigned g) {
     // The block's texldd holds the texld's own words; regenerate with rG = g.
@@ -1424,7 +1432,7 @@ void lightmap_widen_patch(Word* block, unsigned g) {
     lightmap_widen_fetch(expected, fetch_words, g);
     std::copy(expected.begin(), expected.end(), block);
 }
-// The widened fetch at instruction i of s (the first texldd): exactly the 28
+// The widened fetch at instruction i of s (the first texldd): exactly the 30
 // instructions above with gradient temporary g and scratch g + 1, g + 2 (g
 // returned), the coordinate and sampler words of the fetch. -1 otherwise.
 int lightmap_widen_site(const Word* code, const Structure& s, std::size_t i, unsigned stage) noexcept {
@@ -1445,7 +1453,7 @@ int lightmap_widen_site(const Word* code, const Structure& s, std::size_t i, uns
         last.at + last.count + 1 != first.at + lightmap_widen_words)
         return -1;
     // Rebuild the block from the fetch's own words (destination, coordinate,
-    // sampler) and compare all 117.
+    // sampler) and compare all 124.
     Words expected;
     const Word fetch_words[4] = {0, code[fetch.at + 1], coordinate, sampler};
     lightmap_widen_fetch(expected, fetch_words, g);
@@ -1492,8 +1500,9 @@ int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::s
         if (in.opcode == dcl && kind(code[in.at + 2]) == 10 && index(code[in.at + 2]) == stage)
             two_dimensional = ((code[in.at + 1] >> 27) & 15) == 2;
     if (!two_dimensional) return -1;
-    // The widened block's boost (its last sixteen instructions, proven word
-    // for word above) is the term's own; the gain MUL follows the block.
+    // The widened block's boost and alpha restore (its last eighteen
+    // instructions, proven word for word above) are the term's own; the gain
+    // MUL follows the block.
     if (widen) i += lightmap_widen_after;
     if (gained && plate) {
         // The nozzle-plate gain (lightmap_gain_instruction with plate): the

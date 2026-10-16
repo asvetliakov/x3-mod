@@ -155,9 +155,10 @@ mul    rL.xyz, rL, c217.w | c223.x         ; the existing gain MUL, unchanged
   texld, cost 3); `lightmap_term()` must accept a `texldd` whose src0 and sampler equal the original fetch's and
   whose gradient sources are the one temp written by the two preceding derivative instructions; the emitted-program
   re-proof runs as today (fetch, gain MUL, rL.xyz untouched to the final, c217 lane reads).
-- `rL.w` is now the widened alpha too. Opaque hull draws (blend off, alpha test off) discard `oC0.w`; for a draw with
-  blend or alpha test on the route binds the un-widened gained variant (the state is in the shadow; `motion_route`
-  logs `blend`/`atest`). This keeps the two-fetch form (original `texld` for `.w`, `texldd` for `.xyz`) unnecessary.
+- *Superseded 2026-10-16 (As built R1 + R2, "Alpha is unwidened"):* this design widened `rL.w` too and kept
+  alpha-tested draws on the un-widened variant. As built, the block adds the two-fetch form (original `texld` for
+  `.w`, `texldd` for `.xyz`), so `rL.w` is the native alpha and alpha-tested draws widen; opaque draws do not discard
+  `oC0.w` (the bloom extract reads `clamp(scene.a, 0, 1)`, [linear-emission-cost.md](linear-emission-cost.md)).
 
 ### 2.3 Per-draw upload and variant choice
 
@@ -269,7 +270,8 @@ Append results to `docs/verification/motion-output.md` under a "Hull emissive wi
 - **Native Windows**: the variant is bytecode built at create time from documented ps_3_0 opcodes and reads only the
   constant range the route already uploads; identical on Windows and CrossOver. The derivative convention and
   anisotropic `texldd` are unverified natively (add to `platform-portability.md`'s list, as with the shadow pass).
-- **Alpha lane**: `rL.w` widened; harmless on opaque draws, and blended/alpha-tested draws bind the un-widened variant.
+- **Alpha lane** (*superseded 2026-10-16*): planned as widened `rL.w` with alpha-tested draws un-widened; as built
+  `rL.w` is the original `texld`'s and alpha-tested draws widen (blended draws stay refused by the opaque chain).
 - **Option and default plan**: `--hull-emissive-widening K[,Q0,Q1]` (env `X3M_HULL_EMISSIVE_WIDENING`), requires HDR and
   the gained hull path like `--hull-lightmap-gain`, `K` in `[1, 8]`, `Q1 > Q0 >= 0`, `K = 1` or absent = off, default
   **off** for the first flight; after the flight verdict the launcher selects `3,2,8` (or the flown value) whenever it
@@ -331,7 +333,8 @@ Implemented as designed with these concrete choices and measured facts:
   light-map stage stored per program (`linear_material_hull_lightmap_stage`); `evaluate_draw` uploads
   `k_draw = lightmap_widen_scale(footprint)` in `pixel[6]` (c217.z; 0 without the option or a gain pair; 1 without a
   camera); `bind_variant_pair` selects the widened variant when `k_draw > 1`, the draw is not alpha tested (blending
-  is already refused by the opaque chain) and the stage's level count exceeds 1. The `SetTexture` hook installs for
+  is already refused by the opaque chain; the alpha-test exclusion was dropped 2026-10-16, R1 + R2 section) and the
+  stage's level count exceeds 1. The `SetTexture` hook installs for
   the option as for the mip bias so the level counts exist without `--taa-mip-bias`. Frame line
   `hull_lightmap_widen_frame` (widened / unity counts, k range, camera), detach line `hull_lightmap_widen_summary`
   (session k range). Ctrl+Shift+F4 dropped the widened variant with the gain (removed 2026-09-26, [in-game keys](comparison-hotkeys.md#removed-2026-09-26)). No new API call or allocation per draw.
@@ -353,15 +356,27 @@ The revision of [thin-glow-lines.md](thin-glow-lines.md) §8.3, items R1 and R2 
 with the review fixes of the same evening (axis-separated gate, anisotropic minification raised per widened draw,
 brightness floor, minification gate, flow-control and subroutine refusal, identity-keyed size shadow).
 
-- **Block** (`linear_material.cpp`, `lightmap_widen_fetch`): the pinned `texld rL, v1, s` becomes 28 instructions,
-  117 DWORDs, 36 weighted slots (+35 over the texld), three temporaries `rG` (gradients), `rT = rG + 1`, `rU = rG + 2`:
+- **Block** (`linear_material.cpp`, `lightmap_widen_fetch`): the pinned `texld rL, v1, s` becomes 30 instructions,
+  124 DWORDs, 38 weighted slots (+37 over the texld), three temporaries `rG` (gradients), `rT = rG + 1`, `rU = rG + 2`:
   `dsx rG.xy, v1 / dsy rG.zw, v1.xyxy / mul rT, rG, rG / mul rT, rT, c217.yzyz / add rT.xy, rT.xzxx, rT.ywxx /
   max rT.x, rT.x, rT.y / mad_sat rU.w, rT.x, c210.x, -c210.w / rsq rT.x, rT.x / max_sat rT.x, rT.x, c210.x /
   rcp rT.x, rT.x / mul rG, rG, rT.x / texldd rL, v1, s, rG.xy, rG.zw / add rT, rG, rG /
   texldd rU.xyz, v1, s, rT.xy, rG.zw / dp3 rU.x, rU, c211 / texldd rT.xyz, v1, s, rG.xy, rT.zw / dp3 rT.w, rT, c211 /
   min rT.w, rT.w, rU.x / dp3 rT.x, rL, c211 / mad_sat rT.y, rT.x, c203.x, -c203.y / max rT.w, rT.w, c210.y /
   rcp rT.w, rT.w / mul rT.x, rT.x, rT.w / mad_sat rT.x, rT.x, c203.z, -c203.w / mul rT.x, rT.x, rT.y /
-  mul rT.x, rT.x, rU.w / mul rT.x, rT.x, c210.z / mad rL.xyz, rL, rT.x, rL`, then the gain MUL as before. The
+  mul rT.x, rT.x, rU.w / mul rT.x, rT.x, c210.z / mad rL.xyz, rL, rT.x, rL / texld rT, v1, s /
+  mov rL.w, rT.w` (the texld's `_pp` on the widened texldd, the closing texld and the mov), then the gain MUL as
+  before. **Alpha is unwidened** (2026-10-16, user decision "why not widen alpha-tested too"): the hull programs'
+  alpha reads the light map's `rL.w` (5e0a10fe: `lrp r2.w, c3.x, rL.w, r1.w` -> `mul oC0.w, r2.w, v0.w`, the
+  alpha-tested coverage), so the closing pair re-fetches the same texel with the original implicit-gradient `texld`
+  into the free scratch `rT` and copies its `.w`; `rL.w` is the gained variant's bit for bit under the same sampler
+  state and the cut-out boundary is not blurred with distance, which is what lets alpha-tested gain draws widen
+  (Route below). One difference remains: on a widened draw whose light-map stage the application left at LINEAR
+  minification, the route's ANISOTROPIC raise (MINFILTER below) also filters this alpha fetch, so oblique cut-out
+  coverage can differ from the native draw's (unmeasured; a flight shows it). Opaque widened draws also write the
+  native alpha again: `oC0.w` lands in the FP16 scene alpha, which the bloom extract's per-source attenuation reads
+  (`clamp(scene.a, 0, 1)`, [linear-emission-cost.md](linear-emission-cost.md) "Scene alpha"); up to Run181 every
+  widened draw wrote the widened light-map alpha there. The
   **minification gate** `g = saturate(rho^2 / K - 1)` (in `rU.w`, kept across the `.xyz` coarse fetches) removes the
   boost while the widened fetch is still magnified (`rho^2 < K`, the transition band where a strip between `k` and
   `K` px wide toggled its boost with the phase) and is 1 from `rho^2 >= 2 K`; there the output is the un-boosted
@@ -395,8 +410,11 @@ brightness floor, minification gate, flow-control and subroutine refusal, identi
   `c = K` (the frame and draw lines log it as `c`).
 - **Route** (`motion_output.cpp`): `configure_hull_emissive_widening(K, B)` (needs the gain; `1 < K <= 8`,
   `1 <= B <= K`); no camera latch and no `Q0/Q1` ramp; `lightmap_widen_scale(size, K) = (size K)^2` per axis from the
-  light-map stage's shadowed level-0 size; the widened variant binds for **every** gain draw with a known size, no
-  alpha test and a mip chain (the block holds `k = 1` near). **MINFILTER**: the sampler hook shadows the
+  light-map stage's shadowed level-0 size; the widened variant binds for **every** gain draw with a known size and a
+  mip chain (the block holds `k = 1` near), alpha tested or not since 2026-10-16 (`!route.alpha_tested` dropped from
+  `widen_draw`; Run 180 B averaged 20.3 alpha-tested held draws of 66.7 admitted per frame, the Argon Titan's window
+  parts on ps 5e0a10fe among them). The held reason keeps its `alpha` slot (2), now never set: `held_alpha=` stays on
+  the frame line at 0. **MINFILTER**: the sampler hook shadows the
   application's minification filter of every stage while the option is on; at the two selection points a widened
   draw whose light-map stage is shadowed at anything but `D3DTEXF_ANISOTROPIC` (run231's sampler log: stage 3, the
   light-map stage of 56 of the 100 programs, is LINEAR in 11,913 of 25,014 draws, ANISOTROPIC in 13,101; MAXANISOTROPY
@@ -418,9 +436,11 @@ brightness floor, minification gate, flow-control and subroutine refusal, identi
   `tools/manage.py` resolves the option to `4` (`X3M_HULL_EMISSIVE_WIDENING=4,4`) exactly where an explicit `4` would
   have been accepted, that is wherever the light-map gain is already active, never turning that gain on itself, and to
   off where it is not; `--hull-emissive-widening off` is the opt-out and leaves the variable unset.
-- **Cost**: +35 slots per widened variant (largest **299 of 512**: `xt_standard_lighting` f1b0e820c7b488c3 share; the
-  damage share 295; plain 220), three light-map fetches and about 22 ALU instructions per pixel of **every** gain hull
-  draw (the widened variant binds near too, at k = 1), +3 temporaries (share variants reach r26), three DEFs; the
+- **Cost**: +37 slots per widened variant (+35 before the alpha pair; largest 299 + 2 = 301 share / 220 + 2 = 222
+  plain, inferred from the constant +2: the 137-program corpus was not on the host for the 2026-10-16 change), four
+  light-map fetches (the widened, two coarse, the alpha point fetch) and about 23 ALU instructions per pixel of
+  **every** gain hull draw (the widened variant binds near too, at k = 1), +3 temporaries (share variants reach r26),
+  three DEFs; the
   route's per-draw work is two multiplies and a compare, plus one `SetSamplerState` before and one after a widened
   draw whose light-map stage is LINEAR (about half of the stage-3 draws in run231), and one `GetPrivateData` per
   `SetTexture` call that binds a new pointer on s2/s3. **Unmeasured in flight**: no GPU timer exists; the fps overlay
