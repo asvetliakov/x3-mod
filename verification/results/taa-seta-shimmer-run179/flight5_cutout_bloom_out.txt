@@ -1,0 +1,90 @@
+== Run 182 A 30162 plant node 3f6e3060 (z 47-54k, alpha draws widened, native alpha)
+30162 covered 16159 holes 0.0219 edge 0.0654 | bright share 0.00176 blobs 21 mean size 1.38 L p90 1.73
+30163 covered 16311 holes 0.0228 edge 0.0651 | bright share 0.00168 blobs 24 mean size 1.17 L p90 1.88
+30164 covered 16454 holes 0.0212 edge 0.0653 | bright share 0.00125 blobs 17 mean size 1.24 L p90 1.81
+30165 covered 16585 holes 0.0223 edge 0.0648 | bright share 0.00171 blobs 24 mean size 1.21 L p90 1.71
+30166 covered 16731 holes 0.0223 edge 0.0648 | bright share 0.00175 blobs 24 mean size 1.25 L p90 1.66
+30167 covered 16888 holes 0.0225 edge 0.0645 | bright share 0.00145 blobs 19 mean size 1.32 L p90 1.45
+30168 covered 17022 holes 0.0216 edge 0.0642 | bright share 0.00172 blobs 23 mean size 1.30 L p90 1.59
+30169 covered 17183 holes 0.0226 edge 0.0652 | bright share 0.00114 blobs 19 mean size 1.05 L p90 1.28
+30170 covered 17335 holes 0.0211 edge 0.0633 | bright share 0.00209 blobs 29 mean size 1.28 L p90 1.84
+30171 covered 17493 holes 0.0215 edge 0.0631 | bright share 0.00190 blobs 30 mean size 1.13 L p90 1.44
+30172 covered 17677 holes 0.0226 edge 0.0634 | bright share 0.00205 blobs 25 mean size 1.48 L p90 1.63
+30173 covered 17821 holes 0.0228 edge 0.0628 | bright share 0.00175 blobs 25 mean size 1.28 L p90 1.46
+30174 covered 17978 holes 0.0205 edge 0.0640 | bright share 0.00196 blobs 28 mean size 1.29 L p90 1.52
+30175 covered 18167 holes 0.0233 edge 0.0631 | bright share 0.00199 blobs 28 mean size 1.32 L p90 1.60
+30176 covered 18330 holes 0.0221 edge 0.0632 | bright share 0.00219 blobs 32 mean size 1.28 L p90 1.49
+30177 covered 18494 holes 0.0221 edge 0.0633 | bright share 0.00217 blobs 28 mean size 1.46 L p90 1.56
+median frames 2-16: covered 17335 holes 0.0223 edge 0.0640 | bright share 0.00175 blobs 25 mean blob 1.28 px, L p90 1.59
+== Run179 flight 1 13089 plant by view z 50000-65000 box 128,896-768,1152 (no widening; log gone)
+13089 covered 12440 holes 0.1059 edge 0.1682 | bright share 0.00941 blobs 40 mean size 3.27 L p90 1.54
+13090 covered 12435 holes 0.1042 edge 0.1685 | bright share 0.00821 blobs 46 mean size 2.48 L p90 1.55
+13091 covered 12468 holes 0.1021 edge 0.1679 | bright share 0.00871 blobs 40 mean size 3.02 L p90 1.55
+13092 covered 12454 holes 0.1056 edge 0.1679 | bright share 0.00898 blobs 48 mean size 2.60 L p90 1.54
+13093 covered 12474 holes 0.1041 edge 0.1678 | bright share 0.00797 blobs 40 mean size 2.77 L p90 1.54
+13094 covered 12461 holes 0.1092 edge 0.1682 | bright share 0.00929 blobs 44 mean size 2.95 L p90 1.55
+13095 covered 12433 holes 0.1059 edge 0.1691 | bright share 0.00942 blobs 43 mean size 3.05 L p90 1.54
+13096 covered 12476 holes 0.1004 edge 0.1668 | bright share 0.00844 blobs 36 mean size 3.25 L p90 1.55
+13097 covered 12440 holes 0.1059 edge 0.1682 | bright share 0.00941 blobs 40 mean size 3.27 L p90 1.54
+13098 covered 12435 holes 0.1042 edge 0.1685 | bright share 0.00821 blobs 46 mean size 2.48 L p90 1.55
+13099 covered 12468 holes 0.1021 edge 0.1679 | bright share 0.00871 blobs 40 mean size 3.02 L p90 1.55
+13100 covered 12454 holes 0.1056 edge 0.1679 | bright share 0.00898 blobs 48 mean size 2.60 L p90 1.54
+13101 covered 12474 holes 0.1041 edge 0.1678 | bright share 0.00797 blobs 40 mean size 2.77 L p90 1.54
+13102 covered 12461 holes 0.1092 edge 0.1682 | bright share 0.00929 blobs 44 mean size 2.95 L p90 1.55
+13103 covered 12433 holes 0.1059 edge 0.1691 | bright share 0.00942 blobs 43 mean size 3.05 L p90 1.54
+13104 covered 12476 holes 0.1004 edge 0.1668 | bright share 0.00844 blobs 36 mean size 3.25 L p90 1.55
+median frames 2-16: covered 12461 holes 0.1042 edge 0.1679 | bright share 0.00871 blobs 43 mean blob 2.95 px, L p90 1.55
+== Run 180 B 6149 plant node 3c2b2e60 (z 83-92k, alpha draws held)
+6149 covered 1527 holes 0.1938 edge 0.3340 | bright share 0.01478 blobs 19 mean size 1.47 L p90 2.88
+6150 covered 1502 holes 0.1646 edge 0.3302 | bright share 0.01390 blobs 16 mean size 1.56 L p90 3.34
+6151 covered 1508 holes 0.1949 edge 0.3309 | bright share 0.01121 blobs 13 mean size 1.62 L p90 3.29
+6152 covered 1505 holes 0.1726 edge 0.3262 | bright share 0.01814 blobs 20 mean size 1.65 L p90 3.11
+6153 covered 1497 holes 0.1891 edge 0.3353 | bright share 0.01625 blobs 18 mean size 1.67 L p90 3.09
+6154 covered 1493 holes 0.1969 edge 0.3309 | bright share 0.01345 blobs 17 mean size 1.47 L p90 2.81
+6155 covered 1482 holes 0.1646 edge 0.3320 | bright share 0.01522 blobs 19 mean size 1.42 L p90 3.39
+6156 covered 1488 holes 0.1939 edge 0.3333 | bright share 0.01517 blobs 19 mean size 1.47 L p90 3.19
+6157 covered 1510 holes 0.1977 edge 0.3272 | bright share 0.01860 blobs 18 mean size 1.94 L p90 3.27
+6158 covered 1488 holes 0.1678 edge 0.3367 | bright share 0.01286 blobs 19 mean size 1.21 L p90 3.50
+6159 covered 1500 holes 0.1681 edge 0.3247 | bright share 0.01276 blobs 20 mean size 1.15 L p90 3.41
+6160 covered 1518 holes 0.1930 edge 0.3235 | bright share 0.01595 blobs 18 mean size 1.67 L p90 3.34
+6161 covered 1528 holes 0.1838 edge 0.3226 | bright share 0.01229 blobs 17 mean size 1.35 L p90 3.08
+6162 covered 1541 holes 0.1898 edge 0.3238 | bright share 0.01367 blobs 19 mean size 1.37 L p90 3.16
+6163 covered 1578 holes 0.1721 edge 0.3232 | bright share 0.01312 blobs 16 mean size 1.56 L p90 3.33
+6164 covered 1587 holes 0.1713 edge 0.3214 | bright share 0.01619 blobs 19 mean size 1.63 L p90 3.47
+median frames 2-16: covered 1505 holes 0.1838 edge 0.3272 | bright share 0.01390 blobs 18 mean blob 1.56 px, L p90 3.29
+== Run 182 A 9162 Titan node 4ce60e78
+9162 covered 16029 holes 0.0359 edge 0.0703 | bright share 0.00932 blobs 62 mean size 2.50 L p90 2.22
+9163 covered 16210 holes 0.0358 edge 0.0707 | bright share 0.00886 blobs 64 mean size 2.33 L p90 2.46
+9164 covered 16351 holes 0.0357 edge 0.0685 | bright share 0.00879 blobs 67 mean size 2.22 L p90 2.57
+9165 covered 16532 holes 0.0384 edge 0.0699 | bright share 0.00890 blobs 65 mean size 2.35 L p90 2.37
+9166 covered 16688 holes 0.0349 edge 0.0698 | bright share 0.00856 blobs 61 mean size 2.43 L p90 2.59
+9167 covered 16857 holes 0.0381 edge 0.0682 | bright share 0.00907 blobs 62 mean size 2.56 L p90 2.35
+9168 covered 17016 holes 0.0361 edge 0.0682 | bright share 0.00906 blobs 67 mean size 2.39 L p90 2.62
+9169 covered 17158 holes 0.0367 edge 0.0683 | bright share 0.00814 blobs 63 mean size 2.30 L p90 2.61
+9170 covered 17309 holes 0.0363 edge 0.0677 | bright share 0.00935 blobs 62 mean size 2.71 L p90 2.43
+9171 covered 17463 holes 0.0343 edge 0.0679 | bright share 0.00957 blobs 73 mean size 2.37 L p90 2.45
+9172 covered 17675 holes 0.0349 edge 0.0701 | bright share 0.00901 blobs 61 mean size 2.70 L p90 2.72
+9173 covered 17836 holes 0.0367 edge 0.0685 | bright share 0.00934 blobs 70 mean size 2.47 L p90 2.42
+9174 covered 18015 holes 0.0323 edge 0.0688 | bright share 0.00881 blobs 69 mean size 2.38 L p90 2.64
+9175 covered 18173 holes 0.0336 edge 0.0686 | bright share 0.00862 blobs 65 mean size 2.49 L p90 2.75
+9176 covered 18351 holes 0.0342 edge 0.0676 | bright share 0.00926 blobs 70 mean size 2.51 L p90 2.28
+9177 covered 18572 holes 0.0353 edge 0.0685 | bright share 0.00925 blobs 71 mean size 2.51 L p90 2.59
+median frames 2-16: covered 17309 holes 0.0357 edge 0.0685 | bright share 0.00901 blobs 65 mean blob 2.43 px, L p90 2.57
+== Run 180 B 11893 Titan node 48d4e998
+11893 covered 17233 holes 0.0310 edge 0.0673 | bright share 0.00978 blobs 80 mean size 2.17 L p90 2.64
+11894 covered 17414 holes 0.0330 edge 0.0680 | bright share 0.01022 blobs 84 mean size 2.19 L p90 2.39
+11895 covered 17594 holes 0.0322 edge 0.0675 | bright share 0.01051 blobs 79 mean size 2.42 L p90 2.54
+11896 covered 17770 holes 0.0323 edge 0.0672 | bright share 0.01013 blobs 80 mean size 2.33 L p90 2.74
+11897 covered 17935 holes 0.0304 edge 0.0662 | bright share 0.01049 blobs 80 mean size 2.42 L p90 2.57
+11898 covered 18126 holes 0.0311 edge 0.0669 | bright share 0.01005 blobs 69 mean size 2.72 L p90 2.52
+11899 covered 18307 holes 0.0309 edge 0.0656 | bright share 0.00948 blobs 79 mean size 2.27 L p90 2.51
+11900 covered 18508 holes 0.0325 edge 0.0658 | bright share 0.00852 blobs 67 mean size 2.43 L p90 2.73
+11901 covered 18710 holes 0.0307 edge 0.0659 | bright share 0.00948 blobs 72 mean size 2.54 L p90 2.71
+11902 covered 18909 holes 0.0319 edge 0.0659 | bright share 0.01034 blobs 75 mean size 2.69 L p90 2.70
+11903 covered 19075 holes 0.0325 edge 0.0657 | bright share 0.00959 blobs 75 mean size 2.52 L p90 2.63
+11904 covered 19288 holes 0.0314 edge 0.0650 | bright share 0.00949 blobs 73 mean size 2.59 L p90 2.53
+11905 covered 19509 holes 0.0318 edge 0.0646 | bright share 0.01042 blobs 71 mean size 2.96 L p90 2.56
+11906 covered 19712 holes 0.0309 edge 0.0646 | bright share 0.00968 blobs 62 mean size 3.18 L p90 2.70
+11907 covered 19909 holes 0.0313 edge 0.0646 | bright share 0.00993 blobs 63 mean size 3.24 L p90 2.74
+11908 covered 20129 holes 0.0319 edge 0.0651 | bright share 0.00957 blobs 65 mean size 3.06 L p90 2.80
+median frames 2-16: covered 18710 holes 0.0318 edge 0.0658 | bright share 0.00993 blobs 73 mean blob 2.54 px, L p90 2.63

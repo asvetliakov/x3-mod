@@ -167,7 +167,10 @@ if NODES:
     dd = d0 * 0 + 0
     devd = None
     for label, node in NODES.items():
-        m_ = np.zeros(N, bool); cnt = 0
+        m_ = np.zeros(N, bool); cnt = 0; byps = {}
+        if 'PSOF' not in globals():
+            PSOF = {dict(re.findall(r'(\w+)=(\S+)', l))['index']: dict(re.findall(r'(\w+)=(\S+)', l))['ps']
+                    for l in subprocess.run(['grep', '-E', f'^draw device=1 frame={n} ', log], capture_output=True, text=True).stdout.splitlines()}
         for l in rows:
             kv = dict(re.findall(r'(\w+)=(\S+)', l))
             if kv.get('node') != node: continue
@@ -175,8 +178,19 @@ if NODES:
             if devd is None: devd = rd('depth', n, np.float32, 4)[ys, xs, 0]
             x0, y0, x1, y1 = (float(kv[k]) for k in ('sx0', 'sy0', 'sx1', 'sy1'))
             z0, z1 = float(kv['zmin']), float(kv['zmax'])
-            m_ |= (px >= x0) & (px <= x1) & (py >= y0) & (py <= y1) & (devd >= z0 - 2e-6) & (devd <= z1 + 2e-6)
+            dm = (px >= x0) & (px <= x1) & (py >= y0) & (py <= y1) & (devd >= z0 - 2e-6) & (devd <= z1 + 2e-6)
+            m_ |= dm
+            k_ = PSOF.get(kv['index'], '?') + ('/alpha' if kv.get('alpha_tested') == '1' else '')
+            byps[k_] = byps.get(k_, np.zeros(N, bool)) | dm
         obj[label] = m_
+        # Draw attribution by bounding box and depth range (draws of one object overlap: 'only' = no other ps covers it).
+        for k_, dm in byps.items():
+            others = np.zeros(N, bool)
+            for k2, d2 in byps.items():
+                if k2 != k_: others |= d2
+            for nm_, sl in (('all', m_ & ok), ('present-flickering', m_ & flp)):
+                c_ = max(sl.sum(), 1)
+                print(f'    {label} {nm_}: on draws ps {k_}: any {np.sum(sl & dm)/c_:.3f}, only {np.sum(sl & dm & ~others)/c_:.3f}')
         print(f'  object {label} node {node}: {cnt} draws, {m_.sum()} hull px, chain-valid {(m_&ok).sum()}, view z p10/p50/p90 '
               f'{np.percentile(vz[m_],[10,50,90]).round(0) if m_.any() else "-"}, capture-frame speed p50 {np.median(spd[m_]) if m_.any() else float("nan"):.2f}')
         desc(m_ & ok, f'{label} all')

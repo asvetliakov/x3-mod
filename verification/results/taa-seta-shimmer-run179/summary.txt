@@ -53,3 +53,18 @@ Titan 11893: presented flicker 4.8 %, gain 0.124 (Run 180 A mid Titan 6323: 4.7 
   Titan draws at this LOD: 3; 1 widened (ca6bfa4a), 1 held reason=alpha (5e0a10fe), 1 held reason=levels (32x32).
 Pan softness: plant detail (mean |Laplacian| / mean luma) in 6149 present 1.07-1.13, taa/hdr 0.23-0.26 (capture frames), 0.33 first frame;
   Run179 2927 not comparable (plant enters the frame: 2 -> 1329 px). Both pans run above 0.5 px/f in flight, outside the changed band.
+--- Fifth flight (Run 182 A: widening on alpha-tested draws; gate hi 0.5 as in Run 180 B) [M unless marked]
+burst  target    camera                 target view z      in-flight step   target presented flicker / gain
+7711   Titan     turning                70-74k             1.04 px/f        4.4 % / 0.102
+8486   Titan     SETA                   42-49k             0.25             6.3 % / 0.151
+9162   Titan     still (normal speed)   34-40k             0.047            2.4 % / 0.109   (Run 180 B 11893, 33-40k: 4.8 % / 0.124)
+15986  Colossus  still                  87-92k (factory A 17-23k, Titan 110k) 0.03   3.7 % / 0.104
+30162  plant     slow turn              47-54k             0.058            0.2 % / 0.074
+Per-draw attribution by object_bounds is not possible: every Titan draw's box and depth range covers all its pixels ('only' 0.000).
+Titan sharpness (mean |Laplacian| / mean luma, edge excluded; capture-frame median, first frame in brackets):
+  Run 180 A 4905 (0.25, z mode, 39-46k): present 0.594 (0.693), taa/hdr 0.323 (0.354); windows 6.6 % of px, mean L 0.892
+  Run 180 B 11893 (0.5, no alpha widening): present 0.502 (0.672), taa/hdr 0.307 (0.373); windows 3.6 %, mean L 0.825
+  Run 182 A 9162 (0.5, alpha widening): present 0.574 (0.759), taa/hdr 0.324 (0.442); windows 3.2 %, mean L 0.837
+Cut-outs / bloom (closing 3 px; hdr L>1): Titan 9162 holes 3.57 % edge 0.069, bright 0.90 %, 65 blobs of 2.43 px, L p90 2.57;
+  Titan 11893 holes 3.18 % edge 0.066, bright 0.99 %, 73 blobs of 2.54 px, L p90 2.63. Plant 30162 holes 2.2 % vs Run179 13089 z-box 10.4 %
+  (different view and an unconfirmed mask: not comparable).

@@ -38,3 +38,23 @@ python3 titan_lightmap.py $LOG4 48d4e998 11893 11908 17599 17614 > flight4_titan
   echo "== Run181 6149 factoryA 3c284630"; python3 object_sharpness.py $CAP $LOG4 6149 3c284630
   echo "== Run181 6149 plant by view z 80000-92000 (gate hi 0.5)"; python3 object_sharpness.py $CAP $LOG4 6149 z:80000:92000
   echo "== Run179 flight 2 2927 plant by view z 80000-89000 (gate hi 0.25; log gone, z mode)"; python3 object_sharpness.py $CAP $LOG4 2927 z:80000:89000; } > flight4_sharpness_out.txt
+# Fifth flight (Run 182 A: widening on alpha-tested draws; gate hi still 0.5): log x3m.log; Run 180 B is x3m.prev.log.
+LOG5=/mnt/c/X3/x3m.log; LOG4P=/mnt/c/X3/x3m.prev.log
+python3 log_rows.py $LOG5 7711 8486 9162 15986 30162 > flight5_log_rows_out.txt
+python3 flicker.py $CAP $LOG5 7711 3 titan=4ce60e78,plant=3f6e3060,factoryA=3f6b29d0 > flight5_flicker_7711_out.txt
+python3 flicker.py $CAP $LOG5 8486 3 titan=4ce60e78,factoryA=3f6b29d0 > flight5_flicker_8486_out.txt
+python3 flicker.py $CAP $LOG5 9162 3 titan=4ce60e78,factoryA=3f6b29d0 > flight5_flicker_9162_out.txt
+python3 flicker.py $CAP $LOG5 15986 3 colossus=3e01c088,titan=4d630150,factoryA=3f6b29d0 > flight5_flicker_15986_out.txt
+python3 flicker.py $CAP $LOG5 30162 3 plant=3f6e3060 > flight5_flicker_30162_out.txt
+python3 flicker.py $CAP $LOG5 9162 3 titan=4ce60e78 > flight5_flicker_9162_draws_out.txt     # per-ps draw attribution rows
+python3 flicker.py $CAP $LOG5 8486 3 titan=4ce60e78 > flight5_flicker_8486_draws_out.txt
+python3 flicker.py $CAP $LOG4P 11893 3 titan=48d4e998 > flight4_flicker_11893_draws_out.txt
+{ echo "== Run 180 A 4905 Titan by view z 39000-46500 (gate 0.25, no alpha widening; log gone)"; python3 object_sharpness.py $CAP $LOG5 4905 z:39000:46500
+  echo "== Run 180 B 11893 Titan node 48d4e998 (gate 0.5, no alpha widening)"; python3 object_sharpness.py $CAP $LOG4P 11893 48d4e998
+  echo "== Run 182 A 9162 Titan node 4ce60e78 (gate 0.5, alpha widening)"; python3 object_sharpness.py $CAP $LOG5 9162 4ce60e78
+  echo "== Run 182 A 9162 Titan by view z 33500-40500 (method check)"; python3 object_sharpness.py $CAP $LOG5 9162 z:33500:40500; } > flight5_sharpness_out.txt
+{ echo "== Run 182 A 30162 plant node 3f6e3060"; python3 cutout_bloom.py $CAP $LOG5 30162 3f6e3060
+  echo "== Run179 flight 1 13089 plant by view z 50000-65000 box 128,896-768,1152 (log gone)"; python3 cutout_bloom.py $CAP $LOG5 13089 z:50000:65000:128:896:768:1152
+  echo "== Run 180 B 6149 plant node 3c2b2e60"; python3 cutout_bloom.py $CAP $LOG4P 6149 3c2b2e60
+  echo "== Run 182 A 9162 Titan node 4ce60e78"; python3 cutout_bloom.py $CAP $LOG5 9162 4ce60e78
+  echo "== Run 180 B 11893 Titan node 48d4e998"; python3 cutout_bloom.py $CAP $LOG4P 11893 48d4e998; } > flight5_cutout_bloom_out.txt

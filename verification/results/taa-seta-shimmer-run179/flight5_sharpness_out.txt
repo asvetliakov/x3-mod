@@ -1,0 +1,76 @@
+== Run 180 A 4905 Titan by view z 39000-46500 (gate 0.25, no alpha widening; log gone)
+4905 px 5198 present 0.6925 taa 0.6928 hdr 1.9596 taa/hdr 0.354 | windows 0.0716 of px, mean L 0.918, taa win/plate 0.649/0.726, present win/plate 0.377/0.863
+4906 px 5173 present 0.6318 taa 0.6503 hdr 2.0248 taa/hdr 0.321 | windows 0.0725 of px, mean L 0.892, taa win/plate 0.683/0.626, present win/plate 0.341/0.785
+4907 px 5159 present 0.6086 taa 0.6323 hdr 1.8737 taa/hdr 0.337 | windows 0.0708 of px, mean L 0.895, taa win/plate 0.673/0.603, present win/plate 0.327/0.755
+4908 px 5178 present 0.6038 taa 0.6099 hdr 1.8910 taa/hdr 0.323 | windows 0.0695 of px, mean L 0.867, taa win/plate 0.666/0.571, present win/plate 0.322/0.747
+4909 px 5225 present 0.6057 taa 0.6232 hdr 2.0085 taa/hdr 0.310 | windows 0.0672 of px, mean L 0.875, taa win/plate 0.676/0.588, present win/plate 0.333/0.737
+4910 px 5267 present 0.6090 taa 0.6614 hdr 1.9575 taa/hdr 0.338 | windows 0.0672 of px, mean L 0.897, taa win/plate 0.730/0.615, present win/plate 0.345/0.738
+4911 px 5350 present 0.6008 taa 0.6324 hdr 1.9684 taa/hdr 0.321 | windows 0.0658 of px, mean L 0.894, taa win/plate 0.690/0.594, present win/plate 0.338/0.725
+4912 px 5438 present 0.5805 taa 0.6082 hdr 1.9018 taa/hdr 0.320 | windows 0.0660 of px, mean L 0.905, taa win/plate 0.652/0.579, present win/plate 0.312/0.709
+4913 px 5532 present 0.6069 taa 0.6378 hdr 1.8860 taa/hdr 0.338 | windows 0.0680 of px, mean L 0.894, taa win/plate 0.665/0.618, present win/plate 0.350/0.738
+4914 px 5642 present 0.5896 taa 0.6342 hdr 1.8640 taa/hdr 0.340 | windows 0.0643 of px, mean L 0.907, taa win/plate 0.706/0.587, present win/plate 0.341/0.707
+4915 px 5797 present 0.5936 taa 0.6257 hdr 1.9272 taa/hdr 0.325 | windows 0.0662 of px, mean L 0.894, taa win/plate 0.671/0.594, present win/plate 0.321/0.731
+4916 px 5940 present 0.5769 taa 0.5934 hdr 1.9146 taa/hdr 0.310 | windows 0.0633 of px, mean L 0.876, taa win/plate 0.669/0.545, present win/plate 0.325/0.696
+4917 px 6102 present 0.5845 taa 0.6016 hdr 1.8609 taa/hdr 0.323 | windows 0.0629 of px, mean L 0.868, taa win/plate 0.670/0.558, present win/plate 0.326/0.707
+4918 px 6240 present 0.5871 taa 0.5915 hdr 1.8214 taa/hdr 0.325 | windows 0.0590 of px, mean L 0.890, taa win/plate 0.668/0.545, present win/plate 0.312/0.709
+4919 px 6334 present 0.5759 taa 0.5508 hdr 1.8074 taa/hdr 0.305 | windows 0.0595 of px, mean L 0.874, taa win/plate 0.593/0.525, present win/plate 0.304/0.698
+4920 px 6314 present 0.5632 taa 0.5548 hdr 1.7993 taa/hdr 0.308 | windows 0.0559 of px, mean L 0.888, taa win/plate 0.633/0.509, present win/plate 0.291/0.680
+capture frames 4906-4920 median: present 0.5936 taa 0.6232 hdr 1.8910 taa/hdr 0.323 | windows 0.0660 of px, mean L 0.892, taa win/plate 0.670/0.587, present win/plate 0.326/0.725
+first (in-flight) frame 4905: present 0.6925 taa 0.6928 taa/hdr 0.354 windows 0.0716 mean L 0.918 taa win/plate 0.649/0.726
+== Run 180 B 11893 Titan node 48d4e998 (gate 0.5, no alpha widening)
+11893 px 15274 present 0.6718 taa 0.5398 hdr 1.4461 taa/hdr 0.373 | windows 0.0329 of px, mean L 0.808, taa win/plate 0.591/0.526, present win/plate 0.359/0.737
+11894 px 15412 present 0.5788 taa 0.4718 hdr 1.4662 taa/hdr 0.322 | windows 0.0333 of px, mean L 0.801, taa win/plate 0.550/0.451, present win/plate 0.322/0.631
+11895 px 15588 present 0.5648 taa 0.4759 hdr 1.4589 taa/hdr 0.326 | windows 0.0342 of px, mean L 0.807, taa win/plate 0.579/0.447, present win/plate 0.325/0.615
+11896 px 15736 present 0.5204 taa 0.4419 hdr 1.4649 taa/hdr 0.302 | windows 0.0342 of px, mean L 0.810, taa win/plate 0.550/0.412, present win/plate 0.306/0.564
+11897 px 15906 present 0.5223 taa 0.4402 hdr 1.4122 taa/hdr 0.312 | windows 0.0352 of px, mean L 0.811, taa win/plate 0.536/0.413, present win/plate 0.304/0.569
+11898 px 16065 present 0.5317 taa 0.4597 hdr 1.4017 taa/hdr 0.328 | windows 0.0362 of px, mean L 0.814, taa win/plate 0.570/0.427, present win/plate 0.315/0.580
+11899 px 16268 present 0.5116 taa 0.4329 hdr 1.4330 taa/hdr 0.302 | windows 0.0357 of px, mean L 0.816, taa win/plate 0.525/0.407, present win/plate 0.297/0.557
+11900 px 16459 present 0.5086 taa 0.4380 hdr 1.3703 taa/hdr 0.320 | windows 0.0355 of px, mean L 0.825, taa win/plate 0.549/0.406, present win/plate 0.285/0.557
+11901 px 16609 present 0.5020 taa 0.4154 hdr 1.4183 taa/hdr 0.293 | windows 0.0368 of px, mean L 0.807, taa win/plate 0.495/0.392, present win/plate 0.283/0.551
+11902 px 16788 present 0.4888 taa 0.4173 hdr 1.4201 taa/hdr 0.294 | windows 0.0360 of px, mean L 0.830, taa win/plate 0.515/0.389, present win/plate 0.276/0.535
+11903 px 16940 present 0.4901 taa 0.4234 hdr 1.3773 taa/hdr 0.307 | windows 0.0367 of px, mean L 0.840, taa win/plate 0.508/0.398, present win/plate 0.269/0.540
+11904 px 17163 present 0.4805 taa 0.4039 hdr 1.4225 taa/hdr 0.284 | windows 0.0368 of px, mean L 0.833, taa win/plate 0.493/0.377, present win/plate 0.277/0.525
+11905 px 17382 present 0.4781 taa 0.4135 hdr 1.3978 taa/hdr 0.296 | windows 0.0366 of px, mean L 0.854, taa win/plate 0.521/0.380, present win/plate 0.264/0.525
+11906 px 17553 present 0.4854 taa 0.4258 hdr 1.3751 taa/hdr 0.310 | windows 0.0369 of px, mean L 0.858, taa win/plate 0.533/0.392, present win/plate 0.272/0.534
+11907 px 17730 present 0.4666 taa 0.4133 hdr 1.3763 taa/hdr 0.300 | windows 0.0378 of px, mean L 0.861, taa win/plate 0.529/0.376, present win/plate 0.270/0.511
+11908 px 17903 present 0.4767 taa 0.4178 hdr 1.3589 taa/hdr 0.307 | windows 0.0373 of px, mean L 0.872, taa win/plate 0.518/0.386, present win/plate 0.273/0.523
+capture frames 11894-11908 median: present 0.5020 taa 0.4258 hdr 1.4122 taa/hdr 0.307 | windows 0.0362 of px, mean L 0.825, taa win/plate 0.529/0.398, present win/plate 0.283/0.551
+first (in-flight) frame 11893: present 0.6718 taa 0.5398 taa/hdr 0.373 windows 0.0329 mean L 0.808 taa win/plate 0.591/0.526
+== Run 182 A 9162 Titan node 4ce60e78 (gate 0.5, alpha widening)
+9162 px 14089 present 0.7592 taa 0.6221 hdr 1.4081 taa/hdr 0.442 | windows 0.0292 of px, mean L 0.846, taa win/plate 0.719/0.598, present win/plate 0.459/0.816
+9163 px 14262 present 0.7145 taa 0.5835 hdr 1.4891 taa/hdr 0.392 | windows 0.0299 of px, mean L 0.840, taa win/plate 0.681/0.558, present win/plate 0.425/0.771
+9164 px 14439 present 0.6489 taa 0.5108 hdr 1.4765 taa/hdr 0.346 | windows 0.0312 of px, mean L 0.810, taa win/plate 0.564/0.497, present win/plate 0.357/0.708
+9165 px 14580 present 0.6120 taa 0.4842 hdr 1.4325 taa/hdr 0.338 | windows 0.0294 of px, mean L 0.833, taa win/plate 0.542/0.470, present win/plate 0.336/0.663
+9166 px 14711 present 0.6192 taa 0.5007 hdr 1.4863 taa/hdr 0.337 | windows 0.0315 of px, mean L 0.822, taa win/plate 0.567/0.483, present win/plate 0.350/0.673
+9167 px 14910 present 0.5724 taa 0.4603 hdr 1.4210 taa/hdr 0.324 | windows 0.0297 of px, mean L 0.838, taa win/plate 0.537/0.441, present win/plate 0.320/0.619
+9168 px 15043 present 0.5740 taa 0.4592 hdr 1.4328 taa/hdr 0.320 | windows 0.0320 of px, mean L 0.825, taa win/plate 0.518/0.443, present win/plate 0.321/0.626
+9169 px 15159 present 0.5894 taa 0.4695 hdr 1.4178 taa/hdr 0.331 | windows 0.0315 of px, mean L 0.828, taa win/plate 0.531/0.453, present win/plate 0.345/0.639
+9170 px 15306 present 0.5636 taa 0.4524 hdr 1.4228 taa/hdr 0.318 | windows 0.0323 of px, mean L 0.828, taa win/plate 0.504/0.439, present win/plate 0.312/0.615
+9171 px 15436 present 0.5786 taa 0.4642 hdr 1.4499 taa/hdr 0.320 | windows 0.0323 of px, mean L 0.832, taa win/plate 0.540/0.443, present win/plate 0.342/0.628
+9172 px 15585 present 0.5700 taa 0.4567 hdr 1.4385 taa/hdr 0.318 | windows 0.0323 of px, mean L 0.837, taa win/plate 0.520/0.439, present win/plate 0.338/0.619
+9173 px 15751 present 0.5468 taa 0.4416 hdr 1.4137 taa/hdr 0.312 | windows 0.0321 of px, mean L 0.844, taa win/plate 0.508/0.423, present win/plate 0.296/0.598
+9174 px 15930 present 0.5682 taa 0.4668 hdr 1.4358 taa/hdr 0.325 | windows 0.0323 of px, mean L 0.858, taa win/plate 0.544/0.445, present win/plate 0.339/0.616
+9175 px 16063 present 0.5352 taa 0.4274 hdr 1.4430 taa/hdr 0.296 | windows 0.0321 of px, mean L 0.849, taa win/plate 0.492/0.410, present win/plate 0.292/0.584
+9176 px 16238 present 0.5470 taa 0.4473 hdr 1.4120 taa/hdr 0.317 | windows 0.0325 of px, mean L 0.864, taa win/plate 0.541/0.421, present win/plate 0.306/0.597
+9177 px 16432 present 0.5765 taa 0.4658 hdr 1.4269 taa/hdr 0.326 | windows 0.0318 of px, mean L 0.869, taa win/plate 0.532/0.447, present win/plate 0.324/0.628
+capture frames 9163-9177 median: present 0.5740 taa 0.4642 hdr 1.4328 taa/hdr 0.324 | windows 0.0320 of px, mean L 0.837, taa win/plate 0.537/0.443, present win/plate 0.336/0.626
+first (in-flight) frame 9162: present 0.7592 taa 0.6221 taa/hdr 0.442 windows 0.0292 mean L 0.846 taa win/plate 0.719/0.598
+== Run 182 A 9162 Titan by view z 33500-40500 (method check)
+9162 px 9864 present 0.7154 taa 0.5802 hdr 1.4195 taa/hdr 0.409 | windows 0.0369 of px, mean L 0.830, taa win/plate 0.561/0.587, present win/plate 0.340/0.810
+9163 px 10246 present 0.6472 taa 0.5226 hdr 1.4880 taa/hdr 0.351 | windows 0.0359 of px, mean L 0.835, taa win/plate 0.524/0.522, present win/plate 0.290/0.734
+9164 px 10607 present 0.5795 taa 0.4547 hdr 1.4616 taa/hdr 0.311 | windows 0.0371 of px, mean L 0.807, taa win/plate 0.439/0.460, present win/plate 0.258/0.660
+9165 px 10963 present 0.5490 taa 0.4351 hdr 1.4028 taa/hdr 0.310 | windows 0.0345 of px, mean L 0.831, taa win/plate 0.439/0.434, present win/plate 0.256/0.616
+9166 px 11317 present 0.5538 taa 0.4417 hdr 1.4170 taa/hdr 0.312 | windows 0.0361 of px, mean L 0.819, taa win/plate 0.442/0.442, present win/plate 0.255/0.625
+9167 px 11711 present 0.5242 taa 0.4212 hdr 1.3691 taa/hdr 0.308 | windows 0.0343 of px, mean L 0.832, taa win/plate 0.458/0.410, present win/plate 0.262/0.582
+9168 px 12028 present 0.5278 taa 0.4159 hdr 1.3892 taa/hdr 0.299 | windows 0.0362 of px, mean L 0.819, taa win/plate 0.424/0.413, present win/plate 0.253/0.592
+9169 px 12361 present 0.5477 taa 0.4323 hdr 1.3335 taa/hdr 0.324 | windows 0.0352 of px, mean L 0.826, taa win/plate 0.448/0.428, present win/plate 0.276/0.609
+9170 px 12725 present 0.5302 taa 0.4181 hdr 1.4103 taa/hdr 0.296 | windows 0.0352 of px, mean L 0.825, taa win/plate 0.423/0.417, present win/plate 0.246/0.593
+9171 px 13091 present 0.5514 taa 0.4420 hdr 1.4010 taa/hdr 0.315 | windows 0.0354 of px, mean L 0.835, taa win/plate 0.483/0.430, present win/plate 0.292/0.610
+9172 px 13520 present 0.5474 taa 0.4350 hdr 1.4175 taa/hdr 0.307 | windows 0.0348 of px, mean L 0.836, taa win/plate 0.463/0.427, present win/plate 0.293/0.604
+9173 px 14011 present 0.5329 taa 0.4245 hdr 1.3984 taa/hdr 0.304 | windows 0.0345 of px, mean L 0.835, taa win/plate 0.457/0.415, present win/plate 0.269/0.590
+9174 px 14428 present 0.5533 taa 0.4434 hdr 1.4129 taa/hdr 0.314 | windows 0.0340 of px, mean L 0.847, taa win/plate 0.485/0.431, present win/plate 0.304/0.607
+9175 px 14837 present 0.5248 taa 0.4083 hdr 1.3995 taa/hdr 0.292 | windows 0.0320 of px, mean L 0.840, taa win/plate 0.450/0.397, present win/plate 0.264/0.577
+9176 px 14661 present 0.5463 taa 0.4166 hdr 1.3391 taa/hdr 0.311 | windows 0.0266 of px, mean L 0.885, taa win/plate 0.473/0.403, present win/plate 0.264/0.595
+9177 px 14128 present 0.6314 taa 0.4660 hdr 1.3966 taa/hdr 0.334 | windows 0.0160 of px, mean L 0.884, taa win/plate 0.676/0.435, present win/plate 0.461/0.650
+capture frames 9163-9177 median: present 0.5477 taa 0.4350 hdr 1.4010 taa/hdr 0.311 | windows 0.0348 of px, mean L 0.835, taa win/plate 0.457/0.428, present win/plate 0.264/0.607
+first (in-flight) frame 9162: present 0.7154 taa 0.5802 taa/hdr 0.409 windows 0.0369 mean L 0.830 taa win/plate 0.561/0.587
