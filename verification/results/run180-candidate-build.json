@@ -1,0 +1,22 @@
+{
+ "dll": "detached worktree /tmp/x3-run180-candidate of 7c5944b2, build/d3d9.dll (clean configure + build)",
+ "sha256": "722c4a5b9e72891eb26fb712a2b43708eae74231c3a346af05e4ecc8b0065a66",
+ "bytes": 61939987,
+ "commit": "7c5944b2",
+ "dirty": false,
+ "toolchain": "as run143-candidate-build.json (WSL2, MinGW GCC 16.2.0); RelWithDebInfo, unstripped",
+ "gates": {
+  "warnings": "0 (build.log)",
+  "x87_audit": "PASS, reachable_functions 1014, violations 0",
+  "site_verifier": "PASS, 20 checks (--exe /mnt/c/X3/X3AP.exe; EXE unchanged, fdbf3418...)",
+  "native_shader_validator": "verification/results/hull-widen-native-validator: widen 16/16, static 16/16, sun-share 16/16, gained 16/16, screen far-flag 1/1 (byte-identical to the patch witness), rect_mad_vs 1/1, all 0 messages (result-generator-fix.json, result-round2.json)",
+  "host_tests": "test_config_schema test_launcher_defaults test_taa_far_clip test_taa_image_defaults (64 OK); test_hull_lightmap_gain test_linear_material_constant_port test_hull_emissive_widening test_native_validator_rules test_screen_emission_additive_transform test_occlusion_cull (OK, skips: the shader-sweep corpus is absent); Wine fixtures (lightmap widen, screen emission, occlusion-cull-batched) not run: no Wine on this host"
+ },
+ "trigger": "Run179 captures (taa-seta-shimmer-run179): bright hull detail flicker; three generated programs refused by the native D3D9 validator since 2026-10-11, and the far-band default",
+ "producer": "main session (Fable 5.1), 2026-10-16",
+ "changes_since_run179": [
+  "d4ae9c5a taa_far_stabiliser default 0.985,0,30,34,0.03,0.25 (schema, launcher, DLL fallbacks)",
+  "badbff9e hull emissive widening valid on native D3D9 (one constant read port)",
+  "7c5944b2 screen-emission far-flag variant writes oC1; occlusion constants-mode vs one constant per instruction"
+ ]
+}
