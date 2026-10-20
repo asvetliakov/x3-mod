@@ -3364,6 +3364,30 @@ which `laneon_diff.py` now discounts from the totals line while printing every F
 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS (1,014 reachable, 0 violations), `verify_ship_steering_sites.py --exe
 /mnt/c/X3/X3AP.exe` PASS 20. Not installed, not flown.
 
+## Player autopilot confirmation (2026-10-21, Fable 5.1; the user's flight, native Windows, Release 1.3.0 Run183)
+
+**Outcome: the piloted ship is steered and avoided under the game's autopilot exactly as an AI ship, as section 1.4 of the
+design states; manual flight is untouched.** Scenario audit rows 11 and 29 ("steered like AI, not traced") are now traced.
+Flight: the user's M3 under "follow" (order 0x15) past a station, then autopilot to a gate (order 4 approach, order 5
+crossing, `ship_gate_transition validated=matched crossed=1`, `ship_gate_approach ring=5 cross_heading_err_deg=0.5`),
+`debug = 1`, `ship_trace = 1`. The player object is the one from `ship_player_pos` (`0x54f22ec8`, decision-row flags
+`0x800c0002`: player object bit 2, player control `0x40000`, autopilot `0x80000`). Rows for it (all measured, script
+`verification/results/ship-steering/player-autopilot-2026-10-21/player_rows.py` over `C:\X3\x3m.log`, output next to it):
+
+| row | count |
+| --- | --- |
+| `ship_trace` | 942 (order 4: 747, order 5: 193, order 0: 2) |
+| `ship_trace` with the returned point ≠ the given point | 422, all on order 4 (the gate lead-in rewrite) |
+| `ship_avoid_detour` | 26: 22 on order 0x15 against a station (kind 1, miss 1050 → 987 m, C 1061 m), 4 on order 4 against a ship (kind 0, miss 64 → 50 m) |
+| `ship_steering_decision` | 4 (2 on order 4, 2 on order 5) |
+| `ship_avoid_engine_warn_pre` | 1 (order 5 against the gate, `pass_not_resolved`: the engine's warn stands for the player, as designed) |
+| `ship_avoid_e_verdict` with the player as A | 0 (never suppressed, as designed) |
+| summary `pass_no_autopilot` | 0 over 88 reports |
+
+No lane or board row names the player (`ship_gate_ctl_member`/`ship_gate_capital_join`: 0), as stage B requires. Not
+covered: the docking computer (order 5 to a station) and the player under manual control, which `decide` passes as
+`no_autopilot` and this flight did not exercise with rows.
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),

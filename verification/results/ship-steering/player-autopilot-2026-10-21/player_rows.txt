@@ -1,0 +1,4 @@
+player 0x54f22ec8 rows {'chase_camera': 1, 'ship_player_pos': 18, 'ship_avoid_detour': 26, 'ship_trace': 942, 'ship_steering_decision': 4, 'ship_avoid_engine_warn_pre': 1, 'ship_gate_transition': 1, 'ship_gate_approach': 1}
+trace rows 942 by order {'0x4': 747, '0x0': 2, '0x5': 193} point rewritten {'0x4': 422} obst set 4
+detours 26 first [(5463, ('0x4861b468', '1'), 1050.3)] last [(8934, ('0x54f27440', '0'), 49.7)]
+decision flags ['0x800c0002', '0x800c3002']
