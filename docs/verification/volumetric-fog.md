@@ -3038,3 +3038,16 @@ Witness (measured, native Windows; rows in `verification/results/fog-prepare-oom
 - New always-tier row `volumetric_fog_memory device= frame= reason=periodic|prepare_fail private_bytes= avail_virtual= avail_phys= texture_mem= largest_free_virtual= walk_us= capped=` (documented Win32/D3D9 only: `K32GetProcessMemoryInfo` via psapi.h, `GlobalMemoryStatusEx`, device slot 4 `GetAvailableTextureMem`, a VirtualQuery walk with a 50 ms budget on `prepare_fail` only). Periodic at the `volumetric_fog_frame` heartbeat's `frame % 600 == 0`; after every failed prepare except `D3DERR_DEVICELOST`/`D3DERR_DEVICENOTRESET` and `field_row_disabled` (no row, no walk), at most 8 per Reset interval. `capped=1` also when VirtualQuery refused before the end of the user range (a partial walk).
 - Cost (measured on this native host, `verification/results/fog-prepare-oom-2026-10-21/memory_row_cost.{cpp,txt}`): GetProcessMemoryInfo 0.34 us, GlobalMemoryStatusEx 0.89 us, GetAvailableTextureMem 0.20 us; the walk 0.39 us per region (40,254 regions in 15.8 ms). The game's region count on native Windows is not known (no `address_space` row in the default tier); the Wine fixture's 96,090 regions would take about 38 ms (inferred), inside the budget.
 - Acceptance (2026-10-21): RelWithDebInfo MinGW i686 build OK, no warnings; `check_no_x87.py build/d3d9.dll` PASS, 143 roots, 1,014 reachable functions, 0 violations; `test_fog_cards` (new cases `prepare_oom retries=3 PASS` and `prepare_oom_video row_disabled_rows=0 PASS` in the actual-methods harness), `test_logging_tiers`, `test_fog_handover`, `test_volumetric_fog`: all pass except the 9 launcher dry-run tests, which fail identically at 4ab56ca4 (they need the macOS CrossOver Wine path). Unstripped `build/d3d9.dll` 61,951,564 B, SHA-256 7cc520dcfa8463705d8ebb4776ba4af8b589f83b9d9b91707ae747e2a7b1e984 (after the review fixes; x87 audit PASS 143/1,014/0 and `test_fog_cards` + `test_logging_tiers` 16 OK rerun on it). Not flown.
+
+### Run184 flight (2026-10-21, main session): no repro; the process runs within 165 MB of its 4 GB address space
+
+User flight on Run184 (`71af883c…`), 234,000 frames, 33 sector entries (14 fog prepares, all `result=00000000`), three
+alt-tab Resets; fog applied after each Reset, no `volumetric_fog_prepare_retry` or `volumetric_fog_cards_fault` row.
+The 390 periodic `volumetric_fog_memory` rows (extract: `verification/results/fog-prepare-oom-2026-10-21/run184-memory-rows.txt`,
+all measured) show a saw-tooth, not a leak: private bytes climb across sectors from about 2.0 GB to 3.2 GB while
+`avail_virtual` falls to a minimum of 164,761,600 B (frame 213000), then the game itself frees 1.2 to 1.5 GB on a
+sector load (drops at frames 29400, 106200, 133800, 214800, each right after a sector entry) and the climb starts
+again. A proxy leak would not be reclaimed by the game's purge. Interpretation: the Run183 fault was a prepare that
+landed in such a trough right after a Reset, when the runtime recreates every DEFAULT-pool object at once; the retry
+path now covers it. Open: the proxy's own share of the private bytes is not measured (the row reports the process),
+and at the troughs any allocation in the game can fail too, which is vanilla X3 behaviour in a 4 GB process.
