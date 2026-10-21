@@ -1,0 +1,20 @@
+{
+ "run": 184,
+ "what": "fog prepare out-of-memory retry + volumetric_fog_memory row (user runs: navigate several sectors with one alt-tab mid-session)",
+ "commit": "a132a2d3",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "71af883c70ab9bd085d3dadba72243e462911e42446be1d52141c5d4b624475b",
+  "bytes": 61952600,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_fog_cards + test_logging_tiers 16 OK (incremental build, same sources)",
+  "review": "review agent (Opus 5.5) F1-F5 fixed before commit"
+ },
+ "witness": "verification/results/fog-prepare-oom-2026-10-21/witness-prev-log-2026-10-21.txt",
+ "producer": "main session"
+}

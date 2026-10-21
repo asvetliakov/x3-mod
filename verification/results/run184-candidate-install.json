@@ -1,0 +1,29 @@
+{
+ "run": 184,
+ "what": "run184 candidate installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run183; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-21T04:25+04:00",
+ "commit": "a132a2d3",
+ "candidate_record": "verification/results/run184-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "71af883c70ab9bd085d3dadba72243e462911e42446be1d52141c5d4b624475b",
+  "bytes": 61952600,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 183,
+  "sha256": "a5415ba37945de4fdfe8b34bbfb53b59432d408df8ca6518460711d1b923e8cd",
+  "bytes": 42274188,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run183"
+ },
+ "x3m_ini": "unchanged (1.3.0 template + hull_lightmap_gain = 2); the new rows are in the always tier",
+ "unchanged": [
+  "X3AP.exe (fdbf3418\u2026)",
+  "x3m-regenerate.exe",
+  "engine_bodies.json",
+  "fog-families.bin/json"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
