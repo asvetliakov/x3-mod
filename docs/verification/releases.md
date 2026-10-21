@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.3.1
+
+2026-10-21, `python3 tools/release/release.py --out /tmp/x3m-release-1.3.1 --regenerate-dir /tmp/x3m-release-1.3.0-regenerate` (exit 0, 75.6 s wall: dll 72.8 s, package 2.6 s), clean main `58105e3d` ([record](../../verification/results/release-1.3.1.json)).
+
+- Over 1.3.0 (Runs 184-185): **the volumetric fog out-of-memory retry** (a prepare failing with E_OUTOFMEMORY or D3DERR_OUTOFVIDEOMEMORY no longer latches the cards off until Reset: native cards for that latch, retry 600 frames later in the same sector, at once in a new one, bound 3; witness and the Run184 memory rows under `verification/results/fog-prepare-oom-2026-10-21/`), the `volumetric_fog_memory` row, and **the logging tier cleanup** (periodic telemetry rows and the fog heartbeats are `--perf`/`--debug` rows; the plain log keeps init, config, failure witnesses and Reset: 17 to 0.70 MB per hour projected on the Run184 flight; [note](../architecture/logging-tiers.md)).
+- DLL: stripped `0e7199b3…` (42,279,030 B; 0 warnings, x87 0 / 1014 reachable, strip identity PASS, 17 exports, debuglink), `d3d9.debug` kept at /tmp/x3m-release-1.3.1/. Installed into native `C:\X3` as Run186, rollback `rollback-d3d9\d3d9.dll.run185` (the Run185 unstripped build `fe1163ef…`) ([install](../../verification/results/run186-release-install.json)).
+- Zip `x3m-1.3.1.zip` `ba1d417c…` (60,109,681 B): the same 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.3.1`; `generate --check` PASS.
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`): `git diff --stat 0bb4facc..HEAD -- tools/regenerate` is empty.
+- Flown before the release build: the Run184 flight (33 sectors, 3 alt-tabs, no repro, fog applied after each Reset); Run185 and the release differ from it by the tier gates and the version string.
+
 ## Release 1.3.0
 
 2026-10-16, `python3 tools/release/release.py --out /tmp/x3m-release-1.3.0 --regenerate-dir /tmp/x3m-release-1.3.0-regenerate` (dry run, then the real run: exit 0, 75.2 s wall: dll 72.6 s, package 2.5 s) on the WSL2 host (same toolchain as 1.2.0/1.2.1; binutils 2.47). Clean tree at `0bb4facc` (the version bump on top of `a2afcadb`, Run 182 A accepted). Record [release-1.3.0.json](../../verification/results/release-1.3.0.json).
