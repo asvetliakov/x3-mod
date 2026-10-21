@@ -220,6 +220,8 @@ struct FogResult {
 };
 }
 namespace x3m {
+// The plain (no-group) tier: the 600-frame fog heartbeats are --perf/--debug rows (log_tiers.h, 2026-10-21).
+namespace log_tier { inline bool perf_rows() noexcept { return false; } }
 struct MotionDrawCall {
     bool indexed = true, user_memory = false;
     unsigned topology = 4, primitives = 2, vertex_count = 4;
@@ -345,6 +347,7 @@ struct MotionOutput {
          fog_cards_replace_ = true;
     const char* fog_card_refusal_ = nullptr;
     const char* fog_card_last_refusal_ = nullptr;
+    bool fog_card_logged_fault_ = false;
     const char* fog_card_ready_reason_ = nullptr;
     bool fog_card_refusal_ready_ = false;
     std::uint64_t fog_card_states_log_frame_ = 0; // the refused state vector's 300-frame spacing (the mock log is a

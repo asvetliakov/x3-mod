@@ -21,7 +21,7 @@ Three tiers, two launcher options, one file:
 
 - **Always** (no environment at all): one-per-process and one-per-device rows, mode/config rows, errors,
   refusals, first-N failure witnesses, Reset/recovery, `frame_end` about once a minute (stride 3600; amended 2026-09-26, 300 in this design), a
-  `volumetric_fog_cards` heartbeat every 600 frames, one `session_end` row at process detach and one `exception`
+  `volumetric_fog_cards` heartbeat every 600 frames (moved to `--perf` 2026-10-21, see "Periodic rows back to `--perf`"), one `session_end` row at process detach and one `exception`
   row on the first fatal exception. Bounded by construction: about 0.2 MB per hour at 60 fps plus the
   per-session caps (inferred from measured row sizes, `tier_volume.json`).
 - **`--perf`** (`X3M_PERF=1`): the per-frame cost rows at stride 1 (`frame_end`, `volumetric_fog_frame` with its
@@ -620,6 +620,30 @@ sources: `seam-taa-fade-route-overlay-lightmap` and `-far-fade` (runner default 
 capture frames and frame 0: 12 `hull_lightmap_frame` rows, 12 far-fade rows in the far-fade case) 5,101 checks each,
 `seam-lightmap-far-fade-on` 56, `seam-lightmap-widen-k3` 503, all PASS and equal to the 2026-09-26 counts
 (`motion-cases-2026-09-26.json`); `run_sun_share_live.py` sets `X3M_TELEMETRY=1 X3M_MOTION_FRAME_LOG=1` and was not rerun.
+
+### Periodic rows back to `--perf` (2026-10-21)
+
+User decision 2026-10-21, after a 25-minute plain flight (no launcher option; 235,349 frames in 1,522 s, about 155 fps)
+wrote 7.1 MB, 13,794 rows, against the always-tier budget of about 0.2 MB per hour: the periodic telemetry rows that had
+drifted into the always tier are `--perf` rows, gated on `log_tier::perf_rows()` (`src/proxy/log_tiers.h`: the cached
+`X3M_PERF` or `X3M_DEBUG` flag, two bools per check). Moved: `shadow_replay_sun_point` (capture frames stay in every tier)
+and `shadow_replay_sun_point_summary`, the 300-frame `chase_camera frame=… status=…` row, `media_cue_window` (a window
+with `failures` or `video_failures` non-zero stays in every tier), `lens_flare_gain_frame`, `occlusion_cull_session`,
+`cull_small_props_frame`, `motion_unmatched_static_frame` (still capped at 256), the three fog heartbeats on their
+600-frame cadence (`volumetric_fog_frame`, `volumetric_fog_cards`, `volumetric_fog_memory reason=periodic`), and the
+`volumetric_fog_cards` counter and fog-state change rows. Their window resets, class-cache flushes and the skipped media cue
+window's early/foreign counters are reset in every tier; only the formatting is gated. Unchanged in every tier: the change
+rows `volumetric_fog_frame` on a reason change and `shadow_replay_sun_source`; `volumetric_fog_cards` when its `fault=` or
+`refusal=` differs from the last printed cards row (60-frame spacing, the dropout witness); the failure and state witnesses (`volumetric_fog_memory reason=prepare_fail`,
+`volumetric_fog_prepare_retry`, `volumetric_fog_cards_fault`, `volumetric_fog_prepare`, `volumetric_fog_sector`,
+`volumetric_fog_cache`, `shadow_replay_sun_latch`), the `chase_camera` install/refusal/`first_applied` rows, `frame_end` at
+3600 and the one-per-device and config rows. The motion-output fixture build (`X3M_MOTION_OUTPUT_FIXTURE`) keeps
+`shadow_replay_sun_point` and `motion_unmatched_static_frame` without a group, as its runner reads them. Projected on that
+flight's log (`verification/results/logging-tiers/always_census_2026-10-21.py` → `always_census_2026-10-21.json`; row
+sizes measured, classification inferred from the gates): 1,754 always-tier rows (296 KB) instead of 13,794, about 4,150
+rows and 0.70 MB per hour; 12,040 rows (6.8 MB) move to `--perf`. All 1,328 cards rows of that flight had `fault=0
+refusal=none`, so none stays. The remainder is spread over event rows (largest `volumetric_fog_prefill`, 236 rows, 45 KB);
+it is still above the 0.2 MB per hour budget at that flight's 155 fps and sector changes.
 
 ## Verification that would prove it
 

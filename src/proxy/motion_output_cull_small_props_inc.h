@@ -136,11 +136,12 @@ bool MotionOutput::cull_small_prop(const MotionDrawCall& call, MotionRoute& rout
             static_cast<unsigned long>(descriptor));
     return true;
 }
-// Every 300 frames with scene draws while the option is on (every tier: the plain flight's evidence that the cull
-// acted; about 330 B per row, inferred): prop draws seen, skipped and drawn, and why each drawn one was kept. The
+// Every 300 frames with scene draws while the option is on (--perf/--debug since 2026-10-21; the window reset and the
+// class-cache flush run in every tier; about 330 B per row, inferred): prop draws seen, skipped and drawn, and why each drawn one was kept. The
 // model-class cache is flushed with the row (a body id reused after a reload is re-read within 300 frames).
 void MotionOutput::log_cull_small_props_window() noexcept {
     auto& w = props_->window;
+    if (log_tier::perf_rows())
     log("cull_small_props_frame device=%llu frame=%llu frames=%u px=%.4f draws=%u culled=%u kept=%u nodes_culled=%u kept_size=%u exempt_own=%u exempt_target=%u unresolved=%u deferred=%u no_bounds=%u unbounded=%u no_scope=%u resolves=%u walks=%u",
         id_, frame_, w.frames, double(props_->px), w.draws, w.culled, w.kept, w.nodes_culled, w.kept_size,
         w.exempt_own, w.exempt_target, w.unresolved, w.deferred, w.no_bounds, w.unbounded, w.no_scope, w.resolves,

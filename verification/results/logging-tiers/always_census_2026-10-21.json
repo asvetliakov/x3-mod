@@ -1,0 +1,93 @@
+{
+ "file": "/mnt/c/X3/x3m.log",
+ "session_frames": 235349,
+ "elapsed_ms": 1521947,
+ "rows": {
+  "always": 1754,
+  "perf": 12040
+ },
+ "bytes": {
+  "always": 296267,
+  "perf": 6827167
+ },
+ "always_rows_per_hour": 4149,
+ "always_mb_per_hour": 0.701,
+ "perf_moved_mb_per_hour": 16.149,
+ "always_top": [
+  {
+   "name": "volumetric_fog_prefill",
+   "lines": 236,
+   "bytes": 44935
+  },
+  {
+   "name": "chase_view_restore",
+   "lines": 33,
+   "bytes": 18264
+  },
+  {
+   "name": "motion_unmatched_static",
+   "lines": 64,
+   "bytes": 16773
+  },
+  {
+   "name": "shadow_cascade_set",
+   "lines": 34,
+   "bytes": 16042
+  },
+  {
+   "name": "volumetric_fog_frame",
+   "lines": 46,
+   "bytes": 15712
+  },
+  {
+   "name": "shadow_replay_sun_latch",
+   "lines": 92,
+   "bytes": 12627
+  },
+  {
+   "name": "emission_source_gain_refused_state",
+   "lines": 64,
+   "bytes": 12128
+  },
+  {
+   "name": "hull_emission_refused",
+   "lines": 64,
+   "bytes": 8864
+  },
+  {
+   "name": "volumetric_fog_sector",
+   "lines": 64,
+   "bytes": 8573
+  },
+  {
+   "name": "frame_end",
+   "lines": 66,
+   "bytes": 8339
+  },
+  {
+   "name": "hull_emission_refused_state",
+   "lines": 48,
+   "bytes": 8168
+  },
+  {
+   "name": "music_keep_seek",
+   "lines": 47,
+   "bytes": 7784
+  },
+  {
+   "name": "motion_output_variant",
+   "lines": 64,
+   "bytes": 7133
+  },
+  {
+   "name": "volumetric_fog_cache",
+   "lines": 45,
+   "bytes": 6518
+  },
+  {
+   "name": "sun_shadow_original_lightmap_variant",
+   "lines": 32,
+   "bytes": 5341
+  }
+ ]
+}

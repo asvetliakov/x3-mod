@@ -101,8 +101,9 @@ void MotionOutput::fault_fog_cards(const char* reason) noexcept {
     fog_cards_.fail();
     fog_card_transition(3);
 }
-// volumetric_fog_memory (always tier): process commit, free virtual and physical bytes and the device's texture
-// estimate, at the 600-frame heartbeat (reason=periodic, largest_free_virtual=-1) and after a failed prepare
+// volumetric_fog_memory: process commit, free virtual and physical bytes and the device's texture
+// estimate, at the 600-frame heartbeat (reason=periodic, largest_free_virtual=-1; --perf/--debug since 2026-10-21) and,
+// in every tier, after a failed prepare
 // (reason=prepare_fail, at most fog_memory_fail_row_cap per Reset interval) with the VirtualQuery walk's largest free
 // region (walk_us, capped=1 when its 50 ms budget or a VirtualQuery refusal stopped it short). Documented Win32/D3D9 only; -1 = query failed.
 void MotionOutput::log_fog_memory(const char* reason, bool walk) noexcept {
@@ -691,7 +692,10 @@ void MotionOutput::run_volumetric_fog() noexcept {
     const char* reason = skip ? skip : "ok";
     // A change of state is one line (bounded); timing mode logs every frame.
     const bool changed = std::strcmp(reason, fog_last_reason_) != 0;
-    const bool periodic = fog_timing_ || changed || frame_ % 600u == 0u;
+    // The 600-frame heartbeats (this row, volumetric_fog_cards, volumetric_fog_memory reason=periodic) are
+    // --perf/--debug rows since 2026-10-21; the change rows and the failure witnesses stay in every tier.
+    const bool heartbeat = log_tier::perf_rows() && frame_ % 600u == 0u;
+    const bool periodic = fog_timing_ || changed || heartbeat;
     if (periodic) {
         if (!fog_timing_) ++fog_logs_;
         // Launched with the dust motes (fog-dust-motes.md section 4): the stage's report of this frame, zeros when the
@@ -708,7 +712,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
             id_, frame_, unsigned(!skip && out.applied), reason, double(fog_strength_), double(fog_sector_.density_scale), unsigned(fog_latch_.cards_recent(frame_)), fog_sector_.profile, fog_sector_.field_generation,
             skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed), mote_fields);
     }
-    if (frame_ % 600u == 0u) log_fog_memory("periodic", false); // the heartbeat's cadence only, never per frame
+    if (heartbeat) log_fog_memory("periodic", false); // the heartbeat's cadence only, never per frame
     if (fog_timing_ && fog_density_requested_ && fog_) {
         const auto& d = fog_->density_status();
         log("volumetric_fog_cache_frame device=%llu frame=%llu density=%u refused=%u prepared=%u ready_far=%.4f ready_fine=%.4f upload_bytes=%u upload_rects=%u nodes=%llu worker_nodes_per_s=%.0f missed_locks=%llu",
@@ -720,10 +724,15 @@ void MotionOutput::run_volumetric_fog() noexcept {
         std::uint64_t(fog_cards_.fault) << 51 | std::uint64_t(!skip && out.applied) << 52;
     fog_card_observed_total_ += fog_cards_.observed; fog_card_suppressed_total_ += fog_cards_.suppressed; fog_card_refused_total_ += unsigned(fog_cards_.refused);
     // The refusal name is part of the change key (string literals: a pointer compare), under the same 60-frame spacing.
+    // Every tier (2026-10-21): only a fault or refusal that differs from the last printed line (the dropout witness);
+    // the counter changes, the fog-state change and the heartbeat are --perf/--debug telemetry.
     const bool card_changed = card_report != fog_card_last_report_ || fog_card_refusal_ != fog_card_last_refusal_;
-    if (fog_cards_replace_ && (fog_timing_ || (changed || (card_changed && frame_ - fog_card_logged_frame_ >= 60u) || frame_ % 600u == 0u))) {
+    const bool card_witness = fog_cards_.fault != fog_card_logged_fault_ || fog_card_refusal_ != fog_card_last_refusal_;
+    const bool card_rows = log_tier::perf_rows();
+    if (fog_cards_replace_ && (fog_timing_ || heartbeat || (card_rows && changed) ||
+                               ((card_witness || (card_rows && card_changed)) && frame_ - fog_card_logged_frame_ >= 60u))) {
         if (!fog_timing_) ++fog_card_logs_;
-        fog_card_logged_frame_ = frame_; fog_card_last_refusal_ = fog_card_refusal_;
+        fog_card_logged_frame_ = frame_; fog_card_last_refusal_ = fog_card_refusal_; fog_card_logged_fault_ = fog_cards_.fault;
         log("volumetric_fog_cards device=%llu frame=%llu observed=%u suppressed=%u refused=%u ready=%u warmup=%u applied=%u fault=%u reason=%s mode=%u observed_total=%llu suppressed_total=%llu refused_total=%llu refusal=%s%s",
             id_, frame_, fog_cards_.observed, fog_cards_.suppressed, unsigned(fog_cards_.refused), unsigned(fog_card_ready_),
             unsigned(fog_cards_.warmup), unsigned(!skip && out.applied), unsigned(fog_cards_.fault), fog_card_fault_reason_, fog_card_mode_, fog_card_observed_total_, fog_card_suppressed_total_, fog_card_refused_total_,

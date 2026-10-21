@@ -133,7 +133,8 @@ class FogCardPolicyTests(unittest.TestCase):
             # case A: a same-key transit (another id) is a cold start; a heap-token change of the same sector keeps the field (Run75)
             self.assertIn('run273_transit same=1 token=1 id_same=1 realloc=1 id_change=1 run273=1 rekey=1 first=1 PASS', result.stdout)
             self.assertIn('run273_prefill_adopt adopted=1 discarded=1 PASS', result.stdout)  # case B: the confirmed key is adopted, the stale camera dropped
-            self.assertIn('run273_card_refusal named=12 PASS', result.stdout)  # case C: the first refusal of a frame is named
+            self.assertIn('run273_card_refusal named=12 PASS', result.stdout)
+            self.assertIn('plain_tier_cards counters_quiet=1 fault_line=1 PASS', result.stdout)  # 2026-10-21 tier split  # case C: the first refusal of a frame is named
             # run278/run283 case C: the material's own z/cull and the measured run283 vector (z 0, cull NONE, alpha test 1)
             # are admitted; zwrite/stencil 1, alpha test 2 and wrong blend/mask/fill refused; the state row spaced 300 frames
             # run143 (native cockpit): separate alpha 1 admitted, 2 and unknown refused

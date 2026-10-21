@@ -322,6 +322,17 @@ int main() {
      assert(quiet&&held);
      assert(refused_line&&changed_line&&spaced);
    }
+   { // Plain tier (2026-10-21, perf_rows() false in this mock): counter-only changes print no cards line over 240
+     // frames (the --perf telemetry); a fault differing from the last printed line does (the dropout witness).
+     MotionOutput m;m.warm();m.draw();m.run_volumetric_fog();const auto logs=m.fog_card_logs_;
+     for(unsigned i=0;i<240;++i){m.next();m.draw();if(i&1)m.draw();m.run_volumetric_fog();}
+     const bool counters_quiet=m.fog_card_logs_==logs;
+     m.next();m.draw();m.fault_fog_cards("test");m.run_volumetric_fog();
+     const bool fault_line=m.fog_card_logs_==logs+1&&m.fog_card_logged_fault_;
+     if(!(counters_quiet&&fault_line))std::printf("plain_tier_cards counters_quiet=%u fault_line=%u logs=%u\n",unsigned(counters_quiet),unsigned(fault_line),m.fog_card_logs_-logs);
+     assert(counters_quiet&&fault_line);
+     std::printf("plain_tier_cards counters_quiet=1 fault_line=1 PASS\n");
+   }
    std::printf("run273_card_refusal named=%u PASS\n",named);
  }
  { // run278 C: the docked-at-load card carries the material's own z/cull (ZENABLE 1, CULLMODE CW) instead of the dust

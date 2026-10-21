@@ -49,6 +49,11 @@ inline void init() noexcept {
     cached_perf = perf();
     cached_draw_trace = draw_trace();
 }
+// The --perf tier's periodic rows (also logged under --debug, which logs everything --perf does): the heartbeat and
+// window rows moved out of the always tier on 2026-10-21. Two cached bools, safe on the render path.
+inline bool perf_rows() noexcept {
+    return cached_perf || cached_debug;
+}
 // X3M_TELEMETRY=1 or either group: the counters, the 1 Hz summaries, the
 // loading-trace hook set and the family block's gate.
 inline bool telemetry() noexcept {

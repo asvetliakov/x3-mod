@@ -288,6 +288,14 @@ void emit_window() {
         if (n <= 0 || unsigned(n) >= sizeof ids - used) break;
         used += unsigned(n);
     }
+    // --perf/--debug since 2026-10-21; a window with a failed call stays in every tier (a failure witness). The
+    // resets below run either way; a skipped row zeroes the early/foreign counters its arguments would have taken.
+    if (!log_tier::perf_rows() && !s.failures && !video.failures) {
+        gate.early.exchange(0, std::memory_order_relaxed);
+        gate.foreign.exchange(0, std::memory_order_relaxed);
+        video_foreign.exchange(0, std::memory_order_relaxed);
+        video_early.exchange(0, std::memory_order_relaxed);
+    } else
     log("media_cue_window qpc=%llu frame=%llu frames=%u attempts=%llu failures=%llu successes=%llu refused=%llu unobserved=%llu attempts_frame_p50=%llu attempts_frame_max=%lu ids=%s id_overflow=%llu cache_used=%u evictions=%llu depth_max=%u overflow=%llu stale=%llu mismatched=%llu lost=%llu suppressed=%llu enter_suppressed=%llu dropped=%llu early=%u foreign=%u video_blits=%llu video_unlocks=%llu video_failures=%llu video_suppressed=%llu video_reentries=%llu video_foreign=%llu video_early=%llu",
         qpc(), s.frame, s.frames, s.attempts, s.failures, s.successes, s.refused, s.unobserved, s.attempts_frame_p50,
         static_cast<unsigned long>(s.attempts_frame_max), s.id_count ? ids : "none", s.id_overflow, cache.used,

@@ -360,9 +360,10 @@ void MotionOutput::apply_lens_gain(MotionRoute& route, bool plain) noexcept {
     ++lens_gained_;
     ++lens_gain_window_gained_;
 }
-// Every 300 frames while G < 1, in every logging tier (the plain flight's evidence that the gain acted).
+// Every 300 frames while G < 1, --perf/--debug since 2026-10-21 (the window's counters reset in every tier).
 void MotionOutput::log_lens_gain_window() noexcept {
     const unsigned* r = lens_gain_window_refused_;
+    if (log_tier::perf_rows())
     log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f draws=%u gained=%u skipped=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
         id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), lens_gain_window_draws_, lens_gain_window_gained_, lens_gain_window_skipped_,
         r[lens_flare_gain::Caps], r[lens_flare_gain::Route], r[lens_flare_gain::Recording], r[lens_flare_gain::RoutedDraw],

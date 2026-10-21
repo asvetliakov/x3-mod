@@ -12,6 +12,7 @@
 #include "capture.h"
 #include "cpu_state.h"
 #include "telemetry.h"
+#include "log_tiers.h"
 #include <atomic>
 #include <cstring>
 #include <cwchar>
@@ -706,6 +707,9 @@ void report(std::uint64_t frame) {
             deviation, s.render_basis_deviation, s.rotation_clamps, s.position_clamps,
             s.window_applied ? s.rotation_lag_min : 0.0, s.window_applied ? s.rotation_lag_max : 0.0,
             s.window_applied ? s.position_lag_min : 0.0, s.window_applied ? s.position_lag_max : 0.0);
+    // The 300-frame status row is --perf/--debug since 2026-10-21; the install, refusal, first_applied and
+    // last_device rows stay in every tier.
+    if (!log_tier::perf_rows()) return;
     log("chase_camera frame=%llu status=%s frames=%llu applied=%llu refused=%llu refused_inactive=%llu admitted_unbound=%llu cockpits_seen=%u snaps=%llu coalesced=%llu clamps=%llu write_refused=%llu "
         "verdict=%lu snap_reason=%lu mode=%lu connect=%lu flags_1a0=0x%lx tracking=%lu locked=%u locked_frames=%llu lag_deg=%.3f pos_lag=%.1f distance=%.1f dt_ms=%.3f "
         "basis_dev_deg=%.3f half_vfov_tan=%.4f boom_local=%.1f,%.1f,%.1f scene_fixed=%llu scene_fix_deg=%.3f",

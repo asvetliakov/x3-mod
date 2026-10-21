@@ -4207,6 +4207,7 @@ void MotionOutput::before_reset() noexcept {
     fog_card_ready_checked_ = fog_card_ready_ = false;
     fog_card_fault_reason_ = "none";
     fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr;
+    fog_card_logged_fault_ = false;
     fog_card_refusal_ready_ = false;
     fog_prepare_oom_ = fog_memory_fail_rows_ = 0; // the out-of-memory retry bound restarts with the fault latch
     fog_prepare_retry_frame_ = 0;
@@ -10161,7 +10162,13 @@ void MotionOutput::finish_cut_detector() noexcept {
     if (unmatched_static_ && (unmatched_static_applied_ | unmatched_static_object_unknown_ |
                               unmatched_static_camera_refused_ | unmatched_static_rows_refused_)) {
         // Only frames where the assumption applied, capped like the detail line (new keys occur on most flight frames).
-        if (unmatched_static_applied_ && unmatched_static_frames_logged_ < 256 && ++unmatched_static_frames_logged_)
+        // --perf/--debug since 2026-10-21 (the seam runner reads it without a group).
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        const bool unmatched_rows = true;
+#else
+        const bool unmatched_rows = log_tier::perf_rows();
+#endif
+        if (unmatched_rows && unmatched_static_applied_ && unmatched_static_frames_logged_ < 256 && ++unmatched_static_frames_logged_)
             log("motion_unmatched_static_frame device=%llu frame=%llu mode=%u applied=%lu object_unknown=%lu camera_refused=%lu rows_refused=%lu",
                 id_, frame_, unmatched_static_, static_cast<unsigned long>(unmatched_static_applied_),
                 static_cast<unsigned long>(unmatched_static_object_unknown_),
@@ -12183,8 +12190,12 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         const bool point = point_sun_.decide(true, camera_scene_, depth_cascades_);
         point_sun_.end_frame();
         bool event = point_sun_.rederived != 0;
+        // The point-sun detail line and its 300-frame summary are --perf/--debug rows (2026-10-21); capture frames and
+        // the shadow_replay_sun_source change row stay in every tier.
+        bool point_rows = log_tier::perf_rows();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         event = true;
+        point_rows = true; // the seam runner reads the line every frame without a group
 #endif
         if (point_sun_logged_ != point_sun_.reason) {
             event = true;
@@ -12206,6 +12217,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             point_sun_summary_count_ = 0;
             const auto& n = point_sun_.frames_latch;
             using R = shadow_replay::PointSunReason;
+            if (point_rows)
             log("shadow_replay_sun_point_summary device=%llu frame=%llu frames_point=%llu off=%llu unavailable=%llu no_light=%llu camera=%llu near=%llu unchecked=%llu disagrees=%llu cooldown=%llu rederivations=%llu",
                 id_, frame_, static_cast<unsigned long long>(point_sun_.frames_point),
                 static_cast<unsigned long long>(n[unsigned(R::Off)]),
@@ -12229,7 +12241,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
                 sun_light_poll::status_name(point_sun_sample_.status), point_sun_.rederived, point_sun_.rederived_mask,
                 point_sun_.carried_frame ? point_sun_.carried : 0u, point_sun_.checks, point_sun_.disagreements,
                 point_sun_.agreement_degrees(), point_sun_.distance, depth_cascades_.count);
-        if (event || capture_) {
+        if (capture_ || (event && point_rows)) {
             char text[768];
             int used = 0;
             for (unsigned k = 0; k < depth_cascades_.count && used >= 0 && used < int(sizeof text); ++k) {

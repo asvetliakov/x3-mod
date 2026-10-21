@@ -213,6 +213,72 @@ def _strip_comments(text):
     return ''.join(out)
 
 
+class MovedHeartbeatRows(unittest.TestCase):
+    """2026-10-21 (user decision, a 25-minute plain flight wrote 7.1 MB): the periodic rows that had drifted into the
+    always tier are --perf/--debug rows (log_tier::perf_rows()); their change rows and failure witnesses stay."""
+
+    # row -> (file, a fragment unique to its periodic emission)
+    ROWS = {
+        'chase_camera': ('chase_camera.cpp', 'log("chase_camera frame=%llu status='),
+        'lens_flare_gain_frame': ('motion_output_sun_occlusion_inc.h', 'log("lens_flare_gain_frame '),
+        'occlusion_cull_session': ('motion_output_occlusion_cull_inc.h', 'log("occlusion_cull_session '),
+        'cull_small_props_frame': ('motion_output_cull_small_props_inc.h', 'log("cull_small_props_frame '),
+        'motion_unmatched_static_frame': ('motion_output.cpp', 'log("motion_unmatched_static_frame '),
+    }
+
+    @staticmethod
+    def _src(name):
+        return _strip_comments((ROOT / 'src/proxy' / name).read_text(errors='replace'))
+
+    def test_perf_rows_is_the_perf_tier(self):
+        tiers = self._src('log_tiers.h')
+        self.assertRegex(tiers, r'inline bool perf_rows\(\) noexcept \{\s*return cached_perf \|\| cached_debug;\s*\}')
+
+    def test_periodic_rows_sit_under_perf_rows(self):
+        for row, (name, fragment) in self.ROWS.items():
+            text = self._src(name)
+            self.assertEqual(text.count(fragment), 1, row)
+            gate, _ = PerFrameRowTiers._context(text, text.index(fragment))
+            self.assertIn('perf_rows()', gate, row)
+            self.assertNotIn(row, PerFrameRowTiers.EXCEPTIONS)
+        # The 300-frame media cue window stays in every tier only when it carries a failure.
+        media = self._src('media_cue.cpp')
+        skipped = media.index('if (!log_tier::perf_rows() && !s.failures && !video.failures) {')
+        # A skipped row zeroes the counters its arguments would have taken (no carry into the next logged row).
+        for counter in ('gate.early', 'gate.foreign', 'video_foreign', 'video_early'):
+            self.assertIn(counter + '.exchange(0, std::memory_order_relaxed);', media[skipped:media.index('log("media_cue_window ')])
+
+    def test_point_sun_detail_row_keeps_capture_frames_only(self):
+        text = self._src('motion_output.cpp')
+        self.assertEqual(text.count('log("shadow_replay_sun_point '), 1)
+        self.assertIn('bool point_rows = log_tier::perf_rows();', text)
+        self.assertIn('if (capture_ || (event && point_rows))', text)
+        self.assertIn('if (point_rows)\n            log("shadow_replay_sun_point_summary', text)
+        # The source change row stays in every tier.
+        at = text.index('log("shadow_replay_sun_source ')
+        self.assertNotIn('perf_rows', PerFrameRowTiers._context(text, at)[0])
+
+    def test_fog_heartbeats_are_perf_and_witnesses_stay(self):
+        fog = self._src('motion_output_fog_inc.h')
+        self.assertIn('const bool heartbeat = log_tier::perf_rows() && frame_ % 600u == 0u;', fog)
+        self.assertEqual(fog.count('frame_ % 600u'), 1)  # no ungated 600-frame cadence left
+        self.assertIn('const bool periodic = fog_timing_ || changed || heartbeat;', fog)
+        self.assertIn('if (heartbeat) log_fog_memory("periodic", false);', fog)
+        # volumetric_fog_cards: every tier only on a fault/refusal differing from the last printed line; the counter
+        # change, the fog-state change and the heartbeat are --perf/--debug.
+        self.assertIn('const bool card_witness = fog_cards_.fault != fog_card_logged_fault_ || '
+                      'fog_card_refusal_ != fog_card_last_refusal_;', fog)
+        self.assertIn('const bool card_rows = log_tier::perf_rows();', fog)
+        self.assertIn('(fog_timing_ || heartbeat || (card_rows && changed) || '
+                      '((card_witness || (card_rows && card_changed)) && frame_ - fog_card_logged_frame_ >= 60u))',
+                      re.sub(r'\s+', ' ', fog))
+        self.assertIn('fog_card_logged_fault_ = fog_cards_.fault;', fog)
+        # Failure and state witnesses: no tier gate.
+        for witness in ('log_fog_memory("prepare_fail"', 'log("volumetric_fog_cards_fault ', 'log("volumetric_fog_prepare_retry '):
+            if witness in fog:
+                self.assertNotIn('perf_rows', PerFrameRowTiers._context(fog, fog.index(witness))[0], witness)
+
+
 class PerFrameRowTiers(unittest.TestCase):
     """2026-09-27: six per-frame emitter rows (hull_emission_frame, original_fill_frame, hull_lightmap_frame,
     hull_lightmap_far_fade_frame, hull_lightmap_widen_frame, emission_source_gain_frame) were logged every frame in the
@@ -227,8 +293,8 @@ class PerFrameRowTiers(unittest.TestCase):
                        r'|\bcapture_\b|\bctx\.capture\b|\bcaptured\b|\bshadow_timing_\b|\bfog_timing_\b|\bpoint_sun_trace_\b')
     # Rows allowed without such a condition, with the reason (the frame_end heartbeat and session_end are not *_frame rows).
     EXCEPTIONS = {
-        'volumetric_fog_frame': 'always-tier heartbeat by design: every 600th frame and on a state change (fog_timing_ adds every frame)',
-        'motion_unmatched_static_frame': 'first-N witness: at most 256 rows per device',
+        'volumetric_fog_frame': 'on a state change in every tier; its 600-frame heartbeat is --perf/--debug since 2026-10-21 '
+                                '(MovedHeartbeatRows; fog_timing_ adds every frame)',
         'screen_emission_frame': 'X3M_SCREEN_EMISSION_TIMING=1 only, a diagnostic variable the launcher never sends',
         'point_light_admission_frame': 'X3M_POINT_LIGHT_ROOT_ADMISSION=1 only, a fixture variable the launcher never sends',
         'scene_depth_frame': 'the ownership copy-depth view only (fixture builds); no game launch requests it',
@@ -236,9 +302,6 @@ class PerFrameRowTiers(unittest.TestCase):
         'window_msg_frame': 'window_trace.cpp records only with X3M_WINDOW_TRACE, a --debug member',
         'game_phase_slow_frame': 'game_phases.cpp is armed only by X3M_GAME_PHASES, a --draw-trace member',
         'profile_frame': 'the sampling profiler runs only with --profile, a developer option',
-        'lens_flare_gain_frame': 'always-tier status row by design: X3M_LENS_FLARE_GAIN < 1 only, one row per 300 frames '
-                                 '(the plain flight\'s evidence that the gain acted, skipped= at G = 0; default 0.3 since 2026-09-29)',
-        'cull_small_props_frame': 'always-tier status row by design: X3M_CULL_SMALL_PROPS on only (default on since 2026-09-29), one row per '
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 

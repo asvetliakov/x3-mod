@@ -369,6 +369,7 @@ void MotionOutput::occlusion_cull_frame_end() noexcept {
     occlusion_window_frames_ = 0;
     const auto& s = occlusion_session_;
     const auto& sr = occlusion_session_refused_;
+    if (log_tier::perf_rows()) // --perf/--debug since 2026-10-21; the class-cache flush below runs in every tier
     log("occlusion_cull_session device=%llu frame=%llu frames=%u attached=%u candidates=%u tested=%u hidden=%u "
         "skipped=%u ready=%u not_ready=%u ready_lag2=%u ready_age=%u,%u,%u errors=%u drawn_late=%u pool_truncated=%u "
         "unstable=%u no_hull=%u refused=%u failed=%u no_bounds=%u unbounded=%u state=%u restore_failed=%u resolves=%u "
