@@ -1,0 +1,19 @@
+{
+ "run": 185,
+ "what": "logging tiers: periodic telemetry rows moved to --perf; always tier = init/config/failure witnesses/Reset",
+ "commit": "fa831fdf",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "fe1163efa8a9c57940edcd569139d92c1ec6776e2d22e091bb056789d62cba76",
+  "bytes": 61958232,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_logging_tiers + test_fog_cards + test_media_cue 28 OK 2 skipped (incremental build, same sources)",
+  "review": "main session reviewed the gate delta (small change rule)"
+ },
+ "producer": "main session"
+}
