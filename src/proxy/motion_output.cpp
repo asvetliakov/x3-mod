@@ -39,6 +39,8 @@
 #include "screen_emission_admission.h"
 #include "frame_timing.h" // X3M_FRAME_TIMING only: the redundant-state counters
 #include "session_log.h"
+#include "address_space.h" // volumetric_fog_memory: the largest free region after a failed fog prepare
+#include <psapi.h>          // volumetric_fog_memory: GetProcessMemoryInfo
 #include "../renderer/linear_emission_sm1.h"
 #include <algorithm>
 #include <cmath>
@@ -116,7 +118,7 @@ static_assert(prepass_rows_match_shadow(), "every depth-prepass row must name a 
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
 // clang-format off
 enum Slot : unsigned {
-    AddRef = 1, Release = 2, GetDirect3D = 6, GetDisplayMode = 8, GetCreationParameters = 9,
+    AddRef = 1, Release = 2, GetAvailableTextureMem = 4, GetDirect3D = 6, GetDisplayMode = 8, GetCreationParameters = 9,
     CreateTexture = 23, CreateVertexBuffer = 26, CreateRenderTarget = 28, GetRenderTargetData = 32, StretchRect = 34, ColorFill = 35,
     CreateOffscreenPlainSurface = 36, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
@@ -177,6 +179,7 @@ using GetDirect3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
 using GetDisplayModeFn = HRESULT(WINAPI*)(D, UINT, D3DDISPLAYMODE*);
 using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 using CountFn = ULONG(WINAPI*)(D);
+using AvailableTextureMemFn = UINT(WINAPI*)(D);
 using StretchFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*,
                                    D3DTEXTUREFILTERTYPE);
 using ColorFillFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, D3DCOLOR);
@@ -4205,6 +4208,9 @@ void MotionOutput::before_reset() noexcept {
     fog_card_fault_reason_ = "none";
     fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr;
     fog_card_refusal_ready_ = false;
+    fog_prepare_oom_ = fog_memory_fail_rows_ = 0; // the out-of-memory retry bound restarts with the fault latch
+    fog_prepare_retry_frame_ = 0;
+    fog_prepare_retry_sector_ = fog_prepare_retry_profile_ = 0;
     fog_failures_ = 0;
     fog_attach_failed_ = false;    // a transient failure or attach refusal is retried after Reset
     fog_density_prepared_ = false; // the worker, both CPU caches and the staging survive; only the DEFAULT atlases went

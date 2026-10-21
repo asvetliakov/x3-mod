@@ -3258,6 +3258,16 @@ private:
                   fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0,
                   fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
     const char* fog_card_fault_reason_ = "none";
+    // Out-of-memory prepare (volumetric-fog.md, "Cards and history"): consecutive E_OUTOFMEMORY / D3DERR_OUTOFVIDEOMEMORY prepares leave native
+    // cards and retry at the owner latch no sooner than fog_prepare_oom_spacing frames later; the
+    // fog_prepare_oom_bound-th latches the card fault (reason prepare_oom). Cleared by a successful prepare and by Reset.
+    static constexpr unsigned fog_prepare_oom_bound = 3, fog_prepare_oom_spacing = 600;
+    // volumetric_fog_memory rows with reason=prepare_fail (each with the VirtualQuery walk) per Reset interval.
+    static constexpr unsigned fog_memory_fail_row_cap = 8;
+    unsigned fog_prepare_oom_ = 0, fog_memory_fail_rows_ = 0;
+    std::uint64_t fog_prepare_retry_frame_ = 0; // first frame the owner latch may prepare again after an out-of-memory failure
+    std::uint32_t fog_prepare_retry_sector_ = 0;  // the gate's sector token and profile: another one clears the gate
+    unsigned fog_prepare_retry_profile_ = 0;
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false,
          fog_density_camera_valid_ = false;
@@ -3285,6 +3295,7 @@ private:
     void fog_transition_invalidate() noexcept;
     void fog_card_transition(unsigned mode) noexcept;
     void fault_fog_cards(const char* reason) noexcept;
+    void log_fog_memory(const char* reason, bool walk) noexcept;
     void prepare_fog_card(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_fog_card(MotionRoute&, HRESULT) noexcept;
     const char* fog_frame_prerequisite() const noexcept;

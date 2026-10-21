@@ -28,6 +28,7 @@ SLOT(IDirect3DDevice9Vtbl, DrawIndexedPrimitiveUP, 84);
 SLOT(IDirect3DDevice9Vtbl, CreateVertexShader, 91);
 SLOT(IDirect3DDevice9Vtbl, CreatePixelShader, 106);
 // Live motion route (src/proxy/motion_output.cpp): hooked setters and native slots.
+SLOT(IDirect3DDevice9Vtbl, GetAvailableTextureMem, 4);
 SLOT(IDirect3DDevice9Vtbl, GetDirect3D, 6);
 SLOT(IDirect3DDevice9Vtbl, GetDisplayMode, 8);
 SLOT(IDirect3DDevice9Vtbl, GetCreationParameters, 9);

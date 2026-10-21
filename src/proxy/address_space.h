@@ -26,4 +26,9 @@ constexpr unsigned tick_region_limit = 4096, create_region_limit = 409600;
 void report_create(unsigned long long device, unsigned long long frame);
 // One Present tick of the resumable pass; true when it emitted the pass's row.
 bool tick(unsigned long long device, unsigned long long frame);
+// The largest free region of the user range for the volumetric_fog_memory row (one walk on the calling thread,
+// no row of its own): bytes, or -1 when the first VirtualQuery was refused. Stops after budget_us (every 64 regions;
+// tick_region_limit regions without a QPC frequency); capped is true when the budget or a VirtualQuery refusal stopped
+// the walk before the end of the user range (the value is then a lower bound). us is the walk time. LastError preserved.
+long long largest_free(unsigned long budget_us, bool& capped, unsigned long long& us);
 }

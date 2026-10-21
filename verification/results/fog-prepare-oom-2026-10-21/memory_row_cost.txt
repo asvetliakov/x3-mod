@@ -1,0 +1,8 @@
+# Native Windows 11 host (WSL2 interop), 2026-10-21; built with
+#   i686-w64-mingw32-g++ -O2 -msse2 -mfpmath=sse -static -Wl,--large-address-aware memory_row_cost.cpp -o memcost.exe -ld3d9 -lpsapi
+# Output of memcost.exe (per-call figures are means over 1000 calls; X3AP.exe was not running):
+GetProcessMemoryInfo us=0.34 private=1572864
+GlobalMemoryStatusEx us=0.89 avail_virtual=4235198464
+walk own regions=266 us=345.7 per_region_us=1.300 largest=2144731136
+walk fragmented regions=40254 us=15808.3 per_region_us=0.393 largest=1610219520
+GetAvailableTextureMem us=0.20 value=4293918720

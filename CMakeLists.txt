@@ -144,7 +144,7 @@ target_compile_options(d3d9 PRIVATE -Wall -Wextra -Wno-cast-function-type -msse2
 target_link_options(d3d9 PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup)
 # Only _except_handler3 comes from msvcrt.dll; never substitute broad msvcrt-os,
 # which can silently redirect the existing UCRT imports.
-target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32)
+target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32 psapi)
 set_target_properties(d3d9 PROPERTIES PREFIX "" OUTPUT_NAME "d3d9")
 # Verification fixture (built, run by the Wine queue owner): the Win32 read path of the
 # data-driven fog family file, same source and flags as the DLL's loader.

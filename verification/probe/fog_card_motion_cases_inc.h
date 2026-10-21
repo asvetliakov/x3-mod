@@ -55,11 +55,37 @@ int main() {
  for(int error : {D3DERR_DEVICELOST,D3DERR_DEVICENOTRESET,-99}) {
    MotionOutput m;m.fog_storage.ready=false;m.fog_storage.result=error;
    m.prepare_volumetric_fog_targets(64,48);
-   assert(!m.fog_disabled_&&m.fog_cards_.fault==(error==-99)&&m.fog_storage.prepares==1);
+   assert(!m.fog_disabled_&&m.fog_cards_.fault==(error==-99)&&m.fog_storage.prepares==1&&m.memory_rows==unsigned(error==-99));
    m.fog_cards_={};m.fog_storage.result=0;m.prepare_volumetric_fog_targets(64,48);
    assert(m.fog_storage.ready&&!m.fog_cards_.fault);m.prepare_volumetric_fog_targets(64,48);assert(m.fog_storage.prepares==2);
  }
- // Current native state is sampled independently on every eligible card.
+ // Out-of-memory prepare: no fault (native cards stay), one memory row per failure; the owner latch retries no sooner
+ // than the spacing, a success clears the count, the bound-th consecutive failure latches prepare_oom until Reset.
+ { MotionOutput m;m.fog_storage.ready=false;m.fog_storage.result=E_OUTOFMEMORY;
+   m.prepare_volumetric_fog_targets(64,48);
+   assert(!m.fog_cards_.fault&&m.fog_storage.prepares==1&&m.fog_prepare_oom_==1&&m.memory_rows==1);
+   for(unsigned i=1;i<MotionOutput::fog_prepare_oom_spacing;++i){m.next();m.prepare_volumetric_fog_targets(64,48);}
+   assert(m.fog_storage.prepares==1&&!m.fog_cards_.fault);
+   m.next();m.prepare_volumetric_fog_targets(64,48);assert(m.fog_storage.prepares==2&&m.fog_prepare_oom_==2&&!m.fog_cards_.fault);
+   m.fog_storage.result=0;for(unsigned i=0;i<MotionOutput::fog_prepare_oom_spacing;++i)m.next();
+   m.prepare_volumetric_fog_targets(64,48);assert(m.fog_storage.ready&&m.fog_prepare_oom_==0&&m.fog_prepare_retry_frame_==0);
+   m.fog_storage.ready=false;m.fog_storage.result=E_OUTOFMEMORY;unsigned retries=0;
+   while(!m.fog_cards_.fault&&retries<8){m.prepare_volumetric_fog_targets(64,48);++retries;for(unsigned i=0;i<MotionOutput::fog_prepare_oom_spacing;++i)m.next();}
+   assert(m.fog_cards_.fault&&retries==MotionOutput::fog_prepare_oom_bound&&std::strcmp(m.fog_card_fault_reason_,"prepare_oom")==0);
+   assert(m.fog_storage.prepares==2+1+MotionOutput::fog_prepare_oom_bound&&m.memory_rows==2+MotionOutput::fog_prepare_oom_bound);
+   m.reset_fog_for_test();assert(m.fog_prepare_oom_==0&&m.fog_prepare_retry_frame_==0&&m.fog_memory_fail_rows_==0&&!m.fog_cards_.fault);
+   std::printf("prepare_oom retries=%u PASS\n",retries); }
+ // D3DERR_OUTOFVIDEOMEMORY shares the counter, bound and gate; a disabled family row (retried next frame) logs no memory row.
+ { MotionOutput m;m.fog_storage.ready=false;m.fog_storage.result=D3DERR_OUTOFVIDEOMEMORY;
+   m.prepare_volumetric_fog_targets(64,48);m.next();m.prepare_volumetric_fog_targets(64,48);
+   assert(!m.fog_cards_.fault&&m.fog_prepare_oom_==1&&m.fog_storage.prepares==1&&m.fog_prepare_retry_frame_!=0&&m.memory_rows==1);
+   // Another fog sector is a new allocation attempt: the gate clears, the count stays (the bound still holds).
+   ++m.frame_;m.volumetric_fog_begin_frame();m.sample("bluewell",0x2000);m.prepare_volumetric_fog_targets(64,48);
+   assert(m.fog_storage.prepares==2&&m.fog_prepare_oom_==2&&!m.fog_cards_.fault);
+   MotionOutput r;r.fog_storage.ready=false;r.fog_storage.result=renderer::FogPass::field_row_disabled;
+   r.prepare_volumetric_fog_targets(64,48);r.next();r.prepare_volumetric_fog_targets(64,48);
+   assert(!r.fog_cards_.fault&&r.fog_storage.prepares==2&&r.memory_rows==0&&r.fog_prepare_oom_==0);
+   std::printf("prepare_oom_video row_disabled_rows=%u PASS\n",r.memory_rows); }
  for(bool hooked:{false,true}) {
    MotionOutput m;m.state_hooks_=hooked;m.warm();m.draw();
    assert(m.device_storage.freq_gets==1&&m.device_storage.gets==(hooked?0:12)&&m.device_storage.calls==2);

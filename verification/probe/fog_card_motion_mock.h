@@ -35,6 +35,7 @@ inline bool GetModuleHandleExW(unsigned, LPCWSTR, HMODULE* m) {
 constexpr int E_FAIL = -1, E_NOINTERFACE = -2, IID_IDirect3DTexture9 = 1;
 using UINT = unsigned;
 constexpr int S_OK = 0, S_FALSE = 1, D3DERR_DEVICELOST = -200, D3DERR_DEVICENOTRESET = -201;
+constexpr int E_OUTOFMEMORY = -202, D3DERR_OUTOFVIDEOMEMORY = -203; // the out-of-memory retry's codes (0x8007000E, 0x8876017C)
 using DWORD = std::uint32_t;
 using HRESULT = std::int32_t;
 constexpr bool FAILED(HRESULT hr) {
@@ -359,6 +360,11 @@ struct MotionOutput {
     std::uint64_t frame_ = 1, fog_frame_ = 0, id_ = 1;
     HRESULT motion_state_error_ = 0;
     const char* fog_card_fault_reason_ = "none";
+    static constexpr unsigned fog_prepare_oom_bound = 3, fog_prepare_oom_spacing = 600, fog_memory_fail_row_cap = 8;
+    unsigned fog_prepare_oom_ = 0, fog_memory_fail_rows_ = 0, memory_rows = 0;
+    std::uint64_t fog_prepare_retry_frame_ = 0;
+    std::uint32_t fog_prepare_retry_sector_ = 0;
+    unsigned fog_prepare_retry_profile_ = 0;
     HdrState hdr_state_ = HdrState::Active;
     MockHdr hdr_storage{};
     MockHdr* hdr_ = &hdr_storage;
@@ -416,6 +422,7 @@ struct MotionOutput {
     void volumetric_fog_sector_sample(std::uint64_t, const sector_background::Sample&) noexcept;
     void fog_card_transition(unsigned) noexcept;
     void fault_fog_cards(const char*) noexcept;
+    void log_fog_memory(const char*, bool) noexcept { ++memory_rows; } // the Win32/D3D queries are the DLL's
     template <class F> void taa_call(F&& f) { f(); }
     bool attach_volumetric_fog() { return !fog_attach_failed_; }
     void prepare_volumetric_fog_targets(UINT, UINT) noexcept;

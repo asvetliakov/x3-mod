@@ -1,0 +1,19 @@
+Witness rows copied from C:\X3\x3m.prev.log (9,945,774 B, 18,433 lines, rotated away later on 2026-10-21 when the game
+was launched again). Extracted with grep/sed in the main session; the rotated file no longer exists.
+
+Session: release 1.3.0 DLL a5415ba3… (Run183), 5120x1440, X3AP.exe exe_laa=1. Alt-tab device Reset at frame 290013/290014
+(window_mode phase=reset_before, reset_begin, motion_output_reset generation=2, reset_end result=00000000).
+Sectors between the Reset and the fault were all family_unsupported (no prepare). First supported family after it:
+
+volumetric_fog_prefill device=1 frame=311108 event=confirmed lead_ms=1137.0 same_sector=1 same_id=1 key=b4e5d930de3dd1b8 prefill_key=b4e5d930de3dd1b8 index=26 prefill_index=26 profile=3577311395 adopted=1
+volumetric_fog_sector device=1 frame=311108 profile=3577311395 reason=rednexus sector=4a0533d0 index=26 generation=2 density_scale=1.000
+volumetric_fog_prepare device=1 frame=311108 profile=3577311395 field_generation=0 width=5120 height=1440 result=8007000e cpu_us=476.3
+volumetric_fog_cards_fault device=1 frame=311108 reason=prepare observed=0 suppressed=0 until=reset
+volumetric_fog_frame device=1 frame=311108 applied=0 reason=card_fault strength=0.0200 density_scale=1.000 cards=1 profile=3577311395 field_generation=0 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0
+volumetric_fog_cards device=1 frame=311108 observed=25 suppressed=0 refused=0 ready=0 warmup=1 applied=0 fault=1 reason=prepare mode=3 observed_total=1461949 suppressed_total=1447772 refused_total=0 refusal=none
+
+Afterwards (applied transitions from volumetric_fog_frame): frame=318600 applied=0 reason=card_fault profile=0;
+frame=339000 applied=0 reason=card_fault profile=2703245 (litcube19, a supported family). Last frame_end 342000,
+elapsed_ms=2443848. The only 8007000e in the file was the prepare row above; no other subsystem reported a failure
+after the Reset. Earlier in the session the same resolution prepared successfully 14 times (frames 45367..221633).
+A save reload in that session did not clear the fault (user report); a game restart did (x3m.log frame 1200 applied=1).

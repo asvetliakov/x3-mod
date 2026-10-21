@@ -792,7 +792,15 @@ cards while applying the current-frame volume. Sector/profile/generation changes
 toggles, Reset, missing authority and failures retain their existing readiness and
 fallback rules; owner/camera/depth admission is still checked each frame. After suppression, refusal/failure latches
 medium and replacement off until Reset; this can lose both layers for one frame
-and cannot restore already suppressed cards. Native draw count/HRESULT remains
+and cannot restore already suppressed cards. A failed prepare at the owner latch latches the same fault
+(`reason=prepare`) except a lost device, a disabled family row, and `E_OUTOFMEMORY` or
+`D3DERR_OUTOFVIDEOMEMORY` (since 2026-10-21; one occurrence after an alt-tab Reset disabled replacement for
+the rest of a session): native cards stay (the card readiness check refuses before suppression), a
+`volumetric_fog_prepare_retry` row names the attempt, and the latch prepares again no sooner than 600 frames
+later (`fog_prepare_oom_spacing`) or at once in another fog sector or family. A success clears the count;
+the third consecutive out-of-memory prepare (`fog_prepare_oom_bound`, counted across sectors) latches the
+fault with `reason=prepare_oom` until Reset. Every failed prepare other than a lost device or a disabled
+family row is followed by a `volumetric_fog_memory reason=prepare_fail` row (at most 8 per Reset interval). Native draw count/HRESULT remains
 unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate
 TAA once; there is no separate fog history. Finite fog translation against sky
 rotation-only history remains a production-sequence and flight quality gate.
