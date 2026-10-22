@@ -1,0 +1,21 @@
+{
+ "run": 187,
+ "what": "ui_scale claims I/J: universe map sector labels and map pick in real pixels",
+ "commit": "8fa5e419",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "6498d2ddd4762f76a5351da90a17534df296b3c9b50cca894866b9b1c077ae29",
+  "bytes": 61966255,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 0 violations",
+  "site_verifier": "verify_ui_scale_sites PASS 92/92, 10,985 instructions",
+  "host_tests": "test_ui_scale 9 OK",
+  "review": "independent review: no blocker, 4 minor findings fixed before commit"
+ },
+ "producer": "main session"
+}

@@ -1,0 +1,29 @@
+{
+ "run": 187,
+ "what": "run187 candidate installed into native C:\\X3",
+ "command": "manual: mkdir C:\\X3\\rollback-d3d9; cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run186; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-22T16:02+04:00",
+ "commit": "8fa5e419",
+ "candidate_record": "verification/results/run187-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "6498d2ddd4762f76a5351da90a17534df296b3c9b50cca894866b9b1c077ae29",
+  "bytes": 61966255,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 186,
+  "sha256": "0e7199b374a4d646",
+  "note": "release 1.3.1 stripped DLL (42,279,030 B); the earlier rollback-d3d9 directory was absent and was recreated",
+  "bytes": 42279030,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run186"
+ },
+ "x3m_ini": "unchanged (user-edited 2026-10-22 15:20, not touched)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418\u2026)",
+  "x3m-regenerate.exe",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
