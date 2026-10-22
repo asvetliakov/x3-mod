@@ -45,3 +45,5 @@ and the device's back buffer (for `auto`) gives a scale above 1.
 2026-09-30 flight run391 (Run113, `--ui-scale 1.25 --debug`): bracket click selection in the 3D view works again with claims G/H; the user reports "working now" (accepted; menus/map/main menu as in run390). Text sharpness remains open (text density feature).
 
 2026-09-30 run395 (`--ui-scale 1.5`, virtual 3413x960): accepted by the user as the preferred scale at 5120x1440; auto becomes height/1080 rounded to the nearest half (1.5 at 1440 rows) and the option defaults to auto in 0.9.0.
+
+2026-10-22 flight Run 187 A (Run187, native Windows, `ui_scale` auto): the user confirmed the universe map fixed (sector names on their rings, clicks select the ring's sector); shipped in release 1.3.2.

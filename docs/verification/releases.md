@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.3.2
+
+2026-10-22, `python3 tools/release/release.py --out /tmp/x3m-release-1.3.2 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 76.4 s wall: dll 73.9 s, package 2.4 s), clean main `55f68226` ([record](../../verification/results/release-1.3.2.json)).
+
+- Over 1.3.1 (Run187): **universe map under `ui_scale`**: sector names sit on their rings again (they were drawn at s times their offset from the map centre, only the selected, centred sector right) and map clicks and hover pick the ring under the cursor (ui_scale claims I `0x0041eab2` and J `0x0042e952`; [note](../architecture/ui-scale.md), [RE](../reverse-engineering/gui-scale.md), [ledger](ui-scale.md)).
+- DLL: stripped `35d04a1f…` (42,280,909 B; 0 warnings, x87 0 / 1014 reachable, strip identity PASS, 17 exports, debuglink), `d3d9.debug` kept at /tmp/x3m-release-1.3.2/. Installed into native `C:\X3` as Run188, rollback `rollback-d3d9\d3d9.dll.run187` (the Run187 unstripped build `6498d2dd…`) ([install](../../verification/results/run188-release-install.json)).
+- Zip `x3m-1.3.2.zip` `070a94c3…` (60,110,430 B): the same 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.3.2`; `generate --check` PASS. The user's `x3m.ini` header bumped to 1.3.2 (previous file `x3m.ini.run187`).
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`, copied from `C:\X3`): `git diff --stat 0bb4facc..HEAD -- tools/regenerate tools/fog_field_recipe.py` is empty.
+- Flown before the release build: Run 187 A (the user confirmed the universe map fixed); the release differs from Run187 by the version string and the strip.
+
 ## Release 1.3.1
 
 2026-10-21, `python3 tools/release/release.py --out /tmp/x3m-release-1.3.1 --regenerate-dir /tmp/x3m-release-1.3.0-regenerate` (exit 0, 75.6 s wall: dll 72.8 s, package 2.6 s), clean main `58105e3d` ([record](../../verification/results/release-1.3.1.json)).
