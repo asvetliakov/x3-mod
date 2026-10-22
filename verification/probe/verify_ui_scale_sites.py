@@ -6,13 +6,15 @@ docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the pixel orthogr
 `mov eax,1` at 0x004be246, the script's screen-size readers (the `mov edx/ecx,[0x006085e4]` after the movsx in cases
 0x71/0x72 of 0x00493b40), the four script mouse-delta loads (0x00403d36, 0x00403d7a, 0x00411b40, 0x00411b57) and the
 cursor store `mov [0x00607cf0],eax` at 0x004074ec, the two INS click-point loads (case 0x64 at 0x0042ece0, case 0x28
-at 0x0042ddf1, gui-scale.md section 6), plus the debug-only entry counter at 0x004bdee0. This checks X3AP.exe
+at 0x0042ddf1, gui-scale.md section 6), the galaxy map's label callback load at 0x0041eab2 and pick (case 0x3e at
+0x0042e952, section 7), plus the debug-only entry counter at 0x004bdee0. This checks X3AP.exe
 on the host: the structural identity, every expected byte window, a gap-free whole-instruction decode of the whole
 .text (objdump), each claimed span on instruction boundaries, no decoded direct branch and no jump-table entry landing
 inside a span, every raw rel8/rel32 encoding landing inside a span interior to a decoded instruction, no dword in the
 image pointing into a span, the mnemonics that make the return value / EFLAGS / scratch registers dead after each
 site, the register writes between the P load and the 2D exit (EAX/EBX/EBP untouched), the callee prefixes (cmp before
-any flag read), the SSE census of .text (no XMM use outside the CRT's one movups), the other claims (disjoint, the
+any flag read), the map label's EDX/EFLAGS deadness and argument slot, the map pick's live EFLAGS and every reference to
+the map-state cell it re-compares, the SSE census of .text (no XMM use outside the CRT's one movups), the other claims (disjoint, the
 chase-fire claim exactly in the cursor window's gap), the source constants against this table, the auto-scale
 mapping and the fixed-point forms. No Wine, no game launch.
 """
@@ -29,7 +31,8 @@ import verify_collide_sites as collide
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / 'src/proxy/ui_scale_sites.h'
-DEFAULT_EXE = common.DEFAULT_EXE
+NATIVE_EXE = Path('/mnt/c/X3/X3AP.exe')  # the native Windows install seen from WSL2
+DEFAULT_EXE = NATIVE_EXE if NATIVE_EXE.is_file() else common.DEFAULT_EXE
 
 # (name, va, expected bytes, continuation, the mnemonics that follow the displaced span)
 SITES = {
@@ -43,6 +46,8 @@ SITES = {
     'cursor': (0x4074ec, bytes.fromhex('a3f07c6000'), 0x4074f1, ['push', 'mov', 'mov', 'call']),
     'overlay_icon': (0x42ece0, bytes.fromhex('8b76065156'), 0x42ece5, ['add', 'push', 'call', 'jmp']),
     'cursor_aim': (0x42ddf1, bytes.fromhex('8b73068b7b0b'), 0x42ddf7, ['jl', 'lea', 'call', 'mov', 'mov', 'mov', 'push', 'push', 'push', 'push', 'call']),
+    'map_label': (0x41eab2, bytes.fromhex('8b0d64fc5700'), 0x41eab8, ['push', 'mov', 'push', 'push', 'push', 'push', 'push', 'push', 'push', 'push', 'call']),
+    'map_pick': (0x42e952, bytes.fromhex('8b7606897c240c'), 0x42e959, ['mov', 'je', 'lea', 'push', 'lea', 'push', 'push', 'push', 'call']),
     'entry': (0x4bdee0, bytes.fromhex('83ec0883783c00'), 0x4bdee7, ['push', 'mov', 'push', 'mov', 'push', 'mov', 'push']),
 }
 # The verified windows (va, bytes) beyond the sites themselves.
@@ -65,23 +70,38 @@ WINDOWS = {
     'aim_case': (0x42ddc0, bytes.fromhex('8b5d188b5301a104856000e850effeff85c0894424100f8412f9ffff8b4d1483ceff0bfe83f903c644240c007c1b83f9048b73068b7b0b'
                                         '7c108d430fe86fab07008844240c8b4424108b54240c52575650e8fa75ffff85c00f84d0f8ffff')),
     'icon_test': (0x4299a0, bytes.fromhex('83ec10535556578b7c24248b874803000085c00f84240300008b0d386f60008b11')),
+    'map_label_window': (0x41eaa8, bytes.fromhex('50dec9dee9e81ecb10008b0d64fc5700508b44243453506a046a01683cb655006a006a0051e8ee090800')),
+    'map_callback': (0x49f4c0, bytes.fromhex('83ec0c535556578d442418508b4424348d4c2418518b4c24348d54243c')),
+    'map_pick_case': (0x42e934, bytes.fromhex('8b75188b5601e8f1a6050033ff3bc70f84a1000000393d088560008b4e0b8b7606897c240c897c24100f84870000008d54241052'
+                                             '8d542410525156e8bcf6feff')),
 }
 # Decoded gap-free (int3 padding bounds): the five site functions, the projection's two callers and the two callees' prefixes.
 FUNCTIONS = {'projection': (0x4bdee0, 0x4be3e3), 'dispatcher': (0x493b40, 0x49679c), 'main_loop': (0x403840, 0x404278),
              'menu_loop': (0x410080, 0x412250), 'cursor': (0x406de0, 0x40770c), 'caller1': (0x47d9c0, 0x47e617),
              'caller2': (0x47e620, 0x47e77d), 'size_callee': (0x4a47f0, 0x4a480d), 'menu_callee': (0x40fec0, 0x40fecb),
-             'ins_dispatcher': (0x42d340, 0x42f064), 'icon_test': (0x4299a0, 0x4299c1)}
+             'ins_dispatcher': (0x42d340, 0x42f064), 'icon_test': (0x4299a0, 0x4299c1), 'map': (0x41e350, 0x41eb1f),
+             'map_callback': (0x49f4c0, 0x49f4dd), 'ftol': (0x52b5d0, 0x52b67b)}
 # The INS dispatcher's jump table (the click-point cases G and H).
 INS_JUMP_TABLE, INS_JUMP_TABLE_ENTRIES, OVERLAY_CASE, AIM_CASE = 0x42f064, 0x71, 0x64, 0x28
-INS_CASE_STARTS = {OVERLAY_CASE: 0x42ecc5, AIM_CASE: 0x42ddc0}
+MAP_PICK_CASE = 0x3e
+INS_CASE_STARTS = {OVERLAY_CASE: 0x42ecc5, AIM_CASE: 0x42ddc0, MAP_PICK_CASE: 0x42e934}
 AIM_FLAGS_VA = 0x42ddee  # cmp ecx,4 whose EFLAGS the jl at 0x42ddf7 reads across the H span
+# J: cmp [0x608508],edi whose EFLAGS the je at 0x42e95d reads across the span; EDI zeroed at 0x42e93f; the je path at 0x42e9ea.
+MAP_PICK_FLAGS_VA, MAP_PICK_JE_VA, MAP_PICK_EDI_ZERO_VA, MAP_PICK_JE_TARGET, MAP_STATE = 0x42e949, 0x42e95d, 0x42e93f, 0x42e9ea, 0x608508
+# Every instruction in .text that encodes the map-state cell (va, bytes); the two movs are its only writers.
+MAP_STATE_REFS = {0x41e412: '391d08856000', 0x41e72b: 'c70508856000' '01000000', 0x41eb9a: '892d08856000', 0x42e949: '393d08856000',
+                  0x42eaf2: '833d0885600000'}
+MAP_STATE_WRITERS = (0x41e72b, 0x41eb9a)
+# I: the push of y (the argument slot the stub rewrites), the ftol call between it and the span, the callback call.
+MAP_LABEL_Y_PUSH, MAP_LABEL_FTOL_CALL, MAP_LABEL_CALL, MAP_CALLBACK_EDX_WRITE = 0x41eaa8, 0x41eaad, 0x41eacd, 0x49f4d9
 JUMP_TABLE, JUMP_TABLE_ENTRIES, WIDTH_CASE, HEIGHT_CASE = 0x49679c, 0xa8, 0x71, 0x72
 CASE_STARTS = {WIDTH_CASE: 0x496181, HEIGHT_CASE: 0x4961a8}
 SIZE_CALLEE = 0x4a47f0
 SIZE_CALLEE_MNEMONICS = ['push', 'mov', 'push', 'lea', 'mov', 'cmp', 'jb', 'mov', 'call', 'mov']  # cmp writes EFLAGS before jb reads them
 CURSOR_FOREIGN_CLAIM = ('chase_cursor_write', 0x4074de, 6)  # chase_fire's claim inside the cursor window's gap
 COCKPIT_REGISTRY_SLOT, HUD_CAMERA_OFFSET = 0x608504, 8
-STUB_LENGTHS = {'projection': 144, 'size': 21, 'main_mouse': 47, 'menu_mouse': 45, 'cursor': 37, 'entry': 79, 'overlay': 43, 'aim': 47}
+STUB_LENGTHS = {'projection': 144, 'size': 21, 'main_mouse': 47, 'menu_mouse': 45, 'cursor': 37, 'entry': 79, 'overlay': 43, 'aim': 47,
+                'map_label': 70, 'map_pick': 51}
 EXPECTED_CONSTANTS = {
     'projection_function_va': 0x4bdee0, 'projection_function_end_va': 0x4be3e3, 'projection_site_va': 0x4be246, 'projection_return_va': 0x4be24b,
     'projection_tail_va': 0x4be1eb, 'caller1_va': 0x47e002, 'caller2_va': 0x47e70c, 'entry_site_va': 0x4bdee0, 'entry_return_va': 0x4bdee7,
@@ -96,6 +116,10 @@ EXPECTED_CONSTANTS = {
     'ins_dispatcher_va': 0x42d340, 'ins_dispatcher_end_va': 0x42f064, 'ins_jump_table_va': 0x42f064, 'overlay_case_va': 0x42ecc5,
     'overlay_site_va': 0x42ece0, 'overlay_return_va': 0x42ece5, 'aim_case_va': 0x42ddc0, 'aim_site_va': 0x42ddf1, 'aim_return_va': 0x42ddf7,
     'aim_flags_va': 0x42ddee, 'icon_test_va': 0x4299a0, 'cursor_aim_va': 0x425410,
+    'map_function_va': 0x41e350, 'map_function_end_va': 0x41eb1f, 'map_label_window_va': 0x41eaa8, 'map_label_site_va': 0x41eab2,
+    'map_label_return_va': 0x41eab8, 'map_callback_va': 0x49f4c0, 'map_ftol_va': 0x52b5d0, 'map_vm_slot_va': 0x57fc64,
+    'map_pick_case_va': 0x42e934, 'map_pick_site_va': 0x42e952, 'map_pick_return_va': 0x42e959, 'map_pick_flags_va': 0x42e949,
+    'map_state_va': 0x608508, 'map_find_va': 0x41e030,
 }
 LOG_RE = re.compile(r'\bui_scale setting=(?P<setting>\S+) status=(?P<status>pending|off|refused) reason=(?P<reason>\S+) mode=(?P<mode>auto|fixed|off) '
                     r'scale=(?P<scale>[0-9.]+) diagnostic=(?P<diagnostic>\S+) diagnostic_write=(?P<diagnostic_write>\S+) site=(?P<site>[0-9a-f]{8})')
@@ -137,6 +161,23 @@ def mouse_step(delta, inv16, acc):
 
 def cursor_real(v, s256):
     return (v * s256 + 0x80) >> 8
+
+
+def map_offset(v, inv16):
+    """I: round(v/s) through the 64-bit product, a tie away from zero (the stub's cmp edx,0x80000000; adc eax,0x7fff)."""
+    p = v * inv16
+    return (p + (0x8000 if p >= 0 else 0x7fff)) >> 16
+
+
+def reads_edx(instruction):
+    """The instruction may read EDX/DX/DL/DH: named in an operand (a write-only `mov edx,` / `lea edx,` destination excluded) or implicitly."""
+    m, ops = instruction.mnemonic, instruction.operands
+    if m in ('cdq', 'div', 'idiv', 'mul') or (m == 'imul' and ',' not in ops) or m.startswith(('call', 'ret')):
+        return m in ('div', 'idiv')  # cdq/mul/one-operand imul write EDX without reading it; a call is judged at its callee
+    named = bool(re.search(r'\b(edx|dx|dl|dh)\b', ops))
+    if named and m in ('mov', 'lea', 'movzx', 'movsx', 'pop') and re.match(r'(edx|dx|dl|dh)\s*,', ops) and not re.search(r'\b(edx|dx|dl|dh)\b', ops.split(',', 1)[1]):
+        return False
+    return named
 
 
 def anchor(flags):
@@ -204,7 +245,10 @@ def source_ok(text):
                        'expected_menu_callee': WINDOWS['menu_callee'][1], 'expected_cursor_pre': WINDOWS['cursor_pre'][1],
                        'expected_cursor_post': WINDOWS['cursor_post'][1], 'expected_overlay_site': SITES['overlay_icon'][1],
                        'expected_aim_site': SITES['cursor_aim'][1], 'expected_overlay_case': WINDOWS['overlay_case'][1],
-                       'expected_aim_case': WINDOWS['aim_case'][1], 'expected_icon_test': WINDOWS['icon_test'][1]}
+                       'expected_aim_case': WINDOWS['aim_case'][1], 'expected_icon_test': WINDOWS['icon_test'][1],
+                       'expected_map_label_site': SITES['map_label'][1], 'expected_map_pick_site': SITES['map_pick'][1],
+                       'expected_map_label_window': WINDOWS['map_label_window'][1], 'expected_map_callback': WINDOWS['map_callback'][1],
+                       'expected_map_pick_case': WINDOWS['map_pick_case'][1]}
     ok = ok and all(arrays.get(k) == v for k, v in expected_arrays.items())
     ok = ok and all(lengths.get(f'{k}_stub_length') == v for k, v in STUB_LENGTHS.items())
     ok = ok and 'constexpr std::int32_t accumulator_start = 0x8000;' in text
@@ -337,7 +381,7 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     checks['jump_table_in_dispatcher'] = all(FUNCTIONS['dispatcher'][0] <= t < FUNCTIONS['dispatcher'][1] and t in starts for t in table)
     # The INS dispatcher's table: the two click-point cases, no entry inside a span, every entry an instruction start.
     ins_table = [struct.unpack_from('<I', image.read(INS_JUMP_TABLE + 4 * k, 4))[0] for k in range(INS_JUMP_TABLE_ENTRIES)]
-    checks['ins_jump_table_cases'] = ins_table[OVERLAY_CASE] == INS_CASE_STARTS[OVERLAY_CASE] and ins_table[AIM_CASE] == INS_CASE_STARTS[AIM_CASE]
+    checks['ins_jump_table_cases'] = all(ins_table[case] == start for case, start in INS_CASE_STARTS.items())
     ins_inside = [hex(t) for t in ins_table if any(a < t < b for a, b in spans)]
     checks['ins_jump_table_entries_outside_spans'] = ins_inside == []
     checks['ins_jump_table_in_dispatcher'] = all(FUNCTIONS['ins_dispatcher'][0] <= t < FUNCTIONS['ins_dispatcher'][1] and t in starts for t in ins_table)
@@ -357,6 +401,76 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     checks['overlay_flags_dead_and_edx_written'] = g_after is not None and g_after.mnemonic == 'add' and g_after.operands.startswith('eax,') and \
         by_va.get(0x4299bf) is not None and by_va[0x4299bf].mnemonic == 'mov' and by_va[0x4299bf].operands.startswith('edx,') and \
         not any(written_registers(i) & {'edx'} or 'edx' in i.operands for va, i in by_va.items() if 0x4299a0 <= va < 0x4299bf)
+    # I and J: the five patch bytes inside one aligned qword (one cmpxchg8b each).
+    checks['map_sites_one_qword'] = all((SITES[n][0] & 7) + 5 <= 8 for n in ('map_label', 'map_pick'))
+    # I: [ESP] at the site is y, pushed at 0x41eaa8: only x87 arithmetic and the ftol call lie between, and the ftol returns
+    # with a plain ret after leave (its own aligned frame below the pushed slot), so ESP and the slot are the push's.
+    label_va, _, label_cont, _ = SITES['map_label']
+    between = []
+    cursor = MAP_LABEL_Y_PUSH
+    while cursor in by_va and cursor < label_va:
+        between.append((by_va[cursor].mnemonic, by_va[cursor].operands))
+        cursor = by_va[cursor].end
+    ftol = [i for i in instructions if FUNCTIONS['ftol'][0] <= i.va < FUNCTIONS['ftol'][1]]
+    ftol_rets = [k for k, i in enumerate(ftol) if i.mnemonic.startswith('ret')]
+    checks['map_label_slot_is_y'] = cursor == label_va and [m for m, _ in between] == ['push', 'fmulp', 'fsubp', 'call'] and \
+        between[0][1] == 'eax' and between[3][1].split()[0] == hex(FUNCTIONS['ftol'][0]) and len(ftol_rets) == 2 and \
+        all(ftol[k].operands == '' and ftol[k - 1].mnemonic == 'leave' for k in ftol_rets) and \
+        by_va.get(label_cont) is not None and (by_va[label_cont].mnemonic, by_va[label_cont].operands) == ('push', 'eax')
+    report['map_label_before_site'] = between
+    # I: EDX and EFLAGS dead after the span: nothing up to the callback call reads EDX or EFLAGS (pushes and one mov), and
+    # the callee 0x49f4c0 writes EFLAGS first (sub esp,0xc) and EDX (lea) at 0x49f4d9 before any read of it.
+    after = []
+    cursor = label_cont
+    while cursor in by_va and cursor <= MAP_LABEL_CALL:
+        after.append(by_va[cursor])
+        cursor = by_va[cursor].end
+    callee = [i for i in instructions if FUNCTIONS['map_callback'][0] <= i.va < FUNCTIONS['map_callback'][1]]
+    callee_before_write = [i for i in callee if i.va < MAP_CALLBACK_EDX_WRITE]
+    checks['map_label_edx_dead'] = bool(after) and after[-1].va == MAP_LABEL_CALL and after[-1].operands.split()[0] == hex(FUNCTIONS['map_callback'][0]) and \
+        not any(reads_edx(i) for i in after) and bool(callee) and callee[-1].va == MAP_CALLBACK_EDX_WRITE and \
+        callee[-1].mnemonic == 'lea' and callee[-1].operands.startswith('edx,') and not any(reads_edx(i) for i in callee_before_write)
+    checks['map_label_flags_dead'] = all(i.mnemonic in ('push', 'mov', 'call') for i in after) and bool(callee) and \
+        (callee[0].mnemonic, callee[0].operands) == ('sub', 'esp,0xc')
+    report['map_label_edx_readers'] = [hex(i.va) for i in after + callee_before_write if reads_edx(i)]
+    # J: EFLAGS live across the span. The cmp [0x608508],edi at 0x42e949 is the last flag writer before the je at 0x42e95d
+    # (everything between is mov); EDI is zeroed at 0x42e93f and not written again before the je, so the stub's re-executed
+    # compare reads the same EDI; the span's two instructions write ESI and memory only.
+    pick_va, _, pick_cont, _ = SITES['map_pick']
+    flags = by_va.get(MAP_PICK_FLAGS_VA)
+    middle = []
+    cursor = flags.end if flags else None
+    while cursor in by_va and cursor < MAP_PICK_JE_VA:
+        middle.append(by_va[cursor])
+        cursor = by_va[cursor].end
+    edi_writes = [hex(i.va) for va, i in by_va.items() if MAP_PICK_EDI_ZERO_VA < va < MAP_PICK_JE_VA and 'edi' in written_registers(i)]
+    checks['map_pick_flags_live_proof'] = flags is not None and flags.mnemonic == 'cmp' and flags.operands == f'DWORD PTR ds:{MAP_STATE:#x},edi' and \
+        cursor == MAP_PICK_JE_VA and by_va[MAP_PICK_JE_VA].mnemonic == 'je' and direct_target(by_va[MAP_PICK_JE_VA]) == MAP_PICK_JE_TARGET and \
+        [i.mnemonic for i in middle] == ['mov', 'mov', 'mov', 'mov'] and [i.va for i in middle][1] == pick_va and \
+        (by_va[MAP_PICK_EDI_ZERO_VA].mnemonic, by_va[MAP_PICK_EDI_ZERO_VA].operands) == ('xor', 'edi,edi') and edi_writes == []
+    report['map_pick_between_cmp_and_je'] = [(hex(i.va), i.mnemonic, i.operands) for i in middle]
+    # J: the map-state cell is encoded by exactly five instructions in .text, two of them the writers (inside the map build
+    # 0x41e350 and its teardown 0x41eb20, natives of the same script VM thread); no other code changes it between the
+    # engine's compare and the stub's.
+    lo_text, hi_text, raw_text = text_bounds(data)
+    needle = struct.pack('<I', MAP_STATE)
+    hits, at = [], data.find(needle, raw_text, raw_text + (hi_text - lo_text))
+    while at >= 0:
+        hits.append(lo_text + at - raw_text)
+        at = data.find(needle, at + 1, raw_text + (hi_text - lo_text))
+    encoded = {va: (image.read(va, len(bytes.fromhex(b))) or b'').hex() for va, b in MAP_STATE_REFS.items()}
+    # (0x41eb9a lies in 0x41eb20, which is not decoded: its encoding `89 2d disp32` = mov [disp32],ebp is compared as bytes.)
+    checks['map_state_references'] = sorted(hits) == sorted(va + 2 for va in MAP_STATE_REFS) and encoded == MAP_STATE_REFS and \
+        by_va.get(MAP_STATE_WRITERS[0]) is not None and by_va[MAP_STATE_WRITERS[0]].mnemonic == 'mov' and \
+        by_va[MAP_STATE_WRITERS[0]].operands.startswith(f'DWORD PTR ds:{MAP_STATE:#x},') and FUNCTIONS['map'][0] <= MAP_STATE_WRITERS[0] < FUNCTIONS['map'][1] and \
+        MAP_STATE_REFS[MAP_STATE_WRITERS[1]].startswith('892d')
+    report['map_state_text_hits'] = [hex(h) for h in sorted(hits)]
+    # J: EDX on the je path: 0x42e9ea..the call of 0x4a47f0 and that callee up to its first call never write EDX, so EDX reaches
+    # unknown callees: treated live, and the stub leaves it untouched (two-operand imul; test_ui_scale decodes the stub).
+    je_path = [i for va, i in sorted(by_va.items()) if MAP_PICK_JE_TARGET <= va < 0x42e9fa] + \
+        [i for va, i in sorted(by_va.items()) if SIZE_CALLEE <= va < 0x4a4809]
+    checks['map_pick_edx_reaches_callees'] = len(je_path) >= 10 and je_path[4].mnemonic == 'call' and \
+        not any('edx' in written_registers(i) for i in je_path)
     # The size sites' callee: cmp before jb (EFLAGS dead after the claimed mov), as the fov verifier established.
     callee = []
     cursor = SIZE_CALLEE
@@ -418,7 +532,7 @@ def inspect(data, instructions, core_text, claims, xmm=()):
     ins_claims = sorted((name, hex(address)) for name, address, length in claims if FUNCTIONS['ins_dispatcher'][0] <= address < FUNCTIONS['ins_dispatcher'][1])
     report['ins_dispatcher_claims'] = ins_claims
     checks['ins_dispatcher_other_claims_outside_cases'] = all(not (WINDOWS[w][0] <= address < WINDOWS[w][0] + len(WINDOWS[w][1]))
-                                                          for _, address, _ in claims for w in ('overlay_case', 'aim_case'))
+                                                          for _, address, _ in claims for w in ('overlay_case', 'aim_case', 'map_pick_case'))
     report['entry_claims'] = entry_claims
     # Source constants and the arithmetic twins.
     checks['source_constants'] = source_ok(core_text)
@@ -436,6 +550,10 @@ def inspect(data, instructions, core_text, claims, xmm=()):
         negative += out
     checks['mouse_remainder'] = total == 7 and acc == 10926 and negative == -7 and acc_negative == 54610 and anchor(0x200 | 0x1000 | 0x4000) == (-1.0, 1.0) and anchor(0x200) == (0.0, 0.0) \
         and anchor(0x200 | 0x2000 | 0x8000) == (1.0, -1.0) and anchor(0x200 | 0x1000 | 0x2000) == (-1.0, 0.0)
+    # I: the label rounding, a tie away from zero, exact at the identity (the extremes included).
+    checks['map_offset_rounding'] = [map_offset(v, inverse16(2)) for v in (3, -3, 1, -1, 0)] == [2, -2, 1, -1, 0] and \
+        [map_offset(v, inverse16(1.5)) for v in (90, -90, 231, -231)] == [60, -60, 154, -154] and \
+        all(map_offset(v, 65536) == v for v in (0, 1, -1, 12345, -12345, 2**31 - 1, -2**31))
     report['checks'] = checks
     report['instructions'] = len(instructions)
     report['decoded_ranges'] = {name: [hex(a), hex(b)] for name, (a, b) in FUNCTIONS.items()}

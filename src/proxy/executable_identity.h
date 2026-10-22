@@ -47,6 +47,7 @@ struct Anchor {
 // clang-format off
 constexpr Anchor anchors[] = {
     {0x00401b91, 0x0057fc60, 2, {0x8b, 0x35}},       // pause_key_only
+    {0x0041e474, 0x0057fc64, 2, {0x8b, 0x15}},       // ui_scale (the KC VM slot the map label stub re-reads; its load 0x0041eab2 is the site)
     {0x00433cbe, 0x00587b88, 2, {0x89, 0x15}},       // chase_aim_trace
     {0x004e21c7, 0x00596928, 2, {0xd9, 0x05}},       // collide_memo
     {0x004e27df, 0x00596934, 2, {0x89, 0x35}},       // collide_narrow_census
@@ -67,6 +68,7 @@ constexpr Anchor anchors[] = {
     {0x0040e8dd, 0x00607cec, 2, {0x8b, 0x15}},       // ui_scale (the script cursor x; its store 0x004074f4 follows the ui_scale site)
     {0x0040e8d7, 0x00607cf0, 2, {0x8b, 0x0d}},       // ui_scale (the script cursor y; its store 0x004074ec is the ui_scale site)
     {0x00401a0d, 0x00608504, 2, {0x89, 0x1d}},       // chase_*, sector_background, motion_output, sun_occlusion
+    {0x0041e412, 0x00608508, 2, {0x39, 0x1d}},       // ui_scale (the galaxy map state the map pick stub re-compares; 0x0042e949 is in its case window)
     {0x00401e69, 0x0060850c, 1, {0xa1}},             // chase_transition
     {0x00403367, 0x00608518, 1, {0xa3}},             // object_trace, object_lifetime, sun_light_poll, submit/residual_phases, cull_census, point_light
     {0x0048a6d2, 0x0060851c, 2, {0xd9, 0x05}},       // collide_memo

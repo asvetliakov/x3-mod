@@ -3,8 +3,9 @@
 The core header compiled on the host (every expected byte window against the verifier's table, the auto mapping,
 the fixed-point forms, the virtual size, the mouse remainder accumulator, the cursor conversion, the projection
 transform against the engine's own formula for a W/s x H/s viewport over every anchor combination, the X3M_UI_SCALE
-parser, the six stub encoders with their bytes decoded by objdump and the registers they write), the site verifier on
-the installed executable and its refusal on a copy with a site byte changed, the log-line parsers, the production
+parser, the ten stub encoders with their bytes decoded by objdump and the registers they write, the map label/pick stubs
+run on a small emulator of their decoded instructions), the all-or-none transaction compiled from ui_scale.cpp against a
+fake engine_patch, the site verifier on the installed executable and its refusal on a copy with a site byte changed, the log-line parsers, the production
 wiring and the --ui-scale launcher option (--dry-run only, never a launch). No Wine.
 """
 import contextlib
@@ -12,6 +13,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -126,10 +128,236 @@ int main() {
     encode_overlay_stub(0x10000400, 0x10001ffc, g); hex(g, sizeof g);
     encode_aim_stub(0x10000400, 0x10001ffc, h); hex(h, sizeof h);
     check(cursor_real(-1, fixed256(1.0)) == -1 && cursor_real(-1, fixed256(3.0)) == -3 && cursor_real(-1, fixed256(1.25)) == -1, "the -1 sentinel stays negative");
+    // 42..50 the map sites I and J: site bytes, windows, addresses, the two stubs, the label rounding at 1, 1.5, 2, 3
+    hex(expected_map_label_site, map_label_site_length); hex(expected_map_pick_site, map_pick_site_length);
+    hex(expected_map_label_window, map_label_window_length); hex(expected_map_callback, map_callback_length);
+    hex(expected_map_pick_case, map_pick_case_length);
+    std::printf("%08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n", (unsigned long)map_label_site_va, (unsigned long)map_label_return_va,
+                (unsigned long)map_pick_case_va, (unsigned long)map_pick_site_va, (unsigned long)map_pick_return_va,
+                (unsigned long)map_pick_flags_va, (unsigned long)map_state_va, (unsigned long)map_vm_slot_va);
+    unsigned char ml[map_label_stub_length], mp[map_pick_stub_length];
+    encode_map_label_stub(0x10000200, 0x10001ffc, ml); hex(ml, sizeof ml);
+    encode_map_pick_stub(0x10000400, 0x10001ffc, mp); hex(mp, sizeof mp);
+    const std::int32_t samples[] = {0, 1, -1, 2, -2, 3, -3, 5, -5, 90, -90, 231, -231, 2559, -2559, 1000001, -1000001, INT32_MAX, INT32_MIN};
+    const double map_scales[] = {1.0, 1.5, 2.0, 3.0}, symmetric_scales[] = {1.25, 1.5, 2.0, 3.0};
+    for (double s : map_scales)
+        for (std::int32_t v : samples) std::printf("%ld ", (long)map_offset(v, inverse16(s)));
+    std::printf("\n");
+    for (std::int32_t v : samples) {
+        check(map_offset(v, identity_inverse16) == v, "map_offset identity");
+        for (double s : symmetric_scales)
+            if (v != INT32_MIN) check(map_offset(-v, inverse16(s)) == -map_offset(v, inverse16(s)), "map_offset symmetric");
+    }
     std::printf("ui_scale_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
 '''
+
+
+MAP_SAMPLES = [0, 1, -1, 2, -2, 3, -3, 5, -5, 90, -90, 231, -231, 2559, -2559, 1000001, -1000001, 2**31 - 1, -2**31]
+MASK = 0xffffffff
+
+
+def s32(v):
+    v &= MASK
+    return v - (1 << 32) if v & 0x80000000 else v
+
+
+class Stub:
+    """Runs a decoded stub (objdump Intel text) on 32-bit registers, a dword memory and CF/ZF/SF/OF, recording what it writes."""
+    FLAG_WRITERS = ('imul', 'cmp', 'add', 'adc', 'sar', 'shrd')
+
+    def __init__(self, registers, memory):
+        self.r, self.m, self.flags, self.written, self.flag_writers = dict(registers), dict(memory), None, set(), []
+
+    def address(self, operand):
+        m = re.fullmatch(r'DWORD PTR (?:ds:(0x[0-9a-f]+)|\[(\w+)(?:\+(0x[0-9a-f]+))?\])', operand)
+        return int(m.group(1), 16) if m.group(1) else (self.r[m.group(2)] + int(m.group(3) or '0', 16)) & MASK
+
+    def get(self, operand):
+        if operand in self.r:
+            return self.r[operand]
+        return self.m[self.address(operand)] if operand.startswith('DWORD PTR') else int(operand, 16) & MASK
+
+    def put(self, operand, value):
+        key = operand if operand in self.r else self.address(operand)
+        (self.r if operand in self.r else self.m)[key] = value & MASK
+        self.written.add(key)
+
+    def subtract_flags(self, a, b):
+        d = (a - b) & MASK
+        return {'CF': a < b, 'ZF': d == 0, 'SF': bool(d >> 31), 'OF': not -2**31 <= s32(a) - s32(b) < 2**31}
+
+    def run(self, decoded):
+        for k, line in enumerate(decoded):
+            mnemonic, _, operands = line.partition(' ')
+            args = operands.split(',') if operands else []
+            if mnemonic == 'jmp':
+                return args[0]
+            if mnemonic == 'mov':
+                self.put(args[0], self.get(args[1]))
+            elif mnemonic == 'imul' and len(args) == 1:
+                p = s32(self.r['eax']) * s32(self.get(args[0]))
+                self.put('eax', p)
+                self.put('edx', p >> 32)
+            elif mnemonic == 'imul':
+                self.put(args[0], s32(self.get(args[0])) * s32(self.get(args[1])))
+            elif mnemonic == 'cmp':
+                self.flags = self.subtract_flags(self.get(args[0]), self.get(args[1]))
+            elif mnemonic in ('add', 'adc'):
+                a, b = self.get(args[0]), self.get(args[1])
+                total = a + b + (1 if mnemonic == 'adc' and self.flags['CF'] else 0)
+                self.put(args[0], total)
+                self.flags = {'CF': total > MASK, 'ZF': total & MASK == 0, 'SF': bool(total >> 31 & 1), 'OF': None}
+            elif mnemonic == 'sar':
+                self.put(args[0], s32(self.get(args[0])) >> int(args[1], 16))
+                self.flags = None
+            elif mnemonic == 'shrd':
+                self.put(args[0], ((self.get(args[1]) << 32) | self.get(args[0])) >> int(args[2], 16))
+                self.flags = None
+            else:
+                raise AssertionError(f'unmodelled instruction {line}')
+            if mnemonic in self.FLAG_WRITERS:
+                self.flag_writers.append(k)
+        raise AssertionError('no final jmp')
+
+
+ROLLBACK_PREFIX = r'''
+#include "ui_scale_sites.h"
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <vector>
+namespace x3m::engine_patch {
+constexpr unsigned max_prologue = 16;
+struct SiteSpec { const char* name; std::uintptr_t address; unsigned char expected[max_prologue]; unsigned length; unsigned ret_pop; unsigned rel32_offset; };
+struct Site { SiteSpec spec{}; void** entry = nullptr; unsigned char patched[5]{}; bool patched_in = false, atomic_write = false; const char* status = "unclaimed"; };
+}
+namespace fake {
+int fail_index = -1, fail_stage = -1, claims = 0;
+std::uintptr_t restore_fail = 0;
+bool window = true, identity = true;
+std::vector<std::uintptr_t> claimed, restored;
+std::vector<x3m::engine_patch::Site*> live;
+void* heads[16];
+void* slots[16];
+unsigned char tails[16];
+}
+namespace x3m::engine_patch {
+bool install_window_open() { return fake::window; }
+bool claim(Site& s, const SiteSpec& spec) {
+    const int k = fake::claims++;
+    s.spec = spec;
+    if (k == fake::fail_index && fake::fail_stage == 0) { s.status = "bytes_mismatch"; return false; }
+    s.patched_in = true;
+    s.status = "patched";
+    s.atomic_write = (spec.address & 7) + 5 <= 8;
+    s.patched[0] = 0xe9;
+    fake::heads[k] = &fake::tails[k];
+    s.entry = &fake::heads[k];
+    fake::claimed.push_back(spec.address);
+    fake::live.push_back(&s);
+    return true;
+}
+bool store_pointer(void** slot, void* value) {
+    if (fake::claims - 1 == fake::fail_index && fake::fail_stage == 1) return false;
+    *slot = value;
+    return true;
+}
+void* push_front(Site& s, void* stub) {
+    if (fake::claims - 1 == fake::fail_index && fake::fail_stage == 2) return nullptr;
+    void* previous = *s.entry;
+    *s.entry = stub;
+    return previous;
+}
+bool read_code(std::uintptr_t address, unsigned char* out, unsigned n) {
+    for (Site* s : fake::live)
+        if (s->spec.address == address) {
+            std::memcpy(out, s->spec.expected, n);
+            std::memcpy(out, s->patched, 5);
+            if (fake::claims - 1 == fake::fail_index && fake::fail_stage == 3) out[0] = 0xcc;
+            return true;
+        }
+    return false;
+}
+bool restore(Site& s) {
+    fake::restored.push_back(s.spec.address);
+    if (s.spec.address == fake::restore_fail) return false;
+    s.patched_in = false;
+    s.status = "restored";
+    return true;
+}
+}
+volatile std::int32_t x3m_ui_scale_mouse_acc[4];
+volatile std::uint32_t x3m_ui_scale_excluded_camera;
+namespace {
+namespace engine_patch = x3m::engine_patch;
+namespace sites = x3m::ui_scale::sites;
+const char* failed_site_ = "-";
+bool pin_self() { return true; }
+void set_cells(double) { fake::identity = false; }
+void set_identity() { fake::identity = true; }
+std::uintptr_t emit_stub(unsigned index, void*** slot_out);
+'''
+ROLLBACK_SUFFIX = r'''
+std::uintptr_t emit_stub(unsigned index, void*** slot_out) {
+    *slot_out = &fake::slots[index];
+    return 0x10000000u + 0x100u * index;
+}
+}
+int main() {
+    unsigned checks = 0, failures = 0;
+    auto check = [&](bool ok, const char* what) { ++checks; if (!ok) { ++failures; std::printf("FAIL %s\n", what); } };
+    auto reset = [&] {
+        for (unsigned i = 0; i < site_count; ++i) { site_[i] = engine_patch::Site{}; live_[i] = false; write_[i] = nullptr; fake::slots[i] = nullptr; }
+        patched_ = false; failed_site_ = "-"; fake::fail_index = fake::fail_stage = -1; fake::restore_fail = 0; fake::claims = 0;
+        fake::window = true; fake::identity = true; fake::claimed.clear(); fake::restored.clear(); fake::live.clear();
+    };
+    reset();
+    check(!std::strcmp(install_all(1.5), "ok") && patched_ && any_live() && !fake::identity && fake::restored.empty(), "transaction");
+    for (unsigned i = 0; i < site_count; ++i) check(live_[i] && fake::claimed[i] == claims[i].va, "claim order");
+    for (unsigned i = 0; i < site_count; ++i) std::printf("%s%s", i ? " " : "", claims[i].name);
+    std::printf("\n");
+    // The bypass words: the instruction after each displaced span; the projection's word is the tail.
+    check(fake::slots[MapLabel] == reinterpret_cast<void*>(sites::map_label_return_va) &&
+          fake::slots[MapPick] == reinterpret_cast<void*>(sites::map_pick_return_va) && fake::slots[Projection] == &fake::tails[Projection],
+          "continuation words");
+    for (int k = 0; k < int(site_count); ++k)
+        for (int stage = 0; stage < 4; ++stage) {
+            reset();
+            fake::fail_index = k;
+            fake::fail_stage = stage;
+            const char* r = install_all(1.5);
+            check(!std::strcmp(r, stage == 0 ? "bytes_mismatch" : stage == 3 ? "readback_failed" : "chain_failed"), "failure reason");
+            check(!patched_ && !any_live() && fake::identity && !std::strcmp(failed_site_, claims[k].name), "all or none");
+            check(fake::restored.size() == unsigned(k + (stage ? 1 : 0)), "every earlier claim restored");
+            check(int(fake::claimed.size()) == k + (stage ? 1 : 0), "nothing claimed after the failure");
+        }
+    reset();
+    fake::fail_index = MapPick;
+    fake::fail_stage = 1;
+    fake::restore_fail = sites::map_pick_site_va;
+    check(!std::strcmp(install_all(1.5), "rollback_failed") && live_[MapPick] && !patched_ && fake::identity, "rollback failed keeps J registered");
+    for (unsigned i = 0; i < site_count; ++i)
+        if (i != MapPick) check(!live_[i], "the others restored");
+    reset();
+    fake::window = false;
+    check(!std::strcmp(install_all(1.5), "late_claim") && fake::claims == 0 && !any_live() && fake::identity, "late window refused");
+    std::printf("ui_scale_rollback checks=%u failures=%u\n", checks, failures);
+    return failures ? 1 : 0;
+}
+'''
+
+
+def extract(source, signature):
+    """The definition starting at `signature` through its matching closing brace."""
+    start = source.index(signature)
+    depth, k = 0, source.index('{', start)
+    while True:
+        depth += {'{': 1, '}': -1}.get(source[k], 0)
+        if depth == 0:
+            return source[start:k + 1]
+        k += 1
 
 
 def load_manage():
@@ -248,6 +476,84 @@ class UiScaleCore(unittest.TestCase):
             for name, blob in (('overlay', g), ('aim', h)):
                 mnemonics = {d.split(' ')[0] for d in decode(objdump, directory, name, blob, 0x10000000)}
                 self.assertFalse(mnemonics & {'pop', 'call', 'ret'} or any(m.startswith('f') for m in mnemonics), name)
+            # I and J (the galaxy map): bytes, windows and addresses against the verifier; the stubs decoded and run.
+            self.assertEqual([bytes.fromhex(l) for l in lines[42:44]], [verifier.SITES['map_label'][1], verifier.SITES['map_pick'][1]])
+            self.assertEqual([bytes.fromhex(l) for l in lines[44:47]], [verifier.WINDOWS[w][1] for w in ('map_label_window', 'map_callback', 'map_pick_case')])
+            self.assertEqual([int(v, 16) for v in lines[47].split()], [0x41eab2, 0x41eab8, 0x42e934, 0x42e952, 0x42e959, 0x42e949, 0x608508, 0x57fc64])
+            ml, mp = bytes.fromhex(lines[48]), bytes.fromhex(lines[49])
+            self.assertEqual((len(ml), len(mp)), (verifier.STUB_LENGTHS['map_label'], verifier.STUB_LENGTHS['map_pick']))
+            label = decode(objdump, directory, 'map_label', ml, 0x10000000)
+            rounding = ['imul DWORD PTR ds:0x10000200', 'cmp edx,0x80000000', 'adc eax,0x7fff', 'adc edx,0x0', 'shrd eax,edx,0x10']
+            self.assertEqual(label, ['mov ecx,eax', 'mov eax,DWORD PTR [esp]', *rounding, 'mov DWORD PTR [esp],eax', 'mov eax,ecx', *rounding,
+                                     'mov ecx,DWORD PTR ds:0x57fc64', 'jmp DWORD PTR ds:0x10001ffc'])
+            pick = decode(objdump, directory, 'map_pick', mp, 0x10000000)
+            self.assertEqual(pick, ['mov esi,DWORD PTR [esi+0x6]', 'imul esi,DWORD PTR ds:0x10000400', 'add esi,0x80', 'sar esi,0x8',
+                                    'imul ecx,DWORD PTR ds:0x10000400', 'add ecx,0x80', 'sar ecx,0x8', 'mov DWORD PTR [esp+0xc],edi',
+                                    'cmp DWORD PTR ds:0x608508,edi', 'jmp DWORD PTR ds:0x10001ffc'])
+            for name, decoded in (('map_label', label), ('map_pick', pick)):
+                mnemonics = {d.split(' ')[0] for d in decoded}
+                self.assertFalse(mnemonics & {'push', 'pop', 'call', 'ret'} or any(m.startswith('f') or 'xmm' in d for m in mnemonics for d in decoded), name)
+            # The label rounding: the C++ twin, the Python twin and the decoded stub agree at 1, 1.5, 2, 3 for positive and negative
+            # offsets (a tie away from zero: +-3 at s = 2 give +-2), and s = 1 reproduces every input exactly, the 32-bit extremes included.
+            twin = [int(v) for v in lines[50].split()]
+            scales = (1.0, 1.5, 2.0, 3.0)
+            self.assertEqual(twin, [verifier.map_offset(v, verifier.inverse16(s)) for s in scales for v in MAP_SAMPLES])
+            self.assertEqual(twin[:len(MAP_SAMPLES)], MAP_SAMPLES)
+            at2 = dict(zip(MAP_SAMPLES, twin[2 * len(MAP_SAMPLES):3 * len(MAP_SAMPLES)]))
+            self.assertEqual([at2[v] for v in (1, -1, 3, -3, 5, -5)], [1, -1, 2, -2, 3, -3])
+            at15 = dict(zip(MAP_SAMPLES, twin[len(MAP_SAMPLES):2 * len(MAP_SAMPLES)]))
+            self.assertEqual([at15[v] for v in (90, -90, 231, -231, 2559, -2559)], [60, -60, 154, -154, 1706, -1706])
+            vm, held = 0x0badf00d, {'ebx': 0x13, 'esi': 0x11111111, 'edi': 0x22222222, 'ebp': 0x33333333, 'esp': 0x0019f000}
+            for s in scales:
+                for x, y in zip(MAP_SAMPLES, reversed(MAP_SAMPLES)):
+                    m = Stub({'eax': x & MASK, 'ecx': 0xdeadbeef, 'edx': 0xfeedface, **held},
+                             {0x0019f000: y & MASK, 0x0019f004: 0x5555, 0x10000200: verifier.inverse16(s), 0x0057fc64: vm})
+                    self.assertEqual(m.run(label), 'DWORD PTR ds:0x10001ffc')
+                    self.assertEqual((s32(m.r['eax']), s32(m.m[0x0019f000])), (verifier.map_offset(x, verifier.inverse16(s)), verifier.map_offset(y, verifier.inverse16(s))), (s, x, y))
+                    self.assertEqual(m.r['ecx'], vm)  # the displaced load, last
+                    self.assertTrue(m.written <= {'eax', 'ecx', 'edx', 0x0019f000} and all(m.r[k] == v for k, v in held.items()) and m.m[0x0019f004] == 0x5555)
+            # J: E's rounding on ESI (x) and ECX (y); the store; EDX, EAX, EBX, EDI, EBP untouched; the cmp of the map-state cell is
+            # the last flag writer (only the jmp follows), so EFLAGS at the continuation equal the engine's cmp [0x608508],edi.
+            self.assertEqual(Stub({}, {}).FLAG_WRITERS, ('imul', 'cmp', 'add', 'adc', 'sar', 'shrd'))
+            for s in scales:
+                for state in (0, 1, 0x80000000):
+                    for x, y in ((0, 0), (1, -1), (3, -3), (-1, -1), (2047, 575), (-2400, 700)) + (((8388607, -8388608),) if s == 1.0 else ()):
+                        regs = {'eax': 0x0a0a0a0a, 'ebx': 0x0b0b0b0b, 'ecx': y & MASK, 'edx': 0xfeedface, 'esi': 0x00500000, 'edi': 0,
+                                'ebp': 0x0c0c0c0c, 'esp': 0x0019f000}
+                        m = Stub(regs, {0x00500006: x & MASK, 0x10000400: verifier.fixed256(s), 0x00608508: state, 0x0019f00c: 0x77})
+                        self.assertEqual(m.run(pick), 'DWORD PTR ds:0x10001ffc')
+                        self.assertEqual((s32(m.r['esi']), s32(m.r['ecx'])), (verifier.cursor_real(x, verifier.fixed256(s)), verifier.cursor_real(y, verifier.fixed256(s))))
+                        if s == 1.0:
+                            self.assertEqual((s32(m.r['esi']), s32(m.r['ecx'])), (x, y))  # the identity (|v| < 2**23, two-operand imul)
+                        self.assertEqual(m.m[0x0019f00c], 0)
+                        self.assertTrue(m.written <= {'esi', 'ecx', 0x0019f00c} and all(m.r[k] == regs[k] for k in ('eax', 'ebx', 'edx', 'edi', 'ebp', 'esp')))
+                        self.assertEqual(m.flags, m.subtract_flags(state, 0))
+                        self.assertEqual(m.flag_writers[-1], pick.index('cmp DWORD PTR ds:0x608508,edi'))
+                        self.assertEqual(pick[m.flag_writers[-1] + 1:], ['jmp DWORD PTR ds:0x10001ffc'])
+
+    def test_rollback_all_or_none(self):
+        # install_all / install_site / restore_all / any_live and the claim table compiled from ui_scale.cpp against a fake engine_patch:
+        # every claim order, a failure at each of the twelve claims and each of four stages, a failed restore, the late window.
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        self.assertIsNotNone(compiler, 'A host C++ compiler is required')
+        source = (ROOT / 'src/proxy/ui_scale.cpp').read_text()
+        start = source.index('constexpr unsigned site_count')
+        table = source[start:source.index('\n', source.index('bool patched_ = false;')) + 1]
+        body = '\n'.join(extract(source, s) for s in ('const char* install_site(unsigned index)', 'bool restore_all()', 'bool any_live()',
+                                                       'const char* install_all(double s)'))
+        with tempfile.TemporaryDirectory(prefix='x3-ui-scale-rollback-') as temporary:
+            cpp, exe = Path(temporary) / 'rollback.cpp', Path(temporary) / 'rollback'
+            cpp.write_text(ROLLBACK_PREFIX + table + body + ROLLBACK_SUFFIX)
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '-I', str(ROOT / 'src/proxy'),
+                                    str(cpp), '-o', str(exe)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            names, result = run.stdout.splitlines()[-2:]
+            self.assertEqual(names.split(), ['ui_scale_width', 'ui_scale_height', 'ui_scale_main_x', 'ui_scale_main_y', 'ui_scale_menu_x', 'ui_scale_menu_y',
+                                             'ui_scale_cursor', 'ui_scale_overlay_icon', 'ui_scale_cursor_aim', 'ui_scale_map_label', 'ui_scale_map_pick',
+                                             'ui_scale_projection'])
+            self.assertRegex(result, r'^ui_scale_rollback checks=\d+ failures=0$')
 
     def test_python_twins_and_line_parsers(self):
         self.assertEqual([verifier.auto_scale(h) for h in (0, 720, 1080, 1200, 1440, 1600, 2160, 4320, 8640)], [1, 1, 1, 1, 1.5, 1.5, 2, 3, 3])
@@ -298,16 +604,16 @@ class UiScaleCore(unittest.TestCase):
                        'log_handle()', 'WriteFile(handle', 'SetLastError(error);', 'x3m::engine_memory::read', '"patched_unverified"',
                        'sites::encode_projection_stub(', 'sites::encode_size_stub(', 'sites::encode_main_mouse_stub(', 'sites::encode_menu_mouse_stub(',
                        'sites::encode_cursor_stub(', 'sites::encode_entry_stub(', 'sites::encode_overlay_stub(', 'sites::encode_aim_stub(',
-                       '"click_mismatch"', 'c.bypass ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry',
+                       '"click_mismatch"', '"map_mismatch"', 'sites::encode_map_label_stub(', 'sites::encode_map_pick_stub(', 'c.bypass ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry',
                        '*slot != continuation', 'if (log_tier::debug() && requested_)', 'frame % report_window == 0',
                        'constexpr unsigned report_window = 300;', 'if (applied) refresh_excluded_camera(0);',
                        'if (patched_) refresh_excluded_camera(frame);', 'log("ui_scale_camera frame=%llu excluded_camera=%08lx previous=%08lx"',
                        'acc = sites::accumulator_start;'):
             self.assertIn(needle, module)
         self.assertNotIn('claims[index].va + sites::mouse_site_length', module)  # never a code address as the jmp's memory operand
-        # The ten claims in the documented order, the projection last.
+        # The twelve claims in the documented order, the map pair before the projection, the projection last.
         order = [module.index(f'"ui_scale_{n}"') for n in ('width', 'height', 'main_x', 'main_y', 'menu_x', 'menu_y', 'cursor', 'overlay_icon',
-                                                            'cursor_aim', 'projection')]
+                                                            'cursor_aim', 'map_label', 'map_pick', 'projection')]
         self.assertEqual(order, sorted(order))
         header = source_text(ROOT / 'src/proxy/ui_scale_sites.h')
         self.assertNotIn('windows.h', header)
@@ -332,7 +638,7 @@ class UiScaleSite(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout[-3000:] + run.stderr)
         report = json.loads(run.stdout)
         self.assertEqual(report['result'], 'PASS')
-        self.assertEqual(len(report['checks']), 75)
+        self.assertEqual(len(report['checks']), 92)
         self.assertEqual(report['site_bytes'], {name: b.hex() for name, (_, b, _, _) in verifier.SITES.items()})
         self.assertEqual((report['raw_branch_hits_not_interior'], report['branches_into_spans'], report['dword_refs'], report['jump_table_entries_inside'],
                           report['overlapping_claims'], report['xmm_in_site_functions'], report['projection_register_writes']), ([], [], [], [], [], [], []))
@@ -344,11 +650,17 @@ class UiScaleSite(unittest.TestCase):
         self.assertEqual(report['cursor_aim_following'][0], 'jl')  # the live-EFLAGS consumer right after the H span
         self.assertEqual(report['ins_dispatcher_claims'], [['chase_mode_script', '0x42e742'], ['fov_sites:setfocus_site_va', '0x42dbf8']])
         self.assertTrue(report['checks']['aim_flags_live_proof'] and report['checks']['click_sites_one_qword'])
+        self.assertEqual(report['map_label_following'][0], 'push')  # x, pushed by the engine after the span
+        self.assertEqual([m for _, m, _ in report['map_pick_between_cmp_and_je']], ['mov'] * 4)  # nothing between the cmp and the je writes EFLAGS
+        self.assertEqual(report['map_state_text_hits'], ['0x41e414', '0x41e72d', '0x41eb9c', '0x42e94b', '0x42eaf4'])
+        self.assertEqual(report['map_label_edx_readers'], [])
+        self.assertTrue(all(report['checks'][k] for k in ('map_pick_flags_live_proof', 'map_label_edx_dead', 'map_label_flags_dead', 'map_label_slot_is_y',
+                                                          'map_pick_edx_reaches_callees', 'map_sites_one_qword', 'map_state_references')))
         self.assertGreater(report['instructions'], 8000)
 
     def test_changed_site_fails(self):
         with tempfile.TemporaryDirectory() as directory:
-            for name in ('projection', 'cursor', 'cursor_aim'):
+            for name in ('projection', 'cursor', 'cursor_aim', 'map_label', 'map_pick'):
                 copy = Path(directory) / 'X3AP.exe'
                 copy.write_bytes(verifier.patched_image(EXE.read_bytes(), name))
                 report = json.loads(self.run_verifier(copy).stdout)

@@ -439,6 +439,142 @@ and overlay-update (`0x0042a55a`, `-1,-1`) paths do not pass through, so the
 fix cannot double-scale them. Both conversions use the same rounding, so a
 click and a shot at the same cursor resolve the same pixel.
 
+## 7. Universe map sector labels
+
+Added 2026-10-22 after a user screenshot (native Windows, 5120×1440, `ui_scale` 1.5,
+`text_density` 2): on the universe (galaxy) map every sector name sits away from its ring
+except the selected sector's, and the "correct" label follows the selection. Static reading
+of the same `X3AP.exe` (`fdbf3418…`) and of both story objects; the install loads
+`addon/07.cat:L/x3story.obj` (Mayhem 4, build 1462141839, `2c3101a8…`): no loose
+`L\x3story*.obj`, and `07.cat` is the newest addon catalogue carrying the file, which wins
+by the catalogue order of [gate-queue-script.md](gate-queue-script.md) §8 [m]. Stock
+`addon/04.cat` has the same shape at other offsets (table below) [m]. Evidence script
+`verification/results/gui-scale/universe_map_labels.py` (output `universe_map_labels.txt`,
+23/23 checks) [m]; Ghidra listings and KC decompiles stayed in the session scratchpad.
+
+### 7.1 How the map is built [s][m]
+
+KC class 2228 (parent 2200, the menu base) is the map menu. Offsets are CODE offsets (07 / 04):
+
+| Method | 07 | 04 | What |
+| --- | --- | --- | --- |
+| `SpecialMenu` | `0x1533e8` | | `600.CreateAlloc` → scene object `m96`; `B3D_CameraAlloc` → `m97` (flags 0, priority 85) added to `m96.GetScene3D()`; calls `SetMapCameraPosition` |
+| `SetMapCameraPosition` | `0x1535eb` | | `B3D_CameraSetViewPort(m97, x0, x0+w, y0, y0+h)` with every bound `SE_DivFix(menu pixels, B3D_ScreenGetWidth/Height)`: the map is a perspective 3D scene in a **sub-viewport** of the menu's map area, centre at menu `(m79/2, m78/2 + 15)`; `B3D_CameraSetAspectRatio` |
+| `StartMenu` / `MapUpdate` | `0x1537f4` / `0x154376` | `0x13ab07` / `0x13b6bc` | `INS_BuildGalaxyMap` / `INS_BuildGalaxyMapPos(scene, pos, selX, selY, t, zoom)` |
+| `RefreshMapWindow` | `0x15389d` | | draws the window frame into texture **1236** (`DrawMenuWindow(1236, 0, 0, m79, m78, …)`) |
+| `FindMapHoverObject` | `0x154ad9` | `0x13be1f` | `INS_GalaxyMapFindSector(scene, x − m79/2, y − m78/2 − 15)` (from `OnMapClick`, `OnMapMouseMove`) |
+| global `WriteGalaxyMapSectorName(sx, sy, x, y)` | `0x152b78` | `0x13a042` | the label callback, below |
+
+Native side (INS name table `0x0057aef0`, dispatcher `0x0042d340`, table `0x0042f064`):
+case `0x40` `INS_BuildGalaxyMapPos` (`0x0042ea44`) → `0x0041e350`; case `0x3f`
+`INS_BuildGalaxyMap` (`0x0042e9ff`) → `0x0041e2f0` → `0x0041e350`; case `0x3e`
+`INS_GalaxyMapFindSector` (`0x0042e934`) → `0x0041e030`. `0x0041e350` creates, once per
+map (`*0x00608508`), one ring node per sector (`effects/menugfx/galaxy_map_sector_%d`,
+seven bodies by `GetMapSectorState`, node `+0x130 |= 0x400`, table `0x00587408`, a 24×20 grid)
+and gate connectors (`0x00584e88`) into the map scene: ordinary perspective nodes, **no
+`0x200`**, drawn by camera `m97`. It then places the camera: `+0x30/+0x34` =
+`0x0042fb20` blend of the script position towards the **selected** sector's position with
+the transition parameter `t`, `+0x38` = sector z − zoom distance (`0x0041e816..0x0041e87e`).
+At the end of the glide (`t = 65536`) the selected sector is on the camera axis.
+
+The labels are **not instances**. For every visible sector (`|dx| < dz`, `|dy| < dz`)
+`0x0041e350` projects the ring into pixels relative to the sub-viewport centre and calls the
+script by name (`0x0049f4c0`, name `0x0055b63c` "WriteGalaxyMapSectorName", 4 arguments,
+call `0x0041eacd`):
+
+```text
+hw = (((cam+0x294 - cam+0x290) * screenW + 0x8000) >> 16) / 2     0x0041e74b..0x0041e7a0  screenW = *(*0x00606f38)+4
+hh = (((cam+0x28c - cam+0x288) * screenH + 0x8000) >> 16) / 2     0x0041e787..0x0041e7d1  screenH = +6
+X  = ((hw*dx/dz) << 16) / planeW                                    0x0041e98f..0x0041e9c7  planeW = cam+0x300 or display +0x28
+Y  = -((hh*dy/dz) << 16) / planeH - ((hh*r/dz) << 16) / planeH / 2  0x0041e9d5..0x0041ea75  r = ring node +0x70
+(x, y) = (X, Y) rotated by the camera roll cam+0x274 (x87, two 0x0052b5d0 ftol), pushed at 0x0041eaa8 / 0x0041eab8
+```
+
+`screenW/H` are the display record's **real** sizes (read directly, not through the KC
+cases B/C), so `x, y` are real-pixel offsets from the sub-viewport centre [s].
+`WriteGalaxyMapSectorName` adds the map centre in menu units and draws the name **into the
+window texture**: `B3D_TexTextBlock(1236, …, x + GetMenuMaxHeight()/2 − 18, y +
+GetMenuMaxHeight()/2 + 15 − k, …, flags 129)` with font slot `g0`, `k` a size-class nudge
+(−15/−10/−1 or −8/−1/+5 by zoom), culled against the menu bounds in menu units, colour by
+owner race and current sector (`0x152bd5..0x152e8c`) [s]. Texture 1236 is the window's own
+texture, shown by the menu's `0x200` instance; which 2200 instance and anchor carry it was
+not traced [i], and the result below does not depend on the anchor (for any anchor site A
+maps a menu unit `v` to real `s·v` plus a constant, the same mapping the viewport fraction
+`v/(W/s)·W` gives) [i: arithmetic].
+
+### 7.2 The selected label is not special [s]
+
+Same callback, same texture 1236, same font slot and flags; only the colour (current sector)
+and the name highlight (`GetHighlightedName`) differ. What differs is geometry: after the
+glide the camera is centred on the selected sector, so its `x` is 0 and its `y` is only the
+half-ring term `−r_proj/2`.
+
+### 7.3 Mechanism and predicted displacement [i]
+
+Let `c` be the sub-viewport centre on screen (real px), `o = (x, y)` the native's real-pixel
+offset of a ring's label point and `k` the script's own label offsets (−18, −k; menu units).
+The ring is drawn by the perspective camera at `c + o`. The text sits at texel
+`C + o + k` of texture 1236, and site A magnifies the texture by `s`, so it lands at
+`c + s·o + s·k`. Intended is `c + o + s·k`. Error:
+
+```text
+label_drawn − label_intended = (s − 1) · o          (o = ring offset from the map centre, real px)
+```
+
+At `s = 1.5` labels spread radially by 1.5× about the map centre; the selected sector
+(`o ≈ 0`) is right; during the glide after a new selection its label converges as its ring
+reaches the centre. Check against the user's screenshot (ring pitch 94.7 px, measured by the
+orchestrator): 3 columns left, intended x 231 → predicted 89, observed 90; 1 row down,
+intended y 620 → predicted 667, observed 665 [m: script output, observed values from the
+orchestrator]. The selected label keeps a residual `(s − 1)·r_proj/2` vertical error (a few
+pixels) [i]. Text density is not involved: `B3D_TexTextBlock` scales its coordinates by
+`d` into the `d×` texture and the logical layout is unchanged
+([text-density.md](../architecture/text-density.md)) [s].
+
+The inverse defect sits on the same map [i: static, not observed]: `FindMapHoverObject`
+hands `INS_GalaxyMapFindSector` the script cursor relative to the map centre in **virtual**
+units, and `0x0041e030` compares it with the same real-pixel projection (its own `hw/hh`
+from the display record, `0x0041e039..0x0041e0d8`; hit box `|p − X| < r_proj` etc.). A click
+on a ring at offset `o` tests `o/s`: at 1.5, three columns out picks the sector two columns
+out (or nothing). A click on today's displaced label tests `s·o/s = o` and picks the right
+sector, so the two defects currently cancel for label clicks only.
+
+### 7.4 Fix: two dispatcher-adjacent claims, both or neither
+
+Implemented 2026-10-22 as claims I and J of the ui_scale transaction (site table, stubs and
+register facts in [ui-scale.md](../architecture/ui-scale.md); ledger
+[verification/ui-scale.md](../verification/ui-scale.md)); not flown yet. I rounds the label
+offset to nearest with ties away from zero through the 64-bit product; J keeps the E/G/H
+rounding. The proposal as written:
+
+The narrowest sites are the two places where a value crosses between the native's real
+pixels and the script's virtual space (the G/H pattern of §6, here in both directions). Not
+inside the projection arithmetic (x87, flag-heavy) and not in KC (two object builds, the
+signature check). Both added to the ui_scale transaction (all or none, before the
+projection claim A, identity cells at 1080 lines) [s for the facts, i for the design]:
+
+| Claim | Span (whole instructions) | Bytes | Stub | Registers / flags | Qword |
+| --- | --- | --- | --- | --- | --- |
+| I, label callback (`0x0041e350`) | `0x0041eab2..0x0041eab7` `mov ecx,[0x0057fc64]` (6), continuation `0x0041eab8 push eax` | `8b 0d 64 fc 57 00` | `x = EAX`, `y = [ESP]` (pushed at `0x0041eaa8`): each `(v·inverse16 + 0x8000) >> 16` (signed, B/C rounding), `y` written back to `[ESP]`; then `mov ecx,[0x0057fc64]`; `jmp 0x0041eab8` | EAX in/out; ECX scratch (the displaced load writes it); EDX dead (nothing in `0x0041eab8..0x0041eacd` reads it and the cdecl callee `0x0049f4c0` clobbers it), so the one-operand `imul` / `shrd` 64-bit form is free and avoids any overflow concern; EBX (sector column), ESI, EDI, EBP untouched; EFLAGS dead (pushes, then the callee's first `sub esp,0xc`); x87 untouched (stack as the two ftol left it); only memory write: the argument slot `[ESP]` | `0x0041eab0..0x0041eab7`: the jump fits; byte `0x0041eab7` becomes dead padding |
+| J, map pick (case `0x3e`) | `0x0042e952..0x0042e958` `mov esi,[esi+6]; mov [esp+0xc],edi` (7), continuation `0x0042e959` | `8b 76 06 89 7c 24 0c` | `mov esi,[esi+6]`; ESI (x) and ECX (y, loaded at `0x0042e94f`) each `(v·fixed256 + 0x80) >> 8` (the E/G rounding); `mov [esp+0xc],edi`; **`cmp dword [0x00608508],edi`**; `jmp 0x0042e959` | **EFLAGS live**: `je` at `0x0042e95d` reads `cmp [0x00608508],edi` from `0x0042e949`; re-executing it (EDI = 0 from `0x0042e93f`, the flag written only on this thread by `0x0041e350`/`0x0041eb20`) restores them exactly (or `pushfd/popfd`). EDX not touched (its liveness into `0x004a47f0` on the `je` path is not established): two-operand `imul`, script points are small. EAX (scene object), EBX, EBP, EDI untouched; same ESP for the store | `0x0042e950..0x0042e957`: the jump fits; `0x0042e957..58` dead padding. `0x0042e94f` (both loads) would straddle the qword |
+
+Span hygiene [m]: both spans start and end on decoded instruction boundaries; no raw
+rel8/rel32 encoding anywhere in `.text`, no image dword and no INS jump-table entry points
+into either interior; Ghidra `X3XrefsTo` finds no reference to `0x0041eab2..b8` or
+`0x0042e94f..55`. No overlap with the ui_scale, text_density, dust-leak or other claims
+(grep of `src/proxy` for `0x0041e[8-f]…`, `0x0042e9…`). Both run on the main thread inside
+the KC VM's native call; no call, no allocation; at identity cells both reproduce the
+engine exactly (`inverse16 = 65536`, `fixed256 = 256`). The full `verify_ui_scale_sites.py`
+decode (whole `.text`, callee prefixes) was extended to I and J (92 checks, PASS).
+
+Who else is affected: nobody. `0x0041e350` has two callers (`0x0041e2f0` for case `0x3f`,
+case `0x40`), the callback name has one data reference (`0x0041eac3`), and each of the three
+galaxy natives has exactly one KC site in both objects (table above); `GetMapSectorState` /
+`GetMapGateState` callbacks carry no positions. Label size keeps scaling with the menu
+(only the offset changes). I without J would move the labels onto their rings and break
+label clicks (rings and labels would both pick sectors nearer the centre); J without I
+would fix ring clicks and break label clicks. Ship both.
+
 ## Open items
 
 1. Which instances the main menu the user sees uses (non-`0x200` perspective
@@ -457,12 +593,22 @@ click and a shot at the same cursor resolve the same pixel.
 6. §6: only the overlay natives were checked for script-supplied screen
    points; other natives that take a pixel point from the script (none known)
    would need the same treatment. G/H are static proposals, not flown.
+   §7 found the first one outside the overlay (`INS_GalaxyMapFindSector`) and the reverse
+   direction (a native handing real pixels to the script, `WriteGalaxyMapSectorName`); a
+   sweep of every by-name callback (`0x0049f4c0`/`0x0049f570` callers) that passes screen
+   positions was not made.
+7. §7: the ring-click defect is predicted, not observed (the cancellation for label clicks
+   was observed by the user 2026-10-22); the anchor of the 2200 instance
+   carrying texture 1236, the `GetMenuMaxHeight()/2` centre in the non-maximised layout, and
+   the bound on `|x|, |y|` (camera plane `+0x300` after `B3D_CameraSetAspectRatio`) were not
+   traced. I and J are implemented, not flown ([ui-scale.md](../architecture/ui-scale.md)).
 
 ## Reproduce
 
 ```sh
 python3 verification/results/gui-scale/gui_scale_static_checks.py   # EXE/catalogue facts -> gui_scale_static_checks.json
 python3 verification/results/gui-scale/kc_gui_calls.py              # KC native call sites -> kc_gui_calls.txt
+python3 -I verification/results/gui-scale/universe_map_labels.py /mnt/c/X3 > verification/results/gui-scale/universe_map_labels.txt   # §7
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
   /opt/homebrew/opt/ghidra/libexec/support/analyzeHeadless <proj-dir> <proj> \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \

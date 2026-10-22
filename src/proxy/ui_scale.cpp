@@ -10,9 +10,10 @@
 #include <cstdio>
 #include <cstring>
 
-// Ten sites claimed through engine_patch (ui_scale_sites.h), all or none: a failed claim restores the
+// Twelve sites claimed through engine_patch (ui_scale_sites.h), all or none: a failed claim restores the
 // earlier ones; a restore that fails keeps the site registered (patched_unverified) with the data cells
-// at the identity, under which every stub reproduces the displaced instruction exactly. The stubs are
+// at the identity, under which every stub reproduces the displaced instruction exactly (E, G, H and J, whose
+// two-operand imul by 256 wraps beyond, for |v| < 2^23). The stubs are
 // emitted bytes in the never-freed arena reading the data cells below (this module is pinned for the
 // process lifetime, as cull_small_parts does): no call into this module, no push, no x87. Per frame only
 // present(): the excluded camera refresh (a bounded registry walk of validated reads, patched only) and,
@@ -22,8 +23,8 @@ static_assert(sizeof(void*) == 4, "x86 code patching only");
 // The data cells the stubs read (extern "C": fixed names for the emitted absolute operands).
 extern "C" {
 volatile float x3m_ui_scale_factor = 1.0f;                // A: s
-volatile std::uint32_t x3m_ui_scale_inverse16 = 65536;    // B, C, D: round(65536 / s)
-volatile std::uint32_t x3m_ui_scale_fixed256 = 256;       // E: round(s * 256)
+volatile std::uint32_t x3m_ui_scale_inverse16 = 65536;    // B, C, D, I: round(65536 / s)
+volatile std::uint32_t x3m_ui_scale_fixed256 = 256;       // E, G, H, J: round(s * 256)
 volatile std::uint32_t x3m_ui_scale_excluded_camera = 0;  // A: the active cockpit's HUD camera (0 = none)
 volatile std::uint32_t x3m_ui_scale_scaled = 0;           // A: instances scaled since the last Present
 volatile std::uint32_t x3m_ui_scale_excluded = 0;         // A: instances of the excluded camera since the last Present
@@ -37,8 +38,8 @@ volatile std::uint32_t x3m_ui_scale_cameras[x3m::ui_scale::sites::camera_rows * 
 namespace {
 namespace engine_patch = x3m::engine_patch;
 namespace sites = x3m::ui_scale::sites;
-constexpr unsigned site_count = 10;
-enum Index : unsigned { Width = 0, Height, MainX, MainY, MenuX, MenuY, Cursor, OverlayIcon, CursorAim, Projection };
+constexpr unsigned site_count = 12;
+enum Index : unsigned { Width = 0, Height, MainX, MainY, MenuX, MenuY, Cursor, OverlayIcon, CursorAim, MapLabel, MapPick, Projection };
 struct Claim {
     const char* name;
     std::uintptr_t va;
@@ -56,6 +57,8 @@ constexpr Claim claims[site_count] = {
     {"ui_scale_cursor", sites::cursor_site_va, sites::cursor_site_length, sites::expected_cursor_site, false},
     {"ui_scale_overlay_icon", sites::overlay_site_va, sites::overlay_site_length, sites::expected_overlay_site, true},
     {"ui_scale_cursor_aim", sites::aim_site_va, sites::aim_site_length, sites::expected_aim_site, true},
+    {"ui_scale_map_label", sites::map_label_site_va, sites::map_label_site_length, sites::expected_map_label_site, true},
+    {"ui_scale_map_pick", sites::map_pick_site_va, sites::map_pick_site_length, sites::expected_map_pick_site, true},
     {"ui_scale_projection", sites::projection_site_va, sites::projection_site_length, sites::expected_projection_site, false}};
 engine_patch::Site site_[site_count];
 bool live_[site_count] = {};          // registered (active, or a rollback that failed)
@@ -132,6 +135,10 @@ const char* windows_verified() {
         !code_is(sites::aim_case_va, sites::expected_aim_case, sites::aim_case_length) ||
         !code_is(sites::icon_test_va, sites::expected_icon_test, sites::icon_test_length))
         return "click_mismatch";
+    if (!code_is(sites::map_label_window_va, sites::expected_map_label_window, sites::map_label_window_length) ||
+        !code_is(sites::map_callback_va, sites::expected_map_callback, sites::map_callback_length) ||
+        !code_is(sites::map_pick_case_va, sites::expected_map_pick_case, sites::map_pick_case_length))
+        return "map_mismatch";
     return nullptr;
 }
 void set_cells(double s) {
@@ -202,6 +209,14 @@ std::uintptr_t emit_stub(unsigned index, void*** slot_out) {
             sites::aim_stub_length,
             [&](std::uint32_t slot, unsigned char* out) { sites::encode_aim_stub(address_of(&x3m_ui_scale_fixed256), slot, out); },
             slot_out);
+    case MapLabel: // the slot word holds 0x0041eab8
+        return emit(sites::map_label_stub_length,
+                    [&](std::uint32_t slot, unsigned char* out) { sites::encode_map_label_stub(inv, slot, out); }, slot_out);
+    case MapPick: // the slot word holds 0x0042e959
+        return emit(
+            sites::map_pick_stub_length,
+            [&](std::uint32_t slot, unsigned char* out) { sites::encode_map_pick_stub(address_of(&x3m_ui_scale_fixed256), slot, out); },
+            slot_out);
     case Projection:
         return emit(
             sites::projection_stub_length,
@@ -217,7 +232,7 @@ std::uintptr_t emit_stub(unsigned index, void*** slot_out) {
 // Claims one site and pushes its stub in front of the tail: "ok" or the reason. A failure after the jmp
 // went in puts the original bytes back; when even that fails the site stays registered (live_) for
 // shutdown(). The stub's continuation word holds the previous chain head (the tail), except for the bypass
-// stubs (mouse, click point), whose word holds the instruction after the displaced span (the tail is emitted
+// stubs (mouse, click point, map label and pick), whose word holds the instruction after the displaced span (the tail is emitted
 // but never entered); the word is read back before the stub goes live.
 const char* install_site(unsigned index) {
     const Claim& c = claims[index];
@@ -243,7 +258,7 @@ const char* install_site(unsigned index) {
     const char* failure = nullptr;
     unsigned char now[engine_patch::max_prologue]{};
     // The stub's continuation word: the tail (the displaced instruction, then the jump back), except for the
-    // bypass stubs (the four mouse loads, the two click-point loads), which perform the displaced instructions
+    // bypass stubs (the four mouse loads, the two click-point loads, the map label and pick), which perform the displaced instructions
     // themselves and continue at the instruction after them.
     void* continuation = c.bypass ? reinterpret_cast<void*>(c.va + c.length) : *site_[index].entry;
     if (!engine_patch::store_pointer(slot, continuation) || *slot != continuation ||
@@ -274,8 +289,8 @@ bool any_live() {
         if (l) return true;
     return false;
 }
-// The ten claims in order (the projection last: nothing visible changes until every input-side site
-// is in); on a failure the earlier ones are restored. The cells hold the scale before the first claim so
+// The twelve claims in order (the projection last: nothing visible changes until every input-side site
+// and the map label/pick pair are in); on a failure the earlier ones are restored. The cells hold the scale before the first claim so
 // a stub that goes live is never wrong; a failed transaction puts the identity back.
 const char* install_all(double s) {
     if (!pin_self()) return "pin_failed";

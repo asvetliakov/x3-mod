@@ -1,0 +1,88 @@
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+INS case 0x3e INS_GalaxyMapFindSector      entry 0x0042e934
+INS case 0x3f INS_BuildGalaxyMap           entry 0x0042e9ff
+INS case 0x40 INS_BuildGalaxyMapPos        entry 0x0042ea44
+INS case 0x41 INS_GetGalaxyMapPos          entry 0x0042ea93
+INS case 0x42 INS_ClearGalaxyMap           entry 0x0042eae3
+INS case 0x43 INS_GetGalaxyMapNextSector   entry 0x0042eb15
+display record reads (real screen size, *(*0x00606f38)+4/+6) and camera viewport in the label worker:
+   0x0041e74b mov    eax,ds:0x606f38
+   0x0041e752 mov    eax,DWORD PTR [edi+0x294]
+   0x0041e75c sub    eax,DWORD PTR [edi+0x290]
+   0x0041e787 mov    ecx,DWORD PTR ds:0x606f38
+   0x0041e792 mov    ecx,DWORD PTR [edi+0x28c]
+   0x0041e798 sub    ecx,DWORD PTR [edi+0x288]
+   0x0041e7c6 mov    ecx,DWORD PTR ds:0x606f38
+   0x0041e7d5 mov    eax,DWORD PTR [edi+0x300]
+   0x0041e7ec mov    eax,DWORD PTR [edi+0x304]
+   0x0041ea5b mov    edx,DWORD PTR [ecx+0x274]
+same reads in the pick worker 0x0041e030:
+   0x0041e039 mov    ecx,DWORD PTR ds:0x606f38
+   0x0041e045 mov    ecx,DWORD PTR [ebx+0x294]
+   0x0041e04f sub    ecx,DWORD PTR [ebx+0x290]
+   0x0041e07c mov    edx,DWORD PTR ds:0x606f38
+   0x0041e08a mov    edx,DWORD PTR [ebx+0x28c]
+   0x0041e094 sub    edx,DWORD PTR [ebx+0x288]
+   0x0041e0b8 mov    ecx,DWORD PTR ds:0x606f38
+   0x0041e0c7 mov    eax,DWORD PTR [ebx+0x300]
+   0x0041e0d8 mov    eax,DWORD PTR [ebx+0x304]
+label callback tail 0x0041ea9f..0x0041ead2:
+   0x0041ea9f e8 2c cb 10 00             call   0x52b5d0
+   0x0041eaa4 d9 c9                      fxch   st(1)
+   0x0041eaa6 de cb                      fmulp  st(3),st
+   0x0041eaa8 50                         push   eax
+   0x0041eaa9 de c9                      fmulp  st(1),st
+   0x0041eaab de e9                      fsubp  st(1),st
+   0x0041eaad e8 1e cb 10 00             call   0x52b5d0
+   0x0041eab2 8b 0d 64 fc 57 00          mov    ecx,DWORD PTR ds:0x57fc64
+   0x0041eab8 50                         push   eax
+   0x0041eab9 8b 44 24 34                mov    eax,DWORD PTR [esp+0x34]
+   0x0041eabd 53                         push   ebx
+   0x0041eabe 50                         push   eax
+   0x0041eabf 6a 04                      push   0x4
+   0x0041eac1 6a 01                      push   0x1
+   0x0041eac3 68 3c b6 55 00             push   0x55b63c
+   0x0041eac8 6a 00                      push   0x0
+   0x0041eaca 6a 00                      push   0x0
+   0x0041eacc 51                         push   ecx
+   0x0041eacd e8 ee 09 08 00             call   0x49f4c0
+dispatcher case 0x3e head:
+   0x0042e934 8b 75 18                   mov    esi,DWORD PTR [ebp+0x18]
+   0x0042e937 8b 56 01                   mov    edx,DWORD PTR [esi+0x1]
+   0x0042e93a e8 f1 a6 05 00             call   0x489030
+   0x0042e93f 33 ff                      xor    edi,edi
+   0x0042e941 3b c7                      cmp    eax,edi
+   0x0042e943 0f 84 a1 00 00 00          je     0x42e9ea
+   0x0042e949 39 3d 08 85 60 00          cmp    DWORD PTR ds:0x608508,edi
+   0x0042e94f 8b 4e 0b                   mov    ecx,DWORD PTR [esi+0xb]
+   0x0042e952 8b 76 06                   mov    esi,DWORD PTR [esi+0x6]
+   0x0042e955 89 7c 24 0c                mov    DWORD PTR [esp+0xc],edi
+   0x0042e959 89 7c 24 10                mov    DWORD PTR [esp+0x10],edi
+   0x0042e95d 0f 84 87 00 00 00          je     0x42e9ea
+   0x0042e963 8d 54 24 10                lea    edx,[esp+0x10]
+   0x0042e967 52                         push   edx
+   0x0042e968 8d 54 24 10                lea    edx,[esp+0x10]
+   0x0042e96c 52                         push   edx
+   0x0042e96d 51                         push   ecx
+   0x0042e96e 56                         push   esi
+   0x0042e96f e8 bc f6 fe ff             call   0x41e030
+claim I 0x0041eab2..0x0041eab8: raw rel8/rel32 encodings into the interior 0, of them at decoded instruction starts in the scanned functions 0
+claim J 0x0042e952..0x0042e959: raw rel8/rel32 encodings into the interior 0, of them at decoded instruction starts in the scanned functions 0
+loose L\x3story*.obj: none | newest addon catalogue with L/x3story.obj: 07.cat
+== stock addon/04.cat: sha256 ed5786a0c603802d build 1510658513
+  WriteGalaxyMapSectorName: global function, CODE 0x13a042, 4 arguments
+  its native calls: SE_IsClass@0x13a075, B3D_TexTextHeight@0x13a0ff, B3D_TexTextBlock@0x13a19f
+  pushw constants before B3D_TexTextBlock@0x13a19f: [1236]
+  INS_BuildGalaxyMap: 1 site(s) ['StartMenu@0x13ab07']
+  INS_BuildGalaxyMapPos: 1 site(s) ['MapUpdate@0x13b6bc']
+  INS_GalaxyMapFindSector: 1 site(s) ['FindMapHoverObject@0x13be1f']
+== loaded addon/07.cat: sha256 2c3101a8c04ddea7 build 1462141839
+  WriteGalaxyMapSectorName: global function, CODE 0x152b78, 4 arguments
+  its native calls: SE_IsClass@0x152bb5, B3D_TexTextHeight@0x152cdb, B3D_TexTextBlock@0x152e8c
+  pushw constants before B3D_TexTextBlock@0x152e8c: [1236]
+  INS_BuildGalaxyMap: 1 site(s) ['StartMenu@0x1537f4']
+  INS_BuildGalaxyMapPos: 1 site(s) ['MapUpdate@0x154376']
+  INS_GalaxyMapFindSector: 1 site(s) ['FindMapHoverObject@0x154ad9']
+predicted 3 columns left x: correct 231 + (s-1)*-3*94.7 = 89
+predicted 1 row down y: correct 620 + (s-1)*1*94.7 = 667
+checks: 23 / 23 pass

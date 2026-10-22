@@ -23,22 +23,22 @@ that already grows with the screen height. Source: `src/proxy/ui_scale.cpp`,
   into the data cells (no code is rewritten). `1`, unset or empty patches
   nothing.
 - Three fixed-point forms live in pinned DLL data cells the stubs read:
-  `s` as float (projection), `inverse16 = round(65536/s)` (screen size and
-  mouse), `fixed256 = round(256 s)` (cursor). At the identity every stub
+  `s` as float (projection), `inverse16 = round(65536/s)` (screen size,
+  mouse, map label), `fixed256 = round(256 s)` (cursor, click point, map pick). At the identity every stub
   reproduces the displaced instruction exactly, so a failed rollback still
   leaves vanilla behaviour.
 
 ## Sites and contract
 
-Ten claims through `engine_patch`, all or none, in this order (the
-projection last, so nothing visible changes until every input-side site is
-in); a failure restores the earlier ones and puts the identity cells back.
+Twelve claims through `engine_patch`, all or none, in this order (B, C,
+D1..D4, E, G, H, I, J, then the projection A last, so nothing visible changes
+until every input-side site and the map pair are in); a failure restores the earlier ones and puts the identity cells back.
 Every window is byte-compared at `initialize()` (fail closed) and the claims
 happen at `CreateDevice`, inside the install window (a device created after
 the first Present is refused with `late_claim`). Every displaced span is whole
 instructions; `verify_ui_scale_sites.py` proves the boundaries, that no direct
 branch, jump-table entry, raw rel8/rel32 encoding or image dword lands inside a
-span, and the register facts below (75 checks, 10,331 instructions decoded).
+span, and the register facts below (92 checks, 10,985 instructions decoded).
 
 | Site | Claimed bytes | Stub | Registers and flags |
 | --- | --- | --- | --- |
@@ -48,6 +48,8 @@ span, and the register facts below (75 checks, 10,331 instructions decoded).
 | E script cursor store, `X2_UpdateCursorSteering` (case `0x1f` of `0x00406de0`) | `0x004074ec mov [0x00607cf0],eax` (5) | `eax = (eax * fixed256 + 0x80) >> 8` (y), `edx` the same (x): the script's virtual cursor back to real pixels before both stores | EAX, EDX in place; ECX (the VM, pushed after) and EBX untouched; EFLAGS dead (push, mov, mov, the callee's `cmp`). The window compared at install skips the six bytes of the chase-fire claim `chase_cursor_write` at `0x004074de` |
 | G click icon, INS dispatcher `0x0042d340` case `0x64` (`INS_CockpitGetObjectByTargetOverlayIconPos`) | `0x0042ece0 mov esi,[esi+6]; push ecx; push esi` (5, one aligned qword) | the stub performs the load, multiplies ECX (y, loaded at `0x0042ecdd`) and ESI (x) by `fixed256` with the E rounding, re-issues both pushes and continues at `0x0042ece5` through its slot word: the icon hit test `0x004299a0` receives the script's click in real pixels ([gui-scale.md](../reverse-engineering/gui-scale.md) section 6) | EAX (the cockpit) and EDX untouched (the callee writes EDX at `0x004299bf` before reading it); EFLAGS dead (`add eax,0x3ac` follows); stack: the stub's two pushes replace the displaced ones, the callee pops 12 |
 | H cursor aim, case `0x28` (`INS_CockpitGetCursorAim`) | `0x0042ddf1 mov esi,[ebx+6]; mov edi,[ebx+0xb]` (6; the jump in the qword `0x0042ddf0`) | both loads, ESI (x) and EDI (y) multiplied the same way, then `cmp ecx,4` and the slot word `0x0042ddf7`: `0x00425410` and its `0x00489780` ray fallback receive real pixels | EFLAGS are live across the span (the `jl` at `0x0042ddf7` reads `cmp ecx,4` from `0x0042ddee`): the stub re-executes the compare with ECX (the argument count) untouched, so the engine's flags are reproduced exactly; EAX, EBX, ECX, EDX untouched. The `-1,-1` sentinel of the short-argument path skips the span. The natives themselves are not patched: the fire path reaches them with real pixels through E |
+| I map label, the galaxy-map worker `0x0041e350` before its `WriteGalaxyMapSectorName` call (`0x0041eacd`) | `0x0041eab2 mov ecx,[0x0057fc64]` (6; the jump in the qword `0x0041eab0`) | x (EAX, the second ftol) and y (`[ESP]`, pushed at `0x0041eaa8`) each `round(v/s)` through the 64-bit product: `imul [inverse16]; cmp edx,0x80000000; adc eax,0x7fff; adc edx,0; shrd eax,edx,16` (a tie rounds away from zero, so labels at `-o` and `+o` move symmetrically; exact for every 32-bit `v` at the identity); y written back to `[ESP]`, then the displaced load and the slot word `0x0041eab8`. The script now draws the name at the virtual offset into the window texture A magnifies by `s`, so it lands on its ring | EAX in/out; ECX scratch, reloaded last; EDX dead (nothing up to the call reads it, the callee writes it at `0x0049f4d9` first); EFLAGS dead (pushes, then the callee's `sub esp,0xc`); EBX (sector row), ESI, EDI, EBP and the x87 stack untouched; the only memory write is the argument slot. Stub 70 bytes, about 17 instructions once per visible sector per map update |
+| J map pick, case `0x3e` (`INS_GalaxyMapFindSector`) | `0x0042e952 mov esi,[esi+6]; mov [esp+0xc],edi` (7; the jump in the qword `0x0042e950`) | the load, ESI (x) and ECX (y, loaded at `0x0042e94f`) multiplied by `fixed256` with the E rounding (deliberately E/G/H's `+0x80 >> 8`, a tie rounds up: at most one real pixel, and a map click resolves the same pixel as the sibling cursor claims; not to be made symmetric like I), the store, then `cmp [0x00608508],edi` and the slot word `0x0042e959`: `0x0041e030` compares the click offset with its real-pixel rings | EFLAGS are live across the span (the `je` at `0x0042e95d` reads `cmp [0x00608508],edi` at `0x0042e949`; only `mov`s between); the re-executed compare is the stub's last flag writer, EDI = 0 since `0x0042e93f` and the cell has two writers in `.text` (`0x0041e72b` in the map build, `0x0041eb9a` in the teardown, both script natives on this thread). EDX untouched (on the `je` path it reaches `0x004a47f0`'s callees unwritten): two-operand `imul`, exact identity for `abs(v) < 2^23`. EAX, EBX, EDI, EBP untouched. Stub 51 bytes, once per map click or hover pick |
 | F diagnostic (`--debug` only, and only when the option asks for a scale: `auto` or a value above 1) | `0x004bdee0 sub esp,8; cmp [eax+0x3c],0` (7) | per camera (8-row table, linear probe, the last row takes overflow) counts the `0x200` instances and the others, summed over the 300-frame window the other per-frame diagnostics use; printed and cleared at every 300th Present as `ui_scale_frame … frames=300` | EAX kept; ECX/EDX dead (the function writes both before reading, the callers reload); EFLAGS dead (the displaced `cmp`). Shares its bytes with the fixture-only `submit_phase_world_enter` claim: one of them refuses |
 
 Threading: every site runs on the engine's main/render thread (the frame loop,
@@ -93,6 +95,14 @@ entry point.
   its (virtual) cursor to the two INS natives of G and H, which scale the
   point before the real-pixel icon test; run390 (5120x1440, 1.25) showed the
   layout right and bracket clicks missing by `X(1 - 1/s)` before G/H.
+- Universe map ([gui-scale.md](../reverse-engineering/gui-scale.md) section 7):
+  the native hands the label callback real-pixel ring offsets and compares the
+  script's virtual click offset with real-pixel rings. Before I/J the labels sat
+  at `s·o` from the map centre (only the centred, selected sector's label right;
+  user screenshot, native Windows, 5120x1440, `s` = 1.5) and clicking a
+  displaced label selected the right sector because the two errors cancel
+  (observed by the user 2026-10-22), while a ring click tests `o/s` (predicted,
+  not observed). I and J ship together: either alone breaks label clicks.
 
 ## Known limitations
 

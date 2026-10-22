@@ -10,14 +10,16 @@
     "height": [],
     "main_x": [],
     "main_y": [],
+    "map_label": [],
+    "map_pick": [],
     "menu_x": [],
     "menu_y": [],
     "overlay_icon": [],
     "projection": [],
     "width": []
   },
-  "checks": 75,
-  "claims_considered": 161,
+  "checks": 92,
+  "claims_considered": 170,
   "claims_in_windows": [
     [
       "submit_phase_world_return_a",
@@ -39,7 +41,7 @@
     "laa": true,
     "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
   },
-  "instructions": 10331,
+  "instructions": 10985,
   "raw_branch_hits": 0,
   "result": "PASS",
   "xmm_in_site_functions": [],

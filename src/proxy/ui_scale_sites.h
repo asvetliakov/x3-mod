@@ -4,7 +4,7 @@
 #include <cstring>
 
 // Portable core of the UI scale option (X3M_UI_SCALE=auto|1..3; docs/architecture/ui-scale.md,
-// docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the verified byte windows of the ten
+// docs/reverse-engineering/gui-scale.md section 5 strategy (b)): the verified byte windows of the twelve
 // engine sites, the scale's three fixed-point forms the stubs read, the pixel-orthographic projection
 // transform, the mouse-delta remainder accumulator, the virtual screen size, the auto mapping, the
 // X3M_UI_SCALE parser and the stub encoders. No Windows dependency: the host tests and the site verifier
@@ -18,11 +18,13 @@
 // UI out against B3D_ScreenGetWidth/Height and keeps its own cursor from the engine's mouse deltas, so it
 // is told the virtual size (W/s, H/s) and gets the deltas divided by s (with a remainder, so slow motion
 // is not lost); the one native store of the script's cursor (X2_UpdateCursorSteering) multiplies it back
-// to real pixels for the native aim/fire consumers. The native cockpit HUD scene (cockpit+4, rendered with
+// to real pixels for the native aim/fire consumers; the two natives that take the script's click point and the
+// galaxy map's label callback and map pick convert between the script's virtual and the engine's real pixels
+// where the value crosses. The native cockpit HUD scene (cockpit+4, rendered with
 // the camera at cockpit+8: crosshair group, text panels, target icons, the mod's lead marker) is excluded
 // from the projection scale by camera identity so its projected pixel positions stay real pixels.
 //
-// Ten sites, all or none (a failure rolls the earlier ones back; every stub is the identity while the
+// Twelve sites, all or none (a failure rolls the earlier ones back; every stub is the identity while the
 // data cells hold s = 1, so even a failed rollback leaves vanilla behaviour):
 //
 //  A projection  0x004be246  b8 01 00 00 00            mov eax,1        the 2D branch's single exit
@@ -35,6 +37,8 @@
 //  E cursor      0x004074ec  a3 f0 7c 60 00            mov [0x00607cf0],eax   X2_UpdateCursorSteering y store
 //  G click icon  0x0042ece0  8b 76 06 51 56            mov esi,[esi+6]; push ecx; push esi   INS case 0x64
 //  H cursor aim  0x0042ddf1  8b 73 06 8b 7b 0b         mov esi,[ebx+6]; mov edi,[ebx+0xb]   INS case 0x28
+//  I map label   0x0041eab2  8b 0d 64 fc 57 00         mov ecx,[0x0057fc64]   0x0041e350, WriteGalaxyMapSectorName call
+//  J map pick    0x0042e952  8b 76 06 89 7c 24 0c      mov esi,[esi+6]; mov [esp+0xc],edi   INS case 0x3e
 //  F diagnostic  0x004bdee0  83 ec 08 83 78 3c 00      sub esp,8; cmp [eax+0x3c],0   entry counter (--debug only)
 //
 // A: the 2D branch 0x004bdf3b..0x004be252 ends
@@ -117,6 +121,38 @@
 // so EFLAGS are exactly the engine's) and continues at 0x0042ddf7 through its slot word. EAX, EBX, ECX and
 // EDX are untouched. The -1,-1 sentinel of the short-argument path never passes through the span.
 //
+// I, J (gui-scale.md section 7): the galaxy map worker 0x0041e350 projects each visible sector's ring with the
+// display record's real screen size and hands the real-pixel offset (x, y) from the map centre to the script's
+// WriteGalaxyMapSectorName, which draws the name into the window texture that A then scales by s again (labels
+// at s*o instead of o); INS_GalaxyMapFindSector (case 0x3e -> 0x0041e030) gets the script's virtual click offset
+// and compares it with the same real-pixel projection. I divides the label offset by s, J multiplies the pick
+// offset by s. Both or neither: either alone breaks label clicks, which work today because the defects cancel.
+//   0041eaa8  50                 push eax               ; y (the first ftol)
+//   0041eaa9  de c9 de e9        fmulp; fsubp
+//   0041eaad  e8 1e cb 10 00     call 0x0052b5d0        ; ftol (own aligned frame, leave; ret): EAX = x
+//   0041eab2  8b 0d 64 fc 57 00  mov ecx,[0x0057fc64]   <- claimed (6 bytes; jmp in the qword 0041eab0)
+//   0041eab8  50 8b 44 24 34 53 50 6a 04 6a 01 68 3c b6 55 00 6a 00 6a 00 51   push eax ... push ecx
+//   0041eacd  e8 ee 09 08 00     call 0x0049f4c0        ; sub esp,0xc first; EDX written (lea) before any read
+// The stub rounds x (EAX) and y ([ESP]) to the nearest of v/s, a tie away from zero (labels at -o and +o move
+// symmetrically), through the 64-bit product (|v| is not bounded: the plane width after the aspect ratio was not
+// traced): EDX:EAX = v * inverse16; cmp edx,0x80000000 sets CF for a non-negative product; adc eax,0x7fff adds
+// 0x8000 or 0x7fff; adc edx,0; shrd eax,edx,16. At inverse16 = 65536 this is v exactly for every 32-bit v. Then
+// the displaced load and the slot word's 0x0041eab8. ECX (reloaded last), EDX (dead: nothing up to the call reads
+// it, the callee writes it first) and EFLAGS (dead: pushes, then sub esp) are scratch; EBX (the sector row), ESI,
+// EDI, EBP and the x87 stack are untouched; the one memory write is the argument slot [ESP].
+//   0042e934  case 0x3e INS_GalaxyMapFindSector: ... call 0x00489030; xor edi,edi; cmp eax,edi; je 0042e9ea
+//   0042e949  39 3d 08 85 60 00  cmp [0x00608508],edi   ; the map exists (written only by 0x0041e350 / 0x0041eb20)
+//   0042e94f  8b 4e 0b           mov ecx,[esi+0xb]      ; y
+//   0042e952  8b 76 06 89 7c 24 0c   mov esi,[esi+6]; mov [esp+0xc],edi   <- claimed (7 bytes; jmp in the qword 0042e950)
+//   0042e959  89 7c 24 10        mov [esp+0x10],edi
+//   0042e95d  0f 84 87 00 00 00  je 0x0042e9ea          ; reads the cmp's EFLAGS: LIVE across the span
+//   0042e963  ... push &out; push &out; push ecx; push esi; call 0x0041e030
+// The stub performs the load, scales ESI and ECX with the E rounding ((v * fixed256 + 0x80) >> 8, two-operand
+// imul: EDX is not touched, because on the je path it reaches 0x004a47f0's callees unwritten), performs the
+// store, re-executes `cmp [0x00608508],edi` (EDI = 0 since 0x0042e93f; the cell is written only by the two map
+// natives, on this thread) and continues at 0x0042e959 through its slot word. EAX (the scene), EBX, EDI, EBP
+// and EDX are untouched.
+//
 // F (X3M_DEBUG=1 only, independent of the scale): the function entry counts, per camera (a table of eight
 // {camera, n2d, nother} rows, linear probe, the last row takes overflow), the instances with flag 0x200
 // and the others; the Present path prints and clears it every frame. At entry EAX = the object (kept),
@@ -158,6 +194,12 @@ inline std::int32_t mouse_step(std::int32_t delta, std::uint32_t inv16, std::int
     const std::int32_t out = sum >> 16; // arithmetic: floor
     *acc = sum & 0xffff;
     return out;
+}
+// I: a real-pixel map offset to the script's virtual pixels as the stub computes it: round(v/s), a tie away from
+// zero, through the 64-bit product (exact for every 32-bit v at inverse16 = 65536).
+inline std::int32_t map_offset(std::int32_t v, std::uint32_t inv16) {
+    const std::int64_t p = static_cast<std::int64_t>(v) * static_cast<std::int64_t>(inv16);
+    return static_cast<std::int32_t>((p + (p >= 0 ? 0x8000 : 0x7fff)) >> 16); // arithmetic: floor
 }
 // E: the script's virtual cursor coordinate back to real pixels.
 inline std::int32_t cursor_real(std::int32_t v, std::uint32_t s256) {
@@ -327,6 +369,29 @@ constexpr unsigned char expected_aim_case[aim_case_length] = {
 constexpr unsigned char expected_icon_test[icon_test_length] = {0x83, 0xec, 0x10, 0x53, 0x55, 0x56, 0x57, 0x8b, 0x7c, 0x24, 0x24,
                                                                 0x8b, 0x87, 0x48, 0x03, 0x00, 0x00, 0x85, 0xc0, 0x0f, 0x84, 0x24,
                                                                 0x03, 0x00, 0x00, 0x8b, 0x0d, 0x38, 0x6f, 0x60, 0x00, 0x8b, 0x11};
+// I: the label callback's argument tail in 0x0041e350 (0x0041eaa8..0x0041ead2) and the callee's prefix through its EDX write.
+constexpr std::uintptr_t map_function_va = 0x0041e350, map_function_end_va = 0x0041eb1f;
+constexpr std::uintptr_t map_label_window_va = 0x0041eaa8, map_label_site_va = 0x0041eab2, map_label_return_va = 0x0041eab8;
+constexpr std::uintptr_t map_callback_va = 0x0049f4c0, map_ftol_va = 0x0052b5d0, map_vm_slot_va = 0x0057fc64;
+constexpr unsigned map_label_window_length = 42, map_label_site_length = 6, map_callback_length = 29;
+constexpr unsigned char expected_map_label_site[map_label_site_length] = {0x8b, 0x0d, 0x64, 0xfc, 0x57, 0x00}; // mov ecx,[0x0057fc64]
+constexpr unsigned char expected_map_label_window[map_label_window_length] = {
+    0x50, 0xde, 0xc9, 0xde, 0xe9, 0xe8, 0x1e, 0xcb, 0x10, 0x00, 0x8b, 0x0d, 0x64, 0xfc, 0x57, 0x00, 0x50, 0x8b, 0x44, 0x24, 0x34,
+    0x53, 0x50, 0x6a, 0x04, 0x6a, 0x01, 0x68, 0x3c, 0xb6, 0x55, 0x00, 0x6a, 0x00, 0x6a, 0x00, 0x51, 0xe8, 0xee, 0x09, 0x08, 0x00};
+constexpr unsigned char expected_map_callback[map_callback_length] = {0x83, 0xec, 0x0c, 0x53, 0x55, 0x56, 0x57, 0x8d, 0x44, 0x24,
+                                                                      0x18, 0x50, 0x8b, 0x44, 0x24, 0x34, 0x8d, 0x4c, 0x24, 0x18,
+                                                                      0x51, 0x8b, 0x4c, 0x24, 0x34, 0x8d, 0x54, 0x24, 0x3c};
+// J: INS case 0x3e from its entry through the call of the pick 0x0041e030.
+constexpr unsigned map_pick_case = 0x3e;
+constexpr std::uintptr_t map_pick_case_va = 0x0042e934, map_pick_site_va = 0x0042e952, map_pick_return_va = 0x0042e959;
+constexpr std::uintptr_t map_pick_flags_va = 0x0042e949, map_state_va = 0x00608508, map_find_va = 0x0041e030;
+constexpr unsigned map_pick_case_length = 64, map_pick_site_length = 7;
+constexpr unsigned char expected_map_pick_site[map_pick_site_length] = {0x8b, 0x76, 0x06, 0x89, 0x7c, 0x24, 0x0c}; // mov esi,[esi+6]; mov [esp+0xc],edi
+constexpr unsigned char expected_map_pick_case[map_pick_case_length] = {
+    0x8b, 0x75, 0x18, 0x8b, 0x56, 0x01, 0xe8, 0xf1, 0xa6, 0x05, 0x00, 0x33, 0xff, 0x3b, 0xc7, 0x0f, 0x84, 0xa1, 0x00, 0x00,
+    0x00, 0x39, 0x3d, 0x08, 0x85, 0x60, 0x00, 0x8b, 0x4e, 0x0b, 0x8b, 0x76, 0x06, 0x89, 0x7c, 0x24, 0x0c, 0x89, 0x7c, 0x24,
+    0x10, 0x0f, 0x84, 0x87, 0x00, 0x00, 0x00, 0x8d, 0x54, 0x24, 0x10, 0x52, 0x8d, 0x54, 0x24, 0x10, 0x52, 0x51, 0x56, 0xe8,
+    0xbc, 0xf6, 0xfe, 0xff};
 // The excluded scene's camera: the active cockpit's HUD camera at cockpit+8 (the HUD scene is cockpit+4).
 constexpr std::uintptr_t cockpit_registry_slot_va = 0x00608504;
 constexpr unsigned cockpit_hud_camera_offset = 8, cockpit_hud_scene_offset = 4;
@@ -509,6 +574,56 @@ inline void encode_aim_stub(std::uint32_t fixed256, std::uint32_t slot, unsigned
     detail::put32(out + 9, fixed256);
     detail::put32(out + 25, fixed256);
     detail::put32(out + 43, slot);
+}
+// I. EAX = x, [ESP] = y (real-pixel offsets) in, both round(v/s) out (map_offset); then the displaced
+// `mov ecx,[0x0057fc64]`; the slot word holds 0x0041eab8.
+constexpr unsigned map_label_stub_length = 70;
+inline void encode_map_label_stub(std::uint32_t inverse16, std::uint32_t slot, unsigned char out[map_label_stub_length]) {
+    // clang-format off
+    const unsigned char code[map_label_stub_length] = {
+        0x8b,0xc8,                             //  0 mov ecx,eax                  x
+        0x8b,0x04,0x24,                        //  2 mov eax,[esp]                y
+        0xf7,0x2d, 0,0,0,0,                    //  5 imul dword [inverse16]       EDX:EAX = y * inverse16
+        0x81,0xfa, 0x00,0x00,0x00,0x80,        // 11 cmp edx,0x80000000           CF = product >= 0
+        0x15, 0xff,0x7f,0x00,0x00,             // 17 adc eax,0x7fff               + 0x8000, or 0x7fff below zero
+        0x83,0xd2,0x00,                        // 22 adc edx,0
+        0x0f,0xac,0xd0,0x10,                   // 25 shrd eax,edx,16
+        0x89,0x04,0x24,                        // 29 mov [esp],eax
+        0x8b,0xc1,                             // 32 mov eax,ecx
+        0xf7,0x2d, 0,0,0,0,                    // 34 imul dword [inverse16]
+        0x81,0xfa, 0x00,0x00,0x00,0x80,        // 40 cmp edx,0x80000000
+        0x15, 0xff,0x7f,0x00,0x00,             // 46 adc eax,0x7fff
+        0x83,0xd2,0x00,                        // 51 adc edx,0
+        0x0f,0xac,0xd0,0x10,                   // 54 shrd eax,edx,16
+        0x8b,0x0d, 0x64,0xfc,0x57,0x00,        // 58 mov ecx,[0x0057fc64]         the displaced load
+        0xff,0x25, 0,0,0,0};                   // 64 jmp [slot]
+    // clang-format on
+    std::memcpy(out, code, map_label_stub_length);
+    detail::put32(out + 7, inverse16);
+    detail::put32(out + 36, inverse16);
+    detail::put32(out + 66, slot);
+}
+// J. ESI = the argument block, ECX = y (already loaded), EDI = 0 in; ESI = x, ECX = y scaled out; the displaced
+// store, then `cmp [0x00608508],edi` last so the engine's je reads the flags it expects; the slot word holds 0x0042e959.
+constexpr unsigned map_pick_stub_length = 51;
+inline void encode_map_pick_stub(std::uint32_t fixed256, std::uint32_t slot, unsigned char out[map_pick_stub_length]) {
+    // clang-format off
+    const unsigned char code[map_pick_stub_length] = {
+        0x8b,0x76,0x06,                        //  0 mov esi,[esi+6]              x
+        0x0f,0xaf,0x35, 0,0,0,0,               //  3 imul esi,[fixed256]
+        0x81,0xc6, 0x80,0x00,0x00,0x00,        // 10 add esi,0x80
+        0xc1,0xfe,0x08,                        // 16 sar esi,8
+        0x0f,0xaf,0x0d, 0,0,0,0,               // 19 imul ecx,[fixed256]
+        0x81,0xc1, 0x80,0x00,0x00,0x00,        // 26 add ecx,0x80
+        0xc1,0xf9,0x08,                        // 32 sar ecx,8
+        0x89,0x7c,0x24,0x0c,                   // 35 mov [esp+0xc],edi
+        0x39,0x3d, 0x08,0x85,0x60,0x00,        // 39 cmp [0x00608508],edi         the displaced compare's flags
+        0xff,0x25, 0,0,0,0};                   // 45 jmp [slot]
+    // clang-format on
+    std::memcpy(out, code, map_pick_stub_length);
+    detail::put32(out + 6, fixed256);
+    detail::put32(out + 22, fixed256);
+    detail::put32(out + 47, slot);
 }
 // F. table = 8 rows of {camera, n2d, nother, unused} (16 bytes each, camera 0 = free); slot = the tail.
 constexpr unsigned entry_stub_length = 79, camera_rows = 8, camera_row_bytes = 16;

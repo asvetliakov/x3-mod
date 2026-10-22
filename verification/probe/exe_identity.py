@@ -55,6 +55,7 @@ SECTIONS = (  # name, VirtualSize, VirtualAddress, SizeOfRawData, PointerToRawDa
 # prefix + le32(global) + suffix. Same table as executable_identity.h.
 ANCHORS = (
     (0x00401b91, 0x0057fc60, b'\x8b\x35', b''),
+    (0x0041e474, 0x0057fc64, b'\x8b\x15', b''),
     (0x00433cbe, 0x00587b88, b'\x89\x15', b''),
     (0x004e21c7, 0x00596928, b'\xd9\x05', b''),
     (0x004e27df, 0x00596934, b'\x89\x35', b''),
@@ -75,6 +76,7 @@ ANCHORS = (
     (0x0040e8dd, 0x00607cec, b'\x8b\x15', b''),
     (0x0040e8d7, 0x00607cf0, b'\x8b\x0d', b''),
     (0x00401a0d, 0x00608504, b'\x89\x1d', b''),
+    (0x0041e412, 0x00608508, b'\x39\x1d', b''),
     (0x00401e69, 0x0060850c, b'\xa1', b''),
     (0x00403367, 0x00608518, b'\xa3', b''),
     (0x0048a6d2, 0x0060851c, b'\xd9\x05', b''),
