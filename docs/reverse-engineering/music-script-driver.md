@@ -169,6 +169,10 @@ It always starts from the beginning.
 
 ## 3. A sector change, step by step, and deferring it (Q3)
 
+**Correction (Run 189, §8.4):** this sequence is the path of combat, leave and other non-warp changes. A gate or
+jumpdrive change first fades the old track out at the gate (`150::WarpToSector` → `StopMusic(500)`, stop IP
+`0x0da17`), and the new id is then played without a stop.
+
 **Sequence** **[m]** code; the task order is read from the link code, not traced:
 
 1. `402::EnterSector` or `402::WarpEnterSector` forks a child (`6f` at `0xfb4a2` / `0xfb539`). The child runs at once
@@ -464,6 +468,9 @@ call the tick and the scheduler outside the loop (**[i]** a load or leave path; 
 
 ### 7.3 A sector change, frame by frame
 
+(Run 189, §8.4: the C-stop path below is the one combat, leave and non-warp changes take. Gate jumps fade out at
+`0x0da17` first.)
+
 1. **Frame F, TI tick:** the `EnterSector` fork child E's `TI_Delay(1000)` falls due. E is linked at the runnable
    head.
 2. **Frame F, scheduler pass:** E runs `ChangeTrackToSectorMusic` → `ChangeTrackMusic`, whose fork links task C at
@@ -571,7 +578,8 @@ at least one frame and about 100 game ms of silence between the old record's fre
   is EBP (media-record-lifetime.md, boundary 1).
 
 **Frame cells at T3** (the stop at `0x0db4f`). Index `k = [ESI+0x18]`; cell `i` sits at `[ESI+0x14] + 5·i`; deeper
-cells have higher `i`.
+cells have higher `i`. **`k` is negative** (`[ESI+0x14]` is the end of the buffer, valid `−capacity ≤ i ≤ −1`);
+Run 189 measured `k = −19`, so `k+18 = −1` is the bottom cell (§8.4).
 
 | Cell | Content |
 | --- | --- |
@@ -607,6 +615,9 @@ is therefore **not recoverable from C**; only "forked by `ChangeTrackMusic`" is.
   and no Present work.
 * `m17 = new` during the whole wait, so the script accepts every other request normally.
 * None of it depends on I2: the re-key makes T_old's free a miss whenever T_old runs.
+
+**Prerequisite for gate and jumpdrive changes:** the `150::WarpToSector` patch of §8.4. Without it a jump never
+reaches this test.
 
 **Deferrable stop.** All of the following must hold at T3, otherwise vanilla:
 
@@ -682,12 +693,131 @@ id outside 101..299 and every script id, for example `0x7f000000 + n`.
   the first armed flight.
 * **(c) Pause and TI** (§7.2) matters only if pause is later kept out of the "end at T1" row.
 
+### 8.4 Run 189 flight (2026-10-23)
+
+Rows from `verification/results/run189-flight/x3m.log` (local copy; `music_trace = 1`; several gate jumps, one save,
+one dock, two combats), extracted by
+[`run189_music_rows.py`](../../verification/results/music-script-driver/run189_music_rows.py) (output
+`run189_music_rows.txt` beside it). QPC runs at 10.000 MHz (from the `frame_end` rows), and the flight ran at about
+170–200 fps. **[m]** unless marked.
+
+| Stop (frame) | KC IP | `k` / capacity | alert old/new | Stopping task = next player? | Next play | Δ frames | Δ ms |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| gate jump ×5 (17604, 26712, 36090, 45891, 53381) | `0x0da17` (`MusicFadeOut`) | −18 / 32 | 0/0 | no | the new sector id | 208, 291, 226, 222, 282 | 3906, 2293, 3403, 3465, 2730 |
+| combat start (23839) | `0x0db54` | −19 / 32 | 0/1 | yes | 1010 | 19 | 111.0 |
+| combat start (61050) | `0x0db54` | −19 / 32 | 0/1 | yes | 1014 | 2 | 20.6 |
+| combat end (25742, 63568) | `0x0db54` | −19 / 32 | 1/0 | yes | the sector id | 2, 2 | 29.4, 16.9 |
+| leave to menu (64740) | `0x0db54` | −19 / 32 | 0/0 | no | 8404 after `session_start` | 192 | 2580 |
+| speech (25758), intro (4) | `0x0d31f` (`200::SpeakWithPriorityAndNoise`), `0x078eb` (`202::Patch18`) | −46 / 96, −15 / 64 | 0/0 | – | – | – | – |
+
+* **The record's context at every stop is the task id of the play that started it** (10 of 10). This is T_old, as
+  §7.3 assumes. `arg_task == task_id` in every row.
+* **The dock produced no MOV row.** No `200x` dock id was played and no stop fell on it.
+* **The save** gave stop-all `save` at frame 56228, `keep_running`, then a same-task, same-id replay at 56229 with the
+  seek skipped and `music_keep_save_pump`. That is the next pass, as §7 predicts.
+
+**(1) Frame cells.** Every row says `cells=invalid` because `k` is **negative**. The trace's bounds test is wrong,
+and so was §8.2's reading of the index:
+
+* `[ESI+0x14]` is the **end** of the cell buffer (task allocator `0x004a21e0`: base + capacity·5), `+0x18` starts at
+  0, and pushes decrement it;
+* valid cells are `−capacity ≤ i ≤ −1`, and the bottom cell is −1.
+
+The measured depths match the §8.2 layout exactly:
+
+* the `ChangeTrackMusic` fork child stops at `k = −19`: 19 cells, `k..k+18`, with `k+18 = −1` its bottom;
+* the `MusicFadeOut` fork child stops at `k = −18`: the 9-cell copy of the `PlayMusicWithFade` frame, plus the
+  2-argument call (3 cells), 2 return cells, 2 locals and the stop's argc and argument.
+
+So, by absolute index for the 0x0db54 stop:
+
+| Cell | Index | Content |
+| --- | --- | --- |
+| old id | −18 | `k+1` |
+| return into `LoopMusic` | −13 | `k+6`, (3, `0x0dc84`) |
+| new id | −11 | `k+8` |
+| fade | −10 | `k+9` |
+| loop | −9 | `k+10` |
+| return into `ChangeTrackMusic` | −7 | `k+12`, (3, `0x0dcdb`) |
+| the fork-zeroed return | −3 | `k+16`, (3, 0) |
+
+Depth is **[m]**; the values are **[i]**: the rows carry no cell values. The ids the plays then used match the
+stopping task's request: the combat ids 1010 and 1014, and the sector ids after combat. That is consistent but does
+not read the cell.
+
+**(2) Task order.**
+
+* **The C-stop path** (combat start and end) is as §7.3 says: the stopping task is the next player. The leave asked
+  for id 0, so no play followed it. The
+  minimum gap is **2 frames**: the stop runs in the cockpit phase of F, T_old frees in pass F+1, and C's TI node fires
+  in tick F+2. Three of four gaps are exactly 2 frames (16.9–29.4 ms), which needs about 100 game ms in at most
+  29 ms, i.e. warp ≥ 3.4 (**[i]** SETA on, ×10 consistent). The other gap is 19 frames, 111 ms: `TI_Delay(100..106)`
+  at ×1 plus frame rounding (**[i]** SETA off).
+* **No row shows C running before T_old** (that would give ≥ 3 frames). The free itself is not traced.
+* **Gate jumps take another path** (point 3).
+
+**(3) The stop IPs.**
+
+* Gate and jumpdrive changes never reach `0x0db54`. `150::WarpToSector` (callers `150::StartGateWarp` and
+  `150::StartSectorWarp`; the same code in stock AP) **forks a child that calls `StopMusic(500)`**: Mayhem
+  `0x161c3`..`0x161d6`, stock `0x1639c`..`0x163af`. Its `PlayMusicWithFade(0, 500, 0)` sets `m17 = −1` and forks
+  `MusicFadeOut`. That task ramps the volume over 500 game ms with `TI_GetAbsTime`/`TI_CmpTime` and `TI_Delay(100)`
+  steps, so the fade is SETA-scaled, then stops the record at IP **`0x0da17`**. T_old frees it, and the fade child
+  sets `m17 = 0`.
+* At the arrival, `EnterSector`'s child requests the new id with `m17 = 0`, so **C stops nothing** and plays at once.
+* Combat start and end and the leave stop at `0x0db54`; the dock stopped nothing.
+
+**(4) What this contradicts.**
+
+* **§3's and §7.3's "a sector change" sequence** (C stops the old track) is the path of combat, leave and other
+  non-warp changes. A gate jump is a fade-out by a separate task at the gate, followed by an unstopped play after
+  arrival.
+* **§8.3's deferrable test (`0x0db54`) never fires on a jump.** Without a change it would defer nothing in this
+  flight; the leave stop at 64740 passes the alert test but has new id 0, so `N > 0` rejects it.
+* **§8.2's cell index** is negative (above).
+* **Confirmed:**
+  * the alert values the test reads: 0/1 at the combat start (inside `NotifyAlert`), 1/0 at the combat end, 0/0
+    otherwise;
+  * T_old = record context;
+  * the next-pass wake after a stop-all;
+  * nothing in the rows contradicts §7.1/§7.2.
+
+**§8.3 amended.** One prerequisite for gate and jumpdrive changes, and three amendments.
+
+* **Prerequisite:** remove the `StopMusic(500)` fork in `150::WarpToSector`. Replace the 6 bytes `op6f; jt <cont>` at
+  CODE `0x161c3` (Mayhem; stock `0x1639c`; file offset +20) by `jmp <cont>` (`32` + target, 5 bytes) plus one filler
+  byte that never runs.
+  * Checks: no branch lands inside the window (`run189_music_rows.py`); stack balance is unchanged (the fork's result
+    cell was consumed by the `jt`); instruction starts outside the window and saved task IPs (`0x161d5` and later)
+    are unchanged. The same constraints apply as to the KC options of [gate-queue-script.md](gate-queue-script.md) §4 (same
+    length, build id and instruction starts).
+  * With the patch the old track plays through the warp, and the arrival's request becomes the §8.3 entry: C stops
+    the old record at `0x0db54` with alert 0/0. This is the path the combat stops measured here.
+  * Without the queue, the patch alone means "no fade at the gate; cut 1000 game ms after arrival".
+* **Cell checks** use the absolute indices above and the correct bounds; on any mismatch the stop takes the vanilla
+  path and logs `music_queue_refuse reason=cells` with the values.
+* **A `0x0da17` stop is never deferrable.** Fades by cut scenes and the MD stay vanilla.
+* **No other state or transition changes.** An engine-only alternative (hide `MusicFadeOut`'s volume ramp and orphan
+  at `0x0da17`) cannot tell a warp fade from a cut-scene fade, because the fork zeroes the requester's return IP.
+
+**Can it be built now?** Yes, with one condition. Every engine contract is static, and this flight confirms the C-stop
+mechanics, the owner context, the alert test values and the stack depth. Two things are unflown:
+
+* the cell **values**, not logged because of the trace's bounds test;
+* the patched warp flow.
+
+Neither needs a diagnostic flight of its own if the build fails safe on the cell checks and logs them. The first armed
+flight (one gate jump, one track left to end, one jump while a change is pending, one combat while pending, one save
+while pending) is then the acceptance flight. Remaining open: cell values; whether docking changes music at all
+(nothing in this flight); pause and TI (§7.2).
+
 ## Reproduce
 
 ```sh
 python3 -I verification/results/music-script-driver/verify_music_script_driver.py > verification/results/music-script-driver/verify_output.json   # PASS
 python3 -I verification/results/music-script-driver/music_driver_listing.py        # decoded listings into raw/ (git-ignored)
 python3 -I verification/results/music-script-driver/verify_track_queue.py > verification/results/music-script-driver/verify_track_queue_output.json   # PASS (§7-§8)
+python3 -I verification/results/music-script-driver/run189_music_rows.py > verification/results/music-script-driver/run189_music_rows.txt   # §8.4
 python3 -I verification/results/music-script-driver/flight_music_summary.py /mnt/c/X3/x3m.log > verification/results/music-script-driver/flight_music_summary.txt
 i686-w64-mingw32-objdump -d --start-address=0x42c890 --stop-address=0x42ca61 /mnt/c/X3/X3AP.exe   # alert level
 ```

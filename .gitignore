@@ -80,3 +80,4 @@ verification/results/ship-steering/*/x3m.log
 verification/results/ship-steering/run*-triage/*.log
 # decoded KC listings of x3story.obj (music-script-driver.md); local only
 verification/results/music-script-driver/raw/
+verification/results/run189-flight/x3m.log

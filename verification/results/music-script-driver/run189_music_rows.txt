@@ -1,0 +1,20 @@
+log x3m.log  qpc_hz 10000007
+stop-all rows: session_start@4 session_start@4 session_start@130 session_start@748 load@749 save@56228 session_start@64741 alt_tab@65125
+line   frame   id     ip                          k cap alert task      ctx       cells     | nextid nexttask  same  dframe      dms
+199    4       830    0x078eb                   -15  64  0/0  6         0         invalid  
+661    17604   81616  0x0da17 MusicFadeOut stop  -18  32  0/0  15707064  15345032  invalid   | 81210  15710589  False    208   3905.5
+781    23839   81210  0x0db54 PlayMusicWithFade stop  -19  32  0/1  15814729  15710589  invalid   | 1010   15814729  True      19    111.0
+786    25742   1010   0x0db54 PlayMusicWithFade stop  -19  32  1/0  15830824  15814729  invalid   | 81210  15830824  True       2     29.4
+790    25758   144    0x0d31f                   -46  96  0/0  15831149  15830830  invalid   | 81015  15847109  False   1245   8121.0
+791    26712   81210  0x0da17 MusicFadeOut stop  -18  32  0/0  15843901  15830824  invalid   | 81015  15847109  False    291   2293.0
+821    36090   81015  0x0da17 MusicFadeOut stop  -18  32  0/0  16010272  15847109  invalid   | 81811  16012807  False    226   3403.4
+919    45891   81811  0x0da17 MusicFadeOut stop  -18  32  0/0  16207864  16012807  invalid   | 81013  16210911  False    222   3464.6
+952    53381   81013  0x0da17 MusicFadeOut stop  -18  32  0/0  16336527  16210911  invalid   | 80904  16339389  False    282   2730.4
+978    61050   80904  0x0db54 PlayMusicWithFade stop  -19  32  0/1  16403355  16339389  invalid   | 1014   16403355  True       2     20.6
+983    63568   1014   0x0db54 PlayMusicWithFade stop  -19  32  1/0  16426326  16403355  invalid   | 80904  16426326  True       2     16.9
+997    64740   80904  0x0db54 PlayMusicWithFade stop  -19  32  0/0  16451334  16426326  invalid   | 8404   16451671  False    192   2580.1
+stop ctx == task id of the record's last play: 10 of 10; mismatches []
+mayhem 150::WarpToSector 16185: fork at 161c3 (file +161d7), patch window 161c3..161c8 -> jmp 161d7; branches into window interior: none
+   op(6f); jt(33)   161d7; pushw(06) 500; push1(02); pushw(06) 200; callcls(86) 200::StopMusic; drop(24); op(70); ldloc(0d) 11
+stock 150::WarpToSector 1635e: fork at 1639c (file +163b0), patch window 1639c..163a1 -> jmp 163b0; branches into window interior: none
+   op(6f); jt(33)   163b0; pushw(06) 500; push1(02); pushw(06) 200; callcls(86) 200::StopMusic; drop(24); op(70); ldloc(0d) 11
