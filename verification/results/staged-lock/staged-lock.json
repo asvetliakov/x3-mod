@@ -6,16 +6,36 @@
  "lock_bytes": 147456,
  "median_ns": {
   "1056": {
-   "direct_scan_ns": 1268.0,
-   "staged_copy_ns": 1653.0,
-   "staged_scan_ns": 1197.0,
-   "staged_total_ns": 2846.0
+   "direct_scan_ns": 1138.0,
+   "staged_copy_ns": 1499.0,
+   "staged_scan_ns": 1181.0,
+   "staged_total_ns": 2657.0
   },
   "6144": {
-   "direct_scan_ns": 7230.0,
-   "staged_copy_ns": 1271.0,
-   "staged_scan_ns": 7184.0,
-   "staged_total_ns": 8444.0
+   "direct_scan_ns": 6717.0,
+   "staged_copy_ns": 1276.0,
+   "staged_scan_ns": 6716.0,
+   "staged_total_ns": 7946.0
+  }
+ },
+ "game_buffer": {
+  "lock_bytes": 2211840,
+  "reps_per_run": 200,
+  "median_ns": {
+   "1260": {
+    "copied": 30240.0,
+    "scan_ns": 1497.0,
+    "copy_ns": 265.0,
+    "total_ns": 1761.0,
+    "whole_range_copy_ns": 28236.0
+   },
+   "7000": {
+    "copied": 2211840.0,
+    "scan_ns": 7085.0,
+    "copy_ns": 29156.0,
+    "total_ns": 36611.0,
+    "whole_range_copy_ns": 28462.0
+   }
   }
  }
 }

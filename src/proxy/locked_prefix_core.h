@@ -40,14 +40,19 @@
 // DISCARD mapping is write-combined, so reading it back at Unlock (the scan)
 // cost 1.6-5.2 ms per bullet batch. Production therefore never hands the
 // driver mapping to the table: begin_lock with a Stage returns a pooled,
-// cacheable, page-aligned staging block of the slot (grow-only, at least
-// max_bytes, at most staging_limit) that the caller gives the application
-// instead of the mapping. The sentinel goes into the staging block, the
-// application writes it, and at Unlock the caller copies the whole lock range
-// staging -> mapping (one sequential write into write-combined memory) before
-// finish_lock scans the staging block. An open stage pins its slot: eviction,
-// erase and clear never reuse or free it until close(). Without a Stage
-// (host fixtures only) the old direct mode scans the given window itself.
+// cacheable, page-aligned staging block of the slot covering the whole lock
+// range (grow-only, at least max_bytes; all slots together at most
+// staging_pool_limit) that the caller gives the application instead of the
+// mapping. The sentinel goes into the staging block's scan window, the
+// application writes it, and at Unlock finish_lock scans the staging block,
+// then copy_out copies the written extent staging -> mapping (one sequential
+// write into write-combined memory): the prefix up to the first vertex whose
+// six words are all sentinel, or the whole lock range when the scan met no
+// such vertex or did not publish (Run 194 A, 2026-10-23: the game's bullet
+// buffer is 2211840 bytes, 92160 vertices, locked whole per batch). An open
+// stage pins its slot: eviction, erase and clear never reuse or free it until
+// close(). Without a Stage (host fixtures only) the old direct mode scans the
+// given window itself.
 namespace x3m::fade_region::prefix {
 
 constexpr unsigned stride = 24;
@@ -64,9 +69,15 @@ constexpr std::size_t storage_words = std::size_t(max_vertices) * 3;
 constexpr float world_limit = 16777216.f;
 // The sentinel DWORD; a position whose three words are all sentinel ends the scan.
 constexpr std::uint32_t sentinel_word = 0xffffffffu;
-// Largest lock range a staging block serves (4x the captured 147456-byte
-// buffer); a larger scannable lock is passed through unscanned (Invalid).
-constexpr std::size_t staging_limit = 4 * max_bytes;
+// Total staging held across all slots (capacities, alignment slack
+// excluded), the peak included (a regrow frees the old block first): a lock
+// whose slot would have to grow past it is passed through unscanned
+// (Invalid) and counted (size_refusals, largest_refused). The engine's bullet
+// buffers are max instances x vertices per instance x 24
+// (effects-engine-remaining-emission.md: 1024 x 6 x 24 = 147456, 1024 x 90 x
+// 24 = 2211840); 32 MiB holds 14 of the 2.2 MB blocks, against a handful of
+// bullet buffers in flight, in a 32-bit process.
+constexpr std::size_t staging_pool_limit = std::size_t(32) << 20;
 // Staging blocks are page aligned, like a driver mapping at offset 0.
 constexpr std::size_t staging_alignment = 4096;
 
@@ -87,6 +98,8 @@ struct Scan {
     std::uint32_t vertices = 0;   // written vertices: up to the first sentinel, the window end or max_vertices
     std::uint32_t bad_from = ~0u; // first vertex holding NaN, +-inf or a component beyond world_limit
     bool window_end = false;      // no sentinel met: the scan ran to the window end (stale tail not sentinel)
+    bool sentinel = false;        // the scan stopped at a vertex whose six words are all sentinel: nothing written
+                                  // from there on (contiguous-prefix writer), the written extent is vertices * stride
 };
 
 // Writes the sentinel over the leading min(length, vertices*stride) bytes of
@@ -117,7 +130,10 @@ inline std::uint32_t scan(const void* bytes, std::size_t length, float* position
     for (; i < window; ++i) {
         std::uint32_t words[6];
         std::memcpy(words, p + std::size_t(i) * stride, sizeof words);
-        if (words[0] == sentinel_word && words[1] == sentinel_word && words[2] == sentinel_word) break;
+        if (words[0] == sentinel_word && words[1] == sentinel_word && words[2] == sentinel_word) {
+            out->sentinel = words[3] == sentinel_word && words[4] == sentinel_word && words[5] == sentinel_word;
+            break;
+        }
         if (extras) std::memcpy(extras + std::size_t(i) * 3, words + 3, 12);
         float v[3];
         std::memcpy(v, words, 3 * sizeof(float));
@@ -197,8 +213,8 @@ public:
     //
     // stage given (production): a pending lock is served from the slot's
     // staging block (*stage filled, sentinel written there, the mapping never
-    // touched); a slot already open, a range past staging_limit or a failed
-    // first allocation makes the lock Invalid with *stage empty (the caller
+    // touched); a slot already open, a growth past staging_pool_limit or a
+    // failed allocation makes the lock Invalid with *stage empty (the caller
     // passes the mapping through). stage null: direct mode (host fixtures).
     std::uint64_t begin_lock(std::uintptr_t key, bool scannable, void* mapping, std::size_t length,
                              std::uint32_t thread, Stage* stage = nullptr) noexcept {
@@ -229,13 +245,35 @@ public:
         if (pending) sentinel_bytes_ += write_sentinel(window, length, e->sentinel_vertices);
         return e->revision;
     }
-    // The application's writes go to the driver: the whole lock range,
-    // staging -> mapping (at the outermost Unlock, or once before a nested
-    // Lock that detaches the stage). Returns the bytes copied.
+    // The whole lock range, staging -> mapping: once before a nested Lock
+    // that detaches the stage (and in host fixtures). Returns the bytes copied.
     static std::size_t flush(const Stage& stage) noexcept {
         if (!stage.bytes || !stage.mapping || !stage.length) return 0;
         std::memcpy(stage.mapping, stage.bytes, stage.length);
         return stage.length;
+    }
+    // The bytes of a staged lock the outermost Unlock copies, given the scan
+    // finish_lock published from it (Scan{} when it published nothing):
+    // vertices * stride when the scan stopped at an all-sentinel vertex, else
+    // the whole lock range. Relies on the engine's contiguous-prefix write (one
+    // memcpy of count*24 at offset 0) and on no written vertex being six
+    // sentinel words; a write past such a vertex would be lost for that lock.
+    static std::size_t written_extent(const Stage& stage, const Scan& published) noexcept {
+        if (!published.sentinel) return stage.length;
+        const std::size_t prefix = std::size_t(published.vertices) * stride;
+        return prefix < stage.length ? prefix : stage.length;
+    }
+    // The outermost Unlock's copy: written_extent bytes staging -> mapping,
+    // counted as a prefix or a full-range copy. Returns the bytes copied.
+    std::size_t copy_out(const Stage& stage, const Scan& published) noexcept {
+        if (!stage.bytes || !stage.mapping || !stage.length) return 0;
+        const std::size_t bytes = written_extent(stage, published);
+        if (bytes) std::memcpy(stage.mapping, stage.bytes, bytes);
+        if (bytes == stage.length)
+            ++full_copies_;
+        else
+            ++prefix_copies_;
+        return bytes;
     }
     // After finish_lock (or instead, when the buffer is gone): unpins the slot.
     void close(const Stage& stage) noexcept {
@@ -243,8 +281,10 @@ public:
     }
     // Before the backend Unlock while the mapping is valid: scans a pending
     // record on its own thread and publishes it. Returns the vertices scanned
-    // (0: nothing published, the record is now Invalid or absent).
-    std::uint32_t finish_lock(std::uintptr_t key, std::uint32_t thread) noexcept {
+    // (0: nothing published, the record is now Invalid or absent); published,
+    // when given, receives the scan (Scan{} when nothing was published).
+    std::uint32_t finish_lock(std::uintptr_t key, std::uint32_t thread, Scan* published = nullptr) noexcept {
+        if (published) *published = Scan{};
         Entry* e = find(key);
         if (!e) return 0;
         if (e->state != State::Pending || e->thread != thread) {
@@ -252,6 +292,7 @@ public:
             return 0;
         }
         const std::uint32_t vertices = scan(e->mapping, e->length, e->positions, &e->scan, e->extras);
+        if (published) *published = e->scan;
         e->mapping = nullptr;
         e->length = 0;
         // Next lock: sentinel exactly the slots this prefix used (the scan
@@ -273,8 +314,14 @@ public:
     void erase(std::uintptr_t key) noexcept {
         if (Entry* e = find(key)) *e = Entry{};
     }
+    // Reset, device release: every record goes, and the staging blocks of
+    // slots without an open stage are freed (only a Lock/Unlock pair reads
+    // staging, so no draw can hold them); the position/extras storage stays
+    // pooled. A pinned slot keeps its block until its Unlock.
     void clear() noexcept {
         for (auto& e : entries_) e = Entry{};
+        for (unsigned i = 0; i < capacity; ++i)
+            if (!open_[i]) release_staging(i);
     }
     // Per draw: one linear probe of the fixed table; no allocation, no scan.
     // Bound hands out the record's positions (3 floats per vertex, at least
@@ -325,6 +372,13 @@ public:
         for (bool o : open_) n += o;
         return n;
     }
+    std::uint64_t full_copies() const noexcept { return full_copies_; }
+    std::uint64_t prefix_copies() const noexcept { return prefix_copies_; }
+    // Scannable locks refused staging because the pool would pass staging_pool_limit, and the largest such range;
+    // staging allocations that failed (the lock is passed through, like a refusal).
+    std::uint64_t size_refusals() const noexcept { return size_refusals_; }
+    std::uint64_t staging_failures() const noexcept { return staging_failures_; }
+    std::size_t largest_refused() const noexcept { return largest_refused_; }
 
 private:
     struct Entry {
@@ -361,35 +415,55 @@ private:
         entries_[oldest] = Entry{};
         return oldest;
     }
-    // The slot's staging block for a lock of length bytes: grow-only (at
-    // least max_bytes), allocated only on the slot's first staged lock or a
-    // longer range, filled once with the sentinel pattern (so a range that
-    // grew past the previous window still ends at the first unwritten
-    // vertex); nullptr past staging_limit or when the allocation fails (the
-    // old block is kept).
+    // The slot's staging block for a lock of length bytes: the whole range,
+    // grow-only (at least max_bytes), allocated only on the slot's first
+    // staged lock or a longer range; its scan window (the leading max_bytes)
+    // is filled once with the sentinel pattern (so a range that grew past the
+    // previous block still ends the scan at the first unwritten vertex), the
+    // rest is never read by the scan and reaches the mapping only through a
+    // full-range copy (DISCARD contents are undefined). nullptr when the pool
+    // would pass staging_pool_limit or the allocation fails (each counted).
+    // Called only for a slot without an open stage, so a regrow frees the old
+    // block before allocating the new one (the peak stays within the pool; a
+    // failed allocation leaves the slot without a block until the next lock).
     unsigned char* staging_for(unsigned slot, std::size_t length) noexcept {
-        if (length > staging_limit) return nullptr;
         if (staging_capacity_[slot] >= length) return staging_aligned_[slot];
         const std::size_t want = length > max_bytes ? length : max_bytes;
+        if (want > staging_pool_limit || staging_bytes() - staging_capacity_[slot] > staging_pool_limit - want) {
+            ++size_refusals_;
+            if (length > largest_refused_) largest_refused_ = length;
+            return nullptr;
+        }
+        release_staging(slot);
         std::unique_ptr<unsigned char[]> block(new (std::nothrow) unsigned char[want + staging_alignment]);
-        if (!block) return nullptr;
-        std::memset(block.get(), 0xff, want + staging_alignment);
+        if (!block) {
+            ++staging_failures_;
+            return nullptr;
+        }
         const std::uintptr_t raw = reinterpret_cast<std::uintptr_t>(block.get());
         const std::uintptr_t aligned = (raw + staging_alignment - 1) & ~std::uintptr_t(staging_alignment - 1);
+        std::memset(reinterpret_cast<unsigned char*>(aligned), 0xff, max_bytes);
         staging_[slot] = std::move(block);
         staging_aligned_[slot] = reinterpret_cast<unsigned char*>(aligned);
         staging_capacity_[slot] = want;
         return staging_aligned_[slot];
     }
+    void release_staging(unsigned slot) noexcept {
+        staging_[slot].reset();
+        staging_aligned_[slot] = nullptr;
+        staging_capacity_[slot] = 0;
+    }
     Entry entries_[capacity]{};
     std::unique_ptr<float[]> storage_[capacity];
     std::unique_ptr<std::uint32_t[]> extras_[capacity];
-    std::unique_ptr<unsigned char[]> staging_[capacity]; // pooled for the table's lifetime, like the storage
+    std::unique_ptr<unsigned char[]> staging_[capacity]; // pooled until clear() (Reset, device release)
     unsigned char* staging_aligned_[capacity]{};
     std::size_t staging_capacity_[capacity]{};
-    bool open_[capacity]{}; // slot pinned by an open stage (kept across erase/clear/eviction)
+    bool open_[capacity]{}; // slot pinned by an open stage (kept, with its block, across erase/clear/eviction)
     std::uint64_t clock_ = 0, evictions_ = 0, publications_ = 0, scanned_vertices_ = 0, sentinel_bytes_ = 0,
-                  window_end_scans_ = 0, staged_locks_ = 0, unstaged_locks_ = 0;
+                  window_end_scans_ = 0, staged_locks_ = 0, unstaged_locks_ = 0, full_copies_ = 0, prefix_copies_ = 0,
+                  size_refusals_ = 0, staging_failures_ = 0;
+    std::size_t largest_refused_ = 0;
 };
 
 } // namespace x3m::fade_region::prefix

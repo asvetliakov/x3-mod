@@ -699,15 +699,16 @@ refutes the attribution.
 
 **Change.** `prefix::Table::begin_lock` takes a `Stage`: a scannable lock of a
 marked buffer is served from the slot's proxy-owned staging block (cacheable,
-page aligned, at least 147 456 B, grow-only up to `staging_limit` = 589 824 B,
-pooled for the table's lifetime with the position/extras storage). The
+page aligned, covering the whole lock range, at least 147 456 B, grow-only,
+pooled until Reset or device release; all slots together at most
+`staging_pool_limit` = 32 MiB, see "Run 194 A" below). The
 ownership `buffer_lock` hands the application the staging pointer instead of
 the mapping (last, after every other observer saw the mapping); the step-D
-sentinel is written into staging. `buffer_unlock` copies the whole lock range
-staging → mapping (one sequential write into write-combined memory, before the
-real `Unlock`), then scans the staging block (same `prefix::scan`, same
-positions and UV/colour words, same revision and `sentinel_vertices`
-bookkeeping), then unpins the slot. No production path reads the driver
+sentinel is written into staging. `buffer_unlock` scans the staging block
+(same `prefix::scan`, same positions and UV/colour words, same revision and
+`sentinel_vertices` bookkeeping), then copies the written extent staging →
+mapping (one sequential write into write-combined memory, before the real
+`Unlock`; the copy rule is under "Run 194 A"), then unpins the slot. No production path reads the driver
 mapping any more (the sentinel never did: it is `memset`). An open stage pins
 its slot: eviction skips it, `erase`/`clear` (Release, Reset, device release)
 keep it, so the application's pointer stays valid and its data still reaches
@@ -724,16 +725,16 @@ Unlock).
 | `DISCARD`, offset 0, size ≠ 0 (the engine's only shape) | sentinel + scan in the mapping | staged: staging pointer, copy to the mapping at Unlock, scan of staging |
 | `DISCARD` with `READONLY` or `NOOVERWRITE` | scanned (`DISCARD` bit) | passed through, record Invalid |
 | non-`DISCARD` (`0`, `NOOVERWRITE`, `READONLY`), offset ≠ 0, size 0 | passed through, Invalid | unchanged |
-| range > 589 824 B, or staging allocation failed | scanned (first 6144 vertices) | passed through, Invalid (`unstaged_total`) |
-| nested non-`DISCARD` Lock inside the staged range | Invalid, no sentinel | aliases the staging block (`staging + offset`, as the driver's storage would); the outermost Unlock copies once and closes; Invalid |
+| slot growth past the 32 MiB staging pool, or staging allocation failed | scanned (first 6144 vertices) | passed through, Invalid (`unstaged_total`, plus `refused_size_total` or `staging_failures_total`, and one `locked_prefix_staging_refused` row per device) |
+| nested non-`DISCARD` Lock inside the staged range | Invalid, no sentinel | aliases the staging block (`staging + offset`, as the driver's storage would); the outermost Unlock copies the whole range once and closes; Invalid |
 | nested `DISCARD`, SizeToLock 0 or a range outside the staged one | Invalid, no sentinel | the stage is copied to the first mapping before the nested call and detached (never copied again); the nested Lock gets the driver's storage. Limitation: writes through the first pointer after such a nested Lock are lost. The engine never nests (RE note); `nested_flushes_total > 0` on a flight means this must be revisited |
 | failed Lock | nothing | unchanged |
 | Unlock without a staged Lock | marked record Invalid | unchanged, nothing read |
-| Unlock on another thread | Invalid | data copied, record Invalid |
+| Unlock on another thread | Invalid | whole range copied, record Invalid |
 | failed Unlock | Invalid | data already copied; Invalid |
 | Reset / device lost / ProcessVertices between Lock and Unlock | table cleared or record Invalid | same, and the open stage is still copied at Unlock |
 
-**Cost (measured on the host, cacheable memory both ways;
+**Cost of the 147 456-B case (measured on the host, cacheable memory both ways;
 `verification/results/staged-lock/measure.py` → `staged-lock.json`, medians of
 9 runs × 400 locks).** 1056 vertices: old direct scan 1.27 µs; staged copy
 1.65 µs + scan 1.20 µs. 6144 vertices: direct scan 7.23 µs; staged copy
@@ -741,19 +742,25 @@ Unlock).
 147 456-byte copy. On native D3D9 the copy is a write into write-combined
 memory, about 15–30 µs per lock at 5–10 GB/s (inferred, not measured), against
 the 1.6–5.2 ms per bullet draw measured with the old path (its attribution to
-the read is inferred, above). Memory: one staging block per marked slot,
-147 456 + 4 096 B (alignment slack) each, filled once with the sentinel
-pattern; bound 16 × 593 920 B = 9.5 MB (one 589 824-B block plus slack per
-slot); in practice a handful of slots (inferred from 4–8 bullet batches per
-frame).
+the read is inferred, above). Memory and the 2.2 MB game buffer: "Run 194 A"
+below.
 
 **Flight proof.** `locked_prefix_window` (one row per 300 frames beside
 `bolt_footprint`, under `X3M_DEBUG=1`, `X3M_PERF=1` or `X3M_TELEMETRY=1` with
 the footprint on; window deltas): `locks` (marked locks), `staged`, `copies`,
-`copy_bytes`, `copy_us`, `scans`, `scanned_vertices`, `scan_us`,
-`sentinel_bytes`, `sentinel_us`; cumulative `unstaged_total`,
-`window_end_scans_total`, `nested_flushes_total`; `staging_bytes`,
-`open_stages`, `table_used`. The win shows as `(copy_us + scan_us) / staged`
+`copy_bytes`, `copy_bytes_per_lock` (`copy_bytes / staged`), `full_copies`,
+`prefix_copies` (`copies` = the two summed), `copy_us`, `scans`,
+`scanned_vertices`, `scan_us`, `sentinel_bytes`, `sentinel_us`; cumulative
+`unstaged_total`, `window_end_scans_total`, `nested_flushes_total`,
+`refused_size_total`, `refused_size_max_bytes` (largest lock refused for the
+pool cap), `staging_failures_total` (failed staging allocations);
+`staging_bytes`, `open_stages`, `table_used`. The first pool-cap refusal or
+failed allocation since the device attached (the counters are process-wide;
+the device takes a baseline at attach) also writes one
+`locked_prefix_staging_refused` row per device in every logging tier
+(`refused_total`, `failed_total`, `largest_bytes`, `staging_bytes`,
+`pool_limit`).
+The win shows as `(copy_us + scan_us) / staged`
 in tens of µs instead of milliseconds, `staged == locks`, `unstaged_total = 0`,
 and the battle's prepare span and `dt_p50` back near the
 `bolt_footprint = 0` control. `locked_prefix_frame` (per frame, under
@@ -765,7 +772,95 @@ counts, revisions and sentinel extents are bit-identical to the direct mode
 over the same writes (host fixture `test_staged_lock`), so the substitute
 buffer's rewrite and the additive route's bounds are unchanged; the substitute
 buffer itself is created on the native device and never staged. In the game's
-DISCARD buffer the bytes past the written prefix now hold the sentinel instead
-of driver-undefined memory; no draw reads them (the drawn count is
-`primCount*3` within the prefix). Not yet flown.
+DISCARD buffer the bytes past the copied extent stay driver-undefined (a
+prefix copy) or hold staging's stale bytes (a full-range copy); no draw reads
+them (the drawn count is `primCount*3` within the prefix).
+
+### Run 194 A: the game buffer is 2.2 MB (2026-10-23)
+
+**Finding (Run 194 A, b4def9c1, `bolt_footprint = 3,12`, native `C:\X3`;
+measured from `x3m.log` with
+`verification/results/run193-combat-triage/locked_prefix_rows.py`).** All 22
+`locked_prefix_window` rows had `staged=0 copies=0 scans=0` at 1 310–3 866
+marked locks per 300 frames (`unstaged_total` 56 788 at the end), and every
+bolt draw was refused (`refused_buffer == draws`, 655/655); the first
+`bolt_footprint_refused` (frame 803) reads `reason=buffer detail=1
+primitives=420 stream0_bytes=2211840`. The engine's bullet buffer is
+`group[+0x20]` max instances × part `+0x10` vertices per instance × 24
+(`effects-engine-remaining-emission.md`, "Bullet vertex buffer writer",
+`CreateVertexBuffer` at `0x004bfa41`): the 147 456-B capture was a 6-vertex
+part (1024 × 6 × 24), this one a 90-vertex body, 1024 × 90 × 24 = 2 211 840 B
+(92 160 vertices), locked whole with `DISCARD` per batch. b4def9c1 capped a
+staging block at 4 × the captured buffer (589 824 B, headroom over the one size
+then known, not derived from the engine), so every lock was refused staging
+and the record left Invalid: the footprint expanded nothing. (Before
+b4def9c1 the scan ran over the first 6 144 vertices of the 2.2 MB mapping
+regardless of its size.) The single 8 445-ms frame at 803 is the savegame load
+(`verification/results/staged-lock/load_frames.py`):
+the frame spans `music_trace_stop … name=load` (frame 802) to the game music's
+`MOV_PlayMovie` 7.98 s later, plus 0.46 s of first-frame shader variants and
+resource creation; the `bolt_footprint = 0` control (`x3m.prev.log`) has the
+same frame at each of its two loads (639: 7 490 ms, 1500: 7 105 ms). Pre-existing,
+once per load, not this change.
+
+**Change.** A staging block covers the whole lock range, whatever its size;
+the only bound is the pool, `staging_pool_limit` = 32 MiB of block
+capacities across the 16 slots (14 blocks of 2.2 MB; a slot regrows only when
+a longer range is requested, and frees its old block before allocating the new
+one, which it can because a slot never regrows while its stage is open; a
+growth that would pass the pool is refused: the lock passes through, the
+record is Invalid, `refused_size_total` counts it and one row is logged; a
+failed allocation likewise, counted in `staging_failures_total`). `clear()`
+(Reset, device release) frees every block whose slot has no open stage; a
+pinned slot keeps its block until its Unlock. The pointer handed to the game
+covers the full `SizeToLock`. On
+allocation only the scan window (the leading 147 456 B, `max_vertices ×
+stride`) is sentinel-filled, and the Lock-time sentinel still covers only the
+previous prefix inside that window (`write_sentinel` is capped at
+`max_bytes`); the rest of the block is never read by the scan.
+
+**Copy rule.** The outermost Unlock scans first, then copies
+`prefix::Table::written_extent`: bytes 0 up to the first vertex whose six
+words are all `0xffffffff` inside the scan window (the scan's stop vertex,
+`Scan::sentinel`), else the whole lock range. Whole range: the window holds no
+sentinel vertex (≥ 6 144 vertices written, `window_end`), the stop vertex has
+sentinel positions but other words written (a NaN-position vertex the scan
+stops at, unchanged), the scan did not publish (another thread, a record
+already Invalid from a nested or aliased Lock, a cleared or erased record), and
+the detached nested case (flushed whole at the nested Lock, unchanged). This
+relies on two facts: the engine writes one contiguous prefix (`memcpy` of
+`count × 24` bytes at offset 0, RE note above), and no bullet vertex is six
+`0xffffffff` words (positions are finite floats, the D3DCOLOR is RGB 0 with a
+per-object alpha). Both are established only for the bullet writer (its
+colour word is never `0xffffffff`); the other admitted screen-emission buffers
+the table may mark are not reverse-engineered, and for them a vertex that is
+only partly sentinel stops the scan without `Scan::sentinel`, so the
+full-range copy covers it. Failure mode if either breaks: the bytes written past the
+first all-sentinel vertex never reach the buffer for that lock, so a later
+bolt in that batch is lost (or drawn from stale memory) for one frame. The
+scan's own output is unchanged (bit-identical published positions, UV/colour
+words, counts, revisions, sentinel extents; host `test_staged_lock`,
+`stage_big` `same=1`). No cheaper exact bound for the written extent exists
+at Unlock without reading the engine's VB record (`[rec+0x0c]`, a game-state
+read this path does not have); a copy longer than the write (a stale
+non-sentinel tail lengthening the scan) only copies harmless bytes.
+
+**Cost (host, cacheable memory; `verification/results/staged-lock/measure.py`
+→ `staged-lock.json` `game_buffer`, medians of 9 runs × 200 locks of
+2 211 840 B; measured).** 1260 vertices (420 primitives): scan 1.50 µs + prefix
+copy of 30 240 B 0.27 µs = 1.76 µs per lock, against 28.2 µs for the
+whole-range copy b4def9c1 would make. 7000 vertices: scan 7.09 µs + full copy
+29.2 µs = 36.6 µs. On native D3D9 the copy goes to write-combined memory:
+30 240 B is about 3–6 µs and 2.2 MB about 0.2–0.45 ms at 5–10 GB/s (inferred,
+not measured); only a batch past 6 144 vertices (68 bodies of 90) pays the
+latter.
+
+**Memory bound.** Staging capacities ≤ 32 MiB (`staging_pool_limit`), the
+peak included (a regrow frees the old block first), plus ≤ 4 096 B alignment
+slack per slot (64 KiB), plus the position/extras storage 16 × 147 456 B =
+2.25 MiB: ≤ 34.3 MiB at most, released to the storage alone at Reset and
+device release (pinned slots excepted). Expected in
+flight: one 2 211 840-B block per marked bullet buffer, the 147 456-B ones
+for 6-vertex parts (inferred: one buffer per instanced body type).
+Not yet flown.
 
