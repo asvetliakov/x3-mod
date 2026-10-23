@@ -486,6 +486,185 @@ class MusicAlertSource(unittest.TestCase):
         self.assertIn(';music_combat_hold_s = 20', template)
 
 
+INSTALL_HARNESS = r'''
+#include "music_alert_core.h"
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+using namespace x3m::music_alert::core;
+// argv: the .text image file, its VA, and optionally a VA from which every read fails.
+int main(int argc, char** argv) {
+    if (argc < 3) return 2;
+    std::FILE* f = std::fopen(argv[1], "rb");
+    if (!f) return 2;
+    std::vector<unsigned char> text;
+    for (int c; (c = std::fgetc(f)) != EOF;) text.push_back(static_cast<unsigned char>(c));
+    std::fclose(f);
+    const std::uint32_t base = std::uint32_t(std::strtoul(argv[2], nullptr, 0));
+    const std::uint32_t fail = argc > 3 ? std::uint32_t(std::strtoul(argv[3], nullptr, 0)) : 0xffffffffu;
+    auto read = [&](std::uint32_t at, unsigned char* out, unsigned n) {
+        if (at < base || at - base + n > text.size() || at + n > fail) return false;
+        for (unsigned i = 0; i < n; ++i) out[i] = text[at - base + i];
+        return true;
+    };
+    Mismatch m;
+    if (install_windows_match(read, m)) {
+        std::printf("match\n");
+        return 0;
+    }
+    std::printf("mismatch name=%s va=0x%08x readable=%u expected=", m.name, unsigned(m.va), m.readable ? 1u : 0u);
+    for (unsigned i = 0; i < m.shown; ++i) std::printf("%02x", m.expected[i]);
+    std::printf(" got=");
+    for (unsigned i = 0; i < m.shown; ++i) std::printf("%02x", m.got[i]);
+    std::printf("\n");
+    return 0;
+}
+'''
+
+
+def collected_claims():
+    """(owner base, name, va, length) of every engine site src/proxy claims outside music_alert, through the
+    claim collector's own patterns (verify_collide_sites: SiteSpec initialisers and *site_va constants)."""
+    sys.path.insert(0, str(ROOT / 'verification/probe'))
+    import verify_collide_sites as collector
+    claims = []
+    for path in sorted((ROOT / 'src/proxy').glob('*')):
+        if path.suffix not in ('.h', '.cpp') or path.name.startswith('music_alert'):
+            continue
+        text = path.read_text(errors='replace')
+        base = re.sub(r'_(core|sites)$', '', path.stem)
+        claims += [(base, name, int(va, 16), int(length)) for name, va, _, length in collector._SPEC_RE.findall(text)]
+        claims += [(base, name, int(va, 16), 8) for name, va in collector._CORE_SITE_RE.findall(text)]
+    return claims
+
+
+# Sites the Run 189 install rows report before the music_alert row that the collector's patterns do not reach
+# (music_keep site_e / site_entry, music_trace play / stop-all, seta_restore's hook): applied with an 8-byte cover.
+UNCOLLECTED_EARLIER = (('music_keep', 'site_e', 0x00498d71, 8), ('music_keep', 'site_entry', 0x004982b0, 8),
+                       ('music_keep', 'trace_play', 0x00498c90, 8), ('seta_restore', 'hook', 0x004b148c, 8))
+
+
+def earlier_features():
+    """The engine-patch namespaces capture.cpp initialises before music_alert::initialize(), in that order."""
+    text = (ROOT / 'src/proxy/capture.cpp').read_text()
+    return re.findall(r'\b(\w+)::initialize\(', text[:text.index('music_alert::initialize();')])
+
+
+class MusicAlertInstallCheck(unittest.TestCase):
+    """core::install_windows_match, the installer's compare, compiled on the host against a copy of the EXE's .text
+    with the claims of the patches installed before it applied (the live image at music_alert::initialize)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = probe.EXE.read_bytes() if probe.EXE.is_file() else None
+        cls.compiler = shutil.which('clang++') or shutil.which('c++') or shutil.which('g++')
+        cls.directory = tempfile.TemporaryDirectory()
+        cls.harness = None
+        if cls.compiler:
+            source = Path(cls.directory.name) / 'install.cpp'
+            source.write_text(INSTALL_HARNESS)
+            cls.harness = Path(cls.directory.name) / 'install'
+            cls.build = subprocess.run([cls.compiler, '-std=c++17', '-O1', '-Wall', '-Wextra', '-Werror', '-I',
+                                        str(ROOT / 'src/proxy'), str(source), '-o', str(cls.harness)],
+                                       capture_output=True, text=True, timeout=300)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def check(self, text, fail_va=None):
+        if self.data is None:
+            self.skipTest(f'{probe.EXE} absent')
+        if not self.compiler:
+            self.skipTest('no host C++ compiler')
+        self.assertEqual(self.build.returncode, 0, self.build.stderr[-3000:])
+        image = Path(self.directory.name) / 'text.bin'
+        image.write_bytes(bytes(text))
+        args = [str(self.harness), str(image), hex(TEXT_VA)] + ([hex(fail_va)] if fail_va else [])
+        run = subprocess.run(args, capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        return run.stdout.strip()
+
+    def text(self):
+        return bytearray(self.data[TEXT_RAW:TEXT_RAW + probe.TEXT_SIZE])
+
+    @staticmethod
+    def claim(text, va, length):
+        """The bytes a claim leaves: jmp rel32 to an arena address, the rest of the claimed span as 0xcc (the
+        five-byte write plus a conservative cover of the whole spec length)."""
+        if not TEXT_VA <= va < TEXT_VA + len(text):
+            return False
+        patch = b'\xe9' + struct.pack('<i', 0x041a0000 - (va + 5)) + b'\xcc' * max(0, length - 5)
+        off = va - TEXT_VA
+        text[off:off + length] = patch[:len(text) - off]
+        return True
+
+    def test_live_image_after_the_earlier_claims_matches(self):
+        order = earlier_features()
+        for name in ('media_cue', 'fov', 'ship_steering', 'collide_box_cull', 'collide_memo', 'music_keep', 'seta_restore'):
+            self.assertIn(name, order)
+        rank = {name: i for i, name in enumerate(order)}
+
+        def owner(base):
+            return rank.get(base, rank.get(base + 's', rank.get({'terran_lod': 'terran_station_lod'}.get(base, ''))))
+
+        claims = collected_claims() + list(UNCOLLECTED_EARLIER)
+        earlier = sorted((c for c in claims if owner(c[0]) is not None), key=lambda c: owner(c[0]))
+        text = self.text()
+        applied = {va for _, _, va, length in earlier if self.claim(text, va, length)}
+        for va in (0x00498140, 0x004cfd46, 0x0041c9d9, 0x0044ccc0, 0x0044dd90, 0x00454b91, 0x0045d58e, 0x004e25a3,
+                   0x004043a5, 0x0047f329, 0x004982db, 0x00498d71, 0x004b148c, 0x00403f2f):
+            self.assertIn(va, applied, hex(va))
+        self.assertGreaterEqual(len(applied), 100)
+        self.assertEqual(self.check(text), 'match')
+        # Every other collected claim too (the chase, sun-occlusion, cull and loading sites installed later).
+        later = [c for c in claims if owner(c[0]) is None]
+        self.assertGreaterEqual(len(later), 20)
+        for _, _, va, length in later:
+            self.claim(text, va, length)
+        self.assertEqual(self.check(text), 'match')
+
+    def test_unmodified_image_matches_and_long_windows_are_compared_whole(self):
+        text = self.text()
+        self.assertEqual(self.check(text), 'match')
+        rows, _ = header_windows()
+        long_rows = [(n, va, raw) for n, va, raw in rows if len(raw) > 16]
+        self.assertEqual(len(long_rows), 13)  # engine_patch::verify_bytes refuses these (max_prologue = 16)
+        self.assertEqual(long_rows[0][:2], ('range_window', 0x0042c915))  # the first the Run 189 build refused
+        for name, va, raw in long_rows:
+            with self.subTest(window=name):
+                changed = self.text()
+                changed[va - TEXT_VA + len(raw) - 1] ^= 0x01
+                self.assertEqual(self.check(changed), 'mismatch name=%s va=0x%08x readable=1 expected=%s got=%s'
+                                 % (name, va, raw[:8].hex(), raw[:8].hex()))
+
+    def test_first_mismatch_is_named(self):
+        text = self.text()
+        self.claim(text, probe.RELATION_VA, 5)
+        self.claim(text, probe.DISTANCE_VA, 5)
+        relation = probe.window_bytes(dict((n, h) for n, _, h in probe.WINDOWS)['relation_body'])
+        got = (b'\xe9' + struct.pack('<i', 0x041a0000 - (probe.RELATION_VA + 5)) + relation[5:8]).hex()
+        self.assertEqual(self.check(text), 'mismatch name=relation_body va=0x00450890 readable=1 expected=%s got=%s'
+                         % (relation[:8].hex(), got))
+        site = self.text()
+        site[probe.SITE_VA - TEXT_VA:probe.SITE_VA - TEXT_VA + 6] = b'\x90' * 6
+        self.assertRegex(self.check(site), r'^mismatch name=site_window va=0x0042c965 ')
+        caller = self.text()
+        caller[probe.WALK_CALLER_VA - TEXT_VA + 1] ^= 0x10
+        self.assertEqual(self.check(caller), 'mismatch name=walk_caller va=0x0041cdea readable=1 expected=e8a1fa0000 got=e8b1fa0000')
+        self.assertEqual(self.check(self.text(), fail_va=probe.RELATION_VA + 4),
+                         'mismatch name=relation_body va=0x00450890 readable=0 expected=%s got=0000000000000000' % relation[:8].hex())
+
+    def test_installer_uses_the_core_compare_and_logs_the_window(self):
+        text = MODULE.read_text()
+        self.assertNotIn('verify_bytes(', text)
+        self.assertIn('core::install_windows_match(', text)
+        self.assertIn('engine_patch::read_code(at, out, n)', text)
+        self.assertIn('window=%s window_name=%s expected=%s got=%s"', text)
+        self.assertIn('mismatch_ = core::Mismatch{};', text)
+        self.assertRegex((ROOT / 'src/proxy/engine_patch.h').read_text(), r'max_prologue = 16;')
+
+
 class MusicAlertLaunch(unittest.TestCase):
     """--dry-run only; never a launch (subprocess.call is an assertion)."""
 

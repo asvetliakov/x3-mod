@@ -97,7 +97,9 @@ sends neither unless given explicitly.
 * Install, once: `music_alert trigger=<engaged|vanilla|invalid> hold_ms=<n> hold_source=<default|setting|invalid_default>
   patched=<0|1> armed=<0|1> reason=<ok|vanilla|invalid_setting|executable_mismatch|late_claim|bytes_mismatch|pin_failed|
   <claim status>|chain_failed|rollback_failed> site=0x0042c974 continue=<tail> write=<plain|atomic|none> stub=<va>
-  windows=19 walk_limit=4096` (`write=plain` is the expected kind at this site, see above).
+  windows=19 walk_limit=4096 window=<0x…|none> window_name=<name|-> expected=<hex|-> got=<hex|unreadable|->` (`write=plain`
+  is the expected kind at this site, see above; `windows=19` counts the 18 windows and the site; on `bytes_mismatch` the
+  last four fields name the first window that differed and its first 8 bytes as expected and as read).
 * One per edge of the filtered level (the level the engine commits): `music_alert edge from=<old> to=<new>
   vanilla=<[R+8] before> committed=<[R+4]> reason=<letters a..f|-> age_ms=<now − stamp> cause=<stamp|held|expired|
   newer_than_now|out_of_range|none> now=<game ms> step=<frame step> seta=<(cfg+0xcc·cfg+0xd0)>>16> visited=<nodes>

@@ -153,6 +153,51 @@ constexpr Window windows[] = {
 constexpr unsigned window_count = sizeof windows / sizeof windows[0];
 // clang-format on
 
+// ---- The install check: every window in table order, then the six-byte site, each compared over its whole length.
+// Not engine_patch::verify_bytes: that caps a compare at max_prologue (16) bytes and refused 13 of these windows (the
+// Run 189 bytes_mismatch). Raw, no claim overlay: no other engine patch claims a byte of any window
+// (test_music_alert applies every collected claim to a copy of the EXE and reruns this check); the walk_caller window
+// pins `call 0x0042c890` byte for byte. `read(at, out, n)` reads n code bytes, false when unreadable. ----
+constexpr unsigned compare_capacity = 128, mismatch_shown = 8;
+constexpr bool windows_fit() {
+    for (const Window& w : windows)
+        if (w.length > compare_capacity) return false;
+    return site_length <= compare_capacity;
+}
+static_assert(windows_fit(), "a window exceeds the compare buffer");
+struct Mismatch {
+    const char* name = nullptr; // nullptr: every window matched
+    std::uint32_t va = 0;
+    bool readable = false;
+    unsigned shown = 0; // leading bytes of the window kept in expected/got (min(length, mismatch_shown))
+    unsigned char expected[mismatch_shown]{}, got[mismatch_shown]{};
+};
+template <class Read>
+inline bool window_equal(Read& read, const char* name, std::uint32_t va, const unsigned char* bytes, unsigned length,
+                         Mismatch& out) {
+    unsigned char actual[compare_capacity]{};
+    const bool readable = length <= compare_capacity && read(va, actual, length);
+    bool equal = readable;
+    for (unsigned i = 0; equal && i < length; ++i) equal = actual[i] == bytes[i];
+    if (equal) return true;
+    out.name = name;
+    out.va = va;
+    out.readable = readable;
+    out.shown = length < mismatch_shown ? length : mismatch_shown;
+    for (unsigned i = 0; i < out.shown; ++i) {
+        out.expected[i] = bytes[i];
+        out.got[i] = readable ? actual[i] : 0;
+    }
+    return false;
+}
+// True when every window and the site match; otherwise `out` names the first that does not.
+template <class Read> inline bool install_windows_match(Read&& read, Mismatch& out) {
+    out = Mismatch{};
+    for (const Window& w : windows)
+        if (!window_equal(read, w.name, w.va, w.bytes, w.length, out)) return false;
+    return window_equal(read, "site", site_va, site_bytes, site_length, out);
+}
+
 // ---- The rule (pure; Mem supplies `bool read(uint32_t at, void* out, unsigned n)` and `void write32(uint32_t at,
 // uint32_t v)`; every read is bounds-checked by Mem, a failed read ends the decision with no write) ----
 template <class Mem> bool u32(Mem& m, std::uint32_t base, unsigned offset, std::uint32_t& out) {
