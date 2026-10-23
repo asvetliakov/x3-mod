@@ -70,14 +70,16 @@
 //      music_keep_save_pump line per save. Optional: when E's windows or claim fail
 //      or the import row is not bound, the save keeps the paused mode.
 //   Resume after combat (music-script-driver.md section 4): at MOV_StopMovie (native
-//      caller 0x00499886) of a playing music record with a non-combat id (not
-//      1001..1042) the keep remembers (id, position ms), read as the engine's reader
-//      0x004d0600 does; combat plays keep it; the first start-0 play of that id is
-//      seeked to the position (Patch C rewrites the seek's start argument); another
-//      non-combat id, a vanilla stop-all or the one use clears it (music_keep_resume).
+//      caller 0x00499886) of a playing music record on the alert's rising edge (the cockpit
+//      record *0x00608504: [R+4] 0, [R+8] nonzero, inside NotifyAlert(1)) the keep remembers
+//      (id, position ms), read as the engine's reader 0x004d0600 does; plays with the alert on
+//      (combat tracks) keep it; the first start-0 play of that id with the alert off is seeked
+//      to the position (Patch C rewrites the seek's start argument); another id with the alert
+//      off, a vanilla stop-all or the one use clears it (music_keep_resume). No id list.
 //   Track queue (X3M_MUSIC_QUEUE=1, only with the keep; docs/architecture/music-queue.md,
 //      music-script-driver.md section 8.3 as amended by 8.4): at the MOV_StopMovie entry a stop
-//      from PlayMusicWithFade (task IP 0x0db54) of a playing non-combat music record, with the
+//      from PlayMusicWithFade (detected task IP; Mayhem 0x0db54) of a playing music record that is
+//      not the last play made with the alert on, with the
 //      LoopMusic-from-ChangeTrackMusic frame cells and the alert at 0/0, re-keys the record to a
 //      private id, keeps it playing, delivers the two vanilla completions itself and returns
 //      (ORPHANED); the new task's first MOV_PlayMovie at the shared play entry 0x00498c90 is
@@ -87,9 +89,10 @@
 //      newest id; combat, any other music stop or play (any caller of 0x00498c90), a stop-all
 //      other than alt-tab under skip_all (alt-tab under paused frees at the next Present) and an
 //      alert edge at Present end the queue (wake, free, vanilla). The prerequisite KC patch
-//      (150::WarpToSector's StopMusic(500) fork at CODE 0x161c3 -> jmp, build 1462141839) is
-//      maintained from Present and re-applied after every completed story reload (the load gate:
-//      KcPatch in music_keep_core.h).
+//      (150::WarpToSector's StopMusic(500) fork -> jmp; the window, the stop IPs and the return
+//      cells detected at run time in the loaded object, story_detect.h: Mayhem CODE 0x161c3, stock
+//      0x1639c) is maintained from Present and re-applied after every completed story reload (the
+//      load gate: KcPatch in music_keep_core.h).
 // X3M_MUSIC_TRACE=1 (three entry trampolines): 0x004982b0 (stop-all; caller
 //   return address), 0x00498c90 (play; id, start ms, caller) and 0x00498810
 //   (MOV_StopMovie native; id, caller). One line each, written synchronously

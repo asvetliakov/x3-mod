@@ -1,80 +1,455 @@
 {
- "core_constants": {
-  "story_build": 1462141839,
-  "warp_fork_offset": 90563,
-  "warp_continue_offset": 90583,
-  "warp_method_entry": 90501,
-  "warp_window_length": 6
- },
- "kc_stop_ips": {
-  "play_stop": "0db54",
-  "fade_stop": "0da17",
-  "play": "0dbf7",
-  "loop_music_return": "0dc84",
-  "change_track_return": "0dcdb"
- },
- "mayhem": {
-  "build": 1462141839,
-  "code_size": 1908859,
-  "checks": {
-   "method_entry": true,
-   "window_is_fork_then_jt": true,
-   "memory_form_pinned": true,
-   "patch_form_pinned": true,
-   "fork_child_is_stop_music_500": true,
-   "continuation_is_ldloc": true,
-   "no_branch_into_interior": true,
-   "no_method_entry_inside": true,
-   "length_header_build_unchanged": true,
-   "instruction_starts_outside_unchanged": true,
-   "method_entries_are_starts": true,
-   "patched_window_decodes": true,
-   "filler_unreached": true,
-   "method_end_unchanged": true,
-   "stack_depth_at_continuation_unchanged": true,
-   "build_accepted_by_proxy": true
+ "table": [
+  {
+   "name": "mayhem",
+   "prefix": "mayhem",
+   "build": 1462141839,
+   "seta_stop_ip": "1558d",
+   "seta_gate_return": "15ef8",
+   "warp_method_entry": "16185",
+   "warp_fork_offset": "161c3",
+   "warp_continue_offset": "161d7",
+   "warp_window_memory": "6f33d7610100",
+   "warp_patch_memory": "32d761010001",
+   "kc_play_stop_ip": "0db54",
+   "kc_fade_stop_ip": "0da17",
+   "kc_play_ip": "0dbf7",
+   "kc_loop_music_return": "0dc84",
+   "kc_change_track_return": "0dcdb"
   },
-  "warp_to_sector_entries": [
-   "16185"
-  ],
-  "file_window": "6f33000161d7",
-  "memory_window": "6f33d7610100",
-  "fork_child": [
-   "pushw(06) 500",
-   "push1(02)",
-   "pushw(06) 200",
-   "callcls(86) 200::StopMusic",
-   "drop(24)",
-   "op(70)"
-  ],
-  "jumps_into_window_interior": [],
-  "jumps_onto_window_start": [],
-  "depth_flowing_to_continuation": {
-   "vanilla_jt_after_pop": 0,
-   "patched_jmp": 1
+  {
+   "name": "stock_ap",
+   "prefix": "stock",
+   "build": 1510658513,
+   "seta_stop_ip": "157a6",
+   "seta_gate_return": "160d1",
+   "warp_method_entry": "1635e",
+   "warp_fork_offset": "1639c",
+   "warp_continue_offset": "163b0",
+   "warp_window_memory": "6f33b0630100",
+   "warp_patch_memory": "32b063010001",
+   "kc_play_stop_ip": "0d273",
+   "kc_fade_stop_ip": "0d136",
+   "kc_play_ip": "0d316",
+   "kc_loop_music_return": "0d3a3",
+   "kc_change_track_return": "0d3fa"
+  }
+ ],
+ "loaded_story": {
+  "source": "addon/07.cat:L/x3story.obj",
+  "build": 1462141839
+ },
+ "entries": {
+  "mayhem": {
+   "build": 1462141839,
+   "code_size": 1908859,
+   "checks": {
+    "method_entry": true,
+    "window_is_fork_then_jt": true,
+    "memory_form_pinned": true,
+    "patch_form_pinned": true,
+    "fork_child_is_stop_music_500": true,
+    "continuation_is_ldloc": true,
+    "no_branch_into_interior": true,
+    "no_method_entry_inside": true,
+    "length_header_build_unchanged": true,
+    "instruction_starts_outside_unchanged": true,
+    "method_entries_are_starts": true,
+    "patched_window_decodes": true,
+    "filler_unreached": true,
+    "method_end_unchanged": true,
+    "stack_depth_at_continuation_unchanged": true
+   },
+   "warp_to_sector_entries": [
+    "16185"
+   ],
+   "file_window": "6f33000161d7",
+   "memory_window": "6f33d7610100",
+   "fork_child": [
+    "pushw(06) 500",
+    "push1(02)",
+    "pushw(06) 200",
+    "callcls(86) 200::StopMusic",
+    "drop(24)",
+    "op(70)"
+   ],
+   "jumps_into_window_interior": [],
+   "jumps_onto_window_start": [],
+   "depth_flowing_to_continuation": {
+    "vanilla_jt_after_pop": 0,
+    "patched_jmp": 1
+   },
+   "stack_conflicts": {
+    "vanilla": 7,
+    "patched": 7
+   },
+   "failures": [],
+   "source": "addon/07.cat:L/x3story.obj",
+   "kc_ip_checks": {
+    "play_stop_after_MOV_StopMovie": true,
+    "fade_stop_after_MOV_StopMovie": true,
+    "play_after_MOV_PlayMovie": true,
+    "loop_music_return_after_call_PlayMusicWithFade": true,
+    "change_track_return_after_call_LoopMusic": true
+   },
+   "change_track_music_literal_ids": [
+    0,
+    0,
+    0,
+    13,
+    14,
+    8233,
+    8234,
+    8235,
+    8236,
+    8237
+   ],
+   "music_methods_equal_to_mayhem": {
+    "200::PlayMusicWithFade": true,
+    "200::LoopMusic": true,
+    "200::ChangeTrackMusic": true,
+    "200::MusicFadeOut": true,
+    "200::StopMusic": true
+   }
   },
-  "stack_conflicts": {
-   "vanilla": 7,
-   "patched": 7
+  "stock_ap": {
+   "build": 1510658513,
+   "code_size": 1812069,
+   "checks": {
+    "method_entry": true,
+    "window_is_fork_then_jt": true,
+    "memory_form_pinned": true,
+    "patch_form_pinned": true,
+    "fork_child_is_stop_music_500": true,
+    "continuation_is_ldloc": true,
+    "no_branch_into_interior": true,
+    "no_method_entry_inside": true,
+    "length_header_build_unchanged": true,
+    "instruction_starts_outside_unchanged": true,
+    "method_entries_are_starts": true,
+    "patched_window_decodes": true,
+    "filler_unreached": true,
+    "method_end_unchanged": true,
+    "stack_depth_at_continuation_unchanged": true
+   },
+   "warp_to_sector_entries": [
+    "1635e"
+   ],
+   "file_window": "6f33000163b0",
+   "memory_window": "6f33b0630100",
+   "fork_child": [
+    "pushw(06) 500",
+    "push1(02)",
+    "pushw(06) 200",
+    "callcls(86) 200::StopMusic",
+    "drop(24)",
+    "op(70)"
+   ],
+   "jumps_into_window_interior": [],
+   "jumps_onto_window_start": [],
+   "depth_flowing_to_continuation": {
+    "vanilla_jt_after_pop": 0,
+    "patched_jmp": 1
+   },
+   "stack_conflicts": {
+    "vanilla": 7,
+    "patched": 7
+   },
+   "failures": [],
+   "source": "addon/04.cat:L/x3story.obj",
+   "kc_ip_checks": {
+    "play_stop_after_MOV_StopMovie": true,
+    "fade_stop_after_MOV_StopMovie": true,
+    "play_after_MOV_PlayMovie": true,
+    "loop_music_return_after_call_PlayMusicWithFade": true,
+    "change_track_return_after_call_LoopMusic": true
+   },
+   "change_track_music_literal_ids": [
+    0,
+    0,
+    0,
+    13,
+    14,
+    8233,
+    8234,
+    8235,
+    8236,
+    8237
+   ],
+   "music_methods_equal_to_mayhem": {
+    "200::PlayMusicWithFade": true,
+    "200::LoopMusic": true,
+    "200::ChangeTrackMusic": true,
+    "200::MusicFadeOut": true,
+    "200::StopMusic": true
+   }
+  }
+ },
+ "detector": {
+  "addon/04.cat:L/x3story.obj": {
+   "seta": {
+    "fail": "none",
+    "where": "",
+    "stop_ip": "0x157a6",
+    "gate_return": "0x160d1",
+    "reads": "2754",
+    "gate": "0x160ab-0x16154",
+    "toggle": "0x157b2-0x15843",
+    "sector_warp": "0x16154-0x16200",
+    "quick_warp": "0x16bd4-0x16cad",
+    "jumpdrive": "0xbd7a3-0xbdf50",
+    "name_gate": "gate",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "none",
+    "where": "",
+    "build": "1510658513",
+    "warp_entry": "0x1635e",
+    "fork": "0x1639c",
+    "cont": "0x163b0",
+    "window": "6f33b0630100",
+    "patch": "32b063010001",
+    "play_stop": "0x0d273",
+    "fade_stop": "0x0d136",
+    "play": "0x0d316",
+    "loop_return": "0x0d3a3",
+    "change_return": "0x0d3fa",
+    "depth": "19",
+    "reads": "2234"
+   }
   },
-  "failures": []
- },
- "stock": {
-  "build": 1510658513,
-  "warp_to_sector_entry": "1635e",
-  "accepted_by_proxy": false
- },
- "kc_ip_checks": {
-  "play_stop_after_MOV_StopMovie": true,
-  "fade_stop_after_MOV_StopMovie": true,
-  "play_after_MOV_PlayMovie": true,
-  "loop_music_return_after_callself_PlayMusicWithFade": true,
-  "change_track_return_after_callcls_LoopMusic": true
- },
- "kc_ip_owners": {
-  "play_stop": "200::PlayMusicWithFade",
-  "fade_stop": "200::MusicFadeOut",
-  "play": "200::PlayMusicWithFade"
+  "addon/07.cat:L/x3story.obj": {
+   "seta": {
+    "fail": "none",
+    "where": "",
+    "stop_ip": "0x1558d",
+    "gate_return": "0x15ef8",
+    "reads": "2726",
+    "gate": "0x15ed2-0x15f7b",
+    "toggle": "0x15599-0x1562a",
+    "sector_warp": "0x15f7b-0x16027",
+    "quick_warp": "0x169fb-0x16ad4",
+    "jumpdrive": "0xd5f6c-0xd6770",
+    "name_gate": "gate",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "none",
+    "where": "",
+    "build": "1462141839",
+    "warp_entry": "0x16185",
+    "fork": "0x161c3",
+    "cont": "0x161d7",
+    "window": "6f33d7610100",
+    "patch": "32d761010001",
+    "play_stop": "0x0db54",
+    "fade_stop": "0x0da17",
+    "play": "0x0dbf7",
+    "loop_return": "0x0dc84",
+    "change_return": "0x0dcdb",
+    "depth": "19",
+    "reads": "2198"
+   }
+  },
+  "addon/04.cat:L/x3config.obj": {
+   "seta": {
+    "fail": "bad_layout",
+    "where": "vm",
+    "stop_ip": "0x00000",
+    "gate_return": "0x00000",
+    "reads": "7",
+    "gate": "0x00000-0x00000",
+    "toggle": "0x00000-0x00000",
+    "sector_warp": "0x00000-0x00000",
+    "quick_warp": "0x00000-0x00000",
+    "jumpdrive": "0x00000-0x00000",
+    "name_gate": "other",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "bad_layout",
+    "where": "vm",
+    "build": "1510658518",
+    "warp_entry": "0x00000",
+    "fork": "0x00000",
+    "cont": "0x00000",
+    "window": "000000000000",
+    "patch": "000000000000",
+    "play_stop": "0x00000",
+    "fade_stop": "0x00000",
+    "play": "0x00000",
+    "loop_return": "0x00000",
+    "change_return": "0x00000",
+    "depth": "19",
+    "reads": "7"
+   }
+  },
+  "addon/04.cat:L/x3galedit.obj": {
+   "seta": {
+    "fail": "none",
+    "where": "",
+    "stop_ip": "0x13ed1",
+    "gate_return": "0x147fc",
+    "reads": "2704",
+    "gate": "0x147d6-0x1487f",
+    "toggle": "0x13edd-0x13f6e",
+    "sector_warp": "0x1487f-0x1492b",
+    "quick_warp": "0x152ff-0x153d8",
+    "jumpdrive": "0xbef46-0xbf6f3",
+    "name_gate": "gate",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "none",
+    "where": "",
+    "build": "1510658517",
+    "warp_entry": "0x14a89",
+    "fork": "0x14ac7",
+    "cont": "0x14adb",
+    "window": "6f33db4a0100",
+    "patch": "32db4a010001",
+    "play_stop": "0x0bb22",
+    "fade_stop": "0x0b9e5",
+    "play": "0x0bbc5",
+    "loop_return": "0x0bc52",
+    "change_return": "0x0bca9",
+    "depth": "19",
+    "reads": "2178"
+   }
+  },
+  "addon/04.cat:L/x3intro.obj": {
+   "seta": {
+    "fail": "no_method",
+    "where": "150::StopFastForward",
+    "stop_ip": "0x00000",
+    "gate_return": "0x00000",
+    "reads": "30",
+    "gate": "0x00000-0x00000",
+    "toggle": "0x00000-0x00000",
+    "sector_warp": "0x00000-0x00000",
+    "quick_warp": "0x00000-0x00000",
+    "jumpdrive": "0x00000-0x00000",
+    "name_gate": "other",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "no_method",
+    "where": "150::WarpToSector",
+    "build": "1510658518",
+    "warp_entry": "0x00000",
+    "fork": "0x00000",
+    "cont": "0x00000",
+    "window": "000000000000",
+    "patch": "000000000000",
+    "play_stop": "0x00000",
+    "fade_stop": "0x00000",
+    "play": "0x00000",
+    "loop_return": "0x00000",
+    "change_return": "0x00000",
+    "depth": "19",
+    "reads": "30"
+   }
+  },
+  "addon/07.cat:L/x3config.obj": {
+   "seta": {
+    "fail": "bad_layout",
+    "where": "vm",
+    "stop_ip": "0x00000",
+    "gate_return": "0x00000",
+    "reads": "7",
+    "gate": "0x00000-0x00000",
+    "toggle": "0x00000-0x00000",
+    "sector_warp": "0x00000-0x00000",
+    "quick_warp": "0x00000-0x00000",
+    "jumpdrive": "0x00000-0x00000",
+    "name_gate": "other",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "bad_layout",
+    "where": "vm",
+    "build": "1462141340",
+    "warp_entry": "0x00000",
+    "fork": "0x00000",
+    "cont": "0x00000",
+    "window": "000000000000",
+    "patch": "000000000000",
+    "play_stop": "0x00000",
+    "fade_stop": "0x00000",
+    "play": "0x00000",
+    "loop_return": "0x00000",
+    "change_return": "0x00000",
+    "depth": "19",
+    "reads": "7"
+   }
+  },
+  "addon/07.cat:L/x3intro.obj": {
+   "seta": {
+    "fail": "no_method",
+    "where": "150::StopFastForward",
+    "stop_ip": "0x00000",
+    "gate_return": "0x00000",
+    "reads": "30",
+    "gate": "0x00000-0x00000",
+    "toggle": "0x00000-0x00000",
+    "sector_warp": "0x00000-0x00000",
+    "quick_warp": "0x00000-0x00000",
+    "jumpdrive": "0x00000-0x00000",
+    "name_gate": "other",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "no_method",
+    "where": "150::WarpToSector",
+    "build": "1462141842",
+    "warp_entry": "0x00000",
+    "fork": "0x00000",
+    "cont": "0x00000",
+    "window": "000000000000",
+    "patch": "000000000000",
+    "play_stop": "0x00000",
+    "fade_stop": "0x00000",
+    "play": "0x00000",
+    "loop_return": "0x00000",
+    "change_return": "0x00000",
+    "depth": "19",
+    "reads": "30"
+   }
+  },
+  "addon/07.cat:L/x3galedit.obj": {
+   "seta": {
+    "fail": "none",
+    "where": "",
+    "stop_ip": "0x14f11",
+    "gate_return": "0x1587c",
+    "reads": "2688",
+    "gate": "0x15856-0x158ff",
+    "toggle": "0x14f1d-0x14fae",
+    "sector_warp": "0x158ff-0x159ab",
+    "quick_warp": "0x1637f-0x16458",
+    "jumpdrive": "0xd881b-0xd901f",
+    "name_gate": "gate",
+    "name_bottom": "engine_input"
+   },
+   "queue": {
+    "fail": "none",
+    "where": "",
+    "build": "1462141841",
+    "warp_entry": "0x15b09",
+    "fork": "0x15b47",
+    "cont": "0x15b5b",
+    "window": "6f335b5b0100",
+    "patch": "325b5b010001",
+    "play_stop": "0x0d641",
+    "fade_stop": "0x0d504",
+    "play": "0x0d6e4",
+    "loop_return": "0x0d771",
+    "change_return": "0x0d7c8",
+    "depth": "19",
+    "reads": "2154"
+   }
+  }
  },
  "failures": [],
  "result": "PASS"

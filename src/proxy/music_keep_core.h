@@ -1,4 +1,5 @@
 #pragma once
+#include "story_detect.h"
 #include <cstdint>
 
 // Sector-music keep (X3M_MUSIC_KEEP=1) and the music trace (X3M_MUSIC_TRACE=1):
@@ -182,13 +183,17 @@ constexpr unsigned char e_post_window[e_post_length] = {
 // ---- Resume the sector track after combat (music-script-driver.md section 4) ----
 // The story stops (MOV_StopMovie, native caller 0x00499886) and frees the sector record when combat music starts and
 // replays the sector id from 0 when the alert ends. At the shared MOV_StopMovie entry the keep remembers (id, position)
-// of a playing music record whose id is not a combat id; the first later start-0 play of that id at Patch C is seeked to
+// of a playing music record stopped on the alert's rising edge; the first later start-0 play of that id at Patch C, with
+// the alert off, is seeked to
 // the position (the stack argument of 0x004d0430 rewritten in place: the path MOV_PlayMovieFrom takes; EDI, hence
 // [rec+0x1c], keeps 0). The position is read as the engine's reader 0x004d0600 does: [m+0x8c] & 0x20 ->
 // IMultiMediaStream::GetTime on [m+4] (vtbl +0x20, 100 ns units / 10000), else IMediaPosition::get_CurrentPosition on
-// [m+0x70] (vtbl +0x24, REFTIME seconds * 1000.0 at 0x00565550). Combat ids: 1001..1042 (the Mayhem driver's list).
+// [m+0x70] (vtbl +0x24, REFTIME seconds * 1000.0 at 0x00565550). Combat is the alert, not an id list: 150::NotifyAlert
+// runs synchronously inside the engine's commit of the cockpit alert record R = *0x00608504 ([R+4] committed level,
+// [R+8] this frame's level), so the script's stop of the sector track at a combat start arrives with [R+4] = 0 and
+// [R+8] != 0 (the rising edge, Run 189: 0/1), the combat track plays while the level is nonzero, and the sector track's
+// replay after the falling edge (1/0) plays with both 0 (music-script-driver.md section 8.4).
 constexpr std::uint32_t stop_movie_native_return_va = 0x00499886;
-constexpr std::uint32_t combat_id_first = 1001, combat_id_last = 1042;
 constexpr std::uint32_t position_reader_va = 0x004d0600;
 constexpr unsigned position_reader_length = 120; // the whole reader through its last `ret` at 0x004d0677
 // clang-format off
@@ -672,8 +677,18 @@ struct SavePump {
 };
 
 // ---- The resume memory (music-script-driver.md section 4) ----
-inline bool combat_id(std::uint32_t id) {
-    return id >= combat_id_first && id <= combat_id_last;
+// The alert record as a handler reads it: `ok` false when R or its levels are unreadable.
+struct Alert {
+    bool ok = false;
+    std::uint32_t committed = 0, current = 0; // [R+4], [R+8]
+};
+// The combat start: NotifyAlert(1) inside the commit (committed 0, this frame's level nonzero).
+inline bool alert_rising(const Alert& a) {
+    return a.ok && a.committed == 0 && a.current != 0;
+}
+// A combat track's play: the alert is on (either level nonzero).
+inline bool alert_on(const Alert& a) {
+    return a.ok && (a.committed != 0 || a.current != 0);
 }
 struct ResumeMemory {
     std::uint32_t id = 0, ms = 0;
@@ -683,7 +698,7 @@ enum class ResumeAction : unsigned {
     none = 0,
     remember,       // a sector track stopped by the script: (id, position) kept
     forget,         // a sector track stopped without a readable position: the old memory goes
-    keep,           // a combat track plays: the memory stays
+    keep,           // a music play while the alert is on (a combat track): the memory stays
     seek,           // the first start-0 play of the remembered id: seek to the position, memory used
     clear_sector,   // another non-combat id plays (sector change, dock): memory cleared
     clear_played,   // the remembered id plays positioned or still playing (seek skipped): memory cleared
@@ -702,11 +717,11 @@ inline const char* resume_action_name(ResumeAction a) {
     }
 }
 // MOV_StopMovie native entry: `caller` the native's return address, the found record's flags (0 when absent),
-// `position_ok`/`ms` the reading taken before the engine pauses it. Only the script's own stop (caller
-// stop_movie_native_return_va) of a playing music record with a non-combat id counts.
+// `position_ok`/`ms` the reading taken before the engine pauses it, `a` the alert at the stop. Only the script's own
+// stop (caller stop_movie_native_return_va) of a playing music record on the alert's rising edge counts.
 inline ResumeAction resume_on_stop(ResumeMemory& m, std::uint32_t caller, std::uint32_t id, std::uint32_t flags,
-                                   bool position_ok, std::uint32_t ms) {
-    if (caller != stop_movie_native_return_va || combat_id(id)) return ResumeAction::none;
+                                   bool position_ok, std::uint32_t ms, const Alert& a) {
+    if (caller != stop_movie_native_return_va || !alert_rising(a)) return ResumeAction::none;
     if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return ResumeAction::none;
     if (!position_ok || ms == 0 || ms >= position_limit_ms) {
         m = ResumeMemory{};
@@ -715,11 +730,12 @@ inline ResumeAction resume_on_stop(ResumeMemory& m, std::uint32_t caller, std::u
     m = ResumeMemory{id, ms, true};
     return ResumeAction::remember;
 }
-// Patch C, a music play (after decide_seek: `base` its action). Out: `seek_ms` for ResumeAction::seek.
+// Patch C, a music play (after decide_seek: `base` its action; `a` the alert at the play). Out: `seek_ms` for
+// ResumeAction::seek.
 inline ResumeAction resume_on_play(ResumeMemory& m, std::uint32_t id, std::int32_t start_ms, SeekAction base,
-                                   std::uint32_t& seek_ms) {
+                                   std::uint32_t& seek_ms, const Alert& a) {
     if (!m.valid) return ResumeAction::none;
-    if (combat_id(id)) return ResumeAction::keep;
+    if (alert_on(a)) return ResumeAction::keep;
     if (id != m.id) {
         m = ResumeMemory{};
         return ResumeAction::clear_sector;
@@ -786,31 +802,26 @@ constexpr unsigned char kc_loader_code_store[kc_loader_code_store_length] = {
     0xe8, 0xca, 0xf5, 0xff, 0xff, 0x8b, 0x4b, 0x10, 0x51, 0x55, 0x50, 0x89, 0x43, 0x08};
 constexpr unsigned char kc_loader_build_store[kc_loader_build_store_length] = {0x89, 0x83, 0x3c, 0x14, 0x00, 0x00};
 // The KC patch (section 8.4 "Prerequisite"): 150::WarpToSector forks a child that fades the old track out at the gate
-// (StopMusic(500), stop IP 0x0da17). In the Mayhem story object (build 1462141839) the 6 bytes `op6f; jt 0x161d7` at CODE
-// 0x161c3 become `jmp 0x161d7` plus one filler byte that is never reached (push0, the padding the gate-queue options use).
-// Jump operands are byte-swapped to little endian at load (0x0049e1a0), so the in-memory forms below differ from the
-// file's. Bound to the build id; applied (and re-applied after every story reload, which happens on each save load) from
-// Present when the window holds exactly the vanilla bytes; any other content refuses with the bytes seen.
-constexpr std::uint32_t story_build = 1462141839;
-constexpr std::uint32_t warp_fork_offset = 0x161c3, warp_continue_offset = 0x161d7, warp_method_entry = 0x16185;
-constexpr unsigned warp_window_length = 6;
+// (StopMusic(500), MusicFadeOut's stop). The window is detected at run time in the loaded object (story_detect.h
+// detect_queue; Mayhem CODE 0x161c3 -> 0x161d7, stock AP 0x1639c -> 0x163b0): its 6 bytes `op6f; jt <continue>` become
+// `jmp <continue>` plus one filler byte that is never reached (push0, the padding the gate-queue options use). Jump
+// operands are byte-swapped to little endian at load (0x0049e1a0). Detected once per VM key after the load gate opened;
+// applied (and re-applied after every story reload, which happens on each save load) from Present when the window
+// holds exactly the detected vanilla bytes; any other content refuses with the bytes seen. An object where the sites
+// are not found (x3config, x3intro, a story whose signatures do not match uniquely) is no_sites, naming the method.
+using story::warp_window_length;
 constexpr unsigned char kc_op_fork = 0x6f, kc_op_jt = 0x33, kc_op_jmp = 0x32, kc_op_filler = 0x01;
-constexpr unsigned char warp_window_memory[warp_window_length] = {0x6f, 0x33, 0xd7, 0x61, 0x01, 0x00};
-constexpr unsigned char warp_patch_memory[warp_window_length] = {0x32, 0xd7, 0x61, 0x01, 0x00, 0x01};
 constexpr unsigned kc_check_stride_frames = 8; // the fields and the window are re-read every 8th Present (and on a VM change)
-// The deferral site: the T3 stop from PlayMusicWithFade (task IP 0x0db54), the fade stop (0x0da17, never deferred) and
-// the T2 play from the same method (0x0dbf7). Frame cells of the ChangeTrackMusic fork child at its stop, by absolute
-// index from the end of the cell buffer ([ESI+0x14]; valid cells -capacity..-1; section 8.4): the stack index is -19.
-constexpr std::uint32_t kc_play_stop_ip = 0x0db54, kc_fade_stop_ip = 0x0da17, kc_play_ip = 0x0dbf7;
-constexpr std::uint32_t kc_loop_music_return = 0x0dc84, kc_change_track_return = 0x0dcdb;
-constexpr unsigned queue_stack_depth = 19; // k == -queue_stack_depth
-constexpr unsigned queue_cell_old = 18, queue_cell_loop_return = 13, queue_cell_new = 11, queue_cell_fade = 10,
-                   queue_cell_loop = 9, queue_cell_change_return = 7; // cell index = -depth
+// The deferral site, detected with the window: the T3 stop from PlayMusicWithFade (kc_play_stop_ip; Mayhem 0x0db54),
+// the fade stop (kc_fade_stop_ip, never deferred) and the T2 play from the same method (kc_play_ip). Frame cells of the
+// ChangeTrackMusic fork child at its stop, by absolute index from the end of the cell buffer ([ESI+0x14]; valid cells
+// -capacity..-1; section 8.4): the stack index is -queue_stack_depth (19), the cells -queue_cell_depths[i]
+// (old 18, loop return 13, new 11, fade 10, loop 9, change return 7): constants (story_detect.h), checked at each stop
+// against the cell tags and the detected return offsets.
 constexpr unsigned tag_int = 1, tag_return = 3;
-constexpr unsigned queue_cell_count = 6;
-constexpr unsigned queue_cell_depths[queue_cell_count] = {queue_cell_old,  queue_cell_loop_return, queue_cell_new,
-                                                          queue_cell_fade, queue_cell_loop,        queue_cell_change_return};
-// Ids never deferred as the new track: death, landing, combat (1001..1042) and boarding.
+using story::queue_cell_count;
+// Ids never deferred as the new track: death, landing and boarding (the same literals in both builds,
+// verify_music_queue_kc.py). A combat track is never deferred by the alert test instead (deferrable_shape).
 constexpr std::uint32_t id_death = 13, id_landing = 14, boarding_id_first = 8233, boarding_id_last = 8237;
 // Private keys for the orphan: outside 101..299 and every script id; one per episode.
 constexpr std::uint32_t queue_key_base = 0x7f000000, queue_key_mask = 0xffff;
@@ -824,7 +835,7 @@ inline std::int32_t cell_offset(std::int32_t index) {
 }
 // A new id N must be > 0 (signed) to be deferred: 0 (leave, StopMusic) and every negative id play at once.
 inline bool immediate_id(std::uint32_t id) {
-    return std::int32_t(id) <= 0 || id == id_death || id == id_landing || combat_id(id) || (id >= boarding_id_first && id <= boarding_id_last);
+    return std::int32_t(id) <= 0 || id == id_death || id == id_landing || (id >= boarding_id_first && id <= boarding_id_last);
 }
 inline std::uint32_t queue_key(std::uint32_t episode) {
     return queue_key_base + (episode & queue_key_mask);
@@ -851,9 +862,9 @@ enum class QueueReason : unsigned {
     not_armed,    // the queue is not armed (refused at install or music_keep off)
     no_task,      // ESI unreadable
     cells,        // the frame cells do not carry the LoopMusic-from-ChangeTrackMusic shape (values logged)
-    immediate_id, // the new id is <= 0 (signed), death, landing, combat or boarding
+    immediate_id, // the new id is <= 0 (signed), death, landing or boarding
     alert,        // [R+4] or [R+8] nonzero, or R unreadable
-    combat_old,   // the stopped id is a combat id
+    combat_old,   // the stopped id is the track the last music play started with the alert on
     not_playing,  // the record is absent, not music + playing, loop-flagged, unowned or has no media
     same_id,      // new id == old id
     // ends
@@ -912,6 +923,8 @@ struct QueueStopView {
     bool found = false;                                         // the first record with `id`
     std::uint32_t flags = 0, context = 0, rec_slot = 0, record = 0, media = 0;
     OrphanView orphan;                                          // when the queue is active
+    bool combat_old = false;                                    // id is the last play's id and that play had the alert on
+    const story::QueueSites* story = nullptr;                   // the detection for the VM's object (null: none or failed)
 };
 // The T2 entry (play routine) as the handler reads it.
 struct QueuePlayView {
@@ -921,6 +934,7 @@ struct QueuePlayView {
     bool found = false; // the first record with `id` (MOV_LoadMovie created it)
     std::uint32_t flags = 0;
     OrphanView orphan;
+    const story::QueueSites* story = nullptr; // the detection for the VM's object (null: none or failed)
 };
 // What the handler does, in this order: rekey O (`rekey`), wake the task O names (`wake`: deliver (wake_ctx, 1) through
 // wake_slot, then zero O's +0x14/+0x18), complete the calling task (`complete`: (complete_ctx, 1) through complete_slot),
@@ -950,16 +964,18 @@ struct TrackQueue {
         episode = e;
     }
 };
-// Is this stop the LoopMusic-from-ChangeTrackMusic shape with a deferrable new id? (the cells and the alert)
+// Is this stop the LoopMusic-from-ChangeTrackMusic shape with a deferrable new id? (the cells and the alert; only with
+// the story entry v.story, which the callers check)
 inline bool deferrable_shape(const QueueStopView& v, QueueReason& why) {
-    if (!v.task_ok) {
+    if (!v.task_ok || !v.story) {
         why = QueueReason::no_task;
         return false;
     }
-    if (!v.cells_ok || v.index != -std::int32_t(queue_stack_depth) || v.cells[0].tag != tag_int || v.cells[0].value != v.id ||
-        v.cells[1].tag != tag_return || v.cells[1].value != kc_loop_music_return || v.cells[2].tag != tag_int ||
+    const story::QueueSites& s = *v.story;
+    if (!v.cells_ok || v.index != -std::int32_t(s.queue_stack_depth) || v.cells[0].tag != tag_int || v.cells[0].value != v.id ||
+        v.cells[1].tag != tag_return || v.cells[1].value != s.kc_loop_music_return || v.cells[2].tag != tag_int ||
         v.cells[3].tag != tag_int || v.cells[3].value != 0 || v.cells[4].tag != tag_int || v.cells[4].value != 1 ||
-        v.cells[5].tag != tag_return || v.cells[5].value != kc_change_track_return) {
+        v.cells[5].tag != tag_return || v.cells[5].value != s.kc_change_track_return) {
         why = QueueReason::cells;
         return false;
     }
@@ -1007,10 +1023,11 @@ inline QueueOutcome queue_end(TrackQueue& q, QueueReason why, std::uint32_t call
     return out;
 }
 // T3, the MOV_StopMovie native entry (only the native caller 0x00499886 matters; the other two callers stay vanilla).
+// Without a story entry (no story loaded, or an unknown build) no stop is PlayMusicWithFade's: nothing defers.
 inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool armed, unsigned long long frame) {
     QueueOutcome out;
     if (v.return_va != stop_movie_native_return_va) return out;
-    const bool from_play = v.task_ok && v.task_ip == kc_play_stop_ip;
+    const bool from_play = v.story && v.task_ok && v.task_ip == v.story->kc_play_stop_ip;
     if (q.active()) {
         if (!v.orphan.live) return queue_end(q, QueueReason::lost, v.task_id, frame, v.orphan);
         if (!(v.orphan.flags & flag_playing) && v.orphan.context == 0)
@@ -1059,7 +1076,7 @@ inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool ar
         out.reason = why;
         return out;
     }
-    if (combat_id(v.id)) {
+    if (v.combat_old) {
         out.reason = QueueReason::combat_old;
         return out;
     }
@@ -1098,8 +1115,8 @@ inline QueueOutcome queue_on_play(TrackQueue& q, const QueuePlayView& v, unsigne
     QueueOutcome out;
     if (!q.active()) return out;
     if (!v.found || !(v.flags & flag_music)) return out; // speech, video
-    const bool mine = v.return_va == play_callers[0].return_va && v.task_ok && v.task_ip == kc_play_ip && v.task_id == q.task &&
-                      v.id == q.new_id;
+    const bool mine = v.return_va == play_callers[0].return_va && v.story && v.task_ok && v.task_ip == v.story->kc_play_ip &&
+                      v.task_id == q.task && v.id == q.new_id;
     if (!v.orphan.live) return queue_end(q, QueueReason::lost, v.task_id, frame, v.orphan);
     if (q.state == QueueState::orphaned) {
         if (!mine) return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
@@ -1161,11 +1178,11 @@ enum class KcResult : unsigned {
     already,
     no_vm,
     unreadable,
-    build_mismatch,
+    no_sites, // the queue's sites were not detected in the loaded object: refused (the row names the method and reason)
     out_of_range,
     bytes_mismatch,
     unwritable,
-    waiting // the window is vanilla but a story load may still be in progress: no write yet (the load gate)
+    waiting // no write yet: a story load may still be in progress (the load gate), or the sites were detected only now
 };
 inline const char* kc_result_name(KcResult r) {
     switch (r) {
@@ -1173,7 +1190,7 @@ inline const char* kc_result_name(KcResult r) {
     case KcResult::already: return "already";
     case KcResult::no_vm: return "no_vm";
     case KcResult::unreadable: return "unreadable";
-    case KcResult::build_mismatch: return "build_mismatch";
+    case KcResult::no_sites: return "no_sites";
     case KcResult::out_of_range: return "out_of_range";
     case KcResult::bytes_mismatch: return "bytes_mismatch";
     case KcResult::unwritable: return "unwritable";
@@ -1195,6 +1212,9 @@ struct KcObservation {
 };
 struct KcPatch {
     std::uint32_t vm = 0, code = 0, size = 0, build = 0;
+    const story::QueueSites* story = nullptr;   // the detection for (vm, code, size, build) (null: not detected yet)
+    const story::QueueSites* applied_story = nullptr; // the detection the last apply wrote (shutdown restores its window)
+    std::uint32_t noted_build = 0;         // the build of the last row (a no_sites row for each new build)
     KcResult result = KcResult::none;
     unsigned countdown = 1; // the first Present is due
     unsigned applied = 0, refused = 0;
@@ -1253,11 +1273,15 @@ struct KcPatch {
             r = KcResult::unreadable;
             return false;
         }
-        if (build != story_build) {
-            r = KcResult::build_mismatch;
+        if (!story || story->key.code != code || story->key.size != size || story->key.build != build) {
+            r = KcResult::waiting; // not detected for this object yet
             return false;
         }
-        if (code == 0 || size < warp_fork_offset + warp_window_length) {
+        if (!story->outcome.ok()) {
+            r = KcResult::no_sites;
+            return false;
+        }
+        if (code == 0 || size < story->warp_fork_offset + warp_window_length) {
             r = KcResult::out_of_range;
             return false;
         }
@@ -1267,8 +1291,8 @@ struct KcPatch {
         }
         bool vanilla = true, patched = true;
         for (unsigned i = 0; i < warp_window_length; ++i) {
-            if (window[i] != warp_window_memory[i]) vanilla = false;
-            if (window[i] != warp_patch_memory[i]) patched = false;
+            if (window[i] != story->warp_window_memory[i]) vanilla = false;
+            if (window[i] != story->warp_patch_memory[i]) patched = false;
         }
         if (patched) {
             r = KcResult::already;
@@ -1281,12 +1305,19 @@ struct KcPatch {
         r = KcResult::applied;
         return true;
     }
-    // A change of result (or a fresh apply) is a row; the `already` that follows an apply is the same state, no row.
+    // A change of result (or a fresh apply) is a row; the `already` that follows an apply is the same state, no row. A
+    // no_sites result is a row again for each new build id it sees (the config, then the intro).
     bool note(KcResult r) {
-        const bool row = r == KcResult::applied || (r != result && !(r == KcResult::already && result == KcResult::applied));
+        const bool per_build = r == KcResult::no_sites && r == result && build != noted_build;
+        const bool row = r == KcResult::applied || per_build ||
+                         (r != result && !(r == KcResult::already && result == KcResult::applied));
         result = r;
-        if (r == KcResult::applied) ++applied;
-        else if (r != KcResult::already && r != KcResult::none && r != KcResult::waiting) ++refused;
+        if (row) noted_build = build;
+        if (r == KcResult::applied) {
+            ++applied;
+            applied_story = story;
+        } else if (r != KcResult::already && r != KcResult::none && r != KcResult::waiting)
+            ++refused;
         return row;
     }
 };

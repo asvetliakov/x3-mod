@@ -39,6 +39,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='x3-music-mutate-') as temporary:
         d = Path(temporary)
         (d / 'h.cpp').write_text(module.HARNESS)
+        for header in ('story_detect.h', 'story_builds.h'):   # the core's includes
+            shutil.copy(ROOT / 'src/proxy' / header, d / header)
         for name, (old, new) in MUTATIONS.items():
             if core.count(old) != 1:
                 print(f'{name} anchor_missing'); ok = False; continue

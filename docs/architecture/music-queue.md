@@ -25,9 +25,12 @@ Three states, kept in `TrackQueue` (pure functions in the core header, host-test
    frame cells of the `ChangeTrackMusic` fork child by absolute index from the end of the cell buffer
    (`[ESI+0x14]`; valid cells `-capacity..-1`; the stack index `[ESI+0x18]` is -19): old id at -18 (must equal EAX),
    the `LoopMusic` return `(3, 0x0dc84)` at -13, the new id N at -11 (int), fade at -10 (0), loop at -9 (1) and the
-   `ChangeTrackMusic` return `(3, 0x0dcdb)` at -7. N must be greater than 0 as a signed id (0 and every negative id
-   play at once, section 8.3) and not 13 (death), 14 (landing), 1001..1042 (combat) or 8233..8237 (boarding); the alert record `*0x00608504` must read `[R+4] == 0 && [R+8] == 0` (a combat start stops
-   inside `NotifyAlert` with `[R+8] != 0`, a combat end with `[R+4] != 0`); the stopped id must not be a combat id; the
+   `ChangeTrackMusic` return `(3, 0x0dcdb)` at -7. The IPs and the two return offsets are the ones detected in the loaded
+   object at run time (Mayhem values shown; [story-builds.md](story-builds.md)). N must be greater than 0 as a signed
+   id (0 and every negative id play at once, section 8.3) and not 13 (death), 14 (landing) or 8233..8237 (boarding);
+   the alert record `*0x00608504` must read `[R+4] == 0 && [R+8] == 0` (a combat start stops inside `NotifyAlert` with
+   `[R+8] != 0`, a combat end with `[R+4] != 0`); the stopped id must not be the id of the last music play made with
+   the alert on (`combat_old`; no combat-id list since 2026-10-23); the
    first record with that id must be music and playing (`& 0x83 == 0x82`), owned (`+0x14 != 0`, not by the caller),
    with a slot below 32 and a media object. Then the handler re-keys the record to a private id `P = 0x7f000000 + n`
    (outside 101..299 and every script id, so `MOV_LoadMovie` never reuses it and the save's MOVI writer never sees it
@@ -69,13 +72,16 @@ Three states, kept in `TrackQueue` (pure functions in the core header, host-test
    the manager's walk (media-record-lifetime.md, boundary 1) and the walk then pauses the orphan as vanilla would.
 
 **The KC prerequisite.** Without it a jump never reaches the T3 test. In memory, the 6 bytes `op6f; jt 0x161d7` at
-CODE `0x161c3` of `150::WarpToSector` (Mayhem story build 1462141839; the vanilla bytes after the loader's little-endian
+CODE `0x161c3` of `150::WarpToSector` (Mayhem; stock `0x1639c` → `0x163b0`; the window is detected at run time by its
+fork child's signature once the load gate opens for a new VM key, [story-builds.md](story-builds.md); the vanilla
+bytes after the loader's little-endian
 operand swap are `6f 33 d7 61 01 00`) become `jmp 0x161d7` plus one `push0` filler that is never reached
 (`32 d7 61 01 00 01`). The fork's result cell was consumed by the `jt`, so the stack depth at the continuation is
 unchanged; instruction starts outside the window and every method entry are unchanged; no jump lands inside the window
 (`verify_music_queue_kc.py`). The patch is maintained from Present on the main thread, where no task runs: the VM
 pointer `*0x006085e4` is read every frame, its CODE buffer `[VM+8]`, size `[VM+0x10]` and build id `[VM+0x143c]` and
-the window every 8th frame or on a VM change (fault-free reads), the build must be 1462141839, the window must hold
+the window every 8th frame or on a VM change (fault-free reads), the sites must be detected for that exact VM key
+(else `action=no_sites` names the method and the reason), the window must hold
 exactly the vanilla bytes (our patch: nothing; anything else, a threaded or fused window: refused with the bytes
 seen), and the 6 bytes are written only after `VirtualQuery` reports the page committed and writable. Shutdown puts
 the vanilla bytes back when the window still holds the patch. The three EXE witnesses of that layout (the jump handler
@@ -124,11 +130,12 @@ free shims save EBX/ESI/EDI/EBP, and all of them are roots of `check_no_x87.py`.
 ## Rows
 
 * `music_queue requested= armed= reason= site_play=0x00498c90 write_play= stub_play= free=0x004986b0 vm=0x006085e4
-  story_build=1462141839 kc_window=0x161c3 kc_continue=0x161d7 kc_patch=pending|off key_base=0x7f000000 stack_depth=19
-  cells=-18,-13,-11,-10,-9,-7` at install.
-* `music_queue_kc frame= action=applied|already|waiting|no_vm|unreadable|build_mismatch|out_of_range|bytes_mismatch|
-  unwritable vm= code= size= build= window=0x161c3 bytes=<6 bytes seen> applied= refused= load_begins= markers=` once
-  per change of result and per apply (after every completed story reload).
+  detect=runtime expected=mayhem:1462141839:0x161c3:0x161d7,stock_ap:1510658513:0x1639c:0x163b0 kc_patch=pending|off
+  key_base=0x7f000000 stack_depth=19 cells=-18,-13,-11,-10,-9,-7` at install.
+* `music_queue_kc frame= action=applied|already|waiting|no_vm|unreadable|no_sites|out_of_range|bytes_mismatch|
+  unwritable vm= code= size= build= object= detect=pending|none|<reason> method=<method>|- window=<detected> bytes=<6
+  bytes seen> applied= refused= load_begins= markers=` once per change of result, per apply (after every completed
+  story reload) and for each new build that has no sites (x3config at frame 0, x3intro at the menu).
 * `music_queue frame= seq= qpc= event=defer|park|collapse|release|end reason= state= old= new= key= record= task=
   stop_task= wake= clear= complete= park= freed= free_later= frames= episode=` per transition (`frames` since the
   defer); `music_queue frame= seq= qpc= event=free_later key= freed=` at the Present after an alt-tab end under
@@ -145,7 +152,7 @@ free shims save EBX/ESI/EDI/EBP, and all of them are roots of `check_no_x87.py`.
 
 With `music_keep = 1`, `music_queue = 1` and `music_trace = 1`:
 
-1. The install row `music_queue … armed=1 reason=ok write_play=atomic`, then `music_queue_kc action=applied build=1462141839
+1. The install row `music_queue … armed=1 reason=ok write_play=atomic`, then `music_queue_kc action=applied build=1462141839 detect=none
    bytes=6f33d7610100` once the story object has settled (possibly after one `action=waiting` row) and again after every
    save load (`applied=` counts them, `load_begins=` the reloads seen); no
    `bytes_mismatch` row (one would mean the loader's peephole pass rewrote the window: the queue then never defers on a

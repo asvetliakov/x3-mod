@@ -1,0 +1,92 @@
+1. KC objects (L/*.obj): source, size, build id
+  03.cat         L/x3config.obj           637 B  build 1220834023
+  03.cat         L/x3galedit.obj      1626097 B  build 1220834016
+  03.cat         L/x3intro.obj         132460 B  build 1220834022
+  03.cat         L/x3story.obj        1814312 B  build 1220834009
+  04.cat         L/x3config.obj           637 B  build 1223997102
+  04.cat         L/x3galedit.obj      1622786 B  build 1223997096
+  04.cat         L/x3intro.obj         119103 B  build 1223997102
+  04.cat         L/x3story.obj        1833974 B  build 1223997089
+  05.cat         L/x3config.obj           637 B  build 1228158602
+  05.cat         L/x3galedit.obj      1632981 B  build 1228158595
+  05.cat         L/x3intro.obj         119578 B  build 1228158601
+  05.cat         L/x3story.obj        1847795 B  build 1228158587
+  06.cat         L/x3config.obj           637 B  build 1229697870
+  06.cat         L/x3galedit.obj      1634346 B  build 1229697864
+  06.cat         L/x3intro.obj         119577 B  build 1229697869
+  06.cat         L/x3story.obj        1850154 B  build 1229697856
+  07.cat         L/x3config.obj           637 B  build 1234196410
+  07.cat         L/x3galedit.obj      1636990 B  build 1234196404
+  07.cat         L/x3intro.obj         119486 B  build 1234196409
+  07.cat         L/x3story.obj        1856806 B  build 1234196396
+  08.cat         L/x3config.obj           637 B  build 1243527352
+  08.cat         L/x3galedit.obj      1641701 B  build 1243527345
+  08.cat         L/x3intro.obj         119687 B  build 1243527351
+  08.cat         L/x3story.obj        1889256 B  build 1243527337
+  09.cat         L/x3config.obj           637 B  build 1252606642
+  09.cat         L/x3galedit.obj      1671647 B  build 1252606636
+  09.cat         L/x3intro.obj         119741 B  build 1252606642
+  09.cat         L/x3story.obj        1946185 B  build 1252606627
+  10.cat         L/x3config.obj           637 B  build 1270117527
+  10.cat         L/x3galedit.obj      1679794 B  build 1270117520
+  10.cat         L/x3intro.obj         119886 B  build 1270117526
+  10.cat         L/x3story.obj        1990599 B  build 1270117510
+  11.cat         L/x3config.obj           637 B  build 1274786263
+  11.cat         L/x3galedit.obj      1679802 B  build 1274786261
+  11.cat         L/x3intro.obj         130153 B  build 1274786263
+  11.cat         L/x3story.obj        2003586 B  build 1274786256
+  13.cat         L/x3config.obj           637 B  build 1510657426
+  13.cat         L/x3galedit.obj      1682672 B  build 1510657425
+  13.cat         L/x3intro.obj         133682 B  build 1510657426
+  13.cat         L/x3story.obj        3776752 B  build 1510657421
+  addon/01.cat   L/x3config.obj           659 B  build 1323793111
+  addon/01.cat   L/x3galedit.obj      1879403 B  build 1323793108
+  addon/01.cat   L/x3intro.obj         132990 B  build 1323793111
+  addon/01.cat   L/x3story.obj        2066791 B  build 1323793106
+  addon/02.cat   L/x3config.obj           659 B  build 1328010171
+  addon/02.cat   L/x3intro.obj         132015 B  build 1328010170
+  addon/02.cat   L/x3galedit.obj      1873722 B  build 1328010168
+  addon/02.cat   L/x3story.obj        2239966 B  build 1328010164
+  addon/03.cat   L/x3config.obj           659 B  build 1367929487
+  addon/03.cat   L/x3galedit.obj      1888244 B  build 1367929483
+  addon/03.cat   L/x3intro.obj         134600 B  build 1367929487
+  addon/03.cat   L/x3story.obj        2292724 B  build 1367929478
+  addon/04.cat   L/x3config.obj           659 B  build 1510658518
+  addon/04.cat   L/x3galedit.obj      1889564 B  build 1510658517
+  addon/04.cat   L/x3intro.obj         134720 B  build 1510658518
+  addon/04.cat   L/x3story.obj        2312979 B  build 1510658513
+  addon/07.cat   L/x3config.obj           661 B  build 1462141340
+  addon/07.cat   L/x3intro.obj         134461 B  build 1462141842
+  addon/07.cat   L/x3galedit.obj      2007913 B  build 1462141841
+  addon/07.cat   L/x3story.obj        2182503 B  build 1462141839
+  loose L/*.obj: none
+
+2. X3AP.exe object-name table and its readers
+  0x0057c8c8 -> x3story     read at 0x00402e49, 0x004036ef
+  0x0057c8cc -> x3intro     read at 0x00402e3d, 0x004036e8
+  0x0057c8d0 -> x3tutorial  read at 0x00402e0b, 0x004036fd
+  0x0057c8d4 -> x3config    read at 0x00402df3, 0x004031fe, 0x0040321d
+  0x0057c8d8 -> x3galedit   read at 0x00402dff, 0x004036f6
+  0x0057c8dc -> x3demo      read at 0x00402de8, 0x00403704
+  0x0057c8e0 -> x3pdemo     read at 0x00402dd9, 0x0040370b
+  mode switch 0x004036e0 jmp [ecx*4+0x00403818], [*0x0057fc60+0x4d8] = 0..8: 0:0x00402ed5, 1:0x004036e7, 2:0x004036ee, 3:0x004036f5, 4:0x004036fc, 5:0x00403703, 6:0x0040370a, 7:0x00403714, 8:0x0040379b
+  0x004031fd a1d4c85700 ok
+  0x00403203 e858 ok
+  0x004036e7 a1ccc85700 ok
+  0x004036ee a1c8c85700 ok
+  0x0040370f e87ce4ffff ok
+  0x0040373a e801010000 ok
+  0x00403957 8bbed4040000 ok
+  0x0040396e e8bd960900 ok
+
+3. x3m.log: music_queue_kc rows and the session rows next to them
+  kc frame=0 action=build_mismatch build=1462141340 size=0
+  music_trace_stop frame=4 caller=0x0040387d name=session_start
+  music_trace_stop frame=4 caller=0x0040387d name=session_start
+  music_trace_stop frame=88 caller=0x0040387d name=session_start
+  music_trace_stop frame=633 caller=0x0040387d name=session_start
+  kc frame=640 action=waiting build=1462141839 size=1908859
+  kc frame=648 action=applied build=1462141839 size=1908859
+  music_trace_stop frame=49289 caller=0x0040387d name=session_start
+  kc frame=49296 action=build_mismatch build=1462141842 size=107358
+  session_end frames=49632

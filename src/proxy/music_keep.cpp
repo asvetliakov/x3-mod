@@ -86,6 +86,46 @@ std::uint64_t qpc() {
     LARGE_INTEGER v{};
     return QueryPerformanceCounter(&v) && v.QuadPart > 0 ? std::uint64_t(v.QuadPart) : 0;
 }
+// The queue's story sites (story_detect.h), detected from Present once per VM key after the load gate opened (kc_), and
+// the scratch the detection reads a method into. Present and the T2/T3 handlers run on the game's main thread.
+x3m::story::QueueSites kc_sites_{};
+unsigned char kc_scratch_[x3m::story::scratch_size];
+bool engine_read(std::uint32_t at, void* out, unsigned n) {
+    return x3m::engine_memory::read(at, out, n);
+}
+// The detection for the VM's current object when one was made for exactly this key and found every site: the VM
+// pointer from the image, its CODE buffer, size and build through the fault-free reader. Null otherwise (no VM, a
+// reload not yet detected, no story loaded, a signature that did not match): nothing defers.
+const x3m::story::QueueSites* sites_now() {
+    const std::uint32_t vm = load32(vm_ptr_va);
+    x3m::story::VmKey key;
+    if (!vm || !x3m::story::read_key(engine_read, vm, key)) return nullptr;
+    return kc_sites_.detected && kc_sites_.key == key && kc_sites_.outcome.ok() ? &kc_sites_ : nullptr;
+}
+// The cockpit alert record R = *0x00608504: [R+4] committed level, [R+8] this frame's level (the combat test).
+Alert read_alert() {
+    Alert a;
+    std::uint32_t record = 0, levels[3]{};
+    a.ok = x3m::engine_memory::read(alert_record_ptr_va, &record, 4) && record &&
+           x3m::engine_memory::read(record, levels, sizeof levels);
+    a.committed = levels[1];
+    a.current = levels[2];
+    return a;
+}
+// The id of the last music play and whether the alert was on at it (a combat track): a T3 stop of that id is combat_old.
+std::uint32_t combat_track_ = 0;
+// The known builds' expectations for the install row (story_builds.h; the run-time source is the detection):
+// name:build:window:continue per entry.
+char stories_[192] = "";
+void format_stories() {
+    unsigned at = 0;
+    for (const x3m::story::Build& b : x3m::story::builds) {
+        const int n = std::snprintf(stories_ + at, sizeof stories_ - at, "%s%s:%lu:0x%05lx:0x%05lx", at ? "," : "", b.name,
+                                    static_cast<unsigned long>(b.build), static_cast<unsigned long>(b.warp_fork_offset),
+                                    static_cast<unsigned long>(b.warp_continue_offset));
+        if (n > 0 && unsigned(n) < sizeof stories_ - at) at += unsigned(n);
+    }
+}
 // Compares a window with the unpatched image: a live shared entry claim (either feature's) is read as its
 // original bytes when the site still holds exactly that claim's patch; anything else there fails.
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
@@ -488,9 +528,11 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_seek(st
     sync_pumping();
     unsigned answer = unsigned(d.action);
     std::uint32_t resume_ms = 0;
-    if (resume_ok_) {
+    const Alert alert = read_alert(); // a play with the alert on is a combat track
+    combat_track_ = alert_on(alert) ? id : 0;
+    if (resume_ok_ && resume_.valid) {
         const ResumeMemory before = resume_;
-        const ResumeAction r = resume_on_play(resume_, id, start_ms, d.action, resume_ms);
+        const ResumeAction r = resume_on_play(resume_, id, start_ms, d.action, resume_ms, alert);
         if (r == ResumeAction::seek) {
             x3m_music_keep_resume_ms = resume_ms;
             answer |= seek_resume_bit;
@@ -559,8 +601,12 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_mo
     // The track queue (queue_armed_ only with the keep; a disarmed queue still logs one refuse row per
     // PlayMusicWithFade stop of a music record, so a flight shows what it would have deferred).
     bool resume_candidate = true;
+    const Alert alert = read_alert(); // the rising edge (a combat start) and the queue's 0/0 test
     if (queue_armed_ || queue_requested_) {
+        const x3m::story::QueueSites* story = sites_now(); // the queue's IPs and cells
         QueueStopView v;
+        v.story = story;
+        v.combat_old = combat_track_ != 0 && id == combat_track_;
         v.return_va = return_va;
         v.id = id;
         v.task_id = block[5];
@@ -570,15 +616,13 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_mo
         v.task_ip = t.ip;
         v.capacity = t.capacity;
         v.index = std::int32_t(t.index);
-        if (v.task_ok && v.task_ip == kc_play_stop_ip) {
+        if (story && v.task_ok && v.task_ip == story->kc_play_stop_ip) {
             v.cells_ok = true;
             for (unsigned i = 0; i < queue_cell_count && v.cells_ok; ++i)
-                v.cells_ok = read_cell_abs(t, -std::int32_t(queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value);
-            std::uint32_t alert = 0, levels[3]{};
-            v.alert_ok = x3m::engine_memory::read(alert_record_ptr_va, &alert, 4) && alert &&
-                         x3m::engine_memory::read(alert, levels, sizeof levels);
-            v.alert_old = levels[1];
-            v.alert_new = levels[2];
+                v.cells_ok = read_cell_abs(t, -std::int32_t(story->queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value);
+            v.alert_ok = alert.ok;
+            v.alert_old = alert.committed;
+            v.alert_new = alert.current;
         }
         v.found = record != 0;
         v.record = record;
@@ -592,14 +636,14 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_mo
         resume_candidate = o.resume_candidate;
         if (o.consume) return 1;
     }
-    // Resume memory: the script's own stop of a playing sector track, read before the engine pauses it. A record the
-    // queue parks or keeps is never a candidate.
-    if (!resume_ok_ || !resume_candidate || combat_id(id)) return 0;
+    // Resume memory: the script's own stop of a playing sector track on the alert's rising edge (a combat start), read
+    // before the engine pauses it. A record the queue parks or keeps is never a candidate.
+    if (!resume_ok_ || !resume_candidate || !alert_rising(alert)) return 0;
     if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return 0;
     std::uint32_t ms = 0;
     cpu.before_original(); // the COM call sees the engine's MXCSR and LastError; both are restored on return
     const bool read = read_position_ms(load32(record + record_media), ms);
-    const ResumeAction r = resume_on_stop(resume_, return_va, id, flags, read, ms);
+    const ResumeAction r = resume_on_stop(resume_, return_va, id, flags, read, ms, alert);
     if (r != ResumeAction::none) resume_line(r, ResumeMemory{id, read ? ms : 0, read}, id, "stop_movie");
     return 0;
 }
@@ -619,6 +663,7 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_queue_play(c
     TaskView t{};
     v.task_ok = read_task(task, t);
     v.task_ip = t.ip;
+    v.story = sites_now();
     const std::uint32_t record = find_record(v.id);
     v.found = record != 0;
     v.flags = record ? load32(record + record_flags) : 0;
@@ -637,10 +682,14 @@ namespace {
 // 16 frames of its completion and never while one may be in progress. The write is a plain 6-byte copy into the game's
 // own heap buffer after VirtualQuery says committed and writable; nothing executes bytecode during Present.
 void kc_row(KcResult r) {
-    x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u "
+    const bool detected = kc_.story != nullptr;
+    x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu object=%s detect=%s method=%s window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u "
              "load_begins=%u markers=%u",
              current_frame_, kc_result_name(r), static_cast<unsigned long>(kc_.vm), static_cast<unsigned long>(kc_.code),
-             static_cast<unsigned long>(kc_.size), static_cast<unsigned long>(kc_.build), static_cast<unsigned long>(warp_fork_offset),
+             static_cast<unsigned long>(kc_.size), static_cast<unsigned long>(kc_.build), x3m::story::object_name(kc_.build),
+             detected ? x3m::story::fail_name(kc_.story->outcome.fail) : "pending",
+             detected && kc_.story->outcome.where[0] ? kc_.story->outcome.where : "-",
+             static_cast<unsigned long>(detected ? kc_.story->warp_fork_offset : 0),
              kc_window_seen_[0], kc_window_seen_[1], kc_window_seen_[2], kc_window_seen_[3], kc_window_seen_[4], kc_window_seen_[5],
              kc_.applied, kc_.refused, kc_.load_begins, kc_.markers);
 }
@@ -655,9 +704,13 @@ __attribute__((noinline)) void music_queue_kc_present() {
     kc_.code = fields_ok ? code : 0;
     kc_.size = fields_ok ? size : 0;
     kc_.build = fields_ok ? build : 0;
-    const std::uint32_t at = code + warp_fork_offset;
+    const x3m::story::VmKey key{vm, kc_.code, kc_.size, kc_.build};
+    // The detection for this object, when one was made (its window is read and compared); else none yet.
+    kc_.story = fields_ok && kc_sites_.detected && kc_sites_.key == key ? &kc_sites_ : nullptr;
+    const bool sites = kc_.story && kc_.story->outcome.ok();
+    const std::uint32_t at = sites ? code + kc_.story->warp_fork_offset : 0;
     bool window_ok = false;
-    if (fields_ok && code && size >= warp_fork_offset + warp_window_length && at > code)
+    if (sites && code && size >= kc_.story->warp_fork_offset + warp_window_length && at > code)
         window_ok = x3m::engine_memory::read(at, kc_window_seen_, warp_window_length);
     if (!window_ok) std::memset(kc_window_seen_, 0, sizeof kc_window_seen_);
     KcObservation seen;
@@ -669,7 +722,14 @@ __attribute__((noinline)) void music_queue_kc_present() {
     std::memcpy(seen.window, kc_window_seen_, warp_window_length);
     const bool settled = kc_.settle(seen);
     KcResult r = KcResult::none;
-    if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r) && !settled)
+    if (fields_ok && !kc_.story && settled) {
+        // The load gate is open for an object not detected yet: detect its sites now (once per VM key); the write waits
+        // for the next checks, which observe the detected window.
+        x3m::story::detect_queue(engine_read, vm, kc_sites_, kc_scratch_);
+        kc_sites_.key = key;
+        kc_.story = &kc_sites_;
+        r = kc_sites_.outcome.ok() ? KcResult::waiting : KcResult::no_sites;
+    } else if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r) && !settled)
         r = KcResult::waiting; // a story load may still be in progress: no write at this check
     else if (r == KcResult::applied) {
         MEMORY_BASIC_INFORMATION info{};
@@ -680,7 +740,7 @@ __attribute__((noinline)) void music_queue_kc_present() {
              info.Protect == PAGE_EXECUTE_WRITECOPY) &&
             std::uintptr_t(info.BaseAddress) + info.RegionSize >= std::uintptr_t(at) + warp_window_length;
         if (writable)
-            std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), warp_patch_memory, warp_window_length);
+            std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), kc_.story->warp_patch_memory, warp_window_length);
         else
             r = KcResult::unwritable;
     }
@@ -1377,6 +1437,9 @@ bool install_keep(const char** reason) {
     resume_ = ResumeMemory{};
     queue_ = TrackQueue{};
     kc_ = KcPatch{};
+    kc_sites_ = x3m::story::QueueSites{};
+    combat_track_ = 0;
+    format_stories();
     queue_armed_ = false;
     queue_state_ = queue_requested_ ? "disabled" : "not_requested";
     e_live_ = save_pump_ = false;
@@ -1603,14 +1666,14 @@ bool initialize() {
             static_cast<unsigned long>(address_of(&x3m_music_trace_stop_movie_stub)), trace_line_cap);
     if (queue_present)
         log("music_queue requested=%u armed=%u reason=%s site_play=0x%08lx write_play=%s stub_play=0x%08lx free=0x%08lx vm=0x%08lx "
-            "story_build=%lu kc_window=0x%05lx kc_continue=0x%05lx kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u",
+            "detect=runtime expected=%s kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u",
             queue_variable_ ? 1u : 0u, queue_armed_ ? 1u : 0u, queue_state_,
             static_cast<unsigned long>(t_play_site_va), write_kind(play_site_.site.patched_in, play_site_.site.atomic_write),
             static_cast<unsigned long>(address_of(&x3m_music_queue_play_stub)), static_cast<unsigned long>(free_by_id_va),
-            static_cast<unsigned long>(vm_ptr_va), static_cast<unsigned long>(story_build), static_cast<unsigned long>(warp_fork_offset),
-            static_cast<unsigned long>(warp_continue_offset), queue_armed_ ? "pending" : "off",
-            static_cast<unsigned long>(queue_key_base), queue_stack_depth, queue_cell_old, queue_cell_loop_return, queue_cell_new,
-            queue_cell_fade, queue_cell_loop, queue_cell_change_return);
+            static_cast<unsigned long>(vm_ptr_va), stories_, queue_armed_ ? "pending" : "off",
+            static_cast<unsigned long>(queue_key_base), x3m::story::fork_child_stack_depth,
+            x3m::story::fork_child_cell_depths[0], x3m::story::fork_child_cell_depths[1], x3m::story::fork_child_cell_depths[2],
+            x3m::story::fork_child_cell_depths[3], x3m::story::fork_child_cell_depths[4], x3m::story::fork_child_cell_depths[5]);
     SetLastError(error);
     return keep_applied || trace_applied;
 }
@@ -1622,12 +1685,13 @@ bool shutdown() {
     if (keep_patched_) {
         // The KC bytes go back when the window still holds exactly the queue's patch (the story object is the game's own
         // heap buffer; a reloaded object is vanilla already).
-        if (kc_.result == KcResult::applied || kc_.result == KcResult::already) {
+        const x3m::story::QueueSites* s = kc_.applied_story;
+        if ((kc_.result == KcResult::applied || kc_.result == KcResult::already) && s && kc_.story == s) {
             unsigned char window[warp_window_length]{};
-            const std::uint32_t at = kc_.code + warp_fork_offset;
+            const std::uint32_t at = kc_.code + s->warp_fork_offset;
             bool ours = kc_.code && x3m::engine_memory::read(at, window, warp_window_length);
-            for (unsigned i = 0; ours && i < warp_window_length; ++i) ours = window[i] == warp_patch_memory[i];
-            if (ours) std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), warp_window_memory, warp_window_length);
+            for (unsigned i = 0; ours && i < warp_window_length; ++i) ours = window[i] == s->warp_patch_memory[i];
+            if (ours) std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), s->warp_window_memory, warp_window_length);
         }
         const bool back_q = release_for(play_site_, keep_play_acquired_),
                    back_sm = release_for(stop_movie_site_, keep_stop_movie_acquired_),
@@ -1668,12 +1732,11 @@ void save_pump_report() {
                          : !save_pump_bind_called_    ? "iat_unbound"
                                                       : save_pump_state_;
     log("music_keep_save_pump_hook reason=%s save_mode=%s iat=0x%08lx thunk=0x%08lx write_row=%u close_row=%u site_e=0x%08lx write_e=%s pump=0x%08lx "
-        "interval_ms=%u stride=%u bound_ms=%u resume=%s combat_ids=%lu..%lu",
+        "interval_ms=%u stride=%u bound_ms=%u resume=%s combat=alert_edge",
         reason, save_pump_ ? "keep_running" : "paused", static_cast<unsigned long>(gzwrite_iat_va),
         static_cast<unsigned long>(gzwrite_thunk_va), write_row_live_ ? 1u : 0u, close_row_live_ ? 1u : 0u,
         static_cast<unsigned long>(e_site_va), write_kind(e_site_.patched_in, e_site_.atomic_write),
-        static_cast<unsigned long>(pump_va), pump_interval_ms, pump_poll_stride, pump_bound_ms, resume_state_,
-        static_cast<unsigned long>(combat_id_first), static_cast<unsigned long>(combat_id_last));
+        static_cast<unsigned long>(pump_va), pump_interval_ms, pump_poll_stride, pump_bound_ms, resume_state_);
     SetLastError(error);
 }
 const char* trace_state() {
