@@ -92,6 +92,58 @@ constexpr unsigned char stop_call[stop_call_length] = {0x53, 0x6a, 0x01, 0x68, 0
                                                        0x00, 0x53, 0x53, 0xe8, 0x8d, 0xd3, 0x08, 0x00, 0x83, 0xc4, 0x18};
 constexpr std::uint32_t inject_site_va = 0x00410100; // the chase restore's shared injection site (not claimed here)
 
+// ---- the installer's comparison: every window above, in this order, each read whole ----
+// The windows are 4..173 bytes; engine_patch::verify_bytes compares 5..16-byte prologues only and refused case_rest in
+// Run 189 although the image matched (docs/verification/seta-restore.md). No other claim of the tree overlaps a window
+// (test_seta_restore pins it with the claim collector; the chase restore's and the music features' sites lie elsewhere),
+// so the bytes are compared raw: any difference, a foreign patch included, refuses. Read: bool(std::uint32_t, void*,
+// unsigned) reads code bytes.
+struct Window {
+    const char* name;
+    std::uint32_t va;
+    const unsigned char* bytes;
+    unsigned length;
+};
+constexpr Window windows[] = {{"hook", hook_va, hook_bytes, hook_length},
+                              {"case_rest", case_rest_va, case_rest, case_rest_length},
+                              {"dispatch_head", ti_dispatch_va, dispatch_head, dispatch_length},
+                              {"thunk_body", ti_thunk_va, thunk_body, thunk_length},
+                              {"table_entry", ti_table_entry_va, table_entry, sizeof table_entry},
+                              {"native_args", native_args_va, native_args, native_args_length},
+                              {"native_ip", native_ip_va, native_ip, native_ip_length},
+                              {"return_scan", return_scan_va, return_scan, return_scan_length},
+                              {"wrapper_body", script_call_va, wrapper_body, wrapper_length},
+                              {"stop_call", stop_call_va, stop_call, stop_call_length}};
+constexpr unsigned window_count = sizeof windows / sizeof windows[0];
+constexpr unsigned window_max = wrapper_length; // the longest window
+constexpr bool windows_bounded() {
+    for (const Window& w : windows)
+        if (!w.length || w.length > window_max) return false;
+    return true;
+}
+static_assert(windows_bounded(), "every window fits the comparison buffer");
+constexpr unsigned shown_bytes = 8; // the refusal row's expected=/got= prefix of the window
+struct Mismatch {
+    const Window* window = nullptr; // the first window that differs or cannot be read; null when all match
+    bool readable = false;
+    unsigned shown = 0; // min(length, shown_bytes)
+    unsigned char got[shown_bytes]{};
+};
+template <class Read> bool compare_windows(Read&& read, Mismatch& out) noexcept {
+    out = Mismatch{};
+    for (const Window& w : windows) {
+        unsigned char actual[window_max];
+        const bool readable = read(w.va, actual, w.length);
+        if (readable && !std::memcmp(actual, w.bytes, w.length)) continue;
+        out.window = &w;
+        out.readable = readable;
+        out.shown = w.length < shown_bytes ? w.length : shown_bytes;
+        if (readable) std::memcpy(out.got, actual, out.shown);
+        return false;
+    }
+    return true;
+}
+
 // ---- engine globals (each anchored in executable_identity.h) and fields ----
 constexpr std::uint32_t cfg_ptr_va = 0x00606f34, vm_ptr_va = 0x006085e4, manager_ptr_va = 0x0060850c,
                         game_root_va = 0x0057fc60;

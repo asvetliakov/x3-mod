@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <vector>
 using namespace x3m::seta_restore::core;
 static unsigned checks = 0;
 static void check(bool ok, const char* why) {
@@ -385,12 +386,99 @@ static void return_scans() {
         check(scan(empty).scan == Scan::unreadable, "unreadable task");
     }
 }
-int main() {
+// The installer's comparison over a flat image (VA image_base + i at byte i): reader, bounds, first mismatch.
+constexpr std::uint32_t image_base = 0x00400000u;
+struct Image {
+    std::vector<unsigned char> bytes;
+    bool read(std::uint32_t at, void* out, unsigned n) const {
+        if (at < image_base || at - image_base > bytes.size() || n > bytes.size() - (at - image_base)) return false;
+        std::memcpy(out, bytes.data() + (at - image_base), n);
+        return true;
+    }
+};
+static bool compare(const Image& image, Mismatch& m) {
+    return compare_windows([&](std::uint32_t at, void* out, unsigned n) { return image.read(at, out, n); }, m);
+}
+static Image synthetic() {
+    Image image;
+    image.bytes.assign(0x00200000, 0xcc);
+    for (const Window& w : windows) std::memcpy(image.bytes.data() + (w.va - image_base), w.bytes, w.length);
+    return image;
+}
+static void window_compare() {
+    check(window_count == 10 && windows[0].va == hook_va && windows[window_count - 1].va == stop_call_va, "window table");
+    unsigned longest = 0, beyond_prologue = 0;
+    for (const Window& w : windows) {
+        longest = w.length > longest ? w.length : longest;
+        beyond_prologue += w.length < 5 || w.length > 16; // engine_patch::verify_bytes' bound, which refused Run 189
+    }
+    check(longest == wrapper_length && longest == window_max && beyond_prologue == 8, "lengths 4..173, 8 beyond 5..16");
+    // every length in use, pinned against the compare routine's buffer (a new or longer window must update both)
+    constexpr unsigned lengths[window_count] = {8, 34, 33, 36, 4, 27, 15, 43, 173, 23};
+    for (unsigned i = 0; i < window_count; ++i)
+        check(windows[i].length == lengths[i] && windows[i].length <= window_max, windows[i].name);
+    Mismatch m;
+    for (unsigned i = 0; i < window_count; ++i) { // the last byte of each window counts, whatever its length
+        Image flipped = synthetic();
+        flipped.bytes[windows[i].va + windows[i].length - 1 - image_base] ^= 0xff;
+        check(!compare(flipped, m) && m.window == &windows[i] && m.readable, windows[i].name);
+    }
+    Image image = synthetic();
+    check(compare(image, m) && !m.window, "every window matches the unpatched image");
+    image.bytes[case_rest_va + 20 - image_base] ^= 0xff; // a byte past the first 16 still counts
+    check(!compare(image, m) && m.window == &windows[1] && m.readable && m.shown == 8 &&
+              !std::memcmp(m.got, case_rest, 8),
+          "case_rest byte 20 differs: named, got = the window's first 8 bytes");
+    image = synthetic();
+    image.bytes[ti_table_entry_va - image_base] = 0x90; // the 4-byte window compares too
+    check(!compare(image, m) && m.window == &windows[4] && m.shown == 4 && m.got[0] == 0x90, "table entry differs");
+    image = synthetic();
+    image.bytes[script_call_va + wrapper_length - 1 - image_base] ^= 1; // the wrapper's last byte
+    check(!compare(image, m) && m.window == &windows[8], "wrapper tail differs");
+    image = synthetic();
+    image.bytes[hook_va - image_base] = 0xe9; // a foreign jmp over the hook and the stop call: the hook named first
+    image.bytes[stop_call_va - image_base] = 0xe9;
+    check(!compare(image, m) && m.window == &windows[0] && m.got[0] == 0xe9, "first mismatch in table order");
+    image = synthetic();
+    image.bytes.resize(hook_va + 4 - image_base); // the hook window runs past the readable image
+    check(!compare(image, m) && m.window == &windows[0] && !m.readable && m.shown == 8, "unreadable window reported");
+}
+// --image <flat file>: the comparison over a live-image model (test_seta_restore builds it from X3AP.exe with the earlier
+// features' claim bytes applied). One line: windows=N mismatch=none | mismatch=<name> va=0x... readable=0|1 got=hex.
+static int run_image(const char* path) {
+    Image image;
+    FILE* f = std::fopen(path, "rb");
+    if (!f) {
+        std::fprintf(stderr, "cannot open %s\n", path);
+        return 2;
+    }
+    unsigned char buffer[65536];
+    for (std::size_t n; (n = std::fread(buffer, 1, sizeof buffer, f)) > 0;)
+        image.bytes.insert(image.bytes.end(), buffer, buffer + n);
+    std::fclose(f);
+    Mismatch m;
+    if (compare(image, m)) {
+        std::printf("image windows=%u mismatch=none\n", window_count);
+        return 0;
+    }
+    std::printf("image windows=%u mismatch=%s va=0x%08x readable=%u got=", window_count, m.window->name,
+                unsigned(m.window->va), unsigned(m.readable));
+    for (unsigned i = 0; i < m.shown; ++i) std::printf("%02x", m.got[i]);
+    std::printf("\n");
+    return 1;
+}
+int main(int argc, char** argv) {
+    if (argc == 3 && !std::strcmp(argv[1], "--image")) return run_image(argv[2]);
+    if (argc == 2 && !std::strcmp(argv[1], "--windows")) { // the table, one "name va length" line each
+        for (const Window& w : windows) std::printf("%s 0x%08x %u\n", w.name, unsigned(w.va), w.length);
+        return 0;
+    }
     constants();
     arm_conditions();
     cancels();
     inject_sequence();
     return_scans();
+    window_compare();
     std::printf("seta_restore_host checks=%u\nchecks PASS\n", checks);
     return 0;
 }
