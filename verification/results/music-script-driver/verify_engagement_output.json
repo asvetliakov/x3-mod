@@ -1,0 +1,247 @@
+{
+ "status": "PASS",
+ "failures": [],
+ "exe": "/mnt/c/X3/X3AP.exe",
+ "patterns": 37,
+ "sa_entries": 14,
+ "callers": {
+  "0045e130": [
+   "0045d233",
+   "0045d2ff",
+   "0045d691",
+   "0045da3c",
+   "0045df5c"
+  ],
+  "0045d1b0": [
+   "0045d4cf",
+   "0045d4fa"
+  ],
+  "0045d250": [
+   "0043a38f"
+  ],
+  "0043a360": [
+   "00403b17"
+  ],
+  "0041cde0": [
+   "00403f2f"
+  ],
+  "00448b30": [
+   "00461df0"
+  ],
+  "00450950": [
+   "00466887"
+  ]
+ },
+ "hook_spans_interior_branches": {
+  "0042c974": [],
+  "0042c93b": [],
+  "0045e4b5": [],
+  "0045e6a6": []
+ },
+ "flags2_sites": {
+  "or_0x80000_hit": [
+   "0045e4b5",
+   "0045e6a6"
+  ],
+  "test_0x80000_hit": [
+   "004283ab"
+  ],
+  "or_0x100_player_projectile": [
+   "004463ca",
+   "0044931c"
+  ],
+  "or_0x40_hit_by_player": [
+   "0045e4aa",
+   "0045e69b"
+  ],
+  "and_clear_0x80000_0x40": [
+   "0045d287"
+  ]
+ },
+ "kc_fire_sites": {
+  "mayhem": [
+   {
+    "pc": "d2db6",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "d2eb4",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "d2f6f",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "d3260",
+    "owner": "2004::FireLasersOnTarget",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "f7a08",
+    "owner": "2011::___startDefendThread",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "10b2c9",
+    "owner": "606::FireLaser",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "((10 | 32) | 1)",
+    "player_bit": true,
+    "how": "tracked"
+   },
+   {
+    "pc": "1b24b6",
+    "owner": "308::DoFireLaser",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "107f3",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   },
+   {
+    "pc": "10886",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   },
+   {
+    "pc": "10912",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   }
+  ],
+  "stock": [
+   {
+    "pc": "ba5dd",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "ba6db",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "ba7a2",
+    "owner": "2004::FireLasersOnDebris",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "bac6f",
+    "owner": "2004::FireLasersOnTarget",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "df734",
+    "owner": "2011::___startDefendThread",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "f5006",
+    "owner": "606::FireLaser",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "((10 | 32) | 1)",
+    "player_bit": true,
+    "how": "tracked"
+   },
+   {
+    "pc": "197544",
+    "owner": "308::DoFireLaser",
+    "native": "SA_FireOnObject",
+    "argc": 5,
+    "flags": "1",
+    "player_bit": false,
+    "how": "tracked"
+   },
+   {
+    "pc": "0feb8",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   },
+   {
+    "pc": "0ff4b",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   },
+   {
+    "pc": "0ffd7",
+    "owner": "621::HandleEvent",
+    "native": "SA_FireOnObject",
+    "argc": 4,
+    "flags": "1",
+    "player_bit": false,
+    "how": "linear"
+   }
+  ]
+ }
+}

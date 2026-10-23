@@ -1,0 +1,156 @@
+{
+ "callers": {
+  "0x00498370": [
+   "0x00403a7f",
+   "0x00403a98",
+   "0x00403b04",
+   "0x00486809",
+   "0x00492dbe",
+   "0x0049729b"
+  ],
+  "0x004984d0": [
+   "0x004971e8",
+   "0x004980e7",
+   "0x004984b0",
+   "0x004986d7",
+   "0x00498dde",
+   "0x00498fd8"
+  ],
+  "0x004986b0": [
+   "0x004986f0"
+  ],
+  "0x004986f0": [
+   "0x00499865"
+  ],
+  "0x00498810": [
+   "0x0045c27d",
+   "0x00499881",
+   "0x004f66be"
+  ],
+  "0x00498c90": [
+   "0x0049981f",
+   "0x00499982",
+   "0x004f6668"
+  ],
+  "0x0049f770": [
+   "0x00403a7a",
+   "0x00403a93",
+   "0x00403aff",
+   "0x00497296"
+  ],
+  "0x004b0b00": [
+   "0x004b0bd6",
+   "0x004b133a",
+   "0x004b1350",
+   "0x004b1375",
+   "0x004b139c"
+  ],
+  "0x004b0e00": [
+   "0x00403a6b",
+   "0x00403a84",
+   "0x00403af0",
+   "0x00497287"
+  ],
+  "0x004d1df0": [
+   "0x00403ace",
+   "0x004043ef",
+   "0x00404c6c",
+   "0x004b159d",
+   "0x004d1f81",
+   "0x004d1ff5",
+   "0x004edeba",
+   "0x004edeec",
+   "0x004ee1e1"
+  ]
+ },
+ "exe": "/mnt/c/X3/X3AP.exe",
+ "failures": [],
+ "hook_site_interior_branches": {
+  "0x0049981f": [],
+  "0x00499865": []
+ },
+ "hook_site_qword_offset": {
+  "0x004982b0": 0,
+  "0x00498810": 0,
+  "0x00498c90": 0,
+  "0x0049981f": 7,
+  "0x00499865": 5
+ },
+ "iat_0x005320e4": "QueryPerformanceCounter",
+ "kc_change_track_music_literal_ids": {
+  "0dd3a 200::ChangeTrackToSectorMusic": null,
+  "0de3a 200::ChangeTrackToCombatMusic": null,
+  "146a0 150::BeforeLeave": 0,
+  "170e9 150::DockingAllowed": 14,
+  "1b3347 308::DoPlayMusic": null,
+  "1bf4c 622::GameOver": 13,
+  "1bfab 622::GameOver": 0,
+  "1bfe4 622::Kill": 0,
+  "25ef0 624::StartAudio": null,
+  "e73fd 2134::SendMarinesToBoardShip": 8233,
+  "e8301 2073::MarinesCutThroughHull": 8234,
+  "e8d59 2073::RunBoardingProcess": 8235,
+  "e9cf8 2073::StartHacking": 8236,
+  "e9fa4 2073::StartHacking": 8237
+ },
+ "kc_return_ips": {
+  "0dc7f": "0dc84",
+  "0dcd6": "0dcdb"
+ },
+ "kc_stop_fast_forward_tail": [
+  "pushd(07) 65536",
+  "push1(02)",
+  "native(82) TI_SetTimeWarpFactor",
+  "drop(24)"
+ ],
+ "kc_ti_set_time_warp_factor_callers": [
+  "150::StopFastForward",
+  "150::Vbi",
+  "200::SpeakArrayWithPriorityAndFaceAndDuration",
+  "200::SpeakArrayWithPriorityAndFaceAndDurationWithSubtitle",
+  "203::DecreaseTimeWarp",
+  "203::IncreaseTimeWarp",
+  "2225::SpeakQuestionWithDuration",
+  "621::CutEvent"
+ ],
+ "patterns": 54,
+ "result": "PASS",
+ "tships_excluded_rows": {
+  "01.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  },
+  "02.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  },
+  "03.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  },
+  "07.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  },
+  "10.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  },
+  "12.cat": {
+   "0x10f": "SS_SH_MINE_1",
+   "0x13f": "SS_SH_TR_MINE",
+   "0x140": "SS_SH_MINE_2",
+   "0x141": "SS_SH_MINE_3"
+  }
+ }
+}

@@ -343,6 +343,9 @@ an `AttackedBy` timestamp hook. "A player-owned ship attacking" needs more RE.
 
 ## 6. Not established, and the flight that settles it (Q6)
 
+Since settled statically: run-time order (§7, up to I2), SETA (§7.2), the context-0 completion (§8.1) and the
+excluded subtypes (§7.4). §8.3 replaces the orphan policy of §3.
+
 * **Run-time order:** that T_old runs in the same scheduler pass as C's stop on a sector change, and in the next frame
   after a combat start. This is read from the head and tail link code only.
 * **SETA:** whether `TI_Delay(100)` and `(1000)` scale with SETA (game milliseconds; not traced).
@@ -373,11 +376,580 @@ Not covered today, and worth adding to the same diagnostic build:
 * `pos_ms=`, the graph position before the pause;
 * a Present-sampled `music_trace_alert from= to=` line on every change of `[*0x00608504+4]`.
 
+## 7. Scheduler order of a sector change (2026-10-23)
+
+Static, same EXE and story object. Every address and byte window below is pinned by
+[`verify_track_queue.py`](../../verification/results/music-script-driver/verify_track_queue.py) (`PASS`: 54 byte
+patterns, the TI jump table and names, the QPC import, direct-caller census, no raw branch into the interior of
+`0x0049981f` or `0x00499865`, KC return IPs and literal ids, TShips rows; output `verify_track_queue_output.json`
+beside it). **[m]** unless marked.
+
+### 7.1 One frame of the main loop
+
+The loop runs `0x00403ab0`..`0x004041d8` (back edge `je 0x00403ab0`). Per frame, in this order:
+
+| Step | Call site | What it does for music |
+| --- | --- | --- |
+| 1 | `0x00403ac5` | if paused (bit 0 of `[*0x0057fc60+0x4a0]`, set by `X2_SetPause` at `0x0040705d` just before its stop-all), an extra clock call `0x004d1df0` and a resync of the frame-delta bases `0x00609104`/`0x00609108` |
+| 2 | `0x00403af0` → `0x004b0e00` | **TI tick**: advances the game clock, then fires every due timer |
+| 3 | `0x00403af5` → `0x004d34b0` | message pump; WndProc's WM_ACTIVATE inactive arm runs the alt-tab stop-all here |
+| 4 | `0x00403aff` → `0x0049f770` | **scheduler pass** |
+| 5 | `0x00403b04` → `0x00498370` | **media manager**: DirectSound pump, natural end |
+| 6 | `0x00403f2f` → `0x0041cde0` → `0x0042c890` | alert level; `NotifyAlert` runs here as a synchronous call |
+| 7 | `0x00403f34` | render, then Present |
+
+Before the loop, `0x00403a6b`..`0x00403a98` run the tick, pump, scheduler and manager twice. `0x00497287`/`0x00497296`
+call the tick and the scheduler outside the loop (**[i]** a load or leave path; not read).
+
+### 7.2 `TI_Delay` and the game clock
+
+* **Registration.** `0x004b11ba` installs dispatcher `0x004b12d0` with a NULL completion and names at `0x00579f80`
+  (16 natives, `TI_Delay` = 0, `TI_SetTimeWarpFactor` = 9, `TI_SetAbsTime` = 13, `TI_GetRealTime` = 14; jump table
+  `0x004b15f8`).
+* **`TI_Delay(ms)`** (`0x004b1321`; with two arguments `s·1000 + ms`) calls `0x004b0b00` with EAX = ms, ESI = the TI
+  owner `*0x006085ec`, and the stack holding slot and task id. That function:
+  1. reads `now = [*0x00606f34+0x718]`, the game milliseconds;
+  2. adds a jitter `rand()·j/32768` with `j = ms/16 + 1`, or 256 from 4,096 ms up. `TI_Delay(100)` is therefore due
+     in 100..106 game ms, `TI_Delay(1000)` in 1000..1062;
+  3. stores `due` at node `+0x10`, task id `+0xc` and slot `+8`, and links the node at the tail of owner list `+0`.
+
+  It returns 1 **without a completion**. The interpreter cleared `task+0x20` before the call (`0x004a38a5`), so the
+  task suspends at `0x004a3919` (state 2, `0x004a437e`). Only when no node can be allocated is the completion
+  `(task, 0)` delivered at once.
+* **TI tick `0x004b0e00`.**
+  1. It first calls `0x004ee1e0` → `0x004d1df0`, the clock advance, which also writes the frame deltas
+     `+0x714`/`+0x71c`.
+  2. For every node with `due − now ≤ 0` (`jle` at `0x004b0ef5`) it delivers `(task id, 0)` through
+     `[VM+0x34+slot·0x18]` (`0x004b0f29`). For script tasks that is `0x004a4910`, which relinks the task at the
+     **head** of the runnable list.
+
+  The `TI_Delay` result is dropped by every music caller.
+* **Clock `0x004d1df0`.**
+  1. It reads QPC (IAT `0x005320e4`) and converts to whole real ms, spinning until at least 1 ms has passed.
+  2. `+0x720 += dt` is the real clock (`TI_GetRealTime`).
+  3. An override `[0x00608a98] ≠ 0` is added to `+0x718` once. Otherwise
+     `+0x718 += clamp(dt, 1, 200) · (([+0xcc]·[+0xd0]) >> 16) >> 16`.
+
+  The two factors:
+  * `[+0xcc]` is the 16.16 time-warp factor. It is written only by `TI_SetTimeWarpFactor` (`0x004b148c`), whose KC
+    callers include `150::Vbi` (the SETA ramp, up to ×10) and `150::StopFastForward` (`65536` = 1.0), plus
+    `203::Increase/DecreaseTimeWarp`, speech and cut-scene methods.
+  * `[+0xd0]` is a load throttle written by the TI tick (`0x004b0f85`..`0x004b1071`). It is multiplied by 0.7, down
+    to 0.3, while more than 1,000 timers fall due within the next `40·warp` ms. It recovers by 1.2 up to 1.0 below
+    200, and resets to 1.0 when the warp factor drops.
+* **SETA.** Every music wait is in **game ms and scales with SETA.** At ×k, `TI_Delay(100)` takes about 100/k real ms,
+  and `402::EnterSector`'s `TI_Delay(1000)` about 1000/k. Two bounds apply: a wait ends no earlier than the next
+  frame's tick, and real time per frame is clamped to 200 ms before scaling. Track playback runs on the graph's real
+  clock, so a track does not end sooner under SETA.
+* **Pause.** In the paused arm (step 1) the clock call still adds the scaled dt to `+0x718`. The following base resync
+  keeps the frame delta `+0x714` near 1 ms. Whether the story also sets the warp factor to 0 on pause was not traced.
+  **Not established:** whether TI waits expire during a pause.
+
+### 7.3 A sector change, frame by frame
+
+1. **Frame F, TI tick:** the `EnterSector` fork child E's `TI_Delay(1000)` falls due. E is linked at the runnable
+   head.
+2. **Frame F, scheduler pass:** E runs `ChangeTrackToSectorMusic` → `ChangeTrackMusic`, whose fork links task C at
+   the tail, sets `[VM+0x1434] = C` and runs C nested at once (`0x004a3760`).
+3. **C stops the old track.** C sets `m17 = −1` and calls `MOV_StopMovie(old)`, which enters `0x00498810`:
+   1. it takes the first record with that id;
+   2. clears flag `2` and pauses the record (`0x004d1810`);
+   3. delivers `(T_old, 1)` through the record's slot (`0x0049888c`). `0x004a4910` → `0x004a4740` then moves T_old
+      from state 2 to 1, replaces its native arguments with the result and links it at the **head**
+      (`0x004a47c9`..`0x004a47e0`);
+   4. zeroes `+0x18` and `+0x14` (`0x00498898`/`0x0049889f`);
+   5. delivers `(C, 1)` through EDI (`0x004988c1`). C is in state 1, so this only sets `+0x20 = 1` (the relink is
+      skipped at `0x004a4745`), and C continues synchronously.
+4. **C waits.** It sees `m17 == −1` and calls `TI_Delay(100)`: suspended, with a node due at `now_F + 100..106`.
+5. **E finishes.** It resumes after the fork, returns and ends (op `70`).
+6. **Same pass, T_old frees the old record.** `0x0049f770` re-reads the head after every task step (`0x0049f7a2`), so
+   T_old runs next. Its `MOV_PlayMovie` returned 1 and `m17 ≠ own`, so it calls `MOV_FreeMovie(old)`
+   (`0x004986f0` → `0x004986b0` → `0x004984d0`: completion skipped since the context is 0, media teardown, unlink,
+   free). It then sets `m18 = 0` and `m17 = −2`, and ends.
+7. **Frame F, manager:** nothing is left of the old id.
+8. **Frame F+n, n ≥ 1, TI tick:** C's node falls due and C is linked at the head. In that pass C sees `m17 = −2`,
+   sets `m17 = new`, `m18 = 0`, then runs `MOV_LoadMovie` (a new record, completion 1), `MOV_SetVolumeMovie` and
+   `MOV_PlayMovie`. That last call is the `0x00498c90` seek to 0, Run, flag `2` and context store; C then blocks on
+   the record.
+
+| # | Invariant | Enforced by | Depends on run-time state |
+| --- | --- | --- | --- |
+| I1 | The stop wakes T_old before C continues, and T_old is at the runnable head before C suspends | order `0x0049888c` → `0x004988c1`; head link `0x004a47c9` | no |
+| I2 | When the stop happens inside a scheduler pass, T_old frees the record in that same pass | `0x0049f770` loops while the head is non-empty and the step returned non-zero (`0x0049f7a0`) | **yes**: a native returning EAX = 0 later in the pass (`0x004a390e`) ends it, and T_old then runs first in the next pass |
+| I3 | C's load and play come at least one frame after its stop | the tick precedes the pass (`0x00403af0` < `0x00403aff`); `due > now` at insertion; the due test at the tick only | **yes**, the count: the first frame whose accumulated scaled dt reaches 100..106 game ms, about 6 frames at 60 fps and ×1, 1 frame at ×10 |
+| I4 | Free (frame F) precedes C's load (frame ≥ F+1) on a sector change | I2 + I3 | as I2 |
+| I5 | Combat start: the stop runs in the cockpit phase, so T_old frees in the next frame's pass. If C's node fires in that frame, the LIFO head link puts C in front of T_old; C sees `m17 = −1` and waits once more | `0x00403f2f` after `0x00403b04`; head insertion | SETA and frame rate |
+| I6 | C gives up (returning with `m17 = −1`) only after 9 waits with `m17` still −1 | KC `0x0db55`..`0x0db75` | only if T_old never runs |
+
+This settles the §6 bullets "Run-time order" (statically, up to I2's dependence) and "SETA". Gap at a sector change:
+at least one frame and about 100 game ms of silence between the old record's free and the new record's Run.
+
+### 7.4 Two §6 data unknowns
+
+* **The alert's excluded ship subtypes are mines.** TShips rows `0x10f` = `SS_SH_MINE_1`, `0x13f` = `SS_SH_TR_MINE`,
+  `0x140` = `SS_SH_MINE_2` and `0x141` = `SS_SH_MINE_3`, the same in every addon catalogue that carries TShips
+  (`01`, `02`, `03`, `07`, `10`, `12`). **[m]** `verify_track_queue.py`. That `[O+0x4a]` is the TShips row index
+  is **[i]**, consistent across the builds.
+* **The SETA scaling of the music delays:** §7.2.
+
+## 8. Deferral site contracts and the track-queue policy (2026-10-23)
+
+### 8.1 Completion facts a deferral relies on **[m]** unless marked
+
+* **A released record's natural end wakes nobody.** The stop zeroes both `+0x18` (slot) and `+0x14` (context). At the
+  natural end the manager therefore reads slot 0's completion `[VM+0x34]`, which is NULL:
+  * the VM constructor zeroes all 32 slots (`0x0049ced4`..`0x0049cef3`, EBX = 0);
+  * the script slot is index 1 (`0x0049cf2e`), and every later registration takes the next index;
+  * so the call at `0x00498461` is skipped (`0x00498459`).
+
+  With the script slot left in `+0x18`, context 0 would still be a no-op. `0x004a4910` looks key 0 up in the task
+  hash, and task ids come from the auto-id `0x004efcc0`, which issues 1..`0x7ffffffe` and wraps to 1
+  (`0x004efcc5`..`0x004efcde`). **[i]** for tasks restored from a save, because the loader's key source was not read.
+  This settles music-restart.md §6 "ctx 0 undecoded": §3's orphan with context 0 is safe and silent.
+* **Natural end** (`0x0049842b`..`0x00498469`) needs flag `2` (the walk visits only flagged records, `0x00498395`),
+  the loop bit clear (`0x00498402`), id ≠ 0 (`0x0049842e`: an id-0 record never ends) and status 2 from
+  `0x004d14e0`. It then clears flag `2`, delivers `([rec+0x14], 1)` through `[rec+0x18]` and zeroes both. It never
+  checks which task stopped the record. **Any flag-`2` record is pumped and serviced, and its natural end wakes
+  whatever task its `+0x14`/`+0x18` name**, in the manager phase; that task runs in the next frame's pass.
+* **Results the script sees.**
+  * `MOV_FreeMovie`: delete-by-id `0x004986b0` frees the first record with media ≠ 0 and that id and returns 1, else
+    0; `0x004986f0` delivers `(task, result)`; the KC **drops** it (`0x0dc40`).
+  * `MOV_StopMovie`: dropped too (`0x0db54`). The caller's completion still matters: without it C would suspend on
+    the stop.
+  * `MOV_PlayMovie`: 0 clears the loop flag (`0x0dbf7`).
+* **Ids.** `MOV_LoadMovie` reuses an existing record with the id and completes 1 at once (`0x004987ae`..`0x004987c3`,
+  `0x00498803`), so a record the proxy keeps must not keep a script id. The MOVI writer saves **every** linked record
+  (`0x00498955`). The restore recreates absent ids through the allocator, except 101..299 (`0x00498b7e`), and ignores
+  `+0x14`/`+0x18`.
+* **`0x00498c90`:**
+  * an absent id is created once with default flags (`0x00498cd5`, EAX = 0);
+  * a seek or run failure frees the record and completes `(ctx, 0)` (`0x00498dde`);
+  * on success it stores `a2`/`a1` into `+0x14`/`+0x18` (`0x00498dca`).
+
+### 8.2 The sites
+
+| Site | Bytes and boundary | Entry state | Contract | Used by §8.3 |
+| --- | --- | --- | --- | --- |
+| T3 `0x00498810` (shared: keep, trace) | `8b 0d 44 6f 60 00`; qword offset 0 | from `MOV_StopMovie`: return `0x00499886`, EAX = id, EDI = slot, `[esp+4]` = caller task id, ESI = task | preserves EBX/EBP/ESI/EDI; EAX/ECX/EDX scratch; the caller ignores EAX (`0x0049988a`) and the flags (`add esp,4`). Consume with `ret` | yes |
+| Free call `0x00499865` | `e8 86 ee ff ff`, between `mov ecx,[edx+1]` (`0x00499862`) and `add esp,4` (`0x0049986a`); qword offset 5, so the five bytes cross a qword (plain write); no raw branch into the interior | ECX = id, ESI = slot, `[esp+4]` = task id | the callee completes `(task, found)` itself; a thunk that skips it must deliver `(task, 1)` through ESI | **no**: with the re-key at the stop, T_old's free is a miss, returns 0 and is dropped |
+| Patch C `0x00498d54` (keep) | as music-restart.md §6 | EAX = ESI = record, `[esp]` = start ms | 0 return frees the record (`0x00498dde`) | no |
+| Run call `0x00498d71` (planned Patch E, music-restart.md §7.5) | `e8 fa 8a 03 00` | EAX = ESI = record | after a skipped Run the play still sets flag `2` and the context (`0x00498d8f`, `0x00498dd2`), so the manager queries the record each frame and only Patch D could hide it | no |
+| Patch D `0x004983d9` (keep) | as music-restart.md §6 | ECX = record | | no |
+| T2 `0x00498c90` (trace; shared claim needed) | `51 53 8b 5c 24 14`; qword offset 0 | from `MOV_PlayMovie`: return `0x00499824`, `[esp+4]` = slot, `[esp+8]` = task id, `[esp+0xc]` = id, `+0x10..+0x18` = 0, `+0x1c..+0x24` = −1, `+0x28` = 0; ESI = task, `[ESI+0x1c]` = `0x0dbf7` | cdecl, the caller pops `0x28`; preserves EBX/EBP/ESI/EDI; EAX and flags ignored. Consume with `ret`: the handler never completes synchronously (`0x00499824`..`0x0049982e`), so the task suspends exactly as in vanilla | yes |
+| or the handler's call `0x0049981f` | `e8 6c f4 ff ff`, between `push ecx` (`0x0049981e`) and `add esp,0x28` (`0x00499824`); qword offset 7 (plain write); no raw branch into the interior | as T2 at the callee | as T2 | alternative to sharing T2 |
+| T1 `0x004982b0` (shared: keep, trace) | `a1 44 6f 60 00` | `[esp]` = caller return (`alt_tab` `0x004d36c2`, `save` `0x00404561`, `pause` `0x00407069`, `load` `0x00404cf2`, `p_leave` `0x00497bbb`, `session_start` `0x0040387d`) | before the stop-all walk | yes |
+
+**Calling and reentrancy.** Everything runs on the main thread.
+
+* **Where T2 and T3 run.** Only from MOV natives inside an interpreter step: a scheduler pass, a nested fork child, or
+  `NotifyAlert`'s synchronous call in the cockpit phase. T3 has two more callers without a task, `0x0045c27d` and
+  `0x004f66be`; they stay vanilla.
+* **Completions** go through the slot table exactly as the engine does them: `VM ≠ 0`, `[VM+4] ≠ 0`, slot < 32,
+  function ≠ 0, cdecl `(ctx, status)`. They reach only `0x004a4910` → `0x004a4740`, list edits that run no bytecode
+  ([media-record-lifetime.md](media-record-lifetime.md)), so no handler re-enters itself.
+* **The proxy's one free** is `0x004986b0` with ECX = key. It pushes and pops ESI, clobbers EAX/ECX/EDX and frees only
+  a linked record with that id and media ≠ 0, so a stale record pointer can never be freed. Call it only from T2/T3
+  (the context `MOV_FreeMovie` uses) or from T1 for the non-`alt_tab` callers, after the queue state is updated.
+* **Never free from T1 for `alt_tab`.** WndProc can run inside a COM call of the manager walk, whose saved next record
+  is EBP (media-record-lifetime.md, boundary 1).
+
+**Frame cells at T3** (the stop at `0x0db4f`). Index `k = [ESI+0x18]`; cell `i` sits at `[ESI+0x14] + 5·i`; deeper
+cells have higher `i`.
+
+| Cell | Content |
+| --- | --- |
+| `k` | argc 1 |
+| `k+1` | old id |
+| `k+2..k+4` | three locals |
+| `k+5` | tag 10 |
+| `k+6` | tag 3 = `0x0dc84`, the return into `LoopMusic` |
+| `k+7` | argc 3 |
+| `k+8` | new id |
+| `k+9` | fade |
+| `k+10` | loop |
+| `k+11` | tag 10 |
+| `k+12` | tag 3 = `0x0dcdb`, the return into `ChangeTrackMusic`'s forked frame |
+| `k+13`, `k+14` | argc 1, id |
+| `k+15` | tag 10 |
+| `k+16` | tag 3 = 0 |
+
+**[i]**: assembled from the handlers, not executed; the decoded stack depths of `PlayMusicWithFade` carry 4
+conflicts. The handlers are `callself` `0x004a3ee1` (two new cells), `callcls` `0x004a3d1d` (the return IP
+overwrites the class cell), the pushes `0x004a8620` (tag 3, IP) and `0x004a8640` (tag 10), and the fork copy
+`0x004a36c4`..`0x004a36e9`, which **zeroes every tag-3 cell**. The requester (sector music, docking, boarding, the MD)
+is therefore **not recoverable from C**; only "forked by `ChangeTrackMusic`" is.
+
+### 8.3 Simplest policy: park the new task, keep the old record **[i]** design from the code above, unbuilt
+
+**Mechanism.** Keep the old record O playing under a private key and let the new task C block in its own
+`MOV_PlayMovie`, as in vanilla, with O carrying C's wake.
+
+* The engine's own natural-end completion wakes C. C's KC replay (`0x0dc02`..`0x0dc66` → `0x0dbe8` →
+  `MOV_PlayMovie(m17)`) then starts the new track through the vanilla play path.
+* The proxy never seeks, runs or completes a media record itself. No Patch C, Patch D or run-call change is needed,
+  and no Present work.
+* `m17 = new` during the whole wait, so the script accepts every other request normally.
+* None of it depends on I2: the re-key makes T_old's free a miss whenever T_old runs.
+
+**Deferrable stop.** All of the following must hold at T3, otherwise vanilla:
+
+* return `0x00499886` and `[ESI+0x1c] == 0x0db54`;
+* the cells `k+6 = (3, 0x0dc84)`, `k+10 = (1, 1)` and `k+12 = (3, 0x0dcdb)`, i.e. a loop request from a
+  `ChangeTrackMusic` fork child. This excludes class 621's direct `StartMusic`/`LoopMusic`;
+* the new id `N` (cell `k+8`, tag 1) is greater than 0 and not one of:
+  * 13 (death);
+  * 14 (landing, `DockingAllowed`);
+  * 1001..1042 (Mayhem combat; stock AP has a different list);
+  * 8233..8237 (boarding);
+* `R = *0x00608504 ≠ 0` with `[R+4] == 0` and `[R+8] == 0`. A combat start stops inside `NotifyAlert` with
+  `[R+8] ≠ 0`; a combat end with `[R+4] ≠ 0`;
+* the found record is music and playing (`& 0x82 == 0x82`), loop bit clear, `+0x14 ≠ 0`, media ≠ 0.
+
+Docking (`2001..2004`) and the MD's `DoPlayMusic` pass this test. Add `2001..2004` to the exclusions if docking must
+switch at once.
+
+**States:** IDLE; ORPHANED (O, key P, pending N, task C); PARKED (as ORPHANED, plus C's slot). P is a private nonzero
+id outside 101..299 and every script id, for example `0x7f000000 + n`.
+
+| From | Event | Action | To | Line |
+| --- | --- | --- | --- | --- |
+| IDLE | deferrable stop(old) by C at T3 | `[O+0x10] = P`; keep flag `2` and skip the pause; deliver `([O+0x14], 1)` through `[O+0x18]` (T_old); zero both; deliver `(C, 1)` through EDI; `ret` | ORPHANED | `music_queue_defer old= new= record= key= task=` |
+| ORPHANED | T_old's `MOV_FreeMovie(old)` | none: a miss, result 0, dropped | ORPHANED | – |
+| ORPHANED | T2 play from `0x00499824`, `[ESI+0x1c] == 0x0dbf7`, `a2 == C`, `a3 == N`; O linked under P with flag `2` | `[O+0x14] = a2`, `[O+0x18] = a1`; `ret` (N gets no seek, no Run, no context) | PARKED | `music_queue_park task= id= record=` |
+| ORPHANED | that play, but O has ended or is gone | free P; continue vanilla | IDLE | `music_queue_end reason=ended_before_park` |
+| PARKED | O ends naturally | the engine delivers `(C, 1)` (§8.1); C replays N in the next pass | PARKED | – |
+| PARKED | C plays N again at T2 | free P (a miss if the engine already freed O); continue vanilla, so N starts from 0 | IDLE | `music_queue_release reason=natural_end\|stop_all\|lost` |
+| PARKED | deferrable stop(N) by D (a further jump to M) | deliver `([O+0x14] = C, 1)` through `[O+0x18]`; zero both; deliver `(D, 1)` through EDI; `ret`. C frees N's unplayed record and exits with `m17 = −2` | ORPHANED (N := M, task := D) | `music_queue_collapse from= to=` |
+| PARKED | non-deferrable stop(N): combat, `StopMusic`, any other | as the row above, then free P; `ret` | IDLE | `music_queue_end reason=stop new=` |
+| any | T1 stop-all, `alt_tab` | nothing. Keep on: `skip_all` leaves O alone. Keep off: the stop-all pauses O and wakes C through O's context, and C's replay ends the queue | – | – |
+| ORPHANED, PARKED | T1 stop-all, any other caller | if PARKED, deliver `(C, 1)` through O's slot; zero O's context; free P; let the stop-all continue | IDLE | `music_queue_end reason=stop_all name=` |
+| any | any T2/T3 event while O has ended (flag `2` clear, context 0) and is unowned | free P | IDLE | `music_queue_end reason=stale` |
+
+`music_queue_refuse reason=alert|not_fork_child|immediate_id|not_playing|cells` is written once per non-deferred
+`PlayMusicWithFade` stop. Cost: per music request one bounded list walk and at most 17 cell reads; nothing per frame.
+
+**Failure modes and fallbacks:**
+
+* **The pending id's record freed while PARKED.** Nothing in the KC frees N except C itself (subsystem clear and
+  manager shutdown aside). If it happened, C's replay through vanilla `0x00498c90` recreates it with default flags
+  (`0x00498cd5`), which is vanilla's own behaviour for an absent id.
+* **O lost.** The manager's error path (`0x004984ae`) frees O inside its own walk and wakes C through O's context; the
+  replay frees a miss and continues vanilla.
+* **Combat start.**
+  * PARKED: the combat task's stop(N) is non-deferrable. C is woken, O is freed, and combat music starts after
+    `TI_Delay(100)` as in vanilla.
+  * ORPHANED: C is still in `TI_Delay`, `m17 < 0`, and the KC drops the request (`0x0dab4`). Vanilla has the same
+    window.
+* **Save, load, pause, leave.** T1 ends the queue before the walk. The save's MOVI chunk then holds only N and C is
+  runnable: the vanilla savegame, which avoids music-restart.md §7.3's suspended-task trap and keeps the private key
+  out of the restore. Under keep or vanilla, the new track then starts from 0 after the save or pause: a visible
+  degradation, with the old track cut at the save.
+* **Alt-tab.** As in the T1 row: with keep's `skip_all` O plays on; without keep, the vanilla stop-all wakes C, and
+  the new track starts from 0.
+* **`StopMusic` with a fade while PARKED.** `MusicFadeOut` fades N, which is silent, then stops it. The queue ends
+  with O cut, not faded.
+* **Task killed or the VM rebuilt.** O's context names a dead task, its natural end is a no-op lookup, and the stale
+  row frees O at the next event.
+* **Any claim refused.** No queue; vanilla.
+* **Interaction with the combat resume (§4).** Its T3 "remember" must ignore N's record while PARKED: N never ran,
+  and the audible track is O.
+
+**Not established statically, and the trace that settles it.**
+
+* **(a) The cell layout above.** Settled by one flight with a log-only build: at every T3 stop with IP `0x0db54`, log
+  `music_queue_cells` with the tag and value of cells `k..k+16`, `[R+4]`, `[R+8]` and the decision it would take
+  (`would_defer`/`refuse`); at T2 with return `0x00499824`, log `a1`, `a2`, `a3` and `[ESI+0x1c]`. The flight needs
+  two gate jumps, one dock and one combat.
+* **(b) Audible continuity** of O across its re-key (the pump depends only on flag `2` and media state, §8.1) and the
+  gap at the release: about one frame, plus the DirectSound prebuffer the vanilla same-id replay also has. Settled by
+  the first armed flight.
+* **(c) Pause and TI** (§7.2) matters only if pause is later kept out of the "end at T1" row.
+
 ## Reproduce
 
 ```sh
 python3 -I verification/results/music-script-driver/verify_music_script_driver.py > verification/results/music-script-driver/verify_output.json   # PASS
 python3 -I verification/results/music-script-driver/music_driver_listing.py        # decoded listings into raw/ (git-ignored)
+python3 -I verification/results/music-script-driver/verify_track_queue.py > verification/results/music-script-driver/verify_track_queue_output.json   # PASS (§7-§8)
 python3 -I verification/results/music-script-driver/flight_music_summary.py /mnt/c/X3/x3m.log > verification/results/music-script-driver/flight_music_summary.txt
 i686-w64-mingw32-objdump -d --start-address=0x42c890 --stop-address=0x42ca61 /mnt/c/X3/X3AP.exe   # alert level
+```
+
+## 9. Engagement data for a narrowed trigger
+
+2026-10-23. Static study of the same `X3AP.exe` (SHA-256 `fdbf3418d8f0a897…`) and of both `L/x3story.obj` builds.
+Nothing was launched; no Wine. It answers what an "engaged only" rule at the `0x0042c974` site (§5) can read: the
+player attacking, the player attacked, or a player-owned ship near the player attacking or attacked.
+
+| Script (tracked) | Output | What it establishes |
+| --- | --- | --- |
+| [`verify_engagement_data.py`](../../verification/results/music-script-driver/verify_engagement_data.py) | `verify_engagement_output.json` | `PASS`: 37 instruction windows, 3 strings, 14 `SA_` name/handler pairs, 7 complete direct-caller lists, the writers and readers of the Flags2 bits below (raw byte census), no branch into the interior of four candidate spans, and the KC census of all 10 `SA_FireOnObject` call sites in each build (only `606::FireLaser` sets the player-shot bit) |
+
+**Answer.**
+
+* **A hit leaves a per-frame bit, not an attacker.** Every projectile hit sets Flags2 `0x80000` on the victim. A hit
+  by a player shot also sets `0x40` on the victim and bumps a global counter. The collision pass clears both bits
+  before the hits of each frame, and it runs before the alert routine in the same main-loop iteration. No engine
+  field keeps the attacker or the time; `AttackedBy(attacker id, projectile id)` goes only to the script. **[m]**
+* **A player shot is marked.** The cockpit script's `FireLaser` is the only caller that passes fire flag bit `0x2`.
+  That bit marks the bullet (Flags2 `0x100`) and counts it in `SA_GetLaserFired`. Hits by such shots count in
+  `SA_GetLaserHits`/`SA_GetMissileHits`. Projectiles keep their shooter and its owner group, but not a target. **[m]**
+* **Owned ships:** a ship is player-owned when `(int16)[obj+0x3c] == 10`. It is attacking when its order is
+  `0x10`/`0x11` with target `flight+0x224`. It is attacked when its Flags2 has `0x80000` this frame, or when a
+  hostile ship's attack order targets it. **[m]** fields, **[i]** that the AI always fights through these orders.
+* **So a thunk at `0x0042c974` needs no second hook.** It can evaluate the whole rule per frame from fields, counters
+  and its own walk of four class lists, with the game clock `cfg+0x718` (§9.4, §9.5).
+
+### 9.1 The four `AttackedBy` sites (Q1) **[m]** unless marked
+
+All four are in `0x0045e130`. It is stdcall `(A, B)` (`ret 8`) and resolves one colliding pair. Its five call sites
+`0x0045d233`, `0x0045d2ff`, `0x0045d691`, `0x0045da3c` and `0x0045df5c` all lie in the collision pass `0x0045d250`;
+`0x0045d233` sits in the helper `0x0045d1b0`, which only `0x0045d250` calls. The pass runs once per active sector per
+main-loop iteration (`0x0043a38f`, from `0x0043a360` at `0x00403b17`), on the main thread.
+
+**Attacker.** At entry `[esp+0xc]` is the attacker of B and `[esp+0x14]` is the attacker of A (`0x0045e14c`):
+
+* A is a bullet (class 0): `[[A+0x50]+4]`, the shooter;
+* A is a missile (class 10) with `[A+0x40] & 0x1000000`: `[[A+0x50]+0xc]`, the launcher (`0x0045e2b1..0x0045e2dc`);
+* otherwise 0.
+
+A projectile that hits its own shooter ends the call (`0x0045e290`, `0x0045e2ab`).
+
+| Site | Event | Victim | Arguments `(arg0, arg1)` |
+| --- | --- | --- | --- |
+| `0x0045e46b` | A is a bullet or armed missile and hits B. Damage `0x00449a60(B, A, …)` (stdcall, `ret 0x10`) is applied **before** the call | B (ESI) | (attacker id `[[esp+0xc]+8]` or 0, projectile id `[A+8]`) |
+| `0x0045e65c` | the mirror: B hits A | A (EBX) | (`[[esp+0x14]+8]` or 0, `[B+8]`) |
+| `0x0045e9c1` | contact of two bodies (neither class 0 nor 10, `0x0045e6b0..0x0045e6d8`) when A or B is under manual control (`0x0043ff80`: `[+0x40] & 0x40000` and not `0x80000`) and neither is TShips subtype `0x10b` (`0x004191c0`) | B | (A id, 0) |
+| `0x0045e9ef` | the same contact | A | (B id, 0) |
+
+Each call is skipped when the victim has no script object (`[victim+0x94] == 0`). The calls go through the by-name
+call `0x0049f4c0` (`[M+0x60]`, 0, script object, `"AttackedBy"`, 1, argc 2, arg0, arg1), the same encoding as
+`NotifyAlert` in §2.
+
+* **The event is an impact.** It is not a lock or a launch. A launch is announced separately as `"MissileLaunched"`
+  (`0x0055fcac`, `0x00449339`), and no lock notification was found.
+* **Bullet damage** comes from the bullet type record `*0x00606fb8 + subtype·0xdb8` (`+0x44`, `+0x80`). With record
+  flags `+0x58 & 6` it is scaled by the frame step `cfg+0x714` (`0x0045e32a`; continuous weapons **[i]**).
+* **Argument roles in the script:** `2004::AttackedBy(p-4, p-5)` calls `SA_GetEventObject(p-4).GetOwner()`, then
+  `SA_GetMainType(p-5) == 10` and `SA_GetFlags2(p-5) & 256`. So arg0 is the attacker and arg1 the projectile. This
+  settles the open role question in §5 and §6.
+
+**Engine fields written per hit.** Flags2 is `[obj+0x44]` (`SA_GetFlags2`/`SA_SetFlags2`, ids `0x66`/`0x65`,
+`0x0046382e`/`0x00463854`).
+
+| Write | Where | Meaning |
+| --- | --- | --- |
+| victim Flags2 `\|= 0x80000` | `0x0045e4b5`, `0x0045e6a6` (the only two writers) | hit by a projectile this frame, any shooter except itself; not set by a contact |
+| victim `\|= 0x40`, projectile `\|= 0x800`, `M+0x48 += 1` (bullet) or `M+0x4c += 1` (missile hitting a non-bullet) | `0x0045e473..0x0045e4ae`, mirror `0x0045e664..0x0045e69f` | only if the projectile has `0x100` (a player shot, §9.2) and not yet `0x800`: hit by the player this frame, counted once per projectile |
+| `and [obj+0x44], 0xfff7ffbc` for every object in the sector's 32 lists | `0x0045d287`, head of the collision pass | clears `0x80000`, `0x40`, `2`, `1` before this frame's collisions |
+
+* **Other readers.** The only other reader of `0x80000` is the HUD routine `0x00427d50` (`0x004283ab`). It arms a
+  1000 game-ms blink timer `[obj+0x124]` and counts it down by `cfg+0x714` only for objects it draws, so it is not a
+  general signal. No direct `test` of `0x40` on `[reg+0x44]` exists in `.text`; a register-copy test was not
+  searched.
+* **No attacker field.** The engine keeps no attacker pointer and no hit time on the victim. The script keeps them
+  (2004 `m49`/`m54`).
+* **Frame order.** At `0x00403b17` the main loop runs `0x0043a360`: for each sector, collision `0x0045d250`, simulate
+  `0x00452ad0`, then `0x0045b720`. At `0x00403f2f` it runs the alert routine (§2). So at `0x0042c974` the bits
+  describe the current frame's hits. **[m]** call order; **[i]** that no other pass sets or clears them in between,
+  apart from a script-side `SA_SetFlags2` write.
+
+**Record-only hook (diagnostics only; the rule in §9.5 does not need it).**
+
+* **`0x0045e4b5`.** `or dword [esi+0x44],0x80000`, 7 bytes `81 4e 44 00 00 08 00`, next instruction `0x0045e4bc`.
+  * Entries: fall-through from `0x0045e4ae` and the rel8 branches `0x0045e481`/`0x0045e488` onto the first byte. The
+    raw scan finds no branch into the interior.
+  * State: ESI = victim, EBX = projectile, `[esp+0xc]` = attacker or 0, `[ebp+8]`/`[ebp+0xc]` = the pair, time
+    `cfg+0x718`.
+  * Liveness: the flags written by the `or` are dead (`mov`, `movzx`, `test` follow). ESI is reloaded at
+    `0x0045e4bc`, and EAX is rewritten at `0x0045e4bf`. Preserve every other register.
+* **Mirror `0x0045e6a6`.** `or dword [ebx+0x44],0x80000` (`81 4b 44 00 00 08 00`), next instruction `0x0045e6ad`.
+  Entries: `0x0045e672`/`0x0045e679`. State: EBX = victim, EDI = projectile, `[esp+0x14]` = attacker.
+* **Rate and context.** One call per projectile hit, inside the collision pass on the main thread. The synchronous
+  `AttackedBy` script call has already returned. The thunk must not call the engine (no re-entry) and must leave the
+  x87 state as found.
+* **Pointer lifetime.** The death fix-up `0x0044a7c0` (reached from the universe walk `0x0044aab0`, 18 callers) sets
+  to null:
+  * the bullet owner `+4` (`0x0044a84e`);
+  * the missile launcher `+0xc` and target `+0x10` (`0x0044a826`, `0x0044a835`);
+  * a ship's `flight+0x224` (`0x0044a895`).
+
+  So a nonzero owner or target is a live object. **[m]** writes, **[i]** that every removal runs the fix-up.
+
+### 9.2 The player's own attacks (Q2) **[m]** unless marked
+
+* **Fire control** is `0x00445170(ship, target, group, flags, mask)`, `ret 0x14`. It is reached only from
+  `SA_FireOnObject` (`0xfc`, `0x00461b04`/`0x00461b15`) and `SA_FireAhead` (`0xfd`, target 0, `0x00461b54`/`0x00461b66`).
+* **KC census** of the fire flags, 10 sites in each build (Mayhem `07.cat` and stock `04.cat` alike):
+  * `606::FireLaser` (the cockpit class) calls `SA_FireOnObject(ship, 0, group, 10 | (…?32:0) | (…?1:0), mask)`, so
+    bit `0x2` is always set. KC opcode `0x54` is bitwise OR (handler `0x004a33d6`); `kc_obj.py` does not decode it.
+  * `2004::FireLasersOnTarget`, `2004::FireLasersOnDebris` (three sites), `2011::___startDefendThread`,
+    `308::DoFireLaser` and `621::HandleEvent` (three sites) all pass **1**.
+  * So **bit `0x2` marks a player shot.**
+* **Target.** A player shot has target 0. When the cockpit's aim gun maps to the firing group, the fire control
+  substitutes `cockpit+0x1e0` (`0x00445255`), but only for aiming. **No projectile stores a target.**
+* **Bullet.** Allocated by `0x004e6a40(0x130)` and constructed by `0x0043f900` (`0x00446392`). With flags & 2:
+  `M+0x40 += 1` and bullet Flags2 `|= 0x100` (`0x004463c7`, `0x004463ca`). Further writes:
+  * `[[b+0x50]+0]` = now + lifetime (`0x00446593`);
+  * `[[b+0x50]+4]` = shooter (`0x0044659b`);
+  * `[b+0x3c]` = the shooter's owner group (`0x004465a8`).
+* **Missile.** `SA_ShootMissile` (`0xff`) calls `0x00448b30`; that is its only caller (`0x00461df0`). It writes:
+  * `[[m+0x50]+0xc]` = launcher, `+0x10` = target, `+8` = launch time `cfg+0x718`;
+  * `[m+0x3c]` = the launcher's group (`0x00448ced..0x00448d0c`);
+  * with flags bit `0x2`: `M+0x44 += 1` and Flags2 `|= 0x100` (`0x00449318`, `0x0044931c`).
+
+  The collision pass gives `0x100` missiles a 2000 ms arming window after launch (`0x0045cc29..0x0045cc4b`). Which KC
+  caller passes bit `0x2` for missiles was not traced: the two `2004::ShootMissileSECOBID` sites pass a variable.
+* **Counters** at `M = *0x0060850c`, global, the player's statistics:
+  * `+0x40` `SA_GetLaserFired`;
+  * `+0x44` `SA_GetMissileFired`;
+  * `+0x48` `SA_GetLaserHits`;
+  * `+0x4c` `SA_GetMissileHits` (`0x00464797..0x004647ca`).
+* **The relation test** the alert uses is `0x00450890`. It is the same routine as `SA_IsEnemy` (`0x6b`, `0x004668c9`).
+  * **ABI:** a register ABI, EAX = O and **EDI = P** (implicit); it returns AL = 1 when O is hostile to P.
+  * **Step 1:** if P is of class 7, 5 or 6 and `[[P+0x50]+0x1d4] != 0` (written only by `SA_SetEnemyOfEnabled`
+    through `0x00450950`), O's stance towards P is tested first, and < 0 means hostile.
+  * **Step 2:** P's stance towards O, `0x00450810` (ESI = subject, EAX = other, returns −1/0/+1):
+    * a missile flagged `0x1000000` whose launcher is not the subject and whose group differs gives −1;
+    * subject Flags2 `& 0x40000000` gives 0;
+    * a subject class outside 7/5/6 gives 0;
+    * an other group `g = (int16)[other+0x3c] < 0` gives 0;
+    * the friend mask `[[S+0x50]+0x1cc]` bit g gives +1, else the foe mask `+0x1d0` bit g gives −1.
+
+**Readable without a hook, per frame at `0x0042c974`:**
+
+* **"Fired this frame":** `M+0x40` or `M+0x44` grew. **"Hit something this frame":** `M+0x48` or `M+0x4c` grew; the
+  victims are the objects with Flags2 `0x40`.
+* **The current target:** `cockpit+0x1e0`. The cockpit is the bounded hash lookup of `[R+0x10]` that
+  `chase_fire.cpp::active_cockpit` already does, and R = ESI at the site.
+* **"Target hostile and fired within N s":** a stamp of the last frame the fire counters grew, plus the relation rule
+  above applied to `cockpit+0x1e0`.
+* **Pointer rule:** compare the target pointer with objects found in the thunk's own walk rather than dereference it.
+  The death fix-up does not cover cockpits **[i]**.
+* **Baseline [i]:** the counters are statistics. Treat a decrease, or the first sample after a load, as a new
+  baseline.
+
+### 9.3 Player-owned ships (Q3) **[m]** unless marked
+
+* **Enumeration.** The alert routine walks P's sector (`[P+0x54]`, class 1) through `[sector+0x50] + class·12`, one
+  list per class. The class index is used directly (`SA_StartObjectInSpace`, `0x004495d8..0x004495e2`). Node `+0` is
+  next, and a node whose `[node] == 0` ends the list. Every frame it visits all 32 lists, calling `0x00450890` for
+  every object and `0x00419280` (Chebyshev distance over `[obj+0x70]+0x30..0x38`) for every hostile.
+* **Ownership.** `(int16)[obj+0x3c] == 10`, the player's group ([ship-navigation-ai.md](ship-navigation-ai.md) §10.12
+  Item 8). The piloted ship has `[obj+0x40] & 2`. Bullets and missiles carry their shooter's group in `+0x3c` too.
+* **Engine fields of a ship S** (`flight = [S+0x50]`):
+
+  | Field | Value | Writer |
+  | --- | --- | --- |
+  | order word `flight+0x258` | `0x10`/`0x11` | `SA_AttackObject`/`…Big`, target in `flight+0x224` (`0x0046151a`, `0x00461526`) |
+  | order word `flight+0x258` | `0x22` | `SA_DefensiveMove`, **attacker** in `flight+0x224` (`0x00461818`, `0x00461824`) |
+  | Flags2 `0x80000` | hit this frame | §9.1 |
+
+  * **Not kept:** no last attacker and no time (only the script's `m49`/`m54`).
+  * **Turret fire** leaves nothing on the shooter. It shows only as bullets with group 10 and without `0x100` in the
+    class-0 list.
+  * **Lifetime:** the death fix-up nulls `flight+0x224`.
+* **Cost.** The vanilla walk already visits every object of all 32 lists (bullets and asteroids included) with one
+  call per object. The rule adds:
+  * O(1) reads every frame: `[P+0x44]`, four counters, `cfg+0x718`, the cockpit lookup (≤ 32 hash links);
+  * a walk of lists 5, 6, 7 (the classes the relation test admits) and 10 (missiles), only on frames where
+    `[R+8]` or `[R+4]` is nonzero. That walk reads about 7 dwords per object: `+0x3c`, `+0x44`, `[+0x50]+0x258`,
+    `[+0x50]+0x224`, and `[+0x70]+0x30..0x38` for the range test. For a hostile it adds the relation rule's masks.
+
+  This is a subset of the objects the vanilla walk visits. Object counts per frame were not measured **[i]**.
+
+### 9.4 The clock (Q4) **[m]**
+
+* **Fields** at `cfg = *0x00606f34`:
+  * `+0x718` is the absolute game clock in ms (`TI_GetAbsTime`);
+  * `+0x714` is this frame's game step, held in 1..`0x7fff`.
+* **How it runs with SETA.** The tick `0x004d1df0` advances `+0x718` by `clamp(wall ms, 1, 200)` multiplied by the
+  SETA factor `(cfg+0xcc · cfg+0xd0) >> 16`. It runs through the frame clock `0x004ee1e0`, which `0x004b0e00` calls at
+  `0x00403af0` on every main-loop iteration, before the sector pass (`0x00403b17`) and the alert routine
+  ([engine-effects.md](engine-effects.md) §8). A window measured in `+0x718` therefore scales with SETA.
+* **The engine's own windows** on these data use the same clock: bullet expiry, missile launch time, the 2000 ms
+  arming window and the 1000 ms HUD blink.
+* **Rewrites.** `TI_SetAbsTime` (13) rewrites `+0x718`, so treat a stamp newer than now as expired.
+
+### 9.5 The thunk at `0x0042c974` (Q5)
+
+**Inputs at the site** (in addition to §5):
+
+* ESI = R.
+* EDI = P. It is 0 when there is no player ship; the walk's callees `0x00450890`, `0x00450810` and `0x00419280` do not
+  change EDI.
+* BP = this frame's walk level (`movsx` at `0x0042c969`).
+* `[R+8]` = max(walk level, the level 2 raised by missile homing at `0x00459451`), and `[R+4]` = the committed level.
+* EAX, ECX, EDX and the flags are dead. EDX is written before it is read on every path, including `0x0049a4d0`,
+  `0x0049b050`, `0x0049f4c0` and the caller after return.
+* **The triggering object is not kept:** ESI is overwritten at `0x0042c965`, and EBX is the list cursor.
+* **Optional trigger capture:** the record-only site `0x0042c93b` `mov ebp,1` (5 bytes, no branch into its interior;
+  ESI = candidate O, EAX = its Chebyshev distance, EDI = P; flags dead) yields the vanilla trigger and its distance.
+* **Vanilla quirk:** after a missile sets level 2 (`0x0042c94a`) the walk continues with the next list, and an
+  in-range hostile in any later list sets EBP back to 1 (`0x0042c93b`). The homing path still supplies 2.
+
+**Rule** (`now = cfg+0x718`; each stamp is a game-ms time):
+
+1. **Every frame with EDI = P in a sector (O(1)):**
+   * `[P+0x44] & 0x80000` → `t_attacked`;
+   * `[R+8] == 2` → `t_attacked`;
+   * `M+0x40`/`M+0x44` grew while `cockpit+0x1e0` is a hostile found by the walk → `t_attack`;
+   * `M+0x48`/`M+0x4c` grew and an object with Flags2 `0x40` is in lists 5, 6 or 7 (not an asteroid) → `t_attack`.
+2. **When `[R+8]` or `[R+4]` is nonzero, walk lists 5, 6, 7 and 10:**
+   * owned S ≠ P within Chebyshev 5,000,000 of P with Flags2 `0x80000`, or with order `0x10`/`0x11` on a hostile
+     → `t_owned`;
+   * hostile O with order `0x10`/`0x11` whose target is P → `t_attacked`;
+   * hostile O with order `0x10`/`0x11` whose target is an owned ship in that range → `t_owned`;
+   * record the nearest hostile's distance and the counts for the log.
+3. **Filter:**
+   * `engaged = now − max(t_attacked, t_attack, t_owned) < H`, where H is in game ms (an ini value; 20,000 as a
+     starting point);
+   * `[R+8] = engaged ? [R+8] : 0`;
+   * replay `mov ecx,[esi+8]; mov eax,[esi+4]` and `jmp 0x0042c97a`.
+
+**Effects.**
+
+* **Entry.** It still needs a hostile within vanilla range: 5 km, or 10 km once the alert is on.
+* **Hysteresis.** The committed `[R+4]` becomes the filtered level, so the doubled stay range applies only while
+  engaged. The music drops when H runs out or when the hostiles leave 10 km, whichever comes first.
+* **Variant: vanilla stay.** A single switch keeps vanilla behaviour once the alert is on: filter only while
+  `[R+4] == 0`.
+* **Edges.** A fight that starts after a hostile is already in range now produces a 0 → 1 edge, so `NotifyAlert(1)`
+  fires on the first engagement event.
+
+**Hook-site facts:**
+
+* six bytes on two whole instructions (§5), reached by the `jle` at `0x0042c96f` onto the first byte and by
+  fall-through;
+* once per frame on the main thread, with `NotifyAlert` after the site;
+* the thunk only reads memory: no engine call, so no re-entry;
+* guarded reads for every dereference, x87 state untouched, SSE2 arithmetic.
+
+**First-flight log** (one consolidated diagnostic build):
+
+* **On every change of the filtered committed level:** `music_alert from=<old> to=<new> vanilla=<[R+8] before>
+  reason=<p_hit|p_missile|p_fire|p_hit_other|owned_hit|owned_attack|hostile_on_p|hostile_on_owned> age_ms=<now −
+  stamp> nearest=<units> hostiles=<n> owned_near=<n> now=<+0x718> step=<+0x714> seta=<factor>`.
+* **Once per episode in which vanilla goes 0 → nonzero but the filter holds 0:**
+  `music_alert_suppressed vanilla= nearest= hostiles=`.
+* **Per alert episode:** the list sizes 5, 6, 7 and 10 walked and the thunk's QPC cost, which settle the cost
+  question.
+
+**Not established statically:**
+
+* object counts per frame;
+* whether the AI always fights through orders `0x10`/`0x11`; a script may fly order `0x15` and use turrets with no
+  attack order, which is then visible only as hits;
+* whether player missiles carry bit `0x2`;
+* whether turret cockpits manned by the player go through `606::FireLaser` **[i]**;
+* friendly fire, which counts as `p_hit`;
+* the stale bits in paused frames (`0x00403b10` skips the sector pass);
+* the meaning of `+0x1d4` beyond its `SA_` name;
+* a suitable H.
+
+**Reproduce:**
+
+```sh
+python3 -I verification/results/music-script-driver/verify_engagement_data.py > verification/results/music-script-driver/verify_engagement_output.json   # PASS
+i686-w64-mingw32-objdump -d -M intel --start-address=0x45e130 --stop-address=0x45eea5 /mnt/c/X3/X3AP.exe   # hit handler (raw/, untracked)
 ```
