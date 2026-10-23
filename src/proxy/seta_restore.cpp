@@ -57,7 +57,19 @@ struct EngineProbe {
         return ship && !(ship & 3) && load(ship + object_parent, sector);
     }
     bool sector_id(std::uint32_t sector, std::uint32_t& id) {
-        return sector && !(sector & 3) && load(sector + object_id, id);
+        return sector && !(sector & 3) && load(sector + x3m::seta_restore::core::object_id, id);
+    }
+    bool object_id(std::uint32_t object, std::uint32_t& id) {
+        return object && !(object & 3) && load(object + x3m::seta_restore::core::object_id, id);
+    }
+    bool kind(std::uint32_t object, std::uint16_t& cls, std::uint16_t& marker) {
+        return object && !(object & 3) && load(object + object_class, cls) && load(object + object_marker, marker);
+    }
+    bool speed(std::uint32_t ship, std::uint32_t& current, std::uint32_t& desired) {
+        return ship && !(ship & 3) && load(ship + ship_speed, current) && load(ship + ship_desired_speed, desired);
+    }
+    bool flags(std::uint32_t ship, std::uint32_t& f) {
+        return ship && !(ship & 3) && load(ship + ship_flags, f);
     }
     bool paused() {
         std::uint32_t game = 0, bits = 0;
@@ -78,35 +90,53 @@ struct EngineProbe {
 void publish() {
     x3m::chase_transition::inject_want(machine_.active());
 }
-// One row per transition, formatted outside every lock (x3m::log runs the CRT formatter behind call_preserved).
+// One row per transition, formatted outside every lock (x3m::log runs the CRT formatter behind call_preserved). The
+// speed fields (record only) are the current player ship's [+0x10]/[+0x14] as int32; speed_read=0: not read.
 void emit(const Report& r) {
+    const unsigned long speed_ship = r.speed_ship;
+    const unsigned speed_read = r.speed_readable;
+    const long speed = static_cast<std::int32_t>(r.speed), desired = static_cast<std::int32_t>(r.desired_speed);
     switch (r.row) {
     case Row::none: return;
     case Row::armed:
-        x3m::log("seta_restore armed frame=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx ret_name=%s ship=0x%08lx sector=0x%08lx sector_id=%lu build=%lu",
-                 r.frame, static_cast<unsigned long>(r.old_factor), static_cast<unsigned long>(r.new_factor),
-                 static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret),
-                 return_name(r.ret, r.scan == Scan::bottom), static_cast<unsigned long>(r.ship),
+    case Row::skipped:
+        x3m::log("seta_restore %s%s frame=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx ret_name=%s ship=0x%08lx ship_id=0x%08lx sector=0x%08lx sector_id=%lu build=%lu autopilot=%u flags=0x%08lx speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
+                 r.row == Row::armed ? "armed" : "skipped reason=",
+                 r.row == Row::armed ? "" : skip_name(r.reason), r.frame, static_cast<unsigned long>(r.old_factor),
+                 static_cast<unsigned long>(r.new_factor), static_cast<unsigned long>(r.ip),
+                 static_cast<unsigned long>(r.ret), return_name(r.ret, r.scan == Scan::bottom),
+                 static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.ship_id),
                  static_cast<unsigned long>(r.sector), static_cast<unsigned long>(r.sector_id),
-                 static_cast<unsigned long>(r.build));
+                 static_cast<unsigned long>(r.build), unsigned(r.autopilot), static_cast<unsigned long>(r.flags),
+                 speed_ship, speed_read, speed, desired);
+        return;
+    case Row::rebound:
+        x3m::log("seta_restore rebound frame=%llu frames_since_arm=%llu ms_since_arm=%llu old_ship=0x%08lx new_ship=0x%08lx old_ship_id=0x%08lx new_ship_id=0x%08lx sector_id=%lu new_sector=0x%08lx new_sector_id=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
+                 r.frame, r.frames_since_arm, r.ms_since_arm, static_cast<unsigned long>(r.ship),
+                 static_cast<unsigned long>(r.new_ship), static_cast<unsigned long>(r.ship_id),
+                 static_cast<unsigned long>(r.new_ship_id), static_cast<unsigned long>(r.sector_id),
+                 static_cast<unsigned long>(r.new_sector), static_cast<unsigned long>(r.new_sector_id), speed_ship,
+                 speed_read, speed, desired);
         return;
     case Row::cancelled:
-        x3m::log("seta_restore cancelled reason=%s frame=%llu frames_since_arm=%llu ms_since_arm=%llu write_old=0x%08lx write_new=0x%08lx write_ip=0x%05lx write_ret=0x%05lx write_scan=%s write_ret_name=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu",
+        x3m::log("seta_restore cancelled reason=%s frame=%llu frames_since_arm=%llu ms_since_arm=%llu write_old=0x%08lx write_new=0x%08lx write_ip=0x%05lx write_ret=0x%05lx write_scan=%s write_ret_name=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu ship_check=%s new_sector=0x%08lx new_sector_id=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
                  cancel_name(r.reason), r.frame, r.frames_since_arm, r.ms_since_arm,
                  static_cast<unsigned long>(r.old_factor), static_cast<unsigned long>(r.new_factor),
                  static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret), scan_name(r.scan),
                  r.reason == cancel_factor_write ? return_name(r.ret, r.scan == Scan::bottom) : "none",
                  static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.sector_id),
-                 static_cast<unsigned long>(r.ready_sector), static_cast<unsigned long>(r.skipped));
+                 static_cast<unsigned long>(r.ready_sector), static_cast<unsigned long>(r.skipped),
+                 ship_check_name(r.ship_check), static_cast<unsigned long>(r.new_sector),
+                 static_cast<unsigned long>(r.new_sector_id), speed_ship, speed_read, speed, desired);
         return;
     case Row::restored:
     case Row::restore_failed:
-        x3m::log("seta_restore %s frame=%llu frames_after_transit=%llu frames_since_arm=%llu ms_since_arm=%llu result=%lu call=0x%08lx key=0x%lx method=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu",
+        x3m::log("seta_restore %s frame=%llu frames_after_transit=%llu frames_since_arm=%llu ms_since_arm=%llu result=%lu call=0x%08lx key=0x%lx method=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
                  r.row == Row::restored ? "restored" : "restore_failed", r.frame, r.frames_after_transit,
                  r.frames_since_arm, r.ms_since_arm, static_cast<unsigned long>(r.result), static_cast<unsigned long>(script_call_va),
                  static_cast<unsigned long>(call_key), call_method, static_cast<unsigned long>(r.ship),
                  static_cast<unsigned long>(r.sector_id), static_cast<unsigned long>(r.ready_sector),
-                 static_cast<unsigned long>(r.skipped));
+                 static_cast<unsigned long>(r.skipped), speed_ship, speed_read, speed, desired);
         return;
     case Row::refused:
         x3m::log("seta_restore refused reason=%s frame=%llu build=%lu expected_build=%lu old=0x%08lx ip=0x%05lx ret=0x%05lx sector_id=%lu",
@@ -116,6 +146,13 @@ void emit(const Report& r) {
                  static_cast<unsigned long>(r.sector_id));
         return;
     }
+}
+// The row with its record-only speed fields (two checked reads, only when a row is due), outside the lock.
+void finish(Report& r) {
+    if (r.row == Row::none) return;
+    EngineProbe probe;
+    record_speed(r, probe);
+    emit(r);
 }
 
 // ---- the injection consumer (chase_transition::InjectConsumer) ----
@@ -129,7 +166,7 @@ bool poll(std::uint32_t controlled, x3m::chase_transition::InjectCall& call) noe
         wanted = machine_.on_inject(now(), controlled, probe, r);
         publish();
     }
-    emit(r);
+    finish(r);
     if (!wanted) return false;
     call.target = script_call_va;
     call.key = call_key;
@@ -146,7 +183,7 @@ void result(unsigned al) noexcept {
         r = machine_.on_result(al, now());
         publish();
     }
-    emit(r);
+    finish(r);
 }
 void vm(unsigned kind) noexcept {
     if (!armed_.load(std::memory_order_acquire)) return;
@@ -156,7 +193,7 @@ void vm(unsigned kind) noexcept {
         r = machine_.on_vm(kind, now());
         publish();
     }
-    emit(r);
+    finish(r);
 }
 void unwind() noexcept {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
@@ -192,7 +229,7 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_seta_restore_factor_wr
         r = machine_.on_write(w, now(), probe);
         publish();
     }
-    emit(r);
+    finish(r);
 }
 }
 

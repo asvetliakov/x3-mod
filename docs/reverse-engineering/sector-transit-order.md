@@ -33,7 +33,7 @@ stall and R3 gains nothing there (inferred; R1+R2 still apply).
 | --- | --- | --- |
 | `+0x08` / `+0x0c` / `+0x10` | Exec-style list header of **parentless** engine objects: `lh_Head`, `lh_Tail` (always 0), `lh_TailPred`. A node's `+0` is `next`, `+4` is `prev`; the first node's `prev` is `M+8`, the last node's `next` is `M+0xc` | AddTail at `0x0043f93b`–`0x0043f956` in the object constructor `0x0043f900`; same AddTail in the save-load post-pass `0x00442c31`–`0x00442c46`; walks at `0x0043a460` (`SA_CleanUpObjects`), `0x0043a4a0`, `0x0044aab0` |
 | `+0x14` | id → object hash `{bucket array, bucket count}`, nodes `{next, id, object}` | `0x0043a560` (sector by id, returns 0 unless `*(i16*)(obj+0x48)==1`), `0x0043a4f0` |
-| `+0x38` | the player ship (class 7) | written `0x0043f8be` (save load), cleared in the free path when that ship dies |
+| `+0x38` | the player ship (class 7) | written `0x0043f8be` (save load), cleared in the free path when that ship dies. **Contradicted in flight:** in Run 190 the pointer changed exactly once per gate transit, three times, no save load (`0x4c0f7b90` → `0x4628c8e8` → `0x8785a078` → `0x4628a590`). Each change was seen at the first input-routine entry after the loading stall, and each new pointer stayed stable until the next transit. The chase rows show ship id `0xfffebb1e` on both sides. So another writer exists on the transit path, unlocated **[m]** (`verification/results/run190-flight/speed_reset_rows.py`); seta-restore.md "Player-ship re-bind" |
 
 **Engine object** (all classes): `+0x08` id (from `0x004efcc0`, monotonically increasing within a
 session), `+0x48` class (`i16`), `+0x4a` subtype (`i16`, both set by `0x0043ffa0`), `+0x50` class

@@ -38,7 +38,8 @@ class Core(unittest.TestCase):
             run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('checks PASS', run.stdout)
-            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 70)
+            # 153 since the autopilot gate, the player-ship re-bind and the speed record (rebind(), speeds())
+            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 150)
 
 
 class LiveImage(unittest.TestCase):
@@ -239,6 +240,14 @@ class Wiring(unittest.TestCase):
         self.assertLess(source.index('windows_match()) {'), source.index('engine_patch::claim(hook_site_, spec)'))
         self.assertLess(source.index('engine_patch::claim(hook_site_, spec)'), source.index('inject_attach(&consumer_'))
         self.assertIn('engine_patch::restore(hook_site_)', source)  # rollback of the hook when the attach fails
+        # the transit's player-ship re-bind, the manual-pass skip and the record-only speeds reach the log
+        self.assertIn('seta_restore rebound frame=%llu', source)
+        self.assertIn('"skipped reason="', source)
+        self.assertIn('autopilot=%u flags=0x%08lx', source)
+        self.assertIn('ship_check=%s', source)
+        self.assertEqual(source.count('finish(r);'), 4)  # every transition row goes through record_speed
+        self.assertEqual(source.count('emit(r);'), 1)  # only inside finish()
+        self.assertIn('load(ship + ship_flags, f)', source)
         roots = (ROOT / 'verification/probe/check_no_x87.py').read_text()
         for symbol in ('_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write'):
             self.assertIn(f"'{symbol}'", roots)

@@ -1,7 +1,8 @@
 // SETA restore core (src/proxy/seta_restore_core.h; docs/architecture/seta-restore.md) on controlled observations:
 // the arm conditions at the TI_SetTimeWarpFactor case entry, every cancel, the one-arm-per-transit rule, the injection
 // sequence (Ready walk once per presented frame, parent check, two frames, controlled object, the call and its result)
-// and the task-stack return scan over a fake task. No Windows, no Wine; prints "checks PASS".
+// the autopilot gate at the arm, the player-ship re-bind of a gate transit, the record-only speed fields, and the
+// task-stack return scan over a fake task. No Windows, no Wine; prints "checks PASS".
 #include "../../src/proxy/seta_restore_core.h"
 #include <cstdio>
 #include <cstdlib>
@@ -19,18 +20,60 @@ static void check(bool ok, const char* why) {
 }
 constexpr std::uint32_t ship_a = 0x47e69ad0u, ship_b = 0x47e70000u, sector_a = 0x265e8e08u, sector_b = 0x80e89c18u,
                         id_a = 1201, id_b = 1305;
+// Run 190's transit re-pointing: the same ship id under new objects
+constexpr std::uint32_t ship_c = 0x4628c8e8u, ship_d = 0x8785a078u, ship_e = 0x4628a590u, ship_id = 0xfffebb1eu;
+constexpr std::uint32_t autopilot_flags = 0x80000u | 0x40000u | 0x2u, manual_flags = 0x40000u | 0x2u;
+struct Kind {
+    std::uint16_t cls, marker;
+};
 struct Probe {
     std::uint32_t player_ship = ship_a, parent_sector = sector_a, ready_node = 0;
-    std::map<std::uint32_t, std::uint32_t> ids{{sector_a, id_a}, {sector_b, id_b}};
+    std::map<std::uint32_t, std::uint32_t> ids{{sector_a, id_a}, {sector_b, id_b}, {ship_a, ship_id}, {ship_c, ship_id},
+                                               {ship_d, ship_id}, {ship_e, ship_id}};
+    std::map<std::uint32_t, std::uint32_t> parents; // per object; otherwise parent_sector
+    std::map<std::uint32_t, Kind> kinds{{ship_a, {7, 0xcafe}}, {ship_b, {7, 0xcafe}}, {ship_c, {7, 0xcafe}},
+                                        {ship_d, {7, 0xcafe}}, {ship_e, {7, 0xcafe}}, {sector_a, {1, 0xcafe}},
+                                        {sector_b, {1, 0xcafe}}};
+    std::map<std::uint32_t, std::pair<std::uint32_t, std::uint32_t>> speeds;
+    std::map<std::uint32_t, std::uint32_t> ship_flags_of{{ship_a, autopilot_flags}, {ship_b, autopilot_flags},
+                                                         {ship_c, autopilot_flags}, {ship_d, autopilot_flags},
+                                                         {ship_e, autopilot_flags}};
     bool player_ok = true, is_paused = false;
     unsigned walks = 0;
     bool player(std::uint32_t& s) {
         s = player_ship;
         return player_ok;
     }
-    bool parent(std::uint32_t, std::uint32_t& s) {
-        s = parent_sector;
-        return parent_sector != 0;
+    bool parent(std::uint32_t ship, std::uint32_t& s) {
+        const auto it = parents.find(ship);
+        s = it != parents.end() ? it->second : parent_sector;
+        return s != 0;
+    }
+    bool object_id(std::uint32_t obj, std::uint32_t& id) {
+        const auto it = ids.find(obj);
+        if (it == ids.end()) return false;
+        id = it->second;
+        return true;
+    }
+    bool kind(std::uint32_t obj, std::uint16_t& cls, std::uint16_t& marker) {
+        const auto it = kinds.find(obj);
+        if (it == kinds.end()) return false;
+        cls = it->second.cls;
+        marker = it->second.marker;
+        return true;
+    }
+    bool speed(std::uint32_t ship, std::uint32_t& cur, std::uint32_t& desired) {
+        const auto it = speeds.find(ship);
+        if (it == speeds.end()) return false;
+        cur = it->second.first;
+        desired = it->second.second;
+        return true;
+    }
+    bool flags(std::uint32_t ship, std::uint32_t& f) {
+        const auto it = ship_flags_of.find(ship);
+        if (it == ship_flags_of.end()) return false;
+        f = it->second;
+        return true;
     }
     bool sector_id(std::uint32_t sector, std::uint32_t& id) {
         const auto it = ids.find(sector);
@@ -82,6 +125,12 @@ static void constants() {
               std::strcmp(return_name(0x12345, false), "other") == 0,
           "return names");
     check(expiry_ms == 60000 && due_frames == 2, "timing");
+    check(ship_flags == 0x40 && autopilot_bit == 0x80000 && ship_class == 7 && sector_class == 1 &&
+              alive_marker == 0xcafe && object_class == 0x48 && object_marker == 0x9c && ship_speed == 0x10 &&
+              ship_desired_speed == 0x14,
+          "object fields");
+    check(std::strcmp(ship_check_name(ShipCheck::second), "second") == 0 && std::strcmp(skip_name(skip_manual), "manual") == 0,
+          "row names");
 }
 static void arm_conditions() {
     Probe p;
@@ -90,6 +139,27 @@ static void arm_conditions() {
         const Report r = s.on_write(gate_stop(), at(10, 1000), p);
         check(r.row == Row::armed && s.phase == Phase::armed && r.ret == gate_return && r.old_factor == 0xa0000, "arm");
         check(s.ship == ship_a && s.sector == sector_a && s.sector_id == id_a && s.active(), "arm records ship and sector");
+        check(r.autopilot && r.flags == autopilot_flags && r.ship_id == ship_id, "arm records the autopilot flags");
+    }
+    { // a manual gate pass (CanWarp: SA_GetFlags & 0x80000 clear): one skipped row, nothing armed, the transit free
+        State s;
+        Probe q;
+        q.ship_flags_of[ship_a] = manual_flags;
+        Report r = s.on_write(gate_stop(), at(1, 1), q);
+        check(r.row == Row::skipped && r.reason == skip_manual && !r.autopilot && r.flags == manual_flags &&
+                  r.ship == ship_a && r.ship_id == ship_id && r.sector_id == id_a && !s.active() && s.arms == 0 &&
+                  s.skips[skip_manual] == 1 && s.transit_id == 0,
+              "manual: skipped");
+        Report none;
+        check(!s.on_inject(at(2, 2), ship_a, q, none) && none.row == Row::none, "manual: no ticket at the site");
+        q.ship_flags_of[ship_a] = autopilot_flags; // the next stop from the same sector under autopilot arms
+        check(s.on_write(gate_stop(), at(3, 3), q).row == Row::armed, "manual skip leaves the transit unrecorded");
+        q.ship_flags_of.erase(ship_a);
+        State t;
+        r = t.on_write(gate_stop(), at(1, 1), q);
+        check(r.row == Row::refused && r.reason == refuse_unreadable && !t.active(), "flags unreadable: refused");
+        q.ship_flags_of[ship_a] = 0x80000u; // the bit alone decides
+        check(t.on_write(gate_stop(), at(2, 2), q).row == Row::armed, "autopilot bit alone arms");
     }
     struct Case {
         const char* why;
@@ -228,13 +298,17 @@ static void cancels() {
         check(!s.on_inject(at(20 + 7300, 201 + expiry_ms), ship_a, p, r) && r.reason == cancel_expiry, "wall expiry only");
         s.on_vm(1, at(1, 1));
         s.on_write(gate_stop(), at(1, 1), p);
-        p.player_ship = ship_b;
-        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change && r.ship == ship_b, "ship change");
+        p.player_ship = ship_b; // a change inside the departure sector is no transit: cancelled as before
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change && r.ship == ship_b &&
+                  r.ship_check == ShipCheck::same_sector,
+              "ship change");
         s.on_vm(1, at(1, 1));
         p.player_ship = ship_a;
         s.on_write(gate_stop(), at(1, 1), p);
         p.player_ok = false;
-        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change, "player unreadable");
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change &&
+                  r.ship_check == ShipCheck::unreadable,
+              "player unreadable");
         p.player_ok = true;
         s.on_vm(1, at(1, 1));
         s.on_write(gate_stop(), at(1, 1), p);
@@ -302,6 +376,161 @@ static void inject_sequence() {
     check(t.on_inject(at(15, 15), ship_a, q, r), "fourth ticket called");
     r = t.on_vm(2, at(15, 16));
     check(r.reason == cancel_vm_load && t.on_result(1, at(15, 17)).row == Row::none, "load during the call");
+}
+// The gate transit re-points *(M+0x38) once (Run 190): one change to a live ship in a sector other than the departure
+// sector re-binds the ticket, which then restores on the new ship; every other change cancels ship_change.
+static void rebind() {
+    { // Run 190's shape: arm on ship_a in sector_a, the new object ship_c in sector_b at the first entry after the stall
+        State s;
+        Probe p;
+        Report r;
+        check(s.on_write(gate_stop(), at(19177, 1000), p).row == Row::armed && s.ship_id == ship_id, "arm records id");
+        check(!s.on_inject(at(19178, 1010), ship_a, p, r) && r.row == Row::none, "before the stall");
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        check(!s.on_inject(at(19362, 9000), ship_a, p, r) && r.row == Row::rebound && s.active() &&
+                  s.phase == Phase::armed && s.ship == ship_c && s.rebound && s.rebinds == 1,
+              "one change re-binds");
+        check(r.ship == ship_a && r.new_ship == ship_c && r.ship_id == ship_id && r.new_ship_id == ship_id &&
+                  r.sector_id == id_a && r.new_sector == sector_b && r.new_sector_id == id_b &&
+                  r.frames_since_arm == 185 && r.ms_since_arm == 8000 && r.ship_check == ShipCheck::rebound,
+              "rebound row: old/new ship and ids, sector ids, frames since arm");
+        p.ready_node = sector_b;
+        check(!s.on_inject(at(19363, 9010), ship_c, p, r) && s.phase == Phase::due && s.ready_sector == sector_b,
+              "Ready on the re-bound ship");
+        check(!s.on_inject(at(19365, 9030), ship_a, p, r) && s.skipped == 1, "the old object is no longer the controlled one");
+        check(s.on_inject(at(19365, 9031), ship_c, p, r), "the call on the re-bound ship");
+        r = s.on_result(1, at(19365, 9032));
+        check(r.row == Row::restored && r.ship == ship_c && s.restores == 1 && !s.active(), "restored after a re-bind");
+    }
+    { // a second change cancels, in armed and in due
+        for (int due = 0; due < 2; ++due) {
+            State s;
+            Probe p;
+            Report r;
+            s.on_write(gate_stop(), at(1, 1), p);
+            p.player_ship = ship_c;
+            p.parents[ship_c] = sector_b;
+            s.on_inject(at(2, 2), ship_a, p, r);
+            check(r.row == Row::rebound, "first change");
+            if (due) {
+                p.ready_node = sector_b;
+                s.on_inject(at(3, 3), ship_c, p, r);
+                check(s.phase == Phase::due, "due before the second change");
+            }
+            p.player_ship = ship_d;
+            p.parents[ship_d] = sector_b;
+            check(!s.on_inject(at(4, 4), ship_c, p, r) && r.row == Row::cancelled && r.reason == cancel_ship_change &&
+                      r.ship_check == ShipCheck::second && r.ship == ship_d && !s.active() && s.rebinds == 1,
+                  "second change cancels");
+        }
+    }
+    { // a change whose sector is still the departure sector cancels (no transit)
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_a;
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change &&
+                  r.ship_check == ShipCheck::same_sector && r.new_sector_id == id_a && !s.active(),
+              "same-sector change cancels");
+    }
+    struct Case {
+        const char* why;
+        ShipCheck expect;
+        void (*edit)(Probe&);
+    };
+    const Case unreadable[] = {
+        {"null player", ShipCheck::unreadable, [](Probe& p) { p.player_ship = 0; }},
+        {"misaligned player", ShipCheck::unreadable, [](Probe& p) { p.player_ship = ship_c + 2; }},
+        {"player unreadable", ShipCheck::unreadable, [](Probe& p) { p.player_ok = false; }},
+        {"object unreadable", ShipCheck::unreadable, [](Probe& p) { p.kinds.erase(ship_c); }},
+        {"not a ship", ShipCheck::not_ship, [](Probe& p) { p.kinds[ship_c] = Kind{10, 0xcafe}; }},
+        {"dead ship", ShipCheck::not_ship, [](Probe& p) { p.kinds[ship_c] = Kind{7, 0xefac}; }},
+        {"no parent", ShipCheck::no_sector, [](Probe& p) { p.parents[ship_c] = 0; }},
+        {"parent not a sector", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{7, 0xcafe}; }},
+        {"parent dead", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{1, 0xefac}; }},
+        {"parent unreadable", ShipCheck::no_sector, [](Probe& p) { p.kinds.erase(sector_b); }},
+        {"sector id unreadable", ShipCheck::no_sector, [](Probe& p) { p.ids.erase(sector_b); }},
+        {"sector id 0", ShipCheck::no_sector, [](Probe& p) { p.ids[sector_b] = 0; }},
+    };
+    for (const auto& c : unreadable) {
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        c.edit(p);
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.row == Row::cancelled && r.reason == cancel_ship_change &&
+                  r.ship_check == c.expect && !s.active() && s.rebinds == 0,
+              c.why);
+    }
+    { // the next arm clears the re-bind allowance: one re-bind per ticket, not per session
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        s.on_inject(at(2, 2), ship_a, p, r);
+        Write ramp;
+        s.on_write(ramp, at(3, 3), p); // any write while armed cancels (factor_write)
+        check(!s.active() && s.rebound, "cancelled; the flag stays until the next arm");
+        p.parent_sector = sector_b; // the next transit departs from sector_b on ship_c
+        p.parents.clear();
+        check(s.on_write(gate_stop(), at(4, 4), p).row == Row::armed && !s.rebound && s.ship == ship_c, "re-armed");
+        p.player_ship = ship_d;
+        p.parents[ship_d] = sector_a;
+        check(!s.on_inject(at(5, 5), ship_c, p, r) && r.row == Row::rebound && s.ship == ship_d && s.rebinds == 2,
+              "re-bound again on the next ticket");
+    }
+}
+// Record-only speed fields: the current player ship's [+0x10]/[+0x14] in every transition row, none in refusals.
+static void speeds() {
+    Probe p;
+    p.speeds[ship_a] = {120, 150};
+    p.speeds[ship_c] = {0, 0};
+    State s;
+    Report r = s.on_write(gate_stop(), at(1, 1), p);
+    record_speed(r, p);
+    check(r.row == Row::armed && r.speed_readable && r.speed_ship == ship_a && r.speed == 120 && r.desired_speed == 150,
+          "armed speeds");
+    p.player_ship = ship_c;
+    p.parents[ship_c] = sector_b;
+    s.on_inject(at(2, 2), ship_a, p, r);
+    record_speed(r, p);
+    check(r.row == Row::rebound && r.speed_readable && r.speed_ship == ship_c && r.speed == 0, "rebound speeds");
+    p.speeds.erase(ship_c);
+    r = s.on_vm(2, at(3, 3));
+    record_speed(r, p);
+    check(r.row == Row::cancelled && !r.speed_readable && r.speed_ship == ship_c && r.speed == 0, "unreadable speeds");
+    p.speeds[ship_c] = {0xffffff9cu, 0}; // int32 -100: carried raw
+    p.ready_node = sector_b;
+    p.parents[ship_c] = sector_a;
+    s.on_write(gate_stop(), at(5, 5), p);
+    p.parents[ship_c] = sector_b;
+    s.on_inject(at(6, 6), ship_c, p, r);
+    check(s.on_inject(at(8, 8), ship_c, p, r), "call");
+    r = s.on_result(1, at(8, 9));
+    record_speed(r, p);
+    check(r.row == Row::restored && r.speed_readable && std::int32_t(r.speed) == -100, "restored speeds");
+    p.ship_flags_of[ship_c] = manual_flags;
+    p.parents[ship_c] = sector_b;
+    State m;
+    r = m.on_write(gate_stop(), at(9, 9), p);
+    record_speed(r, p);
+    check(r.row == Row::skipped && r.speed_readable && r.speed_ship == ship_c, "skipped speeds");
+    Report none;
+    record_speed(none, p);
+    check(!none.speed_readable && !none.speed_ship, "no row: no read");
+    Write foreign = gate_stop();
+    foreign.build = 1;
+    State t;
+    r = t.on_write(foreign, at(1, 1), p);
+    record_speed(r, p);
+    check(r.row == Row::refused && !r.speed_readable && !r.speed_ship, "refusals carry no speed");
 }
 // Fake task memory for the return scan.
 struct Memory {
@@ -477,6 +706,8 @@ int main(int argc, char** argv) {
     arm_conditions();
     cancels();
     inject_sequence();
+    rebind();
+    speeds();
     return_scans();
     window_compare();
     std::printf("seta_restore_host checks=%u\nchecks PASS\n", checks);
