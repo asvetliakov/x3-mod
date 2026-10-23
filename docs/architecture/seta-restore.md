@@ -79,7 +79,7 @@ Before any write, the installer checks:
 * `object_trace::executable_verified()` and the engine_patch install window (`late_claim` otherwise);
 * ten byte windows: the hook span; the rest of case 9; the dispatcher head; the native thunk; the jump-table entry; the
   interpreter's native-call operand and IP stores; the return scan; the whole wrapper `0x0049f4c0`; the EXE's own
-  `StopFastForward` call shape.
+  `StopFastForward` call shape (`core::windows`, each read whole and compared raw: no other claim overlaps one).
 
 Any mismatch logs one refusal row, and nothing is claimed. The globals read are `0x00606f34`, `0x006085e4`,
 `0x0060850c` and `0x0057fc60`. Each is an anchor of `executable_identity.h`.
@@ -91,7 +91,7 @@ Any mismatch logs one refusal row, and nothing is claimed. The globals read are 
 | Row | When | Fields |
 | --- | --- | --- |
 | `installed=1` | install | hook, write kind, stub, inject site status, call, key, method, story build, IP, return, due frames, expiry ms |
-| `refused reason=executable_mismatch / late_claim / bytes_mismatch / pin_failed / <claim status> / <inject status> / rollback_failed` | install refusal | hook status, inject status, patched |
+| `refused reason=executable_mismatch / late_claim / bytes_mismatch / pin_failed / <claim status> / <inject status> / rollback_failed` | install refusal | first mismatching window (`window`, `window_name`, `expected`/`got` first 8 bytes; `-` otherwise), hook status, inject status, patched |
 | `refused reason=story_build` | first SETA stop on a readable other story build (once; latched off) | build, expected build |
 | `refused reason=build_unreadable` | a SETA stop whose build id could not be read (once; not latched) | old factor, IP, return |
 | `refused reason=same_transit / unreadable` | arm refused | old factor, IP, return, sector id |

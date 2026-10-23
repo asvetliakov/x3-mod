@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -38,6 +39,109 @@ class Core(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('checks PASS', run.stdout)
             self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 70)
+
+
+class LiveImage(unittest.TestCase):
+    """The install comparison over the image seta_restore::initialize() sees (Run 189 refused bytes_mismatch on an
+    unchanged EXE: engine_patch::verify_bytes compares 5..16 bytes only, case_rest is 34): X3AP.exe mapped flat, the
+    claim bytes of the features installed before it in capture.cpp (music_keep, then music_trace) applied, then the chase
+    restore's four sites (the loader claims them later; an install-order change must not matter either), then every claim
+    site the tree declares."""
+    EXE = Path('/mnt/c/X3/X3AP.exe')
+    SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
+    BASE = 0x00400000
+
+    @classmethod
+    def setUpClass(cls):
+        compiler = shutil.which('c++') or shutil.which('clang++')
+        if compiler is None:
+            raise unittest.SkipTest('A host C++ compiler is required')
+        if not cls.EXE.is_file() or hashlib.sha256(cls.EXE.read_bytes()).hexdigest() != cls.SHA256:
+            raise unittest.SkipTest('The pinned X3AP.exe is required at %s' % cls.EXE)
+        cls.directory = tempfile.TemporaryDirectory(prefix='x3-seta-live-')
+        cls.host = Path(cls.directory.name) / 'seta_restore_host'
+        build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                str(ROOT / 'verification/probe/seta_restore_host.cpp'), '-o', str(cls.host)],
+                               capture_output=True, text=True, timeout=120)
+        if build.returncode:
+            raise AssertionError(build.stdout + build.stderr)
+        listing = subprocess.run([str(cls.host), '--windows'], capture_output=True, text=True, timeout=30, check=True)
+        cls.windows = [(n, int(va, 16), int(length)) for n, va, length in (l.split() for l in listing.stdout.splitlines())]
+        data = cls.EXE.read_bytes()
+        pe = struct.unpack_from('<I', data, 0x3c)[0]
+        count, optional = struct.unpack_from('<H', data, pe + 6)[0], struct.unpack_from('<H', data, pe + 20)[0]
+        sections = [struct.unpack_from('<IIII', data, pe + 24 + optional + 40 * i + 8) for i in range(count)]
+        image = bytearray(max(va + max(vs, rs) for vs, va, rs, _ in sections))
+        for vs, va, rs, raw in sections:
+            image[va:va + rs] = data[raw:raw + rs]
+        cls.image = image
+        keep = (ROOT / 'src/proxy/music_keep_core.h').read_text()
+        site = lambda name: int(re.search(r'\b%s = (0x[0-9a-fA-F]+)' % name, keep).group(1), 16)  # noqa: E731
+        # (address, kind): the claim's jmp rel32 to its arena dispatcher, or a call site's re-targeted rel32
+        cls.music_keep = [(site('stop_all_va'), 'jmp'), (site('a_site_va'), 'jmp'), (site('t_stop_movie_site_va'), 'jmp'),
+                          (site('c_site_va'), 'call'), (site('d_site_va'), 'call'), (site('c_run_call_va'), 'call')]
+        cls.music_trace = [(site('play_va'), 'jmp')]  # the stop-all and MOV_StopMovie entries are shared, already live
+        chase = (ROOT / 'verification/probe/verify_chase_restore_sites.py').read_text()
+        cls.chase_restore = [(int(a, 16), 'jmp') for a in re.findall(r"H\('chase_restore_[a-z_]+',(0x[0-9a-f]+)", chase)]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.directory.cleanup()
+
+    def apply(self, image, claims, arena=0x041a0000):
+        for k, (address, kind) in enumerate(claims):
+            at = address - self.BASE
+            self.assertTrue(0 <= at <= len(image) - 5, hex(address))
+            if kind == 'call':
+                self.assertEqual(image[at], 0xe8, hex(address))  # claim_call re-targets an existing call
+            image[at] = 0xe8 if kind == 'call' else 0xe9
+            image[at + 1:at + 5] = struct.pack('<i', arena + 0x20 * k - (address + 5))
+
+    def install_check(self, image):
+        path = Path(self.directory.name) / 'image.bin'
+        path.write_bytes(bytes(image))  # RVA-indexed: the host maps byte i at VA 0x00400000 + i
+        run = subprocess.run([str(self.host), '--image', str(path)], capture_output=True, text=True, timeout=60)
+        return run.returncode, run.stdout.strip()
+
+    def flat(self):
+        return bytearray(self.image)
+
+    def test_claims_in_capture_order(self):
+        self.assertEqual(len(self.windows), 10)
+        self.assertEqual(len(self.chase_restore), 4)
+        image = self.flat()
+        self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))  # the EXE on disk
+        self.apply(image, self.music_keep)
+        self.apply(image, self.music_trace, arena=0x041a0400)
+        self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))  # Run 189's live image
+        self.apply(image, self.chase_restore, arena=0x041a0800)
+        self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))  # chase restore first
+
+    def test_every_declared_claim(self):
+        sys.path.insert(0, str(ROOT / 'verification/probe'))
+        import verify_collide_sites
+        claims = verify_collide_sites.other_claims(ROOT, skip_prefix='seta_restore', own_names=())
+        self.assertGreater(len(claims), 100)
+        hits = [(name, hex(a), w) for name, a, length in claims for w, va, n in self.windows if a < va + n and va < a + length]
+        self.assertEqual(hits, [])  # no window holds another feature's claim: the raw comparison is the right rule
+        image = self.flat()
+        for name, address, _ in claims:
+            at = address - self.BASE
+            if 0 <= at < len(image) - 5:
+                image[at:at + 5] = b'\xe9\0\0\0\0'
+        self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))
+
+    def test_foreign_write_names_the_window(self):
+        image = self.flat()
+        self.apply(image, self.music_keep)
+        hook = dict((n, va) for n, va, _ in self.windows)['hook']
+        image[hook - self.BASE:hook - self.BASE + 5] = b'\xe9\x00\x00\x00\x00'
+        self.assertEqual(self.install_check(image), (1, 'image windows=10 mismatch=hook va=0x004b148c readable=1 got=e9000000008b5301'))
+        image = self.flat()
+        wrapper = dict((n, va) for n, va, _ in self.windows)['wrapper_body']
+        image[wrapper - self.BASE + 172] ^= 0xff  # the wrapper's last byte, past every prologue bound
+        code, line = self.install_check(image)
+        self.assertEqual((code, line.split(' got=')[0]), (1, 'image windows=10 mismatch=wrapper_body va=0x0049f4c0 readable=1'))
 
 
 class Launcher(unittest.TestCase):
@@ -122,10 +226,16 @@ class Config(unittest.TestCase):
 class Wiring(unittest.TestCase):
     def test_production_wiring(self):
         source = (ROOT / 'src/proxy/seta_restore.cpp').read_text()
-        # every window of the core header is compared before the claim
+        # every window of the core table is compared whole before the claim (verify_bytes takes 5..16 bytes: Run 189)
+        core = (ROOT / 'src/proxy/seta_restore_core.h').read_text()
+        table = core[core.index('constexpr Window windows[] = {'):core.index('constexpr unsigned window_count')]
         for window in ('hook_bytes', 'case_rest', 'dispatch_head', 'thunk_body', 'table_entry', 'native_args', 'native_ip',
                        'return_scan', 'wrapper_body', 'stop_call'):
-            self.assertRegex(source, r'verify_bytes\([a-z_]+, %s,' % window, window)
+            self.assertRegex(table, r'\{"[a-z_]+", [a-z_]+, %s, ' % window, window)
+        self.assertNotIn('verify_bytes', source)
+        self.assertIn('compare_windows(', source)
+        self.assertIn('engine_patch::read_code(at,', source)
+        self.assertIn('window=0x%08lx window_name=%s expected=%s got=%s', source)  # the refusal row names the window
         self.assertLess(source.index('windows_match()) {'), source.index('engine_patch::claim(hook_site_, spec)'))
         self.assertLess(source.index('engine_patch::claim(hook_site_, spec)'), source.index('inject_attach(&consumer_'))
         self.assertIn('engine_patch::restore(hook_site_)', source)  # rollback of the hook when the attach fails

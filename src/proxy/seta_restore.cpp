@@ -249,17 +249,29 @@ bool pin_self() {
                               reinterpret_cast<LPCWSTR>(&patched_), &module) != FALSE &&
            module != nullptr;
 }
-// Every window the hook, its register contract and the call depend on (verify_seta_restore_sites.py pins the same).
+// Every window the hook, its register contract and the call depend on (core::windows; verify_seta_restore_sites.py
+// pins the same), each read whole through ReadProcessMemory; mismatch_ names the first one that differs.
+Mismatch mismatch_{};
 bool windows_match() {
-    using engine_patch::verify_bytes;
-    return verify_bytes(hook_va, hook_bytes, hook_length) && verify_bytes(case_rest_va, case_rest, case_rest_length) &&
-           verify_bytes(ti_dispatch_va, dispatch_head, dispatch_length) &&
-           verify_bytes(ti_thunk_va, thunk_body, thunk_length) && verify_bytes(ti_table_entry_va, table_entry, 4) &&
-           verify_bytes(native_args_va, native_args, native_args_length) &&
-           verify_bytes(native_ip_va, native_ip, native_ip_length) &&
-           verify_bytes(return_scan_va, return_scan, return_scan_length) &&
-           verify_bytes(script_call_va, wrapper_body, wrapper_length) &&
-           verify_bytes(stop_call_va, stop_call, stop_call_length);
+    return compare_windows(
+        [](std::uint32_t at, void* out, unsigned n) {
+            return engine_patch::read_code(at, static_cast<unsigned char*>(out), n);
+        },
+        mismatch_);
+}
+// Lower-case hex of n <= shown_bytes bytes into out (2 * shown_bytes + 1 chars), "-" for none.
+void hex(const unsigned char* bytes, unsigned n, char* out) {
+    static const char digits[] = "0123456789abcdef";
+    if (!n) {
+        out[0] = '-';
+        out[1] = 0;
+        return;
+    }
+    for (unsigned i = 0; i < n; ++i) {
+        out[2 * i] = digits[bytes[i] >> 4];
+        out[2 * i + 1] = digits[bytes[i] & 15];
+    }
+    out[2 * n] = 0;
 }
 const char* write_kind(const engine_patch::Site& s) {
     return s.patched_in ? (s.atomic_write ? "atomic" : "plain") : "none";
@@ -346,9 +358,18 @@ bool initialize() {
             static_cast<unsigned long>(call_key), call_method, static_cast<unsigned long>(story_build),
             static_cast<unsigned long>(stop_ip), static_cast<unsigned long>(gate_return),
             static_cast<unsigned long long>(due_frames), static_cast<unsigned long long>(expiry_ms));
-    else
-        log("seta_restore refused reason=%s hook=0x%08lx hook_status=%s inject=%s patched=%u", state_,
+    else {
+        const Window* w = mismatch_.window;
+        char expected[2 * shown_bytes + 1], got[2 * shown_bytes + 1];
+        hex(w ? w->bytes : nullptr, w ? mismatch_.shown : 0, expected);
+        if (w && !mismatch_.readable)
+            std::memcpy(got, "unreadable", sizeof "unreadable");
+        else
+            hex(mismatch_.got, w ? mismatch_.shown : 0, got);
+        log("seta_restore refused reason=%s window=0x%08lx window_name=%s expected=%s got=%s hook=0x%08lx hook_status=%s inject=%s patched=%u",
+            state_, static_cast<unsigned long>(w ? w->va : 0), w ? w->name : "-", expected, got,
             static_cast<unsigned long>(hook_va), hook_site_.status, inject_state_, unsigned(patched_));
+    }
     SetLastError(error);
     return ok;
 }
