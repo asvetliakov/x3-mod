@@ -207,7 +207,7 @@ value is harmless):
 | `[fog]` | `volumetric_fog`, `volumetric_fog_anisotropy`, `volumetric_fog_cards`, `volumetric_fog_range`, `volumetric_fog_march_scale`, `fog_motes_max_px`, `fog_docked`, `fog_handover_step/coldfill/prefill` |
 | `[camera]` | `camera`, `fov`, `ui_scale` (1..3 or `auto`, default `auto` = height / 1080 to the nearest half since 0.9.0; [ui-scale.md](ui-scale.md)), `text_density` (`auto`, 1, 2, 3, default `auto` = ceil(`ui_scale`); [text-density.md](text-density.md)), `chase_pitch_down_deg`, `chase_offset_y`, `chase_distance_scale`, `chase_view_restore`, `sun_occlusion` |
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
-| `[audio]` | `music_keep`, the voice-DMO fallback switch |
+| `[audio]` | `music_keep`, the voice-DMO fallback switch, `music_combat_trigger`, `music_combat_hold_s` |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
 | `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note), `engine_light`, `engine_shimmer`, `engine_shimmer_px`, `engine_shimmer_max` (2026-10-03, end of this note) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |

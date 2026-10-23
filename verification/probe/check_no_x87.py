@@ -105,6 +105,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # gzclose observers the import rows call while the save pump may run, and the integer shim around the engine pump
                 '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close',
                 '_x3m_music_keep_call_pump', '_x3m_music_keep_call_pause',
+                # the combat-music trigger (src/proxy/music_alert.cpp, X3M_MUSIC_COMBAT_TRIGGER=engaged): the integer stub at the alert
+                # routine's level site 0x0042c974 and its per-frame handler under LightCallBoundary (validated reads, one word written)
+                '_x3m_music_alert_stub', '_x3m_music_alert_frame',
                 # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
                 # handler, once per process on the game's init thread; its row is formatted behind call_preserved
                 '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',

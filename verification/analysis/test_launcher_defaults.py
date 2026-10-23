@@ -64,6 +64,8 @@ EXPECTED_EMPTY = {
     'X3M_MOTION_CUT_MEDIAN_PX': '1e30',
     'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
     'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
+    # 2026-10-23: the combat-music trigger narrowed to engagement (music-combat-trigger.md), hold 20 game seconds
+    'X3M_MUSIC_COMBAT_TRIGGER': 'engaged', 'X3M_MUSIC_COMBAT_HOLD_S': '20',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
     'X3M_RESOURCE_READ': 'fast', 'X3M_RUN_IN_BACKGROUND': '1', 'X3M_SCENE_HOOK': '1',  # run in background since 2026-09-27
     'X3M_SETA_RESTORE': '1',  # SETA back on after a gate since 2026-10-23 (docs/architecture/seta-restore.md)
@@ -140,6 +142,7 @@ OPT_OUTS = (
     (('--cull-dock-parts', '0'), 'X3M_CULL_DOCK_PARTS_PX', None),
     (('--cull-dock-parts', '12'), 'X3M_CULL_DOCK_PARTS_PX', '12.0000'),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
+    (('--music-combat-trigger', 'vanilla'), 'X3M_MUSIC_COMBAT_TRIGGER', 'vanilla'),
     (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
     (('--no-seta-restore',), 'X3M_SETA_RESTORE', None),
     (('--taa-luma-lock', '0'), 'X3M_TAA_LUMA_LOCK', '0'),
