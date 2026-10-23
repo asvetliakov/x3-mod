@@ -163,9 +163,9 @@ constexpr unsigned char gzclose_thunk[gzclose_thunk_length] = {0xff, 0x25, 0xf0,
 // 5 s ring minus one 2 s sample leaves a 3 s minimum lead, less a margin. Past it, Patch E forwards the Run (the buffer
 // re-arms), and an episode still waiting for its replay past it is paused through 0x004d1810 at the next Present.
 constexpr unsigned run_skip_bound_ms = 2500;
-// Cadence: at most one pump call per 250 ms of wall time; the clock is read every pump_poll_stride gzwrite calls (one
+// Cadence: at most one pump call per 250 ms of wall time; the clock is read every pump_poll_stride gzwrite calls (about 23k clock reads per 24 M-write save, perf review F3; one
 // load, one decrement and a branch otherwise); pumping stops on its own after pump_bound_ms.
-constexpr unsigned pump_interval_ms = 250, pump_poll_stride = 32, pump_bound_ms = 120000;
+constexpr unsigned pump_interval_ms = 250, pump_poll_stride = 1024, pump_bound_ms = 120000;
 // Patch E: the play routine's Run call at 0x00498d71 (`e8 fa 8a 03 00` = call 0x004d1870, one whole instruction
 // between `mov eax,esi` at 0x00498d6f and `test eax,eax; je 0x00498dde`; & 7 = 1, one lock cmpxchg8b). In: EAX = ESI =
 // record; the callee preserves EBX/EBP/ESI/EDI and returns 1 on this path; ECX/EDX/flags are dead after it (test eax;

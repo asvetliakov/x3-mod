@@ -694,9 +694,9 @@ void kc_row(KcResult r) {
              kc_.applied, kc_.refused, kc_.load_begins, kc_.markers);
 }
 __attribute__((noinline)) void music_queue_kc_present() {
+    const std::uint32_t vm = load32(vm_ptr_va); // image load, no engine read: the due test runs before the boundary
+    if (!kc_.due(vm)) return;                    // (7 of 8 Presents leave here; perf review F4)
     x3m::LightCallBoundary cpu;
-    const std::uint32_t vm = load32(vm_ptr_va);
-    if (!kc_.due(vm)) return;
     std::uint32_t code = 0, size = 0, build = 0;
     const bool vm_ok = vm != 0;
     const bool fields_ok = vm_ok && x3m::engine_memory::read(vm + vm_code, &code, 4) &&

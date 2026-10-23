@@ -86,7 +86,7 @@ EXPECTED = {
     'save_return_va': 0x404561, 'pump_va': 0x4d0700, 'pump_end_va': 0x4d0c0c, 'status_ds_tail_va': 0x4d17b5, 'pump_head_length': 55, 'pump_end_length': 37,
     'status_ds_tail_length': 28, 'media_stream': 0x04, 'media_buffer_state': 0x48, 'media_position': 0x70, 'media_flags': 0x8c, 'media_ds_mask': 0x48,
     'media_ds_value': 0x40, 'media_stream_clock': 0x20, 'buffer_playing': 2, 'buffer_draining': 4, 'gzwrite_iat_va': 0x5323e0, 'gzwrite_thunk_va': 0x4fae46,
-    'gzwrite_thunk_length': 6, 'pump_interval_ms': 250, 'pump_poll_stride': 32, 'pump_bound_ms': 120000, 'e_site_va': 0x498d71, 'e_target_va': 0x4d1870,
+    'gzwrite_thunk_length': 6, 'pump_interval_ms': 250, 'pump_poll_stride': 1024, 'pump_bound_ms': 120000, 'e_site_va': 0x498d71, 'e_target_va': 0x4d1870,
     'e_return_va': 0x498d76, 'e_post_length': 35, 'stop_movie_native_return_va': 0x499886,
     'position_reader_va': 0x4d0600, 'position_reader_length': 120, 'position_vtbl_get_current': 0x24, 'stream_vtbl_get_time': 0x20, 'seek_resume_bit': 4,
     # the save's own gzclose (review fix 4), the Run-skip bound (fix 2), the trace's task fields (script-task-scheduler.md section 2-3)
