@@ -504,6 +504,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::seta_restore::shutdown(); // same rule: the SETA hook back and the injection consumer detached only on
                                            // FreeLibrary
+        if (reserved == nullptr)
             x3m::music_alert::shutdown(); // same rule: the alert level site back only on FreeLibrary
         if (reserved == nullptr)
             x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
