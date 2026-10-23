@@ -1,0 +1,21 @@
+{
+ "run": "190",
+ "what": "Run189 + the install-check fix for music_alert and seta_restore (both refused reason=bytes_mismatch in Run 189 because engine_patch::verify_bytes accepts 5..16-byte windows only; whole-window compare, refusal row names the window, live-image host tests)",
+ "commit": "4d78a5a1",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (52.9 s wall)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "eaf8975434b2d9a74269ef90a7a59099f63063542b7364d6b4cf6ac507511eb8",
+  "bytes": 62244132,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 154 roots, 1040 reachable, 0 violations",
+  "site_verifiers": "verify_music_alert_sites 31 PASS; verify_seta_restore_sites PASS; run189_refusal_cause: first refused window case_rest 0x004b1494 len=34, no overlapping claim",
+  "host_tests": "test_seta_restore 11, test_music_alert 13 (live-image tests ran against /mnt/c/X3/X3AP.exe), test_music_keep, test_chase_transition: OK",
+  "reviews": "one independent review of both fixes, no blocker; two small items applied (mismatch reset at install, ledger wording); verify_bytes callers audited: all 135 site specs within 5..16"
+ },
+ "producer": "main session"
+}
