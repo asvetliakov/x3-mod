@@ -762,6 +762,65 @@ int main() {
             g.load_complete(); g.load_begin();
             check(!g.settle(b), "a load that begins after the marker: closed again");
             check(g.load_begins == 4 && g.markers == 2, "gate counters");
+            // Before a detection is kept, the observation carries the candidate's outcome and window offset with the bytes.
+            KcPatch d;
+            KcObservation e = a; e.detect = 0; e.window_at = warp_fork_offset;
+            check(!d.settle(e) && d.settle(e), "the same key, detection and live window twice: open (the detection is kept)");
+            KcObservation f = e; f.window_at = warp_fork_offset + 1;
+            check(!d.settle(f), "the same window bytes at another detected offset: closed");
+            KcObservation h = e; h.detect = unsigned(x3m::story::Fail::no_site); h.window_at = 0; h.window_ok = false; std::memset(h.window, 0, sizeof h.window);
+            check(!d.settle(h) && d.settle(h), "a failed candidate (no window) twice with the same key and reason: open");
+            KcObservation u = h; u.detect = unsigned(x3m::story::Fail::unreadable);
+            check(!d.settle(u), "another reason: closed");
+            check(KcObservation{}.detect == kc_no_detection, "no detection by default");
+        }
+        // The detection cache (story_detect.h Retries): transient failures retried at most detect_retry_limit times per key.
+        {
+            using x3m::story::Fail;
+            using x3m::story::Outcome;
+            x3m::story::Retries t;
+            const x3m::story::VmKey k1{0x100, 0x20000000, 0x20000, story_build}, k2{0x100, 0x30000000, 0x20000, story_build};
+            Outcome o{Fail::none, ""};
+            check(!t.keep(k1, o, false) && t.keep(k1, o, true) && o.ok(), "a success is kept once settled");
+            bool kept = false;
+            for (const Fail f : {Fail::no_method, Fail::no_site, Fail::ambiguous_site, Fail::decode_error, Fail::bad_layout, Fail::table_mismatch,
+                                 Fail::no_class, Fail::duplicate_method, Fail::no_native, Fail::branch_into_window, Fail::read_budget}) {
+                Outcome d{f, "m"};
+                kept = !t.keep(k1, d, false) && t.keep(k1, d, true) && d.fail == f && !x3m::story::transient(f);
+                if (!kept) break;
+            }
+            check(kept && t.transients == 0, "definitive failures are kept once settled, unchanged");
+            unsigned retried = 0;
+            Outcome x{Fail::unreadable, "150::WarpToSector"};
+            while (!t.keep(k1, x, retried % 2 == 0) && retried < 20) {
+                ++retried;
+                x = Outcome{retried % 2 ? Fail::method_range : Fail::unreadable, "150::WarpToSector"};
+            }
+            check(retried == x3m::story::detect_retry_limit && x.fail == Fail::retry_exhausted && !std::strcmp(x.where, "150::WarpToSector") &&
+                  !std::strcmp(x3m::story::fail_name(x.fail), "retry_exhausted"), "eight retries per key, then kept as retry_exhausted");
+            Outcome y{Fail::no_code, "vm"};
+            check(!t.keep(k2, y) && t.transients == 1 && y.fail == Fail::no_code, "a new key starts its own account (no_code is transient)");
+            check(!std::strcmp(x3m::story::fail_name(Fail::decode_error), "decode_error") && !std::strcmp(x3m::story::fail_name(Fail::read_budget), "read_budget"), "new reasons named");
+        }
+        // The decode walk's widths (story_detect.h memory_width: 0x0049e810's table) and its refusals.
+        {
+            using x3m::story::detail::memory_width;
+            const unsigned char fused[] = {0x95, 0x24, 0x94, 0x01, 0x00, 0x24, 0x96, 0x02, 0x00, 0x23, 0x01, 0x00, 0xa0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                           0xaa, 0x34, 0x10, 0x00, 0x00, 0x00, 0x83, 0x83, 0x83};
+            unsigned at = 0, n = 0;
+            const unsigned widths[] = {2, 4, 6, 9, 1, 5, 1, 1, 1};
+            bool walk = true;
+            for (; at < sizeof fused && n < 9; ++n) {
+                const unsigned w = memory_width(fused, at, sizeof fused);
+                walk = walk && w == widths[n];
+                at += w ? w : sizeof fused;
+            }
+            check(walk && at == sizeof fused, "fused opcodes cover their patterns; aa..b1 one byte");
+            const unsigned char table[] = {0x78, 0x01, 0x00, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+            check(memory_width(table, 0, sizeof table) == 15 && memory_width(table, 0, 14) == 0, "78: a little-endian count; past the method end refused");
+            const unsigned char none[] = {0x00, 0x25, 0x70, 0xb1, 0xb2, 0xff, 0x82};
+            check(!memory_width(none, 0, 7) && !memory_width(none, 1, 7) && memory_width(none, 2, 7) == 1 && memory_width(none, 3, 7) == 1 &&
+                  !memory_width(none, 4, 7) && !memory_width(none, 5, 7) && !memory_width(none, 6, 7), "no handler (00, 25, above b1) or truncated: refused; 70 end decodes");
         }
         check(warp_window_memory[0] == kc_op_fork && warp_window_memory[1] == kc_op_jt && warp_patch_memory[0] == kc_op_jmp && warp_patch_memory[5] == kc_op_filler
               && (warp_window_memory[2] | warp_window_memory[3] << 8 | warp_window_memory[4] << 16 | std::uint32_t(warp_window_memory[5]) << 24) == warp_continue_offset
@@ -1108,7 +1167,10 @@ class MusicSites(unittest.TestCase):
                        'music_queue_kc_present();', 'if (queue_.active()) music_queue_alert_present();', 'music_queue requested=%u armed=%u reason=%s', 'music_queue_kc frame=%llu action=%s',
                        'music_queue frame=%llu seq=%lu qpc=%llu event=%s', 'x3m_music_free_fn = free_by_id_va', 'ours = window[i] == s->warp_patch_memory[i];',
                        # the sites detected at run time (story_detect.h), combat as the alert edge
-                       'x3m::story::detect_queue(engine_read, vm, kc_sites_, kc_scratch_);', 'kc_sites_.key = key;',
+                       'x3m::story::detect_queue(engine_read, vm, kc_candidate_, kc_scratch_);', 'kc_candidate_.key = key;',
+                       'if (kc_retries_.keep(key, kc_candidate_.outcome, settled)) {', 'kc_sites_ = kc_candidate_;',
+                       'seen.detect = seen_sites ? unsigned(seen_sites->outcome.fail) : kc_no_detection;',
+                       'seen.window_at = sites ? seen_sites->warp_fork_offset : 0;',
                        'return kc_sites_.detected && kc_sites_.key == key && kc_sites_.outcome.ok() ? &kc_sites_ : nullptr;',
                        'v.story = sites_now();', 'combat_track_ = alert_on(alert) ? id : 0;', 'v.combat_old = combat_track_ != 0 && id == combat_track_;',
                        'detect=%s method=%s', 'r = kc_sites_.outcome.ok() ? KcResult::waiting : KcResult::no_sites;'):
@@ -1180,13 +1242,17 @@ class StoryDetect(unittest.TestCase):
     def tearDownClass(cls):
         cls.tmp.cleanup()
 
-    def detect(self, raw, **kw):
+    def detect(self, raw, budget=None, **kw):
         image = Path(self.tmp.name) / 'image.bin'
         image.write_bytes(self.img.build_image(raw, **kw))
         try:
-            return self.img.run_host(self.host, image)
+            return self.img.run_host(self.host, image, budget)
         finally:
             image.unlink()
+
+    def sites(self, e):
+        return (('0x%05x' % e['warp_method_entry'], '0x%05x' % e['warp_fork_offset'], '0x%05x' % e['kc_play_stop_ip'], '0x%05x' % e['kc_fade_stop_ip'],
+                 '0x%05x' % e['kc_play_ip'], '0x%05x' % e['kc_loop_music_return'], '0x%05x' % e['kc_change_track_return']))
 
     def test_table_complete(self):
         entries = self.table.entries()
@@ -1223,22 +1289,69 @@ class StoryDetect(unittest.TestCase):
     def test_failure_modes(self):
         e = self.table.entries()[0]
 
-        def dup_stop(code, entries):   # a second MOV_StopMovie operand inside PlayMusicWithFade
+        img = self.img
+        keep = [(e['kc_play_stop_ip'] - 5, 5), (e['kc_play_ip'] - 5, 5)]
+
+        def dup_stop(code, entries):   # a second MOV_StopMovie native at an instruction start of PlayMusicWithFade
             at = e['kc_play_stop_ip'] - 5
-            entry = entries[(200, 'PlayMusicWithFade')]
-            code[entry + 1:entry + 6] = code[at:at + 5]
+            img.replace_insn(code, entries[(200, 'PlayMusicWithFade')], entries, 5, keep, code[at:at + 5])
 
         def no_fork(code, entries):    # the fork child no longer StopMusic(500)
             code[e['warp_fork_offset'] + 7] = 0xf5
 
-        def into_window(code, entries):   # a dword of WarpToSector pointing into the window interior
-            entry = entries[(150, 'WarpToSector')]
-            code[entry + 1:entry + 5] = struct.pack('<I', e['warp_fork_offset'] + 2)
+        def into_window(code, entries):   # a dword of WarpToSector pointing into the window interior (a pushd operand)
+            img.replace_insn(code, entries[(150, 'WarpToSector')], entries, 5, [(e['warp_fork_offset'], 20)],
+                             b'\x07' + struct.pack('<I', e['warp_fork_offset'] + 2))
+
+        def no_handler(code, entries):   # an opcode without an interpreter handler at an instruction start of LoopMusic
+            code[img.method_insns(code, entries[(200, 'LoopMusic')], entries)[1]] = 0x00
+
+        def past_end(code, entries):     # ChangeTrackMusic's last instruction widened past the method's end
+            code[img.method_insns(code, entries[(200, 'ChangeTrackMusic')], entries)[-1]] = 0x07
 
         for mutate, fail, where in ((dup_stop, 'ambiguous_site', '200::PlayMusicWithFade'), (no_fork, 'no_site', '150::WarpToSector'),
-                                    (into_window, 'branch_into_window', '150::WarpToSector')):
+                                    (into_window, 'branch_into_window', '150::WarpToSector'), (no_handler, 'decode_error', '200::LoopMusic'),
+                                    (past_end, 'decode_error', '200::ChangeTrackMusic')):
             q = self.detect(self.raw['mayhem'], build=1234567890, mutate=mutate)['queue']
             self.assertEqual((q['fail'], q['where']), (fail, where), mutate.__name__)
+
+    def test_signatures_only_at_instruction_starts(self):
+        # A copy of a signature inside another instruction's operand (a 0a operand of PlayMusicWithFade holding the
+        # MOV_StopMovie native, a 0a operand of LoopMusic holding the PlayMusicWithFade call) is never a site: the known
+        # build still reproduces its entry exactly; with the true site gone the embedded copy does not stand in for it.
+        img, e = self.img, self.table.entries()[0]
+        stop, play, loop_call = e['kc_play_stop_ip'] - 5, e['kc_play_ip'] - 5, e['kc_loop_music_return'] - 5
+        embedded = {}
+
+        def embed(code, entries):
+            embedded['stop'] = img.embed_in_operand(code, entries[(200, 'PlayMusicWithFade')], entries, code[stop:stop + 5], [(stop, 5), (play, 5)])
+            embedded['call'] = img.embed_in_operand(code, entries[(200, 'LoopMusic')], entries, code[loop_call:loop_call + 5], [(loop_call, 5)])
+
+        def embed_without_stop(code, entries):
+            embed(code, entries)
+            code[stop:stop + 5] = b'\x01' * 5
+
+        def embed_without_call(code, entries):
+            embed(code, entries)
+            code[loop_call:loop_call + 5] = b'\x01' * 5
+
+        q = self.detect(self.raw['mayhem'], mutate=embed)['queue']
+        self.assertEqual(q['fail'], 'none')
+        self.assertEqual((q['warp_entry'], q['fork'], q['play_stop'], q['fade_stop'], q['play'], q['loop_return'], q['change_return']), self.sites(e))
+        self.assertTrue(embedded['stop'] and embedded['call'])
+        for mutate, where in ((embed_without_stop, '200::PlayMusicWithFade'), (embed_without_call, '200::LoopMusic')):
+            q = self.detect(self.raw['mayhem'], build=1234567890, mutate=mutate)['queue']
+            self.assertEqual((q['fail'], q['where']), ('no_site', where), mutate.__name__)
+
+    def test_read_budget(self):
+        # The detection stops at its read budget (story_detect.h detection_read_budget 16,384; the need is measured here).
+        q = self.detect(self.raw['mayhem'])
+        reads = int(q['queue']['reads'])
+        self.assertLess(reads * 4, 16384)
+        self.assertEqual(self.detect(self.raw['mayhem'], budget=reads)['queue']['fail'], 'none')
+        short = self.detect(self.raw['mayhem'], budget=reads - 1)
+        self.assertEqual((short['queue']['fail'], short['queue']['reads']), ('read_budget', str(reads - 1)))
+        self.assertEqual(self.detect(self.raw['mayhem'], budget=int(q['seta']['reads']) - 1)['seta']['fail'], 'read_budget')
 
 
 class MusicLaunchOptions(unittest.TestCase):

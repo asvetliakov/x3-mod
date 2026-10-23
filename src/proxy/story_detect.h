@@ -5,11 +5,13 @@
 
 // Run-time detection of the story-script sites (docs/architecture/story-builds.md): from the KC VM the engine loaded,
 // never from a per-build constant. The methods are found by class key and name through the VM's own tables, the way
-// the engine's resolver 0x0049f330 does; the sites inside them by a short byte signature of the in-memory form, unique
-// within the method; the IPs, return offsets and the KC patch window follow from the matches. A known build
+// the engine's resolver 0x0049f330 does; the sites inside them by a short byte signature of the in-memory form, tested
+// only at instruction starts of a decode walk from the method's entry and unique there; the IPs, return offsets and the
+// KC patch window follow from the matches. A known build
 // (story_builds.h) must reproduce its entry exactly (Fail::table_mismatch otherwise). Any failure names the method and
 // the reason; the feature then stays inert for that object. Pure code over a fault-free reader
-// `bool reader(std::uint32_t address, void* out, unsigned size)`: no Windows header, no allocation, no floating point.
+// `bool reader(std::uint32_t address, void* out, unsigned size)`, at most detection_read_budget calls per detection
+// (Fail::read_budget beyond): no Windows header, no allocation, no floating point.
 //
 // VM layout (*0x006085e4; X3AP.exe SHA-256 fdbf3418..., static disassembly 2026-10-23):
 //   +0x08 CODE buffer, +0x10 its size (loader 0x0049d332..0x0049d34e), +0x143c build id (0x0049d2a7);
@@ -21,9 +23,15 @@
 //   +0x40 + g * 0x18, g = 1..31: native group g's NULL-terminated name table (char*[]); the load pass 0x0049e1a0
 //   rewrites `82 <BE32 STRG name>` to `82 <u16 group> <u16 command>` with the first (g, index) whose name matches.
 // In-memory CODE (0x0049e1a0): every multi-byte operand little-endian; jumps and calls (32..3a, 84..88) carry absolute
-// CODE offsets. The peephole pass 0x0049e4f0 rewrites the first opcode byte only of patterns starting with 01/02
-// (+ jump), 0d..0f/14..16, 17 (+ drop) and 64 (+ jump), and threads jump operands through jmp chains: the native (82),
-// call (86/88) and fork (6f) opcodes every signature below starts with are never rewritten.
+// CODE offsets. The peephole pass 0x0049e4f0 rewrites the opcode byte of patterns starting with 01/02 (+ jump), 0d..0f
+// and 14..16 (+ index, indexed store, drop, drop n, increment), 17 (+ drop) and 64 (+ jump) into fused opcodes 8c..b1,
+// and the first three bytes of `0d 0001 14 0002 24 83` into `83 83 83`; it then threads the operands of 32/33/34 through
+// jmp chains and constant conditionals. No signature byte below is rewritten: the native (82), call (86/88), fork (6f)
+// and child opcodes are never a pattern's head, and only the 32/33/34 operands are threaded.
+// The decode walk (memory_width) uses the in-memory widths of the pass's own second walk 0x0049e810 (byte table
+// 0x0049e9d4, jump table 0x0049e9a0), which cover each fused pattern whole; 78/79 carry little-endian u16 counts
+// (0x0049e283, 0x0049e2e4). A byte the interpreter 0x004a26a0 has no handler of its own for (00, above b1, or a
+// default-handler opcode 0x004a4301 other than 70 end) or an instruction past the method's end is Fail::decode_error.
 namespace x3m::story {
 constexpr unsigned vm_code = 0x08, vm_code_size = 0x10, vm_strings = 0x14, vm_strings_size = 0x18, vm_class_count = 0x1c,
                    vm_class_records = 0x20, vm_build = 0x143c, vm_group_names = 0x40, group_stride = 0x18;
@@ -34,6 +42,11 @@ constexpr unsigned class_parent = 0x14, class_method_count = 0x28, class_method_
 constexpr unsigned class_count_limit = 0x4000, method_count_limit = 0x2000, chain_limit = 64, group_name_limit = 0x400;
 constexpr unsigned name_limit = 48, scratch_size = 0x4000; // longest name compared; the largest method scanned
 constexpr std::uint32_t code_size_limit = 0x01000000;
+// Reader calls one detection may make (measured on the host images: 2,198-2,754 for x3story, 7 for x3config, 30 for
+// x3intro); a VM whose tables would take more fails as Fail::read_budget.
+constexpr unsigned detection_read_budget = 16384;
+// Transient failures (Fail::unreadable, method_range, no_code) one key may retry before it is kept as retry_exhausted.
+constexpr unsigned detect_retry_limit = 8;
 constexpr unsigned char op_native = 0x82, op_callcls = 0x86, op_callself = 0x88, op_fork = 0x6f, op_jt = 0x33,
                         op_jmp = 0x32, op_pushw = 0x06, op_push1 = 0x02, op_drop = 0x24, op_end = 0x70, op_filler = 0x01;
 // The ChangeTrackMusic fork child at PlayMusicWithFade's MOV_StopMovie: stack index -19 and its six frame cells by
@@ -42,7 +55,7 @@ constexpr unsigned char op_native = 0x82, op_callcls = 0x86, op_callself = 0x88,
 // equal in both builds modulo relocation (verify_music_queue_kc.py). Not derivable from a byte signature: each stop
 // checks the cell tags and the detected return offsets before it defers (music_keep_core.h deferrable_shape).
 constexpr unsigned fork_child_stack_depth = 19;
-constexpr unsigned fork_child_cell_depths[queue_cell_count] = {18, 13, 11, 10, 9, 7};
+inline constexpr unsigned fork_child_cell_depths[queue_cell_count] = {18, 13, 11, 10, 9, 7};
 
 enum class Fail : unsigned {
     none = 0,
@@ -55,16 +68,20 @@ enum class Fail : unsigned {
     duplicate_method,  // two rows of that name in the class that has it
     method_range,      // entry outside CODE, or the method longer than scratch_size
     no_native,         // the native name is in no group table
-    no_site,           // the signature does not occur in the method
-    ambiguous_site,    // the signature occurs more than once in the method
+    no_site,           // the signature does not occur at an instruction start of the method
+    ambiguous_site,    // the signature occurs at more than one instruction start of the method
     branch_into_window,// a dword of WarpToSector points into the patch window's interior
     table_mismatch,    // a known build (story_builds.h) whose detected sites differ from its entry
+    decode_error,      // the method's decode walk met an opcode without a handler or an instruction past its end
+    read_budget,       // the detection would take more than detection_read_budget reads
+    retry_exhausted,   // a transient failure seen detect_retry_limit + 1 times for one key (kept, no further retry)
     count
 };
 inline const char* fail_name(Fail f) noexcept {
     static const char* const names[unsigned(Fail::count)] = {
         "none",      "no_vm",     "unreadable",     "no_code",        "bad_layout",         "no_class",      "no_method",
-        "duplicate_method", "method_range", "no_native", "no_site", "ambiguous_site", "branch_into_window", "table_mismatch"};
+        "duplicate_method", "method_range", "no_native", "no_site", "ambiguous_site", "branch_into_window", "table_mismatch",
+        "decode_error", "read_budget", "retry_exhausted"};
     return unsigned(f) < unsigned(Fail::count) ? names[unsigned(f)] : "?";
 }
 // Which object the detection belongs to: a new key (a reload, another object) needs a new detection.
@@ -82,10 +99,30 @@ struct Outcome {
     const char* where = ""; // "150::StartGateWarp", "native:MOV_StopMovie", ...
     bool ok() const noexcept { return fail == Fail::none; }
 };
+// A failure of the moment the VM was read (a table or method not readable or not in range yet, no CODE yet): retried. Every
+// other outcome is a fact of the loaded object and is kept for its key.
+inline bool transient(Fail f) noexcept { return f == Fail::unreadable || f == Fail::method_range || f == Fail::no_code; }
+// One feature's account of transient failures per key. keep() after each detection: true = keep the outcome for its key
+// (a success or a definitive failure once `settled`; the (detect_retry_limit + 1)-th transient failure for one key,
+// rewritten as retry_exhausted, at once); false = detect again at the next due check.
+struct Retries {
+    VmKey key;
+    unsigned transients = 0;
+    bool keep(const VmKey& k, Outcome& o, bool settled = true) noexcept {
+        if (k != key) {
+            key = k;
+            transients = 0;
+        }
+        if (!transient(o.fail)) return settled;
+        if (++transients <= detect_retry_limit) return false;
+        o.fail = Fail::retry_exhausted;
+        return true;
+    }
+};
 // seta_restore: the two sites, and the ranges of StopFastForward's named callers (rows only).
 struct SetaSites {
     VmKey key;
-    bool detected = false; // a detection ran for `key`
+    bool detected = false; // the outcome is kept for `key` (Retries::keep); false: detect again
     Outcome outcome;
     std::uint32_t stop_ip = 0, gate_return = 0;
     static constexpr unsigned named_count = 5;
@@ -109,7 +146,7 @@ struct QueueSites {
     unsigned char warp_window_memory[warp_window_length]{}, warp_patch_memory[warp_window_length]{};
     std::uint32_t kc_play_stop_ip = 0, kc_fade_stop_ip = 0, kc_play_ip = 0, kc_loop_music_return = 0, kc_change_track_return = 0;
     unsigned queue_stack_depth = fork_child_stack_depth;
-    unsigned queue_cell_depths[queue_cell_count] = {18, 13, 11, 10, 9, 7};
+    static constexpr const unsigned (&queue_cell_depths)[queue_cell_count] = fork_child_cell_depths; // the one literal
 };
 
 namespace detail {
@@ -121,6 +158,60 @@ struct Vm {
 };
 template <class R> bool read32(R& rd, std::uint32_t at, std::uint32_t& v) {
     return rd(at, &v, 4u);
+}
+// The reader with the detection's read budget: refuses every call past it and remembers that it did.
+template <class R> struct Budgeted {
+    R& rd;
+    unsigned left;
+    bool spent = false;
+    bool operator()(std::uint32_t at, void* out, unsigned n) {
+        if (!left) {
+            spent = true;
+            return false;
+        }
+        --left;
+        return rd(at, out, n);
+    }
+};
+// In-memory widths of opcodes 00..ff (0x0049e810's table; 78/79 variable; 0 = no handler of its own in the interpreter:
+// 00, above b1, the default-handler opcodes 0x004a4301 other than 70).
+struct WidthTable {
+    unsigned char w[256];
+    constexpr WidthTable() : w{} {
+        for (unsigned op = 1; op <= 0xb1; ++op) w[op] = 1;
+        const unsigned char none[] = {0x25, 0x26, 0x27, 0x31, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45,
+                                      0x60, 0x61, 0x62, 0x63, 0x67, 0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x71, 0x72, 0x73, 0x74,
+                                      0x75, 0x76, 0x77, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x80, 0x81, 0x89, 0x8a, 0x8b, 0x9a,
+                                      0x9b, 0x9c, 0x9d, 0x9e, 0x9f, 0xa8, 0xa9};
+        const unsigned char two[] = {0x05, 0x47, 0x4c, 0x95};
+        const unsigned char three[] = {0x06, 0x0d, 0x0e, 0x0f, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19, 0x1a, 0x1b,
+                                       0x1c, 0x1d, 0x1f, 0x20, 0x21, 0x23, 0x28, 0x29, 0x2c, 0x30, 0x48, 0x4d, 0x6e};
+        const unsigned char five[] = {0x07, 0x0b, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a,
+                                      0x49, 0x4e, 0x82, 0x84, 0x85, 0x86, 0x87, 0x88, 0x97, 0x98, 0x99};
+        for (unsigned char op : none) w[op] = 0;
+        for (unsigned char op : two) w[op] = 2;
+        for (unsigned char op : three) w[op] = 3;
+        for (unsigned op = 0x8c; op <= 0x94; ++op) w[op] = 4;
+        for (unsigned char op : five) w[op] = 5;
+        w[0x96] = 6;
+        w[0xa4] = w[0xa5] = 8;
+        w[0x0a] = w[0xa0] = w[0xa1] = 9;
+        w[0xa6] = w[0xa7] = 10;
+        w[0xa2] = w[0xa3] = 11;
+    }
+};
+inline constexpr WidthTable memory_widths{};
+// The width of the in-memory instruction at b[i] of a method b[0, length); 0 when it has no handler or ends past length.
+inline unsigned memory_width(const unsigned char* b, unsigned i, unsigned length) noexcept {
+    const unsigned char op = b[i];
+    std::uint32_t w = memory_widths.w[op];
+    if (op == 0x78 || op == 0x79) {
+        if (length - i < 5) return 0;
+        const std::uint32_t a = std::uint32_t(b[i + 1]) | std::uint32_t(b[i + 2]) << 8;
+        const std::uint32_t c = std::uint32_t(b[i + 3]) | std::uint32_t(b[i + 4]) << 8;
+        w = op == 0x78 ? 11 + 4 * a : 9 + 8 * (a + c);
+    }
+    return w && w <= length - i ? unsigned(w) : 0;
 }
 // The string at name offset `off` compared with `s` the way strcmp orders them (unsigned bytes): <0, 0, >0; `ok`
 // false when unreadable or the offset is out of range. Only strlen(s) + 1 bytes decide the order.
@@ -276,14 +367,20 @@ template <class R> Outcome method_bytes(R& rd, const Vm& v, const Range& m, unsi
     if (!rd(v.code + m.entry, buf, length)) return {Fail::unreadable, where};
     return {};
 }
-// The only offset in buf[0, length) where `match(buf, i, length)` holds; Fail::no_site / ambiguous_site otherwise.
+// The only instruction start i of the method buf[0, length) (a decode walk from its entry, offset 0) where
+// `match(buf, i, length)` holds; Fail::no_site / ambiguous_site otherwise, Fail::decode_error when the walk fails. A
+// signature's bytes inside another instruction's operand are never tested.
 template <class M> Outcome unique_site(const unsigned char* buf, unsigned length, M match, const char* where, unsigned& at) {
     unsigned hits = 0;
-    for (unsigned i = 0; i < length; ++i)
+    for (unsigned i = 0; i < length;) {
+        const unsigned w = memory_width(buf, i, length);
+        if (!w) return {Fail::decode_error, where};
         if (match(buf, i, length)) {
             if (!hits) at = i;
             ++hits;
         }
+        i += w;
+    }
     if (!hits) return {Fail::no_site, where};
     if (hits > 1) return {Fail::ambiguous_site, where};
     return {};
@@ -297,10 +394,8 @@ inline bool call_at(const unsigned char* b, unsigned i, unsigned n, std::uint32_
 }
 } // namespace detail
 
-// SETA: 150::StopFastForward's only TI_SetTimeWarpFactor native (stop IP = site + 5) and 150::StartGateWarp's only call
-// of StopFastForward (return offset = site + 5).
+namespace detail {
 template <class R> void detect_seta(R& rd, std::uint32_t vm, SetaSites& out, unsigned char* scratch) {
-    using namespace detail;
     out = SetaSites{};
     out.detected = true;
     Vm v;
@@ -347,13 +442,23 @@ template <class R> void detect_seta(R& rd, std::uint32_t vm, SetaSites& out, uns
         if (b->seta_stop_ip != out.stop_ip || b->seta_gate_return != out.gate_return)
             out.outcome = {Fail::table_mismatch, b->name};
 }
+} // namespace detail
+// SETA: 150::StopFastForward's only TI_SetTimeWarpFactor native (stop IP = site + 5) and 150::StartGateWarp's only call
+// of StopFastForward (return offset = site + 5). At most `budget` reader calls.
+template <class R>
+void detect_seta(R& rd, std::uint32_t vm, SetaSites& out, unsigned char* scratch, unsigned budget = detection_read_budget) {
+    detail::Budgeted<R> b{rd, budget};
+    detail::detect_seta(b, vm, out, scratch);
+    if (b.spent) out.outcome.fail = Fail::read_budget;
+}
 
 // The queue: 150::WarpToSector's only fork `6f; jt <p+20>` whose child is `pushw 500; push1; pushw 200; callcls
 // 200::StopMusic; drop; end` (the window, continuation p + 20), with no dword of the method pointing into the window's
 // interior; 200::PlayMusicWithFade's only MOV_StopMovie and MOV_PlayMovie natives, 200::MusicFadeOut's only
 // MOV_StopMovie, 200::LoopMusic's only call of PlayMusicWithFade and 200::ChangeTrackMusic's only call of LoopMusic.
+// At most `budget` reader calls.
+namespace detail {
 template <class R> void detect_queue(R& rd, std::uint32_t vm, QueueSites& out, unsigned char* scratch) {
-    using namespace detail;
     out = QueueSites{};
     out.detected = true;
     Vm v;
@@ -439,6 +544,13 @@ template <class R> void detect_queue(R& rd, std::uint32_t vm, QueueSites& out, u
             b->kc_play_ip != out.kc_play_ip || b->kc_loop_music_return != out.kc_loop_music_return ||
             b->kc_change_track_return != out.kc_change_track_return)
             out.outcome = {Fail::table_mismatch, b->name};
+}
+} // namespace detail
+template <class R>
+void detect_queue(R& rd, std::uint32_t vm, QueueSites& out, unsigned char* scratch, unsigned budget = detection_read_budget) {
+    detail::Budgeted<R> b{rd, budget};
+    detail::detect_queue(b, vm, out, scratch);
+    if (b.spent) out.outcome.fail = Fail::read_budget;
 }
 // The VM's current key (pointer, CODE buffer, size, build): whether a cached detection still applies.
 template <class R> bool read_key(R& rd, std::uint32_t vm, VmKey& k) {

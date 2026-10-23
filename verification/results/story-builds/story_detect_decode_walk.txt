@@ -1,0 +1,19 @@
+1. decode walk over CODE (memory widths, peephole modelled)
+   object                         code_bytes walk_end instructions entries aligned fused no_handler
+   addon/07.cat:L/x3story.obj        1908859  1908859       673500    6815    6815 40684          0
+   addon/04.cat:L/x3story.obj        1812069  1812069       611859    6818    6818 65515          0
+   addon/07.cat:L/x3intro.obj         107358   107358        39902     426     426  2663          0
+   addon/07.cat:L/x3config.obj           106      106           38       0       0     5          0
+   addon/07.cat:L/x3galedit.obj      1760529  1760529       600708    6218    6218 62956          0
+2. detections and reader calls (budget 16384)
+   addon/07.cat:L/x3story.obj     seta none       -                        reads  2726 | queue none       -                        reads  2198
+   addon/04.cat:L/x3story.obj     seta none       -                        reads  2754 | queue none       -                        reads  2234
+   addon/07.cat:L/x3intro.obj     seta no_method  150::StopFastForward     reads    30 | queue no_method  150::WarpToSector        reads    30
+   addon/07.cat:L/x3config.obj    seta bad_layout vm                       reads     7 | queue bad_layout vm                       reads     7
+   addon/07.cat:L/x3galedit.obj   seta none       -                        reads  2688 | queue none       -                        reads  2154
+3. a signature copied into a 0a operand (Mayhem)
+   expected: seta stop_ip 0x1558d, queue play_stop 0x0db54
+   embedded copy, known build     decode walk     seta none            -                      stop_ip 0x1558d | queue none            -                        play_stop 0x0db54
+   embedded copy, known build     byte-wise scan  seta ambiguous_site  150::StopFastForward   stop_ip 0x00000 | queue ambiguous_site  200::PlayMusicWithFade   play_stop 0x00000
+   true site gone, unknown build  decode walk     seta no_site         150::StopFastForward   stop_ip 0x00000 | queue no_site         200::PlayMusicWithFade   play_stop 0x00000
+   true site gone, unknown build  byte-wise scan  seta none            -                      stop_ip 0x1555d | queue none            -                        play_stop 0x0da8d

@@ -26,9 +26,11 @@ const char* inject_state_ = "unclaimed"; // the shared injection site's status a
 // The known builds' expectations for the rows (story_builds.h; the run-time source is the detection), formatted once
 // at install: name:build:stop_ip:gate_return per entry, and the known build ids alone for the refused row.
 char stories_[160] = "", known_builds_[64] = "";
-// The story sites of the VM's current object (story_detect.h), detected at the first SETA stop after the VM key changed;
-// used only inside the TI case handler (the VM's thread), outside the lock.
+// The story sites of the VM's current object (story_detect.h), detected at the first SETA stop after the VM key changed
+// and kept for the key unless the failure was transient (retried at the next SETA stop, at most detect_retry_limit times
+// per key: Retries::keep); used only inside the TI case handler (the VM's thread), outside the lock.
 x3m::story::SetaSites sites_{};
+x3m::story::Retries retries_{};
 unsigned char scratch_[x3m::story::scratch_size];
 void format_stories() {
     unsigned at = 0, known = 0;
@@ -256,6 +258,7 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_seta_restore_factor_wr
             if (!sites_.detected || sites_.key != key) {
                 x3m::story::detect_seta(reader, vm_root, sites_, scratch_);
                 sites_.key = key;
+                sites_.detected = retries_.keep(key, sites_.outcome); // a transient failure: this stop refused, the next retries
             }
             w.build = key.build;
             w.sites = &sites_;
@@ -429,6 +432,7 @@ bool initialize() {
         machine_ = State{};
     }
     sites_ = x3m::story::SetaSites{};
+    retries_ = x3m::story::Retries{};
     format_stories();
     const bool ok = install(&state_);
     armed_.store(ok, std::memory_order_release);

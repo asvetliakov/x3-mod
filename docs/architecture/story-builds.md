@@ -67,17 +67,31 @@ differ in member indices and other code, but each site has the same shape in bot
 | method rows | 16 B: CODE entry and name offset, sorted by name | `0x004b0740` |
 | `+0x40 + g·0x18`, g = 1..31 | Native group name tables | `0x0049e1a0` |
 
-The load pass `0x0049e1a0` stores multi-byte operands little-endian. It turns `82 <name>` into
-`82 <u16 group> <u16 command>`, choosing the first group and index whose name matches. The peephole pass `0x0049e4f0`
-rewrites the first opcode byte only of patterns that start with `01`/`02`, `0d`–`0f`/`14`–`16`, `17` or `64` **[s]**.
-It never rewrites the native (`82`), call (`86`/`88`) or fork (`6f`) opcodes that each signature starts with.
+The load pass `0x0049e1a0` stores multi-byte operands little-endian, the u16 counts of `78`/`79` included. It turns
+`82 <name>` into `82 <u16 group> <u16 command>`, choosing the first group and index whose name matches. The peephole
+pass `0x0049e4f0` then makes two walks **[s]**. The first rewrites the opcode byte of patterns that start with
+`01`/`02`, `0d`–`0f`/`14`–`16`, `17` or `64` into fused opcodes `8c`–`b1`, and the first three bytes of
+`0d 0001 14 0002 24 83` into `83 83 83` (up to three bytes, not only the first). The second threads the operands of
+`32`/`33`/`34` through `jmp` chains and constant conditionals. No signature byte is rewritten: the native (`82`), call
+(`86`/`88`), fork (`6f`) and child opcodes never head a pattern, and only jump operands are threaded.
+
+**Decode walk** **[s]**, **[m]**. A signature is tested only at instruction starts of a walk from the method's entry
+(`unique_site`), so a copy of its bytes inside another instruction's operand never matches. The walk uses the in-memory
+widths of the pass's own second walk (`0x0049e810`: byte table `0x0049e9d4`, jump table `0x0049e9a0`). Its table makes
+each fused opcode cover its whole pattern (`95` 2 bytes, `8c`–`94` 4, `97`–`99` 5, `96` 6, `a4`/`a5` 8, `a0`/`a1` 9,
+`a6`/`a7` 10, `a2`/`a3` 11; `aa`–`b1` 1, the jump after them its own instruction). An opcode the interpreter
+`0x004a26a0` has no handler of its own for fails the method as `decode_error`: `00`, above `b1`, or an opcode it sends
+to its default handler `0x004a4301` (53 of `01`–`b1`) other than `70`. So does an instruction that ends past the method's end.
+Over the host images (peephole modelled), the walk from offset 1 consumes every CODE byte of all five objects. It lands
+on every method entry (Mayhem 6,815/6,815, stock 6,818/6,818, intro 426, galedit 6,218) and meets no handler-less opcode
+([`story_detect_decode_walk.txt`](../../verification/results/story-builds/story_detect_decode_walk.txt) §1).
 
 **Method and native lookup.** A method is found by class key and name, the way the engine's resolver does it: a binary
 search of the class records, then the class chain, then a binary search of the rows. The neighbouring rows must not
 carry the same name. A method ends at the smallest entry above it among all rows of all classes. A native is found by
 name in the group tables.
 
-**Sites.** Each is the only match in its method; otherwise the detection fails:
+**Sites.** Each is the only match at an instruction start of its method; otherwise the detection fails:
 
 | Feature | Method | Signature | Derived |
 | --- | --- | --- | --- |
@@ -91,21 +105,31 @@ name in the group tables.
 
 **Failure reasons.** `no_vm`, `unreadable`, `no_code`, `bad_layout`, `no_class`, `no_method`, `duplicate_method`,
 `method_range`, `no_native`, `no_site`, `ambiguous_site`, `branch_into_window`, `table_mismatch` (a known build whose
-detection differs from `story_builds.h`). Each failure names the method. That object then gets no SETA arm, no KC
-write and no deferral. An unknown build relies on the detection alone.
+detection differs from `story_builds.h`), `decode_error` (the decode walk above), `read_budget` (more than 16,384
+reader calls in one detection), `retry_exhausted` (below). Each failure names the method. That object then gets no SETA
+arm, no KC write and no deferral. An unknown build relies on the detection alone.
 
-**When it runs** **[s]**. Each feature caches one detection per VM key (pointer, CODE buffer, size, build).
+**When it runs** **[s]**. Each feature keeps one detection per VM key (pointer, CODE buffer, size, build): a success or
+a definitive failure. A transient failure (`unreadable`, `method_range`, `no_code`: the VM read at a bad moment) is not
+kept. It is detected again at the next due check, at most 8 retries per key; the ninth transient failure is kept as
+`retry_exhausted` (`story_detect.h` `Retries`).
 
-* **SETA.** At the first SETA stop after the key changes, inside the TI case handler and before the lock. A failure
-  gives `seta_restore refused reason=story_sites detect=<reason> method=<method>`, one row per build and reason.
-* **Queue.** From Present, at the first check where the load gate is open for a new key. The patch is written at a
-  later check that observes the detected window. A failure gives `music_queue_kc action=no_sites detect=… method=…`,
-  one row per build. The T2/T3 handlers use the detection only when the VM's current key equals it; otherwise nothing
-  defers.
+* **SETA.** At the first SETA stop after the key changes, inside the TI case handler and before the lock; after a
+  transient failure, at the next SETA stop. A failure gives
+  `seta_restore refused reason=story_sites detect=<reason> method=<method>`, one row per build and reason.
+* **Queue.** From Present, at every due check (8 frames) while no detection is kept for the current key. The load
+  gate's observation then holds the key, that check's detection outcome and window offset, and the 6 window bytes read
+  live there. A detection is kept only when two consecutive checks agree on all of them, or at the first check after
+  the `save_load_complete` marker. The patch is written at the next check that again observes the same window, so 16
+  to 24 frames after a load completes. A failure gives `music_queue_kc action=no_sites detect=… method=…`, one row per
+  build. The T2/T3 handlers use only a kept detection whose key equals the VM's current key; otherwise nothing defers.
 
-**Cost** **[m]**, host reader over the in-memory images: 2,198–2,754 reads per detection (seta 2,726/2,754 and queue
-2,198/2,234 for Mayhem/stock), 7 for x3config, 30 for x3intro. That is once per story load. The read count on the
-engine reader (one lock and a cached VirtualQuery per region per frame) is not timed.
+**Cost** **[m]**, host reader over the in-memory images: 2,154–2,754 reads per detection (seta 2,726/2,754/2,688 and
+queue 2,198/2,234/2,154 for Mayhem/stock/galedit), 7 for x3config, 30 for x3intro
+([`story_detect_decode_walk.txt`](../../verification/results/story-builds/story_detect_decode_walk.txt) §2). The
+budget of 16,384 is about 6 times the largest. SETA detects once per key. The queue detects at each due check until
+one is kept, normally twice per story load. The decode walk is CPU work over the 16 KiB scratch, with no reads. The
+read count on the engine reader (one lock and a cached VirtualQuery per region per frame) is not timed.
 
 **Combat without ids.** `150::NotifyAlert` runs inside the commit of the alert record `R = *0x00608504` (`[R+4]`
 committed, `[R+8]` this frame's level).
@@ -149,8 +173,9 @@ editor, so it detects sites of its own: Mayhem SETA `14f11`/`1587c` and window `
   `music_queue_kc action=applied detect=none` after the story load. A layout mistake fails closed
   (`bad_layout`/`no_class`/`no_method`/`unreadable`) and leaves both features inert. It cannot mis-patch: the KC write
   still requires the window's exact vanilla bytes.
-* **The peephole pass is not modelled in the host images.** The flown Mayhem window bytes `6f33d7610100` (Run 191)
-  agree with the unmodelled form.
+* **The peephole pass is modelled from the static disassembly only** (`story_vm_image.py` `peephole`: both walks).
+  The flown Mayhem window bytes `6f33d7610100` (Run 191) agree with it: the window's jump is not threaded. No live CODE
+  buffer has been compared with the model.
 * **Stock AP cannot be flown here.** The user has no stock install. The stock entry is decoded and detected
   statically; no stock flight exists. The same holds for the fork child's depth on stock (inferred from equal methods)
   and for the combat edge values on stock.
@@ -162,6 +187,7 @@ editor, so it detects sites of its own: Mayhem SETA `14f11`/`1587c` and window `
 
 ```sh
 python3 -I verification/results/story-builds/story_builds_census.py /mnt/c/X3 <x3m.log> > story_builds_census.txt
+python3 -I verification/results/story-builds/story_detect_decode_walk.py > verification/results/story-builds/story_detect_decode_walk.txt
 python3 -I verification/results/seta-script-toggle/verify_seta_restore_sites.py
 python3 -I verification/results/music-script-driver/verify_music_queue_kc.py
 PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3 -m unittest verification.analysis.test_music_keep verification.analysis.test_seta_restore
