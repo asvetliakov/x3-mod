@@ -63,9 +63,11 @@ struct FakeMem {
     std::uint32_t get32(std::uint32_t at) { std::uint32_t v = 0; read(at, &v, 4); return v; }
 };
 // World: R 0x10000 (table 0x10100, buckets 0x10200, link 0x10300, cockpit 0x10400); cfg 0x20000; M 0x30000; P 0x40000
-// (flight 0x40400, render 0x40800); sector 0x50000 with terminators 0x5f000+c*0x100; H 0x60000 (hostile, group 3),
+// (flight 0x40400, render 0x40800); sector 0x50000 whose list array [sector+0x50] is 0x51000 (the 12-byte headers;
+// the sector object's own bytes at +0x5c.. are left unmapped, as the engine never reads them as lists), terminators
+// 0x5f000+c*0x100; H 0x60000 (hostile, group 3),
 // O 0x61000 (owned, group 10), F 0x62000 (friend, group 4), missile X 0x63000 in list 10.
-constexpr std::uint32_t R = 0x10000, CFG = 0x20000, M = 0x30000, P = 0x40000, PF = 0x40400, PR = 0x40800, SECTOR = 0x50000,
+constexpr std::uint32_t R = 0x10000, CFG = 0x20000, M = 0x30000, P = 0x40000, PF = 0x40400, PR = 0x40800, SECTOR = 0x50000, LISTS = 0x51000,
                         H = 0x60000, HF = 0x60400, HR = 0x60800, O = 0x61000, OF = 0x61400, OR_ = 0x61800, F = 0x62000, FF = 0x62400,
                         FR = 0x62800, X = 0x63000, XD = 0x63400, XR = 0x63800, COCKPIT = 0x10400;
 std::uint32_t term(unsigned c) { return 0x5f000 + c * 0x100; }
@@ -88,18 +90,18 @@ FakeMem world() {
     m.put32(cfg_va, CFG); m.put32(CFG + cfg_clock, 1000); m.put32(CFG + cfg_step, 16); m.put32(CFG + cfg_seta_a, 0x10000); m.put32(CFG + cfg_seta_b, 10);
     m.put32(player_root_va, M); m.put32(M + root_player_ship, P); m.put32(M + root_laser_fired, 100); m.put32(M + root_missile_fired, 7);
     m.put32(M + root_laser_hits, 0); m.put32(M + root_missile_hits, 0);
-    m.put16(SECTOR + obj_class, class_sector);
-    for (unsigned c = 0; c < 32; ++c) { m.put32(SECTOR + sector_lists + c * list_stride, term(c)); m.put32(term(c), 0); }
+    m.put16(SECTOR + obj_class, class_sector); m.put32(SECTOR + sector_lists, LISTS);
+    for (unsigned c = 0; c < 32; ++c) { m.put32(LISTS + c * list_stride, term(c)); m.put32(term(c), 0); }
     object(m, P, H, class_ship, player_group, PF, PR, 0, 0, 0);
     m.put32(P + obj_flags1, 2);
     m.put32(PF + flight_friend_mask, 1u << 4); m.put32(PF + flight_foe_mask, 1u << 3);
     object(m, H, O, class_ship, 3, HF, HR, 500000, 0, 0);
     object(m, O, F, class_ship, player_group, OF, OR_, 1000000, 0, 0);
     object(m, F, term(7), class_ship, 4, FF, FR, 0, 2000000, 0);
-    m.put32(SECTOR + sector_lists + class_ship * list_stride, P);
+    m.put32(LISTS + class_ship * list_stride, P);
     object(m, X, term(10), class_missile, 3, XD, XR, 0, 0, 100);
     m.put32(XD + missile_launcher, H);
-    m.put32(SECTOR + sector_lists + class_missile * list_stride, X);
+    m.put32(LISTS + class_missile * list_stride, X);
     return m;
 }
 int main() {
@@ -233,7 +235,7 @@ int main() {
         f = frame(m, s, R, P, hold);
         check((f.reasons & reason_owned) && f.walk.owned_near == 1, "a second owned ship (group 10) hit in range counts; the walk stops at the first event");
         m.put32(R + registry_level, 1); m.put32(H + obj_flags2, 0); m.put16(H + obj_group, 3);
-        m.put32(SECTOR + sector_lists + class_5 * list_stride, 0x70000); m.put32(0x70000, 0x70000); m.put16(0x70000 + obj_group, 3);
+        m.put32(LISTS + class_5 * list_stride, 0x70000); m.put32(0x70000, 0x70000); m.put16(0x70000 + obj_group, 3);
         m.put32(CFG + cfg_clock, 1000 + 3 * hold);
         f = frame(m, s, R, P, hold);
         check(f.ok && f.walk.cuts == 1 && f.walk.visited >= list_walk_limit && !f.engaged, "a cyclic list is cut at the limit and counted");
@@ -261,7 +263,7 @@ int main() {
         char r[4];
         check(!std::strcmp(reason_text(reason_fire | reason_player_hit | reason_owned, r), "abc") && !std::strcmp(reason_text(0, r), "-") && !std::strcmp(reason_text(reason_owned, r), "c"), "reason text");
         check(!std::strcmp(cause_name(Cause::newer), "newer_than_now") && !std::strcmp(cause_name(Cause::range), "out_of_range") && !std::strcmp(cause_name(Cause::none), "none"), "cause names");
-        check(window_count == 18 && site_length == 6 && site_va + site_length == continue_va && site_window_offset == 15 && site_window[site_window_offset] == site_bytes[0], "site constants");
+        check(window_count == 19 && site_length == 6 && site_va + site_length == continue_va && site_window_offset == 15 && site_window[site_window_offset] == site_bytes[0], "site constants");
         check(!std::strcmp(reason_text(reason_missile | reason_hit | reason_hostile_order, r), "def"), "reason text d/e/f");
     }
     {   // (d) level 2, (e) the hit counters, (f) a hostile's attack order on P or an owned ship, the class-7 rule for orders.
@@ -331,6 +333,84 @@ int main() {
         m.put32(M + root_laser_fired, 154); m.put32(CFG + cfg_clock, 2300);
         f = frame(m, s, R, 0x64000, hold);
         check(!f.rebaselined && f.fired, "then shots count again");
+    }
+    {   // Run 190 (x3m-flight2.log): the list headers are in the array [sector+0x50]; walk= and fire= name the outcome.
+        FakeMem m = world();
+        State s;
+        m.put32(R + registry_level, 1); m.put16(HF + flight_order, order_attack); m.put32(HF + flight_target, P);
+        Frame f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::ok && f.walk.visited >= 1 && (f.reasons & reason_hostile_order) && f.engaged && !f.wrote_zero,
+              "Run 190: a hostile in range with an attack order on P is found through the list array (visited > 0, f)");
+        check(!std::strcmp(walk_status_name(f.walk.status), "ok") && s.last_fire == FireStatus::none && !std::strcmp(fire_status_name(s.last_fire), "none"), "walk=ok fire=none");
+        m.put32(SECTOR + sector_lists + class_ship * list_stride, H); // the old, inline reading would find H here
+        m.put32(SECTOR + sector_lists, 0); m.put32(CFG + cfg_clock, 1000 + hold); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::lists_base && f.walk.visited == 0 && f.reasons == 0 && f.wrote_zero && !std::strcmp(walk_status_name(f.walk.status), "lists_base"),
+              "a null list array: walk=lists_base, the sector's own bytes are never read as list headers");
+        m.put32(SECTOR + sector_lists, 0x58000); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::list_head && f.walk.visited == 0 && f.reasons == 0, "an unreadable list header: walk=list_head");
+        m.put32(SECTOR + sector_lists, LISTS); m.put32(LISTS + class_5 * list_stride, 0x77770); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::node_link && (f.reasons & reason_hostile_order) && f.walk.visited >= 1, "an unreadable node in list 5: walk=node_link, list 7 still walked");
+        m.put32(LISTS + class_5 * list_stride, term(5)); m.put32(R + registry_level, 0); m.put32(CFG + cfg_clock, 1000 + 2 * hold + 10);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::idle && f.walk.visited == 0, "vanilla 0 and no counter rose: walk=idle");
+        m.put32(R + registry_level, 1);
+        f = frame(m, s, R, 0, hold);
+        check(f.walk.status == WalkStatus::no_player && !std::strcmp(walk_status_name(f.walk.status), "no_player"), "P = 0: walk=no_player");
+        m.put32(P + obj_parent, 0); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::player_parent && !f.in_sector, "P without a parent: walk=player_parent");
+        m.put32(P + obj_parent, SECTOR); m.put16(SECTOR + obj_class, 6); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.walk.status == WalkStatus::parent_class && !f.in_sector, "docked: walk=parent_class");
+        m.put16(SECTOR + obj_class, class_sector);
+    }
+    {   // Run 190: the player's shots at a hostile, and the stamp before the hold test in the same frame.
+        FakeMem m = world();
+        State s;
+        m.put32(R + registry_level, 1); m.put32(P + obj_flags2, flags2_hit); m.put32(CFG + cfg_clock, 27726147);
+        Frame f = frame(m, s, R, P, hold); // baseline frame; (b) stamps
+        check(f.engaged && f.reasons == reason_player_hit && f.edge, "Run 190: hit by a hostile, edge 0->1 reason=b");
+        m.put32(P + obj_flags2, 0); m.put32(COCKPIT + cockpit_target, H);
+        std::uint32_t laser = 100, now = 27726147;
+        bool dropped = false;
+        for (unsigned i = 0; i < 2500; ++i) { // 40 s of 16 ms frames, a shot every 8th frame, no further hit on P
+            now += 16;
+            if (i % 8 == 0) m.put32(M + root_laser_fired, ++laser);
+            m.put32(CFG + cfg_clock, now); m.put32(R + registry_level, 1); m.put32(R + registry_committed, 1);
+            f = frame(m, s, R, P, hold);
+            dropped = dropped || !f.engaged || f.wrote_zero;
+        }
+        check(!dropped && s.last_fire == FireStatus::ok && (s.last_reason & reason_fire), "Run 190: 40 s of player fire at a hostile target keeps the alert past age 20,002 ms");
+        check(!std::strcmp(fire_status_name(s.last_fire), "ok"), "fire=ok");
+        // The frame whose hold would expire takes its own stamp first.
+        m.put32(CFG + cfg_clock, now + hold + 5000); m.put32(M + root_laser_fired, ++laser); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.engaged && f.cause == Cause::stamp && f.age == 0 && !f.wrote_zero && f.filtered == 1 && !f.edge, "a shot on the frame the hold would run out: stamp first, no drop");
+        // (e) through the list array: the player's hit counter rose and a hostile carries the player-hit bit.
+        m.put32(CFG + cfg_clock, now + 3 * hold); m.put32(M + root_laser_hits, 1); m.put32(H + obj_flags2, flags2_player_hit); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.hit && (f.reasons & reason_hit) && f.walk.hit_victim && f.walk.status == WalkStatus::ok && f.engaged, "Run 190: (e) a hostile hit by the player is found through the list array");
+        m.put32(H + obj_flags2, 0);
+        const struct { std::uint32_t target; FireStatus want; const char* name; } cases[] = {
+            {F, FireStatus::not_hostile, "not_hostile"}, {0x77770, FireStatus::not_found, "not_found"}, {P, FireStatus::self_target, "self_target"},
+            {0, FireStatus::no_target, "no_target"}};
+        for (const auto& c : cases) {
+            m.put32(COCKPIT + cockpit_target, c.target); m.put32(M + root_laser_fired, ++laser); m.put32(R + registry_level, 0);
+            f = frame(m, s, R, P, hold);
+            check(f.fired && !(f.reasons & reason_fire) && s.last_fire == c.want && !std::strcmp(fire_status_name(s.last_fire), c.name), c.name);
+        }
+        m.put32(R + registry_cockpit_handle, 9); m.put32(COCKPIT + cockpit_target, H); m.put32(M + root_laser_fired, ++laser);
+        f = frame(m, s, R, P, hold);
+        check(f.fired && f.reasons == 0 && s.last_fire == FireStatus::cockpit, "unknown cockpit handle: fire=cockpit");
+        m.put32(R + registry_cockpit_handle, 5); m.put16(SECTOR + obj_class, 6); m.put32(M + root_laser_fired, ++laser);
+        f = frame(m, s, R, P, hold);
+        check(f.fired && f.reasons == 0 && s.last_fire == FireStatus::not_in_sector, "docked: fire=not_in_sector");
+        m.put16(SECTOR + obj_class, class_sector); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(!f.fired && s.last_fire == FireStatus::not_in_sector, "fire= keeps the last fired frame's outcome");
     }
     std::printf("checks done, failures=%u\n", failures);
     return failures ? 1 : 0;
@@ -629,8 +709,9 @@ class MusicAlertInstallCheck(unittest.TestCase):
         self.assertEqual(self.check(text), 'match')
         rows, _ = header_windows()
         long_rows = [(n, va, raw) for n, va, raw in rows if len(raw) > 16]
-        self.assertEqual(len(long_rows), 13)  # engine_patch::verify_bytes refuses these (max_prologue = 16)
-        self.assertEqual(long_rows[0][:2], ('range_window', 0x0042c915))  # the first the Run 189 build refused
+        self.assertEqual(len(long_rows), 14)  # engine_patch::verify_bytes refuses these (max_prologue = 16)
+        self.assertEqual(long_rows[0][:2], ('sector_walk', 0x0042c8a9))
+        self.assertEqual(long_rows[1][:2], ('range_window', 0x0042c915))  # the first the Run 189 build refused
         for name, va, raw in long_rows:
             with self.subTest(window=name):
                 changed = self.text()

@@ -23,7 +23,9 @@ constexpr unsigned cfg_clock = 0x718, cfg_step = 0x714, cfg_seta_a = 0xcc, cfg_s
 constexpr unsigned obj_next = 0x0, obj_group = 0x3c, obj_flags1 = 0x40, obj_flags2 = 0x44, obj_class = 0x48,
                    obj_data = 0x50, obj_parent = 0x54, obj_render = 0x70;
 constexpr unsigned render_position = 0x30;                      // three int32: x, y, z
-constexpr unsigned sector_lists = 0x50, list_stride = 12;       // 32 per-class lists; [list] = first node; node+0 = next
+constexpr unsigned sector_lists = 0x50, list_stride = 12; // [sector+0x50] = the array of 32 per-class list headers,
+                                                          // 12 B each; [array + class*12] = first node; node+0 = next
+                                                          // (0x0042c8bf, 0x004495d8, 0x0045d275 all dereference it)
 constexpr unsigned flight_target = 0x224, flight_order = 0x258; // flight = [ship+0x50]
 constexpr unsigned flight_friend_mask = 0x1cc, flight_foe_mask = 0x1d0, flight_enemy_of_enabled = 0x1d4;
 constexpr unsigned missile_launcher = 0xc; // [missile+0x50]+0xc
@@ -50,6 +52,13 @@ constexpr unsigned char site_bytes[site_length] = {0x8b, 0x4e, 0x08, 0x8b, 0x46,
 // clang-format off
 // 0x0042c890: mov eax,[0x60850c]; sub esp,8; push ebx/ebp/esi/edi; mov edi,[eax+0x38]
 constexpr unsigned char alert_head[15] = {0xa1, 0x0c, 0x85, 0x60, 0x00, 0x83, 0xec, 0x08, 0x53, 0x55, 0x56, 0x57, 0x8b, 0x78, 0x38};
+// 0x0042c8a9: P's parent must be a sector (class word 1); the list array is [sector+0x50]; the first header's first
+// node: mov eax,[edi+0x54]; test eax,eax; je; cmp word [eax+0x48],1; jne; mov eax,[eax+0x50]; mov [esp+0x10],eax;
+// mov [esp+0x14],0x20; mov esi,[eax]; mov ebx,[esi]; test ebx,ebx; je 0x42c94f
+constexpr unsigned char sector_walk[45] = {
+    0x8b, 0x47, 0x54, 0x85, 0xc0, 0x0f, 0x84, 0xb1, 0x00, 0x00, 0x00, 0x66, 0x83, 0x78, 0x48, 0x01, 0x0f, 0x85, 0xa6,
+    0x00, 0x00, 0x00, 0x8b, 0x40, 0x50, 0x89, 0x44, 0x24, 0x10, 0xc7, 0x44, 0x24, 0x14, 0x20, 0x00, 0x00, 0x00, 0x8b,
+    0x30, 0x8b, 0x1e, 0x85, 0xdb, 0x74, 0x79};
 // 0x0042c915: the range test: [R+4]==0 ? dist < 2,500,000 : dist < 5,000,000, both through 0x00419280; mov ebp,1
 constexpr unsigned char range_window[43] = {
     0x8b, 0x54, 0x24, 0x1c, 0x83, 0x7a, 0x04, 0x00, 0x8b, 0xc6, 0x8b, 0xd7, 0x75, 0x0c, 0xe8, 0x58, 0xc9, 0xfe, 0xff,
@@ -132,6 +141,7 @@ struct Window {
 // Every window the installer compares before the one write; the same table drives verify_music_alert_sites.py.
 constexpr Window windows[] = {
     {"alert_head", 0x0042c890, alert_head, sizeof alert_head},
+    {"sector_walk", 0x0042c8a9, sector_walk, sizeof sector_walk},
     {"range_window", 0x0042c915, range_window, sizeof range_window},
     {"site_window", 0x0042c965, site_window, sizeof site_window},
     {"commit_window", 0x0042ca4a, commit_window, sizeof commit_window},
@@ -291,7 +301,38 @@ constexpr unsigned reason_fire = 1, reason_player_hit = 2, reason_owned = 4, rea
 inline bool is_attack_order(std::uint16_t order) {
     return order == order_attack || order == order_attack_big;
 }
+// Why the walk did or did not run this frame (the row's walk=): idle = not wanted (no counter rose, vanilla 0); the
+// rest name the first check that failed, in the order the walk makes them; ok = every list was read.
+enum class WalkStatus : unsigned { idle, ok, no_player, player_parent, parent_class, lists_base, list_head, node_link };
+inline const char* walk_status_name(WalkStatus s) {
+    switch (s) {
+    case WalkStatus::ok: return "ok";
+    case WalkStatus::no_player: return "no_player";
+    case WalkStatus::player_parent: return "player_parent";
+    case WalkStatus::parent_class: return "parent_class";
+    case WalkStatus::lists_base: return "lists_base";
+    case WalkStatus::list_head: return "list_head";
+    case WalkStatus::node_link: return "node_link";
+    default: return "idle";
+    }
+}
+// Rule (a)'s outcome on the last frame a fire counter rose (the row's fire=): none = no shot since the baseline;
+// otherwise the first check that failed, or ok (stamped).
+enum class FireStatus : unsigned { none, ok, not_in_sector, cockpit, no_target, self_target, not_found, not_hostile };
+inline const char* fire_status_name(FireStatus s) {
+    switch (s) {
+    case FireStatus::ok: return "ok";
+    case FireStatus::not_in_sector: return "not_in_sector";
+    case FireStatus::cockpit: return "cockpit";
+    case FireStatus::no_target: return "no_target";
+    case FireStatus::self_target: return "self_target";
+    case FireStatus::not_found: return "not_found";
+    case FireStatus::not_hostile: return "not_hostile";
+    default: return "none";
+    }
+}
 struct Walk {
+    WalkStatus status = WalkStatus::idle;
     std::uint32_t target = 0;  // the selected target to find (0 = not wanted); rule (a)
     bool want_events = false;  // rules (c) and (f): frames with a nonzero vanilla level
     bool want_hits = false;    // rule (e): frames where a player hit counter rose
@@ -304,14 +345,29 @@ struct Walk {
 // not P: owned (group 10) within alert_range -> Flags2 and, for a class-7 ship, its order and target (one relation test
 // on the target); not owned and class 7 -> its order, and for an attack order on P or on an owned ship within
 // alert_range one relation test on the node itself.
+// The list headers are in the array [sector+0x50] (0x0042c8bf), not in the sector object. `w.status` names the first
+// failed read (lists_base, list_head: the walk ends; node_link: that list ends), else ok.
 template <class Mem> void walk_lists(Mem& m, std::uint32_t sector, std::uint32_t player, Walk& w) {
+    std::uint32_t lists = 0;
+    if (!u32(m, sector, sector_lists, lists) || !lists) {
+        w.status = WalkStatus::lists_base;
+        return;
+    }
+    w.status = WalkStatus::ok;
     for (unsigned c : walked_classes) {
         std::uint32_t node = 0;
-        if (!u32(m, sector, sector_lists + c * list_stride, node)) return;
+        if (!u32(m, lists, c * list_stride, node)) {
+            w.status = WalkStatus::list_head;
+            return;
+        }
         unsigned i = 0;
         for (; i < list_walk_limit && node; ++i) {
             std::uint32_t next = 0;
-            if (!u32(m, node, obj_next, next) || !next) break; // the last node is the terminator
+            if (!u32(m, node, obj_next, next)) {
+                if (w.status == WalkStatus::ok) w.status = WalkStatus::node_link;
+                break;
+            }
+            if (!next) break; // the last node is the terminator
             ++w.visited;
             if (w.target && node == w.target) {
                 w.target_found = true;
@@ -369,6 +425,7 @@ struct State {
                   now_prev = 0;
     unsigned last_reason = 0, episode_frames = 0;
     std::uint32_t filtered_prev = 0;
+    FireStatus last_fire = FireStatus::none; // rule (a) on the last frame a fire counter rose
 };
 enum class Cause : unsigned { none, stamp, held, expired, newer, range };
 struct Frame {
@@ -412,8 +469,14 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
     s.rebaseline = false;
     std::uint32_t sector = 0, flags2 = 0;
     std::uint16_t sector_class = 0;
-    f.in_sector = player && u32(m, player, obj_parent, sector) && sector && u16(m, sector, obj_class, sector_class) &&
-                  sector_class == class_sector;
+    if (!player)
+        f.walk.status = WalkStatus::no_player;
+    else if (!u32(m, player, obj_parent, sector) || !sector)
+        f.walk.status = WalkStatus::player_parent;
+    else if (!u16(m, sector, obj_class, sector_class) || sector_class != class_sector)
+        f.walk.status = WalkStatus::parent_class;
+    else
+        f.in_sector = true;
     // (b) the player ship was hit this frame; (d) the walk or the missile homing update raised level 2 (a hostile
     // missile on the player).
     if (player && u32(m, player, obj_flags2, flags2) && (flags2 & flags2_hit)) f.reasons |= reason_player_hit;
@@ -422,19 +485,31 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
     // the lists, never dereferenced from the cockpit pointer alone); (e) a player hit counter rose (the victim with
     // the player-hit bit must be hostile: asteroids and friends do not count); (c) and (f) only while the vanilla
     // level is nonzero.
+    FireStatus fire = FireStatus::not_in_sector;
     if (f.in_sector) {
         std::uint32_t cockpit = 0, target = 0;
-        if (f.fired && active_cockpit(m, registry, cockpit) && u32(m, cockpit, cockpit_target, target) && target &&
-            target != player)
-            f.walk.target = target;
+        if (f.fired) {
+            if (!active_cockpit(m, registry, cockpit))
+                fire = FireStatus::cockpit;
+            else if (!u32(m, cockpit, cockpit_target, target) || !target)
+                fire = FireStatus::no_target;
+            else if (target == player)
+                fire = FireStatus::self_target;
+            else
+                f.walk.target = target;
+        }
         f.walk.want_events = f.vanilla != 0;
         f.walk.want_hits = f.hit;
         if (f.walk.target || f.walk.want_events || f.walk.want_hits) walk_lists(m, sector, player, f.walk);
         if (f.walk.target_found && f.walk.target_hostile) f.reasons |= reason_fire;
+        if (f.fired && f.walk.target_found) fire = f.walk.target_hostile ? FireStatus::ok : FireStatus::not_hostile;
+        else if (f.fired && f.walk.target) fire = FireStatus::not_found; // wanted, not met (or the walk failed)
         if (f.walk.owned_hit || f.walk.owned_attack) f.reasons |= reason_owned;
         if (f.walk.hit_victim) f.reasons |= reason_hit;
         if (f.walk.hostile_order) f.reasons |= reason_hostile_order;
     }
+    if (f.fired) s.last_fire = fire;
+    // The stamp precedes the hold test below: a frame's own events keep the alert on that frame.
     if (f.reasons) {
         s.stamped = true;
         s.last_engaged = f.now;

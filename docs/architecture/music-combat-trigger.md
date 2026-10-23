@@ -3,7 +3,8 @@
 `src/proxy/music_alert.cpp`, `music_alert.h`, `music_alert_core.h`. Options `music_combat_trigger` and
 `music_combat_hold_s` (`[audio]`), launcher `--music-combat-trigger` / `--music-combat-hold-s`. Engine facts:
 [music-script-driver.md](../reverse-engineering/music-script-driver.md) sections 2, 5 and 9. Ledger:
-[verification/music-combat-trigger.md](../verification/music-combat-trigger.md). Unflown as of 2026-10-23.
+[verification/music-combat-trigger.md](../verification/music-combat-trigger.md). First flown in Run 190 (2026-10-23):
+the list walk read the wrong headers (see "Run 190 finding"); fixed, unflown since.
 
 ## Problem
 
@@ -54,7 +55,8 @@ Rule, evaluated every frame the thunk runs (`now` = the game clock `[*0x00606f34
    The deliberate range for (c) and (f) is the routine's first-level range, 2,500,000 units, also while the committed
    level is nonzero (the routine's own stay range there is 5,000,000): an owned ship fighting 3 to 5 km away does not
    start or hold combat music. (a), (b), (d) and (e) stamp on any frame; (c) and (f) are evaluated only on frames
-   where the vanilla level is nonzero, by one walk of lists 5, 6, 7 and 10 of P's sector (`[P+0x54]`, class 1), at
+   where the vanilla level is nonzero, by one walk of lists 5, 6, 7 and 10 of P's sector (`[P+0x54]`, class 1; the
+   12-byte list headers are in the array `[sector+0x50]`, `[[sector+0x50] + class·12]` = the first node), at
    most 4096 nodes per list (a cut is counted), stopping when every wanted answer is known. (a) and (e) share that
    walk on the frames where a counter rose.
 
@@ -71,8 +73,8 @@ Rule, evaluated every frame the thunk runs (`now` = the game clock `[*0x00606f34
    hostiles leave range, whichever comes first.
 
 Fail closed: `trigger=vanilla` patches nothing; an unknown word patches nothing (`invalid_setting`); the executable
-identity (`object_trace::executable_verified`), the 18 windows of `music_alert_core.h` (708 bytes: the routine head,
-the range test with its 2,500,000 / 5,000,000 constants, the site in context, the commit tail, the whole relation,
+identity (`object_trace::executable_verified`), the 19 windows of `music_alert_core.h` (753 bytes: the routine head,
+its parent-sector test and its read of the list array `[sector+0x50]` (`sector_walk`, `0x0042c8a9`), the range test with its 2,500,000 / 5,000,000 constants, the site in context, the commit tail, the whole relation,
 stance and distance routines, and the instruction witnesses of every field offset the rule reads), the site bytes and
 the alert routine's call site (`0x0041cdea` → `0x0042c890`) are compared before the one write. The main loop's call
 `0x00403f2f` → `0x0041cde0` is checked only by the verifier on the unmodified image: the game-phase group
@@ -97,17 +99,39 @@ sends neither unless given explicitly.
 * Install, once: `music_alert trigger=<engaged|vanilla|invalid> hold_ms=<n> hold_source=<default|setting|invalid_default>
   patched=<0|1> armed=<0|1> reason=<ok|vanilla|invalid_setting|executable_mismatch|late_claim|bytes_mismatch|pin_failed|
   <claim status>|chain_failed|rollback_failed> site=0x0042c974 continue=<tail> write=<plain|atomic|none> stub=<va>
-  windows=19 walk_limit=4096 window=<0x…|none> window_name=<name|-> expected=<hex|-> got=<hex|unreadable|->` (`write=plain`
-  is the expected kind at this site, see above; `windows=19` counts the 18 windows and the site; on `bytes_mismatch` the
+  windows=20 walk_limit=4096 window=<0x…|none> window_name=<name|-> expected=<hex|-> got=<hex|unreadable|->` (`write=plain`
+  is the expected kind at this site, see above; `windows=20` counts the 19 windows and the site; on `bytes_mismatch` the
   last four fields name the first window that differed and its first 8 bytes as expected and as read).
 * One per edge of the filtered level (the level the engine commits): `music_alert edge from=<old> to=<new>
   vanilla=<[R+8] before> committed=<[R+4]> reason=<letters a..f|-> age_ms=<now − stamp> cause=<stamp|held|expired|
   newer_than_now|out_of_range|none> now=<game ms> step=<frame step> seta=<(cfg+0xcc·cfg+0xd0)>>16> visited=<nodes>
-  owned_near=<n> hostile_orders=<n> cuts=<n>`. `reason` is this frame's stamp, else the last stamp's; `hostile_orders`
-  counts the (f) candidates that took a relation test.
+  owned_near=<n> hostile_orders=<n> cuts=<n> walk=<idle|ok|no_player|player_parent|parent_class|lists_base|list_head|
+  node_link> fire=<none|ok|not_in_sector|cockpit|no_target|self_target|not_found|not_hostile>`. `reason` is this
+  frame's stamp, else the last stamp's; `hostile_orders` counts the (f) candidates that took a relation test. `walk` is
+  this frame's walk: `idle` when nothing wanted it (vanilla 0, no counter rose), `ok` when every list was read, else
+  the first check that failed (P = 0, P's parent unreadable or null, the parent not class 1, the list array
+  `[sector+0x50]` unreadable or null, a list header unreadable, a node's link unreadable: that list ends). `fire` is
+  rule (a)'s outcome on the last frame a fire counter rose (`none` before the first shot): the cockpit lookup failed,
+  `cockpit+0x1e0` null, the target is P, the target not in lists 5/6/7/10, or not hostile.
 * One per suppressed episode (vanilla nonzero, filtered 0): `music_alert suppressed=start …` with the same fields on
   the episode's first frame, and `music_alert suppressed=end frames=<n> vanilla=<n> to=<n> now=<ms>` when it ends.
 * No per-frame rows; 2,000 rows per session, then one `music_alert cap` notice.
+
+## Run 190 finding (2026-10-23)
+
+Second flight (`verification/results/run190-flight/x3m-flight2.log`, local): installed (`armed=1 reason=ok`), the
+alert started on a hit (`edge 0→1 reason=b`) and dropped 20,002 game ms later (`cause=expired`) during the fight; the
+player's own shots never stamped, and every row had `visited=0` even at `vanilla=1`. One cause for both: `walk_lists`
+read the list headers at `sector+0x50+class·12` inside the sector object, but `[sector+0x50]` is a pointer to the
+header array (the alert routine `0x0042c8bf mov eax,[eax+0x50]` then `0x0042c8ce mov esi,[eax]`; the same in
+`SA_StartObjectInSpace` `0x004495d8` and the collision pass `0x0045d275`). The inline words are not list heads, so
+every list ended before its first node: (a) never found the target, (e) never found the victim, (c)/(f) saw nothing.
+The host fake memory modelled the same wrong layout, so the tests passed. The fire counters themselves are right: the
+chase cursor-fire path only changes the cursor-branch ZF at `0x00445a41` inside fire control `0x00445170` and admits
+only fire flags with `0x22`, and every write of the bullet's player-shot local `[ebp-0x38]` ahead of `0x004463b0`
+(`0x00445a29`, `0x00445df3`, `0x00445f12`) is `flags & 2`, so a chase shot bumps `M+0x40` like any cockpit shot. The
+stamp was already taken before the hold test in the same frame. Fix: the walk reads `[sector+0x50]` first; the
+`sector_walk` window pins that read; `walk=` / `fire=` name the failing check in the rows.
 
 ## Cost (inferred from the code; object counts per frame are not measured)
 
@@ -139,7 +163,7 @@ MinGW i686, SSE2 only (`check_no_x87.py` walks the stub and the handler: no x87 
 
 ## What the first flight must show
 
-1. The install row with `armed=1 reason=ok write=plain windows=19` (any other `reason` means vanilla behaviour), with
+1. The install row with `armed=1 reason=ok write=plain windows=20` (any other `reason` means vanilla behaviour), with
    the stand's `--debug` (game phases on) as well as without it.
 2. Fly past a hostile station or an idle hostile ship without firing: sector music keeps playing and the log carries
    `suppressed=start` when it comes within range, `suppressed=end frames=<n>` when it leaves (no `edge` row).

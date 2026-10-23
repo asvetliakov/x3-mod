@@ -27,8 +27,9 @@
 // script and allocates nothing. The stub is integer-only and preserves every register and EFLAGS; the handler runs
 // under LightCallBoundary (MXCSR + LastError) and holds no x87 code (check_no_x87.py roots).
 //
-// Log rows (x3m.log): one `music_alert` install row; one per filtered-level edge (from, to, vanilla, reason a|b|c,
-// age_ms, cause, now, step, seta, walk counts); one `music_alert suppressed=start` row when vanilla would have raised
+// Log rows (x3m.log): one `music_alert` install row; one per filtered-level edge (from, to, vanilla, reason a..f,
+// age_ms, cause, now, step, seta, walk counts, walk= this frame's walk outcome or the first failed check, fire= rule
+// (a)'s outcome on the last frame a fire counter rose); one `music_alert suppressed=start` row when vanilla would have raised
 // the alert and the rule held it at 0, and one `suppressed=end frames=<n>` row when that episode ends. No per-frame
 // rows; capped per session.
 namespace x3m::music_alert {

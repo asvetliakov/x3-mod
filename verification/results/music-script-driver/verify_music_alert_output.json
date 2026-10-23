@@ -1,7 +1,7 @@
 {
  "status": "PASS",
  "failures": [],
- "checks": 31,
+ "checks": 32,
  "exe": "/mnt/c/X3/X3AP.exe",
  "site": "0042c974",
  "site_bytes": "8b4e088b4604",
@@ -14,6 +14,6 @@
   ]
  },
  "interior_branches": [],
- "windows": 18,
- "window_bytes": 708
+ "windows": 19,
+ "window_bytes": 753
 }
