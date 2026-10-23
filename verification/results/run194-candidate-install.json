@@ -1,0 +1,27 @@
+{
+ "run": "194",
+ "what": "run194 candidate installed into native C:\\X3",
+ "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run193; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-23T18:38+0400",
+ "commit": "b4def9c1",
+ "candidate_record": "verification/results/run194-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "c0d1239c907da74ffb6d1fcd7ffd215537c3130874cdd30390134d8a9bb42343",
+  "bytes": 62487058,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 193,
+  "sha256": "e02cb8079987e5f6",
+  "note": "release 1.4.0 stripped DLL, now rollback-d3d9\\d3d9.dll.run193 (release 1.3.2 stays as .run188)"
+ },
+ "x3m_ini": "unchanged by the install; the user's file still has debug = 1, perf = 1, draw_trace = 1, bolt_footprint = 0 from the triage flights; the run asks for bolt_footprint back on",
+ "unchanged": [
+  "X3AP.exe (fdbf3418\u2026)",
+  "x3m-regenerate.exe",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

@@ -1,0 +1,22 @@
+{
+ "run": "194",
+ "what": "Release 1.4.0 (Run193) + bolt_footprint staged Lock: the locked-prefix scan reads a proxy-owned cacheable staging block instead of the driver's write-combined DISCARD mapping; the outermost Unlock copies staging into the mapping; 0xff sentinel fill on fresh blocks; atomic open-stage flag replaces a second registry_mutex take; locked_prefix_window debug row (locks, staged, copy_bytes, copy_us, scans, scan_us, sentinel_us, unstaged_total, nested_flushes_total)",
+ "commit": "b4def9c1",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (48.6 s wall)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "c0d1239c907da74ffb6d1fcd7ffd215537c3130874cdd30390134d8a9bb42343",
+  "bytes": 62487058,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_bolt_footprint 24 OK (incl. staged_lock, regrow); test_fade_region same 2 pre-existing failures as main; full host suite in the worktree: failing set identical to main (55 tests)",
+  "host_cost": "verification/results/staged-lock/staged-lock.json: 6144 vertices old scan 7.23 us vs staged copy 1.27 + scan 7.18 us (cacheable host memory; native WC read it replaces measured 1.6-5.2 ms per bullet draw)",
+  "reviews": "review: 0 blocker, 3 should-fix, 6 nit; applied: nested-lock aliasing/detach + doc limitation, cause marked inferred, 0xff fill, mutex fold, memory bound; open: no executed host test of the ownership-level Lock/Unlock paths"
+ },
+ "evidence": "docs/verification/bolt-footprint.md (2026-10-23 rows), docs/reverse-engineering/view-submit-hot-path.md (instanced-batch section), verification/results/run193-combat-triage/",
+ "producer": "main session"
+}
