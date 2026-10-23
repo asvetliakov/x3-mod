@@ -1,0 +1,21 @@
+{
+ "run": "191",
+ "what": "Run190 + music_alert list walk fix ([sector+0x50] header array; walk=/fire= row fields), seta_restore re-bind across the transit's player-ship re-pointing with script-id identity and deferred sector check, autopilot-only arming, speed fields on rows; music_queue (track queue across sector changes, in-memory KC patch of 150::WarpToSector behind a load gate) default on",
+ "commit": "88ec0cda",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (46.7 s wall)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "63c5424908e8ee5e1f2194f699657f1e641abfa12765d6972678c05b7490e460",
+  "bytes": 62338024,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 158 roots, 1054 reachable, 0 violations",
+  "site_verifiers": "verify_music_keep_writes 79 PASS; verify_music_queue_kc PASS; verify_music_alert_sites 32/19 windows PASS; verify_seta_restore_sites 55 PASS",
+  "host_tests": "test_music_keep, test_music_alert, test_seta_restore, test_fov_site, test_chase_transition, test_config_schema, test_launcher_defaults, test_logging_tiers: OK; generate.py --check PASS 277 settings",
+  "reviews": "music_alert walk fix (no blocker, 4 notes); seta_restore re-bind (2 should-fix applied: identity, deferred sector); music_queue (4 should-fix applied incl. the KC load gate, notes applied)"
+ },
+ "producer": "main session"
+}
