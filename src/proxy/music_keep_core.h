@@ -109,6 +109,105 @@ constexpr unsigned status_ended_length = 12; // mov ax,2; pop edi/esi/ebp/ebx; a
 constexpr unsigned char status_ended_window[status_ended_length] = {0x66, 0xb8, 0x02, 0x00, 0x5f, 0x5e,
                                                                     0x5d, 0x5b, 0x83, 0xc4, 0x24, 0xc3};
 
+// ---- Music through the save (music-restart.md section 7): the save pump and Patch E ----
+// The save's stop-all (caller save_return_va) keeps a DirectSound-path music record running (keep_running: the vanilla
+// bookkeeping runs, the Pause and the buffer Stop are skipped), and the gzwrite import hook calls the engine's streaming
+// pump 0x004d0700 on it while the save blocks the main loop. Pump contract (section 7.2): EAX = media object, no stack
+// argument, plain `ret`; preserves EBX/EBP/ESI/EDI (pushed at +3..+6, popped on all exits), returns AX = 0 (failure),
+// 1 (streaming), 2 (ended and stopped); no x87; its only engine entry is the status query's DirectSound tail
+// (0x004d17b5: [m+0x8c] & 8 clear and & 0x40 set, then EAX = ESI = media, `jmp 0x004d0700`).
+constexpr std::uint32_t save_return_va = 0x00404561; // the save routine's stop-all call returns here (stop_callers)
+constexpr std::uint32_t pump_va = 0x004d0700, pump_end_va = 0x004d0c0c, status_ds_tail_va = 0x004d17b5;
+constexpr unsigned pump_head_length = 55; // sub esp,0x44; push ebx/ebp/esi/edi; mov esi,eax; mov edi,1; the re-arm
+                                          // ([esi+0x48]==1 && [esi+0x64]==1: Stop, cursors 0, SetCurrentPosition(0))
+constexpr unsigned char pump_head[pump_head_length] = {
+    0x83, 0xec, 0x44, 0x53, 0x55, 0x56, 0x57, 0x8b, 0xf0, 0xbf, 0x01, 0x00, 0x00, 0x00, 0x39, 0x7e, 0x48, 0x75, 0x24,
+    0x39, 0x7e, 0x64, 0x75, 0x1f, 0x8b, 0x46, 0x44, 0x8b, 0x08, 0x8b, 0x51, 0x48, 0x50, 0xff, 0xd2, 0x8b, 0x46, 0x44,
+    0x33, 0xc9, 0x89, 0x4e, 0x4c, 0x89, 0x4e, 0x50, 0x8b, 0x10, 0x51, 0x50, 0x8b, 0x42, 0x34, 0xff, 0xd0};
+constexpr unsigned pump_end_length = 37; // the drain end: Stop, [esi+0x48]=1, wpos 0, pop edi/esi/ebp, mov ax,2; pop
+                                         // ebx; add esp,0x44; ret
+constexpr unsigned char pump_end[pump_end_length] = {
+    0x8b, 0x46, 0x44, 0x8b, 0x08, 0x8b, 0x51, 0x48, 0x50, 0xff, 0xd2, 0x5f, 0xc7, 0x46, 0x48, 0x01, 0x00, 0x00, 0x00,
+    0xc7, 0x46, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x5e, 0x5d, 0x66, 0xb8, 0x02, 0x00, 0x5b, 0x83, 0xc4, 0x44, 0xc3};
+constexpr unsigned status_ds_tail_length = 28; // mov eax,[esi+0x8c]; test al,8; jne; test al,0x40; je; mov eax,esi; pops;
+                                               // add esp,0x24; jmp 0x004d0700
+constexpr unsigned char status_ds_tail[status_ds_tail_length] = {
+    0x8b, 0x86, 0x8c, 0x00, 0x00, 0x00, 0xa8, 0x08, 0x75, 0x45, 0xa8, 0x40, 0x74, 0x0e,
+    0x8b, 0xc6, 0x5f, 0x5e, 0x5d, 0x5b, 0x83, 0xc4, 0x24, 0xe9, 0x2f, 0xef, 0xff, 0xff};
+// Media-object fields the pump gate reads (section 7.1): +0x8c flags (0x40 DirectSound path, 8 excluded, 0x20 stream
+// clock), +0x48 buffer state (1 stopped / needs first fill, 2 playing, 4 draining), +0x04 the multimedia stream,
+// +0x70 the position interface.
+constexpr unsigned media_stream = 0x04, media_buffer_state = 0x48, media_position = 0x70, media_flags = 0x8c;
+constexpr std::uint32_t media_ds_mask = 0x48, media_ds_value = 0x40, media_stream_clock = 0x20;
+constexpr std::uint32_t buffer_playing = 2, buffer_draining = 4;
+// The import the save writes through: `jmp [0x005323e0]` at 0x004fae46 (zlib1.dll!gzwrite; 52 direct callers plus the
+// dispatcher 0x004e92e0). The proxy's import writer (loading_trace) owns the slot; the keep only observes it.
+constexpr std::uint32_t gzwrite_iat_va = 0x005323e0, gzwrite_thunk_va = 0x004fae46;
+constexpr unsigned gzwrite_thunk_length = 6;
+constexpr unsigned char gzwrite_thunk[gzwrite_thunk_length] = {0xff, 0x25, 0xe0, 0x23, 0x53, 0x00};
+// The save's own gzclose: the save calls the close wrapper 0x004e9360 at 0x00404a6f (return 0x00404a74); the wrapper
+// calls the gzclose thunk 0x004fae52 (`jmp [0x005323f0]`) at 0x004e937f (return 0x004e9384). At the import hook's entry
+// [esp] = 0x004e9384, [esp+4] = the file, [esp+8] = 0x00404a74. Only that pair ends pumping; any other gzclose is ignored.
+constexpr std::uint32_t save_gzclose_call_va = 0x00404a6f, save_gzclose_return_va = 0x00404a74;
+constexpr std::uint32_t gzclose_wrapper_va = 0x004e9360, gzclose_wrapper_return_va = 0x004e9384;
+constexpr std::uint32_t gzclose_thunk_va = 0x004fae52, gzclose_iat_va = 0x005323f0;
+constexpr unsigned gzclose_wrapper_length = 39; // test [ecx+4],1; jne; xor al,al; ret; ...; mov eax,[ecx]; push eax; call
+                                                // 0x004fae52; add esp,4; neg eax
+constexpr unsigned char gzclose_wrapper[gzclose_wrapper_length] = {
+    0xf6, 0x41, 0x04, 0x01, 0x75, 0x03, 0x32, 0xc0, 0xc3, 0x8b, 0x41, 0x04, 0x8b, 0xd0, 0x83, 0xe2, 0x05, 0x83, 0xe0, 0xfe,
+    0x80, 0xfa, 0x05, 0x89, 0x41, 0x04, 0x75, 0x13, 0x8b, 0x01, 0x50, 0xe8, 0xce, 0x1a, 0x01, 0x00, 0x83, 0xc4, 0x04};
+constexpr unsigned gzclose_thunk_length = 6;
+constexpr unsigned char gzclose_thunk[gzclose_thunk_length] = {0xff, 0x25, 0xf0, 0x23, 0x53, 0x00};
+// The replay's Run is skipped only when the last pump (or the arm) is less than run_skip_bound_ms of wall time old: the
+// 5 s ring minus one 2 s sample leaves a 3 s minimum lead, less a margin. Past it, Patch E forwards the Run (the buffer
+// re-arms), and an episode still waiting for its replay past it is paused through 0x004d1810 at the next Present.
+constexpr unsigned run_skip_bound_ms = 2500;
+// Cadence: at most one pump call per 250 ms of wall time; the clock is read every pump_poll_stride gzwrite calls (one
+// load, one decrement and a branch otherwise); pumping stops on its own after pump_bound_ms.
+constexpr unsigned pump_interval_ms = 250, pump_poll_stride = 32, pump_bound_ms = 120000;
+// Patch E: the play routine's Run call at 0x00498d71 (`e8 fa 8a 03 00` = call 0x004d1870, one whole instruction
+// between `mov eax,esi` at 0x00498d6f and `test eax,eax; je 0x00498dde`; & 7 = 1, one lock cmpxchg8b). In: EAX = ESI =
+// record; the callee preserves EBX/EBP/ESI/EDI and returns 1 on this path; ECX/EDX/flags are dead after it (test eax;
+// 0x00498d7a reloads EAX, xor ecx,ecx; EDX is loaded at 0x00498d96 / 0x00498dce before any read). The thunk answers
+// `mov eax,1; ret` (no Run, no re-arm of the running buffer) for the record the save kept running, right after Patch C
+// skipped its seek; every other call goes to 0x004d1870 unchanged. The second Run caller 0x00498f76 stays vanilla.
+constexpr std::uint32_t e_site_va = c_run_call_va, e_target_va = run_va, e_return_va = 0x00498d76;
+constexpr unsigned e_post_length = 35; // test eax,eax; je; mov eax,[esi+0x18]; xor ecx,ecx; cmp [esp+0x3c],ebp; mov
+                                       // [esi+0x1c],edi; setne cl; mov [esi+0x20],ebx; or ecx,2; or [esi+0x2c],ecx;
+                                       // cmp eax,ebp; je; mov edx,[esi+0x14]
+constexpr unsigned char e_post_window[e_post_length] = {
+    0x85, 0xc0, 0x74, 0x64, 0x8b, 0x46, 0x18, 0x33, 0xc9, 0x39, 0x6c, 0x24, 0x3c, 0x89, 0x7e, 0x1c, 0x0f, 0x95,
+    0xc1, 0x89, 0x5e, 0x20, 0x83, 0xc9, 0x02, 0x09, 0x4e, 0x2c, 0x3b, 0xc5, 0x74, 0x34, 0x8b, 0x56, 0x14};
+
+// ---- Resume the sector track after combat (music-script-driver.md section 4) ----
+// The story stops (MOV_StopMovie, native caller 0x00499886) and frees the sector record when combat music starts and
+// replays the sector id from 0 when the alert ends. At the shared MOV_StopMovie entry the keep remembers (id, position)
+// of a playing music record whose id is not a combat id; the first later start-0 play of that id at Patch C is seeked to
+// the position (the stack argument of 0x004d0430 rewritten in place: the path MOV_PlayMovieFrom takes; EDI, hence
+// [rec+0x1c], keeps 0). The position is read as the engine's reader 0x004d0600 does: [m+0x8c] & 0x20 ->
+// IMultiMediaStream::GetTime on [m+4] (vtbl +0x20, 100 ns units / 10000), else IMediaPosition::get_CurrentPosition on
+// [m+0x70] (vtbl +0x24, REFTIME seconds * 1000.0 at 0x00565550). Combat ids: 1001..1042 (the Mayhem driver's list).
+constexpr std::uint32_t stop_movie_native_return_va = 0x00499886;
+constexpr std::uint32_t combat_id_first = 1001, combat_id_last = 1042;
+constexpr std::uint32_t position_reader_va = 0x004d0600;
+constexpr unsigned position_reader_length = 120; // the whole reader through its last `ret` at 0x004d0677
+// clang-format off
+constexpr unsigned char position_reader[position_reader_length] = {
+    0x8b, 0x40, 0x24, 0x83, 0xec, 0x0c, 0xf6, 0x80, 0x8c, 0x00, 0x00, 0x00, 0x20, 0x75, 0x2c, 0x8b,
+    0x40, 0x70, 0x8b, 0x08, 0x8d, 0x14, 0x24, 0x52, 0x50, 0x8b, 0x41, 0x24, 0xff, 0xd0, 0x85, 0xc0,
+    0x7c, 0x2c, 0xdd, 0x04, 0x24, 0xdc, 0x0d, 0x50, 0x55, 0x56, 0x00, 0xe8, 0xa0, 0xaf, 0x05, 0x00,
+    0x89, 0x06, 0xb8, 0x01, 0x00, 0x00, 0x00, 0x83, 0xc4, 0x0c, 0xc3, 0x8b, 0x40, 0x04, 0x8b, 0x08,
+    0x8d, 0x14, 0x24, 0x52, 0x50, 0x8b, 0x41, 0x20, 0xff, 0xd0, 0x85, 0xc0, 0x7d, 0x06, 0x33, 0xc0,
+    0x83, 0xc4, 0x0c, 0xc3, 0x8b, 0x4c, 0x24, 0x04, 0x8b, 0x14, 0x24, 0x6a, 0x00, 0x68, 0x10, 0x27,
+    0x00, 0x00, 0x51, 0x52, 0xe8, 0xf7, 0x87, 0x04, 0x00, 0x89, 0x06, 0x89, 0x54, 0x24, 0x04, 0xb8,
+    0x01, 0x00, 0x00, 0x00, 0x83, 0xc4, 0x0c, 0xc3};
+// clang-format on
+constexpr unsigned position_vtbl_get_current = 0x24, stream_vtbl_get_time = 0x20;
+constexpr std::uint32_t position_limit_ms = 24u * 3600u * 1000u; // a larger reading is refused (no memory)
+// Patch C's answer: SeekAction in the low bits, plus seek_resume_bit when the start argument is replaced with the
+// remembered position before the seek.
+constexpr unsigned seek_resume_bit = 4;
+
 // ---- Trace sites: three entry trampolines ----
 constexpr std::uint32_t t_stop_all_site_va = stop_all_va; // mov eax,[0x606f44] (5 bytes, absolute operand)
 constexpr unsigned t_stop_all_length = 5, stop_all_head_length = 16;
@@ -124,6 +223,16 @@ constexpr std::uint32_t t_stop_movie_site_va = 0x00498810; // mov ecx,[0x606f44]
 constexpr unsigned t_stop_movie_length = 6, stop_movie_head_length = 14;
 constexpr unsigned char stop_movie_head[stop_movie_head_length] = {0x8b, 0x0d, 0x44, 0x6f, 0x60, 0x00, 0x55,
                                                                    0x8b, 0x6c, 0x24, 0x08, 0x56, 0x8b, 0x31};
+// Trace of the KC task at T2/T3 (music-script-driver.md section 8.2): ESI = the calling task; +0x08 task id, +0x10
+// stack capacity (cells), +0x14 cell stack base (5-byte cells: tag byte + dword), +0x18 stack index k, +0x1c IP. At the
+// T3 stop from PlayMusicWithFade (IP 0x0db54) the cells k+6 (tag 3, return into LoopMusic), k+8 (the new id), k+10
+// (loop) and k+12 (tag 3, return into ChangeTrackMusic's fork) are logged raw; read only when base != 0 and
+// k + 12 < capacity <= trace_cell_capacity_limit, through the fault-free engine reader. R = *0x00608504 is the alert
+// record ([R+4] committed level, [R+8] this frame's level).
+constexpr unsigned task_id = 0x08, task_capacity = 0x10, task_cells = 0x14, task_index = 0x18, task_ip = 0x1c;
+constexpr unsigned cell_size = 5, trace_cell_capacity_limit = 0x100000;
+constexpr unsigned trace_cells[] = {6, 8, 10, 12};
+constexpr std::uint32_t alert_record_ptr_va = 0x00608504;
 // Play routine arguments at its entry frame (dwords from the return address): a1 slot, a2 context, a3 id, a4 minutes,
 // a5 seconds, a6 ms, a7..a9 end, a10 loop.
 constexpr unsigned play_arg_id = 3, play_arg_minutes = 4, play_arg_seconds = 5, play_arg_ms = 6;
@@ -220,6 +329,15 @@ struct Holds {
             if (slots[i].record == record && slots[i].id == id && slots[i].media == media) return &slots[i];
         return nullptr;
     }
+    // The fallback pause of a kept-running record: its hold becomes a paused one (F2 and pause_then_vanilla skip it).
+    bool set_mode(std::uint32_t record, std::uint32_t id, std::uint32_t media, StopMode mode) {
+        for (unsigned i = 0; i < count; ++i)
+            if (slots[i].record == record && slots[i].id == id && slots[i].media == media) {
+                slots[i].mode = mode;
+                return true;
+            }
+        return false;
+    }
     void add(const Hold& h) {
         for (unsigned i = 0; i < count; ++i)
             if (slots[i].record == h.record) {
@@ -254,12 +372,18 @@ struct LiveRecord {
 // kind, which only Patch D reads (decide_status) and the seek rule ignores (a
 // skip_all hold must not make the next start-0 play after the natural end skip
 // the seek). Without Patch D alt-tab takes the flown paused mode.
+// Music through the save (`save_pump_free`: the save pump is bound, Patch E is
+// live and no other record is armed in this stop-all): a DirectSound-path music
+// record under the save caller keeps running instead (`pump` set: the caller
+// arms the save pump on it); pause keeps the paused mode.
 struct StopDecision {
     StopMode mode;
     bool held;
+    bool pump = false;
 };
 inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id,
-                                std::uint32_t media, std::uint32_t return_va, bool skip_all_available) {
+                                std::uint32_t media, std::uint32_t return_va, bool skip_all_available,
+                                bool save_pump_free = false) {
     StopMode mode = stop_mode(return_va);
     if (mode == StopMode::vanilla) {
         holds.clear();
@@ -267,9 +391,15 @@ inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_
     }
     if (!(flags & flag_music)) return {StopMode::vanilla, false};
     if (mode == StopMode::skip_all && !skip_all_available) mode = StopMode::paused;
-    if (mode == StopMode::keep_running && (flags & flag_directsound)) mode = StopMode::paused;
+    bool pump = false;
+    if (mode == StopMode::keep_running && (flags & flag_directsound)) {
+        if (save_pump_free && return_va == save_return_va)
+            pump = true;
+        else
+            mode = StopMode::paused;
+    }
     holds.add(Hold{record, id, media, mode});
-    return {mode, true};
+    return {mode, true, pump};
 }
 // Stop-all entry, any caller: a keep-running hold the script never replayed
 // (still linked with the same id and media, flag 2 clear, context 0) is a
@@ -364,6 +494,249 @@ inline bool decide_status(const Holds& holds, std::uint32_t record, std::uint32_
     if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return false;
     const Hold* h = holds.find(record, id, media);
     return h && h->mode == StopMode::skip_all;
+}
+
+// ---- The save pump episode (music-restart.md section 7.5) ----
+// One target per save: armed by Patch A for the DirectSound music record the
+// save kept running; `open` until the episode's line is written; `pumping` while the pump may run (from that stop-all to
+// gzclose, a failed or ended pump call, a refused check or the wall bound);
+// `kept` while the replay's Run may be skipped (until the first music play);
+// `run_marker` from Patch C's seek skip of exactly that record to the Run call
+// that follows it (Patch E, one shot). The episode ends (`open` cleared) at the
+// first music play (or at Patch E after the replay), at MOV_StopMovie of the id
+// and at the next stop-all; the caller then writes one line from the fields
+// (kept until reset) and resets. A stopped pump (gzclose, 0/2, a refused check,
+// the bound) leaves the episode open for that line. Every early stop of the
+// kept-running state (all but gzclose followed by a timely replay) cancels the
+// Run skip and asks the caller to pause the record (cancel_skip / note_fallback).
+enum class PumpEnd : unsigned {
+    none = 0,
+    gzclose,
+    replay,
+    play,
+    stop_movie,
+    stop_all,
+    ended,
+    failed,
+    refused,
+    bound,
+    overdue, // gzclose came, the replay did not within run_skip_bound_ms
+    stale,   // Patch E found the last pump older than run_skip_bound_ms
+};
+// What happened to a record the save kept running once the Run skip was cancelled early: paused through 0x004d1810 (the
+// flown paused mode: the replay's seek skip and Run resume it), or nothing to pause (no longer linked as the target).
+enum class Fallback : unsigned { none = 0, paused, unlinked, pending };
+inline const char* fallback_name(Fallback f) {
+    return f == Fallback::paused ? "paused" : f == Fallback::unlinked ? "unlinked" : f == Fallback::pending ? "pending" : "none";
+}
+inline const char* pump_end_name(PumpEnd e) {
+    switch (e) {
+    case PumpEnd::gzclose: return "gzclose";
+    case PumpEnd::replay: return "replay";
+    case PumpEnd::play: return "play";
+    case PumpEnd::stop_movie: return "stop_movie";
+    case PumpEnd::stop_all: return "stop_all";
+    case PumpEnd::ended: return "ended";
+    case PumpEnd::failed: return "failed";
+    case PumpEnd::refused: return "refused";
+    case PumpEnd::bound: return "bound";
+    case PumpEnd::overdue: return "overdue";
+    case PumpEnd::stale: return "stale";
+    default: return "none";
+    }
+}
+inline std::uint64_t ticks_to_ms(std::uint64_t ticks, std::uint64_t frequency) {
+    return frequency ? ticks * 1000u / frequency : 0;
+}
+struct SavePump {
+    std::uint32_t record = 0, id = 0, media = 0, thread = 0;
+    bool open = false, pumping = false, kept = false, run_marker = false;
+    std::uint64_t frequency = 0, interval = 0, bound = 0, skip_bound = 0;
+    std::uint64_t armed_at = 0, first_call_at = 0, last_at = 0, pump_end_at = 0, end_at = 0, max_gap = 0;
+    std::uint32_t writes = 0, samples = 0, calls = 0, returns[4]{}; // returns[3]: any other value (failure)
+    unsigned countdown = 0;
+    PumpEnd pump_end = PumpEnd::none, end = PumpEnd::none, fallback_reason = PumpEnd::none;
+    Fallback fallback = Fallback::none;
+    std::uint64_t fallback_at = 0;
+
+    bool active() const { return open; }
+    void reset() { *this = SavePump{}; }
+    void arm(std::uint32_t r, std::uint32_t i, std::uint32_t m, std::uint32_t t, std::uint64_t now, std::uint64_t f) {
+        reset();
+        record = r;
+        id = i;
+        media = m;
+        thread = t;
+        frequency = f;
+        interval = f * pump_interval_ms / 1000u;
+        bound = f * pump_bound_ms / 1000u;
+        skip_bound = f * run_skip_bound_ms / 1000u;
+        armed_at = last_at = now;
+        open = pumping = kept = true;
+        countdown = 1; // the first gzwrite samples the clock (and pumps): the stop-all's lead is the reserve
+    }
+    // Every gzwrite while pumping: true when this call reads the clock.
+    bool sample_due() {
+        ++writes;
+        if (--countdown) return false;
+        countdown = pump_poll_stride;
+        ++samples;
+        return true;
+    }
+    void stop(PumpEnd why, std::uint64_t now) {
+        if (!pumping) return;
+        pumping = false;
+        pump_end = why;
+        pump_end_at = now;
+        if (now - last_at > max_gap) max_gap = now - last_at; // the unpumped span up to the end
+    }
+    // On a sampled gzwrite: whether to call the pump now (on the armed thread, past the interval since the last call;
+    // the first sample always pumps). Past the wall bound pumping stops.
+    bool pump_due(std::uint64_t now, std::uint32_t current_thread) {
+        if (!pumping || current_thread != thread) return false;
+        if (now - armed_at >= bound) {
+            cancel_skip(PumpEnd::bound, now);
+            return false;
+        }
+        return calls == 0 || now - last_at >= interval;
+    }
+    // An early end of the kept-running state (a refused check, a 0/2/other return, the wall bound, an overdue replay):
+    // pumping stops, the Run skip is cancelled and the record must be paused (Fallback::pending until the caller
+    // reports what it did through note_fallback). Once per episode.
+    void cancel_skip(PumpEnd why, std::uint64_t now) {
+        stop(why, now);
+        if (!kept) return;
+        kept = false;
+        fallback = Fallback::pending;
+        fallback_reason = why;
+        fallback_at = now;
+    }
+    bool fallback_due() const { return fallback == Fallback::pending; }
+    void note_fallback(bool paused) { fallback = paused ? Fallback::paused : Fallback::unlinked; }
+    // The checks before a call failed (record unlinked, other id or media, not DirectSound, flag 2 set, buffer not
+    // running): no call, no Run skip.
+    void refuse(std::uint64_t now) { cancel_skip(PumpEnd::refused, now); }
+    // After gzclose: the replay has not come within run_skip_bound_ms of the last pump (checked at Present, on the
+    // armed thread).
+    bool replay_overdue(std::uint64_t now, std::uint32_t current_thread) const {
+        return open && kept && !pumping && !run_marker && current_thread == thread && now - last_at >= skip_bound;
+    }
+    // After a call: 1 keeps streaming; 0, 2 or anything else stops pumping and the replay's Run stays vanilla (a 2:
+    // the track ended during the save, the replay re-arms at end of stream and ends as after any natural end).
+    void note_call(std::uint32_t result, std::uint64_t before, std::uint64_t after) {
+        if (before - last_at > max_gap) max_gap = before - last_at;
+        if (!calls) first_call_at = before;
+        last_at = after;
+        ++calls;
+        ++returns[result <= 2 ? result : 3];
+        if (result != 1) cancel_skip(result == 2 ? PumpEnd::ended : PumpEnd::failed, after);
+    }
+    // Patch C, any music play (record, id, media of the played record; `skipped`: the seek was skipped). Returns true
+    // when the episode ends here (the caller logs and resets); false when nothing was active or the replay of the kept
+    // record set the Run marker (Patch E logs).
+    bool on_play(std::uint32_t r, std::uint32_t i, std::uint32_t m, bool skipped, std::uint64_t now) {
+        if (!active()) return false;
+        const bool replay = kept && skipped && r == record && i == id && m == media;
+        stop(replay ? PumpEnd::replay : PumpEnd::play, now);
+        kept = false;
+        run_marker = replay;
+        open = replay; // a replay stays open until Patch E
+        end = replay ? PumpEnd::replay : PumpEnd::play;
+        end_at = now;
+        return !replay;
+    }
+    // Patch E (the Run call right after the seek): true = skip the Run. Only for the marked record whose buffer is
+    // still playing and whose last pump (or arm) is younger than run_skip_bound_ms (else the ring may have run dry:
+    // the vanilla Run re-arms it, recorded as PumpEnd::stale); the marker is consumed by any Run call.
+    bool skip_run(std::uint32_t r, std::uint32_t m, std::uint32_t buffer_state, std::uint64_t now) {
+        const bool mine = run_marker && r == record && m == media;
+        if (run_marker) open = false;
+        run_marker = false;
+        if (!mine || buffer_state != buffer_playing) return false;
+        if (now - last_at >= skip_bound) {
+            fallback_reason = PumpEnd::stale;
+            return false;
+        }
+        return true;
+    }
+    // MOV_StopMovie of the id, or the next stop-all entry: the episode ends (true when one was active).
+    bool end_now(PumpEnd why, std::uint64_t now) {
+        if (!active()) return false;
+        stop(why, now);
+        open = kept = run_marker = false;
+        end = why;
+        end_at = now;
+        return true;
+    }
+};
+
+// ---- The resume memory (music-script-driver.md section 4) ----
+inline bool combat_id(std::uint32_t id) {
+    return id >= combat_id_first && id <= combat_id_last;
+}
+struct ResumeMemory {
+    std::uint32_t id = 0, ms = 0;
+    bool valid = false;
+};
+enum class ResumeAction : unsigned {
+    none = 0,
+    remember,       // a sector track stopped by the script: (id, position) kept
+    forget,         // a sector track stopped without a readable position: the old memory goes
+    keep,           // a combat track plays: the memory stays
+    seek,           // the first start-0 play of the remembered id: seek to the position, memory used
+    clear_sector,   // another non-combat id plays (sector change, dock): memory cleared
+    clear_played,   // the remembered id plays positioned or still playing (seek skipped): memory cleared
+    clear_stop_all, // a vanilla stop-all (load, session start, P_Leave, unknown): memory cleared
+};
+inline const char* resume_action_name(ResumeAction a) {
+    switch (a) {
+    case ResumeAction::remember: return "remember";
+    case ResumeAction::forget: return "forget";
+    case ResumeAction::keep: return "keep";
+    case ResumeAction::seek: return "seek";
+    case ResumeAction::clear_sector: return "clear_sector";
+    case ResumeAction::clear_played: return "clear_played";
+    case ResumeAction::clear_stop_all: return "clear_stop_all";
+    default: return "none";
+    }
+}
+// MOV_StopMovie native entry: `caller` the native's return address, the found record's flags (0 when absent),
+// `position_ok`/`ms` the reading taken before the engine pauses it. Only the script's own stop (caller
+// stop_movie_native_return_va) of a playing music record with a non-combat id counts.
+inline ResumeAction resume_on_stop(ResumeMemory& m, std::uint32_t caller, std::uint32_t id, std::uint32_t flags,
+                                   bool position_ok, std::uint32_t ms) {
+    if (caller != stop_movie_native_return_va || combat_id(id)) return ResumeAction::none;
+    if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return ResumeAction::none;
+    if (!position_ok || ms == 0 || ms >= position_limit_ms) {
+        m = ResumeMemory{};
+        return ResumeAction::forget;
+    }
+    m = ResumeMemory{id, ms, true};
+    return ResumeAction::remember;
+}
+// Patch C, a music play (after decide_seek: `base` its action). Out: `seek_ms` for ResumeAction::seek.
+inline ResumeAction resume_on_play(ResumeMemory& m, std::uint32_t id, std::int32_t start_ms, SeekAction base,
+                                   std::uint32_t& seek_ms) {
+    if (!m.valid) return ResumeAction::none;
+    if (combat_id(id)) return ResumeAction::keep;
+    if (id != m.id) {
+        m = ResumeMemory{};
+        return ResumeAction::clear_sector;
+    }
+    if (start_ms == 0 && base != SeekAction::skip) {
+        seek_ms = m.ms;
+        m = ResumeMemory{};
+        return ResumeAction::seek;
+    }
+    m = ResumeMemory{};
+    return ResumeAction::clear_played;
+}
+// Stop-all entry: a vanilla caller (load, session start, P_Leave, unknown) clears the memory; save, pause and alt-tab
+// keep it.
+inline ResumeAction resume_on_stop_all(ResumeMemory& m, std::uint32_t return_va) {
+    if (!m.valid || stop_mode(return_va) != StopMode::vanilla) return ResumeAction::none;
+    m = ResumeMemory{};
+    return ResumeAction::clear_stop_all;
 }
 
 // ---- Shared entry sites (the stop-all entry 0x004982b0 and the MOV_StopMovie entry 0x00498810) ----
