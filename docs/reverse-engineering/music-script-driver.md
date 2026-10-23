@@ -649,7 +649,7 @@ id outside 101..299 and every script id, for example `0x7f000000 + n`.
 | PARKED | C plays N again at T2 | free P (a miss if the engine already freed O); continue vanilla, so N starts from 0 | IDLE | `music_queue_release reason=natural_end\|stop_all\|lost` |
 | PARKED | deferrable stop(N) by D (a further jump to M) | deliver `([O+0x14] = C, 1)` through `[O+0x18]`; zero both; deliver `(D, 1)` through EDI; `ret`. C frees N's unplayed record and exits with `m17 = −2` | ORPHANED (N := M, task := D) | `music_queue_collapse from= to=` |
 | PARKED | non-deferrable stop(N): combat, `StopMusic`, any other | as the row above, then free P; `ret` | IDLE | `music_queue_end reason=stop new=` |
-| any | T1 stop-all, `alt_tab` | nothing. Keep on: `skip_all` leaves O alone. Keep off: the stop-all pauses O and wakes C through O's context, and C's replay ends the queue | – | – |
+| any | T1 stop-all, `alt_tab` | depends on the keep's live alt-tab mode (implementation, 2026-10-23): `skip_all` leaves O alone and the queue stays; `paused` (Patch D refused) ends the queue like every other caller, O's private-key record is freed at the next Present (`event=free_later`, never inside the stop-all's walk). Keep off: the stop-all pauses O and wakes C through O's context, and C's replay ends the queue | – | – |
 | ORPHANED, PARKED | T1 stop-all, any other caller | if PARKED, deliver `(C, 1)` through O's slot; zero O's context; free P; let the stop-all continue | IDLE | `music_queue_end reason=stop_all name=` |
 | any | any T2/T3 event while O has ended (flag `2` clear, context 0) and is unowned | free P | IDLE | `music_queue_end reason=stale` |
 
@@ -672,8 +672,8 @@ id outside 101..299 and every script id, for example `0x7f000000 + n`.
   runnable: the vanilla savegame, which avoids music-restart.md §7.3's suspended-task trap and keeps the private key
   out of the restore. Under keep or vanilla, the new track then starts from 0 after the save or pause: a visible
   degradation, with the old track cut at the save.
-* **Alt-tab.** As in the T1 row: with keep's `skip_all` O plays on; without keep, the vanilla stop-all wakes C, and
-  the new track starts from 0.
+* **Alt-tab.** As in the T1 row: under the keep's `skip_all` mode O plays on; under its `paused` mode the queue ends
+  (O freed at the next Present); without keep, the vanilla stop-all wakes C, and the new track starts from 0.
 * **`StopMusic` with a fade while PARKED.** `MusicFadeOut` fades N, which is silent, then stops it. The queue ends
   with O cut, not faded.
 * **Task killed or the VM rebuilt.** O's context names a dead task, its natural end is a no-op lookup, and the stale
