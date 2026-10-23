@@ -1,8 +1,9 @@
 // SETA restore core (src/proxy/seta_restore_core.h; docs/architecture/seta-restore.md) on controlled observations:
 // the arm conditions at the TI_SetTimeWarpFactor case entry, every cancel, the one-arm-per-transit rule, the injection
 // sequence (Ready walk once per presented frame, parent check, two frames, controlled object, the call and its result)
-// the autopilot gate at the arm, the player-ship re-bind of a gate transit, the record-only speed fields, and the
-// task-stack return scan over a fake task. No Windows, no Wine; prints "checks PASS".
+// the autopilot gate at the arm, the player-ship re-bind of a gate transit (ship-script identity, the deferred sector
+// check), the record-only speed fields, and the task-stack return scan over a fake task. No Windows, no Wine; prints
+// "checks PASS".
 #include "../../src/proxy/seta_restore_core.h"
 #include <cstdio>
 #include <cstdlib>
@@ -20,8 +21,10 @@ static void check(bool ok, const char* why) {
 }
 constexpr std::uint32_t ship_a = 0x47e69ad0u, ship_b = 0x47e70000u, sector_a = 0x265e8e08u, sector_b = 0x80e89c18u,
                         id_a = 1201, id_b = 1305;
-// Run 190's transit re-pointing: the same ship id under new objects
-constexpr std::uint32_t ship_c = 0x4628c8e8u, ship_d = 0x8785a078u, ship_e = 0x4628a590u, ship_id = 0xfffebb1eu;
+// Run 190's transit re-pointing: new objects, one ship-script id +0x94 (the chase rows' ship_id_from/to); the native
+// id +8 (record only) is a placeholder value
+constexpr std::uint32_t ship_c = 0x4628c8e8u, ship_d = 0x8785a078u, ship_e = 0x4628a590u, ship_id = 0x00000c41u,
+                        script_id = 0xfffebb1eu, other_script = 0xfffeb000u;
 constexpr std::uint32_t autopilot_flags = 0x80000u | 0x40000u | 0x2u, manual_flags = 0x40000u | 0x2u;
 struct Kind {
     std::uint16_t cls, marker;
@@ -38,6 +41,8 @@ struct Probe {
     std::map<std::uint32_t, std::uint32_t> ship_flags_of{{ship_a, autopilot_flags}, {ship_b, autopilot_flags},
                                                          {ship_c, autopilot_flags}, {ship_d, autopilot_flags},
                                                          {ship_e, autopilot_flags}};
+    std::map<std::uint32_t, std::uint32_t> scripts{{ship_a, script_id}, {ship_b, script_id}, {ship_c, script_id},
+                                                   {ship_d, script_id}, {ship_e, script_id}};
     bool player_ok = true, is_paused = false;
     unsigned walks = 0;
     bool player(std::uint32_t& s) {
@@ -73,6 +78,12 @@ struct Probe {
         const auto it = ship_flags_of.find(ship);
         if (it == ship_flags_of.end()) return false;
         f = it->second;
+        return true;
+    }
+    bool script(std::uint32_t ship, std::uint32_t& id) {
+        const auto it = scripts.find(ship);
+        if (it == scripts.end()) return false;
+        id = it->second;
         return true;
     }
     bool sector_id(std::uint32_t sector, std::uint32_t& id) {
@@ -129,7 +140,8 @@ static void constants() {
               alive_marker == 0xcafe && object_class == 0x48 && object_marker == 0x9c && ship_speed == 0x10 &&
               ship_desired_speed == 0x14,
           "object fields");
-    check(std::strcmp(ship_check_name(ShipCheck::second), "second") == 0 && std::strcmp(skip_name(skip_manual), "manual") == 0,
+    check(std::strcmp(ship_check_name(ShipCheck::second), "second") == 0 && std::strcmp(skip_name(skip_manual), "manual") == 0 &&
+              std::strcmp(ship_check_name(ShipCheck::identity), "identity") == 0 && ship_script == 0x94,
           "row names");
 }
 static void arm_conditions() {
@@ -140,6 +152,24 @@ static void arm_conditions() {
         check(r.row == Row::armed && s.phase == Phase::armed && r.ret == gate_return && r.old_factor == 0xa0000, "arm");
         check(s.ship == ship_a && s.sector == sector_a && s.sector_id == id_a && s.active(), "arm records ship and sector");
         check(r.autopilot && r.flags == autopilot_flags && r.ship_id == ship_id, "arm records the autopilot flags");
+        check(r.script_id == script_id && s.script_id == script_id, "arm records the ship-script id");
+    }
+    { // the ship-script id: required to arm (unreadable or 0 refuses), record only on a manual skip
+        for (int zero = 0; zero < 2; ++zero) {
+            State s;
+            Probe q;
+            if (zero)
+                q.scripts[ship_a] = 0;
+            else
+                q.scripts.erase(ship_a);
+            Report r = s.on_write(gate_stop(), at(1, 1), q);
+            check(r.row == Row::refused && r.reason == refuse_unreadable && r.script_id == 0 && !s.active() &&
+                      s.transit_id == 0,
+                  "script id unreadable or 0: refused");
+            q.ship_flags_of[ship_a] = manual_flags;
+            r = s.on_write(gate_stop(), at(2, 2), q);
+            check(r.row == Row::skipped && r.script_id == 0, "manual skip without a script id");
+        }
     }
     { // a manual gate pass (CanWarp: SA_GetFlags & 0x80000 clear): one skipped row, nothing armed, the transit free
         State s;
@@ -299,9 +329,9 @@ static void cancels() {
         s.on_vm(1, at(1, 1));
         s.on_write(gate_stop(), at(1, 1), p);
         p.player_ship = ship_b; // a change inside the departure sector is no transit: cancelled as before
-        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change && r.ship == ship_b &&
-                  r.ship_check == ShipCheck::same_sector,
-              "ship change");
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change && r.ship == ship_a &&
+                  r.new_ship == ship_b && r.ship_check == ShipCheck::same_sector,
+              "ship change: ship= the ticket's, new_ship= the new one");
         s.on_vm(1, at(1, 1));
         p.player_ship = ship_a;
         s.on_write(gate_stop(), at(1, 1), p);
@@ -395,6 +425,9 @@ static void rebind() {
                   r.sector_id == id_a && r.new_sector == sector_b && r.new_sector_id == id_b &&
                   r.frames_since_arm == 185 && r.ms_since_arm == 8000 && r.ship_check == ShipCheck::rebound,
               "rebound row: old/new ship and ids, sector ids, frames since arm");
+        check(r.script_id == script_id && r.new_script_id == script_id && r.new_flags_readable &&
+                  r.new_flags == autopilot_flags && s.pendings == 0,
+              "rebound row: both script ids, the new ship's flags");
         p.ready_node = sector_b;
         check(!s.on_inject(at(19363, 9010), ship_c, p, r) && s.phase == Phase::due && s.ready_sector == sector_b,
               "Ready on the re-bound ship");
@@ -421,7 +454,8 @@ static void rebind() {
             p.player_ship = ship_d;
             p.parents[ship_d] = sector_b;
             check(!s.on_inject(at(4, 4), ship_c, p, r) && r.row == Row::cancelled && r.reason == cancel_ship_change &&
-                      r.ship_check == ShipCheck::second && r.ship == ship_d && !s.active() && s.rebinds == 1,
+                      r.ship_check == ShipCheck::second && r.ship == ship_c && r.new_ship == ship_d && !s.active() &&
+                      s.rebinds == 1,
                   "second change cancels");
         }
     }
@@ -448,12 +482,13 @@ static void rebind() {
         {"object unreadable", ShipCheck::unreadable, [](Probe& p) { p.kinds.erase(ship_c); }},
         {"not a ship", ShipCheck::not_ship, [](Probe& p) { p.kinds[ship_c] = Kind{10, 0xcafe}; }},
         {"dead ship", ShipCheck::not_ship, [](Probe& p) { p.kinds[ship_c] = Kind{7, 0xefac}; }},
-        {"no parent", ShipCheck::no_sector, [](Probe& p) { p.parents[ship_c] = 0; }},
-        {"parent not a sector", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{7, 0xcafe}; }},
-        {"parent dead", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{1, 0xefac}; }},
-        {"parent unreadable", ShipCheck::no_sector, [](Probe& p) { p.kinds.erase(sector_b); }},
-        {"sector id unreadable", ShipCheck::no_sector, [](Probe& p) { p.ids.erase(sector_b); }},
-        {"sector id 0", ShipCheck::no_sector, [](Probe& p) { p.ids[sector_b] = 0; }},
+        {"script id unreadable", ShipCheck::unreadable, [](Probe& p) { p.scripts.erase(ship_c); }},
+        {"script id differs", ShipCheck::identity, [](Probe& p) { p.scripts[ship_c] = other_script; }},
+        {"script id 0", ShipCheck::identity, [](Probe& p) { p.scripts[ship_c] = 0; }},
+        {"other ship, no sector yet", ShipCheck::identity, [](Probe& p) {
+             p.scripts[ship_c] = other_script; // identity is checked before the sector: no deferral for it
+             p.parents[ship_c] = 0;
+         }},
     };
     for (const auto& c : unreadable) {
         State s;
@@ -464,8 +499,136 @@ static void rebind() {
         p.parents[ship_c] = sector_b;
         c.edit(p);
         check(!s.on_inject(at(2, 2), ship_a, p, r) && r.row == Row::cancelled && r.reason == cancel_ship_change &&
-                  r.ship_check == c.expect && !s.active() && s.rebinds == 0,
+                  r.ship_check == c.expect && !s.active() && s.rebinds == 0 && r.ship == ship_a && r.new_ship == p.player_ship,
               c.why);
+    }
+    { // identity mismatch: the cancel row names both script ids, the ticket's ship and the new one
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        p.scripts[ship_c] = other_script;
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.reason == cancel_ship_change &&
+                  r.ship_check == ShipCheck::identity && r.ship == ship_a && r.new_ship == ship_c &&
+                  r.script_id == script_id && r.new_script_id == other_script && r.new_sector == 0 &&
+                  s.cancels[cancel_ship_change] == 1 && !s.active(),
+              "identity mismatch cancels before any sector read");
+    }
+    // The new ship's sector not live yet: no cancel, the re-bind not consumed, one rebind_pending row, polled again.
+    const Case deferred[] = {
+        {"no parent", ShipCheck::no_sector, [](Probe& p) { p.parents[ship_c] = 0; }},
+        {"parent not a sector", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{7, 0xcafe}; }},
+        {"parent dead", ShipCheck::no_sector, [](Probe& p) { p.kinds[sector_b] = Kind{1, 0xefac}; }},
+        {"parent unreadable", ShipCheck::no_sector, [](Probe& p) { p.kinds.erase(sector_b); }},
+        {"sector id unreadable", ShipCheck::no_sector, [](Probe& p) { p.ids.erase(sector_b); }},
+        {"sector id 0", ShipCheck::no_sector, [](Probe& p) { p.ids[sector_b] = 0; }},
+        {"parent misaligned", ShipCheck::no_sector, [](Probe& p) { p.parents[ship_c] = sector_b + 2; }},
+    };
+    for (const auto& c : deferred) { // pending, then success once the parent reads as a live sector
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1000), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        Probe live = p;
+        c.edit(p);
+        check(!s.on_inject(at(2, 1010), ship_a, p, r) && r.row == Row::rebind_pending && r.ship_check == c.expect &&
+                  r.ship == ship_a && r.new_ship == ship_c && r.new_script_id == script_id && s.active() &&
+                  s.phase == Phase::armed && s.ship == ship_a && !s.rebound && s.rebinds == 0 && s.pendings == 1,
+              c.why);
+        check(!s.on_inject(at(3, 1020), ship_a, p, r) && r.row == Row::none && s.active() && s.pendings == 1 &&
+                  s.cancels[cancel_ship_change] == 0,
+              "pending: one row, polled again without a cancel");
+        p = live;
+        check(!s.on_inject(at(4, 1030), ship_a, p, r) && r.row == Row::rebound && s.ship == ship_c && s.rebound &&
+                  s.rebinds == 1 && r.new_sector == sector_b && r.new_sector_id == id_b && r.frames_since_arm == 3,
+              "pending, then the sector is live: re-bound");
+        p.ready_node = sector_b;
+        check(!s.on_inject(at(5, 1040), ship_c, p, r) && s.phase == Phase::due, "Ready after a pending re-bind");
+        check(s.on_inject(at(7, 1060), ship_c, p, r) && s.on_result(1, at(7, 1061)).row == Row::restored,
+              "restored after a pending re-bind");
+    }
+    { // pending in due, then success: the same deferral while the ticket is due
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.ready_node = p.parent_sector = sector_b;
+        s.on_inject(at(2, 2), ship_a, p, r);
+        check(s.phase == Phase::due, "due before the change");
+        p.player_ship = ship_c;
+        p.parents[ship_c] = 0;
+        check(!s.on_inject(at(3, 3), ship_a, p, r) && r.row == Row::rebind_pending && s.phase == Phase::due,
+              "pending while due");
+        p.parents[ship_c] = sector_b;
+        check(!s.on_inject(at(4, 4), ship_a, p, r) && r.row == Row::rebound && s.phase == Phase::due, "re-bound while due");
+    }
+    { // pending, then the ticket expires (60 s wall time from the arm)
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1000), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = 0;
+        check(!s.on_inject(at(2, 1010), ship_a, p, r) && r.row == Row::rebind_pending, "pending");
+        check(!s.on_inject(at(500, 1000 + expiry_ms), ship_a, p, r) && r.row == Row::none && s.active() &&
+                  s.pendings == 1,
+              "still pending at the bound");
+        check(!s.on_inject(at(501, 1001 + expiry_ms), ship_a, p, r) && r.row == Row::cancelled &&
+                  r.reason == cancel_expiry && !s.active() && s.rebinds == 0 && s.cancels[cancel_ship_change] == 0,
+              "pending, then expiry");
+    }
+    { // pending, then an identity mismatch: the same pointer's script id changes, or another object replaces it
+        for (int replaced = 0; replaced < 2; ++replaced) {
+            State s;
+            Probe p;
+            Report r;
+            s.on_write(gate_stop(), at(1, 1), p);
+            p.player_ship = ship_c;
+            p.parents[ship_c] = 0;
+            check(!s.on_inject(at(2, 2), ship_a, p, r) && r.row == Row::rebind_pending, "pending");
+            if (replaced) {
+                p.player_ship = ship_e;
+                p.scripts[ship_e] = other_script;
+                p.parents[ship_e] = sector_b;
+            } else {
+                p.scripts[ship_c] = other_script;
+                p.parents[ship_c] = sector_b;
+            }
+            check(!s.on_inject(at(3, 3), ship_a, p, r) && r.row == Row::cancelled && r.reason == cancel_ship_change &&
+                      r.ship_check == ShipCheck::identity && r.ship == ship_a && r.new_ship == p.player_ship &&
+                      r.new_script_id == other_script && !s.active() && s.rebinds == 0,
+                  "pending, then identity mismatch");
+        }
+    }
+    { // the pending row once per ticket; the next arm resets it
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = 0;
+        s.on_inject(at(2, 2), ship_a, p, r);
+        s.on_vm(1, at(3, 3));
+        p.player_ship = ship_a;
+        s.on_write(gate_stop(), at(4, 4), p);
+        p.player_ship = ship_c;
+        check(!s.on_inject(at(5, 5), ship_a, p, r) && r.row == Row::rebind_pending && s.pendings == 2,
+              "the next ticket logs its own pending row");
+    }
+    { // the new ship's flags unreadable: still re-bound, new_flags_read=0
+        State s;
+        Probe p;
+        Report r;
+        s.on_write(gate_stop(), at(1, 1), p);
+        p.player_ship = ship_c;
+        p.parents[ship_c] = sector_b;
+        p.ship_flags_of.erase(ship_c);
+        check(!s.on_inject(at(2, 2), ship_a, p, r) && r.row == Row::rebound && !r.new_flags_readable && r.new_flags == 0,
+              "new flags record only");
     }
     { // the next arm clears the re-bind allowance: one re-bind per ticket, not per session
         State s;

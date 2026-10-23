@@ -71,6 +71,9 @@ struct EngineProbe {
     bool flags(std::uint32_t ship, std::uint32_t& f) {
         return ship && !(ship & 3) && load(ship + ship_flags, f);
     }
+    bool script(std::uint32_t ship, std::uint32_t& id) {
+        return ship && !(ship & 3) && load(ship + ship_script, id);
+    }
     bool paused() {
         std::uint32_t game = 0, bits = 0;
         if (!load(game_root_va, game) || !game || !load(game + game_pause, bits)) return true; // unreadable: defer
@@ -100,34 +103,41 @@ void emit(const Report& r) {
     case Row::none: return;
     case Row::armed:
     case Row::skipped:
-        x3m::log("seta_restore %s%s frame=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx ret_name=%s ship=0x%08lx ship_id=0x%08lx sector=0x%08lx sector_id=%lu build=%lu autopilot=%u flags=0x%08lx speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
+        x3m::log("seta_restore %s%s frame=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx ret_name=%s ship=0x%08lx ship_id=0x%08lx script_id=0x%08lx sector=0x%08lx sector_id=%lu build=%lu autopilot=%u flags=0x%08lx speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
                  r.row == Row::armed ? "armed" : "skipped reason=",
                  r.row == Row::armed ? "" : skip_name(r.reason), r.frame, static_cast<unsigned long>(r.old_factor),
                  static_cast<unsigned long>(r.new_factor), static_cast<unsigned long>(r.ip),
                  static_cast<unsigned long>(r.ret), return_name(r.ret, r.scan == Scan::bottom),
                  static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.ship_id),
-                 static_cast<unsigned long>(r.sector), static_cast<unsigned long>(r.sector_id),
+                 static_cast<unsigned long>(r.script_id), static_cast<unsigned long>(r.sector), static_cast<unsigned long>(r.sector_id),
                  static_cast<unsigned long>(r.build), unsigned(r.autopilot), static_cast<unsigned long>(r.flags),
                  speed_ship, speed_read, speed, desired);
         return;
     case Row::rebound:
-        x3m::log("seta_restore rebound frame=%llu frames_since_arm=%llu ms_since_arm=%llu old_ship=0x%08lx new_ship=0x%08lx old_ship_id=0x%08lx new_ship_id=0x%08lx sector_id=%lu new_sector=0x%08lx new_sector_id=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
-                 r.frame, r.frames_since_arm, r.ms_since_arm, static_cast<unsigned long>(r.ship),
-                 static_cast<unsigned long>(r.new_ship), static_cast<unsigned long>(r.ship_id),
-                 static_cast<unsigned long>(r.new_ship_id), static_cast<unsigned long>(r.sector_id),
-                 static_cast<unsigned long>(r.new_sector), static_cast<unsigned long>(r.new_sector_id), speed_ship,
-                 speed_read, speed, desired);
+    case Row::rebind_pending:
+        // rebound: new_flags_read=0 leaves new_flags/new_autopilot 0; rebind_pending: ship_check=no_sector, no flags read
+        x3m::log("seta_restore %s frame=%llu frames_since_arm=%llu ms_since_arm=%llu old_ship=0x%08lx new_ship=0x%08lx old_ship_id=0x%08lx new_ship_id=0x%08lx script_id=0x%08lx new_script_id=0x%08lx sector_id=%lu new_sector=0x%08lx new_sector_id=%lu ship_check=%s new_flags_read=%u new_flags=0x%08lx new_autopilot=%u speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
+                 r.row == Row::rebound ? "rebound" : "rebind_pending", r.frame, r.frames_since_arm, r.ms_since_arm,
+                 static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.new_ship),
+                 static_cast<unsigned long>(r.ship_id), static_cast<unsigned long>(r.new_ship_id),
+                 static_cast<unsigned long>(r.script_id), static_cast<unsigned long>(r.new_script_id),
+                 static_cast<unsigned long>(r.sector_id), static_cast<unsigned long>(r.new_sector),
+                 static_cast<unsigned long>(r.new_sector_id), ship_check_name(r.ship_check),
+                 unsigned(r.new_flags_readable), static_cast<unsigned long>(r.new_flags),
+                 unsigned((r.new_flags & autopilot_bit) != 0), speed_ship, speed_read, speed, desired);
         return;
     case Row::cancelled:
-        x3m::log("seta_restore cancelled reason=%s frame=%llu frames_since_arm=%llu ms_since_arm=%llu write_old=0x%08lx write_new=0x%08lx write_ip=0x%05lx write_ret=0x%05lx write_scan=%s write_ret_name=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu ship_check=%s new_sector=0x%08lx new_sector_id=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
+        x3m::log("seta_restore cancelled reason=%s frame=%llu frames_since_arm=%llu ms_since_arm=%llu write_old=0x%08lx write_new=0x%08lx write_ip=0x%05lx write_ret=0x%05lx write_scan=%s write_ret_name=%s ship=0x%08lx sector_id=%lu ready_sector=0x%08lx skipped=%lu ship_check=%s new_ship=0x%08lx script_id=0x%08lx new_script_id=0x%08lx new_sector=0x%08lx new_sector_id=%lu speed_ship=0x%08lx speed_read=%u speed=%ld desired_speed=%ld",
                  cancel_name(r.reason), r.frame, r.frames_since_arm, r.ms_since_arm,
                  static_cast<unsigned long>(r.old_factor), static_cast<unsigned long>(r.new_factor),
                  static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret), scan_name(r.scan),
                  r.reason == cancel_factor_write ? return_name(r.ret, r.scan == Scan::bottom) : "none",
                  static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.sector_id),
                  static_cast<unsigned long>(r.ready_sector), static_cast<unsigned long>(r.skipped),
-                 ship_check_name(r.ship_check), static_cast<unsigned long>(r.new_sector),
-                 static_cast<unsigned long>(r.new_sector_id), speed_ship, speed_read, speed, desired);
+                 ship_check_name(r.ship_check), static_cast<unsigned long>(r.new_ship),
+                 static_cast<unsigned long>(r.script_id), static_cast<unsigned long>(r.new_script_id),
+                 static_cast<unsigned long>(r.new_sector), static_cast<unsigned long>(r.new_sector_id), speed_ship,
+                 speed_read, speed, desired);
         return;
     case Row::restored:
     case Row::restore_failed:

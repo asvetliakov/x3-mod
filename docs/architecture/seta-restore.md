@@ -78,12 +78,22 @@ expects.
    **Player-ship re-bind.** The gate transit re-points `*(M+0x38)` once. In Run 190 every arm (three) was cancelled
    `ship_change` at the first injection-site entry after the stall, 183 to 202 frames after the arm, before any Ready
    check, and each new pointer stayed stable until the next arm. So one change is accepted while armed or due. The new
-   object must read fault-free as a live ship (class word `+0x48` = 7, marker `+0x9c` = `0xcafe`), its parent `+0x54`
-   must be a live sector (class 1, `0xcafe`) with a non-zero id `+8`, and that id must not be the departure sector's.
-   The ticket then follows the new ship (`rebound` row) and continues at the next entry. A second change, an unreadable
-   or non-ship object, a missing or unreadable sector, or a change inside the departure sector cancels `ship_change`.
-   The row's `ship_check` names which of these it was (`second`, `unreadable`, `not_ship`, `no_sector`,
-   `same_sector`).
+   object must read fault-free as a live ship (class word `+0x48` = 7, marker `+0x9c` = `0xcafe`) whose ship-script id
+   `+0x94` equals the one read at the arm. That id is the script key the engine passes to `0x0049f4c0` for the ship
+   (`SA_GetEventObject` `0x004607f4`, the `CanLand` call `0x0045d8a3`); Run 190's chase rows show one value,
+   `0xfffebb1e`, across every re-pointed object. The arm refuses `unreadable` when it reads 0 or not at all. The new
+   object's parent `+0x54` must be a live sector (class 1, `0xcafe`) with a non-zero id `+8`, and that id must not be
+   the departure sector's. The ticket then follows the new ship (`rebound` row, with the new ship's flags `+0x40`
+   recorded) and continues at the next entry.
+
+   A live ship with the right id whose parent is not yet a live sector (null, unreadable, misaligned, not class 1 or
+   not alive, id unreadable or 0) defers. Nothing is cancelled and the re-bind is not used up. A `rebind_pending` row
+   is logged once per ticket, and the check runs again at each later entry until the parent reads as a live sector or
+   the 60 s expiry cancels the ticket. The check runs against whatever `*(M+0x38)` holds at that entry. A second
+   change, an unreadable or non-ship object, an unreadable script id, a different script id, or a change inside the
+   departure sector cancels `ship_change`. The identity check runs before any sector read, so a different ship never
+   defers. The row's `ship_check` names which of these it was (`second`, `unreadable`, `not_ship`, `identity`,
+   `same_sector`). It keeps the ticket's own ship in `ship=` and adds the new pointer as `new_ship=`.
 
 ## Sharing the injection site
 
@@ -117,10 +127,11 @@ Any mismatch logs one refusal row, and nothing is claimed. The globals read are 
 | `refused reason=story_build` | first SETA stop on a readable other story build (once; latched off) | build, expected build |
 | `refused reason=build_unreadable` | a SETA stop whose build id could not be read (once; not latched) | old factor, IP, return |
 | `refused reason=same_transit / unreadable` | arm refused | old factor, IP, return, sector id |
-| `armed` | the gate stop under autopilot | old, new factor, IP, return offset and name, ship, ship id, sector, sector id, build, `autopilot=1`, `flags` |
+| `armed` | the gate stop under autopilot | old, new factor, IP, return offset and name, ship, ship id, `script_id` (`+0x94`), sector, sector id, build, `autopilot=1`, `flags` |
 | `skipped reason=manual` | the gate stop with the autopilot bit clear (nothing armed) | the `armed` fields, `autopilot=0` |
-| `rebound` | the transit's one player-ship change accepted | frames and ms since the arm, old and new ship, old and new ship id, departure sector id, new sector and its id |
-| `cancelled reason=factor_write / ship_change / vm_clear / vm_load / epoch / expiry / sector_left / call_unwound` | ticket ended | frames and ms since the arm; for `factor_write` the write's old/new/IP/return offset and name (`toggle`, `sector_warp`, `quick_warp`, `jumpdrive`, `engine_input`, `other`); `ship_check`, `new_sector`, `new_sector_id` (for `ship_change`) |
+| `rebound` | the transit's one player-ship change accepted | frames and ms since the arm, old and new ship, old and new ship id, `script_id`/`new_script_id`, departure sector id, new sector and its id, `ship_check=rebound`, the new ship's `new_flags_read`, `new_flags` (`+0x40`) and `new_autopilot` (record only) |
+| `rebind_pending` | first entry (per ticket) at which the new ship has the right identity but no live sector yet | the `rebound` fields, `ship_check=no_sector`, `new_flags_read=0` |
+| `cancelled reason=factor_write / ship_change / vm_clear / vm_load / epoch / expiry / sector_left / call_unwound` | ticket ended | frames and ms since the arm; for `factor_write` the write's old/new/IP/return offset and name (`toggle`, `sector_warp`, `quick_warp`, `jumpdrive`, `engine_input`, `other`); `ship=` (the ticket's ship), `ship_check`, `new_ship`, `script_id`, `new_script_id`, `new_sector`, `new_sector_id` (for `ship_change`) |
 | `restored` | after the call, AL = 1 | frames after the transit (Ready to call), frames and ms since the arm, `result=1`, call, key, method |
 | `restore_failed` | after the call, AL = 0 (the method did not resolve) | the same fields, `result=0` |
 
@@ -147,6 +158,7 @@ Windows and CrossOver. Not verified on either yet: no flight has run.
   feature too, so they are live even with the chase camera or its restore off. While idle, the stub's prefilter compare skips the injection site
   (`cmp [filter],0; je`), and nothing else runs per frame except `present()`'s relaxed store. While armed, each entry
   costs the chase stub's CPU-state capture, about 4 checked reads (player, pause), and the transit walk at most once
-  per presented frame. The ticket lasts from the gate stop to a few frames after arrival. The re-bind check (at most 7
-  reads) runs once per transit. Each row adds 4 reads for the speed fields (player, speeds), and the arm 2 (flags, ship id).
+  per presented frame. The ticket lasts from the gate stop to a few frames after arrival. The re-bind check (at most 9
+  reads, plus 1 for the flags when it re-binds) runs once per transit, or once per entry while it is pending. Each row
+  adds 4 reads for the speed fields (player, speeds), and the arm 3 (flags, ship id, script id).
 * No allocation. Rows go through the session log, and the only ones are the event rows above.

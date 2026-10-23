@@ -38,8 +38,9 @@ class Core(unittest.TestCase):
             run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('checks PASS', run.stdout)
-            # 153 since the autopilot gate, the player-ship re-bind and the speed record (rebind(), speeds())
-            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 150)
+            # 153 since the autopilot gate, the player-ship re-bind and the speed record (rebind(), speeds()); 205 since
+            # the ship-script identity and the deferred sector check of the re-bind
+            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 205)
 
 
 class LiveImage(unittest.TestCase):
@@ -241,7 +242,12 @@ class Wiring(unittest.TestCase):
         self.assertLess(source.index('engine_patch::claim(hook_site_, spec)'), source.index('inject_attach(&consumer_'))
         self.assertIn('engine_patch::restore(hook_site_)', source)  # rollback of the hook when the attach fails
         # the transit's player-ship re-bind, the manual-pass skip and the record-only speeds reach the log
-        self.assertIn('seta_restore rebound frame=%llu', source)
+        self.assertIn('"seta_restore %s frame=%llu frames_since_arm=%llu ms_since_arm=%llu old_ship=', source)
+        self.assertIn('r.row == Row::rebound ? "rebound" : "rebind_pending"', source)
+        self.assertIn('script_id=0x%08lx new_script_id=0x%08lx', source)  # rebound/rebind_pending and cancelled rows
+        self.assertIn('new_flags_read=%u new_flags=0x%08lx new_autopilot=%u', source)
+        self.assertIn('ship_check=%s new_ship=0x%08lx', source)  # a ship_change cancel keeps ship= the ticket's own
+        self.assertIn('load(ship + ship_script, id)', source)
         self.assertIn('"skipped reason="', source)
         self.assertIn('autopilot=%u flags=0x%08lx', source)
         self.assertIn('ship_check=%s', source)
