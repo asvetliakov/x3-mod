@@ -1,0 +1,173 @@
+X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+   [ok] EXE identity
+  .text 0x00401000 + 0x130800, 396567 instructions (linear sweep, skipdata)
+==============================================================================================================
+1. the nine input flags
+   [ok] each flag is record + 0x10 of one of nine records
+   00608e60 (yaw         ) abs writers 00410b8b 00411036 004111a2 00411329 00411496 0041173f 00411783; abs readers 004120c5
+   00608e88 (pitch       ) abs writers 00410b90; abs readers 004120cd
+   00608eb0 (roll        ) abs writers 00410b95; abs readers 004120d5
+   00608ed8 (turret yaw  ) abs writers 00410b9a; abs readers 004120dd
+   00608f0c (turret pitch) abs writers 00410b9f; abs readers 004120e5
+   00608f40 (strafe x    ) abs writers 00410ba4 00411f0c; abs readers 004120ed
+   00608f6c (strafe y    ) abs writers 00410ba9 00411e6e; abs readers 004120f5
+   00608f98 (speed       ) abs writers 00410bae; abs readers 004120fd
+   00608fd0 (look        ) abs writers 00410bb3; abs readers 00412105
+   [ok] absolute writers: the clear 0x00410b8b..0x00410bb3, e60 x6 (0x00411036/0x004111a2/0x00411329/0x00411496 digital-axis yaw, 0x0041173f/0x00411783 yaw keys), f40 0x00411f0c, f6c 0x00411e6e; nothing else in .text
+   [ok] absolute readers: only the nine cmps 0x004120c5..0x00412105 of the stop block
+   record-range immediates: 0040fc82=608e50 0040fc96=608e78 0040fcaa=608ea0 0040fcc7=608f30 0040fce4=608f5c 0040fd04=608ec8 0040fd2f=608efc 0040fd40=608f88 0040fe8c=608f88 0040fef8=608e50 0040ff09=608e78 0040ff1a=608ea0 0040ff2e=608ec8 0040ff50=608efc 0040ff61=608fc0 0040ff82=608fc0 00411284=608f88 00411578=608f88 00411aa9=608f88 00411b2a=608f88 00411c09=608f88 00411c39=608f88 00411c60=608f88 00411d39=608f88 00411db0=608e50 00411dba=608e78 00411dc6=608ea0 00412048=608ec8 0041205f=608efc 004120bb=608fc0
+   [ok] 30 immediates in [0x00608e50,0x00609020), all record bases, all inside the input family
+   [ok] no dword outside .text points into the records (0 found)
+   [ok] 26 input helpers, every direct caller inside [0x0040e960,0x00412250)
+   [ok] no dword anywhere in the file holds a helper entry address (no function-pointer use; 0 found)
+   [ok] 0040ec28 writes yaw flag 00608e60 (yaw controller 0x0040eb60, EDI; record from 00411db0)
+   [ok] 0040ee88 writes pitch flag 00608e88 (pitch controller 0x0040edc0, EDI; record from 00411dba)
+   [ok] 0040f0ed writes roll flag 00608eb0 (roll controller 0x0040efd0, ESI; record from 00411dc6)
+   [ok] 0040f2b8 writes turret yaw flag 00608ed8 (turret controller 0x0040f1e0, EAX->ESI; record from 00412048)
+   [ok] 0040f2b8 writes turret pitch flag 00608f0c (turret controller 0x0040f1e0, EAX->ESI; record from 0041205f)
+   [ok] 0040f3e7 writes speed flag 00608f98 (speed key step 0x0040f350, [esp+..]->EBP, ECX=1; record from 00411284)
+   [ok] 0040f568 writes speed flag 00608f98 (boost 0x0040f4f0, EBP, EAX=1; record from 00411d39)
+   [ok] 0040f63b writes speed flag 00608f98 (analog speed axis 0x0040f580; record from 0040fd40)
+   [ok] 0040f712 writes speed flag 00608f98 (throttle 0x0040f690; record from 0040fe8c)
+   [ok] 0040f7ba writes speed flag 00608f98 (throttle 0x0040f720; record from 00411aa9)
+   [ok] 0040f9ba writes look flag 00608fd0 (look 0x0040f850, ESI; record from 004120bb)
+   [ok] 0x0040f1e0: mov esi,eax (record in ESI for 0x0040f2b8)
+   [reg+0x10] reads in the family: 0040f39e[edi] 0040f4f2[edi] 0040f5cc[esi] 0040f860[eax] 0041022c[ecx] 00410cff[eax] 00411c8d[eax] 00411ce0[eax]
+   [ok] eight [reg+0x10] reads in the family: ship speed obj+0x10 (0x0040f39e/0x0040f4f2/0x0040f5cc), the cockpit registry [*0x00608504+0x10] (0x0040f860/0x0041022c/0x00410cff/0x00411c8d), the target speed (0x00411ce0); none reads a flag
+   [ok] 0040f39e f350 EDI = ship
+   [ok] 0040f4f2 f4f0 EDI = ship
+   [ok] 0040f5cc f580 ESI = ship
+   [ok] 0040f85b f850 registry
+   [ok] 00410226 registry
+   [ok] 00410ce2 registry ...
+   [ok] 00410cff ... +0x10
+   [ok] 00411c80 registry (match speed)
+   [ok] 00411cd2 target = [cockpit+0x1e0]; its speed +0x10
+   [ok] 0x00412136: under autopilot (0x80000) the record+0x14 flags call SetAutopilot(1, 0): a separate block
+==============================================================================================================
+1b. input sources
+   [ok] 00410200 key/button/hat press -> action counter 0x0057fc68[TranslateKey result] += 1
+   [ok] 004108f8 hat 0 deg -> key 0x140
+   [ok] 00410912 hat -> key 0x147
+   [ok] 0041170e action 527 (Yaw Right) counter 0x0057fe77
+   [ok] 0041175b action 526 (Yaw Left) counter 0x0057fe76
+   [ok] 0040fb2b default mouse X axis type 0xb (InputMouseDelta)
+   [ok] 0040fb3f default mouse Y axis type 0xc ...
+   [ok] 0040fbb6 ... stored to 0x00608e44
+   [ok] 0040fef8 mouse type 1 -> yaw record
+   [ok] 0040fefd ... 0x0040eaa0
+   [ok] 0040ff61 mouse type 9 -> look record via 0x0040f7d0
+   [ok] 0040ff82 mouse type 10 -> look record via 0x0040f810
+   [ok] 0040eaa5 mouse delta: game step cfg+0x714, 10 ms window
+   [ok] 0040eb1e mouse yaw rate = -delta*0x8000/ms
+   [ok] 0040e961 stick deflection: sensitivity % at 0x00608c9c
+   [ok] 0040f851 look: direct-angle mode (+0x48) has no flag write
+   [ok] 0040f9a4 look: InputAction(0x2cd..0x2d4) ...
+   [ok] 00412218 mouse delta -> InputMouseDelta(dx, dy)
+   [ok] strings InputAction / InputMouseDelta / StopFastForward
+   [ok] counter address = 0x0057fc68 + action
+   page 301903: 524 'Pitch Up'; 525 'Pitch Down'; 526 'Yaw Left'; 527 'Yaw Right'; 528 'Roll left'; 529 'Roll right'; 531 'Accelerate'; 532 'Decelerate'; 534 'Boost extension'; 540 'Strafe left'; 541 'Strafe right'; 542 'Strafe up'; 543 'Strafe down'; 544 'Brake to Stop'; 717 'View from west'; 724 'View from southwest'
+   [ok] control names 10000+action for the counters 0x0057fe74.. and the look actions
+==============================================================================================================
+2. stop block and patch
+   [ok] 0x004120c5..0x0041210c: cmp [flag],ebx; jne 0x0041210d (x8); last je 0x00412136
+   [ok] 0x0041210d mov edx,[cfg]; 0x00412113 cmp [edx+0xcc],0x10000; 0x0041211d je 0x00412136
+   [ok] 0x0041211f..0x00412135: 0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0); add esp,0x18
+   [ok] EBX = 0 from 0x004120a5 (the cmps compare against 0)
+   [ok] instruction starts 0x0041210d/0x00412113/0x0041211d/0x0041211f/0x00412136; 0x0041211e is the rel8
+   branches into 0x0041210d..0x00412136: 004120cb->0041210d 004120d3->0041210d 004120db->0041210d 004120e3->0041210d 004120eb->0041210d 004120f3->0041210d 004120fb->0041210d 00412103->0041210d 0041210b->00412136 0041211d->00412136
+   [ok] only the eight jne -> 0x0041210d and the two je -> 0x00412136; nothing enters 0x0041210e..0x00412135
+   [ok] no .text dword holds an address in 0x0041210d..0x00412136 (no jump-table entry)
+   [ok] 0x0041211d lies in the aligned qword 0x00412118 (engine_patch::write_code takes the lock cmpxchg8b path)
+   [ok] patched image: 0x0041211d decodes as jmp 0x00412136, every instruction start 0x004120bb..0x00412135 unchanged
+   [ok] patch byte outside the seta_restore stop_call window 0x0041211f+23
+   [ok] EDX is not referenced in 0x00412136..0x0041224f and 0x00412136 rewrites EFLAGS: both dead at the join
+   [ok] routine ends mov eax,1; pop ebx; leave-style epilogue; ret
+==============================================================================================================
+3. rotation, strafe, speed
+   [ok] yaw controller 0040eb60: returns 0 at once under autopilot (obj+0x40 & 0x80000)
+   [ok] yaw 0040ebde: mov eax,[cfg]; 0040ebe3 fimul [eax+0x714] (game ms); 0040ebe9 mov ecx,[rec+0x24] (target)
+   [ok] yaw 0040ec18 fcomp [0x005656a0] (change threshold)
+   [ok] yaw 0040ec2f: rate*65536 -> obj+0x24
+   [ok] pitch controller 0040edc0: returns 0 at once under autopilot (obj+0x40 & 0x80000)
+   [ok] pitch 0040ee3e: mov eax,[cfg]; 0040ee43 fimul [eax+0x714] (game ms); 0040ee49 mov ecx,[rec+0x24] (target)
+   [ok] pitch 0040ee78 fcomp [0x005656a0] (change threshold)
+   [ok] pitch 0040ee8f: rate*65536 -> obj+0x28
+   [ok] roll controller 0040efd0: returns 0 at once under autopilot (obj+0x40 & 0x80000)
+   [ok] roll 0040f04d: mov eax,[cfg]; 0040f052 fimul [eax+0x714] (game ms); 0040f058 mov ecx,[rec+0x24] (target)
+   [ok] yaw: target clamped to +-max yaw rate 0x00450d60 (0x0040eb79..0x0040eb86)
+   [ok] yaw accel: ships (class 7) (yaw+pitch+roll max) * 0x7999/65536 * 2^-16, other classes [0x005656a4]
+   [ok] yaw step = accel * cfg+0x714 * [0x00565500]; slew 0x0040e9a0 (0x0040ec05)
+   [ok] roll 0x0040f052 fimul game ms; 0x0040f0ed flag
+   [ok] float 005654e0 = 1.52587890625e-05
+   [ok] float 005656a0 = 0.0049896240234375
+   [ok] float 005656a4 = 0.79998779296875
+   [ok] float 00565558 = 65536.0
+   [ok] float 00565650 = 20000.0
+   [ok] double 0x00565500 = 0.001
+   [ok] slew 0x0040e9a0: target int * 2^-16 vs current float
+   [ok] yaw span 0040ebde..0040ebeb: three whole instructions, entered only at its first byte (join from 0040ebd6)
+   [ok] pitch span 0040ee3e..0040ee4b: three whole instructions, entered only at its first byte (join from 0040ee36)
+   [ok] roll span 0040f04d..0040f05a: three whole instructions, entered only at its first byte (join from 0040f045)
+   [ok] 0x0040e9a0 never reads EDX; its only EAX use is fnstsw (write): EAX/EDX dead after each span
+   [ok] 004597dd dt = now - obj+0xa8 (game ms), 1000 cap
+   [ok] 00459926 autopilot clear -> manual branch 0x00459cdb
+   [ok] 00459cdb dpitch = obj+0x28 * dt / 1000
+   [ok] 00459cf7 dyaw = obj+0x24 * dt / 1000
+   [ok] 00459ece droll = obj+0x2c * dt / 1000
+   [ok] 00459d2c player auto-level gate: universe flag 2
+   [ok] 00459dfd auto-level roll through 0x0043ad20 (game dt)
+   [ok] 0045a74e slip *= (2000 - dt) / 2000
+   [ok] 00411dd0 strafe: c = [0x00565650] (20000); max y 0x00608f84
+   [ok] 00411ddd 0.001
+   [ok] 00411e0c strafe y step: game ms
+   [ok] 00411e18 strafe y command 0x00608f80 / max
+   [ok] 00411e6e flag f6c whenever command and max are non-zero
+   [ok] 00411eb2 strafe x step: game ms
+   [ok] 00411ec2 strafe x command 0x00608f54 / max
+   [ok] 00411f0c flag f40
+   [ok] 00411ff6 increments added to the slip velocity obj+0x60..0x68
+   [ok] 0040f35f speed key: game ms, max speed 0x00450980
+   [ok] 0040f36c step ms capped at 100
+   [ok] 0040f38b step = max * ms / 750 ...
+   [ok] 0040f3db flag f98 when the step exceeds 250
+   [ok] 0040f521 boost: game ms
+   [ok] 0040f58f analog speed axis: game ms
+==============================================================================================================
+extra sites
+   [ok] 00410b81 records cleared/re-seeded only when the controlled object EBX != 0
+   [ok] 00410be5 re-seed: yaw current = obj+0x24 * 2^-16
+   [ok] 00410bfa yaw command 0x00608e74 = 0 each frame
+   [ok] 00410290 turret view: cockpit entry +0x1d8 > 0
+   [ok] 0040f024 roll accel factor 0x4000 (0.25)
+   [ok] 0040f2a4 turret: step rate*ms/1000 beyond +-0x51e -> flag
+   [ok] 0040f7d8 mouse look x: |delta| >= 15
+   [ok] 0040f818 mouse look y: |delta| >= 12
+   [ok] 0041222e InputMouseDelta call 0x00412230 -> 0x0049f4c0
+   [ok] 0040eb31 mouse rate clamp 0x10000
+   [ok] 0040ec02 yaw: push ecx (target); this = record; call 0x0040e9a0
+   [ok] 00411f16 strafe x ftol
+   [ok] 00412019 slip obj+0x64/+0x68 stored (and +0x6c), ends 0x0041201f
+   [ok] 004121aa autopilot cancel clears 0x80000; block ends 0x004121b1
+   [ok] 00459e20 auto-level roll rate -> obj+0x2c; branch ends 0x00459e27
+   [ok] action 544 counter 0x0057fe88 read inside the family (00410f54 00411c55)
+   [ok] the family calls 0x0040e8c0 (cursor offset), 0x00450c10 (strafe max), 0x004d25b0 (head tracker): {'0040e8c0': ['0040ff90', '0040ffad', '0040ffc8', '0040ffe5'], '00450c10': ['00410c64', '00410cb1'], '004d25b0': ['00411b79']}
+   [ok] 0x0040747e (X2 dispatcher) calls the axis-type setter 0x004123a0
+   [ok] cursor-steering state 0x00607c64: one writer 0x004074d6, one reader 0x0042ab24
+   [ok] autopilot path 0x00412136..0x004121a2 references neither EAX nor ECX before its call
+   [ok] join path: EAX written at 0x00412205, ECX written at 0x00412218 before any read
+==============================================================================================================
+4/5. readers of the game step, the wall clock and the warp factor
+   family [reg+0x714]: 0040eaa5 0040ebe3 0040ecc5 0040ee43 0040ef05 0040f052 0040f136 0040f217 0040f35f 0040f521 0040f58f 00411e0c 00411eb2
+   family [reg+0x720]: 0040f427 0040f4cc 00410a8a 00410ac9
+   family [reg+0x71c]: 
+   family [reg+0xcc]: 00412113
+   family [reg+0xd0]: 
+   [ok] 13 game-step reads in the family (mouse x4, ramps x3, turret, speed key, boost, speed axis, strafe x2)
+   [ok] wall clock +0x720: speed-key 1000 ms window x2, key tap/hold x2; no +0x71c read
+   [ok] the family reads cfg+0xcc once (0x00412113) and never +0xd0
+   [ok] 0044d67d margin * (1 + (warp-1)/4) (near steering dispatcher)
+   [ok] 0045431d docking margin, same law
+   [ok] 00496f85 auto-detail: +0x714 / warp
+
+RESULT PASS (0 failures)

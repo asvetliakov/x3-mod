@@ -1,0 +1,299 @@
+# SETA and manual flight input: the input stop and real-time steering under warp
+
+2026-10-24, static study of `X3AP.exe` (SHA-256 `fdbf3418d8f0a897…`, verified; native copy `C:\X3`, read from WSL as
+`/mnt/c/X3`); nothing was launched, no Wine. Ghidra 12.1.4 (`X3DecompileFunctions.java` on the project
+`~/x3-ghidra-research`) for `0x00410100`, its 26 helpers and `0x00450980/b80/c10/cf0/d60/dd0`; capstone over the file
+through the PE map for every quoted byte. Raw decompiler output stayed in the session scratchpad. Builds on
+[seta-script-toggle.md](seta-script-toggle.md) §1 and §4 (the script side of the stop),
+[engine-effects.md](engine-effects.md) §8 (the clock, `cfg = *(u32*)0x00606f34`, `cfg+0xcc`, `cfg+0xd0`),
+[ship-movement.md](ship-movement.md) §1–3 and §13.2 (integrator, slip) and
+[pause-dialog-input.md](pause-dialog-input.md) (input block `*0x00606f3c`). Markers: **[m]** read from the bytes,
+**[i]** inferred, **[u]** unknown.
+
+| Script | Output | What it establishes |
+| --- | --- | --- |
+| [`seta_manual_flight_study.py`](../../verification/results/seta-manual-flight/seta_manual_flight_study.py) | [`seta_manual_flight_study.txt`](../../verification/results/seta-manual-flight/seta_manual_flight_study.txt) | the nine flags (every absolute writer and reader in `.text`, the records, the pointer writers, the absence of another reader), the stop block and the patch (boundaries, branch targets, alignment, liveness, decoded patched image), the three angular controllers and their hook spans, the manual-rotation integrator, strafe, speed keys, look routine, mouse-delta normalisation, every game-step and `cfg+0xcc` reader of the input family, the warp-aware AI margins, control names; **139 checks, `RESULT PASS`** |
+
+**Answer.**
+
+* **The nine flags are "changed this frame" bits, one per control record** of the input routine `0x00410100`
+  (record + 0x10; yaw, pitch, roll, turret yaw, turret pitch, strafe x, strafe y, speed, look). They are set by
+  every manual control class: keys, joystick buttons and hat (through the key-action counters), digital and analog
+  joystick axes, throttle, mouse steering and cursor steering (through the angular controllers), mouse or joystick
+  mapped to "look". The default mouse mapping (script `InputMouseDelta`) and head tracking set none. **The stop
+  block `0x004120c5..0x00412133` is their only reader [m].**
+* **(A) one byte:** `0x0041211d` `74 17` (`je 0x00412136`) → `eb 17` (`jmp 0x00412136`). The patched path is the
+  one the engine takes at warp 1.0 whenever a flag is set, register for register. The input has already been applied when the
+  block runs, so the ship steers under warp [m]. Verify `81 ba cc 00 00 00 00 00 01 00 74 17` at `0x00412113`.
+* **(B) all player control is a command in game-time units, ramped and integrated with game ms**, so under
+  warp k both the turn rate and the angular acceleration are k× per real second [m]. Scaling the command alone by
+  1/k gives the right steady turn rate, but the ramp to it then runs k² × faster than unwarped flight in real time.
+  The ramp step must be scaled by 1/k² as well [i, from the listing]. Each axis has one span that holds both
+  quantities: `0x0040ebde` (yaw), `0x0040ee3e` (pitch) and `0x0040f04d` (roll), 14 bytes each. k is the
+  effective rate `(cfg+0xcc · cfg+0xd0 + 0x8000) >> 16`, because that is what the game clock advances by. `cfg+0xcc`
+  alone is not.
+* **No engine path scales player input by the warp factor [m].** The input family reads `cfg+0xcc` once, at the
+  stop. The nearest models are the mouse-delta axis modes, which divide by the game step and are therefore already
+  warp-invariant per mouse count, and the auto-detail code `0x00496f85`, which divides `cfg+0x714` by the warp.
+
+## 1. The nine flags (Q1)
+
+**Records [m].** `0x00410b89..0x00410bb3` clears the nine flags; from `0x00410be5` the records are re-seeded from the
+ship each frame (current yaw = `obj+0x24 · 2^-16`, command 0, `0x00410bfa`). Both run only when the controlled object
+is non-zero (`0x00410b81` `test ebx,ebx; je 0x004121b3`). Each record has
+`+0x00` current value (float), `+0x04` "digital input this frame" **[i]**, `+0x10` **changed (the SETA flag)**,
+`+0x14` "input under autopilot" (feeds the `SetAutopilot(1, 0)` cancel block `0x00412136..0x004121b1`, a separate
+reader), `+0x24` command, `+0x28` scale/maximum **[i]** (strafe and look records). The routine's 30 record-base immediates all lie inside the input
+family `[0x0040e960, 0x00412250)`. No dword outside `.text` points into the records. All 26 helpers are called only
+from inside the family, and no dword in the file holds a helper address.
+
+| flag | record | quantity | writers | physical input that reaches it |
+| --- | --- | --- | --- | --- |
+| `0x00608e60` | `0x00608e50` | ship yaw rate | **abs** `0x00411036`, `0x004111a2`, `0x00411329`, `0x00411496` (digital joystick X/Y mapped to yaw, both directions); `0x0041173f` (action 527 Yaw Right), `0x00411783` (526 Yaw Left); **controller** `0x0040ec28` | keyboard, joystick buttons/hat mapped to yaw, digital and analog stick, mouse steering, cursor steering (all via the controller) |
+| `0x00608e88` | `0x00608e78` | ship pitch rate | controller `0x0040ee88` only | as yaw (actions 524/525) |
+| `0x00608eb0` | `0x00608ea0` | ship roll rate | controller `0x0040f0ed` only | as yaw (actions 528/529) |
+| `0x00608ed8` | `0x00608ec8` | turret yaw | turret controller `0x0040f1e0` at `0x0040f2b8` (record from `0x00412048`) | any yaw input while a turret view is active (cockpit entry `+0x1d8 > 0`) |
+| `0x00608f0c` | `0x00608efc` | turret pitch | `0x0040f2b8` (record from `0x0041205f`) | as above, pitch |
+| `0x00608f40` | `0x00608f30` | strafe x | abs `0x00411f0c` | strafe keys 540/541, stick axes mapped to strafe |
+| `0x00608f6c` | `0x00608f5c` | strafe y | abs `0x00411e6e` | strafe keys 542/543, stick axes |
+| `0x00608f98` | `0x00608f88` | desired speed | `0x0040f3e7` (speed key step `0x0040f350`: 531 Accelerate, 532 Decelerate, 544 Brake to Stop, digital axis), `0x0040f568` (534 Boost extension, `0x0040f4f0`), `0x0040f63b` (analog speed axis `0x0040f580`), `0x0040f712` (slider `0x0040f690`), `0x0040f7ba` (throttle `0x0040f720`) | keyboard speed keys, joystick throttle/slider |
+| `0x00608fd0` | `0x00608fc0` | look direction | `0x0040f9ba` in the look routine `0x0040f850` | stick axis, digital axis or mouse axis mapped to "look" (axis types 9/10) |
+
+The action numbers and names come from the counters `0x0057fc68 + action` (`0x0057fe74` = 524 … `0x0057fe88` = 544)
+and the AP control names (text page 301903, id 10000 + action) **[m]**.
+
+**When each is set [m]:**
+
+* **Angular controllers** (`0x0040eb60` yaw, `0x0040edc0` pitch, `0x0040efd0` roll, called every frame from
+  `0x00411db5/0x00411dbf/0x00411dcb`) set the flag when the current rate changes by more than `[0x005656a0]` =
+  0.00499 turns/s (1.8°/s) in one frame. The comparison is `fcomp` at `0x0040ec18` (pitch `0x0040ee78`). They also
+  set it while the rate decays after a key is released, because the command is reset to 0 each frame and the
+  controller slews toward it. They return at once under autopilot (`0x0040eb65`: `obj+0x40 & 0x80000`). A pitch or
+  roll key sets no flag directly, so it stops SETA only once the per-frame rate change exceeds 1.8°/s. That change
+  is accel × game ms, so it is reached more easily the higher the warp **[i]**.
+* **Turret**: the per-frame angle step `rate × game ms / 1000` exceeds `±0x51e` binary units (7.2°) (`0x0040f2aa`).
+* **Strafe**: whenever the strafe command and the ship's strafe maximum are both non-zero (`0x00411e6e`, `0x00411f0c`).
+* **Speed**: the speed-key step exceeds 250 units (`0x0040f3db`), or the throttle-derived desired speed moves by more
+  than 250 (`0x0040f712`, `0x0040f7ba`). Boost sets it unconditionally (`0x0040f568`).
+* **Look**: `0x0040f850` maps a look vector beyond `0x4000` to one of eight `InputAction(0x2cd..0x2d4)` (717 "View
+  from west" … 724 "View from southwest") and sets the flag (`0x0040f9ba`). Two modes return before it with no flag:
+  the direct-angle look mode (`+0x48`, axis types 0x12/0x13, `0x0040f851`) and head tracking (`+0x44`, filled from the
+  6-value provider `0x004d25b0`). **Correction to seta-script-toggle.md §1:** `0x0040f9ba` is this look routine; it
+  is not a hat routine. The hat itself becomes engine keys `0x140..0x147` (`0x004108f8`, `0x00410912`) and from
+  there key actions.
+
+**Input classes [m path].** Keys, joystick buttons and hat go through `TranslateKey`, which increments
+`0x0057fc68[action]` (`0x00410200`). The key-action loops then add ±max rate to the yaw/pitch/roll command, ±max to
+the strafe command, or call the speed step. Analog stick axes go through `0x0040fc20` and the deflection
+`axis × min(max rate, 0x10000 · [0x00608c9c] / 100)` (`0x0040e960`, sensitivity in percent). The mouse goes through
+`0x0040fec0` by axis type (`0x00608e40/e44`, turret view `0x00608e48/e4c`):
+
+| type | mouse axis does | flag path |
+| --- | --- | --- |
+| 1 / 2 / 3 | delta → yaw / pitch / roll command (`0x0040eaa0` …) | controller |
+| 4 / 5 | delta → turret (`0x0040f130`) | turret |
+| 9 / 10 | \|delta\| ≥ 15 / ≥ 12 counts → look (`0x0040f7d0` / `0x0040f810`) | look `0x0040f9ba` |
+| 0xb / 0xc (**default**, `0x0040fb2b..0x0040fbbb`) | delta accumulated into `0x00609010/14` → `InputMouseDelta(dx, dy)` (`0x00412230`) | **none** |
+| 0xd / 0xe | cursor offset from screen centre, FOV dead zone (`0x0040e8c0`) → yaw / pitch command (mouse steering) | controller |
+
+**Mouse-look and camera panning.** With the default mapping the mouse sets no flag [m]. The script-side camera
+handling of `InputMouseDelta` was not traced [u]. The mapping values come from the script through the X2 command
+dispatcher `0x00406de0` (call to the setter `0x004123a0` at `0x0040747e`) **[m site]**. That mouse steering selects
+0xd/0xe is **[i]**. The cursor-steering state `0x00607c64` (`X2_UpdateCursorSteering`) has one reader,
+`0x0042ab24`, outside the input family [m].
+
+**Other readers [m].** The nine flags have one set of absolute readers, the nine `cmp`s `0x004120c5..0x00412105`.
+The family has eight `[reg+0x10]` reads in all, and none of them has a record base: ship speed
+(`0x0040f39e`, `0x0040f4f2`, `0x0040f5cc`), the cockpit registry `[*0x00608504+0x10]` (`0x0040f860`, `0x0041022c`,
+`0x00410cff`, `0x00411c8d`) and the target's speed (`0x00411ce0`). **Removing the SETA call therefore breaks no other
+consumer.**
+
+## 2. The patch (Q2) **[m]**
+
+```
+004120c5  39 1d 60 8e 60 00 75 40   cmp [0x00608e60],ebx; jne 0x0041210d     (x8, EBX = 0 since 0x004120a5)
+00412105  39 1d d0 8f 60 00 74 29   cmp [0x00608fd0],ebx; je 0x00412136
+0041210d  8b 15 34 6f 60 00         mov edx,[0x00606f34]
+00412113  81 ba cc 00 00 00 00 00 01 00   cmp [edx+0xcc],0x10000
+0041211d  74 17                     je 0x00412136            <- patch: eb 17 (jmp 0x00412136)
+0041211f  53 6a 01 68 1c 5e 55 00 68 96 00 00 00 53 53 e8 8d d3 08 00 83 c4 18
+                                    0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0); add esp,0x18
+00412136  f7 47 40 00 00 08 00      test [edi+0x40],0x80000  (autopilot-cancel block)
+```
+
+* **Bytes.** Original `74` at `0x0041211d`, patched `eb`; one byte. With `engine_patch`:
+  `verify_bytes(0x00412113, {81 ba cc 00 00 00 00 00 01 00 74 17}, 12)`, which compares the cmp and the je as two
+  whole instructions within the 5..16-byte limit. Then `VirtualProtect`, `write_code(0x0041211d, {0xeb}, 1)` and
+  `FlushInstructionCache`, as `fov.cpp`/`lod_occlusion.cpp` do for their in-place patches. `0x0041211d` lies in the
+  aligned qword `0x00412118`, so `write_code` takes the `lock cmpxchg8b` path. Restore writes `74`.
+* **Boundaries and entries.** `0x0041211d` is an instruction start, and the rel8 is unchanged. The only branches into
+  `0x0041210d..0x00412136` are the eight `jne → 0x0041210d` and the two `je → 0x00412136`. No `.text` dword holds an
+  address in that range. In the patched image every instruction start from `0x004120bb` to `0x00412135` is
+  unchanged, and `0x0041211d` decodes as `jmp 0x00412136`.
+* **Side effects.** None beyond skipping the call. The patched path is the engine's own `cfg+0xcc == 0x10000`
+  path: EDX = `cfg`, EBX = 0, the same stack. EDX is not referenced anywhere in `0x00412136..0x0041224f`, and
+  `0x00412136` rewrites EFLAGS. EAX and ECX are written before any read on both continuations (autopilot path up to
+  its call at `0x004121a2`; join path `0x00412205`, `0x00412218`), so the call's clobbers were never consumed.
+* **The input still takes effect in that frame.** The block runs after the controllers wrote `obj+0x24..+0x2c`
+  (`0x0040ec3c` …), the strafe increments went into the slip `obj+0x60..` (`0x00411ff6..0x0041201f`) and the speed
+  keys wrote `obj+0x14`. The original call too only stops SETA for the following frames, through
+  `150::StopFastForward` → `TI_SetTimeWarpFactor(1.0)`. With the patch the ship turns, strafes and changes speed
+  under warp at the warped rates of §3.
+* **Coexistence.** The byte lies outside the `X3M_SETA_RESTORE` compare window `0x0041211f + 23`
+  (`src/proxy/seta_restore_core.h` `stop_call`), so that installer's raw comparison still passes. No proxy claim sits
+  in `0x004120c5..0x00412136` (grep of `src/`). The flags are still set and cleared every frame; that is harmless.
+  Install it in the backend-load install window like every other claim.
+
+## 3. Where commands are produced and integrated (Q3)
+
+**Rotation [m].** Per axis the command `rec+0x24` is accumulated from the inputs of §1, in binary angle per
+**game** second (0x10000 = one turn). The controller then:
+
+1. clamps it to ± the ship's maximum rate (yaw `0x00450d60` = type record `+0x08` × (1 + `f+0x270`); pitch `+0x0c`,
+   roll `+0x10`) (`0x0040eb72..0x0040eb86`);
+2. computes the step `accel × cfg+0x714 × 0.001` (`0x0040ebde..0x0040ebef`). For ships (class 7) accel is
+   (yaw + pitch + roll maximum) × `0x7999/65536` (0.475 per second; roll 0.25, `0x4000`); for other classes it is
+   0.8 turns/s² (`[0x005656a4]`);
+3. slews the current rate toward the command by at most that step (`0x0040e9a0`);
+4. stores `rate × 65536` into `obj+0x24` / `+0x28` / `+0x2c` (`0x0040ec2f..0x0040ec3c`).
+
+The current rate is re-seeded from `obj+0x24..` at `0x00410be5..` each frame. The integrator's manual branch
+(`0x00459926` autopilot clear → `0x00459cdb`) turns the ship by `rate × dt / 1000` per axis with dt in game ms
+(`0x00459cdb` pitch, `0x00459cf7` yaw, `0x00459ece` roll). **Both the ramp and the rotation therefore run in game
+time.** At warp k a full-deflection turn reaches k× the real-time rate, and reaches it k× sooner, in real seconds
+[i, from the bytes].
+
+**What scaling gives unwarped feel [i].** Write the game rate as `r_g = r_real / k`. Unwarped flight follows
+`dr_real/dt_real = a` toward ω. The warped game state that reproduces it needs **target ω/k and per-frame step
+`a · game_ms / (1000 · k²)`** (= `a · wall_ms / (1000 · k)`). Scaling only the command (1/k deflection) keeps the
+step at `a · game_ms / 1000`. The ramp to the reduced target then takes `ω / (a k²)` real seconds instead of `ω / a`.
+At ×10 a turn that ramps in 0.7 s unwarped (equal maximum rates: `1 / (0.475 · 3)`) ramps in 7 ms. The steady turn
+rate is right, but the ramp disappears. **The ramp needs its own 1/k² scale.**
+
+**One site per axis.** Each controller has a 14-byte span that holds both quantities:
+
+| axis | span | instructions | entered |
+| --- | --- | --- | --- |
+| yaw | `0x0040ebde..0x0040ebeb` | `a1 34 6f 60 00` mov eax,[cfg]; `da 88 14 07 00 00` fimul [eax+0x714]; `8b 4f 24` mov ecx,[edi+0x24] (target) | only at its first byte (join from `0x0040ebd6`) |
+| pitch | `0x0040ee3e..0x0040ee4b` | same, `8b 4f 24` | join from `0x0040ee36` |
+| roll | `0x0040f04d..0x0040f05a` | same, `8b 4e 24` mov ecx,[esi+0x24] | join from `0x0040f045` |
+
+**Hook-site suitability.**
+
+* **Boundaries [m].** Three whole, position-independent instructions with no relative branch, so they fit
+  `engine_patch::claim` with length 14 and `rel32_offset` 0. Nothing branches into a span's interior.
+* **Live in [m].** x87 `st0` = accel (one slot used). Yaw/pitch: EDI = record, ESI = ship; roll: ESI = record,
+  EDI = ship. `[esp]` holds the pushed ECX.
+* **Live out [m].**
+  * `st0` = accel · step.
+  * ECX = the target; it is pushed at `0x0040ec02`.
+  * EAX is dead: `0x0040e9a0` touches it only through `fnstsw`.
+  * EDX is dead: no read in `0x0040e9a0` or in the span's tail.
+  * EFLAGS is dead: `sub esp,8` follows.
+* **Thread and reentrancy [m sites, i reentrancy].** Main thread, inside the input routine. The VM is not active
+  there and the code is not reentrant.
+* **What a stub does [i].** It would replace the fimul with a multiply by `game_ms / k²` and ECX with
+  `round(target / k)`, using EAX/EDX as scratch. It must leave the x87 stack depth unchanged.
+
+The controllers already return under autopilot, so the scale can never act on autopilot. The roll controller writes
+`obj+0x2c` through the auto-level branch (`[*0x0060850c+0x3c] & 2`). That branch stays in game time (§5).
+
+**Strafe [m bytes, i reading of the x87 sequence].** Per axis the increment is `clamp(command, ±20000 · game_ms / 1000)`
+(`[0x00565650]` = 20000, `0x00411dd0..0x00411f16`). It is added to the slip velocity `obj+0x60..+0x68`
+(`0x00411ff6..0x0041201f`). The integrator then moves the ship by `slip × dt / 1000` and decays the slip by
+`(2000 − dt) / 2000` per frame (`0x0045a74e`), all in game time. The steady strafe speed in game units is set by
+increment and decay and does not depend on k. Displacement per real second is therefore k×. Scaling the increment
+by 1/k (the `fild [esi+0x714]` at `0x00411e0c`/`0x00411eb2` and the command loads `0x00411e18`/`0x00411ec2`) gives
+the unwarped steady strafe speed. The slip settles k× faster in real time, because the 2 s game time constant is
+fixed in the integrator, which all objects share.
+
+**Speed [m].** Speed keys change the desired speed `obj+0x14` by `max · min(game_ms, 100) / 750 · (max/4 + |v|) / max`
+per frame (`0x0040f35f`, `0x0040f36c`, `0x0040f38b`). That is k× faster per real second, up to the 100 ms cap: at ×10
+and 60 fps the cap binds (160 → 100 game ms), so the change is 6.25× faster. Throttle and slider axes set the desired
+speed absolutely, with no time term (`0x0040f690`, `0x0040f720`). The actual speed slews toward it at accel ×
+game dt / 1000 in the command-pass tail (`0x00459562`, ship-movement.md §1). For unwarped key handling, use
+`game_ms / k` at `0x0040f35f` (boost `0x0040f521`, analog axis `0x0040f58f` likewise) [i]. Forward motion itself must
+stay warped, since that is what SETA is for.
+
+**Which factor [m clock, i choice].** The game clock advances `(clamp(wall_ms, 1, 200) · R + 0x8000) >> 16` per tick,
+with `R = (cfg+0xcc · cfg+0xd0 + 0x8000) >> 16`; `+0xd0` is the load governor, 0.3..1.0
+(engine-effects.md §8). k must be `R / 65536`, not `cfg+0xcc / 65536`. With `+0xcc` alone, a governor at 0.5
+would turn the ship at half the unwarped rate. The per-frame ratio `cfg+0x714 / cfg+0x71c` equals k except on frames
+with a wall step over 200 ms or a step forced to 1, so R is the steadier source. Gate the scaling on
+`cfg+0xcc > 0x10000`. At warp 1 the governor can also lower R below 1.0, and the scale would then speed the ship up
+[i].
+
+## 4. Existing warp scaling (Q4) **[m]**
+
+None for player input. Across the input family `[0x0040e960, 0x00412250)` the only `cfg+0xcc` reference is the stop
+compare `0x00412113`, and there is no `+0xd0` reference. The family has 13 reads of the game step `+0x714` and 4 of the
+wall clock `+0x720` (key tap/hold, the speed key's 1000 ms window), and none of `+0x71c`. Warp-aware code elsewhere:
+
+* **Mouse-delta axis modes 1–5** (`0x0040eaa0`, `0x0040ecc0`, `0x0040ef00`, `0x0040f130`):
+  `rate = delta · 0x8000 / game_ms`, clamped to ±0x10000 (`0x0040eb1e..0x0040eb36`). Steps under 10 ms are pooled
+  first (`0x0040eaab`). The integrator multiplies by game ms again, so the angle per mouse count is fixed
+  (0x8000/1000 binary units ≈ 0.18°) whatever the warp. Only the rate cap and the ramp are warped [i]. This
+  normalises by the step, not by the factor, but it is the one input path already in real-time terms.
+* **Auto-detail** `0x00496f85`: frame ms = `cfg+0x714 / cfg+0xcc` when the warp exceeds 1.0 (ignores `+0xd0`).
+* **AI margins** `0x0044d67d` and `0x0045431d` (docking): a distance term × `(1 + (cfg+0xcc − 1) / 4)`. Not input
+  scaling.
+* The effective rate `(cc · d0) >> 16` is used only by the clock and the fps overlay `0x004e3fe4` (engine-effects.md §8).
+
+So the model for (B) is the clock's own R, applied at the controller spans of §3.
+
+## 5. Consistency and risks (Q5)
+
+**(B) inconsistencies [m sites, i effects].**
+
+* **Mouse-delta modes 1–5 are already warp-invariant**, so a controller-target scale would make them k× too weak.
+  The stub should skip an axis whose mouse type (`0x00608e40/e44`, turret `e48/e4c`) is 1–5. The default type
+  0xb/0xc and cursor steering 0xd/0xe need the scale.
+* **Turret** rotation (`0x0040f1e0`, game ms at `0x0040f217`, step × dt/1000) is warped too and is not covered by
+  the ship controller spans.
+* **Auto-level roll**: the integrator runs it through `0x0043ad20` with game dt (`0x00459d2c..0x00459e27`; player
+  ship, universe flag 2, no roll command). It levels k× faster in real time.
+* **Slip/strafe transient** as in §3. The integrator's slip decay is shared by all objects, so it is not a player-only
+  site.
+* **Speed**: the displayed speed is `obj+0x10` [i, the HUD reader was not traced]. It is unaffected if (B) leaves
+  forward speed warped.
+* **Autopilot** is unaffected. The controllers return under `0x80000`, and autopilot rotation is the integrator's
+  `0x0043ad20` path in game time.
+* **The SETA ramp** changes R in ten steps 250 ms apart (seta-script-toggle.md §1). The stored game rate then gives
+  a real-time rate that jumps by `R_new / R_old` at each step, until the controller re-converges at its scaled ramp.
+  A full stop (k → 1) mid-turn leaves the rate k× low, and it ramps back at the normal acceleration.
+
+**(A) risks.**
+
+* **Nothing else consumes the flags [m]**, so no engine state assumes warp 1 after manual input. The stop appears to
+  be game design: SETA is a cruise aid that cancels on manual control, like the autopilot cancel next to it [i].
+* **Every script stop remains** (seta-script-toggle.md §4): gate entry through `CanWarp` → `150::StartGateWarp`,
+  docking/landing, death, jumpdrive, cut-scenes, save, ship change, the speed-bar click `605::ClickInfoPanel`, the
+  SETA key. The patch touches only the engine's input stop. The proxy's SETA-restore stop classification lists the
+  input stop as "bottom record (offset 0)". That row no longer occurs [i].
+* **Manual flight at warp uses the large game steps** that cruising under SETA already uses. At ×10 and 60 fps the
+  step is about 167 game ms (integrator cap 1000 ms, speed-key cap 100 ms). Per-frame turn angles and strafe
+  increments are k× larger, and collision sees positions k× further apart. This is the existing SETA behaviour,
+  with a turning ship [i].
+* **The autopilot cancel** (`+0x14` flags, `0x00412136`) is a separate block and keeps working [m].
+
+## 6. What remains unknown
+
+* How the script maps the mouse-steering option onto axis types (the X2 command that reaches `0x004123a0`), and the
+  script's use of `InputMouseDelta` for external-camera panning.
+* The HUD's speed reader; the exact strafe maximum `0x00450c10` per equipment (the study needs only that it is
+  non-zero).
+* Felt behaviour: the 1/k² ramp is derived, not flown. A flight check would log `obj+0x24` and wall time for one
+  full-deflection yaw at ×1 and at ×10 with the scale on. Expected: equal rise time and equal steady
+  `obj+0x24 · k`.
+
+## Reproduce
+
+```sh
+python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 139 checks
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 flock /tmp/x3-ghidra.lock \
+  ~/ghidra_12.1.4_PUBLIC/support/analyzeHeadless ~/x3-ghidra-research X3Render \
+  -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \
+  -postScript X3DecompileFunctions.java <scratch>/decomp.txt \
+  00410100 0040fec0 0040eb60 0040edc0 0040efd0 0040e9a0 0040eaa0 0040fc20 0040f1e0 0040f350 0040f4f0 0040f580 \
+  0040f690 0040f720 0040f7d0 0040f810 0040f850 0040ea30 0040f2f0 00450980 00450c10 00450d60   # local only, untracked
+```

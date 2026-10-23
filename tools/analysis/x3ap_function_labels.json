@@ -21,7 +21,8 @@
     "docs/reverse-engineering/engine-effects.md",
     "docs/reverse-engineering/ship-movement.md",
     "docs/reverse-engineering/ship-navigation-ai.md",
-    "docs/reverse-engineering/game-scale-and-ship-classes.md"
+    "docs/reverse-engineering/game-scale-and-ship-classes.md",
+    "docs/reverse-engineering/seta-manual-flight.md"
   ],
   "labels": {
     "0x00402710": {
@@ -76,12 +77,48 @@
       "label": "mouse-steering axis input from the cursor offset with an FOV-scaled dead zone (camera+0x298)",
       "source": "external-camera.md"
     },
+    "0x0040e9a0": {
+      "label": "angular slew: current rate float toward target int*2^-16 by a step (thiscall, ret 0xc)",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040eaa0": {
+      "label": "mouse-delta yaw command: delta*0x8000/game ms into record+0x24 (record 0x00608e50 in ESI)",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040eb60": {
+      "label": "player yaw controller: clamp command to max rate, ramp accel*cfg+0x714/1000, flag record+0x10 on change > 0.005 turn/s, obj+0x24; returns under autopilot",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040edc0": {
+      "label": "player pitch controller (as 0x0040eb60, obj+0x28)",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040efd0": {
+      "label": "player roll controller (as 0x0040eb60, obj+0x2c, auto-level interplay)",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040f1e0": {
+      "label": "turret angle controller (records 0x00608ec8/0x00608efc in EAX), flag on step > 0x51e",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040f350": {
+      "label": "speed key step: desired speed obj+0x14 += max*min(game ms,100)/750*..., flag 0x00608f98 on step > 250",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040f850": {
+      "label": "look record 0x00608fc0: 8-way InputAction(0x2cd..0x2d4) and flag 0x00608fd0, or direct view angles / head tracking",
+      "source": "seta-manual-flight.md"
+    },
+    "0x0040fc20": {
+      "label": "analog joystick axis dispatch by axis type (0x00608dc0.. maps) into the control records",
+      "source": "seta-manual-flight.md"
+    },
     "0x0040fec0": {
       "label": "flight input accumulation (yaw/pitch/roll into 0x00608e74..; calls 0x0040e8c0)",
       "source": "external-camera.md"
     },
     "0x00410100": {
-      "label": "player ship flight control (input accumulation 0x0040fec0, speed keys 0x0040f350/0x0040f4f0/0x0040f720 write obj+0x14)",
+      "label": "player ship flight control (input accumulation 0x0040fec0, speed keys 0x0040f350/0x0040f4f0/0x0040f720 write obj+0x14); nine SETA-stop flags record+0x10 tested at 0x004120c5, StopFastForward at 0x0041211f (seta-manual-flight.md)",
       "source": "ship-movement.md"
     },
     "0x00412440": {

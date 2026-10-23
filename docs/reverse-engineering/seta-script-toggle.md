@@ -80,7 +80,8 @@ no script bytes are printed except the one mod-authored operand of option (iii).
 handler `0x004a37bc`: u16 n, base, default, n targets). **Action 675 → `1d345` → `ToggleFastForward`**, the only
 toggle case. 825 → `PauseGame`. The control names agree: AP text page 301903 id 10000 + action gives 10675 "SETA
 time accelerator" and 10825 "Pause game". `HandleKeyInput` is reached from `150::InputAction(action)` (`148b7`,
-the EXE's named call `InputAction`, e.g. `0x0040f9b2` for the hat directions 0x2cd–0x2d4). It is also reached from
+the EXE's named call `InputAction`, e.g. `0x0040f9b2` for the eight look directions 0x2cd–0x2d4, actions 717–724
+"View from …", seta-manual-flight.md §1). It is also reached from
 six sites in `501::PerFrameInput`, which `150::Input(key)` calls (`148a5`; the EXE's per-key `Input`,
 chase-view-transition.md). How `PerFrameInput` maps a key code to 675 was not traced **[u]**. The second
 toggle caller is `605::ClickDisplayPanel` (`101a67`), the cockpit display click.
@@ -90,8 +91,9 @@ toggle caller is `605::ClickDisplayPanel` (`101a67`), the cockpit display click.
 `0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0)` (6 dwords, caller pops `0x18`). It does so when any of nine
 input flags `0x00608e60 … 0x00608fd0` is set; all nine are cleared at `0x00410b8b..0x00410bb3` (reached when the controlled object `EBX` is non-zero). Writers set them
 in the key/axis handlers of the same routine, e.g. `0x00411036`, `0x004111a2` (inside a switch over mapped
-key actions, skipped while autopilot bit `0x80000` is set), `0x00411e6e`, `0x00411f0c`, and the hat routine
-(`0x0040f9ba`). That these are the manual speed/steer inputs is **[i]**. `0x0049f4c0` resolves the method by key and name
+key actions, skipped while autopilot bit `0x80000` is set), `0x00411e6e`, `0x00411f0c`, and the look routine
+`0x0040f850` (`0x0040f9ba`). Every writer, record and input class, and the one-byte patch that keeps SETA on manual
+input, are in [seta-manual-flight.md](seta-manual-flight.md) §1–2 **[m]**. `0x0049f4c0` resolves the method by key and name
 through `0x0049f330`, builds a task, pushes the integer arguments and runs it synchronously via `0x0049f430`; it
 returns `AL = 0` when the method does not resolve. The EXE has no literal "StartFastForward", "ToggleFastForward" or
 "IsFastForward".
@@ -284,8 +286,8 @@ menus do not stop it under Mayhem.
 * The stack-record layout at the TI native (taken from the chase core), and that `0x0049f4c0` resolves the
   mod-supplied `"StartFastForward"` for key `0x96`. The latter is the same resolver `0x0049f330` as the flight-proven
   chase call, not yet exercised with this name.
-* How `PerFrameInput` maps keys to action 675; the exact role of the nine input flags; whether `m6` (the warp phase) is
-  readable from the class-150 static context.
+* How `PerFrameInput` maps keys to action 675; whether `m6` (the warp phase) is readable from the class-150 static
+  context. (The nine input flags are resolved in [seta-manual-flight.md](seta-manual-flight.md).)
 * The behaviour of `ShowWarpOutScene` and Mayhem's core-sector block when SETA restarts before `m6 = 0`.
 
 **One trace settles the first two items.** Add a log-only hook at `0x004b148c` to the next consolidated
