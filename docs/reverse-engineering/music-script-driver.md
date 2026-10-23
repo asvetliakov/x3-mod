@@ -290,6 +290,23 @@ assembled.
 * **Invalidate** the memory on use, on any other music id, on a stop-all `load`/`session_start`, and when combat ends
   in another sector.
 
+**Implementation (2026-10-23).** Under the existing `music_keep` option (`src/proxy/music_keep.cpp`, state machine
+`ResumeMemory` in `music_keep_core.h`, host-tested in `verification/analysis/test_music_keep.py`). At the shared
+`0x00498810` entry (already claimed by the keep), for the native caller `0x00499886` and an id outside 1001..1042, a
+found record with music + playing flags has its position read as `0x004d0600` does (`[m+0x8c] & 0x20` →
+`IMultiMediaStream::GetTime` on `[m+4]`, else `IMediaPosition::get_CurrentPosition` on `[m+0x70]`; both through the
+engine's interface pointers, SSE2 only) and remembered. Combat plays keep it; the first start-0 play of that id whose
+seek is not skipped is seeked to it: Patch C returns bit 4 and the thunk rewrites the seek's stack argument
+(`[esp+4]` at its entry) before `jmp 0x004d0430`, EDI and so `[rec+0x1c]` stay 0. Another non-combat id, a positioned
+or still-playing play of the id, a vanilla stop-all (load, session start, P_Leave, unknown) and the one use clear it; a
+sector stop without a readable position forgets the old memory. The reader's 120 bytes are compared at install; a
+mismatch logs `resume=bytes_mismatch` and nothing is remembered. The task-IP / alert discriminator of the bullets above
+is not used: any script stop of a sector track is remembered and a sector change clears it at the next play. Lines:
+`music_keep_resume id= saved_ms= action=remember|forget at=stop_movie`, `… action=seek|clear_sector|clear_played at=play
+other_id=`, `… action=clear_stop_all at=load|session_start|…`, and `music_keep_seek … resume_ms=<ms>` on the seeked
+play. For a DirectSound record the saved position is the decode position, ahead of the audible one by the unplayed
+ring (up to about 5–7 s, inferred), so the resumed track starts that much later than where it was cut.
+
 ## 5. Narrowing the trigger (Q5)
 
 **No native carries the predicate.** The decision is engine code (§2). The KC receives only `NotifyAlert(0/1)` through

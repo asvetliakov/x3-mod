@@ -38,7 +38,8 @@ LIGHT_HOOKS = ['set_vs', 'set_ps', 'set_vs_constant_f', 'set_vs_constant_i', 'se
 # The gz read-ahead buffer's import entry points (src/proxy/loading_trace.cpp ->
 # src/proxy/gz_buffer.cpp) run with no boundary at all on their fast path, so the
 # same rule applies to them; the real zlib calls are indirect and stop the walk.
-GZ_HOOKS = ['gz_read', 'gz_getc', 'gz_tell', 'gz_seek']
+GZ_HOOKS = ['gz_read', 'gz_getc', 'gz_tell', 'gz_seek',
+            'gz_write']  # the gzwrite row: the music keep's save-write observer, then the traced wrapper or the original
 # The CryptoAPI context/key cache's import entry points (loading_trace.cpp ->
 # src/proxy/crypt_cache.cpp, X3M_CRYPT_CACHE=1) and the cache functions they
 # reach: no boundary on the cached path either; the real ADVAPI32 calls are
@@ -100,6 +101,10 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # SETA restore (src/proxy/seta_restore.cpp, X3M_SETA_RESTORE=1): the integer stub at the TI_SetTimeWarpFactor case entry
                 # 0x004b148c and its handler under LightCallBoundary inside the VM's native dispatch; rows behind call_preserved
                 '_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write',
+                # music through the save (music-restart.md section 7): Patch E at 0x00498d71 (thunk + handler), the gzwrite /
+                # gzclose observers the import rows call while the save pump may run, and the integer shim around the engine pump
+                '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close',
+                '_x3m_music_keep_call_pump', '_x3m_music_keep_call_pause',
                 # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
                 # handler, once per process on the game's init thread; its row is formatted behind call_preserved
                 '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',

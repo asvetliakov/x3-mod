@@ -92,6 +92,22 @@ bool initialize();
 // initialize() then patches the two D3DX mesh import rows alone. The caller's
 // initialize gate must include this for a fast-only launch.
 bool mesh_adjacency_requested();
+// Save-write observer (X3M_MUSIC_KEEP=1, the music keep's save pump; music-restart.md section 7): registered before
+// initialize(), it makes initialize() patch the gzwrite and gzclose rows (also without telemetry). Each gzwrite call
+// runs `write` first and each gzclose call `close(return address, the dword above the file argument)` (the caller's
+// own return address when it called the import with exactly one pushed argument), both only while `*active` is
+// nonzero (one load and a branch otherwise); `bound` is called once after patching with the gzwrite slot, the original
+// it held, whether each row is live and the gzclose slot. The observer is called on whatever thread calls the import;
+// it filters itself.
+struct SaveWriteObserver {
+    const volatile std::uint32_t* active = nullptr;
+    void(__cdecl* write)() = nullptr;
+    void(__cdecl* close)(std::uint32_t return_va, std::uint32_t caller_return_va) = nullptr;
+    void (*bound)(void* const* write_slot, void* write_original, bool write_live, bool close_live,
+                  void* const* close_slot) = nullptr;
+};
+void set_save_write_observer(const SaveWriteObserver& observer); // before initialize(); later calls are ignored
+bool save_write_observer_requested();
 bool active();
 // Per-field atomic exchange: concurrent calls can straddle adjacent reports.
 // Totals over the complete run are conserved, but a delta is not a transaction.

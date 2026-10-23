@@ -5690,9 +5690,11 @@ void initialize_log(HMODULE module) {
             occlusion_engine_cull::state());
     }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
-        loading_trace::mesh_adjacency_requested())
+        loading_trace::mesh_adjacency_requested() || loading_trace::save_write_observer_requested())
         loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 / X3M_MESH_ADJACENCY=fast patch their rows
-                                     // alone (fast arms without telemetry since 2026-09-25)
+                                     // alone (fast arms without telemetry since 2026-09-25); the music keep's save
+                                     // pump registered its gzwrite/gzclose observer in music_keep::initialize()
+    music_keep::save_pump_report();  // one music_keep_save_pump_hook row when the keep is armed: bound or the refusal
     resource_reader::initialize();   // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub
                                      // chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists

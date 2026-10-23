@@ -713,6 +713,12 @@ LONG __cdecl gz_seek(void*, LONG, int);
 int __cdecl gz_getc(void*);
 LONG __cdecl gz_tell(void*);
 int __cdecl gz_close(void*);
+int __cdecl gz_write(void*, const void*, unsigned);
+using GzWriteFn = int(__cdecl*)(void*, const void*, unsigned);
+// The save-write observer (set_save_write_observer, before install; never cleared) and whether the gzwrite row
+// forwards to the traced wrapper (telemetry) or straight to the original.
+SaveWriteObserver save_observer{};
+bool gz_write_traced = false;
 // X3M_GZ_BUFFER=1: the gz hooks route through gz_buffer (set before patching, never
 // cleared); its real functions are the traced wrappers with telemetry, else the originals.
 bool gz_buffer_active = false;
@@ -769,7 +775,7 @@ Hook hooks[]={
     {"zlib1.dll","gzgetc",reinterpret_cast<PVOID>(gz_getc)},
     {"zlib1.dll","gztell",reinterpret_cast<PVOID>(gz_tell)},
     {"zlib1.dll","gzclose",reinterpret_cast<PVOID>(gz_close)},
-    {"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(light::gz_write)},
+    {"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(gz_write)},
     // Probe batch 2 rows (patched only with X3M_LOADING_PROBES=1).
     {"zlib1.dll","inflateInit2_",reinterpret_cast<PVOID>(light::inflate_init2)},
     {"zlib1.dll","inflateEnd",reinterpret_cast<PVOID>(light::inflate_end)},
@@ -798,6 +804,32 @@ bool probe_row(unsigned index) {
 bool gz_buffer_row(const Hook& hook) {
     return !std::strcmp(hook.dll, "zlib1.dll") && std::strcmp(hook.name, "inflate") &&
            std::strcmp(hook.name, "gzwrite");
+}
+// Rows the save-write observer needs (the music keep's save pump); patched alone when telemetry is off.
+bool save_write_row(const Hook& hook) {
+    return !std::strcmp(hook.dll, "zlib1.dll") &&
+           (!std::strcmp(hook.name, "gzwrite") || !std::strcmp(hook.name, "gzclose"));
+}
+bool save_observer_set() {
+    return save_observer.active && save_observer.write && save_observer.close && save_observer.bound;
+}
+// After patching: tells the observer which slot the gzwrite row bound, the original it held and whether both rows
+// are live (the observer validates the slot itself and stays inert otherwise).
+void bind_save_observer() {
+    if (!save_observer_set()) return;
+    const Hook* write = nullptr;
+    const Hook* close = nullptr;
+    for (const auto& hook : hooks) {
+        if (!save_write_row(hook)) continue;
+        if (!std::strcmp(hook.name, "gzwrite"))
+            write = &hook;
+        else
+            close = &hook;
+    }
+    const bool write_live = write && write->slot && *write->slot == write->replacement,
+               close_live = close && close->slot && *close->slot == close->replacement;
+    save_observer.bound(write ? write->slot : nullptr, write ? write->original : nullptr, write_live, close_live,
+                        close ? close->slot : nullptr);
 }
 // Rows the CryptoAPI context/key cache needs; patched alone when telemetry is off
 // and together with the probe batch 2 rows when it is on.
@@ -947,7 +979,22 @@ LONG __cdecl gz_tell(void* file) {
     return gz_buffer_active ? gz_buffer::tell(file) : light::gz_tell_traced(file);
 }
 int __cdecl gz_close(void* file) {
+    if (save_observer.active && *save_observer.active) {
+        // The dword above the argument (the cdecl incoming slot of `file`): the caller's own return address when it
+        // called the import with exactly one pushed argument (the save's close wrapper does).
+        std::uint32_t above = 0;
+        std::memcpy(&above, reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(&file) + sizeof file),
+                    sizeof above);
+        save_observer.close(static_cast<std::uint32_t>(reinterpret_cast<uintptr_t>(__builtin_return_address(0))), above);
+    }
     return gz_buffer_active ? gz_buffer::close(file) : light::gz_close_traced(file);
+}
+// The save-write observer runs before the write (one load and a branch while it is idle); the write itself goes to
+// the traced wrapper with telemetry, else straight to the original.
+int __cdecl gz_write(void* file, const void* data, unsigned size) {
+    if (save_observer.active && *save_observer.active) save_observer.write();
+    return gz_write_traced ? light::gz_write(file, data, size)
+                           : original<GzWriteFn>(Operation::GzWrite)(file, data, size);
 }
 // CryptoAPI slots: with the cache off the light traced wrappers, with it on the
 // cache (whose real calls are those wrappers when telemetry is on, else the originals).
@@ -1428,14 +1475,15 @@ bool install(HMODULE target) {
         log("loading_trace disabled=reinitialization_not_supported");
         return false;
     }
-    const bool trace = requested(), buffer = gz_buffer::requested(), crypt = crypt_cache::requested();
+    const bool trace = requested(), buffer = gz_buffer::requested(), crypt = crypt_cache::requested(),
+               music = save_observer_set();
     // X3M_MESH_ADJACENCY=fast arms without telemetry: only the two mesh import
     // rows are patched then, and no metric row is written (report() runs from
     // the telemetry summary only). With telemetry the full set is patched below.
     const AdjacencyMode adjacency_request = adjacency_requested_mode(),
                         adjacency_armed = adjacency_fast::armed_mode(adjacency_request, trace);
     const bool adjacency = !trace && adjacency_armed != AdjacencyMode::Native;
-    if (!trace && !buffer && !crypt && !adjacency) return false;
+    if (!trace && !buffer && !crypt && !adjacency && !music) return false;
     auto base = reinterpret_cast<unsigned char*>(target);
     auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     if (!readable(dos, sizeof *dos, target) || dos->e_magic != IMAGE_DOS_SIGNATURE ||
@@ -1499,6 +1547,7 @@ bool install(HMODULE target) {
         light::set_original(unsigned(i), originals[i]);
     }
     const bool nesting = light::initialize();
+    gz_write_traced = trace;
     if (buffer) {
         gz_buffer::Originals real;
         real.open = trace ? light::gz_open_traced : original<GzOpenFn>(Operation::GzOpen);
@@ -1534,7 +1583,7 @@ bool install(HMODULE target) {
             unsigned(crypt_cache_active.load()), trace, imports, crypt_cache::provider_slots, crypt_cache::key_slots,
             crypt_cache::blob_limit);
     }
-    if (!trace && !gz_buffer_active && !crypt_cache_active && !adjacency) {
+    if (!trace && !gz_buffer_active && !crypt_cache_active && !adjacency && !music) {
         log_adjacency_config(adjacency_request, trace);
         return false;
     }
@@ -1556,7 +1605,7 @@ bool install(HMODULE target) {
                 continue;
             }
             if (!((gz_buffer_active && gz_buffer_row(hook)) || (crypt_cache_active && crypt_cache_row(hook)) ||
-                  (adjacency && mesh_row(hook)))) {
+                  (adjacency && mesh_row(hook)) || (music && save_write_row(hook)))) {
                 hook.slot = nullptr;
                 continue;
             }
@@ -1576,10 +1625,10 @@ bool install(HMODULE target) {
         }
         coverage_start = tick();
         installed.store(hook_count != 0);
-        char scope[48]{};
-        const bool scope_on[] = {gz_buffer_active, crypt_cache_active.load(), adjacency_rows};
-        const char* const scope_names[] = {"gz_buffer", "crypt_cache", "mesh_adjacency"};
-        for (unsigned i = 0; i < 3; ++i)
+        char scope[64]{};
+        const bool scope_on[] = {gz_buffer_active, crypt_cache_active.load(), adjacency_rows, music};
+        const char* const scope_names[] = {"gz_buffer", "crypt_cache", "mesh_adjacency", "music_keep"};
+        for (unsigned i = 0; i < 4; ++i)
             if (scope_on[i]) {
                 if (scope[0]) std::strcat(scope, "+");
                 std::strcat(scope, scope_names[i]);
@@ -1587,6 +1636,7 @@ bool install(HMODULE target) {
         log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=0 paths=0 qualification=named_pe32_imports scope=%s",
             coverage_start, clock_frequency, hook_count, scope[0] ? scope : "none");
         log_adjacency_config(adjacency_request, trace);
+        bind_save_observer();
         return installed.load();
     }
     const AdjacencyMode requested_mode = adjacency_armed; // with telemetry every parsed mode arms
@@ -1625,6 +1675,7 @@ bool install(HMODULE target) {
         coverage_start, clock_frequency, hook_count, unsigned(nesting), unsigned(probes), unsigned(crypt_cache_active));
     if (probes) loading_probes::initialize();
     log_adjacency_config(adjacency_request, trace);
+    bind_save_observer();
     return installed.load();
 }
 }
@@ -1634,6 +1685,13 @@ bool initialize() {
     bool result = install(GetModuleHandleW(nullptr));
     SetLastError(error);
     return result;
+}
+void set_save_write_observer(const SaveWriteObserver& observer) {
+    if (installation_started || installed.load()) return;
+    save_observer = observer;
+}
+bool save_write_observer_requested() {
+    return save_observer_set();
 }
 bool mesh_adjacency_requested() {
     return adjacency_fast::armed_mode(adjacency_requested_mode(), false) != AdjacencyMode::Native;

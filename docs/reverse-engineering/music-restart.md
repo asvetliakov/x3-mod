@@ -564,7 +564,21 @@ Cap: 1,000 event lines per session, then one `music_trace_cap` line.
   (`record`/`flags` from a bounded walk of the list at entry: `flags & 2`
   = still registered as playing, `& 0x80` = music class)
 * `music_trace_stop_movie frame= seq= qpc= id= caller=0x… name=… record=0x… flags=0x…`
-* with the keep on: `music_keep_stop … name= record= id= flags= mode=skip_all|keep_running|paused|vanilla held= holds=`,
+* trace fields for the track-queue design (music-script-driver.md §8.2, §8.3 "Not established" (a)); reads through the
+  fault-free engine reader, no behaviour change, only with `music_trace = 1`:
+  * `music_trace_stop_movie` adds `ctx= slot=` (the record's `+0x14`/`+0x18`), `task=` (ESI at `0x00498810`),
+    `task_ok=`, `task_id=` (`[task+8]`), `arg_task=` (`[esp+4]`, the native's task id), `ip=` (`[task+0x1c]`; `0xdb54`
+    for `PlayMusicWithFade`'s stop), `k=` (`[task+0x18]`), `capacity=` (`[task+0x10]`), `cells=ok|invalid` and the raw
+    cells `c6= c8= c10= c12=` as `tag:dword` (cell `i` at `[task+0x14] + 5·(k+i)`, read only when the base is nonzero and
+    `k + 12 < capacity`), and `alert= alert_old= alert_new=` (`[R+4]`, `[R+8]`, `R = *0x00608504`);
+  * `music_trace_play` adds `ctx= slot=`, `task= task_ok= task_id= ip=` (`0xdbf7` for `MOV_PlayMovie` from the driver)
+    and `a1_slot= a2_task=` (the play routine's first two arguments);
+  * the pass order: the existing `music_trace_stop frame= seq= qpc=` at the stop-all entry (T1) shares `seq=` with
+    every other row, so stop-all, stop-movie and play order within and across frames reads from `seq` and `frame`.
+  Expected for the design: a sector change shows `stop_movie ip=0xdb54 cells=ok c6=3:0x0000dc84 c8=1:<new id>
+  c10=1:0x00000001 c12=3:0x0000dcdb alert_old=0 alert_new=0`, then `play id=<new> ip=0xdbf7 a2_task=<arg_task of the
+  stop>`; a combat start the same stop with `alert_new` ≠ 0 and `c8` in 1001..1042; a dock `c8` in 2001..2004.
+* with the keep on: `music_keep_stop … name= record= id= flags= mode=skip_all|keep_running|paused|vanilla held= holds= pump=`,
   `music_keep_seek … record= id= start_ms= flags= action=skip|vanilla|pause_then_vanilla hold_id= pause_record= holds_before=`,
   `music_keep_orphan … caller= name= record= id= action=pause holds=` (an unreplayed keep_running track paused at a
   stop-all: the F2 path, and evidence of the orphan case above), `music_keep_stop_movie … id= caller= name= dropped= holds=`,
@@ -807,6 +821,53 @@ between `gzwrite` calls, last `gzwrite` → replay), which a consolidated diagno
 together with each pump call's return, `[m+0x48]`/`[m+0x64]` and the lead (`ring − free`); that amstream
 completes the asynchronous `Update` while the main thread is blocked in the save (DirectShow design, not
 observed); that the replay keeps arriving in the next iteration; and the audible result.
+
+### 7.6 Implementation (2026-10-23)
+
+Built under the existing `music_keep` option (no new entry) in `src/proxy/music_keep.cpp`, constants and the two
+state machines (`SavePump`, `ResumeMemory`) in `music_keep_core.h`; byte check
+[`verify_music_keep_writes.py`](../../verification/results/music-restart/verify_music_keep_writes.py) (`PASS`, 65
+checks; 69 after the review fixes), host test `verification/analysis/test_music_keep.py`; ledger
+[music-keep.md](../verification/music-keep.md).
+**Patch E** (`0x00498d71`, `claim_call`, one `lock cmpxchg8b`) is optional like D: its windows (pump head 55 B, drain
+exit 37 B, status DS tail 28 B, the continuation 35 B from `0x00498d76`, the `gzwrite` thunk) are compared first and a
+refusal logs `patch_e=<reason>` and keeps the save `paused`. The **save pump** reuses the proxy's only import writer:
+the keep registers a save-write observer with `loading_trace` (`set_save_write_observer`), which then patches its
+`gzwrite`/`gzclose` rows also without telemetry and binds them once; the keep accepts the bind only on slot
+`0x005323e0` holding `zlib1.dll!gzwrite` (`GetProcAddress`), the gzclose row on `0x005323f0`, both rows live, the
+thunks matched, E live and the install window open, else `music_keep_save_pump_hook reason=<refusal> save_mode=paused`. Patch A: `save` + DirectSound music
+record + bound pump + no other target in this stop-all → `keep_running` and arm `(record, id, media, thread)`; pause
+and alt-tab unchanged. The observer reads QPC every 32 `gzwrite` calls (one decrement otherwise; the idle row costs
+two loads and a branch) and, on the armed thread, at most every 250 ms (the first sampled call always pumps), checks
+the record (linked, same id and media, flags music + `0x40` with flag 2 clear, `[m+0x8c] & 0x48 == 0x40`, `[m+0x48]`
+2 or 4) and calls `0x004d0700` through an integer shim under `LightCallBoundary` (the engine's MXCSR and LastError
+for the call, restored after). Pumping stops at the save's own gzclose only: the save closes through the wrapper
+`0x004e9360` (called at `0x00404a6f`, six callers in all), whose gzclose call returns to `0x004e9384`; the import hook
+gets that return and the dword above its argument, the wrapper's own return `0x00404a74`, and any other pair is
+ignored. Every other stop is an early stop: a refused check, a 0/2/other return, 120 s, or (checked at each Present
+on the armed thread) no replay within `run_skip_bound_ms` = 2500 of the last pump (5 s ring minus one 2 s sample,
+less a margin). An early stop cancels the Run skip and **pauses the record through `0x004d1810`** when it is still
+linked as the target, flag 2 clear, unclaimed and music (the F2 rule), and its hold becomes a paused one; the replay's
+seek skip and the vanilla Run then resume it exactly as the flown paused mode. The episode ends at the first music
+play (the replay of the kept record with the seek skipped leaves a one-shot marker; Patch E then answers 1 without the
+Run only for that record with `[m+0x48]` = 2 and its last pump younger than 2.5 s, else the Run re-arms:
+`fallback_reason=stale`), at `MOV_StopMovie` of the id and at the next stop-all entry, and writes one line. The handlers'
+fast paths (gzwrite observer, Patch E) end in a tail jump to a noinline helper that holds the boundary; the build
+uses table-based unwinding (no SjLj registration anywhere in the DLL).
+
+Lines a flight shows: install `music_keep … patch_e=ok site_e=0x00498d71 write_e=atomic thunk_e=… save_pump=pending
+resume=ok`, then `music_keep_save_pump_hook reason=ok save_mode=keep_running iat=0x005323e0 write_row=1 close_row=1
+… interval_ms=250 stride=32 bound_ms=120000` and `loading_trace … scope=…music_keep`. Per save: `music_keep_stop
+name=save flags=0xd2 mode=keep_running held=1 pump=1`, `music_keep_seek … action=skip`, then one `music_keep_save_pump
+record= id= calls= ret0= ret1= ret2= ret_other= writes= samples= span_ms= first_call_ms= max_gap_ms= end_ms=
+pump_end=gzclose close_caller=0x00404a74 end=replay run=skipped buffer_state=2 fallback=none fallback_reason=none
+fallback_ms=0 interval_ms=250` (all spans measured with QPC
+from the arm: `span_ms` to the end of pumping, `first_call_ms` the stop-all → first pump, `max_gap_ms` the largest
+unpumped span up to gzclose, `end_ms − span_ms` the gzclose → replay span). Healthy: `ret1 = calls ≈ span_ms/250`,
+`max_gap_ms` and `end_ms − span_ms` well below 2.75 s, `run=skipped`, no repeated audio after the save.
+`fallback=paused fallback_reason=refused|failed|ended|bound|overdue fallback_ms=` means the record was paused at
+that time (the flown paused mode followed); `fallback=unlinked` that there was nothing to pause; `run=vanilla
+fallback_reason=stale` that the replay came more than 2.5 s after the last pump and re-armed.
 
 Reproduce:
 

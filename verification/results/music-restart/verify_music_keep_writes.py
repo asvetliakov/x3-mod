@@ -10,8 +10,16 @@ writes are modelled (`e9 rel32` over the first five bytes of a claim, the
 remaining site bytes untouched, the tail = displaced bytes + `e9` back to
 site+length; `e8 rel32` to the thunk at the call site) and the raw .text scan
 shows no rel8/rel32 branch into any site's interior; the direct-caller census
-of the six functions involved is repeated. No Wine, no game. Prints one JSON
-object (also written beside this script) and exits 0 only on PASS.
+of the six functions involved is repeated. Music through the save
+(music-restart.md section 7): Patch E at 0x00498d71 (whole instruction, its
+continuation, the written `e8 rel32`, the interior scan), the pump's head and
+drain exit, the status query's DirectSound tail as the pump's only direct
+entry, no literal pump reference, the gzwrite thunk and its IAT slot from the
+import directory (zlib1.dll!gzwrite); the resume's position reader 0x004d0600
+(interfaces, vtable offsets, the 10000 divisor and the 1000.0 factor). No Wine,
+no game. Prints one JSON object (also written beside this script) and exits 0
+only on PASS. The executable: X3AP_EXE, else the native install
+/mnt/c/X3/X3AP.exe, else the CrossOver bottle path.
 
 `parse_line` reads the music_trace_* / music_keep_* lines a flight writes.
 """
@@ -26,7 +34,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CORE = ROOT / 'src/proxy/music_keep_core.h'
 MODULE = ROOT / 'src/proxy/music_keep.cpp'
-EXE = Path(os.environ.get('X3AP_EXE', Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'))
+_CANDIDATES = [Path('/mnt/c/X3/X3AP.exe'), Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe']
+EXE = Path(os.environ['X3AP_EXE']) if os.environ.get('X3AP_EXE') else next((c for c in _CANDIDATES if c.is_file()), _CANDIDATES[-1])
 SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
 TEXT_VA, TEXT_RAW, TEXT_SIZE = 0x401000, 0x400, 1247232
 OUTPUT = Path(__file__).with_name('verify_writes_output.json')
@@ -37,6 +46,9 @@ WINDOWS = [
     ('play_set_playing_window', 'play_set_playing_va'), ('seek_head', 'c_target_va'), ('pause_body', 'pause_va'), ('run_head', 'run_va'),
     ('stop_all_head', 't_stop_all_site_va'), ('play_head', 't_play_site_va'), ('stop_movie_head', 't_stop_movie_site_va'),
     ('d_caller_window', 'd_caller_va'), ('status_head', 'd_target_va'), ('status_ended_window', 'status_ended_va'),
+    ('pump_head', 'pump_va'), ('pump_end', 'pump_end_va'), ('status_ds_tail', 'status_ds_tail_va'), ('e_post_window', 'e_return_va'),
+    ('gzwrite_thunk', 'gzwrite_thunk_va'), ('position_reader', 'position_reader_va'),
+    ('gzclose_wrapper', 'gzclose_wrapper_va'), ('gzclose_thunk', 'gzclose_thunk_va'),
 ]
 # Claim sites: (name, VA constant, length constant, window the expected bytes come from, offset constant into that window or None)
 CLAIMS = [
@@ -47,6 +59,7 @@ CLAIMS = [
 ]
 CALL_SITE = ('music_keep_c', 'c_site_va', 'c_target_va')
 STATUS_CALL_SITE = ('music_keep_d', 'd_site_va', 'd_target_va')
+RUN_CALL_SITE = ('music_keep_e', 'e_site_va', 'e_target_va')
 # Expected address constants (the note's sites) and the caller tables.
 EXPECTED = {
     'stop_all_va': 0x4982b0, 'stop_all_end_va': 0x498367, 'a_site_va': 0x4982db, 'a_next_va': 0x4982e1, 'a_skip_va': 0x498322, 'a_site_length': 6, 'a_return_slot': 0x10,
@@ -62,6 +75,17 @@ EXPECTED = {
     'd_site_va': 0x4983d9, 'd_target_va': 0x4d14e0, 'd_return_va': 0x4983de, 'd_caller_va': 0x4983d4, 'd_caller_length': 41, 'status_head_length': 38,
     'status_ended_va': 0x4d15a0, 'status_ended_length': 12, 'status_normal_va': 0x4d1506, 'active_flag_va': 0x608adc, 'input_flags_ptr_va': 0x606f3c,
     'run_in_background_bit': 0x4000,
+    # music through the save (section 7) and the resume after combat (music-script-driver.md section 4)
+    'save_return_va': 0x404561, 'pump_va': 0x4d0700, 'pump_end_va': 0x4d0c0c, 'status_ds_tail_va': 0x4d17b5, 'pump_head_length': 55, 'pump_end_length': 37,
+    'status_ds_tail_length': 28, 'media_stream': 0x04, 'media_buffer_state': 0x48, 'media_position': 0x70, 'media_flags': 0x8c, 'media_ds_mask': 0x48,
+    'media_ds_value': 0x40, 'media_stream_clock': 0x20, 'buffer_playing': 2, 'buffer_draining': 4, 'gzwrite_iat_va': 0x5323e0, 'gzwrite_thunk_va': 0x4fae46,
+    'gzwrite_thunk_length': 6, 'pump_interval_ms': 250, 'pump_poll_stride': 32, 'pump_bound_ms': 120000, 'e_site_va': 0x498d71, 'e_target_va': 0x4d1870,
+    'e_return_va': 0x498d76, 'e_post_length': 35, 'stop_movie_native_return_va': 0x499886, 'combat_id_first': 1001, 'combat_id_last': 1042,
+    'position_reader_va': 0x4d0600, 'position_reader_length': 120, 'position_vtbl_get_current': 0x24, 'stream_vtbl_get_time': 0x20, 'seek_resume_bit': 4,
+    # the save's own gzclose (review fix 4), the Run-skip bound (fix 2), the trace's task fields (script-task-scheduler.md section 2-3)
+    'save_gzclose_call_va': 0x404a6f, 'save_gzclose_return_va': 0x404a74, 'gzclose_wrapper_va': 0x4e9360, 'gzclose_wrapper_return_va': 0x4e9384,
+    'gzclose_thunk_va': 0x4fae52, 'gzclose_iat_va': 0x5323f0, 'gzclose_wrapper_length': 39, 'gzclose_thunk_length': 6, 'run_skip_bound_ms': 2500,
+    'task_id': 0x08, 'task_capacity': 0x10, 'task_cells': 0x14, 'task_index': 0x18, 'task_ip': 0x1c, 'cell_size': 5, 'alert_record_ptr_va': 0x608504,
 }
 STOP_CALLERS = [(0x4d36bd, 0x4d36c2, 'alt_tab', 'skip_all'), (0x40455c, 0x404561, 'save', 'keep_running'), (0x407064, 0x407069, 'pause', 'keep_running'),
                 (0x404ced, 0x404cf2, 'load', 'vanilla'), (0x497bb6, 0x497bbb, 'p_leave', 'vanilla'), (0x403878, 0x40387d, 'session_start', 'vanilla')]
@@ -70,7 +94,10 @@ STOP_MOVIE_CALLERS = [(0x499881, 0x499886, 'MOV_StopMovie'), (0x45c27d, 0x45c282
 CALLEES = {0x4982b0: 6, 0x498c90: 3, 0x498810: 3, 0x4d0430: 3, 0x4d1810: 1, 0x4d1870: 2, 0x4d14e0: 1}
 # Raw-scan hits proven to be operand bytes of a containing instruction: 0x498c6f is the ModRM byte 0x7c of
 # `lea edi,[esp+0x18]` (8d 7c 24 18 at 0x498c6e), decoded as a false `jl` into 0x498c93.
-REJECTED_INTERIOR = {0x498c90: {0x498c6f}}
+# 0x498d4e is the ModRM byte 0x7c of the 4-byte `add edi,[esp+0x2c]` at 0x498d4d, decoded as a false `jl` into 0x498d74
+# (inside Patch E's call), the rejection of music-restart.md section 7.5.
+REJECTED_INTERIOR = {0x498c90: {0x498c6f}, 0x498d71: {0x498d4e}}
+PUMP_LITERAL = 0x4d0700
 STOP_MOVIE_PAUSE_CALL = 0x49885f
 # Minimal decoder for the displaced instructions (opcode bytes -> length); anything else is a failure.
 LENGTHS = {
@@ -96,7 +123,7 @@ def source_constants(text):
         consts[name] = int(value, 0)
     # derived constants the header spells as expressions
     consts.setdefault('a_site_offset', consts['a_site_va'] - consts['a_window_va'])
-    for alias, base in (('t_stop_all_site_va', 'stop_all_va'), ('t_play_site_va', 'play_va')):
+    for alias, base in (('t_stop_all_site_va', 'stop_all_va'), ('t_play_site_va', 'play_va'), ('e_site_va', 'c_run_call_va'), ('e_target_va', 'run_va')):
         consts.setdefault(alias, consts[base])
     return consts
 
@@ -152,6 +179,51 @@ def scan(text, sites, callees):
                 if s < t < s + n:
                     interior[s].append(va)
     return interior, callers
+
+
+def sections(data):
+    pe = struct.unpack_from('<I', data, 0x3c)[0]
+    count, optional = struct.unpack_from('<H', data, pe + 6)[0], struct.unpack_from('<H', data, pe + 20)[0]
+    out = []
+    for i in range(count):
+        o = pe + 24 + optional + 40 * i
+        virtual_size, rva, raw_size, raw = struct.unpack_from('<IIII', data, o + 8)
+        out.append((rva, max(virtual_size, raw_size), raw))
+    return pe, out
+
+
+def read_va(data, va, n):
+    """Bytes at a VA of any section (image base 0x400000), b'' when unmapped."""
+    _, secs = sections(data)
+    rva = va - 0x400000
+    for start, size, raw in secs:
+        if start <= rva < start + size:
+            return data[raw + rva - start:raw + rva - start + n]
+    return b''
+
+
+def import_slot(data, dll, name):
+    """VA of the IAT slot the import directory binds to dll!name (by its OriginalFirstThunk name), or None."""
+    pe, _ = sections(data)
+    directory = struct.unpack_from('<II', data, pe + 24 + 104)[0]   # DataDirectory[1] (imports) of a PE32 optional header
+    for i in range(256):
+        desc = read_va(data, 0x400000 + directory + 20 * i, 20)
+        if len(desc) < 20:
+            return None
+        names, _, _, dll_rva, first = struct.unpack('<IIIII', desc)
+        if not dll_rva:
+            return None
+        if read_va(data, 0x400000 + dll_rva, len(dll) + 1).lower() != dll.lower().encode() + b'\0':
+            continue
+        for j in range(4096):
+            entry = struct.unpack('<I', read_va(data, 0x400000 + names + 4 * j, 4))[0]
+            if not entry:
+                return None
+            if entry & 0x80000000:
+                continue
+            if read_va(data, 0x400000 + entry + 2, len(name) + 1) == name.encode() + b'\0':
+                return 0x400000 + first + 4 * j
+    return None
 
 
 def inspect(data, core_text):
@@ -223,6 +295,55 @@ def inspect(data, core_text):
         and head[20:26] == b'\x8b\x15' + struct.pack('<I', consts['input_flags_ptr_va']) and head[26:32] == b'\xf7\x02' + struct.pack('<I', consts['run_in_background_bit'])
         and rd(0x4d1500, 2) == b'\x0f\x84' and rel32(0x4d1500) == consts['status_ended_va'] and rd(consts['status_ended_va'], 4) == bytes.fromhex('66b80200'))
     sites[d_site] = 5
+    # Patch E: the Run call is one whole instruction between `mov eax,esi` and the continuation window; five bytes in
+    # one qword (one lock cmpxchg8b); the pump's head/exit and the status query's DS tail (its only direct entry).
+    e_name, e_site_name, e_target_name = RUN_CALL_SITE
+    e_site, e_target = consts[e_site_name], consts[e_target_name]
+    checks['call_' + e_name] = (call_target(e_site) == e_target and rd(e_site - 2, 2) == b'\x8b\xc6' and e_site + 5 == consts['e_return_va']
+                                and (e_site & 7) + 5 <= 8 and rd(consts['e_return_va'], 4) == bytes.fromhex('85c07464'))
+    sites[e_site] = 5
+    written[e_name] = {'site': hex(e_site), 'length': 5, 'original': rd(e_site, 5).hex(), 'writes_example_thunk_0x0a400000': (b'\xe8' + struct.pack('<i', 0x0a400000 - (e_site + 5))).hex(),
+                       'callee': hex(e_target), 'caller_pops': 0, 'qword_offset': e_site & 7}
+    pump, tail = consts['pump_va'], consts['status_ds_tail_va']
+    pump_entries = []
+    for i in range(len(text) - 5):
+        if text[i] in (0xe8, 0xe9) and (TEXT_VA + i + 5 + struct.unpack_from('<i', text, i + 1)[0]) & 0xffffffff == pump:
+            pump_entries.append(TEXT_VA + i)
+    checks['pump_only_entry_is_status_ds_tail'] = pump_entries == [tail + 23] and rd(tail + 23, 1) == b'\xe9'
+    checks['pump_contract'] = (rd(pump + 3, 4) == bytes.fromhex('53555657') and rd(pump + 7, 2) == bytes.fromhex('8bf0')
+                               and rd(pump + 14, 3) == b'\x39\x7e' + bytes([consts['media_buffer_state']])
+                               and rd(consts['pump_end_va'] + 11, 1) == b'\x5f' and rd(consts['pump_end_va'] + 28, 9) == bytes.fromhex('66b802005b83c444c3'))
+    checks['pump_ds_gate'] = (rd(tail, 6) == b'\x8b\x86' + struct.pack('<I', consts['media_flags']) and rd(tail + 6, 2) == b'\xa8\x08' and rd(tail + 10, 2) == b'\xa8\x40'
+                              and consts['media_ds_mask'] == 0x48 and consts['media_ds_value'] == 0x40 and rd(tail + 14, 2) == bytes.fromhex('8bc6'))
+    pump_literals = data.count(struct.pack('<I', PUMP_LITERAL))
+    checks['pump_no_literal_refs'] = pump_literals == 0 and consts['pump_va'] == PUMP_LITERAL
+    # The save pump's import: the thunk jumps through the slot the import directory binds to zlib1.dll!gzwrite.
+    iat, thunk = consts['gzwrite_iat_va'], consts['gzwrite_thunk_va']
+    bound = import_slot(data, 'zlib1.dll', 'gzwrite')
+    checks['gzwrite_iat_slot'] = bound == iat and rd(thunk, 6) == b'\xff\x25' + struct.pack('<I', iat)
+    thunk_refs = text.count(b'\xff\x25' + struct.pack('<I', iat))
+    checks['gzwrite_single_thunk'] = thunk_refs == 1
+    checks['save_caller'] = consts['save_return_va'] in [b for _, b, n, _ in stops if n == 'save'] and consts['stop_movie_native_return_va'] == STOP_MOVIE_CALLERS[0][1]
+    # The resume's position reader: [rec+0x24]; [m+0x8c] & 0x20 -> [m+4] vtbl +0x20 (GetTime, / 10000); else [m+0x70] vtbl +0x24 (seconds * 1000.0).
+    r = consts['position_reader_va']
+    factor = read_va(data, 0x565550, 8)
+    checks['position_reader_contract'] = (
+        rd(r, 3) == b'\x8b\x40' + bytes([consts['record_media']]) and rd(r + 6, 7) == b'\xf6\x80' + struct.pack('<I', consts['media_flags']) + bytes([consts['media_stream_clock']])
+        and rd(r + 15, 3) == b'\x8b\x40' + bytes([consts['media_position']]) and rd(r + 25, 3) == b'\x8b\x41' + bytes([consts['position_vtbl_get_current']])
+        and rd(r + 0x3b, 3) == b'\x8b\x40' + bytes([consts['media_stream']]) and rd(r + 0x45, 3) == b'\x8b\x41' + bytes([consts['stream_vtbl_get_time']])
+        and rd(r + 0x5d, 5) == b'\x68' + struct.pack('<I', 10000) and rd(r + 0x25, 6) == b'\xdc\x0d' + struct.pack('<I', 0x565550)
+        and len(factor) == 8 and struct.unpack('<d', factor)[0] == 1000.0)
+    checks['combat_ids'] = (consts['combat_id_first'], consts['combat_id_last']) == (1001, 1042)
+    # The save's own gzclose: 0x00404a6f calls the close wrapper (return 0x00404a74); the wrapper's gzclose call returns to
+    # 0x004e9384 and goes through the thunk on the slot the import directory binds to zlib1.dll!gzclose.
+    gzclose_bound = import_slot(data, 'zlib1.dll', 'gzclose')
+    wrapper_call = consts['gzclose_wrapper_return_va'] - 5
+    checks['save_gzclose_path'] = (
+        call_target(consts['save_gzclose_call_va']) == consts['gzclose_wrapper_va'] and consts['save_gzclose_call_va'] + 5 == consts['save_gzclose_return_va']
+        and call_target(wrapper_call) == consts['gzclose_thunk_va'] and rd(wrapper_call - 1, 1) == b'\x50'
+        and consts['gzclose_wrapper_va'] < wrapper_call < consts['gzclose_wrapper_va'] + consts['gzclose_wrapper_length']
+        and gzclose_bound == consts['gzclose_iat_va'] and rd(consts['gzclose_thunk_va'], 6) == b'\xff\x25' + struct.pack('<I', consts['gzclose_iat_va']))
+    checks['run_skip_bound'] = consts['run_skip_bound_ms'] < 3000 and consts['pump_interval_ms'] < consts['run_skip_bound_ms']   # under the 5 s ring minus one 2 s sample
     written[d_name] = {'site': hex(d_site), 'length': 5, 'original': rd(d_site, 5).hex(), 'writes_example_thunk_0x0a300000': (b'\xe8' + struct.pack('<i', 0x0a300000 - (d_site + 5))).hex(),
                        'callee': hex(d_target), 'caller_pops': 0}
     checks['stop_callers'] = [(a, b, n, m) for a, b, n, m in stops] == STOP_CALLERS and all(call_target(a) == consts['stop_all_va'] and b == a + 5 for a, b, _, _ in stops)
@@ -241,13 +362,15 @@ def inspect(data, core_text):
     checks['no_literal_refs'] = not any(literal.values())
     failures = sorted(k for k, v in checks.items() if not v)
     return {'exe_sha256': sha, 'checks': checks, 'check_count': len(checks), 'windows': {k: len(v) for k, v in windows.items()}, 'written': written,
+            'pump_direct_entries': [hex(v) for v in pump_entries], 'pump_literal_refs': pump_literals, 'gzwrite_import_slot': hex(bound) if bound else None,
+            'gzwrite_thunks': thunk_refs, 'gzclose_import_slot': hex(gzclose_bound) if gzclose_bound else None,
             'direct_callers': {hex(t): [hex(v) for v in c] for t, c in callers.items()}, 'literal_dword_refs': literal,
             'raw_branch_into_site_interior': {hex(s): [hex(v) for v in c] for s, c in interior.items()},
             'rejected_operand_byte_hits': {hex(k): sorted(hex(v) for v in vs) for k, vs in REJECTED_INTERIOR.items()},
             'failures': failures, 'result': 'PASS' if not failures else 'FAIL'}
 
 
-_LINE = re.compile(r'^(?:\S+ )?(music_trace_stop|music_trace_play|music_trace_stop_movie|music_keep_stop|music_keep_seek|music_keep_orphan|music_keep_stop_movie|music_walk_cut|music_keep|music_trace|music_trace_cap)\b(.*)$')
+_LINE = re.compile(r'^(?:\S+ )?(music_trace_stop|music_trace_play|music_trace_stop_movie|music_keep_stop|music_keep_seek|music_keep_orphan|music_keep_stop_movie|music_keep_save_pump_hook|music_keep_save_pump|music_keep_resume|music_walk_cut|music_keep|music_trace|music_trace_cap)\b(.*)$')
 
 
 def parse_line(line):

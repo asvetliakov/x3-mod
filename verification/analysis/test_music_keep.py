@@ -300,6 +300,193 @@ int main() {
         check(!acquire_shared(ops, orphan, entry_spec, trace_entry_stub, cont, &why) && !std::strcmp(why, "site_live") && orphan.site.live, "live site without users: refused, kept");
         check(release_shared(ops, orphan) && !orphan.site.live && image == pristine, "release restores the orphaned claim");
     }
+    // Music through the save. Patch A: save + DirectSound music + a free, bound pump -> keep_running with the pump armed;
+    // pause, a busy or unbound pump, or DirectShow keep their former answers.
+    holds.clear();
+    s = decide_stop(holds, 0x1000, 0xd2, 8404, 0x2000, save_return_va, true, true);
+    check(s.mode == StopMode::keep_running && s.held && s.pump && holds.count == 1 && holds.slots[0].mode == StopMode::keep_running, "save + DirectSound + pump free: keep_running, pump armed");
+    s = decide_stop(holds, 0x1000, 0xd2, 8404, 0x2000, 0x00407069, true, true);
+    check(s.mode == StopMode::paused && !s.pump, "pause + DirectSound: paused even with the pump free");
+    s = decide_stop(holds, 0x1000, 0xd2, 8404, 0x2000, save_return_va, true, false);
+    check(s.mode == StopMode::paused && !s.pump, "save + DirectSound, pump unbound or busy: paused");
+    s = decide_stop(holds, 0x1000, 0x92, 2004, 0x2000, save_return_va, true, true);
+    check(s.mode == StopMode::keep_running && !s.pump, "save + DirectShow: keep_running, no pump");
+    s = decide_stop(holds, 0x1040, 0x52, 7, 0x2100, save_return_va, true, true);
+    check(s.mode == StopMode::vanilla && !s.pump, "save + DirectSound non-music: vanilla, no pump");
+    s = decide_stop(holds, 0x1000, 0xd2, 8404, 0x2000, 0x004d36c2, true, true);
+    check(s.mode == StopMode::skip_all && !s.pump, "alt-tab unchanged with the pump free");
+    check(stop_caller(save_return_va) && !std::strcmp(stop_caller(save_return_va)->name, "save"), "save_return_va is the save row");
+    holds.clear();
+    // The episode: arm, the clock stride, the 250 ms cadence, the thread, the checks, the returns.
+    const std::uint64_t f = 10000000;   // 10 MHz QPC
+    SavePump pump;
+    check(!pump.active(), "idle pump");
+    pump.arm(0x1000, 8404, 0x2000, 77, 1000, f);
+    check(pump.active() && pump.pumping && pump.kept && !pump.run_marker && pump.interval == f / 4 && pump.bound == f * 120, "arm");
+    check(pump.sample_due(), "first gzwrite samples the clock");
+    check(pump.pump_due(1000 + 10, 77), "first sample pumps");
+    check(!pump.pump_due(1000 + 10, 78), "other thread: no pump");
+    pump.note_call(1, 1010, 1020);
+    check(pump.calls == 1 && pump.returns[1] == 1 && pump.pumping && pump.first_call_at == 1010, "return 1 keeps pumping");
+    unsigned sampled = 0;
+    for (unsigned i = 0; i < pump_poll_stride * 3; ++i) sampled += pump.sample_due() ? 1u : 0u;
+    check(sampled == 3, "the clock is read every pump_poll_stride calls");
+    check(!pump.pump_due(1020 + f / 4 - 1, 77) && pump.pump_due(1020 + f / 4, 77), "at most one call per 250 ms");
+    {   // A 3 s save writing every 10 us: 12 or 13 calls, no gap above 250 ms + one stride of writes.
+        SavePump q;
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        std::uint64_t t = 0;
+        for (unsigned i = 0; i < 300000; ++i, t += 100) {
+            if (!q.sample_due()) continue;
+            if (q.pump_due(t, 1)) q.note_call(1, t, t + 50);
+        }
+        q.stop(PumpEnd::gzclose, t);
+        check(q.calls >= 12 && q.calls <= 13 && q.returns[1] == q.calls, "cadence over a 3 s save");
+        check(q.max_gap <= f / 4 + pump_poll_stride * 100 + 50 && q.writes == 300000, "largest unpumped span bounded by the cadence");
+        check(!q.pumping && q.kept && q.pump_end == PumpEnd::gzclose, "gzclose stops pumping, the Run skip stays eligible");
+        check(!q.pump_due(t + f, 1), "no pump after gzclose");
+    }
+    {   // 0 and 2 stop pumping and the Run skip; a refused check too; the wall bound.
+        SavePump q;
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(0, 10, 20);
+        check(!q.pumping && !q.kept && q.pump_end == PumpEnd::failed && q.returns[0] == 1, "return 0: failed, no Run skip");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(2, 10, 20);
+        check(!q.pumping && !q.kept && q.pump_end == PumpEnd::ended && q.returns[2] == 1, "return 2: ended, no Run skip");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(7, 10, 20);
+        check(!q.pumping && q.returns[3] == 1 && q.pump_end == PumpEnd::failed, "unexpected return: failed");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.refuse(5);
+        check(!q.pumping && !q.kept && q.pump_end == PumpEnd::refused && q.active(), "refused check: no call, no Run skip, the episode stays open for its line");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(!q.pump_due(f * 120, 1) && !q.pumping && !q.kept && q.pump_end == PumpEnd::bound && q.fallback_due() && q.fallback_reason == PumpEnd::bound,
+              "wall bound stops pumping, cancels the Run skip and asks for the pause");
+    }
+    {   // Disarm at plays: the replay of the kept record (seek skipped) marks the Run; Patch E skips it once, only with
+        // the buffer playing; any other play ends the episode at once.
+        SavePump q;
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.stop(PumpEnd::gzclose, 100);
+        check(!q.on_play(0x1000, 8404, 0x2000, true, 200) && q.run_marker && !q.pumping && !q.kept && q.end == PumpEnd::replay, "replay: Run marker");
+        check(q.skip_run(0x1000, 0x2000, buffer_playing, 200) && !q.run_marker && !q.active(), "Patch E skips the marked Run");
+        check(!q.skip_run(0x1000, 0x2000, buffer_playing, 200), "the marker is one shot");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(!q.on_play(0x1000, 8404, 0x2000, true, 200) && !q.skip_run(0x1000, 0x2000, buffer_draining, 200) && !q.active(), "draining buffer: Run vanilla, marker consumed");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(!q.on_play(0x1000, 8404, 0x2000, true, 200) && !q.skip_run(0x1080, 0x2000, buffer_playing, 200) && !q.active(), "another record's Run: vanilla");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(q.on_play(0x1080, 80412, 0x2200, false, 200) && !q.active() && q.end == PumpEnd::play && q.pump_end == PumpEnd::play, "another id plays while pumping: episode ends, pump stops");
+        check(!q.skip_run(0x1000, 0x2000, buffer_playing, 200), "no Run skip after another play");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(q.on_play(0x1000, 8404, 0x2000, false, 200) && !q.run_marker, "same record not skipped (seeked): episode ends, no marker");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(0, 10, 20);
+        check(q.on_play(0x1000, 8404, 0x2000, true, 200) && !q.run_marker, "failed pump: the replay does not mark the Run");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(q.on_play(0x1000, 8404, 0x2100, true, 200) && !q.run_marker, "other media object: no marker");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(q.end_now(PumpEnd::stop_movie, 50) && !q.active() && q.pump_end == PumpEnd::stop_movie && q.end == PumpEnd::stop_movie, "MOV_StopMovie of the id ends the episode");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(q.end_now(PumpEnd::stop_all, 50) && !q.active() && !q.end_now(PumpEnd::stop_all, 60), "the next stop-all ends it, once");
+        SavePump idle;
+        check(!idle.on_play(0x1000, 8404, 0x2000, true, 1) && !idle.skip_run(0x1000, 0x2000, buffer_playing, 200) && !idle.end_now(PumpEnd::stop_all, 1), "idle: nothing");
+        check(ticks_to_ms(f * 3, f) == 3000 && ticks_to_ms(5, 0) == 0, "ticks to ms");
+    }
+    {   // Review fixes: every early stop cancels the Run skip and asks for the fallback pause (once); gzclose does not; an
+        // overdue replay (2.5 s after the last pump, armed thread) and a stale Run at Patch E do.
+        SavePump q;
+        const std::uint64_t lead = f * run_skip_bound_ms / 1000;
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.refuse(5);
+        check(!q.kept && q.fallback_due() && q.fallback_reason == PumpEnd::refused && q.fallback_at == 5, "refusal: pause due");
+        q.note_fallback(true);
+        check(q.fallback == Fallback::paused && !q.fallback_due(), "fallback recorded as paused");
+        q.cancel_skip(PumpEnd::bound, 9);
+        check(q.fallback == Fallback::paused && q.fallback_reason == PumpEnd::refused, "the fallback is taken once per episode");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(0, 10, 20);
+        check(q.fallback_due() && q.fallback_reason == PumpEnd::failed, "return 0: pause due");
+        q.note_fallback(false);
+        check(q.fallback == Fallback::unlinked, "nothing to pause: unlinked");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(2, 10, 20);
+        check(q.fallback_due() && q.fallback_reason == PumpEnd::ended, "return 2: pause due");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.stop(PumpEnd::gzclose, 100);
+        check(q.kept && !q.fallback_due() && q.fallback == Fallback::none, "the save's gzclose keeps the Run skip, no pause");
+        check(!q.replay_overdue(lead - 1, 1) && q.replay_overdue(lead, 1) && !q.replay_overdue(lead, 2), "replay overdue 2.5 s after the last pump, armed thread only");
+        q.cancel_skip(PumpEnd::overdue, lead);
+        check(!q.kept && q.fallback_due() && q.fallback_reason == PumpEnd::overdue && q.active() && !q.replay_overdue(lead + 1, 1), "overdue: pause due, the episode stays open");
+        check(q.on_play(0x1000, 8404, 0x2000, true, lead + 2) && !q.run_marker, "the late replay after the fallback: no Run marker (vanilla Run resumes)");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(1, 10, 20);
+        q.stop(PumpEnd::gzclose, 30);
+        check(!q.on_play(0x1000, 8404, 0x2000, true, 40) && !q.skip_run(0x1000, 0x2000, buffer_playing, 20 + lead) && q.fallback_reason == PumpEnd::stale && !q.active(),
+              "Patch E: last pump older than 2.5 s, Run vanilla (stale)");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(1, 10, 20);
+        q.stop(PumpEnd::gzclose, 30);
+        check(!q.on_play(0x1000, 8404, 0x2000, true, 40) && q.skip_run(0x1000, 0x2000, buffer_playing, 20 + lead - 1), "Patch E: a recent pump, Run skipped");
+        check(!q.replay_overdue(0, 1), "idle: never overdue");
+        check(run_skip_bound_ms < 3000 && pump_interval_ms < run_skip_bound_ms, "the Run-skip bound sits under the 3 s minimum lead");
+        Holds h;
+        h.add(Hold{0x1000, 8404, 0x2000, StopMode::keep_running});
+        check(h.set_mode(0x1000, 8404, 0x2000, StopMode::paused) && h.slots[0].mode == StopMode::paused && !h.set_mode(0x1000, 8404, 0x2100, StopMode::paused),
+              "the fallback turns the hold into a paused one");
+        auto absent = [&](std::uint32_t, std::uint32_t, std::uint32_t, LiveRecord&) { return false; };
+        check(decide_seek(h, 0x1000, 0xd0, 8404, 0x2000, 0, absent).action == SeekAction::skip, "the replay after the fallback pause still skips the seek (Run resumes)");
+        check(save_gzclose_call_va + call_length == save_gzclose_return_va && gzclose_wrapper[31] == 0xe8 && gzclose_wrapper_va + 36 == gzclose_wrapper_return_va
+              && gzclose_thunk[2] == (gzclose_iat_va & 0xff), "the save's gzclose path constants");
+        check(trace_cells[0] == 6 && trace_cells[3] == 12 && task_ip == 0x1c && task_index == 0x18 && cell_size == 5, "trace cell constants");
+    }
+    // Resume after combat.
+    check(!combat_id(1000) && combat_id(1001) && combat_id(1042) && !combat_id(1043) && !combat_id(8404), "combat ids 1001..1042");
+    check(seek_resume_bit == 4 && (seek_resume_bit & (unsigned(SeekAction::skip) | unsigned(SeekAction::pause_then_vanilla))) == 0, "resume bit distinct from the seek actions");
+    {
+        ResumeMemory m;
+        std::uint32_t ms = 0;
+        const std::uint32_t native = stop_movie_native_return_va;
+        check(resume_on_stop(m, native, 8404, 0xd2, true, 63000) == ResumeAction::remember && m.valid && m.id == 8404 && m.ms == 63000, "sector stop: remember");
+        check(resume_on_play(m, 1017, 0, SeekAction::vanilla, ms) == ResumeAction::keep && m.valid, "combat play: keep");
+        check(resume_on_stop(m, native, 1017, 0xd2, true, 9000) == ResumeAction::none && m.id == 8404 && m.ms == 63000, "combat stop: memory untouched");
+        check(resume_on_play(m, 1033, 0, SeekAction::vanilla, ms) == ResumeAction::keep, "another combat track: keep");
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::seek && ms == 63000 && !m.valid, "post-combat sector play at 0: seek to the position, memory used");
+        ms = 0;
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::none && ms == 0, "one use: the next play seeks to 0");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms) == ResumeAction::clear_sector && !m.valid, "another sector id: cleared");
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::none, "after the sector change nothing seeks");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        resume_on_play(m, 1017, 0, SeekAction::vanilla, ms);
+        check(resume_on_play(m, 2003, 0, SeekAction::vanilla, ms) == ResumeAction::clear_sector && !m.valid, "combat, then a dock id: cleared");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_play(m, 8404, 0, SeekAction::skip, ms) == ResumeAction::clear_played && !m.valid, "same id still playing (seek skipped): cleared, no seek");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_play(m, 8404, 1500, SeekAction::vanilla, ms) == ResumeAction::clear_played && !m.valid, "positioned play of the id: cleared");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_play(m, 8404, 0, SeekAction::pause_then_vanilla, ms) == ResumeAction::seek && ms == 63000, "with a pause of another record: still seeks");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_stop_all(m, 0x00404cf2) == ResumeAction::clear_stop_all && !m.valid, "load clears");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_stop_all(m, 0x0040387d) == ResumeAction::clear_stop_all && !m.valid, "session start clears");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_stop_all(m, save_return_va) == ResumeAction::none && resume_on_stop_all(m, 0x00407069) == ResumeAction::none
+              && resume_on_stop_all(m, 0x004d36c2) == ResumeAction::none && m.valid, "save, pause and alt-tab keep the memory");
+        check(resume_on_stop(m, 0x0045c282, 80412, 0xd2, true, 5000) == ResumeAction::none && m.id == 8404, "another MOV_StopMovie caller: ignored");
+        check(resume_on_stop(m, native, 80412, 0x52, true, 5000) == ResumeAction::none && m.id == 8404, "non-music record: ignored");
+        check(resume_on_stop(m, native, 80412, 0xd0, true, 5000) == ResumeAction::none && m.id == 8404, "record not playing: ignored");
+        check(resume_on_stop(m, native, 80412, 0xd2, false, 0) == ResumeAction::forget && !m.valid, "sector stop without a readable position: the old memory goes");
+        check(resume_on_stop(m, native, 80412, 0xd2, true, 0) == ResumeAction::forget && resume_on_stop(m, native, 80412, 0xd2, true, position_limit_ms) == ResumeAction::forget, "zero or out-of-range position: forget");
+        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms) == ResumeAction::none, "no memory: nothing");
+        check(!std::strcmp(resume_action_name(ResumeAction::seek), "seek") && !std::strcmp(pump_end_name(PumpEnd::gzclose), "gzclose"), "names");
+    }
+    check(e_site_va == c_run_call_va && e_target_va == run_va && e_site_va + call_length == e_return_va && (e_site_va & 7) + call_length <= 8
+          && e_post_window[0] == 0x85 && c_post_window[c_post_length - call_length] == 0xe8 && c_post_va + c_post_length == e_return_va, "Patch E constants");
+    check(pump_head[14] == 0x39 && pump_head[16] == media_buffer_state && status_ds_tail[2] == media_flags && status_ds_tail[7] == 0x08 && status_ds_tail[11] == media_ds_value
+          && std::uint32_t(status_ds_tail_va + 28u + (status_ds_tail[24] | status_ds_tail[25] << 8 | status_ds_tail[26] << 16 | std::uint32_t(status_ds_tail[27]) << 24)) == pump_va
+          && status_ds_tail[23] == 0xe9 && gzwrite_thunk[2] == (gzwrite_iat_va & 0xff) && gzwrite_thunk[3] == ((gzwrite_iat_va >> 8) & 0xff), "pump and IAT constants");
     check(a_site_va + a_site_length == a_next_va && c_site_va + call_length == c_return_va && a_window_va + a_site_offset == a_site_va && stop_caller_count == 6 && play_caller_count == 3 && stop_movie_caller_count == 3, "address relations");
     std::printf("music_keep_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
@@ -324,7 +511,13 @@ class MusicSites(unittest.TestCase):
     def test_installed_executable(self):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report['failures'])
-        self.assertEqual(report['check_count'], 48)
+        self.assertEqual(report['check_count'], 69)
+        self.assertEqual(report['gzclose_import_slot'], '0x5323f0')
+        self.assertEqual(report['written']['music_keep_e']['writes_example_thunk_0x0a400000'][:2], 'e8')
+        self.assertEqual(report['written']['music_keep_e']['qword_offset'], 1)
+        self.assertEqual(report['raw_branch_into_site_interior']['0x498d71'], ['0x498d4e'])   # the rejected operand byte of section 7.5
+        self.assertEqual(report['pump_direct_entries'], ['0x4d17cc'])
+        self.assertEqual((report['gzwrite_import_slot'], report['gzwrite_thunks'], report['pump_literal_refs']), ('0x5323e0', 1, 0))
         self.assertEqual(report['written']['music_keep_d']['writes_example_thunk_0x0a300000'][:2], 'e8')
         self.assertEqual(report['direct_callers']['0x4d14e0'], ['0x4983d9'])
         self.assertEqual(sorted(report['direct_callers']['0x4982b0']), sorted(hex(a) for a, _, _, _ in probe.STOP_CALLERS))
@@ -374,6 +567,22 @@ class MusicSites(unittest.TestCase):
             'interior_4983d9': (0x498400, rel(0x498400, 0x4983db)),
             'callers_4d14e0': (0x498400, b'\xe8' + struct.pack('<i', 0x4d14e0 - 0x498405)),
             'sha256': (0x498400, b'\x90'),
+            'window_pump_head': (0x4d0700 + 15, b'\x7e\x4c'),            # cmp [esi+0x4c]
+            'pump_contract': (0x4d0700 + 15, b'\x7e\x4c'),
+            'window_pump_end': (0x4d0c0c + 29, b'\xb8\x01'),             # mov ax,1 on the drain exit
+            'window_status_ds_tail': (0x4d17b5 + 11, b'\x20'),           # test al,0x20
+            'pump_ds_gate': (0x4d17b5 + 11, b'\x20'),
+            'window_e_post_window': (0x498d76 + 7, b'\x31'),             # xor ecx,ecx spelled differently
+            'call_music_keep_e': (0x498d71 + 1, b'\x00'),
+            'interior_498d71': (0x498400, rel(0x498400, 0x498d73)),
+            'pump_only_entry_is_status_ds_tail': (0x498400, b'\xe8' + struct.pack('<i', 0x4d0700 - 0x498405)),
+            'pump_no_literal_refs': (0x498400, struct.pack('<I', 0x4d0700)),
+            'window_gzwrite_thunk': (0x4fae46 + 2, b'\xe4'),             # jmp [0x5323e4]
+            'gzwrite_iat_slot': (0x4fae46 + 2, b'\xe4'),
+            'window_position_reader': (0x4d0600 + 27, b'\x28'),          # vtbl +0x28
+            'position_reader_contract': (0x4d0600 + 27, b'\x28'),
+            'window_gzclose_wrapper': (0x4e9360 + 32, b'\xcf'),           # the wrapper's call lands one byte later
+            'save_gzclose_path': (0x4e9360 + 32, b'\xcf'),
         }
         for failed, change in cases.items():
             with self.subTest(check=failed):
@@ -425,8 +634,8 @@ class MusicSites(unittest.TestCase):
         asm = text[text.index('asm(R"('):text.index('.att_syntax')]
         stubs = re.split(r'\n\s*\.globl _', asm)[1:]
         self.assertEqual([s.split(':', 1)[0].split('\n')[0].strip() for s in stubs],
-                         ['x3m_music_keep_a_stub', 'x3m_music_keep_c_thunk', 'x3m_music_keep_status_thunk', 'x3m_music_keep_entry_stub', 'x3m_music_keep_stop_movie_stub',
-                          'x3m_music_trace_stop_stub', 'x3m_music_trace_play_stub', 'x3m_music_trace_stop_movie_stub'])
+                         ['x3m_music_keep_a_stub', 'x3m_music_keep_c_thunk', 'x3m_music_keep_status_thunk', 'x3m_music_keep_run_thunk', 'x3m_music_keep_entry_stub',
+                          'x3m_music_keep_stop_movie_stub', 'x3m_music_trace_stop_stub', 'x3m_music_trace_play_stub', 'x3m_music_trace_stop_movie_stub'])
         for stub in stubs:
             lines = [l.strip() for l in stub.split('\n')[1:] if l.strip() and not l.strip().startswith('.')]
             body = [re.sub(r'^\d+:\s*', '', l) for l in lines[1:]]
@@ -462,10 +671,33 @@ class MusicSites(unittest.TestCase):
         self.assertEqual(status, ['pushfd', 'push eax', 'push ecx', 'push edx', 'push ecx', 'call _x3m_music_keep_status', 'add esp, 4', 'cmp eax, 1', 'je 1f',
                                   'pop edx', 'pop ecx', 'pop eax', 'popfd', 'jmp dword ptr [_x3m_music_status_original]',
                                   '1: pop edx', 'pop ecx', 'pop eax', 'popfd', 'mov eax, 1', 'ret'])
-        for stub in stubs[3:]:
+        # Patch E thunk: the record (EAX) is the handler's one argument; 1 -> `mov eax, 1; ret` (no Run), else the tail jump
+        # to 0x004d1870 with EAX/ECX/EDX/EFLAGS restored.
+        run = [re.sub(r'\s+', ' ', l.strip()) for l in stubs[3].split('\n')[2:] if l.strip() and not l.strip().startswith('.')]
+        self.assertEqual(run, ['pushfd', 'push eax', 'push ecx', 'push edx', 'push eax', 'call _x3m_music_keep_run', 'add esp, 4', 'cmp eax, 1', 'je 1f',
+                               'pop edx', 'pop ecx', 'pop eax', 'popfd', 'jmp dword ptr [_x3m_music_run_original]',
+                               '1: pop edx', 'pop ecx', 'pop eax', 'popfd', 'mov eax, 1', 'ret'])
+        # Patch C thunk: bit 4 rewrites the seek's start argument ([esp+4] at entry + 16 saved bytes) before the optional pause.
+        seek = [re.sub(r'\s+', ' ', l.strip()) for l in stubs[1].split('\n')[2:] if l.strip() and not l.strip().startswith('.')]
+        at = seek.index('test eax, 4')
+        self.assertEqual(seek[at - 2:at + 6], ['cmp eax, 1', 'je 1f', 'test eax, 4', 'jz 4f', 'mov ecx, dword ptr [_x3m_music_keep_resume_ms]',
+                                               'mov dword ptr [esp+0x14], ecx', '4: test eax, 2', 'jz 2f'])
+        # The pump and pause shims (second asm block): EBX/ESI/EDI/EBP saved, EAX = the argument at [esp+4] + 16; the pump's
+        # AX zero-extended.
+        shim = text[text.index('_x3m_music_keep_call_pump:'):]
+        shim = [l.strip() for l in shim[:shim.index('.att_syntax')].split('\n')[1:] if l.strip() and not l.strip().startswith('.')]
+        self.assertEqual(shim, ['push ebx', 'push esi', 'push edi', 'push ebp', 'mov eax, dword ptr [esp+0x14]', 'call dword ptr [_x3m_music_pump_fn]',
+                                'movzx eax, ax', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret',
+                                '_x3m_music_keep_call_pause:', 'push ebx', 'push esi', 'push edi', 'push ebp', 'mov eax, dword ptr [esp+0x14]',
+                                'call dword ptr [_x3m_music_pause_fn]', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret'])
+        for stub in stubs[4:7]:
             self.assertIn('push esp', stub)
+        # The play and stop-movie trace stubs pass the saved block and ESI (the calling KC task), then pop both.
+        for stub, handler in ((stubs[7], 'x3m_music_trace_play'), (stubs[8], 'x3m_music_trace_stop_movie')):
+            body = [re.sub(r'\s+', ' ', l.strip()) for l in stub.split('\n')[2:] if l.strip() and not l.strip().startswith('.')]
+            self.assertEqual(body[4:9], ['mov eax, esp', 'push esi', 'push eax', 'call _' + handler, 'add esp, 8'])
         # The entry stub loops on the handler until it returns 0, pausing each record through the engine's 0x004d1810.
-        entry = stubs[3]
+        entry = stubs[4]
         self.assertLess(entry.index('call _x3m_music_keep_stop_all_entry'), entry.index('test eax, eax'))
         self.assertLess(entry.index('test eax, eax'), entry.index('call dword ptr [_x3m_music_pause_fn]'))
         self.assertIn('jmp 1b', entry)
@@ -483,6 +715,13 @@ class MusicSites(unittest.TestCase):
         cut = probe.parse_line('music_walk_cut frame=1 seq=2 qpc=3 walk=find_record limit=4096 cuts=1')
         self.assertEqual((cut['kind'], cut['walk'], cut['limit']), ('music_walk_cut', 'find_record', 4096))
         self.assertEqual(probe.parse_line('music_keep_stop_movie frame=1 seq=2 qpc=3 id=2004 caller=0x00499886 name=MOV_StopMovie dropped=1 holds=0')['dropped'], 1)
+        pump = probe.parse_line('music_keep_save_pump frame=900 seq=40 qpc=1 record=0x0a3f1240 id=8404 calls=12 ret0=0 ret1=12 ret2=0 ret_other=0 writes=812345 samples=25386 '
+                                'span_ms=2890 first_call_ms=31 max_gap_ms=262 end_ms=3010 pump_end=gzclose close_caller=0x004e9365 end=replay run=skipped buffer_state=2 interval_ms=250')
+        self.assertEqual((pump['kind'], pump['calls'], pump['ret1'], pump['span_ms'], pump['pump_end'], pump['run']), ('music_keep_save_pump', 12, 12, 2890, 'gzclose', 'skipped'))
+        resume = probe.parse_line('music_keep_resume frame=1 seq=2 qpc=3 id=8404 saved_ms=63000 action=seek at=play other_id=8404')
+        self.assertEqual((resume['kind'], resume['id'], resume['saved_ms'], resume['action']), ('music_keep_resume', 8404, 63000, 'seek'))
+        hook = probe.parse_line('music_keep_save_pump_hook reason=ok save_mode=keep_running iat=0x005323e0 thunk=0x004fae46 write_row=1 close_row=1')
+        self.assertEqual((hook['kind'], hook['reason'], hook['iat']), ('music_keep_save_pump_hook', 'ok', 0x5323e0))
         install = probe.parse_line('music_keep requested=1 patched=1 reason=ok site_a=0x004982db site_c=0x00498d54 write_a=atomic write_c=atomic')
         self.assertEqual((install['patched'], install['reason'], install['site_a']), (1, 'ok', 0x4982db))
         rows = [probe.parse_line(l) for l in (
@@ -513,13 +752,42 @@ class MusicSites(unittest.TestCase):
                        'core::acquire_shared(ops, s, spec, stub, continuation, reason)', 'core::release_shared(ops, s)', 'window_matches(', 'LiveClaim{'):
             self.assertIn(needle, module)
         # Every handler is inert unless its feature's install completed (armed_), so a stub left chained by a failed rollback behaves as vanilla.
-        self.assertEqual(module.count('if (!keep_armed_'), 6)   # the five handlers and Present's active-flag sample
+        self.assertEqual(module.count('if (!keep_armed_'), 10)   # the eight handlers, the save pump's bind and Present's active-flag sample
         # Patch D is optional: its refusal disables skip_all (alt-tab paused) instead of refusing the keep; rollback and shutdown restore it.
         for needle in ('status_windows_match()', 'engine_patch::claim_call(d_site_, d_site_va, d_target_va', 'engine_patch::restore_call(d_site_)',
-                       'decide_stop(holds_, record, flags, id, media, return_va, status_gate_)', 'decide_status(holds_, record, flags, id, media, 0, input)',
+                       'decide_stop(holds_, record, flags, id, media, return_va, status_gate_, save_pump_free)', 'decide_status(holds_, record, flags, id, media, 0, input)',
                        'music_keep_active', 'alt_tab_mode=%s', 'release_for(entry_site_, keep_entry_acquired_)', 'release_for(stop_movie_site_, trace_stop_movie_acquired_)'):
             self.assertIn(needle, module)
         self.assertEqual(module.count('engine_patch::restore_call(d_site_)'), 2)
+        # Music through the save and the resume: Patch E optional (its refusal keeps the save paused), restored by rollback
+        # and shutdown; the pump binds only on the verified IAT slot through loading_trace's existing import rows.
+        for needle in ('save_windows_match()', 'engine_patch::claim_call(e_site_, e_site_va, e_target_va', 'set_save_write_observer(observer)',
+                       'iat_slot_mismatch', 'original_mismatch', 'thunk_mismatch', 'rows_not_live', 'late_claim', 'GetProcAddress(zlib, "gzwrite")',
+                       'pump_.arm(record, id, media, GetCurrentThreadId(), qpc(), frequency_)', 'pump_.pump_due(now, GetCurrentThreadId())',
+                       'pump_.on_play(record, id, media, d.action == SeekAction::skip, qpc())', 'pump_.skip_run(record, media, state, qpc())',
+                       'pump_.end_now(PumpEnd::stop_all, qpc())', 'pump_.end_now(PumpEnd::stop_movie, qpc())', 'pump_.stop(PumpEnd::gzclose, qpc())',
+                       'resume_on_play(resume_, id, start_ms, d.action, resume_ms)', 'resume_on_stop(resume_, return_va, id, flags, read, ms)',
+                       'resume_on_stop_all(resume_, return_va)', 'bytes_match(position_reader_va, position_reader, position_reader_length)',
+                       'music_keep_save_pump ', 'music_keep_resume ', 'music_keep_save_pump_hook',
+                       # review fixes: the fallback pause, the save's own gzclose, the overdue replay at Present, the boundary behind the fast paths
+                       'run_fallback(cpu)', 'x3m_music_keep_call_pause(pump_.record)', 'holds_.set_mode(pump_.record, pump_.id, pump_.media, StopMode::paused)',
+                       'return_va != gzclose_wrapper_return_va', 'caller_return_va != save_gzclose_return_va', 'music_keep_replay_check()',
+                       'return music_keep_run_marked(record);', 'music_keep_gz_write_sampled();', 'fallback=%s fallback_reason=%s',
+                       'call_targets(save_gzclose_call_va, gzclose_wrapper_va)', 'std::uintptr_t(close_slot) != gzclose_iat_va',
+                       # the trace's task fields at T2 / T3
+                       'read_task(task, t)', 'read_cell(t, trace_cells[i], tags[i], values[i])', 'alert_record_ptr_va', 'a1_slot=%lu a2_task=%lu',
+                       'c6=%u:0x%08lx c8=%u:0x%08lx'):
+            self.assertIn(needle, module)
+        self.assertEqual(module.count('engine_patch::restore_call(e_site_)'), 2)
+        self.assertEqual(module.count('cpu.before_original();'), 3)   # the pump call, the fallback pause and the position read run on the engine's MXCSR / LastError
+        self.assertLess(capture.index('loading_trace::initialize();'), capture.index('music_keep::save_pump_report();'))
+        self.assertIn('loading_trace::save_write_observer_requested()', capture)
+        tracer = source_text(ROOT / 'src/proxy/loading_trace.cpp')
+        self.assertIn('{"zlib1.dll","gzwrite",reinterpret_cast<PVOID>(gz_write)}', tracer)
+        self.assertIn('reinterpret_cast<uintptr_t>(&file) + sizeof file', tracer)   # the caller's return above the argument
+        self.assertEqual(tracer.count('bind_save_observer();'), 2)   # both install paths (telemetry and rows alone)
+        self.assertIn('(music && save_write_row(hook))', tracer)
+        self.assertNotIn('music_keep', tracer.replace('"music_keep"', ''))   # no link dependency of the loading fixture on the keep
         self.assertEqual(module.count('if (!trace_armed_) return;'), 3)
         # Every window check sees through the live shared claims (the run271 refusal): bytes_match is the only comparison, and it overlays both shared sites.
         body = module[module.index('bool bytes_match('):module.index('bool call_targets(')]
@@ -529,7 +797,9 @@ class MusicSites(unittest.TestCase):
         self.assertIn('x3m_music_stop_all_skip = a_skip_va', module)
         audit = source_text(ROOT / 'verification/probe/check_no_x87.py')
         for symbol in ('_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub', '_x3m_music_keep_stop_all',
-                       '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie', '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie'):
+                       '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie', '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
+                       '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close', '_x3m_music_keep_call_pump',
+                       '_x3m_music_keep_call_pause'):
             self.assertIn(f"'{symbol}'", audit)
 
 

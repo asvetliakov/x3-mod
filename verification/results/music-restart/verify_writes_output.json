@@ -18,6 +18,14 @@
   "window_d_caller_window": true,
   "window_status_head": true,
   "window_status_ended_window": true,
+  "window_pump_head": true,
+  "window_pump_end": true,
+  "window_status_ds_tail": true,
+  "window_e_post_window": true,
+  "window_gzwrite_thunk": true,
+  "window_position_reader": true,
+  "window_gzclose_wrapper": true,
+  "window_gzclose_thunk": true,
   "a_skip_is_bookkeeping_label": true,
   "a_je_consumes_tail_cmp": true,
   "a_next_record_is_loop_continue": true,
@@ -29,6 +37,18 @@
   "stop_movie_calls_pause": true,
   "call_music_keep_d": true,
   "status_inactive_arm": true,
+  "call_music_keep_e": true,
+  "pump_only_entry_is_status_ds_tail": true,
+  "pump_contract": true,
+  "pump_ds_gate": true,
+  "pump_no_literal_refs": true,
+  "gzwrite_iat_slot": true,
+  "gzwrite_single_thunk": true,
+  "save_caller": true,
+  "position_reader_contract": true,
+  "combat_ids": true,
+  "save_gzclose_path": true,
+  "run_skip_bound": true,
   "stop_callers": true,
   "play_callers": true,
   "stop_movie_callers": true,
@@ -38,6 +58,7 @@
   "interior_498810": true,
   "interior_498d54": true,
   "interior_4983d9": true,
+  "interior_498d71": true,
   "callers_4982b0": true,
   "callers_498c90": true,
   "callers_498810": true,
@@ -50,7 +71,7 @@
   "stop_movie_callers_are_the_table": true,
   "no_literal_refs": true
  },
- "check_count": 48,
+ "check_count": 69,
  "windows": {
   "a_window": 38,
   "a_skip_window": 15,
@@ -64,6 +85,14 @@
   "d_caller_window": 41,
   "status_head": 38,
   "status_ended_window": 12,
+  "pump_head": 55,
+  "pump_end": 37,
+  "status_ds_tail": 28,
+  "gzwrite_thunk": 6,
+  "gzclose_wrapper": 39,
+  "gzclose_thunk": 6,
+  "e_post_window": 35,
+  "position_reader": 120,
   "stop_all_head": 16,
   "play_head": 18,
   "stop_movie_head": 14
@@ -124,6 +153,15 @@
    "callee": "0x4d0430",
    "caller_pops": 4
   },
+  "music_keep_e": {
+   "site": "0x498d71",
+   "length": 5,
+   "original": "e8fa8a0300",
+   "writes_example_thunk_0x0a400000": "e88a72f609",
+   "callee": "0x4d1870",
+   "caller_pops": 0,
+   "qword_offset": 1
+  },
   "music_keep_d": {
    "site": "0x4983d9",
    "length": 5,
@@ -133,6 +171,13 @@
    "caller_pops": 0
   }
  },
+ "pump_direct_entries": [
+  "0x4d17cc"
+ ],
+ "pump_literal_refs": 0,
+ "gzwrite_import_slot": "0x5323e0",
+ "gzwrite_thunks": 1,
+ "gzclose_import_slot": "0x5323f0",
  "direct_callers": {
   "0x4982b0": [
    "0x403878",
@@ -185,11 +230,17 @@
   ],
   "0x498810": [],
   "0x498d54": [],
-  "0x4983d9": []
+  "0x4983d9": [],
+  "0x498d71": [
+   "0x498d4e"
+  ]
  },
  "rejected_operand_byte_hits": {
   "0x498c90": [
    "0x498c6f"
+  ],
+  "0x498d71": [
+   "0x498d4e"
   ]
  },
  "failures": [],
