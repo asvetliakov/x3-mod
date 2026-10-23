@@ -2,7 +2,7 @@
  "run": "189",
  "what": "run189 candidate installed into native C:\\X3",
  "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run188; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
- "installed_at": "2026-10-23T06:52+04:00 (replaces the 06:35 install of 8e0c4c1e\u2026 from 450d1ead)",
+ "installed_at": "2026-10-23T06:38+04:00 (replaces the 06:35 install of 8e0c4c1e\u2026 from 450d1ead)",
  "commit": "ba33e696",
  "candidate_record": "verification/results/run189-candidate-build.json",
  "installed": {
