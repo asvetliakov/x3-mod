@@ -1,0 +1,29 @@
+{
+ "run": "193",
+ "what": "release 1.4.0 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run192; cp /tmp/x3m-release-1.4.0/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-23T14:47+0400",
+ "commit": "bfd9317a",
+ "release_record": "verification/results/release-1.4.0.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "e02cb8079987e5f62a8b6a248743041014f42fa5048e99e2699e7a5194a6d22f",
+  "bytes": 42386261,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 192,
+  "sha256": "62784ae93311a956d0359d0c845fa5afc6896f84cdbb6084eaddd6c976fbf9b8",
+  "bytes": 62433215,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run192"
+ },
+ "x3m_ini": "header line bumped to 1.4.0, body unchanged (hull_lightmap_gain = 2, music_trace = 1); previous file C:\\X3\\x3m.ini.run192",
+ "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.4.0.zip (cmp identical)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418\u2026)",
+  "x3m-regenerate.exe (bb3ba27b\u2026)",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
