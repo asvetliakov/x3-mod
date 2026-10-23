@@ -1976,10 +1976,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     text_density::present(ctx.frame); // X3M_TEXT_DENSITY, s != d: the flagged rows' D3D textures for the filter override
     ui_scale::present(ctx.frame); // X3M_UI_SCALE: the excluded HUD camera for the next frame; under --debug with the
                                   // entry counter live, one ui_scale_frame row per Present
-    if (save_loaded) {
-        fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
-        music_alert::loaded(); // the trigger's fire/hit counters are a new baseline on the next frame
-    }
+    if (save_loaded) fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
+    if (save_loaded) music_alert::loaded(); // the same marker: the trigger's fire/hit counters are a new baseline on the next frame
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per
                                     // 300-frame window
