@@ -1,0 +1,27 @@
+{
+ "run": "189",
+ "what": "run189 candidate installed into native C:\\X3",
+ "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run188; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-23T06:52+04:00 (replaces the 06:35 install of 8e0c4c1e\u2026 from 450d1ead)",
+ "commit": "ba33e696",
+ "candidate_record": "verification/results/run189-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "2f499c29a92c02d47d719c50de3e0641503be726e154d1a5b3f5addf071ffb3f",
+  "bytes": 62234536,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 188,
+  "sha256": "35d04a1fa2586df2",
+  "note": "release 1.3.2 stripped DLL (42,280,909 B)"
+ },
+ "x3m_ini": "music_trace = 1 appended for the Run 189 A flight (previous file saved as x3m.ini.run188); otherwise unchanged",
+ "unchanged": [
+  "X3AP.exe (fdbf3418\u2026)",
+  "x3m-regenerate.exe",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

@@ -1,0 +1,22 @@
+{
+ "run": "189",
+ "what": "music through the save (keep_running + gzwrite pump + Patch E), sector track resume after combat, engaged-only combat music trigger (music_alert), SETA restore after a gate transit (seta_restore), music_trace rows with task/KC IP/frame cells for the track-queue design",
+ "commit": "ba33e696",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (48.5 s wall)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "2f499c29a92c02d47d719c50de3e0641503be726e154d1a5b3f5addf071ffb3f",
+  "bytes": 62234536,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 154 roots, 1040 reachable, 0 violations",
+  "site_verifiers": "verify_music_keep_writes 69 PASS; verify_seta_restore_sites 50 PASS; verify_music_alert_sites 31/18 windows PASS; verify_music_through_save PASS; verify_track_queue PASS; verify_engagement_data PASS; seta_toggle_study PASS",
+  "host_tests": "test_music_keep, test_music_alert, test_seta_restore, test_chase_transition, test_config_schema, test_launcher_defaults, test_logging_tiers: 78 OK; generate.py --check PASS 276 settings; full host suite 302 modules / 2976 tests, failing modules compared against the release commit (run189-host-suite-diff.txt: the one new failure, test_fov_site, was a wiring-text pin fixed in ba33e696; the 40 others fail at the release commit too on this host)",
+  "reviews": "three independent reviews (music keep, seta_restore, music_alert), no blocker, every should-fix applied"
+ },
+ "producer": "main session",
+ "note": "first clean build 8e0c4c1e\u2026 from 450d1ead was installed 06:35 and replaced by this one (capture.cpp wiring line split for test_fov_site, otherwise identical source)"
+}

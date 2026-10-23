@@ -1,0 +1,8 @@
+# Run189 host suite: failing modules vs the release commit 035729dc (WSL2 host, no Wine/CrossOver; 2026-10-23)
+# baseline (035729dc): 300 modules, 2959 tests, 40 failing module(s), 76.6s wall (12 jobs)
+# candidate (450d1ead, pre-fix tree 38626f7d for the suite run): 302 modules, 2976 tests, 41 failing module(s), 88.1s wall (12 jobs)
+# new failures:
+test_fov_site
+# fixed:
+# failing in both (pre-existing on this host):
+lane test_address_space test_bloom_pass_fixture test_bloom_programs test_buffer_lock_observation test_camera_reprojection test_capture_bloom_lifetime test_capture_device_creation test_collide_box_cull test_engine_effects test_engine_ribbons test_exe_identity test_fade_region test_fog_density_cache test_fog_handover test_fog_mass_detail_preview test_fog_mass_detail_refinement test_game_phase_sites test_glass_material_transformer test_lens_flare_cull test_light_phases test_linear_emission_sm1_transformer test_linear_sun_share test_lod_batch_census test_lod_overlay_batch test_lod_overlay_check test_material_motion_report test_mesh_adjacency_fast test_motion_wrap_states test_original_sun_share test_regenerate test_screen_emission_additive_transform test_sector_background test_shadow_cascades test_ship_steering test_snapshot_x3_run test_sun_share_lane test_volumetric_fog test_xt_fixture_execution test_xt_material_transformer test_xt_pixel_execution 
