@@ -33,23 +33,23 @@ struct EngineMemory {
     bool read(std::uint32_t at, void* out, unsigned n) { return x3m::engine_memory::read(at, out, n); }
     void write32(std::uint32_t at, std::uint32_t v) { std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), &v, 4); }
 };
-bool bytes_match(std::uint32_t at, const unsigned char* expected, unsigned length) {
-    return engine_patch::verify_bytes(at, expected, length);
-}
-bool call_targets(std::uint32_t at, std::uint32_t target) {
-    unsigned char code[5]{};
-    if (!engine_patch::read_code(at, code, 5) || code[0] != 0xe8) return false;
-    std::uint32_t rel = 0;
-    std::memcpy(&rel, code + 1, 4);
-    return at + 5 + rel == target;
-}
+core::Mismatch mismatch_{}; // the first window that differed at install (bytes_mismatch), for the install row
+// Every window over its whole length (core::install_windows_match; engine_patch::verify_bytes caps at 16 bytes).
+// The main loop's call at 0x00403f2f is not compared here: the game-phase group may hold that call site in the same
+// install window (music_alert_core.h, the note at walk_caller); the verifier checks it on the unmodified image.
 bool windows_match() {
-    for (const core::Window& w : core::windows)
-        if (!bytes_match(w.va, w.bytes, w.length)) return false;
-    // The main loop's call at 0x00403f2f is not compared here: the game-phase group may hold that call site in the
-    // same install window (music_alert_core.h, the note at walk_caller); the verifier checks it on the unmodified image.
-    return bytes_match(core::site_va, core::site_bytes, core::site_length) &&
-           call_targets(core::walk_caller_va, core::alert_va);
+    return core::install_windows_match(
+        [](std::uint32_t at, unsigned char* out, unsigned n) { return engine_patch::read_code(at, out, n); },
+        mismatch_);
+}
+// Lower-case hex of n bytes into text (2n + 1 chars).
+void hex_bytes(const unsigned char* bytes, unsigned n, char* text) {
+    static const char digits[] = "0123456789abcdef";
+    for (unsigned i = 0; i < n; ++i) {
+        text[2 * i] = digits[bytes[i] >> 4];
+        text[2 * i + 1] = digits[bytes[i] & 15];
+    }
+    text[2 * n] = 0;
 }
 // Pins this DLL for the process lifetime (documented: GET_MODULE_HANDLE_EX_FLAG_PIN): the engine jumps into the stub.
 bool pin_self() {
@@ -162,6 +162,7 @@ engine_patch::SiteSpec site_spec() {
 // Window checks, pin, one claim, one chain; a failure after the claim restores the bytes. A live site that cannot be
 // restored keeps the module registered (patched_) so shutdown() tries again, and armed_ stays false.
 bool install(const char** reason) {
+    mismatch_ = core::Mismatch{};
     if (!engine_patch::install_window_open()) {
         *reason = "late_claim";
         return false;
@@ -224,12 +225,28 @@ bool initialize() {
         state_ = "executable_mismatch";
     else
         applied = install(&state_);
-    log("music_alert trigger=%s hold_ms=%lu hold_source=%s patched=%u armed=%u reason=%s site=0x%08lx continue=0x%08lx write=%s stub=0x%08lx windows=%u walk_limit=%u",
+    // window=: the first mismatching window (bytes_mismatch only), its leading bytes as expected and as read.
+    char window[16] = "none", expected[2 * core::mismatch_shown + 1] = "-", got[2 * core::mismatch_shown + 1] = "-";
+    if (mismatch_.name) {
+        const unsigned char va[4] = {static_cast<unsigned char>(mismatch_.va >> 24),
+                                     static_cast<unsigned char>(mismatch_.va >> 16),
+                                     static_cast<unsigned char>(mismatch_.va >> 8),
+                                     static_cast<unsigned char>(mismatch_.va)};
+        window[0] = '0';
+        window[1] = 'x';
+        hex_bytes(va, 4, window + 2);
+        hex_bytes(mismatch_.expected, mismatch_.shown, expected);
+        if (mismatch_.readable)
+            hex_bytes(mismatch_.got, mismatch_.shown, got);
+        else
+            std::memcpy(got, "unreadable", sizeof "unreadable");
+    }
+    log("music_alert trigger=%s hold_ms=%lu hold_source=%s patched=%u armed=%u reason=%s site=0x%08lx continue=0x%08lx write=%s stub=0x%08lx windows=%u walk_limit=%u window=%s window_name=%s expected=%s got=%s",
         trigger == core::Trigger::vanilla ? "vanilla" : trigger == core::Trigger::engaged ? "engaged" : "invalid",
         static_cast<unsigned long>(hold_ms_), hold_source_, patched_ ? 1u : 0u, armed_ ? 1u : 0u, state_,
         static_cast<unsigned long>(core::site_va), static_cast<unsigned long>(x3m_music_alert_continue),
         write_kind(site_.patched_in, site_.atomic_write), static_cast<unsigned long>(address_of(&x3m_music_alert_stub)),
-        core::window_count + 1, core::list_walk_limit);
+        core::window_count + 1, core::list_walk_limit, window, mismatch_.name ? mismatch_.name : "-", expected, got);
     SetLastError(error);
     return applied;
 }
