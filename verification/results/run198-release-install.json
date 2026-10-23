@@ -1,0 +1,30 @@
+{
+ "run": "198",
+ "what": "release 1.5.0 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run197; cp /tmp/x3m-release-1.5.0/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-24T02:38+0400",
+ "commit": "624d1165",
+ "release_record": "verification/results/release-1.5.0.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "7b4125faa160d3471f1d6f306721d1d7dae6380b6f6594b03ac843ae029cf2e8",
+  "bytes": 42416112,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 197,
+  "sha256": "5a42d68aa076059c",
+  "bytes": 62562741,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run197",
+  "note": "release 1.4.1 stays as d3d9.dll.run196"
+ },
+ "x3m_ini": "header line bumped to 1.5.0; the Run 197 A 'debug = 1' line reverted to the template ';debug = 0' (the flight log had reached 1.31 GB); previous file C:\\X3\\x3m.ini.run197; seta_manual_flight absent, default 2",
+ "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.5.0.zip (cmp identical)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418…)",
+  "x3m-regenerate.exe (bb3ba27b…)",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

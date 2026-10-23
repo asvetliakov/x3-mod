@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.5.0
+
+2026-10-24, `python3 tools/release/release.py --out /tmp/x3m-release-1.5.0 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 63.0 s wall: dll 59.9 s, package 2.3 s), clean main `624d1165` ([record](../../verification/results/release-1.5.0.json)).
+
+- Over 1.4.1 (Run197, Run 197 A flown and confirmed): **`seta_manual_flight`** (default 2). Steering, strafing, speed and look input no longer switch SETA off (the engine's input stop at `0x0041211d` becomes the warp-1.0 path), and under SETA the ship handles in real time: the yaw/pitch/roll controllers scale the commanded rate by 1/k and the ramp step by 1/k², the strafe per-frame limit by 1/k, with k the effective rate including the load governor and the scale applied only above 1.0 on both; mouse-delta axis types 1–3 are skipped. Forward speed, speed-key steps, turret rotation, auto-level roll and the slip settle stay in game time; gate, docking, death and the SETA key still stop SETA ([note](../architecture/seta-manual-flight.md), [RE](../reverse-engineering/seta-manual-flight.md), [ledger](seta-manual-flight.md)).
+- DLL: stripped `7b4125fa…` (42,416,112 B; 0 warnings, x87 0 / 1060 reachable, strip identity PASS, 17 exports, debuglink), unstripped `e4a83f94…` and `d3d9.debug` `dee8775e…` kept at /tmp/x3m-release-1.5.0/. Installed into native `C:\X3` as Run198, rollback `rollback-d3d9\d3d9.dll.run197` (the Run197 unstripped build `5a42d68a…`; release 1.4.1 stays as `.run196`) ([install](../../verification/results/run198-release-install.json)).
+- Zip `x3m-1.5.0.zip` `9eb3b61d…` (60,169,222 B): 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.5.0`; `generate --check` PASS (278 settings, 128 in the template). The user's `x3m.ini` header bumped to 1.5.0 and the Run 197 A `debug = 1` reverted to the template default (previous file `x3m.ini.run197`).
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`).
+- Flown before the release build: Run 197 A (the user: works fine; log: installed row with every site active, 90 scale rows, ×10 target 8660 → scaled 866 with `ship_rate_k` 8660, strafe sites applied, no rate, mouse or contract skips). The release differs from Run197 by the version string and the strip.
+
 ## Release 1.4.1
 
 2026-10-23, `python3 tools/release/release.py --out /tmp/x3m-release-1.4.1 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 68.2 s wall: dll 65.2 s, package 2.3 s), clean main `c8071537` ([record](../../verification/results/release-1.4.1.json)).
