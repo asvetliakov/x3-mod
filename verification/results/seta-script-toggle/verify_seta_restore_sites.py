@@ -190,6 +190,13 @@ check(rd(const('set_autopilot_off_va'), 7) == bytes([0x81, 0x60, flags]) + struc
 check(rd(const('get_flags_va'), 3) == bytes([0x8b, 0x40, flags]),
       '%08x SA_GetFlags: mov eax,[eax+0x%x] (the flag 2004::CanWarp tests)' % (const('get_flags_va'), flags))
 
+print('Ship-script id the re-bind compares (the engine reads it as the ship script key)')
+script = const('ship_script')
+check(rd(const('event_script_read_va'), 6) == bytes([0x8b, 0x80]) + struct.pack('<I', script),
+      '%08x SA_GetEventObject: mov eax,[eax+0x%x]' % (const('event_script_read_va'), script))
+check(rd(const('can_land_script_read_va'), 6) == bytes([0x8b, 0x8e]) + struct.pack('<I', script),
+      '%08x CanLand call: mov ecx,[esi+0x%x] (the script key passed to 0x0049f4c0)' % (const('can_land_script_read_va'), script))
+
 print('Shared injection site and engine globals')
 inject = const('inject_site_va')
 check(rd(inject, 6) == bytes.fromhex('558bec83e4f0'), '%08x input routine entry 55 8b ec 83 e4 f0' % inject)

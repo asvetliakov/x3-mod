@@ -162,6 +162,13 @@ constexpr std::uint16_t ship_class = 7, sector_class = 1, alive_marker = 0xcafe;
 // (seta-script-toggle.md section 2, ship-navigation-ai.md "Player autopilot"). Only an autopilot transit arms.
 constexpr unsigned ship_flags = 0x40;
 constexpr std::uint32_t autopilot_bit = 0x80000;
+// The ship-script id [ship+0x94] (the key the engine passes to 0x0049f4c0 for the ship's script: CanWarp, CanLand,
+// CollisionWarn; SA_GetEventObject 0x004607f4 reads it after the native-id lookup). Run 190: one value (0xfffebb1e,
+// the chase restore's ship_id_from/to) across every re-pointed player-ship object of the transits, so the re-bind
+// requires it to equal the value read at the arm. 0 (no script object) is no identity. Pinned by the site verifier:
+// `mov eax,[eax+0x94]` at 0x004607f4 (SA_GetEventObject) and `mov ecx,[esi+0x94]` at 0x0045d8a3 (the CanLand call).
+constexpr unsigned ship_script = 0x94;
+constexpr std::uint32_t event_script_read_va = 0x004607f4, can_land_script_read_va = 0x0045d8a3;
 constexpr std::uint32_t set_autopilot_on_va = 0x00463e88, set_autopilot_off_va = 0x00463ea7, get_flags_va = 0x004637df;
 
 // ---- the story constants, valid for one story build only (seta_toggle_study.txt) ----
@@ -273,7 +280,7 @@ enum Refusal : unsigned {
     refuse_none = 0,
     refuse_story_build = 1,  // the VM's story build is not story_build: the feature stays off for the process
     refuse_same_transit = 2, // a second gate stop from the departure sector of the previous arm
-    refuse_unreadable = 3,   // player ship, its sector, the sector id or the ship's flags unreadable at the arm
+    refuse_unreadable = 3,   // player ship, its sector, the sector id, its flags or (to arm) its script id unreadable/0
     refuse_build_unreadable = 4, // the VM's build id unreadable at a SETA stop: not this write (row once, not latched)
     refuse_count = 5
 };
@@ -289,25 +296,29 @@ inline const char* refusal_name(unsigned r) noexcept {
 }
 // The player-ship check at the injection site when *(M+0x38) is not the ticket's ship. The gate transit re-points
 // *(M+0x38) once (Run 190: every arm saw exactly one change, at the first entry after the loading stall): one change to
-// a live ship object (class 7, marker 0xcafe) parented to a live sector (class 1, marker 0xcafe) whose id is not the
-// departure sector's re-binds the ticket; every other outcome cancels (ship_change) and names itself in the row.
+// a live ship object (class 7, marker 0xcafe) with the arm's ship-script id, parented to a live sector (class 1, marker
+// 0xcafe) whose id is not the departure sector's, re-binds the ticket. A live ship with that id whose parent is not yet
+// a live sector (no_sector) defers: no cancel, the re-bind not consumed, polled again at later entries until the parent
+// is live or the ticket expires (one rebind_pending row). Every other outcome cancels (ship_change) and names itself.
 enum class ShipCheck : unsigned {
     none = 0,
     rebound = 1,
-    unreadable = 2,   // *(M+0x38) unreadable, null or misaligned, or the object's class/marker unreadable
+    unreadable = 2,   // *(M+0x38) unreadable, null or misaligned, or the object's class/marker or script id unreadable
     not_ship = 3,     // readable, but not a live class-7 object
-    no_sector = 4,    // its parent unreadable, null, not a live sector, or the sector id unreadable/0
+    no_sector = 4,    // its parent unreadable, null, not a live sector, or the sector id unreadable/0 (defers)
     same_sector = 5,  // its sector is still the departure sector
     second = 6,       // the ticket was already re-bound once
-    count = 7
+    identity = 7,     // its ship-script id [+0x94] is not the one read at the arm
+    count = 8
 };
 inline const char* ship_check_name(ShipCheck c) noexcept {
     static const char* const names[unsigned(ShipCheck::count)] = {"none",      "rebound",     "unreadable", "not_ship",
-                                                                   "no_sector", "same_sector", "second"};
+                                                                   "no_sector", "same_sector", "second",     "identity"};
     return unsigned(c) < unsigned(ShipCheck::count) ? names[unsigned(c)] : "?";
 }
 // restored: the wrapper ran StartFastForward (AL 1); restore_failed: AL 0, the method did not resolve; rebound: the
-// ticket follows the transit's new player-ship object; skipped: a gate stop not armed (a manual gate pass).
+// ticket follows the transit's new player-ship object; rebind_pending: the new object passed the identity check but its
+// sector is not live yet (once per ticket); skipped: a gate stop not armed (a manual gate pass).
 enum class Row : unsigned {
     none = 0,
     armed = 1,
@@ -316,7 +327,8 @@ enum class Row : unsigned {
     restored = 4,
     restore_failed = 5,
     rebound = 6,
-    skipped = 7
+    skipped = 7,
+    rebind_pending = 8
 };
 struct Clock {
     std::uint64_t frame = 0, ms = 0; // Present count, GetTickCount64
@@ -337,10 +349,13 @@ struct Report {
     std::uint32_t old_factor = 0, new_factor = 0, ip = 0, ret = 0, build = 0, ship = 0, sector = 0, sector_id = 0,
                   ready_sector = 0, result = 0, skipped = 0;
     Scan scan = Scan::none;
-    // the re-bind (rebound row; new_ship also on a ship_change cancel): the ticket's ship id +8 read at the arm (0:
-    // unreadable), the new player ship, its id, its sector and that sector's id (0 where not read)
+    // the re-bind (rebound and rebind_pending rows; new_ship also on a ship_change cancel): the ticket's ship id +8
+    // read at the arm (0: unreadable) and its ship-script id +0x94, the new player ship, its id, its script id, its
+    // sector and that sector's id (0 where not read); record only, the new ship's flags +0x40 (rebound row)
     ShipCheck ship_check = ShipCheck::none;
     std::uint32_t ship_id = 0, new_ship = 0, new_ship_id = 0, new_sector = 0, new_sector_id = 0;
+    std::uint32_t script_id = 0, new_script_id = 0, new_flags = 0;
+    bool new_flags_readable = false;
     // record only (record_speed): the current player ship's [+0x10]/[+0x14] at the row
     bool speed_readable = false;
     std::uint32_t speed_ship = 0, speed = 0, desired_speed = 0;
@@ -359,15 +374,18 @@ struct Report {
 //   bool kind(std::uint32_t obj, std::uint16_t& cls, std::uint16_t& marker)   u16 [obj+0x48], u16 [obj+0x9c]
 //   bool speed(std::uint32_t ship, std::uint32_t& cur, std::uint32_t& desired)   [ship+0x10], [ship+0x14]
 //   bool flags(std::uint32_t ship, std::uint32_t& f)     [ship+0x40]
+//   bool script(std::uint32_t ship, std::uint32_t& id)   [ship+0x94]
 struct State {
     Phase phase = Phase::idle;
     bool disabled = false;            // story build refused (latched)
     bool build_unreadable_logged = false;
     std::uint32_t ship = 0, sector = 0, sector_id = 0, epoch = 0, ready_sector = 0, skipped = 0, ship_id = 0;
-    bool rebound = false; // this ticket has followed one player-ship change
+    std::uint32_t script_id = 0; // the ticket's ship-script id [+0x94] at the arm (non-zero); a re-bind must match it
+    bool rebound = false;        // this ticket has followed one player-ship change
+    bool pending = false;        // this ticket logged its rebind_pending row (a re-bind waits for the new ship's sector)
     std::uint32_t transit_id = 0;     // departure sector id of the last arm (one arm per transit)
     std::uint64_t arm_frame = 0, arm_ms = 0, ready_frame = 0, walk_frame = ~std::uint64_t(0);
-    std::uint64_t arms = 0, restores = 0, restore_failures = 0, rebinds = 0, cancels[cancel_count]{},
+    std::uint64_t arms = 0, restores = 0, restore_failures = 0, rebinds = 0, pendings = 0, cancels[cancel_count]{},
                   refusals[refuse_count]{}, skips[skip_count]{};
 
     bool active() const noexcept { return phase != Phase::idle; }
@@ -409,6 +427,8 @@ struct State {
         r.flags = f;
         r.autopilot = (f & autopilot_bit) != 0;
         if (id == transit_id) return refuse(r, refuse_same_transit);
+        const bool script_read = p.script(s, r.script_id) && r.script_id;
+        if (!script_read) r.script_id = 0;
         if (!r.autopilot) { // a manual gate pass: nothing armed, the transit not recorded
             if (!p.object_id(s, r.ship_id)) r.ship_id = 0; // record only
             r.row = Row::skipped;
@@ -416,12 +436,15 @@ struct State {
             ++skips[skip_manual];
             return r;
         }
+        if (!script_read) return refuse(r, refuse_unreadable); // no identity for the transit's re-bind
         phase = Phase::armed;
         ship = s;
         ship_id = 0;
         if (!p.object_id(s, ship_id)) ship_id = 0; // record only
         r.ship_id = ship_id;
+        script_id = r.script_id;
         rebound = false;
+        pending = false;
         sector = sec;
         sector_id = transit_id = id;
         epoch = now.epoch;
@@ -456,10 +479,17 @@ struct State {
         std::uint32_t player = 0;
         const bool player_read = p.player(player);
         if (!player_read || player != ship) {
-            out.new_ship = player;
+            out.new_ship = player; // ship= stays the ticket's own (base)
             out.ship_check = player_read ? rebind_check(player, p, out) : ShipCheck::unreadable;
+            if (out.ship_check == ShipCheck::no_sector) { // the right ship, its sector not live yet: poll again
+                if (!pending) {
+                    pending = true;
+                    ++pendings;
+                    out.row = Row::rebind_pending;
+                }
+                return false;
+            }
             if (out.ship_check != ShipCheck::rebound) {
-                out.ship = player;
                 cancel(out, cancel_ship_change, now);
                 return false;
             }
@@ -516,14 +546,20 @@ struct State {
     }
 
 private:
-    // A player-ship change while active: one change to a live ship in a live sector other than the departure sector
-    // re-binds; the reads fill out's new_* fields as far as they got.
+    // A player-ship change while active: one change to a live ship with the arm's ship-script id in a live sector other
+    // than the departure sector re-binds (no_sector defers, see ShipCheck); the reads fill out's new_* fields as far as
+    // they got.
     template <class Probe> ShipCheck rebind_check(std::uint32_t player, Probe& p, Report& out) noexcept {
         if (rebound) return ShipCheck::second;
         std::uint16_t cls = 0, marker = 0;
         if (!player || (player & 3) || !p.kind(player, cls, marker)) return ShipCheck::unreadable;
         if (cls != ship_class || marker != alive_marker) return ShipCheck::not_ship;
         if (!p.object_id(player, out.new_ship_id)) out.new_ship_id = 0; // record only
+        if (!p.script(player, out.new_script_id)) {
+            out.new_script_id = 0;
+            return ShipCheck::unreadable;
+        }
+        if (!script_id || out.new_script_id != script_id) return ShipCheck::identity;
         std::uint32_t sec = 0, id = 0;
         if (!p.parent(player, sec) || !sec || (sec & 3)) return ShipCheck::no_sector;
         out.new_sector = sec;
@@ -531,6 +567,8 @@ private:
             return ShipCheck::no_sector;
         out.new_sector_id = id;
         if (id == sector_id) return ShipCheck::same_sector; // ids are unique within a session (monotonic)
+        out.new_flags_readable = p.flags(player, out.new_flags); // record only (the autopilot bit)
+        if (!out.new_flags_readable) out.new_flags = 0;
         return ShipCheck::rebound;
     }
     Report base(const Clock& now) const noexcept {
@@ -538,6 +576,7 @@ private:
         r.frame = now.frame;
         r.ship = ship;
         r.ship_id = ship_id;
+        r.script_id = script_id;
         r.sector = sector;
         r.sector_id = sector_id;
         r.ready_sector = ready_sector;
