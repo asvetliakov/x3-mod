@@ -1,0 +1,21 @@
+{
+ "run": "192",
+ "what": "Run191 + runtime story-site detection (methods by name, unique opcode signatures; story_builds.h last-resort check; combat by alert edge), music_alert walk performance (span reads, node budget 3600, reads/visited rows), music_keep pump stride 1024 and KC-check guard order",
+ "commit": "26bda29c",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (49.0 s wall)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "62784ae93311a956d0359d0c845fa5afc6896f84cdbb6084eaddd6c976fbf9b8",
+  "bytes": 62433215,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 158 roots, 1060 reachable, 0 violations",
+  "site_verifiers": "verify_seta_restore_sites 73 PASS (host detector reproduces Mayhem 1558d/15ef8 and stock 157a6/160d1); verify_music_queue_kc PASS per build; verify_music_keep_writes 79 PASS; verify_music_alert_sites 32 PASS",
+  "host_tests": "test_music_keep, test_seta_restore, test_music_alert, test_chase_transition, test_config_schema, test_launcher_defaults: OK",
+  "reviews": "story detection (no blocker; 2 should-fix queued for the next build: instruction-start matching, retry of transient failures); music_alert performance (bench before/after in verification/results/music-alert-walk-bench)"
+ },
+ "producer": "main session"
+}
