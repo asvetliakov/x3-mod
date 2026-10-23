@@ -313,6 +313,10 @@ SETTINGS = [
     # ---------------------------------------------------------------- audio
     entry('music_keep', 'bool', 'audio', 'Sector music keeps playing where it was across switching windows, saving and pausing, '
           'instead of restarting. 1 = on, 0 = off.', '1', launcher='--music-keep'),
+    entry('music_queue', 'bool', 'audio', 'When you change sector, the music track that is playing finishes before the new '
+          'sector\'s track starts; several sector changes before that end go straight to the newest sector\'s track. '
+          'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off.', '1',
+          requires=('music_keep',), launcher='--music-queue', since='2026-10-23'),
     entry('voice_dmo_fallback', 'bool', 'audio', 'Makes speech play when the system lacks the game\'s speech decoder, by using the '
           'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off.', '1', launcher='--voice-decoder'),
     entry('music_combat_trigger', 'enum', 'audio', 'When combat music starts. engaged = only while you or one of your ships near '

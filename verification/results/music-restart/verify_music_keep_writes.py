@@ -49,6 +49,10 @@ WINDOWS = [
     ('pump_head', 'pump_va'), ('pump_end', 'pump_end_va'), ('status_ds_tail', 'status_ds_tail_va'), ('e_post_window', 'e_return_va'),
     ('gzwrite_thunk', 'gzwrite_thunk_va'), ('position_reader', 'position_reader_va'),
     ('gzclose_wrapper', 'gzclose_wrapper_va'), ('gzclose_thunk', 'gzclose_thunk_va'),
+    # the track queue (music-script-driver.md section 8.3): the delete-by-id body, the completion delivery of the
+    # MOV_StopMovie body, the KC layout witnesses (jump handler, loader stores)
+    ('free_by_id_body', 'free_by_id_va'), ('completion_window', 'completion_window_va'), ('kc_jump_handler', 'kc_jump_handler_va'),
+    ('kc_loader_code_store', 'kc_loader_code_store_va'), ('kc_loader_build_store', 'kc_loader_build_store_va'),
 ]
 # Claim sites: (name, VA constant, length constant, window the expected bytes come from, offset constant into that window or None)
 CLAIMS = [
@@ -86,12 +90,24 @@ EXPECTED = {
     'save_gzclose_call_va': 0x404a6f, 'save_gzclose_return_va': 0x404a74, 'gzclose_wrapper_va': 0x4e9360, 'gzclose_wrapper_return_va': 0x4e9384,
     'gzclose_thunk_va': 0x4fae52, 'gzclose_iat_va': 0x5323f0, 'gzclose_wrapper_length': 39, 'gzclose_thunk_length': 6, 'run_skip_bound_ms': 2500,
     'task_id': 0x08, 'task_capacity': 0x10, 'task_cells': 0x14, 'task_index': 0x18, 'task_ip': 0x1c, 'cell_size': 5, 'alert_record_ptr_va': 0x608504,
+    # the track queue (music-script-driver.md section 8.3 as amended by 8.4; docs/architecture/music-queue.md)
+    'vm_ptr_va': 0x6085e4, 'vm_slot_guard': 0x04, 'vm_code': 0x08, 'vm_code_size': 0x10, 'vm_build': 0x143c, 'slot_stride': 0x18,
+    'slot_completion': 0x34, 'slot_count': 0x20, 'completion_window_va': 0x498864, 'completion_window_length': 42,
+    'free_by_id_va': 0x4986b0, 'free_by_id_caller_va': 0x4986f0, 'free_by_id_length': 51, 'kc_jump_handler_va': 0x4a317a,
+    'kc_loader_code_store_va': 0x49d332, 'kc_loader_build_store_va': 0x49d2a7, 'kc_jump_handler_length': 9,
+    'kc_loader_code_store_length': 29, 'kc_loader_build_store_length': 6, 'story_build': 1462141839, 'warp_fork_offset': 0x161c3,
+    'warp_continue_offset': 0x161d7, 'warp_method_entry': 0x16185, 'warp_window_length': 6, 'kc_op_fork': 0x6f, 'kc_op_jt': 0x33,
+    'kc_op_jmp': 0x32, 'kc_op_filler': 0x01, 'kc_check_stride_frames': 8, 'kc_play_stop_ip': 0x0db54, 'kc_fade_stop_ip': 0x0da17,
+    'kc_play_ip': 0x0dbf7, 'kc_loop_music_return': 0x0dc84, 'kc_change_track_return': 0x0dcdb, 'queue_stack_depth': 19,
+    'queue_cell_old': 18, 'queue_cell_loop_return': 13, 'queue_cell_new': 11, 'queue_cell_fade': 10, 'queue_cell_loop': 9,
+    'queue_cell_change_return': 7, 'tag_int': 1, 'tag_return': 3, 'queue_cell_count': 6, 'id_death': 13, 'id_landing': 14,
+    'boarding_id_first': 8233, 'boarding_id_last': 8237, 'queue_key_base': 0x7f000000, 'queue_key_mask': 0xffff,
 }
 STOP_CALLERS = [(0x4d36bd, 0x4d36c2, 'alt_tab', 'skip_all'), (0x40455c, 0x404561, 'save', 'keep_running'), (0x407064, 0x407069, 'pause', 'keep_running'),
                 (0x404ced, 0x404cf2, 'load', 'vanilla'), (0x497bb6, 0x497bbb, 'p_leave', 'vanilla'), (0x403878, 0x40387d, 'session_start', 'vanilla')]
 PLAY_CALLERS = [(0x49981f, 0x499824, 'MOV_PlayMovie'), (0x499982, 0x499987, 'MOV_PlayMovieFrom'), (0x4f6668, 0x4f666d, 'helper_0x004f6640')]
 STOP_MOVIE_CALLERS = [(0x499881, 0x499886, 'MOV_StopMovie'), (0x45c27d, 0x45c282, 'selector_0x0045b720'), (0x4f66be, 0x4f66c3, 'caller_0x004f66be')]
-CALLEES = {0x4982b0: 6, 0x498c90: 3, 0x498810: 3, 0x4d0430: 3, 0x4d1810: 1, 0x4d1870: 2, 0x4d14e0: 1}
+CALLEES = {0x4982b0: 6, 0x498c90: 3, 0x498810: 3, 0x4d0430: 3, 0x4d1810: 1, 0x4d1870: 2, 0x4d14e0: 1, 0x4986b0: 1}
 # Raw-scan hits proven to be operand bytes of a containing instruction: 0x498c6f is the ModRM byte 0x7c of
 # `lea edi,[esp+0x18]` (8d 7c 24 18 at 0x498c6e), decoded as a false `jl` into 0x498c93.
 # 0x498d4e is the ModRM byte 0x7c of the 4-byte `add edi,[esp+0x2c]` at 0x498d4d, decoded as a false `jl` into 0x498d74
@@ -344,6 +360,35 @@ def inspect(data, core_text):
         and consts['gzclose_wrapper_va'] < wrapper_call < consts['gzclose_wrapper_va'] + consts['gzclose_wrapper_length']
         and gzclose_bound == consts['gzclose_iat_va'] and rd(consts['gzclose_thunk_va'], 6) == b'\xff\x25' + struct.pack('<I', consts['gzclose_iat_va']))
     checks['run_skip_bound'] = consts['run_skip_bound_ms'] < 3000 and consts['pump_interval_ms'] < consts['run_skip_bound_ms']   # under the 5 s ring minus one 2 s sample
+    # The track queue. The delete-by-id 0x004986b0: ECX = id, `cmp [esi+0x24],0` (media != 0), `cmp [esi+0x10],ecx`, the call of
+    # the teardown 0x004984d0, `mov eax,1`; its only direct caller is MOV_FreeMovie's body 0x004986f0.
+    fb = consts['free_by_id_va']
+    checks['free_by_id_contract'] = (rd(fb, 5) == b'\xa1' + struct.pack('<I', consts['list_head_va']) and rd(fb + 16, 4) == b'\x83\x7e' + bytes([consts['record_media']]) + b'\x00'
+                                     and rd(fb + 22, 3) == b'\x39\x4e' + bytes([consts['record_id']]) and call_target(fb + 39) == 0x4984d0 and rd(fb + 44, 5) == b'\xb8\x01\x00\x00\x00'
+                                     and call_target(consts['free_by_id_caller_va']) == fb and fb + consts['free_by_id_length'] == 0x4986e3)
+    # The completion delivery of the MOV_StopMovie body (the slot-table layout the queue repeats): owner *0x006085e4, [owner+4] != 0,
+    # slot < 0x20, function at owner + 0x34 + slot * 0x18 (lea ecx,[ecx*3]; [eax+ecx*8+0x34]), cdecl (ctx, 1).
+    cw = consts['completion_window_va']
+    checks['completion_slot_layout'] = (rd(cw, 5) == b'\xa1' + struct.pack('<I', consts['vm_ptr_va']) and rd(cw + 7, 3) == b'\x8b\x4e' + bytes([consts['record_slot']])
+                                        and rd(cw + 12, 4) == b'\x83\x78' + bytes([consts['vm_slot_guard']]) + b'\x00' and rd(cw + 18, 3) == b'\x83\xf9' + bytes([consts['slot_count']])
+                                        and rd(cw + 23, 3) == b'\x8d\x14\x49' and rd(cw + 26, 4) == b'\x8b\x4c\xd0' + bytes([consts['slot_completion']])
+                                        and rd(cw + 34, 3) == b'\x8b\x46' + bytes([consts['record_context']]) and rd(cw + 37, 5) == b'\x6a\x01\x50\xff\xd1'
+                                        and consts['slot_stride'] == 0x18 and consts['t_stop_movie_site_va'] < cw < consts['t_stop_movie_site_va'] + 0xb9)
+    # KC layout witnesses: the jump handler adds the operand to [VM+8]; the loader stores the CODE size at [VM+0x10] and the
+    # buffer at [VM+8]; the build id at [VM+0x143c].
+    checks['kc_layout_witnesses'] = (rd(consts['kc_jump_handler_va'] + 6, 3) == b'\x03\x7a' + bytes([consts['vm_code']])
+                                     and rd(consts['kc_loader_code_store_va'], 3) == b'\x89\x43' + bytes([consts['vm_code_size']])
+                                     and rd(consts['kc_loader_code_store_va'] + 26, 3) == b'\x89\x43' + bytes([consts['vm_code']])
+                                     and rd(consts['kc_loader_build_store_va'], 6) == b'\x89\x83' + struct.pack('<I', consts['vm_build']))
+    # The KC patch bytes: the vanilla window is `op6f; jt <continue>` with the operand little-endian in memory and the patch is
+    # `jmp <continue>` plus the filler; the private key is outside 101..299 and the deferral never takes a combat, death, landing or
+    # boarding id.
+    cont = struct.pack('<I', consts['warp_continue_offset'])
+    checks['kc_patch_bytes'] = (windows['warp_window_memory'] == bytes([consts['kc_op_fork'], consts['kc_op_jt']]) + cont
+                                and windows['warp_patch_memory'] == bytes([consts['kc_op_jmp']]) + cont + bytes([consts['kc_op_filler']])
+                                and consts['warp_fork_offset'] + consts['warp_window_length'] < consts['warp_continue_offset']
+                                and consts['queue_key_base'] > 299 and consts['queue_stack_depth'] == consts['queue_cell_old'] + 1
+                                and consts['id_death'] == 13 and consts['id_landing'] == 14 and consts['boarding_id_first'] == 8233)
     written[d_name] = {'site': hex(d_site), 'length': 5, 'original': rd(d_site, 5).hex(), 'writes_example_thunk_0x0a300000': (b'\xe8' + struct.pack('<i', 0x0a300000 - (d_site + 5))).hex(),
                        'callee': hex(d_target), 'caller_pops': 0}
     checks['stop_callers'] = [(a, b, n, m) for a, b, n, m in stops] == STOP_CALLERS and all(call_target(a) == consts['stop_all_va'] and b == a + 5 for a, b, _, _ in stops)
@@ -370,7 +415,7 @@ def inspect(data, core_text):
             'failures': failures, 'result': 'PASS' if not failures else 'FAIL'}
 
 
-_LINE = re.compile(r'^(?:\S+ )?(music_trace_stop|music_trace_play|music_trace_stop_movie|music_keep_stop|music_keep_seek|music_keep_orphan|music_keep_stop_movie|music_keep_save_pump_hook|music_keep_save_pump|music_keep_resume|music_walk_cut|music_keep|music_trace|music_trace_cap)\b(.*)$')
+_LINE = re.compile(r'^(?:\S+ )?(music_trace_stop|music_trace_play|music_trace_stop_movie|music_keep_stop|music_keep_seek|music_keep_orphan|music_keep_stop_movie|music_keep_save_pump_hook|music_keep_save_pump|music_keep_resume|music_walk_cut|music_queue_kc|music_queue|music_keep|music_trace|music_trace_cap)\b(.*)$')
 
 
 def parse_line(line):

@@ -488,6 +488,186 @@ int main() {
           && std::uint32_t(status_ds_tail_va + 28u + (status_ds_tail[24] | status_ds_tail[25] << 8 | status_ds_tail[26] << 16 | std::uint32_t(status_ds_tail[27]) << 24)) == pump_va
           && status_ds_tail[23] == 0xe9 && gzwrite_thunk[2] == (gzwrite_iat_va & 0xff) && gzwrite_thunk[3] == ((gzwrite_iat_va >> 8) & 0xff), "pump and IAT constants");
     check(a_site_va + a_site_length == a_next_va && c_site_va + call_length == c_return_va && a_window_va + a_site_offset == a_site_va && stop_caller_count == 6 && play_caller_count == 3 && stop_movie_caller_count == 3, "address relations");
+    // The track queue (music-script-driver.md section 8.3 as amended by 8.4; docs/architecture/music-queue.md).
+    {
+        check(cell_index_ok(-1, 32) && cell_index_ok(-32, 32) && !cell_index_ok(0, 32) && !cell_index_ok(-33, 32) && !cell_index_ok(-1, 0) && !cell_index_ok(-1, trace_cell_capacity_limit + 1)
+              && cell_offset(-18) == -90 && cell_offset(-1) == -5, "cell index bounds: -capacity..-1 from the buffer end");
+        check(!immediate_id(8404) && immediate_id(0) && immediate_id(13) && immediate_id(14) && immediate_id(1001) && immediate_id(1042) && immediate_id(8233) && immediate_id(8237) && !immediate_id(2001) && !immediate_id(8238), "immediate ids");
+        check(queue_key(1) == 0x7f000001 && queue_key(0x10001) == 0x7f000001 && queue_key(7) > 299, "private keys outside 101..299");
+        auto shaped = [](std::uint32_t old_id, std::uint32_t new_id, std::uint32_t task, std::uint32_t slot) {
+            QueueStopView v; v.return_va = stop_movie_native_return_va; v.id = old_id; v.task_id = task; v.slot = slot; v.task_ok = true; v.task_ip = kc_play_stop_ip;
+            v.capacity = 32; v.index = -19; v.cells_ok = true;
+            v.cells[0] = Cell{tag_int, old_id}; v.cells[1] = Cell{tag_return, kc_loop_music_return}; v.cells[2] = Cell{tag_int, new_id}; v.cells[3] = Cell{tag_int, 0};
+            v.cells[4] = Cell{tag_int, 1}; v.cells[5] = Cell{tag_return, kc_change_track_return};
+            v.alert_ok = true; v.alert_old = 0; v.alert_new = 0;
+            v.found = true; v.flags = 0xd2; v.context = 100; v.rec_slot = 1; v.record = 0x1000; v.media = 0x2000;
+            return v;
+        };
+        auto play_of = [](std::uint32_t id, std::uint32_t task, std::uint32_t slot, const OrphanView& o) {
+            QueuePlayView v; v.return_va = 0x00499824; v.slot = slot; v.task_id = task; v.id = id; v.task_ok = true; v.task_ip = kc_play_ip; v.found = true; v.flags = 0xd0; v.orphan = o; return v;
+        };
+        const OrphanView playing_unowned{true, 0xd2, 0}, gone{false, 0, 0}, ended{true, 0xd0, 0};
+        TrackQueue q;
+        // IDLE, a sector change: defer.
+        QueueOutcome o = queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 1000);
+        check(o.event == QueueEvent::defer && o.consume && o.rekey && o.wake && o.complete && !o.park && !o.free_key && !o.resume_candidate && o.record == 0x1000 && o.key == 0x7f000001
+              && o.wake_ctx == 100 && o.wake_slot == 1 && o.complete_ctx == 200 && o.complete_slot == 1 && o.old_id == 8404 && o.new_id == 80412 && o.task == 200,
+              "defer: re-key, wake T_old through the record's slot, complete C through EDI, consume, no resume memory");
+        check(q.state == QueueState::orphaned && q.record == 0x1000 && q.media == 0x2000 && q.key == 0x7f000001 && q.new_id == 80412 && q.task == 200 && q.defer_frame == 1000, "ORPHANED");
+        // ORPHANED: C's first play of N parks it on O.
+        o = queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 1010);
+        check(o.event == QueueEvent::park && o.consume && o.park && !o.wake && !o.free_key && o.park_ctx == 200 && o.park_slot == 1 && o.frames == 10 && q.state == QueueState::parked && q.slot == 1,
+              "park: O's context and slot become C's, the play is consumed");
+        // PARKED: a speech stop and a speech play are not the queue's business.
+        { QueueStopView s; s.return_va = stop_movie_native_return_va; s.id = 777; s.task_id = 300; s.slot = 1; s.task_ok = true; s.task_ip = 0x0d31f; s.found = true; s.flags = 0x12; s.orphan = OrphanView{true, 0xd2, 200};
+          check(queue_on_stop(q, s, true, 1020).event == QueueEvent::none && q.state == QueueState::parked, "speech stop while parked: nothing"); }
+        { QueuePlayView p = play_of(777, 300, 1, OrphanView{true, 0xd2, 200}); p.flags = 0x12; p.task_ip = 0x0d31f;
+          check(queue_on_play(q, p, 1021).event == QueueEvent::none && q.state == QueueState::parked, "speech play while parked: nothing"); }
+        // PARKED: the replay after O's natural end (the manager zeroed O's context and woke C) releases: free P, vanilla.
+        o = queue_on_play(q, play_of(80412, 200, 1, ended), 1500);
+        check(o.event == QueueEvent::release && o.reason == QueueReason::natural_end && !o.consume && !o.wake && o.free_key && o.key == 0x7f000001 && o.frames == 500 && q.state == QueueState::idle,
+              "release: P freed, N plays through vanilla from 0");
+        // Collapse: PARKED, a further jump's stop of N by D (deferrable) wakes C, completes D, consumes; ORPHANED with the newest id and D.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 2000);
+        queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 2010);
+        QueueStopView d = shaped(80412, 81307, 210, 1); d.flags = 0xd0; d.context = 0; d.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, d, true, 2100);
+        check(o.event == QueueEvent::collapse && o.consume && o.wake && o.complete && !o.free_key && !o.rekey && o.wake_ctx == 200 && o.wake_slot == 1 && o.complete_ctx == 210 && o.complete_slot == 1
+              && o.old_id == 80412 && o.new_id == 81307 && o.task == 210 && !o.resume_candidate, "collapse: C woken through O's slot, D completed, consumed");
+        check(q.state == QueueState::orphaned && q.new_id == 81307 && q.task == 210 && q.key == 0x7f000002 && q.record == 0x1000, "ORPHANED again with the newest id, the same O and key");
+        o = queue_on_play(q, play_of(81307, 210, 1, playing_unowned), 2110);
+        check(o.event == QueueEvent::park && q.state == QueueState::parked && q.task == 210, "D parked");
+        QueueStopView e = shaped(81307, 80300, 220, 1); e.flags = 0xd0; e.context = 0; e.orphan = OrphanView{true, 0xd2, 210};
+        o = queue_on_stop(q, e, true, 2200);
+        check(o.event == QueueEvent::collapse && o.wake_ctx == 210 && o.complete_ctx == 220 && q.new_id == 80300 && q.task == 220, "second collapse: the newest id wins");
+        queue_on_play(q, play_of(80300, 220, 1, playing_unowned), 2210);
+        o = queue_on_play(q, play_of(80300, 220, 1, ended), 2300);
+        check(o.event == QueueEvent::release && q.state == QueueState::idle, "released to the newest id");
+        // PARKED, a combat start: the stop of N inside NotifyAlert (alert 0/1) is not deferrable: C woken, P freed, vanilla continues.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 3000);
+        queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 3010);
+        QueueStopView c = shaped(80412, 1017, 230, 1); c.flags = 0xd0; c.context = 0; c.alert_new = 1; c.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, c, true, 3100);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop && !o.consume && o.wake && o.wake_ctx == 200 && o.wake_slot == 1 && !o.complete && o.free_key && !o.resume_candidate && q.state == QueueState::idle,
+              "combat start while parked: wake C, free P, vanilla stop of N, N not a resume candidate");
+        // PARKED, StopMusic (new id 0) and a fade stop (IP 0x0da17): end.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 3200); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 3210);
+        QueueStopView st = shaped(80412, 0, 240, 1); st.flags = 0xd0; st.context = 0; st.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, st, true, 3300);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop && o.wake && o.free_key && q.state == QueueState::idle, "StopMusic while parked: end");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 3400); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 3410);
+        QueueStopView fade = shaped(80412, 0, 250, 1); fade.task_ip = kc_fade_stop_ip; fade.cells_ok = false; fade.flags = 0xd0; fade.context = 0; fade.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, fade, true, 3500);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop && o.wake && o.free_key && q.state == QueueState::idle, "MusicFadeOut stop of N while parked: end, never deferred");
+        // PARKED, a stop of N by the parked task itself (a guard): the caller is never completed.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 3600); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 3610);
+        QueueStopView self = shaped(80412, 0, 200, 1); self.flags = 0xd0; self.context = 0; self.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, self, true, 3700);
+        check(o.event == QueueEvent::end && !o.wake && o.free_key && q.state == QueueState::idle, "a stop by the parked task itself: ended without completing the caller");
+        // PARKED, another music play by another task: end (wake C, free P), vanilla.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 3800); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 3810);
+        o = queue_on_play(q, play_of(2003, 260, 1, OrphanView{true, 0xd2, 200}), 3900);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::other_play && o.wake && o.wake_ctx == 200 && o.free_key && !o.consume && q.state == QueueState::idle, "another music play while parked: end");
+        // Stop-all: alt-tab leaves the queue alone; save, pause, load and session start end it (wake while parked, free).
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4000); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4010);
+        check(queue_on_stop_all(q, 0x004d36c2, OrphanView{true, 0xd2, 200}, 4020).event == QueueEvent::none && q.state == QueueState::parked, "alt-tab: nothing");
+        o = queue_on_stop_all(q, save_return_va, OrphanView{true, 0xd2, 200}, 4030);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && o.wake && o.wake_ctx == 200 && o.free_key && q.state == QueueState::idle, "save: wake C, free P before the walk");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4100);
+        o = queue_on_stop_all(q, 0x00404cf2, playing_unowned, 4110);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && !o.wake && o.free_key && q.state == QueueState::idle, "load while orphaned: free P only (C is in TI_Delay)");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4200);
+        check(queue_on_stop_all(q, 0x0040387d, playing_unowned, 4210).event == QueueEvent::end && q.state == QueueState::idle, "session start ends it");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4300);
+        check(queue_on_stop_all(q, 0x00407069, playing_unowned, 4310).event == QueueEvent::end && q.state == QueueState::idle, "pause ends it");
+        // Alert edge at Present: while ORPHANED (the script dropped the combat request) and while PARKED.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4400);
+        check(queue_on_alert(q, 0, playing_unowned, 4401).event == QueueEvent::none && q.state == QueueState::orphaned, "alert 0: nothing");
+        o = queue_on_alert(q, 1, playing_unowned, 4402);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::alert_edge && !o.wake && o.free_key && q.state == QueueState::idle, "alert edge while orphaned: free P");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4500); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4510);
+        o = queue_on_alert(q, 2, OrphanView{true, 0xd2, 200}, 4520);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::alert_edge && o.wake && o.free_key && q.state == QueueState::idle, "alert edge while parked: wake C, free P");
+        // O ended before the park: C's play proceeds vanilla, P freed. O lost: idle, nothing to free. O claimed: no park.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4600);
+        o = queue_on_play(q, play_of(80412, 200, 1, ended), 4610);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::ended_before_park && !o.consume && o.free_key && !o.wake && q.state == QueueState::idle, "ended before the park: vanilla play, P freed");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4700);
+        o = queue_on_play(q, play_of(80412, 200, 1, gone), 4710);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::lost && !o.free_key && !o.consume && q.state == QueueState::idle, "O lost: idle, no free");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4800);
+        o = queue_on_play(q, play_of(80412, 200, 1, OrphanView{true, 0xd2, 999}), 4810);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::claimed && !o.consume && q.state == QueueState::idle, "O claimed: no park");
+        // Stale: PARKED, O ended and unowned (the manager already woke C), a music stop arrives before the replay: freed, no second wake.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4900); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4910);
+        QueueStopView any = shaped(8509, 0, 270, 1); any.orphan = ended;
+        o = queue_on_stop(q, any, true, 4950);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stale && !o.wake && o.free_key && q.state == QueueState::idle, "stale orphan: freed, no second wake");
+        // A music stop of another record while ORPHANED ends it (that record stays a resume candidate).
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 5000);
+        QueueStopView m = shaped(8509, 80202, 280, 1); m.orphan = playing_unowned;
+        o = queue_on_stop(q, m, true, 5010);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop && !o.wake && o.free_key && o.resume_candidate && q.state == QueueState::idle, "another music stop while orphaned: end");
+        // Refusals (IDLE), one per PlayMusicWithFade stop; every one leaves vanilla to run.
+        check(queue_on_stop(q, shaped(8404, 80412, 200, 1), false, 6000).reason == QueueReason::not_armed && q.state == QueueState::idle, "not armed: refuse, vanilla");
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.alert_new = 1; o = queue_on_stop(q, v, true, 6001); check(o.event == QueueEvent::refuse && o.reason == QueueReason::alert && !o.consume && o.resume_candidate, "combat start (alert 0/1): refuse, resume candidate"); }
+        { QueueStopView v = shaped(1017, 8404, 200, 1); v.alert_old = 1; check(queue_on_stop(q, v, true, 6002).reason == QueueReason::alert, "combat end (alert 1/0): refuse"); }
+        { QueueStopView v = shaped(1017, 8404, 200, 1); check(queue_on_stop(q, v, true, 6003).reason == QueueReason::combat_old, "a combat track stopped with the alert at 0/0: refuse"); }
+        { QueueStopView v = shaped(8404, 0, 200, 1); check(queue_on_stop(q, v, true, 6004).reason == QueueReason::immediate_id, "new id 0 (leave, StopMusic): refuse"); }
+        for (std::uint32_t id : {13u, 14u, 1001u, 1042u, 8233u, 8237u}) { QueueStopView v = shaped(8404, id, 200, 1); check(queue_on_stop(q, v, true, 6005).reason == QueueReason::immediate_id, "death / landing / combat / boarding ids: refuse"); }
+        { QueueStopView v = shaped(8404, 2003, 200, 1); check(queue_on_stop(q, v, true, 6006).event == QueueEvent::defer, "a dock id is deferrable"); q.reset(); }
+        { QueueStopView v = shaped(8404, 8404, 200, 1); check(queue_on_stop(q, v, true, 6007).reason == QueueReason::same_id, "same id: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.index = -18; check(queue_on_stop(q, v, true, 6008).reason == QueueReason::cells, "another stack depth (the fade child's -18): refuse cells"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells_ok = false; check(queue_on_stop(q, v, true, 6009).reason == QueueReason::cells, "cells outside the buffer: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[1].value = 0; check(queue_on_stop(q, v, true, 6010).reason == QueueReason::cells, "fork-zeroed LoopMusic return: refuse (class 621's direct LoopMusic)"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[5].value = 0x10228; check(queue_on_stop(q, v, true, 6011).reason == QueueReason::cells, "not ChangeTrackMusic's fork: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[4].value = 0; check(queue_on_stop(q, v, true, 6012).reason == QueueReason::cells, "loop 0 (StartMusic): refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[3].value = 500; check(queue_on_stop(q, v, true, 6013).reason == QueueReason::cells, "a fade: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[0].value = 8509; check(queue_on_stop(q, v, true, 6014).reason == QueueReason::cells, "old-id cell differs from EAX: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.cells[2].tag = tag_return; check(queue_on_stop(q, v, true, 6015).reason == QueueReason::cells, "new id not an int cell: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.task_ok = false; check(queue_on_stop(q, v, true, 6016).event == QueueEvent::none, "task unreadable: not a PlayMusicWithFade stop, nothing"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.task_ip = kc_fade_stop_ip; check(queue_on_stop(q, v, true, 6017).event == QueueEvent::none, "MusicFadeOut's stop while idle: nothing (never deferred)"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.return_va = 0x0045c282; check(queue_on_stop(q, v, true, 6018).event == QueueEvent::none, "another caller of 0x00498810: nothing"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.found = false; check(queue_on_stop(q, v, true, 6019).reason == QueueReason::not_playing, "record absent: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.flags = 0xd0; check(queue_on_stop(q, v, true, 6020).reason == QueueReason::not_playing, "not playing: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.flags = 0xd3; check(queue_on_stop(q, v, true, 6021).reason == QueueReason::not_playing, "loop-flagged: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.context = 0; check(queue_on_stop(q, v, true, 6022).reason == QueueReason::not_playing, "unowned record: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.media = 0; check(queue_on_stop(q, v, true, 6023).reason == QueueReason::not_playing, "no media: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.rec_slot = 32; check(queue_on_stop(q, v, true, 6024).reason == QueueReason::not_playing, "record slot out of range: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.alert_ok = false; check(queue_on_stop(q, v, true, 6025).reason == QueueReason::alert, "alert unreadable: refuse"); }
+        check(q.state == QueueState::idle, "every refusal left the queue idle");
+        // Plays while idle, from MOV_PlayMovieFrom, of an unknown record: nothing; a slot out of range refuses the park.
+        check(queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 7000).event == QueueEvent::none, "idle play: nothing");
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 7100);
+        { QueuePlayView p = play_of(80412, 200, 1, playing_unowned); p.return_va = 0x00499987; check(queue_on_play(q, p, 7101).event == QueueEvent::none && q.state == QueueState::orphaned, "PlayMovieFrom: nothing"); }
+        { QueuePlayView p = play_of(80412, 200, 1, playing_unowned); p.found = false; check(queue_on_play(q, p, 7102).event == QueueEvent::none, "unknown record: nothing"); }
+        { QueuePlayView p = play_of(80412, 200, 0x20, playing_unowned); check(queue_on_play(q, p, 7103).reason == QueueReason::claimed && q.state == QueueState::idle, "slot out of range: no park"); }
+        // The KC patch state at Present.
+        KcPatch k;
+        check(k.due(0x12340000) && !k.due(0x12340000) && k.due(0x12350000), "due at the first Present and on a VM change");
+        unsigned dues = 0;
+        for (unsigned i = 0; i < kc_check_stride_frames * 3; ++i) dues += k.due(0x12350000) ? 1u : 0u;
+        check(dues == 3, "due every stride otherwise");
+        KcResult r = KcResult::none;
+        k.code = 0x20000000; k.size = 0x20000; k.build = story_build;
+        check(!k.decide(false, false, warp_window_memory, true, r) && r == KcResult::no_vm, "no VM");
+        check(!k.decide(true, false, warp_window_memory, true, r) && r == KcResult::unreadable, "fields unreadable");
+        k.build = 1510658513; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::build_mismatch, "stock build: refused");
+        k.build = story_build; k.size = warp_fork_offset; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::out_of_range, "window past CODE: refused");
+        k.size = 0x20000; check(!k.decide(true, true, warp_window_memory, false, r) && r == KcResult::unreadable, "window unreadable");
+        check(k.decide(true, true, warp_window_memory, true, r) && r == KcResult::applied, "vanilla window: apply");
+        check(!k.decide(true, true, warp_patch_memory, true, r) && r == KcResult::already, "our patch: nothing");
+        const unsigned char other[6] = {0x6f, 0x33, 0xd8, 0x61, 0x01, 0x00};
+        check(!k.decide(true, true, other, true, r) && r == KcResult::bytes_mismatch, "another target (a threaded or fused window): refused");
+        check(k.note(KcResult::applied) && k.applied == 1 && !k.note(KcResult::already) && k.note(KcResult::bytes_mismatch) && !k.note(KcResult::bytes_mismatch) && k.refused == 2 && k.note(KcResult::applied),
+              "rows on change and on every apply");
+        check(warp_window_memory[0] == kc_op_fork && warp_window_memory[1] == kc_op_jt && warp_patch_memory[0] == kc_op_jmp && warp_patch_memory[5] == kc_op_filler
+              && (warp_window_memory[2] | warp_window_memory[3] << 8 | warp_window_memory[4] << 16 | std::uint32_t(warp_window_memory[5]) << 24) == warp_continue_offset
+              && (warp_patch_memory[1] | warp_patch_memory[2] << 8 | warp_patch_memory[3] << 16 | std::uint32_t(warp_patch_memory[4]) << 24) == warp_continue_offset, "window and patch bytes");
+        check(queue_cell_depths[0] == 18 && queue_cell_depths[5] == 7 && queue_stack_depth == 19 && slot_count == 32 && slot_stride == 0x18 && slot_completion == 0x34 && free_by_id_body[0] == 0xa1
+              && completion_window[0] == 0xa1 && kc_jump_handler[8] == vm_code && kc_loader_code_store[2] == vm_code_size && !std::strcmp(queue_reason_name(QueueReason::natural_end), "natural_end")
+              && !std::strcmp(queue_event_name(QueueEvent::collapse), "collapse") && !std::strcmp(kc_result_name(KcResult::applied), "applied"), "queue constants and names");
+    }
     std::printf("music_keep_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -511,8 +691,12 @@ class MusicSites(unittest.TestCase):
     def test_installed_executable(self):
         report = probe.verify()
         self.assertEqual(report['result'], 'PASS', report['failures'])
-        self.assertEqual(report['check_count'], 69)
+        self.assertEqual(report['check_count'], 79)
         self.assertEqual(report['gzclose_import_slot'], '0x5323f0')
+        self.assertEqual(report['direct_callers']['0x4986b0'], ['0x4986f0'])   # the queue's free: MOV_FreeMovie's body is its only caller
+        for check in ('free_by_id_contract', 'completion_slot_layout', 'kc_layout_witnesses', 'kc_patch_bytes', 'window_free_by_id_body', 'window_completion_window',
+                      'window_kc_jump_handler', 'window_kc_loader_code_store', 'window_kc_loader_build_store'):
+            self.assertTrue(report['checks'][check], check)
         self.assertEqual(report['written']['music_keep_e']['writes_example_thunk_0x0a400000'][:2], 'e8')
         self.assertEqual(report['written']['music_keep_e']['qword_offset'], 1)
         self.assertEqual(report['raw_branch_into_site_interior']['0x498d71'], ['0x498d4e'])   # the rejected operand byte of section 7.5
@@ -583,6 +767,16 @@ class MusicSites(unittest.TestCase):
             'position_reader_contract': (0x4d0600 + 27, b'\x28'),
             'window_gzclose_wrapper': (0x4e9360 + 32, b'\xcf'),           # the wrapper's call lands one byte later
             'save_gzclose_path': (0x4e9360 + 32, b'\xcf'),
+            # the track queue: the delete-by-id body and its contract, the completion delivery's slot layout, the KC witnesses
+            'window_free_by_id_body': (0x4986b0 + 18, b'\x28'),           # cmp [esi+0x28],0 instead of the media
+            'free_by_id_contract': (0x4986b0 + 18, b'\x28'),
+            'callers_4986b0': (0x498400, b'\xe8' + struct.pack('<i', 0x4986b0 - 0x498405)),
+            'window_completion_window': (0x498864 + 29, b'\x38'),         # [eax+edx*8+0x38]
+            'completion_slot_layout': (0x498864 + 29, b'\x38'),
+            'window_kc_jump_handler': (0x4a317a + 8, b'\x0c'),             # add edi,[edx+0xc]
+            'kc_layout_witnesses': (0x4a317a + 8, b'\x0c'),
+            'window_kc_loader_code_store': (0x49d332 + 2, b'\x14'),
+            'window_kc_loader_build_store': (0x49d2a7 + 2, b'\x40'),
         }
         for failed, change in cases.items():
             with self.subTest(check=failed):
@@ -635,7 +829,8 @@ class MusicSites(unittest.TestCase):
         stubs = re.split(r'\n\s*\.globl _', asm)[1:]
         self.assertEqual([s.split(':', 1)[0].split('\n')[0].strip() for s in stubs],
                          ['x3m_music_keep_a_stub', 'x3m_music_keep_c_thunk', 'x3m_music_keep_status_thunk', 'x3m_music_keep_run_thunk', 'x3m_music_keep_entry_stub',
-                          'x3m_music_keep_stop_movie_stub', 'x3m_music_trace_stop_stub', 'x3m_music_trace_play_stub', 'x3m_music_trace_stop_movie_stub'])
+                          'x3m_music_keep_stop_movie_stub', 'x3m_music_trace_stop_stub', 'x3m_music_trace_play_stub', 'x3m_music_trace_stop_movie_stub',
+                          'x3m_music_queue_play_stub'])
         for stub in stubs:
             lines = [l.strip() for l in stub.split('\n')[1:] if l.strip() and not l.strip().startswith('.')]
             body = [re.sub(r'^\d+:\s*', '', l) for l in lines[1:]]
@@ -689,13 +884,26 @@ class MusicSites(unittest.TestCase):
         self.assertEqual(shim, ['push ebx', 'push esi', 'push edi', 'push ebp', 'mov eax, dword ptr [esp+0x14]', 'call dword ptr [_x3m_music_pump_fn]',
                                 'movzx eax, ax', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret',
                                 '_x3m_music_keep_call_pause:', 'push ebx', 'push esi', 'push edi', 'push ebp', 'mov eax, dword ptr [esp+0x14]',
-                                'call dword ptr [_x3m_music_pause_fn]', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret'])
-        for stub in stubs[4:7]:
+                                'call dword ptr [_x3m_music_pause_fn]', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret',
+                                # the queue's completion shim: cdecl (function, context, status) -> function(context, status), EBX/ESI/EDI/EBP saved;
+                                # the free shim: ECX = key, through 0x004986b0
+                                '_x3m_music_queue_call_completion:', 'push ebx', 'push esi', 'push edi', 'push ebp', 'mov eax, dword ptr [esp+0x14]',
+                                'push dword ptr [esp+0x1c]', 'push dword ptr [esp+0x1c]', 'call eax', 'add esp, 8', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret',
+                                '_x3m_music_queue_call_free:', 'push ebx', 'push esi', 'push edi', 'push ebp', 'mov ecx, dword ptr [esp+0x14]',
+                                'call dword ptr [_x3m_music_free_fn]', 'pop ebp', 'pop edi', 'pop esi', 'pop ebx', 'ret'])
+        for stub in (stubs[4], stubs[6]):
             self.assertIn('push esp', stub)
-        # The play and stop-movie trace stubs pass the saved block and ESI (the calling KC task), then pop both.
-        for stub, handler in ((stubs[7], 'x3m_music_trace_play'), (stubs[8], 'x3m_music_trace_stop_movie')):
+        # The play and stop-movie trace stubs and the queue's play stub pass the saved block and ESI (the calling KC task), then pop both.
+        for stub, handler in ((stubs[7], 'x3m_music_trace_play'), (stubs[8], 'x3m_music_trace_stop_movie'), (stubs[9], 'x3m_music_queue_play')):
             body = [re.sub(r'\s+', ' ', l.strip()) for l in stub.split('\n')[2:] if l.strip() and not l.strip().startswith('.')]
             self.assertEqual(body[4:9], ['mov eax, esp', 'push esi', 'push eax', 'call _' + handler, 'add esp, 8'])
+        # The keep's stop-movie stub passes the block, ESI and EDI (the completion slot) and has two exits: the chain (0) or a plain
+        # `ret` to MOV_StopMovie's caller when the queue consumed the stop (1); the queue's play stub the same two exits.
+        for stub, handler, pushes in ((stubs[5], 'x3m_music_keep_stop_movie', ['push edi', 'push esi', 'push eax']), (stubs[9], 'x3m_music_queue_play', ['push esi', 'push eax'])):
+            body = [re.sub(r'\s+', ' ', l.strip()) for l in stub.split('\n')[2:] if l.strip() and not l.strip().startswith('.')]
+            n = len(pushes)
+            self.assertEqual(body[4:9 + n], ['mov eax, esp'] + pushes + ['call _' + handler, 'add esp, %d' % (4 * n), 'test eax, eax', 'jnz 1f'])
+            self.assertEqual(body[9 + n:], ['pop edx', 'pop ecx', 'pop eax', 'popfd', 'jmp dword ptr [_%s_continue]' % handler, '1: pop edx', 'pop ecx', 'pop eax', 'popfd', 'ret'])
         # The entry stub loops on the handler until it returns 0, pausing each record through the engine's 0x004d1810.
         entry = stubs[4]
         self.assertLess(entry.index('call _x3m_music_keep_stop_all_entry'), entry.index('test eax, eax'))
@@ -779,7 +987,27 @@ class MusicSites(unittest.TestCase):
                        'c6=%u:0x%08lx c8=%u:0x%08lx'):
             self.assertIn(needle, module)
         self.assertEqual(module.count('engine_patch::restore_call(e_site_)'), 2)
-        self.assertEqual(module.count('cpu.before_original();'), 3)   # the pump call, the fallback pause and the position read run on the engine's MXCSR / LastError
+        self.assertEqual(module.count('cpu.before_original();'), 5)   # the pump call, the fallback pause, the position read, the completion and the free run on the engine's MXCSR / LastError
+        # The track queue: optional inside the keep (its own windows, the shared play entry acquired through the same protocol, released
+        # by rollback and shutdown for whichever feature acquired it), the KC patch maintained from Present with the VM fields read
+        # fault-free and the write gated by VirtualQuery, the stop-movie handler consuming only on the core's say-so, the resume
+        # memory gated by the outcome, and the T1 end before the walk.
+        for needle in ('queue_windows_match()', 'acquire_shared(play_site_, keep_play_acquired_, play_spec(), &x3m_music_queue_play_stub',
+                       'acquire_shared(play_site_, trace_play_acquired_, play_spec(), &x3m_music_trace_play_stub', 'release_for(play_site_, keep_play_acquired_)',
+                       'release_for(play_site_, trace_play_acquired_)', '&entry_site_, &stop_movie_site_, &play_site_', 'queue_on_stop(queue_, v, queue_armed_, current_frame_)',
+                       'queue_on_play(queue_, v, current_frame_)', 'queue_on_stop_all(queue_, return_va, orphan_view(), current_frame_)', 'queue_on_alert(queue_, levels[1], orphan_view(), current_frame_)',
+                       'if (o.consume) return 1;', 'resume_candidate = o.resume_candidate;', 'if (!resume_ok_ || !resume_candidate || combat_id(id)) return 0;',
+                       'x3m_music_queue_call_completion(function, context, 1)', 'x3m_music_queue_call_free(o.key)', 'load32(owner + slot_completion + slot * slot_stride)',
+                       'if (!owner || !load32(owner + vm_slot_guard) || slot >= slot_count) return;', 'kc_.due(vm)', 'kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r)',
+                       'VirtualQuery(reinterpret_cast<const void*>(std::uintptr_t(at)), &info, sizeof info)', 'info.State == MEM_COMMIT', 'KcResult::unwritable',
+                       'x3m::engine_memory::read(vm + vm_build, &build, 4)', 'x3m::engine_memory::read(at, kc_window_seen_, warp_window_length)',
+                       'read_cell_abs(t, -std::int32_t(queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value)', 'cell_index_ok(index, v.capacity)',
+                       'return read_cell_abs(v, std::int32_t(v.index) + std::int32_t(i), tag, value);', 'L"X3M_MUSIC_QUEUE"', '&& keep_requested; // a no-op without the keep',
+                       'music_queue_kc_present();', 'if (queue_.active()) music_queue_alert_present();', 'music_queue requested=%u armed=%u reason=%s', 'music_queue_kc frame=%llu action=%s',
+                       'music_queue frame=%llu seq=%lu qpc=%llu event=%s', 'x3m_music_free_fn = free_by_id_va', 'ours = window[i] == warp_patch_memory[i];'):
+            self.assertIn(needle, module)
+        self.assertNotIn('hook_site(t_play_site_', module)   # the play entry is a shared claim now
+        self.assertLess(module.index('queue_on_stop_all(queue_, return_va'), module.index('pump_.end_now(PumpEnd::stop_all'))   # the queue ends before the hold work
         self.assertLess(capture.index('loading_trace::initialize();'), capture.index('music_keep::save_pump_report();'))
         self.assertIn('loading_trace::save_write_observer_requested()', capture)
         tracer = source_text(ROOT / 'src/proxy/loading_trace.cpp')
@@ -844,9 +1072,10 @@ class MusicLaunchOptions(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             baseline = self.env(directory, '--no-music-keep')
             self.assertNotIn('X3M_MUSIC_KEEP', baseline)
-            self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1'})
+            # the track queue travels with the keep (2026-10-23): --no-music-keep drops both
+            self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_QUEUE': '1'})
             self.assertEqual({k: v for k, v in self.env(directory, '--no-music-keep', '--debug').items() if k not in baseline}, {'X3M_DEBUG': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--debug').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_DEBUG': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--debug').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_QUEUE': '1', 'X3M_DEBUG': '1'})
             code, _, error = self.launch(directory, '--music-trace')
             self.assertEqual(code, 2)
             self.assertIn('unrecognized arguments', error)
@@ -863,6 +1092,32 @@ class MusicLaunchOptions(unittest.TestCase):
             env = self.env(directory, inherited={'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_TRACE': '1'}, vanilla=True)
             self.assertNotIn('X3M_MUSIC_KEEP', env)
             self.assertNotIn('X3M_MUSIC_TRACE', env)
+
+    def test_queue_default_with_the_keep_and_its_gates(self):
+        # --music-queue is a launcher default since 2026-10-23; it travels only with the keep (a no-op in the DLL without it),
+        # --no-music-queue turns it off alone, --vanilla refuses it, a stale shell value is dropped.
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory)
+            self.assertEqual((env['X3M_MUSIC_KEEP'], env['X3M_MUSIC_QUEUE']), ('1', '1'))
+            self.assertEqual(env, self.env(directory, '--music-queue'), 'the explicit flag is redundant')
+            off = self.env(directory, '--no-music-queue')
+            self.assertNotIn('X3M_MUSIC_QUEUE', off)
+            self.assertEqual({k: v for k, v in env.items() if k not in off}, {'X3M_MUSIC_QUEUE': '1'})
+            no_keep = self.env(directory, '--no-music-keep', inherited={'X3M_MUSIC_QUEUE': '1'})
+            self.assertNotIn('X3M_MUSIC_QUEUE', no_keep)
+            self.assertNotIn('X3M_MUSIC_KEEP', no_keep)
+            self.assertNotIn('X3M_MUSIC_QUEUE', self.env(directory, '--no-music-keep', '--music-queue'))
+            code, _, error = self.launch(directory, '--music-queue', vanilla=True)
+            self.assertEqual(code, 2)
+            self.assertIn('--music-queue cannot be combined with --vanilla', error)
+            self.assertNotIn('X3M_MUSIC_QUEUE', self.env(directory, inherited={'X3M_MUSIC_QUEUE': '1'}, vanilla=True))
+        module = source_text(ROOT / 'src/proxy/music_keep.cpp')
+        self.assertIn('requested(L"X3M_MUSIC_QUEUE", &queue_present) && keep_requested', module)
+        schema = load('music_queue_schema', ROOT / 'tools/config/schema.py')
+        entry = next(e for e in schema.SETTINGS if e['key'] == 'music_queue')
+        self.assertEqual((entry['env'], entry['type'], entry['section'], entry['default'], entry['requires'], entry['launcher']),
+                         ('X3M_MUSIC_QUEUE', 'bool', 'audio', '1', ('music_keep',), '--music-queue'))
+        self.assertIn('music_keep', entry['description'])
 
 if __name__ == '__main__':
     unittest.main()

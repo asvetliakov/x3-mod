@@ -1,0 +1,81 @@
+{
+ "core_constants": {
+  "story_build": 1462141839,
+  "warp_fork_offset": 90563,
+  "warp_continue_offset": 90583,
+  "warp_method_entry": 90501,
+  "warp_window_length": 6
+ },
+ "kc_stop_ips": {
+  "play_stop": "0db54",
+  "fade_stop": "0da17",
+  "play": "0dbf7",
+  "loop_music_return": "0dc84",
+  "change_track_return": "0dcdb"
+ },
+ "mayhem": {
+  "build": 1462141839,
+  "code_size": 1908859,
+  "checks": {
+   "method_entry": true,
+   "window_is_fork_then_jt": true,
+   "memory_form_pinned": true,
+   "patch_form_pinned": true,
+   "fork_child_is_stop_music_500": true,
+   "continuation_is_ldloc": true,
+   "no_branch_into_interior": true,
+   "no_method_entry_inside": true,
+   "length_header_build_unchanged": true,
+   "instruction_starts_outside_unchanged": true,
+   "method_entries_are_starts": true,
+   "patched_window_decodes": true,
+   "filler_unreached": true,
+   "method_end_unchanged": true,
+   "stack_depth_at_continuation_unchanged": true,
+   "build_accepted_by_proxy": true
+  },
+  "warp_to_sector_entries": [
+   "16185"
+  ],
+  "file_window": "6f33000161d7",
+  "memory_window": "6f33d7610100",
+  "fork_child": [
+   "pushw(06) 500",
+   "push1(02)",
+   "pushw(06) 200",
+   "callcls(86) 200::StopMusic",
+   "drop(24)",
+   "op(70)"
+  ],
+  "jumps_into_window_interior": [],
+  "jumps_onto_window_start": [],
+  "depth_flowing_to_continuation": {
+   "vanilla_jt_after_pop": 0,
+   "patched_jmp": 1
+  },
+  "stack_conflicts": {
+   "vanilla": 7,
+   "patched": 7
+  },
+  "failures": []
+ },
+ "stock": {
+  "build": 1510658513,
+  "warp_to_sector_entry": "1635e",
+  "accepted_by_proxy": false
+ },
+ "kc_ip_checks": {
+  "play_stop_after_MOV_StopMovie": true,
+  "fade_stop_after_MOV_StopMovie": true,
+  "play_after_MOV_PlayMovie": true,
+  "loop_music_return_after_callself_PlayMusicWithFade": true,
+  "change_track_return_after_callcls_LoopMusic": true
+ },
+ "kc_ip_owners": {
+  "play_stop": "200::PlayMusicWithFade",
+  "fade_stop": "200::MusicFadeOut",
+  "play": "200::PlayMusicWithFade"
+ },
+ "failures": [],
+ "result": "PASS"
+}

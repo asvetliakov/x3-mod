@@ -739,6 +739,485 @@ inline ResumeAction resume_on_stop_all(ResumeMemory& m, std::uint32_t return_va)
     return ResumeAction::clear_stop_all;
 }
 
+// ---- The track queue (music-script-driver.md section 8.3 as amended by section 8.4; docs/architecture/music-queue.md) ----
+// X3M_MUSIC_QUEUE=1 under the keep: when the story's new track task C stops the playing sector track at the T3 site from
+// PlayMusicWithFade (KC IP 0x0db54), the old record O is re-keyed to a private id P, keeps flag 2 and is not paused; T_old
+// and C get the two vanilla completions (ORPHANED). C's first MOV_PlayMovie(N) at T2 is consumed: O's completion context
+// and slot become C's (PARKED), so the engine's own natural end of O wakes C, whose KC replay plays N through the vanilla
+// path; that replay frees P (IDLE). A further deferrable stop of N while PARKED collapses to the newest id. Every other
+// music stop of N, any stop-all but alt-tab, an alert edge and any other music play end the queue at once: C is woken
+// through O's slot and P is freed, then vanilla continues.
+// Script owner / VM `*0x006085e4` (gate-queue-script.md section 1, script-task-scheduler.md): +0x08 the CODE buffer
+// (0x0049d34c), +0x10 its size (0x0049d332), +0x143c the story build id (0x0049d2a7), +0x04 the slot table guard and
+// +0x34 + 0x18 * slot the completion function (the MOV_StopMovie body 0x00498864..0x0049888e, cdecl (ctx, status), slot < 32).
+constexpr std::uint32_t vm_ptr_va = 0x006085e4;
+constexpr unsigned vm_slot_guard = 0x04, vm_code = 0x08, vm_code_size = 0x10, vm_build = 0x143c;
+constexpr unsigned slot_stride = 0x18, slot_completion = 0x34, slot_count = 0x20;
+constexpr std::uint32_t completion_window_va = 0x00498864;
+constexpr unsigned completion_window_length = 42; // mov eax,[0x6085e4]; test eax,eax; mov ecx,[esi+0x18]; je; cmp [eax+4],0; je;
+                                                  // cmp ecx,0x20; jge; lea edx,[ecx*3]; mov ecx,[eax+edx*8+0x34]; test; je;
+                                                  // mov eax,[esi+0x14]; push 1; push eax; call ecx
+constexpr unsigned char completion_window[completion_window_length] = {
+    0xa1, 0xe4, 0x85, 0x60, 0x00, 0x85, 0xc0, 0x8b, 0x4e, 0x18, 0x74, 0x26, 0x83, 0x78, 0x04, 0x00, 0x74, 0x20, 0x83, 0xf9, 0x20,
+    0x7d, 0x1b, 0x8d, 0x14, 0x49, 0x8b, 0x4c, 0xd0, 0x34, 0x85, 0xc9, 0x74, 0x10, 0x8b, 0x46, 0x14, 0x6a, 0x01, 0x50, 0xff, 0xd1};
+// The engine's delete-by-id 0x004986b0 (MOV_FreeMovie's body, its only caller 0x004986f0): ECX = id; frees the first
+// linked record with that id and media != 0 (0x004984d0: teardown, unlink, free) and returns EAX 1, else 0; pushes and
+// pops ESI, clobbers EAX/ECX/EDX only. The queue's one free, called only from T2/T3, from T1 for the non-alt-tab callers
+// and from Present, never inside the manager's walk.
+constexpr std::uint32_t free_by_id_va = 0x004986b0, free_by_id_caller_va = 0x004986f0;
+constexpr unsigned free_by_id_length = 51;
+// clang-format off
+constexpr unsigned char free_by_id_body[free_by_id_length] = {
+    0xa1, 0x44, 0x6f, 0x60, 0x00, 0x56, 0x8b, 0x30, 0x8b, 0x06, 0x85, 0xc0, 0x74, 0x15, 0x8b, 0xff,
+    0x83, 0x7e, 0x24, 0x00, 0x74, 0x05, 0x39, 0x4e, 0x10, 0x74, 0x0c, 0x8b, 0xf0, 0x8b, 0x06, 0x85,
+    0xc0, 0x75, 0xed, 0x33, 0xc0, 0x5e, 0xc3, 0xe8, 0xf4, 0xfd, 0xff, 0xff, 0xb8, 0x01, 0x00, 0x00,
+    0x00, 0x5e, 0xc3};
+// clang-format on
+// KC layout witnesses compared at install: the jmp handler 0x004a317a (`mov edi,[edi]; mov edx,[esp+0x18]; add
+// edi,[edx+8]`: a jump operand is an absolute CODE offset added to [VM+8]), the loader's CODE size and buffer stores
+// 0x0049d332..0x0049d34e (`mov [ebx+0x10],eax` ... `mov [ebx+8],eax`) and its build id store 0x0049d2a7.
+constexpr std::uint32_t kc_jump_handler_va = 0x004a317a, kc_loader_code_store_va = 0x0049d332,
+                        kc_loader_build_store_va = 0x0049d2a7;
+constexpr unsigned kc_jump_handler_length = 9, kc_loader_code_store_length = 29, kc_loader_build_store_length = 6;
+constexpr unsigned char kc_jump_handler[kc_jump_handler_length] = {0x8b, 0x3f, 0x8b, 0x54, 0x24, 0x18, 0x03, 0x7a, 0x08};
+constexpr unsigned char kc_loader_code_store[kc_loader_code_store_length] = {
+    0x89, 0x43, 0x10, 0x0f, 0x87, 0xe8, 0x0b, 0x00, 0x00, 0x53, 0xbf, 0x0c, 0x00, 0x00, 0x00,
+    0xe8, 0xca, 0xf5, 0xff, 0xff, 0x8b, 0x4b, 0x10, 0x51, 0x55, 0x50, 0x89, 0x43, 0x08};
+constexpr unsigned char kc_loader_build_store[kc_loader_build_store_length] = {0x89, 0x83, 0x3c, 0x14, 0x00, 0x00};
+// The KC patch (section 8.4 "Prerequisite"): 150::WarpToSector forks a child that fades the old track out at the gate
+// (StopMusic(500), stop IP 0x0da17). In the Mayhem story object (build 1462141839) the 6 bytes `op6f; jt 0x161d7` at CODE
+// 0x161c3 become `jmp 0x161d7` plus one filler byte that is never reached (push0, the padding the gate-queue options use).
+// Jump operands are byte-swapped to little endian at load (0x0049e1a0), so the in-memory forms below differ from the
+// file's. Bound to the build id; applied (and re-applied after every story reload, which happens on each save load) from
+// Present when the window holds exactly the vanilla bytes; any other content refuses with the bytes seen.
+constexpr std::uint32_t story_build = 1462141839;
+constexpr std::uint32_t warp_fork_offset = 0x161c3, warp_continue_offset = 0x161d7, warp_method_entry = 0x16185;
+constexpr unsigned warp_window_length = 6;
+constexpr unsigned char kc_op_fork = 0x6f, kc_op_jt = 0x33, kc_op_jmp = 0x32, kc_op_filler = 0x01;
+constexpr unsigned char warp_window_memory[warp_window_length] = {0x6f, 0x33, 0xd7, 0x61, 0x01, 0x00};
+constexpr unsigned char warp_patch_memory[warp_window_length] = {0x32, 0xd7, 0x61, 0x01, 0x00, 0x01};
+constexpr unsigned kc_check_stride_frames = 8; // the fields and the window are re-read every 8th Present (and on a VM change)
+// The deferral site: the T3 stop from PlayMusicWithFade (task IP 0x0db54), the fade stop (0x0da17, never deferred) and
+// the T2 play from the same method (0x0dbf7). Frame cells of the ChangeTrackMusic fork child at its stop, by absolute
+// index from the end of the cell buffer ([ESI+0x14]; valid cells -capacity..-1; section 8.4): the stack index is -19.
+constexpr std::uint32_t kc_play_stop_ip = 0x0db54, kc_fade_stop_ip = 0x0da17, kc_play_ip = 0x0dbf7;
+constexpr std::uint32_t kc_loop_music_return = 0x0dc84, kc_change_track_return = 0x0dcdb;
+constexpr unsigned queue_stack_depth = 19; // k == -queue_stack_depth
+constexpr unsigned queue_cell_old = 18, queue_cell_loop_return = 13, queue_cell_new = 11, queue_cell_fade = 10,
+                   queue_cell_loop = 9, queue_cell_change_return = 7; // cell index = -depth
+constexpr unsigned tag_int = 1, tag_return = 3;
+constexpr unsigned queue_cell_count = 6;
+constexpr unsigned queue_cell_depths[queue_cell_count] = {queue_cell_old,  queue_cell_loop_return, queue_cell_new,
+                                                          queue_cell_fade, queue_cell_loop,        queue_cell_change_return};
+// Ids never deferred as the new track: death, landing, combat (1001..1042) and boarding.
+constexpr std::uint32_t id_death = 13, id_landing = 14, boarding_id_first = 8233, boarding_id_last = 8237;
+// Private keys for the orphan: outside 101..299 and every script id; one per episode.
+constexpr std::uint32_t queue_key_base = 0x7f000000, queue_key_mask = 0xffff;
+// A cell index is valid when -capacity <= index <= -1 (the buffer end is [ESI+0x14]; the bottom cell is -1).
+inline bool cell_index_ok(std::int32_t index, std::uint32_t capacity) {
+    return capacity != 0 && capacity <= trace_cell_capacity_limit && index < 0 && std::int64_t(index) >= -std::int64_t(capacity);
+}
+// Byte offset of cell `index` from the buffer end (only after cell_index_ok).
+inline std::int32_t cell_offset(std::int32_t index) {
+    return index * std::int32_t(cell_size);
+}
+inline bool immediate_id(std::uint32_t id) {
+    return id == 0 || id == id_death || id == id_landing || combat_id(id) || (id >= boarding_id_first && id <= boarding_id_last);
+}
+inline std::uint32_t queue_key(std::uint32_t episode) {
+    return queue_key_base + (episode & queue_key_mask);
+}
+enum class QueueState : unsigned { idle = 0, orphaned = 1, parked = 2 };
+inline const char* queue_state_name(QueueState s) {
+    return s == QueueState::orphaned ? "orphaned" : s == QueueState::parked ? "parked" : "idle";
+}
+enum class QueueEvent : unsigned { none = 0, defer, park, collapse, release, end, refuse };
+inline const char* queue_event_name(QueueEvent e) {
+    switch (e) {
+    case QueueEvent::defer: return "defer";
+    case QueueEvent::park: return "park";
+    case QueueEvent::collapse: return "collapse";
+    case QueueEvent::release: return "release";
+    case QueueEvent::end: return "end";
+    case QueueEvent::refuse: return "refuse";
+    default: return "none";
+    }
+}
+enum class QueueReason : unsigned {
+    none = 0,
+    // refusals of a PlayMusicWithFade stop (one row each)
+    not_armed,    // the queue is not armed (refused at install or music_keep off)
+    no_task,      // ESI unreadable
+    cells,        // the frame cells do not carry the LoopMusic-from-ChangeTrackMusic shape (values logged)
+    immediate_id, // the new id is 0, death, landing, combat or boarding
+    alert,        // [R+4] or [R+8] nonzero, or R unreadable
+    combat_old,   // the stopped id is a combat id
+    not_playing,  // the record is absent, not music + playing, loop-flagged, unowned or has no media
+    same_id,      // new id == old id
+    // ends
+    natural_end,       // the replay after O's natural end: P freed, vanilla plays N from 0
+    lost,              // O no longer linked under P (the manager's error path freed it)
+    ended_before_park, // O ended while C was still waiting: no park, N plays now
+    stop,              // a non-deferrable stop of N (combat, StopMusic, fade) or of another music record
+    other_play,        // another music play while the queue was active
+    stop_all,          // a stop-all other than alt-tab
+    alert_edge,        // the committed alert level became nonzero while the queue was active
+    stale,             // O ended (flag 2 clear, context 0) with nobody left to wake
+    claimed,           // O carries a context the queue did not write, or C's slot is out of range
+};
+inline const char* queue_reason_name(QueueReason r) {
+    switch (r) {
+    case QueueReason::not_armed: return "not_armed";
+    case QueueReason::no_task: return "no_task";
+    case QueueReason::cells: return "cells";
+    case QueueReason::immediate_id: return "immediate_id";
+    case QueueReason::alert: return "alert";
+    case QueueReason::combat_old: return "combat_old";
+    case QueueReason::not_playing: return "not_playing";
+    case QueueReason::same_id: return "same_id";
+    case QueueReason::natural_end: return "natural_end";
+    case QueueReason::lost: return "lost";
+    case QueueReason::ended_before_park: return "ended_before_park";
+    case QueueReason::stop: return "stop";
+    case QueueReason::other_play: return "other_play";
+    case QueueReason::stop_all: return "stop_all";
+    case QueueReason::alert_edge: return "alert_edge";
+    case QueueReason::stale: return "stale";
+    case QueueReason::claimed: return "claimed";
+    default: return "none";
+    }
+}
+// The orphan O as the handler finds it now: linked under the key with the same media (`live`), its flags and context.
+struct OrphanView {
+    bool live = false;
+    std::uint32_t flags = 0, context = 0;
+};
+// One frame cell: tag byte and value.
+struct Cell {
+    unsigned tag = 0;
+    std::uint32_t value = 0;
+};
+// The T3 entry (MOV_StopMovie native) as the handler reads it.
+struct QueueStopView {
+    std::uint32_t return_va = 0, id = 0, task_id = 0, slot = 0; // caller return, EAX, [esp+4], EDI
+    bool task_ok = false;                                       // ESI readable
+    std::uint32_t task_ip = 0, capacity = 0;
+    std::int32_t index = 0;                                     // k, signed
+    bool cells_ok = false;                                      // all six cells inside the buffer
+    Cell cells[queue_cell_count]{};                             // old, loop return, new, fade, loop, change return
+    bool alert_ok = false;
+    std::uint32_t alert_old = 0, alert_new = 0;
+    bool found = false;                                         // the first record with `id`
+    std::uint32_t flags = 0, context = 0, rec_slot = 0, record = 0, media = 0;
+    OrphanView orphan;                                          // when the queue is active
+};
+// The T2 entry (play routine) as the handler reads it.
+struct QueuePlayView {
+    std::uint32_t return_va = 0, slot = 0, task_id = 0, id = 0; // caller return, a1, a2, a3
+    bool task_ok = false;
+    std::uint32_t task_ip = 0;
+    bool found = false; // the first record with `id` (MOV_LoadMovie created it)
+    std::uint32_t flags = 0;
+    OrphanView orphan;
+};
+// What the handler does, in this order: rekey O (`rekey`), wake the task O names (`wake`: deliver (wake_ctx, 1) through
+// wake_slot, then zero O's +0x14/+0x18), complete the calling task (`complete`: (complete_ctx, 1) through complete_slot),
+// park C on O (`park`: O's +0x14/+0x18 := park_ctx/park_slot), free P (`free_key`), and consume the site (`consume`: the
+// stub returns instead of running the engine's body).
+struct QueueOutcome {
+    QueueEvent event = QueueEvent::none;
+    QueueReason reason = QueueReason::none;
+    bool consume = false, rekey = false, wake = false, complete = false, park = false, free_key = false;
+    bool resume_candidate = true; // false: the keep's combat-resume memory must not remember this stop
+    std::uint32_t record = 0, key = 0, wake_ctx = 0, wake_slot = 0, complete_ctx = 0, complete_slot = 0, park_ctx = 0,
+                  park_slot = 0;
+    std::uint32_t old_id = 0, new_id = 0, task = 0, stop_task = 0;
+    unsigned long long frames = 0; // since the defer
+};
+struct TrackQueue {
+    QueueState state = QueueState::idle;
+    std::uint32_t record = 0, media = 0, key = 0, old_id = 0, new_id = 0, task = 0, slot = 0; // O, its media, P, old, N, C, C's slot
+    std::uint32_t episode = 0;
+    unsigned long long defer_frame = 0;
+    bool active() const { return state != QueueState::idle; }
+    void reset() {
+        const std::uint32_t e = episode;
+        *this = TrackQueue{};
+        episode = e;
+    }
+};
+// Is this stop the LoopMusic-from-ChangeTrackMusic shape with a deferrable new id? (the cells and the alert)
+inline bool deferrable_shape(const QueueStopView& v, QueueReason& why) {
+    if (!v.task_ok) {
+        why = QueueReason::no_task;
+        return false;
+    }
+    if (!v.cells_ok || v.index != -std::int32_t(queue_stack_depth) || v.cells[0].tag != tag_int || v.cells[0].value != v.id ||
+        v.cells[1].tag != tag_return || v.cells[1].value != kc_loop_music_return || v.cells[2].tag != tag_int ||
+        v.cells[3].tag != tag_int || v.cells[3].value != 0 || v.cells[4].tag != tag_int || v.cells[4].value != 1 ||
+        v.cells[5].tag != tag_return || v.cells[5].value != kc_change_track_return) {
+        why = QueueReason::cells;
+        return false;
+    }
+    const std::uint32_t new_id = v.cells[2].value;
+    if (immediate_id(new_id)) {
+        why = QueueReason::immediate_id;
+        return false;
+    }
+    if (new_id == v.id) {
+        why = QueueReason::same_id;
+        return false;
+    }
+    if (!v.alert_ok || v.alert_old != 0 || v.alert_new != 0) {
+        why = QueueReason::alert;
+        return false;
+    }
+    return true;
+}
+inline QueueOutcome queue_end(TrackQueue& q, QueueReason why, std::uint32_t caller_task, unsigned long long frame,
+                              const OrphanView& o) {
+    QueueOutcome out;
+    out.event = QueueEvent::end;
+    out.reason = why;
+    out.record = q.record;
+    out.key = q.key;
+    out.old_id = q.old_id;
+    out.new_id = q.new_id;
+    out.task = q.task;
+    out.stop_task = caller_task;
+    out.frames = frame - q.defer_frame;
+    // Wake C only while O still names it (the manager's own end already zeroed the context and woke C) and never the
+    // calling task itself (its +0x20 must stay clear so the native suspends it as vanilla does).
+    if (q.state == QueueState::parked && o.live && o.context == q.task && q.task != caller_task) {
+        out.wake = true;
+        out.wake_ctx = q.task;
+        out.wake_slot = q.slot;
+    }
+    out.free_key = o.live;
+    q.reset();
+    return out;
+}
+// T3, the MOV_StopMovie native entry (only the native caller 0x00499886 matters; the other two callers stay vanilla).
+inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool armed, unsigned long long frame) {
+    QueueOutcome out;
+    if (v.return_va != stop_movie_native_return_va) return out;
+    const bool from_play = v.task_ok && v.task_ip == kc_play_stop_ip;
+    if (q.active()) {
+        if (!v.orphan.live) return queue_end(q, QueueReason::lost, v.task_id, frame, v.orphan);
+        if (!(v.orphan.flags & flag_playing) && v.orphan.context == 0)
+            return queue_end(q, QueueReason::stale, v.task_id, frame, v.orphan);
+        const bool music = v.found && (v.flags & flag_music);
+        if (v.id != q.new_id && v.id != q.key && !music) return out; // speech, video: not the queue's business
+        if (q.state == QueueState::parked && v.id == q.new_id && from_play && v.task_id != q.task) {
+            QueueReason why = QueueReason::none;
+            if (deferrable_shape(v, why)) { // a further jump: collapse to the newest id
+                out.event = QueueEvent::collapse;
+                out.consume = out.wake = out.complete = true;
+                out.record = q.record;
+                out.key = q.key;
+                out.old_id = q.new_id;
+                out.new_id = v.cells[2].value;
+                out.task = v.task_id;
+                out.stop_task = v.task_id;
+                out.wake_ctx = q.task;
+                out.wake_slot = q.slot;
+                out.complete_ctx = v.task_id;
+                out.complete_slot = v.slot;
+                out.frames = frame - q.defer_frame;
+                out.resume_candidate = false;
+                q.state = QueueState::orphaned;
+                q.new_id = out.new_id;
+                q.task = v.task_id;
+                q.slot = 0;
+                return out;
+            }
+        }
+        out = queue_end(q, QueueReason::stop, v.task_id, frame, v.orphan);
+        out.resume_candidate = v.id != out.new_id && v.id != out.key; // N never played; O is the proxy's
+        return out;
+    }
+    if (!from_play) return out;
+    out.event = QueueEvent::refuse;
+    out.old_id = v.id;
+    out.stop_task = v.task_id;
+    if (v.cells_ok) out.new_id = v.cells[2].value;
+    if (!armed) {
+        out.reason = QueueReason::not_armed;
+        return out;
+    }
+    QueueReason why = QueueReason::none;
+    if (!deferrable_shape(v, why)) {
+        out.reason = why;
+        return out;
+    }
+    if (combat_id(v.id)) {
+        out.reason = QueueReason::combat_old;
+        return out;
+    }
+    if (!v.found || (v.flags & (flag_music | flag_playing | flag_loop)) != (flag_music | flag_playing) || v.context == 0 ||
+        v.media == 0 || v.context == v.task_id || v.rec_slot >= slot_count) {
+        out.reason = QueueReason::not_playing;
+        return out;
+    }
+    // Defer: re-key O, wake T_old as the engine would, complete C as the engine would, keep flag 2 and skip the pause.
+    q.state = QueueState::orphaned;
+    q.record = v.record;
+    q.media = v.media;
+    q.key = queue_key(++q.episode);
+    q.old_id = v.id;
+    q.new_id = v.cells[2].value;
+    q.task = v.task_id;
+    q.slot = 0;
+    q.defer_frame = frame;
+    out.event = QueueEvent::defer;
+    out.reason = QueueReason::none;
+    out.consume = out.rekey = out.wake = out.complete = true;
+    out.resume_candidate = false;
+    out.record = v.record;
+    out.key = q.key;
+    out.wake_ctx = v.context;  // T_old, through the record's own slot
+    out.wake_slot = v.rec_slot;
+    out.complete_ctx = v.task_id;
+    out.complete_slot = v.slot;
+    out.new_id = q.new_id;
+    out.task = v.task_id;
+    return out;
+}
+// T2, the play routine entry (only MOV_PlayMovie's call 0x00499824 matters).
+inline QueueOutcome queue_on_play(TrackQueue& q, const QueuePlayView& v, unsigned long long frame) {
+    QueueOutcome out;
+    if (!q.active() || v.return_va != play_callers[0].return_va) return out;
+    if (!v.found || !(v.flags & flag_music)) return out; // speech, video
+    const bool mine = v.task_ok && v.task_ip == kc_play_ip && v.task_id == q.task && v.id == q.new_id;
+    if (!v.orphan.live) return queue_end(q, QueueReason::lost, v.task_id, frame, v.orphan);
+    if (q.state == QueueState::orphaned) {
+        if (!mine) return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
+        if (!(v.orphan.flags & flag_playing)) return queue_end(q, QueueReason::ended_before_park, v.task_id, frame, v.orphan);
+        if (v.orphan.context != 0 || v.slot >= slot_count) return queue_end(q, QueueReason::claimed, v.task_id, frame, v.orphan);
+        out.event = QueueEvent::park;
+        out.consume = out.park = true;
+        out.park_ctx = v.task_id;
+        out.park_slot = v.slot;
+        out.record = q.record;
+        out.key = q.key;
+        out.old_id = q.old_id;
+        out.new_id = q.new_id;
+        out.task = q.task;
+        out.frames = frame - q.defer_frame;
+        q.state = QueueState::parked;
+        q.slot = v.slot;
+        return out;
+    }
+    if (mine) { // the replay after O's natural end: vanilla continues, N seeks to 0 and runs
+        out = queue_end(q, QueueReason::natural_end, v.task_id, frame, v.orphan);
+        out.event = QueueEvent::release;
+        return out;
+    }
+    return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
+}
+// T1, the stop-all entry: alt-tab leaves the queue alone (the keep's skip_all leaves O alone too); every other caller ends it.
+inline QueueOutcome queue_on_stop_all(TrackQueue& q, std::uint32_t return_va, const OrphanView& o, unsigned long long frame) {
+    if (!q.active() || stop_mode(return_va) == StopMode::skip_all) return QueueOutcome{};
+    return queue_end(q, QueueReason::stop_all, 0, frame, o);
+}
+// Present: the committed alert level [R+4] became nonzero while the queue was active (a combat start the script dropped
+// while C was waiting, or one whose stop the queue did not see).
+inline QueueOutcome queue_on_alert(TrackQueue& q, std::uint32_t level, const OrphanView& o, unsigned long long frame) {
+    if (!q.active() || level == 0) return QueueOutcome{};
+    return queue_end(q, QueueReason::alert_edge, 0, frame, o);
+}
+// The KC patch state (Present): one row per change of (vm, code, result) and per apply.
+enum class KcResult : unsigned {
+    none = 0,
+    applied,
+    already,
+    no_vm,
+    unreadable,
+    build_mismatch,
+    out_of_range,
+    bytes_mismatch,
+    unwritable
+};
+inline const char* kc_result_name(KcResult r) {
+    switch (r) {
+    case KcResult::applied: return "applied";
+    case KcResult::already: return "already";
+    case KcResult::no_vm: return "no_vm";
+    case KcResult::unreadable: return "unreadable";
+    case KcResult::build_mismatch: return "build_mismatch";
+    case KcResult::out_of_range: return "out_of_range";
+    case KcResult::bytes_mismatch: return "bytes_mismatch";
+    case KcResult::unwritable: return "unwritable";
+    default: return "none";
+    }
+}
+struct KcPatch {
+    std::uint32_t vm = 0, code = 0, size = 0, build = 0;
+    KcResult result = KcResult::none;
+    unsigned countdown = 1; // the first Present is due
+    unsigned applied = 0, refused = 0;
+    // Whether this Present reads the VM's fields and the window: on a change of the VM pointer (one image load per
+    // frame otherwise) and every kc_check_stride_frames, so a reloaded story object (the same VM, a new CODE buffer) is
+    // patched again within the stride.
+    bool due(std::uint32_t vm_now) {
+        const bool changed = vm_now != vm;
+        vm = vm_now;
+        if (changed) {
+            countdown = kc_check_stride_frames;
+            return true;
+        }
+        if (--countdown) return false;
+        countdown = kc_check_stride_frames;
+        return true;
+    }
+    // The decision over the window bytes: true = write the patch; `r` the result either way.
+    bool decide(bool vm_ok, bool fields_ok, const unsigned char* window, bool window_ok, KcResult& r) const {
+        if (!vm_ok) {
+            r = KcResult::no_vm;
+            return false;
+        }
+        if (!fields_ok) {
+            r = KcResult::unreadable;
+            return false;
+        }
+        if (build != story_build) {
+            r = KcResult::build_mismatch;
+            return false;
+        }
+        if (code == 0 || size < warp_fork_offset + warp_window_length) {
+            r = KcResult::out_of_range;
+            return false;
+        }
+        if (!window_ok) {
+            r = KcResult::unreadable;
+            return false;
+        }
+        bool vanilla = true, patched = true;
+        for (unsigned i = 0; i < warp_window_length; ++i) {
+            if (window[i] != warp_window_memory[i]) vanilla = false;
+            if (window[i] != warp_patch_memory[i]) patched = false;
+        }
+        if (patched) {
+            r = KcResult::already;
+            return false;
+        }
+        if (!vanilla) {
+            r = KcResult::bytes_mismatch;
+            return false;
+        }
+        r = KcResult::applied;
+        return true;
+    }
+    // A change of result (or a fresh apply) is a row; the `already` that follows an apply is the same state, no row.
+    bool note(KcResult r) {
+        const bool row = r == KcResult::applied || (r != result && !(r == KcResult::already && result == KcResult::applied));
+        result = r;
+        if (r == KcResult::applied) ++applied;
+        else if (r != KcResult::already && r != KcResult::none) ++refused;
+        return row;
+    }
+};
+
 // ---- Shared entry sites (the stop-all entry 0x004982b0 and the MOV_StopMovie entry 0x00498810) ----
 // Both features patch the same two heads. The first to install claims the site (the claim writes `e9 rel32`
 // over its first five bytes); every feature chains its own stub in front of the current chain head. The
