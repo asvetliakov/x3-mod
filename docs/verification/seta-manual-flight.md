@@ -23,6 +23,8 @@ under SETA, with k = `((cfg+0xcc · cfg+0xd0 + 0x8000) >> 16) / 65536`.
 
 | 2026-10-24 | Run199 candidate: clean build from main `f1258728` (0 warnings, x87 walk PASS 1060/0, 58 focused host tests OK, study 162 PASS), installed into native `C:\X3` as Run199, bytes verified, rollback `rollback-d3d9\d3d9.dll.run198` (release 1.5.0) | [candidate](../../verification/results/run199-candidate-build.json), [install](../../verification/results/run199-candidate-install.json) | DLL `4a05fa5c…` 62,567,019 B; Run 199 A open |
 
+| 2026-10-24 | **Run 199 A completed** (the user: works fine; speed change ends SETA, steering and strafing keep it). Log: `installed=1 mode=2 stop=speed_only stop_sites=8 stop_status=active`, all five part-B sites active, no refusal or rollback row. Shipped as release 1.5.1 | `grep seta_manual_flight x3m.log` | Run200 = release 1.5.1 `b99567fe…` ([releases](releases.md#release-151)) |
+
 Open:
 * The flight check's rise-time half (equal `ship_rate_k` rise time at ×1 and ×10) is not measurable from the 500 ms debug rows; the steady value matched in Run 197 A and the user judged the handling right. A per-frame row behind a dedicated trace option would settle it if the feel is ever questioned.
 * The native fixture defines its own helper (`publish()` only): the DLL helper's `LightCallBoundary`, MXCSR load, armed

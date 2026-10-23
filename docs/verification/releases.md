@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.5.1
+
+2026-10-24, `python3 tools/release/release.py --out /tmp/x3m-release-1.5.1 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 63.6 s wall: dll 61.1 s, package 2.3 s), clean main `f57082a5` ([record](../../verification/results/release-1.5.1.json)).
+
+- Over 1.5.0 (Run199, Run 199 A flown and confirmed): **a manual speed change ends SETA again**, as in the stock game. `seta_manual_flight` part A no longer skips the engine's stop; it rewrites the eight non-speed flag rows of the stop block (seven `jne` → two-byte nop at `0x004120cb` + 8k, the look `je` → `jmp` at `0x0041210b`), so only the speed flag (speed keys, brake, Boost, throttle, slider) reaches `StopFastForward`; steering, strafe, turret and look input keep SETA on. The real-time handling of 1.5.0 is unchanged ([note](../architecture/seta-manual-flight.md), [ledger](seta-manual-flight.md)).
+- DLL: stripped `b99567fe…` (42,417,318 B; 0 warnings, x87 0 / 1060 reachable, strip identity PASS, 17 exports, debuglink), unstripped `11216b38…` and `d3d9.debug` `54a68d7c…` kept at /tmp/x3m-release-1.5.1/. Installed into native `C:\X3` as Run200, rollback `rollback-d3d9\d3d9.dll.run199` (the Run199 unstripped build `4a05fa5c…`; release 1.5.0 stays as `.run198`) ([install](../../verification/results/run200-release-install.json)).
+- Zip `x3m-1.5.1.zip` `7ea3f7d0…` (60,169,657 B): 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.5.1`; `generate --check` PASS (278 settings, 128 in the template). The user's `x3m.ini` header bumped to 1.5.1, body unchanged (previous file `x3m.ini.run199`).
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`).
+- Flown before the release build: Run 199 A (the user: works fine; log: `installed=1 mode=2 stop=speed_only stop_sites=8`, every site active, no refusal). The release differs from Run199 by the version string and the strip.
+
 ## Release 1.5.0
 
 2026-10-24, `python3 tools/release/release.py --out /tmp/x3m-release-1.5.0 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 63.0 s wall: dll 59.9 s, package 2.3 s), clean main `624d1165` ([record](../../verification/results/release-1.5.0.json)).
