@@ -199,13 +199,18 @@ The controllers already return under autopilot, so the scale can never act on au
 `obj+0x2c` through the auto-level branch (`[*0x0060850c+0x3c] & 2`). That branch stays in game time (§5).
 
 **Strafe [m bytes, i reading of the x87 sequence].** Per axis the increment is `clamp(command, ±20000 · game_ms / 1000)`
-(`[0x00565650]` = 20000, `0x00411dd0..0x00411f16`). It is added to the slip velocity `obj+0x60..+0x68`
+(`[0x00565650]` = 20000, `0x00411dd0..0x00411f16`); game ms enters only through the limit, loaded once by the
+`fild [esi+0x714]` at `0x00411e0c`/`0x00411eb2`. The increment is added to the slip velocity `obj+0x60..+0x68`
 (`0x00411ff6..0x0041201f`). The integrator then moves the ship by `slip × dt / 1000` and decays the slip by
-`(2000 − dt) / 2000` per frame (`0x0045a74e`), all in game time. The steady strafe speed in game units is set by
-increment and decay and does not depend on k. Displacement per real second is therefore k×. Scaling the increment
-by 1/k (the `fild [esi+0x714]` at `0x00411e0c`/`0x00411eb2` and the command loads `0x00411e18`/`0x00411ec2`) gives
-the unwarped steady strafe speed. The slip settles k× faster in real time, because the 2 s game time constant is
-fixed in the integrator, which all objects share.
+`(2000 − dt) / 2000` per frame (`0x0045a74e`), all in game time. In steady state the slip before the move is
+`increment · 2000 / dt`, so the ship moves `2 × increment` per frame whatever dt is. Unscaled warp therefore changes the
+real-time strafe speed only while the limit binds (`|command| > 20 · game_ms`): the increment then grows k× and so does
+the displacement per real second. Below the limit the increment and the displacement per frame are the same at every
+k. The scale that restores unwarped strafing in both regimes is the limit alone: `game_ms / k` at the `fild`, giving
+`clamp(command, ±20 · game_ms / k)` = the unwarped increment. Scaling the command loads `0x00411e18`/`0x00411ec2` as
+well would make the ship strafe k× too slowly whenever its strafe maximum is below the limit. The slip settles k×
+faster in real time, because the 2 s game time constant is fixed in the integrator, which all objects share. The proxy
+applies the limit scale (`X3M_SETA_MANUAL_FLIGHT=2`, [seta-manual-flight.md](../architecture/seta-manual-flight.md)).
 
 **Speed [m].** Speed keys change the desired speed `obj+0x14` by `max · min(game_ms, 100) / 750 · (max/4 + |v|) / max`
 per frame (`0x0040f35f`, `0x0040f36c`, `0x0040f38b`). That is k× faster per real second, up to the 100 ms cap: at ×10
@@ -287,6 +292,10 @@ So the model for (B) is the clock's own R, applied at the controller spans of §
   `obj+0x24 · k`.
 
 ## Reproduce
+
+The strafe reading (steady displacement `2 × increment` per frame, the limit scale equal to the unwarped increment at
+k = 1, 2.5, 10 for strafe maxima below, at and above the limit) is checked by the host core of
+`verification/probe/seta_manual_flight_host.cpp`, run by `verification/analysis/test_seta_manual_flight.py`.
 
 ```sh
 python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 139 checks

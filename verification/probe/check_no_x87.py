@@ -101,6 +101,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # SETA restore (src/proxy/seta_restore.cpp, X3M_SETA_RESTORE=1): the integer stub at the TI_SetTimeWarpFactor case entry
                 # 0x004b148c and its handler under LightCallBoundary inside the VM's native dispatch; rows behind call_preserved
                 '_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write',
+                # SETA and manual flight (src/proxy/seta_manual_flight.cpp, X3M_SETA_MANUAL_FLIGHT=2): the helper the five controller/strafe
+                # stubs call with the engine's x87 stack live (st0 = accel); the stubs' own fmul/fild are the intended x87 and are not roots
+                '_x3m_seta_manual_flight_axis',
                 # music through the save (music-restart.md section 7): Patch E at 0x00498d71 (thunk + handler), the gzwrite /
                 # gzclose observers the import rows call while the save pump may run, and the integer shim around the engine pump
                 '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close',

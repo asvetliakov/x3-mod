@@ -70,6 +70,7 @@ EXPECTED_EMPTY = {
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
     'X3M_RESOURCE_READ': 'fast', 'X3M_RUN_IN_BACKGROUND': '1', 'X3M_SCENE_HOOK': '1',  # run in background since 2026-09-27
     'X3M_SETA_RESTORE': '1',  # SETA back on after a gate since 2026-10-23 (docs/architecture/seta-restore.md)
+    'X3M_SETA_MANUAL_FLIGHT': '2',  # manual flight keeps SETA, real-time steering, since 2026-10-24 (seta-manual-flight.md)
     'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0',
     'X3M_SHADOW_ALPHA_CASTERS': '1', 'X3M_SHADOW_CASCADES': '250.0,1500.0,7500.0,37500.0,150000.0',
     'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '1.5', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance',

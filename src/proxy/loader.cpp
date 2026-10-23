@@ -19,6 +19,7 @@
 #include "text_density.h"
 #include "music_keep.h"
 #include "seta_restore.h"
+#include "seta_manual_flight.h"
 #include "music_alert.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -504,6 +505,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::seta_restore::shutdown(); // same rule: the SETA hook back and the injection consumer detached only on
                                            // FreeLibrary
+        if (reserved == nullptr)
+            x3m::seta_manual_flight::shutdown(); // same rule: the five controller/strafe claims and the stop byte back
+                                                 // only on FreeLibrary
         if (reserved == nullptr)
             x3m::music_alert::shutdown(); // same rule: the alert level site back only on FreeLibrary
         if (reserved == nullptr)
