@@ -21,6 +21,7 @@
 #include "ui_scale.h"
 #include "text_density.h"
 #include "music_keep.h"
+#include "music_alert.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
@@ -1973,8 +1974,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     text_density::present(ctx.frame); // X3M_TEXT_DENSITY, s != d: the flagged rows' D3D textures for the filter override
     ui_scale::present(ctx.frame); // X3M_UI_SCALE: the excluded HUD camera for the next frame; under --debug with the
                                   // entry counter live, one ui_scale_frame row per Present
-    if (save_loaded)
+    if (save_loaded) {
         fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
+        music_alert::loaded(); // the trigger's fire/hit counters are a new baseline on the next frame
+    }
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per
                                     // 300-frame window
@@ -5543,6 +5546,9 @@ void initialize_log(HMODULE module) {
     music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call
                               // redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0,
                               // 0x00498c90, 0x00498810); same window, disjoint from every other claim
+    music_alert::initialize(); // X3M_MUSIC_COMBAT_TRIGGER=engaged (schema default): the alert routine's level site
+                               // 0x0042c974 (six bytes, two whole instructions) redirected to the engagement filter;
+                               // vanilla patches nothing; same window, disjoint from every other claim
     run_in_background::initialize(); // X3M_RUN_IN_BACKGROUND=1 (schema default): the init routine's call 0x004d2580 at
                                      // 0x004033c9, right after the game wrote the -runinbg bit, redirected to a thunk
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every

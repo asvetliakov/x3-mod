@@ -315,6 +315,13 @@ SETTINGS = [
           'instead of restarting. 1 = on, 0 = off.', '1', launcher='--music-keep'),
     entry('voice_dmo_fallback', 'bool', 'audio', 'Makes speech play when the system lacks the game\'s speech decoder, by using the '
           'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off.', '1', launcher='--voice-decoder'),
+    entry('music_combat_trigger', 'enum', 'audio', 'When combat music starts. engaged = only while you or one of your ships near '
+          'you is fighting (hit, or firing at or ordered to attack an enemy), and an enemy is in the game\'s own alert range; '
+          'vanilla = whenever an enemy is in range, as the game does.', 'engaged', choices=('engaged', 'vanilla'),
+          launcher='--music-combat-trigger', since='2026-10-23'),
+    entry('music_combat_hold_s', 'int', 'audio', 'Game seconds the combat music stays after the last fighting event '
+          '(music_combat_trigger = engaged), 1..600. Game time: SETA shortens the real wait.', '20', range=(1, 600),
+          requires=('music_combat_trigger',), launcher='--music-combat-hold-s', since='2026-10-23'),
     # ---------------------------------------------------------------- loading
     entry('crypt_cache', 'bool', 'loading', 'Faster loading: reuses the game\'s file-signature checks instead of repeating them. '
           '1 = on, 0 = off.', '1', launcher='--crypt-cache'),

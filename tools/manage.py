@@ -1170,6 +1170,8 @@ def main():
     parser.add_argument('--media-cue-retry-s', type=int, default=30, metavar='N', help='Seconds before a cached media-cue failure is retried (X3M_MEDIA_CUE_RETRY_S; default 30; 1..3600; meaningless with --media-cue-cache off)')
     parser.add_argument('--music-keep', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch (accepted run273); --no-music-keep = off; not sent under --vanilla] Keep the sector music playing at its position across alt-tab, save and pause (X3M_MUSIC_KEEP=1; absent = nothing patched; opt-in until 2026-09-25: the assumption that the story script replays the same track id after the stop-all is unverified, fly --music-trace first; refused with --vanilla): a six-byte trampoline inside the engine\'s stop-all 0x004982b0 (site 0x004982db) lets a music record through the save and pause callers without the IMediaControl::Pause (the bookkeeping and the script wake stay vanilla) and marks the track after the alt-tab caller, and the play routine\'s seek call 0x00498d54 -> 0x004d0430 is redirected so a MOV_PlayMovie of the held or still-playing track returns without the seek to 0 ms; another id (sector change), load, P_Leave and game start keep vanilla behaviour. One music_keep_stop / music_keep_seek line per decision (docs/reverse-engineering/music-restart.md, Implementation). Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--no-music-keep', dest='music_keep', action='store_false', help='Turn the --music-keep launcher default off')
+    parser.add_argument('--music-combat-trigger', choices=('engaged', 'vanilla'), default=None, help='When combat music starts (X3M_MUSIC_COMBAT_TRIGGER; default engaged on every modded launch, refused under --vanilla). engaged = a six-byte trampoline at the alert routine\'s level site 0x0042c974 lowers the frame\'s alert level to 0 unless the player is engaged within --music-combat-hold-s game seconds: the player fired at a hostile selected target, the player ship was hit this frame, or a player-owned ship within the game\'s own 2,500,000-unit alert range was hit or holds an attack order on a hostile (docs/architecture/music-combat-trigger.md); the game\'s range stays the precondition. vanilla = nothing patched, combat music whenever a hostile is in range. Exact executable and bytes only, otherwise fails closed to vanilla')
+    parser.add_argument('--music-combat-hold-s', type=int, default=None, metavar='N', help='Game seconds the combat music stays after the last engagement event with --music-combat-trigger engaged (X3M_MUSIC_COMBAT_HOLD_S; 1..600, default 20; game time, so SETA shortens the real wait; refused under --vanilla)')
     parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--no-ownership', dest='ownership', action='store_false', help='Turn the --ownership launcher default off')
     parser.add_argument('--object-trace', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-object-trace = off; not sent under --vanilla] Capture verified engine submission identity (exact executable only)')
@@ -1395,6 +1397,12 @@ def main():
         parser.error('--gpu-sync-timing cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so there is no proxy pass to time.')
     if args.vanilla and args.music_keep:
         parser.error('--music-keep cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
+    if args.vanilla and args.music_combat_trigger is not None:
+        parser.error('--music-combat-trigger cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the alert routine never runs')
+    if args.vanilla and args.music_combat_hold_s is not None:
+        parser.error('--music-combat-hold-s cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the alert routine never runs')
+    if args.music_combat_hold_s is not None and not 1 <= args.music_combat_hold_s <= 600:
+        parser.error('--music-combat-hold-s must be a whole number of game seconds between 1 and 600')
     if args.motion_output and (args.object_trace != args.object_lifetime):
         parser.error('--motion-output history needs both --object-trace and --object-lifetime, or neither for sentinel-only mode.')
     if args.motion_jitter and not args.motion_output:
@@ -2203,6 +2211,14 @@ def main():
             env['X3M_MUSIC_KEEP'] = '1'
         else:
             env.pop('X3M_MUSIC_KEEP', None)
+        # Combat-music trigger: always explicit on a modded launch (engaged unless --music-combat-trigger vanilla, hold 20
+        # unless --music-combat-hold-s), so a stale shell value can select neither; dropped under --vanilla (refused above).
+        if args.vanilla:
+            env.pop('X3M_MUSIC_COMBAT_TRIGGER', None)
+            env.pop('X3M_MUSIC_COMBAT_HOLD_S', None)
+        else:
+            env['X3M_MUSIC_COMBAT_TRIGGER'] = args.music_combat_trigger or 'engaged'
+            env['X3M_MUSIC_COMBAT_HOLD_S'] = str(20 if args.music_combat_hold_s is None else args.music_combat_hold_s)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
