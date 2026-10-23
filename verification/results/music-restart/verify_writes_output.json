@@ -51,7 +51,7 @@
   "gzwrite_single_thunk": true,
   "save_caller": true,
   "position_reader_contract": true,
-  "combat_ids": true,
+  "combat_is_alert": true,
   "save_gzclose_path": true,
   "run_skip_bound": true,
   "free_by_id_contract": true,
@@ -110,9 +110,7 @@
   "free_by_id_body": 51,
   "kc_jump_handler": 9,
   "kc_loader_code_store": 29,
-  "kc_loader_build_store": 6,
-  "warp_window_memory": 6,
-  "warp_patch_memory": 6
+  "kc_loader_build_store": 6
  },
  "written": {
   "music_keep_a": {

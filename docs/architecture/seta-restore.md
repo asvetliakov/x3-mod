@@ -40,10 +40,13 @@ expects.
    record one frame below `15ef8` (`cef8f` or `df887`) would need a second return-scan step and more story offsets
    bound to the build. The verifier pins the three instructions.
 
-   The script constants are bound to story build `[*0x006085e4+0x143c]` = 1462141839 (the installed Mayhem
-   `addon/07.cat`). The first SETA stop on a readable other build logs one `refused reason=story_build` row, and the
-   feature then stays off for the process. When the build id cannot be read, that write does not arm: one
-   `refused reason=build_unreadable` row is logged (once per process), and the feature stays armed for later writes.
+   The stop IP and the gate return are detected at run time in the loaded object (`story_detect.h`,
+   [story-builds.md](story-builds.md)): once per VM key (pointer, CODE, size, build), at the first SETA stop after it
+   changed. Mayhem gives `1558d`/`15ef8`, stock AP `157a6`/`160d1`. An object where they are not found uniquely
+   (x3intro, a changed story; a known build that detects differently from `story_builds.h`) logs one
+   `refused reason=story_sites detect=<reason> method=<method>` row per build and reason and never arms. When the VM
+   key cannot be read, that write does not arm: one `refused reason=build_unreadable` row is logged (once per
+   process), and the feature stays armed for later writes.
 2. **Transit complete.** The chase restore's injection site `0x00410100` (the input routine's entry, once per main-loop
    iteration, main thread, outside the interpreter) runs the consumer's poll only while a ticket is active. The poll
    takes no new reader. Once per presented frame it runs the fog hand-over's walk of
@@ -122,9 +125,9 @@ Any mismatch logs one refusal row, and nothing is claimed. The globals read are 
 
 | Row | When | Fields |
 | --- | --- | --- |
-| `installed=1` | install | hook, write kind, stub, inject site status, call, key, method, story build, IP, return, due frames, expiry ms |
+| `installed=1` | install | hook, write kind, stub, inject site status, call, key, method, `detect=runtime`, `expected=` (the known builds' IP and return), due frames, expiry ms |
 | `refused reason=executable_mismatch / late_claim / bytes_mismatch / pin_failed / <claim status> / <inject status> / rollback_failed` | install refusal | first mismatching window (`window`, `window_name`, `expected`/`got` first 8 bytes; `-` otherwise), hook status, inject status, patched |
-| `refused reason=story_build` | first SETA stop on a readable other story build (once; latched off) | build, expected build |
+| `refused reason=story_sites` | a SETA stop in an object whose sites were not detected (once per build and reason; never arms) | build, object, `detect`, `method`, known builds |
 | `refused reason=build_unreadable` | a SETA stop whose build id could not be read (once; not latched) | old factor, IP, return |
 | `refused reason=same_transit / unreadable` | arm refused | old factor, IP, return, sector id |
 | `armed` | the gate stop under autopilot | old, new factor, IP, return offset and name, ship, ship id, `script_id` (`+0x94`), sector, sector id, build, `autopilot=1`, `flags` |

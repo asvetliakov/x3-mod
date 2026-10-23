@@ -8,9 +8,36 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <map>
 #include <vector>
 using namespace x3m::seta_restore::core;
+// The detections of the two objects on disk as the run-time detector reports them (story_detect_host over
+// verification/probe/story_vm_image.py's images reproduces exactly these): Mayhem is the default observation,
+// story_builds() covers the selection.
+constexpr std::uint32_t story_build = x3m::story::mayhem_build, stop_ip = x3m::story::mayhem_seta_stop_ip,
+                        gate_return = x3m::story::mayhem_seta_gate_return;
+static x3m::story::SetaSites detected(std::uint32_t build, std::uint32_t stop, std::uint32_t gate,
+                                      std::initializer_list<x3m::story::Range> named) {
+    x3m::story::SetaSites s;
+    s.detected = true;
+    s.key = x3m::story::VmKey{0x10000000u, 0x20000000u, 0x1d2000u, build};
+    s.stop_ip = stop;
+    s.gate_return = gate;
+    unsigned i = 0;
+    for (const x3m::story::Range& r : named) s.named[i++] = r;
+    return s;
+}
+static const x3m::story::SetaSites mayhem_sites =
+    detected(x3m::story::mayhem_build, 0x1558d, 0x15ef8, {{0x15ed2, 0x15f7b}, {0x15599, 0x1562a}, {0x15f7b, 0x16027}, {0x169fb, 0x16ad4}, {0xd5f6c, 0xd6770}});
+static const x3m::story::SetaSites stock_sites =
+    detected(x3m::story::stock_build, 0x157a6, 0x160d1, {{0x160ab, 0x16154}, {0x157b2, 0x15843}, {0x16154, 0x16200}, {0x16bd4, 0x16cad}, {0xbd7a3, 0xbdf50}});
+static const x3m::story::SetaSites* const mayhem = &mayhem_sites;
+static x3m::story::SetaSites failed(std::uint32_t build, x3m::story::Fail f, const char* where) {
+    x3m::story::SetaSites s = detected(build, 0, 0, {});
+    s.outcome = x3m::story::Outcome{f, where};
+    return s;
+}
 static unsigned checks = 0;
 static void check(bool ok, const char* why) {
     ++checks;
@@ -109,6 +136,7 @@ static Write gate_stop() {
     w.ip = stop_ip;
     w.build = story_build;
     w.build_readable = true;
+    w.sites = &mayhem_sites;
     w.ret = Return{Scan::found, gate_return};
     return w;
 }
@@ -132,8 +160,11 @@ static void constants() {
               call_argc == 0 && call_return_kind == 1,
           "the call");
     check(story_build == 1462141839u && stop_ip == 0x1558d && gate_return == 0x15ef8, "story constants");
-    check(std::strcmp(return_name(0x155ad, false), "toggle") == 0 && std::strcmp(return_name(0, true), "engine_input") == 0 &&
-              std::strcmp(return_name(0x12345, false), "other") == 0,
+    check(std::strcmp(return_name(mayhem, 0x155ad, false), "toggle") == 0 && std::strcmp(return_name(mayhem, 0, true), "engine_input") == 0 &&
+              std::strcmp(return_name(mayhem, 0x12345, false), "other") == 0 && std::strcmp(return_name(nullptr, 0x15ef8, false), "other") == 0 &&
+              std::strcmp(return_name(&stock_sites, 0x160d1, false), "gate") == 0 &&
+              std::strcmp(return_name(&stock_sites, 0x15ef8, false), "other") == 0 &&
+              std::strcmp(return_name(mayhem, 0xd6402, false), "jumpdrive") == 0,
           "return names");
     check(expiry_ms == 60000 && due_frames == 2, "timing");
     check(ship_flags == 0x40 && autopilot_bit == 0x80000 && ship_class == 7 && sector_class == 1 &&
@@ -216,19 +247,37 @@ static void arm_conditions() {
         const Report r = s.on_write(w, at(1, 1), p);
         check(r.row == Row::none && s.phase == Phase::idle, c.why);
     }
-    { // another story build: one refusal row, then off for good (no row, no arm)
+    { // a failed detection: one refusal row per build and reason (naming the method), never arms; a detected object
+      // still arms afterwards
         State s;
+        const x3m::story::SetaSites intro = failed(1462141842u, x3m::story::Fail::no_method, "150::StopFastForward");
         Write w = gate_stop();
-        w.build = 1510658513u;
+        w.build = intro.key.build;
+        w.sites = &intro;
         Report r = s.on_write(w, at(1, 1), p);
-        check(r.row == Row::refused && r.reason == refuse_story_build && s.disabled && !s.active(), "foreign build refused");
-        r = s.on_write(gate_stop(), at(2, 2), p);
-        check(r.row == Row::none && !s.active() && s.refusals[refuse_story_build] == 1, "refused once, stays off");
-        Write user = gate_stop();
-        user.build = 1510658513u;
-        user.ret.offset = 0x155ad; // any SETA stop shape is enough to bind the build
+        check(r.row == Row::refused && r.reason == refuse_story_sites && r.build == 1462141842u && !s.active() &&
+                  r.detect_fail == x3m::story::Fail::no_method && std::strcmp(r.detect_where, "150::StopFastForward") == 0,
+              "x3intro (no StopFastForward): refused, the row names the method and the reason");
+        r = s.on_write(w, at(2, 2), p);
+        check(r.row == Row::none && !s.active() && s.refusals[refuse_story_sites] == 1, "the same build and reason: no second row");
+        const x3m::story::SetaSites ambiguous = failed(1234567891u, x3m::story::Fail::ambiguous_site, "150::StartGateWarp");
+        Write other = w;
+        other.build = ambiguous.key.build;
+        other.sites = &ambiguous;
+        r = s.on_write(other, at(3, 3), p);
+        check(r.row == Row::refused && r.build == 1234567891u && s.refusals[refuse_story_sites] == 2 &&
+                  r.detect_fail == x3m::story::Fail::ambiguous_site,
+              "an unknown build whose signature matches twice: its own row");
+        const x3m::story::SetaSites mismatch = failed(x3m::story::mayhem_build, x3m::story::Fail::table_mismatch, "mayhem");
+        Write known = gate_stop();
+        known.sites = &mismatch;
+        check(s.on_write(known, at(4, 4), p).reason == refuse_story_sites && !s.active(),
+              "a known build whose detection differs from story_builds.h: refused (the last-resort check)");
+        Write user = w;
+        user.ret.offset = 0x155ad; // any SETA stop shape is enough to bind the detection
         State t;
-        check(t.on_write(user, at(1, 1), p).reason == refuse_story_build, "the build is checked on any SETA stop");
+        check(t.on_write(user, at(1, 1), p).reason == refuse_story_sites, "the detection is checked on any SETA stop");
+        check(s.on_write(gate_stop(), at(5, 5), p).row == Row::armed, "a detected object arms after a failed one");
     }
     { // an unreadable build id is not this write: one row, never latched, the next readable stop arms
         State s;
@@ -236,16 +285,20 @@ static void arm_conditions() {
         w.build_readable = false;
         w.build = 0;
         Report r = s.on_write(w, at(1, 1), p);
-        check(r.row == Row::refused && r.reason == refuse_build_unreadable && !s.disabled && !s.active(),
+        check(r.row == Row::refused && r.reason == refuse_build_unreadable && !s.refused_logged && !s.active(),
               "build unreadable: refused, not latched");
         r = s.on_write(w, at(2, 2), p);
-        check(r.row == Row::none && !s.disabled && !s.active(), "build unreadable: the row once");
+        check(r.row == Row::none && !s.refused_logged && !s.active(), "build unreadable: the row once");
         check(s.on_write(gate_stop(), at(3, 3), p).row == Row::armed, "a later readable stop arms");
         Write foreign = gate_stop();
         foreign.build_readable = false;
         foreign.build = 1510658513u; // a value read without the flag is not trusted either
         State t;
-        check(t.on_write(foreign, at(1, 1), p).reason == refuse_build_unreadable && !t.disabled, "flag decides");
+        check(t.on_write(foreign, at(1, 1), p).reason == refuse_build_unreadable && !t.refused_logged, "flag decides");
+        Write none = gate_stop();
+        none.sites = nullptr;
+        State u;
+        check(u.on_write(none, at(1, 1), p).reason == refuse_build_unreadable, "no detection: unreadable, not armed");
     }
     { // the player ship or its sector unreadable at the arm
         State s;
@@ -258,6 +311,38 @@ static void arm_conditions() {
         q.parent_sector = 0x1234;
         check(s.on_write(gate_stop(), at(1, 1), q).reason == refuse_unreadable, "no sector id: refused");
     }
+}
+// The per-build selection: every entry arms on its own stop IP and gate return, the other entry's offsets are another stop
+// under it, the armed row carries the entry (its return names), and the table is complete.
+// Selection by the detection of the loaded object: each object's own detected stop arms with its sites (the ticket keeps
+// them for the rows), another object's offsets are another stop.
+static void story_builds() {
+    for (const x3m::story::SetaSites* d : {&mayhem_sites, &stock_sites}) {
+        Probe q;
+        Write w = gate_stop();
+        w.build = d->key.build;
+        w.sites = d;
+        w.ip = d->stop_ip;
+        w.ret.offset = d->gate_return;
+        State s;
+        Report r = s.on_write(w, at(1, 1), q);
+        check(r.row == Row::armed && s.sites.stop_ip == d->stop_ip && std::strcmp(r.ret_name, "gate") == 0,
+              "the object's own detected stop arms; the row names the gate");
+        const x3m::story::SetaSites* o = d == &mayhem_sites ? &stock_sites : &mayhem_sites;
+        Write x = w;
+        x.ip = o->stop_ip;
+        x.ret.offset = o->gate_return;
+        State t;
+        check(t.on_write(x, at(1, 1), q).row == Row::none && !t.active(), "another object's offsets: another stop, no arm");
+        Write cancel = w;
+        cancel.sites = nullptr; // a write while armed reads no detection: named from the ticket's copy
+        cancel.ret.offset = d == &mayhem_sites ? 0x155ad : 0x157c6;
+        r = s.on_write(cancel, at(2, 2), q);
+        check(r.row == Row::cancelled && std::strcmp(r.ret_name, "toggle") == 0, "a cancel names its return from the ticket's sites");
+    }
+    check(x3m::story::build_count == 2 && x3m::story::builds[0].seta_stop_ip == mayhem_sites.stop_ip &&
+              x3m::story::builds[1].seta_gate_return == stock_sites.gate_return,
+          "the known builds' expectations equal the detections");
 }
 static void cancels() {
     { // any later factor write cancels, in armed and in due; the user's own ramp write too
@@ -688,8 +773,10 @@ static void speeds() {
     Report none;
     record_speed(none, p);
     check(!none.speed_readable && !none.speed_ship, "no row: no read");
+    const x3m::story::SetaSites none_found = failed(1, x3m::story::Fail::no_class, "150::StopFastForward");
     Write foreign = gate_stop();
     foreign.build = 1;
+    foreign.sites = &none_found;
     State t;
     r = t.on_write(foreign, at(1, 1), p);
     record_speed(r, p);
@@ -867,6 +954,7 @@ int main(int argc, char** argv) {
     }
     constants();
     arm_conditions();
+    story_builds();
     cancels();
     inject_sequence();
     rebind();

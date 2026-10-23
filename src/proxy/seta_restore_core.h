@@ -1,12 +1,14 @@
 #pragma once
+#include "story_detect.h"
 #include <cstdint>
 #include <cstring>
 
 // SETA restore after a gate transit (X3M_SETA_RESTORE=1; docs/architecture/seta-restore.md, mechanism and option (i) of
 // docs/reverse-engineering/seta-script-toggle.md section 3): the engine sites, the byte windows the installer compares,
-// the story build the script constants belong to, the task-stack return scan and the arm/cancel state machine, as pure
-// code the host test compiles (verification/probe/seta_restore_host.cpp). No Windows header, no allocation, no floating
-// point. verification/results/seta-script-toggle/verify_seta_restore_sites.py pins every constant against X3AP.exe.
+// the story sites detected at run time from the loaded object (story_detect.h), the task-stack return scan and the
+// arm/cancel state machine, as pure code the host test compiles (verification/probe/seta_restore_host.cpp). No Windows
+// header, no allocation, no floating point. verification/results/seta-script-toggle/verify_seta_restore_sites.py pins
+// every constant against X3AP.exe and the known builds' expectations (story_builds.h) against their objects on disk.
 namespace x3m::seta_restore::core {
 // ---- the TI_SetTimeWarpFactor case of the TI native dispatcher (record-only hook) ----
 // Thunk 0x004b12d0 -> dispatcher 0x004b1300 (EAX = case <= 15; EBX = argument cells, EBP = task, EDI = [task+8],
@@ -171,24 +173,15 @@ constexpr unsigned ship_script = 0x94;
 constexpr std::uint32_t event_script_read_va = 0x004607f4, can_land_script_read_va = 0x0045d8a3;
 constexpr std::uint32_t set_autopilot_on_va = 0x00463e88, set_autopilot_off_va = 0x00463ea7, get_flags_va = 0x004637df;
 
-// ---- the story constants, valid for one story build only (seta_toggle_study.txt) ----
-// Installed L/x3story.obj (addon/07.cat, Mayhem): StopFastForward's TI_SetTimeWarpFactor at 15588 (IP 1558d) and
-// StartGateWarp's StopFastForward call at 15ef3 (return offset 15ef8). Any other build id refuses to arm (one row).
-constexpr std::uint32_t story_build = 1462141839u;
-constexpr std::uint32_t stop_ip = 0x1558d, gate_return = 0x15ef8;
-struct NamedOffset {
-    std::uint32_t offset;
-    const char* name;
-};
-// Return offsets of StopFastForward's callers (section 4 of the note), for the rows only.
-constexpr NamedOffset named_returns[] = {{0x15ef8, "gate"},        {0x155ad, "toggle"},     {0x15fa1, "sector_warp"},
-                                         {0x16a07, "quick_warp"},  {0xd62e2, "jumpdrive"},  {0xd6402, "jumpdrive"},
-                                         {0, "engine_input"}};
-inline const char* return_name(std::uint32_t offset, bool bottom) noexcept {
-    if (bottom) return "engine_input";
-    for (const auto& n : named_returns)
-        if (n.offset && n.offset == offset) return n.name;
-    return "other";
+// ---- the story sites, detected per loaded object (story_detect.h detect_seta; seta_toggle_study.txt) ----
+// StopFastForward's only TI_SetTimeWarpFactor (the task IP after it; Mayhem 1558d, stock 157a6) and StartGateWarp's
+// only StopFastForward call (the return offset after it; Mayhem 15ef8, stock 160d1), detected once per VM key (CODE
+// buffer, size, build) at the first SETA stop after a load. A failed detection (a signature that does not match
+// uniquely, an object without those methods such as x3intro, a known build that differs from story_builds.h) refuses
+// with the method and the reason (one row per build and reason) and never arms. The row names of StopFastForward's
+// callers come from the detected method ranges (rows only).
+inline const char* return_name(const story::SetaSites* s, std::uint32_t offset, bool bottom) noexcept {
+    return story::seta_return_name(s, offset, bottom);
 }
 
 // ---- timing ----
@@ -278,7 +271,7 @@ inline const char* cancel_name(unsigned c) noexcept {
 }
 enum Refusal : unsigned {
     refuse_none = 0,
-    refuse_story_build = 1,  // the VM's story build is not story_build: the feature stays off for the process
+    refuse_story_sites = 1,  // the story sites were not detected in the loaded object: never arms (row per build+reason)
     refuse_same_transit = 2, // a second gate stop from the departure sector of the previous arm
     refuse_unreadable = 3,   // player ship, its sector, the sector id, its flags or (to arm) its script id unreadable/0
     refuse_build_unreadable = 4, // the VM's build id unreadable at a SETA stop: not this write (row once, not latched)
@@ -290,7 +283,7 @@ inline const char* skip_name(unsigned k) noexcept {
     return k < skip_count ? names[k] : "?";
 }
 inline const char* refusal_name(unsigned r) noexcept {
-    static const char* const names[refuse_count] = {"none", "story_build", "same_transit", "unreadable",
+    static const char* const names[refuse_count] = {"none", "story_sites", "same_transit", "unreadable",
                                                    "build_unreadable"};
     return r < refuse_count ? names[r] : "?";
 }
@@ -337,8 +330,9 @@ struct Clock {
 // One TI_SetTimeWarpFactor call as read at the case entry.
 struct Write {
     bool readable = false;       // cfg, the argument cell and the task IP were read
-    bool build_readable = false; // [*0x006085e4+0x143c] was read (only for a SETA stop or while active)
+    bool build_readable = false; // the VM key (pointer, CODE, size, build) was read and `sites` detected for it
     std::uint32_t old_factor = 0, new_factor = 0, tag = 0, ip = 0, build = 0;
+    const story::SetaSites* sites = nullptr; // the detection for the VM's current object (only for a SETA stop)
     Return ret;
 };
 // The row a transition produces; the caller formats it outside every lock.
@@ -349,6 +343,9 @@ struct Report {
     std::uint32_t old_factor = 0, new_factor = 0, ip = 0, ret = 0, build = 0, ship = 0, sector = 0, sector_id = 0,
                   ready_sector = 0, result = 0, skipped = 0;
     Scan scan = Scan::none;
+    const char* ret_name = "none";       // the write's return offset named by the detected callers (write rows)
+    story::Fail detect_fail = story::Fail::none; // a story_sites refusal: the reason and the method
+    const char* detect_where = "";
     // the re-bind (rebound and rebind_pending rows; new_ship also on a ship_change cancel): the ticket's ship id +8
     // read at the arm (0: unreadable) and its ship-script id +0x94, the new player ship, its id, its script id, its
     // sector and that sector's id (0 where not read); record only, the new ship's flags +0x40 (rebound row)
@@ -377,8 +374,11 @@ struct Report {
 //   bool script(std::uint32_t ship, std::uint32_t& id)   [ship+0x94]
 struct State {
     Phase phase = Phase::idle;
-    bool disabled = false;            // story build refused (latched)
     bool build_unreadable_logged = false;
+    bool refused_logged = false;      // a story_sites refusal was written
+    std::uint32_t refused_build = 0;  // the build and reason of the last story_sites refusal: repeats write no row
+    story::Fail refused_fail = story::Fail::none;
+    story::SetaSites sites{};         // the detection the ticket armed with (the names of later cancel rows)
     std::uint32_t ship = 0, sector = 0, sector_id = 0, epoch = 0, ready_sector = 0, skipped = 0, ship_id = 0;
     std::uint32_t script_id = 0; // the ticket's ship-script id [+0x94] at the arm (non-zero); a re-bind must match it
     bool rebound = false;        // this ticket has followed one player-ship change
@@ -399,23 +399,30 @@ struct State {
         r.ret = w.ret.offset;
         r.scan = w.ret.scan;
         r.build = w.build;
-        if (disabled) return r;
+        const story::SetaSites* names = w.sites && w.sites->outcome.ok() ? w.sites : phase != Phase::idle ? &sites : nullptr;
+        r.ret_name = return_name(names, w.ret.offset, w.ret.scan == Scan::bottom);
         if (phase == Phase::armed || phase == Phase::due) {
             cancel(r, cancel_factor_write, now);
             return r;
         }
         if (phase == Phase::calling) return r; // inside our own StartFastForward (it writes no factor)
         if (!w.readable || w.tag != int_tag || w.old_factor <= factor_one || w.new_factor != factor_one) return r;
-        if (!w.build_readable) { // unknown story: not this write; one row, the feature stays armed for later writes
+        if (!w.build_readable || !w.sites) { // unknown story: not this write; one row, the feature stays armed for later writes
             if (build_unreadable_logged) return r;
             build_unreadable_logged = true;
             return refuse(r, refuse_build_unreadable);
         }
-        if (w.build != story_build) { // a readable foreign build: the offsets are not bound to it
-            disabled = true;
-            return refuse(r, refuse_story_build);
+        const story::SetaSites& found = *w.sites;
+        if (!found.outcome.ok()) { // the sites were not detected in this object: never arms
+            r.detect_fail = found.outcome.fail;
+            r.detect_where = found.outcome.where;
+            if (refused_logged && w.build == refused_build && found.outcome.fail == refused_fail) return r;
+            refused_logged = true;
+            refused_build = w.build;
+            refused_fail = found.outcome.fail;
+            return refuse(r, refuse_story_sites);
         }
-        if (w.ip != stop_ip || w.ret.scan != Scan::found || w.ret.offset != gate_return) return r; // another stop
+        if (w.ip != found.stop_ip || w.ret.scan != Scan::found || w.ret.offset != found.gate_return) return r; // another stop
         std::uint32_t s = 0, sec = 0, id = 0;
         if (!p.player(s) || !s || !p.parent(s, sec) || !sec || !p.sector_id(sec, id) || !id)
             return refuse(r, refuse_unreadable);
@@ -438,6 +445,7 @@ struct State {
         }
         if (!script_read) return refuse(r, refuse_unreadable); // no identity for the transit's re-bind
         phase = Phase::armed;
+        sites = found;
         ship = s;
         ship_id = 0;
         if (!p.object_id(s, ship_id)) ship_id = 0; // record only

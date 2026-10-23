@@ -294,7 +294,9 @@ assembled.
 * **Invalidate** the memory on use, on any other music id, on a stop-all `load`/`session_start`, and when combat ends
   in another sector.
 
-**Implementation (2026-10-23).** Under the existing `music_keep` option (`src/proxy/music_keep.cpp`, state machine
+**Implementation (2026-10-23; amended the same day: the id test below is replaced by the alert edge, no id list.**
+A stop counts only on the rising edge `[R+4] = 0`, `[R+8] != 0`; a play with either level nonzero is a combat track.
+See [story-builds.md](../architecture/story-builds.md) §3.**)** Under the existing `music_keep` option (`src/proxy/music_keep.cpp`, state machine
 `ResumeMemory` in `music_keep_core.h`, host-tested in `verification/analysis/test_music_keep.py`). At the shared
 `0x00498810` entry (already claimed by the keep), for the native caller `0x00499886` and an id outside 1001..1042, a
 found record with music + playing flags has its position read as `0x004d0600` does (`[m+0x8c] & 0x20` →

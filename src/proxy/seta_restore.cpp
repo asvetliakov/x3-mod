@@ -9,6 +9,7 @@
 #include "object_trace.h"
 #include <windows.h>
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 
 static_assert(sizeof(void*) == 4, "x86 code patching only");
@@ -22,6 +23,25 @@ bool patched_ = false, attached_ = false;
 std::atomic<bool> armed_{false};
 const char* state_ = "disabled";
 const char* inject_state_ = "unclaimed"; // the shared injection site's status at the attach
+// The known builds' expectations for the rows (story_builds.h; the run-time source is the detection), formatted once
+// at install: name:build:stop_ip:gate_return per entry, and the known build ids alone for the refused row.
+char stories_[160] = "", known_builds_[64] = "";
+// The story sites of the VM's current object (story_detect.h), detected at the first SETA stop after the VM key changed;
+// used only inside the TI case handler (the VM's thread), outside the lock.
+x3m::story::SetaSites sites_{};
+unsigned char scratch_[x3m::story::scratch_size];
+void format_stories() {
+    unsigned at = 0, known = 0;
+    for (const x3m::story::Build& b : x3m::story::builds) {
+        const int n = std::snprintf(stories_ + at, sizeof stories_ - at, "%s%s:%lu:0x%05lx:0x%05lx", at ? "," : "", b.name,
+                                    static_cast<unsigned long>(b.build), static_cast<unsigned long>(b.seta_stop_ip),
+                                    static_cast<unsigned long>(b.seta_gate_return));
+        if (n > 0 && unsigned(n) < sizeof stories_ - at) at += unsigned(n);
+        const int k = std::snprintf(known_builds_ + known, sizeof known_builds_ - known, "%s%lu", known ? "," : "",
+                                    static_cast<unsigned long>(b.build));
+        if (k > 0 && unsigned(k) < sizeof known_builds_ - known) known += unsigned(k);
+    }
+}
 engine_patch::Site hook_site_{};
 SRWLOCK lock_ = SRWLOCK_INIT;
 State machine_; // under lock_
@@ -107,7 +127,7 @@ void emit(const Report& r) {
                  r.row == Row::armed ? "armed" : "skipped reason=",
                  r.row == Row::armed ? "" : skip_name(r.reason), r.frame, static_cast<unsigned long>(r.old_factor),
                  static_cast<unsigned long>(r.new_factor), static_cast<unsigned long>(r.ip),
-                 static_cast<unsigned long>(r.ret), return_name(r.ret, r.scan == Scan::bottom),
+                 static_cast<unsigned long>(r.ret), r.ret_name,
                  static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.ship_id),
                  static_cast<unsigned long>(r.script_id), static_cast<unsigned long>(r.sector), static_cast<unsigned long>(r.sector_id),
                  static_cast<unsigned long>(r.build), unsigned(r.autopilot), static_cast<unsigned long>(r.flags),
@@ -131,7 +151,7 @@ void emit(const Report& r) {
                  cancel_name(r.reason), r.frame, r.frames_since_arm, r.ms_since_arm,
                  static_cast<unsigned long>(r.old_factor), static_cast<unsigned long>(r.new_factor),
                  static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret), scan_name(r.scan),
-                 r.reason == cancel_factor_write ? return_name(r.ret, r.scan == Scan::bottom) : "none",
+                 r.reason == cancel_factor_write ? r.ret_name : "none",
                  static_cast<unsigned long>(r.ship), static_cast<unsigned long>(r.sector_id),
                  static_cast<unsigned long>(r.ready_sector), static_cast<unsigned long>(r.skipped),
                  ship_check_name(r.ship_check), static_cast<unsigned long>(r.new_ship),
@@ -149,9 +169,10 @@ void emit(const Report& r) {
                  static_cast<unsigned long>(r.skipped), speed_ship, speed_read, speed, desired);
         return;
     case Row::refused:
-        x3m::log("seta_restore refused reason=%s frame=%llu build=%lu expected_build=%lu old=0x%08lx ip=0x%05lx ret=0x%05lx sector_id=%lu",
-                 refusal_name(r.reason), r.frame, static_cast<unsigned long>(r.build),
-                 static_cast<unsigned long>(story_build), static_cast<unsigned long>(r.old_factor),
+        x3m::log("seta_restore refused reason=%s frame=%llu build=%lu object=%s detect=%s method=%s known_builds=%s old=0x%08lx ip=0x%05lx ret=0x%05lx sector_id=%lu",
+                 refusal_name(r.reason), r.frame, static_cast<unsigned long>(r.build), x3m::story::object_name(r.build),
+                 x3m::story::fail_name(r.detect_fail), r.detect_where[0] ? r.detect_where : "-", known_builds_,
+                 static_cast<unsigned long>(r.old_factor),
                  static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret),
                  static_cast<unsigned long>(r.sector_id));
         return;
@@ -227,14 +248,25 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_seta_restore_factor_wr
     w.readable = load(cfg_ptr_va, cfg) && cfg && load(cfg + cfg_factor, w.old_factor) && read(args, &tag, 1) &&
                  load(args + 1, w.new_factor) && load(task + task_ip, w.ip);
     w.tag = tag;
+    const bool stop_shaped = w.readable && w.old_factor > factor_one && w.new_factor == factor_one;
+    if (stop_shaped) { // the sites of the VM's current object: detected once per VM key (reads only, outside the lock)
+        auto reader = [](std::uint32_t at, void* out, unsigned n) { return read(at, out, n); };
+        x3m::story::VmKey key;
+        if (load(vm_ptr_va, vm_root) && vm_root && x3m::story::read_key(reader, vm_root, key)) {
+            if (!sites_.detected || sites_.key != key) {
+                x3m::story::detect_seta(reader, vm_root, sites_, scratch_);
+                sites_.key = key;
+            }
+            w.build = key.build;
+            w.sites = &sites_;
+            w.build_readable = true;
+        }
+    }
     Report r;
     {
         Guard guard;
-        const bool stop_shaped = w.readable && w.old_factor > factor_one && w.new_factor == factor_one;
-        if (!machine_.disabled && (machine_.active() || stop_shaped)) {
-            w.build_readable = load(vm_ptr_va, vm_root) && vm_root && load(vm_root + vm_build, w.build);
+        if (machine_.active() || stop_shaped)
             w.ret = first_return(task, [](std::uintptr_t at, void* out, unsigned n) { return read(at, out, n); });
-        }
         EngineProbe probe;
         r = machine_.on_write(w, now(), probe);
         publish();
@@ -396,15 +428,16 @@ bool initialize() {
         Guard guard;
         machine_ = State{};
     }
+    sites_ = x3m::story::SetaSites{};
+    format_stories();
     const bool ok = install(&state_);
     armed_.store(ok, std::memory_order_release);
     if (ok)
-        log("seta_restore installed=1 hook=0x%08lx write=%s stub=0x%08lx inject_site=0x%08lx inject=%s call=0x%08lx key=0x%lx method=%s story_build=%lu stop_ip=0x%05lx gate_return=0x%05lx due_frames=%llu expiry_ms=%llu",
+        log("seta_restore installed=1 hook=0x%08lx write=%s stub=0x%08lx inject_site=0x%08lx inject=%s call=0x%08lx key=0x%lx method=%s detect=runtime expected=%s due_frames=%llu expiry_ms=%llu",
             static_cast<unsigned long>(hook_va), write_kind(hook_site_),
             static_cast<unsigned long>(address_of(reinterpret_cast<const void*>(&x3m_seta_restore_ti_stub))),
             static_cast<unsigned long>(inject_site_va), inject_state_, static_cast<unsigned long>(script_call_va),
-            static_cast<unsigned long>(call_key), call_method, static_cast<unsigned long>(story_build),
-            static_cast<unsigned long>(stop_ip), static_cast<unsigned long>(gate_return),
+            static_cast<unsigned long>(call_key), call_method, stories_,
             static_cast<unsigned long long>(due_frames), static_cast<unsigned long long>(expiry_ms));
     else {
         const Window* w = mismatch_.window;

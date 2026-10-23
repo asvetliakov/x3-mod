@@ -29,6 +29,8 @@ with tempfile.TemporaryDirectory(prefix='x3-seta-mut-') as d:
     (tree / 'src/proxy').mkdir(parents=True)
     (tree / 'verification/probe').mkdir(parents=True)
     shutil.copy(ROOT / 'verification/probe/seta_restore_host.cpp', tree / 'verification/probe/')
+    for header in ('story_detect.h', 'story_builds.h'):   # the core's includes
+        shutil.copy(ROOT / 'src/proxy' / header, tree / 'src/proxy/')
     for name, old, new in MUTATIONS:
         if source.count(old) != 1:
             sys.exit('mutation anchor not unique: %s' % name)

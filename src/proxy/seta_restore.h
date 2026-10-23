@@ -5,7 +5,8 @@
 // SETA restore after a gate transit (docs/architecture/seta-restore.md; ledger docs/verification/seta-restore.md).
 // X3M_SETA_RESTORE=1 (schema default 1, launcher --seta-restore): a record-only trampoline at the TI_SetTimeWarpFactor
 // case entry 0x004b148c arms a ticket when the story's 150::StartGateWarp stops SETA (old factor > 1.0, new 1.0, task
-// IP 1558d, return offset 15ef8, story build 1462141839); once the destination sector is Ready with the player ship in
+// IP and return offset detected at run time in the loaded object, story_detect.h: Mayhem 1558d/15ef8, stock AP
+// 157a6/160d1; an object where they are not found never arms); once the destination sector is Ready with the player ship in
 // it and two frames are presented, the chase restore's injection site 0x00410100 (shared, claimed once for both
 // consumers: chase_transition::inject_attach) calls the script's own `0x0049f4c0(0, 0, 0x96, "StartFastForward", 1, 0)`.
 // Any later factor write, a player-ship change, VM clear/load, the EH epoch and the expiry cancel the ticket. Fails

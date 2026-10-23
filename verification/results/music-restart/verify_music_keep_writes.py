@@ -33,6 +33,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 CORE = ROOT / 'src/proxy/music_keep_core.h'
+DETECT = ROOT / 'src/proxy/story_detect.h'
+sys.path.insert(0, str(ROOT / 'verification/probe'))
+import story_builds_table  # noqa: E402
 MODULE = ROOT / 'src/proxy/music_keep.cpp'
 _CANDIDATES = [Path('/mnt/c/X3/X3AP.exe'), Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe']
 EXE = Path(os.environ['X3AP_EXE']) if os.environ.get('X3AP_EXE') else next((c for c in _CANDIDATES if c.is_file()), _CANDIDATES[-1])
@@ -84,7 +87,7 @@ EXPECTED = {
     'status_ds_tail_length': 28, 'media_stream': 0x04, 'media_buffer_state': 0x48, 'media_position': 0x70, 'media_flags': 0x8c, 'media_ds_mask': 0x48,
     'media_ds_value': 0x40, 'media_stream_clock': 0x20, 'buffer_playing': 2, 'buffer_draining': 4, 'gzwrite_iat_va': 0x5323e0, 'gzwrite_thunk_va': 0x4fae46,
     'gzwrite_thunk_length': 6, 'pump_interval_ms': 250, 'pump_poll_stride': 32, 'pump_bound_ms': 120000, 'e_site_va': 0x498d71, 'e_target_va': 0x4d1870,
-    'e_return_va': 0x498d76, 'e_post_length': 35, 'stop_movie_native_return_va': 0x499886, 'combat_id_first': 1001, 'combat_id_last': 1042,
+    'e_return_va': 0x498d76, 'e_post_length': 35, 'stop_movie_native_return_va': 0x499886,
     'position_reader_va': 0x4d0600, 'position_reader_length': 120, 'position_vtbl_get_current': 0x24, 'stream_vtbl_get_time': 0x20, 'seek_resume_bit': 4,
     # the save's own gzclose (review fix 4), the Run-skip bound (fix 2), the trace's task fields (script-task-scheduler.md section 2-3)
     'save_gzclose_call_va': 0x404a6f, 'save_gzclose_return_va': 0x404a74, 'gzclose_wrapper_va': 0x4e9360, 'gzclose_wrapper_return_va': 0x4e9384,
@@ -95,12 +98,8 @@ EXPECTED = {
     'slot_completion': 0x34, 'slot_count': 0x20, 'completion_window_va': 0x498864, 'completion_window_length': 42,
     'free_by_id_va': 0x4986b0, 'free_by_id_caller_va': 0x4986f0, 'free_by_id_length': 51, 'kc_jump_handler_va': 0x4a317a,
     'kc_loader_code_store_va': 0x49d332, 'kc_loader_build_store_va': 0x49d2a7, 'kc_jump_handler_length': 9,
-    'kc_loader_code_store_length': 29, 'kc_loader_build_store_length': 6, 'story_build': 1462141839, 'warp_fork_offset': 0x161c3,
-    'warp_continue_offset': 0x161d7, 'warp_method_entry': 0x16185, 'warp_window_length': 6, 'kc_op_fork': 0x6f, 'kc_op_jt': 0x33,
-    'kc_op_jmp': 0x32, 'kc_op_filler': 0x01, 'kc_check_stride_frames': 8, 'kc_play_stop_ip': 0x0db54, 'kc_fade_stop_ip': 0x0da17,
-    'kc_play_ip': 0x0dbf7, 'kc_loop_music_return': 0x0dc84, 'kc_change_track_return': 0x0dcdb, 'queue_stack_depth': 19,
-    'queue_cell_old': 18, 'queue_cell_loop_return': 13, 'queue_cell_new': 11, 'queue_cell_fade': 10, 'queue_cell_loop': 9,
-    'queue_cell_change_return': 7, 'tag_int': 1, 'tag_return': 3, 'queue_cell_count': 6, 'id_death': 13, 'id_landing': 14,
+    'kc_loader_code_store_length': 29, 'kc_loader_build_store_length': 6, 'kc_op_fork': 0x6f, 'kc_op_jt': 0x33,
+    'kc_op_jmp': 0x32, 'kc_op_filler': 0x01, 'kc_check_stride_frames': 8, 'tag_int': 1, 'tag_return': 3, 'id_death': 13, 'id_landing': 14,
     'boarding_id_first': 8233, 'boarding_id_last': 8237, 'queue_key_base': 0x7f000000, 'queue_key_mask': 0xffff,
     # the queue rows' own cap and the KC load gate's two story-reload stop-all callers (the session_start and load rows of STOP_CALLERS)
     'queue_line_cap': 200, 'session_start_return_va': 0x40387d, 'load_return_va': 0x404cf2,
@@ -351,7 +350,9 @@ def inspect(data, core_text):
         and rd(r + 0x3b, 3) == b'\x8b\x40' + bytes([consts['media_stream']]) and rd(r + 0x45, 3) == b'\x8b\x41' + bytes([consts['stream_vtbl_get_time']])
         and rd(r + 0x5d, 5) == b'\x68' + struct.pack('<I', 10000) and rd(r + 0x25, 6) == b'\xdc\x0d' + struct.pack('<I', 0x565550)
         and len(factor) == 8 and struct.unpack('<d', factor)[0] == 1000.0)
-    checks['combat_ids'] = (consts['combat_id_first'], consts['combat_id_last']) == (1001, 1042)
+    # Combat is the alert record (resume and queue), never an id list: the core binds no combat id.
+    checks['combat_is_alert'] = (consts['alert_record_ptr_va'] == 0x608504 and 'combat_id' not in core_text
+                                 and 'alert_rising(' in core_text and 'alert_on(' in core_text)
     # The save's own gzclose: 0x00404a6f calls the close wrapper (return 0x00404a74); the wrapper's gzclose call returns to
     # 0x004e9384 and goes through the thunk on the slot the import directory binds to zlib1.dll!gzclose.
     gzclose_bound = import_slot(data, 'zlib1.dll', 'gzclose')
@@ -385,12 +386,27 @@ def inspect(data, core_text):
     # The KC patch bytes: the vanilla window is `op6f; jt <continue>` with the operand little-endian in memory and the patch is
     # `jmp <continue>` plus the filler; the private key is outside 101..299 and the deferral never takes a combat, death, landing or
     # boarding id.
-    cont = struct.pack('<I', consts['warp_continue_offset'])
-    checks['kc_patch_bytes'] = (windows['warp_window_memory'] == bytes([consts['kc_op_fork'], consts['kc_op_jt']]) + cont
-                                and windows['warp_patch_memory'] == bytes([consts['kc_op_jmp']]) + cont + bytes([consts['kc_op_filler']])
-                                and consts['warp_fork_offset'] + consts['warp_window_length'] < consts['warp_continue_offset']
-                                and consts['queue_key_base'] > 299 and consts['queue_stack_depth'] == consts['queue_cell_old'] + 1
-                                and consts['id_death'] == 13 and consts['id_landing'] == 14 and consts['boarding_id_first'] == 8233)
+    # The sites are detected at run time (story_detect.h); the known builds' expectations (story_builds.h) are checked here
+    # for their memory forms, and the detector's VM layout and fork-child cells against the core's.
+    detect = DETECT.read_text()
+    dconsts = {}
+    for name, value in _CONST.findall(detect):
+        dconsts.setdefault(name, int(value, 0))
+    entries_ok = True
+    for e in story_builds_table.entries():
+        cont = struct.pack('<I', e['warp_continue_offset'])
+        entries_ok = entries_ok and (e['warp_window_memory'] == bytes([consts['kc_op_fork'], consts['kc_op_jt']]) + cont
+                                     and e['warp_patch_memory'] == bytes([consts['kc_op_jmp']]) + cont + bytes([consts['kc_op_filler']])
+                                     and e['warp_fork_offset'] + 20 == e['warp_continue_offset'])
+    cells = [int(v) for v in re.findall(r'\d+', re.search(r'fork_child_cell_depths\[queue_cell_count\] = \{([^}]*)\}', detect).group(1))]
+    checks['kc_patch_bytes'] = (entries_ok and len(story_builds_table.entries()) >= 2 and not story_builds_table.row_errors()
+                                and dconsts.get('fork_child_stack_depth') == 19 and cells == [18, 13, 11, 10, 9, 7]
+                                and dconsts.get('fork_child_stack_depth') == cells[0] + 1
+                                and all(dconsts.get(k) == consts[k] for k in ('vm_code', 'vm_code_size', 'vm_build'))
+                                and dconsts.get('op_fork') == consts['kc_op_fork'] and dconsts.get('op_jt') == consts['kc_op_jt']
+                                and dconsts.get('op_jmp') == consts['kc_op_jmp'] and dconsts.get('op_filler') == consts['kc_op_filler']
+                                and consts['queue_key_base'] > 299 and consts['id_death'] == 13 and consts['id_landing'] == 14
+                                and consts['boarding_id_first'] == 8233)
     written[d_name] = {'site': hex(d_site), 'length': 5, 'original': rd(d_site, 5).hex(), 'writes_example_thunk_0x0a300000': (b'\xe8' + struct.pack('<i', 0x0a300000 - (d_site + 5))).hex(),
                        'callee': hex(d_target), 'caller_pops': 0}
     checks['stop_callers'] = [(a, b, n, m) for a, b, n, m in stops] == STOP_CALLERS and all(call_target(a) == consts['stop_all_va'] and b == a + 5 for a, b, _, _ in stops)

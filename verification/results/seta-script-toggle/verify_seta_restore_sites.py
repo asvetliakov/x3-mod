@@ -3,8 +3,10 @@
 installed X3AP.exe, read-only: the byte windows the installer compares, the 8-byte hook span at the TI_SetTimeWarpFactor
 case entry 0x004b148c (whole decoded instructions, no relative control, entered only through jump-table entry 9, no
 branch or dword reference into its interior), the restart call's wrapper 0x0049f4c0 (cdecl, the EXE's own class-150 call
-shape), the shared injection site, the anchored engine globals and the story constants of seta_toggle_study.txt.
-Ends with RESULT PASS only if every check holds.
+shape), the shared injection site, the anchored engine globals, and per story build of src/proxy/story_builds.h the SETA
+fields: decoded from each L/x3story.obj on disk that carries the entry's build (catalogues and loose files under the
+executable's directory) and matched with seta_toggle_study.txt. An entry whose build is on no disk object is listed as
+not on disk; the object the game loads must be a table entry. Ends with RESULT PASS only if every check holds.
 
     python3 -I verification/results/seta-script-toggle/verify_seta_restore_sites.py [X3AP.exe]
 """
@@ -17,7 +19,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
+sys.path.insert(0, str(ROOT / 'verification/results/ship-navigation-ai/gate-queue'))
 from verify_chase_aim_sites import objdump_window, parse_objdump  # noqa: E402
+import story_builds_table  # noqa: E402
+from kc_obj import Obj  # noqa: E402
 
 EXE = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('/mnt/c/X3/X3AP.exe')
 SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
@@ -214,15 +219,93 @@ for g in ('cfg_ptr_va', 'vm_ptr_va', 'manager_ptr_va', 'game_root_va'):
         ok = rd(at, n + 4) == prefix + struct.pack('<I', v)
     check(ok, '%s 0x%08x anchored in executable_identity.h (%s)' % (g, v, m.group(1) if m else 'missing'))
 
-print('Story constants (seta_toggle_study.txt)')
+print('Story constants per build (src/proxy/story_builds.h; seta_toggle_study.txt)')
 study = (HERE / 'seta_toggle_study.txt').read_text()
-check(re.search(r'build %d\b' % const('story_build'), study.split('\n', 3)[1] + study.split('\n', 3)[0]) is not None,
-      'installed story build %d (addon/07.cat)' % const('story_build'))
-check(re.search(r'15588 ret %x\s+native\s+TI_SetTimeWarpFactor\s+in 150::StopFastForward' % const('stop_ip'), study) is not None,
-      'StopFastForward TI_SetTimeWarpFactor at 15588, IP %x' % const('stop_ip'))
-check(re.search(r'15ef3 ret %x\s+call\s+StopFastForward\s+in 150::StartGateWarp' % const('gate_return'), study) is not None,
-      'StartGateWarp StopFastForward at 15ef3, return %x' % const('gate_return'))
 check('RESULT PASS' in study, 'the study itself passed')
+check('#include "story_detect.h"' in H and not re.search(r'\b(story_build|stop_ip|gate_return) = ', H),
+      'seta_restore_core.h binds no story offset: the sites come from the run-time detection (story_detect.h)')
+TABLE = story_builds_table.entries()
+check(len(TABLE) >= 2 and not story_builds_table.row_errors(), 'the table: %d entries, every row spelled from its own prefix (%s)'
+      % (len(TABLE), story_builds_table.row_errors()))
+check(len({e['build'] for e in TABLE}) == len(TABLE), 'one entry per build id')
+OBJECTS = story_builds_table.story_objects(EXE.parent)
+LOADED = story_builds_table.loaded_story(EXE.parent, OBJECTS)
+check(LOADED is not None and LOADED[1] in {e['build'] for e in TABLE},
+      'the story the game loads (%s, build %s) is a table entry' % (LOADED[0] if LOADED else None, LOADED[1] if LOADED else None))
+# The named returns: the method each StopFastForward caller belongs to.
+OWNERS = {'gate': '150::StartGateWarp', 'toggle': '150::ToggleFastForward', 'sector_warp': '150::StartSectorWarp',
+          'quick_warp': '150::QuickWarp', 'jumpdrive': '2004::JumpToSector'}
+
+
+def seta_entry(e, raw, source):
+    o = Obj(raw)
+    starts = set(o.all_insns())
+    entries = o.entries
+
+    def owner(pc):
+        import bisect
+        en = entries[bisect.bisect_right(entries, pc) - 1]
+        return '%d::%s' % o.meth[en][0][:2]
+
+    def after(ip, ops, name):
+        pc = ip - 5
+        return pc in starts and o.code[pc] in ops and o.operand(pc) == name
+    stop, gate = e['seta_stop_ip'], e['seta_gate_return']
+    sff = o.find(150, 'StopFastForward')
+    warp_writes = [pc for pc in o.insns(sff[0]) if o.code[pc] == 0x82 and o.operand(pc) == 'TI_SetTimeWarpFactor'] if len(sff) == 1 else []
+    check(len(sff) == 1 and warp_writes == [stop - 5] and after(stop, (0x82,), 'TI_SetTimeWarpFactor') and owner(stop - 5) == '150::StopFastForward',
+          '%s (%s): StopFastForward %s has one TI_SetTimeWarpFactor at %x, IP %x' % (e['name'], source, ['%05x' % x for x in sff], stop - 5, stop))
+    check(after(gate, (0x86, 0x88), '150::StopFastForward') and owner(gate - 5) == '150::StartGateWarp',
+          '%s: StartGateWarp calls StopFastForward at %x, return %x' % (e['name'], gate - 5, gate))
+    calls = sorted(pc + 5 for pc in o.insns(o.find(150, 'StartGateWarp')[0]) if o.code[pc] in (0x86, 0x88) and o.operand(pc) == '150::StopFastForward')
+    check(calls == [gate], '%s: the only StopFastForward call of StartGateWarp (returns %s)' % (e['name'], ['%05x' % c for c in calls]))
+    named = {}
+    for n, m in OWNERS.items():
+        cls, meth = m.split('::')
+        en = o.find(int(cls), meth)
+        named[n] = len([pc for pc in o.insns(en[0]) if o.code[pc] in (0x86, 0x88) and o.operand(pc) == '150::StopFastForward']) if len(en) == 1 else None
+    check(named['gate'] == 1 and all(named[n] for n in ('toggle', 'sector_warp', 'quick_warp')),
+          '%s: StopFastForward calls in the named callers (row names) %s' % (e['name'], named))
+    check(re.search(r'build %d\b' % e['build'], study) is not None and
+          re.search(r'[0-9a-f]{5} ret %x\s+native\s+TI_SetTimeWarpFactor\s+in 150::StopFastForward' % stop, study) is not None and
+          re.search(r'[0-9a-f]{5} ret %x\s+call\s+StopFastForward\s+in 150::StartGateWarp' % gate, study) is not None,
+          '%s: seta_toggle_study.txt lists build %d, IP %x and return %x' % (e['name'], e['build'], stop, gate))
+
+
+DETECT = []
+for e in TABLE:
+    found = [(s, raw) for s, b, raw in OBJECTS if b == e['build']]
+    if not found:
+        print('   [--] %s build %d: not on disk (entry not verified here)' % (e['name'], e['build']))
+        continue
+    for source, raw in found:
+        seta_entry(e, raw, source)
+        DETECT.append((e, source, raw))
+
+print('The run-time detector (src/proxy/story_detect.h, compiled on the host) over each entry\'s in-memory image')
+import tempfile  # noqa: E402
+import story_vm_image  # noqa: E402
+with tempfile.TemporaryDirectory(prefix='x3-story-detect-') as tmp:
+    host, log = story_vm_image.compile_host(tmp)
+    check(host is not None, 'story_detect_host builds (%s)' % (log.strip()[-200:] or 'ok'))
+    for e, source, raw in DETECT if host else ():
+        image = Path(tmp) / 'image.bin'
+        image.write_bytes(story_vm_image.build_image(raw))
+        s = story_vm_image.run_host(host, image)['seta']
+        image.unlink()
+        check(s['fail'] == 'none' and s['stop_ip'] == '0x%05x' % e['seta_stop_ip'] and s['gate_return'] == '0x%05x' % e['seta_gate_return']
+              and s['name_gate'] == 'gate',
+              '%s (%s): detected stop IP %s, gate return %s, %s reads (expected 0x%05x, 0x%05x)'
+              % (e['name'], source, s['stop_ip'], s['gate_return'], s['reads'], e['seta_stop_ip'], e['seta_gate_return']))
+    for cat, path, b in story_builds_table.kc_objects(EXE.parent):
+        if not path.lower().endswith(('x3intro.obj', 'x3config.obj')) or not host:
+            continue
+        from kc_obj import load_member  # noqa: E402
+        image = Path(tmp) / 'image.bin'
+        image.write_bytes(story_vm_image.build_image(load_member(EXE.parent / cat, path)))
+        s = story_vm_image.run_host(host, image)['seta']
+        image.unlink()
+        check(s['fail'] != 'none', '%s:%s (build %d): no SETA sites (%s %s)' % (cat, path, b, s['fail'], s['where']))
 
 print('\nRESULT %s (%d failures)' % ('PASS' if not FAIL else 'FAIL', len(FAIL)))
 for f in FAIL:

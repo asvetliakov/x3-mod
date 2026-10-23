@@ -43,6 +43,27 @@ HARNESS = r'''
 #include <cstring>
 #include <map>
 using namespace x3m::music_keep::core;
+// Mayhem's detection as the run-time detector reports it (story_detect_host reproduces it from addon/07.cat): the default
+// observation of the queue tests.
+static x3m::story::QueueSites mayhem_queue() {
+    x3m::story::QueueSites s;
+    s.detected = true;
+    s.key = x3m::story::VmKey{0x10000000u, 0x20000000u, 0x20000u, x3m::story::mayhem_build};
+    s.warp_method_entry = 0x16185; s.warp_fork_offset = 0x161c3; s.warp_continue_offset = 0x161d7;
+    std::memcpy(s.warp_window_memory, x3m::story::mayhem_warp_window_memory, x3m::story::warp_window_length);
+    std::memcpy(s.warp_patch_memory, x3m::story::mayhem_warp_patch_memory, x3m::story::warp_window_length);
+    s.kc_play_stop_ip = 0x0db54; s.kc_fade_stop_ip = 0x0da17; s.kc_play_ip = 0x0dbf7; s.kc_loop_music_return = 0x0dc84; s.kc_change_track_return = 0x0dcdb;
+    return s;
+}
+static const x3m::story::QueueSites mayhem_sites = mayhem_queue();
+static const std::uint32_t story_build = x3m::story::mayhem_build, kc_play_stop_ip = mayhem_sites.kc_play_stop_ip,
+                           kc_fade_stop_ip = mayhem_sites.kc_fade_stop_ip, kc_play_ip = mayhem_sites.kc_play_ip,
+                           kc_loop_music_return = mayhem_sites.kc_loop_music_return, kc_change_track_return = mayhem_sites.kc_change_track_return,
+                           warp_fork_offset = mayhem_sites.warp_fork_offset, warp_continue_offset = mayhem_sites.warp_continue_offset;
+static const unsigned char* const warp_window_memory = mayhem_sites.warp_window_memory;
+static const unsigned char* const warp_patch_memory = mayhem_sites.warp_patch_memory;
+static const unsigned queue_stack_depth = mayhem_sites.queue_stack_depth;
+static const unsigned* const queue_cell_depths = mayhem_sites.queue_cell_depths;
 int main() {
     unsigned failures = 0;
     auto check = [&](bool ok, const char* what) { if (!ok) { ++failures; std::printf("FAIL %s\n", what); } };
@@ -442,44 +463,50 @@ int main() {
         check(trace_cells[0] == 6 && trace_cells[3] == 12 && task_ip == 0x1c && task_index == 0x18 && cell_size == 5, "trace cell constants");
     }
     // Resume after combat.
-    check(!combat_id(1000) && combat_id(1001) && combat_id(1042) && !combat_id(1043) && !combat_id(8404), "combat ids 1001..1042");
+    const Alert rising{true, 0, 1}, on{true, 1, 1}, off{true, 0, 0}, falling{true, 1, 0}, unread{false, 0, 1};
+    check(alert_rising(rising) && !alert_rising(on) && !alert_rising(off) && !alert_rising(falling) && !alert_rising(unread) && alert_on(on) && alert_on(falling)
+          && alert_on(rising) && !alert_on(off) && !alert_on(Alert{false, 1, 1}), "combat is the alert: rising edge 0 -> nonzero, on = either level nonzero (no id list)");
     check(seek_resume_bit == 4 && (seek_resume_bit & (unsigned(SeekAction::skip) | unsigned(SeekAction::pause_then_vanilla))) == 0, "resume bit distinct from the seek actions");
     {
         ResumeMemory m;
         std::uint32_t ms = 0;
         const std::uint32_t native = stop_movie_native_return_va;
-        check(resume_on_stop(m, native, 8404, 0xd2, true, 63000) == ResumeAction::remember && m.valid && m.id == 8404 && m.ms == 63000, "sector stop: remember");
-        check(resume_on_play(m, 1017, 0, SeekAction::vanilla, ms) == ResumeAction::keep && m.valid, "combat play: keep");
-        check(resume_on_stop(m, native, 1017, 0xd2, true, 9000) == ResumeAction::none && m.id == 8404 && m.ms == 63000, "combat stop: memory untouched");
-        check(resume_on_play(m, 1033, 0, SeekAction::vanilla, ms) == ResumeAction::keep, "another combat track: keep");
-        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::seek && ms == 63000 && !m.valid, "post-combat sector play at 0: seek to the position, memory used");
+        check(resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising) == ResumeAction::remember && m.valid && m.id == 8404 && m.ms == 63000, "sector stop: remember");
+        check(resume_on_play(m, 1017, 0, SeekAction::vanilla, ms, on) == ResumeAction::keep && m.valid, "combat play (alert on): keep");
+        check(resume_on_stop(m, native, 1017, 0xd2, true, 9000, falling) == ResumeAction::none && m.id == 8404 && m.ms == 63000, "combat end stop (falling edge): memory untouched");
+        check(resume_on_play(m, 1033, 0, SeekAction::vanilla, ms, on) == ResumeAction::keep, "another combat track: keep");
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms, off) == ResumeAction::seek && ms == 63000 && !m.valid, "post-combat sector play at 0: seek to the position, memory used");
         ms = 0;
-        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::none && ms == 0, "one use: the next play seeks to 0");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
-        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms) == ResumeAction::clear_sector && !m.valid, "another sector id: cleared");
-        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms) == ResumeAction::none, "after the sector change nothing seeks");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
-        resume_on_play(m, 1017, 0, SeekAction::vanilla, ms);
-        check(resume_on_play(m, 2003, 0, SeekAction::vanilla, ms) == ResumeAction::clear_sector && !m.valid, "combat, then a dock id: cleared");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
-        check(resume_on_play(m, 8404, 0, SeekAction::skip, ms) == ResumeAction::clear_played && !m.valid, "same id still playing (seek skipped): cleared, no seek");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
-        check(resume_on_play(m, 8404, 1500, SeekAction::vanilla, ms) == ResumeAction::clear_played && !m.valid, "positioned play of the id: cleared");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
-        check(resume_on_play(m, 8404, 0, SeekAction::pause_then_vanilla, ms) == ResumeAction::seek && ms == 63000, "with a pause of another record: still seeks");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms, off) == ResumeAction::none && ms == 0, "one use: the next play seeks to 0");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms, off) == ResumeAction::clear_sector && !m.valid, "another sector id: cleared");
+        check(resume_on_play(m, 8404, 0, SeekAction::vanilla, ms, off) == ResumeAction::none, "after the sector change nothing seeks");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        resume_on_play(m, 1017, 0, SeekAction::vanilla, ms, on);
+        check(resume_on_play(m, 2003, 0, SeekAction::vanilla, ms, off) == ResumeAction::clear_sector && !m.valid, "combat, then a dock id: cleared");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        check(resume_on_play(m, 8404, 0, SeekAction::skip, ms, off) == ResumeAction::clear_played && !m.valid, "same id still playing (seek skipped): cleared, no seek");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        check(resume_on_play(m, 8404, 1500, SeekAction::vanilla, ms, off) == ResumeAction::clear_played && !m.valid, "positioned play of the id: cleared");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        check(resume_on_play(m, 8404, 0, SeekAction::pause_then_vanilla, ms, off) == ResumeAction::seek && ms == 63000, "with a pause of another record: still seeks");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
         check(resume_on_stop_all(m, 0x00404cf2) == ResumeAction::clear_stop_all && !m.valid, "load clears");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
         check(resume_on_stop_all(m, 0x0040387d) == ResumeAction::clear_stop_all && !m.valid, "session start clears");
-        resume_on_stop(m, native, 8404, 0xd2, true, 63000);
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
         check(resume_on_stop_all(m, save_return_va) == ResumeAction::none && resume_on_stop_all(m, 0x00407069) == ResumeAction::none
               && resume_on_stop_all(m, 0x004d36c2) == ResumeAction::none && m.valid, "save, pause and alt-tab keep the memory");
-        check(resume_on_stop(m, 0x0045c282, 80412, 0xd2, true, 5000) == ResumeAction::none && m.id == 8404, "another MOV_StopMovie caller: ignored");
-        check(resume_on_stop(m, native, 80412, 0x52, true, 5000) == ResumeAction::none && m.id == 8404, "non-music record: ignored");
-        check(resume_on_stop(m, native, 80412, 0xd0, true, 5000) == ResumeAction::none && m.id == 8404, "record not playing: ignored");
-        check(resume_on_stop(m, native, 80412, 0xd2, false, 0) == ResumeAction::forget && !m.valid, "sector stop without a readable position: the old memory goes");
-        check(resume_on_stop(m, native, 80412, 0xd2, true, 0) == ResumeAction::forget && resume_on_stop(m, native, 80412, 0xd2, true, position_limit_ms) == ResumeAction::forget, "zero or out-of-range position: forget");
-        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms) == ResumeAction::none, "no memory: nothing");
+        check(resume_on_stop(m, 0x0045c282, 80412, 0xd2, true, 5000, rising) == ResumeAction::none && m.id == 8404, "another MOV_StopMovie caller: ignored");
+        check(resume_on_stop(m, native, 80412, 0x52, true, 5000, rising) == ResumeAction::none && m.id == 8404, "non-music record: ignored");
+        check(resume_on_stop(m, native, 80412, 0xd0, true, 5000, rising) == ResumeAction::none && m.id == 8404, "record not playing: ignored");
+        check(resume_on_stop(m, native, 80412, 0xd2, false, 0, rising) == ResumeAction::forget && !m.valid, "sector stop without a readable position: the old memory goes");
+        check(resume_on_stop(m, native, 80412, 0xd2, true, 0, rising) == ResumeAction::forget && resume_on_stop(m, native, 80412, 0xd2, true, position_limit_ms, rising) == ResumeAction::forget, "zero or out-of-range position: forget");
+        check(resume_on_play(m, 80412, 0, SeekAction::vanilla, ms, off) == ResumeAction::none, "no memory: nothing");
+        check(resume_on_stop(m, native, 8404, 0xd2, true, 63000, off) == ResumeAction::none && !m.valid, "a stop without the rising edge (gate fade, sector change, leave): ignored");
+        check(resume_on_stop(m, native, 8404, 0xd2, true, 63000, unread) == ResumeAction::none && !m.valid, "alert unreadable at the stop: ignored");
+        resume_on_stop(m, native, 8404, 0xd2, true, 63000, rising);
+        check(resume_on_play(m, 1001, 0, SeekAction::vanilla, ms, Alert{}) == ResumeAction::clear_sector && !m.valid, "alert unreadable at a play: not combat, the memory goes");
         check(!std::strcmp(resume_action_name(ResumeAction::seek), "seek") && !std::strcmp(pump_end_name(PumpEnd::gzclose), "gzclose"), "names");
     }
     check(e_site_va == c_run_call_va && e_target_va == run_va && e_site_va + call_length == e_return_va && (e_site_va & 7) + call_length <= 8
@@ -492,11 +519,11 @@ int main() {
     {
         check(cell_index_ok(-1, 32) && cell_index_ok(-32, 32) && !cell_index_ok(0, 32) && !cell_index_ok(-33, 32) && !cell_index_ok(-1, 0) && !cell_index_ok(-1, trace_cell_capacity_limit + 1)
               && cell_offset(-18) == -90 && cell_offset(-1) == -5, "cell index bounds: -capacity..-1 from the buffer end");
-        check(!immediate_id(8404) && immediate_id(0) && immediate_id(13) && immediate_id(14) && immediate_id(1001) && immediate_id(1042) && immediate_id(8233) && immediate_id(8237) && !immediate_id(2001) && !immediate_id(8238)
-              && immediate_id(0xffffffffu) && immediate_id(0x80000000u) && !immediate_id(0x7fffffffu), "immediate ids (N <= 0 signed is immediate)");
+        check(!immediate_id(8404) && immediate_id(0) && immediate_id(13) && immediate_id(14) && !immediate_id(1001) && !immediate_id(1042) && immediate_id(8233) && immediate_id(8237) && !immediate_id(2001) && !immediate_id(8238)
+              && immediate_id(0xffffffffu) && immediate_id(0x80000000u) && !immediate_id(0x7fffffffu), "immediate ids (N <= 0 signed is immediate; no combat id list)");
         check(queue_key(1) == 0x7f000001 && queue_key(0x10001) == 0x7f000001 && queue_key(7) > 299, "private keys outside 101..299");
         auto shaped = [](std::uint32_t old_id, std::uint32_t new_id, std::uint32_t task, std::uint32_t slot) {
-            QueueStopView v; v.return_va = stop_movie_native_return_va; v.id = old_id; v.task_id = task; v.slot = slot; v.task_ok = true; v.task_ip = kc_play_stop_ip;
+            QueueStopView v; v.story = &mayhem_sites; v.return_va = stop_movie_native_return_va; v.id = old_id; v.task_id = task; v.slot = slot; v.task_ok = true; v.task_ip = kc_play_stop_ip;
             v.capacity = 32; v.index = -19; v.cells_ok = true;
             v.cells[0] = Cell{tag_int, old_id}; v.cells[1] = Cell{tag_return, kc_loop_music_return}; v.cells[2] = Cell{tag_int, new_id}; v.cells[3] = Cell{tag_int, 0};
             v.cells[4] = Cell{tag_int, 1}; v.cells[5] = Cell{tag_return, kc_change_track_return};
@@ -505,7 +532,7 @@ int main() {
             return v;
         };
         auto play_of = [](std::uint32_t id, std::uint32_t task, std::uint32_t slot, const OrphanView& o) {
-            QueuePlayView v; v.return_va = 0x00499824; v.slot = slot; v.task_id = task; v.id = id; v.task_ok = true; v.task_ip = kc_play_ip; v.found = true; v.flags = 0xd0; v.orphan = o; return v;
+            QueuePlayView v; v.story = &mayhem_sites; v.return_va = 0x00499824; v.slot = slot; v.task_id = task; v.id = id; v.task_ok = true; v.task_ip = kc_play_ip; v.found = true; v.flags = 0xd0; v.orphan = o; return v;
         };
         const OrphanView playing_unowned{true, 0xd2, 0}, gone{false, 0, 0}, ended{true, 0xd0, 0};
         TrackQueue q;
@@ -652,11 +679,13 @@ int main() {
         check(queue_on_stop(q, shaped(8404, 80412, 200, 1), false, 6000).reason == QueueReason::not_armed && q.state == QueueState::idle, "not armed: refuse, vanilla");
         { QueueStopView v = shaped(8404, 80412, 200, 1); v.alert_new = 1; o = queue_on_stop(q, v, true, 6001); check(o.event == QueueEvent::refuse && o.reason == QueueReason::alert && !o.consume && o.resume_candidate, "combat start (alert 0/1): refuse, resume candidate"); }
         { QueueStopView v = shaped(1017, 8404, 200, 1); v.alert_old = 1; check(queue_on_stop(q, v, true, 6002).reason == QueueReason::alert, "combat end (alert 1/0): refuse"); }
-        { QueueStopView v = shaped(1017, 8404, 200, 1); check(queue_on_stop(q, v, true, 6003).reason == QueueReason::combat_old, "a combat track stopped with the alert at 0/0: refuse"); }
+        { QueueStopView v = shaped(1017, 8404, 200, 1); v.combat_old = true; check(queue_on_stop(q, v, true, 6003).reason == QueueReason::combat_old, "the track the last alert-on play started, stopped with the alert at 0/0: refuse"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.story = nullptr; check(queue_on_stop(q, v, true, 6003).event == QueueEvent::none && q.state == QueueState::idle, "no detection for the loaded object: nothing defers, no row"); }
+        { QueueStopView v = shaped(8404, 80412, 200, 1); v.task_ip = 0x0d273; check(queue_on_stop(q, v, true, 6003).event == QueueEvent::none, "another object's stop IP (stock's under Mayhem's detection): not the site"); }
         { QueueStopView v = shaped(8404, 0, 200, 1); check(queue_on_stop(q, v, true, 6004).reason == QueueReason::immediate_id, "new id 0 (leave, StopMusic): refuse"); }
         for (std::uint32_t id : {0xffffffffu, 0xfffffffeu, 0x80000000u}) { QueueStopView v = shaped(8404, id, 200, 1); o = queue_on_stop(q, v, true, 6004);
           check(o.event == QueueEvent::refuse && o.reason == QueueReason::immediate_id && !o.consume && q.state == QueueState::idle, "a negative new id: immediate, refuse"); }
-        for (std::uint32_t id : {13u, 14u, 1001u, 1042u, 8233u, 8237u}) { QueueStopView v = shaped(8404, id, 200, 1); check(queue_on_stop(q, v, true, 6005).reason == QueueReason::immediate_id, "death / landing / combat / boarding ids: refuse"); }
+        for (std::uint32_t id : {13u, 14u, 8233u, 8237u}) { QueueStopView v = shaped(8404, id, 200, 1); check(queue_on_stop(q, v, true, 6005).reason == QueueReason::immediate_id, "death / landing / combat / boarding ids: refuse"); }
         { QueueStopView v = shaped(8404, 2003, 200, 1); check(queue_on_stop(q, v, true, 6006).event == QueueEvent::defer, "a dock id is deferrable"); q.reset(); }
         { QueueStopView v = shaped(8404, 8404, 200, 1); check(queue_on_stop(q, v, true, 6007).reason == QueueReason::same_id, "same id: refuse"); }
         { QueueStopView v = shaped(8404, 80412, 200, 1); v.index = -18; check(queue_on_stop(q, v, true, 6008).reason == QueueReason::cells, "another stack depth (the fade child's -18): refuse cells"); }
@@ -693,9 +722,17 @@ int main() {
         k.code = 0x20000000; k.size = 0x20000; k.build = story_build;
         check(!k.decide(false, false, warp_window_memory, true, r) && r == KcResult::no_vm, "no VM");
         check(!k.decide(true, false, warp_window_memory, true, r) && r == KcResult::unreadable, "fields unreadable");
-        k.build = 1510658513; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::build_mismatch, "stock build: refused");
-        k.build = story_build; k.size = warp_fork_offset; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::out_of_range, "window past CODE: refused");
-        k.size = 0x20000; check(!k.decide(true, true, warp_window_memory, false, r) && r == KcResult::unreadable, "window unreadable");
+        check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::waiting, "no detection yet: waiting");
+        k.story = &mayhem_sites;
+        k.build = 1510658513; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::waiting, "another object than the detection's: waiting for its own detection");
+        k.build = story_build;
+        x3m::story::QueueSites intro = mayhem_sites; intro.outcome = x3m::story::Outcome{x3m::story::Fail::no_method, "150::WarpToSector"};
+        k.story = &intro; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::no_sites && !std::strcmp(kc_result_name(r), "no_sites"), "sites not detected: refused");
+        { KcPatch n; n.build = 1462141340u; check(n.note(KcResult::no_sites) && n.refused == 1, "no_sites: a row and a refusal");
+          check(!n.note(KcResult::no_sites), "the same build: no second row"); n.build = 1462141842u; check(n.note(KcResult::no_sites) && n.refused == 3, "a new build (the intro after the config): a row again"); }
+        x3m::story::QueueSites small = mayhem_sites; small.key.size = warp_fork_offset;
+        k.story = &small; k.size = warp_fork_offset; check(!k.decide(true, true, warp_window_memory, true, r) && r == KcResult::out_of_range, "window past CODE: refused");
+        k.story = &mayhem_sites; k.size = 0x20000; check(!k.decide(true, true, warp_window_memory, false, r) && r == KcResult::unreadable, "window unreadable");
         check(k.decide(true, true, warp_window_memory, true, r) && r == KcResult::applied, "vanilla window: apply");
         check(!k.decide(true, true, warp_patch_memory, true, r) && r == KcResult::already, "our patch: nothing");
         const unsigned char other[6] = {0x6f, 0x33, 0xd8, 0x61, 0x01, 0x00};
@@ -1039,7 +1076,7 @@ class MusicSites(unittest.TestCase):
                        'pump_.arm(record, id, media, GetCurrentThreadId(), qpc(), frequency_)', 'pump_.pump_due(now, GetCurrentThreadId())',
                        'pump_.on_play(record, id, media, d.action == SeekAction::skip, qpc())', 'pump_.skip_run(record, media, state, qpc())',
                        'pump_.end_now(PumpEnd::stop_all, qpc())', 'pump_.end_now(PumpEnd::stop_movie, qpc())', 'pump_.stop(PumpEnd::gzclose, qpc())',
-                       'resume_on_play(resume_, id, start_ms, d.action, resume_ms)', 'resume_on_stop(resume_, return_va, id, flags, read, ms)',
+                       'resume_on_play(resume_, id, start_ms, d.action, resume_ms, alert)', 'resume_on_stop(resume_, return_va, id, flags, read, ms, alert)',
                        'resume_on_stop_all(resume_, return_va)', 'bytes_match(position_reader_va, position_reader, position_reader_length)',
                        'music_keep_save_pump ', 'music_keep_resume ', 'music_keep_save_pump_hook',
                        # review fixes: the fallback pause, the save's own gzclose, the overdue replay at Present, the boundary behind the fast paths
@@ -1061,15 +1098,20 @@ class MusicSites(unittest.TestCase):
                        'acquire_shared(play_site_, trace_play_acquired_, play_spec(), &x3m_music_trace_play_stub', 'release_for(play_site_, keep_play_acquired_)',
                        'release_for(play_site_, trace_play_acquired_)', '&entry_site_, &stop_movie_site_, &play_site_', 'queue_on_stop(queue_, v, queue_armed_, current_frame_)',
                        'queue_on_play(queue_, v, current_frame_)', 'queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_)', 'queue_on_alert(queue_, levels[1], orphan_view(), current_frame_)',
-                       'if (o.consume) return 1;', 'resume_candidate = o.resume_candidate;', 'if (!resume_ok_ || !resume_candidate || combat_id(id)) return 0;',
+                       'if (o.consume) return 1;', 'resume_candidate = o.resume_candidate;', 'if (!resume_ok_ || !resume_candidate || !alert_rising(alert)) return 0;',
                        'x3m_music_queue_call_completion(function, context, 1)', 'x3m_music_queue_call_free(o.key)', 'load32(owner + slot_completion + slot * slot_stride)',
                        'if (!owner || !load32(owner + vm_slot_guard) || slot >= slot_count) return;', 'kc_.due(vm)', 'kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r)',
                        'VirtualQuery(reinterpret_cast<const void*>(std::uintptr_t(at)), &info, sizeof info)', 'info.State == MEM_COMMIT', 'KcResult::unwritable',
                        'x3m::engine_memory::read(vm + vm_build, &build, 4)', 'x3m::engine_memory::read(at, kc_window_seen_, warp_window_length)',
-                       'read_cell_abs(t, -std::int32_t(queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value)', 'cell_index_ok(index, v.capacity)',
+                       'read_cell_abs(t, -std::int32_t(story->queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value)', 'cell_index_ok(index, v.capacity)',
                        'return read_cell_abs(v, std::int32_t(v.index) + std::int32_t(i), tag, value);', 'L"X3M_MUSIC_QUEUE"', '&& keep_requested; // a no-op without the keep',
                        'music_queue_kc_present();', 'if (queue_.active()) music_queue_alert_present();', 'music_queue requested=%u armed=%u reason=%s', 'music_queue_kc frame=%llu action=%s',
-                       'music_queue frame=%llu seq=%lu qpc=%llu event=%s', 'x3m_music_free_fn = free_by_id_va', 'ours = window[i] == warp_patch_memory[i];'):
+                       'music_queue frame=%llu seq=%lu qpc=%llu event=%s', 'x3m_music_free_fn = free_by_id_va', 'ours = window[i] == s->warp_patch_memory[i];',
+                       # the sites detected at run time (story_detect.h), combat as the alert edge
+                       'x3m::story::detect_queue(engine_read, vm, kc_sites_, kc_scratch_);', 'kc_sites_.key = key;',
+                       'return kc_sites_.detected && kc_sites_.key == key && kc_sites_.outcome.ok() ? &kc_sites_ : nullptr;',
+                       'v.story = sites_now();', 'combat_track_ = alert_on(alert) ? id : 0;', 'v.combat_old = combat_track_ != 0 && id == combat_track_;',
+                       'detect=%s method=%s', 'r = kc_sites_.outcome.ok() ? KcResult::waiting : KcResult::no_sites;'):
             self.assertIn(needle, module)
         self.assertNotIn('hook_site(t_play_site_', module)   # the play entry is a shared claim now
         self.assertLess(module.index('queue_on_stop_all(queue_, return_va'), module.index('pump_.end_now(PumpEnd::stop_all'))   # the queue ends before the hold work
@@ -1108,6 +1150,95 @@ class MusicSites(unittest.TestCase):
                        '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close', '_x3m_music_keep_call_pump',
                        '_x3m_music_keep_call_pause'):
             self.assertIn(f"'{symbol}'", audit)
+
+
+class StoryDetect(unittest.TestCase):
+    """The run-time story detector (src/proxy/story_detect.h; docs/architecture/story-builds.md) compiled on the host and run
+    over in-memory VM images built from the objects on disk (verification/probe/story_vm_image.py, temporary files only):
+    it reproduces every known build's expectation (story_builds.h), finds nothing in x3config / x3intro, uses the detection
+    alone for an unknown build, and refuses each failure mode by name."""
+    X3 = Path('/mnt/c/X3')
+
+    @classmethod
+    def setUpClass(cls):
+        if not (cls.X3 / 'addon/07.cat').is_file() or not (cls.X3 / 'addon/04.cat').is_file():
+            raise unittest.SkipTest('the game catalogues are not present')
+        sys.path.insert(0, str(ROOT / 'verification/probe'))
+        sys.path.insert(0, str(ROOT / 'verification/results/ship-navigation-ai/gate-queue'))
+        import story_vm_image
+        import story_builds_table
+        from kc_obj import load_member
+        cls.img, cls.table, cls.load_member = story_vm_image, story_builds_table, staticmethod(load_member)
+        cls.tmp = tempfile.TemporaryDirectory(prefix='x3-story-detect-')
+        cls.host, log = story_vm_image.compile_host(cls.tmp.name)
+        if cls.host is None:
+            cls.tmp.cleanup()
+            raise AssertionError(log)
+        cls.raw = {'mayhem': load_member(cls.X3 / 'addon/07.cat'), 'stock_ap': load_member(cls.X3 / 'addon/04.cat')}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def detect(self, raw, **kw):
+        image = Path(self.tmp.name) / 'image.bin'
+        image.write_bytes(self.img.build_image(raw, **kw))
+        try:
+            return self.img.run_host(self.host, image)
+        finally:
+            image.unlink()
+
+    def test_table_complete(self):
+        entries = self.table.entries()
+        self.assertEqual([e['name'] for e in entries], ['mayhem', 'stock_ap'])
+        self.assertEqual(self.table.row_errors(), [])
+        for e in entries:
+            for field in self.table.FIELDS:
+                self.assertTrue(e[field], (e['name'], field))
+            self.assertEqual(e['warp_continue_offset'], e['warp_fork_offset'] + 20)
+
+    def test_known_builds_reproduced(self):
+        for e in self.table.entries():
+            q = self.detect(self.raw[e['name']])['queue']
+            self.assertEqual(q['fail'], 'none', e['name'])
+            self.assertEqual((q['warp_entry'], q['fork'], q['cont'], q['window'], q['patch'], q['play_stop'], q['fade_stop'], q['play'],
+                              q['loop_return'], q['change_return'], q['depth']),
+                             ('0x%05x' % e['warp_method_entry'], '0x%05x' % e['warp_fork_offset'], '0x%05x' % e['warp_continue_offset'],
+                              e['warp_window_memory'].hex(), e['warp_patch_memory'].hex(), '0x%05x' % e['kc_play_stop_ip'],
+                              '0x%05x' % e['kc_fade_stop_ip'], '0x%05x' % e['kc_play_ip'], '0x%05x' % e['kc_loop_music_return'],
+                              '0x%05x' % e['kc_change_track_return'], '19'), e['name'])
+            self.assertLess(int(q['reads']), 5000)   # one detection per story load
+
+    def test_other_objects_and_unknown_builds(self):
+        for member in ('L/x3intro.obj', 'L/x3config.obj'):
+            q = self.detect(self.load_member(self.X3 / 'addon/07.cat', member))['queue']
+            self.assertNotEqual(q['fail'], 'none', member)
+        self.assertEqual(self.detect(self.load_member(self.X3 / 'addon/07.cat', 'L/x3intro.obj'))['queue']['where'], '150::WarpToSector')
+        # an unknown build id: the detection alone decides (the same sites); a known build id whose sites differ: refused
+        q = self.detect(self.raw['mayhem'], build=1234567890)['queue']
+        self.assertEqual((q['fail'], q['fork']), ('none', '0x161c3'))
+        q = self.detect(self.raw['mayhem'], build=1510658513)['queue']
+        self.assertEqual((q['fail'], q['where']), ('table_mismatch', 'stock_ap'))
+
+    def test_failure_modes(self):
+        e = self.table.entries()[0]
+
+        def dup_stop(code, entries):   # a second MOV_StopMovie operand inside PlayMusicWithFade
+            at = e['kc_play_stop_ip'] - 5
+            entry = entries[(200, 'PlayMusicWithFade')]
+            code[entry + 1:entry + 6] = code[at:at + 5]
+
+        def no_fork(code, entries):    # the fork child no longer StopMusic(500)
+            code[e['warp_fork_offset'] + 7] = 0xf5
+
+        def into_window(code, entries):   # a dword of WarpToSector pointing into the window interior
+            entry = entries[(150, 'WarpToSector')]
+            code[entry + 1:entry + 5] = struct.pack('<I', e['warp_fork_offset'] + 2)
+
+        for mutate, fail, where in ((dup_stop, 'ambiguous_site', '200::PlayMusicWithFade'), (no_fork, 'no_site', '150::WarpToSector'),
+                                    (into_window, 'branch_into_window', '150::WarpToSector')):
+            q = self.detect(self.raw['mayhem'], build=1234567890, mutate=mutate)['queue']
+            self.assertEqual((q['fail'], q['where']), (fail, where), mutate.__name__)
 
 
 class MusicLaunchOptions(unittest.TestCase):

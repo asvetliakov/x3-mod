@@ -1,29 +1,37 @@
 #!/usr/bin/env python3
 """The track queue's KC patch window (docs/architecture/music-queue.md; music-script-driver.md section 8.4 "Prerequisite").
 
-Reads the story object this install loads (Mayhem's L/x3story.obj in addon/07.cat, build 1462141839) and checks what
-src/proxy/music_keep_core.h pins for the in-memory patch of 150::WarpToSector: the method entry, the 6-byte window
-`op6f; jt <continue>` at CODE 0x161c3 (file bytes big-endian, the memory form with the operand little-endian after the
-loader's byte-swap pass 0x0049e1a0), the continuation (an instruction start of the method, `ldloc`), the fork child's
-StopMusic(500) body behind the window, that no jump in the whole CODE lands inside the window and no method entry does,
-and that the patched object (`jmp <continue>` + one filler byte) keeps every instruction start outside the window,
-every method entry, the method's decode and its symbolic stack depths (0 conflicts, the depth at the continuation
-unchanged). Stock AP (addon/04.cat) is decoded for comparison only: its build is not accepted by the proxy. No bytes
-are written anywhere. Prints one JSON object (also written beside this script) and exits 0 only on PASS.
+Per known story build (src/proxy/story_builds.h) present on disk (catalogues and loose L/x3story*.obj under the game
+directory), checks what the run-time detector (src/proxy/story_detect.h) must find there: the 150::WarpToSector entry,
+the 6-byte window `op6f; jt <continue>` (file bytes big-endian, the memory form with the operand little-endian after the
+loader's byte-swap pass 0x0049e1a0), the continuation, the fork child's StopMusic(500) body behind the window, that no
+jump in the whole CODE lands inside the window and no method entry does, and that the patched object (`jmp <continue>`
++ one filler byte) keeps every instruction start outside the window, every method entry, the method's decode and its
+symbolic stack depths; the queue's KC IPs (each the only native or call of its kind in its method), the literal ids
+ChangeTrackMusic is called with, and that the music methods equal the first entry's modulo relocation (so the fork
+child's stack depth and cells carry over). The object the game loads must be a table entry. Then the detector itself,
+compiled on the host, runs over an in-memory image of every entry's object and of every other KC object in addon/04.cat
+and addon/07.cat (built in a temporary directory, deleted after): it must reproduce each entry exactly and find no
+sites in x3config or x3intro (x3galedit runs the game script in the editor: its detection is reported). No bytes are written anywhere else. Prints a summary (the full JSON is written beside this script)
+and exits 0 only on PASS.
 
     python3 -I verification/results/music-script-driver/verify_music_queue_kc.py [X3 dir] > .../verify_music_queue_kc_output.json
 """
+import bisect
 import importlib.util
 import json
 import re
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent / 'ship-navigation-ai' / 'gate-queue'))
 from kc_obj import Obj, load_member  # noqa: E402
+sys.path.insert(0, str(HERE.parents[1] / 'probe'))
+import story_builds_table  # noqa: E402
 
 X3 = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('/mnt/c/X3')
 CORE = ROOT / 'src/proxy/music_keep_core.h'
@@ -101,61 +109,156 @@ def study(raw, consts, windows, accepted):
     out['stack_conflicts'] = {'vanilla': bad_o, 'patched': bad_q}
     checks['stack_depth_at_continuation_unchanged'] = (fork + 1 in depth_o and fork in depth_q and depth_o[fork + 1] + 1 == depth_q[fork]
                                                        and bad_q == bad_o)
-    checks['build_accepted_by_proxy'] = (o.build == consts['story_build']) == accepted
     out['failures'] = sorted(k for k, v in checks.items() if not v)
     return out
 
 
-def main():
-    probe = load_probe()
-    text = CORE.read_text()
-    consts, windows = probe.source_constants(text), probe.source_windows(text)
-    report = {'core_constants': {k: consts[k] for k in ('story_build', 'warp_fork_offset', 'warp_continue_offset', 'warp_method_entry', 'warp_window_length')},
-              'kc_stop_ips': {'play_stop': '%05x' % consts['kc_play_stop_ip'], 'fade_stop': '%05x' % consts['kc_fade_stop_ip'], 'play': '%05x' % consts['kc_play_ip'],
-                              'loop_music_return': '%05x' % consts['kc_loop_music_return'], 'change_track_return': '%05x' % consts['kc_change_track_return']}}
-    failures = []
-    mayhem = study(load_member(X3 / 'addon/07.cat'), consts, windows, True)
-    report['mayhem'] = mayhem
-    failures += ['mayhem_' + f for f in mayhem['failures']]
-    # Stock AP: the same code at other offsets; decoded for the record, not accepted (its build differs).
-    stock = Obj(load_member(X3 / 'addon/04.cat'))
-    e = stock.find(150, 'WarpToSector')
-    report['stock'] = {'build': stock.build, 'warp_to_sector_entry': '%05x' % e[0] if e else None, 'accepted_by_proxy': stock.build == consts['story_build']}
-    if stock.build == consts['story_build']:
-        failures.append('stock_build_equals_pinned')
-    # The KC IPs the queue tests: the stop in PlayMusicWithFade (callcls at 0x0db4f -> IP 0x0db54), the play (native at 0x0dbf2 -> 0x0dbf7),
-    # the fade stop (0x0da12 -> 0x0da17) and the two return IPs.
-    o = Obj(load_member(X3 / 'addon/07.cat'))
+MUSIC_METHODS = ((200, 'PlayMusicWithFade'), (200, 'LoopMusic'), (200, 'ChangeTrackMusic'), (200, 'MusicFadeOut'), (200, 'StopMusic'))
+
+
+def normalized(o, cls, name):
+    """A method's instructions with jump targets relative to its entry and call/native operands by name (relocation-free)."""
+    e = o.find(cls, name)[0]
+    out = []
+    for pc in o.insns(e):
+        op = o.code[pc]
+        if op in JUMPS:
+            out.append((op, struct.unpack_from('>I', o.code, pc + 1)[0] - e))
+        elif op in (0x82, 0x84, 0x85, 0x86, 0x87, 0x88):
+            out.append((op, o.operand(pc)))
+        else:
+            out.append((op, o.code[pc + 1:pc + o.width(pc)].hex()))
+    return out
+
+
+def site_checks(o, e):
+    """The queue's KC IPs of one object: each follows its native or call in the named method, the only one there."""
     allpc = set(o.all_insns())
-
-    def native_before(ip, name):
-        pc = ip - 5
-        return pc in allpc and o.code[pc] == 0x82 and o.operand(pc) == name
-
-    def call_before(ip, name):
-        pc = ip - 5
-        return pc in allpc and o.code[pc] in (0x86, 0x88) and o.operand(pc) == name
-    ips = {'play_stop_after_MOV_StopMovie': native_before(consts['kc_play_stop_ip'], 'MOV_StopMovie'),
-           'fade_stop_after_MOV_StopMovie': native_before(consts['kc_fade_stop_ip'], 'MOV_StopMovie'),
-           'play_after_MOV_PlayMovie': native_before(consts['kc_play_ip'], 'MOV_PlayMovie'),
-           'loop_music_return_after_callself_PlayMusicWithFade': call_before(consts['kc_loop_music_return'], '200::PlayMusicWithFade'),
-           'change_track_return_after_callcls_LoopMusic': call_before(consts['kc_change_track_return'], '200::LoopMusic')}
-    report['kc_ip_checks'] = ips
-    failures += ['ip_' + k for k, v in ips.items() if not v]
-    # The sites' owners.
-    import bisect
     entries = o.entries
 
     def owner(pc):
         en = entries[bisect.bisect_right(entries, pc) - 1]
         return '%d::%s' % o.meth[en][0][:2]
-    report['kc_ip_owners'] = {k: owner(consts[c] - 5) for k, c in (('play_stop', 'kc_play_stop_ip'), ('fade_stop', 'kc_fade_stop_ip'), ('play', 'kc_play_ip'))}
-    if report['kc_ip_owners'] != {'play_stop': '200::PlayMusicWithFade', 'fade_stop': '200::MusicFadeOut', 'play': '200::PlayMusicWithFade'}:
-        failures.append('ip_owners')
+
+    def only_after(ip, ops, name, method):
+        pc = ip - 5
+        body = list(o.insns(o.find(*method)[0]))
+        hits = [q for q in body if o.code[q] in ops and o.operand(q) == name]
+        return pc in allpc and hits == [pc] and owner(pc) == '%d::%s' % method
+    return {'play_stop_after_MOV_StopMovie': only_after(e['kc_play_stop_ip'], (0x82,), 'MOV_StopMovie', (200, 'PlayMusicWithFade')),
+            'fade_stop_after_MOV_StopMovie': only_after(e['kc_fade_stop_ip'], (0x82,), 'MOV_StopMovie', (200, 'MusicFadeOut')),
+            'play_after_MOV_PlayMovie': only_after(e['kc_play_ip'], (0x82,), 'MOV_PlayMovie', (200, 'PlayMusicWithFade')),
+            'loop_music_return_after_call_PlayMusicWithFade': only_after(e['kc_loop_music_return'], (0x86, 0x88), '200::PlayMusicWithFade', (200, 'LoopMusic')),
+            'change_track_return_after_call_LoopMusic': only_after(e['kc_change_track_return'], (0x86, 0x88), '200::LoopMusic', (200, 'ChangeTrackMusic'))}
+
+
+def change_track_literals(o):
+    allpc = list(o.all_insns())
+    lits = []
+    for i, pc in enumerate(allpc):
+        if o.code[pc] == 0x86 and o.operand(pc) == '200::ChangeTrackMusic':
+            arg = allpc[i - 3]
+            c = o.code[arg]
+            val = {0x01: 0, 0x02: 1, 0x03: 2, 0x04: 3}.get(c)
+            if c in (0x05, 0x06, 0x07):
+                val = int(o.operand(arg))
+            if val is not None:
+                lits.append(val)
+    return sorted(lits)
+
+
+def run_detector(objects):
+    """The run-time detector (src/proxy/story_detect.h) over an in-memory image of each object, in a temporary directory."""
+    sys.path.insert(0, str(ROOT / 'verification/probe'))
+    import story_vm_image
+    with tempfile.TemporaryDirectory(prefix='x3-story-detect-') as d:
+        exe, log = story_vm_image.compile_host(d)
+        if exe is None:
+            return {'error': log[-400:]}
+        out = {}
+        for label, raw in objects:
+            image = Path(d) / 'image.bin'
+            image.write_bytes(story_vm_image.build_image(raw))
+            out[label] = story_vm_image.run_host(exe, image)
+            image.unlink()
+        return out
+
+
+def main():
+    probe = load_probe()
+    text = CORE.read_text()
+    consts = probe.source_constants(text)
+    table = story_builds_table.entries()
+    objects = story_builds_table.story_objects(X3)
+    loaded = story_builds_table.loaded_story(X3, objects)
+    report = {'table': [{k: (v.hex() if isinstance(v, bytes) else ('%05x' % v if isinstance(v, int) and k != 'build' else v))
+                         for k, v in e.items()} for e in table],
+              'loaded_story': {'source': loaded[0], 'build': loaded[1]} if loaded else None, 'entries': {}}
+    failures = []
+    if story_builds_table.row_errors():
+        failures.append('table_rows')
+    if not loaded or loaded[1] not in {e['build'] for e in table}:
+        failures.append('loaded_story_not_in_table')
+    reference = None
+    for e in table:
+        found = [(s, raw) for s, b, raw in objects if b == e['build']]
+        if not found:
+            report['entries'][e['name']] = 'not on disk'
+            continue
+        for source, raw in found:
+            c = dict(consts)
+            c.update({k: e[k] for k in ('warp_fork_offset', 'warp_continue_offset', 'warp_method_entry')})
+            c['warp_window_length'] = 6
+            r = study(raw, c, {'warp_window_memory': e['warp_window_memory'], 'warp_patch_memory': e['warp_patch_memory']}, True)
+            o = Obj(raw)
+            r['source'] = source
+            r['kc_ip_checks'] = site_checks(o, e)
+            r['change_track_music_literal_ids'] = change_track_literals(o)
+            if reference is None:
+                reference = (e['name'], o)
+            r['music_methods_equal_to_' + reference[0]] = {'%d::%s' % m: normalized(o, *m) == normalized(reference[1], *m) for m in MUSIC_METHODS}
+            report['entries'][e['name']] = r
+            label = e['name'] + '_'
+            failures += [label + f for f in r['failures']]
+            failures += [label + 'ip_' + k for k, v in r['kc_ip_checks'].items() if not v]
+            if r['change_track_music_literal_ids'] != [0, 0, 0, 13, 14, 8233, 8234, 8235, 8236, 8237]:
+                failures.append(label + 'change_track_literals')
+            failures += [label + 'method_' + k for k, v in r['music_methods_equal_to_' + reference[0]].items() if not v]
+    # The run-time detector reproduces every entry on disk from its object alone and finds nothing in the other KC objects.
+    others = [(cat + ':' + path, b) for cat, path, b in story_builds_table.kc_objects(X3) if not path.lower().endswith('x3story.obj')]
+    sources = [(s, raw) for s, b, raw in objects if b in {e['build'] for e in table}]
+    from kc_obj import load_member
+    sources += [(name, load_member(X3 / name.split(':')[0], name.split(':')[1])) for name, _ in others]
+    detected = run_detector(sources)
+    report['detector'] = detected
+    if 'error' in detected:
+        failures.append('detector_not_built')
+    else:
+        by_build = {e['build']: e for e in table}
+        for label, rows in detected.items():
+            q, s = rows['queue'], rows['seta']
+            b = int(q['build'])
+            if b in by_build:
+                e = by_build[b]
+                want = {'fail': 'none', 'warp_entry': '0x%05x' % e['warp_method_entry'], 'fork': '0x%05x' % e['warp_fork_offset'],
+                        'cont': '0x%05x' % e['warp_continue_offset'], 'window': e['warp_window_memory'].hex(), 'patch': e['warp_patch_memory'].hex(),
+                        'play_stop': '0x%05x' % e['kc_play_stop_ip'], 'fade_stop': '0x%05x' % e['kc_fade_stop_ip'], 'play': '0x%05x' % e['kc_play_ip'],
+                        'loop_return': '0x%05x' % e['kc_loop_music_return'], 'change_return': '0x%05x' % e['kc_change_track_return']}
+                if any(q.get(k) != v for k, v in want.items()):
+                    failures.append('detector_queue_' + label)
+                if s.get('fail') != 'none' or s.get('stop_ip') != '0x%05x' % e['seta_stop_ip'] or s.get('gate_return') != '0x%05x' % e['seta_gate_return']:
+                    failures.append('detector_seta_' + label)
+            elif 'x3galedit' not in label.lower() and (q.get('fail') == 'none' or s.get('fail') == 'none'):
+                # x3config and x3intro carry no game classes; x3galedit runs the game script in the editor, so a detection
+                # there is that object's own (reported, not an error)
+                failures.append('detector_found_sites_in_' + label)
     report['failures'] = failures
     report['result'] = 'PASS' if not failures else 'FAIL'
     OUTPUT.write_text(json.dumps(report, indent=1) + '\n')
-    print(json.dumps(report, indent=1))
+    print(json.dumps({'result': report['result'], 'failures': failures, 'loaded_story': report['loaded_story'],
+                      'entries': {k: (v if isinstance(v, str) else {'source': v['source'], 'failures': v['failures']}) for k, v in report['entries'].items()},
+                      'detector': {k: {'seta': v['seta'].get('fail'), 'queue': v['queue'].get('fail'), 'where': v['queue'].get('where') or v['seta'].get('where')}
+                                   for k, v in detected.items()} if 'error' not in detected else detected}, indent=1))
     return 0 if not failures else 1
 
 

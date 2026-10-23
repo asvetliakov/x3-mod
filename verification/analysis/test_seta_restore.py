@@ -43,6 +43,71 @@ class Core(unittest.TestCase):
             self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 205)
 
 
+class StorySites(unittest.TestCase):
+    """The SETA sites are detected at run time from the loaded object (src/proxy/story_detect.h detect_seta): the detector,
+    compiled on the host over in-memory VM images of the objects on disk (temporary files only), reproduces both known
+    builds' expectations (story_builds.h), finds nothing in x3intro / x3config and names each failure."""
+    X3 = Path('/mnt/c/X3')
+
+    @classmethod
+    def setUpClass(cls):
+        if not (cls.X3 / 'addon/07.cat').is_file() or not (cls.X3 / 'addon/04.cat').is_file():
+            raise unittest.SkipTest('the game catalogues are not present')
+        sys.path.insert(0, str(ROOT / 'verification/probe'))
+        sys.path.insert(0, str(ROOT / 'verification/results/ship-navigation-ai/gate-queue'))
+        import story_vm_image
+        import story_builds_table
+        from kc_obj import load_member
+        cls.img, cls.table, cls.load = story_vm_image, story_builds_table, staticmethod(load_member)
+        cls.tmp = tempfile.TemporaryDirectory(prefix='x3-seta-detect-')
+        cls.host, log = story_vm_image.compile_host(cls.tmp.name)
+        if cls.host is None:
+            cls.tmp.cleanup()
+            raise AssertionError(log)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def detect(self, raw, **kw):
+        image = Path(self.tmp.name) / 'image.bin'
+        image.write_bytes(self.img.build_image(raw, **kw))
+        try:
+            return self.img.run_host(self.host, image)['seta']
+        finally:
+            image.unlink()
+
+    def test_table_and_detection_per_build(self):
+        entries = {e['name']: e for e in self.table.entries()}
+        self.assertEqual(sorted(entries), ['mayhem', 'stock_ap'])
+        self.assertEqual(self.table.row_errors(), [])
+        for name, cat in (('mayhem', 'addon/07.cat'), ('stock_ap', 'addon/04.cat')):
+            e = entries[name]
+            self.assertTrue(e['seta_stop_ip'] and e['seta_gate_return'], name)
+            s = self.detect(self.load(self.X3 / cat))
+            self.assertEqual((s['fail'], s['stop_ip'], s['gate_return'], s['name_gate']),
+                             ('none', '0x%05x' % e['seta_stop_ip'], '0x%05x' % e['seta_gate_return'], 'gate'), name)
+        for member in ('L/x3intro.obj', 'L/x3config.obj'):
+            self.assertNotEqual(self.detect(self.load(self.X3 / 'addon/07.cat', member))['fail'], 'none', member)
+
+    def test_failure_modes(self):
+        raw = self.load(self.X3 / 'addon/07.cat')
+        e = self.table.entries()[0]
+
+        def no_native(code, entries):    # StopFastForward's TI native gone (another command)
+            code[e['seta_stop_ip'] - 2] ^= 0x7f
+
+        def two_calls(code, entries):    # a second StopFastForward call in StartGateWarp
+            at = e['seta_gate_return'] - 5
+            entry = entries[(150, 'StartGateWarp')]
+            code[entry + 1:entry + 6] = code[at:at + 5]
+        for mutate, fail, where in ((no_native, 'no_site', '150::StopFastForward'), (two_calls, 'ambiguous_site', '150::StartGateWarp')):
+            s = self.detect(raw, build=1234567890, mutate=mutate)
+            self.assertEqual((s['fail'], s['where']), (fail, where), mutate.__name__)
+        self.assertEqual(self.detect(raw, build=1510658513)['fail'], 'table_mismatch')   # a known build must match its entry
+        self.assertEqual(self.detect(raw, build=1234567890)['fail'], 'none')             # an unknown build: the detection alone
+
+
 class LiveImage(unittest.TestCase):
     """The install comparison over the image seta_restore::initialize() sees (Run 189 refused bytes_mismatch on an
     unchanged EXE: engine_patch::verify_bytes compares 5..16 bytes only, case_rest is 34): X3AP.exe mapped flat, the
@@ -254,6 +319,12 @@ class Wiring(unittest.TestCase):
         self.assertEqual(source.count('finish(r);'), 4)  # every transition row goes through record_speed
         self.assertEqual(source.count('emit(r);'), 1)  # only inside finish()
         self.assertIn('load(ship + ship_flags, f)', source)
+        # the story sites come from the run-time detection, once per VM key at a SETA stop, outside the lock
+        for needle in ('x3m::story::detect_seta(reader, vm_root, sites_, scratch_);', 'if (!sites_.detected || sites_.key != key) {',
+                       'w.sites = &sites_;', 'detect=%s method=%s', 'x3m::story::fail_name(r.detect_fail)', 'detect=runtime expected=%s'):
+            self.assertIn(needle, source)
+        self.assertLess(source.index('x3m::story::detect_seta('), source.index('        Guard guard;\n        if (machine_.active() || stop_shaped)'))
+        self.assertIsNone(re.search(r'\bstory_build\b', core))
         roots = (ROOT / 'verification/probe/check_no_x87.py').read_text()
         for symbol in ('_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write'):
             self.assertIn(f"'{symbol}'", roots)
