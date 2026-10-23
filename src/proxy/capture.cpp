@@ -21,6 +21,7 @@
 #include "ui_scale.h"
 #include "text_density.h"
 #include "music_keep.h"
+#include "seta_restore.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
@@ -1931,6 +1932,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                            // collide_memo line per 300 frames
     music_keep::present(ctx.id, ctx.frame, ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame
                                                          // counter the music lines carry
+    seta_restore::present(ctx.frame); // X3M_SETA_RESTORE=1 only: stores the frame counter the restore counts in
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
                                                                // and culled count on a captured frame
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
@@ -5543,6 +5545,10 @@ void initialize_log(HMODULE module) {
     music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call
                               // redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0,
                               // 0x00498c90, 0x00498810); same window, disjoint from every other claim
+    seta_restore::initialize(); // X3M_SETA_RESTORE=1 (schema default): the record-only TI_SetTimeWarpFactor case entry
+                                // 0x004b148c claimed here and the chase restore's injection site 0x00410100 with its
+                                // three VM cancel sites attached (claimed once for both consumers), same window,
+                                // disjoint from every other claim
     run_in_background::initialize(); // X3M_RUN_IN_BACKGROUND=1 (schema default): the init routine's call 0x004d2580 at
                                      // 0x004033c9, right after the game wrote the -runinbg bit, redirected to a thunk
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every

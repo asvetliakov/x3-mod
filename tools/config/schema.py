@@ -429,6 +429,9 @@ SETTINGS = [
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '
           'waiting near a station for a free dock also steer around its parts (needs ship_avoidance; 0 = docking ships behave as '
           'before). 1 = on, 0 = off.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
+    entry('seta_restore', 'bool', 'engine', 'Turns SETA back on after your ship passes a gate when SETA was running as you '
+          'entered it (the game switches it off at every gate). Using the SETA key yourself, changing ships or loading '
+          'a game before you arrive cancels it. 1 = on, 0 = off.', '1', launcher='--seta-restore', since='2026-10-23'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '

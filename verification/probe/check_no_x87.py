@@ -97,6 +97,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
                 # the status-query gate at 0x004983d9 (per flag-2 record per frame inside the media update)
                 '_x3m_music_keep_status_thunk', '_x3m_music_keep_status',
+                # SETA restore (src/proxy/seta_restore.cpp, X3M_SETA_RESTORE=1): the integer stub at the TI_SetTimeWarpFactor case entry
+                # 0x004b148c and its handler under LightCallBoundary inside the VM's native dispatch; rows behind call_preserved
+                '_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write',
                 # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
                 # handler, once per process on the game's init thread; its row is formatted behind call_preserved
                 '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',

@@ -168,7 +168,7 @@ constexpr ElementRange element_ranges[element_range_count] = {
     {113, 1},
     {114, 1},
 };
-constexpr unsigned entry_count = 273;
+constexpr unsigned entry_count = 274;
 constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
@@ -352,6 +352,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_SCREEN_EMISSION_GAIN", "screen_emission_gain", Type::Float, nullptr, nullptr, 74, 1, 8, 0, 0, "", 1, -1},
     {"X3M_SCREEN_EMISSION_TIMING", "screen_emission_timing", Type::Bool, nullptr, nullptr, 75, 0, 8, 0, 0, "", 1, -1},
     {"X3M_SECTOR_BACKGROUND", "sector_background", Type::Bool, nullptr, nullptr, 75, 0, 8, 0, 0, "", 1, -1},
+    {"X3M_SETA_RESTORE", "seta_restore", Type::Bool, "1", nullptr, 75, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHADOW_ALPHA_CASTERS", "shadow_alpha_casters", Type::Bool, "1", nullptr, 75, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SHADOW_CASCADES", "shadow_cascades", Type::FloatList, "250.0,1500.0,7500.0,37500.0,150000.0", nullptr, 75, 2, 8, 0, 62, "", 0, -1},
     {"X3M_SHADOW_CASCADE_ADAPTIVE_C0", "shadow_cascade_adaptive_c0", Type::Float, "1.5", nullptr, 77, 1, 8, 0, 0, "", 0, -1},
@@ -396,7 +397,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_SUN_OCCLUSION", "sun_occlusion", Type::Bool, "1", nullptr, 89, 0, 8, 0, 0, "", 0, -1},
     {"X3M_SUN_OCCLUSION_CORE_F", "sun_occlusion_core_f", Type::Bool, "1", nullptr, 89, 0, 8, 0, 0, "", 1, -1},
     {"X3M_SUN_OCCLUSION_CURVE", "sun_occlusion_curve", Type::Float, nullptr, nullptr, 89, 1, 8, 0, 0, "", 1, -1},
-    {"X3M_SUN_OCCLUSION_DEFAULT", "sun_occlusion_default", Type::Bool, "1", nullptr, 90, 0, 8, 0, 0, "", 3, 222},
+    {"X3M_SUN_OCCLUSION_DEFAULT", "sun_occlusion_default", Type::Bool, "1", nullptr, 90, 0, 8, 0, 0, "", 3, 223},
     {"X3M_SUN_OCCLUSION_LOG", "sun_occlusion_log", Type::Bool, nullptr, nullptr, 90, 0, 8, 0, 0, "", 1, -1},
     {"X3M_SUN_OCCLUSION_RADIUS", "sun_occlusion_radius", Type::Float, nullptr, nullptr, 90, 1, 8, 0, 0, "", 1, -1},
     {"X3M_SUN_SHADOW_APPLY", "sun_shadow_apply", Type::Bool, "1", nullptr, 91, 0, 8, 0, 0, "", 0, -1},
@@ -407,12 +408,12 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA", "taa", Type::Bool, "1", nullptr, 94, 0, 8, 0, 0, "", 0, -1},
     {"X3M_TAA_ALPHA_HISTORY", "taa_alpha_history", Type::Bool, nullptr, nullptr, 94, 0, 8, 0, 0, "", 0, -1},
     {"X3M_TAA_BOX_RESOLUTION", "taa_box_resolution", Type::Enum, "half", nullptr, 94, 0, 8, 0, 0, "half|full", 1, -1},
-    {"X3M_TAA_BOX_RESOLUTION_DEFAULT", "taa_box_resolution_default", Type::Bool, "1", nullptr, 94, 0, 8, 0, 0, "", 3, 235},
+    {"X3M_TAA_BOX_RESOLUTION_DEFAULT", "taa_box_resolution_default", Type::Bool, "1", nullptr, 94, 0, 8, 0, 0, "", 3, 236},
     {"X3M_TAA_DEBUG", "taa_debug", Type::Int, nullptr, nullptr, 94, 1, 8, 0, 0, "", 1, -1},
     {"X3M_TAA_FAR_CLIP", "taa_far_clip", Type::Enum, "7x7", nullptr, 95, 0, 8, 0, 0, "7x7|3x3", 1, -1},
-    {"X3M_TAA_FAR_CLIP_DEFAULT", "taa_far_clip_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 238},
+    {"X3M_TAA_FAR_CLIP_DEFAULT", "taa_far_clip_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 239},
     {"X3M_TAA_FAR_GATE", "taa_far_gate", Type::Enum, "camera", nullptr, 95, 0, 8, 0, 0, "camera|screen", 1, -1},
-    {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 240},
+    {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 95, 0, 8, 0, 0, "", 3, 241},
     {"X3M_TAA_FAR_STABILISER", "taa_far_stabiliser", Type::FloatList, "0.985,0,30,34,0.03,0.25", nullptr, 95, 0, 8, 6, 86, "", 0, -1},
     {"X3M_TAA_HISTORY_WEIGHT", "taa_history_weight", Type::Float, nullptr, nullptr, 101, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_LUMA_LOCK", "taa_luma_lock", Type::FloatList, "16,0.25,3", nullptr, 102, 0, 14, 3, 10, "", 0, -1},
@@ -428,7 +429,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_THIN_REGION", "taa_thin_region", Type::FloatList, "0.97,1", nullptr, 111, 0, 17, 4, 22, "", 0, -1},
     {"X3M_TAA_THIN_REGION_EMISSIVE", "taa_thin_region_emissive", Type::Float, "1", nullptr, 115, 1, 21, 0, 0, "", 0, -1},
     {"X3M_TAA_THIN_VOTE", "taa_thin_vote", Type::Enum, "on", nullptr, 116, 0, 21, 0, 0, "on|off", 1, -1},
-    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 116, 0, 21, 0, 0, "", 3, 256},
+    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 116, 0, 21, 0, 0, "", 3, 257},
     {"X3M_TAA_UNMATCHED_STATIC", "taa_unmatched_static", Type::String, "node", nullptr, 116, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 116, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 116, 0, 21, 0, 0, "", 1, -1},
@@ -442,7 +443,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 117, 1, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 118, 0, 21, 0, 0, "", 1, -1},
     {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 118, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 118, 0, 21, 0, 0, "", 3, 270},
+    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 118, 0, 21, 0, 0, "", 3, 271},
     {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 118, 0, 21, 0, 0, "", 1, -1},
 };
 constexpr unsigned alias_count = 0;
@@ -531,6 +532,7 @@ constexpr bool run_in_background = true;
 constexpr const char scene_hook[] = "1";
 constexpr float screen_emission_additive = 2.0f;
 constexpr float screen_emission_additive_alpha = 0.0f;
+constexpr bool seta_restore = true;
 constexpr bool shadow_alpha_casters = true;
 constexpr float shadow_cascade_adaptive_c0 = 1.5f;
 constexpr const char shadow_cascade_drop_order[] = "importance";

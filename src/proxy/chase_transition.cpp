@@ -214,7 +214,8 @@ void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::ui
 // ---- one-use rear-chase restore ticket (X3M_CHASE_VIEW_RESTORE=1) ----
 // Lock-protected state; the epoch is lock-free so the EH adapter can cancel
 // without acquiring anything. The injection prefilter word is read racily by
-// the site-I stub (nonzero only while a ticket is due); the handler
+// the site-I stub (nonzero only while a ticket is due: bit 0 this ticket,
+// bit 1 the InjectConsumer's, inject_want); the handler
 // re-validates everything under the lock from fresh reads.
 detail::RestoreState restore;
 std::atomic<std::uint32_t> restore_epoch{1};
@@ -236,8 +237,15 @@ using ScriptCall0 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::u
                                             std::uint32_t);
 using ScriptCall1 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
                                             std::uint32_t, std::uint32_t);
+// Prefilter bits: the chase ticket and the second consumer (inject_attach).
+constexpr std::uint32_t filter_chase = 1, filter_consumer = 2;
+std::atomic<const InjectConsumer*> inject_consumer{nullptr};
+bool inject_live = false, inject_chase = false; // the four sites are claimed; the chase restore holds them
 void restore_filter_publish() {
-    restore_inject_filter.store(restore.wants_injection() ? 1u : 0u, std::memory_order_release);
+    if (restore.wants_injection())
+        restore_inject_filter.fetch_or(filter_chase, std::memory_order_release);
+    else
+        restore_inject_filter.fetch_and(~filter_chase, std::memory_order_release);
 }
 // Engine walks the ticket asks for only on the frames that matter (checked
 // reads only; nothing is retained).
@@ -379,28 +387,33 @@ void restore_on_vm() {
 // call runs under the engine's incoming x87/MXCSR/LastError image (the callee
 // is engine code) and the handler's clean state is re-established afterwards;
 // the caller's CpuState brings the engine image back at the stub boundary.
-__attribute__((noinline)) bool restore_engine_call(const detail::RestoreEngineCall& c, x3m::CpuState& cpu) {
+// The wrapper's AL. `target` is 0x0049f570 for the chase ticket, the consumer's own wrapper otherwise (both take
+// the same arguments).
+__attribute__((noinline)) unsigned script_call(std::uintptr_t target, const detail::RestoreEngineCall& c,
+                                               x3m::CpuState& cpu) {
     cpu.restore();
     // Argument 0 is the completion-callback slot (task+0x30; 0 = none): Run147 passed the monitor id
     // there and the completion code 0x004a2260 -> 0x004ab170 indexed the VM callback table with -531
     // (only a signed `cmp ecx,0x20; jge` bounds it) and called through heap data. Argument 2 is the
     // lookup key, argument 4 the return kind, argument 5 argc (argc 0: six dwords).
     const std::uint32_t r =
-        (c.argc ? reinterpret_cast<ScriptCall1>(script_call_address)(c.callback, c.cookie, c.key, c.name,
-                                                                     c.return_kind, c.argc, c.value)
-                : reinterpret_cast<ScriptCall0>(script_call_address)(c.callback, c.cookie, c.key, c.name,
-                                                                     c.return_kind, 0)) &
+        (c.argc ? reinterpret_cast<ScriptCall1>(target)(c.callback, c.cookie, c.key, c.name, c.return_kind, c.argc,
+                                                        c.value)
+                : reinterpret_cast<ScriptCall0>(target)(c.callback, c.cookie, c.key, c.name, c.return_kind, 0)) &
         0xff;
     asm volatile("fninit" ::: "memory");
     const unsigned mxcsr = 0x1f80;
     asm volatile("ldmxcsr %0" ::"m"(mxcsr) : "memory");
-    return r != 0;
+    return unsigned(r);
+}
+__attribute__((noinline)) bool restore_engine_call(const detail::RestoreEngineCall& c, x3m::CpuState& cpu) {
+    return script_call(script_call_address, c, cpu) != 0;
 }
 // Site I (0x00410100 entry, once per main-loop iteration): consume a due
 // ticket. No lock, RAII object or borrowed engine pointer is held across the
 // engine call (a script error unwinds through this frame; the EH adapter's
 // epoch bump is the cancel).
-__attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState& cpu) {
+__attribute__((noinline)) void restore_inject(std::uint32_t* regs, x3m::CpuState& cpu) {
     if (!restore_enabled.load(std::memory_order_acquire)) return;
     const auto start = timing ? now() : 0;
     const auto thread = GetCurrentThreadId();
@@ -445,10 +458,34 @@ __attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState&
         restore_timing[restore_inject_kind].add(start, end);
     }
 }
+// The second consumer's queued call (InjectConsumer): its poll decides under its own lock; nothing of this module is
+// held across the engine call, so a script error unwinding through this frame leaves no state behind (the consumer
+// sees its call unreported at the next poll and the EH adapter's unwind()).
+__attribute__((noinline)) void consumer_inject(std::uint32_t* regs, x3m::CpuState& cpu) {
+    const InjectConsumer* consumer = inject_consumer.load(std::memory_order_acquire);
+    if (!consumer) return;
+    std::uint32_t controlled = 0;
+    if (!field(regs[3] + 4, 4, controlled)) controlled = 0;
+    InjectCall call;
+    if (!consumer->poll(controlled, call) || !call.target || !call.name) return;
+    const detail::RestoreEngineCall engine{0, 0, call.key, call.name, call.return_kind, call.argc, call.value};
+    consumer->result(script_call(call.target, engine, cpu));
+}
+__attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState& cpu) {
+    const std::uint32_t filter = restore_inject_filter.load(std::memory_order_acquire);
+    if (filter & filter_chase) restore_inject(regs, cpu);
+    if (filter & filter_consumer) consumer_inject(regs, cpu);
+}
 void restore_handle(unsigned kind, std::uint32_t* regs) {
     (void)regs;
-    if (kind >= restore_site_count || kind == restore_inject_kind || !restore_enabled.load(std::memory_order_acquire))
-        return;
+    if (kind >= restore_site_count || kind == restore_inject_kind) return;
+    if (const InjectConsumer* consumer = inject_consumer.load(std::memory_order_acquire)) {
+        if (kind == restore_eh_kind)
+            consumer->unwind();
+        else
+            consumer->vm(kind);
+    }
+    if (!restore_enabled.load(std::memory_order_acquire)) return;
     if (kind == restore_eh_kind) {
         // Lock-free: native unwinding may pass through this adapter while
         // another observer holds its lock on the same or another thread.
@@ -702,6 +739,37 @@ bool restore_sites_install(const engine_patch::SiteSpec* table) {
     }
     return true;
 }
+// The four sites once for every user (the chase restore, the InjectConsumer): the first claim inside the install
+// window, every later user attaches to the live sites. *status: ok, late_claim or the refusing site's status.
+bool inject_acquire(const char** status) {
+    if (inject_live) {
+        *status = "ok";
+        return true;
+    }
+    if (!engine_patch::install_window_open()) {
+        *status = "late_claim";
+        return false;
+    }
+    if (!restore_sites_install(restore_specs)) {
+        *status = "claim_failed";
+        for (const auto& s : restore_sites) // rolled-back sites read "restored": the refusing one has its own status
+            if (s.status && std::strcmp(s.status, "unclaimed") != 0 && std::strcmp(s.status, "restored") != 0 &&
+                std::strcmp(s.status, "active") != 0) {
+                *status = s.status;
+                break;
+            }
+        return false;
+    }
+    inject_live = true;
+    *status = "ok";
+    return true;
+}
+bool inject_release_if_unused() {
+    if (!inject_live || inject_chase || inject_consumer.load(std::memory_order_acquire)) return true;
+    if (!restore_sites_restore()) return false;
+    inject_live = false;
+    return true;
+}
 bool restore_wanted() {
     wchar_t setting[8]{};
     return x3m::config::get(L"X3M_CHASE_VIEW_RESTORE", setting, 8) == 1 && setting[0] == L'1';
@@ -751,8 +819,10 @@ bool initialize() {
     // With the option unset nothing below is claimed. The engine path needs
     // the observers (kind 6/7); the call target and roots are the EXE's own
     // (object_trace::executable_verified() bound the image above).
-    const bool restore_okay = restore_requested && okay && observers && retries_ok &&
-                              engine_patch::install_window_open() && restore_sites_install(restore_specs);
+    // The four sites may already be live for the second consumer (inject_attach): then the ticket attaches to them.
+    const char* inject_status = "unclaimed";
+    const bool restore_okay = restore_requested && okay && observers && retries_ok && inject_acquire(&inject_status);
+    inject_chase = restore_okay;
     {
         Guard guard;
         restore = {};
@@ -775,6 +845,30 @@ bool initialize() {
     }
     SetLastError(error);
     return okay;
+}
+bool inject_attach(const InjectConsumer* consumer, const char** status) noexcept {
+    const DWORD error = GetLastError();
+    const char* reason = "invalid_consumer";
+    bool ok = consumer && consumer->poll && consumer->result && consumer->vm && consumer->unwind &&
+              !inject_consumer.load(std::memory_order_acquire) && inject_acquire(&reason);
+    if (ok) inject_consumer.store(consumer, std::memory_order_release);
+    *status = reason;
+    SetLastError(error);
+    return ok;
+}
+bool inject_detach() noexcept {
+    const DWORD error = GetLastError();
+    restore_inject_filter.fetch_and(~filter_consumer, std::memory_order_release);
+    inject_consumer.store(nullptr, std::memory_order_release);
+    const bool ok = inject_release_if_unused();
+    SetLastError(error);
+    return ok;
+}
+void inject_want(bool wanted) noexcept {
+    if (wanted)
+        restore_inject_filter.fetch_or(filter_consumer, std::memory_order_release);
+    else
+        restore_inject_filter.fetch_and(~filter_consumer, std::memory_order_release);
 }
 bool restore_installed() {
     return restore_enabled.load(std::memory_order_acquire);

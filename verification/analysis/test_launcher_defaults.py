@@ -66,6 +66,7 @@ EXPECTED_EMPTY = {
     'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
     'X3M_RESOURCE_READ': 'fast', 'X3M_RUN_IN_BACKGROUND': '1', 'X3M_SCENE_HOOK': '1',  # run in background since 2026-09-27
+    'X3M_SETA_RESTORE': '1',  # SETA back on after a gate since 2026-10-23 (docs/architecture/seta-restore.md)
     'X3M_SCREEN_EMISSION_ADDITIVE': '2.0', 'X3M_SCREEN_EMISSION_ADDITIVE_ALPHA': '0.0',
     'X3M_SHADOW_ALPHA_CASTERS': '1', 'X3M_SHADOW_CASCADES': '250.0,1500.0,7500.0,37500.0,150000.0',
     'X3M_SHADOW_CASCADE_ADAPTIVE_C0': '1.5', 'X3M_SHADOW_CASCADE_DROP_ORDER': 'importance',
@@ -140,6 +141,7 @@ OPT_OUTS = (
     (('--cull-dock-parts', '12'), 'X3M_CULL_DOCK_PARTS_PX', '12.0000'),
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
     (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
+    (('--no-seta-restore',), 'X3M_SETA_RESTORE', None),
     (('--taa-luma-lock', '0'), 'X3M_TAA_LUMA_LOCK', '0'),
     (('--taa-thin-region', '0'), 'X3M_TAA_LUMA_LOCK', None),  # a prerequisite off: the lock default stays off, no refusal
     (('--taa-far-stabiliser', '0'), 'X3M_TAA_LUMA_LOCK', None),

@@ -138,7 +138,22 @@ autopilot:      2004::__FlyToNextSector (ceea8): __EnterHyperspace(...) == 3 and
 refusal. This is the EXE's own call shape at `0x0041211f..0x00412133`, with the mod-supplied name (the resolver matches by
 content, as for the chase restore's "SelectMode"). Argument 0 must stay 0 (Run147: a non-zero completion slot
 crashed). `StartFastForward` and `200::PlaySample` reach no blocking native and no dynamic call (`seta_toggle_study.txt`),
-so the task completes inside the call. It is idempotent: it does nothing when `m21 = 1` (the user restarted SETA)
+so the task completes inside the call.
+
+**Call address: `0x0049f4c0`, not the chase restore's `0x0049f570`** (EXE bytes, 2026-10-23, for
+[seta-restore.md](../architecture/seta-restore.md) **[m]**). Both wrappers take the same arguments
+`(slot, cookie, key, name, return kind, argc, args...)`. Both marshal them identically: `0x0049f4c0..0x0049f4fd` and
+`0x0049f570..0x0049f5ad` differ only in the scratch register (`ebx` against `ebp`). Both resolve through `0x0049f330`,
+both run the task through `0x0049f430`, and both return `AL = 0` when the method does not resolve. After the run,
+`0x0049f570` alone looks up the task id `[task+8]` in the hash `[*0x006085e4]`. When the task is still registered with
+`[entry+8] ≠ 0` it calls `0x004a21a0`, a read-only scan of the task's stack whose result is discarded (`mov al,1`
+follows). It has 46 call sites, among them the input routine's `TranslateKey` and `Input` calls. Whether
+the lookup serves a result is **[i]**. `0x0049f4c0` (56 call sites) returns straight after the run. It is the wrapper the EXE itself uses for class key
+`0x96`: `StopFastForward` at `0x0041212e` (`add esp,0x18`), `InputAction` at `0x0040f9b2`, `SetAutopilot` at
+`0x00410f84`. `StartFastForward` returns nothing, so the restart uses `0x0049f4c0`. The chase restore's `0x0049f570`
+stays right for its own calls. `verify_seta_restore_sites.py` pins the whole wrapper (173 bytes) and the EXE's call shape.
+
+It is idempotent: it does nothing when `m21 = 1` (the user restarted SETA)
 or `m9 = 1` (killed). It skips `ToggleFastForward`'s ware and dock tests. Both hold after a gate arrival (SETA ran on the
 same ship a moment earlier; the player is not docked after `__LeaveHyperspace`) **[i]**.
 
@@ -284,4 +299,5 @@ names a stop this note has not mapped.
 
 ```sh
 python3 -I verification/results/seta-script-toggle/seta_toggle_study.py > verification/results/seta-script-toggle/seta_toggle_study.txt   # RESULT PASS
+python3 -I verification/results/seta-script-toggle/verify_seta_restore_sites.py   # the X3M_SETA_RESTORE constants; RESULT PASS
 ```

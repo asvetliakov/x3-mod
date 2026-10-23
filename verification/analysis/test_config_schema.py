@@ -296,6 +296,7 @@ OPT_OUTS = {
     ('--bolt-single-copy', 'off'): ('X3M_BOLT_SINGLE_COPY',),
     ('--bolt-far-composite', 'off'): ('X3M_BOLT_FAR_COMPOSITE',),
     ('--no-shadow-cascade-adaptive-c0',): ('X3M_SHADOW_CASCADE_ADAPTIVE_C0',), ('--no-pause-key-only',): ('X3M_PAUSE_KEY_ONLY',),
+    ('--no-seta-restore',): ('X3M_SETA_RESTORE',),
     ('--no-window-monitor-rect',): ('X3M_WINDOW_MONITOR_RECT',), ('--no-light-map-far-fade',): ('X3M_LIGHT_MAP_FAR_FADE',),
     ('--no-ship-steering',): ('X3M_SHIP_STEERING',), ('--no-ship-avoidance',): ('X3M_SHIP_AVOIDANCE',),  # on by default since 2026-10-16
 }
