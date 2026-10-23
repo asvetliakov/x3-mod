@@ -1,0 +1,22 @@
+{
+ "run": "195",
+ "what": "Run194 + staged Lock on the game's real bullet buffer: any lock range staged under a 32 MiB pool (bullet buffer 2,211,840 B), sentinel over the 147,456 B scan window only, scan then prefix copy at the outermost Unlock (full copy on any ambiguity), blocks freed on clear/Reset and before regrow, refusal/failure counters, locked_prefix_window gains copy_bytes_per_lock, full_copies, prefix_copies, refused_size_total, refused_size_max_bytes, staging_failures_total; one-shot locked_prefix_staging_refused row",
+ "commit": "3408a2dc",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "273c26421fbf178605714efa2e03ea2b0244f580d318f95b2e7a65c1b0121aac",
+  "bytes": 62497331,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_bolt_footprint 25 OK (stage_big: 1260-vertex prefix copy 30,240 B, 7000-vertex full copy, regrow, pool refusal, pinned across clear)",
+  "host_cost": "verification/results/staged-lock/staged-lock.json game_buffer: 2,211,840 B lock, 1260 vertices: scan 1.50 us + prefix copy 0.27 us = 1.76 us (full-range copy would be 28.2 us); 7000 vertices: 36.6 us",
+  "reviews": "review: 0 blocker, 1 should-fix (pool lifetime: applied, cap 32 MiB, freed on clear/Reset/regrow), nits B/D/F/H applied; open: ownership-level Lock/Unlock paths covered by source assertions only"
+ },
+ "evidence": "docs/verification/bolt-footprint.md 2026-10-23 rows, docs/architecture/bolt-footprint.md Staged Lock + Run 194 A",
+ "producer": "main session"
+}
