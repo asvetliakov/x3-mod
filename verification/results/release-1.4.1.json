@@ -1,0 +1,203 @@
+{
+  "schema": 2,
+  "version": "1.4.1",
+  "complete": true,
+  "toolchain": {
+    "mingw_gcc": "i686-w64-mingw32-gcc (GCC) 16-posix",
+    "mingw_objcopy": "GNU objcopy (GNU Binutils) 2.47",
+    "cmake": "cmake version 4.2.3",
+    "python": "3.14.4 (/usr/bin/python3)"
+  },
+  "commit": "c8071537ae4b8bcf6d1df7ca9d9cc4a967ec46b1",
+  "dirty": false,
+  "dirty_files": [],
+  "generate_check": "PASS",
+  "dll_warnings": 0,
+  "x87": {
+    "result": "PASS",
+    "violations": 0,
+    "reachable_functions": 1059
+  },
+  "source_commit_marker": "c8071537ae4b8bcf6d1df7ca9d9cc4a967ec46b1",
+  "strip": {
+    "result": "PASS",
+    "sections_compared": [
+      ".text",
+      ".data",
+      ".rdata",
+      ".xdata",
+      ".eh_frame",
+      ".bss",
+      ".edata",
+      ".idata",
+      ".tls",
+      ".rsrc",
+      ".reloc"
+    ],
+    "exports": 17,
+    "debug_sections_removed": [
+      ".debug_aranges",
+      ".debug_info",
+      ".debug_abbrev",
+      ".debug_line",
+      ".debug_str",
+      ".debug_line_str",
+      ".debug_loclists",
+      ".debug_rnglists"
+    ],
+    "debuglink": true,
+    "x87": {
+      "result": "PASS",
+      "violations": 0,
+      "reachable_functions": 1059
+    },
+    "method": "i686-w64-mingw32-objcopy --only-keep-debug; --strip-debug --add-gnu-debuglink"
+  },
+  "dll_unstripped": {
+    "path": "/tmp/x3m-release-1.4.1/unstripped/d3d9.dll",
+    "sha256": "12b76da6522e8069fa98c54ad1cd5f6dba9d10614cecc24fa097cde1b6b778a7",
+    "bytes": 62498877
+  },
+  "debug_file": {
+    "path": "/tmp/x3m-release-1.4.1/d3d9.debug",
+    "sha256": "3a42f0e475f436d820e2ae6d9e02a63be6b46d488c2995bb5d070cc46522d7ff",
+    "bytes": 21294653
+  },
+  "dll": {
+    "path": "/tmp/x3m-release-1.4.1/d3d9.dll",
+    "sha256": "937689daec3c9b6e491b69610d759c59fb8f9c19ff090c87a2ed9983507c4f32",
+    "bytes": 42401737
+  },
+  "regenerate_source": "reused",
+  "regenerate": {
+    "x3m-regenerate.exe": {
+      "sha256": "bb3ba27b4d1a9fb68b334d2c7cafbdaa35513e6efdc32d31fb1ff025b03b19eb",
+      "bytes": 29766304
+    }
+  },
+  "zip": {
+    "path": "/tmp/x3m-release-1.4.1/x3m-1.4.1.zip",
+    "sha256": "ab818c78d8c699b350b9a12a9cbee1e5ddb9ff85f16899c079a1a755d899efa8",
+    "bytes": 60163811,
+    "entries": [
+      {
+        "name": "d3d9.dll",
+        "bytes": 42401737,
+        "sha256": "937689daec3c9b6e491b69610d759c59fb8f9c19ff090c87a2ed9983507c4f32"
+      },
+      {
+        "name": "x3m.ini",
+        "bytes": 27800,
+        "sha256": "2d54d1d98d71131e4a2099c63675351d61b862c8038dd7b880834cd1f7498141"
+      },
+      {
+        "name": "x3m-regenerate.exe",
+        "bytes": 29766304,
+        "sha256": "bb3ba27b4d1a9fb68b334d2c7cafbdaa35513e6efdc32d31fb1ff025b03b19eb"
+      },
+      {
+        "name": "f/Harrier48.abc",
+        "bytes": 10102,
+        "sha256": "bfe708cd4c832d6e58116816952dfaaf3dcefe85cf8bea79472141380f19249c"
+      },
+      {
+        "name": "f/Harrier48.tga",
+        "bytes": 2097170,
+        "sha256": "b0e5db2922e7b7d830387d7f9db5d64199fed6378f0dc3131f4fd80734939a09"
+      },
+      {
+        "name": "f/Harrier72.abc",
+        "bytes": 10102,
+        "sha256": "807a78585316503f8c2bef7d6f203e108868b33a19c4839153adbffa91cfe775"
+      },
+      {
+        "name": "f/Harrier72.tga",
+        "bytes": 4194322,
+        "sha256": "7e6db52e670aa17e84ce533913eba10be8777bf96b7f6126a3d132468ff6761e"
+      },
+      {
+        "name": "f/Tahoma26.abc",
+        "bytes": 17054,
+        "sha256": "18cca779096a9e41d547be70beb00552e0dd2cfd9ad2216c398724186d3fe2dd"
+      },
+      {
+        "name": "f/Tahoma26.tga",
+        "bytes": 1048594,
+        "sha256": "ef536bbb89ca579293f33b981bad95e2d2762554626b09979085da9e92bbc68f"
+      },
+      {
+        "name": "f/Tahoma39.abc",
+        "bytes": 17054,
+        "sha256": "abbe3241884774a060006eb2f3888eaae2dcd269d2bace52773ca46c94d9ea76"
+      },
+      {
+        "name": "f/Tahoma39.tga",
+        "bytes": 4194322,
+        "sha256": "42596156cf468d1ce17dad45b2fd320e7082b4e31f9e1c379d07d17fbeba1550"
+      },
+      {
+        "name": "f/Zekton52.abc",
+        "bytes": 7628,
+        "sha256": "7a52633c0a936aa7026aae45ec3a85c3188b27fd943ace23cdc5a7f134ad4248"
+      },
+      {
+        "name": "f/Zekton52.tga",
+        "bytes": 2097170,
+        "sha256": "cff8eb745fdb0fba6e4648a6694c3b615e112a630fd3571f15a56df1c387f53f"
+      },
+      {
+        "name": "f/Zekton78.abc",
+        "bytes": 7628,
+        "sha256": "3960f3cf197336c8ce168c603322a432ce224a1e923c951a865f31cba57fc424"
+      },
+      {
+        "name": "f/Zekton78.tga",
+        "bytes": 4194322,
+        "sha256": "212b87b9e2610142aea56e44677a27af030b633252677a0d7ae11a4a2d5b2b97"
+      },
+      {
+        "name": "f/ZektonES52.abc",
+        "bytes": 24750,
+        "sha256": "96c229be61d9ea2644eb227f2ba2077074227390a35c4324a3af0e462421d0da"
+      },
+      {
+        "name": "f/ZektonES52.tga",
+        "bytes": 2097170,
+        "sha256": "bb01d1d12b9293a9a0812b126e245e19f66c68ed8f1052862c8725b35750e554"
+      },
+      {
+        "name": "f/ZektonES78.abc",
+        "bytes": 24750,
+        "sha256": "496fabf863183563ce63548452ce0a9a34a4a7555230677530f1baec905e3cf5"
+      },
+      {
+        "name": "f/ZektonES78.tga",
+        "bytes": 4194322,
+        "sha256": "79140644e51f02a55241cc6ae37050c7c62dc5d5e3602120229689bbd18bd9fa"
+      },
+      {
+        "name": "OFL-NotoSans.txt",
+        "bytes": 4396,
+        "sha256": "cee9892f9f0cc8fe882c9e9537ee6a89621d86ee7ceaf70b02e2b2b1c25c061a"
+      },
+      {
+        "name": "OFL-Exo2.txt",
+        "bytes": 4386,
+        "sha256": "7f95a8eeecc6904ffc81cd10cc8ebc7fcee72a67922924bf45f02dff03b88127"
+      },
+      {
+        "name": "README.txt",
+        "bytes": 3378,
+        "sha256": "196a6998fd2cca6eec4785d8eae1b2f8ae8d3730398ff59043d054da45d0fd4d"
+      }
+    ]
+  },
+  "wall_seconds": {
+    "tree": 0.0,
+    "config": 0.0,
+    "dll": 65.2,
+    "regenerate": 0.5,
+    "package": 2.3,
+    "total": 68.2
+  }
+}

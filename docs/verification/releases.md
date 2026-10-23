@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.4.1
+
+2026-10-23, `python3 tools/release/release.py --out /tmp/x3m-release-1.4.1 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 68.2 s wall: dll 65.2 s, package 2.3 s), clean main `c8071537` ([record](../../verification/results/release-1.4.1.json)).
+
+- Over 1.4.0 (Runs 194–195, Run 195 A flown and confirmed): **the combat frame-rate fix**. The `bolt_footprint` locked-prefix scan read the game's bullet vertex buffer back from the driver's write-combined DISCARD mapping at Unlock; on native Windows that cost 1.6–5.2 ms per bullet batch and 15–21 ms per frame in a battle (frame time 17–28 ms against 5 ms calm). The game now writes into a proxy-owned cacheable staging block handed out at Lock; the outermost Unlock scans it and copies only the written prefix into the mapping (1.1–2.9 µs per lock in flight, bolts admitted as before; [note "Staged Lock"](../architecture/bolt-footprint.md), [ledger](bolt-footprint.md), [RE: instanced bullet path](../reverse-engineering/view-submit-hot-path.md)).
+- DLL: stripped `937689da…` (42,401,737 B; 0 warnings, x87 0 / 1059 reachable, strip identity PASS, 17 exports, debuglink), unstripped `12b76da6…` and `d3d9.debug` `3a42f0e4…` kept at /tmp/x3m-release-1.4.1/. Installed into native `C:\X3` as Run196, rollback `rollback-d3d9\d3d9.dll.run195` (the Run195 unstripped build `273c2642…`) ([install](../../verification/results/run196-release-install.json)).
+- Zip `x3m-1.4.1.zip` `ab818c78…` (60,163,811 B): 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.4.1`; `generate --check` PASS (277 settings, 127 in the template). The user's `x3m.ini` header bumped to 1.4.1 (previous file `x3m.ini.run195`).
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`).
+- Flown before the release build: Run 195 A; the release differs from Run195 by the version string and the strip. Also first shipped here: the detection robustness round (`3858c9db`, instruction-start signature matching, retry of transient failures), in Runs 194–195 without a detection failure row.
+
 ## Release 1.4.0
 
 2026-10-23, `python3 tools/release/release.py --out /tmp/x3m-release-1.4.0 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 67.3 s wall: dll 64.7 s, package 2.3 s), clean main `bfd9317a` ([record](../../verification/results/release-1.4.0.json)).
