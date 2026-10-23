@@ -279,7 +279,7 @@ const char* write_kind(const engine_patch::Site& s) {
 // Hook, then the shared injection site; a later failure puts the hook back. A hook that cannot be restored keeps the
 // module registered (patched_) so shutdown() tries again; armed_ stays false (the stub then only forwards).
 bool install(const char** reason) {
-    mismatch_ = core::Mismatch{}; // a retried initialize() must not print a stale window on a non-byte refusal
+    mismatch_ = Mismatch{}; // a retried initialize() must not print a stale window on a non-byte refusal
     if (!x3m::object_trace::executable_verified()) {
         *reason = "executable_mismatch";
         return false;
