@@ -237,6 +237,7 @@ constexpr std::uint32_t alert_record_ptr_va = 0x00608504;
 // a5 seconds, a6 ms, a7..a9 end, a10 loop.
 constexpr unsigned play_arg_id = 3, play_arg_minutes = 4, play_arg_seconds = 5, play_arg_ms = 6;
 constexpr unsigned trace_line_cap = 1000;
+constexpr unsigned queue_line_cap = 200; // music_queue rows (transitions and refusals): a cap of their own, so trace rows never crowd them out
 
 // ---- Stop-all callers (return addresses) and their policy ----
 // skip_all: the record is left untouched (no Pause/Stop, flag 2 kept, no completion, context kept): the stub leaves for
@@ -745,8 +746,8 @@ inline ResumeAction resume_on_stop_all(ResumeMemory& m, std::uint32_t return_va)
 // and C get the two vanilla completions (ORPHANED). C's first MOV_PlayMovie(N) at T2 is consumed: O's completion context
 // and slot become C's (PARKED), so the engine's own natural end of O wakes C, whose KC replay plays N through the vanilla
 // path; that replay frees P (IDLE). A further deferrable stop of N while PARKED collapses to the newest id. Every other
-// music stop of N, any stop-all but alt-tab, an alert edge and any other music play end the queue at once: C is woken
-// through O's slot and P is freed, then vanilla continues.
+// music stop of N, any stop-all but alt-tab under the keep's skip_all, an alert edge and any other music play (every
+// caller of the play entry) end the queue at once: C is woken through O's slot and P is freed, then vanilla continues.
 // Script owner / VM `*0x006085e4` (gate-queue-script.md section 1, script-task-scheduler.md): +0x08 the CODE buffer
 // (0x0049d34c), +0x10 its size (0x0049d332), +0x143c the story build id (0x0049d2a7), +0x04 the slot table guard and
 // +0x34 + 0x18 * slot the completion function (the MOV_StopMovie body 0x00498864..0x0049888e, cdecl (ctx, status), slot < 32).
@@ -821,8 +822,9 @@ inline bool cell_index_ok(std::int32_t index, std::uint32_t capacity) {
 inline std::int32_t cell_offset(std::int32_t index) {
     return index * std::int32_t(cell_size);
 }
+// A new id N must be > 0 (signed) to be deferred: 0 (leave, StopMusic) and every negative id play at once.
 inline bool immediate_id(std::uint32_t id) {
-    return id == 0 || id == id_death || id == id_landing || combat_id(id) || (id >= boarding_id_first && id <= boarding_id_last);
+    return std::int32_t(id) <= 0 || id == id_death || id == id_landing || combat_id(id) || (id >= boarding_id_first && id <= boarding_id_last);
 }
 inline std::uint32_t queue_key(std::uint32_t episode) {
     return queue_key_base + (episode & queue_key_mask);
@@ -849,7 +851,7 @@ enum class QueueReason : unsigned {
     not_armed,    // the queue is not armed (refused at install or music_keep off)
     no_task,      // ESI unreadable
     cells,        // the frame cells do not carry the LoopMusic-from-ChangeTrackMusic shape (values logged)
-    immediate_id, // the new id is 0, death, landing, combat or boarding
+    immediate_id, // the new id is <= 0 (signed), death, landing, combat or boarding
     alert,        // [R+4] or [R+8] nonzero, or R unreadable
     combat_old,   // the stopped id is a combat id
     not_playing,  // the record is absent, not music + playing, loop-flagged, unowned or has no media
@@ -928,6 +930,8 @@ struct QueueOutcome {
     QueueEvent event = QueueEvent::none;
     QueueReason reason = QueueReason::none;
     bool consume = false, rekey = false, wake = false, complete = false, park = false, free_key = false;
+    bool clear = false;       // zero O's +0x14/+0x18 before the free without a wake (O still names the calling task)
+    bool free_later = false;  // free P at the next Present instead of now (alt-tab under paused: T1 may run inside the walk)
     bool resume_candidate = true; // false: the keep's combat-resume memory must not remember this stop
     std::uint32_t record = 0, key = 0, wake_ctx = 0, wake_slot = 0, complete_ctx = 0, complete_slot = 0, park_ctx = 0,
                   park_slot = 0;
@@ -987,11 +991,16 @@ inline QueueOutcome queue_end(TrackQueue& q, QueueReason why, std::uint32_t call
     out.stop_task = caller_task;
     out.frames = frame - q.defer_frame;
     // Wake C only while O still names it (the manager's own end already zeroed the context and woke C) and never the
-    // calling task itself (its +0x20 must stay clear so the native suspends it as vanilla does).
-    if (q.state == QueueState::parked && o.live && o.context == q.task && q.task != caller_task) {
-        out.wake = true;
-        out.wake_ctx = q.task;
-        out.wake_slot = q.slot;
+    // calling task itself (its +0x20 must stay clear so the native suspends it as vanilla does). When the wake is
+    // suppressed for that reason, O's context and slot are zeroed before the free all the same, so the teardown 0x004984d0
+    // cannot deliver (C, 1) and set C's +0x20.
+    if (q.state == QueueState::parked && o.live && o.context == q.task) {
+        if (q.task != caller_task) {
+            out.wake = true;
+            out.wake_ctx = q.task;
+            out.wake_slot = q.slot;
+        } else
+            out.clear = true;
     }
     out.free_key = o.live;
     q.reset();
@@ -1083,12 +1092,14 @@ inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool ar
     out.task = v.task_id;
     return out;
 }
-// T2, the play routine entry (only MOV_PlayMovie's call 0x00499824 matters).
+// T2, the play routine entry 0x00498c90, every caller (MOV_PlayMovie, MOV_PlayMovieFrom, the helper 0x004f6640): any play
+// of a music record (flag 0x80) ends the queue unless it is C's own MOV_PlayMovie(N) (park or release).
 inline QueueOutcome queue_on_play(TrackQueue& q, const QueuePlayView& v, unsigned long long frame) {
     QueueOutcome out;
-    if (!q.active() || v.return_va != play_callers[0].return_va) return out;
+    if (!q.active()) return out;
     if (!v.found || !(v.flags & flag_music)) return out; // speech, video
-    const bool mine = v.task_ok && v.task_ip == kc_play_ip && v.task_id == q.task && v.id == q.new_id;
+    const bool mine = v.return_va == play_callers[0].return_va && v.task_ok && v.task_ip == kc_play_ip && v.task_id == q.task &&
+                      v.id == q.new_id;
     if (!v.orphan.live) return queue_end(q, QueueReason::lost, v.task_id, frame, v.orphan);
     if (q.state == QueueState::orphaned) {
         if (!mine) return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
@@ -1115,10 +1126,27 @@ inline QueueOutcome queue_on_play(TrackQueue& q, const QueuePlayView& v, unsigne
     }
     return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
 }
-// T1, the stop-all entry: alt-tab leaves the queue alone (the keep's skip_all leaves O alone too); every other caller ends it.
-inline QueueOutcome queue_on_stop_all(TrackQueue& q, std::uint32_t return_va, const OrphanView& o, unsigned long long frame) {
-    if (!q.active() || stop_mode(return_va) == StopMode::skip_all) return QueueOutcome{};
-    return queue_end(q, QueueReason::stop_all, 0, frame, o);
+// T1, the stop-all entry. Alt-tab leaves the queue alone only when the keep's alt-tab mode in effect is skip_all
+// (`skip_all_available`, the keep's status gate: skip_all leaves O alone too). Under paused (no status gate) alt-tab ends
+// the queue like every other caller, but P is freed at the next Present: alt-tab's T1 can run inside a COM call of the
+// manager's walk (media-record-lifetime.md, boundary 1), so it never frees there.
+inline QueueOutcome queue_on_stop_all(TrackQueue& q, std::uint32_t return_va, bool skip_all_available, const OrphanView& o,
+                                      unsigned long long frame) {
+    if (!q.active()) return QueueOutcome{};
+    const StopMode mode = stop_mode(return_va);
+    if (mode == StopMode::skip_all && skip_all_available) return QueueOutcome{};
+    QueueOutcome out = queue_end(q, QueueReason::stop_all, 0, frame, o);
+    if (mode == StopMode::skip_all) { // alt-tab under paused
+        out.free_later = out.free_key;
+        out.free_key = false;
+    }
+    return out;
+}
+// The story reload's own stop-alls: the session function's (0x0040387d, before it calls the loader 0x00404cc0 at
+// 0x004038ba) and the loader's (0x00404cf2, before the KC VM restore 0x004a0880).
+constexpr std::uint32_t session_start_return_va = 0x0040387d, load_return_va = 0x00404cf2;
+inline bool story_load_caller(std::uint32_t return_va) {
+    return return_va == session_start_return_va || return_va == load_return_va;
 }
 // Present: the committed alert level [R+4] became nonzero while the queue was active (a combat start the script dropped
 // while C was waiting, or one whose stop the queue did not see).
@@ -1136,7 +1164,8 @@ enum class KcResult : unsigned {
     build_mismatch,
     out_of_range,
     bytes_mismatch,
-    unwritable
+    unwritable,
+    waiting // the window is vanilla but a story load may still be in progress: no write yet (the load gate)
 };
 inline const char* kc_result_name(KcResult r) {
     switch (r) {
@@ -1148,14 +1177,58 @@ inline const char* kc_result_name(KcResult r) {
     case KcResult::out_of_range: return "out_of_range";
     case KcResult::bytes_mismatch: return "bytes_mismatch";
     case KcResult::unwritable: return "unwritable";
+    case KcResult::waiting: return "waiting";
     default: return "none";
     }
 }
+// What one due check read: the VM pointer, its CODE buffer, size and build, and the window bytes.
+struct KcObservation {
+    std::uint32_t vm = 0, code = 0, size = 0, build = 0;
+    bool window_ok = false;
+    unsigned char window[warp_window_length]{};
+    bool operator==(const KcObservation& o) const {
+        if (vm != o.vm || code != o.code || size != o.size || build != o.build || window_ok != o.window_ok) return false;
+        for (unsigned i = 0; i < warp_window_length; ++i)
+            if (window[i] != o.window[i]) return false;
+        return true;
+    }
+};
 struct KcPatch {
     std::uint32_t vm = 0, code = 0, size = 0, build = 0;
     KcResult result = KcResult::none;
     unsigned countdown = 1; // the first Present is due
     unsigned applied = 0, refused = 0;
+    // The load gate: the patch is written only once a story load has completed, never while one may be in progress.
+    // A load begins at the stop-all of the session function or of the loader (story_load_caller), both before the KC VM
+    // restore 0x004a0880 reloads the story object; load_begin() closes the gate. It opens for the first due check after
+    // the save_load_complete marker (load_complete(); the marker is emitted once per process, for the first save load),
+    // or, for every load without a marker (the initial story load at session start, every later save load), once two
+    // consecutive due checks kc_check_stride_frames apart after the last load_begin() read the same observation
+    // (VM, CODE buffer, size, build and window bytes).
+    KcObservation last{};
+    bool have_last = false, marker = false;
+    unsigned load_begins = 0, markers = 0;
+    void load_begin() {
+        have_last = false;
+        marker = false;
+        ++load_begins;
+    }
+    void load_complete() {
+        marker = true;
+        ++markers;
+        countdown = 1; // the next Present is due
+    }
+    // Every due check: true when the gate is open for a write at this check.
+    bool settle(const KcObservation& now) {
+        const bool same = have_last && now == last;
+        last = now;
+        have_last = true;
+        if (marker) {
+            marker = false;
+            return true;
+        }
+        return same;
+    }
     // Whether this Present reads the VM's fields and the window: on a change of the VM pointer (one image load per
     // frame otherwise) and every kc_check_stride_frames, so a reloaded story object (the same VM, a new CODE buffer) is
     // patched again within the stride.
@@ -1213,7 +1286,7 @@ struct KcPatch {
         const bool row = r == KcResult::applied || (r != result && !(r == KcResult::already && result == KcResult::applied));
         result = r;
         if (r == KcResult::applied) ++applied;
-        else if (r != KcResult::already && r != KcResult::none) ++refused;
+        else if (r != KcResult::already && r != KcResult::none && r != KcResult::waiting) ++refused;
         return row;
     }
 };

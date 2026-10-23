@@ -25,8 +25,8 @@ Three states, kept in `TrackQueue` (pure functions in the core header, host-test
    frame cells of the `ChangeTrackMusic` fork child by absolute index from the end of the cell buffer
    (`[ESI+0x14]`; valid cells `-capacity..-1`; the stack index `[ESI+0x18]` is -19): old id at -18 (must equal EAX),
    the `LoopMusic` return `(3, 0x0dc84)` at -13, the new id N at -11 (int), fade at -10 (0), loop at -9 (1) and the
-   `ChangeTrackMusic` return `(3, 0x0dcdb)` at -7. N must not be 0, 13 (death), 14 (landing), 1001..1042 (combat) or
-   8233..8237 (boarding); the alert record `*0x00608504` must read `[R+4] == 0 && [R+8] == 0` (a combat start stops
+   `ChangeTrackMusic` return `(3, 0x0dcdb)` at -7. N must be greater than 0 as a signed id (0 and every negative id
+   play at once, section 8.3) and not 13 (death), 14 (landing), 1001..1042 (combat) or 8233..8237 (boarding); the alert record `*0x00608504` must read `[R+4] == 0 && [R+8] == 0` (a combat start stops
    inside `NotifyAlert` with `[R+8] != 0`, a combat end with `[R+4] != 0`); the stopped id must not be a combat id; the
    first record with that id must be music and playing (`& 0x83 == 0x82`), owned (`+0x14 != 0`, not by the caller),
    with a slot below 32 and a media object. Then the handler re-keys the record to a private id `P = 0x7f000000 + n`
@@ -51,15 +51,22 @@ Three states, kept in `TrackQueue` (pure functions in the core header, host-test
 4. **Collapse (PARKED → ORPHANED).** A further deferrable stop of N by another task D (another jump before O ended):
    deliver `(C, 1)` through O's slot, zero both, deliver `(D, 1)` through EDI, return. C frees N's unplayed record and
    exits with `m17 = -2`; D loads and plays the newest id M, which parks on the same O. The newest id always wins.
-5. **Ends with the vanilla fallback.** C is woken through O's slot when O still names it (never the calling task
-   itself, whose `+0x20` must stay clear), O's context and slot are zeroed, P is freed, and the event continues vanilla:
-   a stop of N that is not deferrable (a combat start inside `NotifyAlert`, `StopMusic` with new id 0, a
-   `MusicFadeOut` stop at IP `0x0da17`, which is never deferred), a stop of any other music record, any other music
-   play at T2, every stop-all but alt-tab at the T1 entry (save, pause, load, P_Leave, session start, unknown; before
-   the walk, so neither O nor P is visited), and a nonzero committed alert level `[R+4]` sampled at Present while the
-   queue is active (a combat start the script dropped while C was in `TI_Delay`). An orphan that ended with nobody left
-   to wake (flag 2 clear, context 0) or that is no longer linked under P is freed or forgotten at the next event
-   (`stale`, `lost`). Alt-tab leaves the queue alone: the keep's `skip_all` leaves O untouched too.
+5. **Ends with the vanilla fallback.** C is woken through O's slot when O still names it, O's context and slot are
+   zeroed, P is freed, and the event continues vanilla. The calling task itself is never woken (its `+0x20` must stay
+   clear so the native suspends it as vanilla does); when O still names it, O's `+0x14`/`+0x18` are zeroed before the
+   free all the same (`clear=1`), so the free's teardown `0x004984d0` cannot deliver `(C, 1)` either. The events: a
+   stop of N that is not deferrable (a combat start inside `NotifyAlert`, `StopMusic` with new id 0, a `MusicFadeOut`
+   stop at IP `0x0da17`, which is never deferred), a stop of any other music record, any music play at T2 other than
+   C's own `MOV_PlayMovie(N)` (every caller of `0x00498c90`: `MOV_PlayMovie`, `MOV_PlayMovieFrom` and the helper
+   `0x004f6640`; the record's music flag `0x80` decides, not the caller), every stop-all at the T1 entry but alt-tab
+   under `skip_all` (save, pause, load, P_Leave, session start, unknown; before the walk, so neither O nor P is
+   visited), and a nonzero committed alert level `[R+4]` sampled at Present while the queue is active (a combat start
+   the script dropped while C was in `TI_Delay`). An orphan that ended with nobody left to wake (flag 2 clear, context
+   0) or that is no longer linked under P is freed or forgotten at the next event (`stale`, `lost`). Alt-tab depends on
+   the keep's alt-tab mode in effect: under `skip_all` (Patch D live) it leaves the queue alone, as `skip_all` leaves O
+   untouched; under `paused` (`status_gate` refused) it ends the queue like every other caller (C woken, O's context
+   zeroed), but P is freed at the next Present (`event=free_later`), because alt-tab's T1 can run inside a COM call of
+   the manager's walk (media-record-lifetime.md, boundary 1) and the walk then pauses the orphan as vanilla would.
 
 **The KC prerequisite.** Without it a jump never reaches the T3 test. In memory, the 6 bytes `op6f; jt 0x161d7` at
 CODE `0x161c3` of `150::WarpToSector` (Mayhem story build 1462141839; the vanilla bytes after the loader's little-endian
@@ -70,18 +77,37 @@ unchanged; instruction starts outside the window and every method entry are unch
 pointer `*0x006085e4` is read every frame, its CODE buffer `[VM+8]`, size `[VM+0x10]` and build id `[VM+0x143c]` and
 the window every 8th frame or on a VM change (fault-free reads), the build must be 1462141839, the window must hold
 exactly the vanilla bytes (our patch: nothing; anything else, a threaded or fused window: refused with the bytes
-seen), and the 6 bytes are written only after `VirtualQuery` reports the page committed and writable. The story object
-is reloaded on every save load (a new buffer), so the patch is applied again within 8 frames of a load. Shutdown puts
+seen), and the 6 bytes are written only after `VirtualQuery` reports the page committed and writable. Shutdown puts
 the vanilla bytes back when the window still holds the patch. The three EXE witnesses of that layout (the jump handler
 `0x004a317a` adding the operand to `[VM+8]`, the loader's stores at `0x0049d332`/`0x0049d34c`/`0x0049d2a7`) are
-compared at install. With the patch and the queue refused or off, a gate jump cuts the old track 1000 game ms after
-arrival instead of fading it at the gate.
+compared at install. The patch is maintained only while the queue is armed: with the queue off or refused it is never
+applied, and a gate jump fades the old track at the gate as vanilla.
+
+**When the KC patch is written (the load gate).** Never while a story load may be in progress; once per completed
+load. The story object is reloaded on every save load (`0x004a0880` → `0x0049d030`, a new buffer). A load begins at
+the stop-all of the session function (caller `0x0040387d`, before it calls the loader `0x00404cc0` at `0x004038ba`)
+or of the loader itself (`0x00404cf2`, before its KC VM restore `0x004a0880`); the keep's T1 entry sees both and
+closes the gate (`load_begins=`). It opens for:
+
+* the first check after the `save_load_complete` marker (capture.cpp's Present path, the event `fov::loaded` and
+  `music_alert::loaded` take; `markers=`), which the proxy emits once per process, after the first save load; or
+* for every load without a marker (the initial story load at session start and every later save load), two
+  consecutive checks 8 frames apart after the last load begin that read the same observation: VM pointer, CODE
+  buffer, size, build and the six window bytes. A window still in the file's byte order or being rewritten differs
+  between the two reads, or is not the vanilla memory form, and is not written.
+
+A vanilla window while the gate is closed is `action=waiting` (no write, not a refusal). The VM clear and load sites
+(`0x0049ea80`, `0x004a0880`) are not used: they belong to the chase restore's single `InjectConsumer`, which
+`seta_restore` holds. So a reloaded object is patched 8 to 16 frames after its fields settle, or at the first check
+after the marker. **[i]**: that both stop-alls precede the story reload is read from the call order of `0x00403840`
+and `0x00404cc0` (sector-transit-order.md section 3, shadow-caster-lifetime.md section 5a), not traced.
 
 **Interactions.** The combat resume (music-script-driver.md section 4) never remembers a stop the queue deferred or a
 stop of the parked id: O plays to its end, N never played. The keep's holds and the save pump are unchanged; the save's
 stop-all ends the queue before the walk (C woken, P freed), so after a save the new track starts from 0 and the old one
-is cut at the save: the documented degradation of section 8.3. The trace stubs stay chained on the same sites; a stop
-or play the queue consumes is logged by the queue row, not by a trace row chained behind it.
+is cut at the save: the documented degradation of section 8.3. The trace stubs stay chained on the same sites and run
+in front of the queue's (the trace installs after the keep, and the newest claim is the chain head), so a stop or play
+the queue consumes is still logged by its trace row, followed by the queue row.
 
 ## Install and fail-closed
 
@@ -100,28 +126,36 @@ free shims save EBX/ESI/EDI/EBP, and all of them are roots of `check_no_x87.py`.
 * `music_queue requested= armed= reason= site_play=0x00498c90 write_play= stub_play= free=0x004986b0 vm=0x006085e4
   story_build=1462141839 kc_window=0x161c3 kc_continue=0x161d7 kc_patch=pending|off key_base=0x7f000000 stack_depth=19
   cells=-18,-13,-11,-10,-9,-7` at install.
-* `music_queue_kc frame= action=applied|already|no_vm|unreadable|build_mismatch|out_of_range|bytes_mismatch|unwritable
-  vm= code= size= build= window=0x161c3 bytes=<6 bytes seen> applied= refused=` once per change of result and per
-  apply (after every story reload).
+* `music_queue_kc frame= action=applied|already|waiting|no_vm|unreadable|build_mismatch|out_of_range|bytes_mismatch|
+  unwritable vm= code= size= build= window=0x161c3 bytes=<6 bytes seen> applied= refused= load_begins= markers=` once
+  per change of result and per apply (after every completed story reload).
 * `music_queue frame= seq= qpc= event=defer|park|collapse|release|end reason= state= old= new= key= record= task=
-  stop_task= wake= complete= park= freed= frames= episode=` per transition (`frames` since the defer); `event=refuse
+  stop_task= wake= clear= complete= park= freed= free_later= frames= episode=` per transition (`frames` since the
+  defer); `music_queue frame= seq= qpc= event=free_later key= freed=` at the Present after an alt-tab end under
+  `paused`; `event=refuse
   reason=not_armed|no_task|cells|immediate_id|alert|combat_old|not_playing|same_id … ip= k= capacity= cells= c-18= c-13=
   c-11= c-10= c-9= c-7=<tag:value> alert=<ok>/<old>/<new> record= flags= ctx=` per non-deferred `PlayMusicWithFade` stop.
   End reasons: `natural_end` (release), `lost`, `ended_before_park`, `stop`, `other_play`, `stop_all`, `alert_edge`,
-  `stale`, `claimed`.
+  `stale`, `claimed`. The `music_queue` rows have a cap of their own, 200 per session (`queue_line_cap`), then one
+  `music_queue_cap … note=further_queue_lines_suppressed`, separate from the 1,000-line cap of the trace and keep
+  rows, so a trace-heavy flight cannot suppress them.
+* `X3M_MUSIC_QUEUE` other than exactly `1` (for example `0`) logs `requested=0`.
 
 ## What the first flight must show
 
 With `music_keep = 1`, `music_queue = 1` and `music_trace = 1`:
 
 1. The install row `music_queue … armed=1 reason=ok write_play=atomic`, then `music_queue_kc action=applied build=1462141839
-   bytes=6f33d7610100` within the first frames and again after every save load (`applied=` counts them); no
+   bytes=6f33d7610100` once the story object has settled (possibly after one `action=waiting` row) and again after every
+   save load (`applied=` counts them, `load_begins=` the reloads seen); no
    `bytes_mismatch` row (one would mean the loader's peephole pass rewrote the window: the queue then never defers on a
    jump and the flight is a cell-value flight only).
 2. One gate jump: `music_queue event=defer old=<sector id> new=<new id> key=0x7f00000n`, then `event=park`; the old
-   track keeps playing audibly through the warp and after arrival (no `music_trace_play` of the new id in between);
-   at the old track's natural end `event=release reason=natural_end freed=1` followed by `music_trace_play id=<new>
-   start_ms=0` within about two frames, then the new track plays.
+   track keeps playing audibly through the warp and after arrival. The park's consumed play is logged first by the
+   trace, which runs in front of the queue stub: one `music_trace_play id=<new>` directly before `event=park`, and no
+   other `music_trace_play` of the new id until the release. At the old track's natural end the replay logs
+   `music_trace_play id=<new> start_ms=0`, then `event=release reason=natural_end freed=1`, within about two frames of
+   the end, and the new track plays.
 3. One jump while a change is pending: `event=collapse old=<pending> new=<newest>`, `event=park task=<D>`, and the
    release plays the newest id.
 4. One combat start while pending: `event=end reason=stop wake=1 freed=1` and the combat track plays as vanilla

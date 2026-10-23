@@ -84,10 +84,12 @@
 //      consumed and the old record's completion context becomes that task (PARKED), so the
 //      engine's own natural end wakes it and its KC replay plays the new id through vanilla,
 //      where the orphan is freed (0x004986b0). A further deferrable stop collapses to the
-//      newest id; combat, any other music stop or play, a stop-all other than alt-tab and an
+//      newest id; combat, any other music stop or play (any caller of 0x00498c90), a stop-all
+//      other than alt-tab under skip_all (alt-tab under paused frees at the next Present) and an
 //      alert edge at Present end the queue (wake, free, vanilla). The prerequisite KC patch
 //      (150::WarpToSector's StopMusic(500) fork at CODE 0x161c3 -> jmp, build 1462141839) is
-//      maintained from Present and re-applied after every story reload.
+//      maintained from Present and re-applied after every completed story reload (the load gate:
+//      KcPatch in music_keep_core.h).
 // X3M_MUSIC_TRACE=1 (three entry trampolines): 0x004982b0 (stop-all; caller
 //   return address), 0x00498c90 (play; id, start ms, caller) and 0x00498810
 //   (MOV_StopMovie native; id, caller). One line each, written synchronously
@@ -110,6 +112,8 @@ const char* state(); // keep: ok / disabled / <refusal>
 const char* trace_state(); // trace: ok / disabled / <refusal>
 // Stores the Present frame counter for the lines (no other per-frame work).
 void present(unsigned long long device, unsigned long long frame, bool captured);
+// The save_load_complete marker (Present path): the track queue's KC patch may be written at the next Present's check.
+void loaded();
 // After loading_trace::initialize(): one music_keep_save_pump_hook row (the save pump bound, or its refusal) when
 // X3M_MUSIC_KEEP is set.
 void save_pump_report();

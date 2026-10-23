@@ -50,7 +50,7 @@ Holds holds_;
 // The track queue (X3M_MUSIC_QUEUE=1 under the keep; music_keep_core.h "The track queue"): optional inside the keep like
 // Patches D and E. queue_armed_ only after its windows matched and the play entry was acquired; the KC patch is
 // maintained from Present (kc_), the state machine lives in queue_.
-bool queue_requested_ = false, queue_armed_ = false;
+bool queue_requested_ = false, queue_armed_ = false, queue_variable_ = false; // queue_variable_: X3M_MUSIC_QUEUE is exactly 1
 const char* queue_state_ = "disabled";
 TrackQueue queue_;
 KcPatch kc_;
@@ -73,6 +73,9 @@ ResumeMemory resume_;
 volatile unsigned long long current_frame_ = 0; // stored at Present, read by the handlers
 unsigned long lines_ = 0, seq_ = 0, suppressed_ = 0, walks_cut_ = 0;
 bool cap_noted_ = false;
+unsigned long queue_lines_ = 0, queue_suppressed_ = 0; // the music_queue rows' own cap (queue_line_cap)
+bool queue_cap_noted_ = false;
+std::uint32_t queue_free_pending_ = 0; // a private key to free at the next Present (alt-tab under paused), 0 none
 
 std::uint32_t load32(std::uint32_t at) {
     std::uint32_t v = 0;
@@ -169,26 +172,40 @@ bool live_record(std::uint32_t record, std::uint32_t id, std::uint32_t media, Li
 }
 // One event line through the session log's buffer (no file I/O on the game thread since the logging tiers; the
 // callers' formats keep their trailing newline, which the log strips). The CRT formatter runs behind call_preserved
-// inside the session log, keeping the handlers' audited graph x87-free. Capped at trace_line_cap event lines per
-// session, then one notice.
-void write_line(const char* format, ...) {
+// inside the session log, keeping the handlers' audited graph x87-free. Capped per session (`cap` event lines on the
+// `count` counter), then one notice.
+void write_capped(unsigned long& count, unsigned long& suppressed, bool& noted, unsigned long cap, const char* notice_name,
+                  const char* note, const char* format, va_list args) {
     bool notice = false;
-    if (lines_ >= trace_line_cap) {
-        ++suppressed_;
-        if (cap_noted_) return;
-        cap_noted_ = true;
+    if (count >= cap) {
+        ++suppressed;
+        if (noted) return;
+        noted = true;
         notice = true;
     } else
-        ++lines_;
+        ++count;
     const HANDLE handle = x3m::log_handle();
     if (handle == INVALID_HANDLE_VALUE || !handle) return;
     if (notice) {
-        x3m::log("music_trace_cap frame=%llu lines=%lu note=further_music_lines_suppressed", current_frame_, lines_);
+        x3m::log("%s frame=%llu lines=%lu note=%s", notice_name, current_frame_, count, note);
         return;
     }
+    x3m::session_log::vlog(format, args);
+}
+// The music_trace_* / music_keep_* lines: trace_line_cap per session, then one music_trace_cap notice.
+void write_line(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    x3m::session_log::vlog(format, args);
+    write_capped(lines_, suppressed_, cap_noted_, trace_line_cap, "music_trace_cap", "further_music_lines_suppressed", format,
+                 args);
+    va_end(args);
+}
+// The music_queue rows: queue_line_cap per session of their own, then one music_queue_cap notice.
+void write_queue_line(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    write_capped(queue_lines_, queue_suppressed_, queue_cap_noted_, queue_line_cap, "music_queue_cap", "further_queue_lines_suppressed",
+                 format, args);
     va_end(args);
 }
 const char* action_name(SeekAction a) {
@@ -339,7 +356,7 @@ void deliver(const x3m::LightCallBoundary& cpu, std::uint32_t slot, std::uint32_
 void queue_line(const QueueOutcome& o, const QueueStopView* stop, std::uint32_t freed) {
     if (o.event == QueueEvent::none) return;
     if (o.event == QueueEvent::refuse && stop) {
-        write_line(
+        write_queue_line(
             "music_queue frame=%llu seq=%lu qpc=%llu event=refuse reason=%s state=%s old=%lu new=%lu task=%lu ip=0x%lx k=%ld capacity=%lu cells=%u "
             "c-18=%u:0x%08lx c-13=%u:0x%08lx c-11=%u:0x%08lx c-10=%u:0x%08lx c-9=%u:0x%08lx c-7=%u:0x%08lx alert=%u/%lu/%lu record=0x%08lx flags=0x%lx ctx=%lu\n",
             current_frame_, ++seq_, qpc(), queue_reason_name(o.reason), queue_state_name(queue_.state),
@@ -353,22 +370,24 @@ void queue_line(const QueueOutcome& o, const QueueStopView* stop, std::uint32_t 
             static_cast<unsigned long>(stop->record), static_cast<unsigned long>(stop->flags), static_cast<unsigned long>(stop->context));
         return;
     }
-    write_line(
+    write_queue_line(
         "music_queue frame=%llu seq=%lu qpc=%llu event=%s reason=%s state=%s old=%lu new=%lu key=0x%08lx record=0x%08lx task=%lu stop_task=%lu "
-        "wake=%u complete=%u park=%u freed=%lu frames=%llu episode=%lu\n",
+        "wake=%u clear=%u complete=%u park=%u freed=%lu free_later=%u frames=%llu episode=%lu\n",
         current_frame_, ++seq_, qpc(), queue_event_name(o.event), queue_reason_name(o.reason), queue_state_name(queue_.state),
         static_cast<unsigned long>(o.old_id), static_cast<unsigned long>(o.new_id), static_cast<unsigned long>(o.key),
         static_cast<unsigned long>(o.record), static_cast<unsigned long>(o.task), static_cast<unsigned long>(o.stop_task),
-        o.wake ? 1u : 0u, o.complete ? 1u : 0u, o.park ? 1u : 0u, static_cast<unsigned long>(freed), o.frames,
+        o.wake ? 1u : 0u, o.clear ? 1u : 0u, o.complete ? 1u : 0u, o.park ? 1u : 0u, static_cast<unsigned long>(freed),
+        o.free_later ? 1u : 0u, o.frames,
         static_cast<unsigned long>(queue_.episode));
 }
-// Executes an outcome against the engine, in the core's order: re-key, wake (then zero O's context and slot), complete
-// the caller, park, free. Returns the free's answer (1 found) for the row.
+// Executes an outcome against the engine, in the core's order: re-key, wake (then zero O's context and slot) or only
+// zero them (`clear`), complete the caller, park, free now or at the next Present. Returns the free's answer (1 found)
+// for the row.
 std::uint32_t queue_apply(const x3m::LightCallBoundary& cpu, const QueueOutcome& o) {
     std::uint32_t freed = 0;
     if (o.rekey) store32(o.record + record_id, o.key);
-    if (o.wake) {
-        deliver(cpu, o.wake_slot, o.wake_ctx);
+    if (o.wake || o.clear) {
+        if (o.wake) deliver(cpu, o.wake_slot, o.wake_ctx);
         store32(o.record + record_slot, 0);
         store32(o.record + record_context, 0);
     }
@@ -381,6 +400,7 @@ std::uint32_t queue_apply(const x3m::LightCallBoundary& cpu, const QueueOutcome&
         cpu.before_original();
         freed = x3m_music_queue_call_free(o.key);
     }
+    if (o.free_later) queue_free_pending_ = o.key;
     return freed;
 }
 }
@@ -491,12 +511,15 @@ __attribute__((force_align_arg_pointer)) std::uint32_t __cdecl x3m_music_keep_st
     x3m::LightCallBoundary cpu;
     if (!keep_armed_) return 0;
     const std::uint32_t return_va = block[4];
-    // The track queue ends before the walk on every caller but alt-tab: C is woken through O's slot and P is freed
-    // (outside the walk, which has not loaded its first node yet), so the walk sees neither O nor the private key.
+    // The track queue ends before the walk on every caller but alt-tab under skip_all: C is woken through O's slot and P
+    // is freed (outside the walk, which has not loaded its first node yet), so the walk sees neither O nor the private
+    // key. Alt-tab under paused ends it too, with the free deferred to the next Present (queue_on_stop_all).
     if (queue_.active()) {
-        const QueueOutcome o = queue_on_stop_all(queue_, return_va, orphan_view(), current_frame_);
+        const QueueOutcome o = queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_);
         if (o.event != QueueEvent::none) queue_line(o, nullptr, queue_apply(cpu, o));
     }
+    // A story reload begins (the session function's or the loader's stop-all): the KC patch waits for its completion.
+    if (queue_armed_ && story_load_caller(return_va)) kc_.load_begin();
     // Any stop-all ends a save pump episode (the stub calls this handler until it returns 0: idempotent), and a vanilla
     // caller clears the resume memory.
     if (pump_.active() && pump_.end_now(PumpEnd::stop_all, qpc())) pump_line("none", 0);
@@ -580,9 +603,10 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_mo
     if (r != ResumeAction::none) resume_line(r, ResumeMemory{id, read ? ms : 0, read}, id, "stop_movie");
     return 0;
 }
-// The play routine entry (shared with the trace; from MOV_PlayMovie: [esp+4] = slot, [esp+8] = task id, [esp+0xc] = id,
-// ESI = the calling task): parks C on the orphan (returns 1: the stub returns, the task suspends as vanilla does without
-// a play), releases the orphan on C's replay, or ends the queue on any other music play; everything else is vanilla.
+// The play routine entry (shared with the trace; every caller: [esp+4] = slot, [esp+8] = task id, [esp+0xc] = id, ESI =
+// the calling task from MOV_PlayMovie): parks C on the orphan (returns 1: the stub returns, the task suspends as vanilla
+// does without a play), releases the orphan on C's replay, or ends the queue on any other music play (MOV_PlayMovieFrom
+// and the helper 0x004f6640 included; the record's flag 0x80 decides); everything else is vanilla.
 __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_queue_play(const std::uint32_t* block,
                                                                                std::uint32_t task) {
     if (!queue_armed_ || !queue_.active()) return 0; // the common path: two loads
@@ -605,18 +629,20 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_queue_play(c
 }
 }
 namespace {
-// The KC patch of 150::WarpToSector, maintained from Present on the main thread (no task runs there): the VM pointer,
-// its CODE buffer, size and build id are read every frame (two image loads; the fields through the fault-free reader
-// when the pointer is set); the 6-byte window is re-read on any change of those and every kc_check_stride_frames
-// otherwise, so a story reload (every save load) is patched again within a frame and a reused buffer address within
-// 16 frames. The write is a plain 6-byte copy into the game's own heap buffer after VirtualQuery says committed and
-// writable; nothing executes bytecode during Present.
+// The KC patch of 150::WarpToSector, maintained from Present on the main thread (no task runs there): the VM pointer is
+// read every frame (one image load); its CODE buffer, size, build id and the 6-byte window are read on a change of the
+// pointer and every kc_check_stride_frames (8) otherwise. The write waits for the load gate (KcPatch::settle): after a
+// story reload began (the session or loader stop-all), only the first check after the save_load_complete marker or two
+// consecutive checks 8 frames apart that read the same observation may write, so a reload is patched again within 8 to
+// 16 frames of its completion and never while one may be in progress. The write is a plain 6-byte copy into the game's
+// own heap buffer after VirtualQuery says committed and writable; nothing executes bytecode during Present.
 void kc_row(KcResult r) {
-    x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u",
+    x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u "
+             "load_begins=%u markers=%u",
              current_frame_, kc_result_name(r), static_cast<unsigned long>(kc_.vm), static_cast<unsigned long>(kc_.code),
              static_cast<unsigned long>(kc_.size), static_cast<unsigned long>(kc_.build), static_cast<unsigned long>(warp_fork_offset),
              kc_window_seen_[0], kc_window_seen_[1], kc_window_seen_[2], kc_window_seen_[3], kc_window_seen_[4], kc_window_seen_[5],
-             kc_.applied, kc_.refused);
+             kc_.applied, kc_.refused, kc_.load_begins, kc_.markers);
 }
 __attribute__((noinline)) void music_queue_kc_present() {
     x3m::LightCallBoundary cpu;
@@ -634,8 +660,18 @@ __attribute__((noinline)) void music_queue_kc_present() {
     if (fields_ok && code && size >= warp_fork_offset + warp_window_length && at > code)
         window_ok = x3m::engine_memory::read(at, kc_window_seen_, warp_window_length);
     if (!window_ok) std::memset(kc_window_seen_, 0, sizeof kc_window_seen_);
+    KcObservation seen;
+    seen.vm = vm;
+    seen.code = kc_.code;
+    seen.size = kc_.size;
+    seen.build = kc_.build;
+    seen.window_ok = window_ok;
+    std::memcpy(seen.window, kc_window_seen_, warp_window_length);
+    const bool settled = kc_.settle(seen);
     KcResult r = KcResult::none;
-    if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r)) {
+    if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r) && !settled)
+        r = KcResult::waiting; // a story load may still be in progress: no write at this check
+    else if (r == KcResult::applied) {
         MEMORY_BASIC_INFORMATION info{};
         const bool writable =
             VirtualQuery(reinterpret_cast<const void*>(std::uintptr_t(at)), &info, sizeof info) == sizeof info &&
@@ -649,6 +685,17 @@ __attribute__((noinline)) void music_queue_kc_present() {
             r = KcResult::unwritable;
     }
     if (kc_.note(r)) kc_row(r);
+}
+// The private key an alt-tab under paused ended the queue with (queue_on_stop_all): freed here, outside the manager's
+// walk, with the same delete-by-id the T2/T3 paths use (a miss when the engine freed the record already).
+__attribute__((noinline)) void music_queue_free_present() {
+    x3m::LightCallBoundary cpu;
+    const std::uint32_t key = queue_free_pending_;
+    queue_free_pending_ = 0;
+    cpu.before_original();
+    const std::uint32_t freed = x3m_music_queue_call_free(key);
+    write_queue_line("music_queue frame=%llu seq=%lu qpc=%llu event=free_later key=0x%08lx freed=%lu\n", current_frame_, ++seq_, qpc(),
+                     static_cast<unsigned long>(key), static_cast<unsigned long>(freed));
 }
 // The committed alert level [R+4] while the queue is active: a nonzero level ends it (the fallback: C woken, P freed).
 __attribute__((noinline)) void music_queue_alert_present() {
@@ -1491,7 +1538,8 @@ bool initialize() {
                                  log_tier::debug(); // X3M_MUSIC_TRACE=1
                                                     // or X3M_DEBUG=1
     trace_present = trace_present || trace_requested;
-    queue_requested_ = requested(L"X3M_MUSIC_QUEUE", &queue_present) && keep_requested; // a no-op without the keep
+    queue_variable_ = requested(L"X3M_MUSIC_QUEUE", &queue_present);
+    queue_requested_ = queue_variable_ && keep_requested; // a no-op without the keep
     queue_state_ = queue_present && !keep_requested ? "keep_off" : "disabled";
     if (!keep_present && !trace_present && !queue_present) {
         keep_state_ = trace_state_ = "disabled";
@@ -1499,6 +1547,9 @@ bool initialize() {
         return false;
     }
     lines_ = seq_ = suppressed_ = walks_cut_ = 0;
+    queue_lines_ = queue_suppressed_ = 0;
+    queue_cap_noted_ = false;
+    queue_free_pending_ = 0;
     cap_noted_ = false;
     keep_present_ = keep_present;
     const bool image_ok = object_trace::executable_verified();
@@ -1553,7 +1604,7 @@ bool initialize() {
     if (queue_present)
         log("music_queue requested=%u armed=%u reason=%s site_play=0x%08lx write_play=%s stub_play=0x%08lx free=0x%08lx vm=0x%08lx "
             "story_build=%lu kc_window=0x%05lx kc_continue=0x%05lx kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u",
-            queue_requested_ || queue_present ? 1u : 0u, queue_armed_ ? 1u : 0u, queue_state_,
+            queue_variable_ ? 1u : 0u, queue_armed_ ? 1u : 0u, queue_state_,
             static_cast<unsigned long>(t_play_site_va), write_kind(play_site_.site.patched_in, play_site_.site.atomic_write),
             static_cast<unsigned long>(address_of(&x3m_music_queue_play_stub)), static_cast<unsigned long>(free_by_id_va),
             static_cast<unsigned long>(vm_ptr_va), static_cast<unsigned long>(story_build), static_cast<unsigned long>(warp_fork_offset),
@@ -1589,6 +1640,7 @@ bool shutdown() {
         x3m_music_keep_save_pumping = 0; // the gzwrite / gzclose observer stays registered and inert
         pump_.reset();
         queue_ = TrackQueue{};
+        queue_free_pending_ = 0;
         holds_.clear(); // the stubs stay in the DLL (pinned); the claim tails stay in the arena
         keep_state_ = back_q && back_sm && back_e && back_pe && back_d && back_c && back_a ? "restored" : "restore_failed";
         ok = ok && back_q && back_sm && back_e && back_pe && back_d && back_c && back_a;
@@ -1627,14 +1679,20 @@ void save_pump_report() {
 const char* trace_state() {
     return trace_state_;
 }
+// The save_load_complete marker (capture.cpp Present path, the event fov::loaded and music_alert::loaded take): opens the
+// KC patch's load gate for the next Present's check.
+void loaded() {
+    if (queue_armed_) kc_.load_complete();
+}
 // Stores the frame counter; with the keep armed, samples the engine's active flag [0x00608adc] (one load) and writes
 // one music_keep_active line on each change, so a flight measures how long the flag stays 0 around an alt-tab.
 void present(unsigned long long, unsigned long long frame, bool) {
     if (!keep_patched_ && !trace_patched_) return;
     current_frame_ = frame;
     if (!keep_armed_) return;
-    if (queue_armed_) { // the KC patch (two image loads, the fields and the window on change or every 16th frame) and,
+    if (queue_armed_) { // the KC patch (one image load, the fields and the window on change or every 8th frame) and,
                         // while a track is queued, the committed alert level
+        if (queue_free_pending_) music_queue_free_present();
         music_queue_kc_present();
         if (queue_.active()) music_queue_alert_present();
     }

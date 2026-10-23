@@ -102,6 +102,8 @@ EXPECTED = {
     'queue_cell_old': 18, 'queue_cell_loop_return': 13, 'queue_cell_new': 11, 'queue_cell_fade': 10, 'queue_cell_loop': 9,
     'queue_cell_change_return': 7, 'tag_int': 1, 'tag_return': 3, 'queue_cell_count': 6, 'id_death': 13, 'id_landing': 14,
     'boarding_id_first': 8233, 'boarding_id_last': 8237, 'queue_key_base': 0x7f000000, 'queue_key_mask': 0xffff,
+    # the queue rows' own cap and the KC load gate's two story-reload stop-all callers (the session_start and load rows of STOP_CALLERS)
+    'queue_line_cap': 200, 'session_start_return_va': 0x40387d, 'load_return_va': 0x404cf2,
 }
 STOP_CALLERS = [(0x4d36bd, 0x4d36c2, 'alt_tab', 'skip_all'), (0x40455c, 0x404561, 'save', 'keep_running'), (0x407064, 0x407069, 'pause', 'keep_running'),
                 (0x404ced, 0x404cf2, 'load', 'vanilla'), (0x497bb6, 0x497bbb, 'p_leave', 'vanilla'), (0x403878, 0x40387d, 'session_start', 'vanilla')]

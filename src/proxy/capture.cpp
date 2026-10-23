@@ -1978,6 +1978,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                   // entry counter live, one ui_scale_frame row per Present
     if (save_loaded) fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     if (save_loaded) music_alert::loaded(); // the same marker: the trigger's fire/hit counters are a new baseline on the next frame
+    if (save_loaded) music_keep::loaded(); // the same marker: the track queue's KC patch load gate opens for the next check
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per
                                     // 300-frame window
