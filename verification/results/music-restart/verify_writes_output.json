@@ -26,6 +26,11 @@
   "window_position_reader": true,
   "window_gzclose_wrapper": true,
   "window_gzclose_thunk": true,
+  "window_free_by_id_body": true,
+  "window_completion_window": true,
+  "window_kc_jump_handler": true,
+  "window_kc_loader_code_store": true,
+  "window_kc_loader_build_store": true,
   "a_skip_is_bookkeeping_label": true,
   "a_je_consumes_tail_cmp": true,
   "a_next_record_is_loop_continue": true,
@@ -49,6 +54,10 @@
   "combat_ids": true,
   "save_gzclose_path": true,
   "run_skip_bound": true,
+  "free_by_id_contract": true,
+  "completion_slot_layout": true,
+  "kc_layout_witnesses": true,
+  "kc_patch_bytes": true,
   "stop_callers": true,
   "play_callers": true,
   "stop_movie_callers": true,
@@ -66,12 +75,13 @@
   "callers_4d1810": true,
   "callers_4d1870": true,
   "callers_4d14e0": true,
+  "callers_4986b0": true,
   "stop_all_callers_are_the_table": true,
   "play_callers_are_the_table": true,
   "stop_movie_callers_are_the_table": true,
   "no_literal_refs": true
  },
- "check_count": 69,
+ "check_count": 79,
  "windows": {
   "a_window": 38,
   "a_skip_window": 15,
@@ -95,7 +105,14 @@
   "position_reader": 120,
   "stop_all_head": 16,
   "play_head": 18,
-  "stop_movie_head": 14
+  "stop_movie_head": 14,
+  "completion_window": 42,
+  "free_by_id_body": 51,
+  "kc_jump_handler": 9,
+  "kc_loader_code_store": 29,
+  "kc_loader_build_store": 6,
+  "warp_window_memory": 6,
+  "warp_patch_memory": 6
  },
  "written": {
   "music_keep_a": {
@@ -211,6 +228,9 @@
   ],
   "0x4d14e0": [
    "0x4983d9"
+  ],
+  "0x4986b0": [
+   "0x4986f0"
   ]
  },
  "literal_dword_refs": {
@@ -220,7 +240,8 @@
   "0x4d0430": 0,
   "0x4d1810": 0,
   "0x4d1870": 0,
-  "0x4d14e0": 0
+  "0x4d14e0": 0,
+  "0x4986b0": 0
  },
  "raw_branch_into_site_interior": {
   "0x4982db": [],

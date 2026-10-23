@@ -33,7 +33,7 @@ const char* trace_state_ = "disabled";
 // releases it). The window checks see through a live shared claim
 // (core::window_matches), so either feature may install first.
 using SharedSite = core::SharedSite<engine_patch::Site>;
-engine_patch::Site a_site_{}, t_play_site_{};
+engine_patch::Site a_site_{};
 engine_patch::CallSite c_site_{}, d_site_{};
 // Patch D (the status-query gate) is optional inside the keep: when it cannot be claimed the keep still installs and
 // alt-tab takes the flown paused mode (status_gate_ false, status_gate_state_ the refusal, logged).
@@ -44,9 +44,17 @@ unsigned last_active_ = 2; // the engine's active flag at the last Present (2 = 
 // Which shared sites each feature acquired (released only by that feature; an orphaned live claim with no users is
 // restored by whoever rolls back or shuts down).
 bool keep_entry_acquired_ = false, keep_stop_movie_acquired_ = false, trace_entry_acquired_ = false,
-     trace_stop_movie_acquired_ = false;
-SharedSite entry_site_{}, stop_movie_site_{};
+     trace_stop_movie_acquired_ = false, keep_play_acquired_ = false, trace_play_acquired_ = false;
+SharedSite entry_site_{}, stop_movie_site_{}, play_site_{}; // the play entry 0x00498c90 is shared by the queue and the trace
 Holds holds_;
+// The track queue (X3M_MUSIC_QUEUE=1 under the keep; music_keep_core.h "The track queue"): optional inside the keep like
+// Patches D and E. queue_armed_ only after its windows matched and the play entry was acquired; the KC patch is
+// maintained from Present (kc_), the state machine lives in queue_.
+bool queue_requested_ = false, queue_armed_ = false;
+const char* queue_state_ = "disabled";
+TrackQueue queue_;
+KcPatch kc_;
+unsigned char kc_window_seen_[warp_window_length]{}; // the last window bytes read, for the row
 // Music through the save: Patch E (optional; with the gzwrite row bound it enables the save pump) and the episode.
 engine_patch::CallSite e_site_{};
 bool e_live_ = false;
@@ -78,9 +86,9 @@ std::uint64_t qpc() {
 // Compares a window with the unpatched image: a live shared entry claim (either feature's) is read as its
 // original bytes when the site still holds exactly that claim's patch; anything else there fails.
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
-    LiveClaim claims[2]{};
+    LiveClaim claims[3]{};
     unsigned count = 0;
-    const SharedSite* const shared[] = {&entry_site_, &stop_movie_site_};
+    const SharedSite* const shared[] = {&entry_site_, &stop_movie_site_, &play_site_};
     for (const SharedSite* s : shared)
         if (s->site.patched_in)
             claims[count++] = LiveClaim{std::uint32_t(s->site.spec.address), s->site.original, s->site.patched, 5};
@@ -189,6 +197,8 @@ const char* action_name(SeekAction a) {
 }
 extern "C" volatile std::uint32_t x3m_music_keep_save_pumping;
 extern "C" std::uint32_t __cdecl x3m_music_keep_call_pause(std::uint32_t record);
+extern "C" void __cdecl x3m_music_queue_call_completion(std::uint32_t function, std::uint32_t context, std::uint32_t status);
+extern "C" std::uint32_t __cdecl x3m_music_queue_call_free(std::uint32_t key);
 namespace {
 // The flag loading_trace's gzwrite / gzclose rows test before calling the observer.
 void sync_pumping() {
@@ -250,15 +260,19 @@ bool read_task(std::uint32_t task, TaskView& v) {
     v.ip = header[task_ip / 4];
     return true;
 }
-// Cell k+i of the task's stack: tag byte and dword, only inside the stack's capacity.
-bool read_cell(const TaskView& v, unsigned i, unsigned& tag, std::uint32_t& value) {
-    if (!v.cells || v.capacity > trace_cell_capacity_limit || v.index >= v.capacity || v.capacity - v.index <= 12)
-        return false;
+// Cell `index` of the task's stack (absolute: [ESI+0x14] is the end of the cell buffer, valid cells -capacity..-1,
+// music-script-driver.md section 8.4): tag byte and dword, read fault-free, only inside the buffer.
+bool read_cell_abs(const TaskView& v, std::int32_t index, unsigned& tag, std::uint32_t& value) {
+    if (!v.cells || !cell_index_ok(index, v.capacity)) return false;
     unsigned char cell[cell_size]{};
-    if (!x3m::engine_memory::read(v.cells + cell_size * (v.index + i), cell, cell_size)) return false;
+    if (!x3m::engine_memory::read(v.cells + std::uint32_t(cell_offset(index)), cell, cell_size)) return false;
     tag = cell[0];
     std::memcpy(&value, cell + 1, 4);
     return true;
+}
+// Cell k+i (the trace's relative reads; k = [ESI+0x18] is negative).
+bool read_cell(const TaskView& v, unsigned i, unsigned& tag, std::uint32_t& value) {
+    return read_cell_abs(v, std::int32_t(v.index) + std::int32_t(i), tag, value);
 }
 void resume_line(ResumeAction action, const ResumeMemory& memory, std::uint32_t other_id, const char* at) {
     write_line("music_keep_resume frame=%llu seq=%lu qpc=%llu id=%lu saved_ms=%lu action=%s at=%s other_id=%lu\n",
@@ -296,6 +310,79 @@ bool read_position_ms(std::uint32_t media, std::uint32_t& ms) {
     ms = std::uint32_t(std::int32_t(milliseconds)); // < 2^31: cvttsd2si (an unsigned conversion would use x87 fistp)
     return true;
 }
+// ---- The track queue's engine operations ----
+void store32(std::uint32_t at, std::uint32_t value) {
+    std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), &value, 4);
+}
+// The orphan O as it is now: the first record under the private key, with the same media object.
+OrphanView orphan_view() {
+    OrphanView o;
+    if (!queue_.active()) return o;
+    const std::uint32_t record = find_record(queue_.key);
+    if (!record || record != queue_.record || load32(record + record_media) != queue_.media) return o;
+    o.live = true;
+    o.flags = load32(record + record_flags);
+    o.context = load32(record + record_context);
+    return o;
+}
+// A completion (ctx, 1) through the script owner's slot table, exactly as the MOV_StopMovie body does it (owner != 0,
+// [owner+4] != 0, slot < 32, function != 0; cdecl). It only relinks the task (0x004a4910 -> 0x004a4740), no bytecode runs.
+void deliver(const x3m::LightCallBoundary& cpu, std::uint32_t slot, std::uint32_t context) {
+    const std::uint32_t owner = load32(vm_ptr_va);
+    if (!owner || !load32(owner + vm_slot_guard) || slot >= slot_count) return;
+    const std::uint32_t function = load32(owner + slot_completion + slot * slot_stride);
+    if (!function) return;
+    cpu.before_original(); // the engine's MXCSR and LastError for the call; restored by the boundary
+    x3m_music_queue_call_completion(function, context, 1);
+}
+// One row per transition or refusal.
+void queue_line(const QueueOutcome& o, const QueueStopView* stop, std::uint32_t freed) {
+    if (o.event == QueueEvent::none) return;
+    if (o.event == QueueEvent::refuse && stop) {
+        write_line(
+            "music_queue frame=%llu seq=%lu qpc=%llu event=refuse reason=%s state=%s old=%lu new=%lu task=%lu ip=0x%lx k=%ld capacity=%lu cells=%u "
+            "c-18=%u:0x%08lx c-13=%u:0x%08lx c-11=%u:0x%08lx c-10=%u:0x%08lx c-9=%u:0x%08lx c-7=%u:0x%08lx alert=%u/%lu/%lu record=0x%08lx flags=0x%lx ctx=%lu\n",
+            current_frame_, ++seq_, qpc(), queue_reason_name(o.reason), queue_state_name(queue_.state),
+            static_cast<unsigned long>(o.old_id), static_cast<unsigned long>(o.new_id), static_cast<unsigned long>(o.stop_task),
+            static_cast<unsigned long>(stop->task_ip), static_cast<long>(stop->index), static_cast<unsigned long>(stop->capacity),
+            stop->cells_ok ? 1u : 0u, stop->cells[0].tag, static_cast<unsigned long>(stop->cells[0].value), stop->cells[1].tag,
+            static_cast<unsigned long>(stop->cells[1].value), stop->cells[2].tag, static_cast<unsigned long>(stop->cells[2].value),
+            stop->cells[3].tag, static_cast<unsigned long>(stop->cells[3].value), stop->cells[4].tag,
+            static_cast<unsigned long>(stop->cells[4].value), stop->cells[5].tag, static_cast<unsigned long>(stop->cells[5].value),
+            stop->alert_ok ? 1u : 0u, static_cast<unsigned long>(stop->alert_old), static_cast<unsigned long>(stop->alert_new),
+            static_cast<unsigned long>(stop->record), static_cast<unsigned long>(stop->flags), static_cast<unsigned long>(stop->context));
+        return;
+    }
+    write_line(
+        "music_queue frame=%llu seq=%lu qpc=%llu event=%s reason=%s state=%s old=%lu new=%lu key=0x%08lx record=0x%08lx task=%lu stop_task=%lu "
+        "wake=%u complete=%u park=%u freed=%lu frames=%llu episode=%lu\n",
+        current_frame_, ++seq_, qpc(), queue_event_name(o.event), queue_reason_name(o.reason), queue_state_name(queue_.state),
+        static_cast<unsigned long>(o.old_id), static_cast<unsigned long>(o.new_id), static_cast<unsigned long>(o.key),
+        static_cast<unsigned long>(o.record), static_cast<unsigned long>(o.task), static_cast<unsigned long>(o.stop_task),
+        o.wake ? 1u : 0u, o.complete ? 1u : 0u, o.park ? 1u : 0u, static_cast<unsigned long>(freed), o.frames,
+        static_cast<unsigned long>(queue_.episode));
+}
+// Executes an outcome against the engine, in the core's order: re-key, wake (then zero O's context and slot), complete
+// the caller, park, free. Returns the free's answer (1 found) for the row.
+std::uint32_t queue_apply(const x3m::LightCallBoundary& cpu, const QueueOutcome& o) {
+    std::uint32_t freed = 0;
+    if (o.rekey) store32(o.record + record_id, o.key);
+    if (o.wake) {
+        deliver(cpu, o.wake_slot, o.wake_ctx);
+        store32(o.record + record_slot, 0);
+        store32(o.record + record_context, 0);
+    }
+    if (o.complete) deliver(cpu, o.complete_slot, o.complete_ctx);
+    if (o.park) {
+        store32(o.record + record_context, o.park_ctx);
+        store32(o.record + record_slot, o.park_slot);
+    }
+    if (o.free_key) {
+        cpu.before_original();
+        freed = x3m_music_queue_call_free(o.key);
+    }
+    return freed;
+}
 }
 
 extern "C" {
@@ -314,6 +401,8 @@ std::uint32_t x3m_music_keep_resume_ms = 0;
 volatile std::uint32_t x3m_music_keep_entry_continue = 0, x3m_music_keep_stop_movie_continue = 0;
 volatile std::uint32_t x3m_music_trace_stop_continue = 0, x3m_music_trace_play_continue = 0,
                        x3m_music_trace_stop_movie_continue = 0;
+volatile std::uint32_t x3m_music_queue_play_continue = 0; // the queue's stub on the shared play entry
+volatile std::uint32_t x3m_music_free_fn = 0;             // 0x004986b0 (delete-by-id, ECX = id)
 std::uint32_t x3m_music_keep_pause_record = 0;
 
 __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_all(std::uint32_t record,
@@ -402,6 +491,12 @@ __attribute__((force_align_arg_pointer)) std::uint32_t __cdecl x3m_music_keep_st
     x3m::LightCallBoundary cpu;
     if (!keep_armed_) return 0;
     const std::uint32_t return_va = block[4];
+    // The track queue ends before the walk on every caller but alt-tab: C is woken through O's slot and P is freed
+    // (outside the walk, which has not loaded its first node yet), so the walk sees neither O nor the private key.
+    if (queue_.active()) {
+        const QueueOutcome o = queue_on_stop_all(queue_, return_va, orphan_view(), current_frame_);
+        if (o.event != QueueEvent::none) queue_line(o, nullptr, queue_apply(cpu, o));
+    }
     // Any stop-all ends a save pump episode (the stub calls this handler until it returns 0: idempotent), and a vanilla
     // caller clears the resume memory.
     if (pump_.active() && pump_.end_now(PumpEnd::stop_all, qpc())) pump_line("none", 0);
@@ -419,10 +514,14 @@ __attribute__((force_align_arg_pointer)) std::uint32_t __cdecl x3m_music_keep_st
             static_cast<unsigned long>(record), static_cast<unsigned long>(load32(record + record_id)), holds_.count);
     return record;
 }
-// MOV_StopMovie native entry (EAX = id): the id's holds go; the engine pauses the record itself.
-__attribute__((force_align_arg_pointer)) void __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block) {
+// MOV_StopMovie native entry (EAX = id, ESI = the calling task, EDI = its completion slot): the id's holds go; the
+// track queue decides (defer, collapse, end or nothing); the engine pauses the record itself unless the queue consumed
+// the stop (returns 1: the stub returns to the caller instead of running the body).
+__attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block,
+                                                                                    std::uint32_t task,
+                                                                                    std::uint32_t slot) {
     x3m::LightCallBoundary cpu;
-    if (!keep_armed_) return;
+    if (!keep_armed_) return 0;
     const std::uint32_t id = block[2], return_va = block[4];
     const unsigned dropped = holds_.count ? drop_holds_by_id(holds_, id) : 0;
     if (dropped)
@@ -431,19 +530,135 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_keep_stop_movie(
             current_frame_, ++seq_, qpc(), static_cast<unsigned long>(id), static_cast<unsigned long>(return_va),
             stop_movie_caller_name(return_va), dropped, holds_.count);
     if (pump_.active() && pump_.id == id && pump_.end_now(PumpEnd::stop_movie, qpc())) pump_line("none", 0);
-    // Resume memory: the script's own stop of a playing sector track, read before the engine pauses it.
-    if (!resume_ok_ || return_va != stop_movie_native_return_va || combat_id(id)) return;
+    if (return_va != stop_movie_native_return_va) return 0; // the two other callers carry no task: vanilla
     const std::uint32_t record = find_record(id);
     const std::uint32_t flags = record ? load32(record + record_flags) : 0;
-    if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return;
+    // The track queue (queue_armed_ only with the keep; a disarmed queue still logs one refuse row per
+    // PlayMusicWithFade stop of a music record, so a flight shows what it would have deferred).
+    bool resume_candidate = true;
+    if (queue_armed_ || queue_requested_) {
+        QueueStopView v;
+        v.return_va = return_va;
+        v.id = id;
+        v.task_id = block[5];
+        v.slot = slot;
+        TaskView t{};
+        v.task_ok = read_task(task, t);
+        v.task_ip = t.ip;
+        v.capacity = t.capacity;
+        v.index = std::int32_t(t.index);
+        if (v.task_ok && v.task_ip == kc_play_stop_ip) {
+            v.cells_ok = true;
+            for (unsigned i = 0; i < queue_cell_count && v.cells_ok; ++i)
+                v.cells_ok = read_cell_abs(t, -std::int32_t(queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value);
+            std::uint32_t alert = 0, levels[3]{};
+            v.alert_ok = x3m::engine_memory::read(alert_record_ptr_va, &alert, 4) && alert &&
+                         x3m::engine_memory::read(alert, levels, sizeof levels);
+            v.alert_old = levels[1];
+            v.alert_new = levels[2];
+        }
+        v.found = record != 0;
+        v.record = record;
+        v.flags = flags;
+        v.context = record ? load32(record + record_context) : 0;
+        v.rec_slot = record ? load32(record + record_slot) : 0;
+        v.media = record ? load32(record + record_media) : 0;
+        v.orphan = orphan_view();
+        const QueueOutcome o = queue_on_stop(queue_, v, queue_armed_, current_frame_);
+        if (o.event != QueueEvent::none) queue_line(o, &v, queue_apply(cpu, o)); // one row per transition or refusal
+        resume_candidate = o.resume_candidate;
+        if (o.consume) return 1;
+    }
+    // Resume memory: the script's own stop of a playing sector track, read before the engine pauses it. A record the
+    // queue parks or keeps is never a candidate.
+    if (!resume_ok_ || !resume_candidate || combat_id(id)) return 0;
+    if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return 0;
     std::uint32_t ms = 0;
     cpu.before_original(); // the COM call sees the engine's MXCSR and LastError; both are restored on return
     const bool read = read_position_ms(load32(record + record_media), ms);
     const ResumeAction r = resume_on_stop(resume_, return_va, id, flags, read, ms);
     if (r != ResumeAction::none) resume_line(r, ResumeMemory{id, read ? ms : 0, read}, id, "stop_movie");
+    return 0;
+}
+// The play routine entry (shared with the trace; from MOV_PlayMovie: [esp+4] = slot, [esp+8] = task id, [esp+0xc] = id,
+// ESI = the calling task): parks C on the orphan (returns 1: the stub returns, the task suspends as vanilla does without
+// a play), releases the orphan on C's replay, or ends the queue on any other music play; everything else is vanilla.
+__attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_queue_play(const std::uint32_t* block,
+                                                                               std::uint32_t task) {
+    if (!queue_armed_ || !queue_.active()) return 0; // the common path: two loads
+    x3m::LightCallBoundary cpu;
+    QueuePlayView v;
+    v.return_va = block[4];
+    v.slot = block[5];
+    v.task_id = block[6];
+    v.id = block[7];
+    TaskView t{};
+    v.task_ok = read_task(task, t);
+    v.task_ip = t.ip;
+    const std::uint32_t record = find_record(v.id);
+    v.found = record != 0;
+    v.flags = record ? load32(record + record_flags) : 0;
+    v.orphan = orphan_view();
+    const QueueOutcome o = queue_on_play(queue_, v, current_frame_);
+    if (o.event != QueueEvent::none) queue_line(o, nullptr, queue_apply(cpu, o));
+    return o.consume ? 1u : 0u;
 }
 }
 namespace {
+// The KC patch of 150::WarpToSector, maintained from Present on the main thread (no task runs there): the VM pointer,
+// its CODE buffer, size and build id are read every frame (two image loads; the fields through the fault-free reader
+// when the pointer is set); the 6-byte window is re-read on any change of those and every kc_check_stride_frames
+// otherwise, so a story reload (every save load) is patched again within a frame and a reused buffer address within
+// 16 frames. The write is a plain 6-byte copy into the game's own heap buffer after VirtualQuery says committed and
+// writable; nothing executes bytecode during Present.
+void kc_row(KcResult r) {
+    x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u",
+             current_frame_, kc_result_name(r), static_cast<unsigned long>(kc_.vm), static_cast<unsigned long>(kc_.code),
+             static_cast<unsigned long>(kc_.size), static_cast<unsigned long>(kc_.build), static_cast<unsigned long>(warp_fork_offset),
+             kc_window_seen_[0], kc_window_seen_[1], kc_window_seen_[2], kc_window_seen_[3], kc_window_seen_[4], kc_window_seen_[5],
+             kc_.applied, kc_.refused);
+}
+__attribute__((noinline)) void music_queue_kc_present() {
+    x3m::LightCallBoundary cpu;
+    const std::uint32_t vm = load32(vm_ptr_va);
+    if (!kc_.due(vm)) return;
+    std::uint32_t code = 0, size = 0, build = 0;
+    const bool vm_ok = vm != 0;
+    const bool fields_ok = vm_ok && x3m::engine_memory::read(vm + vm_code, &code, 4) &&
+                           x3m::engine_memory::read(vm + vm_code_size, &size, 4) && x3m::engine_memory::read(vm + vm_build, &build, 4);
+    kc_.code = fields_ok ? code : 0;
+    kc_.size = fields_ok ? size : 0;
+    kc_.build = fields_ok ? build : 0;
+    const std::uint32_t at = code + warp_fork_offset;
+    bool window_ok = false;
+    if (fields_ok && code && size >= warp_fork_offset + warp_window_length && at > code)
+        window_ok = x3m::engine_memory::read(at, kc_window_seen_, warp_window_length);
+    if (!window_ok) std::memset(kc_window_seen_, 0, sizeof kc_window_seen_);
+    KcResult r = KcResult::none;
+    if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r)) {
+        MEMORY_BASIC_INFORMATION info{};
+        const bool writable =
+            VirtualQuery(reinterpret_cast<const void*>(std::uintptr_t(at)), &info, sizeof info) == sizeof info &&
+            info.State == MEM_COMMIT &&
+            (info.Protect == PAGE_READWRITE || info.Protect == PAGE_EXECUTE_READWRITE || info.Protect == PAGE_WRITECOPY ||
+             info.Protect == PAGE_EXECUTE_WRITECOPY) &&
+            std::uintptr_t(info.BaseAddress) + info.RegionSize >= std::uintptr_t(at) + warp_window_length;
+        if (writable)
+            std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), warp_patch_memory, warp_window_length);
+        else
+            r = KcResult::unwritable;
+    }
+    if (kc_.note(r)) kc_row(r);
+}
+// The committed alert level [R+4] while the queue is active: a nonzero level ends it (the fallback: C woken, P freed).
+__attribute__((noinline)) void music_queue_alert_present() {
+    x3m::LightCallBoundary cpu;
+    std::uint32_t alert = 0, levels[2]{};
+    if (!x3m::engine_memory::read(alert_record_ptr_va, &alert, 4) || !alert || !x3m::engine_memory::read(alert, levels, sizeof levels))
+        return;
+    const QueueOutcome o = queue_on_alert(queue_, levels[1], orphan_view(), current_frame_);
+    if (o.event != QueueEvent::none) queue_line(o, nullptr, queue_apply(cpu, o));
+}
 // The marked Run (the boundary lives here so the per-play fast path below carries no unwind registration).
 __attribute__((noinline)) unsigned music_keep_run_marked(std::uint32_t record) {
     x3m::LightCallBoundary cpu;
@@ -748,14 +963,24 @@ _x3m_music_keep_stop_movie_stub:
     push eax
     push ecx
     push edx
-    push esp
+    mov eax, esp
+    push edi
+    push esi
+    push eax
     call _x3m_music_keep_stop_movie
-    add esp, 4
+    add esp, 12
+    test eax, eax
+    jnz 1f
     pop edx
     pop ecx
     pop eax
     popfd
     jmp dword ptr [_x3m_music_keep_stop_movie_continue]
+1:  pop edx
+    pop ecx
+    pop eax
+    popfd
+    ret
 
     .p2align 4
     .globl _x3m_music_trace_stop_stub
@@ -808,6 +1033,31 @@ _x3m_music_trace_stop_movie_stub:
     pop eax
     popfd
     jmp dword ptr [_x3m_music_trace_stop_movie_continue]
+
+    .p2align 4
+    .globl _x3m_music_queue_play_stub
+_x3m_music_queue_play_stub:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    mov eax, esp
+    push esi
+    push eax
+    call _x3m_music_queue_play
+    add esp, 8
+    test eax, eax
+    jnz 1f
+    pop edx
+    pop ecx
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_music_queue_play_continue]
+1:  pop edx
+    pop ecx
+    pop eax
+    popfd
+    ret
     .att_syntax
 )");
 // The pump call (not an engine entry stub): cdecl from the gzwrite observer, EAX = media, the engine pump 0x004d0700
@@ -847,9 +1097,43 @@ _x3m_music_keep_call_pause:
     pop esi
     pop ebx
     ret
+
+    .p2align 4
+    .globl _x3m_music_queue_call_completion
+_x3m_music_queue_call_completion:
+    push ebx
+    push esi
+    push edi
+    push ebp
+    mov eax, dword ptr [esp+0x14]
+    push dword ptr [esp+0x1c]
+    push dword ptr [esp+0x1c]
+    call eax
+    add esp, 8
+    pop ebp
+    pop edi
+    pop esi
+    pop ebx
+    ret
+
+    .p2align 4
+    .globl _x3m_music_queue_call_free
+_x3m_music_queue_call_free:
+    push ebx
+    push esi
+    push edi
+    push ebp
+    mov ecx, dword ptr [esp+0x14]
+    call dword ptr [_x3m_music_free_fn]
+    pop ebp
+    pop edi
+    pop esi
+    pop ebx
+    ret
     .att_syntax
 )");
 extern "C" void x3m_music_keep_a_stub();
+extern "C" void x3m_music_queue_play_stub();
 extern "C" void x3m_music_keep_c_thunk();
 extern "C" void x3m_music_keep_status_thunk();
 extern "C" void x3m_music_keep_run_thunk();
@@ -933,6 +1217,17 @@ bool save_windows_match() {
            call_targets(save_gzclose_call_va, gzclose_wrapper_va) &&
            call_targets(gzclose_wrapper_return_va - call_length, gzclose_thunk_va);
 }
+// The track queue: the delete-by-id body (its only caller MOV_FreeMovie's 0x004986f0), the MOV_StopMovie body's
+// completion delivery (the slot table layout the queue repeats), the KC layout witnesses (jump handler, loader stores)
+// and the play entry's head.
+bool queue_windows_match() {
+    return bytes_match(free_by_id_va, free_by_id_body, free_by_id_length) && call_targets(free_by_id_caller_va, free_by_id_va) &&
+           bytes_match(completion_window_va, completion_window, completion_window_length) &&
+           bytes_match(kc_jump_handler_va, kc_jump_handler, kc_jump_handler_length) &&
+           bytes_match(kc_loader_code_store_va, kc_loader_code_store, kc_loader_code_store_length) &&
+           bytes_match(kc_loader_build_store_va, kc_loader_build_store, kc_loader_build_store_length) &&
+           bytes_match(t_play_site_va, play_head, play_head_length);
+}
 bool keep_windows_match() {
     return bytes_match(stop_all_va, stop_all_head, stop_all_head_length) &&
            bytes_match(a_window_va, a_window, a_window_length) &&
@@ -965,6 +1260,9 @@ engine_patch::SiteSpec entry_spec() {
 }
 engine_patch::SiteSpec stop_movie_spec() {
     return spec_for("music_stop_movie_entry", t_stop_movie_site_va, stop_movie_head, t_stop_movie_length);
+}
+engine_patch::SiteSpec play_spec() {
+    return spec_for("music_play_entry", t_play_site_va, play_head, t_play_length);
 }
 // loading_trace's bind of the save-write observer: the gzwrite row must sit on the verified IAT slot (the thunk
 // `jmp [0x005323e0]` matched), hold zlib1.dll's own gzwrite as its original and be live, the gzclose row too (on slot
@@ -1025,10 +1323,15 @@ bool install_keep(const char** reason) {
     x3m_music_status_original = d_target_va;
     x3m_music_run_original = e_target_va;
     x3m_music_pump_fn = pump_va;
+    x3m_music_free_fn = free_by_id_va;
     x3m_music_keep_resume_ms = 0;
     x3m_music_keep_save_pumping = 0;
     pump_.reset();
     resume_ = ResumeMemory{};
+    queue_ = TrackQueue{};
+    kc_ = KcPatch{};
+    queue_armed_ = false;
+    queue_state_ = queue_requested_ ? "disabled" : "not_requested";
     e_live_ = save_pump_ = false;
     e_state_ = "disabled";
     LARGE_INTEGER frequency{};
@@ -1077,11 +1380,22 @@ bool install_keep(const char** reason) {
         ok = acquire_shared(stop_movie_site_, keep_stop_movie_acquired_, stop_movie_spec(),
                             &x3m_music_keep_stop_movie_stub, x3m_music_keep_stop_movie_continue, reason);
     }
+    if (ok && queue_requested_) { // the track queue, optional: a refusal leaves the keep without it
+        const char* why = "ok";
+        if (!queue_windows_match())
+            queue_state_ = "bytes_mismatch";
+        else if (!acquire_shared(play_site_, keep_play_acquired_, play_spec(), &x3m_music_queue_play_stub,
+                                 x3m_music_queue_play_continue, &why))
+            queue_state_ = why;
+        else
+            queue_state_ = "ok";
+    }
     if (!ok) {
         // Reverse order; restore_call/restore are no-ops on a site that is not live, so a claim that failed
         // after going live (rollback_failed) is retried here too. Shared sites: this feature's own use, or an
         // orphaned live claim, whatever stage was reached.
         bool back = true;
+        back = release_for(play_site_, keep_play_acquired_) && back;
         back = release_for(stop_movie_site_, keep_stop_movie_acquired_) && back;
         back = release_for(entry_site_, keep_entry_acquired_) && back;
         back = engine_patch::restore_call(e_site_) && back;
@@ -1100,6 +1414,7 @@ bool install_keep(const char** reason) {
                                                                                  // claim (a rolled-back or unrestorable
                                                                                  // claim forwards)
     e_live_ = e_site_.patched_in && !std::strcmp(e_state_, "ok");
+    queue_armed_ = keep_play_acquired_ && !std::strcmp(queue_state_, "ok"); // only with the play entry chained
     if (e_live_) { // the save pump binds once loading_trace has patched the gzwrite / gzclose rows
         x3m::loading_trace::SaveWriteObserver observer;
         observer.active = &x3m_music_keep_save_pumping;
@@ -1129,8 +1444,8 @@ bool install_trace(const char** reason) {
         *reason = "pin_failed";
         return false;
     }
-    bool ok = hook_site(t_play_site_, spec_for("music_trace_play", t_play_site_va, play_head, t_play_length),
-                        &x3m_music_trace_play_stub, x3m_music_trace_play_continue, reason);
+    bool ok = acquire_shared(play_site_, trace_play_acquired_, play_spec(), &x3m_music_trace_play_stub,
+                             x3m_music_trace_play_continue, reason);
     if (ok) {
         ok = acquire_shared(stop_movie_site_, trace_stop_movie_acquired_, stop_movie_spec(),
                             &x3m_music_trace_stop_movie_stub, x3m_music_trace_stop_movie_continue, reason);
@@ -1143,7 +1458,7 @@ bool install_trace(const char** reason) {
         bool back = true; // this feature's own uses (the keep's users stay counted) or an orphaned live claim
         back = release_for(entry_site_, trace_entry_acquired_) && back;
         back = release_for(stop_movie_site_, trace_stop_movie_acquired_) && back;
-        back = unhook_site(t_play_site_) && back;
+        back = release_for(play_site_, trace_play_acquired_) && back;
         if (!back) {
             trace_patched_ = true;
             *reason = "rollback_failed";
@@ -1170,13 +1485,15 @@ bool initialize() {
         SetLastError(error);
         return true;
     }
-    bool keep_present = false, trace_present = false;
+    bool keep_present = false, trace_present = false, queue_present = false;
     const bool keep_requested = requested(L"X3M_MUSIC_KEEP", &keep_present),
                trace_requested = requested(L"X3M_MUSIC_TRACE", &trace_present) ||
                                  log_tier::debug(); // X3M_MUSIC_TRACE=1
                                                     // or X3M_DEBUG=1
     trace_present = trace_present || trace_requested;
-    if (!keep_present && !trace_present) {
+    queue_requested_ = requested(L"X3M_MUSIC_QUEUE", &queue_present) && keep_requested; // a no-op without the keep
+    queue_state_ = queue_present && !keep_requested ? "keep_off" : "disabled";
+    if (!keep_present && !trace_present && !queue_present) {
         keep_state_ = trace_state_ = "disabled";
         SetLastError(error);
         return false;
@@ -1228,11 +1545,21 @@ bool initialize() {
             static_cast<unsigned long>(t_stop_all_site_va), static_cast<unsigned long>(t_play_site_va),
             static_cast<unsigned long>(t_stop_movie_site_va),
             write_kind(entry_site_.site.patched_in, entry_site_.site.atomic_write),
-            write_kind(t_play_site_.patched_in, t_play_site_.atomic_write),
+            write_kind(play_site_.site.patched_in, play_site_.site.atomic_write),
             write_kind(stop_movie_site_.site.patched_in, stop_movie_site_.site.atomic_write),
             static_cast<unsigned long>(address_of(&x3m_music_trace_stop_stub)),
             static_cast<unsigned long>(address_of(&x3m_music_trace_play_stub)),
             static_cast<unsigned long>(address_of(&x3m_music_trace_stop_movie_stub)), trace_line_cap);
+    if (queue_present)
+        log("music_queue requested=%u armed=%u reason=%s site_play=0x%08lx write_play=%s stub_play=0x%08lx free=0x%08lx vm=0x%08lx "
+            "story_build=%lu kc_window=0x%05lx kc_continue=0x%05lx kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u",
+            queue_requested_ || queue_present ? 1u : 0u, queue_armed_ ? 1u : 0u, queue_state_,
+            static_cast<unsigned long>(t_play_site_va), write_kind(play_site_.site.patched_in, play_site_.site.atomic_write),
+            static_cast<unsigned long>(address_of(&x3m_music_queue_play_stub)), static_cast<unsigned long>(free_by_id_va),
+            static_cast<unsigned long>(vm_ptr_va), static_cast<unsigned long>(story_build), static_cast<unsigned long>(warp_fork_offset),
+            static_cast<unsigned long>(warp_continue_offset), queue_armed_ ? "pending" : "off",
+            static_cast<unsigned long>(queue_key_base), queue_stack_depth, queue_cell_old, queue_cell_loop_return, queue_cell_new,
+            queue_cell_fade, queue_cell_loop, queue_cell_change_return);
     SetLastError(error);
     return keep_applied || trace_applied;
 }
@@ -1240,9 +1567,19 @@ bool shutdown() {
     if (!keep_patched_ && !trace_patched_) return true;
     const DWORD error = GetLastError();
     bool ok = true;
-    keep_armed_ = trace_armed_ = false;
+    keep_armed_ = trace_armed_ = queue_armed_ = false;
     if (keep_patched_) {
-        const bool back_sm = release_for(stop_movie_site_, keep_stop_movie_acquired_),
+        // The KC bytes go back when the window still holds exactly the queue's patch (the story object is the game's own
+        // heap buffer; a reloaded object is vanilla already).
+        if (kc_.result == KcResult::applied || kc_.result == KcResult::already) {
+            unsigned char window[warp_window_length]{};
+            const std::uint32_t at = kc_.code + warp_fork_offset;
+            bool ours = kc_.code && x3m::engine_memory::read(at, window, warp_window_length);
+            for (unsigned i = 0; ours && i < warp_window_length; ++i) ours = window[i] == warp_patch_memory[i];
+            if (ours) std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), warp_window_memory, warp_window_length);
+        }
+        const bool back_q = release_for(play_site_, keep_play_acquired_),
+                   back_sm = release_for(stop_movie_site_, keep_stop_movie_acquired_),
                    back_e = release_for(entry_site_, keep_entry_acquired_);
         const bool back_pe = engine_patch::restore_call(e_site_), back_d = engine_patch::restore_call(d_site_),
                    back_c = engine_patch::restore_call(c_site_), back_a = unhook_site(a_site_);
@@ -1251,14 +1588,15 @@ bool shutdown() {
         save_pump_ = e_live_ = false;
         x3m_music_keep_save_pumping = 0; // the gzwrite / gzclose observer stays registered and inert
         pump_.reset();
+        queue_ = TrackQueue{};
         holds_.clear(); // the stubs stay in the DLL (pinned); the claim tails stay in the arena
-        keep_state_ = back_sm && back_e && back_pe && back_d && back_c && back_a ? "restored" : "restore_failed";
-        ok = ok && back_sm && back_e && back_pe && back_d && back_c && back_a;
+        keep_state_ = back_q && back_sm && back_e && back_pe && back_d && back_c && back_a ? "restored" : "restore_failed";
+        ok = ok && back_q && back_sm && back_e && back_pe && back_d && back_c && back_a;
     }
     if (trace_patched_) {
         const bool back_e = release_for(entry_site_, trace_entry_acquired_),
                    back_sm = release_for(stop_movie_site_, trace_stop_movie_acquired_),
-                   back_p = unhook_site(t_play_site_);
+                   back_p = release_for(play_site_, trace_play_acquired_);
         trace_patched_ = false;
         trace_state_ = back_e && back_sm && back_p ? "restored" : "restore_failed";
         ok = ok && back_e && back_sm && back_p;
@@ -1295,6 +1633,11 @@ void present(unsigned long long, unsigned long long frame, bool) {
     if (!keep_patched_ && !trace_patched_) return;
     current_frame_ = frame;
     if (!keep_armed_) return;
+    if (queue_armed_) { // the KC patch (two image loads, the fields and the window on change or every 16th frame) and,
+                        // while a track is queued, the committed alert level
+        music_queue_kc_present();
+        if (queue_.active()) music_queue_alert_present();
+    }
     if (pump_.kept && !pump_.pumping && !pump_.run_marker) music_keep_replay_check(); // after gzclose, before the replay
     const unsigned active = load32(active_flag_va) != 0 ? 1u : 0u;
     if (active == last_active_) return;

@@ -75,6 +75,19 @@
 //      0x004d0600 does; combat plays keep it; the first start-0 play of that id is
 //      seeked to the position (Patch C rewrites the seek's start argument); another
 //      non-combat id, a vanilla stop-all or the one use clears it (music_keep_resume).
+//   Track queue (X3M_MUSIC_QUEUE=1, only with the keep; docs/architecture/music-queue.md,
+//      music-script-driver.md section 8.3 as amended by 8.4): at the MOV_StopMovie entry a stop
+//      from PlayMusicWithFade (task IP 0x0db54) of a playing non-combat music record, with the
+//      LoopMusic-from-ChangeTrackMusic frame cells and the alert at 0/0, re-keys the record to a
+//      private id, keeps it playing, delivers the two vanilla completions itself and returns
+//      (ORPHANED); the new task's first MOV_PlayMovie at the shared play entry 0x00498c90 is
+//      consumed and the old record's completion context becomes that task (PARKED), so the
+//      engine's own natural end wakes it and its KC replay plays the new id through vanilla,
+//      where the orphan is freed (0x004986b0). A further deferrable stop collapses to the
+//      newest id; combat, any other music stop or play, a stop-all other than alt-tab and an
+//      alert edge at Present end the queue (wake, free, vanilla). The prerequisite KC patch
+//      (150::WarpToSector's StopMusic(500) fork at CODE 0x161c3 -> jmp, build 1462141839) is
+//      maintained from Present and re-applied after every story reload.
 // X3M_MUSIC_TRACE=1 (three entry trampolines): 0x004982b0 (stop-all; caller
 //   return address), 0x00498c90 (play; id, start ms, caller) and 0x00498810
 //   (MOV_StopMovie native; id, caller). One line each, written synchronously
@@ -127,7 +140,16 @@ extern std::uint32_t x3m_music_keep_resume_ms;             // written by x3m_mus
 // address, [5..] stack arguments.
 std::uint32_t __cdecl x3m_music_keep_stop_all_entry(const std::uint32_t* block); // next orphaned keep-running record to
                                                                                  // pause, 0 when none
-void __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block);              // drops the holds of the id in EAX
+// MOV_StopMovie entry: drops the holds of the id in EAX and runs the track queue (task = ESI, slot = EDI at the entry).
+// Returns 1 when the queue consumed the stop (the stub returns to the caller without the engine's body), else 0.
+unsigned __cdecl x3m_music_keep_stop_movie(const std::uint32_t* block, std::uint32_t task, std::uint32_t slot);
+// The queue's play-entry handler (shared site 0x00498c90; block[5..7] = slot, task id, id; task = ESI): 1 = consume
+// (the task suspends without a play; its wake is the orphan's natural end), 0 = vanilla.
+unsigned __cdecl x3m_music_queue_play(const std::uint32_t* block, std::uint32_t task);
+// Integer-only shims: a completion (context, status) through a slot-table function (cdecl), and the engine's
+// delete-by-id 0x004986b0 (ECX = key; returns 1 when a record was freed).
+void __cdecl x3m_music_queue_call_completion(std::uint32_t function, std::uint32_t context, std::uint32_t status);
+std::uint32_t __cdecl x3m_music_queue_call_free(std::uint32_t key);
 void __cdecl x3m_music_trace_stop(const std::uint32_t* block);
 void __cdecl x3m_music_trace_play(const std::uint32_t* block, std::uint32_t task);       // task = ESI at the entry
 void __cdecl x3m_music_trace_stop_movie(const std::uint32_t* block, std::uint32_t task); // task = ESI at the entry

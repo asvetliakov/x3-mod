@@ -604,7 +604,7 @@ overwrites the class cell), the pushes `0x004a8620` (tag 3, IP) and `0x004a8640`
 `0x004a36c4`..`0x004a36e9`, which **zeroes every tag-3 cell**. The requester (sector music, docking, boarding, the MD)
 is therefore **not recoverable from C**; only "forked by `ChangeTrackMusic`" is.
 
-### 8.3 Simplest policy: park the new task, keep the old record **[i]** design from the code above, unbuilt
+### 8.3 Simplest policy: park the new task, keep the old record **[i]** design from the code above; built 2026-10-23 as `music_queue` ([music-queue.md](../architecture/music-queue.md))
 
 **Mechanism.** Keep the old record O playing under a private key and let the new task C block in its own
 `MOV_PlayMovie`, as in vanilla, with O carrying C's wake.
