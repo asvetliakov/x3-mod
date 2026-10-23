@@ -1,0 +1,21 @@
+{
+ "runs": 9,
+ "host": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+ "compiler": "Ubuntu clang version 21.1.8 (6ubuntu1)",
+ "flags": "-std=c++17 -O2",
+ "lock_bytes": 147456,
+ "median_ns": {
+  "1056": {
+   "direct_scan_ns": 1268.0,
+   "staged_copy_ns": 1653.0,
+   "staged_scan_ns": 1197.0,
+   "staged_total_ns": 2846.0
+  },
+  "6144": {
+   "direct_scan_ns": 7230.0,
+   "staged_copy_ns": 1271.0,
+   "staged_scan_ns": 7184.0,
+   "staged_total_ns": 8444.0
+  }
+ }
+}

@@ -2834,6 +2834,9 @@ private:
         std::uint64_t ticks = 0;
     } bolt_window_{}, bolt_session_{};
     unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;
+    // The locked-prefix statistics at the last bolt_footprint window (cumulative counters; the
+    // locked_prefix_window row logs the differences).
+    std::uint64_t bolt_prefix_last_[10]{};
     // Pre-expansion size histograms of the window's instances, [0] in the
     // chase view (the plan's axes), [1] in any other view (bounding box only).
     bolt_footprint::Histogram bolt_hist_[2]{};

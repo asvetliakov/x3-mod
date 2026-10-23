@@ -91,6 +91,12 @@ struct Node {
     Node* parent;
     LockSidecar* lock_sidecar = nullptr;             // CPU reference only; no native ownership edge.
     bool write_watch = false, watched_write = false; // watch_buffer_writes; a writable Lock of a watched buffer is open
+    // Vertex buffers under locked_prefix_bounds: the open staged Lock (the application holds stage.bytes instead of
+    // the driver mapping until Unlock); guarded by registry_mutex.
+    fade_region::prefix::Stage prefix_stage{};
+    unsigned prefix_stage_depth = 0; // successful Locks nested in the open stage (the outermost Unlock closes it)
+    bool prefix_stage_detached = false; // a nested Lock got the driver's storage: flushed then, never copied again
+    std::atomic<bool> prefix_stage_open{false}; // prefix_stage is set; read without the mutex on every Lock
     Node(Kind type, IUnknown* native, Node* owner)
         : kind(type)
         , backend(native)
@@ -1050,8 +1056,15 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
         if (node->write_watch) push_invalidation(node, true);
         application_nodes.erase(node->application);
         native_nodes.erase(node->identity);
-        if (node->kind == Kind::VertexBuffer && device_of(node)->options.locked_prefix_bounds)
+        if (node->kind == Kind::VertexBuffer && device_of(node)->options.locked_prefix_bounds) {
             prefix_table.erase(reinterpret_cast<std::uintptr_t>(node));
+            // Released while locked: no Unlock will come; unpin the staging slot.
+            if (node->prefix_stage) prefix_table.close(node->prefix_stage);
+            node->prefix_stage = {};
+            node->prefix_stage_depth = 0;
+            node->prefix_stage_detached = false;
+            node->prefix_stage_open.store(false, std::memory_order_release);
+        }
         if (node->kind == Kind::Device) {
             static_cast<Device*>(node)->retiring = true;
             if (static_cast<Device*>(node)->options.locked_prefix_bounds) prefix_table.clear();
@@ -1450,6 +1463,26 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         SideReference hold{acquire_finite(device, static_cast<IDirect3DResource9*>(node->backend))};
         if (hold.value && hold.value->writing) invalidate_finite(hold.value, FiniteEvidenceReason::Pending);
     }
+    // A Lock nested in an open staged one (the engine never nests; nested_flushes counts it). A non-DISCARD range
+    // inside the staged one aliases the staging block (staging + offset, as the driver's storage would while
+    // locked): the stage stays the single copy and the outermost Unlock copies it once. Anything else (a nested
+    // DISCARD may rename the buffer, a range outside the staged one or SizeToLock 0) detaches the stage: it is
+    // copied to the first mapping now, before the runtime sees the nested call, the nested Lock gets the driver's
+    // storage, and no later Unlock copies staging again (writes through the first pointer after this are lost).
+    // Unstaged buffers pay one atomic load here, no mutex.
+    void* staged = nullptr; // the staging block (or a range of it) handed to the application instead of *data
+    bool nested_alias = false;
+    if (node->kind == Kind::VertexBuffer && device->options.locked_prefix_bounds &&
+        node->prefix_stage_open.load(std::memory_order_acquire)) {
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        const auto& open = node->prefix_stage;
+        if (open && !node->prefix_stage_detached) {
+            nested_alias = !(flags & D3DLOCK_DISCARD) && size != 0 && offset <= open.length &&
+                           size <= open.length - offset;
+            ++prefix_stats.nested_flushes;
+            if (!nested_alias) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(open);
+        }
+    }
     incoming.restore();
     const HRESULT hr = node->kind == Kind::VertexBuffer
                            ? static_cast<IDirect3DVertexBuffer9*>(node->backend)->Lock(offset, size, data, flags)
@@ -1458,25 +1491,49 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     observe_result(device, hr);
     if (SUCCEEDED(hr) && node->kind == Kind::VertexBuffer && device->options.locked_prefix_bounds) {
         // Every successful lock of a marked buffer starts a new revision; only
-        // a DISCARD lock of an explicit window from offset 0 (the observed
-        // writer passes the byte size) is scannable at its Unlock, and such a
-        // lock gets the step-D sentinel written over the previous prefix's
-        // slots before the mapping is returned (DISCARD contents are
-        // undefined to the application). SizeToLock 0 (whole buffer) would
-        // need a native GetDesc per lock and is left unscanned. Unmarked
-        // buffers are ignored (no record, no sentinel, no scan).
+        // a DISCARD lock (without READONLY or NOOVERWRITE) of an explicit
+        // window from offset 0 (the observed writer passes the byte size) that
+        // is not nested in an open staged lock is scannable. Such a lock is
+        // staged (locked_prefix_core.h): the application receives the slot's
+        // cacheable staging block, the step-D sentinel is written there, and
+        // the Unlock copies it into the driver mapping before scanning it, so
+        // the write-combined mapping is never read. DISCARD contents are
+        // undefined to the application, so the staging block's contents are
+        // within the Lock contract. SizeToLock 0 (whole buffer) would need a
+        // native GetDesc per lock and is left unscanned, like every other
+        // shape (passed through, record Invalid). Unmarked buffers cost one
+        // table probe: no record, no clock read, no sentinel, no scan.
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        const bool scannable = (flags & D3DLOCK_DISCARD) && offset == 0 && size != 0 && data && *data;
-        // Timed: the sentinel is a streaming store into the mapping (write-combined on native D3D9).
-        LARGE_INTEGER begin{}, end{};
-        QueryPerformanceCounter(&begin);
-        const std::uint64_t bytes_before = prefix_table.sentinel_bytes();
-        if (prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node), scannable, scannable ? *data : nullptr,
-                                    scannable ? size : 0, GetCurrentThreadId()))
-            ++prefix_stats.locks;
-        if (prefix_table.sentinel_bytes() != bytes_before) {
-            QueryPerformanceCounter(&end);
-            prefix_stats.sentinel_ticks += static_cast<std::uint64_t>(end.QuadPart - begin.QuadPart);
+        const auto key = reinterpret_cast<std::uintptr_t>(node);
+        if (node->prefix_stage) { // nested in the open stage, marked or not
+            ++node->prefix_stage_depth;
+            if (nested_alias)
+                staged = node->prefix_stage.bytes + offset;
+            else
+                node->prefix_stage_detached = true;
+        }
+        if (prefix_table.marked(key)) {
+            const bool scannable = !node->prefix_stage && (flags & D3DLOCK_DISCARD) &&
+                                   !(flags & (D3DLOCK_READONLY | D3DLOCK_NOOVERWRITE)) && offset == 0 && size != 0 &&
+                                   data && *data;
+            // Timed: the sentinel is a store into the cacheable staging block.
+            LARGE_INTEGER begin{}, end{};
+            QueryPerformanceCounter(&begin);
+            const std::uint64_t bytes_before = prefix_table.sentinel_bytes();
+            fade_region::prefix::Stage stage{};
+            if (prefix_table.begin_lock(key, scannable, scannable ? *data : nullptr, scannable ? size : 0,
+                                        GetCurrentThreadId(), &stage))
+                ++prefix_stats.locks;
+            if (stage) {
+                node->prefix_stage = stage;
+                node->prefix_stage_detached = false;
+                node->prefix_stage_open.store(true, std::memory_order_release);
+                staged = stage.bytes;
+            }
+            if (prefix_table.sentinel_bytes() != bytes_before) {
+                QueryPerformanceCounter(&end);
+                prefix_stats.sentinel_ticks += static_cast<std::uint64_t>(end.QuadPart - begin.QuadPart);
+            }
         }
     }
     if (SUCCEEDED(hr)) {
@@ -1526,6 +1583,8 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     }
     if (device->options.track_buffer_lock_attempts) complete_buffer_call(node, false, hr);
     if (upload.frame) upload_locked(upload, node, offset, size, SUCCEEDED(hr) && data ? *data : nullptr, flags, hr);
+    // Last: every observer above saw the driver mapping; the application gets the staging block.
+    if (staged) *data = staged;
     outgoing.restore();
     return hr;
 }
@@ -1575,20 +1634,44 @@ HRESULT buffer_unlock(Node* node) {
                 invalidate_finite(side, failure);
         }
         if (node->kind == Kind::VertexBuffer && device->options.locked_prefix_bounds) {
-            // The mapping is still valid here and the application's writes on
-            // this thread are complete; the scan stops at the first sentinel
-            // vertex (bounded to 6144) and copies the written positions.
-            LARGE_INTEGER begin{}, end{};
-            QueryPerformanceCounter(&begin);
-            asm volatile("mfence" ::: "memory");
-            const std::uint32_t vertices = prefix_table.finish_lock(reinterpret_cast<std::uintptr_t>(node),
-                                                                    GetCurrentThreadId());
-            if (vertices) {
-                QueryPerformanceCounter(&end);
-                ++prefix_stats.scans;
-                prefix_stats.scanned_vertices += vertices;
-                prefix_stats.scan_ticks += static_cast<std::uint64_t>(end.QuadPart - begin.QuadPart);
-            }
+            // The mapping is still valid here and the application's writes are
+            // complete. A staged lock is copied staging -> mapping (the whole
+            // lock range, whatever thread unlocks and whatever the record's
+            // state: the application's data must reach the buffer), then the
+            // staging block is scanned to the first sentinel vertex (bounded
+            // to 6144) and the slot unpinned. Without an open stage nothing is
+            // read: finish_lock only turns a marked record Invalid (an Unlock
+            // without a staged Lock). The driver mapping is never read.
+            const auto key = reinterpret_cast<std::uintptr_t>(node);
+            const fade_region::prefix::Stage stage = node->prefix_stage;
+            if (stage && node->prefix_stage_depth) {
+                // The Unlock of a nested Lock: the outer one still holds the stage (the record is Invalid).
+                --node->prefix_stage_depth;
+                prefix_table.finish_lock(key, GetCurrentThreadId());
+            } else if (stage) {
+                const bool detached = node->prefix_stage_detached;
+                node->prefix_stage = {};
+                node->prefix_stage_detached = false;
+                node->prefix_stage_open.store(false, std::memory_order_release);
+                LARGE_INTEGER begin{}, copied{}, end{};
+                QueryPerformanceCounter(&begin);
+                asm volatile("mfence" ::: "memory");
+                if (!detached) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(stage);
+                QueryPerformanceCounter(&copied);
+                if (!detached) {
+                    ++prefix_stats.copies;
+                    prefix_stats.copy_ticks += static_cast<std::uint64_t>(copied.QuadPart - begin.QuadPart);
+                }
+                const std::uint32_t vertices = prefix_table.finish_lock(key, GetCurrentThreadId());
+                prefix_table.close(stage);
+                if (vertices) {
+                    QueryPerformanceCounter(&end);
+                    ++prefix_stats.scans;
+                    prefix_stats.scanned_vertices += vertices;
+                    prefix_stats.scan_ticks += static_cast<std::uint64_t>(end.QuadPart - copied.QuadPart);
+                }
+            } else if (prefix_table.marked(key))
+                prefix_table.finish_lock(key, GetCurrentThreadId());
         }
     }
     if (upload.frame) upload_before_unlock(upload, node);
@@ -2591,6 +2674,10 @@ void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
     out->sentinel_bytes = prefix_table.sentinel_bytes();
     out->window_end_scans = prefix_table.window_end_scans();
     out->sentinel_ticks = prefix_stats.sentinel_ticks;
+    out->staged_locks = prefix_table.staged_locks();
+    out->unstaged_locks = prefix_table.unstaged_locks();
+    out->staging_bytes = prefix_table.staging_bytes();
+    out->open_stages = prefix_table.open_stages();
 }
 
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {

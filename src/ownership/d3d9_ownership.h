@@ -97,8 +97,10 @@ struct Options {
     // Locked-prefix bounds (docs/architecture/screen-emission-region.md, step
     // B/D): sentinel the mapped window of a marked DISCARD-locked vertex
     // buffer at its Lock and copy the written positions at its Unlock
-    // (src/proxy/locked_prefix_core.h). Off by default;
-    // X3M_SCREEN_EMISSION_BOUND=1. Only positions are retained.
+    // (src/proxy/locked_prefix_core.h). The staged Lock hands the application
+    // a cacheable staging block and copies it into the mapping at Unlock; the
+    // mapping is never read. Off by default; X3M_SCREEN_EMISSION_BOUND=1 or the
+    // bolt footprint. Positions and UV/colour words are retained.
     bool locked_prefix_bounds = false;
     // Readable MANAGED buffers (X3M_TAA_THIN_VOTE; docs/architecture/platform-portability.md, "Readable MANAGED
     // buffers"): an eligible creation (MANAGED, not DYNAMIC, unshared, 1 B..256 MiB, asking for WRITEONLY; the
@@ -193,7 +195,12 @@ struct LockedPrefixStatistics {
     std::uint64_t sentinel_bytes = 0, sentinel_ticks = 0, window_end_scans = 0; // step D: sentinel written at Lock
                                                                                 // (bytes, QPC ticks); scans that met no
                                                                                 // sentinel
-    unsigned used = 0;
+    // Staged Lock (bolt-footprint.md "Staged Lock"): locks served from staging, scannable locks refused staging
+    // (passed through unscanned), Unlock copies staging -> mapping (count, bytes incl. nested pre-flushes, QPC
+    // ticks of the Unlock copies), nested-Lock pre-flushes, staging bytes held, stages open now.
+    std::uint64_t staged_locks = 0, unstaged_locks = 0, copies = 0, copy_bytes = 0, copy_ticks = 0, nested_flushes = 0;
+    std::uint64_t staging_bytes = 0;
+    unsigned used = 0, open_stages = 0;
 };
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;
 
