@@ -25,8 +25,20 @@ expects.
    reads at most 128 cells. A ticket is armed when all of these hold:
    * old > `0x10000`, new = `0x10000`, tag 1;
    * IP = `1558d` and return offset = `15ef8`;
-   * the player ship `*(M+0x38)`, its sector `+0x54` and the sector id `+8` are readable;
-   * the departure sector id differs from that of the previous arm (one arm per transit).
+   * the player ship `*(M+0x38)`, its sector `+0x54`, the sector id `+8` and the ship's flags `+0x40` are readable;
+   * the departure sector id differs from that of the previous arm (one arm per transit);
+   * the ship is under autopilot: `[ship+0x40] & 0x80000`. A manual gate pass logs `skipped reason=manual` and arms
+     nothing; the departure sector is not recorded, so a later autopilot stop from it still arms.
+
+   The autopilot state comes from the engine flag, not from the KC caller of `StartGateWarp`. The flag is one checked
+   read at the hook. `SA_SetAutopilot` sets and clears it (`or [eax+0x40],0x80000` at `0x00463e88`, `and` at
+   `0x00463ea7`), and `SA_GetFlags` reads it (`mov eax,[eax+0x40]` at `0x004637df`). The manual path's
+   `2004::CanWarp` calls `StartGateWarp` only when `SA_GetFlags & 0x80000` is clear, so a manual pass reads the bit
+   clear in the same main-loop iteration. The autopilot path `2004::__FlyToNextSector` runs as the ship's script, so
+   `SA_SetAutopilot(ship, IsAutopilotActive())` has set it ([seta-script-toggle.md](../reverse-engineering/seta-script-toggle.md)
+   section 2, [ship-navigation-ai.md](../reverse-engineering/ship-navigation-ai.md) "Player autopilot"). The caller
+   record one frame below `15ef8` (`cef8f` or `df887`) would need a second return-scan step and more story offsets
+   bound to the build. The verifier pins the three instructions.
 
    The script constants are bound to story build `[*0x006085e4+0x143c]` = 1462141839 (the installed Mayhem
    `addon/07.cat`). The first SETA stop on a readable other build logs one `refused reason=story_build` row, and the
@@ -50,7 +62,7 @@ expects.
 4. **Cancel.** Any of these ends the ticket:
    * any later `TI_SetTimeWarpFactor` while armed or due: the user's key (the ramp writes), a cut-scene, speech, the
      cheat keys;
-   * a player-ship change, or the player ship becoming unreadable;
+   * the player ship becoming unreadable, or a player-ship change that is not the transit's re-pointing (below);
    * VM clear `0x0049ea80` (session start) or VM load `0x004a0880` (save load);
    * the EH adapter `0x0052f298` (a script error unwound);
    * the ship leaving the Ready sector before the call;
@@ -62,6 +74,16 @@ expects.
    the arm on the factor is 1.0, so game time runs at wall time and no SETA scaling applies to the bound. Docking,
    death and saving after the gate stop reach `StopFastForward` with `m21 = 0` and write nothing. Only the ship, epoch
    and expiry checks see them. The window between Ready and the call is two frames.
+
+   **Player-ship re-bind.** The gate transit re-points `*(M+0x38)` once. In Run 190 every arm (three) was cancelled
+   `ship_change` at the first injection-site entry after the stall, 183 to 202 frames after the arm, before any Ready
+   check, and each new pointer stayed stable until the next arm. So one change is accepted while armed or due. The new
+   object must read fault-free as a live ship (class word `+0x48` = 7, marker `+0x9c` = `0xcafe`), its parent `+0x54`
+   must be a live sector (class 1, `0xcafe`) with a non-zero id `+8`, and that id must not be the departure sector's.
+   The ticket then follows the new ship (`rebound` row) and continues at the next entry. A second change, an unreadable
+   or non-ship object, a missing or unreadable sector, or a change inside the departure sector cancels `ship_change`.
+   The row's `ship_check` names which of these it was (`second`, `unreadable`, `not_ship`, `no_sector`,
+   `same_sector`).
 
 ## Sharing the injection site
 
@@ -95,10 +117,20 @@ Any mismatch logs one refusal row, and nothing is claimed. The globals read are 
 | `refused reason=story_build` | first SETA stop on a readable other story build (once; latched off) | build, expected build |
 | `refused reason=build_unreadable` | a SETA stop whose build id could not be read (once; not latched) | old factor, IP, return |
 | `refused reason=same_transit / unreadable` | arm refused | old factor, IP, return, sector id |
-| `armed` | the gate stop | old, new factor, IP, return offset and name, ship, sector, sector id, build |
-| `cancelled reason=factor_write / ship_change / vm_clear / vm_load / epoch / expiry / sector_left / call_unwound` | ticket ended | frames and ms since the arm; for `factor_write` the write's old/new/IP/return offset and name (`toggle`, `sector_warp`, `quick_warp`, `jumpdrive`, `engine_input`, `other`) |
+| `armed` | the gate stop under autopilot | old, new factor, IP, return offset and name, ship, ship id, sector, sector id, build, `autopilot=1`, `flags` |
+| `skipped reason=manual` | the gate stop with the autopilot bit clear (nothing armed) | the `armed` fields, `autopilot=0` |
+| `rebound` | the transit's one player-ship change accepted | frames and ms since the arm, old and new ship, old and new ship id, departure sector id, new sector and its id |
+| `cancelled reason=factor_write / ship_change / vm_clear / vm_load / epoch / expiry / sector_left / call_unwound` | ticket ended | frames and ms since the arm; for `factor_write` the write's old/new/IP/return offset and name (`toggle`, `sector_warp`, `quick_warp`, `jumpdrive`, `engine_input`, `other`); `ship_check`, `new_sector`, `new_sector_id` (for `ship_change`) |
 | `restored` | after the call, AL = 1 | frames after the transit (Ready to call), frames and ms since the arm, `result=1`, call, key, method |
 | `restore_failed` | after the call, AL = 0 (the method did not resolve) | the same fields, `result=0` |
+
+Every row except `refused` also carries `speed_ship speed_read speed desired_speed`: the current player ship
+`*(M+0x38)` and its `+0x10` (current) and `+0x14` (desired) speed, int32 position units/s
+([ship-movement.md](../reverse-engineering/ship-movement.md) section 2), read when the row is formatted
+(`speed_read=0`: unreadable). Record only, for the open question of the ship's speed reset to 0 after a gate: the
+`armed` row shows the speed at the gate stop, the `rebound`/`cancelled`/`restored` rows the speed after the arrival.
+`SA_WarpObjectAway` (order 8) writes `[obj+0x14] = [obj+0x10] = 0` every frame before its deadline
+(ship-movement.md section 13.3); whether the player's gate transit runs it is not established.
 
 ## Windows and CrossOver parity
 
@@ -115,5 +147,6 @@ Windows and CrossOver. Not verified on either yet: no flight has run.
   feature too, so they are live even with the chase camera or its restore off. While idle, the stub's prefilter compare skips the injection site
   (`cmp [filter],0; je`), and nothing else runs per frame except `present()`'s relaxed store. While armed, each entry
   costs the chase stub's CPU-state capture, about 4 checked reads (player, pause), and the transit walk at most once
-  per presented frame. The ticket lasts from the gate stop to a few frames after arrival.
+  per presented frame. The ticket lasts from the gate stop to a few frames after arrival. The re-bind check (at most 7
+  reads) runs once per transit. Each row adds 4 reads for the speed fields (player, speeds), and the arm 2 (flags, ship id).
 * No allocation. Rows go through the session log, and the only ones are the event rows above.

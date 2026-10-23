@@ -181,6 +181,15 @@ print('   call sites (E8 rel32 in .text): 0x0049f4c0 %d, 0x0049f570 %d' % (len(c
 check({0x0041212e, 0x0040f9b2, 0x00410f84} <= set(callers[wrap]),
       '0x0049f4c0 is the class-150 wrapper of StopFastForward (0x0041212e), InputAction (0x0040f9b2), SetAutopilot (0x00410f84)')
 
+print('Autopilot flag read at the arm (SA_SetAutopilot, SA_GetFlags)')
+flags, bit = const('ship_flags'), const('autopilot_bit')
+check(rd(const('set_autopilot_on_va'), 7) == bytes([0x81, 0x48, flags]) + struct.pack('<I', bit),
+      '%08x SA_SetAutopilot on: or [eax+0x%x],0x%x' % (const('set_autopilot_on_va'), flags, bit))
+check(rd(const('set_autopilot_off_va'), 7) == bytes([0x81, 0x60, flags]) + struct.pack('<I', ~bit & 0xffffffff),
+      '%08x SA_SetAutopilot off: and [eax+0x%x],~0x%x' % (const('set_autopilot_off_va'), flags, bit))
+check(rd(const('get_flags_va'), 3) == bytes([0x8b, 0x40, flags]),
+      '%08x SA_GetFlags: mov eax,[eax+0x%x] (the flag 2004::CanWarp tests)' % (const('get_flags_va'), flags))
+
 print('Shared injection site and engine globals')
 inject = const('inject_site_va')
 check(rd(inject, 6) == bytes.fromhex('558bec83e4f0'), '%08x input routine entry 55 8b ec 83 e4 f0' % inject)
