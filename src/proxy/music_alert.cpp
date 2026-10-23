@@ -27,10 +27,17 @@ bool cap_noted_ = false;
 volatile long load_pending_ = 0; // set by loaded() on the Present thread, consumed by the handler (InterlockedExchange)
 constexpr unsigned long line_cap = 2000;
 
-// Bounded, validated reads of engine memory (engine_memory.h: VirtualQuery-checked regions, rep movsb copy); the one
-// write goes to [R+8], a word the handler has just read through the same validation.
+// Bounded, validated reads of engine memory (engine_memory.h: VirtualQuery-checked regions, rep movsb copy; each span
+// validated once, whole); plain loads only for the image globals cfg_va / player_root_va (the non-relocatable EXE's
+// .data, mapped for the process lifetime); the one write goes to [R+8], a word the handler has just read through the
+// same validation.
 struct EngineMemory {
     bool read(std::uint32_t at, void* out, unsigned n) { return x3m::engine_memory::read(at, out, n); }
+    std::uint32_t image32(std::uint32_t at) {
+        std::uint32_t v = 0;
+        std::memcpy(&v, reinterpret_cast<const void*>(std::uintptr_t(at)), 4);
+        return v;
+    }
     void write32(std::uint32_t at, std::uint32_t v) { std::memcpy(reinterpret_cast<void*>(std::uintptr_t(at)), &v, 4); }
 };
 core::Mismatch mismatch_{}; // the first window that differed at install (bytes_mismatch), for the install row
@@ -93,30 +100,36 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_alert_frame(std:
     if (load_pending_ && InterlockedExchange(&load_pending_, 0)) rule_.rebaseline = true;
     const core::Frame f = core::frame(memory, rule_, registry, player, hold_ms_);
     if (!f.ok) return;
+    if (f.alert_end && row_allowed())
+        x3m::log("music_alert episode=end frames=%u reads_max=%u reads_mean=%lu visited_max=%u visited_mean=%lu cuts=%u now=%lu",
+                 f.alert.frames, f.alert.reads_max,
+                 static_cast<unsigned long>(f.alert.frames ? f.alert.reads / f.alert.frames : 0), f.alert.visited_max,
+                 static_cast<unsigned long>(f.alert.frames ? f.alert.visited / f.alert.frames : 0), f.alert.cuts,
+                 static_cast<unsigned long>(f.now));
     if (!f.edge && !f.suppressed_start && !f.suppressed_end) return;
     char reason[core::reason_text_size];
     core::reason_text(f.reasons ? f.reasons : rule_.last_reason, reason);
     if (f.suppressed_end && row_allowed())
-        x3m::log("music_alert suppressed=end frames=%u vanilla=%lu to=%lu now=%lu", f.episode_frames,
+        x3m::log("music_alert suppressed=end frames=%u vanilla=%lu to=%lu now=%lu reads=%u visited=%u", f.episode_frames,
                  static_cast<unsigned long>(f.vanilla), static_cast<unsigned long>(f.filtered),
-                 static_cast<unsigned long>(f.now));
+                 static_cast<unsigned long>(f.now), f.reads, f.walk.visited);
     if (f.edge && row_allowed())
         x3m::log(
-            "music_alert edge from=%lu to=%lu vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s",
+            "music_alert edge from=%lu to=%lu vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s reads=%u",
             static_cast<unsigned long>(f.from), static_cast<unsigned long>(f.filtered),
             static_cast<unsigned long>(f.vanilla), static_cast<unsigned long>(f.committed), reason,
             static_cast<unsigned long>(f.age), core::cause_name(f.cause), static_cast<unsigned long>(f.now),
             static_cast<unsigned long>(f.step), static_cast<unsigned long>(f.seta), f.walk.visited, f.walk.owned_near,
             f.walk.hostile_orders, f.walk.cuts, core::walk_status_name(f.walk.status),
-            core::fire_status_name(rule_.last_fire));
+            core::fire_status_name(rule_.last_fire), f.reads);
     if (f.suppressed_start && row_allowed())
         x3m::log(
-            "music_alert suppressed=start vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s",
+            "music_alert suppressed=start vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s reads=%u",
             static_cast<unsigned long>(f.vanilla), static_cast<unsigned long>(f.committed), reason,
             static_cast<unsigned long>(f.age), core::cause_name(f.cause), static_cast<unsigned long>(f.now),
             static_cast<unsigned long>(f.step), static_cast<unsigned long>(f.seta), f.walk.visited, f.walk.owned_near,
             f.walk.hostile_orders, f.walk.cuts, core::walk_status_name(f.walk.status),
-            core::fire_status_name(rule_.last_fire));
+            core::fire_status_name(rule_.last_fire), f.reads);
 }
 }
 
@@ -243,12 +256,12 @@ bool initialize() {
         else
             std::memcpy(got, "unreadable", sizeof "unreadable");
     }
-    log("music_alert trigger=%s hold_ms=%lu hold_source=%s patched=%u armed=%u reason=%s site=0x%08lx continue=0x%08lx write=%s stub=0x%08lx windows=%u walk_limit=%u window=%s window_name=%s expected=%s got=%s",
+    log("music_alert trigger=%s hold_ms=%lu hold_source=%s patched=%u armed=%u reason=%s site=0x%08lx continue=0x%08lx write=%s stub=0x%08lx windows=%u walk_limit=%u node_budget=%u window=%s window_name=%s expected=%s got=%s",
         trigger == core::Trigger::vanilla ? "vanilla" : trigger == core::Trigger::engaged ? "engaged" : "invalid",
         static_cast<unsigned long>(hold_ms_), hold_source_, patched_ ? 1u : 0u, armed_ ? 1u : 0u, state_,
         static_cast<unsigned long>(core::site_va), static_cast<unsigned long>(x3m_music_alert_continue),
         write_kind(site_.patched_in, site_.atomic_write), static_cast<unsigned long>(address_of(&x3m_music_alert_stub)),
-        core::window_count + 1, core::list_walk_limit, window, mismatch_.name ? mismatch_.name : "-", expected, got);
+        core::window_count + 1, core::list_walk_limit, core::walk_node_budget, window, mismatch_.name ? mismatch_.name : "-", expected, got);
     SetLastError(error);
     return applied;
 }

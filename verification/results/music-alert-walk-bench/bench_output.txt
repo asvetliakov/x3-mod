@@ -1,0 +1,19 @@
+virtualquery_ns=514 cached_read_ns=9.7
+raw        scenario=0 regions_other=0 ok=1 walk=idle visited=0 reads_per_frame=6 mean_ns=42 min_ns=0 ns_per_node=0.0 ns_per_read=7.1
+validated  scenario=0 regions_other=0 ok=1 walk=idle visited=0 reads_per_frame=6 mean_ns=10042 min_ns=7500 ns_per_node=0.0 ns_per_read=1673.7
+validated  scenario=0 regions_other=20 ok=1 walk=idle visited=0 reads_per_frame=6 mean_ns=11942 min_ns=7700 ns_per_node=0.0 ns_per_read=1990.4
+raw        scenario=1 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=3412 mean_ns=20881 min_ns=19100 ns_per_node=10.4 ns_per_read=6.1
+validated  scenario=1 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=3412 mean_ns=65962 min_ns=59900 ns_per_node=33.0 ns_per_read=19.3
+validated  scenario=1 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=3412 mean_ns=69269 min_ns=60800 ns_per_node=34.6 ns_per_read=20.3
+raw        scenario=2 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=6214 mean_ns=50525 min_ns=40300 ns_per_node=25.2 ns_per_read=8.1
+validated  scenario=2 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=6214 mean_ns=122129 min_ns=105800 ns_per_node=61.0 ns_per_read=19.7
+validated  scenario=2 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=6214 mean_ns=132634 min_ns=105400 ns_per_node=66.3 ns_per_read=21.3
+raw        scenario=3 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=2018 mean_ns=6996 min_ns=6800 ns_per_node=3.5 ns_per_read=3.5
+validated  scenario=3 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=2018 mean_ns=33117 min_ns=29100 ns_per_node=16.6 ns_per_read=16.4
+validated  scenario=3 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=2018 mean_ns=33196 min_ns=29300 ns_per_node=16.6 ns_per_read=16.4
+raw        scenario=4 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=7614 mean_ns=57765 min_ns=52000 ns_per_node=28.9 ns_per_read=7.6
+validated  scenario=4 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=7614 mean_ns=160721 min_ns=134400 ns_per_node=80.3 ns_per_read=21.1
+validated  scenario=4 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=7614 mean_ns=162145 min_ns=136600 ns_per_node=81.0 ns_per_read=21.3
+virtualquery_touched_32mb_ns=8142 region_mb=0 virtualquery_64kb_ns=363
+calls=24000000 direct_ns=1.31 wrapped_idle_ns=1.45 wrapped_pumping_ns=3.18 samples=750000 sampled_path_ns=29.1 light_call_boundary_ns=8.1
+per_save_23939946_writes: idle_extra_ms=3.5 pumping_extra_ms=44.8 (of which samples_ms=21.8)

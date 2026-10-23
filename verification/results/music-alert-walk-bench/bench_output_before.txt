@@ -1,0 +1,16 @@
+virtualquery_ns=574 cached_read_ns=9.1
+raw        scenario=0 regions_other=0 ok=1 walk=idle visited=0 reads_per_frame=15 mean_ns=51 min_ns=0 ns_per_node=0.0 ns_per_read=3.4
+validated  scenario=0 regions_other=0 ok=1 walk=idle visited=0 reads_per_frame=15 mean_ns=12125 min_ns=8500 ns_per_node=0.0 ns_per_read=808.3
+validated  scenario=0 regions_other=20 ok=1 walk=idle visited=0 reads_per_frame=15 mean_ns=10528 min_ns=8600 ns_per_node=0.0 ns_per_read=701.8
+raw        scenario=1 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=8825 mean_ns=4933 min_ns=4000 ns_per_node=2.5 ns_per_read=0.6
+validated  scenario=1 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=8825 mean_ns=119782 min_ns=95200 ns_per_node=59.9 ns_per_read=13.6
+validated  scenario=1 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=8825 mean_ns=117176 min_ns=94900 ns_per_node=58.6 ns_per_read=13.3
+raw        scenario=2 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=35425 mean_ns=24678 min_ns=19200 ns_per_node=12.3 ns_per_read=0.7
+validated  scenario=2 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=35425 mean_ns=405434 min_ns=351100 ns_per_node=202.6 ns_per_read=11.4
+validated  scenario=2 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=35425 mean_ns=387155 min_ns=350100 ns_per_node=193.5 ns_per_read=10.9
+raw        scenario=3 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=2041 mean_ns=1882 min_ns=1800 ns_per_node=0.9 ns_per_read=0.9
+validated  scenario=3 regions_other=0 ok=1 walk=ok visited=2001 reads_per_frame=2041 mean_ns=30290 min_ns=27300 ns_per_node=15.1 ns_per_read=14.8
+validated  scenario=3 regions_other=20 ok=1 walk=ok visited=2001 reads_per_frame=2041 mean_ns=31476 min_ns=27300 ns_per_node=15.7 ns_per_read=15.4
+virtualquery_touched_32mb_ns=10758 region_mb=0 virtualquery_64kb_ns=395
+calls=24000000 direct_ns=1.34 wrapped_idle_ns=1.82 wrapped_pumping_ns=3.41 samples=750000 sampled_path_ns=31.1 light_call_boundary_ns=9.1
+per_save_23939946_writes: idle_extra_ms=11.6 pumping_extra_ms=49.6 (of which samples_ms=23.3)

@@ -28,7 +28,9 @@ The integer stub saves EFLAGS and EAX/ECX/EDX, clears DF (the handler's reads ar
 restores the engine's DF), calls `x3m_music_alert_frame(R, P)` (cdecl, four-byte stack), restores them and leaves
 through the claim tail, which replays the two moves (reading the filtered `[R+8]`) and jumps to `0x0042c97a`. The
 handler runs once per main-loop iteration on the main thread under `LightCallBoundary` (MXCSR and LastError), reads
-engine memory only through `engine_memory::read` (VirtualQuery-validated), calls no engine routine and no script,
+engine objects only through `engine_memory::read` (VirtualQuery-validated, each span checked once and whole) and the
+two image globals `cfg` (`0x00606f34`) and `M` (`0x0060850c`) by plain loads (both in the non-relocatable EXE's
+`.data`, `0x00573000..0x00662b58`, mapped for the process lifetime), calls no engine routine and no script,
 allocates nothing, and writes one word at most: `[R+8] = 0`.
 
 Rule, evaluated every frame the thunk runs (`now` = the game clock `[*0x00606f34+0x718]`, game ms, so SETA scales it):
@@ -57,8 +59,8 @@ Rule, evaluated every frame the thunk runs (`now` = the game clock `[*0x00606f34
    start or hold combat music. (a), (b), (d) and (e) stamp on any frame; (c) and (f) are evaluated only on frames
    where the vanilla level is nonzero, by one walk of lists 5, 6, 7 and 10 of P's sector (`[P+0x54]`, class 1; the
    12-byte list headers are in the array `[sector+0x50]`, `[[sector+0x50] + class·12]` = the first node), at
-   most 4096 nodes per list (a cut is counted), stopping when every wanted answer is known. (a) and (e) share that
-   walk on the frames where a counter rose.
+   most 4096 nodes per list and 3,600 nodes over the four lists (each cut is counted; the budget ends the walk),
+   stopping when every wanted answer is known. (a) and (e) share that walk on the frames where a counter rose.
 
    The counters are statistics a save restores. They are a new baseline, not a shot, on the first sample, on the
    `save_load_complete` marker (`capture.cpp` Present path, the event `fov::loaded` takes; once per process), on a
@@ -99,22 +101,27 @@ sends neither unless given explicitly.
 * Install, once: `music_alert trigger=<engaged|vanilla|invalid> hold_ms=<n> hold_source=<default|setting|invalid_default>
   patched=<0|1> armed=<0|1> reason=<ok|vanilla|invalid_setting|executable_mismatch|late_claim|bytes_mismatch|pin_failed|
   <claim status>|chain_failed|rollback_failed> site=0x0042c974 continue=<tail> write=<plain|atomic|none> stub=<va>
-  windows=20 walk_limit=4096 window=<0x…|none> window_name=<name|-> expected=<hex|-> got=<hex|unreadable|->` (`write=plain`
+  windows=20 walk_limit=4096 node_budget=3600 window=<0x…|none> window_name=<name|-> expected=<hex|-> got=<hex|unreadable|->` (`write=plain`
   is the expected kind at this site, see above; `windows=20` counts the 19 windows and the site; on `bytes_mismatch` the
   last four fields name the first window that differed and its first 8 bytes as expected and as read).
 * One per edge of the filtered level (the level the engine commits): `music_alert edge from=<old> to=<new>
   vanilla=<[R+8] before> committed=<[R+4]> reason=<letters a..f|-> age_ms=<now − stamp> cause=<stamp|held|expired|
   newer_than_now|out_of_range|none> now=<game ms> step=<frame step> seta=<(cfg+0xcc·cfg+0xd0)>>16> visited=<nodes>
   owned_near=<n> hostile_orders=<n> cuts=<n> walk=<idle|ok|no_player|player_parent|parent_class|lists_base|list_head|
-  node_link> fire=<none|ok|not_in_sector|cockpit|no_target|self_target|not_found|not_hostile>`. `reason` is this
+  node_link> fire=<none|ok|not_in_sector|cockpit|no_target|self_target|not_found|not_hostile> reads=<n>`. `reason` is this
   frame's stamp, else the last stamp's; `hostile_orders` counts the (f) candidates that took a relation test. `walk` is
   this frame's walk: `idle` when nothing wanted it (vanilla 0, no counter rose), `ok` when every list was read, else
   the first check that failed (P = 0, P's parent unreadable or null, the parent not class 1, the list array
   `[sector+0x50]` unreadable or null, a list header unreadable, a node's link unreadable: that list ends). `fire` is
   rule (a)'s outcome on the last frame a fire counter rose (`none` before the first shot): the cockpit lookup failed,
-  `cockpit+0x1e0` null, the target is P, the target not in lists 5/6/7/10, or not hostile.
+  `cockpit+0x1e0` null, the target is P, the target not in lists 5/6/7/10, or not hostile. `reads` is this frame's
+  count of validated span reads (6 on a quiet frame); `visited` is the walk's node count (the budget's unit).
 * One per suppressed episode (vanilla nonzero, filtered 0): `music_alert suppressed=start …` with the same fields on
-  the episode's first frame, and `music_alert suppressed=end frames=<n> vanilla=<n> to=<n> now=<ms>` when it ends.
+  the episode's first frame, and `music_alert suppressed=end frames=<n> vanilla=<n> to=<n> now=<ms> reads=<n>
+  visited=<n>` when it ends.
+* One per alert episode (consecutive frames with a nonzero vanilla level, the frames the walk runs on), on the first
+  frame back at 0: `music_alert episode=end frames=<n> reads_max=<n> reads_mean=<n> visited_max=<n> visited_mean=<n>
+  cuts=<sum> now=<ms>`, the episode's real per-frame read and node counts (counters only, no timing).
 * No per-frame rows; 2,000 rows per session, then one `music_alert cap` notice.
 
 ## Run 190 finding (2026-10-23)
@@ -133,25 +140,46 @@ only fire flags with `0x22`, and every write of the bullet's player-shot local `
 stamp was already taken before the hold test in the same frame. Fix: the walk reads `[sector+0x50]` first; the
 `sector_walk` window pins that read; `walk=` / `fire=` name the failing check in the rows.
 
-## Cost (inferred from the code; object counts per frame are not measured)
+## Cost
+
+Reads are spans (`music_alert_core.h`, `Obj`): an object's header `[o, o+0x74)` in one read, its flight block
+`[data+0x1cc, data+0x25a)` and its position `[render+0x30, +0x3c)` each once on first use; P's header once per frame and
+its flight block and position once per walk. `engine_memory::read` costs a region-cache lookup per read (spin lock,
+`GetTickCount`) and one `VirtualQuery` per distinct region per frame on its first touch, whose cost grows with the
+region's touched size (`engine_memory.h`; `vq_scaling_output.txt` in the bench directory).
 
 * Every frame: the stub (`cld`, 6 pushes, a call, 4 pops, an indirect jump), the boundary (`stmxcsr`/`ldmxcsr`,
-  `GetLastError`/`SetLastError`) and about 15 validated reads (`[R+8]`, `[R+4]`, `cfg`, clock, step, the two SETA
-  words, `M`, four counters, `[P+0x54]`, the sector's class word, `[P+0x44]`). `engine_memory::read` is a region-cache
-  lookup per read with one `VirtualQuery` per distinct region per frame on its first touch (`engine_memory.h`).
-* Only on frames where the vanilla level is nonzero (a hostile in range): one walk of lists 5, 6, 7 and 10, three
-  reads per node (next link, group word, class word), two more for a class-7 ship not owned by the player (flight
-  pointer, order word) and, for one with an attack order, its target plus one relation test when the target is P or an
-  owned object within range (about 10 reads); about 15 reads for each player-owned object within range (position,
-  flags, and for a ship its order, target and one relation test). The walk ends at the first (c)/(f) event; at most
-  4096 nodes per list.
+  `GetLastError`/`SetLastError`), two plain image loads (`cfg`, `M`) and 6 validated span reads (`[R+4..R+0xc)`,
+  `cfg+0x714..0x71c`, `M+0x40..0x50`, `cfg+0xcc..0xd4`, P's header, the parent's `+0x48..0x54`: class word and list
+  array pointer); 15 single-field reads before.
+* Only on frames where the vanilla level is nonzero (a hostile in range): one walk of lists 5, 6, 7 and 10: the four
+  list headers in one span, one header span per node, one flight-block span for a class-7 ship not owned by the
+  player and, for one with an attack order on P or an owned object within range, one relation test; for an owned
+  object its position and, for a ship, its flight block and its target's header (one relation test). At most 4096
+  nodes per list and 3,600 in all.
 * Only on frames where a fire counter rose with a selected target, or a hit counter rose: the cockpit hash lookup
-  (≤ 32 links) and the same walk until the target is found / the victim with the player-hit bit is found (one Flags2
-  read per node, a relation test per node carrying the bit).
+  (≤ 32 links) and the same walk until the target is found / the victim with the player-hit bit is found (only the
+  link per node while the target search alone is left; a relation test per node carrying the player-hit bit).
 * No rows on the per-frame path; rows only on edges and episode boundaries.
 
-The vanilla routine itself already visits every object of all 32 lists with a call per object each frame, so the walk
-is a subset of that work; it was not timed. The per-episode list sizes are reported in the edge rows (`visited`).
+Measured (2026-10-23, `verification/results/music-alert-walk-bench/`, native Windows through WSL interop, i686
+MinGW with the production flags, a flat fake world of 2,001 nodes in one 32 MB committed region; not game FPS;
+`run_before.sh` builds the same bench against the 2105a9c7 header, `run.sh` against the current one):
+
+| Frame (validated reads per frame) | Before: reads, mean ns/node | After: reads, mean ns/node |
+| --- | --- | --- |
+| Quiet (vanilla 0, nothing fired) | 15, 9.2–12.1 µs per frame (min 8.0–8.6) | 6, 10.0–11.9 µs per frame (min 7.5–7.7) |
+| Passive hostiles in range (full walk) | 8,825, 51.6–59.9 | 3,412, 33.0–34.6 |
+| Owned ships attacking a non-hostile | 35,425, 192.4–202.6 | 6,214, 61.0–66.3 |
+| The same with P's enemy-of flag (worst case) | 45,225, 237.2–239.6 | 7,614, 80.3–81.0 |
+| Target search to the last missile | 2,041, 15.1–15.7 | 2,018, 16.6 |
+
+Before = `bench_output_before.txt` (the review's run) and `bench_output_before_rerun.txt`; after = `bench_output.txt`.
+The quiet frame did not get cheaper within the noise: it is dominated by one `VirtualQuery` of the bench's 32 MB
+region per frame (8.1–9.1 µs measured), not by the read count; in the game its cost depends on the size of the heap
+regions holding R, cfg, M, P and the sector and on whether another reader validated them earlier in the same frame
+**[i]**. The node budget 3,600 bounds the worst case at 3,600 × 81 ns ≈ 0.29 ms **[i]** (before: 4 × 4096 nodes at
+up to 240 ns, about 3.9 ms). Run 191's rows showed at most `visited=28` (the walk stops at the first event).
 
 ## Windows / CrossOver parity
 
@@ -175,8 +203,9 @@ MinGW i686, SSE2 only (`check_no_x87.py` walks the stub and the handler: no x87 
    seconds after the last stamp (with SETA on, correspondingly sooner in wall time), then `suppressed=start` while
    it stays in range; sector music resumes.
 5. Leave the range while engaged: `edge from=1 to=0 cause=out_of_range`.
-6. No `cuts` above 0 in any row (a list longer than 4096 nodes would need a higher bound), and `visited` small
-   enough that the walk is a non-issue (hundreds, not thousands).
+6. No `cuts` above 0 in any row (a sector past 3,600 nodes in lists 5/6/7/10 would need a higher budget), and
+   `visited` small enough that the walk is a non-issue (hundreds, not thousands); the `episode=end` rows give the
+   real per-frame `reads` and `visited` (max and mean) of each alert episode.
 7. No frame-time change attributable to the site, no stall, no crash on a sector change, a save/load (no `edge` row
    on the first frame after a load; `cause=newer_than_now` is expected once if the clock was rewound) or a docking.
 

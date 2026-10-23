@@ -1002,8 +1002,10 @@ call `0x0049f4c0` (`[M+0x60]`, 0, script object, `"AttackedBy"`, 1, argc 2, arg0
   call per object. The rule adds:
   * O(1) reads every frame: `[P+0x44]`, four counters, `cfg+0x718`, the cockpit lookup (≤ 32 hash links);
   * a walk of lists 5, 6, 7 (the classes the relation test admits) and 10 (missiles), only on frames where
-    `[R+8]` or `[R+4]` is nonzero. That walk reads about 7 dwords per object: `+0x3c`, `+0x44`, `[+0x50]+0x258`,
-    `[+0x50]+0x224`, and `[+0x70]+0x30..0x38` for the range test. For a hostile it adds the relation rule's masks.
+    `[R+8]` (this frame's vanilla level) is nonzero or a fire / hit counter rose; `[R+4]` is not tested. That walk
+    reads the fields `+0x3c`, `+0x44`, `[+0x50]+0x258`, `[+0x50]+0x224` and `[+0x70]+0x30..0x38` for the range test
+    as spans (the header `+0x00..+0x74`, the flight block `[+0x50]+0x1cc..+0x25a`, the position), which also carry the
+    relation rule's masks (`docs/architecture/music-combat-trigger.md`, "Cost").
 
   This is a subset of the objects the vanilla walk visits. Object counts per frame were not measured **[i]**.
 

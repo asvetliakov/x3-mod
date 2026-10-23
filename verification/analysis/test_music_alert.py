@@ -44,11 +44,16 @@ HARNESS = r'''
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <vector>
 using namespace x3m::music_alert::core;
+struct Span { std::uint32_t at; unsigned n; };
 struct FakeMem {
     std::map<std::uint32_t, unsigned char> bytes;
-    unsigned writes = 0;
+    unsigned writes = 0, image_loads = 0;
+    bool logging = false;
+    std::vector<Span> log; // every validated read while logging
     bool read(std::uint32_t at, void* out, unsigned n) {
+        if (logging) log.push_back(Span{at, n});
         unsigned char* o = static_cast<unsigned char*>(out);
         for (unsigned i = 0; i < n; ++i) {
             auto it = bytes.find(at + i);
@@ -57,15 +62,25 @@ struct FakeMem {
         }
         return true;
     }
+    std::uint32_t image32(std::uint32_t at) { // the plain load of an image global (0 where the fake maps nothing)
+        ++image_loads;
+        unsigned char b[4];
+        for (unsigned i = 0; i < 4; ++i) { auto it = bytes.find(at + i); if (it == bytes.end()) return 0; b[i] = it->second; }
+        return le32(b);
+    }
     void write32(std::uint32_t at, std::uint32_t v) { ++writes; put32(at, v); }
+    void fill(std::uint32_t at, unsigned n) { for (unsigned i = 0; i < n; ++i) bytes[at + i] = 0; }
+    void start() { logging = true; log.clear(); }
+    unsigned count(std::uint32_t at, unsigned n) const { unsigned k = 0; for (const Span& s : log) k += s.at == at && s.n == n; return k; }
     void put32(std::uint32_t at, std::uint32_t v) { for (unsigned i = 0; i < 4; ++i) bytes[at + i] = (v >> (8 * i)) & 0xff; }
     void put16(std::uint32_t at, std::uint16_t v) { for (unsigned i = 0; i < 2; ++i) bytes[at + i] = (v >> (8 * i)) & 0xff; }
     std::uint32_t get32(std::uint32_t at) { std::uint32_t v = 0; read(at, &v, 4); return v; }
 };
 // World: R 0x10000 (table 0x10100, buckets 0x10200, link 0x10300, cockpit 0x10400); cfg 0x20000; M 0x30000; P 0x40000
-// (flight 0x40400, render 0x40800); sector 0x50000 whose list array [sector+0x50] is 0x51000 (the 12-byte headers;
-// the sector object's own bytes at +0x5c.. are left unmapped, as the engine never reads them as lists), terminators
-// 0x5f000+c*0x100; H 0x60000 (hostile, group 3),
+// (flight 0x40400, render 0x40800); sector 0x50000 whose list array [sector+0x50] is 0x51000 (the 32 12-byte headers;
+// of the sector object only +0x48..+0x54 is mapped, so its own bytes at +0x5c.. can never be read as lists),
+// terminators 0x5f000+c*0x100 (only the link mapped); every object maps exactly its header span, flight-block span and
+// position span; H 0x60000 (hostile, group 3),
 // O 0x61000 (owned, group 10), F 0x62000 (friend, group 4), missile X 0x63000 in list 10.
 constexpr std::uint32_t R = 0x10000, CFG = 0x20000, M = 0x30000, P = 0x40000, PF = 0x40400, PR = 0x40800, SECTOR = 0x50000, LISTS = 0x51000,
                         H = 0x60000, HF = 0x60400, HR = 0x60800, O = 0x61000, OF = 0x61400, OR_ = 0x61800, F = 0x62000, FF = 0x62400,
@@ -73,6 +88,7 @@ constexpr std::uint32_t R = 0x10000, CFG = 0x20000, M = 0x30000, P = 0x40000, PF
 std::uint32_t term(unsigned c) { return 0x5f000 + c * 0x100; }
 void object(FakeMem& m, std::uint32_t o, std::uint32_t next, std::uint16_t cls, std::uint16_t group, std::uint32_t data, std::uint32_t render,
             std::int32_t x, std::int32_t y, std::int32_t z) {
+    m.fill(o, header_span); m.fill(data + flight_begin, flight_span); m.fill(render + render_position, 12);
     m.put32(o + obj_next, next); m.put16(o + obj_group, group); m.put32(o + obj_flags1, 0); m.put32(o + obj_flags2, 0);
     m.put16(o + obj_class, cls); m.put32(o + obj_data, data); m.put32(o + obj_parent, SECTOR); m.put32(o + obj_render, render);
     m.put32(render + render_position, std::uint32_t(x)); m.put32(render + render_position + 4, std::uint32_t(y));
@@ -90,7 +106,8 @@ FakeMem world() {
     m.put32(cfg_va, CFG); m.put32(CFG + cfg_clock, 1000); m.put32(CFG + cfg_step, 16); m.put32(CFG + cfg_seta_a, 0x10000); m.put32(CFG + cfg_seta_b, 10);
     m.put32(player_root_va, M); m.put32(M + root_player_ship, P); m.put32(M + root_laser_fired, 100); m.put32(M + root_missile_fired, 7);
     m.put32(M + root_laser_hits, 0); m.put32(M + root_missile_hits, 0);
-    m.put16(SECTOR + obj_class, class_sector); m.put32(SECTOR + sector_lists, LISTS);
+    m.fill(SECTOR + obj_class, sector_lists + 4 - obj_class); m.put16(SECTOR + obj_class, class_sector); m.put32(SECTOR + sector_lists, LISTS);
+    m.fill(LISTS, 32 * list_stride);
     for (unsigned c = 0; c < 32; ++c) { m.put32(LISTS + c * list_stride, term(c)); m.put32(term(c), 0); }
     object(m, P, H, class_ship, player_group, PF, PR, 0, 0, 0);
     m.put32(P + obj_flags1, 2);
@@ -235,10 +252,11 @@ int main() {
         f = frame(m, s, R, P, hold);
         check((f.reasons & reason_owned) && f.walk.owned_near == 1, "a second owned ship (group 10) hit in range counts; the walk stops at the first event");
         m.put32(R + registry_level, 1); m.put32(H + obj_flags2, 0); m.put16(H + obj_group, 3);
-        m.put32(LISTS + class_5 * list_stride, 0x70000); m.put32(0x70000, 0x70000); m.put16(0x70000 + obj_group, 3);
+        m.put32(LISTS + class_5 * list_stride, 0x70000); m.fill(0x70000, header_span); m.put32(0x70000, 0x70000); m.put16(0x70000 + obj_group, 3);
         m.put32(CFG + cfg_clock, 1000 + 3 * hold);
         f = frame(m, s, R, P, hold);
-        check(f.ok && f.walk.cuts == 1 && f.walk.visited >= list_walk_limit && !f.engaged, "a cyclic list is cut at the limit and counted");
+        check(f.ok && f.walk.cuts == 1 && f.walk.visited == walk_node_budget && walk_node_budget < list_walk_limit && f.walk.status == WalkStatus::ok && !f.engaged,
+              "a cyclic list is cut at the node budget (below the per-list limit) and counted");
     }
     {   // No player ship, unreadable inputs.
         FakeMem m = world();
@@ -411,6 +429,66 @@ int main() {
         m.put16(SECTOR + obj_class, class_sector); m.put32(R + registry_level, 1);
         f = frame(m, s, R, P, hold);
         check(!f.fired && s.last_fire == FireStatus::not_in_sector, "fire= keeps the last fired frame's outcome");
+    }
+    {   // The span-read layout (performance pass): a quiet frame makes six validated span reads and two image loads; the
+        // walk reads the four list headers in one span, one header span per node, an object's flight block and position
+        // once each, P's flight block and position once per frame; no object is read field by field.
+        FakeMem m = world();
+        State s;
+        frame(m, s, R, P, hold); // baseline
+        m.start(); m.image_loads = 0; m.put32(CFG + cfg_clock, 1016);
+        Frame f = frame(m, s, R, P, hold);
+        const Span quiet[] = {{R + registry_committed, 8}, {CFG + cfg_step, 8}, {M + root_laser_fired, 16}, {CFG + cfg_seta_a, 8}, {P, header_span},
+                              {SECTOR + obj_class, sector_lists + 4 - obj_class}};
+        const unsigned nq = sizeof quiet / sizeof quiet[0];
+        bool same = m.log.size() == nq && f.reads == nq && nq == 6;
+        for (unsigned i = 0; same && i < nq; ++i) same = m.log[i].at == quiet[i].at && m.log[i].n == quiet[i].n;
+        check(f.ok && same && m.image_loads == 2 && f.walk.status == WalkStatus::idle && f.now == 1016 && f.seta == 10,
+              "quiet frame: six validated span reads in order, cfg and M through two image loads");
+        m.put32(R + registry_level, 1); m.put32(CFG + cfg_clock, 1032); m.start();
+        f = frame(m, s, R, P, hold);
+        const unsigned heads = class_missile * list_stride + 4 - class_5 * list_stride;
+        const Span walk[] = {{LISTS + class_5 * list_stride, heads}, {term(5), header_span}, {term(5), 4}, {term(6), header_span}, {term(6), 4},
+                             {P, header_span}, {H, header_span}, {HF + flight_begin, flight_span}, {O, header_span}, {OR_ + render_position, 12},
+                             {PR + render_position, 12}, {OF + flight_begin, flight_span}, {F, header_span}, {FF + flight_begin, flight_span},
+                             {term(7), header_span}, {term(7), 4}, {X, header_span}, {term(10), header_span}, {term(10), 4}};
+        const unsigned nw = sizeof walk / sizeof walk[0];
+        same = m.log.size() == nq + nw && f.reads == nq + nw;
+        for (unsigned i = 0; same && i < nw; ++i) same = m.log[nq + i].at == walk[i].at && m.log[nq + i].n == walk[i].n;
+        check(f.ok && same && f.walk.status == WalkStatus::ok && f.walk.visited == 5 && f.walk.owned_near == 1 && f.reasons == 0,
+              "walking frame: list headers in one span, one header span per node, flight blocks and positions once, terminators by their link");
+        m.put32(R + registry_level, 0); m.put32(CFG + cfg_clock, 1048);
+        f = frame(m, s, R, P, hold);
+        check(f.alert_end && f.alert.frames == 1 && f.alert.reads_max == nq + nw && f.alert.reads == nq + nw && f.alert.visited_max == 5 && f.alert.cuts == 0 && s.alert_episode.frames == 0,
+              "episode summary: frames, reads and visited of the vanilla-nonzero run, reported when vanilla returns to 0");
+        m.put32(R + registry_level, 1); m.put32(CFG + cfg_clock, 1064);
+        f = frame(m, s, R, P, hold);
+        check(!f.alert_end && s.alert_episode.frames == 1, "a new episode starts on the next nonzero frame");
+        // (e) with two non-hostile victims carrying the player-hit bit: P's flight block is read once for both tests.
+        m.put32(R + registry_level, 0); m.put32(M + root_laser_hits, 1); m.put32(O + obj_flags2, flags2_player_hit); m.put32(F + obj_flags2, flags2_player_hit);
+        m.put32(CFG + cfg_clock, 1080); m.start();
+        f = frame(m, s, R, P, hold);
+        check(f.hit && !f.walk.hit_victim && m.count(PF + flight_begin, flight_span) == 1 && m.count(OF + flight_begin, flight_span) == 0 && m.count(P, 4) == 0 && m.count(P + obj_flags2, 4) == 0,
+              "relation tests share P's flight block (one read); no field-by-field read of P");
+    }
+    {   // The node budget over the four lists: 5,000 passive hostiles in lists 5 and 6 (each under the per-list limit).
+        FakeMem m = world();
+        State s;
+        auto chain = [&](unsigned c, std::uint32_t base, unsigned n) {
+            m.put32(LISTS + c * list_stride, base);
+            for (unsigned i = 0; i < n; ++i) {
+                const std::uint32_t o = base + i * 0x80;
+                m.fill(o, header_span); m.put32(o + obj_next, i + 1 < n ? o + 0x80 : term(c)); m.put16(o + obj_group, 3); m.put16(o + obj_class, std::uint16_t(c));
+            }
+        };
+        chain(class_5, 0x1000000, 2500); chain(class_6, 0x2000000, 2500);
+        m.put32(R + registry_level, 1);
+        Frame f = frame(m, s, R, P, hold);
+        check(f.ok && f.walk.visited == walk_node_budget && f.walk.cuts == 1 && f.walk.status == WalkStatus::ok && f.reads <= walk_node_budget + 16 && f.wrote_zero,
+              "the node budget ends the walk over several lists and is counted in cuts");
+        chain(class_6, 0x2000000, 1000); m.put32(CFG + cfg_clock, 1016); m.put32(R + registry_level, 1);
+        f = frame(m, s, R, P, hold);
+        check(f.ok && 2500 + 1000 + 5 <= walk_node_budget && f.walk.visited == 2500 + 1000 + 5 && f.walk.cuts == 0, "under the budget: every node visited, no cut");
     }
     std::printf("checks done, failures=%u\n", failures);
     return failures ? 1 : 0;

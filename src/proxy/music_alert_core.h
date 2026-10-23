@@ -38,6 +38,10 @@ constexpr std::int32_t alert_range = 2500000; // the routine's own first-level r
 constexpr unsigned walked_classes[] = {class_5, class_6, class_ship, class_missile};
 constexpr unsigned list_walk_limit = 4096;   // nodes visited per list at most (a cut walk is counted; the vanilla walk
                                              // is unbounded)
+constexpr unsigned walk_node_budget = 3600;  // nodes visited per frame over the four lists at most (a spent budget is
+                                             // counted in cuts and ends the walk): <= 0.29 ms at the worst measured
+                                             // 81 ns per node (verification/results/music-alert-walk-bench,
+                                             // scenario 4); below list_walk_limit, so it trips first on one long list
 constexpr unsigned cockpit_chain_limit = 32; // registry hash chain links followed at most (chase_fire::active_cockpit)
 constexpr std::uint32_t default_hold_ms = 20000;
 constexpr std::uint32_t min_hold_s = 1, max_hold_s = 600;
@@ -208,71 +212,126 @@ template <class Read> inline bool install_windows_match(Read&& read, Mismatch& o
     return window_equal(read, "site", site_va, site_bytes, site_length, out);
 }
 
-// ---- The rule (pure; Mem supplies `bool read(uint32_t at, void* out, unsigned n)` and `void write32(uint32_t at,
-// uint32_t v)`; every read is bounds-checked by Mem, a failed read ends the decision with no write) ----
-template <class Mem> bool u32(Mem& m, std::uint32_t base, unsigned offset, std::uint32_t& out) {
+// ---- The rule (pure). Mem supplies `bool read(uint32_t at, void* out, unsigned n)` (validated: a span is checked once,
+// whole, and false ends the decision with no write), `uint32_t image32(uint32_t at)` (a plain load, used only for the
+// two image globals cfg_va and player_root_va: both lie in the non-relocatable EXE's .data, 0x00573000..0x00662b58,
+// mapped for the process lifetime, the way music_keep loads its image addresses) and `void write32(uint32_t at,
+// uint32_t v)`. Engine objects are read as spans: one header span [o, o+0x74) per object and, on first use, one
+// flight-block span [data+0x1cc, data+0x25a) and one position span [render+0x30, render+0x3c) (Obj below). ----
+template <class Mem> bool span(Mem& m, std::uint32_t base, unsigned offset, void* out, unsigned n) {
     if (!base || offset > 0xffffffffu - base) return false;
-    return m.read(base + offset, &out, 4);
+    return m.read(base + offset, out, n);
 }
-template <class Mem> bool u16(Mem& m, std::uint32_t base, unsigned offset, std::uint16_t& out) {
-    if (!base || offset > 0xffffffffu - base) return false;
-    return m.read(base + offset, &out, 2);
+template <class Mem> bool u32(Mem& m, std::uint32_t base, unsigned offset, std::uint32_t& out) {
+    return span(m, base, offset, &out, 4);
+}
+inline std::uint32_t le32(const unsigned char* p) {
+    return std::uint32_t(p[0]) | std::uint32_t(p[1]) << 8 | std::uint32_t(p[2]) << 16 | std::uint32_t(p[3]) << 24;
+}
+inline std::uint16_t le16(const unsigned char* p) {
+    return std::uint16_t(p[0] | p[1] << 8);
+}
+constexpr unsigned header_span = obj_render + 4; // 0x00..0x74: every header field the rule reads
+constexpr unsigned flight_begin = flight_friend_mask, flight_end = flight_order + 2; // 0x1cc..0x25a
+constexpr unsigned flight_span = flight_end - flight_begin;
+static_assert(obj_group + 2 <= header_span && obj_flags1 + 4 <= header_span && obj_flags2 + 4 <= header_span &&
+                  obj_class + 2 <= header_span && obj_data + 4 <= header_span && obj_parent + 4 <= header_span,
+              "a header field outside the header span");
+static_assert(flight_foe_mask + 4 <= flight_end && flight_enemy_of_enabled + 4 <= flight_end &&
+                  flight_target >= flight_begin && flight_target + 4 <= flight_end,
+              "a flight field outside the flight span");
+// One engine object as the rule sees it: the header span, then the flight block and the position, each read once on
+// first use (state 0 unread, 1 read, 2 unreadable). `at` is nonzero only after a successful header read.
+struct Obj {
+    std::uint32_t at = 0, next = 0, flags1 = 0, flags2 = 0, data = 0, parent = 0, render = 0;
+    std::uint16_t group = 0, cls = 0;
+    unsigned char flight_state = 0, position_state = 0;
+    std::uint32_t friend_mask = 0, foe_mask = 0, enemy_of_enabled = 0, target = 0;
+    std::uint16_t order = 0;
+    std::uint32_t position[3]{};
+};
+template <class Mem> bool load_header(Mem& m, std::uint32_t at, Obj& o) {
+    o = Obj{};
+    unsigned char b[header_span];
+    if (!at || !m.read(at, b, header_span)) return false;
+    o.at = at;
+    o.next = le32(b + obj_next);
+    o.group = le16(b + obj_group);
+    o.flags1 = le32(b + obj_flags1);
+    o.flags2 = le32(b + obj_flags2);
+    o.cls = le16(b + obj_class);
+    o.data = le32(b + obj_data);
+    o.parent = le32(b + obj_parent);
+    o.render = le32(b + obj_render);
+    return true;
+}
+template <class Mem> bool load_flight(Mem& m, Obj& o) {
+    if (!o.flight_state) {
+        unsigned char b[flight_span];
+        o.flight_state = 2;
+        if (o.at && span(m, o.data, flight_begin, b, flight_span)) {
+            o.friend_mask = le32(b + (flight_friend_mask - flight_begin));
+            o.foe_mask = le32(b + (flight_foe_mask - flight_begin));
+            o.enemy_of_enabled = le32(b + (flight_enemy_of_enabled - flight_begin));
+            o.target = le32(b + (flight_target - flight_begin));
+            o.order = le16(b + (flight_order - flight_begin));
+            o.flight_state = 1;
+        }
+    }
+    return o.flight_state == 1;
+}
+template <class Mem> bool load_position(Mem& m, Obj& o) {
+    if (!o.position_state) o.position_state = o.at && span(m, o.render, render_position, o.position, 12) ? 1 : 2;
+    return o.position_state == 1;
 }
 inline bool relation_class(std::uint16_t c) {
     return c == class_ship || c == class_5 || c == class_6;
 }
 // 0x00450810: the subject's stance towards `other` (-1 hostile, 0 neutral, +1 friend); 0 on any unreadable field.
-template <class Mem> int stance(Mem& m, std::uint32_t subject, std::uint32_t other) {
-    if (!other) return 0;
-    std::uint16_t oc = 0, og = 0, sg = 0, sc = 0;
-    std::uint32_t of1 = 0, od = 0, launcher = 0, sf2 = 0, flight = 0, mask = 0;
-    if (!u16(m, other, obj_class, oc)) return 0;
-    if (oc == class_missile) {
-        if (!u32(m, other, obj_flags1, of1)) return 0;
-        if (of1 & flags1_missile_hostile) {
-            if (!u32(m, other, obj_data, od) || !u32(m, od, missile_launcher, launcher) ||
-                !u16(m, other, obj_group, og) || !u16(m, subject, obj_group, sg))
-                return 0;
-            if (launcher != subject && og != sg) return -1;
-        }
+template <class Mem> int stance(Mem& m, Obj& subject, const Obj& other) {
+    if (!other.at) return 0;
+    if (other.cls == class_missile && (other.flags1 & flags1_missile_hostile)) {
+        std::uint32_t launcher = 0;
+        if (!u32(m, other.data, missile_launcher, launcher)) return 0;
+        if (launcher != subject.at && other.group != subject.group) return -1;
     }
-    if (!u32(m, subject, obj_flags2, sf2)) return 0;
-    if (sf2 & flags2_neutral) return 0;
-    if (!u16(m, subject, obj_class, sc) || !relation_class(sc)) return 0;
-    if (!u16(m, other, obj_group, og) || std::int16_t(og) < 0) return 0;
-    const std::uint32_t bit = std::uint32_t(1) << (og & 31);
-    if (!u32(m, subject, obj_data, flight) || !u32(m, flight, flight_friend_mask, mask)) return 0;
-    if (mask & bit) return 1;
-    if (!u32(m, flight, flight_foe_mask, mask)) return 0;
-    return (mask & bit) ? -1 : 0;
+    if (subject.flags2 & flags2_neutral) return 0;
+    if (!relation_class(subject.cls)) return 0;
+    if (std::int16_t(other.group) < 0) return 0;
+    const std::uint32_t bit = std::uint32_t(1) << (other.group & 31);
+    if (!load_flight(m, subject)) return 0;
+    if (subject.friend_mask & bit) return 1;
+    return (subject.foe_mask & bit) ? -1 : 0;
 }
 // 0x00450890 (SA_IsEnemy): whether `object` is hostile to the player ship `player`; false on any unreadable field.
-template <class Mem> bool is_enemy(Mem& m, std::uint32_t object, std::uint32_t player) {
-    if (!object || !player) return false;
-    std::uint16_t pc = 0;
-    std::uint32_t flight = 0, enabled = 0;
-    if (!u16(m, player, obj_class, pc)) return false;
-    if (relation_class(pc)) {
-        if (!u32(m, player, obj_data, flight) || !u32(m, flight, flight_enemy_of_enabled, enabled)) return false;
-        if (enabled && stance(m, object, player) < 0) return true;
+template <class Mem> bool is_enemy(Mem& m, Obj& object, Obj& player) {
+    if (!object.at || !player.at) return false;
+    if (relation_class(player.cls)) {
+        if (!load_flight(m, player)) return false;
+        if (player.enemy_of_enabled && stance(m, object, player) < 0) return true;
     }
     return stance(m, player, object) < 0;
 }
+template <class Mem> bool is_enemy(Mem& m, std::uint32_t object, std::uint32_t player) {
+    Obj o, p;
+    return load_header(m, object, o) && load_header(m, player, p) && is_enemy(m, o, p);
+}
 // 0x00419280: max(|dx|,|dy|,|dz|) with the engine's own two's-complement negation (an INT_MIN difference stays
 // negative, i.e. "in range", as the engine computes it).
-template <class Mem> bool chebyshev(Mem& m, std::uint32_t object, std::uint32_t player, std::int32_t& out) {
-    std::uint32_t ro = 0, rp = 0, po[3]{}, pp[3]{};
-    if (!u32(m, object, obj_render, ro) || !u32(m, player, obj_render, rp)) return false;
-    for (unsigned i = 0; i < 3; ++i)
-        if (!u32(m, ro, render_position + 4 * i, po[i]) || !u32(m, rp, render_position + 4 * i, pp[i])) return false;
+template <class Mem> bool chebyshev(Mem& m, Obj& object, Obj& player, std::int32_t& out) {
+    if (!load_position(m, object) || !load_position(m, player)) return false;
     std::int32_t best = 0;
     for (unsigned i = 0; i < 3; ++i) {
-        std::int32_t d = std::int32_t(pp[i] - po[i]);
+        std::int32_t d = std::int32_t(player.position[i] - object.position[i]);
         if (d < 0) d = std::int32_t(0u - std::uint32_t(d));
         if (i == 0 || d > best) best = d;
     }
     out = best;
     return true;
+}
+template <class Mem> bool chebyshev(Mem& m, std::uint32_t object, std::uint32_t player, std::int32_t& out) {
+    Obj o, p;
+    return load_header(m, object, o) && load_header(m, player, p) && chebyshev(m, o, p, out);
 }
 // The active cockpit: the registry's hash lookup of [R+0x10] (chase_fire.cpp::active_cockpit, bounded).
 template <class Mem> bool active_cockpit(Mem& m, std::uint32_t registry, std::uint32_t& cockpit) {
@@ -340,84 +399,116 @@ struct Walk {
          hit_victim = false;
     unsigned visited = 0, owned_near = 0, hostile_orders = 0, cuts = 0;
 };
-// Lists 5, 6, 7 and 10 of the sector, at most list_walk_limit nodes each, stopping as soon as every wanted answer is
-// known. Per node: the next link; with want_hits its Flags2; with want_events its group word, and for a node that is
-// not P: owned (group 10) within alert_range -> Flags2 and, for a class-7 ship, its order and target (one relation test
-// on the target); not owned and class 7 -> its order, and for an attack order on P or on an owned ship within
-// alert_range one relation test on the node itself.
-// The list headers are in the array [sector+0x50] (0x0042c8bf), not in the sector object. `w.status` names the first
-// failed read (lists_base, list_head: the walk ends; node_link: that list ends), else ok.
-template <class Mem> void walk_lists(Mem& m, std::uint32_t sector, std::uint32_t player, Walk& w) {
-    std::uint32_t lists = 0;
-    if (!u32(m, sector, sector_lists, lists) || !lists) {
+// Lists 5, 6, 7 and 10 of the sector, at most list_walk_limit nodes each and walk_node_budget nodes in all, stopping as
+// soon as every wanted answer is known. One span read of the four list headers; per node one header span (link, group,
+// flags, class, flight pointer, render pointer), or only the link while the target search alone is left. With want_hits: its Flags2, and a relation test when it carries the
+// player-hit bit. With want_events, for a node that is not P: owned (group 10) within alert_range -> its Flags2 and,
+// for a class-7 ship, its flight block (order, target) and one relation test on the target; not owned and class 7 ->
+// its flight block, and for an attack order on P or on an owned ship within alert_range one relation test on the node
+// itself. P's header, flight block and position are read once per frame (`player`, from frame()).
+// `lists` is [sector+0x50], the array of the 12-byte list headers (0x0042c8bf), not the sector object. `w.status`
+// names the first failed read (lists_base, list_head: the walk ends; node_link: that list ends), else ok. A cut list
+// and a spent budget each add one to `w.cuts`; the budget ends the walk.
+template <class Mem> void walk_lists(Mem& m, std::uint32_t lists, Obj& player, Walk& w) {
+    if (!lists) {
         w.status = WalkStatus::lists_base;
+        return;
+    }
+    constexpr unsigned heads_begin = class_5 * list_stride, heads_end = class_missile * list_stride + 4;
+    unsigned char heads[heads_end - heads_begin];
+    if (!span(m, lists, heads_begin, heads, sizeof heads)) {
+        w.status = WalkStatus::list_head;
         return;
     }
     w.status = WalkStatus::ok;
     for (unsigned c : walked_classes) {
-        std::uint32_t node = 0;
-        if (!u32(m, lists, c * list_stride, node)) {
-            w.status = WalkStatus::list_head;
-            return;
-        }
+        std::uint32_t node = le32(heads + (c * list_stride - heads_begin));
         unsigned i = 0;
         for (; i < list_walk_limit && node; ++i) {
-            std::uint32_t next = 0;
-            if (!u32(m, node, obj_next, next)) {
-                if (w.status == WalkStatus::ok) w.status = WalkStatus::node_link;
+            Obj o;
+            if (!w.want_events && !w.want_hits && node != w.target) {
+                // Only the target search is left: this node needs nothing but its link.
+                std::uint32_t next = 0;
+                if (!u32(m, node, obj_next, next)) {
+                    if (w.status == WalkStatus::ok) w.status = WalkStatus::node_link;
+                    break;
+                }
+                if (!next) break;
+                if (w.visited >= walk_node_budget) {
+                    ++w.cuts;
+                    return;
+                }
+                ++w.visited;
+                node = next;
+                continue;
+            }
+            if (!load_header(m, node, o)) {
+                // The terminator need not carry a whole header: its link alone decides (0 = the list's normal end).
+                std::uint32_t next = 1;
+                if ((!u32(m, node, obj_next, next) || next) && w.status == WalkStatus::ok)
+                    w.status = WalkStatus::node_link;
                 break;
             }
-            if (!next) break; // the last node is the terminator
+            if (!o.next) break; // the last node is the terminator
+            if (w.visited >= walk_node_budget) {
+                ++w.cuts;
+                return;
+            }
             ++w.visited;
             if (w.target && node == w.target) {
                 w.target_found = true;
-                w.target_hostile = is_enemy(m, node, player);
+                w.target_hostile = is_enemy(m, o, player);
                 w.target = 0;
             }
-            if (w.want_hits && node != player) {
-                std::uint32_t flags2 = 0;
-                if (u32(m, node, obj_flags2, flags2) && (flags2 & flags2_player_hit) && is_enemy(m, node, player)) {
-                    w.hit_victim = true;
-                    w.want_hits = false;
-                }
+            if (w.want_hits && node != player.at && (o.flags2 & flags2_player_hit) && is_enemy(m, o, player)) {
+                w.hit_victim = true;
+                w.want_hits = false;
             }
-            if (w.want_events && node != player) {
-                std::uint16_t group = 0, cls = 0, order = 0;
-                std::uint32_t flags2 = 0, flight = 0, target = 0;
+            if (w.want_events && node != player.at) {
                 std::int32_t distance = 0;
-                if (u16(m, node, obj_group, group) && u16(m, node, obj_class, cls)) {
-                    if (group == player_group) {
-                        if (chebyshev(m, node, player, distance) && distance < alert_range) {
-                            ++w.owned_near;
-                            if (u32(m, node, obj_flags2, flags2) && (flags2 & flags2_hit))
-                                w.owned_hit = true;
-                            else if (cls == class_ship && u32(m, node, obj_data, flight) &&
-                                     u16(m, flight, flight_order, order) && is_attack_order(order) &&
-                                     u32(m, flight, flight_target, target) && target && is_enemy(m, target, player))
-                                w.owned_attack = true;
+                if (o.group == player_group) {
+                    if (chebyshev(m, o, player, distance) && distance < alert_range) {
+                        ++w.owned_near;
+                        if (o.flags2 & flags2_hit) {
+                            w.owned_hit = true;
+                        } else if (o.cls == class_ship && load_flight(m, o) && is_attack_order(o.order) && o.target) {
+                            Obj target;
+                            if (load_header(m, o.target, target) && is_enemy(m, target, player)) w.owned_attack = true;
                         }
-                    } else if (cls == class_ship && u32(m, node, obj_data, flight) &&
-                               u16(m, flight, flight_order, order) && is_attack_order(order) &&
-                               u32(m, flight, flight_target, target) && target) {
-                        std::uint16_t target_group = 0;
-                        const bool on_player = target == player;
-                        const bool on_owned = !on_player && u16(m, target, obj_group, target_group) &&
-                                              target_group == player_group &&
-                                              chebyshev(m, target, player, distance) && distance < alert_range;
-                        if (on_player || on_owned) {
-                            ++w.hostile_orders;
-                            if (is_enemy(m, node, player)) w.hostile_order = true;
-                        }
+                    }
+                } else if (o.cls == class_ship && load_flight(m, o) && is_attack_order(o.order) && o.target) {
+                    Obj target;
+                    const bool on_player = o.target == player.at;
+                    const bool on_owned = !on_player && load_header(m, o.target, target) &&
+                                          target.group == player_group && chebyshev(m, target, player, distance) &&
+                                          distance < alert_range;
+                    if (on_player || on_owned) {
+                        ++w.hostile_orders;
+                        if (is_enemy(m, o, player)) w.hostile_order = true;
                     }
                 }
                 if (w.owned_hit || w.owned_attack || w.hostile_order) w.want_events = false;
             }
             if (!w.target && !w.want_events && !w.want_hits) return;
-            node = next;
+            node = o.next;
         }
         if (i == list_walk_limit) ++w.cuts;
     }
 }
+// Counts the validated reads of one frame (the rows' reads=); no timing.
+template <class Mem> struct Counted {
+    Mem& m;
+    unsigned reads = 0;
+    bool read(std::uint32_t at, void* out, unsigned n) {
+        ++reads;
+        return m.read(at, out, n);
+    }
+};
+// An alert episode: consecutive decided frames with a nonzero vanilla level (the walk runs on each).
+struct Episode {
+    unsigned frames = 0, reads_max = 0, visited_max = 0, cuts = 0;
+    std::uint64_t reads = 0, visited = 0;
+};
 struct State {
     bool stamped = false, baseline = false, episode = false;
     bool rebaseline = false; // set by the caller on a save-load event: the next frame's counters are a baseline
@@ -426,6 +517,8 @@ struct State {
     unsigned last_reason = 0, episode_frames = 0;
     std::uint32_t filtered_prev = 0;
     FireStatus last_fire = FireStatus::none; // rule (a) on the last frame a fire counter rose
+    bool alert = false;
+    Episode alert_episode;
 };
 enum class Cause : unsigned { none, stamp, held, expired, newer, range };
 struct Frame {
@@ -436,22 +529,38 @@ struct Frame {
     Cause cause = Cause::none; // why `engaged` is what it is
     bool edge = false, suppressed_start = false, suppressed_end = false;
     unsigned episode_frames = 0; // with suppressed_end: the episode's length
+    unsigned reads = 0;          // validated reads this frame (image32 loads not counted)
+    bool alert_end = false;      // the alert episode ended on this frame (vanilla back to 0); `alert` is its summary
+    Episode alert;
     Walk walk;
 };
 // One frame at the site. The vanilla level stays the precondition: [R+8] is only ever lowered, to 0, and only when
-// the hold has run out; stamps are taken every frame the inputs allow.
+// the hold has run out; stamps are taken every frame the inputs allow. A quiet frame makes six validated reads
+// ([R+4..R+0xc), cfg+0x714..0x71c, M+0x40..0x50, cfg+0xcc..0xd4, P's header, the parent's +0x48..0x54) and two
+// image loads (cfg, M).
 template <class Mem>
 Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std::uint32_t hold_ms) {
+    static_assert(registry_level == registry_committed + 4 && cfg_clock == cfg_step + 4 &&
+                      root_missile_fired == root_laser_fired + 4 && root_laser_hits == root_laser_fired + 8 &&
+                      root_missile_hits == root_laser_fired + 12 && cfg_seta_b == cfg_seta_a + 4 &&
+                      sector_lists >= obj_class + 2,
+                  "the frame's spans assume adjacent fields");
     Frame f;
-    std::uint32_t cfg = 0, root = 0, laser = 0, missile = 0, laser_hits = 0, missile_hits = 0, seta_a = 0, seta_b = 0;
-    if (!u32(m, registry, registry_level, f.vanilla) || !u32(m, registry, registry_committed, f.committed) ||
-        !u32(m, cfg_va, 0, cfg) || !u32(m, cfg, cfg_clock, f.now) || !u32(m, cfg, cfg_step, f.step) ||
-        !u32(m, player_root_va, 0, root) || !u32(m, root, root_laser_fired, laser) ||
-        !u32(m, root, root_missile_fired, missile) || !u32(m, root, root_laser_hits, laser_hits) ||
-        !u32(m, root, root_missile_hits, missile_hits))
+    Counted<Mem> c{m};
+    std::uint32_t level[2]{}, clock[2]{}, counters[4]{}, seta[2]{};
+    const std::uint32_t cfg = m.image32(cfg_va), root = m.image32(player_root_va);
+    if (!span(c, registry, registry_committed, level, 8) || !span(c, cfg, cfg_step, clock, 8) ||
+        !span(c, root, root_laser_fired, counters, 16)) {
+        f.reads = c.reads;
         return f;
-    if (u32(m, cfg, cfg_seta_a, seta_a) && u32(m, cfg, cfg_seta_b, seta_b))
-        f.seta = std::uint32_t((std::uint64_t(seta_a) * seta_b) >> 16);
+    }
+    f.committed = level[0];
+    f.vanilla = level[1];
+    f.step = clock[0];
+    f.now = clock[1];
+    const std::uint32_t laser = counters[0], missile = counters[1], laser_hits = counters[2],
+                        missile_hits = counters[3];
+    if (span(c, cfg, cfg_seta_a, seta, 8)) f.seta = std::uint32_t((std::uint64_t(seta[0]) * seta[1]) >> 16);
     f.ok = true;
     // Counters: statistics restored by a save load. The first sample, a save-load event (rebaseline), a changed
     // player ship pointer (a load rebuilds the universe; a ship change is harmless) and a clock that went backwards
@@ -467,19 +576,24 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
     s.now_prev = f.now;
     s.baseline = true;
     s.rebaseline = false;
-    std::uint32_t sector = 0, flags2 = 0;
-    std::uint16_t sector_class = 0;
+    // P's header once per frame (its flight block and position on the walk's first use); the parent's class word
+    // and list array pointer in one span.
+    Obj p;
+    std::uint32_t lists = 0;
+    unsigned char parent[sector_lists + 4 - obj_class];
     if (!player)
         f.walk.status = WalkStatus::no_player;
-    else if (!u32(m, player, obj_parent, sector) || !sector)
+    else if (!load_header(c, player, p) || !p.parent)
         f.walk.status = WalkStatus::player_parent;
-    else if (!u16(m, sector, obj_class, sector_class) || sector_class != class_sector)
+    else if (!span(c, p.parent, obj_class, parent, sizeof parent) || le16(parent) != class_sector)
         f.walk.status = WalkStatus::parent_class;
-    else
+    else {
         f.in_sector = true;
+        lists = le32(parent + (sector_lists - obj_class));
+    }
     // (b) the player ship was hit this frame; (d) the walk or the missile homing update raised level 2 (a hostile
     // missile on the player).
-    if (player && u32(m, player, obj_flags2, flags2) && (flags2 & flags2_hit)) f.reasons |= reason_player_hit;
+    if (p.at && (p.flags2 & flags2_hit)) f.reasons |= reason_player_hit;
     if (f.vanilla == 2) f.reasons |= reason_missile;
     // One bounded walk when wanted: (a) the player fired at a selected hostile target (the target is looked up in
     // the lists, never dereferenced from the cockpit pointer alone); (e) a player hit counter rose (the victim with
@@ -489,9 +603,9 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
     if (f.in_sector) {
         std::uint32_t cockpit = 0, target = 0;
         if (f.fired) {
-            if (!active_cockpit(m, registry, cockpit))
+            if (!active_cockpit(c, registry, cockpit))
                 fire = FireStatus::cockpit;
-            else if (!u32(m, cockpit, cockpit_target, target) || !target)
+            else if (!u32(c, cockpit, cockpit_target, target) || !target)
                 fire = FireStatus::no_target;
             else if (target == player)
                 fire = FireStatus::self_target;
@@ -500,7 +614,7 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
         }
         f.walk.want_events = f.vanilla != 0;
         f.walk.want_hits = f.hit;
-        if (f.walk.target || f.walk.want_events || f.walk.want_hits) walk_lists(m, sector, player, f.walk);
+        if (f.walk.target || f.walk.want_events || f.walk.want_hits) walk_lists(c, lists, p, f.walk);
         if (f.walk.target_found && f.walk.target_hostile) f.reasons |= reason_fire;
         if (f.fired && f.walk.target_found) fire = f.walk.target_hostile ? FireStatus::ok : FireStatus::not_hostile;
         else if (f.fired && f.walk.target) fire = FireStatus::not_found; // wanted, not met (or the walk failed)
@@ -545,6 +659,22 @@ Frame frame(Mem& m, State& s, std::uint32_t registry, std::uint32_t player, std:
         f.episode_frames = s.episode_frames;
     }
     s.episode = suppressed;
+    f.reads = c.reads;
+    const bool alert = f.vanilla != 0;
+    if (alert) {
+        Episode& e = s.alert_episode;
+        ++e.frames;
+        e.reads += f.reads;
+        e.visited += f.walk.visited;
+        e.cuts += f.walk.cuts;
+        if (f.reads > e.reads_max) e.reads_max = f.reads;
+        if (f.walk.visited > e.visited_max) e.visited_max = f.walk.visited;
+    } else if (s.alert) {
+        f.alert_end = true;
+        f.alert = s.alert_episode;
+        s.alert_episode = Episode{};
+    }
+    s.alert = alert;
     return f;
 }
 inline const char* cause_name(Cause c) {
