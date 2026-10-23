@@ -742,3 +742,211 @@ rejected exception environments, five tail depths/eight TOP rotations,
 CPU preservation. No implementation decision or performance claim follows
 until those checks and the complete wrapper cost are evaluated. Raw disassembly
 and downloaded/extracted manual content remain local and untracked.
+
+## Combat `prepare` span: the instanced-batch path (2026-10-23)
+
+Question: which code inside `view_submit` costs the ~21 ms per frame that the residual `prepare` span
+(last `0x004c0150` pass end → next `0x004c1eab`) shows in the run193 pirate-vs-patrol battle, when every
+existing stamp inside the span is flat. Static study of the same X3AP.exe (SHA-256 `fdbf3418…f8ab`,
+re-checked on `/mnt/c/X3/X3AP.exe`), Ghidra 12.1.4 headless on `~/x3-ghidra-research` (`X3DecompileFunctions.java`,
+`-readOnly -noanalysis`) and `i686-w64-mingw32-objdump`; raw output stays local. The flight figures are from
+the one log session `20261023-173500` in `C:\X3\x3m.log` (20 windows of 300 frames), queried by
+`verification/results/run193-combat-triage/light_vs_prepare.py`; the site pins by
+`verification/results/run193-combat-triage/instanced_path_sites.py` (14/14 PASS). Marks as in the rest of the note.
+
+### What `view_submit` contains, and what it does not
+
+`view_submit` (`0x00472270` → `0x004722c8`) is, per layer `scene[0x4c]..scene[0x50]`: `0x0047e920` (twice
+when `view[0x270] & 0x40000`, the second with flag 4), the queue sort `0x0047e620`, the drain `0x0047e6e0`
+**[s]**. The cull/LOD pass `0x0047cfe0` is **not** in it: its only frame-loop caller is the walker
+`0x0047e780` at `0x0047226b`, inside `view_setup` (`0x0047224c` → `0x00472270`); the other callers are the
+lens block `0x00472471` and the env-map driver `0x0047e8c2` **[s]**. `view_setup` measured 576–777 µs in
+every battle window whatever `prepare` did (628 µs in the 235-µs window at frame 2700) **[m]**, so the cull
+pass is bounded and flat. Light selection `0x0047d5e0` (the `light_phases` stamps were in this session):
+79–173 calls and 4–14 µs per frame **[m]**, closed.
+
+### Q1. Callees of `0x0047e920` and `0x0047d9c0`
+
+Neither routine has an indirect call or a jump table: `0x0047e920` has 11 direct `e8` calls, `0x0047d9c0` 32
+**[s]**. Node kinds are told apart by flag tests on `+0x12c`/`+0x130`/part `+0x60`, not by a vtable, so there
+is no per-class virtual dispatch to time.
+
+| Caller | Call site(s) | Callee | Rate | Role |
+| --- | --- | --- | --- | --- |
+| `0x0047e920` | `0x0047e958` | `0x0046cde0` (EAX = scene) | per call (view·layer) | reset every batch: flags `&~3`, count `+0x24 = 0`, per material `0x004bf8e0` (vertex count `+0xc = 0`) |
+| | `0x0047e9c2` | `0x0046cd40` (EAX = node) | per root node, pass 1, when `+0x130 & 0x800000` | instancing eligibility: every tri-group of every part has ≤ 0x37 triangles; on failure `0x0047e9cb` clears `0x800000` |
+| | `0x0047e9da` | `0x0046ca80` (EAX = scene, arg node) | per eligible root, pass 1 | linear lookup of the batch for body `+0x140` in `scene+0x40`, create (`malloc 0x3c`, body walk) on a miss; `+0x24 += 1` |
+| | `0x0047e9f1` | `0x0046ce80` (EAX = scene) | per call | priority `+0x08 = verts·100 + count` for count ≥ 2, insertion sort `0x004efac0` (descending), select (`+0x10 |= 1`) while Σ verts·count ≤ `0x78f0` |
+| | `0x0047ea1b` | `0x0046cef0` (stdcall scene, view, node; `ret 0xc`) | per root node in the layer, pass 2 | instance collection (below); nonzero = taken, the node is not traversed |
+| | `0x0047ea91`, `0x0047ea99`, `0x0047eaa4` | `sqrtf 0x00412440`, `_ftol2 0x0052b5d0`, radius `0x00488170` | per root node when `view[0x270] & 0x10000` | distance cull: near test distance + radius < `view+0x36c`, far test distance − radius > `view+0x370` (raised to at least `0x5f5e100` / `0x1dcd6500` when the detail setting `[0x00606f34]+0x768` is ≥ 2 / ≥ 3) |
+| | `0x0047eb32`, `0x0047eb63` | `0x0047d9c0` (thiscall node; scene, `[0x00608518]+0x4c`, view; `ret 0xc`) | per root node drawn | the recursive traversal |
+| | `0x0047eb7a` | `0x0046d080` (stdcall scene, view; `ret 8`) | per call | instanced batch submission (below) |
+| `0x0047d9c0` | `0x0047d9f0` | body lookup `0x004863c0` | per node | hash table `[0x00608518]+0x14`, loader only on a miss |
+| | `0x0047da20`..`0x0047dca9` | `0x00412490`, `0x0042f970` ×2, `0x0040e800`, `0x004f17f0`, `0x00488f60` | per node with `+0x12c & 0x20` | camera-facing basis; **linear search of the per-camera list `camera+0x780`** for the node, `0x00488f60` appends a `0x40` record on a miss |
+| | `0x0047dd18`..`0x0047dd87`, `0x0047dece` | `0x004f17f0`, `0x004f0270`, `0x0042f970` | per node with `+0x12c & 0x4000 / 0x10000000 / 0x200` | the other orientation variants |
+| | `0x0047dff1` | `0x0047d5e0` | per node (gated) | light selection, measured above |
+| | `0x0047dff6` | `0x004bdea0` | per node | writes the 8 selected light slots into each light's record |
+| | `0x0047e002` | `0x004bdee0` | per node | world matrix (stamped, flat) |
+| | `0x0047e015` | `0x004f66e0` (cdecl count, array) | per node | texture-animation step; loops bounded by the instance count `+0x1a8` and each Animations row's frame count, catch-up by division |
+| | `0x0047e076` | `0x004c4fc0` (ECX = part; node, view; caller cleans 8) | per immediate part | wrapper; loops the 8 light slots `[0x00608518]+0x6288`; calls `0x004c0150` at `0x004c5228` |
+| | `0x0047e094`, `0x0047e0aa`, `0x0047e0e2` | `0x004f0da0`, `0x004f0c00`, pool `0x0047b2e0` | per deferred part | depth key and queue entry |
+| | `0x0047e287`..`0x0047e510` | `malloc`, `0x004b8b60`, `memset`, `0x00412450`, `0x00469a30` | per lens-flare node | R4 (submit-phase walk, flat) |
+| | `0x0047e5e5`, `0x0047e600` | `0x0047d9c0` | per child | recursion |
+
+### The instanced-batch path (not covered by any stamp)
+
+Bodies whose every tri-group has ≤ 55 triangles and whose node carries `+0x130 & 0x800000` (or `+0x12c & 0x800`,
+or view `0x8000` with `+0x12c & 0x4000000`) are not traversed: they are collected into one software-instanced
+draw per (body, material) **[s]**. Every bolt, beam and flak node carries `+0x130 & 0x20800000`
+([lod-selection.md](lod-selection.md), "Projectile nodes"), so **every projectile goes this way** **[s]**, which is
+why Run 75 B saw ~750 more bullet primitives and no extra draw call.
+
+Records **[s]**: the scene's batch list `scene+0x40` (`0x3c` bytes: `+0x0c` body id, `+0x10` flags 1 selected /
+2 collected, `+0x14` node `+0x12c`, `+0x18` node `+0x130`, `+0x1c` body `+0x50`, `+0x20` capacity 0x400 / 0x200 /
+0x100 instances, `+0x24` instances this call, `+0x28` vertices per instance, `+0x2c` accepted, `+0x30` material
+list). A material record (`0x1c` bytes, `0x0046c9f0`, linear lookup by the material id at `+0x08`) holds at
+`+0x18` a `0x10` record `{IDirect3DVertexBuffer9*, system copy, bytes, vertex count}`.
+
+Collection, `0x0046cef0` → per tri-group `0x004807d0`, `0x0046c9f0`, `0x004bf960` (`0x0046d012`): on first use
+`CreateVertexBuffer` (device slot 26 at `0x004bfa41`) with Usage `0x208` (DYNAMIC | WRITEONLY; `0x218` under
+software VP), pool DEFAULT, `capacity × vertices × 24` bytes, plus a same-size `malloc`'d system copy; then per
+instance the scene-space matrix `0x004c64f0` (or the camera-relative `0x004c66d0` for `+0x130 & 0x10000000`) and,
+per triangle, three `D3DXVec3Transform` (`0x004faf06`, call `0x004bfbf3`) into the system copy, plus UV and
+colour; with material flag `0x8000000` (TexAnim) or node `+0x130 & 0x1000000` a per-vertex walk of the node's
+texture-animation instances. Batches persist: `0x0046d0d0` (release VB, free copy, unlink) is reached only from
+the `0x0046ca80` failure path, body unload `0x0046d140`, scene teardown `0x00489b44` and device release
+`0x004c61f6`, so buffer creation is one-time **[s]**.
+
+Submission, `0x0046d080` at the end of **every** `0x0047e920` call → per selected batch, per material
+`0x004bfd40` (`0x0046d0a7`): `Lock(0, whole bytes, D3DLOCK_DISCARD)` (`0x004bfdd9`, VB slot 11), `memcpy` of
+`count × 24` bytes from the system copy (`0x004bfdf9`), `Unlock` (`0x004bfe09`), technique by name / find valid /
+set, two `GetParameterByName` by string (`t_DiffuseTexture`, `g_mViewProjection`), `D3DXMatrixMultiply`,
+`SetMatrix`, `Begin` (`0x004c0016`), three engine-wrapper binds (`0x004c002e`, `0x004c0047`, `0x004c005e`),
+`BeginPass` (`0x004c006c`), `DrawPrimitive(TRIANGLELIST, 0, count/3)` (`0x004c008a`), `EndPass`, `End`
+(`0x004c00a2`). It never enters `0x004c0150`, so `pass_phases`, `submit_phases` and the residual `setup`
+never see it; its whole wall time lands in `prepare` **[s]**.
+
+### Q2. Queries, sorts, per-projectile work, list walks reachable from the traversal
+
+- Collision, ray or sector queries: none. The callee closure above (including `0x004863c0`'s miss path,
+  which loads a body) contains no collision, ray or sector routine **[s]**.
+- Sorts: `0x0047e620` (stamped), `0x004efac0` (insertion sort of the batch list, per `0x0047e920` call, quadratic
+  in distinct instanced bodies), `_qsort` in `0x0047d5e0` (measured) **[s]**.
+- Per-projectile work: the instanced path, per projectile per `0x0047e920` call: `0x0046cd40` twice (pass 1
+  and through `0x0046ce20`), `0x0046ca80` twice, the per-tri-group lookups, `0x004bf960` (3 transforms per
+  triangle); per batch the Lock / copy / Unlock and one effect draw **[s]**.
+- Linear searches: `view+0x2a0` (R4, flat), **`camera+0x780`** (per `+0x12c & 0x20` node; this path neither
+  removes records nor bounds the list; its population and the remover were not traced) **[s]**, the batch
+  list and the material list (both bounded by distinct bodies/materials), the light list `[0x00608518]+0x5e8c`
+  (≤ 255, measured flat).
+
+### Q3. Loops whose trip count follows combat state
+
+| Routine | Loop | Trip count source | Grows with |
+| --- | --- | --- | --- |
+| `0x0047e920` | both root loops | the scene's root list `scene+8` | every bolt, missile, debris root node [s] |
+| `0x0046cef0` → `0x004bf960` | per tri-group, per triangle × 3 | `batch+0x24` instances × body triangles | projectiles in the layer [s] |
+| `0x004bf960` | per-vertex texture-animation walk | node `+0x1a8` | TexAnim materials only [s] |
+| `0x004bfd40` | `memcpy` | `[rec+0x0c]` vertices | projectiles [s] |
+| `0x0046ce80`, `0x0046cde0`, `0x0046d080`, `0x004efac0` | batch list | distinct instanced bodies | bolt types in flight [s] |
+| `0x0047d9c0` | `camera+0x780` search | registered facing nodes | not established [s] |
+| `0x0047d5e0` | light list | `[0x00608518]+0x5e8c` | lights (measured flat) [m] |
+
+### Measured against the bullet batch (session `20261023-173500`)
+
+`bolt_footprint` rows count the proxy's view of the same draw (`0x004c008a`): `draws` = admitted bullet-batch
+draws, i.e. `0x004bfd40` calls, each with one engine Lock/Unlock of its batch buffer; `instances` = bullet
+instances in them; `us` = the footprint's draw-time CPU. (`locks` there counts the proxy's **own** 147,456-byte
+replacement buffer, `buffer_bytes`, one per expanded draw.) One engine bullet buffer is visible in the log:
+`bolt_footprint_refused … primitives=420 stream0_bytes=2211840`, i.e. 1024 instances × 90 vertices × 24 **[m]**.
+
+| Frames ending | `prepare` p50 µs | bullet draws / frame | instances / frame | footprint draw µs / frame |
+| --- | --- | --- | --- | --- |
+| 300–900 (calm) | 235–241 | 0 | 0 | 0 |
+| 1200 | 21,573 | 4.15 | 40.8 | 79 |
+| 1500 | 18,712 | 5.56 | 45.8 | 89 |
+| 1800 | 15,882 | 5.82 | 39.9 | 75 |
+| 2700 (battle sector, 8 views) | 235 | 0.59 | 3.6 | 7 |
+| 4800 | 6,098 | 2.61 | 23.0 | 37 |
+| 5400–6000 (calm) | 235–238 | 0 | 0 | 0 |
+
+r(prepare, draws) = 0.85, r(prepare, instances) = 0.89, n = 20 **[m]** (p50 against window means). The frame-2700
+window is the control: same sector, same 8 views, `view_setup` 628 µs, 120 world-matrix calls, but almost no
+bullet batch, and `prepare` is back at the calm 235 µs **[m]**. View count, scene node count and draw count
+cannot explain it there; the bullet batch can.
+
+### Q4. Whole-call timer sites
+
+All pinned by `instanced_path_sites.py` (bytes, `e8` target, instruction boundaries of a linear sweep, no direct
+branch into a site, no abs32 dword pointing inside one) **[s]**. A call-site redirect uses
+`engine_patch::claim_call` (5 bytes, `e8 rel32`); a mid-function stamp is a `SiteSpec` with the displaced
+instructions replayed in the tail.
+
+| Target | Site | Bytes | Contract at the site | Conflicts |
+| --- | --- | --- | --- | --- |
+| `0x0046d080` whole call | `0x0047eb7a` | `e8 01 e5 fe ff` | stdcall (scene EBX, view EDI pushed), callee pops 8; after return the caller pops ESI/EBP/EBX/ECX and `ret 0xc`: EAX/ECX/EDX/flags dead. Per `0x0047e920` call. Not reentrant | none |
+| `0x004bfd40` per batch | `0x0046d0a7` | `e8 94 2c 05 00` | cdecl 4 args, caller cleans `0x10`; EAX ignored, ECX/EDX dead, EBX/EBP/ESI/EDI callee-saved; per selected (batch, material) | none |
+| Lock span | `0x004bfdba` → `0x004bfde3` | `68 00 20 00 00` / `8b 43 0c 8b 53 04` | begin: EDX live (stored at `0x004bfdbf`), EAX/ECX reloaded before use, flags dead, the displaced `push` replays in the tail; end: after the `jl`, flags dead (next write `add ecx,ecx`), EAX/ECX/EDX overwritten. The Lock-failure exit `0x004c00b4` leaves the pair open (count it unmatched) | none |
+| `memcpy` | `0x004bfde3` → `0x004bfdfe` | / `8b 03 8b 08 8b 51 30` | end: after the CRT return, EAX/ECX/EDX overwritten by the displaced loads, flags dead (`add esp,0xc`) | none |
+| Unlock span | `0x004bfdfe` → `0x004bfe0b` | / `8b 7d 14 3b fe` | end: EAX (HRESULT) dead, the displaced `cmp edi,esi` re-runs in the tail before the `je` | none |
+| `0x0046cef0` per root | `0x0047ea1b` | `e8 d0 e4 fe ff` | stdcall 3 args, `ret 0xc`; EAX live (`test eax,eax`); ECX/EDX dead. Rate = root nodes × calls (thousands per frame): use a count plus a sampled clock, or bracket it as `0x0047e920` minus roots minus `0x0046d080` | none |
+| `0x0047e920` whole call | `0x00472295`, `0x004722a8`, `0x00472484` (+ env-map `0x0047e8e0`, `0x0047e8e9`) | `e8 86 c6 00 00` … | **EDI = view is a register input** (`test [edi+0x270]`), three stack args, `ret 0xc`; EAX dead | adjacent to `frame_phase_view_submit_begin` `0x00472270` and `submit_phase_sort_return_a` `0x004722b4`, disjoint |
+| `0x0047d9c0` per root | `0x0047eb32`, `0x0047eb63` | `e8 89 ee ff ff` … | thiscall ECX = node, three stack args, `ret 0xc`; inclusive of children and `0x004c0150`; recursive inside, not at these sites | none |
+| `0x004f66e0` | entry `0x004f66e0` (6: `push ebp; mov ebp,esp; and esp,-16`) and single exit `0x004f6fab` (7: `pop edi … ret`, itself a branch target, nothing inside) | | cdecl 2 args; AL is the result and must survive the exit stamp | the call sites `0x0047e015` / `0x0047e722` lie inside `ui_scale`'s pinned caller windows (`0x0047e002`+31, `0x0047e70c`+34; install refuses), so time at the entry/exit instead. `music_keep` sites end at `0x004f66c3` |
+| `0x004c4fc0` outside `0x004c0150` | `0x0047e076`, `0x0047e769` | `e8 45 6f 04 00`, `e8 52 68 04 00` | ECX = part is a register input, two stack args, caller cleans 8, EAX dead; installs an SEH frame (an exception leaves the pair open). Own time = whole − `submit_phase_material` | none at the call sites; `submit_phase_material_return` `0x004c5230` and `sun_light_poll` `0x004c5030`/`0x004c508f` are inside the callee |
+| `0x0047cfe0` | — | | not in `view_submit`; `view_setup` already brackets it (flat, above). The walker's call `0x0047e7a5` is pinned by `lens_flare_cull` (`0x0047e7a0`, 10 bytes); the census/small-parts claims sit inside at `0x0047d258`, `0x0047d2a2`, `0x0047d528` | lens_flare_cull |
+
+Threads: all of this runs on the render thread that owns the frame stamps; none of the new sites is recursive.
+Every stub must preserve all GPRs except where the table says a register is dead, EFLAGS where it says
+live, and LastError; no x87 value is live across any of these calls (MSVC calls with an empty x87 stack).
+
+### Q5. Best-evidence candidate and the shape of a fix
+
+**Established:** the instanced-batch path (`0x0046cef0` collection per projectile, `0x0046d080` → `0x004bfd40`
+submission per batch per `0x0047e920` call) is the only code inside `view_submit` whose work follows projectile
+count, and it is invisible to every existing stamp **[s]**. `prepare` follows the bullet batch's locks and
+instances across 20 windows and returns to the calm figure in the one battle window without bullets **[m]**.
+
+**Inferred:** the engine's own arithmetic in that path is small. Even if all ~40 instances per frame were the
+90-vertex body, that is ~3,600 `D3DXVec3Transform` calls and an ~86 KB copy into the mapping per frame: about a
+tenth of a millisecond, not twenty **[e]**. The implied cost is 1.6–5.2 ms **per bullet draw** in the heavy
+windows (`prepare` / draws) **[i]**. What is not engine arithmetic is inside `0x004bfdba..0x004bfe0b`: the driver's
+`Lock(DISCARD)`, and the proxy's ownership observation of the marked bullet buffer, which writes the step-D
+sentinel into the mapping at Lock and at Unlock **reads the mapping back** (`locked_prefix_core.h`
+`scan`). On native D3D9 a DYNAMIC | WRITEONLY mapping is write-combined, so that read is uncached;
+[bolt-footprint.md](../architecture/bolt-footprint.md) lists it as unmeasured. When a lock writes more
+vertices than the previous lock of the same buffer, no sentinel lies past the new prefix and the scan runs to
+the window end (6,144 vertices, 147 KB). With 4–6 bullet draws a frame and counts that change from lock to
+lock, that happens on most frames with bolts. The read volume is then the written prefixes (up to ~86 KB a
+frame at 40 instances of the 90-vertex body) plus 147 KB per window-end scan. Two window-end scans a frame at
+~18 MB/s of uncached read would make the 21 ms **[i]**. The alternative inside the same span is a driver stall in
+`Lock`. The Lock-span and Unlock-span pairs above tell the two apart. The `locked_prefix_frame` row, which
+already carries `scan_us`, `sentinel_us` and `window_end_scans`, is logged only with
+`X3M_SCREEN_EMISSION_BOUND`, not for `bolt_footprint_only` (the source this session ran, log line 237).
+A no-build check is the same battle with `bolt_footprint = 0`, which turns the scan off (`loader.cpp`,
+`prefix_requested`).
+
+Fix shapes the code supports:
+
+- If the Unlock read dominates (proxy side, not an engine patch): read the engine's cached system copy
+  (`[rec+0x04]`, `count = [rec+0x0c]`, both live at the `memcpy` `0x004bfdf9`) instead of the mapping (already
+  named in bolt-footprint.md), or stop the scan at the written count rather than at a sentinel.
+- Engine side, cache across passes: the instance vertices are scene-space (matrix `0x004c64f0` from node and
+  `scene+0x2c`; only `+0x130 & 0x10000000` nodes are camera-relative), but `0x0046cde0` resets and `0x0046cef0`
+  recollects them on every `0x0047e920` call, and `0x004bfd40` re-locks and re-uploads. A per-frame
+  (scene, layer, batch) generation would let later traversals skip the collection and the lock **[i]**.
+- Cache a result across passes: `0x0046cd40`'s eligibility is a body property, recomputed per node twice per
+  call **[s]**; small, since a failing node loses `0x800000` once.
+- Skip work for a node class: clearing `+0x130 & 0x800000` would send projectiles through the per-node
+  traversal and add draws. That is not an optimisation.
+
+### Not established
+
+- The split of the ~21 ms between `Lock`, the copy, `Unlock` (with the proxy's sentinel/scan) and the effect
+  draw in `0x004bfd40`. No timing of the instanced path exists; the four pairs above are the measurement.
+- Whether the native driver maps the bullet buffer write-combined in system memory or in host-visible VRAM.
+  Either is uncached for reads. Only the uncached read rate decides the scan's cost.
+- `camera+0x780`: who removes records and how long the list gets in combat.
+- The exact per-frame number of `0x0047e920` calls that see the bullet batch (4–6 bullet draws per frame
+  measured; which views, layers and bullet bodies they belong to was not traced), and how often a lock's count
+  exceeds the same buffer's previous one (`window_end_scans`).
