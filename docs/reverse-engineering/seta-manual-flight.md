@@ -129,7 +129,7 @@ consumer.**
   `FlushInstructionCache`, as `fov.cpp`/`lod_occlusion.cpp` do for their in-place patches. `0x0041211d` lies in the
   aligned qword `0x00412118`, so `write_code` takes the `lock cmpxchg8b` path. Restore writes `74`.
 * **Boundaries and entries.** `0x0041211d` is an instruction start, and the rel8 is unchanged. The only branches into
-  `0x0041210d..0x00412136` are the eight `jne → 0x0041210d` and the two `je → 0x00412136`. No `.text` dword holds an
+  `0x0041210d..0x00412136` are the eight `jne → 0x0041210d` and the two `je → 0x00412136`. No `.text` dword (study scan; `.rdata`, `.data` and `.rsrc` were scanned once in review on 2026-10-24, 0 hits) holds an
   address in that range. In the patched image every instruction start from `0x004120bb` to `0x00412135` is
   unchanged, and `0x0041211d` decodes as `jmp 0x00412136`.
 * **Side effects.** None beyond skipping the call. The patched path is the engine's own `cfg+0xcc == 0x10000`

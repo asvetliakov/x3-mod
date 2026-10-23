@@ -20,7 +20,7 @@ flags is set and the warp `cfg+0xcc` is not `0x10000` (§1, §2). The flags are 
 `0x004120c5`, `cmp [flag],ebx` (EBX = 0) followed by a two-byte jcc at row + 6: rows 1–8 (yaw, pitch, roll, turret
 yaw, turret pitch, strafe x, strafe y, speed) `jne 0x0041210d` (the stop), row 9 (look) `je 0x00412136` (the join).
 Part A keeps the stop for speed only, as the user asked after flying release 1.5.0: a speed change by hand still ends
-SETA, as in the stock game; steering, strafe, turret and look input keep it on. Eight 2-byte rewrites:
+SETA, as in the stock game (the speed flag is also set by Boost, the throttle and the speed slider, so those end SETA too); steering, strafe, turret and look input keep it on. Eight 2-byte rewrites:
 
 | row | jcc at | original | patched |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ A set non-speed flag falls through to the next compare, and the look row never f
 only through the speed row's untouched `jne`, then through the engine's own `cfg+0xcc == 0x10000` check
 (`0x0041211d` stays `74 17`). The filler is the two-byte nop rather than `eb 00`: no control transfer, and the rows
 read as plain compares in a disassembly. Every rewrite starts at the jcc's own instruction start, the rel8 byte is
-never a branch target, nothing in `.text` branches into `0x004120bc..0x0041210c` or holds a pointer there, and every
+never a branch target, nothing in `.text` branches into `0x004120bc..0x0041210c` or holds a pointer there (the study scans `.text`; `.rdata`, `.data` and `.rsrc` were scanned once in review on 2026-10-24, 0 hits), and every
 instruction start of the patched block is unchanged. Each rewrite lies inside one aligned qword (offset 3 of
 `0x004120c8` + 8k, `0x00412108`), so `engine_patch::write_code` writes it with one `lock cmpxchg8b`, under one
 `VirtualProtect` over `0x004120cb..0x0041210c` (one page), followed by `FlushInstructionCache` and a read-back.
