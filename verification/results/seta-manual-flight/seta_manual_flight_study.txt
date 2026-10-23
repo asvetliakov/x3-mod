@@ -83,6 +83,30 @@ X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8a
    [ok] patch byte outside the seta_restore stop_call window 0x0041211f+23
    [ok] EDX is not referenced in 0x00412136..0x0041224f and 0x00412136 rewrites EFLAGS: both dead at the join
    [ok] routine ends mov eax,1; pop ebx; leave-style epilogue; ret
+   2b. per-row variant
+   [ok] row 1 yaw          004120c5: cmp [00608e60],ebx; 004120cb jne 0x0041210d (rel8 0x40)
+   [ok] row 2 pitch        004120cd: cmp [00608e88],ebx; 004120d3 jne 0x0041210d (rel8 0x38)
+   [ok] row 3 roll         004120d5: cmp [00608eb0],ebx; 004120db jne 0x0041210d (rel8 0x30)
+   [ok] row 4 turret_yaw   004120dd: cmp [00608ed8],ebx; 004120e3 jne 0x0041210d (rel8 0x28)
+   [ok] row 5 turret_pitch 004120e5: cmp [00608f0c],ebx; 004120eb jne 0x0041210d (rel8 0x20)
+   [ok] row 6 strafe_x     004120ed: cmp [00608f40],ebx; 004120f3 jne 0x0041210d (rel8 0x18)
+   [ok] row 7 strafe_y     004120f5: cmp [00608f6c],ebx; 004120fb jne 0x0041210d (rel8 0x10)
+   [ok] row 8 speed        004120fd: cmp [00608f98],ebx; 00412103 jne 0x0041210d (rel8 0x08)
+   [ok] row 9 look         00412105: cmp [00608fd0],ebx; 0041210b je 0x00412136 (rel8 0x29)
+   [ok] rewrite 004120cb 75 40 -> 66 90: original in the EXE, inside the aligned qword 004120c8, page 0x00412000
+   [ok] rewrite 004120d3 75 38 -> 66 90: original in the EXE, inside the aligned qword 004120d0, page 0x00412000
+   [ok] rewrite 004120db 75 30 -> 66 90: original in the EXE, inside the aligned qword 004120d8, page 0x00412000
+   [ok] rewrite 004120e3 75 28 -> 66 90: original in the EXE, inside the aligned qword 004120e0, page 0x00412000
+   [ok] rewrite 004120eb 75 20 -> 66 90: original in the EXE, inside the aligned qword 004120e8, page 0x00412000
+   [ok] rewrite 004120f3 75 18 -> 66 90: original in the EXE, inside the aligned qword 004120f0, page 0x00412000
+   [ok] rewrite 004120fb 75 10 -> 66 90: original in the EXE, inside the aligned qword 004120f8, page 0x00412000
+   [ok] rewrite 0041210b 74 29 -> eb 29: original in the EXE, inside the aligned qword 00412108, page 0x00412000
+   [ok] speed row jne 0x00412103 and the stop je 0x0041211d not rewritten
+   [ok] no branch targets 0x004120bc..0x0041210c (no entry into a row, so none into a rewrite's rel8 byte)
+   [ok] no .text dword holds an address in 0x004120bc..0x0041210c
+   [ok] patched rows: every instruction start 0x004120bb..0x00412135 unchanged; seven nop, look jmp 0x00412136; speed jne, stop je kept
+   [ok] patched rows: the speed jne is the only branch to the stop 0x0041210d and the look row no longer falls into it
+   [ok] rewrites outside the seta_restore stop_call window 0x0041211f+23 and the chase restore entry claim 0x00410100+6
 ==============================================================================================================
 3. rotation, strafe, speed
    [ok] yaw controller 0040eb60: returns 0 at once under autopilot (obj+0x40 & 0x80000)

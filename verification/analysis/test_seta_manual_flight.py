@@ -31,6 +31,10 @@ MINGW_FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-m
                '-mincoming-stack-boundary=2']
 ROTATION = {'seta_manual_flight_yaw': 0x0040ebde, 'seta_manual_flight_pitch': 0x0040ee3e, 'seta_manual_flight_roll': 0x0040f04d}
 STRAFE = {'seta_manual_flight_strafe_y': 0x00411e0c, 'seta_manual_flight_strafe_x': 0x00411eb2}
+# The stop block's nine flag rows 0x004120c5 + 8k and their flags (docs/reverse-engineering/seta-manual-flight.md section 2)
+STOP_ROWS = ['stop_yaw', 'stop_pitch', 'stop_roll', 'stop_turret_yaw', 'stop_turret_pitch', 'stop_strafe_x', 'stop_strafe_y',
+             'stop_speed', 'stop_look']
+FLAGS = [0x00608e60, 0x00608e88, 0x00608eb0, 0x00608ed8, 0x00608f0c, 0x00608f40, 0x00608f6c, 0x00608f98, 0x00608fd0]
 FLAG_READERS = re.compile(r'^(j(?!mp)\w+|set\w+|cmov\w+|adc|sbb|pushf\w*|lahf|rc[lr])$')
 
 
@@ -52,7 +56,7 @@ class Core(unittest.TestCase):
             run = subprocess.run([str(host_build(d))], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0 PASS', run.stdout)
-            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 528)
+            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 530)
 
 
 class Image(unittest.TestCase):
@@ -71,7 +75,9 @@ class Image(unittest.TestCase):
         listing = lambda flag: [l.split() for l in subprocess.run([str(cls.host), flag], capture_output=True, text=True,  # noqa: E731
                                                                   timeout=30, check=True).stdout.splitlines()]
         cls.windows = [(n, int(va, 16), int(length), int(part)) for n, va, length, part in listing('--windows')]
-        cls.sites = [(n, int(va, 16), int(length)) for n, va, length in listing('--sites')]
+        sites = listing('--sites')
+        cls.sites = [(f[0], int(f[1], 16), int(f[2])) for f in sites]
+        cls.stop = [(f[0], int(f[1], 16), bytes.fromhex(f[3]), bytes.fromhex(f[4])) for f in sites if len(f) == 5]
         data = EXE.read_bytes()
         pe = struct.unpack_from('<I', data, 0x3c)[0]
         count, optional = struct.unpack_from('<H', data, pe + 6)[0], struct.unpack_from('<H', data, pe + 20)[0]
@@ -108,30 +114,66 @@ class Image(unittest.TestCase):
         return run.returncode, run.stdout.strip()
 
     def test_tables(self):
-        self.assertEqual([n for n, *_ in self.windows], ['stop_block', 'yaw_controller', 'pitch_controller', 'roll_controller',
-                                                         'strafe_block', 'mouse_dispatch', 'mouse_table'])
-        self.assertEqual(self.sites, [('seta_manual_flight_stop', 0x0041211d, 1)] +
+        self.assertEqual([n for n, *_ in self.windows], STOP_ROWS + ['stop_block', 'yaw_controller', 'pitch_controller', 'roll_controller',
+                                                                     'strafe_block', 'mouse_dispatch', 'mouse_table'])
+        self.assertEqual(self.sites, [('seta_manual_flight_' + n, 0x004120cb + 8 * k, 2) for k, n in enumerate(STOP_ROWS[:7])] +
+                         [('seta_manual_flight_stop_look', 0x0041210b, 2)] +
                          [(n, va, 14) for n, va in ROTATION.items()] + [(n, va, 6) for n, va in STRAFE.items()])
-        self.assertEqual(self.install_check(self.image), (0, 'image mode=2 windows=7 mismatch=none'))  # the EXE on disk
-        self.assertEqual(self.install_check(self.image, 1), (0, 'image mode=1 windows=1 mismatch=none'))
+        self.assertEqual(self.install_check(self.image), (0, 'image mode=2 windows=16 mismatch=none'))  # the EXE on disk
+        self.assertEqual(self.install_check(self.image, 1), (0, 'image mode=1 windows=10 mismatch=none'))
 
-    def test_stop_patch(self):
-        # the 12 bytes the brief names, the one-byte je -> jmp, the same rel8, only the eight jne and two je enter the block
-        self.assertEqual(self.read(0x00412113, 12), bytes.fromhex('81 ba cc 00 00 00 00 00 01 00 74 17'))
-        patched = bytearray(self.image)
-        patched[0x0041211d - BASE] = 0xeb
-        before, after = self.decode(0x004120bb, 0x00412136 - 0x004120bb), \
-            [(i.address, i.size, i.mnemonic, i.op_str) for i in self.md.disasm(bytes(patched[0x004120bb - BASE:0x00412136 - BASE]), 0x004120bb)]
+    def patched_image(self):
+        image = bytearray(self.image)
+        for _, va, _, patched in self.stop:
+            image[va - BASE:va - BASE + 2] = patched
+        return image
+
+    def test_stop_rows(self):
+        # the nine rows `cmp [flag],ebx; jcc`, each window at its row; the jne of rows 1..8 to the stop, the look je to the join
+        rows = dict((n, (va, size)) for n, va, size, _ in self.windows)
+        for k, (name, flag) in enumerate(zip(STOP_ROWS, FLAGS)):
+            va = 0x004120c5 + 8 * k
+            self.assertEqual(rows[name], (va, 8), name)
+            insns = self.decode(va, 8)
+            self.assertEqual([(a, s, m) for a, s, m, _ in insns], [(va, 6, 'cmp'), (va + 6, 2, 'je' if k == 8 else 'jne')], name)
+            self.assertEqual(insns[0][3], 'dword ptr [0x%x], ebx' % flag, name)
+            self.assertEqual(insns[1][3], '0x412136' if k == 8 else '0x41210d', name)
+        self.assertEqual(self.read(0x004120a5, 2), bytes.fromhex('33 db'))  # EBX = 0
+        # the eight rewrites: the EXE holds each original, at the row's jcc, two bytes inside one aligned qword
+        self.assertEqual([(va, orig.hex(), new.hex()) for _, va, orig, new in self.stop],
+                         [(0x004120cb + 8 * k, '75%02x' % (0x40 - 8 * k), '6690') for k in range(7)] + [(0x0041210b, '7429', 'eb29')])
+        for name, va, original, _ in self.stop:
+            self.assertEqual(self.read(va, 2), original, name)
+            self.assertLessEqual((va & 7) + 2, 8, name)  # write_code's lock cmpxchg8b path
+            self.assertEqual(va >> 12, 0x412, name)  # one page: one protection span
+        # the patched image: every instruction start 0x004120bb..0x00412135 unchanged, the rewrites decode as intended,
+        # the speed row's jne and the stop's je untouched
+        patched = self.patched_image()
+        before = self.decode(0x004120bb, 0x00412136 - 0x004120bb)
+        after = [(i.address, i.size, i.mnemonic, i.op_str) for i in self.md.disasm(bytes(patched[0x004120bb - BASE:0x00412136 - BASE]), 0x004120bb)]
         self.assertEqual([x[:2] for x in before], [x[:2] for x in after])
-        self.assertEqual([x for x in after if x[0] == 0x0041211d][0][2:], ('jmp', '0x412136'))
-        into = sorted((a, t) for a, t in self.branches if 0x0041210d < t < 0x00412136)
-        self.assertEqual(into, [])
-        self.assertEqual(0x0041211d & ~7, 0x00412118)  # write_code's lock cmpxchg8b path
-        self.assertFalse(0x0041211f <= 0x0041211d < 0x0041211f + 23)  # outside seta_restore's stop_call window
+        decoded = dict((a, (m, o)) for a, _, m, o in after)
+        for name, va, *_ in self.stop:
+            self.assertEqual(decoded[va], ('jmp', '0x412136') if name.endswith('_look') else ('nop', ''), name)
+        self.assertEqual(decoded[0x00412103], ('jne', '0x41210d'))
+        self.assertEqual(decoded[0x0041211d], ('je', '0x412136'))
+        # entries: nothing in .text branches into 0x004120bc..0x0041210c or into a rewrite's interior, no dword points there;
+        # after the patch the speed jne is the only branch to the stop 0x0041210d and the look row never falls through
+        self.assertEqual([(a, t) for a, t in self.branches if 0x004120bb < t < 0x0041210d], [])
+        self.assertEqual([(a, t) for a, t in self.branches for _, va, *_ in self.stop if t == va + 1], [])
+        text_va, text = self.text
+        self.assertEqual([text_va + i for i in range(len(text) - 3) if 0x004120bb < struct.unpack_from('<I', text, i)[0] < 0x0041210d], [])
+        self.assertEqual(sorted(a for a, t in self.branches if t == 0x0041210d), [0x004120cb + 8 * k for k in range(8)])
+        self.assertEqual(decoded[0x0041210b][0], 'jmp')
+        # the stop path keeps its own warp check
+        self.assertEqual(self.read(0x00412113, 12), bytes.fromhex('81 ba cc 00 00 00 00 00 01 00 74 17'))
+        self.assertEqual([(a, t) for a, t in self.branches if 0x0041210d < t < 0x00412136], [])
+        # outside seta_restore's stop_call window 0x0041211f+23
+        self.assertFalse([va for _, va, *_ in self.stop if va < 0x0041211f + 23 and 0x0041211f < va + 2])
 
     def test_claim_boundaries_and_entries(self):
         text_va, text = self.text
-        for name, va, length in self.sites[1:]:
+        for name, va, length in [s for s in self.sites if s[0] in ROTATION or s[0] in STRAFE]:
             insns = self.decode(va, length)
             self.assertEqual(sum(s for _, s, *_ in insns), length, name)  # whole instructions
             self.assertTrue(all(a in self.starts for a, *_ in insns) and va + length in self.starts, name)
@@ -187,24 +229,42 @@ class Image(unittest.TestCase):
             at = address - BASE
             if 0 <= at < len(image) - 5:
                 image[at:at + min(5, length)] = b'\xe9\0\0\0\0'[:min(5, length)]
-        self.assertEqual(self.install_check(image), (0, 'image mode=2 windows=7 mismatch=none'))
-        # and the other direction: this feature's claims are visible to every other feature's collector
+        self.assertEqual(self.install_check(image), (0, 'image mode=2 windows=16 mismatch=none'))
+        # the stop rows 0x004120c5..0x0041210c hold no other claim (the input routine's entry 0x00410100, seta_restore's
+        # stop_call 0x0041211f included)
+        self.assertEqual([(n, hex(a)) for n, a, length in claims if a < 0x0041210d and 0x004120c5 < a + length], [])
+        # and the other direction: this feature's claims, the eight 2-byte rewrites with their length, are visible to
+        # every other feature's collector
         mine = [c for c in verify_collide_sites.other_claims(ROOT, skip_prefix='-', own_names=()) if c[0].startswith('seta_manual_flight')]
         self.assertEqual(sorted(mine), sorted(self.sites))
+        self.assertEqual(sorted(c for c in mine if c[2] == 2), sorted((n, va, 2) for n, va, *_ in self.stop))
+        # the live image with every claim, this feature's eight actual rewrites included: part A refuses a second
+        # install, naming the first row
+        for _, va, _, patched in self.stop:
+            image[va - BASE:va - BASE + 2] = patched
+        self.assertEqual(self.install_check(image, 1), (1, 'image mode=1 windows=10 mismatch=stop_yaw va=0x004120c5 readable=1 got=391d608e60006690'))
 
     def test_foreign_write_names_the_window(self):
         image = bytearray(self.image)
         image[ROTATION['seta_manual_flight_pitch'] - BASE:ROTATION['seta_manual_flight_pitch'] - BASE + 5] = b'\xe9\0\0\0\0'
         self.assertEqual(self.install_check(image),
-                         (1, 'image mode=2 windows=7 mismatch=pitch_controller va=0x0040ee30 readable=1 got=d80de0545600eb06'))
+                         (1, 'image mode=2 windows=16 mismatch=pitch_controller va=0x0040ee30 readable=1 got=d80de0545600eb06'))
         self.assertEqual(self.install_check(image, 1)[0], 0)  # part A alone does not depend on part B's windows
         image = bytearray(self.image)
         image[0x00411f1a - BASE] ^= 0xff  # the strafe block's last byte, past every 16-byte prologue bound
         code, line = self.install_check(image)
-        self.assertEqual((code, line.split(' got=')[0]), (1, 'image mode=2 windows=7 mismatch=strafe_block va=0x00411dd0 readable=1'))
+        self.assertEqual((code, line.split(' got=')[0]), (1, 'image mode=2 windows=16 mismatch=strafe_block va=0x00411dd0 readable=1'))
         image = bytearray(self.image)
-        image[0x0041211d - BASE] = 0xeb  # an already patched stop byte is a mismatch too (no double install)
-        self.assertEqual(self.install_check(image, 1)[0], 1)
+        image[0x0041211d - BASE] = 0xeb  # the previous release's stop byte is a mismatch too
+        self.assertEqual(self.install_check(image, 1)[1].split(' va=')[0], 'image mode=1 windows=10 mismatch=stop_block')
+        # each row is compared whole and named: its jcc, its rel8, its flag operand, the unpatched speed row
+        for va, value, name in ((0x004120fb, b'\xeb\x00', 'stop_strafe_y'), (0x0041210c, b'\x2a', 'stop_look'),
+                                (0x004120ff, b'\x99', 'stop_speed'), (0x00412104, b'\x09', 'stop_speed'),
+                                (0x004120cf, b'\x89', 'stop_pitch')):
+            image = bytearray(self.image)
+            image[va - BASE:va - BASE + len(value)] = value
+            code, line = self.install_check(image, 1)
+            self.assertEqual((code, line.split(' va=')[0]), (1, 'image mode=1 windows=10 mismatch=' + name), hex(va))
 
 
 class NativeStubs(unittest.TestCase):
@@ -288,7 +348,11 @@ class Wiring(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertIn('const bool sites_back = release_sites();\n        const bool stop_back = unpatch_stop();', source)
         self.assertIn('window=0x%08lx window_name=%s window_length=%u expected=%s got=%s', source)
-        self.assertIn('"seta_manual_flight installed=1 mode=%u stop=0x%08lx stop_status=%s', source)
+        self.assertIn('"seta_manual_flight installed=1 mode=%u stop=speed_only stop_sites=%u stop_rows=0x%08lx stop_status=%s', source)
+        # part A: one protection span, each rewrite registered before its write, rollback of every written row by read-back
+        self.assertIn('VirtualProtect(code, stop_span_length, PAGE_EXECUTE_READWRITE, &stop_protection_)', source)
+        self.assertIn('stop_patched_[i] = true;\n        bool used_atomic = false;\n        written = write_stop(', source)
+        self.assertEqual(source.count('restore_stop_rows()'), 3)  # the definition, the install rollback, unpatch_stop
         self.assertIn('"seta_manual_flight scale frame=%llu wall_ms=%llu rate=0x%08lx', source)
         self.assertIn('row_interval_ms = 500', source)
         self.assertIn('x3m_smf_continue[a] = address_of(*sites_[a].entry);\n        if (!engine_patch::push_front(', source)

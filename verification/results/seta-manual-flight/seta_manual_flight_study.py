@@ -4,7 +4,9 @@ re-derived read-only from the installed files.
 
 Checks: the nine input flags (every absolute writer and reader in .text, the records they belong to, the pointer-based
 writers inside the input helpers, the absence of any other reader), the stop block and the one-byte patch at
-0x0041211d (instruction boundaries, branch targets, alignment, register liveness, the decoded patched image), the
+0x0041211d (instruction boundaries, branch targets, alignment, register liveness, the decoded patched image) and the
+per-row variant (the nine rows' bytes and rel8 targets, the eight 2-byte rewrites, qword containment, the decoded
+patched rows), the
 angular controllers 0x0040eb60/0x0040edc0/0x0040efd0 (clamp, ramp step from cfg+0x714, change threshold) and their
 candidate hook spans, the manual-rotation integrator, strafe, speed keys, the look routine, the mouse-delta
 normalisation, the game-step and cfg+0xcc readers of the input family, the warp-aware AI margins, the control names
@@ -254,6 +256,46 @@ tail = [(va, mn, s) for va, n, mn, s, ops in INS if 0x00412136 <= va < 0x0041225
 check(not [x for x in tail if re.search(r'\b(edx|dx|dl|dh)\b', x[2])] and tail[0][1] == 'test',
       'EDX is not referenced in 0x00412136..0x0041224f and 0x00412136 rewrites EFLAGS: both dead at the join')
 check(rd(0x00412246, 10) == bytes.fromhex('b8 01 00 00 00 5b 8b e5 5d c3'), 'routine ends mov eax,1; pop ebx; leave-style epilogue; ret')
+
+# 2b. the per-row variant (release after 1.5.0): the seven non-speed jne -> 66 90 (nop), the look je -> eb 29 (jmp), the
+# speed row and 0x0041211d untouched, so only a set speed flag reaches the stop, through its own cfg+0xcc check
+print('   2b. per-row variant')
+ROWS = ['yaw', 'pitch', 'roll', 'turret_yaw', 'turret_pitch', 'strafe_x', 'strafe_y', 'speed', 'look']
+REWRITE = {0x004120cb + 8 * k: (bytes([0x75, 0x40 - 8 * k]), bytes.fromhex('66 90')) for k in range(7)}
+REWRITE[0x0041210b] = (bytes.fromhex('74 29'), bytes.fromhex('eb 29'))
+row_ins = {}
+for k, (nm, f) in enumerate(zip(ROWS, FLAGS)):
+    r = 0x004120c5 + 8 * k
+    i = [x for x in INS if r <= x[0] < r + 8]
+    row_ins[r] = i
+    jcc = 'je' if k == 8 else 'jne'
+    tgt = 0x00412136 if k == 8 else 0x0041210d
+    check([(x[0], x[1], x[2]) for x in i] == [(r, 6, 'cmp'), (r + 6, 2, jcc)] and i[0][3] == 'dword ptr [0x%x], ebx' % f
+          and r + 8 + rd(r + 7, 1)[0] == tgt and i[1][3] == hex(tgt),
+          'row %d %-12s %08x: cmp [%08x],ebx; %08x %s 0x%08x (rel8 0x%02x)' % (k + 1, nm, r, f, r + 6, jcc, tgt, rd(r + 7, 1)[0]))
+for va, (o, p) in sorted(REWRITE.items()):
+    check(rd(va, 2) == o and (va & 7) + 2 <= 8 and va >> 12 == 0x412,
+          'rewrite %08x %s -> %s: original in the EXE, inside the aligned qword %08x, page 0x00412000'
+          % (va, o.hex(' '), p.hex(' '), va & ~7))
+check(0x00412103 not in REWRITE and 0x0041211d not in REWRITE, 'speed row jne 0x00412103 and the stop je 0x0041211d not rewritten')
+into_rows = [(va, ops[0][3]) for va, n, mn, s, ops in INS
+             if (mn.startswith('j') or mn == 'call') and ops and ops[0][0] == 'i' and 0x004120bb < ops[0][3] < 0x0041210d]
+check(not into_rows, 'no branch targets 0x004120bc..0x0041210c (no entry into a row, so none into a rewrite\'s rel8 byte)')
+dw2 = [TV + i for i in range(len(T) - 3) if 0x004120bb < struct.unpack_from('<I', T, i)[0] < 0x0041210d]
+check(not dw2, 'no .text dword holds an address in 0x004120bc..0x0041210c')
+pat2 = bytearray(d)
+for va, (o, p) in REWRITE.items(): pat2[off(va):off(va) + 2] = p
+new2 = [(i.address, i.size, i.mnemonic, i.op_str) for i in md2.disasm(bytes(pat2[off(a0):off(a1)]), a0)]
+dec = {x[0]: x[2:] for x in new2}
+check([x[:2] for x in new2] == orig and all(dec[va] == (('jmp', '0x412136') if va == 0x0041210b else ('nop', '')) for va in REWRITE)
+      and dec[0x00412103] == ('jne', '0x41210d') and dec[0x0041211d] == ('je', '0x412136'),
+      'patched rows: every instruction start 0x004120bb..0x00412135 unchanged; seven nop, look jmp 0x00412136; speed jne, stop je kept')
+to_stop = sorted(va for va, (m, s) in dec.items() if m.startswith('j') and s == '0x41210d')
+check(to_stop == [0x00412103] and dec[0x0041210b][0] == 'jmp',
+      'patched rows: the speed jne is the only branch to the stop 0x0041210d and the look row no longer falls into it')
+check(not [va for va in REWRITE if va < 0x0041211f + 23 and 0x0041211f < va + 2] and
+      not [va for va in REWRITE if va < 0x00410100 + 6 and 0x00410100 < va + 2],
+      'rewrites outside the seta_restore stop_call window 0x0041211f+23 and the chase restore entry claim 0x00410100+6')
 
 # ---------------------------------------------------------------- 3. controllers, integrator, strafe, speed
 print('=' * 110)

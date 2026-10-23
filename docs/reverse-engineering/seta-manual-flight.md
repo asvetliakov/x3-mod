@@ -12,7 +12,7 @@ through the PE map for every quoted byte. Raw decompiler output stayed in the se
 
 | Script | Output | What it establishes |
 | --- | --- | --- |
-| [`seta_manual_flight_study.py`](../../verification/results/seta-manual-flight/seta_manual_flight_study.py) | [`seta_manual_flight_study.txt`](../../verification/results/seta-manual-flight/seta_manual_flight_study.txt) | the nine flags (every absolute writer and reader in `.text`, the records, the pointer writers, the absence of another reader), the stop block and the patch (boundaries, branch targets, alignment, liveness, decoded patched image), the three angular controllers and their hook spans, the manual-rotation integrator, strafe, speed keys, look routine, mouse-delta normalisation, every game-step and `cfg+0xcc` reader of the input family, the warp-aware AI margins, control names; **139 checks, `RESULT PASS`** |
+| [`seta_manual_flight_study.py`](../../verification/results/seta-manual-flight/seta_manual_flight_study.py) | [`seta_manual_flight_study.txt`](../../verification/results/seta-manual-flight/seta_manual_flight_study.txt) | the nine flags (every absolute writer and reader in `.text`, the records, the pointer writers, the absence of another reader), the stop block and the patch (boundaries, branch targets, alignment, liveness, decoded patched image), the per-row variant (the nine rows, the eight 2-byte rewrites, qword containment, decoded patched rows), the three angular controllers and their hook spans, the manual-rotation integrator, strafe, speed keys, look routine, mouse-delta normalisation, every game-step and `cfg+0xcc` reader of the input family, the warp-aware AI margins, control names; **162 checks, `RESULT PASS`** |
 
 **Answer.**
 
@@ -25,6 +25,8 @@ through the PE map for every quoted byte. Raw decompiler output stayed in the se
 * **(A) one byte:** `0x0041211d` `74 17` (`je 0x00412136`) → `eb 17` (`jmp 0x00412136`). The patched path is the
   one the engine takes at warp 1.0 whenever a flag is set, register for register. The input has already been applied when the
   block runs, so the ship steers under warp [m]. Verify `81 ba cc 00 00 00 00 00 01 00 74 17` at `0x00412113`.
+  To keep the stop for a speed change only, rewrite the flag rows instead (§2, per-row variant; part A's source uses it
+  after release 1.5.0).
 * **(B) all player control is a command in game-time units, ramped and integrated with game ms**, so under
   warp k both the turn rate and the angular acceleration are k× per real second [m]. Scaling the command alone by
   1/k gives the right steady turn rate, but the ramp to it then runs k² × faster than unwarped flight in real time.
@@ -143,6 +145,19 @@ consumer.**
   (`src/proxy/seta_restore_core.h` `stop_call`), so that installer's raw comparison still passes. No proxy claim sits
   in `0x004120c5..0x00412136` (grep of `src/`). The flags are still set and cleared every frame; that is harmless.
   Install it in the backend-load install window like every other claim.
+
+**Per-row variant: the stop for speed only [m].** The nine rows are `39 1d <flag> <jcc> <rel8>` at
+`0x004120c5 + 8k`, each flag operand as in the §1 table: rows 1–8 `jne 0x0041210d` with rel8 `0x40 - 8k`
+(`0x004120cb` `75 40` … speed `0x00412103` `75 08`), row 9 (look) `0x0041210b` `74 29` `je 0x00412136`. Rewriting
+the seven non-speed `jne` (`0x004120cb + 8k`, k = 0..6) to `66 90` and the look `je` to `eb 29` leaves the speed
+row's `jne` as the only branch to `0x0041210d`, so the stop runs exactly when the speed flag is set, still behind the
+`cfg+0xcc == 0x10000` test at `0x00412113` (`0x0041211d` unchanged). Every rewrite is two bytes at the jcc's
+instruction start, at offset 3 of an aligned qword (`0x004120c8 + 8k`, `0x00412108`), all on page `0x00412000`. No
+`.text` branch targets `0x004120bc..0x0041210c` (so none targets a rel8 byte) and no `.text` dword points there; in
+the patched image every instruction start from `0x004120bb` to `0x00412135` is unchanged. The rewrites lie outside
+the `stop_call` window `0x0041211f + 23` and the chase restore's entry claim `0x00410100`+6. The side-effect argument
+above holds unchanged: a non-speed or look flag now reaches `0x00412136` with EBX = 0 and the stack as before, and
+EFLAGS is rewritten there. Checked by the study script's section 2b.
 
 ## 3. Where commands are produced and integrated (Q3)
 
@@ -298,7 +313,7 @@ k = 1, 2.5, 10 for strafe maxima below, at and above the limit) is checked by th
 `verification/probe/seta_manual_flight_host.cpp`, run by `verification/analysis/test_seta_manual_flight.py`.
 
 ```sh
-python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 139 checks
+python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 162 checks
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 flock /tmp/x3-ghidra.lock \
   ~/ghidra_12.1.4_PUBLIC/support/analyzeHeadless ~/x3-ghidra-research X3Render \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \

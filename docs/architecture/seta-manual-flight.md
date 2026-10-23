@@ -10,19 +10,35 @@
 | value | effect |
 | --- | --- |
 | `0`, empty, anything else | nothing patched (anything but `0`/`1`/`2` logs `reason=invalid_value`) |
-| `1` | part A: manual input no longer stops SETA |
+| `1` | part A: steering, strafe, turret and look input no longer stop SETA; a manual speed change still does |
 | `2` | part A and part B: under SETA the ship turns and strafes at its unwarped real-time rates |
 
 ## Part A: the input stop
 
 The input routine `0x00410100` calls `StopFastForward` from its stop block whenever one of nine "changed this frame"
-flags is set and the warp `cfg+0xcc` is not `0x10000` (§1, §2). The installer checks the 12 bytes
-`81 ba cc 00 00 00 00 00 01 00 74 17` at `0x00412113` and rewrites `0x0041211d` `74` (`je 0x00412136`) to `eb`
-(`jmp 0x00412136`). That is the path the engine itself takes at warp 1.0, register for register. The byte lies in the
-aligned qword `0x00412118`, so `engine_patch::write_code` writes it with one `lock cmpxchg8b`, under `VirtualProtect`,
-followed by `FlushInstructionCache` and a read-back. Every script stop (gates, docking, the SETA key, the speed-bar
-click, …) still works; only the engine's input stop is gone. The byte lies outside seta_restore's `stop_call` window
-(`0x0041211f + 23`).
+flags is set and the warp `cfg+0xcc` is not `0x10000` (§1, §2). The flags are tested by nine 8-byte rows from
+`0x004120c5`, `cmp [flag],ebx` (EBX = 0) followed by a two-byte jcc at row + 6: rows 1–8 (yaw, pitch, roll, turret
+yaw, turret pitch, strafe x, strafe y, speed) `jne 0x0041210d` (the stop), row 9 (look) `je 0x00412136` (the join).
+Part A keeps the stop for speed only, as the user asked after flying release 1.5.0: a speed change by hand still ends
+SETA, as in the stock game; steering, strafe, turret and look input keep it on. Eight 2-byte rewrites:
+
+| row | jcc at | original | patched |
+| --- | --- | --- | --- |
+| yaw, pitch, roll, turret yaw, turret pitch, strafe x, strafe y | `0x004120cb` + 8k (k = 0..6) | `75 40`, `75 38`, … `75 10` (`jne 0x0041210d`) | `66 90` (two-byte nop) |
+| look | `0x0041210b` | `74 29` (`je 0x00412136`) | `eb 29` (`jmp 0x00412136`) |
+
+A set non-speed flag falls through to the next compare, and the look row never falls into the stop, so the stop runs
+only through the speed row's untouched `jne`, then through the engine's own `cfg+0xcc == 0x10000` check
+(`0x0041211d` stays `74 17`). The filler is the two-byte nop rather than `eb 00`: no control transfer, and the rows
+read as plain compares in a disassembly. Every rewrite starts at the jcc's own instruction start, the rel8 byte is
+never a branch target, nothing in `.text` branches into `0x004120bc..0x0041210c` or holds a pointer there, and every
+instruction start of the patched block is unchanged. Each rewrite lies inside one aligned qword (offset 3 of
+`0x004120c8` + 8k, `0x00412108`), so `engine_patch::write_code` writes it with one `lock cmpxchg8b`, under one
+`VirtualProtect` over `0x004120cb..0x0041210c` (one page), followed by `FlushInstructionCache` and a read-back.
+Every intermediate state of the eight writes is a valid mix of stock and patched rows. Every script stop (gates,
+docking, the SETA key, the speed-bar click, …) still works. No other claim lies in `0x004120c5..0x0041210c`
+(seta_restore's `stop_call` window starts at `0x0041211f`; the chase restore's claim is the routine entry
+`0x00410100`+6).
 
 ## Part B: real-time handling under warp
 
@@ -111,30 +127,32 @@ install window, in this order:
 1. the executable identity (`object_trace::executable_verified`), else `executable_mismatch`;
 2. the install window, else `late_claim`;
 3. every window of the mode, read whole with `engine_patch::read_code`, else `bytes_mismatch` naming the window.
-   Part A: `stop_block` `0x0041210d`+48. Part B adds `yaw_controller` `0x0040ebd0`+58, `pitch_controller`
-   `0x0040ee30`+58, `roll_controller` `0x0040f03f`+58, `strafe_block` `0x00411dd0`+331, `mouse_dispatch`
-   `0x0040fec0`+105 and `mouse_table` `0x00410024`+20. Each window holds its claim and the code its register and x87
+   Part A: the nine rows `stop_yaw` … `stop_look` `0x004120c5` + 8k, 8 bytes each (the unpatched `stop_speed` row
+   included: it is the stop's only entry after the patch), and `stop_block` `0x0041210d`+48. Part B adds
+   `yaw_controller` `0x0040ebd0`+58, `pitch_controller` `0x0040ee30`+58, `roll_controller` `0x0040f03f`+58,
+   `strafe_block` `0x00411dd0`+331, `mouse_dispatch` `0x0040fec0`+105 and `mouse_table` `0x00410024`+20. Each window holds its claim and the code its register and x87
    contract depends on. `verify_bytes` is not used: it caps at 16 bytes (Run 189);
 4. mode 2: the DLL is pinned (`GET_MODULE_HANDLE_EX_FLAG_PIN`), because the engine jumps into its stubs;
-5. the stop byte (read-back checked; a failure rolls back to `74`, judged by a read-back);
+5. the eight stop rewrites in row order, each registered before its write and read-back checked; a failure puts every
+   rewrite written so far back in reverse order, judged by read-backs of the original bytes (`patch_rolled_back`);
 6. mode 2: the five claims in axis order. The continuation slot is set before the stub becomes the chain head.
-   Any failure restores the claims made so far and the stop byte.
+   Any failure restores the claims made so far and all eight stop rewrites.
 
 The rule is all or nothing per mode: in mode 2 a mismatch in any part-B window refuses part A too (no fallback to
 mode 1). A step that cannot be undone stays registered (`patched=1` in the row) and `shutdown()` retries it. `shutdown()`
 (FreeLibrary only, from `loader.cpp`) disarms the helper first, so a stub still entered takes its original path. It
-then restores the five claims and writes `74` back. The stop byte restore checks that the byte is its own
-(`restore_not_owned` otherwise). The stub arena and the tails stay callable. Device Reset does not touch the feature
-(no device state).
+then restores the five claims and writes the eight original jcc back. The stop restore first checks that every
+registered row still holds this feature's bytes or the original (`restore_not_owned` otherwise, nothing written).
+The stub arena and the tails stay callable. Device Reset does not touch the feature (no device state).
 
 ## Log rows (`seta_manual_flight …`)
 
 * `installed=0 mode=0 reason=disabled|invalid_value`: the variable was set to `0` or to an invalid value.
-* `installed=1 mode=2 stop=0x0041211d stop_status=active stop_write=atomic yaw=active:plain pitch=active:plain
-  roll=active:plain strafe_y=active:plain strafe_x=active:atomic gate=factor>0x10000,rate>0x10000 … debug=…`: each
-  site's status and `engine_patch` write path (`off:none` for part B at mode 1). The stop byte (in qword `0x00412118`)
-  and the strafe-x jmp (`0x00411eb2..0x00411eb6`, inside qword `0x00411eb0`) take `write_code`'s `lock cmpxchg8b`
-  path; the jmps at `0x0040ebde`, `0x0040ee3e`, `0x0040f04d` and `0x00411e0c` cross an 8-byte boundary and are plain
+* `installed=1 mode=2 stop=speed_only stop_sites=8 stop_rows=0x004120c5 stop_status=active stop_write=atomic
+  yaw=active:plain pitch=active:plain roll=active:plain strafe_y=active:plain strafe_x=active:atomic
+  gate=factor>0x10000,rate>0x10000 … debug=…`: each site's status and `engine_patch` write path (`off:none` for part B
+  at mode 1); `stop_write=atomic` only when all eight rewrites took the atomic path. The stop rewrites and the
+  strafe-x jmp (`0x00411eb2..0x00411eb6`, inside qword `0x00411eb0`) take `write_code`'s `lock cmpxchg8b` path; the jmps at `0x0040ebde`, `0x0040ee3e`, `0x0040f04d` and `0x00411e0c` cross an 8-byte boundary and are plain
   copies, safe because the install window precedes the first Present.
 * `refused reason=… mode=… window=0x… window_name=… window_length=… expected=… got=… stop_status=… yaw=… … patched=…`:
   the first failing window or step; each site's status after rollback.

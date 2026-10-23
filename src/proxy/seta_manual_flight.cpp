@@ -18,8 +18,9 @@ namespace engine_patch = x3m::engine_patch;
 
 const char* state_ = "disabled";
 unsigned mode_ = 0;
-// Part A: the stop byte. patched_ is published before the write, so a failed rollback stays registered for shutdown().
-bool stop_patched_ = false;
+// Part A: the eight stop rewrites. stop_patched_[i] is published before its write, so a failed rollback stays
+// registered for shutdown().
+bool stop_patched_[stop_patch_count]{};
 DWORD stop_protection_ = 0;
 const char* stop_status_ = "unpatched";
 const char* stop_write_ = "none";
@@ -124,61 +125,87 @@ void hex(const unsigned char* bytes, unsigned n, char* out) {
     }
     out[2 * n] = 0;
 }
-// One byte under the page protection the caller arranged, flushed; returns whether the read-back holds `value`.
-bool write_stop_byte(unsigned char value, bool* atomic) {
-    const bool used_atomic = engine_patch::write_code(stop_patch.va, &value, 1);
+// Two bytes of one stop rewrite under the page protection the caller arranged, flushed; returns whether the read-back
+// holds `value`.
+bool write_stop(const Patch& p, const unsigned char* value, bool* atomic) {
+    const bool used_atomic = engine_patch::write_code(p.va, value, p.length);
     if (atomic) *atomic = used_atomic;
-    unsigned char back = 0;
-    return FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(stop_patch.va), 1) != FALSE &&
-           engine_patch::read_code(stop_patch.va, &back, 1) && back == value;
+    unsigned char back[2]{};
+    return FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(p.va), p.length) != FALSE &&
+           engine_patch::read_code(p.va, back, p.length) && !std::memcmp(back, value, p.length);
+}
+// Puts every registered rewrite back in reverse order (the span already writable); a row whose original read-back holds
+// is unregistered. Returns whether all are back.
+bool restore_stop_rows() {
+    bool back = true;
+    for (unsigned i = stop_patch_count; i-- > 0;) {
+        if (!stop_patched_[i]) continue;
+        if (write_stop(stop_patches[i], stop_patches[i].original, nullptr))
+            stop_patched_[i] = false;
+        else
+            back = false;
+    }
+    return back;
+}
+bool any_stop_patched() {
+    for (bool p : stop_patched_)
+        if (p) return true;
+    return false;
 }
 bool patch_stop() {
-    auto* code = reinterpret_cast<void*>(stop_patch.va);
+    auto* code = reinterpret_cast<void*>(stop_span_va);
     DWORD unused = 0;
-    if (!VirtualProtect(code, 1, PAGE_EXECUTE_READWRITE, &stop_protection_)) {
+    if (!VirtualProtect(code, stop_span_length, PAGE_EXECUTE_READWRITE, &stop_protection_)) {
         stop_status_ = "protect_failed";
         return false;
     }
-    stop_patched_ = true;
-    bool atomic = false;
-    const bool written = write_stop_byte(stop_patch.patched, &atomic);
+    bool written = true, atomic = true;
+    for (unsigned i = 0; i < stop_patch_count && written; ++i) {
+        stop_patched_[i] = true;
+        bool used_atomic = false;
+        written = write_stop(stop_patches[i], stop_patches[i].patched, &used_atomic);
+        atomic = atomic && used_atomic;
+    }
     stop_write_ = atomic ? "atomic" : "plain";
-    const bool protected_again = VirtualProtect(code, 1, stop_protection_, &unused) != FALSE;
+    const bool protected_again = VirtualProtect(code, stop_span_length, stop_protection_, &unused) != FALSE;
     if (written && protected_again) {
         stop_status_ = "active";
         return true;
     }
-    // Rollback, judged by a read-back of the original byte, not by the protection calls.
+    // Rollback of every row written so far, judged by read-backs of the original bytes, not by the protection calls.
     DWORD writable = 0;
-    if (!protected_again || VirtualProtect(code, 1, PAGE_EXECUTE_READWRITE, &writable)) {
-        const bool back = write_stop_byte(stop_patch.original[0], nullptr);
-        VirtualProtect(code, 1, stop_protection_, &unused);
+    if (!protected_again || VirtualProtect(code, stop_span_length, PAGE_EXECUTE_READWRITE, &writable)) {
+        const bool back = restore_stop_rows();
+        VirtualProtect(code, stop_span_length, stop_protection_, &unused);
         if (back) {
-            stop_patched_ = false;
             stop_status_ = "patch_rolled_back";
             return false;
         }
     }
-    stop_status_ = "rollback_failed"; // the jmp may be live: kept registered for shutdown()
+    stop_status_ = "rollback_failed"; // a rewrite may be live: kept registered for shutdown()
     return false;
 }
 bool unpatch_stop() {
-    if (!stop_patched_) return true;
-    unsigned char current = 0;
-    if (!engine_patch::read_code(stop_patch.va, &current, 1) ||
-        (current != stop_patch.patched && current != stop_patch.original[0])) {
-        stop_status_ = "restore_not_owned";
-        return false;
+    if (!any_stop_patched()) return true;
+    // Only when every registered row still holds this feature's bytes (or the original): a foreign write is not undone.
+    for (unsigned i = 0; i < stop_patch_count; ++i) {
+        if (!stop_patched_[i]) continue;
+        const Patch& p = stop_patches[i];
+        unsigned char current[2]{};
+        if (!engine_patch::read_code(p.va, current, p.length) ||
+            (std::memcmp(current, p.patched, p.length) && std::memcmp(current, p.original, p.length))) {
+            stop_status_ = "restore_not_owned";
+            return false;
+        }
     }
-    auto* code = reinterpret_cast<void*>(stop_patch.va);
+    auto* code = reinterpret_cast<void*>(stop_span_va);
     DWORD previous = 0, unused = 0;
-    if (!VirtualProtect(code, 1, PAGE_EXECUTE_READWRITE, &previous)) {
+    if (!VirtualProtect(code, stop_span_length, PAGE_EXECUTE_READWRITE, &previous)) {
         stop_status_ = "restore_protect_failed";
         return false;
     }
-    const bool back = write_stop_byte(stop_patch.original[0], nullptr);
-    const bool protected_again = VirtualProtect(code, 1, previous, &unused) != FALSE;
-    if (back) stop_patched_ = false;
+    const bool back = restore_stop_rows();
+    const bool protected_again = VirtualProtect(code, stop_span_length, previous, &unused) != FALSE;
     stop_status_ = back && protected_again ? "restored" : back ? "restored_unprotected" : "restore_failed";
     return back;
 }
@@ -219,7 +246,7 @@ bool release_sites() {
     return ok;
 }
 bool any_registered() {
-    if (stop_patched_) return true;
+    if (any_stop_patched()) return true;
     for (bool r : registered_)
         if (r) return true;
     return false;
@@ -288,8 +315,8 @@ bool initialize() {
     const bool ok = install(mode_, &state_);
     armed_.store(ok && mode_ >= 2, std::memory_order_release);
     if (ok)
-        log("seta_manual_flight installed=1 mode=%u stop=0x%08lx stop_status=%s stop_write=%s yaw=%s:%s pitch=%s:%s roll=%s:%s strafe_y=%s:%s strafe_x=%s:%s gate=factor>0x10000,rate>0x10000 k=rate/65536 rate=(factor*governor+0x8000)>>16 mouse_delta_skip=e40,e44,e48,e4c debug=%u",
-            mode_, static_cast<unsigned long>(stop_patch.va), stop_status_, stop_write_, site_status(yaw),
+        log("seta_manual_flight installed=1 mode=%u stop=speed_only stop_sites=%u stop_rows=0x%08lx stop_status=%s stop_write=%s yaw=%s:%s pitch=%s:%s roll=%s:%s strafe_y=%s:%s strafe_x=%s:%s gate=factor>0x10000,rate>0x10000 k=rate/65536 rate=(factor*governor+0x8000)>>16 mouse_delta_skip=e40,e44,e48,e4c debug=%u",
+            mode_, stop_patch_count, static_cast<unsigned long>(stop_rows_va), stop_status_, stop_write_, site_status(yaw),
             site_write(yaw), site_status(pitch), site_write(pitch), site_status(roll), site_write(roll),
             site_status(strafe_y), site_write(strafe_y), site_status(strafe_x), site_write(strafe_x),
             unsigned(debug_));

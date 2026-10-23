@@ -222,7 +222,7 @@ class LiveImage(unittest.TestCase):
             at = address - self.BASE
             if 0 <= at < len(image) - 5:
                 # each claim's own write: a jmp rel32 (5 bytes), or fewer for an in-place patch shorter than that (the
-                # SETA-manual-flight stop byte 0x0041211d is one byte, two before this module's stop_call window)
+                # SETA-manual-flight stop rewrites 0x004120cb..0x0041210c are two bytes each, before the stop_call window)
                 image[at:at + min(5, length)] = b'\xe9\0\0\0\0'[:min(5, length)]
         self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))
 

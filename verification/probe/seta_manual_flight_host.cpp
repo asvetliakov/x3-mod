@@ -3,7 +3,8 @@
 // flat image of X3AP.exe. No Windows, no engine.
 //   (no argument)            decision checks; prints "checks=N PASS"
 //   --windows                one "name va length part" line per compared window
-//   --sites                  one "name va length" line per claim (the stop byte and the five spans)
+//   --sites                  one "name va length" line per claim (the eight stop rewrites, with "original patched" hex,
+//                            and the five spans)
 //   --image <file> <mode>    the comparison over an RVA-indexed flat image (byte i at VA 0x00400000 + i)
 #include "../../src/proxy/seta_manual_flight_core.h"
 #include <cmath>
@@ -121,7 +122,36 @@ int decisions() {
         }
     // the claim table and the windows
     check(sizeof(sites) / sizeof(sites[0]) == 5 && sites_inside_windows(), "five claims inside their windows");
-    check(stop_patch.va == 0x0041211d && stop_patch.original[0] == 0x74 && stop_patch.patched == 0xeb, "stop patch byte");
+    check(stop_patches_well_formed() && stop_patch_count == 8, "eight stop rewrites at the rows' jcc");
+    // the row the stop is still reached from: speed, unpatched; the rewrites' net effect on the row chain (only a set
+    // speed flag reaches 0x0041210d)
+    check(windows[stop_speed_row].va == 0x004120fd && !std::strcmp(windows[stop_speed_row].name, "stop_speed") &&
+              windows[stop_speed_row].bytes[6] == 0x75 && 0x004120fd + 8 + windows[stop_speed_row].bytes[7] == stop_va,
+          "speed row jne 0x0041210d compared, not patched");
+    // walk the row chain, original and patched, with every subset of the nine flags set (bit r: row r's flag non-zero):
+    // the original leaves to the stop when any flag is set, the patched one exactly when the speed flag is
+    unsigned walked = 0, wrong = 0;
+    for (unsigned patched = 0; patched < 2; ++patched)
+        for (unsigned set = 0; set < 1u << stop_row_count; ++set) {
+            std::uint32_t at = 0;
+            for (unsigned r = 0; r < stop_row_count && !at; ++r) {
+                unsigned char op = windows[r].bytes[6], rel = windows[r].bytes[7];
+                for (const Patch& p : stop_patches)
+                    if (patched && p.va == windows[r].va + 6) op = p.patched[0], rel = p.patched[1];
+                const std::uint32_t next = windows[r].va + 8;
+                const bool flag = (set >> r) & 1;
+                if (op == 0xeb || (op == 0x75 && flag) || (op == 0x74 && !flag))
+                    at = next + rel; // jmp, jne taken, je taken
+                else if (op != 0x75 && op != 0x74 && !(op == 0x66 && rel == 0x90))
+                    at = 1; // not a row instruction
+            }
+            if (!at) at = stop_va; // the last row falls through into the stop
+            const bool stops = patched ? (set >> stop_speed_row) & 1 : set != 0;
+            ++walked;
+            if (at != (stops ? stop_va : stop_join_va) && !wrong++)
+                std::printf("row chain: %s rows with flags 0x%03x leave to 0x%08x\n", patched ? "patched" : "original", set, unsigned(at));
+        }
+    check(walked == 1024 && !wrong, "row chain: 2 x 512 flag subsets reach the stop only as expected");
     std::printf("checks=%u failures=%u %s\n", checks, failures, failures ? "FAIL" : "PASS");
     return failures ? 1 : 0;
 }
@@ -160,7 +190,9 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (argc == 2 && !std::strcmp(argv[1], "--sites")) {
-        std::printf("%s 0x%08x %u\n", stop_patch.name, unsigned(stop_patch.va), stop_patch.length);
+        for (const Patch& p : stop_patches)
+            std::printf("%s 0x%08x %u %02x%02x %02x%02x\n", p.name, unsigned(p.va), p.length, p.original[0], p.original[1],
+                        p.patched[0], p.patched[1]);
         for (const Site& s : sites) std::printf("%s 0x%08x %u\n", s.name, unsigned(s.va), s.length);
         return 0;
     }

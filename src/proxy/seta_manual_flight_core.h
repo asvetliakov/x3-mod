@@ -27,18 +27,56 @@ constexpr std::int32_t factor_one = 0x10000;
 constexpr std::int64_t rate_min = 0x10001, rate_max = 0x7fffffff;
 
 // ---- part A: the input stop (seta-manual-flight.md section 2) ----
-// 0x0041210d mov edx,[cfg]; 0x00412113 cmp [edx+0xcc],0x10000; 0x0041211d je 0x00412136 -> jmp 0x00412136 (one
-// byte); 0x0041211f..0x00412135 the StopFastForward call; 0x00412136 the autopilot-cancel block (join).
+// 0x004120c5: nine rows `cmp [flag],ebx; jcc` (EBX = 0), 8 bytes each, the jcc at row + 6. Rows 1..8 `jne 0x0041210d`
+// (yaw, pitch, roll, turret yaw, turret pitch, strafe x, strafe y, speed), row 9 `je 0x00412136` (look).
+// 0x0041210d mov edx,[cfg]; 0x00412113 cmp [edx+0xcc],0x10000; 0x0041211d je 0x00412136; 0x0041211f..0x00412135 the
+// StopFastForward call; 0x00412136 the autopilot-cancel block (join). The patch: the seven non-speed jne become the
+// two-byte nop `66 90` (a set flag falls through to the next compare) and the look je becomes `jmp 0x00412136` (`eb`,
+// same rel8), so only the speed row's jne reaches the stop, through the engine's own cfg+0xcc check. Every write is
+// two bytes at an instruction start inside one aligned qword (engine_patch::write_code's lock cmpxchg8b), and every
+// intermediate state of the eight writes is a valid mix of original and patched rows.
 struct Patch {
     const char* name;
     std::uint32_t va;
-    unsigned char original[1];
+    unsigned char original[2];
     unsigned length;
-    unsigned char patched;
+    unsigned char patched[2];
 };
-constexpr Patch stop_patch = {"seta_manual_flight_stop", 0x0041211d, {0x74}, 1, 0xeb};
+constexpr unsigned stop_patch_count = 8, stop_row_count = 9, stop_row_length = 8, stop_speed_row = 7;
+constexpr std::uint32_t stop_rows_va = 0x004120c5, stop_va = 0x0041210d, stop_join_va = 0x00412136;
+constexpr Patch stop_patches[stop_patch_count] = {
+    {"seta_manual_flight_stop_yaw", 0x004120cb, {0x75, 0x40}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_pitch", 0x004120d3, {0x75, 0x38}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_roll", 0x004120db, {0x75, 0x30}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_turret_yaw", 0x004120e3, {0x75, 0x28}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_turret_pitch", 0x004120eb, {0x75, 0x20}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_strafe_x", 0x004120f3, {0x75, 0x18}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_strafe_y", 0x004120fb, {0x75, 0x10}, 2, {0x66, 0x90}},
+    {"seta_manual_flight_stop_look", 0x0041210b, {0x74, 0x29}, 2, {0xeb, 0x29}},
+};
+// The span the eight writes lie in (one page, 0x00412000), for the protection calls.
+constexpr std::uint32_t stop_span_va = 0x004120cb;
+constexpr unsigned stop_span_length = 0x0041210d - 0x004120cb;
 constexpr std::uint32_t stop_compare_va = 0x00412113; // the 12 bytes cmp + je, inside stop_block
 constexpr unsigned stop_compare_length = 12;
+constexpr bool stop_patches_well_formed() {
+    if ((stop_span_va + stop_span_length - 1) >> 12 != stop_span_va >> 12) return false;
+    for (unsigned i = 0; i < stop_patch_count; ++i) {
+        const Patch& p = stop_patches[i];
+        const unsigned row = i < stop_speed_row ? i : stop_speed_row + 1; // the look row follows the speed row
+        if (p.length != 2 || p.va != stop_rows_va + row * stop_row_length + 6 || (p.va & 7) + p.length > 8 ||
+            p.va < stop_span_va || p.va + p.length > stop_span_va + stop_span_length)
+            return false;
+        // a jne to the stop becomes the nop; the look je becomes jmp with the same rel8 (target unchanged)
+        const std::uint32_t target = p.va + 2 + p.original[1];
+        if (i < stop_speed_row ? (p.original[0] != 0x75 || target != stop_va || p.patched[0] != 0x66 || p.patched[1] != 0x90)
+                               : (p.original[0] != 0x74 || target != stop_join_va || p.patched[0] != 0xeb ||
+                                  p.patched[1] != p.original[1]))
+            return false;
+    }
+    return true;
+}
+static_assert(stop_patches_well_formed(), "eight two-byte jcc rewrites at the rows' jcc, each inside one aligned qword");
 
 // ---- part B: the controller spans and the strafe step loads (sections 3 and 5) ----
 // Rotation: `mov eax,[0x00606f34]; fimul [eax+0x714]; mov ecx,[rec+0x24]` (14 bytes, three whole position-independent
@@ -70,9 +108,18 @@ constexpr const char* axis_names[axis_count] = {"yaw", "pitch", "roll", "strafe_
 constexpr std::uint32_t mouse_delta_type[axis_count] = {1, 2, 3, 0, 0};
 
 // ---- the installer's comparison: every window read whole (engine_patch::verify_bytes caps at 16 bytes: Run 189) ----
-// Each window holds a claim and the code its register and x87 contract depends on: the stop block from the cfg load to
-// the join; each controller from the accel load before the join through the call of the slew 0x0040e9a0; both strafe
+// Each window holds a claim and the code its register and x87 contract depends on: each of the nine flag rows whole
+// (one window per row, so a refusal names the row); the stop block from the cfg load to the join; each controller from the accel load before the join through the call of the slew 0x0040e9a0; both strafe
 // blocks through their ftol calls; the mouse dispatcher's type load and the first five jump-table entries.
+// stop_rows 0x004120c5, 72 bytes: the nine rows, compared as nine 8-byte windows (the speed row stays unpatched: after
+// the patch it is the stop's only entry)
+constexpr unsigned char stop_rows_bytes[72] = {
+    0x39, 0x1d, 0x60, 0x8e, 0x60, 0x00, 0x75, 0x40, 0x39, 0x1d, 0x88, 0x8e, 0x60, 0x00, 0x75, 0x38,
+    0x39, 0x1d, 0xb0, 0x8e, 0x60, 0x00, 0x75, 0x30, 0x39, 0x1d, 0xd8, 0x8e, 0x60, 0x00, 0x75, 0x28,
+    0x39, 0x1d, 0x0c, 0x8f, 0x60, 0x00, 0x75, 0x20, 0x39, 0x1d, 0x40, 0x8f, 0x60, 0x00, 0x75, 0x18,
+    0x39, 0x1d, 0x6c, 0x8f, 0x60, 0x00, 0x75, 0x10, 0x39, 0x1d, 0x98, 0x8f, 0x60, 0x00, 0x75, 0x08,
+    0x39, 0x1d, 0xd0, 0x8f, 0x60, 0x00, 0x74, 0x29,
+};
 // stop_block 0x0041210d, 48 bytes
 constexpr unsigned char stop_block_bytes[48] = {
     0x8b, 0x15, 0x34, 0x6f, 0x60, 0x00, 0x81, 0xba, 0xcc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
@@ -147,7 +194,16 @@ struct Window {
     unsigned length;
     unsigned part; // 1: needed by part A (mode >= 1), 2: by part B (mode 2)
 };
-constexpr Window windows[] = {{"stop_block", 0x0041210d, stop_block_bytes, sizeof stop_block_bytes, 1},
+constexpr Window windows[] = {{"stop_yaw", 0x004120c5, stop_rows_bytes + 0, stop_row_length, 1},
+                              {"stop_pitch", 0x004120cd, stop_rows_bytes + 8, stop_row_length, 1},
+                              {"stop_roll", 0x004120d5, stop_rows_bytes + 16, stop_row_length, 1},
+                              {"stop_turret_yaw", 0x004120dd, stop_rows_bytes + 24, stop_row_length, 1},
+                              {"stop_turret_pitch", 0x004120e5, stop_rows_bytes + 32, stop_row_length, 1},
+                              {"stop_strafe_x", 0x004120ed, stop_rows_bytes + 40, stop_row_length, 1},
+                              {"stop_strafe_y", 0x004120f5, stop_rows_bytes + 48, stop_row_length, 1},
+                              {"stop_speed", 0x004120fd, stop_rows_bytes + 56, stop_row_length, 1},
+                              {"stop_look", 0x00412105, stop_rows_bytes + 64, stop_row_length, 1},
+                              {"stop_block", 0x0041210d, stop_block_bytes, sizeof stop_block_bytes, 1},
                               {"yaw_controller", 0x0040ebd0, yaw_controller_bytes, sizeof yaw_controller_bytes, 2},
                               {"pitch_controller", 0x0040ee30, pitch_controller_bytes, sizeof pitch_controller_bytes, 2},
                               {"roll_controller", 0x0040f03f, roll_controller_bytes, sizeof roll_controller_bytes, 2},
@@ -166,11 +222,17 @@ constexpr bool span_matches(const Window& w, std::uint32_t va, const unsigned ch
 }
 // Every claimed span lies inside its window with the same bytes, so the window compare covers the claim's own check.
 constexpr bool sites_inside_windows() {
-    if (!contains(windows[0], stop_patch.va, 1) || !span_matches(windows[0], stop_patch.va, stop_patch.original, 1) ||
-        !contains(windows[0], stop_compare_va, stop_compare_length))
-        return false;
+    for (unsigned r = 0; r < stop_row_count; ++r)
+        if (windows[r].va != stop_rows_va + r * stop_row_length || windows[r].length != stop_row_length) return false;
+    for (unsigned i = 0; i < stop_patch_count; ++i) {
+        const Window& w = windows[i < stop_speed_row ? i : stop_speed_row + 1];
+        if (!contains(w, stop_patches[i].va, 2) || !span_matches(w, stop_patches[i].va, stop_patches[i].original, 2))
+            return false;
+    }
+    const Window& stop = windows[stop_row_count];
+    if (stop.va != stop_va || !contains(stop, stop_compare_va, stop_compare_length)) return false;
     for (unsigned a = 0; a < axis_count; ++a) {
-        const Window& w = windows[a < strafe_y ? 1 + a : 4];
+        const Window& w = windows[stop_row_count + (a < strafe_y ? 1 + a : 4)];
         if (!contains(w, sites[a].va, sites[a].length) || !span_matches(w, sites[a].va, sites[a].bytes, sites[a].length))
             return false;
     }
