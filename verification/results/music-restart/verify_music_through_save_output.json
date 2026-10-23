@@ -1,0 +1,46 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "patterns": 33,
+ "iat_0x5323e0": "zlib1.dll!gzwrite",
+ "ring_ms_factor": 5000,
+ "sample_ms_factor": 2000,
+ "dsbuffer_flags": "0x10088",
+ "dsbuffer_flags_decoded": [
+  "GETCURRENTPOSITION2",
+  "CTRLVOLUME",
+  "LOCSOFTWARE"
+ ],
+ "census": {
+  "0x4d0700": "0x4d17cc:jmp",
+  "0x4d14e0": "0x4983d9:call",
+  "0x498370": "0x403a7f:call 0x403a98:call 0x403b04:call 0x486809:call 0x492dbe:call 0x49729b:call",
+  "0x4d1870": "0x498d71:call 0x498f76:call",
+  "0x4cf460": "0x4981d3:call",
+  "0x4988d0": "0x404a0b:call",
+  "0x49f930": "0x4049ec:call",
+  "0x404530": "0x403e18:call"
+ },
+ "literal_dword_refs": {
+  "0x4d0700": 0,
+  "0x4d14e0": 0,
+  "0x4d1870": 0
+ },
+ "rejected_operand_byte_hits": [
+  "0x498d4e"
+ ],
+ "raw_branch_into_0x498d71_interior": [
+  "0x498d4e"
+ ],
+ "pump_x87_instructions": 0,
+ "pump_direct_calls": [
+  "0x469a30",
+  "0x4b8b60",
+  "0x515810",
+  "0x518de0",
+  "0x518e60"
+ ],
+ "pump_absolute_indirect_calls": [],
+ "pump_register_indirect_calls": 21,
+ "failures": [],
+ "result": "PASS"
+}

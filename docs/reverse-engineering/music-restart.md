@@ -593,6 +593,230 @@ id (the `restart_pairs()` helper of the verifier pairs each stop with the next
 play and marks `same_id` and `seek_skipped`); a play of another id or no play
 at all means the keep must not ship as is.
 
+## 7. Music through the save (2026-10-23)
+
+Question: can the sector music stay audible through a savegame write on native Windows instead of the
+measured 2.88 s silence (`music_keep_stop … name=save flags=0xd2 mode=paused` →
+`music_keep_seek … action=skip`, 28.8 M QPC ticks with no Present in between; measured, user host)? Static
+study of the same EXE (SHA-256 `fdbf3418d8f0a897…`, re-verified on `/mnt/c/X3/X3AP.exe`), nothing launched.
+Byte patterns, the IAT slot, the census, the pump's x87 count and call set are pinned by
+[`verify_music_through_save.py`](../../verification/results/music-restart/verify_music_through_save.py)
+(`PASS`, 33 patterns; output `verify_music_through_save_output.json`); the story-script side by
+[`kc_save_handlers.py`](../../verification/results/music-restart/kc_save_handlers.py) (output
+`kc_save_handlers.txt`, both story builds). Raw disassembly stayed local. This section resolves the §5
+bullet on the unpumped DirectSound path.
+
+**Answer.** Yes, by keeping the save's stop-all off the DirectSound music record in the existing
+`keep_running` shape (the vanilla bookkeeping still runs, so the MOVI chunk and the script state are
+what vanilla writes), pumping that one record from the proxy's `gzwrite` import hook during the save, and skipping the
+replay's re-arming Run (new Patch E at `0x00498d71`). `skip_all` under the save is not safe (it saves a
+suspended music task that a load never wakes), and forcing the DirectShow path works in principle but
+changes every music track's playback engine.
+
+### 7.1 The DirectSound streaming pump `0x004d0700`
+
+Media-object fields (ESI = media = `[rec+0x24]`); all from `0x004cf460` (`0x004d0244`–`0x004d0379`) and the pump:
+
+| Field | Meaning |
+| --- | --- |
+| `+0x20`–`+0x43` | `DSBUFFERDESC`: `dwFlags` `+0x24` = **`0x10088`** = `GETCURRENTPOSITION2 \| CTRLVOLUME \| LOCSOFTWARE` (no `CTRLPOSITIONNOTIFY`, no `GLOBALFOCUS`/`STICKYFOCUS`); `+0x28` **ring bytes = `nAvgBytesPerSec * 5000 / 1000` (5 s)** (`0x004d02f8 imul 0x1388`) |
+| `+0x44` | `IDirectSoundBuffer` (`IDirectSound::CreateSoundBuffer` on `*0x00608aec`, `0x004d034c`) |
+| `+0x48` | buffer state: 1 stopped/needs first fill (set at `0x004d0372` after creation), 2 playing, 4 draining after end of stream |
+| `+0x4c` | write offset in the ring (next byte to fill) |
+| `+0x50` | drain: bytes still to play after the last data |
+| `+0x54` / `+0x58` / `+0x5c` | `IAudioData` / `IAudioStreamSample` (`IAudioMediaStream::CreateSample`, `0x004d02e5`) / its buffer |
+| `+0x60` | **sample bytes = `nAvgBytesPerSec * 2000 / 1000` (2 s)** (`0x004d024d imul 0x7d0`) |
+| `+0x64` | decode state: 1 idle (issue `Update`), 2 update pending, 4 sample complete (waiting to be copied), 8 ended |
+| `+0x68` | `wBitsPerSample / 8`, the rounding unit of the start/end clip |
+| `+0x90` / `+0x94` | requested start / end ms (clip of the first / last sample) |
+
+At 44.1 kHz 16-bit stereo (format assumed, not read from the soundtrack files) that is a 882,000 B ring and
+352,800 B samples. One call (EAX = media):
+
+1. `[+0x48]==1 && [+0x64]==1` (`0x004d070e`): re-arm (`Stop`, write offset and drain 0, `SetCurrentPosition(0)`).
+2. `GetCurrentPosition(&play,&write)` (`0x004d074a`); failure returns 0.
+3. state 2: `CompletionStatus(0, 0)` (timeout 0); `S_OK` → 4 (`0x004d0754`).
+4. state 4: actual bytes from `IAudioData::GetInfo`; unless the buffer is stopped, copy only when
+   **free = `(ring − wpos + play) mod ring` > actual** (`0x004d079f`–`0x004d07b3`). Clip by the sample times
+   against `+0x90`/`+0x94`, `Lock(wpos, n)` (two tries, `DSERR_BUFFERLOST` → `Restore`), `memcpy`, `Unlock`,
+   `wpos = (wpos + n) mod ring`, state 1; if the buffer was stopped, **`Play(0, 0, DSBPLAY_LOOPING)`**
+   (`0x004d09de push 1`) and `[+0x48]=2` (`0x004d09ef`). A sample end at or past `+0x94` pauses the graph and starts the drain.
+5. state 1: `IStreamSample::Update(SSUPDATE_ASYNC, 0, 0, 0)` (`0x004d0a61`); `S_OK` → 4, pending or error → 2
+   (`0x004d0b0a`), `MS_S_ENDOFSTREAM` with 0 bytes → graph `Pause`, state 8, drain (`0x004d0adc`).
+6. draining: remaining = `(wpos − play) mod ring`; when it grows past `+0x50` or reaches 0 the buffer is
+   stopped, `[+0x48]=1`, `wpos=0`, return **2** (`0x004d0c0c`); otherwise silence is written from `wpos` up to
+   the play cursor so the looping buffer does not replay old data. Otherwise return **1**.
+
+So the ring is refilled **one 2 s sample per call, as soon as more than 2 s of it is free**: just after a
+copy up to 5 s is queued ahead of the play cursor, just before the next one 3 s; with a per-frame pump the
+lead stays in about [3 s − one frame, 5 s) (inference from the condition; decoding of the next sample is
+asynchronous and issued right after each copy, so it is ready long before space is). The pump keeps no
+lap counter and no position: its only bookkeeping is the modular write offset `+0x4c`, the drain remainder
+`+0x50` and the two state words; the track position lives in the multimedia stream.
+
+**Left playing, unpumped for 3 s** (inference from the code above): if the lead at the stall start
+exceeds the stall nothing is audible and the next call refills normally. Otherwise the looping buffer runs
+past the written data into ring bytes written one lap earlier: the listener hears the **previous 5 s of the
+track again** (not silence, not the next 2 s: the next decoded sample sits in `+0x5c` until a call copies
+it). After the stall, free is computed modulo the ring, so the pump keeps writing contiguously at the old
+write offset, which the play cursor reaches only after it wraps: in total one whole lap (5 s; a whole number
+of laps for stalls longer than lead + 5 s) of stale audio, then the track continues seamlessly from where
+the valid data ended. No content is skipped and nothing stays desynchronised after that lap, but the lap is
+audible. For the measured save the unpumped span (2.88 s plus parts of two frames) sits within about 0.1 s
+of the minimum lead, so leaving the buffer running without a pump would be marginal now and fail for a
+larger savegame.
+
+Side finding (inference): the flown `mode=paused` resume is not exact either. The stop-all's DirectSound
+arm sets `[+0x48]=[+0x64]=1` (`0x0049831c`/`0x0049831f`), and the replay's Run (`0x004d19dd`–`0x004d19e5`) does the same,
+so the next pump call re-arms: the 3–5 s already in the ring and a completed but uncopied sample (state 4
+is the common resting state) are discarded, and the stream continues from its decode position: a forward
+jump of roughly 3–7 s besides the ~1 s re-arm gap of §6 "Alt-tab".
+
+### 7.2 Who pumps, and calling the pump from inside the save
+
+Only the main loop. `0x004d0700` has exactly one entry, the tail jump `0x004d17cc` of the status query
+`0x004d14e0` (DirectSound arm: `[m+0x8c] & 0x10`, then `& 8` clear and `& 0x40` set); the query has one
+caller, the media manager `0x00498370` at `0x004983d9`, which visits flag-2 records only. The manager's six
+callers are the main loop (`0x00403a7f`/`0x00403a98`/`0x00403b04`, each right after the scheduler
+`0x0049f770`) and three other synchronous loops (`0x00486809`, `0x00492dbe`, `0x0049729b`). No literal
+references to the pump, the query or the Run helper; the buffer has no position notifications (no
+`DSBCAPS_CTRLPOSITIONNOTIFY`, no `IID_IDirectSoundNotify` in the image); the EXE imports no `CreateThread`.
+Nothing services the ring while the main thread is inside `0x00404530`.
+
+Entry contract of `0x004d0700` (`0x004d0700`–`0x004d0c30`): **EAX = media object** (not the record), no stack
+arguments, plain `ret`; preserves EBX/EBP/ESI/EDI (pushed at `0x004d0703`–`0x004d0706`, popped on all three
+exits), clobbers EAX/ECX/EDX/EFLAGS; returns AX = 0 (cursor read, `Play` or a sample call failed), 1
+(streaming), 2 (ended and stopped). 0x54-byte frame, no alignment requirement, **no x87 instruction**
+(capstone count 0). Direct calls: `memcpy` `0x00515810`, `memset` `0x00518de0`, `__alldiv` `0x00518e60`, the
+integer `MulDiv`-like `0x00469a30`, and on `E_OUTOFMEMORY` only the OOM hook `0x004b8b60` / `[0x00608a00]` =
+`0x00406d80` (installed at `0x004035b1`; resource purges `0x0046d2a0`/`0x004f5200`, guarded by `0x006090f0`);
+every other call (21 register calls) is a COM method on `+0x44`, `+0x54`, `+0x58`, `+0x70` or `+0x74`. It
+reads and writes only media fields (`+0x28` … `+0x94`, writes `+0x48`/`+0x4c`/`+0x50`/`+0x64`); it does not
+read the record, walk the record list, call the engine allocator `0x005112c4`, run script code or take an
+engine lock. Under the manager a 0 return destroys the record (`0x004984b0`) and a 2 fires the completion;
+called directly, the caller owns both outcomes.
+
+Hazards inside `0x00404530` and the safe region:
+
+* **The stop-all must have left the graph and the buffer running.** Under the current F1 `mode=paused` the
+  graph is paused (`0x004982f0`) and `[+0x48]=[+0x64]=1`; a pump call would re-arm a buffer whose stream no
+  longer delivers samples. Under `keep_running` (`jmp 0x00498322`) the span `0x004982e1`–`0x00498321` with the
+  Pause, the `Stop` and both state writes is skipped, so the pump state is live and flag 2 / context are what
+  vanilla leaves (cleared, completion fired). The pump does not read either.
+* **MOVI writer `0x004988d0` walking the list**: no conflict; the pump touches neither nodes nor record fields.
+* **Allocator / lock**: none on the pump path except the OOM purge, which every engine allocation site
+  inside the save can reach as well (`0x004b8b60` has many callers).
+* **Thread and apartment**: the amstream/DirectSound objects were created on the main thread; call the pump
+  only on that thread (the save routine runs on it; record the thread at the Patch A save decision).
+* **Return 0/2 inside the save**: do not fire a completion (the script state may already be written); stop
+  pumping that record. A 2 means the track ended during the save; the replay then re-arms at end of stream
+  and ends at once, and the script's next same-id play seeks to 0 as after any natural end.
+
+`gzwrite` is called only between `gzopen` (`0x00404601`) and `gzclose` (`0x00404a6f`): the routine's own
+fields (`0x0040468e`–`0x004049d9`), the script writer `0x0049f930` (`0x004049ec`), `0x00479010`, MOVI
+(`0x00404a0b`), `0x00417610`, `0x0043d920`, `0x0041f660`, `0x0049b7e0` and the trailer (`0x00404a66`). The
+universe writers call the import thunk `0x004fae46` (`jmp [0x005323e0]`, IAT slot verified =
+`zlib1.dll!gzwrite`) directly (52 sites), the rest go through the dispatcher `0x004e92e0`, so **the IAT slot
+sees every save write**. Safe region for a pump call: the whole interval after the stop-all returns
+(`0x00404561`) to the routine's return (`0x00404cb2`); the reachable part is every `gzwrite` call, before the
+real `gzwrite` runs (not inside zlib). Unpumped by this hook: `0x00404561`–`0x00404601` (free lists
+`0x00417100`/`0x00416fe0`, the object walk `0x00486990`, path setup) and `0x00404a74`–`0x00404cb2` (slot
+files, game-clock resync `0x004d1df0`), plus the `SaveFinished` events, the frame's render and the next
+scheduler pass up to the replay. Their durations are not known statically.
+
+### 7.3 `skip_all` under the save
+
+With the existing `skip_all` exit for the save caller the MOVI chunk stores the record as playing: flags
+`0xd2` (bit 2 set), `+0x14` the live task key, `+0x18` the slot. The restore `0x00498ad0` tolerates that (bit
+2 masked at `0x00498b99`, `+0x14`/`+0x18` ignored, §3). The script state does not: the script writer
+(`0x0049f930`, called at `0x004049ec`, before MOVI) stores each task's state word `+0x3a` (`0x004a0584`), and
+the loader puts a state-2 task back on the suspended list `VM+0x12e4` (`0x004a1c69`–`0x004a1c8c`) without
+waking it. With `skip_all` the music task is still suspended in `MOV_PlayMovie` (no completion), and after a
+load no record carries its key, so it never resumes: **the music player of that save stays blocked after
+loading it** (inference: unless another story path restarts the music with a new task; the stuck task would
+then leak). In vanilla and under `keep_running` the stop-all's completion makes the task runnable before the
+script writer runs, which is why the vanilla savegame is self-consistent. `skip_all` is therefore not a
+candidate for the save, with or without a pump.
+
+Story side (decoded, both builds, `kc_save_handlers.txt`): `150::BeforeSave` = `SE_FreeText()`;
+`150::SaveFinished(r)` = `201::RestoreTexts()`, `640::ResetSavegameCache()`, `150::SetLeave()` when
+`STA_GetDIDState() != 0`, otherwise a block with `TI_Delay(1000)` and `200::SpeakWithPriority(13, 39, 100)`;
+`SaveFinished2` calls `SaveFinished`. Their call closure (41–45 methods) reaches only voice natives
+(`MOV_PlayMovieVoice`, `MOV_GetVoice*`, `MOV_StopMovie` in `200::SpeakWithPriorityAndNoise`) and the screen-movie
+helper `200::PlayMovieArrayDirect`, never `MOV_LoadMovie`, `MOV_PlayMovie` or `MOV_SetVolumeMovie`: **the
+handlers do not touch the music** (inference for the arguments of the reached `MOV_StopMovie` calls: voice and
+movie ids). The music player `200::PlayMusicWithFade` loads the track as `MOV_LoadMovie(m17, 144)` (flags
+`0x90`) and loops on `MOV_PlayMovie(m17)` (decode has stack-depth conflicts, so the loop shape is partial),
+consistent with the measured same-id replay.
+
+### 7.4 The DirectShow path
+
+The path is chosen inside `0x004cf460`: **any request with `0x10` (audio only) gets `0x40` forced**
+(`0x004cf507`–`0x004cf50b`), the audio stream is then added without the default renderer
+(`0x004cf5ce`–`0x004cf5d7`: `AMMSF_ADDDEFAULTRENDERER` only when `0x40` is clear), and a failed DirectSound
+buffer fails the whole constructor for an audio-only request (`0x004d0352`–`0x004d035a`) instead of falling
+back. The allocator copies the media flags into the record (`0x00498254`). The story requests `0x90`, so
+every sector track is a DirectSound record (`0xd0`), as flown on native.
+
+A DirectShow-path music record (`0x40` clear) plays from the graph's own threads; under the save's existing
+`keep_running` (or `skip_all`) it would simply keep playing (inference from the DirectShow model; the only
+per-frame engine touch is the end-of-track position/duration poll at `0x004d17d1`), and the replay's seek
+skip plus Run is a no-op on a running graph. Forcing it means clearing `0x10` from music requests before the
+constructor: at the allocator's single constructor call `0x004981d3` (`push edi; push ebx; call 0x004cf460`,
+flags = `[esp+8]` at the callee) or at `MOV_LoadMovie`'s `0x00498735`. Cost and risk: the constructor then
+also adds an `MSPID_PrimaryVideo` stream with the object `*0x00608ad4` (`0x004cf56b`–`0x004cf587`; GUID at `0x00532b94` verified, the object is DirectDraw by inference), discovers there is no
+video, sets `0x10` and tears it down (`0x004d01bf`, `0x004d1b70`); the audio goes through the DirectShow
+DirectSound renderer only when bit `0x4000` of `[*0x00606f34+0x100]` is set (`0x004cf59e`; otherwise the
+stream gets no renderer and the music is silent; the bit's source was not traced); the restart seek keeps the
+500 ms back-off of `0x10` records; the renderer's focus behaviour in the background is unknown. It changes the
+playback engine of every music track to fix one interruption, and is not flown.
+
+### 7.5 Recommendation
+
+The cheapest safe shape, three pieces on the existing keep:
+
+1. **Patch A rule (no new site, `0x004982db`)**: for the `save` caller (`0x00404561`), a DirectSound music
+   record takes `keep_running` instead of F1's `paused`, and arms a save-pump target
+   `(record, id, media, thread)`. Bookkeeping and savegame content stay vanilla (§7.3).
+2. **Save pump in the `zlib1.dll!gzwrite` import hook** (IAT slot `0x005323e0`; chain whatever already
+   occupies the slot, e.g. the telemetry row of `loading_trace.cpp`): while a target is armed and on its
+   thread, at most every 250 ms of wall time (read QPC every 256 calls; the save makes on the order of
+   millions of calls, inferred from the load profile's 13.9 M reads) check that the record is still linked
+   with the same id and media, `[m+0x8c] & 0x48 == 0x40` and `[m+0x48]` is 2 or 4, then call `0x004d0700`
+   with EAX = media through an asm shim, before forwarding to the real `gzwrite`; preserve LastError; a 0
+   or 2 return disarms. Cost when idle: one load and branch per `gzwrite`. With a 250 ms cadence the lead
+   stays above about 2.75 s, so every unpumped span (§7.2) must stay below that.
+3. **Patch E, `0x00498d71`** (`e8 fa 8a 03 00` = `call 0x004d1870`, whole instruction between
+   `mov eax,esi` at `0x00498d6f` and `test eax,eax; je 0x00498dde` at `0x00498d76`; raw scan: only the
+   rejected operand byte `0x00498d4e`; `& 7 = 1`, so one `lock cmpxchg8b`). In: EAX = ESI = record; the callee
+   preserves EBX/EBP/ESI/EDI and returns 1 on this path; after it ECX/EDX and the flags are dead
+   (`0x00498d7a` reloads EAX, `xor ecx,ecx`, EDX is loaded at `0x00498d96`). Thunk: when Patch C has just
+   skipped the seek for this record under a save-pump target (pass a one-shot marker from the C handler,
+   because C drops the holds) and `[m+0x48]==2`, `mov eax,1; ret` (no re-arm, no Run on the running graph);
+   otherwise `jmp 0x004d1870`. The second Run caller `0x00498f76` stays vanilla.
+
+Disarm the target at the replay, at the next stop-all entry, or after a wall-time bound; until the replay
+the record has flag 2 clear and the manager does not pump it (measured once: the replay came in the next
+iteration), so an optional Present-time pump with the same checks covers a delayed replay, and the F2 orphan
+pause stays the backstop for a script that never replays. Pause (`0x00407069`) could take the same
+`keep_running` + Patch E without a pump (the loop keeps running and the woken task replays in the same
+scheduler pass; inference), which would also remove the 3–7 s jump of §7.1; not part of this question.
+
+Only a flight settles: the durations of the unpumped spans (stop-all → first `gzwrite`, the largest gap
+between `gzwrite` calls, last `gzwrite` → replay), which a consolidated diagnostic build should log per save
+together with each pump call's return, `[m+0x48]`/`[m+0x64]` and the lead (`ring − free`); that amstream
+completes the asynchronous `Update` while the main thread is blocked in the save (DirectShow design, not
+observed); that the replay keeps arriving in the next iteration; and the audible result.
+
+Reproduce:
+
+```sh
+python3 -I verification/results/music-restart/verify_music_through_save.py /mnt/c/X3/X3AP.exe
+python3 -I verification/results/music-restart/kc_save_handlers.py /mnt/c/X3
+i686-w64-mingw32-objdump -d --start-address=0x4d0700 --stop-address=0x4d0c31 /mnt/c/X3/X3AP.exe  # pump
+i686-w64-mingw32-objdump -d --start-address=0x4d0244 --stop-address=0x4d0379 /mnt/c/X3/X3AP.exe  # ring/sample/buffer
+```
+
 ## Reproduce
 
 ```sh

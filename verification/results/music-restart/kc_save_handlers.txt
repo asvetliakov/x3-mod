@@ -1,0 +1,46 @@
+== stock AP (build id 1510658513)
+150::BeforeSave @18d16 (stack conflicts 0)
+    call SE_FreeText()
+    return p0
+    closure: 1 methods; MOV_ natives reached: none
+150::SaveFinished @18d22 (stack conflicts 0)
+    call 201::RestoreTexts()
+    call 640::ResetSavegameCache()
+    call STA_GetDIDState()
+    if not ((STA_GetDIDState() != 0)) goto 18d54
+    call 150::SetLeave()
+    return p0
+    if (?) goto 18d7e
+    call TI_Delay(1000)
+    if not (!(p-4)) goto 18d7d
+    call 200::SpeakWithPriority(13, 39, 100)
+    return p0
+    closure: 41 methods; MOV_ natives reached: [('200::PlayMovieArrayDirect', 'MOV_ConnectMovieToTexture'), ('200::PlayMovieArrayDirect', 'MOV_PlayMovieFrom'), ('200::PlayMovieArrayDirect', 'MOV_StopMovie'), ('200::PlaySpeechScriptWithMood', 'MOV_GetVoiceLength'), ('200::ShowSubTitle', 'MOV_GetVoiceLength'), ('200::SpeakArrayWithPriorityAndFaceAndDuration', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStart'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStream'), ('200::SpeakWithPriorityAndNoise', 'MOV_PlayMovieVoice'), ('200::SpeakWithPriorityAndNoise', 'MOV_StopMovie')]
+150::SaveFinished2 @18d80 (stack conflicts 0)
+    call 150::SaveFinished(p-4)
+    return p0
+    closure: 42 methods; MOV_ natives reached: [('200::PlayMovieArrayDirect', 'MOV_ConnectMovieToTexture'), ('200::PlayMovieArrayDirect', 'MOV_PlayMovieFrom'), ('200::PlayMovieArrayDirect', 'MOV_StopMovie'), ('200::PlaySpeechScriptWithMood', 'MOV_GetVoiceLength'), ('200::ShowSubTitle', 'MOV_GetVoiceLength'), ('200::SpeakArrayWithPriorityAndFaceAndDuration', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStart'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStream'), ('200::SpeakWithPriorityAndNoise', 'MOV_PlayMovieVoice'), ('200::SpeakWithPriorityAndNoise', 'MOV_StopMovie')]
+200::PlayMusicWithFade @0d1a6 (stack conflicts 4): call MOV_LoadMovie(m17, 144); call MOV_PlayMovie(m17); if not (!(MOV_PlayMovie(m17))) goto 0d321; if not (MOV_LoadMovie(m17, 144)) goto 0d38a
+== Mayhem 4 (build id 1462141839)
+150::BeforeSave @18ad5 (stack conflicts 0)
+    call SE_FreeText()
+    return p0
+    closure: 1 methods; MOV_ natives reached: none
+150::SaveFinished @18ae1 (stack conflicts 0)
+    call 201::RestoreTexts()
+    call 640::ResetSavegameCache()
+    call STA_GetDIDState()
+    if not ((STA_GetDIDState() != 0)) goto 18b13
+    call 150::SetLeave()
+    return p0
+    if (?) goto 18b3d
+    call TI_Delay(1000)
+    if not (!(p-4)) goto 18b3c
+    call 200::SpeakWithPriority(13, 39, 100)
+    return p0
+    closure: 44 methods; MOV_ natives reached: [('200::PlayMovieArrayDirect', 'MOV_ConnectMovieToTexture'), ('200::PlayMovieArrayDirect', 'MOV_PlayMovieFrom'), ('200::PlayMovieArrayDirect', 'MOV_StopMovie'), ('200::PlaySpeechScriptWithMood', 'MOV_GetVoiceLength'), ('200::ShowSubTitle', 'MOV_GetVoiceLength'), ('200::SpeakArrayWithPriorityAndFaceAndDuration', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStart'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStream'), ('200::SpeakWithPriorityAndNoise', 'MOV_PlayMovieVoice'), ('200::SpeakWithPriorityAndNoise', 'MOV_StopMovie')]
+150::SaveFinished2 @18b3f (stack conflicts 0)
+    call 150::SaveFinished(p-4)
+    return p0
+    closure: 45 methods; MOV_ natives reached: [('200::PlayMovieArrayDirect', 'MOV_ConnectMovieToTexture'), ('200::PlayMovieArrayDirect', 'MOV_PlayMovieFrom'), ('200::PlayMovieArrayDirect', 'MOV_StopMovie'), ('200::PlaySpeechScriptWithMood', 'MOV_GetVoiceLength'), ('200::ShowSubTitle', 'MOV_GetVoiceLength'), ('200::SpeakArrayWithPriorityAndFaceAndDuration', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceLength'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStart'), ('200::SpeakWithPriorityAndNoise', 'MOV_GetVoiceStream'), ('200::SpeakWithPriorityAndNoise', 'MOV_PlayMovieVoice'), ('200::SpeakWithPriorityAndNoise', 'MOV_StopMovie')]
+200::PlayMusicWithFade @0da87 (stack conflicts 4): call MOV_LoadMovie(m17, 144); call MOV_PlayMovie(m17); if not (!(MOV_PlayMovie(m17))) goto 0dc02; if not (MOV_LoadMovie(m17, 144)) goto 0dc6b

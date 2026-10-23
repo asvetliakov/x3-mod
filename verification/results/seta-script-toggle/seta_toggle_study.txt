@@ -1,0 +1,466 @@
+==============================================================================================================
+Mayhem (installed): addon/07.cat:L/x3story.obj  2182503 B  SHA-256 2c3101a8c04ddea76643099758bfdaefd18d79cdf37580095a12a8ce72199298  build 1462141839
+  class 150 entries: StartFastForward 15509, StopFastForward 15557, ToggleFastForward 15599, IsFastForward 15590, GetWarpFactor 154af, SetWarpFactor 154b8, GetWarpMultiplier 154ea, Vbi 142c2, Input 147e0, InputAction 148ad, StartGateWarp 15ed2, StartSectorWarp 15f7b, QuickWarp 169fb, WarpToSector 16185, IsWarping 16027, NotifyCollisionWarn 17cdd
+  class-150 member accessors (writers | readers):
+    m6   st: StartGateWarp, StartSectorWarp, WarpToSector                 ld: IsWarping, StartGateWarp, StartSectorWarp
+    m9   st: SetKilled, StartKilled                                       ld: BeforeLeave, DoStationAnnouncements, GetKilled, IncomingMessage, NotifyAlert, NotifyAttacked, PlayMessageWithPrioAndFace, PlayMessageWithPrioAndFaceAndNoise, ReceiveMessageWithPriority, SetKilled, SetLeave, StartFastForward, StartKilled, StopFastForward, TryLeave
+    m21  st: StartFastForward, StopFastForward                            ld: IsFastForward, StartFastForward, StopFastForward, ToggleFastForward, Vbi
+    m22  st: StartFastForward, StopFastForward, Vbi                       ld: GetWarpMultiplier, Vbi
+    m23  st: StartFastForward, Vbi                                        ld: Vbi
+    m24  st: InitClient, SetWarpFactor                                    ld: GetWarpFactor, GetWarpMultiplier, Vbi
+    m60  st: NotifyCollisionWarn, StartFastForward                        ld: NotifyCollisionWarn
+
+  -- 150::StartFastForward 15509
+     15509  file+001551d  w3  frame(6e) 3
+     1550c  file+0015520  w3  ldmem(0f) 9
+     1550f  file+0015523  w1  not(64)  
+     15510  file+0015524  w5  jf(34)   15524
+     15515  file+0015529  w3  ldmem(0f) 21
+     15518  file+001552c  w1  not(64)  
+     15519  file+001552d  w5  jf(34)   15524
+     1551e  file+0015532  w1  push1(02) 
+     1551f  file+0015533  w5  jmp(32)  15525
+     15524  file+0015538  w1  push0(01) 
+     15525  file+0015539  w5  jf(34)   15555
+     1552a  file+001553e  w3  pushw(06) 980
+     1552d  file+0015541  w1  push1(02) 
+     1552e  file+0015542  w3  pushw(06) 200
+     15531  file+0015545  w5  callcls(86) 200::PlaySample
+     15536  file+001554a  w1  drop(24) 
+     15537  file+001554b  w1  push1(02) 
+     15538  file+001554c  w3  stmem(16) 21
+     1553b  file+001554f  w1  drop(24) 
+     1553c  file+0015550  w1  push0(01) 
+     1553d  file+0015551  w3  stmem(16) 22
+     15540  file+0015554  w1  drop(24) 
+     15541  file+0015555  w1  push0(01) 
+     15542  file+0015556  w5  native(82) TI_GetRealTime
+     15547  file+001555b  w3  stmem(16) 23
+     1554a  file+001555e  w1  drop(24) 
+     1554b  file+001555f  w1  push0(01) 
+     1554c  file+0015560  w5  native(82) TI_GetAbsTime
+     15551  file+0015565  w3  stmem(16) 60
+     15554  file+0015568  w1  drop(24) 
+     15555  file+0015569  w1  push0(01) 
+     15556  file+001556a  w1  ret(83)  
+
+  -- 150::StopFastForward 15557
+     15557  file+001556b  w3  frame(6e) 3
+     1555a  file+001556e  w3  ldmem(0f) 21
+     1555d  file+0015571  w5  jf(34)   1558e
+     15562  file+0015576  w3  ldmem(0f) 9
+     15565  file+0015579  w1  not(64)  
+     15566  file+001557a  w5  jf(34)   15578
+     1556b  file+001557f  w3  pushw(06) 981
+     1556e  file+0015582  w1  push1(02) 
+     1556f  file+0015583  w3  pushw(06) 200
+     15572  file+0015586  w5  callcls(86) 200::PlaySample
+     15577  file+001558b  w1  drop(24) 
+     15578  file+001558c  w1  push0(01) 
+     15579  file+001558d  w3  stmem(16) 21
+     1557c  file+0015590  w1  drop(24) 
+     1557d  file+0015591  w1  push0(01) 
+     1557e  file+0015592  w3  stmem(16) 22
+     15581  file+0015595  w1  drop(24) 
+     15582  file+0015596  w5  pushd(07) 65536
+     15587  file+001559b  w1  push1(02) 
+     15588  file+001559c  w5  native(82) TI_SetTimeWarpFactor
+     1558d  file+00155a1  w1  drop(24) 
+     1558e  file+00155a2  w1  push0(01) 
+     1558f  file+00155a3  w1  ret(83)  
+
+  -- 150::ToggleFastForward 15599
+     15599  file+00155ad  w3  frame(6e) 3
+     1559c  file+00155b0  w3  ldmem(0f) 21
+     1559f  file+00155b3  w5  jf(34)   155b3
+     155a4  file+00155b8  w1  push0(01) 
+     155a5  file+00155b9  w3  pushw(06) 150
+     155a8  file+00155bc  w5  callcls(86) 150::StopFastForward
+     155ad  file+00155c1  w1  drop(24) 
+     155ae  file+00155c2  w5  jmp(32)  15628
+     155b3  file+00155c7  w2  pushb(05) 23
+     155b5  file+00155c9  w1  push1(02) 
+     155b6  file+00155ca  w3  ldglob(0e) 9
+     155b9  file+00155cd  w5  callobj(85) CheckEquipment
+     155be  file+00155d2  w5  jf(34)   1561c
+     155c3  file+00155d7  w1  push0(01) 
+     155c4  file+00155d8  w3  pushw(06) 605
+     155c7  file+00155db  w5  callcls(86) 605::GetActiveMonitorControlObject
+     155cc  file+00155e0  w5  jf(34)   155eb
+     155d1  file+00155e5  w1  push0(01) 
+     155d2  file+00155e6  w1  push0(01) 
+     155d3  file+00155e7  w3  pushw(06) 605
+     155d6  file+00155ea  w5  callcls(86) 605::GetActiveMonitorControlObject
+     155db  file+00155ef  w5  callobj(85) IsDocked
+     155e0  file+00155f4  w5  jf(34)   155eb
+     155e5  file+00155f9  w1  push1(02) 
+     155e6  file+00155fa  w5  jmp(32)  155ec
+     155eb  file+00155ff  w1  push0(01) 
+     155ec  file+0015600  w1  not(64)  
+     155ed  file+0015601  w5  jf(34)   15607
+     155f2  file+0015606  w1  push0(01) 
+     155f3  file+0015607  w3  ldglob(0e) 10
+     155f6  file+001560a  w5  callobj(85) IsDocked
+     155fb  file+001560f  w1  not(64)  
+     155fc  file+0015610  w5  jf(34)   15607
+     15601  file+0015615  w1  push1(02) 
+     15602  file+0015616  w5  jmp(32)  15608
+     15607  file+001561b  w1  push0(01) 
+     15608  file+001561c  w5  jf(34)   15617
+     1560d  file+0015621  w1  push0(01) 
+     1560e  file+0015622  w3  pushw(06) 150
+     15611  file+0015625  w5  callcls(86) 150::StartFastForward
+     15616  file+001562a  w1  drop(24) 
+     15617  file+001562b  w5  jmp(32)  15628
+     1561c  file+0015630  w2  pushb(05) 23
+     1561e  file+0015632  w1  push1(02) 
+     1561f  file+0015633  w3  pushw(06) 150
+     15622  file+0015636  w5  callcls(86) 150::NotifyNoEquipment
+     15627  file+001563b  w1  drop(24) 
+     15628  file+001563c  w1  push0(01) 
+     15629  file+001563d  w1  ret(83)  
+
+  -- 150::GetWarpMultiplier 154ea
+     154ea  file+00154fe  w3  frame(6e) 5
+     154ed  file+0015501  w5  pushd(07) 65536
+     154f2  file+0015506  w2  pushb(05) 10
+     154f4  file+0015508  w3  ldmem(0f) 22
+     154f7  file+001550b  w3  ldmem(0f) 24
+     154fa  file+001550e  w1  push1(02) 
+     154fb  file+001550f  w1  sub(4b)  
+     154fc  file+0015510  w2  pushb(05) 16
+     154fe  file+0015512  w1  op(58)   
+     154ff  file+0015513  w1  push3(04) 
+     15500  file+0015514  w5  native(82) SE_MulDivFix
+     15505  file+0015519  w1  add(46)  
+     15506  file+001551a  w1  ret(83)  
+     15507  file+001551b  w1  push0(01) 
+     15508  file+001551c  w1  ret(83)  
+
+  -- 150::IsFastForward 15590
+     15590  file+00155a4  w3  frame(6e) 1
+     15593  file+00155a7  w3  ldmem(0f) 21
+     15596  file+00155aa  w1  ret(83)  
+     15597  file+00155ab  w1  push0(01) 
+     15598  file+00155ac  w1  ret(83)  
+
+  -- 150::SetWarpFactor 154b8
+     154b8  file+00154cc  w3  frame(6e) 1
+     154bb  file+00154cf  w3  ldloc(0d) 4
+     154be  file+00154d2  w3  stmem(16) 24
+     154c1  file+00154d5  w1  drop(24) 
+     154c2  file+00154d6  w1  push0(01) 
+     154c3  file+00154d7  w1  ret(83)  
+
+  -- 150::InputAction 148ad
+     148ad  file+00148c1  w3  frame(6e) 3
+     148b0  file+00148c4  w3  ldloc(0d) 4
+     148b3  file+00148c7  w1  push1(02) 
+     148b4  file+00148c8  w3  pushw(06) 501
+     148b7  file+00148cb  w5  callcls(86) 501::HandleKeyInput
+     148bc  file+00148d0  w1  ret(83)  
+     148bd  file+00148d1  w1  push0(01) 
+     148be  file+00148d2  w1  ret(83)  
+
+  -- 150::Vbi 142c2, SETA ramp window
+     142df  file+00142f3  w3  ldmem(0f) 21
+     142e2  file+00142f6  w5  jf(34)   1435a
+     142e7  file+00142fb  w3  ldmem(0f) 24
+     142ea  file+00142fe  w3  ldmem(0f) 22
+     142ed  file+0014301  w2  pushb(05) 10
+     142ef  file+0014303  w1  lt(5c)   
+     142f0  file+0014304  w5  jf(34)   14313
+     142f5  file+0014309  w3  ldmem(0f) 23
+     142f8  file+001430c  w1  push0(01) 
+     142f9  file+001430d  w5  native(82) TI_GetRealTime
+     142fe  file+0014312  w1  push2(03) 
+     142ff  file+0014313  w5  native(82) TI_CmpTime
+     14304  file+0014318  w3  pushw(06) 250
+     14307  file+001431b  w1  gt(5d)   
+     14308  file+001431c  w5  jf(34)   14313
+     1430d  file+0014321  w1  push1(02) 
+     1430e  file+0014322  w5  jmp(32)  14314
+     14313  file+0014327  w1  push0(01) 
+     14314  file+0014328  w5  jf(34)   14359
+     14319  file+001432d  w3  ldmem(0f) 22
+     1431c  file+0014330  w1  push1(02) 
+     1431d  file+0014331  w1  add(46)  
+     1431e  file+0014332  w3  stmem(16) 22
+     14321  file+0014335  w1  drop(24) 
+     14322  file+0014336  w5  pushd(07) 65536
+     14327  file+001433b  w2  pushb(05) 10
+     14329  file+001433d  w3  ldloc(0d) 3
+     1432c  file+0014340  w1  push1(02) 
+     1432d  file+0014341  w1  sub(4b)  
+     1432e  file+0014342  w2  pushb(05) 16
+     14330  file+0014344  w1  op(58)   
+     14331  file+0014345  w3  ldmem(0f) 22
+     14334  file+0014348  w1  push3(04) 
+     14335  file+0014349  w5  native(82) SE_MulDivFix
+     1433a  file+001434e  w1  add(46)  
+     1433b  file+001434f  w1  push1(02) 
+     1433c  file+0014350  w5  native(82) TI_SetTimeWarpFactor
+     14341  file+0014355  w1  drop(24) 
+     14342  file+0014356  w1  push0(01) 
+     14343  file+0014357  w5  native(82) TI_GetRealTime
+     14348  file+001435c  w3  stmem(16) 23
+     1434b  file+001435f  w1  drop(24) 
+     1434c  file+0014360  w3  pushw(06) 982
+     1434f  file+0014363  w1  push1(02) 
+     14350  file+0014364  w3  pushw(06) 200
+     14353  file+0014367  w5  callcls(86) 200::PlaySample
+     14358  file+001436c  w1  drop(24) 
+     14359  file+001436d  w1  drop(24) 
+     1435a  file+001436e  w3  ldmem(0f) 22
+     1435d  file+0014371  w1  push1(02) 
+     1435e  file+0014372  w5  native(82) INS_SetTimeWarpFactor
+     14363  file+0014377  w1  drop(24) 
+     14364  file+0014378  w3  ldglob(0e) 9
+
+  -- 203::IncreaseTimeWarp 0048c
+     0048c  file+00004a0  w3  frame(6e) 2
+     0048f  file+00004a3  w1  push0(01) 
+     00490  file+00004a4  w5  native(82) TI_GetTimeWarpFactor
+     00495  file+00004a9  w5  pushd(07) 1048576
+     0049a  file+00004ae  w1  lt(5c)   
+     0049b  file+00004af  w5  jf(34)   004af
+     004a0  file+00004b4  w1  push0(01) 
+     004a1  file+00004b5  w5  native(82) TI_GetTimeWarpFactor
+     004a6  file+00004ba  w1  push2(03) 
+     004a7  file+00004bb  w1  mul(50)  
+     004a8  file+00004bc  w1  push1(02) 
+     004a9  file+00004bd  w5  native(82) TI_SetTimeWarpFactor
+     004ae  file+00004c2  w1  drop(24) 
+     004af  file+00004c3  w1  push0(01) 
+     004b0  file+00004c4  w1  ret(83)  
+
+  -- 203::DecreaseTimeWarp 004b1
+     004b1  file+00004c5  w3  frame(6e) 2
+     004b4  file+00004c8  w1  push0(01) 
+     004b5  file+00004c9  w5  native(82) TI_GetTimeWarpFactor
+     004ba  file+00004ce  w3  pushw(06) 4096
+     004bd  file+00004d1  w1  gt(5d)   
+     004be  file+00004d2  w5  jf(34)   004d2
+     004c3  file+00004d7  w1  push0(01) 
+     004c4  file+00004d8  w5  native(82) TI_GetTimeWarpFactor
+     004c9  file+00004dd  w1  push2(03) 
+     004ca  file+00004de  w1  div(51)  
+     004cb  file+00004df  w1  push1(02) 
+     004cc  file+00004e0  w5  native(82) TI_SetTimeWarpFactor
+     004d1  file+00004e5  w1  drop(24) 
+     004d2  file+00004e6  w1  push0(01) 
+     004d3  file+00004e7  w1  ret(83)  
+
+  501::HandleKeyInput 1ce97: switch at 1da33, 108 cases; action -> calls:
+    action 675 -> 1d345 ['150::ToggleFastForward']
+    action 825 -> 1cea3 ['150::PauseGame']
+    action 971 -> 1d95c ['203::IncreaseTimeWarp']
+    action 972 -> 1d96c ['203::DecreaseTimeWarp']
+
+  callers (site, return offset = site + 5, kind, target, owner):
+    004a9 ret 004ae  native  TI_SetTimeWarpFactor   in 203::IncreaseTimeWarp (0048c)
+    004cc ret 004d1  native  TI_SetTimeWarpFactor   in 203::DecreaseTimeWarp (004b1)
+    00ab2 ret 00ab7  call    StopFastForward        in 203::B3DReload (00aab)
+    0be1c ret 0be21  call    StopFastForward        in 0::fn_0bd7f (0bd7f)
+    0ce4a ret 0ce4f  native  TI_SetTimeWarpFactor   in 200::SpeakArrayWithPriorityAndFaceAndDurationWithSubtitle (0cda3)
+    0cff7 ret 0cffc  native  TI_SetTimeWarpFactor   in 200::SpeakArrayWithPriorityAndFaceAndDuration (0cf50)
+    114a0 ret 114a5  native  TI_SetTimeWarpFactor   in 621::CutEvent (11257)
+    1433c ret 14341  native  TI_SetTimeWarpFactor   in 150::Vbi (142c2)
+    1435e ret 14363  native  INS_SetTimeWarpFactor  in 150::Vbi (142c2)
+    144f6 ret 144fb  call    StopFastForward        in 150::Killed (144ef)
+    15588 ret 1558d  native  TI_SetTimeWarpFactor   in 150::StopFastForward (15557)
+    155a8 ret 155ad  call    StopFastForward        in 150::ToggleFastForward (15599)
+    15611 ret 15616  call    StartFastForward       in 150::ToggleFastForward (15599)
+    15ef3 ret 15ef8  call    StopFastForward        in 150::StartGateWarp (15ed2)
+    15f9c ret 15fa1  call    StopFastForward        in 150::StartSectorWarp (15f7b)
+    16a02 ret 16a07  call    StopFastForward        in 150::QuickWarp (169fb)
+    17c7f ret 17c84  call    StopFastForward        in 150::NotifyPlanetCollision (17c78)
+    1c23e ret 1c243  call    IsFastForward          in 501::PerFrameInput (1c040)
+    1d349 ret 1d34e  call    ToggleFastForward      in 501::HandleKeyInput (1ce97)
+    23e07 ret 23e0c  call    StopFastForward        in 624::Activate (23d98)
+    613cf ret 613d4  call    StopFastForward        in 702::__runScript (38afa)
+    72f32 ret 72f37  call    StopFastForward        in 702::__runScript (38afa)
+    a09da ret a09df  call    GetWarpMultiplier      in 2001::DoGalaxyTake (a086e)
+    b2315 ret b231a  call    StopFastForward        in 2016::RunPlayerTrade (b2161)
+    c6a71 ret c6a76  call    StartSectorWarp        in 2004::MovePlayerTo (c6a1f)
+    c6af7 ret c6afc  call    StopFastForward        in 2004::MovePlayerTo (c6a1f)
+    cef8f ret cef94  call    StartGateWarp          in 2004::__FlyToNextSector (ceea8)
+    cfe4a ret cfe4f  call    StopFastForward        in 2004::__LandInHangar (cf94e)
+    d06f0 ret d06f5  call    StopFastForward        in 2004::__MoveToHangar (d01f4)
+    d61d0 ret d61d5  call    StartGateWarp          in 2004::JumpToSector (d5f6c)
+    d6213 ret d6218  call    StartSectorWarp        in 2004::JumpToSector (d5f6c)
+    d6231 ret d6236  call    StartSectorWarp        in 2004::JumpToSector (d5f6c)
+    d62dd ret d62e2  call    StopFastForward        in 2004::JumpToSector (d5f6c)
+    d63fd ret d6402  call    StopFastForward        in 2004::JumpToSector (d5f6c)
+    d642a ret d642f  call    StartGateWarp          in 2004::JumpToSector (d5f6c)
+    d646d ret d6472  call    StartSectorWarp        in 2004::JumpToSector (d5f6c)
+    d648b ret d6490  call    StartSectorWarp        in 2004::JumpToSector (d5f6c)
+    df6a6 ret df6ab  call    StopFastForward        in 2004::ChangePlayerShipTo (df5c4)
+    df887 ret df88c  call    StartGateWarp          in 2004::CanWarp (df75c)
+    dfa8c ret dfa91  call    StopFastForward        in 2004::CanLand (df893)
+    ffbe9 ret ffbee  call    GetWarpMultiplier      in 605::UpdateDisplayPanel (ffb8e)
+    101a67 ret 101a6c  call    ToggleFastForward      in 605::ClickDisplayPanel (10154b)
+    102441 ret 102446  call    StopFastForward        in 605::ClickInfoPanel (102172)
+    12d368 ret 12d36d  call    SetWarpFactor          in 2259::Input (12d1e3)
+    12d774 ret 12d779  call    SetWarpFactor          in 2259::Input (12d1e3)
+    12dd1b ret 12dd20  call    SetWarpFactor          in 2259::ChangeValue (12dabd)
+    154eb9 ret 154ebe  call    QuickWarp              in 2228::Input (154c20)
+    15f743 ret 15f748  native  TI_SetTimeWarpFactor   in 2225::SpeakQuestionWithDuration (15f5b9)
+    1acbc4 ret 1acbc9  call    QuickWarp              in 308::DoWarpPlayer (1acada)
+    1b3840 ret 1b3845  call    StopFastForward        in 308::DoPlayMovie (1b3818)
+    1ca7a7 ret 1ca7ac  call    StopFastForward        in 5003::Action2 (1ca762)
+    1cc102 ret 1cc107  call    StopFastForward        in 5005::BeamStart (1cc0f2)
+    1cc8ed ret 1cc8f2  call    StopFastForward        in 5006::ContextMenuReturn (1cc7e0)
+    1cc9bc ret 1cc9c1  call    StopFastForward        in 5006::ContextMenuReturn (1cc7e0)
+
+  2004::CanWarp df75c (engine gate-collision event, EXE 0x0045d7aa): if not ((this != g10)) goto df83c | call 150::IsWarping() | if not (!(150::IsWarping())) goto df866 | if not (!((SA_GetFlags(m3) & 524288))) goto df866 | call 150::StartGateWarp(p-1, p0)
+  702::__runScript StopFastForward at 613cf: case target 613cb, MSCI instruction [1927]
+  702::__runScript StopFastForward at 72f32: case target 72d23, MSCI instruction [1335]
+  150::StartFastForward reaches ['150::StartFastForward', '200::PlaySample']; blocking natives or dynamic calls: none
+  150::StopFastForward reaches ['150::StopFastForward', '200::PlaySample']; blocking natives or dynamic calls: none
+
+  option (iii): 150::StartGateWarp callcls at 15ef3 (file +0x15f07, operand file +0x15f08..+0x15f0b): StopFastForward 15557 -> IsFastForward 15590; 1 bytes differ; length True; instruction starts equal True; IsFastForward body [110, 15, 131]; argc [0]; build id kept True
+==============================================================================================================
+stock AP 3.3: addon/04.cat:L/x3story.obj  2312979 B  SHA-256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a  build 1510658513
+  class 150 entries: StartFastForward 15722, StopFastForward 15770, ToggleFastForward 157b2, IsFastForward 157a9, GetWarpFactor 156c8, SetWarpFactor 156d1, GetWarpMultiplier 15703, Vbi 13952, Input 149a4, InputAction 14a83, StartGateWarp 160ab, StartSectorWarp 16154, QuickWarp 16bd4, WarpToSector 1635e, IsWarping 16200, NotifyCollisionWarn 17ec9
+  class-150 member accessors (writers | readers):
+    m3   st: StartGateWarp, StartSectorWarp, WarpToSector                 ld: IsWarping, StartGateWarp, StartSectorWarp
+    m6   st: SetKilled, StartKilled                                       ld: BeforeLeave, DoStationAnnouncements, GetKilled, IncomingMessage, NotifyAlert, NotifyAttacked, PlayMessageWithPrioAndFace, PlayMessageWithPrioAndFaceAndNoise, ReceiveMessageWithPriority, SetKilled, SetLeave, StartFastForward, StartKilled, StopFastForward, TryLeave
+    m18  st: StartFastForward, StopFastForward                            ld: IsFastForward, StartFastForward, StopFastForward, ToggleFastForward, Vbi
+    m19  st: StartFastForward, StopFastForward, Vbi                       ld: GetWarpMultiplier, Vbi
+    m20  st: StartFastForward, Vbi                                        ld: Vbi
+    m21  st: InitClient, SetWarpFactor                                    ld: GetWarpFactor, GetWarpMultiplier, Vbi
+    m57  st: NotifyCollisionWarn, StartFastForward                        ld: NotifyCollisionWarn
+
+  501::HandleKeyInput 1d495: switch at 1dd51, 106 cases; action -> calls:
+    action 675 -> 1d75a ['150::ToggleFastForward']
+    action 825 -> 1d4a0 ['150::PauseGame']
+    action 971 -> 1dcb6 ['203::IncreaseTimeWarp']
+    action 972 -> 1dcc2 ['203::DecreaseTimeWarp']
+
+  callers (site, return offset = site + 5, kind, target, owner):
+    0048f ret 00494  native  TI_SetTimeWarpFactor   in 203::IncreaseTimeWarp (00472)
+    004b2 ret 004b7  native  TI_SetTimeWarpFactor   in 203::DecreaseTimeWarp (00497)
+    00aa7 ret 00aac  call    StopFastForward        in 203::B3DReload (00aa0)
+    0c569 ret 0c56e  native  TI_SetTimeWarpFactor   in 200::SpeakArrayWithPriorityAndFaceAndDurationWithSubtitle (0c4c2)
+    0c716 ret 0c71b  native  TI_SetTimeWarpFactor   in 200::SpeakArrayWithPriorityAndFaceAndDuration (0c66f)
+    10b65 ret 10b6a  native  TI_SetTimeWarpFactor   in 621::CutEvent (1091c)
+    139cc ret 139d1  native  TI_SetTimeWarpFactor   in 150::Vbi (13952)
+    139ee ret 139f3  native  INS_SetTimeWarpFactor  in 150::Vbi (13952)
+    13b86 ret 13b8b  call    StopFastForward        in 150::Killed (13b7f)
+    157a1 ret 157a6  native  TI_SetTimeWarpFactor   in 150::StopFastForward (15770)
+    157c1 ret 157c6  call    StopFastForward        in 150::ToggleFastForward (157b2)
+    1582a ret 1582f  call    StartFastForward       in 150::ToggleFastForward (157b2)
+    15dca ret 15dcf  call    StopFastForward        in 150::ReceiveMessageWithPriority (15db9)
+    160cc ret 160d1  call    StopFastForward        in 150::StartGateWarp (160ab)
+    16175 ret 1617a  call    StopFastForward        in 150::StartSectorWarp (16154)
+    16bdb ret 16be0  call    StopFastForward        in 150::QuickWarp (16bd4)
+    17bee ret 17bf3  call    StopFastForward        in 150::NotifyMissileAlert (17be7)
+    17e6b ret 17e70  call    StopFastForward        in 150::NotifyPlanetCollision (17e64)
+    17f22 ret 17f27  call    StopFastForward        in 150::NotifyCollisionWarn (17ec9)
+    1aa7b ret 1aa80  call    StopFastForward        in 150::PlayMessageWithPrioAndFaceAndNoise (1aa6a)
+    1ab4f ret 1ab54  call    StopFastForward        in 150::PlayMessageWithPrioAndFace (1ab3e)
+    1c3f5 ret 1c3fa  call    IsFastForward          in 501::PerFrameInput (1c1f7)
+    1c410 ret 1c415  call    StopFastForward        in 501::PerFrameInput (1c1f7)
+    1d75e ret 1d763  call    ToggleFastForward      in 501::HandleKeyInput (1d495)
+    21bdd ret 21be2  call    StopFastForward        in 503::KillMenus (21b7e)
+    24713 ret 24718  call    StopFastForward        in 624::Activate (246a4)
+    640b2 ret 640b7  call    StopFastForward        in 702::__runScript (38137)
+    8b77b ret 8b780  call    GetWarpMultiplier      in 2001::DoGalaxyTake (8b60f)
+    9be88 ret 9be8d  call    StopFastForward        in 2016::RunPlayerTrade (9bcd4)
+    af482 ret af487  call    StartSectorWarp        in 2004::MovePlayerTo (af430)
+    af508 ret af50d  call    StopFastForward        in 2004::MovePlayerTo (af430)
+    b7318 ret b731d  call    StartGateWarp          in 2004::__FlyToNextSector (b7231)
+    b8122 ret b8127  call    StopFastForward        in 2004::__LandInHangar (b7c25)
+    bd9ec ret bd9f1  call    StartGateWarp          in 2004::JumpToSector (bd7a3)
+    bda2f ret bda34  call    StartSectorWarp        in 2004::JumpToSector (bd7a3)
+    bda4d ret bda52  call    StartSectorWarp        in 2004::JumpToSector (bd7a3)
+    bdaf9 ret bdafe  call    StopFastForward        in 2004::JumpToSector (bd7a3)
+    bdc0d ret bdc12  call    StopFastForward        in 2004::JumpToSector (bd7a3)
+    bdc3a ret bdc3f  call    StartGateWarp          in 2004::JumpToSector (bd7a3)
+    bdc7d ret bdc82  call    StartSectorWarp        in 2004::JumpToSector (bd7a3)
+    bdc9b ret bdca0  call    StartSectorWarp        in 2004::JumpToSector (bd7a3)
+    c6fb1 ret c6fb6  call    StopFastForward        in 2004::ChangePlayerShipTo (c6ecf)
+    c7192 ret c7197  call    StartGateWarp          in 2004::CanWarp (c7067)
+    c7398 ret c739d  call    StopFastForward        in 2004::CanLand (c719e)
+    e84aa ret e84af  call    GetWarpMultiplier      in 605::UpdateDisplayPanel (e844f)
+    ea1fa ret ea1ff  call    ToggleFastForward      in 605::ClickDisplayPanel (e9cde)
+    eabd4 ret eabd9  call    StopFastForward        in 605::ClickInfoPanel (ea905)
+    114efe ret 114f03  call    SetWarpFactor          in 2259::Input (114d79)
+    1152cc ret 1152d1  call    SetWarpFactor          in 2259::Input (114d79)
+    115826 ret 11582b  call    SetWarpFactor          in 2259::ChangeValue (1155e6)
+    13c1ff ret 13c204  call    QuickWarp              in 2228::Input (13bf66)
+    146063 ret 146068  native  TI_SetTimeWarpFactor   in 2225::SpeakQuestionWithDuration (145ed9)
+    191bf4 ret 191bf9  call    QuickWarp              in 308::DoWarpPlayer (191b0a)
+    1988cb ret 1988d0  call    StopFastForward        in 308::DoPlayMovie (1988a3)
+    1af83a ret 1af83f  call    StopFastForward        in 5003::Action2 (1af7f5)
+    1b1176 ret 1b117b  call    StopFastForward        in 5005::BeamStart (1b1166)
+    1b17bb ret 1b17c0  call    StopFastForward        in 5006::ContextMenuReturn (1b16ae)
+    1b188a ret 1b188f  call    StopFastForward        in 5006::ContextMenuReturn (1b16ae)
+
+  2004::CanWarp c7067 (engine gate-collision event, EXE 0x0045d7aa): call 150::IsWarping() | if not (!(150::IsWarping())) goto c7171 | if not (!((SA_GetFlags(m3) & 524288))) goto c7171 | call 150::StartGateWarp(p-1, p0)
+  702::__runScript StopFastForward at 640b2: case target 63ea3, MSCI instruction [1335]
+  150::StartFastForward reaches ['150::StartFastForward', '200::PlaySample']; blocking natives or dynamic calls: none
+  150::StopFastForward reaches ['150::StopFastForward', '200::PlaySample']; blocking natives or dynamic calls: none
+
+  option (iii): 150::StartGateWarp callcls at 160cc (file +0x160e0, operand file +0x160e1..+0x160e4): StopFastForward 15770 -> IsFastForward 157a9; 1 bytes differ; length True; instruction starts equal True; IsFastForward body [110, 15, 131]; argc [0]; build id kept True
+==============================================================================================================
+story checks
+  StopFastForward owners, Mayhem only: ['0::fn_0bd7f', '2004::__MoveToHangar']
+  StopFastForward owners, stock only:  ['150::NotifyCollisionWarn', '150::NotifyMissileAlert', '150::PlayMessageWithPrioAndFace', '150::PlayMessageWithPrioAndFaceAndNoise', '150::ReceiveMessageWithPriority', '501::PerFrameInput', '503::KillMenus']
+  TI_SetTimeWarpFactor owners: Mayhem ['150::StopFastForward', '150::Vbi', '200::SpeakArrayWithPriorityAndFaceAndDuration', '200::SpeakArrayWithPriorityAndFaceAndDurationWithSubtitle', '203::DecreaseTimeWarp', '203::IncreaseTimeWarp', '2225::SpeakQuestionWithDuration', '621::CutEvent']; stock ['150::StopFastForward', '150::Vbi', '200::SpeakArrayWithPriorityAndFaceAndDuration', '200::SpeakArrayWithPriorityAndFaceAndDurationWithSubtitle', '203::DecreaseTimeWarp', '203::IncreaseTimeWarp', '2225::SpeakQuestionWithDuration', '621::CutEvent']
+   [ok] StartFastForward has one caller, ToggleFastForward
+   [ok] ToggleFastForward callers: HandleKeyInput (key action) and ClickDisplayPanel
+   [ok] action 675 is the only toggle case
+   [ok] m21 written only by Start/StopFastForward
+   [ok] m22 written by Start/Stop and the Vbi ramp
+   [ok] m24 (target factor) written by InitClient and SetWarpFactor
+   [ok] m9 written only by SetKilled/StartKilled
+   [ok] StartGateWarp calls StopFastForward at 15ef3 (return offset 15ef8)
+   [ok] CanWarp reaches StartGateWarp (manual gate entry)
+   [ok] the __runScript StopFastForward cases are MSCI 1927 (stop SETA) and 1335 (move player to ship)
+   [ok] Mayhem NotifyCollisionWarn does not stop SETA
+   [ok] option (iii) retarget: one site, <= 4 bytes, length/build/instruction starts kept, IsFastForward = frame; ldmem; ret (both builds)
+   [ok] Start/StopFastForward reach no blocking native and no dynamic call (run to completion in one call)
+   [ok] the save-description helper 0bd7f (no CLAS row) stops SETA
+==============================================================================================================
+text and MSCI scripts
+  addon/04.cat 0001-L044 page 301903 id 10675: 'SETA time accelerator'
+  addon/04.cat 0001-L044 page 301903 id 10825: 'Pause game'
+   [ok] control names 10000+action: 675 = SETA, 825 = pause (matches the switch)
+  addon/t/8383-L044.xml page 68 id 200 (m24 default via SE_ReadText): '10'; id 1927: 'stop SETA'; AP 352003/1335: '%0move player to ship %1: Teleport=%2'
+   [ok] default SETA factor m24 = 10
+  addon/scripts: 1994 XML scripts scanned, 0 contain an int 1927 in their code array
+   [ok] no installed MSCI script uses "stop SETA" (1927)
+==============================================================================================================
+X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+   [ok] EXE identity
+EXE byte checks
+   [ok] 0041210d input routine: if cfg+0xcc != 0x10000 (after one of nine input flags) ...
+   [ok] 0041211f ... 0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0)
+   [ok] 00410b89 the input flags are cleared at 0x00410b8b..
+   [ok] 0040f99f action source: 0x0049f4c0(0, 0, 0x96, "InputAction", 1, 1, action)
+   [ok] 0045d79e gate collision: push "CanWarp" before 0x0049f4c0 at 0x0045d7aa
+   [ok] 0045d7aa ... call 0x0049f4c0
+   [ok] 004b148c TI case 9 TI_SetTimeWarpFactor entry: mov eax,[cfg]; mov edx,[ebx+1] (8 B)
+   [ok] 004b1494 ... mov ecx,[VM]; push 1; mov [eax+0xcc],edx
+   [ok] 004b14a2 ... push ecx; mov eax,ebp(task); call 0x004a47f0; eax=1
+   [ok] 00410100 input routine entry (the chase-restore inject site)
+   [ok] 0049f4c0 class/by-key wrapper 0x0049f4c0 prologue
+   [ok] 004a26dc interpreter: table index = opcode - 1
+   [ok] 004a37bc op 0x78 handler: u16 n, base ...
+   [ok] 00555e1c = "StopFastForward"
+   [ok] 00555e00 = "InputAction"
+   [ok] 0055fd64 = "CanWarp"
+   [ok] TI jump table 0x004b15f8[9] = 0x004b148c
+   EXE string StopFastForward      occurrences 1
+   EXE string StartFastForward     occurrences 0
+   EXE string ToggleFastForward    occurrences 0
+   EXE string IsFastForward        occurrences 0
+   [ok] the EXE carries no "StartFastForward" literal (a caller must supply it)
+   [ok] one push of the "StopFastForward" pointer in .text
+   byte-pattern branch candidates into 004b148d..004b14b3: ['004b147c->004b14b1']; dword references: []
+   (candidates are any byte offset decoding as a branch; 004b147c is the rel32 operand of the call at 004b147b, and 004b14b1 lies outside the 8-byte span)
+   [ok] no branch or dword reference into the interior of the 8-byte span 0x004b148c..0x004b1493
+
+RESULT PASS (0 failures)

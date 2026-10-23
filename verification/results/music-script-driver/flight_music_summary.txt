@@ -1,0 +1,12 @@
+log /mnt/c/X3/x3m.log sha256 fdc7c8d7fd220b7fe116dc05a143e5b2cd6d6c7994f7b9e4cc2028d32f627820
+kinds music_keep=1, music_keep_active=1, music_keep_seek=8, music_keep_stop=1
+music_trace present: False
+plays 8, distinct ids 6, combat ids (1001..1042) 0, same-id consecutive replays 1
+  frame 132     id 8404   start_ms 0    vanilla  
+  frame 933     id 80412  start_ms 0    vanilla  12.6 s after the previous play
+  frame 3866    id 80202  start_ms 0    vanilla  23.6 s after the previous play
+  frame 25966   id 81307  start_ms 0    vanilla  106.9 s after the previous play
+  frame 32295   id 80300  start_ms 0    vanilla  44.6 s after the previous play
+  frame 38560   id 81616  start_ms 0    vanilla  39.9 s after the previous play
+  frame 41640   id 81616  start_ms 0    skip     25.1 s after the previous play
+  frame 42649   id 8404   start_ms 0    vanilla  7.5 s after the previous play

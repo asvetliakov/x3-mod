@@ -615,6 +615,8 @@ So `dt` is the game time since that object's previous pass, which equals `cfg+0x
 
 No per-frame path writes 0 to either step; the range rule writes 1. The engine itself never changes `+0xcc` on pause,
 menu, alt-tab or loading. Whether the scripts end SETA there is [u], apart from `StopFastForward` above.
+The script side (the class-150 toggle state, the ramp, the gate switch-off in `150::StartGateWarp` and every other
+stop) is in [seta-script-toggle.md](seta-script-toggle.md) (2026-10-23).
 
 ### Question 4: the safest read
 
