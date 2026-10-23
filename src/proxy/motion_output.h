@@ -2836,7 +2836,9 @@ private:
     unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;
     // The locked-prefix statistics at the last bolt_footprint window (cumulative counters; the
     // locked_prefix_window row logs the differences).
-    std::uint64_t bolt_prefix_last_[10]{};
+    std::uint64_t bolt_prefix_last_[12]{};
+    bool bolt_staging_refusal_logged_ = false; // locked_prefix_staging_refused written (once per device)
+    std::uint64_t bolt_staging_refusal_base_[2]{}; // size_refusals, staging_failures at attach
     // Pre-expansion size histograms of the window's instances, [0] in the
     // chase view (the plan's axes), [1] in any other view (bounding box only).
     bolt_footprint::Histogram bolt_hist_[2]{};

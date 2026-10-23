@@ -45,6 +45,7 @@ HARNESS = r'''
 #include "bolt_footprint_core.h"
 #include "locked_prefix_core.h"
 #include "chase_camera.h"
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -194,7 +195,8 @@ static int stage_case() {
     staged.finish_lock(5, 1);
     staged.close(st);
     const auto nested = staged.lookup(5, 6, &p, &rev, &sc);
-    std::vector<unsigned char> big(prefix::staging_limit + prefix::stride);
+    // Past the pool cap: refused before anything is allocated (a mapping of the stated length all the same).
+    std::vector<unsigned char> big(prefix::staging_pool_limit + prefix::stride);
     staged.begin_lock(5, true, big.data(), big.size(), 1, &st);
     const bool oversize_pass = !st;
     staged.finish_lock(5, 1);
@@ -240,6 +242,7 @@ static int stage_case() {
     pin.begin_lock(100, true, map_pin.data(), bytes, 1, &st);
     write_prefix(st.bytes, 64, 3);
     pin.clear();
+    const std::size_t kept = pin.staging_bytes(); // the pinned block survives clear
     bool marks_ok = true;
     std::vector<std::vector<unsigned char>> maps(16, std::vector<unsigned char>(bytes, 0));
     for (unsigned k = 0; k < 16; ++k) {
@@ -259,9 +262,9 @@ static int stage_case() {
     const std::uint32_t after_clear = pin.finish_lock(100, 1); // the record is gone: copied, not published
     pin.close(st);
     const bool pin_mapped = std::memcmp(map_pin.data(), expect64.data(), expect64.size()) == 0;
-    std::printf("STAGE pinning marks_ok=%u intact=%u mapped=%u published=%u evictions=%llu used=%u open=%u\n",
+    std::printf("STAGE pinning marks_ok=%u intact=%u mapped=%u published=%u evictions=%llu used=%u open=%u kept=%zu\n",
                 unsigned(marks_ok), unsigned(intact), unsigned(pin_mapped), unsigned(after_clear),
-                static_cast<unsigned long long>(pin.evictions()), pin.used(), pin.open_stages());
+                static_cast<unsigned long long>(pin.evictions()), pin.used(), pin.open_stages(), kept);
     // Every slot pinned: a new buffer cannot be marked.
     prefix::Table full;
     prefix::Stage stages[prefix::Table::capacity];
@@ -306,6 +309,168 @@ static int stage_case() {
         }
         std::printf("STAGE cost vertices=%u bytes=%zu direct_scan_ns=%.0f staged_copy_ns=%.0f staged_scan_ns=%.0f staged_total_ns=%.0f\n", n, bytes,
                     direct_ns / reps, copy_ns / reps, scan_ns / reps, (copy_ns + scan_ns) / reps);
+    }
+    return 0;
+}
+
+// The game's real bullet buffer (Run 194 A: stream0_bytes=2211840, 1024 x 90
+// x 24, locked whole with DISCARD): staged whatever its size, the sentinel
+// only over the scan window, the Unlock copy only the written prefix up to the
+// first all-sentinel vertex, the whole range when the window holds none (or
+// the scan did not publish), the pool cap refused and counted; then the copy +
+// scan cost per lock.
+static int stage_big_case() {
+    const std::size_t bytes = 2211840;
+    std::vector<unsigned char> map(bytes, 0x5a), map_direct(bytes, 0x5a);
+    prefix::Table t, direct;
+    t.mark(9);
+    direct.mark(9);
+    prefix::Stage st{};
+    prefix::Scan published{};
+    unsigned char* first = nullptr;
+    bool same = true;
+    const auto lock_write = [&](unsigned n, unsigned salt, std::uint32_t thread, std::size_t* sentinel, std::size_t* copied) {
+        std::fill(map.begin(), map.end(), 0x5a);
+        const std::uint64_t before = t.sentinel_bytes();
+        t.begin_lock(9, true, map.data(), bytes, 1, &st);
+        direct.begin_lock(9, true, map_direct.data(), bytes, 1);
+        *sentinel = std::size_t(t.sentinel_bytes() - before);
+        if (!st) return 0u;
+        if (!first) first = st.bytes;
+        write_prefix(st.bytes, n, salt);
+        write_prefix(map_direct.data(), n, salt);
+        const std::uint32_t scanned = t.finish_lock(9, thread, &published);
+        const std::uint32_t scanned_direct = direct.finish_lock(9, thread);
+        *copied = t.copy_out(st, published);
+        t.close(st);
+        const float *pa = nullptr, *pb = nullptr; const std::uint32_t *ea = nullptr, *eb = nullptr;
+        std::uint64_t qa = 0, qb = 0; std::uint32_t sa = 0, sb = 0;
+        const unsigned want = n < prefix::max_vertices ? n : prefix::max_vertices;
+        const auto la = t.lookup(9, want ? want : 1, &pa, &qa, &sa, &ea), lb = direct.lookup(9, want ? want : 1, &pb, &qb, &sb, &eb);
+        same = same && scanned == scanned_direct && la == lb && sa == sb;
+        if (la == prefix::Lookup::Bound && lb == prefix::Lookup::Bound)
+            same = same && std::memcmp(pa, pb, std::size_t(scanned) * 12) == 0 && std::memcmp(ea, eb, std::size_t(scanned) * 12) == 0;
+        return unsigned(scanned);
+    };
+    // The written bytes reached the mapping; past *copied the mapping is untouched.
+    const auto mapped = [&](unsigned n, unsigned salt, std::size_t copied) {
+        std::vector<unsigned char> expect(std::size_t(n) * prefix::stride);
+        write_prefix(expect.data(), n, salt);
+        bool ok = std::memcmp(map.data(), expect.data(), expect.size()) == 0;
+        for (std::size_t i = copied; ok && i < bytes; ++i) ok = map[i] == 0x5a;
+        return ok;
+    };
+    std::size_t sentinel = 0, copied = 0;
+    const std::uint64_t full0 = t.full_copies(), prefix0 = t.prefix_copies();
+    // 420 primitives drawn = 1260 vertices written (two locks: the second reuses the block, sentinel = previous prefix).
+    unsigned scanned = lock_write(1260, 1, 1, &sentinel, &copied);
+    const std::size_t first_sentinel = sentinel;
+    scanned = lock_write(1260, 2, 1, &sentinel, &copied);
+    const float* pp = nullptr; std::uint64_t rev = 0; std::uint32_t sc = 0;
+    const auto drawn = t.lookup(9, 1260, &pp, &rev, &sc);
+    std::printf("BIG prefix staged=%u length=%zu scanned=%u copied=%zu full=%llu prefix=%llu mapped=%u lookup=%s sentinel_first=%zu sentinel_next=%zu staging_bytes=%zu reused=%u same=%u\n",
+                unsigned(t.staged_locks()), bytes, scanned, copied, static_cast<unsigned long long>(t.full_copies() - full0),
+                static_cast<unsigned long long>(t.prefix_copies() - prefix0), unsigned(mapped(1260, 2, copied)),
+                prefix::lookup_name(drawn), first_sentinel, sentinel, t.staging_bytes(), unsigned(st.bytes == first), unsigned(same));
+    // 7000 vertices written: no sentinel in the 6144-vertex window, the whole range is copied.
+    const std::uint64_t full1 = t.full_copies(), prefix1 = t.prefix_copies();
+    scanned = lock_write(7000, 3, 1, &sentinel, &copied);
+    std::printf("BIG full scanned=%u copied=%zu full=%llu prefix=%llu mapped=%u window_end=%llu sentinel=%zu same=%u\n", scanned, copied,
+                static_cast<unsigned long long>(t.full_copies() - full1), static_cast<unsigned long long>(t.prefix_copies() - prefix1),
+                unsigned(mapped(7000, 3, copied)), static_cast<unsigned long long>(t.window_end_scans()), sentinel, unsigned(same));
+    // After a full window: back to a short prefix, the window was re-sentinelled at Lock (6144 vertices).
+    scanned = lock_write(100, 4, 1, &sentinel, &copied);
+    std::printf("BIG shrink scanned=%u copied=%zu mapped=%u sentinel=%zu same=%u\n", scanned, copied, unsigned(mapped(100, 4, copied)), sentinel, unsigned(same));
+    // A written vertex whose position words are all 0xffffffff but whose other words are not: the scan stops there
+    // (unchanged), the stop is no all-sentinel vertex, so the whole range is copied.
+    std::fill(map.begin(), map.end(), 0x5a);
+    t.begin_lock(9, true, map.data(), bytes, 1, &st);
+    write_prefix(st.bytes, 300, 5);
+    std::memset(st.bytes + 200 * prefix::stride, 0xff, 12);
+    scanned = t.finish_lock(9, 1, &published);
+    copied = t.copy_out(st, published);
+    t.close(st);
+    std::printf("BIG nan_position scanned=%u copied=%zu\n", scanned, copied);
+    // Another thread unlocks: nothing published, the whole range is copied.
+    std::fill(map.begin(), map.end(), 0x5a);
+    t.begin_lock(9, true, map.data(), bytes, 1, &st);
+    write_prefix(st.bytes, 40, 6);
+    scanned = t.finish_lock(9, 2, &published);
+    copied = t.copy_out(st, published);
+    t.close(st);
+    std::printf("BIG thread scanned=%u copied=%zu mapped=%u\n", scanned, copied, unsigned(mapped(40, 6, copied)));
+    // Pool cap: one 20 MiB slot fits, a second 20 MiB slot would pass 32 MiB (refused, counted, Invalid), a
+    // 2.2 MB lock of that buffer still fits; clear (Reset, device release) frees every unpinned block. Mappings
+    // of the stated length; nothing is copied into them.
+    prefix::Table pool;
+    pool.mark(1);
+    pool.mark(2);
+    const std::size_t twenty = std::size_t(20) << 20;
+    std::vector<unsigned char> map_twenty(twenty);
+    pool.begin_lock(1, true, map_twenty.data(), twenty, 1, &st);
+    const bool first_ok = bool(st);
+    pool.finish_lock(1, 1);
+    pool.close(st);
+    pool.begin_lock(2, true, map_twenty.data(), twenty, 1, &st);
+    const bool second_refused = !st;
+    pool.finish_lock(2, 1);
+    const auto refused_lookup = pool.lookup(2, 6, &pp, &rev, &sc);
+    pool.begin_lock(2, true, map.data(), bytes, 1, &st);
+    const bool small_ok = bool(st);
+    pool.finish_lock(2, 1);
+    pool.close(st);
+    const std::size_t held = pool.staging_bytes();
+    pool.clear();
+    std::printf("BIG pool first=%u refused=%u lookup=%s small=%u size_refusals=%llu largest=%zu unstaged=%llu failures=%llu staging_bytes=%zu limit=%zu after_clear=%zu\n",
+                unsigned(first_ok), unsigned(second_refused), prefix::lookup_name(refused_lookup), unsigned(small_ok),
+                static_cast<unsigned long long>(pool.size_refusals()), pool.largest_refused(),
+                static_cast<unsigned long long>(pool.unstaged_locks()), static_cast<unsigned long long>(pool.staging_failures()),
+                held, prefix::staging_pool_limit, pool.staging_bytes());
+    // Regrow on one slot: a 147456-byte lock (3000 written), then the 2211840-byte buffer (500 written): the old
+    // block is freed first, the new block's window is all sentinel past the prefix, the prefix copy is exact.
+    prefix::Table grow;
+    grow.mark(4);
+    std::vector<unsigned char> map_small(prefix::max_bytes, 0x5a);
+    grow.begin_lock(4, true, map_small.data(), map_small.size(), 1, &st);
+    write_prefix(st.bytes, 3000, 7);
+    grow.finish_lock(4, 1, &published);
+    const std::size_t small_copied = grow.copy_out(st, published);
+    grow.close(st);
+    std::fill(map.begin(), map.end(), 0x5a);
+    grow.begin_lock(4, true, map.data(), bytes, 1, &st);
+    bool resentinel = true;
+    for (std::size_t i = 0; i < prefix::max_bytes; ++i) resentinel = resentinel && st.bytes[i] == 0xff;
+    write_prefix(st.bytes, 500, 8);
+    const std::uint32_t grown = grow.finish_lock(4, 1, &published);
+    copied = grow.copy_out(st, published);
+    grow.close(st);
+    std::printf("BIG regrow small_copied=%zu resentinel=%u scanned=%u copied=%zu mapped=%u staging_bytes=%zu\n", small_copied,
+                unsigned(resentinel), unsigned(grown), copied, unsigned(mapped(500, 8, copied)), grow.staging_bytes());
+    // Cost per lock: scan of staging + copy of the written extent into the mapping (host memory is cacheable; the
+    // native write-combined copy is not reproduced). The b4def9c1 rule (whole range per lock) beside it.
+    for (unsigned n : {1260u, 7000u}) {
+        prefix::Table ts;
+        ts.mark(1);
+        const unsigned reps = 200;
+        double copy_ns = 0, scan_ns = 0, whole_ns = 0;
+        std::size_t extent = 0;
+        for (unsigned r = 0; r < reps; ++r) {
+            ts.begin_lock(1, true, map.data(), bytes, 1, &st);
+            write_prefix(st.bytes, n, 0);
+            auto t0 = std::chrono::steady_clock::now();
+            ts.finish_lock(1, 1, &published);
+            auto t1 = std::chrono::steady_clock::now();
+            extent = ts.copy_out(st, published);
+            auto t2 = std::chrono::steady_clock::now();
+            prefix::Table::flush(st);
+            auto t3 = std::chrono::steady_clock::now();
+            ts.close(st);
+            scan_ns += std::chrono::duration<double, std::nano>(t1 - t0).count();
+            copy_ns += std::chrono::duration<double, std::nano>(t2 - t1).count();
+            whole_ns += std::chrono::duration<double, std::nano>(t3 - t2).count();
+        }
+        std::printf("BIG cost vertices=%u bytes=%zu copied=%zu scan_ns=%.0f copy_ns=%.0f total_ns=%.0f whole_range_copy_ns=%.0f\n", n, bytes, extent,
+                    scan_ns / reps, copy_ns / reps, (scan_ns + copy_ns) / reps, whole_ns / reps);
     }
     return 0;
 }
@@ -365,6 +530,7 @@ int main(int argc, char** argv) {
     if (!std::strcmp(argv[1], "period")) return period_cases();
     if (!std::strcmp(argv[1], "scan")) return scan_case();
     if (!std::strcmp(argv[1], "stage")) return stage_case();
+    if (!std::strcmp(argv[1], "stage_big")) return stage_big_case();
     if (!std::strcmp(argv[1], "draw") && argc > 2) return draw_case(argv[2]);
     if (!std::strcmp(argv[1], "gate")) {
         // The frame-stamped view gate over a scripted frame sequence: the handler
@@ -813,6 +979,7 @@ class CoreRules(unittest.TestCase):
         self.assertEqual((pin['marks_ok'], pin['intact'], pin['mapped'], pin['published'], pin['evictions'], pin['used'], pin['open']),
                          ('1', '1', '1', '0', '1', '15', '0'),
                          'an open stage survives clear and eviction: its slot is skipped and its bytes reach the mapping')
+        self.assertEqual(pin['kept'], '147456', 'clear keeps the pinned slot\'s block')
         self.assertEqual((rows['full']['refused'], rows['full']['after_close'], rows['full']['evictions']), ('1', '1', '1'),
                          'all slots pinned: no mark until a stage closes')
         for key in ('costvertices=1056', 'costvertices=6144'):
@@ -826,9 +993,55 @@ class CoreRules(unittest.TestCase):
         self.assertEqual(own.count('prefix_table.begin_lock('), 1)
         self.assertIn('!(flags & (D3DLOCK_READONLY | D3DLOCK_NOOVERWRITE))', own)
         self.assertIn('nested_alias = !(flags & D3DLOCK_DISCARD) && size != 0', own)
-        self.assertIn('if (!detached) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(stage);', own)
+        self.assertIn('if (!nested_alias) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(open);', own)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('locked_prefix_window device=', motion)
+
+    def test_staged_lock_of_the_game_buffer(self):
+        """Run 194 A: the game's bullet buffer is 2211840 B (1024 x 90 x 24), locked whole. It is staged, the
+        sentinel covers only the scan window, the Unlock copies the written prefix (the whole range without a sentinel
+        in the window, a non-sentinel stop or an unpublished scan), the pool cap refuses and counts."""
+        rows = {}
+        for line in Harness.run('stage_big').splitlines():
+            parts = line.split()
+            rows[parts[1] + (parts[2] if parts[1] == 'cost' else '')] = dict(p.split('=', 1) for p in parts[2:])
+        pre = rows['prefix']
+        self.assertEqual((pre['staged'], pre['length'], pre['scanned'], pre['copied'], pre['full'], pre['prefix'], pre['mapped'], pre['lookup']),
+                         ('2', '2211840', '1260', '30240', '0', '2', '1', 'bound'),
+                         '420 primitives: staged, 1260 scanned, a 30240-byte prefix copy, no full copy, the draw bound')
+        self.assertEqual((pre['sentinel_first'], pre['sentinel_next'], pre['staging_bytes'], pre['reused'], pre['same']),
+                         ('147456', '30240', '2211840', '1', '1'),
+                         'sentinel over the scan window only, one 2211840-byte block reused, scan data as the direct mode')
+        full = rows['full']
+        self.assertEqual((full['scanned'], full['copied'], full['full'], full['prefix'], full['mapped'], full['window_end'], full['same']),
+                         ('6144', '2211840', '1', '0', '1', '1', '1'), '7000 vertices: no sentinel in the window, the whole range copied')
+        self.assertEqual((rows['shrink']['scanned'], rows['shrink']['copied'], rows['shrink']['mapped'], rows['shrink']['sentinel']),
+                         ('100', '2400', '1', '147456'), 'after a full window the whole window is re-sentinelled')
+        self.assertEqual((rows['nan_position']['scanned'], rows['nan_position']['copied']), ('200', '2211840'),
+                         'a stop that is not six sentinel words copies the whole range')
+        self.assertEqual((rows['thread']['scanned'], rows['thread']['copied'], rows['thread']['mapped']), ('0', '2211840', '1'),
+                         'an unpublished scan copies the whole range')
+        pool = rows['pool']
+        self.assertEqual((pool['first'], pool['refused'], pool['lookup'], pool['small'], pool['size_refusals'], pool['largest'], pool['unstaged'], pool['failures']),
+                         ('1', '1', 'invalid', '1', '1', str(20 << 20), '1', '0'), 'a slot growth past the 32 MiB pool is refused and counted')
+        self.assertEqual((pool['staging_bytes'], pool['limit'], pool['after_clear']), (str((20 << 20) + 2211840), str(32 << 20), '0'),
+                         'clear frees every unpinned staging block')
+        grow = rows['regrow']
+        self.assertEqual((grow['small_copied'], grow['resentinel'], grow['scanned'], grow['copied'], grow['mapped'], grow['staging_bytes']),
+                         ('72000', '1', '500', '12000', '1', '2211840'),
+                         'a regrown block is re-sentinelled over the window, the old block freed, the prefix copy exact')
+        for n, copied in (('1260', '30240'), ('7000', '2211840')):
+            cost = rows['costvertices=' + n]
+            self.assertEqual(cost['copied'], copied)
+            self.assertLess(float(cost['total_ns']), 5e6, 'scan + copy of one bullet lock stays well under 5 ms on the host')
+        own = source_text(ROOT / 'src/ownership/d3d9_ownership.cpp')
+        self.assertIn('prefix_table.finish_lock(key, GetCurrentThreadId(), &published);', own)
+        self.assertIn('prefix_stats.copy_bytes += prefix_table.copy_out(stage, published);', own)
+        self.assertLess(own.index('prefix_table.finish_lock(key, GetCurrentThreadId(), &published);'),
+                        own.index('prefix_stats.copy_bytes += prefix_table.copy_out(stage, published);'), 'scan first, then the copy')
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        for field in ('copy_bytes_per_lock=', 'full_copies=', 'prefix_copies=', 'refused_size_total=', 'locked_prefix_staging_refused device='):
+            self.assertIn(field, motion)
 
     def test_below_and_above_the_minimums_and_behind(self):
         scene = Scene(seed=3)

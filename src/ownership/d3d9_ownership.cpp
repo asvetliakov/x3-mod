@@ -1495,9 +1495,10 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         // window from offset 0 (the observed writer passes the byte size) that
         // is not nested in an open staged lock is scannable. Such a lock is
         // staged (locked_prefix_core.h): the application receives the slot's
-        // cacheable staging block, the step-D sentinel is written there, and
-        // the Unlock copies it into the driver mapping before scanning it, so
-        // the write-combined mapping is never read. DISCARD contents are
+        // cacheable staging block covering the whole range (pool cap
+        // prefix::staging_pool_limit), the step-D sentinel is written into its
+        // scan window, and the Unlock scans it, then copies the written extent
+        // into the driver mapping, so the write-combined mapping is never read. DISCARD contents are
         // undefined to the application, so the staging block's contents are
         // within the Lock contract. SizeToLock 0 (whole buffer) would need a
         // native GetDesc per lock and is left unscanned, like every other
@@ -1635,13 +1636,15 @@ HRESULT buffer_unlock(Node* node) {
         }
         if (node->kind == Kind::VertexBuffer && device->options.locked_prefix_bounds) {
             // The mapping is still valid here and the application's writes are
-            // complete. A staged lock is copied staging -> mapping (the whole
-            // lock range, whatever thread unlocks and whatever the record's
-            // state: the application's data must reach the buffer), then the
-            // staging block is scanned to the first sentinel vertex (bounded
-            // to 6144) and the slot unpinned. Without an open stage nothing is
-            // read: finish_lock only turns a marked record Invalid (an Unlock
-            // without a staged Lock). The driver mapping is never read.
+            // complete. A staged lock's staging block is scanned to the first
+            // sentinel vertex (bounded to 6144), then copied staging -> mapping
+            // whatever thread unlocks and whatever the record's state (the
+            // application's data must reach the buffer): the written prefix
+            // when the scan published and stopped at an all-sentinel vertex,
+            // else the whole lock range (prefix::Table::written_extent); then
+            // the slot is unpinned. Without an open stage nothing is read:
+            // finish_lock only turns a marked record Invalid (an Unlock without
+            // a staged Lock). The driver mapping is never read.
             const auto key = reinterpret_cast<std::uintptr_t>(node);
             const fade_region::prefix::Stage stage = node->prefix_stage;
             if (stage && node->prefix_stage_depth) {
@@ -1653,22 +1656,23 @@ HRESULT buffer_unlock(Node* node) {
                 node->prefix_stage = {};
                 node->prefix_stage_detached = false;
                 node->prefix_stage_open.store(false, std::memory_order_release);
-                LARGE_INTEGER begin{}, copied{}, end{};
+                LARGE_INTEGER begin{}, scanned{}, end{};
                 QueryPerformanceCounter(&begin);
                 asm volatile("mfence" ::: "memory");
-                if (!detached) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(stage);
-                QueryPerformanceCounter(&copied);
+                fade_region::prefix::Scan published{};
+                const std::uint32_t vertices = prefix_table.finish_lock(key, GetCurrentThreadId(), &published);
+                QueryPerformanceCounter(&scanned);
                 if (!detached) {
+                    prefix_stats.copy_bytes += prefix_table.copy_out(stage, published);
+                    QueryPerformanceCounter(&end);
                     ++prefix_stats.copies;
-                    prefix_stats.copy_ticks += static_cast<std::uint64_t>(copied.QuadPart - begin.QuadPart);
+                    prefix_stats.copy_ticks += static_cast<std::uint64_t>(end.QuadPart - scanned.QuadPart);
                 }
-                const std::uint32_t vertices = prefix_table.finish_lock(key, GetCurrentThreadId());
                 prefix_table.close(stage);
                 if (vertices) {
-                    QueryPerformanceCounter(&end);
                     ++prefix_stats.scans;
                     prefix_stats.scanned_vertices += vertices;
-                    prefix_stats.scan_ticks += static_cast<std::uint64_t>(end.QuadPart - copied.QuadPart);
+                    prefix_stats.scan_ticks += static_cast<std::uint64_t>(scanned.QuadPart - begin.QuadPart);
                 }
             } else if (prefix_table.marked(key))
                 prefix_table.finish_lock(key, GetCurrentThreadId());
@@ -2678,6 +2682,12 @@ void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
     out->unstaged_locks = prefix_table.unstaged_locks();
     out->staging_bytes = prefix_table.staging_bytes();
     out->open_stages = prefix_table.open_stages();
+    out->full_copies = prefix_table.full_copies();
+    out->prefix_copies = prefix_table.prefix_copies();
+    out->size_refusals = prefix_table.size_refusals();
+    out->staging_failures = prefix_table.staging_failures();
+    out->largest_refused = prefix_table.largest_refused();
+    out->staging_pool_limit = fade_region::prefix::staging_pool_limit;
 }
 
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {

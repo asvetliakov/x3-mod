@@ -3161,6 +3161,13 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     id_ = device_id;
     caps_ = caps;
     requested_ = requested;
+    if (bolt_footprint_requested_) {
+        // Baseline of the process-wide staging refusal counters: this device's refusal row reports only its own.
+        ownership::LockedPrefixStatistics p{};
+        ownership::get_locked_prefix_statistics(&p);
+        bolt_staging_refusal_base_[0] = p.size_refusals;
+        bolt_staging_refusal_base_[1] = p.staging_failures;
+    }
     {
         // AGENTS.md "Shader slot budget": the shader transformers (linear_material, linear_emission) check programs
         // against the device's MaxPixelShader30InstructionSlots, 32768 where it reports the 512 spec minimum (wined3d;
@@ -7263,28 +7270,46 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
             w.refused_rows, w.refused_shape, w.refused_recheck, w.failures, w.locks, w.timed, us, s.draws, s.written,
             s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
     // The Unlock-side cost of the scan the footprint reads (bolt-footprint.md, "Staged Lock"): this window's
-    // marked locks, staged locks, staging -> mapping copies (bytes, us), scans (vertices, us), sentinel (bytes, us),
-    // window-end scans and nested pre-flushes; one ownership statistics read per 300 frames.
-    if (telemetry_) {
+    // marked locks, staged locks, staging -> mapping copies (bytes, per staged lock, us; whole-range and
+    // written-prefix ones), scans (vertices, us), sentinel (bytes, us), window-end scans, nested pre-flushes and
+    // locks refused for the staging pool cap or a failed allocation; one ownership statistics read per 300
+    // frames. The first such refusal since this device attached (the counters are process-wide) is logged once
+    // per device in every tier (locked_prefix_staging_refused).
+    if (telemetry_ || !bolt_staging_refusal_logged_) {
         ownership::LockedPrefixStatistics p{};
         ownership::get_locked_prefix_statistics(&p);
-        const std::uint64_t now[10] = {p.locks,      p.staged_locks,   p.copies,      p.copy_bytes, p.copy_ticks,
-                                       p.scans,      p.scanned_vertices, p.scan_ticks, p.sentinel_bytes,
-                                       p.sentinel_ticks};
-        std::uint64_t d[10];
-        for (unsigned i = 0; i < 10; ++i) {
-            d[i] = now[i] - bolt_prefix_last_[i];
-            bolt_prefix_last_[i] = now[i];
+        if (!bolt_staging_refusal_logged_ && (p.size_refusals > bolt_staging_refusal_base_[0] ||
+                                              p.staging_failures > bolt_staging_refusal_base_[1])) {
+            bolt_staging_refusal_logged_ = true;
+            log("locked_prefix_staging_refused device=%llu frame=%llu refused_total=%llu failed_total=%llu largest_bytes=%llu staging_bytes=%llu pool_limit=%llu",
+                id_, frame_, static_cast<unsigned long long>(p.size_refusals - bolt_staging_refusal_base_[0]),
+                static_cast<unsigned long long>(p.staging_failures - bolt_staging_refusal_base_[1]),
+                static_cast<unsigned long long>(p.largest_refused), static_cast<unsigned long long>(p.staging_bytes),
+                static_cast<unsigned long long>(p.staging_pool_limit));
         }
-        const double to_us = p.qpc_frequency ? 1e6 / double(p.qpc_frequency) : 0.0;
-        log("locked_prefix_window device=%llu frame=%llu frames=%u locks=%llu staged=%llu unstaged_total=%llu copies=%llu copy_bytes=%llu copy_us=%.1f scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu sentinel_us=%.1f window_end_scans_total=%llu nested_flushes_total=%llu staging_bytes=%llu open_stages=%u table_used=%u",
-            id_, frame_, bolt_window_frames_, static_cast<unsigned long long>(d[0]),
-            static_cast<unsigned long long>(d[1]), static_cast<unsigned long long>(p.unstaged_locks),
-            static_cast<unsigned long long>(d[2]), static_cast<unsigned long long>(d[3]), double(d[4]) * to_us,
-            static_cast<unsigned long long>(d[5]), static_cast<unsigned long long>(d[6]), double(d[7]) * to_us,
-            static_cast<unsigned long long>(d[8]), double(d[9]) * to_us,
-            static_cast<unsigned long long>(p.window_end_scans), static_cast<unsigned long long>(p.nested_flushes),
-            static_cast<unsigned long long>(p.staging_bytes), p.open_stages, p.used);
+        if (telemetry_) {
+            const std::uint64_t now[12] = {p.locks,          p.staged_locks,     p.copies,     p.copy_bytes,
+                                           p.copy_ticks,     p.scans,            p.scanned_vertices, p.scan_ticks,
+                                           p.sentinel_bytes, p.sentinel_ticks,   p.full_copies, p.prefix_copies};
+            std::uint64_t d[12];
+            for (unsigned i = 0; i < 12; ++i) {
+                d[i] = now[i] - bolt_prefix_last_[i];
+                bolt_prefix_last_[i] = now[i];
+            }
+            const double to_us = p.qpc_frequency ? 1e6 / double(p.qpc_frequency) : 0.0;
+            const double per_lock = d[1] ? double(d[3]) / double(d[1]) : 0.0;
+            log("locked_prefix_window device=%llu frame=%llu frames=%u locks=%llu staged=%llu unstaged_total=%llu copies=%llu copy_bytes=%llu copy_bytes_per_lock=%.0f full_copies=%llu prefix_copies=%llu copy_us=%.1f scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu sentinel_us=%.1f window_end_scans_total=%llu nested_flushes_total=%llu refused_size_total=%llu refused_size_max_bytes=%llu staging_failures_total=%llu staging_bytes=%llu open_stages=%u table_used=%u",
+                id_, frame_, bolt_window_frames_, static_cast<unsigned long long>(d[0]),
+                static_cast<unsigned long long>(d[1]), static_cast<unsigned long long>(p.unstaged_locks),
+                static_cast<unsigned long long>(d[2]), static_cast<unsigned long long>(d[3]), per_lock,
+                static_cast<unsigned long long>(d[10]), static_cast<unsigned long long>(d[11]), double(d[4]) * to_us,
+                static_cast<unsigned long long>(d[5]), static_cast<unsigned long long>(d[6]), double(d[7]) * to_us,
+                static_cast<unsigned long long>(d[8]), double(d[9]) * to_us,
+                static_cast<unsigned long long>(p.window_end_scans), static_cast<unsigned long long>(p.nested_flushes),
+                static_cast<unsigned long long>(p.size_refusals), static_cast<unsigned long long>(p.largest_refused),
+                static_cast<unsigned long long>(p.staging_failures), static_cast<unsigned long long>(p.staging_bytes),
+                p.open_stages, p.used);
+        }
     }
     for (unsigned view = 0; view < 2; ++view) {
         const auto& h = bolt_hist_[view];

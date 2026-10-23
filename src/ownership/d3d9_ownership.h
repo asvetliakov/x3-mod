@@ -197,9 +197,13 @@ struct LockedPrefixStatistics {
                                                                                 // sentinel
     // Staged Lock (bolt-footprint.md "Staged Lock"): locks served from staging, scannable locks refused staging
     // (passed through unscanned), Unlock copies staging -> mapping (count, bytes incl. nested pre-flushes, QPC
-    // ticks of the Unlock copies), nested-Lock pre-flushes, staging bytes held, stages open now.
+    // ticks of the Unlock copies), nested-Lock pre-flushes, staging bytes held, stages open now. Unlock copies
+    // split into whole-range and written-prefix ones; locks refused for the staging pool cap, the largest such
+    // range, the cap, and failed staging allocations.
     std::uint64_t staged_locks = 0, unstaged_locks = 0, copies = 0, copy_bytes = 0, copy_ticks = 0, nested_flushes = 0;
     std::uint64_t staging_bytes = 0;
+    std::uint64_t full_copies = 0, prefix_copies = 0, size_refusals = 0, largest_refused = 0, staging_pool_limit = 0;
+    std::uint64_t staging_failures = 0;
     unsigned used = 0, open_stages = 0;
 };
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;
