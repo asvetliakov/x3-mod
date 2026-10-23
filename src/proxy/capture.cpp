@@ -22,6 +22,7 @@
 #include "text_density.h"
 #include "music_keep.h"
 #include "seta_restore.h"
+#include "seta_manual_flight.h"
 #include "music_alert.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -1934,6 +1935,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     music_keep::present(ctx.id, ctx.frame, ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame
                                                          // counter the music lines carry
     seta_restore::present(ctx.frame); // X3M_SETA_RESTORE=1 only: stores the frame counter the restore counts in
+    seta_manual_flight::present(ctx.frame); // part B under debug = 1 only: the frame counter of its scale row
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
                                                                // and culled count on a captured frame
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
@@ -5551,6 +5553,10 @@ void initialize_log(HMODULE module) {
                                 // 0x004b148c claimed here and the chase restore's injection site 0x00410100 with its
                                 // three VM cancel sites attached (claimed once for both consumers), same window,
                                 // disjoint from every other claim
+    seta_manual_flight::initialize(); // X3M_SETA_MANUAL_FLIGHT=2 (schema default): the input stop's je 0x0041211d ->
+                                      // jmp (one byte) and, at 2, the yaw/pitch/roll controller spans 0x0040ebde,
+                                      // 0x0040ee3e, 0x0040f04d and the strafe step loads 0x00411e0c, 0x00411eb2; same
+                                      // window, disjoint from every other claim
     music_alert::initialize(); // X3M_MUSIC_COMBAT_TRIGGER=engaged (schema default): the alert routine's level site
                                // 0x0042c974 (six bytes, two whole instructions) redirected to the engagement filter;
                                // vanilla patches nothing; same window, disjoint from every other claim

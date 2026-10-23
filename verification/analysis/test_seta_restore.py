@@ -218,10 +218,12 @@ class LiveImage(unittest.TestCase):
         hits = [(name, hex(a), w) for name, a, length in claims for w, va, n in self.windows if a < va + n and va < a + length]
         self.assertEqual(hits, [])  # no window holds another feature's claim: the raw comparison is the right rule
         image = self.flat()
-        for name, address, _ in claims:
+        for name, address, length in claims:
             at = address - self.BASE
             if 0 <= at < len(image) - 5:
-                image[at:at + 5] = b'\xe9\0\0\0\0'
+                # each claim's own write: a jmp rel32 (5 bytes), or fewer for an in-place patch shorter than that (the
+                # SETA-manual-flight stop byte 0x0041211d is one byte, two before this module's stop_call window)
+                image[at:at + min(5, length)] = b'\xe9\0\0\0\0'[:min(5, length)]
         self.assertEqual(self.install_check(image), (0, 'image windows=10 mismatch=none'))
 
     def test_foreign_write_names_the_window(self):

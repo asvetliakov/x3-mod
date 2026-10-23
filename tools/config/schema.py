@@ -443,6 +443,9 @@ SETTINGS = [
     entry('seta_restore', 'bool', 'engine', 'Turns SETA back on after your ship passes a gate when SETA was running as you '
           'entered it (the game switches it off at every gate). Using the SETA key yourself, changing ships or loading '
           'a game before you arrive cancels it. 1 = on, 0 = off.', '1', launcher='--seta-restore', since='2026-10-23'),
+    entry('seta_manual_flight', 'enum', 'engine', 'Steering by hand no longer switches SETA off, and under SETA the ship turns and '
+          'strafes as fast as at normal speed. 2 = both, 1 = SETA stays on only, 0 = off (the game\'s own behaviour).', '2',
+          choices=('0', '1', '2'), launcher='--seta-manual-flight', since='2026-10-24'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '
