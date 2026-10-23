@@ -102,19 +102,21 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_alert_frame(std:
                  static_cast<unsigned long>(f.now));
     if (f.edge && row_allowed())
         x3m::log(
-            "music_alert edge from=%lu to=%lu vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u",
+            "music_alert edge from=%lu to=%lu vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s",
             static_cast<unsigned long>(f.from), static_cast<unsigned long>(f.filtered),
             static_cast<unsigned long>(f.vanilla), static_cast<unsigned long>(f.committed), reason,
             static_cast<unsigned long>(f.age), core::cause_name(f.cause), static_cast<unsigned long>(f.now),
             static_cast<unsigned long>(f.step), static_cast<unsigned long>(f.seta), f.walk.visited, f.walk.owned_near,
-            f.walk.hostile_orders, f.walk.cuts);
+            f.walk.hostile_orders, f.walk.cuts, core::walk_status_name(f.walk.status),
+            core::fire_status_name(rule_.last_fire));
     if (f.suppressed_start && row_allowed())
         x3m::log(
-            "music_alert suppressed=start vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u",
+            "music_alert suppressed=start vanilla=%lu committed=%lu reason=%s age_ms=%lu cause=%s now=%lu step=%lu seta=%lu visited=%u owned_near=%u hostile_orders=%u cuts=%u walk=%s fire=%s",
             static_cast<unsigned long>(f.vanilla), static_cast<unsigned long>(f.committed), reason,
             static_cast<unsigned long>(f.age), core::cause_name(f.cause), static_cast<unsigned long>(f.now),
             static_cast<unsigned long>(f.step), static_cast<unsigned long>(f.seta), f.walk.visited, f.walk.owned_near,
-            f.walk.hostile_orders, f.walk.cuts);
+            f.walk.hostile_orders, f.walk.cuts, core::walk_status_name(f.walk.status),
+            core::fire_status_name(rule_.last_fire));
 }
 }
 

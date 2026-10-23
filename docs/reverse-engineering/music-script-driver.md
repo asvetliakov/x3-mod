@@ -978,7 +978,9 @@ call `0x0049f4c0` (`[M+0x60]`, 0, script object, `"AttackedBy"`, 1, argc 2, arg0
 
 ### 9.3 Player-owned ships (Q3) **[m]** unless marked
 
-* **Enumeration.** The alert routine walks P's sector (`[P+0x54]`, class 1) through `[sector+0x50] + class·12`, one
+* **Enumeration.** The alert routine walks P's sector (`[P+0x54]`, class 1) through `[sector+0x50] + class·12`
+  (`[sector+0x50]` is a pointer to the 12-byte header array, not the array itself: `0x0042c8bf`, `0x004495d8`,
+  `0x0045d275` all load it first; Run 190 showed the inline reading finds no node), one
   list per class. The class index is used directly (`SA_StartObjectInSpace`, `0x004495d8..0x004495e2`). Node `+0` is
   next, and a node whose `[node] == 0` ends the list. Every frame it visits all 32 lists, calling `0x00450890` for
   every object and `0x00419280` (Chebyshev distance over `[obj+0x70]+0x30..0x38`) for every hostile.

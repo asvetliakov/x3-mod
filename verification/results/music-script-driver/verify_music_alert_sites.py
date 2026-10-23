@@ -3,7 +3,7 @@
 docs/reverse-engineering/music-script-driver.md sections 2, 5 and 9).
 
 On the installed X3AP.exe (unmodified): the executable identity; every window the installer compares (the alert
-routine's head, its range test, the six-byte site 0x0042c974 in its context, the commit tail, the whole relation and
+routine's head, its parent-sector test and its read of the list array [sector+0x50], its range test, the six-byte site 0x0042c974 in its context, the commit tail, the whole relation and
 stance routines 0x00450890 / 0x00450810, the whole distance routine 0x00419280, and the instruction witnesses of the
 fields the rule reads: the collision pass clearing Flags2 0x80000/0x40, the player fire counters M+0x40/0x44, the hit
 counters M+0x48/0x4c, the attack order 0x10 at flight+0x258 with its target at flight+0x224, the cockpit target
@@ -39,6 +39,7 @@ SITE_INSTRUCTIONS = ((bytes.fromhex('8b4e08'), 'mov ecx,[esi+8]'), (bytes.fromhe
 # (name, VA, hex) in the order of core::windows
 WINDOWS = [
     ('alert_head', 0x0042c890, 'a10c856000 83ec08 53 55 56 57 8b7838'),
+    ('sector_walk', 0x0042c8a9, '8b4754 85c0 0f84b1000000 6683784801 0f85a6000000 8b4050 89442410 c744241420000000 8b30 8b1e 85db 7479'),
     ('range_window', 0x0042c915, '8b54241c 837a0400 8bc6 8bd7 750c e858c9feff 3da0252600 eb0a e84cc9feff 3d404b4c00 7d05 bd01000000'),
     ('site_window', 0x0042c965, '8b74241c 0fbfc5 3b4608 7e03 894608 8b4e08 8b4604 3bc8 0f84ce000000'),
     ('commit_window', 0x0042ca4a, '8b4608 894604 5f c7460800000000 5e 5d 5b 83c408 c20400'),
