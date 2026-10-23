@@ -1,0 +1,28 @@
+{
+ "run": "197",
+ "what": "run197 candidate installed into native C:\\X3",
+ "command": "mkdir rollback-d3d9 (the folder was gone after the user's fresh 2026-10-24 install); cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run196; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-24T02:18+0400",
+ "commit": "a7d3871d",
+ "candidate_record": "verification/results/run197-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "5a42d68aa076059c3498795451d8f85da8fd6ccf6e52613c22fd5aacaaf03e56",
+  "bytes": 62562741,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 196,
+  "sha256": "937689daec3c9b6e",
+  "bytes": 42401737,
+  "note": "release 1.4.1 stripped; rollback copy C:\\X3\\rollback-d3d9\\d3d9.dll.run196 (recreated; older .run19x copies no longer exist)"
+ },
+ "x3m_ini": "the user's file was the fresh 1.4.1 template (no debug/perf lines); copy saved as C:\\X3\\x3m.ini.run196; line 617 ';debug = 0' -> 'debug = 1' for the flight check; seta_manual_flight absent, schema default 2 applies",
+ "unchanged": [
+  "X3AP.exe (fdbf3418…)",
+  "x3m-regenerate.exe (bb3ba27b…)",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

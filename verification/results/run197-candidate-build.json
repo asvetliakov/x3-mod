@@ -1,0 +1,23 @@
+{
+ "run": "197",
+ "what": "release 1.4.1 (Run196) + seta_manual_flight (default 2): manual input no longer stops SETA (one-byte stop patch 0x0041211d 74->eb, verify window 0x00412113 12 bytes); real-time handling under warp: yaw/pitch/roll controller spans 0x0040ebde/0x0040ee3e/0x0040f04d (14 bytes) scale the target by 1/k and the ramp step by 1/k^2, strafe fild sites 0x00411e0c/0x00411eb2 scale the per-frame limit by 1/k; k = effective rate ((cfg+0xcc*cfg+0xd0+0x8000)>>16)/65536, applied only when factor > 1.0 and rate > 1.0; axes fed by mouse-delta types 1-3 on either type pair skipped; rows: installed, refused, debug-only scale row (<= 1 per 500 wall ms)",
+ "commit": "a7d3871d",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (removed and reconfigured)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "5a42d68aa076059c3498795451d8f85da8fd6ccf6e52613c22fd5aacaaf03e56",
+  "bytes": 62562741,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 1060 reachable, 0 violations (helper _x3m_seta_manual_flight_axis is a root)",
+  "host_tests": "test_seta_manual_flight + test_seta_restore + test_launcher_defaults + test_config_schema: 58 OK (host core 528 checks, native stub fixture 921 checks, 0 failures)",
+  "study": "seta_manual_flight_study.py RESULT PASS 139 checks; verify_seta_restore_sites.py RESULT PASS; generate.py --check PASS 278 settings",
+  "reviews": "review (Opus 5.5): 0 blocker, 2 should-fix (k < 1 under the governor during the ramp: gate on rate > 1.0; mouse-delta skip over both type pairs) applied, nits 3/4/7 applied, 5/6 documented"
+ },
+ "evidence": "docs/verification/seta-manual-flight.md 2026-10-24 rows, docs/architecture/seta-manual-flight.md, docs/reverse-engineering/seta-manual-flight.md",
+ "unflown": "the flight check: ship_rate_k rise time and steady value equal at x1 and x10",
+ "producer": "main session"
+}
