@@ -35,6 +35,19 @@
 // allocated when a slot is first marked and pooled for the table's
 // lifetime, so erase/clear never free memory a draw may still be reading and
 // no draw or lock allocates.
+//
+// Staging (2026-10-23, bolt-footprint.md "Staged Lock"): on native D3D9 the
+// DISCARD mapping is write-combined, so reading it back at Unlock (the scan)
+// cost 1.6-5.2 ms per bullet batch. Production therefore never hands the
+// driver mapping to the table: begin_lock with a Stage returns a pooled,
+// cacheable, page-aligned staging block of the slot (grow-only, at least
+// max_bytes, at most staging_limit) that the caller gives the application
+// instead of the mapping. The sentinel goes into the staging block, the
+// application writes it, and at Unlock the caller copies the whole lock range
+// staging -> mapping (one sequential write into write-combined memory) before
+// finish_lock scans the staging block. An open stage pins its slot: eviction,
+// erase and clear never reuse or free it until close(). Without a Stage
+// (host fixtures only) the old direct mode scans the given window itself.
 namespace x3m::fade_region::prefix {
 
 constexpr unsigned stride = 24;
@@ -51,6 +64,24 @@ constexpr std::size_t storage_words = std::size_t(max_vertices) * 3;
 constexpr float world_limit = 16777216.f;
 // The sentinel DWORD; a position whose three words are all sentinel ends the scan.
 constexpr std::uint32_t sentinel_word = 0xffffffffu;
+// Largest lock range a staging block serves (4x the captured 147456-byte
+// buffer); a larger scannable lock is passed through unscanned (Invalid).
+constexpr std::size_t staging_limit = 4 * max_bytes;
+// Staging blocks are page aligned, like a driver mapping at offset 0.
+constexpr std::size_t staging_alignment = 4096;
+
+// One open staged lock, held by the caller from Lock to Unlock. bytes is what
+// the application received; mapping is the driver's pointer. Copy
+// bytes -> mapping for length at the outermost Unlock (or once, before a nested
+// Lock that cannot alias the staging block), then
+// finish_lock, then close.
+struct Stage {
+    unsigned char* bytes = nullptr;
+    void* mapping = nullptr;
+    std::size_t length = 0;
+    unsigned slot = ~0u;
+    explicit operator bool() const noexcept { return bytes != nullptr; }
+};
 
 struct Scan {
     std::uint32_t vertices = 0;   // written vertices: up to the first sentinel, the window end or max_vertices
@@ -108,8 +139,8 @@ enum class Lookup : unsigned {
     Unknown = 1, // no scan for this buffer (unmarked, marked but not locked since, erased, evicted, cleared or storage
                  // unavailable)
     Pending = 2, // locked now, or locked again since the last publication (also: the record changed under the draw)
-    Invalid = 3, // the last lock was not scanned (non-DISCARD, size unknown, thread mismatch, failed Unlock,
-                 // ProcessVertices)
+    Invalid = 3, // the last lock was not scanned (non-DISCARD, size unknown, nested, thread mismatch, failed Unlock,
+                 // ProcessVertices, staging unavailable)
     Empty = 4,   // vertex_count 0
     Beyond = 5,  // vertex_count past the scanned vertices (or max_vertices)
     NonFinite = 6, // the drawn prefix holds NaN, inf or a component beyond world_limit
@@ -141,6 +172,7 @@ public:
     bool mark(std::uintptr_t key) noexcept {
         if (find(key)) return true;
         const unsigned index = slot_for(key);
+        if (index >= capacity) return false; // every slot pins an open stage
         Entry& e = entries_[index];
         if (!storage_[index]) storage_[index].reset(new (std::nothrow) float[storage_floats]);
         if (!extras_[index]) extras_[index].reset(new (std::nothrow) std::uint32_t[storage_words]);
@@ -162,20 +194,52 @@ public:
     // Invalid until the next fresh lock. A fresh scannable lock writes the
     // sentinel over the previous prefix's slots (the whole window the first
     // time). Returns the new revision.
+    //
+    // stage given (production): a pending lock is served from the slot's
+    // staging block (*stage filled, sentinel written there, the mapping never
+    // touched); a slot already open, a range past staging_limit or a failed
+    // first allocation makes the lock Invalid with *stage empty (the caller
+    // passes the mapping through). stage null: direct mode (host fixtures).
     std::uint64_t begin_lock(std::uintptr_t key, bool scannable, void* mapping, std::size_t length,
-                             std::uint32_t thread) noexcept {
+                             std::uint32_t thread, Stage* stage = nullptr) noexcept {
+        if (stage) *stage = Stage{};
         Entry* e = find(key);
         if (!e) return 0;
         const bool nested = e->state == State::Pending;
         e->revision += 1;
         e->stamp = ++clock_;
-        const bool pending = !nested && scannable && mapping && length;
-        e->mapping = pending ? mapping : nullptr;
+        bool pending = !nested && scannable && mapping && length;
+        void* window = mapping;
+        if (pending && stage) {
+            const unsigned slot = unsigned(e - entries_);
+            unsigned char* bytes = open_[slot] ? nullptr : staging_for(slot, length);
+            pending = bytes != nullptr;
+            if (pending) {
+                open_[slot] = true;
+                ++staged_locks_;
+                *stage = Stage{bytes, mapping, length, slot};
+                window = bytes;
+            } else
+                ++unstaged_locks_;
+        }
+        e->mapping = pending ? window : nullptr;
         e->length = pending ? length : 0;
         e->thread = thread;
         e->state = pending ? State::Pending : State::Invalid;
-        if (pending) sentinel_bytes_ += write_sentinel(mapping, length, e->sentinel_vertices);
+        if (pending) sentinel_bytes_ += write_sentinel(window, length, e->sentinel_vertices);
         return e->revision;
+    }
+    // The application's writes go to the driver: the whole lock range,
+    // staging -> mapping (at the outermost Unlock, or once before a nested
+    // Lock that detaches the stage). Returns the bytes copied.
+    static std::size_t flush(const Stage& stage) noexcept {
+        if (!stage.bytes || !stage.mapping || !stage.length) return 0;
+        std::memcpy(stage.mapping, stage.bytes, stage.length);
+        return stage.length;
+    }
+    // After finish_lock (or instead, when the buffer is gone): unpins the slot.
+    void close(const Stage& stage) noexcept {
+        if (stage.slot < capacity) open_[stage.slot] = false;
     }
     // Before the backend Unlock while the mapping is valid: scans a pending
     // record on its own thread and publishes it. Returns the vertices scanned
@@ -248,6 +312,19 @@ public:
         for (const auto& s : storage_) n += s != nullptr;
         return n;
     }
+    std::uint64_t staged_locks() const noexcept { return staged_locks_; }
+    std::uint64_t unstaged_locks() const noexcept { return unstaged_locks_; }
+    // Bytes of staging held (capacities, alignment slack excluded) and open stages.
+    std::size_t staging_bytes() const noexcept {
+        std::size_t n = 0;
+        for (std::size_t c : staging_capacity_) n += c;
+        return n;
+    }
+    unsigned open_stages() const noexcept {
+        unsigned n = 0;
+        for (bool o : open_) n += o;
+        return n;
+    }
 
 private:
     struct Entry {
@@ -268,27 +345,51 @@ private:
         return nullptr;
     }
     const Entry* find(std::uintptr_t key) const noexcept { return const_cast<Table*>(this)->find(key); }
+    // A slot pinned by an open stage is never handed out (its staging block
+    // is the application's current lock pointer); capacity when all are.
     unsigned slot_for(std::uintptr_t key) noexcept {
         (void)key;
-        unsigned oldest = 0;
-        bool found = false;
+        unsigned oldest = capacity;
         for (unsigned i = 0; i < capacity; ++i) {
             const Entry& e = entries_[i];
+            if (open_[i]) continue;
             if (e.state == State::Free) return i;
-            if (!found || e.stamp < entries_[oldest].stamp) {
-                oldest = i;
-                found = true;
-            }
+            if (oldest == capacity || e.stamp < entries_[oldest].stamp) oldest = i;
         }
+        if (oldest == capacity) return capacity;
         ++evictions_;
         entries_[oldest] = Entry{};
         return oldest;
     }
+    // The slot's staging block for a lock of length bytes: grow-only (at
+    // least max_bytes), allocated only on the slot's first staged lock or a
+    // longer range, filled once with the sentinel pattern (so a range that
+    // grew past the previous window still ends at the first unwritten
+    // vertex); nullptr past staging_limit or when the allocation fails (the
+    // old block is kept).
+    unsigned char* staging_for(unsigned slot, std::size_t length) noexcept {
+        if (length > staging_limit) return nullptr;
+        if (staging_capacity_[slot] >= length) return staging_aligned_[slot];
+        const std::size_t want = length > max_bytes ? length : max_bytes;
+        std::unique_ptr<unsigned char[]> block(new (std::nothrow) unsigned char[want + staging_alignment]);
+        if (!block) return nullptr;
+        std::memset(block.get(), 0xff, want + staging_alignment);
+        const std::uintptr_t raw = reinterpret_cast<std::uintptr_t>(block.get());
+        const std::uintptr_t aligned = (raw + staging_alignment - 1) & ~std::uintptr_t(staging_alignment - 1);
+        staging_[slot] = std::move(block);
+        staging_aligned_[slot] = reinterpret_cast<unsigned char*>(aligned);
+        staging_capacity_[slot] = want;
+        return staging_aligned_[slot];
+    }
     Entry entries_[capacity]{};
     std::unique_ptr<float[]> storage_[capacity];
     std::unique_ptr<std::uint32_t[]> extras_[capacity];
+    std::unique_ptr<unsigned char[]> staging_[capacity]; // pooled for the table's lifetime, like the storage
+    unsigned char* staging_aligned_[capacity]{};
+    std::size_t staging_capacity_[capacity]{};
+    bool open_[capacity]{}; // slot pinned by an open stage (kept across erase/clear/eviction)
     std::uint64_t clock_ = 0, evictions_ = 0, publications_ = 0, scanned_vertices_ = 0, sentinel_bytes_ = 0,
-                  window_end_scans_ = 0;
+                  window_end_scans_ = 0, staged_locks_ = 0, unstaged_locks_ = 0;
 };
 
 } // namespace x3m::fade_region::prefix

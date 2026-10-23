@@ -45,6 +45,7 @@ HARNESS = r'''
 #include "bolt_footprint_core.h"
 #include "locked_prefix_core.h"
 #include "chase_camera.h"
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -121,6 +122,194 @@ static int scan_case() {
     return 0;
 }
 
+// The staged Lock (locked_prefix_core.h, bolt-footprint.md "Staged Lock"):
+// the application writes the staging block, Unlock copies it into the
+// mapping, the scan reads the staging block. Against the direct mode (the old
+// scan of the mapping itself) over the same lock sequence: identical published
+// positions, extras, counts, revisions and sentinel bytes; the mapping holds
+// exactly what the application wrote; then the pinning, refusal and
+// allocation rules, and the copy + scan cost per lock.
+static void write_prefix(unsigned char* to, unsigned n, unsigned salt) {
+    for (unsigned i = 0; i < n; ++i) {
+        float p[3] = {float(i) * .5f + float(salt), -float(i), 3.f * float(salt)};
+        std::uint32_t w[3] = {0x3f000000u + i + salt, 0x3e000000u + i * 3u, 0xffffffffu}; // white D3DCOLOR
+        std::memcpy(to + std::size_t(i) * prefix::stride, p, 12);
+        std::memcpy(to + std::size_t(i) * prefix::stride + 12, w, 12);
+    }
+}
+static int stage_case() {
+    const std::size_t bytes = prefix::max_bytes;
+    bool same = true, mapped = true, aligned = true, reused = true;
+    prefix::Table direct, staged;
+    direct.mark(5);
+    staged.mark(5);
+    std::vector<unsigned char> map_direct(bytes, 0x5a), map_staged(bytes, 0x5a);
+    unsigned char* first = nullptr;
+    const unsigned counts[] = {200, 50, 300, 6144, 10, 1056, 0, 777};
+    unsigned locks = 0;
+    for (unsigned n : counts) {
+        prefix::Stage st{};
+        const std::uint64_t ra = direct.begin_lock(5, true, map_direct.data(), bytes, 1);
+        const std::uint64_t rb = staged.begin_lock(5, true, map_staged.data(), bytes, 1, &st);
+        if (!st || st.mapping != map_staged.data() || st.length != bytes) return std::printf("STAGE refused\n"), 1;
+        if (!first) first = st.bytes;
+        reused = reused && st.bytes == first;
+        aligned = aligned && (reinterpret_cast<std::uintptr_t>(st.bytes) % prefix::staging_alignment) == 0;
+        write_prefix(map_direct.data(), n, locks);
+        write_prefix(st.bytes, n, locks);
+        const std::size_t copied = prefix::Table::flush(st);
+        const std::uint32_t va = direct.finish_lock(5, 1), vb = staged.finish_lock(5, 1);
+        staged.close(st);
+        mapped = mapped && copied == bytes && std::memcmp(map_staged.data(), st.bytes, bytes) == 0;
+        std::vector<unsigned char> expect(std::size_t(n) * prefix::stride);
+        write_prefix(expect.data(), n, locks);
+        mapped = mapped && (!n || std::memcmp(map_staged.data(), expect.data(), expect.size()) == 0);
+        const float *pa = nullptr, *pb = nullptr; const std::uint32_t *ea = nullptr, *eb = nullptr;
+        std::uint64_t qa = 0, qb = 0; std::uint32_t sa = 0, sb = 0;
+        const auto la = direct.lookup(5, n ? n : 1, &pa, &qa, &sa, &ea), lb = staged.lookup(5, n ? n : 1, &pb, &qb, &sb, &eb);
+        same = same && ra == rb && va == vb && la == lb && qa == qb && sa == sb;
+        if (la == prefix::Lookup::Bound && lb == prefix::Lookup::Bound)
+            same = same && std::memcmp(pa, pb, std::size_t(va) * 12) == 0 && std::memcmp(ea, eb, std::size_t(va) * 12) == 0;
+        same = same && direct.sentinel_bytes() == staged.sentinel_bytes() && direct.window_end_scans() == staged.window_end_scans();
+        ++locks;
+    }
+    std::printf("STAGE equivalence locks=%u same=%u mapped=%u aligned=%u reused=%u staging_bytes=%zu staged=%llu open=%u sentinel_bytes=%llu window_end=%llu\n",
+                locks, unsigned(same), unsigned(mapped), unsigned(aligned), unsigned(reused), staged.staging_bytes(),
+                static_cast<unsigned long long>(staged.staged_locks()), staged.open_stages(),
+                static_cast<unsigned long long>(staged.sentinel_bytes()), static_cast<unsigned long long>(staged.window_end_scans()));
+
+    // Lock shapes: not scannable (NOOVERWRITE, READONLY, offset, size 0: the caller passes false), nested, oversize.
+    prefix::Stage st{};
+    const float* p = nullptr; std::uint64_t rev = 0; std::uint32_t sc = 0;
+    staged.begin_lock(5, false, map_staged.data(), bytes, 1, &st);
+    const bool shape_pass = !st;
+    staged.finish_lock(5, 1);
+    const auto shape = staged.lookup(5, 6, &p, &rev, &sc);
+    staged.begin_lock(5, true, map_staged.data(), bytes, 1, &st);
+    prefix::Stage inner{};
+    staged.begin_lock(5, true, map_staged.data(), bytes, 1, &inner); // nested: passed through
+    const bool nested_pass = st && !inner;
+    write_prefix(st.bytes, 12, 9);
+    prefix::Table::flush(st);
+    staged.finish_lock(5, 1);
+    staged.close(st);
+    const auto nested = staged.lookup(5, 6, &p, &rev, &sc);
+    std::vector<unsigned char> big(prefix::staging_limit + prefix::stride);
+    staged.begin_lock(5, true, big.data(), big.size(), 1, &st);
+    const bool oversize_pass = !st;
+    staged.finish_lock(5, 1);
+    const auto oversize = staged.lookup(5, 6, &p, &rev, &sc);
+    // Thread mismatch: still staged and copied (the data must reach the buffer), not published.
+    staged.begin_lock(5, true, map_staged.data(), bytes, 1, &st);
+    write_prefix(st.bytes, 30, 4);
+    prefix::Table::flush(st);
+    const std::uint32_t thread_scanned = staged.finish_lock(5, 2);
+    staged.close(st);
+    std::vector<unsigned char> expect30(30 * prefix::stride);
+    write_prefix(expect30.data(), 30, 4);
+    const bool thread_mapped = std::memcmp(map_staged.data(), expect30.data(), expect30.size()) == 0;
+    const auto thread = staged.lookup(5, 6, &p, &rev, &sc);
+    std::printf("STAGE shapes shape=%s/%u nested=%s/%u oversize=%s/%u thread=%s/%u/%u/%u unstaged=%llu open=%u\n",
+                prefix::lookup_name(shape), unsigned(shape_pass), prefix::lookup_name(nested), unsigned(nested_pass),
+                prefix::lookup_name(oversize), unsigned(oversize_pass), prefix::lookup_name(thread), unsigned(thread_scanned),
+                unsigned(thread_mapped), unsigned(staged.open_stages()), static_cast<unsigned long long>(staged.unstaged_locks()), staged.open_stages());
+
+    // A range that grows past the block regrows it; the fresh block is all
+    // sentinel, so a short prefix still ends the scan at its own end.
+    prefix::Table grow;
+    grow.mark(7);
+    std::vector<unsigned char> map_grow(2 * bytes, 0);
+    grow.begin_lock(7, true, map_grow.data(), bytes, 1, &st);
+    write_prefix(st.bytes, 100, 1);
+    prefix::Table::flush(st);
+    grow.finish_lock(7, 1);
+    grow.close(st);
+    grow.begin_lock(7, true, map_grow.data(), 2 * bytes, 1, &st);
+    write_prefix(st.bytes, 50, 2);
+    prefix::Table::flush(st);
+    const std::uint32_t regrown = grow.finish_lock(7, 1);
+    grow.close(st);
+    std::printf("STAGE regrow scanned=%u window_end=%llu staging_bytes=%zu\n", unsigned(regrown),
+                static_cast<unsigned long long>(grow.window_end_scans()), grow.staging_bytes());
+
+    // Pinning: an open stage survives clear (Reset), eviction and erase: its
+    // slot is never handed to another buffer and its bytes stay intact.
+    prefix::Table pin;
+    pin.mark(100);
+    std::vector<unsigned char> map_pin(bytes, 0);
+    pin.begin_lock(100, true, map_pin.data(), bytes, 1, &st);
+    write_prefix(st.bytes, 64, 3);
+    pin.clear();
+    bool marks_ok = true;
+    std::vector<std::vector<unsigned char>> maps(16, std::vector<unsigned char>(bytes, 0));
+    for (unsigned k = 0; k < 16; ++k) {
+        marks_ok = marks_ok && pin.mark(200 + k);
+        prefix::Stage other{};
+        pin.begin_lock(200 + k, true, maps[k].data(), bytes, 1, &other);
+        marks_ok = marks_ok && other && other.slot != st.slot && other.bytes != st.bytes;
+        write_prefix(other.bytes, 100, 50 + k);
+        prefix::Table::flush(other);
+        pin.finish_lock(200 + k, 1);
+        pin.close(other);
+    }
+    std::vector<unsigned char> expect64(64 * prefix::stride);
+    write_prefix(expect64.data(), 64, 3);
+    const bool intact = std::memcmp(st.bytes, expect64.data(), expect64.size()) == 0;
+    prefix::Table::flush(st);
+    const std::uint32_t after_clear = pin.finish_lock(100, 1); // the record is gone: copied, not published
+    pin.close(st);
+    const bool pin_mapped = std::memcmp(map_pin.data(), expect64.data(), expect64.size()) == 0;
+    std::printf("STAGE pinning marks_ok=%u intact=%u mapped=%u published=%u evictions=%llu used=%u open=%u\n",
+                unsigned(marks_ok), unsigned(intact), unsigned(pin_mapped), unsigned(after_clear),
+                static_cast<unsigned long long>(pin.evictions()), pin.used(), pin.open_stages());
+    // Every slot pinned: a new buffer cannot be marked.
+    prefix::Table full;
+    prefix::Stage stages[prefix::Table::capacity];
+    std::vector<unsigned char> map_full(bytes, 0);
+    for (unsigned k = 0; k < prefix::Table::capacity; ++k) {
+        full.mark(300 + k);
+        full.begin_lock(300 + k, true, map_full.data(), bytes, 1, &stages[k]);
+    }
+    const bool refused = !full.mark(999);
+    for (auto& s : stages) full.close(s);
+    const bool after = full.mark(999);
+    std::printf("STAGE full refused=%u after_close=%u evictions=%llu staging_bytes=%zu\n", unsigned(refused), unsigned(after),
+                static_cast<unsigned long long>(full.evictions()), full.staging_bytes());
+
+    // Cost per lock on cacheable host memory: the old direct scan of the
+    // mapping against the staged copy (whole lock range) + scan of staging.
+    // Host memory is cacheable for both; the native write-combined read the
+    // old path paid is not reproduced here (bolt-footprint.md).
+    for (unsigned n : {1056u, 6144u}) {
+        prefix::Table td, ts;
+        td.mark(1);
+        ts.mark(1);
+        const unsigned reps = 400;
+        double direct_ns = 0, copy_ns = 0, scan_ns = 0;
+        for (unsigned r = 0; r < reps; ++r) {
+            td.begin_lock(1, true, map_direct.data(), bytes, 1);
+            write_prefix(map_direct.data(), n, 0);
+            auto t0 = std::chrono::steady_clock::now();
+            td.finish_lock(1, 1);
+            auto t1 = std::chrono::steady_clock::now();
+            ts.begin_lock(1, true, map_staged.data(), bytes, 1, &st);
+            write_prefix(st.bytes, n, 0);
+            auto t2 = std::chrono::steady_clock::now();
+            prefix::Table::flush(st);
+            auto t3 = std::chrono::steady_clock::now();
+            ts.finish_lock(1, 1);
+            auto t4 = std::chrono::steady_clock::now();
+            ts.close(st);
+            direct_ns += std::chrono::duration<double, std::nano>(t1 - t0).count();
+            copy_ns += std::chrono::duration<double, std::nano>(t3 - t2).count();
+            scan_ns += std::chrono::duration<double, std::nano>(t4 - t3).count();
+        }
+        std::printf("STAGE cost vertices=%u bytes=%zu direct_scan_ns=%.0f staged_copy_ns=%.0f staged_scan_ns=%.0f staged_total_ns=%.0f\n", n, bytes,
+                    direct_ns / reps, copy_ns / reps, scan_ns / reps, (copy_ns + scan_ns) / reps);
+    }
+    return 0;
+}
+
 static int draw_case(const char* path) {
     FILE* f = std::fopen(path, "r");
     if (!f) return 2;
@@ -175,6 +364,7 @@ int main(int argc, char** argv) {
     if (argc < 2) return 1;
     if (!std::strcmp(argv[1], "period")) return period_cases();
     if (!std::strcmp(argv[1], "scan")) return scan_case();
+    if (!std::strcmp(argv[1], "stage")) return stage_case();
     if (!std::strcmp(argv[1], "draw") && argc > 2) return draw_case(argv[2]);
     if (!std::strcmp(argv[1], "gate")) {
         // The frame-stamped view gate over a scripted frame sequence: the handler
@@ -599,6 +789,46 @@ class CoreRules(unittest.TestCase):
     def test_scan_keeps_the_other_words(self):
         line = Harness.run('scan').strip()
         self.assertEqual(line, 'SCAN scanned=40 published=40 ok=1')
+
+    def test_staged_lock(self):
+        """The staged Lock (bolt-footprint.md "Staged Lock"): same scan data as the direct mode, the mapping gets the
+        application's bytes, the shapes that are passed through, the pinned slot, no steady-state allocation."""
+        rows = {}
+        for line in Harness.run('stage').splitlines():
+            parts = line.split()
+            rows[parts[1] + (parts[2] if parts[1] == 'cost' else '')] = dict(p.split('=', 1) for p in parts[2:])
+        eq = rows['equivalence']
+        self.assertEqual((eq['same'], eq['mapped'], eq['aligned'], eq['reused'], eq['open']), ('1', '1', '1', '1', '0'),
+                         'identical scan data, the mapping holds what was written, page-aligned, one block reused')
+        self.assertEqual((eq['locks'], eq['staged'], eq['staging_bytes'], eq['window_end']), ('8', '8', '147456', '1'),
+                         'one 147456-byte block per slot, allocated once')
+        sh = rows['shapes']
+        self.assertEqual((sh['shape'], sh['nested'], sh['oversize']), ('invalid/1', 'invalid/1', 'invalid/1'),
+                         'unscannable, nested and oversize locks are passed through, record Invalid')
+        self.assertEqual((sh['thread'], sh['unstaged'], sh['open']), ('invalid/0/1/0', '1', '0'),
+                         'a foreign-thread Unlock still copies the data but publishes nothing')
+        self.assertEqual((rows['regrow']['scanned'], rows['regrow']['window_end'], rows['regrow']['staging_bytes']), ('50', '0', '294912'),
+                         'a regrown block is sentinel-filled: the scan ends at the written prefix')
+        pin = rows['pinning']
+        self.assertEqual((pin['marks_ok'], pin['intact'], pin['mapped'], pin['published'], pin['evictions'], pin['used'], pin['open']),
+                         ('1', '1', '1', '0', '1', '15', '0'),
+                         'an open stage survives clear and eviction: its slot is skipped and its bytes reach the mapping')
+        self.assertEqual((rows['full']['refused'], rows['full']['after_close'], rows['full']['evictions']), ('1', '1', '1'),
+                         'all slots pinned: no mark until a stage closes')
+        for key in ('costvertices=1056', 'costvertices=6144'):
+            cost = rows[key]
+            self.assertLess(float(cost['staged_total_ns']), 2e6, 'copy + scan of 147456 bytes stays well under a millisecond on the host')
+        # Production: the ownership layer always passes a Stage and swaps the pointer last; the mapping is never scanned.
+        own = source_text(ROOT / 'src/ownership/d3d9_ownership.cpp')
+        self.assertIn('GetCurrentThreadId(), &stage))', own)
+        self.assertIn('if (staged) *data = staged;', own)
+        self.assertLess(own.index('upload_locked(upload, node, offset, size'), own.index('if (staged) *data = staged;'))
+        self.assertEqual(own.count('prefix_table.begin_lock('), 1)
+        self.assertIn('!(flags & (D3DLOCK_READONLY | D3DLOCK_NOOVERWRITE))', own)
+        self.assertIn('nested_alias = !(flags & D3DLOCK_DISCARD) && size != 0', own)
+        self.assertIn('if (!detached) prefix_stats.copy_bytes += fade_region::prefix::Table::flush(stage);', own)
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        self.assertIn('locked_prefix_window device=', motion)
 
     def test_below_and_above_the_minimums_and_behind(self):
         scene = Scene(seed=3)

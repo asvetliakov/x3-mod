@@ -7262,6 +7262,30 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
             w.lengthened, w.widened, w.world_axis, w.disc, w.refused_period, w.refused_w, w.refused_buffer,
             w.refused_rows, w.refused_shape, w.refused_recheck, w.failures, w.locks, w.timed, us, s.draws, s.written,
             s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
+    // The Unlock-side cost of the scan the footprint reads (bolt-footprint.md, "Staged Lock"): this window's
+    // marked locks, staged locks, staging -> mapping copies (bytes, us), scans (vertices, us), sentinel (bytes, us),
+    // window-end scans and nested pre-flushes; one ownership statistics read per 300 frames.
+    if (telemetry_) {
+        ownership::LockedPrefixStatistics p{};
+        ownership::get_locked_prefix_statistics(&p);
+        const std::uint64_t now[10] = {p.locks,      p.staged_locks,   p.copies,      p.copy_bytes, p.copy_ticks,
+                                       p.scans,      p.scanned_vertices, p.scan_ticks, p.sentinel_bytes,
+                                       p.sentinel_ticks};
+        std::uint64_t d[10];
+        for (unsigned i = 0; i < 10; ++i) {
+            d[i] = now[i] - bolt_prefix_last_[i];
+            bolt_prefix_last_[i] = now[i];
+        }
+        const double to_us = p.qpc_frequency ? 1e6 / double(p.qpc_frequency) : 0.0;
+        log("locked_prefix_window device=%llu frame=%llu frames=%u locks=%llu staged=%llu unstaged_total=%llu copies=%llu copy_bytes=%llu copy_us=%.1f scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu sentinel_us=%.1f window_end_scans_total=%llu nested_flushes_total=%llu staging_bytes=%llu open_stages=%u table_used=%u",
+            id_, frame_, bolt_window_frames_, static_cast<unsigned long long>(d[0]),
+            static_cast<unsigned long long>(d[1]), static_cast<unsigned long long>(p.unstaged_locks),
+            static_cast<unsigned long long>(d[2]), static_cast<unsigned long long>(d[3]), double(d[4]) * to_us,
+            static_cast<unsigned long long>(d[5]), static_cast<unsigned long long>(d[6]), double(d[7]) * to_us,
+            static_cast<unsigned long long>(d[8]), double(d[9]) * to_us,
+            static_cast<unsigned long long>(p.window_end_scans), static_cast<unsigned long long>(p.nested_flushes),
+            static_cast<unsigned long long>(p.staging_bytes), p.open_stages, p.used);
+    }
     for (unsigned view = 0; view < 2; ++view) {
         const auto& h = bolt_hist_[view];
         if (!h.instances || !telemetry_) continue;

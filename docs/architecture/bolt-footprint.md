@@ -154,7 +154,8 @@ displacement ≈ twice that, plus a 58 KB copy into the proxy buffer and five
 state calls: ≈ 60–100 µs per draw, ≈ 0.2 ms per firing frame at 30 bolts,
 zero GPU. Frames without an admitted bullet draw pay one bool test. Native
 Windows: the Unlock-window read of write-combined memory is unmeasured (the
-same caveat step D carries); §7 names the alternative source.
+same caveat step D carries); §7 names the alternative source. Measured on
+2026-10-23 as the dominant combat cost and removed: see "Staged Lock".
 
 **Native Windows behaviour.** Documented D3D9 only: the ownership layer's own
 Lock/Unlock observation, `CreateVertexBuffer`, `Lock(DISCARD)`,
@@ -253,6 +254,8 @@ so the halo appears without any clamp exception.
 - **Native write-combined read at Unlock.** Unmeasured, shared with step D.
   If it matters, the same hook site gives the cached system copy
   (`[rec+0x04]`, `[rec+0x0c]` count) without touching the mapping.
+  Settled 2026-10-23: it mattered (1.6–5.2 ms per bullet batch); the staged
+  Lock removes the read without the private system copy ("Staged Lock").
 - **Which bullet pairs.** Only `5e484a06`/`ec1f5c4a` has live evidence; the
   other two bullet VS of `screen_emission_admission.h` share the body class
   and the rule applies to them unchanged if they ever draw.
@@ -673,3 +676,96 @@ one (rule on; single, behind, nullps); the covered half after A must not
 depend on whether the early copy lay beneath it; in `-behind` the kept late
 copy is farther than A and adds nothing on the covered half; `-empty` never
 drops. Results: `verification/results/bolt-single-copy/`.
+
+## Staged Lock (2026-10-23)
+
+**Measurement (user flights, Run193 / release 1.4.0, native Windows; triage in
+`verification/results/run193-combat-triage/`, RE in
+`docs/reverse-engineering/view-submit-hot-path.md`, "Combat prepare span: the
+instanced-batch path").** With the footprint on, the instanced bullet path
+(`0x0046d080` → `0x004bfd40`: per batch `Lock(DISCARD)`, memcpy from the
+engine's system copy, `Unlock`, one effect draw; 4–8 batches per frame in
+combat) cost 1.6–5.2 ms per bullet draw, 15–21 ms per frame. The
+`bolt_footprint = 0` control flight of the same battle: `dt_p50` 28→11 ms
+down to 5–7 ms, the prepare span 21.6 ms down to 0.39–0.47 ms, frames over
+33 ms 20 → 4, with 4.8–7.9 bolt draws and 32–46 footprint instances per frame
+at peak. The footprint's own per-draw timer read 19 µs per draw. Inferred,
+not measured: the time was the Unlock-side scan, `prefix::scan` reading up to
+147 456 B back from the driver's DISCARD mapping, which is write-combined
+(uncached) on native D3D9. The control also removed the sentinel, the Lock
+observation and the substitute draw; the first flight's
+`locked_prefix_window` row (`copy_us`, `scan_us`, `sentinel_us`) confirms or
+refutes the attribution.
+
+**Change.** `prefix::Table::begin_lock` takes a `Stage`: a scannable lock of a
+marked buffer is served from the slot's proxy-owned staging block (cacheable,
+page aligned, at least 147 456 B, grow-only up to `staging_limit` = 589 824 B,
+pooled for the table's lifetime with the position/extras storage). The
+ownership `buffer_lock` hands the application the staging pointer instead of
+the mapping (last, after every other observer saw the mapping); the step-D
+sentinel is written into staging. `buffer_unlock` copies the whole lock range
+staging → mapping (one sequential write into write-combined memory, before the
+real `Unlock`), then scans the staging block (same `prefix::scan`, same
+positions and UV/colour words, same revision and `sentinel_vertices`
+bookkeeping), then unpins the slot. No production path reads the driver
+mapping any more (the sentinel never did: it is `memset`). An open stage pins
+its slot: eviction skips it, `erase`/`clear` (Release, Reset, device release)
+keep it, so the application's pointer stays valid and its data still reaches
+the buffer; a buffer released while locked unpins it. Only marked buffers
+(admitted bullet-producer draws, `admitted_vertex_shader`) are staged; an
+unmarked buffer's Lock costs one atomic load (the node's open-stage flag)
+plus one registry-mutex take and one 16-entry table probe, its Unlock one
+probe inside the mutex take the Unlock already had, with no clock read or
+fence (before: a QPC per successful VB Lock and a QPC + `mfence` per VB
+Unlock).
+
+| Lock shape on a marked buffer | Before | Now |
+| --- | --- | --- |
+| `DISCARD`, offset 0, size ≠ 0 (the engine's only shape) | sentinel + scan in the mapping | staged: staging pointer, copy to the mapping at Unlock, scan of staging |
+| `DISCARD` with `READONLY` or `NOOVERWRITE` | scanned (`DISCARD` bit) | passed through, record Invalid |
+| non-`DISCARD` (`0`, `NOOVERWRITE`, `READONLY`), offset ≠ 0, size 0 | passed through, Invalid | unchanged |
+| range > 589 824 B, or staging allocation failed | scanned (first 6144 vertices) | passed through, Invalid (`unstaged_total`) |
+| nested non-`DISCARD` Lock inside the staged range | Invalid, no sentinel | aliases the staging block (`staging + offset`, as the driver's storage would); the outermost Unlock copies once and closes; Invalid |
+| nested `DISCARD`, SizeToLock 0 or a range outside the staged one | Invalid, no sentinel | the stage is copied to the first mapping before the nested call and detached (never copied again); the nested Lock gets the driver's storage. Limitation: writes through the first pointer after such a nested Lock are lost. The engine never nests (RE note); `nested_flushes_total > 0` on a flight means this must be revisited |
+| failed Lock | nothing | unchanged |
+| Unlock without a staged Lock | marked record Invalid | unchanged, nothing read |
+| Unlock on another thread | Invalid | data copied, record Invalid |
+| failed Unlock | Invalid | data already copied; Invalid |
+| Reset / device lost / ProcessVertices between Lock and Unlock | table cleared or record Invalid | same, and the open stage is still copied at Unlock |
+
+**Cost (measured on the host, cacheable memory both ways;
+`verification/results/staged-lock/measure.py` → `staged-lock.json`, medians of
+9 runs × 400 locks).** 1056 vertices: old direct scan 1.27 µs; staged copy
+1.65 µs + scan 1.20 µs. 6144 vertices: direct scan 7.23 µs; staged copy
+1.27 µs + scan 7.18 µs. The scan itself is unchanged; the added work is the
+147 456-byte copy. On native D3D9 the copy is a write into write-combined
+memory, about 15–30 µs per lock at 5–10 GB/s (inferred, not measured), against
+the 1.6–5.2 ms per bullet draw measured with the old path (its attribution to
+the read is inferred, above). Memory: one staging block per marked slot,
+147 456 + 4 096 B (alignment slack) each, filled once with the sentinel
+pattern; bound 16 × 593 920 B = 9.5 MB (one 589 824-B block plus slack per
+slot); in practice a handful of slots (inferred from 4–8 bullet batches per
+frame).
+
+**Flight proof.** `locked_prefix_window` (one row per 300 frames beside
+`bolt_footprint`, under `X3M_DEBUG=1`, `X3M_PERF=1` or `X3M_TELEMETRY=1` with
+the footprint on; window deltas): `locks` (marked locks), `staged`, `copies`,
+`copy_bytes`, `copy_us`, `scans`, `scanned_vertices`, `scan_us`,
+`sentinel_bytes`, `sentinel_us`; cumulative `unstaged_total`,
+`window_end_scans_total`, `nested_flushes_total`; `staging_bytes`,
+`open_stages`, `table_used`. The win shows as `(copy_us + scan_us) / staged`
+in tens of µs instead of milliseconds, `staged == locks`, `unstaged_total = 0`,
+and the battle's prepare span and `dt_p50` back near the
+`bolt_footprint = 0` control. `locked_prefix_frame` (per frame, under
+`X3M_SCREEN_EMISSION_BOUND`) keeps its fields; its `scan_us` now times the
+staging scan only.
+
+**Visible behaviour.** None intended: the published positions, UV/colour words,
+counts, revisions and sentinel extents are bit-identical to the direct mode
+over the same writes (host fixture `test_staged_lock`), so the substitute
+buffer's rewrite and the additive route's bounds are unchanged; the substitute
+buffer itself is created on the native device and never staged. In the game's
+DISCARD buffer the bytes past the written prefix now hold the sentinel instead
+of driver-undefined memory; no draw reads them (the drawn count is
+`primCount*3` within the prefix). Not yet flown.
+
