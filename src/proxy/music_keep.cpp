@@ -86,9 +86,12 @@ std::uint64_t qpc() {
     LARGE_INTEGER v{};
     return QueryPerformanceCounter(&v) && v.QuadPart > 0 ? std::uint64_t(v.QuadPart) : 0;
 }
-// The queue's story sites (story_detect.h), detected from Present once per VM key after the load gate opened (kc_), and
-// the scratch the detection reads a method into. Present and the T2/T3 handlers run on the game's main thread.
-x3m::story::QueueSites kc_sites_{};
+// The queue's story sites (story_detect.h): kc_sites_ the detection kept for a VM key (a success or a definitive failure,
+// once the load gate opened over it; Retries::keep), kc_candidate_ the detection of the current due check while none is
+// kept for the key, kc_retries_ the transient failures per key, and the scratch the detection reads a method into.
+// Present and the T2/T3 handlers run on the game's main thread.
+x3m::story::QueueSites kc_sites_{}, kc_candidate_{};
+x3m::story::Retries kc_retries_{};
 unsigned char kc_scratch_[x3m::story::scratch_size];
 bool engine_read(std::uint32_t at, void* out, unsigned n) {
     return x3m::engine_memory::read(at, out, n);
@@ -676,11 +679,12 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_queue_play(c
 namespace {
 // The KC patch of 150::WarpToSector, maintained from Present on the main thread (no task runs there): the VM pointer is
 // read every frame (one image load); its CODE buffer, size, build id and the 6-byte window are read on a change of the
-// pointer and every kc_check_stride_frames (8) otherwise. The write waits for the load gate (KcPatch::settle): after a
-// story reload began (the session or loader stop-all), only the first check after the save_load_complete marker or two
-// consecutive checks 8 frames apart that read the same observation may write, so a reload is patched again within 8 to
-// 16 frames of its completion and never while one may be in progress. The write is a plain 6-byte copy into the game's
-// own heap buffer after VirtualQuery says committed and writable; nothing executes bytecode during Present.
+// pointer and every kc_check_stride_frames (8) otherwise. The detection is kept and the write made only through the load
+// gate (KcPatch::settle): after a story reload began (the session or loader stop-all), only the first check after the
+// save_load_complete marker or two consecutive checks 8 frames apart that read the same observation (key, detection,
+// window) may keep a detection, and the next such check may write, so a reload is patched again within 16 to 24 frames
+// of its completion and never while one may be in progress. The write is a plain 6-byte copy into the game's own heap
+// buffer after VirtualQuery says committed and writable; nothing executes bytecode during Present.
 void kc_row(KcResult r) {
     const bool detected = kc_.story != nullptr;
     x3m::log("music_queue_kc frame=%llu action=%s vm=0x%08lx code=0x%08lx size=%lu build=%lu object=%s detect=%s method=%s window=0x%05lx bytes=%02x%02x%02x%02x%02x%02x applied=%u refused=%u "
@@ -705,12 +709,21 @@ __attribute__((noinline)) void music_queue_kc_present() {
     kc_.size = fields_ok ? size : 0;
     kc_.build = fields_ok ? build : 0;
     const x3m::story::VmKey key{vm, kc_.code, kc_.size, kc_.build};
-    // The detection for this object, when one was made (its window is read and compared); else none yet.
+    // The detection kept for this object (its window is read and compared). While none is kept, every due check detects
+    // anew (kc_candidate_): the gate's observation then carries the candidate's outcome, its window offset and the window
+    // bytes read live there, so a detection is kept only when two consecutive checks 8 frames apart agree on all of them
+    // and on the key (or at the first check after the save_load_complete marker).
     kc_.story = fields_ok && kc_sites_.detected && kc_sites_.key == key ? &kc_sites_ : nullptr;
-    const bool sites = kc_.story && kc_.story->outcome.ok();
-    const std::uint32_t at = sites ? code + kc_.story->warp_fork_offset : 0;
+    const x3m::story::QueueSites* seen_sites = kc_.story;
+    if (fields_ok && !kc_.story) {
+        x3m::story::detect_queue(engine_read, vm, kc_candidate_, kc_scratch_);
+        kc_candidate_.key = key;
+        seen_sites = &kc_candidate_;
+    }
+    const bool sites = seen_sites && seen_sites->outcome.ok();
+    const std::uint32_t at = sites ? code + seen_sites->warp_fork_offset : 0;
     bool window_ok = false;
-    if (sites && code && size >= kc_.story->warp_fork_offset + warp_window_length && at > code)
+    if (sites && code && size >= seen_sites->warp_fork_offset + warp_window_length && at > code)
         window_ok = x3m::engine_memory::read(at, kc_window_seen_, warp_window_length);
     if (!window_ok) std::memset(kc_window_seen_, 0, sizeof kc_window_seen_);
     KcObservation seen;
@@ -720,15 +733,21 @@ __attribute__((noinline)) void music_queue_kc_present() {
     seen.build = kc_.build;
     seen.window_ok = window_ok;
     std::memcpy(seen.window, kc_window_seen_, warp_window_length);
+    seen.detect = seen_sites ? unsigned(seen_sites->outcome.fail) : kc_no_detection;
+    seen.window_at = sites ? seen_sites->warp_fork_offset : 0;
     const bool settled = kc_.settle(seen);
     KcResult r = KcResult::none;
-    if (fields_ok && !kc_.story && settled) {
-        // The load gate is open for an object not detected yet: detect its sites now (once per VM key); the write waits
-        // for the next checks, which observe the detected window.
-        x3m::story::detect_queue(engine_read, vm, kc_sites_, kc_scratch_);
-        kc_sites_.key = key;
-        kc_.story = &kc_sites_;
-        r = kc_sites_.outcome.ok() ? KcResult::waiting : KcResult::no_sites;
+    if (fields_ok && !kc_.story) {
+        // No detection kept for this object yet: keep the candidate once the gate is open over it (a transient failure is
+        // retried at the next due check, at most detect_retry_limit times per key, then kept as retry_exhausted). The
+        // write waits for the next check, which observes the kept window.
+        if (kc_retries_.keep(key, kc_candidate_.outcome, settled)) {
+            kc_sites_ = kc_candidate_;
+            kc_sites_.detected = true;
+            kc_.story = &kc_sites_;
+            r = kc_sites_.outcome.ok() ? KcResult::waiting : KcResult::no_sites;
+        } else
+            r = KcResult::waiting;
     } else if (kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r) && !settled)
         r = KcResult::waiting; // a story load may still be in progress: no write at this check
     else if (r == KcResult::applied) {
@@ -1438,6 +1457,8 @@ bool install_keep(const char** reason) {
     queue_ = TrackQueue{};
     kc_ = KcPatch{};
     kc_sites_ = x3m::story::QueueSites{};
+    kc_candidate_ = x3m::story::QueueSites{};
+    kc_retries_ = x3m::story::Retries{};
     combat_track_ = 0;
     format_stories();
     queue_armed_ = false;

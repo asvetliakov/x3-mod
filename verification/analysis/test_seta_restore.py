@@ -97,15 +97,41 @@ class StorySites(unittest.TestCase):
         def no_native(code, entries):    # StopFastForward's TI native gone (another command)
             code[e['seta_stop_ip'] - 2] ^= 0x7f
 
-        def two_calls(code, entries):    # a second StopFastForward call in StartGateWarp
+        def two_calls(code, entries):    # a second StopFastForward call at an instruction start of StartGateWarp
             at = e['seta_gate_return'] - 5
-            entry = entries[(150, 'StartGateWarp')]
-            code[entry + 1:entry + 6] = code[at:at + 5]
-        for mutate, fail, where in ((no_native, 'no_site', '150::StopFastForward'), (two_calls, 'ambiguous_site', '150::StartGateWarp')):
+            self.img.replace_insn(code, entries[(150, 'StartGateWarp')], entries, 5, [(at, 5)], code[at:at + 5])
+
+        def no_handler(code, entries):   # an opcode without an interpreter handler at an instruction start
+            code[self.img.method_insns(code, entries[(150, 'StopFastForward')], entries)[1]] = 0x25
+        for mutate, fail, where in ((no_native, 'no_site', '150::StopFastForward'), (two_calls, 'ambiguous_site', '150::StartGateWarp'),
+                                    (no_handler, 'decode_error', '150::StopFastForward')):
             s = self.detect(raw, build=1234567890, mutate=mutate)
             self.assertEqual((s['fail'], s['where']), (fail, where), mutate.__name__)
         self.assertEqual(self.detect(raw, build=1510658513)['fail'], 'table_mismatch')   # a known build must match its entry
         self.assertEqual(self.detect(raw, build=1234567890)['fail'], 'none')             # an unknown build: the detection alone
+
+    def test_signatures_only_at_instruction_starts(self):
+        # The TI_SetTimeWarpFactor native and the StopFastForward call copied into a 0a operand are never sites: the known
+        # build still reproduces its entry; with the true site gone, the embedded copy does not stand in for it.
+        raw, e, img = self.load(self.X3 / 'addon/07.cat'), self.table.entries()[0], self.img
+        stop, call = e['seta_stop_ip'] - 5, e['seta_gate_return'] - 5
+
+        def embed(code, entries):
+            img.embed_in_operand(code, entries[(150, 'StopFastForward')], entries, code[stop:stop + 5], [(stop, 5)])
+            img.embed_in_operand(code, entries[(150, 'StartGateWarp')], entries, code[call:call + 5], [(call, 5)])
+
+        def embed_without_native(code, entries):
+            embed(code, entries)
+            code[stop:stop + 5] = b'\x01' * 5
+
+        def embed_without_call(code, entries):
+            embed(code, entries)
+            code[call:call + 5] = b'\x01' * 5
+        s = self.detect(raw, mutate=embed)
+        self.assertEqual((s['fail'], s['stop_ip'], s['gate_return']), ('none', '0x%05x' % e['seta_stop_ip'], '0x%05x' % e['seta_gate_return']))
+        for mutate, where in ((embed_without_native, '150::StopFastForward'), (embed_without_call, '150::StartGateWarp')):
+            s = self.detect(raw, build=1234567890, mutate=mutate)
+            self.assertEqual((s['fail'], s['where']), ('no_site', where), mutate.__name__)
 
 
 class LiveImage(unittest.TestCase):
@@ -321,6 +347,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('load(ship + ship_flags, f)', source)
         # the story sites come from the run-time detection, once per VM key at a SETA stop, outside the lock
         for needle in ('x3m::story::detect_seta(reader, vm_root, sites_, scratch_);', 'if (!sites_.detected || sites_.key != key) {',
+                       'sites_.detected = retries_.keep(key, sites_.outcome);', 'retries_ = x3m::story::Retries{};',
                        'w.sites = &sites_;', 'detect=%s method=%s', 'x3m::story::fail_name(r.detect_fail)', 'detect=runtime expected=%s'):
             self.assertIn(needle, source)
         self.assertLess(source.index('x3m::story::detect_seta('), source.index('        Guard guard;\n        if (machine_.active() || stop_shaped)'))

@@ -1198,13 +1198,19 @@ inline const char* kc_result_name(KcResult r) {
     default: return "none";
     }
 }
-// What one due check read: the VM pointer, its CODE buffer, size and build, and the window bytes.
+// What one due check read: the VM pointer, its CODE buffer, size and build, the outcome of the detection it used (kept
+// or, while none is kept for the key, its own; kc_no_detection: none) with its window offset, and the window bytes.
+constexpr unsigned kc_no_detection = ~0u;
 struct KcObservation {
     std::uint32_t vm = 0, code = 0, size = 0, build = 0;
+    unsigned detect = kc_no_detection;
+    std::uint32_t window_at = 0;
     bool window_ok = false;
     unsigned char window[warp_window_length]{};
     bool operator==(const KcObservation& o) const {
-        if (vm != o.vm || code != o.code || size != o.size || build != o.build || window_ok != o.window_ok) return false;
+        if (vm != o.vm || code != o.code || size != o.size || build != o.build || detect != o.detect || window_at != o.window_at ||
+            window_ok != o.window_ok)
+            return false;
         for (unsigned i = 0; i < warp_window_length; ++i)
             if (window[i] != o.window[i]) return false;
         return true;
@@ -1224,7 +1230,8 @@ struct KcPatch {
     // the save_load_complete marker (load_complete(); the marker is emitted once per process, for the first save load),
     // or, for every load without a marker (the initial story load at session start, every later save load), once two
     // consecutive due checks kc_check_stride_frames apart after the last load_begin() read the same observation
-    // (VM, CODE buffer, size, build and window bytes).
+    // (VM, CODE buffer, size, build, detection outcome, window offset and the window bytes read live). The same rule
+    // decides when a detection is kept for a key (music_queue_kc_present): before one is kept, each due check detects.
     KcObservation last{};
     bool have_last = false, marker = false;
     unsigned load_begins = 0, markers = 0;

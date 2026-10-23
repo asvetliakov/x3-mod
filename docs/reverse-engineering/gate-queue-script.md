@@ -85,8 +85,9 @@ bytes printed are the mod-authored replacements.
   method's maximum depth (3,950 of 5,098 methods checked exactly equal).
 * **Load-time rewriting, in memory only** **[m]**. `0x0049e1a0` swaps every multi-byte operand to little endian and
   replaces each native name with u16 group + u16 command (0 if unresolved). It ends by calling the peephole pass
-  (`0x0049e426` → `0x0049e4f0`). That pass rewrites the **first opcode byte** of fixed patterns (push-const + jump,
-  `not` + jump, load + index, store + drop, increment, `0d 1 14 2 24 83`), keeping the summed widths, and threads
+  (`0x0049e426` → `0x0049e4f0`). That pass rewrites the **opcode byte** of fixed patterns (push-const + jump,
+  `not` + jump, load + index, store + drop, increment) and the first three bytes of `0d 1 14 2 24 83` (to `83 83 83`),
+  keeping the summed widths (in-memory widths: [story-builds.md](../architecture/story-builds.md) §3), and threads
   jump operands through chains of `jmp` and constant conditionals. All of it is semantics-preserving and never
   touches the file. The patcher writes big-endian file bytes and need not model it. A patch should only use native
   names that already occur in STRG, so that they resolve; every name the options below use does.

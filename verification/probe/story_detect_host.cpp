@@ -1,7 +1,8 @@
 // The run-time story detector (src/proxy/story_detect.h) over a KC VM image built from an object on disk by
 // verification/probe/story_vm_image.py: prints one `seta ...` and one `queue ...` row of key=value fields. The reader
 // serves a read only when it lies wholly inside one segment (a fault elsewhere, as the engine reader refuses), and
-// counts the reads. No Windows, no Wine.
+// counts the reads. An optional second argument replaces the detection's read budget (story_detect.h
+// detection_read_budget). No Windows, no Wine.
 #include "story_detect.h"
 #include <cstdio>
 #include <cstdlib>
@@ -35,10 +36,11 @@ void hex(const unsigned char* p, unsigned n, char* out) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::fprintf(stderr, "usage: story_detect_host IMAGE\n");
+    if (argc != 2 && argc != 3) {
+        std::fprintf(stderr, "usage: story_detect_host IMAGE [READ_BUDGET]\n");
         return 2;
     }
+    const unsigned budget = argc == 3 ? unsigned(std::strtoul(argv[2], nullptr, 0)) : x3m::story::detection_read_budget;
     std::FILE* f = std::fopen(argv[1], "rb");
     if (!f) return 2;
     std::vector<unsigned char> file;
@@ -60,7 +62,7 @@ int main(int argc, char** argv) {
     Reader rd;
     x3m::story::SetaSites seta;
     reads = 0;
-    x3m::story::detect_seta(rd, vm, seta, scratch);
+    x3m::story::detect_seta(rd, vm, seta, scratch, budget);
     const unsigned long seta_reads = reads;
     std::printf("seta fail=%s where=%s stop_ip=0x%05x gate_return=0x%05x reads=%lu", x3m::story::fail_name(seta.outcome.fail),
                 seta.outcome.where, unsigned(seta.stop_ip), unsigned(seta.gate_return), seta_reads);
@@ -70,7 +72,7 @@ int main(int argc, char** argv) {
                 x3m::story::seta_return_name(&seta, seta.gate_return, true));
     x3m::story::QueueSites q;
     reads = 0;
-    x3m::story::detect_queue(rd, vm, q, scratch);
+    x3m::story::detect_queue(rd, vm, q, scratch, budget);
     char window[13]{}, patch[13]{};
     hex(q.warp_window_memory, x3m::story::warp_window_length, window);
     hex(q.warp_patch_memory, x3m::story::warp_window_length, patch);
