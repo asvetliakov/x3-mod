@@ -1,0 +1,23 @@
+{
+ "run": "199",
+ "what": "release 1.5.0 + seta_manual_flight part A per row: only a manual speed change (speed keys, Boost, throttle, slider) still reaches the engine's StopFastForward; the seven non-speed flag rows' jne at 0x004120cb+8k become 66 90 and the look row's je at 0x0041210b becomes jmp; 0x0041211d stays original; nine row windows and the stop block verified before any write, reverse rollback; part B unchanged",
+ "commit": "f1258728",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (removed and reconfigured)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "4a05fa5c2268563ceca067105526a28f55d38535d93ea1bd633e9707515a4790",
+  "bytes": 62567019,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 1060 reachable, 0 violations",
+  "host_tests": "test_seta_manual_flight + test_seta_restore + test_launcher_defaults + test_config_schema: 58 OK (host core 530 checks incl. the 1024-case row-chain walk)",
+  "study": "seta_manual_flight_study.py RESULT PASS 162 checks; generate.py --check PASS 278 settings",
+  "reviews": "review (Opus 5.5): 0 blocker, 0 should-fix, 3 nits (doc scan scope applied; cosmetic stop_write field and a seta_restore test comment left)"
+ },
+ "evidence": "docs/verification/seta-manual-flight.md 2026-10-24 rows, docs/architecture/seta-manual-flight.md Part A, docs/reverse-engineering/seta-manual-flight.md §2",
+ "unflown": "speed change ends SETA, steering/strafe keep it",
+ "producer": "main session"
+}
