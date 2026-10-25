@@ -1,0 +1,20 @@
+{
+ "run": 206,
+ "what": "fog out-of-memory retry unbounded, step= witness, prepare_ok memory row, address-space census on failure rows",
+ "commit": "c140d6ea",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "e594a726ad2d558a920882163bcba5003fcddbf86fed5407ba98e1a508629200",
+  "bytes": 62912383,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_fog_cards + test_logging_tiers + test_address_space 25 OK (incremental build, same sources)",
+  "review": "implement-deep report + main session read of the delta (bounded change over the reviewed 10-21 retry path)"
+ },
+ "witness": "verification/results/fog-prepare-oom-2026-10-21/witness-run205-2026-10-26.txt",
+ "producer": "main session"
+}
