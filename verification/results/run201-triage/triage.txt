@@ -1,0 +1,255 @@
+identity: ['proxy_identity sha256=1e79a704779c69d26829937f20d3c86d3cc91398370d497d466c94ddb0386d38 bytes=62766490 path=C:\\X3\\d3d9.dl']
+== 1 install/arming
+== music_queue armed: 1
+   music_queue requested=1 armed=1 reason=ok site_play=0x00498c90 write_play=atomic stub_play=0x6c99be70 free=0x004986b0 vm=0x006085e4 detect=runtime expected=mayhem:1462141839:0x161c3:0x161d7,stock_ap:1510658513:0x1639c:0x163b0 kc_patch=pending key_base=0x7f0000
+== music_queue_kc: 0
+== music_dock_keep: 0
+== seta_manual_flight installed: 1
+   seta_manual_flight installed=1 mode=2 stop=speed_only stop_sites=8 stop_rows=0x004120c5 stop_status=active stop_write=atomic yaw=active:plain pitch=active:plain roll=active:plain strafe_y=active:plain strafe_x=active:atomic gate=factor>0x10000,rate>0x10000 k=r
+== seta_key_latch: 0
+== seta_restore installed: 1
+   seta_restore installed=1 hook=0x004b148c write=plain stub=0x6c9a4f00 inject_site=0x00410100 inject=ok call=0x0049f4c0 key=0x96 method=StartFastForward detect=runtime expected=mayhem:1462141839:0x1558d:0x15ef8,stock_ap:1510658513:0x157a6:0x160d1 due_frames=2 ex
+== fog distance mode: 1
+   volumetric_fog_distance_mode distance=3 requested=3 refused=none programs=distance horizon=1 cap_km=67.5
+== horizon_ready: 1
+   volumetric_fog_cache device=1 frame=1198 event=horizon_ready ms=2739.2 nodes=6689068 worker_busy_ms=2864.3 upload_bytes_total=21294600 missed_locks=0
+== bad-word rows by kind: {('volumetric_fog_march_scale', 'refused'): 1, ('volumetric_fog_distance_mode', 'refused'): 1, ('voice_dmo_fallback', 'fallback'): 1, ('ship_steering_gates_capital', 'fallback'): 1, ('resource_reader', 'fallback'): 1, ('ownership_mode', 'fallback'): 1, ('window_mode', 'refused'): 1, ('volumetric_fog_families', 'fallback'): 1, ('music_queue_kc', 'refused'): 8, ('engine_effects_bodies', 'refused'): 1, ('cull_small_parts_value', 'fallback'): 3, ('engine_light_variant', 'refused'): 24, ('hull_emission_refused_state', 'refused'): 16, ('media_cue_window', 'refused'): 1, ('hull_emission_refused', 'refused'): 16, ('volumetric_fog_frame', 'refused'): 4, ('emission_source_gain_refused_state', 'refused'): 16, ('volumetric_fog_docked', 'fallback'): 1, ('bolt_footprint_refused', 'refused'): 1, ('shadow_replay_depth_refused', 'refused'): 8, ('music_keep_save_pump', 'fallback'): 2, ('music_queue', 'refuse'): 1, ('session_end', 'exception'): 1}
+== bad-word rows: 111
+   volumetric_fog_march_scale scale=4 requested=4 refused=none
+   volumetric_fog_distance_mode distance=3 requested=3 refused=none programs=distance horizon=1 cap_km=67.5
+   voice_dmo_fallback requested=1 installed=1 status=ok site=004cfd46 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=031d0000 arena_size=24576 arena_used=476 stub=031d0160 tail=031d0144 dispatcher=0
+   ship_steering_gates_capital installed=1 status=active join_r=6.0 inner_r=5.0 look_turns=2.0 tol_deg=8.11 small_ratio=0.333 fresh_ms=250 fresh_frames=4 join_candidates_ms=100,60,40,25 join_eval_ms=1000 join_step_s=0.25 join_margin=4/6/50/50 fallback_entry_ms=25
+   resource_reader mode=fast installed=1 status=active site=0x004e8880 chained_after_probe=0 scope=whole_extent_fread,word_xor,single_inflate,game_malloc,no_memset fallback=original arena_used=2888
+   ownership_mode requested=1 depth_copy_requested=0 depth_copy_enabled=0 scope=normal9 fallback=native
+   window_mode phase=create_before hwnd=003d0922 style=14c00000 exstyle=00000100 before=0,0,5120,1440 after=0,0,5120,1440 monitor=0,0,5120,1440 work=0,0,5120,1440 backbuffer=5120x1440 windowed=0 single_window=1 top_level=1 window_thread=9076 thread=9076 action=re
+   volumetric_fog_families device=1 frame=0 event=loaded families=70 packets=35 rows_disabled=0 bytes=79847804 reason=ok fallback=compiled_first path="C:\X3\x3m\fog-families.bin"
+   music_queue_kc frame=0 action=waiting vm=0x04926640 code=0x00000000 size=0 build=1462141340 object=mayhem_x3config detect=pending method=- window=0x00000 bytes=000000000000 applied=0 refused=0 load_begins=0 markers=0
+   engine_effects_bodies event=loaded reason=ok bodies=253 named=245 smalljet=1 refused=0 bytes=286080 fault=0 frame=1 path="C:\X3\x3m\engine_bodies.json"
+   cull_small_parts_value px=4 m00=0.499997914 width=5120 threshold=3 focus=0x3470 source=registry fallback=no_scene dock_px=12 dock_threshold=8
+   engine_light_variant device=1 original=99153c144030c396 created=7f refused=00 mismatched=00 failed=00 words_max=4430 slots_max=813 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=0c1f3f0f440e4a0c created=7f refused=00 mismatched=00 failed=00 words_max=4441 slots_max=817 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=7c83ed50c9894e44 created=7f refused=00 mismatched=00 failed=00 words_max=4376 slots_max=806 slot_budget=4096 depth=1
+   hull_emission_refused_state device=1 frame=5 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=5 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=6 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=6 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=7 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=7 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=8 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=8 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=9 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=9 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=10 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=10 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=11 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=11 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=12 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=12 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   hull_emission_refused_state device=1 frame=12 vs=494fe349b8bc12ec ps=7c83ed50c9894e44 hdr=1 scene=0 open=1 recording=0 primitives=2 msaa=0 blend=-1 src=-1 dst=-1 op=-1
+   music_queue_kc frame=16 action=no_sites vm=0x04926640 code=0x1da71030 size=107358 build=1462141842 object=mayhem_x3intro detect=no_method method=150::WarpToSector window=0x00000 bytes=000000000000 applied=0 refused=1 load_begins=2 markers=0
+   engine_light_variant device=1 original=ca6bfa4a6cca7e2a created=7f refused=00 mismatched=00 failed=00 words_max=4403 slots_max=816 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=8759c7838bbc86c2 created=7f refused=00 mismatched=00 failed=00 words_max=4329 slots_max=802 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=5e0a10fe752b6140 created=7f refused=00 mismatched=00 failed=00 words_max=4429 slots_max=821 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=63f96eba9eea7880 created=7f refused=00 mismatched=00 failed=00 words_max=4361 slots_max=807 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=6733b119142c8d42 created=7f refused=00 mismatched=00 failed=00 words_max=4838 slots_max=864 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=5f82ecacd39529cd created=7f refused=00 mismatched=00 failed=00 words_max=4849 slots_max=868 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=fffdabd910793aba created=7f refused=00 mismatched=00 failed=00 words_max=4732 slots_max=853 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=496049cec2066ed3 created=7f refused=00 mismatched=00 failed=00 words_max=4864 slots_max=869 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=f1b0e820c7b488c3 created=7f refused=00 mismatched=00 failed=00 words_max=4875 slots_max=873 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=e6794b6ec37ff71a created=7f refused=00 mismatched=00 failed=00 words_max=4758 slots_max=858 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=c1452981fd0bff64 created=7f refused=00 mismatched=00 failed=00 words_max=4456 slots_max=818 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=64bac8bb307eb896 created=7f refused=00 mismatched=00 failed=00 words_max=4467 slots_max=822 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=e70adc744a38ca59 created=7f refused=00 mismatched=00 failed=00 words_max=4402 slots_max=811 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=99153c144030c396 created=7f refused=00 mismatched=00 failed=00 words_max=4430 slots_max=813 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=0c1f3f0f440e4a0c created=7f refused=00 mismatched=00 failed=00 words_max=4441 slots_max=817 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=7c83ed50c9894e44 created=7f refused=00 mismatched=00 failed=00 words_max=4376 slots_max=806 slot_budget=4096 depth=1
+   music_queue_kc frame=104 action=waiting vm=0x04926640 code=0x11435008 size=107358 build=1462141842 object=mayhem_x3intro detect=pending method=- window=0x00000 bytes=000000000000 applied=0 refused=11 load_begins=3 markers=0
+   music_queue_kc frame=112 action=no_sites vm=0x04926640 code=0x11435008 size=107358 build=1462141842 object=mayhem_x3intro detect=no_method method=150::WarpToSector window=0x00000 bytes=000000000000 applied=0 refused=12 load_begins=3 markers=0
+   media_cue_window qpc=2316002576963 frame=299 frames=300 attempts=13 failures=2 successes=11 refused=0 unobserved=0 attempts_frame_p50=0 attempts_frame_max=9 ids=144:3,244:3,1:3,830:2,831:1,8404:1 id_overflow=0 cache_used=0 evictions=0 depth_max=1 overflow=0 st
+   engine_light_variant device=1 original=d44db87778a43b61 created=00 refused=13 mismatched=00 failed=00 words_max=0 slots_max=0 slot_budget=4096 depth=1
+   engine_light_variant device=1 original=517540ae6d5e5410 created=00 refused=13 mismatched=00 failed=00 words_max=0 slots_max=0 slot_budget=4096 depth=1
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+   hull_emission_refused device=1 frame=820 vs=37c34a7478544c14 ps=5f82ecacd39529cd reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+== 2 music
+== music_queue all: 19
+   music_queue requested=1 armed=1 reason=ok site_play=0x00498c90 write_play=atomic stub_play=0x6c99be70 free=0x004986b0 vm=0x006085e4 detect=runtime expected=mayhem:1462141839:0x161c3:0x161d7,stock_ap:1510658513:0x1639c:0x163b0 kc_patch=pending key_base=0x7f0000
+   music_queue_kc frame=0 action=waiting vm=0x04926640 code=0x00000000 size=0 build=1462141340 object=mayhem_x3config detect=pending method=- window=0x00000 bytes=000000000000 applied=0 refused=0 load_begins=0 markers=0
+   music_queue_kc frame=16 action=no_sites vm=0x04926640 code=0x1da71030 size=107358 build=1462141842 object=mayhem_x3intro detect=no_method method=150::WarpToSector window=0x00000 bytes=000000000000 applied=0 refused=1 load_begins=2 markers=0
+   music_queue_kc frame=104 action=waiting vm=0x04926640 code=0x11435008 size=107358 build=1462141842 object=mayhem_x3intro detect=pending method=- window=0x00000 bytes=000000000000 applied=0 refused=11 load_begins=3 markers=0
+   music_queue_kc frame=112 action=no_sites vm=0x04926640 code=0x11435008 size=107358 build=1462141842 object=mayhem_x3intro detect=no_method method=150::WarpToSector window=0x00000 bytes=000000000000 applied=0 refused=12 load_begins=3 markers=0
+   music_queue_kc frame=824 action=waiting vm=0x04926640 code=0x1e53b020 size=1908859 build=1462141839 object=mayhem detect=pending method=- window=0x00000 bytes=6f33d7610100 applied=0 refused=100 load_begins=5 markers=0
+   music_queue_kc frame=840 action=applied vm=0x04926640 code=0x1e53b020 size=1908859 build=1462141839 object=mayhem detect=none method=- window=0x161c3 bytes=6f33d7610100 applied=1 refused=100 load_begins=5 markers=0
+   music_queue frame=9258 seq=4 qpc=2316586360226 event=defer reason=none state=orphaned old=82103 new=82103 key=0x7f000001 record=0x39956718 task=11033981 stop_task=11033981 wake=1 clear=0 complete=1 park=0 freed=0 free_later=0 frames=0 episode=1 caller=- dock=1
+   music_queue frame=9277 seq=5 qpc=2316587419100 event=park reason=none state=parked old=82103 new=82103 key=0x7f000001 record=0x39956718 task=11033981 stop_task=0 wake=0 clear=0 complete=0 park=1 freed=0 free_later=0 frames=19 episode=1 caller=- dock=0
+   music_queue frame=10312 seq=6 qpc=2316643814295 event=collapse reason=none state=orphaned old=82103 new=82103 key=0x7f000001 record=0x39956718 task=11046303 stop_task=11046303 wake=1 clear=0 complete=1 park=0 freed=0 free_later=0 frames=1054 episode=1 caller=-
+   music_queue frame=10325 seq=7 qpc=2316644786145 event=park reason=none state=parked old=82103 new=82103 key=0x7f000001 record=0x39956718 task=11046303 stop_task=0 wake=0 clear=0 complete=0 park=1 freed=0 free_later=0 frames=1067 episode=1 caller=- dock=0
+   music_queue frame=20581 seq=8 qpc=2317292969312 event=collapse reason=none state=orphaned old=82103 new=81215 key=0x7f000001 record=0x39956718 task=11158155 stop_task=11158155 wake=1 clear=0 complete=1 park=0 freed=0 free_later=0 frames=11323 episode=1 caller=
+   music_queue frame=20589 seq=9 qpc=2317293383420 event=park reason=none state=parked old=82103 new=81215 key=0x7f000001 record=0x39956718 task=11158155 stop_task=0 wake=0 clear=0 complete=0 park=1 freed=0 free_later=0 frames=11331 episode=1 caller=- dock=0
+   music_queue frame=21444 seq=10 qpc=2317330834346 event=keep reason=none state=orphaned old=82103 new=81215 key=0x7f000001 record=0x39956718 task=11158155 stop_task=0 wake=1 clear=0 complete=0 park=0 freed=0 free_later=0 frames=12186 episode=1 caller=save dock=
+   music_queue frame=21445 seq=13 qpc=2317355497222 event=park reason=none state=parked old=82103 new=81215 key=0x7f000001 record=0x39956718 task=11158155 stop_task=0 wake=0 clear=0 complete=0 park=1 freed=0 free_later=0 frames=12187 episode=1 caller=- dock=0
+   music_queue frame=23455 seq=14 qpc=2317439777113 event=end reason=stop_all state=idle old=82103 new=81215 key=0x7f000001 record=0x39956718 task=11158155 stop_task=0 wake=1 clear=0 complete=0 park=0 freed=1 free_later=0 frames=14197 episode=1 caller=pause dock=
+   music_queue frame=26209 seq=21 qpc=2317614700758 event=refuse reason=immediate_id state=idle old=81215 new=0 task=11201349 ip=0xdb54 k=-19 capacity=32 cells=1 c-18=1:0x00013d3f c-13=3:0x0000dc84 c-11=1:0x00000000 c-10=1:0x00000000 c-9=1:0x00000001 c-7=3:0x0000
+   music_queue_kc frame=26216 action=waiting vm=0x04926640 code=0x27c57ca0 size=107358 build=1462141842 object=mayhem_x3intro detect=pending method=- window=0x00000 bytes=000000000000 applied=1 refused=100 load_begins=6 markers=0
+   music_queue_kc frame=26224 action=no_sites vm=0x04926640 code=0x27c57ca0 size=107358 build=1462141842 object=mayhem_x3intro detect=no_method method=150::WarpToSector window=0x00000 bytes=000000000000 applied=1 refused=101 load_begins=6 markers=0
+== 3 fog
+== fog timing rows: 37
+   volumetric_fog_prefill device=1 frame=5 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=453 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=359 action=started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=609 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=859 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=1140 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1390 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1640 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1890 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2140 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2406 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2656 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2906 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3156 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3406 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3656 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3906 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=4156 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=found steps=1 reads=10 node=486ad038 id=50512 index=172 family="litcube151" stall_ms=7390 action=started key=f426d1f5b2f128d1
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=found steps=1 reads=10 node=486ad038 id=50512 index=172 family="litcube151" stall_ms=7719 action=already_started key=f426d1f5b2f128d1
+   volumetric_fog_prefill device=1 frame=820 event=confirmed lead_ms=422.5 same_sector=1 same_id=1 key=f426d1f5b2f128d1 prefill_key=f426d1f5b2f128d1 index=172 prefill_index=172 profile=4081005384 adopted=1
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=same_id steps=1 reads=6 node=486ad038 id=50512 index=-1 family="" stall_ms=8156 action=none key=0000000000000000
+   volumetric_fog_cache device=1 frame=870 event=far_ready ms=1087.2 nodes=2773372 worker_busy_ms=1216.6 upload_bytes_total=4276992 missed_locks=0
+   volumetric_fog_cache device=1 frame=1198 event=horizon_ready ms=2739.2 nodes=6689068 worker_busy_ms=2864.3 upload_bytes_total=21294600 missed_locks=0
+   volumetric_fog_cache device=1 frame=1211 event=fine_ready ms=2806.1 nodes=6851272 worker_busy_ms=2930.5 upload_bytes_total=21694064 missed_locks=0
+   volumetric_fog_prefill device=1 frame=18732 event=poll walk=same_id steps=1 reads=6 node=486ad038 id=50512 index=-1 family="" stall_ms=266 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=344 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=594 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=844 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=1094 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=1344 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=1594 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=26210 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=594 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=26211 event=poll walk=found steps=1 reads=10 node=379e1bd8 id=1858 index=0 family="bluedistance2" stall_ms=343 action=started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=26211 event=poll walk=found steps=1 reads=10 node=379e1bd8 id=1858 index=0 family="bluedistance2" stall_ms=593 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=26211 event=poll walk=found steps=1 reads=10 node=379e1bd8 id=1858 index=0 family="bluedistance2" stall_ms=843 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=26211 event=poll walk=found steps=1 reads=10 node=379e1bd8 id=1858 index=0 family="bluedistance2" stall_ms=1093 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=26211 event=poll walk=found steps=1 reads=10 node=379e1bd8 id=1858 index=0 family="bluedistance2" stall_ms=1343 action=already_started key=2f2eef0c5a13816a
+  far_ready n=1 median=1087.2 vals=[1087.2]
+  fine_ready n=1 median=2806.1 vals=[2806.1]
+  horizon_ready n=1 median=2739.2 vals=[2739.2]
+== 4 frame time
+== dt/frame-time rows: 89
+   voice_dmo_fallback requested=1 installed=1 status=ok site=004cfd46 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=031d0000 arena_size=24576 arena_used=476 stub=031d0160 tail=031d0144 dispatcher=0
+   ship_steering_dock installed=1 status=active margin=1.2*r+50 brake_cap_m=600 carrier_inner_r=0.8 idle_near_r=5.0 row_ring=32
+   ship_steering installed=1 sites=4 class_mask=0x0000 timing=0 tau_s=0.15 tick_s=0.05 floor_ms=10 bank_deg=35 handler_a=0x6c95bb10 handler_b=0x6c95cdd0
+   ship_avoidance installed=1 warn_site=0x0044dd90 warn_status=active write=atomic snapshot_capacity=2048 snapshot_slots=4 station_capacity=64 parts_per_station=64 candidates=8 resolved_age_ms=100 handler_e=0x6c963290
+   ship_steering_gates installed=1 status=active sites=3 lead_in_deg=14.17 cross_fraction=0.75 look_s=0.75 look_min_r=0.30 join_r=3.0 large_cap_ms=100 spread_r=0.25 ring=8 capital_tol_deg=8.11 handler_p2=0x6c95ec10 handler_p4=0x6c9604e0 handler_p5=0x6c960a80
+   ship_steering_gates_capital installed=1 status=active join_r=6.0 inner_r=5.0 look_turns=2.0 tol_deg=8.11 small_ratio=0.333 fresh_ms=250 fresh_frames=4 join_candidates_ms=100,60,40,25 join_eval_ms=1000 join_step_s=0.25 join_margin=4/6/50/50 fallback_entry_ms=25
+   ship_steering_gates_traffic installed=1 status=active site=0x00444606 name=ship_gate_arrival_launch write=plain stub=0x6c94d7b0 tail=0x031d054c resume=0x0044460c boards=4 members=24 samples=61 step_s=0.25 sample_s=0.50 margin_m=50 drift_ms=10.0 cert_ms=250 exc
+   seta_restore installed=1 hook=0x004b148c write=plain stub=0x6c9a4f00 inject_site=0x00410100 inject=ok call=0x0049f4c0 key=0x96 method=StartFastForward detect=runtime expected=mayhem:1462141839:0x1558d:0x15ef8,stock_ap:1510658513:0x157a6:0x160d1 due_frames=2 ex
+   seta_manual_flight installed=1 mode=2 stop=speed_only stop_sites=8 stop_rows=0x004120c5 stop_status=active stop_write=atomic yaw=active:plain pitch=active:plain roll=active:plain strafe_y=active:plain strafe_x=active:atomic gate=factor>0x10000,rate>0x10000 k=r
+   seta_manual_flight key_latch installed=1 reason=ok arm=0x004b148c:toggle_stop inject_site=0x00410100 counter=0x0057ff0b call=0x0049f4c0 key=0x96 method=StopFastForward tail_entries=8 cap_entries=2048 debug=0
+   loading_hook name=gzopen installed=1
+   loading_hook name=gzread installed=1
+   loading_hook name=gzseek installed=1
+   loading_hook name=D3DXCreateMesh installed=1
+   loading_hook name=D3DXCleanMesh installed=1
+   loading_hook name=gzgetc installed=1
+   loading_hook name=gztell installed=1
+   loading_hook name=gzclose installed=1
+   loading_hook name=gzwrite installed=1
+   loading_hook name=inflateInit2_ installed=1
+   loading_hook name=inflateEnd installed=1
+   loading_hook name=CryptAcquireContextA installed=1 cache_active=1
+   loading_hook name=CryptReleaseContext installed=1 cache_active=1
+   loading_hook name=CryptImportKey installed=1 cache_active=1
+   loading_hook name=CryptDestroyKey installed=1 cache_active=1
+   resource_reader mode=fast installed=1 status=active site=0x004e8880 chained_after_probe=0 scope=whole_extent_fread,word_xor,single_inflate,game_malloc,no_memset fallback=original arena_used=2888
+   dat_handle_pool requested=1 installed=1 open_site=0x004e87ff open_status=active close_site=0x004e9392 close_status=active entries=32 scope=catalogue_fopen_reuse
+   chase_camera requested=1 installed=1 status=active site=0x00420e06 length=10 rel32_offset=6 atomic_write=0 arena_used=3040 rot_tau=0.280 pos_tau=0.380 offset_y=0.500 pitch_down_deg=0.50 distance_scale=1.050 fov_compensate=1 lag_clamp_deg=8.00 pos_lag_clamp=0.1
+   chase_fire installed=1 status=active site=0x00445a41 scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0
+   chase_transition installed=1 diagnostics=0 observers=1 mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=0 qpc_frequency=0 identity_version=1 origin_pairs=6 identity_scope=admitted_events
+   chase_view_restore installed=1 requested=1 path=engine sites=1 cancel_sites=3 inject_site=0x00410100 call=0x0049f570 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=
+   chase_native_timing installed=0 status=telemetry_off sites=5 threshold_us=10000 scope=native_span_with_hook_overhead
+   chase_central_hud installed=1 status=active cleanup=native_when_extra_active hud_anchor=forward
+   chase_lead installed=1 status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=0
+   ui_scale_install width=5120 height=1440 scale=1.5000 status=patched reason=ok failed_site=- mode=auto virtual=3413x960 inverse16=43691 fixed256=384 writes=plain,atomic,plain,atomic,atomic,plain,plain,atomic,atomic,atomic,atomic,plain arena_used=6140
+   text_density_install density=2 scale=1.5000 status=patched reason=ok mode=auto config_before=1 style=stock style_write=none rows=pending fonts=Tahoma26,Zekton52,ZektonES52,Harrier48 missing=- caps_limited_d=0 max_texture=16384x16384 arena_used=6140
+   state_hooks device=1 installed=0 reason=none state_shadow=0 rs_mode=get
+   mesh_hook table=0 installed=1 owned_slots=3 scope=shared_native_vtable
+   volumetric_fog_prefill device=1 frame=5 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=453 action=none key=0000000000000000
+   motion_output_scene_hook_disagreement device=1 frame=5 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=6 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=7 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=8 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=9 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=10 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=11 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=12 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=13 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=14 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=15 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=16 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=17 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=18 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=19 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   motion_output_scene_hook_disagreement device=1 frame=20 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=359 action=started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=609 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=859 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=101 event=poll walk=found steps=1 reads=10 node=10f3f5c8 id=4 index=0 family="bluedistance2" stall_ms=1140 action=already_started key=2f2eef0c5a13816a
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1390 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1640 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=1890 action=none key=0000000000000000
+   mesh_hook table=1 installed=1 owned_slots=3 scope=shared_native_vtable
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2140 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2406 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2656 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=2906 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3156 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3406 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3656 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=3906 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=head steps=0 reads=2 node=00000000 id=0 index=-1 family="" stall_ms=4156 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=found steps=1 reads=10 node=486ad038 id=50512 index=172 family="litcube151" stall_ms=7390 action=started key=f426d1f5b2f128d1
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=found steps=1 reads=10 node=486ad038 id=50512 index=172 family="litcube151" stall_ms=7719 action=already_started key=f426d1f5b2f128d1
+   volumetric_fog_prefill device=1 frame=820 event=poll walk=same_id steps=1 reads=6 node=486ad038 id=50512 index=-1 family="" stall_ms=8156 action=none key=0000000000000000
+   loading_phase name=menu_shown frame=820 elapsed_ms=22086 stall_ms=8171 device=1 qpc=2316107287157
+   volumetric_fog_prefill device=1 frame=18732 event=poll walk=same_id steps=1 reads=6 node=486ad038 id=50512 index=-1 family="" stall_ms=266 action=none key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=344 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=594 action=family_unsupported key=0000000000000000
+   volumetric_fog_prefill device=1 frame=20444 event=poll walk=found steps=1 reads=10 node=88119d80 id=1012 index=88 family="litcube55" stall_ms=844 action=family_unsupported key=0000000000000000
+== 5 kinds new vs prev
+prev identity: ['proxy_identity sha256=b99567fecb45e74e03d49e5ec5cd95911ef9cefddbd4abc91d187f80b9ca2be4 bytes=42417318 path=C:\\X3\\d3d9.dl']
+new kinds: {'volumetric_fog_distance_mode': 1}
+all kinds: {'motion_unmatched_static': 64, 'shader': 58, 'motion_output_variant': 48, 'volumetric_fog_prefill': 34, 'gz_buffer_file': 31, 'original_fill_variant': 24, 'hull_lightmap_variant': 24, 'sun_shadow_original_variant': 24, 'sun_shadow_original_lightmap_variant': 24, 'engine_light_variant': 24, 'hull_lightmap_widen_variant': 21, 'sun_shadow_original_lightmap_widen_variant': 21, 'text_density_font': 16, 'hull_emission_refused_state': 16, 'motion_output_scene_hook_disagreement': 16, 'hull_emission_refused': 16, 'emission_source_gain_refused_state': 16, 'loading_hook': 15, 'hull_emission_variant': 15, 'music_queue': 11, 'chase_transition_site': 9, 'shadow_retention_probe': 9, 'music_queue_kc': 8, 'frame_end': 8, 'bloom_prepare': 8, 'shadow_replay_depth_refused': 8, 'volumetric_fog_cache': 7, 'ui_scale_camera': 6, 'emission_source_gain_variant': 6, 'music_keep_seek': 6, 'text_density_shadow': 6, 'volumetric_fog_sector': 5, 'ship_steering_site': 4, 'seta_restore': 4, 'chase_view_restore_site': 4, 'volumetric_fog_frame': 4, 'ship_steering_gate_site': 3, 'chase_view_restore': 3, 'cull_small_parts_value': 3, 'screen_emission_additive_variant': 3, 'screen_emission_additive_flag_variant': 3, 'shadow_cascade_footprint': 3, 'music_keep_stop': 3, 'engine_effects_patch': 2, 'seta_manual_flight': 2, 'run_in_background': 2, 'loaded_module': 2, 'chase_camera': 2, 'fov_confirm': 2, 'engine_effects_resolve': 2, 'mesh_hook': 2, 'bloom_refusal': 2, 'shadow_replay_sun_latch': 2, 'motion_output_taa_box_resolution': 2, 'shadow_cascade_set': 2, 'music_keep_save_pump': 2, 'log_open': 1, 'capture_dir=C:\\X3\\x3-modern-captures': 1, 'clock_anchor': 1, 'proxy_identity': 1, 'proxy_options': 1, 'proxy_environment': 1, 'config_open': 1, 'config_file': 1, 'motion_capture_mode': 1, 'fade_route_mode': 1, 'emission_source_gain_mode': 1, 'hull_emission_gain_mode': 1, 'original_fill_mode': 1, 'hull_lightmap_gain_mode': 1, 'light_map_far_fade_mode': 1, 'hull_emissive_widening_mode': 1, 'screen_emission_additive_mode': 1, 'bolt_footprint_mode': 1, 'bolt_far_composite_mode': 1, 'bloom_source_clamp_mode': 1, 'volumetric_fog_handover_mode': 1, 'volumetric_fog_look_mode': 1, 'volumetric_fog_march_scale': 1, 'volumetric_fog_distance_mode': 1, 'volumetric_fog_motes_mode': 1, 'volumetric_fog_range': 1, 'volumetric_fog_mode': 1, 'motion_output_mode': 1, 'x3-modern-renderer': 1, 'window_mode_config': 1, 'media_cue_mode': 1, 'media_cue_site': 1, 'voice_dmo_fallback': 1, 'terran_station_lod': 1, 'engine_effects_mode': 1, 'engine_effects_plumes': 1, 'lod_occlusion': 1, 'fov': 1, 'ui_scale': 1, 'text_density': 1, 'sun_flare_fix': 1, 'dust_leak_fix': 1, 'ship_steering_gates_lane': 1, 'ship_steering_dock': 1, 'ship_steering': 1, 'ship_avoidance': 1, 'ship_steering_gates': 1, 'ship_steering_gates_capital': 1, 'ship_steering_gates_traffic': 1, 'collide_box_cull': 1, 'collide_sat_sse2': 1, 'pause_key_only': 1, 'collide_memo': 1, 'music_keep': 1, 'music_alert': 1, 'sun_occlusion': 1, 'lens_flare_gain': 1, 'sun_occlusion_config': 1, 'cull_small_parts': 1, 'lens_flare_cull': 1, 'cull_small_props': 1, 'occlusion_engine_cull': 1, 'occlusion_cull_config': 1, 'gz_buffer': 1, 'crypt_cache': 1, 'loading_trace': 1, 'mesh_adjacency_config': 1, 'music_keep_save_pump_hook': 1, 'resource_reader': 1, 'dat_handle_pool': 1, 'application_admission_mode': 1, 'screen_emission_bound': 1, 'ownership_mode': 1, 'backend': 1, 'object_trace': 1, 'camera_state': 1, 'sun_light_poll': 1, 'scene_hook': 1, 'chase_fire': 1, 'chase_transition': 1, 'chase_native_timing': 1, 'chase_central_hud': 1, 'chase_lead': 1, 'object_lifetime': 1, 'ownership_factory': 1, 'adapter': 1, 'device_creation_policy': 1, 'window_mode': 1, 'create_device': 1, 'ui_scale_install': 1, 'text_density_install': 1, 'create_device_result': 1, 'capture_caps': 1, 'device_hooked': 1, 'engine_nozzle_source': 1, 'engine_ribbons_own_ship': 1, 'engine_shimmer_config': 1, 'state_hooks': 1, 'light_map_far_fade_configured': 1, 'hull_emissive_widening_configured': 1, 'engine_light_mode': 1, 'taa_thin_vote_configured': 1, 'fade_rt2_owner_configured': 1, 'shadow_replay_candidates_mode': 1, 'shadow_replay_depth_mode': 1, 'shadow_alpha_casters_mode': 1, 'shadow_cascades_mode': 1, 'shadow_retention_mode': 1, 'sun_shadow_apply_mode': 1, 'ps3_slot_budget': 1, 'motion_output_mrt_blend': 1, 'bolt_far_composite': 1, 'lens_flare_gain_device': 1, 'motion_direct': 1, 'shadow_retention_device': 1, 'linear_cutout_device': 1, 'engine_effects_device': 1, 'thin_vote_mode': 1, 'hdr_device': 1, 'hdr_tonemap': 1, 'sun_shadow_lane_depth': 1, 'sun_shadow_lane_device': 1, 'motion_output_device': 1, 'engine_memory': 1, 'ownership_copy_depth': 1, 'volumetric_fog_families': 1, 'hdr_target': 1, 'motion_output_target': 1, 'music_keep_active': 1, 'engine_effects_bodies': 1, 'text_density_rows': 1, 'mesh_trace': 1, 'text_density_filter': 1, 'media_cue_window': 1, 'volumetric_fog_device': 1, 'volumetric_fog_prepare': 1, 'cull_small_props_device': 1, 'emission_source_gain_pair': 1, 'shadow_replay_sun_source': 1, 'shadow_replay_depth_device': 1, 'shadow_alpha_casters_device': 1, 'shadow_replay_cascades_device': 1, 'shadow_replay_depth_target': 1, 'sun_shadow_apply_device': 1, 'taa_thin_region_source': 1, 'motion_output_taa_luma_lock': 1, 'motion_output_taa': 1, 'engine_plumes_device': 1, 'engine_ribbons_device': 1, 'engine_plumes_state': 1, 'motion_output_taa_depth_fold': 1, 'motion_output_taa_history_taps': 1, 'engine_shimmer_device': 1, 'bloom_attach': 1, 'loading_phase': 1, 'occlusion_cull_device': 1, 'volumetric_fog_handover': 1, 'chase_fov_compensate': 1, 'hull_emission_program': 1, 'volumetric_fog_docked': 1, 'sun_occlusion_device': 1, 'sun_lens_body_unclassifiable': 1, 'bolt_footprint_refused': 1, 'bolt_footprint_buffer': 1, 'session_end': 1}
+== 4b frame_end windows (avg ms/frame over 3600 frames)
+  frames 0..3600 dt_ms=29953 avg_ms=8.32 fps=120
+  frames 3600..7200 dt_ms=22353 avg_ms=6.21 fps=161
+  frames 7200..10800 dt_ms=19995 avg_ms=5.55 fps=180
+  frames 10800..14400 dt_ms=20913 avg_ms=5.81 fps=172
+  frames 14400..18000 dt_ms=20668 avg_ms=5.74 fps=174
+  frames 18000..21600 dt_ms=27434 avg_ms=7.62 fps=131
+  frames 21600..25200 dt_ms=20948 avg_ms=5.82 fps=172
+== music_keep rows: 11
+   music_keep_seek frame=229 seq=2 qpc=2315999767893 record=0x114b2730 id=8404 start_ms=0 flags=0xd0 action=vanilla hold_id=0 pause_record=0x00000000 holds_before=0 resume_ms=0
+   music_keep_seek frame=819 seq=3 qpc=2316103481584 record=0x39956718 id=82103 start_ms=0 flags=0xd0 action=vanilla hold_id=0 pause_record=0x00000000 holds_before=0 resume_ms=0
+   music_keep_stop frame=21444 seq=11 qpc=2317330834395 caller=0x00404561 name=save record=0x39956718 id=2130706433 flags=0xd2 mode=skip_all held=0 holds=0 pump=1 queue=1
+   music_keep_save_pump frame=21444 seq=12 qpc=2317354481066 record=0x39956718 id=2130706433 calls=10 ret0=0 ret1=10 ret2=0 ret_other=0 writes=23098210 samples=22557 span_ms=2364 first_call_ms=0 max_gap_ms=250 end_ms=2364 pump_end=gzclose close_caller=0x00404a74 
+   music_keep_seek frame=23455 seq=15 qpc=2317439779012 record=0x87fe6f78 id=81215 start_ms=0 flags=0xd0 action=vanilla hold_id=0 pause_record=0x00000000 holds_before=0 resume_ms=0
+   music_keep_stop frame=24536 seq=16 qpc=2317505998713 caller=0x00407069 name=pause record=0x87fe6f78 id=81215 flags=0xd2 mode=paused held=1 holds=1 pump=0
+   music_keep_seek frame=24536 seq=17 qpc=2317506000677 record=0x87fe6f78 id=81215 start_ms=0 flags=0xd0 action=skip hold_id=81215 pause_record=0x00000000 holds_before=1 resume_ms=0
+   music_keep_stop frame=25182 seq=18 qpc=2317545569433 caller=0x00404561 name=save record=0x87fe6f78 id=81215 flags=0xd2 mode=keep_running held=1 holds=1 pump=1
+   music_keep_seek frame=25183 seq=19 qpc=2317570866300 record=0x87fe6f78 id=81215 start_ms=0 flags=0xd0 action=skip hold_id=81215 pause_record=0x00000000 holds_before=1 resume_ms=0
+   music_keep_save_pump frame=25183 seq=20 qpc=2317570866355 record=0x87fe6f78 id=81215 calls=10 ret0=0 ret1=10 ret2=0 ret_other=0 writes=23076589 samples=22536 span_ms=2440 first_call_ms=0 max_gap_ms=250 end_ms=2529 pump_end=gzclose close_caller=0x00404a74 end=r
+   music_keep_seek frame=26394 seq=22 qpc=2317643500933 record=0x87feab60 id=8404 start_ms=0 flags=0xd0 action=vanilla hold_id=0 pause_record=0x00000000 holds_before=0 resume_ms=0
+== seta rows: 6
+   seta_restore installed=1 hook=0x004b148c write=plain stub=0x6c9a4f00 inject_site=0x00410100 inject=ok call=0x0049f4c0 key=0x96 method=StartFastForward detect=runtime expected=mayhem:1462141839:0x1558d:0x15ef8,stock_ap:1510658513:0x157a6:0x160d1 due_frames=2 ex
+   seta_manual_flight installed=1 mode=2 stop=speed_only stop_sites=8 stop_rows=0x004120c5 stop_status=active stop_write=atomic yaw=active:plain pitch=active:plain roll=active:plain strafe_y=active:plain strafe_x=active:atomic gate=factor>0x10000,rate>0x10000 k=r
+   seta_manual_flight key_latch installed=1 reason=ok arm=0x004b148c:toggle_stop inject_site=0x00410100 counter=0x0057ff0b call=0x0049f4c0 key=0x96 method=StopFastForward tail_entries=8 cap_entries=2048 debug=0
+   seta_restore armed frame=20253 old=0x000a0000 new=0x00010000 ip=0x1558d ret=0x15ef8 ret_name=gate ship=0x87beba28 ship_id=0x0000c8a1 script_id=0xffff0b79 sector=0x486ad038 sector_id=50512 build=1462141839 autopilot=1 flags=0x800c3002 speed_ship=0x87beba28 spee
+   seta_restore rebound frame=20443 frames_since_arm=190 ms_since_arm=2657 old_ship=0x87beba28 new_ship=0x38c0ece8 old_ship_id=0x0000c8a1 new_ship_id=0x000006f0 script_id=0xffff0b79 new_script_id=0xffff0b79 sector_id=50512 new_sector=0x88119d80 new_sector_id=1012
+   seta_restore restored frame=20446 frames_after_transit=2 frames_since_arm=193 ms_since_arm=2766 result=1 call=0x0049f4c0 key=0x96 method=StartFastForward ship=0x38c0ece8 sector_id=50512 ready_sector=0x88119d80 skipped=0 speed_ship=0x38c0ece8 speed_read=1 speed
+== session_end: 1
+   session_end frames=26559 elapsed_ms=176654 devices=1 resets=0 exception=0 dropped=0 filter=ours
