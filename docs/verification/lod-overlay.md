@@ -857,3 +857,109 @@ Tests:
   - 1 vs 3 workers byte-identical.
 - `test_lod_batch_census.TexturePixels`: de-duplication, AtlasError, placeholder and NULL.
 - `test_regenerate.test_lod_plan_jobs_bound_and_budget`.
+
+## 2026-10-25 Run 202: distant outpost material (F8 frames 2403-2410 / 5728-5735)
+
+Triage of the user's F8 pair (release 1.6.0, DLL ff7db495…, native Windows, 5120x1440): the selected "outpost" is
+`stations/sadiablo/freighter_base` (model `5c09`, node `39b583e0`). Scripts and their outputs are in
+`verification/results/outpost-lod-material/` (read-only against `C:\X3`; nothing baked). Measured unless marked.
+
+**Draws.** Frame 2410 is complete (`frame_end draws=68`). Distant: draws 22 (19,830 prims, PS `5f82ecac` = XT
+BUMPMAP, `CULLMODE` 3, s0-s3 1024² DXT5 atlases #634/#635/#528/#529) and 23 (188 prims, PS `f1b0e820` = the
+two-sided "2s" variant, alpha test on, s0-s3 #637/#638/#530/#531), `lod=1`, `cull_census thr=100000,43,151`
+(3 records, last = the overlay's T_pad 151: the engine loaded the overlay body). Close (frame 5735): draws 18-40,
+23 draws, `lod=0`, 20,018 prims = 19,830 + 188, one draw per source material. The overlay body is
+`addon/14.cat` `objects/stations/sadiablo/freighter_base.pbb` (regenerate log line 1110, `ELIGIBLE`, size 1024,
+min/weighted 2.006 texels/px at the 1800-wide reference, starved 0 %; reused, not rebuilt, at 01:12: `built 0 +
+reused 1155`). Record 1 (C) = material 23 (atlas, 19,830 faces) + material 19 (188 alpha faces) built from record 0.
+The pale object at y 581-603 in the distant frame is not part of the station: model `5e41` is a
+`terran_M1_nagoya` behind it (depth); the pale band itself (rows 577-591) is station geometry (see below).
+
+**Ring (user priority, HDR x 2505-2625, y 607-667 distant).** Record-0 projection with the logged matrices
+(`project_record.py`, bound fit 25.6 px summed error, so shares are approximate): trims materials 12 (47 %), 15
+(22 %), 14 (12 %), 13 (4.5 %), 16 (1.7 %) and solar-panel material 8 (10 %). Their authored
+`g_MatDiffuseStrength` is 1.10 / 0.50 / 0.50 / 0.40 / 1.00 / 0.40; the merged material 23 writes the area-weighted
+mean 0.589 for all of them (and `g_MatSpecularStrength` 2.91, power 5.89, reflection 0.989). Logged PS constants
+confirm it: draw 22 c12 = 0.5893 vs close draw 28 (material 12) 1.1 and draw 37 (material 15) 0.5; c9/c10/c11 and
+VS c39 differ the same way; samplers, VS b/i, fog registers c40/c44, the cube (#611) and the occlusion slot (#636,
+32x32) are identical. In the distant HDR the ring materials come out flat: eroded-mask mean luminance 0.129 / 0.121
+/ 0.125 / 0.137 for materials 12 / 15 / 14 / 13 (`material_lum.py`), where the authored constants would give the
+largest band (12) 2.2x the diffuse term of 14/15 and 2.75x of 13 (inferred; the close-frame per-material masks are
+not reliable, fit error 98-127 px). Box statistics (`ring_stats.py`): distant mean 0.107, p95 0.220, CV 0.71; close
+(the same box mapped by the station bounds) mean 0.146, p95 0.361, CV 0.93: the coarse ring loses its bright trims
+(material 12 drawn at 0.54x) and the darker trims/panels (13, 8: 0.40 -> 0.589, 1.47x) lighten, which is the
+"flat, low-contrast, dark panels missing" look. This is the Run 80 A mechanism (merged material constants) at a much
+larger spread: 49.2 % of the opaque faces are more than 25 % off the merged diffuse (Run 80 A: 1.126 vs 1.0).
+Cause site: `tools/analysis/lod_atlas.py:1420-1428` (`atlas_material`, area-weighted `g_Mat*`), with one atlas
+class per effect and occlusion map only (`effect_classes`, `lod_atlas.py:1818-1840`), so materials with different
+constants share one draw.
+
+**Cull mode.** Materials 12-16 (4,081 faces, 37.8 % of record 0's area) have `g_CullMode 1` (two-sided; close draws
+`CULLMODE` 1, PS `f1b0e820`); material 23 copies the dominant material 8's `g_CullMode 2` (`CULLMODE` 3). In the
+distant view this loses 40 of 12,531 projected pixels (0.3 %, ring rows 616-655, mostly silhouette): real but minor.
+
+**Pale band (rows 577-591, depth nearer than the body).** Projected owner: material 5 (`metal_argon_lattice_support_beams_03`,
+88 faces, alpha test/blend on), eroded mean luminance 0.283 (median 0.157) against 0.12-0.13 on the ring. In C
+the three alpha materials 0, 5, 19 form one alpha group drawn with the dominant material 19
+(`metal_argon_lattice_grid`, 1024²): draw 23 binds exactly close draw 39's (material 19) textures, while close draw
+21 (material 5) binds its own 512x128 set #887/#888/#812/#813. The beams sample the lattice-grid diffuse and alpha
+with their own UVs (Run 79 A mechanism). Site: `lod_atlas.py:1310-1317` (alpha class -> `dominant` ->
+`alpha_remap`). Inferred cause of the band's colour; the close-frame luminance of material 5 was not measured.
+
+**Excluded.** Light map: all 23 source light maps p99 <= 0.16 (`body_materials.py`), `hull_lightmap_widen_draw`
+fires on both records, so `hull_lightmap_gain = 2` adds nothing visible. Occlusion: every material names
+`NONE_OCCL_DECAL`, s5 = #636 in both frames, so `lod_occlusion = all` has nothing to bind. Fog, samplers, cube:
+identical (above). Atlas density: 2.006 texels/px at the 212 px reference; at capture the station is ~150-160 px
+wide, ~2.8 texels/px (inferred), not starved. `terran_station_lod` does not apply (Argon/sadiablo body).
+
+**Scope (fleet, partial).** `merge_census.py` over 945 of the 1,155 overlay bodies (the run died on an OOM at
+`lostcolony_teca`; `census_summary.py`): 50 bodies have > 10 % of opaque record-0 faces with a cull mode other than
+the first atlas material's, 108 have > 25 % of faces more than 25 % off its `g_MatDiffuseStrength`, 28 both
+(upper bounds: kept/glow groups and second atlas classes are not separated; the 100 % rows (khaak, split) are
+multi-class bodies). The five other overlay C records in frame 2410 (nagoya hull, argon_livingsection,
+terran_ts_Bragi, argon_liquid_L_factory_G, argon_farm_M_factory_E) have 0-2.5 % / <= 0.9 %: freighter_base is an
+outlier in this frame, the mechanism is fleet-wide.
+
+**Fix (2026-10-25, baker only; no DLL, not installed).** `tools/analysis/lod_atlas.py`:
+(1) Diffuse: the approved pre-scale (merged strength = class maximum, each material's diffuse tiles scaled by
+s_i / s_max) is not exact for this effect, so classes are split by diffuse strength instead. Disassembly of the
+distant draw's PS `5f82ecac` (`ps_5f82ecacd39529cd.bin`, `verification/results/hull-widen-native-validator/sm3_rules.py
+--disasm`, CTAB via `shader_constants.parse_ctab`): `g_MatDiffuseStrength` (c12) scales only the directional
+diffuse sum (instruction 84, `mad r1, r1, c12.x, r4` with r4 the specular sum); the graded diffuse texel then
+multiplies the whole bracket, diffuse + specular + `sat(v0)` (103-104), and the cube reflection
+(`A * v7.x * c11 * spec.r * cube`, 106-110); only the light map is outside (112-114). A texel pre-scale by k
+would therefore scale specular, ambient/emissive and reflection by k too (0.36 for material 13). Specular
+strength (c9) is not foldable either (its gate `max(detail.a, spec.r)`, 76, and the reflection's raw spec.r).
+`effect_classes` now keys effect materials on (effect, occlusion map, `g_CullMode`, `g_MatDiffuseStrength` raw
+16.16) (`material_class_key`); the other `g_Mat*` stay area-weighted within a class. (2) Cull: `g_CullMode` in the
+key (raw value, so 1 / 2 / 3 never mix); the merged material copies it from a member (that a merged
+`g_CullMode 1` material draws the two-sided `f1b0e820` variant as the source materials do is inferred, not flown).
+The split applies to every effect, not only XT_standard_lighting.fx: it is exact whatever the effect does with
+the strength. (3) Alpha: every alpha
+material keeps its own group, record (textures, constants) and UVs, one group per part and material; the alpha
+`synth_materials` remap is gone. Classic classes are unchanged (already per constant set; two-sided classic
+records are kept). Every class still shares the body's one atlas set (no new textures, tiles unchanged).
+(4) Reuse: `TOOL_FILES` / `tool_sha256` covers `lod_atlas.py`, so the next `x3m-regenerate` (`--batch --sync`)
+rebuilds the whole fleet (settings mismatch -> "every body is rebuilt"); `--trust-tool` must not be used for it.
+The frozen `x3m-regenerate.exe` bundles the tool sources and needs a rebuild to carry the fix.
+
+Evidence (measured; scripts and outputs in `verification/results/outpost-lod-material/`):
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Focused tests | `PYTHONPATH=verification/probe python3 -m unittest` (a scratch venv over the system Python 3.14 + Pillow 13.0.0: the system Python here has no PIL, so test_lod_overlay_batch and the three modules importing it fail to import; the other three pass on it) test_bob1, test_lod_recipes, test_lod_overlay_batch, test_lod_strut_widening, test_lod_batch_census, test_regenerate, test_lod_overlay_check (+ test_engine_bodies, test_fog_families, test_fog_family_file) | 179 OK (4 skipped) + 30 OK (3 skipped); the two new tests (`LodAtlas.test_classes_split_by_cull_and_diffuse_strength`, `test_alpha_materials_keep_their_own_records`) fail on the previous `lod_atlas.py` |
+| Scratch bake | `lod_overlay.py --game /mnt/c/X3 --batch --only <freighter_base> --mod none --jobs 1 --out <scratch>` | ELIGIBLE, size 1024, min/weighted 2.006 texels/px (as installed), C 12 groups (installed: 2) |
+| Per material | `check_bake.py /mnt/c/X3 <scratch>` -> `check_bake_out.txt` | ring materials: merged strength = own strength exactly (12: 1.1, 13: 0.4, 14/15: 0.5, 16: 1.0, 8: 0.4); (atlas luma x merged) / (source luma x own) 1.0069 / 0.9984 / 1.0043 / 1.0074 / 0.9939 / 0.9688 (centroid samples, mip 0; all 20 atlased materials 0.922-1.069, the extremes 4 and 18 with 168 / 624 faces); 12-16 in cull-1 classes (25-28), 8 in a cull-2 class; materials 0 / 5 / 19 bind their own textures (5: `metal_argon_lattice_support_beams_03_diff.dds`) |
+| Draw cost, fleet | `class_census.py /mnt/c/X3 <overlay_bodies.py list> OUT.tsv` (chunks of 100; no bake: record 0's visible output groups per part with the old and new keys; widen, light_bleed keeps, recipes and the 60,000-point split not modelled) -> `class_census_summary.py` -> `class_census_summary_out.txt` | 1,155 bodies, 0 errors: C draws 1,999 -> 4,396 (x2.20; record 0: 15,333); opaque classes 1,404 -> 2,193, alpha groups 574 -> 2,181 (two thirds of the increase); 506 bodies unchanged, 30 bodies +10 or more (argon_farm_m_factory_i, argon_tech_s_factory_e 2 -> 17; military_outpost_middleb 2 -> 16); 41 bodies no longer draw fewer groups than record 0 and will be filtered `no_draw_gain` (they then draw their own records); freighter_base 2 -> 12, as the bake |
+
+Every extra draw shares the body's four atlas textures; the cost is the draw call and its constants. Not flown,
+not installed; the regenerate rebuild (whole fleet) and a flight past freighter_base are the open steps.
+
+Review (2026-10-25, independent, no blocker): class key robust over 1,155 bodies (cull always type 0, diffuse
+always type 2, no two diffuse values within 0.001 in a body; "1.0" and "1" map to the same 16.16 word); alpha
+groups draw after opaque in source order with their original records; the c12 linearity reading confirmed with
+`tools/analysis/disassemble_shaders.cpp` through `d3dx9_37.dll`; both new tests fail on the previous baker.
+Residual (pre-existing, measured with `param_census.py`): within the new classes specular strength still varies in
+420 classes, specular power in 407, reflection 251, bump strength 313, detail texture 335, cube map 303,
+`g_bColor_Mixing` (switches the albedo path of PS 5f82) in 182 and `g_MatEmissiveColor` in 31; these can still
+pop and are the candidates for the next key members. Identical alpha materials are not merged (draw cost).

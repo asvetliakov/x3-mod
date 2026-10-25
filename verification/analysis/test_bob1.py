@@ -1499,6 +1499,71 @@ class LodAtlas(unittest.TestCase):
             self.assertEqual(lod_atlas.effect_classes(other, coarse['parts'][0]['groups']),
                              [('argon.fx', 'name:a_decal.tga', [0]), ('other.fx', 'name:a_decal.tga', [1])])
 
+    @staticmethod
+    def class_body(consts):
+        """atlas_tree's materials and coarse record with (g_CullMode, g_MatDiffuseStrength, g_MatSpecularStrength)
+        consts[i] on material i."""
+        tree = atlas_tree()
+        mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+        for m, (cull, diff, spec) in zip(mats, consts):
+            m['params'] = m['params'] + [(b'g_CullMode', 0, [cull]), (b'g_MatDiffuseStrength', 2, [diff]),
+                                         (b'g_MatSpecularStrength', 2, [spec])]
+        return mats, coarse
+
+    def test_classes_split_by_cull_and_diffuse_strength(self):
+        """Materials that differ in g_MatDiffuseStrength or g_CullMode get merged materials of their own, each
+        carrying exactly its members' strength and cull mode (2026-10-25 Run 202); equal ones still share one
+        merged material with the area-weighted mean of the other g_Mat* (here the specular strength)."""
+        q = lambda x: int(round(x * 65536))
+        word = lambda m, n: lod_atlas.param_word(m, n)
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            for consts, classes in ((((2, q(1.1), q(3)), (2, q(0.4), q(3))), 2),   # diffuse strength
+                                    (((1, q(0.5), q(3)), (2, q(0.5), q(3))), 2),   # two-sided vs one-sided
+                                    (((2, q(0.5), q(2)), (2, q(0.5), q(4))), 1)):  # only the specular differs
+                mats, coarse = self.class_body(consts)
+                out = list(mats)
+                res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+                self.assertEqual(len(res['atlas_indices']), classes)
+                self.assertEqual(sorted(res['atlas_of']), [0, 1])
+                for m, a in res['atlas_of'].items():
+                    for name in (b'g_CullMode', b'g_MatDiffuseStrength'):
+                        self.assertEqual(word(out[a], name), word(mats[m], name))
+                    p = {n: v for n, t, v in out[a]['params'] if t == 8}
+                    self.assertEqual(p[b't_DiffuseTexture'], b'x3m_lod\\x3m_lod_b_diffuse.tga')   # one atlas set
+                groups = res['record']['parts'][0]['groups']
+                self.assertEqual(sorted(g['material'] for g in groups), sorted(res['atlas_indices']))
+                if classes == 1:
+                    self.assertEqual(word(out[res['atlas_indices'][0]], b'g_MatSpecularStrength'),
+                                     q((2 * 162.5 + 4 * 140) / 302.5))      # area-weighted (materials 0 / 1)
+
+    def test_alpha_materials_keep_their_own_records(self):
+        """Each alpha material keeps its own group, material record (textures, constants) and UVs; nothing is
+        remapped onto the dominant alpha material and no alpha material is synthesized."""
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            tree = atlas_tree()
+            mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+            for diff, ds in ((b'grid_diff.tga', 32768), (b'beam_diff.tga', 72089)):
+                mats.append(dict(mats[1], params=[(b't_DiffuseTexture', 8, diff), (b't_LightMapTexture', 8, b'NULL'),
+                                                  (b'g_MatDiffuseStrength', 2, [ds]), (b'g_ALPHATESTENABLE', 0, [1])]))
+            g = coarse['parts'][0]['groups']
+            g += [{'material': 2, 'faces': [(0, 1, 2, 1), (9, 10, 11, 1), (6, 7, 8, 1)]},   # dominant alpha
+                  {'material': 3, 'faces': [(1, 4, 5, 1)]}]
+            out = list(mats)
+            res = lod_atlas.collapse(assets, 'b', out, coarse, {2, 3}, 8, (64,))
+            self.assertEqual(len(out), 5)                                   # one atlas material, nothing else
+            self.assertEqual(out[2:4], mats[2:4])
+            rec = res['record']
+            groups = rec['parts'][0]['groups']
+            self.assertEqual([(x['material'], len(x['faces'])) for x in groups], [(4, 6), (2, 3), (3, 1)])
+            origin = res['info']['origin']
+            for x, src in zip(groups[1:], g[2:]):
+                for f, sf in zip(x['faces'], src['faces']):
+                    self.assertEqual([origin[i] for i in f[:3]], list(sf[:3]))
+                    self.assertEqual([rec['points'][i][4:6] for i in f[:3]],
+                                     [coarse['points'][i][4:6] for i in sf[:3]])   # source UVs, not atlas UVs
+
     DECALS = [(f'dds/{n}.pck', gzip.compress(dds_header(32, 32), mtime=0))
               for n in ('a_decal', 'b_decal', 'NONE_OCCL_DECAL', 'NONE_WHITE', 'NONE_BLACK')]
 

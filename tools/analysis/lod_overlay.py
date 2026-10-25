@@ -31,14 +31,15 @@ unless its occlusion map is not the atlas one (occlusion_outliers). Collapse
     group with the dominant alpha material among them by face count; the rest
     into one group with the dominant opaque material.
   one: one group per part with the dominant material (alpha faces turn solid).
-  atlas: one group per part with ONE synthesized opaque material per body whose
+  atlas: one group per part and opaque class (effect, occlusion map, cull mode,
+    diffuse strength: lod_atlas.effect_classes) with a synthesized material whose
     diffuse and light-map textures are atlases baked from every opaque material of
-    the record (tools/analysis/lod_atlas.py: span tiles, integer UV shifts, points
+    the record (one atlas set shared by the classes) (tools/analysis/lod_atlas.py: span tiles, integer UV shifts, points
     duplicated where faces need different shifts, UVs rewritten into the atlas,
     tangent records regenerated per group; DXT1/DXT5 or --atlas-format a8r8g8b8;
     a bump atlas unless --no-atlas-bump; alpha slot NULL, specular NULL unless
-    --atlas-specular); alpha faces
-    as in two. The atlas side is the first of --atlas-size, 2x, ... up to
+    --atlas-specular); each alpha material keeps its own group, material and
+    UVs (since 2026-10-25; before, as in two). The atlas side is the first of --atlas-size, 2x, ... up to
     --atlas-max-size that leaves >= 2 atlas texels per screen pixel at the switch
     size T (the NAME=T / --threshold value), with one scale for every tile, or
     else with the clamped layout (lod_atlas.plan_layout: faces repeating their

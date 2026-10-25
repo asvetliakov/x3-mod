@@ -2,10 +2,11 @@
 """Texture-atlas collapse of a merged-LOD coarse record (lod_overlay.py --collapse atlas).
 
 The coarse record C (a copy of the body's coarsest record, or of the lod_overlay.py
---source-record) is drawn with ONE opaque
-material per body whose diffuse and light-map textures are atlases baked from the
-materials it replaces; alpha-tested/blended materials keep one merged group per part
-as in --collapse two. Layout (docs/architecture/merged-lod-feasibility.md, "Overlay
+--source-record) is drawn with one opaque merged material per class (effect file, occlusion
+map, g_CullMode, g_MatDiffuseStrength; effect_classes) whose diffuse and light-map textures are
+atlases baked from the materials it replaces (one atlas set per body, shared by every class);
+alpha-tested/blended materials keep their own material, textures and UVs, one group per part
+and material (since 2026-10-25). Layout (docs/architecture/merged-lod-feasibility.md, "Overlay
 tooling"; census: tools/analysis/atlas_census.py):
 
 - One tile per distinct texture set (diffuse, light map, bump[, specular]) of the opaque
@@ -241,6 +242,12 @@ tooling"; census: tools/analysis/atlas_census.py):
   file, so the next lod_overlay --batch --sync rebuilds every body instead of reusing it; bodies
   that baked before are byte-identical (no eligible body had a NULL diffuse or a dominant without
   a required slot).
+- 2026-10-25 change (Run 202, docs/verification/lod-overlay.md): opaque classes also split by g_CullMode and
+  g_MatDiffuseStrength (material_class_key; an area-weighted strength drew freighter_base's ring trims at
+  0.54x / 1.47x and two-sided trims one-sided), and each alpha material keeps its own group, material,
+  textures and UVs (before: one group per part on the dominant alpha material's textures, so the support
+  beams sampled the lattice grid). More draws per body (one per extra class and alpha material per part);
+  the atlas set and its tiles are unchanged. tool_sha256 changes, so --sync rebuilds every body.
 """
 import gzip
 import hashlib
@@ -1256,8 +1263,7 @@ def split_faces(faces, limit, blocks=None):
     return [[f for _, f in sorted(bn[0], key=lambda x: x[0])] for bn in sorted(bins, key=lambda bn: min(bn[0])[0])]
 
 
-def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None, keep=frozenset(),
-                   widen_of=None):
+def rewrite_record(record, layout, atlas_index, alpha, max_group_points=None, keep=frozenset(), widen_of=None):
     """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
     group referencing more than max_group_points distinct points is split (split_faces: whole
     source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
@@ -1265,7 +1271,8 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
     one atlas material index for every opaque group, or {source material: atlas material} (one
     output class per distinct atlas material per part, in first-use order). A material in `keep`
     (light_bleed) keeps its own material and UVs, one group per part after the atlas groups and before
-    the alpha group, like the glow collapse's kept materials. widen_of {source material: widened atlas material}:
+    the alpha groups, like the glow collapse's kept materials. Every alpha material keeps its own material and
+    UVs too: one group per part and alpha material, in first-use order, last. widen_of {source material: widened atlas material}:
     the groups carrying 'widen' (lod_overlay.widen_thin_patches) of an atlased material form one class per part and
     widened material (the blended group), after the kept groups and before the alpha group; a widened group of an
     alpha or kept material goes with its material's class."""
@@ -1308,13 +1315,11 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
             for m in dict.fromkeys(g['material'] for g in groups if g['material'] in keep):
                 classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
             classes += widened
-            classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False))
+            for m in dict.fromkeys(g['material'] for g in groups if g['material'] in alpha):
+                classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
         for cls, material, atlased in classes:
             if not cls:
                 continue
-            if material is None:
-                d = dominant([g for _, g in cls])
-                material = (alpha_remap or {}).get(d, d)
             faces, ref_group, blocks = [], {}, []
             for gi, g in cls:
                 for fi, f in enumerate(g['faces']):
@@ -1815,21 +1820,43 @@ def classic_key(material):
         (':bump' if SLOT_NAMES['bump'] in declared(material) else '')
 
 
+def param_word(material, name):
+    """First value word of the material's numeric parameter `name` (case-insensitive; FLOATs as 16.16), None
+    when the material does not declare it (the effect default applies)."""
+    low = name.lower()
+    return next((v[0] for n, t, v in material.get('params', ()) if t != 8 and n.lower() == low and v), None)
+
+
+CLASS_PARAMS = (b'g_CullMode', b'g_MatDiffuseStrength')
+
+
+def material_class_key(material):
+    """(g_CullMode, g_MatDiffuseStrength 16.16) of an effect material, the raw words (None when absent): materials
+    that differ in either never share a merged material. Cull: the merged material copies its dominant's
+    g_CullMode, so a two-sided (1) material in a one-sided class lost its back faces (Run 202,
+    freighter_base trims 12-16). Diffuse strength: in the XT_standard_lighting.fx pixel shader (PS 5f82ecac,
+    c12) g_MatDiffuseStrength scales only the directional diffuse sum, while the diffuse texel then multiplies the
+    whole bracket (diffuse + specular + clamped v0) and the cube reflection; so it cannot be folded into
+    the diffuse atlas tiles without darkening specular, ambient and reflection by the same factor, and an
+    area-weighted mean drew the ring trims 0.54x / 1.47x (lod-overlay.md, 2026-10-25 Run 202)."""
+    return tuple(param_word(material, n) for n in CLASS_PARAMS)
+
+
 def effect_classes(mats, opaque, textures=None):
     """[(effect, occlusion key, [material indices in first-use order])] of the opaque groups: one class per effect
-    file and bound occlusion texture (occlusion_key: 'none' for absent / NULL, else the entry the engine binds
-    with `textures`), largest face count first (ties: first use). A body whose effects each bind one map has one
-    class per effect, in the order the effect-only classes had. The classic records of a planning view
-    (classic_view) form their own classes, one per constant set (classic_key). Refuses a group material index
-    outside the table."""
+    file, bound occlusion texture (occlusion_key: 'none' for absent / NULL, else the entry the engine binds
+    with `textures`), cull mode and diffuse strength (material_class_key; since 2026-10-25), largest face count
+    first (ties: first use); one (effect, occlusion) pair may therefore appear in several classes. The classic
+    records of a planning view (classic_view) form their own classes, one per constant set (classic_key; their
+    two-sided records are kept, classic_shape). Refuses a group material index outside the table."""
     faces, order, key_of = {}, {}, {}
     for g in opaque:
         m = g['material']
         if m not in key_of:
             if not 0 <= m < len(mats):
                 raise AtlasError(f'group material index {m} is outside the material table (0..{len(mats) - 1})')
-            key_of[m] = (effect_name(mats[m]), classic_key(mats[m]) if 'classic' in mats[m] else
-                         occlusion_key(mats[m], textures))
+            key_of[m] = ((effect_name(mats[m]), classic_key(mats[m]), None) if 'classic' in mats[m] else
+                         (effect_name(mats[m]), occlusion_key(mats[m], textures), material_class_key(mats[m])))
         key = key_of[m]
         order.setdefault(key, [])
         if m not in order[key]:
@@ -1837,14 +1864,14 @@ def effect_classes(mats, opaque, textures=None):
         faces[key] = faces.get(key, 0) + len(g['faces'])
     first = {k: i for i, k in enumerate(order)}
     ranked = sorted(order, key=lambda k: (-faces[k], first[k]))
-    return [(e, o, order[e, o]) for e, o in ranked]
+    return [(e, o, order[e, o, c]) for e, o, c in ranked]
 
 
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
              gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None, keep=frozenset(),
              layout=None):
-    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map) class
-    (effect_classes; then any synthesized alpha material) to `mats` in place. Returns dict(record, layout,
+    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map, cull mode,
+    diffuse strength) class (effect_classes) to `mats` in place; alpha materials keep their own records. Returns dict(record, layout,
     atlas_index (the largest class's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
     Materials in `keep` (light_bleed) are not atlased: they keep their own groups, textures and UVs and
     take no part in the effect / occlusion classes or the g_Mat* means; the opaque materials of a
@@ -1856,7 +1883,6 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     classic record that draws a tilted normal (shape 'tilt') is kept too, since only the bump atlas reproduces
     it. No bump atlas is baked for a model without the tangent declaration whose table holds a BUMPMAP_LOW
     classic record (tangent_declared): the atlas name in a merged t_BumpTexture would introduce the declaration."""
-    import lod_overlay
     textures = textures or Textures(assets)
     record, animation = animated_record(mats, record, assets)
     kept_classic = classic_kept(mats, record, alpha, bump)
@@ -1912,8 +1938,9 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
         if eff not in occlusion:
             occlusion[eff] = occ
         elif isinstance(occlusion[eff], list):
-            occlusion[eff].append(occ)
-        else:
+            if occ not in occlusion[eff]:  # one map over several cull / diffuse classes is listed once
+                occlusion[eff].append(occ)
+        elif occlusion[eff] != occ:
             occlusion[eff] = [occlusion[eff], occ]
         report.append(dict(index=idx, dominant=d, absorbed=sorted(mis), params=rows, atlas=True, effect=eff,
                            occlusion=occ, **({'classic': True} if 'classic' in mats[d] else {})))
@@ -1929,14 +1956,9 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
             widen_of[m] = idx
         report.append(dict(index=idx, dominant=row['dominant'], absorbed=row['absorbed'], params=[], atlas=True,
                            widened=True, effect=eff, occlusion=row['occlusion']))
-    remap = {}
-    if synth:
-        alpha_only = {'points': record['points'], 'parts': [
-            {'flags': p['flags'], 'groups': [g for g in p['groups'] if g['material'] in alpha]}
-            for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
-        remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
-        report += more
-    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points, keep, widen_of)
+    # alpha materials keep their own record, textures and UVs, one group per part and material (since
+    # 2026-10-25; before, one group drawn with the dominant alpha material's textures and averaged g_Mat*)
+    lod, info = rewrite_record(record, layout, atlas_of, alpha, max_group_points, keep, widen_of)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
                 widened_indices=widened, widen_of=widen_of,

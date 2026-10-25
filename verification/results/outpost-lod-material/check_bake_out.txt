@@ -1,0 +1,36 @@
+C groups (draws): [(0, 23, 8573), (0, 30, 112), (0, 24, 6360), (0, 31, 80), (0, 28, 664), (0, 26, 1129), (0, 29, 624), (0, 25, 1500), (0, 27, 788), (0, 5, 88), (0, 0, 8), (0, 19, 92)]
+  material 0: cull 1 diffuse 0.5 specular 3.0 t_DiffuseTexture b'metal_argon_lattice_windowedgrid_diff.dds'
+  material 5: cull 1 diffuse 0.5 specular 3.0 t_DiffuseTexture b'metal_argon_lattice_support_beams_03_diff.dds'
+  material 19: cull 1 diffuse 0.5 specular 3.0 t_DiffuseTexture b'metal_argon_lattice_grid_diff.dds'
+  material 23: cull 2 diffuse 0.5 specular 2.9181 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 24: cull 2 diffuse 0.4 specular 2.4 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 25: cull 1 diffuse 0.5 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 26: cull 1 diffuse 0.4 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 27: cull 1 diffuse 1.0 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 28: cull 1 diffuse 1.1 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 29: cull 2 diffuse 0.9 specular 4.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 30: cull 2 diffuse 0.3 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+  material 31: cull 2 diffuse 0.8 specular 3.0 t_DiffuseTexture b'x3m_lod\\x3m_lod_freighter_base_621e3d_diffuse.tga'
+src  0: faces     8 -> C material 0 cull 1->1 diffuse 0.5->0.5; own textures: t_DiffuseTexture b'metal_argon_lattice_windowedgrid_diff.dds' (source b'metal_argon_lattice_windowedgrid_diff.dds')
+src  1: faces   560 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 72.74 src 72.82; (atlas x merged) / (src x own) 0.9989
+src  2: faces  1172 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 93.91 src 94.76; (atlas x merged) / (src x own) 0.9911
+src  3: faces  1724 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 53.24 src 53.45; (atlas x merged) / (src x own) 0.9962
+src  4: faces   168 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 55.58 src 60.27; (atlas x merged) / (src x own) 0.9222
+src  5: faces    88 -> C material 5 cull 1->1 diffuse 0.5->0.5; own textures: t_DiffuseTexture b'metal_argon_lattice_support_beams_03_diff.dds' (source b'metal_argon_lattice_support_beams_03_diff.dds')
+src  6: faces   112 -> C material 30 cull 2->2 diffuse 0.3->0.3; luma atlas 66.51 src 66.43; (atlas x merged) / (src x own) 1.0012
+src  7: faces   220 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 36.42 src 37.34; (atlas x merged) / (src x own) 0.9756
+src  8: faces  6360 -> C material 24 cull 2->2 diffuse 0.4->0.4; luma atlas 45.37 src 46.83; (atlas x merged) / (src x own) 0.9688
+src  9: faces    80 -> C material 31 cull 2->2 diffuse 0.8->0.8; luma atlas 50.70 src 51.56; (atlas x merged) / (src x own) 0.9832
+src 10: faces   295 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 96.35 src 93.81; (atlas x merged) / (src x own) 1.0270
+src 11: faces   880 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 62.98 src 60.87; (atlas x merged) / (src x own) 1.0348
+src 12: faces   664 -> C material 28 cull 1->1 diffuse 1.1->1.1; luma atlas 96.13 src 95.47; (atlas x merged) / (src x own) 1.0069
+src 13: faces  1129 -> C material 26 cull 1->1 diffuse 0.4->0.4; luma atlas 99.15 src 99.31; (atlas x merged) / (src x own) 0.9984
+src 14: faces   736 -> C material 25 cull 1->1 diffuse 0.5->0.5; luma atlas 102.34 src 101.89; (atlas x merged) / (src x own) 1.0043
+src 15: faces   764 -> C material 25 cull 1->1 diffuse 0.5->0.5; luma atlas 95.83 src 95.13; (atlas x merged) / (src x own) 1.0074
+src 16: faces   788 -> C material 27 cull 1->1 diffuse 1.0->1.0; luma atlas 94.33 src 94.92; (atlas x merged) / (src x own) 0.9939
+src 17: faces   132 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 53.13 src 53.80; (atlas x merged) / (src x own) 0.9875
+src 18: faces   624 -> C material 29 cull 2->2 diffuse 0.9->0.9; luma atlas 101.76 src 95.24; (atlas x merged) / (src x own) 1.0685
+src 19: faces    92 -> C material 19 cull 1->1 diffuse 0.5->0.5; own textures: t_DiffuseTexture b'metal_argon_lattice_grid_diff.dds' (source b'metal_argon_lattice_grid_diff.dds')
+src 20: faces  3076 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 68.50 src 66.99; (atlas x merged) / (src x own) 1.0225
+src 21: faces   152 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 58.52 src 59.75; (atlas x merged) / (src x own) 0.9794
+src 22: faces   194 -> C material 23 cull 2->2 diffuse 0.5->0.5; luma atlas 65.63 src 63.27; (atlas x merged) / (src x own) 1.0374
