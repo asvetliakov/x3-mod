@@ -1142,3 +1142,29 @@ outputs: `verification/results/run203-triage/` (pass1.py, spikes.py, region_stat
   (`motion_output.cpp:428`), and the log ends with `music_trace_stop ... name=alt_tab` and `session_end`, with no
   device teardown. Inferred: the game exits without releasing the device, so the log is complete but the row never
   fires.
+
+## 2026-10-25 Run 204 A: option B + follow-up flown (Run204 = ec6c35d8, native C:\X3, debug + perf)
+
+Flight 27,240 frames; user: "almost no pop-in now". Scripts and small outputs: `verification/results/run204-triage/`.
+
+- **Coverage (measured).** `lod_strength_session ... twins=15 refused=0 failed=0 transform_ms=2.21 create_ms=12.37
+  draws=366463 marked_seen=85,85,85,85,0 marked=366463 no_twin=0 no_twin_keys=0 at=exit`: the exit row now fires.
+  25 `lod_strength_frame` rows, no_twin sum 0, no `lod_strength_no_twin` and no `lod_strength_table_full` rows; last
+  row table=17 stale=0 released=68. 16 `lod_strength_texture` rows, the 4 specular atlases `stored=1`.
+- **Twins (measured).** 15: frame 641 x6 swiden (sector load, 9.35 s frame), swiden 3610/6014/24532/24598, smotion
+  (kind 7, new) 5799/6535/9383, eswiden (engine=1) 5810/6100. engine=1 frames are 50/52 ms with `scene_end_us`
+  44,453/46,006 (Run 203: 42 ms) while create_us was 521/502: the driver first-use compile is still paid once per
+  program per session (no cache benefit seen). Next frames 16/17 ms. smotion and swiden first uses: 13-24 ms frames,
+  except 6535 (162 ms, `pre_render_us` 149,994 with 14 `resource` rows; inferred game-side load, twin create 0.30 ms)
+  and 24532 (44 ms, `view_submit_us` 39,455 in a frame that also created 2 `shader`, 4 `motion_output_variant` and
+  other feature variants; not attributable to option B alone).
+- **Hitches (measured).** dt median 4 ms, p99 10 ms, 35 frames >= 50 ms, 26 >= 100 ms (loads 3-6/640-641, 13354,
+  26843-26844, F8 frames 1496-1503 and 4357-4364 at 290-337 ms). Other 50-80 ms: 5792 (view_submit 54 ms,
+  motion_output_variant x6), 3317/5051/11927/12053/22486 (53-59 ms, all `pre_render_us` 50-55 ms, game side), 13355 (post-load). Option B owns 2 hitches > 30 ms
+  (5810, 6100).
+- **Outpost (measured).** Far 1496..1503: freighter_base node 47e0a000 lod 1, 3 draws: index 22 (5f82ec), 23 (f1b0e8),
+  24 (f1b0e8, `alpha_tested=1`). Twin binding is inferred from counters only (both programs have swiden twins since
+  frame 641, marked == draws, no_twin 0); there is no per-draw twin row. Close 4357..4364: lod 0, 23 draws. Region
+  means far/close (boxes re-picked for this view, so only roughly comparable with Run 203): dome top 0.081/0.082
+  (-1 %, Run 203 -12 %), dome band 0.190/0.204 (-7 %), ring (mid hull) 0.201/0.207 (-3 %, Run 203 -9 %), lower
+  cylinder 0.167/0.167. Remaining visible far/close difference is texel scale and missing small silhouette parts.
