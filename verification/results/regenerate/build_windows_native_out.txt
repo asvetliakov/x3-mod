@@ -1,0 +1,28 @@
+# 2026-10-25, WSL2 host (6.18.54.1-microsoft-standard-WSL2), native Windows Python C:\Python312 (no Wine), final source.
+# Command: python3 tools/regenerate/build.py --windows   (exit 0, 30.5 s wall)
+# Filter:  grep -E '^(Windows Python|staged|  \(PyInstaller|bundle|runs the|start|smoke)|\] (processing|refused|slot plan|engine bodies summary|fog families: check passed|all done)'
+Windows Python C:\Python312\python.exe 3.12.10 (AMD64); pyinstaller 6.22.3, numpy 2.0.2, pillow 12.3.0
+staged 368 sources and the spec in C:\Users\asvet\AppData\Local\x3m-build\src
+  (PyInstaller exit 0, 11.7 s)
+bundle dist/x3m-regenerate.exe: 29767626 B (28.4 MiB), sha256 0a402f859fca8a06e4da2324608820860ac1e2dcb12345df0c6fbb877d7fdfeb
+runs the same bytes from C:\Users\asvet\AppData\Local\x3m-build\dist\x3m-regenerate.exe
+start (directory without X3AP.exe, exit 1 as designed): cold 0.80 s, warm 0.65 s
+[18:49:51] processing fog zzmod (1/2) baked
+[18:49:51] processing fog zzpkg (2/2) baked
+[18:49:51] refused fog zznobody: no_dust_bodies
+[18:49:53] processing model ships/x/good (1/4)
+[18:49:53] processing model ships/x/mixed (2/4)
+[18:49:54] processing model ships/x/newship (3/4) [mod Big]
+[18:49:54] processing model ships/x/good (4/4) [mod Big]
+[18:49:54] refused model effects/engines/fx_t: no_opaque
+[18:49:54] refused model environments/nebulae/zzmod/nebula_zzmod_dust_part01: text_parse_error
+[18:49:54] refused model environments/nebulae/zzmod/nebula_zzmod_dust_part02: text_parse_error
+[18:49:54] refused model ships/x/badtext: text_parse_error
+[18:49:54] refused model stations/y/good: texel_floor
+[18:49:54] slot plan: addon/01 2 bodies 14030 B
+[18:49:54] engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; wrote x3m/engine_bodies.json
+[18:49:54] fog families: check passed after the LOD overlay (launch fingerprint current)
+[18:49:54] all done: fog families, LOD overlay and engine bodies regenerated in 0.2 min
+smoke test PASS: exit 0 in 12.7 s, 6 processing lines, log 10057 B
+# Earlier iteration (same staging/build route): build.py --windows --dist <tmpdir> (release.py's path) exit 0,
+# 29767610 B, cold 0.82 s, warm 0.75 s, smoke PASS exit 0 in 13.4 s; builds are not byte-identical.

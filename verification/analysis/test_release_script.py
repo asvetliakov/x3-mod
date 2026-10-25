@@ -1,7 +1,8 @@
 """The one-command release (tools/release/release.py): argument handling, the dirty-tree refusal, the dry run, the
 record schema with every build step mocked, the debug strip (objcopy mocked over synthetic PE32 images: its arguments,
 the section/export/marker identity check that aborts the release, the --no-strip opt-out), the version single source (CMakeLists.txt project(VERSION) -> package.py
-and the DLL's X3M_VERSION define) and tools/regenerate/build.py's --dist and lock-holder detection. Host only: no
+and the DLL's X3M_VERSION define) and tools/regenerate/build.py's --dist, WSL detection, path mapping and Windows
+Python check. Host only: no
 compiler, PyInstaller or Wine runs."""
 import contextlib
 import hashlib
@@ -10,6 +11,7 @@ import io
 import json
 import os
 import re
+import shutil
 import struct
 import sys
 import tempfile
@@ -140,15 +142,16 @@ class ReleaseScript(unittest.TestCase):
                 code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run'])
                 self.assertEqual(code, 0)
                 self.assertFalse(out.exists())
-                self.assertIn('wine_lock.py build.py --windows', text)
+                self.assertIn('build.py --windows --dist', text)
+                self.assertNotIn('wine_lock', text)
                 self.assertIn('gcc 1', text)
                 # the plan names every zip entry, the fonts and their licences among them
                 self.assertIn('entries exactly d3d9.dll, x3m.ini, x3m-regenerate.exe, f/Harrier48.abc, f/Harrier48.tga, ', text)
                 self.assertIn('f/ZektonES78.tga, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt;', text)
-                with mock.patch.object(self.release, 'windows_state', return_value=(False, 'bottle X3M-Build absent')):
+                with mock.patch.object(self.release, 'windows_state', return_value=(False, 'Windows Python not found')):
                     code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run'])
                 self.assertEqual(code, 1)
-                self.assertIn('build.py --windows --dry', text)  # tells the user how to set the bottle up
+                self.assertIn('build.py --windows --dry', text)  # tells the user how to set the Windows Python up
                 code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run', '--skip-windows'])
                 self.assertIn('NO release zip', text)
                 self.assertIn('package  SKIPPED', text)
@@ -174,12 +177,10 @@ class ReleaseScript(unittest.TestCase):
                 return 0, json.dumps({'result': 'PASS', 'reachable_functions': 7, 'violations': {}})
             if script == 'generate.py':
                 return 0, ''
-            if script in ('build.py', 'wine_lock.py'):
+            if script == 'build.py':
                 dist = Path(cmd[cmd.index('--dist') + 1])
                 name = 'x3m-regenerate.exe' if '--windows' in cmd else 'x3m-regenerate'
                 (dist / name).write_bytes(name.encode())
-                if script == 'wine_lock.py':
-                    Path(cmd[cmd.index('--timings-json') + 1]).write_text('{"lock_wait_seconds": 0.1}')
                 return 0, 'smoke test PASS: exit 0\n'
             if script == 'package.py':
                 with contextlib.redirect_stdout(io.StringIO()):
@@ -194,10 +195,9 @@ class ReleaseScript(unittest.TestCase):
                 mock.patch.object(self.release, 'git', side_effect=lambda *a: {'rev-parse': COMMIT, 'status': ''}[a[0]]), \
                 mock.patch.object(self.release, 'toolchain', return_value={'mingw_gcc': 'gcc', 'cmake': 'cmake', 'python': '3'}), \
                 mock.patch.object(self.release, 'windows_state', return_value=(True, 'ok')), \
-                mock.patch.object(self.release, 'game_guard_clear') as guard, \
                 mock.patch.object(self.package, 'source_commit', return_value=COMMIT), \
                 mock.patch.object(self.release, 'run', side_effect=self.fake_run(out, calls, stripped)):
-            yield out, guard
+            yield out
 
     def test_strip_identity_on_synthetic_images(self):
         identity = self.release.strip_identity(FULL_PE, STRIPPED_PE)
@@ -214,21 +214,19 @@ class ReleaseScript(unittest.TestCase):
 
     def test_record_schema(self):
         calls = []
-        with self.mocked_release(calls) as (out, guard):
+        with self.mocked_release(calls) as out:
             code, text, err = quiet(self.release.main, ['--out', out])
             self.assertEqual(code, 0, err)
-            guard.assert_called_once()
-            wine = [(cmd, env) for cmd, env in calls if Path(cmd[1]).name == 'wine_lock.py']
-            self.assertEqual(len(wine), 1)
-            self.assertEqual(wine[0][1]['X3M_FIXTURE_BOTTLE'], 'X3')
-            self.assertIn('--windows', wine[0][0])
+            builds = [(cmd, env) for cmd, env in calls if Path(cmd[1]).name == 'build.py']
+            self.assertEqual([('--windows' in cmd, env) for cmd, env in builds], [(False, None), (True, None)])
+            self.assertFalse([cmd for cmd, _ in calls if 'wine_lock.py' in ' '.join(cmd)])
             version = self.release.generate.version()
             record = json.loads((Path(out) / f'release-{version}.json').read_text())
             self.assertEqual(record['schema'], 2)
             self.assertEqual(set(record), {'schema', 'version', 'complete', 'commit', 'dirty', 'dirty_files', 'toolchain',
                                            'generate_check', 'dll_warnings', 'x87', 'source_commit_marker', 'dll',
                                            'dll_unstripped', 'debug_file', 'strip', 'regenerate_source', 'regenerate',
-                                           'regenerate_windows_lock', 'zip', 'wall_seconds'})
+                                           'zip', 'wall_seconds'})
             self.assertEqual((record['complete'], record['commit'], record['dirty'], record['generate_check']),
                              (True, COMMIT, False, 'PASS'))
             # the strip: objcopy --only-keep-debug, then --strip-debug with the debuglink, both on the kept unstripped copy
@@ -266,7 +264,7 @@ class ReleaseScript(unittest.TestCase):
 
     def test_no_strip_ships_the_build(self):
         calls = []
-        with self.mocked_release(calls) as (out, _):
+        with self.mocked_release(calls) as out:
             code, text, err = quiet(self.release.main, ['--out', out, '--keep-debug-in-zip'])
             self.assertEqual(code, 0, err)
             self.assertFalse(any(cmd[0] == self.release.OBJCOPY for cmd, _ in calls))
@@ -281,7 +279,7 @@ class ReleaseScript(unittest.TestCase):
         broken = bytearray(STRIPPED_PE)
         broken[broken.index(b'\x55\x89\xe5\xc3') + 1] ^= 0xff  # one .text byte
         calls = []
-        with self.mocked_release(calls, bytes(broken)) as (out, _):
+        with self.mocked_release(calls, bytes(broken)) as out:
             code, _, err = quiet(self.release.main, ['--out', out])
             self.assertEqual(code, 1)
             self.assertIn('.text bytes differ', err)
@@ -339,23 +337,91 @@ class ReleaseScript(unittest.TestCase):
         self.assertEqual(subprocess.run(['sh', '-c', "sed -n 's/^project(.* VERSION \\([0-9][0-9]*\\.[0-9][0-9]*\\).*/\\1/p' CMakeLists.txt"],
                                         cwd=ROOT, capture_output=True, text=True).stdout.strip(), version.rsplit('.', 1)[0])
 
-    def test_build_py_dist_and_lock_holder(self):
+    def test_build_py_dist_and_windows_python(self):
+        build = self.build
         with tempfile.TemporaryDirectory() as base:
             dist = Path(base) / 'dist'
-            with mock.patch.object(self.build, 'smoke') as smoke, mock.patch.object(self.build, 'DIST', self.build.DIST):
-                self.assertEqual(self.build.main(['--smoke-only', '--dist', str(dist)]), 0)
+            with mock.patch.object(build, 'smoke') as smoke, mock.patch.object(build, 'DIST', build.DIST):
+                self.assertEqual(build.main(['--smoke-only', '--dist', str(dist)]), 0)
                 smoke.assert_called_once_with(dist.resolve() / 'x3m-regenerate', False)
-            lock = Path(base) / 'lock'
-            me, parent = os.getpid(), os.getppid()
-            table = lambda: {me: (parent, 'python3 build.py'), parent: (1, 'python3 wine_lock.py')}  # noqa: E731
-            lock.write_text(f'{parent} 12:00:00 x3m release')
-            self.assertTrue(self.build.lock_held_by_ancestor(lock, table))
-            lock.write_text('99999999 12:00:00 other runner')
-            self.assertFalse(self.build.lock_held_by_ancestor(lock, table))
-            lock.write_text('')  # released lock: wine_lock truncates the file
-            self.assertFalse(self.build.lock_held_by_ancestor(lock, table))
-            self.assertFalse(self.build.lock_held_by_ancestor(Path(base) / 'absent', table))
+            release = Path(base) / 'osrelease'
+            release.write_text('6.18.54.1-microsoft-standard-WSL2\n')
+            self.assertTrue(build.is_wsl(release))
+            release.write_text('6.8.0-45-generic\n')
+            self.assertFalse(build.is_wsl(release))
+            self.assertFalse(build.is_wsl(Path(base) / 'absent'))
+            with mock.patch.object(build, 'OSRELEASE', release):
+                self.assertEqual(build.windows_ready()[0], False)  # not WSL: refused before any Windows program runs
+        for word in ('python-3.12.10-amd64.exe', '/quiet InstallAllUsers=0 TargetDir=C:\\Python312 PrependPath=0',
+                     'pyinstaller==6.22.3 numpy==2.0.2 pillow==12.3.0'):
+            self.assertIn(word, build.WINDOWS_SETUP)
 
+    @unittest.skipUnless(shutil.which('wslpath'), 'wslpath (WSL) only')
+    def test_build_py_wslpath_mapping(self):
+        build = self.build
+        self.assertEqual(build.to_wsl(r'C:\Python312\python.exe'), Path('/mnt/c/Python312/python.exe'))
+        self.assertEqual(build.to_wsl('/mnt/c/Python312/python.exe'), Path('/mnt/c/Python312/python.exe'))
+        self.assertEqual(build.to_windows('/mnt/c/Users/a/x3m-build/dist'), r'C:\Users\a\x3m-build\dist')
+        with self.assertRaises(SystemExit):
+            build.to_windows('/home/a/repo')  # the \\wsl.localhost share is never handed to Windows programs
+
+    def test_build_py_windows_check(self):
+        build = self.build
+        packages = dict(build.WIN_PACKAGES)
+        probe = mock.Mock(return_value=('3.12.10 (AMD64)', packages, r'C:\L'))
+        with mock.patch.object(build, 'is_wsl', return_value=True), \
+                mock.patch.object(build, 'to_wsl', side_effect=lambda p: Path('/mnt/d/Py/python.exe')), \
+                mock.patch.object(build, 'to_windows', return_value=r'D:\Py\python.exe'), \
+                mock.patch.object(Path, 'is_file', return_value=True), \
+                mock.patch.object(build, 'probe_windows_python', probe):
+            ready, text, python, local = build.windows_check(r'D:\Py\python.exe')
+            self.assertEqual((ready, python, local), (True, Path('/mnt/d/Py/python.exe'), r'C:\L'))
+            packages['numpy'] = None
+            ready, text, _, _ = build.windows_check()
+            self.assertFalse(ready)
+            self.assertIn('numpy missing (want 2.0.2)', text)
+            packages['numpy'] = '2.0.2'
+            probe.return_value = ('3.12.10 (AMD64)', packages, r'\\server\share\Local')
+            ready, text, _, _ = build.windows_check()
+            self.assertFalse(ready)  # a UNC LOCALAPPDATA is refused before any staging
+            self.assertIn('not a drive path', text)
+            with self.assertRaises(SystemExit), contextlib.redirect_stdout(io.StringIO()):
+                build.require_windows()
+            probe.side_effect = RuntimeError('python.exe could not be run: timed out')
+            ready, text = build.windows_ready()
+            self.assertFalse(ready)  # reported, not raised: release.py --dry-run prints it
+            self.assertIn('not usable', text)
+
+    def test_build_py_probe_failure_is_reported(self):
+        build = self.build
+        for error in (OSError('exec format error'), subprocess.TimeoutExpired('python.exe', 120)):
+            with mock.patch.object(subprocess, 'run', side_effect=error):
+                with self.assertRaisesRegex(RuntimeError, 'could not be run'):
+                    build.probe_windows_python(Path('/mnt/c/Python312/python.exe'))
+
+    def test_build_py_stage_lock_and_stale_exe(self):
+        build = self.build
+        with tempfile.TemporaryDirectory() as base:
+            stage = Path(base) / 'x3m-build'
+            with contextlib.redirect_stdout(io.StringIO()):
+                with build.stage_lock(stage):
+                    self.assertEqual(int((stage / 'build.lock').read_text().split()[0]), os.getpid())
+                    with self.assertRaisesRegex(SystemExit, 'held by pid'):
+                        with build.stage_lock(stage):
+                            pass
+                self.assertFalse((stage / 'build.lock').exists())  # released
+                (stage / 'build.lock').write_text('99999999 2026-10-25T00:00:00\n')  # dead holder
+                with build.stage_lock(stage):
+                    pass
+                self.assertFalse((stage / 'build.lock').exists())
+                # a PyInstaller run that writes no exe fails instead of shipping the previous staged one
+                (stage / 'dist').mkdir()
+                (stage / 'dist' / 'x3m-regenerate.exe').write_bytes(b'old')
+                with mock.patch.object(build, 'stage_sources', return_value=stage / 'spec'), \
+                        mock.patch.object(build, 'to_windows', side_effect=str), \
+                        mock.patch.object(build, 'run', return_value=subprocess.CompletedProcess([], 0)), \
+                        self.assertRaisesRegex(SystemExit, 'is missing'):
+                    build.windows_build(Path('python.exe'), stage)
 
 if __name__ == '__main__':
     sys.exit(unittest.main())

@@ -18,8 +18,8 @@ Steps, in order (each one stops the release on failure):
               and data directories, the same export names, the marker once and no .debug_* section, and must pass
               check_no_x87.py again. --no-strip (alias --keep-debug-in-zip) ships the unstripped build instead.
   4. regen    tools/regenerate/build.py --dist DIR/regenerate: the host build with its smoke test, then the
-              Windows build with its smoke test (bottle X3M-Build under Wine, run through
-              verification/probe/wine_lock.py after the game guard reports no game);
+              Windows build with its smoke test (native Windows Python from WSL2, build.py's docstring; no Wine,
+              no game guard: building and smoke-testing the exe never touches the game);
               --regenerate-dir PATH ships existing binaries instead (no build, no smoke test);
               --skip-windows builds and smoke-tests the host binary only and produces no zip (the zip requires
               x3m-regenerate.exe)
@@ -38,7 +38,6 @@ import argparse
 import hashlib
 import struct
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -58,7 +57,6 @@ BUILD_PY = ROOT / 'tools/regenerate/build.py'
 PACKAGE_PY = ROOT / 'tools/release/package.py'
 GENERATE_PY = ROOT / 'tools/config/generate.py'
 X87_PY = ROOT / 'verification/probe/check_no_x87.py'
-WINE_LOCK_PY = ROOT / 'verification/probe/wine_lock.py'
 GCC = 'i686-w64-mingw32-gcc'
 OBJCOPY = 'i686-w64-mingw32-objcopy'  # binutils of the cmake/mingw-i686.cmake toolchain (i686-w64-mingw32-g++)
 SCHEMA = 2
@@ -73,11 +71,10 @@ def _load_package():
 PACKAGE = _load_package()
 ZIP_ENTRIES = list(PACKAGE.ZIP_ENTRIES)  # package.py's order: d3d9.dll, x3m.ini, x3m-regenerate.exe, f/<16>, OFL x2, README.txt
 MARKER = b'X3M_SOURCE_COMMIT='  # proxy_identity.cpp; tools/manage.py reads it at install
-BOTTLE_SETUP = ('The Windows x3m-regenerate.exe is built in the CrossOver bottle X3M-Build. Set it up once with '
-                '`python3 tools/regenerate/build.py --windows` (creates the bottle from the win10_64 template, installs '
-                'Windows Python 3.12.10 and pip installs pyinstaller numpy==2.0.2 pillow; the steps are in that '
-                "script's docstring), check it with `python3 tools/regenerate/build.py --windows --dry`, or pass "
-                '--regenerate-dir PATH with an existing x3m-regenerate.exe.')
+BOTTLE_SETUP = ('The Windows x3m-regenerate.exe is built from WSL2 by the native Windows Python 3.12.10 at '
+                'C:\\Python312 with pyinstaller==6.22.3 numpy==2.0.2 pillow==12.3.0 (install steps in '
+                "tools/regenerate/build.py's docstring); check it with `python3 tools/regenerate/build.py --windows "
+                '--dry`, or pass --regenerate-dir PATH with an existing x3m-regenerate.exe.')
 SKIP_WINDOWS_NOTE = ('NOTE: --skip-windows: only the host x3m-regenerate is built and smoke-tested. The zip requires '
                      'x3m-regenerate.exe and package.py refuses without it, so this run makes NO release zip.')
 
@@ -260,24 +257,10 @@ def toolchain():
 
 
 def windows_state():
-    """(ready, text) for the X3M-Build bottle and its Windows Python (tools/regenerate/build.py)."""
+    """(ready, text) for the WSL2 host's Windows Python and its pinned packages (tools/regenerate/build.py)."""
     sys.path.insert(0, str(ROOT / 'tools/regenerate'))
     import build as regenerate_build
-    if not (regenerate_build.CX_BIN / 'wine').exists():
-        return False, f'CrossOver Preview wine not found at {regenerate_build.CX_BIN}'
-    if not regenerate_build.BOTTLE_DIR.is_dir():
-        return False, f'bottle {regenerate_build.BOTTLE} absent ({regenerate_build.BOTTLE_DIR})'
-    python = regenerate_build.windows_python()
-    if python is None:
-        return False, f'bottle {regenerate_build.BOTTLE} present but Windows Python is not installed'
-    return True, f'bottle {regenerate_build.BOTTLE} with {python.relative_to(regenerate_build.BOTTLE_DIR)}'
-
-
-def game_guard_clear():
-    import game_guard
-    lines = game_guard.game_running()
-    if lines:
-        raise ReleaseError(f'the game is running ({lines[0]}); no Wine command is started')
+    return regenerate_build.windows_ready()
 
 
 def plan(args, out, version):
@@ -297,8 +280,8 @@ def plan(args, out, version):
     else:
         steps.append(f'4 regen    build.py --dist {out / "regenerate"} (host build + smoke test)')
         if not args.skip_windows:
-            steps.append(f'           X3M_FIXTURE_BOTTLE=X3 wine_lock.py build.py --windows --dist {out / "regenerate"} '
-                         '(bottle X3M-Build; Windows build + smoke test under Wine)')
+            steps.append(f'           build.py --windows --dist {out / "regenerate"} '
+                         '(native Windows Python from WSL2; Windows build + smoke test)')
     if args.skip_windows:
         steps.append('5 package  SKIPPED (--skip-windows: no x3m-regenerate.exe)')
     else:
@@ -453,19 +436,9 @@ class Release:
                 ready, state = windows_state()
                 if not ready:
                     raise ReleaseError(state + '. ' + BOTTLE_SETUP)
-                game_guard_clear()
-                timings = self.out / 'regenerate-windows-lock.json'
-                env = dict(os.environ, X3M_FIXTURE_BOTTLE='X3')
                 started = time.monotonic()
-                code, text = run([sys.executable, WINE_LOCK_PY, '--holder', 'x3m release: x3m-regenerate --windows',
-                                  '--timings-json', timings, sys.executable, BUILD_PY, '--windows', '--dist', directory],
-                                 env=env)
+                code, text = run([sys.executable, BUILD_PY, '--windows', '--dist', directory])
                 self.times['regenerate_windows'] = round(time.monotonic() - started, 1)
-                try:
-                    self.record['regenerate_windows_lock'] = json.loads(timings.read_text())
-                    timings.unlink()
-                except (OSError, ValueError):
-                    pass
                 if code or 'smoke test PASS' not in text:
                     raise ReleaseError(f'Windows regenerate build or smoke test failed (exit {code}). ' + BOTTLE_SETUP)
         self.regenerate_dir = directory

@@ -313,6 +313,18 @@ Wine cold 15.36 s after the rebuild, warm 1.73 s); acceptance source / bundle / 
 console lines each (measured). The Python installer download was deleted; the bottle X3M-Build is kept as the
 reusable build bottle.
 
+2026-10-25: x3m-regenerate.exe built with native Windows Python. `tools/regenerate/build.py --windows` now runs
+from WSL2 with `C:\Python312\python.exe` (3.12.10 AMD64; PyInstaller 6.22.3, NumPy 2.0.2, Pillow 12.3.0: the versions
+recorded for the 2026-09-25 Windows build above; the released 1.1.0 exe `bb3ba27b…` was built with unpinned
+pyinstaller and pillow), stages the spec and 368 sources under `%LOCALAPPDATA%\x3m-build` behind an exclusive
+`build.lock`, and smoke-tests natively on a synthetic root on `C:` built by the Windows Python; no Wine, no
+`wine_lock.py`, the CrossOver X3M-Build route is retired
+([out](../../verification/results/regenerate/build_windows_native_out.txt)). Measured on the final source:
+PyInstaller 11.7 s, whole command 30.5 s, exe 29,767,626 B (sha256 `0a402f85…`), start cold 0.80 s, warm 0.65 s
+(includes the WSL-to-Windows launch), smoke exit 0 with every expected line in console and log. An earlier
+iteration's `--dist <tmp>` run also exited 0; builds are not byte-identical (29,768,312 vs 29,767,610 B). Toolchain
+proof only, built before the baker fix; not shipped.
+
 Changing `lod_overlay.py` (the progress hook) changes `tool_sha256`, so the first `--sync` after this change,
 including the first x3m-regenerate run on the installed fleet, rebuilds every body (about 50 min; inferred from
 install-fleet3's 48.5 min).

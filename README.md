@@ -145,8 +145,8 @@ python3 tools/release/release.py --out DIR     # --dry-run: plan and toolchain c
 It checks the template (`generate.py --check`), builds the DLL fresh in `DIR/build-release`
 (0 warnings, x87 audit 0 violations), ships it stripped of its debug sections (`DIR/d3d9.dll`; the
 unstripped build and `DIR/d3d9.debug` stay in `DIR` for symbolisation, `--no-strip` opts out),
-builds and smoke-tests `x3m-regenerate` for the host and for Windows (the Windows step under Wine in
-the `X3M-Build` bottle, through `wine_lock.py`), packages `DIR/x3m-<version>.zip` (exactly `d3d9.dll`,
+builds and smoke-tests `x3m-regenerate` for the host and for Windows (the Windows step from WSL2 with the
+native Windows Python at `C:\Python312`, `tools/regenerate/build.py --windows`), packages `DIR/x3m-<version>.zip` (exactly `d3d9.dll`,
 `x3m.ini`, `x3m-regenerate.exe`, `README.txt`), re-hashes its binaries and writes `DIR/release-<version>.json`
 ([details](docs/architecture/config-file.md#6-release-packaging-and-the-upgrade-story)). The
 version is `project(VERSION)` in `CMakeLists.txt`.

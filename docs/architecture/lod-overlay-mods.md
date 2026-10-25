@@ -410,9 +410,9 @@ guide [docs/user/regenerate.md](../user/regenerate.md), ledger [lod-overlay.md](
   `tool_sha256` / baker / recipe hashes as a source checkout (measured: identical records and outputs on the
   synthetic root, so `--sync` reuses across source and bundle). Not bundled: the flight radius logs and sector
   censuses under `verification/results/` (informational rows of the batch summary only). `tools/regenerate/
-  build.py` builds and smoke-tests the host bundle; `--windows` builds `x3m-regenerate.exe` with Windows
-  Python 3.12.10 x64 + PyInstaller in the dedicated CrossOver bottle `X3M-Build` (win10_64 template) and runs
-  the smoke test there.
+  build.py` builds and smoke-tests the host bundle; `--windows` builds `x3m-regenerate.exe` from WSL2 with the
+  native Windows Python 3.12.10 x64 + PyInstaller (`C:\Python312`, inputs staged under `%LOCALAPPDATA%\x3m-build`)
+  and runs the smoke test natively (the earlier CrossOver bottle `X3M-Build` route is retired, 2026-10-25).
 - **Cross-platform bytes.** On the synthetic root the Windows exe's overlay differs from the macOS one in 4
   bytes of each DXT diffuse/light atlas and in the gzip stream of the bump atlas (identical decoded bytes);
   geometry members and the fog file are identical (measured). Reuse compares inputs and settings, not outputs,

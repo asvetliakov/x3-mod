@@ -110,16 +110,22 @@ so keep the file pair (or rerun the tool, which retires it cleanly).
 From the repository: `python3 tools/regenerate/build.py` builds
 `dist/x3m-regenerate` for the host (PyInstaller one-file; needs Python with NumPy
 2.x, Pillow and `pip install --user pyinstaller`) and runs a smoke test on a
-synthetic game directory. `python3 tools/regenerate/build.py --windows` builds
-`dist/x3m-regenerate.exe` on the Mac under Wine in a dedicated CrossOver bottle
-`X3M-Build` (created from the `win10_64` template; Python 3.12.10 x64 from
-python.org installed quietly into it; `pip install pyinstaller numpy==2.0.2
-pillow`), never in the game bottle, and smoke-tests it there; `--windows --dry`
-only reports the bottle state; `--dist DIR` writes (or with `--smoke-only` tests) the
-executable in `DIR` instead of `dist/` (`tools/release/release.py` uses it). On a Windows PC: install Python 3.12 (64-bit,
-python.org), then from the repository root `py -m pip install pyinstaller
-numpy==2.0.2 pillow` and `py -m PyInstaller --noconfirm --distpath dist
---workpath build\regenerate-win tools\regenerate\x3m_regenerate.spec`.
+synthetic game directory. `python3 tools/regenerate/build.py --windows`, run in
+WSL2 on the Windows PC, builds `dist/x3m-regenerate.exe` with the native Windows
+Python at `C:\Python312\python.exe` (override with `--windows-python PATH` or
+`X3M_WINDOWS_PYTHON`): it stages the spec and the sources it searches under
+`%LOCALAPPDATA%\x3m-build` (Windows Python handles the `\\wsl.localhost` share
+poorly), runs PyInstaller there, copies the exe to `dist/` and smoke-tests it
+natively on a synthetic directory on `C:`. Nothing runs under Wine. Install the
+Python once by hand: the python.org 3.12.10 amd64 installer with
+`/quiet InstallAllUsers=0 TargetDir=C:\Python312 PrependPath=0`, then
+`C:\Python312\python.exe -m pip install pyinstaller==6.22.3 numpy==2.0.2 pillow==12.3.0`.
+`--windows --dry` reports the Windows Python, its version and the three package
+versions; `--dist DIR` writes (or with `--smoke-only` tests) the executable in
+`DIR` instead of `dist/` (`tools/release/release.py` uses it). On a Windows PC
+without WSL: from the repository root `C:\Python312\python.exe -m PyInstaller
+--noconfirm --distpath dist --workpath build\regenerate-win
+tools\regenerate\x3m_regenerate.spec`.
 
 Developers can run the same flow from source:
 `python3 tools/regenerate/x3m_regenerate.py --game-dir <game> --no-wait`

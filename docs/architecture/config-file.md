@@ -326,11 +326,9 @@ no `.debug_*` section and pass `check_no_x87.py` again; any difference aborts th
 section the loader maps like any other, no data directory points at it) so gdb/addr2line find `d3d9.debug`; the
 unstripped RelWithDebInfo DLL already carries long-named `.debug_*` sections, so the stripped file adds nothing the
 loader has not seen. `--no-strip` (alias `--keep-debug-in-zip`) ships the unstripped build; (4)
-`tools/regenerate/build.py --dist DIR/regenerate` for the host, then `build.py --windows` under
-`X3M_FIXTURE_BOTTLE=X3 wine_lock.py` after `game_guard.game_running()` is empty, each with its smoke test
-(`build.py` runs its Wine commands directly when the lock file names an ancestor as holder, since a nested
-`wine_lock.py` would wait on its own parent; the Wine commands run in the `X3M-Build` bottle, never the game
-bottle); `--regenerate-dir PATH` ships existing binaries instead, `--skip-windows` builds and smoke-tests
+`tools/regenerate/build.py --dist DIR/regenerate` for the host, then `build.py --windows`, each with its smoke test
+(since 2026-10-25 `build.py --windows` runs directly, with no `wine_lock.py` wrapper and no game guard: it
+uses the native Windows Python from WSL2 and never touches the game, see its docstring); `--regenerate-dir PATH` ships existing binaries instead, `--skip-windows` builds and smoke-tests
 the host binary only and makes no zip; (5) `package.py`, then the zip is CRC-tested, its entry list must be
 exactly the four files and its `d3d9.dll` and `x3m-regenerate.exe` are re-hashed against the built files; (6)
 `DIR/release-<version>.json` (schema 2: commit, dirty flag, toolchain lines, `source_commit_marker`, `dll` = the
