@@ -44,6 +44,7 @@ TAA_MOTION_WEIGHT_DEFAULT = '0.7,2,8'  # Run 70 A (2026-09-23, run262/run263): p
 FOG_DUST_MOTES_DEFAULT = (1300, 3.0, 128.0)  # Run 70 B/B2 (2026-09-23): N,SIZE,STREAK under the stored fog range
 FOG_MOTES_MAX_PX_DEFAULT = '8'  # Run 70 B2 (2026-09-23): X3M_FOG_MOTES_MAX_PX with the default motes, unless set
 FOG_MARCH_SCALE_DEFAULT = '4'  # Run 77 C/C2 (2026-09-24): quarter-resolution fog march; 2 is the opt-out, and the shadow pass clamps 4 to 2
+FOG_DISTANCE_DEFAULT = '3'  # 2026-10-25 (docs/architecture/fog-visible-distance.md): the 67.5 km long fade; 1 is today's 22.5 km fog
 # Hull light-map gain the launcher forwards in HDR mode when the option is
 # unset (user selection after run 41 C / run128, 2026-09-18,
 # docs/architecture/linear-emission-cost.md, "Hull light-map gain"). The DLL's
@@ -1264,6 +1265,7 @@ def main():
     parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4 when N is given alone), STREAK the velocity streak cap in pixels (0..512, default 128) (X3M_FOG_DUST_MOTES; the pixel cap X3M_FOG_MOTES_MAX_PX is the one tunable left since 2026-09-26; a value above 0 requires --volumetric-fog-range stored). Default when omitted under --volumetric-fog-range stored = 1300,3,128 with X3M_FOG_MOTES_MAX_PX=8 unless that is set (accepted in Run 70 B/B2, 2026-09-23), else off; 0 is the explicit off and the opt-out. docs/architecture/fog-dust-motes.md')
     # Hand-over after a sector change (docs/architecture/fog-handover.md, "Implementation"): default on, --no-... opts out.
     parser.add_argument('--fog-march-scale', choices=('2', '4'), default=None, help='Stored fog only: march spacing in full pixels; 4 (default since Run 77 C2, 2026-09-24) marches at quarter resolution with the depth-class upsample and the edge repair at 4-px spacing (fog_march 8.99 -> 2.68 ms at 5120x1440 in Run 77 C), 2 is the opt-out and draws the former half-resolution march (step C of docs/architecture/fog-gpu-cost.md). X3M_FOG_MARCH_SCALE is always written; an explicit 4 requires --volumetric-fog-range stored.')
+    parser.add_argument('--fog-distance', type=float, default=None, metavar='D', help='Stored fog only: how far the fog reaches, as a multiple of the 22.5 km column, 1 to 3 (X3M_FOG_DISTANCE; default 3 = 67.5 km since 2026-10-25). Above 1 the density fades as (13 km / s)^2 past 13 km over 40 extra geometric bins instead of the 13-22.5 km smoothstep; above 1.7333 a third "horizon" density level (8192-unit nodes, 8.5 MB address space + 4.3 MB VRAM) carries the 39-67.5 km tail, falling back to a 39 km cap when it cannot be allocated. 1 keeps the earlier programs and constants bit for bit (docs/architecture/fog-visible-distance.md)')
     parser.add_argument('--fog-handover-step', dest='fog_handover_step', action='store_true', default=None, help='Stored fog only, default on: at a cold start (a new sector identity or a load gap) the far density readiness steps to 1 in the frame the far need box is resident, so the vanilla cards are masked at once instead of after a 90-frame ramp; warm refills (a jump inside the same sector) keep the ramp. --no-fog-handover-step keeps the ramp everywhere (X3M_FOG_HANDOVER_STEP; requires --volumetric-fog-range stored when given). One volumetric_fog_handover log line per cold start either way.')
     parser.add_argument('--no-fog-handover-step', dest='fog_handover_step', action='store_false', help='Keep the 90-frame far readiness ramp at a cold start (X3M_FOG_HANDOVER_STEP=0).')
     parser.add_argument('--fog-handover-coldfill', dest='fog_handover_coldfill', action='store_true', default=None, help='Stored fog only, default on: at a cold start the worker fills only the far need box, the far level goes up in one whole-atlas latch (4,260,096 B, past the 1,065,024 B per-frame budget once), then the fine level and the window growth continue under the budget. --no-fog-handover-coldfill keeps the budgeted fill (X3M_FOG_HANDOVER_COLDFILL; requires --volumetric-fog-range stored when given).')
@@ -1823,6 +1825,10 @@ def main():
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.fog_march_scale == '4' and args.volumetric_fog_range != 'stored':
         parser.error('--fog-march-scale 4 requires --volumetric-fog-range stored.')
+    if args.fog_distance is not None and args.volumetric_fog_range != 'stored':
+        parser.error('--fog-distance requires --volumetric-fog-range stored.')
+    if args.fog_distance is not None and not (math.isfinite(args.fog_distance) and 1.0 <= args.fog_distance <= 3.0):
+        parser.error('--fog-distance must be within [1, 3].')
     if (args.fog_handover_step is not None or args.fog_handover_coldfill is not None or args.fog_handover_prefill is not None) and args.volumetric_fog_range != 'stored':
         parser.error('--fog-handover-step, --fog-handover-coldfill and --fog-handover-prefill (and their --no- forms) require --volumetric-fog-range stored.')
     if args.fog_docked is not None and args.volumetric_fog is None:
@@ -2386,6 +2392,9 @@ def main():
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         # Explicit so an inherited value never decides it: the given value, else the default 4.
         env['X3M_FOG_MARCH_SCALE'] = args.fog_march_scale or FOG_MARCH_SCALE_DEFAULT
+        # The long distance fade (fog-visible-distance.md): explicit like the march scale; the DLL reads it under the
+        # stored range only.
+        env['X3M_FOG_DISTANCE'] = repr(args.fog_distance) if args.fog_distance is not None else FOG_DISTANCE_DEFAULT
         # Hand-over and docked view (fog-handover.md, "Implementation"): default on, always explicit so an inherited
         # value cannot decide them; the DLL reads them only under the stored range (hand-over) or the fog (docked).
         env['X3M_FOG_HANDOVER_STEP'] = '0' if args.fog_handover_step is False else '1'

@@ -208,7 +208,7 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
 // Bounded: at most 64 lines a session outside timing mode.
 void MotionOutput::fog_density_epoch(const char* reason) noexcept {
     LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
-    fog_density_epoch_qpc_ = now.QuadPart; fog_density_ready_logged_[0] = fog_density_ready_logged_[1] = false;
+    fog_density_epoch_qpc_ = now.QuadPart; fog_density_ready_logged_[0] = fog_density_ready_logged_[1] = fog_density_ready_logged_[2] = false;
     if (fog_timing_ || fog_density_logs_ < 64u) {
         if (!fog_timing_) ++fog_density_logs_;
         log("volumetric_fog_cache device=%llu frame=%llu event=epoch reason=%s sector_key=%016llx offset=%.0f,%.0f,%.0f", id_, frame_, reason,
@@ -262,6 +262,21 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
         log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u", id_, frame_, status.march_scale_refused,
             fog_density_config_.march_scale, fog_ ? fog_->density_march_scale() : 0u);
     }
+    if (status.distance_refused && !fog_distance_refused_logged_) {
+        // The long distance fade's programs could not be created (fog-visible-distance.md): today's programs draw, as
+        // with fog_distance 1, until the device goes.
+        fog_distance_refused_logged_ = true;
+        log("volumetric_fog_distance device=%llu frame=%llu event=refused reason=%s requested=%g fallback=distance_1", id_, frame_,
+            status.distance_refused, double(fog_density_config_.distance));
+    }
+    if (status.horizon_refused && !fog_horizon_refused_logged_) {
+        // The horizon level could not be allocated or uploaded (fog-visible-distance.md, step 2): the fog draws on at the
+        // far level's 39 km cap; never a fog fault. The memory row says how much address space was left.
+        fog_horizon_refused_logged_ = true;
+        log("volumetric_fog_distance device=%llu frame=%llu event=horizon_fallback reason=%s requested=%g cap_km=%.1f", id_, frame_,
+            status.horizon_refused, double(fog_density_config_.distance), double(status.distance_cap) / 5000.);
+        log_fog_memory("horizon_fallback", true);
+    }
     if (status.motes_refused && !fog_motes_refused_logged_) {
         // The mote stage could not be built or drew once without success (not a lost device): the fog draws without it.
         fog_motes_refused_logged_ = true;
@@ -270,14 +285,16 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
     if (FAILED(hr)) return; // device loss or a transient failure: no fog this frame, retried at the next latch
     fog_density_prepared_ = true;
     if (rekeyed) { fog_density_key_ = placement.key; fog_density_epoch("sector_key"); }
-    const float ready[2] = {status.ready_far, status.ready_fine};
-    for (unsigned i = 0; i < 2; ++i) {
+    // far_ready, fine_ready and (with the long distance fade's horizon level) horizon_ready, each once per epoch.
+    const float ready[3] = {status.ready_far, status.ready_fine, status.ready_horizon};
+    static constexpr const char* ready_events[3] = {"far_ready", "fine_ready", "horizon_ready"};
+    for (unsigned i = 0; i < 3; ++i) {
         if (ready[i] >= 1.f && !fog_density_ready_logged_[i]) {
             fog_density_ready_logged_[i] = true;
             if (fog_timing_ || fog_density_logs_ < 64u) {
                 if (!fog_timing_) ++fog_density_logs_;
                 LARGE_INTEGER now{}, f{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&f);
-                log("volumetric_fog_cache device=%llu frame=%llu event=%s ms=%.1f nodes=%llu worker_busy_ms=%.1f upload_bytes_total=%llu missed_locks=%llu", id_, frame_, i ? "fine_ready" : "far_ready",
+                log("volumetric_fog_cache device=%llu frame=%llu event=%s ms=%.1f nodes=%llu worker_busy_ms=%.1f upload_bytes_total=%llu missed_locks=%llu", id_, frame_, ready_events[i],
                     f.QuadPart ? double(now.QuadPart - fog_density_epoch_qpc_) * 1e3 / double(f.QuadPart) : 0., status.nodes_generated, double(status.worker_busy_us) * 1e-3, status.upload_bytes_total, status.missed_locks);
             }
         } else if (i == 0 && ready[0] == 0.f && fog_density_ready_logged_[0]) fog_density_epoch("residency"); // cut, jump or Reset: far refills and ramps again

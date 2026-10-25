@@ -24,8 +24,14 @@ namespace fog {
 // Level spacing in render units (0.2 m each): fine 102.4 m, far 819.2 m.
 constexpr double kFineDelta = 512.0;
 constexpr double kFarDelta = 4096.0;
+// The optional horizon level of the long distance fade (docs/architecture/fog-visible-distance.md, fog_distance above
+// 1.7333): 1638.4 m nodes, the same 128-node window, atlas format and generator. kLevelCount stays the two levels every
+// stored frame has; level kHorizonLevel exists only in a cache started with the horizon (DensityCache::set_horizon).
+constexpr double kHorizonDelta = 8192.0;
 constexpr int kLevelCount = 2;
-constexpr double kLevelDelta[kLevelCount] = {kFineDelta, kFarDelta};
+constexpr int kHorizonLevel = 2;
+constexpr int kMaxLevels = 3;
+constexpr double kLevelDelta[kMaxLevels] = {kFineDelta, kFarDelta, kHorizonDelta};
 
 // Window: 128 nodes per axis, origin floor(camera/delta)-63, trilinear corners
 // valid for local indices 0..126 (both corners resident).

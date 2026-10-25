@@ -1,0 +1,7 @@
+volumetric_fog_range mode=stored atlas_bytes=4260096 levels=2 cpu_bytes=17040384 upload_budget_bytes=1065024 upload_rects=64 ramp_frames=90 worker_threads=1
+prefill_rows 203 epochs {'prefill': 10, 'residency': 4}
+far_ready_ms n 12 min 744.5 median 1528.85 max 3118.5
+fine_ready_ms n 12 min 1152.9 median 2259.25 max 4310.5
+cold_far_fill_ms n 8 min 456.8 median 486.5 max 539.6
+worker_nodes 280192560 busy_ms 122602.5 rate_Mnodes_per_s 2.29
+residency_epochs 4 same_frame_as_hdr_target_create 4

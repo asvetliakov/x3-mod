@@ -251,6 +251,10 @@ SETTINGS = [
           requires=('volumetric_fog',), launcher='--volumetric-fog-range'),
     entry('fog_march_scale', 'enum', 'fog', 'Resolution of the fog calculation. 4 = quarter resolution (fast), 2 = half '
           'resolution (sharper, slower).', '4', choices=('2', '4'), requires=('volumetric_fog_range',), launcher='--fog-march-scale'),
+    entry('fog_distance', 'float', 'fog', 'How far the volumetric fog reaches, as a multiple of 22.5 km; distant fog thins out '
+          'gradually instead of appearing at a fixed distance. 1 to 3: 1 = the earlier 22.5 km fog, 3 = 67.5 km. Above 1.7333 it '
+          'uses about 13 MB more memory; farther fog costs some frame rate.', '3', range=(1.0, 3.0),
+          requires=('volumetric_fog_range',), launcher='--fog-distance', since='2026-10-25'),
     entry('fog_dust_motes', 'float_list', 'fog', 'Dust specks near the camera inside fog: count (64 to 8192), size (2 to 16) and streak length (0 to 512). '
           'A count of 0 turns them off.', '1300,3,128', counts=(3,), elements=([(0, 0), (64, 8192)], (2, 16), (0, 512)), requires=('volumetric_fog_range',), launcher='--fog-dust-motes'),
     entry('fog_motes_max_px', 'float', 'fog', 'Largest on-screen size of a dust speck, in pixels. 2 to 64 (raised to the speck size when below it).', '8', range=(2, 64),

@@ -3051,3 +3051,64 @@ again. A proxy leak would not be reclaimed by the game's purge. Interpretation: 
 landed in such a trough right after a Reset, when the runtime recreates every DEFAULT-pool object at once; the retry
 path now covers it. Open: the proxy's own share of the private bytes is not measured (the row reports the process),
 and at the troughs any allocation in the game can fail too, which is vanilla X3 behaviour in a 4 GB process.
+
+## 2026-10-25: long distance fade, `fog_distance` 1-3, both steps (uncommitted worktree on d8a4aa18, not installed, not flown)
+
+Design and as-built note: `docs/architecture/fog-visible-distance.md` (§6). Inverse-square fade past 13 km with an end
+smoothstep over the last quarter of the cap, 40 geometric tail bins, a third "horizon" density level (8192 units) for
+39-67.5 km; `fog_distance` (ini, `X3M_FOG_DISTANCE`, `--fog-distance`; 1-3, default 3; 1 = today's programs). Evidence:
+`verification/results/fog-visible-distance-2026-10-25/` (scripts beside their outputs). All on the native WSL2 host; no
+Wine, no game. [M] measured, [I] inferred.
+
+- Build (after the review fixes, rebased on 06096702): clean RelWithDebInfo MinGW i686, 0 warnings;
+  `check_no_x87.py build/d3d9.dll` PASS, 159 roots, 1,068 reachable functions, 0 violations; unstripped
+  `build/d3d9.dll` 62,787,554 B, SHA-256 dc9aee4d2fcf3ec4bc53740e334bd907835cdd055423d082426be1138ea8744e [M].
+- Programs: the generator through WSL interop with the recorded `d3dx9_37.dll` (`compile_interop.py`: the Wine call
+  rewritten, nothing else): all 54 programs `--check` PASS and no existing header changed, so today's four look programs
+  (the fog_distance 1 set) are byte-identical; their records moved only the include and tool hashes [M]. New:
+  march_distance 717 slots, repair_distance 803 (q4 the same), 23 / 28 texture instructions, two rolled loops. The native
+  SysWOW64 validator (`validate_programs.py` -> `validate_programs.json`) passes all 8 look and distance programs: End
+  S_OK, 0 messages, at most one c# per instruction [M].
+- Host tests (`PYTHONPATH=verification/probe:verification/analysis:. python3 -m unittest test_volumetric_fog
+  test_fog_look_reference test_fog_handover test_fog_cards test_fog_density_cache test_fog_density_generator
+  test_fog_density_shaders test_fog_distance test_config_schema test_launcher_defaults`): 101 tests, 90 pass, 1 skipped,
+  10 fail for this host, not the change: the 9 launcher dry-run tests stop at the missing macOS CrossOver Wine path
+  (`CrossOver Preview Wine not found`, 9 of 9; `test_fog_distance` runs the same launcher with the path patched) and the
+  AddressSanitizer lifetime witness of `test_fog_density_cache` (LeakSanitizer reports the deliberately leaked abandoned
+  caches on Linux; with `ASAN_OPTIONS=detect_leaks=0` it passes 5/5). `fog_density_cache_host.cpp` gained
+  `#include <cmath>`: it did not compile at d8a4aa18 with this host's libstdc++ [M].
+- `test_fog_distance` (new): fog_distance 1 selects today's programs, 36 rows, 8 samplers, a two-level cache; the C++
+  constants equal the host reference for 10 values (NaN, 0.5, 1 ... 3.5); the reference march of the new law matches
+  `exp(-sigma rho int w ds)` in a uniform medium within 1e-4 in T at 2 and 3 (today's law too); the tail bins in the
+  shader's float32 order cover [112500, L] within 1e-4 L, widths 3133-9143 (x3) and 1630-2856 (40 km); at horizon
+  readiness 0 the horizon level is never sampled; launcher, schema and template [M].
+- Horizon cache host witness (`fog_density_horizon_host.cpp`, output `horizon_host.txt`): on a cold fill far and fine are
+  resident in the same frames as with two levels (4 and 8), the first horizon slab comes after both needs, slabs are at
+  most 32,768 nodes, uploads go far, fine, horizon under the shared budget (1 MB and a 2-tile budget), all three atlases
+  equal the static generator, a Reset drops and re-ramps the horizon over 90 frames, `drop_horizon` is immediate and
+  final, a refused horizon allocation starts two levels, the threaded worker fills three levels. SETA travel (5 km/s on
+  screen at 60 fps, a 2 s game step every 2 s, the worker at 2.29 M nodes/s): far and horizon readiness never 0, fine
+  resident 771 of 900 frames against 768 without the level, the horizon 4.3 % of the nodes; with 10 km steps the far
+  level drops in 77 frames with or without the horizon, the horizon in none [M, host model].
+- Perf: `DensityCache::step` 18.5 -> 25.3 ns per frame still, 15.6 -> 21.9 ns moving (host x86-64, median of quiet runs)
+  [M]; address space +8,520,192 B, VRAM +4,260,096 B [I]; GPU +292 static slots per program, runtime not measured.
+- Design gates on the reference field (`field_gates.py` -> `field_gates.json`, poses A/B, 144 sky rays) [M]: shimmer
+  holds (max dT per 250 units .0109 / .0179 against today's .0115 / .0186). Fail: sky 1-T median .109 / .091 (gate .02;
+  today 0), exactly empty .12 / .15 (gate .40; today .49 / .65); an isolated bank's largest 1-T change per km beyond
+  15 km .050 against today's .111 (gate a third), visible from 60.0 km instead of 22.6; the horizon 8-point node law
+  against the 2x2x2 far-node box law, sky dT p99 .020 / .020 (gate .003). These need a decision (law constants, the box
+  law); nothing was retuned.
+- Decision (user, 2026-10-25, "some haze is actually good"): the default stays 3. The sky-veil, empty-share and
+  approach-slope gates above are waived by user decision; the horizon aliasing screen (p99 .020 against .003) is
+  accepted pending the flight.
+- Review fixes (same day): the horizon CPU cache is allocated only by `DensityCache::enable_horizon`, which
+  `prepare_density` calls once the distance programs exist (a prefill never allocates it), and `drop_horizon` frees it
+  at the next post under the mutex; a warm horizon that lost its lead now takes one slab and then alternates with the
+  fine need (the SETA rows above are unchanged: fine resident 771/900 against 768, horizon never 0, share 4.3 % [M]);
+  `take_uploads` wakes the worker for every posted change (a horizon drop included); the ini text names 1.7333.
+  `fog_pass_horizon_fault.cpp` (in `test_fog_cards`, MinGW i686 run natively through WSL interop, 28 s) drives the
+  production FogPass against a scripted device: horizon staging and atlas creation failures (E_OUTOFMEMORY,
+  D3DERR_OUTOFVIDEOMEMORY), the atlas lost at a Reset, a failed horizon LockRect and UpdateSurface all fall back to
+  `cap=195000` with `result=00000000`, far and fine ready, the horizon cache freed; a lost device stays a Reset; refused
+  distance programs draw today's set with no horizon allocation; fog_distance 1 creates 4 textures and today's
+  programs; 9 scenarios, 0 failures, 0 live COM objects at the end [M].

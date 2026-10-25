@@ -7,6 +7,7 @@
 #include "../../src/fog/fog_density_cache.h"
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <limits>

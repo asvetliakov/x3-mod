@@ -168,5 +168,34 @@ class FogCardPolicyTests(unittest.TestCase):
         self.assertNotIn('set_stream_frequency', capture)
 
 
+class FogPassHorizonFaultTests(unittest.TestCase):
+    """The production FogPass's horizon-level fallbacks (docs/architecture/fog-visible-distance.md §6) under fault
+    injection: the MotionOutput harness above runs against a mock pass, so this one runs the real FogPass, DensityCache
+    and generator against a scripted device (verification/probe/fog_pass_horizon_fault.cpp). A MinGW i686 build run
+    natively through WSL interop; skipped on hosts without both (under Wine it runs through wine_lock.py by hand)."""
+    SOURCES = ('verification/probe/fog_pass_horizon_fault.cpp', 'src/renderer/fog_pass.cpp', 'src/fog/fog_density_cache.cpp',
+               'src/fog/fog_density_generator.cpp', 'src/renderer/gpu_sync_timing.cpp')
+
+    def test_horizon_create_lock_upload_reset_and_program_faults(self):
+        compiler = shutil.which('i686-w64-mingw32-g++')
+        if not compiler or not Path('/proc/sys/fs/binfmt_misc/WSLInterop').exists():
+            self.skipTest('needs i686-w64-mingw32-g++ and WSL interop (a native Windows run)')
+        with tempfile.TemporaryDirectory(prefix='x3-fog-fault-') as tmp:
+            binary = Path(tmp) / 'fog_pass_horizon_fault.exe'
+            subprocess.run([compiler, '-std=c++17', '-O1', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function-type', '-msse2', '-mfpmath=sse',
+                            '-mstackrealign', '-mincoming-stack-boundary=2', '-ffp-contract=off', '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX',
+                            '-DX3M_FOG_PASS_FIXTURE', '-static', *[str(ROOT / s) for s in self.SOURCES], '-o', str(binary)], check=True)
+            result = subprocess.run([str(binary)], text=True, capture_output=True, timeout=600)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-1000:])
+        self.assertIn('fog_pass_horizon_fault scenarios=9 failures=0 live_objects=0', result.stdout)
+        rows = {line.split()[1]: line for line in result.stdout.splitlines() if line.startswith('SCENARIO ')}
+        for name, reason in (('staging', 'staging'), ('atlas', 'atlas'), ('reset_atlas', 'atlas'), ('lock', 'lock'), ('upload', 'upload')):
+            self.assertIn('result=00000000 available=1 cap=195000 horizon_refused=%s ' % reason, rows[name])
+        self.assertIn('cap=337500 horizon_refused=- distance_refused=- horizon=1 ready=1.000,1.000,1.000 creates=6', rows['baseline'])
+        self.assertIn('result=88760868', rows['lost'])  # D3DERR_DEVICELOST: a Reset, not a fallback
+        self.assertIn('distance_refused=program horizon=0', rows['program'])
+        self.assertIn('cap=0 horizon_refused=- distance_refused=- horizon=0', rows['distance_1'])
+
+
 if __name__ == '__main__':
     unittest.main()

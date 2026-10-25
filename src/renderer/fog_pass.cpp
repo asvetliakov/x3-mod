@@ -121,6 +121,29 @@ constexpr ProgramWords density_repair_programs[2] = {{density_repair_words, std:
 constexpr ProgramWords density_composite_programs[2] = {
     {density_composite_words, std::size(density_composite_words)},
     {density_composite_q4_words, std::size(density_composite_q4_words)}};
+// The long distance fade (docs/architecture/fog-visible-distance.md; FogDensityConfig::distance above 1): the look's march
+// and repair with the inverse-square fade, the 40 geometric tail bins and the horizon level (c36, c37, s8), at either
+// spacing; the composite is shared. Planned against the modern-driver slot cap, not 512 (AGENTS.md, "Shader slot budget"):
+// march 717, repair 803 on the Microsoft table, validated by the native D3D9 validator
+// (verification/results/fog-visible-distance-2026-10-25/validate_programs.json).
+constexpr DWORD density_march_distance_words[] = {
+#include "fog_density_march_distance_program_inc.h"
+};
+constexpr DWORD density_repair_distance_words[] = {
+#include "fog_density_repair_distance_program_inc.h"
+};
+constexpr DWORD density_march_distance_q4_words[] = {
+#include "fog_density_march_distance_q4_program_inc.h"
+};
+constexpr DWORD density_repair_distance_q4_words[] = {
+#include "fog_density_repair_distance_q4_program_inc.h"
+};
+constexpr ProgramWords density_march_distance_programs[2] = {
+    {density_march_distance_words, std::size(density_march_distance_words)},
+    {density_march_distance_q4_words, std::size(density_march_distance_q4_words)}};
+constexpr ProgramWords density_repair_distance_programs[2] = {
+    {density_repair_distance_words, std::size(density_repair_distance_words)},
+    {density_repair_distance_q4_words, std::size(density_repair_distance_q4_words)}};
 constexpr ProgramWords density_needs_programs[2] = {{density_needs_words, std::size(density_needs_words)},
                                                     {density_needs_q4_words, std::size(density_needs_q4_words)}};
 // Dust motes (docs/architecture/fog-dust-motes.md, FogDensityConfig::motes): the capsule vertex program and the pixel
@@ -140,6 +163,7 @@ constexpr double mote_drift_period = 8.0;             // seconds per drift cycle
 constexpr double mote_cut_cosine = .8660254037844386; // a view axis turning more than 30 degrees in one frame is a cut
 constexpr unsigned density_required_slots = 512;
 constexpr unsigned fog_constant_rows = fog_look_first_register + fog_look_rows; // c0..c35 of a stored-density frame
+constexpr unsigned density_distance_rows = fog_distance_register + fog_distance_rows; // c0..c37 of the distance programs
 // c0.zw of the full-resolution repair draw. FogParams::m20/m21 carry the raster offset plus
 // the full-resolution quad pixel-centre term (+1/W, -1/H): a program that forms
 // ndc = 2 uv - 1 from the centre uv of full texel P then looks through raster pixel P, the
@@ -290,12 +314,21 @@ void FogPass::release_targets() noexcept {
     width_ = height_ = half_width_ = half_height_ = 0;
 }
 void FogPass::release_density_default() noexcept {
-    for (unsigned i = 0; i < 2; ++i) {
+    for (unsigned i = 0; i < 3; ++i) {
         drop(density_atlas_surface_[i]);
         drop(density_atlas_[i]);
     }
     if (density_) density_->gpu_reset();
-    density_status_.ready_fine = density_status_.ready_far = 0;
+    density_status_.ready_fine = density_status_.ready_far = density_status_.ready_horizon = 0;
+}
+void FogPass::horizon_fallback(const char* reason) noexcept {
+    const int h = fog::kHorizonLevel;
+    drop(density_atlas_surface_[h]);
+    drop(density_atlas_[h]);
+    drop(density_staging_surface_[h]);
+    drop(density_staging_[h]);
+    if (density_) density_->drop_horizon(reason);
+    density_status_.ready_horizon = 0;
 }
 void FogPass::abandon_density_worker() noexcept {
     if (density_) {
@@ -306,7 +339,7 @@ void FogPass::abandon_density_worker() noexcept {
 void FogPass::invalidate_density() noexcept {
     PreserveCpuState guard;
     if (density_) density_->invalidate();
-    density_status_.ready_fine = density_status_.ready_far = 0;
+    density_status_.ready_fine = density_status_.ready_far = density_status_.ready_horizon = 0;
 }
 bool FogPass::prefill_density(std::uint64_t sector_key, std::uint32_t recipe, const double world_offset[3],
                               const double camera[3], bool handover_step, bool handover_coldfill) noexcept {
@@ -372,7 +405,7 @@ void FogPass::detach() noexcept {
     release_targets();
     drop(atlas_);
     release_density_default();
-    for (unsigned i = 0; i < 2; ++i) {
+    for (unsigned i = 0; i < 3; ++i) {
         drop(density_staging_surface_[i]);
         drop(density_staging_[i]);
     }
@@ -380,6 +413,7 @@ void FogPass::detach() noexcept {
     drop(density_composite_);
     drop(density_repair_);
     density_march_scale_ = 0;
+    density_distance_set_ = distance_unbuildable_ = false;
     march_scale_unbuildable_ = 0;
     march_scale_unbuildable_reason_ = nullptr;
     drop(density_needs_);
@@ -431,7 +465,7 @@ void FogPass::after_reset(HRESULT hr) noexcept {
 }
 unsigned FogPass::references() const noexcept {
     unsigned n = 0;
-    for (unsigned i = 0; i < 2; ++i)
+    for (unsigned i = 0; i < 3; ++i)
         n += (density_staging_[i] != nullptr) + (density_atlas_[i] != nullptr) +
              (density_staging_surface_[i] != nullptr) + (density_atlas_surface_[i] != nullptr);
     n += (density_march_ != nullptr) + (density_composite_ != nullptr) + (density_repair_ != nullptr) +
@@ -649,17 +683,21 @@ HRESULT FogPass::density_resources() noexcept {
     }
     // The march/repair (and, with `c`, the composite) at one march spacing (fog-gpu-cost.md step C): slot-checked, then
     // created into m/r/c; nothing existing is touched. `why` names a failure that is not a lost device.
-    auto make_set = [&](unsigned scale, IDirect3DPixelShader9** m, IDirect3DPixelShader9** r, IDirect3DPixelShader9** c,
-                        const char** why) -> HRESULT {
+    auto make_set = [&](unsigned scale, bool distance, IDirect3DPixelShader9** m, IDirect3DPixelShader9** r,
+                        IDirect3DPixelShader9** c, const char** why) -> HRESULT {
         const unsigned variant = scale == fog_march_scale_quarter ? 1u : 0u;
-        const ProgramWords set[3] = {density_march_programs[variant], density_repair_programs[variant],
-                                     density_composite_programs[variant]};
-        // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
-        // device has to offer, so a program that grew past the ceiling must refuse before it is created.
+        const ProgramWords set[3] = {
+            distance ? density_march_distance_programs[variant] : density_march_programs[variant],
+            distance ? density_repair_distance_programs[variant] : density_repair_programs[variant],
+            density_composite_programs[variant]};
+        // Per program, not only the device's ps_3_0 count: today's repair sits at 510 of the 512 slots a ps_3_0
+        // device reports, so one of today's programs that grew past that must refuse before it is created. The distance
+        // march/repair are planned against the modern-driver cap (AGENTS.md, "Shader slot budget"): only a malformed one
+        // refuses here, and the device decides at creation (a refusal draws today's set).
         for (unsigned i = 0; i < (c ? 3u : 2u); ++i) {
             const unsigned slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(set[i].words),
                                                      set[i].count);
-            if (!slots || slots >= density_required_slots) {
+            if (!slots || (!(distance && i < 2) && slots >= density_required_slots)) {
                 *why = "density_compiled_slots";
                 return D3DERR_NOTAVAILABLE;
             }
@@ -675,12 +713,26 @@ HRESULT FogPass::density_resources() noexcept {
         }
         return hr;
     };
+    // The long distance fade (fog-visible-distance.md): the distance set while FogDensityConfig::distance is above 1 and
+    // it could be built; a set the device refused draws today's set instead (fog_distance 1), sticky until detach.
+    const bool distance_wanted = fog_distance_programs(density_config_.distance) && !distance_unbuildable_;
+    auto refuse_distance = [&] {
+        distance_unbuildable_ = true;
+        density_status_.distance_refused = "program";
+    };
     if (!density_march_) {
         // attach already proved ps_3_0, unrestricted NPOT >= 1560x1430, FP16 linear filtering and FP16 targets.
         if (ps30_slots_ < density_required_slots) return refuse("density_ps30_slots", D3DERR_NOTAVAILABLE);
         const char* why = "density_program_create";
-        HRESULT hr = make_set(density_config_.march_scale, &density_march_, &density_repair_, &density_composite_,
-                              &why);
+        bool distance = distance_wanted;
+        HRESULT hr = make_set(density_config_.march_scale, distance, &density_march_, &density_repair_,
+                              &density_composite_, &why);
+        if (FAILED(hr) && !lost(hr) && distance) {
+            refuse_distance();
+            distance = false;
+            hr = make_set(density_config_.march_scale, distance, &density_march_, &density_repair_, &density_composite_,
+                          &why);
+        }
         if (FAILED(hr) && !lost(hr) && density_config_.march_scale != fog_march_scale_half) {
             // The quarter-resolution set could not be built: the half-resolution set draws, and 4 stays refused until
             // detach.
@@ -688,7 +740,8 @@ HRESULT FogPass::density_resources() noexcept {
             march_scale_unbuildable_reason_ = "program";
             density_status_.march_scale_refused = "program";
             density_config_.march_scale = fog_march_scale_half;
-            hr = make_set(density_config_.march_scale, &density_march_, &density_repair_, &density_composite_, &why);
+            hr = make_set(density_config_.march_scale, distance, &density_march_, &density_repair_, &density_composite_,
+                          &why);
         }
         // Pixel shaders survive Reset; nothing is created on a draw path. A refusal is final: with the
         // retired presets gone there is no unshaped fallback, so the stored path stays off (legacy untouched).
@@ -703,18 +756,30 @@ HRESULT FogPass::density_resources() noexcept {
             return refuse(why, hr);
         }
         density_march_scale_ = density_config_.march_scale;
-    } else if (density_march_scale_ != density_config_.march_scale) {
+        density_distance_set_ = distance;
+    } else if (density_march_scale_ != density_config_.march_scale || density_distance_set_ != distance_wanted) {
         // Another spacing than the drawing set (only a caller that changes FogDensityConfig::march_scale; the proxy
         // fixes it at launch): the new set is built first and replaces the old only when complete. A set that cannot be
         // built leaves the working one drawing and the requested spacing refused until detach.
         IDirect3DPixelShader9 *march = nullptr, *repair = nullptr, *composite = nullptr;
         const char* why = nullptr;
-        const HRESULT hr = make_set(density_config_.march_scale, &march, &repair, &composite, &why);
+        const HRESULT hr = make_set(density_config_.march_scale, distance_wanted, &march, &repair, &composite, &why);
         if (lost(hr)) {
             reset_pending_ = true;
             return hr;
         }
-        if (FAILED(hr)) {
+        if (FAILED(hr) && distance_wanted) {
+            // The distance set was refused: today's set at the asked spacing is built at the next prepare (the working
+            // set draws meanwhile), unless the working set is the quarter set without its target (below).
+            refuse_distance();
+            if (density_march_scale_ == fog_march_scale_quarter && !quarter_) {
+                drop(density_march_);
+                drop(density_repair_);
+                drop(density_composite_);
+                density_march_scale_ = fog_march_scale_half;
+                density_distance_set_ = false;
+            }
+        } else if (FAILED(hr)) {
             if (density_march_scale_ == fog_march_scale_quarter && !quarter_) {
                 // The quarter set has no target (it could not be re-created after a Reset or resize: 4 is refused as
                 // "target") and the half set could not be built now: nothing here can draw. Drop the quarter set so the
@@ -737,6 +802,7 @@ HRESULT FogPass::density_resources() noexcept {
             density_repair_ = repair;
             density_composite_ = composite;
             density_march_scale_ = density_config_.march_scale;
+            density_distance_set_ = distance_wanted;
         }
     }
     // The quarter target lives only while the quarter programs draw (a refused or swapped-back spacing releases it).
@@ -812,6 +878,10 @@ HRESULT FogPass::density_resources() noexcept {
         }
         if (FAILED(hr)) refuse_motes("mote_buffers");
     }
+    // The horizon level (fog-visible-distance.md, step 2): with the distance set above the 39 km cap only, enabled here,
+    // after the distance programs exist (a prefill never allocates it). Its CPU cache is the one allocation; a failure
+    // keeps two levels ("cpu_cache"). Without the distance set the level has nothing to draw into and is dropped.
+    const bool horizon_wanted = density_distance_set_ && fog_distance_horizon(density_config_.look, density_config_.distance);
     if (!density_) {
         density_ = new (std::nothrow) fog::DensityCache;
         if (!density_ || !density_->start()) {
@@ -820,6 +890,10 @@ HRESULT FogPass::density_resources() noexcept {
             return refuse("density_worker", E_OUTOFMEMORY);
         }
     }
+    if (density_->horizon() && !horizon_wanted)
+        horizon_fallback(density_distance_set_ ? "config" : "program");
+    else if (horizon_wanted && !density_->horizon() && !density_->horizon_refused())
+        density_->enable_horizon();
     for (unsigned i = 0; i < 2; ++i) {
         if (!density_staging_[i]) {
             HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
@@ -856,15 +930,57 @@ HRESULT FogPass::density_resources() noexcept {
             ++allocations_;
         }
     }
+    // The horizon level's staging and atlas, the same format: a failure that is not a lost device falls back to the 39 km
+    // cap (one status reason) and never refuses the fog. The DEFAULT atlas is re-created after every Reset, where the one
+    // native out-of-memory prepare happened (2026-10-21).
+    const int h = fog::kHorizonLevel;
+    if (density_->horizon() && !density_staging_[h]) {
+        HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
+                                                          D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &density_staging_[h],
+                                                          nullptr);
+        if (SUCCEEDED(hr)) hr = density_staging_[h]->GetSurfaceLevel(0, &density_staging_surface_[h]);
+        if (FAILED(hr)) {
+            drop(density_staging_surface_[h]);
+            drop(density_staging_[h]);
+            if (lost(hr)) {
+                reset_pending_ = true;
+                return hr;
+            }
+            horizon_fallback("staging");
+        } else
+            ++allocations_;
+    }
+    if (density_->horizon() && !density_atlas_[h]) {
+        HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
+                                                          D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &density_atlas_[h],
+                                                          nullptr);
+        if (SUCCEEDED(hr)) hr = density_atlas_[h]->GetSurfaceLevel(0, &density_atlas_surface_[h]);
+        if (FAILED(hr)) {
+            drop(density_atlas_surface_[h]);
+            drop(density_atlas_[h]);
+            if (lost(hr)) {
+                reset_pending_ = true;
+                return hr;
+            }
+            horizon_fallback("atlas");
+        } else {
+            density_->gpu_reset();
+            ++allocations_;
+        }
+    }
     return S_OK;
 }
 HRESULT FogPass::density_uploads(unsigned budget) noexcept {
     density_status_.upload_bytes = density_status_.upload_rects = 0;
     if (!density_->has_work()) return S_OK; // steady state: three atomic loads, no lock, no device call
-    fog::StagingView views[fog::kLevelCount]{};
+    fog::StagingView views[fog::kMaxLevels]{};
     HRESULT hr = S_OK;
-    for (int i = 0; i < fog::kLevelCount && SUCCEEDED(hr); ++i) {
+    for (int i = 0; i < density_->levels() && SUCCEEDED(hr); ++i) {
         if (!density_->level_dirty(i)) continue;
+        if (i == fog::kHorizonLevel && !(density_staging_[i] && density_atlas_surface_[i])) {
+            horizon_fallback("staging"); // unreachable: density_resources created both or dropped the level
+            continue;
+        }
         // UpdateSurface takes an explicit source rectangle, so the texture's dirty region is not used.
         D3DLOCKED_RECT lock{};
         hr = density_staging_[i]->LockRect(0, &lock, nullptr, D3DLOCK_NO_DIRTY_UPDATE);
@@ -872,22 +988,33 @@ HRESULT FogPass::density_uploads(unsigned budget) noexcept {
             density_staging_[i]->UnlockRect(0);
             hr = E_FAIL;
         }
-        if (SUCCEEDED(hr)) views[i] = {static_cast<std::uint8_t*>(lock.pBits), std::size_t(lock.Pitch)};
+        if (SUCCEEDED(hr))
+            views[i] = {static_cast<std::uint8_t*>(lock.pBits), std::size_t(lock.Pitch)};
+        else if (i == fog::kHorizonLevel && !lost(hr)) {
+            horizon_fallback("lock"); // the horizon level fails closed; far and fine upload on
+            hr = S_OK;
+        }
     }
     fog::TileRect rects[fog::kDefaultUploadRects];
     unsigned count = 0; // bounds the UpdateSurface calls of one frame
     if (SUCCEEDED(hr)) count = density_->take_uploads(views, budget, rects, unsigned(std::size(rects)));
-    for (int i = 0; i < fog::kLevelCount; ++i)
+    for (int i = 0; i < fog::kMaxLevels; ++i)
         if (views[i].bits) {
             const HRESULT unlock = density_staging_[i]->UnlockRect(0);
             if (SUCCEEDED(hr)) hr = unlock;
         }
     for (unsigned i = 0; i < count && SUCCEEDED(hr); ++i) {
         const fog::TileRect& t = rects[i];
+        if (t.level == fog::kHorizonLevel && !density_->horizon()) continue; // dropped in this batch
         const RECT source{t.x, t.y, t.x + t.width, t.y + t.height};
         const POINT at{t.x, t.y};
-        hr = call<UpdateSurfaceFn>(UpdateSurface)(device_, density_staging_surface_[t.level], &source,
-                                                  density_atlas_surface_[t.level], &at);
+        const HRESULT copy = call<UpdateSurfaceFn>(UpdateSurface)(device_, density_staging_surface_[t.level], &source,
+                                                                  density_atlas_surface_[t.level], &at);
+        if (FAILED(copy) && t.level == fog::kHorizonLevel && !lost(copy)) {
+            horizon_fallback("upload"); // its remaining rectangles are skipped; far and fine count as uploaded
+            continue;
+        }
+        hr = copy;
         if (SUCCEEDED(hr)) {
             density_status_.upload_bytes += unsigned(t.bytes());
             ++density_status_.upload_rects;
@@ -1071,7 +1198,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config, const double ca
     PreserveCpuState guard;
     // Every failure below leaves the path unavailable for this frame: execute refuses a density frame.
     density_status_.available = false;
-    density_status_.ready_fine = density_status_.ready_far = 0;
+    density_status_.ready_fine = density_status_.ready_far = density_status_.ready_horizon = 0;
     density_status_.handover.due = false;
     if (!device_ || !caps_.enabled || !camera) return E_INVALIDARG;
     if (density_refused_) return D3DERR_NOTAVAILABLE;
@@ -1114,6 +1241,14 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config, const double ca
     density_status_.reason = "";
     density_status_.ready_fine = state.ready[0];
     density_status_.ready_far = state.ready[1];
+    density_status_.ready_horizon = state.ready[fog::kHorizonLevel]; // 0 without the horizon level
+    density_status_.distance_cap =
+        density_distance_set_ ? fog_distance_cap(density_config_.look, density_config_.distance, density_->horizon())
+                              : 0.f;
+    density_status_.horizon_refused =
+        density_distance_set_ && fog_distance_horizon(density_config_.look, density_config_.distance)
+            ? density_->horizon_refused()
+            : nullptr;
     const fog::CacheStats stats = density_->stats();
     density_status_.nodes_generated = stats.nodes_generated;
     density_status_.worker_busy_us = stats.worker_busy_us;
@@ -1149,7 +1284,7 @@ HRESULT FogPass::prepare_targets(UINT w, UINT h) noexcept {
     ++allocations_;
     return S_OK;
 }
-HRESULT FogPass::normalize(bool density) noexcept {
+HRESULT FogPass::normalize(UINT samplers) noexcept {
 #define STEP(expr)                                                                                                     \
     do {                                                                                                               \
         HRESULT hr = (expr);                                                                                           \
@@ -1178,8 +1313,8 @@ HRESULT FogPass::normalize(bool density) noexcept {
     STEP(call<SetRsFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE, 15));
     STEP(call<SetRsFn>(SetRenderState)(device_, D3DRS_MULTISAMPLEMASK, 0xffffffff));
     for (UINT i = 0; i < 8; ++i) STEP(call<SetRsFn>(SetRenderState)(device_, D3DRENDERSTATETYPE(D3DRS_WRAP0 + i), 0));
-    for (UINT i = 0; i < (density ? 8u : 7u); ++i) {
-        const bool linear = i == 1 || i == 7; // s1 atlas (fine), s7 far atlas
+    for (UINT i = 0; i < samplers; ++i) {
+        const bool linear = i == 1 || i == 7 || i == 8; // s1 atlas (fine), s7 far atlas, s8 horizon atlas
         STEP(call<SetSamplerFn>(SetSamplerState)(device_, i, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP));
         STEP(call<SetSamplerFn>(SetSamplerState)(device_, i, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP));
         STEP(call<SetSamplerFn>(SetSamplerState)(device_, i, D3DSAMP_ADDRESSW, D3DTADDRESS_CLAMP));
@@ -1251,7 +1386,8 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
         return finish(S_FALSE);
     }
     const bool density = f.density;
-    float ready_fine = 0, ready_far = 0;
+    const bool distance = density && density_distance_set_; // the long distance fade's programs draw
+    float ready_fine = 0, ready_far = 0, ready_horizon = 0;
     if (density) {
         if (!density_ready(f.width, f.height) || !density_status_.available) return refuse(E_INVALIDARG);
         for (double v : f.camera_world)
@@ -1260,12 +1396,18 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
         // nodes reads nothing of that level (fine: far-only interior; far: no fog this frame).
         ready_far = density_->covers(1, f.camera_world) ? density_status_.ready_far : 0.f;
         ready_fine = density_->covers(0, f.camera_world) ? density_status_.ready_fine : 0.f;
+        // The horizon level's share of the tail (0: the tail fades out by 195,000 on the far level, never read).
+        ready_horizon = distance && density_->covers(fog::kHorizonLevel, f.camera_world) && density_atlas_[fog::kHorizonLevel]
+                            ? density_status_.ready_horizon
+                            : 0.f;
         if (!(ready_far > 0)) {
             r.operation = S_FALSE;
             return finish(S_FALSE);
         } // same zero-device-call path as off
         if (f.depth_share == density_atlas_[0] || f.depth_share == density_atlas_[1] ||
-            f.depth_share == density_staging_[0] || f.depth_share == density_staging_[1])
+            f.depth_share == density_staging_[0] || f.depth_share == density_staging_[1] ||
+            (density_atlas_[2] && f.depth_share == density_atlas_[2]) ||
+            (density_staging_[2] && f.depth_share == density_staging_[2]))
             return refuse(E_INVALIDARG);
     } else if (!resources_ready(f.width, f.height, f.profile, f.recipe_id, f.field_generation))
         return refuse(E_INVALIDARG);
@@ -1295,7 +1437,7 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
     // All map references are borrowed for this serialized transaction. Validation
     // failure disables only that map; device loss still aborts before any write.
     IDirect3DTexture9* shadow_maps[fog_cascade_max]{};
-    float constants[fog_constant_rows][4]{};
+    float constants[density_distance_rows][4]{}; // c0..c37: the distance programs' rows past c35 are zero otherwise
     const auto& p = f.params;
     constants[0][0] = p.m00;
     constants[0][1] = p.m11;
@@ -1328,6 +1470,16 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
     if (density)
         constants[2][3] *= fog_look_constants(density_config_.look, density_config_.chroma, constants[8], f.look_phase,
                                               constants + fog_look_first_register, f.look_resolved);
+    if (distance) {
+        // The long distance fade (fog-visible-distance.md): every ray ends at the cap C (c3.w = c25.w), the end smoothstep
+        // over its last quarter (c35.yz), c36 the horizon level's camera modulo, c37 the law and the horizon readiness.
+        const float cap = fog_distance_cap(density_config_.look, density_config_.distance, density_->horizon());
+        constants[3][3] = cap;
+        fog_distance_constants(density_config_.look, cap, ready_horizon, constants + fog_look_first_register,
+                               constants[fog_distance_register + 1]);
+        fog::camera_local(fog::kHorizonLevel, f.camera_world, constants[fog_distance_register]);
+        constants[fog_distance_register][3] = float(1.0 / fog::kHorizonDelta);
+    }
     constants[9][1] = .95f;
     constants[9][2] = .85f;
     constants[9][3] = 10.f;
@@ -1335,7 +1487,8 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
         const auto& k = f.cascades[i];
         if (!k.valid || !k.map || !fog_shadow_current(f.frame, k.frame) || !fog_shadow_rows(k.rows, k.bias) ||
             k.map == f.depth_share || k.map == atlas_ || k.map == lit_ || k.map == scratch_ ||
-            (quarter_ && k.map == quarter_) || (density && (k.map == density_atlas_[0] || k.map == density_atlas_[1])))
+            (quarter_ && k.map == quarter_) ||
+            (density && (k.map == density_atlas_[0] || k.map == density_atlas_[1] || k.map == density_atlas_[2])))
             continue;
         D3DSURFACE_DESC desc{};
         hr = k.map->GetLevelDesc(0, &desc);
@@ -1429,9 +1582,13 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
             r.route_poisoned = true;
         }
     }
+    // s8: the horizon atlas of the distance programs (the far atlas while there is none: never read at readiness 0).
+    const UINT samplers = distance ? 9u : density ? 8u : 7u;
+    IDirect3DTexture9* const horizon_texture =
+        density_atlas_[fog::kHorizonLevel] ? density_atlas_[fog::kHorizonLevel] : density_atlas_[1];
     if (SUCCEEDED(r.operation)) {
         changed = true;
-        record(FogStage::Normalize, normalize(density));
+        record(FogStage::Normalize, normalize(samplers));
     }
     if (SUCCEEDED(r.operation))
         record(FogStage::Copy,
@@ -1460,19 +1617,21 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
             if (!r.scene_known) r.route_poisoned = true;
         }
     }
-    const UINT samplers = density ? 8u : 7u;
     if (may_draw && SUCCEEDED(r.operation))
         record(FogStage::March,
                bind_target(march_surface, march_width, march_height, density ? density_march_ : march_, samplers));
     if (may_draw && SUCCEEDED(r.operation))
-        record(FogStage::March, call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_, 0, &constants[0][0],
-                                                                                density ? fog_constant_rows : 22u));
+        record(FogStage::March, call<SetPsConstantsFn>(SetPixelShaderConstantF)(
+                                    device_, 0, &constants[0][0],
+                                    distance ? density_distance_rows : density ? fog_constant_rows : 22u));
     if (may_draw && SUCCEEDED(r.operation))
         record(FogStage::March, call<SetTextureFn>(SetTexture)(device_, 0, f.depth_share));
     if (may_draw && SUCCEEDED(r.operation))
         record(FogStage::March, call<SetTextureFn>(SetTexture)(device_, 1, density ? density_atlas_[0] : atlas_));
     if (density && may_draw && SUCCEEDED(r.operation))
         record(FogStage::March, call<SetTextureFn>(SetTexture)(device_, 7, density_atlas_[1]));
+    if (distance && may_draw && SUCCEEDED(r.operation))
+        record(FogStage::March, call<SetTextureFn>(SetTexture)(device_, 8, horizon_texture));
     for (unsigned i = 0; i < fog_cascade_max && may_draw && SUCCEEDED(r.operation); ++i)
         record(FogStage::March, call<SetTextureFn>(SetTexture)(device_, 4 + i, shadow_maps[i]));
     // --gpu-sync-timing only: the fog_march / fog_composite / fog_repair pairs bracket the three quads (the binds are
@@ -1516,10 +1675,11 @@ HRESULT FogPass::execute(const FogFrame& f, FogResult* output) noexcept {
         density_repair_projection(p, repair_c0);
         if (SUCCEEDED(r.operation))
             record(FogStage::Repair, call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_, 0, repair_c0, 1));
-        IDirect3DTexture9* repair_inputs[] = {f.depth_share,  density_atlas_[0], scratch_,       nullptr,
-                                              shadow_maps[0], shadow_maps[1],    shadow_maps[2], density_atlas_[1]};
+        IDirect3DTexture9* repair_inputs[] = {f.depth_share,     density_atlas_[0], scratch_,
+                                              nullptr,           shadow_maps[0],    shadow_maps[1],
+                                              shadow_maps[2],    density_atlas_[1], distance ? horizon_texture : nullptr};
         UINT slot = 0; // the slots bound (or tried) before a failure stopped the loop
-        for (; slot < 8 && SUCCEEDED(r.operation); ++slot)
+        for (; slot < samplers && SUCCEEDED(r.operation); ++slot)
             if (repair_inputs[slot])
                 record(FogStage::Repair, call<SetTextureFn>(SetTexture)(device_, slot, repair_inputs[slot]));
         if (SUCCEEDED(r.operation)) {

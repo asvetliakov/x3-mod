@@ -1,0 +1,65 @@
+HORIZON_GEOMETRY need_nodes=86 lead=8 retarget=8 reach=342400
+CHECK horizon_need_plus_lead_inside_window_until_retarget PASS
+CHECK horizon_retarget_at_8_nodes PASS
+CHECK far_reach_holds_the_far_share PASS
+CHECK horizon_reach_holds_the_3x_cap PASS
+CHECK two_level_start PASS
+CHECK two_level_generates_no_horizon_node PASS
+CHECK horizon_needs_a_started_cache PASS
+CHECK three_level_start PASS
+FILL far_resident_2=4 fine_resident_2=8 far_resident_3=4 fine_resident_3=8 first_horizon_frame=3 horizon_ready_frame=234 max_horizon_slab=32768 horizon_nodes=2097152 max_upload_bytes=1064608 horizon_upload_bytes=10107824
+CHECK cold_horizon_after_far_and_fine_need PASS
+CHECK fine_need_not_later_than_two_levels PASS
+CHECK horizon_slabs_bounded PASS
+CHECK horizon_ramps_to_ready PASS
+CHECK budget_respected_and_far_fine_horizon_order PASS
+CHECK horizon_uploads_only_after_far_and_fine PASS
+CHECK every_node_once PASS
+ATLAS level=0 differing_bytes=0
+ATLAS level=1 differing_bytes=0
+ATLAS level=2 differing_bytes=0
+CHECK three_levels_equal_static PASS
+ATLAS level=0 differing_bytes=0
+ATLAS level=1 differing_bytes=0
+CHECK two_level_cache_unchanged PASS
+ATLAS level=2 differing_bytes=0
+CHECK tight_budget_shared_in_order PASS
+CHECK horizon_ready_and_covering PASS
+CHECK reset_drops_horizon PASS
+CHECK horizon_ramps_back_over_90_frames PASS
+CHECK horizon_cache_installed PASS
+CHECK drop_is_final PASS
+CHECK drop_is_immediate PASS
+CHECK drop_frees_the_horizon_cache_at_the_next_post PASS
+CHECK dropped_horizon_is_not_filled_or_uploaded PASS
+ATLAS level=0 differing_bytes=0
+ATLAS level=1 differing_bytes=0
+CHECK base_levels_settle_after_drop PASS
+CHECK seta_budget_and_order PASS
+CHECK seta_budget_and_order PASS
+SETA levels=2 frames=900 fine_resident=768 far_zero=0 horizon_zero=0 horizon_full=0 horizon_min=1.0000 nodes_fine=18082432 nodes_far=2002176 nodes_horizon=0
+SETA levels=3 frames=900 fine_resident=771 far_zero=0 horizon_zero=0 horizon_full=900 horizon_min=1.0000 nodes_fine=18082432 nodes_far=2002176 nodes_horizon=892928
+CHECK seta_far_never_drops PASS
+CHECK seta_horizon_never_reaches_zero PASS
+SETA_SHARE horizon_share=0.0426 fine_resident_ratio=1.0039
+CHECK seta_horizon_share_bounded PASS
+CHECK seta_fine_not_starved PASS
+CHECK seta_budget_and_order PASS
+CHECK seta_budget_and_order PASS
+SETA_STRESS levels=2 frames=900 fine_resident=322 far_zero=77 horizon_zero=0 horizon_full=0 horizon_min=1.0000 nodes_fine=26364672 nodes_far=3531008 nodes_horizon=0
+SETA_STRESS levels=3 frames=900 fine_resident=327 far_zero=77 horizon_zero=0 horizon_full=900 horizon_min=1.0000 nodes_fine=26362752 nodes_far=3531008 nodes_horizon=1707776
+CHECK stress_horizon_no_worse_than_far PASS
+CHECK horizon_allocation_failure_keeps_two_levels PASS
+CHECK refused_horizon_fills_two_levels PASS
+CHECK threaded_start_with_horizon PASS
+ATLAS level=0 differing_bytes=0
+ATLAS level=1 differing_bytes=0
+ATLAS level=2 differing_bytes=0
+CHECK threaded_worker_fills_three_levels PASS
+RESULT PASS checks=40 failures=0
+PERF levels=2 step_still_ns=19.8 step_moving_ns=16.5 sink=1
+PERF levels=3 step_still_ns=26.5 step_moving_ns=22.9 sink=1
+PERF levels=2 step_still_ns=33.7 step_moving_ns=16.6 sink=1
+PERF levels=3 step_still_ns=47.1 step_moving_ns=40.1 sink=1
+PERF levels=2 step_still_ns=21.0 step_moving_ns=17.0 sink=1
+PERF levels=3 step_still_ns=26.7 step_moving_ns=23.1 sink=1

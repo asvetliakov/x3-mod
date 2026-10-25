@@ -52,6 +52,13 @@ struct FogDensityConfig {
     // could not be built. The look marches 40 far bins (fog_far_bins; the 24-bin variant and the visibility-grid shadow
     // pass were removed on 2026-09-25).
     unsigned march_scale = fog_march_scale_default;
+    // X3M_FOG_DISTANCE (docs/architecture/fog-visible-distance.md; ini fog_distance, launcher --fog-distance, default 3):
+    // the cap as a multiple of the 22.5 km column, 1 to 3 (fog_look_math.h). 1 draws today's programs and constants and
+    // allocates no horizon level; above 1 the distance march/repair (the composite is shared); above 1.7333 the horizon
+    // level as well (its CPU cache with the worker, its SYSTEMMEM staging and DEFAULT atlas at prepare_density). A
+    // horizon allocation or upload failure is not a refusal: the fog draws on at the 39 km cap
+    // (FogDensityStatus::horizon_refused). Read when the worker starts and at each prepare_density.
+    float distance = fog_distance_default;
 };
 struct FogDensityStatus {
     bool available = false;
@@ -69,6 +76,14 @@ struct FogDensityStatus {
     const char* march_scale_refused = nullptr;
     // The last completed cold start, due in the successful prepare_density of the frame it completed (logged once).
     fog::HandoverReport handover{};
+    // The long distance fade (FogDensityConfig::distance): the horizon level's 90-frame ramp (0 without it), the cap the
+    // distance programs draw (render units; 0 while today's programs draw), why the distance programs could not be built
+    // ("program": today's programs draw; sticky until detach) and why the horizon level is off although asked for
+    // ("cpu_cache", "staging", "atlas", "lock", "upload" or "program"; the cap falls back to 39 km; sticky for the worker's
+    // lifetime). The proxy logs each refusal once.
+    float ready_horizon = 0, distance_cap = 0;
+    const char* distance_refused = nullptr;
+    const char* horizon_refused = nullptr;
 };
 // Borrowed only during execute. Rows map current view coordinates to the exact
 // retained replay basis; frame stamps prohibit the surface lane's older far map.
@@ -201,6 +216,8 @@ public:
     // release_density_worker, and later polls allocate nothing). False: the path is refused, a Reset is pending, the
     // worker could not start, or the camera was not posted (a missed lock; retried at the next poll). The resident
     // identity is re-centred as a cold start.
+    // A worker started here has two levels: the horizon level (FogDensityConfig::distance) is enabled at prepare_density,
+    // once the distance programs exist.
     bool prefill_density(std::uint64_t sector_key, std::uint32_t recipe, const double world_offset[3],
                          const double camera[3], bool handover_step, bool handover_coldfill) noexcept;
     bool prefill_refused() const noexcept { return prefill_refused_; }
@@ -218,6 +235,7 @@ public:
     unsigned density_march_scale() const noexcept {
         return density_march_scale_;
     } // march spacing of the created programs (0: none)
+    bool density_distance_programs() const noexcept { return density_distance_set_; } // the distance set draws
     const FogMoteReport& mote_report() const noexcept { return mote_report_; }
     bool motes_refused() const noexcept { return motes_refused_; } // sticky until detach; the fog draws without motes
     bool motes_variant() const noexcept {
@@ -289,10 +307,13 @@ private:
         ++calls_;
         return reinterpret_cast<Fn>(vtable_[slot]);
     }
-    HRESULT normalize(bool density) noexcept;
+    HRESULT normalize(UINT samplers) noexcept; // 7 legacy, 8 stored, 9 with the distance programs (s8 horizon)
     HRESULT density_resources() noexcept;
     HRESULT density_uploads(unsigned budget) noexcept;
     void release_density_default() noexcept;
+    // The horizon level fails closed (fog-visible-distance.md): its staging and atlas go, the cache drops the level, the
+    // cap falls back to 39 km; one status reason, never a refusal of the fog.
+    void horizon_fallback(const char* reason) noexcept;
     void release_motes() noexcept;
     void release_quarter() noexcept;
     const char* mote_capabilities() noexcept;
@@ -332,6 +353,9 @@ private:
     // which exists only while the quarter programs draw (sized from the targets, released with them and re-created at
     // prepare_density).
     unsigned density_march_scale_ = 0;
+    // The three programs above are the distance set (FOG_DISTANCE); the distance set could not be built (sticky until
+    // detach: today's set draws).
+    bool density_distance_set_ = false, distance_unbuildable_ = false;
     unsigned march_scale_unbuildable_ = 0;
     const char* march_scale_unbuildable_reason_ = nullptr;
     IDirect3DTexture9* quarter_ = nullptr;
@@ -342,8 +366,9 @@ private:
     IDirect3DPixelShader9* density_needs_ = nullptr;
     unsigned density_needs_scale_ = 0;
     bool needs_refused_ = false;
-    IDirect3DTexture9 *density_staging_[2]{}, *density_atlas_[2]{};
-    IDirect3DSurface9 *density_staging_surface_[2]{}, *density_atlas_surface_[2]{};
+    // Per level: fine, far and (only while the cache runs the horizon level) horizon.
+    IDirect3DTexture9 *density_staging_[3]{}, *density_atlas_[3]{};
+    IDirect3DSurface9 *density_staging_surface_[3]{}, *density_atlas_surface_[3]{};
     FogDensityConfig density_config_{};
     FogDensityStatus density_status_{};
     unsigned ps30_slots_ = 0;

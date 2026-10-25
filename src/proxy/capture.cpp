@@ -261,6 +261,10 @@ bool volumetric_fog_range_stored = false;
 // (the default); exactly "2" keeps the half-resolution march (the opt-out); any other value is logged as invalid and
 // keeps the default. The legacy range never reads the variable.
 unsigned volumetric_fog_march_scale = x3m::renderer::fog_march_scale_default;
+// X3M_FOG_DISTANCE=1..3 (docs/architecture/fog-visible-distance.md; ini fog_distance, launcher --fog-distance, default 3):
+// the stored look's cap as a multiple of 22.5 km. The whole string must parse as a number in [1, 3]; anything else is
+// logged as invalid and keeps the default. 1 is today's programs and constants (no horizon level). Stored range only.
+float volumetric_fog_distance = x3m::renderer::fog_distance_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
 // readiness step and cold fill. Stored range only.
@@ -3835,6 +3839,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);
+    hooked.motion_output.configure_volumetric_fog_distance(volumetric_fog_distance);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
     hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,
                                                            volumetric_fog_handover_coldfill);
@@ -5102,6 +5107,41 @@ void initialize_log(HMODULE module) {
                                                           : renderer::fog_march_scale_quarter;
             log("volumetric_fog_march_scale scale=%u requested=%s refused=%s", volumetric_fog_march_scale,
                 march_scale_value, march_scale_refusal);
+            // X3M_FOG_DISTANCE (fog-visible-distance.md): echoed like the march scale; absent is the default 3. `cap_km` is
+            // what the programs draw while the horizon level holds (39 km at most without it; its fallback logs its own
+            // volumetric_fog_distance event=horizon_fallback row).
+            char distance_value[40] = "3";
+            const char* distance_refusal = "none";
+            volumetric_fog_distance = renderer::fog_distance_default;
+            const DWORD distance_length = x3m::config::get(L"X3M_FOG_DISTANCE", setting, 32);
+            if (distance_length >= 32) {
+                std::snprintf(distance_value, sizeof distance_value, "overlong_%lu",
+                              static_cast<unsigned long>(distance_length));
+                distance_refusal = "invalid";
+            } else if (distance_length > 0) {
+                for (DWORD i = 0; i < distance_length; ++i) {
+                    const wchar_t c = setting[i];
+                    distance_value[i] = (c >= L'0' && c <= L'9') || (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z') ||
+                                                c == L'.' || c == L'_' || c == L'+' || c == L'-'
+                                            ? char(c)
+                                            : '?';
+                }
+                distance_value[distance_length] = '\0';
+                wchar_t* end = nullptr;
+                const float v = wcstof(setting, &end);
+                if (end != setting && *end == L'\0' && v >= renderer::fog_distance_min && v <= renderer::fog_distance_max)
+                    volumetric_fog_distance = v;
+                else
+                    distance_refusal = "invalid";
+            }
+            const bool distance_horizon = renderer::fog_distance_horizon(volumetric_fog_look_tuning, volumetric_fog_distance);
+            log("volumetric_fog_distance_mode distance=%g requested=%s refused=%s programs=%s horizon=%u cap_km=%.1f",
+                double(volumetric_fog_distance), distance_value, distance_refusal,
+                renderer::fog_distance_programs(volumetric_fog_distance) ? "distance" : "look", unsigned(distance_horizon),
+                double(renderer::fog_distance_programs(volumetric_fog_distance)
+                           ? renderer::fog_distance_cap(volumetric_fog_look_tuning, volumetric_fog_distance, distance_horizon)
+                           : volumetric_fog_look_tuning.sky_cap) /
+                    5000.);
         }
         // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512),
         // anything else keeps the motes off; the tunables are read only with the option on (one
@@ -5155,11 +5195,17 @@ void initialize_log(HMODULE module) {
             else
                 log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s", valid ? "out_of_range" : "unparsable");
         }
+        // The horizon level of the long distance fade adds one CPU cache and one SYSTEMMEM staging copy (and one DEFAULT
+        // atlas, not counted here) when fog_distance is above 1.7333 (fog-visible-distance.md).
+        const unsigned fog_levels = volumetric_fog_range_stored &&
+                                            renderer::fog_distance_horizon(volumetric_fog_look_tuning, volumetric_fog_distance)
+                                        ? 3u
+                                        : 2u;
         if (asked)
-            log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",
+            log("volumetric_fog_range mode=%s atlas_bytes=%u levels=%u cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",
                 volumetric_fog_range_stored ? "stored" : "legacy",
-                volumetric_fog_range_stored ? unsigned(fog::kAtlasBytes) : 0u,
-                volumetric_fog_range_stored ? unsigned(4 * fog::kAtlasBytes) : 0u,
+                volumetric_fog_range_stored ? unsigned(fog::kAtlasBytes) : 0u, fog_levels,
+                volumetric_fog_range_stored ? unsigned(2 * fog_levels * fog::kAtlasBytes) : 0u,
                 volumetric_fog_range_stored ? unsigned(fog::kDefaultUploadBudget) : 0u,
                 volumetric_fog_range_stored ? fog::kDefaultUploadRects : 0u,
                 volumetric_fog_range_stored ? fog::kReadinessRampFrames : 0u, unsigned(volumetric_fog_range_stored));

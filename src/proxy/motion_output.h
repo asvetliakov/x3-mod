@@ -1302,6 +1302,9 @@ public:
     // X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C): the march spacing 2 or 4 of the stored look, read once at init;
     // FogPass creates the matching programs and quarter target at prepare_density and refuses any other spacing.
     void configure_volumetric_fog_march_scale(unsigned scale) noexcept { fog_density_config_.march_scale = scale; }
+    // X3M_FOG_DISTANCE (docs/architecture/fog-visible-distance.md): the long distance fade's cap, 1 to 3 (1: today's
+    // programs, no horizon level), read once at init; FogPass builds the matching programs and levels.
+    void configure_volumetric_fog_distance(float distance) noexcept { fog_density_config_.distance = distance; }
     // X3M_FOG_DUST_MOTES (fog-dust-motes.md): the stored range's dust motes, read once at init; count 0 is off.
     void configure_volumetric_fog_dust_motes(const renderer::FogMoteTuning& motes) noexcept {
         fog_dust_motes_launch_ = motes.count > 0;
@@ -3277,7 +3280,9 @@ private:
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false,
          fog_density_camera_valid_ = false;
-    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_march_scale_refused_logged_ = false;
+    bool fog_density_config_logged_ = false, fog_density_ready_logged_[3]{}, fog_march_scale_refused_logged_ = false;
+    // The long distance fade's refusals, one row each per session (distance programs, horizon level fallback).
+    bool fog_distance_refused_logged_ = false, fog_horizon_refused_logged_ = false;
     // X3M_FOG_DUST_MOTES at launch: arms the dust-motes fixture toggle and the mote fields of volumetric_fog_frame.
     bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
     long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)

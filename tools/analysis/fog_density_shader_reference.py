@@ -61,6 +61,52 @@ def look_constants(chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=None, 
     return rows, float(t['sigma_scale'])
 
 
+# The long distance fade (docs/architecture/fog-visible-distance.md; FOG_DISTANCE in fog_density_field_inc.h, the
+# fog_distance_* helpers of fog_look_math.h): the cap as a multiple of sky_cap, at most FAR_CAP without the horizon level,
+# the far -> horizon hand-over across BLEND and 40 geometric tail bins over [sky_cap, L].
+DISTANCE_FAR_CAP = 195000.
+DISTANCE_BLEND = (175000., 20000.)  # start, width
+TAIL_BINS = 40
+
+
+def distance_clamp(distance):
+    d = np.float32(distance)
+    return np.float32(1.) if not d > 1 else min(d, np.float32(3.))
+
+
+def distance_horizon(distance, tuning=None):
+    t = tuning or TUNING
+    return bool(np.float32(distance) > 1) and distance_clamp(distance) * np.float32(t['sky_cap']) > np.float32(DISTANCE_FAR_CAP)
+
+
+def distance_cap(distance, horizon, tuning=None):
+    """fog_distance_cap: value x sky_cap (float32), at most DISTANCE_FAR_CAP without the horizon level."""
+    t = tuning or TUNING
+    cap = distance_clamp(distance) * np.float32(t['sky_cap'])
+    return cap if horizon or cap <= np.float32(DISTANCE_FAR_CAP) else np.float32(DISTANCE_FAR_CAP)
+
+
+def distance_rows(rows, cap, horizon_ready, tuning=None):
+    """fog_distance_constants: c25.w, c35.yz of the look rows (in place, float32) and the c37 row."""
+    t = tuning or TUNING; f = np.float32; cap = f(cap)
+    rows[0, 3] = cap; rows[10, 1] = f(.75) * cap; rows[10, 2] = f(1) / (f(.25) * cap)
+    return np.array((f(t['taper_start']) * f(t['taper_start']), f(t['sky_cap']), min(max(f(horizon_ready), f(0)), f(1)), 0), np.float32)
+
+
+def tail_bins(length, start=112500.):
+    """The shader's tail bins in float32 and its operation order: q = exp2(log2(L/start)/40), the first centre
+    start*sqrt(q), width = centre*(q-1)/sqrt(q), the next centre = centre*q. (centres, widths) per ray, shape (n, 40)."""
+    f = np.float32
+    L = np.atleast_1d(np.asarray(length, np.float32)); s0 = f(start)
+    q = np.exp2(np.log2(L / s0) * f(.025)).astype(np.float32)
+    root = np.sqrt(q).astype(np.float32)
+    centre = (s0 * root).astype(np.float32); per = ((q - f(1)) / root).astype(np.float32)
+    centres, widths = [], []
+    for _ in range(TAIL_BINS):
+        centres.append(centre); widths.append((centre * per).astype(np.float32)); centre = (centre * q).astype(np.float32)
+    return np.stack(centres, 1), np.stack(widths, 1)
+
+
 def look_noise(px, py, shift):
     """The shader's interleaved gradient noise in float32, and the distance of both frac() arguments
     from a wrap (the checker leaves out pixels where float rounding could land on the other side)."""
@@ -72,20 +118,29 @@ def look_noise(px, py, shift):
     return n.astype(np.float64), margin.astype(np.float64)
 
 
-def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.), visibility=None, tuning=None, resolved=True):
+def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.), visibility=None, tuning=None, resolved=True,
+               distance=None, horizon_ready=1., horizon=True):
     """(S, T) of the FOG_LOOK law. `limits` is the geometry distance (ignored for sky rays; both end at the cap), `pixels` the
     half-resolution (x, y) of each ray for the shaft lookup offset while `resolved`
     (a repair pixel passes None: the repair law keeps the bin centres), `shadowed` a shaft visibility of 0 on every sample, `visibility(points, rays, ds)` the
     shaft visibility at camera-relative world `points` of ray indices `rays` in bins of length `ds` (the shaft lookup
-    position, which is not the density position when only the lookup is offset). 40 far bins (FOG_FAR_BINS)."""
+    position, which is not the density position when only the lookup is offset). 40 far bins (FOG_FAR_BINS).
+    `distance` (above 1): the FOG_DISTANCE law of fog-visible-distance.md with the cap distance_cap(distance, horizon), the
+    horizon level's readiness `horizon_ready` and store.sample_level('horizon', ...) for the tail; None is today's law."""
     far_bins = 40
-    k, scale = look_constants(chroma, phase=phase, tuning=tuning, resolved=resolved); k = k.astype(np.float64); sigma = float(np.float32(sigma * scale))
+    k, scale = look_constants(chroma, phase=phase, tuning=tuning, resolved=resolved)
+    law = None
+    if distance is not None and np.float32(distance) > 1:
+        cap = distance_cap(distance, horizon, tuning)
+        law = distance_rows(k, cap, horizon_ready if horizon else 0., tuning).astype(np.float64)
+    k = k.astype(np.float64); sigma = float(np.float32(sigma * scale))
     d = np.asarray(directions, np.float64); n = len(d); sun = np.asarray(sun, np.float64); origin = np.asarray(origin, np.float64)
     solid = np.broadcast_to(np.asarray(solid, bool), (n,))
     # Every ray ends at the column cap, sky and geometry alike (no silhouette rim around distant hulls).
-    L = np.minimum(np.where(solid, np.asarray(limits, np.float64), m.FAR), min(m.FAR, k[0, 3]))
+    horizon_w = m.FAR if law is None else k[0, 3]  # c3.w: 200000, or the cap under FOG_DISTANCE
+    L = np.minimum(np.where(solid, np.asarray(limits, np.float64), horizon_w), min(horizon_w, k[0, 3]))
     taper_start = np.full(n, k[10, 1]); taper_recip = np.full(n, k[10, 2])
-    near = np.minimum(L, 12000.) / 24; far = np.maximum(L - 12000., 0) / far_bins
+    near = np.minimum(L, 12000.) / 24; far = np.maximum((L if law is None else np.minimum(L, law[1])) - 12000., 0) / far_bins
     offset = np.full((n, 4), .5)  # bins: near and far of the density sample, near and far of the shaft lookup
     if pixels is not None:
         noise, _ = look_noise(pixels[0], pixels[1], k[8, 3]); offset += (noise - .5)[:, None] * np.concatenate((k[6, 2:], k[7, 2:]))[None, :]
@@ -112,6 +167,8 @@ def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0,
         cover = k[10, 0] * sum(wave(warped[:, 0] * a + warped[:, 1] * b + warped[:, 2] * c) for a, b, c in COVER_WAVES)
         rho = density(store.sample(points, s[active], origin).astype(np.float64), cover)
         e = np.clip((s[active] - taper_start[active]) * taper_recip[active], 0, 1); rho = rho * (1 - e * e * (3 - 2 * e))
+        if law is not None:  # inverse square past the fade start
+            rho = rho * np.minimum(1., law[0] / (s[active] * s[active]))
         step = sigma * rho * ds[active]; a = 1 - np.exp(-step); a2 = 1 - np.exp(-.5 * step)
         sunward = np.ones(len(rho)); fogged = rho > 0
         if fogged.any():
@@ -127,6 +184,41 @@ def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0,
         lit[active] += T[active] * a * sunward * (k[1, 3] + (1 - k[1, 3]) * vis)
         lift[active] += T[active] * a2 * (k[3, 3] + (1 - k[3, 3]) * vis)
         T[active] *= 1 - a
+    if law is not None:
+        tail = L > law[1]
+        if tail.any():
+            centres, widths = tail_bins(L[tail], law[1])
+            for j in range(TAIL_BINS):
+                rays_t = np.flatnonzero(tail); s = centres[:, j].astype(np.float64); ds = widths[:, j].astype(np.float64)
+                ray = d[rays_t] * s[:, None]; points = origin + ray
+                h = np.clip((s - DISTANCE_BLEND[0]) / DISTANCE_BLEND[1], 0, 1); h = h * h * (3 - 2 * h)
+                wf, wh = 1 - h, h * law[2]; presence = wf + wh; on = presence > 0
+                if not on.any():
+                    continue
+                rays_t, s, ds, points, wf, wh, presence = rays_t[on], s[on], ds[on], points[on], wf[on], wh[on], presence[on]
+
+                def blend(p):
+                    out = np.zeros(len(p))
+                    a_, b_ = wf > 0, wh > 0
+                    if a_.any(): out[a_] += wf[a_] * store.sample_level('far', p[a_], origin).astype(np.float64)
+                    if b_.any(): out[b_] += wh[b_] * store.sample_level('horizon', p[b_], origin).astype(np.float64)
+                    return out / presence
+                warped = (local + (points - origin)) / 65536.  # no domain warp in the tail
+                cover = k[10, 0] * sum(wave(warped[:, 0] * a + warped[:, 1] * b + warped[:, 2] * c) for a, b, c in COVER_WAVES)
+                e = np.clip((s - k[10, 1]) * k[10, 2], 0, 1)
+                rho = density(blend(points), cover) * presence * (law[0] / (s * s)) * (1 - e * e * (3 - 2 * e))
+                step = sigma * rho * ds; a = 1 - np.exp(-step); a2 = 1 - np.exp(-.5 * step)
+                sunward = np.ones(len(rho)); fogged = rho > 0
+                if fogged.any():
+                    keep = (wf, wh, presence)
+                    wf, wh, presence = wf[fogged], wh[fogged], presence[fogged]
+                    r = density(blend(points[fogged] + sun * k[7, 0]), cover[fogged]) * k[7, 1]
+                    wf, wh, presence = keep
+                    tau = sigma * k[6, 0] * r
+                    sunward[fogged] = np.exp(-tau) * (1 - k[6, 1] * np.exp(-2 * (tau + sigma * k[6, 0] * rho[fogged] * k[7, 0])))
+                lit[rays_t] += T[rays_t] * a * sunward  # shaft visibility 1 past the cascades
+                lift[rays_t] += T[rays_t] * a2
+                T[rays_t] *= 1 - a
     cosine = d[:, 0] * sun[0] + d[:, 1] * sun[1] + d[:, 2] * sun[2]
     lobes = [k[4 + j, 2] / (k[4 + j, 0] - k[4 + j, 1] * cosine) ** 1.5 for j in range(2)]
     ambient = k[2, :3][None, :] + (k[3, :3] - k[2, :3])[None, :] * (.5 + .5 * cosine)[:, None]

@@ -49,6 +49,14 @@ float4 look_extinction : register(c33); // extinction exponent RGB of T_rgb = po
 float4 look_warp : register(c34);       // domain warp: octave 1 cycles per unit and amplitude, octave 2 the same
 float4 look_edge : register(c35);       // coverage variation amplitude / 3, taper start, 1/(taper end - start)
 #endif
+#ifdef FOG_DISTANCE
+// The long distance fade (docs/architecture/fog-visible-distance.md; fog_distance > 1, FOG_LOOK only). c3.w = c25.w = the
+// cap C, c35.yz = .75 C and 1/(.25 C): w(s) = min(1, (S0/s)^2) x (1 - smoothstep(.75 C, C, s)); 40 geometric tail bins over
+// [112500, C] read the far level blended into the horizon level (8192-unit nodes, s8) across 175000-195000.
+float4 horizon_local : register(c36); // camera modulo 128*8192 (centred), 1/8192
+float4 distance_law : register(c37);  // S0^2 (fade start squared), tail start 112500, horizon readiness 0..1, unused
+sampler2D horizon_atlas : register(s8);
+#endif
 
 // Same slots in march and composite: the latter also repairs full-resolution
 // depth edges by marching. R32F is point sampled; comparisons are filtered here
@@ -218,7 +226,12 @@ float4 march_depth(float2 uv, float4 depth) {
     float3 view_direction = normalize(view);
     // Scalars that live across the loop share registers (ps_3_0 has 32 temporaries and the compiler gives
     // every live scalar its own): steps = near step, far step.
+#ifdef FOG_DISTANCE
+    // The 24 + FOG_FAR_BINS bins keep today's layout over [0, min(L, tail start)]; the tail loop below covers the rest.
+    float2 steps = float2(min(distance,12000.0)/24.0,max(min(distance,distance_law.y)-12000.0,0.0)/float(FOG_FAR_BINS));
+#else
     float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/float(FOG_FAR_BINS));
+#endif
     // Sample offsets in bins: zw the shaft lookup (look_taps.zw; zero without a temporal resolve, so cascade
     // selection is then the bin centre's as well), xy the density and lighting offset (look_self.zw, always zero
     // since the retirement of L3; the rows keep their layout).
@@ -248,7 +261,11 @@ float4 march_depth(float2 uv, float4 depth) {
             float e = saturate((bin.y-look_edge.y)*look_edge.z);
             float3 warped = fine_local.xyz+ray;
             float cover = dot(look_wave(float3(dot(warped,float3(1,-2,1)/65536.0),dot(warped,float3(2,1,-1)/65536.0),dot(warped,float3(-1,1,2)/65536.0))),look_edge.x);
+#ifdef FOG_DISTANCE
+            rho = look_density(rho,cover)*min(1.0,distance_law.x/(bin.y*bin.y))*(1.0-e*e*(3.0-2.0*e)); // inverse square past S0
+#else
             rho = look_density(rho,cover)*(1.0-e*e*(3.0-2.0*e));
+#endif
             float2 a = 1.0-exp(-camera_sigma.w*rho*bin.x*float2(1.0,0.5)); // extinction, half-extinction octave
             float2 light = 1.0; // shaft visibility, sun-ward self-shadow
             [branch] if (rho > 0.0) {
@@ -273,6 +290,47 @@ float4 march_depth(float2 uv, float4 depth) {
 #endif
         }
     }
+#ifdef FOG_DISTANCE
+    // The tail (fog-visible-distance.md): 40 geometric bins over [tail start, L] at their geometric centres, each wider
+    // than the last by q = (L / start)^(1/40). No shaft lookup (fog past the cascades is lit) and no domain warp (sub-node
+    // at these spacings); density, coverage waves, the sun-ward tap and both extinction octaves as in the loop above.
+    // The far level hands over to the horizon level across 175000-195000 (the far need box ends at 200000, tap included).
+    // The horizon share is scaled by its readiness and the blend renormalised over what is present, so an absent or unready
+    // horizon level is never read and the far share then fades out by 195000.
+    [branch] if (distance > distance_law.y) {
+        float q = exp2(log2(distance/distance_law.y)*0.025);
+        float2 tail = float2(distance_law.y*sqrt(q),(q-1.0)/sqrt(q)); // first bin centre, bin width per unit of centre
+        [loop] for (int j=0; j<40; ++j) {
+            float3 ray = direction*tail.x;
+            float h = saturate((tail.x-175000.0)/20000.0);
+            h = h*h*(3.0-2.0*h);
+            float2 w = float2(1.0-h,h*distance_law.z); // far, horizon
+            float presence = w.x+w.y;
+            [branch] if (presence > 0.0) {
+                float rho = 0.0;
+                [branch] if (w.x > 0.0) rho += w.x*level_sample(far_atlas,far_local,ray);
+                [branch] if (w.y > 0.0) rho += w.y*level_sample(horizon_atlas,horizon_local,ray);
+                float3 world = fine_local.xyz+ray;
+                float cover = dot(look_wave(float3(dot(world,float3(1,-2,1)/65536.0),dot(world,float3(2,1,-1)/65536.0),dot(world,float3(-1,1,2)/65536.0))),look_edge.x);
+                float e = saturate((tail.x-look_edge.y)*look_edge.z);
+                rho = look_density(rho/presence,cover)*presence*(distance_law.x/(tail.x*tail.x))*(1.0-e*e*(3.0-2.0*e));
+                float2 a = 1.0-exp(-camera_sigma.w*rho*(tail.x*tail.y)*float2(1.0,0.5));
+                float lit = 1.0; // sun-ward self-shadow; the shaft visibility is 1
+                [branch] if (rho > 0.0) {
+                    float3 tap = ray+sun_horizon.xyz*look_taps.x;
+                    float r = 0.0;
+                    [branch] if (w.x > 0.0) r += w.x*level_sample(far_atlas,far_local,tap);
+                    [branch] if (w.y > 0.0) r += w.y*level_sample(horizon_atlas,horizon_local,tap);
+                    float tau = camera_sigma.w*look_self.x*look_density(r/presence,cover)*look_taps.y;
+                    lit = exp(-tau)*(1.0-look_self.y*exp(-2.0*(tau+camera_sigma.w*look_self.x*rho*look_taps.x)));
+                }
+                sum.xy += sum.z*a*float2(lit,1.0);
+                sum.z *= 1.0-a.x;
+            }
+            tail.x *= q;
+        }
+    }
+#endif
     float cosine = dot(direction,sun_horizon.xyz);
     float2 lobe = float2(look_lobe0.x-look_lobe0.y*cosine,look_lobe1.x-look_lobe1.y*cosine);
     float phase = look_lobe0.z/(lobe.x*sqrt(lobe.x)) + look_lobe1.z/(lobe.y*sqrt(lobe.y));

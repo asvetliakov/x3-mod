@@ -26,15 +26,33 @@
 namespace x3m {
 namespace fog {
 
+// The horizon level's reach (docs/architecture/fog-visible-distance.md): the 3x cap (337,500) plus the sun-ward tap
+// (3000) and the far level's warp margin (1900), whatever fog_distance draws: one need box for every cap above 1.7333.
+constexpr double kHorizonReach = 342400.0;
 // Ray reach per level in render units: fine is sampled to the end of the LOD
-// blend, far to the end of the horizon taper.
-constexpr double kLevelReach[kLevelCount] = {kLodEnd, kTaperEnd};
+// blend, far to the end of the horizon taper (200,000: the far share of the long fade ends at 195,000 plus the tap),
+// the horizon level to the 3x cap.
+constexpr double kLevelReach[kMaxLevels] = {kLodEnd, kTaperEnd, kHorizonReach};
 // Retarget the window when the camera node is this far from the window centre
 // on any axis (plan: fine refill at .25 km of the .4512 km margin, far at 4 km
-// of 11.61 km).
-constexpr int kRetargetNodes[kLevelCount] = {2, 9};
-// The first fill covers the need box plus this many nodes, then grows to the window.
-constexpr int kFirstFillSlack[kLevelCount] = {2, 2};
+// of 11.61 km; horizon at 13.1 km: need half 43 nodes + guard 1 + 7 < 63).
+constexpr int kRetargetNodes[kMaxLevels] = {2, 9, 8};
+// The first fill covers the need box plus this many nodes, then grows to the window. The horizon level starts from a
+// seed box around the camera node instead and grows by slabs at most kHorizonSlabNodes thick (below).
+constexpr int kFirstFillSlack[kMaxLevels] = {2, 2, 2};
+// Horizon slab thickness bound: a horizon slab is at most 128 x 128 x 2 = 32,768 nodes (about 14 ms of the worker at the
+// measured 2.29 M nodes/s), no more than a fine retarget slab and a quarter of the far level's 9-node retarget slab. The
+// worker re-plans after every slab.
+constexpr int kHorizonSlabNodes = 2;
+// Horizon lead: the horizon box is kept this many nodes beyond its need box (13.1 km), so one SETA frame of up to 10 km
+// (a 2 s game step at 5 km/s) keeps the need box and its readiness guard resident. need half <= 43 + 8 stays inside the
+// window up to the 8-node retarget (5 nodes to spare). Priority: (1) the far need (with the cold-fill hold); (2) a warm
+// horizon box (it held need + lead once in this epoch) that lost its lead: one slab ahead of the fine need, and while
+// the fine need is open the next slab is the fine level's, so the two alternate and the fine level waits at most one
+// horizon slab (<= 32,768 nodes, about 14 ms) per fine slab; (3) the fine need; (4) the horizon need + lead (a cold
+// horizon after the fine need: first fog after a jump is not delayed); (5) window growth, fine, far, horizon. The horizon
+// box sweeps about 103^2 / 8192 nodes per unit of travel against the fine need box's 121^2 / 512 (about 4.5 %).
+constexpr int kHorizonLead = 8;
 // Readiness falls (ramps) when the need box grown by this guard leaves the
 // resident box, and drops to zero at once when the need box itself does.
 constexpr int kReadinessGuard = 1;
@@ -109,9 +127,9 @@ struct StagingView {
 };
 
 struct FrameState {
-    float ready[kLevelCount]{};    // 0..1 ramps: [0] fine (lambda), [1] far (density)
-    float local[kLevelCount][3]{}; // camera modulo 128*delta, centred
-    bool resident[kLevelCount]{};  // need box resident on the GPU this frame
+    float ready[kMaxLevels]{};    // 0..1 ramps: [0] fine (lambda), [1] far (density), [2] horizon (tail share; 0 off)
+    float local[kMaxLevels][3]{}; // camera modulo 128*delta, centred
+    bool resident[kMaxLevels]{};  // need box resident on the GPU this frame
 };
 
 struct CacheStats {
@@ -142,7 +160,26 @@ public:
     bool abandoned() const noexcept { return abandoned_; }
     // stop(), then delete unless the cache ended up abandoned (then it is leaked).
     static void retire(DensityCache* cache) noexcept;
+    // The horizon level (docs/architecture/fog-visible-distance.md, step 2). Render thread, after start()/start_stepped()
+    // (FogPass calls it once the distance programs exist): allocates and zeroes the level's 4,260,096 B CPU cache here
+    // (one allocation, no lock); the worker sees it from the next post (step or take_uploads, under the shared mutex).
+    // False when it cannot run: not started, abandoned, already dropped, or the allocation failed ("cpu_cache"; the cache
+    // keeps its two levels). Priority as kHorizonLead describes; never under the cold-fill hold; its own readiness ramp
+    // (FrameState::ready[2]); uploads share the byte budget after far and fine. Never enabled, the cache is the two-level
+    // cache, bit for bit.
+    bool enable_horizon() noexcept;
+    bool horizon() const noexcept { return horizon_on_; }
+    int levels() const noexcept { return horizon_on_ ? kMaxLevels : kLevelCount; }
+    // Why the horizon level is off although it was asked for ("cpu_cache", or the reason given to drop_horizon); null
+    // while it runs or when it was never asked for.
+    const char* horizon_refused() const noexcept { return horizon_refused_; }
+    // Render thread: give the horizon level up for the cache's lifetime (a GPU allocation or upload failure: fail closed
+    // to the two-level cap). Its readiness is 0 from this call on and nothing of it is uploaded or counted as work; at the
+    // next post (the next step or take_uploads that takes the mutex) the worker request drops it and its CPU cache is
+    // freed under the mutex (a horizon job in flight finds no cache and discards its slab). Never waits.
+    void drop_horizon(const char* reason) noexcept;
 #ifdef X3M_FOG_DENSITY_TEST_HOOKS
+    static void test_fail_horizon(bool fail) noexcept { test_fail_horizon_.store(fail); }
     static void test_fail_thread(bool fail) noexcept { test_fail_thread_.store(fail); }
     std::mutex& test_mutex() noexcept { return sync().mutex; }
 #endif
@@ -187,10 +224,12 @@ public:
     bool idle() const noexcept;
     // During a cold fill the far level has nothing to hand out until a box is published (no staging lock per frame).
     bool level_dirty(int level) const noexcept {
+        if (level == kHorizonLevel && !horizon_on_) return false;
         if (level == 1 && cold_latch_ && !publication_pending_.load(std::memory_order_relaxed)) return false;
         return dirty_tiles_[level].load(std::memory_order_relaxed) != 0 || reupload_[level];
     }
-    unsigned take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out,
+    // views[kHorizonLevel] is read only while horizon() is on: a two-level caller may pass two views.
+    unsigned take_uploads(const StagingView views[kMaxLevels], std::size_t byte_budget, TileRect* out,
                           unsigned capacity) noexcept;
     void confirm_uploads(bool succeeded) noexcept;
     // The DEFAULT atlases were lost or recreated: nothing is resident until every
@@ -208,6 +247,8 @@ public:
     const std::uint8_t* cache_bytes(int level) const noexcept { return cache_[level]; }
     // Worker-owned: stepped mode, or after stop(), only.
     NodeKey worker_origin(int level) const noexcept { return worker_[level].origin; }
+    NodeBox worker_box(int level) const noexcept { return worker_[level].box; }
+    std::uint64_t level_nodes(int level) const noexcept { return level_nodes_[level].load(std::memory_order_relaxed); }
 
 private:
     // Dirty regions of one tile: up to four rectangles of the 128×128 body (an x slab and
@@ -254,7 +295,7 @@ private:
     alignas(Sync) mutable unsigned char sync_storage_[sizeof(Sync)];
     Sync& sync() const noexcept { return *reinterpret_cast<Sync*>(sync_storage_); }
 #ifdef X3M_FOG_DENSITY_TEST_HOOKS
-    static std::atomic<bool> test_fail_thread_;
+    static std::atomic<bool> test_fail_thread_, test_fail_horizon_;
 #endif
     // Shared, guarded by sync().mutex.
     // cold_hold: a cold fill in progress; the worker generates the far need box only.
@@ -262,34 +303,45 @@ private:
         std::uint64_t epoch = 0, serial = 0;
         WorldOffset offset = kNoOffset;
         double camera[3]{};
-        bool camera_valid = false, stop = false, cold_hold = false;
+        bool camera_valid = false, stop = false, cold_hold = false, horizon = false;
     } request_;
-    SharedLevel shared_[kLevelCount];
-    std::uint8_t* cache_[kLevelCount]{};
+    SharedLevel shared_[kMaxLevels];
+    std::uint8_t* cache_[kMaxLevels]{};
     // The epoch's far need box publication (steady-clock us) and the worker's busy / CPU time until then; -1 until.
     std::int64_t far_published_us_ = -1, far_fill_busy_us_ = -1, far_fill_cpu_us_ = -1;
 
     // Worker-owned.
-    WorkerLevel worker_[kLevelCount];
+    WorkerLevel worker_[kMaxLevels];
     std::uint64_t worker_epoch_ = 0;
     Job* jobs_ = nullptr;
     std::uint64_t worker_serial_ = 0;
     std::uint16_t* scratch_ = nullptr;
     bool worker_far_published_ = false;
+    bool horizon_led_ = false;  // the horizon box held its need box + kHorizonLead in this epoch (warm)
+    bool horizon_urgent_ = false; // the last slab was a warm horizon's urgent slab: the fine need goes next
     std::int64_t worker_busy_base_ = 0, worker_cpu_base_ = -1;
 
     // Render-thread-owned.
     CacheIdentity identity_{};
-    NodeBox gpu_box_[kLevelCount], candidate_box_[kLevelCount];
-    std::uint64_t candidate_seq_[kLevelCount]{}, transferred_seq_[kLevelCount]{};
-    bool candidate_valid_[kLevelCount]{}, resident_[kLevelCount]{}, reupload_[kLevelCount]{};
+    NodeBox gpu_box_[kMaxLevels], candidate_box_[kMaxLevels];
+    std::uint64_t candidate_seq_[kMaxLevels]{}, transferred_seq_[kMaxLevels]{};
+    bool candidate_valid_[kMaxLevels]{}, resident_[kMaxLevels]{}, reupload_[kMaxLevels]{};
+    // Horizon: running, and the value last posted to the worker (request_.horizon); a CPU cache allocated by
+    // enable_horizon and installed in cache_[kHorizonLevel] at the next post. cache_[kHorizonLevel] is written by the
+    // render thread under the mutex only and read by the worker under the mutex only (commit).
+    bool horizon_on_ = false, horizon_posted_ = false;
+    std::uint8_t* horizon_staged_ = nullptr;
+    const char* horizon_refused_ = nullptr;
+    bool horizon_post_due() const noexcept {
+        return horizon_posted_ != horizon_on_ || horizon_staged_ || (!horizon_on_ && cache_[kHorizonLevel]);
+    }
     bool pending_invalidate_ = false, pending_camera_ = false, running_ = false, stepped_ = false, abandoned_ = false,
          frame_primed_ = false;
     double camera_[3]{};
-    NodeBox posted_need_[kLevelCount];
+    NodeBox posted_need_[kMaxLevels];
     std::uint64_t last_frame_ = 0, posted_serial_ = 0;
-    float ready_[kLevelCount]{};
-    unsigned reload_left_[kLevelCount]{};
+    float ready_[kMaxLevels]{};
+    unsigned reload_left_[kMaxLevels]{};
     // Cold start: cold_ from configure/invalidate until the far readiness reaches 1; cold_latch_ until the
     // whole-atlas latch (cold_fill only). pending_ is the report in progress, report_ the last completed one.
     bool handover_step_ = false, handover_cold_fill_ = false, cold_ = false, cold_step_ = false, cold_latch_ = false,
@@ -298,11 +350,12 @@ private:
     HandoverReport pending_{}, report_{};
 
     // Cross-thread counters.
-    std::atomic<unsigned> dirty_tiles_[kLevelCount];
+    std::atomic<unsigned> dirty_tiles_[kMaxLevels];
     std::atomic<bool> publication_pending_{false}, stop_flag_{false};
     std::atomic<std::uint64_t> idle_serial_{~std::uint64_t(0)}; // request serial the worker last went idle on
     std::atomic<std::uint64_t> nodes_generated_{0}, jobs_done_{0}, slabs_done_{0}, retargets_{0}, first_fills_{0},
         busy_us_{0};
+    std::atomic<std::uint64_t> level_nodes_[kMaxLevels]{}; // nodes generated per level (host witnesses, the perf pass)
     std::uint64_t upload_bytes_ = 0, upload_rects_ = 0, missed_locks_ = 0;
 };
 

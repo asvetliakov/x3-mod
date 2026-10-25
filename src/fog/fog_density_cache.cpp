@@ -194,7 +194,7 @@ bool next_slab(const NodeBox& have, const NodeBox& want, const NodeBox& need, No
 
 DensityCache::DensityCache() noexcept {
     new (sync_storage_) Sync;
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < kMaxLevels; ++l) {
         dirty_tiles_[l].store(0);
         worker_[l].box = shared_[l].box = gpu_box_[l] = candidate_box_[l] = posted_need_[l] = empty_box();
         shared_[l].shrink = universe_box();
@@ -207,7 +207,8 @@ DensityCache::~DensityCache() {
     if (!abandoned_) stop();
     if (abandoned_) return;
     sync().~Sync();
-    for (int l = 0; l < kLevelCount; ++l) delete[] cache_[l];
+    for (int l = 0; l < kMaxLevels; ++l) delete[] cache_[l];
+    delete[] horizon_staged_;
     delete[] jobs_;
     delete[] scratch_;
 }
@@ -221,13 +222,41 @@ bool DensityCache::allocate() noexcept {
     if (!scratch_) scratch_ = new (std::nothrow) std::uint16_t[kJobNodes];
     return cache_[0] && cache_[1] && jobs_ && scratch_;
 }
+bool DensityCache::enable_horizon() noexcept {
+    if (horizon_on_) return true;
+    if (!(running_ || stepped_) || abandoned_ || horizon_refused_) return false; // a dropped level stays dropped
+    // The horizon level is optional: a failed allocation keeps the two-level cache (fog-visible-distance.md, the 39 km
+    // cap) and says why; it is never a reason to refuse the cache.
+    bool refuse = false;
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+    refuse = test_fail_horizon_.load();
+#endif
+    std::uint8_t* bytes = refuse ? nullptr : new (std::nothrow) std::uint8_t[kAtlasBytes];
+    if (!bytes) {
+        horizon_refused_ = "cpu_cache";
+        return false;
+    }
+    std::memset(bytes, 0, kAtlasBytes);
+    horizon_staged_ = bytes; // installed at the next post, under the mutex
+    horizon_on_ = true;
+    return true;
+}
+void DensityCache::drop_horizon(const char* reason) noexcept {
+    if (!horizon_on_) return;
+    horizon_on_ = false;
+    horizon_refused_ = reason ? reason : "dropped";
+    ready_[kHorizonLevel] = 0;
+    resident_[kHorizonLevel] = candidate_valid_[kHorizonLevel] = false;
+    gpu_box_[kHorizonLevel] = candidate_box_[kHorizonLevel] = empty_box();
+    // The worker request and the CPU cache follow at the next post (horizon_post_due forces one).
+}
 void DensityCache::retire(DensityCache* cache) noexcept {
     if (!cache) return;
     cache->stop();
     if (!cache->abandoned_) delete cache; // abandoned: the worker may still use every byte of it
 }
 #ifdef X3M_FOG_DENSITY_TEST_HOOKS
-std::atomic<bool> DensityCache::test_fail_thread_{false};
+std::atomic<bool> DensityCache::test_fail_thread_{false}, DensityCache::test_fail_horizon_{false};
 #endif
 bool DensityCache::start() noexcept {
     if (running_ || stepped_ || abandoned_) return running_;
@@ -423,10 +452,11 @@ bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch
                            std::memory_order_relaxed);
         {
             std::lock_guard<std::mutex> lock(sync().mutex);
-            if (request_.stop || request_.epoch != epoch) return false;
+            if (request_.stop || request_.epoch != epoch || !cache_[level]) return false; // a dropped horizon: no cache
             commit_locked(level, box, scratch_);
         }
         nodes_generated_.fetch_add(box.nodes(), std::memory_order_relaxed);
+        level_nodes_[level].fetch_add(box.nodes(), std::memory_order_relaxed);
         jobs_done_.fetch_add(1, std::memory_order_relaxed);
     }
     return true;
@@ -446,6 +476,7 @@ bool DensityCache::work_once(bool& idle) noexcept {
         worker_epoch_ = request.epoch;
         for (auto& level : worker_) level.box = empty_box();
         worker_far_published_ = false;
+        horizon_led_ = horizon_urgent_ = false;
         worker_busy_base_ = std::int64_t(busy_us_.load(std::memory_order_relaxed));
         worker_cpu_base_ = thread_cpu_us();
     }
@@ -453,22 +484,44 @@ bool DensityCache::work_once(bool& idle) noexcept {
         idle_serial_.store(request.serial, std::memory_order_relaxed);
         return true;
     }
-    // Far need first (it gates drawing), then fine need, then the background growth
-    // to the full window, fine first because its margin is the tighter one.
+    // Far need first (it gates drawing), then fine need, then the background growth to the full window, fine first
+    // because its margin is the tighter one. The horizon level (the long fade's tail; it never gates drawing) fits in as
+    // kHorizonLead describes: a warm horizon that lost its lead before the fine need, a cold one after it, its window
+    // growth last. Re-planned after every slab; a horizon slab is at most kHorizonSlabNodes thick.
     int level = -1;
-    NodeBox need[kLevelCount];
-    for (int l = 0; l < kLevelCount; ++l) need[l] = need_box(l, request.camera);
+    const int levels = request.horizon ? kMaxLevels : kLevelCount;
+    NodeBox need[kMaxLevels];
+    for (int l = 0; l < levels; ++l) need[l] = need_box(l, request.camera);
     // Cold fill: the far box must hold the need box with the readiness guard before the whole-atlas latch, so the
     // latched level is steppable at once (a prefill centred elsewhere extends toward it under the hold).
     const NodeBox far_target = request.cold_hold ? grow(need[1], kReadinessGuard) : need[1];
+    NodeBox horizon_target = empty_box();
+    bool horizon_short = false;
+    if (levels > kHorizonLevel) {
+        horizon_target = grow(need[kHorizonLevel], kHorizonLead);
+        const NodeBox& box = worker_[kHorizonLevel].box;
+        if (box.empty())
+            horizon_led_ = false;
+        else if (box.contains(horizon_target))
+            horizon_led_ = true;
+        horizon_short = !box.contains(horizon_target);
+    }
+    const bool fine_short = !worker_[0].box.contains(need[0]);
+    // Warm and losing its lead: one bounded slab ahead of the fine need, then the fine need's turn (they alternate).
+    const bool urgent = horizon_short && horizon_led_ && !(horizon_urgent_ && fine_short);
     if (!worker_[1].box.contains(far_target))
         level = 1;
-    else if (!worker_[0].box.contains(need[0]))
+    else if (urgent)
+        level = kHorizonLevel;
+    else if (fine_short)
         level = 0;
-    for (int l : {0, 1})
+    else if (horizon_short)
+        level = kHorizonLevel;
+    for (int l = 0; l < levels; ++l)
         if (level < 0 && (retarget_needed(l, worker_[l].origin, request.camera) ||
                           !(worker_[l].box == window_box(worker_[l].origin))))
             level = l;
+    horizon_urgent_ = level == kHorizonLevel && urgent;
     // Cold fill: only the far need box until the render thread has latched it (whole atlas).
     if (level < 0 || (request.cold_hold && !(level == 1 && !worker_[1].box.contains(far_target)))) {
         idle_serial_.store(request.serial, std::memory_order_relaxed);
@@ -498,7 +551,17 @@ bool DensityCache::work_once(bool& idle) noexcept {
     NodeBox slab, grown;
     const NodeBox window = window_box(state.origin);
     if (state.box.empty()) {
-        slab = grown = intersect(window, grow(need[level], kFirstFillSlack[level]));
+        if (level == kHorizonLevel) {
+            // A seed around the camera node; the slabs below grow it toward the need box first.
+            NodeBox seed;
+            for (int a = 0; a < 3; ++a) {
+                const std::int64_t c = floor_node(request.camera[a] / kLevelDelta[level]);
+                seed.lo[a] = c - kHorizonSlabNodes;
+                seed.hi[a] = c + 1 + kHorizonSlabNodes;
+            }
+            slab = grown = intersect(window, seed);
+        } else
+            slab = grown = intersect(window, grow(need[level], kFirstFillSlack[level]));
         first_fills_.fetch_add(1, std::memory_order_relaxed);
     } else {
         // Under the cold hold the far box grows to the far target only (a prefill centred elsewhere, run273 case B:
@@ -510,7 +573,19 @@ bool DensityCache::work_once(bool& idle) noexcept {
                 want.lo[a] = std::max(window.lo[a], std::min(state.box.lo[a], far_target.lo[a]));
                 want.hi[a] = std::min(window.hi[a], std::max(state.box.hi[a], far_target.hi[a]));
             }
-        if (!next_slab(state.box, want, level == 1 ? far_target : need[level], slab)) return true;
+        if (!next_slab(state.box, want,
+                       level == 1               ? far_target
+                       : level == kHorizonLevel ? horizon_target
+                                                : need[level],
+                       slab))
+            return true;
+        if (level == kHorizonLevel) // at most kHorizonSlabNodes thick, the side next to the box first
+            for (int a = 0; a < 3; ++a) {
+                if (slab.lo[a] > state.box.hi[a])
+                    slab.hi[a] = std::min(slab.hi[a], slab.lo[a] + kHorizonSlabNodes - 1);
+                else if (slab.hi[a] < state.box.lo[a])
+                    slab.lo[a] = std::max(slab.lo[a], slab.hi[a] - kHorizonSlabNodes + 1);
+            }
         grown = state.box;
         for (int a = 0; a < 3; ++a) {
             grown.lo[a] = std::min(grown.lo[a], slab.lo[a]);
@@ -563,7 +638,7 @@ void DensityCache::apply_invalidate_locked() noexcept {
     // pending camera right after this, so a step or prefill in the same post starts the worker at once.
     request_.camera_valid = false;
     far_published_us_ = far_fill_busy_us_ = far_fill_cpu_us_ = -1;
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < kMaxLevels; ++l) {
         SharedLevel& s = shared_[l];
         s.box = empty_box();
         s.shrink = universe_box();
@@ -576,6 +651,25 @@ void DensityCache::apply_invalidate_locked() noexcept {
 }
 void DensityCache::post_locked() noexcept {
     if (pending_invalidate_) apply_invalidate_locked();
+    // The horizon level's CPU cache: installed when enable_horizon staged it, freed once drop_horizon gave the level up
+    // (a worker job in flight finds no cache at its commit and discards the slab). The worker request follows.
+    if (horizon_staged_) {
+        if (horizon_on_)
+            cache_[kHorizonLevel] = horizon_staged_;
+        else
+            delete[] horizon_staged_;
+        horizon_staged_ = nullptr;
+    }
+    if (!horizon_on_ && cache_[kHorizonLevel]) {
+        delete[] cache_[kHorizonLevel];
+        cache_[kHorizonLevel] = nullptr;
+    }
+    const bool horizon = horizon_on_ && cache_[kHorizonLevel] != nullptr;
+    if (request_.horizon != horizon) {
+        request_.horizon = horizon;
+        ++request_.serial;
+    }
+    horizon_posted_ = horizon_on_;
     if (pending_camera_) {
         for (int a = 0; a < 3; ++a) request_.camera[a] = camera_[a];
         request_.camera_valid = true;
@@ -590,7 +684,7 @@ void DensityCache::configure(const CacheIdentity& identity) noexcept {
     invalidate();
 }
 void DensityCache::invalidate() noexcept {
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < kMaxLevels; ++l) {
         gpu_box_[l] = candidate_box_[l] = empty_box();
         candidate_valid_[l] = false;
         candidate_seq_[l] = transferred_seq_[l] = 0;
@@ -634,19 +728,21 @@ bool DensityCache::prefill(const CacheIdentity& identity, const double camera[3]
     post_locked();
     lock.unlock();
     sync().wake.notify_one();
-    for (int l = 0; l < kLevelCount; ++l) posted_need_[l] = need_box(l, camera_);
+    for (int l = 0; l < levels(); ++l) posted_need_[l] = need_box(l, camera_);
     return true;
 }
 bool DensityCache::covers(int level, const double camera[3]) const noexcept {
+    if (level == kHorizonLevel && !horizon_on_) return false;
     return admitted(camera) && resident_[level] && gpu_box_[level].contains(need_box(level, camera));
 }
 FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexcept {
     FrameState out{};
     if (!(running_ || stepped_)) return out;
     if (!admitted(camera)) return out;
-    NodeBox need[kLevelCount];
+    const int levels = this->levels();
+    NodeBox need[kMaxLevels];
     bool moved = false;
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < levels; ++l) {
         need[l] = need_box(l, camera);
         moved = moved || !(need[l] == posted_need_[l]);
     }
@@ -654,13 +750,13 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
         for (int a = 0; a < 3; ++a) camera_[a] = camera[a];
         pending_camera_ = true;
     }
-    if (pending_camera_ || pending_invalidate_) {
+    if (pending_camera_ || pending_invalidate_ || horizon_post_due()) {
         std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
         if (lock.owns_lock()) {
             post_locked();
             lock.unlock();
             sync().wake.notify_one();
-            for (int l = 0; l < kLevelCount; ++l) posted_need_[l] = need_box(l, camera_);
+            for (int l = 0; l < levels; ++l) posted_need_[l] = need_box(l, camera_);
         } else {
             ++missed_locks_;
         }
@@ -672,7 +768,7 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
         pending_.arm_frame = frame;
         cold_frame_pending_ = false;
     }
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < levels; ++l) {
         const bool hard = resident_[l] && gpu_box_[l].contains(need[l]);
         const bool soft = hard && gpu_box_[l].contains(grow(need[l], kReadinessGuard));
         if (!hard)
@@ -705,30 +801,34 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
 }
 
 bool DensityCache::idle() const noexcept {
-    return !pending_invalidate_ && !pending_camera_ && !has_work() && !candidate_valid_[0] && !candidate_valid_[1] &&
+    return !pending_invalidate_ && !pending_camera_ && !horizon_post_due() && !has_work() &&
+           !candidate_valid_[0] && !candidate_valid_[1] && !(horizon_on_ && candidate_valid_[kHorizonLevel]) &&
            idle_serial_.load(std::memory_order_relaxed) == posted_serial_;
 }
 bool DensityCache::has_work() const noexcept {
     return publication_pending_.load(std::memory_order_relaxed) || reupload_[0] || reupload_[1] ||
-           dirty_tiles_[0].load(std::memory_order_relaxed) != 0 || dirty_tiles_[1].load(std::memory_order_relaxed) != 0;
+           dirty_tiles_[0].load(std::memory_order_relaxed) != 0 || dirty_tiles_[1].load(std::memory_order_relaxed) != 0 ||
+           (horizon_on_ && (reupload_[kHorizonLevel] ||
+                            dirty_tiles_[kHorizonLevel].load(std::memory_order_relaxed) != 0));
 }
 void DensityCache::gpu_reset() noexcept {
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < kMaxLevels; ++l) {
         resident_[l] = false;
         reupload_[l] = true;
         candidate_valid_[l] = false;
         ready_[l] = 0;
     }
 }
-unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out,
+unsigned DensityCache::take_uploads(const StagingView views[kMaxLevels], std::size_t byte_budget, TileRect* out,
                                     unsigned capacity) noexcept {
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
     if (!lock.owns_lock()) {
         ++missed_locks_;
         return 0;
     }
-    bool wake = pending_invalidate_ || pending_camera_;
+    const std::uint64_t serial = request_.serial;
     post_locked();
+    bool wake = request_.serial != serial; // an invalidation, a camera or a horizon change reached the worker
     unsigned count = 0;
     std::size_t bytes = 0;
     byte_budget = std::max(byte_budget, kTileBytes);
@@ -746,7 +846,9 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
         pending_.fill_busy_us = far_fill_busy_us_;
         pending_.fill_cpu_us = far_fill_cpu_us_;
     }
-    for (int l : {1, 0}) {
+    // Far first, then fine, then the horizon level with what is left of the byte budget.
+    for (int l : {1, 0, kHorizonLevel}) {
+        if (l == kHorizonLevel && !(horizon_on_ && cache_[l])) continue; // its view may not exist; nothing is work
         SharedLevel& s = shared_[l];
         gpu_box_[l] = intersect(gpu_box_[l], s.shrink);
         if (candidate_valid_[l]) candidate_box_[l] = intersect(candidate_box_[l], s.shrink);
@@ -862,7 +964,7 @@ void DensityCache::confirm_uploads(bool succeeded) noexcept {
         return;
     }
     whole_in_flight_ = false;
-    for (int l = 0; l < kLevelCount; ++l) {
+    for (int l = 0; l < levels(); ++l) {
         if (candidate_valid_[l]) {
             gpu_box_[l] = candidate_box_[l];
             transferred_seq_[l] = candidate_seq_[l];

@@ -102,4 +102,44 @@ inline float fog_look_constants(const FogLookTuning& t, const float chroma[3], c
     rows[8][3] = 5.588238f * float(phase % 64u);
     return t.sigma_scale;
 }
+// The long distance fade (docs/architecture/fog-visible-distance.md; X3M_FOG_DISTANCE, ini fog_distance, launcher
+// --fog-distance). The value is the cap as a multiple of FogLookTuning::sky_cap (22.5 km), 1 to 3, default 3:
+//  - 1 (or anything not above 1, NaN included) draws today's look programs with today's constants and allocates no
+//    horizon level: fog_look_constants above, unchanged, is all there is;
+//  - above 1 the distance programs (FOG_DISTANCE: w(s) = min(1, (S0/s)^2) x (1 - smoothstep(.75 C, C, s)) with S0 the
+//    taper start, 40 geometric tail bins over [sky_cap, C]);
+//  - above fog_distance_far_cap / sky_cap (1.7333, 39 km) the horizon level as well. Without it (its allocation or upload
+//    failed, or the value is lower) the cap is at most fog_distance_far_cap: the far level's need box (200,000) less the
+//    sun-ward tap and warp margin.
+constexpr float fog_distance_min = 1.f, fog_distance_max = 3.f, fog_distance_default = 3.f;
+constexpr float fog_distance_far_cap = 195000.f;
+constexpr unsigned fog_distance_register = fog_look_first_register + fog_look_rows; // c36 horizon local, c37 the law
+constexpr unsigned fog_distance_rows = 2;
+inline float fog_distance_clamp(float distance) noexcept {
+    return distance > fog_distance_min ? (distance < fog_distance_max ? distance : fog_distance_max) : fog_distance_min;
+}
+inline bool fog_distance_programs(float distance) noexcept {
+    return distance > fog_distance_min; // false for NaN
+}
+inline bool fog_distance_horizon(const FogLookTuning& t, float distance) noexcept {
+    return fog_distance_programs(distance) && fog_distance_clamp(distance) * t.sky_cap > fog_distance_far_cap;
+}
+// The cap C of the distance programs (render units): value x sky_cap, at most fog_distance_far_cap without the horizon.
+inline float fog_distance_cap(const FogLookTuning& t, float distance, bool horizon) noexcept {
+    const float cap = fog_distance_clamp(distance) * t.sky_cap;
+    return horizon || cap <= fog_distance_far_cap ? cap : fog_distance_far_cap;
+}
+// The distance programs' rows on top of fog_look_constants: c25.w = C, c35.yz = .75 C and 1/(.25 C) (the end
+// smoothstep), and c37 = (S0^2, tail start = sky_cap, horizon readiness, 0). c36 (the horizon level's camera modulo) is
+// the caller's, like c22/c23. c3.w carries C as well (the caller's).
+inline void fog_distance_constants(const FogLookTuning& t, float cap, float horizon_ready, float rows[fog_look_rows][4],
+                                   float law[4]) noexcept {
+    rows[0][3] = cap;
+    rows[10][1] = .75f * cap;
+    rows[10][2] = 1.f / (.25f * cap);
+    law[0] = t.taper_start * t.taper_start;
+    law[1] = t.sky_cap;
+    law[2] = fog_look_unit(horizon_ready);
+    law[3] = 0.f;
+}
 } // namespace x3m::renderer

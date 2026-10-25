@@ -1,0 +1,78 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows 11 host via WSL interop, no device)",
+ "slot_table": "verification/probe/fog_density_shader_slots.py (Microsoft ps_3_0 table)",
+ "programs": {
+  "fog_density_march_look": {
+   "slots": 425,
+   "texture_instructions": 15,
+   "words": 1850,
+   "loops": 1,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_repair_look": {
+   "slots": 510,
+   "texture_instructions": 20,
+   "words": 2164,
+   "loops": 1,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_march_look_q4": {
+   "slots": 425,
+   "texture_instructions": 15,
+   "words": 1850,
+   "loops": 1,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_repair_look_q4": {
+   "slots": 510,
+   "texture_instructions": 20,
+   "words": 2170,
+   "loops": 1,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_march_distance": {
+   "slots": 717,
+   "texture_instructions": 23,
+   "words": 2897,
+   "loops": 2,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_repair_distance": {
+   "slots": 803,
+   "texture_instructions": 28,
+   "words": 3220,
+   "loops": 2,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_march_distance_q4": {
+   "slots": 717,
+   "texture_instructions": 23,
+   "words": 2903,
+   "loops": 2,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  },
+  "fog_density_repair_distance_q4": {
+   "slots": 803,
+   "texture_instructions": 28,
+   "words": 3226,
+   "loops": 2,
+   "max_constant_reads": 1,
+   "messages": [],
+   "end": "00000000"
+  }
+ }
+}

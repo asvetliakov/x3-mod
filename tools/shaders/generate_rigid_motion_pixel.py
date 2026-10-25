@@ -206,6 +206,21 @@ SHADERS = {
     'fog_density_composite_look_q4': dict(source=ROOT / 'src/fog/fog_density_composite_look_q4_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_composite_look_q4_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-composite-look-q4-program.json'),
+    # The long distance fade (docs/architecture/fog-visible-distance.md, fog_distance > 1): the look's march and repair
+    # with the inverse-square fade, 40 geometric tail bins and the horizon level (FOG_DISTANCE), at either spacing. The
+    # composite never marches and is shared; fog_distance = 1 draws the four programs above, unchanged.
+    'fog_density_march_distance': dict(source=ROOT / 'src/fog/fog_density_march_distance_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_distance_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-distance-program.json'),
+    'fog_density_repair_distance': dict(source=ROOT / 'src/fog/fog_density_repair_distance_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_repair_distance_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-repair-distance-program.json'),
+    'fog_density_march_distance_q4': dict(source=ROOT / 'src/fog/fog_density_march_distance_q4_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_distance_q4_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-distance-q4-program.json'),
+    'fog_density_repair_distance_q4': dict(source=ROOT / 'src/fog/fog_density_repair_distance_q4_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_repair_distance_q4_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-repair-distance-q4-program.json'),
     'fog_density_needs_census': dict(source=ROOT / 'src/fog/fog_density_needs_census_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_needs_census_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-needs-census-program.json'),

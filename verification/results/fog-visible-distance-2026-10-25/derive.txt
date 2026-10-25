@@ -1,0 +1,28 @@
+today: cap 22.5 km, taper from 13.0 km
+  w>=.05 from 21.21 km, w>=.5 from 17.75 km: appearance band 3.46 km; max |dw/ds| 0.158 per km; equiv path 17.75 km
+x1.78 cap 40.0 km p=2.0: w(22.5)=0.334 w(45)=0.000 w(67.5)=0.000; w>=.05 from 35.8 km, w>=.5 from 18.4 km: band 17.4 km; equiv path 21.15 km
+x1.78 cap 40.0 km p=1.5: w(22.5)=0.439 w(45)=0.000 w(67.5)=0.000; w>=.05 from 36.8 km, w>=.5 from 20.6 km: band 16.2 km; equiv path 23.13 km
+   tail 40 geometric bins: ratio 0.0145, ds first 1630 last 2856 units
+   delta  4096: need half 51 nodes, retarget slack 12 nodes (9.8 km), need box 1.09 M nodes = 0.48 s at 2.29 M/s
+   delta  8192: need half 26 nodes, retarget slack 37 nodes (60.6 km), need box 0.15 M nodes = 0.07 s at 2.29 M/s
+   delta 16384: need half 13 nodes, retarget slack 50 nodes (163.8 km), need box 0.02 M nodes = 0.01 s at 2.29 M/s
+x3.00 cap 67.5 km p=2.0: w(22.5)=0.334 w(45)=0.083 w(67.5)=0.000; w>=.05 from 54.4 km, w>=.5 from 18.4 km: band 36.0 km; equiv path 23.13 km
+x3.00 cap 67.5 km p=1.5: w(22.5)=0.439 w(45)=0.155 w(67.5)=0.000; w>=.05 from 59.2 km, w>=.5 from 20.6 km: band 38.6 km; equiv path 26.78 km
+   tail 40 geometric bins: ratio 0.0278, ds first 3133 last 9143 units
+   delta  4096: need half 84 nodes, retarget slack -21 nodes (0.0 km), need box 4.83 M nodes = 2.11 s at 2.29 M/s
+   delta  8192: need half 42 nodes, retarget slack 21 nodes (34.4 km), need box 0.61 M nodes = 0.27 s at 2.29 M/s
+   delta 16384: need half 21 nodes, retarget slack 42 nodes (137.6 km), need box 0.08 M nodes = 0.03 s at 2.29 M/s
+x4.00 cap 90.0 km p=2.0: w(22.5)=0.334 w(45)=0.083 w(67.5)=0.037; w>=.05 from 58.1 km, w>=.5 from 18.4 km: band 39.8 km; equiv path 23.85 km
+x4.00 cap 90.0 km p=1.5: w(22.5)=0.439 w(45)=0.155 w(67.5)=0.085; w>=.05 from 75.6 km, w>=.5 from 20.6 km: band 55.0 km; equiv path 28.42 km
+   tail 40 geometric bins: ratio 0.0353, ds first 3967 last 15329 units
+   delta  4096: need half 112 nodes, retarget slack -49 nodes (0.0 km), need box 11.39 M nodes = 4.97 s at 2.29 M/s
+   delta  8192: need half 56 nodes, retarget slack 7 nodes (11.5 km), need box 1.44 M nodes = 0.63 s at 2.29 M/s
+   delta 16384: need half 28 nodes, retarget slack 35 nodes (114.7 km), need box 0.19 M nodes = 0.08 s at 2.29 M/s
+x5.00 cap 112.5 km p=2.0: w(22.5)=0.334 w(45)=0.083 w(67.5)=0.037; w>=.05 from 58.1 km, w>=.5 from 18.4 km: band 39.8 km; equiv path 24.28 km
+x5.00 cap 112.5 km p=1.5: w(22.5)=0.439 w(45)=0.155 w(67.5)=0.085; w>=.05 from 89.7 km, w>=.5 from 20.6 km: band 69.1 km; equiv path 29.54 km
+   tail 40 geometric bins: ratio 0.0411, ds first 4619 last 22183 units
+   delta  4096: need half 139 nodes, retarget slack -76 nodes (0.0 km), need box 21.72 M nodes = 9.48 s at 2.29 M/s
+   delta  8192: need half 70 nodes, retarget slack -7 nodes (0.0 km), need box 2.80 M nodes = 1.22 s at 2.29 M/s
+   delta 16384: need half 35 nodes, retarget slack 28 nodes (91.8 km), need box 0.36 M nodes = 0.16 s at 2.29 M/s
+window fill 128^3 = 2.10 M nodes = 0.92 s
+third level address space (CPU cache + SYSTEMMEM staging) 8520192 B = 5.2% of the Run184 trough; +DEFAULT 4260096 B
