@@ -317,6 +317,18 @@ Implemented as designed with these deviations and settled unknowns:
   of the corpus transform in 0.26 s on the host g++ build including file writes (about 0.2 ms each, inferred for the
   i686 build), plus one `CreatePixelShader` per (program, kind) actually bound. GPU: +2 ALU per overlay pixel (the
   `add` and the `mul`) on marked draws only; every other draw binds the parent program unchanged.
+- **Follow-up after Run 203 A (2026-10-25, worktree; not installed, not flown; ledger `lod-overlay.md`, "follow-up
+  build after Run 203 A").** The 61,376 no_twin draws of that flight coincide with fade-owner draws on the sun lane
+  (8,973 / 8,973 frames, measured; the draw identity is inferred). The fade owner binds `sun_motion_variant`, which
+  was none of the 7 kinds. That form is now kind 7, `smotion`: the motion variant plus `def c221` and
+  `mov oC2.g, c221.x`. Its twin is the motion twin with the same two additions (host oracle: word for word, 100/100),
+  and it has no engine-light twin. The 15 forms give 1,500 twins, all passing the native validator. Still without a
+  twin: the material route and XT DEFAULT ordinary (linear materials only), now counted in marked / no_twin. A
+  debug-tier `lod_strength_no_twin` row names each distinct (ps, form, reason), up to 64. `lod_strength_frame` is now
+  written on change, on no_twin onset or on a 10 s cadence, with interval sums. Replayed on Run 203 A that is 33,405
+  -> 28 rows (inferred). `lod_strength_session` is written once, at release or at process exit. Each creation gets two
+  `lod_strength_variant_frame` rows (after its frame's Present and after the next frame's) for the first-use compile
+  question.
 
 ## 11. Alternatives considered
 

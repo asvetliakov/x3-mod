@@ -425,7 +425,8 @@ MotionOutput::~MotionOutput() {
     // jets stay armed while another device requests the plume stage.
     engine_far_jets::request(&engine_far_counted_, false, this);
     delete engine_light_; // plain CPU tables (engine_light_core.h), no device object
-    strength_session_row(); // lazy twin creation totals (debug / perf tier; nothing when nothing was created)
+    strength_session_row("release"); // lazy twin creation totals (debug / perf tier, once; nothing when nothing was
+                                     // created); the game's exit without a release writes it from exit_rows
     delete strength_marks_; // the marked-texture table (lod_texture_mark.h), plain CPU memory
 }
 
@@ -5100,7 +5101,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_sun_original_lightmap_widen = it->second.sun_original_lightmap_widen_variant;
     shadow_.hull_lightmap_stage = it->second.hull_lightmap_stage;
     for (unsigned e = 0; e < 2; ++e)
-        for (unsigned k = 0; k < engine_light_kinds; ++k) shadow_.strength_twin[e][k] = it->second.strength_twin[e][k];
+        for (unsigned k = 0; k < strength_kinds; ++k) shadow_.strength_twin[e][k] = it->second.strength_twin[e][k];
     shadow_.strength_stage = it->second.strength_stage;
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
@@ -7733,16 +7734,21 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
             ++engine_light_->counts.no_twin;
     }
     // Material strength: the twin of the program chosen above when the program's specular stage holds the overlay's
-    // marked atlas (one byte compare; shadow_.strength_stage is 0 for a program without twins).
+    // marked atlas (one byte compare; shadow_.strength_stage is 0 for a program without twins). A marked draw on the
+    // material route has no twin (counted no_twin, reason material); a marked draw without a twin keeps its parent
+    // and, under --debug, names its (program, form, reason) once (strength_gap).
     bool strength = false;
-    if (shadow_.strength_stage && !material &&
+    if (shadow_.strength_stage &&
         samplers_[shadow_.strength_stage].atlas_lane == lod_texture_mark::lane_strength_alpha) {
         ++strength_marked_draws_;
-        if (IDirect3DPixelShader9* twin = strength_twin(ps, engine)) {
+        std::uint8_t gap = strength_gap_material;
+        if (IDirect3DPixelShader9* twin = material ? nullptr : strength_twin(ps, engine, gap)) {
             ps = twin;
             strength = true;
-        } else
+        } else {
             ++strength_no_twin_;
+            if (log_tier::cached_debug) strength_gap(ps, engine, gap, route);
+        }
     }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);

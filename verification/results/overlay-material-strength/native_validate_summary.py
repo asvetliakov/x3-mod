@@ -24,7 +24,8 @@ gen = json.load(open(S / 'twins.json'))
 tally = collections.Counter((r['kind'], r.get('end'), len(r['messages'])) for r in rows)
 json.dump({'validator': 'SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host through WSL interop, no device)',
            'generator': 'material_strength_twin_structure: parents motion / fill 0.05 / gain 4 / widen K=B=3 dynamic / share / '
-                        'share+gain / share+gain+widen and the engine-light twin of each (14 forms), depth on; twin = parent + add rT.w + join edit',
+                        'share+gain / share+gain+widen, the engine-light twin of each and the sun-lane motion form (smotion: motion + '
+                        'invalid sun share; 15 forms), depth on; twin = parent + add rT.w + join edit',
            'programs': gen['programs'], 'generated_rows': len(gen['rows']),
            'twins': sum(1 for r in gen['rows'] if r['status'] == 0),
            'refusals': dict(collections.Counter(r['refusal'] for r in gen['rows'] if r['refusal'] != 'none')),

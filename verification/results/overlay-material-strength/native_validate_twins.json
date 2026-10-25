@@ -1,15 +1,15 @@
 {
  "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host through WSL interop, no device)",
- "generator": "material_strength_twin_structure: parents motion / fill 0.05 / gain 4 / widen K=B=3 dynamic / share / share+gain / share+gain+widen and the engine-light twin of each (14 forms), depth on; twin = parent + add rT.w + join edit",
+ "generator": "material_strength_twin_structure: parents motion / fill 0.05 / gain 4 / widen K=B=3 dynamic / share / share+gain / share+gain+widen, the engine-light twin of each and the sun-lane motion form (smotion: motion + invalid sun share; 15 forms), depth on; twin = parent + add rT.w + join edit",
  "programs": 495,
- "generated_rows": 1436,
- "twins": 1400,
+ "generated_rows": 1546,
+ "twins": 1500,
  "refusals": {
-  "unsupported": 36
+  "unsupported": 46
  },
  "lanes_read": {
-  "1": 1400,
-  "0": 36
+  "1": 1500,
+  "0": 46
  },
  "max_twin_slots": 873,
  "max_twin_words": 4880,
@@ -82,6 +82,12 @@
   },
   {
    "kind": "share",
+   "end": "00000000",
+   "messages": 0,
+   "programs": 100
+  },
+  {
+   "kind": "smotion",
    "end": "00000000",
    "messages": 0,
    "programs": 100
@@ -9897,6 +9903,706 @@
    "original": "ps_fffdabd910793aba",
    "kind": "eswiden",
    "words": 4737,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_02606104fa59fb29",
+   "kind": "smotion",
+   "words": 1343,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_042c9ae16f41feff",
+   "kind": "smotion",
+   "words": 1410,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_0c1f3f0f440e4a0c",
+   "kind": "smotion",
+   "words": 1528,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_188c5ab9dbb98393",
+   "kind": "smotion",
+   "words": 1509,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_18d372968af4a480",
+   "kind": "smotion",
+   "words": 1483,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_1d638938d93421b3",
+   "kind": "smotion",
+   "words": 1369,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_1de3d2dde345a7e3",
+   "kind": "smotion",
+   "words": 1872,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_1ed1bf0fdec00e1a",
+   "kind": "smotion",
+   "words": 1443,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_1f26d41bcb7dac1e",
+   "kind": "smotion",
+   "words": 1494,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_22cc5b05a55ef61e",
+   "kind": "smotion",
+   "words": 512,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_2b04461d0dae038b",
+   "kind": "smotion",
+   "words": 498,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_3006f8030a467739",
+   "kind": "smotion",
+   "words": 1474,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_31445adb0a62d134",
+   "kind": "smotion",
+   "words": 1908,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_3602b05ce11ca6ff",
+   "kind": "smotion",
+   "words": 1486,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_3755809bd40afc13",
+   "kind": "smotion",
+   "words": 1368,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_39eb3c2258a516e1",
+   "kind": "smotion",
+   "words": 594,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_3b94320087e81945",
+   "kind": "smotion",
+   "words": 1426,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_43c9405568d2226f",
+   "kind": "smotion",
+   "words": 1509,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_462342e3e5781384",
+   "kind": "smotion",
+   "words": 1412,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_496049cec2066ed3",
+   "kind": "smotion",
+   "words": 1942,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_4f052209611387f0",
+   "kind": "smotion",
+   "words": 1488,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_55826dc176afe464",
+   "kind": "smotion",
+   "words": 501,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_57acf59d19c73791",
+   "kind": "smotion",
+   "words": 626,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_593e5dea9b3457d5",
+   "kind": "smotion",
+   "words": 426,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_5c823b8507fa1442",
+   "kind": "smotion",
+   "words": 485,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_5e056627e9ff3a8d",
+   "kind": "smotion",
+   "words": 564,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_5e0a10fe752b6140",
+   "kind": "smotion",
+   "words": 1516,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_5f82ecacd39529cd",
+   "kind": "smotion",
+   "words": 1927,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_61418505e5d8f998",
+   "kind": "smotion",
+   "words": 423,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_62c180abe017e239",
+   "kind": "smotion",
+   "words": 688,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_63379470db8d2a86",
+   "kind": "smotion",
+   "words": 1413,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_63f96eba9eea7880",
+   "kind": "smotion",
+   "words": 1454,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_64bac8bb307eb896",
+   "kind": "smotion",
+   "words": 1554,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_6733b119142c8d42",
+   "kind": "smotion",
+   "words": 1916,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_675f9077d8fd21c4",
+   "kind": "smotion",
+   "words": 528,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_68915563dd0aac9a",
+   "kind": "smotion",
+   "words": 494,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_68f0dd6791fd7d3d",
+   "kind": "smotion",
+   "words": 1436,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_75fb9c6b05e28ea2",
+   "kind": "smotion",
+   "words": 1835,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_769c3814fc0efba8",
+   "kind": "smotion",
+   "words": 486,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_77a5b2d62fb3be48",
+   "kind": "smotion",
+   "words": 514,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_789449ffd931d23e",
+   "kind": "smotion",
+   "words": 1462,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_78963cdc7c710e04",
+   "kind": "smotion",
+   "words": 1417,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_7a0bb00a8070496a",
+   "kind": "smotion",
+   "words": 1377,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_7a14d4dcb28f27e5",
+   "kind": "smotion",
+   "words": 1349,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_7c83ed50c9894e44",
+   "kind": "smotion",
+   "words": 1460,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_7e5e41276b3d7514",
+   "kind": "smotion",
+   "words": 1483,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_827d8d2d617bedce",
+   "kind": "smotion",
+   "words": 1438,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_8759c7838bbc86c2",
+   "kind": "smotion",
+   "words": 1422,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_8ab6188a40ca15ea",
+   "kind": "smotion",
+   "words": 1381,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_8d5b2ba0fb4d13bf",
+   "kind": "smotion",
+   "words": 1345,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_8df6143d0e77d92e",
+   "kind": "smotion",
+   "words": 430,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_8e58ac79b59b02b1",
+   "kind": "smotion",
+   "words": 1512,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_91b6c09eb47f8555",
+   "kind": "smotion",
+   "words": 1444,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_99153c144030c396",
+   "kind": "smotion",
+   "words": 1517,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_9d27e7ba242f3831",
+   "kind": "smotion",
+   "words": 1421,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_a6e1328c0bb3f401",
+   "kind": "smotion",
+   "words": 517,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_a910daef935891ce",
+   "kind": "smotion",
+   "words": 662,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_abf3c0fad53456d8",
+   "kind": "smotion",
+   "words": 537,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_acc83ed2509d84a1",
+   "kind": "smotion",
+   "words": 524,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_b0f9313b77cc78ee",
+   "kind": "smotion",
+   "words": 1451,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_b5f1d4145171026b",
+   "kind": "smotion",
+   "words": 449,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_bd4d51c08486c6e0",
+   "kind": "smotion",
+   "words": 418,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_bdcdb3ab996ae4e0",
+   "kind": "smotion",
+   "words": 1520,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_c1452981fd0bff64",
+   "kind": "smotion",
+   "words": 1543,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_c997a37560e266df",
+   "kind": "smotion",
+   "words": 502,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_ca6bfa4a6cca7e2a",
+   "kind": "smotion",
+   "words": 1490,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_cc09f17db377fd9e",
+   "kind": "smotion",
+   "words": 1342,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_cf449bcb069aec4f",
+   "kind": "smotion",
+   "words": 569,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_d086fde54698070c",
+   "kind": "smotion",
+   "words": 1439,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_d22f2ce2c740e6a7",
+   "kind": "smotion",
+   "words": 1846,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_d514bf852d8a9c58",
+   "kind": "smotion",
+   "words": 1477,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_d51cf763125cb85a",
+   "kind": "smotion",
+   "words": 1882,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_d6e8bdde0e4c515f",
+   "kind": "smotion",
+   "words": 1500,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_dab93928f26906f7",
+   "kind": "smotion",
+   "words": 458,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_db644b73b68c0547",
+   "kind": "smotion",
+   "words": 1394,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_dd87737d697c6764",
+   "kind": "smotion",
+   "words": 1749,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_de2dd381fa64193d",
+   "kind": "smotion",
+   "words": 450,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_dff6a3d360603fa2",
+   "kind": "smotion",
+   "words": 526,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e16a9806ee3544c3",
+   "kind": "smotion",
+   "words": 462,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e1acf8a03850acaf",
+   "kind": "smotion",
+   "words": 1447,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e3b7acc16da9932d",
+   "kind": "smotion",
+   "words": 1458,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e5ea78b8b0b0fe07",
+   "kind": "smotion",
+   "words": 1405,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e6794b6ec37ff71a",
+   "kind": "smotion",
+   "words": 1836,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_e70adc744a38ca59",
+   "kind": "smotion",
+   "words": 1486,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_ebf41e1ace7af45b",
+   "kind": "smotion",
+   "words": 1447,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_ed44232013f67072",
+   "kind": "smotion",
+   "words": 550,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_edaef099780fcafe",
+   "kind": "smotion",
+   "words": 1861,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_ef2bf556f207b8bd",
+   "kind": "smotion",
+   "words": 1418,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f17fffd88d134b04",
+   "kind": "smotion",
+   "words": 520,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f1b0e820c7b488c3",
+   "kind": "smotion",
+   "words": 1953,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f1d14a7dbf7c6173",
+   "kind": "smotion",
+   "words": 558,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f286856c3f400377",
+   "kind": "smotion",
+   "words": 576,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f42202faf57a3c89",
+   "kind": "smotion",
+   "words": 1431,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f646f03be5a8708d",
+   "kind": "smotion",
+   "words": 1421,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f6a501717c3e5ca8",
+   "kind": "smotion",
+   "words": 475,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_f917d48ee826da1f",
+   "kind": "smotion",
+   "words": 482,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_fce465befff2f623",
+   "kind": "smotion",
+   "words": 590,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_fd58e6b7e8cf969c",
+   "kind": "smotion",
+   "words": 1723,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_ff32b602a271c327",
+   "kind": "smotion",
+   "words": 1420,
+   "end": "00000000",
+   "messages": 0
+  },
+  {
+   "original": "ps_fffdabd910793aba",
+   "kind": "smotion",
+   "words": 1810,
    "end": "00000000",
    "messages": 0
   }

@@ -5905,8 +5905,16 @@ void abandon_fog_density_workers() noexcept {
 // exception left a frame) moves into storage that is never destroyed. The OS has already ended every other thread,
 // the D3D runtime's own included (wined3d's command stream), so ~Device / ~MotionOutput would call into D3D objects
 // whose threads are gone and wait forever (the seam-exit-path case). The process is ending: its memory and handles go
-// with it. No allocation, no lock, no D3D call, no logging.
+// with it. Without the capture mutex (a killed thread may hold it), no allocation, no D3D/COM call, no LoadLibrary,
+// no wait. One exception: each device's exit rows (below).
 void abandon_devices_at_exit() noexcept {
+    // The session rows a device release would have written (MotionOutput::exit_rows -> lod_strength_session, once;
+    // the game exits without releasing its device): formatted from plain CPU counters into stack scratch, then
+    // session_log::vlog after session_log::closing makes one TryAcquireSRWLockExclusive of the session-log buffer
+    // lock; held (a killed thread), the row is dropped and counted in dropped_total (session_end dropped=). The
+    // buffered rows and session_end follow in session_log::detach.
+    for (auto& entry : devices)
+        if (entry.second) entry.second->motion_output.exit_rows();
     using Map = decltype(devices);
     alignas(Map) static unsigned char storage[sizeof(Map)];
     Map* kept = new (storage) Map(); // placement: never destroyed

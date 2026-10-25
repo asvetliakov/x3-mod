@@ -3,8 +3,8 @@
 
 Twin transformer (linear_material_strength_twin_pixel_variant, verification/probe/material_strength_twin_structure.cpp
 over the local shader corpus): for every reviewed hull original and each of the 14 original-shading forms the proxy
-can bind (motion, fill, gained, widened, share, share gained, share gained widened, and the engine-light twin of each)
-the twin is the parent byte for byte plus
+can bind (motion, fill, gained, widened, share, share gained, share gained widened, the engine-light twin of each, and
+the sun-lane motion form smotion that the fade owner binds) the twin is the parent byte for byte plus
 exactly two insertions: `add rT.w, rS.w, rS.w` right after the specular texld (stage 1 DEFAULT / 2 BUMPMAP, from the
 program's CTAB SpecularTexSampler) and the join rewrite at the exposure seed's MAD (product: `mul rT.lanes, a, b ; mad
 d, rT, rT.w, c`; addend: `mul rT.lanes, c, rT.w ; mad d, a, b, rT`), rT one above the parent's highest temporary. The
@@ -38,9 +38,11 @@ SEEDS = {int(h, 16): (int(at), int(lanes), prod == 'true') for h, at, lanes, pro
     r'\{0x([0-9a-f]{16})ull,(\d+),(\d+),(true|false)\}',
     (ROOT / 'src/renderer/material_exposure_profiles_inc.h').read_text())}
 ADD, MAD, MUL, TEXLD = 2, 4, 5, 66
-KINDS = ('motion', 'fill', 'gain', 'widen', 'share', 'sgain', 'swiden', 'emotion', 'efill', 'egain', 'ewiden', 'eshare', 'esgain', 'eswiden')
+KINDS = ('motion', 'fill', 'gain', 'widen', 'share', 'sgain', 'swiden', 'emotion', 'efill', 'egain', 'ewiden', 'eshare', 'esgain', 'eswiden',
+         'smotion')
 NO_SPECULAR = {'ps_517540ae6d5e5410', 'ps_550c2a4d4d3ed70f', 'ps_7a0c3388065bb08d', 'ps_d44db87778a43b61',
                'ps_9d49f288800f898d', 'ps_a66fb1981ba755b2', 'ps_ebc9b2b3f1564e9a', 'ps_f31c9e2701c8eee4'}
+MOTION_ONLY = {'ps_6aaaa2cb27e92cc8', 'ps_c002d0727537c5de'}  # a motion row, no reviewed original-shading form
 # texel_lanes.py's read rules (per-component, xyz, dp2add, replicate, texture, else all four)
 PER_COMPONENT = {1, 2, 3, 4, 5, 18, 23, 11, 10, 12, 13, 36, 16, 17}
 XYZ = {8, 36, 33}
@@ -226,6 +228,13 @@ class StrengthTwinTests(unittest.TestCase):
         by_program = {}
         for r in self.rows:
             by_program.setdefault(r['name'], {})[r['kind']] = r
+        # Motion-table programs that are not reviewed hull originals have the sun-lane motion form alone; they have no
+        # specular stage, so the proxy keeps no words for them and they are refused (unsupported) like the eight below.
+        motion_only = {n for n, kinds in by_program.items() if set(kinds) == {'smotion'}}
+        self.assertEqual(motion_only, MOTION_ONLY)
+        for n in motion_only:
+            self.assertEqual((by_program[n]['smotion']['refusal'], by_program[n]['smotion']['stage']), ('unsupported', 0))
+            del by_program[n]
         twinned = {n for n, kinds in by_program.items() if all(k['status'] == 0 for k in kinds.values())}
         refused = {n for n, kinds in by_program.items() if any(k['status'] != 0 for k in kinds.values())}
         self.assertEqual(len(twinned), 100, sorted(by_program)[:5])
@@ -273,6 +282,19 @@ class StrengthTwinTests(unittest.TestCase):
                     continue
                 constants = {w & 0x7ff for w in twin[at + 2:at + 1 + ((t >> 24) & 15)] if rtype(w) == 2}
                 self.assertLessEqual(len(constants), 1, (r['name'], at))
+
+    def test_sun_motion_twin_is_the_motion_twin_with_the_invalid_share(self):
+        """Kind 7 (smotion, motion_output_material_strength_inc.h): the sun-lane motion form is the motion variant with
+        a leading `def c221, -1, 0, 0, 0` and a trailing `mov oC2.g, c221.x` (material_motion_invalid_sun_share), so its
+        twin is the motion twin with the same two additions, word for word, for every program that has the form."""
+        smotion = [r for r in self.rows if r['kind'] == 'smotion' and r['name'] not in NO_SPECULAR | MOTION_ONLY]
+        self.assertEqual(len(smotion), 100)
+        for r in smotion:
+            self.assertEqual(r['status'], 0, r['name'])
+            motion = words(self.out / f"{r['name']}-motion-twin.bin")
+            twin = words(self.out / f"{r['name']}-smotion-twin.bin")
+            self.assertEqual(twin, [motion[0], 0x05000051, 0xa00f00dd, 0xbf800000, 0, 0, 0] + motion[1:-1] +
+                             [0x02000001, 0x80020802, 0xa00000dd, 0x0000ffff], r['name'])
 
     def test_5f82ecac_byte_exact_oracle(self):
         """XT BUMPMAP 5f82ecac (freighter_base's distant draw): specular on s2 into r2, the product join

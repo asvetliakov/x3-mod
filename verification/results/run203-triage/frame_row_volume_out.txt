@@ -1,0 +1,1 @@
+old rows 33405 new rows 28 {'change': 13, 'cadence': 9, 'onset': 6} first/last row elapsed_ms [18265, 221358]

@@ -1227,6 +1227,9 @@ public:
                               std::uint8_t slot) noexcept; // true when stored (the ratio carrier)
     bool strength_mark_forget(const void* texture) noexcept; // final Release: true when an entry was dropped
     std::uint8_t strength_lane(IDirect3DBaseTexture9* texture) noexcept;
+    // Process exit (capture.cpp abandon_devices_at_exit, DllMain with the other threads gone; the device is never
+    // released, so ~MotionOutput never runs): the session rows the release would have written, once.
+    void exit_rows() noexcept { strength_session_row("exit"); }
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h; docs/architecture/engine-exhaust-gap-analysis.md gap 9):
     // reads X3M_ENGINE_SHIMMER (on|off, default on), X3M_ENGINE_SHIMMER_PX (0..4, default 1.5) and
     // X3M_ENGINE_SHIMMER_MAX (0..16 rects, default 4) once and logs one
@@ -1537,9 +1540,11 @@ private:
         // variant, fill, gained, gained widened, share, share gained, share gained widened; null = none.
         IDirect3DPixelShader9* engine_twin[7]{};
         // Material-strength twins (motion_output_material_strength_inc.h): [0][k] of the original-shading kind k above,
-        // [1][k] of its engine-light twin; null = none (refused or not created). strength_stage: the specular sampler
-        // stage the twins read (1 DEFAULT, 2 BUMPMAP), 0 = no twin at all (one byte per draw).
-        IDirect3DPixelShader9* strength_twin[2][7]{};
+        // [0][7] of the sun-lane motion form (sun_motion_variant: the fade owner's bind), [1][k] of the engine-light
+        // twin of kind k ([1][7] unused: the sun-lane form has no engine-light twin); null = none (refused or not
+        // created). strength_stage: the specular sampler stage the twins read (1 DEFAULT, 2 BUMPMAP), 0 = no twin at
+        // all (one byte per draw).
+        IDirect3DPixelShader9* strength_twin[2][8]{};
         std::uint8_t strength_stage = 0;
         std::uint8_t strength_attempted[2] = {0, 0}; // bit k: twin [e][k] creation tried (lazy, first marked selection)
         std::vector<std::uint32_t> strength_code;    // the original's words, kept only for a program with a specular
@@ -1632,7 +1637,7 @@ private:
         IDirect3DPixelShader9* engine_twin[7]{};
         bool engine_light_pair = false;
         // Material strength: the bound PS's twins and specular stage (ShaderEntry::strength_twin / strength_stage).
-        IDirect3DPixelShader9* strength_twin[2][7]{};
+        IDirect3DPixelShader9* strength_twin[2][8]{};
         std::uint8_t strength_stage = 0;
         engine_light::core::VertexLayout engine_layout{};
         float engine_rows[4][12]{};
@@ -1895,20 +1900,47 @@ private:
     std::uint32_t strength_marks_seen_[lod_texture_mark::slot_count + 1] = {0, 0, 0, 0, 0}; // by slot (+1 other)
     std::uint32_t strength_marks_stale_ = 0, strength_marks_dropped_ = 0, strength_twins_created_ = 0,
                   strength_twins_refused_ = 0, strength_twins_failed_ = 0;
-    std::uint32_t strength_session_draws_ = 0;
-    std::uint32_t strength_logged_[6] = {0, 0, 0, 0, 0, 0}; // the totals the last frame row reported
+    std::uint64_t strength_session_draws_ = 0, strength_session_marked_ = 0, strength_session_no_twin_ = 0; // session
+    std::uint32_t strength_logged_[7] = {0, 0, 0, 0, 0, 0, 0}; // the non-cumulative totals the last frame row reported
+    // Frame row interval (debug tier): the twin / marked / no_twin draws and the frames since the last row, the QPC
+    // of that row (cadence), and whether the previous frame had a no_twin draw (onset).
+    std::uint32_t strength_interval_[3] = {0, 0, 0}, strength_interval_frames_ = 0;
+    std::uint64_t strength_row_qpc_ = 0;
+    bool strength_no_twin_previous_ = false, strength_onset_pending_ = false; // onset latched until a family frame
     std::uint64_t strength_transform_ticks_ = 0, strength_create_ticks_ = 0; // QPC ticks spent on lazy twin creation
     bool strength_full_logged_ = false;
+    bool strength_session_logged_ = false; // lod_strength_session written (device release or process exit): once
+    // Twin creation follow-up (debug tier): the frame of the latest creation, its twins, the QPC after the first
+    // CreatePixelShader of that frame and at the last reported frame end, and the frame ends still to report (2: the
+    // creation frame's after Present, then the next frame's).
+    std::uint64_t strength_followup_frame_ = 0, strength_followup_qpc_ = 0, strength_followup_end_qpc_ = 0;
+    std::uint32_t strength_followup_twins_ = 0;
+    std::uint8_t strength_followup_left_ = 0;
+    // No-twin diagnostic (debug tier): one lod_strength_no_twin row per distinct (bound program, form, reason), the
+    // first strength_gap_limit of them; later distinct keys are counted, not logged.
+    static constexpr unsigned strength_kinds = 8; // the 7 original-shading kinds + the sun-lane motion form (kind 7)
+    static constexpr unsigned strength_sun_motion = 7;
+    static constexpr unsigned strength_gap_limit = 64;
+    enum : std::uint8_t { strength_gap_form, strength_gap_refused, strength_gap_entry, strength_gap_code,
+                          strength_gap_material };
+    struct StrengthGap {
+        std::uint64_t ps_hash;
+        std::uint8_t form, reason;
+    };
+    StrengthGap strength_gaps_[strength_gap_limit]{};
+    std::uint32_t strength_gap_count_ = 0, strength_gap_dropped_ = 0;
     void strength_prepare(ShaderEntry& entry, const void* code, UINT bytes, std::uint64_t hash) noexcept;
     void strength_release(ShaderEntry& entry) noexcept;
-    IDirect3DPixelShader9* strength_twin(IDirect3DPixelShader9* ps, bool engine) noexcept; // creates on first use
+    // Creates on first use; null with `reason` (strength_gap_*) when the draw keeps its parent.
+    IDirect3DPixelShader9* strength_twin(IDirect3DPixelShader9* ps, bool engine, std::uint8_t& reason) noexcept;
+    void strength_gap(IDirect3DPixelShader9* ps, bool engine, std::uint8_t reason, const MotionRoute& route) noexcept;
     void strength_clear_twins() noexcept {
         for (auto& row : shadow_.strength_twin)
             for (auto*& twin : row) twin = nullptr;
         shadow_.strength_stage = 0;
     }
     void strength_frame(bool family) noexcept;
-    void strength_session_row() noexcept;
+    void strength_session_row(const char* at) noexcept;
     static std::uint32_t strength_twin_ms100(std::uint64_t ticks) noexcept; // QPC ticks -> ms x 100, integer only
     void engine_light_create_twins(ShaderEntry& entry, const void* code, UINT bytes, std::uint64_t hash) noexcept;
     void engine_light_release(ShaderEntry& entry) noexcept;

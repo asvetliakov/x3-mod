@@ -1054,6 +1054,57 @@ twins are created at registration (about +7 KB bytecode per hull kind). Twins ar
 `lod_strength_frame` `seen` counts against the marker's atlas members settle whether every atlas reaches the device
 through the D3DX import; the first-draw compile hitch; the look at the freighter_base outpost against Run 202).
 
+### 2026-10-25 follow-up build after Run 203 A (findings A-D; worktree on 04c37dd2, not installed, not flown)
+
+- **A, the no_twin draws.** Source: a marked draw keeps its parent when the program `bind_variant_pair` chose is
+  none of the 7 twin kinds. With linear materials off (0 `linear_material_variant` / `linear_material_xt_default_variant`
+  rows in the Run 203 A log, measured), the only such bind is `ps_sun_motion`: the fade owner on the sun lane
+  (`X3M_FADE_RT2_OWNER`), and the lane's fallback for a program without a share producer. Measured on the Run 203 A
+  log (`verification/results/run203-triage/no_twin_vs_fade.py` -> `no_twin_vs_fade_out.txt`): all 8,973 no_twin
+  frames (61,376 draws) have `fade_routed > 0`, `fade_owner=1` and the sun lane available, and no_twin <= fade_routed
+  on 8,973 / 8,973. The draw-level identity is inferred; the new row names it in the next flight. Covered now: kind 7
+  `smotion` = `material_motion_invalid_sun_share(motion variant)` (a leading `def c221`, a trailing
+  `mov oC2.g, c221.x`). Its twin is the motion twin with the same two additions, word for word. It uses the same
+  join, texld and `rT`, the same lazy creation (the parent is regenerated through the registration's two steps), and
+  it has no engine-light twin. Still without a twin, and named by the new row: the material route and XT DEFAULT
+  ordinary (`material`, `sun_material`, `xt`, `sun_xt`; linear materials only), an unexpected form (`other`), and a
+  refused or failed creation (`refused`). Material-route marked draws are now counted in marked / no_twin; before,
+  they were not counted at all.
+- **New row** `lod_strength_no_twin` (debug): one per distinct (ps hash, form, reason), the first 64. Fields: ps,
+  form (motion..swiden, smotion, emotion..eswiden, sun_xt, xt, sun_material, material, other), reason (form, refused,
+  no_entry, no_code, material), stage, fade_arm, fade_owner, sun_lane, sun_receiver, depth, distinct. Keys after the
+  64th are only counted, in `no_twin_keys_dropped` on the session row.
+- **B, frame row volume.** `lod_strength_frame` is now written only when seen / table / stale / released / twins /
+  refused / failed moved (`reason=change`), at the first frame with a no_twin draw after one without (`onset`,
+latched until the next family frame), or,
+  with draws pending, once per 10 s of QPC time (`cadence`). draws / marked / no_twin are sums over `frames=` since
+  the previous row. Replaying the Run 203 A rows through the rule (`frame_row_volume.py` -> `frame_row_volume_out.txt`)
+  gives 33,405 -> 28 rows (13 change, 6 onset, 9 cadence; inferred, the replay uses frame_end `elapsed_ms`).
+- **C, session row.** `lod_strength_session` is written once: at the device's release (`at=release`), or at process
+  exit from `abandon_devices_at_exit` (`at=exit`). That runs in DllMain after `session_log::closing`; `log()` tries
+  the buffer lock once, and `detach` writes the row out before `session_end`. Added fields: marked, no_twin,
+  no_twin_keys, no_twin_keys_dropped. The row is also written when draws were marked but no twin was attempted.
+- **D, first-use cost.** `lod_strength_variant` keeps `frame=` and gains `form=`. Each creation also writes
+  `lod_strength_variant_frame` after the creation frame's Present (step 0, `since_create_us`) and after the next
+  frame's Present (step 1, plus `frame_us`, the whole next frame). Twins created in one frame share one pair of rows
+  (`twins=`). scene_end is not cheaply available in `MotionOutput` (it belongs to the opt-in frame_phases tracker);
+  the triage joins `frame_phases_slow` by frame number, as before.
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| Oracle + validator | `native_validate_twins.sh <scratch>` (15 forms) -> `native_validate_twins.json` | 1,500 / 1,500 twins `end=00000000 messages=0` (100 programs x 15 forms; 46 unsupported rows = the 8 no-specular programs and 2 motion-only programs `6aaaa2cb`, `c002d072` with stage 0), 14.9 s |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p <module>.py` for test_material_strength (+1 test: smotion twin = motion twin + invalid share for 100/100), test_hull_emissive_widening, test_hull_lightmap_gain, test_linear_emission_hull_gain, test_config_schema | 8 / 8 / 9 / 10 / 19 tests OK; coverage JSON restored |
+| DLL | `cmake --build build -j1 --target d3d9` (fresh configure, ledger flags) | 0 warnings, 2 min 28 s; after the review fixes (exit-row comments, onset latch, 64-bit session counters) rebuilt in 1 min 11 s, still 0 warnings: 62,927,285 B, sha256 `7f09557a…` (compile check only, not a candidate) |
+| x87 | `python3 verification/probe/check_no_x87.py build/d3d9.dll`; objdump of the 19 strength / exit functions | PASS, 1,136 reachable functions; 0 x87 instructions in the strength functions |
+
+Performance (instruction-count argument, inferred). On the ordinary route, an unmarked draw is unchanged. A marked
+draw pays one more pointer compare (8 instead of 7), the `material ?` test and the reason-byte stores. With `!material`
+gone from the guard, a material-route draw of a twinned program now also pays the `atlas_lane` byte load and compare.
+That is a few instructions, and none of it applies with linear materials off. A no_twin draw under `--debug` alone also classifies the form (at most 12
+pointer compares) and scans at most 64 ten-byte keys (one in practice). Every frame with the option on adds two adds to
+the session totals. Under `--debug`, frames add three adds, a 7-word compare and one QPC while draws are pending. Each
+twin creation adds two QPCs and two rows. Nothing is allocated, locked or fetched with a `Get*` call on the draw path.
+
 ## 2026-10-25 Run 203 A: option B flown (Run203 = 0c92156e, native C:\X3, debug + perf)
 
 Bake: x3m-regenerate 1,154 bodies in 55.3 min. Flight 37,794 frames, session_end exception=0. Scripts and small

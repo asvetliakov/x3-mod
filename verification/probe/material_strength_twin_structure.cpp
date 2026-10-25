@@ -1,9 +1,10 @@
 // Host-only driver of the merged-LOD material-strength twin
 // (linear_material_strength_twin_pixel_variant; docs/architecture/overlay-material-strength.md 5).
-// Reads every ps_ program of the local corpus, builds the 14 original-shading
+// Reads every ps_ program of the local corpus, builds the 15 original-shading
 // parent forms the proxy binds (the plain motion variant, the fill, the gained,
-// the widened, the share producer, its gained and widened forms, and the
-// engine-light twin of each), writes each parent and its strength twin
+// the widened, the share producer, its gained and widened forms, the
+// engine-light twin of each, and the sun-lane motion form the fade owner binds:
+// material_motion_invalid_sun_share of the motion variant), writes each parent and its strength twin
 // next to each other in a caller-supplied local folder and prints one JSON
 // object with per-program rows for the Python oracle
 // (verification/analysis/test_material_strength.py). No game bytes are
@@ -46,6 +47,7 @@ struct Kind {
     const char* name;
     OriginalVariantOptions options;
     bool engine;
+    bool sun_motion = false; // the proxy's sun_motion_variant: material_motion_pixel_variant + invalid sun share
 };
 int main(int argc, char** argv) {
     try {
@@ -65,13 +67,15 @@ int main(int argc, char** argv) {
         share_gain.share = true;
         OriginalVariantOptions share_widen = widened;
         share_widen.share = true;
-        // The 14 forms the proxy can bind: the seven original-shading kinds and their engine-light twins
-        // (motion_output_material_strength_inc.h kind order 0..6: motion, fill, gain, widen, share, sgain, swiden).
+        // The 15 forms the proxy can bind: the seven original-shading kinds and their engine-light twins
+        // (motion_output_material_strength_inc.h kind order 0..6: motion, fill, gain, widen, share, sgain, swiden),
+        // and kind 7, the sun-lane motion form (no engine-light twin).
         const Kind kinds[] = {{"motion", motion, false},  {"fill", fill, false},        {"gain", gain, false},
                               {"widen", widened, false},  {"share", share, false},      {"sgain", share_gain, false},
                               {"swiden", share_widen, false}, {"emotion", motion, true}, {"efill", fill, true},
                               {"egain", gain, true},      {"ewiden", widened, true},    {"eshare", share, true},
-                              {"esgain", share_gain, true}, {"eswiden", share_widen, true}};
+                              {"esgain", share_gain, true}, {"eswiden", share_widen, true},
+                              {"smotion", motion, false, true}};
         std::vector<std::string> names;
         for (const auto& entry : fs::directory_iterator(corpus)) {
             const auto name = entry.path().filename().string();
@@ -90,10 +94,17 @@ int main(int argc, char** argv) {
             for (const auto& kind : kinds) {
                 Words parent;
                 bool engine_applied = false, share_applied = false, gain_applied = false, widen_applied = false;
-                const auto status = linear_material_original_variant_pixel(
-                    original.data(), original.size(), kind.options, kind.engine, parent, true, nullptr,
-                    &share_applied, &gain_applied, &widen_applied, &engine_applied);
-                if (status != LinearMaterialResult::Applied) continue; // unreviewed, or a form the program lacks
+                if (kind.sun_motion) {
+                    // The registration's two steps (motion_output.cpp sun_motion_variant), depth on.
+                    if (material_motion_pixel_variant(original.data(), original.size(), parent, true) !=
+                            MaterialMotionResult::Applied ||
+                        !material_motion_invalid_sun_share(parent))
+                        continue; // unreviewed, or a program without the depth write (no sun-lane form)
+                } else if (linear_material_original_variant_pixel(original.data(), original.size(), kind.options,
+                                                                  kind.engine, parent, true, nullptr, &share_applied,
+                                                                  &gain_applied, &widen_applied, &engine_applied) !=
+                           LinearMaterialResult::Applied)
+                    continue; // unreviewed, or a form the program lacks
                 if (kind.engine && !engine_applied) continue;
                 if (kind.options.share && !share_applied) continue;
                 if (kind.options.lightmap_gain != 1.f && !gain_applied) continue;

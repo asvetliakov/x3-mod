@@ -1,0 +1,4 @@
+no_twin frames 8973 draws 61376
+no_twin frames by (fade_routed>0, fade_owner, sun lane available): {(True, '1', '1'): 8973}
+marked frames without no_twin, same key: {(True, '1', '1'): 4578, (False, '1', '1'): 19849}
+no_twin <= fade_routed on 8973 of 8973
