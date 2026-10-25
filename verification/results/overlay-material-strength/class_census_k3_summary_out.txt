@@ -1,0 +1,8 @@
+bodies 1155 errors 0 []
+C draws (visible groups, all parts) K2 1999 -> option B 2060 (+61, x1.031); record 0 drawn 15333
+opaque classes per body before 1404 after 1465; alpha groups (one per part, both ways) 574
+bodies with a class merging several diffuse strengths (ratio alpha in use): 371 classes 388
+per-body draw increase (10 = 10 or more): [(0, 1094), (1, 61)]
+bodies unchanged: 1094
+bodies that keep a draw gain before but not after (after >= record 0 drawn): 1 [('ships/props/m6maingun_static', 2, 1, 2)]
+largest increases: [('ships/goner/goner_tl_ozias/hull', 2, 3), ('ships/m8/split_m8', 1, 2), ('ships/mm6/split_mm6', 2, 3), ('ships/others/lasertower/hull', 2, 3), ('ships/others/navigational_beacon/hull', 2, 3), ('ships/paranid/paranid_tm_helios/hull', 2, 3), ('ships/pirate/pirate_m6_morrigu/hull', 2, 3), ('ships/pirate/pirate_tm_caravel/hull', 2, 3)]

@@ -963,3 +963,93 @@ Residual (pre-existing, measured with `param_census.py`): within the new classes
 420 classes, specular power in 407, reflection 251, bump strength 313, detail texture 335, cube map 303,
 `g_bColor_Mixing` (switches the albedo path of PS 5f82) in 182 and `g_MatEmissiveColor` in 31; these can still
 pop and are the candidates for the next key members. Identical alpha materials are not merged (draw cost).
+
+## 2026-10-25 option B: per-material diffuse strength in the specular atlas alpha (host-side; not installed, not flown)
+
+Implements [overlay-material-strength.md](../architecture/overlay-material-strength.md) ("option B", ratified
+2026-10-25) as the alternative to the bef0d269 class split above; the user flies both and chooses. Baker
+(`tools/analysis/lod_atlas.py`): `effect_classes` keys on (effect, occlusion map, raw `g_CullMode`) only
+(`material_class_key`); each class's `g_MatDiffuseStrength` becomes `s_merged = max(area-weighted mean, s_max / 2)`
+(`class_strength`, `merged_strength`) and every member's ratio is baked as its specular tile's alpha
+`255 clamp(s_i / s_merged / 2, 0, 1)` (`strength_alpha`; a per-tile constant, background alpha 128, specular atlas
+always DXT5); tiles shared by materials of different ratios are split (`plan_layout` `strength`); every atlas DDS
+header carries `'X3ML'`, version 1 and `slot | lane << 8 | K << 16 | payload << 24` in `dwReserved1[0..2]`
+(`dds_mark`, `read_dds_mark`); the marker's atlas summary records `strength` rows (s_merged, mean, max, per member
+s_i and alpha byte) and each texture's `mark`. **Alpha materials go back to the pre-bef0d269 path by user decision
+(2026-10-25): one alpha group per part on the dominant alpha material with the `synth_materials` remap; the pale beam
+band on freighter_base is accepted against about 1,600 extra draws.** `tool_sha256` changes: the next
+`x3m-regenerate --batch --sync` rebuilds every body (no `--trust-tool`); the frozen `x3m-regenerate.exe` needs a
+rebuild to carry it.
+
+Proxy: `renderer::linear_material_strength_twin_pixel_variant` builds, from any original-shading parent variant's
+final words, the twin with `add rT.w, rS.w, rS.w` after the specular `texld` (stage 1 DEFAULT / 2 BUMPMAP) and the
+join rewrite at the `exposure_seeds` MAD (product `mul rT.lanes, a, b ; mad d, rT, rT.w, c`; addend
+`mul rT.lanes, c, rT.w ; mad d, a, b, rT`), refusing a program without a join, with other than one texld on the
+stage, that texld inside flow control, a lane other than `.x` of rS read before overwritten, the join absent from the
+parent byte for byte or before the texld, or no free temporary (`StrengthTwinRefusal`, one `lod_strength_variant`
+row per program). `motion_output_material_strength_inc.h`: `strength_twin[2][7]` per program (the seven
+original-shading kinds and their engine-light twins, each parent regenerated from its options at registration),
+selection after the engine-light step when `samplers_[strength_stage].atlas_lane == 1` (one byte compare per draw),
+per-frame `lod_strength_frame` row (debug tier: `draws`, `marked`, `no_twin`, `seen` per atlas slot, table size,
+stale drops, twins created, programs with a refusal). `loading_trace::set_texture_observer`: the
+`D3DXCreateTextureFromFileInMemoryEx` row is patched for this option alone (install scope `lod_strength`); the
+observer (`capture.cpp texture_created`) parses the header (`lod_texture_mark.h`) and records marked textures by
+pointer + resource identity in the device's 4096-entry table; the SetTexture hook probes it on every non-null bind
+(`GetPrivateData` only on a hit; a stale pointer is dropped and counted) and stores the lane byte in
+`SamplerShadow.atlas_lane`; the first 16 marked loads log `lod_strength_texture` under `--debug`. Ini key
+`lod_material_strength` (bool, default 1, `[engine]`); 0 = no twin created or bound and the texture row not patched.
+
+Evidence (measured unless marked; scripts and outputs in `verification/results/overlay-material-strength/`):
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Host tests | `PYTHONPATH=verification/probe python3 -m unittest` test_bob1, test_lod_overlay_batch, test_lod_recipes, test_lod_strut_widening, test_lod_batch_census, test_regenerate, test_lod_overlay_check, test_hull_lightmap_gain, test_hull_emissive_widening, test_linear_emission_hull_gain, test_exposure_port/reference/settings, test_config_schema, test_material_strength (new: twin oracle over the corpus, 5f82ecac byte-exact, texel lanes from the CTAB, validator record, mark parser + table through `verification/probe/lod_texture_mark_check.cpp`) | 272 tests, OK, 4 skipped (one process, 82 s); test_bob1 61 -> 63 tests (the bef0d269 cull/strength test rewritten for the option-B key, the alpha test for the restored remap, plus merged-strength rule, alpha byte and DDS mark round trip), test_lod_overlay_batch + 1 (marks, exact tile alpha, background 128, other atlases byte-identical, tile split), test_material_strength 7 new |
+| DLL build | `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 -DX3M_SEH_CLANG=/usr/bin/clang && cmake --build build -j2 --target d3d9` (worktree, GCC 16.2 mingw) | builds, 0 warnings; `build/d3d9.dll` 62,881,958 B, sha256 `3ae9b412…` (worktree build for compile checks only; not a candidate) |
+| Twin coverage, section 10 (a) | `verification/probe/material_strength_twin_structure.cpp` over `/tmp/x3-shader-sweep/programs` (751 programs restored with `index_shaders.py` + `sweep_shaders.py extract`) | 108 reviewed programs: 100 get a twin in all 14 forms the proxy can bind (motion, fill, gain, widen, share, share+gain, share+gain+widen and the engine-light twin of each = 1,400 twins), the 8 asteroid / glass layouts have no specular stage (`unsupported`); every twinned program reads lane `.x` alone of the specular texel (`lanes_read` 1 for 1,400/1,400, the test re-derives it with texel_lanes.py's rules from the CTAB `SpecularTexSampler` stage); twin = parent + 8 words; largest twin 760 slots (plan cap 32,768); the 1,400 transforms take 0.26 s on the host build including file writes |
+| Native validator | `native_validate_twins.sh <scratch>` (host g++ generator, `i686-w64-mingw32-g++ -O1 -static native_validate.cpp`, SysWOW64 d3d9 through WSL interop, 14 per-form batches by `native_validate_run.py`) -> `native_validate_summary.py` -> `native_validate_twins.json` | 1,400 / 1,400 twins `end=00000000 messages=0` |
+| DDS reserved words, section 10 (b) | `dds_reserved_scan.py /mnt/c/X3` (streaming: 128 header bytes per member, gzip inflated only that far; under `systemd-run --user --scope -p MemoryMax=3G -p MemorySwapMax=0`) -> `dds_reserved_scan_out.txt` | 28 catalogues, 10,480 .dds/.pck members, 9,386 DDS headers, 4 unreadable gzip, 15 with a non-zero `dwReserved1` word (14 `GIMP`, 1 other), **0** carrying `'X3ML'` |
+| Scratch bake | `lod_overlay.py --game /mnt/c/X3 --batch --only <freighter_base> --mod none --jobs 1 --out <scratch>` -> `check_bake_strength.py <scratch>` -> `check_bake_strength_out.txt` | ELIGIBLE, 1024, min/weighted 2.006 texels/px; C **3** groups (opaque classes 23 cull 2 c12 0.4951 / 24 cull 1 c12 0.7272, alpha group on material 19); all four atlases DXT5 with the mark, specular `(1, 3, 3, 2, 1)`; background alpha 128.00 over 909,520 texels; every member's decoded tile alpha equals its byte exactly (worst error 0/255), recovered `2 a s_merged / s_i` 0.9968-1.0038 (members 12: 1.0007, 13: 0.9981, 14/15: 1.0038, 16: 0.9981, 8: 1.0000); both classes take the mean (`s_max / 2` smaller) |
+| Fleet draw count | `run_census_capped.py /mnt/c/X3 <overlay_bodies.py list> OUT.tsv 50` (one capped process per 50 bodies) -> `class_census_k3_summary.py` -> `class_census_k3_summary_out.txt` | 1,155 bodies, 0 errors (23 capped chunks, available memory 5.7-6.0 GB throughout): C draws K2 1,999 -> option B **2,060** (+61, x1.031; the design's 3,667 assumed the bef0d269 alpha split, withdrawn), record 0 15,333; opaque classes 1,404 -> 1,465 (the 61 cull-only splits), alpha groups 574 both ways; 388 classes in 371 bodies merge several diffuse strengths (the ratio alpha is what draws them at their own strength; same 388 / 371 as the design's census); 1,094 bodies unchanged, 61 bodies +1; 1 body falls to `no_draw_gain` (`ships/props/m6maingun_static`, record 0 draws 2, C 1 -> 2); freighter_base 2 -> 3 |
+| Hook parser | `verification/probe/lod_texture_mark_check.cpp` (host g++) | 80 checks pass: specular / other-slot descriptors, zero and `NVTT` reserved words, non-DDS, short, null, later version, K != 2, lane != w, table insert / find / overwrite / half-full refusal / erase keeps probe runs / null |
+
+Review fixes (2026-10-25, independent review, no blocker): S1 `texture_created` takes the capture lock and uses
+`devices.find` (an unknown device marks nothing instead of terminating); S2 the ownership layer's new
+`claim_texture_release_observer` drops a marked entry at the texture's final Release (`texture_released`; one relaxed
+load per final release while no marked texture is stored), and a full table logs `lod_strength_table_full` once at the
+standard tier; S3 the baker docstring names the key (effect, occlusion map, raw `g_CullMode`) and the restored alpha
+remap; N1 the product guard tests `lanes & 8`; N2 the oracle and the validator cover all 14 runtime forms; N3 a join
+inside flow control is refused (`join_depth`); N5 an empty table is skipped by one count load; N6
+`lod_strength_variant` and `lod_strength_frame` are debug-tier and the frame row is written only when a counter
+changed; N7 `hull-emissive-widening-coverage.json` restored. Twins are now created **lazily** at a (program, kind)'s
+first marked selection (the original words are kept per hull program, about 100 x 6 KB); a session without marked
+atlases creates no twin. Delta review (clean) follow-ups: the `lod_strength_variant` row carries `transform_us` and
+`create_us` (QPC) of each lazy creation or refusal, the frame row `twin_ms` so far, and a `lod_strength_session` row
+(debug or perf tier, at the device's release) totals twins created / refused / failed with `transform_ms` /
+`create_ms`; nothing is timed when nothing is created. D2: `lod_texture_mark::live_marks` is an exact process-wide
+count (a new insert +1, an overwrite +0, every erase -1, a destroyed table -count), so the lock-free exit of the
+final-release observer is back once the atlases unload (host check: 88 checks). DLL after the fixes: 62,915,520 B, sha256 `af97b74e…`, 0 warnings (`-j1`); the
+host test set above reruns clean (272 tests, OK, 4 skipped, 96 s; test_material_strength covers the 14 forms); `check_no_x87.py`
+PASS over 1,131 reachable functions (a first build of the timing rows failed it: the 64-bit tick -> double conversions in
+`strength_session_row` compiled to x87 `fstpl`; the rows now use integer microseconds / ms x 100).
+
+Performance pass (`mark_table_bench.cpp`, i686 MinGW `-O2 -msse2 -mfpmath=sse`, run natively through WSL interop,
+10^7 calls each, cache-resident throughput; `mark_table_bench_out.txt`):
+
+| Path | Added cost | Figure |
+| --- | --- | --- |
+| Per routed draw (every draw that reaches `bind_variant_pair`, vanilla included) | one byte load + branch on `shadow_.strength_stage` (0 without twins); on a twinned program one more byte load; on a marked draw at most 7 pointer compares; no map, hash, lock or atomic | 1.27 ns measured for the two-byte gate |
+| Per SetTexture (non-null texture) | one count load when the table is empty; else one open-addressing probe, inside the `PlainHookGuard` lock the hook already holds; `GetPrivateData` only on a hit | 0.27 ns empty, 0.91 ns miss / 1.23 ns hit at 1,500 entries, measured |
+| Per D3DX texture load | 12-byte header compare in the hook; marked: capture lock + `resource_id` + insert (about 2,000 loads per session) | 1.31 ns unmarked / 1.46 ns marked parse, measured; the row is not patched with the option off |
+| Per final texture Release | one relaxed atomic load (observer set, nothing stored); with marked textures: capture lock, device map lookup, probe, erase | erase 1.60 ns measured; lock cost inferred (uncontended recursive mutex) |
+| Twin creation | lazy per (program, kind): transform about 0.2 ms (inferred from 0.26 s / 1,400 on the host build) + one `CreatePixelShader` on first marked draw | at most 14 per hull program over a session |
+| GPU | +2 ALU (`add`, `mul`) per pixel of a marked draw; other draws bind the parent unchanged | inferred |
+
+Hook change review: the texture row is the existing IAT patch (`Hook hooks[]`, `patch`), installed by the same code
+and with the same protection-debt handling as before; the observer runs after the original with the original's
+LastError saved and restored around it, inside the hook's `CpuCallBoundary`; `set_texture_observer` is refused once
+installation started. Per-draw cost: one byte compare on every routed draw of a program with twins (`strength_stage`
+is 0 otherwise); per SetTexture one pointer-table probe (no device call unless the pointer is a marked atlas);
+twins are created at registration (about +7 KB bytecode per hull kind). Twins are released with their entries
+(re-registration, teardown); the table is freed with the device's `MotionOutput`. Not verified: the flight (the
+`lod_strength_frame` `seen` counts against the marker's atlas members settle whether every atlas reaches the device
+through the D3DX import; the first-draw compile hitch; the look at the freighter_base outpost against Run 202).

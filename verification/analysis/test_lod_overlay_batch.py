@@ -525,6 +525,82 @@ class BatchRun(unittest.TestCase):
             with self.assertRaisesRegex(lod_atlas.AtlasError, 'placed in tile'):
                 lod_atlas.check(r0, res['record'], bad, {}, spec + [dict(spec[0])] * 100)
 
+    @staticmethod
+    def strength_body(strengths, shared_textures=False):
+        """atlas_tree_lod0's materials and record 0 with a specular slot (a_diff.tga) and g_MatDiffuseStrength
+        strengths[i] (16.16) on material i; shared_textures gives material 1 material 0's texture set."""
+        tree = bob1.parse(bob1.serialise(atlas_tree_lod0()))
+        mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+        for i, m in enumerate(mats[:2]):
+            if shared_textures and i == 1:
+                m['params'] = [q for q in mats[0]['params'] if q[1] == 8 and q[0] != b't_SpecularTexture']
+            m['params'] = m['params'] + [(b't_SpecularTexture', 8, b'a_diff.tga'), (b'g_MatDiffuseStrength', 2, [strengths[i]])]
+        return mats, r0
+
+    def test_strength_ratio_in_the_specular_alpha_and_header_marks(self):
+        """With the specular slot every atlas DDS carries the 'X3ML' mark (the specular one with the strength
+        descriptor), the specular atlas is DXT5 with each tile's alpha 255 s_i / s_merged / 2 exactly (per-tile constant,
+        decoded error 0) and background alpha 128; a change of the strengths leaves the diffuse, light and bump atlases
+        byte-identical (header included: the layout and tiles do not move) and only the specular alpha moves; two
+        materials of one texture set but different ratios get tiles of their own."""
+        q = lambda x: int(round(x * 65536))
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            assets, _ = lod_overlay.original_assets(game)
+            mats, r0 = self.strength_body((q(1.1), q(0.4)))
+            res = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64, 128), specular=True, light_bleed_max=0)
+            self.assertEqual(res['slots'], ('diffuse', 'light', 'bump', 'specular'))
+            self.assertTrue(res['layout']['strength'])
+            for slot, e in res['encoded'].items():
+                self.assertEqual(lod_atlas.read_dds_mark(e['dds']),
+                                 (1, lod_atlas.SLOT_IDS[slot]) + ((3, 2, 1) if slot == 'specular' else (0, 0, 0)))
+                self.assertEqual(e['mark'], lod_atlas.strength_mark(slot))
+            spec = res['encoded']['specular']
+            self.assertEqual(spec['format'], 'DXT5')
+            [row] = res['strength']
+            areas = {m: sum(lod_atlas.body_materials.face_area(r0['points'], f) for p in r0['parts']
+                            if not p['flags'] & lod_atlas.HIDDEN_PART for g in p['groups'] if g['material'] == m
+                            for f in g['faces']) for m in (0, 1)}
+            merged = lod_atlas.merged_strength([q(1.1), q(0.4)], [areas[0], areas[1]])
+            self.assertEqual((row['merged'], row['max']), (merged, q(1.1)))
+            alpha = {m: lod_atlas.strength_alpha(s, merged) for m, s in ((0, q(1.1)), (1, q(0.4)))}
+            self.assertEqual(row['members'], {0: [q(1.1), alpha[0]], 1: [q(0.4), alpha[1]]})
+            img = spec['decoded']
+            g = res['layout']['gutter']
+            used = np.zeros(img.shape[:2], bool)
+            for t in res['layout']['tiles']:
+                (cx, cy), (cw, ch) = t['origin'], t['content']
+                self.assertEqual(t['strength'], alpha[t['mats'][0]])
+                block = img[cy - g:cy + ch + g, cx - g:cx + cw + g, 3]
+                self.assertTrue((block == t['strength']).all(), (t['mats'], block.min(), block.max()))
+                used[cy - g:cy + ch + g, cx - g:cx + cw + g] = True
+            self.assertTrue((img[..., 3][~used] == lod_atlas.STRENGTH_BACKGROUND).all())
+            self.assertEqual(spec['max_error'][3], 0)
+            # other strengths: the three other atlases are byte-identical, the specular alpha differs
+            mats2, _ = self.strength_body((q(0.5), q(0.5)))
+            res2 = lod_atlas.build(assets, 'b', list(mats2), r0, set(), 8, (64, 128), specular=True, light_bleed_max=0)
+            for slot in ('diffuse', 'light', 'bump'):
+                self.assertEqual(res2['encoded'][slot]['dds'], res['encoded'][slot]['dds'], slot)
+            self.assertNotEqual(res2['encoded']['specular']['dds'], spec['dds'])
+            self.assertEqual({t['strength'] for t in res2['layout']['tiles']}, {128})   # equal strengths: ratio 1
+            # one texture set, two ratios: two tiles; equal ratios: one
+            for strengths, tiles in (((q(1.1), q(0.4)), 2), ((q(0.7), q(0.7)), 1)):
+                mats3, r3 = self.strength_body(strengths, shared_textures=True)
+                res3 = lod_atlas.build(assets, 'b', list(mats3), r3, set(), 8, (64, 128), specular=True, light_bleed_max=0)
+                self.assertEqual(len(res3['layout']['tiles']), tiles)
+            # no specular slot: no marks, no strength rows, the light alpha background stays 0
+            mats4, _ = self.strength_body((q(1.1), q(0.4)))
+            for m in mats4[:2]:
+                m['params'] = [x for x in m['params'] if x[0] != b't_SpecularTexture']
+            res4 = lod_atlas.build(assets, 'b', list(mats4), r0, set(), 8, (64, 128), specular=True, light_bleed_max=0)
+            self.assertEqual((res4['slots'], res4['strength'], bool(res4['layout'].get('strength'))),
+                             (('diffuse', 'light', 'bump'), [], False))
+            self.assertTrue(all(lod_atlas.read_dds_mark(e['dds']) is None for e in res4['encoded'].values()))
+            manifest = lod_atlas.summary(res)
+            self.assertEqual(manifest['strength'][0]['members'], {'0': [q(1.1), alpha[0]], '1': [q(0.4), alpha[1]]})
+            self.assertEqual({t['slot']: t['mark'] for t in manifest['textures']}['specular'],
+                             lod_atlas.strength_mark('specular').hex())
+
     @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
     def test_default_aspect_rule_and_sync(self, _running):
         """--batch without --no-aspect: the settings carry the aspect rule and caps, T_pad = round(T_class * k)

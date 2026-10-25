@@ -12,6 +12,8 @@
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "lod_texture_mark.h"
+#include <atomic>
 #include "engine_effects_patch.h"
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
@@ -214,6 +216,9 @@ bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,
                                                // clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by
                                                // B; needs the gain
 float hull_emissive_widening[2] = {1.f, 1.f};
+bool lod_material_strength_requested = false; // X3M_LOD_MATERIAL_STRENGTH=1 (schema default; overlay-material-strength.md):
+                                              // the merged-LOD overlay's per-material diffuse strength: the D3DX texture
+                                              // hook flags the baker's marked atlases, the hull pixel twins read the ratio
 float hull_lightmap_gain = 1.f; // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the
                                 // original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes
                                 // X3M_LINEAR_MATERIALS=1; the Ctrl+Shift+F4 key was removed 2026-09-26)
@@ -3107,8 +3112,14 @@ HRESULT WINAPI set_texture(IDirect3DDevice9* d, DWORD stage, IDirect3DBaseTextur
     DWORD width = 0, height = 0;
     if (SUCCEEDED(hr) && size) ctx.motion_output.texture_level0_size(texture, width, height);
     const int reader = SUCCEEDED(hr) ? ctx.motion_output.composition_texture_reader(stage, texture) : 2;
+    // Material strength: the baker-marked atlas lane of the bound texture (one pointer-table probe; a GetPrivateData
+    // identity read only on a hit, a resource accessor like GetLevelCount above).
+    const std::uint8_t atlas_lane = SUCCEEDED(hr) && texture && ctx.motion_output.material_strength_requested()
+                                        ? ctx.motion_output.strength_lane(texture)
+                                        : std::uint8_t(0);
     cpu.after_original();
-    if (SUCCEEDED(hr)) ctx.motion_output.set_texture(stage, texture, levels, query, reader, width, height, identity);
+    if (SUCCEEDED(hr))
+        ctx.motion_output.set_texture(stage, texture, levels, query, reader, width, height, identity, atlas_lane);
     if (SUCCEEDED(hr)) text_density::bound_texture(stage, texture); // X3M_TEXT_DENSITY: the stage-0 pointer (one store)
     return hr;
 }
@@ -3395,6 +3406,11 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
         log("hull_emissive_widening_configured accepted=%u k=%g b=%g", unsigned(accepted),
             double(hull_emissive_widening[0]), double(hull_emissive_widening[1]));
     }
+    // Merged-LOD material strength (motion_output_material_strength_inc.h): after the material options the twins
+    // compose with; the texture hook row is patched in initialize_log (loading_trace::set_texture_observer).
+    hooked.motion_output.configure_material_strength(lod_material_strength_requested);
+    log("lod_material_strength_configured enabled=%u texture_hook=%u",
+        unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
     // X3M_ENGINE_LIGHT (engine_light_core.h): the hull light from the plume records, after the material options the
     // twins compose with; effective only with engine_effects = plumes.
     hooked.motion_output.configure_engine_light(engine_effects::mode() == engine_effects::core::Mode::plumes &&
@@ -4084,6 +4100,38 @@ bool fixture_exception_requested() {
     return GetEnvironmentVariableW(L"X3M_FIXTURE_EXCEPTION", raise, 4) == 1 && raise[0] == L'1';
 }
 #endif
+// loading_trace texture observer (lod_texture_mark.h; overlay-material-strength.md 4): a created texture whose DDS
+// header carries the baker's mark is recorded on its device's MotionOutput with the proxy's resource identity (the
+// private-data id the ownership layer assigned at creation) and the lane its descriptor names. Debug tier: the first
+// 16 marked loads are logged with their descriptor (the flight settles whether every atlas reaches the device here).
+// lod_texture_mark::live_marks (exact: every insert, erase and table destruction) is read by texture_released before
+// it takes the capture lock, so a session without stored marked atlases pays one relaxed load per final texture release
+// and nothing else, also after the atlases unloaded.
+void texture_created(IDirect3DDevice9* d, const void* data, UINT size, IDirect3DTexture9* texture) {
+    lod_texture_mark::Mark mark;
+    if (!lod_texture_mark::parse(data, size, mark)) return; // 12 header bytes compared; the common path ends here
+    CaptureLock lock; // the device cache, the table and resource_id's counter are capture-lock state
+    const auto it = devices.find(d);
+    if (it == devices.end()) return; // a device the proxy does not wrap: nothing to mark
+    const std::uint8_t lane = lod_texture_mark::lane_of(mark);
+    const std::uint64_t identity = resource_id(texture);
+    const bool stored = it->second->motion_output.strength_mark_insert(texture, identity, lane, std::uint8_t(mark.slot));
+    static unsigned logged = 0; // under the capture lock
+    if (log_tier::cached_debug && logged++ < 16)
+        log("lod_strength_texture texture=%p identity=%llu size=%u version=%lu slot=%u lane=%u k=%u payload=%u stored=%u",
+            static_cast<void*>(texture), static_cast<unsigned long long>(identity), unsigned(size),
+            static_cast<unsigned long>(mark.version), mark.slot, mark.lane, mark.k, mark.payload, unsigned(stored));
+}
+// ownership texture-release observer: the final Release of any 2D texture drops its marked entry (design section 4),
+// so dead entries never fill the table. One relaxed load when no marked texture is stored; otherwise the capture
+// lock, a device map lookup and one table probe.
+void texture_released(IDirect3DDevice9* d, void* texture) noexcept {
+    if (!lod_texture_mark::live_marks.load(std::memory_order_relaxed)) return;
+    CaptureLock lock;
+    const auto it = devices.find(d);
+    if (it == devices.end()) return;
+    it->second->motion_output.strength_mark_forget(texture);
+}
 void initialize_log(HMODULE module) {
     // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
     // log path included, resolves default < file < environment; logs nothing until log_open (config::log_rows below).
@@ -4736,6 +4784,21 @@ void initialize_log(HMODULE module) {
             log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u default=%u%s",
                 original_fill != 0.f, hdr_requested, unsigned(excluded), double(original_fill), unsigned(fill_valid),
                 unsigned(fill_default), excluded ? " refused=linear_materials" : "");
+    }
+    // X3M_LOD_MATERIAL_STRENGTH=1|0 (schema default 1; docs/architecture/overlay-material-strength.md): the merged-LOD
+    // overlay draws each source material at its own g_MatDiffuseStrength: the baker stores the ratio in the specular
+    // atlas alpha and marks the atlas DDS headers, the D3DX texture hook (loading_trace, patched for this alone) flags
+    // the created textures, and the hull pixel twins multiply the diffuse term by the ratio on draws whose specular
+    // stage holds a marked atlas. Needs the motion-output registry (the hull variants); nothing else. Unset = on (the
+    // DLL's built-in, like engine_light); 0 = the twin is never created or bound and the texture hook row is not
+    // patched, the overlay then draws the merged strength; anything else is refused and keeps the built-in.
+    {
+        wchar_t strength_setting[8]{};
+        const DWORD n = x3m::config::get(L"X3M_LOD_MATERIAL_STRENGTH", strength_setting, 8);
+        const bool valid = n == 0 || (n == 1 && (strength_setting[0] == L'0' || strength_setting[0] == L'1'));
+        lod_material_strength_requested = !(n == 1 && strength_setting[0] == L'0');
+        log("lod_material_strength_mode requested=%s enabled=%u", n == 0 ? "unset" : valid ? "set" : "invalid_setting",
+            unsigned(lod_material_strength_requested));
     }
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull
@@ -5746,8 +5809,16 @@ void initialize_log(HMODULE module) {
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
             occlusion_engine_cull::state());
     }
+    // Merged-LOD material strength: the D3DX texture row is patched for the atlas marks alone (texture_created below).
+    if (lod_material_strength_requested) {
+        loading_trace::set_texture_observer(texture_created);
+        if (!ownership::claim_texture_release_observer(texture_released))
+            log("lod_material_strength_release_observer claimed=0"); // another claimant: marked entries then live until
+                                                                    // their pointer is reused (identity check)
+    }
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
-        loading_trace::mesh_adjacency_requested() || loading_trace::save_write_observer_requested())
+        loading_trace::mesh_adjacency_requested() || loading_trace::save_write_observer_requested() ||
+        loading_trace::texture_observer_requested())
         loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 / X3M_MESH_ADJACENCY=fast patch their rows
                                      // alone (fast arms without telemetry since 2026-09-25); the music keep's save
                                      // pump registered its gzwrite/gzclose observer in music_keep::initialize()

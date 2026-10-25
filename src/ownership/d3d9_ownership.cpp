@@ -74,6 +74,7 @@ std::unordered_map<IUnknown*, Node*> native_nodes;
 // Assigned only on new device/surface adoption under registry_mutex.
 std::uint64_t last_surface_lease_serial = 0;
 std::atomic<ResetObserver> reset_observer{nullptr};
+std::atomic<TextureReleaseObserver> texture_release_observer{nullptr};
 
 // Step B locked-prefix records, keyed by the vertex buffer node (erased with
 // it), guarded by registry_mutex. One process-wide fixed table: the option is
@@ -1091,6 +1092,11 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         drain_finite_retired();
     }
+    // The texture-release observer (claim_texture_release_observer): outside the registry mutex, the dead node's
+    // application pointer as a key, before the memory is freed (a later node at the same address is a new key).
+    if (node->kind == Kind::Texture)
+        if (const auto observer = texture_release_observer.load(std::memory_order_acquire))
+            observer(static_cast<IDirect3DDevice9*>(device_of(node)->application), node->application);
     delete node;
     if (lock_retired.load(std::memory_order_acquire)) {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -2317,6 +2323,13 @@ bool claim_reset_observer(ResetObserver observer) noexcept {
 }
 bool reset_observer_is(ResetObserver observer) noexcept {
     return observer && reset_observer.load(std::memory_order_acquire) == observer;
+}
+bool claim_texture_release_observer(TextureReleaseObserver observer) noexcept {
+    if (!observer) return false;
+    TextureReleaseObserver empty = nullptr;
+    return texture_release_observer.compare_exchange_strong(empty, observer, std::memory_order_acq_rel,
+                                                            std::memory_order_acquire) ||
+           empty == observer;
 }
 
 void set_surface_lock_observer(SurfaceLockObserver observer) noexcept {

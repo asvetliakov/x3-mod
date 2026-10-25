@@ -1,0 +1,17 @@
+bodies 1155 errors 0 []
+C draws: K2 (pre-fix) 1999, K4 (bef0d269) 4396, K3 (this design) 3667; record 0 drawn 15333
+opaque classes K2/K4/K3 1404/2193/1465; alpha groups K2 574 -> per material 2181
+no_draw_gain bodies (draws >= record 0): K4 41, K3 4: ['ships/props/m6maingun_static', 'ships/terran/terran_tl_atmolifter', 'ships/terran/terran_tl_atmospheric_lifter/hull', 'stations/x3tc/torus_decals_fighterdock']
+bodies whose K3 draws exceed K2: 402 max increase (11, 'stations/station_scenes/farm/argon_farm_s_factory_g')
+multi-strength K3 classes 388 in 371 bodies, faces 9367488
+rmax (s_i / s_mean) percentiles 50/90/99/max: [1.151, 1.883, 2.809, 7.018]
+rmin (s_i / s_mean) percentiles 50/10/1/min: [0.852, 0.0, 0.0, 0.0]
+classes with rmax > 1.5: 69 (1689534 faces) 
+classes with rmax > 2.0: 20 (538418 faces) ['ships/argon/argon_m8_gladiator/hull', 'ships/khaak/khaak_m6_corvette/arm', 'ships/m6/khaak_m6sec', 'ships/m7/paranid_m7', 'ships/m8/argon_m8', 'ships/paranid/paranid_m7_deimos/hull']
+classes with rmax > 3.0: 3 (29316 faces) ['ships/khaak/khaak_m6_corvette/arm', 'ships/m6/khaak_m6sec', 'ships/xenon/xenon_m2_t/hull']
+classes with rmax > 4.0: 3 (29316 faces) ['ships/khaak/khaak_m6_corvette/arm', 'ships/m6/khaak_m6sec', 'ships/xenon/xenon_m2_t/hull']
+classes with max ratio under s_merged = max(mean, s_max/2) exceeding 2: 0
+min s_i / s_max percentiles 50/10/1/min: [0.625, 0.0, 0.0, 0.0]
+n strengths per class: [(2, 228), (3, 81), (4, 36), (5, 12), (6, 6), (7, 23), (8, 2)]
+effects of multi-strength classes: [(('xt_standard_lighting.fx', 'bump'), 347), (('standard_lighting.fx', 'bump'), 25), (('terran.fx', 'bump'), 5), (('split.fx', 'bump'), 3), (('xt_terraformer.fx', 'bump'), 3), (('argon.fx', 'bump'), 2), (('khaak.fx', 'bump'), 2), (('teladi.fx', 'bump'), 1)]
+cull of multi-strength classes: [('2', 351), ('1', 37)]

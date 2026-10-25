@@ -295,10 +295,65 @@ LinearMaterialResult linear_material_original_engine_light_pixel_variant(
     const std::uint32_t* original, std::size_t words, const OriginalVariantOptions& options,
     std::vector<std::uint32_t>& output, bool current_depth, bool& engine_applied, bool* share_applied = nullptr,
     bool* lightmap_gain_applied = nullptr, bool* widen_applied = nullptr) noexcept;
+// Any original-shading pixel variant by its options (the forms bind_variant_pair chooses between: the plain
+// motion variant at K = 0, the fill, the gained and widened, the share producer and its gained and widened forms),
+// with or without the engine light; the strength twins regenerate each form's bytes through it. Deterministic in
+// its inputs: the same words the registration created the form from.
+LinearMaterialResult linear_material_original_variant_pixel(const std::uint32_t* original, std::size_t words,
+                                                            const OriginalVariantOptions& options, bool engine_light,
+                                                            std::vector<std::uint32_t>& output, bool current_depth,
+                                                            bool* fill_applied = nullptr, bool* share_applied = nullptr,
+                                                            bool* lightmap_gain_applied = nullptr,
+                                                            bool* widen_applied = nullptr,
+                                                            bool* engine_applied = nullptr) noexcept;
 // The light-map sampler stage of a reviewed hull/palette/XT pixel program (2 for
 // DEFAULT layouts, 3 for BUMPMAP), 0 for a program without the term (glass,
 // asteroid) or an unreviewed one. Table lookup only, no bytecode.
 unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t words) noexcept;
+// Merged-LOD overlay material strength (docs/architecture/overlay-material-strength.md 5, "option B"): the twin
+// of an already combined original-shading pixel variant (`parent`: the motion, fill, gained, widened, share or
+// engine-light form of `original`) with two insertions and nothing else changed: `add rT.w, rS.w, rS.w` right
+// after the specular `texld rS, vN, s{1|2}` (the ratio 2a the baker stored in the specular atlas alpha) and, at
+// the diffuse join material_exposure_profiles_inc.h locates for the program, the product form
+// `mad d, a, b, c` -> `mul rT.lanes, a, b ; mad d, rT, rT.w, c` or the addend form -> `mul rT.lanes, c, rT.w ;
+// mad d, a, b, rT`. rT is one above the parent's highest temporary. Refused (no twin, the draw keeps the parent:
+// the merged strength) when the program has no join, more or fewer than one texld on the specular stage, that
+// texld or the join inside flow control, any lane but .x of rS read before it is overwritten (the baker owns .w), the
+// join absent from the parent byte for byte or before the texld, or no free temporary. No constant register is
+// touched (each instruction still reads at most one c#). Byte-exact oracle: verification/analysis/
+// test_material_strength.py; the native validator run is in verification/results/overlay-material-strength/.
+struct StrengthTwinInfo {
+    unsigned stage = 0;            // the specular sampler stage (1 DEFAULT, 2 BUMPMAP)
+    unsigned texel_at = 0;         // DWORD of the specular texld in the parent
+    unsigned join_at = 0;          // DWORD of the diffuse join in the parent
+    unsigned source_register = 0;  // rS
+    unsigned scratch_register = 0; // rT
+    unsigned lanes_read = 0;       // lanes of rS the parent reads before overwriting them (bit 0 = x .. bit 3 = w)
+    bool product = false;          // the join form
+};
+enum class StrengthTwinRefusal : unsigned {
+    None,
+    Unsupported, // not a reviewed hull original, or a layout without a specular stage (asteroid, glass)
+    NoJoin,      // no exposure seed for the program
+    NoTexel,     // not exactly one texld on the specular stage writing a temporary's w lane
+    TexelDepth,  // that texld inside flow control (or a subroutine before it)
+    JoinDepth,   // the join inside flow control
+    LanesRead,   // a lane other than .x of rS is read before being overwritten
+    JoinMissing, // the join's five words not found exactly once in the parent
+    Order,       // the join precedes the texld
+    Register,    // no free temporary below r32
+    Malformed    // a token walk failure
+};
+LinearMaterialResult linear_material_strength_twin_pixel_variant(const std::uint32_t* parent, std::size_t parent_words,
+                                                                 const std::uint32_t* original,
+                                                                 std::size_t original_words,
+                                                                 std::vector<std::uint32_t>& output,
+                                                                 StrengthTwinInfo* info = nullptr,
+                                                                 StrengthTwinRefusal* refusal = nullptr) noexcept;
+// The specular sampler stage of a reviewed hull/palette/XT pixel program (1 for DEFAULT layouts, 2 for BUMPMAP),
+// 0 for asteroid and glass layouts or an unreviewed program. Table lookup only.
+unsigned linear_material_strength_stage(std::uint64_t pixel, std::size_t words) noexcept;
+const char* linear_material_strength_refusal_name(StrengthTwinRefusal refusal) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

@@ -401,6 +401,9 @@ SETTINGS = [
           'largest on screen first, so 4 covers your own ship and the nearest ones; more costs more GPU time. 0 to 16, 0 = '
           'none, default 4. Read when the game starts.', builtin='4', range=(0, 16), launcher='--engine-shimmer-max',
           since='2026-10-03'),
+    entry('lod_material_strength', 'bool', 'engine', 'Keeps each hull part\'s own brightness on the mod\'s simplified distant '
+          'models of stations and ships (the merged model otherwise draws every part at one average brightness). 1 = on, '
+          '0 = off. Read when the game starts.', builtin='1', since='2026-10-25'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',

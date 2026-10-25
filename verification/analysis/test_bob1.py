@@ -1510,15 +1510,18 @@ class LodAtlas(unittest.TestCase):
                                          (b'g_MatSpecularStrength', 2, [spec])]
         return mats, coarse
 
-    def test_classes_split_by_cull_and_diffuse_strength(self):
-        """Materials that differ in g_MatDiffuseStrength or g_CullMode get merged materials of their own, each
-        carrying exactly its members' strength and cull mode (2026-10-25 Run 202); equal ones still share one
-        merged material with the area-weighted mean of the other g_Mat* (here the specular strength)."""
+    def test_classes_split_by_cull_only_and_carry_the_merged_strength(self):
+        """Materials that differ in g_CullMode get merged materials of their own (2026-10-25 Run 202); materials that
+        differ in g_MatDiffuseStrength or g_MatSpecularStrength share one (option B, overlay-material-strength.md):
+        the merged material's g_MatDiffuseStrength is class_strength's s_merged = max(area-weighted mean, s_max / 2)
+        and the other g_Mat* keep the area-weighted mean; the class's strength row names every member's s_i and
+        alpha byte 255 clamp(s_i / s_merged / 2, 0, 1)."""
         q = lambda x: int(round(x * 65536))
         word = lambda m, n: lod_atlas.param_word(m, n)
+        area = {0: 162.5, 1: 140.0}                                                  # atlas_tree face areas
         with tempfile.TemporaryDirectory() as folder:
             assets, _ = lod_overlay.original_assets(self.game(folder))
-            for consts, classes in ((((2, q(1.1), q(3)), (2, q(0.4), q(3))), 2),   # diffuse strength
+            for consts, classes in ((((2, q(1.1), q(3)), (2, q(0.4), q(3))), 1),   # diffuse strength: one class
                                     (((1, q(0.5), q(3)), (2, q(0.5), q(3))), 2),   # two-sided vs one-sided
                                     (((2, q(0.5), q(2)), (2, q(0.5), q(4))), 1)):  # only the specular differs
                 mats, coarse = self.class_body(consts)
@@ -1527,19 +1530,65 @@ class LodAtlas(unittest.TestCase):
                 self.assertEqual(len(res['atlas_indices']), classes)
                 self.assertEqual(sorted(res['atlas_of']), [0, 1])
                 for m, a in res['atlas_of'].items():
-                    for name in (b'g_CullMode', b'g_MatDiffuseStrength'):
-                        self.assertEqual(word(out[a], name), word(mats[m], name))
+                    self.assertEqual(word(out[a], b'g_CullMode'), word(mats[m], b'g_CullMode'))
                     p = {n: v for n, t, v in out[a]['params'] if t == 8}
                     self.assertEqual(p[b't_DiffuseTexture'], b'x3m_lod\\x3m_lod_b_diffuse.tga')   # one atlas set
                 groups = res['record']['parts'][0]['groups']
                 self.assertEqual(sorted(g['material'] for g in groups), sorted(res['atlas_indices']))
                 if classes == 1:
-                    self.assertEqual(word(out[res['atlas_indices'][0]], b'g_MatSpecularStrength'),
-                                     q((2 * 162.5 + 4 * 140) / 302.5))      # area-weighted (materials 0 / 1)
+                    a = res['atlas_indices'][0]
+                    s0, s1 = consts[0][1], consts[1][1]
+                    mean = (s0 * area[0] + s1 * area[1]) / sum(area.values())
+                    self.assertEqual(word(out[a], b'g_MatDiffuseStrength'),
+                                     lod_atlas.merged_strength([s0, s1], [area[0], area[1]]))
+                    self.assertEqual(word(out[a], b'g_MatDiffuseStrength'), int(round(max(mean, max(s0, s1) / 2))))
+                    self.assertEqual(word(out[a], b'g_MatSpecularStrength'),
+                                     int(round((consts[0][2] * area[0] + consts[1][2] * area[1]) / sum(area.values()))))
+            # no specular slot (the plain diffuse + light bake): no strength rows, no tile bytes
+            self.assertEqual(res['strength'], [])
+            self.assertFalse(res['layout'].get('strength'))
 
-    def test_alpha_materials_keep_their_own_records(self):
-        """Each alpha material keeps its own group, material record (textures, constants) and UVs; nothing is
-        remapped onto the dominant alpha material and no alpha material is synthesized."""
+    def test_merged_strength_rule_and_alpha_byte(self):
+        """s_merged = max(mean, s_max / 2): the mean when every ratio fits below 2 (freighter_base's classes), s_max / 2
+        when one member is more than twice the mean (fleet: 20 classes under the plain mean, 0 under the rule); the
+        alpha byte is 255 clamp(s_i / s_merged / 2, 0, 1): 0 encodes exactly, s_max never clamps."""
+        q = lambda x: int(round(x * 65536))
+        m = lod_atlas.merged_strength([q(0.5), q(1.1), q(0.4)], [2.0, 1.0, 1.0])            # mean 0.625, max/2 0.55
+        self.assertEqual(m, int(round((q(0.5) * 2 + q(1.1) + q(0.4)) / 4)))
+        self.assertEqual(lod_atlas.merged_strength([q(0.0), q(0.8)], [6.0, 1.0]), q(0.4))     # khaak: mean 0.114
+        for s_i, merged, byte in ((q(1.1), q(0.7272), 193), (q(0.4), q(0.7272), 70), (q(0.0), q(0.4), 0),
+                                  (q(0.8), q(0.4), 255), (q(0.5), q(0.5), 128), (q(2.0), q(0.5), 255)):
+            self.assertEqual(lod_atlas.strength_alpha(s_i, merged), byte)
+        self.assertEqual(lod_atlas.strength_alpha(q(1.0), 0), lod_atlas.STRENGTH_BACKGROUND)
+        st = lod_atlas.class_strength([{'params': [(b'g_MatDiffuseStrength', 2, [q(1.1)])]},
+                                       {'params': [(b'g_MatDiffuseStrength', 2, [q(0.4)])]},
+                                       {'params': []}], [0, 1, 2], {0: 1.0, 1: 1.0, 2: 5.0})
+        self.assertEqual((st['merged'], st['max'], sorted(st['values'])), (int(round((q(1.1) + q(0.4)) / 2)), q(1.1), [0, 1]))
+        self.assertEqual(st['alpha'][2], lod_atlas.STRENGTH_BACKGROUND)                   # undeclared: ratio 1
+        self.assertIsNone(lod_atlas.class_strength([{'params': []}], [0], {0: 1.0}))
+
+    def test_dds_mark_round_trip(self):
+        """dds_mark writes 'X3ML', the version and slot | lane << 8 | K << 16 | payload << 24 into dwReserved1[0..2]
+        (file bytes 32-43) of a DDS header; read_dds_mark reads it back and refuses unmarked, foreign or short data;
+        the rest of the header is unchanged."""
+        plain = lod_atlas.dds_header(64, 32, 7, 'DXT5')
+        marked = lod_atlas.dds_header(64, 32, 7, 'DXT5', lod_atlas.strength_mark('specular'))
+        self.assertEqual((plain[:32], plain[44:]), (marked[:32], marked[44:]))
+        self.assertEqual(marked[32:36], b'X3ML')
+        self.assertEqual(lod_atlas.read_dds_mark(marked), (1, 3, 3, 2, 1))
+        self.assertEqual(lod_atlas.read_dds_mark(lod_atlas.dds_header(8, 8, 1, 'DXT1', lod_atlas.strength_mark('bump'))),
+                         (1, 2, 0, 0, 0))
+        self.assertEqual(struct.unpack_from('<11I', plain, 32), (0,) * 11)
+        self.assertIsNone(lod_atlas.read_dds_mark(plain))
+        self.assertIsNone(lod_atlas.read_dds_mark(marked[:100]))
+        self.assertIsNone(lod_atlas.read_dds_mark(b'NVTT' + marked[4:]))
+        self.assertIsNone(lod_atlas.read_dds_mark(plain[:32] + b'NVTT' + plain[36:]))
+
+    def test_alpha_group_draws_the_dominant_alpha_material(self):
+        """The alpha materials of a part form one group drawn with the dominant alpha material (face count), remapped
+        to a synthesized copy with area-weighted g_Mat* when the members differ, and their source UVs (the pre-bef0d269
+        path, kept by user decision 2026-10-25: the pale beam band on freighter_base is accepted against ~1,600 extra
+        draws)."""
         with tempfile.TemporaryDirectory() as folder:
             assets, _ = lod_overlay.original_assets(self.game(folder))
             tree = atlas_tree()
@@ -1552,17 +1601,19 @@ class LodAtlas(unittest.TestCase):
                   {'material': 3, 'faces': [(1, 4, 5, 1)]}]
             out = list(mats)
             res = lod_atlas.collapse(assets, 'b', out, coarse, {2, 3}, 8, (64,))
-            self.assertEqual(len(out), 5)                                   # one atlas material, nothing else
+            self.assertEqual(len(out), 6)                                   # one atlas material + one synth alpha
             self.assertEqual(out[2:4], mats[2:4])
+            synth = out[5]
+            self.assertEqual({n: v for n, t, v in synth['params'] if t == 8}[b't_DiffuseTexture'], b'grid_diff.tga')
             rec = res['record']
             groups = rec['parts'][0]['groups']
-            self.assertEqual([(x['material'], len(x['faces'])) for x in groups], [(4, 6), (2, 3), (3, 1)])
+            self.assertEqual([(x['material'], len(x['faces'])) for x in groups], [(4, 6), (5, 4)])
+            self.assertEqual([r['dominant'] for r in res['synth'] if not r.get('atlas')], [2])
             origin = res['info']['origin']
-            for x, src in zip(groups[1:], g[2:]):
-                for f, sf in zip(x['faces'], src['faces']):
-                    self.assertEqual([origin[i] for i in f[:3]], list(sf[:3]))
-                    self.assertEqual([rec['points'][i][4:6] for i in f[:3]],
-                                     [coarse['points'][i][4:6] for i in sf[:3]])   # source UVs, not atlas UVs
+            for f, sf in zip(groups[1]['faces'], g[2]['faces'] + g[3]['faces']):
+                self.assertEqual([origin[i] for i in f[:3]], list(sf[:3]))
+                self.assertEqual([rec['points'][i][4:6] for i in f[:3]],
+                                 [coarse['points'][i][4:6] for i in sf[:3]])   # source UVs, not atlas UVs
 
     DECALS = [(f'dds/{n}.pck', gzip.compress(dds_header(32, 32), mtime=0))
               for n in ('a_decal', 'b_decal', 'NONE_OCCL_DECAL', 'NONE_WHITE', 'NONE_BLACK')]

@@ -7,6 +7,8 @@ struct ID3DXMesh; // d3dx9mesh.h interface; declared here so translation units w
 #ifdef X3M_LOADING_TRACE_FIXTURE
 #endif
 struct ID3DXMesh; // adjacency_write_dump takes the mesh opaquely; the production header does not include d3dx9mesh.h
+struct IDirect3DDevice9;  // the texture observer (set_texture_observer) names the device and the created texture
+struct IDirect3DTexture9; // opaquely; translation units without d3d9.h can include this file
 
 // Optional loading diagnostics and separately requested experimental adjacency cache.
 // Only the main EXE's verified named
@@ -108,6 +110,14 @@ struct SaveWriteObserver {
 };
 void set_save_write_observer(const SaveWriteObserver& observer); // before initialize(); later calls are ignored
 bool save_write_observer_requested();
+// Texture observer (X3M_LOD_MATERIAL_STRENGTH=1, the merged-LOD overlay's material strength;
+// docs/architecture/overlay-material-strength.md 4): registered before initialize(), it makes initialize() patch the
+// D3DXCreateTextureFromFileInMemoryEx row alone (also without telemetry or any other loading option). After each
+// successful call the observer gets the device, the file bytes the engine passed and the created texture (the
+// application-visible pointer); it runs inside the hook's CPU boundary with the original's LastError saved around it.
+using TextureObserver = void (*)(IDirect3DDevice9* device, const void* data, UINT size, IDirect3DTexture9* texture);
+void set_texture_observer(TextureObserver observer); // before initialize(); later calls are ignored
+bool texture_observer_requested();
 bool active();
 // Per-field atomic exchange: concurrent calls can straddle adjacent reports.
 // Totals over the complete run are conserved, but a delta is not a transaction.

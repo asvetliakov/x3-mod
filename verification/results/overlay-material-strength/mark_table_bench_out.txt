@@ -1,0 +1,8 @@
+parse unmarked header: 1.31 ns/call
+parse marked header + lane_of: 1.46 ns/call
+set_texture probe, empty table (count check): 0.27 ns/call
+set_texture probe, 1500 entries, miss: 0.91 ns/call
+set_texture probe, 1500 entries, hit: 1.23 ns/call
+erase (final release) with 1500 entries: 1.60 ns/call, left 0
+route gate (stage byte, 0 for a program without twins): 1.27 ns/call
+sink=30000000

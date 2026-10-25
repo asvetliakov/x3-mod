@@ -718,6 +718,7 @@ using GzWriteFn = int(__cdecl*)(void*, const void*, unsigned);
 // The save-write observer (set_save_write_observer, before install; never cleared) and whether the gzwrite row
 // forwards to the traced wrapper (telemetry) or straight to the original.
 SaveWriteObserver save_observer{};
+TextureObserver texture_observer = nullptr; // set_texture_observer (the material strength's atlas marks)
 bool gz_write_traced = false;
 // X3M_GZ_BUFFER=1: the gz hooks route through gz_buffer (set before patching, never
 // cleared); its real functions are the traced wrappers with telemetry, else the originals.
@@ -813,6 +814,10 @@ bool save_write_row(const Hook& hook) {
 bool save_observer_set() {
     return save_observer.active && save_observer.write && save_observer.close && save_observer.bound;
 }
+// The row the texture observer needs (the overlay atlas marks); patched alone when nothing else asks for rows.
+bool texture_row(const Hook& hook) {
+    return hook.replacement == reinterpret_cast<PVOID>(texture);
+}
 // After patching: tells the observer which slot the gzwrite row bound, the original it held and whether both rows
 // are live (the observer validates the slot itself and stays inert otherwise).
 void bind_save_observer() {
@@ -898,6 +903,12 @@ HRESULT WINAPI texture(IDirect3DDevice9* d, const void* data, UINT size, UINT wi
         d, data, size, width, height, levels, usage, format, pool, filter, mipfilter, key, info, palette, out);
     cpu.after_original();
     const DWORD error = GetLastError();
+    // The overlay atlas marks (set_texture_observer): the created texture with the bytes the engine passed; the
+    // original's LastError is restored after the observer's own API calls.
+    if (texture_observer && SUCCEEDED(result) && out && *out) {
+        texture_observer(d, data, size, *out);
+        SetLastError(error);
+    }
     const auto end = tick();
     span.finish(end, error, FAILED(result), size);
     return result;
@@ -1476,14 +1487,14 @@ bool install(HMODULE target) {
         return false;
     }
     const bool trace = requested(), buffer = gz_buffer::requested(), crypt = crypt_cache::requested(),
-               music = save_observer_set();
+               music = save_observer_set(), marks = texture_observer != nullptr;
     // X3M_MESH_ADJACENCY=fast arms without telemetry: only the two mesh import
     // rows are patched then, and no metric row is written (report() runs from
     // the telemetry summary only). With telemetry the full set is patched below.
     const AdjacencyMode adjacency_request = adjacency_requested_mode(),
                         adjacency_armed = adjacency_fast::armed_mode(adjacency_request, trace);
     const bool adjacency = !trace && adjacency_armed != AdjacencyMode::Native;
-    if (!trace && !buffer && !crypt && !adjacency && !music) return false;
+    if (!trace && !buffer && !crypt && !adjacency && !music && !marks) return false;
     auto base = reinterpret_cast<unsigned char*>(target);
     auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
     if (!readable(dos, sizeof *dos, target) || dos->e_magic != IMAGE_DOS_SIGNATURE ||
@@ -1583,7 +1594,7 @@ bool install(HMODULE target) {
             unsigned(crypt_cache_active.load()), trace, imports, crypt_cache::provider_slots, crypt_cache::key_slots,
             crypt_cache::blob_limit);
     }
-    if (!trace && !gz_buffer_active && !crypt_cache_active && !adjacency && !music) {
+    if (!trace && !gz_buffer_active && !crypt_cache_active && !adjacency && !music && !marks) {
         log_adjacency_config(adjacency_request, trace);
         return false;
     }
@@ -1605,7 +1616,7 @@ bool install(HMODULE target) {
                 continue;
             }
             if (!((gz_buffer_active && gz_buffer_row(hook)) || (crypt_cache_active && crypt_cache_row(hook)) ||
-                  (adjacency && mesh_row(hook)) || (music && save_write_row(hook)))) {
+                  (adjacency && mesh_row(hook)) || (music && save_write_row(hook)) || (marks && texture_row(hook)))) {
                 hook.slot = nullptr;
                 continue;
             }
@@ -1625,10 +1636,10 @@ bool install(HMODULE target) {
         }
         coverage_start = tick();
         installed.store(hook_count != 0);
-        char scope[64]{};
-        const bool scope_on[] = {gz_buffer_active, crypt_cache_active.load(), adjacency_rows, music};
-        const char* const scope_names[] = {"gz_buffer", "crypt_cache", "mesh_adjacency", "music_keep"};
-        for (unsigned i = 0; i < 4; ++i)
+        char scope[80]{};
+        const bool scope_on[] = {gz_buffer_active, crypt_cache_active.load(), adjacency_rows, music, marks};
+        const char* const scope_names[] = {"gz_buffer", "crypt_cache", "mesh_adjacency", "music_keep", "lod_strength"};
+        for (unsigned i = 0; i < 5; ++i)
             if (scope_on[i]) {
                 if (scope[0]) std::strcat(scope, "+");
                 std::strcat(scope, scope_names[i]);
@@ -1692,6 +1703,13 @@ void set_save_write_observer(const SaveWriteObserver& observer) {
 }
 bool save_write_observer_requested() {
     return save_observer_set();
+}
+void set_texture_observer(TextureObserver observer) {
+    if (installation_started || installed.load()) return;
+    texture_observer = observer;
+}
+bool texture_observer_requested() {
+    return texture_observer != nullptr;
 }
 bool mesh_adjacency_requested() {
     return adjacency_fast::armed_mode(adjacency_requested_mode(), false) != AdjacencyMode::Native;

@@ -425,6 +425,8 @@ MotionOutput::~MotionOutput() {
     // jets stay armed while another device requests the plume stage.
     engine_far_jets::request(&engine_far_counted_, false, this);
     delete engine_light_; // plain CPU tables (engine_light_core.h), no device object
+    strength_session_row(); // lazy twin creation totals (debug / perf tier; nothing when nothing was created)
+    delete strength_marks_; // the marked-texture table (lod_texture_mark.h), plain CPU memory
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -624,6 +626,7 @@ void MotionOutput::release_resources() noexcept {
         release(entry.second.hull_lightmap_widen_variant);
         release(entry.second.sun_original_lightmap_widen_variant);
         engine_light_release(entry.second);
+        strength_release(entry.second);
         entry.second.hull_lightmap_stage = 0;
     }
     shadow_.vs_variant = nullptr;
@@ -1056,7 +1059,7 @@ void MotionOutput::texture_level0_size(IDirect3DBaseTexture9* texture, DWORD& wi
     }
 }
 void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader,
-                               DWORD width, DWORD height, std::uint64_t identity) noexcept {
+                               DWORD width, DWORD height, std::uint64_t identity, std::uint8_t atlas_lane) noexcept {
     if (composition_requested() && !shadow_.recording) {
         const unsigned i = stage < 16 ? unsigned(stage)
                            : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3
@@ -1099,6 +1102,7 @@ void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWOR
         s.minfilter_known = false;
     } // hooks off: re-read for the new binding
     s.texture = texture; // same pointer, still bound: the count stands
+    s.atlas_lane = atlas_lane;
     const std::uint32_t bit = 1u << stage;
     sampler_bound_mask_ = texture ? sampler_bound_mask_ | bit : sampler_bound_mask_ & ~bit;
 }
@@ -4461,6 +4465,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.ps_hull_lightmap_widen = nullptr;
         shadow_.hull_lightmap_stage = 0;
         engine_light_clear_twins();
+        strength_clear_twins();
         shadow_.original_share_pair = false;
         shadow_.original_share_refused = false;
     }
@@ -4469,6 +4474,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         auto& entry = pixel_[shader];
         entry.registered = false;
         engine_light_release(entry);
+        strength_release(entry);
         release(entry.variant);
         release(entry.sun_motion_variant);
         release(entry.sun_material_variant);
@@ -4886,6 +4892,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             }
             // Engine light (motion_output_engine_light_inc.h): the twins of the original-shading variants above.
             engine_light_create_twins(entry, code, bytes, hash);
+            // Material strength (motion_output_material_strength_inc.h): the twins of the variants above and of their
+            // engine-light twins.
+            strength_prepare(entry, code, bytes, hash);
             if (linear_material_requested_ && entry.variant) {
                 words.clear();
                 bool fill_applied = false;
@@ -5056,6 +5065,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_hull_lightmap_widen = nullptr;
     shadow_.hull_lightmap_stage = 0;
     engine_light_clear_twins();
+    strength_clear_twins();
     shadow_.original_share_pair = false;
     shadow_.original_share_refused = false;
     shadow_.fog_card_pair = false;
@@ -5089,6 +5099,9 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_hull_lightmap_widen = it->second.hull_lightmap_widen_variant;
     shadow_.ps_sun_original_lightmap_widen = it->second.sun_original_lightmap_widen_variant;
     shadow_.hull_lightmap_stage = it->second.hull_lightmap_stage;
+    for (unsigned e = 0; e < 2; ++e)
+        for (unsigned k = 0; k < engine_light_kinds; ++k) shadow_.strength_twin[e][k] = it->second.strength_twin[e][k];
+    shadow_.strength_stage = it->second.strength_stage;
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
     shadow_.ps_screen_additive_flag_variant = it->second.screen_additive_flag_variant;
@@ -7719,6 +7732,18 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         } else
             ++engine_light_->counts.no_twin;
     }
+    // Material strength: the twin of the program chosen above when the program's specular stage holds the overlay's
+    // marked atlas (one byte compare; shadow_.strength_stage is 0 for a program without twins).
+    bool strength = false;
+    if (shadow_.strength_stage && !material &&
+        samplers_[shadow_.strength_stage].atlas_lane == lod_texture_mark::lane_strength_alpha) {
+        ++strength_marked_draws_;
+        if (IDirect3DPixelShader9* twin = strength_twin(ps, engine)) {
+            ps = twin;
+            strength = true;
+        } else
+            ++strength_no_twin_;
+    }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -7766,6 +7791,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     if (lightmap && SUCCEEDED(hr)) route.hull_lightmap = true;
     if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;
     route.engine_light = engine && SUCCEEDED(hr);
+    route.strength = strength && SUCCEEDED(hr);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (SUCCEEDED(hr)) { // engine light seam (key 500): 0x100 | kind for a twin, 0x200 | kind for a base, 0x207 other
         const IDirect3DPixelShader9* bases[engine_light_kinds] = {
@@ -9380,6 +9406,10 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     // One branch by default (shadow_.cutout_pair is false without the lane or linear materials).
     if (shadow_.cutout_pair && !cutout_arm_active_) note_cutout_opaque(route, result);
     if (route.routed && route.original_fill && SUCCEEDED(result)) ++original_fill_draws_;
+    if (route.routed && route.strength && SUCCEEDED(result)) {
+        ++strength_draws_;
+        ++strength_session_draws_;
+    }
     if (route.routed && route.hull_lightmap && SUCCEEDED(result)) {
         if (lightmap_far_fade_ && lightmap_fade_gain_ < hull_lightmap_gain_) {
             if (!lightmap_fade_draws_++ || lightmap_fade_gain_ < lightmap_fade_min_)
@@ -10543,6 +10573,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         lightmap_widen_filter_reads_ = 0;
         lightmap_widen_filter_failures_ = 0;
     }
+    strength_frame(family);
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
         // counts are exact, the *_us totals are CPU-side QPC wall clock with
@@ -10830,6 +10861,8 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
         return hull_lightmap_draws_; // fixture: hull light-map gain draws admitted this frame (reset by the frame line)
     case 79: return sun_original_lightmap_variants_; // fixture: gained original share variants created
     case 80: return lightmap_widen_draws_;    // fixture: widened light-map draws this frame (reset by the frame line)
+    case 518: return strength_draws_;         // fixture: material-strength twin draws this frame (reset by the frame line)
+    case 519: return strength_twins_created_; // fixture: material-strength twins created (session)
     case 81: return lightmap_widen_variants_; // fixture: widened variants created (plain and share)
     case 82:
         return lightmap_widen_filter_sets_; // fixture: light-map stages raised to ANISOTROPIC this frame (reset by the
@@ -12726,5 +12759,6 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_engine_plumes_inc.h"
 #include "motion_output_engine_ribbons_inc.h"
 #include "motion_output_engine_light_inc.h"
+#include "motion_output_material_strength_inc.h"
 #include "motion_output_engine_shimmer_inc.h"
 } // namespace x3m

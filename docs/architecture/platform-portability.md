@@ -89,6 +89,17 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- **Merged-LOD material strength (2026-10-25, `lod_material_strength`, default on).** Documented D3D9/D3DX only: the
+  baker's mark sits in the DDS header's reserved words, the proxy reads it in the existing IAT hook on the game's
+  `d3dx9_37.dll` import `D3DXCreateTextureFromFileInMemoryEx` (now patched for this option alone, without telemetry or
+  another loading option: the install scope row says `lod_strength`), the twin is a `ps_3_0` program created with
+  `CreatePixelShader` and accepted by the native SysWOW64 validator for all 800 generated forms
+  (`verification/results/overlay-material-strength/native_validate_twins.json`), and the alpha lane is sampled linearly
+  under `SRGBTEXTURE` by specification. Not yet verified natively: that every overlay atlas reaches the device through
+  that import (the `.pck`/`.dds` path is inferred from the import table; the debug-tier `lod_strength_frame` row's
+  `seen` counts against the marker's atlas members settle it in the first flight) and the driver's first-draw compile of
+  the twins (about 7 KB more bytecode per hull program kind).
+
 - **Gate rings untested in flight (2026-10-15, the arrival round).** Site E's ring row reads a gate's collision tree at runtime (`wk::gate_tree_state`); the installed Mayhem gates have none, so the ring branch (vanilla's ringed rows 0-3, the stock ring numbers of ship-navigation-ai.md section 10.9) has only the fixture's Terran casts behind it, never a flight.
 
 - **Native install and build host (2026-10-11).** The user plays on native Windows 11 (`C:\X3`, RTX 5070 Ti, native

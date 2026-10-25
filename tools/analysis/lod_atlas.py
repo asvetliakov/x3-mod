@@ -3,10 +3,11 @@
 
 The coarse record C (a copy of the body's coarsest record, or of the lod_overlay.py
 --source-record) is drawn with one opaque merged material per class (effect file, occlusion
-map, g_CullMode, g_MatDiffuseStrength; effect_classes) whose diffuse and light-map textures are
-atlases baked from the materials it replaces (one atlas set per body, shared by every class);
-alpha-tested/blended materials keep their own material, textures and UVs, one group per part
-and material (since 2026-10-25). Layout (docs/architecture/merged-lod-feasibility.md, "Overlay
+map, raw g_CullMode; effect_classes) whose diffuse and light-map textures are atlases baked from
+the materials it replaces (one atlas set per body, shared by every class; each member's diffuse-
+strength ratio rides in the specular atlas alpha, module notes 2026-10-25); alpha-tested/blended
+materials keep one merged group per part as in --collapse two (the dominant alpha material, remapped
+to a synthesized copy when the members' g_Mat* differ). Layout (docs/architecture/merged-lod-feasibility.md, "Overlay
 tooling"; census: tools/analysis/atlas_census.py):
 
 - One tile per distinct texture set (diffuse, light map, bump[, specular]) of the opaque
@@ -242,12 +243,23 @@ tooling"; census: tools/analysis/atlas_census.py):
   file, so the next lod_overlay --batch --sync rebuilds every body instead of reusing it; bodies
   that baked before are byte-identical (no eligible body had a NULL diffuse or a dominant without
   a required slot).
-- 2026-10-25 change (Run 202, docs/verification/lod-overlay.md): opaque classes also split by g_CullMode and
-  g_MatDiffuseStrength (material_class_key; an area-weighted strength drew freighter_base's ring trims at
-  0.54x / 1.47x and two-sided trims one-sided), and each alpha material keeps its own group, material,
-  textures and UVs (before: one group per part on the dominant alpha material's textures, so the support
-  beams sampled the lattice grid). More draws per body (one per extra class and alpha material per part);
-  the atlas set and its tiles are unchanged. tool_sha256 changes, so --sync rebuilds every body.
+- 2026-10-25 change (Run 202, docs/verification/lod-overlay.md): opaque classes also split by g_CullMode
+  (material_class_key; the merged material copied one cull mode, so freighter_base's two-sided trims drew
+  one-sided). The alpha path is unchanged (one group per part on the dominant alpha material, synth_materials;
+  the bef0d269 split into one group per alpha material was withdrawn the same day by user decision: the pale
+  beam band on freighter_base is accepted against ~1,600 extra draws). tool_sha256 changes, so --sync rebuilds
+  every body.
+- 2026-10-25 per-material diffuse strength (docs/architecture/overlay-material-strength.md, "option B"): an
+  area-weighted g_MatDiffuseStrength drew freighter_base's ring trims at 0.54x / 1.47x (in XT_standard_lighting
+  PS 5f82ecac c12 scales only the directional diffuse sum, so it cannot be folded into the diffuse tiles). The
+  merged material now carries s_merged = max(area-weighted mean, s_max / 2) (class_strength) and every source
+  material's ratio a = clamp(s_i / s_merged / 2, 0, 1) is baked as the alpha of its specular-atlas tile
+  (strength_alpha; 255 a, a per-tile constant that DXT5 stores exactly; unused area alpha 128 = ratio 1). A tile
+  shared by materials of different ratios is split (plan_layout `strength`). Every atlas DDS header carries the
+  'X3ML' mark in dwReserved1[0..2] (dds_mark: version, slot id, lane, K = 2, payload) so the proxy recognises
+  the atlas by the baker's own signature and binds a pixel-program twin that multiplies the diffuse term by
+  2 a (specular texel .w); without the DLL or with lod_material_strength = 0 the body draws at s_merged, the
+  mean for most classes. Specular atlas: always DXT5 now.
 """
 import gzip
 import hashlib
@@ -299,6 +311,19 @@ WIDEN_ALPHA_SLOTS = ('diffuse', 'light')   # slots whose alpha a widened tile ca
 # g_AlphaValue type 2 16.16)
 WIDEN_STATE = ((b'g_AlphaBlendEnable', 0, 1), (b'g_BlendOp', 0, 1), (b'g_SrcBlend', 0, 5), (b'g_DestBlend', 0, 6),
                (b'g_AlphaTestEnable', 0, 0), (b'g_ZWriteEnable', 0, 1), (b'g_AlphaValue', 2, 65536))
+
+
+# Per-material diffuse strength in the specular atlas alpha (overlay-material-strength.md 3-4; module notes).
+STRENGTH_PARAM = b'g_MatDiffuseStrength'
+STRENGTH_K = 2                   # the shader recovers s_i / s_merged = K a from the alpha a
+STRENGTH_BACKGROUND = 128        # unused specular-atlas alpha: ratio 1.0 (deep-mip bleed is neutral)
+STRENGTH_SLOT = 'specular'
+DDS_MARK = b'X3ML'               # dwReserved1[0] of every atlas DDS the baker writes (file bytes 32-35)
+DDS_MARK_VERSION = 1             # dwReserved1[1]
+DDS_MARK_OFFSET = 32
+SLOT_IDS = {'diffuse': 0, 'light': 1, 'bump': 2, 'specular': 3}
+LANE_W = 3
+PAYLOAD_NONE, PAYLOAD_STRENGTH = 0, 1   # dwReserved1[2] bits 24-31: what the marked lane carries
 
 
 class AtlasError(ValueError):
@@ -483,9 +508,32 @@ def encode_dxt(img, fourcc, chunk=32768):
     return np.concatenate(parts).tobytes()
 
 
-def dds_header(w, h, mips, fmt):
+def dds_mark(slot, payload=PAYLOAD_NONE, lane=0, k=0):
+    """The three reserved words (12 bytes) of an atlas DDS header: 'X3ML', the version, and the descriptor
+    slot id | lane << 8 | K << 16 | payload << 24. The specular atlas says (3, LANE_W, STRENGTH_K,
+    PAYLOAD_STRENGTH): alpha = diffuse-strength ratio / K."""
+    return DDS_MARK + struct.pack('<II', DDS_MARK_VERSION, SLOT_IDS[slot] | lane << 8 | k << 16 | payload << 24)
+
+
+def strength_mark(slot):
+    """dds_mark of a slot's atlas when the strength ratio is baked (every slot marked, the specular slot carrying it)."""
+    return dds_mark(slot, PAYLOAD_STRENGTH, LANE_W, STRENGTH_K) if slot == STRENGTH_SLOT else dds_mark(slot)
+
+
+def read_dds_mark(data):
+    """(version, slot id, lane, K, payload) of a marked DDS, None when unmarked (the proxy's parser, lod_texture_mark.h,
+    applies the same bytes)."""
+    if len(data) < 128 or data[:4] != b'DDS ' or data[DDS_MARK_OFFSET:DDS_MARK_OFFSET + 4] != DDS_MARK:
+        return None
+    version, d = struct.unpack_from('<II', data, DDS_MARK_OFFSET + 4)
+    return version, d & 255, d >> 8 & 255, d >> 16 & 255, d >> 24
+
+
+def dds_header(w, h, mips, fmt, mark=None):
     d = bytearray(128)
     d[:4] = b'DDS '
+    if mark:
+        d[DDS_MARK_OFFSET:DDS_MARK_OFFSET + len(mark)] = mark   # dwReserved1[0..2]; D3DX ignores the reserved words
     if fmt == 'A8R8G8B8':
         struct.pack_into('<7I', d, 4, 124, 0x2100f, h, w, w * 4, 0, mips)
         struct.pack_into('<8I', d, 76, 32, 0x41, 0, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000)
@@ -546,9 +594,9 @@ def normal_mip_chain(vec):
         cur = normalize(cur)
 
 
-def write_dds(levels, fmt):
+def write_dds(levels, fmt, mark=None):
     h, w = levels[0].shape[:2]
-    out = [dds_header(w, h, len(levels), fmt)]
+    out = [dds_header(w, h, len(levels), fmt, mark)]
     for lv in levels:
         out.append(lv[:, :, [2, 1, 0, 3]].tobytes() if fmt == 'A8R8G8B8' else encode_dxt(lv, fmt))
     return b''.join(out)
@@ -1076,7 +1124,7 @@ def _tile_stats(base, limit, px, radius, min_ratio):
 
 
 def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GUTTER, slots=('diffuse', 'light'),
-                min_ratio=MIN_RATIO, outlier_span=OUTLIER_SPAN, keep=frozenset()):
+                min_ratio=MIN_RATIO, outlier_span=OUTLIER_SPAN, keep=frozenset(), strength=None):
     """Tiles, per-face keys and the chosen atlas size for the opaque faces of `record`.
 
     Per size: the uniform layout (one scale for every tile) is taken when its minimum tile ratio reaches
@@ -1086,8 +1134,12 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
     atlased area), 'clamped_share' (the span-clamped faces' share) and 'ratio'. Materials in `keep`
     (light_bleed) are left out like the alpha materials. A group carrying 'widen' q (lod_overlay.widen_thin_patches,
     q < WIDEN_ALPHA_STEPS) gets its own tile per texture set and q: a duplicate of the source tile over the
-    widened faces' UV spans whose diffuse and light alpha bake to q / WIDEN_ALPHA_STEPS (bake_level; tile 'alpha')."""
+    widened faces' UV spans whose diffuse and light alpha bake to q / WIDEN_ALPHA_STEPS (bake_level; tile 'alpha').
+    `strength` {material: alpha byte} (class_strength, with the specular slot): materials of one texture set but
+    different bytes get tiles of their own (the byte joins the tile key; tile 'strength', baked as the specular
+    tile's alpha), and the layout carries 'strength' True so bake_level and encode mark the atlases."""
     pts = record['points']
+    strength = strength if strength is not None and STRENGTH_SLOT in slots else None
     radius = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in pts if p[0] & 1), default=0.0)
     tiles, tile_of = [], {}
     for pi, part in enumerate(record['parts']):
@@ -1106,9 +1158,12 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
                 if names['diffuse'] is None:              # no t_DiffuseTexture: the effect default is untraced
                     raise AtlasError(f'material {mi} has no diffuse texture (no t_DiffuseTexture parameter)')
                 key = tile_key(names) + ((('alpha', q),) if q else ())
+                if strength is not None:
+                    key += (('strength', strength.get(mi, STRENGTH_BACKGROUND)),)
                 t = next((t for t in tiles if t['key'] == key), None)
                 if t is None:
-                    t = dict(key=key, names=names, mats=[], area=0.0, faces=0, face_list=[], **({'alpha': q} if q else {}))
+                    t = dict(key=key, names=names, mats=[], area=0.0, faces=0, face_list=[], **({'alpha': q} if q else {}),
+                             **({'strength': strength.get(mi, STRENGTH_BACKGROUND)} if strength is not None else {}))
                     tiles.append(t)
                 if mi not in t['mats']:
                     t['mats'].append(mi)
@@ -1174,7 +1229,7 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
     return dict(size=n, scale=scale, gutter=gutter, tiles=tiles, face_keys=face_keys, radius=radius, px=px,
                 min_ratio=low, ratio_ok=low >= min_ratio, tried=[x[:3] for x in tried],
                 tried_clamped=[x[3] for x in tried], clamped=clamp, outlier_span=outlier_span, area=total,
-                slots=tuple(slots))
+                slots=tuple(slots), strength=strength is not None)
 
 
 def atlas_uv(t, n, u, v, su, sv, clamp=False):
@@ -1263,7 +1318,8 @@ def split_faces(faces, limit, blocks=None):
     return [[f for _, f in sorted(bn[0], key=lambda x: x[0])] for bn in sorted(bins, key=lambda bn: min(bn[0])[0])]
 
 
-def rewrite_record(record, layout, atlas_index, alpha, max_group_points=None, keep=frozenset(), widen_of=None):
+def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None, keep=frozenset(),
+                   widen_of=None):
     """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
     group referencing more than max_group_points distinct points is split (split_faces: whole
     source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
@@ -1271,8 +1327,9 @@ def rewrite_record(record, layout, atlas_index, alpha, max_group_points=None, ke
     one atlas material index for every opaque group, or {source material: atlas material} (one
     output class per distinct atlas material per part, in first-use order). A material in `keep`
     (light_bleed) keeps its own material and UVs, one group per part after the atlas groups and before
-    the alpha groups, like the glow collapse's kept materials. Every alpha material keeps its own material and
-    UVs too: one group per part and alpha material, in first-use order, last. widen_of {source material: widened atlas material}:
+    the alpha group, like the glow collapse's kept materials. The alpha materials of a part form one group,
+    last, drawn with the dominant alpha material (face count) or its alpha_remap (lod_overlay.synth_materials)
+    and their source UVs. widen_of {source material: widened atlas material}:
     the groups carrying 'widen' (lod_overlay.widen_thin_patches) of an atlased material form one class per part and
     widened material (the blended group), after the kept groups and before the alpha group; a widened group of an
     alpha or kept material goes with its material's class."""
@@ -1315,11 +1372,13 @@ def rewrite_record(record, layout, atlas_index, alpha, max_group_points=None, ke
             for m in dict.fromkeys(g['material'] for g in groups if g['material'] in keep):
                 classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
             classes += widened
-            for m in dict.fromkeys(g['material'] for g in groups if g['material'] in alpha):
-                classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
+            classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False))
         for cls, material, atlased in classes:
             if not cls:
                 continue
+            if material is None:
+                d = dominant([g for _, g in cls])
+                material = (alpha_remap or {}).get(d, d)
             faces, ref_group, blocks = [], {}, []
             for gi, g in cls:
                 for fi, f in enumerate(g['faces']):
@@ -1399,9 +1458,11 @@ def class_dominant(mats, groups, need):
     return dominant([g for g in groups if g['material'] in carry] or groups)
 
 
-def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture', b't_lightmaptexture')):
+def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture', b't_lightmaptexture'),
+                   strength=None):
     """Copy of mats[dom] with the atlas textures and (synth) area-weighted g_Mat* means; rows as
-    lod_overlay.synth_materials. A slot the copied record does not declare is not added (the record keeps
+    lod_overlay.synth_materials. `strength` (class_strength) writes its s_merged into g_MatDiffuseStrength instead
+    of the mean. A slot the copied record does not declare is not added (the record keeps
     its effect's parameter set); `need` (required_slots) must all be declared."""
     import lod_overlay
     base = mats[dom]
@@ -1430,8 +1491,9 @@ def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture
                     num += a * v[0][0]; den += a
             if den > 0:
                 mean = num / den
-                rows.append((name.decode('latin1'), val[0], mean, int(round(mean))))
-                val = [int(round(mean))]
+                written = strength['merged'] if strength and low == STRENGTH_PARAM.lower() else int(round(mean))
+                rows.append((name.decode('latin1'), val[0], mean, written))
+                val = [written]
         params.append((name, typ, val))
     return dict({k: v for k, v in base.items() if k != 'classic'}, index=len(mats), params=params), rows
 
@@ -1827,19 +1889,46 @@ def param_word(material, name):
     return next((v[0] for n, t, v in material.get('params', ()) if t != 8 and n.lower() == low and v), None)
 
 
-CLASS_PARAMS = (b'g_CullMode', b'g_MatDiffuseStrength')
+CLASS_PARAMS = (b'g_CullMode',)
 
 
 def material_class_key(material):
-    """(g_CullMode, g_MatDiffuseStrength 16.16) of an effect material, the raw words (None when absent): materials
-    that differ in either never share a merged material. Cull: the merged material copies its dominant's
-    g_CullMode, so a two-sided (1) material in a one-sided class lost its back faces (Run 202,
-    freighter_base trims 12-16). Diffuse strength: in the XT_standard_lighting.fx pixel shader (PS 5f82ecac,
-    c12) g_MatDiffuseStrength scales only the directional diffuse sum, while the diffuse texel then multiplies the
-    whole bracket (diffuse + specular + clamped v0) and the cube reflection; so it cannot be folded into
-    the diffuse atlas tiles without darkening specular, ambient and reflection by the same factor, and an
-    area-weighted mean drew the ring trims 0.54x / 1.47x (lod-overlay.md, 2026-10-25 Run 202)."""
+    """(g_CullMode,) of an effect material, the raw word (None when absent): materials that differ in it never
+    share a merged material, since the merged material copies its dominant's g_CullMode and a two-sided (1)
+    material in a one-sided class lost its back faces (Run 202, freighter_base trims 12-16). g_MatDiffuseStrength
+    left the key on 2026-10-25 (option B): the merged material carries class_strength's s_merged and each
+    member's ratio rides in the specular atlas alpha, read by the proxy's pixel-program twin."""
     return tuple(param_word(material, n) for n in CLASS_PARAMS)
+
+
+def merged_strength(values, areas):
+    """s_merged of a class (16.16 words, area weights): max(area-weighted mean, s_max / 2), so every ratio
+    s_i / s_merged is at most 2 (fleet: 0 clamped classes) and most classes keep today's mean."""
+    den = sum(areas)
+    mean = sum(v * a for v, a in zip(values, areas)) / den if den > 0 else sum(values) / len(values)
+    return int(round(max(mean, max(values) / 2.0)))
+
+
+def strength_alpha(value, merged):
+    """The alpha byte of a material's specular tile: 255 clamp(s_i / s_merged / K, 0, 1)."""
+    if merged <= 0:
+        return STRENGTH_BACKGROUND
+    return int(round(255.0 * min(1.0, max(0.0, value / merged / STRENGTH_K))))
+
+
+def class_strength(mats, mis, areas):
+    """dict(merged, mean, max, values {material: word}, alpha {material: byte}) of one class, or None when no member
+    declares g_MatDiffuseStrength. A member without the parameter (the effect default applies to it) takes no part
+    in s_merged and gets alpha STRENGTH_BACKGROUND (ratio 1: it draws at s_merged)."""
+    values = {m: param_word(mats[m], STRENGTH_PARAM) for m in mis}
+    have = {m: v for m, v in values.items() if v is not None}
+    if not have:
+        return None
+    merged = merged_strength(list(have.values()), [areas.get(m, 0.0) for m in have])
+    den = sum(areas.get(m, 0.0) for m in have)
+    mean = sum(v * areas.get(m, 0.0) for m, v in have.items()) / den if den > 0 else merged
+    return dict(merged=merged, mean=mean, max=max(have.values()), values=have,
+                alpha={m: strength_alpha(v, merged) if v is not None else STRENGTH_BACKGROUND for m, v in values.items()})
 
 
 def effect_classes(mats, opaque, textures=None):
@@ -1870,9 +1959,11 @@ def effect_classes(mats, opaque, textures=None):
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
              gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None, keep=frozenset(),
              layout=None):
-    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map, cull mode,
-    diffuse strength) class (effect_classes) to `mats` in place; alpha materials keep their own records. Returns dict(record, layout,
-    atlas_index (the largest class's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
+    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map, cull mode)
+    class (effect_classes; then any synthesized alpha material) to `mats` in place. Returns dict(record, layout,
+    atlas_index (the largest class's), atlas_indices, atlas_of, names, members, synth, strength, uv2, occlusion,
+    kept, ...). With the specular slot each class's diffuse strength is merged by class_strength and every member's
+    ratio becomes its specular tile's alpha (plan_layout `strength`; module notes).
     Materials in `keep` (light_bleed) are not atlased: they keep their own groups, textures and UVs and
     take no part in the effect / occlusion classes or the g_Mat* means; the opaque materials of a
     KEPT_EFFECTS effect (excluded_materials) are kept the same way and reported as kept_effects (a body
@@ -1919,19 +2010,38 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     has_spec = any(t == 8 and n.lower() == SLOT_NAMES['specular'] for m in areas for n, t, _ in mats[m].get('params', ()))
     slots = (('diffuse', 'light') + (('bump',) if bump and has_bump else ())
              + (('specular',) if specular and has_spec else ()))
-    if layout is not None and tuple(layout['slots']) != tuple(slots):
-        layout = None                      # keeping changed the slot set (dominant's bump, specular): re-plan
-    layout = layout or plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio, keep=keep)
+    # per class: s_merged and each member's ratio alpha (only with the specular slot, where the ratio lives)
+    strengths = {}
+    alpha_of = {}
+    if STRENGTH_SLOT in slots:
+        for eff, occ, mis in classes:
+            st = class_strength(mats, mis, areas)
+            if st:
+                strengths[tuple(mis)] = st
+                alpha_of.update(st['alpha'])
+    if layout is not None and (tuple(layout['slots']) != tuple(slots) or
+                               any(len({alpha_of.get(m, STRENGTH_BACKGROUND) for m in t['mats']}) > 1
+                                   for t in layout['tiles'])):
+        layout = None                      # keeping changed the slot set or a tile's ratios: re-plan
+    layout = layout or plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio, keep=keep,
+                                   strength=alpha_of if STRENGTH_SLOT in slots else None)
+    if layout.get('strength'):             # a reused layout: refresh the tiles' bytes from this call's classes
+        for t in layout['tiles']:
+            t['strength'] = alpha_of.get(t['mats'][0], STRENGTH_BACKGROUND)
     names, members = texture_names(body, slots)
-    atlas_of, indices, report = {}, [], []
+    atlas_of, indices, report, strength_report = {}, [], [], []
     occlusion = {}                         # effect -> bound map label; a list (class order) when it has several
     for eff, _, mis in classes:
         need = required_slots(mats, mis)
         d = class_dominant(mats, [g for g in opaque if g['material'] in mis], need)
-        mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth, need)
+        st = strengths.get(tuple(mis))
+        mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth, need, st)
         idx = len(mats)
         mats.append(mat)
         indices.append(idx)
+        if st:
+            strength_report.append(dict(material=idx, merged=st['merged'], mean=round(st['mean'], 1), max=st['max'],
+                                        members={m: [st['values'].get(m), st['alpha'][m]] for m in mis}))
         for m in mis:
             atlas_of[m] = idx
         occ = occlusion_label(mats[d])     # the dominant's string, which the merged material binds
@@ -1956,12 +2066,18 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
             widen_of[m] = idx
         report.append(dict(index=idx, dominant=row['dominant'], absorbed=row['absorbed'], params=[], atlas=True,
                            widened=True, effect=eff, occlusion=row['occlusion']))
-    # alpha materials keep their own record, textures and UVs, one group per part and material (since
-    # 2026-10-25; before, one group drawn with the dominant alpha material's textures and averaged g_Mat*)
-    lod, info = rewrite_record(record, layout, atlas_of, alpha, max_group_points, keep, widen_of)
+    remap = {}
+    if synth:                              # the alpha group of a part: the dominant alpha material with averaged g_Mat*
+        import lod_overlay
+        alpha_only = {'points': record['points'], 'parts': [
+            {'flags': p['flags'], 'groups': [g for g in p['groups'] if g['material'] in alpha]}
+            for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
+        remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
+        report += more
+    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points, keep, widen_of)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
-                widened_indices=widened, widen_of=widen_of,
+                widened_indices=widened, widen_of=widen_of, strength=strength_report,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
                 effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(bleed_keep),
                 kept_effects=sorted(kept_fx), kept_classic=kept_classic, source=record, animation=animation)
@@ -2019,14 +2135,17 @@ def bake_level(layout, sources, slot, level=0):
     from its own repeating source at this level's density (so the gutter is the tile's own
     repeat continuation at every level, never a neighbour's texels), the texels overlapping a
     tile's content are written last (content beats a neighbour's gutter), and the unused area
-    keeps the background (diffuse black opaque, light/specular black alpha 0, bump flat).
+    keeps the background (diffuse black opaque, light/specular black alpha 0, bump flat; a strength
+    layout's specular alpha STRENGTH_BACKGROUND). A strength layout writes each specular tile's
+    'strength' byte over its footprint as the alpha (a per-tile constant at every level).
     Float32 (n >> level, n >> level, 4) RGBA; bump: (.., 3) unit vectors. `sources`: per
     tile index the float32 source (bump: vectors) or None (NULL)."""
     n, g = layout['size'], layout['gutter']
     nl, s = max(1, n >> level), 1 << level
     bump = slot == 'bump'
+    strength = slot == STRENGTH_SLOT and layout.get('strength')
     img = np.zeros((nl, nl, 3 if bump else 4), np.float32)
-    img[:, :, -1] = 1 if bump else 255 if slot == 'diffuse' else 0     # flat normal / opaque / black
+    img[:, :, -1] = 1 if bump else 255 if slot == 'diffuse' else STRENGTH_BACKGROUND if strength else 0
     null = np.array((0, 0, 1) if bump else null_texel(slot), np.float32)
     inner = []
     for t, src in zip(layout['tiles'], sources):
@@ -2045,6 +2164,9 @@ def bake_level(layout, sources, slot, level=0):
         if t.get('alpha') and slot in WIDEN_ALPHA_SLOTS:     # widened tile: coverage alpha (plan_layout)
             block = np.array(block, np.float32)
             block[:, :, 3] = 255.0 * t['alpha'] / WIDEN_ALPHA_STEPS
+        if strength:                                         # diffuse-strength ratio: the tile's constant alpha
+            block = np.array(block, np.float32)
+            block[:, :, 3] = float(t.get('strength', STRENGTH_BACKGROUND))
         img[y0:y1, x0:x1] = block
         inner.append((over, (x0, y0), block))
     for (ox0, ox1, oy0, oy1), (x0, y0), block in inner:
@@ -2089,7 +2211,8 @@ def used_mask(layout):
 
 
 def encode(images, layout, fmt='dxt'):
-    """{slot: dict(dds, format, bytes, sha256, error=[(mean, p95) per R,G,B,A] over used texels)}."""
+    """{slot: dict(dds, format, bytes, sha256, error=[(mean, p95) per R,G,B,A] over used texels, max_error=[per
+    channel], mark)}. A strength layout's atlases carry strength_mark(slot) in the DDS header."""
     if fmt not in FORMATS:
         raise AtlasError(f'unknown atlas format {fmt!r}')
     mask = used_mask(layout)
@@ -2100,11 +2223,13 @@ def encode(images, layout, fmt='dxt'):
             f = 'A8R8G8B8'
         else:
             f = 'DXT1' if (levels[0][:, :, 3] == 255).all() else 'DXT5'
-        dds = write_dds(levels, f)
+        mark = strength_mark(slot) if layout.get('strength') else None
+        dds = write_dds(levels, f, mark)
         back = decode_dds(dds)
         diff = np.abs(back.astype(np.int16) - levels[0].astype(np.int16))[mask]
         err = [(float(diff[:, c].mean()), float(np.percentile(diff[:, c], 95))) for c in range(4)]
         out[slot] = dict(dds=dds, format=f, bytes=len(dds), sha256=hashlib.sha256(dds).hexdigest(), error=err,
+                         max_error=[int(diff[:, c].max()) if len(diff) else 0 for c in range(4)], mark=mark,
                          decoded=back)
     return out
 
@@ -2622,6 +2747,8 @@ def summary(res):
         **({'classic_materials': [r['index'] for r in res['synth'] if r.get('classic')]}
            if any(r.get('classic') for r in res['synth']) else {}),
         light_bleed=bleed_summary(res.get('light_bleed')),
+        **({'strength': [dict(r, members={str(m): v for m, v in r['members'].items()}) for r in res['strength']]}
+           if res.get('strength') else {}),
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     sources=dict(t.get('sources', {})),
                     lo=[_num(x) for x in t['lo']], span=[_num(x) for x in t['span']], base=list(t['base']),
@@ -2629,11 +2756,13 @@ def summary(res):
                     name=(t['names'].get('diffuse') or b'').decode('latin1'), share=_num(t['share']),
                     clamped_faces=t.get('clamped_faces', 0), clamped_share=_num(t.get('clamped_share', 0.0)),
                     capped=bool(t.get('capped')), **({'solid': True} if t.get('solid') else {}),
-                    **({'alpha': t['alpha'] / WIDEN_ALPHA_STEPS} if t.get('alpha') else {}))
+                    **({'alpha': t['alpha'] / WIDEN_ALPHA_STEPS} if t.get('alpha') else {}),
+                    **({'strength': t['strength']} if 'strength' in t else {}))
                for t in L['tiles']],
         textures=[dict(slot=s, name=res['names'][s].decode('latin1'), member=res['members'][s], format=e['format'],
                        dds_bytes=e['bytes'], dds_sha256=e['sha256'],
-                       compression_error_rgba=[[_num(m), _num(p)] for m, p in e['error']])
+                       compression_error_rgba=[[_num(m), _num(p)] for m, p in e['error']],
+                       **({'mark': e['mark'].hex()} if e.get('mark') else {}))
                   for s, e in res['encoded'].items()],
         check=dict(faces=c['faces'], sampled_faces=c.get('sampled_faces', c['faces']), vertices=c['vertices'], uv_inside_content=c['inside'],
                    uv_inside_gutter=c['in_gutter'], max_map_error_texels=_num(c['max_map_error_texels']),

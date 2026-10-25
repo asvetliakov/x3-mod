@@ -209,7 +209,7 @@ value is harmless):
 | `[window]` | `window_monitor_rect`, `cursor_reassert`, `pause_key` |
 | `[audio]` | `music_keep`, the voice-DMO fallback switch, `music_combat_trigger`, `music_combat_hold_s` |
 | `[loading]` | `crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` |
-| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note), `engine_light`, `engine_shimmer`, `engine_shimmer_px`, `engine_shimmer_max` (2026-10-03, end of this note) |
+| `[engine]` | `collide_sat_sse2`, `collide_memo`, `collide_box_cull`, `lod_occlusion`, `terran_station_lod`, `sun_flare_fix`, `light_map_far_fade`, `engine_effects`, `engine_effects_preset` (2026-10-01), `engine_plume_nozzle`, `engine_plume_floor` (2026-10-03; all three at the end of this note), `engine_light`, `engine_shimmer`, `engine_shimmer_px`, `engine_shimmer_max` (2026-10-03, end of this note), `lod_material_strength` (2026-10-25, default 1: the merged-LOD overlay's per-material diffuse strength, [overlay-material-strength.md](overlay-material-strength.md); 0 = the twin is never created or bound and the D3DX texture hook row is not patched) |
 | `[logging]` | `debug`, `perf`, `capture_frames`, `log_file` |
 
 Description style: one sentence saying what it does, one saying what the values mean, in words a player

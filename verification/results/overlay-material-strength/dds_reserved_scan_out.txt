@@ -1,0 +1,4 @@
+Running as unit: run-p1300754-i5498465.scope; invocation ID: ad785868c62c4b86a53b6681b38df2b3
+catalogues 28; members (.dds/.pck) 10480; DDS headers 9386; unreadable gzip 4; with a non-zero dwReserved1 word 15
+first reserved word (text hex: count): [('GIMP 504d4947', 14), ('? 00000000', 1)]
+headers carrying b'X3ML': 0 []

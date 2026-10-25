@@ -73,6 +73,13 @@ using ResetObserver = void (*)(const ResetEvent&) noexcept;
 // Exclusive process-lifetime registration. Null/replacement claims refuse.
 bool claim_reset_observer(ResetObserver) noexcept;
 bool reset_observer_is(ResetObserver) noexcept;
+// Final release of an application 2D texture node (the merged-LOD material strength drops its marked-texture entry;
+// docs/architecture/overlay-material-strength.md 4): called once per destroyed Texture node, outside the registry
+// mutex, before the node is freed, with the application's device and the application-visible texture pointer, which
+// the observer uses as a key only (never dereferenced). One atomic load per final release; nothing on AddRef/Release
+// pairs that leave the node alive. Exclusive process-lifetime registration like the reset observer.
+using TextureReleaseObserver = void (*)(IDirect3DDevice9* application_device, void* application_texture) noexcept;
+bool claim_texture_release_observer(TextureReleaseObserver) noexcept;
 
 struct Options {
     // Prepare a private snapshot of automatic, single-sample D24X8 through RESZ.

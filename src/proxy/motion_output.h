@@ -42,6 +42,7 @@
 #include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "engine_light_core.h"
+#include "lod_texture_mark.h"
 #include "engine_nozzle_walk_core.h"
 #include "../renderer/engine_plumes_pass.h"
 #include "../renderer/engine_ribbons_pass.h"
@@ -168,6 +169,8 @@ struct MotionRoute {
                                 // route).
     bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz)
                                       // selected instead of the gained one.
+    bool strength = false; // The material-strength twin (motion_output_material_strength_inc.h) bound over the program
+                           // chosen above: the specular stage held a baker-marked atlas.
     std::uint8_t widen_held_reason = 0; // Why widen_draw was false, first failing condition: 1 light-map size unknown,
                                         // 3 no mip chain on the light-map stage, 0 other (held row); 2 (alpha
                                         // tested) is unreachable since 2026-10-16, kept for the row format.
@@ -1135,7 +1138,8 @@ public:
     // hooks). `levels` is the texture's level count when `queried` (the hook
     // asks the texture once per pointer change, inside its native section).
     void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2,
-                     DWORD width = 0, DWORD height = 0, std::uint64_t identity = 0) noexcept;
+                     DWORD width = 0, DWORD height = 0, std::uint64_t identity = 0,
+                     std::uint8_t atlas_lane = 0) noexcept; // atlas_lane: strength_lane of the texture (SetTexture hook)
     int composition_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
     void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture, std::uint64_t identity = 0) const noexcept;
@@ -1211,6 +1215,18 @@ public:
     // plume stage is requested (X3M_ENGINE_EFFECTS=plumes with the suppression on); reads X3M_ENGINE_LIGHT=on|off
     // (default on) once, after the material options, and allocates the tables (about 0.4 MB) when it applies.
     void configure_engine_light(bool plumes) noexcept;
+    // Merged-LOD overlay material strength (motion_output_material_strength_inc.h; docs/architecture/
+    // overlay-material-strength.md): X3M_LOD_MATERIAL_STRENGTH=1 (schema default) creates, beside every
+    // original-shading hull variant and its engine-light twin, a twin that multiplies the diffuse term by the ratio
+    // the baker stored in the specular atlas alpha, and binds it on draws whose specular stage holds a marked atlas.
+    void configure_material_strength(bool requested) noexcept;
+    bool material_strength_requested() const noexcept { return strength_requested_; }
+    // The D3DX texture hook (capture.cpp texture_created): a created texture whose DDS header carried the baker's
+    // mark, with the proxy's resource identity. The SetTexture hook asks strength_lane for the byte the shadow stores.
+    bool strength_mark_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, std::uint8_t lane,
+                              std::uint8_t slot) noexcept; // true when stored (the ratio carrier)
+    bool strength_mark_forget(const void* texture) noexcept; // final Release: true when an entry was dropped
+    std::uint8_t strength_lane(IDirect3DBaseTexture9* texture) noexcept;
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h; docs/architecture/engine-exhaust-gap-analysis.md gap 9):
     // reads X3M_ENGINE_SHIMMER (on|off, default on), X3M_ENGINE_SHIMMER_PX (0..4, default 1.5) and
     // X3M_ENGINE_SHIMMER_MAX (0..16 rects, default 4) once and logs one
@@ -1520,6 +1536,14 @@ private:
         // Engine light twins (motion_output_engine_light_inc.h), one per original-shading kind: the plain motion
         // variant, fill, gained, gained widened, share, share gained, share gained widened; null = none.
         IDirect3DPixelShader9* engine_twin[7]{};
+        // Material-strength twins (motion_output_material_strength_inc.h): [0][k] of the original-shading kind k above,
+        // [1][k] of its engine-light twin; null = none (refused or not created). strength_stage: the specular sampler
+        // stage the twins read (1 DEFAULT, 2 BUMPMAP), 0 = no twin at all (one byte per draw).
+        IDirect3DPixelShader9* strength_twin[2][7]{};
+        std::uint8_t strength_stage = 0;
+        std::uint8_t strength_attempted[2] = {0, 0}; // bit k: twin [e][k] creation tried (lazy, first marked selection)
+        std::vector<std::uint32_t> strength_code;    // the original's words, kept only for a program with a specular
+                                                     // stage while the option is on (the twins are built from it)
         // XT DEFAULT is pair-specific: the shared VS retains
         // its generic objects for every earlier exact pair.
         IUnknown* xt_default_ordinary_variant = nullptr;
@@ -1607,6 +1631,9 @@ private:
         // (c7-9, c13-15, c28-30, c34-36; kept while the light is configured; bit r = row r known).
         IDirect3DPixelShader9* engine_twin[7]{};
         bool engine_light_pair = false;
+        // Material strength: the bound PS's twins and specular stage (ShaderEntry::strength_twin / strength_stage).
+        IDirect3DPixelShader9* strength_twin[2][7]{};
+        std::uint8_t strength_stage = 0;
         engine_light::core::VertexLayout engine_layout{};
         float engine_rows[4][12]{};
         std::uint8_t engine_rows_known[4]{};
@@ -1860,6 +1887,29 @@ private:
     };
     bool engine_light_requested_ = false;
     EngineLightState* engine_light_ = nullptr;
+    // Material strength (motion_output_material_strength_inc.h): the request, the marked-texture table (pointer ->
+    // identity, lane, slot; 4096 entries, half usable), the frame counters and the session totals.
+    bool strength_requested_ = false;
+    lod_texture_mark::Table<4096>* strength_marks_ = nullptr;
+    std::uint32_t strength_draws_ = 0, strength_marked_draws_ = 0, strength_no_twin_ = 0; // frame line
+    std::uint32_t strength_marks_seen_[lod_texture_mark::slot_count + 1] = {0, 0, 0, 0, 0}; // by slot (+1 other)
+    std::uint32_t strength_marks_stale_ = 0, strength_marks_dropped_ = 0, strength_twins_created_ = 0,
+                  strength_twins_refused_ = 0, strength_twins_failed_ = 0;
+    std::uint32_t strength_session_draws_ = 0;
+    std::uint32_t strength_logged_[6] = {0, 0, 0, 0, 0, 0}; // the totals the last frame row reported
+    std::uint64_t strength_transform_ticks_ = 0, strength_create_ticks_ = 0; // QPC ticks spent on lazy twin creation
+    bool strength_full_logged_ = false;
+    void strength_prepare(ShaderEntry& entry, const void* code, UINT bytes, std::uint64_t hash) noexcept;
+    void strength_release(ShaderEntry& entry) noexcept;
+    IDirect3DPixelShader9* strength_twin(IDirect3DPixelShader9* ps, bool engine) noexcept; // creates on first use
+    void strength_clear_twins() noexcept {
+        for (auto& row : shadow_.strength_twin)
+            for (auto*& twin : row) twin = nullptr;
+        shadow_.strength_stage = 0;
+    }
+    void strength_frame(bool family) noexcept;
+    void strength_session_row() noexcept;
+    static std::uint32_t strength_twin_ms100(std::uint64_t ticks) noexcept; // QPC ticks -> ms x 100, integer only
     void engine_light_create_twins(ShaderEntry& entry, const void* code, UINT bytes, std::uint64_t hash) noexcept;
     void engine_light_release(ShaderEntry& entry) noexcept;
     IDirect3DPixelShader9* engine_light_twin(IDirect3DPixelShader9* ps) const noexcept;
@@ -3172,6 +3222,8 @@ private:
         DWORD srgb = 0;
         bool srgb_known = false;
         bool mipfilter_known = false, saved_known = false, biased = false;
+        std::uint8_t atlas_lane = 0; // lod_texture_mark lane of the bound texture (0 unmarked; 1 = the overlay's specular
+                                     // atlas whose alpha is the diffuse-strength ratio), set by the SetTexture hook
     };
     static constexpr unsigned sampler_stage_count = 16;
     SamplerShadow samplers_[sampler_stage_count]{};

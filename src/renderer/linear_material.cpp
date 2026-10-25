@@ -2805,6 +2805,21 @@ LinearMaterialResult linear_material_original_engine_light_pixel_variant(
     if (share_applied) *share_applied = share;
     return result;
 }
+LinearMaterialResult linear_material_original_variant_pixel(const Word* original, std::size_t words,
+                                                            const OriginalVariantOptions& options, bool engine_light,
+                                                            Words& output, bool current_depth, bool* fill_applied,
+                                                            bool* share_applied, bool* lightmap_gain_applied,
+                                                            bool* widen_applied, bool* engine_applied) noexcept {
+    bool fill = false, share = false, engine = false;
+    const auto result = original_fill_transform(original, words, options.fill, output, current_depth, fill,
+                                                options.share ? &share : nullptr, options.lightmap_gain,
+                                                lightmap_gain_applied, options.lightmap_dynamic, options.widen,
+                                                widen_applied, engine_light, &engine);
+    if (fill_applied) *fill_applied = fill;
+    if (share_applied) *share_applied = share;
+    if (engine_applied) *engine_applied = engine;
+    return result;
+}
 unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t words) noexcept {
     if (words >= 1561) {
         if (const XtPixel* xt = xt_pixel(pixel); xt && xt->words == words) return xt->bump ? 3u : 2u;
@@ -2812,6 +2827,213 @@ unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t wo
     if (const Pixel* p = pixel_for(pixel, words))
         return (p->asteroid_layout || p->glass_fresnel) ? 0u : p->bump ? 3u : 2u;
     return 0u;
+}
+// --- merged-LOD overlay material strength: the twin of a combined original-shading variant ------------------
+namespace {
+constexpr unsigned sampler_kind = 10, if_op = 40, ifc_op = 41, else_op = 42, endif_op = 43, loop_op = 27,
+                   endloop_op = 29, rep_op = 38, endrep_op = 39, call_op = 25, callnz_op = 26, ret_op = 28,
+                   label_op = 30, comment_op = 0xfffe;
+// The lanes of a source operand an instruction reads, as the texel-lane survey does
+// (verification/results/outpost-lod-material/texel_lanes.py): per-component operations read the swizzle lanes the
+// destination mask selects; dp3 / nrm / crs the first three; dp2add xy, xy, x; the replicating scalar operations the
+// first; anything else all four (conservative).
+unsigned operand_lanes(unsigned op, Word destination, bool has_destination, Word source, unsigned position) noexcept {
+    const unsigned sw = (source >> 16) & 0xff;
+    const auto lane_bit = [sw](unsigned k) { return 1u << ((sw >> (2 * k)) & 3); };
+    switch (op) {
+    case mov: case add: case 3: case mad: case mul: case 18: case min_op: case max_op: case slt: case 13:
+    case 19: case abs_op: case cmp: case 46: case 16: case 17: {
+        const unsigned m = has_destination ? mask(destination) : xyzw;
+        unsigned lanes = 0;
+        for (unsigned k = 0; k < 4; ++k)
+            if (m >> k & 1) lanes |= lane_bit(k);
+        return lanes;
+    }
+    case 8: case 36: case 33: return lane_bit(0) | lane_bit(1) | lane_bit(2);
+    case 90: return position < 2 ? lane_bit(0) | lane_bit(1) : lane_bit(0);
+    case 6: case 7: case 14: case 15: case pow_op: case 37: return lane_bit(0);
+    default: return lane_bit(0) | lane_bit(1) | lane_bit(2) | lane_bit(3);
+    }
+}
+bool opcode_has_destination(unsigned op) noexcept {
+    switch (op) {
+    case call_op: case callnz_op: case loop_op: case ret_op: case endloop_op: case label_op: case rep_op:
+    case endrep_op: case if_op: case ifc_op: case else_op: case endif_op: case 44: case 45: case 96: case 65:
+    case 0: return false;
+    default: return true;
+    }
+}
+} // namespace
+unsigned linear_material_strength_stage(std::uint64_t pixel, std::size_t words) noexcept {
+    if (words >= 1561) {
+        if (const XtPixel* xt = xt_pixel(pixel); xt && xt->words == words) return xt->bump ? 2u : 1u;
+    }
+    if (const Pixel* p = pixel_for(pixel, words))
+        return (p->asteroid_layout || p->glass_fresnel) ? 0u : p->bump ? 2u : 1u;
+    return 0u;
+}
+const char* linear_material_strength_refusal_name(StrengthTwinRefusal refusal) noexcept {
+    switch (refusal) {
+    case StrengthTwinRefusal::None: return "none";
+    case StrengthTwinRefusal::Unsupported: return "unsupported";
+    case StrengthTwinRefusal::NoJoin: return "no_join";
+    case StrengthTwinRefusal::NoTexel: return "no_texel";
+    case StrengthTwinRefusal::TexelDepth: return "texel_depth";
+    case StrengthTwinRefusal::JoinDepth: return "join_depth";
+    case StrengthTwinRefusal::LanesRead: return "lanes_read";
+    case StrengthTwinRefusal::JoinMissing: return "join_missing";
+    case StrengthTwinRefusal::Order: return "order";
+    case StrengthTwinRefusal::Register: return "register";
+    case StrengthTwinRefusal::Malformed: return "malformed";
+    }
+    return "?";
+}
+LinearMaterialResult linear_material_strength_twin_pixel_variant(const Word* parent, std::size_t parent_words,
+                                                                 const Word* original, std::size_t original_words,
+                                                                 Words& output, StrengthTwinInfo* info,
+                                                                 StrengthTwinRefusal* refusal) noexcept {
+    const auto refuse = [&](StrengthTwinRefusal why, LinearMaterialResult result) {
+        if (refusal) *refusal = why;
+        return result;
+    };
+    if (refusal) *refusal = StrengthTwinRefusal::None;
+    if (info) *info = {};
+    if (!parent || !original || parent_words < 2 || original_words < 2)
+        return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::InvalidInput);
+    if (parent[0] != 0xffff0300u || original[0] != 0xffff0300u || original_words > 1791)
+        return refuse(StrengthTwinRefusal::Unsupported, LinearMaterialResult::UnsupportedShader);
+    const auto hash = material_motion_fingerprint(original, original_words);
+    const unsigned stage = linear_material_strength_stage(hash, original_words);
+    if (!stage) return refuse(StrengthTwinRefusal::Unsupported, LinearMaterialResult::UnsupportedShader);
+    const ExposureSeed* seed = exposure_seed(hash);
+    if (!seed) return refuse(StrengthTwinRefusal::NoJoin, LinearMaterialResult::ProfileMismatch);
+    // The join on the original: a MAD on a boundary, temp destination, the seed's lanes, no saturate, no relative
+    // addressing (exposure_seed_valid's rules; the boundary from the flow-control walk).
+    if (seed->at + 4 >= original_words || linear_material_flow_control_depth(original, original_words, seed->at) < 0 ||
+        original[seed->at] != ((4u << 24) | mad) || kind(original[seed->at + 1]) != temp ||
+        mask(original[seed->at + 1]) != seed->lanes || (original[seed->at + 1] & sat) ||
+        (original[seed->at + 2] & relative) || (original[seed->at + 3] & relative) || (original[seed->at + 4] & relative))
+        return refuse(StrengthTwinRefusal::NoJoin, LinearMaterialResult::ProfileMismatch);
+    if (seed->product && (seed->lanes & 8u)) // the product scratch would overwrite the ratio lane
+        return refuse(StrengthTwinRefusal::NoJoin, LinearMaterialResult::ProfileMismatch);
+    try {
+        // One walk of the parent: instruction boundaries, flow-control depth, the specular texld, the join and the
+        // highest temporary.
+        struct Site { std::size_t at; unsigned op, n; int depth; };
+        std::vector<Site> sites;
+        sites.reserve(parent_words / 3);
+        int depth = 0;
+        unsigned highest = 0;
+        std::size_t texel_at = 0, join_at = 0, texel_count = 0, join_count = 0;
+        bool subroutine = false, ended = false;
+        for (std::size_t at = 1; at < parent_words;) {
+            const Word token = parent[at];
+            const unsigned op = token & 0xffff, n = length(token);
+            if (token == end_token) {
+                ended = at == parent_words - 1;
+                break;
+            }
+            if (n > parent_words - at - 1) return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::InvalidInput);
+            if (op == comment_op) {
+                at += n + 1;
+                continue;
+            }
+            if (op == endif_op || op == endloop_op || op == endrep_op || op == else_op) --depth;
+            if (depth < 0) return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::InvalidInput);
+            sites.push_back({at, op, n, depth});
+            if (op == if_op || op == ifc_op || op == else_op || op == loop_op || op == rep_op) ++depth;
+            if (op == call_op || op == callnz_op || op == ret_op || op == label_op) subroutine = true;
+            if (op != dcl && op != def)
+                for (unsigned q = 1; q <= n; ++q)
+                    if (kind(parent[at + q]) == temp) highest = std::max(highest, index(parent[at + q]) + 1u);
+            if (op == texld && n == 3 && kind(parent[at + 3]) == sampler_kind && index(parent[at + 3]) == stage) {
+                ++texel_count;
+                texel_at = at;
+            }
+            if (op == mad && n == 4 && parent[at] == original[seed->at] && parent[at + 1] == original[seed->at + 1] &&
+                parent[at + 2] == original[seed->at + 2] && parent[at + 3] == original[seed->at + 3] &&
+                parent[at + 4] == original[seed->at + 4]) {
+                ++join_count;
+                join_at = at;
+            }
+            at += n + 1;
+        }
+        if (!ended) return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::InvalidInput);
+        if (texel_count != 1 || kind(parent[texel_at + 1]) != temp || !(mask(parent[texel_at + 1]) & 8u) ||
+            (parent[texel_at + 1] & sat))
+            return refuse(StrengthTwinRefusal::NoTexel, LinearMaterialResult::ProfileMismatch);
+        if (join_count != 1) return refuse(StrengthTwinRefusal::JoinMissing, LinearMaterialResult::ProfileMismatch);
+        if (join_at < texel_at) return refuse(StrengthTwinRefusal::Order, LinearMaterialResult::ProfileMismatch);
+        std::size_t texel_index = 0, join_index = 0;
+        for (std::size_t i = 0; i < sites.size(); ++i) {
+            if (sites[i].at == texel_at) texel_index = i;
+            if (sites[i].at == join_at) join_index = i;
+        }
+        if (subroutine || sites[texel_index].depth != 0)
+            return refuse(StrengthTwinRefusal::TexelDepth, LinearMaterialResult::FlowControl);
+        if (sites[join_index].depth != 0) // the join inside loop / rep / if: refused, not reasoned about
+            return refuse(StrengthTwinRefusal::JoinDepth, LinearMaterialResult::FlowControl);
+        // Lanes of rS the parent reads before overwriting them (a write inside a deeper block does not kill).
+        const unsigned source = index(parent[texel_at + 1]);
+        unsigned live = mask(parent[texel_at + 1]), used = 0;
+        for (std::size_t i = texel_index + 1; i < sites.size() && live; ++i) {
+            const auto& s = sites[i];
+            if (s.op == dcl || s.op == def) continue;
+            const bool has_destination = opcode_has_destination(s.op) && s.n >= 1;
+            const Word destination = has_destination ? parent[s.at + 1] : 0;
+            for (unsigned q = has_destination ? 2u : 1u; q <= s.n; ++q) {
+                const Word operand = parent[s.at + q];
+                if (kind(operand) == temp && index(operand) == source && !(operand & relative))
+                    used |= operand_lanes(s.op, destination, has_destination, operand, q - (has_destination ? 2u : 1u)) & live;
+            }
+            if (has_destination && kind(destination) == temp && index(destination) == source &&
+                s.depth <= sites[texel_index].depth)
+                live &= ~mask(destination);
+        }
+        if (used & ~1u) {
+            if (info) info->lanes_read = used;
+            return refuse(StrengthTwinRefusal::LanesRead, LinearMaterialResult::ProfileMismatch);
+        }
+        if (highest >= 32u) return refuse(StrengthTwinRefusal::Register, LinearMaterialResult::ResourceLimit);
+        const unsigned scratch = highest;
+        // Emit: the parent, the ADD after the texld, the join's two instructions in place of its MAD.
+        Words twin;
+        twin.reserve(parent_words + 9);
+        const Word destination = parent[join_at + 1], a = parent[join_at + 2], b = parent[join_at + 3],
+                   c = parent[join_at + 4];
+        for (std::size_t at = 0; at < parent_words;) {
+            if (at == join_at) {
+                if (seed->product) {
+                    emit(twin, mul, {dst(temp, scratch, seed->lanes), a, b});
+                    emit(twin, mad, {destination, src(temp, scratch), lane(temp, scratch, 3), c});
+                } else {
+                    emit(twin, mul, {dst(temp, scratch, seed->lanes), c, lane(temp, scratch, 3)});
+                    emit(twin, mad, {destination, a, b, src(temp, scratch)});
+                }
+                at += 5;
+                continue;
+            }
+            const Word token = parent[at];
+            const unsigned n = at == 0 || token == end_token ? 0u : length(token);
+            twin.insert(twin.end(), parent + at, parent + at + n + 1);
+            if (at == texel_at)
+                emit(twin, add, {dst(temp, scratch, 8), lane(temp, source, 3), lane(temp, source, 3)});
+            at += n + 1;
+        }
+        if (info) {
+            info->stage = stage;
+            info->texel_at = unsigned(texel_at);
+            info->join_at = unsigned(join_at);
+            info->source_register = source;
+            info->scratch_register = scratch;
+            info->lanes_read = used;
+            info->product = seed->product;
+        }
+        output.swap(twin);
+        return LinearMaterialResult::Applied;
+    } catch (...) {
+        return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::AllocationFailure);
+    }
 }
 } // namespace x3m::renderer
 

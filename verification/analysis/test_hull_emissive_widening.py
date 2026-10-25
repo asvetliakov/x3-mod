@@ -480,7 +480,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         hook = extract_function(capture, 'HRESULT WINAPI set_texture(')
         self.assertIn('const bool size=query&&ctx.motion_output.texture_size_wanted();', hook)
         self.assertIn('if(SUCCEEDED(hr)&&size)ctx.motion_output.texture_level0_size(texture,width,height);', hook)
-        self.assertIn('ctx.motion_output.set_texture(stage,texture,levels,query,reader,width,height,identity);', hook)
+        self.assertIn('ctx.motion_output.set_texture(stage,texture,levels,query,reader,width,height,identity,atlas_lane);', hook)
         # The size shadow is keyed by the proxy's resource identity as well as the pointer (a freed and reallocated
         # light map at the same address is re-read); the sampler hook installs for the widening (MINFILTER shadow).
         self.assertIn('const std::uint64_t identity=ctx.motion_output.texture_identity_wanted(stage,texture)?resource_id(texture):0;', hook)
