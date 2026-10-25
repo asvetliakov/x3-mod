@@ -3114,3 +3114,32 @@ Wine, no game. [M] measured, [I] inferred.
   programs; 9 scenarios, 0 failures, 0 live COM objects at the end [M].
 
 2026-10-25, review items accepted as they are (orchestrator): F6, a quarter-only creation failure keeps the distance programs off until detach (no half-resolution retry); F7, the distance march/repair programs have no upper slot bound before creation (the device decides, AGENTS.md shader slot budget), while the composite and legacy programs keep the 512 check. Installed as Run201 (DLL `1e79a704…`), unflown.
+
+## 2026-10-26: out-of-memory fog prepare retried without a bound; `step=` and address-space census (uncommitted worktree on ce7c19d7, not installed)
+
+Witness (measured, Run205 / release 1.7.0, native Windows; eight rows in
+`verification/results/fog-prepare-oom-2026-10-21/witness-run205-2026-10-26.txt`): frame 344543 `volumetric_fog_prepare
+... field_generation=0 result=8007000e cpu_us=6272.9`, memory row `private_bytes=3206205440 avail_virtual=154554368
+texture_mem=1928331264 largest_free_virtual=9031680`; the retries at 345143 and 345743 failed with the same
+largest free block (9,031,680 B, `cpu_us` 140.9 / 143.2) and the bound of 3 latched `reason=prepare_oom until=reset`.
+After the user's alt-tab Reset the attempt at 346661 failed (largest free 17,039,360 B), the one at 347261 succeeded
+(`cpu_us=3498.2`). Reading: 32-bit address-space fragmentation, not video memory; only the game's own purges restore a
+large enough block, so a bound that latches until Reset made the user alt-tab. `field_generation=0` on the failed rows
+places the failure inside `prepare_field` (upload, atlas or update) [I]. Each walk cost 21-32 ms (`walk_us`) [M].
+
+- Change: no bound. An `E_OUTOFMEMORY`/`D3DERR_OUTOFVIDEOMEMORY` prepare retries every 600 frames in one fog sector and
+  family, at once in another; the `prepare_oom` fault is gone. `attempt=` counts per sector, cleared by a success,
+  another sector or family, and Reset; the `volumetric_fog_prepare` and `_prepare_retry` rows of an out-of-memory
+  attempt print for attempts 1-8 and then every 10th; `bound=` dropped. A retry with the field decoded skips the decode
+  (`cached_profile_` survives a failed creation and Reset), so a failed attempt costs the failed creation calls (Run205:
+  ~140 us [M]) plus, for the first 8 memory rows per Reset, one walk.
+- `step=` on `volumetric_fog_prepare`: `FogPass::last_step_` set before each creation (`field_upload`, `field_atlas`,
+  `field_update`, `lit`, `scratch`, `block`, `quarter`, `density_staging`, `density_atlas`), `ok`, `none` (refused
+  before a creation), `decode`, or `module` (proxy side). `volumetric_fog_memory reason=prepare_ok` once after a
+  failure, in the same cap of 8 per Reset.
+- Census on the walk rows: `image= mapped= private= reserved= free= regions=` from the existing walk's totals
+  (`docs/architecture/logging-tiers.md`).
+- Acceptance (2026-10-26): RelWithDebInfo MinGW i686 build OK, 0 warnings; `check_no_x87.py build/d3d9.dll` PASS, 159
+  roots, 1,136 reachable functions, 0 violations; `test_fog_cards` 4 tests OK (new cases `prepare_oom unbounded
+  attempts=40 rows=12 ok_rows=1 PASS`, `prepare_oom_video sector_reset=1 row_disabled_rows=0 PASS`), `test_logging_tiers`
+  17 tests OK [M]. Scratch DLL `495e11d8…`, 62,911,347 B (not a candidate). Not flown.

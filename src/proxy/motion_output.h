@@ -3351,13 +3351,19 @@ private:
                   fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0,
                   fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
     const char* fog_card_fault_reason_ = "none";
-    // Out-of-memory prepare (volumetric-fog.md, "Cards and history"): consecutive E_OUTOFMEMORY / D3DERR_OUTOFVIDEOMEMORY prepares leave native
-    // cards and retry at the owner latch no sooner than fog_prepare_oom_spacing frames later; the
-    // fog_prepare_oom_bound-th latches the card fault (reason prepare_oom). Cleared by a successful prepare and by Reset.
-    static constexpr unsigned fog_prepare_oom_bound = 3, fog_prepare_oom_spacing = 600;
-    // volumetric_fog_memory rows with reason=prepare_fail (each with the VirtualQuery walk) per Reset interval.
+    // Out-of-memory prepare (volumetric-fog.md, "Cards and history"): an E_OUTOFMEMORY / D3DERR_OUTOFVIDEOMEMORY prepare
+    // leaves native cards and retries at the owner latch no sooner than fog_prepare_oom_spacing frames later, without a
+    // bound (2026-10-26). fog_prepare_oom_ counts the attempts in one fog sector and family; cleared by a successful
+    // prepare, another sector or family, and Reset. Its prepare/retry rows: the first fog_prepare_retry_rows attempts,
+    // then every fog_prepare_retry_row_every-th.
+    static constexpr unsigned fog_prepare_oom_spacing = 600, fog_prepare_retry_rows = 8, fog_prepare_retry_row_every = 10;
+    static constexpr bool fog_prepare_retry_row(unsigned attempt) noexcept {
+        return attempt <= fog_prepare_retry_rows || attempt % fog_prepare_retry_row_every == 0;
+    }
+    // volumetric_fog_memory rows with reason=prepare_fail or prepare_ok (each with the VirtualQuery walk) per Reset interval.
     static constexpr unsigned fog_memory_fail_row_cap = 8;
     unsigned fog_prepare_oom_ = 0, fog_memory_fail_rows_ = 0;
+    bool fog_prepare_failed_ = false; // a prepare_fail-class failure since the last success: the next success logs prepare_ok
     std::uint64_t fog_prepare_retry_frame_ = 0; // first frame the owner latch may prepare again after an out-of-memory failure
     std::uint32_t fog_prepare_retry_sector_ = 0;  // the gate's sector token and profile: another one clears the gate
     unsigned fog_prepare_retry_profile_ = 0;

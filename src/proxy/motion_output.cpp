@@ -4221,7 +4221,7 @@ void MotionOutput::before_reset() noexcept {
     fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr;
     fog_card_logged_fault_ = false;
     fog_card_refusal_ready_ = false;
-    fog_prepare_oom_ = fog_memory_fail_rows_ = 0; // the out-of-memory retry bound restarts with the fault latch
+    fog_prepare_oom_ = fog_memory_fail_rows_ = 0; // the attempt count and the memory-row cap restart with the fault latch
     fog_prepare_retry_frame_ = 0;
     fog_prepare_retry_sector_ = fog_prepare_retry_profile_ = 0;
     fog_failures_ = 0;

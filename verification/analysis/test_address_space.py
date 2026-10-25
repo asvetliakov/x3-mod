@@ -140,7 +140,8 @@ class AddressSpaceCore(unittest.TestCase):
         # Without a QPC frequency the walk is bounded by a region count instead of running unbounded.
         self.assertIn('if (budget_ticks ? (walked & 63u) == 0 && now() - started > budget_ticks : walked >= region_limit)',
                       source)
-        self.assertEqual(source.count('tick_region_limit);'), 1)
+        # Two users of the tick limit since 2026-10-21: the Present pass and the fog prepare-failure walk (largest_free).
+        self.assertEqual(source.count('tick_region_limit);'), 2)
         self.assertEqual(source.count('create_region_limit);'), 1)
         header = (ROOT / 'src/proxy/address_space.h').read_text()
         self.assertIn('constexpr unsigned long tick_budget_us = 2000, create_budget_us = 200000;', header)

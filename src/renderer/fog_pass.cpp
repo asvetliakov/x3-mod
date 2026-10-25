@@ -569,6 +569,7 @@ HRESULT FogPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMA
 }
 HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcept {
     PreserveCpuState guard;
+    last_step_ = "none";
     if (profile == fog_field::Profile::None) {
         disarm_field();
         return S_FALSE;
@@ -581,7 +582,10 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
         disarm_field();
         return D3DERR_DEVICENOTRESET;
     }
-    if (profile == active_profile_ && atlas_) return S_OK;
+    if (profile == active_profile_ && atlas_) {
+        last_step_ = "ok";
+        return S_OK;
+    }
     disarm_field();
     // Compiled profiles first (unchanged path); a file family's info comes from its table row.
     fog_field::ProfileInfo file_info{};
@@ -605,7 +609,10 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
         base_sigma_ = 0;
         const auto decoded = file_family ? fog_field::decode_family(profile, atlas_bytes_)
                                          : fog_field::decode_from_resource(module, profile, atlas_bytes_);
-        if (!decoded) return file_family ? field_row_disabled : static_cast<HRESULT>(decoded.hresult);
+        if (!decoded) {
+            last_step_ = "decode";
+            return file_family ? field_row_disabled : static_cast<HRESULT>(decoded.hresult);
+        }
         cached_profile_ = profile;
         field_recipe_ = info->recipe_id;
         base_sigma_ = info->base_sigma;
@@ -613,6 +620,7 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
     }
     if (!atlas_) {
         IDirect3DTexture9* upload = nullptr;
+        last_step_ = "field_upload"; // the SYSTEMMEM upload texture, its lock and copy
         HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, info->width, info->height, 1, 0,
                                                           D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &upload, nullptr);
         if (SUCCEEDED(hr)) {
@@ -630,10 +638,15 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
                 if (SUCCEEDED(hr) || lost(unlock)) hr = unlock;
             }
         }
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr)) {
+            last_step_ = "field_atlas";
             hr = call<CreateTextureFn>(CreateTexture)(device_, info->width, info->height, 1, 0, D3DFMT_A16B16G16R16F,
                                                       D3DPOOL_DEFAULT, &atlas_, nullptr);
-        if (SUCCEEDED(hr)) hr = call<UpdateTextureFn>(UpdateTexture)(device_, upload, atlas_);
+        }
+        if (SUCCEEDED(hr)) {
+            last_step_ = "field_update";
+            hr = call<UpdateTextureFn>(UpdateTexture)(device_, upload, atlas_);
+        }
         drop(upload);
         if (FAILED(hr)) {
             drop(atlas_);
@@ -644,6 +657,7 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
     }
     active_profile_ = profile;
     ++field_generation_;
+    last_step_ = "ok";
     return S_OK;
 }
 HRESULT FogPass::density_resources() noexcept {
@@ -660,6 +674,7 @@ HRESULT FogPass::density_resources() noexcept {
     if (density_config_.march_scale == fog_march_scale_quarter && !quarter_ && width_ && height_) {
         const UINT qw = fog_march_extent(width_, fog_march_scale_quarter),
                    qh = fog_march_extent(height_, fog_march_scale_quarter);
+        last_step_ = "quarter";
         HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, qw, qh, 1, D3DUSAGE_RENDERTARGET,
                                                           D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &quarter_, nullptr);
         if (SUCCEEDED(hr)) hr = quarter_->GetSurfaceLevel(0, &quarter_surface_);
@@ -896,6 +911,7 @@ HRESULT FogPass::density_resources() noexcept {
         density_->enable_horizon();
     for (unsigned i = 0; i < 2; ++i) {
         if (!density_staging_[i]) {
+            last_step_ = "density_staging";
             HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
                                                               D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM,
                                                               &density_staging_[i], nullptr);
@@ -912,6 +928,7 @@ HRESULT FogPass::density_resources() noexcept {
             ++allocations_;
         }
         if (!density_atlas_[i]) {
+            last_step_ = "density_atlas";
             HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
                                                               D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &density_atlas_[i],
                                                               nullptr);
@@ -935,6 +952,7 @@ HRESULT FogPass::density_resources() noexcept {
     // native out-of-memory prepare happened (2026-10-21).
     const int h = fog::kHorizonLevel;
     if (density_->horizon() && !density_staging_[h]) {
+        last_step_ = "density_staging";
         HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
                                                           D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &density_staging_[h],
                                                           nullptr);
@@ -951,6 +969,7 @@ HRESULT FogPass::density_resources() noexcept {
             ++allocations_;
     }
     if (density_->horizon() && !density_atlas_[h]) {
+        last_step_ = "density_atlas";
         HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, fog::kAtlasWidth, fog::kAtlasHeight, 1, 0,
                                                           D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &density_atlas_[h],
                                                           nullptr);
@@ -1258,10 +1277,14 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config, const double ca
 }
 HRESULT FogPass::prepare_targets(UINT w, UINT h) noexcept {
     PreserveCpuState guard;
+    last_step_ = "none";
     if (!device_ || !caps_.enabled) return E_INVALIDARG;
     if (reset_pending_) return D3DERR_DEVICENOTRESET;
     if (!w || !h || w > max_width_ || h > max_height_) return E_INVALIDARG;
-    if (width_ == w && height_ == h && block_) return S_OK;
+    if (width_ == w && height_ == h && block_) {
+        last_step_ = "ok";
+        return S_OK;
+    }
     release_targets();
     auto create = [&](UINT x, UINT y, IDirect3DTexture9*& texture, IDirect3DSurface9*& surface) {
         HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, x, y, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F,
@@ -1269,9 +1292,16 @@ HRESULT FogPass::prepare_targets(UINT w, UINT h) noexcept {
         if (SUCCEEDED(hr)) hr = texture->GetSurfaceLevel(0, &surface);
         return hr;
     };
+    last_step_ = "lit";
     HRESULT hr = create((w + 1) / 2, (h + 1) / 2, lit_, lit_surface_);
-    if (SUCCEEDED(hr)) hr = create(w, h, scratch_, scratch_surface_);
-    if (SUCCEEDED(hr)) hr = call<CreateBlockFn>(CreateStateBlock)(device_, D3DSBT_ALL, &block_);
+    if (SUCCEEDED(hr)) {
+        last_step_ = "scratch";
+        hr = create(w, h, scratch_, scratch_surface_);
+    }
+    if (SUCCEEDED(hr)) {
+        last_step_ = "block";
+        hr = call<CreateBlockFn>(CreateStateBlock)(device_, D3DSBT_ALL, &block_);
+    }
     if (FAILED(hr)) {
         release_targets();
         if (lost(hr)) reset_pending_ = true;
@@ -1282,6 +1312,7 @@ HRESULT FogPass::prepare_targets(UINT w, UINT h) noexcept {
     half_width_ = (w + 1) / 2;
     half_height_ = (h + 1) / 2;
     ++allocations_;
+    last_step_ = "ok";
     return S_OK;
 }
 HRESULT FogPass::normalize(UINT samplers) noexcept {

@@ -140,7 +140,29 @@ using SetRenderStateFn = HRESULT (*)(Device*, unsigned, DWORD);
 template <class F> void call_preserved(F&& fn) {
     fn();
 }
-template <class... T> void log(const char*, T...) {}
+// The volumetric_fog_prepare / _prepare_retry rows are formatted and kept (row cap and step= witnesses); others dropped.
+struct MockPrepareRows {
+    unsigned prepare = 0, retry = 0;
+    std::string last_prepare, last_retry;
+};
+inline MockPrepareRows& mock_prepare_rows() {
+    static MockPrepareRows rows;
+    return rows;
+}
+template <class T> auto mock_log_arg(T value) { // the DLL's HRESULT is long (%08lx); the mock's is int32
+    if constexpr (std::is_same_v<T, int>) return static_cast<long>(value);
+    else return value;
+}
+template <class... T> void log(const char* format, T... args) {
+    if constexpr (sizeof...(T) != 0) {
+        if (std::strncmp(format, "volumetric_fog_prepare", 22) != 0) return;
+        char line[512];
+        std::snprintf(line, sizeof line, format, mock_log_arg(args)...);
+        auto& rows = mock_prepare_rows();
+        if (std::strncmp(format, "volumetric_fog_prepare_retry ", 29) == 0) ++rows.retry, rows.last_retry = line;
+        else if (std::strncmp(format, "volumetric_fog_prepare ", 23) == 0) ++rows.prepare, rows.last_prepare = line;
+    }
+}
 namespace x3m::renderer::fog_field {
 // No x3m/fog-families.bin in this host witness: the loader reports nothing, the table stays empty.
 bool load_family_table() noexcept {
@@ -242,6 +264,8 @@ struct MockFog {
     std::uint64_t field_generation() const { return 1; }
     int result = 0;
     unsigned prepares = 0;
+    const char* step = "lit"; // the creation a failed mock prepare names
+    const char* last_step() const { return result >= 0 ? "ok" : step; }
     int prepare_targets(unsigned, unsigned) {
         ++prepares;
         if (result >= 0) ready = true;
@@ -363,8 +387,13 @@ struct MotionOutput {
     std::uint64_t frame_ = 1, fog_frame_ = 0, id_ = 1;
     HRESULT motion_state_error_ = 0;
     const char* fog_card_fault_reason_ = "none";
-    static constexpr unsigned fog_prepare_oom_bound = 3, fog_prepare_oom_spacing = 600, fog_memory_fail_row_cap = 8;
-    unsigned fog_prepare_oom_ = 0, fog_memory_fail_rows_ = 0, memory_rows = 0;
+    static constexpr unsigned fog_prepare_oom_spacing = 600, fog_prepare_retry_rows = 8, fog_prepare_retry_row_every = 10,
+                              fog_memory_fail_row_cap = 8;
+    static constexpr bool fog_prepare_retry_row(unsigned attempt) noexcept {
+        return attempt <= fog_prepare_retry_rows || attempt % fog_prepare_retry_row_every == 0;
+    }
+    unsigned fog_prepare_oom_ = 0, fog_memory_fail_rows_ = 0, memory_rows = 0, memory_ok_rows = 0;
+    bool fog_prepare_failed_ = false;
     std::uint64_t fog_prepare_retry_frame_ = 0;
     std::uint32_t fog_prepare_retry_sector_ = 0;
     unsigned fog_prepare_retry_profile_ = 0;
@@ -425,7 +454,10 @@ struct MotionOutput {
     void volumetric_fog_sector_sample(std::uint64_t, const sector_background::Sample&) noexcept;
     void fog_card_transition(unsigned) noexcept;
     void fault_fog_cards(const char*) noexcept;
-    void log_fog_memory(const char*, bool) noexcept { ++memory_rows; } // the Win32/D3D queries are the DLL's
+    void log_fog_memory(const char* reason, bool) noexcept { // the Win32/D3D queries are the DLL's
+        ++memory_rows;
+        memory_ok_rows += std::strcmp(reason, "prepare_ok") == 0;
+    }
     template <class F> void taa_call(F&& f) { f(); }
     bool attach_volumetric_fog() { return !fog_attach_failed_; }
     void prepare_volumetric_fog_targets(UINT, UINT) noexcept;

@@ -68,10 +68,10 @@ void report_create(unsigned long long device, unsigned long long frame) {
     SetLastError(error);
 }
 
-long long largest_free(unsigned long budget_us, bool& capped, unsigned long long& us) {
+long long largest_free(unsigned long budget_us, bool& capped, unsigned long long& us, core::Totals& t) {
     const DWORD error = GetLastError();
     const std::uint64_t freq = frequency(), started = now();
-    core::Totals t{};
+    t = core::Totals{};
     std::uint64_t next = 0;
     const Stop stop = walk(t, next, started, freq ? std::uint64_t(budget_us) * freq / 1000000u : 0, tick_region_limit);
     us = freq ? (now() - started) * 1000000u / freq : 0;

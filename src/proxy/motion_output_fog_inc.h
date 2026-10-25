@@ -103,9 +103,11 @@ void MotionOutput::fault_fog_cards(const char* reason) noexcept {
 }
 // volumetric_fog_memory: process commit, free virtual and physical bytes and the device's texture
 // estimate, at the 600-frame heartbeat (reason=periodic, largest_free_virtual=-1; --perf/--debug since 2026-10-21) and,
-// in every tier, after a failed prepare
-// (reason=prepare_fail, at most fog_memory_fail_row_cap per Reset interval) with the VirtualQuery walk's largest free
-// region (walk_us, capped=1 when its 50 ms budget or a VirtualQuery refusal stopped it short). Documented Win32/D3D9 only; -1 = query failed.
+// in every tier, after a failed prepare (reason=prepare_fail) and on the first successful prepare after one
+// (reason=prepare_ok), together at most fog_memory_fail_row_cap per Reset interval, with the VirtualQuery walk's largest
+// free region (walk_us, capped=1 when its 50 ms budget or a VirtualQuery refusal stopped it short) and the same walk's
+// census (image= mapped= private= committed bytes by type, reserved=, free=, regions=; partial when capped). Documented
+// Win32/D3D9 only; -1 = query failed.
 void MotionOutput::log_fog_memory(const char* reason, bool walk) noexcept {
     call_preserved([&] {
         PROCESS_MEMORY_COUNTERS_EX counters{};
@@ -117,10 +119,20 @@ void MotionOutput::log_fog_memory(const char* reason, bool walk) noexcept {
         const bool global = GlobalMemoryStatusEx(&status) != FALSE;
         const unsigned long long texture = native<AvailableTextureMemFn>(GetAvailableTextureMem)(device_);
         bool capped = false; unsigned long long walk_us = 0;
-        const long long largest = walk ? address_space::largest_free(50000, capped, walk_us) : -1;
-        log("volumetric_fog_memory device=%llu frame=%llu reason=%s private_bytes=%lld avail_virtual=%lld avail_phys=%lld texture_mem=%llu largest_free_virtual=%lld walk_us=%llu capped=%u",
-            id_, frame_, reason, private_bytes, global ? static_cast<long long>(status.ullAvailVirtual) : -1LL,
-            global ? static_cast<long long>(status.ullAvailPhys) : -1LL, texture, largest, walk_us, unsigned(capped));
+        address_space::core::Totals census{};
+        const long long largest = walk ? address_space::largest_free(50000, capped, walk_us, census) : -1;
+        const long long avail_virtual = global ? static_cast<long long>(status.ullAvailVirtual) : -1LL,
+                        avail_phys = global ? static_cast<long long>(status.ullAvailPhys) : -1LL;
+        if (!walk)
+            log("volumetric_fog_memory device=%llu frame=%llu reason=%s private_bytes=%lld avail_virtual=%lld avail_phys=%lld texture_mem=%llu largest_free_virtual=%lld walk_us=%llu capped=%u",
+                id_, frame_, reason, private_bytes, avail_virtual, avail_phys, texture, largest, walk_us, unsigned(capped));
+        else
+            log("volumetric_fog_memory device=%llu frame=%llu reason=%s private_bytes=%lld avail_virtual=%lld avail_phys=%lld texture_mem=%llu largest_free_virtual=%lld walk_us=%llu capped=%u "
+                "image=%llu mapped=%llu private=%llu reserved=%llu free=%llu regions=%llu",
+                id_, frame_, reason, private_bytes, avail_virtual, avail_phys, texture, largest, walk_us, unsigned(capped),
+                static_cast<unsigned long long>(census.committed_image), static_cast<unsigned long long>(census.committed_mapped),
+                static_cast<unsigned long long>(census.committed_private), static_cast<unsigned long long>(census.reserved),
+                static_cast<unsigned long long>(census.free_total), static_cast<unsigned long long>(census.regions));
     });
 }
 bool MotionOutput::attach_volumetric_fog() noexcept {
@@ -146,35 +158,44 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
     if (!fog_sector_.current(frame_) || fog_cards_.fault || fog_disabled_ || fog_attach_failed_) return;
     const auto profile = static_cast<renderer::fog_field::Profile>(fog_sector_.profile);
     if (fog_ && fog_->resources_ready(width, height, profile, fog_sector_.recipe, fog_sector_.field_generation)) return;
-    // After an out-of-memory prepare the latch keeps native cards and tries again only from this frame on; another
-    // fog sector (or family) is a new allocation attempt and clears the gate (the consecutive count stays).
-    if (frame_ < fog_prepare_retry_frame_) {
-        if (fog_sector_.sector == fog_prepare_retry_sector_ && fog_sector_.profile == fog_prepare_retry_profile_) return;
-        fog_prepare_retry_frame_ = 0;
-    }
+    // After an out-of-memory prepare the latch keeps native cards and tries again from fog_prepare_retry_frame_ on, with
+    // no bound; another fog sector (or family) is a new allocation attempt: the gate and the attempt count clear.
+    if (fog_prepare_oom_ && (fog_sector_.sector != fog_prepare_retry_sector_ || fog_sector_.profile != fog_prepare_retry_profile_))
+        fog_prepare_oom_ = 0, fog_prepare_retry_frame_ = 0;
+    if (frame_ < fog_prepare_retry_frame_) return;
     LARGE_INTEGER t0{}, t1{}, frequency{};
     QueryPerformanceCounter(&t0);
     if (!attach_volumetric_fog()) return;
     HRESULT prepared = S_OK;
+    const char* step = "module";
     taa_call([&] {
         HMODULE module = nullptr;
         static const char resource_anchor = 0;
         if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                                reinterpret_cast<LPCWSTR>(&resource_anchor), &module)) prepared = E_FAIL;
-        else prepared = fog_->prepare_field(module, profile);
-        if (SUCCEEDED(prepared)) prepared = fog_->prepare_targets(width, height);
+        else prepared = fog_->prepare_field(module, profile), step = fog_->last_step();
+        if (SUCCEEDED(prepared)) prepared = fog_->prepare_targets(width, height), step = fog_->last_step();
     });
     QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&frequency);
     const double us = frequency.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(frequency.QuadPart) : 0.;
-    log("volumetric_fog_prepare device=%llu frame=%llu profile=%u field_generation=%llu width=%u height=%u result=%08lx cpu_us=%.1f",
-        id_, frame_, fog_sector_.profile, fog_->field_generation(), width, height, prepared, us);
+    // An out-of-memory attempt counts per fog sector; its prepare and retry rows follow fog_prepare_retry_row (the
+    // first fog_prepare_retry_rows attempts, then every fog_prepare_retry_row_every-th).
+    const bool oom = prepared == E_OUTOFMEMORY || prepared == D3DERR_OUTOFVIDEOMEMORY;
+    if (oom) ++fog_prepare_oom_;
+    const bool rows = !oom || fog_prepare_retry_row(fog_prepare_oom_);
+    if (rows)
+        log("volumetric_fog_prepare device=%llu frame=%llu profile=%u field_generation=%llu width=%u height=%u result=%08lx step=%s cpu_us=%.1f",
+            id_, frame_, fog_sector_.profile, fog_->field_generation(), width, height, prepared, step, us);
     // A lost device takes the Reset path and a disabled family row retries next frame (it would burn the cap): no row, no walk.
-    if (FAILED(prepared) && prepared != D3DERR_DEVICELOST && prepared != D3DERR_DEVICENOTRESET && prepared != renderer::FogPass::field_row_disabled &&
-        fog_memory_fail_rows_ < fog_memory_fail_row_cap) {
-        ++fog_memory_fail_rows_; log_fog_memory("prepare_fail", true);
+    // The first success after such a failure logs reason=prepare_ok (the walk shows the free block that sufficed).
+    const bool memory_failure = FAILED(prepared) && prepared != D3DERR_DEVICELOST && prepared != D3DERR_DEVICENOTRESET &&
+                                prepared != renderer::FogPass::field_row_disabled;
+    if ((memory_failure || (SUCCEEDED(prepared) && fog_prepare_failed_)) && fog_memory_fail_rows_ < fog_memory_fail_row_cap) {
+        ++fog_memory_fail_rows_; log_fog_memory(memory_failure ? "prepare_fail" : "prepare_ok", true);
     }
+    if (memory_failure) fog_prepare_failed_ = true;
     if (SUCCEEDED(prepared)) {
-        fog_prepare_oom_ = 0; fog_prepare_retry_frame_ = 0;
+        fog_prepare_oom_ = 0; fog_prepare_retry_frame_ = 0; fog_prepare_failed_ = false;
         if (fog_sector_.field_generation != fog_->field_generation()) {
             fog_sector_.field_generation = fog_->field_generation();
             fog_cards_.armed = false; fog_cards_.warmup = fog_cards_.active;
@@ -192,16 +213,15 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
         else if (row && !why && !row->retry_reported.exchange(true, std::memory_order_relaxed))
             log("volumetric_fog_family device=%llu frame=%llu event=switch_retry name=\"%s\" profile=%u reason=allocation",
                 id_, frame_, row->name, fog_sector_.profile);
-    } else if (prepared == E_OUTOFMEMORY || prepared == D3DERR_OUTOFVIDEOMEMORY) {
-        // A one-off allocation failure (address space or pool pressure) is not a session fault: native cards stay
-        // (the card readiness check refuses before suppression) and the owner latch retries after the spacing.
-        if (++fog_prepare_oom_ >= fog_prepare_oom_bound) { fog_prepare_retry_frame_ = 0; fault_fog_cards("prepare_oom"); }
-        else {
-            fog_prepare_retry_frame_ = frame_ + fog_prepare_oom_spacing;
-            fog_prepare_retry_sector_ = fog_sector_.sector; fog_prepare_retry_profile_ = fog_sector_.profile;
-            log("volumetric_fog_prepare_retry device=%llu frame=%llu profile=%u attempt=%u bound=%u next_frame=%llu result=%08lx",
-                id_, frame_, fog_sector_.profile, fog_prepare_oom_, fog_prepare_oom_bound, fog_prepare_retry_frame_, prepared);
-        }
+    } else if (oom) {
+        // An allocation failure (32-bit address-space fragmentation, measured 2026-10-26) is not a session fault: native
+        // cards stay (the card readiness check refuses before suppression) and the owner latch retries after the
+        // spacing, without a bound; the game's own purges are what free a large enough block.
+        fog_prepare_retry_frame_ = frame_ + fog_prepare_oom_spacing;
+        fog_prepare_retry_sector_ = fog_sector_.sector; fog_prepare_retry_profile_ = fog_sector_.profile;
+        if (rows)
+            log("volumetric_fog_prepare_retry device=%llu frame=%llu profile=%u attempt=%u next_frame=%llu result=%08lx",
+                id_, frame_, fog_sector_.profile, fog_prepare_oom_, fog_prepare_retry_frame_, prepared);
     } else if (prepared != D3DERR_DEVICELOST && prepared != D3DERR_DEVICENOTRESET) fault_fog_cards("prepare");
 }
 // Stored-density range: a new readiness epoch (enable, sector re-key, load gap, residency loss).

@@ -288,6 +288,11 @@ public:
     bool reset_pending() const noexcept { return reset_pending_; }
     unsigned references() const noexcept;
     unsigned allocations() const noexcept { return allocations_; }
+    // The creation the last prepare_field / prepare_targets / density_resources call reached (volumetric_fog_prepare
+    // step=): field_upload, field_atlas, field_update, lit, scratch, block, quarter, density_staging, density_atlas;
+    // "ok" after a prepare that succeeded, "none" when it refused before any creation, "decode" for a field decode
+    // failure. Written only on those cold paths (never per frame); a static string, valid for the process.
+    const char* last_step() const noexcept { return last_step_; }
     bool sky_seeded() const noexcept { return false; }
 #ifdef X3M_FOG_PASS_FIXTURE
     IDirect3DTexture9* fixture_sky() const noexcept { return nullptr; }
@@ -342,6 +347,7 @@ private:
     UINT width_ = 0, height_ = 0, half_width_ = 0, half_height_ = 0, render_targets_ = 0, streams_ = 0, max_width_ = 0,
          max_height_ = 0;
     unsigned allocations_ = 0;
+    const char* last_step_ = "none";
     mutable unsigned calls_ = 0;
     bool reset_pending_ = false;
     // Stored-density path; everything below stays null/zero until an enabled prepare_density.

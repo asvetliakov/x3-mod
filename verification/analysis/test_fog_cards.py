@@ -127,8 +127,9 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('actual MotionOutput card methods PASS', result.stdout)
             self.assertIn('cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS', result.stdout)
             self.assertIn('cut_recovery scenarios=8 PASS', result.stdout)
-            self.assertIn('prepare_oom retries=3 PASS', result.stdout)  # 2026-10-21: E_OUTOFMEMORY retried, bound 3
-            self.assertIn('prepare_oom_video row_disabled_rows=0 PASS', result.stdout)  # OUTOFVIDEOMEMORY retried; no row for a disabled family row
+            # 2026-10-26: E_OUTOFMEMORY retried without a bound; rows for attempts 1-8, then every 10th; prepare_ok once
+            self.assertIn('prepare_oom unbounded attempts=40 rows=12 ok_rows=1 PASS', result.stdout)
+            self.assertIn('prepare_oom_video sector_reset=1 row_disabled_rows=0 PASS', result.stdout)  # OUTOFVIDEOMEMORY retried; another sector restarts the count
             self.assertIn('prefill_gap confirmed=1 discarded=1 later_gap=1 PASS', result.stdout)  # R3 gap hold and decision
             # case A: a same-key transit (another id) is a cold start; a heap-token change of the same sector keeps the field (Run75)
             self.assertIn('run273_transit same=1 token=1 id_same=1 realloc=1 id_change=1 run273=1 rekey=1 first=1 PASS', result.stdout)

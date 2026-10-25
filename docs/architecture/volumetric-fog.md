@@ -797,10 +797,16 @@ and cannot restore already suppressed cards. A failed prepare at the owner latch
 `D3DERR_OUTOFVIDEOMEMORY` (since 2026-10-21; one occurrence after an alt-tab Reset disabled replacement for
 the rest of a session): native cards stay (the card readiness check refuses before suppression), a
 `volumetric_fog_prepare_retry` row names the attempt, and the latch prepares again no sooner than 600 frames
-later (`fog_prepare_oom_spacing`) or at once in another fog sector or family. A success clears the count;
-the third consecutive out-of-memory prepare (`fog_prepare_oom_bound`, counted across sectors) latches the
-fault with `reason=prepare_oom` until Reset. Every failed prepare other than a lost device or a disabled
-family row is followed by a `volumetric_fog_memory reason=prepare_fail` row (at most 8 per Reset interval). Native draw count/HRESULT remains
+later (`fog_prepare_oom_spacing`) or at once in another fog sector or family, without a bound (since 2026-10-26:
+Run205 showed 32-bit address-space fragmentation that only the game's own purges relieve, so the former bound of 3
+and its `prepare_oom` fault forced an alt-tab). The attempt count is per fog sector and family, cleared by a success,
+another sector or family, and Reset; the prepare and retry rows of an out-of-memory attempt print for attempts 1-8,
+then every 10th. A retry skips the field decode (the decoded field survives a failed creation and Reset), so a failed
+attempt costs only its failed creation calls. `volumetric_fog_prepare` names the creation that failed in `step=`
+(`field_upload`, `field_atlas`, `field_update`, `lit`, `scratch`, `block`; `ok`, `none`, `decode`, `module`), read from
+`FogPass::last_step()`. Every failed prepare other than a lost device or a disabled family row is followed by a
+`volumetric_fog_memory reason=prepare_fail` row and the first success after one by a `reason=prepare_ok` row, both
+with the address-space walk and its census (at most 8 together per Reset interval). Native draw count/HRESULT remains
 unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate
 TAA once; there is no separate fog history. Finite fog translation against sky
 rotation-only history remains a production-sequence and flight quality gate.

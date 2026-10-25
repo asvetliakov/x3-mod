@@ -1,0 +1,12 @@
+Witness rows copied from C:\X3\x3m.log (Run205, release 1.7.0, 282,692 B) on 2026-10-26, log lines 1478, 1479, 1509,
+1513, 1514, 1527, 1543, 1597. Extracted with:
+  for n in 1478 1479 1509 1513 1514 1527 1543 1597; do sed -n "${n}p" /mnt/c/X3/x3m.log | tr -d '\r'; done
+
+volumetric_fog_prepare device=1 frame=344543 profile=104583351 field_generation=0 width=5120 height=1440 result=8007000e cpu_us=6272.9
+volumetric_fog_memory device=1 frame=344543 reason=prepare_fail private_bytes=3206205440 avail_virtual=154554368 avail_phys=4420718592 texture_mem=1928331264 largest_free_virtual=9031680 walk_us=21184 capped=0
+volumetric_fog_memory device=1 frame=345143 reason=prepare_fail private_bytes=3241709568 avail_virtual=150986752 avail_phys=4373450752 texture_mem=1793064960 largest_free_virtual=9031680 walk_us=24527 capped=0
+volumetric_fog_memory device=1 frame=345743 reason=prepare_fail private_bytes=3231903744 avail_virtual=150986752 avail_phys=4392402944 texture_mem=1793064960 largest_free_virtual=9031680 walk_us=21650 capped=0
+volumetric_fog_cards_fault device=1 frame=345743 reason=prepare_oom observed=0 suppressed=0 until=reset
+reset_begin ptr=01249990 device=1
+volumetric_fog_memory device=1 frame=346661 reason=prepare_fail private_bytes=3186479104 avail_virtual=186306560 avail_phys=4202795008 texture_mem=4093640704 largest_free_virtual=17039360 walk_us=31690 capped=0
+volumetric_fog_prepare device=1 frame=347261 profile=104583351 field_generation=5 width=5120 height=1440 result=00000000 cpu_us=3498.2
