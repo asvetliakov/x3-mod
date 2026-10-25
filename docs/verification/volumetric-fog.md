@@ -3112,3 +3112,5 @@ Wine, no game. [M] measured, [I] inferred.
   `cap=195000` with `result=00000000`, far and fine ready, the horizon cache freed; a lost device stays a Reset; refused
   distance programs draw today's set with no horizon allocation; fog_distance 1 creates 4 textures and today's
   programs; 9 scenarios, 0 failures, 0 live COM objects at the end [M].
+
+2026-10-25, review items accepted as they are (orchestrator): F6, a quarter-only creation failure keeps the distance programs off until detach (no half-resolution retry); F7, the distance march/repair programs have no upper slot bound before creation (the device decides, AGENTS.md shader slot budget), while the composite and legacy programs keep the 512 check. Installed as Run201 (DLL `1e79a704…`), unflown.

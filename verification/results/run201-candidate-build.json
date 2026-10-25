@@ -1,0 +1,24 @@
+{
+ "run": "201",
+ "what": "release 1.5.1 + music queue kept through a save, music_dock_keep (default 1) with the dock pause handback (467a1d16); SETA key stop latch with debug-tier rows (06096702, RE 61321d07); fog_distance (default 3): inverse-square long distance fade, 40 tail bins, third horizon density level to 67.5 km with fallback to the 39 km cap (cf2cd8a3)",
+ "commit": "cf2cd8a3",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (removed and reconfigured)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "1e79a704779c69d26829937f20d3c86d3cc91398370d497d466c94ddb0386d38",
+  "bytes": 62766490,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS, 1068 reachable, 0 violations",
+  "config": "generate.py --check PASS 280 settings, 130 in the template",
+  "host_tests": "test_music_keep 18 OK; test_seta_manual_flight + test_seta_restore + test_fog_distance + test_config_schema OK (62 run with test_music_keep, the only error was a PYTHONPATH import, rerun OK)",
+  "per_change": "music: core 320 checks, review x3 (blocker on the pause keep withdrawn, handback clean); SETA latch: host model 22,876 checks, review x2 clean; fog: test_fog_distance 12, fault harness 9 scenarios, native validator 8 programs S_OK (march 717 / repair 803 slots), review: F1 waived by user decision, F2-F5/F8 fixed, F6/F7 accepted",
+  "known_env_failures": "9 launcher dry-run tests (CrossOver path), ASan leak witness (same at d8a4aa18), test_music_alert live-image (same at d8a4aa18)"
+ },
+ "evidence": "docs/verification/music-queue.md, seta-manual-flight.md, volumetric-fog.md 2026-10-25 rows",
+ "unflown": "all three",
+ "producer": "main session"
+}
