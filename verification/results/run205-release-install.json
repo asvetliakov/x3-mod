@@ -1,0 +1,32 @@
+{
+ "run": "205",
+ "what": "release 1.7.0 stripped DLL installed into native C:\\X3",
+ "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run204; cp <release>/d3d9.dll C:\\X3\\d3d9.dll; cp <release>-regenerate/x3m-regenerate.exe C:\\X3\\; cmp both; x3m.ini header 1.6.0 -> 1.7.0 (previous x3m.ini.run204)",
+ "installed_at": "2026-10-25T23:52+0400",
+ "commit": "680720fa",
+ "release_record": "verification/results/release-1.7.0.json",
+ "installed": {
+  "dll": {
+   "sha256": "c70203271b99059e16192d33a3d3803b991c7d404e5e1bf1bf6af53ee3b6dba5",
+   "bytes": 42516410,
+   "verified_bytes": true
+  },
+  "regenerate_exe": {
+   "sha256": "373a4c3b4f172b90984ff33971fffedfbf2a8644c23d25685050de99b73daccf",
+   "bytes": 29777552,
+   "verified_bytes": true
+  }
+ },
+ "previous": {
+  "run": 204,
+  "sha256": "4bc490cb11b4ad6c",
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run204"
+ },
+ "overlay": "the 22:46 bake stays current: tools/analysis, tools/regenerate, tools/effects unchanged since 0c92156e (git diff empty)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418...)",
+  "x3m.ini body (debug = 1, perf = 1, hull_lightmap_gain = 2)"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

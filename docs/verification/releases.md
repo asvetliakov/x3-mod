@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.7.0
+
+2026-10-25, `python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.0 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.9 s wall: dll 68.3 s, package 2.4 s; out of `/tmp` because its 5.9 GB tmpfs had 1.0 GB free), clean main `680720fa` ([record](../../verification/results/release-1.7.0.json)).
+
+- Over 1.6.0 (Runs 203/204 flown and confirmed): **distant stations keep their materials** (merged-LOD overlay, [design](../architecture/overlay-material-strength.md), [ledger](lod-overlay.md)): the baker keys merged classes on effect, occlusion map and cull, writes each material's diffuse-strength ratio into the specular atlas alpha and marks its atlases (`X3ML`); the DLL flags them at load and draws them with a lazily created hull twin (+2 instructions); ini `lod_material_strength` (default on). Run 204 A: the user saw almost no pop-in; outpost far/close ring -3 % (Run 202: -27 %), no_twin 0 over 366,463 marked draws; two engine-light twin first uses of 50-52 ms per session accepted by the user. Fleet distant draws 1,999 -> 2,060.
+- **x3m-regenerate.exe** rebuilt from the release commit with native Windows Python (`build.py --windows`, C:\Python312 3.12.10, PyInstaller 6.22.3, NumPy 2.0.2, Pillow 12.3.0; smoke PASS) `373a4c3b…` (29,777,552 B), passed with `--regenerate-dir` (the WSL host build needs PyInstaller there and is never shipped). Players must run it once: the baker changed, so every overlay body rebakes (55.3 min on the user's machine).
+- DLL: stripped `c7020327…` (42,516,410 B; x87 0 violations, strip identity PASS), unstripped `5a49e6f9…` and `d3d9.debug` `8fa77e34…` kept at /home/asvetl/x3m-releases/1.7.0/. Installed into native `C:\X3` as Run205, rollback `rollback-d3d9\d3d9.dll.run204` ([install](../../verification/results/run205-release-install.json)); the installed overlay (22:46 bake) stays current (baker sources unchanged since `0c92156e`).
+- Zip `x3m-1.7.0.zip` `dc21141f…` (60,211,018 B); copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.7.0`; `generate --check` PASS (281 settings, 131 in the template). The user's `x3m.ini` header bumped to 1.7.0, body unchanged (previous file `x3m.ini.run204`).
+
 ## Release 1.6.0
 
 2026-10-25, `python3 tools/release/release.py --out /tmp/x3m-release-1.6.0 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 83.0 s wall: dll 79.4 s, package 2.6 s; a first attempt failed with ENOSPC on the 5.9 GB `/tmp` tmpfs and passed after the session's scratch builds were removed), clean main `3973b88e` ([record](../../verification/results/release-1.6.0.json)).
