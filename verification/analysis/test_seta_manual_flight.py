@@ -59,6 +59,36 @@ class Core(unittest.TestCase):
             self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 530)
 
 
+class KeyLatchCore(unittest.TestCase):
+    """The SETA key stop latch (src/proxy/seta_key_latch_core.h, docs/architecture/seta-manual-flight.md "Key stop latch"):
+    classification, hold/tail/new-press/cap/VM, refusals, the debug row selection and the section-7 iteration model with
+    and without the latch (verification/probe/seta_key_latch_host.cpp)."""
+
+    def test_decisions_and_model(self):
+        compiler = shutil.which('c++') or shutil.which('clang++')
+        if compiler is None:
+            raise unittest.SkipTest('A host C++ compiler is required')
+        with tempfile.TemporaryDirectory(prefix='x3-seta-latch-') as d:
+            exe = Path(d) / 'seta_key_latch_host'
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                    str(ROOT / 'verification/probe/seta_key_latch_host.cpp'), '-o', str(exe)],
+                                   capture_output=True, text=True, timeout=120)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertIn('checks PASS', run.stdout)
+            self.assertGreaterEqual(int(re.search(r'checks=(\d+)', run.stdout).group(1)), 22000)
+            model = {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', run.stdout)}
+            # every modelled OFF press ends off with the latch; without it some restart; an ON press from idle is never
+            # latched (at 12 fps only thanks to the ramp guard); back to back, a start press outside the tail sees no call
+            self.assertGreater(model['off_presses'], 0)
+            self.assertGreater(model['restarted_without_latch'], 0)
+            self.assertEqual(model['on_presses_latched'], 0)
+            self.assertGreater(model['on_presses_latched_without_ramp_guard'], 0)
+            self.assertGreater(model['outside_tail'], 0)
+            self.assertEqual(model['inside_called'], model['inside_tail'])
+
+
 class Image(unittest.TestCase):
     """The windows the installer compares and the six claims, against the pinned X3AP.exe."""
 
@@ -369,6 +399,21 @@ class Wiring(unittest.TestCase):
         self.assertLess(capture.index('seta_restore::initialize();'), capture.index('seta_manual_flight::initialize();'))
         self.assertIn('seta_manual_flight::present(ctx.frame);', capture)
         self.assertIn('x3m::seta_manual_flight::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
+        # the key stop latch: enabled after the install from the debug tier's flag, run in seta_restore's two sites
+        self.assertIn('x3m::seta_restore::key_latch_enable(debug_);', source)
+        self.assertIn('"seta_manual_flight key_latch installed=%u reason=%s', source)
+        restore = (ROOT / 'src/proxy/seta_restore.cpp').read_text()
+        for needle in ('lr = latch_.on_write(w, frame_.load(std::memory_order_relaxed), inside_latch);',
+                       'calling_ == Calling::latch && epoch_.load(std::memory_order_acquire) == latch_call_epoch_;',
+                       'unwound = latch_.on_unwound();','latch_call = latch_.on_entry(readable, counter, lr);',
+                       'call.name = wanted ? call_method : latch::call_method;', 'if (calling_ == Calling::latch) {',
+                       'lr = latch_.on_vm();', 'machine_.active() || latch_.active() ||',
+                       '"seta_key_latch refused reason=%s', '"seta_factor frame=%llu us=%llu old=0x%08lx',
+                       '"seta_key %s frame=%llu us=%llu press=%lu counter=%u'):
+            self.assertIn(needle, restore)
+        # the debug rows and the always-set prefilter bit only under the debug tier
+        self.assertEqual(restore.count('latch_debug_.store(debug,'), 1)
+        self.assertIn('if (!debug || factor_rows_ > latch::factor_row_cap) return;', restore)
 
 
 if __name__ == '__main__':

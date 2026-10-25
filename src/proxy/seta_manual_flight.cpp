@@ -1,5 +1,7 @@
 #include "seta_manual_flight.h"
 #include "seta_manual_flight_stubs.h"
+#include "seta_key_latch_core.h"
+#include "seta_restore.h"
 #include "capture.h"
 #include "config.h"
 #include "cpu_state.h"
@@ -320,7 +322,13 @@ bool initialize() {
             site_write(yaw), site_status(pitch), site_write(pitch), site_status(roll), site_write(roll),
             site_status(strafe_y), site_write(strafe_y), site_status(strafe_x), site_write(strafe_x),
             unsigned(debug_));
-    else {
+    if (ok) { // the SETA key stop latch, in seta_restore's factor hook and injection consumer (installed before this)
+        namespace kl = x3m::seta_key_latch::core;
+        const char* latch = x3m::seta_restore::key_latch_enable(debug_);
+        log("seta_manual_flight key_latch installed=%u reason=%s arm=0x004b148c:toggle_stop inject_site=0x00410100 counter=0x%08lx call=0x0049f4c0 key=0x96 method=%s tail_entries=%u cap_entries=%u debug=%u",
+            unsigned(std::strcmp(latch, "ok") == 0), latch, static_cast<unsigned long>(kl::seta_counter_va),
+            kl::call_method, kl::tail_entries, kl::cap_entries, unsigned(debug_));
+    } else {
         const Window* w = mismatch_.window;
         char expected[2 * shown_bytes + 1], got[2 * shown_bytes + 1];
         hex(w ? w->bytes : nullptr, w ? mismatch_.shown : 0, expected);

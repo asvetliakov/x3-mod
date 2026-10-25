@@ -352,7 +352,8 @@ class Wiring(unittest.TestCase):
                        'sites_.detected = retries_.keep(key, sites_.outcome);', 'retries_ = x3m::story::Retries{};',
                        'w.sites = &sites_;', 'detect=%s method=%s', 'x3m::story::fail_name(r.detect_fail)', 'detect=runtime expected=%s'):
             self.assertIn(needle, source)
-        self.assertLess(source.index('x3m::story::detect_seta('), source.index('        Guard guard;\n        if (machine_.active() || stop_shaped)'))
+        self.assertLess(source.index('x3m::story::detect_seta('),
+                        source.index('        Guard guard;\n        if (machine_.active() || stop_shaped || debug)'))  # debug: seta_factor rows
         self.assertIsNone(re.search(r'\bstory_build\b', core))
         roots = (ROOT / 'verification/probe/check_no_x87.py').read_text()
         for symbol in ('_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write'):

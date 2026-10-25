@@ -1,4 +1,5 @@
 #include "seta_restore.h"
+#include "seta_key_latch_core.h"
 #include "capture.h"
 #include "chase_transition.h"
 #include "config.h"
@@ -112,8 +113,102 @@ struct EngineProbe {
         return true;
     }
 };
+// ---- the SETA key stop latch (seta_key_latch_core.h; enabled by seta_manual_flight, key_latch_enable) ----
+// latch_ and key_rows_ under lock_; calling_ names whose call the injection site is running (under lock_), so result()
+// and a write inside the call reach the right owner. latch_debug_: the debug tier (X3M_DEBUG=1, set once before the game
+// loop): the seta_factor / seta_key / seta_key_latch rows, and the prefilter bit kept set so every iteration is seen.
+namespace latch = x3m::seta_key_latch::core;
+latch::Latch latch_;
+latch::KeyRows key_rows_;
+enum class Calling : unsigned { none = 0, ticket = 1, latch = 2 };
+Calling calling_ = Calling::none;
+std::uint32_t latch_call_epoch_ = 0; // the EH epoch when the latch's call was handed out (under lock_)
+std::atomic<bool> latch_debug_{false};
+std::uint64_t qpc_frequency_ = 0;
+unsigned factor_rows_ = 0, latch_rows_ = 0; // debug rows written this session (factor: VM thread; latch: under lock_)
+std::uint64_t now_us() {
+    LARGE_INTEGER c{};
+    if (!qpc_frequency_ || !QueryPerformanceCounter(&c) || c.QuadPart < 0) return 0;
+    const std::uint64_t t = std::uint64_t(c.QuadPart);
+    return t / qpc_frequency_ * 1000000u + t % qpc_frequency_ * 1000000u / qpc_frequency_;
+}
 void publish() {
-    x3m::chase_transition::inject_want(machine_.active());
+    x3m::chase_transition::inject_want(machine_.active() || latch_.active() ||
+                                       latch_debug_.load(std::memory_order_relaxed));
+}
+// Debug rows of the latch (arm, fire, release) and its refusals; a refusal row is written in every tier (once per reason
+// per session). The caller decided under lock_ whether the debug row fits the session budget.
+void emit_latch(const latch::Report& r, std::uint64_t frame, unsigned due) {
+    if (r.event == latch::Event::none) return;
+    if (r.event == latch::Event::refused) {
+        x3m::log("seta_key_latch refused reason=%s frame=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx detect=%s method=%s counter=%u entries=%u calls=%u state=%s",
+                 latch::reason_name(r.reason), static_cast<unsigned long long>(frame),
+                 static_cast<unsigned long>(r.old_factor), static_cast<unsigned long>(r.new_factor),
+                 static_cast<unsigned long>(r.ip), static_cast<unsigned long>(r.ret), x3m::story::fail_name(r.fail),
+                 r.where[0] ? r.where : "-", r.counter, r.entries, r.calls,
+                 r.reason >= latch::refused_unreadable ? "off" : "not_armed");
+        return;
+    }
+    if (due == 2) x3m::log("seta_key_latch rows_capped cap=%u", latch::latch_row_cap);
+    if (due != 1) return;
+    const unsigned long long us = now_us();
+    if (r.event == latch::Event::armed)
+        x3m::log("seta_key_latch armed frame=%llu us=%llu old=0x%08lx new=0x%08lx ip=0x%05lx ret=0x%05lx rearm=%u",
+                 static_cast<unsigned long long>(frame), us, static_cast<unsigned long>(r.old_factor),
+                 static_cast<unsigned long>(r.new_factor), static_cast<unsigned long>(r.ip),
+                 static_cast<unsigned long>(r.ret), unsigned(r.rearm));
+    else if (r.event == latch::Event::fire)
+        x3m::log("seta_key_latch fire frame=%llu us=%llu old=0x%08lx new=0x%08lx ip=0x%05lx entries=%u held=%u zeros=%u calls=%u fires=%u",
+                 static_cast<unsigned long long>(frame), us, static_cast<unsigned long>(r.old_factor),
+                 static_cast<unsigned long>(r.new_factor), static_cast<unsigned long>(r.ip), r.entries, r.held, r.zeros,
+                 r.calls, r.fires);
+    else
+        x3m::log("seta_key_latch released reason=%s frame=%llu us=%llu counter=%u entries=%u held=%u zeros=%u calls=%u fires=%u",
+                 latch::reason_name(r.reason), static_cast<unsigned long long>(frame), us, r.counter, r.entries, r.held,
+                 r.zeros, r.calls, r.fires);
+}
+// Under lock_: 1 = the debug row fits the session budget, 2 = the budget is spent now (one rows_capped row), 0 = none.
+unsigned latch_row_due(const latch::Report& r) {
+    if (r.event == latch::Event::none || r.event == latch::Event::refused || !latch_debug_.load(std::memory_order_relaxed) ||
+        latch_rows_ > latch::latch_row_cap)
+        return 0;
+    ++latch_rows_;
+    return latch_rows_ <= latch::latch_row_cap ? 1 : 2;
+}
+// One injection-site entry's key state (debug tier only; checked reads, the counter first).
+struct KeySnap {
+    bool counter_read = false, ring_read = false, ctx_read = false, factor_read = false;
+    unsigned char counter = 0, slots[latch::ring_slot_count]{}, steer[latch::steer_count]{};
+    std::uint16_t read_key = 0, ri = 0, wi = 0;
+    std::uint32_t mouse = 0, joystick = 0, factor = 0;
+    std::uint64_t frame = 0, us = 0;
+};
+KeySnap key_prev_{}; // the previous entry's snapshot (the press's first read precedes the counter's rise)
+void read_snap(KeySnap& s) {
+    s = KeySnap{};
+    s.frame = frame_.load(std::memory_order_relaxed);
+    s.us = now_us();
+    s.counter_read = load(latch::seta_counter_va, s.counter);
+    unsigned char ring[latch::ring_span];
+    s.ring_read = load(latch::ring_read_va, s.read_key) && load(latch::ring_ri_va, s.ri) && load(latch::ring_wi_va, s.wi) &&
+                  read(latch::ring_slots_va, ring, latch::ring_span) &&
+                  read(latch::steer_counters_va, s.steer, latch::steer_count);
+    if (s.ring_read)
+        for (unsigned i = 0; i < latch::ring_slot_count; ++i) s.slots[i] = ring[i * latch::ring_slot_stride];
+    std::uint32_t ctx = 0, cfg = 0;
+    s.ctx_read = load(latch::input_ctx_ptr_va, ctx) && ctx && load(ctx + latch::ctx_joystick_buttons, s.joystick) &&
+                 load(ctx + latch::ctx_mouse_buttons, s.mouse);
+    s.factor_read = load(cfg_ptr_va, cfg) && cfg && load(cfg + cfg_factor, s.factor);
+}
+void emit_key(const KeySnap& s, const char* kind, std::uint32_t press, bool latched) {
+    x3m::log("seta_key %s frame=%llu us=%llu press=%lu counter=%u counter_read=%u read=0x%04x ri=%u wi=%u slots=%02x,%02x,%02x,%02x ring_read=%u steer=%u,%u,%u,%u,%u,%u mouse=0x%08lx joystick=0x%08lx ctx_read=%u factor=0x%08lx factor_read=%u latch=%u",
+             kind, static_cast<unsigned long long>(s.frame), static_cast<unsigned long long>(s.us),
+             static_cast<unsigned long>(press), unsigned(s.counter), unsigned(s.counter_read), unsigned(s.read_key),
+             unsigned(s.ri), unsigned(s.wi), unsigned(s.slots[0]), unsigned(s.slots[1]), unsigned(s.slots[2]),
+             unsigned(s.slots[3]), unsigned(s.ring_read), unsigned(s.steer[0]), unsigned(s.steer[1]),
+             unsigned(s.steer[2]), unsigned(s.steer[3]), unsigned(s.steer[4]), unsigned(s.steer[5]),
+             static_cast<unsigned long>(s.mouse), static_cast<unsigned long>(s.joystick), unsigned(s.ctx_read),
+             static_cast<unsigned long>(s.factor), unsigned(s.factor_read), unsigned(latched));
 }
 // One row per transition, formatted outside every lock (x3m::log runs the CRT formatter behind call_preserved). The
 // speed fields (record only) are the current player ship's [+0x10]/[+0x14] as int32; speed_read=0: not read.
@@ -189,21 +284,63 @@ void finish(Report& r) {
 }
 
 // ---- the injection consumer (chase_transition::InjectConsumer) ----
+// Once per main-loop iteration while the prefilter bit is set (a ticket, an armed latch, or the debug tier): the ticket
+// first; the latch's StopFastForward on an entry the ticket does not use. Under the debug tier the key state is read
+// first (outside the lock) for the seta_key rows.
 bool poll(std::uint32_t controlled, x3m::chase_transition::InjectCall& call) noexcept {
     if (!armed_.load(std::memory_order_acquire)) return false;
+    const bool debug = latch_debug_.load(std::memory_order_relaxed);
+    KeySnap snap;
+    if (debug) read_snap(snap);
     Report r;
-    bool wanted = false;
+    latch::Report lr;
+    bool wanted = false, latch_call = false, latched = false;
+    unsigned due = 0;
+    latch::KeyRows::Emit emit = latch::KeyRows::Emit::none;
+    std::uint32_t press = 0;
+    KeySnap pre;
+    latch::Report unwound;
+    unsigned unwound_due = 0;
     {
         Guard guard;
+        if (calling_ == Calling::latch) { // the latch's previous call never reported back: it unwound
+            unwound = latch_.on_unwound();
+            unwound_due = latch_row_due(unwound);
+        }
+        calling_ = Calling::none; // the ticket's own state machine sees its unreported call (cancel call_unwound)
         EngineProbe probe;
         wanted = machine_.on_inject(now(), controlled, probe, r);
+        if (wanted) {
+            calling_ = Calling::ticket;
+        } else if (latch_.active()) {
+            unsigned char counter = snap.counter;
+            const bool readable = debug ? snap.counter_read : load(latch::seta_counter_va, counter);
+            latch_call = latch_.on_entry(readable, counter, lr);
+            if (latch_call) {
+                calling_ = Calling::latch;
+                latch_call_epoch_ = epoch_.load(std::memory_order_acquire);
+            }
+            due = latch_row_due(lr);
+        }
+        latched = latch_.active();
+        if (debug) {
+            emit = key_rows_.on_entry(snap.counter_read ? snap.counter : 0);
+            press = key_rows_.press;
+            pre = key_prev_;
+            key_prev_ = snap;
+        }
         publish();
     }
     finish(r);
-    if (!wanted) return false;
+    emit_latch(unwound, frame_.load(std::memory_order_relaxed), unwound_due);
+    emit_latch(lr, frame_.load(std::memory_order_relaxed), due);
+    if (emit ==latch::KeyRows::Emit::pre_and_row) emit_key(pre, "pre", press, latched);
+    if (emit == latch::KeyRows::Emit::row || emit == latch::KeyRows::Emit::pre_and_row) emit_key(snap, "row", press, latched);
+    if (emit == latch::KeyRows::Emit::capped) x3m::log("seta_key rows_capped cap=%u", latch::key_row_cap);
+    if (!wanted && !latch_call) return false;
     call.target = script_call_va;
     call.key = call_key;
-    call.name = call_method;
+    call.name = wanted ? call_method : latch::call_method;
     call.return_kind = call_return_kind;
     call.argc = call_argc;
     call.value = 0;
@@ -211,22 +348,36 @@ bool poll(std::uint32_t controlled, x3m::chase_transition::InjectCall& call) noe
 }
 void result(unsigned al) noexcept {
     Report r;
+    latch::Report lr;
+    unsigned due = 0;
     {
         Guard guard;
-        r = machine_.on_result(al, now());
+        if (calling_ == Calling::latch) {
+            lr = latch_.on_result(al);
+            due = latch_row_due(lr);
+        } else {
+            r = machine_.on_result(al, now());
+        }
+        calling_ = Calling::none;
         publish();
     }
     finish(r);
+    emit_latch(lr, frame_.load(std::memory_order_relaxed), due);
 }
 void vm(unsigned kind) noexcept {
     if (!armed_.load(std::memory_order_acquire)) return;
     Report r;
+    latch::Report lr;
+    unsigned due = 0;
     {
         Guard guard;
         r = machine_.on_vm(kind, now());
+        lr = latch_.on_vm();
+        due = latch_row_due(lr);
         publish();
     }
     finish(r);
+    emit_latch(lr, frame_.load(std::memory_order_relaxed), due);
 }
 void unwind() noexcept {
     epoch_.fetch_add(1, std::memory_order_acq_rel);
@@ -265,16 +416,47 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_seta_restore_factor_wr
             w.build_readable = true;
         }
     }
+    const bool debug = latch_debug_.load(std::memory_order_relaxed);
     Report r;
+    latch::Report lr;
+    unsigned due = 0;
+    Calling inside = Calling::none;
+    bool latched = false;
     {
         Guard guard;
-        if (machine_.active() || stop_shaped)
+        if (machine_.active() || stop_shaped || debug)
             w.ret = first_return(task, [](std::uintptr_t at, void* out, unsigned n) { return read(at, out, n); });
         EngineProbe probe;
         r = machine_.on_write(w, now(), probe);
+        // inside the latch's own call only while the EH epoch has not moved since the hand-out (an unwound call leaves
+        // calling_ set until the next entry; the core then refuses instead of counting a stranger's write as a fire)
+        const bool inside_latch =
+            calling_ == Calling::latch && epoch_.load(std::memory_order_acquire) == latch_call_epoch_;
+        lr = latch_.on_write(w, frame_.load(std::memory_order_relaxed), inside_latch);
+        due = latch_row_due(lr);
+        inside = calling_;
+        latched = latch_.active();
         publish();
     }
     finish(r);
+    const std::uint64_t frame = frame_.load(std::memory_order_relaxed);
+    emit_latch(lr, frame, due);
+    // Debug tier: every factor write (record only), at most factor_row_cap per session. The names come from the VM's
+    // current detection (sites_, this thread only); ip_name marks StopFastForward's write, the ramp step is IP 14341
+    // (Mayhem, seta-manual-flight.md section 7.3).
+    if (!debug || factor_rows_ > latch::factor_row_cap) return;
+    if (++factor_rows_ > latch::factor_row_cap) {
+        x3m::log("seta_factor rows_capped cap=%u", latch::factor_row_cap);
+        return;
+    }
+    const x3m::story::SetaSites* names = sites_.detected && sites_.outcome.ok() ? &sites_ : nullptr;
+    x3m::log("seta_factor frame=%llu us=%llu old=0x%08lx new=0x%08lx tag=%lu readable=%u ip=0x%05lx ip_name=%s ret=0x%05lx scan=%s ret_name=%s inside=%s latch=%u",
+             static_cast<unsigned long long>(frame), static_cast<unsigned long long>(now_us()),
+             static_cast<unsigned long>(w.old_factor), static_cast<unsigned long>(w.new_factor),
+             static_cast<unsigned long>(w.tag), unsigned(w.readable), static_cast<unsigned long>(w.ip),
+             names && w.ip == names->stop_ip ? "StopFastForward" : "other", static_cast<unsigned long>(w.ret.offset),
+             scan_name(w.ret.scan), return_name(names, w.ret.offset, w.ret.scan == Scan::bottom),
+             inside == Calling::latch ? "latch" : inside == Calling::ticket ? "ticket" : "none", unsigned(latched));
 }
 }
 
@@ -430,7 +612,12 @@ bool initialize() {
     {
         Guard guard;
         machine_ = State{};
+        latch_ = latch::Latch{}; // enabled later by seta_manual_flight (key_latch_enable)
+        key_rows_ = latch::KeyRows{};
+        calling_ = Calling::none;
+        latch_rows_ = 0;
     }
+    factor_rows_ = 0;
     sites_ = x3m::story::SetaSites{};
     retries_ = x3m::story::Retries{};
     format_stories();
@@ -458,9 +645,35 @@ bool initialize() {
     SetLastError(error);
     return ok;
 }
+const char* key_latch_enable(bool debug) {
+    const DWORD error = GetLastError();
+    const char* status = "ok";
+    if (!armed_.load(std::memory_order_acquire)) {
+        status = std::strcmp(state_, "disabled") == 0 ? "seta_restore_disabled" : "seta_restore_refused";
+    } else {
+        LARGE_INTEGER f{};
+        qpc_frequency_ = debug && QueryPerformanceFrequency(&f) && f.QuadPart > 0 ? std::uint64_t(f.QuadPart) : 0;
+        Guard guard;
+        latch_ = latch::Latch{};
+        latch_.enabled = true;
+        key_rows_ = latch::KeyRows{};
+        key_prev_ = KeySnap{};
+        latch_rows_ = 0;
+        latch_debug_.store(debug, std::memory_order_relaxed);
+        publish();
+    }
+    SetLastError(error);
+    return status;
+}
 bool shutdown() {
     const DWORD error = GetLastError();
     armed_.store(false, std::memory_order_release);
+    latch_debug_.store(false, std::memory_order_relaxed);
+    {
+        Guard guard;
+        latch_.enabled = false;
+        latch_.armed = false;
+    }
     bool ok = true;
     if (attached_) {
         ok = x3m::chase_transition::inject_detach() && ok;

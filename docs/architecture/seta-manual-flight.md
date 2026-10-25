@@ -119,6 +119,106 @@ the command, and the ship would strafe k× too slowly whenever the strafe maximu
 * The SETA ramp (ten steps 250 ms apart) changes k under a held turn. The stored game rate then gives a real-time rate
   that jumps by `R_new / R_old` per step until the controller re-converges at its scaled ramp.
 
+## Key stop latch (mode ≥ 1)
+
+Why (§7): the SETA key is a held-state stream. The engine pushes every held key into a 3-slot ring each poll and feeds
+one entry per iteration to the script's `Input`, whose filter only drops an action equal to the previous one. A steering
+key held with `j` (or an empty or slot-3 read) re-arms the filter, so one press reaches `150::ToggleFastForward` an
+even number of times and turns SETA back on. Vanilla hid this because steering stopped SETA again; part A removed that
+stop on purpose. The latch keeps part A and stops only what the user's own key stop restarts. It has no config key: it
+is on whenever this feature installs (mode 1 or 2) and `seta_restore` is armed. Source:
+`src/proxy/seta_key_latch_core.h` (decision, host-tested by `verification/probe/seta_key_latch_host.cpp`), wired into
+`src/proxy/seta_restore.cpp` and enabled by `seta_manual_flight::initialize` through
+`seta_restore::key_latch_enable(debug)`.
+
+* **Arm.** At `seta_restore`'s record-only factor hook `0x004b148c`: a write with `old > 0x10000`, `new = 0x10000`, the
+  detected stop IP (Mayhem `1558d`, stock `157a6`; `story_detect.h`), a found return record, and a return offset inside
+  the detected `150::ToggleFastForward` range (Mayhem `155ad`). That is the first toggle of a press made to stop SETA.
+  A start writes no factor, and a stop at `old = 0x10000` (start and stop inside one press) does not match.
+* **Ramp guard.** Below about 16 fps, four ring reads take more than 250 ms, so a start press can see the run's first
+  ramp step before its own re-delivered stop. A key stop no more than 4 presented frames after the run's first ramp step
+  (`ramp_guard_frames`; a write with old `0x10000` and new above it) is that press's own re-delivery and does not arm.
+  The run's first step comes at least one read after its start, and re-deliveries come within 4 reads, so the guard
+  covers every frame rate. Its cost is one compare per factor write. A real OFF press that lands within 4 frames of
+  the first ramp step is not latched and behaves as in 1.5.1. The guard counts presented frames (the factor hook sees
+  no loop counter), not loop iterations. If an iteration ever presented more than once, the guard would span fewer
+  reads and could let a start press arm, which fails toward vanilla's restart risk only at low frame rates. The first
+  flight checks the one-Present-per-iteration assumption.
+* **A press made to start SETA** is not latched when it begins from idle (model below, 222, 60 and 12 fps). A start
+  press whose first poll falls inside an armed latch's tail is the accepted edge under "Accepted edges".
+* **Display-panel click.** A click on the SETA display uses the same toggle and arms the latch, but its key never
+  shows in the counter. Nothing is held, so the latch releases after 8 iterations. A `j` press inside those 8
+  iterations has its first toggle stopped (the same edge), and the counter's rise then releases the latch.
+* **Hold.** At every `0x00410100` entry while armed (the consumer's prefilter bit `inject_want` is set only then), the
+  latch reads the SETA action's counter byte `0x0057ff0b` (`0x0057fc68 + 675`). The input routine on the same thread is
+  the only writer, and at the entry the byte holds the previous iteration's count. It then calls
+  `0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0)`, the EXE's own call shape at `0x0041211f` (the `stop_call` window
+  `seta_restore` compares before it installs). `StopFastForward` does nothing while `m21 = 0` (seta-script-toggle.md
+  §1). When a re-delivered toggle has restarted SETA earlier in the same iteration, the call stops it again before any
+  ramp step, which needs more than 250 ms.
+* **Release.** After the counter reads 0 on 8 consecutive entries (`tail_entries`), with a call on each of them. A rise
+  of the counter after a 0 is a new press, and the latch releases without a call. The one exception is a 0 on the
+  arm's own entry: a press that went down at that iteration's poll shows in the counter one entry late. The rule does
+  not need the key to have shown in the counter, so an arm the counter never saw (a click, a binding outside action
+  675) also treats the next press as new. The latch also releases after 2048 entries (`cap_entries`, a stuck binding)
+  and at a VM clear or load.
+* **[0x00607c60] stays the engine's [m].** When this flag is set, `0x004042d1` skips `Input` for an empty ring read.
+  Only 8 instructions in the image reference it by address: the test `0x004042d1`, the clear `0x0040430f` and six
+  `mov …,1` inside the input routine's own key branches (`0x004100f2` … `0x00410b57`). None is in the wrapper
+  `0x0049f4c0`, its resolver `0x0049f330` or its runner `0x0049f430`. So the latch's call does not change which reads
+  reach `Input`, and the §7 model's assumption holds.
+  [`input_flag_writers.py`](../../verification/results/seta-key-toggle/input_flag_writers.py) →
+  [`input_flag_writers.txt`](../../verification/results/seta-key-toggle/input_flag_writers.txt), `RESULT PASS`.
+* **Time bounds are iteration counts.** Key input runs in real time. SETA scales the game time a frame advances
+  (`cfg+0xcc`), not the number of loop iterations, and each iteration polls once, reads one ring entry and runs `Input`
+  once at any warp factor. After a release the counter lags one iteration and the ring drains in at most four reads, so
+  8 iterations cover the residue at any frame rate and any SETA step.
+* **Ticket first.** When `seta_restore`'s gate ticket wants its `StartFastForward` on an entry, the latch skips that
+  entry. `calling_` routes the wrapper's AL to the owner of the call. A factor write counts as inside the latch's call
+  only while the EH epoch is unchanged since the call was handed out. A latch call that unwound is refused at once, at
+  the next write or the next entry, whichever comes first, so a later write is never counted as a fire. Any pass of
+  the EH adapter during the call moves the epoch, including an exception the script handles. The latch then counts its
+  own call as unwound and switches off for the session, which fails toward vanilla.
+* **Fail closed.** Each refusal writes one `seta_key_latch refused` row per reason per session, in every tier:
+  * `seta_restore` disabled or refused: the latch stays off (`seta_manual_flight key_latch installed=0`).
+  * A SETA stop while the story sites are not detected (`story_sites`), or detected without a `ToggleFastForward` range
+    (`no_toggle`): not armed for that stop.
+  * The counter unreadable, the wrapper returning AL 0, or a call that never reported back: off for the session
+    (`state=off`).
+  
+  In every case the key behaves as in vanilla. No new hook site, byte window or stub: both sites are `seta_restore`'s,
+  and their stubs (EFLAGS, GPRs, XMM; the injection stub's full x87/MXCSR/LastError capture) are unchanged.
+* **Accepted edge: a press inside the tail.** Take a press whose first poll comes no more than 8 iterations after the
+  first 0 the counter reads following the previous key's release (the release plus one iteration). That is about 36 ms
+  at 222 fps, 133 ms at 60 fps and 667 ms at 12 fps. Its first toggle is stopped by the latch's call at that entry,
+  because the counter shows the new press only one entry later. The rise then releases the latch, and the rest of the
+  press toggles as in vanilla, so a start press there ends on or off by its re-delivery count. After a click arm the
+  same window runs from the click.
+* **Not covered:** starts (§7.4: the mirror for a lone-key repeat stays open until the debug rows show it).
+
+The host model applies the study's ring rules, the filter, start/stop and the 250 ms ramp, and the counter lag. It
+runs at 222, 60 and 12 fps over every ring phase, with `j` alone, with one arrow and with two. These are the counts
+**[m, model only]**.
+
+Isolated presses of 2–60 iterations:
+
+| | count |
+| --- | --- |
+| OFF presses (each ends with SETA off and no ramp step after the stop) | 4233 |
+| the same presses without the latch: SETA ends on or ramps again | 2635 |
+| presses in which the latch caught a restart | 4113 |
+| ON presses from idle latched | 0 of 6372 |
+| ON presses that would latch without the ramp guard | 874 of 6372 |
+| presses in which no `j` read got through (as in vanilla) | 2139 |
+
+A stop press (4/10/22 iterations) then a start press (4/10/22) after a gap of 1–14 iterations, `j` alone or with one
+arrow:
+
+| | count |
+| --- | --- |
+| gap > 8: start presses with no latch call during them | 3888 of 3888. Where the run without the latch also had SETA off when the start press began, the ending matches it |
+| gap ≤ 8: start presses with exactly one call (their first entry) | 5184 of 5184; 2349 of them end off |
+
 ## Fail closed and rollback
 
 On the backend-load path (capture `initialize_log`, after `seta_restore::initialize()`), inside the `engine_patch`
@@ -167,10 +267,51 @@ The stub arena and the tails stay callable. Device Reset does not touch the feat
 **Flight check (§6).** One full-deflection yaw at ×1 and at ×10 with `debug = 1`. Expected: `ship_rate_k` rises to
 `target` in the same wall time at both warps, and its steady value is equal at both.
 
+Key stop latch rows (`seta_manual_flight key_latch` and `seta_key_latch refused` in every tier; the rest only under
+`debug = 1`, which also keeps the injection prefilter bit set so that every iteration is seen):
+
+* `seta_manual_flight key_latch installed=1 reason=ok arm=0x004b148c:toggle_stop inject_site=0x00410100
+  counter=0x0057ff0b call=0x0049f4c0 key=0x96 method=StopFastForward tail_entries=8 cap_entries=2048 debug=…`, or
+  `installed=0 reason=seta_restore_disabled|seta_restore_refused`.
+* `seta_key_latch refused reason=story_sites|no_toggle|unreadable|call_unresolved|call_unwound … state=not_armed|off`.
+* `seta_factor frame=… us=… old=0x… new=0x… tag=… readable=… ip=0x… ip_name=StopFastForward|other ret=0x… scan=…
+  ret_name=gate|toggle|sector_warp|quick_warp|jumpdrive|engine_input|other inside=none|latch|ticket latch=0|1`: every
+  `TI_SetTimeWarpFactor`, at most 2000 per session. A key stop is `ip=0x1558d ret=0x155ad ret_name=toggle`. A ramp step
+  is `ip=0x14341` (first step `0x10000 → 0x1e666`). The latch's own stop is `ret_name=engine_input inside=latch`.
+* `seta_key pre|row frame=… us=… press=… counter=… read=0x… ri=… wi=… slots=s0,s1,s2,s3 steer=524..529 mouse=0x…
+  joystick=0x… factor=0x… latch=…`: at each `0x00410100` entry while the counter shows the key, for 8 entries after,
+  and (`pre`) the entry before a press's rise. `read` is this iteration's ring read (engine code, 0 = empty or slot
+  3), `slots` are the four ring slots' DIK bytes, and `counter` is the previous iteration's count. Capped at 96 held
+  rows per press and 4000 rows per session; the tail rows are always written.
+* `seta_key_latch armed … rearm=…`, `fire … old=0x… entries=… held=… zeros=… calls=… fires=…`, `released
+  reason=released|new_press|cap|vm … calls=… fires=…`: at most 1000 per session. A `fire` is a factor write inside
+  the latch's own `StopFastForward`, which means a re-delivered toggle had restarted SETA in that iteration.
+
+**First flight (`debug = 1`).** With SETA at ×10, stop it with `j` five times while holding an arrow key and five
+times with no key held, then start it five times with no key held (§7.3).
+
+* **Expected in game.** SETA stops on every key press and stays off: no audible ramp resumes 250 ms later. A press
+  that the latch caught can give a quick extra on/off chirp (980 then 981 in the same frame) during the hold. Starting
+  SETA and steering under SETA behave as in 1.5.1.
+* **What the rows decide.**
+  * Each OFF press shows one `seta_factor … ret_name=toggle` row, then `seta_key_latch armed`, and ends with `released
+    reason=released`. A `fire` row in between, with the `seta_key` rows of that press, names the cause. When the read
+    before the second dispatched `j` was an arrow code, the cause is interleaving. When it was `read=0x0000` with `ri`
+    3 or with `ri == wi`, it is the stale or empty read.
+  * `fires=0` on every steered press means the restart did not come from a re-delivery: reopen §7.2.
+  * During a lone-key press, a `seta_factor` stop with `old=0x00010000` and `ret_name=toggle` means a start in the
+    same press was toggled off. That proves the lone-key repeat (§7.2, unresolved), and starts then need the §7.4
+    mirror.
+  * A ramp row (`ip=0x14341`) after a key stop with no `j` read and no `seta_restore` row names another starter.
+  * One Present per loop iteration (the ramp guard's unit): within a press, consecutive `seta_key` rows are
+    consecutive `0x00410100` entries, so their `frame` must rise by exactly 1 from row to row. Any other step means the
+    guard's 4 frames are not 4 iterations, and the guard must then count injection entries instead.
+
 ## Windows and CrossOver parity
 
 Documented Win32 only: `VirtualProtect`, `FlushInstructionCache`, `ReadProcessMemory` (through `engine_patch`),
-`GetModuleHandleExW` with the pin flag, `GetTickCount64`. No backend-specific dependency. The stubs were executed
+`GetModuleHandleExW` with the pin flag, `GetTickCount64`, and for the latch's debug rows
+`QueryPerformanceCounter`/`QueryPerformanceFrequency`. No backend-specific dependency. The stubs were executed
 natively on Windows 11 by `verification/probe/seta_manual_flight_stub_fixture.cpp`, against a fake engine image at the
 real addresses, not in the game.
 
@@ -181,3 +322,11 @@ Each call makes eight loads, one `divsd` and three `mulsd` on the decision path 
 in the debug row). The native fixture measured 83.4 ns per stub run, including its driver, `finit` and landing
 (2026-10-24, Windows 11 host, fixture helper without the `LightCallBoundary`). That is
 under 0.5 µs per frame for all five.
+
+The key stop latch adds no per-frame work while idle **[i]**. The `0x00410100` stub's prefilter stays one
+`cmp dword [filter],0; je` until a key stop arms the latch. The factor hook runs only on factor writes (a stop, about
+nine ramp steps per SETA start); for each it adds a few compares under its existing lock. While the latch is armed (an
+OFF press: about 20–40 iterations at 222 fps), each iteration costs the injection stub's existing capture, one
+uncontended SRW lock, one checked byte read and one by-name `StopFastForward`. That is the same call vanilla's stop
+block made on every steered frame under SETA. Under `debug = 1` every iteration also costs about ten checked reads
+and one QPC read, plus the rows. Not measured in game.

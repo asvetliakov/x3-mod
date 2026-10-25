@@ -108,6 +108,12 @@ VM clear/load sites call the consumer's `vm()`, and the EH adapter calls its loc
 a lock across the engine call. A refused attach rolls the hook at `0x004b148c` back. The feature then logs
 `seta_restore refused reason=<site status>`, and nothing of it stays live.
 
+Since 2026-10-25 the hook and the consumer also carry the SETA key stop latch of `seta_manual_flight`
+([seta-manual-flight.md](seta-manual-flight.md#key-stop-latch-mode--1)). The factor hook arms it on
+`ToggleFastForward`'s stop. The consumer's `poll()` hands out `StopFastForward` on entries the ticket does not use.
+Bit 1 is set while a ticket is active, while the latch is armed, or always under `debug = 1`. The ticket's decisions
+and rows are unchanged; any factor write still cancels an armed ticket, the latch's own stop included.
+
 ## Fail closed
 
 Before any write, the installer checks:

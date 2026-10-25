@@ -347,7 +347,11 @@ effect]**. Every other starter is excluded below. The fix is a stop latch on the
 3. **One read, one `Input` per iteration.** `0x00404280` (from `0x00403db8`, game mode) reads one entry (`0x0040428c`),
    stores it in `0x0060903c` and calls `150::Input(key)` through `0x00402670`. It does so for an empty read (0) too,
    unless the previous `0x00410100` made a script call of its own (`[0x00607c60]`, `0x004042d1`). Then
-   `0x00410100` runs in the same iteration.
+   `0x00410100` runs in the same iteration. The key latch's injected `0x0049f4c0` call never sets that flag. The image
+   has 8 references to it by address: the test `0x004042d1`, the clear `0x0040430f`, and six sets inside the input
+   routine's own key branches (`0x004100f2` … `0x00410b57`). None is in `0x0049f330..0x0049f56f`, the resolver, runner
+   and wrapper ([`input_flag_writers.py`](../../verification/results/seta-key-toggle/input_flag_writers.py) →
+   [`.txt`](../../verification/results/seta-key-toggle/input_flag_writers.txt), `RESULT PASS`).
 4. **The engine's own per-key work.** `0x00410100` clears the action counters `0x0057fc68[0x400]` at entry
    (`0x0041013c`). Then, for every engine code down this poll, it calls `TranslateKey`. A real action (1..0x3ff, not
    the key) gets `counter[action] += 1` (`0x00410a6a`). Any other result records a press time, and the release sends
@@ -493,6 +497,7 @@ k = 1, 2.5, 10 for strafe maxima below, at and above the limit) is checked by th
 python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 162 checks
 python3 -I verification/results/seta-key-toggle/seta_key_toggle_study.py /mnt/c/X3 <profile0.xpf> > verification/results/seta-key-toggle/seta_key_toggle_study.txt   # §7, RESULT PASS
 python3 -I verification/results/seta-key-toggle/log_facts.py /mnt/c/X3/x3m.log > verification/results/seta-key-toggle/log_facts.txt
+python3 -I verification/results/seta-key-toggle/input_flag_writers.py /mnt/c/X3/X3AP.exe > verification/results/seta-key-toggle/input_flag_writers.txt   # §7.1 item 3, RESULT PASS
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 flock /tmp/x3-ghidra.lock \
   ~/ghidra_12.1.4_PUBLIC/support/analyzeHeadless ~/x3-ghidra-research X3Render \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \

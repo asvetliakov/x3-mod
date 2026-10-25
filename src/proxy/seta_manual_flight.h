@@ -10,6 +10,9 @@
 //       controller's ramp step by 1/k^2 and its target by 1/k (k = R / 65536, the clock's effective rate), and the
 //       strafe limit by 1/k, so the ship turns and strafes at its unwarped real-time rates;
 //   0, empty or anything else = nothing patched.
+// At 1 and 2 the SETA key stop latch (seta_key_latch_core.h) runs in seta_restore's factor hook and injection consumer:
+// after the key's own stop it calls StopFastForward each iteration while the key is held and 8 after, so a re-delivered
+// toggle of the same press cannot restart SETA (seta_restore::key_latch_enable; off when seta_restore is not armed).
 // Fails closed: executable identity, the install window and every byte window (whole) before any write; a failed step
 // rolls the earlier ones back and logs one `seta_manual_flight refused` row naming the window or site.
 namespace x3m::seta_manual_flight {
