@@ -1,0 +1,27 @@
+{
+ "run": "203",
+ "what": "release 1.6.0 + LOD overlay baker class split by cull (bef0d269) + overlay material strength option B (0c92156e): per-texel diffuse-strength ratio in the specular atlas alpha, 'X3ML' DDS signature, D3DX load flagging, lazy hull twins; ini lod_material_strength default on; x3m-regenerate.exe built with native Windows Python (c9df6247)",
+ "commit": "0c92156e",
+ "dirty": false,
+ "toolchain": "WSL2, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (removed and reconfigured), -j4, 64.1 s",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "63a778e0287d1e616a56003245f5b288d5e8052b54ebe0b2c738542eee59104c",
+  "bytes": 62894456,
+  "stripped": false
+ },
+ "regenerate_exe": {
+  "path": "dist/x3m-regenerate.exe",
+  "sha256": "77c2f6747c44ff5ffe18559629bc4a9176778ba373ce98fa2e1c3e65a83c0091",
+  "bytes": 29777836,
+  "build": "tools/regenerate/build.py --windows (C:\\Python312 3.12.10, pyinstaller 6.22.3, numpy 2.0.2, pillow 12.3.0), smoke test PASS 13.7 s"
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS",
+  "config": "generate.py --check PASS 281 settings, 131 in the template",
+  "host_tests": "test_material_strength + test_bob1 + test_lod_overlay_batch + test_config_schema OK on main; implementer 272 OK / 4 skipped over 15 affected modules",
+  "per_change": "native validator 1,400/1,400 twins in 14 forms; DDS signature collisions 0/9,386; scratch bake freighter_base 3 groups, ratios 0.997-1.004; fleet distant draws 1,999 -> 2,060; reviews: baker split clean, option B 2 rounds no blocker"
+ },
+ "producer": "main session"
+}

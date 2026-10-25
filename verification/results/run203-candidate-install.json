@@ -1,0 +1,36 @@
+{
+ "run": "203",
+ "what": "run203 candidate installed into native C:\\X3",
+ "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run202; cp -p C:\\X3\\x3m-regenerate.exe C:\\X3\\x3m-regenerate.exe.1.1.0; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cp dist/x3m-regenerate.exe C:\\X3\\x3m-regenerate.exe; cmp both",
+ "installed_at": "2026-10-25T21:44+0400",
+ "commit": "0c92156e",
+ "candidate_record": "verification/results/run203-candidate-build.json",
+ "installed": {
+  "dll": {
+   "path": "C:\\X3\\d3d9.dll",
+   "sha256": "63a778e0287d1e616a56003245f5b288d5e8052b54ebe0b2c738542eee59104c",
+   "bytes": 62894456,
+   "verified_bytes": true
+  },
+  "regenerate_exe": {
+   "path": "C:\\X3\\x3m-regenerate.exe",
+   "sha256": "77c2f6747c44ff5ffe18559629bc4a9176778ba373ce98fa2e1c3e65a83c0091",
+   "bytes": 29777836,
+   "verified_bytes": true
+  }
+ },
+ "previous": {
+  "run": 202,
+  "dll_sha256": "ff7db495c649731f",
+  "dll_rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run202 (release 1.6.0 stripped)",
+  "regenerate_sha256": "bb3ba27b4d1a9fb6",
+  "regenerate_rollback": "C:\\X3\\x3m-regenerate.exe.1.1.0"
+ },
+ "overlay": "not rebaked by the agent; the installed addon overlay is the 01:09 bake (no ratios, no signature) until the user runs x3m-regenerate.exe",
+ "x3m_ini": "unchanged (debug = 1, perf = 1, hull_lightmap_gain = 2; lod_material_strength takes its built-in default on)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418...)"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
