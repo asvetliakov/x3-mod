@@ -1,0 +1,80 @@
+X3AP.exe SHA-256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+   [ok] EXE identity
+
+1. DirectInput keyboard poll 0x004d5a90 -> key ring
+   [ok] buffer count: 10 vs cfg+0x728 (1 event per poll above, else 4): 004d5b97  b9 0a 00 00 00 3b 8a 28 07 00 00
+   [ok] each buffered event updates the persistent DIK state ctx+0x210: 004d5cc4  81 f9 ff 00 00 00 73 0a 8a 50 04 88 94 31 10 02 00 00
+   [ok] loop over DIK 0..255: test state & 0x80 (held), else skip: 004d5db0  f6 84 37 10 02 00 00 80 74 65
+   [ok] held key -> ctx+0x10[code] = 1 (down table, cleared at poll start): 004d5ddc  c6 44 30 10 01
+   [ok] skip RSHIFT: 004d5dd2  66 83 fb 36
+   [ok] skip LSHIFT: 004d5de3  66 83 fb 2a
+   [ok] push: wi = wi + 1; compare the NEW index with 3 (period 3: 1, 2, 0): 004d5de9  66 a1 7c 84 57 00 66 05 01 00 66 3d 03 00
+   [ok] push: wi >= 3 -> 0: 004d5e09  66 33 c0 66 a3 7c 84 57 00
+   [ok] push: DIK byte -> slot[wi] (0x00595ee8 + 12*wi); no read-index test: 004d5e18  88 1c 95 e8 5e 59 00
+   [ok] every held DIK is pushed on every poll (no edge test): 004d5e25  66 81 fb 00 01 7c 84
+
+2. Ring reader 0x004d3b60 (one entry per call)
+   [ok] empty when ri == wi -> 0: 004d3b8c  66 a1 88 84 57 00 66 8b 0d 7c 84 57 00 66 3b c1 0f 84 1e 01 00 00
+   [ok] ri = ri + 1; reset to 0 only when the OLD index was >= 3 (period 4: 1, 2, 3, 0): 004d3ba2  66 8b d0 66 05 01 00 66 83 fa 03 66 a3 88 84 57 00 7c 09 66 33 c0
+   [ok] DirectInput mode: DIK byte of slot[ri] -> 0x004d6850: 004d3be7  0f bf c0 8d 04 40 0f b6 04 85 e8 5e 59 00 e8 56 2c 00 00
+   [ok] the WM writer (only without a DirectInput keyboard) uses the period-4 rule of the reader: 004d3a88  66 a1 7c 84 57 00 66 8b c8 66 03 c2 66 83 f9 03
+   [ok] slot 3 DIK byte 0x00595f0c lies in zero-initialised .bss
+   [ok] no absolute reference to 0x00595f0c anywhere in the file
+   [ok] five .text uses of the slot base 0x00595ee8 (one writer, four readers)
+   [ok] DIK 0 -> above the table: 004d6850  83 c0 ff 3d ec 00 00 00 0f 87 6e 03 00 00
+   [ok] ... -> engine code 0 (| 0x1000 with Shift): 004d6bcc  33 c0 c3
+   [ok] the keyboard device is always created: 004d57d1  a1 74 8b 60 00 8b 08 8b 51 0c 57 68 7c 8b 60 00
+   [ok] window procedure: WM_KEYDOWN/WM_CHAR feed the ring only without a DirectInput keyboard: 004d37a3  8b 0d 74 8b 60 00 85 c9 74 09 83 3d 7c 8b 60 00 00 75 1f
+
+3. One ring read and one script Input call per main-loop iteration
+   [ok] main loop: pump (DirectInput poll) per iteration: 00403af5  e8 b6 f9 0c 00
+   [ok] game mode -> 0x00403db8: 00403b3a  39 ae d8 04 00 00 0f 85 72 02 00 00
+   [ok] 0x00403db8 call 0x00404280: 00403db8  e8 c3 04 00 00
+   [ok] 0x00404280 reads ONE ring entry: 0040428c  e8 cf f8 0c 00
+   [ok] last read key -> 0x0060903c: 004042a2  66 89 35 3c 90 60 00
+   [ok] Input(key) runs for every read, an empty read (0) included, unless [0x00607c60] (an Input from 0x00410100 in the previous iteration): 004042d1  83 3d 60 7c 60 00 00 74 05 66 85 f6 74 1a 0f bf ce e8 89 e3 ff ff
+   [ok] 0x00402670 = by-name "Input" on class 0x96: 00402681  68 7c 53 55 00 68 96 00 00 00
+   [ok] string 0x0055537c "Input"
+   [ok] 0x00410100 runs after the read, in the same iteration: 00404363  e8 98 bd 00 00
+
+4. 0x00410100 keyboard loop and the action counters
+   [ok] entry: memset(0x0057fc68, 0, 0x400) at 0x0041013c (the 0x00410100 inject stub runs before it): 00410130  68 00 04 00 00 6a 00 68 68 fc 57 00 e8 9f 8c 10 00
+   [ok] per engine code 0..0x1ff: down this poll?: 004109f0  80 7c 3e 10 00 0f 84 a1 00 00 00
+   [ok] held key -> by-name TranslateKey (0x0055539c)
+   [ok] translated (1..0x3ff, != key) -> counter[action] += 1 at 0x00410a6a; else press time, Input(k|0x2000/0x4000) on release: 00410a5a  85 c9 74 18 3b cf 74 14 81 f9 00 04 00 00 7d 0c 80 81 68 fc 57 00 01
+   counter of action 675 (SETA): u8 at 0x0057ff0b
+   [ok] two EXE pushes of "InputAction" (0x00555e00): look 0x2cd..0x2d4 and mouse steering 0x230/0x238
+
+5. Story script (Mayhem addon/07.cat)
+   build id 1462141839
+   [ok] Mayhem build id
+   [ok] 500::InputFrameMap: m15 = previous action, m14 = TranslateVKey(key), returns m14
+   [ok] 500::GetLastInputFrameKey returns m15 (the action of the previous Input call)
+   [ok] 500::TranslateVKey(0) returns 0
+   [ok] 501::PerFrameInput 1c625: last action == action, or context changed -> return 0 (repeat filter)
+   [ok] switch 1c674 (base 536, 438 slots): action 675 -> 1c65a -> 501::HandleKeyInput (behind the filter)
+   [ok] 1c661 HandleKeyInput; case 675 at 1d345 -> 150::ToggleFastForward (no debounce in either)
+   StartFastForward callers ['150::ToggleFastForward']; ToggleFastForward callers ['501::HandleKeyInput', '605::ClickDisplayPanel']
+   [ok] StartFastForward: only caller ToggleFastForward
+   [ok] ToggleFastForward: key action 675, display click
+   [ok] no script call of 150::InputAction (the engine is its only caller)
+   [ok] 150::Vbi ramp step only while m21, > 250 ms real time apart (synchronous, inside 150::Input)
+   [ok] StopFastForward: m21 = 0, m22 = 0, factor 1.0 (the ramp cannot continue)
+   [ok] stock AP (build 1510658513) InputFrameMap: same statements (vanilla filter)
+
+6. Control profile profile0.xpf
+   SETA (675) on ['0x6a']; yaw/pitch 524..527 on ['0x102', '0x103', '0x104', '0x105']; roll 528/529 on ['0x65', '0x71']
+   [ok] SETA on engine code 0x6a (DIK_J), plain
+   [ok] no tap/hold-qualified binding on 0x6a
+
+7. Model: SETA toggles per press (one poll and one read per iteration; exact index rules above; the script dispatches 675 when the previous Input call mapped to another action)
+   engine (reader period 4)                 J alone               2: 1.3/ 33%   4: 2.0/100%   6: 2.7/ 33%  10: 4.0/100%  16: 5.7/ 67%  22: 8.0/100%  30:10.7/ 33%
+   engine (reader period 4)                 J + one arrow held    2: 0.7/ 33%   4: 1.5/ 50%   6: 2.1/ 58%  10: 3.5/ 50%  16: 5.5/ 50%  22: 7.5/ 50%  30:10.1/ 58%
+   engine (reader period 4)                 J + two arrows held   2: 0.0/100%   4: 0.0/100%   6: 0.0/100%  10: 0.0/100%  16: 0.0/100%  22: 0.0/100%  30: 0.0/100%
+   hypothetical consistent ring (period 3)  J alone               2: 1.0/  0%   4: 1.0/  0%   6: 1.0/  0%  10: 1.0/  0%  16: 1.0/  0%  22: 1.0/  0%  30: 1.0/  0%
+   hypothetical consistent ring (period 3)  J + one arrow held    2: 1.0/  0%   4: 2.0/100%   6: 3.0/  0%  10: 5.0/  0%  16: 8.0/100%  22:11.0/  0%  30:15.0/  0%
+   hypothetical consistent ring (period 3)  J + two arrows held   2: 0.0/100%   4: 0.0/100%   6: 0.0/100%  10: 0.0/100%  16: 0.0/100%  22: 0.0/100%  30: 0.0/100%
+   (frames held : mean toggles / share of start phases with an even count = the press undoes itself)
+   [ok] model sanity: a one-frame press toggles once
+
+RESULT PASS (0 failures)

@@ -83,7 +83,7 @@ time accelerator" and 10825 "Pause game". `HandleKeyInput` is reached from `150:
 the EXE's named call `InputAction`, e.g. `0x0040f9b2` for the eight look directions 0x2cd–0x2d4, actions 717–724
 "View from …", seta-manual-flight.md §1). It is also reached from
 six sites in `501::PerFrameInput`, which `150::Input(key)` calls (`148a5`; the EXE's per-key `Input`,
-chase-view-transition.md). How `PerFrameInput` maps a key code to 675 was not traced **[u]**. The second
+chase-view-transition.md). `PerFrameInput` maps the key through `500::InputFrameMap` → `TranslateVKey` and dispatches 675 only when the action differs from the previous `Input` call's; the engine feeds it one key-ring read per main-loop iteration, held keys included, so one press can toggle more than once ([seta-manual-flight.md](seta-manual-flight.md) §7) **[m]**. The second
 toggle caller is `605::ClickDisplayPanel` (`101a67`), the cockpit display click.
 
 **`StopFastForward` in the EXE.** The string `0x00555e1c` has one push in `.text`, at `0x00412122`.
@@ -286,7 +286,7 @@ menus do not stop it under Mayhem.
 * The stack-record layout at the TI native (taken from the chase core), and that `0x0049f4c0` resolves the
   mod-supplied `"StartFastForward"` for key `0x96`. The latter is the same resolver `0x0049f330` as the flight-proven
   chase call, not yet exercised with this name.
-* How `PerFrameInput` maps keys to action 675; whether `m6` (the warp phase) is readable from the class-150 static
+* Whether `m6` (the warp phase) is readable from the class-150 static
   context. (The nine input flags are resolved in [seta-manual-flight.md](seta-manual-flight.md).)
 * The behaviour of `ShowWarpOutScene` and Mayhem's core-sector block when SETA restarts before `m6 = 0`.
 

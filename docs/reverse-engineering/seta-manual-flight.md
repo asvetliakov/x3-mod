@@ -306,6 +306,183 @@ So the model for (B) is the clock's own R, applied at the controller spans of §
   full-deflection yaw at ×1 and at ×10 with the scale on. Expected: equal rise time and equal steady
   `obj+0x24 · k`.
 
+## 7. The SETA key, and SETA restarting after a key stop (2026-10-25)
+
+User report on release 1.5.1 (`seta_manual_flight = 2`): turning SETA off with its key sometimes makes it start ramping
+up again at once, mostly while yawing or pitching. This is a static study of `X3AP.exe` (same hash), the Mayhem story
+object (`addon/07.cat`, build 1462141839; stock `addon/04.cat` for the filter), the user's control profile
+(`Documents\Egosoft\X3AP\profiles\profile0.xpf`) and the 2026-10-25 log. Nothing was launched. Ghidra was used for
+`0x00410100`, `0x00404280`, `0x00402670`, `0x004d5a90` and `0x004d3b60`; raw output stayed local.
+
+| Script | Output | What it establishes |
+| --- | --- | --- |
+| [`seta_key_toggle_study.py`](../../verification/results/seta-key-toggle/seta_key_toggle_study.py) | [`seta_key_toggle_study.txt`](../../verification/results/seta-key-toggle/seta_key_toggle_study.txt) | the key ring (writer, reader, slot 3), one read and one `Input` call per main-loop iteration, the action counters, the script's repeat filter and the 675 dispatch, every SETA starter, the ramp guard, the profile binding, and the ring model; **52 checks, `RESULT PASS`** |
+| [`log_facts.py`](../../verification/results/seta-key-toggle/log_facts.py) | [`log_facts.txt`](../../verification/results/seta-key-toggle/log_facts.txt) | what the flight log carries (SETA row kinds, the frame rate) |
+
+**Answer.** The SETA key is a held-state stream, not a key-down event. The engine pushes every held key into a key ring
+on every poll and reads one entry per main-loop iteration into the script's `Input`. The script toggles SETA
+whenever the action read differs from the action of the previous `Input` call. Any other entry between two reads of
+the held SETA key re-arms the toggle, so one press can toggle two or more times. The other entry can be a steering key
+held at the same time, or the engine's own empty or stale read. With an even count the press undoes itself: SETA
+stops, then starts again, and its ramp audibly resumes 250 ms later. Vanilla hid the restart while steering, because
+the steering flags stopped SETA again at the first ramp step. Part A removed exactly those stops **[m chain, i
+effect]**. Every other starter is excluded below. The fix is a stop latch on the SETA key; it keeps part A (§7.4).
+
+### 7.1 The key, end to end (Q1) **[m]** unless marked
+
+1. **DirectInput, buffered, applied to a persistent state.** The poll `0x004d5a90` (in flight once per main-loop iteration,
+   through the pump `0x004d34b0` at `0x00403af5`; its other callers `0x0049728c/742c/747c` are wait loops [i]) reads keyboard events with `GetDeviceData`: 1 per poll when
+   `cfg+0x728 > 10`, else 4 (`0x004d5b97`). It applies each event to the 256-byte DIK state `ctx+0x210`
+   (`0x004d5cc4`). It then walks DIK 0..255 and, **for every key that is down**, sets `ctx+0x10[code] = 1` and pushes
+   the DIK into the ring at `0x00595ee8` (12-byte slots, `0x004d5db0..0x004d5e2a`; both Shift keys are excluded). There
+   is no edge test, so a held key is pushed on every poll. `WM_KEYDOWN`/`WM_CHAR` feed the ring only without a
+   DirectInput keyboard (`0x004d37a3`), so OS auto-repeat plays no part. The keyboard device is always created
+   (`0x004d57d1`).
+2. **The ring has two index rules.** The DirectInput writer advances `wi` and resets it when the *new* value reaches 3,
+   so it writes slots 1, 2, 0 (`0x004d5de9`). The reader `0x004d3b60` returns 0 when `ri == wi`. Otherwise it resets
+   `ri` only when the *old* value was ≥ 3, so it reads slots 1, 2, 3, 0 (`0x004d3ba2`). The WM writer `0x004d3a88`
+   uses the reader's rule. In DirectInput mode, slot 3's DIK byte `0x00595f0c` is never written. It lies in .bss, and
+   no reference to it exists in the file, so it stays 0, and DIK 0 maps to engine code 0 (`0x004d6850` →
+   `0x004d6bcc`). Neither writer checks for overflow, so with more held keys than reads, older entries are overwritten.
+3. **One read, one `Input` per iteration.** `0x00404280` (from `0x00403db8`, game mode) reads one entry (`0x0040428c`),
+   stores it in `0x0060903c` and calls `150::Input(key)` through `0x00402670`. It does so for an empty read (0) too,
+   unless the previous `0x00410100` made a script call of its own (`[0x00607c60]`, `0x004042d1`). Then
+   `0x00410100` runs in the same iteration.
+4. **The engine's own per-key work.** `0x00410100` clears the action counters `0x0057fc68[0x400]` at entry
+   (`0x0041013c`). Then, for every engine code down this poll, it calls `TranslateKey`. A real action (1..0x3ff, not
+   the key) gets `counter[action] += 1` (`0x00410a6a`). Any other result records a press time, and the release sends
+   `Input(code | 0x2000)` for ≤ 500 ms or `| 0x4000` for a longer hold. The counter for SETA is the byte at
+   **`0x0057ff0b`** (`0x0057fc68 + 675`). At the `0x00410100` inject site it still holds the previous iteration's
+   count of held keys bound to SETA.
+5. **The binding.** The profile binds action 675 to engine code `0x6a` (DIK_J), plain, with no tap/hold qualifier.
+   `500::ResolveQualifierConflicts` moves a plain binding to `| 0x2000` only when the same key also has a `| 0x4000`
+   binding, and only buttons `0x129`/`0x132` have one. So `TranslateVKey(0x6a) = 675` **[i, profile +
+   method]**, and J reaches the script through the ring, not through the release event. Yaw and pitch are on the arrow
+   keys `0x102..0x105`, roll on `q`/`e`.
+6. **The script's repeat filter.** `150::Input` → `501::PerFrameInput` → `500::InputFrameMap(key)`. That sets
+   `m15 = m14` (the previous call's action) and `m14 = TranslateVKey(key)`; `TranslateVKey(0) = 0`.
+   `GetLastInputFrameKey` returns `m15`. At `1c625`, `PerFrameInput` returns without acting when the action equals the
+   previous call's action or the input context changed. Otherwise the switch `1c674` sends 675 to
+   `501::HandleKeyInput` → `1d345` → `150::ToggleFastForward`. Neither has a time debounce. Stock AP's `InputFrameMap`
+   has the same statements: this is vanilla.
+7. **Start, stop, ramp** (seta-script-toggle.md §1). `ToggleFastForward` calls `StopFastForward` when `m21` is set, and
+   otherwise `StartFastForward` (after the ware and dock tests). Start sets `m21 = 1`, `m22 = 0` and
+   `m23 = real time`, plays 980, and **writes no factor**. `150::Vbi` runs inside `150::Input` whenever real time has
+   changed, before `PerFrameInput`. While `m21` is set it adds one step when more than 250 ms have passed (`1433c`).
+   The first step after a start is therefore ≥ 250 ms later (×1.9 at `m24 = 10`). **No ramp task exists to survive a
+   stop.** `StopFastForward` sets `m21 = 0` and `m22 = 0`, writes 1.0 and plays 981, and the next `Vbi` does nothing.
+   Everything is synchronous inside one `Input` call.
+8. **What can raise `cfg+0xcc` after a key stop:** only `StartFastForward` followed by `Vbi` steps. Its one caller is
+   `ToggleFastForward`, whose callers are action 675 and `605::ClickDisplayPanel`. The proxy's `seta_restore`
+   by-name call also reaches it. No script calls `150::InputAction`, and the EXE calls it only for 717–724 and the
+   mouse-steering 560/568. The direct writes that bypass `m21` do not produce a ramp: cheat 971/972 (×2 / ÷2),
+   speech with a duration (`200::Speak…WithDuration`), `621::CutEvent` (1.0) and `2225::SpeakQuestionWithDuration`
+   (1.0).
+
+### 7.2 Which path fires, and why steering makes it likelier (Q2)
+
+The ring model (study §7) applies the exact index rules, one poll and one read per iteration, and the filter. It counts
+toggles per press over every start phase; the frames-held figures map to wall time at the measured rate below.
+
+| held with J | frames held: 4 / 10 / 22 / 30 → mean toggles, share with an even count |
+| --- | --- |
+| nothing | 2.0 (100 %), 4.0 (100 %), 8.0 (100 %), 10.7 (33 %) |
+| one arrow key | 1.5 (50 %), 3.5 (50 %), 7.5 (50 %), 10.1 (58 %) |
+| two arrow keys | 0 (the press is lost: three pushes per poll overwrite J) |
+| one arrow key, if slot 3 behaved (consistent period 3) | 2.0 (100 %), 5.0 (0 %), 11.0 (0 %), 15.0 (0 %); J alone: always exactly 1 |
+
+Ranked, with evidence:
+
+1. **The SETA key re-delivered within one press: most likely.** Every step is in the bytes (§7.1). Steering adds a
+   second held key: the arrow's DIK (`0xc8..0xd0`) is pushed after J on every poll, so reads alternate J and arrow, and
+   each J after an arrow is a new 675. That holds with or without the slot-3 effect (last table row). Vanilla masked
+   it. Yaw keys set the yaw flag every frame they are held (`0x0041173f`, `0x00411783`), and pitch sets its flag
+   through the controller's rate-change test (§1). So the restarted SETA was stopped again at its first ramp step, the
+   first frame with `cfg+0xcc ≠ 0x10000` (`0x0041210d`), a single frame at ×1.9. A user in vanilla also rarely presses
+   J while steering, because steering already ends SETA. Part A removed those rows, so the restart now runs to ×10.
+   **Measured:** the median frame rate is 222 fps (`log_facts.txt`, 320 windows of 3,600 frames; p10 168, p90 238).
+   A 100 ms press therefore spans about 22 reads **[i]**.
+2. **Cockpit display click** (`605::ClickDisplayPanel` → toggle): possible only with a click on the SETA display.
+   Unlikely, and unrelated to steering **[i]**.
+3. **`seta_restore`: excluded.** It arms only on a stop whose return offset is `15ef8` (`StartGateWarp`) under
+   autopilot. A key stop returns to `155ad` and never arms, and any other factor write cancels an armed ticket
+   (seta-restore.md). **Log, measured:** 18 `armed` (all `gate`, `autopilot=1`), 18 `restored` (all
+   `frames_after_transit=2`), 3 `skipped reason=manual`, 0 `cancelled`. It restarted SETA only two frames after a gate
+   arrival.
+4. **A ramp surviving the stop: excluded [m].** It is not a task; `Vbi` is gated on `m21` (7.1 item 7).
+5. **A script or Mayhem hotkey restart: excluded [m].** No method other than the toggle calls `StartFastForward`. No
+   script calls `InputAction`, and the only MSCI SETA command is the stop (case 1927). Custom hotkeys
+   (`500::TriggerCustomHotkey`) run MSCI scripts, which cannot start SETA.
+6. **A part-A row side effect: excluded [m].** The nine flags have no reader other than the stop block (§1). The block
+   only ever calls `StopFastForward`, and the flags are cleared every frame. Part A removes stops and adds no start.
+
+**Unresolved [u].** With nothing held but J, the model predicts that the slot-3 read (code 0 → `Input(0)` →
+`m14 = 0`) re-arms the toggle every fourth read. At 222 fps that would make an ordinary press fail to start SETA about
+as often as it fails to stop it, and the user has not reported failed starts. Either the user has not noticed or not
+reported it, or a factor the bytes do not show breaks the model for the lone key. The steering case does not depend on
+this (last table row). The diagnostic below settles it.
+
+**What the log can and cannot show [m].** The tier is off (`seta_manual_flight … debug=0`). The log has no row for a
+user toggle, a ramp step, a key read or a by-name toggle. `seta_restore` logs only gate arms, skips, rebinds,
+restores and cancels. It can exclude `seta_restore` for any symptom not within about 3 s after a gate arrival, but the
+user gave no time, so no row can be tied to the report.
+
+### 7.3 Diagnostic rows for one flight, if the cause must be measured first (Q3)
+
+These rows go in a debug-tier consolidated build, with no behaviour change:
+
+* **`seta_factor`**: every `TI_SetTimeWarpFactor` from the existing hook `0x004b148c`, not only the gate arms. Fields:
+  frame, QPC ms, old, new, task IP `[task+0x1c]`, return offset and name. A key stop is IP `1558d`, return `155ad`;
+  a ramp step is IP `14341` with old `0x10000` → new `0x1e666` for the first step **[i offsets/values]**.
+* **`seta_key`**: from the `0x00410100` inject handler, on every entry while `[0x0057ff0b] ≠ 0` and for 8 entries
+  after. Fields: frame, QPC ms, the SETA counter `[0x0057ff0b]`, this iteration's ring read `[0x0060903c]`,
+  `ri = [0x00578488]`, `wi = [0x0057847c]`, the steering counters `[0x0057fe74..0x0057fe79]` (524–529), mouse
+  buttons `ctx+0x454` and joystick buttons `ctx+0x450` (`ctx = *0x00606f3c`), and `cfg+0xcc`. Arm the handler
+  through the prefilter word only from `seta_factor`'s toggle rows, so the idle cost stays zero; that misses the
+  presses that start SETA. To see those as well, the debug build must keep the prefilter bit set.
+* **Flight.** With SETA at ×10, stop it with J five times while holding an arrow key and five times with no key held.
+  Then start it five times with no key held.
+* **Reading.** The reported case shows as a `155ad` row with old > `0x10000`, then the `seta_key` read sequence of
+  the same press, then `14341` ramp rows from about 250 ms later. If the read before the second dispatched J was an
+  arrow code, the cause is interleaving; if it was 0 with `ri` 3, or the ring was empty, it is the stale or empty read.
+  A `155ad` row with old = `0x10000` during a press with no steering proves the lone-key repeat (§7.2 unresolved). A
+  ramp after a key stop with no further J read, and no `seta_restore` row, names another starter: reopen §7.2.
+
+### 7.4 The smallest fix that keeps part A (Q3) **[m sites, i design]**
+
+**A stop latch on the SETA key.** The design puts behaviour in the two sites `seta_restore` already owns:
+
+* **Arm** in the factor hook `0x004b148c` on a key stop: IP `1558d`, return `155ad` (`toggle`), old > `0x10000`,
+  new = `0x10000`. This is the first toggle of a press made to stop SETA. Set a new prefilter bit (`inject_want` bit 2)
+  so that the shared `0x00410100` stub runs the handler; while idle it stays one `cmp; je`.
+* **Hold.** At each `0x00410100` entry while armed, read `c = *(u8*)0x0057ff0b`. It is written only by the input
+  routine on the same thread (`0x0041013c` clear, `0x00410a6a` and `0x00410200` increments), so the read needs no
+  lock. Then call `0x0049f4c0(0, 0, 0x96, "StopFastForward", 1, 0)`. That is the EXE's own call shape
+  (`0x0041211f..0x00412133`) on the wrapper `seta_restore` already calls there. It does nothing when `m21 = 0`: no
+  sound, no write. If a re-delivered toggle restarted SETA earlier in this iteration, it stops it again before any
+  ramp step, because a step needs more than 250 ms. The entry follows the iteration's ring read and `Input` (item 3),
+  so the latch always runs after the re-toggle.
+* **Release.** Disarm after `c = 0` on 8 consecutive entries. The ring drains in at most 4 reads [i], and the counter
+  lags one iteration. Add a wall-time cap of 10 s for a stuck key. A new press is a rise of `c` after release: it
+  disarms the latch, and an ON press is never latched.
+* **Hook-site suitability.** No new site. The inject entry `0x00410100` is three whole instructions (`55 8b ec 83 e4
+  f0`), and its stub saves the general and XMM registers and restores the engine's x87, MXCSR and LastError for the
+  callee. It runs on the main thread, outside the interpreter (seta-script-toggle.md §3(i), seta-restore.md). The
+  call re-enters the factor hook through `StopFastForward`'s write, return offset 0 (bottom record). That only
+  cancels a `seta_restore` ticket, which cannot be armed during a key press because only a gate stop arms it.
+  `0x00410100` is not re-entered: `StopFastForward` reaches `PlaySample` and `TI_SetTimeWarpFactor` only.
+* **Cost.** Zero while idle. During an OFF press, one byte read and one by-name call per frame, for about 20–40
+  frames at 222 fps.
+* **Part A** is untouched: steering still never stops SETA; the latch acts only after the user's own key stop.
+
+Starts are not covered. If the diagnostic shows that the lone key repeats (a `155ad` stop with old = `0x10000` while
+`c ≠ 0`), the ON press needs the mirror: `StartFastForward` once after release. That stop row proves a start in the
+same press passed `ToggleFastForward`'s ware and dock tests, and `StartFastForward` is a no-op when the count left
+SETA on. Telling such a press from a deliberate second press within 250 ms needs the press boundaries from `c`. That
+is design work and stays open. An engine-side fix also stays open. Changing the DirectInput writer's limit (`66 3d
+03 00` at `0x004d5df3`, imm 3 → 4) would make the ring consistent, but it does not stop interleaving, and every
+held-key repeat in menus would change with it.
+
 ## Reproduce
 
 The strafe reading (steady displacement `2 × increment` per frame, the limit scale equal to the unwarped increment at
@@ -314,6 +491,8 @@ k = 1, 2.5, 10 for strafe maxima below, at and above the limit) is checked by th
 
 ```sh
 python3 -I verification/results/seta-manual-flight/seta_manual_flight_study.py > verification/results/seta-manual-flight/seta_manual_flight_study.txt   # RESULT PASS, 162 checks
+python3 -I verification/results/seta-key-toggle/seta_key_toggle_study.py /mnt/c/X3 <profile0.xpf> > verification/results/seta-key-toggle/seta_key_toggle_study.txt   # §7, RESULT PASS
+python3 -I verification/results/seta-key-toggle/log_facts.py /mnt/c/X3/x3m.log > verification/results/seta-key-toggle/log_facts.txt
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 flock /tmp/x3-ghidra.lock \
   ~/ghidra_12.1.4_PUBLIC/support/analyzeHeadless ~/x3-ghidra-research X3Render \
   -process X3AP.exe -readOnly -noanalysis -scriptPath tools/analysis \

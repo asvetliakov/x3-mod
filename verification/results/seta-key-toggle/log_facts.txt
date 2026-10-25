@@ -1,0 +1,13 @@
+log /mnt/c/X3/x3m.log
+  seta_manual_flight           1
+  seta_restore                 1
+  seta_restore armed           18
+  seta_restore rebound         18
+  seta_restore restored        18
+  seta_restore skipped         3
+  seta_manual_flight debug=0
+  armed ret_name=gate autopilot=1: 18
+  skipped ret_name=gate autopilot=0: 3
+  restored frames_after_transit values: [2]
+  frame_end windows (3600 frames each): n=320 fps p10=168 median=222 p90=238
+  rows that would show a user SETA toggle, a ramp step or a key read: none exist at this tier
