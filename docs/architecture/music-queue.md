@@ -2,10 +2,13 @@
 
 `src/proxy/music_keep.cpp`, `music_keep.h`, `music_keep_core.h` ("The track queue"). Option `music_queue` (`[audio]`,
 default 1, `requires music_keep`), launcher `--music-queue` / `--no-music-queue` (`X3M_MUSIC_QUEUE=1`, sent only with
-`--music-keep`, refused under `--vanilla`). Engine and script facts:
-[music-script-driver.md](../reverse-engineering/music-script-driver.md) sections 1, 3, 7, 8 (the policy is section 8.3
-as amended by 8.4) and [music-restart.md](../reverse-engineering/music-restart.md) sections 1 and 6. Ledger:
-[verification/music-queue.md](../verification/music-queue.md). Unflown as of 2026-10-23.
+`--music-keep`, refused under `--vanilla`). Docking: option `music_dock_keep` (`[audio]`, default 1, `requires
+music_queue`), launcher `--music-dock-keep` / `--no-music-dock-keep` (`X3M_MUSIC_DOCK_KEEP=1`, sent only with the queue,
+refused under `--vanilla`). Engine and script facts:
+[music-script-driver.md](../reverse-engineering/music-script-driver.md) sections 1, 3, 7, 8, 10 (the policy is section
+8.3 as amended by 8.4) and [music-restart.md](../reverse-engineering/music-restart.md) sections 1, 6 and 7.7. Ledger:
+[verification/music-queue.md](../verification/music-queue.md). First flown in release 1.5.1 (2026-10-25 log: 15
+episodes); the save keep and the docking keep (2026-10-25) are unflown.
 
 ## Problem
 
@@ -62,14 +65,71 @@ Three states, kept in `TrackQueue` (pure functions in the core header, host-test
    stop at IP `0x0da17`, which is never deferred), a stop of any other music record, any music play at T2 other than
    C's own `MOV_PlayMovie(N)` (every caller of `0x00498c90`: `MOV_PlayMovie`, `MOV_PlayMovieFrom` and the helper
    `0x004f6640`; the record's music flag `0x80` decides, not the caller), every stop-all at the T1 entry but alt-tab
-   under `skip_all` (save, pause, load, P_Leave, session start, unknown; before the walk, so neither O nor P is
-   visited), and a nonzero committed alert level `[R+4]` sampled at Present while the queue is active (a combat start
+   under `skip_all`, a save item 6 keeps and a pause item 6 hands back (pause, alt-tab under `paused`, load, P_Leave,
+   session start, unknown, and a save item 6 refuses; before the walk, so neither O nor P is visited), and a nonzero committed alert level `[R+4]` sampled at Present while the queue is active (a combat start
    the script dropped while C was in `TI_Delay`). An orphan that ended with nobody left to wake (flag 2 clear, context
    0) or that is no longer linked under P is freed or forgotten at the next event (`stale`, `lost`). Alt-tab depends on
    the keep's alt-tab mode in effect: under `skip_all` (Patch D live) it leaves the queue alone, as `skip_all` leaves O
    untouched; under `paused` (`status_gate` refused) it ends the queue like every other caller (C woken, O's context
-   zeroed), but P is freed at the next Present (`event=free_later`), because alt-tab's T1 can run inside a COM call of
-   the manager's walk (media-record-lifetime.md, boundary 1) and the walk then pauses the orphan as vanilla would.
+   zeroed), but P is freed at the next Present
+   (`event=free_later`), because alt-tab's T1 can run inside a COM call of the manager's walk (media-record-lifetime.md,
+   boundary 1).
+6. **Through a save (event `keep`), and a pause of a same-id episode (`end reason=handback`), 2026-10-25.** At the
+   save's T1 (caller `0x00404561`, only with the save pump bound: `music_keep_save_pump_hook reason=ok`) the queue stays
+   when O is still as the queue left it: linked under P with the same media, music, DirectSound path (`0x40`), flag 2
+   set, loop bit clear, and context C (PARKED) or 0 (ORPHANED). The same stop-all's walk meets O at Patch A, which
+   returns `skip_all` for it (no hold; flag 2, context and graph untouched). **Pause:** a pause cannot be kept the same
+   way. The iteration that sets it runs the scheduler and the manager once, then enters the pause wait `0x00404280`
+   (from `0x00403db8`), whose loop `0x004043a0`..`0x004043d6` calls only `0x004d34b0` and `0x004d3b60` until the
+   unpause (`0x004043d8`), so nothing pumps O and its DirectSound ring would repeat stale audio; the keep resumes a
+   paused track only through the script's replay of the same id (Patch C, Run), and nothing replays P. So a pause ends
+   the queue as before (C woken, P freed, N from 0 after the unpause), except a same-id episode (old id = new id: what
+   `music_dock_keep` leaves while docked), which is **handed back**: with O still as the queue left it and the first
+   record under the id being the task's own (unplayed, unowned, with media) or none, the handler frees that record by
+   id while O is still under P, then writes the id back into O. That is vanilla's state (the playing record under the
+   script's `m17`, the task waiting on it), so the walk pauses O as the keep pauses any music record under pause
+   (`paused`, held; the vanilla completion wakes the task through O's slot) and the task's replay after the unpause
+   finds O, skips the seek and resumes it at its position. Should another record still carry the id after the free,
+   O keeps P and P is freed instead (the end of before; `freed=2`). One race window remains: a docking defer wakes
+   T_old, which runs only in the next scheduler pass; a pause in the same iteration hands O back under S, and T_old's
+   `MOV_FreeMovie(S)` after the unpause then frees O, so C plays S from 0. That is no worse than the old end, and the
+   keep's hold left on the freed record is dropped safely (its checks go through `live_record`). A pause while an
+   ordinary sector change is pending
+   ends the queue as before. **Alt-tab under `paused`** (Patch D not live) ends it as before: without RunInBackground
+   `GetMessageA` blocks the loop in `0x004d34b0`, and its T1 may run inside the manager's walk, where nothing is freed.
+   **Save:** PARKED delivers `(C, 1)` through O's slot and zeroes O's `+0x14`/`+0x18`, exactly the
+   completion vanilla's stop-all gives the music task, so the script writer saves C runnable (a task saved suspended on
+   a media completion is never woken after a load, [music-restart.md](../reverse-engineering/music-restart.md) §7.3);
+   the state goes back to ORPHANED with the same N and C. The walk also arms the save pump on O in queue mode
+   (`SavePump::arm_queue`: the check expects flag 2 set, nothing waits for a replay, no early stop pauses it; the
+   episode and its `music_keep_save_pump … run=queue` row end at the save's gzclose, also after an early stop). When the
+   pump is already taken by another record of the same save, Patch A gives O the vanilla stop instead (paused, flag 2
+   and context cleared) and C's replay after the save ends the queue (`ended_before_park`), N from 0 as before. A pump
+   return of 2 (O ended during the save; its buffer stopped, `[m+0x48]` back to 1, which the pump head would re-arm at
+   the manager's next poll) makes the handler clear O's flag 2 at once, as the manager's natural end would (its context
+   is 0 after the save's wake), so the manager never polls it again; C's replay then ends the queue
+   (`ended_before_park`) and N starts, any other event frees O (`stale`). After the save the manager
+   services O again (flag 2), C replays `MOV_PlayMovie(N)` in the next scheduler pass and parks on O again (item 2),
+   and O's natural end releases N as without the save. The savegame carries O under its key P with flag 2 and context
+   0: the restore masks the flag and recreates P through the allocator, whose constructor finds no
+   `soundtrack\2130706xxx.*` file, destroys the media and returns 0, so a load recreates nothing (§7.7 [i]); N's
+   unplayed record and C runnable with `m17 = N` are what a load restores, so that save plays N from 0 when loaded.
+   Any mismatch (pump unbound for a save, O ended, not DirectSound, loop-flagged, another context, gone) ends the queue
+   as before (item 5). The entry stub calls its handler again while it returns holds to pause; the repeat call in the
+   same stop-all changes nothing (`walk_caller` lives until the walk meets O or the next Present).
+7. **Docking (`music_dock_keep`, 2026-10-25).** At T3 a request whose new-id cell (-11) is a docking track, 14
+   (`150::DockingAllowed`'s `ChangeTrackMusic(14)`, the only literal request of it) or 2001..2004
+   (`EnvironmentToMusicTrack` for a non-sector environment, `2001 + SE_Random(4)`), is taken as a request for the
+   stopped id (EAX, the script's `m17`): every other test of item 1 (cells, alert 0/0, `combat_old`, a playing owned
+   record) and item 4 applies unchanged, and on a consumed defer or collapse the handler writes that id into the
+   requesting task's id cell before completing it. `PlayMusicWithFade` reads the cell again after the stop (`m17 =
+   p-4` at `0x0db88`), so the task loads and plays the id the script already had, its play parks on O, O keeps playing,
+   and O's natural end replays the same id from 0: the vanilla loop. While a sector change is pending the docking
+   request collapses to the pending id, which stays pending. Undocking requests the sector id, which equals `m17`, so
+   `PlayMusicWithFade` returns at its `m17 == id` gate (`0x0daaa`) and nothing stops. A docking request under an
+   alert or over the combat track stays vanilla (the docking track plays); a docking track that got through that way
+   (or plays after a load in a dock) is refused as the old track of a non-docking request (`dock_old`), so the next
+   sector request switches at once instead of waiting for it.
 
 **The KC prerequisite.** Without it a jump never reaches the T3 test. In memory, the 6 bytes `op6f; jt 0x161d7` at
 CODE `0x161c3` of `150::WarpToSector` (Mayhem; stock `0x1639c` → `0x163b0`; the window is detected at run time by its
@@ -109,9 +169,12 @@ after the marker. **[i]**: that both stop-alls precede the story reload is read 
 and `0x00404cc0` (sector-transit-order.md section 3, shadow-caster-lifetime.md section 5a), not traced.
 
 **Interactions.** The combat resume (music-script-driver.md section 4) never remembers a stop the queue deferred or a
-stop of the parked id: O plays to its end, N never played. The keep's holds and the save pump are unchanged; the save's
-stop-all ends the queue before the walk (C woken, P freed), so after a save the new track starts from 0 and the old one
-is cut at the save: the documented degradation of section 8.3. The trace stubs stay chained on the same sites and run
+stop of the parked id: O plays to its end, N never played. The keep's holds are unchanged. The save keeps the queue
+(item 6; the save pumps O instead of the keep's replayed record), a pause hands a same-id episode back to the keep; a
+pause during a pending change, an alt-tab under `paused`, a load, P_Leave and session start still end it before the
+walk (C woken, P freed), so after those the new track starts from 0. In the 1.5.1 flight 6 of 9 `stop_all` ends were saves and 3 were synchronous ends followed by an alt-tab in the same
+frame, the pattern of the pause stop-all that precedes an alt-tab there (`queue_save_gaps.py`; the row now names the
+caller). The trace stubs stay chained on the same sites and run
 in front of the queue's (the trace installs after the keep, and the newest claim is the chain head), so a stop or play
 the queue consumes is still logged by its trace row, followed by the queue row.
 
@@ -123,7 +186,9 @@ witnesses and the play entry's head through `core::window_matches` (seeing throu
 the play entry `0x00498c90` through the shared-claim protocol (`core::acquire_shared`, chained in front of or behind the
 trace, released by rollback and shutdown for whichever feature acquired it). A refusal logs `music_queue … armed=0
 reason=bytes_mismatch|chain_failed|…` and the keep installs without the queue. Without the keep the option is a
-no-op (`reason=keep_off`). The stubs are integer-only (EFLAGS, EAX/ECX/EDX saved first and restored before each exit,
+no-op (`reason=keep_off`). The save keep and `music_dock_keep` add no site and no byte window: the docking keep is
+read only with the queue requested and acts only while it is armed (`dock_keep=` on the install row), the save keep
+only with the save pump bound. The stubs are integer-only (EFLAGS, EAX/ECX/EDX saved first and restored before each exit,
 ESP as at entry; the consume exits are a plain `ret`); the handlers run under `LightCallBoundary`, the completion and
 free shims save EBX/ESI/EDI/EBP, and all of them are roots of `check_no_x87.py`.
 
@@ -137,16 +202,23 @@ free shims save EBX/ESI/EDI/EBP, and all of them are roots of `check_no_x87.py`.
   bytes seen> applied= refused= load_begins= markers=` once per change of result, per apply (after every completed
   story reload) and for each new build that has no sites (x3config at frame 0, x3intro at the menu).
 * `music_queue frame= seq= qpc= event=defer|park|collapse|release|end reason= state= old= new= key= record= task=
-  stop_task= wake= clear= complete= park= freed= free_later= frames= episode=` per transition (`frames` since the
-  defer); `music_queue frame= seq= qpc= event=free_later key= freed=` at the Present after an alt-tab end under
+  stop_task= wake= clear= complete= park= freed= free_later= frames= episode= caller= dock=` per transition (`frames`
+  since the defer; `caller` names the stop-all on `end reason=stop_all` and `keep`, `-` otherwise; `dock` is the
+  requested docking id a defer or collapse replaced, 0 otherwise); `event=keep caller=save` at a save that keeps the
+  queue (`wake=1` while PARKED), followed in the walk by `music_keep_stop … name=save … mode=skip_all held=0 … pump=1
+  queue=1` (`mode=vanilla pump=0` when the pump was taken) and at its gzclose by `music_keep_save_pump … end=gzclose
+  run=queue`; `event=end reason=handback caller=pause freed=<1: the task's record freed, 0: none, 2: fallback, P
+  freed>` at a pause of a same-id episode, followed by the keep's `music_keep_stop name=pause id=<the id> … mode=paused
+  held=1`; `music_queue frame= seq= qpc= event=free_later key= freed=` at the Present after an alt-tab end under
   `paused`; `event=refuse
-  reason=not_armed|no_task|cells|immediate_id|alert|combat_old|not_playing|same_id … ip= k= capacity= cells= c-18= c-13=
+  reason=not_armed|no_task|cells|immediate_id|alert|combat_old|not_playing|same_id|dock_old … ip= k= capacity= cells= c-18= c-13=
   c-11= c-10= c-9= c-7=<tag:value> alert=<ok>/<old>/<new> record= flags= ctx=` per non-deferred `PlayMusicWithFade` stop.
   End reasons: `natural_end` (release), `lost`, `ended_before_park`, `stop`, `other_play`, `stop_all`, `alert_edge`,
-  `stale`, `claimed`. The `music_queue` rows have a cap of their own, 200 per session (`queue_line_cap`), then one
+  `stale`, `claimed`, `handback`. The `music_queue` rows have a cap of their own, 200 per session (`queue_line_cap`), then one
   `music_queue_cap … note=further_queue_lines_suppressed`, separate from the 1,000-line cap of the trace and keep
   rows, so a trace-heavy flight cannot suppress them.
-* `X3M_MUSIC_QUEUE` other than exactly `1` (for example `0`) logs `requested=0`.
+* `X3M_MUSIC_QUEUE` other than exactly `1` (for example `0`) logs `requested=0`. The install row ends with
+  `dock_keep=1` when the docking keep is armed.
 
 ## What the first flight must show
 
@@ -167,7 +239,27 @@ With `music_keep = 1`, `music_queue = 1` and `music_trace = 1`:
    release plays the newest id.
 4. One combat start while pending: `event=end reason=stop wake=1 freed=1` and the combat track plays as vanilla
    (`music_trace_play id=10xx`); after the alert the sector track of the current sector from 0.
-5. One save while pending: `event=end reason=stop_all wake=1 freed=1`, then the new track from 0 after the save.
+5. One save while pending (changed 2026-10-25): `event=keep caller=save` (`wake=1` if parked), `music_keep_stop
+   name=save … mode=skip_all … pump=1 queue=1`, `music_keep_save_pump … ret1=<n> ret0=0 ret2=0 pump_end=gzclose
+   end=gzclose run=queue`; the old track audible through and after the save; then `event=park` of the same N by the
+   same task right after the save (the consumed play logged by the trace just before it, as at the first park, and
+   no `music_keep_seek` of the new id), and at the old track's end
+   `event=release reason=natural_end`. No `end reason=stop_all caller=save`. A save whose pump returned 2 (`ret2=1`):
+   `event=end reason=ended_before_park` at the task's replay after the save and the new track from 0. One pause (Pause
+   key) while docked under `music_dock_keep`: `event=end reason=handback caller=pause freed=1`, `music_keep_stop
+   name=pause id=<sector id> … mode=paused held=1`, after the unpause `music_keep_seek id=<sector id> action=skip` and
+   the track continuing at its position. Only the Pause key's script handler is shown to call `X2_SetPause`
+   ([pause-dialog-input.md](../reverse-engineering/pause-dialog-input.md)); whether the Esc menu reaches it is not
+   established, so an Esc-menu pause may show no `caller=pause` row at all. One pause while a sector change is pending: `event=end reason=stop_all
+   caller=pause wake=1 freed=1` and the new track from 0 after the unpause (unchanged). Loading that save afterwards plays the new track from 0 and logs no queue
+   row for the private key.
 6. A track left to its end with no change pending: a same-id `music_trace_play` with no queue row (vanilla loop).
+6a. One dock and undock with no change pending (`music_dock_keep = 1`): `event=defer old=<S> new=<S> dock=14` and
+   `event=park` at the docking clearance, `event=collapse old=<S> new=<S> dock=200x` and `event=park` once docked,
+   no landing or docking track audible, the sector track continuous; at undock no queue row and no
+   `music_trace_play`; at S's natural end `event=release` and `music_trace_play id=<S> start_ms=0`. A dock while a
+   sector change is pending: `event=collapse old=<N> new=<N> dock=…`, and N plays at O's end. A dock during combat
+   (alert on): `event=refuse reason=alert new=14` and the vanilla landing track; the first sector request after it:
+   `event=refuse reason=dock_old` and the sector track at once.
 7. Any `event=refuse reason=cells` row on a `0x0db54` stop with alert 0/0 is the open item of section 8.4: the row
    carries the six cells for the correction.

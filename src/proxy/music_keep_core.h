@@ -118,6 +118,7 @@ constexpr unsigned char status_ended_window[status_ended_length] = {0x66, 0xb8, 
 // 1 (streaming), 2 (ended and stopped); no x87; its only engine entry is the status query's DirectSound tail
 // (0x004d17b5: [m+0x8c] & 8 clear and & 0x40 set, then EAX = ESI = media, `jmp 0x004d0700`).
 constexpr std::uint32_t save_return_va = 0x00404561; // the save routine's stop-all call returns here (stop_callers)
+constexpr std::uint32_t pause_return_va = 0x00407069; // X2_SetPause's stop-all call returns here (stop_callers)
 constexpr std::uint32_t pump_va = 0x004d0700, pump_end_va = 0x004d0c0c, status_ds_tail_va = 0x004d17b5;
 constexpr unsigned pump_head_length = 55; // sub esp,0x44; push ebx/ebp/esi/edi; mov esi,eax; mov edi,1; the re-arm
                                           // ([esi+0x48]==1 && [esi+0x64]==1: Stop, cursors 0, SetCurrentPosition(0))
@@ -557,6 +558,10 @@ inline std::uint64_t ticks_to_ms(std::uint64_t ticks, std::uint64_t frequency) {
 struct SavePump {
     std::uint32_t record = 0, id = 0, media = 0, thread = 0;
     bool open = false, pumping = false, kept = false, run_marker = false;
+    // The queue's orphan through a save (arm_queue): flag 2 stays set and the manager services the record again after the
+    // save, so the checks expect flag 2, nothing waits for a replay and no early stop pauses it (kept stays false).
+    bool queue = false;
+    bool queue_ended = false; // queue mode: a pump call returned 2 (O ended during the save); the handler clears O's flag 2
     std::uint64_t frequency = 0, interval = 0, bound = 0, skip_bound = 0;
     std::uint64_t armed_at = 0, first_call_at = 0, last_at = 0, pump_end_at = 0, end_at = 0, max_gap = 0;
     std::uint32_t writes = 0, samples = 0, calls = 0, returns[4]{}; // returns[3]: any other value (failure)
@@ -581,6 +586,13 @@ struct SavePump {
         open = pumping = kept = true;
         countdown = 1; // the first gzwrite samples the clock (and pumps): the stop-all's lead is the reserve
     }
+    void arm_queue(std::uint32_t r, std::uint32_t i, std::uint32_t m, std::uint32_t t, std::uint64_t now, std::uint64_t f) {
+        arm(r, i, m, t, now, f);
+        kept = false;
+        queue = true;
+    }
+    // The record flags a pump call requires (music, DirectSound path, and flag 2 clear, or set for the queue's orphan).
+    std::uint32_t expected_flags() const { return flag_music | flag_directsound | (queue ? flag_playing : 0u); }
     // Every gzwrite while pumping: true when this call reads the clock.
     bool sample_due() {
         ++writes;
@@ -636,6 +648,7 @@ struct SavePump {
         ++calls;
         ++returns[result <= 2 ? result : 3];
         if (result != 1) cancel_skip(result == 2 ? PumpEnd::ended : PumpEnd::failed, after);
+        if (queue && result == 2) queue_ended = true;
     }
     // Patch C, any music play (record, id, media of the played record; `skipped`: the seek was skipped). Returns true
     // when the episode ends here (the caller logs and resets); false when nothing was active or the replay of the kept
@@ -837,6 +850,13 @@ inline std::int32_t cell_offset(std::int32_t index) {
 inline bool immediate_id(std::uint32_t id) {
     return std::int32_t(id) <= 0 || id == id_death || id == id_landing || (id >= boarding_id_first && id <= boarding_id_last);
 }
+// Docking tracks (music_dock_keep): 14 is 150::DockingAllowed's ChangeTrackMusic(14), the only literal request of it,
+// and 2001..2004 is 200::EnvironmentToMusicTrack's pick for a non-sector environment (a dock), 2001 + SE_Random(4); the
+// same in both builds (music-script-driver.md section 10, music_dock_ids.py).
+constexpr std::uint32_t dock_id_first = 2001, dock_id_last = 2004;
+inline bool dock_id(std::uint32_t id) {
+    return id == id_landing || (id >= dock_id_first && id <= dock_id_last);
+}
 inline std::uint32_t queue_key(std::uint32_t episode) {
     return queue_key_base + (episode & queue_key_mask);
 }
@@ -844,9 +864,10 @@ enum class QueueState : unsigned { idle = 0, orphaned = 1, parked = 2 };
 inline const char* queue_state_name(QueueState s) {
     return s == QueueState::orphaned ? "orphaned" : s == QueueState::parked ? "parked" : "idle";
 }
-enum class QueueEvent : unsigned { none = 0, defer, park, collapse, release, end, refuse };
+enum class QueueEvent : unsigned { none = 0, defer, park, collapse, release, end, refuse, keep };
 inline const char* queue_event_name(QueueEvent e) {
     switch (e) {
+    case QueueEvent::keep: return "keep";
     case QueueEvent::defer: return "defer";
     case QueueEvent::park: return "park";
     case QueueEvent::collapse: return "collapse";
@@ -867,6 +888,7 @@ enum class QueueReason : unsigned {
     combat_old,   // the stopped id is the track the last music play started with the alert on
     not_playing,  // the record is absent, not music + playing, loop-flagged, unowned or has no media
     same_id,      // new id == old id
+    dock_old,     // music_dock_keep: the stopped track is a docking track and the new id is not (switch at once)
     // ends
     natural_end,       // the replay after O's natural end: P freed, vanilla plays N from 0
     lost,              // O no longer linked under P (the manager's error path freed it)
@@ -876,6 +898,7 @@ enum class QueueReason : unsigned {
     stop_all,          // a stop-all other than alt-tab
     alert_edge,        // the committed alert level became nonzero while the queue was active
     stale,             // O ended (flag 2 clear, context 0) with nobody left to wake
+    handback,          // a pause of a same-id episode: O re-keyed to its id, the keep pauses and resumes it as any track
     claimed,           // O carries a context the queue did not write, or C's slot is out of range
 };
 inline const char* queue_reason_name(QueueReason r) {
@@ -888,6 +911,7 @@ inline const char* queue_reason_name(QueueReason r) {
     case QueueReason::combat_old: return "combat_old";
     case QueueReason::not_playing: return "not_playing";
     case QueueReason::same_id: return "same_id";
+    case QueueReason::dock_old: return "dock_old";
     case QueueReason::natural_end: return "natural_end";
     case QueueReason::lost: return "lost";
     case QueueReason::ended_before_park: return "ended_before_park";
@@ -896,6 +920,7 @@ inline const char* queue_reason_name(QueueReason r) {
     case QueueReason::stop_all: return "stop_all";
     case QueueReason::alert_edge: return "alert_edge";
     case QueueReason::stale: return "stale";
+    case QueueReason::handback: return "handback";
     case QueueReason::claimed: return "claimed";
     default: return "none";
     }
@@ -924,6 +949,7 @@ struct QueueStopView {
     std::uint32_t flags = 0, context = 0, rec_slot = 0, record = 0, media = 0;
     OrphanView orphan;                                          // when the queue is active
     bool combat_old = false;                                    // id is the last play's id and that play had the alert on
+    bool dock_keep = false;                                     // music_dock_keep is armed
     const story::QueueSites* story = nullptr;                   // the detection for the VM's object (null: none or failed)
 };
 // The T2 entry (play routine) as the handler reads it.
@@ -951,11 +977,25 @@ struct QueueOutcome {
                   park_slot = 0;
     std::uint32_t old_id = 0, new_id = 0, task = 0, stop_task = 0;
     unsigned long long frames = 0; // since the defer
+    // music_dock_keep: the request was a docking track (`dock` = its id) and new_id is the stopped id instead; on a
+    // consumed defer or collapse the handler writes new_id into the requesting task's id cell before completing it.
+    std::uint32_t dock = 0;
+    std::uint32_t caller = 0; // T1 rows: the stop-all's return address
+    // handback: free the first record under free_id (the task's unplayed same-id record) first, then give O its id back
+    // (`restore`: [O+0x10] = old_id). Both before anything else.
+    std::uint32_t free_id = 0;
+    bool restore = false;
+};
+// The first record under the episode's id other than O (the task's MOV_LoadMovie record), for the pause handback.
+struct SameIdView {
+    bool found = false;
+    std::uint32_t record = 0, flags = 0, context = 0, media = 0;
 };
 struct TrackQueue {
     QueueState state = QueueState::idle;
     std::uint32_t record = 0, media = 0, key = 0, old_id = 0, new_id = 0, task = 0, slot = 0; // O, its media, P, old, N, C, C's slot
     std::uint32_t episode = 0;
+    std::uint32_t walk_caller = 0; // the stop-all (return address) that kept the queue: its walk leaves O untouched (Patch A)
     unsigned long long defer_frame = 0;
     bool active() const { return state != QueueState::idle; }
     void reset() {
@@ -964,6 +1004,15 @@ struct TrackQueue {
         episode = e;
     }
 };
+// The new id the queue works with: the requested id (the id cell), or, with music_dock_keep, the stopped id when the
+// request is a docking track. A dock request then becomes a request for the track the script already plays (as if
+// m17 had matched at PlayMusicWithFade's entry): the record keeps playing under the private key and m17 keeps its id, so
+// the undock request for that id is the script's own no-op (`dock`: the requested docking id, 0 when none).
+inline std::uint32_t queue_new_id(const QueueStopView& v, std::uint32_t& dock) {
+    const std::uint32_t requested = v.cells[2].value;
+    dock = v.dock_keep && dock_id(requested) ? requested : 0;
+    return dock ? v.id : requested;
+}
 // Is this stop the LoopMusic-from-ChangeTrackMusic shape with a deferrable new id? (the cells and the alert; only with
 // the story entry v.story, which the callers check)
 inline bool deferrable_shape(const QueueStopView& v, QueueReason& why) {
@@ -979,14 +1028,21 @@ inline bool deferrable_shape(const QueueStopView& v, QueueReason& why) {
         why = QueueReason::cells;
         return false;
     }
-    const std::uint32_t new_id = v.cells[2].value;
-    if (immediate_id(new_id)) {
-        why = QueueReason::immediate_id;
-        return false;
-    }
-    if (new_id == v.id) {
-        why = QueueReason::same_id;
-        return false;
+    std::uint32_t dock = 0;
+    const std::uint32_t new_id = queue_new_id(v, dock);
+    if (!dock) {
+        if (immediate_id(new_id)) {
+            why = QueueReason::immediate_id;
+            return false;
+        }
+        if (new_id == v.id) {
+            why = QueueReason::same_id;
+            return false;
+        }
+        if (v.dock_keep && dock_id(v.id)) { // a docking track that got through (alert, load in dock) never holds the queue
+            why = QueueReason::dock_old;
+            return false;
+        }
     }
     if (!v.alert_ok || v.alert_old != 0 || v.alert_new != 0) {
         why = QueueReason::alert;
@@ -1042,7 +1098,7 @@ inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool ar
                 out.record = q.record;
                 out.key = q.key;
                 out.old_id = q.new_id;
-                out.new_id = v.cells[2].value;
+                out.new_id = queue_new_id(v, out.dock); // a docking request keeps the pending id
                 out.task = v.task_id;
                 out.stop_task = v.task_id;
                 out.wake_ctx = q.task;
@@ -1066,7 +1122,7 @@ inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool ar
     out.event = QueueEvent::refuse;
     out.old_id = v.id;
     out.stop_task = v.task_id;
-    if (v.cells_ok) out.new_id = v.cells[2].value;
+    if (v.cells_ok) out.new_id = v.cells[2].value; // a refusal logs the requested id
     if (!armed) {
         out.reason = QueueReason::not_armed;
         return out;
@@ -1091,7 +1147,7 @@ inline QueueOutcome queue_on_stop(TrackQueue& q, const QueueStopView& v, bool ar
     q.media = v.media;
     q.key = queue_key(++q.episode);
     q.old_id = v.id;
-    q.new_id = v.cells[2].value;
+    q.new_id = queue_new_id(v, out.dock);
     q.task = v.task_id;
     q.slot = 0;
     q.defer_frame = frame;
@@ -1143,21 +1199,96 @@ inline QueueOutcome queue_on_play(TrackQueue& q, const QueuePlayView& v, unsigne
     }
     return queue_end(q, QueueReason::other_play, v.task_id, frame, v.orphan);
 }
-// T1, the stop-all entry. Alt-tab leaves the queue alone only when the keep's alt-tab mode in effect is skip_all
-// (`skip_all_available`, the keep's status gate: skip_all leaves O alone too). Under paused (no status gate) alt-tab ends
-// the queue like every other caller, but P is freed at the next Present: alt-tab's T1 can run inside a COM call of the
-// manager's walk (media-record-lifetime.md, boundary 1), so it never frees there.
+// T1, the stop-all entry. Alt-tab leaves the queue alone when the keep's alt-tab mode in effect is skip_all
+// (`skip_all_available`, the keep's status gate: skip_all leaves O alone too).
+//
+// The save keeps the queue (event `keep`, 2026-10-25) when the save pump is bound (`save_pump_bound`) and O still plays
+// as the queue left it: linked under P, a DirectSound music record with flag 2 set and the loop bit clear, and a context
+// that is 0 (ORPHANED) or C (PARKED). PARKED goes back to ORPHANED: C is woken through O's slot and O's context and slot
+// are zeroed, so the script writer saves C runnable, as vanilla's stop-all completion leaves it (music-restart.md
+// section 7.3: a task saved suspended on a media completion is never woken after a load). `walk_caller` tells the same
+// stop-all's walk to leave O untouched (queue_keep_walk, Patch A: skip_all) and to pump it while the file is written;
+// after the save C's replay of N parks again on O (queue_on_play).
+//
+// A pause cannot keep the queue the same way: the iteration that sets it enters the pause wait 0x00404280, whose loop
+// (0x004043a0..0x004043d6) calls only 0x004d34b0 and 0x004d3b60 until the unpause, so neither the scheduler nor the media
+// manager runs and a running O would loop its stale ring. The keep resumes a paused track only through the script's
+// replay of the same id (Patch C, Run), and nothing replays P. So a pause ends the queue as before, except a same-id
+// episode (old id == new id, what music_dock_keep leaves while docked), which is handed back (`same`): the task's unplayed
+// same-id record is freed and O gets its id back, the vanilla state, so the walk pauses O as the keep pauses any music
+// record and the task's replay after the unpause resumes it at its position. Every other caller (alt-tab under paused
+// included, which may run inside the manager's walk and so never frees) ends the queue; alt-tab's end frees P at the next
+// Present (media-record-lifetime.md, boundary 1).
 inline QueueOutcome queue_on_stop_all(TrackQueue& q, std::uint32_t return_va, bool skip_all_available, const OrphanView& o,
-                                      unsigned long long frame) {
+                                      unsigned long long frame, bool save_pump_bound = false, const SameIdView* same = nullptr) {
+    // The entry stub calls its handler again while it returns a hold to pause: the same stop-all's repeat call changes
+    // nothing (walk_caller lives until the walk meets O or the next Present clears it).
+    if (q.walk_caller && return_va == q.walk_caller) return QueueOutcome{};
+    q.walk_caller = 0;
     if (!q.active()) return QueueOutcome{};
     const StopMode mode = stop_mode(return_va);
     if (mode == StopMode::skip_all && skip_all_available) return QueueOutcome{};
+    const bool parked_on_o = q.state == QueueState::parked && o.context == q.task && q.slot < slot_count;
+    const bool owner_ok = parked_on_o || (q.state == QueueState::orphaned && o.context == 0);
+    constexpr std::uint32_t kept_mask = flag_music | flag_directsound | flag_playing | flag_loop;
+    if (return_va == save_return_va && save_pump_bound && o.live && (o.flags & kept_mask) == (flag_music | flag_directsound | flag_playing) &&
+        owner_ok) {
+        QueueOutcome out;
+        out.event = QueueEvent::keep;
+        out.caller = return_va;
+        out.record = q.record;
+        out.key = q.key;
+        out.old_id = q.old_id;
+        out.new_id = q.new_id;
+        out.task = q.task;
+        out.frames = frame - q.defer_frame;
+        if (parked_on_o) {
+            out.wake = true;
+            out.wake_ctx = q.task;
+            out.wake_slot = q.slot;
+            q.state = QueueState::orphaned;
+            q.slot = 0;
+        }
+        q.walk_caller = return_va;
+        return out;
+    }
+    constexpr std::uint32_t play_mask = flag_music | flag_playing | flag_loop;
+    if (return_va == pause_return_va && same && q.old_id == q.new_id && o.live && (o.flags & play_mask) == (flag_music | flag_playing) &&
+        owner_ok && (!same->found || (same->record != q.record && !(same->flags & flag_playing) && same->context == 0 && same->media != 0))) {
+        QueueOutcome out;
+        out.event = QueueEvent::end;
+        out.reason = QueueReason::handback;
+        out.caller = return_va;
+        out.record = q.record;
+        out.key = q.key;
+        out.old_id = q.old_id;
+        out.new_id = q.new_id;
+        out.task = q.task;
+        out.frames = frame - q.defer_frame;
+        out.free_id = same->found ? q.new_id : 0; // while O is still under P, so only the task's record can match
+        out.restore = true;
+        q.reset();
+        return out;
+    }
     QueueOutcome out = queue_end(q, QueueReason::stop_all, 0, frame, o);
+    out.caller = return_va;
     if (mode == StopMode::skip_all) { // alt-tab under paused
         out.free_later = out.free_key;
         out.free_key = false;
     }
     return out;
+}
+// Patch A inside the walk of a stop-all that kept the queue: is this record O? Then the stub leaves it untouched (no
+// hold). Once per stop-all.
+inline bool queue_keep_walk(TrackQueue& q, std::uint32_t record, std::uint32_t return_va) {
+    if (!q.walk_caller || return_va != q.walk_caller || record != q.record || !q.active()) return false;
+    q.walk_caller = 0;
+    return true;
+}
+// The address of the requesting task's new-id value at T3 (the dword after the tag byte of the cell at depth
+// queue_cell_depths[2] from the buffer end `cells`), where a docking substitution writes new_id before the completions.
+inline std::uint32_t queue_id_cell_value_at(std::uint32_t cells, const story::QueueSites& s) {
+    return cells + std::uint32_t(cell_offset(-std::int32_t(s.queue_cell_depths[2]))) + 1;
 }
 // The story reload's own stop-alls: the session function's (0x0040387d, before it calls the loader 0x00404cc0 at
 // 0x004038ba) and the loader's (0x00404cf2, before the KC VM restore 0x004a0880).

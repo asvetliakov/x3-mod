@@ -462,6 +462,32 @@ int main() {
               && gzclose_thunk[2] == (gzclose_iat_va & 0xff), "the save's gzclose path constants");
         check(trace_cells[0] == 6 && trace_cells[3] == 12 && task_ip == 0x1c && task_index == 0x18 && cell_size == 5, "trace cell constants");
     }
+    {   // The queue's orphan through a save (arm_queue): flag 2 expected set, no replay wait, no fallback pause, any play ends it.
+        SavePump q;
+        q.arm(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        check(q.expected_flags() == (flag_music | flag_directsound) && !q.queue, "a keep_running target expects flag 2 clear");
+        q.arm_queue(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        check(q.active() && q.pumping && q.queue && !q.kept && q.expected_flags() == (flag_music | flag_directsound | flag_playing), "queue target: flag 2 expected set");
+        q.note_call(1, 10, 20);
+        q.stop(PumpEnd::gzclose, 30);
+        check(!q.replay_overdue(f * 10, 1) && !q.fallback_due() && q.end_now(PumpEnd::gzclose, 30) && !q.active() && q.end == PumpEnd::gzclose, "gzclose: no replay wait, the episode ends there");
+        q.arm_queue(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        q.note_call(2, 10, 20);
+        check(!q.pumping && !q.fallback_due() && q.pump_end == PumpEnd::ended && q.queue_ended && q.active(),
+              "return 2: pumping stops, no pause; queue_ended asks the handler to clear O's flag 2; the episode stays open for gzclose's row");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        q.note_call(2, 10, 20);
+        check(!q.queue_ended, "a keep_running target's return 2 is not the queue's");
+        q.arm_queue(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        q.refuse(5);
+        check(!q.fallback_due(), "a refused check: no pause");
+        q.arm_queue(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        check(!q.pump_due(f * 120, 1) && !q.fallback_due(), "the wall bound: no pause");
+        q.arm_queue(0x1000, 0x7f000001, 0x2000, 1, 0, f);
+        check(q.on_play(0x1080, 80412, 0x2200, false, 40) && !q.run_marker && !q.active(), "a music play ends the episode, no Run marker");
+        q.arm(0x1000, 8404, 0x2000, 1, 0, f);
+        check(!q.queue, "arm resets the queue mode");
+    }
     // Resume after combat.
     const Alert rising{true, 0, 1}, on{true, 1, 1}, off{true, 0, 0}, falling{true, 1, 0}, unread{false, 0, 1};
     check(alert_rising(rising) && !alert_rising(on) && !alert_rising(off) && !alert_rising(falling) && !alert_rising(unread) && alert_on(on) && alert_on(falling)
@@ -626,7 +652,8 @@ int main() {
         check(queue_on_stop_all(q, 0x004d36c2, true, OrphanView{true, 0xd2, 200}, 4020).event == QueueEvent::none && q.state == QueueState::parked, "alt-tab under skip_all: nothing");
         o = queue_on_stop_all(q, save_return_va, true, OrphanView{true, 0xd2, 200}, 4030);
         check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && o.wake && o.wake_ctx == 200 && o.free_key && !o.free_later && q.state == QueueState::idle, "save: wake C, free P before the walk");
-        // Alt-tab under paused (no status gate): ends the queue like every caller, the free deferred to the next Present.
+        // Alt-tab under paused (no status gate): ends the queue like every caller, the free deferred to the next Present
+        // (GetMessageA blocks the loop without RunInBackground, so O would run unpumped).
         queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4040); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4050);
         o = queue_on_stop_all(q, 0x004d36c2, false, OrphanView{true, 0xd2, 200}, 4060);
         check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && o.wake && o.wake_ctx == 200 && o.wake_slot == 1 && !o.free_key && o.free_later && q.state == QueueState::idle,
@@ -634,6 +661,10 @@ int main() {
         queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4070);
         o = queue_on_stop_all(q, 0x004d36c2, false, playing_unowned, 4080);
         check(o.event == QueueEvent::end && !o.wake && !o.free_key && o.free_later && q.state == QueueState::idle, "alt-tab under paused while orphaned: end, free later");
+        { QueueStopView dk = shaped(8404, 14, 200, 1); dk.dock_keep = true; queue_on_stop(q, dk, true, 4081); SameIdView none;
+          o = queue_on_stop_all(q, 0x004d36c2, false, playing_unowned, 4082, false, &none);
+          check(q.state == QueueState::idle && o.event == QueueEvent::end && o.reason == QueueReason::stop_all && !o.restore && o.free_later,
+                "alt-tab under paused, a same-id episode: no handback (never frees there)"); }
         queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4085);
         o = queue_on_stop_all(q, 0x004d36c2, false, gone, 4086);
         check(o.event == QueueEvent::end && !o.free_key && !o.free_later, "alt-tab under paused, O gone: nothing to free");
@@ -647,6 +678,146 @@ int main() {
         check(queue_on_stop_all(q, 0x0040387d, true, playing_unowned, 4210).event == QueueEvent::end && q.state == QueueState::idle, "session start ends it");
         queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4300);
         check(queue_on_stop_all(q, 0x00407069, true, playing_unowned, 4310).event == QueueEvent::end && q.state == QueueState::idle, "pause ends it");
+        // Pause of a same-id episode (music_dock_keep while docked): handed back to the keep. The task's unplayed record of
+        // the id is freed first (while O is still under P), then O gets the id back; no wake (the walk's vanilla stop of O
+        // completes the parked task through O's slot), no free of P (it disappears with the re-key).
+        {
+            QueueStopView dk = shaped(8404, 14, 200, 1); dk.dock_keep = true;
+            queue_on_stop(q, dk, true, 4311); queue_on_play(q, play_of(8404, 200, 1, playing_unowned), 4312);
+            const std::uint32_t key = q.key;
+            SameIdView n; n.found = true; n.record = 0x1400; n.flags = 0xd0; n.context = 0; n.media = 0x2400;
+            o = queue_on_stop_all(q, pause_return_va, true, OrphanView{true, 0xd2, 200}, 4313, true, &n);
+            check(o.event == QueueEvent::end && o.reason == QueueReason::handback && o.free_id == 8404 && o.restore && o.old_id == 8404 && o.record == 0x1000 && o.key == key
+                  && !o.wake && !o.clear && !o.free_key && !o.free_later && !o.consume && o.caller == pause_return_va && q.state == QueueState::idle && q.walk_caller == 0,
+                  "pause while parked, same id: free the task's record, re-key O to 8404, idle");
+            // The keep then pauses O like any music record under pause (paused hold) and the task's replay after the unpause
+            // resumes it without the seek; O's later natural end replays the id from 0 (vanilla loop, no queue row).
+            Holds h;
+            const StopDecision sd = decide_stop(h, 0x1000, 0xd2, 8404, 0x2000, pause_return_va, true);
+            check(sd.mode == StopMode::paused && sd.held, "the walk: O paused and held by the keep");
+            auto absent = [&](std::uint32_t, std::uint32_t, std::uint32_t, LiveRecord&) { return false; };
+            check(queue_on_play(q, play_of(8404, 200, 1, OrphanView{}), 4400).event == QueueEvent::none, "the replay after the unpause: no queue");
+            check(decide_seek(h, 0x1000, 0xd0, 8404, 0x2000, 0, absent).action == SeekAction::skip, "the replay resumes O at its position (seek skipped, Run resumes)");
+            check(decide_seek(h, 0x1000, 0xd0, 8404, 0x2000, 0, absent).action == SeekAction::vanilla, "after O's natural end the next replay seeks to 0 (the vanilla loop)");
+        }
+        {   // ORPHANED, no record of the id yet (the task still in TI_Delay): only the re-key.
+            QueueStopView dk = shaped(8404, 2003, 200, 1); dk.dock_keep = true;
+            queue_on_stop(q, dk, true, 4320);
+            SameIdView none;
+            o = queue_on_stop_all(q, pause_return_va, true, playing_unowned, 4321, true, &none);
+            check(o.reason == QueueReason::handback && o.free_id == 0 && o.restore && q.state == QueueState::idle, "pause while orphaned, same id, no record yet: re-key only");
+        }
+        // No handback: another id pending, the id's record played or owned or without media, O ended, another caller.
+        {
+            SameIdView n; n.found = true; n.record = 0x1400; n.flags = 0xd0; n.context = 0; n.media = 0x2400;
+            const struct { const char* what; std::uint32_t pending; std::uint32_t caller; SameIdView view; OrphanView orphan; } cases[] = {
+                {"pause, another id pending", 80412, pause_return_va, n, OrphanView{true, 0xd2, 200}},
+                {"pause, the id's record playing", 8404, pause_return_va, SameIdView{true, 0x1400, 0xd2, 0, 0x2400}, OrphanView{true, 0xd2, 200}},
+                {"pause, the id's record owned", 8404, pause_return_va, SameIdView{true, 0x1400, 0xd0, 300, 0x2400}, OrphanView{true, 0xd2, 200}},
+                {"pause, the id's record without media", 8404, pause_return_va, SameIdView{true, 0x1400, 0xd0, 0, 0}, OrphanView{true, 0xd2, 200}},
+                {"pause, the id's first record is O", 8404, pause_return_va, SameIdView{true, 0x1000, 0xd0, 0, 0x2000}, OrphanView{true, 0xd2, 200}},
+                {"pause, O ended", 8404, pause_return_va, n, OrphanView{true, 0xd0, 200}},
+                {"pause, O names another task", 8404, pause_return_va, n, OrphanView{true, 0xd2, 999}},
+                {"load, same id", 8404, 0x00404cf2, n, OrphanView{true, 0xd2, 200}},
+            };
+            for (const auto& c : cases) {
+                q.reset();
+                QueueStopView dk = shaped(8404, c.pending == 8404 ? 14u : c.pending, 200, 1); dk.dock_keep = true;
+                queue_on_stop(q, dk, true, 4330); queue_on_play(q, play_of(c.pending, 200, 1, playing_unowned), 4331);
+                o = queue_on_stop_all(q, c.caller, true, c.orphan, 4332, true, &c.view);
+                check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && !o.restore && !o.free_id && q.state == QueueState::idle, c.what);
+            }
+            q.reset();
+        }
+        // The save keeps the queue when the save pump is bound and O plays as the queue left it (music-queue.md "Through a save").
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4320); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4330);
+        const std::uint32_t kept_key = q.key;
+        o = queue_on_stop_all(q, save_return_va, true, OrphanView{true, 0xd2, 200}, 4340, true);
+        check(o.event == QueueEvent::keep && o.reason == QueueReason::none && o.wake && o.wake_ctx == 200 && o.wake_slot == 1 && !o.free_key && !o.free_later && !o.consume
+              && !o.complete && !o.park && !o.rekey && o.caller == save_return_va && o.key == kept_key && o.old_id == 8404 && o.new_id == 80412 && o.frames == 20,
+              "save while parked: wake C through O's slot (runnable when the script writer runs), keep O and P");
+        check(q.state == QueueState::orphaned && q.slot == 0 && q.task == 200 && q.new_id == 80412 && q.key == kept_key && q.walk_caller == save_return_va, "back to ORPHANED, the walk marked");
+        check(queue_on_stop_all(q, save_return_va, true, OrphanView{true, 0xd2, 0}, 4340, true).event == QueueEvent::none && q.walk_caller == save_return_va && q.state == QueueState::orphaned,
+              "the entry handler's repeat call in the same save: nothing");
+        check(!queue_keep_walk(q, 0x1080, save_return_va) && !queue_keep_walk(q, 0x1000, 0x00407069) && q.walk_caller == save_return_va, "the walk: another record or caller is not O");
+        check(queue_keep_walk(q, 0x1000, save_return_va) && q.walk_caller == 0 && !queue_keep_walk(q, 0x1000, save_return_va), "the walk leaves O untouched once");
+        o = queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4400);
+        check(o.event == QueueEvent::park && o.park_ctx == 200 && q.state == QueueState::parked, "after the save C's replay of N parks again on O");
+        o = queue_on_play(q, play_of(80412, 200, 1, ended), 4410);
+        check(o.event == QueueEvent::release && o.free_key && o.key == kept_key && q.state == QueueState::idle, "O's natural end after the save: release to N");
+        // ORPHANED save (C still in TI_Delay): nothing to wake; the park follows after the save.
+        queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4420);
+        o = queue_on_stop_all(q, save_return_va, true, playing_unowned, 4430, true);
+        check(o.event == QueueEvent::keep && !o.wake && !o.free_key && q.state == QueueState::orphaned && q.walk_caller == save_return_va, "save while orphaned: keep, no wake");
+        q.walk_caller = 0; // the next Present
+        check(queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4440).event == QueueEvent::park, "then the park");
+        o = queue_on_stop_all(q, save_return_va, true, OrphanView{true, 0xd2, 200}, 4450, true);
+        check(o.event == QueueEvent::keep && o.wake && q.state == QueueState::orphaned, "a second save while parked: kept again");
+        q.walk_caller = 0;
+        o = queue_on_stop_all(q, 0x00404cf2, true, playing_unowned, 4460, true);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && o.free_key && o.caller == 0x00404cf2 && q.walk_caller == 0 && q.state == QueueState::idle,
+              "a save load after a kept save still ends it (P freed)");
+        // The save ends the queue as before whenever O is not as the queue left it, or the pump is unbound; other callers end it.
+        const struct { const char* what; std::uint32_t caller; bool pump; bool park; OrphanView orphan; } ends[] = {
+            {"save, pump unbound", save_return_va, false, true, OrphanView{true, 0xd2, 200}},
+            {"save, O ended (flag 2 clear)", save_return_va, true, true, OrphanView{true, 0xd0, 200}},
+            {"save, O not DirectSound", save_return_va, true, true, OrphanView{true, 0x92, 200}},
+            {"save, O loop-flagged", save_return_va, true, true, OrphanView{true, 0xd3, 200}},
+            {"save, O names another task", save_return_va, true, true, OrphanView{true, 0xd2, 999}},
+            {"save, orphaned but O owned", save_return_va, true, false, OrphanView{true, 0xd2, 999}},
+            {"save, O gone", save_return_va, true, true, gone},
+            {"pause, O ended", 0x00407069, true, true, OrphanView{true, 0xd0, 200}},
+            {"pause, O names another task", 0x00407069, true, true, OrphanView{true, 0xd2, 999}},
+            {"p_leave", 0x00497bbb, true, true, OrphanView{true, 0xd2, 200}},
+            {"session start", 0x0040387d, true, true, OrphanView{true, 0xd2, 200}},
+        };
+        for (const auto& c : ends) {
+            q.reset();
+            queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4500);
+            if (c.park) queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 4510);
+            o = queue_on_stop_all(q, c.caller, true, c.orphan, 4520, c.pump);
+            check(o.event == QueueEvent::end && o.reason == QueueReason::stop_all && o.caller == c.caller && q.walk_caller == 0 && q.state == QueueState::idle, c.what);
+        }
+        // Docking music (music_dock_keep): a docking request becomes a request for the playing (or pending) id.
+        check(dock_id(14) && dock_id(2001) && dock_id(2004) && !dock_id(13) && !dock_id(2000) && !dock_id(2005) && !dock_id(8404) && !dock_id(0), "docking ids: 14 and 2001..2004");
+        auto docked = [&](std::uint32_t old_id, std::uint32_t new_id, std::uint32_t task) { QueueStopView v = shaped(old_id, new_id, task, 1); v.dock_keep = true; return v; };
+        q.reset();
+        o = queue_on_stop(q, docked(8404, 14, 200), true, 8000);
+        check(o.event == QueueEvent::defer && o.consume && o.rekey && o.wake && o.complete && o.dock == 14 && o.new_id == 8404 && o.old_id == 8404 && q.new_id == 8404 && q.old_id == 8404,
+              "landing request while idle: defer with the playing id (the handler writes 8404 into the id cell)");
+        check(queue_on_play(q, play_of(8404, 200, 1, playing_unowned), 8010).event == QueueEvent::park, "the task parks its replay of the same id on O");
+        QueueStopView dk = docked(8404, 2003, 210); dk.flags = 0xd0; dk.context = 0; dk.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, dk, true, 8020);
+        check(o.event == QueueEvent::collapse && o.dock == 2003 && o.new_id == 8404 && q.new_id == 8404 && q.task == 210 && o.wake_ctx == 200 && o.complete_ctx == 210,
+              "docked request while parked: collapse keeping the id");
+        queue_on_play(q, play_of(8404, 210, 1, playing_unowned), 8030);
+        check(queue_on_play(q, play_of(8404, 210, 1, ended), 8040).event == QueueEvent::release && q.state == QueueState::idle, "O's end: the same track from 0 (the vanilla loop)");
+        // A pending sector change survives a dock: the docking request collapses to the pending id.
+        queue_on_stop(q, docked(8404, 80412, 200), true, 8100); queue_on_play(q, play_of(80412, 200, 1, playing_unowned), 8110);
+        QueueStopView pd = docked(80412, 14, 220); pd.flags = 0xd0; pd.context = 0; pd.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, pd, true, 8120);
+        check(o.event == QueueEvent::collapse && o.dock == 14 && o.new_id == 80412 && q.new_id == 80412 && q.task == 220, "pending 80412, landing request: still 80412");
+        q.reset();
+        // Without the option the docking ids keep their former answers.
+        { QueueStopView v = shaped(8404, 14, 200, 1); check(queue_on_stop(q, v, true, 8200).reason == QueueReason::immediate_id && q.state == QueueState::idle, "option off: landing plays at once"); }
+        { QueueStopView v = shaped(8404, 2003, 200, 1); o = queue_on_stop(q, v, true, 8210); check(o.event == QueueEvent::defer && o.dock == 0 && q.new_id == 2003, "option off: a dock id queues like a sector change"); q.reset(); }
+        // Combat: a docking request under an alert, or of the combat track, stays vanilla (the docking track plays).
+        { QueueStopView v = docked(1017, 2002, 200); v.alert_old = 1; o = queue_on_stop(q, v, true, 8300);
+          check(o.event == QueueEvent::refuse && o.reason == QueueReason::alert && o.dock == 0 && o.new_id == 2002 && !o.consume, "docking under the alert: vanilla, the row logs the requested id"); }
+        { QueueStopView v = docked(1017, 14, 200); v.combat_old = true; check(queue_on_stop(q, v, true, 8310).reason == QueueReason::combat_old && q.state == QueueState::idle, "docking over the combat track: vanilla"); }
+        // A docking track that got through (alert, a load while docked) never holds the queue; a docking request keeps it.
+        { QueueStopView v = docked(2003, 8404, 200); o = queue_on_stop(q, v, true, 8400);
+          check(o.event == QueueEvent::refuse && o.reason == QueueReason::dock_old && !o.consume && q.state == QueueState::idle, "undock over a docking track: the sector track at once"); }
+        { QueueStopView v = shaped(2003, 8404, 200, 1); check(queue_on_stop(q, v, true, 8410).event == QueueEvent::defer, "option off: the docking track finishes first"); q.reset(); }
+        o = queue_on_stop(q, docked(14, 2002, 200), true, 8420);
+        check(o.event == QueueEvent::defer && o.dock == 2002 && q.new_id == 14, "a docking request over a docking track: unchanged request");
+        queue_on_play(q, play_of(14, 200, 1, playing_unowned), 8430);
+        QueueStopView ud = docked(14, 8404, 230); ud.flags = 0xd0; ud.context = 0; ud.orphan = OrphanView{true, 0xd2, 200};
+        o = queue_on_stop(q, ud, true, 8440);
+        check(o.event == QueueEvent::end && o.reason == QueueReason::stop && o.wake && o.free_key && !o.consume && q.state == QueueState::idle, "then the undock request: end, the sector track at once");
+        check(!std::strcmp(queue_reason_name(QueueReason::dock_old), "dock_old") && !std::strcmp(queue_event_name(QueueEvent::keep), "keep"), "new names");
+        check(queue_cell_depths[2] == 11 && queue_id_cell_value_at(0x10000, mayhem_sites) == 0x10000 - 55 + 1,
+              "the id cell's value: depth 11 from the buffer end, after the tag byte");
         // Alert edge at Present: while ORPHANED (the script dropped the combat request) and while PARKED.
         queue_on_stop(q, shaped(8404, 80412, 200, 1), true, 4400);
         check(queue_on_alert(q, 0, playing_unowned, 4401).event == QueueEvent::none && q.state == QueueState::orphaned, "alert 0: nothing");
@@ -1148,7 +1319,7 @@ class MusicSites(unittest.TestCase):
                        'c6=%u:0x%08lx c8=%u:0x%08lx'):
             self.assertIn(needle, module)
         self.assertEqual(module.count('engine_patch::restore_call(e_site_)'), 2)
-        self.assertEqual(module.count('cpu.before_original();'), 6)   # the pump call, the fallback pause, the position read, the completion and the two frees (now, at Present) run on the engine's MXCSR / LastError
+        self.assertEqual(module.count('cpu.before_original();'), 8)   # the pump call, the fallback pause, the position read, the completion, the two frees (now, at Present) and the handback's two frees run on the engine's MXCSR / LastError
         # The track queue: optional inside the keep (its own windows, the shared play entry acquired through the same protocol, released
         # by rollback and shutdown for whichever feature acquired it), the KC patch maintained from Present with the VM fields read
         # fault-free and the write gated by VirtualQuery, the stop-movie handler consuming only on the core's say-so, the resume
@@ -1156,7 +1327,7 @@ class MusicSites(unittest.TestCase):
         for needle in ('queue_windows_match()', 'acquire_shared(play_site_, keep_play_acquired_, play_spec(), &x3m_music_queue_play_stub',
                        'acquire_shared(play_site_, trace_play_acquired_, play_spec(), &x3m_music_trace_play_stub', 'release_for(play_site_, keep_play_acquired_)',
                        'release_for(play_site_, trace_play_acquired_)', '&entry_site_, &stop_movie_site_, &play_site_', 'queue_on_stop(queue_, v, queue_armed_, current_frame_)',
-                       'queue_on_play(queue_, v, current_frame_)', 'queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_)', 'queue_on_alert(queue_, levels[1], orphan_view(), current_frame_)',
+                       'queue_on_play(queue_, v, current_frame_)', 'queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_, save_pump_, same_id ? &same : nullptr)', 'const bool same_id = return_va == pause_return_va && queue_.old_id == queue_.new_id;', 'freed = x3m_music_queue_call_free(o.free_id);', 'if (!find_record(o.old_id))', 'queue_on_alert(queue_, levels[1], orphan_view(), current_frame_)',
                        'if (o.consume) return 1;', 'resume_candidate = o.resume_candidate;', 'if (!resume_ok_ || !resume_candidate || !alert_rising(alert)) return 0;',
                        'x3m_music_queue_call_completion(function, context, 1)', 'x3m_music_queue_call_free(o.key)', 'load32(owner + slot_completion + slot * slot_stride)',
                        'if (!owner || !load32(owner + vm_slot_guard) || slot >= slot_count) return;', 'kc_.due(vm)', 'kc_.decide(vm_ok, fields_ok, kc_window_seen_, window_ok, r)',
@@ -1164,6 +1335,13 @@ class MusicSites(unittest.TestCase):
                        'x3m::engine_memory::read(vm + vm_build, &build, 4)', 'x3m::engine_memory::read(at, kc_window_seen_, warp_window_length)',
                        'read_cell_abs(t, -std::int32_t(story->queue_cell_depths[i]), v.cells[i].tag, v.cells[i].value)', 'cell_index_ok(index, v.capacity)',
                        'return read_cell_abs(v, std::int32_t(v.index) + std::int32_t(i), tag, value);', 'L"X3M_MUSIC_QUEUE"', '&& keep_requested; // a no-op without the keep',
+                       'if (queue_keep_walk(queue_, record, return_va)) {', 'const StopMode mode = save && !save_pump_free ? StopMode::vanilla : StopMode::skip_all;',
+                       'store32(pump_.record + record_flags, e.flags & ~flag_playing);', 'if (!pump_.pumping && !(pump_.queue && pump_.open)) return;',
+                       '(pump_.pumping || (pump_.queue && pump_.open))', 'pump_.arm_queue(record, id, media, GetCurrentThreadId(), qpc(), frequency_);',
+                       'return unsigned(mode);', '(r.flags & (flag_music | flag_directsound | flag_playing)) == pump_.expected_flags()',
+                       'if (pump_.queue && pump_.end_now(PumpEnd::gzclose, qpc())) pump_line("queue", 0);', 'queue_.walk_caller = 0;',
+                       'if (o.consume && o.dock && story)', 'store32(queue_id_cell_value_at(t.cells, *story), o.new_id);',
+                       'caller=%s dock=%lu\\n',
                        'music_queue_kc_present();', 'if (queue_.active()) music_queue_alert_present();', 'music_queue requested=%u armed=%u reason=%s', 'music_queue_kc frame=%llu action=%s',
                        'music_queue frame=%llu seq=%lu qpc=%llu event=%s', 'x3m_music_free_fn = free_by_id_va', 'ours = window[i] == s->warp_patch_memory[i];',
                        # the sites detected at run time (story_detect.h), combat as the alert edge
@@ -1189,6 +1367,9 @@ class MusicSites(unittest.TestCase):
         self.assertEqual(re.findall(r'write_line\(\s*"music_queue', str(module)), [])   # every music_queue row goes through write_queue_line
         self.assertEqual(module.count('write_queue_line('), 4)                     # the definition, the refuse row, the transition row, the deferred free
         self.assertLess(module.index('if (queue_free_pending_) music_queue_free_present();'), module.index('music_queue_kc_present();'))
+        write = module.index('store32(queue_id_cell_value_at(t.cells, *story), o.new_id);')
+        self.assertLess(write, module.index('queue_line(o, &v, queue_apply(cpu, o));', write))   # the cell before the completions
+        self.assertLess(module.index('const QueueOutcome o = queue_on_stop(queue_, v, queue_armed_, current_frame_);'), write)
         self.assertEqual(capture.count('if(save_loaded)music_keep::loaded();'), 1)
         self.assertLess(capture.index('music_keep::present(ctx.id,ctx.frame,ctx.capture);'), capture.index('if(save_loaded)music_keep::loaded();'))
         self.assertLess(capture.index('loading_trace::initialize();'), capture.index('music_keep::save_pump_report();'))
@@ -1395,10 +1576,11 @@ class MusicLaunchOptions(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             baseline = self.env(directory, '--no-music-keep')
             self.assertNotIn('X3M_MUSIC_KEEP', baseline)
-            # the track queue travels with the keep (2026-10-23): --no-music-keep drops both
-            self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_QUEUE': '1'})
+            # the track queue travels with the keep (2026-10-23), the docking keep with the queue (2026-10-25): --no-music-keep drops all three
+            music = {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_QUEUE': '1', 'X3M_MUSIC_DOCK_KEEP': '1'}
+            self.assertEqual({k: v for k, v in self.env(directory).items() if k not in baseline}, music)
             self.assertEqual({k: v for k, v in self.env(directory, '--no-music-keep', '--debug').items() if k not in baseline}, {'X3M_DEBUG': '1'})
-            self.assertEqual({k: v for k, v in self.env(directory, '--debug').items() if k not in baseline}, {'X3M_MUSIC_KEEP': '1', 'X3M_MUSIC_QUEUE': '1', 'X3M_DEBUG': '1'})
+            self.assertEqual({k: v for k, v in self.env(directory, '--debug').items() if k not in baseline}, {**music, 'X3M_DEBUG': '1'})
             code, _, error = self.launch(directory, '--music-trace')
             self.assertEqual(code, 2)
             self.assertIn('unrecognized arguments', error)
@@ -1425,7 +1607,7 @@ class MusicLaunchOptions(unittest.TestCase):
             self.assertEqual(env, self.env(directory, '--music-queue'), 'the explicit flag is redundant')
             off = self.env(directory, '--no-music-queue')
             self.assertNotIn('X3M_MUSIC_QUEUE', off)
-            self.assertEqual({k: v for k, v in env.items() if k not in off}, {'X3M_MUSIC_QUEUE': '1'})
+            self.assertEqual({k: v for k, v in env.items() if k not in off}, {'X3M_MUSIC_QUEUE': '1', 'X3M_MUSIC_DOCK_KEEP': '1'})  # the docking keep travels with the queue
             no_keep = self.env(directory, '--no-music-keep', inherited={'X3M_MUSIC_QUEUE': '1'})
             self.assertNotIn('X3M_MUSIC_QUEUE', no_keep)
             self.assertNotIn('X3M_MUSIC_KEEP', no_keep)
@@ -1442,6 +1624,29 @@ class MusicLaunchOptions(unittest.TestCase):
         self.assertEqual((entry['env'], entry['type'], entry['section'], entry['default'], entry['requires'], entry['launcher']),
                          ('X3M_MUSIC_QUEUE', 'bool', 'audio', '1', ('music_keep',), '--music-queue'))
         self.assertIn('music_keep', entry['description'])
+
+    def test_dock_keep_default_with_the_queue_and_its_gates(self):
+        # --music-dock-keep is a launcher default since 2026-10-25; it travels only with the queue (a no-op in the DLL without it),
+        # --no-music-dock-keep turns it off alone, --vanilla refuses it, a stale shell value is dropped.
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory)
+            self.assertEqual(env['X3M_MUSIC_DOCK_KEEP'], '1')
+            self.assertEqual(env, self.env(directory, '--music-dock-keep'), 'the explicit flag is redundant')
+            off = self.env(directory, '--no-music-dock-keep')
+            self.assertEqual({k: v for k, v in env.items() if k not in off}, {'X3M_MUSIC_DOCK_KEEP': '1'})
+            self.assertNotIn('X3M_MUSIC_DOCK_KEEP', self.env(directory, '--no-music-queue', '--music-dock-keep', inherited={'X3M_MUSIC_DOCK_KEEP': '1'}))
+            self.assertNotIn('X3M_MUSIC_DOCK_KEEP', self.env(directory, '--no-music-keep', '--music-dock-keep'))
+            code, _, error = self.launch(directory, '--music-dock-keep', vanilla=True)
+            self.assertEqual(code, 2)
+            self.assertIn('--music-dock-keep cannot be combined with --vanilla', error)
+            self.assertNotIn('X3M_MUSIC_DOCK_KEEP', self.env(directory, inherited={'X3M_MUSIC_DOCK_KEEP': '1'}, vanilla=True))
+        module = source_text(ROOT / 'src/proxy/music_keep.cpp')
+        self.assertIn('dock_keep_ = requested(L"X3M_MUSIC_DOCK_KEEP", &dock_present) && queue_requested_;', module)
+        self.assertIn('v.dock_keep = dock_keep_ && queue_armed_;', module)
+        schema = load('music_dock_schema', ROOT / 'tools/config/schema.py')
+        entry = next(e for e in schema.SETTINGS if e['key'] == 'music_dock_keep')
+        self.assertEqual((entry['env'], entry['type'], entry['section'], entry['default'], entry['requires'], entry['launcher']),
+                         ('X3M_MUSIC_DOCK_KEEP', 'bool', 'audio', '1', ('music_queue',), '--music-dock-keep'))
 
 if __name__ == '__main__':
     unittest.main()

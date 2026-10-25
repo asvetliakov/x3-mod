@@ -65,6 +65,7 @@ EXPECTED_EMPTY = {
     'X3M_MOTION_CUT_MISSING': '1', 'X3M_MOTION_JITTER': '1', 'X3M_MOTION_OUTPUT': '1', 'X3M_MOTION_RT_MODE': 'lazy',
     'X3M_MUSIC_KEEP': '1', 'X3M_OBJECT_LIFETIME': '1', 'X3M_OBJECT_TRACE': '1', 'X3M_ORIGINAL_FILL': '0.01',
     'X3M_MUSIC_QUEUE': '1',  # 2026-10-23: the sector-music track queue under the keep (music-queue.md)
+    'X3M_MUSIC_DOCK_KEEP': '1',  # 2026-10-25: docking music keep under the queue (music-queue.md, Docking)
     # 2026-10-23: the combat-music trigger narrowed to engagement (music-combat-trigger.md), hold 20 game seconds
     'X3M_MUSIC_COMBAT_TRIGGER': 'engaged', 'X3M_MUSIC_COMBAT_HOLD_S': '20',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
@@ -146,6 +147,9 @@ OPT_OUTS = (
     (('--no-music-keep',), 'X3M_MUSIC_KEEP', None),
     (('--no-music-keep',), 'X3M_MUSIC_QUEUE', None),  # the queue travels only with the keep
     (('--no-music-queue',), 'X3M_MUSIC_QUEUE', None),
+    (('--no-music-keep',), 'X3M_MUSIC_DOCK_KEEP', None),  # the docking keep travels only with the queue
+    (('--no-music-queue',), 'X3M_MUSIC_DOCK_KEEP', None),
+    (('--no-music-dock-keep',), 'X3M_MUSIC_DOCK_KEEP', None),
     (('--music-combat-trigger', 'vanilla'), 'X3M_MUSIC_COMBAT_TRIGGER', 'vanilla'),
     (('--run-in-background', 'off'), 'X3M_RUN_IN_BACKGROUND', '0'),
     (('--no-seta-restore',), 'X3M_SETA_RESTORE', None),
@@ -226,10 +230,12 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(self.env('--config'), {})
         self.assertEqual(self.env('--config', '/tmp/x3m-test.ini'), {'X3M_CONFIG': 'Z:/tmp/x3m-test.ini'})
         self.assertEqual(self.env('--config', 'C:\\X3\\x3m.ini'), {'X3M_CONFIG': 'C:\\X3\\x3m.ini'})
-        # --no-music-keep switches the track queue off with it (its dependant since 2026-10-23): both go empty.
+        # --no-music-keep switches the track queue off with it (its dependant since 2026-10-23) and the docking keep with the
+        # queue (2026-10-25): all go empty.
         self.assertEqual(self.env('--config', '--no-music-keep', '--taa-sharpen', '0.5', '--taa'),
-                         {'X3M_MUSIC_KEEP': '', 'X3M_MUSIC_QUEUE': '', 'X3M_TAA_SHARPEN': '0.5', 'X3M_TAA': '1'})
-        self.assertEqual(self.env('--config', '--no-music-queue'), {'X3M_MUSIC_QUEUE': ''})
+                         {'X3M_MUSIC_KEEP': '', 'X3M_MUSIC_QUEUE': '', 'X3M_MUSIC_DOCK_KEEP': '', 'X3M_TAA_SHARPEN': '0.5', 'X3M_TAA': '1'})
+        self.assertEqual(self.env('--config', '--no-music-queue'), {'X3M_MUSIC_QUEUE': '', 'X3M_MUSIC_DOCK_KEEP': ''})
+        self.assertEqual(self.env('--config', '--no-music-dock-keep'), {'X3M_MUSIC_DOCK_KEEP': ''})
         _, data, _ = self.launch('--config')
         self.assertEqual(data['command'][-3:], ['-noabout', '-skipintro', '-runinbg'])
         self.assertNotEqual(self.launch('--config', vanilla=True)[0], 0)

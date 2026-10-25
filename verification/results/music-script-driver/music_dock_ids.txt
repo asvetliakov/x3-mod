@@ -1,0 +1,12 @@
+#### build mayhem
+  170e9 call 200::ChangeTrackMusic(14)
+  0df65 call SE_Random(4)
+-- music-entry calls with a dock literal (14, 2001..2004): 1
+  170e9 150::DockingAllowed                      call 200::ChangeTrackMusic(14)
+-- callers of ChangeTrackToSectorMusic: 21
+#### build stock
+  172b4 call 200::ChangeTrackMusic(14)
+  0d62a call SE_Random(4)
+-- music-entry calls with a dock literal (14, 2001..2004): 1
+  172b4 150::DockingAllowed                      call 200::ChangeTrackMusic(14)
+-- callers of ChangeTrackToSectorMusic: 21

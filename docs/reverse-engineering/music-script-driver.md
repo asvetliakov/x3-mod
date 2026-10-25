@@ -636,7 +636,8 @@ reaches this test.
 * the found record is music and playing (`& 0x82 == 0x82`), loop bit clear, `+0x14 ≠ 0`, media ≠ 0.
 
 Docking (`2001..2004`) and the MD's `DoPlayMusic` pass this test. Add `2001..2004` to the exclusions if docking must
-switch at once.
+switch at once. (Amended 2026-10-25: with `music_dock_keep` a docking request is neither queued nor switched but taken
+as a request for the playing id, §10.)
 
 **States:** IDLE; ORPHANED (O, key P, pending N, task C); PARKED (as ORPHANED, plus C's slot). P is a private nonzero
 id outside 101..299 and every script id, for example `0x7f000000 + n`.
@@ -673,7 +674,10 @@ id outside 101..299 and every script id, for example `0x7f000000 + n`.
 * **Save, load, pause, leave.** T1 ends the queue before the walk. The save's MOVI chunk then holds only N and C is
   runnable: the vanilla savegame, which avoids music-restart.md §7.3's suspended-task trap and keeps the private key
   out of the restore. Under keep or vanilla, the new track then starts from 0 after the save or pause: a visible
-  degradation, with the old track cut at the save.
+  degradation, with the old track cut at the save. (Amended 2026-10-25: the save keeps the queue when the save pump is
+  bound, with C woken before the script writer, and the private key is inferred harmless in the restore **[i]**; a
+  pause still ends it, but hands a same-id (docking) episode back to the keep; music-restart.md §7.7, music-queue.md
+  Mechanism item 6.)
 * **Alt-tab.** As in the T1 row: under the keep's `skip_all` mode O plays on; under its `paused` mode the queue ends
   (O freed at the next Present); without keep, the vanilla stop-all wakes C, and the new track starts from 0.
 * **`StopMusic` with a fade while PARKED.** `MusicFadeOut` fades N, which is silent, then stops it. The queue ends
@@ -821,6 +825,8 @@ python3 -I verification/results/music-script-driver/music_driver_listing.py     
 python3 -I verification/results/music-script-driver/verify_track_queue.py > verification/results/music-script-driver/verify_track_queue_output.json   # PASS (§7-§8)
 python3 -I verification/results/music-script-driver/run189_music_rows.py > verification/results/music-script-driver/run189_music_rows.txt   # §8.4
 python3 -I verification/results/music-script-driver/flight_music_summary.py /mnt/c/X3/x3m.log > verification/results/music-script-driver/flight_music_summary.txt
+python3 -I verification/results/music-script-driver/music_dock_ids.py   # §10 (excerpt kept in music_dock_ids.txt)
+python3 -I verification/results/music-script-driver/queue_save_gaps.py /mnt/c/X3/x3m.log > verification/results/music-script-driver/queue_save_gaps.txt   # music-restart.md §7.7
 i686-w64-mingw32-objdump -d --start-address=0x42c890 --stop-address=0x42ca61 /mnt/c/X3/X3AP.exe   # alert level
 ```
 
@@ -1106,3 +1112,39 @@ call `0x0049f4c0` (`[M+0x60]`, 0, script object, `"AttackedBy"`, 1, argc 2, arg0
 python3 -I verification/results/music-script-driver/verify_engagement_data.py > verification/results/music-script-driver/verify_engagement_output.json   # PASS
 i686-w64-mingw32-objdump -d -M intel --start-address=0x45e130 --stop-address=0x45eea5 /mnt/c/X3/X3AP.exe   # hit handler (raw/, untracked)
 ```
+
+## 10. Docking music (2026-10-25) **[m]** unless marked
+
+Both story builds (Mayhem `addon/07.cat`, stock `addon/04.cat`), decoded by
+[`music_dock_ids.py`](../../verification/results/music-script-driver/music_dock_ids.py) (excerpt
+`music_dock_ids.txt`); flight rows from the user's 1.5.1 log (`/mnt/c/X3/x3m.log`, SHA-256 `24ceb0ebe3ce0118…`).
+
+* **Landing, id 14.** `150::DockingAllowed` (Mayhem `0x17037`, stock `0x17202`) is the only music-entry call with a
+  docking literal in either object: after `SA_SetPlayerLand`, `TI_Delay(2000)` and `SA_IsPlayerLand`, it calls
+  `200::ChangeTrackMusic(14)` (`0x170e9`; stock `0x172b4`), then speech `{13, 1283}`. So 14 plays when the docking
+  clearance completes, before the ship is inside.
+* **Docked, 2001..2004.** `ChangeTrackToSectorMusic` (`0x0dcdf`) asks `EnvironmentToMusicTrack(g10.GetEnvironment())`;
+  for an environment that is not class 2001 (a station or carrier dock) it returns `pushw 2001; pushb 4; push1;
+  native SE_Random; add` (`0x0df5f`..`0x0df6b`), i.e. `2001 + SE_Random(4)` (2001..2004 **[i]** for `SE_Random(n)` in
+  `0..n-1`; the flight played 2003). Its 21 callers include `2016::RunPlayerTrade`, `2004::CanLand`,
+  `150::NotifyDockingAbort` and `150::NotifyAlert`, so while docked every sector request, the end of combat included,
+  yields a docking id.
+* **Undock.** The ship's environment is the sector again, and the next `ChangeTrackToSectorMusic` (the flight's
+  request came through `ChangeTrackMusic` with valid cells) asks for the sector's `m32`, i.e. the track that played
+  before docking.
+* **All three requests are `ChangeTrackMusic` fork children** (`LoopMusic`, fade 0, loop 1): the flight's rows carry
+  the full cell shape for each. Frame 1111969: `refuse reason=immediate_id old=82103 new=14` (landing, vanilla switch);
+  1116621: `defer old=14 new=2003` (docked); 1119214: `collapse old=2003 new=82103` (undock), which then parked on
+  the landing track until a save ended the queue.
+* **The id cell is re-read after the stop.** `PlayMusicWithFade` evaluates `m17 == p-4` at entry (`0x0daaa`, a
+  re-request of the current id returns at once), stops `p2 = m17` (`0x0db4f`), waits, and only then sets `m17 = p-4`
+  (`0x0db88`) and loads `MOV_LoadMovie(m17, 144)`. `p-4` is the cell the queue reads as the new id (-11 at the stop:
+  `c-11` carries the requested id in every flown row). Writing the stopped id into it before the task resumes makes the
+  rest of the method run as `PlayMusicWithFade(old, 0, 1)` after an accepted change: it waits for T_old, loads and
+  plays `old`, and later requests compare against `m17 = old`.
+
+`music_dock_keep` (music-queue.md, Mechanism item 7) uses exactly that at the queue's T3 seam: a docking request with
+the alert at 0/0 is deferred or collapsed as a request for the stopped id, so the playing track continues, loops at its
+end, and the undock request is the script's own no-op. Under an alert the docking request stays vanilla; the alert
+test cannot tell a docked combat end (`NotifyAlert(0)` → a docking id) from a combat stop.
+

@@ -636,7 +636,7 @@ class MusicAlertSource(unittest.TestCase):
         self.assertEqual(hold['range'], ((1.0, 600.0, False),))
         self.assertFalse(trigger['developer'] or hold['developer'])
         keys = [e['key'] for e in schema.SETTINGS if e['section'] == 'audio' and not e['developer']]
-        self.assertEqual(keys[:3], ['music_keep', 'music_queue', 'voice_dmo_fallback'])
+        self.assertEqual(keys[:4], ['music_keep', 'music_queue', 'music_dock_keep', 'voice_dmo_fallback'])
         self.assertIn('music_combat_trigger', keys)
         self.assertIn('music_combat_hold_s', keys)
         template = (ROOT / 'assets/x3m.ini').read_text()

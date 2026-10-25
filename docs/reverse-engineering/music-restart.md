@@ -223,7 +223,9 @@ everything else must leave it playing at its position.
 These six are the complete direct caller set of stop-all (raw E8/E9 scan, no
 literal references). Pause runs scripts and the media pump every iteration
 (`0x00403aff`, `0x00403b04` precede the pause test), so in vanilla the woken
-script restarts the track while paused (**inference**). Menus: the only native
+script restarts the track while paused (**inference**; corrected 2026-10-25: those
+calls run once in the pausing iteration, which then waits in `0x00404280` without
+them until the unpause, §7.7). Menus: the only native
 pause entry is `X2_SetPause`; whether a menu also calls `MOV_StopMovie` is
 script behaviour and not decoded.
 
@@ -877,6 +879,67 @@ python3 -I verification/results/music-restart/kc_save_handlers.py /mnt/c/X3
 i686-w64-mingw32-objdump -d --start-address=0x4d0700 --stop-address=0x4d0c31 /mnt/c/X3/X3AP.exe  # pump
 i686-w64-mingw32-objdump -d --start-address=0x4d0244 --stop-address=0x4d0379 /mnt/c/X3/X3AP.exe  # ring/sample/buffer
 ```
+
+### 7.7 The track queue's orphan through a save (2026-10-25)
+
+Question (user, release 1.5.1): after a sector change, a save resets the music to the new sector's track; can the
+queued state survive the save? Same EXE (`fdbf3418d8f0a897…`, `/mnt/c/X3/X3AP.exe`), the user's flight log
+`/mnt/c/X3/x3m.log` (SHA-256 `24ceb0ebe3ce0118…`, trace off), nothing launched.
+
+**What the flight did.** [`queue_save_gaps.py`](../../verification/results/music-script-driver/queue_save_gaps.py)
+(output `queue_save_gaps.txt`): 9 queue episodes ended with `event=end reason=stop_all` (the 1.5.1 row names no
+caller). In 6 the next row is the woken task's vanilla `music_keep_seek` of the parked id 2,480–2,581 ms later, one
+frame on, with no `music_keep_stop` in between: the save's stop-all ended the queue at T1, freed O before the walk
+(so the walk met no playing music and wrote no row, and the save pump had no target), the file write blocked the loop
+for about 2.5 s (the pumped saves of the same flight span 2,373–3,385 ms), and the task's replay then played N from 0
+**[m]** rows, **[i]** attribution by the gap. The other 3 replay 0.2 ms after the end in the same frame and are
+followed 0.5 s later by an `alt_tab` stop: a stop-all inside a script step, the shape of the logged `pause →
+music_keep_seek action=skip → alt_tab` sequence at frame 911840 **[i]**. So the reported reset is the queue's T1 end at
+the save; nothing else re-issues a play after the save: `BeforeSave`/`SaveFinished` touch no music (§7.3), and the only
+play is the woken task's own `MOV_PlayMovie(N)`.
+
+**What the save does to O under its private key P** **[m]** unless marked:
+
+* T1 runs before the walk (the queue's end today). The walk's Patch A at `0x004982db` visits every flag-2 record; for
+  the save caller `keep_running` jumps to `0x00498322` (flag 2 cleared, completion `(ctx,1)`, context and slot
+  zeroed), `skip_all` to `0x00498359` (record untouched). O is a DirectSound music record (`0xd2`).
+* The script writer (`0x0049f930`, `0x004049ec`) runs before MOVI and saves a task suspended on a media completion as
+  suspended; a load never wakes it (§7.3). A PARKED C is such a task, so C must get its `(C,1)` before the writer, as
+  vanilla's stop-all gives the music task.
+* The MOVI writer saves every linked record (music-script-driver.md §8.1), so O goes into the savegame under P
+  (`0x7f000000 + n`). The restore `0x00498ad0` skips only 101..299 (`0x00498b7e`) and recreates absent ids through
+  the allocator `0x00498140` with the saved flags `& ~2` (`0x00498b99`, `push esi; call 0x498140` at `0x00498bae`).
+  The allocator passes `(id, flags)` to the media constructor `0x004cf460` (`0x004981d3`) and, on a 0 return,
+  frees the record and returns 0 (`0x004981e2`–`0x004981f7`); the restore then only skips its `+0x30` step. The
+  constructor builds the name from the id with `%05d.dat` (`0x563b20`), `addon\mov\%s`, `soundtrack\%05d.mp3`,
+  `soundtrack\%05d.wma` and `%sData\mov\%s` (`0x563b2c`–`0x563b64`), tries the catalogue lookup `0x004e6fa0` and the
+  file system, and on a miss destroys the media (`0x004d1d40`) and returns 0 (`0x004cfa62`–`0x004cfa7d`, `0x004cfaca`)
+  with no dialog. P is `2130706433`+, a ten-digit name; the soundtrack directory holds 485 files, all five-digit
+  **[m]**; no catalogue entry of that name **[i]** (the catalogues were not searched). So a P record in a savegame is
+  recreated as nothing.
+* N's record (created by C's `MOV_LoadMovie`, never played, `0xd0`) and C (runnable after its wake, `m17 = N`) are
+  what vanilla would save after the same change; loading such a save plays N from 0.
+
+**Pause** **[m]**: the main loop calls the scheduler `0x0049f770` and the media manager `0x00498370` at
+`0x00403aff`/`0x00403b04` before the pause test at `0x00403b09`, but only once for the iteration that sets the pause:
+that iteration then takes `0x00403b3a` → `call 0x00404280` (`0x00403db8`), whose wait loop `0x004043a0`..`0x004043d6`
+calls only `0x004d34b0` and `0x004d3b60` until the unpause write at `0x004043d8` (pause-dialog-input.md §1.3, §2.1).
+Nothing pumps a running DirectSound record during the pause, so the queue cannot keep O running across it, and the
+keep's resume (the replay's seek skip and Run) needs a replay of O's own id. A pause therefore ends the queue, except a
+same-id episode, which is handed back: the task's unplayed record of the id is freed by id while O is still under P,
+and O gets the id back, after which the keep pauses and resumes it as any track (music-queue.md, Mechanism item 6).
+(Corrected 2026-10-25 after review: an earlier draft read the pre-test calls as running every paused iteration.)
+
+**Shape built** (music-queue.md, Mechanism item 6): at the save's T1, with the save pump bound and O linked under P,
+`0xd2`-class (music, `0x40`, flag 2, no loop) and owned by C or nobody, PARKED delivers `(C,1)` through O's slot and
+zeroes it (back to ORPHANED), and the walk's Patch A returns `skip_all` for O alone (no hold) and arms the pump on it
+with flag 2 expected set and no replay wait or fallback pause. After the save the manager services O (flag 2) and C's
+replay parks again on O. §7.3's objection to `skip_all` under the save does not apply: O carries no context when the
+writer runs, and no task is suspended on it. A pump return of 2 during the save (O ended) leaves the buffer stopped
+with `[m+0x48]` = 1, and the pump head re-arms a buffer in that state, so the manager's first poll after the save
+could restart O from 0 under P (not traced further). The handler therefore clears O's flag 2 right after that return,
+as the manager's natural end does; O's context is 0 after the save's wake, so nothing is owed a completion, the
+manager never polls O again, and C's replay ends the queue (`ended_before_park`) and starts N.
 
 ## Reproduce
 

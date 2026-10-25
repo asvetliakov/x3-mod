@@ -286,8 +286,8 @@ STRICT_ZERO = ('X3M_SHIP_STEERING', 'X3M_SHIP_AVOIDANCE')
 # Opt-outs and the variables that must end up off (docs/architecture/config-file.md; the reviewer's list of 2026-09-26 and
 # test_launcher_defaults.OPT_OUTS).
 OPT_OUTS = {
-    ('--no-sun-occlusion',): ('X3M_SUN_OCCLUSION',), ('--no-music-keep',): ('X3M_MUSIC_KEEP', 'X3M_MUSIC_QUEUE'),
-    ('--no-music-queue',): ('X3M_MUSIC_QUEUE',),
+    ('--no-sun-occlusion',): ('X3M_SUN_OCCLUSION',), ('--no-music-keep',): ('X3M_MUSIC_KEEP', 'X3M_MUSIC_QUEUE', 'X3M_MUSIC_DOCK_KEEP'),
+    ('--no-music-queue',): ('X3M_MUSIC_QUEUE', 'X3M_MUSIC_DOCK_KEEP'), ('--no-music-dock-keep',): ('X3M_MUSIC_DOCK_KEEP',),
     ('--cull-small-parts', '0'): ('X3M_CULL_SMALL_PARTS_PX', 'X3M_CULL_DOCK_PARTS_PX'), ('--cull-dock-parts', '0'): ('X3M_CULL_DOCK_PARTS_PX',), ('--no-shadow-cascades',): ('X3M_SHADOW_CASCADES', 'X3M_VOLUMETRIC_FOG'),
     ('--no-hdr',): ('X3M_HDR', 'X3M_HDR_BLOOM', 'X3M_HDR_TONEMAP'), ('--no-taa',): ('X3M_TAA', 'X3M_VOLUMETRIC_FOG', 'X3M_SUN_SHADOW_LANE'),
     ('--no-ownership',): ('X3M_OWNERSHIP', 'X3M_TAA'), ('--no-motion-output',): ('X3M_MOTION_OUTPUT', 'X3M_TAA', 'X3M_HDR'),

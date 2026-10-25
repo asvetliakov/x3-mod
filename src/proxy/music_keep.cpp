@@ -52,6 +52,9 @@ Holds holds_;
 // maintained from Present (kc_), the state machine lives in queue_.
 bool queue_requested_ = false, queue_armed_ = false, queue_variable_ = false; // queue_variable_: X3M_MUSIC_QUEUE is exactly 1
 const char* queue_state_ = "disabled";
+// Docking music (X3M_MUSIC_DOCK_KEEP=1, only with the queue; music-queue.md Mechanism item 7): a docking request at T3 becomes a
+// request for the playing track (queue_new_id). Live only while queue_armed_.
+bool dock_keep_ = false;
 TrackQueue queue_;
 KcPatch kc_;
 unsigned char kc_window_seen_[warp_window_length]{}; // the last window bytes read, for the row
@@ -262,7 +265,8 @@ extern "C" std::uint32_t __cdecl x3m_music_queue_call_free(std::uint32_t key);
 namespace {
 // The flag loading_trace's gzwrite / gzclose rows test before calling the observer.
 void sync_pumping() {
-    x3m_music_keep_save_pumping = keep_armed_ && save_pump_ && pump_.pumping ? 1u : 0u;
+    // A queue-mode episode stays observed after an early stop, so the save's gzclose still closes its row.
+    x3m_music_keep_save_pumping = keep_armed_ && save_pump_ && (pump_.pumping || (pump_.queue && pump_.open)) ? 1u : 0u;
 }
 std::uint64_t span_ms(std::uint64_t from, std::uint64_t to) {
     return to >= from ? ticks_to_ms(to - from, pump_.frequency) : 0;
@@ -415,19 +419,35 @@ void queue_line(const QueueOutcome& o, const QueueStopView* stop, std::uint32_t 
     }
     write_queue_line(
         "music_queue frame=%llu seq=%lu qpc=%llu event=%s reason=%s state=%s old=%lu new=%lu key=0x%08lx record=0x%08lx task=%lu stop_task=%lu "
-        "wake=%u clear=%u complete=%u park=%u freed=%lu free_later=%u frames=%llu episode=%lu\n",
+        "wake=%u clear=%u complete=%u park=%u freed=%lu free_later=%u frames=%llu episode=%lu caller=%s dock=%lu\n",
         current_frame_, ++seq_, qpc(), queue_event_name(o.event), queue_reason_name(o.reason), queue_state_name(queue_.state),
         static_cast<unsigned long>(o.old_id), static_cast<unsigned long>(o.new_id), static_cast<unsigned long>(o.key),
         static_cast<unsigned long>(o.record), static_cast<unsigned long>(o.task), static_cast<unsigned long>(o.stop_task),
         o.wake ? 1u : 0u, o.clear ? 1u : 0u, o.complete ? 1u : 0u, o.park ? 1u : 0u, static_cast<unsigned long>(freed),
         o.free_later ? 1u : 0u, o.frames,
-        static_cast<unsigned long>(queue_.episode));
+        static_cast<unsigned long>(queue_.episode), o.caller ? stop_caller_name(o.caller) : "-",
+        static_cast<unsigned long>(o.dock));
 }
 // Executes an outcome against the engine, in the core's order: re-key, wake (then zero O's context and slot) or only
 // zero them (`clear`), complete the caller, park, free now or at the next Present. Returns the free's answer (1 found)
 // for the row.
 std::uint32_t queue_apply(const x3m::LightCallBoundary& cpu, const QueueOutcome& o) {
     std::uint32_t freed = 0;
+    // Handback (a pause of a same-id episode, T1 of X2_SetPause): free the task's unplayed same-id record while O is still
+    // under P, then give O its id back, the vanilla state the keep's pause and resume handle. Should another record still
+    // carry the id, O is not given it back and P is freed instead (the end of before: its teardown wakes a parked task).
+    if (o.free_id) {
+        cpu.before_original();
+        freed = x3m_music_queue_call_free(o.free_id);
+    }
+    if (o.restore) {
+        if (!find_record(o.old_id))
+            store32(o.record + record_id, o.old_id);
+        else {
+            cpu.before_original();
+            freed |= x3m_music_queue_call_free(o.key) << 1;
+        }
+    }
     if (o.rekey) store32(o.record + record_id, o.key);
     if (o.wake || o.clear) {
         if (o.wake) deliver(cpu, o.wake_slot, o.wake_ctx);
@@ -475,6 +495,24 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_al
     const std::uint32_t flags = load32(record + record_flags), id = load32(record + record_id),
                         media = load32(record + record_media);
     const bool save_pump_free = save_pump_ && !pump_.active(); // one target per save
+    // The queue's orphan through a save that kept the queue (queue_on_stop_all's `keep`): untouched (no hold), so the
+    // manager services it again after the save (flag 2 stays set), and pumped while the file is written; when the pump is
+    // already taken it gets the vanilla stop instead (paused, flag 2 and context cleared), and C's replay after the save
+    // then ends the queue (ended_before_park) and plays N as before.
+    if (queue_keep_walk(queue_, record, return_va)) {
+        const bool save = return_va == save_return_va;
+        if (save && save_pump_free) {
+            pump_.arm_queue(record, id, media, GetCurrentThreadId(), qpc(), frequency_);
+            sync_pumping();
+        }
+        const StopMode mode = save && !save_pump_free ? StopMode::vanilla : StopMode::skip_all;
+        write_line(
+            "music_keep_stop frame=%llu seq=%lu qpc=%llu caller=0x%08lx name=%s record=0x%08lx id=%lu flags=0x%lx mode=%s held=0 holds=%u pump=%u queue=1\n",
+            current_frame_, ++seq_, qpc(), static_cast<unsigned long>(return_va), stop_caller_name(return_va),
+            static_cast<unsigned long>(record), static_cast<unsigned long>(id), static_cast<unsigned long>(flags),
+            mode_name(mode), holds_.count, save && save_pump_free ? 1u : 0u);
+        return unsigned(mode);
+    }
     const StopDecision d = decide_stop(holds_, record, flags, id, media, return_va, status_gate_, save_pump_free);
     if (d.pump) {
         pump_.arm(record, id, media, GetCurrentThreadId(), qpc(), frequency_);
@@ -558,9 +596,23 @@ __attribute__((force_align_arg_pointer)) std::uint32_t __cdecl x3m_music_keep_st
     const std::uint32_t return_va = block[4];
     // The track queue ends before the walk on every caller but alt-tab under skip_all: C is woken through O's slot and P
     // is freed (outside the walk, which has not loaded its first node yet), so the walk sees neither O nor the private
-    // key. Alt-tab under paused ends it too, with the free deferred to the next Present (queue_on_stop_all).
+    // key. Alt-tab under paused ends it too, with the free deferred to the next Present (queue_on_stop_all). The save keeps
+    // it while O plays as the queue left it and the save pump is bound (event keep: a parked C is woken; the walk below
+    // leaves O untouched and pumps it). A pause hands a same-id episode back to the keep (O re-keyed to its id).
     if (queue_.active()) {
-        const QueueOutcome o = queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_);
+        SameIdView same;
+        const bool same_id = return_va == pause_return_va && queue_.old_id == queue_.new_id;
+        if (same_id) { // O is under P, so the first record under the id is the task's own (or none)
+            same.record = find_record(queue_.new_id);
+            same.found = same.record != 0;
+            if (same.found) {
+                same.flags = load32(same.record + record_flags);
+                same.context = load32(same.record + record_context);
+                same.media = load32(same.record + record_media);
+            }
+        }
+        const QueueOutcome o =
+            queue_on_stop_all(queue_, return_va, status_gate_, orphan_view(), current_frame_, save_pump_, same_id ? &same : nullptr);
         if (o.event != QueueEvent::none) queue_line(o, nullptr, queue_apply(cpu, o));
     }
     // A story reload begins (the session function's or the loader's stop-all): the KC patch waits for its completion.
@@ -634,7 +686,13 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_mo
         v.rec_slot = record ? load32(record + record_slot) : 0;
         v.media = record ? load32(record + record_media) : 0;
         v.orphan = orphan_view();
+        v.dock_keep = dock_keep_ && queue_armed_;
         const QueueOutcome o = queue_on_stop(queue_, v, queue_armed_, current_frame_);
+        // A docking request the queue took as a request for the playing track: PlayMusicWithFade reads its id parameter
+        // (this cell) again after the stop (`m17 = p-4` at 0x0db88), so the task loads, plays and parks that id. Written
+        // before the completions; the cell was read inside the buffer above.
+        if (o.consume && o.dock && story)
+            store32(queue_id_cell_value_at(t.cells, *story), o.new_id);
         if (o.event != QueueEvent::none) queue_line(o, &v, queue_apply(cpu, o)); // one row per transition or refusal
         resume_candidate = o.resume_candidate;
         if (o.consume) return 1;
@@ -806,7 +864,7 @@ __attribute__((noinline)) void music_keep_gz_write_sampled() {
     }
     LiveRecord r{};
     bool ok = live_record(pump_.record, pump_.id, pump_.media, r) &&
-              (r.flags & (flag_music | flag_directsound | flag_playing)) == (flag_music | flag_directsound);
+              (r.flags & (flag_music | flag_directsound | flag_playing)) == pump_.expected_flags();
     if (ok) {
         const std::uint32_t media_bits = load32(pump_.media + media_flags),
                             state = load32(pump_.media + media_buffer_state);
@@ -821,6 +879,15 @@ __attribute__((noinline)) void music_keep_gz_write_sampled() {
     cpu.before_original(); // the engine's MXCSR and LastError for the pump; restored on return
     const std::uint32_t result = x3m_music_keep_call_pump(pump_.media);
     pump_.note_call(result, now, qpc());
+    // Queue mode, O ended during the save (return 2: the buffer is stopped): clear its flag 2 as the manager's natural
+    // end would (its context is 0: the save woke C), so the manager never re-arms it after the save; C's replay then ends
+    // the queue (ended_before_park) and N starts, and any other event frees it (stale).
+    if (pump_.queue_ended) {
+        pump_.queue_ended = false;
+        LiveRecord e{};
+        if (live_record(pump_.record, pump_.id, pump_.media, e) && e.context == 0 && (e.flags & flag_playing))
+            store32(pump_.record + record_flags, e.flags & ~flag_playing);
+    }
     run_fallback(cpu); // after a 0/2/other return
     sync_pumping();
 }
@@ -852,12 +919,12 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_keep_gz_write() 
 // the wrapper's return 0x00404a74) ends pumping; the episode then waits for the replay. Any other gzclose is ignored.
 __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_keep_gz_close(std::uint32_t return_va,
                                                                               std::uint32_t caller_return_va) {
-    if (!keep_armed_ || !pump_.pumping || return_va != gzclose_wrapper_return_va ||
-        caller_return_va != save_gzclose_return_va)
-        return;
+    if (!keep_armed_ || return_va != gzclose_wrapper_return_va || caller_return_va != save_gzclose_return_va) return;
+    if (!pump_.pumping && !(pump_.queue && pump_.open)) return; // a queue episode that stopped early still ends here
     x3m::LightCallBoundary cpu;
     gzclose_caller_ = caller_return_va;
     pump_.stop(PumpEnd::gzclose, qpc());
+    if (pump_.queue && pump_.end_now(PumpEnd::gzclose, qpc())) pump_line("queue", 0); // no replay follows: the row now
     sync_pumping();
 }
 __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_trace_stop(const std::uint32_t* block) {
@@ -1624,6 +1691,8 @@ bool initialize() {
     trace_present = trace_present || trace_requested;
     queue_variable_ = requested(L"X3M_MUSIC_QUEUE", &queue_present);
     queue_requested_ = queue_variable_ && keep_requested; // a no-op without the keep
+    bool dock_present = false;
+    dock_keep_ = requested(L"X3M_MUSIC_DOCK_KEEP", &dock_present) && queue_requested_; // a no-op without the queue
     queue_state_ = queue_present && !keep_requested ? "keep_off" : "disabled";
     if (!keep_present && !trace_present && !queue_present) {
         keep_state_ = trace_state_ = "disabled";
@@ -1687,14 +1756,15 @@ bool initialize() {
             static_cast<unsigned long>(address_of(&x3m_music_trace_stop_movie_stub)), trace_line_cap);
     if (queue_present)
         log("music_queue requested=%u armed=%u reason=%s site_play=0x%08lx write_play=%s stub_play=0x%08lx free=0x%08lx vm=0x%08lx "
-            "detect=runtime expected=%s kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u",
+            "detect=runtime expected=%s kc_patch=%s key_base=0x%08lx stack_depth=%u cells=-%u,-%u,-%u,-%u,-%u,-%u dock_keep=%u",
             queue_variable_ ? 1u : 0u, queue_armed_ ? 1u : 0u, queue_state_,
             static_cast<unsigned long>(t_play_site_va), write_kind(play_site_.site.patched_in, play_site_.site.atomic_write),
             static_cast<unsigned long>(address_of(&x3m_music_queue_play_stub)), static_cast<unsigned long>(free_by_id_va),
             static_cast<unsigned long>(vm_ptr_va), stories_, queue_armed_ ? "pending" : "off",
             static_cast<unsigned long>(queue_key_base), x3m::story::fork_child_stack_depth,
             x3m::story::fork_child_cell_depths[0], x3m::story::fork_child_cell_depths[1], x3m::story::fork_child_cell_depths[2],
-            x3m::story::fork_child_cell_depths[3], x3m::story::fork_child_cell_depths[4], x3m::story::fork_child_cell_depths[5]);
+            x3m::story::fork_child_cell_depths[3], x3m::story::fork_child_cell_depths[4], x3m::story::fork_child_cell_depths[5],
+            dock_keep_ && queue_armed_ ? 1u : 0u);
     SetLastError(error);
     return keep_applied || trace_applied;
 }
@@ -1777,6 +1847,7 @@ void present(unsigned long long, unsigned long long frame, bool) {
     if (queue_armed_) { // the KC patch (one image load, the fields and the window on change or every 8th frame) and,
                         // while a track is queued, the committed alert level
         if (queue_free_pending_) music_queue_free_present();
+        queue_.walk_caller = 0; // a stop-all's keep lasts for that stop-all's walk only
         music_queue_kc_present();
         if (queue_.active()) music_queue_alert_present();
     }

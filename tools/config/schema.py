@@ -317,6 +317,10 @@ SETTINGS = [
           'sector\'s track starts; several sector changes before that end go straight to the newest sector\'s track. '
           'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off.', '1',
           requires=('music_keep',), launcher='--music-queue', since='2026-10-23'),
+    entry('music_dock_keep', 'bool', 'audio', 'When you dock, the track that is playing keeps playing instead of the landing and '
+          'docking music, and undocking leaves it playing too. Combat music still starts at once. Does nothing when '
+          'music_queue = 0. 1 = on, 0 = off.', '1', requires=('music_queue',), launcher='--music-dock-keep',
+          since='2026-10-25'),
     entry('voice_dmo_fallback', 'bool', 'audio', 'Makes speech play when the system lacks the game\'s speech decoder, by using the '
           'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off.', '1', launcher='--voice-decoder'),
     entry('music_combat_trigger', 'enum', 'audio', 'When combat music starts. engaged = only while you or one of your ships near '

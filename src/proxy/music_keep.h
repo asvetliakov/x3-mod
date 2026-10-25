@@ -88,7 +88,13 @@
 //      where the orphan is freed (0x004986b0). A further deferrable stop collapses to the
 //      newest id; combat, any other music stop or play (any caller of 0x00498c90), a stop-all
 //      other than alt-tab under skip_all (alt-tab under paused frees at the next Present) and an
-//      alert edge at Present end the queue (wake, free, vanilla). The prerequisite KC patch
+//      alert edge at Present end the queue (wake, free, vanilla). The save (with the save pump bound) keeps it while
+//      the orphan plays as the queue left it: a parked task is woken (runnable when the script writer runs), the walk
+//      leaves the orphan untouched (skip_all) and pumps it, and a pump return of 2 clears its flag 2 so the task's
+//      replay ends the queue. A pause ends it, but a same-id episode (the docking keep's) is handed back: the task's
+//      unplayed record of the id is freed and the orphan re-keyed to it, so the keep pauses and resumes it.
+//      X3M_MUSIC_DOCK_KEEP=1 (only with the queue): a docking request (14, 2001..2004) is deferred or collapsed as a
+//      request for the stopped id, written into the task's id cell, so the playing track continues. The prerequisite KC patch
 //      (150::WarpToSector's StopMusic(500) fork -> jmp; the window, the stop IPs and the return
 //      cells detected at run time in the loaded object, story_detect.h: Mayhem CODE 0x161c3, stock
 //      0x1639c) is maintained from Present and re-applied after every completed story reload (the

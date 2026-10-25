@@ -1,0 +1,11 @@
+log /mnt/c/X3/x3m.log sha256 24ceb0ebe3ce0118
+episode=3 end_frame=314874 replay_frame=314874 gap_ms=0.2 next_stop=alt_tab@314874 class=script_step
+episode=6 end_frame=594544 replay_frame=594545 gap_ms=2551.4 next_stop=- class=save
+episode=7 end_frame=660878 replay_frame=660879 gap_ms=2581.0 next_stop=- class=save
+episode=8 end_frame=683271 replay_frame=683272 gap_ms=2550.4 next_stop=- class=save
+episode=9 end_frame=911702 replay_frame=911703 gap_ms=2479.8 next_stop=pause@911840 class=save
+episode=10 end_frame=942455 replay_frame=942455 gap_ms=0.2 next_stop=alt_tab@942455 class=script_step
+episode=11 end_frame=973562 replay_frame=973563 gap_ms=2513.9 next_stop=save@992231 class=save
+episode=14 end_frame=1106386 replay_frame=1106386 gap_ms=0.2 next_stop=alt_tab@1106386 class=script_step
+episode=15 end_frame=1122125 replay_frame=1122126 gap_ms=2480.8 next_stop=save@1125142 class=save
+stop_all_ends=9 save=6 script_step=3 other=0

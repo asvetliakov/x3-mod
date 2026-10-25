@@ -267,12 +267,14 @@ def apply_promoted_defaults(args):
     fill('volumetric_fog_range', 'stored', args.volumetric_fog is not None and args.volumetric_fog > 0.0)
     fill('music_keep', True)
     fill('music_queue', True, bool(args.music_keep))  # the track queue is a no-op without the keep
+    fill('music_dock_keep', True, bool(args.music_keep and args.music_queue))  # docking music keep: a no-op without the queue
     # Ship steering and avoidance: on by default since 2026-10-16 (user decision on Run178's accepted state; schema default 1).
     fill('ship_steering', True)
     fill('ship_avoidance', True, bool(args.ship_steering))
     for dest in ('direct', 'chase_view_restore', 'ownership', 'object_trace', 'object_lifetime', 'motion_output', 'taa', 'hdr',
                  'hdr_tonemap', 'hdr_bloom', 'crypt_cache', 'gz_buffer', 'dat_handles', 'sun_shadow_lane', 'shadow_replay_depth',
-                 'sun_shadow_apply', 'shadow_caster_retention', 'music_keep', 'music_queue', 'ship_steering', 'ship_avoidance'):
+                 'sun_shadow_apply', 'shadow_caster_retention', 'music_keep', 'music_queue', 'music_dock_keep', 'ship_steering',
+                 'ship_avoidance'):
         if getattr(args, dest) is None:
             setattr(args, dest, False)
     for dest, off in (('camera', 'vanilla'), ('resource_read', 'native'), ('mesh_adjacency', 'native'),
@@ -1173,6 +1175,8 @@ def main():
     parser.add_argument('--no-music-keep', dest='music_keep', action='store_false', help='Turn the --music-keep launcher default off')
     parser.add_argument('--music-queue', action='store_true', default=None, help='[launcher default since 2026-10-23 on every modded launch; --no-music-queue = off; not sent under --vanilla; a no-op without --music-keep] Sector-music track queue (X3M_MUSIC_QUEUE=1): when the story changes the sector track, the playing track keeps playing to its natural end under a private id and the new track\'s task is parked on it, so the new track starts only then; further sector changes before that end collapse to the newest track; combat music, StopMusic, any stop-all but alt-tab and a load end the queue at once with the vanilla switch. Needs the story\'s 150::WarpToSector fork patched to a jmp in memory (the window detected at run time in the loaded story, Mayhem CODE 0x161c3, stock 0x1639c; re-applied after every story reload; refused when not detected, gate jumps then fade as vanilla). One music_queue line per transition (docs/architecture/music-queue.md). Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--no-music-queue', dest='music_queue', action='store_false', help='Turn the --music-queue launcher default off')
+    parser.add_argument('--music-dock-keep', action='store_true', default=None, help='[launcher default since 2026-10-25 on every modded launch; --no-music-dock-keep = off; not sent under --vanilla; a no-op without --music-queue] Docking music keep (X3M_MUSIC_DOCK_KEEP=1): a docking request of the story (150::DockingAllowed\'s landing id 14, the docked environment\'s 2001..2004) is taken by the track queue as a request for the track that is playing, which keeps playing under the queue and loops at its natural end; undocking requests that track again, which the story ignores. Under an alert the docking track plays as vanilla, and a docking track that got through is replaced at once by the next sector request. One music_queue row per transition with dock=<requested id> (docs/architecture/music-queue.md, Docking)')
+    parser.add_argument('--no-music-dock-keep', dest='music_dock_keep', action='store_false', help='Turn the --music-dock-keep launcher default off')
     parser.add_argument('--music-combat-trigger', choices=('engaged', 'vanilla'), default=None, help='When combat music starts (X3M_MUSIC_COMBAT_TRIGGER; default engaged on every modded launch, refused under --vanilla). engaged = a six-byte trampoline at the alert routine\'s level site 0x0042c974 lowers the frame\'s alert level to 0 unless the player is engaged within --music-combat-hold-s game seconds: the player fired at a hostile selected target, the player ship was hit this frame, or a player-owned ship within the game\'s own 2,500,000-unit alert range was hit or holds an attack order on a hostile (docs/architecture/music-combat-trigger.md); the game\'s range stays the precondition. vanilla = nothing patched, combat music whenever a hostile is in range. Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--music-combat-hold-s', type=int, default=None, metavar='N', help='Game seconds the combat music stays after the last engagement event with --music-combat-trigger engaged (X3M_MUSIC_COMBAT_HOLD_S; 1..600, default 20; game time, so SETA shortens the real wait; refused under --vanilla)')
     parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the experimental normal-D3D9 ownership wrapper')
@@ -1405,6 +1409,8 @@ def main():
         parser.error('--music-keep cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
     if args.vanilla and args.music_queue:
         parser.error('--music-queue cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
+    if args.vanilla and args.music_dock_keep:
+        parser.error('--music-dock-keep cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
     if args.vanilla and args.music_combat_trigger is not None:
         parser.error('--music-combat-trigger cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the alert routine never runs')
     if args.vanilla and args.music_combat_hold_s is not None:
@@ -2228,6 +2234,11 @@ def main():
             env['X3M_MUSIC_QUEUE'] = '1'
         else:
             env.pop('X3M_MUSIC_QUEUE', None)
+        # Docking music keep: travels only with the queue (a no-op without it) and only when requested, dropped otherwise.
+        if args.music_dock_keep and args.music_queue and args.music_keep:
+            env['X3M_MUSIC_DOCK_KEEP'] = '1'
+        else:
+            env.pop('X3M_MUSIC_DOCK_KEEP', None)
         # Combat-music trigger: always explicit on a modded launch (engaged unless --music-combat-trigger vanilla, hold 20
         # unless --music-combat-hold-s), so a stale shell value can select neither; dropped under --vanilla (refused above).
         if args.vanilla:
