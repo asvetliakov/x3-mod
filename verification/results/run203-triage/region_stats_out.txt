@@ -1,0 +1,8 @@
+far   dome_top  mean 0.078 p95 0.124 cv 0.92 detail 0.89 cover 1.00 mean_range_over_frames 0.077-0.079
+far   dome_band mean 0.207 p95 0.715 cv 1.26 detail 1.01 cover 1.00 mean_range_over_frames 0.202-0.211
+far   ring      mean 0.151 p95 0.350 cv 0.75 detail 0.73 cover 1.00 mean_range_over_frames 0.150-0.152
+far   lower_cyl mean 0.150 p95 0.395 cv 0.78 detail 0.97 cover 1.00 mean_range_over_frames 0.147-0.152
+close dome_top  mean 0.089 p95 0.146 cv 0.70 detail 0.62 cover 1.00 mean_range_over_frames 0.087-0.090
+close dome_band mean 0.196 p95 0.707 cv 1.09 detail 1.13 cover 1.00 mean_range_over_frames 0.191-0.202
+close ring      mean 0.166 p95 0.373 cv 0.83 detail 0.57 cover 1.00 mean_range_over_frames 0.165-0.167
+close lower_cyl mean 0.149 p95 0.403 cv 0.88 detail 0.63 cover 1.00 mean_range_over_frames 0.145-0.153

@@ -1053,3 +1053,41 @@ twins are created at registration (about +7 KB bytecode per hull kind). Twins ar
 (re-registration, teardown); the table is freed with the device's `MotionOutput`. Not verified: the flight (the
 `lod_strength_frame` `seen` counts against the marker's atlas members settle whether every atlas reaches the device
 through the D3DX import; the first-draw compile hitch; the look at the freighter_base outpost against Run 202).
+
+## 2026-10-25 Run 203 A: option B flown (Run203 = 0c92156e, native C:\X3, debug + perf)
+
+Bake: x3m-regenerate 1,154 bodies in 55.3 min. Flight 37,794 frames, session_end exception=0. Scripts and small
+outputs: `verification/results/run203-triage/` (pass1.py, spikes.py, region_stats.py).
+
+- **Coverage (measured).** All 1,154 baked bodies carry 4 marked atlases (13/14/15.x3m-lod.json: diffuse, light,
+  bump `slot,0,0,0`, specular `3,3,2,1`, 1,154 each). Final `seen=86,86,86,86,0`: the four slots stay equal at every
+  step (17 at frame 116, 65 at 764), table 17, released 69, stale 0, no `lod_strength_table_full`. 16 of the first 16
+  `lod_strength_texture` rows `stored` exactly the specular atlas. Far F8 frame 2732: `marked=10 draws=10`, which matches
+  the 10 lod-1 overlay draws bound to an atlas quad; the freighter_base alpha draw (index 19, stage 3 = #774, not an atlas)
+  is unmarked, as designed.
+- **Twins (measured).** 11 created, 0 refused, 0 failed. engine=0: frames 764 (x6), 4752, 9782; transform 82-119 us,
+  create 240-328 us. engine=1: 7926 / 27489 / 35392; transform 366-434 us, create 526-1004 us. Session twin time 6.31 ms.
+- **Hitches (measured; cause inferred).** dt median 4 ms, p99 8 ms. 28 frames >= 100 ms, all loads/gates/SETA/captures
+  (764 = 25.4 s sector load including the six twins at 2.23 ms). The three engine=1 twin frames are the only in-flight
+  hitches of 46-50 ms with nothing else nearby. In all three, `frame_phases_slow` puts 42.3-42.5 ms in `scene_end`
+  (`gap_post_us` 42.4 ms), while CreatePixelShader took <= 1 ms. Inferred: the native driver compiles the 819-875-slot
+  twin at its first-use flush. Frame 9782 (engine=0) has scene_end 8.7 ms in a 14.7 ms frame; 4752 is 16 ms with no
+  scene_end cost. Option B's share is 3 hitches of about 42 ms each, out of the flight's 37 frames >= 50 ms.
+- **Outpost (measured).** Far 2725..2732: freighter_base lod 1, 3 draws (5f82ec opaque, f1b0e8 opaque, f1b0e8 alpha).
+  The two opaque draws are marked and twinned; the alpha draw is not. Close 6029..6036: lod 0, 23 draws. Region means
+  over the 8 frames, far/close (`region_stats.py`, boxes picked by eye): ring 0.151/0.166 (p95 0.350/0.373, CV
+  0.75/0.83), the Run 202 ring was 0.107/0.146. Dome top 0.078/0.089. Dome band (accepted pale beams) 0.207/0.196
+  (p95 0.715/0.707). Lower cylinder 0.150/0.149. The ring gap is down from -27 % to -9 %; the dome band and lower
+  cylinder match. What remains is the dome top (-12 %), the absence of small silhouette parts (antenna/greebles), and
+  the atlas texel scale (blockier ring panels). See the crops in the session scratchpad (r203_far_2732.png,
+  r203_close_6036.png). The ring box is not the Run 202 box, so its numbers are comparable only roughly. The depth<1
+  mask covered every box pixel, so these boxes include no background exclusion.
+- **Log volume (measured, source).** 33,405 rows over 37,794 frames. By design a row is written whenever
+  `draws || marked` is non-zero (`motion_output_material_strength_inc.h:201`), so it appears on every frame with an
+  overlay on screen and `session_draws` changes on 33,156 rows. 8,973 rows carry `no_twin>0` (61,376 marked draws,
+  frames 8374..33827). `strength_twin` returns null without a row when the bound program is outside the 7 twin kinds
+  (`motion_output_material_strength_inc.h:94-96`), so those draws render at the merged strength. Which program they
+  bind is not logged. No `lod_strength_session` row: it comes from `~MotionOutput`
+  (`motion_output.cpp:428`), and the log ends with `music_trace_stop ... name=alt_tab` and `session_end`, with no
+  device teardown. Inferred: the game exits without releasing the device, so the log is complete but the row never
+  fires.
