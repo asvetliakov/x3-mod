@@ -1,0 +1,19 @@
+{
+ "run": "204",
+ "what": "Run203 + option B follow-up (ec6c35d8): smotion twin for fade-owner sun-lane draws, lod_strength_no_twin row, bounded lod_strength_frame, lod_strength_session at exit, twin first-use timing rows",
+ "commit": "ec6c35d8",
+ "dirty": false,
+ "toolchain": "WSL2, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build-clean, -j4, 61.0 s",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "4bc490cb11b4ad6c5a640f13949656544408841133c2bcb9de7581b3ce06d348",
+  "bytes": 62906221,
+  "stripped": false
+ },
+ "checks": {
+  "build_warnings": 0,
+  "check_no_x87": "PASS",
+  "per_change": "native validator 1,500/1,500 twins in 15 forms; test_material_strength 8 OK; focused hull/config modules 54 OK (reviewer); review no blocker, items 1/2/4/5 fixed"
+ },
+ "producer": "main session"
+}

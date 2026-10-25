@@ -1,0 +1,26 @@
+{
+ "run": "204",
+ "what": "run204 candidate installed into native C:\\X3",
+ "command": "cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run203; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-25T23:30+0400",
+ "commit": "ec6c35d8",
+ "candidate_record": "verification/results/run204-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "4bc490cb11b4ad6c5a640f13949656544408841133c2bcb9de7581b3ce06d348",
+  "bytes": 62906221,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 203,
+  "sha256": "63a778e0287d1e61",
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run203"
+ },
+ "unchanged": [
+  "X3AP.exe (fdbf3418...)",
+  "x3m.ini (debug = 1, perf = 1)",
+  "x3m-regenerate.exe 77c2f674... and the 22:46 overlay bake"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
