@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.6.0
+
+2026-10-25, `python3 tools/release/release.py --out /tmp/x3m-release-1.6.0 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 83.0 s wall: dll 79.4 s, package 2.6 s; a first attempt failed with ENOSPC on the 5.9 GB `/tmp` tmpfs and passed after the session's scratch builds were removed), clean main `3973b88e` ([record](../../verification/results/release-1.6.0.json)).
+
+- Over 1.5.1 (Run201, Run 201 A flown and confirmed): **the track queue survives a save** (the old track plays through it, the queued one follows); **`music_dock_keep`** (default 1: no docking music, the sector track continues, a Pause-key pause while docked resumes it); **SETA key stop latch** (a `j` stop while steering stays off); **`fog_distance`** (default 3: long inverse-square fade, horizon density level to 67.5 km) ([music](music-queue.md), [SETA](seta-manual-flight.md), [fog](volumetric-fog.md)).
+- DLL: stripped `ff7db495…` (42,492,885 B; x87 0 / 1068 reachable, strip identity PASS, 17 exports), unstripped `a014f8ac…` and `d3d9.debug` `4607d6e7…` kept at /tmp/x3m-release-1.6.0/. Installed into native `C:\X3` as Run202, rollback `rollback-d3d9\d3d9.dll.run201` (the Run201 unstripped build `1e79a704…`; release 1.5.1 stays as `.run200`) ([install](../../verification/results/run202-release-install.json)).
+- Zip `x3m-1.6.0.zip` `3b8e4dcd…` (60,192,882 B); copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.6.0`; `generate --check` PASS (280 settings, 130 in the template). The user's `x3m.ini` header bumped to 1.6.0, body unchanged (previous file `x3m.ini.run201`).
+- `x3m-regenerate.exe` is the 1.1.0 binary reused (`bb3ba27b…`).
+- Flown before the release build: Run 201 A (the user: save, docking and fog work, SETA "I think it works"; log triage `verification/results/run201-triage/`: no refusal or fallback, `key_latch installed=1`, `distance=3 horizon=1 cap_km=67.5`, queue `keep caller=save`, dock defer/collapse; latch fires unobserved without the debug tier). The release differs from Run201 by the version string and the strip.
+
 ## Release 1.5.1
 
 2026-10-24, `python3 tools/release/release.py --out /tmp/x3m-release-1.5.1 --regenerate-dir /tmp/x3m-release-1.3.2-regenerate` (exit 0, 63.6 s wall: dll 61.1 s, package 2.3 s), clean main `f57082a5` ([record](../../verification/results/release-1.5.1.json)).

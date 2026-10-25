@@ -1,0 +1,30 @@
+{
+ "run": "202",
+ "what": "release 1.6.0 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run201; cp /tmp/x3m-release-1.6.0/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-25T05:27+0400",
+ "commit": "3973b88e",
+ "release_record": "verification/results/release-1.6.0.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "ff7db495c649731f55198987cc56966220e7b8979ad53c576c1e5c8df9c6f005",
+  "bytes": 42492885,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 201,
+  "sha256": "1e79a704779c69d2",
+  "bytes": 62766490,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run201",
+  "note": "release 1.5.1 stays as d3d9.dll.run200"
+ },
+ "x3m_ini": "header line bumped to 1.6.0, body unchanged (template defaults, debug off); previous file C:\\X3\\x3m.ini.run201",
+ "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.6.0.zip (cmp identical)",
+ "unchanged": [
+  "X3AP.exe (fdbf3418…)",
+  "x3m-regenerate.exe (bb3ba27b…)",
+  "x3m/ data files"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
