@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.7.2
+
+2026-10-27, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.2 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 68.4 s wall: dll 65.9 s, package 2.4 s; TMPDIR off the full `/tmp` tmpfs), clean main `7acba3e9` ([record](../../verification/results/release-1.7.2.json)).
+
+- Over 1.7.1 (Run209 flown on a vanilla copy and on `C:\X3`): **text density intercepts `B3D_TexBltImage`**, fixing a user crash to desktop in the New Game menu at 1440p and above with default `ui_scale`/`text_density` (d=2 scaled the 1x image's source rectangle and the copy read past it; [text-density](../architecture/text-density.md), [ledger](text-density.md)). Run 209 A log triage: no crash, `fn=blt_image dst=236 handled=1`, 11 image shadows `built`, no refusal, both sessions `exception=0`.
+- DLL: stripped `630f9821…` (42,525,876 B; x87 0 / 1136 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.7.2/. Installed into native `C:\X3` as Run210, rollback `rollback-d3d9\d3d9.dll.run209` ([install](../../verification/results/run210-release-install.json)).
+- Zip `x3m-1.7.2.zip` `f41959d8…` (60,216,826 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.7.2`; `generate --check` PASS (281 settings, 131 in the template). The user's `x3m.ini` header bumped to 1.7.2, body unchanged (previous file `x3m.ini.run209`).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`): `git diff --stat 680720fa..HEAD -- tools/regenerate` is empty.
+
 ## Release 1.7.1
 
 2026-10-26, `python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.1 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.1 s wall: dll 67.5 s, package 2.5 s), clean main `7bcdfee9` ([record](../../verification/results/release-1.7.1.json)).

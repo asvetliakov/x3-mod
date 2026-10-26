@@ -1,0 +1,24 @@
+{
+ "run": 210,
+ "what": "release 1.7.2 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run209; cp ~/x3m-releases/1.7.2/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-27T00:26+04:00",
+ "commit": "7acba3e9",
+ "release_record": "verification/results/release-1.7.2.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "630f9821e6f502cc1c45306fbf941e2e4993345c2ac2bbc22f2b41a3832096dd",
+  "bytes": 42525876,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 209,
+  "sha256": "247c7b7fc589c8ff1fac13e2b17641448e67ee09153b94168605d23c77ea2b0d",
+  "bytes": 62943847,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run209"
+ },
+ "x3m_ini": "header bumped to 1.7.2, body unchanged (previous file x3m.ini.run209)",
+ "unchanged": ["X3AP.exe", "x3m-regenerate.exe"],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
