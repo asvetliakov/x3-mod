@@ -1,0 +1,30 @@
+{
+ "run": 208,
+ "what": "release 1.7.1 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run207; cp /home/asvetl/x3m-releases/1.7.1/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-26T05:52+04:00",
+ "commit": "7bcdfee9",
+ "release_record": "verification/results/release-1.7.1.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "98caac4440d14bc34600041661fb95973da15a4647b47a9cf26488080de4ed5a",
+  "bytes": 42522432,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 207,
+  "sha256": "2acdac94c88c10b7a88850b5b45828b17671c9ae71b6328b252a631c8c953261",
+  "bytes": 62929651,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run207"
+ },
+ "zip_copy": "C:\\Users\\asvet\\Downloads\\x3m-1.7.1.zip (cmp-verified)",
+ "x3m_ini": "header bumped to 1.7.1; body left as the user has it (schema 2026-09-26 unchanged)",
+ "unchanged": [
+  "X3AP.exe",
+  "x3m-regenerate.exe (1.7.0 binary 373a4c3b\u2026, reused; tools/regenerate unchanged since 680720fa)",
+  "engine_bodies.json",
+  "fog-families.bin/json"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

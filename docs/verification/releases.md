@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.7.1
+
+2026-10-26, `python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.1 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.1 s wall: dll 67.5 s, package 2.5 s), clean main `7bcdfee9` ([record](../../verification/results/release-1.7.1.json)).
+
+- Over 1.7.0 (Runs 206, 207; Run207 flown: `volumetric_fog_memory reason=field_upload` at frame 0 with a 2.1 GB largest free block, four prepares `step=ok`, fog applied after a Reset, no fallback row): **the volumetric fog out-of-memory path** ([ledger](volumetric-fog.md), witnesses under `verification/results/fog-prepare-oom-2026-10-21/`): the retry is unbounded (every 600 frames in the sector, at once in a new one; the `prepare_oom` latch is gone), the 17.8 MB SYSTEMMEM field upload texture is created once at device attach and reused by every family change (the step that failed ten times on Run206 with a 16.6 MB largest free block), the prepare row names the failing `step=`, and the failure/success memory rows carry the address-space census.
+- DLL: stripped `98caac44…` (42,522,432 B; 0 warnings, x87 0 / 1136 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.7.1/. Installed into native `C:\X3` as Run208, rollback `rollback-d3d9\d3d9.dll.run207` ([install](../../verification/results/run208-release-install.json)).
+- Zip `x3m-1.7.1.zip` `e4f64dcf…` (60,213,544 B): the same 22 entries in package.py's order; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.7.1`; `generate --check` PASS. The user's `x3m.ini` header bumped to 1.7.1, body left as is.
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`): `git diff --stat 680720fa..HEAD -- tools/regenerate` is empty.
+- Open: the Wine fixtures `fog_spatial_fixture.cpp` and `fog_family_gpu_cases_inc.h` were updated by inspection for the persistent upload texture and are unrun on this host.
+
 ## Release 1.7.0
 
 2026-10-25, `python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.0 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.9 s wall: dll 68.3 s, package 2.4 s; out of `/tmp` because its 5.9 GB tmpfs had 1.0 GB free), clean main `680720fa` ([record](../../verification/results/release-1.7.0.json)).
