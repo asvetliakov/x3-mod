@@ -1,0 +1,20 @@
+{
+ "run": 209,
+ "what": "text density: B3D_TexBltImage intercepted (d x shadow of 32-bit images, else unscaled source; clamped to both surfaces); fixes the New Game menu CTD at d>=2",
+ "commit": "6c67d072",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "247c7b7fc589c8ff1fac13e2b17641448e67ee09153b94168605d23c77ea2b0d",
+  "bytes": 62943847,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations",
+  "site_verifier": "verify_text_density_sites 92/92 PASS against X3AP.exe fdbf3418",
+  "host_tests": "X3M_EXE=/mnt/c/X3/X3AP.exe test_text_density 11 OK, none skipped",
+  "review": "review agent (Opus 5.5): no blockers; F1-F4, F6 fixed before commit (F6: same-depth copy classes only, measured)"
+ },
+ "producer": "main session"
+}
