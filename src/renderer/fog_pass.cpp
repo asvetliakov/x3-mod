@@ -404,6 +404,9 @@ void FogPass::detach() noexcept {
     PreserveCpuState guard;
     release_targets();
     drop(atlas_);
+    release_field_upload(); // the persistent SYSTEMMEM upload texture: never at Reset
+    field_upload_result_ = S_FALSE;
+    field_upload_dropped_ = false;
     release_density_default();
     for (unsigned i = 0; i < 3; ++i) {
         drop(density_staging_surface_[i]);
@@ -449,8 +452,9 @@ void FogPass::detach() noexcept {
     std::vector<std::uint16_t>().swap(atlas_bytes_);
     render_targets_ = streams_ = max_width_ = max_height_ = 0;
 }
-// Reset keeps the worker, both CPU caches and the SYSTEMMEM staging textures; only the DEFAULT
-// atlases go, and the cache re-uploads every committed tile under the normal budget afterwards.
+// Reset keeps the worker, both CPU caches, the SYSTEMMEM staging textures and the field's persistent SYSTEMMEM upload
+// texture (field_upload_; D3DPOOL_SYSTEMMEM survives Reset, only detach releases it); only the DEFAULT atlases go, and
+// the cache re-uploads every committed tile under the normal budget afterwards.
 void FogPass::before_reset() noexcept {
     PreserveCpuState guard;
     release_targets();
@@ -472,7 +476,8 @@ unsigned FogPass::references() const noexcept {
          (density_needs_ != nullptr) + (quarter_ != nullptr) + (quarter_surface_ != nullptr);
     n += (mote_vs_ != nullptr) + (mote_declaration_ != nullptr) + (mote_ps_ != nullptr) + (mote_vb_ != nullptr) +
          (mote_ib_ != nullptr);
-    for (const void* p : {static_cast<void*>(atlas_), static_cast<void*>(lit_), static_cast<void*>(scratch_),
+    for (const void* p : {static_cast<void*>(atlas_), static_cast<void*>(field_upload_), static_cast<void*>(lit_),
+                          static_cast<void*>(scratch_),
                           static_cast<void*>(lit_surface_), static_cast<void*>(scratch_surface_),
                           static_cast<void*>(march_), static_cast<void*>(composite_), static_cast<void*>(quad_vs_),
                           static_cast<void*>(quad_declaration_), static_cast<void*>(block_)})
@@ -483,11 +488,24 @@ HRESULT FogPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMA
     PreserveCpuState guard;
     // A worker started by a prefill before the first attach (run273 case D) keeps its fill: detach releases
     // everything else; the atlases it needs are created at the first prepare_density (with their gpu_reset).
+    // The persistent field upload texture created by the proxy's device attach is kept as well (same device only).
     fog::DensityCache* prefilled = density_;
     density_ = nullptr;
+    IDirect3DTexture9* upload = field_upload_device_ == d ? field_upload_ : nullptr;
+    const UINT upload_width = field_upload_width_, upload_height = field_upload_height_;
+    const HRESULT upload_result = field_upload_result_;
+    if (upload) field_upload_ = nullptr;
     detach();
     density_ = prefilled;
+    if (upload) {
+        field_upload_ = upload;
+        field_upload_device_ = d;
+        field_upload_width_ = upload_width;
+        field_upload_height_ = upload_height;
+        field_upload_result_ = upload_result;
+    }
     auto refuse = [&](const char* reason, HRESULT hr = D3DERR_NOTAVAILABLE) {
+        release_field_upload(); // a refused pass holds no 17 MB block
         device_ = nullptr;
         vtable_ = nullptr;
         caps_.reason = reason;
@@ -567,6 +585,40 @@ HRESULT FogPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMA
     caps_.reason = "";
     return S_OK;
 }
+// The field's SYSTEMMEM upload texture, created once per device by the proxy's device attach (before any fog sector,
+// while the address space is unfragmented; 2026-10-26: every measured fog out-of-memory failed on the per-sector
+// 17,846,400 B upload creation) and reused by every prepare_field. Sized to the largest compiled field: the family
+// loader rejects any packet of another size; a larger field (none today) takes the per-call upload texture.
+HRESULT FogPass::create_field_upload(D d, void* const* native, UINT max_width, UINT max_height) noexcept {
+    PreserveCpuState guard;
+    release_field_upload();
+    field_upload_dropped_ = false;
+    if (!d || !native) return field_upload_result_ = E_INVALIDARG;
+    UINT width = 0, height = 0;
+    for (auto id = static_cast<std::uint32_t>(fog_field::Profile::Bluewell);
+         id <= static_cast<std::uint32_t>(fog_field::Profile::Khaakhive); ++id)
+        if (const auto* info = fog_field::profile_info(static_cast<fog_field::Profile>(id)))
+            width = std::max<UINT>(width, info->width), height = std::max<UINT>(height, info->height);
+    width = std::min(width, max_width);
+    height = std::min(height, max_height);
+    if (!width || !height) return field_upload_result_ = E_INVALIDARG;
+    field_upload_result_ = reinterpret_cast<CreateTextureFn>(native[CreateTexture])(
+        d, width, height, 1, 0, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &field_upload_, nullptr);
+    if (SUCCEEDED(field_upload_result_) && !field_upload_) field_upload_result_ = E_FAIL;
+    if (FAILED(field_upload_result_)) {
+        field_upload_ = nullptr;
+        return field_upload_result_;
+    }
+    field_upload_device_ = d;
+    field_upload_width_ = width;
+    field_upload_height_ = height;
+    return field_upload_result_;
+}
+void FogPass::release_field_upload() noexcept {
+    drop(field_upload_);
+    field_upload_device_ = nullptr;
+    field_upload_width_ = field_upload_height_ = 0;
+}
 HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcept {
     PreserveCpuState guard;
     last_step_ = "none";
@@ -619,24 +671,47 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
         cached_packet_ = file_family ? static_cast<std::uint32_t>(info->profile) : 0;
     }
     if (!atlas_) {
-        IDirect3DTexture9* upload = nullptr;
-        last_step_ = "field_upload"; // the SYSTEMMEM upload texture, its lock and copy
-        HRESULT hr = call<CreateTextureFn>(CreateTexture)(device_, info->width, info->height, 1, 0,
-                                                          D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &upload, nullptr);
-        if (SUCCEEDED(hr)) {
+        // The persistent upload texture when the field fits (field_copy: its lock and copy), else a per-call one
+        // (field_upload: its creation, lock and copy), released below. A failed lock/copy on the persistent texture
+        // other than a lost device drops it: this prepare and every later one take the per-call path.
+        auto fill = [&](IDirect3DTexture9* texture) noexcept {
             D3DLOCKED_RECT lock{};
-            hr = upload->LockRect(0, &lock, nullptr, 0);
-            if (SUCCEEDED(hr)) {
+            HRESULT result = texture->LockRect(0, &lock, nullptr, 0);
+            if (SUCCEEDED(result)) {
                 if (!lock.pBits || lock.Pitch < static_cast<INT>(info->width * 8u))
-                    hr = E_FAIL;
+                    result = E_FAIL;
                 else
                     for (UINT y = 0; y < info->height; ++y)
                         std::memcpy(static_cast<char*>(lock.pBits) + static_cast<std::size_t>(y) * lock.Pitch,
                                     atlas_bytes_.data() + static_cast<std::size_t>(y) * info->width * 4,
                                     info->width * 8u);
-                const HRESULT unlock = upload->UnlockRect(0);
-                if (SUCCEEDED(hr) || lost(unlock)) hr = unlock;
+                const HRESULT unlock = texture->UnlockRect(0);
+                if (SUCCEEDED(result) || lost(unlock)) result = unlock;
             }
+            return result;
+        };
+        bool persistent = field_upload_ && info->width <= field_upload_width_ && info->height <= field_upload_height_;
+        IDirect3DTexture9* upload = nullptr;
+        HRESULT hr = S_OK;
+        if (persistent) {
+            last_step_ = "field_copy";
+            hr = fill(field_upload_);
+            if (SUCCEEDED(hr) || lost(hr))
+                upload = field_upload_;
+            else {
+                release_field_upload();
+                field_upload_result_ = hr;
+                field_upload_dropped_ = true;
+                persistent = false;
+            }
+        }
+        if (!persistent) {
+            last_step_ = "field_upload";
+            hr = call<CreateTextureFn>(CreateTexture)(device_, info->width, info->height, 1, 0, D3DFMT_A16B16G16R16F,
+                                                      D3DPOOL_SYSTEMMEM, &upload, nullptr);
+            if (FAILED(hr)) upload = nullptr;
+            if (SUCCEEDED(hr) && !upload) hr = E_FAIL;
+            if (SUCCEEDED(hr)) hr = fill(upload);
         }
         if (SUCCEEDED(hr)) {
             last_step_ = "field_atlas";
@@ -645,9 +720,25 @@ HRESULT FogPass::prepare_field(void* module, fog_field::Profile profile) noexcep
         }
         if (SUCCEEDED(hr)) {
             last_step_ = "field_update";
-            hr = call<UpdateTextureFn>(UpdateTexture)(device_, upload, atlas_);
+            // UpdateTexture needs equal dimensions (the whole level was locked, so all of it is dirty); a smaller field
+            // in the persistent texture is copied from its top-left rectangle with UpdateSurface (SYSTEMMEM source,
+            // DEFAULT destination, same format; documented to take a source rectangle and a destination point).
+            if (!persistent || (info->width == field_upload_width_ && info->height == field_upload_height_))
+                hr = call<UpdateTextureFn>(UpdateTexture)(device_, upload, atlas_);
+            else {
+                IDirect3DSurface9 *source = nullptr, *target = nullptr;
+                hr = upload->GetSurfaceLevel(0, &source);
+                if (SUCCEEDED(hr)) hr = atlas_->GetSurfaceLevel(0, &target);
+                if (SUCCEEDED(hr)) {
+                    const RECT rect{0, 0, static_cast<LONG>(info->width), static_cast<LONG>(info->height)};
+                    const POINT origin{0, 0};
+                    hr = call<UpdateSurfaceFn>(UpdateSurface)(device_, source, &rect, target, &origin);
+                }
+                drop(target);
+                drop(source);
+            }
         }
-        drop(upload);
+        if (!persistent) drop(upload);
         if (FAILED(hr)) {
             drop(atlas_);
             if (lost(hr)) reset_pending_ = true;

@@ -3,6 +3,7 @@ namespace {
 void qualify_families(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const D3DCAPS9& caps,
                       const D3DPRESENT_PARAMETERS& pp,const std::string& cases,const std::string& output){
     Inputs input(cases);Hooks hooks(d,api);FogPass pass;
+    check(pass.create_field_upload(d,hooks.methods,caps.MaxTextureWidth,caps.MaxTextureHeight),"family field upload texture"); // the proxy's device attach
     check(pass.attach(d,hooks.methods,caps,format),"family attach");
     auto scene=std::make_unique<Scene>(d,input,caps,std::vector<DWORD>(std::begin(march_words),std::end(march_words)));
     Com<IDirect3DSurface9> back;check(d->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&back.p),"family backbuffer");
@@ -14,10 +15,10 @@ void qualify_families(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const
         const auto label="family_"+std::to_string(run);
         hooks.clear();
         check(cpu_method((label+"_cpu_prepare").c_str(),[&]{return pass.prepare_field(GetModuleHandleA(nullptr),profile);}),"family prepare");
-        require(pass.field_profile()==profile&&pass.field_generation()>generation&&hooks.calls[23]==2&&hooks.calls[31]==1,
+        require(pass.field_profile()==profile&&pass.field_generation()>generation&&hooks.calls[23]==1&&hooks.calls[31]==1,
                 (label+"_switch").c_str());
         generation=pass.field_generation();check(pass.prepare_targets(input.w,input.h),"family targets");
-        require(pass.fixture_cpu_bytes()==17846400&&pass.references()==10,(label+"_one_atlas").c_str());
+        require(pass.fixture_cpu_bytes()==17846400&&pass.references()==11,(label+"_one_atlas").c_str());
         hooks.clear();const auto allocations=pass.allocations();
         check(pass.prepare_field(nullptr,profile),"family warm reuse");
         require(hooks.writes()==0&&pass.allocations()==allocations&&pass.field_generation()==generation,(label+"_warm_reuse").c_str());
@@ -45,19 +46,19 @@ void qualify_families(IDirect3D9* api,IDirect3DDevice9* d,D3DFORMAT format,const
             !pass.resources_ready(input.w,input.h)&&FAILED(pass.execute(previous,&refused))&&hooks.writes()==0,"family_invalid_id_disarmed");
     check(pass.prepare_field(nullptr,fog_field::Profile::Khaakhive),"family cached rearm");
     require(pass.field_generation()>generation&&hooks.writes()==0,"family_invalid_rearm_cached");generation=pass.field_generation();
-    pass.before_reset();require(pass.references()==4&&pass.fixture_cpu_bytes()==17846400,"family_reset_retains_one_cpu");
+    pass.before_reset();require(pass.references()==5&&pass.fixture_cpu_bytes()==17846400,"family_reset_retains_one_cpu");
     scene->unbind(back.p);scene.reset();back.reset();
     auto attempt=pp;const auto reset=d->Reset(&attempt);pass.after_reset(reset);require(SUCCEEDED(reset),"family_real_reset");
     check(d->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&back.p),"family reset backbuffer");
     scene=std::make_unique<Scene>(d,input,caps,std::vector<DWORD>(std::begin(march_words),std::end(march_words)));
     hooks.clear();check(pass.prepare_field(nullptr,fog_field::Profile::Khaakhive),"family retained reupload");
-    require(hooks.calls[23]==2&&hooks.calls[31]==1&&pass.field_generation()>generation&&pass.field_profile()==fog_field::Profile::Khaakhive,"family_reset_cached_upload");
+    require(hooks.calls[23]==1&&hooks.calls[31]==1&&pass.field_generation()>generation&&pass.field_profile()==fog_field::Profile::Khaakhive,"family_reset_cached_upload");
     check(pass.prepare_targets(input.w,input.h),"family reset targets");
     scene->refill();scene->hostile();const Protected before(d,*scene);FogResult result;
     check(pass.execute(scene->frame(pass),&result),"family reset execute");
     const auto st=readback_words(d,pass.fixture_st()),composite=readback_words(d,scene->s0.p);
     require(result.applied&&result.caller_state_restored&&result.scene_known&&!result.scene_open&&!result.route_poisoned&&before.same(d,*scene)&&
-            st==originals[2].st&&composite==originals[2].composite&&pass.fixture_cpu_bytes()==17846400&&pass.references()==10,"family_reset_exact_pixels_state");
+            st==originals[2].st&&composite==originals[2].composite&&pass.fixture_cpu_bytes()==17846400&&pass.references()==11,"family_reset_exact_pixels_state");
     write_words(st,output+"/family-17.st.rgba16f");write_words(composite,output+"/family-17.composite.rgba16f");
     pass.detach();require(pass.references()==0&&pass.fixture_cpu_bytes()==0,"family_detach_empty");
     scene->unbind(back.p);scene.reset();back.reset();

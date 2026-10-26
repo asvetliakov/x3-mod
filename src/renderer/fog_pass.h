@@ -289,10 +289,30 @@ public:
     unsigned references() const noexcept;
     unsigned allocations() const noexcept { return allocations_; }
     // The creation the last prepare_field / prepare_targets / density_resources call reached (volumetric_fog_prepare
-    // step=): field_upload, field_atlas, field_update, lit, scratch, block, quarter, density_staging, density_atlas;
+    // step=): field_copy (the lock and copy into the persistent upload texture), field_upload (the per-call SYSTEMMEM
+    // upload texture of the fallback, its lock and copy), field_atlas, field_update, lit, scratch, block, quarter,
+    // density_staging, density_atlas;
     // "ok" after a prepare that succeeded, "none" when it refused before any creation, "decode" for a field decode
     // failure. Written only on those cold paths (never per frame); a static string, valid for the process.
     const char* last_step() const noexcept { return last_step_; }
+    // The field's persistent SYSTEMMEM upload texture (docs/architecture/volumetric-fog.md, "Field upload"): created
+    // once per device by the proxy's device attach, before attach (which keeps it for the same device), at the largest
+    // compiled field size (the family loader rejects any other packet size) capped by the device's texture limits;
+    // kept across Reset (SYSTEMMEM; before_reset/after_reset never touch it); released by detach, a refused attach or a
+    // failed lock/copy on it. Outside any draw; documented D3D9 only. Returns the creation result, also kept in
+    // field_upload_result() (S_FALSE before a creation and after detach). Without it prepare_field creates a per-call
+    // upload texture.
+    HRESULT create_field_upload(IDirect3DDevice9* device, void* const* native, UINT max_width, UINT max_height) noexcept;
+    HRESULT field_upload_result() const noexcept { return field_upload_result_; }
+    void release_field_upload() noexcept; // also on a refused attach (the proxy) and in detach
+    // True once after prepare_field dropped the persistent texture on a failed lock/copy (the proxy's one row).
+    bool take_field_upload_dropped() noexcept {
+        const bool dropped = field_upload_dropped_;
+        field_upload_dropped_ = false;
+        return dropped;
+    }
+    UINT field_upload_width() const noexcept { return field_upload_width_; }
+    UINT field_upload_height() const noexcept { return field_upload_height_; }
     bool sky_seeded() const noexcept { return false; }
 #ifdef X3M_FOG_PASS_FIXTURE
     IDirect3DTexture9* fixture_sky() const noexcept { return nullptr; }
@@ -337,6 +357,11 @@ private:
     IDirect3DVertexShader9* quad_vs_ = nullptr;
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     IDirect3DTexture9 *atlas_ = nullptr, *lit_ = nullptr, *scratch_ = nullptr;
+    IDirect3DTexture9* field_upload_ = nullptr; // SYSTEMMEM, create_field_upload to detach (field_upload_result())
+    IDirect3DDevice9* field_upload_device_ = nullptr; // the device it was created on (not a reference)
+    UINT field_upload_width_ = 0, field_upload_height_ = 0;
+    HRESULT field_upload_result_ = S_FALSE;
+    bool field_upload_dropped_ = false;
     IDirect3DSurface9 *lit_surface_ = nullptr, *scratch_surface_ = nullptr;
     std::vector<std::uint16_t> atlas_bytes_;
     fog_field::Profile cached_profile_ = fog_field::Profile::None, active_profile_ = fog_field::Profile::None;

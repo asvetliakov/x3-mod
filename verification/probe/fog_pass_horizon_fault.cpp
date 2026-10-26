@@ -1,6 +1,8 @@
 // Fault injection into the production FogPass's long-distance-fade paths (docs/architecture/fog-visible-distance.md §6):
 // the horizon level's SYSTEMMEM staging and DEFAULT atlas creation (also after a Reset), the staging LockRect, the
-// UpdateSurface of a horizon rectangle, the device refusing the distance programs, and fog_distance 1. The real
+// UpdateSurface of a horizon rectangle, the device refusing the distance programs, and fog_distance 1; and the family
+// field's persistent SYSTEMMEM upload texture (prepare_field: reuse, a smaller field, Reset, detach, the per-call
+// fallback). The real
 // FogPass, DensityCache (worker thread) and generator run against a scripted device: a native vtable of the slots
 // prepare_density uses, fake COM textures, surfaces and shaders. No D3D runtime, no window, no GPU, no game.
 // Build: i686-w64-mingw32-g++ (the proxy's flags) with -DX3M_FOG_PASS_FIXTURE; run natively (WSL interop) or under Wine.
@@ -13,10 +15,25 @@
 #include <cstring>
 #include <thread>
 #include <vector>
-// The family field (prepare_field) is not on the density paths: its asset decoder is not linked.
+// The family field's asset decoder is not linked: no compiled profile unless a field scenario lists one (then a
+// small field of its size, decoded as a ramp).
+namespace field_stub {
+x3m::renderer::fog_field::ProfileInfo infos[3]{};
+unsigned count = 0;
+} // namespace field_stub
 namespace x3m::renderer::fog_field {
-const ProfileInfo* profile_info(Profile) noexcept { return nullptr; }
-Result decode_from_resource(void*, Profile, std::vector<std::uint16_t>&) noexcept { return {}; }
+const ProfileInfo* profile_info(Profile profile) noexcept {
+    for (unsigned i = 0; i < field_stub::count; ++i)
+        if (field_stub::infos[i].profile == profile) return &field_stub::infos[i];
+    return nullptr;
+}
+Result decode_from_resource(void*, Profile profile, std::vector<std::uint16_t>& output) noexcept {
+    const ProfileInfo* info = profile_info(profile);
+    if (!info) return {};
+    output.assign(std::size_t(info->width) * info->height * 4, 0);
+    for (std::size_t i = 0; i < output.size(); ++i) output[i] = std::uint16_t(i & 0x3fffu);
+    return {Status::Ok, 0, info->decoded_bytes};
+}
 const FamilyTable* family_table() noexcept { return nullptr; }
 bool family_info(Profile, ProfileInfo&) noexcept { return false; }
 Result decode_family(Profile, std::vector<std::uint16_t>&) noexcept { return {}; }
@@ -46,6 +63,7 @@ struct Obj {
     Kind kind;
     unsigned index = 0; // CreateTexture order (textures and their surfaces)
     D3DPOOL pool = D3DPOOL_DEFAULT;
+    UINT width = 0, height = 0;
     std::vector<unsigned char> bits;
     Obj* level = nullptr;
 };
@@ -63,6 +81,9 @@ struct Faults {
     bool refuse_distance = false;   // CreatePixelShader refuses the distance programs
 } faults;
 unsigned creates = 0, locks_failed = 0, updates_failed = 0, updates[8]{}, shaders_distance = 0, shaders_look = 0;
+unsigned update_textures = 0, systemmem_creates = 0; // the field: UpdateTexture calls, SYSTEMMEM CreateTexture calls
+RECT last_update_rect{};
+Obj* last_update_source = nullptr;
 
 [[noreturn]] void trap(int slot) {
     std::printf("TRAP slot %d\n", slot);
@@ -115,7 +136,7 @@ HRESULT WINAPI lock_rect(Obj* t, UINT, D3DLOCKED_RECT* r, const RECT*, DWORD) {
     }
     if (t->pool != D3DPOOL_SYSTEMMEM) trap(-3);
     r->pBits = t->bits.data();
-    r->Pitch = INT(fog::kAtlasPitch);
+    r->Pitch = INT(t->width * 8u); // the density staging: fog::kAtlasPitch
     return S_OK;
 }
 HRESULT WINAPI unlock_rect(Obj*, UINT) { return S_OK; }
@@ -136,11 +157,23 @@ HRESULT WINAPI create_texture(D, UINT w, UINT h, UINT, DWORD, D3DFORMAT, D3DPOOL
     Obj* t = make(Texture, texture_vt);
     t->index = creates;
     t->pool = pool;
+    t->width = w;
+    t->height = h;
+    systemmem_creates += pool == D3DPOOL_SYSTEMMEM;
     if (pool == D3DPOOL_SYSTEMMEM) t->bits.assign(std::size_t(w) * h * 8, 0);
     *out = reinterpret_cast<IDirect3DTexture9*>(t);
     return S_OK;
 }
-HRESULT WINAPI update_surface(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9* dst, const POINT*) {
+HRESULT WINAPI update_texture(D, IDirect3DBaseTexture9* source, IDirect3DBaseTexture9* target) {
+    const Obj *s = reinterpret_cast<const Obj*>(source), *t = reinterpret_cast<const Obj*>(target);
+    if (s->pool != D3DPOOL_SYSTEMMEM || t->pool != D3DPOOL_DEFAULT || s->width != t->width || s->height != t->height)
+        trap(-5); // the documented contract: SYSTEMMEM to DEFAULT, equal dimensions
+    ++update_textures;
+    return S_OK;
+}
+HRESULT WINAPI update_surface(D, IDirect3DSurface9* src, const RECT* rect, IDirect3DSurface9* dst, const POINT*) {
+    last_update_rect = rect ? *rect : RECT{};
+    last_update_source = reinterpret_cast<Obj*>(src);
     const Obj* s = reinterpret_cast<const Obj*>(dst);
     if (s->index == faults.update_fail_texture) {
         ++updates_failed;
@@ -187,6 +220,7 @@ void tables() {
     device_vt[9] = reinterpret_cast<void*>(&creation);
     device_vt[23] = reinterpret_cast<void*>(&create_texture);
     device_vt[30] = reinterpret_cast<void*>(&update_surface);
+    device_vt[31] = reinterpret_cast<void*>(&update_texture);
     device_vt[86] = reinterpret_cast<void*>(&create_decl);
     device_vt[91] = reinterpret_cast<void*>(&create_vs);
     device_vt[106] = reinterpret_cast<void*>(&create_ps);
@@ -213,13 +247,15 @@ struct Run {
     double camera[3] = {1000., 2000., -3000.};
     HRESULT last = S_OK;
     bool any_oom = false;
-    explicit Run(float distance) {
+    HRESULT upload = S_FALSE; // the proxy's device-attach creation of the field upload texture (field scenarios)
+    explicit Run(float distance, bool field_upload = false) {
         config.enabled = true;
         config.sector_key = 5;
         config.recipe = 1;
         config.sigma = 1e-6f;
         config.distance = distance;
         config.handover_step = config.handover_coldfill = true;
+        if (field_upload) upload = pass.create_field_upload(reinterpret_cast<D>(device), device_vt, 8192, 8192);
         if (FAILED(pass.attach(reinterpret_cast<D>(device), device_vt, caps(), D3DFMT_X8R8G8B8))) trap(-4);
     }
     HRESULT prepare() {
@@ -242,7 +278,7 @@ struct Run {
 };
 void reset_counters(const Faults& f) {
     faults = f;
-    creates = locks_failed = updates_failed = shaders_distance = shaders_look = 0;
+    creates = locks_failed = updates_failed = shaders_distance = shaders_look = update_textures = systemmem_creates = 0;
     std::memset(updates, 0, sizeof updates);
 }
 void report(const char* name, Run& r) {
@@ -342,6 +378,105 @@ void scenario_distance_one() {
              !r.pass.density_status().horizon_refused,
          "distance_1", "today's programs, two levels, no horizon allocation");
 }
+// The family field's persistent SYSTEMMEM upload texture: one creation before attach (the proxy's device attach) at
+// the largest compiled field (64x32), kept by attach and reused for every field; a smaller field (32x16) copies its
+// rectangle with UpdateSurface; Reset keeps it; detach releases it. Then a failed creation: the per-call upload
+// texture (step field_upload); a field larger than the persistent texture takes the per-call path too; a failed lock
+// on the persistent texture drops it and that prepare and later ones go per-call.
+Obj* object_at(unsigned index, D3DPOOL pool) {
+    for (Obj* o : objects)
+        if (o->kind == Texture && o->index == index && o->pool == pool && o->refs > 0) return o;
+    return nullptr;
+}
+void field_infos(unsigned count) {
+    using fog_field::Profile;
+    field_stub::infos[0] = {Profile::Bluewell, 1, 64, 32, 8, 64 * 32 * 8, 1e-6f, 0, 0};
+    field_stub::infos[1] = {Profile::Fogred, 1, 32, 16, 8, 32 * 16 * 8, 1e-6f, 0, 0};
+    field_stub::infos[2] = {Profile::Fogblue, 1, 96, 40, 8, 96 * 40 * 8, 1e-6f, 0, 0};
+    field_stub::count = count;
+}
+void scenario_field_persistent() {
+    using fog_field::Profile;
+    field_infos(2);
+    reset_counters({});
+    unsigned attach_refs = 0;
+    bool ok = false, reuse = false, smaller = false, reset = false, released = false;
+    {
+        Run r(3.f, true);
+        Obj* upload = object_at(1, D3DPOOL_SYSTEMMEM);
+        attach_refs = r.pass.references();
+        ok = r.upload == S_OK && creates == 1 && upload && upload->width == 64 && upload->height == 32 && r.pass.field_upload_result() == S_OK &&
+             r.pass.field_upload_width() == 64 && r.pass.field_upload_height() == 32;
+        reuse = r.pass.prepare_field(nullptr, Profile::Bluewell) == S_OK && creates == 2 && systemmem_creates == 1 &&
+                update_textures == 1 && !std::strcmp(r.pass.last_step(), "ok") && upload->refs == 1 &&
+                upload->bits[8] == 4; // row 0, texel 1, red: the ramp's 4th half
+        smaller = r.pass.prepare_field(nullptr, Profile::Fogred) == S_OK && creates == 3 && systemmem_creates == 1 &&
+                  update_textures == 1 && updates[3] == 1 && last_update_source == upload->level &&
+                  last_update_rect.right == 32 && last_update_rect.bottom == 16 && !last_update_rect.left &&
+                  !last_update_rect.top && upload->bits[64 * 8] == std::uint8_t((32 * 4) & 0xff) && upload->refs == 1 &&
+                  (!upload->level || upload->level->refs == 0);
+        r.pass.before_reset();
+        const bool kept = upload->refs == 1 && r.pass.references() == attach_refs;
+        r.pass.after_reset(S_OK);
+        reset = kept && r.pass.prepare_field(nullptr, Profile::Bluewell) == S_OK && creates == 4 && systemmem_creates == 1 &&
+                update_textures == 2 && upload->refs == 1;
+        r.pass.detach();
+        released = upload->refs == 0 && r.pass.references() == 0 && r.pass.field_upload_result() == S_FALSE;
+    }
+    std::printf("SCENARIO field_persistent attach=%d reuse=%d smaller=%d reset=%d released=%d creates=%u systemmem=%u "
+                "update_textures=%u attach_refs=%u\n",
+                int(ok), int(reuse), int(smaller), int(reset), int(released), creates, systemmem_creates, update_textures,
+                attach_refs);
+    ++scenarios;
+    need(ok && reuse && smaller && reset && released, "field_persistent",
+         "one attach-time SYSTEMMEM upload texture, reused, kept over Reset, released at detach");
+    field_infos(0);
+}
+void scenario_field_fallback() {
+    using fog_field::Profile;
+    field_infos(2);
+    reset_counters({1, E_OUTOFMEMORY});
+    bool attach = false, per_call = false, failed = false, larger = false, lock = false;
+    {
+        Run r(3.f, true);
+        attach = r.upload == E_OUTOFMEMORY && r.pass.caps().enabled && r.pass.field_upload_width() == 0;
+        per_call = r.pass.prepare_field(nullptr, Profile::Bluewell) == S_OK && creates == 3 && systemmem_creates == 1 &&
+                   update_textures == 1 && !object_at(2, D3DPOOL_SYSTEMMEM);
+        faults.create_fail_at = creates + 1; // the per-call upload texture of the next field
+        failed = r.pass.prepare_field(nullptr, Profile::Fogred) == E_OUTOFMEMORY &&
+                 !std::strcmp(r.pass.last_step(), "field_upload") && r.pass.field_profile() == Profile::None;
+    }
+    // A field larger than the persistent texture (64x32) takes the per-call upload texture.
+    field_infos(2);
+    reset_counters({});
+    {
+        Run r(3.f, true);
+        field_infos(3);
+        larger = r.pass.prepare_field(nullptr, Profile::Fogblue) == S_OK && creates == 3 && systemmem_creates == 2 &&
+                 update_textures == 1 && !object_at(2, D3DPOOL_SYSTEMMEM) && object_at(1, D3DPOOL_SYSTEMMEM);
+    }
+    // A failed LockRect on the persistent texture (created 1st): dropped, this prepare goes per-call (2nd, atlas 3rd),
+    // the one-shot drop flag, and the next field per-call as well.
+    field_infos(2);
+    reset_counters({0, E_OUTOFMEMORY, 1});
+    {
+        Run r(3.f, true);
+        Obj* persistent = object_at(1, D3DPOOL_SYSTEMMEM);
+        const unsigned refs = r.pass.references();
+        lock = persistent && r.pass.prepare_field(nullptr, Profile::Bluewell) == S_OK && locks_failed == 1 &&
+               persistent->refs == 0 && r.pass.take_field_upload_dropped() && !r.pass.take_field_upload_dropped() &&
+               r.pass.field_upload_result() == E_FAIL && r.pass.field_upload_width() == 0 && creates == 3 &&
+               systemmem_creates == 2 && update_textures == 1 && r.pass.references() == refs && // -upload +atlas
+               r.pass.prepare_field(nullptr, Profile::Fogred) == S_OK && creates == 5 && systemmem_creates == 3 &&
+               update_textures == 2 && !r.pass.take_field_upload_dropped();
+    }
+    std::printf("SCENARIO field_fallback attach=%d per_call=%d failed=%d larger=%d lock=%d creates=%u systemmem=%u\n",
+                int(attach), int(per_call), int(failed), int(larger), int(lock), creates, systemmem_creates);
+    ++scenarios;
+    need(attach && per_call && failed && larger && lock, "field_fallback",
+         "a failed creation, a larger field and a failed lock use the per-call upload texture");
+    field_infos(0);
+}
 } // namespace
 
 int main() {
@@ -355,6 +490,8 @@ int main() {
     scenario_lost();
     scenario_program();
     scenario_distance_one();
+    scenario_field_persistent();
+    scenario_field_fallback();
     std::printf("fog_pass_horizon_fault scenarios=%u failures=%u live_objects=%ld\n", scenarios, failures, live());
     return failures ? 1 : 0;
 }

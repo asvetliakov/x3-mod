@@ -275,7 +275,8 @@ class MovedHeartbeatRows(unittest.TestCase):
         self.assertIn('fog_card_logged_fault_ = fog_cards_.fault;', fog)
         # Failure and state witnesses: no tier gate.
         for witness in ('log_fog_memory(memory_failure ? "prepare_fail" : "prepare_ok", true)', 'log("volumetric_fog_cards_fault ',
-                        'log("volumetric_fog_prepare_retry ', 'log("volumetric_fog_prepare '):
+                        'log("volumetric_fog_prepare_retry ', 'log("volumetric_fog_prepare ',
+                        'log_fog_memory("field_upload", true)', 'log("volumetric_fog_field_upload '):
             self.assertIn(witness, fog)  # 2026-10-26: the out-of-memory witnesses must exist, not only be untiered
             if witness in fog:
                 self.assertNotIn('perf_rows', PerFrameRowTiers._context(fog, fog.index(witness))[0], witness)

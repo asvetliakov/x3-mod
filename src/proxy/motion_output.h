@@ -3402,6 +3402,7 @@ private:
     const char* fog_frame_prerequisite() const noexcept;
     const char* fog_frame_parameters(renderer::FogFrame&, float weight, bool& sun_tracked) noexcept;
     bool attach_volumetric_fog() noexcept;
+    void create_fog_field_upload() noexcept; // once per device, from attach (fog requested, HDR on)
     void prepare_volumetric_fog_targets(UINT width, UINT height) noexcept;
     void reconcile_volumetric_fog(const renderer::FogFrame&, const renderer::FogResult&, HRESULT) noexcept;
     void complete_volumetric_fog(const char* skip, HRESULT result, const renderer::FogResult& out) noexcept;

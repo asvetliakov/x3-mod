@@ -104,7 +104,9 @@ void MotionOutput::fault_fog_cards(const char* reason) noexcept {
 // volumetric_fog_memory: process commit, free virtual and physical bytes and the device's texture
 // estimate, at the 600-frame heartbeat (reason=periodic, largest_free_virtual=-1; --perf/--debug since 2026-10-21) and,
 // in every tier, after a failed prepare (reason=prepare_fail) and on the first successful prepare after one
-// (reason=prepare_ok), together at most fog_memory_fail_row_cap per Reset interval, with the VirtualQuery walk's largest
+// (reason=prepare_ok), together at most fog_memory_fail_row_cap per Reset interval, and once per device after the
+// persistent field upload texture's creation at the device attach (reason=field_upload, outside the cap: the session
+// baseline), with the VirtualQuery walk's largest
 // free region (walk_us, capped=1 when its 50 ms budget or a VirtualQuery refusal stopped it short) and the same walk's
 // census (image= mapped= private= committed bytes by type, reserved=, free=, regions=; partial when capped). Documented
 // Win32/D3D9 only; -1 = query failed.
@@ -150,8 +152,25 @@ bool MotionOutput::attach_volumetric_fog() noexcept {
     const bool attached = SUCCEEDED(hr) && fog_->caps().enabled;
     log("volumetric_fog_device device=%llu frame=%llu attached=%u reason=%s result=%08lx slots=%u retry=reset", id_, frame_, unsigned(attached),
         attached ? "ok" : queried ? fog_->caps().reason : "adapter_query", hr, fog_->caps().largest_program_slots);
-    if (!attached) { fog_attach_failed_ = true; fog_->release_density_worker(); } // a prefill's worker does not wait for Reset with its 8.5 MB
+    if (!attached) { fog_attach_failed_ = true; fog_->release_density_worker(); fog_->release_field_upload(); } // a prefill's worker does not wait for Reset with its 8.5 MB; nor the 17 MB upload texture
     return attached;
+}
+// Once per device at the proxy's device attach (MotionOutput::attach, fog requested and HDR on), before any sector
+// sample and outside any draw: the field's persistent SYSTEMMEM upload texture (docs/architecture/volumetric-fog.md,
+// "Field upload"), created while the address space is unfragmented and kept by the FogPass constructed here until the
+// device release. A failure logs one row and leaves prepare_field on its per-call upload texture. Then the session's
+// address-space baseline (reason=field_upload, with the walk; outside fog_memory_fail_row_cap).
+void MotionOutput::create_fog_field_upload() noexcept {
+    if (!fog_) {
+        try { fog_ = std::make_unique<renderer::FogPass>(); }
+        catch (...) { return; } // attach_volumetric_fog constructs again and reports an allocation failure
+        fog_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the motes' pair
+    }
+    HRESULT hr = E_FAIL;
+    taa_call([&] { hr = fog_->create_field_upload(device_, native_, caps_.MaxTextureWidth, caps_.MaxTextureHeight); });
+    if (FAILED(hr))
+        log("volumetric_fog_field_upload device=%llu frame=%llu result=%08lx fallback=per_call reason=create", id_, frame_, hr);
+    log_fog_memory("field_upload", true);
 }
 void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexcept {
     // Only the owner latch prepares; no decode/upload/Get* in card brackets.
@@ -176,6 +195,9 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
         else prepared = fog_->prepare_field(module, profile), step = fog_->last_step();
         if (SUCCEEDED(prepared)) prepared = fog_->prepare_targets(width, height), step = fog_->last_step();
     });
+    // A failed lock/copy on the persistent field upload texture dropped it: per-call uploads from now on (one row).
+    if (fog_->take_field_upload_dropped())
+        log("volumetric_fog_field_upload device=%llu frame=%llu result=%08lx fallback=per_call reason=lock", id_, frame_, fog_->field_upload_result());
     QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&frequency);
     const double us = frequency.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(frequency.QuadPart) : 0.;
     // An out-of-memory attempt counts per fog sector; its prepare and retry rows follow fog_prepare_retry_row (the

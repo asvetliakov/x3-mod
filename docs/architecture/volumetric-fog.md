@@ -760,6 +760,26 @@ family cannot use the previous family's readiness. Reset releases DEFAULT
 resources and lazily reuploads retained CPU data; option off allocates none.
 First-use, switch and Reset preparation times are separate performance gates.
 
+**Field upload (2026-10-26).** The SYSTEMMEM upload texture is persistent. The proxy's device attach
+(`MotionOutput::attach`, when fog is requested and HDR is on; before any sector sample and before the lazy
+`FogPass::attach` at the first fog prepare) constructs the `FogPass` and calls `FogPass::create_field_upload`, which
+creates one `D3DFMT_A16B16G16R16F` texture (one level, usage 0) at the largest compiled field size, bounded by
+`MaxTextureWidth/Height`; the family loader rejects any packet of another size, so today every field is 1560×1430 and
+the texture 17,846,400 B. `FogPass::attach` keeps it (same device); a refused attach releases it. `prepare_field` locks its whole level
+(`step=field_copy`), copies the decoded rows, unlocks, creates the DEFAULT atlas (`field_atlas`) and copies with
+`UpdateTexture` when the field has the texture's size (`field_update`; the whole-level lock leaves the whole level
+dirty), or with `UpdateSurface` from level 0 with source rectangle `{0, 0, width, height}` to point `{0, 0}` of the
+atlas when it is smaller. Reset does not touch it (`D3DPOOL_SYSTEMMEM`; `before_reset`/`after_reset` drop only the
+DEFAULT resources, the atlas included); `detach` releases it. If its creation fails (one `volumetric_fog_field_upload
+... fallback=per_call reason=create` row) or a field is larger, `prepare_field` creates and releases a per-call upload
+texture as before (`step=field_upload`). A failed lock, pitch check or non-lost unlock on the persistent texture drops
+it, and that prepare and every later one take the per-call path (one `... reason=lock` row). After the creation the
+proxy logs `volumetric_fog_memory reason=field_upload` with the walk, the session's address-space baseline. Reason: in every measured out-of-memory reproduction
+(Run205, Run206) the per-sector creation of this 17 MB SYSTEMMEM block was the allocation that failed, with the
+largest free virtual region below its size; creating it once at device creation, while the address space is unfragmented,
+removes that allocation and its create/free churn from every family change. `references()` counts it; `allocations()`
+does not (attach-time resources, like the programs).
+
 **Coordinates and light.** Camera position and rays use a checked inverse of the
 existing camera rotation, world phase modulo 32768 and the existing projection/
 jitter correction exactly once. Only the current qualified RGBA32F depth lane's
@@ -803,10 +823,11 @@ and its `prepare_oom` fault forced an alt-tab). The attempt count is per fog sec
 another sector or family, and Reset; the prepare and retry rows of an out-of-memory attempt print for attempts 1-8,
 then every 10th. A retry skips the field decode (the decoded field survives a failed creation and Reset), so a failed
 attempt costs only its failed creation calls. `volumetric_fog_prepare` names the creation that failed in `step=`
-(`field_upload`, `field_atlas`, `field_update`, `lit`, `scratch`, `block`; `ok`, `none`, `decode`, `module`), read from
+(`field_copy`, `field_upload`, `field_atlas`, `field_update`, `lit`, `scratch`, `block`; `ok`, `none`, `decode`, `module`), read from
 `FogPass::last_step()`. Every failed prepare other than a lost device or a disabled family row is followed by a
 `volumetric_fog_memory reason=prepare_fail` row and the first success after one by a `reason=prepare_ok` row, both
-with the address-space walk and its census (at most 8 together per Reset interval). Native draw count/HRESULT remains
+with the address-space walk and its census (at most 8 together per Reset interval); a `reason=field_upload` row with the
+walk records the session baseline once per device at the device attach, outside that cap. Native draw count/HRESULT remains
 unchanged. Sector/profile, strength/mode, cut and Reset transitions invalidate
 TAA once; there is no separate fog history. Finite fog translation against sky
 rotation-only history remains a production-sequence and flight quality gate.

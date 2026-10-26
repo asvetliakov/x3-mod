@@ -1,0 +1,12 @@
+# Run206 (DLL e594a726, native C:\X3), log C:\X3\x3m.log (463,634 B), extracted 2026-10-26 from WSL with:
+#   grep -E '^volumetric_fog_(prepare|memory) device=1 frame=(623536|627736|630221|630821) ' /mnt/c/X3/x3m.log | grep -v reason=periodic
+#   (/mnt/c/X3/x3m.log is C:\X3\x3m.log)
+# Rows: first failure (attempt 1), attempt 8 (last memory row before the cap), first attempt after the alt-tab Reset (frame 630221), success 600 frames later.
+volumetric_fog_prepare device=1 frame=623536 profile=2167391845 field_generation=0 width=5120 height=1440 result=8007000e step=field_upload cpu_us=5921.2
+volumetric_fog_memory device=1 frame=623536 reason=prepare_fail private_bytes=3211071488 avail_virtual=132444160 avail_phys=1076060160 texture_mem=1761607680 largest_free_virtual=16601088 walk_us=20247 capped=0 image=387837952 mapped=39186432 private=3141095424 reserved=594272256 free=132509696 regions=10412
+volumetric_fog_prepare device=1 frame=627736 profile=2167391845 field_generation=0 width=5120 height=1440 result=8007000e step=field_upload cpu_us=140.2
+volumetric_fog_memory device=1 frame=627736 reason=prepare_fail private_bytes=3203813376 avail_virtual=125034496 avail_phys=713478144 texture_mem=1629487104 largest_free_virtual=16601088 walk_us=21508 capped=0 image=387837952 mapped=39186432 private=3133829120 reserved=608948224 free=125100032 regions=10279
+volumetric_fog_prepare device=1 frame=630221 profile=2167391845 field_generation=0 width=5120 height=1440 result=8007000e step=field_upload cpu_us=139.3
+volumetric_fog_memory device=1 frame=630221 reason=prepare_fail private_bytes=3187859456 avail_virtual=169201664 avail_phys=729239552 texture_mem=4093640704 largest_free_virtual=16601088 walk_us=34492 capped=0 image=387837952 mapped=39133184 private=3121221632 reserved=577441792 free=169267200 regions=10480
+volumetric_fog_prepare device=1 frame=630821 profile=2167391845 field_generation=15 width=5120 height=1440 result=00000000 step=ok cpu_us=4241.1
+volumetric_fog_memory device=1 frame=630821 reason=prepare_ok private_bytes=1412308992 avail_virtual=1765433344 avail_phys=2095362048 texture_mem=2855272448 largest_free_virtual=96747520 walk_us=10864 capped=0 image=387837952 mapped=39710720 private=1345290240 reserved=756563968 free=1765498880 regions=8443

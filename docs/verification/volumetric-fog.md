@@ -3143,3 +3143,43 @@ places the failure inside `prepare_field` (upload, atlas or update) [I]. Each wa
   roots, 1,136 reachable functions, 0 violations; `test_fog_cards` 4 tests OK (new cases `prepare_oom unbounded
   attempts=40 rows=12 ok_rows=1 PASS`, `prepare_oom_video sector_reset=1 row_disabled_rows=0 PASS`), `test_logging_tiers`
   17 tests OK [M]. Scratch DLL `495e11d8…`, 62,911,347 B (not a candidate). Not flown.
+
+## 2026-10-26: persistent SYSTEMMEM field upload texture (uncommitted worktree on 27aaeb0f, not installed)
+
+Run206 reproduction (DLL `e594a726…`, native C:\X3; 8 rows with their extraction one-liner in
+`verification/results/fog-prepare-oom-2026-10-21/witness-run206-2026-10-26.txt`) [M]: entering a fog sector at frame
+623536, `volumetric_fog_prepare result=8007000e step=field_upload` with `reason=prepare_fail private_bytes=3211071488
+avail_virtual=132444160 largest_free_virtual=16601088 regions=10412`. Attempts 1-8 and 10 failed at `field_upload`, the
+largest free region fixed at 16,601,088 B (attempt 8, frame 627736: the same value); the first attempt after the alt-tab
+Reset (frame 630221) failed the same way (16,601,088 B); frame 630821 succeeded with `reason=prepare_ok
+private_bytes=1412308992 largest_free_virtual=96747520` after the game released ~1.8 GB.
+
+- Size: every field, compiled (all 14 rows of `fog_field_assets_metadata_inc.h`) or file family (the loader
+  rejects any packet other than 1560×1430×8), is 1560×1430 fp16 = 17,846,400 B [M, source]. The failing request was
+  therefore larger than the 16.6 MB largest free region by itself; no runtime overhead is needed to explain it [I].
+- Change: the proxy's device attach (`MotionOutput::attach`, fog requested and HDR on; before any sector sample)
+  constructs the `FogPass` and calls `FogPass::create_field_upload`: one SYSTEMMEM `A16B16G16R16F` texture at the
+  largest compiled field size (17,846,400 B today), then `volumetric_fog_memory reason=field_upload` with the walk.
+  `FogPass::attach` (lazy, first fog prepare) keeps it for the same device; a refused attach releases it.
+  `prepare_field` reuses it (`step=field_copy` for its lock/copy; `UpdateTexture` for an equal size, `UpdateSurface`
+  with a `{0,0,w,h}` source rectangle for a smaller field). Reset leaves it alone (SYSTEMMEM); `detach` releases it. A
+  failed creation (`volumetric_fog_field_upload ... fallback=per_call reason=create`), a larger field, or a failed
+  lock/pitch/non-lost unlock on it (dropped; `... reason=lock`, that prepare and later ones per-call) keeps the per-call
+  upload texture (`step=field_upload`). Architecture: `docs/architecture/volumetric-fog.md`, "Field upload". Per family
+  change the DEFAULT atlas remains the only fog field allocation.
+- Host evidence: `verification/probe/fog_pass_horizon_fault.cpp` (real FogPass, scripted device, native run through
+  WSL interop) gains `field_persistent` (one SYSTEMMEM creation before attach, kept by attach, reuse with
+  `UpdateTexture`, a 32×16 field copied by `UpdateSurface` with rect 32×16, kept over `before_reset`/`after_reset`,
+  released by `detach`) and `field_fallback` (failed creation: per-call upload, a failed per-call creation names
+  `field_upload`; a larger field per-call; a failed lock drops the texture, one-shot drop flag, per-call afterwards).
+  `fog_card_motion_cases_inc.h`: `field_upload_lock rows=1` (the proxy's `reason=lock` row, once).
+- Wine/real-D3D fixtures updated by inspection, unrun on this host (no Wine), syntax-checked with the MinGW compiler
+  only: `fog_spatial_fixture.cpp` (the production pass and the field, target and resource-refusal candidates call
+  `create_field_upload` before `attach` as the proxy does; references 10→11, 4→5 after `before_reset`, 4→5/5→6 in
+  `field_partial`/`field_retry`, 4→5/9→10 in the target cases, 4→5 resource refusal; `field_partial` faults are now
+  `{23,1}` (the atlas, `step=field_atlas`) and `{31,1}` (`field_update`), the `{23,2}` case is gone because the field
+  has one creation; the family-switch fault moves from `{23,2}` to `{23,1}`) and `fog_family_gpu_cases_inc.h`
+  (`calls[23]` 2→1 per switch and after Reset, references 10→11, 4→5). Fixtures that never call
+  `create_field_upload` (`fog_pass_fixture.cpp`, `fog_density_pass_fixture.cpp`, the attach-refusal cases) keep
+  their counts: `FogPass::attach` itself creates nothing new.
+- Not flown.

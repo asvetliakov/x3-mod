@@ -140,10 +140,11 @@ using SetRenderStateFn = HRESULT (*)(Device*, unsigned, DWORD);
 template <class F> void call_preserved(F&& fn) {
     fn();
 }
-// The volumetric_fog_prepare / _prepare_retry rows are formatted and kept (row cap and step= witnesses); others dropped.
+// The volumetric_fog_prepare / _prepare_retry / _field_upload rows are formatted and kept (row cap and step=
+// witnesses); others dropped.
 struct MockPrepareRows {
-    unsigned prepare = 0, retry = 0;
-    std::string last_prepare, last_retry;
+    unsigned prepare = 0, retry = 0, upload = 0;
+    std::string last_prepare, last_retry, last_upload;
 };
 inline MockPrepareRows& mock_prepare_rows() {
     static MockPrepareRows rows;
@@ -155,12 +156,14 @@ template <class T> auto mock_log_arg(T value) { // the DLL's HRESULT is long (%0
 }
 template <class... T> void log(const char* format, T... args) {
     if constexpr (sizeof...(T) != 0) {
-        if (std::strncmp(format, "volumetric_fog_prepare", 22) != 0) return;
+        if (std::strncmp(format, "volumetric_fog_prepare", 22) != 0 && std::strncmp(format, "volumetric_fog_field_upload ", 28) != 0)
+            return;
         char line[512];
         std::snprintf(line, sizeof line, format, mock_log_arg(args)...);
         auto& rows = mock_prepare_rows();
         if (std::strncmp(format, "volumetric_fog_prepare_retry ", 29) == 0) ++rows.retry, rows.last_retry = line;
         else if (std::strncmp(format, "volumetric_fog_prepare ", 23) == 0) ++rows.prepare, rows.last_prepare = line;
+        else ++rows.upload, rows.last_upload = line;
     }
 }
 namespace x3m::renderer::fog_field {
@@ -261,6 +264,13 @@ struct MockFog {
     } cap;
     const Caps& caps() const { return cap; }
     int prepare_field(void*, renderer::fog_field::Profile) { return 0; }
+    bool upload_dropped = false; // a failed lock/copy on the persistent field upload texture (one-shot)
+    bool take_field_upload_dropped() {
+        const bool dropped = upload_dropped;
+        upload_dropped = false;
+        return dropped;
+    }
+    HRESULT field_upload_result() const { return E_FAIL; }
     std::uint64_t field_generation() const { return 1; }
     int result = 0;
     unsigned prepares = 0;

@@ -127,6 +127,7 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('actual MotionOutput card methods PASS', result.stdout)
             self.assertIn('cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS', result.stdout)
             self.assertIn('cut_recovery scenarios=8 PASS', result.stdout)
+            self.assertIn('field_upload_lock rows=1 PASS', result.stdout)
             # 2026-10-26: E_OUTOFMEMORY retried without a bound; rows for attempts 1-8, then every 10th; prepare_ok once
             self.assertIn('prepare_oom unbounded attempts=40 rows=12 ok_rows=1 PASS', result.stdout)
             self.assertIn('prepare_oom_video sector_reset=1 row_disabled_rows=0 PASS', result.stdout)  # OUTOFVIDEOMEMORY retried; another sector restarts the count
@@ -188,7 +189,7 @@ class FogPassHorizonFaultTests(unittest.TestCase):
                             '-DX3M_FOG_PASS_FIXTURE', '-static', *[str(ROOT / s) for s in self.SOURCES], '-o', str(binary)], check=True)
             result = subprocess.run([str(binary)], text=True, capture_output=True, timeout=600)
         self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-1000:])
-        self.assertIn('fog_pass_horizon_fault scenarios=9 failures=0 live_objects=0', result.stdout)
+        self.assertIn('fog_pass_horizon_fault scenarios=11 failures=0 live_objects=0', result.stdout)
         rows = {line.split()[1]: line for line in result.stdout.splitlines() if line.startswith('SCENARIO ')}
         for name, reason in (('staging', 'staging'), ('atlas', 'atlas'), ('reset_atlas', 'atlas'), ('lock', 'lock'), ('upload', 'upload')):
             self.assertIn('result=00000000 available=1 cap=195000 horizon_refused=%s ' % reason, rows[name])
@@ -196,6 +197,10 @@ class FogPassHorizonFaultTests(unittest.TestCase):
         self.assertIn('result=88760868', rows['lost'])  # D3DERR_DEVICELOST: a Reset, not a fallback
         self.assertIn('distance_refused=program horizon=0', rows['program'])
         self.assertIn('cap=0 horizon_refused=- distance_refused=- horizon=0', rows['distance_1'])
+        # 2026-10-26: the field's persistent SYSTEMMEM upload texture (one creation before attach, kept over Reset) and
+        # its per-call fallback (failed creation, larger field, failed lock).
+        self.assertIn('attach=1 reuse=1 smaller=1 reset=1 released=1 creates=4 systemmem=1 update_textures=2', rows['field_persistent'])
+        self.assertIn('attach=1 per_call=1 failed=1 larger=1 lock=1', rows['field_fallback'])
 
 
 if __name__ == '__main__':

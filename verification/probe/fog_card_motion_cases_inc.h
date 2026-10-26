@@ -95,6 +95,13 @@ int main() {
    m.fog_storage.ready=false;m.next();m.prepare_volumetric_fog_targets(64,48);
    assert(m.fog_storage.ready&&m.memory_ok_rows==1); // a success without a failure before it: no row
    std::printf("prepare_oom unbounded attempts=%u rows=%u ok_rows=%u PASS\n",attempts,retry_rows,m.memory_ok_rows); }
+ // A dropped persistent field upload texture (failed lock/copy): one reason=lock row, taken once; the prepare goes on.
+ { MotionOutput m;auto& rows=mock_prepare_rows();rows={};
+   m.fog_storage.ready=false;m.fog_storage.upload_dropped=true;m.prepare_volumetric_fog_targets(64,48);
+   assert(rows.upload==1&&rows.last_upload.find(" fallback=per_call reason=lock")!=std::string::npos);
+   assert(!m.fog_storage.upload_dropped&&m.fog_storage.ready&&rows.prepare==1);
+   m.fog_storage.ready=false;m.next();m.prepare_volumetric_fog_targets(64,48);assert(rows.upload==1);
+   std::printf("field_upload_lock rows=%u PASS\n",rows.upload); }
  // D3DERR_OUTOFVIDEOMEMORY shares the counter and gate; another fog sector clears both (attempt restarts at 1);
  // a disabled family row (retried next frame) logs no memory row.
  { MotionOutput m;auto& rows=mock_prepare_rows();rows={};

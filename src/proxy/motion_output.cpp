@@ -3690,6 +3690,9 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         hdr_taa_k_ = 0.f;
     }
     qualify_sun_lane();
+    // Volumetric fog's persistent SYSTEMMEM field upload texture, at device creation rather than at the first fog
+    // sector (motion_output_fog_inc.h, create_fog_field_upload); the fog runs only on the HDR route.
+    if (fog_requested_ && hdr_enabled_) create_fog_field_upload();
     if (composition_requested() && taa_enabled_ && hdr_enabled_) {
         D3DDISPLAYMODE display{};
         composition_busy_ = true;

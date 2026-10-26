@@ -132,6 +132,11 @@ void qualify_state(IDirect3D9* api, IDirect3DDevice9* d, D3DFORMAT format, const
     Inputs input(cases);
     Hooks hooks(d, api);
     FogPass pass;
+    // The proxy's order (2026-10-26): the persistent SYSTEMMEM field upload texture at device attach, then the pass.
+    auto field_upload = [&](FogPass& p) {
+        check(p.create_field_upload(d, hooks.methods, caps.MaxTextureWidth, caps.MaxTextureHeight), "field upload texture");
+    };
+    field_upload(pass);
     check(cpu_method("cpu_attach", [&] { return pass.attach(d, hooks.methods, caps, format); }), "production attach");
     check(prepare_time("first_resource_decode_upload",
                        [&] {
@@ -142,7 +147,7 @@ void qualify_state(IDirect3D9* api, IDirect3DDevice9* d, D3DFORMAT format, const
           "production field");
     check(cpu_method("cpu_prepare_targets", [&] { return pass.prepare_targets(input.w, input.h); }),
           "production targets");
-    require(pass.fixture_cpu_bytes() == 17846400 && pass.references() == 10, "one_cpu_atlas_and_ten_refs");
+    require(pass.fixture_cpu_bytes() == 17846400 && pass.references() == 11, "one_cpu_atlas_and_eleven_refs");
     std::printf(
         "ACTUAL_CAPS texture=%08lx filters=%08lx devcaps2=%08lx streams=%lu mrt=%lu maxw=%lu maxh=%lu slots=%lu\n",
         (unsigned long)caps.TextureCaps, (unsigned long)caps.TextureFilterCaps, (unsigned long)caps.DevCaps2,
@@ -189,40 +194,45 @@ void qualify_state(IDirect3D9* api, IDirect3DDevice9* d, D3DFORMAT format, const
         hooks.clear();
         check(candidate.attach(d, hooks.methods, caps, format), "attach retry");
     }
-    for (const auto target : {Fault{23, 1, E_OUTOFMEMORY}, Fault{23, 2, E_OUTOFMEMORY}, Fault{31, 1, E_FAIL}}) {
+    // With the persistent upload texture the field's only creation is the DEFAULT atlas (CreateTexture 1st).
+    for (const auto target : {Fault{23, 1, E_OUTOFMEMORY}, Fault{31, 1, E_FAIL}}) {
         hooks.clear();
         FogPass candidate;
+        field_upload(candidate);
         check(candidate.attach(d, hooks.methods, caps, format), "field allocation attach");
         hooks.clear();
         hooks.fault = target;
         require(candidate.prepare_field(GetModuleHandleA(nullptr), input.profile) == target.error &&
-                    candidate.references() == 4 && candidate.field_profile() == fog_field::Profile::None &&
-                    candidate.fixture_cpu_bytes() == 17846400,
+                    candidate.references() == 5 && candidate.field_profile() == fog_field::Profile::None &&
+                    candidate.fixture_cpu_bytes() == 17846400 &&
+                    std::string(candidate.last_step()) == (target.slot == 23 ? "field_atlas" : "field_update"),
                 ("field_partial_" + std::to_string(target.slot) + "_" + std::to_string(target.at)).c_str());
         hooks.clear();
         check(candidate.prepare_field(nullptr, input.profile), "cached field upload retry");
-        require(candidate.references() == 5 && hooks.calls[31] == 1,
+        require(candidate.references() == 6 && hooks.calls[23] == 1 && hooks.calls[31] == 1,
                 ("field_retry_" + std::to_string(target.slot) + "_" + std::to_string(target.at)).c_str());
     }
     for (const auto target : {Fault{23, 1, E_OUTOFMEMORY}, Fault{23, 2, E_OUTOFMEMORY}, Fault{59, 1, E_FAIL}}) {
         hooks.clear();
         FogPass candidate;
+        field_upload(candidate);
         check(candidate.attach(d, hooks.methods, caps, format), "target allocation attach");
         hooks.clear();
         hooks.fault = target;
-        require(candidate.prepare_targets(input.w, input.h) == target.error && candidate.references() == 4,
+        require(candidate.prepare_targets(input.w, input.h) == target.error && candidate.references() == 5,
                 ("targets_partial_" + std::to_string(target.slot) + "_" + std::to_string(target.at)).c_str());
         hooks.clear();
         check(candidate.prepare_targets(input.w, input.h), "targets retry");
-        require(candidate.references() == 9,
+        require(candidate.references() == 10,
                 ("targets_retry_" + std::to_string(target.slot) + "_" + std::to_string(target.at)).c_str());
     }
     {
         FogPass candidate;
+        field_upload(candidate);
         check(candidate.attach(d, hooks.methods, caps, format), "resource refusal attach");
         hooks.clear();
         require(FAILED(candidate.prepare_field(GetModuleHandleA("kernel32.dll"), input.profile)) &&
-                    candidate.references() == 4 && candidate.fixture_cpu_bytes() == 0 &&
+                    candidate.references() == 5 && candidate.fixture_cpu_bytes() == 0 &&
                     candidate.field_profile() == fog_field::Profile::None && hooks.writes() == 0,
                 "resource_lookup_failure_disarmed");
     }
@@ -604,7 +614,7 @@ void qualify_state(IDirect3D9* api, IDirect3DDevice9* d, D3DFORMAT format, const
     const auto other = input.profile == fog_field::Profile::Bluewell ? fog_field::Profile::Foggreenoutlands
                                                                      : fog_field::Profile::Bluewell;
     hooks.clear();
-    hooks.fault = {23, 2, E_OUTOFMEMORY, false};
+    hooks.fault = {23, 1, E_OUTOFMEMORY, false}; // the atlas: the persistent upload texture needs no creation
     require(FAILED(prepare_time("family_switch_failed_upload",
                                 [&] { return pass.prepare_field(GetModuleHandleA(nullptr), other); })) &&
                 pass.field_profile() == fog_field::Profile::None && !pass.resources_ready(input.w, input.h),
@@ -628,7 +638,7 @@ void qualify_state(IDirect3D9* api, IDirect3DDevice9* d, D3DFORMAT format, const
         pass.before_reset();
         return S_OK;
     });
-    require(pass.references() == 4 && pass.fixture_cpu_bytes() == 17846400, "reset_releases_defaults_retains_cpu");
+    require(pass.references() == 5 && pass.fixture_cpu_bytes() == 17846400, "reset_releases_defaults_retains_cpu");
     scene.unbind(back.p);
     scene_owner.reset();
     back.reset();
