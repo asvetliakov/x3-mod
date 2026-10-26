@@ -54,7 +54,9 @@ the summary and points here. The UI-scale patch it serves is
    patch right after the Materials load (`0x0048af71`) that sets `MPF_FONTSCALE` on the text
    targets (and clears `MPF_NOFILTERING` when `s ≠ d`); and a blit hook (`0x0048c090`,
    `0x0048c460` entries) that upscales non-`MPF_FONTSCALE` sources blitted into scaled targets,
-   because native and KC code blit named GUI atlases (`gui_master`) into text textures. A
+   because native and KC code blit named GUI atlases (`gui_master`) into text textures; and the
+   same for KC's `B3D_TexBltImage` (`0x004960c0`, §2.6), whose engine path scales the source
+   rectangle of its 1x image too and reads past it (a crash, not a size defect). A
    fractional replacement of the 43 sites is ranked last: fonts, line pitch and blit sources
    cannot follow a non-integer ratio without seams or overlapping lines (§3).
 4. **Assets.** `types/Fonts` rows: `LARGE;Zekton;26;8` and `HUD;Tahoma;13;1` (default),
@@ -207,7 +209,7 @@ two `MOV` writes, 20 `IDIV` (texel → layout), 3 `CMP` (`> 1` tests) and 20 loa
 | `0x0048cd20`, `0x0048cd70` | `TexGetWidth`, `TexGetHeight` | result `/N` if `MPF_FONTSCALE` |
 | `0x0048b0b0`, `0x0048ba70`, `0x0048bbc0`, `0x0048bd30`, `0x0048bee0` | `TexRectFill`, pixel plot (native caller not mapped), `TexLine`, `TexCircle`, `TexCircleFill` | coordinates ×N if `MPF_FONTSCALE` |
 | `0x0048c090`, `0x0048c460` | `TexBltBlock`, `TexBltBlockAlpha` (and `TexBltTiles*` via `0x0048c800`/`0x0048c930`) | dest clip bounds `/N`; dest `MPF_FONTSCALE`: dest x, y ×N, and **only if the source is also `MPF_FONTSCALE`** source x, y, w, h ×N |
-| `0x00493b40` `0x004960ab..0x004960f0` | `B3D_TexBltImage` | dest `MPF_FONTSCALE`: all six coordinates ×N (16-bit `imul`), source image included |
+| `0x00493b40` case `0x00495fc1`, scale block `0x0049608b..0x004960c0`, coordinates `0x004960c0..0x00496101` | `B3D_TexBltImage` (KC native 109, §2.6) | dest `MPF_FONTSCALE`: cx = N, then **all six** record words ×N (16-bit `imul`), the source rectangle of the 1x image included → reads past the image (the New Game menu crash, 2026-10-26) |
 | native `0x0041cfd0` | icon blits into a target texture (argument 2) | texture size `/N`; source `0x0046a600("effects/menugfx/gui_master")`, a named texture [i] |
 | native `0x00424e00` | HUD text into texture 15 | measure `/N`, text blocks |
 | native `0x00426e10`, `0x004273d0` | HUD text into texture 61 (as does `0x00426d00`, which reads no `+0x784`) | texture size `/N` |
@@ -276,6 +278,72 @@ is broken for other reasons at any value: no N× fonts, no `1xxxx` files, and th
 native HUD text (texture 15) and tooltip (1230) targets lack `MPF_FONTSCALE` while the wrap
 and line-step factors are unconditional.
 
+### 2.6 `B3D_TexBltImage`: KC native 109 [s][m]
+
+Read 2026-10-26 from the installed EXE (`fdbf3418…`, byte-identical to the user's) after a
+crash-to-desktop in the New Game menu (`Graphics_InitText` → KC dispatcher → `0x004960fc`
+`call 0x004dbbe0` → `0x004ee850` → `0x004b20d0` → memcpy, a read of the page past the image
+buffer). `verification/probe/verify_text_density_sites.py` decodes the case gap-free and checks
+every fact below on the installed EXE.
+
+- **Dispatch.** `0x00493b40` is the KC native dispatcher: `cmp ebx,0xa7; ja; jmp [ebx*4+0x0049679c]`
+  (`0x00493b7d`). Table entry 109 (`0x00496950`) is the only word in the image pointing at the
+  case `0x00495fc1`; it is the only case that calls the image loader `0x004f3510` inside the
+  dispatcher and one of the two callers of the plain copy `0x004dbbe0` in `.text` (the other is
+  `TexBltBlock`'s colour-less path, `0x0048c445`). So there is **one** `TexBltImage` blit site,
+  not two.
+- **Operand record** (`esi`): `[esi+1]` i32 destination texture id, `[esi+5]` the image path
+  (resolved by `0x004a93a0`), then six u16 words at a stride of 5: `sx [esi+0xb]`, `sy [+0x10]`,
+  `dx [+0x15]`, `dy [+0x1a]`, `w [+0x1f]`, `h [+0x24]`.
+- **One-image cache.** The case keeps one image object in `*0x006085cc` and its path in
+  `*0x006085c8`. Entry: if the cached path exists and `strcmp` (`0x00517b7b`) matches → `0x00496068`
+  (reuse). Else the old object is freed (`0x004f38d0(&0x006085cc)`), the surface flags come from
+  `cfg+0xe4` with the display depth (`[*0x00606f38]->+8`: `< 24` → `0x100`, `< 32` → `0x200`, else
+  `0x2000`), `0x004f3510(path, flags, 0, 0)` loads the image into `*0x006085cc`, `0x004ee250`
+  stores the path. Both paths converge at `0x00496068`: `cx = [esi+1]`, `ebx = *0x006085cc`,
+  `0x004f5110` looks the destination up into `[esp+0x10]`; a null image or destination exits to
+  `0x00493bd2`. The texture-system release at `0x0048b050..0x0048b0af` frees both globals.
+- **Scale block** `0x0049608b..0x004960c0`: `ecx = 1`; when `0 <= id < rows` and row `+0x10` has
+  `MPF_FONTSCALE`, `ecx = [*0x00606f34+0x784]` (= N). Both branches land exactly on `0x004960c0`.
+- **Coordinate block** `0x004960c0..0x00496101`: `movzx` each word, `imul dx,cx` / `imul ax,cx`
+  (16-bit: the products wrap at 65536), push `h, w, dy, dx`, `mov ecx,[esp+0x20]` (the destination
+  object under the four pushes), push `sy, sx, dst, src`, `call 0x004dbbe0(src, dst, sx, sy, dx, dy,
+  w, h)`; then `mov cx,[esi+1]; add esp,0x20; call 0x004f5110; jmp 0x00493c32` (the lookup writes
+  EAX before reading it; `add` rewrites EFLAGS). The copy leaf clips neither rectangle: with a
+  flagged destination and the 1x image, `sx·N + w·N` runs past the image's width and the row
+  memcpy reads unmapped memory (at `s = 1.5`, `d = 2`, 2560x1440: the user's crash).
+- **Who calls it.** Not x3intro only: the New Game menu path (`Init → AsyncMenuTask →
+  Graphics_RenderCommonBits → Graphics_InitText`, from the user's crash stack; possibly the
+  content mods in `addon/05.cat`/`06.cat`) blits an image into a flagged row. Which images: the
+  `text_density_shadow src=-1 … image=<path>` rows name them [i: the stack is the user's, the
+  menu script was not decompiled].
+- **Surface formats and the copy leaf** [s][m] (review F6, 2026-10-27). The allocator `0x004f3950`
+  takes the bits per pixel in EAX and the flags on the stack; when the flags carry no depth bit it
+  derives one from the bpp (`0x004f39b6..0x004f3a07`: 16 → `0x100`, 24 → `0x200`, 32 → `0x2000`),
+  so a shadow allocated with `(32, 0x402c)` holds `0x602c`, like every generated 32-bit row
+  (`0x004f4160`), and the image gets the display depth (`0x100`/`0x200`/`0x2000`, from
+  `[*0x00606f38]->+8` at `0x00495fff..0x00496045`). The plain copy leaf `0x004ee850` locks both
+  surfaces (`0x004dce20`, `test ax,ax; je 0x004ee916`), classifies the (source, destination) pair
+  with `0x004ee6e0` (reads only the two `+0x10` flag words: bit `0x4` = pixels, then the depth bits)
+  into 25 classes, `cmp eax,0x18; ja 0x004ee916`, byte table `0x004ee934` → slot, `jmp
+  [slot*4+0x004ee91c]`. The slot table has six entries and only four copy anything: class 0
+  (no depth / no depth) → `0x004b1d80`, 5 (16/16) → `0x004b1e90`, 10 (24/24) → `0x004b1fb0`,
+  24 (32/32) → `0x004b20d0`; the other 21 classes (every mixed-depth pair and every surface
+  without `0x4`) land on slot 3 or 5 = `0x004ee916`, which pops and returns without copying.
+  **There is no conversion**: a 16- or 24-bit image into a 32-bit row copies nothing in the stock
+  game too (blank, no crash). Consequence for the shadow: the image → shadow copy is class 24
+  exactly when the engine's own image → row copy is (a 32-bit display), so the shadow is built only
+  from an image whose flags are `0x4 | 0x2000` (`image_shadow_compatible`); any other image takes
+  the unscaled-source fallback and hands the leaf the pair the engine would have used (nothing
+  copied, as in the stock game). The verifier checks the three windows and that the class table
+  maps exactly classes 0/5/10/24 to the four routines (`copy_leaf_same_depth_only`).
+- **Claim shape** (text-density.md item 4b): the two loads at `0x004960c0` (8 bytes, aligned, both
+  inbound branches to the first byte). EAX and EDX are written by the displaced loads, EFLAGS by
+  the `imul` right after, so the thunk can return the C result in EAX; the C side has `cx` (frame
+  ECX), the record (ESI), the image (EBX) and the destination (`[esp+0x10]`), runs the copy itself
+  and skips the engine's block by leaving `0x20` bytes for the engine's `add esp,0x20`
+  (`sub esp,0x20; jmp 0x00496101`).
+
 ## 3. Sharp text at a fractional scale `s` in (1, 3]
 
 The mod's projection scale magnifies every `0x200` instance by `s` (ui-scale.md). Text stays
@@ -299,8 +367,11 @@ variables. Known: native HUD 15, 61 and tooltip 1230 [s]; the KC menu, info and 
 surfaces are among the 35 writeable generated rows (5–22, 61–66, 90, 236, 340, 342, 579, 922,
 923, 1230, 1235–1237; 10 already flagged) [m]. Flagging all 35 is the conservative choice; its
 cost is the ×d² memory and upload of §2.5. One diagnostic flight settles it (open item 1).
-`B3D_TexBltImage` (two sites, x3intro only) scales its source rectangle too, so it needs the
-same treatment as item 5 if its destination is flagged.
+`B3D_TexBltImage` (one case in the dispatcher, §2.6; the earlier "two sites, x3intro only"
+reading was wrong: the two entries are the cached-image and fresh-load paths of the same case,
+and the New Game menu reaches it) scales its source rectangle too, so it needs the same
+treatment as item 5 when its destination is flagged: implemented as the claim at `0x004960c0`
+([../architecture/text-density.md](../architecture/text-density.md) item 4b).
 
 Visual result: `s = d` (1, 2, 3) gives 1:1 texels; `s = 1.25` or `1.5` with `d = 2` minifies
 1.6 or 1.33 with bilinear filtering and no mips — sharp strokes with mild unevenness, far better
@@ -449,6 +520,9 @@ correctly into the text texture.
    inferred from screenshot pixel values; the source of the filter mode was not traced.
 7. The generated Zekton52/Harrier48/ZektonES52 strokes were not measured (`stem_coverage.py`
    covers Tahoma only).
+8. Which images `B3D_TexBltImage` (§2.6) blits into flagged rows, and from which menu scripts:
+   the `text_density_shadow src=-1 … image=` and `text_density_draw fn=blt_image` rows of the
+   next debug flight name them; the KC menu script was not decompiled.
 
 ## Reproduce
 

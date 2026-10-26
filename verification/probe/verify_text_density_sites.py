@@ -42,7 +42,14 @@ SITES = {
     'blt_alpha': (0x48c460, bytes.fromhex('8b4c240883ec24'), 0x48c467, ['test', 'push', 'push', 'push', 'push', 'jge']),
     'text_line': (0x48b2d0, bytes.fromhex('83ec14535556'), 0x48b2d6, ['mov', 'xor', 'cmp', 'push', 'jge']),
     'rect_fill': (0x48b0b0, bytes.fromhex('83ec1c538b5c2424'), 0x48b0b8, ['test', 'push', 'push', 'push', 'jge']),
+    'blt_image': (0x4960c0, bytes.fromhex('0fb756240fb7461f'), 0x4960c8, ['imul', 'imul', 'push', 'movzx', 'imul']),
 }
+# KC's B3D_TexBltImage: native 109 of the dispatcher 0x00493b40 (`jmp [ebx*4+0x49679c]`, entry 0x00496950 -> the case
+# 0x00495fc1); the image object *0x006085cc, its path *0x006085c8; the scaled block's two inbound branches; the copy call
+# and the return address the thunk's skip path resumes at.
+IMAGE_CASE, IMAGE_SCALE, IMAGE_SITE, IMAGE_RETURN, IMAGE_CALL = 0x495fc1, 0x49608b, 0x4960c0, 0x496101, 0x4960fc
+IMAGE_JUMP, IMAGE_JUMP_TABLE, IMAGE_TABLE_ENTRY, IMAGE_OPCODE, IMAGE_INBOUND = 0x493b7d, 0x49679c, 0x496950, 109, (0x49609c, 0x4960b3)
+IMAGE_DST_STORE, IMAGE_DST_LOAD, IMAGE_CASE_END = 0x496079, 0x4960f4, 0x496112
 MATERIALS_SITE, MATERIALS_TARGET, MATERIALS_RETURN, MATERIALS_WRAPPER, MATERIALS_CALLER = 0x48af71, 0x4f44a0, 0x48af76, 0x48af70, 0x403497
 STYLE_WINDOW, STYLE_WRITE = 0x4f812d, 0x4f813b
 # The verified windows (va, bytes) beyond the claimed spans.
@@ -75,12 +82,29 @@ WINDOWS = {
     'init_materials_call': (0x403497, bytes.fromhex('e8d47a0800')),
     'init_main_loop_call': (0x40373a, bytes.fromhex('e801010000')),
     'loop_cockpit_call': (0x403a26, bytes.fromhex('e8358f0100')),
+    'image_scale_window': (0x49608b, bytes.fromhex('0fbf05ac8d60008b56013bd0b9010000007d228bc2c1e0042bc28b15b08d6000f744821000000100740ba1346f6000'
+                                                   '8b8884070000')),
+    'image_window': (0x4960c0, bytes.fromhex('0fb756240fb7461f660fafd1660fafc1520fb7561a660fafd1500fb74615660fafc1520fb75610660fafd1500fb7460b'
+                                             '660fafc18b4c242052505153e8df5a0400668b4e0183c420e803f00500e920dbffff')),
+    'image_case_head': (0x495fc1, bytes.fromhex('8b75188d4e05e8d43301008bd8a1c885600085c074125350e89d1b080083c40885c00f847f000000')),
+    'image_cached_entry': (0x496068, bytes.fromhex('668b4e018b1dcc856000e899f0050085db894424100f844fdbffff85c00f8447dbffff')),
+    'image_dispatch': (0x493b7d, bytes.fromhex('ff249d9c674900')),
+    'image_table_entry': (0x496950, bytes.fromhex('c15f4900')),
+    # The surface formats the image shadow relies on: the allocator's depth bit from the bpp argument, the copy leaf's
+    # class dispatch and its class -> slot table (same-depth pairs only).
+    'alloc_depth': (0x4f39b6, bytes.fromhex('f7c5000100007405bf10000000f7c5000200007405bf18000000f7c5002000007407bf20000000eb226683ff10750881cd'
+                                            '00010000eb1a6683ff18750881cd00020000eb0c6683ff20750681cd00200000')),
+    'copy_dispatch': (0x4ee866, bytes.fromhex('6685c00f84a70000008bce8bc7e868feffff0fbfc083f8180f87920000000fb68034e94e00ff24851ce94e00')),
+    'copy_class_table': (0x4ee934, bytes.fromhex('00050505050105050505020505050503050505050505050504')),
 }
+COPY_SLOT_TABLE, COPY_NOTHING, COPY_CLASSIFIER = 0x4ee91c, 0x4ee916, 0x4ee6e0
+COPY_ROUTINES = {0: 0x4b1d80, 5: 0x4b1e90, 10: 0x4b1fb0, 24: 0x4b20d0}  # class -> the per-depth copy routine (none, 16, 24, 32 bit)
 # Decoded gap-free (int3 padding bounds).
 FUNCTIONS = {'font_open': (0x48cdc0, 0x48ce3a), 'blt_block': (0x48c090, 0x48c45d), 'blt_alpha': (0x48c460, 0x48c7fd),
              'text_line': (0x48b2d0, 0x48b4ab), 'rect_fill': (0x48b0b0, 0x48b2c1), 'materials_wrapper': (0x48af70, 0x48afb6),
              'style': (0x4f8120, 0x4f8305), 'lookup': (0x4f5110, 0x4f5178), 'copy': (0x4dbbe0, 0x4dbc11),
-             'init_routine': (0x402780, 0x40383d), 'main_loop': (0x403840, 0x404278), 'config_ctor': (0x4ec9e0, 0x4ed745)}
+             'init_routine': (0x402780, 0x40383d), 'main_loop': (0x403840, 0x404278), 'config_ctor': (0x4ec9e0, 0x4ed745),
+             'image_case': (0x495fc1, 0x496112), 'copy_leaf_head': (0x4ee850, 0x4ee91a), 'copy_classifier': (0x4ee6e0, 0x4ee84b)}
 INIT_ROUTINE = FUNCTIONS['init_routine']
 CONFIG_SLOT, CONFIG_STORE, CONFIG_CTOR, CONFIG_CTOR_CALL, D3D_CREATE_CALL, MAIN_LOOP_CALL, MAIN_LOOP, COCKPIT_INIT, COCKPIT_INIT_CALLS = \
     0x606f34, 0x402844, 0x4ec9e0, 0x40283a, 0x402edc, 0x40373a, 0x403840, 0x41c960, (0x403a26, 0x4050f4)
@@ -101,6 +125,10 @@ EXPECTED_CONSTANTS = {
     'init_routine_va': 0x402780, 'init_routine_end_va': 0x40383d, 'config_ctor_call_va': 0x40283a, 'config_ctor_va': 0x4ec9e0,
     'config_store_va': 0x402844, 'd3d_create_call_va': 0x402edc, 'main_loop_call_va': 0x40373a, 'main_loop_va': 0x403840,
     'cockpit_init_call_va': 0x403a26, 'cockpit_init_va': 0x41c960, 'config_default_store_va': 0x4ecae3, 'config_atol_store_va': 0x4ecff8,
+    'image_case_va': 0x495fc1, 'image_scale_va': 0x49608b, 'blt_image_site_va': 0x4960c0, 'image_return_va': 0x496101, 'image_call_va': 0x4960fc,
+    'image_object_slot_va': 0x6085cc, 'image_path_slot_va': 0x6085c8, 'image_jump_table_va': 0x49679c, 'image_table_entry_va': 0x496950,
+    'alloc_depth_va': 0x4f39b6, 'copy_dispatch_va': 0x4ee866, 'copy_class_table_va': 0x4ee934, 'copy_slot_table_va': 0x4ee91c,
+    'copy_nothing_va': 0x4ee916, 'copy_classifier_va': 0x4ee6e0,
 }
 EXPECTED_ARRAYS = {
     'expected_font_window': 'font_window', 'expected_materials_window': 'materials_window', 'expected_materials_callee': 'materials_callee',
@@ -110,6 +138,8 @@ EXPECTED_ARRAYS = {
     'expected_copy': 'copy', 'expected_colour_copy': 'colour_copy', 'expected_alpha_leaf': 'alpha_leaf',
     'expected_text_line_window': 'text_line_window', 'expected_rect_fill_window': 'rect_fill_window',
     'expected_config_default_store': 'config_default_store', 'expected_config_atol_store': 'config_atol_store',
+    'expected_image_scale_window': 'image_scale_window', 'expected_image_window': 'image_window',
+    'expected_alloc_depth': 'alloc_depth', 'expected_copy_dispatch': 'copy_dispatch', 'expected_copy_class_table': 'copy_class_table',
 }
 LOG_RE = re.compile(r'\btext_density setting=(?P<setting>\S+) status=(?P<status>pending|off|refused) reason=(?P<reason>\S+) '
                     r'mode=(?P<mode>auto|fixed|off) value=(?P<value>\d) diagnostic=(?P<diagnostic>[01]) failed_site=(?P<failed_site>\S+) '
@@ -125,8 +155,9 @@ ROWS_RE = re.compile(r'\btext_density_rows status=(?P<status>applied|pending|ref
 FONT_RE = re.compile(r'\btext_density_font name=(?P<name>\S+) size=(?P<size>\d+) density=(?P<density>\d) status=(?P<status>scaled|missing|invalid) '
                      r'file=(?P<file>\S+) cell_width=(?P<cell_width>\d+) y_offset=(?P<y_offset>\d+)')
 SHADOW_RE = re.compile(r'\btext_density_shadow src=(?P<src>-?\d+) status=(?P<status>built|refused) reason=(?P<reason>\S+) '
-                       r'size=(?P<w>\d+)x(?P<h>\d+) density=(?P<density>\d) bytes=(?P<bytes>\d+) total=(?P<total>\d+) slots=(?P<slots>\d+) ms=(?P<ms>\d+)')
-DRAW_RE = re.compile(r'\btext_density_draw fn=(?P<fn>blt_block|blt_alpha|rect_fill) src=(?P<src>-?\d+) dst=(?P<dst>-?\d+) '
+                       r'size=(?P<w>\d+)x(?P<h>\d+) density=(?P<density>\d) bytes=(?P<bytes>\d+) total=(?P<total>\d+) slots=(?P<slots>\d+) ms=(?P<ms>\d+)'
+                       r'(?: image=(?P<image>\S+))?')
+DRAW_RE = re.compile(r'\btext_density_draw fn=(?P<fn>blt_block|blt_alpha|rect_fill|blt_image) src=(?P<src>-?\d+) dst=(?P<dst>-?\d+) '
                      r'dst_flagged=(?P<dst_flagged>[01]) src_flagged=(?P<src_flagged>[01]) src_generated=(?P<src_generated>[01]) handled=(?P<handled>[01])')
 TEXT_LINE_RE = re.compile(r'\btext_density_draw fn=text_line font=(?P<font>-?\d+) x=(?P<x>-?\d+) dst=(?P<dst>-?\d+) dst_flagged=(?P<dst_flagged>[01])')
 FILTER_RE = re.compile(r'\btext_density_filter status=active min_before=(?P<min>\d+) mag_before=(?P<mag>\d+) aniso=(?P<aniso>\d+) '
@@ -252,7 +283,30 @@ def parse_font_line(line):
 
 def parse_shadow_line(line):
     m = SHADOW_RE.search(line)
-    return {k: (v if k in ('status', 'reason') else int(v)) for k, v in m.groupdict().items()} if m else None
+    return {k: (v if k in ('status', 'reason', 'image') else int(v)) for k, v in m.groupdict().items() if v is not None} if m else None
+
+
+def clamp_copy(SW, SH, DW, DH, sx, sy, dx, dy, w, h):
+    """The TexBltImage guard: (drawn, sx, sy, dx, dy, w, h) clamped to the source and destination surfaces."""
+    if sx < 0 or sy < 0 or dx < 0 or dy < 0 or w <= 0 or h <= 0 or sx >= SW or sy >= SH or dx >= DW or dy >= DH:
+        return (False, sx, sy, dx, dy, w, h)
+    w = min(w, SW - sx, DW - dx)
+    h = min(h, SH - sy, DH - dy)
+    return (w > 0 and h > 0, sx, sy, dx, dy, w, h)
+
+
+def plan_image_blit(N, d, have_shadow, SW, SH, DW, DH, raw):
+    """The TexBltImage plan: (drawn, shadow, sx, sy, dx, dy, w, h) for the engine's factor N, the 1x image SW x SH, the
+    destination DW x DH and the six raw record words; with the d x shadow every coordinate x N, else the source
+    rectangle unscaled at the x N destination position."""
+    shadow = N > 1 and N == d and have_shadow
+    if shadow:
+        sx, sy, w, h, SW, SH = raw[0] * N, raw[1] * N, raw[4] * N, raw[5] * N, SW * N, SH * N
+    else:
+        sx, sy, w, h = raw[0], raw[1], raw[4], raw[5]
+    dx, dy = raw[2] * N, raw[3] * N
+    drawn, sx, sy, dx, dy, w, h = clamp_copy(SW, SH, DW, DH, sx, sy, dx, dy, w, h) if min(SW, SH, DW, DH) > 0 else (False, sx, sy, dx, dy, w, h)
+    return (drawn, shadow, sx, sy, dx, dy, w, h)
 
 
 def parse_draw_line(line):
@@ -467,6 +521,62 @@ def inspect(data, instructions, core_text, claims):
         checks[f'{name}_eax_dead'] = ok
         after = by_va.get(SITES[name][2])
         checks[f'{name}_flags_rewritten'] = after is not None and after.mnemonic == 'test' and after.operands == 'ecx,ecx'
+    # The image span: the two displaced loads write EDX and EAX (nothing reads them before), the first instruction after
+    # the span is an `imul` (writes EFLAGS, reads none), the span is reached only by the two branches of the scale block
+    # (both to its first byte), the copy call at +0x3c targets 0x004dbbe0, the destination object is stored at [esp+0x10]
+    # after the lookup and reloaded as [esp+0x20] under four pushes, and the return address holds `mov cx,[esi+1]; add
+    # esp,0x20; call 0x004f5110` (EAX and EFLAGS dead there), the dispatcher's table entry 109 is the case.
+    span = [by_va.get(IMAGE_SITE), by_va.get(IMAGE_SITE + 4)]
+    checks['blt_image_eax_edx_dead'] = all(i is not None and i.mnemonic == 'movzx' for i in span) and \
+        span[0].operands.startswith('edx,') and span[1].operands.startswith('eax,') and 'eax' not in span[0].operands and 'edx' not in span[1].operands
+    after_image = by_va.get(SITES['blt_image'][2])
+    checks['blt_image_flags_rewritten'] = after_image is not None and after_image.mnemonic == 'imul' and after_image.operands == 'dx,cx'
+    inbound = sorted(s for s, t, kind in raw if t == IMAGE_SITE and plausible(s))
+    checks['blt_image_inbound'] = inbound == sorted(IMAGE_INBOUND) and all(by_va.get(s) is not None and by_va[s].mnemonic in ('jge', 'je') for s in inbound)
+    report['blt_image_inbound'] = [hex(s) for s in inbound]
+    image_call = by_va.get(IMAGE_CALL)
+    ret_seq = []
+    cursor = IMAGE_RETURN
+    for _ in range(4):
+        if cursor not in by_va:
+            break
+        ret_seq.append((by_va[cursor].mnemonic, by_va[cursor].operands))
+        cursor = by_va[cursor].end
+    checks['blt_image_call_and_return'] = image_call is not None and image_call.mnemonic == 'call' and direct_target(image_call) == 0x4dbbe0 and \
+        IMAGE_CALL + 5 == IMAGE_RETURN and ret_seq == [('mov', 'cx,WORD PTR [esi+0x1]'), ('add', 'esp,0x20'), ('call', '0x4f5110'), ('jmp', '0x493c32')]
+    report['blt_image_return_sequence'] = ret_seq
+    store = by_va.get(IMAGE_DST_STORE)
+    load = by_va.get(IMAGE_DST_LOAD)
+    pushes = [by_va.get(va) for va in (IMAGE_SITE + 0x10, IMAGE_SITE + 0x19, IMAGE_SITE + 0x22, IMAGE_SITE + 0x2b)]
+    checks['blt_image_dst_slot'] = store is not None and store.mnemonic == 'mov' and store.operands == 'DWORD PTR [esp+0x10],eax' and \
+        load is not None and load.mnemonic == 'mov' and load.operands == 'ecx,DWORD PTR [esp+0x20]' and \
+        all(p is not None and p.mnemonic == 'push' for p in pushes) and by_va.get(IMAGE_SITE - 0x4e) is not None and \
+        by_va[IMAGE_SITE - 0x4e].mnemonic == 'call' and direct_target(by_va[IMAGE_SITE - 0x4e]) == 0x4f5110 and by_va[IMAGE_SITE - 0x4e].end == IMAGE_DST_STORE - 2
+    # The copy leaf copies same-depth pairs only: the class table maps classes 0/5/10/24 to the slots whose routines are the
+    # four per-depth copies and every other class to a slot that returns without copying; the classifier is one function
+    # reading only the two surfaces' +0x10 flags.
+    class_table = read(0x4ee934, 25)
+    slots = [struct.unpack_from('<I', read(COPY_SLOT_TABLE, 24), 4 * i)[0] for i in range(6)]
+    routine = {}
+    for s in slots:
+        cursor = s
+        target = None
+        while cursor in by_va and cursor < s + 0x24:
+            if by_va[cursor].mnemonic == 'call':
+                target = direct_target(by_va[cursor])
+                break
+            cursor = by_va[cursor].end
+        routine[s] = target
+    classes_ok = len(class_table) == 25 and all(
+        (routine.get(slots[class_table[c]]) == COPY_ROUTINES[c]) if c in COPY_ROUTINES else slots[class_table[c]] == COPY_NOTHING
+        for c in range(25))
+    classifier_flag_reads = [i for i in instructions if FUNCTIONS['copy_classifier'][0] <= i.va < FUNCTIONS['copy_classifier'][1] and '[' in i.operands]
+    checks['copy_leaf_same_depth_only'] = classes_ok and all(re.search(r'\[(eax|ecx)\+0x10\]', i.operands) for i in classifier_flag_reads) and \
+        len(classifier_flag_reads) == 5
+    report['copy_slots'] = {hex(s): hex(t) if t else None for s, t in routine.items()}
+    dispatch = by_va.get(IMAGE_JUMP)
+    checks['blt_image_opcode'] =read(IMAGE_TABLE_ENTRY, 4) == struct.pack('<I', IMAGE_CASE) and IMAGE_JUMP_TABLE + IMAGE_OPCODE * 4 == IMAGE_TABLE_ENTRY and \
+        read(IMAGE_JUMP, 7) == bytes.fromhex('ff249d9c674900') and (dispatch is None or dispatch.mnemonic == 'jmp')
     lookup_reads = [(hex(i.va), i.operands) for i in instructions
                     if 0x4f5110 <= i.va < LOOKUP_FIRST_EAX_WRITES[0] and re.search(r'\b(eax|ax|al|ah)\b', i.operands)]
     checks['lookup_writes_eax_first'] = lookup_reads == [] and all(
@@ -547,6 +657,19 @@ def inspect(data, instructions, core_text, claims):
     checks['clip_twin'] = clip_destination(256, 256, 0, 0, -10, 5, 20, 20) == (True, 10, 0, 0, 5, 10, 20) and \
         clip_destination(256, 256, 0, 0, 250, 250, 20, 20) == (True, 0, 0, 250, 250, 6, 6) and \
         clip_destination(256, 256, 0, 0, 300, 0, 20, 20)[0] is False and clip_destination(256, 256, 0, 0, 0, -30, 20, 20)[0] is False
+    # A flagged destination (N = d = 2) and the 1x image: the shadow path scales every coordinate against the 2x shadow, the
+    # fallback keeps the source rectangle unscaled; both stay inside the 64x64 image where the engine's own block would read
+    # 128 texels wide; an unflagged destination (N = 1) is the engine's copy, clamped.
+    whole = [0, 0, 10, 20, 64, 64]
+    checks['image_plan_twin'] = plan_image_blit(2, 2, True, 64, 64, 1024, 1024, whole) == (True, True, 0, 0, 20, 40, 128, 128) and \
+        plan_image_blit(2, 2, False, 64, 64, 1024, 1024, whole) == (True, False, 0, 0, 20, 40, 64, 64) and \
+        plan_image_blit(1, 2, False, 64, 64, 512, 512, whole) == (True, False, 0, 0, 10, 20, 64, 64) and \
+        plan_image_blit(2, 2, True, 64, 64, 1024, 1024, [60, 60, 0, 0, 10, 10]) == (True, True, 120, 120, 0, 0, 8, 8) and \
+        plan_image_blit(2, 2, False, 64, 64, 1024, 1024, [60, 60, 0, 0, 10, 10]) == (True, False, 60, 60, 0, 0, 4, 4) and \
+        plan_image_blit(2, 2, False, 64, 64, 100, 100, [0, 0, 45, 45, 64, 64]) == (True, False, 0, 0, 90, 90, 10, 10) and \
+        plan_image_blit(2, 2, True, 64, 64, 1024, 1024, [64, 0, 0, 0, 10, 10])[0] is False and \
+        plan_image_blit(2, 2, False, 0, 64, 1024, 1024, whole)[0] is False and plan_image_blit(3, 2, False, 64, 64, 1024, 1024, whole) == \
+        (True, False, 0, 0, 30, 60, 64, 64) and clamp_copy(64, 64, 64, 64, 0, 0, 0, 0, 0, 10)[0] is False
     report['checks'] = checks
     report['instructions'] = len(instructions)
     report['decoded_ranges'] = {name: [hex(a), hex(b)] for name, (a, b) in FUNCTIONS.items()}

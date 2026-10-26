@@ -2,7 +2,8 @@
 --text-density and the density-font install step).
 
 The core header compiled on the host (every byte window against the verifier's table, the option parser, the density
-mapping, the font-file rewrite, the Materials row plan, the engine-twin destination clip, the shadow budget, the
+mapping, the font-file rewrite, the Materials row plan, the engine-twin destination clip, the TexBltImage plan and its
+guard (a flagged destination with an unflagged image source never reads outside the source), the shadow budget, the
 diagnostic set), the site verifier on the installed executable and its refusal on a copy with a site byte changed, the
 log-row parsers, the production wiring, the schema entry, the --text-density launcher option (--dry-run only, never a
 launch) and the font copy/removal on a temporary game directory. No Wine.
@@ -12,6 +13,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -25,7 +27,7 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_text_density_sites as verifier  # noqa: E402
 from source_text import source_text  # noqa: E402
 
-EXE = Path(verifier.DEFAULT_EXE)
+EXE = Path(os.environ.get('X3M_EXE', verifier.DEFAULT_EXE))  # X3M_EXE: the native install from WSL2 (/mnt/c/X3/X3AP.exe)
 WINDOW_ORDER = ['font_window', 'materials_window', 'materials_callee', 'style_window', 'blt_block_window', 'config_read', 'row_flag_test',
                 'row_count_read', 'config_flag_test', 'lookup', 'alloc', 'alloc_fields', 'free', 'copy', 'colour_copy', 'alpha_leaf',
                 'text_line_window', 'rect_fill_window', 'config_default_store', 'config_atol_store']
@@ -138,6 +140,32 @@ int main(int argc, char** argv) {
     std::printf("%u %s\n", n3, missing);
     std::printf("%u %u %u %u %u %u\n", caps_density(3, 64, 2048, 4096, 4096), caps_density(3, 64, 2048, 8192, 8192), caps_density(3, 64, 2048, 0, 0),
                 caps_density(2, 1024, 1024, 2048, 1024), caps_density(2, 1024, 1024, 2048, 2048), caps_density(3, 1024, 1024, 2048, 0));
+    // 31, 32 the TexBltImage windows; 33 the plan: a flagged destination (N = d = 2) with the unflagged 64x64 image, through the
+    // shadow and through the fallback, an unflagged destination, a rectangle at the image's edge, one past it, an N the shadow
+    // does not fit; 34 the site constants
+    hex(expected_image_scale_window, image_scale_window_length); hex(expected_image_window, image_window_length);
+    auto plan = [&](unsigned N, unsigned d, bool shadow, int SW, int SH, int DW, int DH, int a, int b, int c, int e, int f, int g) {
+        const int raw[6] = {a, b, c, e, f, g};
+        const ImagePlan p = plan_image_blit(N, d, shadow, SW, SH, DW, DH, raw);
+        std::printf("%d,%d,%d,%d,%d,%d,%d,%d ", (int)p.draw, (int)p.shadow, p.sx, p.sy, p.dx, p.dy, p.w, p.h);
+        if (p.draw) check(p.sx >= 0 && p.sy >= 0 && p.sx + p.w <= SW * (p.shadow ? (int)N : 1) && p.sy + p.h <= SH * (p.shadow ? (int)N : 1) &&
+                          p.dx + p.w <= DW && p.dy + p.h <= DH, "the plan stays inside both surfaces");
+    };
+    plan(2, 2, true, 64, 64, 1024, 1024, 0, 0, 10, 20, 64, 64); plan(2, 2, false, 64, 64, 1024, 1024, 0, 0, 10, 20, 64, 64);
+    plan(1, 2, false, 64, 64, 512, 512, 0, 0, 10, 20, 64, 64); plan(2, 2, true, 64, 64, 1024, 1024, 60, 60, 0, 0, 10, 10);
+    plan(2, 2, false, 64, 64, 1024, 1024, 60, 60, 0, 0, 10, 10); plan(2, 2, false, 64, 64, 100, 100, 0, 0, 45, 45, 64, 64);
+    plan(2, 2, true, 64, 64, 1024, 1024, 64, 0, 0, 0, 10, 10); plan(3, 2, false, 64, 64, 1024, 1024, 0, 0, 10, 20, 64, 64);
+    plan(2, 2, false, 0, 64, 1024, 1024, 0, 0, 10, 20, 64, 64);
+    std::printf("\n");
+    // The engine's own block reads the 1x image at 2 x every record word: the whole-image blit would read 128 texels of a 64-wide image.
+    check(0 * 2 + 64 * 2 > 64, "the engine's scaled source rectangle leaves the image");
+    std::printf("%08lx %08lx %08lx %u %u %u %u %u\n", (unsigned long)blt_image_site_va, (unsigned long)image_return_va, (unsigned long)image_call_va,
+                image_site_length, image_pushed_bytes, kind_blt_image, image_frame_dst, frame_ebx);
+    // 35..37 the surface-format windows (allocator depth bit, copy dispatch, class table); 38 the shadow compatibility of the image
+    // formats KC loads (32-bit with pixels only) and the shadow's own flags after allocation
+    hex(expected_alloc_depth, alloc_depth_length); hex(expected_copy_dispatch, copy_dispatch_length); hex(expected_copy_class_table, copy_classes);
+    std::printf("%d %d %d %d %d %d\n", (int)image_shadow_compatible(0x2004), (int)image_shadow_compatible(0x602c), (int)image_shadow_compatible(0x104),
+                (int)image_shadow_compatible(0x204), (int)image_shadow_compatible(0x2000), (int)image_shadow_compatible(0x402c));
     std::printf("text_density_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -201,6 +229,48 @@ class TextDensityCore(unittest.TestCase):
                                                                                              # left of 0 is not clipped on the right
             self.assertEqual(lines[26].split(), ['16', '4096', str(96 << 20)])
             self.assertEqual(lines[27].split(), ['7', '6', '9', '10'])
+            self.assertEqual([bytes.fromhex(l) for l in lines[31:33]], [verifier.WINDOWS['image_scale_window'][1], verifier.WINDOWS['image_window'][1]])
+            # TexBltImage into a flagged destination from the unflagged 64x64 image: the shadow path reads 128x128 of the 2x shadow,
+            # the fallback reads the 64x64 image unscaled at the scaled position; the edge rectangle is clamped (8x8 of the shadow,
+            # 4x4 of the image); the destination edge clamps too; a rectangle starting past the image, or an empty image, draws nothing.
+            self.assertEqual(lines[33].split(), ['1,1,0,0,20,40,128,128', '1,0,0,0,20,40,64,64', '1,0,0,0,10,20,64,64', '1,1,120,120,0,0,8,8',
+                                                 '1,0,60,60,0,0,4,4', '1,0,0,0,90,90,10,10', '0,1,128,0,0,0,20,20', '1,0,0,0,30,60,64,64',
+                                                 '0,0,0,0,20,40,64,64'])
+            self.assertEqual(lines[34].split(), ['004960c0', '00496101', '004960fc', '8', '32', '4', '13', '4'])
+            self.assertEqual([bytes.fromhex(l) for l in lines[35:38]],
+                             [verifier.WINDOWS[w][1] for w in ('alloc_depth', 'copy_dispatch', 'copy_class_table')])
+            # 32-bit images with pixels (0x2004, and the shadow's own 0x602c) are shadowed; 16/24-bit, no pixels, no depth are not.
+            self.assertEqual(lines[38].split(), ['1', '1', '0', '0', '0', '0'])
+
+    def test_image_blit_flagged_destination_unflagged_source(self):
+        # KC's TexBltImage (0x004960c0) multiplies every record word by N when the destination row is flagged, the source
+        # rectangle of its 1x image included: at N = 2 a whole-image blit of a 64x64 image reads 128x128 (the New Game menu
+        # crash). The plan keeps the source coordinates inside the surface actually read: the 2x shadow with every coordinate
+        # x2, or the 1x image with the source rectangle unscaled; the destination keeps its x2 position.
+        raw = [0, 0, 10, 20, 64, 64]
+        self.assertGreater((raw[0] + raw[4]) * 2, 64)  # what the engine reads
+        drawn, shadow, sx, sy, dx, dy, w, h = verifier.plan_image_blit(2, 2, True, 64, 64, 1024, 1024, raw)
+        self.assertEqual((drawn, shadow, dx, dy), (True, True, 20, 40))
+        self.assertLessEqual(sx + w, 128)
+        self.assertLessEqual(sy + h, 128)
+        drawn, shadow, sx, sy, dx, dy, w, h = verifier.plan_image_blit(2, 2, False, 64, 64, 1024, 1024, raw)
+        self.assertEqual((drawn, shadow, dx, dy, w, h), (True, False, 20, 40, 64, 64))
+        self.assertLessEqual(sx + w, 64)
+        self.assertLessEqual(sy + h, 64)
+        # A rectangle the engine would read past the image's right edge even at 1x is clamped on both paths; one that starts
+        # outside, or a zero-size source, is not drawn; an unflagged destination (N = 1) is the engine's own copy, clamped.
+        self.assertEqual(verifier.plan_image_blit(2, 2, True, 64, 64, 1024, 1024, [60, 60, 0, 0, 10, 10]), (True, True, 120, 120, 0, 0, 8, 8))
+        self.assertEqual(verifier.plan_image_blit(2, 2, False, 64, 64, 1024, 1024, [60, 60, 0, 0, 10, 10]), (True, False, 60, 60, 0, 0, 4, 4))
+        self.assertFalse(verifier.plan_image_blit(2, 2, True, 64, 64, 1024, 1024, [64, 0, 0, 0, 10, 10])[0])
+        self.assertFalse(verifier.plan_image_blit(2, 2, False, 0, 64, 1024, 1024, raw)[0])
+        self.assertEqual(verifier.plan_image_blit(1, 2, False, 64, 64, 512, 512, raw), (True, False, 0, 0, 10, 20, 64, 64))
+        self.assertEqual(verifier.clamp_copy(64, 64, 100, 100, 0, 0, 90, 90, 64, 64), (True, 0, 0, 90, 90, 10, 10))
+        self.assertEqual(verifier.parse_draw_line('text_density_draw fn=blt_image src=-1 dst=22 dst_flagged=1 src_flagged=0 src_generated=0 handled=1'),
+                         {'fn': 'blt_image', 'src': -1, 'dst': 22, 'dst_flagged': 1, 'src_flagged': 0, 'src_generated': 0, 'handled': 1})
+        self.assertEqual(verifier.parse_shadow_line('text_density_shadow src=-1 status=built reason=ok size=256x128 density=2 bytes=524288 total=4718592 '
+                                                    'slots=1 ms=3 image=menugfx\\newgame.jpg'),
+                         {'src': -1, 'status': 'built', 'reason': 'ok', 'w': 256, 'h': 128, 'density': 2, 'bytes': 524288, 'total': 4718592, 'slots': 1,
+                          'ms': 3, 'image': 'menugfx\\newgame.jpg'})
 
     def test_python_twins_and_line_parsers(self):
         self.assertEqual(verifier.parse_setting('auto'), ('auto', 1))
@@ -261,7 +331,7 @@ class TextDensityCore(unittest.TestCase):
         self.assertIn('src/proxy/text_density.cpp', source_text(ROOT / 'CMakeLists.txt'))
         module = source_text(ROOT / 'src/proxy/text_density.cpp')
         for needle in ('L"X3M_TEXT_DENSITY"', '"too_long"', '"invalid_setting"', '"executable_mismatch"', '"font_mismatch"', '"materials_mismatch"',
-                       '"style_mismatch"', '"blit_mismatch"', '"helper_mismatch"', '"diagnostic_mismatch"', '"config_mismatch"', '"no_game_dir"',
+                       '"style_mismatch"', '"blit_mismatch"', '"image_mismatch"', '"helper_mismatch"', '"diagnostic_mismatch"', '"config_mismatch"', '"no_game_dir"',
                        '"late_claim"', '"chain_failed"', '"readback_failed"', '"rollback_failed"', '"pin_failed"', '"density_1"', '"config_unwritable"',
                        '"style_failed"', '"objects_exist"', '"tables_unreadable"', 'pin_self()', 'install_window_open()', 'executable_verified()',
                        'engine_patch::claim(site_[index],spec)', 'engine_patch::restore(site_[index]);', 'engine_patch::claim_call(materials_site_,',
@@ -282,13 +352,25 @@ class TextDensityCore(unittest.TestCase):
                        '    cld\n    call _x3m_text_density_materials_loaded\n    popad\n    popfd\n    jmp dword ptr [_x3m_text_density_materials_return]',
                        'call _x3m_text_density_blit\n    add esp, 8\n    mov dword ptr [esp+28], eax\n    popad\n    popfd\n    test eax, eax\n    jnz 1f\n'
                        '    jmp dword ptr [_x3m_text_density_blt_block_continue]\n1:  ret',
+                       # KC's TexBltImage block: the C side runs the copy itself (the shadow, or the unscaled source rectangle, clamped);
+                       # the skip path leaves the 0x20 bytes of arguments the engine's block would have pushed and resumes at 0x00496101.
+                       'call _x3m_text_density_image_blit\n    add esp, 4\n    mov dword ptr [esp+28], eax\n    popad\n    popfd\n    test eax, eax\n'
+                       '    jnz 3f\n    jmp dword ptr [_x3m_text_density_blt_image_continue]\n3:  sub esp, 32\n    jmp dword ptr [_x3m_text_density_blt_image_return]',
+                       'x3m_text_density_blt_image_return=sites::image_return_va', '(N==1||N==density_)',
+                       'if (N>1&&sites::image_shadow_compatible(src_flags))', 'if (same_object&&image_shadow_.path_unreadable) return nullptr;',
+                       'image_shadow_.path_unreadable = true;', 'code_is(sites::copy_class_table_va,sites::expected_copy_class_table,sites::copy_classes)',
+                       'sites::plan_image_blit(N,density_,shadow!=nullptr,SW,SH,DW,DH,raw)',
+                       'if (plan.draw)\n            reinterpret_cast<CopyFn>(sites::copy_va)(plan.shadow?shadow:src_object,dst_object,plan.sx,plan.sy,plan.dx,plan.dy,plan.w,plan.h);',
+                       'shadow = image_shadow_for(src_object,SW,SH);', 'diagnostic_row(sites::kind_blt_image,-1,dst,N>1?1u:0u,0,0,plan.shadow?1u:0u);',
+                       'free_image_shadow();\n    shadow_count_ = 0;', 'x3m::engine_memory::read(sites::image_path_slot_va,&pointer,4)',
+                       '{"text_density_blt_image",sites::blt_image_site_va,sites::image_site_length,sites::expected_image_window,',
                        'mov edi, dword ptr [ebp+16]\n    mov eax, dword ptr [ebp+12]\n    call dword ptr [ebp+8]\n    add esp, 28\n    pop edi',
                        'mov ecx, dword ptr [esp+4]\n    jmp dword ptr [_x3m_text_density_lookup_fn]',
                        'log("text_density_install density=%u scale=%.4f status=%s reason=%s mode=%s config_before=%lu style=%s style_write=%s rows=%s fonts=%s "\n'
                        '        "missing=%s caps_limited_d=%u max_texture=%ux%u arena_used=%u"',
                        'x3m::log("text_density_font name=%s size=%u density=%u status=%s file=%s cell_width=%lu y_offset=%lu"',
                        'x3m::log("text_density_rows status=%s reason=%s density=%u rows=%u flagged=%u unflagged=%u nofilter_cleared=%u caps_limited_d=%u "',
-                       'x3m::log("text_density_shadow src=%ld status=%s reason=%s size=%ux%u density=%u bytes=%lu total=%lu slots=%u ms=%lu"',
+                       'x3m::log("text_density_shadow src=%ld status=%s reason=%s size=%ux%u density=%u bytes=%lu total=%lu slots=%u ms=%lu image=%s"',
                        'x3m::log("text_density_draw fn=%s src=%ld dst=%ld dst_flagged=%u src_flagged=%u src_generated=%u handled=%u"',
                        'x3m::log("text_density_draw fn=text_line font=%ld x=%ld dst=%ld dst_flagged=%u"', 'text_line_row(args[2],args[3],dst,dst_flagged);',
                        'log("text_density_reset shadows=%u bytes=%lu"', '"text_density_restore status=%s registered=%u\\n"',
@@ -309,7 +391,7 @@ class TextDensityCore(unittest.TestCase):
         self.assertIn('text_density::filter_hooks_wanted())', capture)
         self.assertLess(capture.index('text_density::filter_hooks_wanted())'), capture.index('hooked.set(65,set_texture);'))
         # The production claims in order: the font open, the two blits, then the Materials call; the diagnostics last.
-        order = [module.index(f'"text_density_{n}"') for n in ('font', 'blt_block', 'blt_alpha', 'text_line', 'rect_fill')]
+        order = [module.index(f'"text_density_{n}"') for n in ('font', 'blt_block', 'blt_alpha', 'blt_image', 'text_line', 'rect_fill')]
         self.assertEqual(order, sorted(order))
         self.assertNotIn('float ', module.split('namespace x3m::text_density {')[0].split('extern "C" {')[0])  # integer core; the scale is a double
         for forbidden in ('new ', 'malloc', 'std::string', 'std::vector'):
@@ -348,7 +430,12 @@ class TextDensitySite(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout[-3000:] + run.stderr)
         report = json.loads(run.stdout)
         self.assertEqual(report['result'], 'PASS')
-        self.assertEqual(len(report['checks']), 72)
+        self.assertEqual(len(report['checks']), 92)
+        self.assertEqual(report['copy_slots'], {'0x4ee892': '0x4b1d80', '0x4ee8b4': '0x4b1e90', '0x4ee8d6': '0x4b1fb0', '0x4ee8f8': '0x4b20d0',
+                                                '0x4ee916': None})
+        self.assertEqual(report['blt_image_inbound'], ['0x49609c', '0x4960b3'])
+        self.assertEqual(report['blt_image_following'], ['imul', 'imul', 'push', 'movzx', 'imul'])
+        self.assertEqual([m for m, _ in report['blt_image_return_sequence']], ['mov', 'add', 'call', 'jmp'])
         self.assertEqual(report['site_bytes'], {name: b.hex() for name, (_, b, _, _) in verifier.SITES.items()})
         self.assertEqual((report['raw_branch_hits_not_interior'], report['branches_into_spans'], report['dword_refs'], report['overlapping_claims'],
                           report['lookup_eax_reads_before_write']), ([], [], [], [], []))
@@ -363,7 +450,7 @@ class TextDensitySite(unittest.TestCase):
 
     def test_changed_site_fails(self):
         with tempfile.TemporaryDirectory() as directory:
-            for name in ('font', 'blt_alpha', 'rect_fill'):
+            for name in ('font', 'blt_alpha', 'rect_fill', 'blt_image'):
                 copy = Path(directory) / 'X3AP.exe'
                 copy.write_bytes(verifier.patched_image(EXE.read_bytes(), name))
                 report = json.loads(self.run_verifier(copy).stdout)

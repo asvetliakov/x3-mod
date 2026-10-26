@@ -79,6 +79,8 @@ constexpr Anchor anchors[] = {
     {0x004e0bff, 0x00608544, 2, {0x89, 0x3d}},       // collide_memo
     {0x004e294c, 0x00608548, 1, {0xa3}},             // collide_memo
     {0x004e0c05, 0x0060854c, 2, {0x89, 0x3d}},       // collide_memo, collide_narrow_census
+    {0x00495fce, 0x006085c8, 1, {0xa1}},             // text_density (KC TexBltImage: the cached image path; read before the case's own strcmp)
+    {0x00496050, 0x006085cc, 1, {0xa3}},             // text_density (KC TexBltImage: the cached image object; the loader's store)
     {0x00401d6b, 0x006085e4, 2, {0x8b, 0x0d}},       // chase_transition
     {0x00412c88, 0x006085f4, 2, {0x8b, 0x2d}},       // resource_reader
     {0x004ae07f, 0x006085f8, 2, {0x8b, 0x0d}},       // resource_reader

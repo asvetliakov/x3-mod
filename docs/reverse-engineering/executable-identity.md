@@ -29,8 +29,11 @@ verifies exactly like the shipped one.
   stamp groups' `verify_bytes` preflight, or a module `memcmp` window (lod_scale,
   point_light_admission, pause_key_only, scene_hook, object_trace's call bytes,
   object_lifetime's six region fingerprints). Unchanged by this rule.
-* **Engine globals**: 47 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
-  `0x0057fc64` at `0x0041e474`, `0x00608508` at `0x0041e412`, added 2026-10-22 with claims I/J). Each anchor
+* **Engine globals**: 49 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
+  `0x0057fc64` at `0x0041e474`, `0x00608508` at `0x0041e412`, added 2026-10-22 with claims I/J;
+  the KC `TexBltImage` image cache `0x006085c8` at `0x00495fce` and `0x006085cc` at `0x00496050`,
+  added 2026-10-26 with the text-density image claim, both inside the case
+  `0x00495fc1` and outside its claimed span `0x004960c0`). Each anchor
   is a whole `.text` instruction whose absolute operand is that global
   (prefix + le32(global) [+ imm8]), chosen from objdump's linear sweep; the
   verifier re-confirms every anchor VA is an instruction start. No anchor

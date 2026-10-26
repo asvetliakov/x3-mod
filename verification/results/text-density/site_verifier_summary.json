@@ -1,7 +1,36 @@
 {
+  "blt_image_following": [
+    "imul",
+    "imul",
+    "push",
+    "movzx",
+    "imul"
+  ],
+  "blt_image_inbound": [
+    "0x49609c",
+    "0x4960b3"
+  ],
+  "blt_image_return_sequence": [
+    [
+      "mov",
+      "cx,WORD PTR [esi+0x1]"
+    ],
+    [
+      "add",
+      "esp,0x20"
+    ],
+    [
+      "call",
+      "0x4f5110"
+    ],
+    [
+      "jmp",
+      "0x493c32"
+    ]
+  ],
   "branches_into_spans": [],
-  "checks": 72,
-  "claims_considered": 170,
+  "checks": 92,
+  "claims_considered": 196,
   "cockpit_init_callers": [
     "0x403a26",
     "0x4050f4"
@@ -71,7 +100,7 @@
       true
     ]
   ],
-  "instructions": 4008,
+  "instructions": 4325,
   "materials_callers": [
     "0x403497"
   ],

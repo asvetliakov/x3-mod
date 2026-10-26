@@ -9,7 +9,8 @@ struct IDirect3DBaseTexture9;
 // so the projection minifies d/s instead of magnifying a 1x bitmap: cfg+0x784 = d, every font open x d when the loose
 // d x font pair exists under <game>\f, MPF_FONTSCALE on the generated writeable Materials rows (the text targets)
 // right after the Materials load, MPF_FONTSCALE off the file-backed rows, a d x shadow for static blit sources into
-// flagged targets, the style-offset factor d when d = 3. Six claims through engine_patch (four production, two
+// flagged targets (the two block blits and KC's TexBltImage, whose engine path would read its 1x image d x out of
+// bounds), the style-offset factor d when d = 3. Seven claims through engine_patch (five production, two
 // diagnostic under X3M_DEBUG=1), all or none, at the backend-load path; the density itself is resolved at
 // CreateDevice from ui_scale's scale (auto) and applied there (the config field, the style imm32, the rows when the
 // Materials load already ran; otherwise the Materials thunk applies the rows). d = 1 (no UI scale) restores the
@@ -46,14 +47,17 @@ void x3m_text_density_font_thunk();
 void x3m_text_density_materials_thunk();
 void x3m_text_density_blt_block_thunk();
 void x3m_text_density_blt_alpha_thunk();
+void x3m_text_density_blt_image_thunk();
 void x3m_text_density_text_line_thunk();
 void x3m_text_density_rect_fill_thunk();
 extern std::uintptr_t x3m_text_density_font_continue, x3m_text_density_materials_continue,
     x3m_text_density_materials_return, x3m_text_density_blt_block_continue, x3m_text_density_blt_alpha_continue,
-    x3m_text_density_text_line_continue, x3m_text_density_rect_fill_continue;
+    x3m_text_density_blt_image_continue, x3m_text_density_blt_image_return, x3m_text_density_text_line_continue,
+    x3m_text_density_rect_fill_continue;
 // The C sides, entered from the thunks with every register and EFLAGS saved (frame = the pushad/pushfd frame).
 void __cdecl x3m_text_density_font_open(std::uint32_t* frame);
 void __cdecl x3m_text_density_materials_loaded();
 std::uint32_t __cdecl x3m_text_density_blit(std::uint32_t* frame, std::uint32_t kind);
+std::uint32_t __cdecl x3m_text_density_image_blit(std::uint32_t* frame);
 void __cdecl x3m_text_density_diagnostic(std::uint32_t* frame, std::uint32_t kind);
 }

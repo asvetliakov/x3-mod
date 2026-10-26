@@ -17,7 +17,9 @@
 // Direct3DCreate9 and before the main loop 0x00403840 that opens the first font at 0x00403a26), while the 8 file-backed
 // MPF_FONTSCALE rows lose the flag so they keep loading their stock files; the two block blits 0x0048c090 /
 // 0x0048c460 receive a d x nearest-neighbour shadow of a static (file-backed) source when the destination is a
-// flagged row and the source is not; the style-offset factor imm32 at 0x004f813b becomes d when d = 3.
+// flagged row and the source is not; KC's B3D_TexBltImage block at 0x004960c0 (which would scale the source rectangle
+// of its 1x image too and read past it) runs through the C side with the d x shadow of the image or an unscaled
+// source rectangle, clamped to both surfaces; the style-offset factor imm32 at 0x004f813b becomes d when d = 3.
 //
 // Every claim is byte-verified and the claims are one transaction (a failure restores the earlier ones). The stubs are
 // asm thunks in the DLL (pinned): pushfd/pushad, one cdecl C call, popad/popfd, then the tail or a return.
@@ -332,9 +334,132 @@ constexpr std::uint32_t d3d_texf_none = 0, d3d_texf_point = 1, d3d_texf_linear =
 inline bool filter_needs_raise(std::uint32_t value) {
     return value <= d3d_texf_point;
 }
+// ---- B3D_TexBltImage (item 4b): KC native 109 of the script dispatcher 0x00493b40 ----
+// The case 0x00495fc1 resolves the image path at [esi+5], keeps one image object (*0x006085cc, loaded by 0x004f3510;
+// its path at *0x006085c8, so a repeated blit of the same image reuses the object), looks the destination row up and,
+// from 0x0049608b, sets cx = 1 or cfg+0x784 when the destination row has MPF_FONTSCALE. The block at 0x004960c0 then
+// loads the six record words sx [esi+0xb], sy [esi+0x10], dx [esi+0x15], dy [esi+0x1a], w [esi+0x1f], h [esi+0x24],
+// multiplies ALL of them by cx (16-bit imul: the source rectangle too, whatever the source is) and calls the plain copy
+// 0x004dbbe0(src = ebx = the image object, dst = [esp+0x10], sx, sy, dx, dy, w, h). An unflagged 1x image is then read
+// d x out of bounds (the New Game menu crash: read past the image buffer in the copy leaf's memcpy). The claim takes
+// the two loads at 0x004960c0 (8 bytes, the target of both branches `jge`/`je 0x004960c0`): EAX and EDX are written by
+// the displaced instructions, EFLAGS by the `imul` right after them, so the thunk returns the C result in EAX; handled
+// means the C side ran the leaf itself (the d x shadow of the image with every coordinate x d, or the source rectangle
+// unscaled, always clamped to both surfaces) and the thunk skips the engine's block (`sub esp,0x20` for the eight
+// arguments the engine would have pushed, then 0x00496101 where `mov cx,[esi+1]; add esp,0x20; call lookup` follow:
+// EAX and EFLAGS dead). Zero continues into the engine's own block.
+constexpr std::uintptr_t image_case_va = 0x00495fc1, image_scale_va = 0x0049608b, blt_image_site_va = 0x004960c0,
+                         image_return_va = 0x00496101, image_call_va = 0x004960fc, image_object_slot_va = 0x006085cc,
+                         image_path_slot_va = 0x006085c8, image_jump_table_va = 0x0049679c, image_table_entry_va = 0x00496950;
+constexpr unsigned image_opcode = 109, image_site_length = 8, image_pushed_bytes = 0x20;
+constexpr unsigned image_scale_window_length = 53, image_window_length = 82;
+constexpr unsigned char expected_image_scale_window[image_scale_window_length] = {
+    0x0f, 0xbf, 0x05, 0xac, 0x8d, 0x60, 0x00,             // movsx eax,word [0x608dac]   rows
+    0x8b, 0x56, 0x01,                                     // mov edx,[esi+1]             dst id
+    0x3b, 0xd0,                                           // cmp edx,eax
+    0xb9, 0x01, 0x00, 0x00, 0x00,                         // mov ecx,1
+    0x7d, 0x22,                                           // jge 0x4960c0
+    0x8b, 0xc2, 0xc1, 0xe0, 0x04, 0x2b, 0xc2,             // eax = id*15
+    0x8b, 0x15, 0xb0, 0x8d, 0x60, 0x00,                   // mov edx,[0x608db0]
+    0xf7, 0x44, 0x82, 0x10, 0x00, 0x00, 0x01, 0x00,       // test [edx+eax*4+0x10],MPF_FONTSCALE
+    0x74, 0x0b,                                           // je 0x4960c0
+    0xa1, 0x34, 0x6f, 0x60, 0x00,                         // mov eax,[0x606f34]
+    0x8b, 0x88, 0x84, 0x07, 0x00, 0x00};                  // mov ecx,[eax+0x784]
+constexpr unsigned char expected_image_window[image_window_length] = {
+    0x0f, 0xb7, 0x56, 0x24, 0x0f, 0xb7, 0x46, 0x1f,                                     // movzx edx,[esi+0x24]; movzx eax,[esi+0x1f] <- the claim
+    0x66, 0x0f, 0xaf, 0xd1, 0x66, 0x0f, 0xaf, 0xc1, 0x52,                               // imul dx,cx; imul ax,cx; push edx (h)
+    0x0f, 0xb7, 0x56, 0x1a, 0x66, 0x0f, 0xaf, 0xd1, 0x50,                               // dy; push eax (w)
+    0x0f, 0xb7, 0x46, 0x15, 0x66, 0x0f, 0xaf, 0xc1, 0x52,                               // dx; push edx (dy)
+    0x0f, 0xb7, 0x56, 0x10, 0x66, 0x0f, 0xaf, 0xd1, 0x50,                               // sy; push eax (dx)
+    0x0f, 0xb7, 0x46, 0x0b, 0x66, 0x0f, 0xaf, 0xc1,                                     // sx
+    0x8b, 0x4c, 0x24, 0x20, 0x52, 0x50, 0x51, 0x53,                                     // mov ecx,[esp+0x20] (dst); push sy, sx, dst, src
+    0xe8, 0xdf, 0x5a, 0x04, 0x00,                                                       // call 0x4dbbe0
+    0x66, 0x8b, 0x4e, 0x01, 0x83, 0xc4, 0x20, 0xe8, 0x03, 0xf0, 0x05, 0x00,             // mov cx,[esi+1]; add esp,0x20; call 0x4f5110
+    0xe9, 0x20, 0xdb, 0xff, 0xff};                                                      // jmp 0x493c32
+// The operand record (esi): the destination id and the six 16-bit coordinates.
+constexpr unsigned image_record_dst_offset = 1, image_record_coords_offset = 0xb, image_record_coord_stride = 5,
+                   image_record_length = 0x26;
+// The image site's frame: no return address ([9] is the engine's [esp] at entry), the destination object at the
+// engine's [esp+0x10]; ECX (frame_ecx) = the engine's cx (1 or N), EBX (frame_ebx) = the image object, ESI the record.
+constexpr unsigned frame_esi = 1, frame_ebx = 4, image_frame_dst = 13;
+constexpr unsigned image_path_capacity = 128;
+// Surface formats. The allocator 0x004f3950 derives the depth bit of +0x10 from the bits-per-pixel argument when the
+// flags carry none (0x004f39b6..0x004f3a07: 16 -> 0x100, 24 -> 0x200, 32 -> 0x2000), so a shadow allocated with
+// (32, 0x402c) holds 0x602c, like every generated 32-bit row, and KC's image loader gives the image the display depth
+// (0x100 / 0x200 / 0x2000, case 0x00495fff..0x00496045). The plain copy leaf 0x004ee850 classifies the (source,
+// destination) pair through 0x004ee6e0 into 25 classes and copies only the four same-depth pairs (class 0 none/none
+// -> 0x004b1d80, 5 16/16 -> 0x004b1e90, 10 24/24 -> 0x004b1fb0, 24 32/32 -> 0x004b20d0); every other class, and
+// any surface without bit 0x4 (pixels), falls through to 0x004ee916 and copies nothing. The image shadow is therefore
+// built only from a 32-bit image with pixels (the shadow's own class, the class the engine's own image -> row copy
+// uses on a 32-bit display); any other image takes the unscaled-source fallback, which hands the engine's leaf the
+// same pair the engine would have (nothing is copied, as in the stock game).
+constexpr std::uint32_t surface_has_pixels = 0x4, surface_depth_16 = 0x100, surface_depth_24 = 0x200, surface_depth_32 = 0x2000,
+                        surface_depth_mask = surface_depth_16 | surface_depth_24 | surface_depth_32;
+constexpr bool image_shadow_compatible(std::uint32_t flags) {
+    return (flags & surface_has_pixels) != 0 && (flags & surface_depth_mask) == surface_depth_32;
+}
+constexpr std::uintptr_t alloc_depth_va = 0x004f39b6, copy_dispatch_va = 0x004ee866, copy_class_table_va = 0x004ee934,
+                         copy_slot_table_va = 0x004ee91c, copy_nothing_va = 0x004ee916, copy_classifier_va = 0x004ee6e0;
+constexpr unsigned alloc_depth_length = 81, copy_dispatch_length = 44, copy_classes = 25, copy_slots = 6;
+constexpr unsigned char expected_alloc_depth[alloc_depth_length] = {
+    0xf7, 0xc5, 0x00, 0x01, 0x00, 0x00, 0x74, 0x05, 0xbf, 0x10, 0x00, 0x00, 0x00, // test ebp,0x100; je; mov edi,16
+    0xf7, 0xc5, 0x00, 0x02, 0x00, 0x00, 0x74, 0x05, 0xbf, 0x18, 0x00, 0x00, 0x00, // test ebp,0x200; je; mov edi,24
+    0xf7, 0xc5, 0x00, 0x20, 0x00, 0x00, 0x74, 0x07, 0xbf, 0x20, 0x00, 0x00, 0x00, 0xeb, 0x22, // test ebp,0x2000; je; mov edi,32; jmp
+    0x66, 0x83, 0xff, 0x10, 0x75, 0x08, 0x81, 0xcd, 0x00, 0x01, 0x00, 0x00, 0xeb, 0x1a, // cmp di,16; jne; or ebp,0x100; jmp
+    0x66, 0x83, 0xff, 0x18, 0x75, 0x08, 0x81, 0xcd, 0x00, 0x02, 0x00, 0x00, 0xeb, 0x0c, // cmp di,24; jne; or ebp,0x200; jmp
+    0x66, 0x83, 0xff, 0x20, 0x75, 0x06, 0x81, 0xcd, 0x00, 0x20, 0x00, 0x00};           // cmp di,32; jne; or ebp,0x2000
+constexpr unsigned char expected_copy_dispatch[copy_dispatch_length] = {
+    0x66, 0x85, 0xc0, 0x0f, 0x84, 0xa7, 0x00, 0x00, 0x00, // test ax,ax; je 0x4ee916 (the surface lock failed)
+    0x8b, 0xce, 0x8b, 0xc7, 0xe8, 0x68, 0xfe, 0xff, 0xff, // mov ecx,esi (dst); mov eax,edi (src); call 0x4ee6e0
+    0x0f, 0xbf, 0xc0, 0x83, 0xf8, 0x18, 0x0f, 0x87, 0x92, 0x00, 0x00, 0x00, // movsx eax,ax; cmp eax,0x18; ja 0x4ee916
+    0x0f, 0xb6, 0x80, 0x34, 0xe9, 0x4e, 0x00,             // movzx eax,byte [eax+0x4ee934]
+    0xff, 0x24, 0x85, 0x1c, 0xe9, 0x4e, 0x00};            // jmp [eax*4+0x4ee91c]
+constexpr unsigned char expected_copy_class_table[copy_classes] = {0x00, 0x05, 0x05, 0x05, 0x05, 0x01, 0x05, 0x05, 0x05, 0x05, 0x02, 0x05, 0x05,
+                                                                   0x05, 0x05, 0x03, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x04};
+constexpr unsigned copy_class_none = 0, copy_class_16 = 5, copy_class_24 = 10, copy_class_32 = 24;
+// The plan for one TexBltImage into a destination of DW x DH texels from a 1x image of SW x SH texels, given the
+// engine's factor N (1, or cfg+0x784 = d for a flagged destination), the raw record words and whether the d x shadow
+// of the image exists: with the shadow (N = d) every coordinate is x N against the shadow (what the engine does for a
+// flagged source); otherwise the source rectangle stays unscaled and only the destination position is x N (the icon
+// draws 1x, never out of bounds). The rectangle is then clamped to both surfaces; draw = false when nothing remains.
+struct ImagePlan {
+    bool draw, shadow;
+    int sx, sy, dx, dy, w, h;
+};
+inline bool clamp_copy(int SW, int SH, int DW, int DH, int* sx, int* sy, int* dx, int* dy, int* w, int* h) {
+    if (*sx < 0 || *sy < 0 || *dx < 0 || *dy < 0 || *w <= 0 || *h <= 0) return false;
+    if (*sx >= SW || *sy >= SH || *dx >= DW || *dy >= DH) return false;
+    if (*w > SW - *sx) *w = SW - *sx;
+    if (*w > DW - *dx) *w = DW - *dx;
+    if (*h > SH - *sy) *h = SH - *sy;
+    if (*h > DH - *dy) *h = DH - *dy;
+    return *w > 0 && *h > 0;
+}
+inline ImagePlan plan_image_blit(unsigned N, unsigned d, bool have_shadow, int SW, int SH, int DW, int DH, const int raw[6]) {
+    ImagePlan p{};
+    p.shadow = N > 1 && N == d && have_shadow;
+    const int n = int(N);
+    if (p.shadow) {
+        p.sx = raw[0] * n;
+        p.sy = raw[1] * n;
+        p.w = raw[4] * n;
+        p.h = raw[5] * n;
+        SW *= n;
+        SH *= n;
+    } else {
+        p.sx = raw[0];
+        p.sy = raw[1];
+        p.w = raw[4];
+        p.h = raw[5];
+    }
+    p.dx = raw[2] * n;
+    p.dy = raw[3] * n;
+    p.draw = SW > 0 && SH > 0 && DW > 0 && DH > 0 && clamp_copy(SW, SH, DW, DH, &p.sx, &p.sy, &p.dx, &p.dy, &p.w, &p.h);
+    return p;
+}
 // ---- the diagnostic set (item 7) ----
 // The function ids the thunks push (the diagnostic rows name them in this order).
-enum Kind : unsigned { kind_text_line = 0, kind_blt_block = 1, kind_blt_alpha = 2, kind_rect_fill = 3 };
+enum Kind : unsigned { kind_text_line = 0, kind_blt_block = 1, kind_blt_alpha = 2, kind_rect_fill = 3, kind_blt_image = 4 };
 constexpr unsigned diagnostic_rows = 96;
 struct DiagnosticKey {
     std::uint8_t function; // 0 text line, 1 blit block, 2 blit alpha, 3 rect fill
@@ -353,10 +478,28 @@ static_assert(expected_style_window[style_write_offset - 1] == 0xbf && expected_
               "mov edi,2");
 static_assert((style_write_va & 7u) + style_write_length <= 8u, "the imm32 lies inside one aligned qword");
 static_assert((font_site_va & 7u) + 5 <= 8u && (blt_block_va & 7u) + 5 <= 8u && (blt_alpha_va & 7u) + 5 <= 8u &&
-                  (materials_site_va & 7u) + 5 <= 8u && (text_line_va & 7u) + 5 <= 8u && (rect_fill_va & 7u) + 5 <= 8u,
+                  (materials_site_va & 7u) + 5 <= 8u && (text_line_va & 7u) + 5 <= 8u && (rect_fill_va & 7u) + 5 <= 8u &&
+                  (blt_image_site_va & 7u) + 5 <= 8u,
               "every five-byte patch lies inside one aligned qword (one lock cmpxchg8b)");
 static_assert(font_site_va + font_site_length == font_return_va && materials_site_va + 5 == materials_return_va,
               "continuations");
+static_assert(image_scale_va + image_scale_window_length == blt_image_site_va && blt_image_site_va + 0x41 == image_return_va &&
+                  blt_image_site_va + 0x3c == image_call_va && image_site_length <= image_window_length &&
+                  expected_image_window[0x3c] == 0xe8 && expected_image_window[0x41] == 0x66 && expected_image_window[0x45] == 0x83 &&
+                  expected_image_window[0x46] == 0xc4 && expected_image_window[0x47] == image_pushed_bytes,
+              "the image block: the call at +0x3c, `mov cx,[esi+1]; add esp,0x20` at the return address");
+static_assert(image_jump_table_va + image_opcode * 4 == image_table_entry_va, "KC native 109");
+static_assert(expected_copy_class_table[copy_class_none] == 0 && expected_copy_class_table[copy_class_16] == 1 &&
+                  expected_copy_class_table[copy_class_24] == 2 && expected_copy_class_table[copy_class_32] == 4 &&
+                  expected_copy_dispatch[23] == copy_classes - 1 && (copy_dispatch_va + 9 + 4 + 5 + 3 + 3 + 6) + 0x92 == copy_nothing_va,
+              "the four same-depth classes own the four copy slots; 25 classes; the rest fall through");
+static_assert(image_shadow_compatible(generated_surface_flags | surface_depth_32) && !image_shadow_compatible(generated_surface_flags) &&
+                  !image_shadow_compatible(surface_has_pixels | surface_depth_16) && !image_shadow_compatible(surface_depth_32),
+              "a 32-bit surface with pixels is the shadow's class");
+static_assert(expected_image_window[3] == image_record_coords_offset + 5 * image_record_coord_stride &&
+                  expected_image_window[7] == image_record_coords_offset + 4 * image_record_coord_stride &&
+                  image_record_coords_offset + 5 * image_record_coord_stride + 2 == image_record_length,
+              "the record words h and w are the displaced loads");
 static_assert(expected_materials_window[1] == 0xe8 &&
                   materials_return_va + (std::uint32_t(expected_materials_window[2]) | std::uint32_t(expected_materials_window[3]) << 8 |
                                          std::uint32_t(expected_materials_window[4]) << 16 |

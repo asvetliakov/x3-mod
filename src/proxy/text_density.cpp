@@ -11,11 +11,12 @@
 #include <cstdio>
 #include <cstring>
 
-// Six claims through engine_patch (text_density_sites.h), all or none: three entry claims whose thunks call one
+// Seven claims through engine_patch (text_density_sites.h), all or none: four entry claims whose thunks call one
 // cdecl C function each with every register and EFLAGS saved (the font open 0x0048cdc0, the two block blits
-// 0x0048c090 / 0x0048c460), one call redirect (the Materials load call at 0x0048af71: the thunk calls the original
-// with the caller's stack exactly as it was, then the C side edits the row flags) and, under X3M_DEBUG=1, two entry
-// claims that only record (function, src, dst) triples (the text line 0x0048b2d0, the rect fill 0x0048b0b0). The
+// 0x0048c090 / 0x0048c460, KC's TexBltImage coordinate block 0x004960c0), one call redirect (the Materials load call
+// at 0x0048af71: the thunk calls the original with the caller's stack exactly as it was, then the C side edits the row
+// flags) and, under X3M_DEBUG=1, two entry claims that only record (function, src, dst) triples (the text line
+// 0x0048b2d0, the rect fill 0x0048b0b0). The
 // thunks live in this module, which is pinned before any claim goes live; every continuation word is read back before
 // the stub is pushed in front of the tail. The four engine helpers the shadow path calls (texture lookup, surface
 // allocator and free, the copy leaves) are compared byte for byte before anything is claimed. Per blit into a flagged
@@ -27,7 +28,7 @@ static_assert(sizeof(void*) == 4, "x86 code patching only");
 namespace {
 namespace engine_patch = x3m::engine_patch;
 namespace sites = x3m::text_density::sites;
-enum Index : unsigned { Font = 0, BltBlock, BltAlpha, TextLine, RectFill, claim_count };
+enum Index : unsigned { Font = 0, BltBlock, BltAlpha, BltImage, TextLine, RectFill, claim_count };
 struct Claim {
     const char* name;
     std::uintptr_t va;
@@ -44,6 +45,8 @@ const Claim claims[claim_count] = {
      x3m_text_density_blt_block_thunk, &x3m_text_density_blt_block_continue, false},
     {"text_density_blt_alpha", sites::blt_alpha_va, sites::blit_site_length, sites::expected_blit_window,
      x3m_text_density_blt_alpha_thunk, &x3m_text_density_blt_alpha_continue, false},
+    {"text_density_blt_image", sites::blt_image_site_va, sites::image_site_length, sites::expected_image_window,
+     x3m_text_density_blt_image_thunk, &x3m_text_density_blt_image_continue, false},
     {"text_density_text_line", sites::text_line_va, sites::text_line_site_length, sites::expected_text_line_window,
      x3m_text_density_text_line_thunk, &x3m_text_density_text_line_continue, true},
     {"text_density_rect_fill", sites::rect_fill_va, sites::rect_fill_site_length, sites::expected_rect_fill_window,
@@ -94,6 +97,21 @@ struct Shadow {
 Shadow shadows_[sites::shadow_slots] = {};
 unsigned shadow_count_ = 0;
 std::uint32_t shadow_bytes_ = 0;
+// The one TexBltImage shadow: the engine keeps one image object at a time (*0x006085cc, its path at *0x006085c8) and
+// reloads it when the path changes, so one slot keyed by the object pointer, its size and the path's text (the freed
+// object and path buffers are reused by the allocator, so the pointers alone do not identify the image) mirrors it.
+// object == nullptr with a key present = the shadow for that image was refused (no retry until the image changes).
+struct ImageShadow {
+    void* source;
+    void* object;
+    std::uint32_t bytes;
+    int w, h;
+    bool path_unreadable; // the key is (source, w, h) alone: the refusal is remembered until the image object changes
+    unsigned path_length;
+    char path[sites::image_path_capacity];
+};
+ImageShadow image_shadow_{};
+bool image_shadow_keyed_ = false;
 // Sources whose shadow was refused (budget, slots, size, allocation): remembered so later blits pass straight through.
 constexpr unsigned refused_slots = 32;
 std::int32_t refused_[refused_slots] = {};
@@ -114,7 +132,7 @@ constexpr unsigned filter_report_window = 300;
 // The diagnostic set (debug): printed once per distinct (function, src, dst).
 sites::DiagnosticKey diagnostic_table_[sites::diagnostic_rows] = {};
 unsigned diagnostic_count_ = 0;
-const char* const diagnostic_names[4] = {"text_line", "blt_block", "blt_alpha", "rect_fill"};
+const char* const diagnostic_names[5] = {"text_line", "blt_block", "blt_alpha", "rect_fill", "blt_image"};
 
 using CopyFn = void(__cdecl*)(void*, void*, int, int, int, int, int, int);
 using FreeFn = int(__cdecl*)(void**);
@@ -156,13 +174,19 @@ const char* windows_verified() {
         !code_is(sites::row_flag_test_va, sites::expected_row_flag_test, sites::row_flag_test_length) ||
         !code_is(sites::row_count_read_va, sites::expected_row_count_read, sites::row_count_read_length))
         return "blit_mismatch";
+    if (!code_is(sites::image_scale_va, sites::expected_image_scale_window, sites::image_scale_window_length) ||
+        !code_is(sites::blt_image_site_va, sites::expected_image_window, sites::image_window_length))
+        return "image_mismatch";
     if (!code_is(sites::lookup_va, sites::expected_lookup, sites::lookup_length) ||
         !code_is(sites::alloc_va, sites::expected_alloc, sites::alloc_length) ||
         !code_is(sites::alloc_fields_va, sites::expected_alloc_fields, sites::alloc_fields_length) ||
         !code_is(sites::free_va, sites::expected_free, sites::free_length) ||
         !code_is(sites::copy_va, sites::expected_copy, sites::copy_length) ||
         !code_is(sites::colour_copy_va, sites::expected_colour_copy, sites::colour_copy_length) ||
-        !code_is(sites::alpha_leaf_va, sites::expected_alpha_leaf, sites::alpha_leaf_length))
+        !code_is(sites::alpha_leaf_va, sites::expected_alpha_leaf, sites::alpha_leaf_length) ||
+        !code_is(sites::alloc_depth_va, sites::expected_alloc_depth, sites::alloc_depth_length) ||
+        !code_is(sites::copy_dispatch_va, sites::expected_copy_dispatch, sites::copy_dispatch_length) ||
+        !code_is(sites::copy_class_table_va, sites::expected_copy_class_table, sites::copy_classes))
         return "helper_mismatch";
     if (!code_is(sites::text_line_va, sites::expected_text_line_window, sites::text_line_window_length) ||
         !code_is(sites::rect_fill_va, sites::expected_rect_fill_window, sites::rect_fill_window_length))
@@ -490,32 +514,28 @@ std::int16_t object_height(const void* object) {
     return *reinterpret_cast<const std::int16_t*>(static_cast<const unsigned char*>(object) + sites::object_height_offset);
 }
 void shadow_row(std::int32_t src, const char* status, const char* reason, unsigned w, unsigned h, std::uint32_t bytes,
-                unsigned long ms) {
+                unsigned long ms, const char* image = "-") {
     if (shadow_rows_ >= shadow_row_limit) return;
     ++shadow_rows_;
-    x3m::log("text_density_shadow src=%ld status=%s reason=%s size=%ux%u density=%u bytes=%lu total=%lu slots=%u ms=%lu", long(src),
+    x3m::log("text_density_shadow src=%ld status=%s reason=%s size=%ux%u density=%u bytes=%lu total=%lu slots=%u ms=%lu image=%s", long(src),
              status, reason, w, h, density_, static_cast<unsigned long>(bytes), static_cast<unsigned long>(shadow_bytes_),
-             shadow_count_, ms);
+             shadow_count_, ms, image);
 }
 // The d x nearest-neighbour copy of a static source through the engine's own plain copy leaf: d*W column copies
 // from the source (x), then d*H row copies inside the shadow from the last row up (y; every write lands at or below
-// the row it reads, so no source row is overwritten before its use). Caller holds the lock.
-void* build_shadow(std::int32_t src, void* src_object) {
+// the row it reads, so no source row is overwritten before its use). Caller holds the lock. The result is counted
+// into the budget; the caller records it (an id slot, or the image slot; src = -1 and the image path for the latter).
+void* make_shadow(std::int32_t src, void* src_object, int W, int H, std::uint32_t* bytes, const char* image) {
     const unsigned d = density_;
-    const int W = object_width(src_object), H = object_height(src_object);
-    std::uint32_t bytes = 0;
-    if (W <= 0 || H <= 0 || !sites::shadow_fits(unsigned(W), unsigned(H), d, shadow_bytes_, &bytes)) {
-        shadow_row(src, "refused", W <= 0 || H <= 0 ? "empty_source" : "budget", unsigned(W), unsigned(H), bytes, 0);
-        return nullptr;
-    }
-    if (shadow_count_ >= sites::shadow_slots) {
-        shadow_row(src, "refused", "slots", unsigned(W), unsigned(H), bytes, 0);
+    *bytes = 0;
+    if (W <= 0 || H <= 0 || !sites::shadow_fits(unsigned(W), unsigned(H), d, shadow_bytes_, bytes)) {
+        shadow_row(src, "refused", W <= 0 || H <= 0 ? "empty_source" : "budget", unsigned(W), unsigned(H), *bytes, 0, image);
         return nullptr;
     }
     const ULONGLONG begin = GetTickCount64();
     void* shadow = alloc_surface(sites::generated_bits_per_pixel, W * int(d), H * int(d), sites::generated_surface_flags);
     if (!shadow) {
-        shadow_row(src, "refused", "alloc_failed", unsigned(W), unsigned(H), bytes, 0);
+        shadow_row(src, "refused", "alloc_failed", unsigned(W), unsigned(H), *bytes, 0, image);
         return nullptr;
     }
     const CopyFn copy = reinterpret_cast<CopyFn>(sites::copy_va);
@@ -526,10 +546,80 @@ void* build_shadow(std::int32_t src, void* src_object) {
             const int row = j * int(d) + l;
             if (row != j) copy(shadow, shadow, 0, j, 0, row, W * int(d), 1);
         }
-    shadows_[shadow_count_++] = Shadow{src, shadow, bytes};
-    shadow_bytes_ += bytes;
-    shadow_row(src, "built", "ok", unsigned(W), unsigned(H), bytes, static_cast<unsigned long>(GetTickCount64() - begin));
+    shadow_bytes_ += *bytes;
+    shadow_row(src, "built", "ok", unsigned(W), unsigned(H), *bytes, static_cast<unsigned long>(GetTickCount64() - begin), image);
     return shadow;
+}
+void* build_shadow(std::int32_t src, void* src_object) {
+    const int W = object_width(src_object), H = object_height(src_object);
+    std::uint32_t bytes = 0;
+    if (shadow_count_ >= sites::shadow_slots) {
+        shadow_row(src, "refused", "slots", unsigned(W), unsigned(H), bytes, 0);
+        return nullptr;
+    }
+    void* shadow = make_shadow(src, src_object, W, H, &bytes, "-");
+    if (shadow) shadows_[shadow_count_++] = Shadow{src, shadow, bytes};
+    return shadow;
+}
+void free_image_shadow() {
+    if (image_shadow_.object) {
+        free_surface(&image_shadow_.object);
+        shadow_bytes_ -= image_shadow_.bytes;
+    }
+    image_shadow_ = ImageShadow{};
+    image_shadow_keyed_ = false;
+}
+// The path of the engine's current image (*0x006085c8), through validated reads: first the cached key's length plus
+// its terminator in one read (equal text and terminator = the same image), else byte by byte. False when unreadable
+// or longer than the capacity.
+bool read_image_path(char out[sites::image_path_capacity], unsigned* length) {
+    std::uint32_t pointer = 0;
+    if (!x3m::engine_memory::read(sites::image_path_slot_va, &pointer, 4) || !pointer) return false;
+    if (image_shadow_keyed_ && image_shadow_.path_length + 1 <= sites::image_path_capacity &&
+        x3m::engine_memory::read(pointer, out, image_shadow_.path_length + 1) &&
+        !std::memcmp(out, image_shadow_.path, image_shadow_.path_length + 1)) {
+        *length = image_shadow_.path_length;
+        return true;
+    }
+    unsigned n = 0;
+    while (n < sites::image_path_capacity) {
+        if (!x3m::engine_memory::read(pointer + n, out + n, 1)) return false;
+        if (!out[n]) {
+            *length = n;
+            return true;
+        }
+        ++n;
+    }
+    return false;
+}
+// The d x shadow of the engine's current image (W x H at 1x): the one slot when its key matches, else rebuilt
+// (the previous shadow freed). nullptr when the path is unreadable or the shadow was refused. Caller holds the lock.
+void* image_shadow_for(void* src_object, int W, int H) {
+    char path[sites::image_path_capacity];
+    unsigned length = 0;
+    const bool same_object = image_shadow_keyed_ && image_shadow_.source == src_object && image_shadow_.w == W && image_shadow_.h == H;
+    if (same_object && image_shadow_.path_unreadable) return nullptr; // remembered: no re-read, no second row
+    if (!read_image_path(path, &length)) {
+        free_image_shadow();
+        image_shadow_.source = src_object;
+        image_shadow_.w = W;
+        image_shadow_.h = H;
+        image_shadow_.path_unreadable = true;
+        image_shadow_keyed_ = true;
+        shadow_row(-1, "refused", "path_unreadable", unsigned(W), unsigned(H), 0, 0, "?");
+        return nullptr;
+    }
+    if (same_object && image_shadow_.path_length == length && !std::memcmp(image_shadow_.path, path, length + 1))
+        return image_shadow_.object;
+    free_image_shadow();
+    image_shadow_.source = src_object;
+    image_shadow_.w = W;
+    image_shadow_.h = H;
+    image_shadow_.path_length = length;
+    std::memcpy(image_shadow_.path, path, length + 1);
+    image_shadow_keyed_ = true;
+    image_shadow_.object = make_shadow(-1, src_object, W, H, &image_shadow_.bytes, path);
+    return image_shadow_.object;
 }
 bool shadow_refused(std::int32_t src) {
     for (unsigned i = 0; i < refused_count_; ++i)
@@ -556,7 +646,7 @@ void* shadow_for(std::int32_t src) {
 }
 void diagnostic_row(unsigned function, std::int32_t src, std::int32_t dst, unsigned dst_flagged, unsigned src_flagged,
                     unsigned src_generated, unsigned handled) {
-    if (!x3m::log_tier::cached_debug || function > sites::kind_rect_fill) return;
+    if (!x3m::log_tier::cached_debug || function > sites::kind_blt_image) return;
     if (!sites::diagnostic_first(diagnostic_table_, &diagnostic_count_, sites::DiagnosticKey{std::uint8_t(function), src, dst}))
         return;
     x3m::log("text_density_draw fn=%s src=%ld dst=%ld dst_flagged=%u src_flagged=%u src_generated=%u handled=%u", diagnostic_names[function],
@@ -597,7 +687,8 @@ extern "C" {
 std::uintptr_t x3m_text_density_font_continue = 0, x3m_text_density_materials_continue = sites::materials_target_va,
                x3m_text_density_materials_return = 0, x3m_text_density_blt_block_continue = 0,
                x3m_text_density_blt_alpha_continue = 0, x3m_text_density_text_line_continue = 0,
-               x3m_text_density_rect_fill_continue = 0;
+               x3m_text_density_rect_fill_continue = 0, x3m_text_density_blt_image_continue = 0,
+               x3m_text_density_blt_image_return = sites::image_return_va;
 // The engine calls through register conventions (text_density_sites.h): shims in this module's .text.
 void* __cdecl x3m_text_density_call_lookup(std::int32_t id);
 void* __cdecl x3m_text_density_call_alloc(std::uint32_t bpp, int w, int h, std::uint32_t flags);
@@ -676,7 +767,7 @@ void __cdecl x3m_text_density_materials_loaded() {
 // here, in layout units, exactly as 0x0048c090 does it); returns the destination object (handled) or 0 (the original
 // runs). A composite destination (negative) recurses through the same entry per part, so it passes.
 std::uint32_t __cdecl x3m_text_density_blit(std::uint32_t* frame, std::uint32_t kind) {
-    if (!active_ || density_ <= 1 || !rows_applied_) return 0;
+    if (!active_ || density_ <= 1) return 0; // before the Materials load live_tables() has no rows and every id passes
     const DWORD error = GetLastError();
     std::uint32_t handled = 0;
     std::int32_t* args = reinterpret_cast<std::int32_t*>(frame + sites::frame_args);
@@ -726,6 +817,53 @@ std::uint32_t __cdecl x3m_text_density_blit(std::uint32_t* frame, std::uint32_t 
     SetLastError(error);
     return handled;
 }
+// KC's TexBltImage coordinate block (0x004960c0; text_density_sites.h): the engine's cx (frame ECX: 1, or N for a
+// flagged destination row) would scale the six record words at ESI, the source rectangle of its 1x image (EBX)
+// included, and read past the image. The C side runs the plain copy itself: with the d x shadow of the image (N = d)
+// every coordinate x N, else the source rectangle unscaled at the x N destination position; both clamped to the two
+// surfaces (nothing is drawn when nothing remains). Returns 1 (the thunk skips the engine's block) or 0 (the block
+// runs unchanged: the option is inactive, an input the engine is about to dereference itself is null, or cx is
+// neither 1 nor d). Active from the moment cfg+0x784 = d is written, not only after the row edit: until the edit the
+// 8 stock file-backed MPF_FONTSCALE rows already scale. The record, the image object and the destination object
+// ([esp+0x10], the lookup's result the engine null-checked) are the engine's own pointers, read as the engine reads
+// them right after. The shadow is built only from an image the copy leaf can copy into it (32-bit with pixels, the
+// shadow's own class; the leaf copies same-depth pairs only and nothing else, text_density_sites.h); otherwise the
+// unscaled source rectangle goes to the engine's leaf as the engine's own pair would.
+std::uint32_t __cdecl x3m_text_density_image_blit(std::uint32_t* frame) {
+    if (!active_ || density_ <= 1) return 0;
+    const DWORD error = GetLastError();
+    std::uint32_t handled = 0;
+    const unsigned N = frame[sites::frame_ecx];
+    const std::uintptr_t record = frame[sites::frame_esi];
+    void* src_object = reinterpret_cast<void*>(frame[sites::frame_ebx]);
+    void* dst_object = reinterpret_cast<void*>(frame[sites::image_frame_dst]);
+    if (record && src_object && dst_object && (N == 1 || N == density_)) {
+        std::int32_t dst = 0;
+        std::memcpy(&dst, reinterpret_cast<const void*>(record + sites::image_record_dst_offset), 4);
+        int raw[6];
+        for (unsigned i = 0; i < 6; ++i) {
+            std::uint16_t word = 0;
+            std::memcpy(&word, reinterpret_cast<const void*>(record + sites::image_record_coords_offset + i * sites::image_record_coord_stride), 2);
+            raw[i] = word;
+        }
+        const int SW = object_width(src_object), SH = object_height(src_object), DW = object_width(dst_object), DH = object_height(dst_object);
+        void* shadow = nullptr;
+        std::uint32_t src_flags = 0;
+        std::memcpy(&src_flags, static_cast<const unsigned char*>(src_object) + sites::object_flags_offset, 4);
+        if (N > 1 && sites::image_shadow_compatible(src_flags)) {
+            AcquireSRWLockExclusive(&shadow_lock_);
+            shadow = image_shadow_for(src_object, SW, SH);
+            ReleaseSRWLockExclusive(&shadow_lock_);
+        }
+        const sites::ImagePlan plan = sites::plan_image_blit(N, density_, shadow != nullptr, SW, SH, DW, DH, raw);
+        if (plan.draw)
+            reinterpret_cast<CopyFn>(sites::copy_va)(plan.shadow ? shadow : src_object, dst_object, plan.sx, plan.sy, plan.dx, plan.dy, plan.w, plan.h);
+        handled = 1;
+        diagnostic_row(sites::kind_blt_image, -1, dst, N > 1 ? 1u : 0u, 0, 0, plan.shadow ? 1u : 0u);
+    }
+    SetLastError(error);
+    return handled;
+}
 // The diagnostic entries (debug): the text line (dst = arg0, font slot = arg2, x = arg3) and the rect fill (dst = arg0).
 void __cdecl x3m_text_density_diagnostic(std::uint32_t* frame, std::uint32_t kind) {
     if (!x3m::log_tier::cached_debug || kind > sites::kind_rect_fill) return;
@@ -757,7 +895,10 @@ void* alloc_surface(std::uint32_t bpp, int w, int h, std::uint32_t flags) {
 // (DF cleared for the C ABI and restored by popfd). The blit thunks return the C result in the saved EAX slot: EAX is
 // dead at both entries (the verifier proves the first EAX access is a write), so a non-zero result skips the
 // original with `ret` (cdecl: the caller pops) and zero continues into the tail; the flags after `test` are dead too
-// (the displaced `sub esp,0x24` writes them and `test ecx,ecx` at +7 rewrites them before any reader). The Materials thunk takes
+// (the displaced `sub esp,0x24` writes them and `test ecx,ecx` at +7 rewrites them before any reader). The image thunk
+// does the same at KC's TexBltImage block (EAX and EDX are written by the displaced loads, EFLAGS by the `imul` after
+// them); a non-zero result pops nothing but leaves the 0x20 bytes of arguments the engine's block would have pushed
+// (`sub esp,0x20`) and resumes at 0x00496101, where `add esp,0x20` takes them back and the lookup writes EAX first. The Materials thunk takes
 // the game's return address off the stack, calls the original with the stack exactly as the game's call left it,
 // then runs the C side and returns with EAX forwarded. The shims hand register arguments to the engine helpers.
 asm(R"(
@@ -824,6 +965,24 @@ _x3m_text_density_blt_alpha_thunk:
     jnz 2f
     jmp dword ptr [_x3m_text_density_blt_alpha_continue]
 2:  ret
+    .p2align 4
+    .globl _x3m_text_density_blt_image_thunk
+_x3m_text_density_blt_image_thunk:
+    pushfd
+    pushad
+    cld
+    mov eax, esp
+    push eax
+    call _x3m_text_density_image_blit
+    add esp, 4
+    mov dword ptr [esp+28], eax
+    popad
+    popfd
+    test eax, eax
+    jnz 3f
+    jmp dword ptr [_x3m_text_density_blt_image_continue]
+3:  sub esp, 32
+    jmp dword ptr [_x3m_text_density_blt_image_return]
     .p2align 4
     .globl _x3m_text_density_text_line_thunk
 _x3m_text_density_text_line_thunk:
@@ -1013,10 +1172,11 @@ void before_reset() {
     if (!active_) return;
     const DWORD error = GetLastError();
     AcquireSRWLockExclusive(&shadow_lock_);
-    const unsigned count = shadow_count_;
+    const unsigned count = shadow_count_ + (image_shadow_.object ? 1u : 0u);
     const std::uint32_t bytes = shadow_bytes_;
     for (unsigned i = 0; i < shadow_count_; ++i)
         if (shadows_[i].object) free_surface(&shadows_[i].object);
+    free_image_shadow();
     shadow_count_ = 0;
     shadow_bytes_ = 0;
     refused_count_ = 0; // budget and slot refusals are retried after the Reset emptied the cache

@@ -32,8 +32,9 @@ module supplies what is missing:
 | 2 | font request `x d` | entry `0x0048cdc0` (6 bytes `51 53 56 57 8b f9`) | the thunk saves every register and EFLAGS and hands the C side the frame: EAX = name, ECX = size, `[esp+4]` cell width, `[esp+0xc]` y offset. When both loose files `f\<name><S*d>.abc` and `.tga` exist under the game directory (`GetModuleFileNameW` of the EXE, `GetFileAttributesW`), the saved ECX and the two stack arguments are multiplied by `d`; otherwise the request passes unchanged and one `text_density_font … status=missing` row names the file (a failed open would make `0x0048cdc0` return -1, which KC stores unchecked). Covers the native cockpit (`0x0041c9ab`, `0x0041f7a7`) and KC's `B3D_OpenFont` (`0x00496131`, `0x0049615b`), the four direct callers |
 | 3 | text targets | the Materials load call `0x0048af71` (`call 0x004f44a0`, redirected) | the thunk pops the game's return address, calls the original with the stack exactly as the game's call left it, then edits the rows: every `MPF_GENERATED|MPF_WRITEABLE` row (35 in the shipped table: ids 5–22, 61–66, 90, 236, 340, 342, 579, 922, 923, 1230, 1235–1237) gains `MPF_FONTSCALE`, and loses `MPF_NOFILTERING` when `s != d` (the texture is then minified and must filter); every file-backed `MPF_FONTSCALE` row (46, 47, 56, 158, 219, 327, 568, 705) loses the flag so it loads its stock file. Both copies are edited: the row (`*0x00608db0 + id*0x3c + 0x10`, read by the text and blit functions) and the texture-table entry (`*0x006069ac + id*0x10 + 4`, read by the texture creator `0x004f4160`; the material-flag word the draw path filters by is a third copy, see "On-screen filter"). Refused (`objects_exist`) when a row to flag already has a texture object. Runs once per process on the init thread; `CreateDevice` applies the edit instead when it comes after the load |
 | 4 | blit sources | entries `0x0048c090` `TexBltBlock` and `0x0048c460` `TexBltBlockAlpha` (7 bytes `8b 4c 24 08 83 ec 24`) | when the destination is a flagged row and the source is a static unflagged texture (a named atlas such as `gui_master`, or a file-backed row), the C side runs the engine's own leaf with a `d x` shadow of the source and every coordinate in texels: the destination clip in layout units as `0x0048c2c8..0x0048c32c` does it (only with the clip argument), then `0x004dbbe0` (plain copy, colour < 0), `0x004ee990` (colour copy) or `0x004efa70` (alpha) with EAX = destination object, EDI = shadow. The thunk returns the destination object in EAX (dead at both entries) and `ret`s; a zero result continues into the original. Composite (negative) destinations recurse through the same entry per part and pass; a generated unflagged source (dynamic content) passes and is reported once under debug. Shadows are built once per source id (`0x004f3950(d*W, d*H, 0x402c)`, 32 bpp, the flags of a generated row; `d*W` column copies from the source, then `d*H` in-place row copies from the last row up through the plain-copy leaf: nearest neighbour), capped at 16 sources, 96 MB and 4096 texels per side, freed with `0x004f38d0` before every device `Reset` and rebuilt on demand |
+| 4b | `B3D_TexBltImage` | the coordinate block `0x004960c0` of KC native 109 in the script dispatcher `0x00493b40` (8 bytes `0f b7 56 24 0f b7 46 1f`, the two `movzx` loads; both inbound branches of the scale block land on the first byte; [font-rendering.md](../reverse-engineering/font-rendering.md) section 2.6) | the engine sets `cx = N` for a flagged destination and multiplies **all six** record words by it, the source rectangle of its 1x image included, then calls the plain copy `0x004dbbe0(image, dst, …)`, which clips nothing: the copy reads `d x` past the image (the New Game menu crash of 2026-10-26, `s = 1.5`, `d = 2`). The thunk hands the C side the frame (ECX = the engine's `cx`, ESI = the record, EBX = the image object, `[esp+0x10]` = the destination object); when active it runs the copy itself: with the `d x` shadow of the image every coordinate `x N` (the shadow machinery of item 4, one slot keyed by the image object, its size and the path text at `*0x006085c8`, since the engine keeps one image at a time and the allocator reuses freed pointers), otherwise (shadow refused, path unreadable, or an image that is not 32-bit with pixels: the copy leaf copies same-depth pairs only and converts nothing, font-rendering.md section 2.6, so a 16/24-bit image into a 32-bit row is blank in the stock game too) the source rectangle unscaled at the `x N` destination position (a 1x icon, never out of bounds); the rectangle is clamped to both surfaces (`clamp_copy`), and an `N = 1` blit is the engine's own copy, clamped. A `cx` that is neither 1 nor `d` passes to the engine. The guard is live from the moment `cfg+0x784 = d` is written (the 8 stock file-backed `MPF_FONTSCALE` rows already scale before the row edit), not only after the rows are flagged; the two block blits drop the same `rows_applied_` gate (without the Materials rows every id passes). A refused path read is remembered for the image object like the other refusals (one row). The thunk returns the result in EAX (EAX and EDX are written by the displaced loads, EFLAGS by the `imul` after them): non-zero leaves the `0x20` bytes of arguments the engine's block would have pushed (`sub esp,0x20`) and resumes at `0x00496101` (`add esp,0x20; call lookup`: EAX and EFLAGS dead); zero continues into the engine's block. The byte windows `0x0049608b..0x004960c0` (the scale block) and `0x004960c0..0x00496112` (through the copy call and the return sequence) are compared before anything is claimed |
 | 5 | style factor | imm32 at `0x004f813b` (`mov edi,2`) | `d` when `d = 3` (one `lock cmpxchg8b` inside the qword `0x004f8138`); stock 2 is right for `d = 2`; put back on unload |
-| 6 | diagnostics (`--debug`) | entries `0x0048b2d0` text line (6 bytes) and `0x0048b0b0` rect fill (8 bytes), plus the two blits | one `text_density_draw fn= src= dst= dst_flagged= src_flagged= src_generated= handled=` row per distinct (function, src, dst) for the blits and the rect fill, `fn=text_line font= x= dst= dst_flagged=` per distinct (font slot, dst) for the text line (its arguments are `dst, text, font slot, x, y, right, colour, flags`), 96 at most, printed on first sight: settles open item 1 of the note (which ids KC and native code draw text and blit into) |
+| 6 | diagnostics (`--debug`) | entries `0x0048b2d0` text line (6 bytes) and `0x0048b0b0` rect fill (8 bytes), plus the two blits and the image blit | one `text_density_draw fn= src= dst= dst_flagged= src_flagged= src_generated= handled=` row per distinct (function, src, dst) for the blits and the rect fill (`fn=blt_image` has `src=-1`, no id; `handled=1` means drawn through the shadow, `0` the 1x copy), `fn=text_line font= x= dst= dst_flagged=` per distinct (font slot, dst) for the text line (its arguments are `dst, text, font slot, x, y, right, colour, flags`), 96 at most, printed on first sight: settles open item 1 of the note (which ids KC and native code draw text and blit into); the `text_density_shadow` rows carry `image=<path>` for the image shadow (`-` for id sources) |
 | 7 | on-screen filter (`s != d`) | proxy-side, no engine site: the draw hooks and the `SetTexture` hook of `capture.cpp` | see "On-screen filter" below |
 
 ## On-screen filter
@@ -85,8 +86,8 @@ when the option is off.
 
 Every window is byte-compared at `initialize()` (fail closed: the sites, the helper
 functions' prologues and the whole lookup and plain-copy bodies, the config stores, the
-draw path's flag read); the four production claims (font open, the two blits, the
-Materials call) and, under `--debug`, the two diagnostic entries are claimed on the
+draw path's flag read, the TexBltImage scale and coordinate blocks); the five production
+claims (font open, the two blits, the Materials call, the image blit) and, under `--debug`, the two diagnostic entries are claimed on the
 backend-load path in that order, all or none, and stay inert until `device_created`
 raises `active_`. The density is resolved right after `ui_scale::device_created` from
 `ui_scale::scale()` (1 when `ui_scale` is off or refused): `d = 1` restores the claims
@@ -132,7 +133,11 @@ Per-call cost: a blit into a flagged row costs the row-flag reads, one texture l
 (the original does two) and a 16-entry probe; a text line or rect fill costs nothing
 outside `--debug`. A shadow build is `d*(W+H)` leaf calls (about `d*W*H` four-byte
 copies; a 512x512 atlas at `d = 2` in a few ms, once per session per source, logged
-with its duration).
+with its duration). A `TexBltImage` costs, per blit (nothing per frame), the record and
+object reads, one validated read of the image path (`strlen + 1` bytes compared with the
+cached key; byte-wise only when the image changed) and the same copy the engine would
+have made; its shadow is rebuilt only when the image path, object or size changes, as the
+engine itself reloads the image then.
 
 ## Assets and the install step
 
@@ -154,9 +159,9 @@ for a font added by a mod, which is opened at `1x` and logged.
 
 - Fonts packed into a catalogue are not seen by the existence check (loose `f\` files
   only), so the request stays unscaled.
-- `B3D_TexBltImage` (two sites in the KC dispatcher, x3intro only) scales its source
-  rectangle too and is not intercepted; icons the intro draws into flagged rows would be
-  small.
+- A `TexBltImage` whose image shadow was refused (budget, size, allocation, unreadable
+  path) draws the image at 1x at its scaled position (small, never out of bounds); the
+  refusal is logged once per image.
 - A source whose content changes under the same id would keep its first shadow (the
   cache is by id; only file-backed sources are shadowed).
 - The engine's blit trace (`[0x00608518]+0x24 & 1`, a developer switch) is not called
@@ -167,6 +172,8 @@ for a font added by a mod, which is opened at `1x` and logged.
   text, icons in menus at their usual size (the shadow path: `text_density_shadow …
   status=built` and `text_density_draw … handled=1` rows), the text of texture 15
   (native HUD), 61 (`0x00426e10`) and 1230 (tooltip) laid out as before, no black
-  squares where the 8 unflagged file-backed rows draw, and the `text_density_draw` set
+  squares where the 8 unflagged file-backed rows draw, the New Game menu opening without
+  a crash with its image at its usual size (`text_density_shadow src=-1 status=built …
+  image=<path>` and `text_density_draw fn=blt_image … handled=1`), and the `text_density_draw` set
   (which ids text and blits really reach: if a row outside the 35 receives text, or a
   generated unflagged source feeds a flagged row, the set needs widening).
