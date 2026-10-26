@@ -1,0 +1,20 @@
+{
+ "run": 207,
+ "what": "persistent SYSTEMMEM fog field upload texture created at device attach; reused per family; per-call fallback",
+ "commit": "b691a1ca",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0-3ubuntu1+29ubuntu3, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "2acdac94c88c10b7a88850b5b45828b17671c9ae71b6328b252a631c8c953261",
+  "bytes": 62929651,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations",
+  "host_tests": "test_fog_cards + test_logging_tiers + test_address_space 25 OK (native FogPass fault harness 11 scenarios 0 failures)",
+  "review": "review agent (Opus 5.5): lifetime/copy/Reset/CPU state correct; F1-F5, F8 fixed before commit; Wine fixtures updated by inspection, unrun"
+ },
+ "witness": "verification/results/fog-prepare-oom-2026-10-21/witness-run206-2026-10-26.txt",
+ "producer": "main session"
+}
