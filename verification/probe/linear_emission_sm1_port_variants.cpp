@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
 #include <vector>
 using namespace x3m::renderer;
@@ -45,11 +46,14 @@ int main(int argc, char** argv) {
     cases.push_back({LinearEmissionSm1Outputs::PackedScreen, 1.f, false, false});
     for (float g : {2.f, 8.f})
         for (bool flag : {false, true}) cases.push_back({LinearEmissionSm1Outputs::AdditiveGain, g, false, flag});
+    unsigned duplicates = 0;
+    std::set<std::string> seen;  // a program present in two folders (sweep corpus and native captures) is one program
     for (int a = 2; a < argc; ++a) {
         if (!fs::is_directory(argv[a])) continue;
         for (const auto& entry : fs::directory_iterator(argv[a])) {
             const std::string stem = entry.path().stem().string();
             if (entry.path().extension() != ".bin" || stem.rfind("ps_", 0) != 0) continue;
+            if (!seen.insert(stem).second) { ++duplicates; continue; }
             Words original;
             if (!load(entry.path(), original) || original.size() > 59 || original[0] != 0xffff0101u) continue;
             unsigned here = 0;
@@ -80,6 +84,7 @@ int main(int argc, char** argv) {
             if (here) std::printf("%s variants=%u\n", stem.c_str(), here);
         }
     }
+    std::printf("duplicates=%u\n", duplicates);
     std::printf("variants=%u flagged=%u\n", variants, flagged);
     return 0;
 }

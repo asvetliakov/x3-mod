@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
 #include <vector>
 using namespace x3m::renderer;
@@ -36,12 +37,14 @@ int main(int argc, char** argv) {
     if (argc < 3) return 2;
     const fs::path out = argv[1];
     const HullLightmapWiden widens[3] = {{4.0f, 4.0f}, {3.0f, 3.0f}, {8.0f, 1.0f}};
-    unsigned variants = 0, widened = 0;
+    unsigned variants = 0, widened = 0, duplicates = 0;
+    std::set<std::string> seen;  // a program present in two folders (sweep corpus and native captures) is one program
     for (int a = 2; a < argc; ++a) {
         std::error_code error;
         for (const auto& entry : fs::directory_iterator(argv[a], error)) {
             const std::string name = entry.path().filename().string();
             if (name.rfind("ps_", 0) != 0 || entry.path().extension() != ".bin") continue;
+            if (!seen.insert(name).second) { ++duplicates; continue; }
             Words original;
             if (!load(entry.path(), original) || original[0] != 0xffff0300u) continue;
             const std::string stem = entry.path().stem().string();
@@ -84,6 +87,7 @@ int main(int argc, char** argv) {
             std::printf("%s variants=%u widened=%u\n", stem.c_str(), program_variants, program_widened);
         }
     }
+    std::printf("duplicates=%u\n", duplicates);
     std::printf("variants=%u widened=%u\n", variants, widened);
     return 0;
 }
