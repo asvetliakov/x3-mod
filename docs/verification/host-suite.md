@@ -40,6 +40,53 @@ Microsoft Defender on this Mac quarantines synthetic PE files: a vanished temp
 file or `objdump: Operation not permitted` in a worker is Defender, not the
 runner.
 
+## WSL2 host (since 2026-10-11)
+
+The suite runs on the WSL2 Ubuntu host that builds the DLL; the game is native
+Windows at `C:\X3` (`/mnt/c/X3`). What the suite needs there:
+
+- `verification/probe/bottle.py` `game_dir()` falls back to `X3_DIR` (default
+  `/mnt/c/X3`) when no CrossOver bottle exists; `exe_identity.DEFAULT_EXE` and
+  the chase-camera / sun-occlusion verifiers take their EXE from it, so the
+  identity, site-claim and anchor modules read the shipped `X3AP.exe` there.
+- `/tmp` is a 5.9 GB tmpfs. A full `/tmp` fails about 30 modules at once with
+  `No space left on device` (compiles, links, temp copies); release staging
+  copies (`/tmp/x3m-release-*`) and old session scratchpads are the usual
+  culprits. Check `df -h /tmp` before blaming a module.
+- The local shader corpus `/tmp/x3-shader-sweep/programs` (751 programs,
+  untracked, game-derived) is rebuilt from the installed archives in about
+  10 s and cross-checked against the tracked inventory
+  ([shader-sweep.md](../reverse-engineering/shader-sweep.md), "Restoring the
+  local corpus"):
+
+  ```sh
+  python3 tools/analysis/index_shaders.py /mnt/c/X3 --output /tmp/x3-shader-index-expanded.json
+  python3 tools/analysis/sweep_shaders.py extract /mnt/c/X3 --index /tmp/x3-shader-index-expanded.json \
+      --raw-directory /tmp/x3-shader-sweep/programs --manifest /tmp/x3-shader-sweep/manifest.json
+  python3 tools/analysis/restore_shader_sweep.py --dry-run '/nonexistent/*'   # 751/751 inventory SHA-256s, pins ok
+  ```
+
+  Without it eight corpus modules run zero tests, which the runner counts as
+  failing. The native captures folder `/mnt/c/X3/x3-modern-captures` holds 47
+  of the same programs; the variant generators count a program once across
+  both folders.
+- `tools/manage.py launch --dry-run` needs no Wine binary; a real launch still
+  refuses without CrossOver.
+- Host-only fixtures that the x86_64 compilers broke (GCC 15 `-Werror`
+  indentation and `scanf` results, clang 21 `<initializer_list>`,
+  LeakSanitizer on an intentional leak, `rsqrtss` selected by `__SSE__` on the
+  host) were fixed on 2026-10-27 together with the fixtures that had fallen
+  behind production while the EXE path did not resolve
+  (commits 82368d79..b331737a).
+
+State on 2026-10-27 (measured): 306 modules, 3,250 tests, 2 failing modules.
+`test_engine_ribbons` and `test_engine_effects` bind their retained fixture
+records to production source hashes (`engine_ribbons_core.h`,
+`engine_ribbons_pass.{h,cpp}` and the engine-effects set changed since the
+last Wine run); they stay red until `run_engine_ribbons.py` and
+`run_engine_effects.py` run again, which needs a D3D9 fixture host (Wine on the
+Mac, or a native runner that does not exist yet).
+
 ## Tests that read production source
 
 The C/C++ tree is clang-formatted (README, "Formatting"), so a test that pins

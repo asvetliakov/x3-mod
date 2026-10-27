@@ -88,7 +88,7 @@ excepted), escort capitals in the engine's 0x12/0 transient are suppressed throu
 says it converges and otherwise slows or falls back to a 25 m/s slow entry, site E drops the warn against the ship's own
 gate (capitals in join and hand-over, small ships on the lead-in), freshness windows scale with the frame step under SETA;
 three `--debug` rows (`ship_gate_capital_join`, `ship_avoid_e_verdict`, `ship_avoid_engine_warn_pre`). Fixture 6148/6148
-(capitals 1521/1521), x87 0/958, verifier PASS 18, host suite 36 failing modules (environment set). Next: review, commit,
+(capitals 1521/1521), x87 0/958, verifier PASS 18, host suite 36 failing modules (environment set; repaired 2026-10-27 to 2 failing modules, both Wine fixture records: [host-suite.md](verification/host-suite.md) "WSL2 host"). Next: review, commit,
 the install candidate and Run D against the ledger's per-phase targets.
 
 ## Installed build
