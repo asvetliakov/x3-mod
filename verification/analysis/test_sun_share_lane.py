@@ -1,6 +1,8 @@
 """Host contracts; no claim of D3D execution or coverage qualification."""
 from pathlib import Path
 import shutil
+import hashlib
+import json
 import struct
 import os
 import subprocess
@@ -39,12 +41,19 @@ class SunShareLane(unittest.TestCase):
                 readback.load_r32f(path, 2, 2, 3)
 
     def test_cli_default_and_requirements(self):
-        result = subprocess.run(['python3', str(ROOT/'tools/manage.py'), 'launch', '--no-taa', '--sun-shadow-lane', '--dry-run'], text=True, capture_output=True, env=NO_REPO_DECODER)
+        # A fake owned install, so the dry run does not depend on the host's game directory.
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        game = Path(directory.name)
+        (game / 'X3AP.exe').touch()
+        (game / 'd3d9.dll').write_bytes(b'proxy')
+        (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
+        result = subprocess.run(['python3', str(ROOT/'tools/manage.py'), 'launch', '--no-taa', '--sun-shadow-lane', '--dry-run', '--game-dir', str(game)], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('--sun-shadow-lane requires --motion-output --taa --hdr.', result.stderr)
         # The latch without linear materials (legacy-sun-application.md 4.1): the
         # lane is accepted on original shading; the apply needs the lane and the replay.
-        base = ['python3', str(ROOT/'tools/manage.py'), 'launch', '--dry-run', '--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa', '--hdr', '--sun-shadow-lane']
+        base = ['python3', str(ROOT/'tools/manage.py'), 'launch', '--dry-run', '--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa', '--hdr', '--sun-shadow-lane', '--game-dir', str(game)]
         # The replay depth (and with it the apply) is a launcher default since 2026-09-25: opted out here.
         result = subprocess.run(base + ['--no-shadow-replay-depth'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertEqual(result.returncode, 0, result.stderr)

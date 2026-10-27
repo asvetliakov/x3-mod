@@ -2187,7 +2187,8 @@ def main():
         except (OSError, ValueError, KeyError, TypeError) as error:
             parser.error(str(error))
     elif args.action == 'launch':
-        if not WINE.is_file():
+        # A dry run only validates and prints the command; it needs no Wine binary (a native Windows host has none).
+        if not args.dry_run and not WINE.is_file():
             parser.error(f'CrossOver Preview Wine not found: {WINE}')
         env = os.environ.copy()
         for name in REMOVED_VARIABLES + TIERED_VARIABLES:
