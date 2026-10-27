@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 
-from agx_reference import DECODE_MODES, FP16_MAX, LUMA_WEIGHTS, decode
+from agx_reference import DECODE_MODES, FP16_MAX, LUMA_WEIGHTS, decode, ordered_sum
 
 MAX_LEVELS = 6
 MAX_DIMENSION = 16384
@@ -87,7 +87,7 @@ def prefilter(rgb, params=Params(), exposure=1.0, clamp_max=0.0, mode='gamma2.2'
     """
     params.validate()
     e = exposed(rgb, exposure, clamp_max, mode)
-    y = sum(c * w for c, w in zip(e, LUMA_WEIGHTS))
+    y = ordered_sum(c * w for c, w in zip(e, LUMA_WEIGHTS))
     t, k = params.threshold, params.threshold * params.knee
     q = min(max(y - t + k, 0.0), 2 * k)
     soft = q * (q / max(4 * k, 1e-10))
@@ -118,7 +118,7 @@ def _area_weights(index, source_size, output_size):
     hi = min((index + 1) * source_size / output_size, source_size)
     base = math.floor(lo)
     weights = [max(min(i + 1, hi) - max(i, lo), 0.0) for i in range(base, base + 3)]
-    total = sum(weights)
+    total = ordered_sum(weights)
     return [(min(i, source_size - 1), w / total)
             for i, w in zip(range(base, base + 3), weights)]
 
@@ -129,7 +129,7 @@ def downsample(image):
     ow, oh = (width + 1) // 2, (height + 1) // 2
     xs = [_area_weights(x, width, ow) for x in range(ow)]
     ys = [_area_weights(y, height, oh) for y in range(oh)]
-    return [[tuple(min(sum(image[iy][ix][c] * wx * wy
+    return [[tuple(min(ordered_sum(image[iy][ix][c] * wx * wy
                            for ix, wx in xs[x] for iy, wy in ys[y]), FP16_MAX)
                    for c in range(3)) for x in range(ow)] for y in range(oh)]
 
@@ -140,7 +140,7 @@ def bilinear(image, u, v):
     x, y = u * width - 0.5, v * height - 0.5
     ix, iy = math.floor(x), math.floor(y)
     fx, fy = x - ix, y - iy
-    return tuple(sum(image[min(max(iy + dy, 0), height - 1)]
+    return tuple(ordered_sum(image[min(max(iy + dy, 0), height - 1)]
                           [min(max(ix + dx, 0), width - 1)][c] * wx * wy
                      for dx, wx in ((0, 1 - fx), (1, fx))
                      for dy, wy in ((0, 1 - fy), (1, fy))) for c in range(3))
@@ -155,7 +155,7 @@ def tent(image, width, height):
     def pixel(x, y):
         samples = [(bilinear(image, (x + .5) / width + dx / sw,
                             (y + .5) / height + dy / sh), w) for dx, dy, w in taps]
-        return tuple(min(sum(v[c] * w for v, w in samples), FP16_MAX) for c in range(3))
+        return tuple(min(ordered_sum(v[c] * w for v, w in samples), FP16_MAX) for c in range(3))
     return [[pixel(x, y) for x in range(width)] for y in range(height)]
 
 
@@ -171,7 +171,7 @@ def tent_four_fetch(image, u, v):
                 ((base + 1.5 + f / rd) / size, rd / 4))
     samples = [(bilinear(image, x, y), wx * wy)
                for x, wx in axis(u, width) for y, wy in axis(v, height)]
-    return tuple(min(sum(p[c] * w for p, w in samples), FP16_MAX) for c in range(3))
+    return tuple(min(ordered_sum(p[c] * w for p, w in samples), FP16_MAX) for c in range(3))
 
 
 def bloom(image, params=Params(), exposure=1.0, clamp_max=0.0, mode='gamma2.2'):

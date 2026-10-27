@@ -140,12 +140,18 @@ PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_fon
 ```
 
 Needs Pillow with FreeType (variable-font axes) and numpy. The output is deterministic for a
-given Pillow/FreeType build (measured with Pillow 11.3.0, FreeType 2.13.3). The test regenerates
-Tahoma and Zekton at d = 2 and checks format, band, ranges, code set, shadow and the ratios, and
-regenerates the full default set to compare it with the committed files byte for byte (about 12 s,
-measured). A Pillow/FreeType build that changes the bytes fails that comparison: regenerate, check
+given rasteriser build, not across builds: every run writes `rasteriser.json` beside `F` (Pillow,
+FreeType, raqm, HarfBuzz, FriBiDi, OS, machine), and the committed set records Pillow 11.3.0,
+FreeType 2.13.3 on macOS arm64 (layout libraries not recorded then). Measured 2026-10-27 with
+`verification/results/font-rendering/regeneration_drift.py` on Harrier48: Pillow 12.1.1 /
+FreeType 2.14.2 (Linux x86_64) changes 215 of 315 glyph records and 44,689 atlas alpha values;
+Pillow 11.3.0 / FreeType 2.13.3 on Linux x86_64 reproduces the `.abc` exactly but still differs in
+505 atlas pixels. The test regenerates Tahoma and Zekton at d = 2 and checks format, band, ranges,
+code set, shadow and the ratios on any build, and regenerates the full default set to compare it
+with the committed files byte for byte (about 12 s, measured) only on the recorded rasteriser; on
+another it skips and names both. To move the committed set to a new rasteriser: regenerate, check
 the stem coverage (`verification/results/font-rendering/stem_coverage.py`) and commit the new files
-together.
+with their `rasteriser.json`.
 
 ## Readability under minification (experiment, 2026-09-30)
 

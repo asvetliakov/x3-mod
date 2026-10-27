@@ -1,0 +1,9 @@
+{
+ "pillow": "11.3.0",
+ "freetype": "2.13.3",
+ "raqm": null,
+ "harfbuzz": null,
+ "fribidi": null,
+ "system": "Darwin",
+ "machine": "arm64"
+}

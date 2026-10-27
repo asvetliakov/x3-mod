@@ -88,6 +88,24 @@ def row_inputs(rows):
         result.append(entry)
     return result
 
+def recorded_row_inputs(summary, report_bytes, rows):
+    """The per-row local originals a retained run recorded, for validating its report on a host without them.
+    The summary must name this exact report (report_sha256) and every recorded program must match the row's
+    fingerprint and size and the tracked profile JSON's SHA-256, as row_inputs checked when the run was made."""
+    assert summary['status'] == 'PASS' and summary['report_sha256'] == hashlib.sha256(report_bytes).hexdigest()
+    programs = json.loads(PROFILES.read_text())['programs']
+    recorded = summary['row_inputs']
+    assert len(recorded) == len(rows)
+    for (vs, vs_dwords, ps, ps_dwords, _), entry in zip(rows, recorded):
+        assert set(entry) == {'vs', 'ps'}
+        for stage, fingerprint, dwords in (('vs', vs, vs_dwords), ('ps', ps, ps_dwords)):
+            files = entry[stage]
+            if files is None:
+                continue
+            assert Path(files['path']).name == f'{stage}_{fingerprint}.bin' and files['bytes'] == dwords * 4, files
+            assert programs[f'{stage}_{fingerprint}']['sha256'] == files['sha256'], files
+    return recorded
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -206,9 +224,11 @@ def validate_depth(text_or_lines, config_count, wide_count=None):
     assert len(reference) == config_count and all(int(r[1]) > 0 and int(r[2]) == 0 and float(r[3]) <= 2e-6 for r in reference)
     return samples + w_samples, coverage, reference, max(float(s[5]) for s in samples), max(float(s[6]) for s in w_samples) if w_samples else None
 
-def validate_report(text, expected_table=None):
+def validate_report(text, expected_table=None, inputs=None):
     """Validate the current inventory by default; callers checking retained historical
-    evidence can supply its explicitly bounded table without rewriting that evidence."""
+    evidence can supply its explicitly bounded table without rewriting that evidence,
+    and the per-row program presence the run recorded (recorded_row_inputs) instead of
+    this host's local originals."""
     all_lines = text.splitlines()
     begin = [k for k, l in enumerate(all_lines) if l.startswith('ROWS_BEGIN ')]
     assert len(begin) == 1 and all_lines[-1].startswith('RESULT ')
@@ -227,7 +247,7 @@ def validate_report(text, expected_table=None):
     assert 'FAIL' not in text
     table = table_rows() if expected_table is None else expected_table
     # Not `rows`: the timing loop below reuses that name.
-    row_results, row_totals = validate_rows(row_lines, mixed, expected[4] + 1, table, row_inputs(table))
+    row_results, row_totals = validate_rows(row_lines, mixed, expected[4] + 1, table, row_inputs(table) if inputs is None else inputs)
     transformed = sum(r['status'] == 'PASS' for r in row_results)
     assert any(r['status'] == 'PASS' and (r['vs'], r['ps']) == ARGON for r in row_results), 'the Argon row must run'
     terminal = 'RESULT PASS checks=%u numerical=%u color_components=%u depth_cases=%u configurations=%u devices=3 rows=%u row_transformed=%u row_skipped=%u' % (
