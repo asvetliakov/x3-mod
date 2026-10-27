@@ -2,7 +2,7 @@
 readiness and upload-budget logic on the deterministic stepped worker, then the real
 worker-thread handoff, shutdown and invalidation. Native clang++ build; no Wine, no D3D.
 """
-import re, shutil, subprocess, tempfile, unittest
+import os, re, shutil, subprocess, tempfile, unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -63,7 +63,11 @@ class FogDensityCache(unittest.TestCase):
         self.assertNotRegex(text, r'differing_bytes=[1-9]')
 
     def test_abandon_give_up_and_thread_failure_never_free_or_wait(self):
-        done = subprocess.run([str(self.lifetime_tool), 'lifetime'], capture_output=True, timeout=120)  # a hang is a timeout
+        # abandon_then_retire_is_prompt_and_leaks asserts a deliberate leak; LeakSanitizer (Linux only)
+        # would turn it into exit 1. Address checks (use-after-free, double free) stay on.
+        asan = ':'.join(filter(None, [os.environ.get('ASAN_OPTIONS'), 'detect_leaks=0']))
+        done = subprocess.run([str(self.lifetime_tool), 'lifetime'], capture_output=True, timeout=120,  # a hang is a timeout
+                              env=dict(os.environ, ASAN_OPTIONS=asan))
         text = done.stdout.decode()
         self.assertEqual(done.returncode, 0, text[-2000:] + done.stderr.decode()[-2000:])
         for name in ('thread_creation_failure_is_refused', 'start_succeeds_after_a_refused_start', 'held_lock_abandons_after_250ms_without_free',

@@ -8068,6 +8068,7 @@ struct CResult {
     bool nan = false;
     // the cost bench (host wall time of the frame's controller block: lane_frame / sb_frame and the decisions)
     double frame_us_max = 0, frame_us_sum = 0, frame_us_top[3] = {0, 0, 0}; // (the three worst frames, worst first)
+    std::vector<double> frame_us; // every frame's block in frame order (the bench's per-frame best of its reps)
     unsigned frames = 0, decisions = 0;
     // the consecutive launch pairs (k_prev>k gap/c s, L: an escort behind its own leader); the leader -> escort gaps over the spacing
     char pairs[400] = {};
@@ -10323,6 +10324,7 @@ static CResult run_c(const CSetup& su, int fps, int tf, std::uint32_t seed, bool
             const double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t_frame0).count();
             res.frame_us_max = std::fmax(res.frame_us_max, us);
             res.frame_us_sum += us;
+            res.frame_us.push_back(us);
             if (us > res.frame_us_top[2]) {
                 res.frame_us_top[2] = us;
                 if (res.frame_us_top[2] > res.frame_us_top[1]) std::swap(res.frame_us_top[2], res.frame_us_top[1]);
@@ -13783,11 +13785,16 @@ static void lane_cost_bench() {
     const Cast casts[2] = {{&lanec::kCSetups[1], "abreast5"}, {&lanec::cast24(), "bench24"}};
     for (const Cast& cs : casts)
         for (int tf : {1, 10}) {
-            double mean[2] = {0, 0}, worst[2] = {0, 0}, third[2] = {0, 0};
+            double mean[2] = {0, 0}, worst[2] = {0, 0}, third[2] = {0, 0}, best_third[2] = {0, 0};
+            bool same_frames[2] = {true, true};
             unsigned dec[2] = {0, 0}, launched[2] = {0, 0}, members = 0;
-            for (int lane = 1; lane >= 0; --lane)
+            for (int lane = 1; lane >= 0; --lane) {
+                std::vector<double> best; // (the reps fly identical frames: host noise hits a random frame per rep, a slow frame every rep)
                 for (int rep = 0; rep < 3; ++rep) {
                     const lanec::CResult r = lanec::run_c(*cs.su, tf == 1 ? 60 : 30, tf, kSeeds[0], lane != 0);
+                    if (rep == 0) best = r.frame_us;
+                    else if (best.size() != r.frame_us.size()) same_frames[lane] = false;
+                    else for (size_t i = 0; i < best.size(); ++i) best[i] = std::fmin(best[i], r.frame_us[i]);
                     mean[lane] = std::fmax(mean[lane], r.frame_us_sum / double(r.frames ? r.frames : 1));
                     worst[lane] = std::fmax(worst[lane], r.frame_us_max);
                     third[lane] = std::fmax(third[lane], r.frame_us_top[2]);
@@ -13795,14 +13802,21 @@ static void lane_cost_bench() {
                     launched[lane] = r.launched;
                     members = r.departures;
                 }
+                if (best.size() >= 3) {
+                    std::nth_element(best.begin(), best.begin() + 2, best.end(), std::greater<double>());
+                    best_third[lane] = best[2];
+                }
+            }
             std::printf("lane cost (host) %s tf %d: lane %.1f us mean, %.0f us worst frame, %.0f us third-worst (%u decisions, %u/%u launched); "
-                        "key off %.1f us mean, %.0f us worst, %.0f us third (%u decisions, %u launched); worst of 3 runs; ceiling 1000 us\n", cs.name,
-                        tf, mean[1], worst[1], third[1], dec[1], launched[1], members, mean[0], worst[0], third[0], dec[0], launched[0]);
+                        "key off %.1f us mean, %.0f us worst, %.0f us third (%u decisions, %u launched); worst of 3 runs; third-worst of each frame's best of 3: "
+                        "lane %.0f us, key off %.0f us; ceiling 1000 us\n", cs.name, tf, mean[1], worst[1], third[1], dec[1], launched[1], members,
+                        mean[0], worst[0], third[0], dec[0], launched[0], best_third[1], best_third[0]);
             char why[200];
-            // (the check reads each run's third-worst frame: a single frame of host scheduling noise reached 1.3-1.5 ms in repeated runs)
-            std::snprintf(why, sizeof why, "lane cost: the %s frame's third-worst controller block %.0f us under the 1 ms ceiling (tf %d)", cs.name,
-                          third[1], tf);
-            check(third[1] < 1000.0, why);
+            // (the check reads the third-worst of each frame's best of the 3 identical reps: single frames of host scheduling noise reached
+            // 1.3-4.6 ms on WSL2, alone and under load, landing on different frames in identical runs, while a real slow frame is slow in every run)
+            std::snprintf(why, sizeof why, "lane cost: the %s frame's third-worst controller block (per-frame best of 3) %.0f us under the 1 ms "
+                          "ceiling (tf %d)", cs.name, best_third[1], tf);
+            check(same_frames[1] && best_third[1] < 1000.0, why);
         }
 }
 // Round C (convoy-gate-transit.md section 12.4): the loop-back join. A member re-committed after its eviction whose join does not fit

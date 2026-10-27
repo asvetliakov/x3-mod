@@ -109,8 +109,13 @@ struct Vec {
 // D3DXVec3Normalize of the SSE dispatch table (d3dx9_37 FUN_00756732): the squared
 // length in single precision, vectors below 2^-46 become zero, one Newton step
 // on rsqrtss: r = ((3 - (r*len2)*r) * r) * 0.5, then the components times r.
+// X3M_MESH_ADJACENCY_PORTABLE_RSQRT is defined only by the x86_64 host test build
+// so its normals match the Python reference port's 1/sqrt; production never sets it.
+#if defined(__SSE__) && !defined(X3M_MESH_ADJACENCY_PORTABLE_RSQRT)
+#define X3M_MESH_ADJACENCY_RSQRTSS 1
+#endif
 inline float rsqrt(float x) noexcept {
-#if defined(__SSE__)
+#if defined(X3M_MESH_ADJACENCY_RSQRTSS)
     return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(x)));
 #else
     return float(1.0 / std::sqrt(double(x)));
@@ -278,7 +283,7 @@ const char* status_name(unsigned status) noexcept {
     return status < status_count ? names[status] : "unknown";
 }
 const char* rsqrt_implementation() noexcept {
-#if defined(__SSE__)
+#if defined(X3M_MESH_ADJACENCY_RSQRTSS)
     return "rsqrtss";
 #else
     return "portable";

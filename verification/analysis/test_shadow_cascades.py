@@ -621,7 +621,8 @@ int main(int argc, char** argv) {
         std::int32_t native[3]; double light[3];
         for (unsigned i = 0; i < 3; ++i) { native[i] = std::int32_t(unit[i] * distance * 100.); light[i] = native[i] * .01; }
         auto constant_at = [&](const double o[3], float out[4]) { double d[3], n = 0; for (unsigned i = 0; i < 3; ++i) { d[i] = light[i] - o[i]; n += d[i] * d[i]; } n = std::sqrt(n);
-            for (unsigned i = 0; i < 3; ++i) out[i] = float(std::round(d[i] / n * 65536.) / 65536.); out[3] = 0; }; // the engine's 1/65536 quantisation
+            for (unsigned i = 0; i < 3; ++i) out[i] = float(std::round(d[i] / n * 65536.) / 65536.);
+            out[3] = 0; }; // the engine's 1/65536 quantisation
         PointSun sun;
         sun.begin_frame(); CHECK(!sun.decide(true, cam, set) && sun.reason == PointSunReason::Unavailable); sun.end_frame(); // no poll
         sun.begin_frame(); sun.set_poll(native, PointSunReason::Point);

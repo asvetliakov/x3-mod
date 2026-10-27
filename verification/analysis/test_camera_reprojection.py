@@ -28,10 +28,10 @@ int main() {
     float p0[16], v0[16], p1[16], v1[16]; double x, y; float cut; unsigned mode;
     while (true) {
         for (int i = 0; i < 16; ++i) if (std::scanf("%f", &p0[i]) != 1) return 0;
-        for (int i = 0; i < 16; ++i) std::scanf("%f", &v0[i]);
-        for (int i = 0; i < 16; ++i) std::scanf("%f", &p1[i]);
-        for (int i = 0; i < 16; ++i) std::scanf("%f", &v1[i]);
-        std::scanf("%lf %lf %f %u", &x, &y, &cut, &mode);
+        for (int i = 0; i < 16; ++i) if (std::scanf("%f", &v0[i]) != 1) return 1;
+        for (int i = 0; i < 16; ++i) if (std::scanf("%f", &p1[i]) != 1) return 1;
+        for (int i = 0; i < 16; ++i) if (std::scanf("%f", &v1[i]) != 1) return 1;
+        if (std::scanf("%lf %lf %f %u", &x, &y, &cut, &mode) != 4) return 1;
         CameraState c, p; CameraFailure fc, fp;
         camera_state_from_matrices(p0, v0, c, &fc); camera_state_from_matrices(p1, v1, p, &fp);
         float m[16] = {}; const bool built = camera_far_plane_reprojection(c, p, m);

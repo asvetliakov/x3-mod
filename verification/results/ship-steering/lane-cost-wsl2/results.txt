@@ -1,0 +1,29 @@
+Lane-cost bench (ship_steering_host.cpp lane_cost_bench) on WSL2 Ubuntu 26.04 x86_64, 16 vCPU, c++ = GCC 15.2,
+-std=c++17 -O2 -Wall -Wextra -Werror, source at 0a5a7fe5 (ship_gate_* cores last changed 43c9ea11, 2026-10-16). 2026-10-27.
+Figures in us, measured. "third" = the check's worst-of-3-reps third-worst frame; "best3" = third-worst of each frame's
+minimum over the 3 identical reps (patch_min.py, applied to ship_steering_host.cpp 2026-10-27). Producer: lane.py <exe> <tag>.
+
+bench24 lane            tf1 mean  tf1 third  tf1 best3  tf10 mean  tf10 third  tf10 best3  exit
+alone 1 (current)        9.9       997        -         110.3      1177         -          1
+alone 2 (current)        9.6      1075        -         103.9       338         -          1
+alone 3 (current)        9.7       956        -         107.2       586         -          0
+acceptance run (current)  -       1041        -           -        1027         -          FAIL
+alone 1 (patched)        9.7      1016        56        112.4      1067        265         0
+alone 2 (patched)        9.8      1048        55        106.8      1051        267         0
+alone 3 (patched)        9.6      1072        51        107.5       739        264         0
+load 1 (current)        17.8      6727        -         216.6      8687         -          1
+load 2 (current)        10.0       787        -         113.1      1202         -          1
+in-suite 12 jobs (cur)    -       6622        -           -        3068         -          FAIL
+load 1 (patched)        12.5      3987        61        117.0      1336        276         0
+load 2 (patched)         9.7      1053        53        105.0       781        264         0
+Load: run_host_suite.py (306 modules, 12 jobs) in the background, load average 5.7-6.3.
+
+Spike frames (scratch build with per-frame timing and CLOCK_THREAD_CPUTIME_ID beside wall time): the top frames
+over 1 ms fall at different frame indices in every rep (tf1 e.g. 25032 / 15942 / 49547 of 60130 frames), the
+deterministic heaviest frames cost ~130 us (tf1) and ~400 us (tf10); thread CPU time equals wall time within 2 us on
+most spikes, so on this VM CLOCK_THREAD_CPUTIME_ID does not filter the noise. Means match the ledger's
+(docs/verification/ship-steering.md: tf1 9.1-10.1, tf10 97.7-118.0).
+
+After the change, `python3 -m unittest test_ship_steering` OK 3 of 3; figures from three further runs of the same test
+through tee_unittest.py: bench24 lane best3 tf1 50 / 49 / 53, tf10 261 / 265 / 266 (old figure 934 / 1118 / 929 and
+755 / 859 / 400 in the same runs).

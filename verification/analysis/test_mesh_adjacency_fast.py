@@ -277,6 +277,7 @@ class HostModule(unittest.TestCase):
         cls.directory = tempfile.mkdtemp(prefix='x3-mesh-adjacency-')
         cls.exe = Path(cls.directory) / 'driver'
         subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-ffp-contract=off',
+                        '-DX3M_MESH_ADJACENCY_PORTABLE_RSQRT',  # x86_64 defines __SSE__; keep the Python port's 1/sqrt
                         str(ROOT / 'verification/probe/mesh_adjacency_fast_host.cpp'),
                         str(ROOT / 'src/proxy/mesh_adjacency_fast.cpp'), '-o', str(cls.exe)], check=True)
 
