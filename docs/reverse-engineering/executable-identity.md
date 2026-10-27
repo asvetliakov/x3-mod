@@ -29,11 +29,12 @@ verifies exactly like the shipped one.
   stamp groups' `verify_bytes` preflight, or a module `memcmp` window (lod_scale,
   point_light_admission, pause_key_only, scene_hook, object_trace's call bytes,
   object_lifetime's six region fingerprints). Unchanged by this rule.
-* **Engine globals**: 49 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
+* **Engine globals**: 62 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
   `0x0057fc64` at `0x0041e474`, `0x00608508` at `0x0041e412`, added 2026-10-22 with claims I/J;
   the KC `TexBltImage` image cache `0x006085c8` at `0x00495fce` and `0x006085cc` at `0x00496050`,
   added 2026-10-26 with the text-density image claim, both inside the case
-  `0x00495fc1` and outside its claimed span `0x004960c0`). Each anchor
+  `0x00495fc1` and outside its claimed span `0x004960c0`; the 13 SETA anchors below,
+  added 2026-10-27). Each anchor
   is a whole `.text` instruction whose absolute operand is that global
   (prefix + le32(global) [+ imm8]), chosen from objdump's linear sweep; the
   verifier re-confirms every anchor VA is an instruction start. No anchor
@@ -42,9 +43,31 @@ verifies exactly like the shipped one.
   `0x00606f44` (media record list head, read by music_keep) at `0x004971d3`, a
   branch target outside the music patch sites (`0x004982b0`, `0x004982db`,
   `0x00498810`, `0x00498c90`, `0x00498d54`).
-  Every data-range literal under `src/proxy` is anchored except five that are
-  not reads (two comment range ends, three d3dx9_37 addresses in
-  `loading_trace.cpp`); `test_exe_identity` enforces this.
+  Every data-range literal under `src/proxy` is anchored except eight in the
+  test's `NOT_READ` map: two comment range ends, the `.data` start `0x00573000`
+  in a `music_alert_core.h` comment, three d3dx9_37 addresses in
+  `loading_trace.cpp`, the 16.16 value `0x00640000`, and the SETA counter byte
+  `0x0057ff0b` (a `static_assert` of `0x0057fc68 + 675`: the engine only indexes
+  the array, so no instruction names the byte; the array base is anchored);
+  `test_exe_identity` enforces this.
+
+  SETA anchors (seta_key_latch key-latch rows read by `seta_restore.cpp`; the
+  seta_manual_flight stubs' mouse types and controller records), each a whole
+  instruction in objdump's linear sweep and clear of every claimed site: the
+  nearest is `0x004042a2`, 183 bytes after `game_phase_exit` `0x004041eb`; every
+  other one is at least 1,500 bytes from a claim
+  (`verification/results/executable-identity/seta_anchor_candidates.py`, PASS on the shipped image):
+
+  | Global | Read as | Anchor | Instruction |
+  |---|---|---|---|
+  | `0x0057847c` | key ring writer index (u16) | `0x004d5de9` | `66 a1` mov ax,[g] |
+  | `0x00578488` | key ring reader index (u16) | `0x004d3ef6` | `66 a1` mov ax,[g] |
+  | `0x0057fc68` | input action counters (SETA byte +675) | `0x004106f3` | `80 83 g 01` add byte [ebx+g],1 |
+  | `0x0057fe74` | steering counters 524..529 | `0x00410f0c` | `80 3d g 00` cmp byte [g],0 |
+  | `0x00595ee8` | key ring slots (12-byte stride) | `0x004d3f23` | `8a 04 85` mov al,[eax*4+g] |
+  | `0x0060903c` | the iteration's ring read (u16) | `0x004042a2` | `66 89 35` mov [g],si (the store the latch note names) |
+  | `0x00608e40` / `44` / `48` / `4c` | ship-view and view-flag mouse axis types | `0x0040fa92` / `0x0040fa9c` / `0x0040fa97` / `0x0040faa1` | `a3` mov [g],eax |
+  | `0x00608e50` / `78` / `a0` | yaw / pitch / roll controller records | `0x00410c0a` / `0x00410c25` / `0x00410c3e` | `d9 1d` fstp dword [g] |
 * **Engine call targets**: the bodies of fixed engine callees a module calls
   or redirects to are each module's responsibility and are not covered by the
   anchors; collide_memo, resource_reader and music_keep already hash theirs.
@@ -57,8 +80,9 @@ Module audit (every caller of `object_trace::executable_verified()`):
 | camera_state, capture (sector background, config reads), sun_light_poll, motion_output own-ship (`motion_output_shadow_adaptive_inc.h`) | none: read only | anchored in the gate (the check these modules gained) |
 | music_keep | yes: the 26-byte seek head and the 0x57-byte pause body | anchored in the gate (`0x00606f44`) |
 | object_lifetime (own gate) | six region fingerprints | same structure + anchors + size |
+| occlusion_engine_cull | delegated: `cull_small_parts::site_chainable`/`chain_stub` (check_site's window `memcmp`, patch_site's `engine_patch::claim`) before the stub is emitted and again before the write; `DELEGATED` in `test_exe_identity` | none of its own |
 
-Enforced in `object_trace::verified_image()` (cached once per process; ~41 short
+Enforced in `object_trace::verified_image()` (cached once per process; ~62 short
 reads and one `GetFileSizeEx`, no 2 MB hash) and `object_lifetime::initialize()`.
 Host verifiers (`verify_*_site(s).py`, `verify_pause_sites.py`,
 `verify_music_restart_sites.py`, `inspect_object_lifetimes.py`,

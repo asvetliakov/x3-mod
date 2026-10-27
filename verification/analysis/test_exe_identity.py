@@ -37,12 +37,18 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
             0x00608533: 'collide_memo_core.h: end of the contact record comment',
             0x00587c94: 'loading_trace.cpp: d3dx9_37 address', 0x00587e06: 'loading_trace.cpp: d3dx9_37 address',
             0x00587e6b: 'loading_trace.cpp: d3dx9_37 address',
-            0x00640000: 'engine_plumes_core.h: the SETA warp bound 100.0 in 16.16 (a value, not an address)'}
+            0x00640000: 'engine_plumes_core.h: the SETA warp bound 100.0 in 16.16 (a value, not an address)',
+            0x00573000: 'music_alert_core.h: start of the .data range named in a comment',
+            0x0057ff0b: 'seta_key_latch_core.h: static_assert value of action_counters_va + 675; no instruction names the '
+                        'byte (the engine indexes the array), the array is anchored at 0x0057fc68'}
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
              'motion_output_cull_small_props_inc.h',  # the small-prop draw skip: reads only, no engine write
              'motion_output_occlusion_cull_inc.h'}  # the occlusion cull: scope, model, body table, parents; reads only
+# Modules that patch through another module's checked claim: the delegate's call and the delegate's own check.
+DELEGATED = {'occlusion_engine_cull.cpp': (('cull_small_parts::site_chainable(', 'cull_small_parts::chain_stub('),
+                                           'cull_small_parts.cpp')}  # check_site: window memcmp; patch_site: claim
 # engine_effects.cpp left this set on 2026-10-03: besides the anchored globals it reads the SETA dwords, whose offsets it
 # binds with a whole-instruction compare of the tick at 0x004d1ef0 (memcmp, seta_read).
 SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\(')
@@ -222,7 +228,11 @@ class SourceParity(unittest.TestCase):
             code = path.suffix == '.cpp' or path.name.endswith('_inc.h')  # other headers only mention the gate
             if code and 'executable_verified()' in text and not SITE_CHECK.search(text):
                 unchecked.add(path.name)
-        self.assertEqual(unchecked, READ_ONLY)
+        for name, (calls, delegate) in DELEGATED.items():
+            text = source_text(PROXY / name)
+            self.assertTrue(all(call in text for call in calls), name)
+            self.assertRegex(source_text(PROXY / delegate), SITE_CHECK)
+        self.assertEqual(unchecked - set(DELEGATED), READ_ONLY)
 
     def test_no_anchor_overlaps_a_patched_site(self):
         spans = []
@@ -381,7 +391,7 @@ class OtherGameExecutable(unittest.TestCase):
         self.assertEqual({k for k, ok in checks.items() if not ok},
                          {'size', 'time_date_stamp', 'image_size', 'entry_point', 'sections'})
         self.assertEqual(sum(ident.anchors(X3TC).values()), 0)
-        self.assertEqual(len(ident.ANCHORS), 47)
+        self.assertEqual(len(ident.ANCHORS), 62)
         self.assertFalse(ident.identity_ok(X3TC))
 
 

@@ -55,9 +55,14 @@ SECTIONS = (  # name, VirtualSize, VirtualAddress, SizeOfRawData, PointerToRawDa
 # (instruction VA, global VA, prefix, suffix): the instruction bytes are
 # prefix + le32(global) + suffix. Same table as executable_identity.h.
 ANCHORS = (
+    (0x004d5de9, 0x0057847c, b'\x66\xa1', b''),
+    (0x004d3ef6, 0x00578488, b'\x66\xa1', b''),
     (0x00401b91, 0x0057fc60, b'\x8b\x35', b''),
     (0x0041e474, 0x0057fc64, b'\x8b\x15', b''),
+    (0x004106f3, 0x0057fc68, b'\x80\x83', b'\x01'),
+    (0x00410f0c, 0x0057fe74, b'\x80\x3d', b'\x00'),
     (0x00433cbe, 0x00587b88, b'\x89\x15', b''),
+    (0x004d3f23, 0x00595ee8, b'\x8a\x04\x85', b''),
     (0x004e21c7, 0x00596928, b'\xd9\x05', b''),
     (0x004e27df, 0x00596934, b'\x89\x35', b''),
     (0x0049959b, 0x00596988, b'\x8b\x2d', b''),
@@ -103,6 +108,14 @@ ANCHORS = (
     (0x00401e0e, 0x00608adc, b'\x89\x35', b''),
     (0x0041d00c, 0x00608dac, b'\x0f\xbf\x0d', b''),
     (0x0041d020, 0x00608db0, b'\x8b\x0d', b''),
+    (0x0040fa92, 0x00608e40, b'\xa3', b''),
+    (0x0040fa9c, 0x00608e44, b'\xa3', b''),
+    (0x0040fa97, 0x00608e48, b'\xa3', b''),
+    (0x0040faa1, 0x00608e4c, b'\xa3', b''),
+    (0x00410c0a, 0x00608e50, b'\xd9\x1d', b''),
+    (0x00410c25, 0x00608e78, b'\xd9\x1d', b''),
+    (0x00410c3e, 0x00608ea0, b'\xd9\x1d', b''),
+    (0x004042a2, 0x0060903c, b'\x66\x89\x35', b''),
     (0x00524fa7, 0x006619ec, b'\xa3', b''),
 )
 
