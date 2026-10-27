@@ -1121,7 +1121,8 @@ No Wine and no launch; the capstone listings stayed in the session scratchpad.
   reentrancy-neutral. The DLL reads without a fault guard (`rd32` is a plain volatile load); rule 2 limits a wrong
   pointer to one dereference per step.
 * **Still open.** Whether anything re-parents nodes under a live gate root or swaps a gate's scene after creation (the
-  only post-creation scene rebinding found, `0x004506d0`, is class 6 only). The cache keeps the first verdict per
+  only post-creation change found, `0x004506d0`, swaps the model of the player-logo nodes of class 6 factories
+  and rebinds no scene). The cache keeps the first verdict per
   gate, and a later change towards "tree" would be missed. No flight row yet shows `gate_tree_state` on a real gate.
   A `--debug` row with the state and the visited-node count, once per gate, would confirm "none" on the bubble gates.
 

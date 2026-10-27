@@ -41,7 +41,8 @@ Init routine `0x00402780` (called from `0x0040273c`), argument loop from `0x0040
 The local has exactly one reader, `0x00403398`, the second instruction of the window below (every instruction of
 `0x00402780..0x0040383c` naming `[esp+0x14]`: `0x00402d09`, `0x00402d16`, `0x00403398`; measured). The argument
 therefore does one thing: it decides bit 0x4000. With neither argument the window reads registry value
-`RunInBackground` (`0x004b8510`: `RegOpenKeyExA(HKCU, …, KEY_READ)`, `RegQueryValueExA`, `RegCloseKey`; a pure
+`RunInBackground` (`0x004b8510`, a generic registry DWORD reader that `X2_ReadIntFromRegistry` also uses:
+`RegOpenKeyExA(HKCU, …, KEY_READ)`, `RegQueryValueExA`, `RegCloseKey`; a pure
 read) and uses it instead.
 
 The window `0x00403392..0x004033cd` (60 bytes; the site header's `expected_window`):

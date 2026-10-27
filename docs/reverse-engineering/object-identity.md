@@ -96,7 +96,7 @@ those values alone do not prove a new lifetime if everything is reused. A future
 lifetime hook or conservative invalidation policy remains necessary.
 
 Deferred queue entries are explicitly unsafe identities: `0x0047b2e0` reuses
-pooled `0x1c`-byte entries, `0x0047e920` recycles the previous list, and
+pooled `0x1c`-byte entries, `0x0047e6e0` drains the queue, and
 `0x0047e620` sorts by `+0x14`. This directly explains reordered draws without
 changing the underlying instance node. The node handle is the useful new signal.
 

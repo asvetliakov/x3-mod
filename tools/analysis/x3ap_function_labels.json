@@ -54,7 +54,7 @@
       ]
     },
     "0x00406de0": {
-      "label": "input handler (writes the cursor coordinates 0x00607cec/0x00607cf0)",
+      "label": "X2 native-command dispatcher (one case, X2_UpdateCursorSteering, writes the cursor coordinates 0x00607cec/0x00607cf0)",
       "source": "external-camera.md"
     },
     "0x0040e710": {
@@ -322,7 +322,7 @@
       "source": "loading-orchestration.md"
     },
     "0x00439530": {
-      "label": "universe teardown/reset candidate (1,100 bytes)",
+      "label": "type-table teardown (frees what 0x00434e40 loads; called on universe destroy/restore)",
       "source": "loading-orchestration.md"
     },
     "0x00439ff0": {
@@ -473,7 +473,7 @@
       "source": "loading-orchestration.md"
     },
     "0x0046e0a0": {
-      "label": "body name lookup",
+      "label": "body load-failed flag lookup (id -> slot, returns slot+0x10; the name comes from 0x0046df60)",
       "source": "loading-orchestration.md"
     },
     "0x0046f450": {
@@ -485,7 +485,7 @@
       "source": "object-lifetimes.md"
     },
     "0x00473e10": {
-      "label": "per-view particle pass: walks the generator list *(0x00608518)+0x6318 (0x00474949)",
+      "label": "demo recording (.rec) frame writer, per view; walks the generator list at 0x00474949",
       "source": "engine-effects.md"
     },
     "0x00479010": {
@@ -525,7 +525,7 @@
       "source": "object-identity.md"
     },
     "0x0047e920": {
-      "label": "deferred list recycle",
+      "label": "per-layer scene walk (instancing registration, distance cull, submit via 0x0047d9c0, instanced flush 0x0046d080)",
       "source": "object-identity.md"
     },
     "0x0047eb90": {
@@ -806,7 +806,7 @@
       ]
     },
     "0x004bbb10": {
-      "label": "mesh build: vertex writer (int16 x 1/16384 from 0x005655d4)",
+      "label": "mesh build: tangent/binormal generator (vertex +0x28..+0x3c; positions are written by 0x004bc1c0)",
       "source": "loading-profile-run1.md"
     },
     "0x004bc1c0": {
@@ -855,7 +855,7 @@
       "source": "camera-state-and-frame-routine.md"
     },
     "0x004bfd40": {
-      "label": "local view-projection multiply",
+      "label": "instanced emission batch draw (stride 0x18; local view-projection D3DXMatrixMultiply before the draw)",
       "source": "camera-state-and-frame-routine.md"
     },
     "0x004c0150": {
@@ -973,7 +973,7 @@
       "source": "texture-lookup.md"
     },
     "0x004dfef0": {
-      "label": "collision tree: split-candidate extents (sqrtf 0x00412440, fabsf 0x0040e710)",
+      "label": "collision tree: Jacobi eigen-decomposition of the 3x3 split covariance",
       "source": "loading-profile-run1.md"
     },
     "0x004e0770": {

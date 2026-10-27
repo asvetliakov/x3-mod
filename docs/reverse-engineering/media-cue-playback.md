@@ -66,11 +66,11 @@ sites are the complete entry set. All five are `push <id>` + `call` + a cdecl
 
 | Return address at `[ESP]` | Call site | Caller |
 | --- | --- | --- |
-| `0x0049873f` | `0x0049873a` | `0x00498730` stop/query helper ← `0x004987a0` ← VM `0x004997f3` |
+| `0x0049873f` | `0x0049873a` | `0x00498730` create-record-and-notify helper (allocates the record via `0x00498140`, then reports `1`/`0` to the VM completion) ← `0x004987a0` ← VM `0x004997f3` |
 | `0x00498bb3` | `0x00498bae` | `0x00498ad0` savegame `MOVI` restore ← `0x004050a2` |
 | `0x00498cdd` | `0x00498cd8` | `0x00498c90` play-by-id (VM `0x0049981f`, `0x00499982`; `0x004f6668`) |
 | `0x00498efd` | `0x00498ef8` | `0x00498e30` **speech cue** (VM `0x00499849`) |
-| `0x004f6615` | `0x004f6610` | `0x004f65f0` track/emitter play helper |
+| `0x004f6615` | `0x004f6610` | `0x004f65f0` media play-by-id helper (ensures the record for the id in ESI, marks it playing, calls `0x00498c90`) |
 
 `0x004f65f0` pushes exactly two dwords between its own return address and the
 call (`push ecx` at `0x004f65f0`, `push esi` = the id at `0x004f660d`), so at
