@@ -219,6 +219,10 @@ Every `MPF_FONTSCALE` test reads the Materials row flags `*(0x00608db0 + id·0x3
 requires `0 ≤ id < rows` (`0x00608dac`), so named textures (ids after the rows, e.g. the
 `effects/menugfx/…` atlases) are never scaled [s].
 
+See also [sector-map-scanner-range.md](sector-map-scanner-range.md): `TexCircleFill`'s rasteriser
+`0x004ef620` overflows its 32-bit decision variables from a radius of 826 texels, so `N = 2` makes
+the sector map's scanner disc (texture 1236) dent at half the on-screen size.
+
 ### 2.2 What `N` does to a text texture and its quad
 
 - **Texture:** a generated `MPF_FONTSCALE` row is created `N·w × N·h` (`0x004f4160`, before
