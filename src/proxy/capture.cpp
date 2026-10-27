@@ -18,6 +18,7 @@
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
+#include "circle_fill.h"
 #include "ship_steering.h"
 #include "fov.h"
 #include "ui_scale.h"
@@ -5635,6 +5636,9 @@ void initialize_log(HMODULE module) {
     dust_leak_fix::initialize(); // X3M_DUST_LEAK_FIX=on|off, unset = on: the dust-scene fill's loop tail SUB at
                                  // 0x0041f4d1 (five bytes) claimed through engine_patch with a release-and-leave stub
                                  // in front of the tail, same window, disjoint from every other claim
+    circle_fill::initialize();   // X3M_CIRCLE_FILL_FIX=on|off, unset = on: the filled-ellipse entry 0x004ef620 (seven bytes) claimed through
+                                 // engine_patch; radii above 813 texels run the 64-bit port (the sector map's scanner
+                                 // discs), same window, disjoint from every other claim
     ship_steering::initialize(); // X3M_SHIP_STEERING=1 only (unset = off, nothing claimed): the three steering-leaf
                                  // entries 0x0044ccc0/0x0044c620/0x0044c970 and the command pass's object-loop continue
                                  // 0x004593dd (five bytes each) claimed through engine_patch with stubs assembled into

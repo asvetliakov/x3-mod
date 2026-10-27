@@ -13,6 +13,7 @@
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
+#include "circle_fill.h"
 #include "ship_steering.h"
 #include "fov.h"
 #include "ui_scale.h"
@@ -490,6 +491,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
                                             // jump
         if (reserved == nullptr)
             x3m::dust_leak_fix::shutdown(); // same rule: the five SUB bytes back only on FreeLibrary, only over our jump
+        if (reserved == nullptr)
+            x3m::circle_fill::shutdown(); // same rule: the filled-ellipse entry back only on FreeLibrary, only over our jump
         if (reserved == nullptr)
             x3m::ship_steering::shutdown(); // same rule: the three leaf entries and the loop continue back only on FreeLibrary
         if (reserved == nullptr)

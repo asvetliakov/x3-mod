@@ -1,0 +1,6 @@
+compiler: Ubuntu clang version 21.1.8 (6ubuntu1); seed 1; 3736 cases
+centred r 814..2599: 1786 cases, 1786 identical span for span (6097404 rows), 0 declined by the B rule, 0 mismatches
+random r up to 16000: 150 cases, 150 identical span for span (2644092 rows), 0 declined by the B rule, 0 mismatches
+random clipped on 512..2048: 1500 cases, 1500 identical span for span (1790063 rows), 0 declined by the B rule, 0 mismatches
+random aspect 20000..300000: 300 cases, 300 identical span for span (1007370 rows), 0 declined by the B rule, 0 mismatches
+RESULT PASS

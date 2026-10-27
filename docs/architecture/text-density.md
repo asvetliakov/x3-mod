@@ -155,6 +155,43 @@ families the game directory holds at the resolved density (`fonts=`) and, when t
 refused, the missing names (`missing=`); with the gate the per-open guard only matters
 for a font added by a mod, which is opened at `1x` and logged.
 
+## Oversized disc
+
+The sector map's scanner-coverage discs (KC `B3D_TexCircleFill` into texture 1236, a
+flagged row) are drawn by the engine's filled-ellipse rasteriser `0x004ef620`, whose
+32-bit midpoint arithmetic wraps from a radius of 814 texels, dents the disc from 826 and
+collapses it to about half its radius from 1291
+([sector-map-scanner-range.md](../reverse-engineering/sector-map-scanner-range.md) §§2–3).
+`d = 2` doubles the texel radius, so a disc about as wide as the map window reaches it;
+the stock game reaches it for very large discs.
+
+`src/proxy/circle_fill.cpp` (core `circle_fill_sites.h`) claims the routine's entry
+(`sub esp,0x4c; mov eax,[esp+0x58]`, 7 bytes, continuation `0x004ef627`) through
+`engine_patch` on the backend-load path, independent of the density and of this module's
+transaction, because the defect is stock and the claim reads none of the density rows. It
+is on by default: `circle_fill_fix = on|off` (`X3M_CIRCLE_FILL_FIX`, launcher
+`--circle-fill-fix`, sent `on` on every modded launch, refused under `--vanilla`); `off`
+leaves the engine's bytes (`status=off`). Before the claim it compares the 18-byte entry window
+and the FNV-1a 64 of the whole routine with its tables, the class function, the lock
+and the five span leaves (fail closed; one `circle_fill site=004ef620 status=…` row; a
+late call is refused). The thunk reads the radius as the routine does (`movsx` of the
+word at `[esp+0xc]`): **r ≤ 813** texels (every decision value fits an `int32`;
+negative included) goes straight to the stock routine. Larger radii run a port with
+64-bit `d`, `A`, `B` and products that keeps the engine's 16-bit coordinates, per-span
+clip and unsigned row test, locks the surface as the engine does (`0x004dcd30`, `+0x10 |= 2`),
+picks the leaf through `0x004ee6e0` and calls it with the engine's arguments, order and
+EDI; then it returns to the caller (`ret`, caller cleans). It is identical to the engine
+up to r = 825 and draws the exact midpoint disc above. It declines to the stock routine
+when the aspect gives no B in `[0, 32767²]` (the scripts always pass 65536, B = r²) or
+the pixel class has no leaf. With B > A (aspect below 65536, x semi-axis wider than r) the
+port clips every span even when the engine's `cx ± r`/`cy ± r` test would not, so no span
+runs past its row; at the scripts' aspect nothing changes. The first wide call writes one `circle_fill_wide r=… class=… leaf=…`
+row. Cost: three instructions per call below the threshold; above it about 5.7 µs of
+span walk for r = 1633 on the host (x86-64, without the leaves' pixel stores, which are
+the same as a correct stock disc's; i686 inferred a small factor slower), at most two leaf
+calls per row. No x87 or SSE in the C side (built `-mno-sse -mfpmath=387`, walked by
+`check_no_x87.py`); engine code and calls only, no Wine dependency.
+
 ## Known limitations and open items
 
 - Fonts packed into a catalogue are not seen by the existence check (loose `f\` files

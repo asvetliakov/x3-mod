@@ -1,0 +1,153 @@
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+KC native 104 B3D_TexLine          case 0x00495e3e
+KC native 109 B3D_TexBltImage      case 0x00495fc1
+KC native 120 B3D_TexCircle        case 0x004962aa
+KC native 121 B3D_TexCircleFill    case 0x004962e2
+case 121:
+   0x004962e2 mov    eax,DWORD PTR [ebp+0x18]
+   0x004962e5 mov    edx,DWORD PTR [eax+0x1a]
+   0x004962e8 mov    ecx,DWORD PTR [eax+0x15]
+   0x004962eb push   edx
+   0x004962ec mov    edx,DWORD PTR [eax+0x10]
+   0x004962ef push   ecx
+   0x004962f0 mov    ecx,DWORD PTR [eax+0xb]
+   0x004962f3 push   edx
+   0x004962f4 mov    edx,DWORD PTR [eax+0x6]
+   0x004962f7 mov    eax,DWORD PTR [eax+0x1]
+   0x004962fa push   ecx
+   0x004962fb push   edx
+   0x004962fc push   eax
+   0x004962fd call   0x48bee0
+   0x00496302 mov    ecx,DWORD PTR ds:0x6085e4
+   0x00496308 add    esp,0x18
+   0x0049630b push   0x0
+   0x0049630d push   ecx
+   0x0049630e mov    eax,edi
+   0x00496310 call   0x4a47f0
+   0x00496315 jmp    0x496781
+0x0048bee0 (id >= 0 path):
+   0x0048bfbc call   0x4f5110
+   0x0048bfc1 mov    ecx,eax
+   0x0048bfc3 test   ecx,ecx
+   0x0048bfc5 mov    DWORD PTR [esp+0x20],ecx
+   0x0048bfc9 je     0x48bfb4
+   0x0048bfcb mov    edi,DWORD PTR [esp+0x24]
+   0x0048bfcf mov    esi,DWORD PTR [esp+0x2c]
+   0x0048bfd3 lea    eax,[edi+esi*1]
+   0x0048bfd6 test   eax,eax
+   0x0048bfd8 jl     0x48c07e
+   0x0048bfde movsx  edx,WORD PTR [ecx+0x4]
+   0x0048bfe2 mov    eax,edi
+   0x0048bfe4 sub    eax,esi
+   0x0048bfe6 cmp    eax,edx
+   0x0048bfe8 jge    0x48c07e
+   0x0048bfee mov    ebx,DWORD PTR [esp+0x28]
+   0x0048bff2 lea    edx,[ebx+esi*1]
+   0x0048bff5 test   edx,edx
+   0x0048bff7 jl     0x48c07e
+   0x0048bffd movsx  eax,WORD PTR [ecx+0x6]
+   0x0048c001 mov    edx,ebx
+   0x0048c003 sub    edx,esi
+   0x0048c005 cmp    edx,eax
+   0x0048c007 jge    0x48c07e
+   0x0048c009 mov    eax,ds:0x608518
+   0x0048c00e test   BYTE PTR [eax+0x24],0x1
+   0x0048c012 je     0x48c02d
+   0x0048c014 mov    ecx,DWORD PTR [esp+0x30]
+   0x0048c018 push   ecx
+   0x0048c019 mov    ecx,DWORD PTR [esp+0x38]
+   0x0048c01d push   esi
+   0x0048c01e push   ebx
+   0x0048c01f push   edi
+   0x0048c020 push   ebp
+   0x0048c021 call   0x475800
+   0x0048c026 mov    ecx,DWORD PTR [esp+0x34]
+   0x0048c02a add    esp,0x14
+   0x0048c02d movsx  edx,WORD PTR ds:0x608dac
+   0x0048c034 cmp    ebp,edx
+   0x0048c036 jge    0x48c067
+   0x0048c038 mov    edx,DWORD PTR ds:0x608db0
+   0x0048c03e mov    eax,ebp
+   0x0048c040 shl    eax,0x4
+   0x0048c043 sub    eax,ebp
+   0x0048c045 test   DWORD PTR [edx+eax*4+0x10],0x10000
+   0x0048c04d je     0x48c067
+   0x0048c04f mov    eax,ds:0x606f34
+   0x0048c054 mov    eax,DWORD PTR [eax+0x784]
+   0x0048c05a mov    edx,eax
+   0x0048c05c imul   edi,edx
+   0x0048c05f imul   ebx,edx
+   0x0048c062 imul   eax,esi
+   0x0048c065 mov    esi,eax
+   0x0048c067 mov    eax,DWORD PTR [esp+0x30]
+   0x0048c06b mov    edx,DWORD PTR [esp+0x34]
+   0x0048c06f push   eax
+   0x0048c070 push   edx
+   0x0048c071 push   esi
+   0x0048c072 push   ebx
+   0x0048c073 push   edi
+   0x0048c074 mov    edi,ecx
+   0x0048c076 call   0x4ef620
+   0x0048c07b add    esp,0x14
+   0x0048c07e pop    edi
+   0x0048c07f pop    esi
+   0x0048c080 mov    ecx,ebp
+   0x0048c082 pop    ebp
+   0x0048c083 pop    ebx
+   0x0048c084 add    esp,0xc
+   0x0048c087 jmp    0x4f5110
+0x004ef620 key instructions:
+   0x004ef62a movsx  esi,ax
+   0x004ef632 imul   ebx,esi
+   0x004ef635 movsx  eax,WORD PTR [esp+0x5c]
+   0x004ef6bc cmp    eax,0x18
+   0x004ef70b imul   edx
+   0x004ef72d call   0x52b5d0
+   0x004ef740 imul   edx,esi
+   0x004ef74a imul   edx,ecx
+   0x004ef761 imul   ebp,eax
+   0x004ef766 imul   ecx,DWORD PTR [esp+0x18]
+   0x004ef7aa jl     0x4ef876
+   0x004ef7ec cmp    cx,WORD PTR [edi+0x6]
+   0x004ef811 cmp    cx,WORD PTR [edi+0x6]
+   0x004ef871 imul   ecx,eax
+   0x004ef884 imul   ecx,eax
+   0x004ef89e imul   edx,DWORD PTR [esp+0x18]
+   0x004ef8a7 imul   ecx,DWORD PTR [esp+0x1c]
+   0x004ef8af cmp    edx,ecx
+   0x004ef8b1 jg     0x4ef7a0
+   0x004ef8cb imul   ebp,edx
+   0x004ef8d7 imul   esi,DWORD PTR [esp+0x2c]
+   0x004ef8e7 imul   eax,ebx
+   0x004ef9be test   esi,esi
+   0x004ef9d8 imul   eax,DWORD PTR [esp+0x34]
+   0x004efa11 imul   ebp,DWORD PTR [esp+0x2c]
+   0x004efa1b jne    0x4ef930
+   32-bit imul in the routine: 17
+direct calls to 0x004ef620: ['0x48c076'] | to 0x0048bee0: ['0x477cfb', '0x48bf92', '0x4962fd'] | image dwords = 0x004ef620: 0
+rel8/rel32 encodings anywhere in .text targeting 0x004ef621..0x004ef626: 0
+entry bytes 0x004ef620..0x004ef627: 83 ec 4c 8b 44 24 58 53 | sub    esp,0x4c / mov    eax,DWORD PTR [esp+0x58] / push   ebx
+== stock addon/04.cat: sha256 ed5786a0c603802d build 1510658513; TexCircleFill sites ['2216::SpecialUpdate@0x135e96']
+   pushw/pushd constants in the 0x200 bytes before the call: ['-16384', '65536', '1236', '-805306368', '-268435456', '-1073741824', '-805306368', '659738', '1056816', '131072', '65536']
+   the six operands as pushed (last 10 insns): ldloc 6; ldloc 9; add; pushd 65536; ldloc 6; ldloc 4; ldloc 6; ldloc 15; pushb 6; native B3D_TexCircleFill
+   2216::GetMenuMaxWidth pushw constants ['512', '512', '128', '512', '128', '1024', '1024', '512', '512']
+== Mayhem addon/07.cat: sha256 2c3101a8c04ddea7 build 1462141839; TexCircleFill sites ['2216::SpecialUpdate@0x14e875']
+   pushw/pushd constants in the 0x200 bytes before the call: ['1236', '-805306368', '-234881024', '-1073741824', '-369098752', '659738', '1056816', '3158096', '2631744', '2639944', '2111544', '8378', '8378', '3158064', '34048', '3167536', '131072', '65536']
+   the six operands as pushed (last 10 insns): ldloc 10; ldloc 13; add; pushd 65536; ldloc 6; ldloc 4; ldloc 6; ldloc 19; pushb 6; native B3D_TexCircleFill
+   2216::GetMenuMaxWidth pushw constants ['512', '512', '128', '512', '128', '1024', '1024', '512', '512']
+emulation: first radius (texels) whose spans differ from unbounded arithmetic: 826
+exact arithmetic: first radius whose decision variable reaches 2^31: 814 (max |d| at 813: 2109152079)
+emulation: first radius whose boundary at 25 deg falls below 0.6 r (region-1 exit product r^3 > 2^31): 1291; r^3 at 1290/1291: 2146689000/2151685171 vs 2^31 = 2147483648
+   r= 800 boundary/r at 0..90 deg: 0:0.999 15:0.999 25:1.000 35:0.999 45:0.999 60:1.000 75:1.000 90:1.001
+   r= 825 boundary/r at 0..90 deg: 0:0.999 15:1.000 25:0.999 35:1.000 45:1.000 60:1.000 75:1.001 90:1.000
+   r= 900 boundary/r at 0..90 deg: 0:0.992 15:0.966 25:0.966 35:0.967 45:0.966 60:0.967 75:0.967 90:1.001
+   r=1000 boundary/r at 0..90 deg: 0:0.997 15:0.941 25:0.933 35:0.933 45:0.952 60:0.937 75:0.949 90:1.000
+   r=1100 boundary/r at 0..90 deg: 0:0.999 15:0.906 25:0.892 35:0.898 45:0.917 60:0.888 75:0.908 90:1.000
+   r=1300 boundary/r at 0..90 deg: 0:0.485 15:0.450 25:0.444 35:0.444 45:0.452 60:0.509 75:0.687 90:1.000
+   r=1640 boundary/r at 0..90 deg: 0:0.488 15:0.453 25:0.432 35:0.455 45:0.475 60:0.534 75:0.669 90:1.000
+fit to the user profile (texel radius, real px = texel * s/d = 0.75): best 1633 {0: 598, 25: 528, 45: 582, 60: 656} rms 1.9
+   next distinct radii: [(1640, 2.6), (1634, 4.8), (1641, 5.9), (1627, 6.7), (1638, 7.1)]
+s = 1, d = 1 at the same zoom (r = 820 * 1024/832 = 1009 texels, centred, 1024 window): rows fully covered 1024/1024
+50% zoom (r = 820 texels): max boundary deviation 0.0012
+checks: 30 / 30 pass
+RESULT PASS

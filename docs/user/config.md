@@ -90,6 +90,12 @@ missing dust after one attempt per frame and removes the object it made. `dust_l
 behaviour. `x3m.log` carries one `dust_leak_fix site=0041f4d1 status=...` line near its top (`patched`, `off` or
 `refused`) and, under `--perf`/`--debug`, a `dust_leak_fix hits=` line every 300 frames counting the removals.
 
+`circle_fill_fix` (default `on`) keeps the sector map's scanner-coverage disc round when it is large: the game's own
+circle fill collapses a disc above a radius of about 800 texels into a dented polygon, and the sharper text of
+`text_density = 2` doubles the texels of the same disc. With the fix large discs are drawn by a 64-bit copy of the
+game's circle fill; smaller ones are untouched. `circle_fill_fix = off` leaves the game's own behaviour. `x3m.log`
+carries one `circle_fill site=004ef620 status=...` line near its top (`patched`, `off` or `refused`).
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

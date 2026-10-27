@@ -1,0 +1,5 @@
+compiler: Ubuntu clang version 21.1.8 (6ubuntu1); cpu: AMD Ryzen 7 9850X3D 8-Core Processor; -O2 x86-64 host build
+r=1633 centred in the 1664x1664 map texture (clipped): 5.68 us per call, 1665 leaf calls per call
+r=1633 inside a 6000x6000 texture (unclipped): 4.27 us per call, 3268 leaf calls per call
+r=2400 centred in the 1664x1664 map texture (clipped): 7.82 us per call, 1665 leaf calls per call
+r=826 inside a 6000x6000 texture (unclipped): 2.28 us per call, 1654 leaf calls per call
