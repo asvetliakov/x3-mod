@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.7.3
+
+2026-10-27, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.3 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 66.7 s wall: dll 64.2 s, package 2.4 s), clean main `10d42d74` ([record](../../verification/results/release-1.7.3.json)).
+
+- Over 1.7.2 (Run211 flown, the user: "works fine"): **`circle_fill_fix`** (default on): the sector-map scanner coverage disc drew as a dented or collapsed polygon whenever it was larger than the map window. The engine's filled-circle rasteriser `0x004ef620` overflows its 32-bit midpoint arithmetic from r = 814 texels; `text_density` 2 doubles the texel radius, so any window-sized disc crossed it. Radii above 813 texels now run a 64-bit port through the engine's own span leaves ([RE note](../reverse-engineering/sector-map-scanner-range.md), [ledger](text-density.md)).
+- DLL: stripped `bde29ab1…` (42,535,121 B; x87 0 / 1139 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.7.3/. Installed into native `C:\X3` as Run212, rollback `rollback-d3d9\d3d9.dll.run211` ([install](../../verification/results/run212-release-install.json)).
+- Zip `x3m-1.7.3.zip` `b41cc537…` (60,222,530 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.7.3`; `generate --check` PASS (282 settings, 132 in the template). The user's `x3m.ini` header bumped to 1.7.3, body unchanged (previous file `x3m.ini.run211`).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`): `git diff --stat 680720fa..HEAD -- tools/regenerate` is empty.
+
 ## Release 1.7.2
 
 2026-10-27, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.2 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 68.4 s wall: dll 65.9 s, package 2.4 s; TMPDIR off the full `/tmp` tmpfs), clean main `7acba3e9` ([record](../../verification/results/release-1.7.2.json)).

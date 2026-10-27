@@ -1,0 +1,34 @@
+{
+ "run": 212,
+ "what": "release 1.7.3 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run211; cp ~/x3m-releases/1.7.3/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-27T19:08+04:00",
+ "commit": "10d42d74",
+ "release_record": "verification/results/release-1.7.3.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "bde29ab11b138d3b040864b047d62c5a9da6a6259e29c426f62599da9ceb81fa",
+  "bytes": 42535121,
+  "stripped": true,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 211,
+  "sha256_prefix": "4bfc504c",
+  "bytes": 62988232,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run211"
+ },
+ "zip": {
+  "path": "C:\\Users\\asvet\\Downloads\\x3m-1.7.3.zip",
+  "sha256": "b41cc537bb1b9714629d4107b21250f493f1f7e2bdce6d0970d6d39164a063ec",
+  "bytes": 60222530,
+  "verified_bytes": true
+ },
+ "x3m_ini": "header bumped to 1.7.3, body unchanged (previous file x3m.ini.run211)",
+ "unchanged": [
+  "X3AP.exe",
+  "x3m-regenerate.exe (1.7.0 reused, tools/regenerate unchanged since 680720fa)"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
