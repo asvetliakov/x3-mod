@@ -1,0 +1,21 @@
+{
+ "run": 211,
+ "what": "circle_fill_fix: 64-bit port of the engine's filled-circle rasteriser 0x004ef620 for radii above 813 texels; fixes the dented/collapsed sector-map scanner disc (user report, X3M 1.7.2, 2560x1440, ui_scale 1.5, text_density 2; stock overflow)",
+ "commit": "23dc4075",
+ "dirty": false,
+ "toolchain": "WSL2 Ubuntu 26.04, i686-w64-mingw32 GCC 16.2.0, cmake/mingw-i686.cmake RelWithDebInfo, clean build dir build-clean (TMPDIR under build-clean/tmp, /tmp full)",
+ "dll": {
+  "path": "build-clean/d3d9.dll",
+  "sha256": "4bfc504ca66c48ea59918a0e72eba35da370246b73e4ede31422c8256a0efbe6",
+  "bytes": 62988232,
+  "stripped": false
+ },
+ "checks": {
+  "check_no_x87": "PASS, 0 violations (this DLL)",
+  "site_verifier": "verify_circle_fill_site 24/24 PASS against X3AP.exe fdbf3418",
+  "host_tests": "X3M_EXE=/mnt/c/X3/X3AP.exe test_circle_fill 11 OK (this tree); implementer: 6 modules 76 tests 0 failing",
+  "equivalence_sweep": "verification/results/gui-scale/circle_fill_port_sweep.txt: 3,736 cases, 0 mismatches",
+  "review": "review agent (Opus 5.5): no blocker; F1 (off switch), F2 (clip for B > A), F5 (comments) applied, sweep added before commit"
+ },
+ "producer": "main session"
+}

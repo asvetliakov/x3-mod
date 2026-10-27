@@ -1,0 +1,29 @@
+{
+ "run": 211,
+ "what": "run211 candidate installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run210; cp build-clean/d3d9.dll C:\\X3\\d3d9.dll; cmp",
+ "installed_at": "2026-10-27T19:03+04:00",
+ "commit": "23dc4075",
+ "candidate_record": "verification/results/run211-candidate-build.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "4bfc504ca66c48ea59918a0e72eba35da370246b73e4ede31422c8256a0efbe6",
+  "bytes": 62988232,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 210,
+  "release": "1.7.2",
+  "sha256_prefix": "630f9821",
+  "bytes": 42525876,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run210"
+ },
+ "x3m_ini": "unchanged (circle_fill_fix absent = on)",
+ "unchanged": [
+  "X3AP.exe",
+  "x3m-regenerate.exe",
+  "x3m.ini"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
