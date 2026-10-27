@@ -2,6 +2,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
+#include <initializer_list>
 #include <mutex>
 #include <thread>
 using x3m::ownership::BufferLockObservation;

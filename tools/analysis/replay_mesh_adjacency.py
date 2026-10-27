@@ -103,7 +103,8 @@ def build_host_driver():
         raise SystemExit('no host C++ compiler')
     directory = Path(tempfile.mkdtemp(prefix='x3-mesh-adjacency-replay-'))
     exe = directory / 'driver'
-    subprocess.run([compiler, '-std=c++17', '-O2', '-ffp-contract=off', str(ROOT / 'verification/probe/mesh_adjacency_fast_host.cpp'),
+    subprocess.run([compiler, '-std=c++17', '-O2', '-ffp-contract=off', '-DX3M_MESH_ADJACENCY_PORTABLE_RSQRT',  # x86_64 defines __SSE__
+                    str(ROOT / 'verification/probe/mesh_adjacency_fast_host.cpp'),
                     str(ROOT / 'src/proxy/mesh_adjacency_fast.cpp'), '-o', str(exe)], check=True)
     return directory, exe
 

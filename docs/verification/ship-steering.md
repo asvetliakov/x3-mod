@@ -3388,6 +3388,19 @@ No lane or board row names the player (`ship_gate_ctl_member`/`ship_gate_capital
 covered: the docking computer (order 5 to a station) and the player under manual control, which `decide` passes as
 `no_autopilot` and this flight did not exercise with rows.
 
+## Lane-cost check: per-frame best of 3 (2026-10-27, Opus 5.5; WSL2 host)
+
+The bench's 1 ms ceiling is unchanged; the check now reads the third-worst of each frame's best time over the three
+identical bench runs instead of the worst run's third-worst frame. On the WSL2 host (GCC 15.2, `-O2`) the old figure
+failed alone in 2 of 3 runs (bench24 lane third-worst tf 1 997 / 1,075 / 956 µs, tf 10 1,177 / 338 / 586 µs) and under
+load up to 6,727 / 8,687 µs, while the means matched this ledger's (tf 1 9.6–9.9 µs, tf 10 104–110 µs): the frames over
+1 ms land on different frame indices in identical runs, the deterministic heaviest frames cost about 130 µs (tf 1) and
+400 µs (tf 10), and thread CPU time equals wall time on those spikes, so `CLOCK_THREAD_CPUTIME_ID` does not filter them.
+**Measured [m]:** per-frame best of 3, bench24 lane tf 1 49–61 µs, tf 10 261–276 µs alone and under the full host suite
+(12 jobs, load average 5.7–6.3); `test_ship_steering` OK in 3 of 3 runs after the change. Evidence:
+[`lane-cost-wsl2/results.txt`](../../verification/results/ship-steering/lane-cost-wsl2/results.txt) (producers `lane.py`,
+`tee_unittest.py`; the change as `patch_min.py`).
+
 ## Open flight runs (native Windows, the user; the rows that decide them)
 
 1. **Run A, steering baseline.** Same save twice (`ship_steering = 0`, then `1` in `x3m.ini` or `--ship-steering`),
