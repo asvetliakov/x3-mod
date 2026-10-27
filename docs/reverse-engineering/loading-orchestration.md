@@ -94,7 +94,7 @@ The load is split into a *data* pass and a *lazy geometry* pass.
 - Bodies are cached. `0x004863c0` first probes a **hash table** at
   `*(DAT_00608518+0x14)`: bucket = `(size-1) & (id+1)`, chain walk comparing
   `node[1] == id+1`, value at `node[2]`. On a miss it formats the name (`v\%05`
-  fallback, otherwise the name from `0x0046e0a0`/`0x0046df60`) into the
+  fallback, otherwise the name from `0x0046df60`; `0x0046e0a0` only reads the slot's load-failed flag) into the
   `objects\%s` template, pushes the extension list `pbb bob pbd bod`, calls
   `0x004e9840`, and parses either the `BOB` binary form (`0x00481aa0`) or the text
   form (`0x00483f20`). So **there is an in-engine model cache keyed by numeric body
@@ -181,7 +181,8 @@ Answers to the specific sub-questions:
   menu**: absent slots fail `gzopen` and cost 0.015 s in total. Nothing about the
   gzopen failures indicates a loading problem.
 - On a successful load `0x004050c9` calls `0x0043f420`, which:
-  1. calls `0x00412d00` and `0x00439530` (teardown/reset candidates),
+  1. calls `0x00412d00` (universe effects reset and reload) and `0x00439530` (frees the type tables that
+     `0x00434e40` loads),
   2. **re-runs the whole type-table load `0x00434e40`**,
   3. reads the `"SECT"` chunk, a sector count, then allocates one `0x180`- or
      `0x130`-byte sector record per sector and registers it through `0x004efbf0`,

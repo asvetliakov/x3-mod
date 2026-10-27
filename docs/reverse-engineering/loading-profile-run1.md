@@ -99,7 +99,7 @@ return address in the function (so DLL and wait time lands on the engine caller)
 | `0x00511f77` | `FUN_00511f77` | 0 | 425 (2.33 %, 1.49 s) | CRT `fread` body (pair: ← `_fread_s@0x1121d1` 346, ← resource read `0x004e8880@0xe8da9` 78) |
 | `0x00524aa7` | `___lock_fhandle` | 0 | 418 (2.29 %, 1.47 s) | CRT file-handle lock; 405 of these are one 2.28 s stall (31.3 % of it) |
 | `0x004e0770` | `FUN_004e0770` | **326 (1.79 %, 1.15 s)** | 390 (2.14 %) | **Collision tree: 13-float node summary accumulate** (`n[1..3] += p[1..3]*p[0]`, `n[4..12] += p[4..12]`) |
-| `0x004dfef0` | `FUN_004dfef0` | **189 (1.04 %, 0.66 s)** | 233 (1.28 %) | **Collision tree: split-candidate extents** (2,162 B; calls `sqrtf 0x00412440` ×3, `fabsf 0x0040e710` ×3) |
+| `0x004dfef0` | `FUN_004dfef0` | **189 (1.04 %, 0.66 s)** | 233 (1.28 %) | **Collision tree: Jacobi eigen-decomposition of the 3×3 split covariance** (2,162 B; calls `sqrtf 0x00412440` ×3, `fabsf 0x0040e710` ×3) |
 | `0x004dd2c0` | `FUN_004dd2c0` | 0 | 196 (1.07 %, 0.69 s) | **jpg/tga texture load body**: `"jpg"` string, `0x004e8e10` resource load, `D3DXGetImageInfoFromFileInMemory`, `D3DXCreateTextureFromFileInMemoryEx`, `D3DXLoadSurfaceFromFileInMemory`; callee of `0x004f3510` |
 | `0x0050e1b0` | `_free` | 0 | 175 (0.96 %) | CRT free; 46 samples from `0x004bc680@0xbc90a` (adjacency buffer release) |
 | `0x00412440` | `FUN_00412440` | **172 (0.94 %, 0.60 s)** | 172 (0.94 %) | **`sqrtf` helper, 15 bytes** (`SQRT`); reached from `0x004dfef0` at three sites |
@@ -391,4 +391,5 @@ directory probes.
   changes `GenerateAdjacency`'s output whenever two vertices are closer than 1e-6 without
   being equal; the int16 × 1/16384 quantization argument makes that unlikely for these bodies
   but does not prove it for meshes whose positions pass through a transform before the fill in
-  `0x004bbb10`/`0x004bc1c0`. Verify adjacency equality on a mesh sample before shipping it.
+  `0x004bc1c0` (`0x004bbb10` only adds tangents and binormals, at vertex `+0x28..+0x3c`). Verify adjacency
+  equality on a mesh sample before shipping it.

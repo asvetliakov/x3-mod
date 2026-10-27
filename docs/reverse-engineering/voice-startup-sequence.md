@@ -92,7 +92,7 @@ called from exactly five sites:
 | `00498bae` | `00498ad0` savegame `MOVI` restore, called at `004050a2` from the savegame loader `00404cc0` | **during load** |
 | `004f6610` | `004f65f0` track/emitter play helper (`0045c607` in `0045b720`, `00460424` in `00460390`, `004f6836` in `004f66e0`) | scene/sector update, render walk |
 | `00498cd8` | `00498c90` play-by-id (VM dispatch `0049981f`, `00499982`; also `004f6668`) | script VM |
-| `0049873a` | `00498730` ← `004987a0` | stop/query helper |
+| `0049873a` | `00498730` ← `004987a0` | create-record-and-notify helper (allocates via `00498140`) |
 | `00498ef8` | `00498e30` cue play (VM `00499849`) | speech line |
 
 `00498ad0` is the load-time producer: it parses the `MOVI` chunk of the
