@@ -21,7 +21,7 @@ from pathlib import Path
 
 import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
 
-DEFAULT_EXE = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'
+DEFAULT_EXE = exe_identity.DEFAULT_EXE  # the X3 bottle, or the native install on a host without CrossOver
 EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only: reported as INFO, never a check
 EXPECTED_SIZE = exe_identity.FILE_SIZE
 IMAGE_BASE = 0x00400000

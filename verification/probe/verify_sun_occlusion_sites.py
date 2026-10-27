@@ -27,7 +27,7 @@ import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-e
 ROOT = Path(__file__).resolve().parents[2]
 PROXY = ROOT / 'src/proxy'
 HEADER = PROXY / 'sun_occlusion_core.h'
-DEFAULT_EXE = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'
+DEFAULT_EXE = exe_identity.DEFAULT_EXE  # the X3 bottle, or the native install on a host without CrossOver
 EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only: reported as INFO, never a check
 OBJDUMP = 'i686-w64-mingw32-objdump'
 TEXT_BASE, TEXT_OFFSET, TEXT_SIZE = 0x401000, 0x400, 0x130630

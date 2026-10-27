@@ -27,9 +27,16 @@ def bottle_dir(name=None):
     return BOTTLES / (name or BOTTLE)
 
 
+NATIVE_GAME_DIR = Path(os.environ.get('X3_DIR') or '/mnt/c/X3')  # the native Windows install seen from WSL2 (since 2026-10-11)
+
+
 def game_dir(name=None):
-    """The game installation inside the bottle (X3AP.exe, d3dx9_37.dll, ...)."""
-    return bottle_dir(name) / 'drive_c/X3'
+    """The game installation (X3AP.exe, d3dx9_37.dll, ...): inside the bottle when that exists, else the native
+    install at X3_DIR (default /mnt/c/X3) on a host without CrossOver."""
+    bottled = bottle_dir(name) / 'drive_c/X3'
+    if bottled.is_dir() or not NATIVE_GAME_DIR.is_dir():
+        return bottled
+    return NATIVE_GAME_DIR
 
 
 def wine_args(name=None):

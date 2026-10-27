@@ -22,7 +22,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_EXE = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'
+import bottle
+DEFAULT_EXE = bottle.game_dir('X3') / 'X3AP.exe'  # the X3 bottle, or the native install on a host without CrossOver
 OBJDUMP = 'i686-w64-mingw32-objdump'
 
 LAA_BIT = 0x0020  # IMAGE_FILE_LARGE_ADDRESS_AWARE in IMAGE_FILE_HEADER.Characteristics
