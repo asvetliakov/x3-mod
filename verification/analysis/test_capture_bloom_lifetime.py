@@ -116,7 +116,7 @@ class CaptureBloomLifetimeTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'capture_bloom_lifetime scenarios=41 checks=209 failures=0\n')
+            self.assertEqual(run.stdout, 'capture_bloom_lifetime scenarios=41 checks=221 failures=0\n')
             self.assertEqual(run.stderr, '')
 
 

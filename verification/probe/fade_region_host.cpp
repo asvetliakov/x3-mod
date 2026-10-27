@@ -812,7 +812,8 @@ int near_case_mode(int argc, char** argv) {
 // (outside == 0). A BehindNear list must cover no pixel; the derivation's
 // behind count never exceeds the oracle's (its cut sits eps behind the
 // plane); the rectangle lies inside the near-clipped rectangle of the list's
-// own AABB (the step-B route) unless it is the off-screen 1x1 fallback.
+// own AABB (the step-B route, cut at the same -eps plane) unless it is the
+// off-screen 1x1 fallback.
 namespace hull_mode {
 struct Point {
     double x, y;
@@ -984,12 +985,31 @@ int run(unsigned seed, unsigned cases, unsigned triangles_max) {
         if (reason == Reason::BehindNear && fp.covered) fail = true;
         if (reason != Reason::Bound && reason != Reason::BehindNear && !degenerate_w) fail = true;
         if (reason == Reason::Bound && fp.outside) fail = true;
-        // The step-B box of the same vertices contains the hull rectangle.
+        // The step-B box of the same vertices, cut at the hull's plane, contains the hull rectangle. project_box
+        // cuts at z = 0 and project_prefix at z = -eps (eps = eps_dp4 * the largest z-row |term| sum over the
+        // extent's corners), so the box's z-row constant is raised by at least eps (rounded up in fp32): its
+        // polytope then holds every point the hull projects, its w_min is no larger and its pad no smaller. An
+        // exact-cut box can lie a pixel inside the hull of a near-plane-hugging list at bullet scale.
         Rect box_rect{};
         NearClip cut{true, 0};
         std::uint64_t aabb_px = 0;
         if (reason == Reason::Bound) {
-            const Reason box_reason = project_box(rows, hull.aabb, v, &box_rect, &cut);
+            double z_sum_max = 0;
+            for (unsigned corner = 0; corner < 8; ++corner) {
+                double sum = std::fabs(double(rows[11]));
+                for (unsigned a = 0; a < 3; ++a) {
+                    const double p = hull.aabb.centre[a] +
+                                     ((corner >> a) & 1u ? hull.aabb.half[a] : -hull.aabb.half[a]);
+                    sum += std::fabs(double(rows[8 + a]) * p);
+                }
+                z_sum_max = std::max(z_sum_max, sum);
+            }
+            float box_rows[16];
+            std::memcpy(box_rows, rows, sizeof box_rows);
+            const double raised = double(rows[11]) + eps_dp4 * z_sum_max;
+            box_rows[11] = float(raised);
+            if (double(box_rows[11]) < raised) box_rows[11] = std::nextafter(box_rows[11], HUGE_VALF);
+            const Reason box_reason = project_box(box_rows, hull.aabb, v, &box_rect, &cut);
             if (box_reason != Reason::Bound)
                 fail = true;
             else {

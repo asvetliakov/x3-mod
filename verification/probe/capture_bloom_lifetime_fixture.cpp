@@ -335,6 +335,16 @@ std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
 // extracted release path drops it before erasing. Inert here; this fixture
 // exercises lifetime, not the setter fast path.
 void forget_cached_device() noexcept {}
+// scene_capture.h: the surface-container cache clear on device Reset and on the last device destroy. Counted only;
+// this fixture exercises lifetime, not the capture selector's cache.
+struct SurfaceContainerCacheClears {
+    unsigned calls = 0;
+    const char* last = nullptr;
+} surface_container_cache_clears;
+void surface_container_cache_clear(const char* reason) noexcept {
+    ++surface_container_cache_clears.calls;
+    surface_container_cache_clears.last = reason;
+}
 bool bloom_requested = true;
 // --gpu-sync-timing helpers (capture.cpp): off here (no object, no references), so the
 // extracted release, Reset and bloom paths see the production calls with zero contribution.
@@ -764,9 +774,13 @@ static void final_during_invocation(AliasModel model, bool worker) {
           "invocation Release neither retires CPU owner nor persistent resources");
     std::weak_ptr<Device> cpu = env.ctx;
     env.ctx.reset();
+    const unsigned cache_clears = surface_container_cache_clears.calls;
     compositor_cleanup(nullptr, storage, nullptr, 0);
     check(env.native.destroyed == 1 && devices.count(&env.device) == 0,
           "cleanup pin Release performs final native retirement");
+    check(surface_container_cache_clears.calls == cache_clears + 1 && surface_container_cache_clears.last &&
+              std::strcmp(surface_container_cache_clears.last, "device_destroy") == 0,
+          "final native retirement clears the surface-container cache once");
     check(cpu.expired() && Device::destructors == 1, "CPU pin outlives map erase and is destroyed last");
 }
 
@@ -836,10 +850,14 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     env.native.reset_ex_result = success ? S_OK : E_FAIL;
     env.ctx->composition_scene_owner = true;
     const unsigned adds = env.native.addref_calls;
+    const unsigned cache_clears = surface_container_cache_clears.calls;
     D3DPRESENT_PARAMETERS parameters{};
     D3DDISPLAYMODEEX mode{};
     const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode) : reset(&env.device, &parameters);
     check(bool(SUCCEEDED(result)) == success, "Reset/ResetEx forwards exact success or failure");
+    check(surface_container_cache_clears.calls == cache_clears + 1 && surface_container_cache_clears.last &&
+              std::strcmp(surface_container_cache_clears.last, "reset") == 0,
+          "successful and failed Reset clear the surface-container cache once");
     check(env.ctx->sector_background_evidence.invalidations == 1,
           "sector diagnostic invalidates on successful and failed native Reset");
     check(env.native.reset_observed_revoked && env.native.reset_observed_defaults_dropped,
