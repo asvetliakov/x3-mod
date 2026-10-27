@@ -749,12 +749,14 @@ class MusicAlertInstallCheck(unittest.TestCase):
     @staticmethod
     def claim(text, va, length):
         """The bytes a claim leaves: jmp rel32 to an arena address, the rest of the claimed span as 0xcc (the
-        five-byte write plus a conservative cover of the whole spec length)."""
+        five-byte write plus a conservative cover of the whole spec length). A span shorter than five bytes is an
+        in-place write (seta_manual_flight's two-byte stop rows): covered as 0xcc, the image keeps its length."""
         if not TEXT_VA <= va < TEXT_VA + len(text):
             return False
-        patch = b'\xe9' + struct.pack('<i', 0x041a0000 - (va + 5)) + b'\xcc' * max(0, length - 5)
+        patch = b'\xe9' + struct.pack('<i', 0x041a0000 - (va + 5)) + b'\xcc' * (length - 5) if length >= 5 else b'\xcc' * length
         off = va - TEXT_VA
-        text[off:off + length] = patch[:len(text) - off]
+        span = min(length, len(text) - off)
+        text[off:off + span] = patch[:span]
         return True
 
     def test_live_image_after_the_earlier_claims_matches(self):

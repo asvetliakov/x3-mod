@@ -46,9 +46,14 @@ struct Anchor {
 };
 // clang-format off
 constexpr Anchor anchors[] = {
+    {0x004d5de9, 0x0057847c, 2, {0x66, 0xa1}},       // seta_restore (key latch rows: the key ring's writer index, u16)
+    {0x004d3ef6, 0x00578488, 2, {0x66, 0xa1}},       // seta_restore (key latch rows: the key ring's reader index, u16)
     {0x00401b91, 0x0057fc60, 2, {0x8b, 0x35}},       // pause_key_only
     {0x0041e474, 0x0057fc64, 2, {0x8b, 0x15}},       // ui_scale (the KC VM slot the map label stub re-reads; its load 0x0041eab2 is the site)
+    {0x004106f3, 0x0057fc68, 2, {0x80, 0x83}, 1, 0x01}, // seta_restore (the key latch's action counters; SETA byte +675)
+    {0x00410f0c, 0x0057fe74, 2, {0x80, 0x3d}, 1, 0x00}, // seta_restore (key latch rows: the steering counters 524..529)
     {0x00433cbe, 0x00587b88, 2, {0x89, 0x15}},       // chase_aim_trace
+    {0x004d3f23, 0x00595ee8, 3, {0x8a, 0x04, 0x85}}, // seta_restore (key latch rows: the key ring's slots)
     {0x004e21c7, 0x00596928, 2, {0xd9, 0x05}},       // collide_memo
     {0x004e27df, 0x00596934, 2, {0x89, 0x35}},       // collide_narrow_census
     {0x0049959b, 0x00596988, 2, {0x8b, 0x2d}},       // resource_reader, loading_probes
@@ -94,6 +99,14 @@ constexpr Anchor anchors[] = {
     {0x00401e0e, 0x00608adc, 2, {0x89, 0x35}},       // game_phases
     {0x0041d00c, 0x00608dac, 3, {0x0f, 0xbf, 0x0d}}, // chase_lead
     {0x0041d020, 0x00608db0, 2, {0x8b, 0x0d}},       // chase_lead
+    {0x0040fa92, 0x00608e40, 1, {0xa3}},             // seta_manual_flight (ship-view mouse x type)
+    {0x0040fa9c, 0x00608e44, 1, {0xa3}},             // seta_manual_flight (ship-view mouse y type)
+    {0x0040fa97, 0x00608e48, 1, {0xa3}},             // seta_manual_flight (view-flag mouse x type)
+    {0x0040faa1, 0x00608e4c, 1, {0xa3}},             // seta_manual_flight (view-flag mouse y type)
+    {0x00410c0a, 0x00608e50, 2, {0xd9, 0x1d}},       // seta_manual_flight (the yaw controller record)
+    {0x00410c25, 0x00608e78, 2, {0xd9, 0x1d}},       // seta_manual_flight (the pitch controller record)
+    {0x00410c3e, 0x00608ea0, 2, {0xd9, 0x1d}},       // seta_manual_flight (the roll controller record)
+    {0x004042a2, 0x0060903c, 3, {0x66, 0x89, 0x35}}, // seta_restore (key latch rows: the iteration's ring read, u16)
     {0x00524fa7, 0x006619ec, 1, {0xa3}}};            // collide_memo, collide_box_cull
 // clang-format on
 constexpr unsigned anchor_count = sizeof anchors / sizeof anchors[0];
