@@ -53,15 +53,15 @@ def rcas_cross(taps, gain):
     taps = [tuple(min(1, max(0, c)) for c in t[:3]) for t in taps]
     center = taps[2]
     ring = [taps[i] for i in (0, 1, 3, 4)]
-    lumas = [sum(a * b for a, b in zip(t, (0.5, 1, 0.5))) for t in taps]
-    deviation = abs(sum(lumas[i] for i in (0, 1, 3, 4)) / 4 - lumas[2])
+    lumas = [agx.ordered_sum(a * b for a, b in zip(t, (0.5, 1, 0.5))) for t in taps]
+    deviation = abs(agx.ordered_sum(lumas[i] for i in (0, 1, 3, 4)) / 4 - lumas[2])
     noise = 1 - 0.5 * min(1, deviation / max(max(lumas) - min(lumas), 1 / 256))
     lo = [min(t[c] for t in ring) for c in range(3)]
     hi = [max(t[c] for t in ring) for c in range(3)]
     limits = [max(-a / max(4 * b, 1 / 4096),
                   (1 - b) / min(4 * a - 4, -1 / 4096)) for a, b in zip(lo, hi)]
     weight = max(-0.1875, min(max(limits), 0)) * gain * noise
-    output = [(sum(t[c] for t in ring) * weight + center[c]) / (1 + 4 * weight)
+    output = [(agx.ordered_sum(t[c] for t in ring) * weight + center[c]) / (1 + 4 * weight)
               for c in range(3)]
     return tuple(min(max(v, min(lo[c], center[c])), max(hi[c], center[c]))
                  for c, v in enumerate(output))

@@ -10,13 +10,15 @@ assets/fonts/; the stock code sets and layout targets come from tools/fonts/stoc
       [--preview DIR] [--report FILE]
 
 Needs Pillow with FreeType (variable-font support). The default run rewrites the committed
-files under assets/fonts/generated/F (the ones install and the release zip ship); the host test
-test_font_generator pins that a regeneration reproduces them byte for byte.
+files under assets/fonts/generated/F (the ones install and the release zip ship) and records the
+rasteriser it ran with in assets/fonts/generated/rasteriser.json; the host test test_font_generator
+pins that a regeneration on that rasteriser reproduces them byte for byte.
 """
 import argparse
 import hashlib
 import json
 import math
+import platform
 import struct
 import unicodedata
 from pathlib import Path
@@ -64,6 +66,23 @@ OPTS = {'weight': None, 'hinted': False, 'floor_mode': None, 'gamma': 1.0}
 # convolved with these taps {(dx, dy): weight}, clamped to 1, composited under the glyph.
 SHADOW_D1 = {(1, 0): 0.38, (2, 0): 0.29, (0, 1): 0.12, (1, 1): 0.19, (2, 1): 0.16,
              (0, 2): 0.04, (1, 2): 0.08}
+
+
+# The output bytes depend on the rasteriser build: Pillow, its FreeType and layout libraries, and the platform
+# (measured: Pillow 12.1.1 / FreeType 2.14.2 moves 215 of 315 Harrier48 glyph records; Pillow 11.3.0 / FreeType
+# 2.13.3 on Linux x86_64 keeps every record but differs from the macOS arm64 atlas in 505 pixels).
+RASTERISER_FILE = 'rasteriser.json'
+
+
+def rasteriser_identity():
+    """The build that produced (or would produce) the output bytes, written beside F by every run."""
+    import PIL
+    from PIL import features
+    identity = {'pillow': PIL.__version__, 'freetype': features.version('freetype2')}
+    for library in ('raqm', 'harfbuzz', 'fribidi'):
+        identity[library] = features.version(library)
+    identity.update(system=platform.system(), machine=platform.machine())
+    return identity
 
 
 # --- sfnt helpers (cmap coverage and version for provenance) --------------------------------
@@ -643,6 +662,8 @@ def main(argv=None):
     OPTS.update(weight=a.weight, hinted=a.hinted, floor_mode=a.floor_mode, gamma=a.gamma)
     meta = json.loads(STOCK.read_text())['fonts']
     out = Path(a.out) / 'F'
+    out.mkdir(parents=True, exist_ok=True)
+    (Path(a.out) / RASTERISER_FILE).write_text(json.dumps(rasteriser_identity(), indent=1) + '\n')
     report = {'sources': {}, 'fonts': {}}
     for f in sorted({s['file'] for s in SOURCES.values()} | {FALLBACK['file']}):
         p = ASSETS / f

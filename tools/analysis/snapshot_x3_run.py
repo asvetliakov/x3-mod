@@ -61,9 +61,50 @@ MAX_BASENAME = 64
 FIELDS = re.compile(r'(?:^|\s)(\w+)=([^\s]+)')
 
 
+class _BirthStat:
+    """A stat result plus the birth time statx(2) reported for the same file."""
+    def __init__(self, info, birth_ns):
+        self._info, self.st_birthtime_ns = info, birth_ns
+
+    def __getattr__(self, name):
+        return getattr(self._info, name)
+
+
+def _statx_birth_ns(name, dir_fd):
+    """Linux birth time via statx(2), or None when libc, the kernel or the filesystem does not report it.
+    os.stat has no birth time on Linux, and st_ctime there is the inode change time, which every write moves:
+    used as a creation time it collapses a log's write interval to its last write."""
+    if not sys.platform.startswith('linux'):
+        return None
+    try:
+        import ctypes
+        statx = ctypes.CDLL(None, use_errno=True).statx
+    except (OSError, AttributeError):
+        return None
+    buffer = ctypes.create_string_buffer(256)  # struct statx is 256 bytes
+    flags = 0x1000 if name == '' else 0x100  # AT_EMPTY_PATH (an open fd) / AT_SYMLINK_NOFOLLOW
+    if statx(ctypes.c_int(dir_fd), name.encode(), ctypes.c_int(flags), ctypes.c_uint(0x800), buffer) != 0:
+        return None
+    mask = int.from_bytes(buffer.raw[0:4], 'little')
+    if not mask & 0x800:  # STATX_BTIME not reported (drvfs, 9p, older filesystems)
+        return None
+    seconds = int.from_bytes(buffer.raw[80:88], 'little', signed=True)
+    nanoseconds = int.from_bytes(buffer.raw[88:92], 'little')
+    return seconds * 1_000_000_000 + nanoseconds
+
+
+def file_stat(name=None, *, dir_fd=None, fd=None):
+    """os.stat (no-follow) or os.fstat, carrying a Linux statx birth time where the platform's stat lacks one."""
+    info = os.fstat(fd) if fd is not None else os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
+    if hasattr(info, 'st_birthtime_ns') or hasattr(info, 'st_birthtime'):
+        return info
+    birth = _statx_birth_ns('', fd) if fd is not None else _statx_birth_ns(os.fsdecode(name), -100 if dir_fd is None else dir_fd)
+    return info if birth is None else _BirthStat(info, birth)
+
+
 def created_ns(info):
-    # macOS birth time rejects even an old log whose mtime was touched later.
-    # Linux has no portable birth time; ctime is the conservative fallback.
+    # Birth time (macOS, Windows, Linux statx via file_stat) rejects even an old log whose mtime was touched later.
+    # Without one, ctime is the conservative fallback: it can only refuse a file, never admit a stale one.
     if hasattr(info, 'st_birthtime_ns'):
         return info.st_birthtime_ns
     if hasattr(info, 'st_birthtime'):
@@ -81,7 +122,7 @@ def select_log(directory_fd, since_ns):
     for name in os.listdir(directory_fd):
         if not SESSION.fullmatch(name):
             continue
-        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        info = file_stat(name, dir_fd=directory_fd)
         if not stat.S_ISREG(info.st_mode):
             continue
         if created_ns(info) >= since_ns and info.st_mtime_ns >= since_ns:
@@ -96,7 +137,7 @@ def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=N
     target_name = target_name or name
     read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=source_fd)
     with os.fdopen(read_fd, 'rb') as source:
-        before = os.fstat(source.fileno())
+        before = file_stat(fd=source.fileno())
         if not stat.S_ISREG(before.st_mode):
             raise ValueError('not a regular file')
         if since_ns is not None and (created_ns(before) < since_ns or before.st_mtime_ns < since_ns):
@@ -225,7 +266,7 @@ def select_game_log(directory_fd, since_ns):
     for name in os.listdir(directory_fd):
         if not GAME_LOG.fullmatch(name):
             continue
-        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        info = file_stat(name, dir_fd=directory_fd)
         if not stat.S_ISREG(info.st_mode) or info.st_mtime_ns < since_ns:
             continue
         if created_ns(info) >= since_ns or log_open_row(directory_fd, name).get('previous') in ('busy', 'none'):
@@ -261,7 +302,7 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
             candidates = []
             legacy = select_log(source_fd, since_ns) if source_fd is not None else None
             if legacy is not None:
-                info = os.stat(legacy, dir_fd=source_fd, follow_symlinks=False)
+                info = file_stat(legacy, dir_fd=source_fd)
                 candidates.append((created_ns(info), info.st_mtime_ns, legacy, source_fd))
             game = select_game_log(log_fd, since_ns) if log_fd is not None and log_fd != source_fd else None
             if game is not None:

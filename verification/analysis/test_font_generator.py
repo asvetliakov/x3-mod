@@ -202,11 +202,21 @@ class CommittedFontsTest(unittest.TestCase):
     def test_regeneration_reproduces_the_committed_files(self):
         committed = ROOT / 'assets/fonts/generated/F'
         gen = _load('generate_fonts_committed', ROOT / 'tools/fonts/generate_fonts.py')
+        # The bytes are a function of the rasteriser build (generate_fonts.rasteriser_identity): compare only on the
+        # one the committed set records; null fields were not recorded when it was made and are not compared.
+        recorded = json.loads((committed.parent / gen.RASTERISER_FILE).read_text())
+        host = gen.rasteriser_identity()
+        self.assertEqual(set(recorded), set(host))
+        if any(value is not None and host[key] != value for key, value in recorded.items()):
+            self.skipTest('rasteriser differs from the committed fonts: recorded %s, host %s' % (
+                ' '.join('%s=%s' % item for item in recorded.items() if item[1] is not None),
+                ' '.join('%s=%s' % (key, host[key]) for key, value in recorded.items() if value is not None)))
         digest = lambda d: {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(d.iterdir()) if p.is_file()}
         with tempfile.TemporaryDirectory() as tmp:
             with contextlib.redirect_stdout(io.StringIO()):
                 gen.main(['--out', tmp])
             regenerated = digest(Path(tmp) / 'F')
+            self.assertEqual(json.loads((Path(tmp) / gen.RASTERISER_FILE).read_text()), host)
         expected = digest(committed)
         self.assertEqual(len(expected), 16)
         self.assertEqual(expected['Tahoma26.tga'][:8], 'ef536bbb')

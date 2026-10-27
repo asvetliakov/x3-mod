@@ -1,6 +1,7 @@
 """Offline acceptance controls for the same-draw native report."""
 from pathlib import Path
 import importlib.util
+import json
 import unittest
 import struct
 ROOT=Path(__file__).resolve().parents[2]
@@ -14,9 +15,19 @@ class ReportTests(unittest.TestCase):
         # remains unchanged; do not invent dedicated-mode skips in old evidence.
         cls.table=[row for row in module.table_rows() if row[4] in ('A','B','C')]
         assert len(cls.table)==169
+        # Per-row program presence as the run recorded it (bound to this report's SHA-256), not this host's
+        # /tmp/x3-shader-sweep/programs: the originals are local scratch and absent on other hosts.
+        summary=json.loads((ROOT/'verification/results/material-motion-summary.json').read_text())
+        cls.inputs=module.recorded_row_inputs(summary,(ROOT/'verification/results/material-motion.txt').read_bytes(),cls.table)
     def reject(self,text):
-        with self.assertRaises((AssertionError,KeyError,IndexError)):module.validate_report(text, expected_table=self.table)
-    def test_current(self):self.assertEqual(module.validate_report(self.text, expected_table=self.table)['configurations'],82)
+        with self.assertRaises((AssertionError,KeyError,IndexError)):module.validate_report(text, expected_table=self.table, inputs=self.inputs)
+    def test_current(self):self.assertEqual(module.validate_report(self.text, expected_table=self.table, inputs=self.inputs)['configurations'],82)
+    def test_inputs_bound_to_report(self):
+        summary=json.loads((ROOT/'verification/results/material-motion-summary.json').read_text())
+        with self.assertRaises(AssertionError):module.recorded_row_inputs(summary,(ROOT/'verification/results/material-motion.txt').read_bytes()+b'extra\n',self.table)
+    def test_recorded_absent_program_expects_skip(self):
+        inputs=[dict(entry) for entry in self.inputs];inputs[0]['ps']=None
+        with self.assertRaises(AssertionError):module.validate_report(self.text, expected_table=self.table, inputs=inputs)
     def test_zero_checks(self):self.reject('RESULT PASS checks=0 numerical=0 color_components=0 depth_cases=0 configurations=0 devices=2\n')
     def test_missing_check(self):self.reject(self.text.replace('CHECK exact local shader pair transformed PASS\n','',1))
     def test_duplicate_terminal(self):self.reject(self.text+self.text.splitlines()[-1]+'\n')

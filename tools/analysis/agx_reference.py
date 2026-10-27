@@ -69,6 +69,15 @@ FP16_MAX = 65504.0  # what the host uploads as the clamp when X3M_HDR_CLAMP is u
 
 
 # --- Small vector helpers ----------------------------------------------------
+def ordered_sum(values, start=0.0):
+    """Left-to-right float sum, the order a shader adds in. Not builtins.sum: Python 3.12 made that compensated
+    (Neumaier), so the same reference gave different doubles on Python 3.9 and 3.14 (bloom-pass-legacy-digest*.py)."""
+    total = start
+    for value in values:
+        total = total + value
+    return total
+
+
 def _clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
 
