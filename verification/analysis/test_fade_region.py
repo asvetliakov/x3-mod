@@ -256,7 +256,7 @@ class FadeRegion(unittest.TestCase):
     def test_prefix_hull_random_triangles_covered(self):
         """Step D: random triangle lists (straddling, hugging and behind the near plane, bullet-scale
         cancellation) against the C++ rasterising oracle: no covered pixel outside, BehindNear covers
-        nothing, the hull rectangle never exceeds the near-clipped AABB rectangle of the same vertices."""
+        nothing, the hull rectangle never exceeds the AABB rectangle of the same vertices cut at the same -eps plane."""
         out=subprocess.run([str(self.driver),'--hull','20260914','600','64'],capture_output=True,text=True)
         self.assertEqual(out.returncode,0,out.stdout[-500:])
         rows=[fields(l) for l in out.stdout.splitlines() if l.startswith('HULL ')]
@@ -274,7 +274,11 @@ class FadeRegion(unittest.TestCase):
         capped=[r for r in bound if int(r['capped'])]
         self.assertEqual(len(capped),int(fields(out.stdout.splitlines()[-1])['capped']));self.assertTrue(all(int(r['pad'])==PAD_LIMIT for r in capped))
         self.assertLess(len(capped),len(bound)//2,'most bound lists stay under the pad cap')
-        self.assertTrue(all(int(r['clipped'])>0 for r in bound if r['kind']=='3'),'near-plane hugging lists are cut')
+        # A short hugging list can lie wholly in front (seed 20260914 on libstdc++: one single-triangle list, 0 behind
+        # for the oracle too); every one the oracle sees behind is cut, and nearly all are.
+        hugging=[r for r in bound if r['kind']=='3']
+        self.assertTrue(all(int(r['clipped'])>0 for r in hugging if int(r['behind'])>0),'near-plane hugging lists are cut')
+        self.assertGreaterEqual(sum(int(r['clipped'])>0 for r in hugging),len(hugging)*9//10)
 
     def test_prefix_hull_hand_cases(self):
         """Step D hand cases through project_prefix with the Python oracle: the fixture's near-plane
@@ -870,7 +874,7 @@ class FadeOwnerSource(unittest.TestCase):
     def test_alpha_tested_cutout_admission(self):
         """fade-alpha-cutout-ownership.md option A: the arm admits the alpha test for a fade pair only (not the overlay
         arm) with the owner on under original shading; an admitted row carries its own test read into alpha_tested (the
-        light-map widening and the replay W3 exclusion see it) and counts fade_tested on the frame line."""
+        replay W3 exclusion and the native LOD bias see it) and counts fade_tested on the frame line."""
         motion=source_text(ROOT/'src/proxy/motion_output.cpp')
         arm=motion.split('bool MotionOutput::fade_arm_admits')[1].split('std::uint64_t MotionOutput::fade_identity')[0]
         self.assertIn('const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;',arm)
@@ -881,8 +885,11 @@ class FadeOwnerSource(unittest.TestCase):
         self.assertIn('if (route.fade_tested) ++counters_.fade_tested; }',motion)
         self.assertIn('fade_owner_masked=%lu fade_tested=%lu",',motion)
         self.assertIn('case 86: return counters_.fade_tested;',motion)
-        # The widening skips an alpha-tested row (it rewrites rL.w, the tested coverage).
-        self.assertIn('!widen_suppressed && !route.alpha_tested && shadow_.hull_lightmap_stage',motion)
+        # Alpha-tested rows widen too (7fc522a3): the widened block restores rL.w, the tested coverage, from the
+        # unwidened fetch (texld rT; mov rL.w, rT.w; test_hull_emissive_widening), so widen_draw no longer reads it.
+        self.assertIn('const bool widen_draw = lightmap_widen_draw_scale_[0] > 0.f && !widen_suppressed && shadow_.hull_lightmap_stage &&',motion)
+        self.assertNotIn('!route.alpha_tested && shadow_.hull_lightmap_stage',motion)
+        self.assertIn('mov rL.w, rT.w',source_text(ROOT/'src/renderer/linear_material.h'))
         # Every owned alpha-tested cutout keeps the native LOD bias (the coverage must match vanilla and the unbiased prepass).
         self.assertIn('route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm);',motion)
         capture=source_text(ROOT/'src/proxy/capture.cpp')

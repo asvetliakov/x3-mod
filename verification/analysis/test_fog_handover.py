@@ -143,7 +143,7 @@ class FogHandoverWiring(unittest.TestCase):
         # decided prefill drops the stale camera; a same-key transit invalidates; the cards line names the refusal.
         self.assertIn('fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.id, fog_density_ready_id_)', fog)
         self.assertIn('!(fog_strength_ > 0.f)) return;', fog[fog.index('void MotionOutput::volumetric_fog_prefill('):])
-        self.assertIn('fog_->release_density_worker(); }', fog[fog.index('bool MotionOutput::attach_volumetric_fog('):])
+        self.assertIn('fog_->release_density_worker(); fog_->release_field_upload(); }', fog[fog.index('bool MotionOutput::attach_volumetric_fog('):])
         self.assertIn('if(prefill_refused_)return false;', fog_pass)
         self.assertIn('fog_card_refusal_ != fog_card_last_refusal_', fog)
         self.assertIn('fog_->prefill_density(key, f.recipe, placement.offset, origin, fog_density_config_.handover_step, fog_density_config_.handover_coldfill)', fog)

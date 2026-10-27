@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <map>
@@ -293,6 +294,13 @@ struct HookRecord {
 };
 HookRecord hook_record;
 
+// capture.cpp's device map (hook_device emplaces the device's context; its id names the address-space row).
+struct DeviceContext {
+    unsigned long long id{};
+};
+std::map<IDirect3DDevice9*, std::shared_ptr<DeviceContext>> devices;
+constexpr unsigned long long kHookedId = 41;
+
 void hook_device(IDirect3DDevice9* device, HWND device_window, HWND focus_window) {
     CHECK(capture_lock_depth > 0);
     events.push_back('H');
@@ -300,7 +308,28 @@ void hook_device(IDirect3DDevice9* device, HWND device_window, HWND focus_window
     hook_record.device = device;
     hook_record.device_window = device_window;
     hook_record.focus_window = focus_window;
+    devices[device] = std::make_shared<DeviceContext>(DeviceContext{kHookedId});
 }
+
+// src/proxy/log_tiers.h's flags cached at initialisation (--perf / --debug); off unless a scenario sets them.
+namespace log_tier {
+inline bool cached_perf = false, cached_debug = false;
+}
+// src/proxy/address_space.h: the post-creation address-space row, recorded (device id, frame) under the capture lock.
+namespace address_space {
+struct Reports {
+    int calls{};
+    unsigned long long device{}, frame{};
+    bool locked{};
+} reports;
+void report_create(unsigned long long device, unsigned long long frame) {
+    events.push_back('R');
+    ++reports.calls;
+    reports.device = device;
+    reports.frame = frame;
+    reports.locked = capture_lock_depth > 0;
+}
+} // namespace address_space
 
 enum class Output { Untouched, Null, Device };
 struct DirectScript {
@@ -360,6 +389,9 @@ void reset(IDirect3D9& d, NativeDevice& device,
     events.clear();
     hook_record = {};
     direct_script = {};
+    devices.clear();
+    address_space::reports = {};
+    log_tier::cached_perf = log_tier::cached_debug = false;
     direct_script.device = &device;
     factories.clear();
     auto hooks = std::make_unique<FactoryHooks>();
@@ -436,6 +468,33 @@ void capture_result_case(IDirect3D9& factory, NativeDevice& device, HRESULT resu
     expected_events.push_back('U');
     CHECK(capture_host::events == expected_events);
     CHECK(capture_host::capture_lock_depth == 0);
+    CHECK(capture_host::address_space::reports.calls == 0); // --perf/--debug off: no address-space row
+}
+
+// --perf or --debug: one address-space row after a successful creation, under the capture lock after the hook, with
+// the hooked device's id (0 when no device came back); none after a failed creation.
+void capture_address_space_case(IDirect3D9& factory, NativeDevice& device, bool perf, bool debug, HRESULT result,
+                                capture_host::Output behavior) {
+    test::scenario();
+    capture_host::reset(factory, device, capture_host::direct_native);
+    capture_host::log_tier::cached_perf = perf;
+    capture_host::log_tier::cached_debug = debug;
+    capture_host::direct_script.result = result;
+    capture_host::direct_script.output = behavior;
+    auto pp = parameters();
+    IDirect3DDevice9* out = nullptr;
+    CHECK(capture_host::create_device(&factory, kAdapter, kType, kFocus, 0x10u, &pp, &out) == result);
+    const bool hooked = SUCCEEDED(result) && behavior == capture_host::Output::Device;
+    const bool reported = SUCCEEDED(result) && (perf || debug);
+    CHECK(capture_host::address_space::reports.calls == (reported ? 1 : 0));
+    if (reported) {
+        CHECK(capture_host::address_space::reports.device == (hooked ? capture_host::kHookedId : 0u));
+        CHECK(capture_host::address_space::reports.frame == 0u && capture_host::address_space::reports.locked);
+        std::vector<char> tail{'R', 'U'};
+        if (hooked) tail.insert(tail.begin(), 'H');
+        CHECK(capture_host::events.size() >= tail.size() &&
+              std::vector<char>(capture_host::events.end() - tail.size(), capture_host::events.end()) == tail);
+    }
 }
 
 void ownership_success_case(ownership_host::Factory& factory, NativeDevice& native, HRESULT native_result) {
@@ -490,6 +549,11 @@ int main() {
     capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Null, true, true, 0);
     capture_result_case(capture_factory, direct_device, E_FAIL, capture_host::Output::Untouched, true, true, 0);
     capture_result_case(capture_factory, direct_device, S_OK, capture_host::Output::Device, false, false, 0);
+
+    capture_address_space_case(capture_factory, direct_device, true, false, S_OK, capture_host::Output::Device);
+    capture_address_space_case(capture_factory, direct_device, false, true, S_FALSE, capture_host::Output::Device);
+    capture_address_space_case(capture_factory, direct_device, true, true, S_OK, capture_host::Output::Null);
+    capture_address_space_case(capture_factory, direct_device, true, false, E_FAIL, capture_host::Output::Device);
 
     // The hook observes native parameter/output mutations and runs after the original.
     test::scenario();

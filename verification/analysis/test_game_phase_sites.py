@@ -54,18 +54,11 @@ extern "C" void x3m_probe_exit(){}
 '''
 
 
-def restore_filter_count():
-    """The production constant the chase_transition stub's prefilter is sized by."""
-    header=source_text(ROOT/'src/proxy/chase_transition_restore_core.h')
-    match=re.search(r'constexpr unsigned restore_filter_count\s*=\s*(\d+)',header)
-    if match is None:raise ValueError('restore_filter_count not found')
-    return int(match.group(1))
-
-
 def emitter_fixture_source():
     # Since 123f98d (chase view restore ticket) chase_transition::emit is a thin
     # wrapper over the shared register-saving emit_stub, so the stub is extracted
-    # with it and the one constant it reads is mirrored from its own header.
+    # with it; since f9cceed3 (engine-observed ticket) it reads no header constant
+    # (its prefilter word is a caller argument, null for the transition sites).
     emitters=(
         ('resource_reader','resource_reader.cpp','emit_reader_stub','emit_reader_stub(&next)','',()),
         ('game_phases','game_phases.cpp','emit','emit(0,&next)','',()),
@@ -78,9 +71,7 @@ def emitter_fixture_source():
         # The media-cue gate: two arms plus the return trampoline in one block.
         ('media_cue','media_cue.cpp','emit_gate','emit_gate(nullptr,nullptr,&next,nullptr)','',()),
         ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)','',()),
-        ('chase_transition','chase_transition.cpp','emit','emit(0,&next)',
-         f'namespace detail {{ constexpr unsigned restore_filter_count={restore_filter_count()}; }}',
-         ('emit_stub',)),
+        ('chase_transition','chase_transition.cpp','emit','emit(0,&next)','',('emit_stub',)),
         ('chase_lead','chase_lead.cpp','emit','emit(0,&next)','',()),
         ('chase_aim_trace','chase_aim_trace.cpp','emit','emit(0,&next)','',()),
         ('chase_fire','chase_fire.cpp','emit','emit(&next)','',()),
@@ -163,12 +154,13 @@ class SourceAndReplay(unittest.TestCase):
         emitted={}
         for line in run.stdout.splitlines():
             name,reserve,used=line.split();emitted[name]=(int(reserve),int(used))
-        # chase_transition reserves 320 since 123f98d (chase view restore):
-        # emit() shares emit_stub with the filtered restore path, whose
-        # prefilter is sized into the same reservation. Emitted bytes unchanged.
+        # chase_transition: emit() shares emit_stub with the filtered restore
+        # path, whose prefilter is sized into the same reservation (320 since
+        # 123f98d, 256 since f9cceed3's engine-observed ticket). Emitted bytes
+        # unchanged.
         self.assertEqual(emitted,{
             'resource_reader':(48,32),'game_phases':(192,128),'pass_phases':(160,124),'loop_phases':(160,124),'residual_phases':(160,124),'submit_phases':(176,128),'media_cue':(320,300),
-            'chase_camera':(160,124),'chase_transition':(320,128),
+            'chase_camera':(160,124),'chase_transition':(256,128),
             'chase_lead':(192,128),'chase_aim_trace':(176,128),
             'chase_fire':(176,124),'voice_dmo_fallback':(192,124),
             'loading_probes':(40,28),'loading_probes_exit':(32,24),
@@ -202,11 +194,13 @@ class SourceAndReplay(unittest.TestCase):
         match=re.search(r'SiteSpec spec\{"resource_read",\s*reader_va,\s*\{\},\s*(\d+),\s*0,\s*0\}',reader)
         self.assertIsNotNone(match)
         families['resource_reader']=[int(match.group(1))]
-        # chase_transition carries 16 rows since 123f98d added the seven
-        # byte-verified chase view restore sites.
+        # chase_transition carried 16 rows since 123f98d added the seven
+        # byte-verified chase view restore sites; 13 since f9cceed3 replaced
+        # the four script-seam rows (store, task complete/abort, VM construct)
+        # with the one inject site.
         self.assertEqual({name:len(value) for name,value in families.items()},
                          {'resource_reader':1,'game_phases':33,'frame_phases':10,'pass_phases':4,'loop_phases':10,'residual_phases':2,'submit_phases':22,'media_cue':1,'chase_camera':1,
-                          'chase_transition':16,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
+                          'chase_transition':13,'chase_lead':9,'chase_aim_trace':4,'chase_fire':1,'voice_dmo_fallback':1,
                           'loading_probes':12})
         lead_rows=probe.common.parse_source_specs(source_text(ROOT/'src/proxy/chase_lead.cpp'))
         self.assertEqual([row['name'] for row in lead_rows],[
@@ -246,9 +240,10 @@ class SourceAndReplay(unittest.TestCase):
         accepted,used=admit(capacity)
         # 13908 with the 47-site phase group, the frame and pass stamps and the
         # chase set; the 14 audio witnesses (X3M_AUDIO_SITES, removed
-        # 2026-09-25) took 2144 of it, so 11764 now.
-        self.assertTrue(accepted);self.assertEqual(used,11764)
-        self.assertEqual(capacity-used,12812)
+        # 2026-09-25) took 2144 of it, so 11764; f9cceed3's three fewer chase
+        # restore sites (3 * (24 + 128)) leave 11308.
+        self.assertTrue(accepted);self.assertEqual(used,11308)
+        self.assertEqual(capacity-used,13268)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         # Every optional group on: the ten loop stamps (claims of 6/6/6/5/6/5
@@ -262,7 +257,7 @@ class SourceAndReplay(unittest.TestCase):
         # X3M_MEDIA_CUE_TRACE/CACHE, the chase cursor admission site, the voice
         # DMO fallback site and the twelve loading probes (one shared exit stub
         # plus an entry stub per site). The remaining headroom is what a future
-        # group can claim; chase_transition's 320-byte reserve is the largest
+        # group can claim; the media-cue gate's 320-byte reserve is the largest
         # single reservation.
         everything=list(operations)
         for name in ('loop_phases','residual_phases','submit_phases','media_cue','chase_fire','voice_dmo_fallback'):
@@ -273,10 +268,11 @@ class SourceAndReplay(unittest.TestCase):
         for length in families['loading_probes']:
             everything.extend(((length+23,claim_used(length)),emitted['loading_probes']))
         accepted_all,used_all=admit(capacity,everything)
-        self.assertTrue(accepted_all);self.assertEqual(used_all,18200)
-        self.assertEqual(capacity-used_all,6376)
+        self.assertTrue(accepted_all);self.assertEqual(used_all,17744)
+        self.assertEqual(capacity-used_all,6832)
         self.assertEqual(sum(used for _,used in everything)-sum(used for _,used in operations),6436)
-        # 6,376 B left since the four region loop stamps (2026-09-29, 592 B;
+        # 6,832 B left since f9cceed3 (456 B back from the chase restore
+        # sites); 6,376 B after the four region loop stamps (2026-09-29, 592 B;
         # 6,968 B after the audio witnesses went 2026-09-25, 4,824 B before).
         # The arena grew by one page for the media-cue gate and by another
         # with the residual group as headroom for later groups; 24,576 holds
@@ -292,8 +288,8 @@ class SourceAndReplay(unittest.TestCase):
             selected=families[name][:old_game] if name=='game_phases' else families[name]
             for length in selected:
                 old_operations.extend(((length+23,claim_used(length)),(reserve,stub_used)))
-        self.assertEqual(admit(16384,old_operations),(True,8124))
-        self.assertEqual(admit(8192,old_operations),(True,8124))
+        self.assertEqual(admit(16384,old_operations),(True,7668))
+        self.assertEqual(admit(8192,old_operations),(True,7668))
         # The production '>' guard admits an exact fit and rejects one byte over.
         largest=max(reserve for reserve,_ in operations)
         self.assertEqual((8192-largest)+largest,8192)

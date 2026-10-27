@@ -84,6 +84,10 @@ struct MotionRoute {
     DWORD widen_filter_saved = 0; // hull emissive widening: MINFILTER raised for the draw (never here: the option is
                                   // off)
     bool engine_light_want = false, engine_light = false; // engine light: never requested here
+    // motion_output.h: the material-strength twin bound over the chosen program, and why widen_draw was false (1 no
+    // light-map size, 3 no mip chain on the light-map stage, 0 other).
+    bool strength = false;
+    std::uint8_t widen_held_reason = 0;
     // Scoped owned restoration references taken once per routed draw.
     Shader *restore_vs = nullptr, *restore_ps = nullptr;
     bool restore_held = false;
@@ -200,6 +204,14 @@ HRESULT set_constants(Device*, unsigned, const float*, unsigned) {
     return S_OK;
 }
 template <class... A> void log(const char*, A...) {}
+// Mirrors of src/proxy/lod_texture_mark.h's lanes and src/proxy/log_tiers.h's cached debug flag, which the extracted
+// bind path reads for the material-strength selection.
+namespace lod_texture_mark {
+constexpr std::uint8_t lane_none = 0, lane_strength_alpha = 1;
+}
+namespace log_tier {
+inline bool cached_debug = false;
+}
 struct Pass {
     void after_reset(HRESULT){};
 };
@@ -284,6 +296,10 @@ public:
         bool hull_lightmap_pair = false; // hull light-map gain variants; inert here
         Shader *ps_hull_lightmap_widen = nullptr, *ps_sun_original_lightmap_widen = nullptr;
         std::uint8_t hull_lightmap_stage = 0; // hull emissive widening variants; inert here
+        // Material strength (motion_output.h ShaderEntry): the bound PS's twins and the specular stage they read
+        // (1 DEFAULT, 2 BUMPMAP; 0 = no twin, the default here).
+        Shader* strength_twin[2][8]{};
+        std::uint8_t strength_stage = 0;
         float vs_reserved[16]{}, ps_reserved[8]{};
         renderer::LinearMaterialPairContract material_contract{};
     } shadow_;
@@ -338,9 +354,33 @@ public:
     float lightmap_widen_draw_scale_[2] = {0.f, 0.f};
     struct {
         DWORD levels = 0;
+        std::uint8_t atlas_lane = 0; // lod_texture_mark lane of the bound texture (material strength)
     } samplers_[16]; // hull emissive widening: this draw's footprint lanes (0 = off) and the sampler shadow's level
                      // counts read by the bind path
     unsigned sun_qualifications_ = 0;
+    // Material strength (motion_output.h): the frame-line counters, the gap reasons and a scripted twin lookup that
+    // returns `strength_twin_result_` (null: keeps the parent with `strength_twin_reason_`).
+    std::uint32_t strength_marked_draws_ = 0, strength_no_twin_ = 0;
+    enum : std::uint8_t {
+        strength_gap_form,
+        strength_gap_refused,
+        strength_gap_entry,
+        strength_gap_code,
+        strength_gap_material
+    };
+    Shader* strength_twin_result_ = nullptr;
+    std::uint8_t strength_twin_reason_ = strength_gap_form;
+    unsigned strength_twin_calls_ = 0, strength_gap_calls_ = 0;
+    std::uint8_t strength_gap_reason_ = 0xff;
+    Shader* strength_twin(Shader*, bool, std::uint8_t& reason) noexcept {
+        ++strength_twin_calls_;
+        if (!strength_twin_result_) reason = strength_twin_reason_;
+        return strength_twin_result_;
+    }
+    void strength_gap(Shader*, bool, std::uint8_t reason, const MotionRoute&) noexcept {
+        ++strength_gap_calls_;
+        strength_gap_reason_ = reason;
+    }
     void qualify_sun_lane() { ++sun_qualifications_; }
     struct {
         bool failed = false, published = false, available = false, coverage_required = false;
@@ -651,6 +691,100 @@ void restoration_ownership() {
     }
 }
 
+// Material strength (overlay-material-strength.md, option B): a program with a specular stage that holds the marked
+// atlas binds its twin over the chosen PS (route.strength, undone with the route); an unmarked stage, a twin refusal
+// and the material route keep the parent, counted no_twin with the gap row only under --debug. The held-widening
+// reason is the first failing condition (option off here: 1; size known without a mip chain: 3).
+void material_strength_selection() {
+    auto arm = [](MotionOutput& m, Shader& vs, Shader& ps) {
+        m.shadow_.vs_variant = &vs;
+        m.shadow_.ps_variant = &ps;
+        m.shadow_.vs_material_variant = &vs;
+        m.shadow_.ps_material_variant = &ps;
+    };
+    {
+        Device d;
+        MotionOutput m(d);
+        Shader vs, ps, twin, app_vs, app_ps;
+        arm(m, vs, ps);
+        d.bound_vs = &app_vs;
+        d.bound_ps = &app_ps;
+        m.shadow_.strength_stage = 2;
+        m.samplers_[2].atlas_lane = lod_texture_mark::lane_strength_alpha;
+        m.strength_twin_result_ = &twin;
+        MotionRoute r;
+        CHECK(m.bind_variant_pair(r, false) == S_OK && r.strength && d.bound_ps == &twin && d.bound_vs == &vs);
+        CHECK(m.strength_marked_draws_ == 1 && m.strength_no_twin_ == 0 && m.strength_twin_calls_ == 1);
+        CHECK(r.widen_held_reason == 1);
+        CHECK(m.undo(r) == S_OK && d.bound_ps == &app_ps && d.bound_vs == &app_vs);
+        m.release_restore(r);
+        CHECK(app_vs.refs == 1 && app_ps.refs == 1 && twin.add_refs == 0);
+    }
+    // Unmarked stage: one byte compare, no lookup, no count.
+    {
+        Device d;
+        MotionOutput m(d);
+        Shader vs, ps, twin;
+        arm(m, vs, ps);
+        m.shadow_.strength_stage = 1;
+        m.samplers_[1].atlas_lane = lod_texture_mark::lane_none;
+        m.samplers_[2].atlas_lane = lod_texture_mark::lane_strength_alpha; // not the program's specular stage
+        m.strength_twin_result_ = &twin;
+        MotionRoute r;
+        CHECK(m.bind_variant_pair(r, false) == S_OK && !r.strength && d.bound_ps == &ps);
+        CHECK(m.strength_marked_draws_ == 0 && m.strength_twin_calls_ == 0);
+        m.release_restore(r);
+    }
+    // A refused twin keeps the parent; the gap row only under --debug, with the lookup's reason.
+    for (bool debug : {false, true}) {
+        Device d;
+        MotionOutput m(d);
+        Shader vs, ps;
+        arm(m, vs, ps);
+        m.shadow_.strength_stage = 1;
+        m.samplers_[1].atlas_lane = lod_texture_mark::lane_strength_alpha;
+        m.strength_twin_reason_ = MotionOutput::strength_gap_refused;
+        log_tier::cached_debug = debug;
+        MotionRoute r;
+        CHECK(m.bind_variant_pair(r, false) == S_OK && !r.strength && d.bound_ps == &ps);
+        CHECK(m.strength_marked_draws_ == 1 && m.strength_no_twin_ == 1 && m.strength_twin_calls_ == 1);
+        CHECK(m.strength_gap_calls_ == unsigned(debug) &&
+              (!debug || m.strength_gap_reason_ == MotionOutput::strength_gap_refused));
+        log_tier::cached_debug = false;
+        m.release_restore(r);
+    }
+    // The material route has no twin: no lookup, counted no_twin with reason material.
+    {
+        Device d;
+        MotionOutput m(d);
+        Shader vs, ps, twin;
+        arm(m, vs, ps);
+        m.shadow_.strength_stage = 1;
+        m.samplers_[1].atlas_lane = lod_texture_mark::lane_strength_alpha;
+        m.strength_twin_result_ = &twin;
+        log_tier::cached_debug = true;
+        MotionRoute r;
+        CHECK(m.bind_variant_pair(r, true) == S_OK && !r.strength && d.bound_ps == &ps);
+        CHECK(m.strength_marked_draws_ == 1 && m.strength_no_twin_ == 1 && m.strength_twin_calls_ == 0);
+        CHECK(m.strength_gap_calls_ == 1 && m.strength_gap_reason_ == MotionOutput::strength_gap_material);
+        log_tier::cached_debug = false;
+        m.release_restore(r);
+    }
+    // widen_held_reason: the option on with a light-map stage but no mip chain is reason 3.
+    {
+        Device d;
+        MotionOutput m(d);
+        Shader vs, ps;
+        arm(m, vs, ps);
+        m.lightmap_widen_draw_scale_[0] = 1.f;
+        m.shadow_.hull_lightmap_stage = 2;
+        m.samplers_[2].levels = 1;
+        MotionRoute r;
+        CHECK(m.bind_variant_pair(r, false) == S_OK && r.widen_held_reason == 3);
+        m.release_restore(r);
+    }
+}
+
 void failure_cases() {
     const renderer::MotionOutputProfile basic{0, 15}, full{4, 5};
     for (unsigned zero : {0u, 15u}) {
@@ -905,6 +1039,7 @@ int main() {
     actual_material_contracts();
     fallback_and_alias_cases();
     restoration_ownership();
+    material_strength_selection();
     failure_cases();
     malformed_contracts();
     shadow_reset_and_performance();
