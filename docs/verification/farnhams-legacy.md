@@ -427,4 +427,14 @@ bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run5`. `debug = 1` set 
 `original_fill_variant … fill_applied=1`, `sun_shadow_original_lightmap[_widen]_variant …
 share_applied=1`, `engine_light_variant … created=7f`. Image: hull windows and lights at AP
 brightness, widening on emissive strips at distance; recheck the distant sun-lit wheat
-farms (shimmer) with F8 captures. Result: pending.
+farms (shimmer) with F8 captures.
+
+Result (log session of 2026-11-01 19:0x, 30,422 frames / 216 s, no exception;
+measured): `hull_lightmap_variant` 24 rows (23 `gain_applied=1`, all
+`fill_applied=1`), `hull_lightmap_widen_variant` 23 `widen_applied=1`,
+`original_fill_variant` 24, `sun_shadow_original_lightmap_variant` 24
+`share_applied=1`, `hull_emission_variant` 15; `engine_light_variant` 0 rows (to
+explain). User: stations and ships fine; distant sun-lit wheat farms shimmer less
+than before but still a little; three F8 captures taken (far, mid, close; shimmer
+in the far two). **Accepted.** Shimmer triage from the captures:
+`verification/results/fl-run6-shimmer/` (pending).
