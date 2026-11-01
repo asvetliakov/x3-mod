@@ -1128,7 +1128,7 @@ public:
     // lens-flare gain (its SRCBLEND / BLENDFACTOR restore values).
     bool blend_shadow_requested() const noexcept {
         return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ ||
-               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active || engine_hook_;
+               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active || lens_gain_fog_ || engine_hook_;
     }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept {
@@ -1199,8 +1199,14 @@ public:
     void sun_occlusion_end() noexcept;
     void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
     // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
-    // 1 = off (no per-draw work). The blend-constant cap is checked at attach.
-    void configure_lens_flare_gain(float gain) noexcept { lens_gain_ = lens_flare_gain::law(gain); }
+    // 1 = off (no per-draw work). The blend-constant cap is checked at attach. fog: the lens bracket is installed with
+    // the volumetric fog, and each bracket applies G x T_sun, the fog's transmittance toward the sky
+    // (renderer::fog_sky_lens_gain; T = 1 and G unchanged in a frame without the density composite).
+    void configure_lens_flare_gain(float gain, bool fog = false) noexcept {
+        lens_gain_ = lens_flare_gain::law(gain);
+        lens_gain_base_ = lens_gain_.gain;
+        lens_gain_fog_ = fog;
+    }
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -1802,6 +1808,10 @@ private:
     // Lens-flare gain: the configured law, the device's BLENDFACTOR cap (attach), this bracket's counts and the
     // refusal reasons already logged (one row per reason and device).
     lens_flare_gain::Law lens_gain_{};
+    // The fog's share (configure_lens_flare_gain): the configured G, the last bracket's T_sun, the device's
+    // BLENDFACTOR cap (attach; a fogged G x T between 0 and 1 needs it even when G is 1).
+    float lens_gain_base_ = 1.f, lens_gain_fog_t_ = 1.f;
+    bool lens_gain_fog_ = false, lens_gain_blendfactor_ = false;
     // Engine effects (motion_output_engine_effects_inc.h): the gates, the frame's ring and counts, the pinned c4-6
     // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any and on every F8
     // capture frame).

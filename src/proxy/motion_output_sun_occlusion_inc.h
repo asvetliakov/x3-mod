@@ -77,6 +77,20 @@ void MotionOutput::sun_occlusion_begin() noexcept {
     lens_draws_ = lens_wrapped_ = lens_clipped_ = lens_refused_ = lens_dropped_ = lens_other_ = 0;
     lens_gained_ = lens_gain_refused_ = 0;
     release_lens_depth();
+    // Lens-flare gain through the fog (both editions; only with the volumetric fog configured): this bracket's draws
+    // take G x T_sun, T_sun the frame's fog transmittance toward the sky at the look's column cap (the engine plumes'
+    // law, engine_plumes_fog); T = 1 and G exactly in a frame without the density composite. Fixed for the bracket
+    // (the per-draw restore replays the same law); the lens_flare_gain_frame row carries it.
+    if (lens_gain_fog_) {
+        renderer::FogTransmittanceLaw law{};
+        engine_plumes_fog(&law);
+        float applied = lens_gain_base_;
+        renderer::fog_sky_lens_gain(law, lens_gain_base_, &lens_gain_fog_t_, &applied);
+        if (applied != lens_gain_.gain) {
+            lens_gain_ = lens_flare_gain::law(applied);
+            lens_gain_caps_ = lens_gain_.active && (!lens_gain_.constant || lens_gain_blendfactor_);
+        }
+    }
     if (!sun_occlusion_.requested && !sun_occlusion_.log) return;
     namespace so = sun_occlusion;
     const so::FrameInputs in = so::frame_inputs();
@@ -195,12 +209,8 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
     const char* refusal = nullptr;
     // A sun whose own lens body the scan cannot classify (core::Deferral, run216): its bodies are classified also in a
     // frame the vanilla probe decides, so a classifiable chain lifts the deferral.
-#if !X3M_EDITION_FL
     const bool attributable = sun_occlusion::lens_attributable();
     bool deferred_body = false;
-#else
-    constexpr bool attributable = false, deferred_body = false;
-#endif
     if ((lens_frame_active_ || sun_occlusion_.log || attributable) && !shadow_.recording) {
         DWORD v[6]{};
         static constexpr D3DRENDERSTATETYPE indexed[6] = {D3DRS_ALPHABLENDENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHAREF, D3DRS_ALPHAFUNC, D3DRS_FOGENABLE};
@@ -236,16 +246,13 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
             else {
                 centre = core::classify_body(shadow_.rows[window], true, lens_sun_u_, lens_sun_v_, target_height_ ? float(target_width_) / float(target_height_) : 0.f);
                 if (centre.body == core::Body::Unknown) { body_refusal = "body_unknown"; body_transient = true; }
-#if !X3M_EDITION_FL
                 else if (centre.body == core::Body::Core) sun_occlusion::lens_body_core();
-#endif
             }
         } else if (scanned == renderer::LensVerdict::Variant) body_other = sun_occlusion_pass_->last_variant_refusal();
         else if (scanned == renderer::LensVerdict::CacheFull) body_other = "cache_full";
         else { body_refusal = renderer::lens_verdict_name(scanned); body_transient = scanned == renderer::LensVerdict::NotReady; }
         if (body_other) {
             centre.body = core::Body::Other;
-#if !X3M_EDITION_FL
             // On the bracket's single sun record the override stops answering for it (vanilla probe from the next
             // frame on) and an answered bracket drops the rest below; logged once per pair and per deferral (capped).
             bool row = false;
@@ -255,12 +262,6 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
                 log("sun_lens_body_unclassifiable device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s matrix_register=%ld note=%s", id_, frame_,
                     static_cast<unsigned long long>(state.vertex_hash), static_cast<unsigned long long>(state.hash), body_other,
                     prepared.matrix_register == ~0u ? -1l : long(prepared.matrix_register), deferred_body ? "blocked_vanilla_probe" : "left_untouched");
-#else
-            if (prepared.first || scanned == renderer::LensVerdict::CacheFull)
-                log("sun_lens_body_unclassifiable device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s matrix_register=%ld note=left_untouched", id_, frame_,
-                    static_cast<unsigned long long>(state.vertex_hash), static_cast<unsigned long long>(state.hash), body_other,
-                    prepared.matrix_register == ~0u ? -1l : long(prepared.matrix_register));
-#endif
         }
         state.body = centre.body;
     }
@@ -389,8 +390,9 @@ void MotionOutput::apply_lens_gain(MotionRoute& route, bool plain) noexcept {
 void MotionOutput::log_lens_gain_window() noexcept {
     const unsigned* r = lens_gain_window_refused_;
     if (log_tier::perf_rows())
-    log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f draws=%u gained=%u skipped=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
-        id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), lens_gain_window_draws_, lens_gain_window_gained_, lens_gain_window_skipped_,
+    log("lens_flare_gain_frame device=%llu frame=%llu frames=%u gain=%.4f base=%.4f fog=%u fog_t=%.4f draws=%u gained=%u skipped=%u refused_caps=%u refused_route=%u refused_recording=%u refused_routed_draw=%u refused_state_unknown=%u refused_blend_law=%u refused_device=%u",
+        id_, frame_, lens_gain_window_frames_, double(lens_gain_.gain), double(lens_gain_base_), unsigned(lens_gain_fog_), double(lens_gain_fog_t_),
+        lens_gain_window_draws_, lens_gain_window_gained_, lens_gain_window_skipped_,
         r[lens_flare_gain::Caps], r[lens_flare_gain::Route], r[lens_flare_gain::Recording], r[lens_flare_gain::RoutedDraw],
         r[lens_flare_gain::StateUnknown], r[lens_flare_gain::BlendLaw], r[lens_flare_gain::Device]);
     lens_gain_window_frames_ = lens_gain_window_draws_ = lens_gain_window_gained_ = lens_gain_window_skipped_ = 0;

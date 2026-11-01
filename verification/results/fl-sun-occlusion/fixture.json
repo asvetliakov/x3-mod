@@ -1,0 +1,62 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=906 failures=0 probe_calls=400018 lens_calls=400030",
+ "timing": "TIMING native_probe_ns=33.4 forward_ns=73.3 answered_ns=74.3 native_lens_ns=36.1 bracket_ns=264.7 forward_hook_ns=39.9 bracket_hook_ns=228.6",
+ "anchor": "ANCHOR anchors=17 flips=822 refused=822 operand_flips=52 operand_refused=52",
+ "failures": [],
+ "rows": [
+  "fl.sun_occlusion status=executable_mismatch base=0x00000000 probe=base+0x8af0a lens=base+0x8bcb7 probe_write=none lens_write=none override=1 log=0 bracket=0 main_view=none anchors=17 failed_anchor=none log_s=0",
+  "fl.sun_occlusion status=executable_mismatch base=0x00000000 probe=base+0x8af0a lens=base+0x8bcb7 probe_write=none lens_write=none override=0 log=0 bracket=1 main_view=none anchors=17 failed_anchor=none log_s=0",
+  "fl.sun_occlusion status=active base=0x00000000 probe=base+0x8af0a lens=base+0x8bcb7 probe_write=atomic lens_write=plain override=1 log=0 bracket=0 main_view=registry anchors=17 failed_anchor=none log_s=0",
+  "sun_occlusion_released frame=0 record=005bdcf0 lifts=1 starts=1 note=body_classified_vanilla_visible",
+  "sun_occlusion_foreign_thread frame=0 owner=10280 calls=1 note=probes_from_other_threads_run_the_original",
+  "fl.sun_occlusion_sample row=1 status=active frames=2 probes=2 own=1 visible=1 hidden=0 original=1 foreign=1 brackets=2 multi=0 blocked=0 deferred=0 starts=1 lifts=1 main_view=0x005bd970"
+ ],
+ "audit_exit": 0,
+ "audit": {
+  "roots": [
+   "_x3m_fl_sun_probe_thunk",
+   "_x3m_fl_sun_lens_thunk",
+   "_x3m_fl_sun_probe_decide",
+   "_x3m_fl_sun_lens_begin",
+   "_x3m_fl_sun_lens_end"
+  ],
+  "missing_roots": [],
+  "reachable": 72,
+  "x87": {},
+  "simd": {},
+  "envelopes": {
+   "_x3m_fl_sun_lens_end": 16,
+   "_x3m_fl_sun_lens_begin": 16,
+   "_x3m_fl_sun_probe_decide": 16
+  },
+  "transport": {
+   "_x3m_fl_sun_probe_decide": {
+    "fnsave": 0,
+    "fninit": 0,
+    "frstor": 0,
+    "stmxcsr": 0,
+    "ldmxcsr": 0
+   },
+   "_x3m_fl_sun_lens_begin": {
+    "fnsave": 1,
+    "fninit": 1,
+    "frstor": 1,
+    "stmxcsr": 1,
+    "ldmxcsr": 1
+   },
+   "_x3m_fl_sun_lens_end": {
+    "fnsave": 1,
+    "fninit": 1,
+    "frstor": 1,
+    "stmxcsr": 1,
+    "ldmxcsr": 1
+   }
+  },
+  "transport_ok": true,
+  "log_callers": [
+   "_x3m_fl_sun_lens_end",
+   "_x3m_fl_sun_probe_decide"
+  ]
+ }
+}

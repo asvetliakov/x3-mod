@@ -139,7 +139,6 @@ struct Ready {
     bool single() const noexcept { return records == 1 && record != 0; }
 };
 
-#if !X3M_EDITION_FL // sun occlusion is not installed on FL (capture.cpp)
 // ---- A sun whose lens body the scan cannot classify ----
 // Run216 (AP native, Mayhem): the sun's chain is a vs_3_0 / ps_3_0 pair (stock standard_lighting programs) the lens
 // scan refuses, so its body is Other and was drawn untouched while the override answered "visible": the sun showed
@@ -192,7 +191,6 @@ struct Deferral {
     }
     bool lift_logged() const noexcept { return lifts <= row_cap; } // the sun_occlusion_released row (capped)
 };
-#endif
 
 // ---- A frame whose pass did not run ----
 // A transient skip (a query open, a block recording, the scene end late) must not make the chain flicker: the
