@@ -669,3 +669,13 @@ anchors=50 anchor_rva=0x00000000 log_s=10`. Every 10 s, `fl.sun_light_sample sta
 `shadow_replay_sun_point … record_scale` about 0.01; the shared `point_sun_context_scale` (0.01, AP) is applied to
 FL positions, which sun-light.md flags as unverified for FL, so another value blocks the poll from driving shadows. Sun occlusion and the lens flare do not
 consume this poll; they stay off on FL.
+
+## FL run 12 — step 7 sun light poll (installed 2026-11-01)
+
+Candidate: commit `232c34ae` (step 7 `4a9b36ba` + review fixes `232c34ae`, reviewed Opus
+high: install, no blocking finding), `build-fl/d3d9.dll` SHA-256 `26c677ef…` (55477549 B), 0 warnings,
+FL host tests pass ([record](../../verification/results/fl-run12/candidate.json)); `C:\X3FL\d3d9.dll` bytes
+verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run11` (`eafc5b0d…`). Expected rows and the flight
+checks (`fl.sun_light status=ok anchors=50`, `fl.sun_light_sample … engine_rule=1 score>=0x300`,
+`shadow_replay_sun_source … source=point poll=ok`, `shadow_replay_sun_point … record_scale` ≈ 0.01,
+`volumetric_fog_frame … sun=tracked`): the Step 7 section above. Also carries `bloom_strength` 0.25.
