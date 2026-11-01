@@ -933,3 +933,15 @@ axes, none opposite, lengths 1.73–10.23 R beyond the core edge; `test_own_sun`
 (`--check` PASS, 25 constants). Built unstripped (`build-ap` `dde9bcf4…`, 0 warnings, x87 PASS, 85 host tests
 green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run222`
 ([record](../../verification/results/run223-candidate-install.json)). Flight: the two F8 pairs; same kill rule.
+
+## 2026-11-02: Own sun core visibility, 25 taps (host evidence; not flown)
+
+The core-visibility fraction samples the centre and eight taps each at 0.35, 0.65 and 0.9 core radii (was 13: centre,
+six at 0.45, six at 0.9), weights `1 - 0.1 rho^2` normalised: centre 0.0418, rings 0.0413 / 0.0400 / 0.0384, largest
+single-tap step 4.2 % (was 8.1 %) [measured, `verification/results/own-sun-pass/law_checks.py`]. ps_3_0 1085 words, 214
+slots (was 178), native validator 0 messages ([result](../../verification/results/own-sun-pass/native/result.json),
+`native/validate.py`); `generate_own_sun_programs.py --check` and `generate_own_sun_lab.py --check` PASS; `build-ap` and
+`build-fl` 0 warnings; `test_own_sun`, `test_own_sun_lab`, `test_sun_occlusion`, `test_logging_tiers` 74 tests green
+(`test_core_visibility_taps` pins 25 taps, sum 1, max weight <= 0.045; the lab's JS `CORE_TAPS` pinned to the program's
+taps); lab JS law vs `own_sun_host pixel` worst 1.39e-5 (`own-sun-pass/lab_js_worst.py`). Flight: an occluder edge
+crossing the core should dim the glow without visible steps.

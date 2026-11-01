@@ -82,8 +82,8 @@ def main():
     print('seam (glow units x (1 - D)): nearest spoke alone %.4f at r %s; two nearest summed %.2e' % (single[0], single[1], summed[0]))
     block = PROGRAM[PROGRAM.index('const float visible = '):]
     weights = [float(v) for v in re.findall(r'(\d\.\d{7})', block[:block.index(';')])]
-    print('core-visibility weights centre %.4f inner %.4f outer %.4f, sum %.5f, largest single-tap step %.1f %%'
-          % (weights[0], weights[1], weights[2], weights[0] + 6 * weights[1] + 6 * weights[2], 100 * max(weights)))
+    print('core-visibility weights centre %.4f inner %.4f middle %.4f outer %.4f, sum %.5f, largest single-tap step %.1f %%'
+          % (weights[0], weights[1], weights[2], weights[3], weights[0] + 8 * sum(weights[1:4]), 100 * max(weights)))
     print('rays: N %d, width %.3f core radii = %.2f px at %d rows (floor %.0f px)' % (N, W0, W0 * RADIUS_U * ROWS, ROWS, SIGMA_MIN_PX))
     print('corona at r 1 / 2 / 3: %.4f / %.4f / %.4f' % tuple(CORONA_GAIN * math.exp(-(r / CORONA_SIGMA) ** 2) for r in (1, 2, 3)))
     print('halo at r 1 / 6 / 12 / 20: %.4f / %.4f / %.4f / %.4f' % tuple(HALO_GAIN / (1 + r * r / HALO_RADIUS ** 2) * max(0., 1 - (r / GLOW_RADIUS) ** 2) ** 2

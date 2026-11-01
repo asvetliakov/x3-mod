@@ -251,7 +251,7 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
                             float out[pixel_registers * 4]) noexcept {
     const float dx = width ? 1.f / float(width) : 0.f, dy = height ? 1.f / float(height) : 0.f;
     const float share = rays >= rays_min && rays <= rays_max ? rays : rays_default;
-    const float ring = d.radius_px; // the core-visibility taps sit at 0.45 and 0.9 of it (own_sun_ps.hlsl)
+    const float ring = d.radius_px; // the core-visibility rings sit at 0.35, 0.65 and 0.9 of it (own_sun_ps.hlsl)
     const float n = float(ray_count);
     float sigma = ray_sigma;
     ray_width_radii(d.radius_px, &sigma);
@@ -272,7 +272,7 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
 #ifdef X3M_OWN_SUN_HOST_REFERENCE
 // ---- Host reference of the pixel program (the host test's expectation; CRT math: never compiled into the DLL) ----
 // own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps at the pixel (0..9)
-// and the core's visible fraction (0..1: the program's weighted 13 taps). corona / halo / rays: the terms before the
+// and the core's visible fraction (0..1: the program's weighted 25 taps). corona / halo / rays: the terms before the
 // tint (for the shape tests).
 struct Pixel {
     float rgb[3]{};

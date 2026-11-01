@@ -83,7 +83,7 @@ textarea{font-family:var(--mono);font-size:.78rem;background:var(--panel);color:
     <label class="row">ray_sigma_min_px (width floor)<span class="v" id="v-ray_sigma_min_px">3.0</span><input type="range" id="ray_sigma_min_px" min="0" max="10" step="0.1" value="3"></label>
   </div>
 </div>
-<p class="note">The sun is the game's pixel law, constant for constant (<code>src/effects/own_sun_ps.hlsl</code>, <code>own_sun_core.h</code> <code>pixel_constants()</code>), drawn ONE/ONE into an engine-space scene, then decoded (gamma 2.2), exposed by 2<sup>EV</sup> and tone mapped with the minimal AgX of <code>agx_reference.py</code>. The station stands in for the depth lane: the nine knight taps clip each pixel, the thirteen core taps scale the glow. Pixel sizes follow the chosen game resolution, so the 3-px ray width floor and the 1.5-px draw floor behave as in flight. Approximate: the bloom (a few Kawase taps instead of the five-level pyramid), no TAA, no auto exposure, a still frame.</p>
+<p class="note">The sun is the game's pixel law, constant for constant (<code>src/effects/own_sun_ps.hlsl</code>, <code>own_sun_core.h</code> <code>pixel_constants()</code>), drawn ONE/ONE into an engine-space scene, then decoded (gamma 2.2), exposed by 2<sup>EV</sup> and tone mapped with the minimal AgX of <code>agx_reference.py</code>. The station stands in for the depth lane: the nine knight taps clip each pixel, the twenty-five core taps scale the glow. Pixel sizes follow the chosen game resolution, so the 3-px ray width floor and the 1.5-px draw floor behave as in flight. Approximate: the bloom (a few Kawase taps instead of the five-level pyramid), no TAA, no auto exposure, a still frame.</p>
 <div class="btns"><button id="copy">Copy as C++</button><span class="chip" id="copied" hidden>copied</span></div>
 <textarea id="out" readonly aria-label="Constants for own_sun_core.h and x3m.ini lines"></textarea>
 </div>
@@ -151,7 +151,7 @@ function pixelConstants(width,height,disc,rad,rays,look,h){
   look.ray_start,n,1/n,0];
 }
 const sat=v=>v<0?0:(v>1?1:v);
-// own_sun_ps.hlsl lines 97-102: the minimax arctangent (|error| < 1e-5 rad).
+// own_sun_ps.hlsl lines 112-118: the minimax arctangent (|error| < 1e-5 rad).
 function atanMinimax(px,py){
  const qx=Math.abs(px),qy=Math.abs(py),lo=Math.min(qx,qy),hi=Math.max(Math.max(qx,qy),1e-6),u=lo/hi,u2=u*u;
  let th=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
@@ -192,9 +192,11 @@ const STEP_1D=Object.assign({},STEP_1C,{white_mix:.25,core_inner:.4,core_gain:.7
 const HEADER_PRESET=Object.assign(lookFromHeader(HEADER),{radius_u:HEADER.radius_default_u,K:HEADER.radiance_default,sun_rays:HEADER.rays_default});
 const RES={wide:[5120,1440],small:[1280,768]};
 const COLOURS=[['Yellow sector',[0.9961,0.9961,0.7812]],['Green sector',[0.8789,0.9961,0.7812]],['White',[1,1,1]]];
-// own_sun_ps.hlsl lines 74-87: the 13 core taps (offsets in core radii, lane uv y down) and their weights.
-const CORE_TAPS=[[0,0,0.0806940],[0.45,0,0.0790599],[0.225,0.3897114,0.0790599],[-0.225,0.3897114,0.0790599],[-0.45,0,0.0790599],[-0.225,-0.3897114,0.0790599],[0.225,-0.3897114,0.0790599],
- [0.7794229,0.45,0.0741578],[0,0.9,0.0741578],[-0.7794229,0.45,0.0741578],[-0.7794229,-0.45,0.0741578],[0,-0.9,0.0741578],[0.7794229,-0.45,0.0741578]];
+// own_sun_ps.hlsl lines 73-102: the 25 core taps (offsets in core radii, lane uv y down) and their weights.
+const CORE_TAPS=[[0,0,0.0418130],
+ [0.3500000,0.0000000,0.0413008],[0.2474874,0.2474874,0.0413008],[0.0000000,0.3500000,0.0413008],[-0.2474874,0.2474874,0.0413008],[-0.3500000,0.0000000,0.0413008],[-0.2474874,-0.2474874,0.0413008],[0.0000000,-0.3500000,0.0413008],[0.2474874,-0.2474874,0.0413008],
+ [0.6278518,0.1682324,0.0400464],[0.3250000,0.5629165,0.0400464],[-0.1682324,0.6278518,0.0400464],[-0.5629165,0.3250000,0.0400464],[-0.6278518,-0.1682324,0.0400464],[-0.3250000,-0.5629165,0.0400464],[0.1682324,-0.6278518,0.0400464],[0.5629165,-0.3250000,0.0400464],
+ [0.7794229,0.4500000,0.0384262],[0.2329371,0.8693332,0.0384262],[-0.4500000,0.7794229,0.0384262],[-0.8693332,0.2329371,0.0384262],[-0.7794229,-0.4500000,0.0384262],[-0.2329371,-0.8693332,0.0384262],[0.4500000,-0.7794229,0.0384262],[0.8693332,-0.2329371,0.0384262]];
 // The station: rectangles in units of the viewport height around its anchor (x right, y down): hull, core module, tower,
 // a mast about 3.5 px wide at 1440 rows (1.8 at 768: the knight taps clip it partially), two solar wings on thin trusses.
 const STATION=[[-0.20,-0.025,0.20,0.025],[-0.05,-0.07,0.05,0.07],[-0.012,-0.16,0.012,-0.07],[-0.0012,-0.30,0.0012,-0.16],
@@ -222,10 +224,12 @@ float spoke(float index,float across,float r){
  float perpendicular=r*across*c[7].w;                        // across the spoke over sigma, sqrt(log2 e) folded
  return (0.6+0.6*h2)*exp2(-perpendicular*perpendicular-along*c[8].z)*fade*fade; // exp(-a) saturate(1 - a)^2
 }
-const vec3 TAPS[12]=vec3[12](vec3(0.4500000,0.0000000,0.0790599),vec3(0.2250000,0.3897114,0.0790599),vec3(-0.2250000,0.3897114,0.0790599),
- vec3(-0.4500000,0.0000000,0.0790599),vec3(-0.2250000,-0.3897114,0.0790599),vec3(0.2250000,-0.3897114,0.0790599),
- vec3(0.7794229,0.4500000,0.0741578),vec3(0.0000000,0.9000000,0.0741578),vec3(-0.7794229,0.4500000,0.0741578),
- vec3(-0.7794229,-0.4500000,0.0741578),vec3(-0.0000000,-0.9000000,0.0741578),vec3(0.7794229,-0.4500000,0.0741578));
+const vec3 TAPS[24]=vec3[24](vec3(0.3500000,0.0000000,0.0413008),vec3(0.2474874,0.2474874,0.0413008),vec3(0.0000000,0.3500000,0.0413008),vec3(-0.2474874,0.2474874,0.0413008),
+ vec3(-0.3500000,0.0000000,0.0413008),vec3(-0.2474874,-0.2474874,0.0413008),vec3(0.0000000,-0.3500000,0.0413008),vec3(0.2474874,-0.2474874,0.0413008),
+ vec3(0.6278518,0.1682324,0.0400464),vec3(0.3250000,0.5629165,0.0400464),vec3(-0.1682324,0.6278518,0.0400464),vec3(-0.5629165,0.3250000,0.0400464),
+ vec3(-0.6278518,-0.1682324,0.0400464),vec3(-0.3250000,-0.5629165,0.0400464),vec3(0.1682324,-0.6278518,0.0400464),vec3(0.5629165,-0.3250000,0.0400464),
+ vec3(0.7794229,0.4500000,0.0384262),vec3(0.2329371,0.8693332,0.0384262),vec3(-0.4500000,0.7794229,0.0384262),vec3(-0.8693332,0.2329371,0.0384262),
+ vec3(-0.7794229,-0.4500000,0.0384262),vec3(-0.2329371,-0.8693332,0.0384262),vec3(0.4500000,-0.7794229,0.0384262),vec3(0.8693332,-0.2329371,0.0384262));
 // own_sun_ps.hlsl main(): pix the game pixel index (VPOS), p the offset from the sun in core radii (TEXCOORD0, y up).
 vec3 ownSun(vec2 pix,vec2 p){
  vec2 base=(pix+0.5)*c[0].xy;                                // line 60
@@ -233,28 +237,28 @@ vec3 ownSun(vec2 pix,vec2 p){
  open+=sentinel(lane(base+c[1].xy))+sentinel(lane(base-c[1].xy))+sentinel(lane(base+c[2].xy))+sentinel(lane(base-c[2].xy));
  open+=sentinel(lane(base+c[1].zw))+sentinel(lane(base-c[1].zw))+sentinel(lane(base+c[2].zw))+sentinel(lane(base-c[2].zw));
  open/=9.0;
- vec2 cc=c[6].xy;                                            // lines 72-87: the core's 13 weighted taps
- float visible=sentinel(lane(cc))*0.0806940;
- for(int i=0;i<12;i++)visible+=sentinel(lane(cc+TAPS[i].xy*c[6].zw))*TAPS[i].z;
- float r2=dot(p,p),r=sqrt(r2);                               // lines 89-90
- float d=1.0-smoothstep(c[3].w,1.0,r);                       // line 91: the core D(r)
- float corona=c[5].x*exp2(-r2*c[8].x);                       // line 93: A_c exp(-(r / sigma_c)^2)
- float w=clamp(1.0-r2*c[8].w*c[8].w,0.0,1.0);                // line 94: the window W(r)
- float halo=c[5].y/(1.0+r2*c[8].y)*w*w;                      // line 95: the Lorentzian halo
- vec2 q=abs(p);                                              // lines 97-102: the minimax arctangent
+ vec2 cc=c[6].xy;                                            // lines 73-102: the core's 25 weighted taps
+ float visible=sentinel(lane(cc))*0.0418130;
+ for(int i=0;i<24;i++)visible+=sentinel(lane(cc+TAPS[i].xy*c[6].zw))*TAPS[i].z;
+ float r2=dot(p,p),r=sqrt(r2);                               // lines 104-105
+ float d=1.0-smoothstep(c[3].w,1.0,r);                       // line 106: the core D(r)
+ float corona=c[5].x*exp2(-r2*c[8].x);                       // line 108: A_c exp(-(r / sigma_c)^2)
+ float w=clamp(1.0-r2*c[8].w*c[8].w,0.0,1.0);                // line 109: the window W(r)
+ float halo=c[5].y/(1.0+r2*c[8].y)*w*w;                      // line 110: the Lorentzian halo
+ vec2 q=abs(p);                                              // lines 112-118: the minimax arctangent
  float lo=min(q.x,q.y),hi=max(max(q.x,q.y),1e-6);
  float u=lo/hi,u2=u*u;
  float theta=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
  theta=q.y>q.x?1.57079633-theta:theta;
  theta=p.x<0.0?3.14159265-theta:theta;
  theta=p.y<0.0?-theta:theta;
- float t=theta*c[7].x+c[7].y;                                // lines 103-107: the two nearest spokes
+ float t=theta*c[7].x+c[7].y;                                // lines 119-123: the two nearest spokes
  float nearest=floor(t+0.5);
  float across=t-nearest;
  float side=across>=0.0?1.0:-1.0;
  float rays=c[5].z*(spoke(nearest,across,r)+spoke(nearest+side,across-side,r));
- vec3 glow=c[4].rgb*(corona+halo+rays);                      // line 108
- return mix(glow,c[3].rgb,d)*open*(d+(1.0-d)*visible);       // line 109
+ vec3 glow=c[4].rgb*(corona+halo+rays);                      // line 124
+ return mix(glow,c[3].rgb,d)*open*(d+(1.0-d)*visible);       // line 125
 }
 float hash2(vec2 v){v=fract(v*vec2(0.1031,0.1030));v+=dot(v,v.yx+33.33);return fract((v.x+v.y)*v.x);}
 float vnoise(vec2 v){vec2 i=floor(v),f=fract(v);f=f*f*(3.0-2.0*f);
@@ -404,7 +408,7 @@ function chips(st){
  // The glow outside the core (r >= 1 R, inside the quad), engine units, the brightest channel: own-sun-look.md's 0.781.
  const tint=Math.max(st.rad.glow[0],st.rad.glow[1],st.rad.glow[2]);
  document.getElementById('hud-glow').textContent=(glowMaxOutsideCore(st.cst,st.L.glow_radius)*tint).toFixed(3);
- // The core's visible fraction: the shader's 13 weighted taps, from the same rectangles.
+ // The core's visible fraction: the shader's 25 weighted taps, from the same rectangles.
  const rects=stationRects(),s=sunG();let v=0;CORE_TAPS.forEach(([x,y,w])=>{if(!covered(s[0]+x*st.R,s[1]+y*st.R,rects))v+=w;});
  document.getElementById('hud-vis').textContent=v.toFixed(2);
  document.getElementById('hud-bloom').textContent=usePost?val('bloom').toFixed(2):'n/a (no float target)';

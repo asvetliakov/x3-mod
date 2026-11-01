@@ -268,19 +268,20 @@ class OwnSunHost(unittest.TestCase):
         self.assertLess(float(seam['summed']), 1e-4)
 
     def test_core_visibility_taps(self):
-        # Review F1 of step 1b: 13 taps (the centre, six at 0.45 and six at 0.9 core radii) weighted 1 - 0.1 rho^2 and
-        # normalised, so one tap changes the burst by at most about 8 % (5 equal taps: 20 %).
+        # 25 taps (the centre and eight each at 0.35, 0.65 and 0.9 core radii) weighted 1 - 0.1 rho^2 and normalised, so
+        # one tap changes the burst by at most about 4 % (step 1b's 13 taps: 8 %; 5 equal taps: 20 %).
         text = (ROOT / 'src/effects/own_sun_ps.hlsl').read_text()
         block = text[text.index('const float visible = '):]
         block = block[:block.index(';')]
-        centre, inner, outer = map(float, re.findall(r'(\d\.\d{7})', block))
-        self.assertAlmostEqual(centre + 6 * inner + 6 * outer, 1., places=5)
-        self.assertAlmostEqual(inner / centre, 1 - .1 * .45 ** 2, places=5)
-        self.assertAlmostEqual(outer / centre, 1 - .1 * .9 ** 2, places=5)
-        self.assertLess(max(centre, inner, outer), .085)
+        centre, inner, middle, outer = map(float, re.findall(r'(\d\.\d{7})', block))
+        self.assertAlmostEqual(centre + 8 * (inner + middle + outer), 1., places=5)
+        for weight, rho in ((inner, .35), (middle, .65), (outer, .9)):
+            self.assertAlmostEqual(weight / centre, 1 - .1 * rho ** 2, places=5)
+        self.assertLessEqual(max(centre, inner, middle, outer), .045)                  # the largest single-tap step
         offsets = [tuple(map(float, m)) for m in re.findall(r'lane\(c \+ float2\((-?\d\.\d+), (-?\d\.\d+)\) \* core_taps\.zw\)', text)]
-        self.assertEqual(len(offsets), 12)
-        self.assertEqual(sorted(round(math.hypot(x, y), 4) for x, y in offsets), [.45] * 6 + [.9] * 6)
+        self.assertEqual(len(offsets) + 1, 25)
+        self.assertEqual(sorted(round(math.hypot(x, y), 4) for x, y in offsets), [.35] * 8 + [.65] * 8 + [.9] * 8)
+        self.assertEqual(len({(round(x, 4), round(y, 4)) for x, y in offsets}), 24)
         self.assertEqual(text.count('sentinel(lane(c)).x'), 1)
 
     def test_probe_answer(self):
@@ -343,7 +344,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertIn('constexpr unsigned pixel_registers = 10;', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         native = json.loads((ROOT / 'verification/results/own-sun-pass/native/result.json').read_text())
         self.assertTrue(native['passed'])
-        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 200)  # step 1b review budget
+        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 250)  # the 25-tap core budget
         self.assertEqual({r['program']: (r['words'], r['end'], len(r['messages'])) for r in native['programs']},
                          {'own_sun_vs': (len(vs), '00000000', 0), 'own_sun_ps': (len(ps), '00000000', 0)})
 

@@ -112,7 +112,16 @@ class OwnSunLab(unittest.TestCase):
         glsl = section(self.text, 'const SCENE=`', '}`;')
         for literal in sorted(literals):
             self.assertIn(literal.lstrip('-'), glsl, literal)
-        self.assertEqual(len(re.findall(r'vec3\(-?0\.\d{7},-?0\.\d{7},0\.07\d{5}\)', glsl)), 12)   # the 12 ring taps
+        self.assertEqual(len(re.findall(r'vec3\(-?0\.\d{7},-?0\.\d{7},0\.0[34]\d{5}\)', glsl)), 24)  # the 24 ring taps
+        # The HUD's CORE_TAPS: the program's 25 offsets and weights (the centre first), the same set.
+        block = hlsl[hlsl.index('const float2 c = core_taps.xy;'):]
+        block = block[:block.index('// weight / sum')]
+        weights = [float(w) for w in re.findall(r'(\d\.\d{7})', block[block.index('const float visible'):])]
+        rings = [tuple(map(float, m)) + (weights[1 + i // 8],) for i, m in enumerate(
+            re.findall(r'float2\((-?\d\.\d+), (-?\d\.\d+)\) \* core_taps\.zw', block))]
+        table = section(self.text, 'const CORE_TAPS=', '];')
+        js = [tuple(map(float, m)) for m in re.findall(r'\[(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)\]', table)]
+        self.assertEqual(js, [(0., 0., weights[0])] + rings)
         law = section(self.text, '/* @law_js */', '/* @end_law_js */')                # the CPU mirror: hashes, arctangent
         for literal in ('0.6180340', '0.7548777', '0.31', '0.85', '0.0134804', '0.0574773', '0.1212391', '0.1956359',
                         '0.3329946', '0.9999956', '1.57079633', '3.14159265'):
