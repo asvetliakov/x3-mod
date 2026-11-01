@@ -867,3 +867,46 @@ and the glow next to the core brighter so the core does not stand out (reference
 region). In progress on a fresh implementer.
 
 **Own sun tuning lab (2026-11-02).** `tools/effects/own_sun_lab.html`, the law in WebGL2 with defaults generated from `own_sun_core.h` ([own-sun-look.md, "The tuning lab"](../architecture/own-sun-look.md#the-tuning-lab)); `test_own_sun_lab` (5 tests): `--check` PASS; the page JS law under node against the C++ reference at 1, 2, 3, 6 R over six angles and two suns plus three core/clipped pixels (51 points): worst |JS − C++| 2.7e-7 (asserted < 1e-4); HUD glow max 0.7811 (polar scan) against the reference field scan 0.7798 at 0.02 R (white, K = 2; glow_meter.py 0.781).
+## 2026-11-02: Own sun step 1d — host evidence (on main `02122991`; not flown)
+
+The four Run221 items as constants ([own-sun-look.md, "Step 1d"](../architecture/own-sun-look.md)): eleven spokes at
+offset 0.125 (>= 4.09 deg off the screen axes, no opposite pair), lengths `13 (0.15 + 0.85 frac(0.618034 k + 0.3))`
+beyond the core's edge (2.04-12.09 R, tips <= 13.1 R) with the along-profile starting at the core's edge (`ray_start`
+1, c9.x), strengths `0.6 + 0.6 h2` (0.64-1.12); corona 0.9 at sigma 1.05; halo half at 4.2, window and quad 17; new
+`core_gain` 0.72 on the core term only. Ray gain, width floor, two-spoke sum, taps, settings unchanged.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS (measured) |
+| `generate_own_sun_programs.py` (regenerated), then `--check` | PASS; ps 922 words (946 before), vs 43 unchanged (measured) |
+| Native validator ([result](../../verification/results/own-sun-pass/native/result.json)) | vs 2 slots, ps 178 slots (184 before); `end=00000000`, 0 messages each (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_config_schema | 99 tests, 0 failing (measured) |
+| CPU side, `cpu_cost.py` | median 40.3 ns per frame (37.8 before; one multiply more, within run spread 38.6-45.3) (measured) |
+| `glow_meter.py` | glow max outside the core 0.813 at 1440 rows, 0.826 at 768 (corona 0.363, halo 0.282, rays 0.167 / 0.181); between spokes 0.675, 0.381, 0.262, 0.187, 0.076, 0.028, 0.008 at 1, 1.5, 2, 3, 6, 9, 12 R; 5120x1440: 0 tiles at the K-2.25 luminance, 1-4 above engine 1, 9-12 lit (0.49-0.65 %); 1280x768: 0, 1-4, 45-52 lit (1.17-1.35 %); brightest sun tile L 2.23 (the core, 1.44 engine) -> `ev_limit` +2.72 EV, a glow tile >= +3.87 EV, both above the +1.3 EV cap; quad 0.35 / 0.10 Mpx (measured, offline) |
+| `law_checks.py` (N = 11) | arctangent 3.46e-6 rad; nearest spoke to an axis 0.125 spoke = 4.09 deg; nearest pair to opposite 0.5 spoke; seam 0.0110 with the nearest spoke alone, 0 summed; width 3.46 px at 1440 rows; tap weights sum 1.00000, largest step 8.1 % (measured, offline) |
+| `own_sun_host field` / `seam` (1440 rows, step 0.02) | glow_max 0.81258, hue error 0, no rise outward, asymmetry 3.1e-7; every ray's peak = 0.15 x strength at the core's edge; two-spoke seam 5.3e-5 (measured) |
+| `ray_visibility.py` (contrast model, ray >= 10 % of corona + halo) | step 1c: 4 of 6 rays visible (reach 0, 4.4, 6.9, 0, 8.0, 7.7 R: Run221's X); step 1d: 11 of 11 (2.0-10.9 R) (inferred) |
+
+Display at the +1.3 EV cap (AgX table, inferred): core 0.95 (1c 0.98), 1 R 0.79 (0.82), 1.5 R 0.59 (about 0.69), 6 R
+0.09 (1c 0.23): the visible glow ends near 6 R instead of 9 R. Item 4 as specified leaves the core-to-1 R display step at
+0.16 (narrower corona offsets the higher gain); the note records what would close it. GPU cost (inferred): 0.35 Mpx x
+178 slots x 0.136 ps = 8.5 us at 5120x1440. Flight: the Run221 comparison (two F8 pairs, Ctrl+Shift+F9) and the
+`own_sun_frame ev=/ev_limit=` kill rule.
+
+### Own sun step 1d — item 4 follow-up (2026-11-02; on `4413eada`; not flown)
+
+The first pass (`corona_gain` 0.9) left the core-to-1 R display step at 0.16. Now `corona_gain` 2.15 (sigma 1.05 kept)
+and `core_inner` 0.4. New cap rule replacing "glow < 1.0 engine outside the core": every pixel under engine 2.25 (the
+K-2.25 luminance 5.96) and the worst sun tile's `ev_limit` >= +1.3 EV; `glow_meter.py` prints PASS/FAIL for it.
+Program bytecode unchanged (ps sha `e0e5b5c3…`, 922 words; only the provenance record's source hash moved for a comment),
+so the validator result stands (178 slots, 0 messages).
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`), `check_no_x87.py` | 0 warnings each, PASS (measured) |
+| `generate_own_sun_programs.py --check` | PASS (measured) |
+| Host modules (the five) | 99 tests, 0 failing (measured) |
+| `own_sun_host field` (1440 rows) | glow_max 1.31720, hue error 0, no rise outward; two-spoke seam 5.6e-5 (measured) |
+| `glow_meter.py` | glow max outside the core 1.317 (1440) / 1.331 (768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R; brightest pixel 1.64 / 1.67 engine (inside the soft edge, core 1.44); 0 tiles at the K-2.25 luminance; lit 9-12 (5120x1440), 45-52 (1280x768); worst sun tile `ev_limit` +2.30 EV (5120x1440), +2.24 EV (1280x768); cap rule PASS at both (measured, offline) |
+| Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) |

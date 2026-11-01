@@ -1,18 +1,20 @@
-// Own sun (docs/architecture/own-sun-pass.md sections 2-4 and 14; the look: docs/architecture/own-sun-look.md, step 1c):
+// Own sun (docs/architecture/own-sun-pass.md sections 2-4 and 14; the look: docs/architecture/own-sun-look.md, steps 1c and 1d):
 // the pixel program of the stage's one quad, ONE/ONE into the FP16 scene after the fog pass and before the TAA resolve.
-// A small hot core in a dominant soft glow with six soft rays. p = the pixel's offset from the sun in core radii (the
-// quad reaches 24 to each side), r = |p|, theta = atan2(p.y, p.x):
+// A small hot core in a dominant soft glow with eleven soft rays. p = the pixel's offset from the sun in core radii (the
+// quad reaches 17 to each side), r = |p|, theta = atan2(p.y, p.x):
 //   core    D(r) = 1 - smoothstep(c3.w, 1, r), colour c3 (above the bloom threshold, under the meter's guard)
-//   glow    tint c4 x [ corona + halo + rays ], every term under 1.0 engine at K = 2 (0.781 at most outside the core;
-//           kept for the exposure meter's guard and for AgX contrast at the core's edge), behind the core:
+//   glow    tint c4 x [ corona + halo + rays ], up to about 1.33 engine at K = 2 next to the core and under the
+//           meter's guard (engine 2.25) everywhere (glow_meter.py), behind the core:
 //   corona  A_c exp(-(r / sigma_c)^2)                                    (c5.x, c8.x = log2 e / sigma_c^2)
 //   halo    A_h / (1 + (r / rho_h)^2) x W(r), W(r) = saturate(1 - (r / R_g)^2)^2: a Lorentzian tail, zero at the window
-//   rays    N = 6 spokes; t = theta N / 2 pi + offset, spoke k = floor(t + 0.5) mod N, a = t - floor(t + 0.5); per spoke the
-//           hash h1 = frac(k (0.6180340 + 0.1547 k)) sets the length L_k = L_max (0.25 + 0.75 h1^2) and
-//           h2 = frac(k 0.7548777 + 0.31) the strength 0.6 + 0.4 h2; across the spoke a Gaussian of the perpendicular
-//           distance r (2 pi a / N) with sigma = max(3 px, 0.2 R) (no taper: nothing sub-pixel under the TAA jitter),
-//           along it exp(-r / L_k) saturate(1 - r / L_k)^2. The two nearest spokes are summed (the nearest and its
-//           neighbour on the pixel's side), continuous across a spoke boundary. Screen-fixed: no time or roll term.
+//   rays    N = 11 spokes; t = theta N / 2 pi + offset, spoke k = floor(t + 0.5) mod N, a = t - floor(t + 0.5); per spoke
+//           the hash h1 = frac(0.6180340 k + 0.3) (golden-ratio steps: evenly spread) sets the length
+//           L_k = L_max (0.15 + 0.85 h1) beyond the start r_0 (the core's edge, c9.x) and h2 = frac(k 0.7548777 + 0.31) the
+//           strength 0.6 + 0.6 h2; across the spoke a Gaussian of the perpendicular distance r (2 pi a / N) with
+//           sigma = max(3 px, 0.2 R) (no taper: nothing sub-pixel under the TAA jitter), along it exp(-s) saturate(1 - s)^2,
+//           s = max(r - r_0, 0) / L_k, so a short ray leaves the core at full strength. The two nearest spokes are summed
+//           (the nearest and its neighbour on the pixel's side), continuous across a spoke boundary. Screen-fixed: no
+//           time or roll term.
 //   radiance = lerp(glow, core, D) x open x (D + (1 - D) x visible)
 //   open    = the nine taps (the fragment and the eight knight moves) of the scene depth lane (RT2 at s0, point sampled)
 //             whose .r < 0 (the route's sentinel), / 9: the per-pixel clip over the whole quad, glow and rays included
@@ -27,13 +29,13 @@ sampler2D lane_sampler : register(s0);
 float4 texel : register(c0);     // 1/W, 1/H of the lane (the target's size), unused x2
 float4 knight_d : register(c1);  // 2/W, 1/H, 1/W, 2/H: the knight offsets (+2, +1) and (+1, +2) as lane uv
 float4 knight_w : register(c2);  // -2/W, 1/H, -1/W, 2/H: the knight offsets (-2, +1) and (-1, +2)
-float4 core_rgb : register(c3);  // K lerp(c / m, 1, 0.25) m T, the core's inner edge (core radii)
+float4 core_rgb : register(c3);  // K 0.72 lerp(c / m, 1, 0.25) m T, the core's inner edge (core radii)
 float4 glow_rgb : register(c4);  // c T K / K_default, unused
 float4 amplitude : register(c5); // A_c, A_h, A_r x sun_rays, unused
 float4 core_taps : register(c6); // the core's centre (lane uv, jittered), the core radius as lane uv (x, y)
 float4 spokes : register(c7);    // N / 2 pi, the spokes' offset (spoke units), L_max, (2 pi / N) sqrt(log2 e) / sigma
 float4 extent : register(c8);    // log2 e / sigma_c^2, 1 / rho_h^2, log2 e, 1 / R_g (core radii): exp folded to exp2
-float4 counts : register(c9);    // unused, N, 1 / N, unused
+float4 counts : register(c9);    // the rays' start r_0 (core radii), N, 1 / N, unused
 struct Input {
     float2 local : TEXCOORD0; // offset from the sun's centre in core radii
     float2 pixel : VPOS;
@@ -49,12 +51,12 @@ float4 sentinel(float4 v) {
 // One spoke's ray at radius r, `across` spoke units from its axis (the index wraps modulo N for the hash).
 float spoke(float index, float across, float r) {
     const float k = index - counts.y * floor(index * counts.z);
-    const float h1 = frac(k * (0.6180340 + k * 0.1547));
+    const float h1 = frac(k * 0.6180340 + 0.3);
     const float h2 = frac(k * 0.7548777 + 0.31);
-    const float along = r / (spokes.z * (0.25 + 0.75 * h1 * h1));
+    const float along = max(r - counts.x, 0) / (spokes.z * (0.15 + 0.85 * h1));
     const float fade = saturate(1 - along);
     const float perpendicular = r * across * spokes.w;
-    return (0.6 + 0.4 * h2) * exp2(-perpendicular * perpendicular - along * extent.z) * fade * fade;
+    return (0.6 + 0.6 * h2) * exp2(-perpendicular * perpendicular - along * extent.z) * fade * fade;
 }
 float4 main(Input i) : COLOR {
     const float2 base = (i.pixel + 0.5) * texel.xy;

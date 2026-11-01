@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline checks of the own sun's ray law (step 1c since 2026-11-02: six soft rays, own-sun-look.md) (src/effects/own_sun_ps.hlsl, constants from src/proxy/own_sun_core.h;
+"""Offline checks of the own sun's ray law (step 1d since 2026-11-02: eleven soft rays from the core's edge, own-sun-look.md) (src/effects/own_sun_ps.hlsl, constants from src/proxy/own_sun_core.h;
 adapted from the step-1b review's checks): the minimax arctangent's error against numpy's (in radians and spoke units),
 the hashed ray lengths and strengths per spoke, the seam a pixel sees at a spoke boundary with the nearest spoke alone
 (step 1b as first built) and with the two nearest spokes summed (the review fix), and the core-visibility tap weights.
@@ -21,7 +21,7 @@ def constant(name):
 
 
 N = int(constant('ray_count'))
-L_MAX, OFFSET, GAIN = constant('ray_length'), constant('ray_offset'), constant('ray_gain')
+L_MAX, OFFSET, GAIN, START = constant('ray_length'), constant('ray_offset'), constant('ray_gain'), constant('ray_start')
 SIGMA, SIGMA_MIN_PX, RADIUS_U = constant('ray_sigma'), constant('ray_sigma_min_px'), constant('radius_default_u')
 CORONA_GAIN, CORONA_SIGMA = constant('corona_gain'), constant('corona_sigma')
 ROWS = 1440  # the user's screen height: the ray width floor depends on the core's pixel radius
@@ -36,16 +36,16 @@ def atan_poly(u):
 
 
 def hashes(k):
-    return (k * (0.6180340 + k * 0.1547)) % 1.0, (k * 0.7548777 + 0.31) % 1.0
+    return (k * 0.6180340 + 0.3) % 1.0, (k * 0.7548777 + 0.31) % 1.0
 
 
 def spoke(r, k, across):
     k = k % N
     h1, h2 = hashes(k)
-    along = r / (L_MAX * (0.25 + 0.75 * h1 * h1))
+    along = max(r - START, 0.) / (L_MAX * (0.15 + 0.85 * h1))
     fade = min(1., max(0., 1 - along))
     perpendicular = r * across * (2 * math.pi / N) / W0
-    return (0.6 + 0.4 * h2) * math.exp(-perpendicular * perpendicular - along) * fade * fade
+    return (0.6 + 0.6 * h2) * math.exp(-perpendicular * perpendicular - along) * fade * fade
 
 
 def core_weight(r):
@@ -58,8 +58,13 @@ def main():
     u = np.linspace(0, 1, 200001)
     error = np.abs(atan_poly(u) - np.arctan(u))
     print('atan: max error %.2e rad at u %.4f = %.2e spoke units' % (error.max(), u[error.argmax()], error.max() * N / (2 * math.pi)))
-    print('spokes (k: length core radii, strength):', ', '.join('%d: %.2f, %.2f' % (k, L_MAX * (0.25 + 0.75 * hashes(k)[0] ** 2),
-                                                                                    0.6 + 0.4 * hashes(k)[1]) for k in range(N)))
+    print('spokes (k: angle deg, length beyond the core edge, strength):', ', '.join(
+        '%d: %.1f, %.2f, %.2f' % (k, (k - OFFSET) * 360 / N, L_MAX * (0.15 + 0.85 * hashes(k)[0]), 0.6 + 0.6 * hashes(k)[1])
+        for k in range(N)))
+    axis = min(abs(((k - OFFSET) * 4 / N + .5) % 1 - .5) * N / 4 for k in range(N))  # spoke units to the nearest axis
+    opposite = min(abs(((a - b) / N) % 1 - .5) * N for a in range(N) for b in range(N) if a != b)
+    print('nearest spoke to a screen axis %.3f spoke units = %.2f deg; nearest pair to opposite %.3f spoke units'
+          % (axis, axis * 360 / N, opposite))
     single, summed = (0., None), (0., None)
     for r in np.linspace(CORE_INNER, GLOW_RADIUS, 2000):
         outside = 1 - core_weight(r)

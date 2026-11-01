@@ -8,7 +8,54 @@ Inputs: [the survey](../reference/sun-rendering-survey.md) and its five recommen
 in a wide soft glow; a sunburst over a soft halo) and the vanilla FL sun (a soft glow with ghost rings, no visible rays
 out of fog, faint radial rays in fog). Figures are [M] measured (offline script or code) or [I] inferred. Implemented as
 step 1c on 2026-11-02 (not flown; [own-sun-pass.md §14](own-sun-pass.md), the ledger section "Own sun step 1c — host
-evidence"): ps_3_0 184 slots, the glow maximum 0.781 [M].
+evidence"): ps_3_0 184 slots, the glow maximum 0.781 [M]. Tuned as step 1d after Run221 (section "Step 1d" below; the constants
+there supersede the step 1c table).
+
+## Step 1d: tuning after Run221
+
+Run221 (step 1c, flown 2026-11-02): "close!", with four items. Step 1d changes constants in `src/proxy/own_sun_core.h`
+and, where the hash or the spoke arithmetic is baked into `src/effects/own_sun_ps.hlsl`, the program (regenerated: ps
+922 words, 178 slots, native validator 0 messages [M]). The step 1c table below stays as the design record; where they
+differ, this table is current.
+
+| Item (user) | Name | Step 1c | Step 1d |
+| --- | --- | --- | --- |
+| 1. "4 rays like an X, same length" | `ray_count` | 6 | **11** (odd: no two spokes opposite, no line through the sun) |
+| | `ray_offset` | 0.25 | **0.125** spoke units: every spoke >= 4.09 deg off the screen axes, the most N = 11 allows (4 offset must be a half-integer); the four nearest-axis spokes are the short ones (2.0-5.3 R) |
+| | length hash (program) | `L_max (0.25 + 0.75 h1^2)`, `h1 = frac(k (0.618034 + 0.1547 k))` | **`L_max (0.15 + 0.85 h1)`, `h1 = frac(0.618034 k + 0.3)`** (golden-ratio steps: evenly spread) |
+| | along-profile start (`ray_start`, c9.x) | r = 0 (the centre) | **r = 1** (the core's edge): `a = max(r - 1, 0) / L_k`, so a short ray leaves the core at full strength |
+| | `ray_length` | 14 from the centre | **13 beyond the core's edge**: lengths 5.27, 12.09, 7.87, 3.65, 10.48, 6.26, 2.04, 8.87, 4.65, 11.48, 7.26 R, every tip within 14 R [M] |
+| | strength hash (program) | `0.6 + 0.4 h2` | **`0.6 + 0.6 h2`**: 0.79, 0.64, 1.09, 0.94, 0.80, 0.65, 1.10, 0.96, 0.81, 0.66, 1.12 (never below 0.6 of `ray_gain`) [M] |
+| | `ray_gain`, width, two-spoke sum | 0.15, max(3 px, 0.2 R), yes | **unchanged** |
+| 2. Halo/blob radius down ~30 % | `corona_sigma` | 1.5 | **1.05** |
+| | `halo_radius` | 6 | **4.2** |
+| | `glow_radius` (window, quad half extent) | 24 | **17** (quad 588 x 588 px = 0.35 Mpx at 5120x1440, 313 px = 0.10 Mpx at 1280x768 [M]); longest ray tip 13.1 R |
+| 3. Core 25-30 % dimmer | `core_gain` (new, core term only) | (1) | **0.72**: white core 1.44 engine at K = 2; `sun_disc_radiance` still scales core and glow together; `white_mix` 0.25 |
+| 4. Core must not stand out | `corona_gain` | 0.6 | **2.15** (0.868 at 1 R; first pass 0.9 left the edge step unchanged, see below) |
+| | `core_inner` | 0.6 | **0.4** (the core's soft edge 0.4 -> 1 R, was 0.6 -> 1 R) |
+| | glow cap | glow < 1.0 engine outside the core | **every pixel < engine 2.25** (the meter's guard, K-2.25 luminance 5.96) **and the worst sun tile's `ev_limit` >= +1.3 EV**, checked by `glow_meter.py` |
+
+Why the rays vanished (item 1). With `exp(-r/L) saturate(1 - r/L)^2` from the centre, a ray of L = 3.5-4.1 R is at
+<= 0.38 of its strength at the core's edge, where the corona and halo are brightest; a ray / (corona + halo) >= 10 %
+contrast model gives Run221's step 1c spokes visible reaches of 0, 4.4, 6.9, 0, 8.0, 7.7 R: exactly four rays, the X
+the user saw [I, `verification/results/own-sun-pass/ray_visibility.py`]. Raising only the count and the spread leaves rays under ~4 R invisible at
+any gain up to 1.2 (the profile, not the gain, is the limit), so the along-profile now starts at the core's edge. Step
+1d's visible reaches at 1440 rows: 3.8, 11.0, 6.7, 2.9, 9.2, 4.3, 2.0, 7.6, 3.4, 10.2, 6.1 R [I, same model, `glow_meter.py`].
+
+Item 4 in two passes. With `corona_gain` 0.9 at sigma 1.05 (the first pass) the narrower corona offset the higher
+gain: glow 0.675 at 1 R, 0.381 at 1.5 R, a core-to-1 R display step of 0.16 as in step 1c, and under the old 1.0 guard
+the glow at 1 R could not exceed about 0.82. The second pass lifts the cap to the meter's real limit and widens the core's
+edge: `corona_gain` 2.15 (sigma kept at 1.05: the halo, not the corona, sets the 6 R fade) and `core_inner` 0.4.
+
+Figures at K = 2, white, fog T = 1 [M, `glow_meter.py`, `own_sun_host field`]: glow max outside the core 1.317 at 1440
+rows (1.331 at 768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R (1.253, 0.573, 0.302, 0.187,
+0.076 at 768); monotone outward from 1 R, hue kept exactly. Display at the +1.3 EV cap [I, AgX table]: core 0.95, 1 R
+0.92 (step 1c 0.82), 1.5 R 0.72, 2 R 0.49, 4 R 0.23, 6 R 0.09: the core's edge is within 0.03 of the core and the
+visible glow ends near 6 R (1c: 9 R). Inside the soft edge (0.4-1 R) the glow exceeds the core: the brightest pixel is
+1.64 engine at 1440 rows, 1.67 at 768 (core 1.44), a ring of at most +0.23 engine, about +0.01 display at the cap [I].
+Meter: 0 tiles at the K-2.25 luminance at either resolution; lit tiles 9-12 at 5120x1440 (1c 20-24), 45-52 at 1280x768
+(1c 96-100); worst sun tile L 2.97 -> `ev_limit` +2.30 EV at 5120x1440, L 3.10 -> +2.24 EV at 1280x768; a glow tile
+>= +2.97 EV; cap rule PASS at both.
 
 ## Decision
 
