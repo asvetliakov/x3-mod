@@ -705,3 +705,24 @@ without (fixture, not game FPS). Host tests: `test_fl_*` 10 modules 60 tests OK 
 `test_fog*` 27 modules 235 OK (2 skips), `test_sector*` 1 module 4 OK. Fogged FL sectors
 (`fogged_sectors.py` → `fogged_sectors.txt`): 298 sectors, 48 with dust, all in 11 compiled fog families.
 Expected in game: the note's "Expected rows"; not flown.
+
+Review fixes (2026-11-01, rebased onto main `600a15ff`; measured). F1: the FL edition's `fog_card_match.h`
+admits X3FL.exe's second exact card pair `ececc28e00592d35/214fc10d3672ab92` and treats both pixel programs as
+card sources and latch signals; AP keeps its single pair. Offline inventory
+(`python3 verification/results/fl-port/sector-background/fog_card_pairs.py` → `fog_card_pairs.txt`, through
+`fl-shader-coverage/inventory.py`'s `effective_programs` over `/mnt/c/X3FL` and `/mnt/c/X3AP-orig`, 2,352 effects
+each): `vs_ececc28e00592d35` 128 DWORDs and `ps_214fc10d3672ab92` 76 DWORDs, both SM1.1, paired in 48 effects
+(`nebulafog_0000`, `nebulafog_0001`); the AP pair in 48 (`nebulafog`, `nebulafog2s`); all four programs are also in
+AP's resolved set. `test_fog_cards.py` compiles the matcher as both editions. AP objects: 119 of 121 identical to
+main `600a15ff` built in this worktree (`ap_object_compare.sh` → `ap_object_compare.json`; `config.cpp`,
+`proxy_identity.cpp`), `motion_output.cpp.obj` included. Reviewer's independent figure (not re-measured here):
+135 of 138 objects identical after `objcopy --strip-debug`, `capture.cpp.obj` identical in disassembly, sections and
+relocations, differing only in 8 compiler-numbered local symbol names. AP-address scan of the fl DLL: 22 reachable
+functions; the two new ones (`set_pixel_shader`, `set_vertex_shader`) hold `0x00592d35`, the low word of the FL VS
+hash `ececc28e00592d35`, not an address. F5: the fixture adds ReadFailure (sector and table on an uncommitted
+page), Malformed (registry, cockpit, table misaligned; capacity 12), Limit (33 links) and BadFog (near > far,
+far > 2e9, near 0): `RESULT PASS checks=133 failures=0`, anchors as before, TIMING 2.66 µs / 2.05 µs. F4:
+`test_sector_background.py` also builds the extracted production wrapper with `X3M_EDITION_FL=1` against a double
+of the FL provider's contract (`checks=22 failures=0` both editions); the FL layout itself stays covered by the
+native fixture. Builds fl/ap 0 warnings (`-j4`); `generate.py --check` PASS (292 settings); `test_fl_*` OK
+(4 skips), `test_sector*` 4 OK, `test_fog_cards` + `test_volumetric_fog` 23 OK, `test_config*` OK.

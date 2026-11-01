@@ -375,6 +375,52 @@ int main() {
     expect(take(), sb::Status::Cycle, "link cycle");
     put(link_ours + 0, std::uint32_t(0));
     put(link_ours + 4, handle);
+    // An unreadable pointer mid-chain (a reserved, uncommitted page as the sector): no fault, ReadFailure.
+    {
+        void* reserved = VirtualAlloc(nullptr, 0x1000, MEM_RESERVE, PAGE_NOACCESS);
+        check(reserved != nullptr, "reserved page");
+        put(cockpit + 0x54, std::uint32_t(std::uintptr_t(reserved)));
+        expect(take(), sb::Status::ReadFailure, "sector on an uncommitted page");
+        put(cockpit + 0x54, sector);
+        put(slot(fsb::background_table_slot_rva), std::uint32_t(std::uintptr_t(reserved)));
+        expect(take(), sb::Status::ReadFailure, "table on an uncommitted page");
+        put(slot(fsb::background_table_slot_rva), table);
+    }
+    // Misaligned pointers: Malformed.
+    put(slot(fsb::cockpit_registry_slot_rva), registry + 1);
+    expect(take(), sb::Status::Malformed, "misaligned registry");
+    put(slot(fsb::cockpit_registry_slot_rva), registry);
+    put(link_ours + 8, cockpit + 2);
+    expect(take(), sb::Status::Malformed, "misaligned cockpit");
+    put(link_ours + 8, cockpit);
+    put(map_header + 4, std::uint32_t(12));
+    expect(take(), sb::Status::Malformed, "capacity not a power of two");
+    put(map_header + 4, capacity);
+    put(slot(fsb::background_table_slot_rva), table + 2);
+    expect(take(), sb::Status::Malformed, "misaligned table");
+    put(slot(fsb::background_table_slot_rva), table);
+    // 33 distinct links without the key: Limit (the walk examines at most 32).
+    {
+        const std::uint32_t first = alloc(12 * 33);
+        for (std::uint32_t i = 0; i < 33; ++i) {
+            put(first + 12 * i + 0, i + 1 < 33 ? first + 12 * (i + 1) : std::uint32_t(0));
+            put(first + 12 * i + 4, handle + capacity * (i + 1));
+            put(first + 12 * i + 8, std::uint32_t(0));
+        }
+        put(buckets + 4 * ((capacity - 1) & handle), first);
+        expect(take(), sb::Status::Limit, "33-link chain");
+        put(buckets + 4 * ((capacity - 1) & handle), link_other);
+    }
+    // Fog bounds: near > far, far > 2e9, near 0 with far set.
+    put(r + 0x104, std::int32_t(20000000));
+    expect(take(), sb::Status::BadFog, "near > far");
+    put(r + 0x104, std::int32_t(1500000));
+    put(r + 0x108, std::int32_t(2000000001));
+    expect(take(), sb::Status::BadFog, "far > 2e9");
+    put(r + 0x104, std::int32_t(0));
+    expect(take(), sb::Status::BadFog, "near 0, far set");
+    put(r + 0x104, std::int32_t(1500000));
+    put(r + 0x108, std::int32_t(18500000));
     expect(take(), sb::Status::Ready, "ready again");
     // 10. Cost of one production sample (Ready, docked walk on, name at the page end), rows not due.
     {

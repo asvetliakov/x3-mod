@@ -15,6 +15,15 @@ without one), inside capture.cpp's existing device-call boundary, the same chain
 `+0x270`; `[config slot]+0x758` view distance; the `cockpit+0xc` ref-object anchor and, with `--fog-docked`,
 the bounded parent walk. All four slots are re-read every sample; nothing but value copies is retained.
 
+**When.** The first BeginScene of X3FL.exe's frame is `call [ecx+0xa4]` at RVA `0x8b859`, inside the render pass
+`0x8b6d0..0x8be31`, which the main loop calls at `0x782cf` right after the cockpit update `0x782ca` (whose fog
+copy refreshes the sector camera's `+0x36c/+0x370`), but before the pass's per-view camera activation. This
+deviates from [FL sector fog §6.4](../reverse-engineering/fl/sector-fog.md#64-mutability-and-the-fl-read-window-question-4)'s
+"at or after the main camera activation". It is acceptable because the camera activation writes nothing the
+sample reads, and a sample that is stale against this frame's row fails the raw camera comparison (the copy sets
+`+0x270 |= 0x10000` unconditionally, so `camera_check` is always evaluated) and is refused for that frame as
+`camera_mismatch`: no fog for one frame, never the wrong fog.
+
 **Differences from AP.** The slots are `fl::module_base()` + RVA `0x1a82e4` (registry), `0x1a83d0` (table),
 `0x1a8338` (count), `0x1a83b0` (config) from the generated
 [`sector_background_fl_inc.h`](../../src/engine/fl/sector_background_fl_inc.h); the view distance is
@@ -25,6 +34,16 @@ generated anchors (1,112 bytes, 27 relocated operand words recomputed for the li
 process. The layout is a type parameter (`ApLayout` / `FlLayout`), so the AP objects are byte-identical.
 Unchanged and still AP-only: the R3 transit prefill (`fog_prefill_poll`, AP list layout, refused on FL by the
 constant `object_trace::executable_verified()`); FL fog cold-starts at the first Ready sample after a transit.
+`volumetric_fog_handover_mode … prefill=1` is still logged on FL (the setting's value); the poll does nothing there.
+
+**Fog cards.** X3FL.exe draws its nebula fog cards with two exact program pairs: the AP pair
+`7b6393fe2d3e1d85/f7e0b6647a3bfa62` (`nebulafog`, `nebulafog2s`) and `ececc28e00592d35/214fc10d3672ab92`
+(`nebulafog_0000`, `nebulafog_0001`), [FL fog cards §1, §3.2](../reverse-engineering/fl/fog-cards.md), confirmed by
+the offline inventory ([`fog_card_pairs.py`](../../verification/results/fl-port/sector-background/fog_card_pairs.py),
+[output](../../verification/results/fl-port/sector-background/fog_card_pairs.txt)). In the FL edition
+[`fog_card_match.h`](../../src/proxy/fog_card_match.h) treats both pixel programs as card sources (observed,
+masked under the medium or refused with a named gate) and admits only the two witnessed pairings. AP's resolved
+set holds the same programs, but AP keeps its captured single pair.
 
 **Expected rows (first flight).** Once: `fl.sector status=ready base=0x… registry_slot=<base+0x1a82e4>
 table_slot=<base+0x1a83d0> count_slot=<base+0x1a8338> config_slot=<base+0x1a83b0> view_distance=+0x758
@@ -33,14 +52,17 @@ status=ready sector=… class48=1 index=… count=110 name_valid=1 name="<family
 config758=… effective_far=… camera_check=match anchor_check=match walk=none`. With `sector_background=1`:
 `sector_background … status=ready … count=110 … name_valid=1 name="<family>" … camera_check=match …
 config768=<view distance> …`, replacing today's `status=foreign_executable`. In a fogged sector:
-`volumetric_fog_frame … applied=1 reason=ok … profile=<nonzero> … sun=fallback` (`sun=tracked` once the FL
-sun-light poll lands; `sun=none` is printed only for a skipped frame), dust motes and fog medium visible.
+`volumetric_fog_frame … applied=1 reason=ok … profile=<nonzero> … sun=tracked` (FL sun-light poll, run 12;
+`sun=fallback` when the poll refuses; `sun=none` is printed only for a skipped frame), dust motes and fog medium
+visible, and `volumetric_fog_cards … suppressed>0` while cards are on screen.
 
 **What a flight must show.** Start or load in a fogged sector and fly through one gate. Accept: `status=ready`
 on every in-flight sample, `name` and `index` change at the gate, `camera_check=match`, `count=110`,
 `volumetric_fog_frame applied=1` in the fogged sector and the fog visible. Wrong: `fl.sector
 status=anchor_mismatch failed=<anchor>` (a different X3FL.exe build), `status=executable_mismatch`,
-`camera_mismatch` (wrong row or index), `bad_index`/`bad_count` in flight, `name_valid=0` in flight.
+`camera_mismatch` (wrong row or index) on more than isolated frames, `bad_index`/`bad_count` in flight,
+`name_valid=0` in flight; stacked cards (native fog cards visible under the medium, or `volumetric_fog_cards …
+observed>0 suppressed=0` without a refusal reason).
 `no_cockpit`/`loading` on menus and load screens are expected. If the sector is `ready` but the fog row still
 says `reason=card_refused` or another gate, the `volumetric_fog_cards … refusal=` row names it (outside this step).
 Cost (fixture, measured, not game FPS): 2.8 µs per Ready sample with the docked walk and a 21-character name,

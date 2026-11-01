@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class SectorBackgroundTests(unittest.TestCase):
-    def compile_run(self, filename, fragment=False):
+    def compile_run(self, filename, fragment=False, defines=()):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory(prefix='x3-sector-background-') as directory:
@@ -21,7 +21,7 @@ class SectorBackgroundTests(unittest.TestCase):
                 (directory / 'sector_background_context_under_test_inc.h').write_text(
                     extract_function(source_text(ROOT / 'src/proxy/capture.cpp'), 'void sector_background_context('))
             exe = directory / 'host'
-            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', *defines,
                                     '-I', str(ROOT / 'src/proxy'), '-I', str(directory),
                                     str(ROOT / 'verification/probe' / filename), '-o', str(exe)], capture_output=True, text=True)
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
@@ -36,6 +36,9 @@ class SectorBackgroundTests(unittest.TestCase):
 
     def test_actual_wrapper_error_cadence_gate_and_zero_work_off(self):
         self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))  # 19 + the --fog-docked span (3)
+        # The same wrapper compiled as the FL edition: its FL branch through a double of the FL provider's contract.
+        self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True,
+                                                               defines=('-DX3M_EDITION_FL=1',)))
 
     def test_scene_boundary_standalone_and_reset_wiring(self):
         source = source_text(ROOT / 'src/proxy/capture.cpp')

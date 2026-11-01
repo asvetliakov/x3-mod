@@ -70,6 +70,20 @@ struct Device {
         }
     } motion_output;
 };
+#if X3M_EDITION_FL
+// FL edition (test_sector_background.py's second build): capture.cpp's FL branch calls the provider
+// (src/engine/fl/sector_background_fl.h). This double keeps the provider's contract over the same memory: false
+// without the gate, else one epoch and the shared reader (the FL layout itself: test_fl_sector_background.py).
+namespace fl::sector_background_fl {
+bool sample(sector_background::Sample& out, unsigned walk) {
+    if (!object_trace::executable_verified()) return false;
+    engine_memory::revalidate();
+    auto read = [](std::uintptr_t p, void* o, std::size_t n) { return engine_memory::read(p, o, n); };
+    out = sector_background::sample(read, walk);
+    return true;
+}
+}
+#endif
 #include "sector_background_context_under_test_inc.h"
 int main() {
     Device d;

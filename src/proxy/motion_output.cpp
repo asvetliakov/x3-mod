@@ -5090,9 +5090,9 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
-    shadow_.fog_card_source = fog_cards_replace_ && shadow_.ps_hash == renderer::fog_card_pixel_hash;
+    shadow_.fog_card_source = fog_cards_replace_ && fog_card_pixel(shadow_.ps_hash);
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
-    if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash)
+    if (fog_requested_ && fog_card_pixel(shadow_.ps_hash))
         fog_latch_.card(frame_); // the sector's nebulafog cards: the fog rule's latch
     shadow_.ps_sun_register = it->second.sun_register;
     shadow_.ps_major = it->second.major;

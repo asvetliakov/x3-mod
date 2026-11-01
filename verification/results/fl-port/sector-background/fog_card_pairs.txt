@@ -1,0 +1,7 @@
+effects fl=2352 ap=2352
+vs_7b6393fe2d3e1d85 fl=present model=1_1 dwords=128 basenames=['adeffects', 'adeffects2s', 'gui2d', 'nebula', 'nebula2s', 'nebulafog', 'nebulafog2s'] paths=136 ap=present
+ps_f7e0b6647a3bfa62 fl=present model=1_1 dwords=76 basenames=['nebulafog', 'nebulafog2s'] paths=48 ap=present
+vs_ececc28e00592d35 fl=present model=1_1 dwords=128 basenames=['adeffects_0000', 'adeffects_0001', 'gui2d_0000', 'gui2d_0001', 'nebula_0000', 'nebula_0001', 'nebulafog_0000', 'nebulafog_0001'] paths=160 ap=present
+ps_214fc10d3672ab92 fl=present model=1_1 dwords=76 basenames=['nebulafog_0000', 'nebulafog_0001'] paths=48 ap=present
+pair 7b6393fe2d3e1d85/f7e0b6647a3bfa62 effects=48 basenames=['nebulafog', 'nebulafog2s']
+pair ececc28e00592d35/214fc10d3672ab92 effects=48 basenames=['nebulafog_0000', 'nebulafog_0001']

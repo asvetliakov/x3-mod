@@ -3,8 +3,27 @@
 namespace x3m {
 // Captured run174/run180 card identity and D3D9 enum values. The production
 // translation unit asserts the enums against the SDK. Unknown (-1) refuses.
+// FL edition: X3FL.exe's effects nebulafog_0000/_0001 select a second exact pair, ececc28e00592d35 /
+// 214fc10d3672ab92 (fl/fog-cards.md sections 1 and 3.2; the offline inventory,
+// verification/results/fl-port/sector-background/fog_card_pairs.py): same shading tokens and bindings, same draw
+// and state gates. Both pixel programs are card sources and both witnessed pairings are admitted, never a mixed
+// one. AP's resolved set holds the same programs, but AP keeps its captured single pair (AP behaviour unchanged).
 constexpr bool fog_card_pair(std::uint64_t vs, std::uint64_t ps) noexcept {
+#if X3M_EDITION_FL
+    return (vs == 0x7b6393fe2d3e1d85ull && ps == 0xf7e0b6647a3bfa62ull) ||
+           (vs == 0xececc28e00592d35ull && ps == 0x214fc10d3672ab92ull);
+#else
     return vs == 0x7b6393fe2d3e1d85ull && ps == 0xf7e0b6647a3bfa62ull;
+#endif
+}
+// The card pixel programs: the source the card path observes (and refuses when its pair is not admitted) and the
+// fog latch's card signal.
+constexpr bool fog_card_pixel(std::uint64_t ps) noexcept {
+#if X3M_EDITION_FL
+    return ps == 0xf7e0b6647a3bfa62ull || ps == 0x214fc10d3672ab92ull;
+#else
+    return ps == 0xf7e0b6647a3bfa62ull;
+#endif
 }
 struct FogCardShape {
     bool indexed, user_memory, stream0, indices, stream0_only, frequency_known;

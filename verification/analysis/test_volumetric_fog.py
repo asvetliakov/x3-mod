@@ -526,7 +526,7 @@ class FogWiringTests(unittest.TestCase):
         self.assertIn('if (bloom && fog_requested_) run_volumetric_fog();', motion)
         self.assertIn('if (fog_) taa_call([&] { fog_->before_reset(); });', motion)
         self.assertIn('fog_->after_reset(result);', motion)
-        self.assertIn('if (fog_requested_ && shadow_.ps_hash == renderer::fog_card_pixel_hash) fog_latch_.card(frame_);', motion)
+        self.assertIn('if (fog_requested_ && fog_card_pixel(shadow_.ps_hash)) fog_latch_.card(frame_);', motion)
         self.assertIn('#include "motion_output_fog_inc.h"', motion)
         # The off option: every call site and the latch are behind fog_requested_ on their own line.
         lines = motion.splitlines()

@@ -18,6 +18,18 @@ int main() {
     assert(fog_card_pair(0x7b6393fe2d3e1d85ull, 0xf7e0b6647a3bfa62ull));
     assert(!fog_card_pair(0, 0xf7e0b6647a3bfa62ull));
     assert(!fog_card_pair(0x7b6393fe2d3e1d85ull, 0));
+#if X3M_EDITION_FL
+    // X3FL.exe's second exact pair (nebulafog_0000/_0001, fog_card_pairs.py); never a mixed pairing.
+    assert(fog_card_pair(0xececc28e00592d35ull, 0x214fc10d3672ab92ull));
+    assert(!fog_card_pair(0xececc28e00592d35ull, 0xf7e0b6647a3bfa62ull));
+    assert(!fog_card_pair(0x7b6393fe2d3e1d85ull, 0x214fc10d3672ab92ull));
+    assert(fog_card_pixel(0xf7e0b6647a3bfa62ull) && fog_card_pixel(0x214fc10d3672ab92ull) && !fog_card_pixel(0));
+    std::puts("edition fl");
+#else
+    assert(!fog_card_pair(0xececc28e00592d35ull, 0x214fc10d3672ab92ull));
+    assert(fog_card_pixel(0xf7e0b6647a3bfa62ull) && !fog_card_pixel(0x214fc10d3672ab92ull));
+    std::puts("edition ap");
+#endif
     FogCardShape shape{true,false,true,true,true,true,4,2,4,24,0,16,1,0x0cdf6a8c884ad955ull};
     assert(shape.matches());
     for (auto member : {&FogCardShape::topology, &FogCardShape::primitives, &FogCardShape::vertices,
@@ -86,11 +98,13 @@ class FogCardPolicyTests(unittest.TestCase):
             source = Path(tmp) / 'cards.cpp'
             binary = Path(tmp) / 'cards'
             source.write_text('#include <initializer_list>\n' + DRIVER)
-            subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                            '-I', str(ROOT / 'src/proxy'), str(source), '-o', str(binary)], check=True)
-            result = subprocess.run([str(binary)], text=True, capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn('PASS', result.stdout)
+            for edition, define in (('ap', []), ('fl', ['-DX3M_EDITION_FL=1'])):
+                subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', *define,
+                                '-I', str(ROOT / 'src/proxy'), str(source), '-o', str(binary)], check=True)
+                result = subprocess.run([str(binary)], text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('edition ' + edition, result.stdout)
+                self.assertIn('PASS', result.stdout)
 
     def test_actual_motion_output_methods(self):
         fragment = source_text(ROOT / 'src/proxy/motion_output_fog_inc.h')

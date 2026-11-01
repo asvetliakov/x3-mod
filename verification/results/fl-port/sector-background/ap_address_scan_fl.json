@@ -1,13 +1,13 @@
 {
  "dll": "build-fl/d3d9.dll",
  "image_base": "0x6fb40000",
- "functions": 4513,
+ "functions": 4514,
  "roots": 509,
  "address_taken": 234,
  "roots_data": 491,
- "reachable_functions": 2758,
- "functions_with_ap_constants": 62,
- "reachable_with_ap_constants": 20,
+ "reachable_functions": 2762,
+ "functions_with_ap_constants": 64,
+ "reachable_with_ap_constants": 22,
  "reachable_list": [
   [
    "x3m::MotionOutput::configure_engine_light(bool)",
@@ -38,6 +38,18 @@
    "x3m::MotionOutput::run_volumetric_fog()",
    [
     "0x6d3a06"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::set_pixel_shader(IDirect3DPixelShader9*)",
+   [
+    "0x592d35"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::set_vertex_shader(IDirect3DVertexShader9*)",
+   [
+    "0x592d35"
    ]
   ],
   [

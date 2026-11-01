@@ -13,10 +13,12 @@ Inputs: [AP fog](sector-fog.md), [FL sector authority](sector-fog.md),
 [resource callers](resource-callers.md),
 [depth-writer selection](depth-writer-selection.md), and
 [artistic texture policy](../../architecture/farnhams-legacy-fog-texture-context.md).
-The CPU source is already implemented and qualified separately; its FL consumer
-currently logs the sample after a matched Scene Clear. The renderer still
-returns `fl_family_unqualified` in `fog_frame_prerequisite`. No installed-build
-claim is made here.
+The CPU source is already implemented and qualified separately. **Correction
+(2026-11-01, step 6):** the shipped FL build has no `fl_family_unqualified` gate
+in `fog_frame_prerequisite`; the FL sector sample is taken at the first
+BeginScene ([FL sector note](../../architecture/farnhams-legacy-sector.md)) and
+`fog_card_match.h` admits both exact pairs below in the FL edition. No
+installed-build claim is made here.
 
 ## 1. Exact resources and changed/unchanged programs
 
@@ -159,8 +161,10 @@ For the eventual FL consumer, the necessary conditions are cumulative:
    readiness to the same frozen owner scene. A readiness result for a previous
    camera/scene/sector cannot authorize the first current card.
 
-The existing runtime does not yet connect conditions 1 and 3–5 for FL; removing
-`fl_family_unqualified` alone is insufficient. The minimal renderer change is
+As written (2026-10-29) the runtime did not connect conditions 1 and 3–5 for
+FL. Step 6 (2026-11-01) takes the shared BeginScene sample instead of condition
+1's frozen Scene Clear ticket and admits both exact pairs (condition 2); there was
+no `fl_family_unqualified` gate to remove. The minimal renderer change is
 an edition-qualified scene/sample/depth/sun admission into the existing pass and
 transaction, with both explicit exact aliases and full source/refusal coverage.
 No fog equation, density redesign, shader rewrite or texture resolver in the
