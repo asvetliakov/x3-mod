@@ -873,3 +873,19 @@ small and stop growing; both rising in every sample means the deferral is cyclin
 `lens_flare_gain_refused … reason=blend_law` in The Hole. The gain is applied only to ONE/ONE/ADD draws; if the FL SM3
 sun body (`ced7edef…`) is drawn with another blend law, the gain does not reach the sun itself, only its other lens
 draws, and the user's sun-through-fog report is not fixed by this step (the row's `src`/`dst`/`op` give the law).
+
+## FL run 15 — step 9 sun occlusion hooks, fog lens gain; fade-band fill (installed 2026-11-02)
+
+Candidate: merge `59944c32` (step 9 `5f0d0ac9` + review fixes `b9d5f1fa`, reviewed Opus high: install after
+rebase; AP objects 117 of 121 identical to `317383e5`, `sun_occlusion.cpp.obj` among them), also carrying the AP
+1.8.4 fade-band original fill (shared code; 133 FL forms pass the native validator). `build-fl/d3d9.dll` SHA-256
+`c48809c8…`, 0 warnings, `test_fl_*` OK, seven affected host modules 102 tests green
+([record](../../verification/results/fl-run15/candidate.json)); `C:\X3FL\d3d9.dll` bytes verified, rollback
+`C:\X3FL\rollback-d3d9\d3d9.dll.run14` (`cc8e50c0…`), X3FL.exe unchanged. Expected rows: `fl.sun_occlusion
+status=active … anchors=17`, `lens_flare_gain … bracket=active fog=1`, in The Hole `lens_flare_gain_frame … fog=1
+fog_t≈0.58`; wrong: `fl.sun_occlusion_sample` with `starts`/`lifts` rising every sample (deferral cycling),
+`lens_flare_gain_refused … reason=blend_law` (the SM3 sun body is not ONE/ONE/ADD, so the gain does not reach the
+sun and the sun-through-fog report stays open). Interim by design, removed by the own sun pass
+(`docs/architecture/own-sun-pass.md`): the gain uses the sky-cap mean column, not the sun ray, and dims every
+additive lens draw in the bracket. Flight: The Hole, sun through fog should be dimmed; a hull in front of the sun
+should hide it as vanilla does; nothing else should change.
