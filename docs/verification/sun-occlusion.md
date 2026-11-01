@@ -966,3 +966,13 @@ max outside the core 1.366 (1440 rows) / 1.369 (768), worst sun-tile `ev_limit` 
 both. `generate_own_sun_programs.py --check` and `generate_own_sun_lab.py --check` PASS; `build-ap`, `build-fl` 0
 warnings; the four own-sun modules 74 tests green (`test_core_visibility_taps` pins 37 taps, sum 1, max weight ≤ 0.03;
 lab `CORE_TAPS` pinned); lab JS vs `own_sun_host pixel` worst 1.39e-5 (`own-sun-pass/lab_js_worst.py`).
+
+## Run 225 — own sun 37 visibility taps, halo 0.4 (installed 2026-11-02, dev candidate)
+
+Run 224 judged good in the lab ("it's good now"); the user then asked for 37 taps and `halo_gain` 0.4. `870a00fd6`:
+centre + three rings of twelve at 0.3 / 0.6 / 0.9 R, largest single-tap step 2.8 %, ps 253 slots (budget raised to 260
+for this), validator 0 messages; `glow_meter.py` glow max outside the core 1.366, cap rule PASS (worst sun-tile
+`ev_limit` +2.25 / +2.23 EV). Built unstripped (`build-ap` `2090be1b…`, 0 warnings, x87 PASS, 74 host tests green)
+and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run224`
+([record](../../verification/results/run225-candidate-install.json)). Flight: the two F8 pairs; a strut parked across
+the core.
