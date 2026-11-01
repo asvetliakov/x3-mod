@@ -191,7 +191,21 @@ first period and again only when `saturated` grows (F1 view switches no longer c
 Image: TAA on for programs the AP tables know; **FL hull programs (34 new ps_3_0,
 18 seen in run 3) have no motion rows yet, so moving ships may ghost or smear**;
 hull lightmap gain and widening stay off until the FL shader coverage step
-([shader finding](#fl-shader-coverage-finding-2026-11-01)). Result: pending.
+([shader finding](#fl-shader-coverage-finding-2026-11-01)).
+
+Result (log session of 2026-11-01, base 0x230000, 48,681 frames / 249 s, no reset,
+no exception; measured): `fl.lifetime status=active_without_baseline …
+write=atomic,atomic,atomic,plain`, `motion_output_device … history_available=1`
+(first time under FL). 23 lifetime rows: first period `inserts=54544
+published=54544 loads=1 binds=1 live=5999 rebaseline_us_max=1424`, afterwards
+`known` = 100 % of `current` on every row (e.g. 5046/5046, 4800/4800),
+`unpublished_nested=0 unknown=0 rebind_without_destroy=0 in_flight=0`, live
+objects 6k–9k, `max_probe=1`. `fl.scale_fix status=active`, one sample row
+`calls=6144 saturated=0` (about 600 calls/s; no overflow occurred this flight, so
+the fix is install-proven, not yet exercise-proven). Shadow-lane refusals are all
+`pair` (82 untracked at the last row), i.e. the FL hull programs without motion
+rows, as predicted. **Accepted on the log side: the lifetime observer and TAA
+history are live under FL.** Visual report from the user: pending.
 
 ## FL shader coverage finding (2026-11-01)
 
