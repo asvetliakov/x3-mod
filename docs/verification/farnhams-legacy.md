@@ -416,3 +416,15 @@ and form.
 | `e57c48fc06198e20` | XT B | 1911 | 6 | s3 @1892 | 1782 prod | yes |
 | `f06b626708db3c7e` | XT D | 1788 | 6 | s2 @1769 | 1659 prod | yes |
 | `f083a2be99470f83` | XT terra B | 1836 | 7 | s3 @1813 | 1638 prod | n/a |
+
+## FL run 6 — shader coverage 4b, hull gain/widening/exposure rows (installed 2026-11-01)
+
+Candidate: commit `879f3e8c`, `build-fl/d3d9.dll` SHA-256 `e91ee801…`, 0 warnings, FL host
+tests pass ([record](../../verification/results/fl-run6/candidate.json)); `C:\X3FL\d3d9.dll`
+bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run5`. `debug = 1` set in
+`C:\X3FL\x3m.ini` for F8 captures. Expected rows for FL program ids:
+`hull_lightmap_variant … gain_applied=1`, `hull_lightmap_widen_variant … widen_applied=1`,
+`original_fill_variant … fill_applied=1`, `sun_shadow_original_lightmap[_widen]_variant …
+share_applied=1`, `engine_light_variant … created=7f`. Image: hull windows and lights at AP
+brightness, widening on emissive strips at distance; recheck the distant sun-lit wheat
+farms (shimmer) with F8 captures. Result: pending.
