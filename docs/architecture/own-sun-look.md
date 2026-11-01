@@ -35,7 +35,7 @@ glow and a per-pixel test for the core, nothing sub-pixel) and the user's "x3 ha
 | rays `ray_count`, `ray_gain`, `ray_length` | 16, 0.75, 15 | **6, 0.15, 14** | hashed lengths 3.50, 9.77, 11.17, 4.14, 12.92, 13.13 R; strengths 0.72, 0.63, 0.93, 0.83, 0.73, 0.63 [M] |
 | ray width | 0.12 R tapering to 0.3 of it | **sigma = max(3 px, 0.2 R)**, no taper | 3.5 px at 1440, 3.0 px at 768 [M]; a CPU constant (c7.w), since R is known per frame |
 | ray along-profile | `saturate(1 - r/L)^2` | **`exp(-r / L) saturate(1 - r / L)^2`** | exponential (survey rec. 2), still zero at L |
-| `ray_offset` | 0.5 | **0.5** | spoke units; keeps the two-nearest-spokes sum and the hash as built |
+| `ray_offset` | 0.5 | **0.25** | spoke units; 0.25 keeps every spoke off the screen axes (with N = 6 and 0.5 two spokes sat on the vertical axis, a vertical cousin of the deleted streak pair: review of 13692fc8) |
 | streaks `streak_*` | 0.6, 0.15, 8, 24 | **deleted** | the horizontal pair was the most "painted" element |
 | quad | 48 x 32 R | **48 x 48 R** (half extent 24 both axes) | 829 x 829 px = 0.69 Mpx at 5120x1440, 442 px = 0.20 Mpx at 1280x768 [M] |
 | per-pixel law | `lerp(glow, core, D) open (D + (1 - D) visible)` | **same** | glow = tint x (corona + halo + rays) |

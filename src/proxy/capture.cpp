@@ -224,7 +224,7 @@ bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side c
 // the default) and the comparison hotkey Ctrl+Shift+F9 (comparison-hotkeys.md, "Own sun"), polled only while it is on.
 bool own_sun_on = false;
 float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default,
-      own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' and streaks' share (step 1b)
+      own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' share (step 1c: six soft rays, no streaks)
 own_sun::core::Toggle own_sun_key;
 // The chord, F9 first so an idle frame costs one call.
 bool own_sun_chord_down() {

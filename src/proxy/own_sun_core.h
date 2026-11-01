@@ -42,7 +42,7 @@ constexpr float white_mix = .25f, core_inner = .6f;
 constexpr float corona_gain = .6f, corona_sigma = 1.5f;
 constexpr float halo_gain = .3f, halo_radius = 6.f, glow_radius = 24.f;
 constexpr unsigned ray_count = 6; // spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl)
-constexpr float ray_gain = .15f, ray_length = 14.f, ray_offset = .5f; // offset: spoke units (no spoke on the axes)
+constexpr float ray_gain = .15f, ray_length = 14.f, ray_offset = .25f; // offset: spoke units; .25 keeps every spoke off the screen axes (spokes at 45 + 60k and -15 + 60k deg), so the three opposite-spoke lines through the sun never run vertically or horizontally (review of 13692fc8, finding 1)
 constexpr float ray_sigma = .2f, ray_sigma_min_px = 3.f;              // the rays' Gaussian width: max(3 px, 0.2 R)
 // The quad: 24 core radii to each side (the halo's window).
 constexpr float quad_extent_x = glow_radius, quad_extent_y = glow_radius;
