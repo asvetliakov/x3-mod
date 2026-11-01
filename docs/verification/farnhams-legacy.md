@@ -554,3 +554,16 @@ FL-specific: a shared bloom regression between 2026-09-26 and 10-13** (bolts thr
 HDR meter rework, or the native-Windows move; not separable from logs). `validate_inputs`
 (`src/renderer/bloom_pass.cpp:548-610`) returns a bare E_INVALIDARG; a diagnostic row
 naming the clause and the descriptors is being added for the next build.
+
+## FL run 8 — far alpha-tested thin hold + bloom diagnostic row (installed 2026-11-01)
+
+Candidate: commit `b156415a` (thin hold `6cdaf384`, reviewed Opus high, docs-only
+findings; bloom diagnostic `b156415a`, delta reviewed by the main session: 27 numbered checks,
+conditions and order unchanged), `build-fl/d3d9.dll` SHA-256 `22b67304…`, RelWithDebInfo, 0
+warnings, host tests 37 + 69 OK ([record](../../verification/results/fl-run8/candidate.json));
+`C:\X3FL\d3d9.dll` bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run7` (`c91ce71c…`).
+Expected: `thin_vote_mode … alpha_far=1`, `thin_vote_frame … alpha_far=N` with N > 0 near farms;
+distant farm shimmer reduced to the station level; no trail behind slow-moving distant
+alpha-tested ships (kill criterion, both editions). First 8 `bloom_prepare` failure rows carry
+`clause=N` and the main/scene descriptors, which names the refusing check of
+`validate_inputs` (7 = main descriptor, 18 = scene descriptor, 24–27 = device identity).
