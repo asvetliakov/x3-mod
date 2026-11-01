@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step 1c look (docs/architecture/own-sun-look.md): the law (constants read from src/proxy/own_sun_core.h by name) evaluated offline against the HDR meter's tile model
+"""Step 1c look, tuned in step 1d (docs/architecture/own-sun-look.md): the law (constants read from src/proxy/own_sun_core.h by name) evaluated offline against the HDR meter's tile model
 (verification/results/own-sun-pass/meter_exposure.py: tile = 4^steps px until both axes <= 128; p99 of the tile maxima
 sets ev_limit = log2(0.9 * 16.2917424) - log2(min(L, 64)); L = engine^2.2 under the default gamma2.2 decode; a tile is
 "lit" when its mean log2 L >= log2(1/512), L floored at 1e-4) and against the quad / slot cost. White sun, fog T = 1,
@@ -23,12 +23,14 @@ def constant(name):
 
 
 RADIUS_U, K = constant('radius_default_u'), constant('radiance_default')
-CORE_INNER, WHITE_MIX = constant('core_inner'), constant('white_mix')
+CORE_INNER, WHITE_MIX, CORE_GAIN = constant('core_inner'), constant('white_mix'), constant('core_gain')
 CORONA_A, CORONA_SIGMA = constant('corona_gain'), constant('corona_sigma')
 HALO_A, HALO_RHO, GLOW_RADIUS = constant('halo_gain'), constant('halo_radius'), constant('glow_radius')
 RAY_N, RAY_A, RAY_LENGTH = int(constant('ray_count')), constant('ray_gain'), constant('ray_length')
 RAY_SIGMA_PX, RAY_SIGMA_MIN, RAY_OFFSET = constant('ray_sigma'), constant('ray_sigma_min_px'), constant('ray_offset')  # sigma = max(3 px, 0.2 R)
+RAY_START = constant('ray_start')  # the rays' along-profile starts at the core's edge
 QUAD = GLOW_RADIUS  # half extent, core radii, both axes
+GAP = (0.5 - RAY_OFFSET) * 2 * math.pi / RAY_N  # the direction between spokes 0 and 1
 # AgX display reads from docs/architecture/bloom-falloff.md (exposed linear -> display), log-linear interpolation [S].
 AGX = [(0.0035, 0.04), (0.01, 0.10), (0.05, 0.28), (0.18, 0.50), (0.5, 0.68), (1, 0.79), (2, 0.87), (4, 0.93), (8, 0.97), (16, 0.998)]
 
@@ -50,9 +52,9 @@ def smoothstep(a, b, x):
 def spoke_params(n):
     out = []
     for k in range(n):
-        h1 = (k * (0.6180340 + k * 0.1547)) % 1
+        h1 = (k * 0.6180340 + 0.3) % 1
         h2 = (k * 0.7548777 + 0.31) % 1
-        out.append((RAY_LENGTH * (0.25 + 0.75 * h1 * h1), 0.6 + 0.4 * h2))
+        out.append((RAY_LENGTH * (0.15 + 0.85 * h1), 0.6 + 0.6 * h2))
     return out
 
 
@@ -71,11 +73,11 @@ def field(px, py, radius_px):
         # distance across spoke k (angle k * 2pi/N - offset), two nearest summed == all spokes summed here (Gaussian tails)
         ang = (k - RAY_OFFSET) * 2 * math.pi / RAY_N
         across = np.abs(np.sin(theta - ang)) * r
-        along = r / length
+        along = np.maximum(r - RAY_START, 0) / length
         rays += strength * np.exp(-(across / sigma) ** 2) * np.exp(-along) * np.clip(1 - along, 0, 1) ** 2 * (np.cos(theta - ang) > 0)
     rays *= RAY_A
     glow = corona + halo + rays
-    core = K * 1.0  # white: hue 1, m 1
+    core = K * CORE_GAIN  # white: hue 1, m 1
     return glow + (core - glow) * d, glow, corona, halo, rays, d
 
 
@@ -96,17 +98,28 @@ def main():
         radius_px = RADIUS_U * height
         v, glow, corona, halo, rays, _ = field(rr * np.cos(tt), rr * np.sin(tt), radius_px)
         print('height %d (R = %.1f px, ray sigma %.1f px): glow max outside the core %.3f (corona %.3f, halo %.3f, rays %.3f); '
-              'glow at r = 1, 2, 3, 6, 9, 12, 16, 20 R: %s' % (height, radius_px, max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px),
+              'glow between spokes at r = 1, 1.5, 2, 3, 6, 9, 12, 16, 20 R: %s' % (height, radius_px, max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px),
               glow.max(), corona.max(), halo.max(), rays.max(),
-              ', '.join('%.3f' % field(np.array([x]), np.array([0.0]), radius_px)[1][0] for x in (1, 2, 3, 6, 9, 12, 16, 20))))
-    print('ray lengths / strengths, N = %d: %s' % (RAY_N, ', '.join('%.2f R x %.2f' % p for p in spoke_params(RAY_N))))
-    print('ray lengths, N = 8: %s' % ', '.join('%.2f' % p[0] for p in spoke_params(8)))
+              ', '.join('%.3f' % field(np.array([x * math.cos(GAP)]), np.array([x * math.sin(GAP)]), radius_px)[1][0]
+                        for x in (1, 1.5, 2, 3, 6, 9, 12, 16, 20))))
+    print('ray lengths beyond r = %g / strengths, N = %d: %s' % (RAY_START, RAY_N, ', '.join('%.2f R x %.2f' % p for p in spoke_params(RAY_N))))
+    # Each ray's visible reach (inferred): the last radius where it adds >= 10 % to the glow between spokes there.
+    radius_px = RADIUS_U * 1440
+    reach = []
+    for k, (length, strength) in enumerate(spoke_params(RAY_N)):
+        ang = (k - RAY_OFFSET) * 2 * math.pi / RAY_N
+        rs = np.linspace(1, RAY_START + length, 2000)
+        on = field(rs * math.cos(ang), rs * math.sin(ang), radius_px)
+        base = on[2] + on[3]
+        seen = rs[on[4] >= 0.1 * base]
+        reach.append('%.0f deg %.1f' % (math.degrees(ang) % 360, seen.max() if len(seen) else 0.))
+    print('ray visible reach (rays >= 10 %% of corona + halo, 1440 rows), angle and R: %s' % ', '.join(reach))
     # Display reads of the axis profile (between spokes) at EV +1.3 (x 2.46) and EV 0, white sun.
     radius_px = RADIUS_U * 1440
     for ev in (1.3, 0.0):
         reads = []
-        for x in (0, 1, 2, 3, 4, 6, 9, 12, 16):
-            v = field(np.array([x * math.cos(math.pi / RAY_N)]), np.array([x * math.sin(math.pi / RAY_N)]), radius_px)[0][0]
+        for x in (0, 1, 1.5, 2, 3, 4, 6, 9, 12, 16):
+            v = field(np.array([x * math.cos(GAP)]), np.array([x * math.sin(GAP)]), radius_px)[0][0]
             reads.append('%gR %.3f->%.2f' % (x, v, agx(v ** 2.2 * 2 ** ev)))
         print('display at EV %+.1f (engine -> AgX): %s' % (ev, '; '.join(reads)))
     # Tiles.

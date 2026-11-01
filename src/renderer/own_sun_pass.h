@@ -5,7 +5,7 @@
 // one. No vertex buffer: the four vertices go through DrawPrimitiveUP (24 bytes each, built on the stack by
 // own_sun_core.h quad()), so the pass holds no DEFAULT-pool resource and allocates nothing per frame.
 //
-// run() draws one camera-facing quad of 48 x 48 core radii at the projected sun inside the temporal resolve's stage bracket
+// run() draws one camera-facing quad of 34 x 34 core radii at the projected sun inside the temporal resolve's stage bracket
 // (TemporalPass FrameInputs::stage_callback: RT0 the FP16 scene the resolve reads, RT1+ and the depth surface unbound,
 // every render state at the pass's baseline, the scene open; the resolve normalizes again afterwards), so it sets only
 // what it draws with: the programs, the declaration, ten pixel constants, the lane at s0 (point, clamp), CLIPPING,

@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
         frame_constants(argv + 2, f(argv[7]), c, &r);
         core::Pixel p;
         core::reference_pixel(c, f(argv[8]), f(argv[9]), unsigned(std::atoi(argv[10])), f(argv[11]), &p);
-        std::printf("rgb=%.7f,%.7f,%.7f corona=%.7f halo=%.7f rays=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
+        std::printf("rgb=%.9g,%.9g,%.9g corona=%.7f halo=%.7f rays=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
                     double(p.rgb[2]), double(p.corona), double(p.halo), double(p.rays), double(p.core));
         return 0;
     }

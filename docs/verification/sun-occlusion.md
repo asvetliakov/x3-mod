@@ -865,3 +865,30 @@ in view than without, or rays shimmering while parked.
 length (only four equal-length rays read as an X), the halo/blob radius down about 30 %, the core 25–30 % dimmer,
 and the glow next to the core brighter so the core does not stand out (reference: Everspace 2's blown-out near-core
 region). In progress on a fresh implementer.
+
+## 2026-11-02: Own sun step 1d — host evidence (on main `02122991`; not flown)
+
+The four Run221 items as constants ([own-sun-look.md, "Step 1d"](../architecture/own-sun-look.md)): eleven spokes at
+offset 0.125 (>= 4.09 deg off the screen axes, no opposite pair), lengths `13 (0.15 + 0.85 frac(0.618034 k + 0.3))`
+beyond the core's edge (2.04-12.09 R, tips <= 13.1 R) with the along-profile starting at the core's edge (`ray_start`
+1, c9.x), strengths `0.6 + 0.6 h2` (0.64-1.12); corona 0.9 at sigma 1.05; halo half at 4.2, window and quad 17; new
+`core_gain` 0.72 on the core term only. Ray gain, width floor, two-spoke sum, taps, settings unchanged.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS (measured) |
+| `generate_own_sun_programs.py` (regenerated), then `--check` | PASS; ps 922 words (946 before), vs 43 unchanged (measured) |
+| Native validator ([result](../../verification/results/own-sun-pass/native/result.json)) | vs 2 slots, ps 178 slots (184 before); `end=00000000`, 0 messages each (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_config_schema | 99 tests, 0 failing (measured) |
+| CPU side, `cpu_cost.py` | median 40.3 ns per frame (37.8 before; one multiply more, within run spread 38.6-45.3) (measured) |
+| `glow_meter.py` | glow max outside the core 0.813 at 1440 rows, 0.826 at 768 (corona 0.363, halo 0.282, rays 0.167 / 0.181); between spokes 0.675, 0.381, 0.262, 0.187, 0.076, 0.028, 0.008 at 1, 1.5, 2, 3, 6, 9, 12 R; 5120x1440: 0 tiles at the K-2.25 luminance, 1-4 above engine 1, 9-12 lit (0.49-0.65 %); 1280x768: 0, 1-4, 45-52 lit (1.17-1.35 %); brightest sun tile L 2.23 (the core, 1.44 engine) -> `ev_limit` +2.72 EV, a glow tile >= +3.87 EV, both above the +1.3 EV cap; quad 0.35 / 0.10 Mpx (measured, offline) |
+| `law_checks.py` (N = 11) | arctangent 3.46e-6 rad; nearest spoke to an axis 0.125 spoke = 4.09 deg; nearest pair to opposite 0.5 spoke; seam 0.0110 with the nearest spoke alone, 0 summed; width 3.46 px at 1440 rows; tap weights sum 1.00000, largest step 8.1 % (measured, offline) |
+| `own_sun_host field` / `seam` (1440 rows, step 0.02) | glow_max 0.81258, hue error 0, no rise outward, asymmetry 3.1e-7; every ray's peak = 0.15 x strength at the core's edge; two-spoke seam 5.3e-5 (measured) |
+| `ray_visibility.py` (contrast model, ray >= 10 % of corona + halo) | step 1c: 4 of 6 rays visible (reach 0, 4.4, 6.9, 0, 8.0, 7.7 R: Run221's X); step 1d: 11 of 11 (2.0-10.9 R) (inferred) |
+
+Display at the +1.3 EV cap (AgX table, inferred): core 0.95 (1c 0.98), 1 R 0.79 (0.82), 1.5 R 0.59 (about 0.69), 6 R
+0.09 (1c 0.23): the visible glow ends near 6 R instead of 9 R. Item 4 as specified leaves the core-to-1 R display step at
+0.16 (narrower corona offsets the higher gain); the note records what would close it. GPU cost (inferred): 0.35 Mpx x
+178 slots x 0.136 ps = 8.5 us at 5120x1440. Flight: the Run221 comparison (two F8 pairs, Ctrl+Shift+F9) and the
+`own_sun_frame ev=/ev_limit=` kill rule.
