@@ -12,3 +12,7 @@ Measured:
 - Recovery: WM_ACTIVATEAPP(1) frame 29208, window restored frame 29210, reset_begin/reset_end result=0 (only reset of the session), telemetry_first_present frame 29211.
 - own_sun_frame frame 28142 active=0, no own_sun_failed / *_failed rows; hdr_frame redirected=0 end=none from 28142 onward (menu).
 - x3m.prev.log: no save_load / exit-to-menu, no WM_ACTIVATEAPP(0), resets=0: no comparison case.
+
+Follow-up (2026-11-02): the user retried the exit to menu and it did not recur. Parked: the device loss followed a
+focus loss during a 29.5 s load stall (ghost-window hypothesis unproven). A dev-tier diagnostic (`window_focus_lost`
+foreground owner/class, message-pump gap during load stalls) is being added so the next occurrence is attributable.
