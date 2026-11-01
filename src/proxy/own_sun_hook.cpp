@@ -1,4 +1,4 @@
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "config.h"
 #include "engine_patch.h"
 #include "engine_memory.h"

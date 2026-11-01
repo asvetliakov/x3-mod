@@ -1,6 +1,6 @@
 #pragma once
 // Lens-flare gain (X3M_LENS_FLARE_GAIN, 0..1, 1 = off): the colour contribution of every ONE/ONE/ADD draw inside the
-// lens bracket (sun_occlusion.h, the engine's call 0x00472491) is multiplied by G for that draw only, through the
+// lens bracket (own_sun_hook.h, the engine's call 0x00472491) is multiplied by G for that draw only, through the
 // documented blend constant: SRCBLEND = BLENDFACTOR with D3DRS_BLENDFACTOR = G in every lane (D3DPBLENDCAPS_BLENDFACTOR),
 // or, for G = 0, no draw at all (the admitted draw is not submitted: the hook returns S_OK with no state change, since
 // 0 * src + dst is dst). The draw's own pixel program, textures and DESTBLEND are untouched, so the result is

@@ -2,7 +2,7 @@
 """X3FL.exe sun-probe and lens-bracket constants for src/engine/fl/sun_occlusion_fl.cpp (FL step 9).
 
 Reads X3: Farnham's Legacy's X3FL.exe and writes src/engine/fl/sun_occlusion_fl_inc.h. AP contract:
-docs/reverse-engineering/lens-flare-visibility.md sections 12-16 (src/proxy/sun_occlusion.h); FL findings:
+docs/reverse-engineering/lens-flare-visibility.md sections 12-16 (src/proxy/own_sun_hook.h); FL findings:
 docs/reverse-engineering/fl/sun-occlusion.md, "Verified hook sites and ABI (2026-11-01)". Decoded with capstone
 as whole instructions at the preferred base:
 

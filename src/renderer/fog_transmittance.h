@@ -105,7 +105,7 @@ inline void fog_transmittance(const FogTransmittanceLaw& law, float d, float out
     const float tau = law.extinction * depth;
     for (unsigned i = 0; i < 3; ++i) fog_exp_negative(law.k[i] * tau, &out[i]);
 }
-// The lens-flare gain through the fog toward the sky (motion_output_sun_occlusion_inc.h, once per lens bracket): the
+// The lens-flare gain through the fog toward the sky (motion_output_lens_bracket_inc.h, once per lens bracket): the
 // sun lies past every fog distance, so its transmittance is the column's at the cap, reduced to one factor by its
 // Rec. 709 luminance (the blend constant is grey) and clamped to [0, 1]; the applied gain is G x T. Law off: T = 1 and
 // the gain stays G exactly.

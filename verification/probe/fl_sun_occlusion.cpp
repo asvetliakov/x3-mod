@@ -18,7 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
-#include "../../src/proxy/sun_occlusion.h"
+#include "../../src/proxy/own_sun_hook.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/engine/fl/sun_occlusion_fl_inc.h"
 namespace so = x3m::sun_occlusion;

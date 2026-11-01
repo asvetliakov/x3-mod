@@ -5,7 +5,7 @@ The probe override's decision table against a Python restatement of the vanilla 
 re-probe of a background-view-owned record, run223) and the readiness fallback; the readiness state
 machine; record -> footprint with the sun's saturated size; the body classification from the clip
 rows; the blend classification; the main-view registry walk over a fake image; the structural
-pixel wrap over hand-assembled ps_2_0 / ps_3_0 programs and the step-2 vertex / clip wraps. The C++ driver (verification/probe/sun_occlusion_host.cpp) uses the
+pixel wrap over hand-assembled ps_2_0 / ps_3_0 programs and the step-2 vertex / clip wraps. The C++ driver (verification/probe/own_sun_hook_host.cpp) uses the
 production headers. No device, no Wine.
 """
 import contextlib
@@ -57,10 +57,10 @@ class SunOcclusionHost(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory(prefix='x3-sun-occlusion-')
-        cls.driver = Path(cls.dir.name) / 'sun_occlusion_host'
+        cls.driver = Path(cls.dir.name) / 'own_sun_hook_host'
         compiler = shutil.which('clang++') or shutil.which('c++')
         subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                        str(ROOT / 'verification/probe/sun_occlusion_host.cpp'), str(ROOT / 'src/renderer/lens_visibility_variant.cpp'),
+                        str(ROOT / 'verification/probe/own_sun_hook_host.cpp'), str(ROOT / 'src/renderer/lens_visibility_variant.cpp'),
                         '-o', str(cls.driver)], check=True)
 
     @classmethod
@@ -477,7 +477,7 @@ class SunOcclusionHost(unittest.TestCase):
         # The compiled visibility program takes it on c2 (c0 the disc, c1 the smoothing), and the fixture's phases are the temporal pass's.
         words = [int(w, 16) for w in re.findall(r'0x([0-9a-f]{8})u', source_text(ROOT / 'src/renderer/sun_visibility_program_inc.h'))]
         self.assertEqual(constant_table(words), {'disc': (2, 0), 'control': (2, 1), 'jitter': (2, 2), 'sceneDepth': (3, 0), 'history': (3, 1)})
-        fixture = load('run_sun_occlusion', 'verification/probe/run_sun_occlusion.py')
+        fixture = load('run_own_sun_hook', 'verification/probe/run_own_sun_hook.py')
         motion = load('run_motion_output', 'verification/probe/run_motion_output.py')
         self.assertEqual(fixture.expected_phases(), {i: (round(motion.expected_jitter(i)[1], 4), round(motion.expected_jitter(i)[2], 4)) for i in range(8)})
         self.assertEqual(fixture.EXPECTED_GPU_CHECKS, 137)  # 128 + the nine lens-flare gain checks (2026-09-29; G = 0 not issued)
@@ -486,7 +486,7 @@ class SunOcclusionHost(unittest.TestCase):
         # Own sun, step 1 (own-sun-pass.md section 5): in an own-sun frame the sun's eligible record is answered "hidden"
         # (own_sun_core.h answer, the host table in test_own_sun) before Ready::probe and the latch, so the visibility
         # pass and the lens wraps see no record; every other probe keeps the path above. The install row says own_sun=.
-        sun = source_text(ROOT / 'src/proxy/sun_occlusion.cpp')
+        sun = source_text(ROOT / 'src/proxy/own_sun_hook.cpp')
         decide = sun[sun.index('int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {\n    if'):]
         branch = decide.index('if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {')
         self.assertLess(decide.index('const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);'), branch)
@@ -534,7 +534,7 @@ def load(name, path):
 
 class SunOcclusionSites(unittest.TestCase):
     def test_installed_executable_matches_every_site_claim(self):
-        verifier = load('sun_occlusion_sites', 'verification/probe/verify_sun_occlusion_sites.py')
+        verifier = load('sun_occlusion_sites', 'verification/probe/verify_own_sun_hook_sites.py')
         if not verifier.DEFAULT_EXE.exists():
             self.skipTest('X3AP.exe is not installed')
         result = verifier.verify(verifier.DEFAULT_EXE)
@@ -631,7 +631,7 @@ class SunOcclusionLaunchOption(unittest.TestCase):
         self.assertIn("value[0]==L'1'", read)
         row = re.search(r'log\("sun_occlusion_config [^"]*"', capture).group(0)
         self.assertTrue(row.endswith(' default=%u"'), row)
-        sun = source_text(ROOT / 'src/proxy/sun_occlusion.cpp')                                        # absent = disabled, nothing patched
+        sun = source_text(ROOT / 'src/proxy/own_sun_hook.cpp')                                        # absent = disabled, nothing patched
         self.assertIn('x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L\'1\'', sun)
 
     def test_dll_reads_the_variable_as_default_on(self):

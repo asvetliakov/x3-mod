@@ -220,7 +220,7 @@ class MovedHeartbeatRows(unittest.TestCase):
     # row -> (file, a fragment unique to its periodic emission)
     ROWS = {
         'chase_camera': ('chase_camera.cpp', 'log("chase_camera frame=%llu status='),
-        'lens_flare_gain_frame': ('motion_output_sun_occlusion_inc.h', 'log("lens_flare_gain_frame '),
+        'lens_flare_gain_frame': ('motion_output_lens_bracket_inc.h', 'log("lens_flare_gain_frame '),
         'occlusion_cull_session': ('motion_output_occlusion_cull_inc.h', 'log("occlusion_cull_session '),
         'cull_small_props_frame': ('motion_output_cull_small_props_inc.h', 'log("cull_small_props_frame '),
         'motion_unmatched_static_frame': ('motion_output.cpp', 'log("motion_unmatched_static_frame '),

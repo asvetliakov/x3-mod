@@ -1,5 +1,5 @@
 #pragma once
-#include "sun_occlusion_core.h"
+#include "own_sun_hook_core.h"
 #include <cstdint>
 
 // Partial sun occlusion, step 1 (X3M_SUN_OCCLUSION=1; X3M_SUN_OCCLUSION_LOG=1 adds the diagnostic

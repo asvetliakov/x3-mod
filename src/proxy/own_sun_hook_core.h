@@ -2,7 +2,7 @@
 // Partial sun occlusion, steps 1 and 2: the pure part (docs/architecture/sun-partial-occlusion.md;
 // sites, layouts and formulas from docs/reverse-engineering/lens-flare-visibility.md,
 // sections 11-16). No Windows/D3D dependency, no allocation, no engine call: the
-// host double verification/probe/sun_occlusion_host.cpp drives exactly this header.
+// host double verification/probe/own_sun_hook_host.cpp drives exactly this header.
 //
 // Three CPU contracts:
 //   * eligible(), decide(), latch(), main_view(): integer only. They run inside the probe

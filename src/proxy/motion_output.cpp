@@ -20,7 +20,7 @@
 #include "cull_census.h" // X3M_CULL_SMALL_PROPS: the census's culled_prop verdict
 #include "sun_light_poll.h"
 #include "chase_camera.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
@@ -12928,7 +12928,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
-#include "motion_output_sun_occlusion_inc.h"
+#include "motion_output_lens_bracket_inc.h"
 #include "motion_output_cull_small_props_inc.h"
 #include "motion_output_occlusion_cull_inc.h"
 #include "motion_output_engine_effects_inc.h"

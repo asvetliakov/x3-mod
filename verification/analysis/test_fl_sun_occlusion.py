@@ -84,8 +84,8 @@ class FlSunOcclusionWiring(unittest.TestCase):
         linked = re.search(r'set\(X3M_AP_ENGINE_LINKED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         shared = re.search(r'set\(X3M_SHARED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         ap = re.search(r'set\(X3M_AP_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
-        self.assertNotIn('sun_occlusion.cpp', linked + shared)
-        self.assertIn('src/proxy/sun_occlusion.cpp', ap)
+        self.assertNotIn('own_sun_hook.cpp', linked + shared)
+        self.assertIn('src/proxy/own_sun_hook.cpp', ap)
         self.assertIn('target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)', cmake)
         self.assertIn('set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp\n'
                       '  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")', cmake)
@@ -137,10 +137,10 @@ class FogLensGain(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory(prefix='x3-fog-lens-gain-')
-        cls.driver = Path(cls.dir.name) / 'sun_occlusion_host'
+        cls.driver = Path(cls.dir.name) / 'own_sun_hook_host'
         compiler = shutil.which('clang++') or shutil.which('c++')
         subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                        str(ROOT / 'verification/probe/sun_occlusion_host.cpp'),
+                        str(ROOT / 'verification/probe/own_sun_hook_host.cpp'),
                         str(ROOT / 'src/renderer/lens_visibility_variant.cpp'), '-o', str(cls.driver)], check=True)
 
     @classmethod
@@ -173,7 +173,7 @@ class FogLensGain(unittest.TestCase):
         self.assertEqual(self.gain(1.0, 1, 1.0, 65000, 112500, 1, 1, 1, 0.6)['t'], 0.0)
 
     def test_both_editions_reach_the_rule(self):
-        inc = strip((ROOT / 'src/proxy/motion_output_sun_occlusion_inc.h').read_text())
+        inc = strip((ROOT / 'src/proxy/motion_output_lens_bracket_inc.h').read_text())
         self.assertNotIn('X3M_EDITION', inc)
         begin = inc[inc.index('void MotionOutput::sun_occlusion_begin() noexcept {'):]
         begin = begin[:begin.index('if (!sun_occlusion_.requested && !sun_occlusion_.log) return;')]

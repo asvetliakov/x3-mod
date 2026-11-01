@@ -8,8 +8,8 @@
 // state restoration around each transaction under hostile state, native Reset and teardown; the lens-flare gain's blend
 // law (src/proxy/lens_flare_gain.h: SRCBLEND = BLENDFACTOR; at G = 0 the admitted draw is not issued, observed by an
 // occlusion query) alone and on top of the ghost wrap. Validation-only readback
-// lives here, never in production (the pass's own readback() is its diagnostic one). Built by build_sun_occlusion.py;
-// run by run_sun_occlusion.py.
+// lives here, never in production (the pass's own readback() is its diagnostic one). Built by build_own_sun_hook.py;
+// run by run_own_sun_hook.py.
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/sun_occlusion_pass.h"

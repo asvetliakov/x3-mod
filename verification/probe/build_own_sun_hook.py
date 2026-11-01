@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build and audit the two partial-sun-occlusion fixtures. Never runs Wine.
 
-  hook  sun_occlusion_hook_fixture.exe: the production hook module (src/proxy/sun_occlusion.cpp,
+  hook  own_sun_hook_fixture.exe: the production hook module (src/proxy/own_sun_hook.cpp,
         production flags, -fno-exceptions) with engine_patch.cpp over two synthetic call sites.
         Audit: both thunks are the documented instruction sequences, and the probe handler's
         object code holds no x87 / MMX instruction and no floating-point arithmetic outside the
@@ -61,13 +61,13 @@ def audit_module(obj):
 def build():
     BUILD.mkdir(parents=True, exist_ok=True)
     objects = []
-    for source, stem, extra in [('verification/probe/sun_occlusion_hook_fixture.cpp', 'hook_fixture', []), ('src/proxy/sun_occlusion.cpp', 'module', []),
+    for source, stem, extra in [('verification/probe/own_sun_hook_fixture.cpp', 'hook_fixture', []), ('src/proxy/own_sun_hook.cpp', 'module', []),
                                 ('src/proxy/engine_patch.cpp', 'patch', []), ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects.append(out)
     audit = audit_module(BUILD / 'module.o')
-    hook = BUILD / 'sun_occlusion_hook_fixture.exe'
+    hook = BUILD / 'own_sun_hook_fixture.exe'
     subprocess.run(['i686-w64-mingw32-g++', *map(str, objects), '-static', '-static-libgcc', '-static-libstdc++', '-o', str(hook)], check=True, cwd=ROOT)
     gpu = BUILD / 'sun_occlusion_fixture.exe'
     subprocess.run(['i686-w64-mingw32-g++', *GPU_FLAGS, '-static', str(ROOT / 'verification/probe/sun_occlusion_fixture.cpp'), str(ROOT / 'src/renderer/sun_occlusion_pass.cpp'),

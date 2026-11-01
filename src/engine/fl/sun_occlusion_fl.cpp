@@ -1,4 +1,4 @@
-// FL edition of x3m::sun_occlusion (src/proxy/sun_occlusion.h; the ap target keeps src/proxy/sun_occlusion.cpp):
+// FL edition of x3m::sun_occlusion (src/proxy/own_sun_hook.h; the ap target keeps src/proxy/own_sun_hook.cpp):
 // the flare probe override and the lens bracket in X3FL.exe (docs/architecture/farnhams-legacy-sun-occlusion.md;
 // sites, ABI and gates: docs/reverse-engineering/fl/sun-occlusion.md, "Verified hook sites and ABI").
 //
@@ -27,7 +27,7 @@
 // base + slot RVA), then claim_call on both sites inside the install window; a failure of the second claim restores
 // the first. Built -fno-exceptions -mno-sse -mno-mmx -mfpmath=387: no x87 arithmetic and no compiler XMM use; the
 // only x87/XMM instructions are the save/restore envelopes (cpu_state.h and XmmSave).
-#include "../../proxy/sun_occlusion.h"
+#include "../../proxy/own_sun_hook.h"
 #include "../../proxy/config.h"
 #include "../../proxy/cpu_state.h"
 #include "../../proxy/engine_memory.h"

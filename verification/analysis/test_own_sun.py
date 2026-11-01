@@ -333,7 +333,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(profile, [1, 7 / 9, 5 / 9, 4 / 9, 2 / 9, 0])
 
     def test_compiled_programs_match_the_constant_layout(self):
-        sun = load('own_sun_sun_occlusion_test', 'verification/analysis/test_sun_occlusion.py')
+        sun = load('own_sun_sun_occlusion_test', 'verification/analysis/test_own_sun_hook.py')
         words = lambda name: [int(v, 16) for v in re.findall(r'0x([0-9a-f]{8})u', (ROOT / 'src/renderer' / name).read_text())]
         ps, vs = words('own_sun_pixel_program_inc.h'), words('own_sun_vertex_program_inc.h')
         self.assertEqual((ps[0], ps[-1], vs[0], vs[-1]), (0xffff0300, 0xffff, 0xfffe0300, 0xffff))
@@ -378,7 +378,7 @@ class OwnSunWiring(unittest.TestCase):
         wiring = wiring[:wiring.index('#endif')]
         self.assertLess(wiring.index('if (sun_occlusion::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
         self.assertIn('} else\n                    own_sun_no_probe();', wiring)
-        sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()
+        sun = (ROOT / 'src/proxy/own_sun_hook.cpp').read_text()
         self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', sun)
         branch = sun[sun.index('++counters_.own_sun_hidden;'):]
         self.assertTrue(branch.startswith('++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n        own_sun_hidden_frame_ = frame;\n        return core::Hidden;'))

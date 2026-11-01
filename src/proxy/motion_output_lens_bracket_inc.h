@@ -2,7 +2,7 @@
 // the lens bracket. Included inside namespace x3m by motion_output.cpp.
 //
 // sun_occlusion_begin / _end run on the render thread inside the engine's `call 0x0047e6e0` for the
-// lens scene (src/proxy/sun_occlusion.h), under the capture lock and a full CPU-state boundary,
+// lens scene (src/proxy/own_sun_hook.h), under the capture lock and a full CPU-state boundary,
 // after the scene end of the same frame: RT2 is complete and no routed draw follows. Outside the
 // bracket the draw hooks pay one flag test (sun_occlusion::bracket_open()).
 bool MotionOutput::ensure_sun_occlusion() noexcept {

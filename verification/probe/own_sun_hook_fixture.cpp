@@ -1,4 +1,4 @@
-// CPU fixture of the partial-sun-occlusion hooks (src/proxy/sun_occlusion.cpp) over two synthetic
+// CPU fixture of the partial-sun-occlusion hooks (src/proxy/own_sun_hook.cpp) over two synthetic
 // call sites with the engine's shapes (RE note section 16): `push view; push record; call probe;
 // add esp,8` with EBX / EBP / ESI / EDI live (EBP a value), and `push view; call traversal; ...;
 // add esp,4` with the argument still on the stack after the call. Checks the redirect bytes, the
@@ -6,8 +6,8 @@
 // registers, stack balance, x87 stack / MXCSR / LastError across both thunks (the listener is
 // deliberately dirty), bracket ordering, the foreign-thread and no-probe-yet paths, the log mode
 // (the original runs exactly once), second-claim rollback, restore and late-claim refusal.
-// Built by build_sun_occlusion.py with the production module and engine_patch.cpp.
-#include "../../src/proxy/sun_occlusion.h"
+// Built by build_own_sun_hook.py with the production module and engine_patch.cpp.
+#include "../../src/proxy/own_sun_hook.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/cpu_state.h"

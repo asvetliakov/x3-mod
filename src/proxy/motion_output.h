@@ -1188,7 +1188,7 @@ public:
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
     // Partial sun occlusion, step 1 (X3M_SUN_OCCLUSION / _LOG / _RADIUS / _CURVE;
     // docs/architecture/sun-partial-occlusion.md). begin / end are the lens bracket's
-    // listener (src/proxy/sun_occlusion.h, the engine's call 0x00472491): begin runs the
+    // listener (src/proxy/own_sun_hook.h, the engine's call 0x00472491): begin runs the
     // 1x1 visibility pass against this frame's RT2, prepare_lens wraps one lens-scene
     // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
     // radius_u: the disc's half-width as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; the
@@ -1803,7 +1803,7 @@ private:
     unsigned sun_apply_sampled_ = 0;
     void run_sun_shadow_apply() noexcept;
     bool ensure_sun_shadow_apply() noexcept;
-    // Partial sun occlusion (motion_output_sun_occlusion_inc.h). Storage only outside the lens bracket.
+    // Partial sun occlusion (motion_output_lens_bracket_inc.h). Storage only outside the lens bracket.
     SunOcclusionConfig sun_occlusion_{};
     std::unique_ptr<renderer::SunOcclusionPass> sun_occlusion_pass_;
     bool sun_occlusion_attach_failed_ = false;

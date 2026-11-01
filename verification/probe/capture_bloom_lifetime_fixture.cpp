@@ -595,7 +595,7 @@ static void device_reset() noexcept {}
 } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
 namespace sun_occlusion {
 static void device_reset() noexcept {}
-} // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
+} // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/own_sun_hook.h); no-op on the host
 namespace resource_reader {
 static void report() noexcept {}
 }

@@ -25,7 +25,7 @@
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
 #include "occlusion_engine_cull.h"

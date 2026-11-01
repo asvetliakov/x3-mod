@@ -2,7 +2,7 @@
 """Build (host only) and run the two partial-sun-occlusion fixtures in the X3 bottle; one compact record.
 
 Invoke only as:
-  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_own_sun_hook.py
 The hook fixture is a plain CPU executable; the GPU fixture runs with builtin D3D9. --no-build runs
 existing binaries; --hook-only / --gpu-only select one. Never launches the game.
 """
@@ -17,12 +17,12 @@ from pathlib import Path
 import bottle
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'build/verification/sun-occlusion'
-HOOK, GPU = BUILD / 'sun_occlusion_hook_fixture.exe', BUILD / 'sun_occlusion_fixture.exe'
-SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/sun_occlusion.cpp', 'src/proxy/sun_occlusion.h', 'src/proxy/sun_occlusion_core.h', 'src/proxy/engine_patch.cpp', 'src/proxy/cpu_state.h',
+HOOK, GPU = BUILD / 'own_sun_hook_fixture.exe', BUILD / 'sun_occlusion_fixture.exe'
+SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/own_sun_hook.cpp', 'src/proxy/own_sun_hook.h', 'src/proxy/own_sun_hook_core.h', 'src/proxy/engine_patch.cpp', 'src/proxy/cpu_state.h',
            'src/renderer/sun_occlusion_pass.cpp', 'src/renderer/sun_occlusion_pass.h', 'src/renderer/lens_visibility_variant.cpp', 'src/renderer/lens_visibility_variant.h',
            'src/renderer/sun_visibility_program_inc.h', 'src/renderer/sun_visibility_taps_inc.h', 'src/temporal/sun_visibility_ps.hlsl',
-           'verification/probe/sun_occlusion_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_sun_occlusion.py',
-           'verification/probe/run_sun_occlusion.py', 'src/proxy/lens_flare_gain.h')
+           'verification/probe/own_sun_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_own_sun_hook.py',
+           'verification/probe/run_own_sun_hook.py', 'src/proxy/lens_flare_gain.h')
 EXPECTED_HOOK_CHECKS = 74   # a run that skips a section is not a pass
 EXPECTED_GPU_CHECKS = 137  # with both optional RT2 formats available; each SKIPPED format line takes one off (128 + 9 lens-flare gain)
 LENS_GAIN_CASES = {'off', 'half', 'zero', 'half_wrapped'}
@@ -119,8 +119,8 @@ def main():
     args = sys.argv[1:]
     build = None
     if '--no-build' not in args:
-        import build_sun_occlusion
-        build = build_sun_occlusion.build()
+        import build_own_sun_hook
+        build = build_own_sun_hook.build()
     record = {'passed': False, 'game_launched': False, 'bottle': bottle.describe(name), 'sources': {s: sha(ROOT / s) for s in SOURCES},
               'module_audit': build['module_audit'] if build else None}
     results = bottle.results_dir(ROOT)

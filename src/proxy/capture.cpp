@@ -30,7 +30,7 @@
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "own_sun_core.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
@@ -213,7 +213,7 @@ float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
 bool lens_flare_fog = false; // the lens bracket installed for the volumetric fog: each bracket applies G x T_sun (the
-                             // fog's transmittance toward the sky, motion_output_sun_occlusion_inc.h), both editions
+                             // fog's transmittance toward the sky, motion_output_lens_bracket_inc.h), both editions
 #if !X3M_EDITION_FL
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
@@ -4193,7 +4193,7 @@ bool bolt_footprint_requested_gate() noexcept {
 bool thin_vote_route_gate() noexcept {
     return thin_vote_gate;
 } // the loader's readable policy and bookends; hook_device's enable
-// The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
+// The lens bracket's listener (src/proxy/own_sun_hook.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
 void sun_lens_begin() {
     CaptureLock lock;

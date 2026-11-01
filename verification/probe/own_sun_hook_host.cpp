@@ -1,9 +1,9 @@
 // Host double of the partial-sun-occlusion pure parts (no Windows, no D3D): the probe decision
 // and gate order, the readiness state machine, the record -> footprint mapping, the blend
-// classification, the main-view walk (src/proxy/sun_occlusion_core.h) and the structural pixel
+// classification, the main-view walk (src/proxy/own_sun_hook_core.h) and the structural pixel
 // wrap (src/renderer/lens_visibility_variant.cpp). Prints key=value lines; the assertions are in
-// verification/analysis/test_sun_occlusion.py.
-#include "../../src/proxy/sun_occlusion_core.h"
+// verification/analysis/test_own_sun_hook.py.
+#include "../../src/proxy/own_sun_hook_core.h"
 #include "../../src/renderer/lens_visibility_variant.h"
 #include "../../src/renderer/fog_transmittance.h"
 #include <cstdio>
@@ -61,7 +61,7 @@ int ready_command(int count, char** a) {
     std::printf("answers=%s single=%d\n", answers.c_str(), int(state.single()));
     return 0;
 }
-// defer <script>: the probe / bracket composition of sun_occlusion.cpp and prepare_lens with core::Deferral.
+// defer <script>: the probe / bracket composition of own_sun_hook.cpp and prepare_lens with core::Deferral.
 // b = begin_frame, p<record> = probe (prints the answer; enabled = deferral.answers(record)), k = pass ok,
 // [ / V = bracket begin (the frame's single record) with the vanilla probe having hidden / left visible the record
 // (record+0x30, read only while it is deferred), U / u = an unclassifiable body (the pair's first scan / a later one),
@@ -97,7 +97,7 @@ int defer_command(int count, char** a) {
             release_rows += lift && deferral.lift_logged();
         }
         else if (c == 'r')
-            state.reset(); // device Reset: sun_occlusion.cpp resets Ready only
+            state.reset(); // device Reset: own_sun_hook.cpp resets Ready only
     }
     std::printf("answers=%s blocks=%u logs=%u releases=%u release_rows=%u deferred=%lx\n", answers.c_str(), blocks, logs,
                 releases, release_rows, static_cast<unsigned long>(deferral.record));
@@ -277,7 +277,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     // foggain <G> <on> <extinction> <start> <cap> <chroma r g b> <tint>: the lens gain through the fog toward the sky
-    // (renderer::fog_sky_lens_gain, motion_output_sun_occlusion_inc.h's sun_occlusion_begin).
+    // (renderer::fog_sky_lens_gain, motion_output_lens_bracket_inc.h's sun_occlusion_begin).
     if (command == "foggain" && argc == 11) {
         FogTransmittanceLaw law;
         law.on = number(argv[3]) != 0;

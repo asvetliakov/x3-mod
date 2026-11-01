@@ -22,7 +22,7 @@
 #include <cstdint>
 #include <vector>
 #include <d3d9.h>
-#include "../proxy/sun_occlusion_core.h"
+#include "../proxy/own_sun_hook_core.h"
 #include "lens_visibility_variant.h"
 namespace x3m::renderer {
 struct SunOcclusionCaps {
