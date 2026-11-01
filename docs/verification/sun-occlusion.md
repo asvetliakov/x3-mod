@@ -976,3 +976,8 @@ for this), validator 0 messages; `glow_meter.py` glow max outside the core 1.366
 and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run224`
 ([record](../../verification/results/run225-candidate-install.json)). Flight: the two F8 pairs; a strut parked across
 the core.
+
+**Run 225 accepted (2026-11-02).** User: "ok good. i accept it now. go to step 2." The own sun look (step 1 series,
+constants of `870a00fd6`) is the accepted baseline; step 2 (deletion of the lens wraps, scan, classifier, deferral and
+visibility pass; `own_sun` default on) starts. New report, separate: exiting the game to the main menu shows a black
+screen until an alt-tab out and back (fullscreen); cause unknown, under triage.
