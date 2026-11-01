@@ -41,18 +41,18 @@ constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // worst sun tile's ev_limit >= +1.3 EV (glow_meter.py). The resolve sets no emitter bound (its sentinel stabiliser,
 // once E = 1, was retired on 2026-09-25: the sun's sentinel pixels reproject with the far-plane camera history, are clipped by the
 // 3x3 box, and the far gate is 0 on the sentinel).
-constexpr float white_mix = .25f, core_inner = .4f, core_gain = .72f; // core_gain: the core term only (step 1d)
+constexpr float white_mix = .15f, core_inner = .4f, core_gain = .72f; // core_gain: the core term only (step 1d)
 constexpr float corona_gain = 2.15f, corona_sigma = 1.05f;
 constexpr float halo_gain = .3f, halo_radius = 4.2f, glow_radius = 17.f;
 // Spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl). Odd, so no two spokes are opposite (no straight
 // line through the sun). ray_length: the longest hashed ray beyond ray_start (the core's edge), so every ray ends within
 // 1 + 13 = 14 core radii, inside the quad (17).
-constexpr unsigned ray_count = 11;
+constexpr unsigned ray_count = 9;
 // offset: spoke units; with N = 11 a spoke sits on a screen axis when 4 (k - offset) is a multiple of 11, so a quarter-odd
 // offset (4 offset = 0.5 mod 1) holds every spoke at least 1/8 spoke (4.1 deg) off the axes, the most N = 11 allows; .125
 // puts the four nearest-axis spokes (4.1 and 12.3 deg off) on hashed lengths 2.0-5.3 (review of 13692fc8, finding 1).
-constexpr float ray_gain = .15f, ray_length = 13.f, ray_start = 1.f, ray_offset = .125f;
-constexpr float ray_sigma = .2f, ray_sigma_min_px = 3.f;              // the rays' Gaussian width: max(3 px, 0.2 R)
+constexpr float ray_gain = .11f, ray_length = 11.f, ray_start = 1.f, ray_offset = .125f;
+constexpr float ray_sigma = .25f, ray_sigma_min_px = 3.f;             // the rays' Gaussian width: max(3 px, 0.25 R)
 // The quad: 17 core radii to each side (the halo's window; the longest ray ends at 14).
 constexpr float quad_extent_x = glow_radius, quad_extent_y = glow_radius;
 // Below 1.5 px of radius the stage draws nothing (the plumes' rule; note section 7).

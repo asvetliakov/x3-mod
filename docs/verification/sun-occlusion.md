@@ -922,3 +922,14 @@ unstripped (`build-ap` `e0e351c5…`, 0 warnings, x87 PASS, 99 host tests green)
 pairs with Ctrl+Shift+F9; expected: eleven rays of different length, glow ending near 6 R, the core edge blending into
 a bright region to ~1.5 R; same kill rule as run 221.
 | Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) | Re-ported to step 1d after `2a4a77cf6` (rays from `ray_start`, new hashes, `core_gain`): 51 points worst |JS − C++| 1.26e-5; HUD glow max 1.3172 = reference field 1.3172 (white, K = 2); `--check` PASS (25 constants).
+
+## Run 223 — own sun user tuning from the lab (installed 2026-11-02, dev candidate)
+
+Run 222 not flown separately; the user tuned in `tools/effects/own_sun_lab.html` and asked for `ray_count` 9,
+`ray_gain` 0.11, `ray_length` 11, `ray_sigma` 0.25, `white_mix` 0.15 (constants only, program bytecode unchanged;
+`generate_own_sun_programs.py --check` PASS). `glow_meter.py`: glow max outside the core 1.272 (1440 rows), cap
+rule PASS at both resolutions (worst sun-tile `ev_limit` +2.35 / +2.32 EV); `law_checks.py`: nine spokes 5° off the
+axes, none opposite, lengths 1.73–10.23 R beyond the core edge; `test_own_sun` pins updated; lab regenerated
+(`--check` PASS, 25 constants). Built unstripped (`build-ap` `dde9bcf4…`, 0 warnings, x87 PASS, 85 host tests
+green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run222`
+([record](../../verification/results/run223-candidate-install.json)). Flight: the two F8 pairs; same kill rule.

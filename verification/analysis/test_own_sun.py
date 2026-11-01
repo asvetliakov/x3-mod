@@ -164,7 +164,7 @@ class OwnSunHost(unittest.TestCase):
         def want(words, k, fog):
             c = [w / 256 for w in words]
             m = max(c)
-            return [k * .72 * (ci / m + (1 - ci / m) * .25) * m * fog for ci in c], [k / 2 * ci * fog for ci in c]
+            return [k * .72 * (ci / m + (1 - ci / m) * .15) * m * fog for ci in c], [k / 2 * ci * fog for ci in c]
         for words, k, fog in (((256, 128, 0), 2, .5), ((50, 50, 50), 2, 1), ((70, 65, 85), 8, 1), ((225, 255, 200), 2, .886)):
             r = self.run_driver('radiance', *words, k, fog)
             self.assertEqual(r['black'], '0')
@@ -206,8 +206,8 @@ class OwnSunHost(unittest.TestCase):
         # along any radial line; the corona and halo on the axis are the note's 2.15 exp(-(r / 1.05)^2) and
         # 0.3 / (1 + (r / 4.2)^2) W(r), W windowed at 17.
         field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .02)
-        self.assertLessEqual(float(field['glow_max']), 1.35)
-        self.assertGreater(float(field['glow_max']), 1.30)
+        self.assertLessEqual(float(field['glow_max']), 1.30)                                       # user tuning 2026-11-02: 9 rays at .11 -> 1.269
+        self.assertGreater(float(field['glow_max']), 1.25)
         self.assertLessEqual(float(field['glow_rise']), 0.)
         self.assertLess(float(field['asymmetry']), 1e-4)                                              # each spoke mirror-symmetric
         for r in (1, 2, 3, 6, 9, 12, 16, 20):
@@ -216,27 +216,28 @@ class OwnSunHost(unittest.TestCase):
             window = max(0., 1 - (r / 17) ** 2) ** 2
             self.assertAlmostEqual(float(px['halo']), .3 / (1 + (r / 4.2) ** 2) * window, delta=1e-6)
         self.assertEqual(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 17, 0, 9, 1)['halo']), 0.)  # windowed at 17
-        # Eleven spokes (odd: no two opposite) with the note's hashed lengths beyond the core's edge (2.0-12.1, evenly
+        # Nine spokes (user tuning 2026-11-02; odd: no two opposite) with the hashed lengths beyond the core's edge (1.7-10.2,
+        # evenly
         # spread) and strengths (0.6-1.2: the shortest rays are not hashed below 0.6 of the gain); each ray's reach orders
-        # as its length and ends within 1 + 13 = 14 core radii.
+        # as its length and ends within 1 + 11 = 12 core radii.
         header = (ROOT / 'src/proxy/own_sun_core.h').read_text()
-        self.assertIn('constexpr unsigned ray_count = 11;', header)
-        lengths = [13 * (.15 + .85 * ((k * .6180340 + .3) % 1)) for k in range(11)]
-        self.assertEqual([round(v, 2) for v in lengths], [5.27, 12.09, 7.87, 3.65, 10.48, 6.26, 2.04, 8.87, 4.65, 11.48, 7.26])
-        strengths = [.6 + .6 * ((k * .7548777 + .31) % 1) for k in range(11)]
+        self.assertIn('constexpr unsigned ray_count = 9;', header)
+        lengths = [11 * (.15 + .85 * ((k * .6180340 + .3) % 1)) for k in range(9)]
+        self.assertEqual([round(v, 2) for v in lengths], [4.46, 10.23, 6.66, 3.09, 8.87, 5.30, 1.73, 7.51, 3.93])
+        strengths = [.6 + .6 * ((k * .7548777 + .31) % 1) for k in range(9)]
         self.assertGreaterEqual(min(strengths), .6)
         self.assertLessEqual(max(strengths), 1.2)
         spokes = [tuple(map(float, s.split(':'))) for s in field['spokes'].split(',')]
-        self.assertEqual(len(spokes), 11)
-        self.assertEqual(sorted(range(11), key=lambda k: spokes[k][0]), sorted(range(11), key=lambda k: lengths[k]))
+        self.assertEqual(len(spokes), 9)
+        self.assertEqual(sorted(range(9), key=lambda k: spokes[k][0]), sorted(range(9), key=lambda k: lengths[k]))
         self.assertTrue(all(1 < reach < 1 + length for (reach, _), length in zip(spokes, lengths)))
-        self.assertLessEqual(max(1 + length for length in lengths), 14.)
-        self.assertLessEqual(max(peak for _, peak in spokes), .15 * 1.2 + 1e-6)                       # 0.15 x strength x profile
+        self.assertLessEqual(max(1 + length for length in lengths), 12.)
+        self.assertLessEqual(max(peak for _, peak in spokes), .11 * 1.2 + 1e-6)                       # 0.11 x strength x profile
         # Every ray, the shortest too, leaves the core at its full strength: the along-profile starts at the core's edge.
         for (reach, peak), strength in zip(spokes, strengths):
-            self.assertAlmostEqual(peak, .15 * strength, delta=2e-3 * .15)
-        # Every spoke off the screen axes (at least 1/8 spoke, 4.09 degrees, the most N = 11 allows) and none opposite.
-        angles = [(k - .125) * 360 / 11 for k in range(11)]
+            self.assertAlmostEqual(peak, .11 * strength, delta=2e-3 * .11)
+        # Every spoke off the screen axes (1/8 spoke = 5 degrees at N = 9) and none opposite.
+        angles = [(k - .125) * 360 / 9 for k in range(9)]
         self.assertGreater(min(min(abs((a - axis + 180) % 360 - 180) for axis in (0, 90, 180, 270)) for a in angles), 4.)
         self.assertGreater(min(abs((a - b) % 360 - 180) for a in angles for b in angles if a != b), 16.)
         # No streak term: the horizontal axis carries no ray (the nearest spoke, 4.1 degrees off it, is 5.3 R long).
@@ -252,11 +253,11 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(set(off['spokes'].split(',')), {'0.00:0.0000'})
 
     def test_ray_width_floor(self):
-        # sigma = max(3 px, 0.2 R): c7.w = (2 pi / N) sqrt(log2 e) / sigma in core radii (no taper).
+        # sigma = max(3 px, 0.25 R): c7.w = (2 pi / N) sqrt(log2 e) / sigma in core radii (no taper).
         for rows, radius_px in ((768, .012 * 768), (1440, .012 * 1440), (1440, 50.)):
             c = floats(self.run_driver('constants', 5120, rows, 0, 0, radius_px, 1, 1, 1, 1, 1, 1, 1)['c'])
-            sigma_px = (2 * math.pi / 11) * math.sqrt(1 / math.log(2)) / c[31] * radius_px
-            self.assertAlmostEqual(sigma_px, max(3., .2 * radius_px), places=3, msg=(rows, radius_px))
+            sigma_px = (2 * math.pi / 9) * math.sqrt(1 / math.log(2)) / c[31] * radius_px
+            self.assertAlmostEqual(sigma_px, max(3., .25 * radius_px), places=3, msg=(rows, radius_px))
             self.assertGreaterEqual(sigma_px, 3. - 1e-4)
 
     def test_no_seam_between_spokes(self):
@@ -313,12 +314,12 @@ class OwnSunHost(unittest.TestCase):
         self.assertAlmostEqual(c[1] * h, 1.)
         self.assertEqual(c[12:15] + c[16:19], [1., 2., 3., 4., 5., 6.])
         self.assertAlmostEqual(c[15], .4, places=6)                                                   # the core's inner edge
-        for got, value in zip(c[20:23], (2.15, .3, .15 * .5)):                                         # sun_rays scales the rays only
+        for got, value in zip(c[20:23], (2.15, .3, .11 * .5)):                                         # sun_rays scales the rays only
             self.assertAlmostEqual(got, value, places=6)
         self.assertEqual((c[24], c[25]), (.75, .625))                                                 # centre uv: (.5 + .5 x, .5 - .5 y)
         self.assertAlmostEqual(c[26] * w, 10., places=4)                                             # the core radius
         self.assertAlmostEqual(c[27] * h, 10., places=4)
-        self.assertEqual((c[36], c[37]), (1., 11.))                                                   # the rays' start, the spoke count
+        self.assertEqual((c[36], c[37]), (1., 9.))                                                   # the rays' start, the spoke count
         d, wv = c[4:8], c[8:12]
         offsets = set()
         for vec in (d[0:2], d[2:4], wv[0:2], wv[2:4]):

@@ -1,0 +1,30 @@
+{
+ "run": 223,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun user tuning from the lab: ray_count 9, ray_gain 0.11, ray_length 11, ray_sigma 0.25, white_mix 0.15 (bytecode unchanged: constants are uploaded)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run222; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T03:24:44+04:00",
+ "commit": "(this commit)",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "dde9bcf4d1732f928a4d5512126be6d5876bc30a2e720016cf56abc5dca5a796",
+  "bytes": 63224618,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 222,
+  "sha256_prefix": "e0e351c5",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run222"
+ },
+ "host_tests": "run_host_suite modules own_sun, own_sun_lab, sun_occlusion, logging_tiers, launcher_defaults: 85 tests, 0 failing; glow_meter cap rule PASS both resolutions (worst sun-tile ev_limit +2.35 / +2.32 EV)",
+ "review": "none: user-chosen constants over the reviewed step 1d law",
+ "ini": "own_sun = 1 (unchanged)",
+ "producer": "main session"
+}
