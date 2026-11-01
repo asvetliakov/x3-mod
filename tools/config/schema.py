@@ -187,7 +187,7 @@ SETTINGS = [
     entry('bloom_source_clamp', 'float', 'hdr', 'Caps how bright a light may be before it feeds the glow, so a single hot pixel does '
           'not flare. Lower = subtler glow. Above 0, up to 64.', '1.0', range=[R(0, 64, True)], requires=('hdr_bloom',), launcher='--bloom-source-clamp'),
     entry('bloom_strength', 'float', 'hdr', 'Strength of the glow around bright lights. 1 = full, lower = subtler, 0 = no glow '
-          'drawn (bloom still runs). 0 to 1.', '0.7', range=(0.0, 1.0), requires=('hdr_bloom',), launcher='--bloom-strength',
+          'drawn (bloom still runs). 0 to 1.', '0.25', range=(0.0, 1.0), requires=('hdr_bloom',), launcher='--bloom-strength',
           since='2026-11-01'),
     entry('emission_source_gain', 'float', 'hdr', 'Brightness of engine exhausts, weapon effects and ship guide lights. 1 = the game\'s '
           'own, up to 8.', '1.0', range=(1.0, 8.0), requires=('hdr',), launcher='--emission-source-gain'),

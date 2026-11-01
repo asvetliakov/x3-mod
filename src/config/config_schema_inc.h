@@ -181,7 +181,7 @@ constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
     {"X3M_BLOOM_SOURCE_CLAMP", "bloom_source_clamp", Type::Float, "1.0", nullptr, 0, 1, 0, 0, 0, "", 0, -1},
-    {"X3M_BLOOM_STRENGTH", "bloom_strength", Type::Float, "0.7", nullptr, 1, 1, 0, 0, 0, "", 0, -1},
+    {"X3M_BLOOM_STRENGTH", "bloom_strength", Type::Float, "0.25", nullptr, 1, 1, 0, 0, 0, "", 0, -1},
     {"X3M_BOLT_FAR_COMPOSITE", "bolt_far_composite", Type::Bool, "1", nullptr, 2, 0, 0, 0, 0, "", 0, -1},
     {"X3M_BOLT_FAR_SHOW", "bolt_far_show", Type::Float, "1", nullptr, 2, 1, 0, 0, 0, "", 0, -1},
     {"X3M_BOLT_FOOTPRINT", "bolt_footprint", Type::FloatList, "3,12", nullptr, 3, 0, 0, 2, 6, "", 0, -1},
@@ -476,7 +476,7 @@ constexpr Alias aliases[1] = {{nullptr, 0}}; // none yet
 
 namespace x3m::config_default {
 constexpr float bloom_source_clamp = 1.0f;
-constexpr float bloom_strength = 0.7f;
+constexpr float bloom_strength = 0.25f;
 constexpr bool bolt_far_composite = true;
 constexpr float bolt_far_show = 1.0f;
 constexpr const char bolt_footprint[] = "3,12";

@@ -303,8 +303,8 @@ bool bloom_requested = false; // X3M_HDR_BLOOM=1; opt-in AgX compositor replacem
 // feed this option leaves untouched when absent or invalid.
 float bloom_source_clamp = x3::temporal::kAgxClampOff;
 // X3M_BLOOM_STRENGTH=S: overall gain of the bloom composite (c26.w, linear in
-// bloomCompose); 0.7 since 2026-11-01, when 1 read as too prominent on native Windows.
-constexpr float kBloomStrengthDefault = 0.7f;
+// bloomCompose); 0.25 since 2026-11-01 (1 and then 0.7 read as too prominent on native Windows, halos on star fields).
+constexpr float kBloomStrengthDefault = 0.25f;
 float bloom_strength = kBloomStrengthDefault;
 x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
@@ -1586,7 +1586,7 @@ void retain_compositor_scene(void* storage, const MotionHdrScene& scene) noexcep
     // Bloom-only source ceiling: the pyramid sees at most this decoded code,
     // the presented scene keeps its full HDR value (bloom-falloff.md).
     call.input.filter.source_clamp = bloom_source_clamp;
-    // X3M_BLOOM_STRENGTH, default 0.7 (full gain 1 until 2026-11-01; the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
+    // X3M_BLOOM_STRENGTH, default 0.25 (full gain 1 until 2026-11-01, 0.7 briefly; the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
     call.input.filter.strength = bloom_strength;
 }
 bool compositor_current(const CompositorInvocation& call, bool refresh_owner = true) noexcept {
