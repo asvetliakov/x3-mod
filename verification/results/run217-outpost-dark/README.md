@@ -19,3 +19,11 @@ at 7063 the same draws (117-119) are opaque (zwrite 1, blend 0), routed=1 gate 0
 VS 37c34a74 has no fade_route registers row (fade_route_core.h vertex_programs, deliberately excluded as "damage"),
 so fade_route_pair=0 and the draw falls to the overlay arm, which refuses it (no routed draw of the same node just
 before): native draw, no fill. fade_owner_forms rows exist for both PS (fill=1 gain=1 widen=1) but are never reached.
+
+Fix (2026-11-02): VS 37c34a74 is fade_route row 10 (c40/c44, `fog_branch`: the arm's only with b0 TRUE, else the overlay
+arm as before); ledger `docs/verification/fill-light.md` "XT BUMP stations in the fade band (Run 217)".
+
+    python3 -I fade_state_census.py /mnt/c/X3/x3m.log /mnt/c/X3/x3m.prev.log > fade_state_census.txt  # b0 evidence
+    python3 fade_arm_ab.py [b1ec6b0f] > fade_arm_ab.txt   # host fixture fade_arm_selection, working tree vs base
+    python3 ../farnhams-legacy-build/cmp_objs.py <clean b1ec6b0f build-fl> <candidate build-fl> > fl_object_compare.json
+    # capture.cpp.obj: objdump -d both, sed -E 's/0x[0-9a-f]+\(/D(/g', diff: only the MotionOutput size 0x16ae00 -> 0x16ae08

@@ -1091,15 +1091,16 @@ namespace fade_route_mode {
 int registers(int, char** argv) {
     x3m::fade_route::Registers r{};
     const bool known = x3m::fade_route::registers(std::strtoull(argv[2], nullptr, 16), r);
-    std::printf("REGISTERS vs=%s known=%u alpha=%u fog=%u\n", argv[2], known, r.alpha, r.fog);
+    std::printf("REGISTERS vs=%s known=%u alpha=%u fog=%u fog_branch=%u\n", argv[2], known, r.alpha, r.fog,
+                unsigned(r.fog_branch));
     return 0;
 }
-// --fade-route-table: the register table's rows (fade-rt2-ownership.md section 3: nine).
+// --fade-route-table: the register table's rows (fade-rt2-ownership.md section 3: ten).
 int table(int, char**) {
     std::printf("TABLE rows=%u\n", unsigned(x3m::fade_route::vertex_program_count));
     for (const auto& row : x3m::fade_route::vertex_programs)
-        std::printf("ROW vs=%016llx alpha=%u fog=%u\n", (unsigned long long)row.hash, row.registers.alpha,
-                    row.registers.fog);
+        std::printf("ROW vs=%016llx alpha=%u fog=%u fog_branch=%u\n", (unsigned long long)row.hash,
+                    row.registers.alpha, row.registers.fog, unsigned(row.registers.fog_branch));
     return 0;
 }
 // --fade-route-arm-pair registers_row distance_fade_pair owner: fade_route::arm_pair.
