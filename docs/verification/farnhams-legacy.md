@@ -66,4 +66,13 @@ Installed to `C:\X3FL\d3d9.dll`, bytes verified; rollback
 every 10 s two `fl.camera_sample` rows (`k=0` sky read, `k=1` scene read) with
 `read_failure=0 shape=persp aspect=3.556`, `ortho_dot`/`ortho_len` below 1e-3,
 `t_len` > 0 on `k=1`, `changed=1` while flying. Image still vanilla (no TAA
-history yet). Result: pending.
+history yet).
+
+Result (log session of 2026-11-01, 19,115 frames / 105 s, no reset, no exception;
+measured): `fl.camera status=active` with both anchors matched at base 0x4d0000,
+slots 0x67ae68/0x67ae78; buffers null in the menu (`read_failure=2`, one burst),
+then `proj=0x04c86108 view=0x04c85d60` for the whole flight. 16 of 18 sample rows
+`shape=persp m00=0.375 m11=1.3333 aspect=3.5555 m23=1 m22=1.000003 m32=-6`
+(FOV_y 73.7°, near ≈ 6), `ortho_dot`/`ortho_len` ≤ 2.3e-4, `changed=1`; `k=0` (sky
+read) `t_len` ≈ 11.3, `k=1` (scene read) `t_len` 112,765 → 139,542 while flying.
+**Accepted:** the inherited slots and the row-major D3D layout are confirmed in game.
