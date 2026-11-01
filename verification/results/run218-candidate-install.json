@@ -1,0 +1,36 @@
+{
+ "run": 218,
+ "what": "dev candidate (unstripped RelWithDebInfo build-ap) installed into native C:\\X3: XT BUMP VS 37c34a74 fade-route admission (d812702c + docs 4e6b16a5, merge 793a2443); no version bump (user rule 2026-11-02)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run217; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T00:54:40+04:00",
+ "commit": "793a2443",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS 0 violations"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "9be4c8a489434a6fe0f8c017973c6c5f830bf280aeb675b94235277e777e9900",
+  "bytes": 63068842,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 217,
+  "release": "1.8.4",
+  "sha256_prefix": "2f278784",
+  "bytes": 42558846,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run217"
+ },
+ "host_tests": "run_host_suite modules fade_region, original_fill, shader_population, motion_wrap_states, sun_share_lane, hull_lightmap_gain: 62 tests, 0 failing",
+ "review": "Opus medium: merge; F1 doc fix applied (4e6b16a5)",
+ "unchanged": [
+  "X3AP.exe fdbf3418\u2026",
+  "x3m.ini"
+ ],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

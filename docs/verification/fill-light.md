@@ -268,3 +268,12 @@ brightness across the switch (no step), windows unchanged. Log in the band: `mot
 `vs=37c34a7478544c14` in the fade state show `fade_arm=1 routed=1`, permille 500-999 (the alpha-tested sub-mesh with
 `atest=1` routed too) instead of `unmatched=overlay_node` / `no_zwrite`; `fade_route_frame` `fade_fill` and
 `fade_tested` rise accordingly; near XT draws unchanged (opaque, routed).
+
+**Run 218 (2026-11-02, dev candidate, no release).** The XT BUMP row (`d812702c`, reviewed Opus medium: merge; doc
+fix `4e6b16a5`; merge `793a2443`) built unstripped in `build-ap` (RelWithDebInfo, 0 warnings, x87 PASS, 62 affected
+host tests green) and installed into `C:\X3` (SHA-256 `9be4c8a4…`, rollback `rollback-d3d9\d3d9.dll.run217` = release
+1.8.4; [record](../../verification/results/run218-candidate-install.json)). Flight: approach the remote outpost (XT
+`freighter_base`) from beyond its fade distance; F8 in the band and after it turns opaque; pass = no brightness step
+on the hull; rows `motion_route … vs=37c34a7478544c14 fade_arm=1 routed=1` at permille 500–999 in the band,
+`fade_route_frame … fade_fill`/`fade_tested` rising; watch window sub-meshes as the station crosses N (review F1);
+a lit-side step is read against the receiver difference (review F5), not the guard.
