@@ -38,3 +38,12 @@ crash over 36k frames. The renderer's engine inputs are the port order:
 camera matrices (TAA reprojection, shadow cascades), object identity (TAA
 history), scene hook (bloom/compositor), sector background (fog), sun poll
 (shadows). Rollback: delete `C:\X3FL\d3d9.dll` and `x3m.ini`.
+
+## FL run 1 — first `fl` edition DLL, identity line only (installed 2026-11-01)
+
+Candidate: commit `7c038797`, `build-fl/d3d9.dll` SHA-256 `144a023b…`, 55,307,009 B
+unstripped, 0 warnings, 41 s wall ([record](../../verification/results/fl-run1/candidate.json)).
+Installed to `C:\X3FL\d3d9.dll`, bytes verified; rollback
+`C:\X3FL\rollback-d3d9\d3d9.dll.run0` (the run 0 AP DLL). Expected: one
+`fl.identity ok base=0x… ` line in `x3m.log`, no `executable_mismatch` rows
+(the AP modules are not in this DLL), otherwise run 0 behaviour. Result: pending.

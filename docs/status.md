@@ -5,8 +5,8 @@ branch `fl-codex`; main carries only its 106 disassembly notes
 ([docs/reverse-engineering/fl/](reverse-engineering/fl/README.md), unverified in
 game). FL run 0 flew the accepted AP DLL under `X3FL.exe`: loads, 36k frames, all
 engine modules refused on identity, TAA/HDR inactive ([FL ledger](verification/farnhams-legacy.md)).
-Next: the `fl` compile-time edition with an FL identity line, then the engine
-providers one per run. `C:\X3FL` holds the AP DLL and ini from run 0.
+Installed in `C:\X3FL`: FL run 1, the first `fl` edition DLL (`144a023b…`, commit `7c038797`, identity line only, result pending). Next: the engine
+providers one per run.
 
 **Release 1.7.3** (2026-10-27T19:08): stripped DLL `bde29ab1…` (42,535,121 B) built by `release.py` from clean `10d42d74`, installed into native `C:\X3` as Run212, rollback `rollback-d3d9\d3d9.dll.run211`; zip `b41cc537…` (60,222,530 B) at /home/asvetl/x3m-releases/1.7.3/ and `C:\Users\asvet\Downloads\`; x3m-regenerate.exe 1.7.0 reused; the user's `x3m.ini` header bumped to 1.7.3 ([releases ledger](verification/releases.md#release-173)). = 1.7.2 + `circle_fill_fix` (Run211). No run open.
 
