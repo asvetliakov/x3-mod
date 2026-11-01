@@ -1,5 +1,13 @@
 # Project status
 
+**Farnham's Legacy port restarted (2026-11-01):** the Codex attempt is archived on
+branch `fl-codex`; main carries only its 106 disassembly notes
+([docs/reverse-engineering/fl/](reverse-engineering/fl/README.md), unverified in
+game). FL run 0 flew the accepted AP DLL under `X3FL.exe`: loads, 36k frames, all
+engine modules refused on identity, TAA/HDR inactive ([FL ledger](verification/farnhams-legacy.md)).
+Next: the `fl` compile-time edition with an FL identity line, then the engine
+providers one per run. `C:\X3FL` holds the AP DLL and ini from run 0.
+
 **Release 1.7.3** (2026-10-27T19:08): stripped DLL `bde29ab1…` (42,535,121 B) built by `release.py` from clean `10d42d74`, installed into native `C:\X3` as Run212, rollback `rollback-d3d9\d3d9.dll.run211`; zip `b41cc537…` (60,222,530 B) at /home/asvetl/x3m-releases/1.7.3/ and `C:\Users\asvet\Downloads\`; x3m-regenerate.exe 1.7.0 reused; the user's `x3m.ini` header bumped to 1.7.3 ([releases ledger](verification/releases.md#release-173)). = 1.7.2 + `circle_fill_fix` (Run211). No run open.
 
 **Run211** installed into native `C:\X3` (2026-10-27T19:03): main `23dc4075`, DLL `4bfc504c…` 62,988,232 B unstripped, bytes verified, rollback `rollback-d3d9\d3d9.dll.run210` (release 1.7.2) ([candidate](../verification/results/run211-candidate-build.json), [install](../verification/results/run211-candidate-install.json)) = 1.7.2 + **`circle_fill_fix`** (default on): the sector-map scanner disc drew as a dented or collapsed polygon whenever it was larger than the map window (user report, 2560x1440, `ui_scale` 1.5 / `text_density` 2; the owner's Mayhem advanced-satellite coverage). Cause: the engine's own filled-circle rasteriser `0x004ef620` behind `B3D_TexCircleFill` overflows its 32-bit midpoint arithmetic from r = 814 texels (dents from 826, collapse from 1291); `d = 2` doubles the texel radius so any window-sized disc crosses it, and the stock game hits it for huge discs too. Entry claim: r <= 813 runs stock code, larger radii a 64-bit port through the engine's lock, class dispatch and span leaves ([RE note](reverse-engineering/sector-map-scanner-range.md), [text-density note, "Oversized disc"](architecture/text-density.md), [ledger](verification/text-density.md)). Review: no blocker; host test 11, site verifier 24/24, equivalence sweep 3,736 cases 0 mismatches. `x3m.ini` unchanged. **Run 211 A completed** (the user: works fine). Was: open the sector map with an advanced satellite being placed (or any scanner range bigger than the window) at 100 % and 200 % zoom: the disc must be a clean circle cut by the window edge; the log must carry `circle_fill site=004ef620 status=patched reason=ok mode=on` and one `circle_fill_wide` row.
