@@ -63,6 +63,9 @@
 #include "object_trace.h"
 #include "object_capture.h"
 #include "sector_background.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/sector_background_fl.h"
+#endif
 #include "scene_hook.h"
 #include "compositor_bridge.h"
 #include "compositor_owner.h"
@@ -982,11 +985,20 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
         ~RestoreError() { SetLastError(value); }
     } restore_error{saved_error};
     sector_background::Sample value;
-    if (object_trace::executable_verified()) {
+#if X3M_EDITION_FL
+    // X3FL.exe: the same reader over the FL layout, admitted by its anchors (sector_background_fl.cpp).
+    const bool admitted =
+        fl::sector_background_fl::sample(value, volumetric_fog_docked ? sector_background::anchor_walk_limit : 0u);
+#else
+    const bool admitted = object_trace::executable_verified();
+#endif
+    if (admitted) {
+#if !X3M_EDITION_FL
         // Even without the motion route, revalidate pages after a load/realloc.
         engine_memory::revalidate(); // an epoch only: not a Present (engine_memory.h)
         auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
         value = sector_background::sample(read, volumetric_fog_docked ? sector_background::anchor_walk_limit : 0u);
+#endif
         // R3: the Ready sector's id [sector+8], read once per sector and again after any break in Ready samples
         // (a transit), for the prefill walk's id check and its confirmation.
         if (volumetric_fog_prefill && scene_authority && value.status == sector_background::Status::Ready) {

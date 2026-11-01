@@ -1,0 +1,51 @@
+records=110 sectors=298 dust_sectors=48 compiled_profile_sectors=48 names_resolved=31
+compiled_families=['bluewell', 'fogbluedistance', 'fogcyancorner', 'fogdeepred', 'foggreeneye', 'foggreenoutlands', 'fogparanid', 'fogred', 'uranus', 'uranus3', 'whitenexus']
+dust_families_without_compiled_profile=[]
+2,0 "Queen's Space" index=14 family=foggreenoutlands near=3000000 far=3500000 dust=16
+18,0 "" index=11 family=fogcyancorner near=15500000 far=19500000 dust=10
+3,1 "Rolk's Fate" index=14 family=foggreenoutlands near=3000000 far=3500000 dust=16
+11,1 "Saturn" index=76 family=uranus near=500000000 far=500000000 dust=15
+18,1 "Menelaus' Paradise" index=11 family=fogcyancorner near=15500000 far=19500000 dust=10
+20,1 "{7,1023000}" index=10 family=fogbluedistance near=18500000 far=23500000 dust=8
+2,2 "The Hole" index=14 family=foggreenoutlands near=3000000 far=3500000 dust=16
+3,2 "Atreus' Clouds" index=14 family=foggreenoutlands near=3000000 far=3500000 dust=16
+11,2 "Jupiter" index=79 family=uranus3 near=500000000 far=500000000 dust=15
+19,2 "{7,30000}" index=10 family=fogbluedistance near=18500000 far=23500000 dust=8
+20,2 "{7,30052}" index=10 family=fogbluedistance near=18500000 far=23500000 dust=8
+0,3 "Ringo Moon" index=2 family=bluewell near=18000000 far=18500000 dust=8
+1,3 "Argon Prime" index=2 family=bluewell near=18000000 far=18500000 dust=8
+1,7 "Empire's Edge" index=33 family=whitenexus near=17000000 far=17500000 dust=16
+2,7 "Duke's Domain" index=33 family=whitenexus near=17000000 far=17500000 dust=16
+1,8 "Preacher's Void" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+2,8 "" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+0,9 "{7,30003}" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+1,9 "Duke's Vision" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+2,9 "Emperor's Wisdom" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+5,9 "Shore of Infinity" index=11 family=fogcyancorner near=15500000 far=19500000 dust=10
+1,10 "" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+5,10 "" index=11 family=fogcyancorner near=15500000 far=19500000 dust=10
+11,10 "{7,30055}" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+13,10 "Aldrin" index=74 family=fogdeepred near=500000000 far=500000000 dust=16
+1,11 "Rhy's Crusade" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+5,11 "{7,1020000}" index=11 family=fogcyancorner near=15500000 far=19500000 dust=10
+11,11 "" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+12,11 "" index=16 family=fogparanid near=11500000 far=12500000 dust=16
+19,12 "" index=13 family=foggreeneye near=3500000 far=5000000 dust=16
+20,12 "" index=13 family=foggreeneye near=3500000 far=5000000 dust=16
+21,12 "" index=13 family=foggreeneye near=3500000 far=5000000 dust=16
+8,14 "Spring of Belief" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+9,14 "Friar's Retreat" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+10,14 "Pontifex' Seclusion" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+1,15 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+8,15 "Unholy Descent" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+9,15 "Consecrated Fire" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+10,15 "{7,30025}" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+1,16 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+2,16 "{7,30004}" index=17 family=fogred near=8700000 far=10200000 dust=16
+8,16 "{7,1020000}" index=12 family=fogdeepred near=20000000 far=30000000 dust=16
+2,17 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+3,17 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+2,18 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+3,18 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+2,19 "" index=17 family=fogred near=8700000 far=10200000 dust=16
+3,19 "" index=49 family=fogbluedistance near=2350000 far=3850000 dust=8

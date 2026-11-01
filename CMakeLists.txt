@@ -156,6 +156,8 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/scale_overflow_fix_fl.cpp)
   # The hook-free poll of the engine's brightest directional light (docs/architecture/farnhams-legacy-sun-light.md).
   target_sources(d3d9 PRIVATE src/engine/fl/sun_light_poll_fl.cpp)
+  # The active sector's TBackgrounds record for the fog (docs/architecture/farnhams-legacy-sector.md).
+  target_sources(d3d9 PRIVATE src/engine/fl/sector_background_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -198,6 +200,9 @@ set_source_files_properties(src/engine/fl/scale_overflow_fix_fl.cpp
 # SSE2 stays on (its score is the engine's double-precision sum); no exception bookends.
 set_source_files_properties(src/engine/fl/sun_light_poll_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL sector-background reader (src/engine/fl/sector_background_fl.cpp) runs inside capture.cpp's device-call
+# boundary like the AP reader: default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/sector_background_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

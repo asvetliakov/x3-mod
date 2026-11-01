@@ -1,0 +1,138 @@
+{
+ "dll": "build-fl/d3d9.dll",
+ "image_base": "0x6fb40000",
+ "functions": 4513,
+ "roots": 509,
+ "address_taken": 234,
+ "roots_data": 491,
+ "reachable_functions": 2758,
+ "functions_with_ap_constants": 62,
+ "reachable_with_ap_constants": 20,
+ "reachable_list": [
+  [
+   "x3m::MotionOutput::configure_engine_light(bool)",
+   [
+    "0x404000",
+    "0x61a258"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::engine_light_upload()",
+   [
+    "0x61a224"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::engine_seta_step(double)",
+   [
+    "0x63ffff"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::prepare_volumetric_fog_density(unsigned int, unsigned int)",
+   [
+    "0x410100"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::run_volumetric_fog()",
+   [
+    "0x6d3a06"
+   ]
+  ],
+  [
+   "x3m::MotionOutput::~MotionOutput()",
+   [
+    "0x61a258"
+   ]
+  ],
+  [
+   "x3m::engine_effects::seta_read(unsigned int*, unsigned int*)",
+   [
+    "0x4d1ef0",
+    "0x606f34"
+   ]
+  ],
+  [
+   "x3m::engine_light::core::build_nodes(x3m::engine_light::core::ShipTable const&, x3m::engine_light::core::DrawLog const&, x3m::engine_light::core::NodeTable*)",
+   [
+    "0x404000"
+   ]
+  ],
+  [
+   "x3m::fog::DensityCache::allocate()",
+   [
+    "0x410100"
+   ]
+  ],
+  [
+   "x3m::fog::DensityCache::enable_horizon()",
+   [
+    "0x410100"
+   ]
+  ],
+  [
+   "x3m::fog::DensityCache::take_uploads(x3m::fog::StagingView const*, unsigned int, x3m::fog::TileRect*, unsigned int)",
+   [
+    "0x410100"
+   ]
+  ],
+  [
+   "x3m::initialize_log(HINSTANCE__*)",
+   [
+    "0x410100",
+    "0x5b005b",
+    "0x5f005f",
+    "0x600060"
+   ]
+  ],
+  [
+   "x3m::object_lifetime::initialize()",
+   [
+    "0x600000"
+   ]
+  ],
+  [
+   "x3m::renderer::(anonymous namespace)::engine_light_block(std::vector<unsigned int, std::allocator<unsigned int> >&, unsigned int, bool, bool)",
+   [
+    "0x550001"
+   ]
+  ],
+  [
+   "x3m::renderer::(anonymous namespace)::lightmap_widen_fetch(std::vector<unsigned int, std::allocator<unsigned int> >&, unsigned int const*, unsigned int)",
+   [
+    "0x440000"
+   ]
+  ],
+  [
+   "x3m::renderer::(anonymous namespace)::original_fill_block(std::vector<unsigned int, std::allocator<unsigned int> >&, unsigned int, unsigned int, bool, bool)",
+   [
+    "0x550000"
+   ]
+  ],
+  [
+   "x3m::renderer::(anonymous namespace)::transfer(std::vector<unsigned int, std::allocator<unsigned int> >&, bool, unsigned int, x3m::renderer::(anonymous namespac",
+   [
+    "0x550000"
+   ]
+  ],
+  [
+   "x3m::renderer::fog_field::decode_packet(unsigned char const*, unsigned int, x3m::renderer::fog_field::ProfileInfo const&, std::vector<unsigned short, std::alloc",
+   [
+    "0x4b5047"
+   ]
+  ],
+  [
+   "x3m::renderer::linear_emission_pixel_variant(unsigned int const*, unsigned int, x3m::renderer::LinearEmissionConfig const&, std::vector<unsigned int, std::alloc",
+   [
+    "0x550000"
+   ]
+  ],
+  [
+   "x3m::renderer::linear_emission_sm1_pixel_variant(unsigned int const*, unsigned int, x3m::renderer::LinearEmissionSm1Config const&, std::vector<unsigned int, std",
+   [
+    "0x550000"
+   ]
+  ]
+ ]
+}

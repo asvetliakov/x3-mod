@@ -679,3 +679,29 @@ verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run11` (`eafc5b0d…`). Expec
 checks (`fl.sun_light status=ok anchors=50`, `fl.sun_light_sample … engine_rule=1 score>=0x300`,
 `shadow_replay_sun_source … source=point poll=ok`, `shadow_replay_sun_point … record_scale` ≈ 0.01,
 `volumetric_fog_frame … sun=tracked`): the Step 7 section above. Also carries `bloom_strength` 0.25.
+
+## Step 6 — sector background, host evidence (2026-11-01, not installed)
+
+Design: [FL sector note](../architecture/farnhams-legacy-sector.md); layout proof
+[FL sector fog §6](../reverse-engineering/fl/sector-fog.md#6-verification-pass-for-the-step-6-reader-2026-11-01).
+Measured on the WSL2 host, worktree builds (`-j4`, fl then ap): fl and ap 0 warnings each; the fl DLL carries
+2 `fl.sector*` row strings. AP: 119 of 121 objects identical to a fresh build of the base commit `68a23daf`
+(`verification/results/fl-port/sector-background/ap_object_compare.json`; `config.cpp` one schema key,
+`proxy_identity.cpp` the source-commit string). `capture.cpp` and `seta_restore.cpp` (the reader's two AP
+instantiations) are identical because the layout is a type parameter (`ApLayout` with the literal addresses).
+AP-address rescan of the fl DLL (`ap_address_scan_fl.json`): 20 reachable functions with AP constants, as
+before; none is a sector reader (the remaining FL hits of `0x608504`/`0x606f34` are the AP-only chase/effects
+modules). `fl_sector_background_constants.py --check` matches X3FL.exe. Schema: `fl_sector_log` added
+(`schema_semantic_compare.txt`: added=1 removed=0 changed=0); `generate.py --check` PASS (291 settings).
+Native fixture (`run_fixture.py` → `fixture.json`): `RESULT PASS checks=102 failures=0`, `ANCHOR anchors=22
+bytes=1112 flips=1112 refused=1112` (each flip names its anchor), identity refusal of the fixture exe
+(`executable_mismatch`), an image relocated for another base refused at `registry_lookup`, null/wrapping base
+refused; Ready with dust 50, near 1.5 M, far 18.5 M, stardust 7, rates, `config758=3` with a decoy at `+0x768`,
+far floors 500 M/100 M; a 21-character name whose NUL is the last committed byte read (an over-read would fail)
+and 26 bytes without NUL refused; docked walk Found at depth 1, OtherSector refused; NoCockpit (handle, registry),
+Missing, NoSector, BadClass, BadIndex (count, −1), BadCount (5000, −3), Loading, BadDust, CameraMismatch, Cycle;
+LastError preserved on every path. TIMING per sample (Ready, docked walk on): 2.77 µs with the name, 2.16 µs
+without (fixture, not game FPS). Host tests: `test_fl_*` 10 modules 60 tests OK (4 skips: local shader corpus),
+`test_fog*` 27 modules 235 OK (2 skips), `test_sector*` 1 module 4 OK. Fogged FL sectors
+(`fogged_sectors.py` → `fogged_sectors.txt`): 298 sectors, 48 with dust, all in 11 compiled fog families.
+Expected in game: the note's "Expected rows"; not flown.

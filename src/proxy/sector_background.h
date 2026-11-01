@@ -84,6 +84,18 @@ template <class Read> bool span(Read& read, std::uint32_t base, std::uint64_t of
 template <class Read, class T> bool field(Read& read, std::uint32_t base, unsigned offset, T& out) {
     return !(base & 3) && span(read, base, offset, &out, sizeof out);
 }
+// The edition's layout, a type with static members: the four image slots the sample dereferences (absolute),
+// the view-distance field of the config object and the two far floors (sector-fog.md §11.4). Every other
+// offset is shared. name_to_nul: copy the record's name one byte at a time and stop after its NUL (FL names
+// are strlen+1 allocations, fl/sector-fog.md §6.6); false keeps AP's single 32-byte span read. A type rather
+// than a value so the AP instantiation stays the literal-address reader it always was; the FL layout
+// (module base + generated RVAs) is src/engine/fl/sector_background_fl.cpp's FlLayout.
+struct ApLayout {
+    static constexpr std::uint32_t registry = 0x608504, table = 0x606fc0, count = 0x607040, config = 0x606f34,
+                                   view_distance = 0x768;
+    static constexpr std::int32_t far_floor_high = 500000000, far_floor_mid = 100000000;
+    static constexpr bool name_to_nul = false;
+};
 struct Sample {
     Status status = Status::ReadFailure;
     Check camera_check = Check::Unavailable, anchor_check = Check::Unavailable;
@@ -124,9 +136,11 @@ inline bool anchor_refused(const Sample& s) {
     return s.anchor_check == Check::Mismatch && s.anchor_walk != AnchorWalk::Found;
 }
 // The TBackgrounds row of `out.index` in `out.table` (both validated by the caller) and its name: one
-// 0x120-byte row read, one 32-byte name read (sector-fog.md §11.4). False: the caller returns `out`
+// 0x120-byte row read, one 32-byte name read (sector-fog.md §11.4; with Layout::name_to_nul the byte-wise
+// copy_name instead). False: the caller returns `out`
 // (status BadDust/BadFog, or ReadFailure left as is). Shared by sample() and the fog prefill walk.
-template <class Read> bool read_record(Read& read, Sample& out) {
+template <class Read> bool copy_name(Read& read, std::uint32_t name, char (&raw)[32]);
+template <class Read, class Layout = ApLayout> bool read_record(Read& read, Sample& out) {
     const std::uint64_t offset = std::uint64_t(out.index) * 0xdb8 + 0x44;
     std::uint32_t row[0x120 / 4]{};
     if (!span(read, out.table, offset, row, sizeof row)) return false;
@@ -148,7 +162,7 @@ template <class Read> bool read_record(Read& read, Sample& out) {
     }
     out.row_valid = true;
     char raw[32]{};
-    if (span(read, out.name_pointer, 0, raw, sizeof raw)) {
+    if (Layout::name_to_nul ? copy_name(read, out.name_pointer, raw) : span(read, out.name_pointer, 0, raw, sizeof raw)) {
         unsigned length = 0;
         while (length < sizeof raw && raw[length] >= 0x20 && raw[length] <= 0x7e) ++length;
         if (length < sizeof raw && raw[length] == '\0') {
@@ -163,13 +177,21 @@ template <class Read> bool read_record(Read& read, Sample& out) {
     }
     return true;
 }
+// Layout::name_to_nul: one byte per read, stopping after the NUL, at most 32 bytes, so a strlen+1 allocation at the
+// end of a readable span is never read past. False: no NUL within 32 bytes or a byte unreadable (the bytes after
+// the NUL stay zero, never read).
+template <class Read> bool copy_name(Read& read, std::uint32_t name, char (&raw)[32]) {
+    for (unsigned i = 0; i < sizeof raw && span(read, name, i, raw + i, 1); ++i)
+        if (!raw[i]) return true;
+    return false;
+}
 // `walk` > 0 (the fog's --fog-docked, anchor_walk_limit): a ref object whose parent is not the
 // sector is accepted when the bounded parent walk reaches the sector; the identity still comes
 // from cockpit+0x54. 0 is the legacy check, read for read.
-template <class Read> Sample sample(Read& read, unsigned walk = 0) {
+template <class Read, class Layout = ApLayout> Sample sample(Read& read, unsigned walk = 0) {
     Sample out;
     std::uint32_t header = 0, bucket[2]{}, link = 0;
-    if (!field(read, 0x608504, 0, out.registry)) return out;
+    if (!field(read, Layout::registry, 0, out.registry)) return out;
     if (!out.registry) {
         out.status = Status::NoCockpit;
         return out;
@@ -258,7 +280,7 @@ template <class Read> Sample sample(Read& read, unsigned walk = 0) {
         out.status = Status::BadClass;
         return out;
     }
-    if (!field(read, 0x607040, 0, out.count) || !field(read, 0x606fc0, 0, out.table)) return out;
+    if (!field(read, Layout::count, 0, out.count) || !field(read, Layout::table, 0, out.table)) return out;
     if (!out.table || !out.count) {
         out.status = Status::Loading;
         return out;
@@ -276,7 +298,7 @@ template <class Read> Sample sample(Read& read, unsigned walk = 0) {
         out.status = Status::BadIndex;
         return out;
     }
-    if (!read_record(read, out)) return out;
+    if (!read_record<Read, Layout>(read, out)) return out;
     if (!field(read, out.sector, 0x140, out.neb) || !field(read, out.sector, 0x144, out.stars)) return out;
     if (field(read, out.cockpit, 0x58, out.camera) && out.camera && !(out.camera & 3)) {
         std::int32_t fog[2]{};
@@ -291,9 +313,9 @@ template <class Read> Sample sample(Read& read, unsigned walk = 0) {
         }
     }
     std::uint32_t config = 0;
-    if (field(read, 0x606f34, 0, config) && field(read, config, 0x768, out.config)) {
+    if (field(read, Layout::config, 0, config) && field(read, config, Layout::view_distance, out.config)) {
         out.config_valid = true;
-        out.far_floor = out.config >= 3 ? 500000000 : (out.config == 2 ? 100000000 : 0);
+        out.far_floor = out.config >= 3 ? Layout::far_floor_high : (out.config == 2 ? Layout::far_floor_mid : 0);
         out.effective_far = out.fog_far > out.far_floor ? out.fog_far : out.far_floor;
     }
     // The floor is applied in registers at 004c2c34..004c2c63, NOT written to

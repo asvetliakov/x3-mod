@@ -1,0 +1,16 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=102 failures=0",
+ "anchor": "ANCHOR anchors=22 bytes=1112 flips=1112 refused=1112",
+ "ready": "READY name=foggreenoutlands_dust dust=50 near=1500000 far=18500000 stardust=7 config758=3 effective_far=500000000",
+ "timing": "TIMING sample_ns=2774.6 no_name_ns=2160.0 samples=100000",
+ "failures": [],
+ "rows": [
+  "fl.sector status=executable_mismatch base=0x00000000 registry_slot=0x00000000 table_slot=0x00000000 count_slot=0x00000000 config_slot=0x00000000 view_distance=+0x758 anchors=22 failed=none log_s=10",
+  "fl.sector status=anchor_mismatch base=0x01d20000 registry_slot=0x00000000 table_slot=0x00000000 count_slot=0x00000000 config_slot=0x00000000 view_distance=+0x758 anchors=22 failed=registry_lookup log_s=10",
+  "fl.sector status=base_overflow base=0x00000000 registry_slot=0x00000000 table_slot=0x00000000 count_slot=0x00000000 config_slot=0x00000000 view_distance=+0x758 anchors=22 failed=none log_s=10",
+  "fl.sector status=base_overflow base=0xfff00000 registry_slot=0x00000000 table_slot=0x00000000 count_slot=0x00000000 config_slot=0x00000000 view_distance=+0x758 anchors=22 failed=none log_s=10",
+  "fl.sector status=ready base=0x01b70000 registry_slot=0x01d182e4 table_slot=0x01d183d0 count_slot=0x01d18338 config_slot=0x01d183b0 view_distance=+0x758 anchors=22 failed=none log_s=10",
+  "fl.sector_sample row=1 samples=1 ready=1 status=ready sector=01d200f0 class48=1 index=14 count=110 name_valid=1 name=\"foggreenoutlands_dust\" dust=50 near=1500000 far=18500000 stardust=7 config758=3 far_floor=500000000 effective_far=500000000 camera_check=match anchor_check=match walk=none"
+ ]
+}
