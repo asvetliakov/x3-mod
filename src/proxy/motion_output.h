@@ -1535,18 +1535,26 @@ private:
         // (X3M_HULL_EMISSIVE_WIDENING); null without the option or the term.
         IDirect3DPixelShader9* sun_original_lightmap_widen_variant = nullptr;
         IDirect3DPixelShader9* hull_lightmap_widen_variant = nullptr;
+        // The fade owner's lane forms (distance-fade band, X3M_FADE_RT2_OWNER on the sun lane): the fill, gained and
+        // widened gained variants each with material_motion_invalid_sun_share (leading `def c221`, trailing
+        // `mov oC2.g, c221.x`: no share, not a receiver), as sun_motion_variant is of the motion variant. Created at
+        // registration beside their parent with the lane and the owner on; null = the owner keeps sun_motion_variant.
+        IDirect3DPixelShader9* sun_fill_variant = nullptr;
+        IDirect3DPixelShader9* sun_lightmap_variant = nullptr;
+        IDirect3DPixelShader9* sun_lightmap_widen_variant = nullptr;
         std::uint8_t hull_lightmap_stage = 0; // the light-map sampler stage (2/3) of a widened program; 0 = none
         // Engine light twins (motion_output_engine_light_inc.h), one per original-shading kind: the plain motion
         // variant, fill, gained, gained widened, share, share gained, share gained widened; null = none.
         IDirect3DPixelShader9* engine_twin[7]{};
         // Material-strength twins (motion_output_material_strength_inc.h): [0][k] of the original-shading kind k above,
-        // [0][7] of the sun-lane motion form (sun_motion_variant: the fade owner's bind), [1][k] of the engine-light
-        // twin of kind k ([1][7] unused: the sun-lane form has no engine-light twin); null = none (refused or not
-        // created). strength_stage: the specular sampler stage the twins read (1 DEFAULT, 2 BUMPMAP), 0 = no twin at
-        // all (one byte per draw).
-        IDirect3DPixelShader9* strength_twin[2][8]{};
+        // [0][7] of the sun-lane motion form (sun_motion_variant: the fade owner's bind), [0][8..10] of the fade
+        // owner's lane fill, gained and widened forms (sun_fill_variant ...), [1][k] of the engine-light twin of kind
+        // k ([1][7..10] unused: the sun-lane forms have no engine-light twin); null = none (refused or not created).
+        // strength_stage: the specular sampler stage the twins read (1 DEFAULT, 2 BUMPMAP), 0 = no twin at all (one
+        // byte per draw).
+        IDirect3DPixelShader9* strength_twin[2][11]{};
         std::uint8_t strength_stage = 0;
-        std::uint8_t strength_attempted[2] = {0, 0}; // bit k: twin [e][k] creation tried (lazy, first marked selection)
+        std::uint16_t strength_attempted[2] = {0, 0}; // bit k: twin [e][k] creation tried (lazy, first marked use)
         std::vector<std::uint32_t> strength_code;    // the original's words, kept only for a program with a specular
                                                      // stage while the option is on (the twins are built from it)
         // XT DEFAULT is pair-specific: the shared VS retains
@@ -1631,13 +1639,17 @@ private:
         IDirect3DPixelShader9* ps_hull_lightmap_widen = nullptr;
         IDirect3DPixelShader9* ps_sun_original_lightmap_widen = nullptr;
         std::uint8_t hull_lightmap_stage = 0;
+        // The fade owner's lane forms of the bound PS (ShaderEntry::sun_fill_variant ...; refreshed with the pair).
+        IDirect3DPixelShader9* ps_sun_fill = nullptr;
+        IDirect3DPixelShader9* ps_sun_lightmap = nullptr;
+        IDirect3DPixelShader9* ps_sun_lightmap_widen = nullptr;
         // Engine light: the bound PS's twins (ShaderEntry::engine_twin), the pair predicate and the bound VS's row
         // layout (refreshed with the pair identities), and the world / view-inverse rows of both layouts as last set
         // (c7-9, c13-15, c28-30, c34-36; kept while the light is configured; bit r = row r known).
         IDirect3DPixelShader9* engine_twin[7]{};
         bool engine_light_pair = false;
         // Material strength: the bound PS's twins and specular stage (ShaderEntry::strength_twin / strength_stage).
-        IDirect3DPixelShader9* strength_twin[2][8]{};
+        IDirect3DPixelShader9* strength_twin[2][11]{};
         std::uint8_t strength_stage = 0;
         engine_light::core::VertexLayout engine_layout{};
         float engine_rows[4][12]{};
@@ -1918,7 +1930,8 @@ private:
     std::uint8_t strength_followup_left_ = 0;
     // No-twin diagnostic (debug tier): one lod_strength_no_twin row per distinct (bound program, form, reason), the
     // first strength_gap_limit of them; later distinct keys are counted, not logged.
-    static constexpr unsigned strength_kinds = 8; // the 7 original-shading kinds + the sun-lane motion form (kind 7)
+    static constexpr unsigned strength_kinds = 11; // the 7 original-shading kinds, the sun-lane motion form (kind 7)
+                                                   // and the fade owner's lane fill / gained / widened forms (8-10)
     static constexpr unsigned strength_sun_motion = 7;
     static constexpr unsigned strength_gap_limit = 64;
     enum : std::uint8_t { strength_gap_form, strength_gap_refused, strength_gap_entry, strength_gap_code,

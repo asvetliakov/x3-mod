@@ -74,7 +74,8 @@ struct MotionRoute {
     DWORD saved_write1 = 15, saved_write2 = 15, saved_wrap[6]{};
     std::uint8_t wrap_index[6]{}, wrap_count = 0, wrap_attempted = 0;
     bool fade_arm = false, sun_receiver = false; // fade-band arm and sun-share lane flags read by the bind path
-    bool fade_owner = false;                     // X3M_FADE_RT2_OWNER: a fade-arm row that writes RT2 (never here)
+    bool fade_owner = false; // X3M_FADE_RT2_OWNER: a fade-arm row that writes RT2 (fade_band_fill_selection)
+    bool overlay = false;    // the overlay arm's row (a fade_arm row admitted at 1000 without the fraction)
     bool original_fill = false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
     bool hull_lightmap = false; // hull light-map gain PS selected in the routed pair
     bool hull_lightmap_widen = false, alpha_tested = false; // hull emissive widening: the widened PS selected; the
@@ -296,9 +297,11 @@ public:
         bool hull_lightmap_pair = false; // hull light-map gain variants; inert here
         Shader *ps_hull_lightmap_widen = nullptr, *ps_sun_original_lightmap_widen = nullptr;
         std::uint8_t hull_lightmap_stage = 0; // hull emissive widening variants; inert here
+        // The fade owner's lane forms (motion_output.h Shadow::ps_sun_fill ...).
+        Shader *ps_sun_fill = nullptr, *ps_sun_lightmap = nullptr, *ps_sun_lightmap_widen = nullptr;
         // Material strength (motion_output.h ShaderEntry): the bound PS's twins and the specular stage they read
         // (1 DEFAULT, 2 BUMPMAP; 0 = no twin, the default here).
-        Shader* strength_twin[2][8]{};
+        Shader* strength_twin[2][11]{};
         std::uint8_t strength_stage = 0;
         float vs_reserved[16]{}, ps_reserved[8]{};
         renderer::LinearMaterialPairContract material_contract{};
@@ -321,9 +324,10 @@ public:
         default: return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));
         }
     }
+    bool widen_filter_ok_ = false; // the MINFILTER raise's verdict (fade_band_fill_selection turns it on)
     bool ensure_widen_filter(MotionRoute&) {
-        return false;
-    } // hull emissive widening off: never called (widen_draw is false without the footprint lanes)
+        return widen_filter_ok_;
+    } // hull emissive widening off unless a case sets the footprint lanes and the mip chain
     // Engine light off: no node is lit (engine_light_want stays false), so neither is reached.
     struct EngineLightCounts {
         unsigned no_twin = 0;
@@ -785,6 +789,97 @@ void material_strength_selection() {
     }
 }
 
+// Fade-band fill (linear-distance-fade-region.md "Fade-band fill"; Run 216 distant-dark): a row the fade arm admitted
+// (blend SRCALPHA/INVSRCALPHA, z write 0: route.fade_arm) takes the fill and the light-map gain its opaque draw takes.
+// Masked (no lane, or RT2 masked on the lane): the plain fill / gained / widened program; an owner on the lane: the
+// same program's invalid-share form (never the share producer: not a receiver). The overlay arm, a fade row without
+// the fill (original_fill 0, light-map flag off) and every opaque row keep their previous selection.
+void fade_band_fill_selection() {
+    struct Programs {
+        Shader vs, motion, fill, gain, widen, sun_motion, sun_fill, sun_gain, sun_widen, share, share_gain, share_widen;
+    };
+    enum Row { Opaque, Masked, Owner, Overlay };
+    struct Case {
+        Row row;
+        bool lane, fill, gain, widen, owner_forms, share;
+        Shader Programs::*expected;
+        bool filled, gained, widened;
+    };
+    const Case cases[] = {
+        // Opaque rows: unchanged (the owner's lane forms exist but are never chosen).
+        {Opaque, false, true, false, false, true, false, &Programs::fill, true, false, false},
+        {Opaque, false, true, true, false, true, false, &Programs::gain, true, true, false},
+        {Opaque, false, true, true, true, true, false, &Programs::widen, true, true, true},
+        {Opaque, false, false, false, false, true, false, &Programs::motion, false, false, false},
+        {Opaque, true, true, true, false, true, true, &Programs::share_gain, true, true, false},
+        {Opaque, true, true, false, false, true, true, &Programs::share, true, false, false},
+        {Opaque, true, true, true, false, true, false, &Programs::sun_motion, false, false, false}, // no share pair
+        // Masked fade rows (no lane; or the lane with RT2 masked): the plain fill family (was motion).
+        {Masked, false, true, false, false, true, false, &Programs::fill, true, false, false},
+        {Masked, false, true, true, false, true, false, &Programs::gain, true, true, false},
+        {Masked, false, true, true, true, true, false, &Programs::widen, true, true, true},
+        {Masked, true, true, true, false, true, true, &Programs::gain, true, true, false},
+        // Owner fade rows on the lane: the invalid-share forms (was sun_motion), never the share producer.
+        {Owner, true, true, false, false, true, true, &Programs::sun_fill, true, false, false},
+        {Owner, true, true, true, false, true, true, &Programs::sun_gain, true, true, false},
+        {Owner, true, true, true, true, true, true, &Programs::sun_widen, true, true, true},
+        {Owner, true, true, true, false, false, true, &Programs::sun_motion, false, false, false}, // forms refused
+        // The owner without a lane writes RT2 through the motion program's own fragment: the plain fill family.
+        {Owner, false, true, false, false, true, false, &Programs::fill, true, false, false},
+        // Without the fill (original_fill 0) and the light-map flag off: the previous selection.
+        {Masked, false, false, false, false, true, false, &Programs::motion, false, false, false},
+        {Owner, true, false, false, false, true, true, &Programs::sun_motion, false, false, false},
+        // The overlay arm (material alpha, not a distance fade): unchanged.
+        {Overlay, false, true, true, false, true, false, &Programs::motion, false, false, false},
+    };
+    for (const auto& c : cases) {
+        const unsigned before = failures;
+        Device d;
+        MotionOutput m(d);
+        Programs p;
+        m.shadow_.vs_variant = &p.vs;
+        m.shadow_.ps_variant = &p.motion;
+        m.shadow_.ps_original_fill_variant = &p.fill;
+        m.shadow_.ps_hull_lightmap_variant = &p.gain;
+        m.shadow_.ps_hull_lightmap_widen = &p.widen;
+        m.shadow_.ps_sun_motion = &p.sun_motion;
+        m.shadow_.ps_sun_original = &p.share;
+        m.shadow_.ps_sun_original_lightmap = &p.share_gain;
+        m.shadow_.ps_sun_original_lightmap_widen = &p.share_widen;
+        if (c.owner_forms) {
+            m.shadow_.ps_sun_fill = &p.sun_fill;
+            m.shadow_.ps_sun_lightmap = &p.sun_gain;
+            m.shadow_.ps_sun_lightmap_widen = &p.sun_widen;
+        }
+        m.shadow_.original_share_pair = c.share;
+        m.original_fill_requested_ = c.fill;
+        m.shadow_.original_fill_pair = c.fill;
+        m.shadow_.hull_lightmap_pair = true;
+        m.hull_lightmap_enabled_ = c.gain;
+        m.sun_lane_active_ = c.lane;
+        m.fade_rt2_owner_ = c.row == Owner;
+        if (c.widen) {
+            m.lightmap_widen_draw_scale_[0] = 1.f;
+            m.shadow_.hull_lightmap_stage = 2;
+            m.samplers_[2].levels = 4;
+            m.widen_filter_ok_ = true;
+        }
+        MotionRoute r;
+        r.depth = true;
+        r.fade_arm = c.row != Opaque;
+        r.fade_owner = c.row == Owner;
+        r.overlay = c.row == Overlay;
+        CHECK(m.bind_variant_pair(r, false) == S_OK && d.bound_vs == &p.vs);
+        CHECK(d.bound_ps == &(p.*c.expected));
+        CHECK(r.original_fill == c.filled && r.hull_lightmap == c.gained && r.hull_lightmap_widen == c.widened);
+        CHECK(!r.sun_receiver || c.row == Opaque); // a fade row is never a receiver
+        CHECK(r.fade_owner == (c.row == Owner) && m.counters_.fade_owner_masked == 0);
+        CHECK(m.undo(r) == S_OK);
+        m.release_restore(r);
+        if (failures != before) std::printf("fade_band_fill case=%u\n", unsigned(&c - cases));
+    }
+}
+
 void failure_cases() {
     const renderer::MotionOutputProfile basic{0, 15}, full{4, 5};
     for (unsigned zero : {0u, 15u}) {
@@ -1040,6 +1135,7 @@ int main() {
     fallback_and_alias_cases();
     restoration_ownership();
     material_strength_selection();
+    fade_band_fill_selection();
     failure_cases();
     malformed_contracts();
     shadow_reset_and_performance();

@@ -301,11 +301,13 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('lightmap_fade_gain_ = lightmap_far_fade_ && gain_pair', draw)
         # Every program that reads c217.w gets it: the two gained selections of the one bind site are covered by the
         # upload's gate (plain: hull_lightmap_pair; share, the lane's cutout pairs included: ps_sun_original_lightmap),
-        # and the fade-band / overlay arm never binds a gained variant.
+        # and a fade-band row binds a gained variant (plain, or the owner's invalid-share form) only under the same
+        # hull_lightmap_pair gate; the overlay arm never does.
         bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
-        self.assertEqual(bind.count('ps = shadow_.ps_hull_lightmap_variant;'), 1)
+        self.assertEqual(bind.count('ps = owner_gain ? shadow_.ps_sun_lightmap : shadow_.ps_hull_lightmap_variant;'), 1)
         self.assertIn('if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_', bind)
-        self.assertIn('&& !route.fade_arm && shadow_.ps_hull_lightmap_variant) {', bind)
+        self.assertIn('(!route.fade_arm || fade_fill))) && shadow_.ps_hull_lightmap_variant) {', bind)
+        self.assertIn('const bool owner_gain = owner_lane && (ps == shadow_.ps_sun_motion || (fill && ps == shadow_.ps_sun_fill)) && shadow_.ps_sun_lightmap;', bind)
         self.assertIn('} else if(sun_lane_active_&&route.depth&&!route.fade_arm){', bind)
         self.assertEqual(bind.count('gained_original?shadow_.ps_sun_original_lightmap:'), 1)
         self.assertEqual(motion.count('bind_variant_pair(route, material)'), 1)
@@ -373,7 +375,8 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
         self.assertIn('(ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant))', bind)
         self.assertIn('route.hull_lightmap = true', bind)
-        self.assertLess(bind.index('ps = shadow_.ps_original_fill_variant; fill = true;'), bind.index('ps = shadow_.ps_hull_lightmap_variant; lightmap = true;'))
+        self.assertLess(bind.index('ps = owner_lane ? shadow_.ps_sun_fill : shadow_.ps_original_fill_variant; fill = true;'),
+                        bind.index('ps = owner_gain ? shadow_.ps_sun_lightmap : shadow_.ps_hull_lightmap_variant; lightmap = true;'))
         self.assertNotIn('GetRenderState', bind)
         contract = motion[motion.index('void MotionOutput::refresh_linear_material_contract'):][:3000]
         self.assertIn('shadow_.hull_lightmap_pair = hull_lightmap_gain_requested_ && shadow_.ps_hull_lightmap_variant && shadow_.vs_variant', contract)

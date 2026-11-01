@@ -476,6 +476,9 @@ unsigned MotionOutput::device_references() const noexcept {
         if (entry.second.sun_original_lightmap_variant) ++count;
         if (entry.second.hull_lightmap_widen_variant) ++count;
         if (entry.second.sun_original_lightmap_widen_variant) ++count;
+        if (entry.second.sun_fill_variant) ++count;
+        if (entry.second.sun_lightmap_variant) ++count;
+        if (entry.second.sun_lightmap_widen_variant) ++count;
         for (const auto* twin : entry.second.engine_twin)
             if (twin) ++count;
     }
@@ -501,6 +504,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.ps_sun_original_lightmap = nullptr;
     shadow_.ps_sun_original_lightmap_widen = nullptr;
     shadow_.ps_hull_lightmap_widen = nullptr;
+    shadow_.ps_sun_fill = shadow_.ps_sun_lightmap = shadow_.ps_sun_lightmap_widen = nullptr;
     shadow_.hull_lightmap_stage = 0;
     engine_light_clear_twins();
     shadow_.original_share_pair = false;
@@ -626,6 +630,9 @@ void MotionOutput::release_resources() noexcept {
         release(entry.second.sun_original_lightmap_variant);
         release(entry.second.hull_lightmap_widen_variant);
         release(entry.second.sun_original_lightmap_widen_variant);
+        release(entry.second.sun_fill_variant);
+        release(entry.second.sun_lightmap_variant);
+        release(entry.second.sun_lightmap_widen_variant);
         engine_light_release(entry.second);
         strength_release(entry.second);
         entry.second.hull_lightmap_stage = 0;
@@ -4328,6 +4335,9 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         release(entry.sun_original_lightmap_variant);
         release(entry.hull_lightmap_widen_variant);
         release(entry.sun_original_lightmap_widen_variant);
+        release(entry.sun_fill_variant);
+        release(entry.sun_lightmap_variant);
+        release(entry.sun_lightmap_widen_variant);
         entry.hull_lightmap_stage = 0;
         entry.sun_extraction = false;
         release(entry.material_variant);
@@ -4472,6 +4482,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.ps_sun_original_lightmap = nullptr;
         shadow_.ps_sun_original_lightmap_widen = nullptr;
         shadow_.ps_hull_lightmap_widen = nullptr;
+        shadow_.ps_sun_fill = shadow_.ps_sun_lightmap = shadow_.ps_sun_lightmap_widen = nullptr;
         shadow_.hull_lightmap_stage = 0;
         engine_light_clear_twins();
         strength_clear_twins();
@@ -4492,6 +4503,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         release(entry.sun_original_lightmap_variant);
         release(entry.hull_lightmap_widen_variant);
         release(entry.sun_original_lightmap_widen_variant);
+        release(entry.sun_fill_variant);
+        release(entry.sun_lightmap_variant);
+        release(entry.sun_lightmap_widen_variant);
         entry.hull_lightmap_stage = 0;
         entry.sun_extraction = false;
         release(entry.material_variant);
@@ -4721,6 +4735,24 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
                 id_, hash, unsigned(result), hr, unsigned(words.size()),
                 renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
+            // The fade owner's lane form of a fill-family variant just created from `words` (the distance-fade band
+            // on the sun lane, linear-distance-fade-region.md "Fade-band fill"): the same program with
+            // material_motion_invalid_sun_share, exactly as sun_motion_variant is made from the motion variant, so the
+            // owner's RT2 reads no share (.g = -1, not a receiver) while the colour carries the fill / gain. Only with
+            // the lane and the owner on; a refusal leaves the owner on sun_motion_variant (no fill, as before).
+            const bool owner_forms = sun_lane_requested_ && fade_rt2_owner_ && entry.sun_motion_variant &&
+                                     renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_);
+            const auto owner_form = [&](IDirect3DPixelShader9*& out, const char* form) {
+                const HRESULT owner_hr = renderer::material_motion_invalid_sun_share(words)
+                                             ? native<CreatePsFn>(CreatePixelShader)(
+                                                   device_, reinterpret_cast<const DWORD*>(words.data()), &out)
+                                             : E_FAIL;
+                if (FAILED(owner_hr) || !out) {
+                    release(out);
+                    log("fade_owner_form_refused device=%llu original=%016llx form=%s create=%08lx words=%u", id_, hash,
+                        form, owner_hr, unsigned(words.size()));
+                }
+            };
             // Option C fill (original-shading-critique.md 1a): the same motion
             // variant with the fill block, created once here and selected in
             // bind_variant_pair for the routed reviewed pair. fill_applied=0 is
@@ -4745,6 +4777,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     log("original_fill_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g fill_applied=%u",
                         id_, hash, unsigned(filled), fill_hr, unsigned(words.size()), depth_enabled_,
                         double(original_fill_), unsigned(fill_applied));
+                if (owner_forms && entry.original_fill_variant) owner_form(entry.sun_fill_variant, "fill");
             }
             // Hull light-map gain (hull-self-illumination.md 5): the fill
             // variant (K, or K=0) plus the one MUL after the light-map fetch,
@@ -4773,6 +4806,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                         id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_,
                         double(original_fill_requested_ ? original_fill_ : 0.f), double(hull_lightmap_gain_),
                         unsigned(fill_applied), unsigned(gain_applied));
+                if (owner_forms && entry.hull_lightmap_variant) owner_form(entry.sun_lightmap_variant, "gain");
                 // Hull emissive widening (hull-emissive-widening.md 2.2): the
                 // same gained variant with the light-map texld replaced by the
                 // gradient-scaled texldd, created only beside a created gained
@@ -4804,6 +4838,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                         log("hull_lightmap_widen_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u k=%g b=%g stage=%u widen_applied=%u",
                             id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_,
                             double(lightmap_widen_k_), double(lightmap_widen_b_), stage, unsigned(widen_applied));
+                    if (owner_forms && entry.hull_lightmap_widen_variant && entry.sun_lightmap_variant)
+                        owner_form(entry.sun_lightmap_widen_variant, "widen");
                 }
             }
             // Original-shading share producer (legacy-sun-application.md section
@@ -5072,6 +5108,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_sun_original_lightmap = nullptr;
     shadow_.ps_sun_original_lightmap_widen = nullptr;
     shadow_.ps_hull_lightmap_widen = nullptr;
+    shadow_.ps_sun_fill = shadow_.ps_sun_lightmap = shadow_.ps_sun_lightmap_widen = nullptr;
     shadow_.hull_lightmap_stage = 0;
     engine_light_clear_twins();
     strength_clear_twins();
@@ -5107,6 +5144,9 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_hull_lightmap_variant = it->second.hull_lightmap_variant;
     shadow_.ps_hull_lightmap_widen = it->second.hull_lightmap_widen_variant;
     shadow_.ps_sun_original_lightmap_widen = it->second.sun_original_lightmap_widen_variant;
+    shadow_.ps_sun_fill = it->second.sun_fill_variant;
+    shadow_.ps_sun_lightmap = it->second.sun_lightmap_variant;
+    shadow_.ps_sun_lightmap_widen = it->second.sun_lightmap_widen_variant;
     shadow_.hull_lightmap_stage = it->second.hull_lightmap_stage;
     for (unsigned e = 0; e < 2; ++e)
         for (unsigned k = 0; k < strength_kinds; ++k) shadow_.strength_twin[e][k] = it->second.strength_twin[e][k];
@@ -7709,26 +7749,43 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
             sun_lane_failed_ = true;
         }
     }
+    // Fade-band fill (linear-distance-fade-region.md "Fade-band fill"): a fade-arm row of a fade pair (never the
+    // overlay arm, whose alpha is the material's) takes the fill and the light-map gain its opaque draw takes, so
+    // the band and the opaque draw shade alike and only the engine's alpha ramp shows. A masked row (no lane, or RT2
+    // masked: owner off or withdrawn above) binds the plain fill-family program, whose lane writes the mask drops; an
+    // owner on the lane (ps_sun_motion above) binds the same program's invalid-share form (ps_sun_fill ...: RT2 .g =
+    // -1, never a receiver, as ps_sun_motion), else keeps ps_sun_motion. Both terms change oC0.rgb only (the fill
+    // block sum.xyz, the gain MUL rL.xyz); oC0.a stays the engine's, so the blend scales them like the base colour.
+    const bool fade_fill = route.fade_arm && !route.overlay;
+    const bool owner_lane = fade_fill && route.fade_owner && ps == shadow_.ps_sun_motion;
     // Original fill: the same one bind pair, the PS being the motion variant
     // with the fill block. Only the ordinary (non-material) route, never over
-    // an XT repaired or sun-lane program, only into the FP16 scene target.
+    // an XT repaired or sun-lane program (the owner's ps_sun_motion aside),
+    // only into the FP16 scene target.
     if (shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active &&
-        ps == shadow_.ps_variant && !route.fade_arm && shadow_.ps_original_fill_variant) {
-        ps = shadow_.ps_original_fill_variant;
+        (ps == shadow_.ps_variant ? !route.fade_arm || fade_fill : owner_lane && shadow_.ps_sun_fill) &&
+        shadow_.ps_original_fill_variant) {
+        ps = owner_lane ? shadow_.ps_sun_fill : shadow_.ps_original_fill_variant;
         fill = true;
     }
     // Hull light-map gain: over the plain or fill-composed motion variant of
     // the same one bind pair while the light-map flag is on; the gained variant
     // carries the fill K itself. Never over a sun-lane, XT repaired or
-    // material program, only into the FP16 scene target.
+    // material program (the owner's lane forms aside), only into the FP16 scene
+    // target.
+    const bool owner_gain =
+        owner_lane && (ps == shadow_.ps_sun_motion || (fill && ps == shadow_.ps_sun_fill)) && shadow_.ps_sun_lightmap;
     if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready &&
         hdr_state_ == HdrState::Active &&
-        (ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) && !route.fade_arm &&
+        (owner_gain || ((ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) &&
+                        (!route.fade_arm || fade_fill))) &&
         shadow_.ps_hull_lightmap_variant) {
-        ps = shadow_.ps_hull_lightmap_variant;
+        ps = owner_gain ? shadow_.ps_sun_lightmap : shadow_.ps_hull_lightmap_variant;
         lightmap = true;
-        if (widen_draw && shadow_.ps_hull_lightmap_widen && ensure_widen_filter(route)) {
-            ps = shadow_.ps_hull_lightmap_widen;
+        IDirect3DPixelShader9* const widened =
+            owner_gain ? shadow_.ps_sun_lightmap_widen : shadow_.ps_hull_lightmap_widen;
+        if (widen_draw && widened && ensure_widen_filter(route)) {
+            ps = widened;
             widen = true;
         }
     }

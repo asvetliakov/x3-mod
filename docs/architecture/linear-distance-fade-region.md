@@ -1042,3 +1042,41 @@ Evidence:
   verification/probe/run_linear_distance_fade_live.py --fixture
   verification/probe/build/motion_output_fixture.exe --dll
   verification/probe/build/motion-output-seam/d3d9.dll`.
+
+## Fade-band fill — implemented 2026-11-01
+
+Run 216 distant-dark triage (`verification/results/run216-distant-dark/README.md`): the big asteroid (model 509e,
+LOD 0, PS `d44db87778a43b61`) drawn in the engine's fade band (SRCALPHA/INVSRCALPHA, z write 0, `fade_arm=1`,
+permille 997) had a night side of HDR luminance p50 0.0000; drawn opaque nearer, 0.0701 (measured). The routed fade
+row skipped the original fill and the hull light-map gain (`bind_variant_pair` required `!route.fade_arm` for both),
+so an object lit up when the engine switched it from the fade draw to the opaque one.
+
+`bind_variant_pair` now gives a fade-arm row of a fade pair (`fade_arm && !overlay`) the fill and the gain its opaque
+draw takes; the overlay arm (material alpha, not a distance fade) and every opaque row keep their selection:
+
+- **Masked row** (no sun lane; or the lane with RT2 masked: owner off or withdrawn): the plain fill / gained / widened
+  program (`ps_original_fill_variant`, `ps_hull_lightmap_variant`, `ps_hull_lightmap_widen`). Their oC1/oC2 words are
+  the motion variant's (the same `material_motion_pixel_variant_for` composition), and COLORWRITEENABLE2 0 drops the
+  lane writes as before.
+- **Owner on the lane** (`X3M_FADE_RT2_OWNER`, the default): the invalid-share form of the same program
+  (`ShaderEntry::sun_fill_variant`, `sun_lightmap_variant`, `sun_lightmap_widen_variant`: the parent plus
+  `material_motion_invalid_sun_share`'s leading `def c221` and trailing `mov oC2.g, c221.x`), exactly as
+  `sun_motion_variant` is made from the motion variant. RT2 .g = -1: no share, never a receiver; .r/.a are the owner
+  fragment's, unchanged. Created at registration beside their parent only with the lane and the owner on; a refused
+  form (one `fade_owner_form_refused` row) leaves the owner on `ps_sun_motion`, as before.
+- Never the share producer (`ps_sun_original*`): a fade row does not write depth and stays out of the receiver set,
+  the thin vote and the shadow-receiver count, as before.
+- **Alpha**: the fill block writes the lobe sum's `.xyz` and the gain MUL `rL.xyz` (default destination mask), so
+  `oC0.a` is the engine's fade alpha; the SRCALPHA blend scales the fill and gain exactly as it scales the base
+  colour, and a fading object loses its fill with its alpha (from the code; no readback).
+- **Material strength**: kinds 8-10 (`ofill`, `ogain`, `owiden`) are the strength twins of the three owner forms,
+  regenerated lazily like kind 7 (`smotion`), so a marked fade-band draw keeps its strength twin.
+- **Engine light**: still off on every fade-arm row (`engine_light_prepare`); no engine twin of the owner forms.
+
+Cost: per draw, two bool tests and up to three pointer compares in `bind_variant_pair`; no allocation, no getter, no
+constant upload (the fill reads the DEF'd c215 and the game's light constant; the gain's c217.w rides the existing
+upload, whose `gain_pair` gate covers every gained selection). At registration, up to three more programs per
+reviewed pixel shader with the lane and the owner on. Host fixture: `motion_wrap_state_fixture.cpp`
+`fade_band_fill_selection` (19 rows). Native D3D9 validator: AP 122/122 and FL 133/133 generated programs (owner forms
+and their strength twins) pass (`verification/results/run216-distant-dark/fade_owner_forms_native*.json`). Ledger:
+[fill-light.md](../verification/fill-light.md) "Fade-band fill".

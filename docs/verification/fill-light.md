@@ -189,3 +189,33 @@ dry runs (`verification/results/original-fill-default/dry_runs.py`): modded `--h
 0.0/none. No Wine run (DLL default unchanged).
 
 **Same day, later:** the user lowered the default to `0.01` (`ORIGINAL_FILL_DEFAULT` in `tools/manage.py`; test updated: the modded `--hdr` dry run sends `0.01`/`1`). The DLL is untouched: the value is a launcher default, so the Run83 candidate's dry-run record still shows `0.02` for that field and the main checkout's launcher, which every flight uses, sends `0.01`.
+
+### Fade-band fill, 2026-11-01
+
+Run 216 (1.8.3, AP native) report "distant objects are dark and light up on approach". Triage on two F8 captures
+(`verification/results/run216-distant-dark/README.md`, measured): the big asteroid node 4a9e8058 (model 509e, LOD 0,
+PS `d44db87778a43b61` in both frames) is drawn in the engine's fade band at frame 12898 (SRCALPHA/INVSRCALPHA,
+z write 0, `fade_arm=1`, permille 997, view depth 149 km) and opaque at 15576 (118 km); its night side has HDR
+luminance p50 0.0000 far and 0.0701 near at the same EV (1.18961). Shadows, far fade and exposure ruled out. Cause:
+`bind_variant_pair` withheld the original fill and the hull light-map gain from every fade-arm row (`!route.fade_arm`),
+so the fill switched on with the engine's opaque draw; stations lost their light-map gain the same way (from the code).
+
+Change: a fade-arm row of a fade pair now takes the fill and the gain (and the widened gain) its opaque draw takes —
+the plain fill-family program when RT2 is masked, the program's invalid-share form (new, `sun_fill_variant` /
+`sun_lightmap_variant` / `sun_lightmap_widen_variant`) for an owner on the sun lane; never the share producer, never a
+receiver; the overlay arm, the engine light and every opaque row unchanged
+([linear-distance-fade-region.md](../architecture/linear-distance-fade-region.md) "Fade-band fill"). No settings key.
+Evidence: host fixture `fade_band_fill_selection` (19 rows) in `test_motion_wrap_states` passes (34943 checks, 0
+failures); against the pre-change `bind_variant_pair` (c2838446) the same fixture fails exactly the 8 masked/owner
+fade rows and passes the 7 opaque, 1 overlay, 2 fill-less and 1 refused-form rows
+(`verification/results/run216-distant-dark/fade_fill_selection_ab.py` → `fade_fill_selection_ab.txt`). Native D3D9
+validator (`gen_fade_owner_forms.cpp` + `hull-widen-native-validator/native_validate.cpp`, `summarize_native.py`):
+AP captures 22 programs, 62 owner forms + 60 strength twins, 122/122 pass, the asteroid PS's `ofill` included; FL
+captures 23 programs, 133/133 pass. Focused host suite (14 modules: original fill, fill default, fade region, sun
+share lane, light-map gain, widening, cutout contract, thin vote, FL materials, shader population, logging tiers,
+motion-output runner, wrap states, material strength): 135 tests OK, 10 corpus skips. AP and FL builds 0 warnings.
+
+Flight check (open): fly toward a large asteroid (and a station) from beyond its fade distance; F8 once in the fade
+band and once after it turns opaque. Pass: the asteroid's dark side has the same HDR luminance in both captures (no
+step; previously 0.000 vs 0.070) and the station's windows keep their brightness; the only visible transition is
+the engine's own alpha ramp.

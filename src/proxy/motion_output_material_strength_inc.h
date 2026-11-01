@@ -81,20 +81,24 @@ void MotionOutput::strength_release(ShaderEntry& entry) noexcept {
 // deterministic transform the registration created it with) and the twin is that form plus the two insertions.
 // Kind 7 is the sun-lane motion form (sun_motion_variant: material_motion_invalid_sun_share of the motion variant, a
 // leading `def c221` and a trailing `mov oC2.g, c221.x`), which the fade owner binds on the sun lane (and the lane
-// binds for a program without a share producer); its twin is the motion twin with the same two additions. A
+// binds for a program without a share producer); its twin is the motion twin with the same two additions. Kinds 8-10
+// are the fade owner's lane fill, gained and widened forms (ShaderEntry::sun_fill_variant ...: kinds 1-3 plus the same
+// two additions), regenerated the same way. A
 // refused twin (linear_material.h StrengthTwinRefusal), a regenerated form whose out-flags differ from the created
 // one, or a failed create leaves the kind without a twin for good (no retry): the draw keeps the parent (counted
 // no_twin). One debug-tier lod_strength_variant row per attempt. `reason`: why the result is null (strength_gap_*).
 IDirect3DPixelShader9* MotionOutput::strength_twin(IDirect3DPixelShader9* ps, bool engine, std::uint8_t& reason) noexcept {
     static_assert(sizeof(shadow_.strength_twin[0]) / sizeof(shadow_.strength_twin[0][0]) == strength_kinds &&
-                      strength_kinds == engine_light_kinds + 1 && strength_sun_motion == engine_light_kinds,
-                  "the strength twins: the engine-light kinds and the sun-lane motion form");
+                      strength_kinds == engine_light_kinds + 4 && strength_sun_motion == engine_light_kinds &&
+                      sizeof(ShaderEntry::strength_attempted[0]) * 8 >= strength_kinds,
+                  "the strength twins: the engine-light kinds, the sun-lane motion form and the owner's lane forms");
     reason = strength_gap_form;
     if (!ps) return nullptr;
     const IDirect3DPixelShader9* bases[strength_kinds] = {
         shadow_.ps_variant,          shadow_.ps_original_fill_variant, shadow_.ps_hull_lightmap_variant,
         shadow_.ps_hull_lightmap_widen, shadow_.ps_sun_original,    shadow_.ps_sun_original_lightmap,
-        shadow_.ps_sun_original_lightmap_widen, shadow_.ps_sun_motion};
+        shadow_.ps_sun_original_lightmap_widen, shadow_.ps_sun_motion,      shadow_.ps_sun_fill,
+        shadow_.ps_sun_lightmap,     shadow_.ps_sun_lightmap_widen};
     const unsigned e = engine ? 1u : 0u;
     unsigned kind = strength_kinds;
     for (unsigned k = 0; k < strength_kinds; ++k)
@@ -108,18 +112,21 @@ IDirect3DPixelShader9* MotionOutput::strength_twin(IDirect3DPixelShader9* ps, bo
     ShaderEntry& entry = it->second;
     reason = entry.strength_code.empty() ? strength_gap_code : strength_gap_refused;
     if (entry.strength_attempted[e] & (1u << kind) || entry.strength_code.empty()) return nullptr;
-    entry.strength_attempted[e] |= std::uint8_t(1u << kind);
+    entry.strength_attempted[e] |= std::uint16_t(1u << kind);
     const float fill = original_fill_requested_ ? original_fill_ : 0.f;
     const renderer::HullLightmapWiden widen{lightmap_widen_k_, lightmap_widen_b_};
     renderer::OriginalVariantOptions options;
-    if (kind == 1) options.fill = original_fill_;
-    if (kind >= 2 && kind != strength_sun_motion) options.fill = fill;
-    if (kind == 2 || kind == 3 || kind == 5 || kind == 6) {
+    // The owner's lane forms (8-10) are kinds 1-3 plus the invalid share: the same options, regenerated below.
+    const bool owner_form = kind > strength_sun_motion;
+    const unsigned base = owner_form ? kind - strength_sun_motion : kind;
+    if (base == 1) options.fill = original_fill_;
+    if (base >= 2 && base != strength_sun_motion) options.fill = fill;
+    if (base == 2 || base == 3 || base == 5 || base == 6) {
         options.lightmap_gain = hull_lightmap_gain_;
         options.lightmap_dynamic = lightmap_far_fade_;
     }
-    if (kind == 3 || kind == 6) options.widen = &widen;
-    if (kind >= 4 && kind != strength_sun_motion) options.share = true;
+    if (base == 3 || base == 6) options.widen = &widen;
+    if (base >= 4 && base != strength_sun_motion) options.share = true;
     const char* refusal = "none";
     HRESULT hr = E_FAIL;
     std::size_t words = 0;
@@ -152,7 +159,7 @@ IDirect3DPixelShader9* MotionOutput::strength_twin(IDirect3DPixelShader9* ps, bo
             // The regenerated form must be the one the registration created: the same out-flags.
             same = result == renderer::LinearMaterialResult::Applied && share == options.share &&
                    gain == (options.lightmap_gain != 1.f) && widened == (options.widen != nullptr) &&
-                   engine_applied == engine;
+                   engine_applied == engine && (!owner_form || renderer::material_motion_invalid_sun_share(parent));
         }
         if (!same)
             refusal = "form_mismatch";
@@ -206,7 +213,7 @@ IDirect3DPixelShader9* MotionOutput::strength_twin(IDirect3DPixelShader9* ps, bo
         reason = strength_gap_refused;
     }
     static const char* const forms[strength_kinds] = {"motion", "fill", "gain", "widen", "share", "sgain", "swiden",
-                                                      "smotion"};
+                                                      "smotion", "ofill", "ogain", "owiden"};
     if (log_tier::cached_debug)
         log("lod_strength_variant device=%llu frame=%llu original=%016llx kind=%u engine=%u stage=%u refusal=%s create=%08lx words=%u slots=%lu slot_budget=%lu depth=%u transform_us=%u create_us=%u form=%s%s",
             id_, frame_, entry.hash, kind, e, unsigned(entry.strength_stage), refusal, hr, unsigned(words),
@@ -223,17 +230,19 @@ void MotionOutput::strength_gap(IDirect3DPixelShader9* ps, bool engine, std::uin
                                 const MotionRoute& route) noexcept {
     static const char* const names[] = {"motion", "fill", "gain", "widen", "share", "sgain", "swiden", "smotion",
                                         "emotion", "efill", "egain", "ewiden", "eshare", "esgain", "eswiden",
-                                        "sun_xt", "xt", "sun_material", "material", "other"};
-    constexpr unsigned other = 19;
+                                        "sun_xt", "xt", "sun_material", "material", "other", "ofill", "ogain",
+                                        "owiden"};
+    constexpr unsigned other = 19, owner_first = 20; // the owner's lane forms (kinds 8-10) after "other"
     const IDirect3DPixelShader9* bases[strength_kinds] = {
         shadow_.ps_variant,          shadow_.ps_original_fill_variant, shadow_.ps_hull_lightmap_variant,
         shadow_.ps_hull_lightmap_widen, shadow_.ps_sun_original,    shadow_.ps_sun_original_lightmap,
-        shadow_.ps_sun_original_lightmap_widen, shadow_.ps_sun_motion};
+        shadow_.ps_sun_original_lightmap_widen, shadow_.ps_sun_motion,      shadow_.ps_sun_fill,
+        shadow_.ps_sun_lightmap,     shadow_.ps_sun_lightmap_widen};
     unsigned form = other;
     if (ps) {
         for (unsigned k = 0; k < strength_kinds && form == other; ++k)
             if (engine ? (k < engine_light_kinds && ps == shadow_.engine_twin[k]) : ps == bases[k])
-                form = engine ? engine_light_kinds + 1 + k : k;
+                form = engine ? engine_light_kinds + 1 + k : k > strength_sun_motion ? owner_first + k - 8 : k;
         if (form == other)
             form = ps == shadow_.ps_sun_xt                ? 15u
                    : ps == shadow_.ps_xt_default_ordinary ? 16u

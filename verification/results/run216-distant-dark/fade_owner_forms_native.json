@@ -1,0 +1,987 @@
+{
+"validator": "C:/Windows/SysWOW64/d3d9.dll Direct3DShaderValidatorCreate9 (native_validate.exe, WSL interop)",
+"generator": "gen_fade_owner_forms.cpp (fill 0.01, gain 4 dynamic, widen K4 B4, fade-owner depth fragment, depth on)",
+"captures": "/mnt/c/X3/x3-modern-captures ps_*.bin (AP)",
+"programs": 22,
+"validated": 122,
+"passed": 122,
+"max_owner_form_slots": 212,
+"rows": [
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "ofill-strength",
+"words": 1593,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "ofill",
+"words": 1585,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "ogain-strength",
+"words": 1597,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "ogain",
+"words": 1589,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "owiden-strength",
+"words": 1735,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "0c1f3f0f440e4a0c",
+"form": "owiden",
+"words": 1727,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "ofill-strength",
+"words": 1559,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "ofill",
+"words": 1551,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "ogain-strength",
+"words": 1563,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "ogain",
+"words": 1555,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "owiden-strength",
+"words": 1701,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "1f26d41bcb7dac1e",
+"form": "owiden",
+"words": 1693,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "ofill-strength",
+"words": 1551,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "ofill",
+"words": 1543,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "ogain-strength",
+"words": 1555,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "ogain",
+"words": 1547,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "owiden-strength",
+"words": 1693,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3602b05ce11ca6ff",
+"form": "owiden",
+"words": 1685,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "ofill-strength",
+"words": 1491,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "ofill",
+"words": 1483,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "ogain-strength",
+"words": 1495,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "ogain",
+"words": 1487,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "owiden-strength",
+"words": 1633,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "3b94320087e81945",
+"form": "owiden",
+"words": 1625,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "ofill-strength",
+"words": 2007,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "ofill",
+"words": 1999,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "ogain-strength",
+"words": 2011,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "ogain",
+"words": 2003,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "owiden-strength",
+"words": 2149,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "496049cec2066ed3",
+"form": "owiden",
+"words": 2141,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "517540ae6d5e5410",
+"form": "ofill",
+"words": 616,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "ofill-strength",
+"words": 1581,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "ofill",
+"words": 1573,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "ogain-strength",
+"words": 1585,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "ogain",
+"words": 1577,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "owiden-strength",
+"words": 1723,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5e0a10fe752b6140",
+"form": "owiden",
+"words": 1715,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "ofill-strength",
+"words": 1992,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "ofill",
+"words": 1984,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "ogain-strength",
+"words": 1996,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "ogain",
+"words": 1988,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "owiden-strength",
+"words": 2134,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "5f82ecacd39529cd",
+"form": "owiden",
+"words": 2126,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "ofill-strength",
+"words": 1519,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "ofill",
+"words": 1511,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "ogain-strength",
+"words": 1523,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "ogain",
+"words": 1515,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "owiden-strength",
+"words": 1661,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "63f96eba9eea7880",
+"form": "owiden",
+"words": 1653,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "ofill-strength",
+"words": 1619,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "ofill",
+"words": 1611,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "ogain-strength",
+"words": 1623,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "ogain",
+"words": 1615,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "owiden-strength",
+"words": 1761,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "64bac8bb307eb896",
+"form": "owiden",
+"words": 1753,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "ofill-strength",
+"words": 1981,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "ofill",
+"words": 1973,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "ogain-strength",
+"words": 1985,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "ogain",
+"words": 1977,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "owiden-strength",
+"words": 2123,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "6733b119142c8d42",
+"form": "owiden",
+"words": 2115,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "ofill-strength",
+"words": 1525,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "ofill",
+"words": 1517,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "ogain-strength",
+"words": 1529,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "ogain",
+"words": 1521,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "owiden-strength",
+"words": 1667,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "7c83ed50c9894e44",
+"form": "owiden",
+"words": 1659,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "ofill-strength",
+"words": 1487,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "ofill",
+"words": 1479,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "ogain-strength",
+"words": 1491,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "ogain",
+"words": 1483,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "owiden-strength",
+"words": 1629,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "8759c7838bbc86c2",
+"form": "owiden",
+"words": 1621,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "ofill-strength",
+"words": 1582,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "ofill",
+"words": 1574,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "ogain-strength",
+"words": 1586,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "ogain",
+"words": 1578,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "owiden-strength",
+"words": 1724,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "99153c144030c396",
+"form": "owiden",
+"words": 1716,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "ofill-strength",
+"words": 1608,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "ofill",
+"words": 1600,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "ogain-strength",
+"words": 1612,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "ogain",
+"words": 1604,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "owiden-strength",
+"words": 1750,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "c1452981fd0bff64",
+"form": "owiden",
+"words": 1742,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "ofill-strength",
+"words": 1555,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "ofill",
+"words": 1547,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "ogain-strength",
+"words": 1559,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "ogain",
+"words": 1551,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "owiden-strength",
+"words": 1697,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ca6bfa4a6cca7e2a",
+"form": "owiden",
+"words": 1689,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "d44db87778a43b61",
+"form": "ofill",
+"words": 667,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "ofill-strength",
+"words": 1901,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "ofill",
+"words": 1893,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "ogain-strength",
+"words": 1905,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "ogain",
+"words": 1897,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "owiden-strength",
+"words": 2043,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e6794b6ec37ff71a",
+"form": "owiden",
+"words": 2035,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "ofill-strength",
+"words": 1551,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "ofill",
+"words": 1543,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "ogain-strength",
+"words": 1555,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "ogain",
+"words": 1547,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "owiden-strength",
+"words": 1693,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "e70adc744a38ca59",
+"form": "owiden",
+"words": 1685,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "ofill-strength",
+"words": 1483,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "ofill",
+"words": 1475,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "ogain-strength",
+"words": 1487,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "ogain",
+"words": 1479,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "owiden-strength",
+"words": 1625,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "ef2bf556f207b8bd",
+"form": "owiden",
+"words": 1617,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "ofill-strength",
+"words": 2018,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "ofill",
+"words": 2010,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "ogain-strength",
+"words": 2022,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "ogain",
+"words": 2014,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "owiden-strength",
+"words": 2160,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "f1b0e820c7b488c3",
+"form": "owiden",
+"words": 2152,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "ofill-strength",
+"words": 1875,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "ofill",
+"words": 1867,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "ogain-strength",
+"words": 1879,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "ogain",
+"words": 1871,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "owiden-strength",
+"words": 2017,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+},
+{
+"original": "fffdabd910793aba",
+"form": "owiden",
+"words": 2009,
+"end": "00000000",
+"messages": 0,
+"worst": "00000000"
+}
+]
+}

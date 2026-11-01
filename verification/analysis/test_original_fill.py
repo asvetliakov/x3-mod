@@ -305,7 +305,15 @@ class LauncherGateTests(unittest.TestCase):
         # pair and recorded on the route only once the bind succeeded.
         bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
         select = bind.index('shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active')
-        self.assertIn('ps = shadow_.ps_original_fill_variant; fill = true;', bind)
+        self.assertIn('ps = owner_lane ? shadow_.ps_sun_fill : shadow_.ps_original_fill_variant; fill = true;', bind)
+        # Fade-band fill (Run 216 distant-dark): a fade-arm row of a fade pair (not the overlay arm) takes the fill;
+        # an owner on the lane only through the invalid-share form; an opaque row's condition is unchanged.
+        self.assertIn('const bool fade_fill = route.fade_arm && !route.overlay;', bind)
+        self.assertIn('const bool owner_lane = fade_fill && route.fade_owner && ps == shadow_.ps_sun_motion;', bind)
+        self.assertIn('(ps == shadow_.ps_variant ? !route.fade_arm || fade_fill : owner_lane && shadow_.ps_sun_fill)', bind)
+        # The engine light stays off on every fade-arm row (no engine twin of the owner's lane forms).
+        self.assertIn('material || route.fade_arm || !shadow_.engine_light_pair) return;',
+                      source_text(ROOT / 'src/proxy/motion_output_engine_light_inc.h'))
         record = bind.index('route.original_fill = true')
         self.assertLess(select, record)
         self.assertIn('if (fill && SUCCEEDED(hr)) route.original_fill = true', bind)

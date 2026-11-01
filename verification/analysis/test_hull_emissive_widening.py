@@ -558,7 +558,9 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertIn('samplers_[shadow_.hull_lightmap_stage].levels > 1;', bind)
         self.assertNotIn('alpha_tested', bind)
         self.assertIn('static const char* const reason_names[4] = {"other", "size", "alpha", "levels"};', motion)
-        self.assertIn('if (widen_draw && shadow_.ps_hull_lightmap_widen && ensure_widen_filter(route)) { ps = shadow_.ps_hull_lightmap_widen; widen = true; }', bind)
+        # The plain gained program or, for a fade owner on the lane, its invalid-share form (fade-band fill).
+        self.assertIn('IDirect3DPixelShader9* const widened = owner_gain ? shadow_.ps_sun_lightmap_widen : shadow_.ps_hull_lightmap_widen;', bind)
+        self.assertIn('if (widen_draw && widened && ensure_widen_filter(route)) { ps = widened; widen = true; }', bind)
         self.assertIn('const bool widened_original=gained_original&&widen_draw&&shadow_.ps_sun_original_lightmap_widen&&ensure_widen_filter(route);', bind)
         self.assertIn('if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;', bind)
         self.assertNotIn('GetRenderState', bind); self.assertNotIn('GetTexture', bind)
