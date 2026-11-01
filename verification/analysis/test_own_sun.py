@@ -201,17 +201,18 @@ class OwnSunHost(unittest.TestCase):
         on = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 1)['rgb'])[0]
         part = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, .4)['rgb'])[0]
         self.assertAlmostEqual(part, on * .4, places=6)
-        # Step 1d (own-sun-look.md): the glow outside the core peaks at 0.813 at K = 2 and 1440 rows (glow_meter.py), stays
-        # under 1.0 engine (the meter's guard) and never rises outward along any radial line; the corona and halo on the
-        # axis are the note's 0.9 exp(-(r / 1.05)^2) and 0.3 / (1 + (r / 4.2)^2) W(r), W windowed at 17.
+        # Step 1d (own-sun-look.md): the glow outside the core peaks at 1.317 at K = 2 and 1440 rows (glow_meter.py), next
+        # to the core so its edge disappears into it, far under the meter's guard (engine 2.25), and never rises outward
+        # along any radial line; the corona and halo on the axis are the note's 2.15 exp(-(r / 1.05)^2) and
+        # 0.3 / (1 + (r / 4.2)^2) W(r), W windowed at 17.
         field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .02)
-        self.assertLessEqual(float(field['glow_max']), .815)
-        self.assertGreater(float(field['glow_max']), .80)
+        self.assertLessEqual(float(field['glow_max']), 1.35)
+        self.assertGreater(float(field['glow_max']), 1.30)
         self.assertLessEqual(float(field['glow_rise']), 0.)
         self.assertLess(float(field['asymmetry']), 1e-4)                                              # each spoke mirror-symmetric
         for r in (1, 2, 3, 6, 9, 12, 16, 20):
             px = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, r, 0, 9, 1)
-            self.assertAlmostEqual(float(px['corona']), .9 * math.exp(-(r / 1.05) ** 2), delta=2e-5 * max(1, r))
+            self.assertAlmostEqual(float(px['corona']), 2.15 * math.exp(-(r / 1.05) ** 2), delta=5e-5 * max(1, r))
             window = max(0., 1 - (r / 17) ** 2) ** 2
             self.assertAlmostEqual(float(px['halo']), .3 / (1 + (r / 4.2) ** 2) * window, delta=1e-6)
         self.assertEqual(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 17, 0, 9, 1)['halo']), 0.)  # windowed at 17
@@ -311,8 +312,8 @@ class OwnSunHost(unittest.TestCase):
         self.assertAlmostEqual(c[0] * w, 1.)
         self.assertAlmostEqual(c[1] * h, 1.)
         self.assertEqual(c[12:15] + c[16:19], [1., 2., 3., 4., 5., 6.])
-        self.assertAlmostEqual(c[15], .6, places=6)                                                   # the core's inner edge
-        for got, value in zip(c[20:23], (.9, .3, .15 * .5)):                                         # sun_rays scales the rays only
+        self.assertAlmostEqual(c[15], .4, places=6)                                                   # the core's inner edge
+        for got, value in zip(c[20:23], (2.15, .3, .15 * .5)):                                         # sun_rays scales the rays only
             self.assertAlmostEqual(got, value, places=6)
         self.assertEqual((c[24], c[25]), (.75, .625))                                                 # centre uv: (.5 + .5 x, .5 - .5 y)
         self.assertAlmostEqual(c[26] * w, 10., places=4)                                             # the core radius

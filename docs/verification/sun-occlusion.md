@@ -892,3 +892,20 @@ Display at the +1.3 EV cap (AgX table, inferred): core 0.95 (1c 0.98), 1 R 0.79 
 0.16 (narrower corona offsets the higher gain); the note records what would close it. GPU cost (inferred): 0.35 Mpx x
 178 slots x 0.136 ps = 8.5 us at 5120x1440. Flight: the Run221 comparison (two F8 pairs, Ctrl+Shift+F9) and the
 `own_sun_frame ev=/ev_limit=` kill rule.
+
+### Own sun step 1d — item 4 follow-up (2026-11-02; on `4413eada`; not flown)
+
+The first pass (`corona_gain` 0.9) left the core-to-1 R display step at 0.16. Now `corona_gain` 2.15 (sigma 1.05 kept)
+and `core_inner` 0.4. New cap rule replacing "glow < 1.0 engine outside the core": every pixel under engine 2.25 (the
+K-2.25 luminance 5.96) and the worst sun tile's `ev_limit` >= +1.3 EV; `glow_meter.py` prints PASS/FAIL for it.
+Program bytecode unchanged (ps sha `e0e5b5c3…`, 922 words; only the provenance record's source hash moved for a comment),
+so the validator result stands (178 slots, 0 messages).
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`), `check_no_x87.py` | 0 warnings each, PASS (measured) |
+| `generate_own_sun_programs.py --check` | PASS (measured) |
+| Host modules (the five) | 99 tests, 0 failing (measured) |
+| `own_sun_host field` (1440 rows) | glow_max 1.31720, hue error 0, no rise outward; two-spoke seam 5.6e-5 (measured) |
+| `glow_meter.py` | glow max outside the core 1.317 (1440) / 1.331 (768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R; brightest pixel 1.64 / 1.67 engine (inside the soft edge, core 1.44); 0 tiles at the K-2.25 luminance; lit 9-12 (5120x1440), 45-52 (1280x768); worst sun tile `ev_limit` +2.30 EV (5120x1440), +2.24 EV (1280x768); cap rule PASS at both (measured, offline) |
+| Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) |

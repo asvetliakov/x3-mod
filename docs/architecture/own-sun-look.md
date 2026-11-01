@@ -31,7 +31,9 @@ differ, this table is current.
 | | `halo_radius` | 6 | **4.2** |
 | | `glow_radius` (window, quad half extent) | 24 | **17** (quad 588 x 588 px = 0.35 Mpx at 5120x1440, 313 px = 0.10 Mpx at 1280x768 [M]); longest ray tip 13.1 R |
 | 3. Core 25-30 % dimmer | `core_gain` (new, core term only) | (1) | **0.72**: white core 1.44 engine at K = 2; `sun_disc_radiance` still scales core and glow together; `white_mix` 0.25 |
-| 4. Core must not stand out | `corona_gain` | 0.6 | **0.9** |
+| 4. Core must not stand out | `corona_gain` | 0.6 | **2.15** (0.868 at 1 R; first pass 0.9 left the edge step unchanged, see below) |
+| | `core_inner` | 0.6 | **0.4** (the core's soft edge 0.4 -> 1 R, was 0.6 -> 1 R) |
+| | glow cap | glow < 1.0 engine outside the core | **every pixel < engine 2.25** (the meter's guard, K-2.25 luminance 5.96) **and the worst sun tile's `ev_limit` >= +1.3 EV**, checked by `glow_meter.py` |
 
 Why the rays vanished (item 1). With `exp(-r/L) saturate(1 - r/L)^2` from the centre, a ray of L = 3.5-4.1 R is at
 <= 0.38 of its strength at the core's edge, where the corona and halo are brightest; a ray / (corona + halo) >= 10 %
@@ -40,20 +42,20 @@ the user saw [I, `verification/results/own-sun-pass/ray_visibility.py`]. Raising
 any gain up to 1.2 (the profile, not the gain, is the limit), so the along-profile now starts at the core's edge. Step
 1d's visible reaches at 1440 rows: 3.8, 11.0, 6.7, 2.9, 9.2, 4.3, 2.0, 7.6, 3.4, 10.2, 6.1 R [I, same model, `glow_meter.py`].
 
-Figures at K = 2, white, fog T = 1 [M, `glow_meter.py`, `own_sun_host field`]: glow max outside the core 0.813 at 1440
-rows (0.826 at 768), under the 1.0 guard; between spokes 0.675, 0.381, 0.262, 0.187, 0.076, 0.028, 0.008 at 1, 1.5, 2,
-3, 6, 9, 12 R (step 1c: 0.676 at 1 R, 0.368 at 2 R, 0.132 at 6 R). Display at the +1.3 EV cap [I, AgX table]: core 0.95
-(1c 0.98), 1 R 0.79 (1c 0.82), 1.5 R 0.59 (1c about 0.69), 2 R 0.44, 4 R 0.23, 6 R 0.09: the visible glow ends near 6 R
-(1c: 9 R), so the blob is about 1/3 smaller. Meter: 0 tiles at the K-2.25 luminance at either resolution; lit tiles
-9-12 at 5120x1440 (1c 20-24), 45-52 at 1280x768 (1c 96-100); brightest sun tile L 2.23, `ev_limit` +2.72 EV if it
-were the p99 tile (1c +1.67), above the +1.3 EV cap.
+Item 4 in two passes. With `corona_gain` 0.9 at sigma 1.05 (the first pass) the narrower corona offset the higher
+gain: glow 0.675 at 1 R, 0.381 at 1.5 R, a core-to-1 R display step of 0.16 as in step 1c, and under the old 1.0 guard
+the glow at 1 R could not exceed about 0.82. The second pass lifts the cap to the meter's real limit and widens the core's
+edge: `corona_gain` 2.15 (sigma kept at 1.05: the halo, not the corona, sets the 6 R fade) and `core_inner` 0.4.
 
-Item 4 as specified does not raise the near-core glow: the narrower corona (sigma 1.05) offsets the higher gain, so the
-glow at 1 R is unchanged (0.675) and at 1.5 R lower (0.381 vs 0.50); the core-to-1 R display step is 0.95 -> 0.79,
-the same 0.16 as step 1c, now from a dimmer core. Within the 1.0 engine guard the glow at 1 R cannot exceed about
-0.82 (the corona and halo there plus a ray of 0.18), display 0.83; a core edge that "disappears" like the Everspace 2
-reference needs either a glow above 1.0 engine next to the core (the meter's actual limit is the K-2.25 luminance, engine
-2.25, far above the 1.44 core) or a wider core edge (`core_inner` below 0.6). Not changed here; the flight decides.
+Figures at K = 2, white, fog T = 1 [M, `glow_meter.py`, `own_sun_host field`]: glow max outside the core 1.317 at 1440
+rows (1.331 at 768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R (1.253, 0.573, 0.302, 0.187,
+0.076 at 768); monotone outward from 1 R, hue kept exactly. Display at the +1.3 EV cap [I, AgX table]: core 0.95, 1 R
+0.92 (step 1c 0.82), 1.5 R 0.72, 2 R 0.49, 4 R 0.23, 6 R 0.09: the core's edge is within 0.03 of the core and the
+visible glow ends near 6 R (1c: 9 R). Inside the soft edge (0.4-1 R) the glow exceeds the core: the brightest pixel is
+1.64 engine at 1440 rows, 1.67 at 768 (core 1.44), a ring of at most +0.23 engine, about +0.01 display at the cap [I].
+Meter: 0 tiles at the K-2.25 luminance at either resolution; lit tiles 9-12 at 5120x1440 (1c 20-24), 45-52 at 1280x768
+(1c 96-100); worst sun tile L 2.97 -> `ev_limit` +2.30 EV at 5120x1440, L 3.10 -> +2.24 EV at 1280x768; a glow tile
+>= +2.97 EV; cap rule PASS at both.
 
 ## Decision
 

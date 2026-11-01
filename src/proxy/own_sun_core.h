@@ -31,17 +31,18 @@ constexpr float radiance_default = 2.f, radiance_min = 0.f, radiance_max = 64.f;
 constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // The look (step 1c, own-sun-look.md "Defaults and constants", tuned in step 1d after Run221; every length in core radii;
 // derived constants, not settings): the core whitened only a little (the polled colour stays visible) at core_gain of K,
-// its soft edge from core_inner to 1 core radius; the glow is the pure polled colour times intensity, like vanilla's
-// chain, and dominates: a Gaussian corona (sigma 1.05, 0.9) plus a Lorentzian halo (half brightness at 4.2, 0.3) windowed
+// its soft edge from core_inner (0.4) to 1 core radius; the glow is the pure polled colour times intensity, like vanilla's
+// chain, and dominates: a Gaussian corona (sigma 1.05, 2.15: 0.87 at the core's edge) plus a Lorentzian halo (half brightness at 4.2, 0.3) windowed
 // at 17; eleven soft rays at 0.15 with hashed lengths (2.0-12.1 beyond the core's edge, ray_start) and strengths
 // (0.6-1.2), a Gaussian width of max(3 px, 0.2 core radii) without taper and exp(-a) saturate(1 - a)^2 along,
-// a = max(r - ray_start, 0) / L (so a short ray still leaves the core at full strength). The glow's sum stays under 1.0
-// engine at K = 2 (glow_meter.py), kept for the exposure
-// meter's guard and for AgX contrast at the core's edge (the resolve's sentinel stabiliser that once set an emitter bound
-// E = 1 was retired on 2026-09-25: the sun's sentinel pixels reproject with the far-plane camera history, are clipped by the
+// a = max(r - ray_start, 0) / L (so a short ray still leaves the core at full strength). The cap (step 1d): the glow
+// next to the core reaches about 1.15-1.33 engine at K = 2 so the core's edge disappears into it (display within ~0.04 of
+// the core), and every pixel stays under the meter's highlight guard, engine 2.25 (the K-2.25 luminance 5.96), with the
+// worst sun tile's ev_limit >= +1.3 EV (glow_meter.py). The resolve sets no emitter bound (its sentinel stabiliser,
+// once E = 1, was retired on 2026-09-25: the sun's sentinel pixels reproject with the far-plane camera history, are clipped by the
 // 3x3 box, and the far gate is 0 on the sentinel).
-constexpr float white_mix = .25f, core_inner = .6f, core_gain = .72f; // core_gain: the core term only (step 1d)
-constexpr float corona_gain = .9f, corona_sigma = 1.05f;
+constexpr float white_mix = .25f, core_inner = .4f, core_gain = .72f; // core_gain: the core term only (step 1d)
+constexpr float corona_gain = 2.15f, corona_sigma = 1.05f;
 constexpr float halo_gain = .3f, halo_radius = 4.2f, glow_radius = 17.f;
 // Spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl). Odd, so no two spokes are opposite (no straight
 // line through the sun). ray_length: the longest hashed ray beyond ray_start (the core's edge), so every ray ends within

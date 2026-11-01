@@ -3,8 +3,8 @@
 // A small hot core in a dominant soft glow with eleven soft rays. p = the pixel's offset from the sun in core radii (the
 // quad reaches 17 to each side), r = |p|, theta = atan2(p.y, p.x):
 //   core    D(r) = 1 - smoothstep(c3.w, 1, r), colour c3 (above the bloom threshold, under the meter's guard)
-//   glow    tint c4 x [ corona + halo + rays ], the sum under 1.0 engine at K = 2 outside the core (glow_meter.py;
-//           kept for the exposure meter's guard), behind the core:
+//   glow    tint c4 x [ corona + halo + rays ], up to about 1.33 engine at K = 2 next to the core and under the
+//           meter's guard (engine 2.25) everywhere (glow_meter.py), behind the core:
 //   corona  A_c exp(-(r / sigma_c)^2)                                    (c5.x, c8.x = log2 e / sigma_c^2)
 //   halo    A_h / (1 + (r / rho_h)^2) x W(r), W(r) = saturate(1 - (r / R_g)^2)^2: a Lorentzian tail, zero at the window
 //   rays    N = 11 spokes; t = theta N / 2 pi + offset, spoke k = floor(t + 0.5) mod N, a = t - floor(t + 0.5); per spoke

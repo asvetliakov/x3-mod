@@ -94,9 +94,11 @@ def main():
     r = np.linspace(1.0, QUAD * 1.5, 4000)
     th = np.linspace(-math.pi, math.pi, 1441)
     rr, tt = np.meshgrid(r, th)
+    glow_max = {}
     for height in (1440, 768):
         radius_px = RADIUS_U * height
         v, glow, corona, halo, rays, _ = field(rr * np.cos(tt), rr * np.sin(tt), radius_px)
+        glow_max[height] = float(glow.max())
         print('height %d (R = %.1f px, ray sigma %.1f px): glow max outside the core %.3f (corona %.3f, halo %.3f, rays %.3f); '
               'glow between spokes at r = 1, 1.5, 2, 3, 6, 9, 12, 16, 20 R: %s' % (height, radius_px, max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px),
               glow.max(), corona.max(), halo.max(), rays.max(),
@@ -129,7 +131,7 @@ def main():
         need = tiles - tiles * 99 // 100
         radius_px = RADIUS_U * height
         half = int(QUAD * radius_px) + tile
-        worst = {}
+        worst, brightest = {}, 0.
         for i in range(4):
             for j in range(4):
                 cx, cy = width / 2 + tile * i / 4, height / 2 + tile * j / 4
@@ -158,11 +160,17 @@ def main():
                 }
                 for k, n in stats.items():
                     worst[k] = (min(worst.get(k, (n, n))[0], n), max(worst.get(k, (n, n))[1], n))
-                brightest = tmax.max()
+                brightest = max(brightest, float(tmax.max()))
         print('%dx%d tiles %dx%d (%d px) = %d, p99 needs %d: ' % (width, height, tw, thh, tile, tiles, need) +
               '; '.join('%s %d..%d (%.2f..%.2f %%)' % (k, lo, hi, 100 * lo / tiles, 100 * hi / tiles) for k, (lo, hi) in worst.items()))
-        print('  brightest sun tile L %.2f -> ev_limit %+.2f EV if it is the p99 tile; a tile at the glow max (engine <= 1.0) '
-              '-> ev_limit >= %+.2f' % (brightest, math.log2(WHITE) - math.log2(min(brightest, CLIP)), math.log2(WHITE)))
+        # The cap rule (step 1d): every glow pixel under engine 2.25 (the K-2.25 luminance 5.96) and the worst sun tile's
+        # ev_limit at or above the +1.3 EV Auto cap.
+        ev_worst = math.log2(WHITE) - math.log2(min(brightest, CLIP))
+        g = glow_max[height]
+        ok = g < 2.25 and ev_worst >= 1.3
+        print('  brightest sun tile L %.2f (engine %.3f) -> ev_limit %+.2f EV if it is the p99 tile; a tile at the glow max '
+              '(engine %.3f) -> ev_limit >= %+.2f; cap rule (glow < 2.25 engine, worst ev_limit >= +1.3): %s'
+              % (brightest, brightest ** (1 / 2.2), ev_worst, g, math.log2(WHITE) - 2.2 * math.log2(g), 'PASS' if ok else 'FAIL'))
         area = (2 * QUAD * radius_px) ** 2 / 1e6
         print('  quad %.0f x %.0f px = %.2f Mpx; at 200 slots x 0.136 ps per slot-pixel (1 us per slot per 5120x1440 frame, AGENTS.md) = %.0f us (inferred)'
               % (2 * QUAD * radius_px, 2 * QUAD * radius_px, area, area * 1e6 * 200 * 0.136e-6))
