@@ -312,7 +312,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_HULL_EMISSION_GAIN", "hull_emission_gain", Type::Float, nullptr, nullptr, 61, 1, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_EMISSIVE_WIDENING", "hull_emissive_widening", Type::String, "4,4", nullptr, 62, 0, 5, 0, 0, "", 1, -1},
     {"X3M_HULL_LIGHTMAP_GAIN", "hull_lightmap_gain", Type::Float, "4.0", nullptr, 62, 1, 5, 0, 0, "", 0, -1},
-    {"X3M_LENS_FLARE_GAIN", "lens_flare_gain", Type::Float, "0.3", nullptr, 63, 1, 5, 0, 0, "", 0, -1},
+    {"X3M_LENS_FLARE_GAIN", "lens_flare_gain", Type::Float, "1", nullptr, 63, 1, 5, 0, 0, "", 0, -1},
     {"X3M_LIGHTMAP_EMISSIVE_GAIN", "lightmap_emissive_gain", Type::Float, nullptr, nullptr, 64, 1, 5, 0, 0, "", 1, -1},
     {"X3M_LIGHT_MAP_FAR_FADE", "light_map_far_fade", Type::FloatList, "80,220,1", nullptr, 65, 0, 5, 3, 12, "", 0, -1},
     {"X3M_LIGHT_PHASES", "light_phases", Type::Bool, nullptr, nullptr, 68, 0, 8, 0, 0, "", 1, -1},
@@ -539,7 +539,7 @@ constexpr const char hdr_tonemap[] = "agx";
 constexpr float hdr_white_target = 0.9f;
 constexpr const char hull_emissive_widening[] = "4,4";
 constexpr float hull_lightmap_gain = 4.0f;
-constexpr float lens_flare_gain = 0.3f;
+constexpr float lens_flare_gain = 1.0f;
 constexpr const char light_map_far_fade[] = "80,220,1";
 constexpr const char lod_occlusion[] = "all";
 constexpr bool media_cue_cache = true;

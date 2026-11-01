@@ -250,7 +250,7 @@ def apply_promoted_defaults(args):
     # User decision 2026-09-29 after Run 103 A: gain 1 (the game's own), cores capped at 0.7, lens flares at 0.3.
     fill('emission_source_gain', 1.0, bool(args.hdr))
     fill('emission_source_clamp', 0.7, bool(args.hdr))
-    fill('lens_flare_gain', 0.3, bool(args.motion_output))
+    fill('lens_flare_gain', 1, bool(args.motion_output))
     fill('sun_shadow_lane', True, bool(args.motion_output and args.taa and args.hdr))
     fill('shadow_replay_depth', True, bool(args.motion_output and args.ownership))
     fill('sun_shadow_apply', True, bool(args.sun_shadow_lane and args.shadow_replay_depth))
