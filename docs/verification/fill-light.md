@@ -223,3 +223,47 @@ band and once after it turns opaque. Pass: the asteroid's dark side has the same
 step; previously 0.000 vs 0.070) and the station's windows keep their brightness; the only visible transition is
 the engine's own alpha ramp. Log: `fade_owner_forms` rows at load and `fade_fill` > 0 on `fade_route_frame` while
 the asteroid is in the band.
+
+### XT BUMP stations in the fade band (Run 217), 2026-11-02
+
+Run 217 (1.8.4, AP native) report after the asteroid fix: distant stations are still dark in the fade band and light
+up when they turn opaque. Triage (`verification/results/run217-outpost-dark/README.md`, measured): station
+`stations\sadiablo\freighter_base` (node 4bb6a2f8, model 5c09, LOD 1 in both frames) draws VS `37c34a7478544c14` with
+PS `5f82ecacd39529cd` / `f1b0e820c7b488c3`; at frame 5845 the three draws are in the engine fade-band state (blend
+5/6, z write 0; one alpha tested) and refused `overlay_node` / `no_zwrite`, at 7063 they are opaque and routed. The VS
+had no `fade_route` registers row (excluded as the "damage" VS, `fade-rt2-ownership.md` section 3), so the arm, and
+with it the fade-band fill and the owner forms that exist for both PS, never saw the draws.
+
+Rule: the VS is row 10 of `fade_route_core.h` (c40 / c44 / b0 from the inventory CTAB), flagged `fog_branch`.
+`fade_arm_admits` reads b0 once after the state check: TRUE continues as a fade pair (fraction, 500 permille
+threshold, hysteresis, RT2 owner, tested cutouts, the fill), and the fraction reuses the read; FALSE hands the draw to
+the overlay arm exactly as before the row. The fraction alone does not separate the two: an `MPF_ALPHABLEND` material
+draws the same state with AlphaValue 1 and b0 FALSE, so its fraction is 1000 (measured on a table VS: the docking-port
+pair `4944d81d/64bac8bb`, frames 5849-5852, `fade_arm=1 fade_permille=1000` beside opaque draws of its node). b0 is
+the engine's own branch bit: TRUE only on the distance-fade branch (`0x004c2e04`, static). In Runs 216/217 every
+fade-arm row of the asteroid programs (1,126 rows) has permille below 1000 with no node alpha override (alpha13c 0),
+which with AlphaValue 1 requires b0 TRUE (inferred); all 464 fade-state draws of `37c34a74` are on nodes at cull
+distance 16.1-20.3 M with no opaque draw of the same node, every opaque one at 15.8 M or nearer
+(`fade_state_census.py` -> `fade_state_census.txt`). The glass VS `c30104cb0efb6675` stays out.
+
+Evidence: host fixture `fade_arm_selection` in `motion_wrap_state_fixture.cpp` runs the production `fade_arm_admits`
+(11 cases: the 5845 hull and tested rows routed at 997 and bound to the fill, the band end refused at 144, material
+rows with b0 FALSE refused `overlay_node` / admitted at 1000 after a routed draw of the node / tested refused
+uncounted, b0 read failure, owner off, glass, asteroid); 35,076 checks, 0 failures. Against b1ec6b0f
+(`fade_arm_ab.py` -> `fade_arm_ab.txt`) the band, band-end and read-failure rows fail on their outcome and the three
+material rows only on the added b0 getter. Host modules `test_fade_region` (10-row table, `fog_branch` only on the XT
+row, XT pairs fade pairs only with the owner), `test_original_fill`, `test_shader_population`,
+`test_motion_wrap_states`, `test_sun_share_lane`, `test_hull_lightmap_gain`: 62 tests OK. AP and FL builds 0
+warnings (AP 136, FL 96 C++ objects). FL objects against a clean build of b1ec6b0f
+(`farnhams-legacy-build/cmp_objs.py` -> `run217-outpost-dark/fl_object_compare.json`): 77 of 81 identical; different
+`motion_output.cpp`, `shader_population.cpp` (the table), `proxy_identity.cpp` (source commit) and `capture.cpp`,
+whose disassembly differs only in MotionOutput member displacements and its size (0x16ae00 -> 0x16ae08: the
+`Registers` flag). Cost: one bool test per fade-band draw; one b0 getter
+moved earlier for this VS's fade-band draws and one added for its material draws (none observed in two flights).
+
+Flight check (open): approach an XT station (the sadiablo freighter base, the USC mine modules) from beyond its fade
+distance; F8 once in the band and once after it turns opaque. Pass: the hull's lit and dark sides keep their
+brightness across the switch (no step), windows unchanged. Log in the band: `motion_route` rows with
+`vs=37c34a7478544c14` in the fade state show `fade_arm=1 routed=1`, permille 500-999 (the alpha-tested sub-mesh with
+`atest=1` routed too) instead of `unmatched=overlay_node` / `no_zwrite`; `fade_route_frame` `fade_fill` and
+`fade_tested` rise accordingly; near XT draws unchanged (opaque, routed).

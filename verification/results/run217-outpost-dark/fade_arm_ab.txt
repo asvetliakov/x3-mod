@@ -1,0 +1,11 @@
+working tree: fade_arm failing checks=0
+  ['fade_arm_cases=11', 'motion_wrap_states checks=35076 failures=0']
+base b1ec6b0f: fade_arm failing checks=23
+  run217_5845_hull: admitted == c.admitted, route.fade_arm == c.admitted && route.overlay == (c.admitted && c.overlay), route.fade_permille == c.permille, route.unmatched == c.unmatched, m.counters_.fade_refused == c.fade_refused && m.counters_.overlay_refused == c.overlay_refused, d.bool_gets == c.bool_gets, route.fade_owner == (c.admitted && !c.overlay && c.owner)
+  run217_5845_tested: admitted == c.admitted, route.fade_arm == c.admitted && route.overlay == (c.admitted && c.overlay), route.fade_permille == c.permille, d.bool_gets == c.bool_gets, route.fade_owner == (c.admitted && !c.overlay && c.owner), route.fade_tested == (c.admitted && !c.overlay && c.alpha_test != 0)
+  xt_band_end: route.fade_permille == c.permille, route.unmatched == c.unmatched, m.counters_.fade_refused == c.fade_refused && m.counters_.overlay_refused == c.overlay_refused, d.bool_gets == c.bool_gets
+  xt_material: d.bool_gets == c.bool_gets
+  xt_material_after_routed: d.bool_gets == c.bool_gets
+  xt_material_tested: d.bool_gets == c.bool_gets
+  xt_b0_read_fails: route.unmatched == c.unmatched, m.counters_.fade_refused == c.fade_refused && m.counters_.overlay_refused == c.overlay_refused, d.bool_gets == c.bool_gets
+  ['fade_arm_cases=11', 'motion_wrap_states checks=35076 failures=23']

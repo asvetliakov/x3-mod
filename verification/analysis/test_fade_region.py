@@ -456,12 +456,14 @@ class FadeRegion(unittest.TestCase):
         origin distance from the clip rows and the camera's projection scales."""
         loop=('b0602757fce6e870','0c223ad11bce02d5','167eb2d5629ab9d3','330ceb9dd874ede2','4944d81dfe531b37')
         fixed=('233d17d26ce0c1fc','12b8a13f13fe8cfe')
-        # fade-rt2-ownership.md section 3: the run214 station families declare the same three registers; the glass and
-        # damage programs (material transparency in the fade-band state) are not rows and keep the overlay path.
+        # fade-rt2-ownership.md section 3: the run214 station families declare the same three registers; the XT BUMP
+        # program (Run 217) declares c40 / c44 / b0 and is admitted on the engine's fog branch only (fog_branch); the
+        # glass program (material transparency in the fade-band state) is not a row and keeps the overlay path.
         stations=('494fe349b8bc12ec','53a0a641107ed76c')
-        for vs,expect in [(v,(1,39,41)) for v in loop+stations]+[(v,(1,18,20)) for v in fixed]+[(v,(0,0,0)) for v in ('c30104cb0efb6675','37c34a7478544c14','0')]:
+        for vs,expect in ([(v,(1,39,41,0)) for v in loop+stations]+[(v,(1,18,20,0)) for v in fixed]
+                          +[('37c34a7478544c14',(1,40,44,1))]+[(v,(0,0,0,0)) for v in ('c30104cb0efb6675','0')]):
             f=fields(subprocess.check_output([str(self.driver),'--fade-route-registers',vs],text=True).strip())
-            self.assertEqual((int(f['known']),int(f['alpha']),int(f['fog'])),expect,vs)
+            self.assertEqual((int(f['known']),int(f['alpha']),int(f['fog']),int(f['fog_branch'])),expect,vs)
         band=[1,0,0,1,7,0,5,6,1,0]  # ZENABLE, ZWRITE, ALPHATEST, ALPHABLEND, COLORWRITE, SRGBWRITE, SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHA
         state=lambda v,tested=0:int(fields(subprocess.check_output([str(self.driver),'--fade-route-state']+[str(x) for x in v]+[str(tested)],text=True).strip())['fade_band'])
         self.assertEqual(state(band),1)
@@ -520,17 +522,28 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(self.fade_route(.5,1,(4,1),IDENTITY,camera)[2:],(.5,500,1))   # saturate(3) = 1
         self.assertEqual(self.fade_route(2,1,(1,0),IDENTITY,camera)[3:],(1000,1))      # alpha above one clamps the permille
 
-    def test_fade_route_table_nine_rows(self):
-        """The register table (fade_route_core.h vertex_programs, static_assert 9): the seven distance-fade programs
-        and the two run214 station families (fade-rt2-ownership.md section 3), every hash once."""
+    def test_fade_route_table_ten_rows(self):
+        """The register table (fade_route_core.h vertex_programs, static_assert 10): the seven distance-fade programs,
+        the two run214 station families (fade-rt2-ownership.md section 3) and the XT BUMP program (Run 217, c40 / c44,
+        the only fog_branch row), every hash once; the glass program is not a row."""
         lines=subprocess.check_output([str(self.driver),'--fade-route-table'],text=True).splitlines()
-        self.assertEqual(fields(lines[0])['rows'],'9')
+        self.assertEqual(fields(lines[0])['rows'],'10')
         rows=[fields(l) for l in lines[1:]]
-        self.assertEqual(len(rows),9);self.assertEqual(len({r['vs'] for r in rows}),9)
-        self.assertEqual({r['vs']:(int(r['alpha']),int(r['fog'])) for r in rows if r['vs'] in ('494fe349b8bc12ec','53a0a641107ed76c')},
-                         {'494fe349b8bc12ec':(39,41),'53a0a641107ed76c':(39,41)})
+        self.assertEqual(len(rows),10);self.assertEqual(len({r['vs'] for r in rows}),10)
+        self.assertEqual({r['vs']:(int(r['alpha']),int(r['fog'])) for r in rows if r['vs'] in ('494fe349b8bc12ec','53a0a641107ed76c','37c34a7478544c14')},
+                         {'494fe349b8bc12ec':(39,41),'53a0a641107ed76c':(39,41),'37c34a7478544c14':(40,44)})
+        self.assertEqual([r['vs'] for r in rows if r['fog_branch']=='1'],['37c34a7478544c14'])
+        self.assertNotIn('c30104cb0efb6675',{r['vs'] for r in rows})
         core=source_text(ROOT/'src/proxy/fade_route_core.h')
-        self.assertIn('static_assert(vertex_program_count == 9,',core)
+        self.assertIn('static_assert(vertex_program_count == 10,',core)
+        # The guard: a fog_branch row's draw with b0 FALSE is the overlay arm's; the b0 read is reused by the fraction.
+        self.assertIn('return !registers.fog_branch || fog_enabled;',core)
+        motion=source_text(ROOT/'src/proxy/motion_output.cpp')
+        arm=motion.split('bool MotionOutput::fade_arm_admits')[1].split('std::uint64_t MotionOutput::fade_identity')[0]
+        self.assertIn('const bool enable_read = !overlay && shadow_.fade_route_registers.fog_branch;',arm)
+        self.assertIn('if (!fade_route::fade_branch(shadow_.fade_route_registers, enable != FALSE)) {',arm)
+        self.assertIn('(!enable_read && FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1)))',arm)
+        self.assertLess(arm.index('fade_route::state('),arm.index('const bool enable_read'))
 
     def test_arm_pair_identity(self):
         """fade_route::arm_pair: a registers row always; without the owner also a distance_fade_rows pair."""
@@ -726,13 +739,15 @@ class FadeOwnerIdentity(unittest.TestCase):
     """The arm's pair identity with the owner off and on, against the real distance_fade_rows (the bracket's identity,
     linear_material.cpp) and the reviewed motion table (gate 3): the seven fade pairs are fade pairs either way; the run214
     station families (a registers row, no distance_fade_rows row) only with the owner, the bracket's sampler mask staying 0;
-    the glass and damage programs never (the overlay path)."""
+    the XT BUMP program (Run 217) only with the owner, like the run214 families; the glass program never (the overlay
+    path)."""
     SEVEN=[('b0602757fce6e870','517540ae6d5e5410'),('0c223ad11bce02d5','7a0c3388065bb08d'),('233d17d26ce0c1fc','7a0c3388065bb08d'),
            ('167eb2d5629ab9d3','d44db87778a43b61'),('330ceb9dd874ede2','550c2a4d4d3ed70f'),('12b8a13f13fe8cfe','550c2a4d4d3ed70f'),
            ('4944d81dfe531b37','64bac8bb307eb896')]
     RUN214=[('494fe349b8bc12ec','fffdabd910793aba'),('53a0a641107ed76c','8759c7838bbc86c2'),('4944d81dfe531b37','ca6bfa4a6cca7e2a'),
             ('53a0a641107ed76c','63f96eba9eea7880')]
-    OVERLAY=[('c30104cb0efb6675','a66fb1981ba755b2'),('37c34a7478544c14','5f82ecacd39529cd')]
+    XT_BUMP=[('37c34a7478544c14','5f82ecacd39529cd'),('37c34a7478544c14','f1b0e820c7b488c3')]
+    OVERLAY=[('c30104cb0efb6675','a66fb1981ba755b2')]
 
     @classmethod
     def setUpClass(cls):
@@ -743,7 +758,7 @@ class FadeOwnerIdentity(unittest.TestCase):
         cls.exe=Path(cls.temp.name)/'identity'
         subprocess.run([compiler,'-std=c++17','-O1','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/renderer'),'-I',str(ROOT/'src/proxy'),str(source)]
                        +[str(ROOT/s) for s in IDENTITY_SOURCES]+['-o',str(cls.exe)],check=True)
-        pairs=cls.SEVEN+cls.RUN214+cls.OVERLAY
+        pairs=cls.SEVEN+cls.RUN214+cls.XT_BUMP+cls.OVERLAY
         lines=subprocess.check_output([str(cls.exe)]+[h for pair in pairs for h in pair],text=True).splitlines()
         cls.rows={(f['vs'],f['ps']):f for f in map(fields,lines)}
 
@@ -754,11 +769,11 @@ class FadeOwnerIdentity(unittest.TestCase):
             self.assertNotEqual(r['sampler_mask'],'0',pair)
 
     def test_run214_families_only_with_the_owner_and_the_bracket_admits_nothing_new(self):
-        for pair in self.RUN214:
+        for pair in self.RUN214+self.XT_BUMP:
             r=self.rows[pair]
             self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['sampler_mask'],r['arm_off'],r['arm_on']),('1','1','0','0','0','1'),pair)
 
-    def test_glass_and_damage_keep_the_overlay_path(self):
+    def test_glass_keeps_the_overlay_path(self):
         for pair in self.OVERLAY:
             r=self.rows[pair]
             self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['sampler_mask'],r['arm_off'],r['arm_on']),('1','0','0','0','0','0'),pair)

@@ -23,13 +23,24 @@ namespace x3m::fade_route {
 // programs carry c39/c41, the two fixed-light programs c18/c20). Rows 8 and 9
 // (docs/architecture/fade-rt2-ownership.md section 3): the run214 station
 // families' vertex programs 494fe349b8bc12ec and 53a0a641107ed76c (vs_3_0,
-// runtime captured) declare the same three at c39 / c41 / b0. They have no
-// distance_fade_rows pair, so the arm admits them only with X3M_FADE_RT2_OWNER
-// on (arm_pair below); the glass c30104cb0efb6675 and damage 37c34a7478544c14
-// programs, whose fade-band-state draws are material transparency, are not
-// rows and keep the overlay path.
+// runtime captured) declare the same three at c39 / c41 / b0. Row 10 (Run
+// 217): the XT BUMPMAP / BUMPMAP_LOW vertex program 37c34a7478544c14 (shared
+// by xt_standard_lighting, its damage variant and xt_terraformer;
+// xt-material-linkage.md) at c40 / c44 / b0, admitted only on the engine's
+// distance-fog branch (fog_branch, fade_branch below). Rows 8-10 have no
+// distance_fade_rows pair, so the arm admits them only with
+// X3M_FADE_RT2_OWNER on (arm_pair below). The glass c30104cb0efb6675 is not a
+// row and keeps the overlay path.
+// fog_branch: the engine sets g_EnableFog (b0) TRUE only on its distance-fade
+// branch, node origin at or beyond the camera's fade start
+// (station-material-distance.md, 0x004c2e04; asteroid-fog-temporal.md), and
+// FALSE on the bypass; an MPF_ALPHABLEND material draws the same blend state
+// with AlphaValue 1 and b0 FALSE at any nearer distance (0x004c1779). A
+// fog_branch row's fade-band-state draw with b0 FALSE is therefore material
+// transparency and stays the overlay arm's, exactly as without the row.
 struct Registers {
     std::uint8_t alpha = 0, fog = 0;
+    bool fog_branch = false;
 };
 // The single source for this arm: registers() scans this table and the
 // shader-population classifier (src/renderer/shader_population.h) enumerates
@@ -40,14 +51,16 @@ struct VertexProgram {
 };
 // clang-format off
 inline constexpr VertexProgram vertex_programs[] = {
-    {0xb0602757fce6e870ull, {39, 41}}, {0x0c223ad11bce02d5ull, {39, 41}},
-    {0x167eb2d5629ab9d3ull, {39, 41}}, {0x330ceb9dd874ede2ull, {39, 41}},
-    {0x4944d81dfe531b37ull, {39, 41}},
-    {0x233d17d26ce0c1fcull, {18, 20}}, {0x12b8a13f13fe8cfeull, {18, 20}},
-    {0x494fe349b8bc12ecull, {39, 41}}, {0x53a0a641107ed76cull, {39, 41}}};
+    {0xb0602757fce6e870ull, {39, 41, false}}, {0x0c223ad11bce02d5ull, {39, 41, false}},
+    {0x167eb2d5629ab9d3ull, {39, 41, false}}, {0x330ceb9dd874ede2ull, {39, 41, false}},
+    {0x4944d81dfe531b37ull, {39, 41, false}},
+    {0x233d17d26ce0c1fcull, {18, 20, false}}, {0x12b8a13f13fe8cfeull, {18, 20, false}},
+    {0x494fe349b8bc12ecull, {39, 41, false}}, {0x53a0a641107ed76cull, {39, 41, false}},
+    {0x37c34a7478544c14ull, {40, 44, true}}};
 // clang-format on
 inline constexpr std::size_t vertex_program_count = sizeof vertex_programs / sizeof vertex_programs[0];
-static_assert(vertex_program_count == 9, "seven distance-fade vertex programs and the two run214 station families");
+static_assert(vertex_program_count == 10,
+              "seven distance-fade vertex programs, the two run214 station families and the XT BUMP program");
 constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
     for (const auto& row : vertex_programs)
         if (row.hash == vs) {
@@ -66,6 +79,12 @@ constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
 // function and admits nothing new.
 constexpr bool arm_pair(bool registers_row, bool distance_fade_pair, bool widen) noexcept {
     return registers_row && (widen || distance_fade_pair);
+}
+// The arm's own draw for a fade pair (fog_branch above): a row without the
+// flag always; a fog_branch row only with b0 (g_EnableFog) TRUE. False: the
+// draw is the overlay arm's (MotionOutput::fade_arm_admits).
+constexpr bool fade_branch(const Registers& registers, bool fog_enabled) noexcept {
+    return !registers.fog_branch || fog_enabled;
 }
 
 // The exact fade-band render state (the fade route's nine-state check plus

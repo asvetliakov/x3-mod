@@ -1,0 +1,13 @@
+{
+ "objects_baseline": 81,
+ "objects_candidate": 81,
+ "only_baseline": [],
+ "only_candidate": [],
+ "identical": 77,
+ "different": [
+  "CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj",
+  "CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj",
+  "CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj",
+  "CMakeFiles/d3d9.dir/src/renderer/shader_population.cpp.obj"
+ ]
+}

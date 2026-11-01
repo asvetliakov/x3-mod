@@ -138,9 +138,17 @@ far-plane path as today.
 
 Identity: the arm keys on `fade_route::registers(vs)` alone (gate 3 still requires the reviewed pair), with the table
 extended by `494fe349b8bc12ec` and `53a0a641107ed76c` (registers 39/41, the inventory [M]); `distance_fade_rows` stays
-the bracket's identity (`fade_sampler_mask`) so the linear-material bracket admits nothing new. Not added in this step:
-the glass VS `c30104cb0efb6675` (39/41) and the damage VS `37c34a7478544c14` (40/44), whose fade-band-state draws are
-material transparency at any distance; they keep the overlay path. HUD sprites on `494fe349` are ONE/ONE and fail
+the bracket's identity (`fade_sampler_mask`) so the linear-material bracket admits nothing new. Not added: the glass VS
+`c30104cb0efb6675` (39/41), whose fade-band-state draws are material transparency at any distance; it keeps the overlay
+path. Added in Run 217 (2026-11-02): the XT BUMP/BUMPMAP_LOW VS `37c34a7478544c14` (40/44; called the "damage" VS here
+before, but it is shared by `xt_standard_lighting`, its damage variant and `xt_terraformer`), as a `fog_branch` row:
+its fade-band-state draw is the arm's only with `g_EnableFog` (b0) TRUE, which the engine sets exactly on its
+distance-fade branch (node origin at or beyond the camera's fade start, `0x004c2e04`,
+[station-material-distance.md](../reverse-engineering/station-material-distance.md)); an `MPF_ALPHABLEND` material
+draws the same state with b0 FALSE and AlphaValue 1 and stays the overlay arm's, exactly as before the row. Measured
+in Runs 216/217: all 464 fade-state draws of this VS sit on nodes at cull distance 16.1-20.3 M, none beside an opaque
+draw of the same node; every opaque one is at 15.8 M or nearer (`verification/results/run217-outpost-dark/`
+`fade_state_census.txt`). HUD sprites on `494fe349` are ONE/ONE and fail
 `fade_route::state`. The overlay arm stays as the second chance for a reviewed pair without a registers row (with the
 extension it should be empty on vanilla content; the `overlay_node` count of the flight tells). The `g_AlphaValue`
 node override (`+0x13c`, value/255 [S]) is part of the fraction, so a node the engine fades by alpha is refused below

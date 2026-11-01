@@ -42,6 +42,9 @@ class MotionWrapStatesTests(unittest.TestCase):
             (output / 'motion_wrap_under_test_inc.h').write_text(
                 source[states_start:states_end] + '\n' +
                 '\n\n'.join(extract_function(source, f) for f in functions))
+            # The fade-band arm (fade_arm_selection: Run 217's XT BUMP rows and the fog_branch guard).
+            (output / 'motion_wrap_fade_arm_inc.h').write_text('\n\n'.join(extract_function(source, f) for f in (
+                'bool MotionOutput::blend_known(', 'bool MotionOutput::fade_arm_admits(')))
             executable = output / 'fixture'
             compiled = subprocess.run([shutil.which('clang++') or 'c++', '-std=c++17', '-O2',
                 '-Wall', '-Wextra', '-Werror', '-I', directory,
@@ -51,6 +54,7 @@ class MotionWrapStatesTests(unittest.TestCase):
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0', run.stdout)
+            self.assertIn('fade_arm_cases=11', run.stdout)
             print(run.stdout.strip())
 
     def test_route_wiring(self):

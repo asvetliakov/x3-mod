@@ -840,7 +840,7 @@ public:
     // the seven pairs keep the arm alone). `enabled` is the caller's resolution (requested with the route, TAA, HDR and
     // the arm on); it also switched the material transformer (renderer::material_motion_configure_fade_owner) before
     // any program was created. Enabled: every routed draw uploads c216-c218 in one call. The overlay arm (a reviewed
-    // pair without a registers row) keeps RT2 masked.
+    // pair without a registers row, or a fog_branch row's draw with b0 FALSE) keeps RT2 masked.
     void configure_fade_rt2_owner(bool requested, bool enabled) noexcept {
         fade_rt2_owner_requested_ = requested;
         fade_rt2_owner_ = enabled;

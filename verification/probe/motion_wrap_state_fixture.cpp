@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <new>
 #include <utility>
+#include "../../src/proxy/fade_route_core.h" // the production table and helpers fade_arm_admits keys on
 using DWORD = std::uint32_t;
 using HRESULT = std::int32_t;
 using UINT = unsigned;
@@ -30,6 +31,33 @@ constexpr unsigned D3DRS_ALPHAFUNC = 25, D3DRS_ALPHAREF = 24, D3DRS_ZFUNC = 23, 
                    D3DRS_SRCBLENDALPHA = 207, D3DRS_DESTBLENDALPHA = 208, D3DRS_BLENDOPALPHA = 209,
                    D3DRS_BLENDFACTOR = 193;
 constexpr unsigned motion_shadow_state_count = 32, failure_log_limit = 16;
+// The fade-band arm (MotionOutput::fade_arm_admits, extracted into motion_wrap_fade_arm_inc.h): documented D3D9 values.
+using BOOL = int;
+constexpr BOOL FALSE = 0, TRUE = 1;
+using D3DFORMAT = unsigned;
+constexpr D3DFORMAT D3DFMT_A16B16G16R16F = 113;
+constexpr unsigned D3DSTREAMSOURCE_INDEXEDDATA = 1u << 30;
+constexpr std::size_t motion_matrix_windows_max = 4; // motion_output.h
+namespace fade_route = x3m::fade_route;
+namespace cutout {
+enum class Capability : std::uint8_t { Pending, Ready, Unsupported, Retry }; // linear_cutout.h
+}
+// motion_output.h's UnmatchedReason, the names the fade arm writes.
+enum class UnmatchedReason : std::uint8_t {
+    None,
+    FadeCaps,
+    FadeInstanced,
+    FadeRows,
+    FadeGeometry,
+    FadeConstants,
+    FadeOrigin,
+    FadeThreshold,
+    OverlayNode
+};
+struct MotionDrawCall {
+    bool indexed = false, user_memory = false;
+    UINT primitives = 0;
+};
 namespace renderer {
 struct MotionOutputProfile {
     std::uint8_t texcoord_index = 4, depth_texcoord_index = 7;
@@ -92,6 +120,11 @@ struct MotionRoute {
     // Scoped owned restoration references taken once per routed draw.
     Shader *restore_vs = nullptr, *restore_ps = nullptr;
     bool restore_held = false;
+    // The fade arm's outputs (fade_arm_selection).
+    UnmatchedReason unmatched = UnmatchedReason::None;
+    UINT stream0_frequency = 0;
+    bool stream0_frequency_known = false, fade_held = false, fade_tested = false;
+    unsigned fade_permille = 0;
 };
 static unsigned failures = 0, checks = 0, allocations = 0;
 void* operator new(std::size_t n) {
@@ -120,6 +153,11 @@ struct Device {
     unsigned shader_gets = 0;
     std::array<unsigned, 4> fail_shader_get{}; // nth GetVertexShader/GetPixelShader call fails
     std::array<std::pair<unsigned, DWORD>, 64> writes{};
+    float vs_float[64][4]{}; // vertex float constants (the fade arm reads c40/c44 or c39/c41)
+    BOOL vs_bool[16]{};
+    UINT stream_frequency = 1;
+    unsigned float_gets = 0, bool_gets = 0;
+    bool fail_bool_get = false;
 };
 using GetRenderStateFn = HRESULT (*)(Device*, D3DRENDERSTATETYPE, DWORD*);
 using SetRenderStateFn = HRESULT (*)(Device*, D3DRENDERSTATETYPE, DWORD);
@@ -132,6 +170,9 @@ using SetVsFn = SetPsFn;
 using GetVsFn = HRESULT (*)(Device*, Shader**);
 using GetPsFn = GetVsFn;
 using SetConstantsFFn = HRESULT (*)(Device*, unsigned, const float*, unsigned);
+using GetConstantsFFn = HRESULT (*)(Device*, UINT, float*, UINT);
+using GetConstantsBFn = HRESULT (*)(Device*, UINT, BOOL*, UINT);
+using GetStreamFreqFn = HRESULT (*)(Device*, UINT, UINT*);
 enum {
     GetRenderState,
     SetRenderState,
@@ -142,8 +183,27 @@ enum {
     SetVertexShaderConstantF,
     SetPixelShaderConstantF,
     SetSamplerState,
-    GetSamplerState
+    GetSamplerState,
+    GetVertexShaderConstantF,
+    GetVertexShaderConstantB,
+    GetStreamSourceFreq
 };
+HRESULT get_vs_float(Device* d, UINT start, float* v, UINT count) {
+    ++d->float_gets;
+    if (start + count > 64) return D3DERR_INVALIDCALL;
+    for (UINT i = 0; i < count * 4; ++i) v[i] = d->vs_float[start + i / 4][i % 4];
+    return S_OK;
+}
+HRESULT get_vs_bool(Device* d, UINT start, BOOL* v, UINT count) {
+    ++d->bool_gets;
+    if (d->fail_bool_get || start + count > 16) return E_FAIL;
+    for (UINT i = 0; i < count; ++i) v[i] = d->vs_bool[start + i];
+    return S_OK;
+}
+HRESULT get_stream_frequency(Device* d, UINT, UINT* v) {
+    *v = d->stream_frequency;
+    return S_OK;
+}
 HRESULT set_sampler(Device*, DWORD, D3DSAMPLERSTATETYPE, DWORD) {
     return E_FAIL;
 } // never reached: the widening is off in this seam
@@ -271,7 +331,7 @@ public:
     struct {
         unsigned rs_queries = 0, rs_hits = 0, rs_gets = 0, rs_resyncs = 0, restore_failures = 0, draws = 0,
                  sb_resyncs = 0, material_bind_failures = 0, restore_getters = 0, restore_declines = 0,
-                 fade_owner_masked = 0;
+                 fade_owner_masked = 0, overlay_refused = 0, fade_refused = 0, fade_evicted = 0;
     } counters_;
     struct {
         DWORD states[motion_shadow_state_count]{};
@@ -305,6 +365,13 @@ public:
         std::uint8_t strength_stage = 0;
         float vs_reserved[16]{}, ps_reserved[8]{};
         renderer::LinearMaterialPairContract material_contract{};
+        // The fade arm's draw inputs (motion_output.h Shadow): pair identity, registers, rows and stream bindings.
+        bool fade_route_pair = false;
+        fade_route::Registers fade_route_registers{};
+        float rows[motion_matrix_windows_max][16]{};
+        bool rows_known[motion_matrix_windows_max]{};
+        void *stream0 = nullptr, *declaration = nullptr, *indices = nullptr;
+        UINT stream0_stride = 0;
     } shadow_;
     explicit MotionOutput(Device& d)
         : device_(&d) {}
@@ -321,6 +388,9 @@ public:
         case GetPixelShader: return reinterpret_cast<F>(reinterpret_cast<void*>(get_ps));
         case SetSamplerState: return reinterpret_cast<F>(reinterpret_cast<void*>(set_sampler));
         case GetSamplerState: return reinterpret_cast<F>(reinterpret_cast<void*>(get_sampler));
+        case GetVertexShaderConstantF: return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs_float));
+        case GetVertexShaderConstantB: return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs_bool));
+        case GetStreamSourceFreq: return reinterpret_cast<F>(reinterpret_cast<void*>(get_stream_frequency));
         default: return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));
         }
     }
@@ -341,6 +411,23 @@ public:
     enum class HdrState { Off, Active, Suspended };
     HdrState hdr_state_ = HdrState::Active;
     bool cutout_reset_pending_ = false;
+    // The fade arm's configuration and frame inputs (motion_output.h), set by fade_arm_selection.
+    unsigned fade_route_threshold_ = fade_route::threshold_off;
+    bool linear_material_requested_ = false, taa_enabled_ = true, hdr_enabled_ = true;
+    cutout::Capability cutout_caps_ = cutout::Capability::Ready;
+    struct {
+        bool known = true;
+        D3DFORMAT format = D3DFMT_A16B16G16R16F;
+    } hdr_target_;
+    struct {
+        bool valid = true;
+        float m00 = 1.f, m11 = 1.f, m20 = 0.f, m21 = 0.f;
+    } camera_scene_;
+    fade_route::Hysteresis fade_hysteresis_;
+    std::uint64_t last_routed_node_ = 0, last_routed_frame_ = ~std::uint64_t{0};
+    unsigned last_routed_draw_ = 0;
+    std::uint64_t scope_node_ = 0; // the draw's node identity (production: object_trace)
+    std::uint64_t fade_identity() noexcept { return scope_node_; }
     void probe_cutout_caps(bool) {}
     bool composition_requested() const { return false; }
     bool blend_shadow_requested() const { return false; }
@@ -405,6 +492,8 @@ public:
     HRESULT acquire_restore(MotionRoute&) noexcept;
     void release_restore(MotionRoute&) noexcept;
     HRESULT bind_variant_pair(MotionRoute&, bool) noexcept;
+    bool blend_known(unsigned) noexcept;
+    bool fade_arm_admits(MotionRoute&, const MotionDrawCall&, DWORD, DWORD, std::size_t, bool) noexcept;
     void after_reset(HRESULT) noexcept;
     void begin_stateblock() noexcept;
     void end_stateblock() noexcept;
@@ -419,6 +508,12 @@ enum class StateSet : unsigned { RenderState = 0, SamplerState = 1, Texture = 2 
 inline void state_write(StateSet, unsigned, bool, bool) noexcept {}
 }
 #include "motion_wrap_under_test_inc.h"
+// fade_arm_admits and blend_known, written by test_motion_wrap_states.py; an older seam without them (a historical
+// A/B script) builds without fade_arm_selection.
+#if __has_include("motion_wrap_fade_arm_inc.h")
+#include "motion_wrap_fade_arm_inc.h"
+#define X3M_WRAP_FADE_ARM 1
+#endif
 static_assert(composition_blend_count <= 8, "blend shadow mirror is smaller than the production table");
 
 unsigned wrap(unsigned i) {
@@ -891,6 +986,127 @@ void fade_band_fill_selection() {
     }
 }
 
+#ifdef X3M_WRAP_FADE_ARM
+// Run 217 outpost-dark (verification/results/run217-outpost-dark/README.md): the XT BUMP program 37c34a7478544c14
+// (c40 / c44 / b0, fade_route_core.h row 10, fog_branch) drawn in the engine's fade-band state. The engine's distance
+// fade sets b0 TRUE (station-material-distance.md 0x004c2e04): frame 5845's freighter_base rows (PS 5f82ecac, blend
+// 5/6, z write 0; and the alpha-tested sub-mesh) are admitted as fade pairs at fraction 997 and bind the fill. An
+// MPF_ALPHABLEND material draw keeps b0 FALSE and AlphaValue 1: the overlay arm decides it exactly as before the row
+// (refused overlay_node when not right after a routed draw of its node; admitted at 1000 when it is; alpha tested
+// refused uncounted). The glass program has no row; with the owner off the row is no fade pair (arm_pair).
+void fade_arm_selection() {
+    constexpr std::uint64_t xt_bump = 0x37c34a7478544c14ull, glass = 0xc30104cb0efb6675ull,
+                            asteroid = 0x167eb2d5629ab9d3ull, node = 0x4bb6a2f8ull;
+    // Fade start N = 1024, end F = 2048: g_FogClip = (F / (F - N), 1 / (F - N)) (asteroid-fog-temporal.md); the
+    // origin at 1027 gives saturate(2 - 1027 / 1024) = 1021 / 1024, permille 997 (the Run 216/217 band rows).
+    enum Branch { Fog, Bypass, BoolFails };
+    struct Case {
+        const char* name;
+        std::uint64_t vs;
+        bool owner;
+        Branch branch;
+        DWORD alpha_test;
+        float distance;
+        bool after_routed_same_node; // the previous draw index of this frame routed the same node
+        bool admitted, overlay;
+        unsigned permille;
+        UnmatchedReason unmatched;
+        unsigned fade_refused, overlay_refused, bool_gets;
+    };
+    const Case cases[] = {
+        {"run217_5845_hull", xt_bump, true, Fog, 0, 1027.f, false, true, false, 997, UnmatchedReason::None, 0, 0, 1},
+        {"run217_5845_tested", xt_bump, true, Fog, 1, 1027.f, false, true, false, 997, UnmatchedReason::None, 0, 0, 1},
+        {"xt_band_end", xt_bump, true, Fog, 0, 1900.f, false, false, false, 144, UnmatchedReason::FadeThreshold, 1, 0,
+         1},
+        {"xt_material", xt_bump, true, Bypass, 0, 1027.f, false, false, true, 0, UnmatchedReason::OverlayNode, 0, 1, 1},
+        {"xt_material_after_routed", xt_bump, true, Bypass, 0, 1027.f, true, true, true, 1000, UnmatchedReason::None, 0,
+         0, 1},
+        {"xt_material_tested", xt_bump, true, Bypass, 1, 1027.f, false, false, false, 0, UnmatchedReason::None, 0, 0, 1},
+        {"xt_b0_read_fails", xt_bump, true, BoolFails, 0, 1027.f, false, false, false, 0,
+         UnmatchedReason::FadeConstants, 1, 0, 1},
+        {"xt_owner_off", xt_bump, false, Fog, 0, 1027.f, false, false, true, 0, UnmatchedReason::OverlayNode, 0, 1, 0},
+        {"glass", glass, true, Bypass, 0, 1027.f, false, false, true, 0, UnmatchedReason::OverlayNode, 0, 1, 0},
+        {"asteroid_band", asteroid, true, Fog, 0, 1027.f, false, true, false, 997, UnmatchedReason::None, 0, 0, 1},
+        {"asteroid_no_fog", asteroid, true, Bypass, 0, 1027.f, false, true, false, 1000, UnmatchedReason::None, 0, 0, 1},
+    };
+    unsigned run = 0;
+    for (const auto& c : cases) {
+        const unsigned before = failures;
+        Device d;
+        MotionOutput m(d);
+        d.states[D3DRS_ALPHABLENDENABLE] = 1;
+        d.states[D3DRS_ALPHATESTENABLE] = c.alpha_test;
+        d.states[D3DRS_SRGBWRITEENABLE] = 0;
+        d.states[D3DRS_COLORWRITEENABLE] = 7;
+        d.states[D3DRS_SRCBLEND] = 5;
+        d.states[D3DRS_DESTBLEND] = 6;
+        d.states[D3DRS_BLENDOP] = 1;
+        d.states[D3DRS_SEPARATEALPHABLENDENABLE] = 0;
+        m.fade_route_threshold_ = 500;
+        m.fade_rt2_owner_ = c.owner;
+        // The pair identity as resync_shadow computes it; none of these VS has a distance_fade_rows pair with PS
+        // 5f82ecac (the asteroid's is d44db877, a distance_fade_rows pair: the identity holds either way).
+        const bool row = fade_route::registers(c.vs, m.shadow_.fade_route_registers);
+        m.shadow_.fade_route_pair = fade_route::arm_pair(row, c.vs == asteroid, c.owner);
+        const auto& r = m.shadow_.fade_route_registers;
+        const bool bypass = c.branch == Bypass;
+        d.vs_float[row ? r.alpha : 0][0] = 1.f;               // g_AlphaValue: 1 (no node +13c override)
+        d.vs_float[row ? r.fog : 0][0] = bypass ? 1.f : 2.f;  // g_FogClip.x
+        d.vs_float[row ? r.fog : 0][1] = bypass ? 0.f : 1.f / 1024.f;
+        d.vs_bool[0] = bypass ? FALSE : TRUE;
+        d.fail_bool_get = c.branch == BoolFails;
+        m.shadow_.rows_known[0] = true;
+        m.shadow_.rows[0][0] = m.shadow_.rows[0][5] = m.shadow_.rows[0][10] = 1.f;
+        m.shadow_.rows[0][15] = c.distance; // the origin's clip w on the view axis: distance = w
+        static int vb, decl, ib;
+        m.shadow_.stream0 = &vb;
+        m.shadow_.declaration = &decl;
+        m.shadow_.indices = &ib;
+        m.shadow_.stream0_stride = 40;
+        m.scope_node_ = node;
+        m.frame_ = 5845;
+        m.counters_.draws = 102;
+        if (c.after_routed_same_node) {
+            m.last_routed_frame_ = 5845;
+            m.last_routed_draw_ = 101;
+            m.last_routed_node_ = node;
+        }
+        MotionDrawCall call;
+        call.indexed = true;
+        call.primitives = 15749;
+        MotionRoute route;
+        const bool admitted = m.fade_arm_admits(route, call, 1, 0, 0, true);
+        CHECK(admitted == c.admitted);
+        CHECK(route.fade_arm == c.admitted && route.overlay == (c.admitted && c.overlay));
+        CHECK(route.fade_permille == c.permille);
+        CHECK(route.unmatched == c.unmatched);
+        CHECK(m.counters_.fade_refused == c.fade_refused && m.counters_.overlay_refused == c.overlay_refused);
+        CHECK(d.bool_gets == c.bool_gets); // b0 read once: the fog_branch guard's read is the fraction's
+        CHECK(route.fade_owner == (c.admitted && !c.overlay && c.owner));
+        CHECK(route.fade_tested == (c.admitted && !c.overlay && c.alpha_test != 0));
+        if (c.admitted) {
+            // The fade-band fill (linear-distance-fade-region.md "Fade-band fill"): a fade pair's row binds the fill
+            // program its opaque draw takes (the owner without a lane: the plain fill family); the overlay arm keeps
+            // the motion program.
+            Shader vs, motion, fill;
+            m.shadow_.vs_variant = &vs;
+            m.shadow_.ps_variant = &motion;
+            m.shadow_.ps_original_fill_variant = &fill;
+            m.original_fill_requested_ = m.shadow_.original_fill_pair = true;
+            m.hull_lightmap_enabled_ = false;
+            route.depth = true;
+            CHECK(m.bind_variant_pair(route, false) == S_OK && d.bound_vs == &vs);
+            CHECK(d.bound_ps == (c.overlay ? &motion : &fill) && route.original_fill == !c.overlay);
+            CHECK(m.undo(route) == S_OK);
+            m.release_restore(route);
+        }
+        ++run;
+        if (failures != before) std::printf("fade_arm case=%s\n", c.name);
+    }
+    std::printf("fade_arm_cases=%u\n", run);
+}
+#endif
+
 void failure_cases() {
     const renderer::MotionOutputProfile basic{0, 15}, full{4, 5};
     for (unsigned zero : {0u, 15u}) {
@@ -1147,6 +1363,9 @@ int main() {
     restoration_ownership();
     material_strength_selection();
     fade_band_fill_selection();
+#ifdef X3M_WRAP_FADE_ARM
+    fade_arm_selection();
+#endif
     failure_cases();
     malformed_contracts();
     shadow_reset_and_performance();

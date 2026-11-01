@@ -1474,9 +1474,13 @@ bool MotionOutput::cutout_draw_state() noexcept {
 // render-state reads (blend, test, sRGB, mask, the blend triple and the
 // separate-alpha switch; shadow slots with the hooks on), the frequency
 // getter and one identity read; a draw with z write on reaches no getter.
+// A fog_branch row (fade_route_core.h: the XT BUMP program, Run 217) reads b0
+// once after the state check: FALSE (no engine distance fade, so material
+// transparency) hands the draw to the overlay arm exactly as without the row;
+// TRUE continues as a fade pair and the fraction reuses the read.
 bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write,
                                    std::size_t window, bool loop_bounded) noexcept {
-    const bool overlay = !shadow_.fade_route_pair;
+    bool overlay = !shadow_.fade_route_pair;
     if ((overlay && (fade_route_threshold_ > 1000u || linear_material_requested_)) || call.user_memory || z != 1 ||
         z_write != 0)
         return false;
@@ -1499,6 +1503,20 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;
     if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok))
         return false;
+    BOOL enable = FALSE;
+    const bool enable_read = !overlay && shadow_.fade_route_registers.fog_branch;
+    if (enable_read) {
+        if (FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))) {
+            route.unmatched = UnmatchedReason::FadeConstants;
+            ++counters_.fade_refused;
+            return false;
+        }
+        if (!fade_route::fade_branch(shadow_.fade_route_registers, enable != FALSE)) {
+            // The overlay arm's own state boundary (fade_route::state with tested_ok false; original shading).
+            if (test != 0 || linear_material_requested_) return false;
+            overlay = true;
+        }
+    }
     // Recognised fade-band draw of a fade pair: a refusal below is counted.
     UINT frequency = 0;
     if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_ ||
@@ -1538,12 +1556,11 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
         return true;
     }
     float alpha[4]{}, fog[4]{};
-    BOOL enable = FALSE;
     float distance = 0.f;
     const auto& r = shadow_.fade_route_registers;
     if (FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.alpha, alpha, 1)) ||
         FAILED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, r.fog, fog, 1)) ||
-        FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1))) {
+        (!enable_read && FAILED(native<GetConstantsBFn>(GetVertexShaderConstantB)(device_, 0, &enable, 1)))) {
         route.unmatched = UnmatchedReason::FadeConstants;
         ++counters_.fade_refused;
         return false;
