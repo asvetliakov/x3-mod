@@ -35,6 +35,8 @@ core::Latch latch_;
 Counters counters_{};
 bool own_sun_wanted_ = false;      // request_own_sun(): install for the own sun
 volatile bool own_sun_frame_ = false; // set_own_sun_frame(): this frame's own-sun answer (Present thread = owner thread)
+bool own_sun_hidden_seen_ = false;     // the answer branch ran at least once; with own_sun_hidden_frame_ its frame
+std::uint32_t own_sun_hidden_frame_ = 0;
 std::uint32_t seen_frame_ = 0;
 std::uintptr_t main_view_ = 0;
 bool multi_counted_ = false, frame_started_ = false, foreign_logged_ = false;
@@ -150,6 +152,8 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {
         ++counters_.own;
         ++counters_.own_sun_hidden;
+        own_sun_hidden_seen_ = true;
+        own_sun_hidden_frame_ = frame;
         return core::Hidden;
     }
     if (own) {
@@ -453,6 +457,9 @@ void request_own_sun() {
 }
 void set_own_sun_frame(bool active) {
     own_sun_frame_ = patched_ && active;
+}
+bool own_sun_hidden() {
+    return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;
 }
 FrameInputs frame_inputs() {
     FrameInputs out;

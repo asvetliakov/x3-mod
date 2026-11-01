@@ -693,3 +693,31 @@ armed=1` with `answered` >= `active_frames`, `drawn` > 0 with the sun on screen,
 `colour`, `fog_t` (< 1 in a fogged sector); after Ctrl+Shift+F9 `own_sun_toggle on=0` and `active=0 answered=0`.
 F8 bursts: the sun behind a hull edge (own sun, then toggled to vanilla), and the sun clear in a fogged sector (both
 states). No `own_sun_failed`, no `own_sun_device attached=0`.
+
+### Own sun step 1 — review fixes (2026-11-02; rebased onto main `2f47e5a5`; not flown)
+
+Review of the step-1 commit, applied in one commit ([own-sun-pass.md](../architecture/own-sun-pass.md) section 14):
+F1 the stage draws only in a frame whose main-view eligible probe the own sun answered "hidden" (planets leave the
+lane at the sentinel; a failed eligibility kept a double sun); armed, active frames without it count `no_probe=` and
+write one `own_sun_no_probe` row. F2 the sun poll moved into the arming: not Ok leaves the stage unarmed
+(`own_sun_state reason=poll`), so the next probe forwards; a camera or size refusal of the projection clears the
+readiness. F3 section 2 corrected (below); `own_sun_frame` carries `ev=` and `ev_limit=`. F4 disc
+`K lerp(c / m, 1, 0.6) m T`, F5 corona `0.8 (K / 8) c T`, K = 0 draws nothing and requests no answer
+(`own_sun status=unavailable reason=radiance_zero`). F6 `sun_disc_radius` is a fraction of the viewport height
+(default 0.0667, 51 px at 768 rows, 96 px at 1440). F9 the hotkey note says the "off" state is the sun-occlusion-modified
+chain and the chord is not focus-limited.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `compare_objects.py` against main `2f47e5a5` | FL 81 objects, 3 differ (capture, config, proxy_identity); AP 122, +`own_sun_pass`, 5 differ (capture, config, motion_output, proxy_identity, sun_occlusion) (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_fl_sun_occlusion, test_config_schema | 99 tests, 0 failing (measured) |
+| Programs | unchanged (vs 43 / ps 339 words, validator result as above) |
+| CPU side, `cpu_cost.py` | median 36.1 ns per frame (measured) |
+| Meter, `verification/results/own-sun-pass/meter_exposure.py` | 1280x768: the disc core covers 36-41 of 3,840 tiles (0.94-1.07 %; p99 needs 39); 1920x1080 0.81-0.85 %, 5120x1440 0.49-0.76 % with the height radius (1.96-2.23 % with the old width radius); a white K = 8 decodes (gamma 2.2) to 97, clipped 64: ev_limit -2.13 EV while the disc holds p99 (+0.87 EV under the identity decode); K <= 3.39 keeps >= 0 EV, K <= 2.25 leaves the +1.3 EV cap (measured, offline) |
+
+The review's "+0.87 EV" assumed the identity decode; the default decode is gamma 2.2, so at 1280x768 the guard would
+pull the exposure to about -2.1 EV with the sun in view. The flight's `ev=` / `ev_limit=` decide; the meter is
+unchanged. Flight additions: `no_probe=0` (or near 0) in frames with the sun in view, `ev` / `ev_limit` with and without
+the sun (Ctrl+Shift+F9), and the sun setting behind a planet (the disc must vanish with the engine's verdict).

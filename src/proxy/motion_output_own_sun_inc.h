@@ -9,8 +9,12 @@
 // and the stage read that one latch, so the hotkey flips them together. Arming, at each resolve: the route on, the
 // HDR/TAA FP16 path (as the plumes', jitter not required), the scene camera latched, the completed lane at the target's
 // size in the lane format, the attached pass (programs and declaration; FP16 post-pixel-shader blending; refused until
-// Reset when it fails) and not within 64 frames of a failed stage frame; the third consecutive failure refuses until
-// Reset. An unarmed device answers nothing (the engine's chain), so a refused stage never leaves the sky without a sun.
+// Reset when it fails), not within 64 frames of a failed stage frame (the third consecutive failure refuses until
+// Reset) and this frame's sun poll Ok (the shadow lane's, else one at the scene end). An unarmed device answers nothing
+// (the engine's chain), so a refused stage or a missing poll never leaves the sky without a sun. The stage draws only in
+// a frame whose main-view probe the own sun answered "hidden" (sun_occlusion::own_sun_hidden()): a sun the probe did not
+// reach (another view, the flare video option off, the main view unresolved) stays the engine's or none, never two;
+// such armed, active frames count no_probe on the own_sun_frame row and the first one writes own_sun_no_probe.
 // One own_sun_state row per change of the armed state or its reason; one own_sun_device row per attach; --debug: one
 // own_sun_frame row every 10 s.
 void MotionOutput::configure_own_sun(bool requested, float radius_u, float radiance) noexcept {
@@ -24,6 +28,7 @@ void MotionOutput::configure_own_sun(bool requested, float radius_u, float radia
     own_sun_failed_out_ = false;
     own_sun_reason_ = requested ? "pending" : "off";
     own_sun_state_logged_ = false;
+    own_sun_no_probe_logged_ = false;
 }
 void MotionOutput::note_own_sun_state(bool armed, const char* reason) noexcept {
     own_sun_armed_ = armed;
@@ -107,6 +112,24 @@ bool MotionOutput::own_sun_arm(bool fp16_route, IDirect3DTexture9* lane, UINT wi
         note_own_sun_state(false, "disarmed");
         return false;
     }
+    // The sun: this frame's poll when the shadow lane took it (its first routed z-writing draw), else one poll here at
+    // the scene end (the main view was the last view rendered before the hook: sun_light_poll.h). Not Ok (no directional
+    // light, unavailable): not ready, so the next frame's probe forwards to the engine.
+    own_sun_poll_source_ = "lane";
+    if (candidates_requested_ && point_sun_.polled)
+        own_sun_sample_ = point_sun_sample_;
+    else if (sun_light_poll::available()) {
+        own_sun_poll_source_ = "stage";
+        sun_light_poll::read(&own_sun_sample_);
+    } else {
+        own_sun_poll_source_ = "none";
+        own_sun_sample_ = sun_light_poll::Sample{};
+        own_sun_sample_.status = sun_light_poll::Status::Disabled;
+    }
+    if (own_sun_sample_.status != sun_light_poll::Status::Ok) {
+        note_own_sun_state(false, "poll");
+        return false;
+    }
     own_sun_lane_ = lane;
     own_sun_width_ = width;
     own_sun_height_ = height;
@@ -126,26 +149,17 @@ HRESULT MotionOutput::own_sun_stage_callback(void* context, IDirect3DDevice9*) n
     if (FAILED(plumes)) return plumes;
     return sun == S_OK || plumes == S_OK ? S_OK : S_FALSE;
 }
+// An armed, active frame whose main-view probe was not answered "hidden": nothing drawn (the resolve's wiring).
+void MotionOutput::own_sun_no_probe() noexcept {
+    ++own_sun_period_.no_probe;
+    own_sun_skip_ = "no_probe";
+    if (own_sun_no_probe_logged_) return;
+    own_sun_no_probe_logged_ = true;
+    log("own_sun_no_probe device=%llu frame=%llu note=chain_not_hidden_stage_off", id_, frame_);
+}
 HRESULT MotionOutput::run_own_sun() noexcept {
     ++own_sun_period_.active;
     own_sun_skip_ = "none";
-    // The sun: this frame's poll when the shadow lane took it (its first routed z-writing draw), else one poll here at
-    // the scene end (the sector view's light array is still the last rendered view's: sun_light_poll.h).
-    own_sun_poll_source_ = "lane";
-    if (candidates_requested_ && point_sun_.polled)
-        own_sun_sample_ = point_sun_sample_;
-    else if (sun_light_poll::available()) {
-        own_sun_poll_source_ = "stage";
-        sun_light_poll::read(&own_sun_sample_);
-    } else {
-        own_sun_poll_source_ = "none";
-        own_sun_sample_ = sun_light_poll::Sample{};
-        own_sun_sample_.status = sun_light_poll::Status::Disabled;
-    }
-    if (own_sun_sample_.status != sun_light_poll::Status::Ok) {
-        own_sun_skip_ = "poll";
-        return S_FALSE;
-    }
     own_sun::core::Camera camera;
     for (unsigned i = 0; i < 9; ++i) camera.r[i] = camera_scene_.r[i];
     for (unsigned i = 0; i < 3; ++i) camera.t[i] = camera_scene_.t[i];
@@ -167,6 +181,9 @@ HRESULT MotionOutput::run_own_sun() noexcept {
     own_sun_colour_ = f.radiance;
     if (f.disc.skip != own_sun::core::Skip::None) {
         own_sun_skip_ = own_sun::core::skip_name(f.disc.skip);
+        // A camera or target the projection refuses: not ready, the next frame's probe forwards to the engine (behind,
+        // small, offscreen are a sun the engine would not show either).
+        if (f.disc.skip == own_sun::core::Skip::Camera || f.disc.skip == own_sun::core::Skip::Size) own_sun_ready_ = false;
         return S_FALSE;
     }
     if (f.radiance.black) {
@@ -222,12 +239,14 @@ void MotionOutput::own_sun_frame(bool active, bool key_on) noexcept {
     const sun_occlusion::Counters c = sun_occlusion::counters();
     const auto& d = own_sun_disc_;
     const auto& r = own_sun_colour_;
+    // The meter's reaction (note section 2): the EV the tonemap consumes and the highlight guard's limit of the last meter.
+    const float ev = hdr_ ? hdr_->exposure().ev() : 0.f, ev_limit = hdr_ ? hdr_->exposure().ev_limit() : 0.f;
     if (log_tier::cached_debug)
-        log("own_sun_frame device=%llu frame=%llu active=%u key=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u answered=%lu forwarded=%lu poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f disc=%.3f,%.3f,%.3f result=%08lx calls=%u stage_us=%.1f",
+        log("own_sun_frame device=%llu frame=%llu active=%u key=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f disc=%.3f,%.3f,%.3f result=%08lx calls=%u stage_us=%.1f",
         id_, frame_, unsigned(active), unsigned(key_on), unsigned(own_sun_armed_), own_sun_reason_, own_sun_period_.frames,
-        own_sun_period_.active, own_sun_period_.drawn,
+        own_sun_period_.active, own_sun_period_.drawn, own_sun_period_.no_probe,
         static_cast<unsigned long>(c.own_sun_hidden - own_sun_answered_seen_),
-        static_cast<unsigned long>(c.original - own_sun_forwarded_seen_),
+        static_cast<unsigned long>(c.original - own_sun_forwarded_seen_), double(ev), double(ev_limit),
         sun_light_poll::status_name(own_sun_sample_.status), own_sun_poll_source_, own_sun_skip_, double(d.u), double(d.v),
         double(d.view_z), double(d.radius_px), double(r.colour[0]), double(r.colour[1]), double(r.colour[2]),
         double(own_sun_fog_t_), double(r.disc[0]), double(r.disc[1]), double(r.disc[2]),

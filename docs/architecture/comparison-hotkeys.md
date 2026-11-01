@@ -36,7 +36,11 @@ chord is one press) toggles one state that starts on and writes one `own_sun_tog
 Present the next frame's latch is `own_sun::core::frame_active(setting, key, stage armed in the last resolve)`; the
 flare probe's "hidden" answer for the sun's record and the stage's draw both read that one latch, so the two switch
 together in the same frame (the engine re-instantiates its chain within about two frames after the answer returns to
-the original). F9 is polled first, the modifiers only while it is down. Host proof: `test_own_sun.OwnSunHost.
+the original). F9 is polled first, the modifiers only while it is down. The "off" state is the engine's chain as the
+sun-occlusion feature modifies it (its probe override, lens wraps and deferral when `--sun-occlusion` is on, the
+launcher default), not pure vanilla; compare against `--no-sun-occlusion` for the unmodified chain. `GetAsyncKeyState`
+reads the physical key state whether or not the game has the focus, as for F8: a chord pressed in another window
+flips it too. Host proof: `test_own_sun.OwnSunHost.
 test_hotkey_flips_per_frame` (the production `Toggle` and `frame_active`) and `test_comparison_hotkeys` (the chord is
 the only other `GetAsyncKeyState` use, in one function, polled at one site under `own_sun_on`). Ledger:
 [sun-occlusion.md](../verification/sun-occlusion.md), "Own sun step 1".

@@ -68,8 +68,12 @@ void device_reset();                                    // readiness restarts: v
 // makes it install both redirects (observe-only unless the sun-occlusion variables ask for more); set_own_sun_frame() is
 // the Present-time latch for the next frame (own_sun::core::frame_active): while it is set, the probe answers "hidden"
 // for the sun's eligible record (core::eligible) before any readiness test or latch, every other probe as before.
+// own_sun_hidden(): this frame's main-view eligible probe was answered "hidden" (owner thread; the main view is probed
+// before the scene-end hook, lens-flare-visibility.md section 14): the stage draws only then, so the engine's chain and
+// the own sun never show together and a sun the probe did not reach (another view, the flare option off) is not drawn.
 void request_own_sun();
 void set_own_sun_frame(bool active);
+bool own_sun_hidden();
 #endif
 namespace detail {
 extern volatile bool bracket_open;

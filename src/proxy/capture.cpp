@@ -5908,15 +5908,20 @@ void initialize_log(HMODULE module) {
             const float v = wcstof(value, &end);
             if (end != value && *end == L'\0') own_sun::core::accept_radiance(v, &own_sun_radiance);
         }
-        if (own_sun_requested && motion_output_requested) sun_occlusion::request_own_sun();
+        // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
+        if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();
 #endif
         sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
         const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested);
 #if !X3M_EDITION_FL
-        own_sun_on = own_sun_requested && motion_output_requested && sun_installed;
+        own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
         log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f hotkey=ctrl+shift+f9",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
-            own_sun_on ? "ok" : !own_sun_requested ? "setting" : !motion_output_requested ? "route_off" : "probe",
+            own_sun_on                     ? "ok"
+            : !own_sun_requested           ? "setting"
+            : !motion_output_requested     ? "route_off"
+            : !(own_sun_radiance > 0.f)    ? "radiance_zero"
+                                           : "probe",
             sun_occlusion::state(), double(own_sun_radius), double(own_sun_radiance));
 #else
         log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending", own_sun_requested ? 1u : 0u);

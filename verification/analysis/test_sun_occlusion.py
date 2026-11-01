@@ -491,7 +491,8 @@ class SunOcclusionHost(unittest.TestCase):
         branch = decide.index('if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {')
         self.assertLess(decide.index('const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);'), branch)
         self.assertLess(branch, decide.index('ready_.probe('))
-        self.assertIn('++counters_.own;\n        ++counters_.own_sun_hidden;\n        return core::Hidden;\n    }', decide[branch:])
+        self.assertIn('++counters_.own;\n        ++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n'
+                      '        own_sun_hidden_frame_ = frame;\n        return core::Hidden;\n    }', decide[branch:])
         self.assertIn('void set_own_sun_frame(bool active) {\n    own_sun_frame_ = patched_ && active;\n}', sun)
         self.assertIn('!requested && !log_requested && !bracket_wanted && !own_sun_wanted_', sun)
         self.assertRegex(sun, r'log\("sun_occlusion requested=%u [^"]* own_sun=%u"')

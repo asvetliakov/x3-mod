@@ -2091,8 +2091,9 @@ private:
     own_sun::core::Radiance own_sun_colour_{};
     renderer::OwnSunReport own_sun_report_{};
     struct OwnSunPeriod {
-        unsigned frames = 0, active = 0, drawn = 0;
+        unsigned frames = 0, active = 0, drawn = 0, no_probe = 0;
     } own_sun_period_{};
+    bool own_sun_no_probe_logged_ = false; // the first armed, active frame without a hidden answer wrote its row
     std::uint32_t own_sun_answered_seen_ = 0, own_sun_forwarded_seen_ = 0;
     bool own_sun_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
     bool attach_own_sun() noexcept;
@@ -2100,6 +2101,7 @@ private:
     void note_own_sun_state(bool armed, const char* reason) noexcept;
     static HRESULT own_sun_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_own_sun() noexcept;
+    void own_sun_no_probe() noexcept;
 #endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until

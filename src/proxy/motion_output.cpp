@@ -2475,12 +2475,15 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             }
 #if !X3M_EDITION_FL
             // Own sun (motion_output_own_sun_inc.h): armed at every resolve (own_sun_ready() feeds the next frame's latch,
-            // also while the hotkey has it off); drawn only in a frame the latch made active, then before the plumes when
-            // both draw (one callback slot).
+            // also while the hotkey has it off); drawn only in a frame the latch made active and whose main-view probe was
+            // answered "hidden", then before the plumes when both draw (one callback slot).
             if (own_sun_requested_ && own_sun_arm(hdr_scene != nullptr, depth, in.width, in.height) && own_sun_frame_active_) {
-                own_sun_with_plumes_ = in.stage_callback != nullptr;
-                in.stage_callback = &MotionOutput::own_sun_stage_callback;
-                in.stage_context = this;
+                if (sun_occlusion::own_sun_hidden()) {
+                    own_sun_with_plumes_ = in.stage_callback != nullptr;
+                    in.stage_callback = &MotionOutput::own_sun_stage_callback;
+                    in.stage_context = this;
+                } else
+                    own_sun_no_probe();
             }
 #endif
             // Phase timing of the run (telemetry only): the pass stamps its own

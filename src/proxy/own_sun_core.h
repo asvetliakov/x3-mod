@@ -15,9 +15,11 @@
 
 namespace x3m::own_sun::core {
 // ---- Settings (X3M_OWN_SUN, X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; tools/config/schema.py) ----
-// The disc's half-width as a fraction of the back-buffer width (0.04 = 51 px at 1280, the run223 default), and the
-// disc's radiance K in FP16 engine space (8: saturates AgX white under the capped Auto exposure; note section 2).
-constexpr float radius_default_u = .04f, radius_min_u = .005f, radius_max_u = .25f;
+// The disc's radius as a fraction of the viewport (target) height, so its angular size follows the engine's vertical
+// field of view, which the engine keeps fixed as far as is known (0.0667 = 51 px at 768 rows, the run223 size at
+// 1280x768; 96 px at 1440 rows), and the disc's radiance K in FP16 engine space (8; note sections 2 and 14 for what the
+// exposure meter does with it). The pixels are square: the disc is round at every aspect.
+constexpr float radius_default_u = .0667f, radius_min_u = .005f, radius_max_u = .25f;
 constexpr float radiance_default = 8.f, radiance_min = 0.f, radiance_max = 64.f;
 // The look (note section 2): the disc whitened like the plume core, the corona under the stabiliser's emitter bound E = 1.
 constexpr float white_mix = .6f, corona_gain = .8f;
@@ -97,7 +99,7 @@ struct Disc {
 inline bool finite(double v) noexcept {
     return v == v && v < 1e30 && v > -1e30;
 }
-// position: the poll's integer world position; radius_u: the configured half-width / back-buffer width; jx / jy: this
+// position: the poll's integer world position; radius_u: the configured radius / viewport height; jx / jy: this
 // frame's TAA jitter in pixels (+x right, +y down on the raster; 0 without jitter).
 inline Disc project(const std::int32_t position[3], const Camera& camera, unsigned width, unsigned height,
                     float radius_u, float jx, float jy) noexcept {
@@ -131,7 +133,7 @@ inline Disc project(const std::int32_t position[3], const Camera& camera, unsign
     d.x = float(xj);
     d.y = float(yj);
     const float r = radius_u >= radius_min_u && radius_u <= radius_max_u ? radius_u : radius_default_u;
-    d.radius_px = r * float(width);
+    d.radius_px = r * float(height);
     d.half_x = quad_extent * 2.f * d.radius_px / float(width);
     d.half_y = quad_extent * 2.f * d.radius_px / float(height);
     if (d.radius_px < radius_min_px) {
@@ -149,8 +151,10 @@ inline Disc project(const std::int32_t position[3], const Camera& camera, unsign
 
 // ---- Radiance (FP16 engine space) ----
 // c = colour / 256 (the poll's words, the code values the engine uploads as light colour), clamped to [0, 4] as the
-// fog's E_sun reads them. Disc K lerp(c, white, 0.6), corona K_h c, both x the fog scalar T. A black sun (every word 0,
-// FL's #000000 sectors) draws nothing, as vanilla's colour-multiplied chain; neither does T = 0 (a fully fogged sky).
+// fog's E_sun reads them; m = max_ch(c), the hue c / m. Disc K lerp(c / m, white, 0.6) m T: the whitening keeps the hue
+// of a bright sun and the brightness follows the colour as vanilla's colour-multiplied chain does (a #323232 sun is a
+// dim grey disc, not a white one). Corona K_h (K / 8) c T: it scales with sun_disc_radiance too. A black sun (every word
+// 0, FL's #000000 sectors), T = 0 (a fully fogged sky) or K = 0 draws nothing.
 struct Radiance {
     float disc[3]{}, corona[3]{};
     float colour[3]{}; // c, for the log
@@ -166,12 +170,16 @@ inline void radiance(const std::int32_t colour[3], float k, float fog_t, Radianc
         lit = lit || c > 0.f;
     }
     const float t = fog_t > 0.f ? (fog_t < 1.f ? fog_t : 1.f) : 0.f; // NaN -> 0
-    r.black = !lit || !(t > 0.f);
-    if (!r.black)
+    r.black = !lit || !(t > 0.f) || !(k > 0.f);
+    if (!r.black) {
+        float m = r.colour[0] > r.colour[1] ? r.colour[0] : r.colour[1];
+        m = m > r.colour[2] ? m : r.colour[2];
         for (unsigned i = 0; i < 3; ++i) {
-            r.disc[i] = k * (r.colour[i] + (1.f - r.colour[i]) * white_mix) * t;
-            r.corona[i] = corona_gain * r.colour[i] * t;
+            const float hue = r.colour[i] / m;
+            r.disc[i] = k * (hue + (1.f - hue) * white_mix) * m * t;
+            r.corona[i] = corona_gain * (k / radiance_default) * r.colour[i] * t;
         }
+    }
     *out = r;
 }
 // The fog's analytic far transmittance toward the sky, as one scalar (renderer::fog_sky_lens_gain at gain 1: the column's

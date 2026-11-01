@@ -163,11 +163,14 @@ SETTINGS = [
           'two in flight. 1 = on, 0 = the game\'s own sun. X3: Albion Prelude only for now.', '0', builtin='0',
           requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02'),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the mod\'s own sun (own_sun = 1): the disc\'s radius as a fraction of '
-          'the screen width, 0.005 to 0.25. 0.04 = 51 pixels on a 1280-pixel-wide screen.', builtin='0.04',
+          'the screen height, 0.005 to 0.25; 0.0667 = 51 pixels on a 768-row screen, 96 on a 1440-row one. Height, because the '
+          'game keeps its vertical field of view fixed (as far as is known), so the sun keeps its apparent size on a wider '
+          'screen. The disc stays round.', builtin='0.0667',
           range=(0.005, 0.25), requires=('own_sun',), launcher='--sun-disc-radius', since='2026-11-02'),
-    entry('sun_disc_radiance', 'float', 'graphics', 'Brightness of the mod\'s own sun disc (own_sun = 1), 0 to 64; 8 shows the '
-          'disc as pure white with a glow around it, lower values let the sun\'s colour show through.', builtin='8',
-          range=(0.0, 64.0), requires=('own_sun',), launcher='--sun-disc-radiance', since='2026-11-02'),
+    entry('sun_disc_radiance', 'float', 'graphics', 'Brightness of the mod\'s own sun (own_sun = 1), disc and glow together, 0 to '
+          '64; 8 is a bright disc, the sector\'s sun colour sets its tint and how bright it is (a dim sun stays dim). 0 = no own '
+          'sun: the game\'s sun is kept. Very bright values darken the picture while the sun is in view (automatic exposure).',
+          builtin='8', range=(0.0, 64.0), requires=('own_sun',), launcher='--sun-disc-radiance', since='2026-11-02'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),

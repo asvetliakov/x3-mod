@@ -58,7 +58,7 @@ def reference_projection(p, r, t, m00, m11, m20, m21, w, h, radius, jx, jy):
     view = [t[j] + sum(p[i] * SCALE * r[i * 3 + j] for i in range(3)) for j in range(3)]
     x = view[0] * m00 / view[2] + m20
     y = view[1] * m11 / view[2] + m21
-    rp = radius * w
+    rp = radius * h  # the radius is a fraction of the viewport height
     return dict(u=.5 + .5 * x, v=.5 - .5 * y, x=x + 2 * jx / w, y=y - 2 * jy / h, half_x=3 * 2 * rp / w, half_y=3 * 2 * rp / h,
                 radius_px=rp, view_z=view[2])
 
@@ -85,7 +85,7 @@ class OwnSunHost(unittest.TestCase):
     def run_driver(self, *args):
         return fields(subprocess.check_output([str(self.driver)] + [str(a) for a in args], text=True).strip())
 
-    def project(self, p, r=(1, 0, 0, 0, 1, 0, 0, 0, 1), t=(0, 0, 0), m=(1, 1.7777778, 0, 0), size=(1280, 720), radius=.04, jitter=(0, 0)):
+    def project(self, p, r=(1, 0, 0, 0, 1, 0, 0, 0, 1), t=(0, 0, 0), m=(1, 1.7777778, 0, 0), size=(1280, 768), radius=.0667, jitter=(0, 0)):
         out = self.run_driver('project', *p, *r, *t, *m, *size, radius, *jitter)
         return {k: (v if k == 'skip' else float(v)) for k, v in out.items()}
 
@@ -103,8 +103,8 @@ class OwnSunHost(unittest.TestCase):
             view = [rng.uniform(-.4, .4) * vz, rng.uniform(-.3, .3) * vz, vz]
             world = [sum((view[j] - t[j]) * r[i * 3 + j] for j in range(3)) for i in range(3)]  # R orthonormal: R^-1 = R^T
             p = [int(round(v / SCALE)) for v in world]
-            got = self.project(p, r, t, m, size, .04, jitter)
-            want = reference_projection(p, r, t, *m, *size, .04, *jitter)
+            got = self.project(p, r, t, m, size, .0667, jitter)
+            want = reference_projection(p, r, t, *m, *size, .0667, *jitter)
             self.assertEqual(got['skip'], 'none' if abs(want['x']) - want['half_x'] < 1 and abs(want['y']) - want['half_y'] < 1 else 'offscreen')
             for key in ('u', 'v', 'x', 'y', 'half_x', 'half_y', 'radius_px'):
                 self.assertAlmostEqual(got[key], want[key], delta=2e-5 * max(1., abs(want[key])), msg=(key, p))
@@ -119,7 +119,7 @@ class OwnSunHost(unittest.TestCase):
         j = self.project((0, 0, 10 ** 9), jitter=(.5, -.25))
         self.assertEqual((j['u'], j['v']), (.5, .5))                       # the logged position is the unjittered one
         self.assertAlmostEqual(j['x'], 2 * .5 / 1280, places=7)            # +jx right: m20 + 2 jx / W
-        self.assertAlmostEqual(j['y'], -2 * -.25 / 720, places=7)          # +jy down: m21 - 2 jy / H
+        self.assertAlmostEqual(j['y'], -2 * -.25 / 768, places=7)          # +jy down: m21 - 2 jy / H
 
     def test_behind_offscreen_and_camera_refusals(self):
         self.assertEqual(self.project((0, 0, -10 ** 9))['skip'], 'behind')
@@ -134,16 +134,20 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(0, 720))['skip'], 'size')
 
     def test_radius_in_pixels_and_the_small_rule(self):
-        self.assertAlmostEqual(self.project((0, 0, 10 ** 9))['radius_px'], 51.2, places=3)            # 0.04 x 1280
-        self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'], 204.8, places=2)
+        # The radius is a fraction of the viewport height (the engine's vertical FOV): the same at every width.
+        self.assertAlmostEqual(self.project((0, 0, 10 ** 9))['radius_px'], 51.2256, places=3)          # 0.0667 x 768
+        self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'], 96.048, places=2)
+        self.assertEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'],
+                         self.project((0, 0, 10 ** 9), size=(2560, 1440))['radius_px'])
         d = self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.1)
-        self.assertAlmostEqual(d['half_x'], 3 * 2 * 128 / 1280, places=6)                              # square pixels
-        self.assertAlmostEqual(d['half_y'], 3 * 2 * 128 / 720, places=6)
-        self.assertEqual(self.project((0, 0, 10 ** 9), size=(37, 20))['skip'], 'small')                # 1.48 px
-        self.assertEqual(self.project((0, 0, 10 ** 9), size=(38, 20))['skip'], 'none')                 # 1.52 px
-        self.assertEqual(self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.005)['radius_px'], 6.4)
+        self.assertAlmostEqual(d['half_x'], 3 * 2 * 72 / 1280, places=6)                               # square pixels: round
+        self.assertAlmostEqual(d['half_y'], 3 * 2 * 72 / 720, places=6)
+        self.assertAlmostEqual(d['half_x'] * 1280, d['half_y'] * 720, places=3)
+        self.assertEqual(self.project((0, 0, 10 ** 9), size=(20, 22))['skip'], 'small')                # 1.467 px
+        self.assertEqual(self.project((0, 0, 10 ** 9), size=(20, 23))['skip'], 'none')                 # 1.534 px
+        self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.005)['radius_px'], 3.6, places=5)
         for bad in (.001, .3, float('nan')):                                                           # out of range: the default
-            self.assertAlmostEqual(self.project((0, 0, 10 ** 9), radius=bad)['radius_px'], 51.2, places=3)
+            self.assertAlmostEqual(self.project((0, 0, 10 ** 9), radius=bad)['radius_px'], 51.2256, places=3)
 
     def test_fog_scalar(self):
         self.assertEqual(float(self.run_driver('fog', 0, 1e-4, 65000, 112500, 1, 1, 1)['t']), 1.)      # no composite: exactly 1
@@ -155,19 +159,33 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(dense['black'], '1')                                                          # T = 0 draws nothing
 
     def test_radiance_and_the_pixel_law(self):
-        r = self.run_driver('radiance', 256, 128, 0, 8, .5)
-        c = (1., .5, 0.)
-        self.assertEqual(r['black'], '0')
-        for got, want in zip(floats(r['disc']), [8 * (ci + (1 - ci) * .6) * .5 for ci in c]):
-            self.assertAlmostEqual(got, want, places=5)
-        for got, want in zip(floats(r['corona']), [.8 * ci * .5 for ci in c]):
-            self.assertAlmostEqual(got, want, places=6)
+        # disc = K lerp(c / m, 1, 0.6) m T, corona = 0.8 (K / 8) c T, m = max_ch(c).
+        def want(words, k, fog):
+            c = [w / 256 for w in words]
+            m = max(c)
+            return [k * (ci / m + (1 - ci / m) * .6) * m * fog for ci in c], [.8 * k / 8 * ci * fog for ci in c]
+        for words, k, fog in (((256, 128, 0), 8, .5), ((50, 50, 50), 8, 1), ((70, 65, 85), 8, 1), ((200, 180, 255), 4, .7)):
+            r = self.run_driver('radiance', *words, k, fog)
+            self.assertEqual(r['black'], '0')
+            disc, corona = want(words, k, fog)
+            for got, value in zip(floats(r['disc']), disc):
+                self.assertAlmostEqual(got, value, places=5, msg=words)
+            for got, value in zip(floats(r['corona']), corona):
+                self.assertAlmostEqual(got, value, places=6, msg=words)
+        # A dark sun stays dark: #323232 (FL) is a grey disc at 0.195 x K, not a white one at 0.68 K.
+        dark = floats(self.run_driver('radiance', 50, 50, 50, 8, 1)['disc'])
+        self.assertAlmostEqual(dark[0], 8 * 50 / 256, places=5)
+        # The hue survives the whitening at full brightness: a blue-white sun keeps blue the largest channel.
+        blue = floats(self.run_driver('radiance', 100, 150, 255, 8, 1)['disc'])
+        self.assertGreater(blue[2], blue[1])
+        self.assertGreater(blue[1], blue[0])
         self.assertEqual(self.run_driver('radiance', 0, 0, 0, 8, 1)['black'], '1')                    # #000000: nothing
+        self.assertEqual(self.run_driver('radiance', 255, 255, 255, 0, 1)['black'], '1')              # K = 0: nothing
         self.assertEqual(floats(self.run_driver('radiance', 4096, -5, 256, 8, 1)['colour']), [4., 0., 1.])  # clamped
-        # Full sentinel lane: the centre texel is K lerp(c, 1, 0.6) T; the quad's edge (r = 3) is 0; open taps scale it.
+        # Full sentinel lane: the centre texel is the disc radiance; the quad's edge (r = 3) is 0; open taps scale it.
         centre = floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 0, 9, math.exp(3))['rgb'])
-        for got, ci in zip(centre, (200 / 256, 100 / 256, 50 / 256)):
-            self.assertAlmostEqual(got, 8 * (ci + (1 - ci) * .6), places=5)
+        for got, value in zip(centre, want((200, 100, 50), 8, 1)[0]):
+            self.assertAlmostEqual(got, value, places=5)
         self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 3, 9, math.exp(-6))['rgb']), [0., 0., 0.])
         corona = floats(self.run_driver('pixel', 256, 256, 256, 8, 1, 2, 9, math.exp(-3))['rgb'])
         self.assertAlmostEqual(corona[0], .8 * (math.exp(-3) - math.exp(-6)), places=6)
@@ -250,9 +268,29 @@ class OwnSunWiring(unittest.TestCase):
         self.assertLess(latch, capture.index('    sun_occlusion::present(ctx.frame + 1); // installed bracket only'))
         self.assertEqual(capture.count('own_sun_chord_down()'), 2)        # the definition and the one poll under own_sun_on
         self.assertIn('log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending"', capture)
-        self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && sun_installed;', capture)
+        self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
         fl_row = capture.index('log("own_sun status=unavailable edition=fl')
         self.assertEqual(capture.rindex('#else', 0, fl_row) > capture.rindex('#if !X3M_EDITION_FL', 0, fl_row), True)
+
+    def test_stage_draws_only_after_a_hidden_answer(self):
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
+        wiring = wiring[:wiring.index('#endif')]
+        self.assertLess(wiring.index('if (sun_occlusion::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
+        self.assertIn('} else\n                    own_sun_no_probe();', wiring)
+        sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()
+        self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', sun)
+        branch = sun[sun.index('++counters_.own_sun_hidden;'):]
+        self.assertTrue(branch.startswith('++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n        own_sun_hidden_frame_ = frame;\n        return core::Hidden;'))
+        stage = (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text()
+        arm = stage[stage.index('bool MotionOutput::own_sun_arm('):stage.index('// The stage callback while')]
+        # F2: the poll decides the readiness at the arming (the next probe forwards when it is not Ok).
+        self.assertLess(arm.index('note_own_sun_state(false, "poll");'), arm.index('own_sun_ready_ = true;'))
+        self.assertIn('if (f.disc.skip == own_sun::core::Skip::Camera || f.disc.skip == own_sun::core::Skip::Size) own_sun_ready_ = false;', stage)
+        # F5: radiance 0 requests nothing, so the chain is never hidden for it.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();', capture)
+        self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
 
     def test_stage_is_ap_only(self):
         cmake = (ROOT / 'CMakeLists.txt').read_text()
