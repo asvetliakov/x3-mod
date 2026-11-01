@@ -1,0 +1,14 @@
+{
+ "objects_baseline": 80,
+ "objects_candidate": 81,
+ "only_baseline": [],
+ "only_candidate": [
+  "CMakeFiles/d3d9.dir/src/engine/fl/fog_prefill_fl.cpp.obj"
+ ],
+ "identical": 77,
+ "different": [
+  "CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj",
+  "CMakeFiles/d3d9.dir/src/proxy/config.cpp.obj",
+  "CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj"
+ ]
+}

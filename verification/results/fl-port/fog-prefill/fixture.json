@@ -1,0 +1,17 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=118 failures=0",
+ "anchor": "ANCHOR anchors=18 bytes=617 flips=617 refused=617",
+ "found": "FOUND node=new steps=3 reads=36 id=5021 index=14 name=foggreenoutlands_dust near=1500000 far=18500000",
+ "timing": "TIMING found_ns=3872.6 guarded_ns=460.7 walks=100000",
+ "failures": [],
+ "rows": [
+  "fl.prefill status=executable_mismatch base=0x00000000 manager_slot=0x00000000 count_slot=0x00000000 table_slot=0x00000000 guard_slot=0x00000000 anchors=18 failed=none log_s=10",
+  "fl.prefill status=anchor_mismatch base=0x01c40000 manager_slot=0x00000000 count_slot=0x00000000 table_slot=0x00000000 guard_slot=0x00000000 anchors=18 failed=manager_publish log_s=10",
+  "fl.prefill status=base_overflow base=0x00000000 manager_slot=0x00000000 count_slot=0x00000000 table_slot=0x00000000 guard_slot=0x00000000 anchors=18 failed=none log_s=10",
+  "fl.prefill status=base_overflow base=0xfff00000 manager_slot=0x00000000 count_slot=0x00000000 table_slot=0x00000000 guard_slot=0x00000000 anchors=18 failed=none log_s=10",
+  "fl.prefill status=ready base=0x01a10000 manager_slot=0x01bb82ec count_slot=0x01bb8338 table_slot=0x01bb83d0 guard_slot=0x01c3de10 anchors=18 failed=none log_s=10",
+  "fl.prefill_sample row=1 polls=1 found=1 guarded=0 walk=found steps=3 reads=36 node=018301a0 id=5021 index=14 count=110 name_valid=1 name=\"foggreenoutlands_dust\" near=1500000 far=18500000",
+  "fl.prefill_sample row=2 polls=27 found=5 guarded=3 walk=guarded steps=0 reads=1 node=00000000 id=0 index=-1 count=0 name_valid=0 name=\"\" near=0 far=0"
+ ]
+}

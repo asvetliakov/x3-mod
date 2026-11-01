@@ -650,6 +650,8 @@ SETTINGS = [
     dev('fl_sun_light_log', 'int', 'logging', 'FL edition: seconds between fl.sun_light_sample rows (DLL default 10, 0 off).',
         range=(0, 3600)),
     dev('fl_sector_log', 'int', 'logging', 'FL edition: seconds between fl.sector_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
+    dev('fl_prefill_log', 'int', 'logging', 'FL edition: seconds between fl.prefill_sample rows of the fog transit prefill '
+        'walk; the first poll writes one (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_scale_overflow_log', 'int', 'logging', 'FL edition: seconds between fl.scale_fix_sample checks; a row at the first '
         'period, then only when the saturation count changed (DLL default 10, 0 off).', range=(0, 3600)),
     dev('shadow_rows', 'bool', 'logging', 'The shadow and sun state rows every frame (member of debug).'),

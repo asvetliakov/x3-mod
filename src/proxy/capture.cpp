@@ -64,6 +64,7 @@
 #include "object_capture.h"
 #include "sector_background.h"
 #if X3M_EDITION_FL
+#include "../engine/fl/fog_prefill_fl.h"
 #include "../engine/fl/sector_background_fl.h"
 #endif
 #include "scene_hook.h"
@@ -1052,11 +1053,18 @@ void fog_prefill_poll(Device& ctx) {
         DWORD value;
         ~RestoreError() { SetLastError(value); }
     } restore_error{saved_error};
+#if X3M_EDITION_FL
+    // X3FL.exe: the same walk over the FL layout and its recovery guard (<= 56 reads), admitted by its anchors
+    // (fog_prefill_fl.cpp).
+    fog_prefill::Result result;
+    if (!fl::fog_prefill_fl::walk(result, ctx.fog_ready_sector_id)) return;
+#else
     if (!object_trace::executable_verified()) return;
     engine_memory::revalidate(); // the stall reallocates: revalidate pages (an epoch only: neither ends the stall bound
                                  // nor the shutdown signal)
     auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
     const fog_prefill::Result result = fog_prefill::walk(read, ctx.fog_ready_sector_id);
+#endif
     ctx.motion_output.volumetric_fog_prefill(result, now - ctx.fog_prefill_gate.present_ms);
 }
 void object_context(Device& ctx) {

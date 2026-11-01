@@ -760,3 +760,31 @@ rows, `card_refused` 40 (clear sectors), `density_filling` 2; handover at arriva
 vanilla fog cards stayed visible for 3–4 s after arriving in The Hole (the transit prefill is AP-only, so
 FL fills cold); (2) the sun / sun lens is very visible through the fog (one F8 capture). Both under
 triage; the FL fog-prefill addresses are being established from X3FL.exe.
+
+## Step 8 — fog transit prefill, host evidence (2026-11-01, not installed)
+
+Design: [FL prefill note](../architecture/farnhams-legacy-prefill.md); layout proof
+[FL fog prefill §7](../reverse-engineering/fl/fog-prefill.md#7-verified-constants-2026-11-01). `fog_prefill::walk`
+takes a layout type (`ApLayout`: the literal `0x0060850c`/`0x607040`/`0x606fc0`, no guard read, AP's record layout;
+`FlLayout` in `fog_prefill_fl.cpp`: module base + generated RVAs and the recovery-guard read first); the new
+`Walk::Guarded` is named only under the FL fence so AP's name table is unchanged. Measured on the WSL2 host,
+worktree builds (`-j4`, RelWithDebInfo, ap then fl): 0 warnings each. Objects against main `daa2776c` built in the
+same worktree first (`verification/results/fl-port/fog-prefill/object_compare.sh` → `ap_object_compare.json`,
+`fl_object_compare.json`): AP 119 of 121 identical (`config.cpp` one schema key, `proxy_identity.cpp` the
+source-commit string), `capture.cpp`, `motion_output.cpp` and `seta_restore.cpp` included; FL 77 of 80 identical,
+differing `capture.cpp` (the FL poll), `motion_output.cpp` (the `guarded` name), `config.cpp`, plus the new
+`fog_prefill_fl.cpp.obj`. Schema: `fl_prefill_log` added; `generate.py --check` PASS (293 settings).
+Native fixture (`run_fixture.py` → `fixture.json`): `RESULT PASS checks=118 failures=0`, `ANCHOR anchors=18
+bytes=617 flips=617 refused=617` (each flip names its anchor); identity refusal of the fixture exe
+(`executable_mismatch`, walk not run, LastError kept), an image relocated for another base refused at
+`manager_publish`, null/wrapping base refused; Found: the new sector behind a ship (class) and a cut-scene space
+(subtype 3) at step 3, 36 reads, record of index 14 (dust 50, near 1.5 M, far 18.5 M, a 21-character name whose
+NUL is the last committed byte); guard set (1 or 0xffffffff) with a partially constructed sector at the tail:
+`guarded` after one read, nothing of the node reported; guard clear: scene 0 (index 0 or set) `no_scene`, garbage
+index `bad_index`; `same_id`, `dead` (stops at the newest sector), subtype 2 skipped to the old sector at step 4,
+class skipped; 9 ships at the tail `bound` (8 types, 7 links, 18 reads), 7 ships found at step 8; `head` (empty
+list), `no_manager`, `malformed` (manager, prev link), `read_failure` (prev link, tailpred, manager and table on
+an uncommitted page), `loading`, `bad_count`, `bad_index`, `bad_record`; the `fl.prefill_sample` row at the first
+poll and per period. TIMING per poll: 3.9 µs found with the name, 0.42–0.46 µs refused at the guard (fixture, two
+runs, not game FPS). Host tests: `test_fl_*` 13 modules 73 tests OK (4 skips: local shader corpus; 14 modules 79 OK after rebasing onto `3cbb394d`, which adds `test_fl_sun_occlusion_constants` and no compiled source), `test_fog*`
+27 modules 235 tests OK (2 skips: local data), `test_sector*` 4 OK, `test_config*` 19 OK. Expected in game: the note's "Expected rows"; not flown.

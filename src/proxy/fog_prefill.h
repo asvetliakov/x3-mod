@@ -8,7 +8,16 @@
 #include <cstdint>
 
 namespace x3m::fog_prefill {
-constexpr std::uint32_t kManager = 0x0060850c; // M = *kManager; list header at M+8 (head, tail 0, tailpred)
+// The edition's layout, a type with static members (as sector_background::ApLayout): the manager slot (M = *manager;
+// list header at M+8: head, tail 0, tailpred), the background count and table slots, read_record's layout and the
+// optional recovery-guard slot (guarded: one read first, nonzero refuses the poll). A type rather than a value so the
+// AP instantiation stays the literal-address walk it always was (no guard read); the FL layout (module base +
+// generated RVAs, the guard) is src/engine/fl/fog_prefill_fl.cpp's FlLayout. Every other offset is shared.
+struct ApLayout {
+    static constexpr std::uint32_t manager = 0x0060850c, count = 0x607040, table = 0x606fc0, guard = 0;
+    static constexpr bool guarded = false;
+    using Record = sector_background::ApLayout;
+};
 constexpr unsigned kMaxSteps = 8;              // nodes examined backward from the tail
 constexpr unsigned kReadBudget = 25;           // reads per poll, recipe included
 // Worst case of walk(): manager, tailpred, 8 type words and 7 links, marker, block, id, count, table, row, name.
@@ -29,7 +38,8 @@ enum class Walk : unsigned {
     Loading,
     BadCount,
     BadIndex,
-    BadRecord
+    BadRecord,
+    Guarded // Layout::guarded only: the allocator's recovery guard is set
 };
 inline const char* name(Walk w) {
     switch (w) {
@@ -46,6 +56,11 @@ inline const char* name(Walk w) {
     case Walk::BadCount: return "bad_count";
     case Walk::BadIndex: return "bad_index";
     case Walk::BadRecord: return "bad_record";
+#if X3M_EDITION_FL
+    case Walk::Guarded: return "guarded";
+#else
+    default: break; // Guarded: AP never reports it; fenced so the AP name table stays as it was
+#endif
     }
     return "invalid";
 }
@@ -57,16 +72,25 @@ struct Result {
 };
 // Backward walk from the list tail (sector-transit-order.md §5): the first node whose type word is class 1
 // subtype 0, then alive marker 0xcafe, scene +0x130 set, id +8 != last_ready_id (0: none known), then the
-// record recipe. Every read is aligned and goes through `read` (engine_memory::read in production).
-template <class Read> Result walk(Read& read, std::uint32_t last_ready_id) {
+// record recipe. Every read is aligned and goes through `read` (engine_memory::read in production). A guarded
+// layout first reads its recovery guard: nonzero is Guarded (fl/fog-prefill.md §7.2, answer 4).
+template <class Read, class Layout = ApLayout> Result walk(Read& read, std::uint32_t last_ready_id) {
     namespace sb = sector_background;
     Result out;
     auto counted = [&](std::uintptr_t at, void* to, std::size_t n) {
         ++out.reads;
         return read(at, to, n);
     };
+    if constexpr (Layout::guarded) {
+        std::uint32_t guard = 0;
+        if (!sb::field(counted, Layout::guard, 0, guard)) return out;
+        if (guard) {
+            out.status = Walk::Guarded;
+            return out;
+        }
+    }
     std::uint32_t manager = 0, node = 0;
-    if (!sb::field(counted, kManager, 0, manager)) return out;
+    if (!sb::field(counted, Layout::manager, 0, manager)) return out;
     if (!manager) {
         out.status = Walk::NoManager;
         return out;
@@ -119,7 +143,7 @@ template <class Read> Result walk(Read& read, std::uint32_t last_ready_id) {
     s.class48 = 1;
     s.sector_id = out.id;
     s.index = std::int32_t(block[3]);
-    if (!sb::field(counted, 0x607040, 0, s.count) || !sb::field(counted, 0x606fc0, 0, s.table)) return out;
+    if (!sb::field(counted, Layout::count, 0, s.count) || !sb::field(counted, Layout::table, 0, s.table)) return out;
     if (!s.table || !s.count) {
         out.status = Walk::Loading;
         return out;
@@ -136,7 +160,7 @@ template <class Read> Result walk(Read& read, std::uint32_t last_ready_id) {
         out.status = Walk::BadIndex;
         return out;
     }
-    if (!sb::read_record(counted, s)) {
+    if (!sb::read_record<decltype(counted), typename Layout::Record>(counted, s)) {
         out.status = s.status == sb::Status::ReadFailure ? Walk::ReadFailure : Walk::BadRecord;
         return out;
     }
