@@ -22,6 +22,7 @@ using HRESULT = std::int32_t;
 using HWND = void*;
 constexpr HRESULT S_OK = 0;
 constexpr HRESULT E_FAIL = static_cast<HRESULT>(0x80004005u);
+constexpr HRESULT E_POINTER = static_cast<HRESULT>(0x80004003u);
 constexpr HRESULT D3DERR_INVALIDCALL = static_cast<HRESULT>(0x8876086cu);
 constexpr HRESULT D3DERR_NOTFOUND = static_cast<HRESULT>(0x88760866u);
 #define SUCCEEDED(value) ((value) >= 0)
@@ -29,6 +30,9 @@ constexpr HRESULT D3DERR_NOTFOUND = static_cast<HRESULT>(0x88760866u);
 
 struct D3DCAPS9 {};
 struct D3DSURFACE_DESC {
+    // Field set the bloom_prepare failure diagnostic prints (b156415a); values are inert here.
+    UINT Format = 0, Type = 0, Usage = 0, Pool = 0, MultiSampleType = 0;
+    DWORD MultiSampleQuality = 0;
     UINT Width = 1, Height = 1;
 };
 struct D3DPRESENT_PARAMETERS {
@@ -50,6 +54,9 @@ struct IDirect3DSurface9 {
         if (value) *value = {};
         return S_OK;
     }
+    // The production scene is a texture (IDirect3DTexture9::GetLevelDesc); the fixture's
+    // scene stand-in answers the failure diagnostic's level-0 query the same way.
+    HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC* value) { return GetDesc(value); }
 
 protected:
     ~IDirect3DSurface9() = default;
@@ -149,8 +156,14 @@ struct BloomPrepare {
     float bolt_show = 0.f;
     BloomBoundary boundary{};
     x3::temporal::BloomParams filter{};
-    int agx = 0, decode = 0;
+    struct {
+        float exposure[3]{};
+    } agx{}; // x3::temporal::AgxConstants as far as the failure diagnostic reads it
+    int decode = 0;
     float sharpen = 0;
+    struct {
+        float values[4]{};
+    } sharpen_constants{}; // x3::temporal::SharpenConstants, likewise
 };
 struct BloomCandidate {
     IDirect3DSurface9* surface = nullptr;
@@ -160,6 +173,7 @@ struct BloomPrepared {
     bool ready = false, state_preserved = true;
     const char* reason = "stub";
     HRESULT operation = S_OK, restore = S_OK;
+    unsigned clause = 0; // validate_inputs clause the failure diagnostic prints
 };
 struct BloomCommitted {
     bool committed = true, state_preserved = true, original_preserved = true;
