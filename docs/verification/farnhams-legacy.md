@@ -567,3 +567,12 @@ distant farm shimmer reduced to the station level; no trail behind slow-moving d
 alpha-tested ships (kill criterion, both editions). First 8 `bloom_prepare` failure rows carry
 `clause=N` and the main/scene descriptors, which names the refusing check of
 `validate_inputs` (7 = main descriptor, 18 = scene descriptor, 24–27 = device identity).
+
+Result (log of 2026-11-01 20:1x, 26,600 frames / 199 s, no exception; measured):
+`thin_vote_mode … alpha_far=1`; `thin_vote_frame … alpha_far>0` on 22,713 of 26,600 frames.
+User: distant farm shimmer gone, no trails or smearing on ships. **Accepted.** Bloom
+diagnostic: 8 rows `clause=7 main_fmt=15 main_type=3 main_usage=800001 main_pool=0 main_ms=0
+main_w=5120 main_h=1440 scene_fmt=71 … thread_ok=1`: `main_descriptor()` requires
+`Type == D3DRTYPE_SURFACE`, native D3D9 reports the texture-level render target as
+`D3DRTYPE_TEXTURE` with usage bit `0x800000` set, Wine reported a plain surface. **Cause of the
+shared bloom regression since the native-Windows move (2026-10-11); fix in progress.**
