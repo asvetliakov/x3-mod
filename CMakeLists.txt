@@ -150,6 +150,8 @@ else()
   add_library(d3d9 SHARED ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES}
     src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp
     src/engine/fl/object_lifetime_fl.cpp)
+  # The saturating replacement of X3FL.exe's fixed-point scaler (docs/architecture/farnhams-legacy-scale-overflow.md).
+  target_sources(d3d9 PRIVATE src/engine/fl/scale_overflow_fix_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -179,6 +181,10 @@ set_source_files_properties(src/engine/fl/object_trace_fl.cpp
 # The FL registry observer (src/engine/fl/object_lifetime_fl.cpp) runs inside the engine's map helpers behind a
 # PUSHFD/PUSHAD/FXSAVE envelope: same rule, no SSE/MMX, no floating point, no exception bookends.
 set_source_files_properties(src/engine/fl/object_lifetime_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL scaler replacement (src/engine/fl/scale_overflow_fix_fl.cpp) replaces an engine function called with live
+# XMM/x87 state and no CPU-state boundary: same flags; its rare QPC/row path saves XMM0-7 and runs under call_preserved.
+set_source_files_properties(src/engine/fl/scale_overflow_fix_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no

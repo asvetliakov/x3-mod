@@ -45,6 +45,7 @@
 #include "cpu_state.h"
 #if X3M_EDITION_FL
 #include "../engine/fl/executable_identity_fl.h"
+#include "../engine/fl/scale_overflow_fix_fl.h"
 #endif
 #include <string>
 
@@ -80,6 +81,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // remove and destroy entries and the renderer-load call, in the same install window, before X3FL.exe constructs
     // its engine. It logs its own fl.lifetime row; with both active the motion history is available.
     x3m::object_lifetime::initialize();
+    // The engine's fixed-point scaler (src/engine/fl/scale_overflow_fix_fl.cpp; X3M_FL_SCALE_OVERFLOW_FIX, default on):
+    // one entry JMP inside the same install window, gated by the identity, the entry bytes and the body hash; the
+    // replacement clamps a quotient the engine's idiv would trap on. It logs its own fl.scale_fix row.
+    x3m::fl::scale_fix::initialize();
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",

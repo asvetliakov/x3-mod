@@ -158,3 +158,21 @@ switches. Wrong: a refusal status names the gate (`*_entry_mismatch`, `engine_an
 `top_reason=unknown_node`; a wrong registry gives `other_maps≈all, inserts=0`; a stuck scope gives `in_flight>0`
 in every row and `top_reason=mutation_in_progress`; table loss gives `object_lifetime_disabled reason=…`;
 history keyed wrongly shows as smearing or ghosting on moving objects.
+
+## Scale overflow fix, host evidence (2026-11-01, not installed)
+
+Design: [scale overflow note](../architecture/farnhams-legacy-scale-overflow.md). Measured on the WSL2 host,
+uncommitted worktree on 3fbbef65: clean fl and ap builds, 0 warnings each; the fl link has
+`scale_overflow_fix_fl.cpp.obj`, ap does not; `build-fl/d3d9.dll` SHA-256 `e2677f13…ecb6e04b`.
+`fl_scale_overflow_constants.py --check` matches X3FL.exe (helper 0x12d10, 0xbc bytes, eleven direct callers, no
+relocation in or pointing into the body, no interior branch). Native fixture
+(`verification/results/fl-scale-overflow/run_fixture.py` → `fixture.json`): `RESULT PASS checks=121 failures=0`;
+gate flips 188/188 refused; the original bytes trap on the FL run 3 vector with c0000095 at offset 0xaf (RVA
+0x12dbf); the replacement returns (683350000, −346272000, 2147483647); 20,000-case sweep (13,744 fit, 6,256
+clamped) with 0 mismatches against the model and, where it fits, the original (out, EAX, ECX, EDX, CPU state);
+six alias layouts equal to the original; per call 3.7 ns original, 6.7 ns replacement (fixture, not game).
+CPU-state audit (`cpu_state_audit_dll.json`): no x87/XMM/libgcc on the per-call path. Schema: two keys added, none
+changed (`schema_semantic_compare.txt`); AP-address rescan unchanged (20 reachable functions). Expected in game:
+`fl.scale_fix status=active … write=atomic`, one `fl.scale_fix_sample … saturated=0` after the first 10 s, then a
+row only when a clamp happened (`last_site=0x22dd4` for the F1 camera crash path). Rebased onto 04d463ac (step
+3b); the rebased build's hash and test counts are in the commit's report.

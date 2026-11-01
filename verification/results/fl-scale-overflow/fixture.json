@@ -1,0 +1,51 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=121 failures=0",
+ "gate": "GATE flips=188 refused=188 entry=16 body=172",
+ "original_dump": "ORIGINAL_DUMP trapped=1 code=0xc0000095 offset=0xaf out=683350000,-346272000",
+ "replacement_dump": "REPLACEMENT_DUMP out=683350000,-346272000,2147483647 ecx=2 edx=0 saturated=1",
+ "sweep": "SWEEP cases=20000 fit=13744 c0=2345 clamped=6256 mismatches=0",
+ "timing": "TIMING original_ns=3.70 replacement_ns=6.70",
+ "failures": [],
+ "rows": [
+  "fl.scale_fix status=disabled base=0x00000000 site=0x00000000 entry_ok=0 body_ok=0 write=none",
+  "fl.scale_fix status=executable_mismatch base=0x00000000 site=0x00000000 entry_ok=0 body_ok=0 write=none",
+  "fl.scale_fix status=executable_mismatch base=0x00000000 site=0x00000000 entry_ok=0 body_ok=0 write=none",
+  "fl.scale_fix status=active base=0x01700000 site=0x01712d10 entry_ok=1 body_ok=1 write=atomic",
+  "fl.scale_fix_sample calls=1 saturated=0 last_site=0x00000",
+  "fl.scale_fix_sample calls=4 saturated=1 last_site=0x22dd4",
+  "fl.scale_fix status=active base=0x01700000 site=0x01712d10 entry_ok=1 body_ok=1 write=atomic",
+  "fl.scale_fix status=late_claim base=0x01700000 site=0x01712d10 entry_ok=1 body_ok=1 write=none"
+ ],
+ "audit_exit": 0,
+ "audit": {
+  "roots": [
+   "_x3m_fl_scale_entry",
+   "_x3m_fl_scale_body"
+  ],
+  "missing_roots": [],
+  "reachable": 3,
+  "x87": {},
+  "simd": {},
+  "envelopes": {
+   "__ZN12_GLOBAL__N_1L12check_sampleEv": 16
+  },
+  "hot": {
+   "_x3m_fl_scale_entry": {
+    "instructions": 19,
+    "x87_or_simd": [],
+    "calls": [
+     "_x3m_fl_scale_body"
+    ]
+   },
+   "_x3m_fl_scale_body": {
+    "instructions": 262,
+    "x87_or_simd": [],
+    "calls": [
+     "__ZN12_GLOBAL__N_1L12check_sampleEv"
+    ]
+   }
+  },
+  "hot_bad_calls": []
+ }
+}

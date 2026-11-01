@@ -1,0 +1,3 @@
+entries 285->287 added=2 removed=0 changed=0
+  added "X3M_FL_SCALE_OVERFLOW_FIX" {'key': '"fl_scale_overflow_fix"', 'type': 'Type::Bool', 'default': 'nullptr', 'off': 'nullptr', 'range': [], 'elements': [], 'count_mask': 0, 'choices': '""', 'flags': 1, 'marker_of': None}
+  added "X3M_FL_SCALE_OVERFLOW_LOG" {'key': '"fl_scale_overflow_log"', 'type': 'Type::Int', 'default': 'nullptr', 'off': 'nullptr', 'range': [('0.0', '3600.0', 'false')], 'elements': [], 'count_mask': 0, 'choices': '""', 'flags': 1, 'marker_of': None}

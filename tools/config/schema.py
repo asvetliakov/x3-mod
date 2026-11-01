@@ -486,6 +486,8 @@ SETTINGS = [
     dev('ownership', 'bool', 'engine', 'The D3D9 ownership wrapper: prerequisite of the TAA history, the thin vote, the sun lane and '
         'the shadows.', '1', launcher='--ownership'),
     dev('object_trace', 'bool', 'engine', 'Verified submission identity (prerequisite of the TAA history).', '1', launcher='--object-trace'),
+    dev('fl_scale_overflow_fix', 'bool', 'engine', 'FL edition: the saturating replacement of the engine\'s fixed-point scaler '
+        '(prevents the c0000095 camera-velocity crash); DLL default on, 0 off.', builtin='1'),
     dev('object_lifetime', 'bool', 'engine', 'Render-registry lifetimes (prerequisite of the TAA history).', '1',
         launcher='--object-lifetime'),
     dev('motion_output', 'bool', 'engine', 'The same-draw motion route: prerequisite of TAA, HDR and the shadows.', '1',
@@ -639,6 +641,8 @@ SETTINGS = [
     dev('fl_camera_log', 'int', 'logging', 'FL edition: seconds between fl.camera_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_trace_log', 'int', 'logging', 'FL edition: seconds between fl.trace_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_lifetime_log', 'int', 'logging', 'FL edition: seconds between fl.lifetime_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
+    dev('fl_scale_overflow_log', 'int', 'logging', 'FL edition: seconds between fl.scale_fix_sample checks; a row at the first '
+        'period, then only when the saturation count changed (DLL default 10, 0 off).', range=(0, 3600)),
     dev('shadow_rows', 'bool', 'logging', 'The shadow and sun state rows every frame (member of debug).'),
     dev('shadow_timing', 'bool', 'logging', 'The two shadow cost rows every frame (member of perf).'),
     dev('shadow_retention_census', 'bool', 'logging', 'Caster retention census (member of debug).'),
