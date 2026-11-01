@@ -795,3 +795,17 @@ at most 4.6, so `ev_limit` stays at the scene's own value within a few tiles' sh
 `test_own_sun` adds `test_no_seam_between_spokes` (alone > 0.02, summed < 1e-3) and `test_core_visibility_taps` (12
 ring offsets at 0.45 and 0.9, the weights' ratios and sum, largest step < 8.5 %). GPU cost (inferred): 0.46 Mpx x 197
 slots x 0.135 ns = 12 us at 5120x1440 plus the fixed draw, about 0.05 ms.
+
+## Run 220 — own sun step 1b look installed (2026-11-02, dev candidate)
+
+Run 219 flown: occlusion accepted ("works and is better than vanilla"); the disc was too big and too bright (the meter
+pulled `ev` to -1.0 with the sun in view), white instead of the sector's yellow, and the user wants a star with rays
+(reference art). Step 1b (`fefb0411`, review fixes `403f10c7`; reviewed Opus medium: merge): core radius 0.012 of the
+height (17 px at 1440), radiance 2, 16 rays of uneven length plus two horizontal streaks and a faint halo in the
+polled colour (core white mix 0.25), `sun_rays` setting, core-visibility from 13 weighted taps, two nearest spokes
+summed; ps 197 slots, validator 0 messages. Merge `403f10c7` built unstripped (`build-ap` `9feed01b…`, 0 warnings, x87
+PASS, 138 host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run219`
+([record](../../verification/results/run220-candidate-install.json)); the same DLL carries the fade-owner shadow
+receiver/caster change (fill-light ledger). Flight: the two F8 pairs again (hull edge across the sun; fogged sector),
+Ctrl+Shift+F9 for the engine chain; watch for burst flicker while parked with a hull edge across the core, ray shimmer
+under TAA, and `own_sun_frame ev=`/`ev_limit=` no longer dropping with the sun in view.

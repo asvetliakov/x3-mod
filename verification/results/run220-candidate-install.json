@@ -1,0 +1,30 @@
+{
+ "run": 220,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun step 1b look (fefb0411 + 403f10c7) and fade-owner shadow receiver/caster 950-999 (fbe0c137 + 66d2afd3); merge 403f10c7",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run219; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T01:56:16+04:00",
+ "commit": "403f10c7",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "9feed01b6349894b86844682bf9b01eed2826bc240d7e9dc71267dd6d466f8a6",
+  "bytes": 63224106,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 219,
+  "sha256_prefix": "50b8b2f3",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run219"
+ },
+ "host_tests": "run_host_suite 8 modules 138 tests 0 failing; generate --check PASS 298",
+ "review": "own sun 1b: Opus medium merge, F1/F2 fixed in 403f10c7; shadow receiver: Opus high merge, F1/F3/F5 fixed in 66d2afd3",
+ "ini": "own_sun = 1 already set (run 219)",
+ "producer": "main session"
+}
