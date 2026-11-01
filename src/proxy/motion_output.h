@@ -69,6 +69,9 @@
 #include "shadow_caster_class.h"
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
+#if !X3M_EDITION_FL
+#include "../renderer/own_sun_pass.h" // the own sun (AP edition only, docs/architecture/own-sun-pass.md)
+#endif
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -1207,6 +1210,15 @@ public:
         lens_gain_base_ = lens_gain_.gain;
         lens_gain_fog_ = fog;
     }
+#if !X3M_EDITION_FL
+    // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; AP edition only): process-start values, validated
+    // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting, the
+    // comparison hotkey and own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
+    // own_sun_ready: the stage armed in this device's last resolve (the probe answers "hidden" only then).
+    void configure_own_sun(bool requested, float radius_u, float radiance) noexcept;
+    void own_sun_frame(bool active, bool key_on) noexcept;
+    bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
+#endif
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2052,6 +2064,45 @@ private:
     bool engine_ribbons_live() const noexcept { return ribbons_ && ribbons_->live() != 0; }
     HRESULT run_engine_ribbons(const renderer::EnginePlumesFrame& frame) noexcept;
     void engine_plumes_fog(x3m::renderer::FogTransmittanceLaw* law) noexcept;
+#if !X3M_EDITION_FL
+    // Own sun (motion_output_own_sun_inc.h): the setting, the pass (attached at the first armed resolve; refused until
+    // Reset with one own_sun_device row; a failed stage frame disarms 64 frames, the third consecutive one refuses until
+    // Reset), this frame's latch, the lane the callback borrows, the last stage frame's inputs and report for the
+    // own_sun_frame row and the period counters since the previous row.
+    bool own_sun_requested_ = false, own_sun_attach_failed_ = false, own_sun_armed_ = false, own_sun_ready_ = false;
+    bool own_sun_frame_active_ = false, own_sun_with_plumes_ = false, own_sun_failed_out_ = false;
+    bool own_sun_state_logged_ = false, own_sun_logged_armed_ = false;
+    const char* own_sun_reason_ = "off";
+    const char* own_sun_logged_reason_ = "";
+    const char* own_sun_skip_ = "none";
+    const char* own_sun_poll_source_ = "none";
+    float own_sun_radius_u_ = own_sun::core::radius_default_u, own_sun_radiance_ = own_sun::core::radiance_default;
+    float own_sun_fog_t_ = 1.f, own_sun_stage_us_ = 0.f;
+    std::unique_ptr<renderer::OwnSunPass> own_sun_;
+    IDirect3DTexture9* own_sun_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
+    UINT own_sun_width_ = 0, own_sun_height_ = 0;
+    std::uint64_t own_sun_disarmed_until_ = 0, own_sun_row_qpc_ = 0;
+    static constexpr std::uint64_t own_sun_disarm_frames = 64;
+    static constexpr unsigned own_sun_failure_limit = 3;
+    static constexpr std::uint64_t own_sun_row_seconds = 10; // the --debug own_sun_frame cadence
+    unsigned own_sun_failures_ = 0;
+    sun_light_poll::Sample own_sun_sample_{};
+    own_sun::core::Disc own_sun_disc_{};
+    own_sun::core::Radiance own_sun_colour_{};
+    renderer::OwnSunReport own_sun_report_{};
+    struct OwnSunPeriod {
+        unsigned frames = 0, active = 0, drawn = 0, no_probe = 0;
+    } own_sun_period_{};
+    bool own_sun_no_probe_logged_ = false; // the first armed, active frame without a hidden answer wrote its row
+    std::uint32_t own_sun_answered_seen_ = 0, own_sun_forwarded_seen_ = 0;
+    bool own_sun_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
+    bool attach_own_sun() noexcept;
+    void release_own_sun() noexcept;
+    void note_own_sun_state(bool armed, const char* reason) noexcept;
+    static HRESULT own_sun_stage_callback(void* context, IDirect3DDevice9*) noexcept;
+    HRESULT run_own_sun() noexcept;
+    void own_sun_no_probe() noexcept;
+#endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.

@@ -31,6 +31,7 @@
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
 #include "sun_occlusion.h"
+#include "own_sun_core.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
 #include "occlusion_engine_cull.h"
@@ -216,6 +217,19 @@ bool lens_flare_fog = false; // the lens bracket installed for the volumetric fo
 #if !X3M_EDITION_FL
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
+#endif
+#if !X3M_EDITION_FL
+// Own sun, step 1 (X3M_OWN_SUN=1, docs/architecture/own-sun-pass.md; AP edition): the setting as installed (the probe
+// redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; out of range keeps
+// the default) and the comparison hotkey Ctrl+Shift+F9 (comparison-hotkeys.md, "Own sun"), polled only while it is on.
+bool own_sun_on = false;
+float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default;
+own_sun::core::Toggle own_sun_key;
+// The chord, F9 first so an idle frame costs one call.
+bool own_sun_chord_down() {
+    return (GetAsyncKeyState(VK_F9) & 0x8000) != 0 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 &&
+           (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+}
 #endif
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
       sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
@@ -2017,6 +2031,16 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                     // accepted-pair ring; one collide_narrow line per
                                                                     // 300 frames, collide_narrow_pair rows on a capture
                                                                     // frame
+    // Own sun (X3M_OWN_SUN=1 only): the hotkey's press edge flips it; the next frame's latch (the setting, the key, this
+    // device's stage armed in its last resolve) goes to the probe answer and the stage together, before the probe's
+    // frame boundary.
+    if (own_sun_on) {
+        if (own_sun_key.step(own_sun_chord_down()))
+            log("own_sun_toggle device=%llu frame=%llu on=%u", ctx.id, ctx.frame, own_sun_key.on ? 1u : 0u);
+        const bool active = own_sun::core::frame_active(true, own_sun_key.on, ctx.motion_output.own_sun_ready());
+        sun_occlusion::set_own_sun_frame(active);
+        ctx.motion_output.own_sun_frame(active, own_sun_key.on);
+    }
     sun_occlusion::present(ctx.frame + 1); // installed bracket only: the probe override's frame boundary
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one
@@ -3439,6 +3463,9 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
+#if !X3M_EDITION_FL
+    hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance); // X3M_OWN_SUN=1 as installed
+#endif
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
                                                                                           // installed for it; fog: G x T_sun
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
@@ -5866,8 +5893,39 @@ void initialize_log(HMODULE module) {
         const bool lens_gain_wanted = lens_gain < 1.f && motion_output_requested;
         // The volumetric fog dims the lens draws by its transmittance toward the sun (G x T_sun per bracket), so it
         // installs the bracket too (observe-only redirects when neither sun-occlusion variable is set).
+        // X3M_OWN_SUN=1 (docs/architecture/own-sun-pass.md, step 1): the probe answers "hidden" for the sun's record in an
+        // own-sun frame and the route draws the sun, so it needs the two redirects (installed observe-only otherwise)
+        // and the route's resolve. FL: inert in this step (no probe answer on main yet): one row, nothing else.
+        const bool own_sun_requested = x3m::config::get(L"X3M_OWN_SUN", value, 32) == 1 && value[0] == L'1';
+#if !X3M_EDITION_FL
+        if (x3m::config::get(L"X3M_SUN_DISC_RADIUS", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0') own_sun::core::accept_radius(v, &own_sun_radius);
+        }
+        if (x3m::config::get(L"X3M_SUN_DISC_RADIANCE", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0') own_sun::core::accept_radiance(v, &own_sun_radiance);
+        }
+        // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
+        if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();
+#endif
         sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
         const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested);
+#if !X3M_EDITION_FL
+        own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
+        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f hotkey=ctrl+shift+f9",
+            own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
+            own_sun_on                     ? "ok"
+            : !own_sun_requested           ? "setting"
+            : !motion_output_requested     ? "route_off"
+            : !(own_sun_radiance > 0.f)    ? "radiance_zero"
+                                           : "probe",
+            sun_occlusion::state(), double(own_sun_radius), double(own_sun_radiance));
+#else
+        log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending", own_sun_requested ? 1u : 0u);
+#endif
         if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
         lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
         lens_flare_fog = volumetric_fog_requested && sun_installed;

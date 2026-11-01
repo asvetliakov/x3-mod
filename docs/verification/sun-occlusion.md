@@ -648,3 +648,76 @@ tinted fog gives the luminance; the FL bracket reaches the same `sun_occlusion_b
 comparison: [FL ledger, "Step 9"](farnhams-legacy.md). Open: the gain applies to every lens draw of the bracket
 (other records' flares take the sky's transmittance too); the distance-mode column (`--fog-distance 3`) is longer
 than the look's cap (0.49 vs 0.58 in The Hole), not used here.
+
+## 2026-11-02: Own sun step 1 — host evidence (AP minimal mode; worktree, not installed, not flown)
+
+Design: [own-sun-pass.md](../architecture/own-sun-pass.md) (step 1; as built in its section 14). `--own-sun on`
+(`X3M_OWN_SUN=1`, builtin and launcher default off) draws a procedural disc and corona as the first act of the
+temporal resolve's stage bracket (after the fog, RT1/RT2 unbound, FP16 RT0), placed from the sun light poll with the
+jittered scene projection, clipped by the lane's nine-tap knight kernel, multiplied by the fog's far transmittance
+scalar (`renderer::fog_sky_lens_gain` at gain 1); the flare probe answers "hidden" for the sun's eligible record in
+an own-sun frame, before the readiness machine and the latch. Ctrl+Shift+F9 flips both per frame. FL: one
+`own_sun status=unavailable edition=fl` row, nothing else.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Builds | `cmake --build build-ap -j4`, `cmake --build build-fl -j4` (MinGW i686 16.2, RelWithDebInfo) | 0 warnings each (measured) |
+| Object scope | `verification/results/own-sun-pass/compare_objects.py <baseline d3d9.dir> <build d3d9.dir> <scratch>` (debug stripped, baseline = main `59944c32`) | FL 81 objects, 3 differ: capture, config, proxy_identity; AP 122, +`own_sun_pass`, 5 differ: capture, config, motion_output, proxy_identity, sun_occlusion (measured) |
+| x87 audit | `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 reachable functions (measured) |
+| Programs | `python3 tools/shaders/generate_own_sun_programs.py --check` (native host, compile.exe through WSL interop) | PASS; vs 43 words, ps 339 words (measured) |
+| Native validator | `python3 verification/results/own-sun-pass/native/validate.py <scratch>` -> [result.json](../../verification/results/own-sun-pass/native/result.json) | vs 2 slots, ps 70 slots; `end=00000000`, 0 messages each (measured) |
+| Host test | `run_host_suite.py --modules test_own_sun test_sun_occlusion test_logging_tiers test_launcher_defaults test_fl_sun_light_poll test_fl_sun_occlusion test_config_schema` | 7 modules, 101 tests, 0 failing (measured) |
+| Config | `python3 tools/config/generate.py --check` | PASS, 297 settings, 136 in the template (measured) |
+| CPU cost | `python3 verification/results/own-sun-pass/cpu_cost.py <scratch>` (i686 `-O2 -msse2 -mfpmath=sse`, native, 5 x 1,000,000 frames) | median 37.0 ns per frame for projection, fog scalar, radiance, quad and constants (measured); the ~26 device calls per drawn frame are not in it |
+
+`test_own_sun` (production `own_sun_core.h` through `verification/probe/own_sun_host.cpp`): projection of 60 random
+cameras and suns against a double restatement (u, v, jittered NDC, half extents within 2e-5); jitter moves only the
+quad; behind, offscreen, camera and size refusals; radius 0.04 x 1280 = 51.2 px, 1.48 px draws nothing, 1.52 px
+draws, out-of-range radius keeps 0.04; fog scalar exactly 1 without the composite and within 2e-5 of the analytic
+law, 0 for an opaque column (draws nothing); centre texel `K lerp(c, 1, 0.6) T`, 0 at the quad edge, 7/9 with two
+covered taps; answer 1 only for active and eligible; the hotkey's held chord is one press; the constants' eight
+offsets are exactly the knight moves and give the edge profile (1, 7/9, 5/9, 4/9, 2/9, 0); the compiled CTAB is
+c0..c4 + s0 as `pixel_constants` writes them; launcher default `X3M_OWN_SUN=0`, inherited values dropped, refusals.
+`test_sun_occlusion` pins the answer's place in `decide_probe`; `test_logging_tiers` the rows' tiers;
+`test_launcher_defaults` the default; `test_comparison_hotkeys` the chord (its two `bloom_strength` assertions fail on
+main since 9813e2c0, unrelated).
+
+Not run: no GPU fixture (section 11's real-device cases) and no Wine hook fixture for the new answer branch (no Wine on
+this host); the stage's GPU cost is inferred at about 0.05 ms at 5120x1440 (1.5 Mpx x 70 slots x 0.135 ns + the fixed
+draw cost). The first flight is the device test.
+
+Flight (AP, `--own-sun on --debug`): start rows `sun_occlusion ... patched=1 reason=ok ... own_sun=1` and
+`own_sun status=ready edition=ap requested=1 reason=ok`; per device `own_sun_device attached=1 ... vs_slots=2
+ps_slots=70 max_ps_slots=` and `own_sun_state armed=1 reason=armed sun=own`; every 10 s `own_sun_frame active=1 key=1
+armed=1` with `answered` >= `active_frames`, `drawn` > 0 with the sun on screen, `poll=ok`, `skip=none`, `radius_px`,
+`colour`, `fog_t` (< 1 in a fogged sector); after Ctrl+Shift+F9 `own_sun_toggle on=0` and `active=0 answered=0`.
+F8 bursts: the sun behind a hull edge (own sun, then toggled to vanilla), and the sun clear in a fogged sector (both
+states). No `own_sun_failed`, no `own_sun_device attached=0`.
+
+### Own sun step 1 — review fixes (2026-11-02; rebased onto main `2f47e5a5`; not flown)
+
+Review of the step-1 commit, applied in one commit ([own-sun-pass.md](../architecture/own-sun-pass.md) section 14):
+F1 the stage draws only in a frame whose main-view eligible probe the own sun answered "hidden" (planets leave the
+lane at the sentinel; a failed eligibility kept a double sun); armed, active frames without it count `no_probe=` and
+write one `own_sun_no_probe` row. F2 the sun poll moved into the arming: not Ok leaves the stage unarmed
+(`own_sun_state reason=poll`), so the next probe forwards; a camera or size refusal of the projection clears the
+readiness. F3 section 2 corrected (below); `own_sun_frame` carries `ev=` and `ev_limit=`. F4 disc
+`K lerp(c / m, 1, 0.6) m T`, F5 corona `0.8 (K / 8) c T`, K = 0 draws nothing and requests no answer
+(`own_sun status=unavailable reason=radiance_zero`). F6 `sun_disc_radius` is a fraction of the viewport height
+(default 0.0667, 51 px at 768 rows, 96 px at 1440). F9 the hotkey note says the "off" state is the sun-occlusion-modified
+chain and the chord is not focus-limited.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `compare_objects.py` against main `2f47e5a5` | FL 81 objects, 3 differ (capture, config, proxy_identity); AP 122, +`own_sun_pass`, 5 differ (capture, config, motion_output, proxy_identity, sun_occlusion) (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_fl_sun_occlusion, test_config_schema | 99 tests, 0 failing (measured) |
+| Programs | unchanged (vs 43 / ps 339 words, validator result as above) |
+| CPU side, `cpu_cost.py` | median 36.1 ns per frame (measured) |
+| Meter, `verification/results/own-sun-pass/meter_exposure.py` | 1280x768: the disc core covers 36-41 of 3,840 tiles (0.94-1.07 %; p99 needs 39); 1920x1080 0.81-0.85 %, 5120x1440 0.49-0.76 % with the height radius (1.96-2.23 % with the old width radius); a white K = 8 decodes (gamma 2.2) to 97, clipped 64: ev_limit -2.13 EV while the disc holds p99 (+0.87 EV under the identity decode); K <= 3.39 keeps >= 0 EV, K <= 2.25 leaves the +1.3 EV cap (measured, offline) |
+
+The review's "+0.87 EV" assumed the identity decode; the default decode is gamma 2.2, so at 1280x768 the guard would
+pull the exposure to about -2.1 EV with the sun in view. The flight's `ev=` / `ev_limit=` decide; the meter is
+unchanged. Flight additions: `no_probe=0` (or near 0) in frames with the sun in view, `ev` / `ev_limit` with and without
+the sun (Ctrl+Shift+F9), and the sun setting behind a planet (the disc must vanish with the engine's verdict).

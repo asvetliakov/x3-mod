@@ -439,6 +439,33 @@ class StatusRowTiers(unittest.TestCase):
         self.assertEqual(row.split(' | ')[3], 'perf')
 
 
+class OwnSunRows(unittest.TestCase):
+    """2026-11-02 (own-sun-pass.md, step 1): own_sun_frame is a --debug row every 10 s, its QueryPerformanceCounter read
+    only under that tier; the start-up status, device, state, failure and hotkey rows are always-tier change rows."""
+
+    def test_own_sun_rows(self):
+        text = _strip_comments((ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text(errors='replace'))
+        self.assertEqual(text.count('log("own_sun_frame '), 1)
+        gate, _ = PerFrameRowTiers._context(text, text.index('log("own_sun_frame '))
+        self.assertIn('log_tier::cached_debug', gate)
+        frame = text[text.index('void MotionOutput::own_sun_frame('):]
+        self.assertLess(frame.index('if (log_tier::cached_debug) {'), frame.index('QueryPerformanceCounter(&now);'))
+        self.assertIn('own_sun_row_seconds * frequency', frame)
+        self.assertIn('static constexpr std::uint64_t own_sun_row_seconds = 10;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        self.assertIn('no_probe=%u', text)
+        self.assertIn('ev=%.3f ev_limit=%.3f', text)
+        for row in ('own_sun_state ', 'own_sun_device ', 'own_sun_failed ', 'own_sun_no_probe '):
+            at = text.index('log("' + row)
+            self.assertNotIn('log_tier', PerFrameRowTiers._context(text, at)[0], row)
+        capture = _strip_comments((ROOT / 'src/proxy/capture.cpp').read_text(errors='replace'))
+        for row in ('own_sun status=%s edition=ap', 'own_sun status=unavailable edition=fl', 'own_sun_toggle '):
+            self.assertEqual(capture.count('log("' + row), 1, row)
+            self.assertNotIn('log_tier', PerFrameRowTiers._context(capture, capture.index('log("' + row))[0], row)
+        doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()
+        self.assertEqual(next(l for l in doc.splitlines() if l.startswith('| `--debug` with `--own-sun on` |')).split(' | ')[3], 'debug')
+        self.assertEqual(next(l for l in doc.splitlines() if l.startswith('| `--own-sun on`')).split(' | ')[3], 'always')
+
+
 class SessionLogContracts(unittest.TestCase):
     """Review of 2026-09-26: the exit path, the crash filter and the game-thread I/O rule, pinned in the source."""
 

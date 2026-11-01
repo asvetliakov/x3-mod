@@ -482,6 +482,21 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(fixture.expected_phases(), {i: (round(motion.expected_jitter(i)[1], 4), round(motion.expected_jitter(i)[2], 4)) for i in range(8)})
         self.assertEqual(fixture.EXPECTED_GPU_CHECKS, 137)  # 128 + the nine lens-flare gain checks (2026-09-29; G = 0 not issued)
 
+    def test_own_sun_answers_hidden_before_the_readiness_machine(self):
+        # Own sun, step 1 (own-sun-pass.md section 5): in an own-sun frame the sun's eligible record is answered "hidden"
+        # (own_sun_core.h answer, the host table in test_own_sun) before Ready::probe and the latch, so the visibility
+        # pass and the lens wraps see no record; every other probe keeps the path above. The install row says own_sun=.
+        sun = source_text(ROOT / 'src/proxy/sun_occlusion.cpp')
+        decide = sun[sun.index('int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {\n    if'):]
+        branch = decide.index('if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {')
+        self.assertLess(decide.index('const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);'), branch)
+        self.assertLess(branch, decide.index('ready_.probe('))
+        self.assertIn('++counters_.own;\n        ++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n'
+                      '        own_sun_hidden_frame_ = frame;\n        return core::Hidden;\n    }', decide[branch:])
+        self.assertIn('void set_own_sun_frame(bool active) {\n    own_sun_frame_ = patched_ && active;\n}', sun)
+        self.assertIn('!requested && !log_requested && !bracket_wanted && !own_sun_wanted_', sun)
+        self.assertRegex(sun, r'log\("sun_occlusion requested=%u [^"]* own_sun=%u"')
+
     def test_site_constants(self):
         sites = self.run_driver('sites')
         self.assertEqual((sites['probe_site'], sites['probe_target'], sites['lens_site'], sites['lens_target']), ('0x471630', '0x488720', '0x472491', '0x47e6e0'))

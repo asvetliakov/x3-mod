@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source": "src/effects/own_sun_ps.hlsl",
+  "source_sha256": "618f1832cf21d036f34153db312b4209af5bdc02062593d1431bee37448ab38e",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": null,
+  "word_count": 339,
+  "bytecode_sha256": "ed49007c7f28569a0a19d31be841c863def94a4a042513408fbdd330e2cd6561",
+  "header_sha256": "68417080ad27a43967e099b8a064a3ab1b356f3b91d2ab2c241937c746dfeb78",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_own_sun_programs.py": "5e71ff9e447d6cfaf5c6106b04d00d4ac9fd628a904d553ea8d24a62e7e7f35d"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

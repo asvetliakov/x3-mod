@@ -1,6 +1,7 @@
-"""In-game keys (comparison-hotkeys.md, "Removed 2026-09-26" and "Removed
-2026-10-04"): F8, only under X3M_DEBUG=1, is the one key; the engine plume preset
-(Ctrl+Alt+F6) and heat shimmer (Ctrl+Alt+F7) keys are gone. Focused host
+"""In-game keys (comparison-hotkeys.md, "Removed 2026-09-26", "Removed
+2026-10-04" and "Own sun"): F8, only under X3M_DEBUG=1, is the capture key; the engine plume preset
+(Ctrl+Alt+F6) and heat shimmer (Ctrl+Alt+F7) keys are gone; the own sun's comparison chord
+Ctrl+Shift+F9 (2026-11-02) is polled only while X3M_OWN_SUN is installed. Focused host
 execution: no Wine, game, shader compiler or DLL build."""
 import argparse
 import ast
@@ -35,10 +36,20 @@ class InGameKeys(unittest.TestCase):
         sources = {path: source_text(path) for path in (ROOT / 'src').rglob('*') if path.suffix in ('.cpp', '.h')}
         pollers = {str(path.relative_to(ROOT)): text.count('GetAsyncKeyState(')
                    for path, text in sources.items() if 'GetAsyncKeyState(' in text}
-        # F8, one poll; the Ctrl+Alt+F6 plume preset and Ctrl+Alt+F7 shimmer blocks went on 2026-10-04.
-        self.assertEqual(pollers, {'src/proxy/capture.cpp': 1})
+        # F8, one poll, and the own sun's chord (three polls in one function); the Ctrl+Alt+F6 plume preset and
+        # Ctrl+Alt+F7 shimmer blocks went on 2026-10-04.
+        self.assertEqual(pollers, {'src/proxy/capture.cpp': 4})
+        capture_text = sources[ROOT / 'src/proxy/capture.cpp']
+        chord = extract_function(capture_text, 'bool own_sun_chord_down(')
+        self.assertEqual(chord.count('GetAsyncKeyState('), 3)
+        self.assertIn('(GetAsyncKeyState(VK_F9) & 0x8000) != 0 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 &&', chord)
+        # The chord is polled at one site, only while the own sun is installed (own_sun_on).
+        self.assertEqual(capture_text.count('own_sun_chord_down()'), 2)
+        self.assertIn('if (own_sun_on) {\n        if (own_sun_key.step(own_sun_chord_down()))', capture_text)
         for path, text in sources.items():
-            for modifier in ('VK_CONTROL', 'VK_SHIFT', 'VK_MENU', 'VK_F6', 'VK_F7'):
+            if path == ROOT / 'src/proxy/capture.cpp':
+                text = text.replace(chord, '')
+            for modifier in ('VK_CONTROL', 'VK_SHIFT', 'VK_MENU', 'VK_F6', 'VK_F7', 'VK_F9'):
                 self.assertNotIn(modifier, text, (path, modifier))
             for absent in ('GetKeyState(', 'ComparisonControls', 'comparison_begin_frame', 'PresetKey', 'ToggleKey',
                            'engine_plumes_cycle_preset', 'engine_shimmer_toggle', 'next_preset(',
