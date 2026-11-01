@@ -178,6 +178,9 @@ bool patch(void* site, void* target) {
 // process (about 40 short reads and one GetFileSizeEx); shared with every
 // module that reads engine globals.
 bool verified_image() {
+#if X3M_EDITION_FL
+    return false; // the FL edition never verifies X3AP.exe (object_trace.h executable_verified)
+#else
     // Racing first callers compute the same value; the atomic makes the publish well-defined.
     static std::atomic<int> cached{-1};
     const int known = cached.load(std::memory_order_acquire);
@@ -188,14 +191,17 @@ bool verified_image() {
                        executable_identity::anchors_match(read_memory) && executable_identity::known_file_size(module);
     cached.store(valid ? 1 : 0, std::memory_order_release);
     return valid;
+#endif
 }
 }
+#if !X3M_EDITION_FL
 bool executable_verified() {
     const DWORD error = GetLastError();
     const bool valid = verified_image();
     SetLastError(error);
     return valid;
 }
+#endif
 bool large_address_aware() {
     const DWORD error = GetLastError();
     const bool laa = executable_identity::large_address_aware(reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)),

@@ -43,6 +43,9 @@
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/executable_identity_fl.h"
+#endif
 #include <string>
 
 namespace {
@@ -57,6 +60,16 @@ bool readable_buffers_enabled = false; // X3M_TAA_THIN_VOTE=on under ownership: 
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
+#if X3M_EDITION_FL
+    // FL edition: the one engine-side action is the X3FL.exe identity row (RVA based; no patch, no read
+    // beyond the main module's headers and entry bytes).
+    if (x3m::fl::verified())
+        x3m::log("fl.identity ok base=0x%08lx timestamp=0x%08lx image_size=0x%08lx",
+                 static_cast<unsigned long>(x3m::fl::module_base()),
+                 static_cast<unsigned long>(x3m::fl::time_date_stamp), static_cast<unsigned long>(x3m::fl::image_size));
+    else
+        x3m::log("fl.identity mismatch reason=%s", x3m::fl::mismatch_reason());
+#endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
              admission_requested, admission_requested);
@@ -133,6 +146,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         // hash prefix (builtin, a replacement in the system directory, ...): one
         // hash of the loaded file, once, never classified by name here.
         x3m::proxy_identity::log_loaded_module(backend, "d3d9.dll");
+#if !X3M_EDITION_FL
         x3m::object_trace::initialize();
         x3m::log("object_trace active=%u status=%s recovery_required=%u", x3m::object_trace::active(),
                  x3m::object_trace::status(), x3m::object_trace::recovery_required());
@@ -166,6 +180,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
                  x3m::object_lifetime::active(), x3m::object_lifetime::status(),
                  x3m::object_lifetime::recovery_required(), lifetime_stats.baseline_complete,
                  static_cast<DWORD>(lifetime_stats.baseline_entries), static_cast<DWORD>(lifetime_stats.capacity));
+#endif
     } else {
         x3m::log("ERROR backend load failed error=%lu", load_error);
     }
@@ -453,14 +468,17 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         // capture lock, and the module pin makes a FreeLibrary with a worker unreachable anyway.
         if (reserved != nullptr) x3m::abandon_fog_density_workers();
         if (reserved != nullptr) x3m::abandon_devices_at_exit(); // no D3D call from the static teardown at ExitProcess
+#if !X3M_EDITION_FL
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock,
                                              // idempotent
+#endif
         x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call
                                                             // forwards natively
         // FreeLibrary only, and only if window_trace's pin failed (a pinned module never reaches this with hooks):
         // the window-thread hooks go before their procedures' code does; at process exit (reserved != NULL) the
         // threads are gone and no user32 call is made from the loader lock.
         if (reserved == nullptr) x3m::window_trace::shutdown();
+#if !X3M_EDITION_FL
         // Dynamic unload only (reserved == NULL, FreeLibrary): the original
         // bytes go back before the stub's storage disappears. The module is
         // pinned once a patch is live, so this path is unreachable then; at
@@ -521,6 +539,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::lens_flare_cull::shutdown(); // same rule: disarms the second stub on the small-parts site (below)
         if (reserved == nullptr)
             x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
+#endif
         // Last: the exception handler goes, the writer is signalled and waited for (at most 1 s; at process exit it is
         // already gone), and at process exit the buffered rows and one session_end row are written through the OS
         // handle.

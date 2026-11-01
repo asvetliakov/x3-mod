@@ -170,8 +170,10 @@ void summary(State& state, const char* reason, uint64_t frame) {
     state.position_suppressed = 0;
     state.cursor_changes_suppressed = 0;
     engine_memory_line("summary", state.device, frame);
+#if !X3M_EDITION_FL
     if (state.device) game_phases::report(frame); // prior finalized records only
     if (state.device == 0) loading_trace::report();
+#endif
     // Wakes the log writer (session_log::request_drain: one SetEvent, no I/O); log_wake is that call's cost, formerly
     // log_flush.
     if (flush_output) {

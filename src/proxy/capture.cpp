@@ -207,8 +207,10 @@ unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
+#if !X3M_EDITION_FL
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
+#endif
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
       sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
                                  // back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
@@ -1440,7 +1442,9 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         refs = ctx.release_original(d); // can be final: the backend's table goes back first (Hooks)
         cpu.after_original();
         if (!refs) {
+#if !X3M_EDITION_FL
             game_phases::invalidate_device();
+#endif
             report_shader_population(true); // session end: flush the last count movement
             telemetry::summary(devices.at(d)->stats, "device_destroy", devices.at(d)->frame);
             telemetry::summary(telemetry::process(), "device_destroy", devices.at(d)->frame);
@@ -1461,6 +1465,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         sampling_profiler::shutdown();
         // The scene patch/binding remains installed for process lifetime. A
         // bridge may still be returning after this final native Release.
+#if !X3M_EDITION_FL
         chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not
                                           // re-claim the site
         resource_reader::report();        // final summary without telemetry; the reader itself stays installed (loading
@@ -1468,6 +1473,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process
                                                       // exit
         voice_dmo_fallback::shutdown();     // disarms the fault witness; the site patch stays with the other claims
+#endif
         session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
                                             // drain cost)
         session_log::park_writer("last_device"); // the writer ends and drops its module reference (FreeLibrary can
@@ -1900,15 +1906,19 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     gpu_sync_mark(ctx, gpu_sync_timing::Scene, false); // --gpu-sync-timing only: the whole-scene bracket ends just
                                                        // before the native Present
     const auto begin = telemetry::now();
+#if !X3M_EDITION_FL
     frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as
                                    // frame_timing
+#endif
     frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input
                                    // state (cpu_state.h)
     cpu.before_original();
     const HRESULT hr = fn(d, a, b, w, r);
     cpu.after_original();
     frame_timing::present_end();
+#if !X3M_EDITION_FL
     frame_phases::present_end(); // X3M_FRAME_PHASES only: closes the frame at the native Present return
+#endif
     gpu_sync_present(ctx); // --gpu-sync-timing only: the Present pair, the frame's spans, one row per pass per 300
                            // frames
     ctx.motion_output.after_present(hr);
@@ -1918,6 +1928,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         log("motion_frame device=%llu frame=%llu scene_confirmed=%u storage_history_committed=%u present=%08lx temporal_history_committed=0",
             ctx.id, ctx.frame, scene_confirmed, motion_committed, hr);
     const auto end = telemetry::now();
+#if !X3M_EDITION_FL
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d), ctx.id, ctx.reset_generation, ctx.frame,
                                   ctx.capture, end, static_cast<std::uint32_t>(hr));
     const bool save_loaded = game_phases::loading_phase_present(ctx.id, ctx.reset_generation,
@@ -1948,6 +1959,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     seta_manual_flight::present(ctx.frame); // part B under debug = 1 only: the frame counter of its scale row
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
                                                                // and culled count on a captured frame
+#endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
                                                                 // trace's flush and snapshots
@@ -1983,6 +1995,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // engine_patch claim belongs to initialize_log (before the device existed);
     // a later claim would write over code the loading threads may be executing.
     if (engine_patch::install_window_open()) engine_patch::close_install_window("first_present");
+#if !X3M_EDITION_FL
     fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present,
                              // one more if the registry appears later; then a flag test
     text_density::present(ctx.frame); // X3M_TEXT_DENSITY, s != d: the flagged rows' D3D textures for the filter override
@@ -1991,11 +2004,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (save_loaded) fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     if (save_loaded) music_alert::loaded(); // the same marker: the trigger's fire/hit counters are a new baseline on the next frame
     if (save_loaded) music_keep::loaded(); // the same marker: the track queue's KC patch load gate opens for the next check
+#endif
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
+#if !X3M_EDITION_FL
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per
                                     // 300-frame window
     media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains
                                  // the trace ring
+#endif
     // Programs the game compiled that are in none of the proxy's tables
     // (docs/architecture/mod-compatibility.md, "Making unknown programs
     // visible"). One line per distinct unknown, at the first Present after it
@@ -2023,6 +2039,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu issued=%llu",
             ctx.id, ctx.frame, ctx.draws, ctx.capture, hr, elapsed_ms, dt_ms, now, ctx.issued);
     }
+#if !X3M_EDITION_FL
     // The chase reports keep their own 300-frame cadence: --frame-end-stride
     // shortens the frame_end line only.
     if (ctx.capture || ctx.frame % 300 == 0) {
@@ -2031,6 +2048,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         chase_transition::report(ctx.frame); // bounded native view/lifetime observations
         chase_lead::report(ctx.frame);       // predictive marker results, no per-draw reporting
     }
+#endif
     if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
     // With the route requested, log the wrapper's copy-depth epochs per capture
     // frame: source_epoch counts the application's depth clears that found the
@@ -2067,15 +2085,18 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                 static_cast<DWORD>(lifetime.max_probe), static_cast<DWORD>(lifetime.capacity),
                 object_lifetime::status(), unsigned(lifetime.active), lifetime.load_epoch);
     }
+#if !X3M_EDITION_FL
     // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four
     // table counts, the unattached-list walk with its model histogram, registry_live and the registry insert
     // callers since the previous row. Read-only through engine_memory::read; its own cost is walk_us=.
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0)
         scene_graph_census::report(ctx.id, ctx.frame);
+#endif
     // --perf/--debug: every 30 frames one tick (at most 2 ms) of the resumable VirtualQuery walk of the 32-bit
     // range (address_space.h); the address_space row is emitted when a pass covers the whole range (ticks=, us=).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 30 == 0)
         address_space::tick(ctx.id, ctx.frame);
+#if !X3M_EDITION_FL
     // --perf/--debug: the dust-leak fix's detour count every 300 frames (one module word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
     // Ship steering (X3M_SHIP_STEERING=1 only; one flag read otherwise): the stuck witnesses at the always tier, the
@@ -2083,6 +2104,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     ship_steering::frame_boundary(ctx.frame);
     // --perf/--debug: the lens-flare cull's count every 300 frames (one counter word read; nothing per frame).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);
+#endif
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
@@ -2104,6 +2126,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         ctx.remaining = capture_count ? capture_count : 1;
     ctx.key_down = down;
     ctx.capture = ctx.remaining > 0;
+#if !X3M_EDITION_FL
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
@@ -2113,6 +2136,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     lens_flare_cull::begin_frame(ctx.frame); // X3M_LENS_FLARE_GAIN=0 only: the flare body set from the engine's body
                                              // table (the header and the mapped dynamic names per frame, a scan only
                                              // when the table moves, grows or re-binds a name)
+#endif
     ctx.scene_depth.begin_frame(d, ctx.id, ctx.frame, ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame, ctx.capture);
     ctx.motion_output.volumetric_fog_begin_frame(); // fog option only (returns at once without it)
@@ -2130,7 +2154,9 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     // Named for the hook the game called, not for this shared body.
     HookGuard lock(frame_timing::Bucket::State, extended ? "reset_ex" : "reset");
     auto& ctx = *devices.at(d);
+#if !X3M_EDITION_FL
     game_phases::invalidate_device();            // includes a refused reentrant attempt
+#endif
     ctx.sector_background_evidence.invalidate(); // also on refused Reset; no retained engine memory
     ctx.object_evidence.invalidate();            // diagnostic association also ends on refused Reset
     // A Reset reentered from injected GPU work cannot destroy that work's
@@ -2157,8 +2183,10 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
         gpu_sync_before_reset(ctx); // the boundary queries go before the Reset (device resources)
         ctx.motion_output.before_reset();
     }
+#if !X3M_EDITION_FL
     text_density::before_reset(); // X3M_TEXT_DENSITY: the d x shadow surfaces (engine texture objects) go before the
                                   // Reset and are rebuilt on demand
+#endif
     presentation_parameters("reset_before", ctx.id, ctx.stats.focus_window, p);
     // X3M_WINDOW_MONITOR_RECT=1 only: the game repositioned at the work-area origin before this Reset (0x4dac90's
     // mode-change path); the same predicate moves its window back to the monitor rectangle (window_mode.h).
@@ -2193,6 +2221,7 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     ctx.motion_output.after_reset(hr);
     surface_container_cache_clear("reset"); // bound only: identities are never reused (scene_capture.cpp)
     gpu_sync_after_reset(ctx, hr);       // recreated after a successful Reset
+#if !X3M_EDITION_FL
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table
     sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
@@ -2202,6 +2231,7 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
                                                                                        // follows the new height (cells only)
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next
                                                                 // frame's projection read; new back-buffer width
+#endif
     ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
     finite_upload_metrics(d, ctx, "reset_after");
     if (SUCCEEDED(hr) && p && p->hDeviceWindow) ctx.stats.window = p->hDeviceWindow;
@@ -3410,8 +3440,13 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     // Merged-LOD material strength (motion_output_material_strength_inc.h): after the material options the twins
     // compose with; the texture hook row is patched in initialize_log (loading_trace::set_texture_observer).
     hooked.motion_output.configure_material_strength(lod_material_strength_requested);
+#if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
+#else
+    log("lod_material_strength_configured enabled=%u texture_hook=0",
+        unsigned(hooked.motion_output.material_strength_requested())); // FL: no D3DX texture row patch
+#endif
     // X3M_ENGINE_LIGHT (engine_light_core.h): the hull light from the plume records, after the material options the
     // twins compose with; effective only with engine_effects = plumes.
     hooked.motion_output.configure_engine_light(engine_effects::mode() == engine_effects::core::Mode::plumes &&
@@ -4006,6 +4041,7 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     cpu.after_original();
     telemetry::record(telemetry::process(), telemetry::Metric::CreateDevice, telemetry::now() - begin, FAILED(hr));
     presentation_parameters("create_after", 0, window, p);
+#if !X3M_EDITION_FL
     if (SUCCEEDED(hr) && p)
         cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // X3M_CULL_SMALL_PARTS_PX only: the pixel scale of
                                                                     // the threshold
@@ -4019,6 +4055,7 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
                                                                                 // hold the largest flagged row: cfg+0x784, the
                                                                                 // style imm32 when d = 3, the Materials rows
     }
+#endif
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
         hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
@@ -4139,8 +4176,10 @@ void initialize_log(HMODULE module) {
     config::load(module);
     CaptureLock lock;
     log_tier::init(); // the group flags cached once for the render-path checks (the F8 guard)
+#if !X3M_EDITION_FL
     // The scene-graph census row and its registry insert-caller capture: --perf/--debug only.
     scene_graph_census::initialize(log_tier::cached_perf || log_tier::cached_debug);
+#endif
     // The session log (docs/architecture/logging-tiers.md, "Log file policy"): <game dir>\x3m.log with the
     // previous one renamed to x3m.prev.log, x3m-<pid>.log when that rename fails (another instance or an
     // editor holding the file), X3M_LOG_FILE=<path> opened exactly (the fixture runners), and W3 of the
@@ -5576,11 +5615,16 @@ void initialize_log(HMODULE module) {
 #endif
     window_mode::initialize();     // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set
     cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
+#if !X3M_EDITION_FL
     window_trace::initialize(telemetry::enabled(), &loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with
                                                                                          // X3M_TELEMETRY=1 only
     if (window_trace::enabled())
         loading_trace::light::cursor_observe(true); // the EXE's SetCursor/SetCursorPos rows record changes (patched by
                                                     // loading_trace below)
+#else
+    window_trace::initialize(telemetry::enabled(), nullptr); // FL: no EXE cursor rows (those are AP import patches)
+#endif
+#if !X3M_EDITION_FL
     game_phases::initialize();  // X3M_GAME_PHASES=1 or X3M_DRAW_TRACE=1: all 33 claims here, before the first Present
     frame_phases::initialize(); // X3M_FRAME_PHASES=1, X3M_PERF=1, X3M_DEBUG=1 or X3M_DRAW_TRACE=1 (the stamp families
                                 // pair with it): ten render-routine stamps through the game-phase stub, same window
@@ -5603,7 +5647,9 @@ void initialize_log(HMODULE module) {
             static_cast<unsigned long>(media_cue::sites::kVideoBlitEnd), media_cue::detail::video_blit_line_interval);
     }
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
+#endif
     frame_timing::initialize();       // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
+#if !X3M_EDITION_FL
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
                                       // 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other
                                       // cull/LOD pass claims
@@ -5737,6 +5783,7 @@ void initialize_log(HMODULE module) {
                                     // same window, disjoint from the census claims
     lens_flare_cull::initialize(lens_flare_gain_zero); // X3M_LENS_FLARE_GAIN=0 only; a second stub on the same
                                                        // 0x0047d2a2 claim (shared with the small-parts cull)
+#endif
     {
         // X3M_CULL_SMALL_PROPS=on|off (cull_small_props_core.h): no patch; the motion route skips the draws of small
         // prop nodes below X3M_CULL_SMALL_PARTS_PX (the same pixel setting, read here independently of whether the
@@ -5794,8 +5841,10 @@ void initialize_log(HMODULE module) {
         occlusion_cull_on = !std::strcmp(reason, "ok");
         // The engine-side stub: claimed here, on the backend-load path inside the install window, after the
         // small-parts and lens-flare stubs on the same claim (the chain runs the later stub first).
+#if !X3M_EDITION_FL
         occlusion_cull_engine =
             occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine) && occlusion_cull_on;
+#endif
         // X3M_OCCLUSION_CULL_RETEST: frames between tests of a part last read visible (1..64; unset = 8); anything
         // else keeps the default (retest_status=invalid_setting or too_long).
         wchar_t retest_text[16]{};
@@ -5815,11 +5864,14 @@ void initialize_log(HMODULE module) {
     }
     // Merged-LOD material strength: the D3DX texture row is patched for the atlas marks alone (texture_created below).
     if (lod_material_strength_requested) {
+#if !X3M_EDITION_FL
         loading_trace::set_texture_observer(texture_created);
+#endif
         if (!ownership::claim_texture_release_observer(texture_released))
             log("lod_material_strength_release_observer claimed=0"); // another claimant: marked entries then live until
                                                                     // their pointer is reused (identity check)
     }
+#if !X3M_EDITION_FL
     if (telemetry::enabled() || gz_buffer::requested() || crypt_cache::requested() ||
         loading_trace::mesh_adjacency_requested() || loading_trace::save_write_observer_requested() ||
         loading_trace::texture_observer_requested())
@@ -5829,6 +5881,7 @@ void initialize_log(HMODULE module) {
     music_keep::save_pump_report();  // one music_keep_save_pump_hook row when the keep is armed: bound or the refusal
     resource_reader::initialize();   // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub
                                      // chains behind theirs
+#endif
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() {

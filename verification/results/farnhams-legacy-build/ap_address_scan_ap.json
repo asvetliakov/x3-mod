@@ -1,0 +1,12 @@
+{
+ "dll": "build-ap/d3d9.dll",
+ "image_base": "0x6fb40000",
+ "functions": 5263,
+ "roots": 602,
+ "address_taken": 303,
+ "roots_data": 584,
+ "reachable_functions": 3690,
+ "functions_with_ap_constants": 166,
+ "reachable_with_ap_constants": 165,
+ "reachable_list": []
+}

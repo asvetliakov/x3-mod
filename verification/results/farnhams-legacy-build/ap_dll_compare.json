@@ -1,0 +1,13 @@
+{
+ "loadable_bytes_compared": 41432064,
+ "differing_bytes": 9,
+ "where": [
+  ".edata+0x4",
+  ".edata+0x5",
+  "coff.TimeDateStamp",
+  "optional.CheckSum",
+  "section_header:.debug_abbrev",
+  "section_header:.debug_info",
+  "section_header:.debug_line"
+ ]
+}

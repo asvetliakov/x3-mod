@@ -1,5 +1,8 @@
 /build/
 /build-ownership/
+# Edition builds (docs/architecture/farnhams-legacy-build.md).
+/build-ap/
+/build-fl/
 # x3m-regenerate bundles (tools/regenerate/build.py); its work tree is under /build/.
 /dist/
 /artifacts/

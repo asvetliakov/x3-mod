@@ -124,6 +124,8 @@ cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake \
 cmake --build build -j4
 ```
 
+Add `-DX3M_EDITION=ap|fl` (default `ap`, X3: Albion Prelude; `fl` for X3: Farnham's Legacy) to select the game, one build directory per edition (`build-ap`, `build-fl`; [farnhams-legacy-build.md](docs/architecture/farnhams-legacy-build.md)).
+
 The result is `build/d3d9.dll`, statically linked against the MinGW C++ and thread
 runtime. CPU arithmetic uses SSE2 (`-msse2 -mfpmath=sse`) with
 `-mstackrealign -mincoming-stack-boundary=2`, because the game's callbacks arrive on

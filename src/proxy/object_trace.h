@@ -24,7 +24,13 @@ bool initialize(); // X3M_OBJECT_TRACE=1, executable identity + callsite bytes
 // evaluated once per process and cached. Shared by every module that reads
 // engine globals; each hook still checks its own site bytes. true never
 // implies the callsite patch is installed. LastError preserved.
+#if X3M_EDITION_FL
+// The FL edition (X3FL.exe) never runs AP engine code: the gate is a constant false, so the
+// engine paths that stay compiled are dead (docs/architecture/farnhams-legacy-build.md).
+constexpr bool executable_verified() { return false; }
+#else
 bool executable_verified();
+#endif
 // IMAGE_FILE_LARGE_ADDRESS_AWARE of the main module's mapped headers (the
 // value the loader acted on); false when unreadable. Provenance only, never a
 // gate; logged once in the proxy_identity line. LastError preserved.

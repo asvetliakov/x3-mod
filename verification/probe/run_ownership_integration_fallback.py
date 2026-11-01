@@ -14,6 +14,27 @@ from run_ownership_integration import sources, binaries, sha, require_no_game
 from verify_ownership_integration import verify_geometry, verify_motion_mode, verify_admission
 
 
+def ap_target_sources(cmake_text):
+    """The src/**.cpp files of the ap edition's d3d9 target: the first add_library(d3d9 SHARED ...) (the ap
+    branch; the only one before the edition switch) with ${..._SOURCES} list variables expanded from their
+    set() blocks (docs/architecture/farnhams-legacy-build.md)."""
+    lists = {m.group(1): m.group(2).split() for m in re.finditer(r'\bset\((\w+_SOURCES)\s(.*?)\)', cmake_text, re.S)}
+
+    def expand(tokens, depth=0):
+        out = []
+        for token in tokens:
+            name = re.fullmatch(r'"?\$\{(\w+)\}"?', token)
+            if name and name.group(1) in lists:
+                assert depth < 8, 'recursive CMake list'
+                out.extend(expand(lists[name.group(1)], depth + 1))
+            else:
+                out.append(token)
+        return out
+
+    target = re.search(r'add_library\(d3d9 SHARED(.*?)\)', cmake_text, re.S).group(1)
+    return [token for token in expand(target.split()) if re.fullmatch(r'src/[\w/]+\.cpp', token)]
+
+
 def production_link_inputs(project_root=root):
     object_root = project_root / 'build-ownership/CMakeFiles/d3d9.dir'
     objects = sorted(p for p in (object_root / 'src').rglob('*.obj')
@@ -22,9 +43,7 @@ def production_link_inputs(project_root=root):
     # Reconcile the linked set with the actual production target, retaining the
     # ownership test-double boundary. The generated compositor inputs are part
     # of that target too; omitting them made the fallback link stale.
-    production_target = re.search(r'add_library\(d3d9 SHARED(.*?)\)',
-                                  (project_root / 'CMakeLists.txt').read_text(), re.S).group(1)
-    expected = {name + '.obj' for name in re.findall(r'src/[\w/]+\.cpp', production_target)
+    expected = {name + '.obj' for name in ap_target_sources((project_root / 'CMakeLists.txt').read_text())
                 if '/ownership/' not in name or Path(name).name in
                 ('execution_state.cpp', 'application_admission.cpp', 'application_admission_abi.cpp')}
     assert {str(p.relative_to(object_root)) for p in objects} == expected, 'Build all current production components first'

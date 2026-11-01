@@ -69,7 +69,17 @@ add_custom_command(OUTPUT "${X3M_COMPOSITOR_SEH}" "${X3M_COMPOSITOR_RUNTIME}"
   COMMENT "Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)" VERBATIM)
 set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
-add_library(d3d9 SHARED
+# Game edition (docs/architecture/farnhams-legacy-build.md): one source tree, two d3d9.dll builds.
+# ap: X3: Albion Prelude (X3AP.exe, the existing DLL). fl: X3: Farnham's Legacy (X3FL.exe): the shared
+# D3D/renderer sources, the AP engine modules they link against (inert) and the FL identity.
+set(X3M_EDITION "ap" CACHE STRING "Game edition: ap (X3: Albion Prelude) or fl (X3: Farnham's Legacy)")
+set_property(CACHE X3M_EDITION PROPERTY STRINGS ap fl)
+if(NOT X3M_EDITION STREQUAL "ap" AND NOT X3M_EDITION STREQUAL "fl")
+  message(FATAL_ERROR "X3M_EDITION must be ap or fl, not '${X3M_EDITION}'")
+endif()
+# The ap target links this list in its original order (the AP DLL stays byte-identical apart from the
+# source-commit string); the fl target links the two groups below, both subsets of it.
+set(X3M_AP_SOURCES
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
   src/proxy/loader.cpp src/proxy/config.cpp src/proxy/capture.cpp src/proxy/session_log.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/comparison_notice.cpp
@@ -87,6 +97,55 @@ add_library(d3d9 SHARED
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
+# fl edition: the shared D3D/renderer sources and the mixed files.
+set(X3M_SHARED_SOURCES
+  "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
+  src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp src/proxy/loader.cpp src/proxy/config.cpp
+  src/proxy/capture.cpp src/proxy/session_log.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp
+  src/proxy/comparison_notice.cpp src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
+  src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp src/proxy/scene_capture.cpp
+  src/proxy/telemetry.cpp src/proxy/address_space.cpp src/proxy/frame_timing.cpp src/proxy/window_mode.cpp
+  src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp src/proxy/sampling_profiler.cpp
+  src/ownership/d3d9_ownership.cpp src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
+  src/proxy/draw_input.cpp src/proxy/mesh_adjacency_fast.cpp src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp
+  src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp
+  src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp src/renderer/gpu_sync_timing.cpp
+  src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp
+  src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp
+  src/renderer/lens_visibility_variant.cpp src/renderer/occlusion_cull_pass.cpp src/renderer/motion_history.cpp
+  src/renderer/rigid_position.cpp src/renderer/shader_population.cpp src/renderer/material_motion.cpp
+  src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp
+  src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
+  src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
+# AP engine modules both editions link: motion_output, its *_inc.h fragments and the capture.cpp draw/compositor
+# paths call into them. In the fl edition their initializers are fenced out (capture.cpp, loader.cpp) and
+# object_trace::executable_verified() is a constant false, so their hooks are never installed.
+set(X3M_AP_ENGINE_LINKED_SOURCES
+  src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp
+  src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
+  src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
+  src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
+  src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
+  src/proxy/sun_occlusion.cpp src/proxy/engine_patch.cpp src/proxy/object_lifetime.cpp)
+# AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
+# addresses (0x400000 based), gated by object_trace::executable_verified(). Their call sites in capture.cpp,
+# loader.cpp and telemetry.cpp are fenced with #if !X3M_EDITION_FL (no edition define, as in the host and
+# Wine fixtures that compile production sources directly, means AP).
+set(X3M_AP_ENGINE_SOURCES ${X3M_AP_SOURCES})
+foreach(source IN LISTS X3M_SHARED_SOURCES X3M_AP_ENGINE_LINKED_SOURCES)
+  if(NOT source IN_LIST X3M_AP_SOURCES)
+    message(FATAL_ERROR "${source} is in an fl group but not in X3M_AP_SOURCES")
+  endif()
+endforeach()
+list(REMOVE_ITEM X3M_AP_ENGINE_SOURCES ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES})
+if(X3M_EDITION STREQUAL "ap")
+  add_library(d3d9 SHARED ${X3M_AP_SOURCES})
+  target_compile_definitions(d3d9 PRIVATE X3M_EDITION_AP=1)
+else()
+  add_library(d3d9 SHARED ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES}
+    src/engine/fl/executable_identity_fl.cpp)
+  target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
+endif()
 x3m_add_fog_field_assets(d3d9)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
 target_include_directories(d3d9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
