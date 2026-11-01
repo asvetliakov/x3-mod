@@ -40,6 +40,12 @@ without `X3M_SUN_OCCLUSION`, observe-only), and each bracket applies `G × T_sun
 luminance of the fog law's transmittance at the look's column cap (`renderer::fog_sky_lens_gain`); `T = 1` in a frame
 without the density composite.
 
+**Accepted interim limitations (2026-11-02).** `T_sun` is the mean-density column of the look to its sky cap, not
+sampled along the sun's ray nor from the march's own density, so a sun seen through a gap in the cloud is dimmed like
+one behind it. The gain dims every ONE/ONE/ADD draw in the lens bracket, ship and station flares included, on both
+editions whenever the fog composite applied in that frame. Both go away when the engine's sun body is replaced by the
+mod's own sun (`docs/architecture/own-sun-pass.md`, in progress, not yet on main).
+
 **Expected rows (first flight, inferred).** Once: `fl.sun_occlusion status=active base=0x… probe=base+0x8af0a
 lens=base+0x8bcb7 probe_write=atomic lens_write=plain override=1 log=0 bracket=1 main_view=registry anchors=17
 failed_anchor=none log_s=10`, `lens_flare_gain value=1.0000 configured=0 reason=unset bracket=active fog=1`,

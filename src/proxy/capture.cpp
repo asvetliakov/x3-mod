@@ -2017,7 +2017,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                     // accepted-pair ring; one collide_narrow line per
                                                                     // 300 frames, collide_narrow_pair rows on a capture
                                                                     // frame
-    sun_occlusion::present(ctx.frame + 1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
+    sun_occlusion::present(ctx.frame + 1); // installed bracket only: the probe override's frame boundary
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one
                                                            // collide_memo line per 300 frames
@@ -2380,8 +2380,9 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     const MotionDrawCall draw_call{false, false, t, c, s, 0, 0, 0, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
@@ -2440,8 +2441,9 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     const MotionDrawCall draw_call{true, false, t, c, s, b, m, n, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) {
         ++ctx.fixture_emission_source_calls;
@@ -2487,8 +2489,9 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     const MotionDrawCall draw_call{false, true, t, c, 0, 0, 0, 0};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
@@ -2530,8 +2533,9 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
     const MotionDrawCall draw_call{true, true, t, c, 0, 0, m, n};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();

@@ -818,10 +818,10 @@ Design: [FL sun occlusion note](../architecture/farnhams-legacy-sun-occlusion.md
 `sun_occlusion_fl.cpp` replaces `sun_occlusion.cpp` in the fl link (the ap target keeps it); the `Deferral` and the
 consumer's deferral calls are no longer fenced out of FL; capture installs the bracket on both editions, also for
 the volumetric fog, whose lens gain `G × T_sun` is shared ([sun-occlusion ledger, 2026-11-02](sun-occlusion.md)).
-Measured on the WSL2 host after rebasing onto main `181b050a`, clean-first builds (`-j4`, RelWithDebInfo, fl then
+Measured on the WSL2 host after rebasing onto main `317383e5` (release 1.8.4, fade-band fill), clean-first builds (`-j4`, RelWithDebInfo, fl then
 ap): fl 96 and ap 136 C++ objects compiled, 0 warnings each; the fl link has `sun_occlusion_fl.cpp.obj` and no
 `sun_occlusion.cpp.obj`, `strings | grep -c '^fl\.sun_occlusion'` = 2, no AP address (`606f34`, `608504`,
-`471630`, `472491`) in the provider's disassembly. AP against a fresh build of main `181b050a`
+`471630`, `472491`) in the provider's disassembly. AP against a fresh build of main `317383e5`
 (`farnhams-legacy-build/cmp_objs.py <main-ap> build-ap` → `fl-sun-occlusion/ap_object_compare.json`): 117 of 121
 identical, `sun_occlusion.cpp.obj` among them. Differing: `capture.cpp` (the bracket also for the fog,
 `lens_flare_fog`, the `fog=` field, the FL Present/Reset calls fenced in), `motion_output.cpp` (the fog gain in
@@ -861,9 +861,15 @@ from `lens_end` and the probe handler inside their envelopes (an unpruned walk: 
 (`mutation_check.py` → `mutation_check.json`, source restored, unmutated PASS 906): no XMM save 54 failures (the
 forward path's XMM too: the handler's Win32 calls change XMM on this host), no PreserveCpuState 160, flags word at
 +0xfc 67; the first two also fail the audit. Cost per call (fixture, measured, not game FPS): probe forwarded
-+40 ns over a 33 ns native call, answered 74 ns total; lens bracket +229 ns per lens call (once per frame) with
++39 ns over a 32 ns native call, answered 71 ns total; lens bracket +222 ns per lens call (once per frame) with
 trivial listeners. Host tests: `test_fl_*` 84 OK (4 skips: shader corpus); `test_sun_occlusion`,
 `test_logging_tiers`, `test_config_schema`, `test_launcher_defaults`, `test_lens_flare_cull`, `test_fog_cards`,
-`test_sector_background` 90 OK; `test_fog*` 27 modules 235 OK. Pre-existing on main `181b050a`, unchanged:
+`test_sector_background` 90 OK; `test_fog*` 27 modules 235 OK. Pre-existing on main `181b050a`, unchanged (the other host modules were run on `181b050a`; after the rebase onto `317383e5` `test_fl_sun_occlusion`, `test_sun_occlusion`, `test_logging_tiers`, `test_config_schema` and the fixture were rerun, all OK):
 `test_engine_effects` and `test_engine_ribbons` fail their source-bound fixture records (Wine runners, not rerun).
 Expected in game: the note's "Expected rows"; not flown.
+
+First-flight checks (beyond the note's expected rows): (a) `starts` and `lifts` in `fl.sun_occlusion_sample` stay
+small and stop growing; both rising in every sample means the deferral is cycling (start, lift, start). (b) No
+`lens_flare_gain_refused … reason=blend_law` in The Hole. The gain is applied only to ONE/ONE/ADD draws; if the FL SM3
+sun body (`ced7edef…`) is drawn with another blend law, the gain does not reach the sun itself, only its other lens
+draws, and the user's sun-through-fog report is not fixed by this step (the row's `src`/`dst`/`op` give the law).
