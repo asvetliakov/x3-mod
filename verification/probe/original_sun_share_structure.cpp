@@ -244,10 +244,10 @@ int main(int argc, char** argv) {
             const Pixel* p = xt ? nullptr : pixel_for(hash, original.size());
             require(xt || p, "admitted program has a row");
             std::vector<unsigned> seeds;
-            unsigned final_rgb = xt ? xt->final_rgb : p->final_rgb, light = xt ? 6u : p->light0;
+            unsigned final_rgb = xt ? xt->final_rgb : p->final_rgb, light = xt ? xt_roles(*xt).light0 : p->light0;
             if (xt) {
                 for (const auto& u : xt->lights)
-                    if (u.value == 6) seeds.push_back(u.operand);
+                    if (u.value == light) seeds.push_back(u.operand);
             } else
                 for (unsigned k = 0; k < 2; ++k)
                     if (p->color_source[k]) seeds.push_back(p->color_source[k]);

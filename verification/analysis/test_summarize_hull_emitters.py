@@ -10,14 +10,19 @@ from summarize_hull_emitters import PROGRAMS, render, summarize  # noqa: E402
 
 
 class ProgramTableTests(unittest.TestCase):
-    def test_programs_equal_the_twelve_hull_profiles_of_the_transformer(self):
-        # The tool's hash table mirrors hull_profiles[] in order; parse the source so a drift is caught.
+    def test_programs_equal_the_hull_profiles_of_the_transformer(self):
+        # The tool reads hull_profiles[] (AP rows, then the FL include) in order: the DLL's program= indices.
         source = (ROOT / 'src/renderer/linear_emission.cpp').read_text()
         block = source[source.index('constexpr HullProfile hull_profiles[] = {'):]
         block = block[:block.index('};')]
         rows = re.findall(r'\{0x([0-9a-f]{16})ull,\d+,\d+,\d+,(?:true|false)\}', block)
-        self.assertEqual(len(rows), 12)
-        self.assertEqual(tuple(rows), PROGRAMS)
+        fl = re.findall(r'\{0x([0-9a-f]{16})ull,\d+,\d+,\d+,(?:true|false)\}',
+                        (ROOT / 'src/renderer/linear_emission_hull_fl_inc.h').read_text())
+        self.assertEqual((len(rows), len(fl)), (12, 12))
+        self.assertEqual(PROGRAMS, tuple(rows + fl))
+        count = re.search(r'linear_emission_hull_program_count = (\d+);',
+                          (ROOT / 'src/renderer/linear_emission.h').read_text())
+        self.assertEqual(len(PROGRAMS), int(count[1]))
 
 DRAW = ('hull_emission_draw device=1 frame={frame} index={index} vs=494fe349b8bc12ec ps=7c83ed50c9894e44 program=7 routed=0 gain=2 '
         'known={known} node=0x1100 node_handle={handle} node_serial=12 camera_handle=9 model={model} lod={lod} load_epoch=3 registry_epoch=5 '
@@ -53,6 +58,19 @@ class SummarizeHullEmitters(unittest.TestCase):
         text = render(summary)
         self.assertIn('00000012   00000002        3         82      2      1.5 7', text)
         self.assertIn('admitted=4 refused_blend=9 (opaque=8 alpha=1)', text)
+
+    def test_fl_program_index_above_eleven_keeps_its_hash(self):
+        # FL hull programs carry program=12..23 (linear_emission_hull_fl_inc.h after the 12 AP rows).
+        draw = DRAW.format(frame=4, index=1, known=1, handle=8, model='00000030', lod='00000001', prims=10,
+                           origin_known=0, origin='0.0,0.0').replace('program=7', 'program=23')
+        summary = summarize([draw, FRAME.format(frame=4, admitted=1, blend=0, programs='800001', opaque=0, alpha=0,
+                                                toggled=1)])
+        self.assertEqual(summary['models'][0]['programs'], [23])
+        self.assertEqual(summary['models'][0]['program_hashes'], [PROGRAMS[23]])
+        self.assertEqual(PROGRAMS[23], 'f06b626708db3c7e')
+        self.assertEqual(summary['frame_totals']['program_hashes'], [PROGRAMS[0], PROGRAMS[23]])
+        self.assertEqual(summarize([draw.replace('program=23', 'program=30')])['models'][0]['program_hashes'],
+                         ['unknown_30'])
 
     def test_empty_log_is_an_empty_table(self):
         summary = summarize([])

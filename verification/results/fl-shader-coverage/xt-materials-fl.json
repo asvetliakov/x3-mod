@@ -1,0 +1,18 @@
+{
+ "schema": 1,
+ "scope": "12 FL XT original PS derived by this tool with the FL register roles, compared with inspect_fl_linear_materials.py; derived metadata only",
+ "programs": 12,
+ "rgb_sites": 318,
+ "fields_compared": [
+  "final_rgb",
+  "alpha",
+  "textures",
+  "texture_registers",
+  "lights",
+  "palette",
+  "clamps",
+  "scalar",
+  "rgb"
+ ],
+ "mismatches": {}
+}

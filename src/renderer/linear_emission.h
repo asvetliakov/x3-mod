@@ -111,10 +111,13 @@ SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, st
 // cannot reach, drawn by hull programs (position lights, deco flares, warning
 // signs, warp tunnels; the ADD ONE/ONE material census in
 // docs/reverse-engineering/effect-shader-users.md, "Additive emitters drawn by
-// material programs"). Twelve exact ps_3_0 originals: six
-// `XT_standard_lighting.fx` and six `standard_lighting.fx` material programs.
-// Identity only; this admits no draw and reads no state.
-constexpr unsigned linear_emission_hull_program_count = 12;
+// material programs"). Twelve exact AP ps_3_0 originals, six
+// `XT_standard_lighting.fx` and six `standard_lighting.fx` material programs,
+// then the twelve FL programs of the same two effect sources
+// (linear_emission_hull_fl_inc.h). Identity only; this admits no draw and reads
+// no state. Program indices are bits of a per-device 32-bit mask.
+constexpr unsigned linear_emission_hull_program_count = 24;
+static_assert(linear_emission_hull_program_count <= 32, "per-device program mask capacity");
 unsigned linear_emission_hull_program_index(std::uint64_t pixel) noexcept;
 bool linear_emission_hull_program_reviewed(std::uint64_t pixel) noexcept;
 // Colour blend admission of a hull-program emitter draw: only ADD ONE/ONE with

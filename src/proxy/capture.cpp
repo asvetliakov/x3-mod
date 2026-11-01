@@ -186,7 +186,7 @@ float emission_source_gain = 1.f; // X3M_EMISSION_SOURCE_GAIN: source-only encod
                                   // emission pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
 float emission_source_clamp = 0.f; // X3M_EMISSION_SOURCE_CLAMP: per-channel cap of the gained colour in both gain
                                    // families (engine space), 0 = off, else finite 0.25..8 (requires X3M_HDR=1)
-float hull_emission_gain = 1.f;   // X3M_HULL_EMISSION_GAIN: the same gain over the twelve hull programs' ADD ONE/ONE
+float hull_emission_gain = 1.f;   // X3M_HULL_EMISSION_GAIN: the same gain over the 24 hull programs' (12 AP, 12 FL) ADD ONE/ONE
                                   // draws (emitter plan phase 3), finite 1..8, 1 = off (requires X3M_HDR=1 only;
                                   // independent of the effects gain; its Ctrl+Shift+F4 key was removed 2026-09-26)
 float original_fill = 0.f; // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite
@@ -4701,7 +4701,7 @@ void initialize_log(HMODULE module) {
     }
     // X3M_EMISSION_SOURCE_CLAMP=<c>: per-channel cap of the gained colour in
     // engine (pre-decode) space, baked into both gain families' variants (the
-    // twenty effects programs and the twelve hull programs) as one MIN after
+    // twenty effects programs and the 24 hull programs) as one MIN after
     // the gain MUL: 0 (unset) is off, else finite 0.25..8; 1 = native white.
     // A clamp with gain 1 still builds the clamp-only variant. Needs X3M_HDR=1
     // like the gains; unparsable or out of range keeps 0 and is logged on the
@@ -4758,7 +4758,7 @@ void initialize_log(HMODULE module) {
                 unsigned(emission_source_gain != 1.f && !x3m::renderer::linear_emission_clamp_saturates(clamp)),
                 excluded ? " refused=linear_emissions" : "");
     }
-    // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the twelve hull programs'
+    // X3M_HULL_EMISSION_GAIN=<g>: a source gain over the 24 hull programs' (12 AP, 12 FL)
     // ADD ONE/ONE emitter draws (emitter plan phase 3): finite 1..8, 1 is
     // off. Unset in both the file and the environment (the schema entry has
     // no default, follows=emission_source_gain) it takes the resolved

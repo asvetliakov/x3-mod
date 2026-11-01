@@ -2,7 +2,7 @@
 """Per-model table of the hull-program emitter draws of an F8 capture.
 
 Joins the `hull_emission_draw` lines a capture frame writes for every admitted
-ONE/ONE draw of the twelve covered hull programs (emitter plan phase 3) with
+ONE/ONE draw of the covered hull programs (emitter plan phase 3) with
 the `hull_emission_frame` accounting, so a session log answers which models
 and LODs carry these emitters, through which program, how many draws and
 primitives per frame, and where on screen their object origin projected. The
@@ -11,13 +11,30 @@ log is streamed line by line and never held whole. No game bytes are read.
 import argparse
 from collections import defaultdict
 import json
+from pathlib import Path
 import re
 import sys
 
 FIELDS = re.compile(r'(\w+)=([^\s]+)')
-PROGRAMS = ('5f82ecacd39529cd', '6733b119142c8d42', 'fffdabd910793aba', '496049cec2066ed3',
-            'e6794b6ec37ff71a', 'f1b0e820c7b488c3', '0c1f3f0f440e4a0c', '7c83ed50c9894e44',
-            '99153c144030c396', '64bac8bb307eb896', 'c1452981fd0bff64', 'e70adc744a38ca59')
+RENDERER = Path(__file__).resolve().parents[2] / 'src/renderer'
+
+
+def hull_programs(renderer=RENDERER):
+    """The program= index order of the DLL: linear_emission.cpp's hull_profiles[] (the 12 AP rows and the
+    rows its #include adds, e.g. the 12 FL rows of linear_emission_hull_fl_inc.h), read from the same sources."""
+    source = (renderer / 'linear_emission.cpp').read_text()
+    block = source[source.index('constexpr HullProfile hull_profiles[] = {'):]
+    block = block[:block.index('};')]
+    for name in re.findall(r'#include "([\w.]+)"', block):
+        block = block.replace(f'#include "{name}"', (renderer / name).read_text())
+    return tuple(re.findall(r'^\s*\{0x([0-9a-f]{16})ull,\d+,\d+,\d+,(?:true|false)\}', block, re.M))
+
+
+PROGRAMS = hull_programs()
+
+
+def program_hash(index):
+    return PROGRAMS[index] if 0 <= index < len(PROGRAMS) else 'unknown_%d' % index
 
 
 def fields(line):
@@ -64,13 +81,14 @@ def summarize(lines):
         table.append(dict(model=model, lod=lod, draws=row['draws'], primitives=row['primitives'],
                           frames=len(row['frames']), draws_per_frame=row['draws'] / max(1, len(row['frames'])),
                           programs=sorted(row['programs']),
-                          program_hashes=[PROGRAMS[p] for p in sorted(row['programs']) if p < len(PROGRAMS)],
+                          program_hashes=[program_hash(p) for p in sorted(row['programs'])],
                           nodes=len(row['nodes']), node_handles=sorted(row['node_handles']),
                           unknown_scope=row['unknown_scope'],
                           origin_bounds=[min(o[0] for o in origins), min(o[1] for o in origins),
                                          max(o[0] for o in origins), max(o[1] for o in origins)] if origins else None))
     frames['programs'] = '%03x' % frames['programs']
-    frames['program_hashes'] = [PROGRAMS[i] for i in range(len(PROGRAMS)) if int(frames['programs'], 16) >> i & 1]
+    mask = int(frames['programs'], 16)
+    frames['program_hashes'] = [program_hash(i) for i in range(mask.bit_length()) if mask >> i & 1]
     return dict(capture_frames=sorted(capture_frames), models=table, frame_totals=frames)
 
 

@@ -27,9 +27,14 @@ PAIRS = [
     ('edaef099780fcafe', True, False, True, 1567, 4),
 ]
 
-def derive(directory):
+# AP register roles: LightDir_Color0/1 in c6/c8, palette from c14 (DEFAULT) or c17
+# (BUMPMAP), temporaries up to r5 (r6 terraformer). --fl-report supplies the FL
+# rows' CTAB-derived roles instead (light0, light1, palette_first, temporary base).
+def derive(directory, pairs=PAIRS, roles=None):
     result = []
-    for hash_, bump, damage, terra, base_at, base_reg in PAIRS:
+    for hash_, bump, damage, terra, base_at, base_reg in pairs:
+        light0, light1, palette_first, temporary_base = (roles or {}).get(
+            hash_, (6, 8, 17 if bump else 14, 7 if terra else 6))
         code = (directory / f'ps_{hash_}.bin').read_bytes()
         items = motion.instructions(code)[1]
         fingerprint=14695981039346656037
@@ -39,8 +44,7 @@ def derive(directory):
                    words=len(code)//4, bump=bump, damage=damage, terra=terra,
                    base_at=base_at, base_reg=base_reg, lights=[], palette=[], clamps=[],
                    scalar=[], rgb=[], textures=[], branches=[])
-        palette_first = 17 if bump else 14
-        tainted = {('v0', c) for c in 'xyz'} | {(f'c{i}', c) for i in [6,8,*range(palette_first,palette_first+5)] for c in 'xyz'}
+        tainted = {('v0', c) for c in 'xyz'} | {(f'c{i}', c) for i in [light0,light1,*range(palette_first,palette_first+5)] for c in 'xyz'}
         stack=[]
         for item in items:
             at, op = item['dword'], item['opcode']
@@ -62,7 +66,7 @@ def derive(directory):
                 row['textures'].append(dict(at=at,sampler=sampler,register=register))
             operand=2
             for source in sources:
-                if source['name'] in ['c6','c8']:
+                if source['name'] in [f'c{light0}',f'c{light1}']:
                     assert dst['mask']=='xyz' and op in [5,4]
                     row['lights'].append([at+operand,source['register']])
                 if source['register_type']==2 and palette_first<=source['register']<palette_first+5:
@@ -96,15 +100,53 @@ def derive(directory):
         row['temps']=sorted({x['register'] for item in items if item['opcode'] not in motion.HEADER_OPCODES
                             for x in ([motion.split_operands(item,3)[0]]+motion.split_operands(item,3)[1])
                             if x and x['register_type']==0})
-        assert max(row['temps'])==(6 if terra else 5)
+        assert max(row['temps'])==temporary_base-1
         result.append(row)
     return result
+
+def fl_rows(report):
+    """The FL XT rows of inspect_fl_linear_materials.py's report: this tool's own derivation over them and
+    the generator's fields side by side (equal when both derivations agree)."""
+    rows=[p for p in report['programs'] if p['row']['family']=='xt']
+    pairs=[(p['ps'],p['row']['bump'],False,p['row']['terra'],p['row']['base_at'],p['row']['base_reg']) for p in rows]
+    roles={p['ps']:(p['row']['light0'],p['row']['light1'],p['row']['palette_first'],p['row']['temporary_base']) for p in rows}
+    return pairs, roles, {p['ps']:p['row'] for p in rows}
+
+def compare(derived, generated):
+    """Field-by-field agreement of a derived row with the generator's row."""
+    textures=sorted(derived['textures'],key=lambda t:t['sampler'])
+    checks=dict(final_rgb=derived['final_rgb']==generated['final_rgb'], alpha=derived['alpha']==generated['alpha'],
+                textures=[t['at'] for t in textures]==generated['textures'],
+                texture_registers=[t['register'] for t in textures]==generated['texture_registers'],
+                lights=sorted(map(list,derived['lights']))==sorted(map(list,generated['lights'])),
+                palette=sorted(map(list,derived['palette']))==sorted(map(list,generated['palette'])),
+                clamps=derived['clamps']==generated['clamps'],
+                scalar=sorted(map(list,derived['scalar']))==sorted(map(list,generated['scalar'])),
+                rgb=derived['rgb']==generated['rgb'])
+    return [name for name,ok in checks.items() if not ok]
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     parser.add_argument('--output',type=Path,required=True)
-    args=parser.parse_args();rows=derive(args.programs)
+    parser.add_argument('--fl-report',type=Path,help='derive the FL XT rows of this inspect_fl_linear_materials.py '
+                        'report (FL corpus in --programs) and compare them with the report')
+    args=parser.parse_args()
+    if args.fl_report:
+        pairs,roles,generated=fl_rows(json.loads(args.fl_report.read_text()))
+        rows=derive(args.programs,pairs,roles)
+        mismatches={row['ps']:compare(row,generated[row['ps']]) for row in rows}
+        mismatches={k:v for k,v in mismatches.items() if v}
+        args.output.write_text(json.dumps({'schema':1,'scope':'12 FL XT original PS derived by this tool with the FL '
+                                           'register roles, compared with inspect_fl_linear_materials.py; derived '
+                                           'metadata only','programs':len(rows),
+                                           'rgb_sites':sum(len(r['rgb']) for r in rows),
+                                           'fields_compared':['final_rgb','alpha','textures','texture_registers','lights',
+                                                              'palette','clamps','scalar','rgb'],
+                                           'mismatches':mismatches},indent=1)+'\n')
+        print(f'{len(rows)} FL XT programs; {len(mismatches)} differ from the generator report')
+        return 1 if mismatches else 0
+    rows=derive(args.programs)
     args.output.write_text(json.dumps({'schema':1,'scope':'14 exact XT original PS; derived metadata only','programs':rows},indent=2)+'\n')
     print(f'{len(rows)} XT programs; {sum(len(r["rgb"]) for r in rows)} RGB sites; no bytecode exported')
-if __name__=='__main__': main()
+if __name__=='__main__': raise SystemExit(main())

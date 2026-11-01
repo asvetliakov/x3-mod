@@ -35,10 +35,13 @@ void write(const std::string& path, const Words& words) {
 }
 int main(int argc, char** argv) {
     try {
-        require(argc == 3, "usage: linear_emission_hull_gain_structure <original directory> <local output directory>");
-        const char* names[] = {"5f82ecacd39529cd", "6733b119142c8d42", "fffdabd910793aba", "496049cec2066ed3",
-                               "e6794b6ec37ff71a", "f1b0e820c7b488c3", "0c1f3f0f440e4a0c", "7c83ed50c9894e44",
-                               "99153c144030c396", "64bac8bb307eb896", "c1452981fd0bff64", "e70adc744a38ca59"};
+        require(argc >= 3, "usage: linear_emission_hull_gain_structure <original directory> <local output directory> "
+                           "[<program id>...] (default: the twelve AP programs)");
+        std::vector<const char*> names = {"5f82ecacd39529cd", "6733b119142c8d42", "fffdabd910793aba",
+                                          "496049cec2066ed3", "e6794b6ec37ff71a", "f1b0e820c7b488c3",
+                                          "0c1f3f0f440e4a0c", "7c83ed50c9894e44", "99153c144030c396",
+                                          "64bac8bb307eb896", "c1452981fd0bff64", "e70adc744a38ca59"};
+        if (argc > 3) names.assign(argv + 3, argv + argc); // e.g. the twelve FL programs (part 4b)
         const float gains[] = {1, 2, 3.5f, 8};
         unsigned variants = 0, identical = 0, modulated = 0, reviewed = 0, clamped = 0, normalized = 0;
         long long create_ns = 0;

@@ -995,7 +995,7 @@ public:
     // builds a clamp-only variant. Configure before attach.
     void configure_emission_source_gain(float gain, float clamp = 0.f) noexcept; // one gain for all twenty pairs
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
-    // Emitter plan phase 3: the same gain over the twelve hull programs' ADD
+    // Emitter plan phase 3: the same gain over the 24 hull programs' (12 AP, 12 FL) ADD
     // ONE/ONE draws (X3M_HULL_EMISSION_GAIN); 1 = off. The toggle is a fixture
     // seam (x3m_hull_emission_fixture_toggle; no key since 2026-09-26):
     // lightmap = true for the light-map gain, false for the guide lights.
@@ -1557,7 +1557,7 @@ private:
         IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant at the source gain (PS only; the VS
                                                               // stays original)
         // Hull-emitter gain (emitter plan phase 3): the whole-output
-        // variant of one of the twelve hull programs, keyed on the PS
+        // variant of one of the 24 hull programs, keyed on the PS
         // alone; hull_program marks a covered original whether or not
         // its variant was created (a covered draw without one is counted).
         IDirect3DPixelShader9* hull_gain_variant = nullptr;

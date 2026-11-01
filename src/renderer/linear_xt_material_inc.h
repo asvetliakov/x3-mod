@@ -1,11 +1,35 @@
 // Included inside linear_material.cpp's anonymous namespace. This is a bounded
-// extension for the 14 reviewed XT originals, not a general shader rewriter.
+// extension for the 14 reviewed AP XT originals (and, for the original-shading
+// variants only, the 12 FL ones), not a general shader rewriter.
 #include "linear_xt_profiles_inc.h"
 constexpr std::uint64_t xt_default_vs = 0x494fe349b8bc12ecull;
 constexpr std::uint64_t xt_bump_vs = 0x37c34a7478544c14ull;
+// Register roles an XtPixel row does not carry. The AP rows share these
+// defaults (LightDir_Color0/1 in c6/c8, palette from c14 or c17, temporary
+// base 6 or 7 by terraformer); an FL row (part 4b, linear_xt_profiles_fl_inc.h)
+// states its CTAB-derived roles and its motion row's temporary base, and admits
+// only the original-shading variants (xt_transform refuses it).
+struct XtRoles { unsigned light0=6, light1=8, palette_first=0, temporary_base=0; };
+struct XtPixelFl { XtPixel row; XtRoles roles; };
+constexpr XtPixelFl xt_pixels_fl[] = {
+#include "linear_xt_profiles_fl_inc.h"
+};
 const XtPixel* xt_pixel(std::uint64_t hash) noexcept {
     for (const auto& p:xt_pixels) if (p.hash==hash) return &p;
+    for (const auto& p:xt_pixels_fl) if (p.row.hash==hash) return &p.row;
     return nullptr;
+}
+const XtPixelFl* xt_fl_row(const XtPixel& p) noexcept {
+    for (const auto& f:xt_pixels_fl) if (&f.row==&p) return &f;
+    return nullptr;
+}
+XtRoles xt_roles(const XtPixel& p) noexcept {
+    const auto* f=xt_fl_row(p);
+    return f ? f->roles : XtRoles{};
+}
+unsigned xt_temporary_base(const XtPixel& p) noexcept {
+    const auto roles=xt_roles(p);
+    return roles.temporary_base ? roles.temporary_base : p.terra ? 7u : 6u;
 }
 FamilyAbi xt_abi(bool bump) noexcept {
     return bump ? FamilyAbi{8,7,10,9,8,7,10,9,8} : FamilyAbi{10,8,10,6,6,4,7,7,7};
@@ -38,6 +62,8 @@ bool xt_vertex_sites(const Word* code, const Structure& s, bool bump) noexcept {
     return colors==3 && (!bump || (scalar==1 && view==1 && normal==1));
 }
 bool xt_pixel_sites(const Word* code, const Structure& s, const XtPixel& p) noexcept {
+    const auto roles=xt_roles(p);
+    const unsigned first=roles.palette_first?roles.palette_first:p.bump?17:14;
     if (!xt_instruction_at(s,p.base_at) || !xt_instruction_at(s,p.final_rgb) || !xt_instruction_at(s,p.alpha)) return false;
     unsigned textures=0, colors=0, lights=0, palette=0, clamps=0, scalar=0, view=0, normal=0, carrier=0;
     for (const auto& i:s.instructions) {
@@ -73,12 +99,11 @@ bool xt_pixel_sites(const Word* code, const Structure& s, const XtPixel& p) noex
         }
         for (unsigned n=2;n<=i.count;++n) {
             const auto value=code[at+n];
-            if (kind(value)==constant && (index(value)==6 || index(value)==8)) {
+            if (kind(value)==constant && (index(value)==roles.light0 || index(value)==roles.light1)) {
                 const auto found=std::find_if(p.lights.begin(),p.lights.end(),[&](const XtUse& u){return u.operand==at+n && u.value==index(value);});
                 if (found==p.lights.end() || value!=src(constant,index(value)) || mask(code[at+1])!=xyz) return false;
                 ++lights;
             }
-            const unsigned first=p.bump?17:14;
             if (kind(value)==constant && index(value)>=first && index(value)<first+5) {
                 const auto found=std::find_if(p.palette.begin(),p.palette.end(),[&](const XtUse& u){return u.operand==at+n && u.value==index(value);});
                 if (found==p.palette.end() || value!=src(constant,index(value)) || mask(code[at+1])!=xyz) return false;
@@ -178,6 +203,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
     if (sun_extracted) *sun_extracted=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config) || (config.selective_exposure && !linear)) return LinearMaterialResult::InvalidConfig;
+    if (xt_fl_row(p)) return LinearMaterialResult::UnsupportedShader; // FL rows: original-shading variants only
     const auto expected=vertex?(p.bump?xt_bump_vs:xt_default_vs):p.hash;
     if (words!=(vertex?(p.bump?768u:526u):p.words) || material_motion_fingerprint(original,words)!=expected || (!linear && p.bump))
         return LinearMaterialResult::UnsupportedShader;

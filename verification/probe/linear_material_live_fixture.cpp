@@ -316,7 +316,7 @@ LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* p,
 }
 // Hull-emitter gain double (emitter plan phase 3): synthetic PS 62 is the one
 // covered hull program; the real transformer is checked by its own oracle.
-constexpr unsigned linear_emission_hull_program_count = 12;
+constexpr unsigned linear_emission_hull_program_count = 24; // production: 12 AP + 12 FL rows
 unsigned hull_gain_transforms = 0;
 float hull_gain_value = 0;
 bool hull_gain_reject = false;

@@ -54,10 +54,18 @@ def span(words, item):
 
 
 class HullLightmapGainTransformerTests(unittest.TestCase):
+    # Corpus-specific expectations; test_fl_linear_materials.py reruns this oracle over the FL rows.
+    GAINED = 100
+    EXPECTED_REGISTERS, EXPECTED_STAGES = {0: 94, 1: 6}, {2: 44, 3: 56}
+    UNTOUCHED = UNTOUCHED
+
+    @classmethod
+    def corpus(cls):
+        return Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs')), families()
+
     @classmethod
     def setUpClass(cls):
-        cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
-        cls.families = families()
+        cls.originals, cls.families = cls.corpus()
         if not all((cls.originals / f'{name}.bin').is_file() for name in cls.families):
             reason = f'local original corpus of the 137 reviewed programs unavailable under {cls.originals} (X3M_SHADER_PROGRAM_DIRECTORY)'
             if os.environ.get('X3M_REQUIRE_SHADER_CORPUS') == '1':
@@ -87,7 +95,7 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         return sorted(name for name, family in self.families.items() if name.startswith('ps_'))
 
     def gained(self):
-        return [name for name in self.covered() if name not in UNTOUCHED]
+        return [name for name in self.covered() if name not in self.UNTOUCHED]
 
     def test_coverage_100_programs_gain_and_8_without_the_term_stay(self):
         by_family = {}
@@ -100,7 +108,7 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         self.assertEqual({k: tuple(v) for k, v in by_family.items()},
                          {'hull': (66, 66), 'asteroid': (4, 0), 'palette': (20, 20), 'xt': (14, 14), 'glass': (4, 0)})
         self.assertEqual((self.driver['supported'], self.driver['applied'], self.driver['untouched']), (108, 100, 8))
-        self.assertEqual({name for name in self.covered() if not self.rows[name]['gain_applied']}, UNTOUCHED)
+        self.assertEqual({name for name in self.covered() if not self.rows[name]['gain_applied']}, self.UNTOUCHED)
         for name in self.families:
             if name.startswith('vs_'):
                 self.assertEqual(self.rows[name]['status'], 3, (name, 'vertex programs: UnsupportedShader'))
@@ -113,10 +121,10 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
         # byte for byte: 100 programs x (2 fills x 2 depth modes + 2 share), plus
         # the same rebuild of the 400 static widened variants (hull emissive
         # widening composes with either gain form).
-        self.assertEqual(self.driver['dynamic_checks'], 100 * 6 + 100 * 4)
+        self.assertEqual(self.driver['dynamic_checks'], self.GAINED * 6 + self.GAINED * 4)
 
     def test_untouched_programs_keep_the_fill_variant_byte_for_byte(self):
-        for name in sorted(UNTOUCHED):
+        for name in sorted(self.UNTOUCHED):
             for f in range(len(FILLS)):
                 for depth in (0, 1):
                     base = (self.directory / f'{name}-hlbase-{f}-{depth}.bin').read_bytes()
@@ -133,7 +141,7 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
             for f in range(len(FILLS)):
                 share = (self.directory / f'{name}-hlshare-{f}.bin').read_bytes()
                 gained = (self.directory / f'{name}-hlsharegain-{f}.bin').read_bytes()
-                if name in UNTOUCHED:
+                if name in self.UNTOUCHED:
                     self.assertEqual(gained, share, (name, f))
                     continue
                 self.assertEqual(row['share_variant_slots'][f] - row['share_slots'][f], 1, name)
@@ -223,8 +231,8 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
                     if f == 0 and depth == 0:
                         registers[rl] = registers.get(rl, 0) + 1
                         stages[stage] = stages.get(stage, 0) + 1
-        self.assertEqual(registers, {0: 94, 1: 6})
-        self.assertEqual(stages, {2: 44, 3: 56})
+        self.assertEqual(registers, self.EXPECTED_REGISTERS)
+        self.assertEqual(stages, self.EXPECTED_STAGES)
 
     def test_slot_budget_and_constant_reservation(self):
         for name in self.gained():

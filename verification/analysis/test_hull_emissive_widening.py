@@ -171,10 +171,18 @@ def program_words(path):
 
 
 class HullEmissiveWideningTransformerTests(unittest.TestCase):
+    # Corpus-specific expectations; test_fl_linear_materials.py reruns this oracle over the FL rows.
+    GAINED = 100
+    EXPECTED_FAMILIES = {'hull': 66, 'palette': 20, 'xt': 14}
+    UNTOUCHED = UNTOUCHED
+
+    @classmethod
+    def corpus(cls):
+        return Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs')), families()
+
     @classmethod
     def setUpClass(cls):
-        cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
-        cls.families = families()
+        cls.originals, cls.families = cls.corpus()
         if not all((cls.originals / f'{name}.bin').is_file() for name in cls.families):
             reason = f'local original corpus unavailable under {cls.originals} (X3M_SHADER_PROGRAM_DIRECTORY)'
             if os.environ.get('X3M_REQUIRE_SHADER_CORPUS') == '1':
@@ -201,7 +209,7 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
         cls.rows = {row['name']: row for row in cls.driver['rows']}
 
     def gained(self):
-        return sorted(name for name, family in self.families.items() if name.startswith('ps_') and name not in UNTOUCHED)
+        return sorted(name for name, family in self.families.items() if name.startswith('ps_') and name not in self.UNTOUCHED)
 
     def test_python_reference_rebuilds_every_widened_variant_byte_for_byte(self):
         registers, checks = {}, 0
@@ -220,11 +228,11 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
                 self.assertEqual(widened, expected, (name, f, 'share'))
                 registers.setdefault(g, 0); registers[g] += 1
                 checks += 1
-        self.assertEqual(checks, 100 * 6)
+        self.assertEqual(checks, self.GAINED * 6)
         # rG sits above every register: the plain variants' motion bodies end at r8/r9 (XT r9/r10),
         # the share variants at r23 (its r11-r23 reduction), never at or beyond r32.
         self.assertTrue(all(g < 32 for g in registers), registers)
-        self.assertEqual(sum(registers.values()), 600)
+        self.assertEqual(sum(registers.values()), self.GAINED * 6)
         self.assertEqual(max(registers), 24)  # rT = r25, rU = r26 in those share variants
 
     def test_free_lanes_and_constants(self):
@@ -268,11 +276,11 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
                 self.assertEqual(uses, {WIDEN_CONSTANT: 5 if widened else 0, WIDEN_LUMA_CONSTANT: 3 if widened else 0, WIDEN_GATE_CONSTANT: 4 if widened else 0}, variant)
                 lanes[seen['xxxx']] = lanes.get(seen['xxxx'], 0) + 1
                 reads[variant.split('-')[1]] = reads.get(variant.split('-')[1], 0) + 1
-        self.assertEqual(sum(reads.values()), 400)
+        self.assertEqual(sum(reads.values()), self.GAINED * 4)
         self.assertTrue(all(count >= 1 for count in lanes), lanes)  # the motion fragment reads c217.x
 
     def test_untouched_programs_and_slot_growth(self):
-        for name in sorted(UNTOUCHED):
+        for name in sorted(self.UNTOUCHED):
             self.assertEqual(self.rows[name]['widen_applied'], 0, name)
             for f in range(len(FILLS)):
                 for depth in (0, 1):
@@ -293,7 +301,7 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
             family['programs'] += 1
             family['max_widen_slots'] = max(family['max_widen_slots'], max(max(v) for v in row['widen_slots']))
             family['max_share_widen_slots'] = max(family['max_share_widen_slots'], max(row['share_widen_slots']))
-        self.assertEqual({k: v['programs'] for k, v in growth.items()}, {'hull': 66, 'palette': 20, 'xt': 14})
+        self.assertEqual({k: v['programs'] for k, v in growth.items()}, self.EXPECTED_FAMILIES)
         self.assertEqual(self.driver['max_widen_slots'], self.driver['max_variant_slots'] + WIDEN_SLOTS)
         self.assertLess(self.driver['max_widen_slots'], 512)
 

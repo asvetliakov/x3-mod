@@ -68,7 +68,7 @@ class ShaderPopulationTests(unittest.TestCase):
             'fade_route_vertex', 'cutout_pairs', 'screen_emission_pairs',
             'linear_material_vertex', 'linear_material_pixel', 'linear_material_pairs',
             'linear_material_palette', 'material_exposure_seed', 'linear_xt_pixel',
-            'linear_xt_vertex', 'linear_distance_fade_pairs', 'linear_emission_pixel',
+            'linear_xt_pixel_fl', 'material_exposure_seed_fl', 'linear_xt_vertex', 'linear_distance_fade_pairs', 'linear_emission_pixel',
             'linear_emission_pairs', 'linear_emission_sm1_pixel', 'linear_emission_sm1_pairs',
             'rigid_position_vertex', 'position_path_vertex', 'pixel_coverage_pixel',
             'material_radiance_pixel'])
@@ -83,7 +83,8 @@ class ShaderPopulationTests(unittest.TestCase):
         self.assertEqual(counts['linear_emission_sm1_pairs'], 9 * 2)
         self.assertEqual(counts['depth_prepass_vertex'], 4)  # z_only and the base z_only_0000/0001 copies
         self.assertEqual(counts['linear_material_pairs'] % 2, 0)
-        self.assertEqual(counts['linear_material_pairs'] // 2, 154)
+        self.assertEqual(counts['linear_material_pairs'] // 2, 154 + 22)  # AP pairs + the FL conventional rows (part 4b)
+        self.assertEqual((counts['linear_xt_pixel_fl'], counts['material_exposure_seed_fl']), (12, 34))
 
     def test_every_table_entry_is_known(self):
         hashes = sorted({row[2] for row in self.entries})

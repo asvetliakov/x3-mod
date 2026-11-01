@@ -123,6 +123,14 @@ struct Pixel {
     unsigned asteroid_layout = 0;
     unsigned palette_style = 0; // Boron base=1, Boron single=2, Paranid=3.
     unsigned glass_fresnel = 0; // Original COLOR1.x source operand; relocated to COLOR0.x.
+    // Register layout the AP rows share and an FL row states explicitly
+    // (linear_material_pixels_fl_inc.h; docs/reverse-engineering/fl/materials.md):
+    // the glow-alpha LRP constant, the first affine matrix row, the temporary
+    // base of the motion row (0: the family rule of temporal_temporary_base).
+    unsigned glow = 3, affine_first = 0, temporary_base = 0;
+    // Original-shading variants only (fill, light-map gain/widening, share,
+    // engine light, strength twin); the converted transform refuses the row.
+    bool original_only = false;
 };
 // clang-format off
 constexpr Pixel pixels[] = {
@@ -316,6 +324,7 @@ constexpr Pixel pixels[] = {
      {202,0,0,0},{192,199,208,216},false,0,0,0,198},
     {0x9d49f288800f898dull,258,{244,206,236},0,224,248,1,1,0,
      {234,0,0,0},{224,231,240,248},false,0,0,0,230},
+#include "linear_material_pixels_fl_inc.h"
 };
 // clang-format on
 struct Vertex {
@@ -542,6 +551,7 @@ constexpr Pair pairs[] = {
     {0xe2ad860d5fbb3e59ull,0x9d49f288800f898dull,0x07},
     {0x74fdc00d802b4027ull,0xf31c9e2701c8eee4ull,0x07},
     {0x74fdc00d802b4027ull,0x9d49f288800f898dull,0x07},
+#include "linear_material_pairs_fl_inc.h"
 };
 // clang-format on
 // Fixed family layouts, not a varying/temporary allocator. Asteroid's native
@@ -565,6 +575,7 @@ FamilyAbi family_abi(const Pixel& pixel) noexcept {
     return result;
 }
 unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
+    if (pixel.temporary_base) return pixel.temporary_base;
     if (pixel.palette_style) return pixel.bump || pixel.affine_end ? 6 : 5;
     if (pixel.asteroid_layout) return 5;
     return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
@@ -1085,7 +1096,7 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
         !exact(code, s, p.final_rgb, add, dst(color_output, 0) | pp, {src(temp, 1), src(temp, 0)}) ||
         !exact(code, s, p.final_rgb + 4, mul, dst(color_output, 0, 8) | pp, {lane(temp, 2, 3), lane(input, 0, 3)}) ||
         !exact(code, s, p.texture[lightmap] + 4, 18, dst(temp, 2, 8) | pp,
-               {lane(constant, p.affine_end ? 3 : 0, 0), lane(temp, 0, 3), lane(temp, 1, 3)}))
+               {lane(constant, p.affine_end ? p.glow : 0, 0), lane(temp, 0, 3), lane(temp, 1, 3)}))
         return false;
     if (!no_write(code, s, 1, 8, p.texture[0], p.texture[lightmap] + 4) ||
         !no_write(code, s, 0, 8, p.texture[lightmap], p.texture[lightmap] + 4) ||
@@ -1094,7 +1105,7 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
     if (p.affine_end)
         for (unsigned lane_index = 0; lane_index < 3; ++lane_index)
             if (!exact(code, s, p.affine_end - 8 + lane_index * 4, 9, dst(temp, albedo, 1u << lane_index) | pp,
-                       {src(temp, affine_source), src(constant, lane_index)}))
+                       {src(temp, affine_source), src(constant, p.affine_first + lane_index)}))
                 return false;
     unsigned outputs = 0, textures = 0, directional = 0;
     for (const auto& instruction : s.instructions) {
@@ -1617,7 +1628,8 @@ const Vertex* vertex_for(std::uint64_t hash, std::size_t words) noexcept {
 const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcept {
     if (vertex) {
         for (const auto& pixel : pixels)
-            if (linear_material_pair_reviewed(hash, pixel.hash)) return material_motion_profile(hash, pixel.hash);
+            if (!pixel.original_only && linear_material_pair_reviewed(hash, pixel.hash))
+                return material_motion_profile(hash, pixel.hash);
     } else {
         for (const auto& v : vertices)
             if (linear_material_pair_reviewed(v.hash, hash)) return material_motion_profile(v.hash, hash);
@@ -1627,6 +1639,32 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
 #include "linear_sun_share_inc.h"
 #include "material_exposure_profiles_inc.h"
 #include "linear_xt_material_inc.h"
+// FL diffuse joins (part 4b), beside the AP seeds: the strength twin of an FL
+// original reads them; the converted transforms (AP rows only) keep exposure_seed.
+constexpr ExposureSeed exposure_seeds_fl[] = {
+#include "material_exposure_profiles_fl_inc.h"
+};
+const ExposureSeed* original_exposure_seed(std::uint64_t hash) noexcept {
+    if (const auto* seed = exposure_seed(hash)) return seed;
+    for (const auto& seed : exposure_seeds_fl)
+        if (seed.hash == hash) return &seed;
+    return nullptr;
+}
+// Input bound of the original-shading variants and the strength twin: the
+// largest reviewed original pixel program (FL e57c48fc06198e20, 1911 DWORDs,
+// CTAB and preshader comments included), checked against every row below. It
+// only bounds the read before hashing; the exact row then pins the length. The
+// emitted program's size is bounded separately: the final structure() walk
+// refuses a result above the device's ps_3_0 slot budget.
+constexpr std::size_t original_pixel_max_words = 1911;
+constexpr std::size_t reviewed_pixel_max_words() noexcept {
+    std::size_t result = 0;
+    for (const auto& p : pixels) result = p.words > result ? p.words : result;
+    for (const auto& p : xt_pixels) result = p.words > result ? p.words : result;
+    for (const auto& p : xt_pixels_fl) result = p.row.words > result ? p.row.words : result;
+    return result;
+}
+static_assert(reviewed_pixel_max_words() == original_pixel_max_words, "the input bound is the largest reviewed row");
 
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
                                Words& output, bool current_depth, bool vertex, bool fade = false,
@@ -1635,13 +1673,14 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     if (sun_extracted) *sun_extracted = false;
     if (!original || words < 2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
-    // Bound the read before hashing; none of the reviewed original programs exceeds
-    // 1392 DWORDs, including opaque CTAB/preshader comments.
+    // Bound the read before hashing; none of the converted (AP) rows exceeds 1392
+    // DWORDs, including opaque CTAB/preshader comments (FL rows are original_only).
     if (words > 1392) return LinearMaterialResult::UnsupportedShader;
     const auto hash = material_motion_fingerprint(original, words);
     const auto* v = vertex ? vertex_for(hash, words) : nullptr;
     const auto* p = vertex ? nullptr : pixel_for(hash, words);
     if ((!v && vertex) || (!p && !vertex)) return LinearMaterialResult::UnsupportedShader;
+    if (p && p->original_only) return LinearMaterialResult::UnsupportedShader; // FL rows: original variants only
     if (fade && !(vertex ? fade_eligible(*v) : fade_eligible(*p))) return LinearMaterialResult::UnsupportedShader;
     const bool bump = vertex ? v->bump : p->bump;
     const auto* row = selected_row(vertex, hash);
@@ -2062,7 +2101,7 @@ LinearMaterialResult linear_material_pixel_variant_sun_share(const Word* origina
 }
 bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     const auto* p = xt_pixel(pixel);
-    return vertex == xt_default_vs && p && !p->bump;
+    return vertex == xt_default_vs && p && !p->bump && !xt_fl_row(*p); // the authored repair covers the AP rows
 }
 LinearMaterialResult linear_material_xt_default_vertex_variant(const Word* original, std::size_t words,
                                                                const LinearMaterialConfig& config, Words& output,
@@ -2336,7 +2375,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
     if (!std::isfinite(lightmap_gain) || lightmap_gain < 1.0f || lightmap_gain > 8.0f)
         return LinearMaterialResult::InvalidConfig;
     if (widen && (lightmap_gain == 1.0f || !lightmap_widen_valid(*widen))) return LinearMaterialResult::InvalidConfig;
-    if (words > 1791 || original[0] != 0xffff0300u) return LinearMaterialResult::UnsupportedShader;
+    if (words > original_pixel_max_words || original[0] != 0xffff0300u) return LinearMaterialResult::UnsupportedShader;
     const auto hash = material_motion_fingerprint(original, words);
     const XtPixel* xt = nullptr;
     if (words >= 1561) {
@@ -2351,7 +2390,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         row->pixel_output_register != 1 || !row->depth_output)
         return LinearMaterialResult::ProfileMismatch;
     const FamilyAbi abi = xt ? xt_abi(xt->bump) : family_abi(*p);
-    const unsigned temp_count = xt ? (xt->terra ? 7u : 6u) : temporal_temporary_base(*p);
+    const unsigned temp_count = xt ? xt_temporary_base(*xt) : temporal_temporary_base(*p);
     if (row->pixel_temporary_base != temp_count) return LinearMaterialResult::ProfileMismatch;
     try {
         Structure s;
@@ -2365,7 +2404,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         bool fill_site = false;
         if (xt) {
             fill_site = xt_fill_site(original, s, *xt, temp_count, sum, site) && fill_constant_free(original, s);
-            light = 6; // XT LightDir_Color0 (xt profiles: u.value==6)
+            light = xt_roles(*xt).light0; // XT LightDir_Color0 (AP c6, FL c7: the row's role)
         } else {
             const unsigned albedo = (p->asteroid_layout || p->glass_fresnel) ? 0u
                                     : p->palette_style ? (p->affine_end ? (p->bump ? 1u : 4u) : 1u)
@@ -2387,7 +2426,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                                engine_light_inputs(original, s, row->pixel_depth_input_register);
         const bool block_on = fill_on || engine_on;
         // Share plan on the original: seeds are the profile's sun-colour
-        // operands (hull rows color_source[0..1]; XT lights with value 6).
+        // operands (hull rows color_source[0..1]; XT lights reading the light0 role).
         std::vector<SunEdit> edits;
         Word final_destination = 0;
         bool share = false;
@@ -2445,8 +2484,9 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             std::array<unsigned, 2> seeds{};
             if (xt) {
                 unsigned count = 0;
+                const unsigned light0 = xt_roles(*xt).light0;
                 for (const auto& u : xt->lights)
-                    if (u.value == 6) {
+                    if (u.value == light0) {
                         if (count >= seeds.size()) return LinearMaterialResult::ProfileMismatch;
                         seeds[count++] = u.operand;
                     }
@@ -2900,12 +2940,12 @@ LinearMaterialResult linear_material_strength_twin_pixel_variant(const Word* par
     if (info) *info = {};
     if (!parent || !original || parent_words < 2 || original_words < 2)
         return refuse(StrengthTwinRefusal::Malformed, LinearMaterialResult::InvalidInput);
-    if (parent[0] != 0xffff0300u || original[0] != 0xffff0300u || original_words > 1791)
+    if (parent[0] != 0xffff0300u || original[0] != 0xffff0300u || original_words > original_pixel_max_words)
         return refuse(StrengthTwinRefusal::Unsupported, LinearMaterialResult::UnsupportedShader);
     const auto hash = material_motion_fingerprint(original, original_words);
     const unsigned stage = linear_material_strength_stage(hash, original_words);
     if (!stage) return refuse(StrengthTwinRefusal::Unsupported, LinearMaterialResult::UnsupportedShader);
-    const ExposureSeed* seed = exposure_seed(hash);
+    const ExposureSeed* seed = original_exposure_seed(hash);
     if (!seed) return refuse(StrengthTwinRefusal::NoJoin, LinearMaterialResult::ProfileMismatch);
     // The join on the original: a MAD on a boundary, temp destination, the seed's lanes, no saturate, no relative
     // addressing (exposure_seed_valid's rules; the boundary from the flow-control walk).
@@ -3100,6 +3140,10 @@ const ShaderTable* linear_material_shader_tables(std::size_t& count) noexcept {
          [](std::size_t i) noexcept -> std::uint64_t { return exposure_seeds[i].hash; }},
         {"linear_xt_pixel", sizeof xt_pixels / sizeof xt_pixels[0],
          [](std::size_t i) noexcept -> std::uint64_t { return xt_pixels[i].hash; }},
+        {"linear_xt_pixel_fl", sizeof xt_pixels_fl / sizeof xt_pixels_fl[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return xt_pixels_fl[i].row.hash; }},
+        {"material_exposure_seed_fl", sizeof exposure_seeds_fl / sizeof exposure_seeds_fl[0],
+         [](std::size_t i) noexcept -> std::uint64_t { return exposure_seeds_fl[i].hash; }},
         {"linear_xt_vertex", sizeof xt_vertex_hashes / sizeof xt_vertex_hashes[0],
          [](std::size_t i) noexcept -> std::uint64_t { return xt_vertex_hashes[i]; }},
         {"linear_distance_fade_pairs", (sizeof distance_fade_rows / sizeof distance_fade_rows[0]) * 2,

@@ -1,0 +1,3070 @@
+{
+ "schema": 1,
+ "scope": "Derived FL hull material rows of the original-shading variants (part 4b). Offsets are original DWORDs; registers from CTAB and the instruction stream. Derived numbers only.",
+ "producer": "tools/analysis/inspect_fl_linear_materials.py",
+ "tool_sha256": "ef463e296d1b5a68d67a3acebfa7d1f800f1f7fab4b156d0b1004d4323f495ac",
+ "inventory_sha256": "12ec9fee00f58469b2bd129ee576ca89186da2291af9bed3b6fb0b5754c0be74",
+ "motion_extension_sha256": "98232d5dae104d1a3bcc3e0ecadc38a3fcc765673d2420e24a5513391b16eec6",
+ "ap_base_sha256": {
+  "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
+  "src/renderer/material_exposure_profiles_inc.h": "07f597ae8839620aea6b2c6dabe5f7c445986d7d5b667020d5337d667c443c5d"
+ },
+ "counts": {
+  "programs": 34,
+  "conventional": 22,
+  "xt": 12,
+  "pairs": 22,
+  "exposure_seeds": 34,
+  "hull_emitters": 12,
+  "join_product": 30
+ },
+ "hull_emitter_rule": {
+  "stems": [
+   "standard_lighting",
+   "xt_standard_lighting"
+  ],
+  "reproduces_ap_rows": 12
+ },
+ "programs": [
+  {
+   "ps": "0d5848c8489b6630",
+   "vs": "494fe349b8bc12ec",
+   "words": 1450,
+   "basenames": [
+    "standard_lighting2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1334,
+     1326,
+     1432,
+     1419
+    ],
+    "affine_end": 1400,
+    "affine_first": 1,
+    "clamp": 1404,
+    "clamp_temporary": 4,
+    "final_rgb": 1441,
+    "alpha": 1445,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1319,
+     1324,
+     1278,
+     1311
+    ],
+    "rgb": [
+     1275,
+     1308,
+     1316,
+     1321,
+     1342,
+     1387,
+     1404,
+     1407,
+     1411,
+     1415,
+     1423,
+     1427,
+     1441
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1432,
+    "depth_texcoord_override": 7,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1387,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1165,
+    "emission": 1441,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "1455079b3f18aa88",
+   "vs": "53a0a641107ed76c",
+   "words": 1412,
+   "basenames": [
+    "argon2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1304,
+     1287,
+     1394,
+     1381
+    ],
+    "affine_end": 1369,
+    "affine_first": 1,
+    "clamp": 1358,
+    "clamp_temporary": 1,
+    "final_rgb": 1403,
+    "alpha": 1407,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1285,
+     1298,
+     1273,
+     1281
+    ],
+    "rgb": [
+     1270,
+     1278,
+     1282,
+     1295,
+     1300,
+     1312,
+     1358,
+     1373,
+     1377,
+     1385,
+     1389,
+     1403
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1394,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1312,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "16d4af171035acd1",
+   "vs": "4944d81dfe531b37",
+   "words": 1448,
+   "basenames": [
+    "argon"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1352,
+     1175,
+     1315,
+     1430,
+     1348
+    ],
+    "affine_end": 1409,
+    "affine_first": 1,
+    "clamp": 1340,
+    "clamp_temporary": 6,
+    "final_rgb": 1439,
+    "alpha": 1443,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1308,
+     1313,
+     1268,
+     1300
+    ],
+    "rgb": [
+     1265,
+     1297,
+     1305,
+     1310,
+     1323,
+     1331,
+     1340,
+     1413,
+     1417,
+     1421,
+     1425,
+     1439
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1430,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1331,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "1835f5e1ba07b1aa",
+   "vs": "53a0a641107ed76c",
+   "words": 1386,
+   "basenames": [
+    "argon"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1278,
+     1261,
+     1368,
+     1355
+    ],
+    "affine_end": 1343,
+    "affine_first": 1,
+    "clamp": 1332,
+    "clamp_temporary": 1,
+    "final_rgb": 1377,
+    "alpha": 1381,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1259,
+     1272,
+     1247,
+     1255
+    ],
+    "rgb": [
+     1244,
+     1252,
+     1256,
+     1269,
+     1274,
+     1286,
+     1332,
+     1347,
+     1351,
+     1359,
+     1363,
+     1377
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1368,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1286,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "1886829a571cf2db",
+   "vs": "53a0a641107ed76c",
+   "words": 1376,
+   "basenames": [
+    "terran"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1268,
+     1260,
+     1358,
+     1345
+    ],
+    "affine_end": 1333,
+    "affine_first": 1,
+    "clamp": 1322,
+    "clamp_temporary": 1,
+    "final_rgb": 1367,
+    "alpha": 1371,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1253,
+     1258,
+     1213,
+     1245
+    ],
+    "rgb": [
+     1210,
+     1242,
+     1250,
+     1255,
+     1276,
+     1322,
+     1337,
+     1341,
+     1349,
+     1353,
+     1367
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1358,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1276,
+    "lanes": 7,
+    "product": false,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "1b54cbfa2155b61c",
+   "vs": "4944d81dfe531b37",
+   "words": 1486,
+   "basenames": [
+    "standard_lighting"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1386,
+     1225,
+     1349,
+     1468,
+     1382
+    ],
+    "affine_end": 1443,
+    "affine_first": 1,
+    "clamp": 1374,
+    "clamp_temporary": 6,
+    "final_rgb": 1477,
+    "alpha": 1481,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1342,
+     1347,
+     1301,
+     1334
+    ],
+    "rgb": [
+     1298,
+     1331,
+     1339,
+     1344,
+     1357,
+     1365,
+     1374,
+     1447,
+     1451,
+     1455,
+     1459,
+     1463,
+     1477
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1468,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1365,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1174,
+    "emission": 1477,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "20c3851a4cac4213",
+   "vs": "4944d81dfe531b37",
+   "words": 1452,
+   "basenames": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1352,
+     1175,
+     1315,
+     1434,
+     1348
+    ],
+    "affine_end": 1409,
+    "affine_first": 1,
+    "clamp": 1340,
+    "clamp_temporary": 6,
+    "final_rgb": 1443,
+    "alpha": 1447,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1308,
+     1313,
+     1268,
+     1300
+    ],
+    "rgb": [
+     1265,
+     1297,
+     1305,
+     1310,
+     1323,
+     1331,
+     1340,
+     1413,
+     1417,
+     1421,
+     1425,
+     1429,
+     1443
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1434,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1331,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "2a7f1c93d4fd081c",
+   "vs": "4944d81dfe531b37",
+   "words": 1476,
+   "basenames": [
+    "terran2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1380,
+     1184,
+     1347,
+     1458,
+     1376
+    ],
+    "affine_end": 1437,
+    "affine_first": 1,
+    "clamp": 1368,
+    "clamp_temporary": 6,
+    "final_rgb": 1467,
+    "alpha": 1471,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1340,
+     1345,
+     1300,
+     1332
+    ],
+    "rgb": [
+     1297,
+     1329,
+     1337,
+     1342,
+     1359,
+     1368,
+     1441,
+     1445,
+     1449,
+     1453,
+     1467
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1458,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1359,
+    "lanes": 7,
+    "product": false,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "33826e49b53b88dc",
+   "vs": "53a0a641107ed76c",
+   "words": 1390,
+   "basenames": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1274,
+     1266,
+     1372,
+     1359
+    ],
+    "affine_end": 1340,
+    "affine_first": 1,
+    "clamp": 1344,
+    "clamp_temporary": 2,
+    "final_rgb": 1381,
+    "alpha": 1385,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1259,
+     1264,
+     1219,
+     1251
+    ],
+    "rgb": [
+     1216,
+     1248,
+     1256,
+     1261,
+     1282,
+     1327,
+     1344,
+     1347,
+     1351,
+     1355,
+     1363,
+     1367,
+     1381
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1372,
+    "depth_texcoord_override": 0,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1327,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "3c39d45636d95744",
+   "vs": "4944d81dfe531b37",
+   "words": 1475,
+   "basenames": [
+    "standard_lighting"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1375,
+     1225,
+     1338,
+     1457,
+     1371
+    ],
+    "affine_end": 1432,
+    "affine_first": 1,
+    "clamp": 1363,
+    "clamp_temporary": 6,
+    "final_rgb": 1466,
+    "alpha": 1470,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1331,
+     1336,
+     1290,
+     1323
+    ],
+    "rgb": [
+     1287,
+     1320,
+     1328,
+     1333,
+     1346,
+     1354,
+     1363,
+     1436,
+     1440,
+     1444,
+     1448,
+     1452,
+     1466
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1457,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1354,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1174,
+    "emission": 1466,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "3ff64d33ff2782ab",
+   "vs": "4944d81dfe531b37",
+   "words": 1432,
+   "basenames": [
+    "split"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1336,
+     1175,
+     1299,
+     1414,
+     1332
+    ],
+    "affine_end": 1393,
+    "affine_first": 1,
+    "clamp": 1324,
+    "clamp_temporary": 6,
+    "final_rgb": 1423,
+    "alpha": 1427,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1292,
+     1297,
+     1251,
+     1284
+    ],
+    "rgb": [
+     1248,
+     1281,
+     1289,
+     1294,
+     1307,
+     1315,
+     1324,
+     1397,
+     1401,
+     1405,
+     1409,
+     1423
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1414,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1315,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "5831fb1d488e089e",
+   "vs": "53a0a641107ed76c",
+   "words": 1408,
+   "basenames": [
+    "terran2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1300,
+     1292,
+     1390,
+     1377
+    ],
+    "affine_end": 1365,
+    "affine_first": 1,
+    "clamp": 1354,
+    "clamp_temporary": 1,
+    "final_rgb": 1399,
+    "alpha": 1403,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1285,
+     1290,
+     1245,
+     1277
+    ],
+    "rgb": [
+     1242,
+     1274,
+     1282,
+     1287,
+     1308,
+     1354,
+     1369,
+     1373,
+     1381,
+     1385,
+     1399
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1390,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1308,
+    "lanes": 7,
+    "product": false,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "5fb88b63dd609443",
+   "vs": "53a0a641107ed76c",
+   "words": 1416,
+   "basenames": [
+    "khaak2s",
+    "teladi2s",
+    "teladi_nodiff2s",
+    "xenon2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1300,
+     1292,
+     1398,
+     1385
+    ],
+    "affine_end": 1366,
+    "affine_first": 1,
+    "clamp": 1370,
+    "clamp_temporary": 2,
+    "final_rgb": 1407,
+    "alpha": 1411,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1285,
+     1290,
+     1245,
+     1277
+    ],
+    "rgb": [
+     1242,
+     1274,
+     1282,
+     1287,
+     1308,
+     1353,
+     1370,
+     1373,
+     1377,
+     1381,
+     1389,
+     1393,
+     1407
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1398,
+    "depth_texcoord_override": 0,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1353,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "67f738c3b080164a",
+   "vs": "4944d81dfe531b37",
+   "words": 1484,
+   "basenames": [
+    "khaak2s",
+    "teladi2s",
+    "teladi_nodiff2s",
+    "xenon2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1384,
+     1184,
+     1347,
+     1466,
+     1380
+    ],
+    "affine_end": 1441,
+    "affine_first": 1,
+    "clamp": 1372,
+    "clamp_temporary": 6,
+    "final_rgb": 1475,
+    "alpha": 1479,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1340,
+     1345,
+     1300,
+     1332
+    ],
+    "rgb": [
+     1297,
+     1329,
+     1337,
+     1342,
+     1355,
+     1363,
+     1372,
+     1445,
+     1449,
+     1453,
+     1457,
+     1461,
+     1475
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1466,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1363,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "6f745daaf928a297",
+   "vs": "37c34a7478544c14",
+   "words": 1900,
+   "basenames": [
+    "xt_standard_lighting2s"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": false,
+    "base_at": 1594,
+    "base_reg": 0,
+    "final_rgb": 1890,
+    "alpha": 1895,
+    "textures": [
+     1453,
+     1629,
+     1608,
+     1881,
+     1868,
+     1519,
+     1616
+    ],
+    "texture_registers": [
+     1,
+     4,
+     2,
+     0,
+     2,
+     0,
+     3
+    ],
+    "lights": [
+     [
+      1740,
+      9
+     ],
+     [
+      1744,
+      9
+     ],
+     [
+      1748,
+      7
+     ],
+     [
+      1753,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1786,
+      20
+     ],
+     [
+      1794,
+      19
+     ],
+     [
+      1803,
+      21
+     ],
+     [
+      1811,
+      23
+     ],
+     [
+      1816,
+      22
+     ]
+    ],
+    "clamps": [
+     1827,
+     1844
+    ],
+    "scalar": [
+     [
+      1812,
+      1
+     ],
+     [
+      1859,
+      0
+     ]
+    ],
+    "rgb": [
+     1737,
+     1741,
+     1745,
+     1750,
+     1755,
+     1763,
+     1771,
+     1783,
+     1791,
+     1800,
+     1809,
+     1814,
+     1819,
+     1823,
+     1827,
+     1830,
+     1835,
+     1839,
+     1844,
+     1847,
+     1851,
+     1856,
+     1860,
+     1864,
+     1872,
+     1890
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1881,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1771,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1381,
+    "emission": 1890,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "740346590fe7bff5",
+   "vs": "4944d81dfe531b37",
+   "words": 1518,
+   "basenames": [
+    "standard_lighting2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1418,
+     1234,
+     1381,
+     1500,
+     1414
+    ],
+    "affine_end": 1475,
+    "affine_first": 1,
+    "clamp": 1406,
+    "clamp_temporary": 6,
+    "final_rgb": 1509,
+    "alpha": 1513,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1374,
+     1379,
+     1333,
+     1366
+    ],
+    "rgb": [
+     1330,
+     1363,
+     1371,
+     1376,
+     1389,
+     1397,
+     1406,
+     1479,
+     1483,
+     1487,
+     1491,
+     1495,
+     1509
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1500,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1397,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1174,
+    "emission": 1509,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "7d11d532dedaf1d9",
+   "vs": "37c34a7478544c14",
+   "words": 1804,
+   "basenames": [
+    "xt_terraformer"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": true,
+    "base_at": 1672,
+    "base_reg": 4,
+    "final_rgb": 1795,
+    "alpha": 1799,
+    "textures": [
+     1607,
+     1457,
+     1436,
+     1781,
+     1764,
+     1773,
+     1444
+    ],
+    "texture_registers": [
+     2,
+     2,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "lights": [
+     [
+      1571,
+      9
+     ],
+     [
+      1579,
+      7
+     ],
+     [
+      1584,
+      9
+     ],
+     [
+      1592,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1682,
+      20
+     ],
+     [
+      1690,
+      19
+     ],
+     [
+      1699,
+      21
+     ],
+     [
+      1707,
+      23
+     ],
+     [
+      1712,
+      22
+     ]
+    ],
+    "clamps": [
+     1723,
+     1740
+    ],
+    "scalar": [
+     [
+      1708,
+      1
+     ],
+     [
+      1755,
+      0
+     ]
+    ],
+    "rgb": [
+     1568,
+     1576,
+     1581,
+     1585,
+     1589,
+     1594,
+     1602,
+     1679,
+     1687,
+     1696,
+     1705,
+     1710,
+     1715,
+     1719,
+     1723,
+     1726,
+     1731,
+     1735,
+     1740,
+     1743,
+     1747,
+     1752,
+     1756,
+     1760,
+     1768,
+     1785,
+     1795
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1781,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1602,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "87ccd863f19254b2",
+   "vs": "494fe349b8bc12ec",
+   "words": 1681,
+   "basenames": [
+    "xt_terraformer"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": false,
+    "terra": true,
+    "base_at": 1434,
+    "base_reg": 1,
+    "final_rgb": 1672,
+    "alpha": 1676,
+    "textures": [
+     1373,
+     1434,
+     1658,
+     1641,
+     1650
+    ],
+    "texture_registers": [
+     2,
+     0,
+     1,
+     0,
+     0
+    ],
+    "lights": [
+     [
+      1517,
+      9
+     ],
+     [
+      1525,
+      7
+     ],
+     [
+      1530,
+      9
+     ],
+     [
+      1538,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1559,
+      17
+     ],
+     [
+      1567,
+      16
+     ],
+     [
+      1576,
+      18
+     ],
+     [
+      1584,
+      20
+     ],
+     [
+      1589,
+      19
+     ]
+    ],
+    "clamps": [
+     1600,
+     1617
+    ],
+    "scalar": [
+     [
+      1585,
+      1
+     ],
+     [
+      1632,
+      0
+     ]
+    ],
+    "rgb": [
+     1514,
+     1522,
+     1527,
+     1531,
+     1535,
+     1540,
+     1544,
+     1556,
+     1564,
+     1573,
+     1582,
+     1587,
+     1592,
+     1596,
+     1600,
+     1603,
+     1608,
+     1612,
+     1617,
+     1620,
+     1624,
+     1629,
+     1633,
+     1637,
+     1645,
+     1662,
+     1672
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 16,
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1658,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1544,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "96238a8b2cee4f6e",
+   "vs": "4944d81dfe531b37",
+   "words": 1464,
+   "basenames": [
+    "split2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1368,
+     1184,
+     1331,
+     1446,
+     1364
+    ],
+    "affine_end": 1425,
+    "affine_first": 1,
+    "clamp": 1356,
+    "clamp_temporary": 6,
+    "final_rgb": 1455,
+    "alpha": 1459,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1324,
+     1329,
+     1283,
+     1316
+    ],
+    "rgb": [
+     1280,
+     1313,
+     1321,
+     1326,
+     1339,
+     1347,
+     1356,
+     1429,
+     1433,
+     1437,
+     1441,
+     1455
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1446,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1347,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "9db5eebae86ce142",
+   "vs": "37c34a7478544c14",
+   "words": 1793,
+   "basenames": [
+    "xt_terraformer"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": true,
+    "base_at": 1661,
+    "base_reg": 4,
+    "final_rgb": 1784,
+    "alpha": 1788,
+    "textures": [
+     1596,
+     1457,
+     1436,
+     1770,
+     1753,
+     1762,
+     1444
+    ],
+    "texture_registers": [
+     2,
+     2,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "lights": [
+     [
+      1560,
+      9
+     ],
+     [
+      1568,
+      7
+     ],
+     [
+      1573,
+      9
+     ],
+     [
+      1581,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1671,
+      20
+     ],
+     [
+      1679,
+      19
+     ],
+     [
+      1688,
+      21
+     ],
+     [
+      1696,
+      23
+     ],
+     [
+      1701,
+      22
+     ]
+    ],
+    "clamps": [
+     1712,
+     1729
+    ],
+    "scalar": [
+     [
+      1697,
+      1
+     ],
+     [
+      1744,
+      0
+     ]
+    ],
+    "rgb": [
+     1557,
+     1565,
+     1570,
+     1574,
+     1578,
+     1583,
+     1591,
+     1668,
+     1676,
+     1685,
+     1694,
+     1699,
+     1704,
+     1708,
+     1712,
+     1715,
+     1720,
+     1724,
+     1729,
+     1732,
+     1736,
+     1741,
+     1745,
+     1749,
+     1757,
+     1774,
+     1784
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1770,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1591,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "ac429ac9cd658e64",
+   "vs": "4944d81dfe531b37",
+   "words": 1444,
+   "basenames": [
+    "terran"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1348,
+     1175,
+     1315,
+     1426,
+     1344
+    ],
+    "affine_end": 1405,
+    "affine_first": 1,
+    "clamp": 1336,
+    "clamp_temporary": 6,
+    "final_rgb": 1435,
+    "alpha": 1439,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1308,
+     1313,
+     1268,
+     1300
+    ],
+    "rgb": [
+     1265,
+     1297,
+     1305,
+     1310,
+     1327,
+     1336,
+     1409,
+     1413,
+     1417,
+     1421,
+     1435
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1426,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1327,
+    "lanes": 7,
+    "product": false,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "b2d8f40cc7a03904",
+   "vs": "37c34a7478544c14",
+   "words": 1879,
+   "basenames": [
+    "xt_standard_lighting"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": false,
+    "base_at": 1643,
+    "base_reg": 0,
+    "final_rgb": 1869,
+    "alpha": 1874,
+    "textures": [
+     1500,
+     1461,
+     1651,
+     1860,
+     1847,
+     1568,
+     1448
+    ],
+    "texture_registers": [
+     1,
+     0,
+     2,
+     0,
+     2,
+     0,
+     3
+    ],
+    "lights": [
+     [
+      1723,
+      9
+     ],
+     [
+      1727,
+      9
+     ],
+     [
+      1731,
+      7
+     ],
+     [
+      1736,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1765,
+      20
+     ],
+     [
+      1773,
+      19
+     ],
+     [
+      1782,
+      21
+     ],
+     [
+      1790,
+      23
+     ],
+     [
+      1795,
+      22
+     ]
+    ],
+    "clamps": [
+     1806,
+     1823
+    ],
+    "scalar": [
+     [
+      1791,
+      1
+     ],
+     [
+      1838,
+      0
+     ]
+    ],
+    "rgb": [
+     1720,
+     1724,
+     1728,
+     1733,
+     1738,
+     1742,
+     1750,
+     1762,
+     1770,
+     1779,
+     1788,
+     1793,
+     1798,
+     1802,
+     1806,
+     1809,
+     1814,
+     1818,
+     1823,
+     1826,
+     1830,
+     1835,
+     1839,
+     1843,
+     1851,
+     1869
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1860,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1750,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1381,
+    "emission": 1869,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "b5af46aebb231ba2",
+   "vs": "53a0a641107ed76c",
+   "words": 1370,
+   "basenames": [
+    "split"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1262,
+     1245,
+     1352,
+     1339
+    ],
+    "affine_end": 1327,
+    "affine_first": 1,
+    "clamp": 1316,
+    "clamp_temporary": 1,
+    "final_rgb": 1361,
+    "alpha": 1365,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1243,
+     1256,
+     1231,
+     1239
+    ],
+    "rgb": [
+     1228,
+     1236,
+     1240,
+     1253,
+     1258,
+     1270,
+     1316,
+     1331,
+     1335,
+     1343,
+     1347,
+     1361
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1352,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1270,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "ba08f36b160527a5",
+   "vs": "37c34a7478544c14",
+   "words": 1868,
+   "basenames": [
+    "xt_standard_lighting"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": false,
+    "base_at": 1580,
+    "base_reg": 0,
+    "final_rgb": 1858,
+    "alpha": 1863,
+    "textures": [
+     1444,
+     1601,
+     1580,
+     1849,
+     1836,
+     1505,
+     1588
+    ],
+    "texture_registers": [
+     1,
+     4,
+     2,
+     0,
+     2,
+     0,
+     3
+    ],
+    "lights": [
+     [
+      1712,
+      9
+     ],
+     [
+      1716,
+      9
+     ],
+     [
+      1720,
+      7
+     ],
+     [
+      1725,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1754,
+      20
+     ],
+     [
+      1762,
+      19
+     ],
+     [
+      1771,
+      21
+     ],
+     [
+      1779,
+      23
+     ],
+     [
+      1784,
+      22
+     ]
+    ],
+    "clamps": [
+     1795,
+     1812
+    ],
+    "scalar": [
+     [
+      1780,
+      1
+     ],
+     [
+      1827,
+      0
+     ]
+    ],
+    "rgb": [
+     1709,
+     1713,
+     1717,
+     1722,
+     1727,
+     1731,
+     1739,
+     1751,
+     1759,
+     1768,
+     1777,
+     1782,
+     1787,
+     1791,
+     1795,
+     1798,
+     1803,
+     1807,
+     1812,
+     1815,
+     1819,
+     1824,
+     1828,
+     1832,
+     1840,
+     1858
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1849,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1739,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1381,
+    "emission": 1858,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "c17114ca9752ab62",
+   "vs": "494fe349b8bc12ec",
+   "words": 1756,
+   "basenames": [
+    "xt_standard_lighting"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": false,
+    "terra": false,
+    "base_at": 1517,
+    "base_reg": 0,
+    "final_rgb": 1746,
+    "alpha": 1751,
+    "textures": [
+     1381,
+     1517,
+     1737,
+     1724,
+     1442
+    ],
+    "texture_registers": [
+     1,
+     2,
+     0,
+     2,
+     0
+    ],
+    "lights": [
+     [
+      1600,
+      9
+     ],
+     [
+      1608,
+      7
+     ],
+     [
+      1613,
+      9
+     ],
+     [
+      1621,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1642,
+      17
+     ],
+     [
+      1650,
+      16
+     ],
+     [
+      1659,
+      18
+     ],
+     [
+      1667,
+      20
+     ],
+     [
+      1672,
+      19
+     ]
+    ],
+    "clamps": [
+     1683,
+     1700
+    ],
+    "scalar": [
+     [
+      1668,
+      1
+     ],
+     [
+      1715,
+      0
+     ]
+    ],
+    "rgb": [
+     1597,
+     1605,
+     1610,
+     1614,
+     1618,
+     1623,
+     1627,
+     1639,
+     1647,
+     1656,
+     1665,
+     1670,
+     1675,
+     1679,
+     1683,
+     1686,
+     1691,
+     1695,
+     1700,
+     1703,
+     1707,
+     1712,
+     1716,
+     1720,
+     1728,
+     1746
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 16,
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1737,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1627,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1336,
+    "emission": 1746,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "c79c3b2c6749df10",
+   "vs": "4944d81dfe531b37",
+   "words": 1480,
+   "basenames": [
+    "argon2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1384,
+     1184,
+     1347,
+     1462,
+     1380
+    ],
+    "affine_end": 1441,
+    "affine_first": 1,
+    "clamp": 1372,
+    "clamp_temporary": 6,
+    "final_rgb": 1471,
+    "alpha": 1475,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1340,
+     1345,
+     1300,
+     1332
+    ],
+    "rgb": [
+     1297,
+     1329,
+     1337,
+     1342,
+     1355,
+     1363,
+     1372,
+     1445,
+     1449,
+     1453,
+     1457,
+     1471
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1462,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1363,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "cca466f41a0de457",
+   "vs": "494fe349b8bc12ec",
+   "words": 1713,
+   "basenames": [
+    "xt_terraformer2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": false,
+    "terra": true,
+    "base_at": 1581,
+    "base_reg": 4,
+    "final_rgb": 1704,
+    "alpha": 1708,
+    "textures": [
+     1392,
+     1454,
+     1690,
+     1673,
+     1682
+    ],
+    "texture_registers": [
+     2,
+     0,
+     1,
+     0,
+     0
+    ],
+    "lights": [
+     [
+      1541,
+      9
+     ],
+     [
+      1549,
+      7
+     ],
+     [
+      1554,
+      9
+     ],
+     [
+      1562,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1591,
+      17
+     ],
+     [
+      1599,
+      16
+     ],
+     [
+      1608,
+      18
+     ],
+     [
+      1616,
+      20
+     ],
+     [
+      1621,
+      19
+     ]
+    ],
+    "clamps": [
+     1632,
+     1649
+    ],
+    "scalar": [
+     [
+      1617,
+      1
+     ],
+     [
+      1664,
+      0
+     ]
+    ],
+    "rgb": [
+     1538,
+     1546,
+     1551,
+     1555,
+     1559,
+     1564,
+     1568,
+     1588,
+     1596,
+     1605,
+     1614,
+     1619,
+     1624,
+     1628,
+     1632,
+     1635,
+     1640,
+     1644,
+     1649,
+     1652,
+     1656,
+     1661,
+     1665,
+     1669,
+     1677,
+     1694,
+     1704
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 16,
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1690,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1568,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "ced7edef48059e84",
+   "vs": "494fe349b8bc12ec",
+   "words": 1418,
+   "basenames": [
+    "standard_lighting"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1302,
+     1294,
+     1400,
+     1387
+    ],
+    "affine_end": 1368,
+    "affine_first": 1,
+    "clamp": 1372,
+    "clamp_temporary": 4,
+    "final_rgb": 1409,
+    "alpha": 1413,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1287,
+     1292,
+     1246,
+     1279
+    ],
+    "rgb": [
+     1243,
+     1276,
+     1284,
+     1289,
+     1310,
+     1355,
+     1372,
+     1375,
+     1379,
+     1383,
+     1391,
+     1395,
+     1409
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1400,
+    "depth_texcoord_override": 7,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1355,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1165,
+    "emission": 1409,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "db375f72fe3cdf5e",
+   "vs": "53a0a641107ed76c",
+   "words": 1396,
+   "basenames": [
+    "split2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": false,
+    "textures": [
+     1288,
+     1271,
+     1378,
+     1365
+    ],
+    "affine_end": 1353,
+    "affine_first": 1,
+    "clamp": 1342,
+    "clamp_temporary": 1,
+    "final_rgb": 1387,
+    "alpha": 1391,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1269,
+     1282,
+     1257,
+     1265
+    ],
+    "rgb": [
+     1254,
+     1262,
+     1266,
+     1279,
+     1284,
+     1296,
+     1342,
+     1357,
+     1361,
+     1369,
+     1373,
+     1387
+    ],
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1378,
+    "depth_texcoord_override": 0,
+    "temporary_base": 5
+   },
+   "join": {
+    "at": 1296,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "df146f0ed69e1acf",
+   "vs": "37c34a7478544c14",
+   "words": 1825,
+   "basenames": [
+    "xt_terraformer2s"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": true,
+    "base_at": 1693,
+    "base_reg": 4,
+    "final_rgb": 1816,
+    "alpha": 1820,
+    "textures": [
+     1619,
+     1485,
+     1464,
+     1802,
+     1785,
+     1794,
+     1472
+    ],
+    "texture_registers": [
+     2,
+     2,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "lights": [
+     [
+      1592,
+      9
+     ],
+     [
+      1600,
+      7
+     ],
+     [
+      1605,
+      9
+     ],
+     [
+      1613,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1703,
+      20
+     ],
+     [
+      1711,
+      19
+     ],
+     [
+      1720,
+      21
+     ],
+     [
+      1728,
+      23
+     ],
+     [
+      1733,
+      22
+     ]
+    ],
+    "clamps": [
+     1744,
+     1761
+    ],
+    "scalar": [
+     [
+      1729,
+      1
+     ],
+     [
+      1776,
+      0
+     ]
+    ],
+    "rgb": [
+     1589,
+     1597,
+     1602,
+     1606,
+     1610,
+     1615,
+     1627,
+     1700,
+     1708,
+     1717,
+     1726,
+     1731,
+     1736,
+     1740,
+     1744,
+     1747,
+     1752,
+     1756,
+     1761,
+     1764,
+     1768,
+     1773,
+     1777,
+     1781,
+     1789,
+     1806,
+     1816
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1802,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1627,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "e326b2b1363c9886",
+   "vs": "4944d81dfe531b37",
+   "words": 1507,
+   "basenames": [
+    "standard_lighting2s"
+   ],
+   "techniques": [
+    "BUMPMAP_LOW"
+   ],
+   "row": {
+    "family": "conventional",
+    "bump": true,
+    "textures": [
+     1407,
+     1234,
+     1370,
+     1489,
+     1403
+    ],
+    "affine_end": 1464,
+    "affine_first": 1,
+    "clamp": 1395,
+    "clamp_temporary": 6,
+    "final_rgb": 1498,
+    "alpha": 1502,
+    "light0": 6,
+    "light1": 8,
+    "glow": 4,
+    "color_source": [
+     1363,
+     1368,
+     1322,
+     1355
+    ],
+    "rgb": [
+     1319,
+     1352,
+     1360,
+     1365,
+     1378,
+     1386,
+     1395,
+     1468,
+     1472,
+     1476,
+     1480,
+     1484,
+     1498
+    ],
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1489,
+    "depth_texcoord_override": 0,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1386,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1174,
+    "emission": 1498,
+    "modulated": false
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "e57c48fc06198e20",
+   "vs": "37c34a7478544c14",
+   "words": 1911,
+   "basenames": [
+    "xt_standard_lighting2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": false,
+    "base_at": 1594,
+    "base_reg": 0,
+    "final_rgb": 1901,
+    "alpha": 1906,
+    "textures": [
+     1453,
+     1629,
+     1608,
+     1892,
+     1879,
+     1519,
+     1616
+    ],
+    "texture_registers": [
+     1,
+     4,
+     2,
+     0,
+     2,
+     0,
+     3
+    ],
+    "lights": [
+     [
+      1751,
+      9
+     ],
+     [
+      1755,
+      9
+     ],
+     [
+      1759,
+      7
+     ],
+     [
+      1764,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1797,
+      20
+     ],
+     [
+      1805,
+      19
+     ],
+     [
+      1814,
+      21
+     ],
+     [
+      1822,
+      23
+     ],
+     [
+      1827,
+      22
+     ]
+    ],
+    "clamps": [
+     1838,
+     1855
+    ],
+    "scalar": [
+     [
+      1823,
+      1
+     ],
+     [
+      1870,
+      0
+     ]
+    ],
+    "rgb": [
+     1748,
+     1752,
+     1756,
+     1761,
+     1766,
+     1774,
+     1782,
+     1794,
+     1802,
+     1811,
+     1820,
+     1825,
+     1830,
+     1834,
+     1838,
+     1841,
+     1846,
+     1850,
+     1855,
+     1858,
+     1862,
+     1867,
+     1871,
+     1875,
+     1883,
+     1901
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1892,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1782,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1381,
+    "emission": 1901,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "f06b626708db3c7e",
+   "vs": "494fe349b8bc12ec",
+   "words": 1788,
+   "basenames": [
+    "xt_standard_lighting2s"
+   ],
+   "techniques": [
+    "DEFAULT"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": false,
+    "terra": false,
+    "base_at": 1531,
+    "base_reg": 0,
+    "final_rgb": 1778,
+    "alpha": 1783,
+    "textures": [
+     1390,
+     1545,
+     1769,
+     1756,
+     1456
+    ],
+    "texture_registers": [
+     1,
+     2,
+     0,
+     2,
+     0
+    ],
+    "lights": [
+     [
+      1632,
+      9
+     ],
+     [
+      1640,
+      7
+     ],
+     [
+      1645,
+      9
+     ],
+     [
+      1653,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1674,
+      17
+     ],
+     [
+      1682,
+      16
+     ],
+     [
+      1691,
+      18
+     ],
+     [
+      1699,
+      20
+     ],
+     [
+      1704,
+      19
+     ]
+    ],
+    "clamps": [
+     1715,
+     1732
+    ],
+    "scalar": [
+     [
+      1700,
+      1
+     ],
+     [
+      1747,
+      0
+     ]
+    ],
+    "rgb": [
+     1629,
+     1637,
+     1642,
+     1646,
+     1650,
+     1655,
+     1659,
+     1671,
+     1679,
+     1688,
+     1697,
+     1702,
+     1707,
+     1711,
+     1715,
+     1718,
+     1723,
+     1727,
+     1732,
+     1735,
+     1739,
+     1744,
+     1748,
+     1752,
+     1760,
+     1778
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 16,
+    "lightmap_stage": 2,
+    "lightmap_fetch": 1769,
+    "temporary_base": 6
+   },
+   "join": {
+    "at": 1659,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": {
+    "definition": 1336,
+    "emission": 1778,
+    "modulated": true
+   },
+   "lightmap_flow_depth": 0
+  },
+  {
+   "ps": "f083a2be99470f83",
+   "vs": "37c34a7478544c14",
+   "words": 1836,
+   "basenames": [
+    "xt_terraformer2s"
+   ],
+   "techniques": [
+    "BUMPMAP"
+   ],
+   "row": {
+    "family": "xt",
+    "bump": true,
+    "terra": true,
+    "base_at": 1704,
+    "base_reg": 4,
+    "final_rgb": 1827,
+    "alpha": 1831,
+    "textures": [
+     1630,
+     1485,
+     1464,
+     1813,
+     1796,
+     1805,
+     1472
+    ],
+    "texture_registers": [
+     2,
+     2,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "lights": [
+     [
+      1603,
+      9
+     ],
+     [
+      1611,
+      7
+     ],
+     [
+      1616,
+      9
+     ],
+     [
+      1624,
+      7
+     ]
+    ],
+    "palette": [
+     [
+      1714,
+      20
+     ],
+     [
+      1722,
+      19
+     ],
+     [
+      1731,
+      21
+     ],
+     [
+      1739,
+      23
+     ],
+     [
+      1744,
+      22
+     ]
+    ],
+    "clamps": [
+     1755,
+     1772
+    ],
+    "scalar": [
+     [
+      1740,
+      1
+     ],
+     [
+      1787,
+      0
+     ]
+    ],
+    "rgb": [
+     1600,
+     1608,
+     1613,
+     1617,
+     1621,
+     1626,
+     1638,
+     1711,
+     1719,
+     1728,
+     1737,
+     1742,
+     1747,
+     1751,
+     1755,
+     1758,
+     1763,
+     1767,
+     1772,
+     1775,
+     1779,
+     1784,
+     1788,
+     1792,
+     1800,
+     1817,
+     1827
+    ],
+    "light0": 7,
+    "light1": 9,
+    "palette_first": 19,
+    "lightmap_stage": 3,
+    "lightmap_fetch": 1813,
+    "temporary_base": 7
+   },
+   "join": {
+    "at": 1638,
+    "lanes": 7,
+    "product": true,
+    "depth": 0
+   },
+   "hull_emitter": null,
+   "lightmap_flow_depth": 0
+  }
+ ]
+}

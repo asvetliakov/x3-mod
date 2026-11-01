@@ -301,3 +301,118 @@ distant sun-lit wheat farms still shimmer. **Accepted.** The shimmer is no longe
 a missing-motion-row symptom; candidates are specular on the FL hull programs
 without the sun-share/LOD-strength exposure twins (4b) or plain specular aliasing;
 F8 captures of a shimmering farm are requested for the 4b build.
+
+## FL shader coverage 4b — hull material rows (host evidence, 2026-11-01, not installed)
+
+Offline only: no game launch, no Wine. The base is `531d0f70`. Design and what stays
+off: [FL shader tables](../architecture/farnhams-legacy-shaders.md) "Material rows".
+Results and their producers are in `verification/results/fl-shader-coverage/`.
+
+- **Rows.** `tools/analysis/inspect_fl_linear_materials.py` runs as the last step of
+  `regenerate.sh`, takes 0.2 s and writes `linear-materials-fl.json`. Each value comes
+  from the program's instruction stream and CTAB register names: texture sites by
+  sampler, the COLOR0 clamp, `oC0`, the glow LRP, three consecutive `dp4` affine rows,
+  light/palette uses by CTAB name and RGB sites by branch-aware taint. The diffuse join
+  is the MAD with both light colours on both sides and the specular sample on one. The
+  temporary base and depth texcoord come from the 4a motion row. Output: 22 `Pixel`
+  rows, 22 pairs, 12 XT rows with FL roles, 34 joins (30 product, the 4 Terran
+  addend) and 12 HDR hull rows. The hull rule (an effect basename
+  `standard_lighting`/`xt_standard_lighting`, optionally `2s`) reproduces the 12 AP rows.
+  The generator refuses any FL hash already in an AP table (tested) and writes only
+  `*_fl_inc.h`.
+- **Independent cross-checks.** `crosscheck_codex.py` → `codex-crosscheck.json`
+  compares field by field with the rows of the archived fl-codex commit `636258da`
+  (a separate DAG analyzer): 22/12/34/12 rows, all equal, same hull set. The joins and
+  light-map sites also equal the J/L columns of `fl/materials.md`.
+  `inspect_xt_materials.py --fl-report` (new FL mode with CTAB roles; AP output
+  byte-identical) → `xt-materials-fl.json`: 12 XT rows, 318 RGB sites, 0 mismatches.
+- **Transformer generalisations** (data, AP defaults unchanged): `Pixel.glow` (c4),
+  `affine_first` (c1) in `pixel_sites`; `Pixel.temporary_base` before the family rule;
+  XT roles `light0/light1/palette_first/temporary_base` in `xt_pixel_sites`, the fill
+  light and the share seeds. `original_only` makes the converted `transform`/
+  `xt_transform` and the XT-default repair refuse FL rows. The input bound becomes
+  `original_pixel_max_words = 1911`, `static_assert`-ed equal to the largest row. The
+  output bound stays the final structure walk against the device slot budget.
+  `linear_emission_hull_program_count` goes 12 → 24.
+- **Proof.** `test_fl_linear_materials` (20 tests, 32 s) covers report and wiring,
+  byte-identical regeneration and AP-collision refusal. It reruns the AP light-map
+  gain and widening oracles over the FL rows, subclassed with FL counts; the widening
+  bytes are rebuilt in Python, 204 checks. It runs the fill (34/34, 3,153 checks),
+  share (34/34, 3,558 checks; the reported light is the row's c6/c7), strength (510
+  twins, none refused), engine-light (272 twins) and HDR hull-gain (12 programs, 48
+  variants, 1,684 checks) drivers. The gain/widen driver: 34/34, 9,493 checks, at
+  most 274/311 slots. `validate_variants.py`: 1,256 FL variants and 38 originals S_OK
+  with 0 messages. They are 110 from 4a plus 7 forms × with/without engine light, a
+  strength twin of each (952), static gain (68), depth-off (102) and HDR hull gain
+  (24). The `c216, c217` negative control is refused `80004005`. The largest variant
+  is 5,000 DWORDs and 883 slots (`validator.json` `largest_variant_words/_slots`,
+  `ps3_program_slots` over every saved variant).
+- **AP unchanged.** `git diff` is empty on every generated AP table include (the changed
+  `linear_xt_material_inc.h` is transformer code). `ap_identity.py`
+  builds a digest probe of every touched public API against `531d0f70` and the tree:
+  751/751 AP programs and 180 AP pairs identical. On the FL corpus exactly the 34
+  FL-only programs change. The AP gain/widening oracles pass (17 tests) after the
+  expectation refactor. The host suite ran 313 modules and 3,317 tests in 120 s. Only
+  the known `test_engine_effects`/`test_engine_ribbons` source-binding records fail;
+  none of their sources changed. `test_shader_population` now expects 176 pairs and
+  the two FL tables. AP and FL release builds: 0 warnings. `lookup_bench.py` →
+  `lookup-bench.json` (x86-64 host, best of 5): the pair-contract plus hull-program
+  lookup at the shader setter goes 43.7 → 62.7 ns for an unknown pair and 6.0 → 11.0 ns
+  for an AP pair. `summarize_hull_emitters.py` reads the hull program list from
+  `linear_emission.cpp` and its FL include, so F8 tables keep `program=12–23`.
+- **Not applicable.** Pixel coverage (capture reader only; open issue), radiance (no
+  production consumer), cutout (converted path only).
+- **Expected in the next FL flight once installed** (launcher defaults: fill 0.01, gain
+  4 with far fade, widening 4,4, lane on). The 34 FL programs log `original_fill_variant
+  … transform=0 … fill_applied=1`, `hull_lightmap_variant … transform=0
+  create=00000000 … gain_applied=1` and `hull_lightmap_widen_variant … transform=0
+  create=00000000 … stage=2|3 widen_applied=1`. They also log
+  `sun_shadow_original_lightmap[_widen]_variant … share_applied=1` and
+  `engine_light_variant … created=7f`. Before this change none of these rows
+  existed for FL programs. Visible: lit windows and hull lights on FL ships and
+  stations at the AP brightness, and widened thin emissive strips at distance. The
+  HDR hull gain (`hull_emission_variant … program=12–23`) appears only with an
+  emitter gain above 1. Result: pending.
+
+Per-program acceptance, from `linear-materials-fl.json`: every program is accepted in
+every applicable family (row, pair or XT pair, join, all original-shading forms and
+twins, plus HDR hull gain where "yes"). Row: D/B/L = DEFAULT/BUMPMAP/BUMPMAP_LOW.
+r-base: temporary base. LM: light-map stage @ fetch DWORD. Join: diffuse-join DWORD
+and form.
+
+| FL PS | Row | Words | r-base | LM | Join | HDR hull |
+| --- | --- | ---: | ---: | --- | --- | --- |
+| `0d5848c8489b6630` | Pixel D | 1450 | 6 | s2 @1432 | 1387 prod | yes |
+| `1455079b3f18aa88` | Pixel D | 1412 | 5 | s2 @1394 | 1312 prod | n/a |
+| `16d4af171035acd1` | Pixel B | 1448 | 7 | s3 @1430 | 1331 prod | n/a |
+| `1835f5e1ba07b1aa` | Pixel D | 1386 | 5 | s2 @1368 | 1286 prod | n/a |
+| `1886829a571cf2db` | Pixel D | 1376 | 5 | s2 @1358 | 1276 add | n/a |
+| `1b54cbfa2155b61c` | Pixel B | 1486 | 7 | s3 @1468 | 1365 prod | yes |
+| `20c3851a4cac4213` | Pixel B | 1452 | 7 | s3 @1434 | 1331 prod | n/a |
+| `2a7f1c93d4fd081c` | Pixel B | 1476 | 7 | s3 @1458 | 1359 add | n/a |
+| `33826e49b53b88dc` | Pixel D | 1390 | 6 | s2 @1372 | 1327 prod | n/a |
+| `3c39d45636d95744` | Pixel L | 1475 | 7 | s3 @1457 | 1354 prod | yes |
+| `3ff64d33ff2782ab` | Pixel B | 1432 | 7 | s3 @1414 | 1315 prod | n/a |
+| `5831fb1d488e089e` | Pixel D | 1408 | 5 | s2 @1390 | 1308 add | n/a |
+| `5fb88b63dd609443` | Pixel D | 1416 | 6 | s2 @1398 | 1353 prod | n/a |
+| `67f738c3b080164a` | Pixel B | 1484 | 7 | s3 @1466 | 1363 prod | n/a |
+| `6f745daaf928a297` | XT L | 1900 | 6 | s3 @1881 | 1771 prod | yes |
+| `740346590fe7bff5` | Pixel B | 1518 | 7 | s3 @1500 | 1397 prod | yes |
+| `7d11d532dedaf1d9` | XT terra B | 1804 | 7 | s3 @1781 | 1602 prod | n/a |
+| `87ccd863f19254b2` | XT terra D | 1681 | 6 | s2 @1658 | 1544 prod | n/a |
+| `96238a8b2cee4f6e` | Pixel B | 1464 | 7 | s3 @1446 | 1347 prod | n/a |
+| `9db5eebae86ce142` | XT terra L | 1793 | 7 | s3 @1770 | 1591 prod | n/a |
+| `ac429ac9cd658e64` | Pixel B | 1444 | 7 | s3 @1426 | 1327 add | n/a |
+| `b2d8f40cc7a03904` | XT B | 1879 | 6 | s3 @1860 | 1750 prod | yes |
+| `b5af46aebb231ba2` | Pixel D | 1370 | 5 | s2 @1352 | 1270 prod | n/a |
+| `ba08f36b160527a5` | XT L | 1868 | 6 | s3 @1849 | 1739 prod | yes |
+| `c17114ca9752ab62` | XT D | 1756 | 6 | s2 @1737 | 1627 prod | yes |
+| `c79c3b2c6749df10` | Pixel B | 1480 | 7 | s3 @1462 | 1363 prod | n/a |
+| `cca466f41a0de457` | XT terra D | 1713 | 7 | s2 @1690 | 1568 prod | n/a |
+| `ced7edef48059e84` | Pixel D | 1418 | 6 | s2 @1400 | 1355 prod | yes |
+| `db375f72fe3cdf5e` | Pixel D | 1396 | 5 | s2 @1378 | 1296 prod | n/a |
+| `df146f0ed69e1acf` | XT terra L | 1825 | 7 | s3 @1802 | 1627 prod | n/a |
+| `e326b2b1363c9886` | Pixel L | 1507 | 7 | s3 @1489 | 1386 prod | yes |
+| `e57c48fc06198e20` | XT B | 1911 | 6 | s3 @1892 | 1782 prod | yes |
+| `f06b626708db3c7e` | XT D | 1788 | 6 | s2 @1769 | 1659 prod | yes |
+| `f083a2be99470f83` | XT terra B | 1836 | 7 | s3 @1813 | 1638 prod | n/a |

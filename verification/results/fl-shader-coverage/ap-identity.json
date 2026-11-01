@@ -1,0 +1,14 @@
+{
+ "producer": "verification/results/fl-shader-coverage/ap_identity.py",
+ "probe": "ap_identity.cpp: digests of every original-shading form (7 kinds x engine x dynamic x depth) and its strength twin, the converted pixel/vertex/XT-default variants (fill 0 and 0.05), the stage lookups, the HDR hull gain (clamps 0, 0.5, 1) and the pair contracts of the AP motion result",
+ "base_commit": "531d0f70",
+ "ap_corpus_programs": 751,
+ "ap_pairs": 180,
+ "ap_pairs_identical": true,
+ "ap_programs_identical": 751,
+ "ap_programs_changed": [],
+ "fl_corpus_programs": 785,
+ "fl_programs_changed": 34,
+ "fl_changed_are_the_34_fl_only_programs": true,
+ "ap_run_seconds": 1.3
+}

@@ -6066,7 +6066,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         route.submit)
         prepare_source_gain(call, route);
     // Hull-emitter gain: one bool test when the option is off or the bound PS
-    // is not one of the twelve; its own flag (a fixture seam toggles it).
+    // is not one of the 24 (12 AP, 12 FL); its own flag (a fixture seam toggles it).
     // A routed or composed draw takes the same blend verdict inside.
     if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit)
         prepare_hull_gain(call, route);
@@ -8017,7 +8017,7 @@ void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     }
 }
 // Hull-emitter gain admission (emitter plan phase 3). The variant scales the
-// whole colour output of one of the twelve hull programs, which is exactly a
+// whole colour output of one of the 24 hull programs, which is exactly a
 // brightness change of what the draw adds only under ADD ONE/ONE into the
 // FP16 scene target; the law is renderer::linear_emission_hull_source_gain_blend
 // (no screen substitution in this population: an opaque or screen draw of the
@@ -8160,7 +8160,7 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
     const unsigned program = renderer::linear_emission_hull_program_index(shadow_.ps_hash);
     const std::uint32_t bit = program < renderer::linear_emission_hull_program_count ? 1u << program : 0u;
     hull_gain_counts_.programs |= bit;
-    // First admission of each program per device epoch (at most twelve lines).
+    // First admission of each program per device epoch (at most 24 lines).
     if (bit && !(hull_gain_program_logged_ & bit)) {
         hull_gain_program_logged_ |= bit;
         log("hull_emission_program device=%llu frame=%llu vs=%016llx ps=%016llx program=%u gain=%g", id_, frame_,
@@ -10538,7 +10538,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (hull_emission_gain_requested_) {
         // Same shape for the hull emitters: one line per frame that saw a
         // covered program reach prepare_hull_gain; programs = bit per admitted
-        // program (twelve); refused_other = routed + unknown + state + bind;
+        // program (24 bits: 12 AP, 12 FL); refused_other = routed + unknown + state + bind;
         // opaque and alpha are the blend-off and source-over parts of
         // refused_blend; toggled is the light-map flag.
         const auto& g = hull_gain_counts_;

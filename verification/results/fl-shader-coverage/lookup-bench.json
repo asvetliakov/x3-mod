@@ -1,0 +1,18 @@
+{
+ "producer": "verification/results/fl-shader-coverage/lookup_bench.py",
+ "base_commit": "531d0f70",
+ "host": "x86_64",
+ "unit": "ns per pair-contract + hull-program lookup, best of 5 x 2e6",
+ "base": {
+  "unknown": 43.7,
+  "fl_conventional_last": 36.7,
+  "fl_xt": 45.2,
+  "ap_pair": 6.0
+ },
+ "tree": {
+  "unknown": 62.7,
+  "fl_conventional_last": 41.8,
+  "fl_xt": 9.8,
+  "ap_pair": 11.0
+ }
+}

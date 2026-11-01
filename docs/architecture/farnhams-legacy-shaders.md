@@ -33,18 +33,35 @@ and 12 C, all on four AP vertex programs. None needed a size or class change; ev
 row writes depth. Both editions compile 205 rows; in AP the 34 are inert (AP never
 creates their pixel programs).
 
-What the rows enable under FL: these hull pairs get past gate 3 (the exact pair
-check). They get the same-draw motion variant (oC1), the current-depth output
-(RT2) and the sun-lane writer sibling. They then take the remaining draw gates like
-any AP pair. What stays off: the linear-material variants built on the motion
-variant (original fill, hull light-map gain and widening, sun share). They return
-`UnsupportedShader` for every FL pixel program because no linear row exists. The
-HDR additive hull gain, exposure/strength twins and distance fade also stay off.
+The rows let these hull pairs past gate 3 (exact pair) to the same-draw motion
+variant (oC1), the current-depth output (RT2) and the sun-lane writer sibling.
 
-## Part 4b
+## Material rows (part 4b)
 
-Read the register layout from each program's constant table (FL: glow c4, hue
-c1–c3, XT c7/c9, c12) in `linear_material.cpp` and the XT profiles. Add the gain/XT,
-HDR hull gain (`linear_emission.cpp`) and exposure/strength rows. Raise the 1,392
-and 1,791 input guards to 1,911 with proof, then run the native validator on every
-variant. The motion variants need none of this; the largest is 2,065 DWORDs.
+`inspect_fl_linear_materials.py` derives five FL-only includes from the program
+bytes and constant tables. Each sits after the AP rows of its table; the AP tables
+and includes are untouched, and an FL hash already in an AP table is refused:
+`linear_material_pixels_fl_inc.h` (22 conventional `Pixel` rows), `_pairs_fl_inc.h`
+(their 22 pairs), `linear_xt_profiles_fl_inc.h` (12 XT rows), `material_exposure_
+profiles_fl_inc.h` (34 diffuse joins) and `linear_emission_hull_fl_inc.h` (12 HDR
+hull rows). The FL register layout is row data, not code: `Pixel` gains `glow`
+(c4), `affine_first` (c1), `temporary_base` (5/6/7, the 4a motion row's) and
+`original_only`; FL XT rows carry `light0/light1` (c7/c9), `palette_first` (c16/c19)
+and their temporary base (6; 7 for five of the six terraformer rows). AP rows
+keep the old defaults. The input guard of the original-shading variants and the
+strength twin is 1,911 DWORDs, the largest reviewed original, statically checked
+against every row. The emitted program is bounded by the final structure walk
+against the device slot budget. The largest FL variant is 5,000 DWORDs and 883 slots.
+
+Switched on for the 34 FL programs under `fl`: original fill, hull light-map gain
+(static and far-fade dynamic), emissive widening, sun-share producer and its gained
+and widened forms, engine-light twins and LOD-strength twins. The 12
+`standard_lighting`/`XT_standard_lighting` FL programs also get the HDR additive hull
+gain; the same effect-source rule reproduces the 12 AP rows. The hull program mask
+grows from 12 to 24 bits. Proof is in the ledger entry "FL shader coverage 4b".
+
+Still off or AP-only: the converted linear-material path (`original_only`; launcher
+option retired), the station distance fade, the two runtime-qualified cutout pairs
+(they apply only with converted materials) and FL pixel-coverage rows for the capture
+reader (they need an FL sweep `features` inventory and a 1,911-DWORD bound).
+`material_radiance` has no production consumer.

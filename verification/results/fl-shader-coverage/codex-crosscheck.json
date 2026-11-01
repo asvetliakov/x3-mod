@@ -1,0 +1,18 @@
+{
+ "producer": "verification/results/fl-shader-coverage/crosscheck_codex.py",
+ "commit": "636258da",
+ "rows_compared": {
+  "pixel": 22,
+  "xt": 12,
+  "seed": 34,
+  "hull": 12
+ },
+ "differing": {
+  "pixel": [],
+  "xt": [],
+  "seed": [],
+  "hull": []
+ },
+ "hull_program_sets_equal": true,
+ "all_equal": true
+}
