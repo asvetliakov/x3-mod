@@ -2276,6 +2276,12 @@ private:
     // option); thin_vote_cache_ (allocated once at configuration of an enabled device) maps a subset to its histogram;
     // the frame's queued reads hold the VB and IB wrapper references until the scene end (read) or the release.
     bool thin_vote_requested_ = false, thin_vote_upload_ = false;
+    // X3M_TAA_THIN_ALPHA_FAR (builtin on; read at attach): an alpha-tested routed row whose origin lies beyond the far
+    // gate's F0 votes thin = 1 (thin_vote::alpha_far_votes), so the camera-gate resolve holds it like a thin row.
+    // thin_alpha_far_depth_ is this frame's view depth for it, set at the scene camera read only with the setting, the
+    // vote's upload, the camera-gate resolve, the thin region and a far weight on; 0 (every other frame) is the rule off.
+    bool thin_alpha_far_ = true;
+    float thin_alpha_far_depth_ = 0.f;
     // X3M_FADE_RT2_OWNER (configure_fade_rt2_owner): the resolved option; with it or the thin vote every routed draw
     // uploads c216-c218 (upload_c218()).
     bool fade_rt2_owner_requested_ = false, fade_rt2_owner_ = false;
@@ -2298,6 +2304,7 @@ private:
         std::uint32_t draws = 0, opaque = 0, known = 0, voted = 0, unreadable = 0, missed = 0, queued = 0, dropped = 0,
                       no_scale = 0;
         std::uint32_t already_queued = 0;
+        std::uint32_t alpha_far = 0; // alpha-tested rows that voted through X3M_TAA_THIN_ALPHA_FAR (not in draws' opaque)
         std::uint64_t ticks = 0; // thin_vote_alpha's own time (telemetry draw metrics only)
         // One sampled lookup per frame while telemetry is on (with or without the draw metrics): the opaque draw number
         // sample_at (rotating over the previous frame's opaque count), its lookup ticks and the empty QPC pair before

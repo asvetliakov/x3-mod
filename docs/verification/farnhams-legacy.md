@@ -517,3 +517,22 @@ motion), so the residual at normal-flight motion is not measured; the two LOD-3 
 (ps `1835f5e1…`, no alpha test) are unheld on 30–37 % of pixels with the highest residual
 (3.0–3.6) and the alpha-tested rule does not cover them; pixel-to-draw assignment is by
 node box, not draw id.
+
+## TAA far alpha-tested thin hold, host evidence (2026-11-01, not installed)
+
+Shared TAA stage, both editions. An alpha-tested routed draw (not the fade or overlay arm) writes RT2 `.a = 0`
+(thin = 1) through the existing `c218.x` thin-vote upload when its origin's view depth reaches the far gate's F0
+depth (`F0 * m00 * W / 2`, the depth where `farw` leaves 0), so the camera-gate resolve gives its pixels the 0.97 /
+7x7 thin-region hold where the camera gate is open; the far depth is set once per frame at the scene camera read and
+only with the vote, the camera-gate resolve, the thin region and a far weight on. Setting `X3M_TAA_THIN_ALPHA_FAR` /
+`taa_thin_alpha_far` (Bool, builtin 1, developer key; 0 switches it off); `thin_vote_frame alpha_far=` counts the
+rows that voted (design and limits:
+[taa-thin-geometry-alternatives.md](../architecture/taa-thin-geometry-alternatives.md) section 3.2, "Alpha-tested far
+rows"). Host evidence (measured): `test_taa_thin_vote` 18 OK (two new cases: the per-draw predicate at D 130000 /
+76800 votes, 5000 / behind / NaN / setting 0 do not, an opaque far panel keeps its histogram verdict; the draw site),
+`tools/config/generate.py --check` clean through `test_config_schema`, `build-fl` and `build-ap` 0 warnings;
+`check_no_x87.py` reports the same 180 functions as `main` on AP (no new x87 on the draw path). **Kill criterion:** a
+ghosting trail behind a moving alpha-tested ship, to be checked in both editions. Open: the LOD-3 farms (ps
+`1835f5e1…`, no alpha test, highest residual 3.0–3.6) are not covered; the test is per draw origin, so a large
+alpha-tested draw with a far origin also votes its near pixels; the residual at normal-flight motion is unmeasured;
+the Wine motion-output fixture was not rerun.

@@ -513,6 +513,8 @@ SETTINGS = [
         launcher='--taa-far-clip'),
     dev('taa_thin_vote', 'enum', 'graphics', 'Draw-time triangle-height vote flagging thin geometry into the thin region.', 'on',
         choices=('on', 'off'), launcher='--taa-thin-vote'),
+    dev('taa_thin_alpha_far', 'bool', 'graphics', 'Distant alpha-tested draws (farm fields, foliage cards) take the thin region\'s '
+        'hold through the thin vote. 1 = on, 0 = off.', builtin='1', requires=('taa_thin_vote',), since='2026-11-01'),
     dev('fade_rt2_owner', 'enum', 'graphics', 'Fade-band draws write their depth into RT2.', 'on', choices=('on', 'off'),
         launcher='--fade-rt2-owner'),
     dev('taa_unmatched_static', 'string', 'graphics', 'A routed draw with a new motion key reprojects as static for one frame: off, '

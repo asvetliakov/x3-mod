@@ -271,6 +271,29 @@ departures from the text above, each forced by the code or the review:
   depth), measured in the fixture at 0.07-0.13 of 1.38-1.53 ms at 5120x1440 (E = 0; the emissive vote still runs under `vote` unless --taa-thin-region-emissive 0)
   ([ledger](../verification/temporal-resolve.md#2026-09-24-thin-region-source-ab-opt-in-fixture-not-flown)).
 
+**Alpha-tested far rows (2026-11-01, trial, default on; ratified by the user).** `X3M_TAA_THIN_ALPHA_FAR` (ini
+`taa_thin_alpha_far`, Bool, builtin 1, developer key; 0 switches it off). An alpha-tested routed row (the tested-opaque
+or exact cutout arm, not the fade or overlay arm) writes `.a = 0` (thin = 1) instead of 1 when its origin's view depth
+`D` (the clip-w row's `.w`, as the vote's scale reads it) reaches `F0 * m00 * W / 2`, the depth where the far
+stabiliser's `farw` leaves 0 (`temporal::far_gate`, `F0` = 30 view units per pixel by default), else 1; no histogram.
+The depth is set once per frame at the scene camera read, and only with the vote's upload, the camera-gate resolve
+(the only reader of `.a` in such a session, which composes the region with the per-pixel camera openness,
+`b = region * openC`), the thin region and a far weight on; every other frame it is 0 and nothing changes. The depth
+fragment twins are unchanged: alpha test discards before every target write, so each surviving fragment of the draw
+writes the vote. Cost per alpha-tested routed draw: two compares and a store into the `c218` upload the draw already
+makes. `thin_vote_mode alpha_far=` logs the setting and `thin_vote_frame alpha_far=` the count of rows that voted this
+frame; neither says whether the resolve read the vote (a runtime box-target failure turns the thin region off and
+leaves the votes unread). Reason: distant alpha-tested wheat-farm cards in FL run 6 change 23-26 display codes per
+frame pre-TAA ([FL ledger, run 6](../verification/farnhams-legacy.md#fl-run-6--shader-coverage-4b-hull-gainwideningexposure-rows-installed-2026-11-01));
+the direct support is the run 6 readback captures, where farm pixels the lock or the thin region already held change
+1.3-1.6 codes per frame after TAA against 3.3-3.4 on the unheld ones
+([readback section](../verification/farnhams-legacy.md#run-6-readback-captures--farm-shimmer-hold-state-2026-11-01)).
+The ledger's CPU-model figure of about 0.34 codes is for a full 0.985 hold; this rule gives the 0.97 thin-region hold,
+whose residual on these farms is not modelled. Known gaps: the LOD-3 farms (ps `1835f5e1…`, no alpha test) carry the
+highest residual (3.0-3.6 codes) and this rule does not cover them; the test is per draw origin, so a large
+alpha-tested draw whose origin is far also votes its near pixels.
+Kill criterion: a ghosting trail behind a moving alpha-tested ship.
+
 ### 3.3 C: half-resolution mask and box (S4 / S5), the baseline
 
 Costed in the high-res note: S4 -0.4 to -0.5 ms at 1080p and -1.4 to -1.8 at 5120x1440, S5 -0.1 and -0.35; both

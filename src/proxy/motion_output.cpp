@@ -3379,6 +3379,10 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         wchar_t setting[8]{};
         locked_prefix_log_ = x3m::config::get(L"X3M_LOCKED_PREFIX_LOG", setting, 8) == 1 && setting[0] == L'1';
     }
+    {
+        wchar_t setting[8]{}; // X3M_TAA_THIN_ALPHA_FAR: on unless the resolved value is 0 (schema builtin 1)
+        thin_alpha_far_ = !(x3m::config::get(L"X3M_TAA_THIN_ALPHA_FAR", setting, 8) == 1 && setting[0] == L'0');
+    }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     {
         char setting[8]{};
@@ -3598,11 +3602,12 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         thin_vote_cache_.reset(new (std::nothrow) thin_vote::Cache());
     if (thin_vote_requested_ && !thin_vote_logged_) {
         thin_vote_logged_ = true;
-        log("thin_vote_mode device=%llu requested=1 enabled=%u route=%u depth=%u taa=%u lane=%u cache=%u window_px=%.2f..%.2f vote_fraction=%.2f bins=%u sample_cap=%u reads_per_frame=%u triangles_per_frame=%u",
+        log("thin_vote_mode device=%llu requested=1 enabled=%u route=%u depth=%u taa=%u lane=%u cache=%u window_px=%.2f..%.2f vote_fraction=%.2f bins=%u sample_cap=%u reads_per_frame=%u triangles_per_frame=%u alpha_far=%u",
             id_, unsigned(thin_vote_upload_), unsigned(enabled_), unsigned(depth_enabled_), unsigned(taa_enabled_),
             unsigned(sun_lane_requested_), unsigned(thin_vote_cache_ != nullptr), double(thin_vote::window_low_px),
             double(thin_vote::window_high_px), double(thin_vote::vote_fraction), thin_vote::bins,
-            unsigned(thin_vote::sample_cap), thin_vote::reads_per_frame, unsigned(thin_vote::triangles_per_frame));
+            unsigned(thin_vote::sample_cap), thin_vote::reads_per_frame, unsigned(thin_vote::triangles_per_frame),
+            unsigned(thin_alpha_far_));
     }
     // D1: the format-converting StretchRect is used only where the adapter
     // grants the conversion AND a live 4x4 round trip per 8-bit format
@@ -5479,6 +5484,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     displacements_.clear();
     camera_scene_ = camera_background_ = renderer::CameraState{};
     lightmap_fade_m00_ = 0.f;
+    thin_alpha_far_depth_ = 0.f; // the alpha-tested far vote waits for this frame's scene camera (read_camera)
     camera_projection_address_ = camera_view_address_ = 0;
     if (!enabled_) return;
     selector_ = renderer::SceneBoundarySelector{signatures()};
@@ -10207,6 +10213,18 @@ void MotionOutput::read_camera(bool scene) noexcept {
         if (valid) cull_small_parts::note_scene_projection(sample.state.m00, sample.state.m11);
         camera_scene_ = sample.state;
         lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;
+        // X3M_TAA_THIN_ALPHA_FAR: the view depth where this scene's far weight leaves 0, from the same far_gate the
+        // resolve uploads (a projection or width it refuses leaves the rule off). The vote is read by the camera-gate
+        // resolve alone, which composes it with the per-pixel camera openness (b = region * openC).
+        float far_d0 = 0.f, far_inv = 0.f, far_depth = 0.f;
+        thin_alpha_far_depth_ =
+            thin_alpha_far_ && thin_vote_upload_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f &&
+                    (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid &&
+                    x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width,
+                                           taa_far_f0_, taa_far_f1_, far_d0, far_inv) &&
+                    thin_vote::alpha_far_depth(taa_far_f0_, camera_scene_.m00, main_.width, far_depth)
+                ? far_depth
+                : 0.f;
         counters_.camera_scene_valid = valid;
         counters_.camera_read_failure = sample.read_failure;
         counters_.camera_failure = unsigned(sample.failure);
@@ -11049,6 +11067,15 @@ void MotionOutput::thin_vote_alpha(const MotionRoute& route, const float* rows, 
     auto& f = thin_vote_frame_;
     ++f.draws;
     const auto& k = route.key;
+    // Alpha-tested rows (not the fade or overlay arm) vote thin = 1 (.a = 0) beyond this frame's far depth
+    // (X3M_TAA_THIN_ALPHA_FAR; thin_vote::alpha_far_votes), else 1: two compares, no lookup, no API call.
+    if (route.alpha_tested && !route.fade_arm && !route.overlay && sun_lane_active_) {
+        if (thin_vote::alpha_far_votes(rows, thin_alpha_far_depth_)) {
+            alpha = 0.f;
+            ++f.alpha_far;
+        }
+        return;
+    }
     // Opaque routed rows only (the fade arm, the overlay arm and alpha-tested rows write 1); triangle lists of a
     // supported position element with the shadowed stream and indices equal to the key's.
     if (route.alpha_tested || route.fade_arm || route.overlay || !thin_vote_cache_ || !sun_lane_active_) return;
@@ -11332,7 +11359,7 @@ void MotionOutput::log_thin_vote_frame() noexcept {
         "draw_us=%.2f reads=%llu measured=%llu unreadable_total=%llu retries=%llu not_managed=%llu not_readable=%llu stale=%llu range=%llu geometry=%llu "
         "invalidated=%llu dropped_entries=%llu overflows=%llu volatile_buffers=%llu volatile_refused=%llu "
         "not_quiet=%llu lock_failed=%llu triangles=%llu lock_us=%.1f measure_us=%.1f max_measure_us=%.1f refused=%u "
-        "deferred_cap=%u already_queued=%u draw_timing=%u sampled=%u sample_at=%u sample_us=%.2f stamp_us=%.2f",
+        "deferred_cap=%u already_queued=%u draw_timing=%u sampled=%u sample_at=%u sample_us=%.2f stamp_us=%.2f alpha_far=%u",
         id_, frame_, unsigned(sun_lane_active_), f.draws, f.opaque, f.known, f.voted, double(f.min_alpha),
         double(f.max_unvoted), f.unreadable, f.missed, f.queued, f.dropped, f.no_scale,
         telemetry::microseconds(f.ticks), static_cast<unsigned long long>(t.reads),
@@ -11347,7 +11374,7 @@ void MotionOutput::log_thin_vote_frame() noexcept {
         telemetry::microseconds(t.lock_ticks), telemetry::microseconds(t.measure_ticks),
         telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u, f.dropped,
         f.already_queued, unsigned(telemetry::draw_enabled() && telemetry_), f.sampled, f.sample_at,
-        telemetry::microseconds(f.sample_ticks), telemetry::microseconds(f.stamp_ticks));
+        telemetry::microseconds(f.sample_ticks), telemetry::microseconds(f.stamp_ticks), f.alpha_far);
 }
 
 // ---- caster-candidate counter (shadow_replay_candidates.h) ----------------

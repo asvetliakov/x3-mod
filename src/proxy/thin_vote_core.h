@@ -230,6 +230,20 @@ inline float thin_fraction(const Histogram& h, float log2_scale) noexcept {
 inline float rt2_alpha(float fraction) noexcept {
     return fraction >= vote_fraction ? 1.f - fraction : 1.f;
 }
+// Alpha-tested far rows (X3M_TAA_THIN_ALPHA_FAR, default on; taa-thin-geometry-alternatives.md section 3.2,
+// "Alpha-tested far rows"): no histogram, the whole draw votes (thin = 1, .a = rt2_alpha(1) = 0) when its origin's view
+// depth D (rows[15], as log2_pixels_per_unit reads it) reaches far_depth, the depth at which the resolve's far weight
+// leaves 0: F0 * m00 * W / 2 (temporal::far_gate's footprint F0 in view units per pixel). far_depth 0 is the rule off;
+// a non-finite or behind-the-camera D does not vote. Bool returns and an out value: no float return (x87 st0 on i686)
+// on the draw path.
+inline bool alpha_far_depth(float f0, float m00, unsigned width, float& out) noexcept {
+    const float d = f0 * m00 * float(width) * .5f;
+    out = d > 0.f && finite(d) ? d : 0.f;
+    return out > 0.f;
+}
+inline bool alpha_far_votes(const float* rows, float far_depth) noexcept {
+    return far_depth > 0.f && rows[15] >= far_depth;
+}
 
 // ---- cache ----
 struct Key {

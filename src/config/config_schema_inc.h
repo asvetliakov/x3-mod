@@ -175,7 +175,7 @@ constexpr ElementRange element_ranges[element_range_count] = {
     {120, 1},
     {121, 1},
 };
-constexpr unsigned entry_count = 288;
+constexpr unsigned entry_count = 289;
 constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
@@ -447,10 +447,11 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_SKY_HISTORY", "taa_sky_history", Type::String, "strict", nullptr, 115, 0, 17, 0, 0, "", 1, -1},
     {"X3M_TAA_SKY_HISTORY_BAND_PX", "taa_sky_history_band_px", Type::Float, nullptr, nullptr, 115, 1, 17, 0, 0, "", 1, -1},
     {"X3M_TAA_SKY_HISTORY_EXIT_PX", "taa_sky_history_exit_px", Type::Float, "0.25", nullptr, 116, 2, 17, 0, 0, "", 1, -1},
+    {"X3M_TAA_THIN_ALPHA_FAR", "taa_thin_alpha_far", Type::Bool, nullptr, nullptr, 118, 0, 17, 0, 0, "", 1, -1},
     {"X3M_TAA_THIN_REGION", "taa_thin_region", Type::FloatList, "0.97,1", nullptr, 118, 0, 17, 4, 22, "", 0, -1},
     {"X3M_TAA_THIN_REGION_EMISSIVE", "taa_thin_region_emissive", Type::Float, "1", nullptr, 122, 1, 21, 0, 0, "", 0, -1},
     {"X3M_TAA_THIN_VOTE", "taa_thin_vote", Type::Enum, "on", nullptr, 123, 0, 21, 0, 0, "on|off", 1, -1},
-    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 123, 0, 21, 0, 0, "", 3, 271},
+    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 123, 0, 21, 0, 0, "", 3, 272},
     {"X3M_TAA_UNMATCHED_STATIC", "taa_unmatched_static", Type::String, "node", nullptr, 123, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 123, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 123, 0, 21, 0, 0, "", 1, -1},
@@ -464,7 +465,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 124, 1, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 125, 0, 21, 0, 0, "", 1, -1},
     {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 125, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 125, 0, 21, 0, 0, "", 3, 285},
+    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 125, 0, 21, 0, 0, "", 3, 286},
     {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 125, 0, 21, 0, 0, "", 1, -1},
 };
 constexpr unsigned alias_count = 0;

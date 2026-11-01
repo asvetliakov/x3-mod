@@ -25,6 +25,7 @@ HARNESS = r'''
 #include "thin_vote_core.h"
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <vector>
 using namespace x3m::thin_vote;
 struct Mesh { std::vector<float> xyz; std::vector<unsigned short> indices; };
@@ -70,6 +71,20 @@ int main() {
       std::printf("ROWS ok=%d log2=%.5f behind=%d\n", ok, s, log2_pixels_per_unit(behind, 256.f, t)); }
     // The vote threshold: at least half the triangles in the window.
     std::printf("VOTE f40=%.6f f50=%.6f f75=%.6f f100=%.6f\n", rt2_alpha(.4f), rt2_alpha(.5f), rt2_alpha(.75f), rt2_alpha(1.f));
+    // Alpha-tested far rows (X3M_TAA_THIN_ALPHA_FAR): the far depth F0 * m00 * W / 2 = 30 * 1 * 5120 / 2 = 76800 view units;
+    // the run-6 wheat-farm cards at D = 130000, a near card at 5000, one exactly at the edge, behind the camera and NaN. The
+    // setting at 0 is a far depth of 0. The opaque panel at the same D keeps its histogram's verdict (no vote).
+    { float depth = 0, bad[3] = {1, 1, 1}; const bool valid = alpha_far_depth(30.f, 1.f, 5120u, depth);
+      const bool m00_zero = alpha_far_depth(30.f, 0.f, 5120u, bad[0]), width_zero = alpha_far_depth(30.f, 1.f, 0u, bad[1]),
+                 overflow = alpha_far_depth(1e30f, 1e30f, 5120u, bad[2]);
+      const auto at = [](float d, float* r) { for (int i = 0; i < 16; ++i) r[i] = i % 5 ? 0.f : 1.f; r[15] = d; return r; };
+      float far[16], near[16], edge[16], behind[16], nan[16]; at(130000.f, far); at(5000.f, near); at(76800.f, edge);
+      at(-130000.f, behind); at(std::numeric_limits<float>::quiet_NaN(), nan);
+      float s = 0; const bool ok = log2_pixels_per_unit(far, 5120.f, s);
+      std::printf("ALPHAFAR valid=%d depth=%.1f far=%d near=%d edge=%d behind=%d nan=%d off=%d opaque_far=%.1f m00_zero=%d,%.1f width_zero=%d,%.1f overflow=%d,%.1f\n",
+                  valid, depth, alpha_far_votes(far, depth), alpha_far_votes(near, depth), alpha_far_votes(edge, depth),
+                  alpha_far_votes(behind, depth), alpha_far_votes(nan, depth), alpha_far_votes(far, 0.f),
+                  ok ? rt2_alpha(thin_fraction(hp, s)) : -1.f, m00_zero, bad[0], width_zero, bad[1], overflow, bad[2]); }
     // FLOAT16_4 positions, INDEX32, the index bias, an index outside the window, a degenerate triangle.
     {
         auto half = [](float f) { unsigned bits; std::memcpy(&bits, &f, 4); const unsigned e = ((bits >> 23) & 255) - 127 + 15, m = (bits >> 13) & 1023;
@@ -230,6 +245,17 @@ class ThinVoteArithmetic(unittest.TestCase):
         self.assertAlmostEqual(float(vote['f75']), 0.25)
         self.assertEqual(float(vote['f100']), 0.0)
 
+    def test_alpha_tested_far_rows(self):
+        """X3M_TAA_THIN_ALPHA_FAR: an alpha-tested row whose origin reaches the far gate's F0 depth votes thin = 1 (.a = 0);
+        a near, behind or NaN origin and the setting at 0 (far depth 0) write 1; an opaque far panel keeps its histogram's
+        verdict (1, no vote); a projection or width the far depth cannot use turns the rule off."""
+        row = Harness.rows('ALPHAFAR')[0]
+        self.assertEqual((row['valid'], float(row['depth'])), ('1', 76800.0))
+        self.assertEqual((row['far'], row['edge']), ('1', '1'))  # the vote: the site writes .a = 0 (thin = 1)
+        self.assertEqual((row['near'], row['behind'], row['nan'], row['off']), ('0', '0', '0', '0'))
+        self.assertEqual(row['opaque_far'], '1.0')
+        self.assertEqual((row['m00_zero'], row['width_zero'], row['overflow']), ('0,0.0', '0,0.0', '0,0.0'))
+
     def test_half_index32_bias_and_refusals(self):
         half = Harness.rows('HALF')[0]
         # A 0.25 x 8 quad in FLOAT16_4 behind INDEX32 indices biased by 10: two triangles, h ~ 0.2496, both in the top bin.
@@ -384,6 +410,26 @@ class ThinVoteSource(unittest.TestCase):
         self.assertIn('plan=portable_upload::plan_creation(finite_plan||device->options.readable_managed_buffers,length,usage,pool,shared);', ownership)
         header = source_text(ROOT / 'src/renderer/material_motion.h')
         self.assertIn('static constexpr unsigned pixel_thin_constant = 218;', header)
+
+    def test_alpha_tested_far_rule_site(self):
+        """The rule's draw site: only alpha-tested rows outside the fade and overlay arms on the lane take it (an opaque row goes
+        on to its histogram, an alpha-tested row never reaches it); the far depth is set per scene camera read only with the
+        setting (on unless 0), the vote's upload, the camera-gate resolve, the thin region and a far weight, and is 0 otherwise."""
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        self.assertIn('if (route.alpha_tested && !route.fade_arm && !route.overlay && sun_lane_active_) { if (thin_vote::alpha_far_votes(rows, thin_alpha_far_depth_)) { alpha = 0.f; ++f.alpha_far; } return; }', motion)
+        self.assertIn('if (route.alpha_tested || route.fade_arm || route.overlay || !thin_vote_cache_ || !sun_lane_active_) return;', motion)
+        self.assertIn('thin_alpha_far_ = !(x3m::config::get(L"X3M_TAA_THIN_ALPHA_FAR", setting, 8) == 1 && setting[0] == L\'0\');', motion)
+        self.assertIn('thin_alpha_far_depth_ = thin_alpha_far_ && thin_vote_upload_ && taa_thin_camera_gate_ && taa_thin_weight_ > 0.f && '
+                      '(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid && x3::temporal::far_gate(camera_scene_.m00, '
+                      'camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, far_d0, far_inv) && '
+                      'thin_vote::alpha_far_depth(taa_far_f0_, camera_scene_.m00, main_.width, far_depth) ? far_depth : 0.f;', motion)
+        self.assertIn('thin_alpha_far_depth_ = 0.f; // the alpha-tested far vote waits for this frame\'s scene camera', motion)
+        self.assertIn('sample_us=%.2f stamp_us=%.2f alpha_far=%u",', motion)
+        self.assertIn('bool thin_alpha_far_ = true;', source_text(ROOT / 'src/proxy/motion_output.h'))
+        sys.path.insert(0, str(ROOT / 'tools/config'))
+        import schema
+        e = schema.BY_KEY['taa_thin_alpha_far']
+        self.assertEqual((e['type'], e['default'], e['builtin'], e['developer']), ('bool', None, '1', True))
 
     def test_plain_programs_keep_their_bytecode(self):
         # bytecode_sha256 prefixes at fd60e44b (before the vote): the option-off tests draws, the current-depth and motion
