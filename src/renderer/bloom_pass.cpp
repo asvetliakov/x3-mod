@@ -545,68 +545,79 @@ bool BloomPass::owned(IDirect3DSurface9* t) const noexcept {
     return false;
 }
 
-HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
+HRESULT BloomPass::validate_inputs(const BloomPrepare& p, unsigned& clause) const noexcept {
+    // Each refusal records its 1-based source-order clause index for the
+    // bloom_prepare failure row; the checks and their order are unchanged.
+    const auto fail = [&clause](unsigned n, HRESULT hr = E_INVALIDARG) noexcept {
+        clause = n;
+        return hr;
+    };
     const auto& b = p.boundary;
-    if (!enabled() || !p.scene || !b.admitted || !b.main || owned(b.main) || b.thread != GetCurrentThreadId() ||
-        !main_descriptor(b.main_desc) || !x3::temporal::valid_bloom_params(p.filter) ||
-        !x3::temporal::valid_sharpen(p.sharpen))
-        return E_INVALIDARG;
+    if (!enabled()) return fail(1);
+    if (!p.scene) return fail(2);
+    if (!b.admitted) return fail(3);
+    if (!b.main) return fail(4);
+    if (owned(b.main)) return fail(5);
+    if (b.thread != GetCurrentThreadId()) return fail(6);
+    if (!main_descriptor(b.main_desc)) return fail(7);
+    if (!x3::temporal::valid_bloom_params(p.filter)) return fail(8);
+    if (!x3::temporal::valid_sharpen(p.sharpen)) return fail(9);
     if (p.exact_sharpen && p.sharpen > 0) {
         const auto& c = p.sharpen_constants.values;
         for (float v : c)
-            if (!std::isfinite(v)) return E_INVALIDARG;
+            if (!std::isfinite(v)) return fail(10);
         // Preserve the supplied gain exactly; only validate its supported
         // range and that its texel steps describe this same image.
         if (c[0] < 0.25f || c[0] > 1.f || c[3] != 0.f || c[1] != 1.f / float(b.main_desc.Width) ||
             c[2] != 1.f / float(b.main_desc.Height))
-            return E_INVALIDARG;
+            return fail(11);
     }
     const auto mode = p.decode;
     if (mode != x3::temporal::AgxDecode::gamma22 && mode != x3::temporal::AgxDecode::srgb &&
         mode != x3::temporal::AgxDecode::none)
-        return E_INVALIDARG;
+        return fail(12);
     // Preserve the exact supplied AgX block but reject nonfinite inputs and a
     // decode mismatch between extraction specialization and base tonemapping.
     float floats[sizeof(p.agx) / sizeof(float)];
     std::memcpy(floats, &p.agx, sizeof(p.agx));
     for (unsigned i = 0; i < sizeof(p.agx) / sizeof(float); ++i)
-        if (!std::isfinite(floats[i])) return E_INVALIDARG;
+        if (!std::isfinite(floats[i])) return fail(13);
     x3::temporal::AgxConstants expected{};
     x3::temporal::set_decode(expected, mode);
     for (unsigned i = 0; i < 4; ++i)
-        if (p.agx.decode[i] != expected.decode[i]) return E_INVALIDARG;
+        if (p.agx.decode[i] != expected.decode[i]) return fail(14);
     if (p.agx.exposure[0] <= 0 || p.agx.exposure[0] > x3::temporal::kAgxClampOff || p.agx.exposure[1] <= 0 ||
         p.agx.exposure[1] > x3::temporal::kAgxClampOff)
-        return E_INVALIDARG;
+        return fail(15);
     // c8.z is the display dither of the write-back this candidate replaces:
     // off or the one amplitude the shaders are built for, nothing else.
-    if (p.agx.exposure[2] != 0.f && p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return E_INVALIDARG;
+    if (p.agx.exposure[2] != 0.f && p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return fail(16);
     D3DSURFACE_DESC scene{};
     HRESULT hr = p.scene->GetLevelDesc(0, &scene);
-    if (FAILED(hr)) return hr;
+    if (FAILED(hr)) return fail(17, hr);
     if (scene.Format != D3DFMT_A16B16G16R16F || scene.Pool != D3DPOOL_DEFAULT || scene.Width != b.main_desc.Width ||
         scene.Height != b.main_desc.Height || scene.MultiSampleType != D3DMULTISAMPLE_NONE || scene.MultiSampleQuality)
-        return E_INVALIDARG;
+        return fail(18);
     IDirect3DSurface9* scene_surface = nullptr;
     hr = p.scene->GetSurfaceLevel(0, &scene_surface);
     const bool alias = !scene_surface || owned(scene_surface) || scene_surface == b.main;
     drop(scene_surface);
-    if (FAILED(hr) || alias) return FAILED(hr) ? hr : E_INVALIDARG;
+    if (FAILED(hr) || alias) return fail(19, FAILED(hr) ? hr : E_INVALIDARG);
     // The bolt composite's scene (bolt_far.h): the same contract as `scene` (it
     // may be `scene` itself), a finite W in [0, 1]; a null texture needs W = 0.
-    if (!x3::temporal::valid_bolt_show(p.bolt_show) || (p.bolt_show > 0.f && !p.bolt_scene)) return E_INVALIDARG;
+    if (!x3::temporal::valid_bolt_show(p.bolt_show) || (p.bolt_show > 0.f && !p.bolt_scene)) return fail(20);
     if (p.bolt_scene && p.bolt_scene != p.scene) {
         D3DSURFACE_DESC bolt{};
         hr = p.bolt_scene->GetLevelDesc(0, &bolt);
-        if (FAILED(hr)) return hr;
+        if (FAILED(hr)) return fail(21, hr);
         if (bolt.Format != scene.Format || bolt.Pool != scene.Pool || bolt.Width != scene.Width ||
             bolt.Height != scene.Height || bolt.MultiSampleType != scene.MultiSampleType || bolt.MultiSampleQuality)
-            return E_INVALIDARG;
+            return fail(22);
         IDirect3DSurface9* bolt_surface = nullptr;
         hr = p.bolt_scene->GetSurfaceLevel(0, &bolt_surface);
         const bool bolt_alias = !bolt_surface || owned(bolt_surface) || bolt_surface == b.main;
         drop(bolt_surface);
-        if (FAILED(hr) || bolt_alias) return FAILED(hr) ? hr : E_INVALIDARG;
+        if (FAILED(hr) || bolt_alias) return fail(23, FAILED(hr) ? hr : E_INVALIDARG);
     }
     // Native resource ownership checked once per prepare, never per pyramid
     // draw. Exact device interface mismatch refuses; no backend-private data.
@@ -614,22 +625,22 @@ HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
     hr = p.scene->GetDevice(&owner);
     bool same = SUCCEEDED(hr) && owner == device_;
     drop(owner);
-    if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+    if (!same) return fail(24, FAILED(hr) ? hr : E_INVALIDARG);
     if (p.bolt_scene && p.bolt_scene != p.scene) {
         hr = p.bolt_scene->GetDevice(&owner);
         same = SUCCEEDED(hr) && owner == device_;
         drop(owner);
-        if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+        if (!same) return fail(25, FAILED(hr) ? hr : E_INVALIDARG);
     }
     hr = b.main->GetDevice(&owner);
     same = SUCCEEDED(hr) && owner == device_;
     drop(owner);
-    if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+    if (!same) return fail(26, FAILED(hr) ? hr : E_INVALIDARG);
     if (b.depth) {
         hr = b.depth->GetDevice(&owner);
         same = SUCCEEDED(hr) && owner == device_;
         drop(owner);
-        if (!same) return FAILED(hr) ? hr : E_INVALIDARG;
+        if (!same) return fail(27, FAILED(hr) ? hr : E_INVALIDARG);
     }
     return S_OK;
 }
@@ -659,7 +670,7 @@ HRESULT BloomPass::validate_boundary(const BloomBoundary& b, const SavedState& s
 BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     revoke();
     BloomPreparation result{};
-    result.operation = validate_inputs(p);
+    result.operation = validate_inputs(p, result.clause);
     if (FAILED(result.operation)) {
         if (lost(result.operation)) disabled_ = true;
         return result;

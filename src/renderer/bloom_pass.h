@@ -74,6 +74,9 @@ struct BloomPreparation {
     HRESULT allocation = S_FALSE, saved = S_FALSE, operation = S_FALSE, restore = S_FALSE;
     bool ready = false, state_preserved = true;
     const char* reason = "invalid";
+    // Diagnostic: 1-based source-order index of the validate_inputs clause
+    // that refused (0: none refused); its HRESULT is `operation`.
+    unsigned clause = 0;
 };
 struct BloomCommit {
     HRESULT saved = S_FALSE, backup = S_FALSE, operation = S_FALSE;
@@ -157,7 +160,7 @@ private:
                  const x3::temporal::BloomConstants* = nullptr, bool* issued = nullptr,
                  IDirect3DTexture9* s2 = nullptr) noexcept;
     HRESULT validate_boundary(const BloomBoundary&, const SavedState&, bool full_viewport) const noexcept;
-    HRESULT validate_inputs(const BloomPrepare&) const noexcept;
+    HRESULT validate_inputs(const BloomPrepare&, unsigned& clause) const noexcept;
     bool owned(IDirect3DSurface9*) const noexcept;
     void revoke() noexcept;
 #ifdef X3M_BLOOM_PASS_FIXTURE

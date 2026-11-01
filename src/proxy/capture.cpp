@@ -1694,17 +1694,49 @@ void compositor_pre(const X3mCompositorFrame* frame, void* storage, void*) {
         call.ready = compositor_current(call);
         if (call.ready) ++ctx.bloom_prepared;
     }
-    if ((call.ready && ctx.bloom_prepared == 1) || (!prepared.ready && ctx.bloom_failure_reports++ < 8) ||
-        (ctx.frame % 300 == 0 && telemetry::enabled())) {
+    // The failure counter only advances on !prepared.ready, where the first
+    // term below is false, so evaluating it first keeps the original count.
+    const bool failure_row = !prepared.ready && ctx.bloom_failure_reports++ < 8;
+    if ((call.ready && ctx.bloom_prepared == 1) || failure_row || (ctx.frame % 300 == 0 && telemetry::enabled())) {
+        // Failure diagnostic (the first 8 failure rows only): the refusing
+        // validate_inputs clause and the descriptors it judged. Empty on
+        // every other row, which keeps those rows byte-identical.
+        char detail[640];
+        detail[0] = '\0';
+        if (failure_row) {
+            const auto& in = call.input;
+            const auto& m = in.boundary.main_desc;
+            char scene_text[96];
+            D3DSURFACE_DESC scene{};
+            const HRESULT scene_hr = in.scene ? in.scene->GetLevelDesc(0, &scene) : E_POINTER;
+            if (SUCCEEDED(scene_hr))
+                std::snprintf(scene_text, sizeof scene_text, "scene_fmt=%x scene_pool=%u scene_w=%u scene_h=%u scene_ms=%u",
+                              unsigned(scene.Format), unsigned(scene.Pool), unsigned(scene.Width),
+                              unsigned(scene.Height), unsigned(scene.MultiSampleType));
+            else
+                std::snprintf(scene_text, sizeof scene_text, "scene_hr=%08lx", static_cast<unsigned long>(scene_hr));
+            const auto& c = in.sharpen_constants.values;
+            std::snprintf(detail, sizeof detail,
+                          " clause=%u main_fmt=%x main_type=%u main_usage=%x main_pool=%u main_ms=%u main_msq=%u"
+                          " main_w=%u main_h=%u %s bolt_show=%g bolt_scene=%s c0=%g c1=%g c2=%g c3=%g"
+                          " exposure0=%g exposure1=%g exposure2=%g decode=%u thread_ok=%u",
+                          prepared.clause, unsigned(m.Format), unsigned(m.Type), unsigned(m.Usage),
+                          unsigned(m.Pool), unsigned(m.MultiSampleType), unsigned(m.MultiSampleQuality),
+                          unsigned(m.Width), unsigned(m.Height), scene_text, double(in.bolt_show),
+                          !in.bolt_scene ? "null" : in.bolt_scene == in.scene ? "scene" : "other", double(c[0]),
+                          double(c[1]), double(c[2]), double(c[3]), double(in.agx.exposure[0]),
+                          double(in.agx.exposure[1]), double(in.agx.exposure[2]), unsigned(in.decode),
+                          unsigned(in.boundary.thread == GetCurrentThreadId()));
+        }
         char clamp_text[24];
         const float clamp = call.input.filter.source_clamp;
         if (clamp < x3::temporal::kAgxClampOff)
             std::snprintf(clamp_text, sizeof clamp_text, "%g", double(clamp));
         else
             std::snprintf(clamp_text, sizeof clamp_text, "none");
-        log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u clamp=%s cpu_ticks=%llu bytes=%llu",
+        log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u clamp=%s cpu_ticks=%llu bytes=%llu%s",
             ctx.id, ctx.frame, call.ready, prepared.reason, prepared.operation, prepared.restore,
-            prepared.state_preserved, clamp_text, telemetry::now() - begin, ctx.bloom.resource_bytes());
+            prepared.state_preserved, clamp_text, telemetry::now() - begin, ctx.bloom.resource_bytes(), detail);
     }
 }
 void compositor_post(const X3mCompositorFrame*, void* storage, void*) {
