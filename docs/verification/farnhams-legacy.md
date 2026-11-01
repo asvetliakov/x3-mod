@@ -750,3 +750,13 @@ override answers the engine probe Visible on 4,111 frames. Sun position, depth l
 maths are all correct (lane vs record du 0.0008, dv 0.0004; drawn disc within 0.003 u). The dim sun was
 `lens_flare_gain` 0.3 (user-confirmed; default now 1). Fix in progress: block the override for a sun
 whose body is unclassifiable so the vanilla probe hides it; SM3 body support is the follow-up.
+
+Result, runs 11–13 flown together (log of 2026-11-01 22:5x, 29,482 frames / 196 s, no exception;
+measured): `fl.sector status=ready anchors=22`, `sector_background … status=ready` on 160 of 172 samples
+(12 `no_cockpit`, menus); `fl.sun_light status=ok anchors=50`, sample `engine_rule=1 score=0x3ff`,
+`shadow_replay_sun_source source=point poll=ok`; `volumetric_fog_frame applied=1 reason=ok sun=tracked` 13
+rows, `card_refused` 40 (clear sectors), `density_filling` 2; handover at arrival in The Hole
+`coldfill=1 frames=45 fill_ms=471`. User: fog works. **Steps 6 and 7 accepted.** Two issues: (1) the
+vanilla fog cards stayed visible for 3–4 s after arriving in The Hole (the transit prefill is AP-only, so
+FL fills cold); (2) the sun / sun lens is very visible through the fog (one F8 capture). Both under
+triage; the FL fog-prefill addresses are being established from X3FL.exe.
