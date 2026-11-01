@@ -422,3 +422,103 @@ request bits above. `inspect_order.py` authenticates those anchors and the
 constructor/attachment direct-write census. This is not a census of later
 runtime mutations, loaded/modded flags or all late ordinary views; those remain
 flight evidence needs and Clear remains a hard refusal.
+
+## Verified hook sites and ABI (2026-11-01)
+
+Image `/mnt/c/X3FL/X3FL.exe`, SHA-256 `e7f3aad8…dfbb8` (the same bytes the sections above
+name as `X3FL-orig`, which is no longer present). Producer:
+[`fl_sun_occlusion_constants.py`](../../../tools/analysis/fl_sun_occlusion_constants.py), which
+decodes every claim below with Capstone as whole instructions, raises on any difference and writes
+[`sun_occlusion_fl_inc.h`](../../../src/engine/fl/sun_occlusion_fl_inc.h) (17 anchors, 3 slots,
+every value an RVA or offset). Host test:
+[`test_fl_sun_occlusion_constants.py`](../../../verification/analysis/test_fl_sun_occlusion_constants.py)
+(6 tests; the anchor mirror accepts each span relocated to `0x400000`, `0x4d0000` and `0x10000000` and
+refuses every single-bit flip, a foreign base and an unreadable span; 16 byte mutations and the AP
+image are refused). Reproduce: `python3 tools/analysis/fl_sun_occlusion_constants.py --check` and
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fl_sun_occlusion_constants`.
+Addresses below are RVAs. Raw listings were kept in the session scratchpad only.
+
+**Probe CALL, RVA `0x8af0a → 0xa3fd0` (measured).** The walk `0x8aeb0` (AP `0x4715d0`) takes the
+probing view in **ECX** (`mov ebx,ecx`), not on the stack; its only direct caller is `0x8bb96`
+(after the cache reset `view+0x37c = 0` and the `view+0x270 & 0x1000` skip). Window
+`[0x8af00,0x8af1a)`: `cmp [esi+0x30],0; je; mov edx,ebx; mov ecx,esi; call; test eax,eax; je;
+mov dword [esi+0x30],0`. Target ABI: **ECX = record, EDX = probing view**, no stack argument
+(no `[ebp+d]`, d ≥ 8, in its 220 instructions), RETs at `0xa4011` and `0xa42db`, both bare `c3`.
+EAX is written before it is read in the straight-line prologue, ECX and EDX are read: two register
+arguments, EAX the boolean (1 = hide). The target saves EBX/ESI/EDI/EBP and clobbers ECX/EDX.
+At the site EBX = probing view, ESI = record, EDI = owner view, EBP = holder cursor, all live after
+the return; ECX/EDX are dead; the continuation's `test eax,eax` defines the consumed flags. The
+caller pushes four registers and does not align: the site guarantees four-byte ESP alignment
+only. The CALL is one five-byte instruction; no base relocation touches it, no rel32 in `.text` and
+no branch of the walk or pass lands inside it, no relocated word points at it or its target, and it
+is the target's only direct caller. `0x8af0a % 8 = 2`, so `engine_patch::claim_call` writes it
+with one `lock cmpxchg8b` at any 64 KB-aligned base. **Hook suitability: claimable.** A thunk must
+keep ECX/EDX for the forwarding path (save them around the C decision, which receives them as
+cdecl arguments), return EAX 0/1 with a plain `ret` and no stack cleanup, preserve EBX/ESI/EDI/EBP,
+and forward with `popfd; jmp [target]` with ESP at the return address and ECX/EDX as on entry.
+
+**Record+0x30 on FL is AP §13(c) unchanged (measured).** The probe target and its body contain no
+store at displacement `0x30`; the caller writes literal 0 at `0x8af13` when EAX ≠ 0 (AP stores
+EBP = 0 at `0x47163c`). Other writers: per-pass reset of every record of every holder view
+`0x8b830` (= 0), collector `0x97549` (= 1). Readers: the walk's skip `0x8af00` and the accumulator
+`0x8aff0` (±0x64, clamped 0..0xc8) in the body update `0x8af40`, which runs after every probe and
+before the lens draw in the same pass. So the answer still reaches the picture only through
+record+0x30 and the two-frame ramp.
+
+**Early gates (measured; correction to the brief).** `[0xa3fd0,0xa4063)`, 147 bytes, file FNV-1a64
+`0x1abcc319ce5e4445` (equals the fl-codex figure), masked (two slot words zeroed) `0x3318806b0f9a9fdf`.
+Before the gates the prologue only reads view+0x1c and root+0x6c into locals. Gates, AP order:
+config `[*0x1a83b0 + 0xec] & 0x8000` clear → EAX = 1 (`0xa4006`); signed inclusive rectangle on
+`x+0x8000` against view+0x290/+0x294, then `0x8000−y` against +0x288/+0x28c, outside → EAX = 0
+(`0xa42d3`); view+0x270 & `0x8000000` → EAX = 1. AP's override **does** replicate all three
+(`core::decide` after `eligible`), which is why AP compares its 148-byte span whole; FL must
+replicate the same three, reading the flags word at **+0xec** (the AP core constant
+`config_video_flags = 0xfc` must not be used on FL). Everything after the gates (projection, body-195
+probe pose, candidate cache, narrow phase) is skipped by an answer, as on AP.
+
+**Lens CALL, RVA `0x8bcb7 → 0x97680` (measured).** Lens block `0x8bc54..0x8bcce`: root+0x64 holder
+with +0x18 & 1, ESI = holder+0x1c (lens view; no instruction of the block writes ESI before the
+site), body update `0x8af40`, propagation `0x94b00`, activation `0x95670`, selection `0x97720`,
+layer `0x978e0`, sort `0x975c0` (EDX = view), **`mov edx,esi; call 0x97680`**, then
+`mov eax,[root]; mov ecx,esi; mov edx,[eax+0x6304]; call 0xe7310` (2D overlay, outside the bracket).
+Target ABI: **EDX = view** (`mov ebx,edx`), no stack argument (no ESP-based operand), never touches
+EBP, one bare RET `0x97714`, 47 instructions, saves EBX/ESI/EDI. ECX is read only by `push ecx` at
+`0x9769b` as the second word for the cdecl instance helper `0xde570`, which reads only `[ebp+8]`
+(the view): an unread padding word. After the return EAX, ECX and EDX are written before any read;
+ESI is read. It walks root+0x40, the draw list selection filled for the active (lens) scene, and per
+entry calls the instance helper and the material wrapper `0xe6ef0`: **every selected lens body of
+every record**, not one record's chain, and **no record pointer is in a register** at the call.
+Per-record attribution must therefore come from the probe latch (the single eligible record), as on
+AP, whose site also passes only the view. Direct callers of `0x97680`: `0x8ba8d` (ordinary view),
+`0x8bcb7` (lens), `0x978ab` (cube face): hook the call site only. **`0x8bcb7 % 8 = 7`: the five bytes
+straddle a qword**, so `claim_call` takes its plain-copy path; claim it only inside the install
+window, before the render thread runs the pass. **Hook suitability: claimable**; the bracket thunk
+saves ECX and EDX before `begin` and restores both before `call [target]` (EDX is the argument; ECX
+only keeps the padding word identical), opens the bracket before and closes it after the original,
+with EFLAGS saved and DF cleared around the C handlers, and returns with a plain `ret`.
+
+**Record and view layout (measured): the AP core's offsets hold.** Record 0x70 bytes (`0x97259`):
+next +0, prev +4, owner +8, source +0xc, accumulator +0x10, x +0x20, y +0x24, z +0x28 (= 0x8000),
+visible +0x30, size +0x34, group +0x38. View: flags +0x270, rect top/bottom/left/right
++0x288/+0x28c/+0x290/+0x294, fov +0x298, layer +0x29c, records +0x2a0 (tail +0x2a4, tailpred +0x2a8),
+scale +0x300/+0x304 with fallback `[*0x1a82f8 + 0x28/+0x2c]` when either is nonpositive, cache +0x37c.
+The host test checks each against `src/proxy/sun_occlusion_core.h`. Only the config flags word
+moved (+0xfc → +0xec); slots are RVAs `0x1aa100` (root), `0x1a83b0` (config), `0x1a82f8` (mode).
+
+**Thread and order (measured unless marked).** The complete pass `0x8b6d0` has one direct caller,
+`0x782cf` in the main loop, the thread that also issues the frame's D3D work (the scene hook's
+thread). Inside it: record reset `0x8b830` < sorted-loop head `0x8b917` ≤ compositor CALL `0x8b929`
+(once, before the first view with layer > 17) < probe walk `0x8bb96` (each view, after its draw)
+< loop back edge `0x8bba7` < auxiliary overlay loop < body update `0x8bc69` < lens CALL `0x8bcb7`.
+Both seams run inside the loop/pass that owns the compositor, so the main view's probe precedes the
+compositor if the main view's layer is ≤ 17 (inferred from the scene-hook design, not checked
+here), and every lens draw follows the compositor CALL, as on AP. If no view above layer 17 exists
+in a pass, the compositor does not run in that pass and the lens draw has no preceding write-back
+in it. Reentrancy: the walk, the pass and the probe target have one direct caller each; indirect
+re-entry is not excluded by this census (as for the scene hook).
+
+**Settled against the sections above.** All fl-codex RVAs, the register ABIs, the 147-byte FNV,
+the record layout, the EBP-is-holder-cursor difference and the padding word are confirmed. New: the
+lens CALL straddles a qword (non-atomic patch), the walk itself is ECX-ABI, and AP's override does
+replicate the three gates (FL needs +0xec). Not checked here: the absence of x87/MXCSR instructions
+in the probe closure, the 9-byte wide-FOV span (§5) and the cube/Clear findings (§7).
