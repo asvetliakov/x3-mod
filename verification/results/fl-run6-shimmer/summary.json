@@ -1,0 +1,1077 @@
+[
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "53980",
+  "model": "0000556f",
+  "farm": true,
+  "lod": "00000003",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 613,
+  "view_w_p50": 98895,
+  "speed_capture_px": 1.67,
+  "sun_share": 0.263,
+  "surface_switch_frac": 0.095,
+  "pre_dC": 13.185,
+  "pre_std8": 10.989,
+  "model_taa_dH": 1.705,
+  "model_lock_dH": 0.218,
+  "model_hist_clip": 0.268,
+  "lockmodel_dH": 0.919,
+  "lockmodel_locked": 0.332,
+  "flicker_px_dC_gt8": 0.5661,
+  "flicker_px_dH_gt2": 0.3295,
+  "sun_cov": [
+   14,
+   22.094,
+   2.419
+  ],
+  "sun_nocov": [
+   142,
+   24.642,
+   3.093
+  ],
+  "dark_cov": [
+   24,
+   12.821,
+   1.846
+  ],
+  "dark_nocov": [
+   257,
+   8.337,
+   1.097
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "54196",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 11,
+  "alphatest_draws": 6,
+  "lit_px": 185,
+  "view_w_p50": 168445,
+  "speed_capture_px": 0.17,
+  "sun_share": 0.166,
+  "surface_switch_frac": 0.659,
+  "pre_dC": 25.744,
+  "pre_std8": 22.356,
+  "model_taa_dH": 3.214,
+  "model_lock_dH": 0.342,
+  "model_hist_clip": 1.039,
+  "lockmodel_dH": 1.829,
+  "lockmodel_locked": 0.409,
+  "flicker_px_dC_gt8": 0.9297,
+  "flicker_px_dH_gt2": 0.6,
+  "sun_cov": [
+   20,
+   32.623,
+   5.335
+  ],
+  "sun_nocov": [
+   14,
+   35.934,
+   5.027
+  ],
+  "dark_cov": [
+   98,
+   25.836,
+   2.921
+  ],
+  "dark_nocov": [
+   37,
+   19.151,
+   2.276
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "54026",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 11,
+  "alphatest_draws": 6,
+  "lit_px": 93,
+  "view_w_p50": 230096,
+  "speed_capture_px": 0.28,
+  "sun_share": 0.149,
+  "surface_switch_frac": 0.591,
+  "pre_dC": 24.756,
+  "pre_std8": 22.01,
+  "model_taa_dH": 3.22,
+  "model_lock_dH": 0.438,
+  "model_hist_clip": 1.486,
+  "lockmodel_dH": 2.036,
+  "lockmodel_locked": 0.341,
+  "flicker_px_dC_gt8": 0.9462,
+  "flicker_px_dH_gt2": 0.5591,
+  "sun_cov": [
+   11,
+   37.17,
+   6.769
+  ],
+  "dark_cov": [
+   38,
+   24.368,
+   3.199
+  ],
+  "dark_nocov": [
+   32,
+   19.166,
+   1.908
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "53754",
+  "model": "00005570",
+  "farm": true,
+  "lod": "00000003",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 78,
+  "view_w_p50": 266252,
+  "speed_capture_px": 0.34,
+  "sun_share": 0.166,
+  "surface_switch_frac": 0.577,
+  "pre_dC": 19.959,
+  "pre_std8": 17.869,
+  "model_taa_dH": 2.794,
+  "model_lock_dH": 0.271,
+  "model_hist_clip": 0.351,
+  "lockmodel_dH": 1.226,
+  "lockmodel_locked": 0.521,
+  "flicker_px_dC_gt8": 0.8333,
+  "flicker_px_dH_gt2": 0.5256,
+  "sun_cov": [
+   8,
+   29.12,
+   4.622
+  ],
+  "sun_nocov": [
+   5,
+   42.0,
+   7.14
+  ],
+  "dark_cov": [
+   26,
+   18.393,
+   2.397
+  ],
+  "dark_nocov": [
+   23,
+   18.522,
+   2.485
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "54129",
+  "model": "000054ca",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 31,
+  "alphatest_draws": 6,
+  "lit_px": 2490,
+  "view_w_p50": 112037,
+  "speed_capture_px": 0.33,
+  "sun_share": 0.18,
+  "surface_switch_frac": 0.27,
+  "pre_dC": 7.024,
+  "pre_std8": 5.722,
+  "model_taa_dH": 0.998,
+  "model_lock_dH": 0.109,
+  "model_hist_clip": 0.324,
+  "lockmodel_dH": 0.538,
+  "lockmodel_locked": 0.246,
+  "flicker_px_dC_gt8": 0.2984,
+  "flicker_px_dH_gt2": 0.1574,
+  "sun_cov": [
+   124,
+   11.221,
+   1.564
+  ],
+  "sun_nocov": [
+   417,
+   11.03,
+   1.561
+  ],
+  "dark_cov": [
+   424,
+   6.53,
+   0.932
+  ],
+  "dark_nocov": [
+   1166,
+   4.738,
+   0.729
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "53618",
+  "model": "000057df",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 16,
+  "alphatest_draws": 2,
+  "lit_px": 2383,
+  "view_w_p50": 141013,
+  "speed_capture_px": 1.36,
+  "sun_share": 0.199,
+  "surface_switch_frac": 0.125,
+  "pre_dC": 20.593,
+  "pre_std8": 18.211,
+  "model_taa_dH": 3.109,
+  "model_lock_dH": 0.358,
+  "model_hist_clip": 0.429,
+  "lockmodel_dH": 1.676,
+  "lockmodel_locked": 0.384,
+  "flicker_px_dC_gt8": 0.7235,
+  "flicker_px_dH_gt2": 0.5455,
+  "sun_cov": [
+   68,
+   26.637,
+   3.758
+  ],
+  "sun_nocov": [
+   422,
+   25.358,
+   4.187
+  ],
+  "dark_cov": [
+   197,
+   23.297,
+   3.596
+  ],
+  "dark_nocov": [
+   1421,
+   18.658,
+   2.702
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "53595",
+  "model": "000057df",
+  "farm": false,
+  "lod": "00000003",
+  "draws": 14,
+  "alphatest_draws": 1,
+  "lit_px": 1573,
+  "view_w_p50": 158404,
+  "speed_capture_px": 1.16,
+  "sun_share": 0.262,
+  "surface_switch_frac": 0.137,
+  "pre_dC": 15.176,
+  "pre_std8": 12.368,
+  "model_taa_dH": 2.029,
+  "model_lock_dH": 0.215,
+  "model_hist_clip": 0.189,
+  "lockmodel_dH": 1.014,
+  "lockmodel_locked": 0.361,
+  "flicker_px_dC_gt8": 0.5982,
+  "flicker_px_dH_gt2": 0.3846,
+  "sun_cov": [
+   57,
+   18.566,
+   2.355
+  ],
+  "sun_nocov": [
+   370,
+   17.127,
+   2.318
+  ],
+  "dark_cov": [
+   104,
+   19.607,
+   2.46
+  ],
+  "dark_nocov": [
+   639,
+   11.1,
+   1.532
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "54130",
+  "model": "000054cb",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 36,
+  "alphatest_draws": 6,
+  "lit_px": 1329,
+  "view_w_p50": 111987,
+  "speed_capture_px": 0.25,
+  "sun_share": 0.226,
+  "surface_switch_frac": 0.321,
+  "pre_dC": 9.038,
+  "pre_std8": 7.74,
+  "model_taa_dH": 1.332,
+  "model_lock_dH": 0.134,
+  "model_hist_clip": 0.377,
+  "lockmodel_dH": 0.698,
+  "lockmodel_locked": 0.266,
+  "flicker_px_dC_gt8": 0.3567,
+  "flicker_px_dH_gt2": 0.2272,
+  "sun_cov": [
+   112,
+   16.739,
+   2.313
+  ],
+  "sun_nocov": [
+   212,
+   15.769,
+   2.498
+  ],
+  "dark_cov": [
+   223,
+   7.904,
+   1.266
+  ],
+  "dark_nocov": [
+   518,
+   5.732,
+   0.848
+  ]
+ },
+ {
+  "capture": 27833,
+  "file": "tv_capture1_27833.json",
+  "node": "61242",
+  "model": "00004f74",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 31,
+  "alphatest_draws": 4,
+  "lit_px": 712,
+  "view_w_p50": 152368,
+  "speed_capture_px": 1.44,
+  "sun_share": 0.127,
+  "surface_switch_frac": 0.025,
+  "pre_dC": 16.087,
+  "pre_std8": 13.585,
+  "model_taa_dH": 2.425,
+  "model_lock_dH": 0.293,
+  "model_hist_clip": 1.013,
+  "lockmodel_dH": 1.379,
+  "lockmodel_locked": 0.313,
+  "flicker_px_dC_gt8": 0.5042,
+  "flicker_px_dH_gt2": 0.3806,
+  "sun_nocov": [
+   97,
+   32.926,
+   5.259
+  ],
+  "dark_cov": [
+   12,
+   22.176,
+   4.212
+  ],
+  "dark_nocov": [
+   571,
+   12.531,
+   1.809
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53980",
+  "model": "0000556f",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 15,
+  "alphatest_draws": 9,
+  "lit_px": 2470,
+  "view_w_p50": 61959,
+  "speed_capture_px": 3.77,
+  "sun_share": 0.281,
+  "surface_switch_frac": 0.128,
+  "pre_dC": 12.287,
+  "pre_std8": 10.087,
+  "model_taa_dH": 1.724,
+  "model_lock_dH": 0.197,
+  "model_hist_clip": 0.247,
+  "lockmodel_dH": 0.975,
+  "lockmodel_locked": 0.328,
+  "flicker_px_dC_gt8": 0.5652,
+  "flicker_px_dH_gt2": 0.3324,
+  "sun_cov": [
+   150,
+   18.119,
+   2.356
+  ],
+  "sun_nocov": [
+   531,
+   17.465,
+   2.348
+  ],
+  "dark_cov": [
+   55,
+   18.26,
+   2.658
+  ],
+  "dark_nocov": [
+   869,
+   9.839,
+   1.476
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "54196",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 11,
+  "alphatest_draws": 6,
+  "lit_px": 393,
+  "view_w_p50": 132856,
+  "speed_capture_px": 0.92,
+  "sun_share": 0.134,
+  "surface_switch_frac": 0.562,
+  "pre_dC": 23.342,
+  "pre_std8": 19.516,
+  "model_taa_dH": 3.164,
+  "model_lock_dH": 0.343,
+  "model_hist_clip": 1.012,
+  "lockmodel_dH": 1.899,
+  "lockmodel_locked": 0.377,
+  "flicker_px_dC_gt8": 0.8931,
+  "flicker_px_dH_gt2": 0.5827,
+  "sun_cov": [
+   48,
+   40.023,
+   6.564
+  ],
+  "sun_nocov": [
+   12,
+   28.545,
+   4.768
+  ],
+  "dark_cov": [
+   161,
+   24.272,
+   3.014
+  ],
+  "dark_nocov": [
+   151,
+   17.025,
+   2.121
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53703",
+  "model": "0000556f",
+  "farm": true,
+  "lod": "00000003",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 190,
+  "view_w_p50": 170917,
+  "speed_capture_px": 0.04,
+  "sun_share": 0.268,
+  "surface_switch_frac": 0.179,
+  "pre_dC": 18.734,
+  "pre_std8": 16.151,
+  "model_taa_dH": 2.712,
+  "model_lock_dH": 0.3,
+  "model_hist_clip": 0.276,
+  "lockmodel_dH": 1.602,
+  "lockmodel_locked": 0.344,
+  "flicker_px_dC_gt8": 0.8263,
+  "flicker_px_dH_gt2": 0.5526,
+  "sun_cov": [
+   8,
+   27.465,
+   5.516
+  ],
+  "sun_nocov": [
+   51,
+   23.379,
+   3.886
+  ],
+  "dark_cov": [
+   18,
+   15.972,
+   2.366
+  ],
+  "dark_nocov": [
+   89,
+   15.86,
+   1.86
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "54026",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 11,
+  "alphatest_draws": 6,
+  "lit_px": 139,
+  "view_w_p50": 194877,
+  "speed_capture_px": 0.92,
+  "sun_share": 0.128,
+  "surface_switch_frac": 0.698,
+  "pre_dC": 23.244,
+  "pre_std8": 21.058,
+  "model_taa_dH": 3.056,
+  "model_lock_dH": 0.332,
+  "model_hist_clip": 1.074,
+  "lockmodel_dH": 1.781,
+  "lockmodel_locked": 0.4,
+  "flicker_px_dC_gt8": 0.8993,
+  "flicker_px_dH_gt2": 0.5612,
+  "sun_cov": [
+   11,
+   36.727,
+   5.993
+  ],
+  "sun_nocov": [
+   8,
+   34.098,
+   5.784
+  ],
+  "dark_cov": [
+   77,
+   24.154,
+   2.959
+  ],
+  "dark_nocov": [
+   33,
+   16.427,
+   1.944
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53754",
+  "model": "00005570",
+  "farm": true,
+  "lod": "00000003",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 124,
+  "view_w_p50": 230778,
+  "speed_capture_px": 0.4,
+  "sun_share": 0.124,
+  "surface_switch_frac": 0.395,
+  "pre_dC": 18.908,
+  "pre_std8": 17.007,
+  "model_taa_dH": 2.999,
+  "model_lock_dH": 0.392,
+  "model_hist_clip": 0.934,
+  "lockmodel_dH": 1.831,
+  "lockmodel_locked": 0.39,
+  "flicker_px_dC_gt8": 0.7984,
+  "flicker_px_dH_gt2": 0.5565,
+  "sun_nocov": [
+   10,
+   32.224,
+   4.898
+  ],
+  "dark_cov": [
+   32,
+   18.485,
+   2.707
+  ],
+  "dark_nocov": [
+   58,
+   15.897,
+   2.724
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "54129",
+  "model": "000054ca",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 31,
+  "alphatest_draws": 6,
+  "lit_px": 5443,
+  "view_w_p50": 76574,
+  "speed_capture_px": 0.53,
+  "sun_share": 0.209,
+  "surface_switch_frac": 0.191,
+  "pre_dC": 5.673,
+  "pre_std8": 4.969,
+  "model_taa_dH": 0.86,
+  "model_lock_dH": 0.107,
+  "model_hist_clip": 0.249,
+  "lockmodel_dH": 0.557,
+  "lockmodel_locked": 0.182,
+  "flicker_px_dC_gt8": 0.2254,
+  "flicker_px_dH_gt2": 0.1119,
+  "sun_cov": [
+   363,
+   8.415,
+   1.462
+  ],
+  "sun_nocov": [
+   1054,
+   8.114,
+   1.325
+  ],
+  "dark_cov": [
+   517,
+   5.644,
+   0.907
+  ],
+  "dark_nocov": [
+   2670,
+   4.131,
+   0.573
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53618",
+  "model": "000057df",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 16,
+  "alphatest_draws": 2,
+  "lit_px": 5187,
+  "view_w_p50": 105505,
+  "speed_capture_px": 2.76,
+  "sun_share": 0.178,
+  "surface_switch_frac": 0.063,
+  "pre_dC": 16.839,
+  "pre_std8": 15.1,
+  "model_taa_dH": 2.643,
+  "model_lock_dH": 0.302,
+  "model_hist_clip": 0.36,
+  "lockmodel_dH": 1.59,
+  "lockmodel_locked": 0.316,
+  "flicker_px_dC_gt8": 0.6445,
+  "flicker_px_dH_gt2": 0.477,
+  "sun_cov": [
+   63,
+   26.365,
+   4.639
+  ],
+  "sun_nocov": [
+   907,
+   20.483,
+   2.96
+  ],
+  "dark_cov": [
+   242,
+   19.684,
+   3.712
+  ],
+  "dark_nocov": [
+   3489,
+   15.532,
+   2.46
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53595",
+  "model": "000057df",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 16,
+  "alphatest_draws": 2,
+  "lit_px": 4018,
+  "view_w_p50": 121071,
+  "speed_capture_px": 1.58,
+  "sun_share": 0.25,
+  "surface_switch_frac": 0.11,
+  "pre_dC": 15.821,
+  "pre_std8": 13.358,
+  "model_taa_dH": 2.161,
+  "model_lock_dH": 0.235,
+  "model_hist_clip": 0.196,
+  "lockmodel_dH": 1.174,
+  "lockmodel_locked": 0.358,
+  "flicker_px_dC_gt8": 0.6444,
+  "flicker_px_dH_gt2": 0.4084,
+  "sun_cov": [
+   138,
+   20.55,
+   2.477
+  ],
+  "sun_nocov": [
+   795,
+   15.012,
+   2.008
+  ],
+  "dark_cov": [
+   172,
+   20.407,
+   2.909
+  ],
+  "dark_nocov": [
+   1472,
+   13.769,
+   1.895
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "54130",
+  "model": "000054cb",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 36,
+  "alphatest_draws": 6,
+  "lit_px": 2706,
+  "view_w_p50": 76597,
+  "speed_capture_px": 0.73,
+  "sun_share": 0.253,
+  "surface_switch_frac": 0.233,
+  "pre_dC": 7.402,
+  "pre_std8": 6.927,
+  "model_taa_dH": 1.3,
+  "model_lock_dH": 0.148,
+  "model_hist_clip": 0.292,
+  "lockmodel_dH": 0.832,
+  "lockmodel_locked": 0.222,
+  "flicker_px_dC_gt8": 0.3078,
+  "flicker_px_dH_gt2": 0.1962,
+  "sun_cov": [
+   188,
+   11.447,
+   1.987
+  ],
+  "sun_nocov": [
+   656,
+   9.673,
+   1.686
+  ],
+  "dark_cov": [
+   349,
+   7.315,
+   1.375
+  ],
+  "dark_nocov": [
+   1147,
+   5.285,
+   0.849
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "61242",
+  "model": "00004f74",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 31,
+  "alphatest_draws": 4,
+  "lit_px": 1598,
+  "view_w_p50": 115061,
+  "speed_capture_px": 3.15,
+  "sun_share": 0.038,
+  "surface_switch_frac": 0.026,
+  "pre_dC": 7.277,
+  "pre_std8": 7.236,
+  "model_taa_dH": 1.14,
+  "model_lock_dH": 0.155,
+  "model_hist_clip": 0.331,
+  "lockmodel_dH": 0.771,
+  "lockmodel_locked": 0.186,
+  "flicker_px_dC_gt8": 0.301,
+  "flicker_px_dH_gt2": 0.1921,
+  "sun_nocov": [
+   63,
+   18.344,
+   3.091
+  ],
+  "dark_cov": [
+   36,
+   13.548,
+   1.951
+  ],
+  "dark_nocov": [
+   1447,
+   6.527,
+   1.006
+  ]
+ },
+ {
+  "capture": 28592,
+  "file": "tv_capture2_28592.json",
+  "node": "53941",
+  "model": "0000553e",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 93,
+  "view_w_p50": 64986,
+  "speed_capture_px": 3.41,
+  "sun_share": 0.45,
+  "surface_switch_frac": 0.344,
+  "pre_dC": 21.025,
+  "pre_std8": 16.452,
+  "model_taa_dH": 2.838,
+  "model_lock_dH": 0.341,
+  "model_hist_clip": 0.289,
+  "lockmodel_dH": 1.577,
+  "lockmodel_locked": 0.441,
+  "flicker_px_dC_gt8": 0.9355,
+  "flicker_px_dH_gt2": 0.6989,
+  "sun_cov": [
+   8,
+   19.829,
+   2.638
+  ],
+  "sun_nocov": [
+   41,
+   25.881,
+   3.441
+  ],
+  "dark_cov": [
+   20,
+   15.317,
+   2.1
+  ],
+  "dark_nocov": [
+   17,
+   17.983,
+   2.548
+  ]
+ },
+ {
+  "capture": 29722,
+  "file": "tv_capture3_29722.json",
+  "node": "54196",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000001",
+  "draws": 21,
+  "alphatest_draws": 7,
+  "lit_px": 4031,
+  "view_w_p50": 59452,
+  "speed_capture_px": 2.04,
+  "sun_share": 0.055,
+  "surface_switch_frac": 0.132,
+  "pre_dC": 6.708,
+  "pre_std8": 6.548,
+  "model_taa_dH": 1.081,
+  "model_lock_dH": 0.13,
+  "model_hist_clip": 0.276,
+  "lockmodel_dH": 0.801,
+  "lockmodel_locked": 0.148,
+  "flicker_px_dC_gt8": 0.2883,
+  "flicker_px_dH_gt2": 0.1613,
+  "sun_cov": [
+   61,
+   15.516,
+   3.048
+  ],
+  "sun_nocov": [
+   280,
+   16.472,
+   3.544
+  ],
+  "dark_cov": [
+   475,
+   6.989,
+   0.954
+  ],
+  "dark_nocov": [
+   3036,
+   5.559,
+   0.834
+  ]
+ },
+ {
+  "capture": 29722,
+  "file": "tv_capture3_29722.json",
+  "node": "54026",
+  "model": "0000556e",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 11,
+  "alphatest_draws": 6,
+  "lit_px": 649,
+  "view_w_p50": 121327,
+  "speed_capture_px": 1.24,
+  "sun_share": 0.076,
+  "surface_switch_frac": 0.49,
+  "pre_dC": 10.686,
+  "pre_std8": 9.209,
+  "model_taa_dH": 1.421,
+  "model_lock_dH": 0.179,
+  "model_hist_clip": 0.571,
+  "lockmodel_dH": 1.003,
+  "lockmodel_locked": 0.18,
+  "flicker_px_dC_gt8": 0.4823,
+  "flicker_px_dH_gt2": 0.2188,
+  "sun_cov": [
+   39,
+   28.087,
+   4.999
+  ],
+  "sun_nocov": [
+   12,
+   14.93,
+   2.481
+  ],
+  "dark_cov": [
+   257,
+   10.904,
+   1.313
+  ],
+  "dark_nocov": [
+   310,
+   8.037,
+   1.03
+  ]
+ },
+ {
+  "capture": 29722,
+  "file": "tv_capture3_29722.json",
+  "node": "53754",
+  "model": "00005570",
+  "farm": true,
+  "lod": "00000002",
+  "draws": 15,
+  "alphatest_draws": 9,
+  "lit_px": 483,
+  "view_w_p50": 157457,
+  "speed_capture_px": 0.31,
+  "sun_share": 0.245,
+  "surface_switch_frac": 0.24,
+  "pre_dC": 8.199,
+  "pre_std8": 7.358,
+  "model_taa_dH": 1.293,
+  "model_lock_dH": 0.159,
+  "model_hist_clip": 0.259,
+  "lockmodel_dH": 0.862,
+  "lockmodel_locked": 0.275,
+  "flicker_px_dC_gt8": 0.4306,
+  "flicker_px_dH_gt2": 0.1925,
+  "sun_cov": [
+   33,
+   13.752,
+   2.338
+  ],
+  "sun_nocov": [
+   97,
+   13.9,
+   2.34
+  ],
+  "dark_cov": [
+   52,
+   8.731,
+   1.228
+  ],
+  "dark_nocov": [
+   204,
+   4.612,
+   0.708
+  ]
+ },
+ {
+  "capture": 29722,
+  "file": "tv_capture3_29722.json",
+  "node": "61551",
+  "model": "00004a88",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 689,
+  "view_w_p50": 40,
+  "speed_capture_px": 0.3,
+  "sun_share": 0.013,
+  "surface_switch_frac": 0.139,
+  "pre_dC": 4.827,
+  "pre_std8": 4.399,
+  "model_taa_dH": 1.036,
+  "model_lock_dH": 0.222,
+  "model_hist_clip": 0.217,
+  "lockmodel_dH": 0.777,
+  "lockmodel_locked": 0.136,
+  "flicker_px_dC_gt8": 0.1785,
+  "flicker_px_dH_gt2": 0.1001,
+  "sun_nocov": [
+   5,
+   10.038,
+   1.687
+  ],
+  "dark_cov": [
+   88,
+   5.978,
+   0.882
+  ],
+  "dark_nocov": [
+   533,
+   3.913,
+   1.017
+  ]
+ },
+ {
+  "capture": 29722,
+  "file": "tv_capture3_29722.json",
+  "node": "61552",
+  "model": "00004a88",
+  "farm": false,
+  "lod": "00000000",
+  "draws": 1,
+  "alphatest_draws": 0,
+  "lit_px": 579,
+  "view_w_p50": 40,
+  "speed_capture_px": 0.3,
+  "sun_share": 0.076,
+  "surface_switch_frac": 0.155,
+  "pre_dC": 4.378,
+  "pre_std8": 4.026,
+  "model_taa_dH": 0.977,
+  "model_lock_dH": 0.205,
+  "model_hist_clip": 0.253,
+  "lockmodel_dH": 0.745,
+  "lockmodel_locked": 0.166,
+  "flicker_px_dC_gt8": 0.1727,
+  "flicker_px_dH_gt2": 0.0725,
+  "sun_cov": [
+   33,
+   9.999,
+   1.443
+  ],
+  "sun_nocov": [
+   87,
+   6.683,
+   1.393
+  ],
+  "dark_cov": [
+   89,
+   5.616,
+   0.791
+  ],
+  "dark_nocov": [
+   340,
+   2.826,
+   0.862
+  ]
+ }
+]
