@@ -802,3 +802,11 @@ then `volumetric_fog_handover … coldfill=1`. Acceptance is visual: no vanilla 
 sector (The Hole, Atreus' Clouds, Menelaus' Paradise). Review open items: the lead between the found poll and the
 arrival is unmeasured on FL (below ~0.5 s the cards may still flash); fixture gaps `sector_refused`, cycle,
 page-straddling node, unreadable guard, count 0 (handled by structure, untested).
+
+**Run 14 accepted (2026-11-02).** User: "fine now", no vanilla cards on arrival. Log (`C:\X3FL\x3m.log`, measured):
+`fl.prefill status=ready anchors=18 failed=none`; 104 `volumetric_fog_prefill` polls: `walk=found` 44 (one
+`action=started`, 5 `already_started`, the rest `action=clear`/`none` outside a transit), `walk=same_id` 10,
+`walk=head` 50 (no newer sector on the list, i.e. stalls that were not sector transits); one `event=confirmed
+lead_ms=1353.4 adopted=1`; handovers `coldfill=1` with `frames=` 38/108/110 (depends on the arrival point, as
+the prefill note says). The found-to-arrival lead of 1.35 s answers the open question: the found poll is early
+enough.
