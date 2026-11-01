@@ -788,3 +788,17 @@ an uncommitted page), `loading`, `bad_count`, `bad_index`, `bad_record`; the `fl
 poll and per period. TIMING per poll: 3.9 µs found with the name, 0.42–0.46 µs refused at the guard (fixture, two
 runs, not game FPS). Host tests: `test_fl_*` 13 modules 73 tests OK (4 skips: local shader corpus; 14 modules 79 OK after rebasing onto `3cbb394d`, which adds `test_fl_sun_occlusion_constants` and no compiled source), `test_fog*`
 27 modules 235 tests OK (2 skips: local data), `test_sector*` 4 OK, `test_config*` 19 OK. Expected in game: the note's "Expected rows"; not flown.
+
+## FL run 14 — step 8 fog transit prefill (installed 2026-11-02)
+
+Candidate: commit `95c06506` (step 8 `87caaa56` + review doc fixes `95c06506`; reviewed Opus high: install,
+no production defect; fresh-tree parity AP 120 of 121 objects identical to `3cbb394d`, only `config.cpp`; FL 77
+of 80 plus the new `fog_prefill_fl.cpp.obj`), `build-fl/d3d9.dll` SHA-256 `cc8e50c0…` (55,603,866 B), 0
+warnings, `test_fl_*` 79 OK and `test_fog*` 235 OK ([record](../../verification/results/fl-run14/candidate.json));
+`C:\X3FL\d3d9.dll` bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run13` (`1651118e…`), X3FL.exe
+unchanged (`e7f3aad8…`). Expected rows: `fl.prefill status=ready anchors=18`; in a transit
+`volumetric_fog_prefill … walk=found … action=started`; on arrival `event=confirmed … same_id=1 … adopted=1`,
+then `volumetric_fog_handover … coldfill=1`. Acceptance is visual: no vanilla fog cards on arrival into a fogged
+sector (The Hole, Atreus' Clouds, Menelaus' Paradise). Review open items: the lead between the found poll and the
+arrival is unmeasured on FL (below ~0.5 s the cards may still flash); fixture gaps `sector_refused`, cycle,
+page-straddling node, unreadable guard, count 0 (handled by structure, untested).
