@@ -372,12 +372,21 @@ draw is classified on the CPU and wrapped accordingly:
   `(position.xyz, 1)` (`origin_known`: `mov rS, vP` of the `dcl_position0` input, or the fingerprinted
   `mad rS, vP.xyzx, cA.xxxy, cA.yyyx` with `cA` a `def` evaluating to mul (1,1,1,0) / add (0,0,0,1); any other last
   write, or a write between the dp4s, fails it), or whose clip rows are in no shadowed window cannot be the
-  fingerprinted sun program: its body is **Other** (untouched, no wrap built, never blocking), logged once per pair
+  fingerprinted sun program: its body is **Other** (untouched, no wrap built, never `block()`; on the sun's record it defers, below), logged once per pair
   (`sun_lens_body_unclassifiable`). Other records' bodies and the log-only mode therefore never create a shader.
   A core body's vertex wrap is created on its first core draw. Only a transient state is a refusal, and a
   transient one: the rows not yet set in this device generation (`rows_unknown`), a centre behind the camera
   (`body_unknown`), a missing RT2. `block()` is reached only through a Core / Ghost body of the eligible record
   (its blend law, fog, a refused wrap).
+- *An unclassifiable body defers the sun's record (2026-11-01, Run216).* Untouched with Z off, such a body showed the
+  sun through hulls whenever it was the sun's own chain (AP native: one vs_3_0 / ps_3_0 draw the scan refuses).
+  With the override on and a single eligible record in the bracket, an unclassifiable body defers that record
+  (`core::Deferral`): the override stops answering for it and the vanilla probe hides the chain all or nothing; in an
+  answered frame the draw and the rest of the bracket are dropped. The bodies are then classified also in vanilla
+  frames, and a bracket of the record with a core body and no unclassifiable one lifts the deferral, so a
+  classifiable chain keeps partial occlusion. Unlike `block()` it is per record, releasable and logged
+  (`sun_lens_body_unclassifiable ... note=blocked_vanilla_probe`, `sun_occlusion_released`). Ledger:
+  [sun-occlusion.md](../verification/sun-occlusion.md), 2026-11-01.
 
 **Diagnostic added for the next flight.** With `--sun-occlusion-log`, on F8 capture frames whose lens bracket
 drew, `MotionOutput::before_present` reads the presented back buffer back as `lens_<device>_<frame>.bgra8`

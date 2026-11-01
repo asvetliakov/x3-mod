@@ -76,6 +76,15 @@ FrameInputs frame_inputs();
 void report_pass(bool ok);      // the visibility pass ran for the latched record in this frame
 void block(const char* reason); // a lens draw that can never carry the fraction: vanilla from the next frame on, for
                                 // the process (a Reset does not lift it)
+// The lens draws' report on the sun's own record (core::Deferral; owner thread, inside the bracket). attributable():
+// the override is on and the bracket has a single eligible record, so its bodies are classified also in a frame the
+// vanilla probe decides. lens_body_unclassifiable(): Started once per record (the override stops answering for it
+// from the next frame on; the caller drops the rest of an answered bracket and logs), Held while it stays deferred,
+// NotAttributed without a record. lens_body_core(): a core body at the record's uv (the deferral lifts at the
+// bracket's end when no unclassifiable body was drawn, sun_occlusion_released).
+bool lens_attributable();
+int lens_body_unclassifiable();
+void lens_body_core();
 Counters counters();
 }
 extern "C" {

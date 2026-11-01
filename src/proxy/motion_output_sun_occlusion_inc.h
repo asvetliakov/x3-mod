@@ -193,7 +193,15 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
     renderer::LensState state{};
     const bool plain = route.submit && !route.routed && !route.composition && !route.fog_card_mask.masked && !route.source_gain && !route.hull_gain && !route.screen_additive;
     const char* refusal = nullptr;
-    if ((lens_frame_active_ || sun_occlusion_.log) && !shadow_.recording) {
+    // A sun whose own lens body the scan cannot classify (core::Deferral, run216): its bodies are classified also in a
+    // frame the vanilla probe decides, so a classifiable chain lifts the deferral.
+#if !X3M_EDITION_FL
+    const bool attributable = sun_occlusion::lens_attributable();
+    bool deferred_body = false;
+#else
+    constexpr bool attributable = false, deferred_body = false;
+#endif
+    if ((lens_frame_active_ || sun_occlusion_.log || attributable) && !shadow_.recording) {
         DWORD v[6]{};
         static constexpr D3DRENDERSTATETYPE indexed[6] = {D3DRS_ALPHABLENDENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHAREF, D3DRS_ALPHAFUNC, D3DRS_FOGENABLE};
         bool known = blend_known(0) && blend_known(1) && blend_known(2);
@@ -216,7 +224,7 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
     std::size_t window = motion_matrix_windows_max;
     bool rows_known = false, body_transient = false;
     const char* body_refusal = nullptr; const char* body_other = nullptr;
-    if ((lens_frame_active_ || sun_occlusion_.log) && state.known && state.shader && state.vertex_shader && sun_occlusion_pass_ && !shadow_.recording) {
+    if ((lens_frame_active_ || sun_occlusion_.log || attributable) && state.known && state.shader && state.vertex_shader && sun_occlusion_pass_ && !shadow_.recording) {
         renderer::LensVerdict scanned = renderer::LensVerdict::NotReady;
         taa_call([&] { scanned = sun_occlusion_pass_->lens_prepare(state, &prepared); });
         if (scanned == renderer::LensVerdict::Applied) {
@@ -228,16 +236,30 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
             else {
                 centre = core::classify_body(shadow_.rows[window], true, lens_sun_u_, lens_sun_v_, target_height_ ? float(target_width_) / float(target_height_) : 0.f);
                 if (centre.body == core::Body::Unknown) { body_refusal = "body_unknown"; body_transient = true; }
+#if !X3M_EDITION_FL
+                else if (centre.body == core::Body::Core) sun_occlusion::lens_body_core();
+#endif
             }
         } else if (scanned == renderer::LensVerdict::Variant) body_other = sun_occlusion_pass_->last_variant_refusal();
         else if (scanned == renderer::LensVerdict::CacheFull) body_other = "cache_full";
         else { body_refusal = renderer::lens_verdict_name(scanned); body_transient = scanned == renderer::LensVerdict::NotReady; }
         if (body_other) {
             centre.body = core::Body::Other;
+#if !X3M_EDITION_FL
+            // On the bracket's single sun record the override stops answering for it (vanilla probe from the next
+            // frame on) and an answered bracket drops the rest below; logged once per pair and once per deferral.
+            const auto deferral = core::Deferral::Result(sun_occlusion::lens_body_unclassifiable());
+            deferred_body = deferral != core::Deferral::NotAttributed;
+            if (core::Deferral::logged(prepared.first || scanned == renderer::LensVerdict::CacheFull, deferral))
+                log("sun_lens_body_unclassifiable device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s matrix_register=%ld note=%s", id_, frame_,
+                    static_cast<unsigned long long>(state.vertex_hash), static_cast<unsigned long long>(state.hash), body_other,
+                    prepared.matrix_register == ~0u ? -1l : long(prepared.matrix_register), deferred_body ? "blocked_vanilla_probe" : "left_untouched");
+#else
             if (prepared.first || scanned == renderer::LensVerdict::CacheFull)
                 log("sun_lens_body_unclassifiable device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s matrix_register=%ld note=left_untouched", id_, frame_,
                     static_cast<unsigned long long>(state.vertex_hash), static_cast<unsigned long long>(state.hash), body_other,
                     prepared.matrix_register == ~0u ? -1l : long(prepared.matrix_register));
+#endif
         }
         state.body = centre.body;
     }
@@ -245,6 +267,7 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
         if (!plain) refusal = "routed_draw";
         else if (!state.known) refusal = "state_unknown";
         else if (body_refusal) refusal = body_refusal;
+        else if (deferred_body) refusal = body_other; // the sun's own body, unscaled: never shown in an answered frame
         else if (state.body == core::Body::Other) { verdict = renderer::LensVerdict::Body; ++lens_other_; }
         else {
             taa_call([&] { verdict = sun_occlusion_pass_->lens_begin(state, route.lens); });
@@ -261,7 +284,8 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
             ++lens_refused_;
             lens_frame_active_ = false; lens_suppress_ = true;
             const bool transient = !state.known || body_transient || verdict == renderer::LensVerdict::Device || (plain && verdict == renderer::LensVerdict::NotReady);
-            if (transient && plain) sun_occlusion::report_pass(false); else sun_occlusion::block(refusal);
+            if (deferred_body) {} // the record's deferral (lens_body_unclassifiable) hands the probe back, releasably
+            else if (transient && plain) sun_occlusion::report_pass(false); else sun_occlusion::block(refusal);
         }
     }
     if (lens_suppress_ && route.submit) { route.submit = false; route.submission_error = D3D_OK; ++lens_dropped_; }

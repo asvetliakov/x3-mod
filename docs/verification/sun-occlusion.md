@@ -563,3 +563,42 @@ overlays phase, where the flares are drawn, falls from 2.68 ms (run385, 168 flar
 1.2 ms, so the engine's per-flare work does vanish with the node, but it is not measurable in a plain run. `skipped=`
 stays at about 0.2 per frame: `v\01009` (dynamic id) and `v\10667` are outside the 42-name set. Verdict: the cull stays
 available at gain 0; no flare batcher (the recoverable cost is under the noise without instrumentation).
+
+## 2026-11-01: Run216 sun through hulls (AP native, 1.8.2): an unclassifiable sun body hands the record to the vanilla probe (worktree, not installed, not flown)
+
+Triage (`verification/results/run216-sun-occlusion/`, from the user's log with `sun_occlusion_log = 1`, measured): the sun's
+lens chain on this install is one vs_3_0 / ps_3_0 draw per frame, `vs 494fe349b8bc12ec / ps 7c83ed50c9894e44` (one quad,
+2048² texture, ONE/ONE), drawn in 4,112 of the 4,113 sun frames; the run223 vs_2_0 pair `d5e1c753 / 8360f422` belongs to
+ship and station lights here (groups 36 / 37 / 4). The lens scan refuses every SM3 pair (`no_free_texcoord`), so the
+body was `Other` and drawn untouched with Z off while the override answered "visible" on 4,111 of 4,113 frames: the
+engine's own all-or-nothing hiding was defeated. The pass itself works (raw fraction 0.06-0.41 while occluded).
+Offline inventory (`lens_pair_inventory.py`, output `lens_pair_inventory.json`, measured): both programs are **stock AP**
+content, in `addon/01.cat`, `ps_7c83ed50` only in the four `shader/3_0/**/standard_lighting.fb` effects; `/mnt/c/X3`
+(Mayhem as numbered `addon/05..15`) resolves to the same 2,352 effects and 751 programs as `/mnt/c/X3AP-orig`; FL
+(`/mnt/c/X3FL`, root + addon2) has the vertex program but not `ps_7c83ed50`. So the shaders do not come from Mayhem;
+whether stock AP's sun is drawn with this pair (the model's material choice) is not known offline (the
+Run 223 sun, group 5 under CrossOver at 1280x768, drew 10 draws per frame of the vs_2_0 pair, section C above).
+
+Fix (`core::Deferral`, `sun_occlusion.cpp`, `prepare_lens`): a lens body the scan cannot classify (`body_other`: a refused
+SM3 pair, an unknown origin, rows in no window, a full scan cache) in the bracket of the frame's single eligible record
+defers that record: the override stops answering for it (`Ready::probe` gets `enabled = false`), so the vanilla probe
+hides the chain behind geometry from the next frame on. In an answered frame the draw takes the refusal path (it and the
+rest of the bracket are dropped, `lens_suppress_`), never drawn unscaled. Unlike `block()` it is per record and lifts:
+the bodies are classified in every frame with a single record while the override is on (also vanilla frames), and a
+bracket of the same record with a `core` body at the sun's uv and no unclassifiable body ends the deferral
+(`sun_occlusion_released ... note=body_classified`), so a classifiable chain (the stock vs_2_0 one) keeps partial
+occlusion. Device Resets keep it. Rows: `sun_lens_body_unclassifiable ... note=blocked_vanilla_probe` on the pair's first
+scan and on each deferral's start (`note=left_untouched` without a single record). The ghost path and `block()` are
+unchanged; the probe thunk gains one integer compare. FL: the code is fenced `#if !X3M_EDITION_FL` like the install.
+
+| Check | Result (measured) |
+| --- | --- |
+| `cmake --build build-ap -j4 2>&1 \| grep -ci warning` / same for `build-fl` (MinGW i686, RelWithDebInfo) | 0 / 0 |
+| FL objects vs a build of `ad792ade` in the same tree, `objcopy --strip-debug` then byte compare (`verification/results/run216-sun-occlusion/fl_object_compare.py`) | 79 of 80 identical; `proxy_identity.cpp.obj` differs (source identity) |
+| `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | 1142 reachable functions, 0 violations |
+| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion test_logging_tiers` | 28 + 17 tests, 0 failing (new: `test_an_unclassifiable_sun_body_hands_the_record_to_the_vanilla_probe_until_it_classifies`: one block and one row per deferral, none for a classifiable chain, held through a hidden chain, a mixed bracket and a Reset, lifted by a core-only bracket, per record) |
+
+Open: SM3 support for the sun's own chain (the scan and the clip wrap for a vs_3_0 / ps_3_0 pair; this pair is the
+standard-lighting family, whose view-projection is c24-c27 per `docs/architecture/linear-distance-fade-region.md`, section
+2), which would restore partial occlusion on this install; until then the sun is hidden all or nothing as in vanilla.
+Not covered: the Wine fixture (no run in this change), the flight.

@@ -60,6 +60,41 @@ int ready_command(int count, char** a) {
     std::printf("answers=%s single=%d\n", answers.c_str(), int(state.single()));
     return 0;
 }
+// defer <script>: the probe / bracket composition of sun_occlusion.cpp and prepare_lens with core::Deferral.
+// b = begin_frame, p<record> = probe (prints the answer; enabled = deferral.answers(record)), k = pass ok,
+// [ = bracket begin (the frame's single record), U / u = an unclassifiable body (the pair's first scan / a later
+// one), c = a core body, ] = bracket end, r = device Reset. blocks = deferrals started, logs = sun_lens_body_unclassifiable rows.
+int defer_command(int count, char** a) {
+    Ready state;
+    Deferral deferral;
+    std::string answers;
+    unsigned blocks = 0, logs = 0, releases = 0;
+    for (int i = 0; i < count; ++i) {
+        const char c = a[i][0];
+        if (c == 'b')
+            state.begin_frame();
+        else if (c == 'k')
+            state.pass_ok = true;
+        else if (c == 'p') {
+            const std::uintptr_t record = std::uintptr_t(number(a[i] + 1));
+            answers += state.probe(record, deferral.answers(record)) ? '1' : '0';
+        } else if (c == '[')
+            deferral.bracket_begin(state.single() ? state.record : 0);
+        else if (c == 'U' || c == 'u') {
+            const Deferral::Result r = deferral.body_unclassifiable();
+            blocks += r == Deferral::Started;
+            logs += Deferral::logged(c == 'U', r);
+        } else if (c == 'c')
+            deferral.body_core();
+        else if (c == ']')
+            releases += deferral.bracket_end();
+        else if (c == 'r')
+            state.reset(); // device Reset: sun_occlusion.cpp resets Ready only
+    }
+    std::printf("answers=%s blocks=%u logs=%u releases=%u deferred=%lx\n", answers.c_str(), blocks, logs, releases,
+                static_cast<unsigned long>(deferral.record));
+    return 0;
+}
 // footprint <x> <y> <size> <acc> <fov> <scale_x> <width> <height> <radius_scale>   (full-screen rect)
 int footprint_command(char** a) {
     Latch l;
@@ -201,6 +236,7 @@ int main(int argc, char** argv) {
     const std::string command = argv[1];
     if (command == "decide" && argc == 15) return decide_command(argv + 2);
     if (command == "ready") return ready_command(argc - 2, argv + 2);
+    if (command == "defer") return defer_command(argc - 2, argv + 2);
     if (command == "footprint" && argc == 11) return footprint_command(argv + 2);
     if (command == "blend" && argc == 11) return blend_command(argv + 2);
     if (command == "view" && argc == 3) return view_command(argv[2]);

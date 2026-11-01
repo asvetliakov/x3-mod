@@ -13,3 +13,9 @@ Scripts (numpy/stdlib only, no capture bytes kept):
 - `find_sun_blob.py`, `local_centroid.py`: bright-pixel centroids in bgra8 captures.
   lens_1_6229 saturated core u=0.5866 v=0.4576; lens_1_6236 u=0.5880 v=0.4452; record 6229 u=0.58533 v=0.43983,
   6236 u=0.58524 v=0.43985; lane - record over 4113 rows: du median +0.00083 (p95 |0.0022|), dv median -0.00039 (p95 |0.0013|).
+- `lens_pair_inventory.py` (offline, `fl-shader-coverage/inventory.py`'s `effective_programs`; output
+  `lens_pair_inventory.json`): `vs_494fe349b8bc12ec` and `ps_7c83ed50c9894e44` are both in `/mnt/c/X3AP-orig` and
+  `/mnt/c/X3` (`addon/01.cat`; the ps only in the four `shader/3_0/**/standard_lighting.fb`); both installs resolve to
+  2352 effects / 751 programs (Mayhem's `addon/05..15` add no program); `/mnt/c/X3FL` has the vs, not the ps.
+- `fl_object_compare.py BASE NEW OBJ...`: FL build of the fix vs its parent, stripped objects: 79 of 80 identical
+  (`proxy_identity.cpp.obj` differs).

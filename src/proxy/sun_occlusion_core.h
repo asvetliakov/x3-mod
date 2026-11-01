@@ -139,6 +139,46 @@ struct Ready {
     bool single() const noexcept { return records == 1 && record != 0; }
 };
 
+#if !X3M_EDITION_FL // sun occlusion is not installed on FL (capture.cpp)
+// ---- A sun whose lens body the scan cannot classify ----
+// Run216 (AP native, Mayhem): the sun's chain is a vs_3_0 / ps_3_0 pair (stock standard_lighting programs) the lens
+// scan refuses, so its body is Other and was
+// drawn untouched while the override answered "visible": the sun showed through hulls. Such a body in the bracket of
+// the frame's single eligible record defers that record: the override does not answer for it (Ready::probe gets
+// enabled = false), so the vanilla all-or-nothing probe hides the chain behind geometry. The deferral lifts at the end
+// of a bracket of the same record that classified a core body (at the record's uv) and no unclassifiable one: the
+// stock chain or a later classifiable one. One record; device Resets keep it (a property of the program).
+struct Deferral {
+    std::uintptr_t record = 0;         // the deferred record (0: none)
+    std::uintptr_t bracket_record = 0; // this bracket's single eligible record (0: none, nothing is attributed)
+    bool unclassifiable = false, core = false;
+    enum Result : unsigned char { NotAttributed = 0, Started = 1, Held = 2 };
+    bool answers(std::uintptr_t rec) const noexcept { return rec != record; }
+    void bracket_begin(std::uintptr_t single_record) noexcept {
+        bracket_record = single_record;
+        unclassifiable = core = false;
+    }
+    // Started once per record: the caller drops the rest of an answered bracket and logs.
+    Result body_unclassifiable() noexcept {
+        unclassifiable = true;
+        if (!bracket_record) return NotAttributed;
+        if (record == bracket_record) return Held;
+        record = bracket_record;
+        return Started;
+    }
+    // The sun_lens_body_unclassifiable row: the pair's first scan (or a full scan cache) and each deferral's start.
+    static constexpr bool logged(bool first_or_cache_full, Result r) noexcept { return first_or_cache_full || r == Started; }
+    void body_core() noexcept { core = true; }
+    // True when the record's deferral was lifted.
+    bool bracket_end() noexcept {
+        const bool lift = record != 0 && record == bracket_record && core && !unclassifiable;
+        if (lift) record = 0;
+        bracket_record = 0;
+        return lift;
+    }
+};
+#endif
+
 // ---- A frame whose pass did not run ----
 // A transient skip (a query open, a block recording, the scene end late) must not make the chain flicker: the
 // last smoothed fraction stays in use for at most hold_limit consecutive frames, the override keeps answering,

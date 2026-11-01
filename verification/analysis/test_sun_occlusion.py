@@ -120,6 +120,33 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(ready('b', 'p5', 'p5')['single'], '1')                              # the same record twice is one record
         self.assertEqual(ready('b', 'p5', 'p6')['single'], '0')
 
+    def test_an_unclassifiable_sun_body_hands_the_record_to_the_vanilla_probe_until_it_classifies(self):
+        # run216: the Mayhem sun chain is a vs_3_0 / ps_3_0 pair the lens scan refuses (core::Deferral).
+        def frame(*bodies, records=('p5',)):
+            return ['b', *records, 'k', '[', *bodies, ']']
+        defer = lambda *frames: self.run_driver('defer', *[t for f in frames for t in f])
+        # A classifiable chain: no block, the override answers as before (the readiness test's '01...').
+        out = defer(*[frame('c', 'c') for _ in range(4)])
+        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('0111', '0', '0', '0', '0'))
+        # Unclassifiable on the sun's record (first scan in an answered frame): one block, one row, vanilla from the next frame on,
+        # also over a device Reset and with the vanilla probe showing the chain again and again.
+        out = defer(frame('c'), frame('c'), frame('U'), frame('u'), ['r'], frame('u'), frame('u'), frame())
+        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('0110000', '1', '1', '0', '5'))
+        # Release: not while the chain is hidden (no draw) or still carries the unclassifiable body beside a core one; a bracket
+        # with a core body and no unclassifiable one lifts it and the override answers again from the next frame.
+        held = [frame('c'), frame('U'), frame(), frame('c', 'u'), frame('u', 'c')]
+        out = defer(*held, frame('c'), frame('c'), frame('c'))
+        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('01000011', '1', '1', '1', '0'))
+        # Blocks again when the unclassifiable body returns (one more row, the pair's first scan is not repeated).
+        out = defer(*held, frame('c'), frame('c'), frame('u'), frame('u'))
+        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases']), ('010000110', '2', '2', '1'))
+        # No single record in the bracket (two suns): nothing attributed, the row says left_untouched (logged once, no block).
+        out = defer(frame('U', records=('p5', 'p6')), frame('u', records=('p5', 'p6')))
+        self.assertEqual((out['answers'], out['blocks'], out['logs']), ('0000', '0', '1'))
+        # Per record: another sun record is answered as before while the first stays deferred.
+        out = defer(frame('c'), frame('U'), frame('c', records=('p6',)), frame('c', records=('p6',)))
+        self.assertEqual((out['answers'], out['blocks'], out['deferred']), ('0101', '1', '5'))
+
     def test_a_transient_skip_holds_the_fraction_for_at_most_four_frames(self):
         usable = lambda *script: self.run_driver('hold', *script)['usable']
         self.assertEqual(usable('r', 's', 's', 's', 's', 's', 's'), '1111100')   # four held, then dropped until a pass runs again

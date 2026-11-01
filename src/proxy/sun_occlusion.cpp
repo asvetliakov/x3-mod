@@ -27,6 +27,9 @@ volatile LONG foreign_thread_ = 0;             // counted by the foreign threads
 volatile LONG reset_requested_ = 0;            // device Reset: consumed by the owner at its next probe or bracket
 // Owner thread only from here on.
 core::Ready ready_;
+#if !X3M_EDITION_FL
+core::Deferral deferral_; // a record whose lens body the scan cannot classify: the vanilla probe decides for it
+#endif
 core::Latch latch_;
 Counters counters_{};
 std::uint32_t seen_frame_ = 0;
@@ -140,7 +143,12 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);
     if (own) {
         ++counters_.own;
+#if !X3M_EDITION_FL
+        in.ready = ready_.probe(reinterpret_cast<std::uintptr_t>(record),
+                                override_ && deferral_.answers(reinterpret_cast<std::uintptr_t>(record)));
+#else
         in.ready = ready_.probe(reinterpret_cast<std::uintptr_t>(record), override_);
+#endif
         if (ready_.records == 1) {
             latch_.record = reinterpret_cast<std::uintptr_t>(record);
             latch_.x = in.x;
@@ -219,6 +227,12 @@ void __cdecl x3m_sun_lens_begin() {
         return; // no probe yet, or not the render thread: no bracket
     ++counters_.brackets;
     if (listener_begin_) listener_begin_();
+#if !X3M_EDITION_FL
+    // After the listener: its frame_inputs() consumes a pending device Reset, which leaves no record for this frame.
+    deferral_.bracket_begin(override_ && frame_started_ && seen_frame_ == frame_ && ready_.single() && latch_.valid
+                                ? ready_.record
+                                : 0);
+#endif
     detail::bracket_open = true;
 }
 void __cdecl x3m_sun_lens_end() {
@@ -226,6 +240,12 @@ void __cdecl x3m_sun_lens_end() {
     if (!detail::bracket_open) return;
     detail::bracket_open = false;
     if (listener_end_) listener_end_();
+#if !X3M_EDITION_FL
+    const std::uintptr_t record = deferral_.record;
+    if (deferral_.bracket_end())
+        x3m::log("sun_occlusion_released frame=%llu record=%08lx note=body_classified",
+            static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(record));
+#endif
 }
 }
 // In: [ESP] = the engine's return address, [ESP+4] = record, [ESP+8] = view. decide() = 0 / 1: that is the probe's
@@ -289,6 +309,9 @@ bool install_at(const Addresses& a, bool override_enabled_value, bool log_enable
     x3m_sun_probe_target = static_cast<std::uint32_t>(a.probe_target);
     x3m_sun_lens_target = static_cast<std::uint32_t>(a.lens_target);
     ready_ = core::Ready{};
+#if !X3M_EDITION_FL
+    deferral_ = core::Deferral{};
+#endif
     latch_ = core::Latch{};
     counters_ = Counters{};
     foreign_logged_ = false;
@@ -433,6 +456,17 @@ void block(const char* reason) {
     ++counters_.blocked;
     log("sun_occlusion_blocked frame=%llu reason=%s", static_cast<unsigned long long>(device_frame_), block_reason_);
 }
+#if !X3M_EDITION_FL
+bool lens_attributable() {
+    return patched_ && detail::bracket_open && deferral_.bracket_record != 0;
+}
+int lens_body_unclassifiable() {
+    return patched_ && detail::bracket_open ? int(deferral_.body_unclassifiable()) : int(core::Deferral::NotAttributed);
+}
+void lens_body_core() {
+    if (patched_ && detail::bracket_open) deferral_.body_core();
+}
+#endif
 Counters counters() {
     Counters c = counters_;
     c.foreign_thread = static_cast<std::uint32_t>(foreign_thread_);
