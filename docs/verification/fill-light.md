@@ -277,3 +277,7 @@ host tests green) and installed into `C:\X3` (SHA-256 `9be4c8a4…`, rollback `r
 on the hull; rows `motion_route … vs=37c34a7478544c14 fade_arm=1 routed=1` at permille 500–999 in the band,
 `fade_route_frame … fade_fill`/`fade_tested` rising; watch window sub-meshes as the station crosses N (review F1);
 a lit-side step is read against the receiver difference (review F5), not the guard.
+
+**Run 218 flown (2026-11-02).** User: the outpost is the correct colour at distance now; a residual switch remains
+between the band and the opaque state, suspected specular or material (four F8 captures: distant, closer, distant,
+closer). Triage under `verification/results/run218-outpost-switch/`.
