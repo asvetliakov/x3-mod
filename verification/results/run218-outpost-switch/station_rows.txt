@@ -1,0 +1,44 @@
+route frame=3571 index=103 vs=37c34a7478544c14 ps=5f82ecacd39529cd routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=0 fade_arm=1 fade_permille=998 unmatched=none primitives=15749
+route frame=3571 index=104 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=0 fade_arm=1 fade_permille=998 unmatched=none primitives=4081
+route frame=3571 index=105 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=1 fade_arm=1 fade_permille=998 unmatched=none primitives=188
+route frame=4148 index=92 vs=37c34a7478544c14 ps=5f82ecacd39529cd routed=1 gate=0 zwrite=1 blend=0 src=2 dst=1 atest=0 fade_arm=0 fade_permille=0 unmatched=none primitives=15749
+route frame=4148 index=93 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=1 blend=0 src=2 dst=1 atest=0 fade_arm=0 fade_permille=0 unmatched=none primitives=4081
+route frame=4148 index=94 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=1 blend=0 src=5 dst=6 atest=1 fade_arm=0 fade_permille=0 unmatched=none primitives=188
+route frame=15021 index=113 vs=37c34a7478544c14 ps=5f82ecacd39529cd routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=0 fade_arm=1 fade_permille=999 unmatched=none primitives=15749
+route frame=15021 index=114 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=0 fade_arm=1 fade_permille=999 unmatched=none primitives=4081
+route frame=15021 index=115 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=0 blend=1 src=5 dst=6 atest=1 fade_arm=1 fade_permille=999 unmatched=none primitives=188
+route frame=16134 index=106 vs=37c34a7478544c14 ps=5f82ecacd39529cd routed=1 gate=0 zwrite=1 blend=0 src=2 dst=1 atest=0 fade_arm=0 fade_permille=0 unmatched=none primitives=15749
+route frame=16134 index=107 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=1 blend=0 src=2 dst=1 atest=0 fade_arm=0 fade_permille=0 unmatched=none primitives=4081
+route frame=16134 index=108 vs=37c34a7478544c14 ps=f1b0e820c7b488c3 routed=1 gate=0 zwrite=1 blend=0 src=5 dst=6 atest=1 fade_arm=0 fade_permille=0 unmatched=none primitives=188
+widen 3571 103 5f82ecacd39529cd 1024x1024
+widen 3571 104 f1b0e820c7b488c3 1024x1024
+widen 3571 105 f1b0e820c7b488c3 1024x1024
+sun_shadow_lane_frame 3571 receiver_draws=68 non_depth_writers=20 original_variants=23
+hull_lightmap_frame 3571 admitted=84 gain=2
+hull_lightmap_far_fade_frame 3571 admitted=84 faded=21 min_gain=1.2517
+fade_route_frame 3571 fade_routed=47 fade_fill=47 fade_gain=16 fade_widen=15 fade_owner=1 fade_owner_masked=0
+engine_light_frame 3571 draws_lit=15 nodes=11
+widen 4148 92 5f82ecacd39529cd 1024x1024
+widen 4148 93 f1b0e820c7b488c3 1024x1024
+widen 4148 94 f1b0e820c7b488c3 1024x1024
+sun_shadow_lane_frame 4148 receiver_draws=27 non_depth_writers=17 original_variants=23
+hull_lightmap_frame 4148 admitted=40 gain=2
+hull_lightmap_far_fade_frame 4148 admitted=40 faded=21 min_gain=1.36554
+fade_route_frame 4148 fade_routed=41 fade_fill=41 fade_gain=13 fade_widen=12 fade_owner=1 fade_owner_masked=0
+engine_light_frame 4148 draws_lit=14 nodes=10
+widen 15021 113 5f82ecacd39529cd 1024x1024
+widen 15021 114 f1b0e820c7b488c3 1024x1024
+widen 15021 115 f1b0e820c7b488c3 1024x1024
+sun_shadow_lane_frame 15021 receiver_draws=44 non_depth_writers=20 original_variants=23
+hull_lightmap_frame 15021 admitted=60 gain=2
+hull_lightmap_far_fade_frame 15021 admitted=60 faded=21 min_gain=1.20356
+fade_route_frame 15021 fade_routed=52 fade_fill=52 fade_gain=16 fade_widen=15 fade_owner=1 fade_owner_masked=0
+engine_light_frame 15021 draws_lit=16 nodes=11
+widen 16134 106 5f82ecacd39529cd 1024x1024
+widen 16134 107 f1b0e820c7b488c3 1024x1024
+widen 16134 108 f1b0e820c7b488c3 1024x1024
+sun_shadow_lane_frame 16134 receiver_draws=61 non_depth_writers=27 original_variants=23
+hull_lightmap_frame 16134 admitted=74 gain=2
+hull_lightmap_far_fade_frame 16134 admitted=74 faded=21 min_gain=1.3327
+fade_route_frame 16134 fade_routed=48 fade_fill=48 fade_gain=14 fade_widen=12 fade_owner=1 fade_owner_masked=0
+engine_light_frame 16134 draws_lit=16 nodes=11
