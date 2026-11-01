@@ -588,3 +588,10 @@ verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run8` (`22b67304…`). Expect
 `bloom_prepare … ready=1` (no `clause=7`), `bloom_commit … committed=1`, no
 `bloom_refusal reason=boundary`; image: bloom halo around lights as AP had under Wine. The
 same commit is release 1.8.0 for AP ([releases](releases.md)).
+
+Result (log of 2026-11-01 20:4x, 35,987 frames / 236 s, no exception; measured): 117
+`bloom_prepare … ready=1 reason=ok`, 117 `bloom_commit … committed=1 reason=ok`, no
+`clause=` rows, `bloom_refusal` only `glow_off` and `scene_handoff` once each (menus),
+admission `boundary=0`. **Bloom draws on native D3D9 for the first time; accepted.** User:
+bloom is too strong, halos too prominent (same wanted for AP): a `bloom_strength` setting
+with a lower default is in progress (the gain at `capture.cpp:1585` was a hard-coded 1).
