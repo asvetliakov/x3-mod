@@ -721,3 +721,16 @@ The review's "+0.87 EV" assumed the identity decode; the default decode is gamma
 pull the exposure to about -2.1 EV with the sun in view. The flight's `ev=` / `ev_limit=` decide; the meter is
 unchanged. Flight additions: `no_probe=0` (or near 0) in frames with the sun in view, `ev` / `ev_limit` with and without
 the sun (Ctrl+Shift+F9), and the sun setting behind a planet (the disc must vanish with the engine's verdict).
+
+## Run 219 — own sun step 1 installed (2026-11-02, dev candidate, no release)
+
+Merge `b1f7a8c3` (step 1 `97ed0320` + review fixes `3d5049f9`, reviewed Opus high: fix first, fixes applied), unstripped
+`build-ap` DLL `50b8b2f3…` (0 warnings, x87 PASS, 99 host tests green) installed into `C:\X3`, rollback
+`rollback-d3d9\d3d9.dll.run218`; `C:\X3\x3m.ini` gets `own_sun = 1` under `[graphics]` (previous copy `x3m.ini.run218`),
+everything else unchanged ([record](../../verification/results/run219-candidate-install.json)). Flight: Ctrl+Shift+F9
+flips between the own sun and the engine chain per frame; two F8 pairs (own / engine): the sun partly behind a station
+strut or hull edge, and the sun in clear view in a fogged sector. Rows: `own_sun status=ready`, `own_sun_device attached=1
+vs_slots=2 ps_slots=70`, `own_sun_state armed=1 sun=own`, `own_sun_frame active=1 … drawn>0 no_probe≈0 ev= ev_limit=`,
+`own_sun_toggle` on the chord; wrong: `own_sun_failed`, `attached=0`, `no_probe` rising with the sun in view (probe order
+assumption wrong), a double sun or no sun for more than one frame at a toggle. Kill criterion: looks worse than vanilla
+or shows through a hull → `own_sun = 0`.

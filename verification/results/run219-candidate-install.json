@@ -1,0 +1,29 @@
+{
+ "run": 219,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun step 1 (97ed0320 + review fixes 3d5049f9, merge b1f7a8c3; default off, user enables own_sun = 1); also the XT fade-route row of run 218 and the bloom test fixes",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run218; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T01:16:41+04:00",
+ "commit": "b1f7a8c3",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "50b8b2f3d94ae8bb6eaff699580a7243a2054f4ca811ff6616fecafc1bb1218c",
+  "bytes": 63210783,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 218,
+  "sha256_prefix": "9be4c8a4",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run218"
+ },
+ "host_tests": "run_host_suite modules own_sun, sun_occlusion, logging_tiers, launcher_defaults, config_schema, comparison_hotkeys: 99 tests, 0 failing",
+ "review": "Opus high: fix first; F1-F6, F9 fixed in 3d5049f9",
+ "producer": "main session"
+}
