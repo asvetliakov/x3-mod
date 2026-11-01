@@ -901,6 +901,8 @@ void fade_band_fill_selection() {
         bool filled, gained, widened;
         bool sun_motion = true; // the lane's ps_sun_motion exists (else the owner is withdrawn: RT2 masked)
         bool fill_form = true;  // with owner_forms: ps_sun_fill exists (else only the gained forms were created)
+        unsigned permille = 940; // the row's fade fraction (fade-owner-shadow-receiver.md: below 950 nothing changes)
+        bool refused = false;    // the reviewed pair's share producer refused (original_share_refused)
     };
     const Case cases[] = {
         // Opaque rows: unchanged (the owner's lane forms exist but are never chosen).
@@ -936,6 +938,25 @@ void fade_band_fill_selection() {
         // The owner's fill form refused, its gained form created: the gained form (it carries K itself).
         {Owner, true, true, true, false, true, true, &Programs::sun_gain, false, true, false, true, false},
         {Owner, true, true, false, false, true, true, &Programs::sun_motion, false, false, false, true, false},
+        // Fade-owner shadow receivers (fade-owner-shadow-receiver.md): an owner on the lane at or above
+        // fade_route::owner_shadow_permille binds the share form its opaque draw binds (plain, gained, widened), is a
+        // receiver and a caster; 949 and 940 keep the owner forms (no receiver, no caster).
+        {Owner, true, true, false, false, true, true, &Programs::share, true, false, false, true, true, 998},
+        {Owner, true, true, true, false, true, true, &Programs::share_gain, true, true, false, true, true, 998},
+        {Owner, true, true, true, true, true, true, &Programs::share_widen, true, true, true, true, true, 998},
+        {Owner, true, false, false, false, true, true, &Programs::share, false, false, false, true, true, 998},
+        {Owner, true, true, true, false, true, true, &Programs::share_gain, true, true, false, true, true, 950},
+        {Owner, true, true, true, false, true, true, &Programs::sun_gain, true, true, false, true, true, 949},
+        {Owner, true, true, true, true, true, true, &Programs::sun_widen, true, true, true, true, true, 940},
+        // At 998 without a share pair (the producer refused): the owner form, no frame veto (still a caster).
+        {Owner, true, true, true, false, true, false, &Programs::sun_gain, true, true, false, true, true, 998, true},
+        // At 998 with the owner withdrawn (no ps_sun_motion: RT2 masked) or off: the plain fill family, unchanged.
+        {Owner, true, true, true, false, true, true, &Programs::gain, true, true, false, false, true, 998},
+        {Masked, true, true, true, false, true, true, &Programs::gain, true, true, false, true, true, 998},
+        // The owner without a lane at 998: the plain fill family (no receiver; a caster by its fraction).
+        {Owner, false, true, false, false, true, false, &Programs::fill, true, false, false, true, true, 998},
+        // The overlay arm (admitted at 1000, never an owner): unchanged on the lane too.
+        {Overlay, true, true, true, false, true, true, &Programs::motion, false, false, false, true, true, 1000},
     };
     for (const auto& c : cases) {
         const unsigned before = failures;
@@ -957,6 +978,7 @@ void fade_band_fill_selection() {
             m.shadow_.ps_sun_lightmap_widen = &p.sun_widen;
         }
         m.shadow_.original_share_pair = c.share;
+        m.shadow_.original_share_refused = c.refused;
         m.original_fill_requested_ = c.fill;
         m.shadow_.original_fill_pair = c.fill;
         m.shadow_.hull_lightmap_pair = true;
@@ -974,12 +996,21 @@ void fade_band_fill_selection() {
         r.fade_arm = c.row != Opaque;
         r.fade_owner = c.row == Owner;
         r.overlay = c.row == Overlay;
+        r.fade_permille = c.row == Opaque ? 0u : c.permille;
         CHECK(m.bind_variant_pair(r, false) == S_OK && d.bound_vs == &p.vs);
         CHECK(d.bound_ps == &(p.*c.expected));
         CHECK(r.original_fill == c.filled && r.hull_lightmap == c.gained && r.hull_lightmap_widen == c.widened);
-        CHECK(!r.sun_receiver || c.row == Opaque); // a fade row is never a receiver
+        // A receiver exactly when a share form is bound: the opaque draw, or a fade owner at or above 950.
+        const bool share_form = c.expected == &Programs::share || c.expected == &Programs::share_gain ||
+                                c.expected == &Programs::share_widen;
+        CHECK(r.sun_receiver == share_form);
+        CHECK(!m.sun_frame_.failed); // never a frame veto here (the share pair refused only on a fade row)
         const bool withdrawn = c.row == Owner && c.lane && !c.sun_motion;
         CHECK(r.fade_owner == (c.row == Owner && !withdrawn) && m.counters_.fade_owner_masked == unsigned(withdrawn));
+        // The caster admission (note_candidate_draw's zwrite, test_motion_wrap_states.py pins the production line):
+        // every opaque draw, and a fade row only as an owner at or above 950.
+        const bool caster = !r.fade_arm || fade_route::owner_shadow(r.fade_owner, r.fade_permille);
+        CHECK(caster == (c.row == Opaque || (c.row == Owner && !withdrawn && c.permille >= 950)));
         CHECK(m.undo(r) == S_OK);
         m.release_restore(r);
         if (failures != before) std::printf("fade_band_fill case=%u\n", unsigned(&c - cases));
@@ -1099,6 +1130,20 @@ void fade_arm_selection() {
             CHECK(d.bound_ps == (c.overlay ? &motion : &fill) && route.original_fill == !c.overlay);
             CHECK(m.undo(route) == S_OK);
             m.release_restore(route);
+            // The same admitted row on the sun lane with the share pair (fade-owner-shadow-receiver.md): an owner at
+            // 997 / 1000 binds the share form and is a receiver and a caster; the overlay arm keeps the motion program.
+            Shader sun_motion, share;
+            m.sun_lane_active_ = true;
+            m.shadow_.ps_sun_motion = &sun_motion;
+            m.shadow_.ps_sun_original = &share;
+            m.shadow_.original_share_pair = true;
+            CHECK(m.bind_variant_pair(route, false) == S_OK);
+            const bool receiver = !c.overlay && c.owner && c.permille >= fade_route::owner_shadow_permille;
+            CHECK(d.bound_ps == (receiver ? &share : &motion) && route.sun_receiver == receiver);
+            CHECK(fade_route::owner_shadow(route.fade_owner, route.fade_permille) == receiver);
+            CHECK(m.undo(route) == S_OK);
+            m.release_restore(route);
+            m.sun_lane_active_ = false;
         }
         ++run;
         if (failures != before) std::printf("fade_arm case=%s\n", c.name);

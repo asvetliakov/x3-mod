@@ -195,6 +195,21 @@ constexpr unsigned threshold_off = 1001u;
 constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept {
     return threshold_permille <= 1000u && f_permille >= threshold_permille;
 }
+// Fade-owner sun shadow (docs/architecture/fade-owner-shadow-receiver.md): a
+// fade-band RT2 owner (a fade pair's routed row with X3M_FADE_RT2_OWNER, never
+// the overlay arm) whose fraction is at or above this per mille is opaque to
+// the sun-shadow system: it binds its opaque draw's share form (a receiver,
+// MotionOutput::bind_variant_pair) and is a shadow-caster candidate
+// (note_candidate_draw). Below it the owner keeps the invalid-share forms and
+// casts nothing. A constant, not a setting: at 950 a blended pixel's share
+// over-shadows the background part by at most 5 % of its luminance (Run 218:
+// every routed fade row at 981-1000). Kill criterion (a shadow switch at the
+// crossing, acne or a dark halo on band stations, sun_shadow_lane_frame
+// failed= rising): set it back to 1001, which no per mille reaches.
+constexpr unsigned owner_shadow_permille = 950u;
+constexpr bool owner_shadow(bool fade_owner, unsigned f_permille) noexcept {
+    return fade_owner && f_permille >= owner_shadow_permille;
+}
 // Hysteresis at the threshold, keyed by the draw's node identity: an object
 // whose estimate hovers about X3M_FADE_ROUTE would otherwise alternate
 // between the route and the bracket every frame (the composite steps between

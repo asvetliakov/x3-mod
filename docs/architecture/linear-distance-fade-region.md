@@ -1062,14 +1062,19 @@ draw takes; the overlay arm (material alpha, not a distance fade) and every opaq
   invalid-share form of the same program
   (`ShaderEntry::sun_fill_variant`, `sun_lightmap_variant`, `sun_lightmap_widen_variant`: the parent plus
   `material_motion_invalid_sun_share`'s leading `def c221` and trailing `mov oC2.g, c221.x`), exactly as
-  `sun_motion_variant` is made from the motion variant. RT2 .g = -1: no share, never a receiver; .r/.a are the owner
-  fragment's, unchanged. Created at registration beside their parent only with the lane and the owner on; a refused
+  `sun_motion_variant` is made from the motion variant. RT2 .g = -1: no share, not a receiver; .r/.a are the owner
+  fragment's, unchanged. Only below `fade_route::owner_shadow_permille` (950) since 2026-11-02: see the next item. Created at registration beside their parent only with the lane and the owner on; a refused
   form (one `fade_owner_form_refused` row) leaves the owner on `ps_sun_motion`, as before; a program with at least
   one created form logs one `fade_owner_forms ... fill= gain= widen= slots=` row at registration.
 - **Evidence in a log**: `fade_route_frame` carries `fade_fill=`, `fade_gain=`, `fade_widen=`: of `fade_routed`
   (overlay rows excluded), the rows that bound the fill / a gained / a widened program in that row's interval.
-- Never the share producer (`ps_sun_original*`): a fade row does not write depth and stays out of the receiver set,
-  the thin vote and the shadow-receiver count, as before.
+- **Fade-owner shadow receiver** (2026-11-02, [fade-owner-shadow-receiver.md](fade-owner-shadow-receiver.md)): an
+  owner on the lane at or above `fade_route::owner_shadow_permille` (950, a constant; the kill criterion sets it to
+  1001) binds the share form its opaque draw binds (`ps_sun_original`, `_lightmap`, `_lightmap_widen`; their depth
+  fragment is the owner's, so `.a = 1` and `.g` the draw's own f), counts as a sun-shadow receiver and is a
+  shadow-caster candidate. Below it, without the owner, or without a share pair (an owner then keeps its owner form,
+  no frame veto) a fade row is never the share producer and stays out of the receiver set and the caster set; the
+  thin vote never counts a fade row.
 - **Alpha**: the fill block writes the lobe sum's `.xyz` and the gain MUL `rL.xyz` (default destination mask), so
   `oC0.a` is the engine's fade alpha; the SRCALPHA blend scales the fill and gain exactly as it scales the base
   colour, and a fading object loses its fill with its alpha (from the code; no readback).

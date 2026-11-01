@@ -281,3 +281,41 @@ a lit-side step is read against the receiver difference (review F5), not the gua
 **Run 218 flown (2026-11-02).** User: the outpost is the correct colour at distance now; a residual switch remains
 between the band and the opaque state, suspected specular or material (four F8 captures: distant, closer, distant,
 closer). Triage under `verification/results/run218-outpost-switch/`.
+
+### Fade-owner shadow receiver (Run 218 outpost switch), 2026-11-02
+
+Cause ([run218-outpost-switch](../../verification/results/run218-outpost-switch/README.md)): the band station is an RT2
+owner with `.g = -1` on every pixel and casts nothing, so its sunlit faces and highlights drop 11-33 % and its
+self-shadow pops in when it turns opaque. Change ([fade-owner-shadow-receiver.md](../architecture/fade-owner-shadow-receiver.md),
+option B, P = 950): a fade owner on the sun lane at or above `fade_route::owner_shadow_permille` (950, a named
+constant in `src/proxy/fade_route_core.h`, not a setting) binds the share form its opaque draw binds
+(`ps_sun_original`, `_lightmap`, `_lightmap_widen`), counts as a receiver in `sun_frame_.draw` and is admitted by
+`note_candidate_draw` as a caster (`zwrite = !route.fade_arm || fade_route::owner_shadow(...)`). This supersedes the
+Fade-band fill entry's "never the share producer, never a receiver" for those rows only; below 950, with the owner off
+or withdrawn, on the overlay arm, or without a share pair (the owner form, no frame veto) nothing changes. Zero new
+programs; per draw one integer compare in the bind and one in the caster admission, no allocation, no getter; an
+admitted band caster costs what its opaque twin costs (the same box test, `sample_candidate_sun` and replay
+primitives). The shadow pass, the apply and the resolve are unchanged.
+
+Evidence (host, measured): `fade_band_fill_selection` 36 rows (24 + 12: owner at 998 plain / gained / widened / fill
+off and at 950 -> share form, receiver, caster; 949 and 940 -> owner form, neither; 998 without a share pair -> owner
+form, caster, no veto; 998 withdrawn, owner off, no lane, overlay -> unchanged) and `fade_arm_selection` (the admitted
+997 / 1000 rows on the lane bind the share form) in `test_motion_wrap_states`: 35240 checks, 0 failures; with the
+constant at 1001 the same fixture fails 11 cases (5 receiver rows, the 2 caster-only rows at 998 and the 4 admitted
+arm rows). Open issue 1 of the note
+(do the share forms carry the owner depth fragment?) is settled by
+`test_original_sun_share.FadeOwnerShareFormTests` (driver `verification/probe/fade_owner_share_forms.cpp`, local
+corpus): 108 programs, 308 share forms (100 x 3 + 8 plain), owner transform on vs off, 1848 float64 executions: no
+`def c218`; RT2 `.a = 1` exactly with `c218 = (0|0.37, 1, 0, 0)` (owner row), `.a = w` with `(0, 0, 1, 0)`; `.r`,
+`.g` (share), `.b` and `oC0` identical to the owner-off form. With the owner transform left off the test fails.
+`run_host_suite.py --modules test_fade_region test_original_fill test_motion_wrap_states test_sun_share_lane
+test_hull_lightmap_gain test_shadow_replay_candidates test_shadow_replay_depth test_shadow_cascades test_taa_thin_vote
+test_original_sun_share`: 10 modules, 122 tests, 0 failing. `build-ap` and `build-fl` (RelWithDebInfo, MinGW i686):
+0 warnings.
+
+Flight check (open): the Run 218 stand (the remote outpost, XT `freighter_base`), F8 once in the band and once opaque.
+Pass: `share_bins.py` on the band frame shows `.g` in [0, 1] with the opaque frame's bin fractions (83 % at 0, 8 % at
+0.8-1.0, within a few points); hi2 % and p90 band/opaque ratios within +-5 % (Run 218: 1.18-1.24 / 1.16-1.33);
+`shadow_replay_caster` rows carrying the station's vbs with `cascades=16` in the band frame;
+`sun_shadow_lane_frame failed=0`. Kill: a visible shadow switch at the 950 crossing, shadow acne or a dark halo on band
+stations that the opaque draw does not show, or `failed=` rising -> `owner_shadow_permille` back to 1001.

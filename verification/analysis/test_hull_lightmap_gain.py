@@ -308,7 +308,8 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         self.assertIn('if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_', bind)
         self.assertIn('(!route.fade_arm || fade_fill))) && shadow_.ps_hull_lightmap_variant) {', bind)
         self.assertIn('const bool owner_gain = owner_lane && (ps == shadow_.ps_sun_motion || (fill && ps == shadow_.ps_sun_fill)) && shadow_.ps_sun_lightmap;', bind)
-        self.assertIn('} else if(sun_lane_active_&&route.depth&&!route.fade_arm){', bind)
+        # fade-owner-shadow-receiver.md: a fade owner at or above owner_shadow_permille takes the same share selection.
+        self.assertIn('} else if(sun_lane_active_&&route.depth&&(!route.fade_arm||fade_receiver)){', bind)
         self.assertEqual(bind.count('gained_original?shadow_.ps_sun_original_lightmap:'), 1)
         self.assertEqual(motion.count('bind_variant_pair(route, material)'), 1)
         # The latch is armed only for a value the DLL parser accepted, and never feeds camera_scene_ on its own.

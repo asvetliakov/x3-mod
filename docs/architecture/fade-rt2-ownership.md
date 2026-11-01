@@ -26,7 +26,10 @@ on any other row with B off, so every non-owner row keeps exactly the value the 
 fragment writes and B's `.x` upload and DEF repack are unchanged; (2) the identity widening applies under original
 shading only (the overlay arm's own boundary: under linear materials a blended hull pair may belong to the composition or
 glass bracket), and `fade_route::arm_pair` is the one identity function; (3) on the four-channel lane an owner writes
-`.g` too, so it binds the motion variant's invalid-share twin (`.g = -1`, not a receiver); a row without one (material,
+`.g` too, so it binds the motion variant's invalid-share twin (`.g = -1`, not a receiver), except that since
+2026-11-02 an owner at or above `fade_route::owner_shadow_permille` (950) whose opaque draw binds an original share form
+binds that form and is a sun-shadow receiver and caster ([fade-owner-shadow-receiver.md](fade-owner-shadow-receiver.md));
+a row without one (material,
 XT) stays masked and is counted (`fade_owner_masked` on `fade_route_frame`, with `fade_evicted` and `fade_owner`); (4)
 the tests draw is unchanged: B votes on `validDepth && 0 <= a < 1`, an owner carries `a = 1` exactly. Slots: depth
 fragment 3 -> 5, every depth-writing pixel variant +2 (measured). The lattice case shows the class change opens the

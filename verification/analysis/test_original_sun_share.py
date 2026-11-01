@@ -333,5 +333,89 @@ class OriginalSunShareTests(unittest.TestCase):
         self.assertEqual(checked, 2 * (94 + 2 * 14))
 
 
+def lowered(code):
+    """The widened forms' texldd (gradients dropped) as texld and dsx/dsy as mov: the float64 VM's subset. Applied to
+    both copies compared below, so it changes no comparison of the depth fragment's lanes."""
+    words, items, _ = shader.instructions(code)
+    out, at = [], 0
+    for i in items:
+        out += words[at:i['dword']]  # the version token, comments
+        row = list(words[i['dword']:i['dword'] + i['length'] + 1])
+        if i['opcode'] == 0x5d:  # texldd dst, coord, sampler, ddx, ddy
+            row = [(row[0] & ~0x0f00ffff) | (3 << 24) | 0x42] + row[1:4]
+        elif i['opcode'] in (0x5b, 0x5c):  # dsx / dsy dst, src
+            row[0] = (row[0] & ~0xffff) | MOV
+        out += row
+        at = i['dword'] + i['length'] + 1
+    return pack(out + list(words[at:]))  # END
+
+
+class FadeOwnerShareFormTests(unittest.TestCase):
+    """fade-owner-shadow-receiver.md section 8, open issue 1: a fade owner at or above owner_shadow_permille binds the
+    share forms (plain, gained, widened), so they must carry the fade-owner depth fragment with the owner transform on
+    (X3M_FADE_RT2_OWNER): RT2 .a = max(w * c218.z + c218.x, c218.y) from the uploaded c218, never a def, and every
+    other output lane the owner-off form's. Executed in float64 on the local corpus with the uploads motion_output.cpp
+    makes: an owner row (c218.y = 1, c218.z = 0; .x the thin vote's 0 or a value) gives .a = 1 exactly; any other row
+    with the vote off (c218.z = 1) gives the plain fragment's .a = w."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
+        if not cls.originals.is_dir() or not any(cls.originals.glob('ps_*.bin')):
+            reason = f'local original corpus unavailable under {cls.originals} (X3M_SHADER_PROGRAM_DIRECTORY)'
+            if os.environ.get('X3M_REQUIRE_SHADER_CORPUS') == '1':
+                raise AssertionError(reason)
+            raise unittest.SkipTest(reason)
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        temporary = tempfile.TemporaryDirectory(prefix='x3-fade-owner-share-')
+        cls.addClassCleanup(temporary.cleanup)
+        cls.directory = Path(temporary.name)
+        executable = cls.directory / 'forms'
+        build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                str(ROOT / 'verification/probe/fade_owner_share_forms.cpp'),
+                                str(ROOT / 'src/renderer/linear_material.cpp'),
+                                str(ROOT / 'src/renderer/material_motion.cpp'), '-o', str(executable)],
+                               capture_output=True, text=True)
+        if build.returncode:
+            raise AssertionError(build.stdout + build.stderr)
+        run = subprocess.run([str(executable), str(cls.originals), str(cls.directory)], capture_output=True, text=True)
+        if run.returncode:
+            raise AssertionError(run.stdout + run.stderr)
+        cls.rows = json.loads(run.stdout)['rows']
+
+    def test_share_forms_carry_the_owner_depth_fragment(self):
+        rows = self.rows
+        self.assertEqual(len(rows), 108)
+        self.assertTrue(all(row['on'] == row['off'] for row in rows), 'the owner transform refuses no share form')
+        self.assertEqual(sum(bin(row['on']).count('1') for row in rows), 308)  # 100 programs x 3 forms + 8 plain only
+        checked = 0
+        for index, row in enumerate(rows):
+            for bit, form in enumerate(('plain', 'gain', 'widen')):
+                if not row['on'] >> bit & 1:
+                    continue
+                off = lowered((self.directory / f"{row['name']}-{form}-off.bin").read_bytes())
+                on = lowered((self.directory / f"{row['name']}-{form}-on.bin").read_bytes())
+                _, items = unpack(on)
+                self.assertFalse(any(i['opcode'] == DEF and shader.register_of(i['words'][0]) == (2, 218) for i in items),
+                                 (row['name'], form, 'c218 is uploaded, never a def'))
+                for branch in (False, True):
+                    state = initial(index, branch)
+                    state.registers['c217'] = [.2, .3, .4, 3.]  # the gain's dynamic lane (c217.w)
+                    state.registers['vFace'] = [-1. if branch else 1.] * 4  # the two-sided programs' face register
+                    reference = vm.execute(off, copy.deepcopy(state), stop_after_oc0=False).registers
+                    w = reference['oC2'][3]  # the plain fragment's .a: clip w
+                    self.assertGreater(w, 0., (row['name'], form))
+                    for lanes, alpha in (([0., 1., 0., 0.], 1.), ([.37, 1., 0., 0.], 1.), ([0., 0., 1., 0.], w)):
+                        upload = copy.deepcopy(state)
+                        upload.registers['c218'] = lanes
+                        result = vm.execute(on, upload, stop_after_oc0=False).registers
+                        self.assertEqual(result['oC2'][3], alpha, (row['name'], form, branch, lanes))
+                        self.assertEqual(result['oC2'][:3], reference['oC2'][:3], (row['name'], form, 'r, g (share), b'))
+                        self.assertEqual(result['oC0'], reference['oC0'], (row['name'], form, 'colour'))
+                    checked += 1
+        self.assertEqual(checked, 2 * 308)
+        print(f'fade_owner_share_forms programs={len(rows)} forms=308 executions={3 * checked}')
+
+
 if __name__ == '__main__':
     unittest.main()

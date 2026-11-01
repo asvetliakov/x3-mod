@@ -81,6 +81,15 @@ class MotionWrapStatesTests(unittest.TestCase):
         bind = extract_function(source, 'HRESULT MotionOutput::bind_variant_pair(')
         self.assertIn('return bind_variant_pair(route, false);', bind)
         self.assertIn('route.linear_material = material && SUCCEEDED(hr);', bind)
+        # Fade-owner sun shadow (fade-owner-shadow-receiver.md; fade_band_fill_selection's rows): the receiver gate in
+        # the bind, the lane bookkeeping after the draw and the caster admission share one predicate.
+        self.assertIn('fade_route::owner_shadow(route.fade_owner, route.fade_permille);', bind)
+        self.assertIn('constexpr unsigned owner_shadow_permille = 950u;', source_text(ROOT / 'src/proxy/fade_route_core.h'))
+        after = extract_function(source, 'void MotionOutput::after_draw(')
+        self.assertIn('const bool lane_row = route.routed && route.depth && (!route.fade_arm || route.sun_receiver);', after)
+        self.assertIn('sun_frame_.draw(route.submit && SUCCEEDED(result), lane_row && route.sun_receiver, coverage, stamped || lane_row, reason,', after)
+        candidate = extract_function(source, 'void MotionOutput::note_candidate_draw(')
+        self.assertIn('const bool zwrite = !route.fade_arm || fade_route::owner_shadow(route.fade_owner, route.fade_permille);', candidate)
         resync = extract_function(source, 'void MotionOutput::resync_shadow(')
         self.assertIn('shadow_ = Shadow{};', resync)
         reset = extract_function(source, 'void MotionOutput::before_reset(')

@@ -7767,6 +7767,13 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
             ++counters_.fade_owner_masked;
         }
     }
+    // Fade-owner sun shadow (fade-owner-shadow-receiver.md): an owner still on the lane RT2 at or above
+    // fade_route::owner_shadow_permille whose opaque draw binds an original share form takes that form in the
+    // opaque branch below (a receiver: .g the draw's own f, .a = 1 from the owner depth fragment c218.y). Without
+    // a share pair it keeps the owner forms (.g = -1, no frame veto); below the constant nothing changes.
+    const bool fade_receiver = sun_lane_active_ && route.depth && route.fade_arm && !material &&
+                               shadow_.original_share_pair && !shadow_.xt_default_ready &&
+                               fade_route::owner_shadow(route.fade_owner, route.fade_permille);
     if (sun_lane_active_ && route.depth && !route.fade_arm && !material && shadow_.original_share_refused &&
         !shadow_.xt_default_ready) {
         // Fail closed (legacy-sun-application.md section 4.1): a reviewed
@@ -7776,10 +7783,13 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         // counted (original_refused_draws on the lane line).
         sun_frame_.failed = true;
         ++sun_original_refused_draws_;
-    } else if (sun_lane_active_ && route.depth && !route.fade_arm) {
+    } else if (sun_lane_active_ && route.depth && (!route.fade_arm || fade_receiver)) {
         // Original shading (legacy-sun-application.md section 4.1): a reviewed
         // original pair binds its share variant (composed with the fill K) and
         // is a receiver; the fill needs the FP16 target as the plain fill does.
+        // A fade receiver (above) has original true here (its arm required the
+        // FP16 scene), so it binds a share form; were it false, ps_sun_motion
+        // (the owner's own form) and the owner path below, never a veto.
         const bool original = !material && shadow_.original_share_pair && !shadow_.xt_default_ready &&
                               (!original_fill_requested_ || hdr_state_ == HdrState::Active);
         // The gained share variant (hull light-map gain) over the plain one
@@ -7809,9 +7819,11 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     // overlay arm, whose alpha is the material's) takes the fill and the light-map gain its opaque draw takes, so
     // the band and the opaque draw shade alike and only the engine's alpha ramp shows. A masked row (no lane, or RT2
     // masked: owner off or withdrawn above) binds the plain fill-family program, whose lane writes the mask drops; an
-    // owner on the lane (ps_sun_motion above) binds the same program's invalid-share form (ps_sun_fill ...: RT2 .g =
-    // -1, never a receiver, as ps_sun_motion), else keeps ps_sun_motion. Both terms change oC0.rgb only (the fill
-    // block sum.xyz, the gain MUL rL.xyz); oC0.a stays the engine's, so the blend scales them like the base colour.
+    // owner on the lane (ps_sun_motion above) below fade_route::owner_shadow_permille binds the same program's
+    // invalid-share form (ps_sun_fill ...: RT2 .g = -1, not a receiver, as ps_sun_motion), else keeps ps_sun_motion;
+    // a fade receiver already holds its share form (no longer ps_sun_motion), so neither block below rebinds it. Both
+    // terms change oC0.rgb only (the fill block sum.xyz, the gain MUL rL.xyz); oC0.a stays the engine's, so the blend
+    // scales them like the base colour.
     const bool fade_fill = route.fade_arm && !route.overlay;
     const bool owner_lane = fade_fill && route.fade_owner && ps == shadow_.ps_sun_motion;
     // Original fill: the same one bind pair, the PS being the motion variant
@@ -9603,10 +9615,12 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
             } else
                 ++sun_stamp_refused_;
         }
-        if (sun_frame_.draw(route.submit && SUCCEEDED(result),
-                            route.routed && route.depth && !route.fade_arm && route.sun_receiver, coverage,
-                            stamped || (route.routed && route.depth && !route.fade_arm), reason,
-                            (route.sun_z_state & 7u) == 7u))
+        // A fade-arm row is a receiver and a lane depth writer only when bind_variant_pair bound it a share form
+        // (route.sun_receiver: a fade-owner shadow receiver, fade-owner-shadow-receiver.md); any other fade row
+        // keeps RT2 .g = -1 or masked and, its z write off, is never a veto.
+        const bool lane_row = route.routed && route.depth && (!route.fade_arm || route.sun_receiver);
+        if (sun_frame_.draw(route.submit && SUCCEEDED(result), lane_row && route.sun_receiver, coverage,
+                            stamped || lane_row, reason, (route.sun_z_state & 7u) == 7u))
             note_sun_untracked_writer(route, reason);
     }
     if (candidates_requested_ && route.routed && SUCCEEDED(result)) note_candidate_draw(route);
@@ -11681,14 +11695,18 @@ std::uint8_t MotionOutput::classify_candidate_static(const MotionRoute& route, c
 }
 void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // Gate 4 required ZENABLE=1 and ZWRITEENABLE=1 for every routed draw except
-    // the fade-band arm (fade_route::state); alpha-tested draws (the exact
+    // the fade-band arm (fade_route::state); a fade-band RT2 owner at or above
+    // fade_route::owner_shadow_permille is a caster like its opaque twin
+    // (fade-owner-shadow-receiver.md: the replay re-issues the recorded
+    // geometry through the pass's own depth program, so the draw's blend and
+    // z-write state do not enter); alpha-tested draws (the exact
     // cutout arm and the tested-opaque arm) are excluded by W3. A draw is a
     // cascade-0 caster when its vertex extent (cached from a scene-end read)
     // meets the map box; a draw without an extent yet falls back to the
     // origin rule for this frame and queues its read. The near bound stays on
     // the origin (W1: no camera latch, no candidate); pools come from the
     // setter cache.
-    const bool zwrite = !route.fade_arm;
+    const bool zwrite = !route.fade_arm || fade_route::owner_shadow(route.fade_owner, route.fade_permille);
     const float d = route.candidate_distance;
     const bool near_ok = d >= candidate_slice_near_;
     const bool origin_rule = near_ok && d <= shadow_replay::slice0_far;
