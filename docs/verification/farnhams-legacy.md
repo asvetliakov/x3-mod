@@ -104,4 +104,24 @@ Install: commit `295cc894` (the A/B-selected implementation, see
 [model routing](model-routing.md)), `build-fl/d3d9.dll` SHA-256 `66998d98…`
 built from main, 0 warnings, FL host tests 21 pass
 ([record](../../verification/results/fl-run3/candidate.json)); `C:\X3FL\d3d9.dll`
-bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run2`. Result: pending.
+bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run2`.
+
+Result (log session of 2026-11-01 16:07, base 0xfd0000, about 50 s of flight,
+measured): `fl.trace status=active … write=atomic`; four sample rows with
+`entries` 33k–156k per 10 s, `depth_max=1`, `null_node=0 null_camera=0
+camera_unreadable=0 field_failed=0`, `nodes` 107–256+, `cameras` 8–13, handles
+24,139–62,212, `lod` 0–3, `registry=0x06684af0 registry_changed=0`. The hook
+behaves as designed. The run ended in an unhandled exception `c0000095` at
+X3FL.exe RVA 0x12dbf (`idiv ecx`) on the main thread while the user switched
+views with F1. Minidump analysis
+([scripts](../../verification/results/fl-run3-crash/)): the engine's own
+cockpit update computes the sector camera velocity as `(pos − prev) × 1000 / dt`
+in 32-bit integers (helper RVA 0x12d10, caller 0x22d0a–0x22dd4, guard
+|Δ| ≤ 4,999,999 and 1 ≤ dt ≤ 3000); here Δz = 4,460,464 and dt = 2 ms, so the
+quotient overflowed. No d3d9.dll frame is on the crashing stack, the frame runs
+before the render pass that holds the hooked call, and both FL modules only read
+engine memory. **Assessment: FL engine bug, reachable whenever a view switch
+moves the camera millions of units within a 1–2 ms clock tick (about 240 fps
+here); not caused by the hook (confidence high).** Pending: the user's stock-FL
+F1 check for confirmation. Candidate later FL feature: a guard patch for this
+overflow. Hook rows accepted; the lifetime step proceeds.
