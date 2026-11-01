@@ -11,6 +11,7 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 - Over 1.8.0 (Run213 flown, bloom committing on native; the user: halos too strong): **`bloom_strength`** (`[hdr]`, 0 to 1, default 0.7, env `X3M_BLOOM_STRENGTH`, launcher `--bloom-strength`): the overall bloom gain `c26.w`, a linear scale of the final composite add only (`bloom_common.hlsl:96`); it was a hard-coded 1. Row `bloom_strength_mode requested= strength= value= value_valid=`.
 - DLL: stripped `258895f3…` (42,555,312 B; x87 0 / 1139 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.1/. Installed into native `C:\X3` as Run214, rollback `rollback-d3d9\d3d9.dll.run213` ([install](../../verification/results/run214-release-install.json)).
 - Zip `x3m-1.8.1.zip` `ea2323df…` (60,230,197 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.1`; `generate --check` PASS (290 settings, 133 in the template). The user's `x3m.ini` header bumped to 1.8.1, body unchanged (`x3m.ini.run213` kept).
+- Run214 flown 2026-11-01 (54,914 frames / 301 s, no exception, no reset; measured): `bloom_strength_mode strength=0.7 value_valid=1`, bloom prepared and committed. The user: good.
 - `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
 
 ## Release 1.8.0
