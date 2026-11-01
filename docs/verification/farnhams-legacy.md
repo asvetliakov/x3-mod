@@ -437,4 +437,18 @@ measured): `hull_lightmap_variant` 24 rows (23 `gain_applied=1`, all
 explain). User: stations and ships fine; distant sun-lit wheat farms shimmer less
 than before but still a little; three F8 captures taken (far, mid, close; shimmer
 in the far two). **Accepted.** Shimmer triage from the captures:
-`verification/results/fl-run6-shimmer/` (pending).
+`verification/results/fl-run6-shimmer/` (`summary.json`, measured on the three
+captures): the farms are models 556e/556f/5570 drawn alpha-tested (`ALPHAREF=1`,
+cull none, up to 18.8k primitives per draw) with ps `c79c3b2c…`/`16d4af17…`, all
+variants applied, LOD 2 at 130–230k view units; pre-TAA frame-to-frame change
+23–26 display codes against 6–7 on a station and 1–2 on the own hull; surface
+switching on 56–70 % of farm pixels (stations 3–32 %); sun-lit pixels flicker more
+(35–40) but are only 5–15 % of the farm. A CPU model of the resolve puts the luma
+lock on 34–52 % of farm pixels, output ≈ 1.8–2.0 codes; full 0.985 hold ≈ 0.34.
+**Cause: alpha-tested sub-pixel coverage aliasing in the shared TAA stage, not an
+FL program difference and not mainly specular**; the AP ledger
+`taa-seta-shimmer-run179` records the same class on distant AP hulls. Proposal
+(not implemented): far-eligible alpha-tested draws with the camera gate open take
+the thin-region hold (0.97, 7x7) through the existing thin-vote lane. Decisive
+diagnostic for the next flight: `taa_debug = 1` and one F8 at a distant farm in
+normal flight (lock/mask/age readbacks).
