@@ -223,15 +223,15 @@ inline void quad(const Disc& d, Vertex out[4]) noexcept {
 }
 // src/effects/own_sun_ps.hlsl: c0 the lane texel, c1 / c2 the knight offsets as lane uv, c3 the core (w its inner edge),
 // c4 the glow tint, c5 the amplitudes (A_r and A_s x sun_rays), c6 the core's centre as lane uv (jittered, the quad's) and
-// 0.7 core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, 1 / w0), c8 the halo and streak shapes, c9 the
-// streaks' reach and the spoke count.
+// the core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, the across scale with log2 e folded in), c8 the halo
+// and streak shapes (log2 e folded in), c9 the streaks' reach and the spoke count.
 constexpr unsigned pixel_registers = 10;
-constexpr float two_pi = 6.28318531f;
+constexpr float two_pi = 6.28318531f, log2e = 1.44269504f, sqrt_log2e = 1.20112241f; // exp(-x) = exp2(-x log2 e)
 inline void pixel_constants(unsigned width, unsigned height, const Disc& d, const Radiance& r, float rays,
                             float out[pixel_registers * 4]) noexcept {
     const float dx = width ? 1.f / float(width) : 0.f, dy = height ? 1.f / float(height) : 0.f;
     const float share = rays >= rays_min && rays <= rays_max ? rays : rays_default;
-    const float ring = .7f * d.radius_px;
+    const float ring = d.radius_px; // the core-visibility taps sit at 0.45 and 0.9 of it (own_sun_ps.hlsl)
     const float n = float(ray_count);
     const float c[pixel_registers * 4] = {dx, dy, 0.f, 0.f,
                                           2.f * dx, dy, dx, 2.f * dy,
@@ -240,17 +240,18 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
                                           r.glow[0], r.glow[1], r.glow[2], 0.f,
                                           halo_gain, ray_gain * share, streak_gain * share, 0.f,
                                           .5f + .5f * d.x, .5f - .5f * d.y, ring * dx, ring * dy,
-                                          n / two_pi, ray_offset, ray_length, 1.f / ray_width,
-                                          1.f / (halo_radius * halo_radius), 1.f / streak_width, 1.f / streak_length,
-                                          1.f / glow_radius,
+                                          n / two_pi, ray_offset, ray_length, two_pi / n / ray_width * sqrt_log2e,
+                                          1.f / (halo_radius * halo_radius), sqrt_log2e / streak_width,
+                                          log2e / streak_length, 1.f / glow_radius,
                                           1.f / streak_reach, n, 1.f / n, two_pi / n};
     for (unsigned i = 0; i < pixel_registers * 4; ++i) out[i] = c[i];
 }
 
 #ifdef X3M_OWN_SUN_HOST_REFERENCE
 // ---- Host reference of the pixel program (the host test's expectation; CRT math: never compiled into the DLL) ----
-// own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps (0..9 at the pixel,
-// 0..5 at the core). glow_terms: the halo, ray and streak terms before the tint (for the shape tests).
+// own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps at the pixel (0..9)
+// and the core's visible fraction (0..1: the program's weighted 13 taps). halo / rays / streaks: the terms before the
+// tint (for the shape tests).
 struct Pixel {
     float rgb[3]{};
     float halo = 0.f, rays = 0.f, streaks = 0.f, core = 0.f; // core: D(r)
@@ -261,7 +262,16 @@ inline float hlsl_frac(float v) noexcept {
 inline float saturate(float v) noexcept {
     return v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
 }
-inline void reference_pixel(const float c[pixel_registers * 4], float px, float py, unsigned open_taps, unsigned visible_taps,
+inline float reference_spoke(const float c[pixel_registers * 4], float index, float across, float r) noexcept {
+    const float* spokes = c + 28; const float* counts = c + 36;
+    const float k = index - counts[1] * std::floor(index * counts[2]);
+    const float h1 = hlsl_frac(k * (.6180340f + k * .1547f)), h2 = hlsl_frac(k * .7548777f + .31f);
+    const float along = r / (spokes[2] * (.25f + .75f * h1 * h1));
+    const float fade = saturate(1.f - along);
+    const float perpendicular = r * across * spokes[3] / (1.f - .7f * saturate(along));
+    return (.6f + .4f * h2) * std::exp2(-perpendicular * perpendicular) * fade * fade;
+}
+inline void reference_pixel(const float c[pixel_registers * 4], float px, float py, unsigned open_taps, float visible,
                             Pixel* out) noexcept {
     const float* core = c + 12; const float* glow = c + 16; const float* amp = c + 20; const float* spokes = c + 28;
     const float* extent = c + 32; const float* counts = c + 36;
@@ -271,18 +281,12 @@ inline void reference_pixel(const float c[pixel_registers * 4], float px, float 
     const float w = saturate(1.f - r2 * extent[3] * extent[3]);
     const float halo = amp[0] / (1.f + r2 * extent[0]) * w * w;
     const float t = std::atan2(py, px) * spokes[0] + spokes[1];
-    const float nearest = std::floor(t + .5f), across = t - nearest;
-    const float k = nearest - counts[1] * std::floor(nearest * counts[2]);
-    const float h1 = hlsl_frac(k * (.6180340f + k * .1547f)), h2 = hlsl_frac(k * .7548777f + .31f);
-    const float along = r / (spokes[2] * (.25f + .75f * h1 * h1));
-    const float fade = saturate(1.f - along);
-    const float taper = 1.f - .7f * saturate(along);
-    const float perpendicular = r * across * counts[3] * spokes[3] / (taper > .05f ? taper : .05f);
-    const float rays = amp[1] * (.6f + .4f * h2) * std::exp(-perpendicular * perpendicular) * fade * fade;
+    const float nearest = std::floor(t + .5f), across = t - nearest, side = across >= 0.f ? 1.f : -1.f;
+    const float rays = amp[1] * (reference_spoke(c, nearest, across, r) + reference_spoke(c, nearest + side, across - side, r));
     const float sy = py * extent[1], sx = saturate(1.f - px * px * counts[0] * counts[0]);
-    const float streaks = amp[2] * std::exp(-sy * sy) * std::exp(-std::fabs(px) * extent[2]) * sx * sx;
+    const float streaks = amp[2] * std::exp2(-(sy * sy + std::fabs(px) * extent[2])) * sx * sx;
     const float open = float(open_taps > 9u ? 9u : open_taps) / 9.f;
-    const float visible = float(visible_taps > 5u ? 5u : visible_taps) / 5.f;
+    visible = saturate(visible);
     for (unsigned i = 0; i < 3; ++i) {
         const float g = glow[i] * (halo + rays + streaks);
         out->rgb[i] = (g + (core[i] - g) * d) * open * (d + (1.f - d) * visible);

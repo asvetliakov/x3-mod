@@ -184,23 +184,23 @@ class OwnSunHost(unittest.TestCase):
         field = self.run_driver('field', *words, 2, 1, 1, .05)
         self.assertEqual(float(field['hue_error']), 0.)
         for px, py in ((3, 0.05), (0, 4), (5 * math.cos(1.2), 5 * math.sin(1.2)), (10, 0.1)):
-            rgb = floats(self.run_driver('pixel', *words, 2, 1, 1, px, py, 9, 5)['rgb'])
+            rgb = floats(self.run_driver('pixel', *words, 2, 1, 1, px, py, 9, 1)['rgb'])
             self.assertGreater(rgb[1], 0.)
             self.assertAlmostEqual(rgb[0] / rgb[1], 225 / 255, delta=2e-6)                         # float precision
             self.assertAlmostEqual(rgb[2] / rgb[1], 200 / 255, delta=2e-6)
 
     def test_core_halo_rays_and_streaks(self):
-        centre = self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 9, 5)
+        centre = self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 9, 1)
         core = floats(self.run_driver('radiance', 200, 100, 50, 2, 1)['core'])
         for got, value in zip(floats(centre['rgb']), core):
             self.assertAlmostEqual(got, value, places=5)                                              # the centre is the core
-        self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 0, 5)['rgb']), [0., 0., 0.])  # covered
-        seven = floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 7, 5)['rgb'])
+        self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 0, 1)['rgb']), [0., 0., 0.])  # covered
+        seven = floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 7, 1)['rgb'])
         self.assertAlmostEqual(seven[0], core[0] * 7 / 9, places=5)
-        # A covered core takes its glow with it: on a streak, 2 of 5 core taps visible = 2/5 of the glow.
-        on = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 5)['rgb'])[0]
-        part = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 2)['rgb'])[0]
-        self.assertAlmostEqual(part, on * 2 / 5, places=6)
+        # A covered core takes its glow with it: on a streak, a visible fraction of 0.4 keeps 0.4 of the glow.
+        on = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 1)['rgb'])[0]
+        part = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, .4)['rgb'])[0]
+        self.assertAlmostEqual(part, on * .4, places=6)
         field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .05)
         self.assertLess(float(field['glow_max']), 1.)                                                 # under the stabiliser bound E
         self.assertLessEqual(float(field['halo_rise']), 0.)                                           # the halo never rises outward
@@ -214,16 +214,39 @@ class OwnSunHost(unittest.TestCase):
         self.assertGreaterEqual(len({round(r, 1) for r in reach}), 12)
         self.assertLessEqual(reach[-1], 16)                                                           # inside the quad
         # The streaks: horizontal, long, symmetric left and right; sun_rays = 0 removes rays and streaks, not the halo.
-        right = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 12, 0, 9, 5)
-        left = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, -12, 0, 9, 5)
+        right = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 12, 0, 9, 1)
+        left = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, -12, 0, 9, 1)
         self.assertEqual(right['streaks'], left['streaks'])
         self.assertGreater(float(right['streaks']), .05)
-        self.assertLess(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 0, 12, 9, 5)['streaks']), 1e-6)
-        none = self.run_driver('pixel', 255, 255, 255, 2, 1, 0, 3, 0.05, 9, 5)
+        self.assertLess(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 0, 12, 9, 1)['streaks']), 1e-6)
+        none = self.run_driver('pixel', 255, 255, 255, 2, 1, 0, 3, 0.05, 9, 1)
         self.assertEqual((float(none['rays']), float(none['streaks'])), (0., 0.))
         self.assertGreater(float(none['halo']), 0.)
         off = self.run_driver('field', 255, 255, 255, 2, 1, 0, .1)
         self.assertEqual(set(off['spokes'].split(',')), {'0.00:0.0000'})
+
+    def test_no_seam_between_spokes(self):
+        # Review F2 of step 1b: the nearest spoke alone jumped by about 0.026 glow units at a spoke boundary (seam lines
+        # just outside the core); the program sums the two nearest spokes, continuous across the boundary.
+        seam = self.run_driver('seam', 255, 255, 255, 2, 1, 1)
+        self.assertGreater(float(seam['single']), .02)
+        self.assertLess(float(seam['summed']), 1e-3)
+
+    def test_core_visibility_taps(self):
+        # Review F1 of step 1b: 13 taps (the centre, six at 0.45 and six at 0.9 core radii) weighted 1 - 0.1 rho^2 and
+        # normalised, so one tap changes the burst by at most about 8 % (5 equal taps: 20 %).
+        text = (ROOT / 'src/effects/own_sun_ps.hlsl').read_text()
+        block = text[text.index('const float visible = '):]
+        block = block[:block.index(';')]
+        centre, inner, outer = map(float, re.findall(r'(\d\.\d{7})', block))
+        self.assertAlmostEqual(centre + 6 * inner + 6 * outer, 1., places=5)
+        self.assertAlmostEqual(inner / centre, 1 - .1 * .45 ** 2, places=5)
+        self.assertAlmostEqual(outer / centre, 1 - .1 * .9 ** 2, places=5)
+        self.assertLess(max(centre, inner, outer), .085)
+        offsets = [tuple(map(float, m)) for m in re.findall(r'lane\(c \+ float2\((-?\d\.\d+), (-?\d\.\d+)\) \* core_taps\.zw\)', text)]
+        self.assertEqual(len(offsets), 12)
+        self.assertEqual(sorted(round(math.hypot(x, y), 4) for x, y in offsets), [.45] * 6 + [.9] * 6)
+        self.assertEqual(text.count('sentinel(lane(c)).x'), 1)
 
     def test_probe_answer(self):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
@@ -259,8 +282,8 @@ class OwnSunHost(unittest.TestCase):
         for got, value in zip(c[20:23], (.2, .75 * .5, .6 * .5)):                                    # sun_rays scales rays, streaks
             self.assertAlmostEqual(got, value, places=6)
         self.assertEqual((c[24], c[25]), (.75, .625))                                                 # centre uv: (.5 + .5 x, .5 - .5 y)
-        self.assertAlmostEqual(c[26] * w, 7., places=4)                                              # 0.7 core radius
-        self.assertAlmostEqual(c[27] * h, 7., places=4)
+        self.assertAlmostEqual(c[26] * w, 10., places=4)                                             # the core radius
+        self.assertAlmostEqual(c[27] * h, 10., places=4)
         self.assertEqual(c[37], 16.)                                                                  # the spoke count
         d, wv = c[4:8], c[8:12]
         offsets = set()
@@ -285,7 +308,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertIn('constexpr unsigned pixel_registers = 10;', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         native = json.loads((ROOT / 'verification/results/own-sun-pass/native/result.json').read_text())
         self.assertTrue(native['passed'])
-        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 150)  # step 1b budget
+        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 200)  # step 1b review budget
         self.assertEqual({r['program']: (r['words'], r['end'], len(r['messages'])) for r in native['programs']},
                          {'own_sun_vs': (len(vs), '00000000', 0), 'own_sun_ps': (len(ps), '00000000', 0)})
 

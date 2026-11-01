@@ -8,10 +8,12 @@
 //   frame_active configured key_on stage_ready
 //   quad x y half_x half_y
 //   constants width height x y radius_px rays core0 core1 core2 glow0 glow1 glow2
-//   pixel c0 c1 c2 k fog_t rays px py open_taps visible_taps   the program's law (own_sun_core.h reference_pixel) at
+//   pixel c0 c1 c2 k fog_t rays px py open_taps visible   the program's law (own_sun_core.h reference_pixel) at
 //                                  offset (px, py) core radii, with the constants pixel_constants() uploads
 //   field c0 c1 c2 k rays step reach   the glow terms on a grid of `step` core radii out to `reach`: maxima, the hue
 //                                  ratio of the glow, the rays per spoke (length, peak) and their mirror symmetry
+//   seam c0 c1 c2 k fog_t rays     the largest jump of the ray term across a spoke boundary (r 0.6..16): the program's
+//                                  two-spoke sum, and the nearest spoke alone for comparison
 //   bench frames                   the stage's CPU side per frame (projection, fog scalar, radiance, quad, constants)
 #define X3M_OWN_SUN_HOST_REFERENCE
 #include "../../src/proxy/own_sun_core.h"
@@ -131,9 +133,36 @@ int main(int argc, char** argv) {
         core::Radiance r;
         frame_constants(argv + 2, f(argv[7]), c, &r);
         core::Pixel p;
-        core::reference_pixel(c, f(argv[8]), f(argv[9]), unsigned(std::atoi(argv[10])), unsigned(std::atoi(argv[11])), &p);
+        core::reference_pixel(c, f(argv[8]), f(argv[9]), unsigned(std::atoi(argv[10])), f(argv[11]), &p);
         std::printf("rgb=%.7f,%.7f,%.7f halo=%.7f rays=%.7f streaks=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
                     double(p.rgb[2]), double(p.halo), double(p.rays), double(p.streaks), double(p.core));
+        return 0;
+    }
+    if (!std::strcmp(cmd, "seam") && argc == 8) {
+        float c[core::pixel_registers * 4];
+        core::Radiance r;
+        frame_constants(argv + 2, f(argv[7]), c, &r);
+        float summed = 0.f, single = 0.f, where = 0.f;
+        for (unsigned k = 0; k < core::ray_count; ++k) {
+            // The boundary between spoke k and k + 1 (t = k + 0.5).
+            const float theta = (float(k) + .5f - core::ray_offset) * core::two_pi / float(core::ray_count);
+            for (float rr = .6f; rr <= core::glow_radius; rr += .01f) {
+                core::Pixel a, b;
+                const float e = 2e-4f;
+                core::reference_pixel(c, rr * std::cos(theta - e), rr * std::sin(theta - e), 9, 1.f, &a);
+                core::reference_pixel(c, rr * std::cos(theta + e), rr * std::sin(theta + e), 9, 1.f, &b);
+                const float d = 1.f - a.core;
+                const float jump = std::fabs(a.rays - b.rays) * d;
+                if (jump > summed) {
+                    summed = jump;
+                    where = rr;
+                }
+                const float one = std::fabs(core::reference_spoke(c, float(k), .5f, rr) -
+                                            core::reference_spoke(c, float(k + 1), -.5f, rr)) * c[21] * d;
+                single = one > single ? one : single;
+            }
+        }
+        std::printf("summed=%.6f at=%.2f single=%.6f\n", double(summed), double(where), double(single));
         return 0;
     }
     if (!std::strcmp(cmd, "field") && argc == 9) {
@@ -147,7 +176,7 @@ int main(int argc, char** argv) {
         for (float y = -core::quad_extent_y; y <= core::quad_extent_y; y += step)
             for (float x = -core::quad_extent_x; x <= core::quad_extent_x; x += step) {
                 core::Pixel p;
-                core::reference_pixel(c, x, y, 9, 5, &p);
+                core::reference_pixel(c, x, y, 9, 1.f, &p);
                 if (p.core > 0.f) continue;
                 const float g = p.halo + p.rays + p.streaks;
                 glow_max = g > glow_max ? g : glow_max;
@@ -158,7 +187,7 @@ int main(int argc, char** argv) {
             }
         for (float rr = 0.f; rr <= core::glow_radius; rr += step / 4.f) {
             core::Pixel p;
-            core::reference_pixel(c, 0.f, rr, 9, 5, &p);
+            core::reference_pixel(c, 0.f, rr, 9, 1.f, &p);
             const float rise = p.halo - previous;
             halo_rise = rise > halo_rise ? rise : halo_rise;
             previous = p.halo;
@@ -173,14 +202,14 @@ int main(int argc, char** argv) {
             float reach = 0.f, peak = 0.f;
             for (float rr = 1.f; rr <= core::quad_extent_y; rr += .05f) {
                 core::Pixel p;
-                core::reference_pixel(c, rr * std::cos(theta), rr * std::sin(theta), 9, 5, &p);
+                core::reference_pixel(c, rr * std::cos(theta), rr * std::sin(theta), 9, 1.f, &p);
                 if (p.rays > .01f * core::ray_gain) reach = rr;
                 peak = p.rays > peak ? p.rays : peak;
             }
             for (float delta = .002f; delta < .03f; delta += .004f) {
                 core::Pixel a, b;
-                core::reference_pixel(c, 3.f * std::cos(theta + delta), 3.f * std::sin(theta + delta), 9, 5, &a);
-                core::reference_pixel(c, 3.f * std::cos(theta - delta), 3.f * std::sin(theta - delta), 9, 5, &b);
+                core::reference_pixel(c, 3.f * std::cos(theta + delta), 3.f * std::sin(theta + delta), 9, 1.f, &a);
+                core::reference_pixel(c, 3.f * std::cos(theta - delta), 3.f * std::sin(theta - delta), 9, 1.f, &b);
                 const float e = std::fabs(a.rays - b.rays);
                 asymmetry = e > asymmetry ? e : asymmetry;
             }

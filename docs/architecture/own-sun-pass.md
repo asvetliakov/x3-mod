@@ -369,12 +369,19 @@ constant in `own_sun_core.h`, uploaded as c3..c9, so `test_own_sun` evaluates th
 - **Rays.** 16 spokes (offset half a spoke so none lies on the streaks), the nearest one per pixel from a minimax
   arctangent; per spoke a hash of its index sets the length (3.3-12.9 core radii: a few long, many short) and the
   strength (0.6-1.0 x 0.75); a Gaussian across the spoke (width 0.12 core radii, tapering outward) and
-  `saturate(1 - r / L)^2` along it. Static in screen space. `sun_rays` (0..1, default 1) scales rays and streaks.
+  `saturate(1 - r / L)^2` along it. Static in screen space. `sun_rays` (0..1, default 1) scales rays and streaks. Each
+  pixel sums the two nearest spokes (review fix: the nearest alone jumped by 0.038 glow units at a spoke boundary, seam
+  lines just outside the core; summed, the profile is continuous, `law_checks.py`).
 - **Streaks.** The long horizontal pair: `0.6 exp(-(y / 0.15)^2 - |x| / 8)`, windowed to 24 core radii.
 - **Halo.** Faint and wide: `0.2 / (1 + r^2 / 4)`, windowed to 16 core radii.
 - **Occlusion.** The per-pixel knight clip over the whole quad (rays included) as before, and the glow multiplied by
-  the core's visible fraction (five sentinel taps: the centre and four at 0.7 core radii), so a covered core takes its
-  rays with it; the core itself keeps the per-pixel clip.
-- **Quad.** 48 x 32 core radii (0.46 Mpx at 5120x1440, 0.04 Mpx at 1280x768). ps_3_0 142 slots by the production
-  counter (14 `texld`: plain `tex2D`, valid without flow control on the one-level point-sampled lane); native
-  validator 0 messages.
+  the core's visible fraction, so a covered core takes its rays with it; the core itself keeps the per-pixel clip. The
+  fraction comes from 13 sentinel taps (the centre, six at 0.45 and six at 0.9 core radii, weighted `1 - 0.1 rho^2`,
+  normalised): one tap moves the whole burst by at most 8.1 % (review fix: five equal taps moved it in 20 % steps, and a
+  tap within half a pixel of a hull edge flipped per frame under the jitter). 17 taps cost 216 slots, over the budget.
+- **Quad.** 48 x 32 core radii (0.46 Mpx at 5120x1440, 0.04 Mpx at 1280x768). ps_3_0 197 slots by the production
+  counter after the review fixes (22 `texld`: plain `tex2D`, valid without flow control on the one-level
+  point-sampled lane; `exp` folded into `exp2` through the uploaded constants); native validator 0 messages.
+- **Meter, corrected (review F3).** "Below p99 has no effect" was wrong: tiles under the 1 % index still shift which
+  tile is the p99 one. The new core adds 1-4 tiles at 5120x1440 (4-6 at 1280x768) and decodes to at most 4.6, so
+  `ev_limit` stays at the scene's own value within a few tiles' shift of the p99 index.

@@ -768,3 +768,30 @@ CTAB. GPU cost (inferred): 0.46 Mpx x 142 slots x 0.135 ns = 9 us at 5120x1440 p
 The Run219 `ev_limit` of -0.92 with the 96-px disc at 5120x1440 contradicts the tile model's "below p99"; the model
 under-counts something there (open). Flight: `own_sun_frame` with `ev` near the no-sun windows' values and
 `ev_limit` above +1.3 with the sun in view; the yellowish hue in the fogged sector; ray lengths irregular and fixed.
+
+### Own sun step 1b — review fixes (2026-11-02; on main `66d2afd3`; not flown)
+
+F1: the core's visible fraction (which carries the halo, rays and streaks) comes from 13 weighted taps instead of 5
+equal ones: the centre, six at 0.45 and six at 0.9 core radii, weights `1 - 0.1 rho^2` normalised (0.0807 / 0.0791 /
+0.0742): one tap moves the burst by at most 8.1 % instead of 20 %. 17 taps (6.2 %) compiled to 216 slots, over the
+~200 budget; 13 was the allowed fallback. F2: each pixel sums the two nearest spokes; the ray term is continuous across
+a spoke boundary (nearest spoke alone: 0.038 glow units x (1 - D) at r 0.87; summed: 0 in `law_checks.py`, 3.3e-4 in
+the host driver's +-2e-4 rad finite difference). F3 (correction of the step-1b row above): tiles below the p99 index
+are not without effect, they shift which tile is the p99 one. The new core adds 1-4 tiles at 5120x1440 and decodes to
+at most 4.6, so `ev_limit` stays at the scene's own value within a few tiles' shift.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `compare_objects.py` against main `66d2afd3` (step 1b and these fixes together) | FL 81 objects, 2 differ (config, proxy_identity); AP 122, 5 differ (capture, config, motion_output, proxy_identity, own_sun_pass) (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 (measured) |
+| `generate_own_sun_programs.py --check` | PASS; ps 996 words (measured) |
+| Native validator ([result](../../verification/results/own-sun-pass/native/result.json)) | vs 2 slots, ps 197 slots (22 texture); `end=00000000`, 0 messages each (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_fl_sun_light_poll, test_fl_sun_occlusion, test_config_schema | 106 tests, 0 failing (measured) |
+| `generate.py --check` | PASS, 298 settings (measured) |
+| CPU side, `cpu_cost.py` | median 36.7 ns per frame (measured) |
+| `verification/results/own-sun-pass/law_checks.py` | arctangent max error 3.46e-6 rad (8.8e-6 spoke units); ray lengths 3.75-14.42 core radii, strengths 0.63-0.95; seam 0.0381 alone, 0 summed; tap weights sum 1.00000, largest step 8.1 % (measured, offline) |
+
+`test_own_sun` adds `test_no_seam_between_spokes` (alone > 0.02, summed < 1e-3) and `test_core_visibility_taps` (12
+ring offsets at 0.45 and 0.9, the weights' ratios and sum, largest step < 8.5 %). GPU cost (inferred): 0.46 Mpx x 197
+slots x 0.135 ns = 12 us at 5120x1440 plus the fixed draw, about 0.05 ms.
