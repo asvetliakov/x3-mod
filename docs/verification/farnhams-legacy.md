@@ -889,3 +889,12 @@ sun and the sun-through-fog report stays open). Interim by design, removed by th
 (`docs/architecture/own-sun-pass.md`): the gain uses the sky-cap mean column, not the sun ray, and dims every
 additive lens draw in the bracket. Flight: The Hole, sun through fog should be dimmed; a hull in front of the sun
 should hide it as vanilla does; nothing else should change.
+
+**Run 15 flown (2026-11-02).** User: the sun is dimmed in The Hole; the lens chain's ghosts and rays read as
+flat grey discs over the fog ("turned black"); a station in front of the sun hides it as vanilla does. Log
+(measured, `verification/results/fl-run15-black-lens/`): 11 lens draws per frame, 7 additive gained ×0.577
+(`fog_t=0.5771`), 4 SRCALPHA/INVSRCALPHA refused `blend_law`; no lens pixel darker than its fog ring in capture
+12637; `sun_occlusion_blocked reason=create_clip` from frame 1232 (the ps_2_0 clip program fails native
+creation, the known follow-up), so the FL visibility pass never ran and the hull hide was vanilla's. Decision:
+no further triage; the additive-over-bright-fog look is an interim artefact of the lens gain and the engine
+chain is removed by the own sun pass (`docs/architecture/own-sun-pass.md`). Run 14 remains the rollback.
