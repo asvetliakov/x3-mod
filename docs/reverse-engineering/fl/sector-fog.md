@@ -343,3 +343,145 @@ interpreter transport, exact string allocation/copy count, and both string
 callers under the same three synthetic rebases. Focused negatives include
 registering validator `0x46a610` instead of dispatcher `0x46a640`, changing
 VM/type-cell arithmetic, allocator/copy targets or size, and changing callers.
+
+## 6. Verification pass for the step 6 reader (2026-11-01)
+
+Targeted re-derivation for `src/engine/fl/sector_background_fl.cpp` (Farnham's Legacy port step 6),
+from the installed `/mnt/c/X3FL/X3FL.exe` (same SHA-256 `e7f3aad8…01dfbb8` as section 1) side by side
+with `/mnt/c/X3AP-orig/X3AP.exe`. Method: capstone linear sweep and whole-instruction decoding of
+named spans, HIGHLOW relocation census, direct-caller census; no game, Wine or build execution. Every
+value below is an **RVA** (preferred VA − `0x400000`) or a field offset; the generated fragment adds
+`fl::module_base()`. Sections 1–5 keep their preferred-VA notation; RVA = VA − `0x400000`.
+
+**Generator.** [`tools/analysis/fl_sector_background_constants.py`](../../../tools/analysis/fl_sector_background_constants.py)
+writes [`sector_background_fl_inc.h`](../../../src/engine/fl/sector_background_fl_inc.h): 8 slots,
+53 named values and **22 anchors** (1,112 bytes, 27 relocated operand words). Each anchor must decode
+as whole instructions; every base relocation in its span must be an absolute operand naming a listed
+`.data` slot; each value is read from a named instruction operand (disp, immediate or branch target)
+and must equal the documented value; row offsets read from the getters must equal the rebased
+offsets read from the setter plus `0x44`. The runtime check mirrors the camera provider's: compare
+the span at `module_base() + rva` with each operand word equal to `module_base() + operand_rva`.
+[`test_fl_sector_background_constants.py`](../../../verification/analysis/test_fl_sector_background_constants.py)
+(6 tests) accepts every span relocated to `0x400000`, `0x4d0000` and `0x10000000`, refuses every
+single-bit flip, a foreign base and an unreadable span, refuses nine mutated operands (wrong slot,
+`+0x368`, stride `0xdb4`, rebase `0x40`, row `+0x138`, AP's `+0x768`, class 2, split instruction) and
+the AP image. Census: [`census.py`](../../../verification/results/fl-port/sector-background/census.py),
+[`tbackgrounds_census.py`](../../../verification/results/fl-port/sector-background/tbackgrounds_census.py).
+
+### 6.1 AP input → FL (question 1)
+
+All rows **verified**: the FL operand is read by the generator, and the AP instruction at the cited
+address performs the same use (function match by identical instruction shape and operand set).
+
+| Reader input (AP) | FL RVA / offset | FL anchor (RVA) | AP match |
+| --- | --- | --- | --- |
+| Cockpit registry slot `0x608504` | **`0x1a82e4`** | `registry_lookup` `0x0cf46f`; `active_control_set` `0x031fab`; `ref_object_set` `0x0308d6` | inline lookup `0x40f85b`; `INS_SetActiveControlCockpit` `0x42ebed` |
+| Active handle `registry+0x10`; map `registry+0` | `+0x10`, `+0` | `0x0cf474`, `0x0cf477`; store `0x031fd0` | `0x40f860`, `0x40f863`; store `0x42ec03` |
+| Map `{buckets +0, capacity +4}`, index `(capacity−1)&handle`, link `{next +0, key +4, cockpit +8}` | same | `0x0cf479`…`0x0cf4a3`; resolver `0x01e420` (thiscall, `RET 4`) | `0x40f865`…`0x40f88f`; resolver `0x41cd20` (EAX/EDX) |
+| Cockpit `+0xc` ref object | `+0xc` | store `0x030911` | own-ship contract |
+| Cockpit `+0x54` sector | `+0x54` | store `0x021c77`; load `0x022e3f` | store `0x42d670`; load `0x421533` |
+| Cockpit `+0x58` sector camera | `+0x58` | `0x022e42` | `0x42155a` |
+| Class word `+0x48` == 1 | `+0x48`, 1 | `0x021c86`, `0x043de9`, `0x025057` | `0x420369`, `0x43a596`, `0x423839` |
+| Parent `+0x54` | `+0x54` | `parent_walk` `0x025031`/`0x02504c` (class 5/6 → parent → class 1) | `0x423813`/`0x42382e` |
+| Sector id `+8` | `+8` | `sector_constructor` store `0x05c181` (map insert `0x10cfe0`) | `0x43f972` (insert `0x4efcc0`) |
+| Background index `sector+0x13c` | `+0x13c` | `0x022e45`, `0x021c8d`, `0x05c199` | `0x421536`, `0x420370` |
+| `neb`/`stars` = `sector+0x140/+0x144` | same | `sector_bodies` `0x05c320`/`0x05c351` | `0x452630`/`0x452662` |
+| TBackgrounds table `0x606fc0` | **`0x1a83d0`** = type array `0x1a83c8` + 4·2 | `fog_copy`, getters, `setter_rebase`, `loader_table` `0x040637` | `0x42153c`, `0x4363ea` |
+| Record count `0x607040` | **`0x1a8338`** = count array `0x1a8330` + 4·2 | getters (`cmp`), `loader_count` `0x0405b3` | getters `0x467765`…, `0x4363c8` |
+| Stride `0xdb8`; `R = row + 0x44` | same | `0x022e45`; `setter_rebase` `0x072703`/`0x07270f` | `0x421542`; `0x467b47` |
+| Name `R+0` (row `+0x44`) | same | getter `0x0722f2`; setter `0x07272c` | `0x46778d`; `0x467b5f` |
+| Rates `R+0xd0[8]` (row `+0x114`) | same | getter `0x072427` (`cmp 8`, dword stride `0x36e`); setter `0x07274b` | `0x467892`; `0x467b76` |
+| Dust `R+0xf0` (row `+0x134`) | same | `0x072464`; `0x072786` | `0x4678c5`; `0x467ba6` |
+| Fog near/far `R+0x104/+0x108` (row `+0x148/+0x14c`) | same | `0x072531`/`0x07256e`; `0x0727c0`/`0x0727c9`; copy `0x022e5b`/`0x022e54` | `0x467980`/`0x4679b9`; `0x421548`/`0x42154f` |
+| Stardust `R+0x10c` (row `+0x150`) | same | `0x0725ab`; `0x0727d2` | `0x4679f2`; `0x467bf2` |
+| Camera `+0x36c/+0x370`, `+0x270` OR `0x10000` | same | `0x022e66`/`0x022e6c`/`0x022e74` | `0x42156e`/`0x421574`/`0x42157c` |
+| Config slot `0x606f34` | **`0x1a83b0`** | `far_floor` `0x0e4bc1` | `0x4c2c1a` |
+| View distance `config+0x768` | **`config+0x758`** | `0x0e4bcc`; floors 500,000,000 / 100,000,000 at `0x0e4bda`/`0x0e4beb` | `0x4c2c22`, `0x4c2c3e`/`0x4c2c57` |
+
+The cockpit registry is **not** the object-trace registry: `object_trace_fl_inc.h`'s slot `0x1aa100`
+with `*(*slot+0xc)` is the B3D render-object map. The sector reader walks the cockpit map at
+`0x1a82e4`; the simulation-object map is object manager `0x1a82ec` `+0x14` (`sector_by_id`
+`0x043db0`, AP `0x43a560`), which the ordinary reader does not traverse.
+
+### 6.2 Record layout and table shape (question 2)
+
+The layout holds unchanged. FL has the same 14 count-bounded `SA_GetBgType*` getters in the same order
+and offsets as AP (`+0x44`, `+0x48`, `+0x8c`, `+0xd0`, `+0x114[i<8]`, `+0x134`, `+0x138` packed RGB,
+`+0x144`, `+0x148`, `+0x14c`, `+0x150`, `+0x154` packed RGB, `+0x90[i]`, `+0x4c[i]`; FL `0x0722cc`…`0x072664`,
+AP `0x467765`…`0x467a98`), the same `0xdb8` stride and the same indexed loader publication
+(type 2; clear/count/table/cleanup writes `0x04043b`, `0x040446`, `0x0405b3`, `0x040637`, `0x042d25`;
+AP `0x436277`/`0x43627e`/`0x4363c8`/`0x4363ea`/`0x4396e4`). The `+0x44` rebase is the compiler's
+addressing choice, not a layout: FL's fog copy and background change index the unrebased row
+(`[row+0x148]`), FL's setter rebases (`0x07270f`), AP rebases in both. The reader's single `0x120`-byte
+copy from `R` ends at row `+0x164`, inside the row. **Count differs by data only (measured):** FL
+resolves types under `addon2\types\` and `addon2/04.cat` `TBackgrounds` has **110** records (version 25,
+38 columns; AP `addon/03.cat` 83), dust max 50, 23 rows with dust, far max 500,000,000, no row with
+far < near, family names ≤ 21 characters (100 families). All inside the shared bounds (count ≤ 4096,
+dust ≤ 64, far ≤ 2e9, name < 32).
+
+### 6.3 Pointer chain (question 3)
+
+Same hops and offsets as AP §11.2: `[0x1a82e4]` → registry; `+0x10` handle, `+0` map → bucket walk →
+cockpit; `cockpit+0x54` sector (class word `+0x48 == 1`), `+0x13c` index, `[0x1a83d0] + index·0xdb8 + 0x44`
+= `R`; `cockpit+0x58` camera; `cockpit+0xc` → ref object `+0x54` parent for the anchor check; the
+docked parent walk follows simulation `+0x54` with class word `+0x48` (FL `0x025031`, native shape: one
+extra hop through class 5/6, then class 1, identical to AP `0x423813`). The only edition differences
+the reader sees are the four slot RVAs and `config+0x758`.
+
+### 6.4 Mutability and the FL read window (question 4)
+
+Writers, by direct-operand census (linear sweep; aliasing through computed pointers not excluded):
+
+| State | FL writers (RVA) | When |
+| --- | --- | --- |
+| Table / count slots | loader `0x03e710` (clear `0x04043b`/`0x040446`, count `0x0405b3`, table `0x040637` before rows are filled); cleanup `0x042b80` (frees each row name through `0x042c6e`…`0x042c91`, the table at `0x042d11`, clears the slot at `0x042d25`); `SA_SetBgTypeData` block `0x072693` (realloc `0x0d8ef0`, count `inc` `0x0726c3` **before** table `0x0726c9`) | loader: startup `0x0778ae`, simulation restore `0x048bf9` (sole caller `0x07987e` in whole-load); cleanup: restore `0x048bf2`, manager destructor `0x076af9`; setter: synchronous script command |
+| Row fields and name | loader (`0x0409e9` name …`0x040b02`); setter (`0x07272c`…`0x0727d2`); name helper `0x10b670` frees then allocates **`strlen+1`** bytes | same as above |
+| `sector+0x13c` | constructor `0x05c199` (0); background change `0x05c2a0` writes the new index **last** at `0x05c395` (sole caller `0x06eaf4`); raw script store `0x06eac5` (no bound check; neither path bounds the index) | script commands; universe/save load |
+| `cockpit+0x54` | init `0x0211fb`; `0x021c77` (sole caller `0x0308bc`, `INS_CockpitSetSectorSpace`); save restore `0x01b788` | script command; whole-load |
+| Registry slot | `0x075ed3`, `0x0763af`, `0x0785f9` (zero), `0x077e37`, `0x0798b2` (publish) | create/teardown; reread every sample |
+
+Frame order is verified: `0x0782ca` → cockpit update loop `0x01e550` (sole caller) → per cockpit
+`0x01e5b0` → updater `0x021f50` (sole caller), whose fog copy `0x022e3f` refreshes the sector camera,
+then `0x0782cf` → complete render pass `0x08b6d0` (sole caller). The FL safe window therefore restates
+§11.4 with the FL addresses: **sample at most once per frame inside the complete render pass, at or
+after the ordinary main camera activation** (section 4's seam), where the row, the sector index and
+the sector camera `+0x36c/+0x370` are consistent with this frame; re-read all four slots every
+sample; copy the row in one span. A table rebuild happens only in the loader/cleanup (startup and
+whole-load) or a synchronous `SA_SetBgTypeData`; that the script interpreter cannot run inside the
+render pass is section 3's closure (reused, not re-derived here).
+
+### 6.5 Corrections and settled points (question 5)
+
+- **The `0x10000` fog flag is unconditional on AP too.** AP's `JL 0x4215a0` at `0x42157a` takes its
+  flags from `AND EAX,0xffffff` at `0x421563` (the following MOVs do not touch flags): SF = OF = 0, so
+  the branch to the clearing `AND [ECX+0x270],0xfffeffff` is never taken and has no other predecessor
+  (census). Section 2's "differs from AP's conditional activation branch" is wrong in effect; both
+  editions set the bit on every fog copy, and `+0x368 = 0xffffff` iff near ≠ 0 on both.
+- **The view-distance override is not FL-specific.** FL `0x0782b3`/`0x0782e8` (`+0x758 = 4` around
+  the cockpit update and render, gated by `[0x1a8fe4]`) matches AP `0x403f20`/`0x403f54` (`+0x768`).
+- **The `neb`/`stars` naming inversion is an AP reader naming issue.** AP `0x4525b0` also pairs
+  `sector+0x140` with row `+0x4c[]` (stars, via `R+8`) and `+0x144` with row `+0x90[]` (background
+  nebula, via `R+0x4c`). The values are right; only the log names are swapped, on both editions.
+- **The index is unbounded natively.** The raw store `0x06eac5` and the change function `0x05c2a0`
+  both accept any index; the reader's `0 ≤ index < count` check is mandatory, not defensive.
+- Re-verified as stated in sections 1–3: every slot, the resolver contracts `0x01e420`/`0x043db0`,
+  `0x021c70`, `0x01b788`, `0x0211fb`/`0x021202`, `0x0227ad`, `0x022e3f`…`0x022e83`, `0x0e4bc1`…`0x0e4bf9`,
+  `0x05c181`/`0x05c199`, the loader/cleanup/setter writes, the loader clamp `0x040ad7`…`0x040ae9`, the
+  `strlen+1` name allocation (`0x10b6bc`) and all caller counts in the section 3 table.
+- AP §11.1's "16 `SA_GetBgType*` handlers" are 14 count-bounded getters plus `SA_BgTypeFromBody` and
+  the setter on both editions.
+
+### 6.6 For the implementation, and what remains open
+
+- `sector_background::sample()` hard-codes AP absolutes (`0x608504`, `0x607040`, `0x606fc0`,
+  `0x606f34`, `+0x768`). Step 6 must pass the four FL slots (module base + RVA) and `+0x758` through an
+  edition parameter; every other offset in the shared header is identical on FL.
+- `read_record()` reads 32 name bytes unconditionally; FL names are `strlen+1` allocations (≤ 22
+  bytes in the shipped data), so the FL `Read` must fail safely across an uncommitted page or the
+  name copy must stop at NUL (section 4). This is an implementation choice, not a layout change.
+- Not established here: the seam's own ABI (section 4 owns it), the interpreter closure (reused),
+  aliasing writes through computed pointers, and the FL R3 prefill (section 5).
+- Reproduce: `python3 tools/analysis/fl_sector_background_constants.py --check`;
+  `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_fl_sector_background_constants.py'`;
+  `python3 verification/results/fl-port/sector-background/census.py`;
+  `python3 verification/results/fl-port/sector-background/tbackgrounds_census.py`.
