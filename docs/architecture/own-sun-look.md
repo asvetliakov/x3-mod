@@ -68,6 +68,17 @@ slots (was 178), 1085 words, native validator 0 messages [M]: 12 more point-samp
 slots, about 2 us per frame on the 0.35-Mpx quad at 5120x1440 under the slot-budget rule [I]. The lab's GLSL and HUD carry the same 25 taps;
 item 6 below, which names 13 taps, describes step 1b to 1d.
 
+### Core visibility: 37 taps, halo 0.4 (2026-11-02, user decision)
+
+The fraction now samples 37 taps: the centre and twelve each at 0.3, 0.6 and 0.9 core radii (30 deg apart, the rings
+turned by 0, 10 and 20 deg), the same `1 - 0.1 rho^2` weights normalised (centre 0.0282, rings 0.0279, 0.0272,
+0.0259), so one tap moves the burst by at most 2.8 % [M, `law_checks.py`]. ps 1265 words, 253 slots (budget raised to
+260 for this), native validator 0 messages [M]; about 2 us more per frame on the 0.35-Mpx quad than the 25-tap program
+[I]. In the same change `halo_gain` 0.3 -> 0.4 (an uploaded constant, no bytecode change): glow max outside the core
+1.366 at 1440 rows, 1.369 at 768; worst sun-tile `ev_limit` +2.25 / +2.23 EV; cap rule PASS at both [M, `glow_meter.py`].
+Display at +1.3 EV: 1 R 0.93, 2 R 0.58, 4 R 0.32, 6 R 0.15 [I, AgX table]. The 25-tap paragraph above is the previous
+layout.
+
 ## Decision
 
 **One quad, one program, three elements: a 17-px core (unchanged), a glow that dominates (a Gaussian corona of
@@ -188,7 +199,7 @@ nothing in this step adds a dependency. The program's validity is proven by the 
 
 `tools/effects/own_sun_lab.html` (open it from disk in a WebGL2 browser) is a live mock-up of this law. Its GLSL
 mirrors `own_sun_ps.hlsl` term by term, each line commenting the HLSL line it ports. Inputs are the same ten registers that
-`pixel_constants()` builds, the same hash, two-spoke sum, minimax arctangent and 25 weighted core taps, the knight-tap
+`pixel_constants()` builds, the same hash, two-spoke sum, minimax arctangent and 37 weighted core taps, the knight-tap
 clip, the core-visibility fraction scaling the glow, fog T, K and the polled colour (`radiance()`). These go ONE/ONE
 into an engine-space scene (stars, nebula, a draggable station standing in for the depth lane) at a chosen game
 resolution (5120x1440 or 1280x768 pixel scale, so the 3-px ray width floor and the 1.5-px draw floor behave as in flight).

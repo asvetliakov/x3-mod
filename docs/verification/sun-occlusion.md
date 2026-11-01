@@ -955,3 +955,14 @@ validator 0 messages; lab tap table pinned to the program. Built unstripped (`bu
 PASS, 74 host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run223`
 ([record](../../verification/results/run224-candidate-install.json)). Carries the run 223 user constants. Flight: the
 two F8 pairs; park with a strut across the core and watch the glow dim smoothly.
+
+## 2026-11-02: Own sun core visibility 37 taps and halo 0.4 (host evidence; not flown)
+
+Centre plus twelve taps each at 0.3 / 0.6 / 0.9 R (rings turned 0 / 10 / 20 deg), weights `1 − 0.1ρ²` normalised,
+largest single-tap step 2.8 % (was 4.2 %) [measured, `own-sun-pass/law_checks.py`]; ps_3_0 1265 words, 253 slots
+(test budget raised 250 → 260 by user decision), native validator 0 messages
+([result](../../verification/results/own-sun-pass/native/result.json)); `halo_gain` 0.3 → 0.4: `glow_meter.py` glow
+max outside the core 1.366 (1440 rows) / 1.369 (768), worst sun-tile `ev_limit` +2.25 / +2.23 EV, cap rule PASS at
+both. `generate_own_sun_programs.py --check` and `generate_own_sun_lab.py --check` PASS; `build-ap`, `build-fl` 0
+warnings; the four own-sun modules 74 tests green (`test_core_visibility_taps` pins 37 taps, sum 1, max weight ≤ 0.03;
+lab `CORE_TAPS` pinned); lab JS vs `own_sun_host pixel` worst 1.39e-5 (`own-sun-pass/lab_js_worst.py`).

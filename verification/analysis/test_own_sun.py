@@ -204,17 +204,17 @@ class OwnSunHost(unittest.TestCase):
         # Step 1d (own-sun-look.md): the glow outside the core peaks at 1.317 at K = 2 and 1440 rows (glow_meter.py), next
         # to the core so its edge disappears into it, far under the meter's guard (engine 2.25), and never rises outward
         # along any radial line; the corona and halo on the axis are the note's 2.15 exp(-(r / 1.05)^2) and
-        # 0.3 / (1 + (r / 4.2)^2) W(r), W windowed at 17.
+        # 0.4 / (1 + (r / 4.2)^2) W(r), W windowed at 17 (halo_gain 0.4: user change 2026-11-02).
         field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .02)
-        self.assertLessEqual(float(field['glow_max']), 1.30)                                       # user tuning 2026-11-02: 9 rays at .11 -> 1.269
-        self.assertGreater(float(field['glow_max']), 1.25)
+        self.assertLessEqual(float(field['glow_max']), 1.39)                                       # halo_gain .4 (2026-11-02): 1.366
+        self.assertGreater(float(field['glow_max']), 1.33)
         self.assertLessEqual(float(field['glow_rise']), 0.)
         self.assertLess(float(field['asymmetry']), 1e-4)                                              # each spoke mirror-symmetric
         for r in (1, 2, 3, 6, 9, 12, 16, 20):
             px = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, r, 0, 9, 1)
             self.assertAlmostEqual(float(px['corona']), 2.15 * math.exp(-(r / 1.05) ** 2), delta=5e-5 * max(1, r))
             window = max(0., 1 - (r / 17) ** 2) ** 2
-            self.assertAlmostEqual(float(px['halo']), .3 / (1 + (r / 4.2) ** 2) * window, delta=1e-6)
+            self.assertAlmostEqual(float(px['halo']), .4 / (1 + (r / 4.2) ** 2) * window, delta=1e-6)
         self.assertEqual(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 17, 0, 9, 1)['halo']), 0.)  # windowed at 17
         # Nine spokes (user tuning 2026-11-02; odd: no two opposite) with the hashed lengths beyond the core's edge (1.7-10.2,
         # evenly
@@ -268,20 +268,20 @@ class OwnSunHost(unittest.TestCase):
         self.assertLess(float(seam['summed']), 1e-4)
 
     def test_core_visibility_taps(self):
-        # 25 taps (the centre and eight each at 0.35, 0.65 and 0.9 core radii) weighted 1 - 0.1 rho^2 and normalised, so
-        # one tap changes the burst by at most about 4 % (step 1b's 13 taps: 8 %; 5 equal taps: 20 %).
+        # 37 taps (the centre and twelve each at 0.3, 0.6 and 0.9 core radii) weighted 1 - 0.1 rho^2 and normalised, so
+        # one tap changes the burst by at most about 2.8 % (25 taps: 4.2 %; step 1b's 13 taps: 8 %; 5 equal taps: 20 %).
         text = (ROOT / 'src/effects/own_sun_ps.hlsl').read_text()
         block = text[text.index('const float visible = '):]
         block = block[:block.index(';')]
         centre, inner, middle, outer = map(float, re.findall(r'(\d\.\d{7})', block))
-        self.assertAlmostEqual(centre + 8 * (inner + middle + outer), 1., places=5)
-        for weight, rho in ((inner, .35), (middle, .65), (outer, .9)):
+        self.assertAlmostEqual(centre + 12 * (inner + middle + outer), 1., places=5)
+        for weight, rho in ((inner, .3), (middle, .6), (outer, .9)):
             self.assertAlmostEqual(weight / centre, 1 - .1 * rho ** 2, places=5)
-        self.assertLessEqual(max(centre, inner, middle, outer), .045)                  # the largest single-tap step
+        self.assertLessEqual(max(centre, inner, middle, outer), .03)                  # the largest single-tap step
         offsets = [tuple(map(float, m)) for m in re.findall(r'lane\(c \+ float2\((-?\d\.\d+), (-?\d\.\d+)\) \* core_taps\.zw\)', text)]
-        self.assertEqual(len(offsets) + 1, 25)
-        self.assertEqual(sorted(round(math.hypot(x, y), 4) for x, y in offsets), [.35] * 8 + [.65] * 8 + [.9] * 8)
-        self.assertEqual(len({(round(x, 4), round(y, 4)) for x, y in offsets}), 24)
+        self.assertEqual(len(offsets) + 1, 37)
+        self.assertEqual(sorted(round(math.hypot(x, y), 4) for x, y in offsets), [.3] * 12 + [.6] * 12 + [.9] * 12)
+        self.assertEqual(len({(round(x, 4), round(y, 4)) for x, y in offsets}), 36)
         self.assertEqual(text.count('sentinel(lane(c)).x'), 1)
 
     def test_probe_answer(self):
@@ -315,7 +315,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertAlmostEqual(c[1] * h, 1.)
         self.assertEqual(c[12:15] + c[16:19], [1., 2., 3., 4., 5., 6.])
         self.assertAlmostEqual(c[15], .4, places=6)                                                   # the core's inner edge
-        for got, value in zip(c[20:23], (2.15, .3, .11 * .5)):                                         # sun_rays scales the rays only
+        for got, value in zip(c[20:23], (2.15, .4, .11 * .5)):                                         # sun_rays scales the rays only
             self.assertAlmostEqual(got, value, places=6)
         self.assertEqual((c[24], c[25]), (.75, .625))                                                 # centre uv: (.5 + .5 x, .5 - .5 y)
         self.assertAlmostEqual(c[26] * w, 10., places=4)                                             # the core radius
@@ -344,7 +344,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertIn('constexpr unsigned pixel_registers = 10;', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         native = json.loads((ROOT / 'verification/results/own-sun-pass/native/result.json').read_text())
         self.assertTrue(native['passed'])
-        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 250)  # the 25-tap core budget
+        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 260)  # the 37-tap core budget (user decision)
         self.assertEqual({r['program']: (r['words'], r['end'], len(r['messages'])) for r in native['programs']},
                          {'own_sun_vs': (len(vs), '00000000', 0), 'own_sun_ps': (len(ps), '00000000', 0)})
 

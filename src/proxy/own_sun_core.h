@@ -32,7 +32,7 @@ constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // The look (step 1c, own-sun-look.md "Defaults and constants", tuned in step 1d after Run221; every length in core radii;
 // derived constants, not settings): the core whitened only a little (the polled colour stays visible) at core_gain of K,
 // its soft edge from core_inner (0.4) to 1 core radius; the glow is the pure polled colour times intensity, like vanilla's
-// chain, and dominates: a Gaussian corona (sigma 1.05, 2.15: 0.87 at the core's edge) plus a Lorentzian halo (half brightness at 4.2, 0.3) windowed
+// chain, and dominates: a Gaussian corona (sigma 1.05, 2.15: 0.87 at the core's edge) plus a Lorentzian halo (half brightness at 4.2, 0.4) windowed
 // at 17; eleven soft rays at 0.15 with hashed lengths (2.0-12.1 beyond the core's edge, ray_start) and strengths
 // (0.6-1.2), a Gaussian width of max(3 px, 0.2 core radii) without taper and exp(-a) saturate(1 - a)^2 along,
 // a = max(r - ray_start, 0) / L (so a short ray still leaves the core at full strength). The cap (step 1d): the glow
@@ -43,7 +43,7 @@ constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // 3x3 box, and the far gate is 0 on the sentinel).
 constexpr float white_mix = .15f, core_inner = .4f, core_gain = .72f; // core_gain: the core term only (step 1d)
 constexpr float corona_gain = 2.15f, corona_sigma = 1.05f;
-constexpr float halo_gain = .3f, halo_radius = 4.2f, glow_radius = 17.f;
+constexpr float halo_gain = .4f, halo_radius = 4.2f, glow_radius = 17.f;
 // Spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl). Odd, so no two spokes are opposite (no straight
 // line through the sun). ray_length: the longest hashed ray beyond ray_start (the core's edge), so every ray ends within
 // 1 + 13 = 14 core radii, inside the quad (17).
@@ -251,7 +251,7 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
                             float out[pixel_registers * 4]) noexcept {
     const float dx = width ? 1.f / float(width) : 0.f, dy = height ? 1.f / float(height) : 0.f;
     const float share = rays >= rays_min && rays <= rays_max ? rays : rays_default;
-    const float ring = d.radius_px; // the core-visibility rings sit at 0.35, 0.65 and 0.9 of it (own_sun_ps.hlsl)
+    const float ring = d.radius_px; // the core-visibility rings sit at 0.3, 0.6 and 0.9 of it (own_sun_ps.hlsl)
     const float n = float(ray_count);
     float sigma = ray_sigma;
     ray_width_radii(d.radius_px, &sigma);
@@ -272,7 +272,7 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
 #ifdef X3M_OWN_SUN_HOST_REFERENCE
 // ---- Host reference of the pixel program (the host test's expectation; CRT math: never compiled into the DLL) ----
 // own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps at the pixel (0..9)
-// and the core's visible fraction (0..1: the program's weighted 25 taps). corona / halo / rays: the terms before the
+// and the core's visible fraction (0..1: the program's weighted 37 taps). corona / halo / rays: the terms before the
 // tint (for the shape tests).
 struct Pixel {
     float rgb[3]{};

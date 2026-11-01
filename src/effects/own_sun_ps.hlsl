@@ -18,9 +18,9 @@
 //   radiance = lerp(glow, core, D) x open x (D + (1 - D) x visible)
 //   open    = the nine taps (the fragment and the eight knight moves) of the scene depth lane (RT2 at s0, point sampled)
 //             whose .r < 0 (the route's sentinel), / 9: the per-pixel clip over the whole quad, glow and rays included
-//   visible = the same sentinel test at 25 points of the core (its centre c6.xy, eight each at 0.35, 0.65 and 0.9 core
-//             radii, 45 degrees apart, the rings turned by 0, 15 and 30 degrees; c6.zw the core radius as lane uv),
-//             weighted 1 - 0.1 rho^2 and normalised (one tap moves it by at most 4.2 %, an outer one by 3.8 %): a covered
+//   visible = the same sentinel test at 37 points of the core (its centre c6.xy, twelve each at 0.3, 0.6 and 0.9 core
+//             radii, 30 degrees apart, the rings turned by 0, 10 and 20 degrees; c6.zw the core radius as lane uv),
+//             weighted 1 - 0.1 rho^2 and normalised (one tap moves it by at most 2.8 %, an outer one by 2.6 %): a covered
 //             core takes its glow and rays with it, as the engine's chain went with its probe
 // The constants come from src/proxy/own_sun_core.h pixel_constants() (the host test evaluates the same law with them);
 // colours carry the fog's far transmittance. Alpha 0: the scene's alpha is left as it is under ONE/ONE. Compiled with
@@ -41,7 +41,7 @@ struct Input {
     float2 pixel : VPOS;
 };
 // tex2D, not tex2Dlod: no flow control here, the lane has one level and is point sampled with MIPFILTER NONE, so the
-// implicit level is the only one (one slot and no coordinate move per tap; 34 taps).
+// implicit level is the only one (one slot and no coordinate move per tap; 46 taps).
 float lane(float2 uv) {
     return tex2D(lane_sampler, uv).r;
 }
@@ -70,36 +70,49 @@ float4 main(Input i) : COLOR {
     b.z = lane(base + knight_w.zw);
     b.w = lane(base - knight_w.zw);
     const float open = (dot(sentinel(a) + sentinel(b), 1) + sentinel(lane(base)).x) / 9.0;
-    // The core's visible fraction: its centre and eight taps each at 0.35, 0.65 and 0.9 core radii, weighted
+    // The core's visible fraction: its centre and twelve taps each at 0.3, 0.6 and 0.9 core radii, weighted
     // 1 - 0.1 rho^2.
     const float2 c = core_taps.xy;
-    float4 va, vb, vc, vd, ve, vf;
-    va.x = lane(c + float2(0.3500000, 0.0000000) * core_taps.zw);
-    va.y = lane(c + float2(0.2474874, 0.2474874) * core_taps.zw);
-    va.z = lane(c + float2(0.0000000, 0.3500000) * core_taps.zw);
-    va.w = lane(c + float2(-0.2474874, 0.2474874) * core_taps.zw);
-    vb.x = lane(c + float2(-0.3500000, 0.0000000) * core_taps.zw);
-    vb.y = lane(c + float2(-0.2474874, -0.2474874) * core_taps.zw);
-    vb.z = lane(c + float2(0.0000000, -0.3500000) * core_taps.zw);
-    vb.w = lane(c + float2(0.2474874, -0.2474874) * core_taps.zw);
-    vc.x = lane(c + float2(0.6278518, 0.1682324) * core_taps.zw);
-    vc.y = lane(c + float2(0.3250000, 0.5629165) * core_taps.zw);
-    vc.z = lane(c + float2(-0.1682324, 0.6278518) * core_taps.zw);
-    vc.w = lane(c + float2(-0.5629165, 0.3250000) * core_taps.zw);
-    vd.x = lane(c + float2(-0.6278518, -0.1682324) * core_taps.zw);
-    vd.y = lane(c + float2(-0.3250000, -0.5629165) * core_taps.zw);
-    vd.z = lane(c + float2(0.1682324, -0.6278518) * core_taps.zw);
-    vd.w = lane(c + float2(0.5629165, -0.3250000) * core_taps.zw);
-    ve.x = lane(c + float2(0.7794229, 0.4500000) * core_taps.zw);
-    ve.y = lane(c + float2(0.2329371, 0.8693332) * core_taps.zw);
-    ve.z = lane(c + float2(-0.4500000, 0.7794229) * core_taps.zw);
-    ve.w = lane(c + float2(-0.8693332, 0.2329371) * core_taps.zw);
-    vf.x = lane(c + float2(-0.7794229, -0.4500000) * core_taps.zw);
-    vf.y = lane(c + float2(-0.2329371, -0.8693332) * core_taps.zw);
-    vf.z = lane(c + float2(0.4500000, -0.7794229) * core_taps.zw);
-    vf.w = lane(c + float2(0.8693332, -0.2329371) * core_taps.zw);
-    const float visible = sentinel(lane(c)).x * 0.0418130 + dot(sentinel(va) + sentinel(vb), 0.0413008) +
-                          dot(sentinel(vc) + sentinel(vd), 0.0400464) + dot(sentinel(ve) + sentinel(vf), 0.0384262); // weight / sum
+    float4 va, vb, vc, vd, ve, vf, vg, vh, vi;
+    va.x = lane(c + float2(0.3000000, 0.0000000) * core_taps.zw);
+    va.y = lane(c + float2(0.2598076, 0.1500000) * core_taps.zw);
+    va.z = lane(c + float2(0.1500000, 0.2598076) * core_taps.zw);
+    va.w = lane(c + float2(0.0000000, 0.3000000) * core_taps.zw);
+    vb.x = lane(c + float2(-0.1500000, 0.2598076) * core_taps.zw);
+    vb.y = lane(c + float2(-0.2598076, 0.1500000) * core_taps.zw);
+    vb.z = lane(c + float2(-0.3000000, 0.0000000) * core_taps.zw);
+    vb.w = lane(c + float2(-0.2598076, -0.1500000) * core_taps.zw);
+    vc.x = lane(c + float2(-0.1500000, -0.2598076) * core_taps.zw);
+    vc.y = lane(c + float2(0.0000000, -0.3000000) * core_taps.zw);
+    vc.z = lane(c + float2(0.1500000, -0.2598076) * core_taps.zw);
+    vc.w = lane(c + float2(0.2598076, -0.1500000) * core_taps.zw);
+    vd.x = lane(c + float2(0.5908847, 0.1041889) * core_taps.zw);
+    vd.y = lane(c + float2(0.4596267, 0.3856726) * core_taps.zw);
+    vd.z = lane(c + float2(0.2052121, 0.5638156) * core_taps.zw);
+    vd.w = lane(c + float2(-0.1041889, 0.5908847) * core_taps.zw);
+    ve.x = lane(c + float2(-0.3856726, 0.4596267) * core_taps.zw);
+    ve.y = lane(c + float2(-0.5638156, 0.2052121) * core_taps.zw);
+    ve.z = lane(c + float2(-0.5908847, -0.1041889) * core_taps.zw);
+    ve.w = lane(c + float2(-0.4596267, -0.3856726) * core_taps.zw);
+    vf.x = lane(c + float2(-0.2052121, -0.5638156) * core_taps.zw);
+    vf.y = lane(c + float2(0.1041889, -0.5908847) * core_taps.zw);
+    vf.z = lane(c + float2(0.3856726, -0.4596267) * core_taps.zw);
+    vf.w = lane(c + float2(0.5638156, -0.2052121) * core_taps.zw);
+    vg.x = lane(c + float2(0.8457234, 0.3078181) * core_taps.zw);
+    vg.y = lane(c + float2(0.5785088, 0.6894400) * core_taps.zw);
+    vg.z = lane(c + float2(0.1562834, 0.8863270) * core_taps.zw);
+    vg.w = lane(c + float2(-0.3078181, 0.8457234) * core_taps.zw);
+    vh.x = lane(c + float2(-0.6894400, 0.5785088) * core_taps.zw);
+    vh.y = lane(c + float2(-0.8863270, 0.1562834) * core_taps.zw);
+    vh.z = lane(c + float2(-0.8457234, -0.3078181) * core_taps.zw);
+    vh.w = lane(c + float2(-0.5785088, -0.6894400) * core_taps.zw);
+    vi.x = lane(c + float2(-0.1562834, -0.8863270) * core_taps.zw);
+    vi.y = lane(c + float2(0.3078181, -0.8457234) * core_taps.zw);
+    vi.z = lane(c + float2(0.6894400, -0.5785088) * core_taps.zw);
+    vi.w = lane(c + float2(0.8863270, -0.1562834) * core_taps.zw);
+    const float visible = sentinel(lane(c)).x * 0.0281785 + dot(sentinel(va) + sentinel(vb) + sentinel(vc), 0.0279249) +
+                          dot(sentinel(vd) + sentinel(ve) + sentinel(vf), 0.0271641) +
+                          dot(sentinel(vg) + sentinel(vh) + sentinel(vi), 0.0258961); // weight / sum
     const float2 p = i.local;
     const float r2 = dot(p, p);
     const float r = sqrt(r2);
