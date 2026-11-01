@@ -290,4 +290,14 @@ FL host tests pass ([record](../../verification/results/fl-run5/candidate.json))
 Expected: `motion_output_variant kind=ps … create=00000000` rows for the FL hull
 programs, `sun_shadow_lane_refusals pair=` near 0 (run 4: 82 at the last row), no
 hull shimmer on distant stations, no smear on large moving ships. Hull lightmap
-gain and widening still off (part 4b). Result: pending.
+gain and widening still off (part 4b).
+
+Result (log session of 2026-11-01, 63,717 frames / 355 s, no reset, no exception;
+measured): 24 `motion_output_variant kind=ps` rows created (run 4: 1), all
+`create=00000000 depth=1`; no `sun_shadow_lane_refusals` row at all (run 4: 82
+pair refusals); lifetime `known` 475,919 / 475,919; `hull_lightmap_variant
+gain_applied=0` (4b pending). User: stations fine, ships including big ships fine;
+distant sun-lit wheat farms still shimmer. **Accepted.** The shimmer is no longer
+a missing-motion-row symptom; candidates are specular on the FL hull programs
+without the sun-share/LOD-strength exposure twins (4b) or plain specular aliasing;
+F8 captures of a shimmering farm are requested for the 4b build.
