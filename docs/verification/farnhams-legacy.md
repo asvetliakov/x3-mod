@@ -176,3 +176,35 @@ changed (`schema_semantic_compare.txt`); AP-address rescan unchanged (20 reachab
 `fl.scale_fix status=active … write=atomic`, one `fl.scale_fix_sample … saturated=0` after the first 10 s, then a
 row only when a clamp happened (`last_site=0x22dd4` for the F1 camera crash path). Rebased onto 04d463ac (step
 3b); the rebased build's hash and test counts are in the commit's report.
+
+## FL run 4 — lifetime observer + scaler overflow fix (installed 2026-11-01)
+
+Candidate: commit `22507889` (steps 3b `04d463ac` and the scale fix), `build-fl/d3d9.dll`
+SHA-256 `2dc5c82b…`, 0 warnings, FL host tests 35 pass
+([record](../../verification/results/fl-run4/candidate.json)); `C:\X3FL\d3d9.dll` bytes
+verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run3`. First FL build with TAA
+history available. Expected: `fl.lifetime status=active_without_baseline …
+failed_site=none`, `motion_output_device … history_available=1`, `fl.lifetime_sample`
+with `published≈inserts`, `binds=1`, `known ≥ 95 %` of `current`, `rebaselined>0`
+after a save load; `fl.scale_fix status=active`, a `fl.scale_fix_sample` row at the
+first period and again only when `saturated` grows (F1 view switches no longer crash).
+Image: TAA on for programs the AP tables know; **FL hull programs (34 new ps_3_0,
+18 seen in run 3) have no motion rows yet, so moving ships may ghost or smear**;
+hull lightmap gain and widening stay off until the FL shader coverage step
+([shader finding](#fl-shader-coverage-finding-2026-11-01)). Result: pending.
+
+## FL shader coverage finding (2026-11-01)
+
+From the run 3 log and the inherited notes (`fl/shaders.md`, `fl/materials.md`):
+all 256 vertex programs are byte-identical to AP; FL replaces 34 ps_3_0 hull
+programs (22 conventional, 12 XT) and drops 30. Run 3 created 55 distinct programs,
+21 vs all known, 18 of 34 ps unknown (all FL hulls). Exact-hash consumers that stay
+off for them: TAA motion pair (jitter applied, pair refused → camera-only
+reprojection), hull lightmap gain and widening (built on the motion variant), HDR
+additive hull gain (12 AP rows, all replaced), exposure/strength twins, pixel
+coverage, radiance, distance fade. Unaffected: fog, bloom, emission, lens, fade VS,
+position programs, sun register (by constant name). Porting needs: motion rows for
+the 34 programs, the transformer's register layout read from each program's constant
+table (FL: glow c4, hue c1–c3, XT c7/c9, c12), variant limit above 1911 DWORDs,
+native validator rerun, `addon2` added to the archive scans. Order: motion rows
+(enables gain and widening), then HDR hull gain and exposure rows.
