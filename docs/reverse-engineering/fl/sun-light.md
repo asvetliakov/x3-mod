@@ -228,3 +228,110 @@ validation. Cube world-position readiness needs its later propagation boundary
 if ever supported. No runtime evidence yet proves FL fog radiance, scale,
 shadow direction or the presence of a unique sun. Windows-compatible source and
 synthetic fixtures would remain distinct from verified native game behavior.
+
+## 2026-11-01: poll contract
+
+Offline, X3FL.exe SHA-256 `e7f3aad8…dfbb8` at `/mnt/c/X3FL/X3FL.exe`, matched
+function by function against `/mnt/c/X3AP-orig/X3AP.exe` (`fdbf3418…f8ab`) with
+Capstone. Addresses below are **RVAs** (FL is ASLR-relocatable; add the loaded
+module base); AP addresses are absolute VAs. Everything in the table is
+re-derived on every run by
+[`tools/analysis/fl_sun_light_constants.py`](../../../tools/analysis/fl_sun_light_constants.py),
+which writes `src/engine/fl/sun_light_poll_fl_inc.h`. It decodes **50 runtime
+anchors**, whole instructions of at most 31 bytes, each relocated at most at its
+own disp32: six name the context global and four name `.rdata` doubles. It also
+decodes **16 census shapes**, the direct-caller census of seven functions, and a
+linear-sweep census of the nine instructions that name the array.
+[`verification/analysis/test_fl_sun_light_constants.py`](../../../verification/analysis/test_fl_sun_light_constants.py)
+mirrors the in-memory check at three bases. It refuses every single-bit flip, a
+foreign base, nine AP-layout or foreign-value mutations, a moved relocation and
+a fourth collector caller (measured: 6 tests pass). No raw listing is kept in
+the repository; no game, Wine or build run was involved.
+
+**Outcome: the AP hook-free poll ports to FL unchanged in logic.** It needs the
+context slot as an RVA, colour, range and record each 4 bytes later, a
+`0xc4`-byte node block (`+0xb0..+0x173`) and the FL anchors as the identity gate.
+
+| Contract item | FL (RVA) | AP | Status |
+| --- | --- | --- | --- |
+| Render context R | `*(base+0x1aa100)` | `*0x608518` | verified: collector `0x95457`, selector `0x964c9`, Dir rule `0xe6f6d`, slot-count init `0xda1a5` read it; published at `0x77697`/`0x8a5f1` (AP `0x403367`/`0x470df8`). It is the engine slot of `object_trace_fl_inc.h`, not a camera or renderer slot |
+| Candidate array | R+`0x5e8c`, 255 words, append cap `0xfe` | same | verified: `0x95472`, `0x9555c` (`0x17a3*4`), caps `0x9548f`/`0x9557f`, terminators `0x9563d`/`0x95652` |
+| Slot count | R+`0x6288` = min(caps `[[[renderer]+0x18]+4]+0x4f4`, 8) | same code at `0x4b9ba4` | verified `0xda1a5..0xda1cc`. Expected 8 on hardware reporting at least 8 (the AP reader's assumption on both editions); no lower clamp. The field is most likely D3DCAPS9.MaxActiveLights (inferred, not traced) |
+| Selection records | R+`0x628c`, stride 12 | same | verified (Dir rule `0xe6f82`, `0xe6fb8`) |
+| Flags | node+`0x12c`: 4 light, `0x10` spot, `0x400000` point, `0x800000` directional | same | verified; the D3DLIGHTTYPE written by `0xde1c0` (2/1/3) names `0x10` and `0x400000` |
+| Position | int32 node+`0xb0/b4/b8` | same | verified (collector `0x9549f..0x954cf`) |
+| Colour | int16 node+`0x154/156/158` | `+0x150/152/154` | verified (selector `0x96540..0x9655a`, setter `0xa3eec..0xa3f04`, record filler `0xde206`). FL `+0x150` is the LOD index |
+| Range | int32 node+`0x15c` | `+0x158` | verified (collector `0x954f7`, selector `0x9660f`, Dir rule `0xe6fa5`, setter `0xa3f2b`) |
+| Light record | node+`0x170`, position floats at record+`0x34` | `+0x16c` | verified (`0xde1c0`, `0xde416`, `0xde43c`). FL `+0x16c` is a scalar |
+
+Functions, each matched by instruction shape against its AP counterpart:
+collector `0x95450` (AP `0x47c640`, `RET 8`); selector `0x964c0` (AP
+`0x47d5e0`; the score block AP `0x47d641` is FL `0x96523..0x96596`); Dir-slot
+rule `[0xe6f6d, 0xe6fc8)` (AP `0x4c5030..0x4c508f`) inside wrapper `0xe6ef0`;
+lazy directional flag `0xde1c0` (AP `0x4bdbf0`, setter instruction `0xde1fc`).
+
+**Score.** `trunc((0.587·G + 0.299·R) + 0.114·B)` in SSE2 double precision
+(`cvttsd2si` at `0x96587`; weights at `.rdata` RVAs `0x191b38/0x191b10/0x191ae0`),
+then `+0x300` when the node has `0x800000`. AP computes the same sum in the same
+order on x87 and converts through `0x52b5d0`, which also **truncates**
+(`cvttsd2si`). The formula is therefore the same in both editions. The AP
+reader's `(x + 500) / 1000` rounding is an approximation on both, off by one
+only near a tie. Lights with `0x400010` (point or spot) lose
+`luma·d/(2·range)`, where d is the Chebyshev distance to the submitted node minus
+node `+0x70`. They score 0 out of range, and spot lights take a further cone
+factor (`0x96649..0x96733`). An untyped light (no `0x800000`, no `0x400010`)
+scores -1. The Dir-slot threshold is confirmed: `flags & 0x800000` **or**
+signed range `> 0x256250` (`0xe6f99`, `0xe6fa5`).
+
+**Thread and timing (verified by call tree; not a whole-engine thread audit).**
+The main loop calls the cockpit updater's registry walk at `0x782ca` and the
+complete pass `0x8b6d0` at `0x782cf`, in that order (AP `0x403f2f`/`0x403f34`).
+Inside the complete pass every rendered view runs propagate `0x94b00`, then
+activation `0x95670` (which collects at `0x95783`), then prepare `0x97720`. Its
+layer draws `0x978e0`, `0x975c0` and `0x97680` follow, and the selection records
+are reset at `0x8ba9b` before the next camera. The Dir rule's two callers,
+`0x97035` and `0x97702`, lie inside that draw cone. The auxiliary-view loop
+(`0x8bbef`) and the engine+0x64 view (`0x8bc87`) collect again in their own
+activations. Cube rendering `0x4977c0` collects at `0x97857` for its own faces.
+The only instructions that write the array are the collector's
+(linear-sweep census). A poll taken inside a routed main-scene draw therefore
+sees the main view's array, rebuilt on the same thread, as on AP. A poll at
+Present sees the last view rendered.
+
+**Cockpit HUD light scene (the AP "secondary scene", settled for both
+editions).** Cockpit init `0x21b60` (AP `0x420260`; FL thiscall, AP stack
+argument) creates the HUD scene at cockpit+4 and the HUD camera at cockpit+8
+(`+0x270 |= 0x24`). It also creates 16 lights at cockpit+0x14 (`0x21c00` →
+light birth `0xa3da0`) with colour `0x80` and a forced `0x800000`
+(`0x21c49`). That init state does not persist. Every frame before the complete
+pass, cockpit light refresh `0x22fb0` (AP `0x4216e0`; called at `0x2292a` from
+the cockpit updater) detaches all 16 lights (`0xa5740`). It collects and selects
+for the ship node (`0x23007`, `0x23012`; AP `0x42172f`, `0x42173b`), which
+overwrites the array before the pass. For each selected non-spot light it then
+copies the colour, range, `+0x160..+0x168` and flags & `0xc00000` (so the forced
+bit is replaced by the source's own bit). It also copies the camera-relative
+position (`0x494240` → `+0xf0` → local `+0x30`). Finally it re-attaches the copy
+to the HUD scene (`0xa56b0`; AP `0x489da0`). In the HUD view's own activation
+the array therefore holds copies of the ship's chosen lights, the sun included,
+with the sun's colour. Inside a main-scene draw they are not in the array.
+
+### Corrections to sections 1 to 4
+
+* "Native ranking differs" from AP: it does not. Both editions truncate the same
+  weighted sum. What differs from both is the AP reader's rounding.
+* The type setter's explicit `0x800000` (`0xa3f81`) is not FL-specific: AP has
+  it at `0x4886de`.
+* `+0x6288` is not a layout signature: AP initialises it with the same code.
+  The AP reader's `== 8` check carries the same hardware assumption on both
+  editions. It also catches the selector's index -1 overwrite of `+0x6288`
+  described in [registry-retained-aliases.md](registry-retained-aliases.md).
+* Section 3's call-seam adapter at `0x95783` is not required for a
+  main-scene sample. The bounded poll at a routed main-scene draw has the same
+  timing guarantee on FL as on AP. The engine-pointer staleness caveat of
+  section 1 still applies: the global is read fresh on every poll and stays
+  behind the FL anchor gate.
+
+Remaining unknowns: the exact meaning of renderer caps `+0x4f4`; the qsort tie
+order (comparator `0x96490`); whether any computed or third-party path writes
+the array (outside the linear-sweep census); FL behaviour in flight (no runtime
+sample).
