@@ -453,7 +453,7 @@ the thin-region hold (0.97, 7x7) through the existing thin-vote lane. Decisive
 diagnostic for the next flight: `taa_debug = 1` and one F8 at a distant farm in
 normal flight (lock/mask/age readbacks).
 
-## Step 5 — scene hook, host evidence (2026-11-01, not installed)
+## Step 5 — scene hook, host evidence (2026-11-01)
 
 Design: [FL scene note](../architecture/farnhams-legacy-scene.md). Measured on the WSL2 host, the step-5 commit rebased onto
 5fec7535, fresh worktree builds: fl and ap 0 warnings each; the fl link has `scene_hook_fl.cpp.obj` and `compositor_owner_fl.cpp.obj`
@@ -487,3 +487,13 @@ Assumption (bridge on by default for this flight): the bridge replaces the nativ
 without an FL shader-profile or `bloom.fb` check; high shader quality with stock `bloom.fb` is the flown case,
 medium/low quality or a modified `bloom.fb` is unverified; the runtime guard is `validate_boundary` (`reason=boundary`,
 no draw).
+
+## FL run 7 — step 5 scene hook, bloom bridge and compositor owner (installed 2026-11-01)
+
+Candidate: commit `c931a86c`, `build-fl/d3d9.dll` SHA-256 `c91ce71c…` (55,437,053 B), 0 warnings,
+FL host tests 62 pass ([record](../../verification/results/fl-run7/candidate.json));
+`C:\X3FL\d3d9.dll` bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run6`
+(`e91ee801…`). `debug = 1` and `taa_debug = 1` stay set in `C:\X3FL\x3m.ini`. Expected
+rows and image: the Step 5 section above. Also open from run 6: the readback captures
+(frames 13630–13637 and 13940–13947, taken on run 6 with `taa_debug = 1`) are under
+triage in `verification/results/fl-run6-shimmer/readback/`.

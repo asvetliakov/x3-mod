@@ -1,0 +1,19 @@
+{
+  "run": 7,
+  "step": "5 scene hook (bloom bridge, compositor owner)",
+  "edition": "fl",
+  "commit": "c931a86c345c1738b458afdbfe6e154e9d6d03c0",
+  "dirty": false,
+  "build_dir": "build-fl",
+  "toolchain": "cmake/mingw-i686.cmake (WSL2, GCC 16.2 i686-w64-mingw32)",
+  "dll_sha256": "c91ce71c72a8b8692807613cfe83ca8142e62b120d7242ae3413064290bb34fd",
+  "dll_bytes": 55437053,
+  "installed_path": "C:\\X3FL\\d3d9.dll",
+  "installed_sha256": "c91ce71c72a8b8692807613cfe83ca8142e62b120d7242ae3413064290bb34fd",
+  "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run6 (e91ee801, run 6)",
+  "exe_sha256_prefix": "e7f3aad8",
+  "host_tests": "test_fl_*.py 62 OK",
+  "build_warnings": 0,
+  "ini_changes": "none since run 6 (debug=1, taa_debug=1 remain set)",
+  "installed_at": "2026-11-01T19:43:09+04:00"
+}
