@@ -66,8 +66,14 @@ class InGameKeys(unittest.TestCase):
         overlay = source_text(ROOT / 'src/proxy/fps_overlay.h')
         self.assertIn('bool visible() const noexcept { return requested_; }', overlay)
         self.assertNotIn('toggle', overlay)
-        # Bloom runs at full strength; the fog begin-frame step runs every frame without the sampler.
-        self.assertIn('call.input.filter.strength=1.f;', extract_function(capture, 'void retain_compositor_scene('))
+        # Bloom strength comes from X3M_BLOOM_STRENGTH (default 0.25), never a literal; the fog
+        # begin-frame step runs every frame without the sampler.
+        retain = extract_function(capture, 'void retain_compositor_scene(')
+        self.assertRegex(retain, r'call\.input\.filter\.strength\s*=\s*bloom_strength\s*;')
+        self.assertEqual(len(re.findall(r'filter\.strength\s*=', retain)), 1)
+        self.assertIn('constexpr float kBloomStrengthDefault = 0.25f;', capture)
+        self.assertIn('float bloom_strength = kBloomStrengthDefault;', capture)
+        self.assertIn('x3m::config::get(L"X3M_BLOOM_STRENGTH", setting, 32)', capture)
         self.assertIn('ctx.motion_output.volumetric_fog_begin_frame();', present)
         # The remaining toggles are fixture seams: no production caller.
         for seam in ('hull_emission_gain_toggle(', 'volumetric_fog_toggle(', 'volumetric_fog_step(', 'volumetric_fog_dust_motes_toggle('):
@@ -132,7 +138,7 @@ class InGameKeys(unittest.TestCase):
         # The notice panel class now draws only the FPS overlay.
         self.run_host('comparison_notice_fixture.cpp', [], notice=True)
 
-    def test_production_bloom_handoff_preserves_display_at_full_strength(self):
+    def test_production_bloom_handoff_preserves_display_and_strength(self):
         source = source_text(ROOT / 'src/proxy/capture.cpp')
         functions = [extract_function(source, 'void retain_compositor_scene(')]
         self.run_host('comparison_bloom_handoff_fixture.cpp', functions, handoff=True)

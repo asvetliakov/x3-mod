@@ -36,6 +36,7 @@ struct Input {
     x3::temporal::BloomParams filter{};
 };
 float bloom_source_clamp = x3::temporal::kAgxClampOff; // mirrors capture.cpp (inert, --bloom-source-clamp)
+float bloom_strength = 1.f; // mirrors capture.cpp (X3M_BLOOM_STRENGTH, default 0.25); the fixture sets each case
 struct CompositorInvocation {
     Device* owner;
     void* device;
@@ -58,32 +59,36 @@ int main() {
         ++checks;
         if (!ok) ++failures;
     };
-    // Two retains in a row: the handoff is deterministic and always at full
-    // strength (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26).
-    float active_gain = 0;
-    for (bool again : {false, true}) {
-        Device owner;
-        Resource texture, main;
-        CompositorInvocation call{&owner, &owner};
-        MotionHdrScene scene{&owner, &texture, &main, owner.id, owner.frame};
-        scene.display.agx.exposure[0] = 2.8284271f;
-        scene.display.sharpen_constants.values[0] = .59460354f;
-        retain_compositor_scene(&call, scene);
-        check(texture.references == 2 && main.references == 2);
-        check(call.input.scene == &texture && call.input.boundary.main == &main);
-        check(!std::memcmp(&call.input.agx, &scene.display.agx, sizeof scene.display.agx));
-        check(call.input.decode == scene.display.decode && call.input.sharpen == scene.display.sharpen);
-        check(call.input.exact_sharpen && !std::memcmp(&call.input.sharpen_constants, &scene.display.sharpen_constants,
-                                                       sizeof scene.display.sharpen_constants));
-        check(call.input.filter.strength == 1.f);
-        check(call.input.filter.authored_glow_gain > 0 && call.input.filter.authored_glow_gain <= 4.f);
-        check(call.input.filter.highlight_gain == .05f);
-        check(call.input.filter.levels == 5 && call.input.filter.threshold == 1.f && call.input.filter.knee == .5f);
-        if (again) check(call.input.filter.authored_glow_gain == active_gain);
-        active_gain = call.input.filter.authored_glow_gain;
-        // The callback is retain-once even when invoked again before cleanup.
-        retain_compositor_scene(&call, scene);
-        check(texture.references == 2 && main.references == 2);
+    // Two retains in a row per strength: the handoff is deterministic, preserves
+    // the display and forwards X3M_BLOOM_STRENGTH unchanged (full gain 1 and the
+    // 0.25 default; the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26).
+    for (float strength : {1.f, .25f}) {
+        bloom_strength = strength;
+        float active_gain = 0;
+        for (bool again : {false, true}) {
+            Device owner;
+            Resource texture, main;
+            CompositorInvocation call{&owner, &owner};
+            MotionHdrScene scene{&owner, &texture, &main, owner.id, owner.frame};
+            scene.display.agx.exposure[0] = 2.8284271f;
+            scene.display.sharpen_constants.values[0] = .59460354f;
+            retain_compositor_scene(&call, scene);
+            check(texture.references == 2 && main.references == 2);
+            check(call.input.scene == &texture && call.input.boundary.main == &main);
+            check(!std::memcmp(&call.input.agx, &scene.display.agx, sizeof scene.display.agx));
+            check(call.input.decode == scene.display.decode && call.input.sharpen == scene.display.sharpen);
+            check(call.input.exact_sharpen && !std::memcmp(&call.input.sharpen_constants, &scene.display.sharpen_constants,
+                                                           sizeof scene.display.sharpen_constants));
+            check(call.input.filter.strength == strength);
+            check(call.input.filter.authored_glow_gain > 0 && call.input.filter.authored_glow_gain <= 4.f);
+            check(call.input.filter.highlight_gain == .05f);
+            check(call.input.filter.levels == 5 && call.input.filter.threshold == 1.f && call.input.filter.knee == .5f);
+            if (again) check(call.input.filter.authored_glow_gain == active_gain);
+            active_gain = call.input.filter.authored_glow_gain;
+            // The callback is retain-once even when invoked again before cleanup.
+            retain_compositor_scene(&call, scene);
+            check(texture.references == 2 && main.references == 2);
+        }
     }
     for (unsigned fault = 0; fault < 8; ++fault) {
         Device owner;
