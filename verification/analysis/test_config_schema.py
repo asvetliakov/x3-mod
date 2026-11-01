@@ -474,16 +474,18 @@ class ConfigParser(unittest.TestCase):
 
     def test_ranges_are_the_sites(self):
         text = ''.join(f'{k} = {v}\n' for k, v in (
-            ('hdr_key', '0'), ('fog_motes_max_px', '1'), ('fog_motes_max_px', '65'), ('bloom_source_clamp', '0'),
+            ('hdr_key', '0'), ('fog_motes_max_px', '1'), ('fog_motes_max_px', '65'), ('bloom_source_clamp', '0'), ('bloom_strength', '1.01'), ('bloom_strength', '-0.1'),
+            ('bloom_strength', 'nan'),
             ('screen_emission_additive', '0.5'), ('shadow_cascades', '10,20'), ('fog_dust_motes', '32,3,128'),
             ('taa_far_stabiliser', '0.985,0,60'), ('bolt_footprint', '3,300')))
-        self.assertEqual(self.parse(text)['counts']['invalid'], 9)
+        self.assertEqual(self.parse(text)['counts']['invalid'], 12)
         text = ''.join(f'{k} = {v}\n' for k, v in (
-            ('hdr_key', '0.001'), ('fog_motes_max_px', '2'), ('bloom_source_clamp', '64'), ('screen_emission_additive', '0'),
+            ('hdr_key', '0.001'), ('fog_motes_max_px', '2'), ('bloom_source_clamp', '64'), ('bloom_strength', '0'), ('bloom_strength', '1'),
+            ('screen_emission_additive', '0'),
             ('shadow_cascades', '0'), ('fog_dust_motes', '0,3,128'), ('taa_far_stabiliser', '0'), ('bolt_footprint', '0'),
             ('shadow_cascade_sizes', '64'), ('capture_frames', '100')))
         r = self.parse(text)
-        self.assertEqual((r['counts']['invalid'], r['counts']['keys']), (0, 10))
+        self.assertEqual((r['counts']['invalid'], r['counts']['keys']), (0, 11))
 
     def test_table_lookup(self):
         for env, expected in (('X3M_TAA', True), ('X3M_TAA_SHARPEN', True), ('X3M_NOPE', False), ('X3M_', False), ('LOCALAPPDATA', False)):

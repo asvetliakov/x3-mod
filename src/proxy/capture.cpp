@@ -302,6 +302,10 @@ bool bloom_requested = false; // X3M_HDR_BLOOM=1; opt-in AgX compositor replacem
 // source (docs/architecture/bloom-falloff.md). kAgxClampOff is the unbounded
 // feed this option leaves untouched when absent or invalid.
 float bloom_source_clamp = x3::temporal::kAgxClampOff;
+// X3M_BLOOM_STRENGTH=S: overall gain of the bloom composite (c26.w, linear in
+// bloomCompose); 0.7 since 2026-11-01, when 1 read as too prominent on native Windows.
+constexpr float kBloomStrengthDefault = 0.7f;
+float bloom_strength = kBloomStrengthDefault;
 x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
 // draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
@@ -1582,7 +1586,8 @@ void retain_compositor_scene(void* storage, const MotionHdrScene& scene) noexcep
     // Bloom-only source ceiling: the pyramid sees at most this decoded code,
     // the presented scene keeps its full HDR value (bloom-falloff.md).
     call.input.filter.source_clamp = bloom_source_clamp;
-    call.input.filter.strength = 1.f; // full gain (the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
+    // X3M_BLOOM_STRENGTH, default 0.7 (full gain 1 until 2026-11-01; the Ctrl+Shift+F10 zero-gain A/B went on 2026-09-26)
+    call.input.filter.strength = bloom_strength;
 }
 bool compositor_current(const CompositorInvocation& call, bool refresh_owner = true) noexcept {
     if (!call.owner || !call.native_pin || call.revoked) return false;
@@ -5181,6 +5186,21 @@ void initialize_log(HMODULE module) {
         log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u", unsigned(present),
             unsigned(bloom_source_clamp < x3::temporal::kAgxClampOff), double(value), unsigned(valid),
             unsigned(bloom_requested));
+    }
+    // X3M_BLOOM_STRENGTH=S (finite, 0..1, the range valid_bloom_params accepts):
+    // overall bloom gain. Absent, unparsable or out of range keeps the default.
+    {
+        bloom_strength = kBloomStrengthDefault;
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length = x3m::config::get(L"X3M_BLOOM_STRENGTH", setting, 32);
+        const bool present = length || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+        wchar_t* end = nullptr;
+        const float value = length && length < 32 ? wcstof(setting, &end) : 0.f;
+        const bool valid = length && length < 32 && end != setting && !*end && std::isfinite(value) && value >= 0.f &&
+                           value <= x3::temporal::kBloomMaxStrength;
+        if (valid) bloom_strength = value;
+        log("bloom_strength_mode requested=%u strength=%g value=%g value_valid=%u bloom=%u", unsigned(present),
+            double(bloom_strength), double(value), unsigned(valid), unsigned(bloom_requested));
     }
     sector_background_requested = log_tier::debug_flag(L"X3M_SECTOR_BACKGROUND"); // X3M_SECTOR_BACKGROUND=1 or
                                                                                   // X3M_DEBUG=1

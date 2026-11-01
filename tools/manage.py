@@ -239,6 +239,7 @@ def apply_promoted_defaults(args):
     fill('hdr_tonemap', True, bool(args.hdr))
     fill('hdr_bloom', True, bool(args.hdr_tonemap and args.scene_hook != 'off'))
     fill('bloom_source_clamp', 1.0, bool(args.hdr_bloom))
+    fill('bloom_strength', 0.7, bool(args.hdr_bloom))  # 2026-11-01: halos too prominent at full gain on native Windows
     fill('crypt_cache', True)
     fill('gz_buffer', True)
     fill('resource_read', 'fast')
@@ -1295,6 +1296,7 @@ def main():
     parser.add_argument('--no-hdr-bloom', dest='hdr_bloom', action='store_false', help='Turn the --hdr-bloom launcher default off')
     parser.add_argument('--emission-source-clamp', type=float, default=None, metavar='C', help='[launcher default since 2026-09-29 (Run 103 A): 0.7 on every modded launch with --hdr; --emission-source-clamp 0 = no cap; not sent under --vanilla] Per-channel cap of the gained emitter colour in engine (pre-decode) space (X3M_EMISSION_SOURCE_CLAMP=C, 0 = no cap, else finite 0.25..8; requires --hdr): baked into the same pixel program variants as the --emission-source-gain (the twenty engine/effects pairs and the twelve hull guide-light programs) as one MIN after the gain, so dim exhaust texels still gain while the cores stop at C. C = 1 is the native 8-bit white; with gain 1 a clamp still builds the clamp-only variant (a screen draw then keeps its native blend), so the default 0.7 caps the engine/effects pairs and the hull guide-light cards at 0.7 without any gain. 0 = no cap, the stock look')
     parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='[launcher default since 2026-09-25: 1.0 on every modded launch with --hdr-bloom; --no-bloom-source-clamp = off; not sent under --vanilla] Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
+    parser.add_argument('--bloom-strength', type=float, default=None, metavar='S', help='[launcher default since 2026-11-01: 0.7 on every modded launch with --hdr-bloom; not sent under --vanilla] Overall gain of the bloom contribution added to the scene (X3M_BLOOM_STRENGTH=S, finite 0 <= S <= 1; requires --hdr-bloom). 1 is the full gain flown until 2026-11-01, 0 draws no glow while the bloom pass still runs; the threshold and the extraction are unchanged')
     parser.add_argument('--no-bloom-source-clamp', dest='bloom_source_clamp', action='store_const', const=PROMOTED_OFF, help='Turn the --bloom-source-clamp launcher default off')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
     parser.add_argument('--hdr-ev', type=float, default=0.0, help='Exposure offset in EV added to the auto-exposure target (X3M_HDR_EV; requires --hdr-tonemap; default 0)')
@@ -1940,6 +1942,10 @@ def main():
     if args.bloom_source_clamp is not None and not (math.isfinite(args.bloom_source_clamp)
                                                    and 0.0 < args.bloom_source_clamp <= 64.0):
         parser.error('--bloom-source-clamp must be finite and within (0, 64].')
+    if args.bloom_strength is not None and not args.hdr_bloom:
+        parser.error('--bloom-strength requires --hdr-bloom.')
+    if args.bloom_strength is not None and not (math.isfinite(args.bloom_strength) and 0.0 <= args.bloom_strength <= 1.0):
+        parser.error('--bloom-strength must be finite and within [0, 1].')
     if not args.hdr_tonemap and (args.hdr_exposure is not None or args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0
                                  or args.hdr_ev_min != -3.0 or args.hdr_ev_max != 1.3 or args.hdr_meter_bg != 1.0 / 512.0 or args.hdr_white_target != 0.9 or args.hdr_key_pull != 0.25
                                  or args.hdr_ev_deadband != 0.25 or args.hdr_edge_weight != 0.35):
@@ -2461,6 +2467,10 @@ def main():
             env['X3M_BLOOM_SOURCE_CLAMP'] = repr(args.bloom_source_clamp)
         else:
             env.pop('X3M_BLOOM_SOURCE_CLAMP', None)
+        if args.bloom_strength is not None:
+            env['X3M_BLOOM_STRENGTH'] = repr(args.bloom_strength)
+        else:
+            env.pop('X3M_BLOOM_STRENGTH', None)
         env['X3M_HDR_LOOK'] = args.hdr_look
         # Always explicit so a stale shell value can neither enable nor disable it.
         env['X3M_HDR_DITHER'] = '1' if args.hdr and args.hdr_dither != 'off' else '0'

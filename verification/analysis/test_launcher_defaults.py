@@ -38,7 +38,7 @@ STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trac
 # The stand command since 2026-09-26 (docs/verification/user-runs.md, "Stand command").
 STAND_SHORT = '--direct --debug --perf'.split()
 EXPECTED_EMPTY = {
-    'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
+    'X3M_BLOOM_SOURCE_CLAMP': '1.0', 'X3M_BLOOM_STRENGTH': '0.7', 'X3M_BOLT_FOOTPRINT': '3,12', 'X3M_CAMERA': 'chase', 'X3M_CAMERA_CUT_DEG': '20.0',
     'X3M_BOLT_SINGLE_COPY': '1',  # 2026-09-26: the early bullet copy dropped (bolt-footprint.md, "Single copy")
     'X3M_BOLT_FAR_COMPOSITE': '1', 'X3M_BOLT_FAR_SHOW': '1',  # 2026-09-26: bolts through the TAA (bolts-through-taa.md); W 1 since Run 94 A
     'X3M_CAPTURE_FRAMES': '8', 'X3M_CAPTURE_START': '999999', 'X3M_CHASE_COMBAT_TIGHTNESS': '0.0',
@@ -247,7 +247,7 @@ class LauncherDefaults(unittest.TestCase):
                      'X3M_VOLUMETRIC_FOG', 'X3M_CRYPT_CACHE', 'X3M_GZ_BUFFER', 'X3M_DAT_HANDLES', 'X3M_SHADOW_ALPHA_CASTERS'):
             self.assertEqual(env[name], '0', name)
         self.assertEqual((env['X3M_CAMERA'], env['X3M_RESOURCE_READ'], env['X3M_MESH_ADJACENCY']), ('vanilla', 'native', 'native'))
-        for name in ('X3M_MUSIC_KEEP', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_BLOOM_SOURCE_CLAMP', 'X3M_CULL_SMALL_PARTS_PX',
+        for name in ('X3M_MUSIC_KEEP', 'X3M_SHADOW_CASCADE_DROP_ORDER', 'X3M_BLOOM_SOURCE_CLAMP', 'X3M_BLOOM_STRENGTH', 'X3M_CULL_SMALL_PARTS_PX',
                      'X3M_RUN_IN_BACKGROUND'):
             self.assertNotIn(name, env)
         _, data, _ = self.launch(vanilla=True)
