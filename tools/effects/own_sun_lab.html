@@ -1,0 +1,469 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Own Sun Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Layout: one dark viewer with the live GPU sun on top, a control deck below; the engine exhaust lab's tokens. */
+:root{
+  --bg:#07090e; --panel:#0e121b; --line:#1d2433; --fg:#d9dde6; --muted:#8a93a6; --accent:#f0a24a; --accent-2:#5fb3ff;
+  --display:"Chakra Petch",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);margin:0;padding-block:18px;padding-inline:16px}
+.wrap{max-width:1100px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px}
+h1{font-family:var(--display);font-weight:600;font-size:1.35rem;margin:0;letter-spacing:.02em;text-wrap:balance}
+header p{margin:0;color:var(--muted);font-size:.92rem;max-width:60ch}
+.stage{position:relative;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden;aspect-ratio:5120/1440;max-width:100%}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas.drag{cursor:grabbing}
+.hud{position:absolute;left:12px;top:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.chip{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:rgba(14,18,27,.75);border:1px solid var(--line);padding:3px 8px;border-radius:3px}
+.chip b{color:var(--fg);font-weight:400}
+.deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px 22px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.group{display:grid;gap:8px;min-width:0;align-content:start}
+.group h2{font-family:var(--display);font-size:.8rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 2px}
+label.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:.86rem;align-items:center}
+label.row span.v{font-family:var(--mono);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
+input[type=color]{background:none;border:1px solid var(--line);border-radius:4px;width:44px;height:26px;padding:0}
+.btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button{font-family:var(--display);font-size:.8rem;letter-spacing:.05em;background:#131927;color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.sw{display:inline-block;width:.8em;height:.8em;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.note{color:var(--muted);font-size:.84rem;line-height:1.5;max-width:70ch}
+.note code{font-family:var(--mono);font-size:.8rem;color:var(--fg)}
+textarea{font-family:var(--mono);font-size:.78rem;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:10px;width:100%;box-sizing:border-box;min-height:14em;resize:vertical}
+@media (prefers-reduced-motion:reduce){.stage{outline:1px dashed var(--line)}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Own Sun Lab</h1>
+  <p>A live mock-up of the mod's own sun pixel law (own_sun_ps.hlsl) in linear HDR through AgX and a light bloom. Tune it here; the numbers port one-to-one into own_sun_core.h. Drag the station across the sun.</p>
+</header>
+<div class="stage" id="stage"><canvas id="c"></canvas>
+  <div class="hud"><span class="chip">res <b id="hud-res">5120x1440</b></span><span class="chip">EV <b id="hud-ev">+1.3</b></span><span class="chip">K <b id="hud-k">2.00</b></span><span class="chip">rays <b id="hud-rays">6</b></span><span class="chip">glow max outside core <b id="hud-glow">-</b></span><span class="chip">R <b id="hud-r">-</b></span><span class="chip">core visible <b id="hud-vis">1.00</b></span><span class="chip">bloom <b id="hud-bloom">-</b></span></div>
+</div>
+<div class="deck">
+  <div class="group"><h2>Presets and scene</h2>
+    <div class="btns" aria-label="Look preset"><button id="p-header" aria-pressed="true">Header (defaults)</button><button id="p-1c" aria-pressed="false">Step 1c</button><button id="p-1d" aria-pressed="false">Step 1d</button></div>
+    <div class="btns" aria-label="Resolution"><button id="r-wide" aria-pressed="true">5120x1440</button><button id="r-small" aria-pressed="false">1280x768</button><button id="z-one">1:1 game px</button></div>
+    <label class="row">Zoom on the sun<span class="v" id="v-zoom">2.0</span><input type="range" id="zoom" min="1" max="16" step="0.1" value="2"></label>
+    <label class="row">Exposure EV (Auto cap +1.3)<span class="v" id="v-ev">+1.3</span><input type="range" id="ev" min="-4" max="4" step="0.1" value="1.3"></label>
+    <label class="row">Bloom strength (game 0.25)<span class="v" id="v-bloom">0.25</span><input type="range" id="bloom" min="0" max="1" step="0.01" value="0.25"></label>
+    <label class="row">Fog transmittance T<span class="v" id="v-fog">1.00</span><input type="range" id="fog" min="0" max="1" step="0.01" value="1"></label>
+    <label class="row">Nebula tint<span class="v" id="v-neb">0.50</span><input type="range" id="neb" min="0" max="1" step="0.01" value="0.5"></label>
+    <div class="btns" id="colors"><input type="color" id="pick" value="#ffffc8" aria-label="Sun colour (engine words / 256)"></div>
+    <div class="btns" aria-label="Occluder"><button id="o-away">Station away</button><button id="o-mast">Mast over core</button><button id="o-edge">Hull edge on core</button><button id="o-off" aria-pressed="false">Hide station</button></div>
+  </div>
+  <div class="group"><h2>Settings (x3m.ini)</h2>
+    <label class="row">sun_disc_radius (of height)<span class="v" id="v-radius_u">0.012</span><input type="range" id="radius_u" min="0.005" max="0.1" step="0.001" value="0.012"></label>
+    <label class="row">sun_disc_radiance K<span class="v" id="v-K">2.00</span><input type="range" id="K" min="0" max="8" step="0.05" value="2"></label>
+    <label class="row">sun_rays<span class="v" id="v-sun_rays">1.00</span><input type="range" id="sun_rays" min="0" max="1" step="0.01" value="1"></label>
+    <h2>Core</h2>
+    <label class="row">core_gain (step 1d)<span class="v" id="v-core_gain">1.00</span><input type="range" id="core_gain" min="0" max="2" step="0.01" value="1"></label>
+    <label class="row">white_mix<span class="v" id="v-white_mix">0.25</span><input type="range" id="white_mix" min="0" max="1" step="0.01" value="0.25"></label>
+    <label class="row">core_inner (soft edge from, R)<span class="v" id="v-core_inner">0.60</span><input type="range" id="core_inner" min="0" max="0.95" step="0.01" value="0.6"></label>
+  </div>
+  <div class="group"><h2>Corona and halo</h2>
+    <label class="row">corona_gain<span class="v" id="v-corona_gain">0.60</span><input type="range" id="corona_gain" min="0" max="2" step="0.01" value="0.6"></label>
+    <label class="row">corona_sigma (R)<span class="v" id="v-corona_sigma">1.50</span><input type="range" id="corona_sigma" min="0.2" max="5" step="0.05" value="1.5"></label>
+    <label class="row">halo_gain<span class="v" id="v-halo_gain">0.30</span><input type="range" id="halo_gain" min="0" max="1" step="0.01" value="0.3"></label>
+    <label class="row">halo_radius (half brightness, R)<span class="v" id="v-halo_radius">6.00</span><input type="range" id="halo_radius" min="0.5" max="16" step="0.1" value="6"></label>
+    <label class="row">glow_radius (window, quad half extent, R)<span class="v" id="v-glow_radius">24.0</span><input type="range" id="glow_radius" min="4" max="48" step="0.5" value="24"></label>
+  </div>
+  <div class="group"><h2>Rays</h2>
+    <label class="row">ray_count<span class="v" id="v-ray_count">6</span><input type="range" id="ray_count" min="1" max="32" step="1" value="6"></label>
+    <label class="row">ray_gain<span class="v" id="v-ray_gain">0.15</span><input type="range" id="ray_gain" min="0" max="1" step="0.01" value="0.15"></label>
+    <label class="row">ray_length (longest, R)<span class="v" id="v-ray_length">14.0</span><input type="range" id="ray_length" min="1" max="48" step="0.5" value="14"></label>
+    <label class="row">ray_offset (spoke units)<span class="v" id="v-ray_offset">0.25</span><input type="range" id="ray_offset" min="0" max="1" step="0.01" value="0.25"></label>
+    <label class="row">ray_sigma (width, R)<span class="v" id="v-ray_sigma">0.20</span><input type="range" id="ray_sigma" min="0.02" max="1" step="0.01" value="0.2"></label>
+    <label class="row">ray_sigma_min_px (width floor)<span class="v" id="v-ray_sigma_min_px">3.0</span><input type="range" id="ray_sigma_min_px" min="0" max="10" step="0.1" value="3"></label>
+  </div>
+</div>
+<p class="note">The sun is the game's pixel law, constant for constant (<code>src/effects/own_sun_ps.hlsl</code>, <code>own_sun_core.h</code> <code>pixel_constants()</code>), drawn ONE/ONE into an engine-space scene, then decoded (gamma 2.2), exposed by 2<sup>EV</sup> and tone mapped with the minimal AgX of <code>agx_reference.py</code>. The station stands in for the depth lane: the nine knight taps clip each pixel, the thirteen core taps scale the glow. Pixel sizes follow the chosen game resolution, so the 3-px ray width floor and the 1.5-px draw floor behave as in flight. Approximate: the bloom (a few Kawase taps instead of the five-level pyramid), no TAA, no auto exposure, a still frame.</p>
+<div class="btns"><button id="copy">Copy as C++</button><span class="chip" id="copied" hidden>copied</span></div>
+<textarea id="out" readonly aria-label="Constants for own_sun_core.h and x3m.ini lines"></textarea>
+</div>
+<script>
+(function(){
+'use strict';
+/* @own_sun_constants */
+// Generated by tools/effects/generate_own_sun_lab.py from src/proxy/own_sun_core.h; do not edit by hand.
+const HEADER = {
+  radius_default_u: 0.012,
+  radius_min_u: 0.005,
+  radius_max_u: 0.25,
+  radiance_default: 2.0,
+  radiance_min: 0.0,
+  radiance_max: 64.0,
+  rays_default: 1.0,
+  rays_min: 0.0,
+  rays_max: 1.0,
+  white_mix: 0.25,
+  core_inner: 0.6,
+  corona_gain: 0.6,
+  corona_sigma: 1.5,
+  halo_gain: 0.3,
+  halo_radius: 6.0,
+  glow_radius: 24.0,
+  ray_count: 6,
+  ray_gain: 0.15,
+  ray_length: 14.0,
+  ray_offset: 0.25,
+  ray_sigma: 0.2,
+  ray_sigma_min_px: 3.0,
+  radius_min_px: 1.5,
+  core_gain: 1.0
+};
+const HEADER_MISSING = ["core_gain"];
+/* @end */
+
+/* @law_js */
+// The CPU mirror of the game's sun (the host test verification/analysis/test_own_sun_lab.py runs this block under node
+// against the C++ reference of src/proxy/own_sun_core.h). Pure functions, no DOM.
+const TWO_PI=6.28318531,LOG2E=1.44269504,SQRT_LOG2E=1.20112241; // own_sun_core.h two_pi, log2e, sqrt_log2e
+const LOOK_NAMES=['white_mix','core_inner','core_gain','corona_gain','corona_sigma','halo_gain','halo_radius','glow_radius','ray_count','ray_gain','ray_length','ray_offset','ray_sigma','ray_sigma_min_px'];
+function lookFromHeader(h){const o={};LOOK_NAMES.forEach(n=>o[n]=h[n]);return o;}
+// own_sun_core.h radiance(): c = the poll's words / 256 clamped to [0, 4]; core K lerp(c / m, 1, white_mix) m T (x core_gain,
+// step 1d), glow tint c T K / K_default.
+function sunRadiance(colour,k,fogT,look,h){
+ const c=colour.map(v=>v>0?(v<4?v:4):0),t=fogT>0?(fogT<1?fogT:1):0;
+ const out={core:[0,0,0],glow:[0,0,0],black:!(c[0]>0||c[1]>0||c[2]>0)||!(t>0)||!(k>0)};
+ if(!out.black){const m=Math.max(c[0],c[1],c[2]);
+  for(let i=0;i<3;i++){const hue=c[i]/m;out.core[i]=k*look.core_gain*(hue+(1-hue)*look.white_mix)*m*t;out.glow[i]=(k/h.radiance_default)*c[i]*t;}}
+ return out;
+}
+// own_sun_core.h ray_width_radii(): max(ray_sigma_min_px px, ray_sigma R) in core radii.
+function rayWidthRadii(radiusPx,look){const f=radiusPx>0?look.ray_sigma_min_px/radiusPx:look.ray_sigma;return f>look.ray_sigma?f:look.ray_sigma;}
+// own_sun_core.h pixel_constants(): the ten registers c0..c9 of own_sun_ps.hlsl, in the same order.
+function pixelConstants(width,height,disc,rad,rays,look,h){
+ const dx=width?1/width:0,dy=height?1/height:0,share=rays>=h.rays_min&&rays<=h.rays_max?rays:h.rays_default;
+ const ring=disc.radius_px,n=look.ray_count,sigma=rayWidthRadii(disc.radius_px,look);
+ return [dx,dy,0,0, 2*dx,dy,dx,2*dy, -2*dx,dy,-dx,2*dy,
+  rad.core[0],rad.core[1],rad.core[2],look.core_inner, rad.glow[0],rad.glow[1],rad.glow[2],0,
+  look.corona_gain,look.halo_gain,look.ray_gain*share,0, .5+.5*disc.x,.5-.5*disc.y,ring*dx,ring*dy,
+  n/TWO_PI,look.ray_offset,look.ray_length,TWO_PI/n/sigma*SQRT_LOG2E,
+  LOG2E/(look.corona_sigma*look.corona_sigma),1/(look.halo_radius*look.halo_radius),LOG2E,1/look.glow_radius,
+  0,n,1/n,0];
+}
+const sat=v=>v<0?0:(v>1?1:v);
+// own_sun_ps.hlsl lines 97-102: the minimax arctangent (|error| < 1e-5 rad).
+function atanMinimax(px,py){
+ const qx=Math.abs(px),qy=Math.abs(py),lo=Math.min(qx,qy),hi=Math.max(Math.max(qx,qy),1e-6),u=lo/hi,u2=u*u;
+ let th=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
+ th=qy>qx?1.57079633-th:th;th=px<0?3.14159265-th:th;return py<0?-th:th;
+}
+// own_sun_ps.hlsl spoke(): one spoke's ray, its length and strength hashed by index.
+function lawSpoke(c,index,across,r){
+ const k=index-c[37]*Math.floor(index*c[38]);
+ const h1=(k*(0.6180340+k*0.1547))-Math.floor(k*(0.6180340+k*0.1547)),h2=(k*0.7548777+0.31)-Math.floor(k*0.7548777+0.31);
+ const along=r/(c[30]*(0.25+0.75*h1*h1)),fade=sat(1-along),perpendicular=r*across*c[31];
+ return (0.6+0.4*h2)*Math.pow(2,-perpendicular*perpendicular-along*c[34])*fade*fade;
+}
+// own_sun_ps.hlsl main() after the taps (own_sun_core.h reference_pixel with the shader's arctangent): open 0..9 taps,
+// visible 0..1 the weighted core fraction; p in core radii, y up.
+function lawPixel(c,px,py,openTaps,visible){
+ const r2=px*px+py*py,r=Math.sqrt(r2),s=sat((r-c[15])/(1-c[15])),d=1-s*s*(3-2*s);
+ const corona=c[20]*Math.pow(2,-r2*c[32]),w=sat(1-r2*c[35]*c[35]),halo=c[21]/(1+r2*c[33])*w*w;
+ const t=atanMinimax(px,py)*c[28]+c[29],nearest=Math.floor(t+0.5),across=t-nearest,side=across>=0?1:-1;
+ const rays=c[22]*(lawSpoke(c,nearest,across,r)+lawSpoke(c,nearest+side,across-side,r));
+ const open=Math.min(openTaps,9)/9,vis=sat(visible),rgb=[0,0,0];
+ for(let i=0;i<3;i++){const g=c[16+i]*(corona+halo+rays);rgb[i]=(g+(c[12+i]-g)*d)*open*(d+(1-d)*vis);}
+ return {rgb,corona,halo,rays,core:d};
+}
+// The glow's largest sum (corona + halo + rays, before the tint) outside the core (r >= 1 R) inside the quad (|x|, |y| <=
+// the half extent), on a polar grid of 160 radii x 720 angles: the HUD's "glow max" times the tint's brightest channel.
+function glowMaxOutsideCore(c,ext){let m=0;
+ for(let i=0;i<=160;i++){const r=1+(ext-1)*i/160;for(let j=0;j<720;j++){const th=j*TWO_PI/720,x=r*Math.cos(th),y=r*Math.sin(th);
+  if(Math.abs(x)>ext||Math.abs(y)>ext)continue;const q=lawPixel(c,x,y,9,1);m=Math.max(m,q.corona+q.halo+q.rays);}}
+ return m;}
+/* @end_law_js */
+
+const STEP_1C={white_mix:.25,core_inner:.6,core_gain:1,corona_gain:.6,corona_sigma:1.5,halo_gain:.3,halo_radius:6,glow_radius:24,ray_count:6,ray_gain:.15,ray_length:14,ray_offset:.25,ray_sigma:.2,ray_sigma_min_px:3,radius_u:.012,K:2,sun_rays:1};
+// Step 1d (Run 221 feedback: more rays of different length, the halo about 30 % smaller, the core dimmer, the glow at
+// the core brighter).
+const STEP_1D=Object.assign({},STEP_1C,{ray_count:11,corona_sigma:1.05,halo_radius:4.2,glow_radius:17,core_gain:.72,corona_gain:.9});
+const HEADER_PRESET=Object.assign(lookFromHeader(HEADER),{radius_u:HEADER.radius_default_u,K:HEADER.radiance_default,sun_rays:HEADER.rays_default});
+const RES={wide:[5120,1440],small:[1280,768]};
+const COLOURS=[['Yellow sector',[0.9961,0.9961,0.7812]],['Green sector',[0.8789,0.9961,0.7812]],['White',[1,1,1]]];
+// own_sun_ps.hlsl lines 74-87: the 13 core taps (offsets in core radii, lane uv y down) and their weights.
+const CORE_TAPS=[[0,0,0.0806940],[0.45,0,0.0790599],[0.225,0.3897114,0.0790599],[-0.225,0.3897114,0.0790599],[-0.45,0,0.0790599],[-0.225,-0.3897114,0.0790599],[0.225,-0.3897114,0.0790599],
+ [0.7794229,0.45,0.0741578],[0,0.9,0.0741578],[-0.7794229,0.45,0.0741578],[-0.7794229,-0.45,0.0741578],[0,-0.9,0.0741578],[0.7794229,-0.45,0.0741578]];
+// The station: rectangles in units of the viewport height around its anchor (x right, y down): hull, core module, tower,
+// a mast about 3.5 px wide at 1440 rows (1.8 at 768: the knight taps clip it partially), two solar wings on thin trusses.
+const STATION=[[-0.20,-0.025,0.20,0.025],[-0.05,-0.07,0.05,0.07],[-0.012,-0.16,0.012,-0.07],[-0.0012,-0.30,0.0012,-0.16],
+ [-0.34,-0.012,-0.22,0.012],[0.22,-0.012,0.34,0.012],[-0.22,-0.002,-0.20,0.002],[0.20,-0.002,0.22,0.002]];
+
+const c=document.getElementById('c');const gl=c.getContext('webgl2',{antialias:false,alpha:false,preserveDrawingBuffer:false});
+if(!gl){c.replaceWith(Object.assign(document.createElement('p'),{textContent:'WebGL2 is not available in this viewer.',className:'note'}));return;}
+
+const vs=`#version 300 es
+in vec2 p;void main(){gl_Position=vec4(p,0,1);}`;
+// The scene in engine space: stars, nebula, the station (the depth lane), and the sun added ONE/ONE.
+const SCENE=`
+uniform vec2 canvasRes,game,sunG,occ;uniform float gpc,occOn,neb,drawSun,quadExt;uniform vec4 c[10];uniform vec4 rects[8];
+// own_sun_ps.hlsl lane() + sentinel(): the scene depth lane, point sampled; .r < 0 (the route's sentinel) is the sky. Here the
+// station's rectangles at the sampled game pixel's centre: -1 sky, +1 covered.
+float lane(vec2 uv){vec2 q=floor(uv*game)+0.5;if(occOn>0.5)for(int i=0;i<8;i++){vec4 r=rects[i];if(q.x>=r.x&&q.x<r.z&&q.y>=r.y&&q.y<r.w)return 1.0;}return -1.0;}
+float sentinel(float v){return v<0.0?1.0:0.0;}
+// own_sun_ps.hlsl spoke() (lines 50-58).
+float spoke(float index,float across,float r){
+ float k=index-c[9].y*floor(index*c[9].z);                 // the index modulo N
+ float h1=fract(k*(0.6180340+k*0.1547));                     // the length hash
+ float h2=fract(k*0.7548777+0.31);                           // the strength hash
+ float along=r/(c[7].z*(0.25+0.75*h1*h1));                   // r / L_k
+ float fade=clamp(1.0-along,0.0,1.0);
+ float perpendicular=r*across*c[7].w;                        // across the spoke over sigma, sqrt(log2 e) folded
+ return (0.6+0.4*h2)*exp2(-perpendicular*perpendicular-along*c[8].z)*fade*fade; // exp(-r / L) saturate(1 - r / L)^2
+}
+const vec3 TAPS[12]=vec3[12](vec3(0.4500000,0.0000000,0.0790599),vec3(0.2250000,0.3897114,0.0790599),vec3(-0.2250000,0.3897114,0.0790599),
+ vec3(-0.4500000,0.0000000,0.0790599),vec3(-0.2250000,-0.3897114,0.0790599),vec3(0.2250000,-0.3897114,0.0790599),
+ vec3(0.7794229,0.4500000,0.0741578),vec3(0.0000000,0.9000000,0.0741578),vec3(-0.7794229,0.4500000,0.0741578),
+ vec3(-0.7794229,-0.4500000,0.0741578),vec3(-0.0000000,-0.9000000,0.0741578),vec3(0.7794229,-0.4500000,0.0741578));
+// own_sun_ps.hlsl main(): pix the game pixel index (VPOS), p the offset from the sun in core radii (TEXCOORD0, y up).
+vec3 ownSun(vec2 pix,vec2 p){
+ vec2 base=(pix+0.5)*c[0].xy;                                // line 60
+ float open=sentinel(lane(base));                            // lines 62-70: the fragment and the eight knight moves, / 9
+ open+=sentinel(lane(base+c[1].xy))+sentinel(lane(base-c[1].xy))+sentinel(lane(base+c[2].xy))+sentinel(lane(base-c[2].xy));
+ open+=sentinel(lane(base+c[1].zw))+sentinel(lane(base-c[1].zw))+sentinel(lane(base+c[2].zw))+sentinel(lane(base-c[2].zw));
+ open/=9.0;
+ vec2 cc=c[6].xy;                                            // lines 72-87: the core's 13 weighted taps
+ float visible=sentinel(lane(cc))*0.0806940;
+ for(int i=0;i<12;i++)visible+=sentinel(lane(cc+TAPS[i].xy*c[6].zw))*TAPS[i].z;
+ float r2=dot(p,p),r=sqrt(r2);                               // lines 89-90
+ float d=1.0-smoothstep(c[3].w,1.0,r);                       // line 91: the core D(r)
+ float corona=c[5].x*exp2(-r2*c[8].x);                       // line 93: A_c exp(-(r / sigma_c)^2)
+ float w=clamp(1.0-r2*c[8].w*c[8].w,0.0,1.0);                // line 94: the window W(r)
+ float halo=c[5].y/(1.0+r2*c[8].y)*w*w;                      // line 95: the Lorentzian halo
+ vec2 q=abs(p);                                              // lines 97-102: the minimax arctangent
+ float lo=min(q.x,q.y),hi=max(max(q.x,q.y),1e-6);
+ float u=lo/hi,u2=u*u;
+ float theta=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
+ theta=q.y>q.x?1.57079633-theta:theta;
+ theta=p.x<0.0?3.14159265-theta:theta;
+ theta=p.y<0.0?-theta:theta;
+ float t=theta*c[7].x+c[7].y;                                // lines 103-107: the two nearest spokes
+ float nearest=floor(t+0.5);
+ float across=t-nearest;
+ float side=across>=0.0?1.0:-1.0;
+ float rays=c[5].z*(spoke(nearest,across,r)+spoke(nearest+side,across-side,r));
+ vec3 glow=c[4].rgb*(corona+halo+rays);                      // line 108
+ return mix(glow,c[3].rgb,d)*open*(d+(1.0-d)*visible);       // line 109
+}
+float hash2(vec2 v){v=fract(v*vec2(0.1031,0.1030));v+=dot(v,v.yx+33.33);return fract((v.x+v.y)*v.x);}
+float vnoise(vec2 v){vec2 i=floor(v),f=fract(v);f=f*f*(3.0-2.0*f);
+ return mix(mix(hash2(i),hash2(i+vec2(1,0)),f.x),mix(hash2(i+vec2(0,1)),hash2(i+vec2(1,1)),f.x),f.y);}
+vec3 sceneEngine(vec2 frag){
+ // The canvas pixel in game pixels (raster, y down) around the sun; zoomed past 1:1 the game's pixel grid shows.
+ vec2 g=sunG+vec2(frag.x-0.5*canvasRes.x,0.5*canvasRes.y-frag.y)*gpc;
+ vec2 pix=floor(g),at=gpc<1.0?pix+0.5:g;
+ vec3 col;
+ if(lane(at/game)>0.0)col=vec3(0.045,0.047,0.052)*(0.85+0.15*vnoise(at/game.y*60.0)); // the station, unlit
+ else{
+  vec2 n=at/game.y;                                         // the sky: a nebula and a star field fixed to the game raster
+  float f=0.5*vnoise(n*3.0+vec2(4.1,1.3))+0.3*vnoise(n*7.0+vec2(9.2,3.7))+0.2*vnoise(n*15.0);
+  col=neb*smoothstep(0.35,0.85,f)*vec3(0.10,0.055,0.14);
+  float cell=18.0,sg=max(0.6,0.5*gpc);
+  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){
+   vec2 id=floor(at/cell)+vec2(i,j),h=vec2(hash2(id),hash2(id+17.0));
+   if(h.x<0.4){vec2 sp=(id+0.15+0.7*h)*cell;float b=0.08+0.6*pow(hash2(id+5.0),5.0);
+    vec2 dd=at-sp;col+=b*exp(-dot(dd,dd)/(2.0*sg*sg))*(0.36/(sg*sg))*mix(vec3(1.0,0.92,0.82),vec3(0.82,0.9,1.0),hash2(id+9.0));}}
+ }
+ vec2 p=vec2(at.x-sunG.x,sunG.y-at.y)/(c[6].z*game.x);       // TEXCOORD0: core radii, y up (c6.z = R / W)
+ if(drawSun>0.5&&abs(p.x)<=quadExt&&abs(p.y)<=quadExt)col+=ownSun(pix,p); // ONE/ONE, inside the quad only
+ return col;
+}`;
+// The display transform: tools/analysis/agx_reference.py tonemap_engine (gamma 2.2 decode, exposure, minimal AgX, look none).
+const AGX=`
+uniform float expo;
+vec3 decode(vec3 e){return pow(max(e,vec3(0.0)),vec3(2.2));}
+float agxContrast(float x){float x2=x*x,x4=x2*x2;return 15.5*x4*x2-40.14*x4*x+31.96*x4-6.868*x2*x+0.4298*x2+0.1191*x-0.00232;}
+vec3 agx(vec3 v){
+ v=vec3(dot(vec3(0.842479062253094,0.0784335999999992,0.0792237451477643),v),
+        dot(vec3(0.0423282422610123,0.878468636469772,0.0791661274605434),v),
+        dot(vec3(0.0423756549057051,0.0784336,0.879142973793104),v));
+ v=(clamp(log2(max(v,vec3(1e-10))),-12.47393,4.026069)+12.47393)/(4.026069+12.47393);
+ v=vec3(agxContrast(v.r),agxContrast(v.g),agxContrast(v.b));
+ v=vec3(dot(vec3(1.19687900512017,-0.0980208811401368,-0.0990297440797205),v),
+        dot(vec3(-0.0528968517574562,1.15190312990417,-0.0989611408712536),v),
+        dot(vec3(-0.0529716355144438,-0.0980434501171241,1.15107367264116),v));
+ return clamp(v,0.0,1.0);
+}`;
+const HEAD='#version 300 es\nprecision highp float;precision highp int;out vec4 o;\n';
+const fsScene=HEAD+SCENE+'\nvoid main(){o=vec4(sceneEngine(gl_FragCoord.xy),1.0);}';
+// The bloom's extract (bloom_common.hlsl bloomPrefilter): decode, the source clamp 1.0, exposure, the soft threshold 1 with
+// knee 0.5, alpha 0 (the highlight term at 0.05); one bilinear tap = the 2x2 box at half resolution.
+const fsPre=HEAD+AGX+`
+uniform sampler2D src;uniform vec2 dstRes;
+void main(){vec3 e=min(decode(texture(src,gl_FragCoord.xy/dstRes).rgb),vec3(1.0))*expo;
+ float y=dot(e,vec3(0.2126,0.7152,0.0722)),t=1.0,k=0.5,q=clamp(y-t+k,0.0,2.0*k),soft=q*(q/max(4.0*k,1e-10));
+ float weight=clamp(max(y-t,soft)/max(y,1e-10),0.0,1.0);o=vec4(e*0.05*weight,1.0);}`;
+// A Kawase pass: four bilinear taps at +-off (diagonal or on the axes, alternating), averaged.
+const fsKaw=HEAD+`
+uniform sampler2D src;uniform vec2 dstRes,off;uniform float axis;
+void main(){vec2 uv=gl_FragCoord.xy/dstRes;vec2 a=axis>0.5?vec2(off.x*1.4142,0.0):off,b=axis>0.5?vec2(0.0,off.y*1.4142):vec2(-off.x,off.y);
+ o=vec4(0.25*(texture(src,uv+a).rgb+texture(src,uv-a).rgb+texture(src,uv+b).rgb+texture(src,uv-b).rgb),1.0);}`;
+// The composite (bloom_common.hlsl bloomComposite): the exposed scene plus strength x the bloom, before AgX.
+const fsFinal=HEAD+AGX+`
+uniform sampler2D scene,bloomTex;uniform float strength;uniform vec2 res;
+void main(){vec3 e=decode(texelFetch(scene,ivec2(gl_FragCoord.xy),0).rgb)*expo;
+ e+=strength*texture(bloomTex,gl_FragCoord.xy/res).rgb;o=vec4(agx(e),1.0);}`;
+// Without a float render target: the scene inline, no bloom.
+const fsDirect=HEAD+SCENE+AGX+'\nvoid main(){o=vec4(agx(decode(sceneEngine(gl_FragCoord.xy))*expo),1.0);}';
+
+function sh(t,s){const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(x));return x;}
+const vsh=sh(gl.VERTEX_SHADER,vs);
+function program(fs){const pr=gl.createProgram();gl.attachShader(pr,vsh);gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,fs));gl.bindAttribLocation(pr,0,'p');gl.linkProgram(pr);
+ if(!gl.getProgramParameter(pr,gl.LINK_STATUS))console.error(gl.getProgramInfoLog(pr));const u={};
+ for(let i=0,n=gl.getProgramParameter(pr,gl.ACTIVE_UNIFORMS);i<n;i++){const a=gl.getActiveUniform(pr,i);const name=a.name.replace(/\[0\]$/,'');u[name]=gl.getUniformLocation(pr,a.name);}
+ return {pr,u};}
+const vb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+const floatRT=!!(gl.getExtension('EXT_color_buffer_float')||gl.getExtension('EXT_color_buffer_half_float'));
+let P=null; // programs, built lazily per path
+let rt=null; // {w,h,scene,b0,b1}
+function target(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+ const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;gl.bindFramebuffer(gl.FRAMEBUFFER,null);return ok?{t,f,w,h}:null;}
+function freeTarget(x){if(x){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.f);}}
+let usePost=floatRT;
+function ensureTargets(w,h){
+ if(!usePost)return;if(rt&&rt.w===w&&rt.h===h)return;
+ if(rt){freeTarget(rt.scene);freeTarget(rt.b0);freeTarget(rt.b1);}
+ const hw=Math.max(1,w>>1),hh=Math.max(1,h>>1);rt={w,h,scene:target(w,h),b0:target(hw,hh),b1:target(hw,hh)};
+ if(!rt.scene||!rt.b0||!rt.b1){freeTarget(rt.scene);freeTarget(rt.b0);freeTarget(rt.b1);rt=null;usePost=false;}
+}
+
+// ---- the controls ----
+const ids=['zoom','ev','bloom','fog','neb','radius_u','K','sun_rays'].concat(LOOK_NAMES.filter(n=>n!=='white_mix'&&n!=='core_inner'&&n!=='core_gain'),['core_gain','white_mix','core_inner']);
+const el={};ids.forEach(i=>el[i]=document.getElementById(i));
+const val=i=>parseFloat(el[i].value);
+const digits={zoom:1,ev:1,radius_u:3,ray_count:0,glow_radius:1,ray_length:1,ray_sigma_min_px:1,halo_radius:2};
+function fmt(i){const v=val(i);document.getElementById('v-'+i).textContent=i==='ev'?(v>=0?'+':'')+v.toFixed(1):v.toFixed(i in digits?digits[i]:2);}
+let dirty=true,lawDirty=true;
+const press=(group,id)=>group.forEach(g=>document.getElementById(g).setAttribute('aria-pressed',g===id?'true':'false'));
+ids.forEach(i=>{el[i].addEventListener('input',()=>{fmt(i);dirty=true;lawDirty=true;if(LOOK_NAMES.includes(i)||i==='radius_u'||i==='K'||i==='sun_rays')press(['p-header','p-1c','p-1d'],'');});fmt(i);});
+function apply(preset,id){Object.keys(preset).forEach(k=>{if(el[k]){el[k].value=preset[k];fmt(k);}});press(['p-header','p-1c','p-1d'],id);dirty=lawDirty=true;}
+document.getElementById('p-header').addEventListener('click',()=>apply(HEADER_PRESET,'p-header'));
+document.getElementById('p-1c').addEventListener('click',()=>apply(STEP_1C,'p-1c'));
+document.getElementById('p-1d').addEventListener('click',()=>apply(STEP_1D,'p-1d'));
+let res=RES.wide;
+const stage=document.getElementById('stage');
+function setRes(key){res=RES[key];stage.style.aspectRatio=res[0]+'/'+res[1];press(['r-wide','r-small'],key==='wide'?'r-wide':'r-small');occ=awayAnchor();dirty=lawDirty=true;}
+document.getElementById('r-wide').addEventListener('click',()=>setRes('wide'));
+document.getElementById('r-small').addEventListener('click',()=>setRes('small'));
+document.getElementById('z-one').addEventListener('click',()=>{const z=Math.min(16,Math.max(1,res[1]/Math.max(1,c.height)));el.zoom.value=z.toFixed(1);fmt('zoom');dirty=true;});
+let colour=COLOURS[0][1].slice();
+const toHex=v=>'#'+v.map(x=>Math.round(Math.min(255,x*256)).toString(16).padStart(2,'0')).join('');
+const cbox=document.getElementById('colors'),pick=document.getElementById('pick');
+COLOURS.forEach(([n,v],i)=>{const b=document.createElement('button');b.id='col-'+i;b.innerHTML=`<span class="sw" style="background:${toHex(v)}"></span>${n}`;b.title=v.join(', ');
+ b.setAttribute('aria-pressed',i===0?'true':'false');b.addEventListener('click',()=>{colour=v.slice();pick.value=toHex(v);press(COLOURS.map((_,j)=>'col-'+j),b.id);dirty=lawDirty=true;});cbox.insertBefore(b,pick);});
+pick.value=toHex(colour);
+// The picker sets the poll's words: c = code / 256 (0xff -> 0.9961, as the flown sectors' 255 / 256).
+pick.addEventListener('input',()=>{const n=parseInt(pick.value.slice(1),16);colour=[(n>>16&255)/256,(n>>8&255)/256,(n&255)/256];press(COLOURS.map((_,j)=>'col-'+j),'');dirty=lawDirty=true;});
+
+// ---- the station (the depth lane) ----
+const sunG=()=>[res[0]/2,res[1]/2];
+const awayAnchor=()=>[res[0]/2+0.45*res[1],res[1]/2+0.16*res[1]];
+let occ=awayAnchor(),occOn=true;
+const look=()=>{const o={};LOOK_NAMES.forEach(n=>o[n]=n==='ray_count'?Math.round(val(n)):val(n));return o;};
+const radiusPx=()=>val('radius_u')*res[1];
+document.getElementById('o-away').addEventListener('click',()=>{occ=awayAnchor();dirty=lawDirty=true;});
+document.getElementById('o-mast').addEventListener('click',()=>{const s=sunG();occ=[s[0],s[1]+0.23*res[1]];dirty=lawDirty=true;});
+document.getElementById('o-edge').addEventListener('click',()=>{const s=sunG();occ=[s[0]+0.08*res[1],s[1]+0.025*res[1]+0.3*radiusPx()];dirty=lawDirty=true;});
+const offBtn=document.getElementById('o-off');
+offBtn.addEventListener('click',()=>{occOn=!occOn;offBtn.setAttribute('aria-pressed',occOn?'false':'true');dirty=lawDirty=true;});
+function stationRects(){return STATION.map(r=>[occ[0]+r[0]*res[1],occ[1]+r[1]*res[1],occ[0]+r[2]*res[1],occ[1]+r[3]*res[1]]);}
+function covered(x,y,rects){if(!occOn)return false;const qx=Math.floor(x)+0.5,qy=Math.floor(y)+0.5;return rects.some(r=>qx>=r[0]&&qx<r[2]&&qy>=r[1]&&qy<r[3]);}
+let drag=null;
+const gpc=()=>res[1]/(Math.max(1,c.height)*val('zoom'));
+c.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];c.setPointerCapture(e.pointerId);c.classList.add('drag');});
+c.addEventListener('pointermove',e=>{if(!drag)return;const k=(devicePixelRatio||1)*gpc();occ=[occ[0]+(e.clientX-drag[0])*k,occ[1]+(e.clientY-drag[1])*k];drag=[e.clientX,e.clientY];dirty=lawDirty=true;});
+const end=()=>{drag=null;c.classList.remove('drag');};c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);
+
+// ---- the CPU side of a frame: the constants, the chips ----
+function frameState(){
+ const L=look(),R=radiusPx(),rad=sunRadiance(colour,val('K'),val('fog'),L,HEADER);
+ const cst=pixelConstants(res[0],res[1],{x:0,y:0,radius_px:R},rad,val('sun_rays'),L,HEADER);
+ return {L,R,rad,cst,draw:R>=HEADER.radius_min_px&&!rad.black};
+}
+function chips(st){
+ document.getElementById('hud-res').textContent=res[0]+'x'+res[1];
+ const ev=val('ev');document.getElementById('hud-ev').textContent=(ev>=0?'+':'')+ev.toFixed(1);
+ document.getElementById('hud-k').textContent=val('K').toFixed(2);
+ document.getElementById('hud-rays').textContent=st.L.ray_count+' x '+val('sun_rays').toFixed(2);
+ document.getElementById('hud-r').textContent=st.R.toFixed(1)+' px'+(st.draw?'':' (not drawn)');
+ // The glow outside the core (r >= 1 R, inside the quad), engine units, the brightest channel: own-sun-look.md's 0.781.
+ const tint=Math.max(st.rad.glow[0],st.rad.glow[1],st.rad.glow[2]);
+ document.getElementById('hud-glow').textContent=(glowMaxOutsideCore(st.cst,st.L.glow_radius)*tint).toFixed(3);
+ // The core's visible fraction: the shader's 13 weighted taps, from the same rectangles.
+ const rects=stationRects(),s=sunG();let v=0;CORE_TAPS.forEach(([x,y,w])=>{if(!covered(s[0]+x*st.R,s[1]+y*st.R,rects))v+=w;});
+ document.getElementById('hud-vis').textContent=v.toFixed(2);
+ document.getElementById('hud-bloom').textContent=usePost?val('bloom').toFixed(2):'n/a (no float target)';
+ document.getElementById('out').value=portText(st.L);
+}
+// ---- Copy as C++ ----
+function cf(v){let s=String(+v.toFixed(4));if(!s.includes('.'))s+='.';return s.replace(/^0\./,'.').replace(/^-0\./,'-.')+'f';}
+function portText(L){
+ const lines=['// src/proxy/own_sun_core.h, the look (own_sun_lab.html)',
+  'constexpr float white_mix = '+cf(L.white_mix)+', core_inner = '+cf(L.core_inner)+';'];
+ if(L.core_gain!==1||!HEADER_MISSING.includes('core_gain'))lines.push('constexpr float core_gain = '+cf(L.core_gain)+';'+(HEADER_MISSING.includes('core_gain')?' // new: the core radiance factor in radiance()':''));
+ lines.push('constexpr float corona_gain = '+cf(L.corona_gain)+', corona_sigma = '+cf(L.corona_sigma)+';',
+  'constexpr float halo_gain = '+cf(L.halo_gain)+', halo_radius = '+cf(L.halo_radius)+', glow_radius = '+cf(L.glow_radius)+';',
+  'constexpr unsigned ray_count = '+L.ray_count+';',
+  'constexpr float ray_gain = '+cf(L.ray_gain)+', ray_length = '+cf(L.ray_length)+', ray_offset = '+cf(L.ray_offset)+';',
+  'constexpr float ray_sigma = '+cf(L.ray_sigma)+', ray_sigma_min_px = '+cf(L.ray_sigma_min_px)+';',
+  '','; x3m.ini','[graphics]','own_sun = 1','sun_disc_radius = '+(+val('radius_u').toFixed(4)),
+  'sun_disc_radiance = '+(+val('K').toFixed(3)),'sun_rays = '+(+val('sun_rays').toFixed(3)));
+ return lines.join('\n');
+}
+document.getElementById('copy').addEventListener('click',()=>{
+ const s=document.getElementById('out').value,box=document.getElementById('out');
+ const done=()=>{const k=document.getElementById('copied');k.hidden=false;setTimeout(()=>k.hidden=true,1500);};
+ const fallback=()=>{box.focus();box.select();try{document.execCommand('copy');}catch(e){}done();};
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done).catch(fallback);else fallback();
+});
+
+// ---- drawing ----
+function use(p){gl.useProgram(p.pr);return p.u;}
+function bindTex(unit,t,loc){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);gl.uniform1i(loc,unit);}
+function sceneUniforms(u,st,w,h){
+ const s=sunG();gl.uniform2f(u.canvasRes,w,h);gl.uniform2f(u.game,res[0],res[1]);gl.uniform2f(u.sunG,s[0],s[1]);gl.uniform2f(u.occ,occ[0],occ[1]);
+ gl.uniform1f(u.gpc,res[1]/(h*val('zoom')));gl.uniform1f(u.occOn,occOn?1:0);gl.uniform1f(u.neb,val('neb'));gl.uniform1f(u.drawSun,st.draw?1:0);
+ gl.uniform1f(u.quadExt,st.L.glow_radius);gl.uniform4fv(u.c,new Float32Array(st.cst));gl.uniform4fv(u.rects,new Float32Array(stationRects().flat()));
+}
+function frame(){
+ const dpr=Math.min(devicePixelRatio||1,2),w=Math.max(1,Math.round(c.clientWidth*dpr)),h=Math.max(1,Math.round(c.clientHeight*dpr));
+ if(c.width!==w||c.height!==h){c.width=w;c.height=h;dirty=true;}
+ if(dirty){
+  const st=frameState();if(lawDirty){chips(st);lawDirty=false;}
+  const expo=Math.pow(2,val('ev'));
+  ensureTargets(w,h);
+  if(!P)P={};
+  if(usePost){
+   P.scene=P.scene||program(fsScene);P.pre=P.pre||program(fsPre);P.kaw=P.kaw||program(fsKaw);P.fin=P.fin||program(fsFinal);
+   gl.bindFramebuffer(gl.FRAMEBUFFER,rt.scene.f);gl.viewport(0,0,w,h);sceneUniforms(use(P.scene),st,w,h);gl.drawArrays(gl.TRIANGLES,0,3);
+   const hw=rt.b0.w,hh=rt.b0.h;
+   let u=use(P.pre);gl.bindFramebuffer(gl.FRAMEBUFFER,rt.b0.f);gl.viewport(0,0,hw,hh);bindTex(0,rt.scene.t,u.src);gl.uniform2f(u.dstRes,hw,hh);gl.uniform1f(u.expo,expo);gl.drawArrays(gl.TRIANGLES,0,3);
+   // Offsets in game pixels, doubling like the pyramid's 2..32-px texels, converted to the half-resolution canvas uv.
+   u=use(P.kaw);let a=rt.b0,b=rt.b1;const cpg=h/res[1]*val('zoom');
+   [1.5,3,6,12,24,48].forEach((o,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,b.f);gl.viewport(0,0,hw,hh);bindTex(0,a.t,u.src);gl.uniform2f(u.dstRes,hw,hh);
+    gl.uniform2f(u.off,o*cpg/w,o*cpg/h);gl.uniform1f(u.axis,i&1);gl.drawArrays(gl.TRIANGLES,0,3);const x=a;a=b;b=x;});
+   u=use(P.fin);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);bindTex(0,rt.scene.t,u.scene);bindTex(1,a.t,u.bloomTex);
+   gl.uniform1f(u.strength,val('bloom'));gl.uniform1f(u.expo,expo);gl.uniform2f(u.res,w,h);gl.drawArrays(gl.TRIANGLES,0,3);
+  }else{
+   P.direct=P.direct||program(fsDirect);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);
+   const u=use(P.direct);sceneUniforms(u,st,w,h);gl.uniform1f(u.expo,expo);gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  dirty=false;
+ }
+ requestAnimationFrame(frame);
+}
+apply(HEADER_PRESET,'p-header');
+requestAnimationFrame(frame);
+})();
+</script>

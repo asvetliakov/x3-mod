@@ -865,3 +865,5 @@ in view than without, or rays shimmering while parked.
 length (only four equal-length rays read as an X), the halo/blob radius down about 30 %, the core 25–30 % dimmer,
 and the glow next to the core brighter so the core does not stand out (reference: Everspace 2's blown-out near-core
 region). In progress on a fresh implementer.
+
+**Own sun tuning lab (2026-11-02).** `tools/effects/own_sun_lab.html`, the law in WebGL2 with defaults generated from `own_sun_core.h` ([own-sun-look.md, "The tuning lab"](../architecture/own-sun-look.md#the-tuning-lab)); `test_own_sun_lab` (5 tests): `--check` PASS; the page JS law under node against the C++ reference at 1, 2, 3, 6 R over six angles and two suns plus three core/clipped pixels (51 points): worst |JS − C++| 2.7e-7 (asserted < 1e-4); HUD glow max 0.7811 (polar scan) against the reference field scan 0.7798 at 0.02 R (white, K = 2; glow_meter.py 0.781).

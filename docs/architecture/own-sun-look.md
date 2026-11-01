@@ -126,6 +126,25 @@ nothing in this step adds a dependency. The program's validity is proven by the 
 - Flight (the device test; no own-sun fixture exists on the native host): the two F8 pairs and the hotkey comparison;
   `own_sun_frame ev=/ev_limit=` with and without the sun in view; a parked frame with a hull edge across the core.
 
+## The tuning lab
+
+`tools/effects/own_sun_lab.html` (open it from disk in a WebGL2 browser) is a live mock-up of this law. Its GLSL
+mirrors `own_sun_ps.hlsl` term by term, each line commenting the HLSL line it ports. Inputs are the same ten registers that
+`pixel_constants()` builds, the same hash, two-spoke sum, minimax arctangent and 13 weighted core taps, the knight-tap
+clip, the core-visibility fraction scaling the glow, fog T, K and the polled colour (`radiance()`). These go ONE/ONE
+into an engine-space scene (stars, nebula, a draggable station standing in for the depth lane) at a chosen game
+resolution (5120x1440 or 1280x768 pixel scale, so the 3-px ray width floor and the 1.5-px draw floor behave as in flight).
+The scene is then shown through the display chain approximated: gamma-2.2 decode, 2^EV, the minimal AgX of
+`tools/analysis/agx_reference.py`, and a bloom of a few Kawase taps on the extract of `bloomPrefilter` (source clamp 1,
+threshold 1, knee 0.5, highlight 0.05) at strength 0.25. Not modelled: the five-level pyramid, TAA, auto exposure.
+Its defaults come from `own_sun_core.h`: `python3 tools/effects/generate_own_sun_lab.py` rewrites the page's
+`/* @own_sun_constants */` block and `--check` fails when it is stale. `test_own_sun_lab` runs the check and compares
+the page's JS law under node with the C++ reference at 1, 2, 3 and 6 R (within 1e-3). Porting back: "Copy as C++"
+gives the `constexpr` look lines for `own_sun_core.h` and the `[graphics]` ini lines. Paste the constants, run the
+generator (the page then reads them as defaults), rebuild the programs with `generate_own_sun_programs.py` and re-run
+`test_own_sun`, `glow_meter.py` and the native validator. `core_gain` (step 1d) is the lab's factor on the core
+radiance in `radiance()`; until the header defines it, the generator defaults it to 1.
+
 ## Options considered and why they lose
 
 - **a. Bloom-driven glow with a per-pixel clamp exemption for the sun.** The bloom kernel is compact: 50 % at 2-3 px,
