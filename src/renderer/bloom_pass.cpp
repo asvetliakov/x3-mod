@@ -1,4 +1,5 @@
 #include "bloom_pass.h"
+#include "bloom_main_target.h"
 #include "quad_vertex_program.h"
 #include <algorithm>
 #include <cmath>
@@ -113,11 +114,11 @@ bool descriptor_equal(const D3DSURFACE_DESC& a, const D3DSURFACE_DESC& b) noexce
            a.MultiSampleType == b.MultiSampleType && a.MultiSampleQuality == b.MultiSampleQuality &&
            a.Width == b.Width && a.Height == b.Height;
 }
-bool main_descriptor(const D3DSURFACE_DESC& d) noexcept {
-    return d.Format == D3DFMT_A8R8G8B8 && d.Type == D3DRTYPE_SURFACE && (d.Usage & D3DUSAGE_RENDERTARGET) &&
-           d.Pool == D3DPOOL_DEFAULT && d.MultiSampleType == D3DMULTISAMPLE_NONE && !d.MultiSampleQuality &&
-           x3::temporal::valid_bloom_size({d.Width, d.Height});
-}
+static_assert(kBloomFormatA8R8G8B8 == D3DFMT_A8R8G8B8 && kBloomTypeSurface == D3DRTYPE_SURFACE &&
+              kBloomTypeTexture == D3DRTYPE_TEXTURE && kBloomUsageRenderTarget == D3DUSAGE_RENDERTARGET &&
+              kBloomPoolDefault == D3DPOOL_DEFAULT && kBloomMultisampleNone == D3DMULTISAMPLE_NONE);
+// Native D3D9 reports the main target as a texture level (Type TEXTURE), Wine as a surface.
+bool main_descriptor(const D3DSURFACE_DESC& d) noexcept { return bloom_main_descriptor(d); }
 bool bytecode_valid(BloomBytecode b, DWORD version) noexcept {
     // Authored bundle contract only, not arbitrary shader admission. Frame the
     // entire bounded program so native CreateShader cannot walk past the input.
