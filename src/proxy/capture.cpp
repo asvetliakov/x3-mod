@@ -211,6 +211,8 @@ unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X
 float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
+bool lens_flare_fog = false; // the lens bracket installed for the volumetric fog: each bracket applies G x T_sun (the
+                             // fog's transmittance toward the sky, motion_output_sun_occlusion_inc.h), both editions
 #if !X3M_EDITION_FL
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
@@ -2015,7 +2017,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                     // accepted-pair ring; one collide_narrow line per
                                                                     // 300 frames, collide_narrow_pair rows on a capture
                                                                     // frame
-    sun_occlusion::present(ctx.frame + 1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
+    sun_occlusion::present(ctx.frame + 1); // installed bracket only: the probe override's frame boundary
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one
                                                            // collide_memo line per 300 frames
@@ -2158,6 +2160,9 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // FL scene-end hook: counts this frame with or without a compositor call; one fl.scene_sample row every
     // X3M_FL_SCENE_LOG seconds (scene_hook_fl.cpp).
     scene_hook::fl_sample_row();
+    // FL sun occlusion (sun_occlusion_fl.cpp): the probe override's frame boundary; one fl.sun_occlusion_sample row
+    // every X3M_FL_SUN_OCCLUSION_LOG seconds.
+    sun_occlusion::present(ctx.frame + 1);
 #endif
 #if !X3M_EDITION_FL
     // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four
@@ -2298,7 +2303,9 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
 #if !X3M_EDITION_FL
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table
+#endif
     sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
+#if !X3M_EDITION_FL
     collide_memo::device_reset();  // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it)
                                    // drops the whole memo
     ui_scale::after_reset(p ? p->BackBufferWidth : 0u, p ? p->BackBufferHeight : 0u); // X3M_UI_SCALE=auto: the scale
@@ -2373,8 +2380,9 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     const MotionDrawCall draw_call{false, false, t, c, s, 0, 0, 0, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
@@ -2433,8 +2441,9 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     const MotionDrawCall draw_call{true, false, t, c, s, b, m, n, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) {
         ++ctx.fixture_emission_source_calls;
@@ -2480,8 +2489,9 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     const MotionDrawCall draw_call{false, true, t, c, 0, 0, 0, 0};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
@@ -2523,8 +2533,9 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
     const MotionDrawCall draw_call{true, true, t, c, 0, 0, m, n};
     auto route = ctx.motion_output.before_draw(draw_call);
     if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag
-                                                          // test otherwise
+        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
+                                                          // occlusion, its log, the lens-flare gain or the volumetric
+                                                          // fog): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
@@ -3428,7 +3439,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
-    hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value); // 1 unless the bracket is installed for it
+    hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
+                                                                                          // installed for it; fog: G x T_sun
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
     hooked.motion_output.configure_engine_plumes(engine_effects::mode() == engine_effects::core::Mode::plumes &&
@@ -5812,10 +5824,12 @@ void initialize_log(HMODULE module) {
                                      // 0x004033c9, right after the game wrote the -runinbg bit, redirected to a thunk
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
+#endif
     // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare
     // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
     // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2
-    // (X3M_MOTION_OUTPUT=1).
+    // (X3M_MOTION_OUTPUT=1). FL edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
+    // docs/architecture/farnhams-legacy-sun-occlusion.md), same window.
     {
         wchar_t value[32]{};
         if (x3m::config::get(L"X3M_SUN_OCCLUSION_RADIUS", value, 32) > 0) {
@@ -5842,18 +5856,23 @@ void initialize_log(HMODULE module) {
             if (end != value && *end == L'\0' && v >= lens_flare_gain::gain_min && v <= lens_flare_gain::gain_max) {
                 lens_gain = v;
                 lens_gain_reason = v < 1.f ? "ok" : "one";
+#if !X3M_EDITION_FL
                 lens_flare_gain_zero = v == 0.f;
+#endif
             } else
                 lens_gain_reason = "invalid";
         }
         if (lens_gain < 1.f && !motion_output_requested) lens_gain_reason = "route_off"; // no state shadow for the draw
         const bool lens_gain_wanted = lens_gain < 1.f && motion_output_requested;
+        // The volumetric fog dims the lens draws by its transmittance toward the sun (G x T_sun per bracket), so it
+        // installs the bracket too (observe-only redirects when neither sun-occlusion variable is set).
         sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
-        const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted);
+        const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested);
         if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
         lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
-        log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
-            lens_gain_reason, sun_occlusion::state());
+        lens_flare_fog = volumetric_fog_requested && sun_installed;
+        log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s fog=%u", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
+            lens_gain_reason, sun_occlusion::state(), lens_flare_fog ? 1u : 0u);
         if (sun_installed) {
             // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when
             // the override is on).
@@ -5866,6 +5885,7 @@ void initialize_log(HMODULE module) {
                 sun_occlusion_core_f ? 1u : 0u, from_default ? 1u : 0u);
         }
     }
+#if !X3M_EDITION_FL
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,
                                // 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2),

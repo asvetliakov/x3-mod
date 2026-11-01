@@ -5,6 +5,7 @@
 // verification/analysis/test_sun_occlusion.py.
 #include "../../src/proxy/sun_occlusion_core.h"
 #include "../../src/renderer/lens_visibility_variant.h"
+#include "../../src/renderer/fog_transmittance.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -273,6 +274,21 @@ int main(int argc, char** argv) {
         const JitterUv j = jitter_uv(number(argv[2]) != 0, float(std::atof(argv[3])), float(std::atof(argv[4])),
                                      unsigned(number(argv[5])), unsigned(number(argv[6])));
         std::printf("u=%.8f v=%.8f\n", j.u, j.v);
+        return 0;
+    }
+    // foggain <G> <on> <extinction> <start> <cap> <chroma r g b> <tint>: the lens gain through the fog toward the sky
+    // (renderer::fog_sky_lens_gain, motion_output_sun_occlusion_inc.h's sun_occlusion_begin).
+    if (command == "foggain" && argc == 11) {
+        FogTransmittanceLaw law;
+        law.on = number(argv[3]) != 0;
+        law.extinction = float(std::atof(argv[4]));
+        const float tint = float(std::atof(argv[10]));
+        for (unsigned i = 0; i < 3; ++i) law.k[i] = 1.f + tint * (1.f - float(std::atof(argv[7 + i])));
+        law.start = float(std::atof(argv[5]));
+        law.cap = float(std::atof(argv[6]));
+        float t = -1.f, gain = -1.f;
+        fog_sky_lens_gain(law, float(std::atof(argv[2])), &t, &gain);
+        std::printf("t=%.9g gain=%.9g\n", double(t), double(gain));
         return 0;
     }
     if (command == "sites") {

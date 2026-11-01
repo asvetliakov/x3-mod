@@ -127,13 +127,14 @@ set(X3M_SHARED_SOURCES
 # docs/architecture/farnhams-legacy-lifetime.md). Likewise scene_hook.cpp and compositor_owner.cpp: the fl target
 # links src/engine/fl/scene_hook_fl.cpp and src/engine/fl/compositor_owner_fl.cpp
 # (docs/architecture/farnhams-legacy-scene.md). sun_light_poll.cpp too: the fl target links
-# src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md).
+# src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md). sun_occlusion.cpp too: the fl
+# target links src/engine/fl/sun_occlusion_fl.cpp (docs/architecture/farnhams-legacy-sun-occlusion.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
-  src/proxy/sun_occlusion.cpp src/proxy/engine_patch.cpp)
+  src/proxy/engine_patch.cpp)
 # AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
 # addresses (0x400000 based), gated by object_trace::executable_verified(). Their call sites in capture.cpp,
 # loader.cpp and telemetry.cpp are fenced with #if !X3M_EDITION_FL (no edition define, as in the host and
@@ -160,6 +161,8 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/sector_background_fl.cpp)
   # The fog transit prefill's walk over X3FL.exe's object list (docs/architecture/farnhams-legacy-prefill.md).
   target_sources(d3d9 PRIVATE src/engine/fl/fog_prefill_fl.cpp)
+  # The flare probe override and the lens bracket (docs/architecture/farnhams-legacy-sun-occlusion.md).
+  target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -208,6 +211,11 @@ set_source_files_properties(src/engine/fl/sector_background_fl.cpp PROPERTIES CO
 # The FL prefill walk (src/engine/fl/fog_prefill_fl.cpp) runs inside capture.cpp's resource-creation wrappers like the
 # AP walk: default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/fog_prefill_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL sun occlusion thunks (src/engine/fl/sun_occlusion_fl.cpp) run inside the engine's flare walk and lens pass:
+# no SSE/MMX, no floating point, no exception bookends; the lens begin/end save XMM0-7 and the x87/MXCSR/LastError
+# image (cpu_state.h) around the SSE listener, the probe handler XMM0-7 and LastError.
+set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

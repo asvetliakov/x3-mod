@@ -627,3 +627,24 @@ standard-lighting family, whose view-projection is c24-c27 per `docs/architectur
 2), which would restore partial occlusion on this install and allow per-draw attribution (F2); until then the sun is
 hidden all or nothing as in vanilla. Skipping the visibility pass while deferred (cost not measured). F2, F3 above.
 Not covered: the Wine fixture (no run in this change), the flight.
+
+## 2026-11-02: lens-flare gain through the fog (both editions; worktree, not installed, not flown)
+
+FL run 13 showed the sun and its flare plainly through The Hole's fog (`verification/results/fl-run13-sun-fog/`): the
+lens draws come after the fog composite and nothing attenuates them. Now, with the volumetric fog configured, capture
+installs the lens bracket (`sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested)`, observe-only
+redirects when no sun-occlusion variable is set; row `lens_flare_gain … fog=1`), and `sun_occlusion_begin` sets the
+bracket's law to `law(G × T_sun)`: `T_sun` = the Rec. 709 luminance of the engine plumes' fog law
+(`engine_plumes_fog`) evaluated at the look's column cap (`renderer::fog_sky_lens_gain`, clamped to [0, 1]), `G` the
+configured `X3M_LENS_FLARE_GAIN`. A frame without the density composite (fog off, a clear sector, filling) has the
+law off: `T = 1` and the gain is `G` exactly. The BLENDFACTOR cap is kept from attach, so a fogged `G × T` in (0, 1)
+works with `G = 1`; the blend shadow is fed while the fog gain is configured. The `--perf` row `lens_flare_gain_frame`
+(every 300 frames while the applied gain is below 1) gains `base=` (G), `fog=` and `fog_t=` (the last bracket's T).
+Without the fog nothing changes in behaviour: `lens_gain_fog_` is false, the law is the configured one and the
+draw path is untouched; the `lens_flare_gain` and `lens_flare_gain_frame` rows carry the extra fields. The Hole at
+run 13's inputs predicts `fog_t` ≈ 0.58 (inferred, `sky_transmittance.py`, plain column). Host case:
+`test_fl_sun_occlusion.FogLensGain` (law off: `t=1`, gain `G` for G 1 / 0.6 / 0; T 0.5 at the cap gives 0.5 G; a
+tinted fog gives the luminance; the FL bracket reaches the same `sun_occlusion_begin`). Evidence and the AP object
+comparison: [FL ledger, "Step 9"](farnhams-legacy.md). Open: the gain applies to every lens draw of the bracket
+(other records' flares take the sky's transmittance too); the distance-mode column (`--fog-distance 3`) is longer
+than the look's cap (0.49 vs 0.58 in The Hole), not used here.

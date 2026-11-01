@@ -810,3 +810,66 @@ page-straddling node, unreadable guard, count 0 (handled by structure, untested)
 lead_ms=1353.4 adopted=1`; handovers `coldfill=1` with `frames=` 38/108/110 (depends on the arrival point, as
 the prefill note says). The found-to-arrival lead of 1.35 s answers the open question: the found poll is early
 enough.
+
+## Step 9 — sun occlusion hooks, host evidence (2026-11-01, not installed)
+
+Design: [FL sun occlusion note](../architecture/farnhams-legacy-sun-occlusion.md); sites and ABI
+[FL sun occlusion, "Verified hook sites and ABI"](../reverse-engineering/fl/sun-occlusion.md#verified-hook-sites-and-abi-2026-11-01).
+`sun_occlusion_fl.cpp` replaces `sun_occlusion.cpp` in the fl link (the ap target keeps it); the `Deferral` and the
+consumer's deferral calls are no longer fenced out of FL; capture installs the bracket on both editions, also for
+the volumetric fog, whose lens gain `G × T_sun` is shared ([sun-occlusion ledger, 2026-11-02](sun-occlusion.md)).
+Measured on the WSL2 host after rebasing onto main `317383e5` (release 1.8.4, fade-band fill), clean-first builds (`-j4`, RelWithDebInfo, fl then
+ap): fl 96 and ap 136 C++ objects compiled, 0 warnings each; the fl link has `sun_occlusion_fl.cpp.obj` and no
+`sun_occlusion.cpp.obj`, `strings | grep -c '^fl\.sun_occlusion'` = 2, no AP address (`606f34`, `608504`,
+`471630`, `472491`) in the provider's disassembly. AP against a fresh build of main `317383e5`
+(`farnhams-legacy-build/cmp_objs.py <main-ap> build-ap` → `fl-sun-occlusion/ap_object_compare.json`): 117 of 121
+identical, `sun_occlusion.cpp.obj` among them. Differing: `capture.cpp` (the bracket also for the fog,
+`lens_flare_fog`, the `fog=` field, the FL Present/Reset calls fenced in), `motion_output.cpp` (the fog gain in
+`sun_occlusion_begin`, the BLENDFACTOR cap kept, the row fields), `config.cpp` (one schema key), `proxy_identity.cpp`
+(source commit). Schema: `fl_sun_occlusion_log` added, `generate.py --check` PASS (294 settings, after main's
+`fl_prefill_log`).
+
+Native fixture (`verification/probe/fl_sun_occlusion.cpp`, `fl-sun-occlusion/run_fixture.py` → `fixture.json`):
+`RESULT PASS checks=906 failures=0`. The fake walk carries the generated 26-byte probe window with the call at
+`% 8 = 2` (`probe_write=atomic`), the fake lens pass `mov edx,esi; call` at `% 8 = 7` (`lens_write=plain`), both
+claimed by the production `claim_call`. Checked on every call: ESP balance, EBP/EBX/ESI/EDI, x87 value, CW and MXCSR;
+answer path EAX 0/1 without the original, ECX/EDX as at the call, DF from `popfd`, LastError and XMM0-7 unchanged,
+record+0x30 cleared exactly on 1 by the window; forward path ECX = record, EDX = view, ESP at the return address
+(`[ESP]` = site + 5), the site's EFLAGS, XMM/x87/CW/MXCSR into the original, its EAX, LastError and XMM back. Gates:
+flares bit clear at +0xec with AP's +0xfc set → 1; set at +0xec only → 0; x outside the rect with the view flag set
+→ 0; inclusive left edge with `0x8000000` → 1; y above the rect → 0. Ineligible probes forward (another view, a
+main-view-owned record, an owner without `0x400000`); two records → vanilla for the next frame. Lens: begin/end once,
+bracket open only inside the original, EDX view and ECX padding into it, its EAX/ECX/EDX/EFLAGS/LastError/XMM back;
+the listeners run on an initialised x87 while XMM, x87, MXCSR and LastError are clobbered. Deferral: an
+unclassifiable body starts it (row), the vanilla probe hides (no lift), a vanilla-visible core body lifts it
+(`sun_occlusion_released … lifts=1 starts=1`, record+0x30 read), then answered again. SEH raise in the original:
+outer handler reached, no `end`, bracket open until Present closes it, answering again. Foreign thread → original,
+counted, one row. Registry walk (FL slot layout) finds the cockpit camera, refuses no sector bit / capacity 3 /
+missing handle / no slot; scale from `[mode slot] + 0x28`; log mode calls the original through ECX/EDX (`fastcall`)
+once and answers itself. Install refusals: target mismatch on the probe after the lens claim (lens rolled back byte
+for byte), lens target mismatch, a site one byte off, override without config; non-X3FL process
+`executable_mismatch` (also for the bracket alone); after `close_install_window` both claims `late_claim`, nothing
+written, also `claim_call` on the straddling site directly. `ANCHOR anchors=17 flips=822 refused=822
+operand_flips=52 operand_refused=52` (each naming its anchor), another base and a foreign operand refused, an
+uncommitted anchor page refused. `fl.sun_occlusion_sample` deltas checked; `X3M_FL_SUN_OCCLUSION_LOG=0` writes none.
+
+CPU audit (`fl-sun-occlusion/hook_cpu_state_audit.py`, on the fixture and on `build-fl/d3d9.dll` →
+`hook_cpu_state_audit_dll.json`): 71 reachable functions, no x87 outside the transport, XMM only in the three
+16-`movups` envelopes, `fnsave/fninit/frstor/stmxcsr/ldmxcsr` once each in lens begin and end, none in the probe
+handler; the walk stops at `x3m::log` (session log, SSE with `call_preserved` around the formatter), reached only
+from `lens_end` and the probe handler inside their envelopes (an unpruned walk: 91 functions, no x87). Mutations
+(`mutation_check.py` → `mutation_check.json`, source restored, unmutated PASS 906): no XMM save 54 failures (the
+forward path's XMM too: the handler's Win32 calls change XMM on this host), no PreserveCpuState 160, flags word at
++0xfc 67; the first two also fail the audit. Cost per call (fixture, measured, not game FPS): probe forwarded
++39 ns over a 32 ns native call, answered 71 ns total; lens bracket +222 ns per lens call (once per frame) with
+trivial listeners. Host tests: `test_fl_*` 84 OK (4 skips: shader corpus); `test_sun_occlusion`,
+`test_logging_tiers`, `test_config_schema`, `test_launcher_defaults`, `test_lens_flare_cull`, `test_fog_cards`,
+`test_sector_background` 90 OK; `test_fog*` 27 modules 235 OK. Pre-existing on main `181b050a`, unchanged (the other host modules were run on `181b050a`; after the rebase onto `317383e5` `test_fl_sun_occlusion`, `test_sun_occlusion`, `test_logging_tiers`, `test_config_schema` and the fixture were rerun, all OK):
+`test_engine_effects` and `test_engine_ribbons` fail their source-bound fixture records (Wine runners, not rerun).
+Expected in game: the note's "Expected rows"; not flown.
+
+First-flight checks (beyond the note's expected rows): (a) `starts` and `lifts` in `fl.sun_occlusion_sample` stay
+small and stop growing; both rising in every sample means the deferral is cycling (start, lift, start). (b) No
+`lens_flare_gain_refused … reason=blend_law` in The Hole. The gain is applied only to ONE/ONE/ADD draws; if the FL SM3
+sun body (`ced7edef…`) is drawn with another blend law, the gain does not reach the sun itself, only its other lens
+draws, and the user's sun-through-fog report is not fixed by this step (the row's `src`/`dst`/`op` give the law).

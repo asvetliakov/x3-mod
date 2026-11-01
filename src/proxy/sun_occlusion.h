@@ -88,6 +88,15 @@ bool lens_attributable();
 int lens_body_unclassifiable(bool first_or_cache_full, bool* row);
 void lens_body_core();
 Counters counters();
+#ifdef X3M_SUN_OCCLUSION_FL_FIXTURE
+// FL edition fixture seams (src/engine/fl/sun_occlusion_fl.cpp, verification/probe/fl_sun_occlusion.cpp).
+const char* fixture_gate(std::uintptr_t base); // the 17 anchors at base: nullptr or the first refused anchor
+void fixture_slots(std::uintptr_t registry_slot, std::uintptr_t mode_slot); // before install_at
+std::uintptr_t fixture_main_view();                                         // the registry walk now
+unsigned fixture_arm_sample();
+void fixture_force_sample();
+void fixture_log_status(); // the fl.sun_occlusion row of the current install
+#endif
 }
 extern "C" {
 void x3m_sun_probe_thunk();

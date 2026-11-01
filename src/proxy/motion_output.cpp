@@ -3228,6 +3228,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         unsigned(screen_additive_requested_), double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
     // Lens-flare gain: G strictly between 0 and 1 needs the blend constant (D3DPBLENDCAPS_BLENDFACTOR); 0 skips
     // the admitted draws (no state, no cap). Checked once here; without the cap every lens draw stays native (one refusal row).
+    lens_gain_blendfactor_ = (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;
     lens_gain_caps_ = lens_gain_.active && (!lens_gain_.constant || (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0);
     lens_gain_logged_ = 0;
     if (lens_gain_.active) {
