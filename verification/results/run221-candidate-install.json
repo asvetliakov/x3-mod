@@ -1,0 +1,30 @@
+{
+ "run": 221,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun step 1c look (13692fc8 + 01a5e52c, design own-sun-look.md)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run220; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T02:41:04+04:00",
+ "commit": "01a5e52c",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "15ac091189a554238cb71725cbd753f343ff2f263b678d299b3b924041e95140",
+  "bytes": 63224106,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 220,
+  "sha256_prefix": "9feed01b",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run220"
+ },
+ "host_tests": "run_host_suite 5 modules 99 tests 0 failing; generate --check PASS 298",
+ "review": "Opus medium: install; findings 1 (spokes on the vertical axis) and 4 (stale text) fixed in 01a5e52c",
+ "ini": "own_sun = 1 (unchanged)",
+ "producer": "main session"
+}

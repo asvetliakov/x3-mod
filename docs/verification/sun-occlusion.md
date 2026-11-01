@@ -846,3 +846,17 @@ keeps corona and halo; ray width 3.0 px at 768 rows, 3.46 px at 1440 and 10 px f
 5120x1440 plus the fixed draw. The lit-tile shift of the key rule is unmodelled against a real scene; the flight's
 `own_sun_frame ev=/ev_limit=` with and without the sun decides (the note's kill rule: `ev` lower by > 0.25 EV with the
 sun in view).
+
+## Run 221 — own sun step 1c look installed (2026-11-02, dev candidate)
+
+Design `docs/architecture/own-sun-look.md` (survey-led, user-approved): Gaussian corona (σ 1.5 R, 0.6) + Lorentzian
+halo (half at 6 R, 0.3, window 24 R), six soft rays (0.15, hashed 3.5–13.1 R, width ≥ 3 px), streak pair removed,
+quad 48 R; settings and defaults unchanged. Step 1c `13692fc8` (reviewed Opus medium: install; finding 1: with six
+spokes at offset 0.5 two spokes sat on the vertical axis, a vertical line through the sun → `ray_offset` 0.25 in
+`01a5e52c`; finding 2 recorded: a sub-0.05 jump at a spoke's centre line only below the default radius). ps 184
+slots, validator 0 messages; `glow_meter.py`: glow max outside the core 0.781, 20–24 lit tiles at 5120×1440, worst
+sun-tile `ev_limit` +1.67 EV. Merge `01a5e52c` built unstripped (`9feed01b` → `15ac0911…`, 0 warnings, x87 PASS, 99
+host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run220`
+([record](../../verification/results/run221-candidate-install.json)). Flight: the two F8 pairs with Ctrl+Shift+F9;
+kill rule: worse than the engine chain in either sector, or `own_sun_frame ev=` more than 0.25 EV lower with the sun
+in view than without, or rays shimmering while parked.
