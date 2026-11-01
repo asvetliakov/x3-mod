@@ -2089,6 +2089,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                 static_cast<DWORD>(lifetime.max_probe), static_cast<DWORD>(lifetime.capacity),
                 object_lifetime::status(), unsigned(lifetime.active), lifetime.load_epoch);
     }
+#if X3M_EDITION_FL
+    // FL registry observer: one fl.lifetime_sample row every X3M_FL_LIFETIME_LOG seconds (object_lifetime_fl.cpp);
+    // otherwise one QueryPerformanceCounter per frame.
+    object_lifetime::fl_sample_row();
+#endif
 #if !X3M_EDITION_FL
     // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four
     // table counts, the unattached-list walk with its model histogram, registry_live and the registry insert

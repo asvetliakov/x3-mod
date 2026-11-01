@@ -120,16 +120,18 @@ set(X3M_SHARED_SOURCES
 # AP engine modules both editions link: motion_output, its *_inc.h fragments and the capture.cpp draw/compositor
 # paths call into them. In the fl edition their initializers are fenced out (capture.cpp, loader.cpp) and
 # object_trace::executable_verified() is a constant false, so their hooks are never installed.
-# camera_state.cpp and object_trace.cpp are ap only: the fl target links its own providers of camera_state.h
-# and object_trace.h below (src/engine/fl/camera_state_fl.cpp, docs/architecture/farnhams-legacy-camera.md;
-# src/engine/fl/object_trace_fl.cpp, docs/architecture/farnhams-legacy-object-identity.md).
+# camera_state.cpp, object_trace.cpp and object_lifetime.cpp are ap only: the fl target links its own providers
+# of camera_state.h, object_trace.h and object_lifetime.h below (src/engine/fl/camera_state_fl.cpp,
+# docs/architecture/farnhams-legacy-camera.md; src/engine/fl/object_trace_fl.cpp,
+# docs/architecture/farnhams-legacy-object-identity.md; src/engine/fl/object_lifetime_fl.cpp,
+# docs/architecture/farnhams-legacy-lifetime.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/scene_hook.cpp src/proxy/sun_light_poll.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
-  src/proxy/sun_occlusion.cpp src/proxy/engine_patch.cpp src/proxy/object_lifetime.cpp)
+  src/proxy/sun_occlusion.cpp src/proxy/engine_patch.cpp)
 # AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
 # addresses (0x400000 based), gated by object_trace::executable_verified(). Their call sites in capture.cpp,
 # loader.cpp and telemetry.cpp are fenced with #if !X3M_EDITION_FL (no edition define, as in the host and
@@ -146,7 +148,8 @@ if(X3M_EDITION STREQUAL "ap")
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_AP=1)
 else()
   add_library(d3d9 SHARED ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES}
-    src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp)
+    src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp
+    src/engine/fl/object_lifetime_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -172,6 +175,10 @@ set_source_files_properties(src/proxy/engine_memory.cpp
 # engine's call with no CPU-state boundary: no SSE/MMX, no floating point, no exception bookends; the periodic
 # log row saves XMM0-7 and runs under call_preserved.
 set_source_files_properties(src/engine/fl/object_trace_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL registry observer (src/engine/fl/object_lifetime_fl.cpp) runs inside the engine's map helpers behind a
+# PUSHFD/PUSHAD/FXSAVE envelope: same rule, no SSE/MMX, no floating point, no exception bookends.
+set_source_files_properties(src/engine/fl/object_lifetime_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no

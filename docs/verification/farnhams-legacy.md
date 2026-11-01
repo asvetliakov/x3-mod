@@ -125,3 +125,36 @@ moves the camera millions of units within a 1–2 ms clock tick (about 240 fps
 here); not caused by the hook (confidence high).** Pending: the user's stock-FL
 F1 check for confirmation. Candidate later FL feature: a guard patch for this
 overflow. Hook rows accepted; the lifetime step proceeds.
+
+## Step 3b — FL registry observer (host evidence; not installed)
+
+Design: [FL lifetime note](../architecture/farnhams-legacy-lifetime.md). Measured on the WSL2 host, uncommitted
+worktree on 3fbbef65: clean builds of both editions, 0 warnings each; the fl link has `object_lifetime_fl.cpp.obj`
+and no `object_lifetime.cpp.obj`; `strings build-fl/d3d9.dll | grep -c '^fl\.lifetime'` = 2; `build-fl/d3d9.dll`
+SHA-256 `c2e254d8…7f9dacc6`. AP: 119 of 121 objects identical to a pre-change build
+(`verification/results/fl-object-lifetime/ap_object_compare.json`), the others `config.cpp` (one schema entry)
+and `proxy_identity.cpp` (`-dirty`). `fl_object_lifetime_constants.py --check` matches X3FL.exe (42/37/33 direct
+callers of insert/remove/destroy, one of the load target; every `ret` bare); `load_target_stack_scan.py`: the
+load target reads no stack argument over 990 instructions. Native fixture (`run_fixture.py` → `fixture.json`):
+`RESULT PASS checks=257 failures=0`, `ANCHOR flips=84 refused=84`, TIMING hook 188.5 ns per helper call,
+`current()` 99.2 ns, post-load re-baseline of 20,002 entries 1,356 µs. Dispatch-path audit
+(`hook_cpu_state_audit_dll.json`): 85 functions, no x87 or XMM outside the two FXSAVE/FXRSTOR envelopes.
+AP-address rescan (`ap_address_scan_fl.json`): 20 functions, `x3m_lifetime_enter` gone. Schema: `fl_lifetime_log`
+added (`schema_semantic_compare.txt`: added=1 removed=0 changed=0). FL host tests 28 pass.
+
+Expected in game, correct: `fl.lifetime status=active_without_baseline … engine=0x00000000 registry=0x00000000
+baseline=no_engine baseline_entries=0 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none`;
+`motion_output_device … history_available=1`; `fl.lifetime_sample` rows with `dormant>0` only before the engine
+exists, then `binds=1`, `inserts` in the tens of thousands during a load, `loads=1` per save load with
+`rebaselined` ≈ the entries that survived it, `rebaseline_rejected=0 rebaseline_skipped=0`, `rebaseline_us_max`
+a few ms, `published` ≈ `inserts`, `unpublished_nested≈0`, `unpublished_lookup=0`, `unwinds=0`, `live` tens of
+thousands, one constant `registry`, `registry_changed=0 rebind_without_destroy=0 registry_dead=0`; in flight
+`current` near the `fl.trace_sample` entries and `known` ≥ 95 % of it (AP iteration05: 98 %).
+`motion_output_frame` `routed`, `matched` and `history_current` > 0 in flight; `sun_shadow_lane_refusals`
+`history=` near 0. Image: anti-aliased edges that hold still, no ghost trails behind moving ships or on view
+switches. Wrong: a refusal status names the gate (`*_entry_mismatch`, `engine_anchor_mismatch`, `failed_site=`);
+`top_reason=unknown_camera, known≈0` after `loads=1` (survivors not re-adopted: `rebaseline_rejected` or
+`rebaseline_skipped` > 0); ABI or key mix-up gives `published≈0`, `unpublished_lookup≈inserts`,
+`top_reason=unknown_node`; a wrong registry gives `other_maps≈all, inserts=0`; a stuck scope gives `in_flight>0`
+in every row and `top_reason=mutation_in_progress`; table loss gives `object_lifetime_disabled reason=…`;
+history keyed wrongly shows as smearing or ghosting on moving objects.

@@ -135,7 +135,30 @@ JournalStats journal_stats();
 // Once production detours have been published, successful shutdown retains the
 // tiny forwarding trampolines until process exit and forbids reinstallation.
 
+#if X3M_EDITION_FL
+// FL edition (src/engine/fl/object_lifetime_fl.cpp, docs/architecture/farnhams-legacy-lifetime.md): one
+// fl.lifetime_sample row every X3M_FL_LIFETIME_LOG seconds (default 10, 0 off). Called at each Present
+// (capture.cpp), outside every engine call: one QueryPerformanceCounter per frame, the lock only for a row.
+void fl_sample_row();
+#endif
+
 #ifdef X3M_OBJECT_LIFETIME_FIXTURE
+#if X3M_EDITION_FL
+// FL fixture seam (verification/probe/fl_object_lifetime.cpp): the four sites at synthetic addresses with
+// the FL entry bytes; the production byte gate against a synthetic image at `base`.
+struct FixtureSites {
+    void* insert_entry = nullptr;
+    void* remove_entry = nullptr;
+    void* destroy_entry = nullptr;
+    void* load_call = nullptr;
+    void* load_target = nullptr;
+    std::uintptr_t engine_slot = 0;
+};
+bool fixture_install(const FixtureSites&, unsigned capacity = RegistryCapacity, bool initial_snapshot = true);
+bool fixture_shutdown();
+const char* fixture_gate(std::uintptr_t base); // nullptr when every anchor matches
+void fixture_force_sample();                    // the next fl_sample_row() writes a row
+#else
 // Original synthetic code only; absent from production. Every site uses the
 // reviewed original instruction layout/ABI, but no game bytes are redistributed.
 struct FixtureSites {
@@ -153,5 +176,6 @@ bool fixture_shutdown(unsigned fail_stage = 0, unsigned fail_site = 0);
 void fixture_journal_consumers(unsigned count); // saturation seam only
 // Replaces the production insert-caller rules (the fixture's return sites); null restores them.
 void fixture_insert_caller_rules(const scene_graph_census::core::CallerRule* rules, unsigned count);
+#endif
 #endif
 } // namespace x3m::object_lifetime

@@ -216,14 +216,16 @@ class FlTraceWiring(unittest.TestCase):
         self.assertNotIn('object_trace.cpp', linked)
         self.assertNotIn('object_trace', re.search(r'set\(X3M_SHARED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1))
         self.assertIn('src/proxy/object_trace.cpp', re.search(r'set\(X3M_AP_SOURCES\n(.*?)\)\n', cmake, re.S).group(1))
-        self.assertIn('src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp)', cmake)
+        self.assertIn('src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp\n', cmake)
         self.assertIn('set_source_files_properties(src/engine/fl/object_trace_fl.cpp\n'
                       '  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")', cmake)
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
         fl_block = loader[loader.index('#if X3M_EDITION_FL\n    // FL edition'):]
         fl_block = fl_block[:fl_block.index('#endif')]
         self.assertIn('x3m::object_trace::initialize();', fl_block)
-        self.assertNotIn('object_lifetime', re.sub(r'//.*', '', fl_block))
+        # Step 3b initializes the registry observer after the scope hook (test_fl_object_lifetime.py).
+        code = re.sub(r'//.*', '', fl_block)
+        self.assertLess(code.index('object_trace::initialize'), code.index('object_lifetime::initialize'))
 
     def test_provider_contract(self):
         code = re.sub(r'//.*', '', PROVIDER.read_text())

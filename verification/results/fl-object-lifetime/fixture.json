@@ -1,0 +1,51 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=257 failures=0 target_calls=400043",
+ "timing": "TIMING native_ns=26.0 hooked_ns=214.4 hook_ns=188.5 current_ns=99.2",
+ "anchor": "ANCHOR flips=84 refused=84",
+ "rebaseline": "REBASELINE entries=20002 load_us=1636 rebaseline_us_max=1356",
+ "failures": [],
+ "rows": [
+  "fl.lifetime status=disabled base=0x00000000 insert=0x00000000 remove=0x00000000 destroy=0x00000000 load_site=0x00000000 load_target=0x00000000 engine_slot=0x00000000 engine=0x00000000 registry=0x00000000 baseline=not_run baseline_entries=0 capacity=262144 write=none,none,none,none failed_site=none",
+  "fl.lifetime status=executable_mismatch base=0x00000000 insert=0x00000000 remove=0x00000000 destroy=0x00000000 load_site=0x00000000 load_target=0x00000000 engine_slot=0x00000000 engine=0x00000000 registry=0x00000000 baseline=not_run baseline_entries=0 capacity=262144 write=none,none,none,none failed_site=none",
+  "fl.lifetime status=bytes_mismatch base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b415d8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00000000 engine=0x00000000 registry=0x00000000 baseline=not_run baseline_entries=0 capacity=262144 write=none,none,none,none failed_site=destroy",
+  "fl.lifetime status=target_mismatch base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20044 load_target=0x00b41788 engine_slot=0x00000000 engine=0x00000000 registry=0x00000000 baseline=not_run baseline_entries=0 capacity=262144 write=none,none,none,none failed_site=load",
+  "fl.lifetime status=active_without_baseline base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00000000 registry=0x00000000 baseline=no_engine baseline_entries=0 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime_sample row=1 status=active_without_baseline inserts=13 removes=2 destroys=1 loads=1 unwinds=1 other_maps=2 dormant=1 published=11 unpublished_nested=1 unpublished_lookup=0 live=0 peak_live=7 capacity=262144 max_probe=1 current=44 known=9 unknown=35 top_reason=mutation_in_progress top_count=17 registry=0x020955b8 registry_changed=0 binds=3 rebind_without_destroy=1 registry_dead=0 in_flight=0 load_epoch=3 registry_epoch=5 rebaselined=5 rebaseline_rejected=0 rebaseline_skipped=0 rebaseline_us_max=224",
+  "fl.lifetime status=active base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x020956a0 baseline=complete baseline_entries=21 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime status=active_without_baseline base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x020956a0 baseline=rejected baseline_entries=0 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime status=active base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x020987e8 baseline=complete baseline_entries=0 capacity=8 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime status=active_without_baseline base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x020987e8 baseline=rejected baseline_entries=0 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime status=active_without_baseline base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x020987e8 baseline=rejected baseline_entries=0 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime status=active base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x02099038 baseline=complete baseline_entries=20000 capacity=262144 write=atomic,atomic,atomic,plain failed_site=none",
+  "fl.lifetime_sample row=1 status=active inserts=2 removes=1 destroys=0 loads=1 unwinds=0 other_maps=0 dormant=0 published=2 unpublished_nested=0 unpublished_lookup=0 live=20002 peak_live=20002 capacity=262144 max_probe=1 current=5 known=1 unknown=4 top_reason=mutation_in_progress top_count=4 registry=0x02099038 registry_changed=0 binds=0 rebind_without_destroy=0 registry_dead=0 in_flight=0 load_epoch=10 registry_epoch=17 rebaselined=20000 rebaseline_rejected=0 rebaseline_skipped=0 rebaseline_us_max=1356",
+  "fl.lifetime status=late_claim base=0x00000000 insert=0x00b41500 remove=0x00b415d8 destroy=0x00b416a8 load_site=0x01b20004 load_target=0x00b41788 engine_slot=0x00b80984 engine=0x00b809a0 registry=0x02099038 baseline=complete baseline_entries=20000 capacity=262144 write=none,none,none,none failed_site=none"
+ ],
+ "audit_exit": 0,
+ "audit": {
+  "roots": [
+   "_x3m_fl_lifetime_insert",
+   "_x3m_fl_lifetime_remove",
+   "_x3m_fl_lifetime_destroy",
+   "_x3m_fl_lifetime_load",
+   "_x3m_fl_lifetime_dispatch",
+   "_x3m_fl_lifetime_enter",
+   "_x3m_fl_lifetime_leave",
+   "_x3m_fl_lifetime_unwind"
+  ],
+  "missing_roots": [],
+  "reachable": 85,
+  "findings": {},
+  "envelopes": {
+   "_x3m_fl_lifetime_unwind": {
+    "fxsave": 1,
+    "fxrstor": 1
+   },
+   "_x3m_fl_lifetime_dispatch": {
+    "fxsave": 2,
+    "fxrstor": 2
+   }
+  },
+  "envelope_mismatch": {}
+ }
+}

@@ -18,10 +18,11 @@ initializer (`motion_output`, its `*_inc.h`, a `capture.cpp` draw/compositor pat
 links it. Initializer, Present, Reset, report and shutdown calls in `capture.cpp`, `loader.cpp`,
 `telemetry.cpp` are fenced `#if !X3M_EDITION_FL` (no define means AP, as in fixtures compiling
 production sources); in FL `object_trace::executable_verified()` is `constexpr false`. An FL
-engine provider replaces an AP module behind the same header: `src/proxy/camera_state.cpp` and
-`src/proxy/object_trace.cpp` are ap only and the fl target links `src/engine/fl/camera_state_fl.cpp`
-([FL camera provider](farnhams-legacy-camera.md)) and `src/engine/fl/object_trace_fl.cpp`
-([FL object identity](farnhams-legacy-object-identity.md)).
+engine provider replaces an AP module behind the same header: `src/proxy/camera_state.cpp`,
+`src/proxy/object_trace.cpp` and `src/proxy/object_lifetime.cpp` are ap only and the fl target links
+`src/engine/fl/camera_state_fl.cpp` ([FL camera provider](farnhams-legacy-camera.md)),
+`src/engine/fl/object_trace_fl.cpp` ([FL object identity](farnhams-legacy-object-identity.md)) and
+`src/engine/fl/object_lifetime_fl.cpp` ([FL lifetime](farnhams-legacy-lifetime.md)).
 
 Evidence in `verification/results/farnhams-legacy-build/`: `cmp_objs.py` and `cmp_dll.py` compare the AP
 build with one of the pre-switch commit from the same source path and commit string
@@ -33,7 +34,10 @@ the FL DLL, three are real addresses, each behind state only AP initializers set
 18 are shader tokens, allocation sizes and text bytes. Since the FL scope hook sets `object_trace::active()`
 in FL, the capture-frame `object_context` evidence block (cockpit root 0x608504, flags slot 0x606f34) is
 fenced `#if !X3M_EDITION_FL`; the rescan (`verification/results/fl-object-trace/ap_address_scan_fl.json`)
-finds 20 functions, the two remaining real addresses behind engine_effects `identity_` and the installer.
+finds 20 functions, the two remaining real addresses behind engine_effects `identity_` and the installer. With
+the AP observer out of the fl link (step 3b, `verification/results/fl-object-lifetime/ap_address_scan_fl.json`)
+the installer's address is gone; the FL `object_lifetime::initialize()` is listed for `0x600000`, the byte size
+of its 262,144 × 24-byte table (a loop bound, not an address).
 
 ## FL identity contract (`src/engine/fl/executable_identity_fl.h`)
 

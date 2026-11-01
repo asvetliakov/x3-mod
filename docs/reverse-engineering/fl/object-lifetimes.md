@@ -1,9 +1,9 @@
 # Farnham's Legacy object-lifetime observer contract
 
 Offline targeted analysis, 2026-10-27. The four FL counterparts and the reviewed
-registry mutation semantics are established below. **This is not an available FL
-observer capability:** baseline/install quiescence, all writer coverage, the
-adapter's nested/concurrent bookkeeping and foreign-unwind behavior remain open.
+registry mutation semantics are established below. **Status 2026-11-01:** the step-3b
+observer ([FL lifetime](../../architecture/farnhams-legacy-lifetime.md)) implements these four
+sites; what it closes and what stays open is in "Remaining qualification boundary" below.
 Recognition alone must keep `object_trace::executable_verified()` and the
 independent AP checks in `object_lifetime::initialize()` AP-only.
 
@@ -303,3 +303,16 @@ Independent deep review accepted the bounded contract after correcting the load
 epilogue start to `0x47993b` and adding the interior-start regression. Its corrected
 rerun passed all 253 instruction witnesses, 72 region-edge checks and 14 negatives
 (exit 0, 3.318 s). The remaining activation prerequisites above still apply.
+
+**2026-11-01, step 3b (host evidence, not yet flown).** `src/engine/fl/object_lifetime_fl.cpp`
+closes, by native fixture (`verification/probe/fl_object_lifetime.cpp`, real dispatcher on fake
+helpers with these entry bytes): exact forwarding of ECX/EDX, the one stack word, all GPRs,
+EFLAGS, XMM0-7, x87 control word/ST0, MXCSR and LastError in both directions; the replayed
+destroy CMP deciding its JE; foreign SEH unwind (table dropped, `load_epoch` advanced);
+transactional install with rollback of earlier claims and late-window refusal; nested
+bookkeeping (an insert finishing while another registry mutation is in flight is not
+published); the install point (in `load_backend`, before the engine exists, so the baseline is
+empty) and a post-load re-baseline under the observer lock with no hooked mutation in flight.
+Still open: coverage of every registry writer beyond the hooked helpers (computed or aliased
+writes), thread confinement of engine writers versus unhooked readers, the factory
+constructor-unwind seam, and in-game qualification on native Windows and CrossOver.

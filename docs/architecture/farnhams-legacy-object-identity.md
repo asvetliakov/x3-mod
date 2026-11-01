@@ -2,8 +2,8 @@
 
 TAA's motion history is keyed on each draw's engine scope (`x3m::object_trace`, `src/proxy/object_trace.h`).
 In FL it comes from `src/engine/fl/object_trace_fl.cpp` (ap keeps `src/proxy/object_trace.cpp`;
-[build](farnhams-legacy-build.md)). Step 3a makes `active()` true; `object_lifetime` stays off, so
-`history_available_` stays false. Step 3b (lifetime) is separate. Rows and evidence:
+[build](farnhams-legacy-build.md)). Step 3a makes `active()` true; step 3b adds the registry observer
+([FL lifetime](farnhams-legacy-lifetime.md)), so `history_available_` is true. Rows and evidence:
 [ledger](../verification/farnhams-legacy.md), "Step 3a".
 
 ## Step 3a: scope hook
@@ -50,9 +50,10 @@ sightings, last node, registry and its change, `current()` calls, other-thread e
 | capture.cpp 813 | `read_draw_input` scope fields | capture-only |
 | capture.cpp 1053 | `object_context` rows; AP evidence block (0x608504/0x606f34) | capture-only; block fenced |
 | capture.cpp 3549 | `object_bounds_mode` (`X3M_OBJECT_BOUNDS_LOG`/debug) | capture-only |
-| loader.cpp 284 | ownership `track_buffer_writes` | fenced (off until 3b) |
+| loader.cpp 295 | ownership `track_buffer_writes` | on with `trace && lifetime` (3b) |
 | fade_region.cpp `scope()` | AP descriptor layout for the fade bound | fenced (full viewport) |
-| motion_output.cpp 5683, engine effects, occlusion ledger | need history, `engine_hook_`, `executable_verified()` | still off |
+| motion_output.cpp 5681/5690 | the history route: `history_available_` check, `object_lifetime::current` per draw | runs (3b) |
+| engine effects/plumes, occlusion ledger | `engine_hook_`, `executable_verified()` | still off |
 
 **Evidence** (host): fixture `verification/probe/fl_object_trace.cpp` (328 checks, native via WSL interop);
 hook ≈18 ns per entry, `current()` ≈65 ns (fixture, not in game).

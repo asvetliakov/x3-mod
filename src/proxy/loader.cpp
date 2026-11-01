@@ -74,8 +74,12 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::camera_state::initialize();
     // The FL scope hook (src/engine/fl/object_trace_fl.cpp; X3M_OBJECT_TRACE, default on): one call rel32 inside
     // the engine_patch install window (before the device exists), gated by the identity and the site/target bytes.
-    // It logs its own fl.trace row; object_lifetime stays off, so the motion history stays unavailable.
+    // It logs its own fl.trace row.
     x3m::object_trace::initialize();
+    // The FL registry observer (src/engine/fl/object_lifetime_fl.cpp; X3M_OBJECT_LIFETIME, default on): the insert,
+    // remove and destroy entries and the renderer-load call, in the same install window, before X3FL.exe constructs
+    // its engine. It logs its own fl.lifetime row; with both active the motion history is available.
+    x3m::object_lifetime::initialize();
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
@@ -286,9 +290,9 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         x3m::ownership::Options options{};
         options.capture_auto_depth = depth_copy_enabled;
 #if X3M_EDITION_FL
-        // FL step 3a: the scope hook is active but no lifetime (no motion history) consumes buffer revisions yet;
-        // the per-Lock write tracking stays off until step 3b (docs/architecture/farnhams-legacy-object-identity.md).
-        constexpr bool traced_writes = false;
+        // FL: buffer revisions are consumed by the motion history, which needs both the scope hook and the registry
+        // observer (docs/architecture/farnhams-legacy-lifetime.md).
+        const bool traced_writes = x3m::object_trace::active() && x3m::object_lifetime::active();
 #else
         const bool traced_writes = x3m::object_trace::active();
 #endif
