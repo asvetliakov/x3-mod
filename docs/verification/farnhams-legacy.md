@@ -281,3 +281,13 @@ producers are in `verification/results/fl-shader-coverage/`.
   create=00000000 depth=1` rows appear, and `pair`/`untracked` falls to about 0 on
   hull scenes. Moving FL ships get per-object motion, so they no longer ghost or
   smear. Hull light-map gain and widening stay off until 4b. Result: pending.
+
+## FL run 5 — shader coverage 4a, hull motion rows (installed 2026-11-01)
+
+Candidate: commit `400def01`, `build-fl/d3d9.dll` SHA-256 `41d2cff0…`, 0 warnings,
+FL host tests pass ([record](../../verification/results/fl-run5/candidate.json));
+`C:\X3FL\d3d9.dll` bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run4`.
+Expected: `motion_output_variant kind=ps … create=00000000` rows for the FL hull
+programs, `sun_shadow_lane_refusals pair=` near 0 (run 4: 82 at the last row), no
+hull shimmer on distant stations, no smear on large moving ships. Hull lightmap
+gain and widening still off (part 4b). Result: pending.
