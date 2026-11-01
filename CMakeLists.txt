@@ -100,7 +100,7 @@ set(X3M_AP_SOURCES
 # fl edition: the shared D3D/renderer sources and the mixed files.
 set(X3M_SHARED_SOURCES
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
-  src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp src/proxy/loader.cpp src/proxy/config.cpp
+  src/renderer/bloom_pass.cpp src/proxy/loader.cpp src/proxy/config.cpp
   src/proxy/capture.cpp src/proxy/session_log.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp
   src/proxy/comparison_notice.cpp src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp src/proxy/scene_capture.cpp
@@ -124,9 +124,11 @@ set(X3M_SHARED_SOURCES
 # of camera_state.h, object_trace.h and object_lifetime.h below (src/engine/fl/camera_state_fl.cpp,
 # docs/architecture/farnhams-legacy-camera.md; src/engine/fl/object_trace_fl.cpp,
 # docs/architecture/farnhams-legacy-object-identity.md; src/engine/fl/object_lifetime_fl.cpp,
-# docs/architecture/farnhams-legacy-lifetime.md).
+# docs/architecture/farnhams-legacy-lifetime.md). Likewise scene_hook.cpp and compositor_owner.cpp: the fl target
+# links src/engine/fl/scene_hook_fl.cpp and src/engine/fl/compositor_owner_fl.cpp
+# (docs/architecture/farnhams-legacy-scene.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
-  src/proxy/scene_hook.cpp src/proxy/sun_light_poll.cpp
+  src/proxy/sun_light_poll.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
@@ -149,7 +151,7 @@ if(X3M_EDITION STREQUAL "ap")
 else()
   add_library(d3d9 SHARED ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES}
     src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp src/engine/fl/object_trace_fl.cpp
-    src/engine/fl/object_lifetime_fl.cpp)
+    src/engine/fl/object_lifetime_fl.cpp src/engine/fl/scene_hook_fl.cpp src/engine/fl/compositor_owner_fl.cpp)
   # The saturating replacement of X3FL.exe's fixed-point scaler (docs/architecture/farnhams-legacy-scale-overflow.md).
   target_sources(d3d9 PRIVATE src/engine/fl/scale_overflow_fix_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
@@ -181,6 +183,10 @@ set_source_files_properties(src/engine/fl/object_trace_fl.cpp
 # The FL registry observer (src/engine/fl/object_lifetime_fl.cpp) runs inside the engine's map helpers behind a
 # PUSHFD/PUSHAD/FXSAVE envelope: same rule, no SSE/MMX, no floating point, no exception bookends.
 set_source_files_properties(src/engine/fl/object_lifetime_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL scene-end trampoline (src/engine/fl/scene_hook_fl.cpp) runs inside the engine's complete pass: same rule;
+# its signal saves XMM0-7 and the x87/MXCSR/LastError image (cpu_state.h) around the SSE listener.
+set_source_files_properties(src/engine/fl/scene_hook_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The FL scaler replacement (src/engine/fl/scale_overflow_fix_fl.cpp) replaces an engine function called with live
 # XMM/x87 state and no CPU-state boundary: same flags; its rare QPC/row path saves XMM0-7 and runs under call_preserved.

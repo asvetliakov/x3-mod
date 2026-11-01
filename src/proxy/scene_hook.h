@@ -24,6 +24,13 @@
 // site/binding stay installed for the process lifetime; last-device release is
 // not proof of code quiescence. Explicit shutdown is for an externally
 // quiescent caller (including fixtures), outside DllMain. No on-disk change.
+//
+// FL edition: src/engine/fl/scene_hook_fl.cpp implements this header for
+// X3FL.exe (the ap target keeps scene_hook.cpp): the complete pass's
+// compositor call at module_base() + 0x8b929, claimed with engine_patch::
+// claim_call after the 24-byte boundary window, the compositor entry and the
+// glow/owner/device anchors match (scene_hook_fl_inc.h,
+// docs/architecture/farnhams-legacy-scene.md).
 namespace x3m::scene_hook {
 using Listener = void (*)();
 bool wanted(); // the switch as parsed: "1", or unset with X3M_MOTION_OUTPUT=1 ("0" or unset without the route: off)
@@ -39,6 +46,20 @@ bool active();                         // installed and signalling
 const char* status();
 unsigned long long signals(); // signals delivered since load (diagnostics)
 bool shutdown();              // restore the original bytes; true when nothing is installed
+#if X3M_EDITION_FL
+// One fl.scene_sample row every X3M_FL_SCENE_LOG seconds (fl_scene_log, default 10, 0 off). Called at each
+// Present (capture.cpp), outside every engine call: counts the frame (with or without a compositor call since
+// the previous Present) and one QueryPerformanceCounter; the row itself only when due.
+void fl_sample_row();
+#endif
+#if defined(X3M_SCENE_HOOK_FIXTURE) && X3M_EDITION_FL
+// FL fixture seam (verification/probe/fl_scene_hook.cpp): the production window/entry gate minus the X3FL.exe
+// identity and the module anchors, then the production install (bridge binding when callbacks, claim_call).
+// window points at a synthetic 24-byte boundary window whose call at +9 names target.
+bool fixture_install(void* window, void* target, Listener listener, const X3mCompositorBinding* callbacks);
+const char* fixture_gate(std::uintptr_t base); // the exact production gate at a synthetic image; nullptr: pass
+void fixture_force_sample();                   // the next fl_sample_row() writes a row
+#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Compile-only fixture seam (absent from production): the fixture executable
 // supplies its own E8 callsite and expected target; identity gate bypassed.

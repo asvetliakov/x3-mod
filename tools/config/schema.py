@@ -641,6 +641,7 @@ SETTINGS = [
     dev('fl_camera_log', 'int', 'logging', 'FL edition: seconds between fl.camera_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_trace_log', 'int', 'logging', 'FL edition: seconds between fl.trace_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_lifetime_log', 'int', 'logging', 'FL edition: seconds between fl.lifetime_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
+    dev('fl_scene_log', 'int', 'logging', 'FL edition: seconds between fl.scene_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('fl_scale_overflow_log', 'int', 'logging', 'FL edition: seconds between fl.scale_fix_sample checks; a row at the first '
         'period, then only when the saturation count changed (DLL default 10, 0 off).', range=(0, 3600)),
     dev('shadow_rows', 'bool', 'logging', 'The shadow and sun state rows every frame (member of debug).'),

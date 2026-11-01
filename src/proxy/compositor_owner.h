@@ -16,6 +16,27 @@ enum class Result : unsigned { Ok, InvalidAddress, Unreadable, OwnerMismatch };
 // All addresses are game x86 addresses. Output is empty on any failure.
 // Preserves LastError; the caller's CPU bridge preserves registers/FP state.
 Result read(std::uintptr_t admitted_image_base, Snapshot& out) noexcept;
+#if X3M_EDITION_FL
+// FL edition (src/engine/fl/compositor_owner_fl.cpp; docs/architecture/farnhams-legacy-scene.md,
+// docs/reverse-engineering/fl/compositor-owner.md): renderer = *(base + renderer_slot_rva), record =
+// [renderer + 0x18], device = [record], from scene_hook_fl_inc.h. FL has no manager agreement: manager and
+// manager_device stay zero. read() and glow_enabled() refuse (InvalidAddress / false) for any base other than
+// the one the FL scene hook admitted after its anchors matched and its patch went live.
+inline bool same(const Snapshot& a, const Snapshot& b) noexcept {
+    return a.renderer && a.record && a.device && a.renderer == b.renderer && a.record == b.record &&
+           a.device == b.device;
+}
+void admit(std::uintptr_t admitted_image_base) noexcept; // the FL scene hook, after its anchors matched
+// The compositor's own glow test (config = *(base + config_slot_rva), byte +0xf0 bit 0x80). LastError kept.
+bool glow_enabled(std::uintptr_t admitted_image_base) noexcept;
+// read() outcomes since the previous call (the fl.scene_sample row); not a lock, relaxed counters.
+struct ReadCounts {
+    unsigned long ok = 0, failed = 0;
+    Result last_failure = Result::Ok;
+};
+ReadCounts take_read_counts() noexcept;
+const char* result_name(Result result) noexcept;
+#else
 inline bool same(const Snapshot& a, const Snapshot& b) noexcept {
     return a.renderer && a.record && a.manager && a.device && a.device == a.manager_device &&
            b.device == b.manager_device && a.renderer == b.renderer && a.record == b.record && a.device == b.device &&
@@ -49,4 +70,5 @@ template <class Reader> Result collect(std::uintptr_t base, Snapshot& out, Reade
     return Result::Ok;
 }
 } // namespace detail
+#endif
 } // namespace x3m::compositor_owner

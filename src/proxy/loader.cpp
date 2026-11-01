@@ -81,6 +81,11 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // remove and destroy entries and the renderer-load call, in the same install window, before X3FL.exe constructs
     // its engine. It logs its own fl.lifetime row; with both active the motion history is available.
     x3m::object_lifetime::initialize();
+    // The FL scene-end hook (src/engine/fl/scene_hook_fl.cpp; X3M_SCENE_HOOK, default on with X3M_MOTION_OUTPUT=1):
+    // the complete pass's compositor call, same window and gates (boundary window, compositor entry, owner/glow
+    // anchors); with bloom + HDR AgX it carries capture's compositor bridge. Kept for the process lifetime. It
+    // logs its own fl.scene row.
+    x3m::scene_hook::initialize(&x3m::scene_end_signal, x3m::compositor_binding());
     // The engine's fixed-point scaler (src/engine/fl/scale_overflow_fix_fl.cpp; X3M_FL_SCALE_OVERFLOW_FIX, default on):
     // one entry JMP inside the same install window, gated by the identity, the entry bytes and the body hash; the
     // replacement clamps a quotient the engine's idiv would trap on. It logs its own fl.scale_fix row.

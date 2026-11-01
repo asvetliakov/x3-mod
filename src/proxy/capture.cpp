@@ -1531,6 +1531,10 @@ void bloom_refuse(BloomRefusal reason, const Device* ctx = nullptr) noexcept {
                      reason == BloomRefusal::Boundary || reason == BloomRefusal::Post));
 }
 bool compositor_glow_enabled(std::uintptr_t base) noexcept {
+#if X3M_EDITION_FL
+    // X3FL.exe's compositor tests config+0xf0 bit 0x80 (AP: +0x100), admitted base only (compositor_owner_fl.cpp).
+    return compositor_owner::glow_enabled(base);
+#else
     std::uint32_t settings = 0;
     unsigned char flags = 0;
     SIZE_T copied = 0;
@@ -1541,6 +1545,7 @@ bool compositor_glow_enabled(std::uintptr_t base) noexcept {
     return ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<void*>(settings + 0x100u), &flags, sizeof flags,
                              &copied) &&
            copied == sizeof flags && (flags & 0x80u);
+#endif
 }
 void retain_compositor_scene(void* storage, const MotionHdrScene& scene) noexcept {
     auto& call = *static_cast<CompositorInvocation*>(storage);
@@ -2093,6 +2098,9 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // FL registry observer: one fl.lifetime_sample row every X3M_FL_LIFETIME_LOG seconds (object_lifetime_fl.cpp);
     // otherwise one QueryPerformanceCounter per frame.
     object_lifetime::fl_sample_row();
+    // FL scene-end hook: counts this frame with or without a compositor call; one fl.scene_sample row every
+    // X3M_FL_SCENE_LOG seconds (scene_hook_fl.cpp).
+    scene_hook::fl_sample_row();
 #endif
 #if !X3M_EDITION_FL
     // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four

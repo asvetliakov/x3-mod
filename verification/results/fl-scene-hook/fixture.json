@@ -1,0 +1,51 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=304 failures=0 target_calls=600013",
+ "timing": "TIMING native_ns=9.4 signal_ns=103.4 bridge_ns=203.9 signal_hook_ns=94.1 bridge_hook_ns=194.5",
+ "anchor": "ANCHOR flips=61 refused=61",
+ "failures": [],
+ "rows": [
+  "fl.scene status=disabled base=0x00000000 site=0x00000000 target=0x00000000 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=disabled base=0x00000000 site=0x00000000 target=0x00000000 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=executable_mismatch base=0x00000000 site=0x00000000 target=0x00000000 path=none bridge_requested=1 renderer=0x00000000 write=none",
+  "fl.scene status=entry_mismatch base=0x00000000 site=0x015901bb target=0x00a415e2 path=none bridge_requested=1 renderer=0x00000000 write=none",
+  "fl.scene status=target_mismatch base=0x00000000 site=0x0159007b target=0x00a415e2 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=callsite_mismatch base=0x00000000 site=0x0159007c target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=boundary_mismatch base=0x00000000 site=0x015902fb target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=boundary_mismatch base=0x00000000 site=0x015902fb target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=boundary_mismatch base=0x00000000 site=0x015902fb target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=boundary_mismatch base=0x00000000 site=0x015902fb target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=boundary_mismatch base=0x00000000 site=0x015902fb target=0x00a41500 path=none bridge_requested=0 renderer=0x00000000 write=none",
+  "fl.scene status=bridge_bind_failed base=0x00000000 site=0x0159007b target=0x00a41500 path=none bridge_requested=1 renderer=0x00000000 write=none",
+  "fl.scene status=active base=0x00000000 site=0x0159007b target=0x00a41500 path=signal bridge_requested=0 renderer=0x00000000 write=atomic",
+  "fl.scene_sample row=1 status=active path=signal frames=6 entries=5 frames_without_call=3 frames_multi_call=2 nested=0 compositor_active=0 owner_reads=0 owner_failed=0 owner_last_failure=none glow=0 renderer=0x00000000",
+  "fl.scene status=active base=0x00000000 site=0x0159007b target=0x00a41500 path=bridge bridge_requested=1 renderer=0x00000000 write=atomic",
+  "fl.scene_sample row=2 status=active path=bridge frames=4 entries=5 frames_without_call=1 frames_multi_call=2 nested=1 compositor_active=1 owner_reads=0 owner_failed=0 owner_last_failure=none glow=0 renderer=0x00000000",
+  "fl.scene status=active base=0x00000000 site=0x0159007b target=0x00a41500 path=signal bridge_requested=0 renderer=0x00000000 write=atomic",
+  "fl.scene status=active base=0x00000000 site=0x0159007b target=0x00a41500 path=signal bridge_requested=0 renderer=0x00000000 write=atomic",
+  "fl.scene status=active base=0x00000000 site=0x0159007b target=0x00a41500 path=bridge bridge_requested=1 renderer=0x00000000 write=atomic",
+  "fl.scene status=late_claim base=0x00000000 site=0x0159007b target=0x00a41500 path=none bridge_requested=1 renderer=0x00000000 write=none"
+ ],
+ "audit_exit": 0,
+ "audit": {
+  "roots": [
+   "_x3m_fl_scene_trampoline",
+   "_x3m_fl_scene_signal"
+  ],
+  "missing_roots": [],
+  "reachable": 2,
+  "x87": {},
+  "simd": {},
+  "envelopes": {
+   "_x3m_fl_scene_signal": 16
+  },
+  "signal_transport": {
+   "fnsave": 1,
+   "fninit": 1,
+   "frstor": 1,
+   "stmxcsr": 1,
+   "ldmxcsr": 1
+  },
+  "transport_ok": true
+ }
+}

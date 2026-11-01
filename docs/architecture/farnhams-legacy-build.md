@@ -22,7 +22,9 @@ engine provider replaces an AP module behind the same header: `src/proxy/camera_
 `src/proxy/object_trace.cpp` and `src/proxy/object_lifetime.cpp` are ap only and the fl target links
 `src/engine/fl/camera_state_fl.cpp` ([FL camera provider](farnhams-legacy-camera.md)),
 `src/engine/fl/object_trace_fl.cpp` ([FL object identity](farnhams-legacy-object-identity.md)) and
-`src/engine/fl/object_lifetime_fl.cpp` ([FL lifetime](farnhams-legacy-lifetime.md)).
+`src/engine/fl/object_lifetime_fl.cpp` ([FL lifetime](farnhams-legacy-lifetime.md)). Likewise `src/proxy/scene_hook.cpp`
+and `src/proxy/compositor_owner.cpp` are ap only; fl links `src/engine/fl/scene_hook_fl.cpp` and
+`src/engine/fl/compositor_owner_fl.cpp` ([FL scene hook](farnhams-legacy-scene.md)).
 
 Evidence in `verification/results/farnhams-legacy-build/`: `cmp_objs.py` and `cmp_dll.py` compare the AP
 build with one of the pre-switch commit from the same source path and commit string

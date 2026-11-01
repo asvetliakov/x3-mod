@@ -1,0 +1,1 @@
+{"roots": ["_x3m_fl_scene_trampoline", "_x3m_fl_scene_signal"], "missing_roots": [], "reachable": 2, "x87": {}, "simd": {}, "envelopes": {"_x3m_fl_scene_signal": 16}, "signal_transport": {"fnsave": 1, "fninit": 1, "frstor": 1, "stmxcsr": 1, "ldmxcsr": 1}, "transport_ok": true}

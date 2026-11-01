@@ -216,7 +216,7 @@ class FlLifetimeWiring(unittest.TestCase):
         self.assertNotIn('object_lifetime', block('X3M_AP_ENGINE_LINKED_SOURCES'))
         self.assertNotIn('object_lifetime', block('X3M_SHARED_SOURCES'))
         self.assertIn('src/proxy/object_lifetime.cpp', block('X3M_AP_SOURCES'))
-        self.assertIn('src/engine/fl/object_trace_fl.cpp\n    src/engine/fl/object_lifetime_fl.cpp)', cmake)
+        self.assertIn('src/engine/fl/object_trace_fl.cpp\n    src/engine/fl/object_lifetime_fl.cpp', cmake)
         self.assertIn('set_source_files_properties(src/engine/fl/object_lifetime_fl.cpp\n'
                       '  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")', cmake)
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
@@ -226,7 +226,7 @@ class FlLifetimeWiring(unittest.TestCase):
                         fl_block.index('x3m::object_lifetime::initialize();'))
         self.assertIn('const bool traced_writes = x3m::object_trace::active() && x3m::object_lifetime::active();', loader)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertRegex(capture, r'#if X3M_EDITION_FL\n(?:    //.*\n)*    object_lifetime::fl_sample_row\(\);\n#endif')
+        self.assertRegex(capture, r'#if X3M_EDITION_FL\n(?:    //.*\n)*    object_lifetime::fl_sample_row\(\);\n(?:    .*\n)*#endif')
         fade = (ROOT / 'src/proxy/fade_region.cpp').read_text()
         self.assertIn('#if X3M_EDITION_FL\n    // The bound reads the descriptor with AP\'s layout', fade)  # still fenced
 

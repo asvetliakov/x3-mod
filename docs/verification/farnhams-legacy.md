@@ -452,3 +452,38 @@ FL program difference and not mainly specular**; the AP ledger
 the thin-region hold (0.97, 7x7) through the existing thin-vote lane. Decisive
 diagnostic for the next flight: `taa_debug = 1` and one F8 at a distant farm in
 normal flight (lock/mask/age readbacks).
+
+## Step 5 — scene hook, host evidence (2026-11-01, not installed)
+
+Design: [FL scene note](../architecture/farnhams-legacy-scene.md). Measured on the WSL2 host, the step-5 commit rebased onto
+5fec7535, fresh worktree builds: fl and ap 0 warnings each; the fl link has `scene_hook_fl.cpp.obj` and `compositor_owner_fl.cpp.obj`
+and neither ap object; `strings | grep -c '^fl\.scene'` = 2 (install hash: `verification/results/fl-run7/candidate.json`); no
+`0x208b3c`/`0x206f34` (AP owner/glow RVAs) in the fl disassembly, 2 in ap's. AP: 119 of 121 objects identical to a fresh
+build of main 5fec7535 (`verification/results/fl-scene-hook/ap_object_compare.json`; `config.cpp` one schema key,
+`proxy_identity.cpp` the source-commit string). `fl_scene_hook_constants.py --check` matches X3FL.exe (`constants.json`: window and
+call as documented, the compositor's only E8 caller `0x8b929`, complete pass caller `0x782cf`, compositor 553
+instructions, RETs `0xe6887/0xe69b3/0xe6e86` all `c3`, no stack-argument operand, branches into the window only to
+`0x8b932`). Native fixture (`run_fixture.py` → `fixture.json`): `RESULT PASS checks=304 failures=0`, `ANCHOR
+flips=61 refused=61`, TIMING per compositor call: signal path +94 ns, bridge path +195 ns (fixture, once per frame;
+not game FPS). Mutations (`mutation_check.py` → `mutation_check.json`): without the XMM save 4 failures, without
+`PreserveCpuState` 31, unmutated PASS (source restored byte for byte).
+Audit (`hook_cpu_state_audit_dll.json`): 2 functions, no x87/XMM outside one FNSAVE/FNINIT/FRSTOR and one XMM
+envelope. AP-address rescan of the fresh fl build (`ap_address_scan_fl.json`): the same 20 reachable functions as step 3b. Schema:
+`fl_scene_log` added (`schema_semantic_compare.txt`: added=1 removed=0 changed=0). FL host tests (7 `test_fl_*` modules) 62 pass.
+
+Expected in game with the user's route (bloom + HDR AgX): `fl.scene status=active base=0x… site=base+0x8b929
+target=base+0xe6770 path=bridge bridge_requested=1 renderer=0x00000000 write=atomic` (installed before the engine
+builds its renderer; `path=signal` without bloom/HDR AgX). Every 10 s `fl.scene_sample`: `entries` ≈ `frames` in
+flight, `frames_without_call` ≈ 0 in flight (menus, loading screens and the map may count), `frames_multi_call=0`,
+`nested=0` (bridge entries only; the signal path cannot see nesting), `compositor_active=1`, `owner_reads` > 0 with `owner_failed=0`, `glow=1` when the game's glow option is
+on, one constant nonzero `renderer`. Capture rows: `bloom_attach … result=00000000`, `bloom_prepare … ready=1`,
+`bloom_commit … committed=1`, no `bloom_refusal reason=caller|owner|device|glow`; `motion_output_device … scene_hook=1`;
+`motion_output_frame … scene_end_source=hook scene_end_check=1` (agree: the compositor's own copy follows; `2` with glow off);
+`hdr_frame … end=hook`. Wrong: a `*_mismatch` status names the gate; `owner_failed` ≈ `owner_reads` or
+`bloom_refusal reason=owner` (owner chain); `glow=0` with glow on or `reason=glow` (glow byte); `frames_without_call`
+≈ `frames` in flight (the boundary never reached: no camera above layer 17 in FL's normal view); a
+`motion_output_scene_hook_disagreement` row per frame. Image: bloom halo and AgX tonemap as on AP, TAA unchanged.
+Assumption (bridge on by default for this flight): the bridge replaces the native glow with the AP bloom commit
+without an FL shader-profile or `bloom.fb` check; high shader quality with stock `bloom.fb` is the flown case,
+medium/low quality or a modified `bloom.fb` is unverified; the runtime guard is `validate_boundary` (`reason=boundary`,
+no draw).
