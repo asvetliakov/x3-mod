@@ -18,7 +18,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 HTML = ROOT / 'tools/effects/own_sun_lab.html'
 RADII = (1, 2, 3, 6)
-ANGLES = (0., 20., 45., 75., 100., 225.)  # degrees; 45 + 60k lie on step 1c's spokes (ray_offset 0.25)
+ANGLES = (0., 20., 45., 75., 100., 225.)  # degrees, on and between spokes
 SUNS = ((255, 255, 255, 2., 1., 1.), (255, 255, 200, 2., .8, .6))  # words, K, fog T, sun_rays
 
 
@@ -54,11 +54,11 @@ def python_law(h, words, k, fog, rays, px, py):
 
     def spoke(index, across):
         kk = index - n * math.floor(index / n)
-        h1, h2 = (kk * (.6180340 + kk * .1547)) % 1, (kk * .7548777 + .31) % 1
-        along = r / (h['ray_length'] * (.25 + .75 * h1 * h1))
+        h1, h2 = (kk * .6180340 + .3) % 1, (kk * .7548777 + .31) % 1
+        along = max(r - h['ray_start'], 0.) / (h['ray_length'] * (.15 + .85 * h1))
         fade = min(max(1 - along, 0.), 1.)
         perpendicular = r * across * (2 * math.pi / n) / sigma
-        return (.6 + .4 * h2) * math.exp(-perpendicular ** 2 - along) * fade * fade
+        return (.6 + .6 * h2) * math.exp(-perpendicular ** 2 - along) * fade * fade
 
     t = math.atan2(py, px) * n / (2 * math.pi) + h['ray_offset']
     nearest = math.floor(t + .5)
@@ -108,13 +108,13 @@ class OwnSunLab(unittest.TestCase):
     def test_glsl_carries_the_programs_literals(self):
         hlsl = (ROOT / 'src/effects/own_sun_ps.hlsl').read_text()
         hlsl = hlsl[hlsl.index('sampler2D lane_sampler'):]
-        literals = set(re.findall(r'(?<![\w.])-?\d+\.\d{4,}', hlsl)) | {'0.1547', '0.31'}
+        literals = set(re.findall(r'(?<![\w.])-?\d+\.\d{4,}', hlsl)) | {'0.31', '0.85', '0.15'}
         glsl = section(self.text, 'const SCENE=`', '}`;')
         for literal in sorted(literals):
             self.assertIn(literal.lstrip('-'), glsl, literal)
         self.assertEqual(len(re.findall(r'vec3\(-?0\.\d{7},-?0\.\d{7},0\.07\d{5}\)', glsl)), 12)   # the 12 ring taps
         law = section(self.text, '/* @law_js */', '/* @end_law_js */')                # the CPU mirror: hashes, arctangent
-        for literal in ('0.6180340', '0.1547', '0.7548777', '0.31', '0.0134804', '0.0574773', '0.1212391', '0.1956359',
+        for literal in ('0.6180340', '0.7548777', '0.31', '0.85', '0.0134804', '0.0574773', '0.1212391', '0.1956359',
                         '0.3329946', '0.9999956', '1.57079633', '3.14159265'):
             self.assertIn(literal, law, literal)
 

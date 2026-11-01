@@ -189,8 +189,9 @@ Its defaults come from `own_sun_core.h`: `python3 tools/effects/generate_own_sun
 the page's JS law under node with the C++ reference at 1, 2, 3 and 6 R (within 1e-3). Porting back: "Copy as C++"
 gives the `constexpr` look lines for `own_sun_core.h` and the `[graphics]` ini lines. Paste the constants, run the
 generator (the page then reads them as defaults), rebuild the programs with `generate_own_sun_programs.py` and re-run
-`test_own_sun`, `glow_meter.py` and the native validator. `core_gain` (step 1d) is the lab's factor on the core
-radiance in `radiance()`; until the header defines it, the generator defaults it to 1.
+`test_own_sun`, `glow_meter.py` and the native validator. The lab ports the step 1d law (rays from `ray_start`, the
+step 1d hashes, `core_gain` on the core term); its "Step 1c" preset loads step 1c's constants into that law, so its
+rays differ from the flown step 1c (the old hashes are not reproduced).
 
 ## Options considered and why they lose
 
