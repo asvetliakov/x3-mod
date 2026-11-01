@@ -1,0 +1,12 @@
+5845 station depth       px=   220 hdrL_p10/50/90=0.0493/0.0682/0.0817 present_p50/90=16/23
+5845 station nodepth_cov px=  3390 hdrL_p10/50/90=0.0086/0.0868/0.4622 present_p50/90=19/133
+5845 upper   depth       px=   201 hdrL_p10/50/90=0.0493/0.0679/0.0816 present_p50/90=16/23
+5845 upper   nodepth_cov px=  1867 hdrL_p10/50/90=0.0085/0.1264/0.3514 present_p50/90=31/120
+5845 lower   depth       px=    19 hdrL_p10/50/90=0.0502/0.0712/0.0802 present_p50/90=16/22
+5845 lower   nodepth_cov px=  1523 hdrL_p10/50/90=0.0086/0.0595/0.6419 present_p50/90=10/162
+7063 station depth       px= 15210 hdrL_p10/50/90=0.0242/0.0472/0.1063 present_p50/90=9/36
+7063 station nodepth_cov px=    74 hdrL_p10/50/90=0.0061/0.0175/0.0447 present_p50/90=1/5
+7063 upper   depth       px=  7199 hdrL_p10/50/90=0.0233/0.0464/0.1630 present_p50/90=8/56
+7063 upper   nodepth_cov px=    29 hdrL_p10/50/90=0.0070/0.0211/0.0393 present_p50/90=1/5
+7063 lower   depth       px=  8011 hdrL_p10/50/90=0.0266/0.0477/0.0710 present_p50/90=9/20
+7063 lower   nodepth_cov px=    45 hdrL_p10/50/90=0.0060/0.0164/0.0447 present_p50/90=1/5
