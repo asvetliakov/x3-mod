@@ -1,0 +1,30 @@
+{
+ "run": 224,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun core visibility from 25 taps (bcdcfdd9e), largest step 4.2 %; ps 214 slots, validator 0 messages",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run223; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T03:33:31+04:00",
+ "commit": "bcdcfdd9e",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "aa9fc0348f6e552b68ce63e96fcfa0abd7c79a08c7c59bb442cba801cf48ca0f",
+  "bytes": 63225642,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 223,
+  "sha256_prefix": "dde9bcf4",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run223"
+ },
+ "host_tests": "run_host_suite modules own_sun, own_sun_lab, sun_occlusion, logging_tiers: 74 tests, 0 failing; lab JS vs C++ worst 1.4e-5",
+ "review": "none: tap layout change inside the reviewed pass, pinned by test_own_sun and the validator",
+ "ini": "own_sun = 1 (unchanged)",
+ "producer": "main session"
+}

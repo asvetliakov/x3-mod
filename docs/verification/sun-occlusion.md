@@ -945,3 +945,13 @@ slots (was 178), native validator 0 messages ([result](../../verification/result
 (`test_core_visibility_taps` pins 25 taps, sum 1, max weight <= 0.045; the lab's JS `CORE_TAPS` pinned to the program's
 taps); lab JS law vs `own_sun_host pixel` worst 1.39e-5 (`own-sun-pass/lab_js_worst.py`). Flight: an occluder edge
 crossing the core should dim the glow without visible steps.
+
+## Run 224 — own sun 25 visibility taps installed (2026-11-02, dev candidate)
+
+User-approved after the lab showed 8 % steps as a mast crossed the core (core visible 0.84/0.92/0.77 for one mast
+width at three positions: sample-point quantisation, not area). `bcdcfdd9e`: centre + three rings of eight at 0.35 /
+0.65 / 0.9 R, weights `1 − 0.1ρ²` normalised, largest single-tap step 4.2 % (was 8.1 %); ps 214 slots (budget 250),
+validator 0 messages; lab tap table pinned to the program. Built unstripped (`build-ap` `aa9fc034…`, 0 warnings, x87
+PASS, 74 host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.run223`
+([record](../../verification/results/run224-candidate-install.json)). Carries the run 223 user constants. Flight: the
+two F8 pairs; park with a strut across the core and watch the glow dim smoothly.
