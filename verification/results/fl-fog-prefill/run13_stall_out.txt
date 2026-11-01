@@ -1,0 +1,19 @@
+stall {'frame': '3', 'elapsed_ms': '6690', 'dt_ms': '803'}
+stall {'frame': '4', 'elapsed_ms': '7212', 'dt_ms': '522'}
+stall {'frame': '5', 'elapsed_ms': '8304', 'dt_ms': '1092'}
+stall {'frame': '6', 'elapsed_ms': '9907', 'dt_ms': '1602'}
+stall {'frame': '555', 'elapsed_ms': '23556', 'dt_ms': '11287'}
+stall {'frame': '9218', 'elapsed_ms': '67354', 'dt_ms': '2358'}
+stall {'frame': '17672', 'elapsed_ms': '114328', 'dt_ms': '3028'}
+stall {'frame': '23320', 'elapsed_ms': '150944', 'dt_ms': '2667'}
+handover {'frame': '23367', 'arm_frame': '23322', 'frames': '45', 'ms': '490.0', 'fill_ms': '471.0', 'coldfill': '1'}
+stall {'frame': '26288', 'elapsed_ms': '172926', 'dt_ms': '417'}
+stall {'frame': '26289', 'elapsed_ms': '173336', 'dt_ms': '410'}
+stall {'frame': '26290', 'elapsed_ms': '173742', 'dt_ms': '405'}
+stall {'frame': '26291', 'elapsed_ms': '174149', 'dt_ms': '407'}
+stall {'frame': '26292', 'elapsed_ms': '174562', 'dt_ms': '413'}
+stall {'frame': '26293', 'elapsed_ms': '174967', 'dt_ms': '404'}
+stall {'frame': '26294', 'elapsed_ms': '175380', 'dt_ms': '412'}
+stall {'frame': '26295', 'elapsed_ms': '175785', 'dt_ms': '405'}
+stall {'frame': '29061', 'elapsed_ms': '192268', 'dt_ms': '797'}
+stall {'frame': '29062', 'elapsed_ms': '193633', 'dt_ms': '1365'}

@@ -1,0 +1,17 @@
+build 1636047691 code 2731291 methods 8803
+2004::FlyThroughGate entry 14750e: 147552 TI_DelayRandom; 147588 150::StartGateWarp; 147593 150::IsWarping; 1475a0 TI_Delay; 1475bd 2004::__LeaveHyperspaceWarpIn; 147619 TI_Delay
+2004::JumpToSector entry 1485fa: 14883c TI_Delay; 14885b 150::StartGateWarp; 1488a9 150::StartSectorWarp; 1488c7 150::StartSectorWarp; 14890a RequestWarpThroughSlot; 148931 TI_Delay; 148999 TI_Delay; 148a4d TI_Delay; 148a83 TI_Delay; 148b69 150::StartGateWarp; 148bb7 150::StartSectorWarp; 148bd5 150::StartSectorWarp; 148be0 150::IsWarping; 148bed TI_Delay; 148c84 2004::__LeaveHyperspaceWarpIn; 148ce0 RequestWarpThroughSlot; 148d07 TI_Delay; 148d53 TI_Delay; 148dc7 TI_Delay
+2004::HyperspeedToSector entry 148460: 1484d5 TI_Delay; 14850b TI_Delay; 148563 TI_Delay; 148571 150::StartGateWarp; 14857c 150::IsWarping; 148589 TI_Delay; 1485c3 2004::__LeaveHyperspaceWarpIn
+150::StartGateWarp entry 199b0: 19a20 150::SetWarpSector; 19a49 150::WarpToSector
+150::StartSectorWarp entry 19af2: 19b61 150::SetWarpSector; 19b93 150::WarpToSector
+150::WarpToSector entry 19cfc: 19e59 150::ShowWarpInScene; 19f0e TI_Delay; 19f4c 605::GetMainMonitor; 19f5c 605::GetMainMonitor; 19f78 TI_Delay; 19fd7 TI_Delay; 1a0cd TI_Delay; 1a0d7 605::StopAllMonitors; 1a135 LeaveSector; 1a187 150::LeaveSector; 1a18e SA_CleanUpObjects; 1a195 SA_FreeAllBodies; 1a1aa 150::EnterSector; 1a1ee EnterSector; 1a240 WarpEnterSector; 1a24a 605::RestartAllMonitors; 1a274 150::ShowWarpOutScene; 1a480 TI_Delay; 1a488 TI_Delay; 1a4ae TI_Delay; 1a627 TI_Delay; 1a62f TI_Delay; 1a651 TI_Delay; 1a66c TI_Delay; 1a6c1 TI_Delay
+150::QuickWarp entry 1a73e: 1a76c 605::StopAllMonitors; 1a7a5 LeaveSector; 1a7ba 150::LeaveSector; 1a7c1 SA_CleanUpObjects; 1a7c8 SA_FreeAllBodies; 1a7dd 150::EnterSector; 1a7f2 EnterSector; 1a7fc 605::RestartAllMonitors; 1a80c 150::SetWarpSector
+150::EnterSector entry 1996f: 19976 Activate
+2001::Activate entry 1075d9: 1075fb SA_AllocObject; 107616 SA_SetSectorBackgroundType; 107656 SA_SetSpaceScene; 1076fe Activate; 10773c Activate; 10777a Activate; 1077b9 Activate2; 1077f8 Activate2; 107837 Activate2; 107876 Activate2; 1078b4 Activate; 1078f4 NoSafePosOnActivate; 107902 Activate; 107940 Activate; 10797f Activate2; 1079bf NoSafePosOnActivate; 1079ce Activate; 107a0d Activate2; 107a4c Activate2; 107a8b Activate2; 107ac9 Activate; 107af3 ActivateStartTasks; 107b2e ActivateStartTasks; 107b72 ActivateConnections; 107b9c ActivateStartTasks; 107d0a TI_Interrupt
+2001::Activate SA_AllocObject args: push0; push1; push2
+SA_AllocObject sites 30
+150::Run: 1655f GetSector; 16932 150::EnterSector; 16947 EnterSector; 16984 605::StartMainMonitor; 1666e 700::RunScript
+600::CreateAlloc: 367d5 B3D_SceneAlloc
+INS_CockpitSetSectorSpace 1: 1876b9 606::StartMonitor
+SA_SetSectorBackgroundType 3: 12313 621::PlayThread; 105fed 2001::SetBackgroundType; 107616 2001::Activate
+SA_AllocObject main 1 2: 11aad 621::Create subtype=ldmem 14; 1075fb 2001::Activate subtype=push0

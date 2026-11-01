@@ -304,3 +304,104 @@ the independently matched ordinary Scene sample.
 [Implementation and scoped evidence](../../verification/volumetric-fog.md#2026-10-30--fl-loading-cpu-prefill-implementation-checkpoint)
 record the host/code-generation checks and synthetic native wrapper witness;
 actual game transition availability and lead time remain open.
+
+## 7. Verified constants (2026-11-01)
+
+Targeted static RE after FL run 13 (the vanilla cards stayed 3–4 s after arriving in The Hole; the log
+has no `volumetric_fog_prefill` row, measured: the poll in `capture.cpp` reads AP's literal
+`0x0060850c`/`0x00607040`/`0x00606fc0` and is not reached on FL). X3FL.exe SHA-256 `e7f3aad8…1dfbb8`
+(provenance), side by side with `/mnt/c/X3AP-orig/X3AP.exe`; capstone over the file bytes and its base
+relocations. **The AP walk applies to FL unchanged in shape: the same manager list, node and sector
+layout, with the three image slots rebased.** §6's `fog_prefill_fl.h` is not in this tree (the Codex FL
+work is archived on `fl-codex`); FL has no prefill code today.
+
+Producer and checks (RVAs below; VA = module base + RVA, preferred base `0x400000`):
+
+```sh
+python3 tools/analysis/fl_fog_prefill_constants.py --check     # writes/compares src/engine/fl/fog_prefill_fl_inc.h
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fl_fog_prefill_constants
+python3 verification/results/fl-fog-prefill/kc_transit_route.py   # story route, names and CODE offsets only
+python3 verification/results/fl-fog-prefill/run13_stall.py         # runs 11–13 log: stalls > 200 ms, handover row
+```
+
+18 anchors / 159 whole instructions / 11 relocated operands / 66 operand witnesses (measured); every
+anchor is at most 111 bytes and 3 operands, accepted at bases `0x400000`, `0x4d0000`, `0x10000000` and
+refused for every single flipped byte (host test). Cross-checks: the shared slots and offsets equal
+`fl_sector_background_constants.py`'s (which anchors the count slot); eax holds `0xcafe` from its load
+at `0x49963` to the marker store at `0x49a20` (26 instructions, none writes eax); native command table
+`0x73dc4` routes case 0 → `0x6a6a3`, `0x128` → `0x6e909`, `0x133` → `0x6eaac` (AP's numbering:
+SA_AllocObject, SA_SetSpaceScene, SA_SetSectorBackgroundType).
+
+### 7.1 AP inputs of `fog_prefill.h` and their FL counterparts
+
+| AP (`fog_prefill.h`) | FL | Matched by | Status |
+| --- | --- | --- | --- |
+| `kManager` `0x0060850c` | slot RVA **`0x1a82ec`** | writer `0x778a9` stores the result of ctor `0x3dc30` (AP `0x403565`); cleanup walk `0x43cd0` = AP `0x43a460` instruction for instruction | verified |
+| list header `M+8` (head), `M+0xc` (tail 0), `M+0x10` (tailpred) | same | ctor `0x3dc88..0x3dc95`: `[M+8]=M+0xc`, `[M+0xc]=0`, `[M+0x10]=M+8` (AP inferred this; FL measured) | verified |
+| link prev `node+4`, next `node+0` | same | AddTail in sector ctor `0x5c14d..0x5c16a`, restore post-pass `0x4bea0..0x4beb6` (AP `0x442c31`), unlink `0x49602..0x49616` | verified |
+| type dword `+0x48` = class 1, subtype 0 | class word `+0x48`, subtype word `+0x4a` | common init `0x4995f`/`0x499f2`; sector ctor tests `+0x4a` at `0x5c195` | verified |
+| marker `+0x9c` == `0xcafe` | same; dead `0xefac` | `0x49963`/`0x49a20`; unlink then `0xefac` at `0x4961e`, then memset(obj, 0, 0x130) via `0x521920` | verified |
+| block `+0x130` (scene) … `+0x13c` (index, dword 3) | same | ctor zeroes `+0x130` at `0x5c18b`, `+0x13c` at `0x5c199`; setter stores `+0x130` at `0x5c264`; case `0x133` stores `+0x13c` at `0x6eac5` | verified |
+| id `+8` | same | ctor `0x5c181` stores the id-map insert result (`0x10cfe0`) | verified |
+| count `0x00607040`, table `0x00606fc0` | **`0x1a8338`**, **`0x1a83d0`** | `sector_background_fl_inc.h` anchors; table also in setter `0x5c278` | verified |
+| record recipe (`read_record`, stride `0xdb8` + `0x44`) | FL layout of `sector_background_fl` (`name_to_nul`) | unchanged | verified (sector-fog.md §6) |
+
+Differences from AP: FL is relocatable (every slot is `module_base() + RVA`); the sector constructor
+`0x5c110` inlines AP's common constructor AddTail (AP `0x43f93b`) and the sector initialisation (AP
+`0x4524d0`) with the same order: common init `0x49910` (class, subtype, `0xcafe`), AddTail, id-map
+insert (`CALL 0x10cfe0`, which allocates through the guarded allocator `0xd8fc0`), id store, then
+`+0x130..+0x178` (flags `+0x148 = 2` for subtype 0, size `+0x14c = 10,000,000`, `+0x178 = -1`, as AP).
+
+### 7.2 Answers
+
+1. **Inputs.** Table 7.1; anchors and witnesses in the generated include.
+2. **List.** Same Exec layout as AP: header at M+8 `{head, tail 0, tailpred}`, the backward walk's
+   head sentinel is `M+8`, node = the engine object itself (`+0` next, `+4` prev). There is no native
+   "pending destination" field: the destination is the newest class-1/subtype-0 node, appended at the
+   tail by `0x5c110` when the script's `2001::Activate` allocates it (`SA_AllocObject(1,0)`, KC
+   `0x1075fb`, args `push0; push1`), distinguished from the old sector by id `+8` and from cut-scene
+   spaces (`621::Create`, subtype `member14`) by subtype 0. The two main-class-1 allocation sites of
+   30 are those two (measured).
+3. **Timing.** The outer loop's head is `0x77e80` (back edge `0x78591`); per iteration the KC ready-task
+   runner `0x788b0` is called at `0x77ebf`, then the cockpit update at `0x782ca` and the render pass at
+   `0x782cf` (BeginScene `call [ecx+0xa4]` at `0x8b859`). The whole transit runs synchronously inside
+   one `0x77ebf` call: `150::WarpToSector` presents frames during the fade (`TI_Delay` `0x1a0cd`), then
+   tears down (`0x1a0d7` StopAllMonitors … `0x1a195` FreeAllBodies) and calls `150::EnterSector`
+   (`0x1a1aa`) → `2001::Activate`: alloc `0x1075fb`, index `0x107616`, scene `0x107656`; the sector is
+   readable by the walk from the scene store on, **before** the first destination object activation
+   at `0x1076fe` (bulk body/mesh/texture creation, the poll's opportunities). Cockpit `+0x54` is
+   written only by `INS_CockpitSetSectorSpace` in `606::StartMonitor` (`0x1876b9`, the sole site),
+   after `RestartAllMonitors` `0x1a24a`, still inside the same call; the arrival frame is the next
+   `0x782ca`/`0x782cf`. The window is therefore from `0x107656` to the end of the stall. Measured in
+   runs 11–13: the The Hole transit frame 23320 had `dt_ms=2667`; the handover armed at 23322 and
+   needed 45 frames / 490 ms (`fill_ms=471`). AP reference (run273 D): found 7.1 s into a 12.6 s stall.
+   The FL share of the 2.67 s after `0x107656` is not measured (needs FL poll rows); a lead above
+   ~0.5 s would hide the cold fill (inferred from `fill_ms=471`).
+4. **Codex notes.** Confirmed: slot `0x5a82ec`, ctor `0x43dc30` and header init, sector AddTail
+   without a CALL, publication before initialisation, unlink/marker, cleanup `0x443cd0`, scene setter
+   with no CALL, index store `0x46eac5`, recovery guard `0x62de10` (set `0x4d900c`/`0x4d905c`, cleared
+   `0x4d901c`/`0x4d906c`), every KC offset in §§1–2 and the 30-site census. Settled: the id-map insert
+   between AddTail and the `+0x130` zeroing does allocate (`0x50cfe0` → `0x50cf30` → `0x4d8fc0`), so
+   a resource callback inside allocation recovery could see a linked, typed, `0xcafe` sector with an
+   unset scene/index; refusing the poll while `[guard slot]` is nonzero closes it (one extra read; the
+   AP poll has the same window unguarded). Corrected: §1's "placement `0x44ccb0`" is a second relink
+   path (unlink, per-class child AddTail, parent at `0x44ceb1`); the counterpart of AP's
+   `SA_StartObjectInSpace` `0x449510` is **`0x452b70`** (parent at `0x452c53`, scene attach
+   `0x452c78 → 0x4a56b0`, as prefill-ready.md has it). The "134 scalar loads" bound and the
+   SEH/finite-copy requirements of §3 are Codex design, not engine facts, and were not re-examined.
+   `gate-transit.md` and `gate-bootstrap.md` carry no prefill input.
+5. **Gate vs jump.** Same structure: `2004::FlyThroughGate` → `150::StartGateWarp`;
+   `2004::JumpToSector` → `StartGateWarp` or `StartSectorWarp`; `2004::HyperspeedToSector` →
+   `StartGateWarp`; both starts → `150::WarpToSector` → `150::EnterSector` → `Activate` (`0x19976`).
+   `150::QuickWarp` calls `150::EnterSector` at `0x1a7dd` without the fade. All allocate through native
+   case 0 → `0x6a71e` (`0x180` bytes) → `0x5c110`. `2001::Activate` returns the existing sector when
+   its member 37 is positive (already active), so a transit into an active sector appends nothing.
+
+Hook-site suitability: no patch and no instruction boundary; the walk runs in the existing
+`CreateTexture`/`CreateVertexBuffer` wrappers on the render thread, as on AP. Every list mutation
+named above (AddTail, unlink, relink) is CALL-free, so a callback never observes a half-linked node;
+the only reentrant hazard is the allocation-recovery callback, covered by the guard read.
+
+Unknown: the post-`0x107656` share of an FL stall and the tail occupancy at the first poll (needs
+an FL build with the walk and a flight); whether 0x4d9120's allocation is zeroed (it decides what an
+unguarded mid-construction read sees; irrelevant with the guard).
