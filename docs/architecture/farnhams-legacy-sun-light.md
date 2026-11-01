@@ -30,12 +30,17 @@ cascades: `status=disabled reason=setting`. Every 10 s (`fl_sun_light_log`), at 
 candidates=… slot_admitted=… admitted=… engine_rule=1 rules_agree=1 score=0x3xx second=… flags=0x008000x4
 pos=… colour=… admission_pos=… record=1 record_pos=…`. `reads` and the status counts cover the period; the rest
 describe the row's own poll. Downstream: `shadow_replay_sun_source … source=point reason=point poll=ok`,
-`shadow_sun_frame … source=point`, and `volumetric_fog_sun` with the polled radiance instead of `source=fallback`.
+`shadow_sun_frame … source=point`, and `volumetric_fog_frame … sun=tracked` (the fog's sun radiance from the polled
+colour) with no `volumetric_fog_sun … source=fallback` row; that row appears once only when the fog falls back.
 
 **What a flight must show.** In a sector with a sun: `ok` ≈ `reads`, `layout=0`, `unreadable=0`, `engine_rule=1`,
 `score` ≥ 0x300, `flags` with 0x800000, one stable `pos` per sector (it changes with the sector or a gate jump),
 `record=1`. `shadow_replay_sun_source` must settle on `point`, not `disagrees` or `unavailable`, with
-`agreement_deg` small in `shadow_sun_frame` (perf tier). Shadows must keep the run 10 direction. `layout` > 0
+`agreement_deg` small in `shadow_sun_frame` (perf tier). `shadow_replay_sun_point … record_scale` (perf tier: the
+chosen node's record x over its integer x) must read about 0.01. The shared `point_sun_context_scale` (0.01, from
+AP) converts FL positions too, and sun-light.md warns that scale is unverified for FL; another value means the
+point sun is mis-scaled on FL and the poll must not drive shadows until the scale is owned. Shadows must keep the
+run 10 direction. `layout` > 0
 means the slot count is not 8 on this adapter (renderer caps +0x4f4) or a non-light entry appeared; `no_directional`
 in flight means the sun lacks 0x800000 and the range rule. Neither should occur; either is a finding for
 sun-light.md, not a reason to relax the gate. A sector without a sun may show `no_directional` or the admission

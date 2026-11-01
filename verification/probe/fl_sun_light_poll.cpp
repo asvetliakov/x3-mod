@@ -207,6 +207,31 @@ void selection_cases() {
           "D: admission scores and counts");
     std::printf("CASE D status=%s engine_rule=%u score=0x%x second=0x%x\n", sp::status_name(s.status),
                 unsigned(s.engine_rule), s.score, s.second_score);
+    // E: a negative range word is not above the threshold (signed compare): a bright point light with range -1 or
+    // INT32_MIN stays out of the Dir slot and the dim directional light wins. Unsigned, both would be admitted.
+    write_node(node(0), L | P, 71, 72, 73, 30000, 30000, 30000, -1, 0);
+    write_node(node(1), L | D, 81, 82, 83, 100, 50, 20, 0, 0);
+    write_node(node(2), L | S, 91, 92, 93, 32000, 32000, 32000, INT32_MIN, 0);
+    {
+        const uint32_t e[] = {addr(node(0)), addr(node(1)), addr(node(2))};
+        set_array(e, 3);
+    }
+    check(poll(&s) && position_is(s.position, 81, 82, 83) && s.slot_admitted == 1 && s.score == 0x300u + 61u,
+          "E: negative range words not admitted by the threshold");
+    std::printf("CASE E status=%s slot_admitted=%u score=0x%x pos=%d,%d,%d\n", sp::status_name(s.status),
+                s.slot_admitted, s.score, s.position[0], s.position[1], s.position[2]);
+    // F: equal scores: the farther node wins in either array order, under both rules.
+    for (unsigned order = 0; order < 2; ++order) {
+        write_node(node(order), L | D, 10, -20, 30, 100, 100, 100, 0, 0);
+        write_node(node(1 - order), L | D, 5, -900000, 7, 100, 100, 100, 0, 0);
+        const uint32_t e[] = {addr(node(0)), addr(node(1))};
+        set_array(e, 2);
+        check(poll(&s) && position_is(s.position, 5, -900000, 7) && position_is(s.admission_position, 5, -900000, 7) &&
+                  s.score == s.second_score && s.score == 0x300u + 100u && s.rules_agree,
+              "F: tie goes to the farther node");
+        std::printf("CASE F order=%u score=0x%x second=0x%x pos=%d,%d,%d\n", order, s.score, s.second_score,
+                    s.position[0], s.position[1], s.position[2]);
+    }
     // No light admitted by either rule.
     write_node(node(0), L | P, 1, 1, 1, 100, 100, 100, 1000, 0);
     {

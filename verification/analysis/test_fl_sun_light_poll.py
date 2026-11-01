@@ -75,6 +75,9 @@ class FlSunLightNativeFixture(unittest.TestCase):
         self.assertIn(f'CASE D status=ok engine_rule=0 score=0x{0x300 + luma(40, 40, 40):x} '
                       f'second=0x{0x300 + luma(10, 10, 10):x}', out)
         self.assertIn('CASE none status=no_directional', out)
+        self.assertIn(f'CASE E status=ok slot_admitted=1 score=0x{0x300 + luma(100, 50, 20):x} pos=81,82,83', out)
+        for order in (0, 1):
+            self.assertIn(f'CASE F order={order} score=0x364 second=0x364 pos=5,-900000,7', out)
         for count in (0, 7, 9, 0xffffffff):
             self.assertIn(f'CASE slot_count={count} status=layout', out)
         self.assertIn('CASE non_light status=layout', out)

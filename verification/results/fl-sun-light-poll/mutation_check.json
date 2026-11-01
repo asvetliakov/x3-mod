@@ -1,0 +1,55 @@
+{
+ "source_sha256": "7f301bf753226925c315fc96fb93f4279bd02e599f01dd402ba5a1703df5bc46",
+ "round_not_truncate": {
+  "result": "FAIL",
+  "checks": 76,
+  "failures": 6,
+  "failed": [
+   "A: score trunc(61.53) + 0x300",
+   "B: score trunc(183.7), no bonus",
+   "C: (128,128,128) scores 127, (0,1,0) 0",
+   "C: truncated score ranks (0,2,0) over the farther (3,0,0)",
+   "E: negative range words not admitted by the threshold",
+   "fl.sun_light_sample fields"
+  ]
+ },
+ "node_read_0xc8": {
+  "result": "FAIL",
+  "checks": 76,
+  "failures": 1,
+  "failed": [
+   "node read is exactly +0xb0..+0x173"
+  ]
+ },
+ "light_bit_removed": {
+  "result": "FAIL",
+  "checks": 76,
+  "failures": 1,
+  "failed": [
+   "a non-light entry refused"
+  ]
+ },
+ "unsigned_range_compare": {
+  "result": "FAIL",
+  "checks": 76,
+  "failures": 1,
+  "failed": [
+   "E: negative range words not admitted by the threshold"
+  ]
+ },
+ "tie_rule_removed": {
+  "result": "FAIL",
+  "checks": 76,
+  "failures": 1,
+  "failed": [
+   "F: tie goes to the farther node"
+  ]
+ },
+ "unmutated": {
+  "result": "PASS",
+  "checks": 76,
+  "failures": 0,
+  "failed": []
+ },
+ "restored": true
+}

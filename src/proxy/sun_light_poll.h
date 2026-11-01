@@ -35,6 +35,10 @@
 // established). Both winners are reported so a flight shows any divergence; the
 // caller cross-checks the result against the shader constants before trusting
 // it (shadow_replay_sun_point.h).
+// The executable-specific values above and below (absolute VAs, colour +0x150, range +0x158, record +0x16c, the
+// 192-byte node read, the rounded luma) are the X3AP.exe layout of sun_light_poll.cpp; the FL edition's
+// src/engine/fl/sun_light_poll_fl.cpp implements the same contract with the X3FL.exe values from its generated
+// sun_light_poll_fl_inc.h (base + RVA, +0x154/+0x15c/+0x170, a 196-byte read, the engine's truncated luma).
 #include <cstdint>
 
 namespace x3m::sun_light_poll {
