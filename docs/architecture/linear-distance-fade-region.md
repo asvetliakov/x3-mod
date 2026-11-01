@@ -1058,12 +1058,16 @@ draw takes; the overlay arm (material alpha, not a distance fade) and every opaq
   program (`ps_original_fill_variant`, `ps_hull_lightmap_variant`, `ps_hull_lightmap_widen`). Their oC1/oC2 words are
   the motion variant's (the same `material_motion_pixel_variant_for` composition), and COLORWRITEENABLE2 0 drops the
   lane writes as before.
-- **Owner on the lane** (`X3M_FADE_RT2_OWNER`, the default): the invalid-share form of the same program
+- **Owner on the lane** (`X3M_FADE_RT2_OWNER`; the DLL default is off, the launcher sends `on` since Run 81): the
+  invalid-share form of the same program
   (`ShaderEntry::sun_fill_variant`, `sun_lightmap_variant`, `sun_lightmap_widen_variant`: the parent plus
   `material_motion_invalid_sun_share`'s leading `def c221` and trailing `mov oC2.g, c221.x`), exactly as
   `sun_motion_variant` is made from the motion variant. RT2 .g = -1: no share, never a receiver; .r/.a are the owner
   fragment's, unchanged. Created at registration beside their parent only with the lane and the owner on; a refused
-  form (one `fade_owner_form_refused` row) leaves the owner on `ps_sun_motion`, as before.
+  form (one `fade_owner_form_refused` row) leaves the owner on `ps_sun_motion`, as before; a program with at least
+  one created form logs one `fade_owner_forms ... fill= gain= widen= slots=` row at registration.
+- **Evidence in a log**: `fade_route_frame` carries `fade_fill=`, `fade_gain=`, `fade_widen=`: of `fade_routed`
+  (overlay rows excluded), the rows that bound the fill / a gained / a widened program in that row's interval.
 - Never the share producer (`ps_sun_original*`): a fade row does not write depth and stays out of the receiver set,
   the thin vote and the shadow-receiver count, as before.
 - **Alpha**: the fill block writes the lobe sum's `.xyz` and the gain MUL `rL.xyz` (default destination mask), so
@@ -1077,6 +1081,6 @@ Cost: per draw, two bool tests and up to three pointer compares in `bind_variant
 constant upload (the fill reads the DEF'd c215 and the game's light constant; the gain's c217.w rides the existing
 upload, whose `gain_pair` gate covers every gained selection). At registration, up to three more programs per
 reviewed pixel shader with the lane and the owner on. Host fixture: `motion_wrap_state_fixture.cpp`
-`fade_band_fill_selection` (19 rows). Native D3D9 validator: AP 122/122 and FL 133/133 generated programs (owner forms
+`fade_band_fill_selection` (24 rows). Native D3D9 validator: AP 122/122 and FL 133/133 generated programs (owner forms
 and their strength twins) pass (`verification/results/run216-distant-dark/fade_owner_forms_native*.json`). Ledger:
 [fill-light.md](../verification/fill-light.md) "Fade-band fill".

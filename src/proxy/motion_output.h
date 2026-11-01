@@ -446,6 +446,9 @@ struct MotionFrameCounters {
     std::uint32_t fade_tested = 0; // of fade_routed, admitted with the alpha test on (fade-alpha-cutout-ownership.md)
     std::uint32_t fade_owner_masked = 0; // X3M_FADE_RT2_OWNER: fade-arm rows kept masked on the lane RT2 (no
                                          // invalid-share twin)
+    // Of fade_routed: rows that bound the fill / a gained / a widened program (fade-band fill,
+    // linear-distance-fade-region.md); on the fade_route_frame line.
+    std::uint32_t fade_fill = 0, fade_gain = 0, fade_widen = 0;
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves

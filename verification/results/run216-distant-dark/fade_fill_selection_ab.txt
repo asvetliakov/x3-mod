@@ -1,6 +1,6 @@
-working tree: motion_wrap_states checks=34943 failures=0 fade_band_fill_selection_fails=0 other_fails=0
+working tree: motion_wrap_states checks=34973 failures=0 fade_band_fill_selection_fails=0 other_fails=0
   failing cases: none
-base c2838446: motion_wrap_states checks=34943 failures=16 fade_band_fill_selection_fails=16 other_fails=0
-  line 873: CHECK(d.bound_ps == &(p.*c.expected)); x8
-  line 874: CHECK(r.original_fill == c.filled && r.hull_lightmap == c.gained && r.hull_lightmap_widen == c.widened); x8
-  failing cases: 7,8,9,10,11,12,13,15
+base c2838446: motion_wrap_states checks=34973 failures=24 fade_band_fill_selection_fails=24 other_fails=0
+  line 883: CHECK(d.bound_ps == &(p.*c.expected)); x12
+  line 884: CHECK(r.original_fill == c.filled && r.hull_lightmap == c.gained && r.hull_lightmap_widen == c.widened); x12
+  failing cases: 7,8,9,10,11,12,13,15,19,20,21,22

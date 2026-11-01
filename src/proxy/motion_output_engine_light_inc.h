@@ -272,8 +272,9 @@ HRESULT MotionOutput::engine_light_upload() noexcept {
 }
 // Before bind_variant_pair on a routed draw: log the draw for the next frame when its node or its parent is a lit ship's
 // root this frame (the log then holds the lit ships' hull draws only, not the scene's thousands), and decide whether its
-// node is lit (route.engine_light_want, the constants in engine_light_->constants). Like the fill, never on a fade-arm
-// draw (its own RT2 and blend contract).
+// node is lit (route.engine_light_want, the constants in engine_light_->constants). Never on a fade-arm draw: unlike
+// the fill and the light-map gain (fade-band fill, linear-distance-fade-region.md), the fade owner's lane forms have
+// no engine-light twin.
 void MotionOutput::engine_light_prepare(MotionRoute& route, bool material) noexcept {
     route.engine_light_want = false;
     if (!engine_light_requested_ || !engine_light_ || material || route.fade_arm || !shadow_.engine_light_pair) return;

@@ -205,10 +205,13 @@ the plain fill-family program when RT2 is masked, the program's invalid-share fo
 `sun_lightmap_variant` / `sun_lightmap_widen_variant`) for an owner on the sun lane; never the share producer, never a
 receiver; the overlay arm, the engine light and every opaque row unchanged
 ([linear-distance-fade-region.md](../architecture/linear-distance-fade-region.md) "Fade-band fill"). No settings key.
-Evidence: host fixture `fade_band_fill_selection` (19 rows) in `test_motion_wrap_states` passes (34943 checks, 0
-failures); against the pre-change `bind_variant_pair` (c2838446) the same fixture fails exactly the 8 masked/owner
-fade rows and passes the 7 opaque, 1 overlay, 2 fill-less and 1 refused-form rows
-(`verification/results/run216-distant-dark/fade_fill_selection_ab.py` → `fade_fill_selection_ab.txt`). Native D3D9
+Evidence: host fixture `fade_band_fill_selection` (24 rows) in `test_motion_wrap_states` passes (34973 checks, 0
+failures); against the pre-change `bind_variant_pair` (c2838446) the same fixture fails exactly the 12 fade rows that
+now take the fill / gain family (masked, owner, fill 0 with the light-map flag on, owner withdrawn, owner fill form
+refused) and passes the 7 opaque, 1 overlay, 2 fill-less flag-off and 2 refused-form flag-off rows
+(`verification/results/run216-distant-dark/fade_fill_selection_ab.py` → `fade_fill_selection_ab.txt`).
+Follow-up after review (2026-11-02): `fade_route_frame` gains `fade_fill= fade_gain= fade_widen=` and registration
+logs one `fade_owner_forms` row per program with created owner forms, so a flight log shows the fix directly. Native D3D9
 validator (`gen_fade_owner_forms.cpp` + `hull-widen-native-validator/native_validate.cpp`, `summarize_native.py`):
 AP captures 22 programs, 62 owner forms + 60 strength twins, 122/122 pass, the asteroid PS's `ofill` included; FL
 captures 23 programs, 133/133 pass. Focused host suite (14 modules: original fill, fill default, fade region, sun
@@ -218,4 +221,5 @@ motion-output runner, wrap states, material strength): 135 tests OK, 10 corpus s
 Flight check (open): fly toward a large asteroid (and a station) from beyond its fade distance; F8 once in the fade
 band and once after it turns opaque. Pass: the asteroid's dark side has the same HDR luminance in both captures (no
 step; previously 0.000 vs 0.070) and the station's windows keep their brightness; the only visible transition is
-the engine's own alpha ramp.
+the engine's own alpha ramp. Log: `fade_owner_forms` rows at load and `fade_fill` > 0 on `fade_route_frame` while
+the asteroid is in the band.

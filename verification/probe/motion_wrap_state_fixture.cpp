@@ -804,6 +804,8 @@ void fade_band_fill_selection() {
         bool lane, fill, gain, widen, owner_forms, share;
         Shader Programs::*expected;
         bool filled, gained, widened;
+        bool sun_motion = true; // the lane's ps_sun_motion exists (else the owner is withdrawn: RT2 masked)
+        bool fill_form = true;  // with owner_forms: ps_sun_fill exists (else only the gained forms were created)
     };
     const Case cases[] = {
         // Opaque rows: unchanged (the owner's lane forms exist but are never chosen).
@@ -831,6 +833,14 @@ void fade_band_fill_selection() {
         {Owner, true, false, false, false, true, true, &Programs::sun_motion, false, false, false},
         // The overlay arm (material alpha, not a distance fade): unchanged.
         {Overlay, false, true, true, false, true, false, &Programs::motion, false, false, false},
+        // original_fill 0 with the light-map flag on: the gained program (created with K = 0), plain or the owner's.
+        {Masked, false, false, true, false, true, false, &Programs::gain, false, true, false},
+        {Owner, true, false, true, false, true, true, &Programs::sun_gain, false, true, false},
+        // The owner withdrawn (no ps_sun_motion): RT2 masked (fade_owner_masked 1), the plain fill family.
+        {Owner, true, true, true, false, true, true, &Programs::gain, true, true, false, false},
+        // The owner's fill form refused, its gained form created: the gained form (it carries K itself).
+        {Owner, true, true, true, false, true, true, &Programs::sun_gain, false, true, false, true, false},
+        {Owner, true, true, false, false, true, true, &Programs::sun_motion, false, false, false, true, false},
     };
     for (const auto& c : cases) {
         const unsigned before = failures;
@@ -842,12 +852,12 @@ void fade_band_fill_selection() {
         m.shadow_.ps_original_fill_variant = &p.fill;
         m.shadow_.ps_hull_lightmap_variant = &p.gain;
         m.shadow_.ps_hull_lightmap_widen = &p.widen;
-        m.shadow_.ps_sun_motion = &p.sun_motion;
+        m.shadow_.ps_sun_motion = c.sun_motion ? &p.sun_motion : nullptr;
         m.shadow_.ps_sun_original = &p.share;
         m.shadow_.ps_sun_original_lightmap = &p.share_gain;
         m.shadow_.ps_sun_original_lightmap_widen = &p.share_widen;
         if (c.owner_forms) {
-            m.shadow_.ps_sun_fill = &p.sun_fill;
+            m.shadow_.ps_sun_fill = c.fill_form ? &p.sun_fill : nullptr;
             m.shadow_.ps_sun_lightmap = &p.sun_gain;
             m.shadow_.ps_sun_lightmap_widen = &p.sun_widen;
         }
@@ -873,7 +883,8 @@ void fade_band_fill_selection() {
         CHECK(d.bound_ps == &(p.*c.expected));
         CHECK(r.original_fill == c.filled && r.hull_lightmap == c.gained && r.hull_lightmap_widen == c.widened);
         CHECK(!r.sun_receiver || c.row == Opaque); // a fade row is never a receiver
-        CHECK(r.fade_owner == (c.row == Owner) && m.counters_.fade_owner_masked == 0);
+        const bool withdrawn = c.row == Owner && c.lane && !c.sun_motion;
+        CHECK(r.fade_owner == (c.row == Owner && !withdrawn) && m.counters_.fade_owner_masked == unsigned(withdrawn));
         CHECK(m.undo(r) == S_OK);
         m.release_restore(r);
         if (failures != before) std::printf("fade_band_fill case=%u\n", unsigned(&c - cases));

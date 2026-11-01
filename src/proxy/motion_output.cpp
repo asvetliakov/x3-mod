@@ -4742,6 +4742,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             // the lane and the owner on; a refusal leaves the owner on sun_motion_variant (no fill, as before).
             const bool owner_forms = sun_lane_requested_ && fade_rt2_owner_ && entry.sun_motion_variant &&
                                      renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_);
+            // Created forms are named once per program after the gain block (fade_owner_forms row), refusals at once.
+            std::uint32_t owner_slots = 0;
             const auto owner_form = [&](IDirect3DPixelShader9*& out, const char* form) {
                 const HRESULT owner_hr = renderer::material_motion_invalid_sun_share(words)
                                              ? native<CreatePsFn>(CreatePixelShader)(
@@ -4751,6 +4753,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     release(out);
                     log("fade_owner_form_refused device=%llu original=%016llx form=%s create=%08lx words=%u", id_, hash,
                         form, owner_hr, unsigned(words.size()));
+                } else {
+                    const std::uint32_t slots = renderer::ps3_program_slots(words.data(), words.size());
+                    if (slots > owner_slots) owner_slots = slots;
                 }
             };
             // Option C fill (original-shading-critique.md 1a): the same motion
@@ -4842,6 +4847,10 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                         owner_form(entry.sun_lightmap_widen_variant, "widen");
                 }
             }
+            if (entry.sun_fill_variant || entry.sun_lightmap_variant || entry.sun_lightmap_widen_variant)
+                log("fade_owner_forms device=%llu original=%016llx fill=%u gain=%u widen=%u slots=%lu", id_, hash,
+                    unsigned(entry.sun_fill_variant != nullptr), unsigned(entry.sun_lightmap_variant != nullptr),
+                    unsigned(entry.sun_lightmap_widen_variant != nullptr), static_cast<unsigned long>(owner_slots));
             // Original-shading share producer (legacy-sun-application.md section
             // 1): the lane's bind pair for a routed reviewed original pair, the
             // motion/depth variant composed with the fill K (0 without the
@@ -8826,6 +8835,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     else if (route.fade_arm) {
         ++counters_.fade_routed;
         if (route.fade_held) ++counters_.fade_held;
+        // Fade-band fill: what the routed fade row bound (the route flags bind_variant_pair set).
+        if (route.original_fill) ++counters_.fade_fill;
+        if (route.hull_lightmap) ++counters_.fade_gain;
+        if (route.hull_lightmap_widen) ++counters_.fade_widen;
         if (route.fade_tested) ++counters_.fade_tested;
     }
     if (route.linear_material) {
@@ -10764,12 +10777,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             // Original shading: the fade-band arm's frame counters and the
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
-            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu",
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu fade_fill=%lu fade_gain=%lu fade_widen=%lu",
                 id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused),
                 static_cast<unsigned long>(c.fade_held), fade_route_threshold_, unsigned(cutout_caps_),
                 static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
                 static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_),
-                static_cast<unsigned long>(c.fade_owner_masked), static_cast<unsigned long>(c.fade_tested));
+                static_cast<unsigned long>(c.fade_owner_masked), static_cast<unsigned long>(c.fade_tested),
+                static_cast<unsigned long>(c.fade_fill), static_cast<unsigned long>(c.fade_gain),
+                static_cast<unsigned long>(c.fade_widen));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"

@@ -3,8 +3,8 @@
 Builds the host fixture twice: against the working tree's bind_variant_pair and against the one at <base>
 (default c2838446, the pre-change commit), and prints, per build, the failing CHECK lines inside
 fade_band_fill_selection and the case rows they belong to. Expected: the working tree fails none; the base
-fails only on the masked/owner fade rows that now take the fill family (every opaque, overlay and fill-less
-fade row passes on both, i.e. their selection is unchanged).
+fails only on the fade rows that now take the fill / gain family (every opaque and overlay row, and every fade
+row without the fill and with the light-map flag off, passes on both, i.e. its selection is unchanged).
 usage: python3 fade_fill_selection_ab.py [<base rev>]
 """
 import re
