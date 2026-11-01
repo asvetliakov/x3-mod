@@ -44,3 +44,31 @@ than the ledgers hold. Decision: `triage` stays Opus 5.5 low for locating
 evidence; use medium (`triage-deep`, added the same day) only when
 the question is "why", not "where". Nine agents, all read-only, no repository
 edits; scratch tables under the session scratchpad only.
+
+## 2026-11-01: implement-deep A/B on the FL scope hook (Fable medium vs Opus 5.5 high)
+
+Task: the first Farnham's Legacy code hook, an FL `object_trace` (one 5-byte
+CALL rewrite at RVA 0xe7142 with a register ABI that differs from AP, a naked
+dispatcher with SEH, generated anchors, native fixture, host test, design note).
+Byte-identical brief, separate worktrees, same base (171e5477), neither agent
+aware of the other. One blind `review` at Opus 5.5 high judged them as A and B.
+
+| | A: Fable, medium | B: Opus 5.5, high |
+| --- | --- | --- |
+| tokens (measured) | 234,786 | 324,109 |
+| agent time (measured) | 23.7 min | 27.4 min |
+| tool uses | 80 | 156 |
+| fixture checks | 182 | 274 (adds XMM/x87/MXCSR, ECX, EBP, threads, sample row) |
+| host tests | 21 pass | 21 pass |
+| review: medium findings unique to it | SSE2 + exceptions compiled into the hook (XMM0 clobbered in the dispatcher's enter path); `log()` inside the engine call without `call_preserved`; AP-address capture block (0x608504/0x606f34) left reachable under FL | none |
+| review: shared medium findings | buffer-write tracking turned on by `active()`; fade paths run with an unqualified FL scope | same |
+| brief errors caught | none | wrapper RVA typo (0x96ef0 → 0xe6ef0) |
+
+Verdict: B selected; A's anchor fixture block and `camera_unreadable` counter
+folded in. Opus 5.5 high cost 1.4x the tokens and 1.15x the time, found the
+two defects that mattered for a hook (CPU-state discipline and an AP-address
+read reachable in the FL image) and one brief error. Decision (user,
+2026-11-01): `implement-deep` is Opus 5.5 high for every hook/ABI/lifetime
+task, uncertain invariants included; hook reviews run at Opus 5.5 high; Fable
+is reserved for the main session and `design`. One comparison on one task; the
+step 3b lifetime hooks are the planned second data point.

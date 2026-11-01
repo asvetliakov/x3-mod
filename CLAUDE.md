@@ -34,10 +34,9 @@ prompt-engineering/prompting-claude-opus-5-5.
 
 | Task | Agent | Model / effort |
 | --- | --- | --- |
-| Hooks, ABI, lifetime, GPU transactions, install-bound change with established invariants | `implement-deep` | Opus 5.5, high |
-| Same, but the change must establish or validate an uncertain invariant | `implement-deep` with `model: "fable"` | Fable, medium |
+| Hooks, ABI, lifetime, GPU transactions, install-bound change, including one that must establish or validate an uncertain invariant | `implement-deep` | Opus 5.5, high (A/B 2026-11-01 on the FL scope hook: Opus found two defects Fable missed at 1.4x the tokens; `docs/verification/model-routing.md`) |
 | Well-specified change with a fixture that proves it (defaults, tooling, launcher, docs, small patches) | `implement` | Opus 5.5, medium |
-| Independent review before a checkpoint commit | `review` | Opus 5.5, medium |
+| Independent review before a checkpoint commit | `review` | Opus 5.5, medium; hook, ABI or lifetime changes pass `effort: "high"` |
 | Run fixtures, host tests, hash checks; compare readbacks | `verify` | Sonnet 5, medium |
 | Log and capture triage: narrow a symptom to evidence | `triage` | Opus 5.5, low (A/B 2026-09-22: matched Sonnet 5 medium on every number at ~0.4x the tokens; `docs/verification/model-routing.md`) |
 | Triage that must explain, not only locate (a "why" question, or a plain triage that found the rows but no cause) | `triage-deep` | Opus 5.5, medium |
@@ -45,16 +44,17 @@ prompt-engineering/prompting-claude-opus-5-5.
 | Design note for a hard decision | `design` | Fable, high |
 | Locate code or facts across many files | built-in `Explore` | Inherits the session model capped at Opus, so Opus 5.5 at session effort; pass `model: "sonnet"` for a broad, cheap sweep |
 
-Escalation: a `review` of hook or ABI code that finds nothing but the change is
-consequential gets a second `review` on Fable (pass `model: "fable"`). A `triage`
+Escalation: a clean `review` does not trigger a second review; choose the
+review effort upfront (high for hook, ABI and lifetime code). A `triage`
 that located the rows but cannot explain them goes once to `triage-deep`; if
-that also cannot explain the symptom, its evidence goes to `implement-deep` on
-Fable for diagnosis, never to a third triage.
+that also cannot explain the symptom, its evidence goes to `implement-deep`
+(Opus 5.5 high) for diagnosis, never to a third triage. Fable is used only by
+the main session and the `design` agent (user decision 2026-11-01).
 
 Fixture-verifiable retry policy: dispatch on `implement` (Opus 5.5 medium). If
 the fixture fails, the task was misclassified: spawn a fresh `implement-deep`
 (Opus 5.5 high) with the same brief and the failure output; if that fails too,
-spawn `implement-deep` with `model: "fable"`. Do not continue the failed agent.
+escalate to the main session with the failure witness. Do not continue the failed agent.
 
 Parallel design (opt-in, for the hardest decisions only): spawn `design` twice,
 once on Fable high and once with `model: "opus"`, with the same brief
