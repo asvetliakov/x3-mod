@@ -54,3 +54,16 @@ Result (user: behaves like run 0; log session 20261101-141549, measured):
 the only engine refusal left is `volumetric_fog_sector reason=foreign_executable`
 from the kept sector reader. **Accepted.** The live base 0x4d0000 confirms that
 the inherited preferred-base addresses must be used as RVAs.
+
+## FL run 2 — camera_state provider (installed 2026-11-01)
+
+Candidate: commit `8438025e`, `build-fl/d3d9.dll` SHA-256 `e589ebeb…`,
+unstripped, 0 warnings ([record](../../verification/results/fl-run2/candidate.json)).
+Installed to `C:\X3FL\d3d9.dll`, bytes verified; rollback
+`C:\X3FL\rollback-d3d9\d3d9.dll.run1`. Design:
+[camera note](../architecture/farnhams-legacy-camera.md). Expected in `x3m.log`:
+`fl.camera status=active` with the two anchors matched at the live base, then
+every 10 s two `fl.camera_sample` rows (`k=0` sky read, `k=1` scene read) with
+`read_failure=0 shape=persp aspect=3.556`, `ortho_dot`/`ortho_len` below 1e-3,
+`t_len` > 0 on `k=1`, `changed=1` while flying. Image still vanilla (no TAA
+history yet). Result: pending.
