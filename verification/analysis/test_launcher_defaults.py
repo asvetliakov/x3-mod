@@ -23,11 +23,11 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 # The Run 84 A stand command without --loading-intervals (removed 2026-09-25), with its telemetry/debug options as the
 # two logging groups and without --capture-start / --capture-delay (both removed 2026-09-26); its emission gain 2 became
-# gain 1, clamp 0.7 and lens-flare gain 0.3 with the 2026-09-29 defaults (user decision after Run 103 A).
+# gain 1, clamp 0.7 and lens-flare gain 1 since 2026-11-01 (0.3 from 2026-09-29 to 2026-11-01 dimmed the sun).
 STAND = ('--direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa '
          '--debug --perf --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 '
          '--crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 '
-         '--screen-emission-additive-alpha 0 --emission-source-gain 1 --emission-source-clamp 0.7 --lens-flare-gain 0.3 --sun-shadow-lane '
+         '--screen-emission-additive-alpha 0 --emission-source-gain 1 --emission-source-clamp 0.7 --lens-flare-gain 1 --sun-shadow-lane '
          '--shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on '
          '--shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance '
          '--shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 '
@@ -49,7 +49,7 @@ EXPECTED_EMPTY = {
     'X3M_CHASE_VIEW_RESTORE': '1', 'X3M_CHASE_VIEW_RESTORE_RETRIES': '3', 'X3M_COLLIDE_BOX_CULL': '1', 'X3M_COLLIDE_MEMO': '1', 'X3M_COLLIDE_SAT_SSE2': '1',
     'X3M_CRYPT_CACHE': '1', 'X3M_CULL_DOCK_PARTS_PX': '12.0000', 'X3M_CULL_SMALL_PARTS_PROJECTILES': 'on', 'X3M_CULL_SMALL_PARTS_PX': '4.0000', 'X3M_DAT_HANDLES': '1',
     'X3M_DUST_LEAK_FIX': 'on', 'X3M_CIRCLE_FILL_FIX': 'on',
-    # 2026-09-29 (Run 103 A): gain 1, cores capped at 0.7, lens flares at 0.3 (screen-emission.md, sun-occlusion.md).
+    # 2026-09-29 (Run 103 A): gain 1, cores capped at 0.7, lens flares 0.3 until 2026-11-01, now 1 (screen-emission.md, sun-occlusion.md).
     'X3M_EMISSION_SOURCE_CLAMP': '0.7', 'X3M_EMISSION_SOURCE_GAIN': '1.0', 'X3M_FADE_RT2_OWNER': 'on', 'X3M_FADE_RT2_OWNER_DEFAULT': '1', 'X3M_FOG_DOCKED': '1', 'X3M_FOG_DUST_MOTES': '1300,3,128',
     'X3M_FOG_HANDOVER_COLDFILL': '1', 'X3M_FOG_HANDOVER_PREFILL': '1', 'X3M_FOG_HANDOVER_STEP': '1',
     'X3M_FOG_DISTANCE': '3', 'X3M_FOG_MARCH_SCALE': '4', 'X3M_FOG_MOTES_MAX_PX': '8', 'X3M_FOV': '90',
@@ -258,10 +258,10 @@ class LauncherDefaults(unittest.TestCase):
         self.assertIn('--run-in-background cannot be combined with --vanilla', error)
 
     def test_lens_flare_gain_default(self):
-        # Default 0.3 on every modded --motion-output launch since 2026-09-29 (the empty-command stand above); not filled
+        # Default 1 on every modded --motion-output launch since 2026-11-01 (0.3 before) (the empty-command stand above); not filled
         # with --no-motion-output or under --vanilla. An explicit value is sent fixed-point with trailing zeros dropped
         # (the schema default's text), in player mode too; out of range, --vanilla and --no-motion-output are refused.
-        self.assertEqual(self.env()['X3M_LENS_FLARE_GAIN'], '0.3')
+        self.assertEqual(self.env()['X3M_LENS_FLARE_GAIN'], '1')
         self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env('--no-motion-output'))
         self.assertNotIn('X3M_LENS_FLARE_GAIN', self.env(vanilla=True))
         self.assertEqual(self.env('--lens-flare-gain', '0.5')['X3M_LENS_FLARE_GAIN'], '0.5')
