@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline checks of the own sun's step-1b ray law (src/effects/own_sun_ps.hlsl, constants from src/proxy/own_sun_core.h;
+"""Offline checks of the own sun's ray law (step 1c since 2026-11-02: six soft rays, own-sun-look.md) (src/effects/own_sun_ps.hlsl, constants from src/proxy/own_sun_core.h;
 adapted from the step-1b review's checks): the minimax arctangent's error against numpy's (in radians and spoke units),
 the hashed ray lengths and strengths per spoke, the seam a pixel sees at a spoke boundary with the nearest spoke alone
 (step 1b as first built) and with the two nearest spokes summed (the review fix), and the core-visibility tap weights.
@@ -21,7 +21,11 @@ def constant(name):
 
 
 N = int(constant('ray_count'))
-L_MAX, W0, OFFSET, GAIN = constant('ray_length'), constant('ray_width'), constant('ray_offset'), constant('ray_gain')
+L_MAX, OFFSET, GAIN = constant('ray_length'), constant('ray_offset'), constant('ray_gain')
+SIGMA, SIGMA_MIN_PX, RADIUS_U = constant('ray_sigma'), constant('ray_sigma_min_px'), constant('radius_default_u')
+CORONA_GAIN, CORONA_SIGMA = constant('corona_gain'), constant('corona_sigma')
+ROWS = 1440  # the user's screen height: the ray width floor depends on the core's pixel radius
+W0 = max(SIGMA_MIN_PX / (RADIUS_U * ROWS), SIGMA)  # the rays' Gaussian width in core radii
 CORE_INNER = constant('core_inner')
 HALO_GAIN, HALO_RADIUS, GLOW_RADIUS = constant('halo_gain'), constant('halo_radius'), constant('glow_radius')
 
@@ -40,8 +44,8 @@ def spoke(r, k, across):
     h1, h2 = hashes(k)
     along = r / (L_MAX * (0.25 + 0.75 * h1 * h1))
     fade = min(1., max(0., 1 - along))
-    perpendicular = r * across * (2 * math.pi / N) / W0 / (1 - 0.7 * min(1., max(0., along)))
-    return (0.6 + 0.4 * h2) * math.exp(-perpendicular * perpendicular) * fade * fade
+    perpendicular = r * across * (2 * math.pi / N) / W0
+    return (0.6 + 0.4 * h2) * math.exp(-perpendicular * perpendicular - along) * fade * fade
 
 
 def core_weight(r):
@@ -75,8 +79,10 @@ def main():
     weights = [float(v) for v in re.findall(r'(\d\.\d{7})', block[:block.index(';')])]
     print('core-visibility weights centre %.4f inner %.4f outer %.4f, sum %.5f, largest single-tap step %.1f %%'
           % (weights[0], weights[1], weights[2], weights[0] + 6 * weights[1] + 6 * weights[2], 100 * max(weights)))
-    print('halo at r 1 / 4 / 8: %.4f / %.4f / %.4f' % tuple(HALO_GAIN / (1 + r * r / HALO_RADIUS ** 2) * max(0., 1 - (r / GLOW_RADIUS) ** 2) ** 2
-                                                         for r in (1, 4, 8)))
+    print('rays: N %d, width %.3f core radii = %.2f px at %d rows (floor %.0f px)' % (N, W0, W0 * RADIUS_U * ROWS, ROWS, SIGMA_MIN_PX))
+    print('corona at r 1 / 2 / 3: %.4f / %.4f / %.4f' % tuple(CORONA_GAIN * math.exp(-(r / CORONA_SIGMA) ** 2) for r in (1, 2, 3)))
+    print('halo at r 1 / 6 / 12 / 20: %.4f / %.4f / %.4f / %.4f' % tuple(HALO_GAIN / (1 + r * r / HALO_RADIUS ** 2) * max(0., 1 - (r / GLOW_RADIUS) ** 2) ** 2
+                                                                     for r in (1, 6, 12, 20)))
 
 
 if __name__ == '__main__':

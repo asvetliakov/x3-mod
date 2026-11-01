@@ -814,3 +814,35 @@ under TAA, and `own_sun_frame ev=`/`ev_limit=` no longer dropping with the sun i
 belonging to the scene"; wants a big bright halo (about 3x) with falloff and dimmer rays, and first a survey of how
 modern space games render the sun (`docs/reference/sun-rendering-survey.md`, in progress) before the next look
 iteration. Occlusion and the shadow receiver change accepted.
+
+## 2026-11-02: Own sun step 1c — host evidence (on main `47a16590`; not flown)
+
+[own-sun-look.md](../architecture/own-sun-look.md) implemented as decided (own-sun-pass.md section 14, "Step 1c"): the
+core unchanged; a Gaussian corona (sigma 1.5 R, 0.6) and a Lorentzian halo (half brightness at 6 R, 0.3, windowed at
+24 R); six soft rays at 0.15 (hashed lengths 3.50, 9.77, 11.17, 4.14, 12.92, 13.13 R; width max(3 px, 0.2 R), no taper;
+`exp(-r/L) saturate(1 - r/L)^2` along; two nearest spokes summed); the streak pair and its constants deleted; quad
+48 x 48 R; visibility fraction, per-pixel clip, fog scalar, screen-fixed rays and the four settings unchanged. The
+stale "stabiliser E = 1" wording in own-sun-pass.md sections 2, 7 and 14 and in the shader and core headers now names
+the bound's live purpose (meter guard, AgX contrast).
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `compare_objects.py` against main `47a16590` | FL 81 objects, 1 differs (proxy_identity); AP 122, 3 differ (motion_output, proxy_identity, own_sun_pass) (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 (measured) |
+| `generate_own_sun_programs.py --check` | PASS; ps 946 words (measured) |
+| Native validator ([result](../../verification/results/own-sun-pass/native/result.json)) | vs 2 slots, ps 184 slots (22 texture); `end=00000000`, 0 messages each (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_fl_sun_light_poll, test_fl_sun_occlusion, test_config_schema | 107 tests, 0 failing (measured) |
+| `generate.py --check` | PASS, 298 settings (measured) |
+| CPU side, `cpu_cost.py` | median 37.8 ns per frame (measured) |
+| `glow_meter.py` (now reads the header's constants by name) | glow max outside the core 0.781 (corona 0.385, halo 0.291, rays 0.106); axis 0.676, 0.368, 0.244, 0.132, 0.068, 0.034, 0.011, 0.002 at 1, 2, 3, 6, 9, 12, 16, 20 R; 5120x1440 (1,840 tiles, p99 needs 19): 0 tiles at the K-2.25 luminance, 1-4 above engine 1, 2-4 above the key, 20-24 lit (1.09-1.30 %); 1280x768 (3,840, p99 needs 39): 0, 1-4, 6-9, 96-100 lit (2.50-2.60 %); the brightest sun tile gives ev_limit +1.67 EV, a glow tile >= +3.87 EV (measured, offline) |
+| `law_checks.py` (N = 6) | arctangent 3.46e-6 rad; seam 0.0003 with the nearest spoke alone, 0 summed; ray width 0.200 R = 3.46 px at 1440 rows; tap weights sum 1.00000, largest step 8.1 % (measured, offline) |
+
+`test_own_sun` (22 tests): glow maximum outside the core 0.77-0.781 at K = 2; no rise outward on 72 radial lines;
+corona and halo on the axis equal the note's laws (halo 0 at 24 R); six spokes with the note's lengths, reaches ordered
+by length, peaks under 0.15; no streak term in the header or program, the horizontal axis carries no ray; `sun_rays 0`
+keeps corona and halo; ray width 3.0 px at 768 rows, 3.46 px at 1440 and 10 px for a 50-px core; hue ratio
+(225, 255, 200) kept to 2e-6; the 13 taps unchanged. GPU cost (inferred): 0.69 Mpx x 184 slots x 0.136 ps = 17 us at
+5120x1440 plus the fixed draw. The lit-tile shift of the key rule is unmodelled against a real scene; the flight's
+`own_sun_frame ev=/ev_limit=` with and without the sun decides (the note's kill rule: `ev` lower by > 0.25 EV with the
+sun in view).

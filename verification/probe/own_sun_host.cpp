@@ -134,8 +134,8 @@ int main(int argc, char** argv) {
         frame_constants(argv + 2, f(argv[7]), c, &r);
         core::Pixel p;
         core::reference_pixel(c, f(argv[8]), f(argv[9]), unsigned(std::atoi(argv[10])), f(argv[11]), &p);
-        std::printf("rgb=%.7f,%.7f,%.7f halo=%.7f rays=%.7f streaks=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
-                    double(p.rgb[2]), double(p.halo), double(p.rays), double(p.streaks), double(p.core));
+        std::printf("rgb=%.7f,%.7f,%.7f corona=%.7f halo=%.7f rays=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
+                    double(p.rgb[2]), double(p.corona), double(p.halo), double(p.rays), double(p.core));
         return 0;
     }
     if (!std::strcmp(cmd, "seam") && argc == 8) {
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
                     where = rr;
                 }
                 const float one = std::fabs(core::reference_spoke(c, float(k), .5f, rr) -
-                                            core::reference_spoke(c, float(k + 1), -.5f, rr)) * c[21] * d;
+                                            core::reference_spoke(c, float(k + 1), -.5f, rr)) * c[22] * d;
                 single = one > single ? one : single;
             }
         }
@@ -170,37 +170,42 @@ int main(int argc, char** argv) {
         core::Radiance r;
         frame_constants(argv + 2, f(argv[7]), c, &r);
         const float step = f(argv[8]);
-        // The glow outside the core (D = 0): its largest radiance (the stabiliser bound), the hue ratio's largest
-        // deviation from the polled colour, and the halo along the +x axis away from the streaks (monotone).
-        float glow_max = 0.f, hue_error = 0.f, halo_rise = 0.f, previous = 1e30f;
+        // The glow outside the core (D = 0; r >= 1 core radius): its largest radiance (under 1.0 engine: the meter's guard
+        // and AgX contrast), the hue ratio's largest deviation from the polled colour, and its largest rise outward along
+        // 72 radial lines (monotone: corona, halo and the rays' along-profile all fall with r).
+        float glow_max = 0.f, hue_error = 0.f, halo_rise = 0.f;
         for (float y = -core::quad_extent_y; y <= core::quad_extent_y; y += step)
             for (float x = -core::quad_extent_x; x <= core::quad_extent_x; x += step) {
                 core::Pixel p;
                 core::reference_pixel(c, x, y, 9, 1.f, &p);
                 if (p.core > 0.f) continue;
-                const float g = p.halo + p.rays + p.streaks;
+                const float g = p.corona + p.halo + p.rays;
                 glow_max = g > glow_max ? g : glow_max;
                 for (int i = 0; i < 3 && g > 1e-6f; ++i) {
                     const float want = r.glow[i] * g, e = std::fabs(p.rgb[i] - want) / (want > 1e-6f ? want : 1e-6f);
                     hue_error = e > hue_error ? e : hue_error;
                 }
             }
-        for (float rr = 0.f; rr <= core::glow_radius; rr += step / 4.f) {
-            core::Pixel p;
-            core::reference_pixel(c, 0.f, rr, 9, 1.f, &p);
-            const float rise = p.halo - previous;
-            halo_rise = rise > halo_rise ? rise : halo_rise;
-            previous = p.halo;
+        for (unsigned line = 0; line < 72; ++line) {
+            const float theta = float(line) * core::two_pi / 72.f;
+            float previous = 1e30f;
+            for (float rr = 1.f; rr <= core::glow_radius; rr += step / 4.f) {
+                core::Pixel p;
+                core::reference_pixel(c, rr * std::cos(theta), rr * std::sin(theta), 9, 1.f, &p);
+                const float g = p.corona + p.halo + p.rays, rise = g - previous;
+                halo_rise = rise > halo_rise ? rise : halo_rise;
+                previous = g;
+            }
         }
         // Per spoke: its centre angle, the ray's reach (the last radius above 1 % of the gain) and peak, and the
         // mirror symmetry of the profile about the spoke's axis at 3 core radii.
-        std::printf("glow_max=%.5f hue_error=%.3g halo_rise=%.3g spokes=", double(glow_max), double(hue_error),
+        std::printf("glow_max=%.5f hue_error=%.3g glow_rise=%.3g spokes=", double(glow_max), double(hue_error),
                     double(halo_rise));
         float asymmetry = 0.f;
         for (unsigned k = 0; k < core::ray_count; ++k) {
             const float theta = (float(k) - core::ray_offset) * core::two_pi / float(core::ray_count);
             float reach = 0.f, peak = 0.f;
-            for (float rr = 1.f; rr <= core::quad_extent_y; rr += .05f) {
+            for (float rr = 1.f; rr <= core::glow_radius; rr += .05f) {
                 core::Pixel p;
                 core::reference_pixel(c, rr * std::cos(theta), rr * std::sin(theta), 9, 1.f, &p);
                 if (p.rays > .01f * core::ray_gain) reach = rr;

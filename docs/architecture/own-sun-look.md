@@ -6,7 +6,9 @@ sun or something belonging to the scene; we probably want a big bright halo (x3 
 Inputs: [the survey](../reference/sun-rendering-survey.md) and its five recommendations, [own-sun-pass.md §14](own-sun-pass.md)
 (step 1b as built), `src/effects/own_sun_ps.hlsl`, `src/proxy/own_sun_core.h`, the user's references (a small hot core
 in a wide soft glow; a sunburst over a soft halo) and the vanilla FL sun (a soft glow with ghost rings, no visible rays
-out of fog, faint radial rays in fog). Figures are [M] measured (offline script or code) or [I] inferred. Not implemented.
+out of fog, faint radial rays in fog). Figures are [M] measured (offline script or code) or [I] inferred. Implemented as
+step 1c on 2026-11-02 (not flown; [own-sun-pass.md §14](own-sun-pass.md), the ledger section "Own sun step 1c — host
+evidence"): ps_3_0 184 slots, the glow maximum 0.781 [M].
 
 ## Decision
 

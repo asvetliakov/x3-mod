@@ -158,13 +158,13 @@ SETTINGS = [
     entry('lens_flare_gain', 'float', 'graphics', 'Brightness of the game\'s lens flares around engines and lights (the sun\'s '
           'flare too), 1 = the game\'s own, down to 0 = the flares are not drawn at all. Some mods draw very large flares.', '1', builtin='1', range=(0.0, 1.0),
           launcher='--lens-flare-gain', since='2026-09-29'),
-    entry('own_sun', 'bool', 'graphics', 'Experimental: the mod draws its own sun, a small bright star with thin rays and a '
-          'faint glow in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
+    entry('own_sun', 'bool', 'graphics', 'Experimental: the mod draws its own sun, a small bright centre in a wide soft glow with a few '
+          'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
           'sun flare. Ctrl+Shift+F9 switches between the two in flight. 1 = on, 0 = the game\'s own sun. X3: Albion Prelude '
           'only for now.', '0', builtin='0', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02'),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the bright centre of the mod\'s own sun (own_sun = 1): its radius as a '
-          'fraction of the screen height, 0.005 to 0.25; 0.012 = 9 pixels on a 768-row screen, 17 on a 1440-row one. The rays, '
-          'streaks and glow scale with it. Height, because the game keeps its vertical field of view fixed (as far as is '
+          'fraction of the screen height, 0.005 to 0.25; 0.012 = 9 pixels on a 768-row screen, 17 on a 1440-row one. The glow and '
+          'rays scale with it. Height, because the game keeps its vertical field of view fixed (as far as is '
           'known), so the sun keeps its apparent size on a wider screen. The centre stays round.', builtin='0.012',
           range=(0.005, 0.25), requires=('own_sun',), launcher='--sun-disc-radius', since='2026-11-02'),
     entry('sun_disc_radiance', 'float', 'graphics', 'Brightness of the mod\'s own sun (own_sun = 1), centre, rays and glow together, '
@@ -172,8 +172,8 @@ SETTINGS = [
           'bright it is (a dim sun stays dim). 0 = no own sun: the game\'s sun is kept. Above about 2.25 the automatic '
           'exposure darkens the picture while the sun is in view.', builtin='2', range=(0.0, 64.0), requires=('own_sun',),
           launcher='--sun-disc-radiance', since='2026-11-02'),
-    entry('sun_rays', 'float', 'graphics', 'How strong the rays and the two long horizontal streaks of the mod\'s own sun are '
-          '(own_sun = 1), 0 to 1; 1 = full, 0 = no rays, only the centre and its faint glow.', builtin='1', range=(0.0, 1.0),
+    entry('sun_rays', 'float', 'graphics', 'How strong the six soft rays of the mod\'s own sun are (own_sun = 1), 0 to 1; 1 = full, '
+          '0 = no rays, only the bright centre and its glow.', builtin='1', range=(0.0, 1.0),
           requires=('own_sun',), launcher='--sun-rays', since='2026-11-02'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '

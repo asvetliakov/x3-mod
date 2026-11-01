@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step 1c look (docs/architecture/own-sun-look.md): the proposed law evaluated offline against the HDR meter's tile model
+"""Step 1c look (docs/architecture/own-sun-look.md): the law (constants read from src/proxy/own_sun_core.h by name) evaluated offline against the HDR meter's tile model
 (verification/results/own-sun-pass/meter_exposure.py: tile = 4^steps px until both axes <= 128; p99 of the tile maxima
 sets ev_limit = log2(0.9 * 16.2917424) - log2(min(L, 64)); L = engine^2.2 under the default gamma2.2 decode; a tile is
 "lit" when its mean log2 L >= log2(1/512), L floored at 1e-4) and against the quad / slot cost. White sun, fog T = 1,
@@ -8,16 +8,26 @@ every occlusion tap open. Prints: the field maxima per element, tile counts per 
 Usage: python3 glow_meter.py
 """
 import math
+import re
+from pathlib import Path
 
 import numpy as np
 
 WHITE, CLIP, FLOOR, BG = 0.9 * 16.2917424, 64.0, 1e-4, 1 / 512
-# ---- the proposed law (core radii; R = radius_u * height px) ----
-RADIUS_U, K = 0.012, 2.0
-CORE_INNER, WHITE_MIX = 0.6, 0.25
-CORONA_A, CORONA_SIGMA = 0.6, 1.5
-HALO_A, HALO_RHO, GLOW_RADIUS = 0.3, 6.0, 24.0
-RAY_N, RAY_A, RAY_LENGTH, RAY_SIGMA_PX, RAY_SIGMA_MIN = 6, 0.15, 14.0, 0.2, 3.0  # sigma = max(3 px, 0.2 R)
+# ---- the law's constants, read by name from src/proxy/own_sun_core.h (core radii; R = radius_u * height px) ----
+HEADER = (Path(__file__).resolve().parents[3] / 'src/proxy/own_sun_core.h').read_text()
+
+
+def constant(name):
+    return float(re.search(r'\b%s = ([0-9.]+)f?\b' % name, HEADER).group(1))
+
+
+RADIUS_U, K = constant('radius_default_u'), constant('radiance_default')
+CORE_INNER, WHITE_MIX = constant('core_inner'), constant('white_mix')
+CORONA_A, CORONA_SIGMA = constant('corona_gain'), constant('corona_sigma')
+HALO_A, HALO_RHO, GLOW_RADIUS = constant('halo_gain'), constant('halo_radius'), constant('glow_radius')
+RAY_N, RAY_A, RAY_LENGTH = int(constant('ray_count')), constant('ray_gain'), constant('ray_length')
+RAY_SIGMA_PX, RAY_SIGMA_MIN, RAY_OFFSET = constant('ray_sigma'), constant('ray_sigma_min_px'), constant('ray_offset')  # sigma = max(3 px, 0.2 R)
 QUAD = GLOW_RADIUS  # half extent, core radii, both axes
 # AgX display reads from docs/architecture/bloom-falloff.md (exposed linear -> display), log-linear interpolation [S].
 AGX = [(0.0035, 0.04), (0.01, 0.10), (0.05, 0.28), (0.18, 0.50), (0.5, 0.68), (1, 0.79), (2, 0.87), (4, 0.93), (8, 0.97), (16, 0.998)]
@@ -54,13 +64,12 @@ def field(px, py, radius_px):
     corona = CORONA_A * np.exp(-(r / CORONA_SIGMA) ** 2)
     halo = HALO_A / (1 + (r / HALO_RHO) ** 2) * w
     theta = np.arctan2(py, px)
-    t = theta * RAY_N / (2 * math.pi) + 0.5
     rays = np.zeros_like(r)
     sigma = max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px) / radius_px  # core radii
     params = spoke_params(RAY_N)
     for k, (length, strength) in enumerate(params):
         # distance across spoke k (angle k * 2pi/N - offset), two nearest summed == all spokes summed here (Gaussian tails)
-        ang = (k - 0.5) * 2 * math.pi / RAY_N
+        ang = (k - RAY_OFFSET) * 2 * math.pi / RAY_N
         across = np.abs(np.sin(theta - ang)) * r
         along = r / length
         rays += strength * np.exp(-(across / sigma) ** 2) * np.exp(-along) * np.clip(1 - along, 0, 1) ** 2 * (np.cos(theta - ang) > 0)

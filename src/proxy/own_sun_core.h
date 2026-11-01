@@ -1,7 +1,7 @@
 #pragma once
-// Own sun, steps 1 and 1b (docs/architecture/own-sun-pass.md, the AP minimal mode; section 14): the pure part. The mod
-// draws its own sun (a tiny hot core, thin rays of irregular length, two horizontal streaks, a faint wide halo) in the
-// scene-end stage slot (after the fog pass, before the TAA resolve) and the flare probe answers "hidden" for the sun's
+// Own sun, steps 1, 1b and 1c (docs/architecture/own-sun-pass.md, the AP minimal mode, section 14; the look:
+// docs/architecture/own-sun-look.md): the pure part. The mod draws its own sun (a small hot core in a dominant soft glow,
+// six soft rays) in the scene-end stage slot (after the fog pass, before the TAA resolve) and the flare probe answers "hidden" for the sun's
 // eligible record, so the engine destroys its own lens chain. No Windows/D3D dependency, no
 // allocation, no engine call: verification/analysis/test_own_sun.py compiles exactly this header.
 //
@@ -25,22 +25,27 @@ namespace x3m::own_sun::core {
 // (gamma 2.2) to 4.6, above the bloom threshold (exposed luminance 1) and under the meter's highlight guard at the +1.3 EV
 // Auto cap (14.66 / 2^1.3 = 5.96, K <= 2.25), so the core never sets the exposure (Run219: K 8 pulled it to -1.0 EV;
 // verification/results/own-sun-pass/meter_exposure.py). The pixels are square: the core is round at every aspect. The
-// rays' share: sun_rays 0..1 scales rays and streaks (0 = none).
+// rays' share: sun_rays 0..1 scales the rays (0 = none).
 constexpr float radius_default_u = .012f, radius_min_u = .005f, radius_max_u = .25f;
 constexpr float radiance_default = 2.f, radiance_min = 0.f, radiance_max = 64.f;
 constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
-// The look (step 1b, a star seen from space): the core whitened only a little (the polled colour stays visible: Run219's
-// fogged sector was yellowish in vanilla, white in step 1), its soft edge from core_inner to 1 core radius; the glow (halo,
-// rays, streaks) is the pure polled colour times intensity, like vanilla's chain, every term under the TAA stabiliser's
-// emitter bound E = 1 at K = 2 (the host test's maximum). Lengths in core radii; derived constants, not settings.
+// The look (step 1c, own-sun-look.md "Defaults and constants"; every length in core radii; derived constants, not
+// settings): the core whitened only a little (the polled colour stays visible), its soft edge from core_inner to 1 core
+// radius; the glow is the pure polled colour times intensity, like vanilla's chain, and dominates: a Gaussian corona
+// (sigma 1.5, 0.6) plus a Lorentzian halo (half brightness at 6, 0.3) windowed at 24; six soft rays at 0.15 with hashed
+// lengths (3.50-13.13), a Gaussian width of max(3 px, 0.2 core radii) without taper and exp(-r / L) saturate(1 - r / L)^2
+// along. The glow's sum stays under 1.0 engine at K = 2 (0.781 outside the core, glow_meter.py), kept for the exposure
+// meter's guard and for AgX contrast at the core's edge (the resolve's sentinel stabiliser that once set an emitter bound
+// E = 1 was retired on 2026-09-25: the sun's sentinel pixels reproject with the far-plane camera history, are clipped by the
+// 3x3 box, and the far gate is 0 on the sentinel).
 constexpr float white_mix = .25f, core_inner = .6f;
-constexpr float halo_gain = .2f, halo_radius = 2.f, glow_radius = 16.f;
-constexpr unsigned ray_count = 16;           // spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl)
-constexpr float ray_gain = .75f, ray_length = 15.f, ray_width = .12f, ray_offset = .5f; // offset: spoke units, so no
-                                                                                       // spoke lies on the streaks
-constexpr float streak_gain = .6f, streak_width = .15f, streak_length = 8.f, streak_reach = 24.f;
-// The quad: 24 core radii to each side (the streaks), 16 up and down (the longest rays, the halo's window).
-constexpr float quad_extent_x = streak_reach, quad_extent_y = glow_radius;
+constexpr float corona_gain = .6f, corona_sigma = 1.5f;
+constexpr float halo_gain = .3f, halo_radius = 6.f, glow_radius = 24.f;
+constexpr unsigned ray_count = 6; // spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl)
+constexpr float ray_gain = .15f, ray_length = 14.f, ray_offset = .5f; // offset: spoke units (no spoke on the axes)
+constexpr float ray_sigma = .2f, ray_sigma_min_px = 3.f;              // the rays' Gaussian width: max(3 px, 0.2 R)
+// The quad: 24 core radii to each side (the halo's window).
+constexpr float quad_extent_x = glow_radius, quad_extent_y = glow_radius;
 // Below 1.5 px of radius the stage draws nothing (the plumes' rule; note section 7).
 constexpr float radius_min_px = 1.5f;
 // Light node positions are engine integers; world (view) units are integers x the gameplay context scale 0.01
@@ -172,7 +177,7 @@ inline Disc project(const std::int32_t position[3], const Camera& camera, unsign
 // c = colour / 256 (the poll's words, the code values the engine uploads as light colour), clamped to [0, 4] as the
 // fog's E_sun reads them; m = max_ch(c), the hue c / m. Core K lerp(c / m, white, 0.25) m T: a slightly whitened hue at
 // the colour's brightness (a #323232 sun is a dim grey core). Glow tint c T K / K_default: the pure polled colour, so the
-// halo, rays and streaks keep its hue ratio exactly. A black sun (every word 0, FL's #000000 sectors), T = 0 (a fully
+// corona, halo and rays keep its hue ratio exactly. A black sun (every word 0, FL's #000000 sectors), T = 0 (a fully
 // fogged sky) or K = 0 draws nothing.
 struct Radiance {
     float core[3]{}, glow[3]{};
@@ -222,39 +227,46 @@ inline void quad(const Disc& d, Vertex out[4]) noexcept {
     }
 }
 // src/effects/own_sun_ps.hlsl: c0 the lane texel, c1 / c2 the knight offsets as lane uv, c3 the core (w its inner edge),
-// c4 the glow tint, c5 the amplitudes (A_r and A_s x sun_rays), c6 the core's centre as lane uv (jittered, the quad's) and
-// the core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, the across scale with log2 e folded in), c8 the halo
-// and streak shapes (log2 e folded in), c9 the streaks' reach and the spoke count.
+// c4 the glow tint, c5 the amplitudes (corona, halo, rays x sun_rays), c6 the core's centre as lane uv (jittered, the
+// quad's) and the core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, the across scale: 2 pi / N over the
+// width in core radii, log2 e folded in), c8 the corona, halo and window shapes (log2 e folded in), c9 the spoke count.
 constexpr unsigned pixel_registers = 10;
 constexpr float two_pi = 6.28318531f, log2e = 1.44269504f, sqrt_log2e = 1.20112241f; // exp(-x) = exp2(-x log2 e)
+// The rays' Gaussian width in core radii for a core of radius_px pixels: max(3 px, 0.2 R).
+inline void ray_width_radii(float radius_px, float* width) noexcept {
+    const float floor_r = radius_px > 0.f ? ray_sigma_min_px / radius_px : ray_sigma;
+    *width = floor_r > ray_sigma ? floor_r : ray_sigma;
+}
 inline void pixel_constants(unsigned width, unsigned height, const Disc& d, const Radiance& r, float rays,
                             float out[pixel_registers * 4]) noexcept {
     const float dx = width ? 1.f / float(width) : 0.f, dy = height ? 1.f / float(height) : 0.f;
     const float share = rays >= rays_min && rays <= rays_max ? rays : rays_default;
     const float ring = d.radius_px; // the core-visibility taps sit at 0.45 and 0.9 of it (own_sun_ps.hlsl)
     const float n = float(ray_count);
+    float sigma = ray_sigma;
+    ray_width_radii(d.radius_px, &sigma);
     const float c[pixel_registers * 4] = {dx, dy, 0.f, 0.f,
                                           2.f * dx, dy, dx, 2.f * dy,
                                           -2.f * dx, dy, -dx, 2.f * dy,
                                           r.core[0], r.core[1], r.core[2], core_inner,
                                           r.glow[0], r.glow[1], r.glow[2], 0.f,
-                                          halo_gain, ray_gain * share, streak_gain * share, 0.f,
+                                          corona_gain, halo_gain, ray_gain * share, 0.f,
                                           .5f + .5f * d.x, .5f - .5f * d.y, ring * dx, ring * dy,
-                                          n / two_pi, ray_offset, ray_length, two_pi / n / ray_width * sqrt_log2e,
-                                          1.f / (halo_radius * halo_radius), sqrt_log2e / streak_width,
-                                          log2e / streak_length, 1.f / glow_radius,
-                                          1.f / streak_reach, n, 1.f / n, two_pi / n};
+                                          n / two_pi, ray_offset, ray_length, two_pi / n / sigma * sqrt_log2e,
+                                          log2e / (corona_sigma * corona_sigma), 1.f / (halo_radius * halo_radius), log2e,
+                                          1.f / glow_radius,
+                                          0.f, n, 1.f / n, 0.f};
     for (unsigned i = 0; i < pixel_registers * 4; ++i) out[i] = c[i];
 }
 
 #ifdef X3M_OWN_SUN_HOST_REFERENCE
 // ---- Host reference of the pixel program (the host test's expectation; CRT math: never compiled into the DLL) ----
 // own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps at the pixel (0..9)
-// and the core's visible fraction (0..1: the program's weighted 13 taps). halo / rays / streaks: the terms before the
+// and the core's visible fraction (0..1: the program's weighted 13 taps). corona / halo / rays: the terms before the
 // tint (for the shape tests).
 struct Pixel {
     float rgb[3]{};
-    float halo = 0.f, rays = 0.f, streaks = 0.f, core = 0.f; // core: D(r)
+    float corona = 0.f, halo = 0.f, rays = 0.f, core = 0.f; // core: D(r)
 };
 inline float hlsl_frac(float v) noexcept {
     return v - std::floor(v);
@@ -263,37 +275,36 @@ inline float saturate(float v) noexcept {
     return v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
 }
 inline float reference_spoke(const float c[pixel_registers * 4], float index, float across, float r) noexcept {
-    const float* spokes = c + 28; const float* counts = c + 36;
+    const float* spokes = c + 28; const float* extent = c + 32; const float* counts = c + 36;
     const float k = index - counts[1] * std::floor(index * counts[2]);
     const float h1 = hlsl_frac(k * (.6180340f + k * .1547f)), h2 = hlsl_frac(k * .7548777f + .31f);
     const float along = r / (spokes[2] * (.25f + .75f * h1 * h1));
     const float fade = saturate(1.f - along);
-    const float perpendicular = r * across * spokes[3] / (1.f - .7f * saturate(along));
-    return (.6f + .4f * h2) * std::exp2(-perpendicular * perpendicular) * fade * fade;
+    const float perpendicular = r * across * spokes[3];
+    return (.6f + .4f * h2) * std::exp2(-perpendicular * perpendicular - along * extent[2]) * fade * fade;
 }
 inline void reference_pixel(const float c[pixel_registers * 4], float px, float py, unsigned open_taps, float visible,
                             Pixel* out) noexcept {
     const float* core = c + 12; const float* glow = c + 16; const float* amp = c + 20; const float* spokes = c + 28;
-    const float* extent = c + 32; const float* counts = c + 36;
+    const float* extent = c + 32;
     const float r2 = px * px + py * py, r = std::sqrt(r2);
     const float s = saturate((r - core[3]) / (1.f - core[3]));
     const float d = 1.f - s * s * (3.f - 2.f * s);
+    const float corona = amp[0] * std::exp2(-r2 * extent[0]);
     const float w = saturate(1.f - r2 * extent[3] * extent[3]);
-    const float halo = amp[0] / (1.f + r2 * extent[0]) * w * w;
+    const float halo = amp[1] / (1.f + r2 * extent[1]) * w * w;
     const float t = std::atan2(py, px) * spokes[0] + spokes[1];
     const float nearest = std::floor(t + .5f), across = t - nearest, side = across >= 0.f ? 1.f : -1.f;
-    const float rays = amp[1] * (reference_spoke(c, nearest, across, r) + reference_spoke(c, nearest + side, across - side, r));
-    const float sy = py * extent[1], sx = saturate(1.f - px * px * counts[0] * counts[0]);
-    const float streaks = amp[2] * std::exp2(-(sy * sy + std::fabs(px) * extent[2])) * sx * sx;
+    const float rays = amp[2] * (reference_spoke(c, nearest, across, r) + reference_spoke(c, nearest + side, across - side, r));
     const float open = float(open_taps > 9u ? 9u : open_taps) / 9.f;
     visible = saturate(visible);
     for (unsigned i = 0; i < 3; ++i) {
-        const float g = glow[i] * (halo + rays + streaks);
+        const float g = glow[i] * (corona + halo + rays);
         out->rgb[i] = (g + (core[i] - g) * d) * open * (d + (1.f - d) * visible);
     }
+    out->corona = corona;
     out->halo = halo;
     out->rays = rays;
-    out->streaks = streaks;
     out->core = d;
 }
 #endif

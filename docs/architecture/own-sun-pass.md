@@ -72,8 +72,9 @@ RT0, **before the TAA resolve, bloom and AgX** ([hdr-scene-path.md §4](hdr-scen
 **Radiance (FP16, engine space).** `c = colour / 256` (the poll's words, the same code values the engine uploads as
 light colour [S]). Disc: `K · lerp(c, white, w) · D(r / r_disc)` with `K = 8` (`sun_disc_radiance`), `w = 0.6`
 (the plume core's whitening), `D` a smoothstep edge of 0.1 r_disc. Corona: `K_h · c · exp(-3 (r - r_disc) / r_disc)`
-with `K_h = 0.8` (under the stabiliser's emitter bound E = 1, so it reads at 0.37-0.66 through the resolve like the
-plume halo [S]; sized for that). A black sun (`#000000`) draws nothing, which is what vanilla's colour-multiplied
+with `K_h = 0.8` (sized under 1.0 engine; this sentence first cited a sentinel stabiliser's emitter bound E = 1, but
+that stabiliser was retired on 2026-09-25, taa-mask-fold.md section 7: the bound is kept for the exposure meter and for
+AgX contrast, see section 7 and own-sun-look.md). A black sun (`#000000`) draws nothing, which is what vanilla's colour-multiplied
 chain does in those sectors [I]. **Exposure policy unchanged** ([space-exposure-policy.md](space-exposure-policy.md)):
 Auto capped +1.3 EV multiplies by at most 2.46, so the disc saturates AgX white (far endpoint 16.29) as a sun
 should. **Corrected 2026-11-02 (review of step 1):** the meter does react. Its highlight guard limits the EV to
@@ -206,9 +207,13 @@ stage [I]; `capture.cpp` has 42 references to the four features, most of them th
 - The sun is at infinity: its pixels are unrouted sentinel pixels in the resolve, which reprojects them with the
   far-plane camera history [S], the correct motion for a star under camera rotation; under translation it does not
   move. No motion vector is needed and none is written.
-- The disc core is above E = 1, so the stabiliser keeps 1.00 of its radiance; the corona is below E and shows at
-  0.37-0.66 [S, plume halo], by design. The 3x3 clip cannot erase the edge: neighbours span 0..K, so the box is
-  wide; the interior is uniform.
+- The live resolve on the sun's pixels (corrected 2026-11-02, step 1c): the sentinel pixels reproject with the
+  far-plane camera history and are clipped by the 3x3 mean +/- sigma box; the far stabiliser's gate is 0 on the
+  sentinel (`resolve.hlsl` header), so a smooth static feature converges to its value at any radiance. The emitter
+  bound E = 1 this item first cited belongs to the sentinel stabiliser retired on 2026-09-25 (taa-mask-fold.md
+  section 7). The glow is still kept under 1.0 engine (0.781 at most outside the core at K = 2), for the exposure
+  meter's guard and for AgX contrast at the core's edge, not for the resolve. The 3x3 clip cannot erase the core's
+  edge: neighbours span 0..K, so the box is wide; the interior is uniform.
 - Thin hold: not involved. The disc is not alpha-tested, not thin (>= 6 px: below 1.5 px of radius the stage draws
   nothing, the plumes' rule), writes no thin vote. The RT2 words are untouched (`.r` sentinel, `.g` share, `.b`
   view z, `.a` thin vote), so the far alpha-tested thin hold of FL run 8 sees the same lane as before.
@@ -365,7 +370,8 @@ constant in `own_sun_core.h`, uploaded as c3..c9, so `test_own_sun` evaluates th
   [M, `meter_exposure.py`]. Run219 measured `ev_limit` -0.92 with the 96-px disc at 5120x1440 where the tile model
   predicted it below p99, so the model under-counts something there; the new defaults hold either way.
 - **Glow, the polled colour exactly.** Halo, rays and streaks are `c T K / 2` times their intensity, no white mix
-  (vanilla multiplies every body by the colour). Their sum peaks at 0.764 at K = 2, under the stabiliser's E = 1 [M].
+  (vanilla multiplies every body by the colour). Their sum peaks at 0.764 at K = 2, under 1.0 engine (the meter's
+  guard and AgX contrast; the "stabiliser E = 1" first cited here was retired on 2026-09-25, section 7) [M].
 - **Rays.** 16 spokes (offset half a spoke so none lies on the streaks), the nearest one per pixel from a minimax
   arctangent; per spoke a hash of its index sets the length (3.3-12.9 core radii: a few long, many short) and the
   strength (0.6-1.0 x 0.75); a Gaussian across the spoke (width 0.12 core radii, tapering outward) and
@@ -385,3 +391,15 @@ constant in `own_sun_core.h`, uploaded as c3..c9, so `test_own_sun` evaluates th
 - **Meter, corrected (review F3).** "Below p99 has no effect" was wrong: tiles under the 1 % index still shift which
   tile is the p99 one. The new core adds 1-4 tiles at 5120x1440 (4-6 at 1280x768) and decodes to at most 4.6, so
   `ev_limit` stays at the scene's own value within a few tiles' shift of the p99 index.
+
+### Step 1c: the glow-dominant look (2026-11-02, AP; not flown)
+
+Run220 found step 1b "a painted circle with rays". Step 1c implements [own-sun-look.md](own-sun-look.md) as decided
+there: the core unchanged (0.012 of the height, K = 2, white mix 0.25, edge 0.6-1 R); a Gaussian corona
+`0.6 exp(-(r / 1.5)^2)` and a Lorentzian halo `0.3 / (1 + (r / 6)^2)` windowed at 24 R; six soft rays at 0.15 (hashed
+lengths 3.50-13.13 R, offset 0.5, Gaussian width `max(3 px, 0.2 R)` without taper, `exp(-r / L) saturate(1 - r / L)^2`
+along, the two nearest spokes summed); the horizontal streak pair and its constants deleted; the quad 48 x 48 R. The
+13-tap visibility fraction on the glow, the per-pixel clip over the quad, the fog scalar on all, the screen-fixed rays and
+the four settings with their defaults are unchanged. ps_3_0 184 slots, native validator 0 messages. The glow outside
+the core peaks at 0.781 at K = 2 [M, host test and `glow_meter.py`, which now reads the header's constants by name].
+Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun step 1c — host evidence".
