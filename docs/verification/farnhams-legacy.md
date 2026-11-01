@@ -497,3 +497,23 @@ FL host tests 62 pass ([record](../../verification/results/fl-run7/candidate.jso
 rows and image: the Step 5 section above. Also open from run 6: the readback captures
 (frames 13630–13637 and 13940–13947, taken on run 6 with `taa_debug = 1`) are under
 triage in `verification/results/fl-run6-shimmer/readback/`.
+
+## Run 6 readback captures — farm shimmer hold state (2026-11-01)
+
+Two F8 captures on run 6 with `taa_debug = 1` (frames 13630–13637 and 13940–13947,
+distant farm selected, measured; scripts and `summary.json` in
+`verification/results/fl-run6-shimmer/readback/`). Lane decoding from
+`src/temporal/resolve.hlsl`. Farm alpha-tested pixels: luma lock on 41–54 %, thin
+region on 9–61 % (85–100 % on the 556f farm, 6–16 % on the two 556e farms), age median
+64, none at age ≤ 1. TAA output change per frame (motion-compensated, jitter-corrected
+display codes): held farm pixels 1.3–1.6, unheld 3.3–3.4 (the method floor is 1.1–1.2),
+whole alpha-tested farm 1.9–2.4 against the station's 1.4; pre-TAA 28–34. The unheld
+pixels are 27–36 % of the farm and carry about half its residual. **Conclusion: the hold
+removes the flicker where it applies; the residual is on the farm pixels the lock and the
+thin region miss, so the approved rule (far alpha-tested draws take the thin hold) is
+supported** (bringing unheld pixels to the held figure puts the farm at ≈ 1.4–1.7 codes,
+inferred). Limits: the capture frames after the first run at dt 200 ms (8x normal
+motion), so the residual at normal-flight motion is not measured; the two LOD-3 farms
+(ps `1835f5e1…`, no alpha test) are unheld on 30–37 % of pixels with the highest residual
+(3.0–3.6) and the alpha-tested rule does not cover them; pixel-to-draw assignment is by
+node box, not draw id.
