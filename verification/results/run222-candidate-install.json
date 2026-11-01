@@ -1,0 +1,30 @@
+{
+ "run": 222,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun step 1d tuning (4413eada + 92e521ac, merge 2a4a77cf6): 11 rays from the core edge, glow radius -30 %, core_gain 0.72, core_inner 0.4, corona 2.15; the lab page 3e81f60a9 (re-port to 1d pending)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run221; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T03:08:38+04:00",
+ "commit": "2a4a77cf6",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "e0e351c5c15198aaf37d7fabc3b768df48d13784de1050e63e73ab7fe75c0020",
+  "bytes": 63224106,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 221,
+  "sha256_prefix": "15ac0911",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run221"
+ },
+ "host_tests": "run_host_suite 5 modules 99 tests 0 failing",
+ "review": "tuning constants and ray_start (Opus medium implementer, host tests, validator 178 slots 0 messages); no separate review (constants-only change over the reviewed 1c pass)",
+ "ini": "own_sun = 1 (unchanged)",
+ "producer": "main session"
+}

@@ -910,3 +910,14 @@ so the validator result stands (178 slots, 0 messages).
 | `own_sun_host field` (1440 rows) | glow_max 1.31720, hue error 0, no rise outward; two-spoke seam 5.6e-5 (measured) |
 | `glow_meter.py` | glow max outside the core 1.317 (1440) / 1.331 (768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R; brightest pixel 1.64 / 1.67 engine (inside the soft edge, core 1.44); 0 tiles at the K-2.25 luminance; lit 9-12 (5120x1440), 45-52 (1280x768); worst sun tile `ev_limit` +2.30 EV (5120x1440), +2.24 EV (1280x768); cap rule PASS at both (measured, offline) |
 | Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) |
+
+## Run 222 — own sun step 1d installed (2026-11-02, dev candidate)
+
+Step 1d (`4413eada` + item-4 follow-up `92e521ac`, merge `2a4a77cf6`; constants plus the ray start at the core edge, ps 178
+slots, validator 0 messages; no separate review: a constants change over the reviewed step 1c pass, pinned by
+`test_own_sun` and `glow_meter.py` PASS at both resolutions, worst sun-tile `ev_limit` +2.30 EV at 5120×1440) built
+unstripped (`build-ap` `e0e351c5…`, 0 warnings, x87 PASS, 99 host tests green) and installed into `C:\X3`, rollback
+`rollback-d3d9\d3d9.dll.run221` ([record](../../verification/results/run222-candidate-install.json)). The tuning lab
+`tools/effects/own_sun_lab.html` (`3e81f60a9`) is merged; its re-port to the 1d law is pending. Flight: the two F8
+pairs with Ctrl+Shift+F9; expected: eleven rays of different length, glow ending near 6 R, the core edge blending into
+a bright region to ~1.5 R; same kill rule as run 221.
