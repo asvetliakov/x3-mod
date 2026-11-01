@@ -46,4 +46,11 @@ unstripped, 0 warnings, 41 s wall ([record](../../verification/results/fl-run1/c
 Installed to `C:\X3FL\d3d9.dll`, bytes verified; rollback
 `C:\X3FL\rollback-d3d9\d3d9.dll.run0` (the run 0 AP DLL). Expected: one
 `fl.identity ok base=0x… ` line in `x3m.log`, no `executable_mismatch` rows
-(the AP modules are not in this DLL), otherwise run 0 behaviour. Result: pending.
+(the AP modules are not in this DLL), otherwise run 0 behaviour.
+
+Result (user: behaves like run 0; log session 20261101-141549, measured):
+`fl.identity ok base=0x004d0000 timestamp=0x618416c8 image_size=0x00391000`;
+25,176 frames / 126 s, no reset, no exception; zero `executable_mismatch` rows;
+the only engine refusal left is `volumetric_fog_sector reason=foreign_executable`
+from the kept sector reader. **Accepted.** The live base 0x4d0000 confirms that
+the inherited preferred-base addresses must be used as RVAs.
