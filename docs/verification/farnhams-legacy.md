@@ -205,7 +205,7 @@ objects 6k–9k, `max_probe=1`. `fl.scale_fix status=active`, one sample row
 the fix is install-proven, not yet exercise-proven). Shadow-lane refusals are all
 `pair` (82 untracked at the last row), i.e. the FL hull programs without motion
 rows, as predicted. **Accepted on the log side: the lifetime observer and TAA
-history are live under FL.** Visual report from the user: pending.
+history are live under FL.** Visual report from the user: stations more or less fine; a few wheat farms shimmered at distance in the last sector (specular shimmer or missing hull motion rows; to recheck after the shader step); small ships showed no visible issue, big ships not checked. **Run 4 accepted.**
 
 ## FL shader coverage finding (2026-11-01)
 
