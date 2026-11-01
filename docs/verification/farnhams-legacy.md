@@ -608,3 +608,7 @@ halos at 70 % of run 9. The same commit is release 1.8.1 for AP (Run214, [releas
 Result (log of 2026-11-01 20:4x, 47,999 frames / 305 s, no exception; measured):
 `bloom_strength_mode requested=1 strength=0.7 value_valid=1`, 157 `bloom_prepare ready=1`,
 157 `bloom_commit committed=1`, one `scene_handoff` refusal (menu). User: good. **Accepted.**
+
+Shadows on FL (2026-11-01, user report after run 10): sun shadows visible, no issue noticed.
+The direction comes from the portable light-constant latch (`sun_light_poll` is AP-only until
+step 7); `sun_shadow_apply_frame applied=1` on 46,973 frames of the run 10 log (measured).
