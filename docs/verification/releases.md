@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.0
+
+2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.0 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 67.5 s wall: dll 65.0 s, package 2.5 s), clean main `bad55d33` ([record](../../verification/results/release-1.8.0.json)).
+
+- Over 1.7.3 (Run212 flown): **far alpha-tested draws take the TAA thin-region hold** (`taa_thin_alpha_far`, on; removed the distant wheat-farm shimmer on FL run 8, no ship trails; [FL ledger](farnhams-legacy.md)); **bloom on native Windows** (`main_descriptor` accepts the texture-level main target native D3D9 reports; every native flight since 2026-10-13 had refused bloom at `validate_inputs` clause 7, flown on FL run 9 first); `bloom_prepare` failure rows name the refusing clause; the **Farnham's Legacy edition** (`-DX3M_EDITION=fl`, separate DLL, not in this zip; [build note](../architecture/farnhams-legacy-build.md)).
+- DLL: stripped `367a3b11…` (42,554,741 B; x87 0 / 1139 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.0/. Installed into native `C:\X3` as Run213, rollback `rollback-d3d9\d3d9.dll.run212` (the directory had been removed and was recreated) ([install](../../verification/results/run213-release-install.json)).
+- Zip `x3m-1.8.0.zip` `da6b4327…` (60,230,066 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.0`; `generate --check` PASS (289 settings, 132 in the template). The user's `x3m.ini` header bumped to 1.8.0, body unchanged (`x3m.ini.run212` kept).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.7.3
 
 2026-10-27, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.7.3 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 66.7 s wall: dll 64.2 s, package 2.4 s), clean main `10d42d74` ([record](../../verification/results/release-1.7.3.json)).

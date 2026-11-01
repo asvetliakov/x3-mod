@@ -576,3 +576,15 @@ main_w=5120 main_h=1440 scene_fmt=71 … thread_ok=1`: `main_descriptor()` requi
 `Type == D3DRTYPE_SURFACE`, native D3D9 reports the texture-level render target as
 `D3DRTYPE_TEXTURE` with usage bit `0x800000` set, Wine reported a plain surface. **Cause of the
 shared bloom regression since the native-Windows move (2026-10-11); fix in progress.**
+
+## FL run 9 — bloom fix, native texture-level main target (installed 2026-11-01)
+
+Candidate: commit `bad55d33` (fix reviewed by the main session: `main_descriptor` accepts
+`D3DRTYPE_SURFACE` or `D3DRTYPE_TEXTURE`, all other conditions unchanged, pinned by static
+asserts; `test_bloom_main_target.py` covers the native and Wine descriptors and 7 refusals),
+`build-fl/d3d9.dll` SHA-256 `c7ceeb02…` (55,452,232 B), 0 warnings, `test_bloom*` 71 OK
+([record](../../verification/results/fl-run9/candidate.json)); `C:\X3FL\d3d9.dll` bytes
+verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run8` (`22b67304…`). Expected:
+`bloom_prepare … ready=1` (no `clause=7`), `bloom_commit … committed=1`, no
+`bloom_refusal reason=boundary`; image: bloom halo around lights as AP had under Wine. The
+same commit is release 1.8.0 for AP ([releases](releases.md)).

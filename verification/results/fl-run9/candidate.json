@@ -1,0 +1,20 @@
+{
+  "run": 9,
+  "step": "bloom fix: main_descriptor accepts the native texture-level main target (bad55d33); version 1.8.0 (f0059ad4)",
+  "edition": "fl",
+  "commit": "bad55d33d467298a165a5968fce6a437f31e067b",
+  "dirty": false,
+  "build_dir": "build-fl",
+  "build_type": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake (WSL2, GCC 16.2 i686-w64-mingw32)",
+  "dll_sha256": "c7ceeb02807909c99a4ed0ba68bb042a9ce7db75d1d8a00c4f0f238b62d2d72d",
+  "dll_bytes": 55452232,
+  "installed_path": "C:\\X3FL\\d3d9.dll",
+  "installed_sha256": "c7ceeb02807909c99a4ed0ba68bb042a9ce7db75d1d8a00c4f0f238b62d2d72d",
+  "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run8 (22b67304, run 8)",
+  "exe_sha256_prefix": "e7f3aad8",
+  "host_tests": "test_bloom* 71 OK",
+  "build_warnings": 0,
+  "ini_changes": "none",
+  "installed_at": "2026-11-01T20:21:19+04:00"
+}
