@@ -28,7 +28,10 @@ identical). The name is copied byte-wise (FL names are strlen+1 allocations).
 transit frame: `volumetric_fog_prefill … event=poll walk=found steps=<1..8> … family="foggreenoutlands…" stall_ms=…
 action=started`, later polls `already_started`; earlier polls in the same stall may say `same_id` or `no_scene`.
 On arrival: `volumetric_fog_prefill … event=confirmed lead_ms=… same_id=1 … adopted=1`, then one
-`volumetric_fog_handover … coldfill=1 …` row whose `frames=` is a few frames (warm) instead of run 13's 45.
+`volumetric_fog_handover … coldfill=1 …` row. Its `frames=` drops below run 13's 45 only to the extent the far box
+filled around the sector origin already covers the arrival point (AP's host witness still needed 795,144 of
+1,103,336 nodes after an adopted prefill); `ms=`/`fill_ms=` start at the prefill inside the stall, so they are not
+comparable with run 13's 490 ms. The acceptance signal is visual: no vanilla cards on arrival.
 
 **What a flight must show.** Gate into a fogged sector (The Hole): the vanilla fog cards are not visible on
 arrival, the fog medium is there from the first frames. Wrong: `fl.prefill status=anchor_mismatch` or
