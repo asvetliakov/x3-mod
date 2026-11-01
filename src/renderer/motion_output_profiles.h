@@ -72,8 +72,12 @@ struct MotionOutputProfile {
 inline constexpr std::uint8_t motion_output_depth_none = 255;
 
 // Derived numbers only; regenerate with --emit-header, never edit by hand.
+// The FL include holds the Farnham's Legacy pairs the AP archives lack (the
+// generator's --base-profiles mode); both editions compile both, and a row
+// whose programs an edition never creates is never looked up there.
 inline constexpr MotionOutputProfile motion_output_profiles[] = {
 #include "motion_output_profiles_inc.h"
+#include "motion_output_profiles_fl_inc.h"
 };
 inline constexpr std::size_t motion_output_profile_count = sizeof motion_output_profiles /
                                                            sizeof motion_output_profiles[0];

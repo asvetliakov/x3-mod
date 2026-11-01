@@ -51,6 +51,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from index_shaders import fnv1a64, shader_end  # noqa: E402
+from catalogue_mounts import add_edition_argument, mounted_catalogues  # noqa: E402
 from inspect_x3 import read_catalogue  # noqa: E402
 from shader_constants import parse_ctab  # noqa: E402
 
@@ -436,14 +437,15 @@ def _bucket(category, kind):
     return reported + ('_const' if kind in CONSTANT_KINDS else '_param')
 
 
-def _archive_effects(game, resolve=True):
+def _archive_effects(game, resolve=True, edition=None):
     """Yield `(catalogue, path, bytes)` for the `shader/**/*.fb` archive entries.
 
     With `resolve` (the default) a virtual path present in several catalogues
-    yields only the entry the game loads: catalogues are read in ascending
-    order and the addon ones last, so the final occurrence wins.
+    yields only the entry the game loads: catalogues are read in mount order
+    (`catalogue_mounts`: root, then the edition's addon or addon2), so the
+    final occurrence wins.
     """
-    catalogues = sorted([*game.glob('[0-9][0-9].cat'), *game.glob('addon/[0-9][0-9].cat')])
+    catalogues = mounted_catalogues(game, edition)
     chosen = {}
     for cat in catalogues:
         for entry in read_catalogue(cat):
@@ -457,13 +459,13 @@ def _archive_effects(game, resolve=True):
                        bytes(value ^ 0x33 for value in stream.read(entry['size'])))
 
 
-def archive_classification(game):
+def archive_classification(game, edition=None):
     """Classification totals over every installed compiled effect: counts only."""
     totals, kinds = Counter(), Counter()
     digests, groups = set(), {}
     effect_count, pass_count, replayable, signatures = 0, 0, 0, Counter()
     worst = []
-    for _, path, data in _archive_effects(game):
+    for _, path, data in _archive_effects(game, edition=edition):
         effect_count += 1
         effect = Counter()
         digest = hashlib.sha256(data).hexdigest()
@@ -523,13 +525,13 @@ def archive_classification(game):
                             for directory, group in sorted(groups.items())]}
 
 
-def print_pass_detail(game, selector):
+def print_pass_detail(game, selector, edition=None):
     """Print the classified assignments of one `<effect>:<technique>:<pass>`."""
     try:
         effect_key, technique_key, pass_key = selector.split(':')
     except ValueError:
         raise SystemExit('--pass takes <effect>:<technique>:<pass>')
-    for catalogue, path, data in _archive_effects(game):
+    for catalogue, path, data in _archive_effects(game, edition=edition):
         if effect_key not in (path, Path(path).stem) and not path.endswith(effect_key):
             continue
         for record in classify_effect(data, detail=True):
@@ -553,10 +555,10 @@ def print_pass_detail(game, selector):
     raise SystemExit('no pass matched %r' % selector)
 
 
-def archive_passes(game):
+def archive_passes(game, edition=None):
     """Every pass of every installed numbered-archive effect, derived facts only."""
     passes, effects = [], 0
-    for cat in sorted([*game.glob('[0-9][0-9].cat'), *game.glob('addon/[0-9][0-9].cat')]):
+    for cat in mounted_catalogues(game, edition):
         entries = [e for e in read_catalogue(cat)
                    if e['path'].startswith('shader/') and e['path'].endswith('.fb')]
         if not entries:
@@ -600,21 +602,22 @@ def main():
                         help='write the per-pass state classification summary here')
     parser.add_argument('--pass', dest='pass_selector', metavar='EFFECT:TECHNIQUE:PASS',
                         help='print the classified assignments of one pass')
+    add_edition_argument(parser)
     arguments = parser.parse_args()
     if not (arguments.output or arguments.classification or arguments.pass_selector):
         parser.error('one of --output, --classification or --pass is required')
     if arguments.output:
-        result = archive_passes(arguments.game)
+        result = archive_passes(arguments.game, arguments.edition)
         arguments.output.write_text(json.dumps(result, indent=1) + '\n')
         print(json.dumps({key: value for key, value in result.items() if key != 'passes'},
                          indent=2))
     if arguments.classification:
-        summary = archive_classification(arguments.game)
+        summary = archive_classification(arguments.game, arguments.edition)
         arguments.classification.write_text(json.dumps(summary, indent=1) + '\n')
         print(json.dumps({key: value for key, value in summary.items()
                           if key not in ('directories', 'pass_signatures')}, indent=2))
     if arguments.pass_selector:
-        print_pass_detail(arguments.game, arguments.pass_selector)
+        print_pass_detail(arguments.game, arguments.pass_selector, arguments.edition)
 
 
 if __name__ == '__main__':

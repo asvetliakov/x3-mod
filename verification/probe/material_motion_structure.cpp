@@ -1,6 +1,6 @@
 // Host-only structural oracle for every row of the generated profile table.
-// Raw game programs are read from a local directory at run time, never embedded.
-// Usage: material_motion_structure <programs directory>
+// Raw game programs are read from local directories at run time, never embedded.
+// Usage: material_motion_structure <programs directory>... (first holding a program wins)
 // Rows whose original programs are absent locally are skipped with a ROW line
 // saying so; the runner decides whether a skip is acceptable.
 #include "../../src/renderer/material_motion.h"
@@ -1148,14 +1148,19 @@ static void test_table_lookups() {
 
 int main(int argc, char** argv) {
     try {
-        require(argc == 2, "usage: material_motion_structure <programs directory>");
-        const std::string directory = argv[1];
+        require(argc >= 2, "usage: material_motion_structure <programs directory>...");
+        // Several corpora (AP, FL): a program is read from the first directory holding it.
+        const auto load = [&](const char* stage, std::uint64_t fingerprint, Words& words) {
+            for (int a = 1; a < argc; ++a)
+                if (read(program_path(argv[a], stage, fingerprint), words)) return true;
+            return false;
+        };
         std::printf("TABLE rows=%zu\n", motion_output_profile_count);
         unsigned transformed = 0, skipped = 0, index = 0;
         for (const auto& row : motion_output_profiles) {
             Words vs, ps;
-            const bool have_vs = read(program_path(directory, "vs", row.vertex_fingerprint), vs);
-            const bool have_ps = read(program_path(directory, "ps", row.pixel_fingerprint), ps);
+            const bool have_vs = load("vs", row.vertex_fingerprint, vs);
+            const bool have_ps = load("ps", row.pixel_fingerprint, ps);
             if (!have_vs || !have_ps) {
                 std::printf("ROW index=%u vs=%016llx ps=%016llx status=SKIP reason=missing_local_program%s%s\n", index,
                             static_cast<unsigned long long>(row.vertex_fingerprint),

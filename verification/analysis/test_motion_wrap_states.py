@@ -90,9 +90,16 @@ class MotionWrapStatesTests(unittest.TestCase):
         if not programs.is_dir():
             self.skipTest('local original shader tokens not available')
         from check_motion_wrap_profiles import check
-        result = check(programs)
+        from shader_coverage_offline import registered_pairs
+        # The FL extension rows' pixel programs live only in the FL sweep; without
+        # it, exactly those rows may be absent, never an AP row.
+        fl_programs = Path(os.environ.get('X3M_FL_SHADER_PROGRAMS', '/tmp/x3-fl-shader-sweep/programs'))
+        result = check([programs, fl_programs])
         self.assertGreater(result['pairs'], 0)
         self.assertEqual(result['declaration_collisions'], 0)
+        fl_rows = registered_pairs(ROOT / 'src/renderer/motion_output_profiles_fl_inc.h')
+        expected_absent = [] if fl_programs.is_dir() else fl_rows
+        self.assertEqual(sorted(result['absent_rows']), sorted(expected_absent))
 
     def test_shadow_index_contract(self):
         header = source_text(ROOT / 'src/proxy/motion_output.h')

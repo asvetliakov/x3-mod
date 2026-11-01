@@ -14,30 +14,30 @@
         "-Wextra",
         "-Werror",
         "-O2",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/renderer/material_motion.cpp",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/material_motion_structure.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/src/renderer/material_motion.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/material_motion_structure.cpp",
         "-o",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/material-motion-structure/release"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/build/material-motion-structure/release"
       ],
       "fresh_build": true,
-      "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/material-motion-structure/release",
-      "executable_sha256_before": "b8d5b333b720019b6793f920efb7de1de0d4026f1f1082b901407e6aa0a94800",
-      "executable_sha256_after": "b8d5b333b720019b6793f920efb7de1de0d4026f1f1082b901407e6aa0a94800",
-      "checks": 1711,
-      "single_bit_mutations": 1560128,
-      "alias_layouts": 1026,
-      "program_perturbations": 7689,
+      "executable": "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/build/material-motion-structure/release",
+      "executable_sha256_before": "8b45299c6d633156605e60689521a0b3e4b7890bebbcd8acd43fd55c9414ecb6",
+      "executable_sha256_after": "8b45299c6d633156605e60689521a0b3e4b7890bebbcd8acd43fd55c9414ecb6",
+      "checks": 2051,
+      "single_bit_mutations": 1699392,
+      "alias_layouts": 1230,
+      "program_perturbations": 8911,
       "skipped_perturbation_sites": 2,
       "rows_with_skipped_sites": 2,
       "full_sweep_rows": 16,
-      "sampled_sweep_rows": 155,
+      "sampled_sweep_rows": 189,
       "sampled_mutations_per_program": 2048,
-      "lookup_absent_pairs": 2565,
-      "row_perturbations": 4446,
-      "depth_output_rows": 171,
+      "lookup_absent_pairs": 3075,
+      "row_perturbations": 5330,
+      "depth_output_rows": 205,
       "motion_only_rows": 0,
-      "rows": 171,
-      "transformed": 171,
+      "rows": 205,
+      "transformed": 205,
       "skipped": 0,
       "row_results": [
         {
@@ -3634,10 +3634,724 @@
           "pixel_writes_depth": true,
           "skipped_perturbations": [],
           "alias_layouts": 6
+        },
+        {
+          "index": 171,
+          "vs": "37c34a7478544c14",
+          "ps": "6f745daaf928a297",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2045,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 172,
+          "vs": "37c34a7478544c14",
+          "ps": "7d11d532dedaf1d9",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1949,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 173,
+          "vs": "37c34a7478544c14",
+          "ps": "9db5eebae86ce142",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1938,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 174,
+          "vs": "37c34a7478544c14",
+          "ps": "b2d8f40cc7a03904",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2024,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 175,
+          "vs": "37c34a7478544c14",
+          "ps": "ba08f36b160527a5",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2013,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 176,
+          "vs": "37c34a7478544c14",
+          "ps": "df146f0ed69e1acf",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1970,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 177,
+          "vs": "37c34a7478544c14",
+          "ps": "e57c48fc06198e20",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2056,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 178,
+          "vs": "37c34a7478544c14",
+          "ps": "f083a2be99470f83",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1981,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 179,
+          "vs": "4944d81dfe531b37",
+          "ps": "16d4af171035acd1",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1593,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 180,
+          "vs": "4944d81dfe531b37",
+          "ps": "1b54cbfa2155b61c",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1631,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 181,
+          "vs": "4944d81dfe531b37",
+          "ps": "20c3851a4cac4213",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1597,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 182,
+          "vs": "4944d81dfe531b37",
+          "ps": "2a7f1c93d4fd081c",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1621,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 183,
+          "vs": "4944d81dfe531b37",
+          "ps": "3c39d45636d95744",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1620,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 184,
+          "vs": "4944d81dfe531b37",
+          "ps": "3ff64d33ff2782ab",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1577,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 185,
+          "vs": "4944d81dfe531b37",
+          "ps": "67f738c3b080164a",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1629,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 186,
+          "vs": "4944d81dfe531b37",
+          "ps": "740346590fe7bff5",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1663,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 187,
+          "vs": "4944d81dfe531b37",
+          "ps": "96238a8b2cee4f6e",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1609,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 188,
+          "vs": "4944d81dfe531b37",
+          "ps": "ac429ac9cd658e64",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1589,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 189,
+          "vs": "4944d81dfe531b37",
+          "ps": "c79c3b2c6749df10",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1625,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 190,
+          "vs": "4944d81dfe531b37",
+          "ps": "e326b2b1363c9886",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1652,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 191,
+          "vs": "494fe349b8bc12ec",
+          "ps": "0d5848c8489b6630",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1595,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 192,
+          "vs": "494fe349b8bc12ec",
+          "ps": "87ccd863f19254b2",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1826,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 193,
+          "vs": "494fe349b8bc12ec",
+          "ps": "c17114ca9752ab62",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1901,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 194,
+          "vs": "494fe349b8bc12ec",
+          "ps": "cca466f41a0de457",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1858,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 195,
+          "vs": "494fe349b8bc12ec",
+          "ps": "ced7edef48059e84",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1563,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 196,
+          "vs": "494fe349b8bc12ec",
+          "ps": "f06b626708db3c7e",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1933,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 197,
+          "vs": "53a0a641107ed76c",
+          "ps": "1455079b3f18aa88",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1557,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 198,
+          "vs": "53a0a641107ed76c",
+          "ps": "1835f5e1ba07b1aa",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1531,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 199,
+          "vs": "53a0a641107ed76c",
+          "ps": "1886829a571cf2db",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1521,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 200,
+          "vs": "53a0a641107ed76c",
+          "ps": "33826e49b53b88dc",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1535,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 201,
+          "vs": "53a0a641107ed76c",
+          "ps": "5831fb1d488e089e",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1553,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 202,
+          "vs": "53a0a641107ed76c",
+          "ps": "5fb88b63dd609443",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1561,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 203,
+          "vs": "53a0a641107ed76c",
+          "ps": "b5af46aebb231ba2",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1515,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 204,
+          "vs": "53a0a641107ed76c",
+          "ps": "db375f72fe3cdf5e",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1541,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
         }
       ],
       "report": "verification/results/material-motion-structure-release.txt",
-      "report_sha256": "a76aefd036c8f03a9eb2edf438a4533cf2ad250e1690b62e853ca7387a851ad6",
+      "report_sha256": "8f7dd4e90bf8ec04dbcc8628f0c3afd326b849b02b3c4b01333540f4287466db",
       "passed": true
     },
     {
@@ -3652,30 +4366,30 @@
         "-g",
         "-fsanitize=address,undefined",
         "-fno-omit-frame-pointer",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/src/renderer/material_motion.cpp",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/material_motion_structure.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/src/renderer/material_motion.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/material_motion_structure.cpp",
         "-o",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/material-motion-structure/asan-ubsan"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/build/material-motion-structure/asan-ubsan"
       ],
       "fresh_build": true,
-      "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2fa66402c00c2891/verification/probe/build/material-motion-structure/asan-ubsan",
-      "executable_sha256_before": "07e6584ad1fccec41151386e2f46af40ebf44ebc34023c600490d106d63f8689",
-      "executable_sha256_after": "07e6584ad1fccec41151386e2f46af40ebf44ebc34023c600490d106d63f8689",
-      "checks": 1711,
-      "single_bit_mutations": 1560128,
-      "alias_layouts": 1026,
-      "program_perturbations": 7689,
+      "executable": "/home/asvetl/x3-mod/.claude/worktrees/agent-a6081fe37be7a784f/verification/probe/build/material-motion-structure/asan-ubsan",
+      "executable_sha256_before": "4aea15a0627fa565abaa34535e50eb82c5f6100b42eec3b6b818a042dfbf84e6",
+      "executable_sha256_after": "4aea15a0627fa565abaa34535e50eb82c5f6100b42eec3b6b818a042dfbf84e6",
+      "checks": 2051,
+      "single_bit_mutations": 1699392,
+      "alias_layouts": 1230,
+      "program_perturbations": 8911,
       "skipped_perturbation_sites": 2,
       "rows_with_skipped_sites": 2,
       "full_sweep_rows": 16,
-      "sampled_sweep_rows": 155,
+      "sampled_sweep_rows": 189,
       "sampled_mutations_per_program": 2048,
-      "lookup_absent_pairs": 2565,
-      "row_perturbations": 4446,
-      "depth_output_rows": 171,
+      "lookup_absent_pairs": 3075,
+      "row_perturbations": 5330,
+      "depth_output_rows": 205,
       "motion_only_rows": 0,
-      "rows": 171,
-      "transformed": 171,
+      "rows": 205,
+      "transformed": 205,
       "skipped": 0,
       "row_results": [
         {
@@ -7272,27 +7986,745 @@
           "pixel_writes_depth": true,
           "skipped_perturbations": [],
           "alias_layouts": 6
+        },
+        {
+          "index": 171,
+          "vs": "37c34a7478544c14",
+          "ps": "6f745daaf928a297",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2045,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 172,
+          "vs": "37c34a7478544c14",
+          "ps": "7d11d532dedaf1d9",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1949,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 173,
+          "vs": "37c34a7478544c14",
+          "ps": "9db5eebae86ce142",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1938,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 174,
+          "vs": "37c34a7478544c14",
+          "ps": "b2d8f40cc7a03904",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2024,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 175,
+          "vs": "37c34a7478544c14",
+          "ps": "ba08f36b160527a5",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2013,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 176,
+          "vs": "37c34a7478544c14",
+          "ps": "df146f0ed69e1acf",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1970,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 177,
+          "vs": "37c34a7478544c14",
+          "ps": "e57c48fc06198e20",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 2056,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 178,
+          "vs": "37c34a7478544c14",
+          "ps": "f083a2be99470f83",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1981,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 179,
+          "vs": "4944d81dfe531b37",
+          "ps": "16d4af171035acd1",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1593,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 180,
+          "vs": "4944d81dfe531b37",
+          "ps": "1b54cbfa2155b61c",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1631,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 181,
+          "vs": "4944d81dfe531b37",
+          "ps": "20c3851a4cac4213",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1597,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 182,
+          "vs": "4944d81dfe531b37",
+          "ps": "2a7f1c93d4fd081c",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1621,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 183,
+          "vs": "4944d81dfe531b37",
+          "ps": "3c39d45636d95744",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1620,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 184,
+          "vs": "4944d81dfe531b37",
+          "ps": "3ff64d33ff2782ab",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1577,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 185,
+          "vs": "4944d81dfe531b37",
+          "ps": "67f738c3b080164a",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1629,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 186,
+          "vs": "4944d81dfe531b37",
+          "ps": "740346590fe7bff5",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1663,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 187,
+          "vs": "4944d81dfe531b37",
+          "ps": "96238a8b2cee4f6e",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1609,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 188,
+          "vs": "4944d81dfe531b37",
+          "ps": "ac429ac9cd658e64",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1589,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 189,
+          "vs": "4944d81dfe531b37",
+          "ps": "c79c3b2c6749df10",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1625,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 190,
+          "vs": "4944d81dfe531b37",
+          "ps": "e326b2b1363c9886",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 586,
+          "pixel_words": 1652,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 191,
+          "vs": "494fe349b8bc12ec",
+          "ps": "0d5848c8489b6630",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1595,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 192,
+          "vs": "494fe349b8bc12ec",
+          "ps": "87ccd863f19254b2",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1826,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 193,
+          "vs": "494fe349b8bc12ec",
+          "ps": "c17114ca9752ab62",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1901,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 194,
+          "vs": "494fe349b8bc12ec",
+          "ps": "cca466f41a0de457",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1858,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 195,
+          "vs": "494fe349b8bc12ec",
+          "ps": "ced7edef48059e84",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1563,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 196,
+          "vs": "494fe349b8bc12ec",
+          "ps": "f06b626708db3c7e",
+          "class": "C",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1933,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 45,
+          "program_perturbation_sites": 45,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 197,
+          "vs": "53a0a641107ed76c",
+          "ps": "1455079b3f18aa88",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1557,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 198,
+          "vs": "53a0a641107ed76c",
+          "ps": "1835f5e1ba07b1aa",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1531,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 199,
+          "vs": "53a0a641107ed76c",
+          "ps": "1886829a571cf2db",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1521,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 200,
+          "vs": "53a0a641107ed76c",
+          "ps": "33826e49b53b88dc",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1535,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 201,
+          "vs": "53a0a641107ed76c",
+          "ps": "5831fb1d488e089e",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1553,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 202,
+          "vs": "53a0a641107ed76c",
+          "ps": "5fb88b63dd609443",
+          "class": "B",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1561,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 203,
+          "vs": "53a0a641107ed76c",
+          "ps": "b5af46aebb231ba2",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1515,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 204,
+          "vs": "53a0a641107ed76c",
+          "ps": "db375f72fe3cdf5e",
+          "class": "A",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 556,
+          "pixel_words": 1541,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 31,
+          "program_perturbation_sites": 31,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
         }
       ],
       "report": "verification/results/material-motion-structure-asan-ubsan.txt",
-      "report_sha256": "a76aefd036c8f03a9eb2edf438a4533cf2ad250e1690b62e853ca7387a851ad6",
+      "report_sha256": "8f7dd4e90bf8ec04dbcc8628f0c3afd326b849b02b3c4b01333540f4287466db",
       "passed": true
     }
   ],
   "sources_before": {
-    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
-    "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
-    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/material_motion.cpp": "5734138efcfe06b1a3297af28d4be08ce251a994e30b99c91993b67a4a771d79",
+    "src/renderer/material_motion.h": "59ff85bfb88a836c8dd1d0b3443d83bf26b6665d3e55331bbd800317dac78254",
+    "src/renderer/motion_output_profiles.h": "b8348e5b358f20f9676b2c6b0ef7ecb0275f7b9ae5360f77b0b4d92dd0ed8b87",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
-    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
-    "verification/probe/material_motion_structure.cpp": "fcec34f0a67f29c56ca7f09c6e03ac748567316b01e0405b1d59fe713e8092be",
-    "verification/probe/run_material_motion_structure.py": "8abc58c8c8b627541976d46c749b319a8585fa260d4dafd0351a709edac6e3c4",
-    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "f5613a4c7d60e7229a8889b065f3cf51c8c05e27a5de9e9d1c0719fde56e24b5",
+    "verification/probe/material_motion_structure.cpp": "c1494c018a0613e8f7cdc0e88aa46a0d8eab3690f4651461bc159bd9c1341400",
+    "verification/probe/run_material_motion_structure.py": "a1c9fee7d272ea69610ebb32eff72cb6170c15d30cd58bb044c9b0d0643de88d",
+    "src/renderer/current_depth_pixel_program.h": "4878748b92c6c61123aca05f3b8a594d0571cec422ca9720094ff67431939f4b",
     "src/renderer/current_depth_pixel_program_inc.h": "971d4671296b4c6ca6228c949b4fde4e75f076ec186bc8d84ac0721b2ed136d1",
-    "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151"
+    "src/renderer/damage_motion_validation.h": "da7c14495930ad10802a50b489cf31e0519fdb5b2efa97561df0ffea5dc34013",
+    "src/renderer/motion_output_profiles_fl_inc.h": "770ec88f27df48b1f3290ace3c53e362b2d85198357ed1ad73eba572a6bba266"
   },
-  "programs_directory": "/tmp/x3-shader-sweep/programs",
+  "programs_directories": [
+    "/tmp/x3-shader-sweep/programs",
+    "/tmp/x3-fl-shader-sweep/programs"
+  ],
   "inputs_before": [
     {
       "vs": {
@@ -9345,10 +10777,419 @@
         "sha256": "7a02eda58b8432b207978affd796053cc88bcf21ae652d6d7faf3f8146370cf7",
         "bytes": 1280
       }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_6f745daaf928a297.bin",
+        "sha256": "479a8e0cd188f5905ac858965ba9a3a7fcf8098e00be8f0002f681db1da44cc1",
+        "bytes": 7600
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_7d11d532dedaf1d9.bin",
+        "sha256": "2a57c9e8b81d61fb2ee732ccb908afb4b19ace7057476b40bff54aef1825e170",
+        "bytes": 7216
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_9db5eebae86ce142.bin",
+        "sha256": "4e12849e7573ea7e3c4fed7e3879375a05be889f972bd9cc5a54046d71f13da3",
+        "bytes": 7172
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_b2d8f40cc7a03904.bin",
+        "sha256": "16a9bf84bdbadcd7f2304b92ddc71df92dc4dea74ee9ee760305e8b539479022",
+        "bytes": 7516
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ba08f36b160527a5.bin",
+        "sha256": "e8a6141429687ff6af94b13e0db79f5523be19a64c262d08e834efc367179532",
+        "bytes": 7472
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_df146f0ed69e1acf.bin",
+        "sha256": "c2730d99553769b0785c349a613942cc7e1d5858181a2ce2e1c8aefe7ea5d15b",
+        "bytes": 7300
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_e57c48fc06198e20.bin",
+        "sha256": "907760f069b8a30e4e2b72740fc4f159876c19a87ff219184cdcdecfd8cb621d",
+        "bytes": 7644
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_f083a2be99470f83.bin",
+        "sha256": "bac7fe63cd53a146de78cba095c1402a84ae72c484a01e195b49e8cf79579b69",
+        "bytes": 7344
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_16d4af171035acd1.bin",
+        "sha256": "f838e79e96f111bd61c92eb123936d44dfcd2cf2b61d86717b80bd9fd28af658",
+        "bytes": 5792
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1b54cbfa2155b61c.bin",
+        "sha256": "ea7517c6e7af5500c6bddd585a4600fa6519ba76ecb79a4e190734a4c6688b97",
+        "bytes": 5944
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_20c3851a4cac4213.bin",
+        "sha256": "1bd1eaf70bd8a247fe67801a3e319c838c16852a13ac2622b26ed6c688664e49",
+        "bytes": 5808
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_2a7f1c93d4fd081c.bin",
+        "sha256": "e465e2e55fb604fa630141ffd8143d606a237407e4cabb9164541819f56e46c4",
+        "bytes": 5904
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_3c39d45636d95744.bin",
+        "sha256": "732503d94cf931703cf7cc4f6207a48e173934e8fe002c47a14df54d5e145a8e",
+        "bytes": 5900
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_3ff64d33ff2782ab.bin",
+        "sha256": "6546663f48ef5eca48852afe87340b7e263944f2c1e9fe3feec40bb45479e679",
+        "bytes": 5728
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_67f738c3b080164a.bin",
+        "sha256": "b99e1193967bf1d2b043dc8e68feb1631d4f9430d8fdd9568d73ee45d9b76f9e",
+        "bytes": 5936
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_740346590fe7bff5.bin",
+        "sha256": "ed932cba0edb5b0273d75896ffb9eb15d8678edcb0df8e2571ed6a63011e80be",
+        "bytes": 6072
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_96238a8b2cee4f6e.bin",
+        "sha256": "7b4a60c65956c6b0aca453763a69a26c30475bd0ec86595bebeeb09a09b6a843",
+        "bytes": 5856
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ac429ac9cd658e64.bin",
+        "sha256": "f42513e92ff314389edb14a67ba4470bc7586f3d54386d042114572c473b4a30",
+        "bytes": 5776
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_c79c3b2c6749df10.bin",
+        "sha256": "81ca42e7a96909ddb67474522624cf79c69b1fffd3bdb29a462acb9138b545bc",
+        "bytes": 5920
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_e326b2b1363c9886.bin",
+        "sha256": "398a8c114aed596935b757346b3b4b839c580985b5e77791c34c8f7765c7e24b",
+        "bytes": 6028
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_0d5848c8489b6630.bin",
+        "sha256": "11e3d2f11e148122a463c865c730165bc6128d18dc053017a7285004728dcd2a",
+        "bytes": 5800
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_87ccd863f19254b2.bin",
+        "sha256": "43ae6b474cd488c7fb12b85ae4deb4f1d2aad2f8bd9cbe1cde9900bdb31d9167",
+        "bytes": 6724
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_c17114ca9752ab62.bin",
+        "sha256": "54799c5f51b2536f10dbedee1b302d57a53aca643b89d40164cf068bd6276c54",
+        "bytes": 7024
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_cca466f41a0de457.bin",
+        "sha256": "9f8c67496a1ba7e1161ac402676660a73c1ca96736ce2e1cb963fe189a67427e",
+        "bytes": 6852
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ced7edef48059e84.bin",
+        "sha256": "49ffecdaf1f211019a936429bb208639d76fdc6aaac91e02e84856544c389266",
+        "bytes": 5672
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_f06b626708db3c7e.bin",
+        "sha256": "32744bfa0974b09f201528c01fe57de5b29d2a709f54abfd8811881d705e1cea",
+        "bytes": 7152
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1455079b3f18aa88.bin",
+        "sha256": "ca19cad3d60f622f32e3df2f494ed17cd58cda3f83f66506a83eff4daf938080",
+        "bytes": 5648
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1835f5e1ba07b1aa.bin",
+        "sha256": "8ad758be97e3701cfe9408301a2780fb1ee86ace0a52b6ec8a27b3725935ff96",
+        "bytes": 5544
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1886829a571cf2db.bin",
+        "sha256": "21dfbb44d468b37aa422c05f9996f15ef4177092d9559106b3fa6d78240560ef",
+        "bytes": 5504
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_33826e49b53b88dc.bin",
+        "sha256": "70b33abd0ab47899f31066d34f6e2f4dc68b4dfc38bdde663408729991453f75",
+        "bytes": 5560
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_5831fb1d488e089e.bin",
+        "sha256": "3aec6c950f790f60c0b65c2e024f160e3f33ad55a90df3c00db5d4efa213102f",
+        "bytes": 5632
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_5fb88b63dd609443.bin",
+        "sha256": "312ee4cfe32285bf0b83a0c027f2842d336fb8c13a3b99a68f64ca4add5308e5",
+        "bytes": 5664
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_b5af46aebb231ba2.bin",
+        "sha256": "224d824f2a33b171d142ba9793405be90c2682a2c49d00d623b37844cebedbc9",
+        "bytes": 5480
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_db375f72fe3cdf5e.bin",
+        "sha256": "e44812705e206ee7e3fb139a9f2c27bd03bc22d52b1720bf74b34e805ff8fe75",
+        "bytes": 5584
+      }
     }
   ],
   "profiles_json_sha256": "1f579d212695c7d6202d2032dfe0849c4d52defd784e5ed4db0ced976fb34c74",
-  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "fl_profiles_json_sha256": "98232d5dae104d1a3bcc3e0ecadc38a3fcc765673d2420e24a5513391b16eec6",
+  "compiler": "Ubuntu clang version 21.1.8 (6ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-21/bin",
   "compiler_path": "/usr/bin/clang++",
   "host_only": true,
   "expected_row_checks": [
@@ -9383,17 +11224,18 @@
   },
   "expected_argon_check": "argon_output_byte_identical_to_previous_transformer",
   "sources_after": {
-    "src/renderer/material_motion.cpp": "323cc398f73f98c17bce629f939289021bc4d427e12a19eb79ee65496ad35497",
-    "src/renderer/material_motion.h": "e0fe5cc734d6ab4fe8ba3ae587c1610a9dcbb359c5fa8f5eaf6e245f1b06e7bb",
-    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/material_motion.cpp": "5734138efcfe06b1a3297af28d4be08ce251a994e30b99c91993b67a4a771d79",
+    "src/renderer/material_motion.h": "59ff85bfb88a836c8dd1d0b3443d83bf26b6665d3e55331bbd800317dac78254",
+    "src/renderer/motion_output_profiles.h": "b8348e5b358f20f9676b2c6b0ef7ecb0275f7b9ae5360f77b0b4d92dd0ed8b87",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
     "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
-    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
-    "verification/probe/material_motion_structure.cpp": "fcec34f0a67f29c56ca7f09c6e03ac748567316b01e0405b1d59fe713e8092be",
-    "verification/probe/run_material_motion_structure.py": "8abc58c8c8b627541976d46c749b319a8585fa260d4dafd0351a709edac6e3c4",
-    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "f5613a4c7d60e7229a8889b065f3cf51c8c05e27a5de9e9d1c0719fde56e24b5",
+    "verification/probe/material_motion_structure.cpp": "c1494c018a0613e8f7cdc0e88aa46a0d8eab3690f4651461bc159bd9c1341400",
+    "verification/probe/run_material_motion_structure.py": "a1c9fee7d272ea69610ebb32eff72cb6170c15d30cd58bb044c9b0d0643de88d",
+    "src/renderer/current_depth_pixel_program.h": "4878748b92c6c61123aca05f3b8a594d0571cec422ca9720094ff67431939f4b",
     "src/renderer/current_depth_pixel_program_inc.h": "971d4671296b4c6ca6228c949b4fde4e75f076ec186bc8d84ac0721b2ed136d1",
-    "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151"
+    "src/renderer/damage_motion_validation.h": "da7c14495930ad10802a50b489cf31e0519fdb5b2efa97561df0ffea5dc34013",
+    "src/renderer/motion_output_profiles_fl_inc.h": "770ec88f27df48b1f3290ace3c53e362b2d85198357ed1ad73eba572a6bba266"
   },
   "inputs_after": [
     {
@@ -11446,6 +13288,414 @@
         "path": "/tmp/x3-shader-sweep/programs/ps_f917d48ee826da1f.bin",
         "sha256": "7a02eda58b8432b207978affd796053cc88bcf21ae652d6d7faf3f8146370cf7",
         "bytes": 1280
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_6f745daaf928a297.bin",
+        "sha256": "479a8e0cd188f5905ac858965ba9a3a7fcf8098e00be8f0002f681db1da44cc1",
+        "bytes": 7600
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_7d11d532dedaf1d9.bin",
+        "sha256": "2a57c9e8b81d61fb2ee732ccb908afb4b19ace7057476b40bff54aef1825e170",
+        "bytes": 7216
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_9db5eebae86ce142.bin",
+        "sha256": "4e12849e7573ea7e3c4fed7e3879375a05be889f972bd9cc5a54046d71f13da3",
+        "bytes": 7172
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_b2d8f40cc7a03904.bin",
+        "sha256": "16a9bf84bdbadcd7f2304b92ddc71df92dc4dea74ee9ee760305e8b539479022",
+        "bytes": 7516
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ba08f36b160527a5.bin",
+        "sha256": "e8a6141429687ff6af94b13e0db79f5523be19a64c262d08e834efc367179532",
+        "bytes": 7472
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_df146f0ed69e1acf.bin",
+        "sha256": "c2730d99553769b0785c349a613942cc7e1d5858181a2ce2e1c8aefe7ea5d15b",
+        "bytes": 7300
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_e57c48fc06198e20.bin",
+        "sha256": "907760f069b8a30e4e2b72740fc4f159876c19a87ff219184cdcdecfd8cb621d",
+        "bytes": 7644
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin",
+        "sha256": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+        "bytes": 3072
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_f083a2be99470f83.bin",
+        "sha256": "bac7fe63cd53a146de78cba095c1402a84ae72c484a01e195b49e8cf79579b69",
+        "bytes": 7344
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_16d4af171035acd1.bin",
+        "sha256": "f838e79e96f111bd61c92eb123936d44dfcd2cf2b61d86717b80bd9fd28af658",
+        "bytes": 5792
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1b54cbfa2155b61c.bin",
+        "sha256": "ea7517c6e7af5500c6bddd585a4600fa6519ba76ecb79a4e190734a4c6688b97",
+        "bytes": 5944
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_20c3851a4cac4213.bin",
+        "sha256": "1bd1eaf70bd8a247fe67801a3e319c838c16852a13ac2622b26ed6c688664e49",
+        "bytes": 5808
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_2a7f1c93d4fd081c.bin",
+        "sha256": "e465e2e55fb604fa630141ffd8143d606a237407e4cabb9164541819f56e46c4",
+        "bytes": 5904
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_3c39d45636d95744.bin",
+        "sha256": "732503d94cf931703cf7cc4f6207a48e173934e8fe002c47a14df54d5e145a8e",
+        "bytes": 5900
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_3ff64d33ff2782ab.bin",
+        "sha256": "6546663f48ef5eca48852afe87340b7e263944f2c1e9fe3feec40bb45479e679",
+        "bytes": 5728
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_67f738c3b080164a.bin",
+        "sha256": "b99e1193967bf1d2b043dc8e68feb1631d4f9430d8fdd9568d73ee45d9b76f9e",
+        "bytes": 5936
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_740346590fe7bff5.bin",
+        "sha256": "ed932cba0edb5b0273d75896ffb9eb15d8678edcb0df8e2571ed6a63011e80be",
+        "bytes": 6072
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_96238a8b2cee4f6e.bin",
+        "sha256": "7b4a60c65956c6b0aca453763a69a26c30475bd0ec86595bebeeb09a09b6a843",
+        "bytes": 5856
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ac429ac9cd658e64.bin",
+        "sha256": "f42513e92ff314389edb14a67ba4470bc7586f3d54386d042114572c473b4a30",
+        "bytes": 5776
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_c79c3b2c6749df10.bin",
+        "sha256": "81ca42e7a96909ddb67474522624cf79c69b1fffd3bdb29a462acb9138b545bc",
+        "bytes": 5920
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin",
+        "sha256": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+        "bytes": 2224
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_e326b2b1363c9886.bin",
+        "sha256": "398a8c114aed596935b757346b3b4b839c580985b5e77791c34c8f7765c7e24b",
+        "bytes": 6028
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_0d5848c8489b6630.bin",
+        "sha256": "11e3d2f11e148122a463c865c730165bc6128d18dc053017a7285004728dcd2a",
+        "bytes": 5800
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_87ccd863f19254b2.bin",
+        "sha256": "43ae6b474cd488c7fb12b85ae4deb4f1d2aad2f8bd9cbe1cde9900bdb31d9167",
+        "bytes": 6724
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_c17114ca9752ab62.bin",
+        "sha256": "54799c5f51b2536f10dbedee1b302d57a53aca643b89d40164cf068bd6276c54",
+        "bytes": 7024
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_cca466f41a0de457.bin",
+        "sha256": "9f8c67496a1ba7e1161ac402676660a73c1ca96736ce2e1cb963fe189a67427e",
+        "bytes": 6852
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_ced7edef48059e84.bin",
+        "sha256": "49ffecdaf1f211019a936429bb208639d76fdc6aaac91e02e84856544c389266",
+        "bytes": 5672
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_494fe349b8bc12ec.bin",
+        "sha256": "8a7049b1fab64b40e5a667350c21c55c8155d614bd5b7a3465bba6713594c2c7",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_f06b626708db3c7e.bin",
+        "sha256": "32744bfa0974b09f201528c01fe57de5b29d2a709f54abfd8811881d705e1cea",
+        "bytes": 7152
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1455079b3f18aa88.bin",
+        "sha256": "ca19cad3d60f622f32e3df2f494ed17cd58cda3f83f66506a83eff4daf938080",
+        "bytes": 5648
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1835f5e1ba07b1aa.bin",
+        "sha256": "8ad758be97e3701cfe9408301a2780fb1ee86ace0a52b6ec8a27b3725935ff96",
+        "bytes": 5544
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_1886829a571cf2db.bin",
+        "sha256": "21dfbb44d468b37aa422c05f9996f15ef4177092d9559106b3fa6d78240560ef",
+        "bytes": 5504
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_33826e49b53b88dc.bin",
+        "sha256": "70b33abd0ab47899f31066d34f6e2f4dc68b4dfc38bdde663408729991453f75",
+        "bytes": 5560
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_5831fb1d488e089e.bin",
+        "sha256": "3aec6c950f790f60c0b65c2e024f160e3f33ad55a90df3c00db5d4efa213102f",
+        "bytes": 5632
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_5fb88b63dd609443.bin",
+        "sha256": "312ee4cfe32285bf0b83a0c027f2842d336fb8c13a3b99a68f64ca4add5308e5",
+        "bytes": 5664
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_b5af46aebb231ba2.bin",
+        "sha256": "224d824f2a33b171d142ba9793405be90c2682a2c49d00d623b37844cebedbc9",
+        "bytes": 5480
+      }
+    },
+    {
+      "vs": {
+        "path": "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin",
+        "sha256": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+        "bytes": 2104
+      },
+      "ps": {
+        "path": "/tmp/x3-fl-shader-sweep/programs/ps_db375f72fe3cdf5e.bin",
+        "sha256": "e44812705e206ee7e3fb139a9f2c27bd03bc22d52b1720bf74b34e805ff8fe75",
+        "bytes": 5584
       }
     }
   ],

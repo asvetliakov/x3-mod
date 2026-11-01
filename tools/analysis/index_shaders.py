@@ -12,6 +12,7 @@ import hashlib
 import json
 import struct
 from pathlib import Path
+from catalogue_mounts import add_edition_argument, mounted_catalogues
 from inspect_x3 import read_catalogue
 
 FNV_OFFSET = 14695981039346656037
@@ -85,9 +86,9 @@ def embedded_shaders(data):
         pos = end
 
 
-def index(root):
+def index(root, edition=None):
     results = []
-    for cat in sorted([*root.glob('[0-9][0-9].cat'), *root.glob('addon/[0-9][0-9].cat')]):
+    for cat in mounted_catalogues(root, edition):
         entries = [e for e in read_catalogue(cat) if e['path'].startswith('shader/') and e['path'].endswith('.fb')]
         if not entries:
             continue
@@ -108,8 +109,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('game', type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    add_edition_argument(parser)
     args = parser.parse_args()
-    result = index(args.game)
+    result = index(args.game, args.edition)
     args.output.write_text(json.dumps(result, indent=2) + '\n')
     print(f"Indexed {len(result['effects'])} effects; "
           f"{sum(len(e['shaders']) for e in result['effects'])} embedded streams")

@@ -1,0 +1,1116 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host via WSL interop, no device)",
+ "producer": "verification/results/fl-shader-coverage/validate_variants.py",
+ "generator": "gen_fl_motion_variants.cpp built against the working tree (material_motion.cpp, linear_material.cpp)",
+ "extension_rows": 34,
+ "programs": 38,
+ "variants": 110,
+ "controls": 38,
+ "all_end_s_ok_without_messages": true,
+ "negative_control": {
+  "source": "ps_0d5848c8489b6630-motion-depth.bin",
+  "mutation": "add r0, c216, c217 appended before END",
+  "end": "80004005",
+  "messages": 1,
+  "refused": true
+ },
+ "linear_material_variants_on_fl_ps": {
+  "fill=3 gain=3 share=3": 34
+ },
+ "tally": [
+  {
+   "stage": "ps",
+   "kind": "motion",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 34
+  },
+  {
+   "stage": "ps",
+   "kind": "motion-depth",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 34
+  },
+  {
+   "stage": "ps",
+   "kind": "original",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 34
+  },
+  {
+   "stage": "ps",
+   "kind": "sunlane",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 34
+  },
+  {
+   "stage": "vs",
+   "kind": "motion",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 4
+  },
+  {
+   "stage": "vs",
+   "kind": "motion-depth",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 4
+  },
+  {
+   "stage": "vs",
+   "kind": "original",
+   "end": "00000000",
+   "instruction_worst": "00000000",
+   "messages": 0,
+   "programs": 4
+  }
+ ],
+ "rows": [
+  {
+   "program": "ps_0d5848c8489b6630",
+   "kind": "motion-depth",
+   "words": 1595,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_0d5848c8489b6630",
+   "kind": "motion",
+   "words": 1582,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_0d5848c8489b6630",
+   "kind": "original",
+   "words": 1450,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_0d5848c8489b6630",
+   "kind": "sunlane",
+   "words": 1604,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1455079b3f18aa88",
+   "kind": "motion-depth",
+   "words": 1557,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1455079b3f18aa88",
+   "kind": "motion",
+   "words": 1544,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1455079b3f18aa88",
+   "kind": "original",
+   "words": 1412,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1455079b3f18aa88",
+   "kind": "sunlane",
+   "words": 1566,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_16d4af171035acd1",
+   "kind": "motion-depth",
+   "words": 1593,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_16d4af171035acd1",
+   "kind": "motion",
+   "words": 1580,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_16d4af171035acd1",
+   "kind": "original",
+   "words": 1448,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_16d4af171035acd1",
+   "kind": "sunlane",
+   "words": 1602,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1835f5e1ba07b1aa",
+   "kind": "motion-depth",
+   "words": 1531,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1835f5e1ba07b1aa",
+   "kind": "motion",
+   "words": 1518,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1835f5e1ba07b1aa",
+   "kind": "original",
+   "words": 1386,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1835f5e1ba07b1aa",
+   "kind": "sunlane",
+   "words": 1540,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1886829a571cf2db",
+   "kind": "motion-depth",
+   "words": 1521,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1886829a571cf2db",
+   "kind": "motion",
+   "words": 1508,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1886829a571cf2db",
+   "kind": "original",
+   "words": 1376,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1886829a571cf2db",
+   "kind": "sunlane",
+   "words": 1530,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1b54cbfa2155b61c",
+   "kind": "motion-depth",
+   "words": 1631,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1b54cbfa2155b61c",
+   "kind": "motion",
+   "words": 1618,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1b54cbfa2155b61c",
+   "kind": "original",
+   "words": 1486,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_1b54cbfa2155b61c",
+   "kind": "sunlane",
+   "words": 1640,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_20c3851a4cac4213",
+   "kind": "motion-depth",
+   "words": 1597,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_20c3851a4cac4213",
+   "kind": "motion",
+   "words": 1584,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_20c3851a4cac4213",
+   "kind": "original",
+   "words": 1452,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_20c3851a4cac4213",
+   "kind": "sunlane",
+   "words": 1606,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_2a7f1c93d4fd081c",
+   "kind": "motion-depth",
+   "words": 1621,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_2a7f1c93d4fd081c",
+   "kind": "motion",
+   "words": 1608,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_2a7f1c93d4fd081c",
+   "kind": "original",
+   "words": 1476,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_2a7f1c93d4fd081c",
+   "kind": "sunlane",
+   "words": 1630,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_33826e49b53b88dc",
+   "kind": "motion-depth",
+   "words": 1535,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_33826e49b53b88dc",
+   "kind": "motion",
+   "words": 1522,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_33826e49b53b88dc",
+   "kind": "original",
+   "words": 1390,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_33826e49b53b88dc",
+   "kind": "sunlane",
+   "words": 1544,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3c39d45636d95744",
+   "kind": "motion-depth",
+   "words": 1620,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3c39d45636d95744",
+   "kind": "motion",
+   "words": 1607,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3c39d45636d95744",
+   "kind": "original",
+   "words": 1475,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3c39d45636d95744",
+   "kind": "sunlane",
+   "words": 1629,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3ff64d33ff2782ab",
+   "kind": "motion-depth",
+   "words": 1577,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3ff64d33ff2782ab",
+   "kind": "motion",
+   "words": 1564,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3ff64d33ff2782ab",
+   "kind": "original",
+   "words": 1432,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_3ff64d33ff2782ab",
+   "kind": "sunlane",
+   "words": 1586,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5831fb1d488e089e",
+   "kind": "motion-depth",
+   "words": 1553,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5831fb1d488e089e",
+   "kind": "motion",
+   "words": 1540,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5831fb1d488e089e",
+   "kind": "original",
+   "words": 1408,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5831fb1d488e089e",
+   "kind": "sunlane",
+   "words": 1562,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5fb88b63dd609443",
+   "kind": "motion-depth",
+   "words": 1561,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5fb88b63dd609443",
+   "kind": "motion",
+   "words": 1548,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5fb88b63dd609443",
+   "kind": "original",
+   "words": 1416,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_5fb88b63dd609443",
+   "kind": "sunlane",
+   "words": 1570,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_67f738c3b080164a",
+   "kind": "motion-depth",
+   "words": 1629,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_67f738c3b080164a",
+   "kind": "motion",
+   "words": 1616,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_67f738c3b080164a",
+   "kind": "original",
+   "words": 1484,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_67f738c3b080164a",
+   "kind": "sunlane",
+   "words": 1638,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_6f745daaf928a297",
+   "kind": "motion-depth",
+   "words": 2045,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_6f745daaf928a297",
+   "kind": "motion",
+   "words": 2032,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_6f745daaf928a297",
+   "kind": "original",
+   "words": 1900,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_6f745daaf928a297",
+   "kind": "sunlane",
+   "words": 2054,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_740346590fe7bff5",
+   "kind": "motion-depth",
+   "words": 1663,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_740346590fe7bff5",
+   "kind": "motion",
+   "words": 1650,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_740346590fe7bff5",
+   "kind": "original",
+   "words": 1518,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_740346590fe7bff5",
+   "kind": "sunlane",
+   "words": 1672,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_7d11d532dedaf1d9",
+   "kind": "motion-depth",
+   "words": 1949,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_7d11d532dedaf1d9",
+   "kind": "motion",
+   "words": 1936,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_7d11d532dedaf1d9",
+   "kind": "original",
+   "words": 1804,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_7d11d532dedaf1d9",
+   "kind": "sunlane",
+   "words": 1958,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_87ccd863f19254b2",
+   "kind": "motion-depth",
+   "words": 1826,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_87ccd863f19254b2",
+   "kind": "motion",
+   "words": 1813,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_87ccd863f19254b2",
+   "kind": "original",
+   "words": 1681,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_87ccd863f19254b2",
+   "kind": "sunlane",
+   "words": 1835,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_96238a8b2cee4f6e",
+   "kind": "motion-depth",
+   "words": 1609,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_96238a8b2cee4f6e",
+   "kind": "motion",
+   "words": 1596,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_96238a8b2cee4f6e",
+   "kind": "original",
+   "words": 1464,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_96238a8b2cee4f6e",
+   "kind": "sunlane",
+   "words": 1618,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_9db5eebae86ce142",
+   "kind": "motion-depth",
+   "words": 1938,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_9db5eebae86ce142",
+   "kind": "motion",
+   "words": 1925,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_9db5eebae86ce142",
+   "kind": "original",
+   "words": 1793,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_9db5eebae86ce142",
+   "kind": "sunlane",
+   "words": 1947,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ac429ac9cd658e64",
+   "kind": "motion-depth",
+   "words": 1589,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ac429ac9cd658e64",
+   "kind": "motion",
+   "words": 1576,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ac429ac9cd658e64",
+   "kind": "original",
+   "words": 1444,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ac429ac9cd658e64",
+   "kind": "sunlane",
+   "words": 1598,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b2d8f40cc7a03904",
+   "kind": "motion-depth",
+   "words": 2024,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b2d8f40cc7a03904",
+   "kind": "motion",
+   "words": 2011,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b2d8f40cc7a03904",
+   "kind": "original",
+   "words": 1879,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b2d8f40cc7a03904",
+   "kind": "sunlane",
+   "words": 2033,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b5af46aebb231ba2",
+   "kind": "motion-depth",
+   "words": 1515,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b5af46aebb231ba2",
+   "kind": "motion",
+   "words": 1502,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b5af46aebb231ba2",
+   "kind": "original",
+   "words": 1370,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_b5af46aebb231ba2",
+   "kind": "sunlane",
+   "words": 1524,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ba08f36b160527a5",
+   "kind": "motion-depth",
+   "words": 2013,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ba08f36b160527a5",
+   "kind": "motion",
+   "words": 2000,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ba08f36b160527a5",
+   "kind": "original",
+   "words": 1868,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ba08f36b160527a5",
+   "kind": "sunlane",
+   "words": 2022,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c17114ca9752ab62",
+   "kind": "motion-depth",
+   "words": 1901,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c17114ca9752ab62",
+   "kind": "motion",
+   "words": 1888,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c17114ca9752ab62",
+   "kind": "original",
+   "words": 1756,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c17114ca9752ab62",
+   "kind": "sunlane",
+   "words": 1910,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c79c3b2c6749df10",
+   "kind": "motion-depth",
+   "words": 1625,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c79c3b2c6749df10",
+   "kind": "motion",
+   "words": 1612,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c79c3b2c6749df10",
+   "kind": "original",
+   "words": 1480,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_c79c3b2c6749df10",
+   "kind": "sunlane",
+   "words": 1634,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_cca466f41a0de457",
+   "kind": "motion-depth",
+   "words": 1858,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_cca466f41a0de457",
+   "kind": "motion",
+   "words": 1845,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_cca466f41a0de457",
+   "kind": "original",
+   "words": 1713,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_cca466f41a0de457",
+   "kind": "sunlane",
+   "words": 1867,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ced7edef48059e84",
+   "kind": "motion-depth",
+   "words": 1563,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ced7edef48059e84",
+   "kind": "motion",
+   "words": 1550,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ced7edef48059e84",
+   "kind": "original",
+   "words": 1418,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_ced7edef48059e84",
+   "kind": "sunlane",
+   "words": 1572,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_db375f72fe3cdf5e",
+   "kind": "motion-depth",
+   "words": 1541,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_db375f72fe3cdf5e",
+   "kind": "motion",
+   "words": 1528,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_db375f72fe3cdf5e",
+   "kind": "original",
+   "words": 1396,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_db375f72fe3cdf5e",
+   "kind": "sunlane",
+   "words": 1550,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_df146f0ed69e1acf",
+   "kind": "motion-depth",
+   "words": 1970,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_df146f0ed69e1acf",
+   "kind": "motion",
+   "words": 1957,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_df146f0ed69e1acf",
+   "kind": "original",
+   "words": 1825,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_df146f0ed69e1acf",
+   "kind": "sunlane",
+   "words": 1979,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e326b2b1363c9886",
+   "kind": "motion-depth",
+   "words": 1652,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e326b2b1363c9886",
+   "kind": "motion",
+   "words": 1639,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e326b2b1363c9886",
+   "kind": "original",
+   "words": 1507,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e326b2b1363c9886",
+   "kind": "sunlane",
+   "words": 1661,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e57c48fc06198e20",
+   "kind": "motion-depth",
+   "words": 2056,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e57c48fc06198e20",
+   "kind": "motion",
+   "words": 2043,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e57c48fc06198e20",
+   "kind": "original",
+   "words": 1911,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_e57c48fc06198e20",
+   "kind": "sunlane",
+   "words": 2065,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f06b626708db3c7e",
+   "kind": "motion-depth",
+   "words": 1933,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f06b626708db3c7e",
+   "kind": "motion",
+   "words": 1920,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f06b626708db3c7e",
+   "kind": "original",
+   "words": 1788,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f06b626708db3c7e",
+   "kind": "sunlane",
+   "words": 1942,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f083a2be99470f83",
+   "kind": "motion-depth",
+   "words": 1981,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f083a2be99470f83",
+   "kind": "motion",
+   "words": 1968,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f083a2be99470f83",
+   "kind": "original",
+   "words": 1836,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "ps_f083a2be99470f83",
+   "kind": "sunlane",
+   "words": 1990,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_37c34a7478544c14",
+   "kind": "motion-depth",
+   "words": 798,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_37c34a7478544c14",
+   "kind": "motion",
+   "words": 787,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_37c34a7478544c14",
+   "kind": "original",
+   "words": 768,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_4944d81dfe531b37",
+   "kind": "motion-depth",
+   "words": 586,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_4944d81dfe531b37",
+   "kind": "motion",
+   "words": 575,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_4944d81dfe531b37",
+   "kind": "original",
+   "words": 556,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_494fe349b8bc12ec",
+   "kind": "motion-depth",
+   "words": 556,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_494fe349b8bc12ec",
+   "kind": "motion",
+   "words": 545,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_494fe349b8bc12ec",
+   "kind": "original",
+   "words": 526,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_53a0a641107ed76c",
+   "kind": "motion-depth",
+   "words": 556,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_53a0a641107ed76c",
+   "kind": "motion",
+   "words": 545,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  },
+  {
+   "program": "vs_53a0a641107ed76c",
+   "kind": "original",
+   "words": 526,
+   "end": "00000000",
+   "instruction_worst": "00000000"
+  }
+ ]
+}

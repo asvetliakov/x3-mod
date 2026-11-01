@@ -13,7 +13,8 @@ class ReportTests(unittest.TestCase):
         cls.text=(ROOT/'verification/results/material-motion.txt').read_text()
         # The retained capture predates class D. Its original A/B/C inventory
         # remains unchanged; do not invent dedicated-mode skips in old evidence.
-        cls.table=[row for row in module.table_rows() if row[4] in ('A','B','C')]
+        # It also predates the FL extension include: the AP header's rows only.
+        cls.table=[row for row in module.table_rows((module.HEADER,)) if row[4] in ('A','B','C')]
         assert len(cls.table)==169
         # Per-row program presence as the run recorded it (bound to this report's SHA-256), not this host's
         # /tmp/x3-shader-sweep/programs: the originals are local scratch and absent on other hosts.

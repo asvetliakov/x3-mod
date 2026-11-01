@@ -18,9 +18,14 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'verification/probe/build/material-motion-structure'
 RESULTS = ROOT / 'verification/results'
 SUMMARY = RESULTS / 'material-motion-structure-summary.json'
-HEADER = ROOT / 'src/renderer/motion_output_profiles_inc.h'
+# The compiled table is the AP include followed by the FL extension include
+# (rows of FL pairs the AP archives lack); each has its derived profile JSON.
+HEADERS = [ROOT / 'src/renderer/motion_output_profiles_inc.h', ROOT / 'src/renderer/motion_output_profiles_fl_inc.h']
 PROFILES = RESULTS / 'motion-output-profiles.json'
-PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
+FL_PROFILES = RESULTS / 'fl-shader-coverage/motion-output-profiles-fl.json'
+# Local corpora, first holding a program wins: the AP sweep and the FL sweep
+# (tools/analysis/index_shaders.py + sweep_shaders.py extract over /mnt/c/X3FL).
+PROGRAMS = [Path('/tmp/x3-shader-sweep/programs'), Path('/tmp/x3-fl-shader-sweep/programs')]
 SOURCES = [
     'src/renderer/material_motion.cpp', 'src/renderer/material_motion.h',
     'src/renderer/motion_output_profiles.h', 'src/renderer/motion_output_profiles_inc.h',
@@ -30,6 +35,7 @@ SOURCES = [
     'verification/probe/run_material_motion_structure.py',
     'src/renderer/current_depth_pixel_program.h', 'src/renderer/current_depth_pixel_program_inc.h',
     'src/renderer/damage_motion_validation.h',
+    'src/renderer/motion_output_profiles_fl_inc.h',
 ]
 ROW_CHECKS = [
     'pair_and_per_stage_lookups_applied_identically',
@@ -101,7 +107,7 @@ def sources():
 def table_rows():
     """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class, observed
     draws, position quad adjacent, VS exports depth, PS writes depth)."""
-    text = HEADER.read_text()
+    text = ''.join(header.read_text() for header in HEADERS)
     heads = [(m[1], int(m[2]), m[3], int(m[4]), m[5]) for m in ROW_PATTERN.finditer(text)]
     quads = [[int(v) for v in m.split(',')] for m in re.findall(r'\{(\d+, \d+, \d+, \d+)\}, \{1, 2, 4, 8\}', text)]
     assert len(quads) == len(heads)
@@ -117,7 +123,7 @@ def table_rows():
         assert not output or (vertex_depth and pixel_register != DEPTH_NONE), 'depth output without its interpolator'
         rows.append((*head, draws, all(q[i] == q[i - 1] + 4 for i in range(1, 4)), vertex_depth, output))
     # The header's metadata must agree with the derived JSON it was rendered from.
-    pairs = {(p['vs'], p['ps']): p for p in json.loads(PROFILES.read_text())['pairs']}
+    pairs = {(p['vs'], p['ps']): p for path in (PROFILES, FL_PROFILES) for p in json.loads(path.read_text())['pairs']}
     assert all(pairs[(vs, ps)]['observed_draws'] == draws and pairs[(vs, ps)]['position_quad_contiguous'] == adjacent
                for vs, _, ps, _, _, draws, adjacent, _, _ in rows), 'header/JSON metadata differ'
     return rows
@@ -125,13 +131,14 @@ def table_rows():
 
 def row_inputs(rows):
     """Local program files per row with their SHA-256 (None when absent)."""
-    programs = json.loads(PROFILES.read_text())['programs']
+    programs = {**json.loads(FL_PROFILES.read_text())['programs'], **json.loads(PROFILES.read_text())['programs']}
     result = []
     for vs, vs_dwords, ps, ps_dwords, klass, _, _, _, _ in rows:
         entry = {}
         for stage, fingerprint, dwords in (('vs', vs, vs_dwords), ('ps', ps, ps_dwords)):
-            path = PROGRAMS / f'{stage}_{fingerprint}.bin'
-            if path.exists():
+            path = next((directory / f'{stage}_{fingerprint}.bin' for directory in PROGRAMS
+                         if (directory / f'{stage}_{fingerprint}.bin').exists()), None)
+            if path:
                 digest = sha(path)
                 expected = programs[f'{stage}_{fingerprint}']
                 assert path.stat().st_size == dwords * 4 and expected['dword_count'] == dwords
@@ -247,8 +254,8 @@ def main():
             raise RuntimeError('clang++ is required for the authored ASan/UBSan run')
         rows = table_rows()
         before, raw_before = sources(), row_inputs(rows)
-        report.update(sources_before=before, programs_directory=str(PROGRAMS), inputs_before=raw_before,
-                      profiles_json_sha256=sha(PROFILES),
+        report.update(sources_before=before, programs_directories=[str(p) for p in PROGRAMS], inputs_before=raw_before,
+                      profiles_json_sha256=sha(PROFILES), fl_profiles_json_sha256=sha(FL_PROFILES),
                       compiler=subprocess.check_output([compiler, '--version'], text=True).strip(),
                       compiler_path=compiler, host_only=True,
                       expected_row_checks=[name or 'program_perturbations_by_class' for name in ROW_CHECKS],
@@ -273,7 +280,7 @@ def main():
             exe_before = sha(executable)
             environment = dict(os.environ, ASAN_OPTIONS='halt_on_error=1',
                                UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1')
-            completed = subprocess.run([str(executable), str(PROGRAMS)],
+            completed = subprocess.run([str(executable), *map(str, PROGRAMS)],
                                        cwd=ROOT, env=environment, text=True,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        timeout=600)

@@ -15,6 +15,7 @@ import re
 import struct
 
 from index_shaders import fnv1a64, shader_end, SM1_ARITY
+from catalogue_mounts import add_edition_argument, mounted_catalogues
 from inspect_x3 import read_catalogue
 from shader_constants import parse_ctab
 
@@ -70,7 +71,7 @@ def gpu_words(code):
     return struct.pack(f'<{len(result)}I', *result)
 
 
-def extract(game, index_path, raw_directory, manifest_path):
+def extract(game, index_path, raw_directory, manifest_path, edition=None):
     directory = local_directory(raw_directory, game)
     indexed_bytes = index_path.read_bytes()
     indexed = json.loads(indexed_bytes)
@@ -80,7 +81,7 @@ def extract(game, index_path, raw_directory, manifest_path):
     programs, aliases, filename_digests, catalogues = {}, [], {}, []
     catalogue_entries = {}
     expected_effects = []
-    for cat in sorted([*game.glob('[0-9][0-9].cat'), *game.glob('addon/[0-9][0-9].cat')]):
+    for cat in mounted_catalogues(game, edition):
         relative = str(cat.relative_to(game))
         entries = read_catalogue(cat)
         catalogue_entries[relative] = {entry['path']: entry for entry in entries}
@@ -228,6 +229,7 @@ def main():
     ex.add_argument('--index', type=Path, required=True)
     ex.add_argument('--raw-directory', type=Path, required=True)
     ex.add_argument('--manifest', type=Path, required=True)
+    add_edition_argument(ex)
     inv = commands.add_parser('inventory')
     inv.add_argument('--manifest', type=Path, required=True)
     inv.add_argument('--raw-directory', type=Path, required=True)
@@ -239,7 +241,7 @@ def main():
     inv.add_argument('--runtime-directory', type=Path)
     args = parser.parse_args()
     if args.command == 'extract':
-        extract(args.game, args.index, args.raw_directory, args.manifest)
+        extract(args.game, args.index, args.raw_directory, args.manifest, args.edition)
     else:
         inventory(args.manifest, args.raw_directory, args.disassembly_directory,
                   args.output, args.aliases_output, args.families_output, args.unknowns_output, args.runtime_directory)

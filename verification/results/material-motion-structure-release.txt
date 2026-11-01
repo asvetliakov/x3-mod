@@ -1,4 +1,4 @@
-TABLE rows=171
+TABLE rows=205
 CHECK row=0 pair_and_per_stage_lookups_applied_identically
 CHECK row=0 all_original_words_preserved
 CHECK row=0 vertex_previous_clip_current_depth_and_public_abi
@@ -1883,5 +1883,379 @@ CHECK row=170 sampled_input_bit_atomic_refusals
 CHECK row=170 six_input_output_alias_layouts_applied
 CHECK row=170 cross_alias_refusal_atomic
 ROW index=170 vs=ea3d15b287892410 ps=f917d48ee826da1f class=B status=PASS vertex_words=590 pixel_words=465 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
-TABLE lookups=PASS rows=171 absent_pairs=2565
-RESULT PASS rows=171 transformed=171 skipped=0 checks=1711 mutations=1560128 full_sweeps=16 sampled_sweeps=155 aliases=1026
+CHECK row=171 pair_and_per_stage_lookups_applied_identically
+CHECK row=171 all_original_words_preserved
+CHECK row=171 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=171 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=171 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=171 twenty_six_row_perturbations_refused_atomically
+CHECK row=171 program_perturbations_refused_by_revalidation
+CHECK row=171 sampled_input_bit_atomic_refusals
+CHECK row=171 six_input_output_alias_layouts_applied
+CHECK row=171 cross_alias_refusal_atomic
+ROW index=171 vs=37c34a7478544c14 ps=6f745daaf928a297 class=C status=PASS vertex_words=798 pixel_words=2045 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=172 pair_and_per_stage_lookups_applied_identically
+CHECK row=172 all_original_words_preserved
+CHECK row=172 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=172 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=172 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=172 twenty_six_row_perturbations_refused_atomically
+CHECK row=172 program_perturbations_refused_by_revalidation
+CHECK row=172 sampled_input_bit_atomic_refusals
+CHECK row=172 six_input_output_alias_layouts_applied
+CHECK row=172 cross_alias_refusal_atomic
+ROW index=172 vs=37c34a7478544c14 ps=7d11d532dedaf1d9 class=C status=PASS vertex_words=798 pixel_words=1949 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=173 pair_and_per_stage_lookups_applied_identically
+CHECK row=173 all_original_words_preserved
+CHECK row=173 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=173 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=173 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=173 twenty_six_row_perturbations_refused_atomically
+CHECK row=173 program_perturbations_refused_by_revalidation
+CHECK row=173 sampled_input_bit_atomic_refusals
+CHECK row=173 six_input_output_alias_layouts_applied
+CHECK row=173 cross_alias_refusal_atomic
+ROW index=173 vs=37c34a7478544c14 ps=9db5eebae86ce142 class=C status=PASS vertex_words=798 pixel_words=1938 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=174 pair_and_per_stage_lookups_applied_identically
+CHECK row=174 all_original_words_preserved
+CHECK row=174 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=174 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=174 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=174 twenty_six_row_perturbations_refused_atomically
+CHECK row=174 program_perturbations_refused_by_revalidation
+CHECK row=174 sampled_input_bit_atomic_refusals
+CHECK row=174 six_input_output_alias_layouts_applied
+CHECK row=174 cross_alias_refusal_atomic
+ROW index=174 vs=37c34a7478544c14 ps=b2d8f40cc7a03904 class=C status=PASS vertex_words=798 pixel_words=2024 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=175 pair_and_per_stage_lookups_applied_identically
+CHECK row=175 all_original_words_preserved
+CHECK row=175 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=175 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=175 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=175 twenty_six_row_perturbations_refused_atomically
+CHECK row=175 program_perturbations_refused_by_revalidation
+CHECK row=175 sampled_input_bit_atomic_refusals
+CHECK row=175 six_input_output_alias_layouts_applied
+CHECK row=175 cross_alias_refusal_atomic
+ROW index=175 vs=37c34a7478544c14 ps=ba08f36b160527a5 class=C status=PASS vertex_words=798 pixel_words=2013 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=176 pair_and_per_stage_lookups_applied_identically
+CHECK row=176 all_original_words_preserved
+CHECK row=176 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=176 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=176 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=176 twenty_six_row_perturbations_refused_atomically
+CHECK row=176 program_perturbations_refused_by_revalidation
+CHECK row=176 sampled_input_bit_atomic_refusals
+CHECK row=176 six_input_output_alias_layouts_applied
+CHECK row=176 cross_alias_refusal_atomic
+ROW index=176 vs=37c34a7478544c14 ps=df146f0ed69e1acf class=C status=PASS vertex_words=798 pixel_words=1970 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=177 pair_and_per_stage_lookups_applied_identically
+CHECK row=177 all_original_words_preserved
+CHECK row=177 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=177 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=177 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=177 twenty_six_row_perturbations_refused_atomically
+CHECK row=177 program_perturbations_refused_by_revalidation
+CHECK row=177 sampled_input_bit_atomic_refusals
+CHECK row=177 six_input_output_alias_layouts_applied
+CHECK row=177 cross_alias_refusal_atomic
+ROW index=177 vs=37c34a7478544c14 ps=e57c48fc06198e20 class=C status=PASS vertex_words=798 pixel_words=2056 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=178 pair_and_per_stage_lookups_applied_identically
+CHECK row=178 all_original_words_preserved
+CHECK row=178 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=178 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=178 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=178 twenty_six_row_perturbations_refused_atomically
+CHECK row=178 program_perturbations_refused_by_revalidation
+CHECK row=178 sampled_input_bit_atomic_refusals
+CHECK row=178 six_input_output_alias_layouts_applied
+CHECK row=178 cross_alias_refusal_atomic
+ROW index=178 vs=37c34a7478544c14 ps=f083a2be99470f83 class=C status=PASS vertex_words=798 pixel_words=1981 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=179 pair_and_per_stage_lookups_applied_identically
+CHECK row=179 all_original_words_preserved
+CHECK row=179 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=179 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=179 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=179 twenty_six_row_perturbations_refused_atomically
+CHECK row=179 program_perturbations_refused_by_revalidation
+CHECK row=179 sampled_input_bit_atomic_refusals
+CHECK row=179 six_input_output_alias_layouts_applied
+CHECK row=179 cross_alias_refusal_atomic
+ROW index=179 vs=4944d81dfe531b37 ps=16d4af171035acd1 class=B status=PASS vertex_words=586 pixel_words=1593 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=180 pair_and_per_stage_lookups_applied_identically
+CHECK row=180 all_original_words_preserved
+CHECK row=180 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=180 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=180 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=180 twenty_six_row_perturbations_refused_atomically
+CHECK row=180 program_perturbations_refused_by_revalidation
+CHECK row=180 sampled_input_bit_atomic_refusals
+CHECK row=180 six_input_output_alias_layouts_applied
+CHECK row=180 cross_alias_refusal_atomic
+ROW index=180 vs=4944d81dfe531b37 ps=1b54cbfa2155b61c class=B status=PASS vertex_words=586 pixel_words=1631 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=181 pair_and_per_stage_lookups_applied_identically
+CHECK row=181 all_original_words_preserved
+CHECK row=181 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=181 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=181 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=181 twenty_six_row_perturbations_refused_atomically
+CHECK row=181 program_perturbations_refused_by_revalidation
+CHECK row=181 sampled_input_bit_atomic_refusals
+CHECK row=181 six_input_output_alias_layouts_applied
+CHECK row=181 cross_alias_refusal_atomic
+ROW index=181 vs=4944d81dfe531b37 ps=20c3851a4cac4213 class=B status=PASS vertex_words=586 pixel_words=1597 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=182 pair_and_per_stage_lookups_applied_identically
+CHECK row=182 all_original_words_preserved
+CHECK row=182 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=182 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=182 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=182 twenty_six_row_perturbations_refused_atomically
+CHECK row=182 program_perturbations_refused_by_revalidation
+CHECK row=182 sampled_input_bit_atomic_refusals
+CHECK row=182 six_input_output_alias_layouts_applied
+CHECK row=182 cross_alias_refusal_atomic
+ROW index=182 vs=4944d81dfe531b37 ps=2a7f1c93d4fd081c class=B status=PASS vertex_words=586 pixel_words=1621 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=183 pair_and_per_stage_lookups_applied_identically
+CHECK row=183 all_original_words_preserved
+CHECK row=183 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=183 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=183 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=183 twenty_six_row_perturbations_refused_atomically
+CHECK row=183 program_perturbations_refused_by_revalidation
+CHECK row=183 sampled_input_bit_atomic_refusals
+CHECK row=183 six_input_output_alias_layouts_applied
+CHECK row=183 cross_alias_refusal_atomic
+ROW index=183 vs=4944d81dfe531b37 ps=3c39d45636d95744 class=B status=PASS vertex_words=586 pixel_words=1620 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=184 pair_and_per_stage_lookups_applied_identically
+CHECK row=184 all_original_words_preserved
+CHECK row=184 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=184 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=184 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=184 twenty_six_row_perturbations_refused_atomically
+CHECK row=184 program_perturbations_refused_by_revalidation
+CHECK row=184 sampled_input_bit_atomic_refusals
+CHECK row=184 six_input_output_alias_layouts_applied
+CHECK row=184 cross_alias_refusal_atomic
+ROW index=184 vs=4944d81dfe531b37 ps=3ff64d33ff2782ab class=B status=PASS vertex_words=586 pixel_words=1577 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=185 pair_and_per_stage_lookups_applied_identically
+CHECK row=185 all_original_words_preserved
+CHECK row=185 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=185 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=185 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=185 twenty_six_row_perturbations_refused_atomically
+CHECK row=185 program_perturbations_refused_by_revalidation
+CHECK row=185 sampled_input_bit_atomic_refusals
+CHECK row=185 six_input_output_alias_layouts_applied
+CHECK row=185 cross_alias_refusal_atomic
+ROW index=185 vs=4944d81dfe531b37 ps=67f738c3b080164a class=B status=PASS vertex_words=586 pixel_words=1629 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=186 pair_and_per_stage_lookups_applied_identically
+CHECK row=186 all_original_words_preserved
+CHECK row=186 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=186 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=186 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=186 twenty_six_row_perturbations_refused_atomically
+CHECK row=186 program_perturbations_refused_by_revalidation
+CHECK row=186 sampled_input_bit_atomic_refusals
+CHECK row=186 six_input_output_alias_layouts_applied
+CHECK row=186 cross_alias_refusal_atomic
+ROW index=186 vs=4944d81dfe531b37 ps=740346590fe7bff5 class=B status=PASS vertex_words=586 pixel_words=1663 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=187 pair_and_per_stage_lookups_applied_identically
+CHECK row=187 all_original_words_preserved
+CHECK row=187 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=187 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=187 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=187 twenty_six_row_perturbations_refused_atomically
+CHECK row=187 program_perturbations_refused_by_revalidation
+CHECK row=187 sampled_input_bit_atomic_refusals
+CHECK row=187 six_input_output_alias_layouts_applied
+CHECK row=187 cross_alias_refusal_atomic
+ROW index=187 vs=4944d81dfe531b37 ps=96238a8b2cee4f6e class=B status=PASS vertex_words=586 pixel_words=1609 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=188 pair_and_per_stage_lookups_applied_identically
+CHECK row=188 all_original_words_preserved
+CHECK row=188 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=188 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=188 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=188 twenty_six_row_perturbations_refused_atomically
+CHECK row=188 program_perturbations_refused_by_revalidation
+CHECK row=188 sampled_input_bit_atomic_refusals
+CHECK row=188 six_input_output_alias_layouts_applied
+CHECK row=188 cross_alias_refusal_atomic
+ROW index=188 vs=4944d81dfe531b37 ps=ac429ac9cd658e64 class=B status=PASS vertex_words=586 pixel_words=1589 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=189 pair_and_per_stage_lookups_applied_identically
+CHECK row=189 all_original_words_preserved
+CHECK row=189 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=189 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=189 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=189 twenty_six_row_perturbations_refused_atomically
+CHECK row=189 program_perturbations_refused_by_revalidation
+CHECK row=189 sampled_input_bit_atomic_refusals
+CHECK row=189 six_input_output_alias_layouts_applied
+CHECK row=189 cross_alias_refusal_atomic
+ROW index=189 vs=4944d81dfe531b37 ps=c79c3b2c6749df10 class=B status=PASS vertex_words=586 pixel_words=1625 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=190 pair_and_per_stage_lookups_applied_identically
+CHECK row=190 all_original_words_preserved
+CHECK row=190 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=190 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=190 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=190 twenty_six_row_perturbations_refused_atomically
+CHECK row=190 program_perturbations_refused_by_revalidation
+CHECK row=190 sampled_input_bit_atomic_refusals
+CHECK row=190 six_input_output_alias_layouts_applied
+CHECK row=190 cross_alias_refusal_atomic
+ROW index=190 vs=4944d81dfe531b37 ps=e326b2b1363c9886 class=B status=PASS vertex_words=586 pixel_words=1652 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=191 pair_and_per_stage_lookups_applied_identically
+CHECK row=191 all_original_words_preserved
+CHECK row=191 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=191 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=191 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=191 twenty_six_row_perturbations_refused_atomically
+CHECK row=191 program_perturbations_refused_by_revalidation
+CHECK row=191 sampled_input_bit_atomic_refusals
+CHECK row=191 six_input_output_alias_layouts_applied
+CHECK row=191 cross_alias_refusal_atomic
+ROW index=191 vs=494fe349b8bc12ec ps=0d5848c8489b6630 class=B status=PASS vertex_words=556 pixel_words=1595 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=192 pair_and_per_stage_lookups_applied_identically
+CHECK row=192 all_original_words_preserved
+CHECK row=192 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=192 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=192 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=192 twenty_six_row_perturbations_refused_atomically
+CHECK row=192 program_perturbations_refused_by_revalidation
+CHECK row=192 sampled_input_bit_atomic_refusals
+CHECK row=192 six_input_output_alias_layouts_applied
+CHECK row=192 cross_alias_refusal_atomic
+ROW index=192 vs=494fe349b8bc12ec ps=87ccd863f19254b2 class=C status=PASS vertex_words=556 pixel_words=1826 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=193 pair_and_per_stage_lookups_applied_identically
+CHECK row=193 all_original_words_preserved
+CHECK row=193 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=193 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=193 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=193 twenty_six_row_perturbations_refused_atomically
+CHECK row=193 program_perturbations_refused_by_revalidation
+CHECK row=193 sampled_input_bit_atomic_refusals
+CHECK row=193 six_input_output_alias_layouts_applied
+CHECK row=193 cross_alias_refusal_atomic
+ROW index=193 vs=494fe349b8bc12ec ps=c17114ca9752ab62 class=C status=PASS vertex_words=556 pixel_words=1901 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=194 pair_and_per_stage_lookups_applied_identically
+CHECK row=194 all_original_words_preserved
+CHECK row=194 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=194 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=194 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=194 twenty_six_row_perturbations_refused_atomically
+CHECK row=194 program_perturbations_refused_by_revalidation
+CHECK row=194 sampled_input_bit_atomic_refusals
+CHECK row=194 six_input_output_alias_layouts_applied
+CHECK row=194 cross_alias_refusal_atomic
+ROW index=194 vs=494fe349b8bc12ec ps=cca466f41a0de457 class=C status=PASS vertex_words=556 pixel_words=1858 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=195 pair_and_per_stage_lookups_applied_identically
+CHECK row=195 all_original_words_preserved
+CHECK row=195 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=195 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=195 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=195 twenty_six_row_perturbations_refused_atomically
+CHECK row=195 program_perturbations_refused_by_revalidation
+CHECK row=195 sampled_input_bit_atomic_refusals
+CHECK row=195 six_input_output_alias_layouts_applied
+CHECK row=195 cross_alias_refusal_atomic
+ROW index=195 vs=494fe349b8bc12ec ps=ced7edef48059e84 class=B status=PASS vertex_words=556 pixel_words=1563 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=196 pair_and_per_stage_lookups_applied_identically
+CHECK row=196 all_original_words_preserved
+CHECK row=196 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=196 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=196 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=196 twenty_six_row_perturbations_refused_atomically
+CHECK row=196 program_perturbations_refused_by_revalidation
+CHECK row=196 sampled_input_bit_atomic_refusals
+CHECK row=196 six_input_output_alias_layouts_applied
+CHECK row=196 cross_alias_refusal_atomic
+ROW index=196 vs=494fe349b8bc12ec ps=f06b626708db3c7e class=C status=PASS vertex_words=556 pixel_words=1933 mutations=4096 sweep=sampled program_perturbations=45 skipped=0 quad=adjacent depth=2
+CHECK row=197 pair_and_per_stage_lookups_applied_identically
+CHECK row=197 all_original_words_preserved
+CHECK row=197 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=197 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=197 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=197 twenty_six_row_perturbations_refused_atomically
+CHECK row=197 program_perturbations_refused_by_revalidation
+CHECK row=197 sampled_input_bit_atomic_refusals
+CHECK row=197 six_input_output_alias_layouts_applied
+CHECK row=197 cross_alias_refusal_atomic
+ROW index=197 vs=53a0a641107ed76c ps=1455079b3f18aa88 class=A status=PASS vertex_words=556 pixel_words=1557 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=198 pair_and_per_stage_lookups_applied_identically
+CHECK row=198 all_original_words_preserved
+CHECK row=198 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=198 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=198 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=198 twenty_six_row_perturbations_refused_atomically
+CHECK row=198 program_perturbations_refused_by_revalidation
+CHECK row=198 sampled_input_bit_atomic_refusals
+CHECK row=198 six_input_output_alias_layouts_applied
+CHECK row=198 cross_alias_refusal_atomic
+ROW index=198 vs=53a0a641107ed76c ps=1835f5e1ba07b1aa class=A status=PASS vertex_words=556 pixel_words=1531 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=199 pair_and_per_stage_lookups_applied_identically
+CHECK row=199 all_original_words_preserved
+CHECK row=199 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=199 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=199 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=199 twenty_six_row_perturbations_refused_atomically
+CHECK row=199 program_perturbations_refused_by_revalidation
+CHECK row=199 sampled_input_bit_atomic_refusals
+CHECK row=199 six_input_output_alias_layouts_applied
+CHECK row=199 cross_alias_refusal_atomic
+ROW index=199 vs=53a0a641107ed76c ps=1886829a571cf2db class=A status=PASS vertex_words=556 pixel_words=1521 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=200 pair_and_per_stage_lookups_applied_identically
+CHECK row=200 all_original_words_preserved
+CHECK row=200 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=200 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=200 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=200 twenty_six_row_perturbations_refused_atomically
+CHECK row=200 program_perturbations_refused_by_revalidation
+CHECK row=200 sampled_input_bit_atomic_refusals
+CHECK row=200 six_input_output_alias_layouts_applied
+CHECK row=200 cross_alias_refusal_atomic
+ROW index=200 vs=53a0a641107ed76c ps=33826e49b53b88dc class=B status=PASS vertex_words=556 pixel_words=1535 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=201 pair_and_per_stage_lookups_applied_identically
+CHECK row=201 all_original_words_preserved
+CHECK row=201 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=201 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=201 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=201 twenty_six_row_perturbations_refused_atomically
+CHECK row=201 program_perturbations_refused_by_revalidation
+CHECK row=201 sampled_input_bit_atomic_refusals
+CHECK row=201 six_input_output_alias_layouts_applied
+CHECK row=201 cross_alias_refusal_atomic
+ROW index=201 vs=53a0a641107ed76c ps=5831fb1d488e089e class=A status=PASS vertex_words=556 pixel_words=1553 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=202 pair_and_per_stage_lookups_applied_identically
+CHECK row=202 all_original_words_preserved
+CHECK row=202 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=202 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=202 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=202 twenty_six_row_perturbations_refused_atomically
+CHECK row=202 program_perturbations_refused_by_revalidation
+CHECK row=202 sampled_input_bit_atomic_refusals
+CHECK row=202 six_input_output_alias_layouts_applied
+CHECK row=202 cross_alias_refusal_atomic
+ROW index=202 vs=53a0a641107ed76c ps=5fb88b63dd609443 class=B status=PASS vertex_words=556 pixel_words=1561 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=203 pair_and_per_stage_lookups_applied_identically
+CHECK row=203 all_original_words_preserved
+CHECK row=203 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=203 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=203 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=203 twenty_six_row_perturbations_refused_atomically
+CHECK row=203 program_perturbations_refused_by_revalidation
+CHECK row=203 sampled_input_bit_atomic_refusals
+CHECK row=203 six_input_output_alias_layouts_applied
+CHECK row=203 cross_alias_refusal_atomic
+ROW index=203 vs=53a0a641107ed76c ps=b5af46aebb231ba2 class=A status=PASS vertex_words=556 pixel_words=1515 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+CHECK row=204 pair_and_per_stage_lookups_applied_identically
+CHECK row=204 all_original_words_preserved
+CHECK row=204 vertex_previous_clip_current_depth_and_public_abi
+CHECK row=204 authored_fragments_register_bits_literals_and_opcodes
+CHECK row=204 invalid_wrong_pair_truncated_appended_atomic_refusal
+CHECK row=204 twenty_six_row_perturbations_refused_atomically
+CHECK row=204 program_perturbations_refused_by_revalidation
+CHECK row=204 sampled_input_bit_atomic_refusals
+CHECK row=204 six_input_output_alias_layouts_applied
+CHECK row=204 cross_alias_refusal_atomic
+ROW index=204 vs=53a0a641107ed76c ps=db375f72fe3cdf5e class=A status=PASS vertex_words=556 pixel_words=1541 mutations=4096 sweep=sampled program_perturbations=31 skipped=0 quad=adjacent depth=2
+TABLE lookups=PASS rows=205 absent_pairs=3075
+RESULT PASS rows=205 transformed=205 skipped=0 checks=2051 mutations=1699392 full_sweeps=16 sampled_sweeps=189 aliases=1230

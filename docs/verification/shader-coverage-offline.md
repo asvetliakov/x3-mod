@@ -30,6 +30,13 @@ python3 tools/analysis/shader_coverage_offline.py \
 `grep -aoE 'vs=[0-9a-f]{16} ps=[0-9a-f]{16}' /tmp/x3-bottleX3-run{172..175}/session-*.log | sort -u`
 (streamed, no log read whole).
 
+Since 2026-11-01 the archive scans share `tools/analysis/catalogue_mounts.py`.
+X3AP.exe mounts root then `addon`, and X3FL.exe mounts root then `addon2`, each up
+to its first gap. `--header` is repeatable and defaults to the compiled table:
+`motion_output_profiles_inc.h` and its FL include. The AP and FL runs are recorded
+in [FL shader tables](../architecture/farnhams-legacy-shaders.md) and
+`verification/results/fl-shader-coverage/census-summary.json`.
+
 ## Counts (2026-09-19, bottle X3 install)
 
 | quantity | value |

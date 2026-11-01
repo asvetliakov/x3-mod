@@ -19,6 +19,10 @@ import inspect_motion_output_profiles as motion
 
 
 def check(programs, profile_root=ROOT):
+    """`programs`: one corpus directory or several (AP sweep, FL sweep; the first
+    holding a program wins). A row whose programs are in none of them is listed
+    in `absent_rows`, so the caller decides whether that corpus may be missing."""
+    directories = [Path(programs)] if isinstance(programs, (str, Path)) else [Path(p) for p in programs]
     source = r'''
 #include "src/renderer/motion_output_profiles.h"
 #include <cstdio>
@@ -37,6 +41,11 @@ int main(){for(const auto&r:x3m::renderer::motion_output_profiles)
         rows = subprocess.check_output([str(temp / 'table')], text=True).splitlines()
     cache = {}
     indices, depth_indices = Counter(), Counter()
+    absent = []
+
+    def located(key):
+        return next((d / (key + '.bin') for d in directories if (d / (key + '.bin')).is_file()), None)
+
     for row in rows:
         vs, vs_words, ps, ps_words, texcoord, depth, depth_output = row.split()
         texcoord, depth, depth_output = int(texcoord), int(depth), int(depth_output)
@@ -45,10 +54,13 @@ int main(){for(const auto&r:x3m::renderer::motion_output_profiles)
         if depth_output:
             assert depth != 255
             depth_indices[depth] += 1
+        if not (located('vs_' + vs) and located('ps_' + ps)):
+            absent.append((vs, ps))
+            continue
         for stage, fingerprint, word_count in [('vs', vs, vs_words), ('ps', ps, ps_words)]:
             key = f'{stage}_{fingerprint}'
             if key not in cache:
-                code = (programs / (key + '.bin')).read_bytes()
+                code = located(key).read_bytes()
                 facts = motion.profile(code, key, stage, '3_0')
                 assert facts['parsed'] and facts['fnv1a64'] == fingerprint
                 cache[key] = facts
@@ -60,7 +72,7 @@ int main(){for(const auto&r:x3m::renderer::motion_output_profiles)
             # Depth is zeroed only for a pair whose PS consumes it.
             if depth_output:
                 assert depth not in original, (key, 'depth semantic occupied', depth)
-    return {'pairs': len(rows), 'original_programs': len(cache),
+    return {'pairs': len(rows), 'original_programs': len(cache), 'absent_rows': absent,
             'motion_semantic_counts': dict(sorted(indices.items())),
             'depth_semantic_counts': dict(sorted(depth_indices.items())),
             'declaration_collisions': 0,
@@ -69,7 +81,8 @@ int main(){for(const auto&r:x3m::renderer::motion_output_profiles)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--programs', type=Path, required=True)
+    parser.add_argument('--programs', type=Path, required=True, action='append',
+                        help='corpus directory (repeatable; the first holding a program wins)')
     parser.add_argument('--profile-root', type=Path, default=ROOT)
     args = parser.parse_args()
     print(json.dumps(check(args.programs, args.profile_root), indent=2))

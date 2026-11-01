@@ -43,6 +43,10 @@ RAW = {
     PROGRAMS / 'vs_53a0a641107ed76c.bin': 'bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c',
     PROGRAMS / 'ps_8759c7838bbc86c2.bin': '9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0'}
 HEADER = ROOT / 'src/renderer/motion_output_profiles_inc.h'
+# The compiled table appends the FL extension rows (FL pairs the AP archives
+# lack); their programs are absent from the AP corpus, so the fixture skips them.
+HEADERS = (HEADER, ROOT / 'src/renderer/motion_output_profiles_fl_inc.h')
+FL_PROFILES = ROOT / 'verification/results/fl-shader-coverage/motion-output-profiles-fl.json'
 PROFILES = RESULTS / 'motion-output-profiles.json'
 PROFILES_SOURCE = 'bottle'
 if not PROFILES.is_file():  # the profile inventory is tracked once, bottle-independent (verification/results/motion-output-profiles.json)
@@ -64,16 +68,20 @@ BOOLEAN_COMBINATIONS = {'A': [0], 'B': [0], 'C': [0, 1, 2, 3], 'D': [0, 1, 2, 3]
 BOOLEAN_CONTROL = 'CHECK boolean branches change original material PASS'
 ARGON = ('53a0a641107ed76c', '8759c7838bbc86c2')
 
-def table_rows():
-    """Rows of the generated header: (vs, vs_dwords, ps, ps_dwords, class letter)."""
-    text = HEADER.read_text()
+def table_rows(headers=HEADERS):
+    """Rows of the generated headers: (vs, vs_dwords, ps, ps_dwords, class letter)."""
+    text = ''.join(header.read_text() for header in headers)
     rows = [(m[1], int(m[2]), m[3], int(m[4]), CLASS_LETTER[m[5]]) for m in ROW_PATTERN.finditer(text)]
     assert rows and text.count('{0x') == len(rows), 'generated header rows not parsed'
     return rows
 
+def profile_programs():
+    """Program facts of the AP profile result and the FL extension."""
+    return {**json.loads(FL_PROFILES.read_text())['programs'], **json.loads(PROFILES.read_text())['programs']}
+
 def row_inputs(rows):
     """Local originals per row with SHA-256 cross-checked against the derived profile JSON; None when absent."""
-    programs = json.loads(PROFILES.read_text())['programs']
+    programs = profile_programs()
     result = []
     for vs, vs_dwords, ps, ps_dwords, _ in rows:
         entry = {}
@@ -93,7 +101,7 @@ def recorded_row_inputs(summary, report_bytes, rows):
     The summary must name this exact report (report_sha256) and every recorded program must match the row's
     fingerprint and size and the tracked profile JSON's SHA-256, as row_inputs checked when the run was made."""
     assert summary['status'] == 'PASS' and summary['report_sha256'] == hashlib.sha256(report_bytes).hexdigest()
-    programs = json.loads(PROFILES.read_text())['programs']
+    programs = profile_programs()
     recorded = summary['row_inputs']
     assert len(recorded) == len(rows)
     for (vs, vs_dwords, ps, ps_dwords, _), entry in zip(rows, recorded):

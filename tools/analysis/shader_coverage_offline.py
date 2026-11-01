@@ -17,7 +17,8 @@ are directories inside the archive -- the shader-profile trees `1_1`, `1_4`,
 Steps:
   1. The effective effect set, with the game's override precedence: a virtual
      path present in several catalogues resolves to the last one (ascending
-     numbered catalogues, `addon/` last), via `effect_passes._archive_effects`.
+     numbered catalogues, then `addon/` (AP) or `addon2/` (FL); see
+     `catalogue_mounts`), via `effect_passes._archive_effects`.
   2. Per technique pass, the vertex and pixel program identity exactly as the
      proxy computes it at CreateShader time: FNV-1a 64 over the complete token
      stream (version, comments/CTAB and END included), plus DWORD length and
@@ -57,6 +58,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from effect_passes import (_archive_effects, _u32, parse_container,  # noqa: E402
                            STATE_TABLE, VERTEX_SHADER_STATE, PIXEL_SHADER_STATE)
 from index_shaders import fnv1a64, shader_end  # noqa: E402
+from catalogue_mounts import add_edition_argument, mounted_catalogues  # noqa: E402
 from inspect_x3 import read_catalogue  # noqa: E402
 
 NULL_HASH = '0' * 16
@@ -143,19 +145,18 @@ def classify_pass(states):
     return 'depth_inherited'
 
 
-def archive_pairs(game):
+def archive_pairs(game, edition=None):
     """Every (vs, ps) pair bound by a pass of the effective installed effects."""
     pairs, effects, passes = {}, 0, 0
     catalogues, incomplete = Counter(), 0
     # How many entries the override precedence hides, from the catalogue
     # listings alone (no DAT read): one virtual path, several catalogues.
     seen_paths = Counter(
-        entry['path'] for cat in sorted([*game.glob('[0-9][0-9].cat'),
-                                         *game.glob('addon/[0-9][0-9].cat')])
+        entry['path'] for cat in mounted_catalogues(game, edition)
         for entry in read_catalogue(cat)
         if entry['path'].startswith('shader/') and entry['path'].endswith('.fb'))
     overridden = sum(count - 1 for count in seen_paths.values())
-    for catalogue, path, data in _archive_effects(game):
+    for catalogue, path, data in _archive_effects(game, edition=edition):
         effects += 1
         catalogues[catalogue] += 1
         container = parse_container(data)
@@ -388,14 +389,16 @@ def main():
                         help='recompute the rewriter verdicts from a shader-sweep inventory')
     parser.add_argument('--raw-directory', type=Path,
                         help='local program directory for --inventory (bytes are read, never copied)')
-    parser.add_argument('--header', type=Path,
-                        default=root / 'src/renderer/motion_output_profiles_inc.h')
+    parser.add_argument('--header', type=Path, action='append',
+                        help='generated pair table (repeatable); default: the compiled table, '
+                             'motion_output_profiles_inc.h and its FL extension include')
     parser.add_argument('--prepass-header', type=Path,
                         default=root / 'src/renderer/depth_prepass_profiles.h')
     parser.add_argument('--flight-pairs', type=Path,
                         help='text holding `vs=<hex> ps=<hex>` observations to cross-check')
     parser.add_argument('--output', type=Path, help='machine-readable census JSON')
     parser.add_argument('--markdown', type=Path, help='unknown depth-pair table (Markdown)')
+    add_edition_argument(parser)
     arguments = parser.parse_args()
     if arguments.inventory:
         if not arguments.raw_directory:
@@ -406,7 +409,7 @@ def main():
         inventory = json.loads(inventory_bytes)
         inventory['_sha256'] = hashlib.sha256(inventory_bytes).hexdigest()
         profiles = build(inventory, arguments.raw_directory,
-                         archive_passes(arguments.game), None)
+                         archive_passes(arguments.game, arguments.edition), None)
         profiles_provenance = {'source': 'recomputed', 'inventory': str(arguments.inventory)}
     else:
         profile_bytes = arguments.profiles.read_bytes()
@@ -414,7 +417,10 @@ def main():
         profiles_provenance = {'source': str(arguments.profiles),
                                'sha256': hashlib.sha256(profile_bytes).hexdigest()}
     observed = flight_pairs(arguments.flight_pairs) if arguments.flight_pairs else []
-    result = census(archive_pairs(arguments.game), registered_pairs(arguments.header),
+    headers = arguments.header or [root / 'src/renderer/motion_output_profiles_inc.h',
+                                   root / 'src/renderer/motion_output_profiles_fl_inc.h']
+    rows = [row for header in headers for row in registered_pairs(header)]
+    result = census(archive_pairs(arguments.game, arguments.edition), rows,
                     prepass_vertices(arguments.prepass_header),
                     rewriter_verdicts(profiles), observed)
     result['rewriter_verdict_source'] = profiles_provenance

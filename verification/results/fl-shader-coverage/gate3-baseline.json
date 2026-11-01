@@ -1,0 +1,34 @@
+{
+ "run3": {
+  "path": "/mnt/c/X3FL/x3m.prev.log",
+  "writer_rows": [
+   {
+    "pair": "fl_row",
+    "reason": "pair",
+    "gate": 3,
+    "rows": 11
+   }
+  ],
+  "refusal_samples": 30,
+  "samples_all_untracked_are_pair": true,
+  "max_untracked": 286,
+  "max_pair": 286,
+  "max_unregistered": 0
+ },
+ "run4": {
+  "path": "/mnt/c/X3FL/x3m.log",
+  "writer_rows": [
+   {
+    "pair": "fl_row",
+    "reason": "pair",
+    "gate": 3,
+    "rows": 16
+   }
+  ],
+  "refusal_samples": 95,
+  "samples_all_untracked_are_pair": true,
+  "max_untracked": 856,
+  "max_pair": 856,
+  "max_unregistered": 0
+ }
+}

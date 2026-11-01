@@ -9,14 +9,17 @@
 # generator's bytes: identical except for the 7 inserted words, which must be the
 # texld/mov pair on the light-map destination. Folds the output into
 # result-round3.json (names, sizes, verdicts, messages, witness counts only).
-# usage: rerun_round3.sh <scratch dir> [<pre-change commit, default HEAD>]
+# usage: rerun_round3.sh [--captures <dir>] <scratch dir> [<pre-change commit, default HEAD>]
+# --captures: the ps_<hash>.bin originals (default /mnt/c/X3/x3-modern-captures;
+# FL: /mnt/c/X3FL/x3-modern-captures, or a sweep's programs directory).
 # Generated shader bytes stay in the scratch dir (game-derived; never commit).
 set -e
 V=$(cd "$(dirname "$0")" && pwd)
 R=$(cd "$V/../../.." && pwd)
+CAPTURES=/mnt/c/X3/x3-modern-captures
+if [ "$1" = --captures ]; then CAPTURES=$2; shift 2; fi
 S=$1; BASE=${2:-HEAD}
 # The 16 hull originals of result.json (its screen-emission original ec1f5c4a2f4e1445 is not a hull program).
-CAPTURES=/mnt/c/X3/x3-modern-captures
 HASHES=$(python3 -c "import json,sys;print(' '.join(sorted({r['original'] for r in json.load(open(sys.argv[1]))['rows'] if r['kind'] == 'widen'})))" "$V/result.json")
 rm -rf "$S/out" "$S/old" "$S/oldout"
 mkdir -p "$S/out" "$S/old" "$S/oldout"

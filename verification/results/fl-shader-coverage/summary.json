@@ -1,0 +1,501 @@
+{
+ "schema": 1,
+ "producer": "verification/results/fl-shader-coverage/inventory.py",
+ "producer_sha256": "8133786b04d34942e9c7c770bc3b8daeabdf1a5b17f0989202d895b614008d65",
+ "mount_order": {
+  "fl": [
+   "01.cat",
+   "02.cat",
+   "03.cat",
+   "04.cat",
+   "05.cat",
+   "06.cat",
+   "07.cat",
+   "08.cat",
+   "09.cat",
+   "10.cat",
+   "11.cat",
+   "12.cat",
+   "13.cat",
+   "addon2/01.cat",
+   "addon2/02.cat",
+   "addon2/03.cat",
+   "addon2/04.cat",
+   "addon2/05.cat"
+  ],
+  "ap": [
+   "01.cat",
+   "02.cat",
+   "03.cat",
+   "04.cat",
+   "05.cat",
+   "06.cat",
+   "07.cat",
+   "08.cat",
+   "09.cat",
+   "10.cat",
+   "11.cat",
+   "12.cat",
+   "13.cat",
+   "addon/01.cat",
+   "addon/02.cat",
+   "addon/03.cat",
+   "addon/04.cat"
+  ]
+ },
+ "effective_effects": {
+  "fl": 2352,
+  "ap": 2352
+ },
+ "programs": {
+  "fl": 755,
+  "ap": 751,
+  "shared": 721,
+  "fl_only": 34,
+  "ap_only_dropped": 30
+ },
+ "by_model": {
+  "fl": {
+   "ps_1_1": 42,
+   "ps_1_4": 24,
+   "ps_2_0": 110,
+   "ps_2_1": 200,
+   "ps_3_0": 123,
+   "vs_1_1": 128,
+   "vs_2_0": 61,
+   "vs_2_1": 28,
+   "vs_3_0": 39
+  },
+  "ap": {
+   "ps_1_1": 42,
+   "ps_1_4": 24,
+   "ps_2_0": 110,
+   "ps_2_1": 200,
+   "ps_3_0": 119,
+   "vs_1_1": 128,
+   "vs_2_0": 61,
+   "vs_2_1": 28,
+   "vs_3_0": 39
+  },
+  "shared": {
+   "ps_1_1": 42,
+   "ps_1_4": 24,
+   "ps_2_0": 110,
+   "ps_2_1": 200,
+   "ps_3_0": 89,
+   "vs_1_1": 128,
+   "vs_2_0": 61,
+   "vs_2_1": 28,
+   "vs_3_0": 39
+  },
+  "fl_only": {
+   "ps_3_0": 34
+  },
+  "ap_only_dropped": {
+   "ps_3_0": 30
+  }
+ },
+ "vertex_programs_all_shared": true,
+ "fl_only_ps_by_family": {
+  "conventional": 22,
+  "xt": 12
+ },
+ "fl_only_ps_dwords": {
+  "min": 1370,
+  "max": 1911,
+  "over_1392": 30,
+  "over_1791": 8
+ },
+ "fl_only": [
+  {
+   "id": "ps_0d5848c8489b6630",
+   "dwords": 1450,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_1455079b3f18aa88",
+   "dwords": 1412,
+   "family": "conventional",
+   "basenames": [
+    "argon2s"
+   ]
+  },
+  {
+   "id": "ps_16d4af171035acd1",
+   "dwords": 1448,
+   "family": "conventional",
+   "basenames": [
+    "argon"
+   ]
+  },
+  {
+   "id": "ps_1835f5e1ba07b1aa",
+   "dwords": 1386,
+   "family": "conventional",
+   "basenames": [
+    "argon"
+   ]
+  },
+  {
+   "id": "ps_1886829a571cf2db",
+   "dwords": 1376,
+   "family": "conventional",
+   "basenames": [
+    "terran"
+   ]
+  },
+  {
+   "id": "ps_1b54cbfa2155b61c",
+   "dwords": 1486,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_20c3851a4cac4213",
+   "dwords": 1452,
+   "family": "conventional",
+   "basenames": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ]
+  },
+  {
+   "id": "ps_2a7f1c93d4fd081c",
+   "dwords": 1476,
+   "family": "conventional",
+   "basenames": [
+    "terran2s"
+   ]
+  },
+  {
+   "id": "ps_33826e49b53b88dc",
+   "dwords": 1390,
+   "family": "conventional",
+   "basenames": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ]
+  },
+  {
+   "id": "ps_3c39d45636d95744",
+   "dwords": 1475,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_3ff64d33ff2782ab",
+   "dwords": 1432,
+   "family": "conventional",
+   "basenames": [
+    "split"
+   ]
+  },
+  {
+   "id": "ps_5831fb1d488e089e",
+   "dwords": 1408,
+   "family": "conventional",
+   "basenames": [
+    "terran2s"
+   ]
+  },
+  {
+   "id": "ps_5fb88b63dd609443",
+   "dwords": 1416,
+   "family": "conventional",
+   "basenames": [
+    "khaak2s",
+    "teladi2s",
+    "teladi_nodiff2s",
+    "xenon2s"
+   ]
+  },
+  {
+   "id": "ps_67f738c3b080164a",
+   "dwords": 1484,
+   "family": "conventional",
+   "basenames": [
+    "khaak2s",
+    "teladi2s",
+    "teladi_nodiff2s",
+    "xenon2s"
+   ]
+  },
+  {
+   "id": "ps_6f745daaf928a297",
+   "dwords": 1900,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_740346590fe7bff5",
+   "dwords": 1518,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_7d11d532dedaf1d9",
+   "dwords": 1804,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer"
+   ]
+  },
+  {
+   "id": "ps_87ccd863f19254b2",
+   "dwords": 1681,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer"
+   ]
+  },
+  {
+   "id": "ps_96238a8b2cee4f6e",
+   "dwords": 1464,
+   "family": "conventional",
+   "basenames": [
+    "split2s"
+   ]
+  },
+  {
+   "id": "ps_9db5eebae86ce142",
+   "dwords": 1793,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer"
+   ]
+  },
+  {
+   "id": "ps_ac429ac9cd658e64",
+   "dwords": 1444,
+   "family": "conventional",
+   "basenames": [
+    "terran"
+   ]
+  },
+  {
+   "id": "ps_b2d8f40cc7a03904",
+   "dwords": 1879,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_b5af46aebb231ba2",
+   "dwords": 1370,
+   "family": "conventional",
+   "basenames": [
+    "split"
+   ]
+  },
+  {
+   "id": "ps_ba08f36b160527a5",
+   "dwords": 1868,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_c17114ca9752ab62",
+   "dwords": 1756,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_c79c3b2c6749df10",
+   "dwords": 1480,
+   "family": "conventional",
+   "basenames": [
+    "argon2s"
+   ]
+  },
+  {
+   "id": "ps_cca466f41a0de457",
+   "dwords": 1713,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer2s"
+   ]
+  },
+  {
+   "id": "ps_ced7edef48059e84",
+   "dwords": 1418,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting"
+   ]
+  },
+  {
+   "id": "ps_db375f72fe3cdf5e",
+   "dwords": 1396,
+   "family": "conventional",
+   "basenames": [
+    "split2s"
+   ]
+  },
+  {
+   "id": "ps_df146f0ed69e1acf",
+   "dwords": 1825,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer2s"
+   ]
+  },
+  {
+   "id": "ps_e326b2b1363c9886",
+   "dwords": 1507,
+   "family": "conventional",
+   "basenames": [
+    "standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_e57c48fc06198e20",
+   "dwords": 1911,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_f06b626708db3c7e",
+   "dwords": 1788,
+   "family": "xt",
+   "basenames": [
+    "xt_standard_lighting2s"
+   ]
+  },
+  {
+   "id": "ps_f083a2be99470f83",
+   "dwords": 1836,
+   "family": "xt",
+   "basenames": [
+    "xt_terraformer2s"
+   ]
+  }
+ ],
+ "unmounted_addon": {
+  "shader_paths": 1176,
+  "absent_from_addon2": 0,
+  "effect": "none: every addon shader path is overridden by addon2"
+ },
+ "captures": {
+  "directory": "/mnt/c/X3FL/x3-modern-captures",
+  "files": 57,
+  "in_inventory": 57,
+  "name_mismatch": [],
+  "not_in_inventory": [],
+  "not_in_ap": [
+   "ps_0d5848c8489b6630",
+   "ps_1455079b3f18aa88",
+   "ps_16d4af171035acd1",
+   "ps_1835f5e1ba07b1aa",
+   "ps_1b54cbfa2155b61c",
+   "ps_20c3851a4cac4213",
+   "ps_33826e49b53b88dc",
+   "ps_3c39d45636d95744",
+   "ps_3ff64d33ff2782ab",
+   "ps_6f745daaf928a297",
+   "ps_740346590fe7bff5",
+   "ps_b2d8f40cc7a03904",
+   "ps_b5af46aebb231ba2",
+   "ps_ba08f36b160527a5",
+   "ps_c17114ca9752ab62",
+   "ps_c79c3b2c6749df10",
+   "ps_ced7edef48059e84",
+   "ps_e326b2b1363c9886",
+   "ps_e57c48fc06198e20",
+   "ps_f06b626708db3c7e"
+  ]
+ },
+ "logs": {
+  "run3": {
+   "path": "/mnt/c/X3FL/x3m.prev.log",
+   "distinct_programs": 55,
+   "by_kind": {
+    "ps": 34,
+    "vs": 21
+   },
+   "not_in_fl_inventory": [],
+   "length_mismatch": [],
+   "not_in_ap": [
+    "ps_0d5848c8489b6630",
+    "ps_1455079b3f18aa88",
+    "ps_16d4af171035acd1",
+    "ps_1835f5e1ba07b1aa",
+    "ps_1b54cbfa2155b61c",
+    "ps_20c3851a4cac4213",
+    "ps_33826e49b53b88dc",
+    "ps_3c39d45636d95744",
+    "ps_6f745daaf928a297",
+    "ps_740346590fe7bff5",
+    "ps_b2d8f40cc7a03904",
+    "ps_ba08f36b160527a5",
+    "ps_c17114ca9752ab62",
+    "ps_c79c3b2c6749df10",
+    "ps_ced7edef48059e84",
+    "ps_e326b2b1363c9886",
+    "ps_e57c48fc06198e20",
+    "ps_f06b626708db3c7e"
+   ],
+   "not_in_ap_by_family": {
+    "conventional": 12,
+    "xt": 6
+   }
+  },
+  "run4": {
+   "path": "/mnt/c/X3FL/x3m.log",
+   "distinct_programs": 57,
+   "by_kind": {
+    "ps": 36,
+    "vs": 21
+   },
+   "not_in_fl_inventory": [],
+   "length_mismatch": [],
+   "not_in_ap": [
+    "ps_0d5848c8489b6630",
+    "ps_1455079b3f18aa88",
+    "ps_16d4af171035acd1",
+    "ps_1835f5e1ba07b1aa",
+    "ps_1b54cbfa2155b61c",
+    "ps_20c3851a4cac4213",
+    "ps_33826e49b53b88dc",
+    "ps_3c39d45636d95744",
+    "ps_3ff64d33ff2782ab",
+    "ps_6f745daaf928a297",
+    "ps_740346590fe7bff5",
+    "ps_b2d8f40cc7a03904",
+    "ps_b5af46aebb231ba2",
+    "ps_ba08f36b160527a5",
+    "ps_c17114ca9752ab62",
+    "ps_c79c3b2c6749df10",
+    "ps_ced7edef48059e84",
+    "ps_e326b2b1363c9886",
+    "ps_e57c48fc06198e20",
+    "ps_f06b626708db3c7e"
+   ],
+   "not_in_ap_by_family": {
+    "conventional": 14,
+    "xt": 6
+   }
+  }
+ }
+}

@@ -6,6 +6,7 @@ archives. Synthetic token fixtures exercise the parser and the pass-container
 parser themselves, so a regression fails here even when the committed table is
 stale. The JSON is queried, never printed.
 """
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 from inspect_motion_output_profiles import (  # noqa: E402
     DEFERRED_CLASSES, DEPTH_NONE, HEADER_CLASSES, HEADER_FIELDS, REFERENCE, REFERENCE_DEFINITION_DWORDS, depth_plan,
+    extension_depth_plan, render_extension_header,
     REFERENCE_POSITION_DWORDS, SM2_GROUPS, check, classify, header_rows, profile,
     render_header, sm2_feasibility)
 from effect_passes import parse_effect  # noqa: E402
@@ -886,6 +888,83 @@ class GeneratedHeaderTests(unittest.TestCase):
         fingerprints |= {'0x' + pair['ps'] for pair in self.result['pairs']}
         allowed = fingerprints | {'0xfffe0300', '0xffff0300'}
         assert literals <= allowed, literals - allowed
+
+
+FL_RESULT = ROOT / 'verification/results/fl-shader-coverage/motion-output-profiles-fl.json'
+FL_HEADER = ROOT / 'src/renderer/motion_output_profiles_fl_inc.h'
+# Farnham's Legacy: 34 ps_3_0 hull programs replace AP's; every one pairs with
+# one of four unchanged AP vertex programs (fl-shader-coverage/summary.json).
+FL_CLASS_COUNTS = {'A_reference_registers': 6, 'B_relocated_registers': 16, CLASS_C: 12}
+FL_VERTEX_PROGRAMS = {'37c34a7478544c14', '4944d81dfe531b37', '494fe349b8bc12ec', '53a0a641107ed76c'}
+
+
+class FLExtensionTests(unittest.TestCase):
+    """The FL extension include: FL pairs the AP table lacks, agreeing with every AP row."""
+
+    def setUp(self):
+        self.base = load()
+        self.extension = json.loads(FL_RESULT.read_text())
+        self.text = FL_HEADER.read_text()
+        self.rows = parse_header(self.text)
+
+    def test_regeneration_is_byte_identical(self):
+        assert render_extension_header(self.base, self.extension, 'FL') == self.text
+
+    def test_rows_are_the_34_fl_pairs_with_their_classes(self):
+        rows = header_rows(self.extension)
+        assert len(rows) == len(self.rows) == self.extension['pair_count'] == 34
+        assert not self.extension['unsupported_pairs']
+        assert {name: item['pairs'] for name, item in self.extension['transformation_classes'].items()} == FL_CLASS_COUNTS
+        assert {pair['vs'] for pair in rows} == FL_VERTEX_PROGRAMS
+        assert len({pair['ps'] for pair in rows}) == 34
+        base_pairs = {(pair['vs'], pair['ps']) for pair in self.base['pairs']}
+        assert not base_pairs & {(pair['vs'], pair['ps']) for pair in rows}
+        for row, pair in zip(self.rows, rows):
+            assert row[0] == '0x%sull' % pair['vs'] and row[3] == '0x%sull' % pair['ps']
+            assert row[6] == 'MotionOutputClass::' + HEADER_CLASSES[pair['transformation_class']]
+            assert row[-2] == 'true' and row[-1] == '0', 'every FL row writes depth; no capture metadata'
+        assert self.extension['base_profiles_sha256'] == hashlib.sha256(RESULT.read_bytes()).hexdigest()
+
+    def test_base_rows_keep_their_plan_and_shared_programs_agree(self):
+        union = extension_depth_plan(self.base, self.extension)
+        alone = depth_plan(self.base)
+        assert all(union[key] == alone[key] for key in alone)
+        vertex_side = ('vs_declaration_insert_dword', 'vs_arithmetic_insert_dword', 'vs_matrix_register',
+                       'vs_position_temporary', 'vs_position_dp4_dwords', 'vs_output_register',
+                       'texcoord_index', 'light_loop_bound_required')
+        by_vs = {}
+        for pair in header_rows(self.base) + header_rows(self.extension):
+            plan = pair['insertion_plan']
+            depth = union[(pair['vs'], pair['ps'])]
+            side = tuple(json.dumps(plan[key]) for key in vertex_side) + (
+                depth['vertex_depth_output_register'], depth['depth_texcoord_index'])
+            assert by_vs.setdefault(pair['vs'], side) == side, pair['vs']
+        for name in self.extension['programs']:
+            if name in self.base['programs']:
+                assert self.extension['programs'][name] == self.base['programs'][name], name
+
+    def test_an_extension_that_moves_a_base_row_is_refused(self):
+        extension = json.loads(FL_RESULT.read_text())
+        pixel = extension['programs']['ps_' + header_rows(extension)[0]['ps']]
+        moved = dict(extension, programs=dict(extension['programs']))
+        # Claim every TEXCOORD index the base component uses: the union plan
+        # would have to move the shared VS's depth index.
+        moved['programs']['ps_' + header_rows(extension)[0]['ps']] = dict(
+            pixel, declared_texcoord_input_indices=list(range(16)))
+        with self.assertRaisesRegex(ValueError, 'change the depth plan of base rows'):
+            extension_depth_plan(self.base, moved)
+        with self.assertRaisesRegex(ValueError, 'change the depth plan of base rows'):
+            render_extension_header(self.base, moved, 'FL')
+        repeated = dict(extension, pairs=extension['pairs'] + [self.base['pairs'][0]])
+        with self.assertRaisesRegex(ValueError, 'repeats a base pair row'):
+            extension_depth_plan(self.base, repeated)
+
+    def test_json_and_header_carry_no_shader_words(self):
+        versions = {'0xfffe0300', '0xffff0300'}
+        assert set(re.findall(r'"0x[0-9a-fA-F]+"', FL_RESULT.read_text())) <= {'"%s"' % v for v in versions}
+        literals = set(re.findall(r'0x[0-9a-fA-F]+', self.text))
+        fingerprints = {'0x' + p['vs'] for p in self.extension['pairs']} | {'0x' + p['ps'] for p in self.extension['pairs']}
+        assert literals <= fingerprints | versions, literals - fingerprints - versions
 
 
 if __name__ == '__main__':

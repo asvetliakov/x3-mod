@@ -1,0 +1,47 @@
+{
+ "schema": 1,
+ "producer": "verification/results/fl-shader-coverage/ap_census_regression.py",
+ "game": "/mnt/c/X3AP-orig",
+ "base_commit": "c87d81b8",
+ "pre_change_tool_sha256": "21daec52952d25d4759a95f6cb762f1d8efc74d1c2384579e622996d4b57b035",
+ "post_change_tool_sha256": "57d188856852b4f465218de5d2f61b83dfcb4b15a572e4a817b66d4f7b614c5b",
+ "same_registry": {
+  "keys_compared": 14,
+  "differing_keys": [],
+  "identical": true
+ },
+ "compiled_table": {
+  "keys_compared": 14,
+  "differing_keys": [
+   "registry"
+  ],
+  "profile_rows": [
+   171,
+   205
+  ],
+  "rows_absent_from_ap_archive": 34
+ },
+ "pre_change": {
+  "archive": {
+   "effect_count": 2352,
+   "overridden_entry_count": 1128,
+   "pass_count": 4528,
+   "incomplete_pass_count": 0,
+   "catalogues": {
+    "01.cat": 1176,
+    "addon/01.cat": 1176
+   }
+  },
+  "pair_count": 817,
+  "coverage_counts": {
+   "depth_candidate_not_analyzed": 1,
+   "depth_candidate_not_rewritable": 627,
+   "depth_candidate_prepass_jitter_only": 4,
+   "depth_candidate_registered": 170,
+   "not_analyzed": 1,
+   "not_rewritable": 641,
+   "prepass_jitter_only": 4,
+   "registered": 171
+  }
+ }
+}

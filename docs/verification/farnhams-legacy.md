@@ -222,3 +222,62 @@ the 34 programs, the transformer's register layout read from each program's cons
 table (FL: glow c4, hue c1–c3, XT c7/c9, c12), variant limit above 1911 DWORDs,
 native validator rerun, `addon2` added to the archive scans. Order: motion rows
 (enables gain and widening), then HDR hull gain and exposure rows.
+
+## FL shader coverage 4a — archive inventory and motion rows (host evidence, 2026-11-01, not installed)
+
+Offline only: no game launch, no Wine. Design and rule:
+[FL shader tables](../architecture/farnhams-legacy-shaders.md). Results and their
+producers are in `verification/results/fl-shader-coverage/`.
+
+- **Mount order.** `tools/analysis/catalogue_mounts.py` (root, then `addon` for AP
+  or `addon2` for FL, first gap ends a series) serves the four archive scans. Each
+  scan takes `--edition auto|ap|fl`. Test: `test_catalogue_mounts` (5 tests).
+  `ap_census_regression.py` → `ap-census-regression.json` runs the pre-change tool
+  tree (`c87d81b8`) and the current one over `/mnt/c/X3AP-orig`. With the same
+  registry, all 14 keys apart from the tool hash are identical. With the compiled
+  table, only `registry` differs: 171 → 205 rows, 34 absent from the AP archive.
+  The pair count is 817.
+- **Inventory** (`inventory.py` → `summary.json`; the per-program `inventory.json`
+  is local and git-ignored). FL has 755
+  programs and AP 751: 721 shared, 34 FL-only, 30 AP-only, all ps_3_0. All 256 VS
+  are shared. The 34 split into 22 conventional and 12 XT, 1,370–1,911 DWORDs; 30
+  exceed 1,392 (the note's 18/22 conventional plus all 12 XT) and 8 exceed 1,791.
+  This confirms the inherited 721/34/30. All 57 dumps and every logged program are
+  inventory members. Runs 3 and 4 logged 18 and 20 FL-only programs; the 18 are a
+  subset of the 34.
+- **Rows.** `motion_output_profiles_fl_inc.h` comes from
+  `inspect_motion_output_profiles.py --base-profiles`; the exact commands are in
+  `regenerate.sh`, and rerunning it is byte-identical except for the generator
+  hash. The generator refuses before writing anything if an AP row would move. It
+  adds 34 rows (6 A, 16 B,
+  12 C) on the four AP VS `37c34a74`, `4944d81d`, `494fe349`, `53a0a641`. The
+  generator accepted all 34 unchanged: none needed a size or class change. The
+  depth plan over the union leaves all 171 AP rows unchanged, and every row writes
+  depth. No VS or jitter row was missing: the 29 jitter gaps of `fl/shaders.md` are
+  AP-identical SM1/SM2 programs and the 9 bloom pairs. The compiled table has 205
+  rows (AP +34 inert). FL census (`census.py`): 175 registered pairs, previously 141.
+- **Proof.** `run_material_motion_structure.py` over the AP and FL corpora, release
+  and ASan/UBSan: 205/205 rows transformed. The 34 FL rows pass 340 checks, 139,264
+  sampled bit mutations and 1,222 program perturbations.
+  `test_motion_output_profiles` has 44 tests, including the FL extension's
+  byte-identical regeneration and a refusal when a base row would move.
+  `validate_variants.py` ran the native SysWOW64 validator over 110 FL variants (34
+  PS × motion, motion-depth and sun-lane; 4 VS × 2) and 38 originals: all S_OK with
+  0 messages. A two-constant negative control is refused with `80004005`. The fill,
+  gain and share variants return `UnsupportedShader` for all 34 FL PS (part 4b).
+  Both editions build with 0 warnings. The capture paths in
+  `rerun_round3.sh`/`twin_on_captures.py` now take `--captures`;
+  `twin_on_captures.json` regenerates byte-identically through it. The full host
+  suite ran 312 modules and 3,296 tests in 142 s. `test_motion_wrap_states` read FL
+  rows from the AP corpus only; it now also reads the FL corpus and passes, with or
+  without that corpus. The two remaining failures are the known
+  `test_engine_ribbons`/`test_engine_effects` source-binding records, which this
+  change does not touch. The D3D fixture runner `run_material_motion.py` parses both
+  includes, but it was not run (it needs a D3D9 fixture host).
+- **Expected in the next FL flight once installed.** `gate3-baseline.json`: in runs
+  3 and 4 every `sun_shadow_lane_refusals` sample is pair-only (`pair` = `untracked`,
+  up to 856). All 27 `sun_shadow_lane_writer … reason=pair gate=3` rows are FL rows.
+  Next flight: `motion_output_variant kind=ps original=<FL id> transform=0
+  create=00000000 depth=1` rows appear, and `pair`/`untracked` falls to about 0 on
+  hull scenes. Moving FL ships get per-object motion, so they no longer ghost or
+  smear. Hull light-map gain and widening stay off until 4b. Result: pending.
