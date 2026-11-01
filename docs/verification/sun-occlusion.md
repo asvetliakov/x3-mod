@@ -909,4 +909,4 @@ so the validator result stands (178 slots, 0 messages).
 | Host modules (the five) | 99 tests, 0 failing (measured) |
 | `own_sun_host field` (1440 rows) | glow_max 1.31720, hue error 0, no rise outward; two-spoke seam 5.6e-5 (measured) |
 | `glow_meter.py` | glow max outside the core 1.317 (1440) / 1.331 (768); between spokes 1.179, 0.543, 0.295, 0.187, 0.076 at 1, 1.5, 2, 3, 6 R; brightest pixel 1.64 / 1.67 engine (inside the soft edge, core 1.44); 0 tiles at the K-2.25 luminance; lit 9-12 (5120x1440), 45-52 (1280x768); worst sun tile `ev_limit` +2.30 EV (5120x1440), +2.24 EV (1280x768); cap rule PASS at both (measured, offline) |
-| Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) |
+| Display at +1.3 EV (AgX table) | core 0.95, 1 R 0.92, 1.5 R 0.72, 2 R 0.49, 6 R 0.09 (inferred) | Re-ported to step 1d after `2a4a77cf6` (rays from `ray_start`, new hashes, `core_gain`): 51 points worst |JS − C++| 1.26e-5; HUD glow max 1.3172 = reference field 1.3172 (white, K = 2); `--check` PASS (25 constants).

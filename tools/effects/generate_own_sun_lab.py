@@ -19,9 +19,9 @@ HTML = ROOT / 'tools/effects/own_sun_lab.html'
 BEGIN, END = '/* @own_sun_constants */', '/* @end */'
 NAMES = ('radius_default_u', 'radius_min_u', 'radius_max_u', 'radiance_default', 'radiance_min', 'radiance_max',
          'rays_default', 'rays_min', 'rays_max', 'white_mix', 'core_inner', 'corona_gain', 'corona_sigma', 'halo_gain',
-         'halo_radius', 'glow_radius', 'ray_count', 'ray_gain', 'ray_length', 'ray_offset', 'ray_sigma',
-         'ray_sigma_min_px', 'radius_min_px')
-OPTIONAL = {'core_gain': 1.0}  # step 1d's core factor; 1 (no change) while the header lacks it
+         'halo_radius', 'glow_radius', 'ray_count', 'ray_gain', 'ray_length', 'ray_start', 'ray_offset', 'ray_sigma',
+         'ray_sigma_min_px', 'radius_min_px', 'core_gain')
+OPTIONAL = {}  # name -> fallback for a constant the header may not define yet (none since step 1d)
 INTEGERS = ('ray_count',)
 # The lab draws the quad as glow_radius core radii to each side; a header that sizes it otherwise needs a lab change.
 QUAD = 'quad_extent_x = glow_radius, quad_extent_y = glow_radius'
