@@ -860,3 +860,8 @@ host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\d3d9.dll.r
 ([record](../../verification/results/run221-candidate-install.json)). Flight: the two F8 pairs with Ctrl+Shift+F9;
 kill rule: worse than the engine chain in either sector, or `own_sun_frame ev=` more than 0.25 EV lower with the sun
 in view than without, or rays shimmering while parked.
+
+**Run 221 flown (2026-11-02).** User: "close!". Four adjustments requested (step 1d): more rays of visibly different
+length (only four equal-length rays read as an X), the halo/blob radius down about 30 %, the core 25–30 % dimmer,
+and the glow next to the core brighter so the core does not stand out (reference: Everspace 2's blown-out near-core
+region). In progress on a fresh implementer.
