@@ -898,7 +898,10 @@ class FadeOwnerSource(unittest.TestCase):
         self.assertIn('route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0;',motion)
         self.assertNotIn('route.alpha_tested = !route.fade_arm && test != 0;',motion)
         self.assertIn('if (route.fade_tested) ++counters_.fade_tested; }',motion)
-        self.assertIn('fade_owner_masked=%lu fade_tested=%lu fade_fill=%lu fade_gain=%lu fade_widen=%lu",',motion)
+        self.assertIn('fade_owner_masked=%lu fade_tested=%lu fade_fill=%lu fade_gain=%lu fade_widen=%lu fade_receiver=%lu fade_caster=%lu",',motion)
+        # fade-owner-shadow-receiver.md: the receiver / caster counts of fade_routed.
+        self.assertIn('if (route.sun_receiver) ++counters_.fade_receiver;',motion)
+        self.assertIn('if (route.fade_arm) ++counters_.fade_caster;',motion)
         self.assertIn('case 86: return counters_.fade_tested;',motion)
         # Alpha-tested rows widen too (7fc522a3): the widened block restores rL.w, the tested coverage, from the
         # unwidened fetch (texld rT; mov rL.w, rT.w; test_hull_emissive_widening), so widen_draw no longer reads it.

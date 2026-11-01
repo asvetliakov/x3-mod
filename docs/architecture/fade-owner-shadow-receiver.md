@@ -3,7 +3,11 @@
 Question: should a distance-fade-band RT2 owner (fade-rt2-ownership.md) also be a sun-shadow receiver, so the sun
 shadow term does not pop in when a station leaves the engine's fade band and turns opaque? Evidence: AP Run 218
 (`verification/results/run218-outpost-switch/`, native Windows, dev DLL 9be4c8a4). Markers: [M] measured this
-session or in the triage, [C] read in code, [I] inferred. Not implemented; the main session ratifies.
+session or in the triage, [C] read in code, [I] inferred. Ratified; implemented in fbe0c137 and its review commit
+(the guard `950 <= permille <= 999`: exactly 1000 is a material draw at full alpha, not a distance fade; the
+`fade_receiver=` / `fade_caster=` counts on `fade_route_frame`); ledger `docs/verification/fill-light.md`
+"Fade-owner shadow receiver". Section 8's first unknown is settled (the share forms carry the owner fragment); the
+GPU check of section 6 was not run.
 
 ## Decision
 

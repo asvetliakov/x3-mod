@@ -207,8 +207,14 @@ constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept 
 // crossing, acne or a dark halo on band stations, sun_shadow_lane_frame
 // failed= rising): set it back to 1001, which no per mille reaches.
 constexpr unsigned owner_shadow_permille = 950u;
+// The upper end: the per mille is g_AlphaValue x the fog factor only, so a
+// blended material draw at full alpha (b0 FALSE, AlphaValue 1: the docking-port
+// glass pair 4944d81d / 64bac8bb measured at exactly 1000 in Run 217) reads
+// 1000. Exactly 1000 is a material draw at full alpha, not a distance fade
+// (Run 218's distance-fade rows: 981-999), and is never a receiver or caster.
+constexpr unsigned owner_shadow_permille_max = 999u;
 constexpr bool owner_shadow(bool fade_owner, unsigned f_permille) noexcept {
-    return fade_owner && f_permille >= owner_shadow_permille;
+    return fade_owner && f_permille >= owner_shadow_permille && f_permille <= owner_shadow_permille_max;
 }
 // Hysteresis at the threshold, keyed by the draw's node identity: an object
 // whose estimate hovers about X3M_FADE_ROUTE would otherwise alternate

@@ -319,6 +319,7 @@ public:
     Pass* occlusion_pass_ = nullptr; // occlusion cull: after_reset arms the pass's query recreation when one is attached
     Pass* ribbons_ = nullptr; // engine ribbons (phase 3): likewise
     Pass* shimmer_ = nullptr; // engine heat shimmer (exhaust gap 9): likewise, through its own forwarder
+    Pass* own_sun_ = nullptr; // own procedural sun (step 1, AP): after_reset forwards to the pass when one is attached
     void engine_shimmer_after_reset(HRESULT result) noexcept {
         if (shimmer_) shimmer_->after_reset(result);
     }
@@ -948,6 +949,11 @@ void fade_band_fill_selection() {
         {Owner, true, true, true, false, true, true, &Programs::share_gain, true, true, false, true, true, 950},
         {Owner, true, true, true, false, true, true, &Programs::sun_gain, true, true, false, true, true, 949},
         {Owner, true, true, true, true, true, true, &Programs::sun_widen, true, true, true, true, true, 940},
+        // Exactly 1000 (owner_shadow_permille_max 999): a material draw at full alpha (b0 FALSE, AlphaValue 1), not a
+        // distance fade: the owner forms, no receiver, no caster.
+        {Owner, true, true, false, false, true, true, &Programs::sun_fill, true, false, false, true, true, 1000},
+        {Owner, true, true, true, false, true, true, &Programs::sun_gain, true, true, false, true, true, 1000},
+        {Owner, true, true, true, true, true, true, &Programs::sun_widen, true, true, true, true, true, 1000},
         // At 998 without a share pair (the producer refused): the owner form, no frame veto (still a caster).
         {Owner, true, true, true, false, true, false, &Programs::sun_gain, true, true, false, true, true, 998, true},
         // At 998 with the owner withdrawn (no ps_sun_motion: RT2 masked) or off: the plain fill family, unchanged.
@@ -1008,9 +1014,9 @@ void fade_band_fill_selection() {
         const bool withdrawn = c.row == Owner && c.lane && !c.sun_motion;
         CHECK(r.fade_owner == (c.row == Owner && !withdrawn) && m.counters_.fade_owner_masked == unsigned(withdrawn));
         // The caster admission (note_candidate_draw's zwrite, test_motion_wrap_states.py pins the production line):
-        // every opaque draw, and a fade row only as an owner at or above 950.
+        // every opaque draw, and a fade row only as an owner at 950-999.
         const bool caster = !r.fade_arm || fade_route::owner_shadow(r.fade_owner, r.fade_permille);
-        CHECK(caster == (c.row == Opaque || (c.row == Owner && !withdrawn && c.permille >= 950)));
+        CHECK(caster == (c.row == Opaque || (c.row == Owner && !withdrawn && c.permille >= 950 && c.permille <= 999)));
         CHECK(m.undo(r) == S_OK);
         m.release_restore(r);
         if (failures != before) std::printf("fade_band_fill case=%u\n", unsigned(&c - cases));
@@ -1131,15 +1137,20 @@ void fade_arm_selection() {
             CHECK(m.undo(route) == S_OK);
             m.release_restore(route);
             // The same admitted row on the sun lane with the share pair (fade-owner-shadow-receiver.md): an owner at
-            // 997 / 1000 binds the share form and is a receiver and a caster; the overlay arm keeps the motion program.
+            // 997 binds the share form and is a receiver and a caster; at 1000 (asteroid_no_fog: b0 FALSE, no distance
+            // fade) it keeps the owner's motion form; the overlay arm keeps the motion program.
             Shader sun_motion, share;
             m.sun_lane_active_ = true;
             m.shadow_.ps_sun_motion = &sun_motion;
             m.shadow_.ps_sun_original = &share;
             m.shadow_.original_share_pair = true;
             CHECK(m.bind_variant_pair(route, false) == S_OK);
-            const bool receiver = !c.overlay && c.owner && c.permille >= fade_route::owner_shadow_permille;
-            CHECK(d.bound_ps == (receiver ? &share : &motion) && route.sun_receiver == receiver);
+            const bool receiver = !c.overlay && c.owner && c.permille >= fade_route::owner_shadow_permille &&
+                                  c.permille <= fade_route::owner_shadow_permille_max;
+            CHECK(d.bound_ps == (receiver    ? &share
+                                 : c.overlay ? &motion
+                                             : &sun_motion) &&
+                  route.sun_receiver == receiver);
             CHECK(fade_route::owner_shadow(route.fade_owner, route.fade_permille) == receiver);
             CHECK(m.undo(route) == S_OK);
             m.release_restore(route);

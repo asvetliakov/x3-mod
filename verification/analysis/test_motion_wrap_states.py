@@ -84,7 +84,9 @@ class MotionWrapStatesTests(unittest.TestCase):
         # Fade-owner sun shadow (fade-owner-shadow-receiver.md; fade_band_fill_selection's rows): the receiver gate in
         # the bind, the lane bookkeeping after the draw and the caster admission share one predicate.
         self.assertIn('fade_route::owner_shadow(route.fade_owner, route.fade_permille);', bind)
-        self.assertIn('constexpr unsigned owner_shadow_permille = 950u;', source_text(ROOT / 'src/proxy/fade_route_core.h'))
+        core = source_text(ROOT / 'src/proxy/fade_route_core.h')
+        self.assertIn('constexpr unsigned owner_shadow_permille = 950u;', core)
+        self.assertIn('constexpr unsigned owner_shadow_permille_max = 999u;', core)
         after = extract_function(source, 'void MotionOutput::after_draw(')
         self.assertIn('const bool lane_row = route.routed && route.depth && (!route.fade_arm || route.sun_receiver);', after)
         self.assertIn('sun_frame_.draw(route.submit && SUCCEEDED(result), lane_row && route.sun_receiver, coverage, stamped || lane_row, reason,', after)

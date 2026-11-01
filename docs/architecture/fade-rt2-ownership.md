@@ -27,7 +27,7 @@ fragment writes and B's `.x` upload and DEF repack are unchanged; (2) the identi
 shading only (the overlay arm's own boundary: under linear materials a blended hull pair may belong to the composition or
 glass bracket), and `fade_route::arm_pair` is the one identity function; (3) on the four-channel lane an owner writes
 `.g` too, so it binds the motion variant's invalid-share twin (`.g = -1`, not a receiver), except that since
-2026-11-02 an owner at or above `fade_route::owner_shadow_permille` (950) whose opaque draw binds an original share form
+2026-11-02 an owner at 950-999 permille (`fade_route::owner_shadow_permille` / `_max`) whose opaque draw binds an original share form
 binds that form and is a sun-shadow receiver and caster ([fade-owner-shadow-receiver.md](fade-owner-shadow-receiver.md));
 a row without one (material,
 XT) stays masked and is counted (`fade_owner_masked` on `fade_route_frame`, with `fade_evicted` and `fade_owner`); (4)

@@ -8898,6 +8898,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         if (route.original_fill) ++counters_.fade_fill;
         if (route.hull_lightmap) ++counters_.fade_gain;
         if (route.hull_lightmap_widen) ++counters_.fade_widen;
+        if (route.sun_receiver) ++counters_.fade_receiver; // a fade-owner shadow receiver (share form bound)
         if (route.fade_tested) ++counters_.fade_tested;
     }
     if (route.linear_material) {
@@ -10838,14 +10839,15 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             // Original shading: the fade-band arm's frame counters and the
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
-            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu fade_fill=%lu fade_gain=%lu fade_widen=%lu",
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu fade_fill=%lu fade_gain=%lu fade_widen=%lu fade_receiver=%lu fade_caster=%lu",
                 id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused),
                 static_cast<unsigned long>(c.fade_held), fade_route_threshold_, unsigned(cutout_caps_),
                 static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
                 static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_),
                 static_cast<unsigned long>(c.fade_owner_masked), static_cast<unsigned long>(c.fade_tested),
                 static_cast<unsigned long>(c.fade_fill), static_cast<unsigned long>(c.fade_gain),
-                static_cast<unsigned long>(c.fade_widen));
+                static_cast<unsigned long>(c.fade_widen), static_cast<unsigned long>(c.fade_receiver),
+                static_cast<unsigned long>(c.fade_caster));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
@@ -11960,6 +11962,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         release(alpha_texture);
         return;
     }
+    if (route.fade_arm) ++counters_.fade_caster; // a fade-owner caster candidate (fade_route_frame)
     // A managed candidate without a known view for every buffer it uses is
     // counted managed but not leased.
     if (!vb_known) {

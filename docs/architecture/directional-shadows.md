@@ -311,8 +311,9 @@ does not yet prove generated shaders or framebuffer ownership.
   no later whole-register depth output may overwrite the share.
 - **Blended glass, native source-over cutout, detached fade and the fused
   fade-band arm are not first-version receivers.** Exception since 2026-11-02:
-  a fused fade-band RT2 owner at or above `fade_route::owner_shadow_permille`
-  (950) binds its opaque draw's share form (owner depth fragment, `.a = 1`, so
+  a fused fade-band RT2 owner at 950-999 permille
+  (`fade_route::owner_shadow_permille` / `_max`; 1000 is a full-alpha material
+  draw) binds its opaque draw's share form (owner depth fragment, `.a = 1`, so
   the stored `.g` is the draw's f, not a blend) and is a receiver and a caster
   ([fade-owner-shadow-receiver.md](fade-owner-shadow-receiver.md)); the text
   below holds for every other fade row. Native source-over cutout is
@@ -665,8 +666,8 @@ final `MOV oC2.g = -1` uses a collision-checked shader-local c221 DEF, adds one
 slot and no temporary or host upload, and preserves all original instructions.
 The converted variant instead selects the explicit extraction API. Ordinary
 opaque/qualified cutout depth writers, including opaque glass, can publish a
-receiver. Fused fade keeps its existing RT2 mask (an RT2 owner at or above
-950 permille is the one fused-fade receiver, fade-owner-shadow-receiver.md);
+receiver. Fused fade keeps its existing RT2 mask (an RT2 owner at 950-999
+permille is the one fused-fade receiver, fade-owner-shadow-receiver.md);
 detached/native blend draws never become receivers. Empty clear is `(-1,0)`; invalid share is `-1`, distinct
 from proved zero. Failed shader creation/bind immediately vetoes the shadow
 frame and schedules R32F for the next frame boundary. The failed frame has **no

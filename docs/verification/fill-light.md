@@ -288,22 +288,32 @@ Cause ([run218-outpost-switch](../../verification/results/run218-outpost-switch/
 owner with `.g = -1` on every pixel and casts nothing, so its sunlit faces and highlights drop 11-33 % and its
 self-shadow pops in when it turns opaque. Change ([fade-owner-shadow-receiver.md](../architecture/fade-owner-shadow-receiver.md),
 option B, P = 950): a fade owner on the sun lane at or above `fade_route::owner_shadow_permille` (950, a named
-constant in `src/proxy/fade_route_core.h`, not a setting) binds the share form its opaque draw binds
+constant in `src/proxy/fade_route_core.h`, not a setting) and at or below `owner_shadow_permille_max` (999) binds the share form its opaque draw binds
 (`ps_sun_original`, `_lightmap`, `_lightmap_widen`), counts as a receiver in `sun_frame_.draw` and is admitted by
 `note_candidate_draw` as a caster (`zwrite = !route.fade_arm || fade_route::owner_shadow(...)`). This supersedes the
 Fade-band fill entry's "never the share producer, never a receiver" for those rows only; below 950, with the owner off
-or withdrawn, on the overlay arm, or without a share pair (the owner form, no frame veto) nothing changes. Zero new
+or withdrawn, on the overlay arm, at exactly 1000, or without a share pair (the owner form, no frame veto) nothing
+changes. The upper bound (review F1): the per mille is `g_AlphaValue` x the fog factor only, so a blended material
+draw at full alpha (b0 FALSE, AlphaValue 1) reads exactly 1000 and is not a distance fade. Census of the session in
+`/mnt/c/X3/x3m.log` (20261102-011747-31008; `verification/results/run218-outpost-switch/permille_1000_census.py` ->
+`permille_1000_census.txt`, measured): 672 routed fade-arm rows, 16 at exactly 1000, all VS `4944d81d` (the
+docking-port glass pair, which has no row below 1000); the other 656 (VS `167eb2d5`, `37c34a74`, `b0602757`) at
+979-996, none below 950. Without the bound those 16 glass rows would have cast full-depth shadows and received with
+their own f. Frame evidence: `fade_route_frame` gains `fade_receiver=` (of `fade_routed`, rows that bound a share
+form) and `fade_caster=` (of `fade_routed`, rows that became managed caster candidates in `note_candidate_draw`). Zero new
 programs; per draw one integer compare in the bind and one in the caster admission, no allocation, no getter; an
 admitted band caster costs what its opaque twin costs (the same box test, `sample_candidate_sun` and replay
 primitives). The shadow pass, the apply and the resolve are unchanged.
 
-Evidence (host, measured): `fade_band_fill_selection` 36 rows (24 + 12: owner at 998 plain / gained / widened / fill
-off and at 950 -> share form, receiver, caster; 949 and 940 -> owner form, neither; 998 without a share pair -> owner
-form, caster, no veto; 998 withdrawn, owner off, no lane, overlay -> unchanged) and `fade_arm_selection` (the admitted
-997 / 1000 rows on the lane bind the share form) in `test_motion_wrap_states`: 35240 checks, 0 failures; with the
-constant at 1001 the same fixture fails 11 cases (5 receiver rows, the 2 caster-only rows at 998 and the 4 admitted
-arm rows). Open issue 1 of the note
-(do the share forms carry the owner depth fragment?) is settled by
+Evidence (host, measured): `fade_band_fill_selection` 39 rows (24 + 15: owner at 998 plain / gained / widened / fill
+off and at 950 -> share form, receiver, caster; 949, 940 and exactly 1000 (plain / gained / widened) -> owner form,
+neither; 998 without a share pair -> owner form, caster, no veto; 998 withdrawn, owner off, no lane, overlay ->
+unchanged) and `fade_arm_selection` on the lane (the admitted 997 rows bind the share form; the 1000 row
+`asteroid_no_fog` keeps the owner's motion form) in `test_motion_wrap_states`: 35264 checks, 0 failures. Kill switch
+(`owner_shadow_permille` 1001): 7 cases fail (the 5 receiver rows and the 2 caster-only rows at 998); with
+`owner_shadow_permille_max` at 1000 the three 1000 rows and the constant's source pin fail. The seam gained
+`own_sun_` (main's own-sun step 1 forwards `after_reset` to it; the fixture no longer compiled on main). Open issue 1
+of the note (do the share forms carry the owner depth fragment?) is settled by
 `test_original_sun_share.FadeOwnerShareFormTests` (driver `verification/probe/fade_owner_share_forms.cpp`, local
 corpus): 108 programs, 308 share forms (100 x 3 + 8 plain), owner transform on vs off, 1848 float64 executions: no
 `def c218`; RT2 `.a = 1` exactly with `c218 = (0|0.37, 1, 0, 0)` (owner row), `.a = w` with `(0, 0, 1, 0)`; `.r`,
@@ -311,11 +321,15 @@ corpus): 108 programs, 308 share forms (100 x 3 + 8 plain), owner transform on v
 `run_host_suite.py --modules test_fade_region test_original_fill test_motion_wrap_states test_sun_share_lane
 test_hull_lightmap_gain test_shadow_replay_candidates test_shadow_replay_depth test_shadow_cascades test_taa_thin_vote
 test_original_sun_share`: 10 modules, 122 tests, 0 failing. `build-ap` and `build-fl` (RelWithDebInfo, MinGW i686):
-0 warnings.
+0 warnings. Not run: the GPU check of the design's section 6 (one blended draw at alpha 0.998 over an earlier
+receiver through the motion-output runner: RT2 `.g` the draw's f exactly, `.a = 1`); the store-not-blend behaviour
+of the owner's `.g` on a device rests on the host execution above and the Run 218 `.r` precedent, not a readback.
 
 Flight check (open): the Run 218 stand (the remote outpost, XT `freighter_base`), F8 once in the band and once opaque.
 Pass: `share_bins.py` on the band frame shows `.g` in [0, 1] with the opaque frame's bin fractions (83 % at 0, 8 % at
 0.8-1.0, within a few points); hi2 % and p90 band/opaque ratios within +-5 % (Run 218: 1.18-1.24 / 1.16-1.33);
 `shadow_replay_caster` rows carrying the station's vbs with `cascades=16` in the band frame;
 `sun_shadow_lane_frame failed=0`. Kill: a visible shadow switch at the 950 crossing, shadow acne or a dark halo on band
-stations that the opaque draw does not show, or `failed=` rising -> `owner_shadow_permille` back to 1001.
+stations that the opaque draw does not show, or `failed=` rising -> `owner_shadow_permille` back to 1001. Without a
+capture, `fade_route_frame` shows the rule firing: `fade_receiver` and `fade_caster` near `fade_routed` while the
+station is in the band (0 for the glass rows at 1000).

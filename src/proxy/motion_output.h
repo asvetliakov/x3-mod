@@ -452,6 +452,9 @@ struct MotionFrameCounters {
     // Of fade_routed: rows that bound the fill / a gained / a widened program (fade-band fill,
     // linear-distance-fade-region.md); on the fade_route_frame line.
     std::uint32_t fade_fill = 0, fade_gain = 0, fade_widen = 0;
+    // Of fade_routed: rows that bound a share form (fade-owner shadow receivers) / became managed caster candidates
+    // (note_candidate_draw), fade-owner-shadow-receiver.md; on the fade_route_frame line.
+    std::uint32_t fade_receiver = 0, fade_caster = 0;
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
