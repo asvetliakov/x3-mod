@@ -595,3 +595,12 @@ Result (log of 2026-11-01 20:4x, 35,987 frames / 236 s, no exception; measured):
 admission `boundary=0`. **Bloom draws on native D3D9 for the first time; accepted.** User:
 bloom is too strong, halos too prominent (same wanted for AP): a `bloom_strength` setting
 with a lower default is in progress (the gain at `capture.cpp:1585` was a hard-coded 1).
+
+## FL run 10 — bloom_strength 0.7 (installed 2026-11-01)
+
+Candidate: commit `b420dc42` (`bloom_strength` setting `5cd520bd`, delta reviewed by the main
+session; version 1.8.1), `build-fl/d3d9.dll` SHA-256 `ef209a18…` (55,453,827 B), 0 warnings,
+`test_bloom*` 71 OK, `test_config*` 19 OK ([record](../../verification/results/fl-run10/candidate.json));
+`C:\X3FL\d3d9.dll` bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run9` (`c7ceeb02…`).
+Expected: `bloom_strength_mode requested=0 strength=0.7 value_valid=0`, bloom commits as in run 9,
+halos at 70 % of run 9. The same commit is release 1.8.1 for AP (Run214, [releases](releases.md)).

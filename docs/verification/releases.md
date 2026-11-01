@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.1
+
+2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.1 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0), clean main `b420dc42` ([record](../../verification/results/release-1.8.1.json)).
+
+- Over 1.8.0 (Run213 flown, bloom committing on native; the user: halos too strong): **`bloom_strength`** (`[hdr]`, 0 to 1, default 0.7, env `X3M_BLOOM_STRENGTH`, launcher `--bloom-strength`): the overall bloom gain `c26.w`, a linear scale of the final composite add only (`bloom_common.hlsl:96`); it was a hard-coded 1. Row `bloom_strength_mode requested= strength= value= value_valid=`.
+- DLL: stripped `258895f3…` (42,555,312 B; x87 0 / 1139 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.1/. Installed into native `C:\X3` as Run214, rollback `rollback-d3d9\d3d9.dll.run213` ([install](../../verification/results/run214-release-install.json)).
+- Zip `x3m-1.8.1.zip` `ea2323df…` (60,230,197 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.1`; `generate --check` PASS (290 settings, 133 in the template). The user's `x3m.ini` header bumped to 1.8.1, body unchanged (`x3m.ini.run213` kept).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.8.0
 
 2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.0 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 67.5 s wall: dll 65.0 s, package 2.5 s), clean main `bad55d33` ([record](../../verification/results/release-1.8.0.json)).

@@ -1,0 +1,15 @@
+{
+ "run": 214,
+ "what": "release 1.8.1 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run213; cp ~/x3m-releases/1.8.1/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-01T20:37:07+04:00",
+ "commit": "b420dc42",
+ "release_record": "verification/results/release-1.8.1.json",
+ "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "258895f30574556a8984dae39a234d5f4d41231aa05a7f7b3b94fa32783c878e", "bytes": 42555312, "stripped": true, "verified_bytes": true},
+ "previous": {"run": 213, "sha256_prefix": "367a3b11", "bytes": 42554741, "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run213"},
+ "zip": {"path": "C:\\Users\\asvet\\Downloads\\x3m-1.8.1.zip", "sha256": "ea2323dfcb69d222870eed7c65a13667fedf845c60c1033575ca0a6a2064bb67", "bytes": 60230197, "verified_bytes": true},
+ "x3m_ini": "header bumped to 1.8.1, body unchanged (previous file x3m.ini.run213); bloom_strength unset = 0.7",
+ "unchanged": ["X3AP.exe", "x3m-regenerate.exe (1.7.0 reused)"],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}
