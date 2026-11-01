@@ -809,3 +809,8 @@ PASS, 138 host tests green) and installed into `C:\X3`, rollback `rollback-d3d9\
 receiver/caster change (fill-light ledger). Flight: the two F8 pairs again (hull edge across the sun; fogged sector),
 Ctrl+Shift+F9 for the engine chain; watch for burst flicker while parked with a hull edge across the core, ray shimmer
 under TAA, and `own_sun_frame ev=`/`ev_limit=` no longer dropping with the sun in view.
+
+**Run 220 flown (2026-11-02).** User on the step 1b star: "like a painted circle with rays, not a sun or something
+belonging to the scene"; wants a big bright halo (about 3x) with falloff and dimmer rays, and first a survey of how
+modern space games render the sun (`docs/reference/sun-rendering-survey.md`, in progress) before the next look
+iteration. Occlusion and the shadow receiver change accepted.

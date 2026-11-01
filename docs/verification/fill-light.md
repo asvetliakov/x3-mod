@@ -333,3 +333,7 @@ Pass: `share_bins.py` on the band frame shows `.g` in [0, 1] with the opaque fra
 stations that the opaque draw does not show, or `failed=` rising -> `owner_shadow_permille` back to 1001. Without a
 capture, `fade_route_frame` shows the rule firing: `fade_receiver` and `fade_caster` near `fade_routed` while the
 station is in the band (0 for the glass rows at 1000).
+
+**Run 220 flown (2026-11-02).** User: the outpost is "much better now"; a residual transition remains that he
+attributes to the alpha-tested parts, accepted as the known trade-off (not much visible). Fade-owner shadow
+receiver/caster rule accepted.
