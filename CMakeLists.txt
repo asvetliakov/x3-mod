@@ -120,8 +120,10 @@ set(X3M_SHARED_SOURCES
 # AP engine modules both editions link: motion_output, its *_inc.h fragments and the capture.cpp draw/compositor
 # paths call into them. In the fl edition their initializers are fenced out (capture.cpp, loader.cpp) and
 # object_trace::executable_verified() is a constant false, so their hooks are never installed.
+# camera_state.cpp is ap only: the fl target links its own provider of camera_state.h below
+# (src/engine/fl/camera_state_fl.cpp, docs/architecture/farnhams-legacy-camera.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
-  src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp
+  src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/sun_light_poll.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
@@ -143,7 +145,7 @@ if(X3M_EDITION STREQUAL "ap")
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_AP=1)
 else()
   add_library(d3d9 SHARED ${X3M_SHARED_SOURCES} ${X3M_AP_ENGINE_LINKED_SOURCES}
-    src/engine/fl/executable_identity_fl.cpp)
+    src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)

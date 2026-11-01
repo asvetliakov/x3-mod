@@ -17,7 +17,9 @@ remainder. An engine module stays out of FL unless a retained file needs it at l
 initializer (`motion_output`, its `*_inc.h`, a `capture.cpp` draw/compositor path) or a kept module
 links it. Initializer, Present, Reset, report and shutdown calls in `capture.cpp`, `loader.cpp`,
 `telemetry.cpp` are fenced `#if !X3M_EDITION_FL` (no define means AP, as in fixtures compiling
-production sources); in FL `object_trace::executable_verified()` is `constexpr false`.
+production sources); in FL `object_trace::executable_verified()` is `constexpr false`. An FL
+engine provider replaces an AP module behind the same header: `src/proxy/camera_state.cpp` is ap only
+and the fl target links `src/engine/fl/camera_state_fl.cpp` ([FL camera provider](farnhams-legacy-camera.md)).
 
 Evidence in `verification/results/farnhams-legacy-build/`: `cmp_objs.py` and `cmp_dll.py` compare the AP
 build with one of the pre-switch commit from the same source path and commit string

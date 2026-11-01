@@ -69,6 +69,9 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
                  static_cast<unsigned long>(x3m::fl::time_date_stamp), static_cast<unsigned long>(x3m::fl::image_size));
     else
         x3m::log("fl.identity mismatch reason=%s", x3m::fl::mismatch_reason());
+    // The FL camera provider (src/engine/fl/camera_state_fl.cpp): the same X3M_MOTION_OUTPUT/X3M_TAA latch as AP,
+    // slots admitted by anchor; reads only, no patch. It logs its own fl.camera row.
+    x3m::camera_state::initialize();
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",

@@ -1,0 +1,11 @@
+fl_objects: camera_state_fl.cpp.obj executable_identity_fl.cpp.obj 
+ap_objects: camera_state.cpp.obj 
+fl_rsp_camera_state: CMakeFiles/d3d9.dir/src/engine/fl/camera_state_fl.cpp.obj 
+fl_nm_camera_state_symbols: 22
+fl_nm_anchor_symbols: 16
+fl_strings_fl_camera: 2
+ap_strings_fl_camera: 0
+fl_warnings: 0
+ap_warnings: 0
+1ff9b6b66a57f7f89b38adc1e3c9a84bc450a28413726c716c398fb05a1c4c92  build-fl/d3d9.dll
+d4e942fb1eaf59ccc6eafa65f2f10379524b0d4ae6085739a429c17b0613fdbd  build-ap/d3d9.dll
