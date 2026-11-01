@@ -61,8 +61,8 @@ INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
 #if X3M_EDITION_FL
-    // FL edition: the one engine-side action is the X3FL.exe identity row (RVA based; no patch, no read
-    // beyond the main module's headers and entry bytes).
+    // FL edition: the X3FL.exe identity row (RVA based; no read beyond the main module's headers and entry
+    // bytes), then the camera provider and the material-submission scope hook below.
     if (x3m::fl::verified())
         x3m::log("fl.identity ok base=0x%08lx timestamp=0x%08lx image_size=0x%08lx",
                  static_cast<unsigned long>(x3m::fl::module_base()),
@@ -72,6 +72,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // The FL camera provider (src/engine/fl/camera_state_fl.cpp): the same X3M_MOTION_OUTPUT/X3M_TAA latch as AP,
     // slots admitted by anchor; reads only, no patch. It logs its own fl.camera row.
     x3m::camera_state::initialize();
+    // The FL scope hook (src/engine/fl/object_trace_fl.cpp; X3M_OBJECT_TRACE, default on): one call rel32 inside
+    // the engine_patch install window (before the device exists), gated by the identity and the site/target bytes.
+    // It logs its own fl.trace row; object_lifetime stays off, so the motion history stays unavailable.
+    x3m::object_trace::initialize();
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
@@ -281,7 +285,14 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         IDirect3D9* wrapped = nullptr;
         x3m::ownership::Options options{};
         options.capture_auto_depth = depth_copy_enabled;
-        options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled || lock_bookends_enabled;
+#if X3M_EDITION_FL
+        // FL step 3a: the scope hook is active but no lifetime (no motion history) consumes buffer revisions yet;
+        // the per-Lock write tracking stays off until step 3b (docs/architecture/farnhams-legacy-object-identity.md).
+        constexpr bool traced_writes = false;
+#else
+        const bool traced_writes = x3m::object_trace::active();
+#endif
+        options.track_buffer_writes = traced_writes || finite_positions_enabled || lock_bookends_enabled;
         // Buffer-lock bookends (buffer_lock_observation.h) for the caster-
         // candidate counter; they require the write tracking above.
         options.track_buffer_lock_attempts = lock_bookends_enabled;

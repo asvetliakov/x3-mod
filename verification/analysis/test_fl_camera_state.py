@@ -240,7 +240,7 @@ class FlCameraWiring(unittest.TestCase):
         self.assertNotIn('camera_state.cpp', linked)
         shared = re.search(r'set\(X3M_SHARED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         self.assertNotIn('camera_state', shared)
-        self.assertIn('src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp)', cmake)
+        self.assertIn('src/engine/fl/executable_identity_fl.cpp src/engine/fl/camera_state_fl.cpp', cmake)
         self.assertIn('src/proxy/camera_state.cpp', re.search(r'set\(X3M_AP_SOURCES\n(.*?)\)\n', cmake, re.S).group(1))
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
         fl_block = loader[loader.index('#if X3M_EDITION_FL\n    // FL edition'):]

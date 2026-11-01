@@ -1,0 +1,33 @@
+{
+ "exit_code": 0,
+ "result": "RESULT PASS checks=328 failures=0 target_calls=600015",
+ "timing": "TIMING native_ns=6.8 hooked_ns=25.5 hooked_current_ns=93.0 hook_ns=18.7 current_ns=67.5",
+ "anchor": "ANCHOR flips=21 refused=21",
+ "xmm_after_virtualquery": "XMM_AFTER_VIRTUALQUERY changed=6 zero=6 of=8",
+ "failures": [],
+ "rows": [
+  "fl.trace status=disabled base=0x00000000 site=0x00000000 target=0x00000000 engine_slot=0x00000000 registry=0x00000000 write=none",
+  "fl.trace status=executable_mismatch base=0x00000000 site=0x00000000 target=0x00000000 engine_slot=0x00000000 registry=0x00000000 write=none",
+  "fl.trace_sample row=1 status=active entries=6 depth_max=2 null_node=1 null_camera=1 nodes=1 cameras=2 camera_unreadable=1 fields=1 field_failed=0 handle_min=42 handle_max=42 lod_min=2 lod_max=2 model_min=123 model_max=123 last_node=0x00c779a0 last_handle=42 last_camera=0x00c77200 last_camera_handle=7 registry=0x00013579 registry_changed=0 current_calls=9 current_scoped=7 foreign_entries=1",
+  "fl.trace status=tls_enter_failed base=0x00000000 site=0x015b006b target=0x00c41500 engine_slot=0x00c771dc registry=0x00013579 write=atomic",
+  "fl.trace status=tls_restore_failed base=0x00000000 site=0x015b006b target=0x00c41500 engine_slot=0x00c771dc registry=0x00013579 write=atomic"
+ ],
+ "audit_exit": 0,
+ "audit": {
+  "roots": [
+   "_x3m_fl_object_dispatch",
+   "_x3m_fl_object_enter",
+   "_x3m_fl_object_leave",
+   "_x3m_fl_object_unwind"
+  ],
+  "missing_roots": [],
+  "reachable": 75,
+  "x87": {},
+  "simd": {},
+  "envelopes": {
+   "__ZN12_GLOBAL__N_1L9preservedIZNS_L3popEPNS_5ScopeEEUlvE_EEvOT_": 16,
+   "__ZN12_GLOBAL__N_1L10note_entryEPKNS_5ScopeE": 64,
+   "__ZN12_GLOBAL__N_1L9preservedIZ19x3m_fl_object_enterEUlvE_EEvOT_": 16
+  }
+ }
+}

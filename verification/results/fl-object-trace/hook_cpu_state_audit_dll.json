@@ -1,0 +1,1 @@
+{"roots": ["_x3m_fl_object_dispatch", "_x3m_fl_object_enter", "_x3m_fl_object_leave", "_x3m_fl_object_unwind"], "missing_roots": [], "reachable": 75, "x87": {}, "simd": {}, "envelopes": {"__ZN12_GLOBAL__N_1L9preservedIZNS_L3popEPNS_5ScopeEEUlvE_EEvOT_": 16, "__ZN12_GLOBAL__N_1L10note_entryEPKNS_5ScopeE": 64, "__ZN12_GLOBAL__N_1L9preservedIZ19x3m_fl_object_enterEUlvE_EEvOT_": 16}}

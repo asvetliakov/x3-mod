@@ -1062,6 +1062,9 @@ void object_context(Device& ctx) {
         static_cast<unsigned long>(value.model), static_cast<unsigned long>(value.lod),
         static_cast<unsigned long>(value.flags12c), static_cast<unsigned long>(value.flags130));
     if (!scoped) return;
+#if !X3M_EDITION_FL
+    // X3AP.exe evidence: the cockpit registry root 0x608504, the D3D flags slot 0x606f34 and AP's camera layout.
+    // The FL scope (src/engine/fl/object_trace_fl.cpp) keeps only the rows below, which carry its own reads.
     auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
     auto& evidence = ctx.object_evidence;
     if (evidence.begin(ctx.frame, ctx.reset_generation, read, 0x608504)) {
@@ -1100,6 +1103,7 @@ void object_context(Device& ctx) {
         ctx.id, ctx.frame, ctx.reset_generation, evidence.epoch, ctx.draws, bool(value.valid & object_trace::Node),
         value.parent, value.alpha13c, ancestry_id, bool(value.valid & object_trace::Node) && !ancestry_id,
         bool(value.valid & object_trace::Camera), camera_id, bool(value.valid & object_trace::Camera) && !camera_id);
+#endif
     const auto rows = [&](const char* role, const uint32_t* bits, unsigned count) {
         for (unsigned row = 0; row < count; ++row)
             log("object_matrix role=%s row=%u bits=%08lx,%08lx,%08lx,%08lx", role, row,

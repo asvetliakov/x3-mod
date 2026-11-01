@@ -637,6 +637,7 @@ SETTINGS = [
     dev('motion_frame_log', 'int', 'logging', 'motion_output_frame cadence, 1..100000 (DLL default 60, 1 with debug).', range=(1, 100000)),
     dev('camera_log', 'int', 'logging', 'camera_state cadence (member of debug).', range=(1, 1000000)),
     dev('fl_camera_log', 'int', 'logging', 'FL edition: seconds between fl.camera_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
+    dev('fl_trace_log', 'int', 'logging', 'FL edition: seconds between fl.trace_sample rows (DLL default 10, 0 off).', range=(0, 3600)),
     dev('shadow_rows', 'bool', 'logging', 'The shadow and sun state rows every frame (member of debug).'),
     dev('shadow_timing', 'bool', 'logging', 'The two shadow cost rows every frame (member of perf).'),
     dev('shadow_retention_census', 'bool', 'logging', 'Caster retention census (member of debug).'),

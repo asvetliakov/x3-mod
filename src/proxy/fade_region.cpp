@@ -13,7 +13,16 @@ bool read_memory(std::uintptr_t address, void* out, std::size_t size) noexcept {
     return engine_memory::read(address, out, size);
 }
 bool scope(std::uintptr_t* descriptor, std::uint32_t* depth) noexcept {
+#if X3M_EDITION_FL
+    // The bound reads the descriptor with AP's layout (part +0, the part's AABB and back link), unverified for
+    // X3FL.exe: no scope, so resolve/peek report NoScope and the region stays the full viewport, as before the FL
+    // scope hook (docs/architecture/farnhams-legacy-object-identity.md).
+    *descriptor = 0;
+    *depth = 0;
+    return false;
+#else
     return object_trace::scope_descriptor(descriptor, depth);
+#endif
 }
 // The wrapper pointer is a registry key only (a map find under the ownership
 // mutex); the view must be tracked, unlocked and unambiguous.

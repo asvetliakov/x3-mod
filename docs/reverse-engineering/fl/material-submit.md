@@ -15,6 +15,13 @@ nested D3D consumers. An AP-style delayed `current()` heap read inside the
 material call is not this contract. Standalone reader activation remains
 unqualified: the native borrow needs the owning complete-pass admission below.
 
+**Superseded 2026-11-01 (step 3a).** The entry-time-copy contract above is
+replaced: the lazy `current()` read inside the open call is ratified, because
+the engine itself dereferences the node for the duration of the call and the
+dispatcher's own SEH frame clears the scope on unwind, so no read outlives the
+engine's own use. Evidence: the native fixture `verification/probe/fl_object_trace.cpp`
+and the forthcoming flight ([object identity](../../architecture/farnhams-legacy-object-identity.md)).
+
 ## Evidence and reproducibility
 
 ```sh

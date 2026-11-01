@@ -76,3 +76,26 @@ then `proj=0x04c86108 view=0x04c85d60` for the whole flight. 16 of 18 sample row
 (FOV_y 73.7°, near ≈ 6), `ortho_dot`/`ortho_len` ≤ 2.3e-4, `changed=1`; `k=0` (sky
 read) `t_len` ≈ 11.3, `k=1` (scene read) `t_len` 112,765 → 139,542 while flying.
 **Accepted:** the inherited slots and the row-major D3D layout are confirmed in game.
+
+## Step 3a — FL scope hook, host evidence (2026-11-01, not installed)
+
+Design: [object identity note](../architecture/farnhams-legacy-object-identity.md). Measured on the WSL2 host,
+uncommitted worktree on 171e5477: clean rebuilds of both editions, 0 warnings each; the fl link has
+`object_trace_fl.cpp.obj` and no `object_trace.cpp.obj`; `build-fl/d3d9.dll` SHA-256 `e1af4af2…f38888f2`.
+`fl_object_trace_constants.py --check` matches X3FL.exe (0xe7142 the only direct caller of 0xe0f30, wrapper
+callers 0x97035/0x97702, one relocation at the engine operand 0xa2292, eleven field operands). Native fixture
+(`verification/results/fl-object-trace/run_fixture.py` → `fixture.json`): `RESULT PASS checks=328 failures=0`,
+`ANCHOR flips=21 refused=21` (production gate on a synthetic image), `XMM_AFTER_VIRTUALQUERY changed=6 zero=6`;
+hook 18.7 ns per entry, `current()` 67.5 ns. Dispatch-path audit (`hook_cpu_state_audit_dll.json`): 75
+functions, no x87, XMM only in three save/restore envelopes. AP-address rescan (`ap_address_scan_fl.json`): 20
+reachable functions, the real addresses only in `engine_effects::seta_read` and `x3m_lifetime_enter`. Schema:
+`fl_trace_log` added (`schema_semantic_compare.txt`: added=1 removed=0 changed=0). Fenced for FL until step
+3b: ownership buffer-write tracking (loader) and the fade-region scope (full viewport).
+
+Expected in game: `fl.trace status=active base=0x004d0000 … write=atomic`, then every 10 s one
+`fl.trace_sample` row. Correct: thousands of `entries`, `depth_max=1`, `null_node=0`, `null_camera=0`,
+`camera_unreadable=0`, `field_failed=0`, `nodes` tens to `256+`, a few `cameras`, small handles, `lod` 0..3,
+non-negative `model` keys, a constant nonzero `registry` (`registry_changed=1` only around a load). Wrong ABI
+(descriptor/node swapped, camera one word off): `null_camera`, `camera_unreadable` or `field_failed` near the
+first-sighting counts, handles 0. Wrong node offsets: `lod`/`model` pointer-like or −1 throughout. Image
+still vanilla (`object_lifetime` off).

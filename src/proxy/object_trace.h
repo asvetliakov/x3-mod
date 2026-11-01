@@ -52,7 +52,19 @@ bool scope_descriptor(uintptr_t* descriptor, uint32_t* depth);
 // or scope. LastError preserved. The small-prop cull's per-draw key.
 bool scope_node(uintptr_t* descriptor, uintptr_t* node);
 bool shutdown(); // restore only our own displacement, while no submission can run
-#ifdef X3M_OBJECT_TRACE_FIXTURE
+#if defined(X3M_OBJECT_TRACE_FIXTURE) && X3M_EDITION_FL
+// FL fixture seam (src/engine/fl/object_trace_fl.cpp): the same site gate as initialize() (a call rel32 to
+// expected_target followed by `add esp,0x10`, the target's six entry bytes) and the same engine_patch claim,
+// minus the X3FL.exe identity and the generated exact bytes. engine_slot holds the engine pointer whose +0xc is
+// the registry. Caller owns code storage and guarantees quiescence.
+bool fixture_install(void* callsite, void* expected_target, uintptr_t engine_slot);
+void fixture_fail_next_tls_set();
+// The next scope entry on the diagnostic thread writes its fl.trace_sample row (no QPC wait).
+void fixture_force_sample();
+// initialize()'s production byte gates (exact site bytes, target entry, engine anchor) against an image mapped at
+// base (the generated RVAs): nullptr when they pass, else the refusal initialize() would log.
+const char* fixture_gate(uintptr_t base);
+#elif defined(X3M_OBJECT_TRACE_FIXTURE)
 // Compile-only original fixture seam: absent from production. Caller owns code
 // storage and guarantees quiescence. Addresses refer only to original fixture data.
 struct FixtureAddresses {

@@ -18,8 +18,10 @@ initializer (`motion_output`, its `*_inc.h`, a `capture.cpp` draw/compositor pat
 links it. Initializer, Present, Reset, report and shutdown calls in `capture.cpp`, `loader.cpp`,
 `telemetry.cpp` are fenced `#if !X3M_EDITION_FL` (no define means AP, as in fixtures compiling
 production sources); in FL `object_trace::executable_verified()` is `constexpr false`. An FL
-engine provider replaces an AP module behind the same header: `src/proxy/camera_state.cpp` is ap only
-and the fl target links `src/engine/fl/camera_state_fl.cpp` ([FL camera provider](farnhams-legacy-camera.md)).
+engine provider replaces an AP module behind the same header: `src/proxy/camera_state.cpp` and
+`src/proxy/object_trace.cpp` are ap only and the fl target links `src/engine/fl/camera_state_fl.cpp`
+([FL camera provider](farnhams-legacy-camera.md)) and `src/engine/fl/object_trace_fl.cpp`
+([FL object identity](farnhams-legacy-object-identity.md)).
 
 Evidence in `verification/results/farnhams-legacy-build/`: `cmp_objs.py` and `cmp_dll.py` compare the AP
 build with one of the pre-switch commit from the same source path and commit string
@@ -28,7 +30,10 @@ only the link timestamps, CheckSum and debug section sizes differ), and `ap_addr
 `ap_address_scan_{fl,ap}.json`. Of the 21 X3AP-range constants the scan finds statically reachable in
 the FL DLL, three are real addresses, each behind state only AP initializers set
 (`object_trace::active()`, engine_effects `identity_`, the fenced object_lifetime installer). The other
-18 are shader tokens, allocation sizes and text bytes.
+18 are shader tokens, allocation sizes and text bytes. Since the FL scope hook sets `object_trace::active()`
+in FL, the capture-frame `object_context` evidence block (cockpit root 0x608504, flags slot 0x606f34) is
+fenced `#if !X3M_EDITION_FL`; the rescan (`verification/results/fl-object-trace/ap_address_scan_fl.json`)
+finds 20 functions, the two remaining real addresses behind engine_effects `identity_` and the installer.
 
 ## FL identity contract (`src/engine/fl/executable_identity_fl.h`)
 
