@@ -1,0 +1,15 @@
+{
+ "run": 216,
+ "what": "release 1.8.3 stripped DLL installed into native C:\\X3",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run215; cp ~/x3m-releases/1.8.3/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-01T23:17:51+04:00",
+ "commit": "9d8c97eb",
+ "release_record": "verification/results/release-1.8.3.json",
+ "installed": {"path": "C:\\X3\\d3d9.dll", "sha256": "73508a5c4077e4dc47c919f2451be78951e0958d452907d735e7775697ca73e4", "bytes": 42557146, "stripped": true, "verified_bytes": true},
+ "previous": {"run": 215, "sha256_prefix": "4ccbc880", "bytes": 42555312, "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run215"},
+ "zip": {"path": "C:\\Users\\asvet\\Downloads\\x3m-1.8.3.zip", "sha256": "2a4557e16ce2c645a075de6faaad82a4b32aa429603b0a7389b3fa373d2cc947", "bytes": 60230756, "verified_bytes": true},
+ "x3m_ini": "header bumped to 1.8.3, body unchanged (previous file x3m.ini.run215); user's explicit lens_flare_gain = 1 and sun_occlusion_log = 1 lines remain",
+ "unchanged": ["X3AP.exe", "x3m-regenerate.exe (1.7.0 reused)"],
+ "game_running_check": "tasklist.exe | grep -i x3ap: none",
+ "producer": "main session"
+}

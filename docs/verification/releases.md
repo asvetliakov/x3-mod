@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.3
+
+2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.3 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 64.6 s wall: dll 61.6 s, package 2.7 s), clean main `9d8c97eb` ([record](../../verification/results/release-1.8.3.json)).
+
+- Over 1.8.2 (Run215 flown; the user: dim sun, sun drawn through ship and station): **`lens_flare_gain` default 1** (0.3 since 2026-09-29 dimmed the sun's flare; user-confirmed with `lens_flare_gain = 1`); **sun occlusion deferral** (`16c853d1`, reviewed Opus high): when the sun's lens body is one the lens scan cannot classify (the stock SM3 pair `494fe349…/7c83ed50…`, drawn on the Mayhem install and present in stock `addon/01.cat`), the override stops answering the engine's visibility probe for that record so the vanilla all-or-nothing probe hides the sun; it lifts only after a pass in which the vanilla probe itself showed the record with a core body and no unclassifiable body (no two-frame oscillation; rows capped at 8 per session); probe hook +8 instructions, one integer compare; FL objects identical ([ledger](sun-occlusion.md), triage `verification/results/run216-sun-occlusion/`). Partial occlusion is lost on the SM3 chain until the SM3 wrap ([plan](../reverse-engineering/sun-lens-sm3-body.md)).
+- DLL: stripped `73508a5c…` (42,557,146 B; x87 0 / 1142 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.3/. Installed into native `C:\X3` as Run216, rollback `rollback-d3d9\d3d9.dll.run215` ([install](../../verification/results/run216-release-install.json)).
+- Zip `x3m-1.8.3.zip` `2a4557e1…` (60,230,756 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.3`; `generate --check` PASS (292 settings, 133 in the template). The user's `x3m.ini` header bumped to 1.8.3, body unchanged (`x3m.ini.run215` kept).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.8.2
 
 2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.2 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.7 s wall: dll 68.1 s, package 2.5 s), clean main `68a23daf` ([record](../../verification/results/release-1.8.2.json)).
