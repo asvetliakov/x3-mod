@@ -882,7 +882,8 @@ or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3
 ## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
 
 The own sun stage ([own-sun-pass.md](own-sun-pass.md) sections 2-4 and 10) uses documented D3D9 only: one vs_3_0 /
-ps_3_0 pair (2 / 70 slots by the production counter; `VPOS`, nine `texldl` of the lane), one vertex declaration
+ps_3_0 pair (2 / 142 slots by the production counter since step 1b; `VPOS`, fourteen `texld` of the lane, no flow
+control), one vertex declaration
 (`FLOAT4` position, `FLOAT2` texcoord) and one `DrawPrimitiveUP` of a four-vertex strip per frame, so no vertex buffer
 or other pool resource is held; `SetTexture` of RT2 (already a texture), point/clamp sampling, ONE/ONE blending into
 `A16B16G16R16F` gated by the plumes' `CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,

@@ -349,3 +349,32 @@ Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun ste
   hook since FL step 9; enabling it there is a separate step.
 - **Not built.** Section 11's real-device fixture and a hook-fixture case for the answer (no Wine on the native host);
   the flight is the device test.
+
+### Step 1b: the look after Run219 (2026-11-02, AP; not flown)
+
+Run219 accepted the occlusion ("works and is better than vanilla") and rejected the look: about four times too big, too
+bright, a flat disc instead of vanilla's rays, white where vanilla is yellowish (fogged sector, polled colour 0.88, 1.0,
+0.78). The user's references are stars seen from space: a small hot point with thin rays of different lengths over a
+faint halo. The same stage, quad, occlusion and fog scalar draw that instead (`src/effects/own_sun_ps.hlsl`; every
+constant in `own_sun_core.h`, uploaded as c3..c9, so `test_own_sun` evaluates the law with the numbers the DLL draws with):
+
+- **Core.** Radius 0.012 of the height (9 px at 768 rows, 17 px at 1440; step 1 drew 96), soft edge from 0.6 to 1 core
+  radius, `K lerp(c / m, 1, 0.25) m T` with K = 2: decoded (gamma 2.2) 4.6, above the bloom threshold (exposed 1) and
+  under the meter guard's +1.3 EV Auto cap (K <= 2.25). The core now covers 0.10-0.16 % of the meter tiles at 1280x768
+  and 0.05-0.22 % at 5120x1440, far below the 1 % that sets p99, and even at p99 it would leave `ev_limit` at +1.67 EV
+  [M, `meter_exposure.py`]. Run219 measured `ev_limit` -0.92 with the 96-px disc at 5120x1440 where the tile model
+  predicted it below p99, so the model under-counts something there; the new defaults hold either way.
+- **Glow, the polled colour exactly.** Halo, rays and streaks are `c T K / 2` times their intensity, no white mix
+  (vanilla multiplies every body by the colour). Their sum peaks at 0.764 at K = 2, under the stabiliser's E = 1 [M].
+- **Rays.** 16 spokes (offset half a spoke so none lies on the streaks), the nearest one per pixel from a minimax
+  arctangent; per spoke a hash of its index sets the length (3.3-12.9 core radii: a few long, many short) and the
+  strength (0.6-1.0 x 0.75); a Gaussian across the spoke (width 0.12 core radii, tapering outward) and
+  `saturate(1 - r / L)^2` along it. Static in screen space. `sun_rays` (0..1, default 1) scales rays and streaks.
+- **Streaks.** The long horizontal pair: `0.6 exp(-(y / 0.15)^2 - |x| / 8)`, windowed to 24 core radii.
+- **Halo.** Faint and wide: `0.2 / (1 + r^2 / 4)`, windowed to 16 core radii.
+- **Occlusion.** The per-pixel knight clip over the whole quad (rays included) as before, and the glow multiplied by
+  the core's visible fraction (five sentinel taps: the centre and four at 0.7 core radii), so a covered core takes its
+  rays with it; the core itself keeps the per-pixel clip.
+- **Quad.** 48 x 32 core radii (0.46 Mpx at 5120x1440, 0.04 Mpx at 1280x768). ps_3_0 142 slots by the production
+  counter (14 `texld`: plain `tex2D`, valid without flow control on the one-level point-sampled lane); native
+  validator 0 messages.

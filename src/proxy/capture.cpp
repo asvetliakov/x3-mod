@@ -223,7 +223,8 @@ bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side c
 // redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; out of range keeps
 // the default) and the comparison hotkey Ctrl+Shift+F9 (comparison-hotkeys.md, "Own sun"), polled only while it is on.
 bool own_sun_on = false;
-float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default;
+float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default,
+      own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' and streaks' share (step 1b)
 own_sun::core::Toggle own_sun_key;
 // The chord, F9 first so an idle frame costs one call.
 bool own_sun_chord_down() {
@@ -3464,7 +3465,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
                                                   sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
 #if !X3M_EDITION_FL
-    hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance); // X3M_OWN_SUN=1 as installed
+    hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
+                                           own_sun_rays); // X3M_OWN_SUN=1 as installed
 #endif
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
                                                                                           // installed for it; fog: G x T_sun
@@ -5908,6 +5910,11 @@ void initialize_log(HMODULE module) {
             const float v = wcstof(value, &end);
             if (end != value && *end == L'\0') own_sun::core::accept_radiance(v, &own_sun_radiance);
         }
+        if (x3m::config::get(L"X3M_SUN_RAYS", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            if (end != value && *end == L'\0') own_sun::core::accept_rays(v, &own_sun_rays);
+        }
         // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
         if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();
 #endif
@@ -5915,14 +5922,14 @@ void initialize_log(HMODULE module) {
         const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested);
 #if !X3M_EDITION_FL
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
-        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f hotkey=ctrl+shift+f9",
+        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f hotkey=ctrl+shift+f9",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
             own_sun_on                     ? "ok"
             : !own_sun_requested           ? "setting"
             : !motion_output_requested     ? "route_off"
             : !(own_sun_radiance > 0.f)    ? "radiance_zero"
                                            : "probe",
-            sun_occlusion::state(), double(own_sun_radius), double(own_sun_radiance));
+            sun_occlusion::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
 #else
         log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending", own_sun_requested ? 1u : 0u);
 #endif

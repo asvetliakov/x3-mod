@@ -7,10 +7,15 @@
 //   toggle <0/1 string>            the key state per frame; prints on / edges per frame
 //   frame_active configured key_on stage_ready
 //   quad x y half_x half_y
-//   constants width height d0 d1 d2 c0 c1 c2
-//   pixel c0 c1 c2 k fog_t distance open_taps exp_term
+//   constants width height x y radius_px rays core0 core1 core2 glow0 glow1 glow2
+//   pixel c0 c1 c2 k fog_t rays px py open_taps visible_taps   the program's law (own_sun_core.h reference_pixel) at
+//                                  offset (px, py) core radii, with the constants pixel_constants() uploads
+//   field c0 c1 c2 k rays step reach   the glow terms on a grid of `step` core radii out to `reach`: maxima, the hue
+//                                  ratio of the glow, the rays per spoke (length, peak) and their mirror symmetry
 //   bench frames                   the stage's CPU side per frame (projection, fog scalar, radiance, quad, constants)
+#define X3M_OWN_SUN_HOST_REFERENCE
 #include "../../src/proxy/own_sun_core.h"
+#include <cmath>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -46,9 +51,9 @@ int main(int argc, char** argv) {
         const std::int32_t c[3] = {i32(argv[2]), i32(argv[3]), i32(argv[4])};
         core::Radiance r;
         core::radiance(c, f(argv[5]), f(argv[6]), &r);
-        std::printf("black=%u disc=%.7f,%.7f,%.7f corona=%.7f,%.7f,%.7f colour=%.7f,%.7f,%.7f\n", unsigned(r.black),
-                    double(r.disc[0]), double(r.disc[1]), double(r.disc[2]), double(r.corona[0]), double(r.corona[1]),
-                    double(r.corona[2]), double(r.colour[0]), double(r.colour[1]), double(r.colour[2]));
+        std::printf("black=%u core=%.7f,%.7f,%.7f glow=%.7f,%.7f,%.7f colour=%.7f,%.7f,%.7f\n", unsigned(r.black),
+                    double(r.core[0]), double(r.core[1]), double(r.core[2]), double(r.glow[0]), double(r.glow[1]),
+                    double(r.glow[2]), double(r.colour[0]), double(r.colour[1]), double(r.colour[2]));
         return 0;
     }
     if (!std::strcmp(cmd, "fog") && argc == 9) {
@@ -96,26 +101,92 @@ int main(int argc, char** argv) {
                         double(v[k].w), double(v[k].lx), double(v[k].ly), k == 3 ? "\n" : " ");
         return 0;
     }
-    if (!std::strcmp(cmd, "constants") && argc == 10) {
+    if (!std::strcmp(cmd, "constants") && argc == 14) {
+        core::Disc d;
+        d.x = f(argv[4]);
+        d.y = f(argv[5]);
+        d.radius_px = f(argv[6]);
         core::Radiance r;
         for (int i = 0; i < 3; ++i) {
-            r.disc[i] = f(argv[4 + i]);
-            r.corona[i] = f(argv[7 + i]);
+            r.core[i] = f(argv[8 + i]);
+            r.glow[i] = f(argv[11 + i]);
         }
         float c[core::pixel_registers * 4];
-        core::pixel_constants(unsigned(std::atoi(argv[2])), unsigned(std::atoi(argv[3])), r, c);
+        core::pixel_constants(unsigned(std::atoi(argv[2])), unsigned(std::atoi(argv[3])), d, r, f(argv[7]), c);
         std::printf("c=");
         for (unsigned i = 0; i < core::pixel_registers * 4; ++i) std::printf("%s%.9g", i ? "," : "", double(c[i]));
         std::printf("\n");
         return 0;
     }
-    if (!std::strcmp(cmd, "pixel") && argc == 10) {
-        const std::int32_t c[3] = {i32(argv[2]), i32(argv[3]), i32(argv[4])};
+    // The constants of a centred sun of 17 px at 1440 rows for a colour, K, fog and rays.
+    auto frame_constants = [](const char* const* a, float rays, float* c, core::Radiance* r) {
+        const std::int32_t colour[3] = {i32(a[0]), i32(a[1]), i32(a[2])};
+        core::radiance(colour, f(a[3]), f(a[4]), r);
+        core::Disc d;
+        d.radius_px = core::radius_default_u * 1440.f;
+        core::pixel_constants(5120, 1440, d, *r, rays, c);
+    };
+    if (!std::strcmp(cmd, "pixel") && argc == 12) {
+        float c[core::pixel_registers * 4];
         core::Radiance r;
-        core::radiance(c, f(argv[5]), f(argv[6]), &r);
+        frame_constants(argv + 2, f(argv[7]), c, &r);
         core::Pixel p;
-        core::reference_pixel(r, f(argv[7]), unsigned(std::atoi(argv[8])), f(argv[9]), &p);
-        std::printf("rgb=%.7f,%.7f,%.7f\n", double(p.rgb[0]), double(p.rgb[1]), double(p.rgb[2]));
+        core::reference_pixel(c, f(argv[8]), f(argv[9]), unsigned(std::atoi(argv[10])), unsigned(std::atoi(argv[11])), &p);
+        std::printf("rgb=%.7f,%.7f,%.7f halo=%.7f rays=%.7f streaks=%.7f core=%.7f\n", double(p.rgb[0]), double(p.rgb[1]),
+                    double(p.rgb[2]), double(p.halo), double(p.rays), double(p.streaks), double(p.core));
+        return 0;
+    }
+    if (!std::strcmp(cmd, "field") && argc == 9) {
+        float c[core::pixel_registers * 4];
+        core::Radiance r;
+        frame_constants(argv + 2, f(argv[7]), c, &r);
+        const float step = f(argv[8]);
+        // The glow outside the core (D = 0): its largest radiance (the stabiliser bound), the hue ratio's largest
+        // deviation from the polled colour, and the halo along the +x axis away from the streaks (monotone).
+        float glow_max = 0.f, hue_error = 0.f, halo_rise = 0.f, previous = 1e30f;
+        for (float y = -core::quad_extent_y; y <= core::quad_extent_y; y += step)
+            for (float x = -core::quad_extent_x; x <= core::quad_extent_x; x += step) {
+                core::Pixel p;
+                core::reference_pixel(c, x, y, 9, 5, &p);
+                if (p.core > 0.f) continue;
+                const float g = p.halo + p.rays + p.streaks;
+                glow_max = g > glow_max ? g : glow_max;
+                for (int i = 0; i < 3 && g > 1e-6f; ++i) {
+                    const float want = r.glow[i] * g, e = std::fabs(p.rgb[i] - want) / (want > 1e-6f ? want : 1e-6f);
+                    hue_error = e > hue_error ? e : hue_error;
+                }
+            }
+        for (float rr = 0.f; rr <= core::glow_radius; rr += step / 4.f) {
+            core::Pixel p;
+            core::reference_pixel(c, 0.f, rr, 9, 5, &p);
+            const float rise = p.halo - previous;
+            halo_rise = rise > halo_rise ? rise : halo_rise;
+            previous = p.halo;
+        }
+        // Per spoke: its centre angle, the ray's reach (the last radius above 1 % of the gain) and peak, and the
+        // mirror symmetry of the profile about the spoke's axis at 3 core radii.
+        std::printf("glow_max=%.5f hue_error=%.3g halo_rise=%.3g spokes=", double(glow_max), double(hue_error),
+                    double(halo_rise));
+        float asymmetry = 0.f;
+        for (unsigned k = 0; k < core::ray_count; ++k) {
+            const float theta = (float(k) - core::ray_offset) * core::two_pi / float(core::ray_count);
+            float reach = 0.f, peak = 0.f;
+            for (float rr = 1.f; rr <= core::quad_extent_y; rr += .05f) {
+                core::Pixel p;
+                core::reference_pixel(c, rr * std::cos(theta), rr * std::sin(theta), 9, 5, &p);
+                if (p.rays > .01f * core::ray_gain) reach = rr;
+                peak = p.rays > peak ? p.rays : peak;
+            }
+            for (float delta = .002f; delta < .03f; delta += .004f) {
+                core::Pixel a, b;
+                core::reference_pixel(c, 3.f * std::cos(theta + delta), 3.f * std::sin(theta + delta), 9, 5, &a);
+                core::reference_pixel(c, 3.f * std::cos(theta - delta), 3.f * std::sin(theta - delta), 9, 5, &b);
+                const float e = std::fabs(a.rays - b.rays);
+                asymmetry = e > asymmetry ? e : asymmetry;
+            }
+            std::printf("%s%.2f:%.4f", k ? "," : "", double(reach), double(peak));
+        }
+        std::printf(" asymmetry=%.3g\n", double(asymmetry));
         return 0;
     }
     if (!std::strcmp(cmd, "bench") && argc == 3) {
@@ -142,7 +213,7 @@ int main(int argc, char** argv) {
             core::Vertex v[4];
             core::quad(d, v);
             float k[core::pixel_registers * 4];
-            core::pixel_constants(5120, 1440, r, k);
+            core::pixel_constants(5120, 1440, d, r, core::rays_default, k);
             sink = sink + v[3].x + k[12];
         }
         const double ns = std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - begin).count();

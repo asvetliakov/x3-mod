@@ -8,6 +8,8 @@ is src/renderer/exposure.h, unchanged). Offline arithmetic, no device:
   ev_limit  log2(0.9 * 16.2917424) - log2(min(L, meter_clip 64)), L the decoded luminance of a white disc of radiance K:
             K^2.2 under the default X3M_HDR_DECODE=gamma2.2, K under decode=identity
 The Auto cap is +1.3 EV; ev_limit below it caps the exposure while the disc holds p99.
+Step 1b (own-sun-pass.md section 14): the core is 0.012 of the height and every core pixel (r <= 1 core radius, D > 0)
+counts; K = 2 for a white core, the glow (halo, rays, streaks) peaks at 0.764 (test_own_sun's field maximum).
 Usage: python3 meter_exposure.py  (prints one row per resolution and radius definition, then the radiance thresholds)
 """
 import math
@@ -24,8 +26,8 @@ def tile_grid(width, height):
             return w, h, 4 ** steps
 
 
-def disc_tiles(width, height, tile, radius, ox, oy):
-    cx, cy, core = width / 2 + ox, height / 2 + oy, 0.9 * radius
+def disc_tiles(width, height, tile, radius, ox, oy, inner=0.9):
+    cx, cy, core = width / 2 + ox, height / 2 + oy, inner * radius
     hit = set()
     for y in range(int(cy - core) - 1, int(cy + core) + 2):
         for x in range(int(cx - core) - 1, int(cx + core) + 2):
@@ -43,13 +45,14 @@ def main():
         tw, th, tile = tile_grid(width, height)
         tiles = tw * th
         need = tiles - tiles * 99 // 100
-        for name, radius in (('width 0.04', 0.04 * width), ('height 0.0667', 0.0667 * height)):
-            counts = [disc_tiles(width, height, tile, radius, tile * i / 4, tile * j / 4) for i in range(4) for j in range(4)]
+        for name, radius, inner in (('width 0.04', 0.04 * width, .9), ('height 0.0667', 0.0667 * height, .9),
+                                    ('step 1b height 0.012, r <= 1', 0.012 * height, 1.)):
+            counts = [disc_tiles(width, height, tile, radius, tile * i / 4, tile * j / 4, inner) for i in range(4) for j in range(4)]
             print('%dx%d tiles %dx%d (%d px) radius %s = %.1f px: disc tiles %d..%d of %d = %.2f..%.2f %%, p99 needs %d -> %s'
                   % (width, height, tw, th, tile, name, radius, min(counts), max(counts), tiles, 100 * min(counts) / tiles,
                      100 * max(counts) / tiles, need, 'disc sets p99' if min(counts) >= need else
                      'disc sets p99 at some placements' if max(counts) >= need else 'below p99'))
-    for k in (8.0, 4.0, 3.39, 2.25):
+    for k in (8.0, 4.0, 3.39, 2.25, 2.0, 0.764):
         print('K %.2f: gamma2.2 L %.1f ev_limit %+.2f EV; identity L %.2f ev_limit %+.2f EV'
               % (k, k ** 2.2, ev_limit(k ** 2.2), k, ev_limit(k)))
     print('ev_limit >= 0 needs K <= %.2f, >= +1.3 (no effect under the Auto cap) K <= %.2f (gamma2.2)'

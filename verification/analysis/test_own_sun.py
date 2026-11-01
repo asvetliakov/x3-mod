@@ -59,7 +59,7 @@ def reference_projection(p, r, t, m00, m11, m20, m21, w, h, radius, jx, jy):
     x = view[0] * m00 / view[2] + m20
     y = view[1] * m11 / view[2] + m21
     rp = radius * h  # the radius is a fraction of the viewport height
-    return dict(u=.5 + .5 * x, v=.5 - .5 * y, x=x + 2 * jx / w, y=y - 2 * jy / h, half_x=3 * 2 * rp / w, half_y=3 * 2 * rp / h,
+    return dict(u=.5 + .5 * x, v=.5 - .5 * y, x=x + 2 * jx / w, y=y - 2 * jy / h, half_x=24 * 2 * rp / w, half_y=16 * 2 * rp / h,
                 radius_px=rp, view_z=view[2])
 
 
@@ -85,7 +85,7 @@ class OwnSunHost(unittest.TestCase):
     def run_driver(self, *args):
         return fields(subprocess.check_output([str(self.driver)] + [str(a) for a in args], text=True).strip())
 
-    def project(self, p, r=(1, 0, 0, 0, 1, 0, 0, 0, 1), t=(0, 0, 0), m=(1, 1.7777778, 0, 0), size=(1280, 768), radius=.0667, jitter=(0, 0)):
+    def project(self, p, r=(1, 0, 0, 0, 1, 0, 0, 0, 1), t=(0, 0, 0), m=(1, 1.7777778, 0, 0), size=(1280, 768), radius=.012, jitter=(0, 0)):
         out = self.run_driver('project', *p, *r, *t, *m, *size, radius, *jitter)
         return {k: (v if k == 'skip' else float(v)) for k, v in out.items()}
 
@@ -103,8 +103,8 @@ class OwnSunHost(unittest.TestCase):
             view = [rng.uniform(-.4, .4) * vz, rng.uniform(-.3, .3) * vz, vz]
             world = [sum((view[j] - t[j]) * r[i * 3 + j] for j in range(3)) for i in range(3)]  # R orthonormal: R^-1 = R^T
             p = [int(round(v / SCALE)) for v in world]
-            got = self.project(p, r, t, m, size, .0667, jitter)
-            want = reference_projection(p, r, t, *m, *size, .0667, *jitter)
+            got = self.project(p, r, t, m, size, .012, jitter)
+            want = reference_projection(p, r, t, *m, *size, .012, *jitter)
             self.assertEqual(got['skip'], 'none' if abs(want['x']) - want['half_x'] < 1 and abs(want['y']) - want['half_y'] < 1 else 'offscreen')
             for key in ('u', 'v', 'x', 'y', 'half_x', 'half_y', 'radius_px'):
                 self.assertAlmostEqual(got[key], want[key], delta=2e-5 * max(1., abs(want[key])), msg=(key, p))
@@ -124,7 +124,7 @@ class OwnSunHost(unittest.TestCase):
     def test_behind_offscreen_and_camera_refusals(self):
         self.assertEqual(self.project((0, 0, -10 ** 9))['skip'], 'behind')
         self.assertEqual(self.project((0, 0, 0))['skip'], 'behind')        # at the camera
-        self.assertEqual(self.project((3 * 10 ** 9, 0, 10 ** 9))['skip'], 'offscreen')
+        self.assertEqual(self.project((2 * 10 ** 9, 0, 10 ** 9))['skip'], 'offscreen')  # int32 words
         # Centre just outside the right edge, the quad still reaches in: drawn (clipped by the hardware).
         edge = self.project((int(1.05 * 10 ** 9), 0, 10 ** 9))
         self.assertGreater(edge['x'], 1.)
@@ -134,20 +134,21 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(0, 720))['skip'], 'size')
 
     def test_radius_in_pixels_and_the_small_rule(self):
-        # The radius is a fraction of the viewport height (the engine's vertical FOV): the same at every width.
-        self.assertAlmostEqual(self.project((0, 0, 10 ** 9))['radius_px'], 51.2256, places=3)          # 0.0667 x 768
-        self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'], 96.048, places=2)
+        # The core's radius is a fraction of the viewport height (the engine's vertical FOV): the same at every width.
+        # Step 1b default 0.012: 9.2 px at 768 rows, 17.3 px at 1440 (a quarter of step 1's 0.0667 or less).
+        self.assertAlmostEqual(self.project((0, 0, 10 ** 9))['radius_px'], 9.216, places=3)
+        self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'], 17.28, places=3)
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'],
                          self.project((0, 0, 10 ** 9), size=(2560, 1440))['radius_px'])
         d = self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.1)
-        self.assertAlmostEqual(d['half_x'], 3 * 2 * 72 / 1280, places=6)                               # square pixels: round
-        self.assertAlmostEqual(d['half_y'], 3 * 2 * 72 / 720, places=6)
-        self.assertAlmostEqual(d['half_x'] * 1280, d['half_y'] * 720, places=3)
-        self.assertEqual(self.project((0, 0, 10 ** 9), size=(20, 22))['skip'], 'small')                # 1.467 px
-        self.assertEqual(self.project((0, 0, 10 ** 9), size=(20, 23))['skip'], 'none')                 # 1.534 px
+        self.assertAlmostEqual(d['half_x'], 24 * 2 * 72 / 1280, places=5)                              # 24 radii across
+        self.assertAlmostEqual(d['half_y'], 16 * 2 * 72 / 720, places=5)                               # 16 up and down
+        self.assertAlmostEqual(d['half_x'] * 1280 / 24, d['half_y'] * 720 / 16, places=3)              # square pixels: round
+        self.assertEqual(self.project((0, 0, 10 ** 9), size=(200, 120))['skip'], 'small')              # 1.44 px
+        self.assertEqual(self.project((0, 0, 10 ** 9), size=(200, 130))['skip'], 'none')              # 1.56 px
         self.assertAlmostEqual(self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.005)['radius_px'], 3.6, places=5)
         for bad in (.001, .3, float('nan')):                                                           # out of range: the default
-            self.assertAlmostEqual(self.project((0, 0, 10 ** 9), radius=bad)['radius_px'], 51.2256, places=3)
+            self.assertAlmostEqual(self.project((0, 0, 10 ** 9), radius=bad)['radius_px'], 9.216, places=3)
 
     def test_fog_scalar(self):
         self.assertEqual(float(self.run_driver('fog', 0, 1e-4, 65000, 112500, 1, 1, 1)['t']), 1.)      # no composite: exactly 1
@@ -158,40 +159,71 @@ class OwnSunHost(unittest.TestCase):
         dense = self.run_driver('radiance', 255, 255, 255, 8, 0)
         self.assertEqual(dense['black'], '1')                                                          # T = 0 draws nothing
 
-    def test_radiance_and_the_pixel_law(self):
-        # disc = K lerp(c / m, 1, 0.6) m T, corona = 0.8 (K / 8) c T, m = max_ch(c).
+    def test_radiance(self):
+        # core = K lerp(c / m, 1, 0.25) m T, glow = c T K / 2, m = max_ch(c).
         def want(words, k, fog):
             c = [w / 256 for w in words]
             m = max(c)
-            return [k * (ci / m + (1 - ci / m) * .6) * m * fog for ci in c], [.8 * k / 8 * ci * fog for ci in c]
-        for words, k, fog in (((256, 128, 0), 8, .5), ((50, 50, 50), 8, 1), ((70, 65, 85), 8, 1), ((200, 180, 255), 4, .7)):
+            return [k * (ci / m + (1 - ci / m) * .25) * m * fog for ci in c], [k / 2 * ci * fog for ci in c]
+        for words, k, fog in (((256, 128, 0), 2, .5), ((50, 50, 50), 2, 1), ((70, 65, 85), 8, 1), ((225, 255, 200), 2, .886)):
             r = self.run_driver('radiance', *words, k, fog)
             self.assertEqual(r['black'], '0')
-            disc, corona = want(words, k, fog)
-            for got, value in zip(floats(r['disc']), disc):
+            core, glow = want(words, k, fog)
+            for got, value in zip(floats(r['core']), core):
                 self.assertAlmostEqual(got, value, places=5, msg=words)
-            for got, value in zip(floats(r['corona']), corona):
+            for got, value in zip(floats(r['glow']), glow):
                 self.assertAlmostEqual(got, value, places=6, msg=words)
-        # A dark sun stays dark: #323232 (FL) is a grey disc at 0.195 x K, not a white one at 0.68 K.
-        dark = floats(self.run_driver('radiance', 50, 50, 50, 8, 1)['disc'])
-        self.assertAlmostEqual(dark[0], 8 * 50 / 256, places=5)
-        # The hue survives the whitening at full brightness: a blue-white sun keeps blue the largest channel.
-        blue = floats(self.run_driver('radiance', 100, 150, 255, 8, 1)['disc'])
-        self.assertGreater(blue[2], blue[1])
-        self.assertGreater(blue[1], blue[0])
-        self.assertEqual(self.run_driver('radiance', 0, 0, 0, 8, 1)['black'], '1')                    # #000000: nothing
+        self.assertAlmostEqual(floats(self.run_driver('radiance', 50, 50, 50, 2, 1)['core'])[0], 2 * 50 / 256, places=5)  # dim stays dim
+        self.assertEqual(self.run_driver('radiance', 0, 0, 0, 2, 1)['black'], '1')                    # #000000: nothing
         self.assertEqual(self.run_driver('radiance', 255, 255, 255, 0, 1)['black'], '1')              # K = 0: nothing
-        self.assertEqual(floats(self.run_driver('radiance', 4096, -5, 256, 8, 1)['colour']), [4., 0., 1.])  # clamped
-        # Full sentinel lane: the centre texel is the disc radiance; the quad's edge (r = 3) is 0; open taps scale it.
-        centre = floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 0, 9, math.exp(3))['rgb'])
-        for got, value in zip(centre, want((200, 100, 50), 8, 1)[0]):
-            self.assertAlmostEqual(got, value, places=5)
-        self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 3, 9, math.exp(-6))['rgb']), [0., 0., 0.])
-        corona = floats(self.run_driver('pixel', 256, 256, 256, 8, 1, 2, 9, math.exp(-3))['rgb'])
-        self.assertAlmostEqual(corona[0], .8 * (math.exp(-3) - math.exp(-6)), places=6)
-        seven = floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 0, 7, math.exp(3))['rgb'])
-        self.assertAlmostEqual(seven[0], centre[0] * 7 / 9, places=5)
-        self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 8, 1, 0, 0, math.exp(3))['rgb']), [0., 0., 0.])
+        self.assertEqual(floats(self.run_driver('radiance', 4096, -5, 256, 2, 1)['colour']), [4., 0., 1.])  # clamped
+
+    def test_glow_keeps_the_polled_hue(self):
+        # Run219's fogged sector polled (0.88, 1.0, 0.78): halo, rays and streaks carry exactly that ratio (no white mix).
+        words = (225, 255, 200)
+        field = self.run_driver('field', *words, 2, 1, 1, .05)
+        self.assertEqual(float(field['hue_error']), 0.)
+        for px, py in ((3, 0.05), (0, 4), (5 * math.cos(1.2), 5 * math.sin(1.2)), (10, 0.1)):
+            rgb = floats(self.run_driver('pixel', *words, 2, 1, 1, px, py, 9, 5)['rgb'])
+            self.assertGreater(rgb[1], 0.)
+            self.assertAlmostEqual(rgb[0] / rgb[1], 225 / 255, delta=2e-6)                         # float precision
+            self.assertAlmostEqual(rgb[2] / rgb[1], 200 / 255, delta=2e-6)
+
+    def test_core_halo_rays_and_streaks(self):
+        centre = self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 9, 5)
+        core = floats(self.run_driver('radiance', 200, 100, 50, 2, 1)['core'])
+        for got, value in zip(floats(centre['rgb']), core):
+            self.assertAlmostEqual(got, value, places=5)                                              # the centre is the core
+        self.assertEqual(floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 0, 5)['rgb']), [0., 0., 0.])  # covered
+        seven = floats(self.run_driver('pixel', 200, 100, 50, 2, 1, 1, 0, 0, 7, 5)['rgb'])
+        self.assertAlmostEqual(seven[0], core[0] * 7 / 9, places=5)
+        # A covered core takes its glow with it: on a streak, 2 of 5 core taps visible = 2/5 of the glow.
+        on = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 5)['rgb'])[0]
+        part = floats(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 4, 0, 9, 2)['rgb'])[0]
+        self.assertAlmostEqual(part, on * 2 / 5, places=6)
+        field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .05)
+        self.assertLess(float(field['glow_max']), 1.)                                                 # under the stabiliser bound E
+        self.assertLessEqual(float(field['halo_rise']), 0.)                                           # the halo never rises outward
+        self.assertLess(float(field['asymmetry']), 1e-4)                                              # each spoke mirror-symmetric
+        spokes = [tuple(map(float, s.split(':'))) for s in field['spokes'].split(',')]
+        self.assertEqual(len(spokes), 16)
+        reach = sorted(r for r, _ in spokes)
+        self.assertGreaterEqual(reach[-1] / reach[0], 2.5)                                            # irregular: a few long...
+        self.assertGreaterEqual(sum(r >= 10 for r in reach), 3)
+        self.assertGreaterEqual(sum(r <= 4.5 for r in reach), 4)                                      # ...many short
+        self.assertGreaterEqual(len({round(r, 1) for r in reach}), 12)
+        self.assertLessEqual(reach[-1], 16)                                                           # inside the quad
+        # The streaks: horizontal, long, symmetric left and right; sun_rays = 0 removes rays and streaks, not the halo.
+        right = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 12, 0, 9, 5)
+        left = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, -12, 0, 9, 5)
+        self.assertEqual(right['streaks'], left['streaks'])
+        self.assertGreater(float(right['streaks']), .05)
+        self.assertLess(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 0, 12, 9, 5)['streaks']), 1e-6)
+        none = self.run_driver('pixel', 255, 255, 255, 2, 1, 0, 3, 0.05, 9, 5)
+        self.assertEqual((float(none['rays']), float(none['streaks'])), (0., 0.))
+        self.assertGreater(float(none['halo']), 0.)
+        off = self.run_driver('field', 255, 255, 255, 2, 1, 0, .1)
+        self.assertEqual(set(off['spokes'].split(',')), {'0.00:0.0000'})
 
     def test_probe_answer(self):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
@@ -213,16 +245,23 @@ class OwnSunHost(unittest.TestCase):
         for got, want in zip([v[:2] for v in vertices], [(.15, -.7), (.15, -.3), (.35, -.7), (.35, -.3)]):
             self.assertAlmostEqual(got[0], want[0], places=6)
             self.assertAlmostEqual(got[1], want[1], places=6)
-        self.assertEqual([v[4:] for v in vertices], [[-3, -3], [-3, 3], [3, -3], [3, 3]])
+        self.assertEqual([v[4:] for v in vertices], [[-24, -16], [-24, 16], [24, -16], [24, 16]])
         self.assertEqual({tuple(v[2:4]) for v in vertices}, {(0., 1.)})
 
     def test_constants_give_the_knight_kernel_and_its_edge_profile(self):
         w, h = 1280, 720
-        c = floats(self.run_driver('constants', w, h, 1, 2, 3, 4, 5, 6)['c'])
-        self.assertEqual(len(c), 20)
+        c = floats(self.run_driver('constants', w, h, .5, -.25, 10, .5, 1, 2, 3, 4, 5, 6)['c'])
+        self.assertEqual(len(c), 40)
         self.assertAlmostEqual(c[0] * w, 1.)
         self.assertAlmostEqual(c[1] * h, 1.)
         self.assertEqual(c[12:15] + c[16:19], [1., 2., 3., 4., 5., 6.])
+        self.assertAlmostEqual(c[15], .6, places=6)                                                   # the core's inner edge
+        for got, value in zip(c[20:23], (.2, .75 * .5, .6 * .5)):                                    # sun_rays scales rays, streaks
+            self.assertAlmostEqual(got, value, places=6)
+        self.assertEqual((c[24], c[25]), (.75, .625))                                                 # centre uv: (.5 + .5 x, .5 - .5 y)
+        self.assertAlmostEqual(c[26] * w, 7., places=4)                                              # 0.7 core radius
+        self.assertAlmostEqual(c[27] * h, 7., places=4)
+        self.assertEqual(c[37], 16.)                                                                  # the spoke count
         d, wv = c[4:8], c[8:12]
         offsets = set()
         for vec in (d[0:2], d[2:4], wv[0:2], wv[2:4]):
@@ -239,12 +278,14 @@ class OwnSunHost(unittest.TestCase):
         words = lambda name: [int(v, 16) for v in re.findall(r'0x([0-9a-f]{8})u', (ROOT / 'src/renderer' / name).read_text())]
         ps, vs = words('own_sun_pixel_program_inc.h'), words('own_sun_vertex_program_inc.h')
         self.assertEqual((ps[0], ps[-1], vs[0], vs[-1]), (0xffff0300, 0xffff, 0xfffe0300, 0xffff))
-        self.assertEqual(sun.constant_table(ps), {'texel': (2, 0), 'knight_d': (2, 1), 'knight_w': (2, 2), 'disc_rgb': (2, 3),
-                                                  'corona_rgb': (2, 4), 'lane_sampler': (3, 0)})
+        self.assertEqual(sun.constant_table(ps), {'texel': (2, 0), 'knight_d': (2, 1), 'knight_w': (2, 2), 'core_rgb': (2, 3),
+                                                  'glow_rgb': (2, 4), 'amplitude': (2, 5), 'core_taps': (2, 6), 'spokes': (2, 7),
+                                                  'extent': (2, 8), 'counts': (2, 9), 'lane_sampler': (3, 0)})
         self.assertEqual(sun.constant_table(vs), {})                     # the vertex program takes no constant
-        self.assertIn('constexpr unsigned pixel_registers = 5;', source_text(ROOT / 'src/proxy/own_sun_core.h'))
+        self.assertIn('constexpr unsigned pixel_registers = 10;', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         native = json.loads((ROOT / 'verification/results/own-sun-pass/native/result.json').read_text())
         self.assertTrue(native['passed'])
+        self.assertLessEqual({r['program']: r['slots'] for r in native['programs']}['own_sun_ps'], 150)  # step 1b budget
         self.assertEqual({r['program']: (r['words'], r['end'], len(r['messages'])) for r in native['programs']},
                          {'own_sun_vs': (len(vs), '00000000', 0), 'own_sun_ps': (len(ps), '00000000', 0)})
 
@@ -308,7 +349,7 @@ class OwnSunWiring(unittest.TestCase):
 
 
 class OwnSunLaunchOption(unittest.TestCase):
-    NAMES = ('X3M_OWN_SUN', 'X3M_SUN_DISC_RADIUS', 'X3M_SUN_DISC_RADIANCE')
+    NAMES = ('X3M_OWN_SUN', 'X3M_SUN_DISC_RADIUS', 'X3M_SUN_DISC_RADIANCE', 'X3M_SUN_RAYS')
 
     def launch(self, *args, vanilla=False, inherited=None):
         module = load('own_sun_manage', 'tools/manage.py')
@@ -339,6 +380,8 @@ class OwnSunLaunchOption(unittest.TestCase):
         self.assertEqual(self.launch('--own-sun', 'on', '--sun-disc-radius', '0.05', '--sun-disc-radiance', '6')[1],
                          {'X3M_OWN_SUN': '1', 'X3M_SUN_DISC_RADIUS': '0.05', 'X3M_SUN_DISC_RADIANCE': '6'})
         self.assertEqual(self.launch(vanilla=True)[1], {})
+        self.assertEqual(self.launch('--own-sun', 'on', '--sun-rays', '0')[1], {'X3M_OWN_SUN': '1', 'X3M_SUN_RAYS': '0'})
+        self.assertEqual(self.launch('--own-sun', 'on', '--sun-rays', '0.5')[1], {'X3M_OWN_SUN': '1', 'X3M_SUN_RAYS': '0.5'})
 
     def test_refusals(self):
         for args, vanilla, needle in ((('--own-sun', 'on'), True, 'cannot be combined with --vanilla'),
@@ -346,6 +389,8 @@ class OwnSunLaunchOption(unittest.TestCase):
                                       (('--own-sun', 'off', '--sun-disc-radiance', '4'), False, 'requires --own-sun on'),
                                       (('--own-sun', 'on', '--sun-disc-radius', '0.3'), False, 'out of range'),
                                       (('--own-sun', 'on', '--sun-disc-radiance', 'nan'), False, 'out of range'),
+                                      (('--own-sun', 'on', '--sun-rays', '1.5'), False, 'out of range'),
+                                      (('--sun-rays', '0.5'), False, 'requires --own-sun on'),
                                       (('--own-sun', 'maybe'), False, 'invalid choice')):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args, vanilla=vanilla)

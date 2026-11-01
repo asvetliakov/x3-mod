@@ -5,10 +5,10 @@
 // one. No vertex buffer: the four vertices go through DrawPrimitiveUP (24 bytes each, built on the stack by
 // own_sun_core.h quad()), so the pass holds no DEFAULT-pool resource and allocates nothing per frame.
 //
-// run() draws one camera-facing quad of side 2 x 3 r at the projected sun inside the temporal resolve's stage bracket
+// run() draws one camera-facing quad of 48 x 32 core radii at the projected sun inside the temporal resolve's stage bracket
 // (TemporalPass FrameInputs::stage_callback: RT0 the FP16 scene the resolve reads, RT1+ and the depth surface unbound,
 // every render state at the pass's baseline, the scene open; the resolve normalizes again afterwards), so it sets only
-// what it draws with: the programs, the declaration, five pixel constants, the lane at s0 (point, clamp), CLIPPING,
+// what it draws with: the programs, the declaration, ten pixel constants, the lane at s0 (point, clamp), CLIPPING,
 // CULLMODE NONE, Z off, ONE/ONE additive. No SetRenderTarget, no RT2 write, no depth test: occlusion is the pixel
 // program's nine-tap lane clip. Documented D3D9 only; capabilities are checked at attach (shader model 3, FP16
 // post-pixel-shader blending on the adapter format, BLENDOP and ONE blend caps, CULLNONE, the compiled programs' slots).
@@ -27,6 +27,7 @@ struct OwnSunFrame {
     IDirect3DTexture9* lane = nullptr; // the completed RT2 (borrowed)
     own_sun::core::Disc disc{};        // projected, skip == None
     own_sun::core::Radiance radiance{}; // not black
+    float rays = own_sun::core::rays_default; // sun_rays: the rays' and streaks' share, 0..1
 };
 enum class OwnSunStep : unsigned { None, Validate, Resources, State, Draw };
 struct OwnSunReport {

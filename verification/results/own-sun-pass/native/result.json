@@ -14,10 +14,10 @@
   },
   {
    "program": "own_sun_ps",
-   "words": 339,
+   "words": 743,
    "messages": [],
    "end": "00000000",
-   "slots": 70,
+   "slots": 142,
    "source_header": "src/renderer/own_sun_pixel_program_inc.h"
   }
  ]

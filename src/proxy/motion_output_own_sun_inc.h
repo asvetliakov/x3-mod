@@ -17,12 +17,14 @@
 // such armed, active frames count no_probe on the own_sun_frame row and the first one writes own_sun_no_probe.
 // One own_sun_state row per change of the armed state or its reason; one own_sun_device row per attach; --debug: one
 // own_sun_frame row every 10 s.
-void MotionOutput::configure_own_sun(bool requested, float radius_u, float radiance) noexcept {
+void MotionOutput::configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept {
     own_sun_requested_ = requested;
     own_sun_radius_u_ = own_sun::core::radius_default_u;
     own_sun::core::accept_radius(radius_u, &own_sun_radius_u_);
     own_sun_radiance_ = own_sun::core::radiance_default;
     own_sun::core::accept_radiance(radiance, &own_sun_radiance_);
+    own_sun_rays_ = own_sun::core::rays_default;
+    own_sun::core::accept_rays(rays, &own_sun_rays_);
     own_sun_armed_ = own_sun_ready_ = own_sun_frame_active_ = false;
     own_sun_failures_ = 0;
     own_sun_failed_out_ = false;
@@ -171,6 +173,7 @@ HRESULT MotionOutput::run_own_sun() noexcept {
     f.width = own_sun_width_;
     f.height = own_sun_height_;
     f.lane = own_sun_lane_;
+    f.rays = own_sun_rays_;
     f.disc = own_sun::core::project(own_sun_sample_.position, camera, f.width, f.height, own_sun_radius_u_,
                                     jitter_active_ ? jitter_[0] : 0.f, jitter_active_ ? jitter_[1] : 0.f);
     renderer::FogTransmittanceLaw law{};
@@ -242,14 +245,15 @@ void MotionOutput::own_sun_frame(bool active, bool key_on) noexcept {
     // The meter's reaction (note section 2): the EV the tonemap consumes and the highlight guard's limit of the last meter.
     const float ev = hdr_ ? hdr_->exposure().ev() : 0.f, ev_limit = hdr_ ? hdr_->exposure().ev_limit() : 0.f;
     if (log_tier::cached_debug)
-        log("own_sun_frame device=%llu frame=%llu active=%u key=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f disc=%.3f,%.3f,%.3f result=%08lx calls=%u stage_us=%.1f",
+        log("own_sun_frame device=%llu frame=%llu active=%u key=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f core=%.3f,%.3f,%.3f glow=%.3f,%.3f,%.3f rays=%.2f result=%08lx calls=%u stage_us=%.1f",
         id_, frame_, unsigned(active), unsigned(key_on), unsigned(own_sun_armed_), own_sun_reason_, own_sun_period_.frames,
         own_sun_period_.active, own_sun_period_.drawn, own_sun_period_.no_probe,
         static_cast<unsigned long>(c.own_sun_hidden - own_sun_answered_seen_),
         static_cast<unsigned long>(c.original - own_sun_forwarded_seen_), double(ev), double(ev_limit),
         sun_light_poll::status_name(own_sun_sample_.status), own_sun_poll_source_, own_sun_skip_, double(d.u), double(d.v),
         double(d.view_z), double(d.radius_px), double(r.colour[0]), double(r.colour[1]), double(r.colour[2]),
-        double(own_sun_fog_t_), double(r.disc[0]), double(r.disc[1]), double(r.disc[2]),
+        double(own_sun_fog_t_), double(r.core[0]), double(r.core[1]), double(r.core[2]), double(r.glow[0]),
+        double(r.glow[1]), double(r.glow[2]), double(own_sun_rays_),
         static_cast<unsigned long>(own_sun_report_.operation), own_sun_report_.calls, double(own_sun_stage_us_));
     own_sun_answered_seen_ = c.own_sun_hidden;
     own_sun_forwarded_seen_ = c.original;

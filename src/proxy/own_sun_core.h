@@ -1,7 +1,8 @@
 #pragma once
-// Own sun, step 1 (docs/architecture/own-sun-pass.md, the AP minimal mode): the pure part. The mod draws its own sun
-// disc and corona in the scene-end stage slot (after the fog pass, before the TAA resolve) and the flare probe answers
-// "hidden" for the sun's eligible record, so the engine destroys its own lens chain. No Windows/D3D dependency, no
+// Own sun, steps 1 and 1b (docs/architecture/own-sun-pass.md, the AP minimal mode; section 14): the pure part. The mod
+// draws its own sun (a tiny hot core, thin rays of irregular length, two horizontal streaks, a faint wide halo) in the
+// scene-end stage slot (after the fog pass, before the TAA resolve) and the flare probe answers "hidden" for the sun's
+// eligible record, so the engine destroys its own lens chain. No Windows/D3D dependency, no
 // allocation, no engine call: verification/analysis/test_own_sun.py compiles exactly this header.
 //
 // Two CPU contracts:
@@ -12,19 +13,34 @@
 //     i386 float return is an x87 st0 load), no CRT math.
 #include "../renderer/fog_transmittance.h"
 #include <cstdint>
+#ifdef X3M_OWN_SUN_HOST_REFERENCE
+#include <cmath>
+#endif
 
 namespace x3m::own_sun::core {
-// ---- Settings (X3M_OWN_SUN, X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; tools/config/schema.py) ----
-// The disc's radius as a fraction of the viewport (target) height, so its angular size follows the engine's vertical
-// field of view, which the engine keeps fixed as far as is known (0.0667 = 51 px at 768 rows, the run223 size at
-// 1280x768; 96 px at 1440 rows), and the disc's radiance K in FP16 engine space (8; note sections 2 and 14 for what the
-// exposure meter does with it). The pixels are square: the disc is round at every aspect.
-constexpr float radius_default_u = .0667f, radius_min_u = .005f, radius_max_u = .25f;
-constexpr float radiance_default = 8.f, radiance_min = 0.f, radiance_max = 64.f;
-// The look (note section 2): the disc whitened like the plume core, the corona under the stabiliser's emitter bound E = 1.
-constexpr float white_mix = .6f, corona_gain = .8f;
-// The quad: side 2 x 3 r around the sun (the corona's exp(-3 (r - 1)) is exp(-6) at its edge, subtracted in the program).
-constexpr float quad_extent = 3.f;
+// ---- Settings (X3M_OWN_SUN, X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE, X3M_SUN_RAYS; tools/config/schema.py) ----
+// The core's radius as a fraction of the viewport (target) height, so its angular size follows the engine's vertical
+// field of view, which the engine keeps fixed as far as is known (step 1b, Run219: 0.012 = 17 px at 1440 rows, 9 px at
+// 768; step 1's 0.0667 was about four times vanilla's disc). The core's radiance K in FP16 engine space: 2 decodes
+// (gamma 2.2) to 4.6, above the bloom threshold (exposed luminance 1) and under the meter's highlight guard at the +1.3 EV
+// Auto cap (14.66 / 2^1.3 = 5.96, K <= 2.25), so the core never sets the exposure (Run219: K 8 pulled it to -1.0 EV;
+// verification/results/own-sun-pass/meter_exposure.py). The pixels are square: the core is round at every aspect. The
+// rays' share: sun_rays 0..1 scales rays and streaks (0 = none).
+constexpr float radius_default_u = .012f, radius_min_u = .005f, radius_max_u = .25f;
+constexpr float radiance_default = 2.f, radiance_min = 0.f, radiance_max = 64.f;
+constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
+// The look (step 1b, a star seen from space): the core whitened only a little (the polled colour stays visible: Run219's
+// fogged sector was yellowish in vanilla, white in step 1), its soft edge from core_inner to 1 core radius; the glow (halo,
+// rays, streaks) is the pure polled colour times intensity, like vanilla's chain, every term under the TAA stabiliser's
+// emitter bound E = 1 at K = 2 (the host test's maximum). Lengths in core radii; derived constants, not settings.
+constexpr float white_mix = .25f, core_inner = .6f;
+constexpr float halo_gain = .2f, halo_radius = 2.f, glow_radius = 16.f;
+constexpr unsigned ray_count = 16;           // spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl)
+constexpr float ray_gain = .75f, ray_length = 15.f, ray_width = .12f, ray_offset = .5f; // offset: spoke units, so no
+                                                                                       // spoke lies on the streaks
+constexpr float streak_gain = .6f, streak_width = .15f, streak_length = 8.f, streak_reach = 24.f;
+// The quad: 24 core radii to each side (the streaks), 16 up and down (the longest rays, the halo's window).
+constexpr float quad_extent_x = streak_reach, quad_extent_y = glow_radius;
 // Below 1.5 px of radius the stage draws nothing (the plumes' rule; note section 7).
 constexpr float radius_min_px = 1.5f;
 // Light node positions are engine integers; world (view) units are integers x the gameplay context scale 0.01
@@ -36,6 +52,9 @@ inline void accept_radius(float value, float* radius) noexcept {
 }
 inline void accept_radiance(float value, float* radiance) noexcept {
     if (value == value && value >= radiance_min && value <= radiance_max) *radiance = value;
+}
+inline void accept_rays(float value, float* rays) noexcept {
+    if (value == value && value >= rays_min && value <= rays_max) *rays = value;
 }
 
 // ---- The probe answer (integer only; sun_occlusion::core::Decision values) ----
@@ -134,8 +153,8 @@ inline Disc project(const std::int32_t position[3], const Camera& camera, unsign
     d.y = float(yj);
     const float r = radius_u >= radius_min_u && radius_u <= radius_max_u ? radius_u : radius_default_u;
     d.radius_px = r * float(height);
-    d.half_x = quad_extent * 2.f * d.radius_px / float(width);
-    d.half_y = quad_extent * 2.f * d.radius_px / float(height);
+    d.half_x = quad_extent_x * 2.f * d.radius_px / float(width);
+    d.half_y = quad_extent_y * 2.f * d.radius_px / float(height);
     if (d.radius_px < radius_min_px) {
         d.skip = Skip::Small;
         return d;
@@ -151,12 +170,12 @@ inline Disc project(const std::int32_t position[3], const Camera& camera, unsign
 
 // ---- Radiance (FP16 engine space) ----
 // c = colour / 256 (the poll's words, the code values the engine uploads as light colour), clamped to [0, 4] as the
-// fog's E_sun reads them; m = max_ch(c), the hue c / m. Disc K lerp(c / m, white, 0.6) m T: the whitening keeps the hue
-// of a bright sun and the brightness follows the colour as vanilla's colour-multiplied chain does (a #323232 sun is a
-// dim grey disc, not a white one). Corona K_h (K / 8) c T: it scales with sun_disc_radiance too. A black sun (every word
-// 0, FL's #000000 sectors), T = 0 (a fully fogged sky) or K = 0 draws nothing.
+// fog's E_sun reads them; m = max_ch(c), the hue c / m. Core K lerp(c / m, white, 0.25) m T: a slightly whitened hue at
+// the colour's brightness (a #323232 sun is a dim grey core). Glow tint c T K / K_default: the pure polled colour, so the
+// halo, rays and streaks keep its hue ratio exactly. A black sun (every word 0, FL's #000000 sectors), T = 0 (a fully
+// fogged sky) or K = 0 draws nothing.
 struct Radiance {
-    float disc[3]{}, corona[3]{};
+    float core[3]{}, glow[3]{};
     float colour[3]{}; // c, for the log
     bool black = true;
 };
@@ -176,8 +195,8 @@ inline void radiance(const std::int32_t colour[3], float k, float fog_t, Radianc
         m = m > r.colour[2] ? m : r.colour[2];
         for (unsigned i = 0; i < 3; ++i) {
             const float hue = r.colour[i] / m;
-            r.disc[i] = k * (hue + (1.f - hue) * white_mix) * m * t;
-            r.corona[i] = corona_gain * (k / radiance_default) * r.colour[i] * t;
+            r.core[i] = k * (hue + (1.f - hue) * white_mix) * m * t;
+            r.glow[i] = (k / radiance_default) * r.colour[i] * t;
         }
     }
     *out = r;
@@ -192,42 +211,86 @@ inline void fog_scalar(const renderer::FogTransmittanceLaw& law, float* t) noexc
 // ---- The quad and the pixel program's constants ----
 struct Vertex {
     float x, y, z, w; // clip space (w = 1, z = 0: depth is never tested)
-    float lx, ly;     // offset from the centre in disc radii
+    float lx, ly;     // offset from the centre in core radii
 };
 static_assert(sizeof(Vertex) == 24, "the declaration follows the vertex");
 // A triangle strip: (-,-), (-,+), (+,-), (+,+).
 inline void quad(const Disc& d, Vertex out[4]) noexcept {
     for (unsigned k = 0; k < 4; ++k) {
         const float sx = k & 2 ? 1.f : -1.f, sy = k & 1 ? 1.f : -1.f;
-        out[k] = Vertex{d.x + sx * d.half_x, d.y + sy * d.half_y, 0.f, 1.f, sx * quad_extent, sy * quad_extent};
+        out[k] = Vertex{d.x + sx * d.half_x, d.y + sy * d.half_y, 0.f, 1.f, sx * quad_extent_x, sy * quad_extent_y};
     }
 }
-// c0 the lane texel, c1 / c2 the knight offsets as lane uv, c3 the disc, c4 the corona (src/effects/own_sun_ps.hlsl).
-constexpr unsigned pixel_registers = 5;
-inline void pixel_constants(unsigned width, unsigned height, const Radiance& r, float out[pixel_registers * 4]) noexcept {
+// src/effects/own_sun_ps.hlsl: c0 the lane texel, c1 / c2 the knight offsets as lane uv, c3 the core (w its inner edge),
+// c4 the glow tint, c5 the amplitudes (A_r and A_s x sun_rays), c6 the core's centre as lane uv (jittered, the quad's) and
+// 0.7 core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, 1 / w0), c8 the halo and streak shapes, c9 the
+// streaks' reach and the spoke count.
+constexpr unsigned pixel_registers = 10;
+constexpr float two_pi = 6.28318531f;
+inline void pixel_constants(unsigned width, unsigned height, const Disc& d, const Radiance& r, float rays,
+                            float out[pixel_registers * 4]) noexcept {
     const float dx = width ? 1.f / float(width) : 0.f, dy = height ? 1.f / float(height) : 0.f;
+    const float share = rays >= rays_min && rays <= rays_max ? rays : rays_default;
+    const float ring = .7f * d.radius_px;
+    const float n = float(ray_count);
     const float c[pixel_registers * 4] = {dx, dy, 0.f, 0.f,
                                           2.f * dx, dy, dx, 2.f * dy,
                                           -2.f * dx, dy, -dx, 2.f * dy,
-                                          r.disc[0], r.disc[1], r.disc[2], 0.f,
-                                          r.corona[0], r.corona[1], r.corona[2], 0.f};
+                                          r.core[0], r.core[1], r.core[2], core_inner,
+                                          r.glow[0], r.glow[1], r.glow[2], 0.f,
+                                          halo_gain, ray_gain * share, streak_gain * share, 0.f,
+                                          .5f + .5f * d.x, .5f - .5f * d.y, ring * dx, ring * dy,
+                                          n / two_pi, ray_offset, ray_length, 1.f / ray_width,
+                                          1.f / (halo_radius * halo_radius), 1.f / streak_width, 1.f / streak_length,
+                                          1.f / glow_radius,
+                                          1.f / streak_reach, n, 1.f / n, two_pi / n};
     for (unsigned i = 0; i < pixel_registers * 4; ++i) out[i] = c[i];
 }
 
-// ---- Host reference of the pixel program (the host test's expectation; the GPU fixture's too) ----
-// The program's law at one pixel for a given open fraction (0..9 sentinel taps), per channel.
+#ifdef X3M_OWN_SUN_HOST_REFERENCE
+// ---- Host reference of the pixel program (the host test's expectation; CRT math: never compiled into the DLL) ----
+// own_sun_ps.hlsl's law at one pixel from the uploaded constants `c`, for a given number of open taps (0..9 at the pixel,
+// 0..5 at the core). glow_terms: the halo, ray and streak terms before the tint (for the shape tests).
 struct Pixel {
     float rgb[3]{};
+    float halo = 0.f, rays = 0.f, streaks = 0.f, core = 0.f; // core: D(r)
 };
-inline void reference_pixel(const Radiance& r, float distance_radii, unsigned open_taps, float exp_term, Pixel* out) noexcept {
-    // exp_term = exp(-3 (distance - 1)) supplied by the caller (no CRT math here).
-    float e = exp_term > 1.f ? 1.f : exp_term;
-    float h = e - .00247875218f;
-    h = h > 0.f ? h : 0.f;
-    float s = (distance_radii - .9f) / .1f;
-    s = s < 0.f ? 0.f : (s > 1.f ? 1.f : s);
-    const float d = 1.f - s * s * (3.f - 2.f * s);
-    const float open = float(open_taps > 9u ? 9u : open_taps) / 9.f;
-    for (unsigned i = 0; i < 3; ++i) out->rgb[i] = (r.corona[i] * h + (r.disc[i] - r.corona[i] * h) * d) * open;
+inline float hlsl_frac(float v) noexcept {
+    return v - std::floor(v);
 }
+inline float saturate(float v) noexcept {
+    return v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
+}
+inline void reference_pixel(const float c[pixel_registers * 4], float px, float py, unsigned open_taps, unsigned visible_taps,
+                            Pixel* out) noexcept {
+    const float* core = c + 12; const float* glow = c + 16; const float* amp = c + 20; const float* spokes = c + 28;
+    const float* extent = c + 32; const float* counts = c + 36;
+    const float r2 = px * px + py * py, r = std::sqrt(r2);
+    const float s = saturate((r - core[3]) / (1.f - core[3]));
+    const float d = 1.f - s * s * (3.f - 2.f * s);
+    const float w = saturate(1.f - r2 * extent[3] * extent[3]);
+    const float halo = amp[0] / (1.f + r2 * extent[0]) * w * w;
+    const float t = std::atan2(py, px) * spokes[0] + spokes[1];
+    const float nearest = std::floor(t + .5f), across = t - nearest;
+    const float k = nearest - counts[1] * std::floor(nearest * counts[2]);
+    const float h1 = hlsl_frac(k * (.6180340f + k * .1547f)), h2 = hlsl_frac(k * .7548777f + .31f);
+    const float along = r / (spokes[2] * (.25f + .75f * h1 * h1));
+    const float fade = saturate(1.f - along);
+    const float taper = 1.f - .7f * saturate(along);
+    const float perpendicular = r * across * counts[3] * spokes[3] / (taper > .05f ? taper : .05f);
+    const float rays = amp[1] * (.6f + .4f * h2) * std::exp(-perpendicular * perpendicular) * fade * fade;
+    const float sy = py * extent[1], sx = saturate(1.f - px * px * counts[0] * counts[0]);
+    const float streaks = amp[2] * std::exp(-sy * sy) * std::exp(-std::fabs(px) * extent[2]) * sx * sx;
+    const float open = float(open_taps > 9u ? 9u : open_taps) / 9.f;
+    const float visible = float(visible_taps > 5u ? 5u : visible_taps) / 5.f;
+    for (unsigned i = 0; i < 3; ++i) {
+        const float g = glow[i] * (halo + rays + streaks);
+        out->rgb[i] = (g + (core[i] - g) * d) * open * (d + (1.f - d) * visible);
+    }
+    out->halo = halo;
+    out->rays = rays;
+    out->streaks = streaks;
+    out->core = d;
+}
+#endif
 } // namespace x3m::own_sun::core

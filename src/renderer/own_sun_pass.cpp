@@ -180,7 +180,8 @@ HRESULT OwnSunPass::run(const OwnSunFrame& f, OwnSunReport* output) noexcept {
         !(f.disc.half_x > 0.f) || !(f.disc.half_y > 0.f))
         return refuse(OwnSunStep::Validate, E_INVALIDARG);
     for (unsigned i = 0; i < 3; ++i)
-        if (!finite(f.radiance.disc[i]) || !finite(f.radiance.corona[i])) return refuse(OwnSunStep::Validate, E_INVALIDARG);
+        if (!finite(f.radiance.core[i]) || !finite(f.radiance.glow[i])) return refuse(OwnSunStep::Validate, E_INVALIDARG);
+    if (!finite(f.rays)) return refuse(OwnSunStep::Validate, E_INVALIDARG);
     HRESULT hr = ensure_resources();
     if (FAILED(hr)) return refuse(OwnSunStep::Resources, hr);
     D d = device_;
@@ -194,7 +195,7 @@ HRESULT OwnSunPass::run(const OwnSunFrame& f, OwnSunReport* output) noexcept {
     own_sun::core::Vertex vertices[4];
     own_sun::core::quad(f.disc, vertices);
     float pixel[own_sun::core::pixel_registers * 4];
-    own_sun::core::pixel_constants(f.width, f.height, f.radiance, pixel);
+    own_sun::core::pixel_constants(f.width, f.height, f.disc, f.radiance, f.rays, pixel);
     step(OwnSunStep::State, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, pixel, own_sun::core::pixel_registers));
     step(OwnSunStep::State, call<SetTextureFn>(SetTexture)(d, 0, f.lane));
     for (auto s : {std::pair{D3DSAMP_MINFILTER, DWORD(D3DTEXF_POINT)}, std::pair{D3DSAMP_MAGFILTER, DWORD(D3DTEXF_POINT)},

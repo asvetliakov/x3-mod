@@ -1218,7 +1218,7 @@ public:
     // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting, the
     // comparison hotkey and own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
     // own_sun_ready: the stage armed in this device's last resolve (the probe answers "hidden" only then).
-    void configure_own_sun(bool requested, float radius_u, float radiance) noexcept;
+    void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
     void own_sun_frame(bool active, bool key_on) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
 #endif
@@ -2080,7 +2080,7 @@ private:
     const char* own_sun_skip_ = "none";
     const char* own_sun_poll_source_ = "none";
     float own_sun_radius_u_ = own_sun::core::radius_default_u, own_sun_radiance_ = own_sun::core::radiance_default;
-    float own_sun_fog_t_ = 1.f, own_sun_stage_us_ = 0.f;
+    float own_sun_fog_t_ = 1.f, own_sun_stage_us_ = 0.f, own_sun_rays_ = own_sun::core::rays_default;
     std::unique_ptr<renderer::OwnSunPass> own_sun_;
     IDirect3DTexture9* own_sun_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
     UINT own_sun_width_ = 0, own_sun_height_ = 0;

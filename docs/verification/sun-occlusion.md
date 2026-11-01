@@ -734,3 +734,37 @@ vs_slots=2 ps_slots=70`, `own_sun_state armed=1 sun=own`, `own_sun_frame active=
 `own_sun_toggle` on the chord; wrong: `own_sun_failed`, `attached=0`, `no_probe` rising with the sun in view (probe order
 assumption wrong), a double sun or no sun for more than one frame at a toggle. Kill criterion: looks worse than vanilla
 or shows through a hull → `own_sun = 0`.
+
+### Own sun step 1b — the look after Run219 (2026-11-02; on main `78bbbacc`; not flown)
+
+Run219 (measured, `/mnt/c/X3/x3m.log`): `own_sun_device attached=1 ps_slots=70 max_ps_slots=4096`; occlusion accepted;
+look rejected (about 4x too big, too bright, a flat disc, white instead of vanilla's yellowish sun). With the sun in view
+`ev` fell to -1.02 and `ev_limit` to -0.92 (frames 12140-14370), against +0.7..+3.9 without it. The three `no_probe`
+windows (701, 1633 and 962 frames ending at frames 2571, 4519 and 39028) are not hotkey windows: hotkey-off frames are
+inactive and never count, and the last two windows hold no `own_sun_toggle`; they are frames with the sun outside the main
+view, which the engine's collector does not probe. Fogged sector `fog_t=0.8861`, colour 0.8789,0.9961,0.7812.
+
+Step 1b ([own-sun-pass.md](../architecture/own-sun-pass.md) section 14, "Step 1b"): a 9-17 px core at K = 2 with a 0.25
+white mix, 16 thin rays of hashed length, two horizontal streaks and a faint halo, all glow in the polled colour exactly;
+`sun_rays` (0..1) added.
+
+| Check | Result |
+| --- | --- |
+| Builds `build-ap` / `build-fl` (`-j4`) | 0 warnings each (measured) |
+| `compare_objects.py` against main `78bbbacc` | FL 81 objects, 2 differ (config, proxy_identity); AP 122, 5 differ (capture, config, motion_output, proxy_identity, own_sun_pass) (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS, 1,146 (measured) |
+| `generate_own_sun_programs.py --check` | PASS; vs 43 words, ps 743 words (measured) |
+| Native validator ([result](../../verification/results/own-sun-pass/native/result.json)) | vs 2 slots, ps 142 slots (D3DX: 141, 14 texture + 127 arithmetic); `end=00000000`, 0 messages each (measured) |
+| Host modules test_own_sun, test_sun_occlusion, test_logging_tiers, test_launcher_defaults, test_fl_sun_light_poll, test_fl_sun_occlusion, test_config_schema | 104 tests, 0 failing (measured) |
+| `generate.py --check` | PASS, 298 settings (measured) |
+| CPU side, `cpu_cost.py` | median 36.8 ns per frame (measured) |
+| Meter, `meter_exposure.py` | the core covers 0.10-0.16 % of the tiles at 1280x768, 0.05-0.22 % at 5120x1440 (p99 needs 1 %); K = 2 decodes to 4.6: ev_limit +1.67 EV even at p99; glow peak 0.764 decodes to 0.55 (measured, offline) |
+
+`test_own_sun` adds: the glow at (225, 255, 200) keeps the hue ratio to 2e-6 over the whole quad; the halo never rises
+outward; each spoke mirror-symmetric (6e-6); 16 ray reaches from 3.3 to 12.9 core radii (at least three >= 10, four
+<= 4.5); glow peak < E = 1; streaks left/right equal and absent vertically; `sun_rays 0` removes rays and streaks, not
+the halo; a core with 2 of 5 taps visible keeps 2/5 of its glow; the radius rule at 0.012 of the height; the 10-register
+CTAB. GPU cost (inferred): 0.46 Mpx x 142 slots x 0.135 ns = 9 us at 5120x1440 plus the fixed draw, about 0.05 ms.
+The Run219 `ev_limit` of -0.92 with the 96-px disc at 5120x1440 contradicts the tile model's "below p99"; the model
+under-counts something there (open). Flight: `own_sun_frame` with `ev` near the no-sun windows' values and
+`ev_limit` above +1.3 with the sun in view; the yellowish hue in the fogged sector; ray lengths irregular and fixed.
