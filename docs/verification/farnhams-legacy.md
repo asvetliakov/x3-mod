@@ -726,3 +726,27 @@ far > 2e9, near 0): `RESULT PASS checks=133 failures=0`, anchors as before, TIMI
 of the FL provider's contract (`checks=22 failures=0` both editions); the FL layout itself stays covered by the
 native fixture. Builds fl/ap 0 warnings (`-j4`); `generate.py --check` PASS (292 settings); `test_fl_*` OK
 (4 skips), `test_sector*` 4 OK, `test_fog_cards` + `test_volumetric_fog` 23 OK, `test_config*` OK.
+
+## FL run 13 — step 6 sector background, fog (installed 2026-11-01)
+
+Candidate: commit `ad792ade` (step 6 `12b6d364` + review fixes `ad792ade`, reviewed Opus high:
+install; the FL fog-card pair `ececc28e…/214fc10d…` added to the classifier under the FL fence from the
+offline inventory), `build-fl/d3d9.dll` SHA-256 `1651118e…` (55,541,724 B), 0 warnings, `test_fl_*` and
+`test_fog*` pass ([record](../../verification/results/fl-run13/candidate.json)); `C:\X3FL\d3d9.dll` bytes
+verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run12` (`26c677ef…`). Also carries `lens_flare_gain`
+default 1. Expected: `fl.sector status=ready anchors=22`, `fl.sector_sample … status=ready count=110
+name_valid=1`, in a fogged sector `volumetric_fog_frame applied=1 reason=ok`; wrong: native fog cards
+visible under the medium (stacked cards), `camera_mismatch` on most frames. Fogged FL sectors
+(`verification/results/fl-port/sector-background/fogged_sectors.txt`, 48 of 298): e.g. Queen's Space,
+Rolk's Fate, The Hole, Atreus' Clouds (foggreenoutlands, dust 16), Menelaus' Paradise (fogcyancorner).
+
+## AP sun through the hull — triage (2026-11-01)
+
+With `sun_occlusion_log = 1` (Run215 flight, measured; scripts in
+`verification/results/run216-sun-occlusion/`): the sun's lens chain on the Mayhem install is one
+vs_3_0/ps_3_0 draw `494fe349…/7c83ed50…` per frame (4,112 of 4,113 sun frames); the lens scan refuses
+every SM3 pair (`no_free_texcoord`), so it is `Body::Other`, drawn untouched with Z off, while the
+override answers the engine probe Visible on 4,111 frames. Sun position, depth lane and classifier
+maths are all correct (lane vs record du 0.0008, dv 0.0004; drawn disc within 0.003 u). The dim sun was
+`lens_flare_gain` 0.3 (user-confirmed; default now 1). Fix in progress: block the override for a sun
+whose body is unclassifiable so the vanilla probe hides it; SM3 body support is the follow-up.
