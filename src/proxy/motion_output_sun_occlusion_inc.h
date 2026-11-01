@@ -247,10 +247,11 @@ void MotionOutput::prepare_lens(const MotionDrawCall& call, MotionRoute& route) 
             centre.body = core::Body::Other;
 #if !X3M_EDITION_FL
             // On the bracket's single sun record the override stops answering for it (vanilla probe from the next
-            // frame on) and an answered bracket drops the rest below; logged once per pair and once per deferral.
-            const auto deferral = core::Deferral::Result(sun_occlusion::lens_body_unclassifiable());
-            deferred_body = deferral != core::Deferral::NotAttributed;
-            if (core::Deferral::logged(prepared.first || scanned == renderer::LensVerdict::CacheFull, deferral))
+            // frame on) and an answered bracket drops the rest below; logged once per pair and per deferral (capped).
+            bool row = false;
+            deferred_body = sun_occlusion::lens_body_unclassifiable(prepared.first || scanned == renderer::LensVerdict::CacheFull, &row) !=
+                            core::Deferral::NotAttributed;
+            if (row)
                 log("sun_lens_body_unclassifiable device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s matrix_register=%ld note=%s", id_, frame_,
                     static_cast<unsigned long long>(state.vertex_hash), static_cast<unsigned long long>(state.hash), body_other,
                     prepared.matrix_register == ~0u ? -1l : long(prepared.matrix_register), deferred_body ? "blocked_vanilla_probe" : "left_untouched");

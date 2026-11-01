@@ -17,5 +17,8 @@ Scripts (numpy/stdlib only, no capture bytes kept):
   `lens_pair_inventory.json`): `vs_494fe349b8bc12ec` and `ps_7c83ed50c9894e44` are both in `/mnt/c/X3AP-orig` and
   `/mnt/c/X3` (`addon/01.cat`; the ps only in the four `shader/3_0/**/standard_lighting.fb`); both installs resolve to
   2352 effects / 751 programs (Mayhem's `addon/05..15` add no program); `/mnt/c/X3FL` has the vs, not the ps.
-- `fl_object_compare.py BASE NEW OBJ...`: FL build of the fix vs its parent, stripped objects: 79 of 80 identical
-  (`proxy_identity.cpp.obj` differs).
+- `fl_object_compare.py [--count SYMBOL] BASE_TREE NEW_TREE BUILD_FL OBJ...` (the reviewer's script, generalised):
+  main `bf6238ee` vs the review-fix commit, FL objects motion_output, sun_occlusion, sun_occlusion_pass, loader,
+  capture: 5 of 5 identical (stripped). `--count decide_probe` with `build-ap`: 605 -> 613 instructions.
+- `oscillation.py TREE...`: review F1's scenario on each tree's host driver. First fix
+  `answers=01101010101 blocks=5 logs=5 releases=4`; review fix `answers=01100000000 blocks=1 logs=1 releases=0`.

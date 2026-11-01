@@ -576,29 +576,54 @@ Offline inventory (`lens_pair_inventory.py`, output `lens_pair_inventory.json`, 
 content, in `addon/01.cat`, `ps_7c83ed50` only in the four `shader/3_0/**/standard_lighting.fb` effects; `/mnt/c/X3`
 (Mayhem as numbered `addon/05..15`) resolves to the same 2,352 effects and 751 programs as `/mnt/c/X3AP-orig`; FL
 (`/mnt/c/X3FL`, root + addon2) has the vertex program but not `ps_7c83ed50`. So the shaders do not come from Mayhem;
-whether stock AP's sun is drawn with this pair (the model's material choice) is not known offline (the
-Run 223 sun, group 5 under CrossOver at 1280x768, drew 10 draws per frame of the vs_2_0 pair, section C above).
+Run 223 (2026-09-22) predates the Mayhem install (2026-09-28): it was stock AP under CrossOver, whose sun (group 5,
+1280x768) drew 10 draws per frame of the vs_2_0 pair (section C above). Whether stock AP on native Windows draws its
+sun with the SM3 pair (the model's material choice) is unknown.
 
 Fix (`core::Deferral`, `sun_occlusion.cpp`, `prepare_lens`): a lens body the scan cannot classify (`body_other`: a refused
 SM3 pair, an unknown origin, rows in no window, a full scan cache) in the bracket of the frame's single eligible record
 defers that record: the override stops answering for it (`Ready::probe` gets `enabled = false`), so the vanilla probe
 hides the chain behind geometry from the next frame on. In an answered frame the draw takes the refusal path (it and the
 rest of the bracket are dropped, `lens_suppress_`), never drawn unscaled. Unlike `block()` it is per record and lifts:
-the bodies are classified in every frame with a single record while the override is on (also vanilla frames), and a
-bracket of the same record with a `core` body at the sun's uv and no unclassifiable body ends the deferral
-(`sun_occlusion_released ... note=body_classified`), so a classifiable chain (the stock vs_2_0 one) keeps partial
-occlusion. Device Resets keep it. Rows: `sun_lens_body_unclassifiable ... note=blocked_vanilla_probe` on the pair's first
-scan and on each deferral's start (`note=left_untouched` without a single record). The ghost path and `block()` are
-unchanged; the probe thunk gains one integer compare. FL: the code is fenced `#if !X3M_EDITION_FL` like the install.
+the bodies are classified in every frame with a single record while the override is on (also vanilla frames), and the
+deferral ends after a bracket of the same record in which the vanilla probe left the record visible (`record+0x30`
+non-zero, one validated read per bracket while deferred) with a `core` body at the sun's uv and no unclassifiable body
+(`sun_occlusion_released ... note=body_classified_vanilla_visible`), so a classifiable chain (the stock vs_2_0 one) keeps
+partial occlusion. Device Resets keep it. Rows: `sun_lens_body_unclassifiable ... note=blocked_vanilla_probe` on the
+pair's first scan and on each deferral's start (`note=left_untouched` without a single record); deferral-start and
+release rows are capped at 8 each per session (`Deferral::row_cap`). `block()` itself is unchanged, but a deferred
+body's refusal never calls it: `prepare_lens` skips `block()` / `report_pass(false)` for every refusal of a deferred draw,
+including `routed_draw` and `state_unknown`, so such a draw is dropped for the frame and handed to the releasable
+deferral instead of the process-wide block. The ghost path is unchanged. FL: the code is fenced `#if !X3M_EDITION_FL`
+like the install. Performance: the probe hook (`decide_probe`) grows from 605 to 613 instructions (+8, one integer compare
+on the path); the visibility pass still runs every frame while the record is deferred (its fraction is unused then).
+
+### Review (same day): three findings, F1 fixed
+
+- **F1 (fixed): false-lift oscillation.** The first version lifted on any core-only bracket. With the sun hidden by the
+  vanilla probe, another light's classifiable core within 0.005 u of the sun's uv lifted the deferral; the next frame was
+  answered, the SM3 body drew, the bracket was dropped and the deferral restarted: a two-frame cycle with two unthrottled
+  rows per cycle and the other flares at half rate (reviewer's driver: `answers=01101010101 blocks=5 logs=5 releases=4`).
+  Now the lift also needs the vanilla probe to have left the record visible, i.e. the sun's own chain is drawn in that
+  bracket, so its bodies decide; a hidden sun never lifts. No K-bracket fallback: a hidden sun's bracket says nothing
+  about its chain. Rows capped at 8 per kind per session.
+- **F2 (open): attribution by bracket, not by draw.** Any unclassifiable body of any record in a bracket with one sun
+  record is charged to the sun (an SM3 ship flare would defer a classifiable sun). It errs towards vanilla. A refused SM3
+  body has no known centre (the scan supplies the matrix register), so a per-draw test needs the SM3 scan below.
+- **F3 (open): `cache_full` counts as unclassifiable and never lifts** while the scan cache stays full (every new pair is
+  unscannable then); same direction (vanilla).
 
 | Check | Result (measured) |
 | --- | --- |
 | `cmake --build build-ap -j4 2>&1 \| grep -ci warning` / same for `build-fl` (MinGW i686, RelWithDebInfo) | 0 / 0 |
-| FL objects vs a build of `ad792ade` in the same tree, `objcopy --strip-debug` then byte compare (`verification/results/run216-sun-occlusion/fl_object_compare.py`) | 79 of 80 identical; `proxy_identity.cpp.obj` differs (source identity) |
+| `python3 verification/results/run216-sun-occlusion/fl_object_compare.py BASE NEW build-fl` over motion_output, sun_occlusion, sun_occlusion_pass, loader, capture (BASE = main `bf6238ee`, NEW = the review-fix commit, both archive exports) | 5 of 5 identical (stripped). First version: an incremental FL build vs its parent, 79 of 80 objects identical, `proxy_identity.cpp.obj` differs |
+| same script, `--count decide_probe` on `build-ap` `src/proxy/sun_occlusion.cpp.obj` | 605 -> 613 instructions |
 | `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | 1142 reachable functions, 0 violations |
-| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion test_logging_tiers` | 28 + 17 tests, 0 failing (new: `test_an_unclassifiable_sun_body_hands_the_record_to_the_vanilla_probe_until_it_classifies`: one block and one row per deferral, none for a classifiable chain, held through a hidden chain, a mixed bracket and a Reset, lifted by a core-only bracket, per record) |
+| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion test_logging_tiers` | 28 + 17 tests, 0 failing (`test_an_unclassifiable_sun_body_hands_the_record_to_the_vanilla_probe_until_it_classifies`: one block and one row per deferral, none for a classifiable chain, held through a hidden chain, a mixed bracket, a hidden-sun core and a Reset, lifted by a vanilla-visible core-only bracket, the F1 scenario, the row cap, per record) |
+| `python3 verification/results/run216-sun-occlusion/oscillation.py FIRST_FIX_TREE REVIEW_FIX_TREE` (F1 scenario) | first fix `answers=01101010101 blocks=5 logs=5 releases=4`; review fix `answers=01100000000 blocks=1 logs=1 releases=0` |
 
 Open: SM3 support for the sun's own chain (the scan and the clip wrap for a vs_3_0 / ps_3_0 pair; this pair is the
 standard-lighting family, whose view-projection is c24-c27 per `docs/architecture/linear-distance-fade-region.md`, section
-2), which would restore partial occlusion on this install; until then the sun is hidden all or nothing as in vanilla.
+2), which would restore partial occlusion on this install and allow per-draw attribution (F2); until then the sun is
+hidden all or nothing as in vanilla. Skipping the visibility pass while deferred (cost not measured). F2, F3 above.
 Not covered: the Wine fixture (no run in this change), the flight.

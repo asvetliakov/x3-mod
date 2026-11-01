@@ -121,25 +121,34 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(ready('b', 'p5', 'p6')['single'], '0')
 
     def test_an_unclassifiable_sun_body_hands_the_record_to_the_vanilla_probe_until_it_classifies(self):
-        # run216: the Mayhem sun chain is a vs_3_0 / ps_3_0 pair the lens scan refuses (core::Deferral).
-        def frame(*bodies, records=('p5',)):
-            return ['b', *records, 'k', '[', *bodies, ']']
+        # run216: the sun chain on the Mayhem install is a vs_3_0 / ps_3_0 pair the lens scan refuses (core::Deferral).
+        # A frame: probe, pass, bracket; `visible`: the vanilla probe left the deferred record visible (record+0x30).
+        def frame(*bodies, records=('p5',), visible=False):
+            return ['b', *records, 'k', 'V' if visible else '[', *bodies, ']']
         defer = lambda *frames: self.run_driver('defer', *[t for f in frames for t in f])
+        row = lambda out, *keys: tuple(out[k] for k in keys)
         # A classifiable chain: no block, the override answers as before (the readiness test's '01...').
         out = defer(*[frame('c', 'c') for _ in range(4)])
-        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('0111', '0', '0', '0', '0'))
+        self.assertEqual(row(out, 'answers', 'blocks', 'logs', 'releases', 'deferred'), ('0111', '0', '0', '0', '0'))
         # Unclassifiable on the sun's record (first scan in an answered frame): one block, one row, vanilla from the next frame on,
         # also over a device Reset and with the vanilla probe showing the chain again and again.
-        out = defer(frame('c'), frame('c'), frame('U'), frame('u'), ['r'], frame('u'), frame('u'), frame())
-        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('0110000', '1', '1', '0', '5'))
-        # Release: not while the chain is hidden (no draw) or still carries the unclassifiable body beside a core one; a bracket
-        # with a core body and no unclassifiable one lifts it and the override answers again from the next frame.
-        held = [frame('c'), frame('U'), frame(), frame('c', 'u'), frame('u', 'c')]
-        out = defer(*held, frame('c'), frame('c'), frame('c'))
-        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases'], out['deferred']), ('01000011', '1', '1', '1', '0'))
+        out = defer(frame('c'), frame('c'), frame('U'), frame('u', visible=True), ['r'], frame('u'), frame('u', visible=True), frame())
+        self.assertEqual(row(out, 'answers', 'blocks', 'logs', 'releases', 'deferred'), ('0110000', '1', '1', '0', '5'))
+        # Release only in a bracket where the vanilla probe left the record visible, with a core body and no unclassifiable one:
+        # not while the chain is hidden (no draw, or another light's core at the sun's uv), not beside an unclassifiable body.
+        held = [frame('c'), frame('U'), frame(), frame('c', 'u', visible=True), frame('u', 'c', visible=True), frame('c'), frame('c')]
+        out = defer(*held, frame('c', visible=True), frame('c'), frame('c'))
+        self.assertEqual(row(out, 'answers', 'blocks', 'logs', 'releases', 'release_rows', 'deferred'), ('0100000011', '1', '1', '1', '1', '0'))
         # Blocks again when the unclassifiable body returns (one more row, the pair's first scan is not repeated).
-        out = defer(*held, frame('c'), frame('c'), frame('u'), frame('u'))
-        self.assertEqual((out['answers'], out['blocks'], out['logs'], out['releases']), ('010000110', '2', '2', '1'))
+        out = defer(*held, frame('c', visible=True), frame('c'), frame('u'), frame('u'))
+        self.assertEqual(row(out, 'answers', 'blocks', 'logs', 'releases'), ('01000000110', '2', '2', '1'))
+        # Review F1: the hidden sun with another light's core at its uv, alternating with the drawn sun body. The first fix lifted
+        # and re-deferred every two frames (answers 01101010101, blocks 5, logs 5, releases 4); it now stays deferred.
+        out = defer(frame('c'), frame('c'), frame('U'), *[f for _ in range(4) for f in (frame('c'), frame('u'))])
+        self.assertEqual(row(out, 'answers', 'blocks', 'logs', 'releases'), ('01100000000', '1', '1', '0'))
+        # A genuine lift / re-defer every two frames still logs at most row_cap (8) rows of each kind per session.
+        out = defer(frame('c'), frame('c'), frame('U'), *[f for _ in range(12) for f in (frame('c', visible=True), frame('u'))])
+        self.assertEqual(row(out, 'blocks', 'logs', 'releases', 'release_rows'), ('13', '8', '12', '8'))
         # No single record in the bracket (two suns): nothing attributed, the row says left_untouched (logged once, no block).
         out = defer(frame('U', records=('p5', 'p6')), frame('u', records=('p5', 'p6')))
         self.assertEqual((out['answers'], out['blocks'], out['logs']), ('0000', '0', '1'))

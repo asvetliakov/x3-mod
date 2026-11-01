@@ -383,8 +383,10 @@ draw is classified on the CPU and wrapped accordingly:
   With the override on and a single eligible record in the bracket, an unclassifiable body defers that record
   (`core::Deferral`): the override stops answering for it and the vanilla probe hides the chain all or nothing; in an
   answered frame the draw and the rest of the bracket are dropped. The bodies are then classified also in vanilla
-  frames, and a bracket of the record with a core body and no unclassifiable one lifts the deferral, so a
-  classifiable chain keeps partial occlusion. Unlike `block()` it is per record, releasable and logged
+  frames, and a bracket of the record in which the vanilla probe left it visible (`record+0x30`, so its own chain is
+  drawn) with a core body and no unclassifiable one lifts the deferral, so a classifiable chain keeps partial
+  occlusion; a hidden sun never lifts (review F1: another light's core at the sun's uv cycled it). Unlike `block()` it
+  is per record, releasable and logged, at most 8 rows per kind per session
   (`sun_lens_body_unclassifiable ... note=blocked_vanilla_probe`, `sun_occlusion_released`). Ledger:
   [sun-occlusion.md](../verification/sun-occlusion.md), 2026-11-01.
 

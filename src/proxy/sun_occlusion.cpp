@@ -229,9 +229,14 @@ void __cdecl x3m_sun_lens_begin() {
     if (listener_begin_) listener_begin_();
 #if !X3M_EDITION_FL
     // After the listener: its frame_inputs() consumes a pending device Reset, which leaves no record for this frame.
-    deferral_.bracket_begin(override_ && frame_started_ && seen_frame_ == frame_ && ready_.single() && latch_.valid
-                                ? ready_.record
-                                : 0);
+    // While the record is deferred the original probe ran for it, so record+0x30 is the vanilla verdict (the probe
+    // loop 0x004715d0 clears it on "hide"): one validated read per bracket, only then.
+    const std::uintptr_t single =
+        override_ && frame_started_ && seen_frame_ == frame_ && ready_.single() && latch_.valid ? ready_.record : 0;
+    std::uint32_t visible = 0;
+    if (deferral_.deferred(single) && !x3m::engine_memory::read(single + core::record_visible, &visible, 4))
+        visible = 0;
+    deferral_.bracket_begin(single, visible != 0);
 #endif
     detail::bracket_open = true;
 }
@@ -242,9 +247,10 @@ void __cdecl x3m_sun_lens_end() {
     if (listener_end_) listener_end_();
 #if !X3M_EDITION_FL
     const std::uintptr_t record = deferral_.record;
-    if (deferral_.bracket_end())
-        x3m::log("sun_occlusion_released frame=%llu record=%08lx note=body_classified",
-            static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(record));
+    if (deferral_.bracket_end() && deferral_.lift_logged())
+        x3m::log("sun_occlusion_released frame=%llu record=%08lx lifts=%u starts=%u note=body_classified_vanilla_visible",
+            static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(record), deferral_.lifts,
+            deferral_.starts);
 #endif
 }
 }
@@ -460,8 +466,11 @@ void block(const char* reason) {
 bool lens_attributable() {
     return patched_ && detail::bracket_open && deferral_.bracket_record != 0;
 }
-int lens_body_unclassifiable() {
-    return patched_ && detail::bracket_open ? int(deferral_.body_unclassifiable()) : int(core::Deferral::NotAttributed);
+int lens_body_unclassifiable(bool first_or_cache_full, bool* row) {
+    const core::Deferral::Result r =
+        patched_ && detail::bracket_open ? deferral_.body_unclassifiable() : core::Deferral::NotAttributed;
+    *row = deferral_.logged(first_or_cache_full, r);
+    return int(r);
 }
 void lens_body_core() {
     if (patched_ && detail::bracket_open) deferral_.body_core();

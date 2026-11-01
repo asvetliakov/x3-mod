@@ -62,13 +62,15 @@ int ready_command(int count, char** a) {
 }
 // defer <script>: the probe / bracket composition of sun_occlusion.cpp and prepare_lens with core::Deferral.
 // b = begin_frame, p<record> = probe (prints the answer; enabled = deferral.answers(record)), k = pass ok,
-// [ = bracket begin (the frame's single record), U / u = an unclassifiable body (the pair's first scan / a later
-// one), c = a core body, ] = bracket end, r = device Reset. blocks = deferrals started, logs = sun_lens_body_unclassifiable rows.
+// [ / V = bracket begin (the frame's single record) with the vanilla probe having hidden / left visible the record
+// (record+0x30, read only while it is deferred), U / u = an unclassifiable body (the pair's first scan / a later one),
+// c = a core body, ] = bracket end, r = device Reset. blocks = deferrals started, logs = sun_lens_body_unclassifiable
+// rows, releases = lifts, release_rows = sun_occlusion_released rows.
 int defer_command(int count, char** a) {
     Ready state;
     Deferral deferral;
     std::string answers;
-    unsigned blocks = 0, logs = 0, releases = 0;
+    unsigned blocks = 0, logs = 0, releases = 0, release_rows = 0;
     for (int i = 0; i < count; ++i) {
         const char c = a[i][0];
         if (c == 'b')
@@ -78,21 +80,26 @@ int defer_command(int count, char** a) {
         else if (c == 'p') {
             const std::uintptr_t record = std::uintptr_t(number(a[i] + 1));
             answers += state.probe(record, deferral.answers(record)) ? '1' : '0';
-        } else if (c == '[')
-            deferral.bracket_begin(state.single() ? state.record : 0);
+        } else if (c == '[' || c == 'V') {
+            const std::uintptr_t single = state.single() ? state.record : 0;
+            deferral.bracket_begin(single, c == 'V' && deferral.deferred(single));
+        }
         else if (c == 'U' || c == 'u') {
             const Deferral::Result r = deferral.body_unclassifiable();
             blocks += r == Deferral::Started;
-            logs += Deferral::logged(c == 'U', r);
+            logs += deferral.logged(c == 'U', r);
         } else if (c == 'c')
             deferral.body_core();
-        else if (c == ']')
-            releases += deferral.bracket_end();
+        else if (c == ']') {
+            const bool lift = deferral.bracket_end();
+            releases += lift;
+            release_rows += lift && deferral.lift_logged();
+        }
         else if (c == 'r')
             state.reset(); // device Reset: sun_occlusion.cpp resets Ready only
     }
-    std::printf("answers=%s blocks=%u logs=%u releases=%u deferred=%lx\n", answers.c_str(), blocks, logs, releases,
-                static_cast<unsigned long>(deferral.record));
+    std::printf("answers=%s blocks=%u logs=%u releases=%u release_rows=%u deferred=%lx\n", answers.c_str(), blocks, logs,
+                releases, release_rows, static_cast<unsigned long>(deferral.record));
     return 0;
 }
 // footprint <x> <y> <size> <acc> <fov> <scale_x> <width> <height> <radius_scale>   (full-screen rect)

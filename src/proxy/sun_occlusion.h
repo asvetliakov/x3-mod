@@ -79,11 +79,13 @@ void block(const char* reason); // a lens draw that can never carry the fraction
 // The lens draws' report on the sun's own record (core::Deferral; owner thread, inside the bracket). attributable():
 // the override is on and the bracket has a single eligible record, so its bodies are classified also in a frame the
 // vanilla probe decides. lens_body_unclassifiable(): Started once per record (the override stops answering for it
-// from the next frame on; the caller drops the rest of an answered bracket and logs), Held while it stays deferred,
-// NotAttributed without a record. lens_body_core(): a core body at the record's uv (the deferral lifts at the
-// bracket's end when no unclassifiable body was drawn, sun_occlusion_released).
+// from the next frame on; the caller drops the rest of an answered bracket), Held while it stays deferred,
+// NotAttributed without a record; *row: write the sun_lens_body_unclassifiable row (the pair's first scan or a full
+// cache, and a deferral's start, capped). lens_body_core(): a core body at the record's uv (the deferral lifts at the
+// bracket's end when the vanilla probe left the record visible and no unclassifiable body was drawn,
+// sun_occlusion_released).
 bool lens_attributable();
-int lens_body_unclassifiable();
+int lens_body_unclassifiable(bool first_or_cache_full, bool* row);
 void lens_body_core();
 Counters counters();
 }

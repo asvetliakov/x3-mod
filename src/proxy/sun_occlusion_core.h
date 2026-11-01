@@ -142,20 +142,28 @@ struct Ready {
 #if !X3M_EDITION_FL // sun occlusion is not installed on FL (capture.cpp)
 // ---- A sun whose lens body the scan cannot classify ----
 // Run216 (AP native, Mayhem): the sun's chain is a vs_3_0 / ps_3_0 pair (stock standard_lighting programs) the lens
-// scan refuses, so its body is Other and was
-// drawn untouched while the override answered "visible": the sun showed through hulls. Such a body in the bracket of
-// the frame's single eligible record defers that record: the override does not answer for it (Ready::probe gets
-// enabled = false), so the vanilla all-or-nothing probe hides the chain behind geometry. The deferral lifts at the end
-// of a bracket of the same record that classified a core body (at the record's uv) and no unclassifiable one: the
-// stock chain or a later classifiable one. One record; device Resets keep it (a property of the program).
+// scan refuses, so its body is Other and was drawn untouched while the override answered "visible": the sun showed
+// through hulls. Such a body in the bracket of the frame's single eligible record defers that record: the override does
+// not answer for it (Ready::probe gets enabled = false), so the vanilla all-or-nothing probe hides the chain behind
+// geometry. The deferral lifts at the end of a bracket of the same record in which the vanilla probe itself left the
+// record visible (record+0x30 != 0 at the bracket: the chain is drawn, so its bodies are in the bracket) and which
+// classified a core body (at the record's uv) and no unclassifiable one: the stock chain or a later classifiable one.
+// A core body while the vanilla probe hides the chain (another light's core at the sun's uv) never lifts it, so no
+// lift / re-defer cycle. One record; device Resets keep it (a property of the program). The two rows it causes
+// (a deferral's start, a lift) are capped at row_cap each per session.
 struct Deferral {
+    static constexpr unsigned row_cap = 8;
     std::uintptr_t record = 0;         // the deferred record (0: none)
     std::uintptr_t bracket_record = 0; // this bracket's single eligible record (0: none, nothing is attributed)
+    bool vanilla_visible = false;      // the vanilla probe left bracket_record visible (read only while deferred)
     bool unclassifiable = false, core = false;
+    unsigned starts = 0, lifts = 0; // per session
     enum Result : unsigned char { NotAttributed = 0, Started = 1, Held = 2 };
     bool answers(std::uintptr_t rec) const noexcept { return rec != record; }
-    void bracket_begin(std::uintptr_t single_record) noexcept {
+    bool deferred(std::uintptr_t rec) const noexcept { return rec != 0 && rec == record; }
+    void bracket_begin(std::uintptr_t single_record, bool visible) noexcept {
         bracket_record = single_record;
+        vanilla_visible = visible;
         unclassifiable = core = false;
     }
     // Started once per record: the caller drops the rest of an answered bracket and logs.
@@ -164,18 +172,25 @@ struct Deferral {
         if (!bracket_record) return NotAttributed;
         if (record == bracket_record) return Held;
         record = bracket_record;
+        ++starts;
         return Started;
     }
-    // The sun_lens_body_unclassifiable row: the pair's first scan (or a full scan cache) and each deferral's start.
-    static constexpr bool logged(bool first_or_cache_full, Result r) noexcept { return first_or_cache_full || r == Started; }
+    // The sun_lens_body_unclassifiable row: the pair's first scan (or a full scan cache) and a deferral's start (capped).
+    bool logged(bool first_or_cache_full, Result r) const noexcept {
+        return first_or_cache_full || (r == Started && starts <= row_cap);
+    }
     void body_core() noexcept { core = true; }
     // True when the record's deferral was lifted.
     bool bracket_end() noexcept {
-        const bool lift = record != 0 && record == bracket_record && core && !unclassifiable;
-        if (lift) record = 0;
+        const bool lift = deferred(bracket_record) && vanilla_visible && core && !unclassifiable;
+        if (lift) {
+            record = 0;
+            ++lifts;
+        }
         bracket_record = 0;
         return lift;
     }
+    bool lift_logged() const noexcept { return lifts <= row_cap; } // the sun_occlusion_released row (capped)
 };
 #endif
 
