@@ -239,7 +239,8 @@ Rule: the VS is row 10 of `fade_route_core.h` (c40 / c44 / b0 from the inventory
 threshold, hysteresis, RT2 owner, tested cutouts, the fill), and the fraction reuses the read; FALSE hands the draw to
 the overlay arm exactly as before the row. The fraction alone does not separate the two: an `MPF_ALPHABLEND` material
 draws the same state with AlphaValue 1 and b0 FALSE, so its fraction is 1000 (measured on a table VS: the docking-port
-pair `4944d81d/64bac8bb`, frames 5849-5852, `fade_arm=1 fade_permille=1000` beside opaque draws of its node). b0 is
+pair `4944d81d/64bac8bb`, frames 5849-5852, `fade_arm=1 fade_permille=1000` beside opaque draws of its node). Material transparency at or beyond N also carries b0 TRUE (fade-rt2-ownership.md §3), so XT windows beyond N take the
+fill as distance-fraction owners and drop it nearer than N: watch window sub-meshes as a station crosses N. b0 is
 the engine's own branch bit: TRUE only on the distance-fade branch (`0x004c2e04`, static). In Runs 216/217 every
 fade-arm row of the asteroid programs (1,126 rows) has permille below 1000 with no node alpha override (alpha13c 0),
 which with AlphaValue 1 requires b0 TRUE (inferred); all 464 fade-state draws of `37c34a74` are on nodes at cull

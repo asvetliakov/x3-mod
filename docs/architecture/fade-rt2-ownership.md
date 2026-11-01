@@ -145,7 +145,12 @@ before, but it is shared by `xt_standard_lighting`, its damage variant and `xt_t
 its fade-band-state draw is the arm's only with `g_EnableFog` (b0) TRUE, which the engine sets exactly on its
 distance-fade branch (node origin at or beyond the camera's fade start, `0x004c2e04`,
 [station-material-distance.md](../reverse-engineering/station-material-distance.md)); an `MPF_ALPHABLEND` material
-draws the same state with b0 FALSE and AlphaValue 1 and stays the overlay arm's, exactly as before the row. Measured
+draws the same state with b0 FALSE and AlphaValue 1 when nearer than the fade-start distance N and stays the overlay
+arm's, exactly as before the row; at or beyond N the fog block sets b0 TRUE for it too
+([station-material-distance.md](../reverse-engineering/station-material-distance.md) line 120), so such a sub-mesh
+(XT windows, glass) becomes a distance-fraction owner with the fill out there and returns to the overlay path
+without it when nearer than N (a possible brightness step at N; rows 1-9 already behave this way; not observed in
+Runs 216/217). Measured
 in Runs 216/217: all 464 fade-state draws of this VS sit on nodes at cull distance 16.1-20.3 M, none beside an opaque
 draw of the same node; every opaque one is at 15.8 M or nearer (`verification/results/run217-outpost-dark/`
 `fade_state_census.txt`). HUD sprites on `494fe349` are ONE/ONE and fail
