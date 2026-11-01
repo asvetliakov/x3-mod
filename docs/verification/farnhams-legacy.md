@@ -612,3 +612,14 @@ Result (log of 2026-11-01 20:4x, 47,999 frames / 305 s, no exception; measured):
 Shadows on FL (2026-11-01, user report after run 10): sun shadows visible, no issue noticed.
 The direction comes from the portable light-constant latch (`sun_light_poll` is AP-only until
 step 7); `sun_shadow_apply_frame applied=1` on 46,973 frames of the run 10 log (measured).
+
+## FL run 11 — bloom_strength default 0.25 (installed 2026-11-01)
+
+Candidate: commit `9813e2c0` (default 0.25 in schema, launcher, DLL constant and tests;
+version 1.8.2), `build-fl/d3d9.dll` SHA-256 `eafc5b0d…` (55,453,827 B), 0 warnings,
+`test_config*` 19 OK, `test_launcher_defaults` 10 OK
+([record](../../verification/results/fl-run11/candidate.json)); `C:\X3FL\d3d9.dll` bytes
+verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run10` (`ef209a18…`). The user's explicit
+`bloom_strength = 0.3` line in `C:\X3FL\x3m.ini` was commented out so the default applies.
+Expected: `bloom_strength_mode requested=0 strength=0.25`, halos at a quarter of run 9. The same
+default ships for AP as release 1.8.2 (Run215, [releases](releases.md)).

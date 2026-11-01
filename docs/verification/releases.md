@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.2
+
+2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.2 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 70.7 s wall: dll 68.1 s, package 2.5 s), clean main `68a23daf` ([record](../../verification/results/release-1.8.2.json)).
+
+- Over 1.8.1 (Run214 flown, the user: 0.7 still an eye-sore, halos on star fields): **`bloom_strength` default 0.25** (schema, launcher, DLL constant and tests; the halo shape is unchanged, only the final add is scaled). Also in the tree, not affecting AP behaviour: the FL sun-light and sector-background constants generators.
+- DLL: stripped `4ccbc880…` (42,555,312 B; x87 0 / 1139 reachable, strip identity PASS, 17 exports), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.2/. Installed into native `C:\X3` as Run215, rollback `rollback-d3d9\d3d9.dll.run214` ([install](../../verification/results/run215-release-install.json)).
+- Zip `x3m-1.8.2.zip` `f2093512…` (60,230,174 B): the same 22 entries; copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.2`; `generate --check` PASS (290 settings, 133 in the template). The user's `x3m.ini` header bumped to 1.8.2, body unchanged (`x3m.ini.run214` kept).
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.8.1
 
 2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.1 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0), clean main `b420dc42` ([record](../../verification/results/release-1.8.1.json)).
