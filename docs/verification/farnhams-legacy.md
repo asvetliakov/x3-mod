@@ -623,3 +623,42 @@ verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run10` (`ef209a18…`). The u
 `bloom_strength = 0.3` line in `C:\X3FL\x3m.ini` was commented out so the default applies.
 Expected: `bloom_strength_mode requested=0 strength=0.25`, halos at a quarter of run 9. The same
 default ships for AP as release 1.8.2 (Run215, [releases](releases.md)).
+
+## Step 7 — sun light poll, host evidence (2026-11-01, not installed)
+
+Design: [FL sun light note](../architecture/farnhams-legacy-sun-light.md); contract:
+[sun-light.md, "2026-11-01: poll contract"](../reverse-engineering/fl/sun-light.md). Measured on the WSL2 host, the
+step-7 commit on `68a23daf` (main's later `e8f0e522` changes docs and results only), `-j4`, one build at a time. Clean-first builds: fl 96 objects and ap 138, 0
+warnings each. The fl link has `sun_light_poll_fl.cpp.obj` and no `sun_light_poll.cpp.obj`, with
+`strings | grep -c '^fl\.sun_light'` = 2 and no `608518` in the provider's disassembly. AP: 119 of 121 objects match a
+fresh build of main `68a23daf` (`verification/results/fl-sun-light-poll/ap_object_compare.json`). The two that differ
+are `config.cpp` (one schema key) and `proxy_identity.cpp` (source-commit string). Schema: `fl_sun_light_log` added,
+`generate.py --check` PASS, `schema_semantic_compare.txt` added=1 removed=0 changed=0.
+
+The native fixture (`verification/probe/fl_sun_light_poll.cpp`, run by
+`verification/results/fl-sun-light-poll/run_fixture.py` → `fixture.json`) gave `RESULT PASS checks=70 failures=0`.
+It uses a synthetic relocated image holding the 50 anchors. `ANCHOR flips=491 refused=491` covers every anchor byte
+outside the ten relocated operands. A foreign-base relocation and a check at another base are refused, and so is an
+unreadable slot (`slot_unreadable`). Selection results:
+* A dim directional light (100,50,20) beats point and spot lights of 30000+: score `0x33d` = 0x300 + trunc(61.53).
+* With no directional light, the range rule admits a point light at `0x256251` but not one at `0x256250`: score `0xb7`.
+* Truncation decides: (0,2,0) `0x301` ranks over a farther (3,0,0) `0x300` (rounding would tie and pick the farther),
+  and (128,128,128) scores `0x37f` (127.99999999999999, rounded 128).
+* When the engine rule admits nothing, the admission rule's winner is returned: `engine_rule=0`, `0x328`/`0x30a`.
+
+Refusals: `layout` for slot counts 0, 7, 9 and 0xffffffff, for a non-light entry and for 255 entries without
+terminator (254 are accepted); `unreadable` for the context and for a node; `null_context`; `no_directional`.
+`BOUND tested=4 accepted=2 refused=2`: the node read is exactly +0xb0..+0x173 (0xc4 B). LastError is kept on every
+poll, and the forced `fl.sun_light_sample` row carries the documented fields. Mutations, with the source restored
+byte for byte: rounding instead of truncation gives 5 failures; a 0xc8-byte node read gives 1. Per poll, measured
+natively on fake memory (fixture, not game FPS): 16 candidates 383 ns warm and 1.94 us after a frame epoch
+(`engine_memory` revalidates its regions after each Present, the in-game case); 254 candidates 3.98 / 5.52 us.
+FL host tests (`test_fl_*`, 10 modules): 59 run, OK, 4 skipped (the shader-corpus oracles; `/tmp` corpus absent).
+`test_config_schema`, `test_exe_identity` and `test_volumetric_fog`: 62 OK.
+
+Expected in game with cascades on: `fl.sun_light status=ok reason=none base=0x… slot=0x… context=0x00000000
+anchors=50 anchor_rva=0x00000000 log_s=10`. Every 10 s, `fl.sun_light_sample status=ok` with `ok` ≈ `reads`,
+`layout=0`, `unreadable=0`, `engine_rule=1`, `score` ≥ 0x300, `flags` & 0x800000, one stable `pos` per sector and
+`record=1`. Downstream, `shadow_replay_sun_source … source=point reason=point poll=ok`, and
+`volumetric_fog_sun` uses the polled radiance instead of `source=fallback`. Sun occlusion and the lens flare do not
+consume this poll; they stay off on FL.

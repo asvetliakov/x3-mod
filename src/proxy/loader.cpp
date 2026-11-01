@@ -73,6 +73,9 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // The FL camera provider (src/engine/fl/camera_state_fl.cpp): the same X3M_MOTION_OUTPUT/X3M_TAA latch as AP,
     // slots admitted by anchor; reads only, no patch. It logs its own fl.camera row.
     x3m::camera_state::initialize();
+    // The FL sun light poll (src/engine/fl/sun_light_poll_fl.cpp): the AP cascade latch (X3M_SHADOW_SUN_POLL=0 off),
+    // the context slot admitted by 50 anchors; reads only, no patch. It logs its own fl.sun_light row.
+    x3m::sun_light_poll::initialize();
     // The FL scope hook (src/engine/fl/object_trace_fl.cpp; X3M_OBJECT_TRACE, default on): one call rel32 inside
     // the engine_patch install window (before the device exists), gated by the identity and the site/target bytes.
     // It logs its own fl.trace row.

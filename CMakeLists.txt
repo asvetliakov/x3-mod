@@ -126,9 +126,9 @@ set(X3M_SHARED_SOURCES
 # docs/architecture/farnhams-legacy-object-identity.md; src/engine/fl/object_lifetime_fl.cpp,
 # docs/architecture/farnhams-legacy-lifetime.md). Likewise scene_hook.cpp and compositor_owner.cpp: the fl target
 # links src/engine/fl/scene_hook_fl.cpp and src/engine/fl/compositor_owner_fl.cpp
-# (docs/architecture/farnhams-legacy-scene.md).
+# (docs/architecture/farnhams-legacy-scene.md). sun_light_poll.cpp too: the fl target links
+# src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
-  src/proxy/sun_light_poll.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
@@ -154,6 +154,8 @@ else()
     src/engine/fl/object_lifetime_fl.cpp src/engine/fl/scene_hook_fl.cpp src/engine/fl/compositor_owner_fl.cpp)
   # The saturating replacement of X3FL.exe's fixed-point scaler (docs/architecture/farnhams-legacy-scale-overflow.md).
   target_sources(d3d9 PRIVATE src/engine/fl/scale_overflow_fix_fl.cpp)
+  # The hook-free poll of the engine's brightest directional light (docs/architecture/farnhams-legacy-sun-light.md).
+  target_sources(d3d9 PRIVATE src/engine/fl/sun_light_poll_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -192,6 +194,10 @@ set_source_files_properties(src/engine/fl/scene_hook_fl.cpp
 # XMM/x87 state and no CPU-state boundary: same flags; its rare QPC/row path saves XMM0-7 and runs under call_preserved.
 set_source_files_properties(src/engine/fl/scale_overflow_fix_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL sun light poll (src/engine/fl/sun_light_poll_fl.cpp) runs in the proxy's draw path, not inside engine code:
+# SSE2 stays on (its score is the engine's double-precision sum); no exception bookends.
+set_source_files_properties(src/engine/fl/sun_light_poll_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

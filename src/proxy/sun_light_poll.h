@@ -81,4 +81,12 @@ bool read(Sample* out);
 // pointer slot stands in for 0x00608518; the identity gate is bypassed. Null uninstalls.
 void fixture_install(const std::uint32_t* context_slot);
 #endif
+#if defined(X3M_FL_SUN_LIGHT_FIXTURE) && X3M_EDITION_FL
+// FL fixture seam (src/engine/fl/sun_light_poll_fl.cpp; the FL edition implements this header with the FL layout):
+// initialize()'s anchor and slot gate against an image mapped at base (the generated RVAs), minus the setting
+// latch and the X3FL.exe identity. nullptr when admitted (available() true), else the refusal reason.
+const char* fixture_initialize(std::uintptr_t base);
+// The next read() writes its fl.sun_light_sample row (no QPC wait).
+void fixture_force_sample();
+#endif
 }

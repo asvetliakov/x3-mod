@@ -1,0 +1,26 @@
+{
+ "returncode": 0,
+ "status_rows": 497,
+ "lines": [
+  "ANCHOR flips=491 refused=491",
+  "CASE A status=ok score=0x33d candidates=3 slot_admitted=1 admitted=1",
+  "CASE B status=ok score=0xb7 slot_admitted=1 admitted=0",
+  "CASE C1 score=0x301 second=0x300",
+  "CASE C2 score=0x37f second=0x300",
+  "CASE D status=ok engine_rule=0 score=0x328 second=0x30a",
+  "CASE none status=no_directional",
+  "CASE slot_count=0 status=layout",
+  "CASE slot_count=7 status=layout",
+  "CASE slot_count=9 status=layout",
+  "CASE slot_count=4294967295 status=layout",
+  "CASE non_light status=layout",
+  "CASE unterminated status=layout",
+  "CASE context_unreadable status=unreadable",
+  "NODE_SPAN 0xc4",
+  "BOUND tested=4 accepted=2 refused=2",
+  "LOG fl.sun_light_sample status=ok reads=22 ok=10 unreadable=4 null_context=1 layout=6 no_directional=1 context=0x01180000 candidates=1 slot_admitted=1 admitted=1 engine_rule=1 rules_agree=1 score=0x33d second=0x0 flags=0x00800004 pos=-1,-2,-3 colour=100,50,20 admission_pos=-1,-2,-3 record=1 record_pos=1.5,-2.25,3.125",
+  "LOG fl.sun_light_sample status=ok reads=1 ok=1 unreadable=0 null_context=0 layout=0 no_directional=0 context=0x01180000 candidates=16 slot_admitted=1 admitted=1 engine_rule=1 rules_agree=1 score=0x364 second=0x0 flags=0x00800004 pos=8,0,0 colour=100,100,100 admission_pos=8,0,0 record=1 record_pos=1.5,-2.25,3.125",
+  "TIMING warm16_ns=383 cold16_ns=1939 warm254_ns=3984 cold254_ns=5524",
+  "RESULT PASS checks=70 failures=0"
+ ]
+}
