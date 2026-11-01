@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.4
+
+2026-11-02, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.4 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 61.4 s wall: dll 58.9 s, package 2.4 s), clean main `a05818f2` ([record](../../verification/results/release-1.8.4.json)).
+
+- Over 1.8.3 (Run216 flown; the user: distant objects dark until close): **fade-band original fill** (`6ac322ff` + review follow-up `c6e9fee0`, reviewed Opus high: merge). Distance-fade-band draws (SRCALPHA/INVSRCALPHA, z-write 0) excluded from the original fill, hull light-map gain and widened gain now bind the same fill/gain/widen program as the opaque draw; on the sun share lane three invalid-share owner forms (`sun_fill`, `sun_lightmap`, `sun_lightmap_widen`, RT2.g = -1) with strength twin kinds 8–10; alpha stays the engine's. Native validator 122/122 AP and 133/133 FL forms; wrap-state fixture 34,973 checks; A/B against c2838446 changes exactly the 12 fade rows ([triage and change](fill-light.md), `verification/results/run216-distant-dark/`). Also in the tree: FL steps 7–8 (not affecting AP behaviour; AP objects identical except config/proxy_identity). **Not included:** the SM3 lens wrap (`784552bd`, worktree branch kept): the user decided to replace the engine sun body with the mod's own procedural sun, so the 1.8.3 deferral stays until then.
+- DLL: stripped `2f278784…` (42,558,846 B; x87 0 / 1142 reachable, strip identity PASS), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.4/. Installed into native `C:\X3` as Run217, rollback `rollback-d3d9\d3d9.dll.run216` ([install](../../verification/results/run217-release-install.json)); X3AP.exe unchanged.
+- Zip `x3m-1.8.4.zip` `2a7f0cff…` (60,231,658 B); copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.4`. The user's `x3m.ini` header bumped to 1.8.4, body unchanged (`x3m.ini.run216` kept).
+- Flight check (open): approach the remote outpost and its asteroid from beyond the fade distance; F8 while the asteroid is in the fade band (`motion_route … fade_arm=1 blend=1 src=5 dst=6 zwrite=0`) and again when `fade_arm=0`; night-side HDR L p50 must match (was 0.000 vs 0.070); `fade_owner_forms` rows at load, `fade_route_frame … fade_fill>0` in the band, no `fade_owner_form_refused`; station windows unchanged across the switch.
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.8.3
 
 2026-11-01, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.3 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 64.6 s wall: dll 61.6 s, package 2.7 s), clean main `9d8c97eb` ([record](../../verification/results/release-1.8.3.json)).
