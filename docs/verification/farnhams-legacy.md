@@ -536,3 +536,21 @@ ghosting trail behind a moving alpha-tested ship, to be checked in both editions
 `1835f5e1…`, no alpha test, highest residual 3.0–3.6) are not covered; the test is per draw origin, so a large
 alpha-tested draw with a far origin also votes its near pixels; the residual at normal-flight motion is unmeasured;
 the Wine motion-output fixture was not rerun.
+
+## FL run 7 result — scene hook accepted, bloom refused on every frame (2026-11-01)
+
+Log of 2026-11-01 19:4x, 35,196 frames / 224 s, no exception (measured): `fl.scene
+status=active path=bridge`, `fl.scene_sample … frames_without_call=0 frames_multi_call=0
+owner_failed=0 glow=1`, `scene_end_source=hook` on 34,211 frames (`none` on 985 menu
+frames), `hdr_frame … redirected=1 end=hook writeback_source=shader`, TAA `committed=1`
+in flight. 15 `motion_output_scene_hook_disagreement` rows on frames 5–19 (loading, before
+the first scene). **Hook accepted.** Bloom: `bloom_attach … reason=ok`, but all 122
+`bloom_prepare` rows `ready=0 reason=invalid operation=80070057` and no `bloom_commit`;
+admission counters show the boundary admitted (`scene_handoff=873 glow_off=15`, others 0).
+Triage (`verification/results/fl-run7/bloom_prepare_history.sh`, measured): every
+native-Windows AP flight log in the repo (25 logs, 2026-10-13 to 10-23, 4,984 rows) fails
+the same way; the last `bloom_commit` rows are from Wine run 83 (2026-09-25). **Not
+FL-specific: a shared bloom regression between 2026-09-26 and 10-13** (bolts through TAA,
+HDR meter rework, or the native-Windows move; not separable from logs). `validate_inputs`
+(`src/renderer/bloom_pass.cpp:548-610`) returns a bare E_INVALIDARG; a diagnostic row
+naming the clause and the descriptors is being added for the next build.
