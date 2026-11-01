@@ -13,3 +13,5 @@ f1b0e820 (4081), f1b0e820 atest (188).
 Result: band rows are fade_arm=1 routed (permille 998/999), RT2.g = -1 on every station pixel (no cascade apply);
 opaque rows are receivers (RT2.g 0..0.95). Band: top-2 % +14..18 %, p90 +16..33 %, upper-half p50 -20 %, lower p50 equal.
 Per-draw bound program (fill/gain/owner form), engine-light admission and material strength are not logged per draw.
+
+    python3 -I permille_hist.py /mnt/c/X3/x3m.log 10 > permille_hist.txt  # routed fade-arm permille per VS: all 981-999 (design note fade-owner-shadow-receiver.md)
