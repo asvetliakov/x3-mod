@@ -296,3 +296,28 @@ so native behaviour is verified by the flight itself; record the entry in
   halos on stock (`d5e1c753/8360f422` shared; 753/754/778 in both groups); the record owner does.
 - **Suppress via the engine cull at gain 0 or the flare video flag.** Loses: both remove every lens flare, which
   is the user's separate halo decision, not the sun's.
+
+## 14. Step 1 as built (2026-11-02, AP; not flown)
+
+Sources: `src/proxy/own_sun_core.h` (pure: answer, hotkey, projection, radiance, fog scalar, quad, constants),
+`src/renderer/own_sun_pass.{h,cpp}`, `src/effects/own_sun_{vs,ps}.hlsl` (tool `tools/shaders/generate_own_sun_programs.py`),
+`src/proxy/motion_output_own_sun_inc.h`, the answer in `sun_occlusion.cpp`, the latch and hotkey in `capture.cpp`.
+Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun step 1". Where it differs from sections 2-11:
+
+- **Answer gate.** The probe answers "hidden" only in a frame whose Present-time latch was set: setting on, hotkey on,
+  and this device's stage armed in its last resolve (route, HDR/TAA FP16 path, camera, lane, attached pass). A device
+  whose stage cannot draw keeps the engine's chain, so the sky is never without a sun. The answer precedes the
+  readiness machine and the latch, so the step-1 visibility pass and the lens wraps see no record in an own-sun frame.
+- **Draw.** `DrawPrimitiveUP` of four CPU-built clip-space vertices; the vertex program takes no constant, the pixel
+  program five registers (texel, two knight-offset vectors, disc, corona). ps 70 slots, not ~45: nine `texldl` and
+  their address arithmetic.
+- **Corona.** `lerp(K_h c h(r), disc, D(r))` with `h = max(saturate(exp(-3 (r - 1))) - exp(-6), 0)`: the corona fades
+  in under the disc's edge (the centre texel is exactly `K lerp(c, 1, 0.6) T`) and reaches 0 at the quad's edge.
+- **Poll.** The shadow lane's poll of the frame when it ran (`poll_source=lane`); otherwise one poll at the scene end
+  (`poll_source=stage`), an assumption that the array still holds the main view's lights there.
+- **Hotkey.** Ctrl+Shift+F9, polled only while the own sun is installed ([comparison-hotkeys.md](comparison-hotkeys.md),
+  "Own sun").
+- **FL.** Inert in this step (one `own_sun status=unavailable edition=fl` row), although main has carried the FL probe
+  hook since FL step 9; enabling it there is a separate step.
+- **Not built.** Section 11's real-device fixture and a hook-fixture case for the answer (no Wine on the native host);
+  the flight is the device test.

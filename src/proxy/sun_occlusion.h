@@ -45,6 +45,9 @@ struct Addresses {
 struct Counters {
     std::uint32_t probes = 0, own = 0, answered_visible = 0, answered_hidden = 0, original = 0, foreign_thread = 0;
     std::uint32_t brackets = 0, multi_record_frames = 0, blocked = 0;
+#if !X3M_EDITION_FL
+    std::uint32_t own_sun_hidden = 0; // eligible probes the own sun answered "hidden" (own_sun_core.h answer)
+#endif
 };
 bool initialize(bool bracket_wanted = false); // backend-load path only; one sun_occlusion line when either variable is
                                               // set or bracket_wanted (X3M_LENS_FLARE_GAIN < 1: the lens bracket alone,
@@ -60,6 +63,14 @@ void set_listener(void (*begin)(), void (*end)());
 void present(unsigned long long next_device_frame = 0); // frame boundary (the Present hook; the number labels the log
                                                         // lines): also closes a bracket an unwind left open
 void device_reset();                                    // readiness restarts: vanilla until a pass has run again
+#if !X3M_EDITION_FL
+// Own sun, step 1 (docs/architecture/own-sun-pass.md; X3M_OWN_SUN=1, AP edition): request_own_sun() before initialize()
+// makes it install both redirects (observe-only unless the sun-occlusion variables ask for more); set_own_sun_frame() is
+// the Present-time latch for the next frame (own_sun::core::frame_active): while it is set, the probe answers "hidden"
+// for the sun's eligible record (core::eligible) before any readiness test or latch, every other probe as before.
+void request_own_sun();
+void set_own_sun_frame(bool active);
+#endif
 namespace detail {
 extern volatile bool bracket_open;
 }

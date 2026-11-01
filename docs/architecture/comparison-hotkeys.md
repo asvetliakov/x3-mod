@@ -28,6 +28,19 @@ executed with and without the debug tier). Ledger lines (`docs/verification/`): 
 `directional-shadows.md`, `volumetric-fog.md`, `telemetry.md`, `window-and-cursor.md`, `screen-emission.md`,
 `hdr-scene-path.md`.
 
+## Own sun (2026-11-02)
+
+**Ctrl+Shift+F9**, polled only while `own_sun` is installed (`--own-sun on`, AP edition; not tied to `--debug`), flips
+the own sun against the engine's sun for the A/B of [own-sun-pass.md](own-sun-pass.md) step 1. Each press edge (a held
+chord is one press) toggles one state that starts on and writes one `own_sun_toggle device= frame= on=` row. At every
+Present the next frame's latch is `own_sun::core::frame_active(setting, key, stage armed in the last resolve)`; the
+flare probe's "hidden" answer for the sun's record and the stage's draw both read that one latch, so the two switch
+together in the same frame (the engine re-instantiates its chain within about two frames after the answer returns to
+the original). F9 is polled first, the modifiers only while it is down. Host proof: `test_own_sun.OwnSunHost.
+test_hotkey_flips_per_frame` (the production `Toggle` and `frame_active`) and `test_comparison_hotkeys` (the chord is
+the only other `GetAsyncKeyState` use, in one function, polled at one site under `own_sun_on`). Ledger:
+[sun-occlusion.md](../verification/sun-occlusion.md), "Own sun step 1".
+
 ## Removed 2026-10-04: engine plume preset and heat shimmer keys
 
 User decision 2026-10-04: the two engine keys went; F8 is again the only in-game key. Both options keep their

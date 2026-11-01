@@ -879,6 +879,22 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
+
+The own sun stage ([own-sun-pass.md](own-sun-pass.md) sections 2-4 and 10) uses documented D3D9 only: one vs_3_0 /
+ps_3_0 pair (2 / 70 slots by the production counter; `VPOS`, nine `texldl` of the lane), one vertex declaration
+(`FLOAT4` position, `FLOAT2` texcoord) and one `DrawPrimitiveUP` of a four-vertex strip per frame, so no vertex buffer
+or other pool resource is held; `SetTexture` of RT2 (already a texture), point/clamp sampling, ONE/ONE blending into
+`A16B16G16R16F` gated by the plumes' `CheckDeviceFormat(..., D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
+D3DFMT_A16B16G16R16F)` at attach, plus `D3DPMISCCAPS_BLENDOP`, `D3DPBLENDCAPS_ONE` and `D3DPMISCCAPS_CULLNONE`. No
+query, readback, VTF, MRT, private layout or Wine export. Both programs pass the native SysWOW64 runtime validator
+with 0 messages ([result](../../verification/results/own-sun-pass/native/result.json)); the device row logs
+`MaxPixelShader30InstructionSlots` beside the programs' slots once per attach. The probe answer is the existing
+byte-validated game-internal hook at 0x00471630 (in scope on both platforms); the comparison chord is
+`GetAsyncKeyState`. A refused capability or program leaves the engine's sun (the probe answers only while the stage
+armed in the device's last resolve). Cross-compiled (0 warnings, x87 PASS); not run on a device here (no Wine on the
+native host): native behaviour is verified by the first flight on native AP. FL: inert in this step (one row).
+
 ## 2026-10-08: occlusion cull of ship sub-parts (`occlusion_cull`, default on)
 
 The cull ([occlusion-cull.md](occlusion-cull.md)) uses documented D3D9 only: `D3DQUERYTYPE_OCCLUSION` queries

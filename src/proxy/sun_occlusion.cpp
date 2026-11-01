@@ -5,6 +5,7 @@
 #include "object_trace.h"
 #include "cpu_state.h"
 #include "capture.h"
+#include "own_sun_core.h"
 #include <windows.h>
 #include <cstring>
 
@@ -32,6 +33,8 @@ core::Deferral deferral_; // a record whose lens body the scan cannot classify: 
 #endif
 core::Latch latch_;
 Counters counters_{};
+bool own_sun_wanted_ = false;      // request_own_sun(): install for the own sun
+volatile bool own_sun_frame_ = false; // set_own_sun_frame(): this frame's own-sun answer (Present thread = owner thread)
 std::uint32_t seen_frame_ = 0;
 std::uintptr_t main_view_ = 0;
 bool multi_counted_ = false, frame_started_ = false, foreign_logged_ = false;
@@ -141,6 +144,14 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     }
     in.owner_flags = owner_flags;
     const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);
+    // Own sun (own_sun_core.h): the sun's eligible record is "hidden" in an own-sun frame, before the readiness state
+    // machine and the latch (the visibility pass and the lens wraps then see no record); the engine destroys the
+    // record's bodies (0x00471660). Integer only, like everything on this path.
+    if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {
+        ++counters_.own;
+        ++counters_.own_sun_hidden;
+        return core::Hidden;
+    }
     if (own) {
         ++counters_.own;
 #if !X3M_EDITION_FL
@@ -362,7 +373,7 @@ bool initialize(bool bracket_wanted) {
     wchar_t setting[4]{};
     const bool requested = x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L'1';
     const bool log_requested = x3m::config::get(L"X3M_SUN_OCCLUSION_LOG", setting, 4) == 1 && setting[0] == L'1';
-    if (!requested && !log_requested && !bracket_wanted) {
+    if (!requested && !log_requested && !bracket_wanted && !own_sun_wanted_) {
         state_ = "disabled";
         SetLastError(error);
         return false;
@@ -384,12 +395,13 @@ bool initialize(bool bracket_wanted) {
         applied = install_at(Addresses{core::probe_site_va, core::probe_target_va, core::lens_site_va,
                                        core::lens_target_va, core::config_global_va, nullptr},
                              requested, log_requested);
-    log("sun_occlusion requested=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s lens_gain=%u",
+    log("sun_occlusion requested=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s lens_gain=%u own_sun=%u",
         requested ? 1u : 0u, log_requested ? 1u : 0u, patched_ ? 1u : 0u, state_,
         static_cast<unsigned long>(core::probe_site_va), static_cast<unsigned long>(core::probe_target_va),
         probe_site_.patched_in ? (probe_site_.atomic_write ? "atomic" : "plain") : "none",
         static_cast<unsigned long>(core::lens_site_va), static_cast<unsigned long>(core::lens_target_va),
-        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none", bracket_wanted ? 1u : 0u);
+        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none", bracket_wanted ? 1u : 0u,
+        own_sun_wanted_ ? 1u : 0u);
     SetLastError(error);
     return applied;
 }
@@ -435,6 +447,12 @@ void present(unsigned long long next_device_frame) {
 }
 void device_reset() {
     if (patched_) InterlockedExchange(&reset_requested_, 1);
+}
+void request_own_sun() {
+    own_sun_wanted_ = true;
+}
+void set_own_sun_frame(bool active) {
+    own_sun_frame_ = patched_ && active;
 }
 FrameInputs frame_inputs() {
     FrameInputs out;

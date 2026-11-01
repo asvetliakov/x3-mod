@@ -1,0 +1,24 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, WSL interop, no device)",
+ "harness": "verification/results/hull-widen-native-validator/native_validate.cpp",
+ "slot_counter": "src/renderer/ps3_program_slots.h",
+ "passed": true,
+ "programs": [
+  {
+   "program": "own_sun_vs",
+   "words": 43,
+   "messages": [],
+   "end": "00000000",
+   "slots": 2,
+   "source_header": "src/renderer/own_sun_vertex_program_inc.h"
+  },
+  {
+   "program": "own_sun_ps",
+   "words": 339,
+   "messages": [],
+   "end": "00000000",
+   "slots": 70,
+   "source_header": "src/renderer/own_sun_pixel_program_inc.h"
+  }
+ ]
+}
