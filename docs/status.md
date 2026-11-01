@@ -5,7 +5,7 @@ branch `fl-codex`; main carries only its 106 disassembly notes
 ([docs/reverse-engineering/fl/](reverse-engineering/fl/README.md), unverified in
 game). FL run 0 flew the accepted AP DLL under `X3FL.exe`: loads, 36k frames, all
 engine modules refused on identity, TAA/HDR inactive ([FL ledger](verification/farnhams-legacy.md)).
-Installed in `C:\X3FL`: FL run 2, the camera_state provider (`e589ebeb…`, commit `8438025e`), accepted: anchors matched, perspective aspect 3.5555, orthonormal view, scene eye moving; run 1 (identity line) accepted with `fl.identity ok base=0x004d0000`. Next: the remaining engine
+Installed in `C:\X3FL`: FL run 3, the object_trace scope hook (`66998d98…`, commit `295cc894`, first FL code patch, log-proof only, result pending). Run 2, the camera_state provider (commit `8438025e`), accepted: anchors matched, perspective aspect 3.5555, orthonormal view, scene eye moving; run 1 (identity line) accepted with `fl.identity ok base=0x004d0000`. Next: the remaining engine
 providers one per run.
 
 **Release 1.7.3** (2026-10-27T19:08): stripped DLL `bde29ab1…` (42,535,121 B) built by `release.py` from clean `10d42d74`, installed into native `C:\X3` as Run212, rollback `rollback-d3d9\d3d9.dll.run211`; zip `b41cc537…` (60,222,530 B) at /home/asvetl/x3m-releases/1.7.3/ and `C:\Users\asvet\Downloads\`; x3m-regenerate.exe 1.7.0 reused; the user's `x3m.ini` header bumped to 1.7.3 ([releases ledger](verification/releases.md#release-173)). = 1.7.2 + `circle_fill_fix` (Run211). No run open.

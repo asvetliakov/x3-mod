@@ -77,7 +77,7 @@ then `proj=0x04c86108 view=0x04c85d60` for the whole flight. 16 of 18 sample row
 read) `t_len` ≈ 11.3, `k=1` (scene read) `t_len` 112,765 → 139,542 while flying.
 **Accepted:** the inherited slots and the row-major D3D layout are confirmed in game.
 
-## Step 3a — FL scope hook, host evidence (2026-11-01, not installed)
+## FL run 3 — step 3a, FL scope hook (installed 2026-11-01)
 
 Design: [object identity note](../architecture/farnhams-legacy-object-identity.md). Measured on the WSL2 host,
 uncommitted worktree on 171e5477: clean rebuilds of both editions, 0 warnings each; the fl link has
@@ -99,3 +99,9 @@ non-negative `model` keys, a constant nonzero `registry` (`registry_changed=1` o
 (descriptor/node swapped, camera one word off): `null_camera`, `camera_unreadable` or `field_failed` near the
 first-sighting counts, handles 0. Wrong node offsets: `lod`/`model` pointer-like or −1 throughout. Image
 still vanilla (`object_lifetime` off).
+
+Install: commit `295cc894` (the A/B-selected implementation, see
+[model routing](model-routing.md)), `build-fl/d3d9.dll` SHA-256 `66998d98…`
+built from main, 0 warnings, FL host tests 21 pass
+([record](../../verification/results/fl-run3/candidate.json)); `C:\X3FL\d3d9.dll`
+bytes verified, rollback `C:\X3FL\rollback-d3d9\d3d9.dll.run2`. Result: pending.
