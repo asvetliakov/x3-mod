@@ -1784,3 +1784,19 @@ mouse steering); (0,0) lies inside a full viewport, so an admitted shot could go
 exposure as AP; the flight check covers it (report any bolts that go to a screen corner). The witness is bound by the
 two-second QPC window, not by `chase_transition`'s cockpit-lifetime generation (as on AP). `check_no_x87.py` cannot
 check the FL DLL (it roots at the AP-only `gz_read`).
+
+## FL run 26 — chase cursor fire on FL (installed 2026-11-03)
+
+Commit `b3b0e30c0` (fast-forward), Opus-high review with no blocker, fixes folded (section above); the transition wiring
+test accepts the fire report line (`b4ea9ff1d`). Clean `build-fl` from main `b4ea9ff1d`, 0 warnings; 10 host modules 147 tests
+0 failing; `verify_chase_fire_sites_fl.py` PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` =
+`3851f91d…` (55,621,875 B), rollback `rollback-d3d9\d3d9.dll.run25` = `413eb49b…`; overlay and ini unchanged. Record
+`verification/results/fl-run26/candidate.json`.
+
+**FL run 26 A (open):** in the chase view, select a target well off-centre, hold the right mouse button with the cursor on it
+and fire a few bursts; also fire once with the cursor hidden (mouse steering) to probe the (0,0) exposure; one F8 while
+firing; tell me before relaunching. Expect `chase_fire installed=1 … edition=fl`, the fire row's `native_inactive_override`
+rising while firing at the cursor (or `native_active > 0` with override 0 if FL already aims at the cursor natively),
+`early_*`/`refused_*` not rising during those bursts, `chase_camera … dependencies=chase_lead,chase_fire,chase_transition`.
+Visual: bolts go to the cursor, not straight ahead; with the cursor hidden nothing aims at the top-left corner. Report a
+shot that goes somewhere other than the cursor or the boresight.
