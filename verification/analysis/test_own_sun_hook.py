@@ -125,8 +125,10 @@ class OwnSunHookSource(unittest.TestCase):
         # The lens call's bytes stay in the identity; the call itself is never claimed.
         for kept in ('state_ = "lens_site_mismatch";', 'state_ = "lens_body_mismatch";'):
             self.assertIn(kept, init)
-        for gone in ('x3m_sun_lens', 'lens_site_{', 'lens_site_.', 'bracket', 'set_listener', 'X3M_SUBMIT_PHASES', 'PreserveCpuState'):
+        for gone in ('x3m_sun_lens', 'lens_site_{', 'lens_site_.', 'bracket', 'set_listener', 'PreserveCpuState'):
             self.assertFalse(gone in sun, gone)
+        # The submit stamp rewrites the lens call's identity bytes: refused by name, before the identity checks.
+        self.assertLess(init.index('state_ = "submit_phases_conflict";'), init.index('state_ = "lens_site_mismatch";'))
 
     def test_lens_bracket_gain_and_cull_are_deleted(self):
         # 2026-11-02: the own sun replaces the engine sun and the engine plumes remove the small engine flares, so the

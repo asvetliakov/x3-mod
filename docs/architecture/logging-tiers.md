@@ -383,8 +383,8 @@ failing closed per site). The heavy set is in neither group because the stand is
 flight; a stutter report starts with `--perf`, adds `--debug`, and uses `--draw-trace` for one attribution flight. The
 launcher refuses `--draw-trace` without `--perf` or `--debug` (the telemetry counters and the frame boundary) and sends
 nothing under `--vanilla`; the DLL also turns the frame phases on for `X3M_DRAW_TRACE=1`. `X3M_SUBMIT_PHASES` is in no
-group: its stamp at 0x00472490 claims the lens traversal call (patched by the sun-occlusion default, later the own-sun
-hook's lens bracket, until 2026-11-02), so it stays a fixture-only read (`run_submit_phase_cpu.py`, the site verifiers); the launcher's `--submit-phases` conflict check and the
+group: its stamp at 0x00472490 claims the lens traversal call (patched by the own-sun hook's lens bracket until
+2026-11-02, still part of the hook's install identity, so the hook refuses the pair), so it stays a fixture-only read (`run_submit_phase_cpu.py`, the site verifiers); the launcher's `--submit-phases` conflict check and the
 default's suppression went with the option, the DLL still refuses the pair. Fixture-only (options removed, reads kept):
 `X3M_FRAME_END_STRIDE` (an explicit value still wins over 3600 / 1), `X3M_FRAME_TIMING_STATE_STAMPS`,
 `X3M_COLLIDE_MEMO_VERIFY`, `X3M_MESH_ADJACENCY=verify`, `X3M_GAME_PHASE_THRESHOLD_MS`; `--resource-read verify` left the

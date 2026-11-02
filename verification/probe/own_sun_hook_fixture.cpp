@@ -205,7 +205,7 @@ int main() {
     }
     // An install without the own-sun request (initialize() no longer makes one; install_at still can): the latch cannot
     // be set, every probe is the original's on the caller's frame.
-    check("install_bracket_only", so::install_at(addresses(), false) && so::installed() && !so::logging());
+    check("install_not_requested", so::install_at(addresses(), false) && so::installed() && !so::logging());
     {
         std::int32_t rel = 0;
         std::memcpy(&rel, fx_probe_site + 1, 4);
@@ -215,11 +215,11 @@ int main() {
     check("install_twice", !so::install_at(addresses(), false) && so::installed());
     fx_probe_answer = 0;
     next_frame(true); // not requested: ignored
-    check("bracket_only_original_visible", probe(record_block, view_block, 0, 1));
+    check("not_requested_original_visible", probe(record_block, view_block, 0, 1));
     check("original_return_address", fx_probe_return == fx_probe_site + 5);
     fx_probe_answer = 1;
-    check("bracket_only_original_hidden", probe(record_block, view_block, 1, 1) && !so::own_sun_hidden());
-    check("shutdown_bracket_only", so::shutdown() && !so::installed() && !std::memcmp(probe_before, fx_probe_site, 5));
+    check("not_requested_original_hidden", probe(record_block, view_block, 1, 1) && !so::own_sun_hidden());
+    check("shutdown_not_requested", so::shutdown() && !so::installed() && !std::memcmp(probe_before, fx_probe_site, 5));
 
     // The own sun requested.
     so::request_own_sun();

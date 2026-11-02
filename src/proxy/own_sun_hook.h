@@ -25,8 +25,9 @@
 //
 // Install: exact-executable identity, 21 whole-instruction bytes around the probe call and around the (untouched)
 // lens-scene call 0x00472491, the probe's prologue with its three early tests (148 bytes, FNV-1a: the probe's
-// identity) and the traversal's entry, then engine_patch::claim_call on the probe site inside the install window. Any
-// refusal logs one line and leaves the site vanilla.
+// identity) and the traversal's entry, then engine_patch::claim_call on the probe site inside the install window.
+// Refused by name with X3M_SUBMIT_PHASES=1, whose sort_return_b stamp rewrites the lens call's identity bytes
+// 0x00472490..0x00472495. Any refusal logs one line and leaves the site vanilla.
 //
 // Threads: all state belongs to the first thread through the probe thunk (the game's render
 // thread, also the Present thread); any other thread gets the original.

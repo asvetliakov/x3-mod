@@ -31,8 +31,8 @@ constexpr std::uint64_t probe_gates_fnv1a = 0x0e5f40888a926996ull;
 constexpr unsigned char probe_entry[] = {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf0, 0x83, 0xec, 0x44};
 // mov eax,[0x608518]; push ebx; push ebp; mov ebp,[esp+0xc] (one stack argument, caller cleans).
 constexpr unsigned char lens_entry[] = {0xa1, 0x18, 0x85, 0x60, 0x00, 0x53, 0x55, 0x8b, 0x6c, 0x24, 0x0c};
-// The X3M_SUBMIT_PHASES diagnostic claims 0x00472490 (six bytes: push esi + this call); no conflict since the lens call
-// is not claimed (verify_own_sun_hook_sites.py still reports the overlap).
+// The X3M_SUBMIT_PHASES diagnostic claims 0x00472490 (six bytes: push esi + this call): the lens call is not claimed
+// any more, but its bytes are part of the install identity, so the pair is refused by name (submit_phases_conflict).
 constexpr std::uintptr_t conflicting_submit_phase_va = 0x00472490;
 
 // ---- Engine layout ----

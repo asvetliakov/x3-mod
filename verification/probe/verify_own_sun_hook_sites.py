@@ -13,8 +13,8 @@ the exact caller sets of both callees from a raw E8/E9 scan of .text; no direct 
 rel8/rel32 inside the two owning routines, raw rel32 anywhere in .text) into the interior of
 either call; no 32-bit absolute reference to a byte of either call anywhere in the file; and
 disjointness from every other claimed site under src/proxy, except the one documented overlap
-(X3M_SUBMIT_PHASES' sort_return_b stamp at 0x00472490 over the lens call; refused by name at install until the lens
-bracket's deletion, no longer a conflict since the lens call is not claimed). No Wine, no launch.
+(X3M_SUBMIT_PHASES' sort_return_b stamp at 0x00472490 over the lens call; the call is no longer claimed, but its
+bytes stay in the install identity, so the pair is still refused by name at install). No Wine, no launch.
 """
 import argparse
 import json

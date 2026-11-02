@@ -224,9 +224,12 @@ bool initialize() {
     wchar_t setting[4]{};
     const bool log_requested = x3m::config::get(L"X3M_OWN_SUN_LOG", setting, 4) == 1 && setting[0] == L'1';
     bool applied = false;
-    // The lens-scene call's bytes stay part of the identity (21 whole-instruction bytes and the traversal's entry);
-    // the call itself is not claimed, so the submit-phase stamp at 0x00472490 no longer conflicts.
-    if (!object_trace::executable_verified())
+    // The lens-scene call's bytes stay part of the identity (21 whole-instruction bytes and the traversal's entry)
+    // although the call itself is not claimed: X3M_SUBMIT_PHASES' sort_return_b stamp rewrites 0x00472490..0x00472495
+    // (installed earlier on the same path), so it is refused by name rather than as lens_site_mismatch.
+    if (x3m::config::get(L"X3M_SUBMIT_PHASES", setting, 4) == 1 && setting[0] == L'1')
+        state_ = "submit_phases_conflict";
+    else if (!object_trace::executable_verified())
         state_ = "executable_mismatch";
     else if (!bytes_match(core::probe_context_va, core::probe_context, sizeof core::probe_context))
         state_ = "probe_site_mismatch";

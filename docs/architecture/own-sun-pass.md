@@ -488,7 +488,9 @@ engine plumes flown on FL). Evidence: [sun-occlusion ledger](../verification/sun
   link-time placement of the handler call and the target word differ); the install identity is unchanged (AP: executable,
   the 21 context bytes of both calls, the 148-byte probe hash and the traversal's entry; FL: the 17 anchors, the
   `lens_block` one included). The lens call is byte-for-byte vanilla on both editions. The AP refusal
-  `submit_phases_conflict` went too: it guarded the lens claim, and the probe call is disjoint from the submit stamps.
+  `submit_phases_conflict` stays: the submit stamp rewrites the lens call's identity bytes (installed earlier on the
+  same path), so the pair is refused by name rather than as `lens_site_mismatch`; dropping those bytes from the identity
+  would weaken a check that costs nothing.
   Rows: `own_sun_hook own_sun= log= patched= reason= probe_site= probe_target= probe_write=` (no `bracket=`, no
   `lens_*`); FL `fl.sun_occlusion status= base= probe= probe_write= log= own_sun= main_view= anchors= failed_anchor=
   log_s=` and `fl.sun_occlusion_sample` without `brackets=`.
@@ -496,6 +498,8 @@ engine plumes flown on FL). Evidence: [sun-occlusion ledger](../verification/sun
   `config_key key=lens_flare_gain problem=unknown line=N value=G`; nothing else changes. `X3M_LENS_FLARE_GAIN` is in
   the launcher's `REMOVED_VARIABLES` (an inherited value is dropped); `--lens-flare-gain` is an unrecognised argument.
 - **Kept.** The RT2 acquire/release seam (the retention fixture's clamp case uses it).
+- **`own_sun = 0` with the fog (user decision).** The vanilla sun's lens flare is no longer dimmed by the fog's
+  transmittance: that share rode on the deleted bracket.
 
 ### Step 3 as built: the FL hidden answer (2026-11-02, FL; not flown)
 
