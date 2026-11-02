@@ -25,6 +25,7 @@ core::Stats stats() noexcept;
 unsigned culled_count() noexcept;
 const core::CulledPair* culled() noexcept;
 } // namespace x3m::engine_far_jets
-// The stub's call: cdecl, node = EDI, measure = ESI, view = the pass's site [ESP+0x28]; EAX/ECX/EDX saved by the stub.
+// The stub's call: cdecl, node = EDI, measure = ESI, view = the pass's site [ESP+0x28]; EAX/ECX/EDX saved by the stub
+// (FL, cull_small_parts_sites_fl.h: node = ESI, measure = ECX, view = EBX; ECX saved, EAX/EDX dead).
 extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std::uint32_t view);
 extern "C" volatile std::uint32_t x3m_engine_far_armed;

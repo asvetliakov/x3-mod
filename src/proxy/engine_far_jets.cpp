@@ -11,6 +11,13 @@ core::CulledPair culled_[core::capacity]; // the engine-culled (node handle, vie
 unsigned culled_count_ = 0;
 core::Stats stats_{};
 core::Requests requests_{};
+// The node's model id: +0x140 on X3AP.exe, +0x144 on X3FL.exe (docs/reverse-engineering/fl/cull-chain.md, "Node layout";
+// every other field the handler reads is at the same offset in both editions).
+#if X3M_EDITION_FL
+constexpr unsigned model_at = 0x144;
+#else
+constexpr unsigned model_at = core::model_offset;
+#endif
 inline std::uint32_t word(std::uint32_t base, unsigned offset) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(base + offset);
 }
@@ -23,7 +30,7 @@ extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std
         ++stats_.disarmed;
         return;
     }
-    const std::uint32_t model = word(node, core::model_offset);
+    const std::uint32_t model = word(node, model_at);
     if (model == core::steering_model) {
         ++stats_.steering;
         return;
