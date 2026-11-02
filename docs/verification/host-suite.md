@@ -101,6 +101,7 @@ so the records cannot be re-recorded while the sources keep changing natively:
 | `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140) | 5 of 14 |
 | `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140) | 1 of 9 |
 | `test_fov_patch_result` | `fov-patch.json` (ecf0215ee, 2026-09-26) | 1 of 7 |
+| `test_engine_effects_sites` | `engine-effects-patch.json` (203c5e984, Run124) | 1 of 7 (`engine_effects_option.h`, 17ab85a84) |
 | `test_occlusion_cull` | occlusion records (2026-10-08) | accepted 2026-11-02 |
 
 Pattern (as `test_occlusion_cull`'s 2026-11-02 constants): a dated constant
