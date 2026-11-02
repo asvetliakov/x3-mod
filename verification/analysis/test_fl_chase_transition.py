@@ -72,7 +72,23 @@ class FlChaseTransitionNativeFixture(unittest.TestCase):
             self.assertIn(f'result={result} ', row.group(0))
             self.assertIn(f'hud_refresh={hud} ', row.group(0))
         self.assertRegex(out, r'(?m)^LOG chase_transition installed=1 status=active edition=fl base=0x[0-9a-f]{4}0000 '
-                              r'window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 ')
+                              r'window=- window_closed_by=- diagnostics=0 diagnostics_reason=telemetry_off '
+                              r'diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,'
+                              r'camera_58,target_1e0,boom_130 observers=1 ')
+        self.assertRegex(out, r'(?m)^LOG chase_transition installed=1 status=active edition=fl .* diagnostics=1 '
+                              r'diagnostics_reason=fl_verified_reads ')
+        # The restore cases' kind-9 event rows (result, cancel, attempts, hud_refresh), as the outcome rows have them.
+        for name, row in (('gate', 'result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258'),
+                          ('dock', 'result=restored cancel=none attempts=1 hud_refresh=skipped mode_seen=258'),
+                          ('jump', 'result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258'),
+                          ('retries', 'result=no_effect cancel=retries attempts=3 hud_refresh=none'),
+                          ('refused', 'result=call_refused cancel=call_refused attempts=1 hud_refresh=none')):
+            self.assertRegex(out, rf'(?m)^EVENT {name} events: kind 9 {row}')
+        for cancel in ('load', 'epoch', 'lifetime', 'no_monitor'):
+            self.assertRegex(out, rf'(?m)^EVENT cancel events: .* -> kind 9 cancel={cancel} result=cancelled '
+                                  rf'cancel={cancel} ')
+        self.assertRegex(out, r'(?m)^TIMING n=2000 update_us diagnostics_off=[0-9.]+ on_unchanged=[0-9.]+ '
+                              r'on_changing=[0-9.]+ ')
         self.assertRegex(out, r'(?m)^LOG chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine '
                               r'sites=1 cancel_sites=3 inject_site=0x[0-9a-f]{8} inject_rva=0x0cfd00 call=0x[0-9a-f]{8} '
                               r'call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 ')

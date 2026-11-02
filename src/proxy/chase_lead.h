@@ -4,8 +4,10 @@
 // Main-gun predictive marker and optional native central instruments in a
 // currently applied chase view. Requires
 // chase_transition's actual cockpit lifetime and update hooks. No mode writes.
-// FL edition (src/engine/fl/chase_lead_fl.cpp): the same API; its update binding is the chase camera's pose-seam visit
-// (invalidate_pose, then camera_context), closed at the final-FOV seam; native_timing_invalidate is a no-op there.
+// FL edition (src/engine/fl/chase_lead_fl.cpp): the same API; its update binding is chase_transition's lifetime/update
+// token as on AP when that module is installed (update=lifetime), else the chase camera's pose-seam visit
+// (invalidate_pose, then camera_context), closed at the final-FOV seam (update=pose_seam); native_timing_invalidate is
+// a no-op there.
 namespace x3m::chase_lead {
 bool initialize();
 bool installed();
@@ -27,7 +29,7 @@ void shutdown(); // explicit quiescent fixture teardown only
 struct FixtureCounts {
     std::uint64_t lead[12]{}, hud[12]{}, anchor_applied = 0, anchor_refused = 0;
     std::int32_t anchor_x = 0, anchor_y = 0;
-    bool pose_open = false;
+    bool pose_open = false, lifetime = false; // lifetime: update=lifetime was chosen at initialize()
 };
 void fixture_base(std::uintptr_t base);
 void fixture_reset();

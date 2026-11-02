@@ -26,9 +26,11 @@ namespace {
 // FL (X3FL.exe, relocatable; src/engine/fl/chase_transition_sites_fl.h, docs/reverse-engineering/fl/
 // chase-transition.md "Verified 2026-11-02"): the same witness/observer/restore groups bound to the loaded base by
 // fl_admit() once every identity window matches. Eight sites: the six mandatory witnesses and the script/load mode
-// stores (AP's connect observer, kind 8, is a diagnostic only and is not claimed: diagnostics stay off on FL, their
-// provenance and identity readers are AP-bound). Register ABI differences are local to handle(),
-// restore_on_mode_store() and restore_inject(); native return addresses are normalized to preferred-base VAs.
+// stores (AP's connect observer, kind 8, is a diagnostic only and is not claimed). With telemetry the event window runs
+// on FL too, on FL-verified reads only (snapshot(), active_handle(), fl_store_frame()) plus a kind-9 row per finished
+// restore ticket; what would need an unverified read stays off and is named in fl_diagnostics_off. Register ABI
+// differences are local to handle(), restore_on_mode_store() and restore_inject(); native return addresses are
+// normalized to preferred-base VAs.
 namespace S = x3m::fl::chase_transition_fl;
 constexpr unsigned mandatory = S::mandatory, site_count = S::site_count;
 engine_patch::SiteSpec specs[site_count]{};
@@ -38,6 +40,13 @@ std::uintptr_t fl_base = 0;                // the admitted base (0 until fl_admi
 std::uint32_t fl_native_return = 0;        // base + S::native_return_rva
 const char* fl_refusal = "not_initialized"; // initialize()'s FL status
 unsigned fl_failed_window = S::window_count;
+// AP diagnostics not ported on FL, logged in the install and window rows: the connect observer (kind 8, not claimed),
+// the VM return-record and destructor provenance, IdentityReader and geometry (+0xa8/+0x160/+0x120), whose FL
+// contracts are unverified; the +0x130 boom field (unverified on FL); and the +0x58 world camera and +0x1e0 target,
+// which are FL-verified (fl/chase-camera.md, fl/chase-lead.md) but kept out deliberately: the FL row carries the
+// restore's field set.
+constexpr const char* fl_diagnostics_off =
+    "connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130";
 #ifdef X3M_CHASE_TRANSITION_FL_FIXTURE
 std::uintptr_t fixture_base_ = 0;  // initialize()'s base instead of fl::module_base() when nonzero
 unsigned fixture_fault_claim_ = ~0u; // one-shot: the n-th claim's read-back sees a foreign byte
@@ -101,6 +110,9 @@ using detail::Origin;
 struct Snapshot {
     std::uint32_t valid = 0, mode = 0, connect = 0, ship = 0, view = 0, camera = 0, sector = 0, target = 0;
     std::int32_t boom[3]{};
+#if X3M_EDITION_FL
+    std::uint32_t flags = 0, sector54 = 0; // FL: +0x1a0 (valid 256), +0x54 (valid 512); camera/target/boom stay 0
+#endif
 };
 struct Event {
     std::uint64_t sequence = 0, qpc = 0, generation = 0, update = 0;
@@ -112,6 +124,12 @@ struct Event {
         std::int32_t angles[3]{}, offset[3]{};
     } geometry;
     detail::Identity identity;
+#if X3M_EDITION_FL
+    // Kind 6: the verified dispatcher frame chain (fl_store_frame); kind 9: a finished restore ticket.
+    std::uint32_t frame_ok = 0, task = 0, context = 0, script_id = 0, script_class = 0;
+    std::uint32_t result = 0, cancel = 0, attempts = 0, hud = 0, mode_seen = 0, monitor = 0;
+    std::uint64_t generation_from = 0;
+#endif
 };
 struct Seen {
     std::uintptr_t cockpit = 0;
@@ -136,6 +154,17 @@ std::uint64_t now() {
     return QueryPerformanceCounter(&q) && q.QuadPart > 0 ? std::uint64_t(q.QuadPart) : 0;
 }
 void snapshot(std::uintptr_t c, Snapshot& s) {
+#if X3M_EDITION_FL
+    // FL: the restore_read_frame field set (all verified on X3FL.exe). +0x58 camera and +0x1e0 target are verified too
+    // but kept out deliberately; +0x130 boom is unverified on FL. Their valid bits stay clear.
+    if (field(c, 0x150, s.mode)) s.valid |= 1;
+    if (field(c, 0x1c0, s.connect)) s.valid |= 2;
+    if (field(c, 0xc, s.ship)) s.valid |= 4;
+    if (field(c, 0x10, s.view)) s.valid |= 8;
+    if (field(c, 0x1fc, s.sector)) s.valid |= 32;
+    if (field(c, 0x1a0, s.flags)) s.valid |= 256;
+    if (field(c, 0x54, s.sector54)) s.valid |= 512;
+#else
     if (field(c, 0x150, s.mode)) s.valid |= 1;
     if (field(c, 0x1c0, s.connect)) s.valid |= 2;
     if (field(c, 0xc, s.ship)) s.valid |= 4;
@@ -144,6 +173,7 @@ void snapshot(std::uintptr_t c, Snapshot& s) {
     if (field(c, 0x1fc, s.sector)) s.valid |= 32;
     if (field(c, 0x1e0, s.target)) s.valid |= 64;
     if (field(c, 0x130, s.boom)) s.valid |= 128;
+#endif
 }
 // Process roots; the CPU fixture aliases them to fixture-owned memory.
 #if X3M_EDITION_FL
@@ -166,6 +196,7 @@ bool active_handle(std::uintptr_t cockpit, std::uint32_t& handle) {
     }
     return false;
 }
+#if !X3M_EDITION_FL // FL: no provenance reader uses it (see record())
 // Runtime CODE length has not been established. Instead of inventing one,
 // enforce overflow-free offsets and the same VirtualAlloc allocation as CODE
 // base, then use the ordinary checked reader. This is conservative at split
@@ -178,9 +209,34 @@ bool code_address(std::uint32_t code, std::uint32_t offset, unsigned n, std::uin
            VirtualQuery(reinterpret_cast<void*>(at + n - 1), &b, sizeof b) == sizeof b && a.State == MEM_COMMIT &&
            b.State == MEM_COMMIT && a.AllocationBase == b.AllocationBase;
 }
+#endif
+#if X3M_EDITION_FL
+// The script mode store's dispatcher argument frame (EBX, "Verified 2026-11-02": [EBX+4] native return base+0x0c0785,
+// [EBX+0x10] command 0x30, [EBX+0xc] task; task +0x3c context; context +0 id, +8 class descriptor, [desc] class id).
+// ok only for the whole chain with a dynamic (negative) object id; id and class_id are 0 otherwise.
+struct StoreFrame {
+    std::uint32_t task = 0, context = 0, id = 0, class_id = 0;
+    bool ok = false;
+};
+StoreFrame fl_store_frame(std::uint32_t ebx) {
+    StoreFrame f;
+    std::uint32_t return_pc = 0, command = 0, desc = 0;
+    f.ok = field(ebx, S::frame_return, return_pc) && return_pc == fl_native_return && fl_native_return &&
+           field(ebx, S::frame_command, command) && command == S::mode_command && field(ebx, S::frame_task, f.task) &&
+           f.task && !(f.task & 3) && field(f.task, 0x3c, f.context) && f.context && !(f.context & 3) &&
+           field(f.context, 0, f.id) && std::int32_t(f.id) < 0 && field(f.context, 8, desc) && desc && !(desc & 3) &&
+           field(desc, 0, f.class_id);
+    if (!f.ok) f.id = f.class_id = 0;
+    return f;
+}
+#endif
 bool same(const Event& a, const Event& b) {
     return a.kind == b.kind && a.requested == b.requested && a.caller == b.caller && a.valid == b.valid &&
            a.handle == b.handle && !std::memcmp(&a.before, &b.before, sizeof a.before) &&
+#if X3M_EDITION_FL
+           a.frame_ok == b.frame_ok && a.task == b.task && a.context == b.context && a.script_id == b.script_id &&
+           a.script_class == b.script_class &&
+#endif
            !std::memcmp(&a.origin, &b.origin, sizeof a.origin);
 }
 void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::uint32_t caller = 0,
@@ -203,8 +259,21 @@ void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::ui
         else
             e.handle = 0;
     }
+#if X3M_EDITION_FL
+    // FL: the verified mode-store frame chain only (`ebp` carries EBX). AP's VM provenance (return-record pairs) and
+    // destructor provenance are not ported: their dispatcher/return contracts are unverified on FL.
+    if (kind == 6) {
+        const StoreFrame f = fl_store_frame(ebp);
+        e.frame_ok = f.ok;
+        e.task = f.task;
+        e.context = f.context;
+        e.script_id = f.id;
+        e.script_class = f.class_id;
+    }
+#else
     if (kind == 6) detail::provenance(ebp, e.origin, bytes, code_address);
     if (kind == 2) detail::destructor_provenance(caller, ebp, e.origin, bytes, code_address);
+#endif
     if (kind == 3 && !life) {
         Seen* slot = nullptr;
         for (auto& row : unknown_updates)
@@ -238,6 +307,10 @@ void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::ui
         }
         prior = {cockpit, e.generation, e, true};
     }
+#if X3M_EDITION_FL
+    // FL: no geometry (+0xa8/+0x160/+0x120) or IdentityReader walk (AP-bound roots and story cells): unverified there.
+    if (kind == 6 && !e.frame_ok) ++read_failures;
+#else
     // Supplement only an admitted event. Animated angles and identity walks
     // neither change suppression nor add work on every updater/draw.
     if (life && life->complete) {
@@ -249,10 +322,32 @@ void record(unsigned kind, std::uintptr_t cockpit, std::uint32_t thread, std::ui
     identity_reader.capture((e.before.valid & 4) ? e.before.ship : 0, (e.origin.valid & 7) == 7 ? e.origin.context : 0,
                             e.identity);
     if (e.origin.flags & 1) ++read_failures;
+#endif
     e.sequence = ++sequence;
     e.qpc = now();
     window.push(e);
 }
+#if X3M_EDITION_FL
+// FL: a finished ticket also enters the diagnostic window as kind 9, in order with the witnesses that led to it (the
+// chase_view_restore outcome row is emitted at once; the window at the next report). No engine read.
+void record_outcome(const detail::RestoreOutcome& o) {
+    if (!diagnostic.load(std::memory_order_relaxed)) return;
+    Event e{};
+    e.kind = 9;
+    e.thread = GetCurrentThreadId();
+    e.generation = o.generation_to;
+    e.generation_from = o.generation_from;
+    e.result = o.result;
+    e.cancel = o.cancel;
+    e.attempts = o.attempts;
+    e.hud = o.hud_refresh;
+    e.mode_seen = o.mode_seen;
+    e.monitor = o.monitor;
+    e.sequence = ++sequence;
+    e.qpc = now();
+    window.push(e);
+}
+#endif
 // ---- one-use rear-chase restore ticket (X3M_CHASE_VIEW_RESTORE=1) ----
 // Lock-protected state; the epoch is lock-free so the EH adapter can cancel
 // without acquiring anything. The injection prefilter word is read racily by
@@ -350,7 +445,14 @@ struct RestoreRows {
     detail::RestoreOutcome outcome;
     void take() { // keeps a row an earlier take of the same handler already holds
         if (const auto s = restore.take_arm_sample(); s.wanted) sample = s;
+#if X3M_EDITION_FL
+        if (const auto o = restore.take_outcome(); o.wanted) {
+            outcome = o;
+            record_outcome(o);
+        }
+#else
         if (const auto o = restore.take_outcome(); o.wanted) outcome = o;
+#endif
     }
     void emit() const { // never under the Guard: log() takes capture's mutex, which present() holds around report()
         if (sample.wanted) restore_emit_sample(sample);
@@ -403,24 +505,22 @@ void restore_on_mode_store(std::uint32_t* regs, std::uint32_t thread) {
     const std::uintptr_t cockpit = regs[7];
 #if X3M_EDITION_FL
     // FL: the dispatcher's argument frame is EBX (entry ESP - 4), not EBP; the native-call return is base-relative
-    // and the command word must be the mode case 0x30.
-    const std::uint32_t requested = regs[6], ebp = regs[4];
+    // and the command word must be the mode case 0x30 (fl_store_frame, shared with the kind-6 event row).
+    const std::uint32_t requested = regs[6];
     const auto* life = state.find(cockpit);
-    std::uint32_t return_pc = 0, task = 0, context = 0, id = 0, desc = 0, class_id = 0, command = 0;
-    if (!(field(ebp, S::frame_return, return_pc) && return_pc == fl_native_return && fl_native_return &&
-          field(ebp, S::frame_command, command) && command == S::mode_command &&
-          field(ebp, S::frame_task, task) && task && !(task & 3) &&
+    const StoreFrame frame = fl_store_frame(regs[4]);
+    const std::uint32_t task = frame.task, context = frame.context, id = frame.id, class_id = frame.class_id;
 #else
     const std::uint32_t requested = regs[6], ebp = regs[2];
     const auto* life = state.find(cockpit);
     std::uint32_t return_pc = 0, task = 0, context = 0, id = 0, desc = 0, class_id = 0;
     if (!(field(ebp, 4, return_pc) && return_pc == 0x4a3909 && field(ebp, 0xc, task) && task && !(task & 3) &&
-#endif
           field(task, 0x3c, context) && context && !(context & 3) && field(context, 0, id) &&
           std::int32_t(id) < 0 && field(context, 8, desc) && desc && !(desc & 3) && field(desc, 0, class_id))) {
         id = 0;
         class_id = 0;
     }
+#endif
     detail::RestoreCaller caller;
     if (id && restore.phase != detail::phase_calling && life && life->constructor_caller == detail::restore_alloc_caller)
         caller = detail::restore_caller_context(task, context, bytes);
@@ -585,7 +685,8 @@ void handle(unsigned kind, std::uint32_t* regs) {
 #if X3M_EDITION_FL
         // FL register ABI (chase_transition_sites_fl.h): constructor, wrapper and updater take the cockpit in ECX
         // (regs[6]); the mode store has EAX = cockpit, ECX = mode; the load store EDI = cockpit, EDX = mode. Return
-        // addresses are normalized to preferred-base VAs for the core. Diagnostics (record) are never on here.
+        // addresses are normalized to preferred-base VAs for the core. record() (telemetry only) reads the FL-verified
+        // fields; the mode-store rows carry the store's preferred-base VA as their caller, as AP carries its site VA.
         switch (kind) {
         case 0:
             chase_lead::native_timing_invalidate(0, thread);
@@ -593,17 +694,21 @@ void handle(unsigned kind, std::uint32_t* regs) {
             if (field(esp, 0, caller)) caller = S::preferred(caller, fl_base);
             chase_lead::native_timing_invalidate(cockpit, thread);
             state.construct(cockpit, thread, caller);
-            record(0, cockpit, thread, caller); // diagnostics are never on for FL: one relaxed load
+            record(0, cockpit, thread, caller);
             break;
         case 1:
             cockpit = regs[7];
-            if (state.complete(cockpit, thread)) restore_on_complete(cockpit);
+            if (state.complete(cockpit, thread)) {
+                record(1, cockpit, thread);
+                restore_on_complete(cockpit);
+            }
             break;
         case 2:
             chase_lead::native_timing_invalidate(0, thread);
             cockpit = regs[6];
             if (cockpit) {
                 if (field(esp, 0, caller)) caller = S::preferred(caller, fl_base);
+                record(2, cockpit, thread, caller);
                 restore_on_destroy(cockpit, caller);
                 chase_lead::native_timing_invalidate(cockpit, thread);
                 state.destroy(cockpit);
@@ -613,6 +718,7 @@ void handle(unsigned kind, std::uint32_t* regs) {
             chase_lead::native_timing_invalidate(0, thread);
             cockpit = regs[6];
             state.begin(cockpit, esp, thread);
+            record(3, cockpit, thread);
             restore_on_update();
             break;
         case 4:
@@ -621,9 +727,11 @@ void handle(unsigned kind, std::uint32_t* regs) {
             state.end(regs[2] + 4, thread);
             break;
         case 6:
+            record(6, regs[7], thread, S::preferred_base + S::sites[6].rva, regs[6], regs[4]);
             restore_on_mode_store(regs, thread);
             break;
         case 7:
+            record(7, regs[0], thread, S::preferred_base + S::sites[7].rva, regs[5]);
             restore_on_load();
             break;
         }
@@ -974,7 +1082,8 @@ bool restore_retries(unsigned& out) {
 #if X3M_EDITION_FL
 // FL: the same three groups as AP (mandatory witnesses with the chase camera; the two mode-store observers and the
 // four restore sites only with X3M_CHASE_VIEW_RESTORE=1), bound to the admitted base after every identity window
-// matched, each group both-or-none. Diagnostics stay off (diagnostics=0 reason=ap_only). Rows carry edition=fl.
+// matched, each group both-or-none. With telemetry the event window is on (FL-verified reads only; diagnostics_off names
+// what is not ported). Rows carry edition=fl.
 bool initialize() {
     const DWORD error = GetLastError();
     if (initialized) {
@@ -1011,11 +1120,14 @@ bool initialize() {
     if (observers_claimed && !restore_okay) restore_group(mandatory, site_count);
     const bool observers = restore_okay;
     inject_chase = restore_okay;
-    diagnostic.store(false, std::memory_order_release);
-    log("chase_transition installed=%u status=%s edition=fl base=0x%08lx window=%s window_closed_by=%s diagnostics=0 diagnostics_reason=ap_only observers=%u mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=%u",
+    // The event window, as on AP with telemetry; the mode-store kinds 6/7 appear only when the restore claimed them.
+    const bool diag = okay && telemetry::enabled();
+    diagnostic.store(diag, std::memory_order_release);
+    log("chase_transition installed=%u status=%s edition=fl base=0x%08lx window=%s window_closed_by=%s diagnostics=%u diagnostics_reason=%s diagnostics_off=%s observers=%u mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=%u",
         unsigned(okay), fl_refusal, static_cast<unsigned long>(base),
         fl_failed_window < S::window_count ? S::window_names[fl_failed_window] : "-",
-        engine_patch::install_window_reason() ? engine_patch::install_window_reason() : "-", unsigned(observers),
+        engine_patch::install_window_reason() ? engine_patch::install_window_reason() : "-", unsigned(diag),
+        diag ? "fl_verified_reads" : okay ? "telemetry_off" : "not_installed", fl_diagnostics_off, unsigned(observers),
         unsigned(timing));
     for (unsigned i = 0; i < site_count; ++i)
         if (sites[i].patched_in || (okay && (i < mandatory || restore_requested)))
@@ -1302,6 +1414,37 @@ void report(std::uint64_t frame) {
                 frame, ft.calls, ft.samples, ft.invalid, as_double(ft.ticks) * micros, as_double(ft.max_ticks) * micros);
     }
     if (!diagnostics_active()) return;
+#if X3M_EDITION_FL
+    log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu frame_refusals_total=%llu suppressed_total=%llu detail=off diagnostics_off=%s edition=fl",
+        frame, out.first_used, out.last_used, out.dropped, over, threads, failed, skipped, fl_diagnostics_off);
+    // FL rows: the witness kinds 0-3, 6, 7 with the verified snapshot (snapshot_valid bits 1 mode, 2 connect, 4 ref,
+    // 8 view, 32 sector, 256 flags, 512 sector54) and, for kind 6, the dispatcher frame chain; kind 9 a finished
+    // restore ticket. No chase_transition_detail row: all its fields are unverified on FL.
+    auto print = [](const Event& e) {
+        static const char* const names[10] = {"construct", "complete", "destroy", "update", "end_internal",
+                                               "end", "mode_script", "mode_load", "connect", "restore"};
+        if (e.kind == 9) {
+            log("chase_transition_event event=%llu qpc=%llu generation=%llu update=0 thread=%lu kind=9 kind_name=restore result=%s cancel=%s attempts=%lu hud_refresh=%s mode_seen=%lu monitor=0x%08lx generation_from=%llu edition=fl",
+                e.sequence, e.qpc, e.generation, static_cast<unsigned long>(e.thread), detail::restore_result_name(e.result),
+                detail::restore_cancel_name(e.cancel), static_cast<unsigned long>(e.attempts),
+                detail::restore_hud_name(e.hud), static_cast<unsigned long>(e.mode_seen),
+                static_cast<unsigned long>(e.monitor), e.generation_from);
+            return;
+        }
+        log("chase_transition_event event=%llu qpc=%llu generation=%llu update=%llu thread=%lu kind=%lu kind_name=%s cockpit=0x%08lx caller=0x%08lx requested=%lu valid=%lu active_handle=%lu snapshot_valid=%lu mode=%lu connect=%lu flags=0x%08lx ship=0x%08lx view=0x%08lx sector=0x%08lx sector54=0x%08lx frame=%s task=0x%08lx context=0x%08lx script_id=0x%08lx script_class=0x%lx edition=fl",
+            e.sequence, e.qpc, e.generation, e.update, static_cast<unsigned long>(e.thread),
+            static_cast<unsigned long>(e.kind), e.kind < 10 ? names[e.kind] : "?", static_cast<unsigned long>(e.cockpit),
+            static_cast<unsigned long>(e.caller), static_cast<unsigned long>(e.requested),
+            static_cast<unsigned long>(e.valid), static_cast<unsigned long>(e.handle),
+            static_cast<unsigned long>(e.before.valid), static_cast<unsigned long>(e.before.mode),
+            static_cast<unsigned long>(e.before.connect), static_cast<unsigned long>(e.before.flags),
+            static_cast<unsigned long>(e.before.ship), static_cast<unsigned long>(e.before.view),
+            static_cast<unsigned long>(e.before.sector), static_cast<unsigned long>(e.before.sector54),
+            e.kind != 6 ? "-" : e.frame_ok ? "ok" : "refused", static_cast<unsigned long>(e.task),
+            static_cast<unsigned long>(e.context), static_cast<unsigned long>(e.script_id),
+            static_cast<unsigned long>(e.script_class));
+    };
+#else
     log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu origin_refusals_total=%llu suppressed_total=%llu",
         frame, out.first_used, out.last_used, out.dropped, over, threads, failed, skipped);
     auto print = [](const Event& e) {
@@ -1321,6 +1464,7 @@ void report(std::uint64_t frame) {
             e.identity.tags[1], e.identity.tags[2], e.identity.tags[3], e.identity.tags[4], e.identity.tags[5],
             e.identity.class_ids[0], e.identity.class_ids[1], e.identity.class_ids[2], e.identity.class_ids[3]);
     };
+#endif
     for (unsigned i = 0; i < out.first_used; ++i) print(out.first[i]);
     const unsigned start = out.last_used == 32 ? out.next : 0;
     for (unsigned i = 0; i < out.last_used; ++i) print(out.last[(start + i) % 32]);
