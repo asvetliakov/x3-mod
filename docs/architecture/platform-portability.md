@@ -879,6 +879,16 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: own sun, step 3 (FL edition draws the own sun)
+
+The FL edition now links the same own sun stage (documented D3D9 only, as step 1 below) and its probe hook answers
+"hidden" for the sun's eligible record ([own-sun-pass.md](own-sun-pass.md) section 14, "Step 3 as built"). The hook is
+FL-executable-specific engine code behind the X3FL.exe identity and 17 byte anchors, no Wine/CrossOver dependency; the
+lens call is claimed only for the bracket. Natively verified on the Windows host through WSL interop (measured
+2026-11-02): the FL hook fixture 776 checks, 0 failures (the hidden answer's register/flag/LastError/XMM contract,
+forwarding, probe-only install, rollback, late claim, SEH, foreign thread), the AP hook fixture unchanged (46 / 0).
+Not verified: the FL stage on a real device in game (not flown).
+
 ## 2026-11-02: own sun, step 2 (`own_sun` default on; the partial sun occlusion deleted)
 
 The partial sun occlusion's D3D side is gone ([own-sun-pass.md](own-sun-pass.md) section 14, "Step 2 as built"): the

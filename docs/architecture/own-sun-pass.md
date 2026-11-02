@@ -457,3 +457,36 @@ Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are d
   the scan and the body classification whenever the override or its log was on). Per frame the visibility pass, the
   RT2 `GetContainer`/`Release` and the frame-inputs latch are gone; per probe, latch-off frames skip the main-view walk.
   FL native fixture: forward 42.6 ns over the native probe [M].
+
+### Step 3 as built: the FL hidden answer (2026-11-02, FL; not flown)
+
+The own sun draws on Farnham's Legacy (`X3M_EDITION=fl`) with the AP law. Evidence:
+[FL ledger](../verification/farnhams-legacy.md), "Own sun step 3".
+
+- **Answer.** `sun_occlusion_fl.cpp` `decide_probe()` mirrors AP: latch off and no log → forwarded before any read;
+  otherwise the frame's main view is resolved once (cockpit registry walk), the owner's `+0x270` read only where the
+  cheap tests hold, and `core::eligible` with the owner flag `0x400000`; in a latched frame the eligible record is
+  answered 1 (EAX 1 through the thunk's `pop edx; pop ecx; popfd; ret`, the original not run) and
+  `own_sun_hidden_seen_/own_sun_hidden_frame_` record it; every other probe forwards (`popfd; jmp [target]`) or, with
+  `own_sun_log`, runs the original for its `sun_probe` row (hidden answers are not logged, as on AP). The owner's layer
+  is read only with the log. `request_own_sun()`, `set_own_sun_frame()`, `own_sun_hidden()` are the shared
+  `own_sun_hook.h` interface; the header fence is gone.
+- **Install.** The probe call is claimed for the own sun or the bracket; the lens call (`0x8bcb7`, non-atomic) only
+  for the bracket (`lens_flare_gain` < 1 or the volumetric fog), as section 8 asks: `install_at` with
+  `lens_site = lens_target = 0` claims the probe only (`lens_write=none`; one of the two without the other is
+  `invalid_site`). The `fl.sun_occlusion` row gains `own_sun=`.
+- **Wiring.** `capture.cpp`: the request, the three settings, `own_sun_on` and `configure_own_sun` are unfenced;
+  FL's Present block sets the latch (`frame_active(true, own_sun_ready())`) before its `own_sun_hook::present`, as AP's.
+  One status row for both editions, `own_sun status=%s edition=<ap|fl> requested= reason= probe=` (the edition by
+  string-literal concatenation, so the AP format string is unchanged); `probe=` is FL's `fl.sun_occlusion` status
+  (`active`, `executable_mismatch`, `anchor_mismatch`, `late_claim`, ...), `reason=probe` when it did not install.
+  The stage (`own_sun_pass.cpp`, `motion_output_own_sun_inc.h`, the resolve wiring, Reset) is unfenced and
+  `own_sun_pass.cpp` moved into the shared source list. AP objects unchanged (strip-debug compare).
+- **FL-specific risks for the first flight** (nothing here is flown). The main view must be probed before the
+  scene-end hook, where the stage reads `own_sun_hidden()`: on FL the compositor call fires before the first view
+  with layer > 17 and each view is probed after its draw ([FL sun occlusion](../reverse-engineering/fl/sun-occlusion.md),
+  "Thread and order"), so this holds if the main view's layer is ≤ 17 (inferred, as on AP); otherwise every armed
+  frame counts `no_probe` and `own_sun_no_probe` is written once. The main view needs the registry slot that
+  `sector_background_fl` admits (`fl.sun_occlusion … main_view=registry`; `none` makes nothing eligible: `own=0` in
+  `fl.sun_occlusion_sample`). The sun colour is the FL poll (step 7), which needs the shadow cascades like AP's; not Ok
+  leaves the stage unarmed (`own_sun_state reason=poll`).

@@ -898,3 +898,49 @@ flat grey discs over the fog ("turned black"); a station in front of the sun hid
 creation, the known follow-up), so the FL visibility pass never ran and the hull hide was vanilla's. Decision:
 no further triage; the additive-over-bright-fog look is an interim artefact of the lens gain and the engine
 chain is removed by the own sun pass (`docs/architecture/own-sun-pass.md`). Run 14 remains the rollback.
+
+## Own sun step 3 — FL hidden answer, host evidence (2026-11-02, not flown)
+
+Design and as-built: [own-sun-pass.md](../architecture/own-sun-pass.md) section 8 and section 14, "Step 3 as built".
+Base main `c6b232a09` (release 1.8.5). The FL probe answers "hidden" for the eligible record in a latched frame and
+the shared stage draws on FL; the lens call is claimed only for the bracket. All measured on the WSL2 host, native
+through interop, no Wine, no game.
+
+- **Builds.** `build-fl` and `build-ap` (RelWithDebInfo, `cmake/mingw-i686.cmake`, `-j8`): 0 warnings each. The fl DLL
+  carries `own_sun status=%s edition=fl` and the stage's `own_sun_device` row, no `fl_step_pending`.
+- **AP unchanged.** `capture.cpp`, `motion_output.cpp`, `own_sun_hook.cpp`, `own_sun_pass.cpp` objects of `build-ap`
+  at `c6b232a09` against the rebuilt tree, debug sections stripped (`own-sun-pass/compare_objects.py`): 4 compared,
+  0 differ ([`step3/ap_object_compare.txt`](../../verification/results/own-sun-pass/step3/ap_object_compare.txt); the
+  remaining differences are `.debug_info`/`.debug_line` relocations). AP hook fixture
+  (`own-sun-pass/step2/run_native.sh`): `OWN SUN HOOK checks=46 failures=0`, gain fixture 8 / 0, as at step 2.
+- **FL fixture** (`verification/probe/fl_sun_occlusion.cpp` via `test_fl_sun_occlusion.build_and_run`):
+  `RESULT PASS checks=776 failures=0` (step 2: 464). New cases: latch without `request_own_sun()` forwards; latched +
+  eligible → EAX 1 without the original, record+0x30 cleared by the caller's window, ECX/EDX as at the call, DF back
+  from `popfd`, LastError 0x145 and XMM0-7 unchanged, ESP balanced; counters probes +1, own +1, own_sun_hidden +1,
+  original +0; `own_sun_hidden()` false before the frame's probe, true in its frame, false after Present; latched +
+  another view / main-view-owned record / owner without `0x400000` / main view 0 → forwarded with the forward path's
+  full contract, not hidden; a foreign thread in a latched frame runs the original; an SEH unwind through the bracket
+  keeps the answer, Present closes the bracket, the next frame answers again; `fl.sun_occlusion_sample … probes=1 own=1
+  hidden=1 original=0`; latch cleared → forwards; after `shutdown()` the latch is refused; `initialize(false)` with the
+  own sun alone writes one row (`bracket=0 own_sun=1`); probe-only `install_at` leaves the lens call byte for byte
+  vanilla (`lens_write=none`, no bracket), half-given lens addresses refused `invalid_site`; log mode in a latched frame
+  answers hidden with no row and no original, another view still logged with the original's answer; late window
+  refuses the probe-only claim too.
+- **Mutations** ([`step3/fl_fixture_mutations.py`](../../verification/results/own-sun-pass/step3/fl_fixture_mutations.py)
+  → `fl_fixture_mutations.json`, source restored): no hidden branch 50 failures, answer ignores the latch 5, ignores
+  eligibility 37, answers 0 instead of 1 19, answer not recorded 4, latch without the request 8, lens claimed without
+  the bracket 11, early exit ignores the latch 48; unmutated PASS 776.
+- **CPU audit** (`fl-sun-occlusion/hook_cpu_state_audit.py`): fixture exit 0 (72 reachable); `build-fl/d3d9.dll` exit 0,
+  71 reachable, no x87 outside the transport, no SIMD outside the envelopes, transport ok
+  ([`step3/fl_dll_audit.json`](../../verification/results/own-sun-pass/step3/fl_dll_audit.json)).
+- **Cost** (fixture, per call, not game FPS): native probe 32.7 ns; forwarded 70.5 ns (+37.9); eligible forwarded
+  76.4 ns; hidden answer 69.5 ns; another view in a latched frame 75.5 ns; lens bracket +212.8 ns per lens call.
+- **Host tests.** `run_host_suite.py --modules test_fl_sun_occlusion test_own_sun test_own_sun_hook test_logging_tiers
+  test_config_schema`: 5 modules, 77 tests, 0 failing; `tools/config/generate.py --check` PASS (293 settings).
+- **Expected rows in the first FL flight** (`own_sun` default on, route on): `fl.sun_occlusion status=active …
+  probe_write=atomic lens_write=plain|none … own_sun=1 main_view=registry`; `own_sun status=ready edition=fl
+  requested=1 reason=ok probe=active`; per device `own_sun_device attached=1`, `own_sun_state armed=1 reason=armed`;
+  `fl.sun_occlusion_sample … own=N hidden=N` with N close to `frames=` while a sun is in view (inferred: one
+  eligible main-view probe per frame, as on AP). `own_sun_no_probe`
+  (or `no_probe=` growing on the `--debug` `own_sun_frame` row) means the main view's probe did not precede the
+  stage: either `main_view=none`/`0x00000000` (registry not admitted) or the main view's layer above 17 (section 14).
