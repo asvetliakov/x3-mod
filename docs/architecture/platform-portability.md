@@ -959,6 +959,23 @@ injection also with a hostile engine call inside it; gate, dock, undock, jump, r
 through the thunks; every window refusing a changed byte; read-back faults rolled back per group; late claim), and the
 AP restore-core harness's 28 cases with the FL constants. Not verified: the FL restore in game (not flown).
 
+## 2026-11-03: chase cursor fire on FL (`chase_fire` on FL)
+
+The FL edition installs AP's one cursor-fire seam in X3FL.exe at module base + RVA (`je` at `0x04ecad` in the native
+fire function; [fl/chase-fire-aim.md](../reverse-engineering/fl/chase-fire-aim.md), section 9): a plain five-byte copy
+inside the install window (the span crosses an aligned qword), read back, the AP module's generated stub shape
+(PUSHFD, one-byte enable and saved-ZF test, then PUSHAD/CLD and XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError)
+around the shared policy (`chase_fire_core.h`, integer only), behind the X3FL.exe identity and five compared windows
+(eleven relocated dwords checked against the base). It writes only the saved ZF; no engine call, no device call.
+Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery` + `rep movsb` through `engine_memory`,
+SRW locks, `QueryPerformanceCounter`), no Wine/CrossOver dependency. Natively verified on the Windows host through WSL
+interop (measured 2026-11-03): the FL fixture 89 checks, 0 failures (the thunk entered through the native compare for
+each 4-byte ESP skew with every GPR/EFLAGS incl. DF/ESP/XMM0-7/x87/MXCSR/LastError at the continuation, the JE both
+ways, 3,600 cursor positions against the fixture's model of the native unprojection's first stage (the native code
+has no in-viewport test itself), every window bit, read-back rollback restored
+and failed, shutdown, late claim). `chase_aim_trace` stays AP-only (diagnostic). Not verified: the seam in game (not
+flown).
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

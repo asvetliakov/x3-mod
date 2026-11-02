@@ -1739,3 +1739,48 @@ the chase view returns by itself after a gate, jump or undock with no second of 
 and distance panels, status icon and the lead reticle visible in the chase view and anchored where the ship points;
 target brackets as before. Report: any first-person fallback that stays, a HUD element still missing, a reticle that
 does not match where bolts go, or a camera jump outside sector changes.
+
+## Chase cursor fire on FL, host evidence (2026-11-03, not installed, not flown)
+
+Run 25's remaining AP-only chase gap was `chase_fire`: right-mouse cursor fire in the chase view aims along the ray from
+the chase camera through the cursor. Ported as `src/engine/fl/chase_fire_fl.cpp` + `chase_fire_sites_fl.h` (AP
+`src/proxy/chase_fire.cpp` no longer linked into FL; its decision moved into the shared `src/proxy/chase_fire_core.h`
+with an identical AP object). One relocated `je` at RVA `0x04ecad` in the native fire function; only the saved ZF
+changes, and only for the player's main-group cursor-flag call (`[EBX+0xc]`, `[EBX+0x10]`, ship `[EBP−0x3c]`) with a
+fresh applied chase witness from the pose seam, the same cockpit/ship/camera, mode 258, and the real cursor inside
+the camera's viewport. Gun, range, cone and the unprojection stay native. `chase_aim_trace` stays AP-only
+(`reason=diagnostic_not_ported`): not needed for the first flight (fire row counters plus the visual check). Facts:
+[chase-fire-aim.md](../reverse-engineering/fl/chase-fire-aim.md), section 9.
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_fire_sites_fl.py --out verification/results/fl-chase-fire/verify_fl_sites.json` | PASS: 5 windows (481 bytes) FNV-1a with 11 HIGHLOW dwords at their targets, whole instructions; seam exact bytes and decode, no fixup, no direct edge to its start or interior (72,230 edges), qword crosses; fire function 1,843 instructions, EBX/EBP writers only prologue/epilogue, `[EBP−0x3c]` sole writer `0x04e350`, only `[EBX+8]` stored, four callers, no outside edge into it, no HIGHLOW dword pointing into it, EH FuncInfo `0x19c8b8` (magic `0x19930522`, maxState 1) with no try block; cursor-active HIGHLOW refs exactly `0x04eca8`, `0x07bc49`; 62 anchors; header bytes = executable |
+| Native fixture | `python3 -I verification/results/fl-chase-fire/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_fire.cpp`) | `RESULT PASS checks=89 failures=0`: thunk entered through the native `cmp [cursor active],0` for ESP skews 0/4/8/12, every GPR, EFLAGS incl. DF, ESP, XMM0-7, x87 CW `007f` + one register, MXCSR `bfe0`, LastError intact except ZF (admitted only); no witness / natively active cursor → original branch, no override (the stub's `lock inc` counts the natively active visits: 4; early filters by reason: no witness 5, group 1, flags 2, other ship 1); cursor cells, steering and stack words never written; refusals: flags `0x02`/`0x28`, group 1, other ship in `[EBP−0x3c]` with the player ship as decoy in AP's `[EBX+8]`, view 1/257, connect, flag 4, camera/ref/view-object/registry mismatch, zero active handle, new ship id, stale/future/other-thread witness, cursor off screen/negative/outside viewport, invalid/unreadable screen (counts stale 3, identity 5, view 4, cursor 4, read 2); witness cleared by an unapplied update, a zero stamp and the same cockpit's invalidation, kept by another's; 3,600 / 3,600 cursor positions agree with the fixture's model of the native unprojection's first stage (pixel·65536/dimension inside the normalized bounds; the native code has no in-viewport test, so this checks the handler's reads and arithmetic, not native behaviour; off-centre viewport, both axes); aim model check (production forward projection plus a fixture pinhole inverse, not a test of the native ray): a target 14.4° off boresight in a rotated chase camera, projected through `chase_lead_core::project`, gives cursor `1271,409` and a camera ray 0.08° (≈2 px) from the target; 3,848 / 3,848 window bit flips refused before any write (352 in relocated dwords); read-back fault → `rollback=restored`, unrecoverable → `rollback=failed`, inert; shutdown, re-install, `late_claim` |
+| AP unchanged | `python3 -I verification/results/fl-chase-fire/ap_objects_identical.py chase_fire.cpp chase_camera.cpp loader.cpp capture.cpp` (`ap_objects.txt`; base `549aba334`) | identical AP disassembly (1,238 / 6,660 / 3,070 / 41,169 lines) |
+| Cost (diagnostic) | the fixture's `TIMING` row (5,000 calls each, this host, not game FPS) | harness alone 0.14 µs; natively active cursor 0.13 µs (the stub's byte tests and one `lock inc`); non-player call 0.33 µs; admitted call 0.51 µs (≈0.37 µs over the harness: lock, QPC, registry walk, fields); per fire call, no per-draw work |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_fire_site test_fl_chase_fire test_fl_chase_camera test_fl_chase_lead test_config_schema` | 40 tests, 0 failing; plus `test_bolt_footprint`, `test_game_phase_sites`, `test_chase_aim_sites` 57 tests, 0 failing |
+| Builds | `cmake --build build-fl -j --clean-first`, then `cmake --build build-ap -j --clean-first` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected in game (not verified), with `camera = chase`: `chase_camera requested=1 installed=1 status=active … edition=fl
+rva=0x0227ad rollback=none unbound_phase=active_control dependencies=chase_lead,chase_fire,chase_transition`, the
+`chase_lead`/`chase_central_hud`/`chase_transition` rows as in run 25, then `chase_fire installed=1 status=active
+scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl
+base=0x<base> rva=0x04ecad window=- rollback=none` and `chase_aim_trace installed=0 status=ap_only edition=fl
+reason=diagnostic_not_ported`. With telemetry on, every 300 frames: `chase_fire_window frame=… native_inactive_override=<n>
+refused_stale=… refused_identity=… refused_view=… refused_cursor=… refused_read=… … native_active=<n> early_no_witness=<n>
+early_group=<n> early_flags=<n> early_other_ship=<n> early_read=<n> edition=fl`, with `native_inactive_override > 0` in
+windows where you fired with the right mouse in the chase view. Reading the fire row: `native_active > 0` with `native_inactive_override = 0` means FL already treats the cursor as active in the chase view (the native cursor ray runs without the hook); `early_no_witness`, `early_other_ship` or the `refused_*` counts rising instead mean the call reached the seam but was never admitted (no applied chase witness, another ship, or a stale/identity/view/cursor refusal). No `installed=0`,
+`window_mismatch`, `slot_mismatch` or `rollback=failed` on the `chase_fire` row.
+
+User flight check: in the chase view, put the mouse cursor on a target away from the screen centre and fire with the
+right mouse; the bolts should go to the cursor (toward the target), not straight ahead. Also fire with the right mouse
+in first-person view (unchanged) and once with the normal fire key in the chase view (straight ahead, unchanged).
+Report where the bolts went; if they do not follow the cursor, the `chase_fire_window` rows of that stretch tell which
+case it was (reading above). Bolts come from the guns, not the camera, so a target very close behind the
+cursor shows a small offset (the camera-to-gun parallax, as on AP).
+
+Open items: when the active cell is 0 the cursor x/y cells may be stale or meaningless (the cursor is hidden during
+mouse steering); (0,0) lies inside a full viewport, so an admitted shot could go toward the top-left corner. Same
+exposure as AP; the flight check covers it (report any bolts that go to a screen corner). The witness is bound by the
+two-second QPC window, not by `chase_transition`'s cockpit-lifetime generation (as on AP). `check_no_x87.py` cannot
+check the FL DLL (it roots at the AP-only `gz_read`).

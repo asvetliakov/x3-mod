@@ -2,8 +2,8 @@
 #include "config.h"
 #if !X3M_EDITION_FL
 #include "chase_aim_trace.h"
-#include "chase_fire.h"
 #endif
+#include "chase_fire.h"
 #include "chase_lead.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
@@ -41,9 +41,10 @@ namespace {
 // 0x021f50 (EBX = cockpit), rel32 at +6, continuation RVA 0x0227b7, branch target RVA 0x022928. The spec and the
 // default-plane slot (base + RVA 0x1a82f8) are filled by initialize() from the admitted base once the three identity
 // windows of chase_camera_sites_fl.h match (docs/reverse-engineering/fl/chase-camera.md, "Verified 2026-11-02"). The
-// handler below is shared; its AP-only dependencies (chase_fire, chase_aim_trace) are compiled out, so the FL module
-// reaches no AP address. It publishes one downstream context: chase_lead's FL edition (src/engine/fl/chase_lead_fl.cpp),
-// whose update binding is this seam's visit (invalidate_pose, camera_context). The restore observer and the
+// handler below is shared; its AP-only dependency (chase_aim_trace) is compiled out, so the FL module reaches no AP
+// address. It publishes two downstream contexts: chase_lead's FL edition (src/engine/fl/chase_lead_fl.cpp), whose update
+// binding is this seam's visit (invalidate_pose, camera_context), and chase_fire's FL edition
+// (src/engine/fl/chase_fire_fl.cpp), whose witness is this visit's applied bound pose and QPC. The restore observer and the
 // unbound-phase proof (chase_transition::restore_observe_frame, active_control_cockpit) run on FL too, bound by
 // chase_transition's own FL module.
 namespace S = x3m::fl::chase_camera_fl;
@@ -218,8 +219,8 @@ void handle(uint32_t* regs) {
         publish_pose(false);
 #if !X3M_EDITION_FL
         chase_aim_trace::invalidate_camera(cockpit);
-        chase_fire::invalidate_camera(cockpit);
 #endif
+        chase_fire::invalidate_camera(cockpit);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames;
         ++stats_.refused;
@@ -270,9 +271,7 @@ void handle(uint32_t* regs) {
         chase_transition::restore_observe_frame(observed);
     }
     if (!active) {
-#if !X3M_EDITION_FL
         chase_fire::invalidate_camera(cockpit);
-#endif
         return;
     }
     // Defence in depth behind the predicate: if the active cockpit pointer
@@ -309,8 +308,8 @@ void handle(uint32_t* regs) {
         ReleaseSRWLockExclusive(&stats_lock);
 #if !X3M_EDITION_FL
         chase_aim_trace::camera_context(0, 0, 0, 0, false);
-        chase_fire::camera_context(0, 0, 0, 0, 0, 0, false, 0);
 #endif
+        chase_fire::camera_context(0, 0, 0, 0, 0, 0, false, 0);
         return;
     }
     int32_t fixed[12];
@@ -477,10 +476,12 @@ void handle(uint32_t* regs) {
         }
     }
 #if X3M_EDITION_FL
-    ReleaseSRWLockExclusive(&stats_lock); // FL: the lead/central HUD context only (fire and aim are AP-only)
+    ReleaseSRWLockExclusive(&stats_lock); // FL: the lead/central HUD and cursor-fire contexts (aim trace is AP-only)
     const bool context_ok = written && bound;
     chase_lead::camera_context(cockpit, ref_object, camera, context_ok, context_ok ? &pose.basis : nullptr,
                                context_ok ? &pose.view_rel : nullptr);
+    chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, context_ok,
+                               now);
 #else
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
@@ -780,7 +781,7 @@ bool initialize() {
     log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
         "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f fov_compensate=%u lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
         "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view "
-        "edition=fl rva=0x%06lx rollback=%s unbound_phase=active_control dependencies=chase_lead,chase_transition",
+        "edition=fl rva=0x%06lx rollback=%s unbound_phase=active_control dependencies=chase_lead,chase_fire,chase_transition",
         unsigned(site.patched_in), state.load(), static_cast<unsigned long>(site_va), site_spec.length,
         site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(), tunables.rot_tau, tunables.pos_tau,
         tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, unsigned(tunables.fov_compensate),
@@ -932,9 +933,7 @@ void note_last_device() {
     log("chase_camera_last_device kept=1 status=%s lifetime=process", state.load());
 }
 void shutdown() {
-#if !X3M_EDITION_FL
     chase_fire::shutdown();
-#endif
     pose_written.store(false, std::memory_order_relaxed);
     if (!site.patched_in) return;
     const bool okay = engine_patch::restore(site);

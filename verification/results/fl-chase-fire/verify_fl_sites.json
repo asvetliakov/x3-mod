@@ -1,0 +1,134 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "fl_identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "highlow": 38327
+  },
+  "windows": {
+   "ok": true,
+   "prologue": {
+    "ok": true,
+    "fnv1a32": "5347c1f5",
+    "whole_instructions": true,
+    "relocs": {
+     "0x04e329": "0x14d3b5"
+    }
+   },
+   "admission": {
+    "ok": true,
+    "fnv1a32": "56a65ba8",
+    "whole_instructions": true,
+    "relocs": {
+     "0x04eca8": "0x1aa184",
+     "0x04ecb5": "0x1a82e4"
+    }
+   },
+   "unproject_call": {
+    "ok": true,
+    "fnv1a32": "f6c4c372",
+    "whole_instructions": true,
+    "relocs": {
+     "0x04eded": "0x1aa188",
+     "0x04edf3": "0x1aa180"
+    }
+   },
+   "cursor_writer": {
+    "ok": true,
+    "fnv1a32": "e849e23a",
+    "whole_instructions": true,
+    "relocs": {
+     "0x07bc41": "0x1aaa10",
+     "0x07bc49": "0x1aa184",
+     "0x07bc51": "0x1aa180",
+     "0x07bc59": "0x1aa188"
+    }
+   },
+   "screen": {
+    "ok": true,
+    "fnv1a32": "c013bc5c",
+    "whole_instructions": true,
+    "relocs": {
+     "0x0a51f1": "0x1a82f8",
+     "0x0a5224": "0x1a82f8"
+    }
+   }
+  },
+  "seam": {
+   "ok": true,
+   "bytes": "0f84ec020000",
+   "decode": "je 0x44ef9f",
+   "previous": "cmp dword ptr [0x5aa184], 0",
+   "interior_edges": [],
+   "edges_to_start": [],
+   "fixups": [],
+   "direct_edges": 72230,
+   "qword": "crosses",
+   "rva_mod_8": 5
+  },
+  "fire_function": {
+   "ok": true,
+   "instructions": 1843,
+   "ebx_ebp_writes": [
+    "0x04e311",
+    "0x04e31d",
+    "0x04e324",
+    "0x04ff3f",
+    "0x04ff42"
+   ],
+   "ship_slot_writers": [
+    "0x04e350"
+   ],
+   "arg_writes": {
+    "0x04e3fd": "ebx+0x8",
+    "0x04ed24": "ebx+0x8",
+    "0x04ed40": "ebx+0x8"
+   },
+   "callers": [
+    "0x06bb81",
+    "0x06bb9f",
+    "0x06bbe4",
+    "0x06bc03"
+   ],
+   "edges_from_outside": [],
+   "edges_into_prologue": []
+  },
+  "fire_eh_and_pointers": {
+   "ok": true,
+   "highlow_into_function": [],
+   "handler": "mov eax, 0x59c8b8",
+   "magic": "0x19930522",
+   "max_state": 1,
+   "n_try": 0,
+   "try_map": "0x0"
+  },
+  "cursor_active_refs": {
+   "ok": true,
+   "fixups": [
+    "0x04eca8",
+    "0x07bc49"
+   ]
+  },
+  "anchors": {
+   "ok": true,
+   "count": 62,
+   "failed": []
+  },
+  "source_header": {
+   "ok": true,
+   "prologue": true,
+   "admission": true,
+   "unproject_call": true,
+   "cursor_writer": true,
+   "screen": true,
+   "seam": true
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe"
+}

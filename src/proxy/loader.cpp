@@ -43,6 +43,7 @@
 #include "../ownership/application_admission_abi.h"
 #include "cpu_state.h"
 #if X3M_EDITION_FL
+#include "chase_fire.h"
 #include "../engine/fl/executable_identity_fl.h"
 #include "../engine/fl/scale_overflow_fix_fl.h"
 #endif
@@ -97,13 +98,16 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // one chase_camera row with edition=fl. With the pose seam installed, the cockpit lifetime witnesses and the view
     // restore (src/proxy/chase_transition.cpp, FL branch; docs/reverse-engineering/fl/chase-transition.md) in the same
     // window, then the lead marker and central HUD (src/engine/fl/chase_lead_fl.cpp; its update binding is the pose
-    // seam, so it needs the camera installed), which claim their four seams there and log their own rows. Cursor fire
-    // and the aim trace stay AP-only: one refusal row each, nothing claimed.
+    // seam, so it needs the camera installed), which claim their four seams there and log their own rows; then the cursor
+    // fire (src/engine/fl/chase_fire_fl.cpp; docs/reverse-engineering/fl/chase-fire-aim.md), one relocated JE in the
+    // native fire function, witness published by the same pose seam; it logs its own row. The aim trace (four read-only
+    // telemetry sites) stays AP-only: one refusal row, nothing claimed; the fire row's counters and the user's flight
+    // check verify the aim instead.
     if (x3m::chase_camera::wanted()) {
         if (x3m::chase_camera::initialize()) x3m::chase_transition::initialize();
         x3m::chase_lead::initialize();
-        for (const char* name : {"chase_fire", "chase_aim_trace"})
-            x3m::log("%s installed=0 status=ap_only edition=fl reason=ap_only", name);
+        x3m::chase_fire::initialize();
+        x3m::log("chase_aim_trace installed=0 status=ap_only edition=fl reason=diagnostic_not_ported");
     }
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;

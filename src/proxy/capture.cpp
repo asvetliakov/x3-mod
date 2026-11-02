@@ -65,6 +65,7 @@
 #include "object_capture.h"
 #include "sector_background.h"
 #if X3M_EDITION_FL
+#include "chase_fire.h"
 #include "../engine/fl/fog_prefill_fl.h"
 #include "../engine/fl/sector_background_fl.h"
 #endif
@@ -2153,6 +2154,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         chase_camera::report(ctx.frame);     // FL: the pose seam (no line otherwise)
         chase_lead::report(ctx.frame);       // FL: lead marker and central HUD windows (telemetry only)
         chase_transition::report(ctx.frame); // FL: the view restore's state/timing rows (telemetry only)
+        chase_fire::report(ctx.frame);       // FL: cursor-fire override/refusal window (telemetry only)
     }
 #endif
     if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
