@@ -1,0 +1,24 @@
+DEVICE kind=d3d9 plain=00000000 created=00000000
+WARMUP hr=00000000 error=0000007e
+REFUSAL reason=foreign_redirect
+RESOLVED dll=d3dx9_43.dll slot_rva=0x0004f294 imp_rva=0x0004f294 reason=ok
+MARKED hr=00000000 error=00c0ffee mxcsr=00007f80 cw=0e7f direct_error=00c0ffee observer_calls=1 lane=1
+UNMARKED hr=00000000 error=00c0ffee direct_error=00c0ffee
+FAILED hr=8876086c error=00c0ffee direct_error=00c0ffee
+BOUNDARY result=00000001 entry_error=00c0ffee entry_mxcsr=00007f80 entry_cw=0e7f entry_top=7 exit_error=0000beef exit_mxcsr=00009fc0 exit_cw=037f exit_top=6
+BOUNDARY result=80004005 entry_error=00c0ffee entry_mxcsr=00007f80 entry_cw=0e7f entry_top=7 exit_error=0000beef exit_mxcsr=00009fc0 exit_cw=037f exit_top=6
+ROLLBACK failing_restores=1 reason=protect_restore_failed slot_original=1
+ROLLBACK failing_restores=2 reason=protect_restore_failed slot_original=1
+CHAINED reason=foreign_chained slot_foreign=1 stub_forwards=1 observer_delta=0
+SYNTHETIC case=upper_case_dll reason=ok dll=D3DX9_43.DLL
+SYNTHETIC case=read_only_view reason=slot_not_writable dll=d3dx9_43.dll
+SYNTHETIC case=absent reason=import_absent dll=-
+SYNTHETIC case=not_d3dx9 reason=import_absent dll=-
+SYNTHETIC case=no_name_table reason=import_absent dll=-
+SYNTHETIC case=ambiguous reason=ambiguous_import dll=d3dx9_43.dll
+SYNTHETIC case=dll_not_loaded reason=dll_not_loaded dll=d3dx9_99.dll
+SYNTHETIC case=misaligned reason=slot_misaligned dll=d3dx9_43.dll
+SYNTHETIC case=foreign reason=foreign_redirect dll=d3dx9_43.dll
+SYNTHETIC case=bad_image reason=bad_image dll=-
+LATE reason=late_claim
+RESULT PASS checks=61 failures=0

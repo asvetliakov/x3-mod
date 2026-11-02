@@ -51,6 +51,7 @@
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "loading_trace_light.h"
+#include "d3dx_texture_hook.h"
 #include "window_mode.h"
 #include "window_trace.h"
 #include "cursor_reassert.h"
@@ -3538,14 +3539,15 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
             double(hull_emissive_widening[0]), double(hull_emissive_widening[1]));
     }
     // Merged-LOD material strength (motion_output_material_strength_inc.h): after the material options the twins
-    // compose with; the texture hook row is patched in initialize_log (loading_trace::set_texture_observer).
+    // compose with; the texture hook row is patched in initialize_log (AP: loading_trace::set_texture_observer; FL: the
+    // import-slot stub, d3dx_texture_hook::install).
     hooked.motion_output.configure_material_strength(lod_material_strength_requested);
 #if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
 #else
-    log("lod_material_strength_configured enabled=%u texture_hook=0",
-        unsigned(hooked.motion_output.material_strength_requested())); // FL: no D3DX texture row patch
+    log("lod_material_strength_configured enabled=%u texture_hook=%u",
+        unsigned(hooked.motion_output.material_strength_requested()), unsigned(d3dx_texture_hook::installed()));
 #endif
     // X3M_ENGINE_LIGHT (engine_light_core.h): the hull light from the plume records, after the material options the
     // twins compose with; effective only with engine_effects = plumes.
@@ -5978,6 +5980,16 @@ void initialize_log(HMODULE module) {
     if (lod_material_strength_requested) {
 #if !X3M_EDITION_FL
         loading_trace::set_texture_observer(texture_created);
+#else
+        // FL: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (d3dx9_43.dll in the shipped EXE, resolved by
+        // name), patched here inside the install window; one row, installed or the refusal.
+        const char* hook_reason = d3dx_texture_hook::install(GetModuleHandleW(nullptr), texture_created);
+        if (!std::strcmp(hook_reason, "ok"))
+            log("lod_material_strength_texture_hook state=installed dll=%s slot_rva=0x%08x edition=fl",
+                d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva());
+        else
+            log("lod_material_strength_texture_hook state=refused reason=%s dll=%s slot_rva=0x%08x edition=fl",
+                hook_reason, d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva());
 #endif
         if (!ownership::claim_texture_release_observer(texture_released))
             log("lod_material_strength_release_observer claimed=0"); // another claimant: marked entries then live until

@@ -174,6 +174,9 @@ else()
   # The small-parts cull stub and the two one-byte LOD patches (docs/verification/cull-small-parts.md, "FL port").
   target_sources(d3d9 PRIVATE src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
     src/engine/fl/lod_occlusion_fl.cpp)
+  # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
+  # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
+  target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -234,6 +237,9 @@ set_source_files_properties(src/engine/fl/engine_effects_fl.cpp PROPERTIES COMPI
 # bookends.
 set_source_files_properties(src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
   src/engine/fl/lod_occlusion_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
+# loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
+set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

@@ -1395,3 +1395,25 @@ a wreck at distance; tell me before relaunching. Expect `lod_overlay` rows at lo
 no `lod_overlay … refused`, fogged draws below run 20's 468 median; visual check: distant stations and ships keep their
 silhouette with no missing or untextured parts (an untextured distant body means its atlas failed to load), close-up
 unchanged, loading time not noticeably longer.
+
+## Material-strength texture hook on FL, host evidence (2026-11-02, not installed, not flown)
+
+FL logged `lod_material_strength_configured enabled=1 texture_hook=0`: the D3DX texture row lived only in AP's
+`loading_trace.cpp`, so the `addon2` atlases' X3ML marks were never read and merged materials drew at the averaged
+strength (the third cosmetic gap of the run 18 study above). Now FL patches X3FL.exe's
+`D3DXCreateTextureFromFileInMemoryEx` import slot with a forwarding stub of AP's semantics; design, rows and refusal
+reasons: [overlay-material-strength.md](../architecture/overlay-material-strength.md), section 13. AP keeps its
+`loading_trace` row; both call the shared `d3dx_texture_hook::observe_created`. Base `e6c9d03b5`. All measured on
+the WSL2 host (native Windows through interop), no Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| FL import census | `python3 -I verification/results/fl-material-strength/import_census.py` (`import_census_out.txt`) | X3FL.exe (SHA-256 `e7f3aad8…`, DYNAMIC_BASE) imports 22 names from `d3dx9_43.dll`, one by-name `D3DXCreateTextureFromFileInMemoryEx` at slot RVA `0x150374`, `resolvable=1`; X3AP.exe: `d3dx9_37.dll`, slot RVA `0x132334` |
+| Native fixture | `python3 -I verification/results/fl-material-strength/run_fixture.py` (`fixture_out.txt`; `verification/probe/d3dx_texture_hook_fixture.cpp`) | `RESULT PASS checks=61 failures=0` (skips, not fails, without MinGW or WSL interop). The executable imports the system `d3dx9_43.dll`; the hook resolves its `__imp_` slot (`dll=d3dx9_43.dll`, RVA equal). Real D3DX on a hidden-window device (D3D9Ex: X3FL.exe was running in exclusive fullscreen, plain HAL `D3DERR_NOTAVAILABLE`): marked DDS → observer once, lane 1, right device/bytes/size/texture; marked, unmarked and null-device calls return the direct original's HRESULT, LastError (`00c0ffee`), MXCSR and x87 CW. Probe original: entry sees the caller's LastError `00c0ffee`, MXCSR `7f80`, CW `0e7f`, x87 top 7; the caller leaves with `beef`, `9fc0`, `037f`, top 6 (S_FALSE and E_FAIL; observer only on success). Rollback: `restore()` back to the export, the restored stub still forwards; one and two failed protection restores → `protect_restore_failed`, slot original; a writer chaining on top inside the failed restore → `foreign_chained`, no undo, the foreign pointer kept and the stub it chained to still forwards with the observer detached. Refusals: `no_observer`, `foreign_redirect` (slot untouched), `already_installed`, synthetic section views `slot_not_writable` (read-only view), `import_absent` (absent, `d3dx9.dll`/`xd3dx9_43.dll`, no name table), `ambiguous_import`, `dll_not_loaded`, `slot_misaligned`, `foreign_redirect`, `bad_image`; `D3DX9_43.DLL` (upper case) resolves and its slot round-trips byte-identically; `late_claim` after `close_install_window`. LastError kept across every `install()` |
+| Mutation | `cpu.after_original()` removed from the stub, fixture rerun | 2 failures (both probe-original exit checks); restored |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_material_strength test_fl_material_strength_hook` | 11 tests, 0 failing; neighbours (logging_tiers, exe_identity, fl_identity, fl_cull_chain, music_keep, runner_housekeeping, fl_engine_effects, fl_scene_hook) 90 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, `cmake --build build-ap -j` (fresh trees, RelWithDebInfo, mingw-i686) | 0 warnings each; FL stub ends in `ret 0x3c` (15 stdcall arguments); `check_no_x87.py build-ap/d3d9.dll` PASS; `tools/config/generate.py --check` PASS (no setting changed) |
+
+Not verified: the in-game FL path (rows `lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll
+slot_rva=0x00150374 edition=fl`, `texture_hook=1`, then the debug-tier `lod_strength_texture` rows for the `addon2`
+atlases and `lod_strength_frame` marked draws) waits for an FL run with the overlay catalogue installed.

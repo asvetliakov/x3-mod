@@ -98,7 +98,13 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   under `SRGBTEXTURE` by specification. Not yet verified natively: that every overlay atlas reaches the device through
   that import (the `.pck`/`.dds` path is inferred from the import table; the debug-tier `lod_strength_frame` row's
   `seen` counts against the marker's atlas members settle it in the first flight) and the driver's first-draw compile of
-  the twins (about 7 KB more bytecode per hull program kind).
+  the twins (about 7 KB more bytecode per hull program kind). **FL (2026-11-02, host evidence, not flown):** the same
+  row on X3FL.exe is `src/proxy/d3dx_texture_hook.cpp`, one aligned IAT dword exchanged for a forwarding stub with AP's
+  semantics; the import is resolved by name from whichever `d3dx9_NN.dll` descriptor names it (X3FL.exe: `d3dx9_43.dll`,
+  slot RVA `0x150374`, relocatable image), and it refuses on an absent, ambiguous or foreign-redirected import, an
+  unwritable slot or a closed install window. Documented PE/loader and `VirtualProtect` contracts only; the native
+  fixture (`test_fl_material_strength_hook`) runs it against the system `d3dx9_43.dll` on native Windows through WSL
+  interop, so the hook mechanics are native-verified; the in-game atlas path on FL is not.
 
 - **Gate rings untested in flight (2026-10-15, the arrival round).** Site E's ring row reads a gate's collision tree at runtime (`wk::gate_tree_state`); the installed Mayhem gates have none, so the ring branch (vanilla's ringed rows 0-3, the stock ring numbers of ship-navigation-ai.md section 10.9) has only the fixture's Terran casts behind it, never a flight.
 
