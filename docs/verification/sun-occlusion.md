@@ -1046,3 +1046,21 @@ drawn on every answered frame (`active_frames=1940 drawn=1940 answered=1940`), 2
 `sun_occlusion_config`, `sun_visibility`, `sun_lens_draw`, `own_sun_toggle` or `config_key` rows; `window_pump_gap`
 rows only during the save loads (22–23 s `over_hung=1`), no `device_lost` (measured). Step 2 accepted; released as
 1.8.5 (Run227, [releases](releases.md)). Step 3 (FL port) starts.
+
+## Lens-flare bracket deleted (2026-11-02, both editions; host evidence, not flown)
+
+The lens bracket on the engine's lens pass call (AP `0x00472491`, FL `base+0x8bcb7`), the lens-flare gain with its fog
+share and the gain-0 engine cull are deleted (user decision recorded in `docs/status.md`; design note
+[own-sun-pass.md](../architecture/own-sun-pass.md) section 14, "Lens-flare bracket deleted"). The flare-probe hook installs
+only for the own sun and claims the probe call alone; the lens call is byte-for-byte vanilla on both editions. Evidence
+(measured, 2026-11-02, worktree on main `5644dbb5b`): AP and FL `RelWithDebInfo` builds 0 warnings;
+`check_no_x87.py build-ap/d3d9.dll` PASS (1,110 reachable; 1,116 at Run 226); no `lens_flare` string or lens symbol in
+either DLL; `generate.py --check` PASS (292 settings, 137 in the template). AP hook fixture natively
+(`verification/results/own-sun-pass/step2/run_native.sh`): 40 checks, 0 failures (46 before; the six bracket checks went),
+counters unchanged `probes=35 own=10 hidden=10 original=25 foreign=1`. The probe thunk's instruction sequence is
+unchanged on both editions; only the link-time placement of the handler call and the target word differ
+(`verification/results/own-sun-pass/step2/thunk_compare.txt`, produced by `thunk_bytes.py` beside it). Cull small-parts
+CPU fixture natively: 225 checks, 0 failures (285 before; the 58-check lens section and two lens cases went; the
+engine-skip chain case now compares the pass's return flags with a disarmed run at the same stack depth, since the
+epilogue's `add esp` sets them). Full host suite (`run_host_suite.py`, measured): 326 modules, 3,370 tests, 6 failing modules: test_engine_effects, test_engine_plumes, test_engine_ribbons, test_hdr_dither_launch and test_motion_hdr_scene fail on main too; test_engine_shimmer fails because its Wine record (`verification/results/bottle-X3/engine-shimmer/summary.json`) pins the sha256 of `engine_effects_core.h`, changed only by the resolver move (include, alias, comment): it needs a Wine re-record, not a code fix. An ini `lens_flare_gain = 0.3` gives `config_open … unknown=1` and one
+`config_key key=lens_flare_gain problem=unknown line=N value=0.3` (host parse of `config_parse.h`, measured). Code and tests against the base: 56 files, +851 / -3,219 lines (shortstat `5644dbb5b..642956dd0`, measured).

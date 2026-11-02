@@ -1,0 +1,22 @@
+# 2026-11-02 lens-bracket deletion: the probe thunks before (base 5644dbb5b tree) and after, by thunk_bytes.py.
+# Same instruction sequence; only the handler call rel32 and the target word .bss addend (link-time placement) differ.
+## AP module.o (build_own_sun_hook.py)
+before:
+_x3m_sun_probe_thunk 9cfcff74240cff74240ce84106000083c40883f80274029dc39dff2504000000
+  pushf | cld | push DWORD PTR [esp+0xc] | push DWORD PTR [esp+0xc] | call <_x3m_sun_probe_decide> | add esp,0x8 | cmp eax,0x2 | je <_x3m_sun_probe_thunk> | popf | ret | popf | jmp DWORD PTR ds:0x4 1c: dir32 .bss
+_x3m_sun_lens_thunk 9cfce8690600009dff742404ff150000000083c4049cfce8040700009dc36690
+  pushf | cld | call <_x3m_sun_lens_begin> | popf | push DWORD PTR [esp+0x4] | call DWORD PTR ds:0x0 2e: dir32 .bss | add esp,0x4 | pushf | cld | call <_x3m_sun_lens_end> | popf | ret | xchg ax,ax
+after:
+_x3m_sun_probe_thunk 9cfcff74240cff74240ce82106000083c40883f80274029dc39dff2500000000
+  pushf | cld | push DWORD PTR [esp+0xc] | push DWORD PTR [esp+0xc] | call <_x3m_sun_probe_decide> | add esp,0x8 | cmp eax,0x2 | je <_x3m_sun_probe_thunk> | popf | ret | popf | jmp DWORD PTR ds:0x0 1c: dir32 .bss
+_x3m_sun_lens_thunk absent
+## FL sun_occlusion_fl.o (the FL fixture flags)
+before:
+_x3m_fl_sun_probe_thunk 9c5152fc5251e84500000083c4085a5983f80274029dc39dff25040000006690
+  pushf | push ecx | push edx | cld | push edx | push ecx | call <_x3m_fl_sun_probe_decide> | add esp,0x8 | pop edx | pop ecx | cmp eax,0x2 | je <_x3m_fl_sun_probe_thunk> | popf | ret | popf | jmp DWORD PTR ds:0x4 1a: dir32 .bss | xchg ax,ax
+_x3m_fl_sun_lens_thunk 9c5152fce8e70700005a599dff15000000009c505152fce8d40800005a59589dc38db426000000002e8db42600000000
+  pushf | push ecx | push edx | cld | call <_x3m_fl_sun_lens_begin> | pop edx | pop ecx | popf | call DWORD PTR ds:0x0 2e: dir32 .bss | pushf | push eax | push ecx | push edx | cld | call <_x3m_fl_sun_lens_end> | pop edx | pop ecx | pop eax | popf | ret | lea esi,[esi+eiz*1+0x0] | lea esi,cs:[esi+eiz*1+0x0]
+after:
+_x3m_fl_sun_probe_thunk 9c5152fc5251e81500000083c4085a5983f80274029dc39dff25000000006690
+  pushf | push ecx | push edx | cld | push edx | push ecx | call <_x3m_fl_sun_probe_decide> | add esp,0x8 | pop edx | pop ecx | cmp eax,0x2 | je <_x3m_fl_sun_probe_thunk> | popf | ret | popf | jmp DWORD PTR ds:0x0 1a: dir32 .bss | xchg ax,ax
+_x3m_fl_sun_lens_thunk absent

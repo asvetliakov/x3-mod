@@ -4,7 +4,10 @@
 > (its files, `core::decide`, the deferral, the `override=1` rows), and the hook no longer always claims both calls.
 > Current design and as-built state: [own-sun-pass.md](own-sun-pass.md) section 8 ("FL differences") and section 14
 > ("Step 3 as built: the FL hidden answer"); hook sites, ABI and main-view facts:
-> [FL sun occlusion RE note](../reverse-engineering/fl/sun-occlusion.md). The text below is kept as history.
+> [FL sun occlusion RE note](../reverse-engineering/fl/sun-occlusion.md). The text below is kept as history. The lens
+> bracket, the fog-transmittance lens gain and the `lens_flare_gain` row described below were deleted on 2026-11-02
+> (own-sun-pass.md section 14, "Lens-flare bracket deleted"): FL claims only the probe call, `base+0x8bcb7` is never
+> written, and the fog scalar is `renderer::fog_sky_transmittance` (the own sun's).
 
 AP's flare probe override and lens bracket ([sun partial occlusion](sun-partial-occlusion.md), AP contract
 [lens-flare visibility](../reverse-engineering/lens-flare-visibility.md)) on X3FL.exe:

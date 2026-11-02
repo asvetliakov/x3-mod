@@ -1191,3 +1191,19 @@ rows, which this instrument cannot separate from vanilla. Conclusion of the run 
 is anomalous; the fixed mod cost is ~4 ms per fogged frame at 5120x1440 on both editions (TAA resolve 1.0, fog 1.1–1.7,
 bloom + writeback 1.0, shadows 0.35, sun 0.2) and the heavy FL sectors are draw-bound. Levers if wanted later: TAA
 resolve, fog march/repair resolution, per-draw material cost (needs a vanilla-comparable instrument).
+
+## Lens-flare bracket deleted (2026-11-02, FL and AP; host evidence, not flown)
+
+After FL runs 17 (own sun) and 18 (engine plumes remove the small engine lens flares), the lens bracket, the
+lens-flare gain and its fog-transmittance share are deleted on both editions
+([own-sun-pass.md](../architecture/own-sun-pass.md) section 14, "Lens-flare bracket deleted"). FL now claims only the
+probe call `base+0x8af0a`; `base+0x8bcb7` is never written; the 17-anchor identity (the `lens_block` anchor included)
+is unchanged. FL fixture through `test_fl_sun_occlusion.build_and_run` (measured): `RESULT PASS checks=739 failures=0
+probe_calls=800029` (806 checks before, same probe calls; every lens call checked byte-for-byte vanilla), anchors
+`17 flips=822 refused=822 operand_flips=52 operand_refused=52`, two `fl.sun_occlusion_sample` rows (no `brackets=`
+field), forward 37.3 ns over the native probe; the CPU-state audit of the fixture and of `build-fl/d3d9.dll` passes
+(68 reachable, one XMM envelope, no x87/MXCSR transport, no lens symbol). FL build 0 warnings. The probe thunk's object
+code is the same instruction sequence as before
+([thunk_compare.txt](../../verification/results/own-sun-pass/step2/thunk_compare.txt)). Rows: `fl.sun_occlusion status=
+base= probe= probe_write= log= own_sun= main_view= anchors= failed_anchor= log_s=`; the `lens_flare_gain` start row is
+gone. Full host suite (`run_host_suite.py`, measured): 326 modules, 3,370 tests, 6 failing modules: test_engine_effects, test_engine_plumes, test_engine_ribbons, test_hdr_dither_launch and test_motion_hdr_scene fail on main too; test_engine_shimmer fails because its Wine record (`verification/results/bottle-X3/engine-shimmer/summary.json`) pins the sha256 of `engine_effects_core.h`, changed only by the resolver move (include, alias, comment): it needs a Wine re-record, not a code fix.
