@@ -747,6 +747,25 @@ int main() {
         so::present(0);
         check(row_has("fl.sun_occlusion_sample ") && row_has(" probes=1 own=1 hidden=1 original=0 "),
               "fl.sun_occlusion_sample: own=1 hidden=1 original=0");
+        // The late-probe rule (after FL run 16): the resolve without a hidden answer closes the frame; an eligible probe
+        // after it forwards with the full forward contract and counts as late, another view's does not; Present's
+        // set_own_sun_frame() answers again.
+        so::set_own_sun_frame(true);
+        so::present(0);
+        {
+            const so::Counters l0 = so::counters();
+            so::close_own_sun_frame();
+            probe_answer = 0;
+            probe(view, 2, "late probe after the resolve cleared the latch: forwards");
+            probe(other_view, 2, "late window: another view forwards");
+            const so::Counters l1 = so::counters();
+            check(l1.late == l0.late + 1 && l1.own_sun_hidden == l0.own_sun_hidden && !so::own_sun_hidden(),
+                  "late window: the eligible probe counted once, nothing hidden");
+            so::set_own_sun_frame(true); // Present
+            so::present(0);
+            probe(view, 1, "after Present the latch answers again");
+            check(so::counters().late == l1.late && so::own_sun_hidden(), "re-armed: hidden, no late count");
+        }
         // Latch cleared: forwards again.
         so::set_own_sun_frame(false);
         so::present(0);

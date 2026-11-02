@@ -97,8 +97,8 @@ class OwnSunHookSource(unittest.TestCase):
     def test_probe_answers_hidden_only_for_the_own_sun(self):
         sun = source_text(ROOT / 'src/proxy/own_sun_hook.cpp')
         decide = body(sun, 'int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {\n    if')
-        # Nothing to answer and no log: the original, before the main-view walk and the owner's read.
-        early = decide.index('if (!record || !view || (!own_sun_frame_ && !log_)) {')
+        # Nothing to answer, no closed (late) frame and no log: the original, before the main-view walk and the owner's read.
+        early = decide.index('if (!record || !view || (!own_sun_frame_ && !own_sun_late_ && !log_)) {')
         self.assertLess(decide.index('++counters_.probes;'), early)
         self.assertLess(early, decide.index('begin_frame(frame);'))
         self.assertLess(early, decide.index('x3m::engine_memory::read('))
@@ -112,7 +112,8 @@ class OwnSunHookSource(unittest.TestCase):
         self.assertEqual(decide.count('x3m_sun_probe_target)(record, view)'), 1)
         for gone in ('core::decide', 'ready_', 'latch_', 'deferral_', 'video_flags', 'core::Visible;\n'):
             self.assertNotIn(gone, decide.replace('return vanilla ? core::Hidden : core::Visible;', ''), gone)
-        self.assertIn('void set_own_sun_frame(bool active) {\n    own_sun_frame_ = patched_ && own_sun_wanted_ && active;\n}', sun)
+        self.assertIn('void set_own_sun_frame(bool active) {\n    own_sun_frame_ = patched_ && own_sun_wanted_ && active;\n'
+                      '    own_sun_late_ = false;\n}', sun)
         # Installed for the own sun or the bracket; the log alone installs nothing.
         init = body(sun, 'bool initialize(bool bracket_wanted) {')
         self.assertIn('if (!bracket_wanted && !own_sun_wanted_) {', init)

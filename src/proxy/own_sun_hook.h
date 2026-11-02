@@ -45,6 +45,7 @@ struct Addresses {
 struct Counters {
     std::uint32_t probes = 0, own = 0, original = 0, foreign_thread = 0, brackets = 0;
     std::uint32_t own_sun_hidden = 0; // eligible probes the own sun answered "hidden" (own_sun_core.h answer)
+    std::uint32_t late = 0;           // eligible probes forwarded because the resolve cleared the latch (diagnosis)
 };
 bool initialize(bool bracket_wanted = false); // backend-load path only; one own_sun_hook row (AP; FL: fl.sun_occlusion)
                                               // when the own sun or the bracket is wanted (bracket_wanted: the
@@ -69,6 +70,9 @@ void present(unsigned long long next_device_frame = 0); // frame boundary (the P
 void request_own_sun();
 void set_own_sun_frame(bool active);
 bool own_sun_hidden();
+// The resolve saw no hidden answer in a latched frame (own_sun::core::latch_after_resolve): the latch is cleared until
+// the next set_own_sun_frame() (Present); an eligible probe after it forwards and counts as Counters::late.
+void close_own_sun_frame();
 bool bracket_installed(); // the lens call is claimed (AP: with every install; FL: only for the bracket)
 bool main_view_known();   // installed with a main-view source (FL: the admitted registry slot; AP: always)
 namespace detail {

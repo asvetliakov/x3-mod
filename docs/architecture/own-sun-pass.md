@@ -485,19 +485,24 @@ The own sun draws on Farnham's Legacy (`X3M_EDITION=fl`) with the AP law. Eviden
 - **Review fixes (same day).** `reason=main_view` when the hook installed without a main-view source
   (`own_sun_hook::main_view_known()`; FL: no admitted registry slot): the own sun stays off, the engine's sun is
   vanilla. `lens_flare_gain … bracket=probe_only` when only the probe is claimed (`bracket_installed()`).
-- **No-probe fail-safe (both editions, shared).** `own_sun::core::ProbeGuard`: an armed resolve in an active frame
-  without the main-view hidden answer is a miss (the `no_probe` path), a hidden answer a hit. The eighth consecutive
-  miss withholds the readiness, so the latch stays off and the engine's sun returns (one `--debug` row
-  `own_sun_state … reason=no_probe sun=engine misses=8 retry_frames=600`); every 600 frames one readiness is let
-  through as a retry, and a hit re-arms for good; a missed retry waits another 600 frames. Reset and
-  `configure_own_sun` clear the guard. `own_sun_frame` carries `starved=` and `retries=`. Cost: two integer tests per
-  armed resolve. This changes AP's `motion_output.cpp`, `capture.cpp` and `own_sun_hook.cpp` objects (intended).
+- **Late-probe rule (both editions, shared; replaces the run-16 fail-safe).** At the scene-end resolve, a latched
+  frame whose main-view probe has not been answered "hidden" (`own_sun::core::latch_after_resolve`) clears the latch
+  for the rest of the frame (`own_sun_hook::close_own_sun_frame()`): a probe after the resolve forwards to the engine
+  instead of hiding a sun the stage did not draw; Present sets the latch for the next frame as before. Nothing is
+  counted across frames. Eligible probes forwarded that way are `late=` on `own_sun_frame` (`Counters::late`,
+  diagnosis only; in a closed frame the hook evaluates eligibility for that count). On a correct build nothing
+  changes; on a build whose main view were probed after the resolve the engine's sun stays, with `late>0`.
+- **FL run 16 (flown).** The own sun works on FL and the probe order holds (`drawn=936` of 936 active frames with the
+  sun on screen). The review's no-probe fail-safe (8 misses withheld the latch, a retry every 600 frames) was wrong:
+  the engine does not probe a sun off screen, so a missing probe is the normal case, not a misorder; after the sun
+  left the view and came back, the engine's sun showed for 3-4 s until the next retry (`own_sun_state
+  reason=no_probe` 12 times, `starved=1`, retries up to 35). The guard, its row and its fields are deleted.
 - **FL-specific risks for the first flight** (nothing here is flown). The main view must be probed before the
   scene-end hook, where the stage reads `own_sun_hidden()`: on FL the compositor call fires before the first view
   with layer > 17 and each view is probed after its draw ([FL sun occlusion](../reverse-engineering/fl/sun-occlusion.md),
   "Thread and order"), so this holds if the main view's layer is ≤ 17 (inferred, as on AP); otherwise every armed
-  frame counts `no_probe`, `own_sun_no_probe` is written once and the fail-safe returns the engine's sun after 8
-  frames (`starved=1` on `own_sun_frame`). The main view needs the registry slot that
+  frame counts `no_probe` and `own_sun_no_probe` is written once; the late-probe rule keeps the engine's sun then
+  (`late>0`). Run 16 measured the order as correct. The main view needs the registry slot that
   `sector_background_fl` admits (`fl.sun_occlusion … main_view=registry`; `none` makes nothing eligible: `own=0` in
   `fl.sun_occlusion_sample`). The sun colour is the FL poll (step 7), which needs the shadow cascades like AP's; not Ok
   leaves the stage unarmed (`own_sun_state reason=poll`).

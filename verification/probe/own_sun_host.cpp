@@ -5,7 +5,7 @@
 //   fog on extinction start cap k0 k1 k2
 //   answer active eligible
 //   frame_active configured stage_ready
-//   guard frames miss_from miss_until   the no-probe guard over a frame model (ProbeGuard)
+//   resolve latch hidden_before_resolve   the late-probe rule (latch_after_resolve)
 //   quad x y half_x half_y
 //   constants width height x y radius_px rays core0 core1 core2 glow0 glow1 glow2
 //   pixel c0 c1 c2 k fog_t rays px py open_taps visible   the program's law (own_sun_core.h reference_pixel) at
@@ -74,31 +74,12 @@ int main(int argc, char** argv) {
         std::printf("answer=%d\n", core::answer(std::atoi(argv[2]) != 0, std::atoi(argv[3]) != 0));
         return 0;
     }
-    // The no-probe guard over a frame model: the latch set at frame f's Present makes frame f + 1 active; an active
-    // frame's main-view probe is answered "hidden" unless f is in [miss_from, miss_until). Frame 0 is not active.
-    // Prints the latch per frame, the frame that started the starved state, the retries and the frames active.
-    if (!std::strcmp(cmd, "guard") && argc == 5) {
-        const unsigned frames = unsigned(std::atoi(argv[2]));
-        const long miss_from = std::atol(argv[3]), miss_until = std::atol(argv[4]);
-        core::ProbeGuard g;
-        bool active = false;
-        long starved_at = -1;
-        unsigned starts = 0, active_frames = 0;
-        std::printf("latch=");
-        for (unsigned f = 0; f < frames; ++f) {
-            if (active) {
-                ++active_frames;
-                const bool hit = !(long(f) >= miss_from && long(f) < miss_until);
-                if (core::probe_outcome(g, hit, f)) {
-                    ++starts;
-                    if (starved_at < 0) starved_at = long(f);
-                }
-            }
-            active = core::frame_active(true, core::latch_allowed(g, f)); // the armed stage, then the guard
-            std::putchar(active ? '1' : '0');
-        }
-        std::printf(" starved_at=%ld starts=%u retries=%u active_frames=%u starved=%u misses=%u\n", starved_at, starts,
-                    g.retries, active_frames, unsigned(g.starved), g.misses);
+    // The late-probe rule over one frame: the latch set at the previous Present, a hidden answer before the resolve or
+    // not; prints the latch for the rest of the frame (after the resolve) and for the next frame (Present sets it again).
+    if (!std::strcmp(cmd, "resolve") && argc == 4) {
+        const bool latch = std::atoi(argv[2]) != 0, hidden = std::atoi(argv[3]) != 0;
+        const bool after = core::latch_after_resolve(latch, hidden);
+        std::printf("after_resolve=%u next_frame=%u\n", unsigned(after), unsigned(core::frame_active(true, true)));
         return 0;
     }
     if (!std::strcmp(cmd, "frame_active") && argc == 4) {

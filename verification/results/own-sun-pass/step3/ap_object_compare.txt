@@ -7,3 +7,4 @@ Command: python3 verification/results/own-sun-pass/compare_objects.py <baseline 
 Step 3 code commit 7997ebdf6: compared 4, differ 0.
 After the review fixes (no-probe guard, main_view_known/bracket_installed, the two capture rows): compared 4, differ 3
   (capture.cpp, motion_output.cpp, own_sun_hook.cpp; intended), own_sun_pass.cpp identical.
+After the late-probe rule (FL run 16 fix): compared 4, differ 3 (the same three), own_sun_pass identical.

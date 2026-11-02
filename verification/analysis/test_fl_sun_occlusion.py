@@ -71,7 +71,7 @@ class FlSunOcclusionNativeFixture(unittest.TestCase):
         self.assertNotIn('FAIL ', out)
         self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ eligible_forward_ns=[\d.]+ .* '
                               r'hidden_ns=[\d.]+ own_frame_forward_ns=[\d.]+')
-        self.assertGreaterEqual(int(re.search(r'RESULT PASS checks=(\d+)', out).group(1)), 766)  # step 3: 464 -> 766
+        self.assertGreaterEqual(int(re.search(r'RESULT PASS checks=(\d+)', out).group(1)), 806)  # step 3: 464 -> 806 (late-probe rule)
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
         # 874 anchor bytes: 822 outside the 13 relocated operands, 52 inside; every single-bit flip refused.
         self.assertIn('ANCHOR anchors=17 flips=822 refused=822 operand_flips=52 operand_refused=52', out)
@@ -141,7 +141,7 @@ class FlSunOcclusionWiring(unittest.TestCase):
         self.assertTrue('    pop edx\n    pop ecx\n    cmp eax, 2\n    je 1f\n    popfd\n    ret\n1:' in code, 'answer path')
         # Own sun step 3: the hidden answer gated by the latch and the eligibility, recorded for own_sun_hidden().
         decide = code[code.index('int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {\n    if'):]
-        self.assertIn('if (!record || !view || (!own_sun_frame_ && !log_)) {', decide)
+        self.assertIn('if (!record || !view || (!own_sun_frame_ && !own_sun_late_ && !log_)) {', decide)
         self.assertIn('    if (own && own_sun_frame_) {\n        ++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n'
                       '        own_sun_hidden_frame_ = frame;\n        return core::Hidden;\n    }', decide)
         self.assertLess(decide.index('return core::Hidden;\n    }'), decide.index('const int vanilla ='))
