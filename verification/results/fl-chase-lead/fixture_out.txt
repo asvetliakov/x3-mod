@@ -1,0 +1,41 @@
+WINDOWS count=12 bytes=823 gate_mod8=1 publish_mod8=7 fov_mod8=5 hud_mod8=6
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=executable_mismatch scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=chase_camera_unavailable scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=invalid_base scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam
+FLIPS bits=6584 refused=6584 reloc_bits=288
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=readback_mismatch scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=restored update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=readback_mismatch scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=restored update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=readback_mismatch scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=restored update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=readback_mismatch scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=failed update=pose_seam
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=1 status=active cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=1 status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam
+EXPECT lead=231,-65 forward=-6543,0,65209 anchor=-232,0
+NODES crosshair=-232,9 distance=-232,40 marker=231,-65 cached=231
+LOG chase_central_hud_window frame=300 active=1 admitted=4 no_pose=1 lifetime=0 read=0 scope=1 identity=1 cleanup_pending=1 texture_unavailable=1 calls=9 total_us=<us> max_us=<us> hud_anchor=forward anchor_applied=4 anchor_refused=0 anchor_last_px=-232,0 edition=fl
+LOG chase_lead_window frame=300 ready=6 committed=5 final_fov=1 no_pose=2 lifetime=0 read=0 scope=0 identity=0 projection=1 marker=0 unchanged=4 calls=27 total_us=<us> max_us=<us> samples=6 omitted=1 edition=fl
+LOG chase_lead_sample frame=300 phase=1 generation=1 update=1 thread=<tid> cockpit=0x<addr> ship=4242 target=5151 sector=0x<addr> marker=0x<addr> point=1100,2050,4000 early_fov=8192 final_fov=0 native=286326785,572653570 projected=231,-65 camera_pos=1000,2000,3000 viewport=0,65536,0,65536 plane=65536,65536 screen=1920,1080
+LOG chase_lead_sample frame=300 phase=1 generation=2 update=2 thread=<tid> cockpit=0x<addr> ship=4242 target=5151 sector=0x<addr> marker=0x<addr> point=1100,2050,4000 early_fov=8192 final_fov=0 native=286326785,572653570 projected=231,-65 camera_pos=1000,2000,3000 viewport=0,65536,0,65536 plane=65536,65536 screen=1920,1080
+LOG chase_lead_sample frame=300 phase=1 generation=3 update=3 thread=<tid> cockpit=0x<addr> ship=4242 target=5151 sector=0x<addr> marker=0x<addr> point=1100,2050,4000 early_fov=8192 final_fov=0 native=286326785,572653570 projected=231,-65 camera_pos=1000,2000,3000 viewport=0,65536,0,65536 plane=65536,65536 screen=1920,1080
+LOG chase_lead_sample frame=300 phase=1 generation=4 update=4 thread=<tid> cockpit=0x<addr> ship=4242 target=5151 sector=0x<addr> marker=0x<addr> point=1100,2050,4000 early_fov=8192 final_fov=0 native=286326785,572653570 projected=231,-65 camera_pos=1000,2000,3000 viewport=0,65536,0,65536 plane=65536,65536 screen=1920,1080
+LOG chase_lead_sample frame=300 phase=2 generation=6 update=6 thread=<tid> cockpit=0x<addr> ship=4242 target=5151 sector=0x<addr> marker=0x<addr> point=1100,2050,4000 early_fov=8192 final_fov=6144 native=0,0 projected=316,-89 camera_pos=1000,2000,3000 viewport=0,65536,0,65536 plane=65536,65536 screen=1920,1080
+TIMING n=2000 harness_us=<us> other_cockpit_final_fov_us=<us> disabled_final_fov_us=<us> admitted_update_us=<us> (harness included: 1 call, 1 call, 1 call, 4 calls + pose)
+LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+LOG chase_central_hud installed=0 status=lead_unavailable cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none
+LOG chase_lead installed=0 status=late_claim scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<addr> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam
+RESULT PASS checks=79 failures=0
+# exit=0

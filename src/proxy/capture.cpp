@@ -2149,7 +2149,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         chase_lead::report(ctx.frame);       // predictive marker results, no per-draw reporting
     }
 #else
-    if (ctx.capture || ctx.frame % 300 == 0) chase_camera::report(ctx.frame); // FL: the pose seam only (no line otherwise)
+    if (ctx.capture || ctx.frame % 300 == 0) {
+        chase_camera::report(ctx.frame); // FL: the pose seam (no line otherwise)
+        chase_lead::report(ctx.frame);   // FL: lead marker and central HUD windows (telemetry only)
+    }
 #endif
     if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
     // With the route requested, log the wrapper's copy-depth epochs per capture

@@ -334,3 +334,64 @@ flight acceptance must check marker/bolt alignment, settled forward HUD framing,
 zoom, view changes, loads and resets. No production edits, build, Wine/native/
 game execution, installation or commit was performed. Native Windows behavior
 and FL visual acceptance remain unverified.
+
+## 7. Verified 2026-11-02 against X3FL.exe
+
+Re-checked on the installed `C:\X3FL\X3FL.exe` (SHA-256 `e7f3aad8…`, 38,327 HIGHLOW fixups, no other type; measured)
+by `verification/probe/verify_chase_lead_sites_fl.py` (Capstone over the file, read-only; compact result
+`verification/results/fl-chase-lead/verify_fl_sites.json`). Every claim of sections 1–5 that the implemented subset
+relies on holds; none had to be corrected. The `verification/results/fl-port/chase-lead-contract/` producer named in
+section 6 is not on this branch; the verifier replaces it for this subset. Implementation: `src/engine/fl/chase_lead_fl.cpp`
+(it provides `chase_lead.h` on FL in place of `src/proxy/chase_lead.cpp`, which stays AP-only and unchanged) with its
+constants in `src/engine/fl/chase_lead_sites_fl.h`. RVAs below (preferred VA = `0x400000` + RVA).
+
+**What makes each missing element appear (from the AP module and its notes):** the central crosshair (O+0), target-speed
+panel (O+0x208), own-speed panel (O+0x21c), target-distance panel (O+0x230) and status icon (O+0x294) are hidden by the
+overlay's view-bit branch at the **HUD gate**; the predictive reticle (O+0x3c) by the **lead gate**, with its corrected
+position from **publish** and **final FOV**; the true-forward placement of the five nodes (`chase_hud_anchor = forward`)
+is written at **final FOV**. The target brackets/offscreen arrows (the separate target-overlay record O+0x3e8) need no
+hook: their caller tests `test byte [eax+0x150],3` at `0x02c2b5`, which mode 258 passes natively, as on AP. Cursor fire
+and the aim trace are not needed for any of these elements and stay AP-only. The five AP native-timing sites are
+telemetry only; they are not ported (`chase_native_timing installed=0 status=not_ported`).
+
+| RVA / field | Fact | How verified |
+| --- | --- | --- |
+| `0x02c7b9` gate | `0f 84 36 04 00 00` `je 0x42cbf5`, rel32 +2; preceded by `test byte [esi+0x150],1` (`0x02c7b2`) and the tracking 2..3 test (`0x02c79f`); ESI = `[ebx+0x3c4]` (`0x02c799`) | exact bytes, Capstone; window `gate` FNV `f2edff5d` |
+| `0x02cbe7` publish | `89 8b e0 03 00 00` `mov [ebx+0x3e0],ecx`; ECX = x `[esp+0x14]` (`0x02cbbd`), EDX = y `[esp+0x40]` (`0x02cbc1`), EAX = node `[ebx+0x40]` (`0x02cbba`) | bytes, Capstone anchors; window `publish` `457c74a0` |
+| `0x022cf5` final FOV | `39 b3 40 02 00 00` `cmp [ebx+0x240],esi`; camera FOV stores before it (`0x022cc5`), cached store `0x022cfd`, HUD parent call `0x022d05` | bytes, anchors; window `fov` `247c90cb` |
+| `0x02cc1e` HUD gate | `0f 84 f5 03 00 00` `je 0x42d019`, rel32 +2; EAX = `[ebx+0x3c4]` (`0x02cc11`), `test byte [eax+0x150],1` (`0x02cc17`) | bytes, anchors; in window `publish` |
+| span relocations / inbound edges | no HIGHLOW touching any span `[rva-3, rva+6)`; no direct edge into any interior (72,230 direct edges); edges to starts: publish from `0x02cbdb`, final FOV from `0x022ce5`/`0x022ced` (allowed: the jump is at the start) | `.reloc` census, linear-sweep edge census |
+| qword | gate `& 7 = 1` fits one aligned qword (`lock cmpxchg8b`); publish 7, final FOV 5, HUD gate 6 cross one (plain copy inside the install window) | arithmetic on the RVA (64 KB base keeps it) |
+| pose seam dominance | in the cockpit updater `[0x021f50, 0x022fb0)` (1,082 instructions, no unresolved edge) the chase camera's pose seam `0x0227ad` dominates the overlay call `0x0229c2` and the final-FOV seam: both unreachable from the entry with that node removed; EBX writes only `0x021f5e`, the loop `0x02268d/0x0226bd`, reload `0x0226d8`, epilogue pops | complete CFG with jump tables, Capstone register-write sets |
+| overlay `0x02c330` | sole direct caller `0x0229c2` (`lea ecx,[ebx+0x3bc]` at `0x0229bc`: **O = cockpit + 0x3bc**); EBX = O (`0x02c33d`); body enable O+0x3c0 (`0x02c345`), backpointer O+0x3c4 (`0x02c352`) | edge census; windows `call` `a26fea9a`, `prologue` `c6e1e559` |
+| overlay stack | ESP relative to the post-prologue base P is 0 at the gate, solver setup, solver return, publish, hide path, HUD gate, HUD target and central end, and -0x14 at the solver call, on every path (3,061 instructions, both jump tables followed, no depth conflict) | abstract interpretation of push/pop/`sub`/`add esp`/callee `ret n` |
+| solver slot | `lea eax,[esp+0xe0]` (`0x02c850`) is the solver's fifth argument; `0x0505a0` writes `[ebp+0x18]` from target root+0x30 (`0x0506ce..0x0506df`) and returns `ret 0x14` (`0x050723`, `0x050741`); the main-gun projection reads P+0xe0 (`0x02c89c`). The handler reads **saved ESP + 0xe4** (pushfd before pushad) | anchors; window `solver` `7ece295a` |
+| hide helper `[0x027c20, 0x027c3f)` | `push esi; mov esi,ecx; …; push [ecx+0x1c]; call 0x4a5740; mov [esi],0; pop esi; ret`: ECX = entry, plain RET; the detacher compares node+0x1c with its argument (`0x0a574a`) | whole 31 bytes as window `hide` `8da11c57`; executed by the native fixture |
+| HUD entries | O+0, +0x208, +0x21c, +0x230, +0x294, extra +0x118, +0x140, +0x12c in the native hide order `0x02d019..0x02d068`, then `mov eax,[ebx+0x3c4]` at the central end `0x02d06d`; node positions (0,9) `0x02ccc7`, (1,-25) `0x02cd98`, (-70,-10) `0x02cdee`, (70,-10) `0x02ceb1`, (0,40) `0x02cf74` | window `cleanup` `08143880`; anchors |
+| node fields | +0x30/+0x34 x/y (`0x02cbc9/0x02cbcc`), +0x130 Flags2 `0x200` (`0x02cbdd`), +0x1c scene (`0x0a574a`) | anchors |
+| cockpit display fields | +0x244 draw-2D (`0x024870`), +0x2b0 display-body (`0x02489a`), +4 HUD scene with +0x18 bit 0 active (`0x026701`, `0x02670c`), texture 15 query `0x02671b` | windows `distance` `61976064`, `producer` `728ce072` |
+| texture 15 availability `[0x1123a0, 0x112406)` | metadata count short RVA `0x21b410`, metadata rows `0x21b418` (stride 0x3c, +0xc), counts `0x1fb404` + `0x21b40c`, cached rows `0x1cb3f4` (stride 0x10, +8); lazy loader not called | window `texture` `56445803` with six HIGHLOW dwords, each checked against base + RVA at run time |
+| registry | slot RVA `0x1a82e4` (`0x02487d`, setter `0x031fae`), active handle +0x10 (`0x031fd0`); resolver `0x01e420`: map +0, buckets [map], count [map+4], index `(count-1)&handle`, link next +0/key +4/value +8. FL `active()` also refuses handle 0 | anchors; relocated dword of window `distance` |
+| projection | HUD camera cockpit+8 (`0x02caca`), normalized viewport +0x288..+0x294, screen record *(*`0x5a82f8`)+4/+6 (`0x02cadf/0x02cb0d`), planes +0x300/+0x304 with fallback +0x28/+0x2c; camera+0x278 is the D3DVIEWPORT9 pointer (`push [ebx+0x278]` at `0x0defa4` before SetViewport) | window `projection` `bdd984e9` (two HIGHLOW dwords = base + `0x1a82f8`); anchors |
+| scope fields | +0xc/+0x10 refs, +0x150 mode, +0x1a0 flags (`0x0224e1`), +0x1c0 connect (`0x0224c5`), +0x1d8 gun (`0x02c88e`), +0x1e0 target, +0x1e4 tracking, +0x54 sector, +0x58 camera; object +8 id (`0x03107d`), +0x54 owner (`0x059780`), +0x48 type 1/7 (`0x059787`, `0x059fc0`) | anchors (with the chase camera verifier's) |
+| aim publication | the native fire-control helper reads cockpit+0x79c/+0x7a0 = O+0x3e0/+0x3e4 (`0x027173`, `0x027195`); the extension's publication therefore also feeds native fire aiming, as on AP | anchors |
+
+**Update binding (FL decision, not the note's transition binding):** `chase_transition` (constructor generation,
+update serial) is not available on FL. The FL module binds each update to the chase camera's pose-seam visit instead:
+`invalidate_pose()` on every visit, `camera_context()` publishes `{generation = serial = a per-publication counter,
+thread}` for the applied bound cockpit, and the final-FOV seam closes it. The dominance result above makes this sound
+within one updater invocation: no gate can be reached in an invocation without that invocation's pose visit and
+the cockpit is the invocation's live `this` (EBX). One path leaves the token open: `0x022a0d je 0x022fa9`
+(cockpit+0xc == 0 after the HUD calls) skips the final-FOV seam. That pose stays open until the next pose-seam visit
+invalidates it; no gate can use it first, a leftover lead ticket fails at `scope`/`owned_marker` (the token no longer
+matches) so nothing is written from it, and its anchor slot is reclaimed at that visit. It does not detect a cockpit destroyed and
+reallocated by a callback inside the same invocation (the native hide helper and the solver can reach callbacks); the
+native continuation would then also resume on a destroyed owner, the limit section 5 already states.
+
+Run-time identity: before any write, the twelve windows (823 bytes) must match at base + RVA with each relocated dword
+equal to base + its target (nine relocated dwords); refusals `executable_mismatch`, `chase_camera_unavailable`, `invalid_base`, `unreadable`,
+`window_mismatch`, `slot_mismatch` (the row names the window), `late_claim`. The marker's three seams install all or
+none: a read-back mismatch writes the original five bytes back inside the install window and counts as restored only
+when all six read back original; earlier seams go back through `engine_patch::restore`. The HUD gate is a separate
+transaction that never disables the marker. Not verified: the four seams in game (not flown), foreign-SEH unwinding
+through the callbacks, a callback-driven cockpit destruction inside one updater invocation.

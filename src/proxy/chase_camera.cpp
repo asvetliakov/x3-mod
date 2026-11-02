@@ -3,8 +3,8 @@
 #if !X3M_EDITION_FL
 #include "chase_aim_trace.h"
 #include "chase_fire.h"
-#include "chase_lead.h"
 #endif
+#include "chase_lead.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
 #if !X3M_EDITION_FL
@@ -43,8 +43,9 @@ namespace {
 // 0x021f50 (EBX = cockpit), rel32 at +6, continuation RVA 0x0227b7, branch target RVA 0x022928. The spec and the
 // default-plane slot (base + RVA 0x1a82f8) are filled by initialize() from the admitted base once the three identity
 // windows of chase_camera_sites_fl.h match (docs/reverse-engineering/fl/chase-camera.md, "Verified 2026-11-02"). The
-// handler below is shared; its AP-only dependencies (chase_transition, chase_lead, chase_fire, chase_aim_trace) are
-// compiled out, so the FL module reaches no AP address and publishes no downstream context.
+// handler below is shared; its AP-only dependencies (chase_transition, chase_fire, chase_aim_trace) are compiled out, so
+// the FL module reaches no AP address. It publishes one downstream context: chase_lead's FL edition
+// (src/engine/fl/chase_lead_fl.cpp), whose update binding is this seam's visit (invalidate_pose, camera_context).
 namespace S = x3m::fl::chase_camera_fl;
 uintptr_t site_va = 0;
 engine_patch::SiteSpec site_spec{};
@@ -192,9 +193,8 @@ void publish_pose(bool written, bool snapped = false) {
     if (continuity.update(written, snapped)) snap_epoch.fetch_add(1, std::memory_order_relaxed);
 }
 void handle(uint32_t* regs) {
-#if !X3M_EDITION_FL
+    // FL too (src/engine/fl/chase_lead_fl.cpp): this visit's invalidation opens the lead's update binding.
     chase_lead::invalidate_pose();
-#endif
     const uintptr_t cockpit = regs[4]; // EBX after pushad: EDI ESI EBP ESP EBX EDX ECX EAX
     chase::Input in;
     chase::Pose pose;
@@ -482,7 +482,10 @@ void handle(uint32_t* regs) {
         }
     }
 #if X3M_EDITION_FL
-    ReleaseSRWLockExclusive(&stats_lock); // FL: no downstream context (lead, fire and aim are AP-only)
+    ReleaseSRWLockExclusive(&stats_lock); // FL: the lead/central HUD context only (fire and aim are AP-only)
+    const bool context_ok = written && bound;
+    chase_lead::camera_context(cockpit, ref_object, camera, context_ok, context_ok ? &pose.basis : nullptr,
+                               context_ok ? &pose.view_rel : nullptr);
 #else
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
@@ -782,7 +785,7 @@ bool initialize() {
     log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
         "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f fov_compensate=%u lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
         "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view "
-        "edition=fl rva=0x%06lx rollback=%s unbound_phase=ap_only dependencies=none",
+        "edition=fl rva=0x%06lx rollback=%s unbound_phase=ap_only dependencies=chase_lead",
         unsigned(site.patched_in), state.load(), static_cast<unsigned long>(site_va), site_spec.length,
         site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(), tunables.rot_tau, tunables.pos_tau,
         tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, unsigned(tunables.fov_compensate),

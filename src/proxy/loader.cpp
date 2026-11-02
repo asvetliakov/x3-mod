@@ -94,11 +94,13 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::fl::scale_fix::initialize();
     // X3M_CAMERA=chase (the FL ini default): the cockpit updater's pose seam (src/proxy/chase_camera.cpp, FL branch;
     // docs/reverse-engineering/fl/chase-camera.md), same install window, before the game loop first runs the updater;
-    // one chase_camera row with edition=fl. The view restore, the lead marker, cursor fire and the aim trace stay
-    // AP-only: one refusal row each, nothing claimed.
+    // one chase_camera row with edition=fl. The lead marker and central HUD (src/engine/fl/chase_lead_fl.cpp; its
+    // update binding is the pose seam, so it needs the camera installed) claim their four seams in the same window and
+    // log their own rows. The view restore, cursor fire and the aim trace stay AP-only: one refusal row each.
     if (x3m::chase_camera::wanted()) {
         x3m::chase_camera::initialize();
-        for (const char* name : {"chase_transition", "chase_lead", "chase_fire", "chase_aim_trace"})
+        x3m::chase_lead::initialize();
+        for (const char* name : {"chase_transition", "chase_fire", "chase_aim_trace"})
             x3m::log("%s installed=0 status=ap_only edition=fl reason=ap_only", name);
     }
 #endif
