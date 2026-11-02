@@ -1587,7 +1587,20 @@ with no blocker, fixes folded (sections above). Clean `build-fl` from main `caae
 (55,579,145 B), rollback `rollback-d3d9\d3d9.dll.run23` = `647e8ebc…`; overlay and ini unchanged (template defaults: `fov = 90`,
 `camera = chase`). Record `verification/results/fl-run24/candidate.json`.
 
-**FL run 24 A (open):** load a game, fly in open space and through one gate, dock once if convenient, take one F8 in flight;
+**FL run 24 A (flown 2026-11-02, accepted for FOV and the camera pose):** user: "fov and chase camera works"; a sector
+change switched the view back to first person and did not restore; the HUD elements of the chase view (crosshair, distance
+icon, target overlay, possibly the lead reticle) are not shown. Both are the documented AP-only gaps (`chase_transition`,
+`chase_lead`), now **user decision 2026-11-02: port the view restore and the central HUD / `chase_hud_anchor` and the other
+UI elements so the chase view shows them as on AP**. Log `/home/asvetl/x3m-logs/fl-run24-fov-chase.log` (measured):
+`fov … edition=fl status=patched value=0x3470 write=plain setfocus=active setfocus_write=atomic load=active
+load_write=atomic`; `fov_confirm` rows `match=1 kind=constructor` at frames 64 and 2240, then `focus=0x351f
+kind=remapped` (a script/menu SetFocus remapped through the table, so the setter site works); `chase_camera installed=1
+status=active site=0x00dd27ad` with 198 window/timing rows; `chase_transition`/`chase_lead`/`chase_fire`/`chase_aim_trace
+installed=0 status=ap_only edition=fl`; `bolt_footprint session_draws=8274 written=5660 expanded=42,158 gated=1,355`
+(the footprint path ran on FL for the first time; no refusal). No `installed=0`, `refused` or `rollback=failed` on the
+FOV or camera rows.
+
+Original brief: load a game, fly in open space and through one gate, dock once if convenient, take one F8 in flight;
 tell me before relaunching. Expect `fov … edition=fl status=active` with the constructor literal, SetFocus and load sites
 claimed (`write=plain setfocus=atomic load=atomic` or the row's equivalents), `fov_confirm` rows showing `0x3470`
 (90 on 16:9) after load, `chase_camera requested=1 installed=1 status=active edition=fl rva=0x0227ad`, four
