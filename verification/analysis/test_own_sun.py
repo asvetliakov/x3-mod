@@ -288,38 +288,32 @@ class OwnSunHost(unittest.TestCase):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
         self.assertEqual(table, {(0, 0): 2, (0, 1): 2, (1, 0): 2, (1, 1): 1})  # hidden only for the eligible record
 
-    def test_no_probe_guard_frame_model(self):
-        # Step 3 review F3: 8 consecutive active frames without the hidden answer withhold the latch, a retry is let
-        # through every 600 frames, one hit re-arms. Frame 0 latches, frames 1.. are active while the latch holds.
-        never = self.run_driver('guard', 2000, 10, 10**9)
-        latch = never['latch']
-        self.assertEqual(latch[:17], '1' * 17)              # frames 0..16 latch; 10..17 are the 8 active misses
-        self.assertEqual(never['starved_at'], '17')         # the eighth miss withholds frame 17's latch
-        self.assertEqual(latch[17:617], '0' * 600)          # the engine's sun for 600 frames
-        self.assertEqual(latch[617], '1')                   # the retry: frame 618 active, misses again
-        self.assertEqual(latch[618:1218], '0' * 600)
-        self.assertEqual(latch[1218], '1')
-        self.assertEqual((never['starts'], never['retries'], never['starved']), ('1', '3', '1'))
-        self.assertEqual(never['active_frames'], str(17 + 3))  # 1..17 and the retry frames 618, 1219, 1820
-        # A transient (a menu or load from frame 10 to 700): the second retry (frame 1219) hits and re-arms for good.
-        transient = self.run_driver('guard', 2000, 10, 700)
-        self.assertEqual(transient['latch'][1218:], '1' * (2000 - 1218))
-        self.assertEqual((transient['starts'], transient['retries'], transient['starved'], transient['misses']),
-                         ('1', '2', '0', '0'))
-        # Seven misses in a row never withhold the latch; a hit clears the count.
-        seven = self.run_driver('guard', 100, 10, 17)
-        self.assertEqual(seven['latch'], '1' * 100)
-        self.assertEqual((seven['starts'], seven['starved_at'], seven['misses']), ('0', '-1', '0'))
-        # The production wiring: the outcome at the resolve, then the guard on the readiness; the row is --debug.
+    def test_late_probe_rule(self):
+        # Step 3 after FL run 16: at the resolve a latched frame without a hidden answer clears the latch until Present
+        # (a later probe forwards to the engine); with the answer before the resolve the latch is unchanged; Present
+        # sets it again. No counting across frames (the run-16 fail-safe withheld the sun after it left the screen).
+        self.assertEqual(self.run_driver('resolve', 1, 0), {'after_resolve': '0', 'next_frame': '1'})
+        self.assertEqual(self.run_driver('resolve', 1, 1), {'after_resolve': '1', 'next_frame': '1'})
+        self.assertEqual(self.run_driver('resolve', 0, 0)['after_resolve'], '0')
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
+        wiring = motion[motion.index('if (own_sun_requested_ && own_sun_frame_active_ &&'):]
         wiring = wiring[:wiring.index('// Phase timing of the run')]
-        self.assertLess(wiring.index('own_sun::core::probe_outcome(own_sun_guard_, true, frame_);'),
-                        wiring.index('if (!own_sun::core::latch_allowed(own_sun_guard_, frame_)) own_sun_ready_ = false;'))
+        self.assertIn('!own_sun::core::latch_after_resolve(true, own_sun_hook::own_sun_hidden()))\n'
+                      '                own_sun_hook::close_own_sun_frame();', wiring)
+        self.assertLess(wiring.index('own_sun_hook::close_own_sun_frame();'), wiring.index('own_sun_arm('))
+        for gone in ('ProbeGuard', 'probe_outcome', 'latch_allowed', 'own_sun_guard_', 'no_probe_retry_frames'):
+            for path in ('src/proxy/own_sun_core.h', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output.h',
+                         'src/proxy/motion_output_own_sun_inc.h'):
+                self.assertNotIn(gone, (ROOT / path).read_text(), (gone, path))
+        for gone in ('starved=', 'retries=', 'reason=no_probe'):
+            self.assertNotIn(gone, (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text(), gone)
         stage = (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text()
-        self.assertIn('if (own_sun::core::probe_outcome(own_sun_guard_, false, frame_) && log_tier::cached_debug)', stage)
-        self.assertIn('no_probe=%u starved=%u retries=%u', stage)
-        self.assertIn('own_sun_guard_ = {};', motion)  # Reset
+        self.assertIn('no_probe=%u answered=%lu forwarded=%lu late=%lu', stage)
+        for path in ('src/proxy/own_sun_hook.cpp', 'src/engine/fl/sun_occlusion_fl.cpp'):
+            hook = (ROOT / path).read_text()
+            self.assertIn('if (!record || !view || (!own_sun_frame_ && !own_sun_late_ && !log_)) {', hook)
+            self.assertIn('own_sun_frame_ = patched_ && own_sun_wanted_ && active;\n    own_sun_late_ = false;', hook)
+            self.assertIn('own_sun_late_ = own_sun_frame_;\n    own_sun_frame_ = false;', hook)
 
     def test_frame_active_is_the_setting_and_the_armed_stage(self):
         # Step 2: the Ctrl+Shift+F9 hotkey is gone; the setting and the armed stage alone decide the frame.
@@ -446,7 +440,7 @@ class OwnSunWiring(unittest.TestCase):
         wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
         wiring = wiring[:wiring.index('#endif')]
         self.assertLess(wiring.index('if (own_sun_hook::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
-        self.assertIn('} else\n                        own_sun_no_probe();', wiring)
+        self.assertIn('} else\n                    own_sun_no_probe();', wiring)
         sun = (ROOT / 'src/proxy/own_sun_hook.cpp').read_text()
         self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', sun)
         branch = sun[sun.index('++counters_.own_sun_hidden;'):]

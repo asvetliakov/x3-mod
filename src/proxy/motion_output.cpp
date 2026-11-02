@@ -2466,19 +2466,19 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             }
             // Own sun (motion_output_own_sun_inc.h): armed at every resolve (own_sun_ready() feeds the next frame's latch);
             // drawn only in a frame the latch made active and whose main-view probe was
-            // answered "hidden", then before the plumes when both draw (one callback slot). The no-probe guard
-            // (own_sun::core::ProbeGuard) withholds the readiness after 8 active frames without the answer.
-            if (own_sun_requested_ && own_sun_arm(hdr_scene != nullptr, depth, in.width, in.height)) {
-                if (own_sun_frame_active_) {
-                    if (own_sun_hook::own_sun_hidden()) {
-                        own_sun::core::probe_outcome(own_sun_guard_, true, frame_);
-                        own_sun_with_plumes_ = in.stage_callback != nullptr;
-                        in.stage_callback = &MotionOutput::own_sun_stage_callback;
-                        in.stage_context = this;
-                    } else
-                        own_sun_no_probe();
-                }
-                if (!own_sun::core::latch_allowed(own_sun_guard_, frame_)) own_sun_ready_ = false;
+            // answered "hidden", then before the plumes when both draw (one callback slot). The late-probe rule
+            // (own_sun::core::latch_after_resolve): without that answer the latch is cleared until Present, so a probe
+            // after the resolve forwards to the engine.
+            if (own_sun_requested_ && own_sun_frame_active_ &&
+                !own_sun::core::latch_after_resolve(true, own_sun_hook::own_sun_hidden()))
+                own_sun_hook::close_own_sun_frame();
+            if (own_sun_requested_ && own_sun_arm(hdr_scene != nullptr, depth, in.width, in.height) && own_sun_frame_active_) {
+                if (own_sun_hook::own_sun_hidden()) {
+                    own_sun_with_plumes_ = in.stage_callback != nullptr;
+                    in.stage_callback = &MotionOutput::own_sun_stage_callback;
+                    in.stage_context = this;
+                } else
+                    own_sun_no_probe();
             }
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
@@ -4249,7 +4249,6 @@ void MotionOutput::before_reset() noexcept {
     own_sun_attach_failed_ = own_sun_failed_out_ = false;
     own_sun_disarmed_until_ = 0;
     own_sun_failures_ = 0;
-    own_sun_guard_ = {}; // the no-probe guard starts over at a mode or load boundary
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     engine_scene_camera_last_ = 0; // node-sourced nozzles: the root filter's view is forgotten (a mode or load boundary)

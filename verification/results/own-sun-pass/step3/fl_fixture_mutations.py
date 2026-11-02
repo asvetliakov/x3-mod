@@ -27,7 +27,10 @@ MUTATIONS = {
                               '    own_sun_frame_ = patched_ && active;'),
     'lens_claimed_without_bracket': ('    if (with_lens && !engine_patch::claim_call(lens_site_',
                                      '    if (!engine_patch::claim_call(lens_site_'),
-    'early_exit_ignores_latch': ('(!own_sun_frame_ && !log_)', '(!log_)'),
+    'early_exit_ignores_latch': ('(!own_sun_frame_ && !own_sun_late_ && !log_)', '(!own_sun_late_ && !log_)'),
+    'late_not_closed': ('    own_sun_late_ = own_sun_frame_;\n    own_sun_frame_ = false;\n',
+                        '    own_sun_late_ = own_sun_frame_;\n'),
+    'late_not_counted': ('    if (own && own_sun_late_) ++counters_.late;', '    if (false) ++counters_.late;'),
     'latch_while_unpatched': ('    own_sun_frame_ = patched_ && own_sun_wanted_ && active;',
                               '    own_sun_frame_ = own_sun_wanted_ && active;'),
 }

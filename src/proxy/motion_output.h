@@ -2062,8 +2062,7 @@ private:
         unsigned frames = 0, active = 0, drawn = 0, no_probe = 0;
     } own_sun_period_{};
     bool own_sun_no_probe_logged_ = false; // the first armed, active frame without a hidden answer wrote its row
-    own_sun::core::ProbeGuard own_sun_guard_{}; // the no-probe fail-safe (8 misses withhold the latch, retry per 600)
-    std::uint32_t own_sun_answered_seen_ = 0, own_sun_forwarded_seen_ = 0;
+    std::uint32_t own_sun_answered_seen_ = 0, own_sun_forwarded_seen_ = 0, own_sun_late_seen_ = 0;
     bool own_sun_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
     bool attach_own_sun() noexcept;
     void release_own_sun() noexcept;

@@ -28,6 +28,7 @@ volatile LONG foreign_thread_ = 0;             // counted by the foreign threads
 Counters counters_{};
 bool own_sun_wanted_ = false;         // request_own_sun(): install for the own sun
 volatile bool own_sun_frame_ = false; // set_own_sun_frame(): this frame's own-sun answer (Present thread = owner thread)
+bool own_sun_late_ = false; // close_own_sun_frame(): the latch was cleared at the resolve until Present
 bool own_sun_hidden_seen_ = false;    // the answer branch ran at least once; with own_sun_hidden_frame_ its frame
 std::uint32_t own_sun_hidden_frame_ = 0;
 std::uint32_t seen_frame_ = 0;
@@ -103,7 +104,7 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     ++counters_.probes;
     // Nothing to answer in this frame (the own sun's latch off: unarmed stage, not requested, the bracket-only
     // install) and no log: the original, before any read.
-    if (!record || !view || (!own_sun_frame_ && !log_)) {
+    if (!record || !view || (!own_sun_frame_ && !own_sun_late_ && !log_)) {
         ++counters_.original;
         return core::Original;
     }
@@ -123,6 +124,7 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     }
     const bool own = core::eligible(record_owner, probing, main_view_, owner_flags);
     if (own) ++counters_.own;
+    if (own && own_sun_late_) ++counters_.late; // forwarded: the resolve cleared the latch
     // Own sun (own_sun_core.h): the sun's eligible record is "hidden" in an own-sun frame; the engine destroys the
     // record's bodies (0x00471660). Integer only, like everything on this path.
     if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {
@@ -234,6 +236,7 @@ bool install_at(const Addresses& a, bool log_enabled) {
     main_view_ = 0;
     frame_started_ = false;
     own_sun_frame_ = false;
+    own_sun_late_ = false;
     own_sun_hidden_seen_ = false;
     detail::bracket_open = false;
     probe_site_ = engine_patch::CallSite{};
@@ -306,6 +309,7 @@ bool shutdown() {
     patched_ = probe_site_.patched_in || lens_site_.patched_in; // retain a failed restoration for a later detach retry
     detail::bracket_open = false;
     own_sun_frame_ = false;
+    own_sun_late_ = false;
     state_ = probe_back && lens_back ? "restored" : "restore_failed";
     SetLastError(error);
     return probe_back && lens_back;
@@ -341,6 +345,11 @@ void request_own_sun() {
 }
 void set_own_sun_frame(bool active) {
     own_sun_frame_ = patched_ && own_sun_wanted_ && active;
+    own_sun_late_ = false;
+}
+void close_own_sun_frame() {
+    own_sun_late_ = own_sun_frame_;
+    own_sun_frame_ = false;
 }
 bool own_sun_hidden() {
     return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;

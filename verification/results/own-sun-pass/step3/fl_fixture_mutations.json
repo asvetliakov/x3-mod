@@ -1,10 +1,10 @@
 {
  "no_hidden_branch": {
   "result": "FAIL",
-  "checks": 772,
-  "failures": 50,
+  "checks": 813,
+  "failures": 58,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=36.3 forward_ns=70.9 eligible_forward_ns=70.1 native_lens_ns=36.5 bracket_ns=246.5 forward_hook_ns=34.5 bracket_hook_ns=210.0 hidden_ns=77.5 own_frame_forward_ns=71.5",
+  "timing": "TIMING native_probe_ns=32.3 forward_ns=71.4 eligible_forward_ns=74.5 native_lens_ns=36.5 bracket_ns=255.1 forward_hook_ns=39.1 bracket_hook_ns=218.6 hidden_ns=90.1 own_frame_forward_ns=70.2",
   "first_failures": [
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
@@ -12,21 +12,21 @@
  },
  "answer_ignores_latch": {
   "result": "FAIL",
-  "checks": 766,
-  "failures": 5,
+  "checks": 805,
+  "failures": 14,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=32.9 forward_ns=72.4 eligible_forward_ns=71.9 native_lens_ns=36.0 bracket_ns=243.1 forward_hook_ns=39.5 bracket_hook_ns=207.1 hidden_ns=79.5 own_frame_forward_ns=71.3",
+  "timing": "TIMING native_probe_ns=37.1 forward_ns=78.2 eligible_forward_ns=70.7 native_lens_ns=43.0 bracket_ns=257.3 forward_hook_ns=41.1 bracket_hook_ns=214.3 hidden_ns=68.7 own_frame_forward_ns=74.9",
   "first_failures": [
-   "log mode: the original ran once through the register ABI",
-   "sun_probe row: the registry main view, the owner's layer, the original's answer"
+   "late probe after the resolve cleared the latch: forwards: record+0x30 cleared exactly on a nonzero answer",
+   "late probe after the resolve cleared the latch: forwards: the walk's test eax,eax saw the answer"
   ]
  },
  "answer_ignores_eligibility": {
   "result": "FAIL",
-  "checks": 761,
+  "checks": 801,
   "failures": 37,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=33.0 forward_ns=72.6 eligible_forward_ns=72.8 native_lens_ns=36.3 bracket_ns=254.1 forward_hook_ns=39.6 bracket_hook_ns=217.8 hidden_ns=71.2 own_frame_forward_ns=64.7",
+  "timing": "TIMING native_probe_ns=33.9 forward_ns=70.8 eligible_forward_ns=70.1 native_lens_ns=36.0 bracket_ns=251.8 forward_hook_ns=36.8 bracket_hook_ns=215.8 hidden_ns=69.9 own_frame_forward_ns=61.9",
   "first_failures": [
    "own-sun frame: another view's probe forwards: the original ran once and its EAX returned",
    "own-sun frame: another view's probe forwards: original entered with ECX record, EDX view"
@@ -34,10 +34,10 @@
  },
  "hidden_answers_visible": {
   "result": "FAIL",
-  "checks": 766,
-  "failures": 19,
+  "checks": 806,
+  "failures": 22,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=35.5 forward_ns=71.9 eligible_forward_ns=70.6 native_lens_ns=36.9 bracket_ns=253.9 forward_hook_ns=36.4 bracket_hook_ns=217.0 hidden_ns=70.2 own_frame_forward_ns=72.6",
+  "timing": "TIMING native_probe_ns=34.9 forward_ns=71.4 eligible_forward_ns=73.9 native_lens_ns=36.5 bracket_ns=253.0 forward_hook_ns=36.5 bracket_hook_ns=216.5 hidden_ns=95.8 own_frame_forward_ns=72.3",
   "first_failures": [
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
@@ -45,10 +45,10 @@
  },
  "hidden_not_recorded": {
   "result": "FAIL",
-  "checks": 766,
-  "failures": 4,
+  "checks": 806,
+  "failures": 5,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=33.6 forward_ns=72.8 eligible_forward_ns=70.7 native_lens_ns=36.8 bracket_ns=250.6 forward_hook_ns=39.1 bracket_hook_ns=213.8 hidden_ns=86.3 own_frame_forward_ns=71.2",
+  "timing": "TIMING native_probe_ns=32.8 forward_ns=74.6 eligible_forward_ns=70.6 native_lens_ns=35.3 bracket_ns=250.4 forward_hook_ns=41.8 bracket_hook_ns=215.1 hidden_ns=69.7 own_frame_forward_ns=70.2",
   "first_failures": [
    "own_sun_hidden() true in the frame of the answer",
    "own-sun frame: SEH past the bracket, answer kept, bracket open until Present"
@@ -56,10 +56,10 @@
  },
  "latch_without_request": {
   "result": "FAIL",
-  "checks": 765,
+  "checks": 805,
   "failures": 8,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=32.7 forward_ns=69.6 eligible_forward_ns=77.5 native_lens_ns=35.4 bracket_ns=261.1 forward_hook_ns=36.9 bracket_hook_ns=225.7 hidden_ns=70.0 own_frame_forward_ns=70.7",
+  "timing": "TIMING native_probe_ns=33.0 forward_ns=78.5 eligible_forward_ns=71.0 native_lens_ns=36.3 bracket_ns=254.9 forward_hook_ns=45.4 bracket_hook_ns=218.6 hidden_ns=72.1 own_frame_forward_ns=70.8",
   "first_failures": [
    "latch without the request: the eligible probe forwards: record+0x30 cleared exactly on a nonzero answer",
    "latch without the request: the eligible probe forwards: the walk's test eax,eax saw the answer"
@@ -67,10 +67,10 @@
  },
  "lens_claimed_without_bracket": {
   "result": "FAIL",
-  "checks": 767,
+  "checks": 807,
   "failures": 12,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=35.2 forward_ns=74.1 eligible_forward_ns=71.3 native_lens_ns=39.5 bracket_ns=251.9 forward_hook_ns=38.9 bracket_hook_ns=212.4 hidden_ns=72.1 own_frame_forward_ns=77.1",
+  "timing": "TIMING native_probe_ns=33.6 forward_ns=69.5 eligible_forward_ns=69.1 native_lens_ns=36.4 bracket_ns=247.1 forward_hook_ns=35.8 bracket_hook_ns=210.6 hidden_ns=69.8 own_frame_forward_ns=74.2",
   "first_failures": [
    "probe-only install",
    "probe-only status row: lens_write=none"
@@ -78,21 +78,42 @@
  },
  "early_exit_ignores_latch": {
   "result": "FAIL",
-  "checks": 772,
-  "failures": 48,
+  "checks": 813,
+  "failures": 56,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=37.1 forward_ns=75.7 eligible_forward_ns=75.4 native_lens_ns=38.1 bracket_ns=262.6 forward_hook_ns=38.6 bracket_hook_ns=224.5 hidden_ns=73.2 own_frame_forward_ns=73.0",
+  "timing": "TIMING native_probe_ns=33.1 forward_ns=70.4 eligible_forward_ns=77.5 native_lens_ns=37.3 bracket_ns=261.4 forward_hook_ns=37.3 bracket_hook_ns=224.1 hidden_ns=69.9 own_frame_forward_ns=71.5",
   "first_failures": [
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
    "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
   ]
  },
+ "late_not_closed": {
+  "result": "FAIL",
+  "checks": 805,
+  "failures": 9,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.7 forward_ns=71.5 eligible_forward_ns=75.1 native_lens_ns=35.9 bracket_ns=254.4 forward_hook_ns=38.8 bracket_hook_ns=218.5 hidden_ns=77.7 own_frame_forward_ns=80.5",
+  "first_failures": [
+   "late probe after the resolve cleared the latch: forwards: record+0x30 cleared exactly on a nonzero answer",
+   "late probe after the resolve cleared the latch: forwards: the walk's test eax,eax saw the answer"
+  ]
+ },
+ "late_not_counted": {
+  "result": "FAIL",
+  "checks": 806,
+  "failures": 1,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.9 forward_ns=72.7 eligible_forward_ns=78.1 native_lens_ns=37.0 bracket_ns=245.5 forward_hook_ns=39.8 bracket_hook_ns=208.5 hidden_ns=85.5 own_frame_forward_ns=71.2",
+  "first_failures": [
+   "late window: the eligible probe counted once, nothing hidden"
+  ]
+ },
  "latch_while_unpatched": {
   "result": "FAIL",
-  "checks": 766,
+  "checks": 806,
   "failures": 2,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=33.4 forward_ns=69.1 eligible_forward_ns=75.5 native_lens_ns=35.9 bracket_ns=250.1 forward_hook_ns=35.7 bracket_hook_ns=214.2 hidden_ns=72.6 own_frame_forward_ns=80.3",
+  "timing": "TIMING native_probe_ns=33.1 forward_ns=72.4 eligible_forward_ns=71.5 native_lens_ns=37.2 bracket_ns=256.2 forward_hook_ns=39.3 bracket_hook_ns=219.0 hidden_ns=68.8 own_frame_forward_ns=71.9",
   "first_failures": [
    "unpatched latch: the handler forwards, LastError kept",
    "unpatched latch: early forward, no eligibility test, no hidden answer, own_sun_hidden() false"
@@ -100,10 +121,10 @@
  },
  "unmutated": {
   "result": "PASS",
-  "checks": 766,
+  "checks": 806,
   "failures": 0,
   "audit_exit": 0,
-  "timing": "TIMING native_probe_ns=33.8 forward_ns=94.8 eligible_forward_ns=73.2 native_lens_ns=36.4 bracket_ns=251.3 forward_hook_ns=61.0 bracket_hook_ns=214.9 hidden_ns=76.3 own_frame_forward_ns=75.4",
+  "timing": "TIMING native_probe_ns=35.0 forward_ns=74.2 eligible_forward_ns=85.2 native_lens_ns=39.2 bracket_ns=265.8 forward_hook_ns=39.2 bracket_hook_ns=226.6 hidden_ns=71.9 own_frame_forward_ns=82.8",
   "first_failures": []
  }
 }

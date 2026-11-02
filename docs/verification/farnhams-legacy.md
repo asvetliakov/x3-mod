@@ -915,7 +915,7 @@ through interop, no Wine, no game.
   two capture rows) 3 differ (`capture`, `motion_output`, `own_sun_hook`; intended), `own_sun_pass` identical. AP hook
   fixture (`own-sun-pass/step2/run_native.sh`): `OWN SUN HOOK checks=46 failures=0`, gain fixture 8 / 0.
 - **FL fixture** (`verification/probe/fl_sun_occlusion.cpp` via `test_fl_sun_occlusion.build_and_run`):
-  `RESULT PASS checks=766 failures=0` (step 2: 464). New cases: latch without `request_own_sun()` forwards; latched +
+  `RESULT PASS checks=806 failures=0` (step 2: 464; 766 before the late-probe rule). New cases: latch without `request_own_sun()` forwards; latched +
   eligible → EAX 1 without the original, record+0x30 cleared by the caller's window, ECX/EDX as at the call, DF back
   from `popfd`, LastError 0x145 and XMM0-7 unchanged, ESP balanced; counters probes +1, own +1, own_sun_hidden +1,
   original +0; `own_sun_hidden()` false before the frame's probe, true in its frame, false after Present; latched +
@@ -931,20 +931,28 @@ through interop, no Wine, no game.
   answers hidden with no row and no original, another view still logged with the original's answer; late window
   refuses the probe-only claim too.
 - **Mutations** ([`step3/fl_fixture_mutations.py`](../../verification/results/own-sun-pass/step3/fl_fixture_mutations.py)
-  → `fl_fixture_mutations.json`, source restored): no hidden branch 50 failures, answer ignores the latch 5, ignores
-  eligibility 37, answers 0 instead of 1 19, answer not recorded 4, latch without the request 8, lens claimed without
-  the bracket 12, early exit ignores the latch 48, latch accepted while unpatched 2; unmutated PASS 766.
+  → `fl_fixture_mutations.json`, source restored; after the late-probe rule): no hidden branch 58 failures, answer
+  ignores the latch 14, ignores eligibility 37, answers 0 instead of 1 22, answer not recorded 5, latch without the
+  request 8, lens claimed without the bracket 12, early exit ignores the latch 56, latch not closed at the resolve 9,
+  late not counted 1, latch accepted while unpatched 2; unmutated PASS 806.
 - **CPU audit** (`fl-sun-occlusion/hook_cpu_state_audit.py`): fixture exit 0 (72 reachable); `build-fl/d3d9.dll` exit 0,
   71 reachable, no x87 outside the transport, no SIMD outside the envelopes, transport ok
   ([`step3/fl_dll_audit.json`](../../verification/results/own-sun-pass/step3/fl_dll_audit.json)).
-- **Cost** (fixture, per call, not game FPS; two runs, the spread is host noise): native probe 32.7-33.8 ns;
-  forwarded 70.5-94.8 ns; eligible forwarded 73.2-76.4 ns; hidden answer 69.5-76.3 ns; another view in a latched frame
-  75.4-75.5 ns; lens bracket +212.8-214.9 ns per lens call.
-- **No-probe fail-safe** (both editions, [own-sun-pass.md](../architecture/own-sun-pass.md) section 14): host frame
-  model `own_sun_host guard` in `test_own_sun` (`test_no_probe_guard_frame_model`): misses from frame 10 forever →
-  the eighth (frame 17) withholds the latch, 600 frames of the engine's sun, retries let through at 617, 1218, 1819
-  (3), 20 active frames in 2000; misses in [10, 700) → the first retry misses, the second (frame 1219) hits and the
-  latch holds to the end, 2 retries; seven misses never withhold it.
+- **Cost** (fixture, per call, not game FPS; three runs, the spread is host noise): native probe 32.7-35.0 ns;
+  forwarded 70.5-94.8 ns; eligible forwarded 73.2-85.2 ns; hidden answer 69.5-76.3 ns; another view in a latched frame
+  75.4-82.8 ns; lens bracket +212.8-226.6 ns per lens call.
+- **Late-probe rule, after FL run 16** ([own-sun-pass.md](../architecture/own-sun-pass.md) section 14). Run 16 showed
+  the review's no-probe fail-safe withholding the latch whenever the sun left the screen (the engine does not probe an
+  off-screen sun), so the engine's sun showed for 3-4 s after it returned; the guard is deleted. Instead the resolve
+  clears the latch until Present when no hidden answer came before it. Host: `test_own_sun.test_late_probe_rule`
+  (`own_sun_host resolve`: latched without the answer → `after_resolve=0`, with it → 1, the next frame latched again;
+  the wiring and the deleted guard pinned). FL fixture: after `close_own_sun_frame()` an eligible probe forwards with
+  the full forward contract and counts `late` +1, another view's does not, Present answers hidden again.
+  After the change (measured): `build-ap` / `build-fl` 0 warnings; `generate.py --check` PASS; the five host modules
+  78 tests 0 failing; FL fixture 806 / 0 and 11 of 11 mutations failing (above); FL DLL CPU audit exit 0, 71
+  reachable, no x87/SIMD; AP `run_native.sh` hook 46 / 0, gain 8 / 0 (the AP hook fixture has no late case); AP objects
+  `capture`, `motion_output`, `own_sun_hook` differ from `c6b232a09` as after the review fixes, `own_sun_pass`
+  identical.
 - **Host tests.** `run_host_suite.py --modules test_fl_sun_occlusion test_own_sun test_own_sun_hook test_logging_tiers
   test_config_schema`: 5 modules, 78 tests, 0 failing; also `test_launcher_defaults`, `test_own_sun_lab`,
   `test_comparison_hotkeys` OK; `tools/config/generate.py --check` PASS (293 settings).
@@ -956,8 +964,8 @@ through interop, no Wine, no game.
   `fl.sun_occlusion_sample … own=N hidden=N` with N close to `frames=` while a sun is in view (inferred: one
   eligible main-view probe per frame, as on AP). `own_sun_no_probe`
   (or `no_probe=` growing on the `--debug` `own_sun_frame` row) means the main view's probe did not precede the
-  stage: the main view's layer above 17 (section 14); after 8 such frames the fail-safe returns the engine's sun
-  (`own_sun_frame … starved=1 retries=`, with `--debug` one `own_sun_state … reason=no_probe` row). With the registry
+  stage: the main view's layer above 17 (section 14); the late-probe rule then keeps the engine's sun (`late>0` on
+  `own_sun_frame`). With the registry
   not admitted (`fl.sun_occlusion … main_view=none`) the own sun stays off: `own_sun status=unavailable
   reason=main_view`.
 
