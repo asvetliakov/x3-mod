@@ -1065,3 +1065,20 @@ measured on the WSL2 host (native through interop), no Wine, no game.
   FL programs): VS `d5e1c753…`, `89193868…` and PS `8360f422…` are FL members (`addon2/01.cat`, `shader/2_0/effects.fb`,
   shared with AP); all 16 FL engine/effects pixel shaders are shared with AP. No recogniser change. Rebuilt clean: 0
   warnings each; AP objects 4 / 4 identical again (the own-ship branch is `#if X3M_EDITION_FL`).
+
+## FL run 18 — engine plumes port step 1 (installed 2026-11-02)
+
+Merge `6ede84be1` (`a354e156e` port, `f13aa725b` review fixes; review Opus high, no blocker; RE
+`docs/reverse-engineering/fl/engine-effects.md` "Verified 2026-11-02"). `build-fl` 0 warnings, `generate.py --check`
+PASS, nine host modules 120 tests 0 failing, native FL fixture 69/0, 10/10 mutations killed, AP objects 4/4 identical
+(measured). Installed `C:\X3FL\d3d9.dll` = `d89a1666…` (55,341,954 B), rollback `rollback-d3d9\d3d9.dll.run17` =
+`afd77c47…`; new `C:\X3FL\x3m\engine_bodies.json` = `b350c323…` (226 bodies, 23 missing, FL edition); `x3m.ini`
+unchanged (`engine_effects` default `plumes`). Record: `verification/results/fl-run18/candidate.json`.
+
+**FL run 18 A (open), any sector with traffic:** ships must show the mod's plumes (as on AP) and no engine sprite,
+engine lens flare or exhaust trail; missiles keep theirs; the own ship has no ribbon; look at a ship on the target
+monitor while others fly in the main view (the own-ship tag replaces the majority rule there). Expect
+`engine_effects_patch site=A … edition=fl state=active reason=ok write=plain` and `site=B … write=atomic`,
+`engine_effects_mode status=armed`, `engine_effects_bodies event=loaded bodies=226`, `engine_effects_device redirects=1`,
+`engine_plumes_state`, no `own_ship status=unavailable`. A refusal is `engine_effects_patch … reason=<…>` with
+`redirects=0` and `engine_plumes_state … suppression_off` (ships then keep the vanilla effects).
