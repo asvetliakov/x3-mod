@@ -1203,3 +1203,59 @@ game data in `addon2/06.cat` (no DLL change); the bake tooling (`tools/analysis/
 regenerate) is AP-only and needs an addon2 mount and the FL slot rule; three cosmetic gaps need DLL sites later
 (occlusion placeholder texture, Terran station distance branch, material strength texture hook). The run 18 capture
 log was lost to rotation; the next heavy-sector F8 must be copied before relaunch.
+
+## Cull/LOD selector ports — host evidence (2026-11-02, not flown)
+
+`cull_small_parts` (with dock ports, the projectile exemption and the far-jet hand-off), `terran_station_lod` and
+`lod_occlusion` on X3FL.exe, AP defaults (4 px / projectiles on / dock 12 px, `size`, `all` from the launcher). Design
+and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not flown)"; sites:
+[fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Verified 2026-11-02 against X3FL.exe". Base main
+`d8b71cbfe`. All measured on the WSL2 host (native through interop), no Wine, no game.
+
+- **Providers.** `src/engine/fl/cull_small_parts_fl.cpp` (+ `cull_small_parts_sites_fl.h`, `cull_small_parts_fl.h`),
+  `terran_station_lod_fl.cpp`, `lod_occlusion_fl.cpp` (+ `lod_patch_sites_fl.h`, `lod_patches_fl.h`) provide the AP
+  headers for the fl target; `cull_small_parts.cpp` left `X3M_AP_ENGINE_LINKED_SOURCES` (AP only now). capture.cpp:
+  the three `initialize()` calls in the FL engine-effects block, and an `#else` beside each AP frame call
+  (`present`, `begin_frame`, `after_reset`, `set_backbuffer_width`). `engine_far_jets.cpp` reads the model at `+0x144`
+  under `X3M_EDITION_FL`.
+- **Builds.** `build-fl` and `build-ap` (RelWithDebInfo, `cmake/mingw-i686.cmake`, `-j8`): 0 compiler warnings each; the
+  fl DLL carries the four `edition=fl state=%s reason=%s` formats (engine_effects_patch and the three ports);
+  `tools/config/generate.py --check` PASS (293 settings). Far-jet handler in the fl DLL
+  ([`far_jet_no_x87.py`](../../verification/results/fl-cull-chain/far_jet_no_x87.py),
+  [json](../../verification/results/fl-cull-chain/far_jet_no_x87.json)): no x87/SIMD, reads `0x144(…)` only.
+- **Native fixture** (`verification/probe/fl_cull_chain.cpp` via `test_fl_cull_chain.build_and_run`):
+  `RESULT PASS checks=184 failures=0`. Measured window identities `cull_fnv1a=9df9cf9e terran_fnv1a=0e8e0d62
+  occlusion_fnv1a_masked=3105ccaa marker_store=7fd6e34b marker_or=147c2006 jet_writer=4d34a219` (= contract.json). The
+  real window bytes run from the site with the selector's frame (ESP = align_down(EBP,8) − 0x28, both EBP alignments):
+  80 decisions over 20 node cases × 4 states (full, disarmed, projectiles off, far off): 20 culled, 10 dock, 6 exempt,
+  3 far, 41 native. Continue and exempt paths equal the unpatched image in every register, the arithmetic flags and DF
+  at `0x0961fc` / `0x096201`, ESP/EBP, locals and the node; culled paths leave EAX/EDX as the native max-threshold block
+  (parent threshold / max), ECX = the input measure, `+0x12c` with bit 1 cleared and the AND's flags, identical to a
+  native cull of the same node apart from ECX; the far handler gets (node, ECX, EBX) at site ESP − 20 with DF clear and
+  ECX survives its clobber. Every single-bit change refused before any write: `FLIPS cull=440 refused=440`,
+  `terran=248 refused=248 occlusion=160 refused=160 fixup=32 fixup_refused=32`; the occlusion fixup zeroed or rebased
+  refused. Faults: read-back → `readback_rolled_back`, chain push → `chain_failed`, read-back + restore →
+  `rollback_failed` registered (the jump runs the tail only; re-install refused; `shutdown()` restores). One-byte
+  sequences (buffer Ops): `patch_rolled_back`, `rollback_failed` registered, `rollback_unprotected`, `protect_failed`,
+  `restore_not_owned`, `restored`. Executed LOD paths: Terran root with bit 31 stores 1 natively, 0 patched; LOD 2
+  takes the placeholder bind natively, the LOD-0 path patched. Rows: 8 `cull_small_parts` rows (`off`, `invalid_px` ×2,
+  `invalid_projectiles`, `invalid_dock_px`, `executable_mismatch`, `marker_mismatch`/`writer_mismatch`, `active`),
+  value and frame rows with `edition=fl`, the terran/occlusion rows `off`/`refused`/`executable_mismatch`/`patched
+  write=atomic`. Late window: all three refused, no arena growth, windows unchanged. Timing (fixture loop, harness
+  included, noisy): 11–14 ns native, 13–22 ns disarmed, 11–21 ns armed continue, 11–14 ns armed cull per site pass.
+- **Stub audit** ([`stub_cpu_state_audit.py`](../../verification/results/fl-cull-chain/stub_cpu_state_audit.py), over
+  the bytes the module emitted): full 44 reachable instructions / 1 call, projectiles off 40 / 1, far off 34 / 0; no
+  x87/SIMD, no EBX/ESI/EDI/EBP write, ECX written only by the `pop ecx` of its own push, memory written only by the three
+  counters, stack slot read only `[ESP+0x10]`, every exit at the site ESP (`jmp [slot]` or `jmp base+0x0961f3`).
+- **Mutations** ([`mutation_check.py`](../../verification/results/fl-cull-chain/mutation_check.py),
+  [json](../../verification/results/fl-cull-chain/mutation_check.json)): 20 / 20 killed by `FAIL` rows (AP s slot,
+  ECX clobbered / not restored, AP model offset, no `cmovg` replay, cull past the engine's AND, far arguments swapped,
+  inclusive upper / threshold, marker never set, far bit 0 unchecked, no late window, no window check, no read-back,
+  chain failure not rolled back, marker unpinned, occlusion fixup unchecked, Terran ModRM `c8`, no one-byte rollback
+  write, no one-byte late window).
+- **AP objects** ([`ap_object_compare.py`](../../verification/results/fl-cull-chain/ap_object_compare.py),
+  [json](../../verification/results/fl-cull-chain/ap_object_compare.json)): `cull_small_parts.cpp`,
+  `terran_station_lod.cpp`, `lod_occlusion.cpp`, `capture.cpp`, `engine_far_jets.cpp` against `d8b71cbfe`, build-ap
+  flags without `-g`, debug stripped: 5 / 5 identical. AP small-parts CPU fixture (`build_cull_small_parts.py`, run
+  natively): 285 checks; its two `engine: engine stub first/last` checks fail intermittently (measured 3 / 12 runs on
+  the base sources, 4 / 12 with this change; `same_outputs` false), a pre-existing flake, not this port.

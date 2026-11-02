@@ -879,6 +879,17 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
+
+The FL edition patches X3FL.exe's cull/LOD selector and material submission
+([cull-small-parts.md](../verification/cull-small-parts.md), "FL port"): a five-byte jump to an emitted integer stub and two one-byte edits, engine code behind
+the X3FL.exe identity and compared windows at the module base (the occlusion window's fixup checked against the base),
+documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `GetModuleHandleExW` pin), no Wine/CrossOver
+dependency, no device call. Natively verified on the Windows host through WSL interop (measured 2026-11-02): the FL
+fixture 184 checks, 0 failures (the stub's decisions and register/flag/stack contract against the unpatched bytes,
+every window bit, rollback, late claim), the emitted-stub audit and 20 / 20 mutations. Not verified: the three ports in
+game (not flown); the FL draw saving.
+
 ## 2026-11-02: engine effects, FL port step 1 (`engine_effects = plumes` on FL)
 
 The FL edition links the shared plume stage and recogniser (documented D3D9 only, as phase 2 below) and its own two

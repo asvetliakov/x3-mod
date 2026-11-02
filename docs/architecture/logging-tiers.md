@@ -471,7 +471,10 @@ fallback's fault witness, in a vectored handler on a faulting thread that may ho
 fires only on that hook's execute fault; `report()` logs the record through the buffer as well), and the five patch
 restore rows (`fov`, `lod_occlusion`, `sun_flare_fix`, `terran_station_lod`, `dust_leak_fix`), written only inside DllMain on a dynamic
 `FreeLibrary`, never during play (their fixture records are bound to those sources; `test_logging_tiers.py` pins the
-list). Full buffer:
+list). The FL providers of two of them (`src/engine/fl/terran_station_lod_fl.cpp`, `lod_occlusion_fl.cpp`) and the FL
+small-parts cull (`cull_small_parts_fl.cpp`) write no restore row (the FL loader never calls their shutdown); their
+once-per-session install rows carry `edition=fl state= reason=`, and `cull_small_parts_value` / `cull_small_parts_frame` end in
+`edition=fl`. Full buffer:
 the row is dropped and counted, never blocking and never growing; one `log_dropped n=` row precedes the next row that
 fits, and `session_end dropped=` carries the session total.
 
