@@ -1180,3 +1180,14 @@ shadows 0.35, sun 0.2, present/meter) on both editions, plus the per-draw additi
 real gain, both editions: the TAA resolve (0.98 ms), the fog march/repair (1.1 ms), and the per-draw hull work (shadow
 receiver sampling of five cascades, material rows) in draw-heavy sectors; the last needs a shadows-off A/B segment to
 size (`sun_shadow_lane = 0`).
+
+**FL run 19 D, `sun_shadow_lane = 0` (2026-11-02; `fl-run19d-shadows-off.log`, 8,233 frames).** With the shadow lane off the
+fog was refused on the fogged frames (`volumetric_fog_frame applied=0 reason=linear_depth`: the fog's linear depth comes
+with the lane; user-visible dependency, documented here). The game-draw `engine` pass still scales with the draw count
+without any shadow receiver work: 1,866 draws → 9.3 ms, 1,044 → 1.4–5.2 ms, 80–140 → 1.1–1.6 ms (sync on; ~5 µs per
+draw at the heavy end), the same per-draw cost as segment C with shadows on. So the shadow receiver sampling is not
+the per-draw cost either; what remains inside `engine` is the game's own draws into the FP16 target plus the material
+rows, which this instrument cannot separate from vanilla. Conclusion of the run 18/19 frame-rate work: no ported stage
+is anomalous; the fixed mod cost is ~4 ms per fogged frame at 5120x1440 on both editions (TAA resolve 1.0, fog 1.1–1.7,
+bloom + writeback 1.0, shadows 0.35, sun 0.2) and the heavy FL sectors are draw-bound. Levers if wanted later: TAA
+resolve, fog march/repair resolution, per-draw material cost (needs a vanilla-comparable instrument).
