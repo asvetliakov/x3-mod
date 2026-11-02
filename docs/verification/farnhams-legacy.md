@@ -1460,7 +1460,20 @@ above). Clean `build-fl` from main, 0 warnings; 12 host modules 140 tests 0 fail
 Installed `C:\X3FL\d3d9.dll` = `81dd4fb5…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run21` = `af2d404f…`
 (runs 20–21); overlay `addon2/06+07` and ini unchanged. Record `verification/results/fl-run22/candidate.json`.
 
-**FL run 22 A (open):** the fogged spot of runs 19–21 plus a clear sector with ships, one F8 each; tell me before
+**FL run 22 A (flown 2026-11-02, accepted):** two F8 (clear with ships; fogged with stations); user: nothing wrong by eye.
+Log `/home/asvetl/x3m-logs/fl-run22-culls-strength.log`, triage `verification/results/fl-run22/triage_log.py` (Opus medium,
+measured): hook `state=installed dll=d3dx9_43.dll slot_rva=0x00150374`, `texture_hook=1`, 328 marked atlas loads (82 per
+slot; the 16 `lod_strength_texture` rows are the log cap), 14 twins, `marked=366,984 no_twin=0` (same shape as AP run
+204); small props `attached=1 model_offset=0x144`, 69,733 prop verdicts, 2,089 culled, 0 unresolved (two own-ship props
+at 173 px kept every frame, inferred); occlusion `attached=1`, 180,272 candidates, 15,881 tested, 2,101 hidden, 1,601
+skipped, 48 % `no_hull` (station dock/turret-named parts or parts drawn before their hull, inferred, open); fogged
+frames: neither proxy cull skipped anything. `frame_end draws=` counts skipped draws too; the proxy culls show in
+`issued=` (fogged not-issued median 1). Fogged draws median 187 vs run 21's 191 (same content). One device Reset at
+frame 33,249, recovered. Bolt features: `screen_emission_additive … pair_draws=0` over the whole flight (AP flights:
+thousands), chase camera not ported (`bolt_footprint view_gate=chase_camera`): whether the bolt recogniser matches FL
+bullets is open until a flight with weapons fired.
+
+Original brief: the fogged spot of runs 19–21 plus a clear sector with ships, one F8 each; tell me before
 relaunching. Expect `lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll … edition=fl`,
 `lod_material_strength_configured enabled=1 texture_hook=1`, `lod_strength_texture`/`lod_strength_frame seen>0`
 (atlases marked at load), `cull_small_props_device … attached=1 edition=fl model_offset=0x144`,
@@ -1468,3 +1481,15 @@ relaunching. Expect `lod_material_strength_texture_hook state=installed dll=d3dx
 fogged `frame_end draws=` below run 21's 191 median, no `attached=0`/`refused` rows. Visual: distant station trims no
 longer pale/flat (material strength), nothing visible missing near ships or stations (small props, occlusion), own
 ship and target intact in chase view, no pop-in when turning (occlusion retest).
+
+## FL run 23 — occlusion_cull default off (installed 2026-11-02)
+
+Commit `ba32f497f`: unset/empty `X3M_OCCLUSION_CULL` now means off, the documented default (the code said on since 2026-10-08:
+every AP flight since then and FL run 22 ran the draw-level cull; `docs/verification/occlusion-cull.md`, 2026-11-02
+section; user decision 2026-11-02 "leave it off by default too"). Host: 4 modules 72 tests 0 failing; `build-fl` 0
+warnings (measured). Installed `C:\X3FL\d3d9.dll` = `647e8ebc…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run22` =
+`81dd4fb5…`. Record `verification/results/fl-run23/candidate.json`.
+
+**FL run 23 A (open):** any flight; fire a few shots at a distant target in open space (bolt recogniser check:
+`screen_emission_additive_refused_window pair_draws>0`, `bolt_far_composite` rows). Expect `occlusion_cull_config
+requested=unset configured=0 reason=off edition=fl` and no `occlusion_cull_device` row. Tell me before relaunching.
