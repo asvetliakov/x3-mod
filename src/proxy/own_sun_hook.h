@@ -2,11 +2,11 @@
 #include "own_sun_hook_core.h"
 #include <cstdint>
 
-// The own sun's flare-probe hook and the lens bracket (docs/architecture/own-sun-pass.md section 5; sites and ABI:
-// docs/reverse-engineering/lens-flare-visibility.md sections 12-16). Installed when the own sun is requested
-// (X3M_OWN_SUN, request_own_sun()) or the lens bracket is wanted for the lens-flare gain or the fog's transmittance
-// (initialize(bracket_wanted)); otherwise nothing is patched and nothing costs. X3M_OWN_SUN_LOG=1 adds the sun_probe
-// diagnostic row of an installed hook.
+// The own sun's flare-probe hook (docs/architecture/own-sun-pass.md section 5; sites and ABI:
+// docs/reverse-engineering/lens-flare-visibility.md sections 12-16). Installed only when the own sun is requested
+// (X3M_OWN_SUN, request_own_sun()); otherwise nothing is patched and nothing costs. X3M_OWN_SUN_LOG=1 adds the
+// sun_probe diagnostic row of an installed hook. The lens bracket on the engine's lens-scene call 0x00472491 (FL
+// base+0x8bcb7) was deleted on 2026-11-02 with the lens-flare gain: that call is never written.
 //
 //   0x00471630  call 0x00488720   the flare probe, __cdecl (record, view), caller cleans 8, EAX = 1
 //                                 "hide". x3m_sun_probe_thunk asks x3m_sun_probe_decide: 1 is returned as the
@@ -15,53 +15,43 @@
 //                                 the main view's re-probe of a record owned by a background-regime view, owner+0x270
 //                                 & 0x400000, one validated engine_memory read of the owner's flags) in a frame its
 //                                 Present-time latch made active; every other probe is the original's.
-//   0x00472491  call 0x0047e6e0   the lens-scene traversal, __cdecl (view), caller cleans 4, EAX dead.
-//                                 x3m_sun_lens_thunk calls begin, the original with a copy of the
-//                                 argument, then end; the caller's argument stays where it is. The bracket carries
-//                                 only the lens-flare gain (lens_flare_gain.h) and its fog transmittance.
 //
-// Both thunks save EFLAGS and clear DF around the C handlers and are otherwise plain cdecl frames: EBX / EBP / ESI /
-// EDI come back as the C ABI and the original return them (EBP is a value register at both sites and is never used as a
-// frame pointer by the thunks); EAX / ECX / EDX and the flags are dead at both sites. The probe handler is integer only
+// The thunk saves EFLAGS and clears DF around the C handler and is otherwise a plain cdecl frame: EBX / EBP / ESI /
+// EDI come back as the C ABI and the original return them (EBP is a value register at the site and is never used as a
+// frame pointer by the thunk); EAX / ECX / EDX and the flags are dead at the site. The probe handler is integer only
 // (no x87, no SSE arithmetic, MXCSR untouched) inside a GetLastError / SetLastError envelope (the
 // frame's first probe reaches engine_memory's VirtualQuery); with the log on it writes through log(), which preserves
-// the full CPU state itself. begin / end run once per frame under PreserveCpuState (FNSAVE / FRSTOR, MXCSR, LastError):
-// they reach D3D, float math and the formatter.
+// the full CPU state itself.
 //
-// Install: exact-executable identity, 21 whole-instruction bytes around each call, the probe's
-// prologue with its three early tests (148 bytes, FNV-1a: the probe's identity) and the traversal's entry, then
-// engine_patch::claim_call on both sites inside the install window; a failure of the second claim restores the
-// first. Refused with X3M_SUBMIT_PHASES=1, whose sort_return_b stamp claims 0x00472490..0x00472495. Any refusal logs
-// one line and leaves both sites vanilla.
+// Install: exact-executable identity, 21 whole-instruction bytes around the probe call and around the (untouched)
+// lens-scene call 0x00472491, the probe's prologue with its three early tests (148 bytes, FNV-1a: the probe's
+// identity) and the traversal's entry, then engine_patch::claim_call on the probe site inside the install window. Any
+// refusal logs one line and leaves the site vanilla.
 //
 // Threads: all state belongs to the first thread through the probe thunk (the game's render
-// thread, also the Present thread); any other thread gets the original and no bracket.
+// thread, also the Present thread); any other thread gets the original.
 namespace x3m::own_sun_hook {
 struct Addresses {
-    std::uintptr_t probe_site = 0, probe_target = 0, lens_site = 0, lens_target = 0;
+    std::uintptr_t probe_site = 0, probe_target = 0;
     const std::uintptr_t* main_view = nullptr; // fixtures: the main view is *main_view; production: null, the cockpit
                                                // registry walk
 };
 struct Counters {
-    std::uint32_t probes = 0, own = 0, original = 0, foreign_thread = 0, brackets = 0;
+    std::uint32_t probes = 0, own = 0, original = 0, foreign_thread = 0;
     std::uint32_t own_sun_hidden = 0; // eligible probes the own sun answered "hidden" (own_sun_core.h answer)
     std::uint32_t late = 0;           // eligible probes forwarded because the resolve cleared the latch (diagnosis)
 };
-bool initialize(bool bracket_wanted = false); // backend-load path only; one own_sun_hook row (AP; FL: fl.sun_occlusion)
-                                              // when the own sun or the bracket is wanted (bracket_wanted: the
-                                              // lens-flare gain below 1 or the volumetric fog)
-bool shutdown();                              // restores both calls; true when nothing is installed
+bool initialize(); // backend-load path only; installs only after request_own_sun(); one own_sun_hook row (AP; FL:
+                   // fl.sun_occlusion) when the own sun is requested
+bool shutdown();   // restores the probe call; true when nothing is installed
 bool install_at(const Addresses&, bool log_enabled);
 const char* state();
 bool installed();
 bool logging();
-// The bracket's listener (capture.cpp): begin sets the bracket's lens-flare gain, end (may be null) closes it.
-void set_listener(void (*begin)(), void (*end)());
 void present(unsigned long long next_device_frame = 0); // frame boundary (the Present hook; the number labels the log
-                                                        // lines): also closes a bracket an unwind left open
+                                                        // lines)
 // Own sun (docs/architecture/own-sun-pass.md; X3M_OWN_SUN, both editions): request_own_sun() before initialize() makes
-// it install the probe redirect (AP: both redirects; FL: the lens call is claimed only when the bracket, gain or fog,
-// is wanted); set_own_sun_frame() is the Present-time latch for the next frame (own_sun::core::frame_active): while it
+// it install the probe redirect; set_own_sun_frame() is the Present-time latch for the next frame (own_sun::core::frame_active): while it
 // is set, the probe answers "hidden" for the sun's eligible record (core::eligible), every other probe is the
 // original's. own_sun_hidden(): this frame's main-view eligible probe was answered "hidden" (owner thread; the main view
 // is probed before the scene-end hook, lens-flare-visibility.md section 14): the stage draws only then, so the engine's
@@ -73,14 +63,7 @@ bool own_sun_hidden();
 // The resolve saw no hidden answer in a latched frame (own_sun::core::latch_after_resolve): the latch is cleared until
 // the next set_own_sun_frame() (Present); an eligible probe after it forwards and counts as Counters::late.
 void close_own_sun_frame();
-bool bracket_installed(); // the lens call is claimed (AP: with every install; FL: only for the bracket)
-bool main_view_known();   // installed with a main-view source (FL: the admitted registry slot; AP: always)
-namespace detail {
-extern volatile bool bracket_open;
-}
-inline bool bracket_open() noexcept {
-    return detail::bracket_open;
-} // the draw hooks' one flag test
+bool main_view_known(); // installed with a main-view source (FL: the admitted registry slot; AP: always)
 Counters counters();
 #ifdef X3M_SUN_OCCLUSION_FL_FIXTURE
 // FL edition fixture seams (src/engine/fl/sun_occlusion_fl.cpp, verification/probe/fl_sun_occlusion.cpp).
@@ -94,9 +77,6 @@ void fixture_log_status(); // the fl.sun_occlusion row of the current install
 }
 extern "C" {
 void x3m_sun_probe_thunk();
-void x3m_sun_lens_thunk();
 int __cdecl x3m_sun_probe_decide(const std::uint32_t* record, const std::uint32_t* view);
-void __cdecl x3m_sun_lens_begin();
-void __cdecl x3m_sun_lens_end();
-extern std::uint32_t x3m_sun_probe_target, x3m_sun_lens_target;
+extern std::uint32_t x3m_sun_probe_target;
 }

@@ -136,11 +136,12 @@ class OcclusionCullHost(unittest.TestCase):
     def test_engine_wiring(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine)', capture)
-        self.assertLess(capture.index('lens_flare_cull::initialize('), capture.index('occlusion_engine_cull::initialize('))
+        self.assertLess(capture.index('cull_small_parts::initialize();'), capture.index('occlusion_engine_cull::initialize('))
+        self.assertNotIn('lens_flare_cull', capture)  # the lens-flare cull's stub went on 2026-11-02
         self.assertIn('engine::parse_mode(mode, &parsed)', capture)
         self.assertIn('engine=%u engine_status=%s', capture)
         loader = (ROOT / 'src/proxy/loader.cpp').read_text()
-        self.assertLess(loader.index('x3m::occlusion_engine_cull::shutdown();'), loader.index('x3m::lens_flare_cull::shutdown();'))
+        self.assertLess(loader.index('x3m::occlusion_engine_cull::shutdown();'), loader.index('x3m::cull_small_parts::shutdown();'))
         self.assertIn('src/proxy/occlusion_engine_cull.cpp', (ROOT / 'CMakeLists.txt').read_text())
         module = (ROOT / 'src/proxy/occlusion_engine_cull.cpp').read_text()
         self.assertIn('cull_small_parts::chain_stub(site, cull_target, reinterpret_cast<void*>(stub), slot, &reason)', module)

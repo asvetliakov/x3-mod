@@ -24,7 +24,7 @@ namespace {
 namespace core = x3m::cull_small_parts::core;
 namespace engine_patch = x3m::engine_patch;
 bool patched_ = false;      // the small-parts stub is chained
-bool site_claimed_ = false; // the shared claim is live (this stub, the lens-flare cull's, or both)
+bool site_claimed_ = false; // the shared claim is live (this stub, the occlusion skip's, or both)
 bool site_broken_ = false;  // a claim whose rollback failed: registered for shutdown(), nothing chained
 unsigned chained_ = 0;      // stubs on the chain
 engine_patch::Site site_{};
@@ -286,7 +286,7 @@ bool shutdown() {
     x3m_cull_small_parts_upper = 0;
     x3m_cull_small_parts_threshold = 0;
     cull_census::note_small_threshold(0);
-    const bool ok = engine_patch::restore(site_); // the shared claim: the lens-flare cull's stub goes with it
+    const bool ok = engine_patch::restore(site_); // the shared claim: the occlusion skip's stub goes with it
     patched_ = false;
     site_claimed_ = site_broken_ = false;
     chained_ = 0;

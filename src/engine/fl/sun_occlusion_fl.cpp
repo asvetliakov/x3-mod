@@ -1,11 +1,11 @@
 // FL edition of x3m::own_sun_hook (src/proxy/own_sun_hook.h; the ap target keeps src/proxy/own_sun_hook.cpp):
-// the flare probe hook and the lens bracket in X3FL.exe (docs/architecture/own-sun-pass.md sections 8 and 14;
-// sites, ABI and gates: docs/reverse-engineering/fl/sun-occlusion.md, "Verified hook sites and ABI"). The probe call is
-// claimed when the own sun is requested (request_own_sun()) or the lens bracket is wanted (the lens-flare gain or the
-// fog's transmittance); the lens call only for the bracket (the own sun never touches it, own-sun-pass.md section 8).
-// In a frame whose Present-time latch is set (set_own_sun_frame) the eligible record is answered "hidden" without the
-// original (docs/architecture/own-sun-pass.md section 14, "Step 3 as built (FL)"); every other probe forwards, and with
-// X3M_OWN_SUN_LOG=1 the original runs inside the handler for the sun_probe row.
+// the flare probe hook in X3FL.exe (docs/architecture/own-sun-pass.md sections 8 and 14; sites, ABI and gates:
+// docs/reverse-engineering/fl/sun-occlusion.md, "Verified hook sites and ABI"). The probe call is claimed only when the
+// own sun is requested (request_own_sun()). In a frame whose Present-time latch is set (set_own_sun_frame) the eligible
+// record is answered "hidden" without the original (docs/architecture/own-sun-pass.md section 14, "Step 3 as built
+// (FL)"); every other probe forwards, and with X3M_OWN_SUN_LOG=1 the original runs inside the handler for the sun_probe
+// row. The lens draw call base+0x8bcb7 (the lens bracket's site until its deletion on 2026-11-02) is never written; its
+// bytes stay in the lens_block anchor.
 //
 //   base+0x8af0a  call base+0xa3fd0   the flare probe. Register ABI: ECX = record, EDX = probing view, no stack
 //                                     argument, EAX = 1 "hide", bare RET; the caller's `test eax,eax` stores 0 to
@@ -13,29 +13,21 @@
 //                                     x3m_fl_sun_probe_decide(record, view): 0 / 1 return as the probe's answer
 //                                     (plain RET), 2 forwards with `popfd; jmp [target]`, ESP at the return
 //                                     address and ECX/EDX as on entry.
-//   base+0x8bcb7  call base+0x97680   the lens draw (every selected lens body of every record). EDX = lens view,
-//                                     ECX a padding word the target pushes unread, no stack argument, bare RET.
-//                                     x3m_fl_sun_lens_thunk: begin, the original with ECX/EDX and EFLAGS as on
-//                                     entry, end. The call straddles a qword: claim_call writes it plainly, so it
-//                                     is claimed only inside the install window (never after the first Present).
 //
 // Eligibility is AP's core::eligible (the gate span is compared as the probe's identity; its config flags word is at
 // +0xec, AP +0xfc). The main view is the active cockpit's camera (cockpit +0x58, sector-camera bit), found by the
 // AP registry walk over X3FL.exe's registry slot, which sector_background_fl admits by its own anchors.
 //
-// CPU contract. Both thunks save EFLAGS and clear DF around the C handlers; EBX/ESI/EDI/EBP come back by the C ABI.
+// CPU contract. The thunk saves EFLAGS and clears DF around the C handler; EBX/ESI/EDI/EBP come back by the C ABI.
 // The probe handler is integer only and keeps XMM0-7 (Win32 calls may change the volatile ones) and LastError;
-// x87 and MXCSR are not touched. begin / end run once per frame and reach the SSE listener (D3D, float math, the
-// formatter): XMM0-7 and the full PreserveCpuState image (x87, MXCSR, LastError) around it.
+// x87 and MXCSR are not touched.
 //
 // Install: X3FL.exe identity, all 17 generated anchors at the live base (every relocated operand recomputed as
-// base + slot RVA), then claim_call inside the install window: the lens site when the bracket is wanted (install_at:
-// lens_site and lens_target both 0 = probe only), then the probe site; a failure of the probe claim restores the lens.
-// Built -fno-exceptions -mno-sse -mno-mmx -mfpmath=387: no x87 arithmetic and no compiler XMM use; the only x87/XMM
-// instructions are the save/restore envelopes (cpu_state.h and XmmSave).
+// base + slot RVA), then claim_call on the probe site inside the install window.
+// Built -fno-exceptions -mno-sse -mno-mmx -mfpmath=387: no x87 arithmetic and no compiler XMM use; the only XMM
+// instructions are the XmmSave envelope.
 #include "../../proxy/own_sun_hook.h"
 #include "../../proxy/config.h"
-#include "../../proxy/cpu_state.h"
 #include "../../proxy/engine_memory.h"
 #include "../../proxy/engine_patch.h"
 #include "executable_identity_fl.h"
@@ -75,10 +67,8 @@ static_assert(L::view_flag_probe_hidden == core::view_flag_probe_hidden &&
 static_assert(L::config_video_flags == 0xec && L::config_video_flags != core::config_video_flags,
               "FL reads the flags word at +0xec, not AP's +0xfc");
 static_assert(L::mode_scale_x == 0x28 && L::view_layer == 0x29c, "scale fallback and layer as AP");
-static_assert(L::probe_site_atomic == (L::probe_site_rva % 8 + 5 <= 8) &&
-                  L::lens_site_atomic == (L::lens_site_rva % 8 + 5 <= 8) && L::probe_site_atomic &&
-                  !L::lens_site_atomic,
-              "one lock cmpxchg8b for the probe call, a plain copy for the lens call");
+static_assert(L::probe_site_atomic == (L::probe_site_rva % 8 + 5 <= 8) && L::probe_site_atomic,
+              "one lock cmpxchg8b for the probe call");
 static_assert(R::registry_map == 0 && R::registry_active_handle == 0x10 && R::map_buckets == 0 &&
                   R::map_capacity == 4 && R::link_next == 0 && R::link_key == 4 && R::link_value == 8 &&
                   R::cockpit_camera == 0x58 && R::camera_flags == core::view_flags &&
@@ -104,11 +94,9 @@ static_assert(L::lens_site_rva - 0x8bc54u + 5 <= sizeof L::lens_block_bytes &&
 bool patched_ = false, log_ = false;
 const char* state_ = "disabled";
 const char* failed_anchor_ = "none";
-engine_patch::CallSite probe_site_{}, lens_site_{};
+engine_patch::CallSite probe_site_{};
 Addresses addresses_{};
 std::uintptr_t install_base_ = 0, registry_slot_ = 0;
-void (*listener_begin_)() = nullptr;
-void (*listener_end_)() = nullptr;
 volatile std::uint32_t frame_ = 0;             // written by present() only
 volatile unsigned long long device_frame_ = 0; // the capture layer's number of the frame now being built (rows only)
 volatile LONG owner_thread_ = 0;               // the first thread through the probe thunk
@@ -249,14 +237,9 @@ inline std::uint32_t word(const std::uint32_t* base, unsigned offset) {
 int decide_probe(const std::uint32_t* record, const std::uint32_t* view);
 }
 
-namespace x3m::own_sun_hook::detail {
-volatile bool bracket_open = false;
-}
-
 extern "C" {
-std::uint32_t x3m_fl_sun_probe_target = 0, x3m_fl_sun_lens_target = 0;
+std::uint32_t x3m_fl_sun_probe_target = 0;
 void x3m_fl_sun_probe_thunk();
-void x3m_fl_sun_lens_thunk();
 // The thread's last error and XMM0-7 come back exactly as the engine left them on every path: the frame's first
 // probe resolves the main view through engine_memory (VirtualQuery), the log mode runs the original and the
 // formatter.
@@ -275,8 +258,8 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
         return core::Original;
     }
     ++counters_.probes;
-    // Nothing to answer in this frame (the own sun's latch off: unarmed stage, not requested, the bracket-only install)
-    // and no log: the original, before any read.
+    // Nothing to answer in this frame (the own sun's latch off: unarmed stage, not requested) and no log: the original,
+    // before any read.
     if (!record || !view || (!own_sun_frame_ && !own_sun_late_ && !log_)) {
         ++counters_.original;
         return core::Original;
@@ -325,32 +308,10 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     return vanilla ? core::Hidden : core::Visible;
 }
 }
-extern "C" {
-// Once per lens call (once per frame): XMM0-7 and the full CPU image around the SSE listener.
-__attribute__((force_align_arg_pointer)) void __cdecl x3m_fl_sun_lens_begin() {
-    XmmSave xmm;
-    x3m::PreserveCpuState cpu;
-    if (!owner_thread_ || static_cast<LONG>(GetCurrentThreadId()) != owner_thread_)
-        return; // no probe yet, or not the render thread: no bracket
-    ++counters_.brackets;
-    if (listener_begin_) listener_begin_();
-    x3m::own_sun_hook::detail::bracket_open = true;
-}
-__attribute__((force_align_arg_pointer)) void __cdecl x3m_fl_sun_lens_end() {
-    XmmSave xmm;
-    x3m::PreserveCpuState cpu;
-    if (!x3m::own_sun_hook::detail::bracket_open) return;
-    x3m::own_sun_hook::detail::bracket_open = false;
-    if (listener_end_) listener_end_();
-}
-}
 // Probe, in: [ESP] = the return address (site + 5), ECX = record, EDX = view, no stack argument. decide() = 0 / 1 is
 // the probe's answer (plain RET: the caller's `test eax,eax` follows); 2 forwards to the original with ECX, EDX,
-// EFLAGS and ESP exactly as at the site. ECX/EDX are dead after the call on both paths; they are kept anyway.
-// Lens, in: [ESP] = the return address, EDX = view, ECX = the target's padding word. begin; the original with ECX,
-// EDX and EFLAGS as at the site; end with the original's EAX/ECX/EDX and EFLAGS kept (dead at the site, kept
-// anyway); plain RET. Only the 4-byte stack contract is
-// assumed; DF is cleared around the C handlers.
+// EFLAGS and ESP exactly as at the site. ECX/EDX are dead after the call on both paths; they are kept anyway. Only the
+// 4-byte stack contract is assumed; DF is cleared around the C handler.
 asm(R"(
     .intel_syntax noprefix
     .text
@@ -373,29 +334,6 @@ _x3m_fl_sun_probe_thunk:
     ret
 1:  popfd
     jmp dword ptr [_x3m_fl_sun_probe_target]
-    .p2align 4
-    .globl _x3m_fl_sun_lens_thunk
-_x3m_fl_sun_lens_thunk:
-    pushfd
-    push ecx
-    push edx
-    cld
-    call _x3m_fl_sun_lens_begin
-    pop edx
-    pop ecx
-    popfd
-    call dword ptr [_x3m_fl_sun_lens_target]
-    pushfd
-    push eax
-    push ecx
-    push edx
-    cld
-    call _x3m_fl_sun_lens_end
-    pop edx
-    pop ecx
-    pop eax
-    popfd
-    ret
     .att_syntax
 )");
 
@@ -403,12 +341,11 @@ namespace {
 const char* write_name(const engine_patch::CallSite& site) {
     return site.patched_in ? (site.atomic_write ? "atomic" : "plain") : "none";
 }
-void log_status(bool log_requested, bool bracket_wanted, unsigned seconds) {
-    x3m::log("fl.sun_occlusion status=%s base=0x%08lx probe=base+0x%lx lens=base+0x%lx probe_write=%s lens_write=%s "
-             "log=%u bracket=%u own_sun=%u main_view=%s anchors=%u failed_anchor=%s log_s=%u",
+void log_status(bool log_requested, unsigned seconds) {
+    x3m::log("fl.sun_occlusion status=%s base=0x%08lx probe=base+0x%lx probe_write=%s log=%u own_sun=%u main_view=%s "
+             "anchors=%u failed_anchor=%s log_s=%u",
              state_, static_cast<unsigned long>(install_base_), static_cast<unsigned long>(L::probe_site_rva),
-             static_cast<unsigned long>(L::lens_site_rva), write_name(probe_site_), write_name(lens_site_),
-             unsigned(log_requested), unsigned(bracket_wanted), unsigned(own_sun_wanted_),
+             write_name(probe_site_), unsigned(log_requested), unsigned(own_sun_wanted_),
              registry_slot_ ? "registry" : "none", L::anchor_count, failed_anchor_, seconds);
 }
 }
@@ -422,15 +359,12 @@ bool install_at(const Addresses& a, bool log_enabled) {
         return ok;
     };
     if (patched_) return done("already_installed", false);
-    const bool with_lens = a.lens_site || a.lens_target; // both 0: the probe only (the own sun without the bracket)
-    if (!a.probe_site || !a.probe_target || (with_lens && (!a.lens_site || !a.lens_target)))
-        return done("invalid_site", false);
+    if (!a.probe_site || !a.probe_target) return done("invalid_site", false);
     if (!engine_patch::install_window_open()) return done("late_claim", false);
     if (!pin_self()) return done("pin_failed", false);
     addresses_ = a;
     log_ = log_enabled;
     x3m_fl_sun_probe_target = static_cast<std::uint32_t>(a.probe_target);
-    x3m_fl_sun_lens_target = static_cast<std::uint32_t>(a.lens_target);
     counters_ = Counters{};
     foreign_logged_ = false;
     owner_thread_ = 0;
@@ -441,41 +375,28 @@ bool install_at(const Addresses& a, bool log_enabled) {
     own_sun_frame_ = false;
     own_sun_late_ = false;
     own_sun_hidden_seen_ = false;
-    detail::bracket_open = false;
     probe_site_ = engine_patch::CallSite{};
-    lens_site_ = engine_patch::CallSite{};
-    // The lens call first (its write is the non-atomic one); a failed probe claim takes it back.
-    if (with_lens && !engine_patch::claim_call(lens_site_, a.lens_site, a.lens_target,
-                                               reinterpret_cast<void*>(&x3m_fl_sun_lens_thunk))) {
-        if (lens_site_.patched_in) {
+    if (!engine_patch::claim_call(probe_site_, a.probe_site, a.probe_target,
+                                  reinterpret_cast<void*>(&x3m_fl_sun_probe_thunk))) {
+        if (probe_site_.patched_in) {
             patched_ = true;
             return done("rollback_failed", false);
         } // registered: shutdown() tries again
-        return done(lens_site_.status, false);
-    }
-    if (!engine_patch::claim_call(probe_site_, a.probe_site, a.probe_target,
-                                  reinterpret_cast<void*>(&x3m_fl_sun_probe_thunk))) {
-        const char* reason = probe_site_.status;
-        const bool lens_back = engine_patch::restore_call(lens_site_);
-        if (probe_site_.patched_in || !lens_back) {
-            patched_ = true;
-            return done("rollback_failed", false);
-        }
-        return done(reason, false);
+        return done(probe_site_.status, false);
     }
     patched_ = true;
     return done("active", true);
 }
 // The X3FL.exe identity and the 17 anchors at the live base; then, inside the engine_patch install window only
-// (capture's initialize_log on the backend-load path), the claims: the probe for the own sun or the bracket, the lens
-// for the bracket only. One fl.sun_occlusion row whenever the own sun or the bracket is wanted.
-bool initialize(bool bracket_wanted) {
+// (capture's initialize_log on the backend-load path), the probe claim. One fl.sun_occlusion row whenever the own sun
+// is requested.
+bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) {
         SetLastError(error);
         return true;
     }
-    if (!bracket_wanted && !own_sun_wanted_) {
+    if (!own_sun_wanted_) {
         state_ = "disabled";
         SetLastError(error);
         return false;
@@ -495,17 +416,15 @@ bool initialize(bool bracket_wanted) {
             failed_anchor_ = anchor;
         } else {
             // The main view needs the cockpit registry slot, admitted by the sector-background anchors; without it
-            // nothing is eligible (the bracket and the forwarding probe stay; the own sun never answers, so its stage
-            // never draws: own_sun_no_probe).
+            // nothing is eligible (the forwarding probe stays; the own sun never answers, so capture.cpp keeps it
+            // off: reason=main_view).
             registry_slot_ = x3m::fl::sector_background_fl::admitted() ? base + R::cockpit_registry_slot_rva : 0;
-            applied = install_at(Addresses{base + L::probe_site_rva, base + L::probe_target_rva,
-                                           bracket_wanted ? base + L::lens_site_rva : 0,
-                                           bracket_wanted ? base + L::lens_target_rva : 0, nullptr},
+            applied = install_at(Addresses{base + L::probe_site_rva, base + L::probe_target_rva, nullptr},
                                  log_requested);
         }
     }
     const unsigned seconds = applied ? arm_sample() : 0;
-    log_status(log_requested, bracket_wanted, seconds);
+    log_status(log_requested, seconds);
     SetLastError(error);
     return applied;
 }
@@ -513,14 +432,12 @@ bool shutdown() {
     if (!patched_) return true;
     const DWORD error = GetLastError();
     const bool probe_back = engine_patch::restore_call(probe_site_);
-    const bool lens_back = engine_patch::restore_call(lens_site_);
-    patched_ = probe_site_.patched_in || lens_site_.patched_in; // a failed restoration stays for a later retry
-    detail::bracket_open = false;
+    patched_ = probe_site_.patched_in; // a failed restoration stays for a later retry
     own_sun_frame_ = false;
     own_sun_late_ = false;
-    state_ = probe_back && lens_back ? "restored" : "restore_failed";
+    state_ = probe_back ? "restored" : "restore_failed";
     SetLastError(error);
-    return probe_back && lens_back;
+    return probe_back;
 }
 const char* state() {
     return state_;
@@ -531,17 +448,11 @@ bool installed() {
 bool logging() {
     return patched_ && log_;
 }
-void set_listener(void (*begin)(), void (*end)()) {
-    listener_begin_ = begin;
-    listener_end_ = end;
-}
-// The frame boundary (capture's Present): also closes a bracket an unwind left open, and writes one
-// fl.sun_occlusion_sample row per X3M_FL_SUN_OCCLUSION_LOG seconds (one QueryPerformanceCounter per frame).
+// The frame boundary (capture's Present): writes one fl.sun_occlusion_sample row per X3M_FL_SUN_OCCLUSION_LOG seconds (one QueryPerformanceCounter per frame).
 void present(unsigned long long next_device_frame) {
     if (!patched_) return;
     frame_ = frame_ + 1;
     device_frame_ = next_device_frame;
-    detail::bracket_open = false; // an unwind past the lens thunk must not leave the draws' window open
     if (!foreign_logged_ && foreign_thread_ != 0) {
         foreign_logged_ = true;
         log("own_sun_hook_foreign_thread frame=%llu owner=%lu calls=%ld note=probes_from_other_threads_run_the_original",
@@ -562,11 +473,11 @@ void present(unsigned long long next_device_frame) {
     const Counters& p = sample_last;
     ++sample_rows;
     log("fl.sun_occlusion_sample row=%lu status=%s frames=%lu probes=%lu own=%lu hidden=%lu original=%lu foreign=%lu "
-        "brackets=%lu main_view=0x%08lx",
+        "main_view=0x%08lx",
         sample_rows, state_, sample_frames, static_cast<unsigned long>(c.probes - p.probes),
         static_cast<unsigned long>(c.own - p.own), static_cast<unsigned long>(c.own_sun_hidden - p.own_sun_hidden),
         static_cast<unsigned long>(c.original - p.original), static_cast<unsigned long>(c.foreign_thread),
-        static_cast<unsigned long>(c.brackets - p.brackets), static_cast<unsigned long>(main_view_));
+        static_cast<unsigned long>(main_view_));
     sample_last = c;
     sample_frames = 0;
     SetLastError(error);
@@ -584,9 +495,6 @@ void close_own_sun_frame() {
 }
 bool own_sun_hidden() {
     return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;
-}
-bool bracket_installed() {
-    return patched_ && lens_site_.patched_in;
 }
 bool main_view_known() {
     return patched_ && (addresses_.main_view != nullptr || registry_slot_ != 0);
@@ -613,7 +521,7 @@ void fixture_force_sample() {
     sample_force = true;
 }
 void fixture_log_status() {
-    log_status(log_, false, 0);
+    log_status(log_, 0);
 }
 #endif
 }

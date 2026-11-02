@@ -86,7 +86,7 @@ set(X3M_AP_SOURCES
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
-  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/terran_station_lod.cpp src/proxy/lod_occlusion.cpp src/proxy/engine_effects_patch.cpp src/proxy/fov.cpp src/proxy/ui_scale.cpp src/proxy/text_density.cpp src/proxy/sun_flare_fix.cpp src/proxy/dust_leak_fix.cpp src/proxy/circle_fill.cpp src/proxy/ship_steering_install.cpp src/proxy/ship_steering_decide.cpp src/proxy/ship_steering_clamp.cpp src/proxy/ship_steering_warn.cpp src/proxy/ship_steering_rows.cpp src/proxy/ship_gate_ctl_glue.cpp src/proxy/ship_dock_glue.cpp src/proxy/point_light_admission.cpp src/proxy/cull_census.cpp src/proxy/scene_graph_census.cpp src/proxy/address_space.cpp src/proxy/cull_small_parts.cpp src/proxy/engine_far_jets.cpp src/proxy/lens_flare_cull.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp src/proxy/frame_timing.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/collide_box_cull.cpp src/proxy/pause_key_only.cpp src/proxy/collide_narrow_census.cpp src/proxy/collide_sat_sse2.cpp src/proxy/collide_memo.cpp src/proxy/music_keep.cpp src/proxy/seta_restore.cpp src/proxy/seta_manual_flight.cpp src/proxy/music_alert.cpp src/proxy/run_in_background.cpp src/proxy/collide_query_phases.cpp src/proxy/own_sun_hook.cpp
+  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/terran_station_lod.cpp src/proxy/lod_occlusion.cpp src/proxy/engine_effects_patch.cpp src/proxy/fov.cpp src/proxy/ui_scale.cpp src/proxy/text_density.cpp src/proxy/sun_flare_fix.cpp src/proxy/dust_leak_fix.cpp src/proxy/circle_fill.cpp src/proxy/ship_steering_install.cpp src/proxy/ship_steering_decide.cpp src/proxy/ship_steering_clamp.cpp src/proxy/ship_steering_warn.cpp src/proxy/ship_steering_rows.cpp src/proxy/ship_gate_ctl_glue.cpp src/proxy/ship_dock_glue.cpp src/proxy/point_light_admission.cpp src/proxy/cull_census.cpp src/proxy/scene_graph_census.cpp src/proxy/address_space.cpp src/proxy/cull_small_parts.cpp src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp src/proxy/frame_timing.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/collide_box_cull.cpp src/proxy/pause_key_only.cpp src/proxy/collide_narrow_census.cpp src/proxy/collide_sat_sse2.cpp src/proxy/collide_memo.cpp src/proxy/music_keep.cpp src/proxy/seta_restore.cpp src/proxy/seta_manual_flight.cpp src/proxy/music_alert.cpp src/proxy/run_in_background.cpp src/proxy/collide_query_phases.cpp src/proxy/own_sun_hook.cpp
   src/proxy/window_mode.cpp src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
@@ -165,7 +165,7 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/sector_background_fl.cpp)
   # The fog transit prefill's walk over X3FL.exe's object list (docs/architecture/farnhams-legacy-prefill.md).
   target_sources(d3d9 PRIVATE src/engine/fl/fog_prefill_fl.cpp)
-  # The flare probe override and the lens bracket (docs/architecture/farnhams-legacy-sun-occlusion.md).
+  # The flare probe override for the own sun (docs/architecture/farnhams-legacy-sun-occlusion.md).
   target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)
   # The engine-effects call redirects (docs/architecture/engine-effects-modern.md, "FL port, step 1").
   target_sources(d3d9 PRIVATE src/engine/fl/engine_effects_fl.cpp)
@@ -217,9 +217,8 @@ set_source_files_properties(src/engine/fl/sector_background_fl.cpp PROPERTIES CO
 # The FL prefill walk (src/engine/fl/fog_prefill_fl.cpp) runs inside capture.cpp's resource-creation wrappers like the
 # AP walk: default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/fog_prefill_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
-# The FL sun occlusion thunks (src/engine/fl/sun_occlusion_fl.cpp) run inside the engine's flare walk and lens pass:
-# no SSE/MMX, no floating point, no exception bookends; the lens begin/end save XMM0-7 and the x87/MXCSR/LastError
-# image (cpu_state.h) around the SSE listener, the probe handler XMM0-7 and LastError.
+# The FL flare-probe thunk (src/engine/fl/sun_occlusion_fl.cpp) runs inside the engine's flare walk: no SSE/MMX, no
+# floating point, no exception bookends; the probe handler saves XMM0-7 and LastError.
 set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The FL engine-effects stubs (src/engine/fl/engine_effects_fl.cpp) are file-scope asm, integer only; the install code

@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-"""Build and audit the own sun hook's two fixtures. Never runs Wine.
+"""Build and audit the own sun hook's fixture. Never runs Wine.
 
   hook  own_sun_hook_fixture.exe: the production hook module (src/proxy/own_sun_hook.cpp,
-        production flags, -fno-exceptions) with engine_patch.cpp over two synthetic call sites.
-        Audit: both thunks are the documented instruction sequences, and the probe handler's
-        object code holds no x87 / MMX instruction and no floating-point arithmetic outside the
-        FNSAVE / FRSTOR boundary of the two lens callbacks.
-  gpu   lens_flare_gain_fixture.exe: the lens-flare gain's production law and steps (src/proxy/lens_flare_gain.h) on a
-        real device (the partial-sun-occlusion pass and wraps it used to share were deleted in own sun step 2).
+        production flags, -fno-exceptions) with engine_patch.cpp over a synthetic call site.
+        Audit: the probe thunk is the documented instruction sequence, and the module's object code holds no
+        x87 / MMX instruction and no floating-point arithmetic (the lens bracket, its FNSAVE / FRSTOR callbacks and
+        the lens-flare gain's GPU fixture were deleted on 2026-11-02).
 """
 import json
 import re
@@ -17,11 +15,8 @@ from run_chase_aim_trace import FLAGS
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'build/verification/own-sun-hook'
 OBJDUMP = 'i686-w64-mingw32-objdump'
-GPU_FLAGS = ('-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2')
 PROBE_THUNK = ['pushf', 'cld', 'push', 'push', 'call', 'add', 'cmp', 'je', 'popf', 'ret', 'popf', 'jmp']
-LENS_THUNK = ['pushf', 'cld', 'call', 'popf', 'push', 'call', 'add', 'pushf', 'cld', 'call', 'popf', 'ret']
 NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']   # engine_memory.cpp's production flags (CMakeLists.txt)
-BOUNDARY = {'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
 FLOAT_RE = re.compile(r'^(f[a-z0-9]+|emms|(add|sub|mul|div|sqrt|max|min|cmp)[sp][sd]|cvt\w+|u?comis[sd])$')
 
 
@@ -42,19 +37,19 @@ def functions(obj):
 def audit_module(obj):
     code = functions(obj)
     strip = lambda rows: [m.rstrip('dw') if m.startswith(('pushf', 'popf')) else m for m in rows if m not in ('nop', 'lea', 'xchg', 'data16', 'cs', 'nopw', 'nopl')]
-    if strip(code['_x3m_sun_probe_thunk']) != PROBE_THUNK or strip(code['_x3m_sun_lens_thunk']) != LENS_THUNK:
-        raise RuntimeError('thunk shape changed: %s / %s' % (code['_x3m_sun_probe_thunk'], code['_x3m_sun_lens_thunk']))
+    if strip(code['_x3m_sun_probe_thunk']) != PROBE_THUNK or '_x3m_sun_lens_thunk' in code:
+        raise RuntimeError('thunk shape changed: %s' % code['_x3m_sun_probe_thunk'])
     probe = [m for m in code['_x3m_sun_probe_decide'] if FLOAT_RE.match(m)]
     if probe:
         raise RuntimeError('floating point in the probe handler: %s' % probe[:6])
-    outside = {name: [m for m in rows if FLOAT_RE.match(m) and m not in BOUNDARY] for name, rows in code.items()}
-    outside = {k: v for k, v in outside.items() if v}
-    if outside:
-        raise RuntimeError('floating point outside the CPU-state boundary: %s' % outside)
+    floating = {name: [m for m in rows if FLOAT_RE.match(m)] for name, rows in code.items()}
+    floating = {k: v for k, v in floating.items() if v}
+    if floating:
+        raise RuntimeError('floating point in the hook module: %s' % floating)
     symbols = subprocess.run([OBJDUMP, '-t', str(obj)], capture_output=True, text=True, check=True).stdout
     if any(name in symbols for name in ('_Unwind_', '__gxx_personality', '__cxa_throw')):
         raise RuntimeError('exception runtime symbols in the hook module')
-    return {'probe_thunk': PROBE_THUNK, 'lens_thunk': LENS_THUNK, 'probe_handler_float_free': True, 'module_float_free_outside_boundary': True,
+    return {'probe_thunk': PROBE_THUNK, 'probe_handler_float_free': True, 'module_float_free': True,
             'no_exception_runtime_symbols': True, 'functions': len(code)}
 
 
@@ -69,10 +64,7 @@ def build():
     audit = audit_module(BUILD / 'module.o')
     hook = BUILD / 'own_sun_hook_fixture.exe'
     subprocess.run(['i686-w64-mingw32-g++', *map(str, objects), '-static', '-static-libgcc', '-static-libstdc++', '-o', str(hook)], check=True, cwd=ROOT)
-    gpu = BUILD / 'lens_flare_gain_fixture.exe'
-    subprocess.run(['i686-w64-mingw32-g++', *GPU_FLAGS, '-static', str(ROOT / 'verification/probe/lens_flare_gain_fixture.cpp'), '-o', str(gpu), '-luser32'],
-                   check=True, cwd=ROOT)
-    return {'hook': str(hook), 'gpu': str(gpu), 'module_audit': audit, 'runtime': 'not run'}
+    return {'hook': str(hook), 'module_audit': audit, 'runtime': 'not run'}
 
 
 if __name__ == '__main__':

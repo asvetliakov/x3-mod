@@ -26,7 +26,7 @@ enum D3DFORMAT {
 enum D3DPRIMITIVETYPE { D3DPT_TRIANGLELIST };
 enum D3DTEXTUREFILTERTYPE { D3DTEXF_POINT };
 enum D3DRENDERSTATETYPE { D3DRS_ZENABLE = 7, D3DRS_SRCBLEND = 19, D3DRS_BLENDFACTOR = 193 };
-// src/proxy/lens_flare_gain.h (the documented d3d9.h values)
+// the documented d3d9.h values (first needed by the lens-flare gain, deleted 2026-11-02)
 constexpr DWORD FALSE = 0;
 enum D3DBLEND { D3DBLEND_ZERO = 1, D3DBLEND_ONE = 2, D3DBLEND_BLENDFACTOR = 14 };
 enum D3DBLENDOP { D3DBLENDOP_ADD = 1 };

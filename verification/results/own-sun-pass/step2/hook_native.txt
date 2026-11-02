@@ -1,2 +1,2 @@
-COUNTERS probes=35 own=10 hidden=10 original=25 brackets=10 foreign=1
-OWN SUN HOOK checks=46 failures=0
+COUNTERS probes=35 own=10 hidden=10 original=25 foreign=1
+OWN SUN HOOK checks=40 failures=0

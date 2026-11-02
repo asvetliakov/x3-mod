@@ -213,11 +213,10 @@ inline void radiance(const std::int32_t colour[3], float k, float fog_t, Radianc
     }
     *out = r;
 }
-// The fog's analytic far transmittance toward the sky, as one scalar (renderer::fog_sky_lens_gain at gain 1: the column's
+// The fog's analytic far transmittance toward the sky, as one scalar (renderer::fog_sky_transmittance: the column's
 // T at the cap reduced by its Rec. 709 luminance, clamped to [0, 1]); 1 in a frame without the density composite.
 inline void fog_scalar(const renderer::FogTransmittanceLaw& law, float* t) noexcept {
-    float applied = 1.f;
-    renderer::fog_sky_lens_gain(law, 1.f, t, &applied);
+    renderer::fog_sky_transmittance(law, t);
 }
 
 // ---- The quad and the pixel program's constants ----

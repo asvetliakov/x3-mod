@@ -4,9 +4,9 @@
 
 // Engine-side occlusion skip (X3M_OCCLUSION_CULL=engine; occlusion_engine_core.h;
 // docs/architecture/occlusion-cull.md "Engine-side skip";
-// docs/reverse-engineering/engine-side-occlusion-cull.md). A third stub on the
+// docs/reverse-engineering/engine-side-occlusion-cull.md). A second stub on the
 // small-parts claim of the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2
-// (cull_small_parts.h chain_stub: one engine_patch claim, all three stubs,
+// (cull_small_parts.h chain_stub: one engine_patch claim, both stubs,
 // restored once by cull_small_parts::shutdown()): a ship part node listed in
 // the table the motion route publishes at the sector view's Clear takes the
 // engine's own size-cull instruction at 0x0047d2c3 for that view and frame.
@@ -17,7 +17,7 @@
 // inside the pass. Fail closed: the table is armed only between a publish and
 // the next Present; a refused claim leaves the draw-level cull alone.
 namespace x3m::occlusion_engine_cull {
-// Backend-load path only, after cull_small_parts::initialize() and lens_flare_cull::initialize(); engine = the mode
+// Backend-load path only, after cull_small_parts::initialize(); engine = the mode
 // parsed as `engine` (and the route requested). Logs one `occlusion_engine_cull status=patched|off|refused reason=` row.
 bool initialize(bool engine);
 bool shutdown(); // disarms; the shared site's bytes go back in cull_small_parts::shutdown()
