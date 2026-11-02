@@ -879,6 +879,16 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: engine effects, FL port step 1 (`engine_effects = plumes` on FL)
+
+The FL edition links the shared plume stage and recogniser (documented D3D9 only, as phase 2 below) and its own two
+call redirects in X3FL.exe ([engine-effects-modern.md](engine-effects-modern.md), "FL port, step 1"): engine code
+behind the X3FL.exe identity and two compared windows at the module base, documented Win32 only (`VirtualProtect`,
+`FlushInstructionCache`, `GetModuleHandleExW` pin), no Wine/CrossOver dependency. Natively verified on the Windows host
+through WSL interop (measured 2026-11-02): the FL redirect fixture 58 checks, 0 failures (skip/forward register and
+stack contract, write paths, every window bit, rollback, late claim). Not verified: the FL redirects and the plumes in
+game (not flown).
+
 ## 2026-11-02: own sun, step 3 (FL edition draws the own sun)
 
 The FL edition now links the same own sun stage (documented D3D9 only, as step 1 below) and its probe hook answers

@@ -102,9 +102,14 @@ class EngineEffectsCore(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('engine_effects_patch::initialize();'), 1)
-        self.assertLess(capture.index('lod_occlusion::initialize();'), capture.index('engine_effects_patch::initialize();'))
-        self.assertLess(capture.index('engine_effects_patch::initialize();'), capture.index('fov::initialize();'))
+        # Two calls since the FL port (step 1): the FL provider's in an #if X3M_EDITION_FL block first, then AP's.
+        self.assertEqual(capture.count('engine_effects_patch::initialize();'), 2)
+        fl = capture.index('engine_effects_patch::initialize();')
+        opened = capture.rindex('#if X3M_EDITION_FL', 0, fl)
+        self.assertNotIn('#endif', capture[opened:fl])
+        ap = capture.rindex('engine_effects_patch::initialize();')
+        self.assertLess(capture.index('lod_occlusion::initialize();'), ap)
+        self.assertLess(ap, capture.index('fov::initialize();'))
         self.assertIn('if (reserved == nullptr) x3m::engine_effects_patch::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/engine_effects_patch.cpp', source_text(ROOT / 'CMakeLists.txt'))
         module = source_text(ROOT / 'src/proxy/engine_effects_patch.cpp')

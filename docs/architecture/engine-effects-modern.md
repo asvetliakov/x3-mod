@@ -716,3 +716,36 @@ Only ship roots are walked (a record named the root as its parent within two fra
 node_overflow= node_unreadable= node_engine_culled= node_no_scale= node_root_overflow= node_children= node_other_view=
 node_not_ship= node_invalid= node_walk_us=` (`node_invalid` = `far_record` refusals + RCS jets + ring or dedupe set
 full).
+
+## FL port, step 1 (2026-11-02, not flown)
+
+`engine_effects = plumes` (the default) now runs on Farnham's Legacy (`X3M_EDITION=fl`). Verified sites and ABI:
+[fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md), "Verified 2026-11-02 against X3FL.exe"; host
+evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effects FL port, step 1".
+
+- **Redirects.** `src/engine/fl/engine_effects_fl.cpp` provides `engine_effects_patch.h` for the fl target (the ap
+  target keeps `engine_effects_patch.cpp`, unchanged); constants in `engine_effects_sites_fl.h`. Site A `base+0x015075`
+  (call `base+0x0150e0`: ECX = 0, EDX = k, eight dwords, obj `[esp+8]`, caller pops `0x20`) and site B `base+0x0150aa`
+  (call `base+0x013640`: four dwords, obj `[esp+0xc]`, `ret 0x10`). Each stub tests `obj+0x48 == 7`: a ship returns
+  at once (`xor eax,eax; ret` / `ret 0x10`), class 10 tail-jumps to the original with ECX, EDX and every other
+  register and the stack as the call left them. The stubs touch no memory but the EAX save, call nothing and use no
+  x87/SSE (instruction-level audit).
+- **Install** (backend-load path, in the engine_patch install window): `fl::module_base()` (X3FL.exe identity, else
+  `executable_mismatch`), both windows compared before any write (A 41 bytes exact; B 42 bytes with its one fixup at
+  +0xd equal to `base+0x1a83b0`, the other bytes exact; the hashes `5a69143c` / `601f528c` are the zeroed-fixup FNV-1a),
+  then B with one `lock cmpxchg8b`, then A by plain copy (its rel32 crosses a qword; never after the first Present,
+  `late_claim`), each read back. Both or none: a failed A restores B. Order B-then-A mirrors AP's atomic-first rule
+  (on AP, A is the atomic site). Rows: `engine_effects_patch site=A|B va= rva= edition=fl state= reason= mode= setting=
+  write=plain|atomic|none`.
+- **Draw path, unchanged code.** `engine_effects.cpp` is shared: on FL its identity is `fl::module_base() != 0`, the body
+  resolver reads the manager through `base+0x1aa100` every frame (header, mapped names round-robin, same layout as AP)
+  and drops every mapping when object_lifetime's load epoch changes; the SETA read uses FL's 12-byte tick compare at
+  `base+0x0fff26` and cfg `+0xbc/+0xc0`. The recogniser reads the FL object_trace snapshot (flags130, model `+0x144`,
+  scale) and the plumes stage arms exactly as on AP.
+- **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
+  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull (`lens_flare_cull`) and the far-jet
+  feed (`cull_small_parts`): their cull-pass stub is not ported. Own-ship tagging stays off on FL (`resolve_own_ship`
+  is AP-only), so the own ship's records carry `own=0`.
+- **Body table.** `tools/effects/engine_bodies.py` detects FL (`X3FL.exe` + `addon2/01.cat`, or `--edition fl`) and
+  reads `addon2/types/Bodies` over X3FL.exe's mounts (root + `addon2/`, no loose files); `manage.py install` and
+  `x3m-regenerate` produce the FL table through the same auto-detection.

@@ -205,6 +205,73 @@ class EngineBodiesSynthetic(unittest.TestCase):
         self.assertFalse((self.stock_root / 'x.json').exists())
 
 
+FL_BODIES_TXT = (b'SBTYPE_JET;3;\r\n566;effects\\engines\\fx_b;p39\\effects\\engines\\playeryacht_engine;\r\n'
+                 b'SBTYPE_SMALLJET;1;\r\n566;\r\n')
+
+
+def fl_game(root):
+    """An FL layout: X3FL.exe, root 01.cat (a root types/Bodies the FL loader never reads), a physical addon/ (AP's,
+    never mounted by X3FL.exe) and addon2/01.cat carrying addon2/types/Bodies and the bodies."""
+    root.mkdir(parents=True)
+    (root / 'X3FL.exe').write_bytes(b'MZ')
+    both = body(effect_material(b'tex_red.dds'), 7000, [((-65536, 65536), (0, 0), (-65536, 65536))])
+    yacht = body(effect_material(b'tex_red.dds'), 18000, [((-65536, 65536), (-65536, 65536), (-65536, 0))])
+    navjet = body(legacy_material(b'tex_grey.dds'), 350, [((-1000, 1000), (-1000, 1000), (-65536, 0))])
+    sfc.write_catalogue(root / '01.cat', [('types/Bodies.txt', BODIES_TXT), ('objects/v/00566.bob', navjet),
+                                          ('dds/tex_red.dds', dds_rgba(red_blue())),
+                                          ('dds/tex_grey.dds', dds_rgba(np.full((2, 2, 4), [128] * 4, np.uint8)))])
+    sfc.write_catalogue(root / 'addon/01.cat', [('types/Bodies.txt', BODIES_TXT)])
+    sfc.write_catalogue(root / 'addon2/01.cat', [('addon2/types/Bodies.txt', FL_BODIES_TXT),
+                                                 ('objects/effects/engines/fx_b.bob', both),
+                                                 ('objects/p39/effects/engines/playeryacht_engine.bob', yacht)])
+    return root
+
+
+class EngineBodiesFlSynthetic(unittest.TestCase):
+    """--edition fl (auto on an FL layout): the X3FL.exe mounts and addon2/types/Bodies."""
+
+    def test_auto_edition_reads_addon2_bodies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = fl_game(Path(tmp) / 'fl')
+            t = eb.generate(root)
+            self.assertEqual(eb.generate(root, edition='fl'), t)
+            ap = eb.generate(root, edition='ap')
+            with self.assertRaises(eb.GenerateError):
+                eb.generate(root, stock_only=True)
+        g = t['generated_from']
+        self.assertEqual((g['edition'], g['layers'], g['loose_files']), ('fl', ['01.cat', 'addon2/01.cat'], 0))
+        self.assertEqual((g['bodies_txt']['member'], g['bodies_txt']['source']), ('addon2/types/Bodies.txt', 'addon2/01.cat'))
+        self.assertEqual(g['lists'], {'jet': {'declared': 3, 'listed': 3}, 'smalljet': {'declared': 1, 'listed': 1}})
+        self.assertEqual(sorted(t['bodies']), ['effects\\engines\\fx_b', 'p39\\effects\\engines\\playeryacht_engine',
+                                               'v\\00566'])
+        self.assertEqual(t['bodies']['p39\\effects\\engines\\playeryacht_engine']['source'], 'addon2/01.cat')
+        self.assertNotIn('edition', ap['generated_from'])   # the AP table keeps its bytes
+        self.assertEqual(ap['generated_from']['bodies_txt']['source'], 'addon/01.cat')
+
+
+FL_GAME = Path('/mnt/c/X3FL')
+
+
+@unittest.skipUnless((FL_GAME / 'X3FL.exe').exists() and (FL_GAME / 'addon2/04.cat').exists(), 'X3FL tree unavailable')
+class EngineBodiesFlInstalled(unittest.TestCase):
+    """The FL table on the live C:\\X3FL tree (docs/reverse-engineering/fl/engine-effects.md section 4)."""
+
+    def test_fl_list_spelling_and_count(self):
+        t = eb.generate(FL_GAME)
+        g = t['generated_from']
+        self.assertEqual(g['edition'], 'fl')
+        self.assertEqual(g['bodies_txt'], {'member': 'addon2/types/Bodies.pck', 'source': 'addon2/04.cat',
+                                           'sha256': 'c7226417e14ec1b1e21c81b504348d3df6e68adc7c9208204af5c18a13b241cd'})
+        self.assertEqual(g['lists'], {'jet': {'declared': 249, 'listed': 249}, 'smalljet': {'declared': 1, 'listed': 1}})
+        self.assertFalse(any(layer.startswith('addon/') for layer in g['layers']))
+        self.assertEqual((t['counts']['bodies'], t['counts']['missing']), (226, 23))
+        for name in ('p39\\effects\\engines\\playeryacht_engine', 'p39\\effects\\engines\\terran_ts_xl_engine'):
+            self.assertIn(name, t['bodies'])
+            self.assertEqual(t['bodies'][name]['lists'], ['jet'])
+        self.assertEqual(t['bodies']['v\\00566']['lists'], ['jet', 'smalljet'])
+        self.assertFalse(any('/' in k for k in list(t['bodies']) + [m['name'] for m in t['missing']]))
+
+
 CENSUS = ROOT / 'verification/results/engine-effects-census/engine_bodies.csv'
 
 

@@ -1004,3 +1004,48 @@ drawn>0 late=0`; `late>0` with the engine's sun visible would mean a probe after
 resets 0; `own_sun status=ready edition=fl reason=ok probe=active`; over the 20 frame rows drawn 6,821, `late=0`
 throughout, no `own_sun_state` beyond the armed row (`no_probe` 24,540 is now only the off-screen count) (measured).
 Own sun step 3 (FL port) accepted; FL run 15's grey lens over fog is closed by it.
+
+## Engine effects FL port, step 1 — host evidence (2026-11-02, not flown)
+
+Design and as-built: [engine-effects-modern.md](../architecture/engine-effects-modern.md), "FL port, step 1"; sites:
+[fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md), "Verified 2026-11-02". Base main `4af1e4521`. All
+measured on the WSL2 host (native through interop), no Wine, no game.
+
+- **Builds.** `build-fl` and `build-ap` (RelWithDebInfo, `cmake/mingw-i686.cmake`, clean `-j8`): 0 warnings each. The fl
+  DLL carries the `engine_effects_patch … edition=fl` format and `fl_draw_only`; `tools/config/generate.py --check` PASS.
+- **Stub audit** ([`stub_cpu_state_audit.py`](../../verification/results/fl-engine-effects/stub_cpu_state_audit.py)) on
+  the fl DLL ([json](../../verification/results/fl-engine-effects/stub_cpu_state_audit_dll.json)) and the fixture: each
+  stub is exactly `push eax; mov eax,[esp+0xc|0x10]; cmpw $7,0x48(eax); pop eax; je; jmp *continue; xor eax,eax;
+  ret|ret 0x10` (8 instructions): no call, no x87/MMX/XMM, no ECX/EDX/EBX/ESI/EDI/EBP operand.
+- **Native fixture** (`verification/probe/fl_engine_effects.cpp` via `test_fl_engine_effects.build_and_run`):
+  `RESULT PASS checks=58 failures=0`. Windows laid into a 64 KB-aligned image, B's fixup relocated to it:
+  `a_fnv1a=5a69143c b_fnv1a_masked=601f528c`. Native image: both callees run for classes 7 and 10. Redirected: class 7
+  skipped on A (EAX 0, callee not entered, ECX/EDX untouched, ESP balanced by the caller's `add esp,0x20`) and on B
+  (`ret 0x10`); class 10 forwarded with ECX, EDX, EAX, EBX, ESI, EDI, EBP, ESP, the return address (`base+0x01507a` /
+  `base+0x0150af`), the eight / four stack dwords and DF exactly as at the call; LastError sentinel and
+  EBX/ESI/EDI/EBP/ESP/DF kept at the caller on every path. Write paths B `atomic`, A `plain`; only the two calls change.
+  Every single-bit change of either window refused before any write: `FLIPS a=328 refused_a=328 b=336 refused_b=336
+  fixup=32 fixup_refused=32`; B's fixup zeroed or rebased to another base refused. Rollback: A's read-back fault rolls
+  back A and restores B; B's read-back fault rolls back B, A not attempted; A fails and B's restore is refused →
+  `rollback_failed`, B registered (`already_installed`), ships lose only the trail, `shutdown()` restores. `shutdown()`
+  restores both; `late_claim` after `close_install_window`; `initialize()` rows (10) with `edition=fl` for unset/off
+  (`executable_mismatch`: the fixture is not X3FL.exe), `native`, `invalid_setting`, `too_long`, nothing written.
+  Timing (fixture loop, harness included): skip A 37 ns, forward A 50 ns per call.
+- **Mutations** ([`mutation_check.py`](../../verification/results/fl-engine-effects/mutation_check.py),
+  [json](../../verification/results/fl-engine-effects/mutation_check.json)): 10 / 10 killed (AP's A offset `0x14`, B
+  offset, ECX or EDX clobbered on A's forward, A `ret 0x20`, B plain `ret`, class 10 skipped, no B rollback, the late
+  window, B's fixup unchecked).
+- **AP objects** ([`ap_object_compare.py`](../../verification/results/fl-engine-effects/ap_object_compare.py),
+  [json](../../verification/results/fl-engine-effects/ap_object_compare.json)): `engine_effects.cpp`,
+  `engine_effects_patch.cpp`, `motion_output.cpp`, `capture.cpp` compiled with build-ap's flags without `-g`, base
+  sources from `git show 4af1e4521`, debug stripped: 4 compared, 4 identical.
+- **FL body table** (`tools/effects/engine_bodies.py --game-root C:\X3FL`, edition auto → fl; written outside the game
+  tree): sha256 `b350c323fd9ac0995fd979c8ac09927e0f323e74ee9bdc4a333af855a21d94b8`, Bodies `addon2/types/Bodies.pck`
+  from `addon2/04.cat` (decoded `c7226417…`), lists 249 JET + 1 SMALLJET (`v\00566`), 18 catalogues (root + addon2, no
+  `addon/`), 226 bodies (cyan 123, grey 103), 23 missing (13 not_found, 10 format, among them
+  `fx_engine_supplydrone`, `fx_engine_teladi_M4`, `fx_engine_xtc_lightblue_big`/`_nor` and 19 numeric `v\…`). The two FL-only bodies load:
+  `p39\effects\engines\playeryacht_engine` (value 18022, cyan, big3) and `p39\effects\engines\terran_ts_xl_engine`
+  (8384, cyan, big2). `test_engine_bodies.EngineBodiesFlInstalled` pins the spelling and counts;
+  [`install_paths_check.py`](../../verification/results/fl-engine-effects/install_paths_check.py): `manage.py`'s
+  `install_engine_bodies` and `x3m_regenerate.engine_step` write `x3m/engine_bodies.json` (edition fl) on a synthetic
+  FL layout.

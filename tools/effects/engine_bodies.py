@@ -5,11 +5,17 @@ SBTYPE_SMALLJET) the engine-effects pass ships (docs/architecture/engine-effects
 verification/results/engine-effects-census/engine_effects_census.py.
 
   python3 tools/effects/engine_bodies.py --game-root <X3 dir> --out <engine_bodies.json> [--stock-only]
+                                        [--edition auto|ap|fl]
 
 Views. Default: every installed catalogue (NN.cat, addon/NN.cat) and the loose files, as the engine mounts them,
 minus the x3m LOD overlay slots (lod_overlay.original_assets: the table must not depend on whether our own overlay
 is installed); bodies resolve by bob1.resolve_body (loose file first, then the highest mounted catalogue).
 --stock-only: sector_fog_census.STOCK_AP_CATALOGUES (01..13 + addon/01..04), no loose files.
+Edition (--edition, default auto: catalogue_mounts.edition, fl when X3FL.exe and addon2/01.cat exist). fl (Farnham's
+Legacy, docs/reverse-engineering/fl/engine-effects.md section 4): the catalogues X3FL.exe mounts
+(catalogue_mounts.mounted_catalogues(root, 'fl'): root NN.cat then addon2/NN.cat, never the physical addon/), no loose
+files, and the body list from `addon2/types/Bodies` (the loader's own path; the root types/Bodies is shadowed by
+namespace). --stock-only is AP only.
 
 Body list. The SBTYPE_JET and SBTYPE_SMALLJET sections of the winning types/Bodies: `TYPE;count;` then `count`
 tokens (an id or a name, `;`-separated, `//` comments dropped). Only the first `count` tokens are read (the
@@ -64,6 +70,7 @@ sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import bob1  # noqa: E402
 import lod_atlas  # noqa: E402
 import lod_overlay  # noqa: E402
+import catalogue_mounts  # noqa: E402
 from sector_fog_census import Assets, STOCK_AP_CATALOGUES  # noqa: E402
 
 SCHEMA = 1
@@ -356,19 +363,36 @@ def describe(assets, key, info, cache):
 
 # --------------------------------------------------------------------------- driver
 
-def load_assets(game_root, stock_only):
+BODIES_PATH = {'ap': 'types/Bodies.txt', 'fl': 'addon2/types/Bodies.txt'}  # X3FL.exe 0x43f6fb: "addon2\\types\\Bodies"
+
+
+def load_assets(game_root, stock_only, edition='ap'):
+    if edition == 'fl':
+        cats = [p.relative_to(game_root).as_posix() for p in catalogue_mounts.mounted_catalogues(game_root, 'fl')]
+        return Assets(game_root, catalogues=cats), []
     if stock_only:
         return Assets(game_root, catalogues=STOCK_AP_CATALOGUES), []
     return lod_overlay.original_assets(game_root)
 
 
-def generate(game_root, stock_only=False):
+def resolve_edition(game_root, edition):
+    """'ap' or 'fl'; auto (or None) lets the installation decide (catalogue_mounts.edition)."""
+    edition = catalogue_mounts.edition(game_root) if edition in (None, 'auto') else edition
+    if edition not in BODIES_PATH:
+        raise GenerateError(f'unknown edition {edition!r}')
+    return edition
+
+
+def generate(game_root, stock_only=False, edition='auto'):
     game_root = Path(game_root)
-    assets, skipped = load_assets(game_root, stock_only)
+    edition = resolve_edition(game_root, edition)
+    if edition == 'fl' and stock_only:
+        raise GenerateError('--stock-only is an AP view (STOCK_AP_CATALOGUES)')
+    assets, skipped = load_assets(game_root, stock_only, edition)
     try:
-        data, prov = assets.get('types/Bodies.txt')
+        data, prov = assets.get(BODIES_PATH[edition])
     except FileNotFoundError:
-        raise GenerateError('types/Bodies not found in the selected layers') from None
+        raise GenerateError(f'{BODIES_PATH[edition][:-4]} not found in the selected layers') from None
     lists = body_lists(data.decode('latin1'))
     bodies, missing, cache = {}, [], {}
     for key, info in jet_bodies(lists).items():
@@ -387,7 +411,7 @@ def generate(game_root, stock_only=False):
     return dict(
         schema=SCHEMA, tool='tools/effects/engine_bodies.py',
         generated_from=dict(
-            root='<game-root>', view='stock' if stock_only else 'installed',
+            root='<game-root>', view='stock' if stock_only else 'installed', **({'edition': 'fl'} if edition == 'fl' else {}),
             catalogues=len([s for s in assets.layers if s not in skipped]), layers=[s for s in assets.layers if s not in skipped],
             skipped_overlay_layers=list(skipped), loose_files=len(assets.loose),
             bodies_txt=dict(source=prov['source'], member=prov['member'], sha256=prov['decoded_sha256']),
@@ -408,6 +432,7 @@ def main(argv=None):
     parser.add_argument('--game-root', type=Path, default=bob1.DEFAULT_GAME)
     parser.add_argument('--out', type=Path, required=True, help='output JSON path (outside the game root)')
     parser.add_argument('--stock-only', action='store_true', help='stock AP catalogues only, no mod layers or loose files')
+    catalogue_mounts.add_edition_argument(parser)
     args = parser.parse_args(argv)
     root = args.game_root.resolve()
     out = args.out.resolve()
@@ -415,7 +440,7 @@ def main(argv=None):
         parser.error('--out must be outside the game root (the game tree is read-only)')
     started = time.monotonic()
     try:
-        table = generate(root, args.stock_only)
+        table = generate(root, args.stock_only, args.edition)
     except (GenerateError, ValueError) as exc:
         print(f'engine_bodies: {exc}', file=sys.stderr)
         return 1
@@ -423,7 +448,8 @@ def main(argv=None):
     tmp = out.with_name(out.name + '.tmp')
     tmp.write_text(dumps(table))
     os.replace(tmp, out)
-    print(json.dumps(dict(view=table['generated_from']['view'], bodies=table['counts']['bodies'],
+    print(json.dumps(dict(edition=table['generated_from'].get('edition', 'ap'), view=table['generated_from']['view'],
+                          bodies=table['counts']['bodies'],
                           missing=table['counts']['missing'], effect=table['counts']['effect'],
                           cluster=table['counts']['cluster'], seconds=round(time.monotonic() - started, 2)),
                      sort_keys=True))
