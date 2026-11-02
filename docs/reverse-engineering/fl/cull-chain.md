@@ -8,6 +8,10 @@ requirement; **[u]** means unestablished. No production source edit, PE build or
 execution, Wine, game launch or installation. This qualifies a bounded native
 binding contract; it does not claim an implemented or runtime-qualified FL hook.
 
+> **2026-11-02:** the sites below were re-derived from the live image; see
+> [Verified 2026-11-02 against X3FL.exe](#verified-2026-11-02-against-x3flexe) for
+> the per-module port table and the status of each claim in this older text.
+
 **Retain one shared claim and the existing three-consumer chain.** FL changes
 the displaced span, register assignment, stack locals and model field. It does
 not require another dispatcher, writer, lifetime owner or policy layer. In
@@ -331,3 +335,268 @@ These remain unclassified rather than expanding the set from asset membership
 alone. Complete FL runtime flare coverage still needs a flight census. The
 [feature ledger](../../verification/sun-occlusion.md#2026-10-29-fl-gain-zero-lens-cull-prepared-before-exports)
 and its source-bound producers retain the counts, hashes and limitations.
+
+
+## Verified 2026-11-02 against X3FL.exe
+
+Input: the live `C:\X3FL\X3FL.exe` (SHA-256 `e7f3aad8…01dfbb8`, the image the
+2026-10-29 text calls `/mnt/c/X3FL-orig`, which no longer exists) and
+`C:\X3\X3AP.exe` (`fdbf3418…`) for the AP twins. Static only; no Wine, no game.
+The 2026-10-29 producers (`fl-port/cull-chain-contract/produce.py`,
+`fl-port/cull-projection/verify_ordering.py`) are no longer in the tree, so
+their counts above cannot be re-run; this section replaces them with one
+producer.
+
+```sh
+python3 -I verification/results/fl-cull-chain/produce.py          # writes contract.json
+python3 -I verification/results/fl-cull-chain/produce.py --check  # 0 when it is current
+```
+
+The [producer](../../../verification/results/fl-cull-chain/produce.py) reuses the
+`Image` class of the engine-effects producer (`inspect_x3.py` PE reader, `.reloc`
+parse, Capstone). It asserts 109 FL and 11 AP whole-instruction anchors. It hashes
+15 windows and compares every AP window that has a source array byte for byte
+with that array (`cull_small_parts_core.h` window, marker and JET writer,
+`terran_lod_sites.h`, `lod_occlusion_sites.h`, both `cull_census_core.h` windows).
+Over the selector's CFG (407 instructions, every one reached) it computes
+reaching definitions for the seven GPRs and the stack-slot writers at each
+site, with a forward ESP-depth pass that must agree at every join. It also runs
+a linear direct-edge census of `.text` (72,230 edges), a raw rel8/rel32
+byte-position scan and an unaligned-dword scan of the whole file for every
+patched span. [contract.json](../../../verification/results/fl-cull-chain/contract.json)
+holds RVAs, offsets, counts and hashes only. Every figure in this section is
+**measured** from the bytes unless it is marked [i]. AP has no `.reloc`; FL has
+38,327 HIGHLOW fixups (DYNAMIC_BASE), so every FL address below is an **RVA**
+(VA − `0x400000`) that a hook adds to the running module base.
+
+### FL beside AP
+
+Window identity = window bytes with relocated dwords zeroed, FNV-1a 32 / SHA-256
+(full digests in contract.json).
+
+| AP claim (module) | AP VA | FL RVA | FL window RVA, len | Relocs in FL window | FL FNV-1a | FL SHA-256 prefix | Write, qword |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Shared cull site: small parts, dock, far jets, lens, occlusion-engine | `0x47d2a2` (5-byte span) | `0x0961d3` (9-byte span: `mov eax,[esi+0x18]` + `mov edx,[esi+0x1d8]`), continuation `0x0961dc` | `0x0961c5`, 55 (AP `0x47d294`, 56) | none | `9df9cf9e` | `e4339bc9587acfcd` | jmp rel32 `[0x0961d3,+5)` in qword `0x0961d0`: **atomic** |
+| Engine "culled" instruction | `0x47d2c3` | `0x0961f3` `and dword [esi+0x12c],~2; jmp 0x096201` | size verdict `0x0961d3`, 73 (AP 74) | none | `8f680dbc` | `59a638249270ff5c` | – |
+| Model read after the verdict | `0x47d2ec` (+0x140) | `0x09621c` `mov ecx,[esi+0x144]` | `0x09621c`, 6 | none | `41372e13` | `be924c44b50003fc` | – |
+| Terran bit-31 reader (terran_station_lod) | `0x47d01c` `je` → `jmp` | `0x095e96` `cmovl eax,ecx`; edit byte `0x095e98` `c1→c0` = `cmovl eax,eax` | `0x095e82`, 31 (AP `0x47d012`, 17) | none | `0e8e0d62` | `d6c77e017dc61e1e` | 1 byte in qword `0x095e98`: **atomic** |
+| LOD-0 occlusion gate (lod_occlusion) | `0x4c34f7` `jne rel32` → 0 | `0x0e56c0` `jne rel8 0x0e5731`; edit byte `0x0e56c1` `6f→00` = `jne 0x0e56c2` | `0x0e56b1`, 20 (AP `0x4c34e7`, 31) | 1 at `0x0e56bc` → `0x1a9014` (placeholder global) | `3105ccaa` | `87db655b2b327743` | 1 byte in qword `0x0e56c0`: **atomic** |
+| Census measure site (cull_census) | `0x47d258` (6) | `0x096186` `mov eax,[esi+0x1dc]` (6); alternative `0x096182` (10-byte span) | `0x09617a`, 22 (AP `0x47d248`, 31) | none | `b37f0e2b` | `3529aeda4d83f997` | `0x096186`: crosses `0x096188`, **install window**; `0x096182`: qword `0x096180`, **atomic** |
+| Census exit site (cull_census) | `0x47d528` (6) | `0x095f27` `mov esi,[esi+0xc]; cmp dword [esi],0` (6) | head `0x095f24`, 11; tail `0x09642e`, 24 (AP `0x47d519`, 27) | none | `2787f851` / `e07654a9` | `1717005dae339d7c` / `507b45838f62b3bb` | crosses `0x095f28`: **install window** |
+| Projectile marker store | `0x4401ae` | `0x049b1d` `mov dword [ebp-0x20],0x20800000` | `0x049b1d`, 7 (AP 8) | none | `7fd6e34b` | `26bb6a72e5467347` | – |
+| Projectile marker OR | `0x44123b` | `0x04a807` `mov eax,[esi+0x70]; mov ecx,[ebp-0x20]; or [eax+0x130],ecx`; class guard `0x04a6b9/0x04a6bc` | `0x04a807`, 12 (AP 13) | none | `147c2006` | `8cb6cc7c7c1b4edb` | – |
+| JET flag writer | `0x434708` (`[esi+…]`) | `0x03deb3` `or dword [ecx+0x130],0x4000001` | `0x03deb3`, 10 | none | `4d34a219` | `d2a7a221955f9809` | – |
+| Dock cut id arithmetic, text / binary | `0x4920f8` / `0x491528` | `0x0ae169` / `0x0ad62d`: `local + (cut−1)·100000` | `0x0ae169`, 20 / `0x0ad62d`, 15 | text: 1 at `0x0ae171` (string push) | `b8cf9dc8` / `c577a9ee` | `12b069c2411d5480` / `231cf02ec4a609b0` | – |
+| Lens scene walk | `0x472466..0x472476` → `0x47e780` | `0x08bc8c` `mov ecx,[*0x5aa100]; push esi; mov ecx,[ecx+0x64]; call 0x097720` | `0x08bc8c`, 15 | 1 at `0x08bc8e` → `0x1aa100` | `c09fb95a` | `c2a03ff5c34d00a2` | – |
+| Walker → selector call | `0x47e7a5` | `0x097745` | `0x097740`, 10 | none | `8524dc9a` | `18e77a30f9fc7b7f` | – |
+| Terran bit-31 writer | `0x441644` | `0x04ab6a` `or dword [edx+0x12c],0x80000000` (the only such OR in `.text`) | – | – | – | – | – |
+
+Callers: selector `0x095e50` has exactly two direct callers, its own child loop
+`0x095f37` and the walker `0x097745`. Walker `0x097720` has three: the sector scene
+`0x08ba4c`, the lens scene `0x08bc96` and `0x09786e`, a third view whose routine
+issues its own Clear through `vtable+0xac`. AP's walker `0x47e780` also has three
+(`0x47226b`, `0x472471`, `0x47e8c2`); that `0x09786e` is AP `0x47e8c2`'s twin is
+[i]. The selector's callees are shared widely: model lookup `0x0a1a40` has 59
+direct callers, measure helper `0x012b50` 39, radius cache `0x0a39b0` 35, frustum
+`0x0e9000` 1. Every claim is therefore a selector-site claim, never a callee
+claim.
+
+### 1. Shared cull site `0x0961d3` (hook-site suitability)
+
+- **Boundaries.** Two complete loads of 3 + 6 bytes, then `0x0961dc test eax,eax`.
+  Entries to `0x0961d3` are exactly the `je` at `0x0961b9`, the `jge` at
+  `0x0961c8` and the fall-through from `0x0961cc`. No direct edge, raw rel8/rel32 candidate or
+  unaligned dword lands in `(0x0961d3, 0x0961dc)`. The span has no relocation
+  and no relative operand. The engine's culled instruction `0x0961f3` has no
+  direct entry (fall-through only, as AP `0x47d2c3`), so a stub reaches it by
+  `jmp`.
+- **State at the site** (reaching definitions; ESP = `align_down(EBP,8) − 0x28` on
+  every path):
+
+  | Value | FL | AP (site `0x47d2a2`) |
+  | --- | --- | --- |
+  | Node | ESI (only writer `0x095e5e mov esi,ecx`) | EDI |
+  | Native measure `r·W/D` (W = `[*0x5aa100+0x5c]`, helper `0x012b50`) | **ECX, live** (writers `0x09617a`, `0x0961ca` = 0 in env-map views) | ESI |
+  | Pixel metric `s = r·640/D` (≥ 1, or `0x7000000`) | `[ESP+0x10]` (only writer `0x096182`), copy `[ESP+0x18]` (`0x09617e`) | `[ESP+0x2c]` |
+  | Native measure, stack copy | `[ESP+0x14]` (`0x096142`) | – |
+  | D (focus-scaled view depth) | EDI (`0x0960cd/d8/e3`, `0x09610d`) | EBX / `[ESP+0x10]` |
+  | View (camera) | EBX (only writer `0x0960d5 mov ebx,[ebp+8]`) = `[EBP+8]` | EBP = `[ESP+0x28]` |
+  | Local distance flag / propagated flag | `[ESP+0x1c]` / `[ESP+0x24]` byte | `[ESP+0x18]` byte (one slot) |
+  | Dead at site | EAX, EDX (written by the displaced loads), EFLAGS (`0x0961dc` TEST, or the culled AND, writes them before any read) | EAX, ECX, EFLAGS |
+
+  The selector has no x87 instruction. Whether the incoming x87 stack is empty
+  is not established; the stubs must stay integer-only, as on AP.
+- **Culled verdict path.** Replay the native max-threshold block on the scratch
+  registers, then jump to the engine's own instruction:
+  `mov eax,[esi+0x18]; mov edx,[esi+0x1d8]; test eax,eax; je +; mov eax,[eax+0x1d8];
+  cmp eax,edx; cmovg edx,eax; jmp base+0x0961f3`. ECX is left untouched. From there
+  the native path is `0x0961fa → 0x096201`: a set `+0x12c` bit 26 escapes to LOD
+  selection `0x09621c` exactly as AP `0x47d2d1` does; otherwise the path stores
+  and goes `0x096217 → 0x095f24` (children still visited). After the culled AND,
+  ECX is dead (`0x09621c` reloads it, the child loop overwrites it, the thiscall
+  return clobbers it). On every continue path the stub must preserve **ECX**,
+  which is read at `0x0961ef/0x0961fc`. The continue tail replays the 9 bytes
+  once and jumps to `base+0x0961dc`.
+- **Write.** Five bytes in the aligned qword `[0x0961d0, 0x0961d8)`, so the
+  existing `lock cmpxchg8b` path applies. The four remaining span bytes stay as
+  they are and become unreachable.
+- **Reentrancy.** The site runs before the node's child loop. The recursion
+  (`0x095f37`) re-enters the selector only after the stub has left by `jmp`, so a
+  stateless stub never nests [i]. All three walker callers are frame-render
+  paths. That they run on one thread, as on AP, is [i].
+
+### 2. Terran station LOD `0x095e98`
+
+The root path `0x095e82..0x095e9d` tests the incoming flag (`test al,al; jne`) and
+the parent (`cmp [esi+0x18],0; jne`). It then runs `cmp dword [esi+0x12c],0;
+movzx eax,al; cmovl eax,ecx` (ECX = 1 from `0x095e69`) and stores EAX to **both**
+the local flag `[ESP+0x1c]` and the propagated byte `[ESP+0x24]`. AP has one slot.
+`0x09628a cmp byte [esp+0x1c],0; je 0x096354` selects the metric loop over the
+fixed-distance ladder (`0x096295..0x0962e0`, constants identical to AP's
+`0x47d36d..0x47d3b8`). Changing ModRM `0x095e98` from `c1` to `c0` decodes as
+`cmovl eax,eax`, 3 bytes, with the same boundaries. On the root path AL is 0
+(the `jne` at `0x095e84` already left for a non-zero flag), so EAX stays 0, both
+slots receive 0, and every node selects by size. The edit writes no flags, and
+the CMP's flags are not consumed elsewhere. No edge lands inside
+`0x095e97..0x095e98`, the window has no relocation, and the one byte lies in
+qword `0x095e98`. The only bit-31 writer is `0x04ab6a` (AP `0x441644`). The
+AP save-load reader `0x47a005` was not re-located on FL [u].
+
+### 3. LOD occlusion `0x0e56c1`
+
+`0x0e56b4 cmp dword [eax+0x150],0` (EAX = node from `[ebp-0x1c]`, LOD +0x150)
+precedes `0x0e56bb mov eax,[0x5a9014]` (placeholder entry, relocated) and then
+`0x0e56c0 jne 0x0e5731` (placeholder bind `push -1; push [eax+0x34]`). The
+LOD-0 path `0x0e56c2` stores the placeholder at `[ebp-0x2c]` as its fallback,
+the way AP stores it at `[esp+0x18]`. `0x0e5731` has exactly one direct entry,
+this `jne`. Rel8 `0x6f → 0x00` makes both outcomes fall through to `0x0e56c2`.
+Flags are dead there (the first flag reader after `0x0e56c2` is behind
+`0x0e56cb test eax,eax`), so registers and stack match a native LOD-0 arrival.
+No edge or dword lands in the rel8 byte. The window's one fixup at `0x0e56bc`
+must be zeroed (or rebased to `base+0x1a9014`) before comparison. The
+material-routine extent and its other callers were not re-derived [u].
+
+### 4. Census sites
+
+- **Measure** `0x096186` (twin of `0x47d258`): ESI = node, ECX = native measure
+  (live; `0x096190 cmp ecx,eax`), `[ESP+0x10]` = s, EDI = D, EBX = view. The FL
+  stub pushes `(node ESI, measure ECX, s [ESP+0x10+pushes], D EDI, view EBX)`.
+  AP's slot offsets do not carry over (FL `[ESP+0x10]` is s, not D). The
+  six-byte span crosses qword `0x096188`, so it needs a plain write inside the
+  install window. Moving the site to `0x096182`, which displaces
+  `mov [esp+0x10],eax` too (10 bytes, no relative operand, no entry into either
+  span), keeps the jump in one qword. At `0x096182` s is still in EAX and
+  `[ESP+0x18]`.
+- **Exit** `0x095f27` (twin of `0x47d528`, the child-loop head): entered from
+  `0x095fc2/0x095fe3/0x0960b4/0x0960c1/0x096431/0x096441` and by fall-through from
+  `0x095f24` (itself entered from `0x095f0b`, `0x096217`). Nothing enters
+  `0x095f28..0x095f2c`. ESI = node. EDI holds the camera on every path that
+  reaches the exit (`0x095f24`, `0x095f5a`, `0x096396`, `0x0963f2`); the `0x095f24`
+  path loads it there. LOD `+0x150` and bit 2 of `+0x12c` are final. **The AP
+  model-pointer rule does not port:** EBX holds `LOD count − 1` or a caller value,
+  and `[ESP+0x14]` holds the model pointer (`0x096227`), the native measure
+  (`0x096142`) or a stale word, depending on the path. An FL exit stub must
+  resolve the ladder from `+0x144` outside the pass, or capture `[ESP+0x14]` only
+  on the `0x096227` path. The span crosses qword `0x095f28`, so it needs a plain
+  write inside the install window, and no atomic alternative keeps the node in
+  ESI.
+
+### 5. Node layout (FL selector ESI accesses vs AP pass EDI accesses)
+
+Counted memory operands. FL: `+0x12c` ×14, `+0x130` ×4, **`+0x144` ×3**, **`+0x150`
+×15**, `+0x18`, `+0x1c`, `+0x1d8`, `+0x1dc` ×1 each, `+0xa0` ×3, `+0xb0/b4/b8`,
+`+0xf0/f4/f8` ×2. AP: `+0x140` ×3, `+0x14c` ×17, and no `+0x144/+0x150`. Hence:
+parent `+0x18`, children `+0xc`, flags `+0x12c/+0x130`, radius `+0xa0`, thresholds
+`+0x1d8/+0x1dc` and view position `+0xf0..+0xf8` are **unchanged**. Model id
+**`+0x140 → +0x144`** and selected LOD **`+0x14c → +0x150`**. The body manager
+`*0x5aa100` (AP `*0x608518`) is confirmed as the measure's width source (`+0x5c`,
+`0x096113/19`) and as the lens-scene root (`+0x64`, `0x08bc8c`). Its body-table
+fields (`+0xb4/+0xb8/+0xbc`, stride `0x1c`, name `+0xc`) are the engine-effects
+note's §4 result and were not re-derived here.
+
+### 6. Per-module judgement
+
+1. **cull_small_parts** (small parts, dock ports, projectile exemption, far-jet
+   hand-off): **portable with a changed stub.** The policy is unchanged; the
+   site, registers and offsets are new. Compare `s` at `[ESP+0x10]` (plus pushes)
+   rather than `[ESP+0x2c]`. Use EAX/EDX as scratch and never ECX. The dock id
+   is `[esi+0x144]`; the marker and JET bits are `[esi+0x130]`. Pass the far-jet
+   call `(node ESI, measure ECX, view EBX)`. Replay as in §1. The marker
+   writers `0x049b1d/0x04a807`, the JET writer `0x03deb3` and both dock
+   formulas are present with the same constants. The **small-props** rule is
+   not part of this stub: on AP it is a draw-hook skip
+   (`cull_small_props_core.h`) with no engine site. Moving it into the pass
+   would be a new stub, not a port. It would need a prop-body bitmap like the
+   lens set and a size proxy, because the engine's `s` overstates split
+   turret props about 9× (AP run375, `+0xa0` radius).
+2. **terran_station_lod**: **portable with a changed patch**, the one-byte
+   ModRM edit of §2 (AP edits a `je`). The `size`/`distance` setting semantics
+   carry over.
+3. **lod_occlusion**: **portable with a changed patch**, the one-byte rel8 edit
+   of §3 with the fixup normalised. It removes no draw: `all` adds occlusion
+   binds and lookups on LOD > 0.
+4. **cull_census** (read-only): **portable with changed stubs and a changed exit
+   handler** (§4). One or both sites need the plain install-window write unless
+   the measure site moves to `0x096182`.
+5. **lens_flare_cull**: **portable with a changed stub.** It reads `+0x144`,
+   uses EAX/EDX for the bitmap index, and the AP stub's `mov ecx,eax`/`shr ecx`
+   must move to EDX. It then takes the same culled path to `0x0961f3`. The lens
+   scene reaches the same selector (`0x08bc96 → 0x097720 → 0x095e50`).
+6. **occlusion_engine_cull**: **portable with a changed stub, and not yet
+   usable.** Compare the view against EBX (or `[EBP+8]`) instead of
+   `[ESP+0x28]`, and move the probe register from ECX to EDX. Model `+0x144` and
+   position `+0xf0..+0xf8` are unchanged. Its table comes from the draw-level
+   occlusion cull, which FL does not have yet.
+7. **engine_far_jets**: claims no engine site. It is the small-parts stub's
+   callee, and its inputs map as in item 1 and the old §4 read set (model
+   `+0x144`).
+
+### 7. Expected draw saving on FL, ranked
+
+FL heavy frames, measured (`fl-run18-triage/draw_census/summary.txt`, run 19
+C/D): 1,742 draws, 825 opaque routed and 906 blended object draws, in station
+sectors with 10–13 stations each. AP figures are measured
+([cull-small-parts.md](../../verification/cull-small-parts.md),
+[occlusion-cull.md](../../architecture/occlusion-cull.md),
+[sun-occlusion.md](../../verification/sun-occlusion.md)). Every FL figure is [i].
+
+| Rank | Module | AP measured | FL expectation [i] |
+| --- | --- | --- | --- |
+| 1 | cull_small_parts 2 px | busy station view 901 → 477 draws (−47 %), ~31 → ~42 fps (Run 43 B) | the heavy FL frames are the same class (station-dominated), so several hundred of 1,742; unmeasured |
+| 2 | lens_flare_cull (gain 0 only) | 115–181 flare draws per frame, 150–176 nodes culled | same order when the user runs gain 0; nothing otherwise |
+| 3 | dock ports 12 px | 159/27/27 draws, 2.4–3.7 ms at carrier views (Run 110 A) | only with carriers in view; stock cut-scene ids assumed present on FL [u] |
+| 4 | occlusion_engine_cull | 67–91 hidden sub-part draws at close capital views; ~10 µs per skipped draw | 0 until the FL draw-level occlusion cull exists |
+| 5 | small props (new stub) | 76 of 82 prop draws predicted (render-only on AP) | battle views only; needs new policy |
+| 6 | terran_station_lod | not a draw cut: stock ladders cut triangles (station coarsest/LOD0 draws p50 0.83) | small, Terran stations only |
+| 7 | lod_occlusion, cull_census | no draw saving (quality fix / diagnostic) | none |
+
+### Status of the 2026-10-29 claims
+
+| Claim | Status |
+| --- | --- |
+| §1 producer, its 14 hashes / 81 anchors / 466 CFG edges etc. | **unverified**: the producer is gone; replaced by this section's producer |
+| §1 72,241 direct edges; only `0x495f37`, `0x497745` enter the selector; nothing enters `(0x4961d3,0x4961dc)`; zero raw/dword interior hits | **confirmed** (this sweep counts 72,230 edges; same conclusions) |
+| §2 selector `[0x495e50,0x496446)`, ECX node, camera + flag args, RET 8 at `0x495ed0/0x495f49`, pushes `0x495f33/34`, walker `0x497740/42` | **confirmed** |
+| §2 region table (`+0x150` init, `+0x130 & ~0x180000`, bit-26 early return `0x495f4c..58`, frustum `0x495fd3 → 0x4e9000`, `0x4a39b0` RET 4, model `<0`/bit 2 gate `0x4960ad/c1`) | **confirmed** |
+| §2 cull `0x4961f3 → 0x496201`, bit-26 escape `0x49620c`, `0x496217 → 0x495f24` | **confirmed** |
+| §2 `0x4e9000` 296 instructions, ten calls, GetViewport `+0xc0` | unverified (not re-read) |
+| §3 binding table (9-byte span, EAX/EDX outputs, continuation `0x4961dc`, reject `0x4961f3`, ESI/ECX, `[ESP+0x10]`/`+0x18`, `[EBP+8]`/EBX, `+0x144/+0x150`) | **confirmed** |
+| §3 entries `0x4961b9`, `0x4961c8`, fall-through `0x4961cc`; ECX live; flags dead; site ESP `align_down(EBP,8)−0x28`; helper argument cleanup | **confirmed** |
+| §3 "zero x87 does not prove an empty x87 stack" | **confirmed** (0 x87 instructions; incoming state unknown) |
+| §4 `*0x5aa100+0x5c`, helper `0x412b50` (ECX radius, EDX width, one stack arg, 0 on zero divisor), `[ESP+0x14]` → ECX, `0x7000000` paths, `s` at `+0x10/+0x18`, D law, env-map zeroes ECX only | **confirmed** (helper body read only to its zero-divisor return) |
+| §4 consumer table: marker `0x449b1d`, OR `0x44a807..0d`, guard `0x44a6b9/6bc`; JET `0x43deb3`; lens `[*0x5aa100+0x64]` via `0x48bc8c..96`, prep `0x48bc78/87`; dock `0x4ae169..17b`/`0x4ad62d..639` | **confirmed**; **added**: the JET OR is `[ecx+0x130]` on FL (`[esi+…]` on AP) |
+| §4 class dispatch `0x449aee`, class-7 subtype `0x449f7d..96`, SMALLJET `0x43dede/0x43dee8`, far-copy read set | unverified here (SMALLJET: engine-effects note) |
+| §5 five redirect bytes in qword `[0x4961d0,0x4961d8)`, atomic path | **confirmed** |
+| §5 chain order, rollback, arena and cost statements | design statements; not re-checked |
+| §6 `0x48ba43 → 0x495670`, then `0x48ba4c → 0x497720 → 0x495e50` | **confirmed** for the three calls; Clear helper internals `0x4db750/0x4db7f8` unverified |
+| 2026-10-29 lens: 15-byte traversal `0x48bc8c`, 10-byte call `0x497740`, 6-byte model read `0x49621c` | **confirmed** (traversal carries one fixup, `0x48bc8e → 0x5aa100`); "existing 50-byte cull window": bounds not stated, not reproduced; Lensflares table hash not re-read |
+| (implicit) the walker has the sector and lens callers | **corrected/added**: three direct callers, the third `0x49786e` |
+
+### Unknown
+
+- Runtime: none of the stubs or edits has run on FL. That the threading and
+  render-thread-only pass match AP is [i].
+- The FL equivalents of AP's save reader `0x47a005`, the material routine's
+  callers, and the dock cut-scene bodies 9013/9014/9098/9099 in FL's assets.
+- The FL draw saving of every module (§7) is inferred from AP flights. A flown
+  FL census with a small-parts stub is the first measurement.
