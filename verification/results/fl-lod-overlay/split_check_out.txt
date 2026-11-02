@@ -1,0 +1,9 @@
+6 header 06.dat trailing-newline True crlf False
+6 entries 2530 max end 1996148766 below limit True max start 1996070041
+6 marker slot 6 overlay_slots [6, 7] edition fl bodies 506
+6 bodies whose members are not all in this slot 0
+7 header 07.dat trailing-newline True crlf False
+7 entries 655 max end 755549336 below limit True max start 755164859
+7 marker slot 7 overlay_slots [6, 7] edition fl bodies 131
+7 bodies whose members are not all in this slot 0
+stock header foo.dat trailing-newline True crlf False sep sample '.tga 2097196'

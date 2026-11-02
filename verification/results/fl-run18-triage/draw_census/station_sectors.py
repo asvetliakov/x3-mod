@@ -48,7 +48,7 @@ def table(name):
 
 
 tables = {'5': table('tdocks'), '6': table('tfactories')}
-uni = ET.fromstring(fl.get('addon2/maps/x3_universe.txt')[0])
+uni = ET.fromstring(fl.get('addon2/maps/x3_universe.xml')[0])
 tot = collections.Counter()
 for sec in uni.iter('o'):
     if sec.get('t') != '1':

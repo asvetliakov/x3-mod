@@ -14,6 +14,7 @@ HASHED = [ANALYSIS / n for n in ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'l
                                                         ROOT / 'tools' / 'fog_field_recipe.py']
 TOOLS = ['fog_families', 'fog_family_inputs', 'bake_fog_fields', 'fog_field_recipe', 'lod_overlay', 'lod_overlay_check',
          'lod_atlas', 'lod_batch_census', 'lod_recipes', 'thin_patches', 'bob1', 'body_materials', 'sector_fog_census', 'inspect_x3',
+         'catalogue_mounts',
          'game_guard', 'engine_bodies', 'PIL.Image', 'PIL.JpegImagePlugin', 'PIL.TgaImagePlugin', 'PIL.PngImagePlugin']
 
 a = Analysis(

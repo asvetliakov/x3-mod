@@ -107,6 +107,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bob1            # noqa: E402
+import catalogue_mounts  # noqa: E402
 import lod_atlas       # noqa: E402
 import lod_overlay     # noqa: E402
 import lod_recipes     # noqa: E402
@@ -549,16 +550,18 @@ def winning_entry(assets, key):
     """The engine's winner of the key's stem (bob1.resolve_body) when it is one of this key's entries, else None
     (the stem's other key, binary or text, holds the winner). A key outside objects/ is its own winner. A stem
     the resolver refuses (bob1.BodyRefused) is represented by its first key in addon/.bob, addon/.bod, .bob,
-    .bod order that holds a mounted member, so it gives one (refused) row; a stem with no mounted member none."""
-    if not key.removeprefix('addon/').startswith('objects/'):
+    .bod order that holds a mounted member, so it gives one (refused) row; a stem with no mounted member none.
+    FL: addon2/ in place of addon/ (Assets.expansion)."""
+    xp = bob1._expansion(assets) + '/'
+    if not key.removeprefix(xp).startswith('objects/'):
         return assets.entries[key][-1]
     try:
         won = bob1.resolve_body(assets, key)
     except FileNotFoundError:              # every member sits in a catalogue after a numbering gap
         return None
     except bob1.BodyRefused:
-        base = key.removeprefix('addon/')[:-4]
-        first = next(k for k in ('addon/' + base + '.bob', 'addon/' + base + '.bod', base + '.bob', base + '.bod')
+        base = key.removeprefix(xp)[:-4]
+        first = next(k for k in (xp + base + '.bob', xp + base + '.bod', base + '.bob', base + '.bod')
                      if any(bob1.mounted(assets, e) for e in assets.entries.get(k, [])))
         return assets.entries[key][-1] if key == first else None
     return won if any(e is won for e in assets.entries[key]) else None
@@ -573,18 +576,20 @@ def body_keys(assets):
 def text_body_keys(assets):
     """Stems whose engine winner is text (.pbd/.bod), including a text member in a higher catalogue than a
     binary one; cut scenes (objects/cut) are left out."""
+    cut = ('objects/cut/', bob1._expansion(assets) + '/objects/cut/')
     return sorted(k for k, v in assets.entries.items()
                   if v[-1]['path'].lower().endswith(TEXT_EXTENSIONS) and winning_entry(assets, k) is not None
-                  and not k.startswith(('objects/cut/', 'addon/objects/cut/')))
+                  and not k.startswith(cut))
 
 
 def package_keys(assets, keys):
     """With a selected package (Assets mods=[...]) its members sit under addon/<key>, which the resolver
     (Assets.candidates) prefers over the numbered <key>: drop the numbered key of a stem the package holds in
-    either body form, so each stem gives one row (the package's)."""
-    held = {k[len('addon/'):-4] for k in assets.entries if k.startswith('addon/objects/')
+    either body form, so each stem gives one row (the package's). FL: addon2/<key>."""
+    xp = bob1._expansion(assets) + '/'
+    held = {k[len(xp):-4] for k in assets.entries if k.startswith(xp + 'objects/')
             and k.endswith(('.bob', '.bod'))}
-    return [k for k in keys if k.startswith('addon/') or k[:-4] not in held]
+    return [k for k in keys if k.startswith(xp) or k[:-4] not in held]
 
 
 def run(game, opts, jobs=1, limit=None, only=None, include_text=False, mods=()):
@@ -783,6 +788,7 @@ def _count(it):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--game', default=str(bob1.DEFAULT_GAME))
+    catalogue_mounts.add_edition_argument(ap)
     ap.add_argument('--out', help='directory for census.txt, summary.txt, sectors.txt, eligible_bodies.txt')
     ap.add_argument('--jobs', type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument('--limit', type=int)
@@ -821,6 +827,8 @@ def main(argv=None):
                 rule=dict(ship_min=a.ship_min, ship_factor=a.ship_factor, station_t=a.station_t, t_cap=a.t_cap,
                           aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0], aspect_station=a.aspect_cap[1]))
     t0 = time.time()
+    if a.edition != 'auto':                    # the spawned census workers resolve the edition from the environment
+        os.environ[catalogue_mounts.EDITION_ENV] = a.edition
     rows, skipped = run(a.game, opts, a.jobs, a.limit, include_text=not a.binary_only)
     attach_world(rows, world_radii(a.radius_log or default_radius_logs()))
     root = Path(__file__).resolve().parents[2]

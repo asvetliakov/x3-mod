@@ -17,6 +17,7 @@ Lines mentioning `java`, `ghidra`, `AnalyzeHeadless` or `pgrep` are ignored.
 import subprocess
 
 GAME_COMMANDS = ('x3ap.exe', 'x3ap')
+FL_COMMANDS = ('x3fl.exe', 'x3fl')       # Farnham's Legacy (the merged-LOD tools' FL mode)
 WINE_COMMANDS = ('wine', 'wine64', 'wine-preloader', 'wine64-preloader', 'winewrapper.exe', 'wineloader')
 VALUE_OPTIONS = ('--bottle', '--dll', '--workdir', '--cx-app', '--wl-app', '--ux-app', '--desktop', '--scope',
                  '--wait-child', '--cx-log', '--check-dll', '--enable-alt-loader')
@@ -27,8 +28,9 @@ def _basename(token):
     return token.replace('\\', '/').rsplit('/', 1)[-1].lower()
 
 
-def is_game_line(line):
-    """True when one `ps -o pid=,args=` line describes a real game process."""
+def is_game_line(line, commands=GAME_COMMANDS):
+    """True when one `ps -o pid=,args=` line describes a real game process (commands: lower-case executable
+    names, default X3AP; FL_COMMANDS for X3FL)."""
     lowered = line.lower()
     if any(word in lowered for word in IGNORED_WORDS):
         return False
@@ -43,7 +45,7 @@ def is_game_line(line):
         if count > 1 and argv[count - 1].startswith('-'):
             return False
         command = _basename(' '.join(argv[:count]))
-        if command in GAME_COMMANDS:
+        if command in commands:
             return True
         if command in WINE_COMMANDS:
             break
@@ -53,21 +55,21 @@ def is_game_line(line):
     for token in rest:
         if token == '--':
             token = next(rest, None)
-            return token is not None and _basename(token) in GAME_COMMANDS
+            return token is not None and _basename(token) in commands
         if token in VALUE_OPTIONS:
             next(rest, None)
             continue
         if token.startswith('-') or _basename(token) in WINE_COMMANDS:
             continue  # option, or the loader named by a preloader
-        return _basename(token) in GAME_COMMANDS
+        return _basename(token) in commands
     return False
 
 
-def game_lines(text):
-    return [line.strip() for line in text.splitlines() if line.strip() and is_game_line(line)]
+def game_lines(text, commands=GAME_COMMANDS):
+    return [line.strip() for line in text.splitlines() if line.strip() and is_game_line(line, commands)]
 
 
-def game_running():
+def game_running(commands=GAME_COMMANDS):
     """Return the process-table lines of real game processes (empty when none).
 
     Raises RuntimeError when the process inventory cannot be read, so callers
@@ -79,4 +81,4 @@ def game_running():
         raise RuntimeError('process inventory unavailable: ' + str(error))
     if inventory.returncode != 0:
         raise RuntimeError('process inventory unavailable: ps exit ' + str(inventory.returncode))
-    return game_lines(inventory.stdout)
+    return game_lines(inventory.stdout, commands)

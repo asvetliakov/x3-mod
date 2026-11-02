@@ -5,7 +5,8 @@ mixed-effects split, the second UV set with an occlusion decal, negative materia
 qualified atlas names, textures/ jpg textures, the display-derived width, marker validation and
 orphans, --sync reuse with slot retirement, the addon/mods warning, and the area-weighted texel floor
 with the clamped layout (span-clamped outlier faces, texel_clamped tiles), and the 2^31 - 1 dat limit with
-the multi-slot split (--max-dat-bytes), cross-slot reuse, rollback, shrink and an orphaned slot."""
+the multi-slot split (--max-dat-bytes), cross-slot reuse, rollback, shrink and an orphaned slot; the FL
+(addon2) edition (FlEdition)."""
 import contextlib
 import copy
 import gzip
@@ -2559,6 +2560,143 @@ class AlphaRule(unittest.TestCase):
         mats[0]['params'] += [(b'g_ALPHATESTENABLE', 0, [1])]
         occl(mats, b'x_occl.tga', b'x_occl.tga')
         self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, record=coarse), set())
+
+
+
+def make_fl_game(folder):
+    """Synthetic Farnham's Legacy root: X3FL.exe, root 01..02.cat, addon2/01.cat (FL's own ship plus the X3FL
+    namespace), an AP addon/01.cat on disk that X3FL.exe never mounts, and addon2/03.cat after a gap."""
+    game = Path(folder) / 'fl'
+    game.mkdir(parents=True)
+    (game / 'X3FL.exe').write_bytes(b'MZ stub')
+    (game / 'X3AP.exe').write_bytes(b'MZ stub')                   # the FL directory carries AP's exe too
+    write_catalogue(game / '01.cat', atlas_textures())
+    write_catalogue(game / '02.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
+                                      ('objects/stations/y/good.pbb', packed(with_threshold(atlas_tree_lod0(), 160)))])
+    write_catalogue(game / 'addon2/01.cat', [('objects/ships/x/flship.pbb', packed(mixed_tree())),
+                                             ('addon2/types/TShips.txt', b'fl types\n')])
+    write_catalogue(game / 'addon/01.cat', [('objects/ships/x/aponly.pbb', packed(atlas_tree_lod0())),
+                                            ('objects/ships/x/good.pbd', b'BODY 0\n')])   # would win on AP
+    write_catalogue(game / 'addon2/03.cat', [('objects/ships/x/gapped.pbb', packed(atlas_tree_lod0()))])
+    return game
+
+
+def fl_reg(path, mod_name):
+    path.write_text(f'WINE REGISTRY Version 2\n\n[Software\\\\EGOSOFT\\\\X3FL] 1790307522\n"ModName"="{mod_name}"\n')
+    return path
+
+
+class FlEdition(unittest.TestCase):
+    """--edition fl / auto on an X3FL.exe + addon2/01.cat root (docs/architecture/lod-overlay-mods.md, "FL (addon2)
+    mode"): root + addon2 sources, addon2 slot, markers and outputs, X3FL registry key and process check."""
+
+    def tearDown(self):
+        os.environ.pop('X3M_EDITION', None)
+
+    def test_batch_out_markers_and_check(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = make_fl_game(folder), Path(folder) / 'out'
+            (game / 'addon2/03.cat').rename(game / 'addon2/02.cat')     # contiguous: addon2/01..02, next 03
+            self.assertEqual(lod_overlay.next_slot(game), 3)
+            (game / 'addon2/02.cat').rename(game / 'addon2/03.cat')
+            with self.assertRaisesRegex(SystemExit, 'addon2 catalogues are not contiguous'):
+                lod_overlay.next_slot(game)
+            (game / 'addon2/03.cat').unlink()
+            (game / 'addon2/03.dat').unlink()
+            code, text = run(BATCH + ['--game', str(game), '--out', str(out), '--mod', 'none'])
+            self.assertEqual(code, 0, text)
+            self.assertFalse((out / 'addon').exists())
+            record = json.loads((out / 'x3m-lod-batch.json').read_text())
+            names = {b['name'] for b in record['bodies']}
+            self.assertEqual(names, {'ships/x/good', 'ships/x/flship', 'stations/y/good'})   # never addon/01
+            self.assertEqual(record['slot'], 2)
+            by = {b['name']: b for b in record['bodies']}
+            self.assertTrue(by['ships/x/good']['member'].startswith('02.cat:'))   # not AP's addon/01 text member
+            self.assertTrue(by['ships/x/flship']['member'].startswith('addon2/01.cat:'))
+            self.assertIn('target addon2/02.cat', text)
+            marker = json.loads((out / 'addon2/02.x3m-lod.json').read_text())
+            self.assertEqual((marker['edition'], marker['slot']), ('fl', 2))
+            self.assertIn('addon2/01.cat', marker['originals_fingerprints'])
+            self.assertNotIn('addon/01.cat', marker['originals_fingerprints'])
+            members = cat_members(out / 'addon2/02.cat')
+            self.assertIn('objects/ships/x/flship.pbb', members)
+            line, ok = lod_overlay_check.candidate_line(game, out)
+            self.assertTrue(ok, line)
+            self.assertIn('slot 02 free (game addon2/ run 01..01)', line)
+            self.assertIn('no member collision (3 body members, 3 of them override a mounted body)', line)
+            # an AP view of the same output finds no addon/ pair; a foreign addon2/02 takes the slot
+            with contextlib.redirect_stdout(io.StringIO()) as o:
+                self.assertEqual(lod_overlay_check.main(['--game', str(game), '--candidate', str(out),
+                                                         '--edition', 'ap']), 1)
+            self.assertIn('no addon/ directory', o.getvalue())
+            self.assertNotIn('X3M_EDITION', os.environ)
+            write_catalogue(game / 'addon2/02.cat', [('t/0001.xml', b'mod')])
+            line, ok = lod_overlay_check.candidate_line(game, out)
+            self.assertFalse(ok)
+            self.assertIn('slot 02 is not free: the next contiguous addon2 slot is 03', line)
+            (game / 'addon2/02.cat').unlink()
+            (game / 'addon2/02.dat').unlink()
+            atlas = next(m for m in members if m.startswith('dds/'))
+            write_catalogue(game / '02.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
+                                              ('objects/stations/y/good.pbb',
+                                               packed(with_threshold(atlas_tree_lod0(), 160))), (atlas, b'x')])
+            line, ok = lod_overlay_check.candidate_line(game, out)
+            self.assertFalse(ok)
+            self.assertIn('1 non-body member(s) collide', line)
+            self.assertIn('sources changed since the bake (02.cat', line)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_install_launch_line_and_edition_override(self, running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_fl_game(folder)
+            (game / 'addon2/03.cat').unlink()
+            (game / 'addon2/03.dat').unlink()
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'none'])
+            self.assertEqual(code, 0, text)
+            running.assert_called_with('fl')                            # the X3FL.exe process check
+            self.assertTrue((game / 'addon2/02.cat').is_file() and (game / 'addon2/x3m-lod-batch.json').is_file())
+            self.assertFalse(list((game / 'addon').glob('0[2-9].*')))
+            self.assertEqual([m['status'] for m in lod_overlay.installed_markers(game)], ['valid'])
+            line = lod_overlay_check.overlay_line(game, mod_name='')
+            self.assertTrue(line.startswith('lod overlay: ok (3 bodies in slots 02'), line)
+            write_catalogue(game / 'addon2/03.cat', [('objects/ships/x/flship.pbb', packed(atlas_tree_lod0()))])
+            self.assertIn('addon2/03.cat above the overlay holds 1 overlay bodies',
+                          lod_overlay_check.overlay_line(game, mod_name=''))
+            (game / 'addon2/03.cat').unlink()
+            (game / 'addon2/03.dat').unlink()
+            code, text = run(BATCH + ['--game', str(game), '--install', '--mod', 'none', '--sync'])
+            self.assertIn('built 0 + reused 3 = 3 overlay bodies', text)
+            # --edition ap on the same directory: AP's addon/ view, no overlay marker there
+            code, text = run(BATCH + ['--game', str(game), '--dry-run', '--mod', 'none', '--edition', 'ap',
+                                      '--out', str(Path(folder) / 'ap')])
+            record = json.loads((Path(folder) / 'ap' / 'x3m-lod-batch.json').read_text())
+            self.assertEqual(record['slot'], 2)
+            self.assertIn('ships/x/aponly', {b['name'] for b in record['bodies']})
+            self.assertNotIn('ships/x/flship', {b['name'] for b in record['bodies']})
+            self.assertNotIn('X3M_EDITION', os.environ)                # restored after the run
+
+    def test_fl_package_from_the_x3fl_key(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_fl_game(folder)
+            (game / 'addon2/03.cat').unlink()
+            (game / 'addon2/03.dat').unlink()
+            write_catalogue(game / 'addon2/mods/Big.cat', [('objects/ships/x/good.pbb', packed(mixed_tree()))])
+            regf = Path(folder) / 'user.reg'
+            for value, want in (('Big', 'Big'), (';Big;', 'Big'), ('Big;Other', None), ('', '')):
+                fl_reg(regf, value)
+                self.assertEqual(lod_overlay_check.read_mod_name(regf, game)[0], want, value)
+            reg(regf, 'Big')                                               # the X3AP key is not FL's
+            self.assertEqual(lod_overlay_check.read_mod_name(regf, game)[0], '')
+            fl_reg(regf, 'Big')
+            out = Path(folder) / 'out'
+            code, text = run(BATCH + ['--game', str(game), '--out', str(out), '--registry', str(regf)])
+            self.assertEqual(code, 0, text)
+            self.assertTrue((out / 'addon2/mods/Big-x3m-lod.cat').is_file())
+            self.assertIn('derived addon2/mods/Big-x3m-lod.cat/.dat', text)
+            fl_reg(regf, 'Big;Other')
+            code, text = run(BATCH + ['--game', str(game), '--dry-run', '--registry', str(regf),
+                                      '--record', str(Path(folder) / 'r.json')])
+            self.assertIn('a package list is not modelled', text)
 
 
 if __name__ == '__main__':

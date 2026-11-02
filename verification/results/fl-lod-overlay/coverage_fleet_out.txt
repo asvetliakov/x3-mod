@@ -1,0 +1,17 @@
+FL bodies 2542, AP bodies 4611, in both 2450; baked in both 635
+
+== baked by AP, not by FL (0): body | category | FL reasons | FL member | AP member
+by FL reason []
+AP member from a mod catalogue (addon/05..12) 0
+
+== baked by FL, not by AP (2): body | category | AP reasons | FL member | AP member
+others/argon_gate | station | text_parse_error | 01.cat:objects/others/argon_gate.pbb | addon/11.cat:objects/others/argon_gate.pbd
+others/terraformer_gate | station | not_bob1 | 01.cat:objects/others/terraformer_gate.pbb | addon/11.cat:objects/others/terraformer_gate.bob
+by AP reason [('text_parse_error', 1), ('not_bob1', 1)]
+
+== FL-only bodies 92 by FL outcome [('category_other', 69), ('no_opaque', 14), ('text_parse_error', 7), ('texture_animation_unsupported', 2)]
+FL-only baked: -
+FL-only ships/stations not baked: others/hsap (text_parse_error)
+== AP-only bodies 2161 by AP outcome [('no_opaque', 861), ('category_other', 543), ('baked', 519), ('no_draw_gain', 205), ('mat3', 12), ('texture_animation_unsupported', 7), ('texel_floor', 6), ('classic_unsupported', 5), ('classic_nothing_to_atlas', 3)]
+
+== FL ship/station not baked, by first reason [('no_opaque', 220), ('no_draw_gain', 163), ('classic_nothing_to_atlas', 79), ('texture_animation_unsupported', 11), ('excluded_effect', 6), ('texel_floor', 5), ('no_diffuse', 5), ('mat3', 4), ('parse_error', 1), ('text_parse_error', 1)]

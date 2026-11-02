@@ -21,6 +21,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 from collections import Counter
 
+import catalogue_mounts
 from inspect_x3 import read_catalogue
 
 
@@ -38,17 +39,18 @@ def canonical(path):
     path = path.replace('\\', '/').lower()
     suffix = PurePosixPath(path).suffix
     # Packed and unpacked members refer to the same engine resource.
-    folder = path.removeprefix('addon/').split('/')[0]
+    folder = re.sub(r'^addon2?/', '', path).split('/')[0]
     packed_suffix = {'maps': '.xml', 't': '.xml', 'dds': '.dds'}.get(folder, '.txt')
     return str(PurePosixPath(path).with_suffix({'.pck': packed_suffix, '.pbd': '.bod', '.pbb': '.bob'}.get(suffix, suffix)))
 
 
 
-def resource_key(path, selected_mod=False):
-    """AP-selected mods may omit addon/; base-game resources keep their namespace."""
+def resource_key(path, selected_mod=False, expansion='addon'):
+    """Selected mods may omit the expansion directory (AP addon/, FL addon2/); base-game resources keep their
+    namespace."""
     key = canonical(path)
     if selected_mod and key.split('/')[0] in {'maps', 'types', 't', 'objects', 'dds'}:
-        return 'addon/' + key
+        return expansion + '/' + key
     return key
 
 
@@ -64,17 +66,25 @@ STOCK_AP_CATALOGUES = tuple(f'{i:02d}.cat' for i in range(1, 14)) + tuple(f'addo
 
 
 class Assets:
-    def __init__(self, root, mods=(), catalogues=None):
+    def __init__(self, root, mods=(), catalogues=None, edition=None):
         """catalogues=None (default): every numbered catalogue plus loose files, as the engine loads them.
         catalogues=[relative CAT paths]: exactly those layers in that order and no loose files (a pinned view,
-        e.g. STOCK_AP_CATALOGUES); a missing one raises ValueError."""
+        e.g. STOCK_AP_CATALOGUES); a missing one raises ValueError.
+        edition 'ap' or 'fl' picks the expansion directory (AP addon/, FL addon2/: root NN.cat then
+        <expansion>/NN.cat, docs/reverse-engineering/fl/resource-resolver.md section 1; FL mounts no physical
+        addon/). None: catalogue_mounts.game_edition (X3M_EDITION, else the installation); a pinned view without
+        an addon2/ layer is AP."""
         self.root = root
+        if edition is None and catalogues is not None:
+            edition = 'fl' if any(str(c).replace('\\', '/').startswith('addon2/') for c in catalogues) else 'ap'
+        self.edition = catalogue_mounts.game_edition(root, edition)
+        self.expansion = catalogue_mounts.EXPANSIONS[self.edition]
         self.layers = []
         self.entries = {}
         self.loose = []
         self.cache = {}
         if catalogues is None:
-            cats = sorted(root.glob('[0-9][0-9].cat')) + sorted((root / 'addon').glob('[0-9][0-9].cat'))
+            cats = sorted(root.glob('[0-9][0-9].cat')) + sorted((root / self.expansion).glob('[0-9][0-9].cat'))
         else:
             cats = [root / relative for relative in catalogues]
             for cat in cats:
@@ -85,8 +95,8 @@ class Assets:
             self.layers.append(source)
             for entry in read_catalogue(cat):
                 entry = dict(entry, source=source, cat=cat)
-                self.entries.setdefault(resource_key(entry['path'], selected_mod), []).append(entry)
-        for base in (('', 'addon') if catalogues is None else ()):
+                self.entries.setdefault(resource_key(entry['path'], selected_mod, self.expansion), []).append(entry)
+        for base in (('', self.expansion) if catalogues is None else ()):
             for folder in ('maps', 'types', 't', 'objects', 'dds', 'tex', 'textures'):   # tex, textures: lod_atlas.lookup
                 for path in sorted((root / base / folder).rglob('*')):
                     if path.is_file():
@@ -100,10 +110,11 @@ class Assets:
                         self.loose.append(relative)
 
     def candidates(self, path):
-        # AP namespace wins over base-game resources. Explicit selected mods
-        # are rebased into AP at insertion; base TC loose files remain base-only.
-        key = canonical(path).removeprefix('addon/')
-        return self.entries.get('addon/' + key, []) or self.entries.get(key, [])
+        # The expansion namespace (AP addon/, FL addon2/) wins over base-game resources. Explicit selected
+        # mods are rebased into it at insertion; base TC loose files remain base-only.
+        xp = self.__dict__.get('expansion', 'addon')
+        key = canonical(path).removeprefix(xp + '/')
+        return self.entries.get(xp + '/' + key, []) or self.entries.get(key, [])
 
     def read_entry(self, entry):
         key = (entry['source'], entry['path'])

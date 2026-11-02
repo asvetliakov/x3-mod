@@ -251,6 +251,42 @@ class Regenerate(unittest.TestCase):
             self.assertEqual(argv[argv.index('--memory-budget') + 1], '3.0')
             self.assertIn('baking with up to', (game / regen.LOG_NAME).read_text())
 
+    def test_fl_install(self):
+        """An FL directory (X3FL.exe, addon2/01.cat): the overlay goes to the next addon2 slot, the fog steps are
+        skipped, engine bodies come from addon2/types/Bodies, the process check asks for X3FL.exe."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder) / 'drive_c' / 'X3FL'
+            game.mkdir(parents=True)
+            (game / 'X3FL.exe').write_bytes(b'MZ stub')
+            (game / 'X3AP.exe').write_bytes(b'MZ stub')
+            engine = [('addon2/' + m, d) if m == 'types/Bodies.txt' else (m, d) for m, d in engine_members()]
+            write_catalogue(game / '01.cat', atlas_textures() + engine)
+            write_catalogue(game / 'addon2/01.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
+                                                     ('objects/stations/y/good.pbb',
+                                                      packed(with_threshold(atlas_tree_lod0(), 160)))])
+            write_catalogue(game / 'addon/01.cat', [('objects/ships/x/aponly.pbb', packed(atlas_tree_lod0()))])
+            out = io.StringIO()
+            with mock.patch.object(regen, 'running_game', return_value=[]) as running, \
+                    contextlib.redirect_stdout(out):
+                code = regen.main(['--game-dir', str(game), '--no-wait', '--jobs', '1'])
+            text, log = out.getvalue(), (game / regen.LOG_NAME).read_text()
+            self.assertEqual(code, 0, log)
+            running.assert_any_call('fl')
+            self.assertIn("edition: Farnham's Legacy (X3FL.exe, addon2/)", text)
+            self.assertIn('fog families: skipped on FL', text)
+            self.assertNotIn('== fog families', text)
+            self.assertIn('slot plan: addon2/02 1 bodies', text)                  # the station: texel_floor
+            self.assertIn('all done: LOD overlay and engine bodies regenerated', text)
+            self.assertTrue((game / 'addon2/02.cat').is_file() and (game / 'addon2/02.x3m-lod.json').is_file())
+            self.assertEqual(sorted(p.name for p in (game / 'addon').iterdir()), ['01.cat', '01.dat'])
+            self.assertFalse((game / 'x3m' / 'fog-families.bin').exists())
+            table = json.loads((game / 'x3m' / 'engine_bodies.json').read_text())
+            self.assertEqual(table['generated_from']['edition'], 'fl')
+            with mock.patch.object(regen, 'running_game', return_value=['1 X3FL.exe']), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(regen.main(['--game-dir', str(game), '--no-wait']), 1)
+            self.assertIn('refused: the game is running (1 X3FL.exe)', (game / regen.LOG_NAME).read_text())
+
     def test_windows_process_check(self):
         csv_text = '"System Idle Process","0","Services","0","8 K"\n"X3AP.exe","4242","Console","1","900,000 K"\n'
         done = mock.Mock(returncode=0, stdout=csv_text)
@@ -261,6 +297,10 @@ class Regenerate(unittest.TestCase):
         with mock.patch.object(regen.sys, 'platform', 'win32'), \
                 mock.patch.object(regen.subprocess, 'run', return_value=done):
             self.assertEqual(regen.running_game(), [])
+        done.stdout = csv_text.replace('X3AP.exe', 'X3FL.exe')
+        with mock.patch.object(regen.sys, 'platform', 'win32'), \
+                mock.patch.object(regen.subprocess, 'run', return_value=done):
+            self.assertEqual((len(regen.running_game('fl')), regen.running_game()), (1, []))
 
 
 if __name__ == '__main__':

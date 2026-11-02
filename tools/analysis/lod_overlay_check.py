@@ -21,7 +21,14 @@ sha256 and dat size match (the dat is not hashed at launch; --hash-archives does
 originals_fingerprints (written by the baker since 2026-09-25) names the changed original; an older one is
 compared by its originals_sha256 digest and says only "sources changed since the bake".
 
-  python3 tools/analysis/lod_overlay_check.py [--game DIR] [--registry user.reg] [--hash-archives]
+Farnham's Legacy (catalogue_mounts.game_edition: --edition fl, X3M_EDITION, or X3FL.exe beside addon2/01.cat):
+every addon/ above reads addon2/ (X3FL.exe mounts root NN.cat then addon2/NN.cat and no physical addon/,
+docs/reverse-engineering/fl/resource-resolver.md section 1), the registry key is HKCU\\Software\\EGOSOFT\\X3FL and
+its ModName is an ordered semicolon list (section 2): one entry is the selected package, more than one is reported
+as unknown (no derived package is modelled for a list).
+
+  python3 tools/analysis/lod_overlay_check.py [--game DIR] [--edition auto|ap|fl] [--registry user.reg]
+                                              [--hash-archives]
 """
 import argparse
 import hashlib
@@ -30,6 +37,9 @@ import os
 import shlex
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import catalogue_mounts  # noqa: E402  (standard library only)
 
 
 MARKER_SUFFIX = '.x3m-lod.json'
@@ -45,6 +55,11 @@ REBAKE = 'python3 tools/analysis/lod_overlay.py --batch --sync --install'
 
 # --- archive helpers (also used by lod_overlay.py) -------------------------------------------
 
+def expansion(game):
+    """The edition's expansion directory of a game: 'addon' (AP) or 'addon2' (FL); catalogue_mounts.game_edition."""
+    return catalogue_mounts.expansion(game)
+
+
 def slot_set(slots):
     """None, one slot number or an iterable of them -> a set of slot numbers."""
     if slots is None:
@@ -53,10 +68,11 @@ def slot_set(slots):
 
 
 def original_archives(game, exclude_slot=None):
-    """Every installed NN.cat/.dat and addon/NN.cat/.dat pair except the addon slots in exclude_slot (one
-    number or an iterable: all slots of a multi-slot overlay plus retired slots)."""
-    cats = sorted(game.glob('[0-9][0-9].cat')) + sorted((game / 'addon').glob('[0-9][0-9].cat'))
-    skip = {game / 'addon' / f'{s:02d}.cat' for s in slot_set(exclude_slot)}
+    """Every installed NN.cat/.dat and addon/NN.cat/.dat pair (FL: addon2/NN) except the expansion slots in
+    exclude_slot (one number or an iterable: all slots of a multi-slot overlay plus retired slots)."""
+    xp = expansion(game)
+    cats = sorted(game.glob('[0-9][0-9].cat')) + sorted((game / xp).glob('[0-9][0-9].cat'))
+    skip = {game / xp / f'{s:02d}.cat' for s in slot_set(exclude_slot)}
     return [p for cat in cats if cat not in skip for p in (cat, cat.with_suffix('.dat'))]
 
 
@@ -106,7 +122,10 @@ def body_key(path):
         if stem.endswith(ext):
             stem = stem[:-len(ext)]
             break
-    stem = stem.removeprefix('addon/')
+    for xp in ('addon/', 'addon2/'):
+        if stem.startswith(xp):
+            stem = stem[len(xp):]
+            break
     return stem if stem.startswith('objects/') else 'objects/' + stem
 
 
@@ -153,10 +172,10 @@ def _reg_string(text):
     return ''.join(out)
 
 
-def parse_mod_name(text):
-    """ModName from the text of a Wine user.reg: the [Software\\\\EGOSOFT\\\\X3AP] block, the "ModName" line.
-    '' when the key or value is absent (no package), None when the value is not a string."""
-    want = REGISTRY_KEY.replace('\\', '\\\\').lower()
+def parse_mod_name(text, key=REGISTRY_KEY):
+    """ModName from the text of a Wine user.reg: the [Software\\\\EGOSOFT\\\\X3AP] block (FL: key X3FL), the
+    "ModName" line. '' when the key or value is absent (no package), None when the value is not a string."""
+    want = key.replace('\\', '\\\\').lower()
     inside = False
     for line in text.splitlines():
         if line.startswith('['):
@@ -167,21 +186,40 @@ def parse_mod_name(text):
     return ''
 
 
-def read_mod_name(registry=None, game=None):
+def fl_mod_name(value, where):
+    """(ModName, where) of an FL ModName: an ordered semicolon list (X3FL.exe 0x4d7b8b; empty slices skipped). No
+    entry is '' (no package), one entry is that package, several are None (a package list: not modelled)."""
+    if value is None:
+        return None, where
+    names = [n for n in value.split(';') if n]
+    if len(names) > 1:
+        return None, f'{where}: ModName lists {len(names)} packages ({";".join(names)}); a package list is not modelled'
+    return (names[0] if names else ''), where
+
+
+def read_mod_name(registry=None, game=None, edition=None):
     """(ModName, where): registry is a user.reg path (CrossOver); without one the bottle's user.reg is found
-    from game, and on native Windows winreg reads HKCU\\Software\\EGOSOFT\\X3AP. ModName is '' for no package
-    and None when it cannot be read."""
+    from game, and on native Windows winreg reads HKCU\\Software\\EGOSOFT\\X3AP (FL: X3FL, edition from game or
+    the argument; its list form goes through fl_mod_name). ModName is '' for no package and None when it cannot
+    be read."""
+    edition = edition or (catalogue_mounts.game_edition(game) if game else 'ap')
+    key = catalogue_mounts.REGISTRY_KEYS[edition]
+    value, where = _read_mod_value(registry, game, key)
+    return fl_mod_name(value, where) if edition == 'fl' else (value, where)
+
+
+def _read_mod_value(registry, game, key_name):
     reg = Path(registry) if registry else (bottle_registry(game) if game else None)
     if reg is not None:
         try:
             with reg.open(encoding='utf-8', errors='replace') as f:
-                return parse_mod_name(f.read()), str(reg)
+                return parse_mod_name(f.read(), key_name), str(reg)
         except OSError:
             return None, f'{reg} unreadable'
     if sys.platform == 'win32':
         import winreg
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTRY_KEY) as key:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_name) as key:
                 value, kind = winreg.QueryValueEx(key, 'ModName')
             return (value if kind in (winreg.REG_SZ, winreg.REG_EXPAND_SZ) else None), 'HKCU'
         except FileNotFoundError:
@@ -200,8 +238,10 @@ def derived_name(package):
     return package + PACKAGE_SUFFIX
 
 
-def package_files(game, derived):
-    mods = Path(game) / 'addon' / 'mods'
+def package_files(game, derived, xp=None):
+    """(cat, dat, marker) of a derived package copy under <game>/<expansion>/mods; xp overrides the expansion (an
+    output root that is not a game directory)."""
+    mods = Path(game) / (xp or expansion(game)) / 'mods'
     return mods / f'{derived}.cat', mods / f'{derived}.dat', mods / f'{derived}{MARKER_SUFFIX}'
 
 
@@ -227,9 +267,10 @@ def package_status(game, marker_path, manifest, full=False):
     if full and hash_files([dat])[str(dat)] != own.get('dat'):
         return 'orphaned', f'{derived}.dat does not match the marker'
     package = manifest.get('package')
-    src = Path(game) / 'addon' / 'mods' / f'{package}.cat'
+    xp = expansion(game)
+    src = Path(game) / xp / 'mods' / f'{package}.cat'
     if not package or not src.is_file() or not src.with_suffix('.dat').is_file():
-        return 'source_missing', f'addon/mods/{package}.cat missing'
+        return 'source_missing', f'{xp}/mods/{package}.cat missing'
     want = manifest.get('package_fingerprint') or {}
     if hash_files([src])[str(src)] != want.get('cat'):
         return 'stale', f'{package}.cat changed'
@@ -242,9 +283,9 @@ def package_status(game, marker_path, manifest, full=False):
 
 
 def package_markers(game, full=False):
-    """[dict(path, derived, package, manifest, status, reason)] for every addon/mods/*.x3m-lod.json."""
+    """[dict(path, derived, package, manifest, status, reason)] for every addon/mods/*.x3m-lod.json (FL: addon2/)."""
     out = []
-    for path in sorted((Path(game) / 'addon' / 'mods').glob('*' + MARKER_SUFFIX)):
+    for path in sorted((Path(game) / expansion(game) / 'mods').glob('*' + MARKER_SUFFIX)):
         derived = path.name[:-len(MARKER_SUFFIX)]
         m = dict(path=path, derived=derived, package=None, manifest=None, status='unreadable', reason='unreadable')
         try:
@@ -278,7 +319,7 @@ def slot_markers(game, full=False):
     match, legacy for a marker without overlay hashes (its member proof reads the dat: not checked here),
     orphaned or unreadable otherwise."""
     out = []
-    for path in sorted((Path(game) / 'addon').glob('[0-9][0-9]' + MARKER_SUFFIX)):
+    for path in sorted((Path(game) / expansion(game)).glob('[0-9][0-9]' + MARKER_SUFFIX)):
         m = dict(path=path, slot=None, manifest=None, status='unreadable', overlay_slots=None)
         try:
             manifest = json.loads(path.read_text())
@@ -353,6 +394,7 @@ def overlay_state(game, registry=None, full=False, mod_name=Ellipsis, mod_where=
     package. mod_name overrides the registry read (Ellipsis = read it; None = unknown, reported with mod_where
     and treated as no package)."""
     game = Path(game).resolve()
+    xp = expansion(game)
     clauses, states, rebake_pkg = [], [], None
     markers = slot_markers(game, full)
     live = [m for m in markers if m['status'] in LIVE_MARKERS]
@@ -368,7 +410,7 @@ def overlay_state(game, registry=None, full=False, mod_name=Ellipsis, mod_where=
     if live:
         slots = [m['slot'] for m in live]
         bodies = sum(len(m['manifest'].get('bodies') or ()) for m in live)
-        size = sum((game / 'addon' / f'{s:02d}.dat').stat().st_size for s in slots)
+        size = sum((game / xp / f'{s:02d}.dat').stat().st_size for s in slots)
         for m in live:
             for b in m['manifest'].get('bodies') or ():
                 if isinstance(b, dict) and (b.get('member') or b.get('name')):
@@ -377,14 +419,14 @@ def overlay_state(game, registry=None, full=False, mod_name=Ellipsis, mod_where=
         clauses.insert(0, f'{bodies} bodies in slots {slot_text(slots)}, {gb(size)}'
                        + (f'; legacy marker(s) {slot_text(legacy)} not verified at launch' if legacy else ''))
         top = max(slots)
-        above = [c for c in sorted((game / 'addon').glob('[0-9][0-9].cat')) if int(c.stem) > top
+        above = [c for c in sorted((game / xp).glob('[0-9][0-9].cat')) if int(c.stem) > top
                  and int(c.stem) not in exclude]
         for c in above:
             try:
                 hit = len(catalogue_body_keys(c) & overlay_keys)
-                clauses.append(f'addon/{c.name} above the overlay holds {hit} overlay bodies')
+                clauses.append(f'{xp}/{c.name} above the overlay holds {hit} overlay bodies')
             except (ValueError, OSError) as exc:
-                clauses.append(f'addon/{c.name} above the overlay (unreadable: {exc})')
+                clauses.append(f'{xp}/{c.name} above the overlay (unreadable: {exc})')
             states.append('stale')
         changed, text = sources_clause(game, live[0]['manifest'], exclude, set(above), full)
         clauses.append(text)
@@ -424,9 +466,9 @@ def overlay_state(game, registry=None, full=False, mod_name=Ellipsis, mod_where=
                 clauses.append(f'package {name} selected, {p["reason"]}')
                 states.append('orphaned')
     else:
-        cat = game / 'addon' / 'mods' / f'{name}.cat'
+        cat = game / xp / 'mods' / f'{name}.cat'
         if not cat.is_file():
-            clauses.append(f'package {name} selected but addon/mods/{name}.cat is missing')
+            clauses.append(f'package {name} selected but {xp}/mods/{name}.cat is missing')
         else:
             try:
                 hit = len(catalogue_body_keys(cat) & overlay_keys)
@@ -448,12 +490,12 @@ def overlay_state(game, registry=None, full=False, mod_name=Ellipsis, mod_where=
             continue
         if p['status'] in ('orphaned', 'unreadable'):
             states.append('orphaned')
-            clauses.append(f'addon/mods/{p["derived"]}: {p["reason"]}')
+            clauses.append(f'{xp}/mods/{p["derived"]}: {p["reason"]}')
         elif p['status'] == 'source_missing':
             states.append('source_missing')
-            clauses.append(f'addon/mods/{p["derived"]}: {p["reason"]} (lod_overlay.py --remove-package {p["package"]})')
+            clauses.append(f'{xp}/mods/{p["derived"]}: {p["reason"]} (lod_overlay.py --remove-package {p["package"]})')
         elif p['status'] == 'stale':
-            clauses.append(f'addon/mods/{p["derived"]} (not selected) stale: {p["reason"]}')
+            clauses.append(f'{xp}/mods/{p["derived"]} (not selected) stale: {p["reason"]}')
     state = max(states, key=STATE_ORDER.index) if states else 'none'
     if state == 'none':
         clauses.insert(0, 'no overlay installed')
@@ -473,15 +515,161 @@ def overlay_line(game, registry=None, full=False, mod_name=Ellipsis, mod_where='
     return line
 
 
+# --- a baked pair before it is installed (--candidate) ------------------------------------------
+
+def candidate_state(game, out, full=False):
+    """dict(state, clauses, slots) of a batch output under out (lod_overlay.py --batch --out OUT writes
+    OUT/<expansion>/NN.cat/.dat and NN.x3m-lod.json) checked against the game it would be installed into, without
+    writing anything: ok or refused, worst wins. Checks, each one clause:
+    - edition: the markers' recorded edition (when present) is the game's (AP addon/, FL addon2/);
+    - markers: every candidate marker parses, names its own slot and matches its cat sha256 and dat size (the dat
+      sha256 with full); the marker set forms one consecutive overlay_slots group;
+    - slot free: the group starts at the next contiguous free expansion number of the game (count of its
+      contiguous NN.cat run + 1) or replaces our own installed overlay (live or retired markers) at the top of the
+      run; no foreign NN.cat/.dat/marker sits at a candidate slot (the engine mounts the run up to the first gap,
+      resource-resolver.md section 1);
+    - collisions: no non-body member (atlas textures, types) of the candidate repeats a member of a mounted game
+      catalogue (root run plus the expansion run below the candidate slots); body members are the intended
+      overrides and are counted;
+    - sources: the marker's originals_fingerprints still match the game (sources_clause)."""
+    game, out = Path(game).resolve(), Path(out).resolve()
+    xp = expansion(game)
+    which = catalogue_mounts.game_edition(game)
+    clauses, states = [], []
+    cands = []
+    for path in sorted((out / xp).glob('[0-9][0-9]' + MARKER_SUFFIX)):
+        try:
+            manifest = json.loads(path.read_text())
+            slot = int(manifest['slot'])
+            if path.name != f'{slot:02d}{MARKER_SUFFIX}':
+                raise ValueError('marker name does not match its slot')
+        except (ValueError, KeyError, TypeError, OSError) as exc:
+            return dict(state='refused', clauses=[f'marker {path.name} unreadable ({exc})'], slots=[])
+        cands.append((slot, path, manifest))
+    if not cands:
+        return dict(state='refused', clauses=[f'no {xp}/NN{MARKER_SUFFIX} under {out}'
+                                              + ('' if (out / xp).is_dir() else f' (no {xp}/ directory: wrong edition?)')],
+                    slots=[])
+    slots = [c[0] for c in cands]
+    recorded = {m.get('edition') for _, _, m in cands} - {None}
+    if recorded and recorded != {which}:
+        states.append('refused')
+        clauses.append(f'baked for edition {"/".join(sorted(recorded))}, the game is {which}')
+    else:
+        clauses.append(f'edition {which} ({xp}/)')
+    group = cands[0][2].get('overlay_slots', [cands[0][0]])
+    if not isinstance(group, list) or not all(isinstance(g, int) for g in group):
+        group = ['invalid']            # a damaged marker refuses below instead of raising in sorted()
+    if sorted(slots) != list(range(slots[0], slots[0] + len(slots))) or sorted(group) != sorted(slots):
+        states.append('refused')
+        clauses.append(f'markers {slot_text(slots)} do not form one overlay (overlay_slots {group})')
+    for slot, path, manifest in cands:
+        cat = out / xp / f'{slot:02d}.cat'
+        dat = cat.with_suffix('.dat')
+        expected = manifest.get('overlay_sha256') or {}
+        if not cat.is_file() or not dat.is_file():
+            states.append('refused')
+            clauses.append(f'{xp}/{slot:02d}.cat/.dat missing beside the marker')
+            continue
+        size = slot_dat_bytes(manifest, slot)
+        same = (hash_files([cat])[str(cat)] == expected.get('cat') and (size is None or dat.stat().st_size == size)
+                and (not full or hash_files([dat])[str(dat)] == expected.get('dat')))
+        if not same:
+            states.append('refused')
+            clauses.append(f'{xp}/{slot:02d}.cat/.dat do not match the marker')
+    installed = slot_markers(game, full)
+    ours = {m['slot'] for m in installed if m['slot'] and m['status'] in OUR_SLOTS}
+    run = 0
+    while (game / xp / f'{run + 1:02d}.cat').is_file():
+        run += 1
+    top = run
+    while top in ours:                     # our installed overlay at the top of the run is replaced
+        top -= 1
+    first = min(slots)
+    if first != top + 1:
+        states.append('refused')
+        clauses.append(f'slot {first:02d} is not free: the next contiguous {xp} slot is {run + 1:02d}'
+                       + (f' (or {top + 1:02d}, replacing our installed overlay)' if top != run else ''))
+    else:
+        clauses.append(f'slot {slot_text(slots)} free (game {xp}/ run 01..{run:02d}'
+                       + (f', replaces our installed {slot_text(sorted(ours & set(range(top + 1, run + 1))))})' if top != run
+                          else ')'))
+    foreign = [f'{xp}/{s:02d}{ext}' for s in slots for ext in ('.cat', '.dat', MARKER_SUFFIX)
+               if (game / xp / f'{s:02d}{ext}').exists() and s not in ours]
+    if foreign:
+        states.append('refused')
+        clauses.append(f'foreign files at the candidate slots: {", ".join(foreign)}')
+    mounted = catalogue_mounts.numbered_run(game) + \
+              [game / xp / f'{s:02d}.cat' for s in range(1, top + 1)]
+    existing = set()
+    for c in mounted:
+        try:
+            existing |= {n.replace('\\', '/').lower() for n in catalogue_names(c)}
+        except (ValueError, OSError) as exc:
+            states.append('refused')
+            clauses.append(f'{c.relative_to(game).as_posix()} unreadable ({exc})')
+    bodies = overrides = 0
+    clash = []
+    for slot in slots:
+        cat = out / xp / f'{slot:02d}.cat'
+        try:
+            names = catalogue_names(cat)
+        except (ValueError, OSError) as exc:
+            states.append('refused')
+            clauses.append(f'{xp}/{slot:02d}.cat unreadable ({exc})')
+            continue
+        for n in names:
+            low = n.replace('\\', '/').lower()
+            if low.endswith(BODY_EXTENSIONS):
+                bodies += 1
+                overrides += low in existing or any(low[:-4] + e in existing for e in BODY_EXTENSIONS)
+            elif low in existing:
+                clash.append(n)
+    if clash:
+        states.append('refused')
+        clauses.append(f'{len(clash)} non-body member(s) collide with mounted game members ({", ".join(clash[:4])}'
+                       f'{", ..." if len(clash) > 4 else ""})')
+    else:
+        clauses.append(f'no member collision ({bodies} body members, {overrides} of them override a mounted body)')
+    changed, text = sources_clause(game, cands[0][2], ours, set(), full)
+    clauses.append(text)
+    if changed:
+        states.append('refused')
+    return dict(state='refused' if states else 'ok', clauses=clauses, slots=slots)
+
+
+def candidate_line(game, out, full=False):
+    s = candidate_state(game, out, full)
+    return f'lod overlay candidate: {s["state"]} ({"; ".join(s["clauses"])})', s['state'] == 'ok'
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--game', type=Path, default=DEFAULT_GAME)
+    catalogue_mounts.add_edition_argument(ap)
     ap.add_argument('--registry', type=Path, help='user.reg to read ModName from (default: the bottle\'s, found'
                                                   ' from --game; native Windows: HKCU)')
     ap.add_argument('--hash-archives', action='store_true', help='also hash our overlay dats (slow: gigabytes)')
+    ap.add_argument('--candidate', type=Path, metavar='OUT',
+                    help='check a baked, not yet installed pair (lod_overlay.py --batch --out OUT) against --game:'
+                         ' edition, markers, slot free, member collisions, sources; exit 1 when refused')
     a = ap.parse_args(argv)
-    print(overlay_line(a.game, a.registry, a.hash_archives))
-    return 0
+    saved = os.environ.get(catalogue_mounts.EDITION_ENV)
+    if a.edition != 'auto':
+        os.environ[catalogue_mounts.EDITION_ENV] = a.edition
+    try:
+        if a.candidate is not None:
+            line, ok = candidate_line(a.game, a.candidate, a.hash_archives)
+            print(line)
+            return 0 if ok else 1
+        print(overlay_line(a.game, a.registry, a.hash_archives))
+        return 0
+    finally:
+        if a.edition != 'auto':
+            if saved is None:
+                os.environ.pop(catalogue_mounts.EDITION_ENV, None)
+            else:
+                os.environ[catalogue_mounts.EDITION_ENV] = saved
 
 
 if __name__ == '__main__':

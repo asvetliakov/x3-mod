@@ -27,6 +27,14 @@ It regenerates all three and overwrites the previous results.
 The same console text, with timestamps, goes to `x3m-regenerate.log` next to the
 executable. The file is rewritten on each run.
 
+**Farnham's Legacy:** put the executable next to `X3FL.exe` instead (for example `C:\X3FL`). It recognises the
+FL folder (`X3FL.exe` plus `addon2\01.cat`; the AP files that FL keeps beside it are ignored) and writes the
+merged-LOD overlay as the next free `addon2\NN.cat/.dat` numbers with their `.x3m-lod.json` markers (a stock FL 1.3
+install gets `addon2\06` and `addon2\07`, about 2.75 GB) and the engine body table from FL's own body list. The
+fog family steps are skipped on FL (the log says so). The mod package is read from FL's start-menu setting; when
+several packages are selected at once, no package is baked. It refuses while `X3FL.exe` is running. To remove the
+overlay, delete the `addon2\NN.cat`, `.dat` and `.x3m-lod.json` files it wrote.
+
 **CrossOver Preview (macOS, arm64):** double-clicking the executable in a game directory as short
 as `C:\X3` makes it exit at once with no window and no log. That is a bug in the x64 emulator
 CrossOver Preview ships (FEX in `xtajit64.dll`), which drops the executable's name during process

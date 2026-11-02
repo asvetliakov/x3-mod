@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'verification/probe'))
-from game_guard import game_lines, is_game_line
+from game_guard import FL_COMMANDS, game_lines, is_game_line
 
 GHIDRA = ('4242 /usr/bin/java -Xmx4G -cp /opt/ghidra/support/../Ghidra/Framework/Utility/lib/Utility.jar '
           'ghidra.GhidraLauncher ghidra.app.util.headless.AnalyzeHeadless /tmp/x3-ghidra-research X3Render '
@@ -24,6 +24,15 @@ class GameGuardTests(unittest.TestCase):
                      '130 /opt/wine/bin/wine-preloader /opt/wine/bin/wine64 ../drive_c/X3/x3ap.EXE'.replace(
                          '/opt/wine/bin/wine-preloader ', 'wine-preloader ')):
             self.assertTrue(is_game_line(line), line)
+
+    def test_fl_commands(self):
+        for line in ('123 C:\\X3FL\\X3FL.exe', '124 X3FL',
+                     '128 /opt/wine/bin/wine --bottle X3 --workdir C:\\X3FL C:\\X3FL\\X3FL.exe'):
+            self.assertTrue(is_game_line(line, FL_COMMANDS), line)
+            self.assertFalse(is_game_line(line), line)                 # the default looks for X3AP only
+        self.assertFalse(is_game_line('125 C:\\X3FL\\X3AP.exe', FL_COMMANDS))
+        self.assertFalse(is_game_line('4244 pgrep -ifl X3FL.exe', FL_COMMANDS))
+        self.assertEqual(game_lines('1 X3FL.exe\n2 X3AP.exe\n', FL_COMMANDS), ['1 X3FL.exe'])
 
     def test_analysis_tooling_is_ignored(self):
         for line in (GHIDRA,

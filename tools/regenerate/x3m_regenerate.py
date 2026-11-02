@@ -18,6 +18,14 @@ double-click it. It starts at once, needs no answers, and runs, in order:
   4. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
                       launch fingerprint is refreshed (otherwise the launcher reports the fog file stale)
 
+Farnham's Legacy (X3FL.exe beside addon2/01.cat, catalogue_mounts.edition): the same run with addon2/ in place of
+addon/ (X3FL.exe mounts root NN.cat then addon2/NN.cat, docs/reverse-engineering/fl/resource-resolver.md): recovery
+under addon2/ and addon2/mods/, the LOD overlay as addon2/NN.cat/.dat + marker at the next free addon2 number,
+engine bodies from addon2/types/Bodies (engine_bodies.generate's own FL view), the selected package from
+HKCU\\Software\\EGOSOFT\\X3FL\\ModName (one entry; a package list bakes no package). The fog family steps (1, 4) are
+skipped on FL: fog_families.py reads the AP view only (a log line says so). The running-game check looks for
+X3FL.exe.
+
 Every console line (timestamped) goes to <game>/x3m-regenerate.log too (rewritten each run); the tools'
 detailed output (the LOD batch summary, the fog family table) goes to the log only, marked '|'. The run
 ends with 'press any key' (--no-wait skips it) and exits 0 when every step succeeded, else 1. It refuses
@@ -48,6 +56,7 @@ from pathlib import Path
 
 LOG_NAME = 'x3m-regenerate.log'
 GAME_EXE = 'x3ap.exe'
+GAME_EXES = {'ap': 'x3ap.exe', 'fl': 'x3fl.exe'}     # catalogue_mounts.GAME_EXES, lower case
 
 if not getattr(sys, 'frozen', False):      # source checkout: the tools live beside this directory
     _ROOT = Path(__file__).resolve().parents[2]
@@ -142,16 +151,23 @@ def default_game_dir():
     return Path.cwd()
 
 
-def has_game_exe(game):
+def game_edition(game):
+    """'fl' for a Farnham's Legacy directory (X3FL.exe and addon2/01.cat; X3M_EDITION overrides), else 'ap'."""
+    import catalogue_mounts
+    return catalogue_mounts.game_edition(game)
+
+
+def has_game_exe(game, edition='ap'):
+    exe = GAME_EXES[edition]
     try:
-        return any(p.name.lower() == GAME_EXE and p.is_file() for p in Path(game).iterdir())
+        return any(p.name.lower() == exe and p.is_file() for p in Path(game).iterdir())
     except OSError:
         return False
 
 
-def running_game():
-    """Process lines of a running X3AP.exe; raises RuntimeError when the process table cannot be read.
-    Windows: tasklist (CSV, no filter); elsewhere ps through game_guard, which also recognises the game
+def running_game(edition='ap'):
+    """Process lines of a running X3AP.exe (FL: X3FL.exe); raises RuntimeError when the process table cannot be
+    read. Windows: tasklist (CSV, no filter); elsewhere ps through game_guard, which also recognises the game
     started by a wine loader."""
     if sys.platform == 'win32':
         try:
@@ -162,9 +178,9 @@ def running_game():
         if out.returncode != 0:
             raise RuntimeError(f'tasklist exit {out.returncode}')
         rows = [r for r in csv.reader(out.stdout.splitlines()) if r]
-        return [','.join(r) for r in rows if r[0].strip().lower() == GAME_EXE]
+        return [','.join(r) for r in rows if r[0].strip().lower() == GAME_EXES[edition]]
     import game_guard
-    return game_guard.game_running()
+    return game_guard.game_running(game_guard.FL_COMMANDS if edition == 'fl' else game_guard.GAME_COMMANDS)
 
 
 def default_jobs():
@@ -226,13 +242,13 @@ def call_tool(log, main, argv):
 REPLACED_SUFFIX = '.x3m-replaced'   # lod_overlay.REPLACED_SUFFIX: a previous file moved aside during a write
 
 
-def recover_interrupted(log, game):
+def recover_interrupted(log, game, xp='addon'):
     """Undo a write that was killed between moving the previous overlay aside and finishing (lod_overlay
     commit_outputs / commit_package): every addon/*.x3m-replaced and addon/mods/*.x3m-replaced file goes back
     over its original name, replacing a partial new file, which is exactly what their in-process rollback does.
     Returns the restored names; raises OSError when a file cannot be put back."""
     restored = []
-    for folder in (game / 'addon', game / 'addon' / 'mods'):
+    for folder in (game / xp, game / xp / 'mods'):
         if not folder.is_dir():
             continue
         for aside in sorted(folder.glob('*' + REPLACED_SUFFIX)):
@@ -244,7 +260,7 @@ def recover_interrupted(log, game):
     return restored
 
 
-def package_layer(game, name):
+def package_layer(game, name, xp='addon'):
     """The selected package's catalogue as an extra fog layer: addon/mods/<name>.cat, or for a selected derived
     copy (<src>-x3m-lod) its source package named in the copy's marker; None when no such file exists."""
     import lod_overlay_check
@@ -253,12 +269,12 @@ def package_layer(game, name):
     if name.endswith(lod_overlay_check.PACKAGE_SUFFIX):
         try:
             src = json.loads(lod_overlay_check.package_files(game, name)[2].read_text())['package']
-            cat = game / 'addon' / 'mods' / f'{src}.cat'
+            cat = game / xp / 'mods' / f'{src}.cat'
             if cat.is_file() and cat.with_suffix('.dat').is_file():
                 return cat
         except (OSError, ValueError, KeyError, TypeError):
             pass
-    cat = game / 'addon' / 'mods' / f'{name}.cat'
+    cat = game / xp / 'mods' / f'{name}.cat'
     return cat if cat.is_file() and cat.with_suffix('.dat').is_file() else None
 
 
@@ -299,14 +315,14 @@ def selected_mod(game):
     return lod_overlay_check.read_mod_name(None, game)
 
 
-def lod_step(log, game, jobs, name, where, memory_budget=None):
+def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon'):
     import lod_overlay
     if name is None:
         log.say(f'selected mod: unknown ({where}); the LOD overlay is baked without a mod package')
     elif not name:
         log.say(f'selected mod: none ({where})')
     else:
-        log.say(f'selected mod: {name} ({where}); its changed bodies go into addon/mods/{name}-x3m-lod')
+        log.say(f'selected mod: {name} ({where}); its changed bodies go into {xp}/mods/{name}-x3m-lod')
     plan = lod_plan(jobs, memory_budget)
     how = (f"within {plan['budget'] / 2**30:.1f} GiB" if plan['budget'] is not None else 'memory size unknown')
     log.say(f"LOD overlay: scanning the ship and station bodies, then baking with up to {plan['workers']} job(s)"
@@ -326,17 +342,17 @@ def lod_step(log, game, jobs, name, where, memory_budget=None):
         lod_overlay.progress = None
     if code:
         raise StepFailed(f'lod_overlay exit code {code}')
-    record = json.loads((game / 'addon' / 'x3m-lod-batch.json').read_text())
+    record = json.loads((game / xp / 'x3m-lod-batch.json').read_text())
     for b in record['bodies']:                 # bake refusals were printed as they happened
         before_bake = [r for r in b['refuse'] if not r.startswith('bake:')]
         if before_bake:
             log.say(f"refused model {b['name']}: {', '.join(before_bake)}")
     for note in record.get('notes', ()):
-        if note.startswith(('--mod auto', 'package ', 'warning: addon/mods', 'previous overlay', 'orphaned marker')):
+        if note.startswith(('--mod auto', 'package ', f'warning: {xp}/mods', 'previous overlay', 'orphaned marker')):
             log.say(note)
-    slots = '; '.join(f"addon/{s['slot']:02d} {s['bodies']} bodies {s['bytes']} B" for s in record['slots'])
-    slots += ''.join(f'; addon/{s:02d} retired (empty catalogue)' for s in record['retired_slots'])
-    slots += ''.join(f'; addon/{s:02d} removed' for s in record['removed_slots'])
+    slots = '; '.join(f"{xp}/{s['slot']:02d} {s['bodies']} bodies {s['bytes']} B" for s in record['slots'])
+    slots += ''.join(f'; {xp}/{s:02d} retired (empty catalogue)' for s in record['retired_slots'])
+    slots += ''.join(f'; {xp}/{s:02d} removed' for s in record['removed_slots'])
     log.say(f'slot plan: {slots}')
     c = record['counts']
     refused = sum(1 for b in record['bodies'] if b['refuse'])
@@ -406,11 +422,16 @@ def run(game, jobs, log, memory_budget=None):
     started = time.monotonic()
     log.say(f'x3m-regenerate: game directory {game}')
     log.say(f'log file {log.path}' + (f' (cannot be written: {log.error})' if log.error else ''))
-    if not has_game_exe(game):
-        log.say(f'refused: {game} holds no X3AP.exe; put x3m-regenerate next to X3AP.exe and start it there')
+    edition = game_edition(game)
+    xp = 'addon2' if edition == 'fl' else 'addon'
+    if not has_game_exe(game, edition):
+        log.say(f'refused: {game} holds no X3AP.exe (nor X3FL.exe with addon2/01.cat); put x3m-regenerate next to'
+                ' X3AP.exe or X3FL.exe and start it there')
         return ['setup']
+    if edition == 'fl':
+        log.say("edition: Farnham's Legacy (X3FL.exe, addon2/)")
     try:
-        lines = running_game()
+        lines = running_game(edition)
     except RuntimeError as exc:
         log.say(f'refused: cannot tell whether the game is running ({exc})')
         return ['setup']
@@ -428,14 +449,17 @@ def run(game, jobs, log, memory_budget=None):
     lod_overlay.running_game = running_game
     failed = []
     try:
-        recover_interrupted(log, game)
+        recover_interrupted(log, game, xp)
     except OSError as exc:                         # the LOD step then refuses with the tool's own message
         log.say(f'warning: could not recover an interrupted overlay write ({exc})')
     name, where = selected_mod(game)
-    package_cat = package_layer(game, name)
-    for label, step in (('fog families', lambda: fog_step(log, game, jobs, package_cat)),
-                        ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget)),
-                        ('engine bodies', lambda: engine_step(log, game))):
+    package_cat = package_layer(game, name, xp)
+    steps = [('fog families', lambda: fog_step(log, game, jobs, package_cat))] if edition == 'ap' else []
+    if edition == 'fl':
+        log.say('fog families: skipped on FL (fog_families.py reads the AP catalogue view only)')
+    steps += [('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp)),
+              ('engine bodies', lambda: engine_step(log, game))]
+    for label, step in steps:
         log.say(f'== {label}')
         t0 = time.monotonic()
         try:
@@ -448,7 +472,7 @@ def run(game, jobs, log, memory_budget=None):
             failed.append(label)
             log.say(f'{label}: FAILED with an unexpected error:')
             log.say(traceback.format_exc().rstrip())
-    if not {'fog families', 'LOD overlay'} & set(failed):      # the engine table does not touch the catalogues
+    if edition == 'ap' and not {'fog families', 'LOD overlay'} & set(failed):   # the engine table does not touch the catalogues
         log.say('== fog families check')
         fog_check_step(log, game)
     minutes = (time.monotonic() - started) / 60
@@ -456,7 +480,8 @@ def run(game, jobs, log, memory_budget=None):
         log.say(f'FAILED: {", ".join(failed)} after {minutes:.1f} min; a failed step keeps its previous results'
                 f' (details above and in {LOG_NAME})')
     else:
-        log.say(f'all done: fog families, LOD overlay and engine bodies regenerated in {minutes:.1f} min')
+        log.say(f'all done: {"fog families, " if edition == "ap" else ""}LOD overlay and engine bodies'
+                f' regenerated in {minutes:.1f} min')
     return failed
 
 

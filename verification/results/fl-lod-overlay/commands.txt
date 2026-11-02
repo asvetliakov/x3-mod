@@ -1,0 +1,21 @@
+FL merged-LOD overlay, host evidence (2026-11-02). Game C:\X3FL (FL 1.3, addon2/01..05) read only; outputs in the
+session scratchpad, not in the repository (derived from game data). OUT below = the scratchpad's fl-lod-overlay/.
+
+bake (48:42 wall, at most 9 bodies at once by the memory rule; exit 0; two earlier runs with the same rule set
+wrote byte-identical catalogues):
+  python3 tools/analysis/lod_overlay.py --game /mnt/c/X3FL --batch --mod none --out OUT
+  -> OUT/addon2/06.cat/.dat/.x3m-lod.json, OUT/addon2/07.cat/.dat/.x3m-lod.json, OUT/x3m-lod-batch.json (+ -summary.txt,
+     -bodies.txt). Settings = the AP regenerate defaults (no flag beyond --mod none; --edition auto -> fl).
+
+counts and hashes:        python3 verification/results/fl-lod-overlay/bake_counts.py OUT      > bake_counts_out.txt
+pre-install check:        python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL --candidate OUT
+                          python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL       > candidate_check_out.txt
+fogged-sector stations:   python3 verification/results/fl-lod-overlay/overlay_sectors.py OUT  > overlay_sectors_out.txt
+AP vs FL coverage there:  python3 verification/results/fl-lod-overlay/coverage_diff.py OUT    > coverage_diff_out.txt
+format refusals vs AP:    python3 verification/results/fl-lod-overlay/format_refusals.py OUT > format_refusals_out.txt
+fleet coverage vs AP:     python3 verification/results/fl-lod-overlay/coverage_fleet.py OUT  > coverage_fleet_out.txt
+
+install (user): copy OUT/addon2/06.cat, 06.dat, 06.x3m-lod.json, 07.cat, 07.dat, 07.x3m-lod.json into C:\X3FL\addon2\
+(all six: the markers make the launch check and a later regenerate --sync treat both slots as ours; without them
+a regenerate reads 06/07 as foreign catalogues and bakes into 08). Uninstall: delete the six files.
+split check (reviewer, 2026-11-02): python3 verification/results/fl-lod-overlay/split_check.py OUT > split_check_out.txt (both slots: member ends below 2^31-1, no body split across the pair, cat index like stock)
