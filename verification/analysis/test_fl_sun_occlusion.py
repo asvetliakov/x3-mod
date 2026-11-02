@@ -1,14 +1,15 @@
-"""Host tests of the FL sun occlusion hooks (src/engine/fl/sun_occlusion_fl.cpp).
+"""Host tests of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp).
 
-docs/architecture/farnhams-legacy-sun-occlusion.md. (a) The native fixture verification/probe/fl_sun_occlusion.cpp
-(MinGW i686, run natively through WSL interop) claims a fake flare walk's probe call (one qword word, as base+0x8af0a)
-and a fake lens pass's call (straddling a qword, as base+0x8bcb7) with the production engine_patch::claim_call and
-checks: the probe thunk's answer path (EAX 0/1, EFLAGS, ECX/EDX, ESP, LastError, XMM, x87) and forward path (ECX/EDX
-and EFLAGS into the original, `popfd; jmp` with ESP at the return address), the three early gates with the flags word
-at config +0xec, readiness, the deferral (record+0x30 read), the lens bracket around the original with ECX/EDX and
-EFLAGS restored, an SEH unwind through the bracket, a foreign thread, the registry main view, the log mode's call of
-the original through the register ABI, the 17-anchor gate on a synthetic relocated image, restore and late-window
-refusal; the hook paths are audited for x87 and XMM use. (b) Edition wiring and the shared fog-transmittance lens gain.
+docs/architecture/farnhams-legacy-sun-occlusion.md; since own sun step 2 (docs/architecture/own-sun-pass.md section 14)
+the FL probe forwards every call (the own sun's FL answer is a later step) and the hook installs for the lens bracket
+only. (a) The native fixture verification/probe/fl_sun_occlusion.cpp (MinGW i686, run natively through WSL interop)
+claims a fake flare walk's probe call (one qword word, as base+0x8af0a) and a fake lens pass's call (straddling a qword,
+as base+0x8bcb7) with the production engine_patch::claim_call and checks: the probe thunk's forward path (ECX/EDX and
+EFLAGS into the original, `popfd; jmp` with ESP at the return address, LastError, XMM, x87) for eligible and ineligible
+probes, the log mode's answer path (the original through the register ABI, EAX 0/1, LastError, XMM), the lens bracket
+around the original with ECX/EDX and EFLAGS restored, an SEH unwind through the bracket, a foreign thread, the registry
+main view, the 17-anchor gate on a synthetic relocated image, restore and late-window refusal; the hook paths are
+audited for x87 and XMM use. (b) Edition wiring and the shared fog-transmittance lens gain.
 """
 import importlib.util
 from pathlib import Path
@@ -66,12 +67,12 @@ class FlSunOcclusionNativeFixture(unittest.TestCase):
         self.assertEqual(result.returncode, 0, "\n".join(l for l in out.splitlines() if l.startswith("FAIL"))[:6000] + result.stderr[-1000:])
         self.assertRegex(out, r'RESULT PASS checks=\d+ failures=0 ')
         self.assertNotIn('FAIL ', out)
-        self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ answered_ns=[\d.]+ ')
+        self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ eligible_forward_ns=[\d.]+ ')
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
         # 874 anchor bytes: 822 outside the 13 relocated operands, 52 inside; every single-bit flip refused.
         self.assertIn('ANCHOR anchors=17 flips=822 refused=822 operand_flips=52 operand_refused=52', out)
         self.assertEqual(len(re.findall(r'^LOG fl\.sun_occlusion_sample ', out, re.M)), 1)
-        self.assertEqual(len(re.findall(r'^LOG sun_occlusion_released ', out, re.M)), 1)
+        self.assertEqual(len(re.findall(r'^LOG sun_occlusion_released ', out, re.M)), 0)  # the deferral went with step 2
 
 
 def strip(text):
@@ -84,22 +85,23 @@ class FlSunOcclusionWiring(unittest.TestCase):
         linked = re.search(r'set\(X3M_AP_ENGINE_LINKED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         shared = re.search(r'set\(X3M_SHARED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         ap = re.search(r'set\(X3M_AP_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
-        self.assertNotIn('sun_occlusion.cpp', linked + shared)
-        self.assertIn('src/proxy/sun_occlusion.cpp', ap)
+        self.assertNotIn('own_sun_hook.cpp', linked + shared)
+        self.assertIn('src/proxy/own_sun_hook.cpp', ap)
         self.assertIn('target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)', cmake)
         self.assertIn('set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp\n'
                       '  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")', cmake)
         capture = strip((ROOT / 'src/proxy/capture.cpp').read_text())
         # The FL Present block calls the frame boundary; the Reset and the install are outside every AP fence.
         fl_present = capture[capture.index('scene_hook::fl_sample_row();'):]
-        self.assertIn('sun_occlusion::present(ctx.frame + 1);', fl_present[:fl_present.index('#endif')])
+        self.assertIn('own_sun_hook::present(ctx.frame + 1);', fl_present[:fl_present.index('#endif')])
 
         def fenced_ap(text, needle):
             before = text[:text.index(needle)]
             opened = [m.start() for m in re.finditer(r'#if !X3M_EDITION_FL\n', before)]
             closed = [m.start() for m in re.finditer(r'#endif', before)]
             return bool(opened) and (not closed or opened[-1] > closed[-1])
-        for needle in ('sun_occlusion::device_reset();', 'sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested)',
+        self.assertNotIn('own_sun_hook::device_reset', capture)  # nothing of the hook survives a Reset since step 2
+        for needle in ('own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested)',
                        'lens_flare_fog = volumetric_fog_requested && sun_installed;'):
             self.assertIn(needle, capture)
             self.assertFalse(fenced_ap(capture, needle), needle)
@@ -137,11 +139,11 @@ class FogLensGain(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory(prefix='x3-fog-lens-gain-')
-        cls.driver = Path(cls.dir.name) / 'sun_occlusion_host'
+        cls.driver = Path(cls.dir.name) / 'own_sun_hook_host'
         compiler = shutil.which('clang++') or shutil.which('c++')
         subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                        str(ROOT / 'verification/probe/sun_occlusion_host.cpp'),
-                        str(ROOT / 'src/renderer/lens_visibility_variant.cpp'), '-o', str(cls.driver)], check=True)
+                        str(ROOT / 'verification/probe/own_sun_hook_host.cpp'),
+                        '-o', str(cls.driver)], check=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -173,22 +175,22 @@ class FogLensGain(unittest.TestCase):
         self.assertEqual(self.gain(1.0, 1, 1.0, 65000, 112500, 1, 1, 1, 0.6)['t'], 0.0)
 
     def test_both_editions_reach_the_rule(self):
-        inc = strip((ROOT / 'src/proxy/motion_output_sun_occlusion_inc.h').read_text())
+        inc = strip((ROOT / 'src/proxy/motion_output_lens_bracket_inc.h').read_text())
         self.assertNotIn('X3M_EDITION', inc)
-        begin = inc[inc.index('void MotionOutput::sun_occlusion_begin() noexcept {'):]
-        begin = begin[:begin.index('if (!sun_occlusion_.requested && !sun_occlusion_.log) return;')]
-        self.assertIn('if (lens_gain_fog_) {', begin)
+        begin = inc[inc.index('void MotionOutput::lens_bracket_begin() noexcept {'):]
+        begin = begin[:begin.index('\n}\n')]
+        self.assertIn('if (!lens_gain_fog_) return;', begin)
         self.assertIn('engine_plumes_fog(&law);', begin)
         self.assertIn('renderer::fog_sky_lens_gain(law, lens_gain_base_, &lens_gain_fog_t_, &applied);', begin)
         self.assertIn('lens_gain_ = lens_flare_gain::law(applied);', begin)
         self.assertIn('base=%.4f fog=%u fog_t=%.4f', inc)
-        # The FL lens bracket reaches the same listener (capture.cpp sun_lens_begin -> sun_occlusion_begin).
+        # The FL lens bracket reaches the same listener (capture.cpp sun_lens_begin -> lens_bracket_begin).
         code = strip(PROVIDER.read_text())
         self.assertIn('if (listener_begin_) listener_begin_();', code)
         capture = strip((ROOT / 'src/proxy/capture.cpp').read_text())
-        self.assertIn('sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);', capture)
+        self.assertIn('own_sun_hook::set_listener(&sun_lens_begin, nullptr);', capture)
         listener = capture[capture.index('void sun_lens_begin() {'):]
-        self.assertIn('motion_output.sun_occlusion_begin();', listener[:200])
+        self.assertIn('motion_output.lens_bracket_begin();', listener[:200])
 
 
 if __name__ == '__main__':

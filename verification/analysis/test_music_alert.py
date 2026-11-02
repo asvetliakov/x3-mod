@@ -777,7 +777,7 @@ class MusicAlertInstallCheck(unittest.TestCase):
             self.assertIn(va, applied, hex(va))
         self.assertGreaterEqual(len(applied), 100)
         self.assertEqual(self.check(text), 'match')
-        # Every other collected claim too (the chase, sun-occlusion, cull and loading sites installed later).
+        # Every other collected claim too (the chase, own-sun hook, cull and loading sites installed later).
         later = [c for c in claims if owner(c[0]) is None]
         self.assertGreaterEqual(len(later), 20)
         for _, _, va, length in later:

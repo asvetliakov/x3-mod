@@ -178,7 +178,7 @@ class WindowRowParser(unittest.TestCase):
 class SubmitPhasesLaunchOption(unittest.TestCase):
     def test_launch_option_removed_and_inherited_value_dropped(self):
         # Since 2026-09-26 the launcher option is removed and X3M_SUBMIT_PHASES is fixture-only (run_submit_phase_cpu.py sets it): it
-        # claims the lens traversal call the sun-occlusion default patches, so it is not a member of --perf.
+        # claims the lens traversal call the own-sun hook patches, so it is not a member of --perf.
         from verification.analysis.test_lod_scale_launch import LodScaleLaunchOption
         helper = LodScaleLaunchOption()
         with tempfile.TemporaryDirectory() as directory:

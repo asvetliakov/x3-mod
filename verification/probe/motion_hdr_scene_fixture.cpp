@@ -220,7 +220,6 @@ renderer::ShadowReplayPass::~ShadowReplayPass() = default; // the depth-replay p
 renderer::SunShadowApplyPass::~SunShadowApplyPass() = default; // likewise: only the unique_ptr member destructor is
                                                                // needed
 renderer::FogPass::~FogPass() = default;                       // likewise
-renderer::SunOcclusionPass::~SunOcclusionPass() = default;     // likewise (partial sun occlusion, 855fc1bc)
 renderer::EnginePlumesPass::~EnginePlumesPass() = default;     // likewise (engine plumes, phase 2)
 renderer::OcclusionCullPass::~OcclusionCullPass() = default; // likewise (occlusion cull)
 renderer::EngineRibbonsPass::~EngineRibbonsPass() = default;   // likewise (engine ribbons, phase 3)

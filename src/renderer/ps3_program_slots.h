@@ -1,5 +1,5 @@
 #pragma once
-// The ps_3_0 slot counter the fog, sun-shadow-apply and sun-occlusion passes
+// The ps_3_0 slot counter the fog, sun-shadow-apply and own-sun passes
 // gate against D3DCAPS9::MaxPixelShader30InstructionSlots. Kept free of d3d9.h
 // so host tests can compile it with a native compiler.
 #include <cstddef>

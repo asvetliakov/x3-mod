@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Read-only qualification of the two partial-sun-occlusion call sites against the installed X3AP.exe.
+"""Read-only qualification of the own sun hook's two call sites (the flare probe and the lens bracket) against the installed X3AP.exe.
 
-Sites and claims of src/proxy/sun_occlusion_core.h (docs/reverse-engineering/lens-flare-visibility.md,
+Sites and claims of src/proxy/own_sun_hook_core.h (docs/reverse-engineering/lens-flare-visibility.md,
 sections 12 and 16): the flare probe's call 0x00471630 -> 0x00488720 and the lens traversal's call
 0x00472491 -> 0x0047e6e0. Verified: the executable identity (exe_identity.py; the raw SHA-256 is INFO); the 21 whole-instruction context bytes
 around each call exactly as the header pins them, decoded gap-free by objdump with the call on an
@@ -26,7 +26,7 @@ import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-e
 
 ROOT = Path(__file__).resolve().parents[2]
 PROXY = ROOT / 'src/proxy'
-HEADER = PROXY / 'sun_occlusion_core.h'
+HEADER = PROXY / 'own_sun_hook_core.h'
 DEFAULT_EXE = exe_identity.DEFAULT_EXE  # the X3 bottle, or the native install on a host without CrossOver
 EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only: reported as INFO, never a check
 OBJDUMP = 'i686-w64-mingw32-objdump'
@@ -115,7 +115,7 @@ def verify(exe):
     # Every other claim under src/proxy: SiteSpec rows and *_site_va call sites.
     conflicts = []
     for path in sorted(PROXY.glob('*')):
-        if path.suffix not in ('.h', '.cpp') or path.name.startswith('sun_occlusion'):
+        if path.suffix not in ('.h', '.cpp') or path.name.startswith('own_sun_hook'):
             continue
         source = path.read_text(errors='replace')
         rows = [(m.group(1), int(m.group(2), 16), int(m.group(3))) for m in re.finditer(r'\{\s*"([^"]+)"\s*,\s*(0x[0-9a-fA-F]+)\s*,\s*\{[^}]*\}\s*,\s*(\d+)\s*,', source)]

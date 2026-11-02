@@ -89,7 +89,7 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # Opt-in query clocks under assembly FNSAVE/FRSTOR, MXCSR and XMM transport.
                 '_x3m_collide_query_memo_thunk', '_x3m_collide_query_descent_thunk',
                 '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave',
-                # partial sun occlusion (src/proxy/sun_occlusion.cpp, X3M_SUN_OCCLUSION=1): the flare-probe thunk and its integer-only
+                # the own sun hook (src/proxy/own_sun_hook.cpp, X3M_OWN_SUN / the lens bracket): the flare-probe thunk and its integer-only
                 # handler run inside the engine's record loop with no boundary; the lens thunk's begin / end carry PreserveCpuState
                 '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide', '_x3m_sun_lens_thunk', '_x3m_sun_lens_begin', '_x3m_sun_lens_end',
                 # sector-music keep and trace (src/proxy/music_keep.cpp, X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1): integer stubs and handlers under

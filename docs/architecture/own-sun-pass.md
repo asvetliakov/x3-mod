@@ -349,7 +349,7 @@ Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun ste
   Not Ok (no directional light, unavailable) leaves the stage unarmed (`own_sun_state reason=poll`), so the next
   frame's probe forwards to the engine (review F2).
 - **Hotkey.** Ctrl+Shift+F9, polled only while the own sun is installed ([comparison-hotkeys.md](comparison-hotkeys.md),
-  "Own sun").
+  "Own sun"). Removed in step 2.
 - **FL.** Inert in this step (one `own_sun status=unavailable edition=fl` row), although main has carried the FL probe
   hook since FL step 9; enabling it there is a separate step.
 - **Not built.** Section 11's real-device fixture and a hook-fixture case for the answer (no Wine on the native host);
@@ -403,3 +403,57 @@ along, the two nearest spokes summed); the horizontal streak pair and its consta
 the four settings with their defaults are unchanged. ps_3_0 184 slots, native validator 0 messages. The glow outside
 the core peaks at 0.781 at K = 2 [M, host test and `glow_meter.py`, which now reads the header's constants by name].
 Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun step 1c — host evidence".
+
+### Step 2 as built: the deletion (2026-11-02, both editions; not flown)
+
+Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are done in one code commit after a pure
+`git mv` commit, on both editions' shared code. Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md),
+"Own sun step 2 — deletion".
+
+- **Deleted.** `src/renderer/lens_visibility_variant.{h,cpp}`, `src/renderer/sun_occlusion_pass.{h,cpp}`, the
+  visibility program (`sun_visibility_ps.hlsl`, its `_program_inc.h`, `_taps_inc.h` and provenance record
+  `verification/results/sun-visibility-program.json`). Its entry in `tools/shaders/generate_rigid_motion_pixel.py`
+  (lines 158-160) is a documented leftover pointing at the deleted files: removing it changes the generator's digest,
+  which 64 provenance records pin (`test_bloom_programs`), so it goes at the next generator re-record. In the core header `classify_body`, `footprint`, `Deferral`, `Hold`, `Ready`, `Latch`, `decide` (the
+  replicated gates and the "visible" answer), `classify_blend`, the smoothing and jitter helpers; in the bracket inc the
+  wrap, scan, classification, refusal/block and drop paths, `sun_lane_uv`, the RT2 reference per bracket; the settings
+  `sun_occlusion_core_f`, `sun_occlusion_curve`, `sun_occlusion_radius`, the marker `sun_occlusion_default`; the rows
+  `sun_lens_draw`, `sun_visibility`, `sun_lens_body_unclassifiable`, `sun_occlusion_blocked`, `sun_occlusion_released`,
+  `sun_occlusion_config`, `sun_lens_bracket`, the `lens_*.bgra8` readback; the hook's `device_reset`, `frame_inputs`,
+  `report_pass`, `block`, `lens_*` calls; the launcher options `--sun-occlusion`, `--no-sun-occlusion`,
+  `--sun-occlusion-radius/-curve/-core-f` (their variables are in `REMOVED_VARIABLES`, dropped from any inherited
+  shell); the GPU fixture of the pass and wraps. Its lens-flare gain cases moved into
+  `verification/probe/lens_flare_gain_fixture.cpp` (8 checks).
+- **Renamed.** `src/proxy/sun_occlusion{.h,.cpp,_core.h}` -> `own_sun_hook{.h,.cpp,_core.h}` (namespace
+  `x3m::own_sun_hook`), `motion_output_sun_occlusion_inc.h` -> `motion_output_lens_bracket_inc.h`, the hook fixture, host
+  double, site verifier, build/run scripts and `test_sun_occlusion` -> `own_sun_hook` names; the install row is
+  `own_sun_hook own_sun= bracket= log= patched= reason=`. The FL file `sun_occlusion_fl.cpp`, its generated constants,
+  `fl.sun_occlusion*` rows and `fl_sun_occlusion_log` keep their names. Settings: `own_sun` (Bool, schema and builtin
+  default 1; the read site is on unless the value is "0"; launcher `--own-sun on|off`, sent explicitly, default on) and
+  `own_sun_log` (`--own-sun-log`, developer). The ini keys `sun_occlusion` and `sun_occlusion_log` are aliases: the
+  parser sets the new key and writes one `config_key key=<old> problem=renamed value=<new>` row; old and new key in one
+  file are a duplicate, the last line wins.
+- **The probe hook.** AP: installed when the own sun is requested (setting on, route on, radiance > 0) or the bracket is
+  wanted (`lens_flare_gain` < 1 or the volumetric fog). In a frame whose latch is off and without the log, every probe
+  is forwarded before any read (no main-view walk, no owner read); in an own-sun frame the eligible record is answered
+  1 without the original, every other probe forwarded; the log (`own_sun_log`) runs the original itself once per
+  logged probe and returns its answer (`sun_probe` row, the own sun's hidden answers are not logged). The 148-byte
+  prologue hash stays the install identity. FL: installed for the bracket only; the probe forwards every call (with the
+  log: runs it itself for the row); the own sun's FL answer is section 8's later step.
+- **The lens bracket.** begin: the fog's share of the gain only (`lens_bracket_begin`); per draw: the gain only
+  (`prepare_lens(route)`: one active test, the window count, the `plain` test, `apply_lens_gain`); no end listener.
+  The engine cull at gain 0 (`lens_flare_cull`) is unchanged.
+- **No hotkey (user decision, same day).** The Ctrl+Shift+F9 comparison chord, its `Toggle` state, the `own_sun_toggle`
+  row and the `key=` field of `own_sun_frame` are deleted (a separate commit): `own_sun` in `x3m.ini` is the only switch,
+  and the Present-time latch is `frame_active(setting, stage armed in the last resolve)`. F8 is the only in-game key.
+- **`own_sun = 0`.** Nothing is answered and nothing drawn on either edition: the engine's chain is vanilla. The hook
+  installs only for the gain or the fog, its probe then forwards every call without a read; the bracket scales the
+  lens draws by G (and the fog's transmittance), as every other engine flare.
+- **Kept beyond section 6's list.** The RT2 container acquire/release and `x3m_sun_occlusion_fixture_lens_depth`, now
+  reached only by the retention fixture's case n (the run336 accounting regression; production never acquires); the
+  runners' clearing of `X3M_SUN_OCCLUSION_DEFAULT`; the core header's layout and config constants (FL `+0xec`
+  static_assert, the site verifier).
+- **Cost.** Per lens draw the bracket's work is a subset of what it was (the gain path only; before: the state reads,
+  the scan and the body classification whenever the override or its log was on). Per frame the visibility pass, the
+  RT2 `GetContainer`/`Release` and the frame-inputs latch are gone; per probe, latch-off frames skip the main-view walk.
+  FL native fixture: forward 42.6 ns over the native probe [M].

@@ -126,7 +126,7 @@ class LauncherGroups(unittest.TestCase):
         _, empty, _ = self.launch()
         for args, added in ((('--gpu-sync-timing',), {'X3M_GPU_SYNC_TIMING': '1'}),
                             (('--profile',), {'X3M_PROFILE': '1', 'X3M_PROFILE_INTERVAL_US': '2000'}),
-                            (('--taa-debug',), {'X3M_TAA_DEBUG': '1'}), (('--sun-occlusion-log',), {'X3M_SUN_OCCLUSION_LOG': '1'}),
+                            (('--taa-debug',), {'X3M_TAA_DEBUG': '1'}), (('--own-sun-log',), {'X3M_OWN_SUN_LOG': '1'}),
                             (('--perf',), {'X3M_PERF': '1'})):
             with self.subTest(args=args):
                 code, env, error = self.launch(*args)
@@ -180,7 +180,7 @@ class DllGroupReads(unittest.TestCase):
                 for path, i in reads:
                     self.assertIn('log_tier::', enclosing_function(sources[path], i), f'{path.name}:{i + 1} reads {name} without the group')
         self.assertFalse([p.name for p, lines in sources.items() if any('L"X3M_TELEMETRY"' in l for l in lines)])
-        # The submit stamps stay outside --perf: they claim the lens traversal call the sun-occlusion default patches.
+        # The submit stamps stay outside --perf: they claim the lens traversal call the own-sun hook patches.
         submit = source_text(ROOT / 'src/proxy/submit_phases.cpp').splitlines()
         reads = [i for i, line in enumerate(submit) if 'L"X3M_SUBMIT_PHASES"' in line]
         self.assertEqual(len(reads), 1)
@@ -220,7 +220,7 @@ class MovedHeartbeatRows(unittest.TestCase):
     # row -> (file, a fragment unique to its periodic emission)
     ROWS = {
         'chase_camera': ('chase_camera.cpp', 'log("chase_camera frame=%llu status='),
-        'lens_flare_gain_frame': ('motion_output_sun_occlusion_inc.h', 'log("lens_flare_gain_frame '),
+        'lens_flare_gain_frame': ('motion_output_lens_bracket_inc.h', 'log("lens_flare_gain_frame '),
         'occlusion_cull_session': ('motion_output_occlusion_cull_inc.h', 'log("occlusion_cull_session '),
         'cull_small_props_frame': ('motion_output_cull_small_props_inc.h', 'log("cull_small_props_frame '),
         'motion_unmatched_static_frame': ('motion_output.cpp', 'log("motion_unmatched_static_frame '),
@@ -458,7 +458,8 @@ class OwnSunRows(unittest.TestCase):
             at = text.index('log("' + row)
             self.assertNotIn('log_tier', PerFrameRowTiers._context(text, at)[0], row)
         capture = _strip_comments((ROOT / 'src/proxy/capture.cpp').read_text(errors='replace'))
-        for row in ('own_sun status=%s edition=ap', 'own_sun status=unavailable edition=fl', 'own_sun_toggle '):
+        self.assertNotIn('own_sun_toggle', capture)  # the hotkey and its row went with own sun step 2
+        for row in ('own_sun status=%s edition=ap', 'own_sun status=unavailable edition=fl'):
             self.assertEqual(capture.count('log("' + row), 1, row)
             self.assertNotIn('log_tier', PerFrameRowTiers._context(capture, capture.index('log("' + row))[0], row)
         doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()

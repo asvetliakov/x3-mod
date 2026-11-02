@@ -61,8 +61,8 @@ constexpr Anchor anchors[] = {
     {0x0042760b, 0x006069ac, 2, {0x8b, 0x0d}},       // chase_lead
     {0x004275fa, 0x006069b0, 3, {0x0f, 0xbf, 0x05}}, // chase_lead
     {0x004275f3, 0x006069b4, 3, {0x0f, 0xbf, 0x15}}, // chase_lead
-    {0x00401c19, 0x00606f34, 1, {0xa1}},             // sector_background, sun_occlusion
-    {0x00401bb0, 0x00606f38, 2, {0x8b, 0x0d}},       // chase_camera/aim/fire/lead, sun_occlusion
+    {0x00401c19, 0x00606f34, 1, {0xa1}},             // sector_background
+    {0x00401bb0, 0x00606f38, 2, {0x8b, 0x0d}},       // chase_camera/aim/fire/lead
     {0x0040258b, 0x00606f3c, 1, {0xa1}},             // game_phases
     {0x004971d3, 0x00606f44, 1, {0xa1}},             // music_keep (media record list head; outside the music patch sites)
     {0x0041efd6, 0x00606fc0, 2, {0x8b, 0x35}},       // sector_background
@@ -72,7 +72,7 @@ constexpr Anchor anchors[] = {
     {0x00445a3a, 0x00607ce8, 2, {0x83, 0x3d}, 1, 0x00}, // chase_aim_trace, chase_fire (0x004074de is a chase_aim_trace site)
     {0x0040e8dd, 0x00607cec, 2, {0x8b, 0x15}},       // ui_scale (the script cursor x; its store 0x004074f4 follows the ui_scale site)
     {0x0040e8d7, 0x00607cf0, 2, {0x8b, 0x0d}},       // ui_scale (the script cursor y; its store 0x004074ec is the ui_scale site)
-    {0x00401a0d, 0x00608504, 2, {0x89, 0x1d}},       // chase_*, sector_background, motion_output, sun_occlusion
+    {0x00401a0d, 0x00608504, 2, {0x89, 0x1d}},       // chase_*, sector_background, motion_output, own_sun_hook
     {0x0041e412, 0x00608508, 2, {0x39, 0x1d}},       // ui_scale (the galaxy map state the map pick stub re-compares; 0x0042e949 is in its case window)
     {0x00401e69, 0x0060850c, 1, {0xa1}},             // chase_transition
     {0x00403367, 0x00608518, 1, {0xa3}},             // object_trace, object_lifetime, sun_light_poll, submit/residual_phases, cull_census, point_light

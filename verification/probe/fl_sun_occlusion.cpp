@@ -1,4 +1,5 @@
-// Original synthetic fixture of the FL sun occlusion hooks (src/engine/fl/sun_occlusion_fl.cpp),
+// Original synthetic fixture of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp; the probe
+// forwards every call since own sun step 2, docs/architecture/own-sun-pass.md section 14),
 // docs/architecture/farnhams-legacy-sun-occlusion.md: no game code, no game bytes beyond the generated window/anchor
 // constants, no launch. Built with -DX3M_EDITION_FL=1 -DX3M_SUN_OCCLUSION_FL_FIXTURE by
 // verification/analysis/test_fl_sun_occlusion.py and run natively (WSL interop).
@@ -18,10 +19,10 @@
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
-#include "../../src/proxy/sun_occlusion.h"
+#include "../../src/proxy/own_sun_hook.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/engine/fl/sun_occlusion_fl_inc.h"
-namespace so = x3m::sun_occlusion;
+namespace so = x3m::own_sun_hook;
 namespace L = x3m::fl::sun_occlusion_fl;
 unsigned checks = 0, failures = 0;
 void check(bool value, const char* label) {
@@ -183,11 +184,7 @@ unsigned char *probe_site = nullptr, *lens_site = nullptr;
 unsigned probe_calls = 0, lens_calls = 0, begin_calls = 0, end_calls = 0;
 uint32_t native_probe_flags = 0; // the original's entry EFLAGS without the hook (the window's cmp defines them)
 unsigned target_mode = 0;     // 0 checked, 2 raise (lens), 3 timing (no checks)
-unsigned lens_action = 0;     // 1: an unclassifiable body, 2: a core body (inside the bracket)
-int lens_action_result = -1;
-bool lens_action_row = false, bracket_at_target = false, attributable_at_target = false, clobber = true, pass_ok = true,
-     check_probe_error = true;
-so::FrameInputs last_inputs{};
+bool bracket_at_target = false, clobber = true, check_probe_error = true;
 void make_objects() {
     std::memset(record, 0, sizeof record);
     std::memset(view, 0, sizeof view);
@@ -226,9 +223,6 @@ extern "C" void __cdecl fl_fake_lens_body() {
     ++lens_calls;
     if (target_mode == 3) return;
     bracket_at_target = so::bracket_open();
-    attributable_at_target = so::lens_attributable();
-    if (lens_action == 1) lens_action_result = so::lens_body_unclassifiable(true, &lens_action_row);
-    if (lens_action == 2) so::lens_body_core();
     check(GetLastError() == 0x145, "lens original entered with the caller's LastError");
     if (target_mode == 2) RaiseException(0xe3450001, 0, 0, nullptr);
     SetLastError(0x246);
@@ -253,8 +247,6 @@ void listener_check() {
 void begin_listener() {
     ++begin_calls;
     listener_check();
-    last_inputs = so::frame_inputs();
-    so::report_pass(pass_ok);
     clobber_cpu();
 }
 void end_listener() {
@@ -414,17 +406,9 @@ so::Addresses addresses(bool fixture_main_view = true) {
     a.probe_target = reinterpret_cast<uintptr_t>(&fl_fake_probe);
     a.lens_site = reinterpret_cast<uintptr_t>(lens_site);
     a.lens_target = reinterpret_cast<uintptr_t>(&fl_fake_lens);
-    a.config_global = reinterpret_cast<uintptr_t>(&config_slot);
     a.main_view = fixture_main_view ? reinterpret_cast<const uintptr_t*>(&main_view_word) : nullptr;
     return a;
 }
-// Two frames that make the record ready (a single eligible record and a pass in the previous frame).
-void make_ready(const char* label) {
-    probe_answer = 0;
-    frame(2, label);
-    frame(0, label);
-}
-
 // The production gate (fixture_gate: the 17 anchors) against a synthetic image at the base VirtualAlloc picks.
 void anchor_cases() {
     const SIZE_T span = (L::root_slot_rva + 0x2000) & ~SIZE_T(0xfff);
@@ -483,8 +467,7 @@ void anchor_cases() {
     VirtualFree(base, 0, MEM_RELEASE);
 }
 // The FL registry walk (cockpit registry -> active handle -> bucket chain -> cockpit +0x58 -> sector camera).
-uint32_t registry_obj[0x20 / 4], map_header[2], buckets[4], link_a[3], link_b[3], cockpit[0x60 / 4], registry_slot,
-    mode_obj[0x30 / 4], mode_slot;
+uint32_t registry_obj[0x20 / 4], map_header[2], buckets[4], link_a[3], link_b[3], cockpit[0x60 / 4], registry_slot;
 void main_view_cases() {
     const auto u = [](const void* p) { return uint32_t(reinterpret_cast<uintptr_t>(p)); };
     registry_slot = u(registry_obj);
@@ -497,9 +480,7 @@ void main_view_cases() {
     link_b[0] = 0, link_b[1] = 0x1235, link_b[2] = u(cockpit);
     cockpit[0x58 / 4] = u(view);
     view[L::view_flags / 4] = 0x10001; // sector camera
-    mode_slot = u(mode_obj);
-    mode_obj[L::mode_scale_x / 4] = 0x7777;
-    so::fixture_slots(u(&registry_slot), u(&mode_slot));
+    so::fixture_slots(u(&registry_slot));
     check(so::fixture_main_view() == reinterpret_cast<uintptr_t>(view), "registry walk finds the cockpit camera");
     view[L::view_flags / 4] = 0x1;
     check(so::fixture_main_view() == 0, "no sector-camera bit: no main view");
@@ -510,9 +491,9 @@ void main_view_cases() {
     link_b[1] = 0x1236;
     check(so::fixture_main_view() == 0, "handle not in the chain: no main view");
     link_b[1] = 0x1235;
-    so::fixture_slots(0, 0);
+    so::fixture_slots(0);
     check(so::fixture_main_view() == 0, "no admitted registry slot: no main view");
-    so::fixture_slots(u(&registry_slot), u(&mode_slot));
+    so::fixture_slots(u(&registry_slot));
 }
 
 double time_probes(uint32_t* v, unsigned iterations) {
@@ -570,73 +551,57 @@ int main() {
     probe(view, 2, "unpatched probe show");
     lens_call(view, false, "unpatched lens");
 
-    // Production initialize in a non-X3FL process.
+    // Production initialize in a non-X3FL process. Only the bracket (the lens-flare gain or the fog) installs on FL: the
+    // own sun is inert here and its log alone installs nothing.
     check(!so::initialize(false) && !std::strcmp(so::state(), "disabled"), "nothing requested: disabled, no row");
-    SetEnvironmentVariableW(L"X3M_SUN_OCCLUSION", L"1");
-    check(!so::initialize(false) && row_has("fl.sun_occlusion status=executable_mismatch ") && row_has(" override=1 "),
-          "not X3FL.exe: executable_mismatch");
-    SetEnvironmentVariableW(L"X3M_SUN_OCCLUSION", nullptr);
-    check(!so::initialize(true) && row_has("status=executable_mismatch") && row_has(" bracket=1 "),
-          "bracket for the fog/gain alone: one row, executable_mismatch");
+    SetEnvironmentVariableW(L"X3M_OWN_SUN_LOG", L"1");
+    const unsigned rows_before = rows;
+    check(!so::initialize(false) && !std::strcmp(so::state(), "disabled") && rows == rows_before,
+          "the log alone: disabled, no row");
+    check(!so::initialize(true) && row_has("fl.sun_occlusion status=executable_mismatch ") && row_has(" log=1 bracket=1 "),
+          "bracket for the fog/gain: one row, executable_mismatch");
+    SetEnvironmentVariableW(L"X3M_OWN_SUN_LOG", nullptr);
     check(unchanged() && !so::installed(), "refusals wrote nothing");
 
     // install_at refusals and the rollback of the first claim.
     {
         so::Addresses a = addresses();
         a.probe_target = reinterpret_cast<uintptr_t>(&fl_other_target);
-        check(!so::install_at(a, true, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged() &&
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged() &&
                   !so::installed(),
               "probe claim refused after the lens claim: the lens call rolled back byte for byte");
         a = addresses();
         a.lens_target = reinterpret_cast<uintptr_t>(&fl_other_target);
-        check(!so::install_at(a, true, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged(),
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged(),
               "lens claim refused, nothing written");
         a = addresses();
         a.lens_site += 1;
-        check(!so::install_at(a, true, false) && unchanged(), "lens site one byte off refused");
+        check(!so::install_at(a, false) && unchanged(), "lens site one byte off refused");
         a = addresses();
-        a.config_global = 0;
-        check(!so::install_at(a, true, false) && !std::strcmp(so::state(), "invalid_site"), "override without config");
+        a.probe_site = 0;
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(), "no probe site");
     }
 
-    // ---- override on ---------------------------------------------------------------------------------------------
+    // ---- installed: every probe forwards, the bracket opens around the lens pass ----------------------------------
     main_view_cases();
-    check(so::install_at(addresses(), true, false) && so::installed() && so::override_enabled() &&
-              !std::strcmp(so::state(), "active"),
+    check(so::install_at(addresses(), false) && so::installed() && !so::logging() && !std::strcmp(so::state(), "active"),
           "both calls claimed");
     so::fixture_log_status();
     check(row_has("fl.sun_occlusion status=active ") && row_has(" probe=base+0x8af0a lens=base+0x8bcb7 ") &&
-              row_has(" probe_write=atomic lens_write=plain ") && row_has(" anchors=17 "),
+              row_has(" probe_write=atomic lens_write=plain ") && row_has(" log=0 bracket=0 ") && row_has(" anchors=17 "),
           "status row: sites, write modes, anchors");
     check(probe_site[0] == 0xe8 && lens_site[0] == 0xe8 && !unchanged(), "only the rel32s rewritten");
-    // Frame 1: no previous frame, the original decides (forward path); the bracket opens; frame 2 answers.
     probe_answer = 1;
-    frame(2, "frame 1 forward hide");
-    check(last_inputs.single && !last_inputs.answered && last_inputs.latch.record == reinterpret_cast<uintptr_t>(record) &&
-              last_inputs.latch.scale_x == 0x8000 && last_inputs.latch.owner_layer == -1,
-          "the bracket's inputs latch the single eligible record");
+    frame(2, "eligible probe forwards (hide)");
     probe_answer = 0;
-    frame(0, "frame 2 answered visible");
-    check(last_inputs.answered, "frame 2 answered");
-    // The three gates (core::decide after eligible), config flags at +0xec.
+    frame(2, "eligible probe forwards (show)");
+    // The flare option off or the view's hide flag: still the original's answer (no gate is replicated on FL).
     config[L::config_video_flags / 4] = 0;
-    config[0xfc / 4] = L::video_flag_flares; // AP's word: must not count
-    frame(1, "gate 1: flares bit clear at +0xec -> hidden");
-    config[L::config_video_flags / 4] = L::video_flag_flares;
-    config[0xfc / 4] = 0;
-    frame(0, "flares bit set at +0xec only -> visible");
-    record[L::record_x / 4] = 0x9000; // x + 0x8000 = 0x11000 > right
     view[L::view_flags / 4] |= L::view_flag_probe_hidden;
-    frame(0, "gate 2: outside the rect -> visible (before gate 3)");
-    record[L::record_x / 4] = uint32_t(-0x8000); // x + 0x8000 = 0 = left: inclusive
-    frame(1, "gate 3: inside (inclusive edge), view flag 0x8000000 -> hidden");
+    frame(2, "flags never read: the original decides");
+    config[L::config_video_flags / 4] = L::video_flag_flares;
     view[L::view_flags / 4] &= ~L::view_flag_probe_hidden;
-    record[L::record_x / 4] = 0;
-    record[L::record_y / 4] = 0x8001; // 0x8000 - y = -1 < top
-    frame(0, "gate 2: above the rect -> visible");
-    record[L::record_y / 4] = 0;
-    frame(0, "back inside -> visible");
-    // Ineligible probes forward: another view, a record the main view owns, an owner without the background bit.
+    // Ineligible probes forward too: another view, a record the main view owns, an owner without the background bit.
     probe_answer = 1;
     probe(other_view, 2, "another view's probe forwards");
     record[L::record_owner / 4] = uint32_t(reinterpret_cast<uintptr_t>(view));
@@ -645,51 +610,13 @@ int main() {
     owner[L::view_flags / 4] = 0x135;
     probe(view, 2, "an owner without the background bit forwards");
     owner[L::view_flags / 4] = 0x00400135;
-    probe_answer = 0;
-    probe(view, 0, "the eligible probe of the same frame still answers");
-    lens_call(view, true, "bracket after the ineligible probes");
+    lens_call(view, true, "bracket after the probes");
     so::present(0);
-    // Two background-owned records probed by the main view in one frame: vanilla for the frame (multi-record).
-    probe_answer = 0;
-    frame(0, "ready again");
-    {
-        alignas(16) static uint32_t second[0x70 / 4];
-        std::memcpy(second, record, sizeof second);
-        probe(view, 0, "first of two records");
-        record[L::record_visible / 4] = 1;
-        const unsigned calls = probe_calls;
-        SetLastError(0x145);
-        walk(second, view); // the second record: Original
-        asm volatile("fninit");
-        check(probe_calls == calls + 1, "the second record runs the original");
-        lens_call(view, true, "two-record bracket");
-        check(!last_inputs.single, "two records: no single record for the pass");
-        so::present(0);
-    }
-    frame(2, "after the two-record frame the original decides");
-    frame(0, "and the next frame answers again");
-
-    // ---- deferral: an unclassifiable sun body hands the record to the vanilla probe --------------------------------
-    lens_action = 1;
-    frame(0, "answered frame with an unclassifiable body");
-    check(attributable_at_target && lens_action_result == 1 && lens_action_row, "deferral started (row)");
-    lens_action = 2;
-    probe_answer = 1;
-    probe(view, 2, "deferred: the vanilla probe hides");
-    lens_call(view, true, "deferred, vanilla hidden: core body");
-    check(lens_action == 2 && rows > 0 && !row_has("sun_occlusion_released"), "no lift while the vanilla probe hides");
-    so::present(0);
-    probe_answer = 0;
-    probe(view, 2, "deferred: the vanilla probe shows");
-    lens_call(view, true, "deferred, vanilla visible: core body lifts");
-    check(row_has("sun_occlusion_released ") && row_has(" lifts=1 starts=1 "), "deferral lifted (record+0x30 read)");
-    so::present(0);
-    lens_action = 0;
-    frame(0, "answers again after the lift");
 
     // ---- unwind through the bracket ------------------------------------------------------------------------------
     {
-        probe(view, 0, "probe before the raise");
+        probe_answer = 0;
+        probe(view, 2, "probe before the raise");
         const unsigned ends = end_calls, calls = lens_calls;
         target_mode = 2;
         SetLastError(0x145);
@@ -701,7 +628,7 @@ int main() {
         check(so::bracket_open(), "an unwind leaves the bracket open until Present");
         so::present(0);
         check(!so::bracket_open(), "Present closes the bracket");
-        frame(0, "after the unwind the override answers again");
+        frame(2, "after the unwind the probe forwards");
     }
 
     // ---- a probe from another thread runs the original ----------------------------------------------------------
@@ -712,22 +639,21 @@ int main() {
         if (thread) CloseHandle(thread);
         check(probe_calls == calls + 1 && so::counters().foreign_thread == 1, "foreign probe: the original, counted");
         so::present(0);
-        check(row_has("sun_occlusion_foreign_thread ") && row_has(" calls=1 "), "foreign thread row");
+        check(row_has("own_sun_hook_foreign_thread ") && row_has(" calls=1 "), "foreign thread row");
     }
 
     // ---- the periodic row -----------------------------------------------------------------------------------------
     {
-        frame(2, "after the probe-less frame the original decides");
+        frame(2, "after the probe-less frame the probe forwards");
         check(so::fixture_arm_sample() == 10, "X3M_FL_SUN_OCCLUSION_LOG unset: 10 s");
-        frame(0, "sample frame 1");
+        frame(2, "sample frame 1");
         probe(other_view, 2, "sample frame 2 ineligible");
         lens_call(view, true, "sample frame 2 bracket");
         so::fixture_force_sample();
         so::present(0);
-        check(row_has("fl.sun_occlusion_sample row=1 status=active frames=2 probes=2 own=1 visible=1 hidden=0 original=1 "
-                      "foreign=1 brackets=2 ") &&
-                  row_has(" deferred=0 starts=1 lifts=1 "),
-              "fl.sun_occlusion_sample counts");
+        check(row_has("fl.sun_occlusion_sample row=1 status=active frames=2 probes=2 own=0 hidden=0 original=2 "
+                      "foreign=1 brackets=2 main_view=0x00000000"),
+              "fl.sun_occlusion_sample counts (no main-view walk without the log)");
         SetEnvironmentVariableW(L"X3M_FL_SUN_OCCLUSION_LOG", L"0");
         check(so::fixture_arm_sample() == 0, "X3M_FL_SUN_OCCLUSION_LOG=0: off");
         const unsigned before = rows;
@@ -736,23 +662,18 @@ int main() {
         check(rows == before, "no row when off");
         SetEnvironmentVariableW(L"X3M_FL_SUN_OCCLUSION_LOG", nullptr);
     }
-    // A device Reset: vanilla until a pass has run again.
-    so::device_reset();
-    frame(2, "after a Reset the original decides");
-    frame(0, "a pass after the Reset: answering again");
     check(so::shutdown() && unchanged() && !so::installed() && !std::strcmp(so::state(), "restored"), "exact restore");
     lens_call(view, false, "lens after restore");
     probe_answer = 0;
     probe(view, 2, "probe after restore");
 
-    // ---- the registry main view, the scale fallback and the log mode (the original via the register ABI) ----------
-    check(so::install_at(addresses(false), true, true) && so::logging(), "install with the registry walk and the log");
-    view[L::view_scale_x / 4] = 0;
+    // ---- the registry main view and the log mode (the original via the register ABI) -------------------------------
+    check(so::install_at(addresses(false), true) && so::logging(), "install with the registry walk and the log");
     check_probe_error = false; // the diagnostic calls the original from inside the handler
-    // The diagnostic runs the original itself (ECX record, EDX view, as fastcall) and returns the override's decision,
-    // or the original's where the decision was "original": the thunk never forwards.
+    // The diagnostic runs the original itself (ECX record, EDX view, as fastcall) and returns its answer: the thunk
+    // never forwards.
     for (unsigned k = 0; k < 2; ++k) {
-        probe_answer = k == 0 ? 1 : 0; // frame 1 (not ready): the original's 1; frame 2 (ready): the override's 0
+        probe_answer = k == 0 ? 1 : 0;
         const unsigned calls = probe_calls;
         record[L::record_visible / 4] = 1;
         const Cpu saved = enter_test_state();
@@ -764,44 +685,40 @@ int main() {
         check(eax_after == probe_answer && visible == (probe_answer ? 0u : 1u) && a.error == 0x145 &&
                   !std::memcmp(xmm_after, xmm_in, sizeof xmm_in) && esp_after == esp_before,
               "log mode: answered by the thunk, LastError and XMM kept");
-        check(row_has("sun_probe ") && row_has(" eligible=1 ") &&
-                  row_has(k == 0 ? " ready=0 vanilla=1 answer=1" : " ready=1 vanilla=0 answer=0"),
-              "sun_probe row");
+        check(row_has("sun_probe ") && row_has(" owner_layer=15 ") && row_has(" eligible=1 ") &&
+                  row_has(k == 0 ? " vanilla=1 answer=1" : " vanilla=0 answer=0"),
+              "sun_probe row: the registry main view, the owner's layer, the original's answer");
         lens_call(view, true, "log mode bracket");
-        check(last_inputs.single && last_inputs.latch.scale_x == 0x7777 && last_inputs.latch.owner_layer == 15,
-              "registry main view eligible; scale from [mode slot]+0x28; owner layer read");
         so::present(0);
     }
     check_probe_error = true;
-    view[L::view_scale_x / 4] = 0x8000;
     check(so::shutdown() && unchanged(), "restore after the log mode");
 
     anchor_cases();
 
-    // Cost per call: unpatched, forwarded (ineligible), answered; lens unpatched and bracketed (trivial listeners).
+    // Cost per call: unpatched, forwarded (another view's probe and the main view's eligible one); lens unpatched and
+    // bracketed (trivial listeners).
     {
         clobber = false;
         const unsigned iterations = 200000;
         const double native_probe = time_probes(view, iterations), native_lens = time_lens(iterations);
-        check(so::install_at(addresses(), true, false), "timing install");
+        check(so::install_at(addresses(), false), "timing install");
         probe_answer = 0;
-        frame(2, "timing warm 1");
-        frame(0, "timing warm 2");
-        probe(view, 0, "timing ready");
+        frame(2, "timing warm");
         const double forward = time_probes(other_view, iterations);
-        const double answered = time_probes(view, iterations);
+        const double eligible = time_probes(view, iterations);
         const double bracket = time_lens(iterations);
         so::present(0);
         check(so::shutdown() && unchanged(), "timing restore");
         clobber = true;
-        std::printf("TIMING native_probe_ns=%.1f forward_ns=%.1f answered_ns=%.1f native_lens_ns=%.1f bracket_ns=%.1f "
+        std::printf("TIMING native_probe_ns=%.1f forward_ns=%.1f eligible_forward_ns=%.1f native_lens_ns=%.1f bracket_ns=%.1f "
                     "forward_hook_ns=%.1f bracket_hook_ns=%.1f\n",
-                    native_probe, forward, answered, native_lens, bracket, forward - native_probe, bracket - native_lens);
+                    native_probe, forward, eligible, native_lens, bracket, forward - native_probe, bracket - native_lens);
     }
     // Late window: after the first Present closes the engine_patch window, both claims are refused, nothing written
     // (the lens call's plain write is never attempted outside the window).
     x3m::engine_patch::close_install_window("fixture_first_present");
-    check(!so::install_at(addresses(), true, false) && !std::strcmp(so::state(), "late_claim") && unchanged() &&
+    check(!so::install_at(addresses(), false) && !std::strcmp(so::state(), "late_claim") && unchanged() &&
               !so::installed(),
           "late claim refused, nothing written");
     {

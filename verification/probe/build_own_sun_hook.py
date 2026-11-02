@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Build and audit the two partial-sun-occlusion fixtures. Never runs Wine.
+"""Build and audit the own sun hook's two fixtures. Never runs Wine.
 
-  hook  sun_occlusion_hook_fixture.exe: the production hook module (src/proxy/sun_occlusion.cpp,
+  hook  own_sun_hook_fixture.exe: the production hook module (src/proxy/own_sun_hook.cpp,
         production flags, -fno-exceptions) with engine_patch.cpp over two synthetic call sites.
         Audit: both thunks are the documented instruction sequences, and the probe handler's
         object code holds no x87 / MMX instruction and no floating-point arithmetic outside the
         FNSAVE / FRSTOR boundary of the two lens callbacks.
-  gpu   sun_occlusion_fixture.exe: the production pass (src/renderer/sun_occlusion_pass.cpp with
-        its embedded program) and the pixel wrap (src/renderer/lens_visibility_variant.cpp).
+  gpu   lens_flare_gain_fixture.exe: the lens-flare gain's production law and steps (src/proxy/lens_flare_gain.h) on a
+        real device (the partial-sun-occlusion pass and wraps it used to share were deleted in own sun step 2).
 """
 import json
 import re
@@ -15,7 +15,7 @@ import subprocess
 from pathlib import Path
 from run_chase_aim_trace import FLAGS
 ROOT = Path(__file__).resolve().parents[2]
-BUILD = ROOT / 'build/verification/sun-occlusion'
+BUILD = ROOT / 'build/verification/own-sun-hook'
 OBJDUMP = 'i686-w64-mingw32-objdump'
 GPU_FLAGS = ('-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2')
 PROBE_THUNK = ['pushf', 'cld', 'push', 'push', 'call', 'add', 'cmp', 'je', 'popf', 'ret', 'popf', 'jmp']
@@ -61,17 +61,17 @@ def audit_module(obj):
 def build():
     BUILD.mkdir(parents=True, exist_ok=True)
     objects = []
-    for source, stem, extra in [('verification/probe/sun_occlusion_hook_fixture.cpp', 'hook_fixture', []), ('src/proxy/sun_occlusion.cpp', 'module', []),
+    for source, stem, extra in [('verification/probe/own_sun_hook_fixture.cpp', 'hook_fixture', []), ('src/proxy/own_sun_hook.cpp', 'module', []),
                                 ('src/proxy/engine_patch.cpp', 'patch', []), ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects.append(out)
     audit = audit_module(BUILD / 'module.o')
-    hook = BUILD / 'sun_occlusion_hook_fixture.exe'
+    hook = BUILD / 'own_sun_hook_fixture.exe'
     subprocess.run(['i686-w64-mingw32-g++', *map(str, objects), '-static', '-static-libgcc', '-static-libstdc++', '-o', str(hook)], check=True, cwd=ROOT)
-    gpu = BUILD / 'sun_occlusion_fixture.exe'
-    subprocess.run(['i686-w64-mingw32-g++', *GPU_FLAGS, '-static', str(ROOT / 'verification/probe/sun_occlusion_fixture.cpp'), str(ROOT / 'src/renderer/sun_occlusion_pass.cpp'),
-                    str(ROOT / 'src/renderer/lens_visibility_variant.cpp'), '-o', str(gpu), '-luser32'], check=True, cwd=ROOT)
+    gpu = BUILD / 'lens_flare_gain_fixture.exe'
+    subprocess.run(['i686-w64-mingw32-g++', *GPU_FLAGS, '-static', str(ROOT / 'verification/probe/lens_flare_gain_fixture.cpp'), '-o', str(gpu), '-luser32'],
+                   check=True, cwd=ROOT)
     return {'hook': str(hook), 'gpu': str(gpu), 'module_audit': audit, 'runtime': 'not run'}
 
 

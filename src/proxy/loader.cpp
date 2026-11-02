@@ -25,7 +25,7 @@
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
 #include "occlusion_engine_cull.h"
@@ -548,7 +548,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
         if (reserved == nullptr)
-            x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
+            x3m::own_sun_hook::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_memo::shutdown(); // same rule: the memo's call back only on FreeLibrary
         if (reserved == nullptr)
             x3m::run_in_background::shutdown(); // same rule: the init call back only on FreeLibrary

@@ -20,7 +20,7 @@
 #include "cull_census.h" // X3M_CULL_SMALL_PROPS: the census's culled_prop verdict
 #include "sun_light_poll.h"
 #include "chase_camera.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
@@ -586,15 +586,8 @@ void MotionOutput::release_resources() noexcept {
         taa_call([&] { sun_apply_->detach(); });
         sun_apply_.reset();
     }
-    if (sun_occlusion_pass_) {
-        taa_call([&] { sun_occlusion_pass_->detach(); });
-        sun_occlusion_pass_.reset();
-    }
     release_occlusion_cull(); // the occlusion queries, programs, declaration and strip (occlusion_cull_pass.h)
     release_lens_depth();
-    lens_frame_active_ = lens_suppress_ = false;
-    lens_record_ = 0;
-    sun_occlusion_attach_failed_ = false;
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
     release(sun_sentinel_ps_);
@@ -2474,11 +2467,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 in.stage_context = this;
             }
 #if !X3M_EDITION_FL
-            // Own sun (motion_output_own_sun_inc.h): armed at every resolve (own_sun_ready() feeds the next frame's latch,
-            // also while the hotkey has it off); drawn only in a frame the latch made active and whose main-view probe was
+            // Own sun (motion_output_own_sun_inc.h): armed at every resolve (own_sun_ready() feeds the next frame's latch);
+            // drawn only in a frame the latch made active and whose main-view probe was
             // answered "hidden", then before the plumes when both draw (one callback slot).
             if (own_sun_requested_ && own_sun_arm(hdr_scene != nullptr, depth, in.width, in.height) && own_sun_frame_active_) {
-                if (sun_occlusion::own_sun_hidden()) {
+                if (own_sun_hook::own_sun_hidden()) {
                     own_sun_with_plumes_ = in.stage_callback != nullptr;
                     in.stage_callback = &MotionOutput::own_sun_stage_callback;
                     in.stage_context = this;
@@ -4228,9 +4221,6 @@ void MotionOutput::before_reset() noexcept {
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed
                                // and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
-    // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again
-    // (sun_occlusion::device_reset).
-    if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
     // Occlusion cull: the queries (and the dynamic rectangle buffer) go (each holds a device reference); the next
     // successful Reset recreates them and its first frame has no previous result, so every part draws; every part is
     // tested at its ship's next block (the cadence's results are forgotten).
@@ -4238,11 +4228,6 @@ void MotionOutput::before_reset() noexcept {
     if (occlusion_batcher_) occlusion_batcher_->reset_results();
     occlusion_pass_failed_ = false; // a refusal or creation failure is retried after Reset
     release_lens_depth();
-    lens_frame_active_ = lens_suppress_ = false;
-    lens_record_ = 0;
-    lens_pass_qpc_ = 0;
-    lens_hold_ = {};
-    sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
     // Engine plumes: every device object of the pass goes (programs, declaration, DEFAULT buffers); the next armed
     // resolve after a successful Reset recreates them; the attach refusal, the disarm window and the failure count
@@ -4307,7 +4292,6 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (taa_) taa_->after_reset(result);
     if (depth_replay_) depth_replay_->after_reset(result);
     if (sun_apply_) sun_apply_->after_reset(result);
-    if (sun_occlusion_pass_) sun_occlusion_pass_->after_reset(result);
     if (occlusion_pass_) occlusion_pass_->after_reset(result); // its queries come back at the next part, under taa_call
     if (fog_) {
         fog_->after_reset(result);
@@ -5522,7 +5506,6 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     sun_frame_ = {};
     sun_stamps_ = sun_stamp_refused_ = sun_stamp_prims_ = 0;
     sun_coverage_current_ = sun_composition_completed_ = false;
-    lens_chain_drawn_ = false;
     sun_apply_applied_ = sun_apply_attempted_ = false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_ = 0;
     if (thin_vote_upload_) {
@@ -9531,9 +9514,8 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
-    if (route.lens_gain) restore_lens_gain(route); // applied after the sun wrap: put back first
-    if (route.lens.applied)
-        finish_lens(route); // before every other restore: the wrap sits on top of the application's own bindings
+    if (route.lens_gain) restore_lens_gain(route); // before every other restore: the gain sits on top of the application's
+                                                   // own blend states
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -10489,8 +10471,6 @@ void MotionOutput::before_present() noexcept {
         t.skip = unsigned(TaaSkip::Disabled);
     witness_readback();
     if (capture_) readback();
-    sun_lens_present_readback(); // --sun-occlusion-log, capture frames: the back buffer with the lens chain (drawn
-                                 // after every other dump)
 }
 // Fade-region witness (X3M_FADE_WITNESS=k): on every k-th frame the M
 // coverage target (A16B16G16R16F, cleared once per frame by begin_frame and
@@ -12928,7 +12908,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
-#include "motion_output_sun_occlusion_inc.h"
+#include "motion_output_lens_bracket_inc.h"
 #include "motion_output_cull_small_props_inc.h"
 #include "motion_output_occlusion_cull_inc.h"
 #include "motion_output_engine_effects_inc.h"

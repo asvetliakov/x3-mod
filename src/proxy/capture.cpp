@@ -30,7 +30,7 @@
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
-#include "sun_occlusion.h"
+#include "own_sun_hook.h"
 #include "own_sun_core.h"
 #include "cull_small_parts.h"
 #include "lens_flare_cull.h"
@@ -200,8 +200,6 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
                                           // (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the
                                           // gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
-bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on
-                                  // with the override; =0 restores clip-only)
 bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the render-only small-prop draw skip,
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
 bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
@@ -213,28 +211,19 @@ float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare
                                    // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
                                    // X3M_MOTION_OUTPUT=1
 bool lens_flare_fog = false; // the lens bracket installed for the volumetric fog: each bracket applies G x T_sun (the
-                             // fog's transmittance toward the sky, motion_output_sun_occlusion_inc.h), both editions
+                             // fog's transmittance toward the sky, motion_output_lens_bracket_inc.h), both editions
 #if !X3M_EDITION_FL
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
 #endif
 #if !X3M_EDITION_FL
-// Own sun, step 1 (X3M_OWN_SUN=1, docs/architecture/own-sun-pass.md; AP edition): the setting as installed (the probe
+// Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; AP edition): the setting as installed (the probe
 // redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; out of range keeps
-// the default) and the comparison hotkey Ctrl+Shift+F9 (comparison-hotkeys.md, "Own sun"), polled only while it is on.
+// the default). The setting is the only switch (the Ctrl+Shift+F9 comparison hotkey was removed in step 2).
 bool own_sun_on = false;
 float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default,
       own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' share (step 1c: six soft rays, no streaks)
-own_sun::core::Toggle own_sun_key;
-// The chord, F9 first so an idle frame costs one call.
-bool own_sun_chord_down() {
-    return (GetAsyncKeyState(VK_F9) & 0x8000) != 0 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 &&
-           (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-}
 #endif
-float sun_occlusion_radius = sun_occlusion::core::radius_default_u,
-      sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the
-                                 // back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
 bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the
                                                // light-map fetch of the gained hull variants widens to k x k px, k =
                                                // clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by
@@ -2032,17 +2021,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                     // accepted-pair ring; one collide_narrow line per
                                                                     // 300 frames, collide_narrow_pair rows on a capture
                                                                     // frame
-    // Own sun (X3M_OWN_SUN=1 only): the hotkey's press edge flips it; the next frame's latch (the setting, the key, this
-    // device's stage armed in its last resolve) goes to the probe answer and the stage together, before the probe's
-    // frame boundary.
+    // Own sun (X3M_OWN_SUN installed only): the next frame's latch (the setting, this device's stage armed in its last
+    // resolve) goes to the probe answer and the stage together, before the probe's frame boundary.
     if (own_sun_on) {
-        if (own_sun_key.step(own_sun_chord_down()))
-            log("own_sun_toggle device=%llu frame=%llu on=%u", ctx.id, ctx.frame, own_sun_key.on ? 1u : 0u);
-        const bool active = own_sun::core::frame_active(true, own_sun_key.on, ctx.motion_output.own_sun_ready());
-        sun_occlusion::set_own_sun_frame(active);
-        ctx.motion_output.own_sun_frame(active, own_sun_key.on);
+        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());
+        own_sun_hook::set_own_sun_frame(active);
+        ctx.motion_output.own_sun_frame(active);
     }
-    sun_occlusion::present(ctx.frame + 1); // installed bracket only: the probe override's frame boundary
+    own_sun_hook::present(ctx.frame + 1); // installed hook only: the probe answer's frame boundary
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one
                                                            // collide_memo line per 300 frames
@@ -2185,9 +2171,9 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // FL scene-end hook: counts this frame with or without a compositor call; one fl.scene_sample row every
     // X3M_FL_SCENE_LOG seconds (scene_hook_fl.cpp).
     scene_hook::fl_sample_row();
-    // FL sun occlusion (sun_occlusion_fl.cpp): the probe override's frame boundary; one fl.sun_occlusion_sample row
+    // FL flare-probe hook and lens bracket (sun_occlusion_fl.cpp): the frame boundary; one fl.sun_occlusion_sample row
     // every X3M_FL_SUN_OCCLUSION_LOG seconds.
-    sun_occlusion::present(ctx.frame + 1);
+    own_sun_hook::present(ctx.frame + 1);
 #endif
 #if !X3M_EDITION_FL
     // --perf/--debug: the scene-graph census row every 300 frames (scene_graph_census.h): the engine's four
@@ -2329,7 +2315,6 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::reset(); // a Reset disarms the census stubs, drops the partial frame and re-seeds the LOD-switch table
 #endif
-    sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
 #if !X3M_EDITION_FL
     collide_memo::device_reset();  // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it)
                                    // drops the whole memo
@@ -2404,10 +2389,9 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
     const MotionDrawCall draw_call{false, false, t, c, s, 0, 0, 0, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
-                                                          // occlusion, its log, the lens-flare gain or the volumetric
-                                                          // fog): one flag test otherwise
+    if (own_sun_hook::bracket_open())
+        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
+                                               // gain): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
@@ -2465,10 +2449,9 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
     const MotionDrawCall draw_call{true, false, t, c, s, b, m, n, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
-                                                          // occlusion, its log, the lens-flare gain or the volumetric
-                                                          // fog): one flag test otherwise
+    if (own_sun_hook::bracket_open())
+        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
+                                               // gain): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) {
         ++ctx.fixture_emission_source_calls;
@@ -2513,10 +2496,9 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u", data, stride);
     const MotionDrawCall draw_call{false, true, t, c, 0, 0, 0, 0};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
-                                                          // occlusion, its log, the lens-flare gain or the volumetric
-                                                          // fog): one flag test otherwise
+    if (own_sun_hook::bracket_open())
+        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
+                                               // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
@@ -2557,10 +2539,9 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
             stride, indices, f);
     const MotionDrawCall draw_call{true, true, t, c, 0, 0, m, n};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (sun_occlusion::bracket_open())
-        ctx.motion_output.prepare_lens(draw_call, route); // lens-scene draws inside the installed bracket only (sun
-                                                          // occlusion, its log, the lens-flare gain or the volumetric
-                                                          // fog): one flag test otherwise
+    if (own_sun_hook::bracket_open())
+        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
+                                               // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
@@ -3462,11 +3443,9 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
-    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(), sun_occlusion::logging(),
-                                                  sun_occlusion_radius, sun_occlusion_curve, sun_occlusion_core_f});
 #if !X3M_EDITION_FL
     hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
-                                           own_sun_rays); // X3M_OWN_SUN=1 as installed
+                                           own_sun_rays); // X3M_OWN_SUN as installed
 #endif
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
                                                                                           // installed for it; fog: G x T_sun
@@ -4193,15 +4172,11 @@ bool bolt_footprint_requested_gate() noexcept {
 bool thin_vote_route_gate() noexcept {
     return thin_vote_gate;
 } // the loader's readable policy and bookends; hook_device's enable
-// The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
+// The lens bracket's listener (src/proxy/own_sun_hook.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
 void sun_lens_begin() {
     CaptureLock lock;
-    for (auto& entry : devices) entry.second->motion_output.sun_occlusion_begin();
-}
-void sun_lens_end() {
-    CaptureLock lock;
-    for (auto& entry : devices) entry.second->motion_output.sun_occlusion_end();
+    for (auto& entry : devices) entry.second->motion_output.lens_bracket_begin();
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam only: the render-thread cost of log() (format + append, no file I/O) per row, its worst single call, the calls
@@ -5763,7 +5738,7 @@ void initialize_log(HMODULE module) {
     residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 or X3M_DRAW_TRACE=1: two residual stamps through the lean
                                    // stub, needs the frame and pass groups, same window
     light_phases::initialize();    // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1: R7 whole-call timer
-    submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the sun-occlusion lens
+    submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the own-sun hook's lens
                                  // call): twenty-two view_submit candidate stamps through the context lean stub, needs
                                  // the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps plus four around
@@ -5854,29 +5829,15 @@ void initialize_log(HMODULE module) {
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
 #endif
-    // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare
+    // The own sun or the lens bracket (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare
     // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
-    // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2
-    // (X3M_MOTION_OUTPUT=1). FL edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
-    // docs/architecture/farnhams-legacy-sun-occlusion.md), same window.
+    // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). Both need the route (X3M_MOTION_OUTPUT=1). FL
+    // edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
+    // docs/architecture/farnhams-legacy-sun-occlusion.md), same window, for the bracket only.
     {
         wchar_t value[32]{};
-        if (x3m::config::get(L"X3M_SUN_OCCLUSION_RADIUS", value, 32) > 0) {
-            wchar_t* end = nullptr;
-            const float v = wcstof(value, &end);
-            if (end != value && *end == L'\0' && v >= sun_occlusion::core::radius_option_min_u &&
-                v <= sun_occlusion::core::radius_option_max_u)
-                sun_occlusion_radius = v;
-        }
-        if (x3m::config::get(L"X3M_SUN_OCCLUSION_CURVE", value, 32) > 0) {
-            wchar_t* end = nullptr;
-            const float v = wcstof(value, &end);
-            if (end != value && *end == L'\0' && v >= .25f && v <= 4.f) sun_occlusion_curve = v;
-        }
-        sun_occlusion_core_f = !(x3m::config::get(L"X3M_SUN_OCCLUSION_CORE_F", value, 32) == 1 &&
-                                 value[0] == L'0'); // default on; only an explicit "0" restores clip-only
-        // X3M_LENS_FLARE_GAIN (src/proxy/lens_flare_gain.h): G < 1 needs the lens bracket, so it installs the same two
-        // redirects observe-only when neither sun-occlusion variable does; 1 (or unset, or invalid) installs nothing.
+        // X3M_LENS_FLARE_GAIN (src/proxy/lens_flare_gain.h): G < 1 needs the lens bracket, so it installs the two
+        // redirects (the probe forwarding) when the own sun does not; 1 (or unset, or invalid) installs nothing.
         const char* lens_gain_reason = "unset";
         float lens_gain = 1.f;
         if (x3m::config::get(L"X3M_LENS_FLARE_GAIN", value, 32) > 0) {
@@ -5894,11 +5855,12 @@ void initialize_log(HMODULE module) {
         if (lens_gain < 1.f && !motion_output_requested) lens_gain_reason = "route_off"; // no state shadow for the draw
         const bool lens_gain_wanted = lens_gain < 1.f && motion_output_requested;
         // The volumetric fog dims the lens draws by its transmittance toward the sun (G x T_sun per bracket), so it
-        // installs the bracket too (observe-only redirects when neither sun-occlusion variable is set).
-        // X3M_OWN_SUN=1 (docs/architecture/own-sun-pass.md, step 1): the probe answers "hidden" for the sun's record in an
-        // own-sun frame and the route draws the sun, so it needs the two redirects (installed observe-only otherwise)
-        // and the route's resolve. FL: inert in this step (no probe answer on main yet): one row, nothing else.
-        const bool own_sun_requested = x3m::config::get(L"X3M_OWN_SUN", value, 32) == 1 && value[0] == L'1';
+        // installs the bracket too.
+        // X3M_OWN_SUN (docs/architecture/own-sun-pass.md; on unless "0", the schema default 1): the probe answers
+        // "hidden" for the sun's record in an own-sun frame and the route draws the sun, so it needs the two redirects
+        // and the route's resolve. Off: nothing is answered and nothing drawn, the engine's sun is vanilla (the bracket
+        // stays only for the gain). FL: inert in this step (no probe answer on FL yet): one row, nothing else.
+        const bool own_sun_requested = !(x3m::config::get(L"X3M_OWN_SUN", value, 32) == 1 && value[0] == L'0');
 #if !X3M_EDITION_FL
         if (x3m::config::get(L"X3M_SUN_DISC_RADIUS", value, 32) > 0) {
             wchar_t* end = nullptr;
@@ -5916,20 +5878,20 @@ void initialize_log(HMODULE module) {
             if (end != value && *end == L'\0') own_sun::core::accept_rays(v, &own_sun_rays);
         }
         // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
-        if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();
+        if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();
 #endif
-        sun_occlusion::set_listener(&sun_lens_begin, &sun_lens_end);
-        const bool sun_installed = sun_occlusion::initialize(lens_gain_wanted || volumetric_fog_requested);
+        own_sun_hook::set_listener(&sun_lens_begin, nullptr);
+        const bool sun_installed = own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested);
 #if !X3M_EDITION_FL
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
-        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f hotkey=ctrl+shift+f9",
+        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
             own_sun_on                     ? "ok"
             : !own_sun_requested           ? "setting"
             : !motion_output_requested     ? "route_off"
             : !(own_sun_radiance > 0.f)    ? "radiance_zero"
                                            : "probe",
-            sun_occlusion::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
+            own_sun_hook::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
 #else
         log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending", own_sun_requested ? 1u : 0u);
 #endif
@@ -5937,18 +5899,7 @@ void initialize_log(HMODULE module) {
         lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
         lens_flare_fog = volumetric_fog_requested && sun_installed;
         log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s fog=%u", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
-            lens_gain_reason, sun_occlusion::state(), lens_flare_fog ? 1u : 0u);
-        if (sun_installed) {
-            // X3M_SUN_OCCLUSION_DEFAULT=1: the launcher filled the override in from its Run 83 default (read only when
-            // the override is on).
-            const bool from_default = sun_occlusion::override_enabled() &&
-                                      x3m::config::get(L"X3M_SUN_OCCLUSION_DEFAULT", value, 32) == 1 &&
-                                      value[0] == L'1';
-            log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u default=%u",
-                sun_occlusion::override_enabled() ? 1u : 0u, sun_occlusion::logging() ? 1u : 0u,
-                motion_output_requested ? 1u : 0u, double(sun_occlusion_radius), double(sun_occlusion_curve),
-                sun_occlusion_core_f ? 1u : 0u, from_default ? 1u : 0u);
-        }
+            lens_gain_reason, own_sun_hook::state(), lens_flare_fog ? 1u : 0u);
     }
 #if !X3M_EDITION_FL
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,
@@ -6437,7 +6388,7 @@ extern "C" __declspec(dllexport) unsigned x3m_shadow_retention_fixture_stats(IDi
     const auto it = x3m::devices.find(device);
     return it == x3m::devices.end() ? 0u : it->second->motion_output.fixture_shadow_retention_stats(out, count);
 }
-// The route's own mid-session device-object lifecycle (the sun bracket's RT2 reference: 1 releases the
+// The route's own mid-session device-object lifecycle (an RT2 reference, the former sun bracket's: 1 releases the
 // previous one and acquires, 0 releases; 2 acquires outside the accounting (main's shape, the one-sided
 // release that drove taa_references_ negative), 3 acquires under it and releases outside); 1 while held, -1 unknown
 // device.

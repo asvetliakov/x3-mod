@@ -36,7 +36,6 @@
 #include "../temporal/resolve.h"
 #include "../renderer/fog_pass.h"
 #include "../renderer/gpu_sync_timing_core.h"
-#include "../renderer/sun_occlusion_pass.h"
 #include "../renderer/occlusion_cull_pass.h"
 #include "occlusion_engine_core.h"
 #include "lens_flare_gain.h"
@@ -195,7 +194,6 @@ struct MotionRoute {
     IDirect3DVertexShader9* restore_vs = nullptr;
     IDirect3DPixelShader9* restore_ps = nullptr;
     bool restore_held = false;
-    renderer::LensDraw lens{}; // Partial sun occlusion: what the lens wrap bound for this draw; put back by after_draw.
     std::uint8_t lens_gain = 0; // Lens-flare gain: render states applied for this draw (lens_flare_gain::steps order);
                                 // put back by after_draw.
     bool sun_receiver = false, sun_color_writer = false;
@@ -1186,24 +1184,11 @@ public:
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
-    // Partial sun occlusion, step 1 (X3M_SUN_OCCLUSION / _LOG / _RADIUS / _CURVE;
-    // docs/architecture/sun-partial-occlusion.md). begin / end are the lens bracket's
-    // listener (src/proxy/sun_occlusion.h, the engine's call 0x00472491): begin runs the
-    // 1x1 visibility pass against this frame's RT2, prepare_lens wraps one lens-scene
-    // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
-    // radius_u: the disc's half-width as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; the
-    // engine's record size saturates for the sun, so the radius is configured, not derived).
-    // core_fraction (X3M_SUN_OCCLUSION_CORE_F, default on; =0 = clipped only): a clipped core body is also multiplied
-    // by f, like the ghosts.
-    struct SunOcclusionConfig {
-        bool requested = false, log = false;
-        float radius_u = sun_occlusion::core::radius_default_u, curve = 1.f;
-        bool core_fraction = false;
-    };
-    void configure_sun_occlusion(const SunOcclusionConfig& config) noexcept { sun_occlusion_ = config; }
-    void sun_occlusion_begin() noexcept;
-    void sun_occlusion_end() noexcept;
-    void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    // The lens bracket (motion_output_lens_bracket_inc.h; src/proxy/own_sun_hook.h, the engine's call 0x00472491):
+    // lens_bracket_begin is the bracket's listener (the fog's share of the lens-flare gain), prepare_lens the gain's
+    // per-draw step (the draw hooks call it only while own_sun_hook::bracket_open()).
+    void lens_bracket_begin() noexcept;
+    void prepare_lens(MotionRoute& route) noexcept;
     // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
     // 1 = off (no per-draw work). The blend-constant cap is checked at attach. fog: the lens bracket is installed with
     // the volumetric fog, and each bracket applies G x T_sun, the fog's transmittance toward the sky
@@ -1215,11 +1200,11 @@ public:
     }
 #if !X3M_EDITION_FL
     // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; AP edition only): process-start values, validated
-    // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting, the
-    // comparison hotkey and own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
+    // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting and
+    // own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
     // own_sun_ready: the stage armed in this device's last resolve (the probe answers "hidden" only then).
     void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
-    void own_sun_frame(bool active, bool key_on) noexcept;
+    void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
 #endif
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
@@ -1803,23 +1788,8 @@ private:
     unsigned sun_apply_sampled_ = 0;
     void run_sun_shadow_apply() noexcept;
     bool ensure_sun_shadow_apply() noexcept;
-    // Partial sun occlusion (motion_output_sun_occlusion_inc.h). Storage only outside the lens bracket.
-    SunOcclusionConfig sun_occlusion_{};
-    std::unique_ptr<renderer::SunOcclusionPass> sun_occlusion_pass_;
-    bool sun_occlusion_attach_failed_ = false;
-    bool lens_frame_active_ = false, lens_suppress_ = false; // this bracket: draws are wrapped / dropped (the override
-                                                             // answered but no fraction exists)
-    std::uintptr_t lens_record_ = 0;                         // the record the fraction belongs to (another one seeds)
-    std::uint64_t lens_pass_qpc_ = 0;
-    sun_occlusion::core::Hold lens_hold_{}; // a skipped pass keeps the last fraction for at most four frames
-    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_clipped_ = 0, lens_refused_ = 0, lens_dropped_ = 0,
-             lens_other_ = 0;
-    // Step 2: this bracket's RT2 (one reference, begin .. end), its size and the sun's uv for the body classification.
+    // The retention fixture's RT2 reference (fixture_lens_depth only; null in production since own sun step 2).
     IDirect3DTexture9* lens_depth_ = nullptr;
-    unsigned lens_depth_width_ = 0, lens_depth_height_ = 0;
-    float lens_sun_u_ = .5f, lens_sun_v_ = .5f;
-    bool lens_chain_drawn_ = false; // a bracket with draws ran this frame (the Present-time back-buffer readback under
-                                    // the log)
     // Lens-flare gain: the configured law, the device's BLENDFACTOR cap (attach), this bracket's counts and the
     // refusal reasons already logged (one row per reason and device).
     lens_flare_gain::Law lens_gain_{};
@@ -2157,7 +2127,7 @@ private:
     void fail_engine_shimmer(const char* step, HRESULT hr) noexcept;
     void log_engine_shimmer() noexcept;
     bool lens_gain_caps_ = false;
-    unsigned lens_gained_ = 0, lens_gain_refused_ = 0, lens_gain_logged_ = 0;
+    unsigned lens_gain_logged_ = 0;
     // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped
     // (G = 0: admitted and not submitted), refused per reason since the last row. Counters only.
     unsigned lens_gain_window_frames_ = 0, lens_gain_window_draws_ = 0, lens_gain_window_gained_ = 0,
@@ -2220,11 +2190,8 @@ private:
     void apply_lens_gain(MotionRoute& route, bool plain) noexcept;
     void restore_lens_gain(MotionRoute& route) noexcept;
     void refuse_lens_gain(unsigned reason) noexcept;
-    bool ensure_sun_occlusion() noexcept;
-    void finish_lens(MotionRoute& route) noexcept;
     void release_lens_depth() noexcept;
     IDirect3DTexture9* acquire_lens_depth() noexcept; // RT2's container under taa_call (its release is under it too)
-    void sun_lens_present_readback() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
     unsigned sun_lane_depth_count_ = 0;
     bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {
@@ -2582,7 +2549,7 @@ public:
                                            unsigned param_floats, unsigned cascade = 0) noexcept;
     // Retention seam: the store's levels and cumulative counters (index list in the inc file).
     unsigned fixture_shadow_retention_stats(std::uint64_t* out, unsigned count) noexcept;
-    int fixture_lens_depth(unsigned mode) noexcept; // the bracket's RT2 reference lifecycle
+    int fixture_lens_depth(unsigned mode) noexcept; // an RT2 reference lifecycle under the accounting
                                                     // (x3m_sun_occlusion_fixture_lens_depth)
     void fixture_shadow_retention_device_lost() noexcept {
         flush_shadow_retention(shadow_retention::Flush::Device);

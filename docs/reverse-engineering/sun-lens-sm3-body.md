@@ -1,5 +1,7 @@
 # The AP sun lens body as an SM3 pair: register roles and the clip-wrap plan
 
+> **Implementation cancelled (2026-11-02):** the own sun replaced the lens wraps ([own-sun-pass.md](../architecture/own-sun-pass.md) section 14, step 2); the SM3 wrap plan below was never merged and stays as reverse-engineering record only.
+
 2026-11-01. Offline only: the proxy's dumps `vs_494fe349b8bc12ec.bin` (2,104 B, 526 words) and
 `ps_7c83ed50c9894e44.bin` (5,192 B, 1,298 words) under `/mnt/c/X3/x3-modern-captures/`, read in place with the
 token parser of `verification/results/hull-widen-native-validator/sm3_rules.py` and a CTAB reader; FL programs from

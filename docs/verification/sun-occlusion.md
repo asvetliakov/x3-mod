@@ -981,3 +981,45 @@ the core.
 constants of `870a00fd6`) is the accepted baseline; step 2 (deletion of the lens wraps, scan, classifier, deferral and
 visibility pass; `own_sun` default on) starts. New report, separate: exiting the game to the main menu shows a black
 screen until an alt-tab out and back (fullscreen); cause unknown, under triage.
+
+## Step 2 — deletion (2026-11-02; worktree on main `3302c92b`, commits `acbb1a3e` rename, `5d10a8ac` code; not flown)
+
+What was deleted, renamed and kept: [own-sun-pass.md](../architecture/own-sun-pass.md) section 14, "Step 2 as built".
+The partial sun occlusion this ledger qualified (sections above, from 2026-09-22) no longer exists: no "visible"
+answer, no wraps, no visibility pass, no deferral. `own_sun` is on by default (ini aliases `sun_occlusion`,
+`sun_occlusion_log`); `own_sun = 0` is the engine's sun unmodified on both editions, the lens bracket staying only for
+`lens_flare_gain` and the fog's transmittance.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Builds | `cmake -S . -B build-{ap,fl} -DX3M_EDITION={ap,fl} -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake`, `cmake --build … -j4` (clean trees) | 0 warnings each (measured) |
+| x87 audit | `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | PASS, 1,114 reachable functions (1,146 at step 1) (measured) |
+| Config | `python3 tools/config/generate.py --check` | PASS, 293 settings, 136 in the template (main: 298 and 137; five removed: `sun_occlusion` (now an alias), `_core_f`, `_radius`, `_curve`, `_default`; `own_sun_log` replaces `sun_occlusion_log`) (measured) |
+| Own sun lab | `python3 tools/effects/generate_own_sun_lab.py --check` | PASS, 25 constants (measured) |
+| Hook fixture, native | `verification/results/own-sun-pass/step2/run_native.sh` (`build_own_sun_hook.py`: production flags, thunk shapes, no float in the probe handler, no EH symbols; then the .exe on Windows through WSL interop, no Wine) | 46 checks, 0 failures; counters probes 35, own 10, hidden 10, original 25, brackets 10, foreign 1 ([hook_native.txt](../../verification/results/own-sun-pass/step2/hook_native.txt)) (measured) |
+| Lens-flare gain, native device | same script, `lens_flare_gain_fixture.exe` on the native D3D9 HAL | 8 / 0: G = 1 and 0.5 within 2.5/255 of the law, G = 0 not issued (0 samples), state restored byte for byte; 5.14 µs per frame for 113 draws' set/restore calls ([gain_native.txt](../../verification/results/own-sun-pass/step2/gain_native.txt)) (measured) |
+| FL hook fixture, native | `test_fl_sun_occlusion` (builds and runs `verification/probe/fl_sun_occlusion.cpp` natively, CPU-state audit) | 464 checks, 0 failures; forward 42.6 ns over the native probe, bracket 242.9 ns over the native lens call with trivial listeners (measured) |
+| Host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` (worktree; baseline the same command on a `git archive` export of main `3302c92b`) | 325 modules, 3,366 tests, 7 failing, all failing on main too: `test_motion_hdr_scene`, `test_engine_plumes`, `test_engine_ribbons`, `test_volumetric_fog`, `test_linear_emission_hull_gain`, `test_engine_effects`, `test_hdr_dither_launch` (main: those 7 plus `test_proxy_identity`, which needs a git checkout and fails only in the export); `test_own_sun_hook` 11, `test_own_sun` 22, `test_fl_sun_occlusion` 5, `test_config_schema` 20 (new alias test), `test_launcher_defaults` 11, `test_logging_tiers` 18 green (measured) |
+
+Leftover: the `sun_visibility` entry of `tools/shaders/generate_rigid_motion_pixel.py` (lines 158-160) still points at
+the deleted program files; it stays so the 64 provenance records pinning the generator's digest remain valid, and is
+removed at the next generator re-record.
+
+Not run: the Wine form of the two fixtures (`run_own_sun_hook.py`, no Wine on this host; the native runs above
+replace it as evidence), any flight. The step-1 GPU fixture's pass and wrap cases went with the code; its nine
+lens-gain checks are now the gain fixture's eight (the `half_wrapped` case had no wrap left to compose with).
+
+Flight (AP, default launch): rows `own_sun_hook own_sun=1 bracket=1 log=0 patched=1 reason=ok` and `own_sun status=ready
+… probe=ok`; no `sun_occlusion_config`, `sun_visibility` or `sun_lens_draw` row; with `own_sun_log = 1` (the user's ini,
+alias `sun_occlusion_log`) one `config_key key=sun_occlusion_log problem=renamed value=own_sun_log` row and `sun_probe`
+rows without `records=`/`ready=`; no `own_sun_toggle` row and no `key=` field on `own_sun_frame` (the Ctrl+Shift+F9 hotkey
+was removed the same day by user decision, below). `--own-sun off` / `own_sun = 0`: the engine's unmodified sun, which
+pops at about half cover as in vanilla.
+
+### Step 2 — Ctrl+Shift+F9 removed (2026-11-02; separate commit on the same branch; not flown)
+
+User decision: the comparison hotkey is not needed; `own_sun` in `x3m.ini` is the only switch. Deleted: the chord and
+its three `GetAsyncKeyState` polls (`capture.cpp`), `own_sun::core::Toggle`, the `own_sun_toggle` row, the `key=` field of
+`own_sun_frame`, `hotkey=` on the `own_sun status` row, the host driver's `toggle` command; `frame_active` takes the
+setting and the armed stage only. Builds 0 warnings both editions, `generate.py --check` PASS, AP hook fixture native,
+host modules: see the commit's evidence in the report (measured).

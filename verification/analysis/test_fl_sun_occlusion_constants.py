@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FL_EXE = Path('/mnt/c/X3FL/X3FL.exe')
 AP_EXE = Path('/mnt/c/X3AP-orig/X3AP.exe')
 FRAGMENT = ROOT / 'src/engine/fl/sun_occlusion_fl_inc.h'
-AP_CORE = ROOT / 'src/proxy/sun_occlusion_core.h'
+AP_CORE = ROOT / 'src/proxy/own_sun_hook_core.h'
 LIVE_BASE = 0x4d0000  # FL run 1 (docs/verification/farnhams-legacy.md)
 
 spec = importlib.util.spec_from_file_location('fl_sun_occlusion_constants',

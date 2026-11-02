@@ -593,9 +593,6 @@ static void detach(unsigned long long) noexcept {}
 namespace collide_memo {
 static void device_reset() noexcept {}
 } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
-namespace sun_occlusion {
-static void device_reset() noexcept {}
-} // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
 namespace resource_reader {
 static void report() noexcept {}
 }

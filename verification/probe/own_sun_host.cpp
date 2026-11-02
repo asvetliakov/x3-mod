@@ -4,8 +4,7 @@
 //   radiance c0 c1 c2 k fog_t
 //   fog on extinction start cap k0 k1 k2
 //   answer active eligible
-//   toggle <0/1 string>            the key state per frame; prints on / edges per frame
-//   frame_active configured key_on stage_ready
+//   frame_active configured stage_ready
 //   quad x y half_x half_y
 //   constants width height x y radius_px rays core0 core1 core2 glow0 glow1 glow2
 //   pixel c0 c1 c2 k fog_t rays px py open_taps visible   the program's law (own_sun_core.h reference_pixel) at
@@ -74,20 +73,8 @@ int main(int argc, char** argv) {
         std::printf("answer=%d\n", core::answer(std::atoi(argv[2]) != 0, std::atoi(argv[3]) != 0));
         return 0;
     }
-    if (!std::strcmp(cmd, "toggle") && argc == 3) {
-        core::Toggle t;
-        std::printf("initial=%u on=", unsigned(t.on));
-        unsigned edges = 0;
-        for (const char* k = argv[2]; *k; ++k) {
-            edges += t.step(*k == '1');
-            std::printf("%u", unsigned(t.on));
-        }
-        std::printf(" edges=%u\n", edges);
-        return 0;
-    }
-    if (!std::strcmp(cmd, "frame_active") && argc == 5) {
-        std::printf("active=%u\n",
-                    unsigned(core::frame_active(std::atoi(argv[2]) != 0, std::atoi(argv[3]) != 0, std::atoi(argv[4]) != 0)));
+    if (!std::strcmp(cmd, "frame_active") && argc == 4) {
+        std::printf("active=%u\n", unsigned(core::frame_active(std::atoi(argv[2]) != 0, std::atoi(argv[3]) != 0)));
         return 0;
     }
     if (!std::strcmp(cmd, "quad") && argc == 6) {

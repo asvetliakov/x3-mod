@@ -2,17 +2,17 @@
 // renderer/own_sun_pass.h; docs/architecture/own-sun-pass.md). X3M_OWN_SUN=1: the mod draws its own sun disc and corona
 // as an act of the temporal resolve's stage bracket (TemporalPass FrameInputs::stage_callback: after the fog pass, RT1/RT2
 // and the depth surface unbound, RT0 the FP16 scene the resolve reads), beside the engine plumes, while the flare probe
-// answers "hidden" for the sun's eligible record (sun_occlusion.cpp) so the engine destroys its own lens chain.
+// answers "hidden" for the sun's eligible record (own_sun_hook.cpp) so the engine destroys its own lens chain.
 //
 // The frame's decision (own_sun::core::frame_active) is latched at Present for the next frame by capture.cpp from the
-// setting, the comparison hotkey and own_sun_ready(): this device's stage armed in its last resolve. Both the probe answer
-// and the stage read that one latch, so the hotkey flips them together. Arming, at each resolve: the route on, the
+// setting and own_sun_ready(): this device's stage armed in its last resolve. Both the probe answer and the stage read
+// that one latch, so they switch together. Arming, at each resolve: the route on, the
 // HDR/TAA FP16 path (as the plumes', jitter not required), the scene camera latched, the completed lane at the target's
 // size in the lane format, the attached pass (programs and declaration; FP16 post-pixel-shader blending; refused until
 // Reset when it fails), not within 64 frames of a failed stage frame (the third consecutive failure refuses until
 // Reset) and this frame's sun poll Ok (the shadow lane's, else one at the scene end). An unarmed device answers nothing
 // (the engine's chain), so a refused stage or a missing poll never leaves the sky without a sun. The stage draws only in
-// a frame whose main-view probe the own sun answered "hidden" (sun_occlusion::own_sun_hidden()): a sun the probe did not
+// a frame whose main-view probe the own sun answered "hidden" (own_sun_hook::own_sun_hidden()): a sun the probe did not
 // reach (another view, the flare video option off, the main view unresolved) stays the engine's or none, never two;
 // such armed, active frames count no_probe on the own_sun_frame row and the first one writes own_sun_no_probe.
 // One own_sun_state row per change of the armed state or its reason; one own_sun_device row per attach; --debug: one
@@ -223,7 +223,7 @@ HRESULT MotionOutput::run_own_sun() noexcept {
 // Present (capture.cpp), once per frame after own_sun_ready() was read for the latch: the next frame's latch, and under
 // --debug the own_sun_frame row every 10 s (this period's frames, the stage's last frame, the probe's answers since the
 // previous row).
-void MotionOutput::own_sun_frame(bool active, bool key_on) noexcept {
+void MotionOutput::own_sun_frame(bool active) noexcept {
     ++own_sun_period_.frames;
     own_sun_frame_active_ = active;
     // Readiness is earned again by the next frame's resolve (own_sun_arm): a frame whose resolve never reaches the
@@ -239,14 +239,14 @@ void MotionOutput::own_sun_frame(bool active, bool key_on) noexcept {
         if (due) own_sun_row_qpc_ = std::uint64_t(now.QuadPart);
     }
     if (!due) return;
-    const sun_occlusion::Counters c = sun_occlusion::counters();
+    const own_sun_hook::Counters c = own_sun_hook::counters();
     const auto& d = own_sun_disc_;
     const auto& r = own_sun_colour_;
     // The meter's reaction (note section 2): the EV the tonemap consumes and the highlight guard's limit of the last meter.
     const float ev = hdr_ ? hdr_->exposure().ev() : 0.f, ev_limit = hdr_ ? hdr_->exposure().ev_limit() : 0.f;
     if (log_tier::cached_debug)
-        log("own_sun_frame device=%llu frame=%llu active=%u key=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f core=%.3f,%.3f,%.3f glow=%.3f,%.3f,%.3f rays=%.2f result=%08lx calls=%u stage_us=%.1f",
-        id_, frame_, unsigned(active), unsigned(key_on), unsigned(own_sun_armed_), own_sun_reason_, own_sun_period_.frames,
+        log("own_sun_frame device=%llu frame=%llu active=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f core=%.3f,%.3f,%.3f glow=%.3f,%.3f,%.3f rays=%.2f result=%08lx calls=%u stage_us=%.1f",
+        id_, frame_, unsigned(active), unsigned(own_sun_armed_), own_sun_reason_, own_sun_period_.frames,
         own_sun_period_.active, own_sun_period_.drawn, own_sun_period_.no_probe,
         static_cast<unsigned long>(c.own_sun_hidden - own_sun_answered_seen_),
         static_cast<unsigned long>(c.original - own_sun_forwarded_seen_), double(ev), double(ev_limit),

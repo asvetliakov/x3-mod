@@ -1422,7 +1422,7 @@ public:
     }
     std::unique_ptr<Pass> sun_apply_;
     unsigned candidate_extent_releases_ = 0;
-    // Partial sun occlusion (855fc1bc) stays inert in this double; test_sun_occlusion qualifies the pass and the
+    // Partial sun occlusion (855fc1bc) stays inert in this double; test_own_sun_hook qualifies the pass and the
     // lens bracket. release_resources/before_reset/after_reset only drop the pass and clear the bracket's storage.
     std::unique_ptr<Pass> sun_occlusion_pass_;
     bool sun_occlusion_attach_failed_ = false;

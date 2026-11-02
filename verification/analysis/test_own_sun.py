@@ -288,15 +288,10 @@ class OwnSunHost(unittest.TestCase):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
         self.assertEqual(table, {(0, 0): 2, (0, 1): 2, (1, 0): 2, (1, 1): 1})  # hidden only for the eligible record
 
-    def test_hotkey_flips_per_frame(self):
-        t = self.run_driver('toggle', '00011110001101')
-        self.assertEqual(t['initial'], '1')
-        # A held key is one press; release and press again flips back; the state holds between presses.
-        self.assertEqual(t['on'], '11100000001110')
-        self.assertEqual(t['edges'], '3')
-        for configured, key, ready in ((a, b, c) for a in (0, 1) for b in (0, 1) for c in (0, 1)):
-            self.assertEqual(self.run_driver('frame_active', configured, key, ready)['active'],
-                             '1' if configured and key and ready else '0')
+    def test_frame_active_is_the_setting_and_the_armed_stage(self):
+        # Step 2: the Ctrl+Shift+F9 hotkey is gone; the setting and the armed stage alone decide the frame.
+        for configured, ready in ((a, b) for a in (0, 1) for b in (0, 1)):
+            self.assertEqual(self.run_driver('frame_active', configured, ready)['active'], '1' if configured and ready else '0')
 
     def test_quad_strip(self):
         q = self.run_driver('quad', .25, -.5, .1, .2)
@@ -333,7 +328,7 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(profile, [1, 7 / 9, 5 / 9, 4 / 9, 2 / 9, 0])
 
     def test_compiled_programs_match_the_constant_layout(self):
-        sun = load('own_sun_sun_occlusion_test', 'verification/analysis/test_sun_occlusion.py')
+        sun = sys.modules[__name__]
         words = lambda name: [int(v, 16) for v in re.findall(r'0x([0-9a-f]{8})u', (ROOT / 'src/renderer' / name).read_text())]
         ps, vs = words('own_sun_pixel_program_inc.h'), words('own_sun_vertex_program_inc.h')
         self.assertEqual((ps[0], ps[-1], vs[0], vs[-1]), (0xffff0300, 0xffff, 0xfffe0300, 0xffff))
@@ -361,12 +356,36 @@ def load(name, path):
     return module
 
 
+def constant_table(words):
+    """{name: (register set, register index)} of a D3DX CTAB comment (2 = float constants, 3 = samplers)."""
+    at = 1
+    while at < len(words):
+        token = words[at]
+        if token & 0xffff == 0xfffe:
+            length = (token >> 16) & 0x7fff
+            blob = b''.join(struct.pack('<I', w) for w in words[at + 1:at + 1 + length])
+            if blob[:4] == b'CTAB':
+                table = blob[4:]
+                _, _, _, constants, info, _, _ = struct.unpack('<7I', table[:28])
+                out = {}
+                for k in range(constants):
+                    name, register_set, index, count, _, _, _ = struct.unpack('<IHHHHII', table[info + 20 * k:info + 20 * k + 20])
+                    out[table[name:table.index(b'\0', name)].decode()] = (register_set, index)
+                return out
+            at += 1 + length
+        else:
+            at += 1 + ((token >> 24) & 15)
+    return {}
+
+
 class OwnSunWiring(unittest.TestCase):
     def test_ap_latch_and_fl_row(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        latch = capture.index('    if (own_sun_on) {\n        if (own_sun_key.step(own_sun_chord_down()))')
-        self.assertLess(latch, capture.index('    sun_occlusion::present(ctx.frame + 1); // installed bracket only'))
-        self.assertEqual(capture.count('own_sun_chord_down()'), 2)        # the definition and the one poll under own_sun_on
+        latch = capture.index('    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());')
+        self.assertLess(latch, capture.index('    own_sun_hook::present(ctx.frame + 1); // installed hook only'))
+        for gone in ('own_sun_chord_down', 'own_sun_key', 'own_sun_toggle', 'hotkey=', 'VK_F9'):  # no hotkey since step 2
+            self.assertNotIn(gone, capture)
+        self.assertNotIn('struct Toggle', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         self.assertIn('log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending"', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
         fl_row = capture.index('log("own_sun status=unavailable edition=fl')
@@ -376,9 +395,9 @@ class OwnSunWiring(unittest.TestCase):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
         wiring = wiring[:wiring.index('#endif')]
-        self.assertLess(wiring.index('if (sun_occlusion::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
+        self.assertLess(wiring.index('if (own_sun_hook::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
         self.assertIn('} else\n                    own_sun_no_probe();', wiring)
-        sun = (ROOT / 'src/proxy/sun_occlusion.cpp').read_text()
+        sun = (ROOT / 'src/proxy/own_sun_hook.cpp').read_text()
         self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', sun)
         branch = sun[sun.index('++counters_.own_sun_hidden;'):]
         self.assertTrue(branch.startswith('++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n        own_sun_hidden_frame_ = frame;\n        return core::Hidden;'))
@@ -389,7 +408,7 @@ class OwnSunWiring(unittest.TestCase):
         self.assertIn('if (f.disc.skip == own_sun::core::Skip::Camera || f.disc.skip == own_sun::core::Skip::Size) own_sun_ready_ = false;', stage)
         # F5: radiance 0 requests nothing, so the chain is never hidden for it.
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) sun_occlusion::request_own_sun();', capture)
+        self.assertIn('if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
 
     def test_stage_is_ap_only(self):
@@ -432,10 +451,14 @@ class OwnSunLaunchOption(unittest.TestCase):
                     return exit_error.code, None, error.getvalue()
         return 0, {k: v for k, v in json.loads(output.getvalue())['env'].items() if k in self.NAMES}, error.getvalue()
 
-    def test_default_off_and_explicit_values(self):
-        self.assertEqual(self.launch()[1], {'X3M_OWN_SUN': '0'})
-        self.assertEqual(self.launch(inherited={'X3M_OWN_SUN': '1', 'X3M_SUN_DISC_RADIUS': '0.2'})[1], {'X3M_OWN_SUN': '0'})
+    def test_default_on_and_explicit_values(self):
+        # Step 2 (2026-11-02, Run 225 accepted): on by default, sent explicitly; --own-sun off sends 0 (the DLL's own
+        # default is on, so only an explicit 0 turns it off).
+        self.assertEqual(self.launch()[1], {'X3M_OWN_SUN': '1'})
+        self.assertEqual(self.launch(inherited={'X3M_OWN_SUN': '0', 'X3M_SUN_DISC_RADIUS': '0.2'})[1], {'X3M_OWN_SUN': '1'})
+        self.assertEqual(self.launch('--own-sun', 'off', inherited={'X3M_OWN_SUN': '1'})[1], {'X3M_OWN_SUN': '0'})
         self.assertEqual(self.launch('--own-sun', 'on')[1], {'X3M_OWN_SUN': '1'})
+        self.assertEqual(self.launch('--sun-disc-radius', '0.03')[1], {'X3M_OWN_SUN': '1', 'X3M_SUN_DISC_RADIUS': '0.03'})
         self.assertEqual(self.launch('--own-sun', 'on', '--sun-disc-radius', '0.05', '--sun-disc-radiance', '6')[1],
                          {'X3M_OWN_SUN': '1', 'X3M_SUN_DISC_RADIUS': '0.05', 'X3M_SUN_DISC_RADIANCE': '6'})
         self.assertEqual(self.launch(vanilla=True)[1], {})
@@ -444,12 +467,12 @@ class OwnSunLaunchOption(unittest.TestCase):
 
     def test_refusals(self):
         for args, vanilla, needle in ((('--own-sun', 'on'), True, 'cannot be combined with --vanilla'),
-                                      (('--sun-disc-radius', '0.05'), False, 'requires --own-sun on'),
+                                      (('--own-sun', 'off', '--sun-disc-radius', '0.05'), False, 'requires --own-sun on'),
                                       (('--own-sun', 'off', '--sun-disc-radiance', '4'), False, 'requires --own-sun on'),
                                       (('--own-sun', 'on', '--sun-disc-radius', '0.3'), False, 'out of range'),
                                       (('--own-sun', 'on', '--sun-disc-radiance', 'nan'), False, 'out of range'),
                                       (('--own-sun', 'on', '--sun-rays', '1.5'), False, 'out of range'),
-                                      (('--sun-rays', '0.5'), False, 'requires --own-sun on'),
+                                      (('--own-sun', 'off', '--sun-rays', '0.5'), False, 'requires --own-sun on'),
                                       (('--own-sun', 'maybe'), False, 'invalid choice')):
             with self.subTest(args=args):
                 code, _, error = self.launch(*args, vanilla=vanilla)

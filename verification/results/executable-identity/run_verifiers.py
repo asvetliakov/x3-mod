@@ -31,7 +31,7 @@ EXE_OPTION = ['exe_identity', 'verify_chase_camera_site', 'verify_chase_aim_site
               'verify_point_light_site', 'verify_collide_memo_site', 'verify_cull_small_parts_site', 'verify_cull_census_sites',
               'verify_game_phase_sites', 'verify_frame_phase_sites', 'verify_media_cue_site',
               'verify_loop_phase_sites', 'verify_residual_phase_sites', 'verify_pass_phase_sites', 'verify_voice_dmo_site',
-              'verify_submit_phase_sites', 'verify_post_phase_sites', 'verify_sun_occlusion_sites',
+              'verify_submit_phase_sites', 'verify_post_phase_sites', 'verify_own_sun_hook_sites',
               'verify_terran_lod_site', 'verify_lod_occlusion_site', 'verify_fov_site', 'verify_sun_flare_site',
               'verify_engine_effects_sites']
 RESULTS = {'pause': ROOT / 'verification/results/pause-dialog-input/verify_pause_sites.py',

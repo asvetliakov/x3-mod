@@ -6,7 +6,7 @@
 // allocation, no engine call: verification/analysis/test_own_sun.py compiles exactly this header.
 //
 // Two CPU contracts:
-//   * answer(), Toggle, frame_active(): integer only. answer() runs inside the probe thunk at 0x00471630, in the middle
+//   * answer(), frame_active(): integer only. answer() runs inside the probe thunk at 0x00471630, in the middle
 //     of the engine's record loop, where the x87 stack and MXCSR belong to the engine.
 //   * project(), radiance(), fog_scalar(), quad(), pixel_constants(): float (SSE2 in the DLL), once per frame inside the
 //     temporal resolve's stage bracket under a full CPU-state boundary. No float is returned by value (an out-of-line
@@ -71,7 +71,7 @@ inline void accept_rays(float value, float* rays) noexcept {
     if (value == value && value >= rays_min && value <= rays_max) *rays = value;
 }
 
-// ---- The probe answer (integer only; sun_occlusion::core::Decision values) ----
+// ---- The probe answer (integer only; own_sun_hook::core::Decision values) ----
 // Hidden (1) for the sun's eligible record (core::eligible: the main view's re-probe of a record owned by a background
 // view) while the own sun is active in this frame; every other probe is the original's (2). Returning 1 is always safe:
 // the engine's own first gate returns it whenever the flare video option is off; downstream 0x00471660 destroys the
@@ -81,30 +81,19 @@ inline int answer(bool frame_active, bool eligible) noexcept {
     return frame_active && eligible ? answer_hidden : answer_original;
 }
 
-// ---- The comparison hotkey (Ctrl+Shift+F9; comparison-hotkeys.md, "Own sun") ----
-// One press edge flips the own sun for the whole frame: the probe answer and the stage together. Starts on; a held key
-// is one press.
-struct Toggle {
-    bool on = true, down = false;
-    // True on a press edge (the state flipped).
-    bool step(bool pressed) noexcept {
-        const bool edge = pressed && !down;
-        down = pressed;
-        if (edge) on = !on;
-        return edge;
-    }
-};
-// The frame's decision, latched at Present for the next frame (both the answer and the stage read it): the setting on,
-// the hotkey on, and a stage that could draw in the last resolve (attached, armed). Otherwise the engine's chain stays.
-inline bool frame_active(bool configured, bool key_on, bool stage_ready) noexcept {
-    return configured && key_on && stage_ready;
+// ---- The frame's decision ----
+// Latched at Present for the next frame (both the answer and the stage read it): the setting on and a stage that could
+// draw in the last resolve (attached, armed). Otherwise the engine's chain stays. (The Ctrl+Shift+F9 comparison hotkey
+// was removed in step 2 by user decision: own_sun in x3m.ini is the only switch.)
+inline bool frame_active(bool configured, bool stage_ready) noexcept {
+    return configured && stage_ready;
 }
 
 // ---- Projection of the polled sun with the frame camera ----
 // The camera of renderer::CameraState: view_j = sum_i world_i r[i*3+j] + t_j, clip x = view_x m00 + view_z m20,
 // clip y = view_y m11 + view_z m21, w = view_z. The quad uses the jittered m20 / m21 (the routed draws' projection, so
 // the disc is on the lane's raster: m20 + 2 jx / W, m21 - 2 jy / H); u / v are the unjittered position (the log, and the
-// sun_visibility lane_u / lane_v it compares with).
+// former sun_visibility row's lane_u / lane_v).
 struct Camera {
     float r[9]{}, t[3]{};
     float m00 = 0.f, m11 = 0.f, m20 = 0.f, m21 = 0.f;

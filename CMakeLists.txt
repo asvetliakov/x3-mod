@@ -86,7 +86,7 @@ set(X3M_AP_SOURCES
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
-  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/terran_station_lod.cpp src/proxy/lod_occlusion.cpp src/proxy/engine_effects_patch.cpp src/proxy/fov.cpp src/proxy/ui_scale.cpp src/proxy/text_density.cpp src/proxy/sun_flare_fix.cpp src/proxy/dust_leak_fix.cpp src/proxy/circle_fill.cpp src/proxy/ship_steering_install.cpp src/proxy/ship_steering_decide.cpp src/proxy/ship_steering_clamp.cpp src/proxy/ship_steering_warn.cpp src/proxy/ship_steering_rows.cpp src/proxy/ship_gate_ctl_glue.cpp src/proxy/ship_dock_glue.cpp src/proxy/point_light_admission.cpp src/proxy/cull_census.cpp src/proxy/scene_graph_census.cpp src/proxy/address_space.cpp src/proxy/cull_small_parts.cpp src/proxy/engine_far_jets.cpp src/proxy/lens_flare_cull.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp src/proxy/frame_timing.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/collide_box_cull.cpp src/proxy/pause_key_only.cpp src/proxy/collide_narrow_census.cpp src/proxy/collide_sat_sse2.cpp src/proxy/collide_memo.cpp src/proxy/music_keep.cpp src/proxy/seta_restore.cpp src/proxy/seta_manual_flight.cpp src/proxy/music_alert.cpp src/proxy/run_in_background.cpp src/proxy/collide_query_phases.cpp src/proxy/sun_occlusion.cpp
+  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/terran_station_lod.cpp src/proxy/lod_occlusion.cpp src/proxy/engine_effects_patch.cpp src/proxy/fov.cpp src/proxy/ui_scale.cpp src/proxy/text_density.cpp src/proxy/sun_flare_fix.cpp src/proxy/dust_leak_fix.cpp src/proxy/circle_fill.cpp src/proxy/ship_steering_install.cpp src/proxy/ship_steering_decide.cpp src/proxy/ship_steering_clamp.cpp src/proxy/ship_steering_warn.cpp src/proxy/ship_steering_rows.cpp src/proxy/ship_gate_ctl_glue.cpp src/proxy/ship_dock_glue.cpp src/proxy/point_light_admission.cpp src/proxy/cull_census.cpp src/proxy/scene_graph_census.cpp src/proxy/address_space.cpp src/proxy/cull_small_parts.cpp src/proxy/engine_far_jets.cpp src/proxy/lens_flare_cull.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp src/proxy/frame_timing.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/collide_box_cull.cpp src/proxy/pause_key_only.cpp src/proxy/collide_narrow_census.cpp src/proxy/collide_sat_sse2.cpp src/proxy/collide_memo.cpp src/proxy/music_keep.cpp src/proxy/seta_restore.cpp src/proxy/seta_manual_flight.cpp src/proxy/music_alert.cpp src/proxy/run_in_background.cpp src/proxy/collide_query_phases.cpp src/proxy/own_sun_hook.cpp
   src/proxy/window_mode.cpp src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
@@ -94,7 +94,7 @@ set(X3M_AP_SOURCES
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_fast.cpp
   src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp
   src/renderer/own_sun_pass.cpp
-  src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp src/renderer/lens_visibility_variant.cpp src/renderer/occlusion_cull_pass.cpp
+  src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/occlusion_cull_pass.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
@@ -112,8 +112,8 @@ set(X3M_SHARED_SOURCES
   src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp
   src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp src/renderer/gpu_sync_timing.cpp
   src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp
-  src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp
-  src/renderer/lens_visibility_variant.cpp src/renderer/occlusion_cull_pass.cpp src/renderer/motion_history.cpp
+  src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp
+  src/renderer/occlusion_cull_pass.cpp src/renderer/motion_history.cpp
   src/renderer/rigid_position.cpp src/renderer/shader_population.cpp src/renderer/material_motion.cpp
   src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp
   src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
@@ -128,7 +128,7 @@ set(X3M_SHARED_SOURCES
 # docs/architecture/farnhams-legacy-lifetime.md). Likewise scene_hook.cpp and compositor_owner.cpp: the fl target
 # links src/engine/fl/scene_hook_fl.cpp and src/engine/fl/compositor_owner_fl.cpp
 # (docs/architecture/farnhams-legacy-scene.md). sun_light_poll.cpp too: the fl target links
-# src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md). sun_occlusion.cpp too: the fl
+# src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md). The flare-probe hook module too: the fl
 # target links src/engine/fl/sun_occlusion_fl.cpp (docs/architecture/farnhams-legacy-sun-occlusion.md).
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
@@ -175,7 +175,7 @@ add_dependencies(d3d9 x3m_source_commit)
 # These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
-  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/sun_occlusion.cpp
+  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/own_sun_hook.cpp
   src/proxy/scene_graph_census.cpp src/proxy/address_space.cpp src/proxy/window_mode.cpp src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp
   src/proxy/ship_steering_install.cpp src/proxy/ship_steering_decide.cpp src/proxy/ship_steering_clamp.cpp src/proxy/ship_steering_warn.cpp
   src/proxy/ship_steering_rows.cpp src/proxy/ship_gate_ctl_glue.cpp src/proxy/ship_dock_glue.cpp src/proxy/seta_restore.cpp src/proxy/seta_manual_flight.cpp
