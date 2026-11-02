@@ -1,0 +1,519 @@
+== fl: TShips rows 426, JET list 249 unique tokens
+  capital          rows=79 scene_text=70 scene_binary=0 scene_missing=9 with_engine_parts=5 with_jet_parts=5 with_main_jet=5 with_emitters=3 engine_parts=28 jet_parts=28 emitter_parts=18
+  0                rows=5 scene_text=0 scene_binary=0 scene_missing=5 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  2061             rows=7 scene_text=5 scene_binary=0 scene_missing=2 with_engine_parts=4 with_jet_parts=4 with_main_jet=4 with_emitters=4 engine_parts=4 jet_parts=4 emitter_parts=4
+  2153             rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_BEACON       rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_FIGHTDRONE   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_FIGHTDRONE2  rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_FIGHTDRONEUSC rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=0 engine_parts=1 jet_parts=1 emitter_parts=0
+  OBJ_FREIGHTDRONE rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_JUMPBEACON   rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE         rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE2        rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE3        rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINETR       rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_ORBITALLASER rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_ORBITALLASER2 rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_RECONDRONE   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_RELAYBEACON  rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SATELLITE    rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SATELLITE2   rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_ASTRONAUT rows=3 scene_text=3 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_DRONECARRIER rows=7 scene_text=7 scene_binary=0 scene_missing=0 with_engine_parts=4 with_jet_parts=4 with_main_jet=4 with_emitters=4 engine_parts=82 jet_parts=82 emitter_parts=12
+  OBJ_SHIP_GONER   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=0 engine_parts=1 jet_parts=1 emitter_parts=0
+  OBJ_SHIP_KHAAKCLUSTER rows=4 scene_text=0 scene_binary=0 scene_missing=4 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_M3      rows=67 scene_text=66 scene_binary=0 scene_missing=1 with_engine_parts=65 with_jet_parts=65 with_main_jet=65 with_emitters=62 engine_parts=1076 jet_parts=1076 emitter_parts=88
+  OBJ_SHIP_M4      rows=48 scene_text=47 scene_binary=0 scene_missing=1 with_engine_parts=47 with_jet_parts=47 with_main_jet=47 with_emitters=46 engine_parts=805 jet_parts=805 emitter_parts=56
+  OBJ_SHIP_M5      rows=42 scene_text=40 scene_binary=0 scene_missing=2 with_engine_parts=40 with_jet_parts=40 with_main_jet=40 with_emitters=39 engine_parts=669 jet_parts=669 emitter_parts=57
+  OBJ_SHIP_M6      rows=34 scene_text=33 scene_binary=0 scene_missing=1 with_engine_parts=13 with_jet_parts=12 with_main_jet=12 with_emitters=14 engine_parts=38 jet_parts=35 emitter_parts=40
+  OBJ_SHIP_M8      rows=7 scene_text=7 scene_binary=0 scene_missing=0 with_engine_parts=7 with_jet_parts=7 with_main_jet=7 with_emitters=3 engine_parts=14 jet_parts=14 emitter_parts=7
+  OBJ_SHIP_MISSILE_FRIGATE rows=8 scene_text=8 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_SPECIALDRONE rows=7 scene_text=7 scene_binary=0 scene_missing=0 with_engine_parts=7 with_jet_parts=7 with_main_jet=7 with_emitters=7 engine_parts=24 jet_parts=24 emitter_parts=8
+  OBJ_SHIP_TM      rows=11 scene_text=11 scene_binary=0 scene_missing=0 with_engine_parts=11 with_jet_parts=11 with_main_jet=11 with_emitters=1 engine_parts=19 jet_parts=19 emitter_parts=2
+  OBJ_SHIP_TP      rows=19 scene_text=19 scene_binary=0 scene_missing=0 with_engine_parts=19 with_jet_parts=19 with_main_jet=19 with_emitters=5 engine_parts=52 jet_parts=52 emitter_parts=11
+  OBJ_SHIP_TS      rows=54 scene_text=54 scene_binary=0 scene_missing=0 with_engine_parts=49 with_jet_parts=49 with_main_jet=49 with_emitters=7 engine_parts=98 jet_parts=98 emitter_parts=23
+  OBJ_SHIP_UFO     rows=5 scene_text=0 scene_binary=0 scene_missing=5 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SPACEFLY     rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  engine bodies referenced by capital scenes (name, on JET list: parts):
+    fx_engine_xtc_magenta_huge jet=1 parts=8
+    fx_engine_xtc_darkblue_big3 jet=1 parts=7
+    fx_engine_xtc_magenta_big3 jet=1 parts=6
+    00127 jet=1 parts=4
+    fx_engine_xtc_white_huge jet=1 parts=3
+  off-list engine bodies (all classes): {'effects\\engines\\xtc_split_m6turbo_fx_mid': 1, 'effects\\engines\\xtc_split_m6turbo_fx_out': 1, 'effects\\engines\\fx_engine_xtc_red_nor3_disable': 1}
+  capital rows: sid scene format source engine/jet/main/emitters eff trail
+    SS_SH_A_TL ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M1 ships\argon\argon_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M2 ships\argon\argon_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M7 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_OWP_1 ships\owp\owp_small_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_A_OWP_2 ships\owp\owp_medium_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_A_OWP_3 ships\owp\owp_large_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_S_TL ships\split\split_TL_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M1 ships\split\split_M1_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M2 ships\split\split_M2_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M7 ships\m7\split_m7_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_P_TL ships\paranid\paranid_TL_scene text 02.cat 0 0 0 0 9 0
+    SS_SH_P_M1 ships\paranid\Paranid_M1_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_P_M2 ships\paranid\Paranid_M2_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_P_M7 ships\M7\Paranid_M7_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_B_TL ships\boron\boron_TL_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M1 ships\boron\boron_M1_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M2 ships\boron\boron_M2_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M7 ships\m7\boron_m7_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_T_TL ships\teladi\teladi_TL_scene text 02.cat 0 0 0 0 10 0
+    SS_SH_T_M1 ships\teladi\teladi_M1_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_T_M2 ships\teladi\teladi_M2_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_T_M7 ships\m7\teladi_m7_scene text 07.cat 0 0 0 0 13 0
+    SS_SH_X_M1 ships\xenon\Xenon_Carrier_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_X_M2 ships\xenon\xenon_M1_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_X_M7 ships\xenon\xenon_m7_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_PI_M7_P ships\Pirate\Pirate_M7_scene text 11.cat 0 0 0 0 11 1
+    SS_SH_TR_M1 ships\terran\terran_M2_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M2 ships\m2\terran_m2tyr_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M7 ships\m7\terran_m7_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M1H ships\terran\atf_m1_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M0 ships\terran\atf_m0_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_USC_M1 ships\usc\terran_m1_scene text 11.cat 0 0 0 0 3 0
+    SS_SH_USC_M2 ships\usc\terran_m2_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_USC_M7 ships\usc\terran_m7_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TERRAFORMER1 ships\terraformer\terraformer_cpu_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_K_HIVEGUARD ships\khaak\khaak_hive_base_scene text 02.cat 0 0 0 0 5 1
+    SS_SH_GO_TL ships\TL\Goner_TL_scene text 02.cat 0 0 0 0 11 1
+    SS_SH_GO_MSY ships\MX\Goner_MSY_scene text 02.cat 2 2 2 0 5 0
+    SS_SH_OTAS_M2 ships\M2\Otas_M2R_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_OTAS_M7 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 1
+    SS_SH_TL_P ships\others\pirate_TL_var2_scene text 02.cat 0 0 0 0 10 1
+    SS_SH_TL_P2 ships\others\pirate_TL_var2_scene text 02.cat 0 0 0 0 10 1
+    SS_SH_A_MDEMO ships\argon\argonMdemo_scene text 02.cat 0 0 0 0 11 0
+    SS_SH_A_M7_SPECIAL ships\m7\argon_m7s_scene text 12.cat 0 0 0 0 11 1
+    SS_SH_S_M7_SPECIAL ships\m7\split_m7s_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_P_M7_SPECIAL ships\m7\paranid_m7s_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_T_M7_SPECIAL ships\m7\teladi_m7_scene text 07.cat 0 0 0 0 10 0
+    SS_SH_PI_TL_P ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_PI_M1_P ships\pirate\Pirate_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_PI_M2_P ships\pirate\Pirate_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M0 ships\argon\argon_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_TL ships\Yaki\Yaki_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M1 ships\yaki\yaki_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M2 ships\yaki\yaki_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M7_1 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 1
+    SS_SH_TROOPTRAINER ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_1 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_2 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_3 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_4 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_REPAIRSHIP ships\MX\Goner_MSY_scene text 02.cat 2 2 2 0 5 0
+    SS_SH_USC_TL p39\ships\terran_TL_atmolifter_scene text addon2/02.cat 0 0 0 0 11 0
+    SS_SH_USC_TL_MINING ships\terran\terran_TL_mining_scene text 02.cat 0 0 0 0 11 0
+    SS_SH_K_WP_1 ships\khaak\khaak_hive_base_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_TR_TURRET ships\terran\terran_turret_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_B_M2P ships\X3AP\boron\XTC_boron_m2_plus_scene text addon2/01.cat 7 7 7 7 221 0
+    SS_SH_TR_M2P ships\X3AP\usc\XTC_usc_m2plus_scene text addon2/01.cat 3 3 3 3 236 0
+    SS_SH_X_M2P ships\X3AP\xenon\XTC_xenon_M2_plus_scene text addon2/01.cat 14 14 14 8 227 0
+    SS_SH_S_M2P ships\split\KG_Split_M2+_scene text addon2/01.cat 0 0 0 0 12 0
+  big TS rows (TS/TP with >= 4 jet parts or no jet part):
+    SS_SH_OTAS_TS_1 ships\TS\Otas_TS_scene text 02.cat 6 6 6 0 5 1
+    SS_SH_USC_TS_1 patch20\terran_ts_miner_scene text 07.cat 0 0 0 0 5 1
+    SS_SH_T_TSP ships\X3AP\teladi\XTC_teladi_ts_plus_scene text addon2/01.cat 6 6 6 4 210 0
+    SS_SH_TR_TSP ships\X3AP\usc\XTC_terran_ts_plus_scene text addon2/01.cat 5 5 5 5 234 0
+    SS_SH_A_TSP ships\argon\XTC_argon_ts_plus_scene text addon2/01.cat 8 8 8 2 216 0
+    SS_SH_T_TSP_MINER ships\X3AP\teladi\XTC_teladi_ts_plus_scene text addon2/01.cat 6 6 6 4 210 0
+    SS_SH_A_TS_HT p39\ships\argon_consus_TS_scene text addon2/01.cat 0 0 0 0 5 1
+    SS_SH_P_TS_HT p39\ships\paranid_athena_TS_scene text addon2/01.cat 0 0 0 0 5 1
+    SS_SH_S_TS_HT p39\ships\split_mule_TS_scene text addon2/01.cat 0 0 0 0 5 1
+    SS_SH_T_TS_HT p39\ships\teladi_moa_TS_scene text addon2/01.cat 0 0 0 0 5 1
+== ap: TShips rows 404, JET list 247 unique tokens
+  capital          rows=95 scene_text=86 scene_binary=0 scene_missing=9 with_engine_parts=9 with_jet_parts=9 with_main_jet=9 with_emitters=7 engine_parts=110 jet_parts=110 emitter_parts=30
+  0                rows=6 scene_text=0 scene_binary=0 scene_missing=6 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_BEACON       rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_FIGHTDRONE   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_FIGHTDRONE2  rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_FIGHTDRONEUSC rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=0 engine_parts=1 jet_parts=1 emitter_parts=0
+  OBJ_FREIGHTDRONE rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_JUMPBEACON   rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE         rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE2        rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE3        rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINETR       rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_ORBITALLASER rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_ORBITALLASER2 rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_RECONDRONE   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=1 engine_parts=0 jet_parts=0 emitter_parts=1
+  OBJ_SATELLITE    rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SATELLITE2   rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_ASTRONAUT rows=3 scene_text=3 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_GONER   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=0 engine_parts=1 jet_parts=1 emitter_parts=0
+  OBJ_SHIP_KHAAKCLUSTER rows=4 scene_text=0 scene_binary=0 scene_missing=4 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_M3      rows=64 scene_text=63 scene_binary=0 scene_missing=1 with_engine_parts=62 with_jet_parts=62 with_main_jet=62 with_emitters=59 engine_parts=1025 jet_parts=1025 emitter_parts=84
+  OBJ_SHIP_M4      rows=53 scene_text=52 scene_binary=0 scene_missing=1 with_engine_parts=52 with_jet_parts=52 with_main_jet=52 with_emitters=51 engine_parts=812 jet_parts=812 emitter_parts=62
+  OBJ_SHIP_M5      rows=46 scene_text=43 scene_binary=0 scene_missing=3 with_engine_parts=42 with_jet_parts=42 with_main_jet=42 with_emitters=41 engine_parts=639 jet_parts=639 emitter_parts=57
+  OBJ_SHIP_M6      rows=29 scene_text=28 scene_binary=0 scene_missing=1 with_engine_parts=11 with_jet_parts=10 with_main_jet=10 with_emitters=12 engine_parts=29 jet_parts=26 emitter_parts=34
+  OBJ_SHIP_M8      rows=7 scene_text=7 scene_binary=0 scene_missing=0 with_engine_parts=7 with_jet_parts=7 with_main_jet=7 with_emitters=3 engine_parts=14 jet_parts=14 emitter_parts=7
+  OBJ_SHIP_TM      rows=10 scene_text=10 scene_binary=0 scene_missing=0 with_engine_parts=10 with_jet_parts=10 with_main_jet=10 with_emitters=1 engine_parts=18 jet_parts=18 emitter_parts=2
+  OBJ_SHIP_TP      rows=18 scene_text=18 scene_binary=0 scene_missing=0 with_engine_parts=18 with_jet_parts=18 with_main_jet=18 with_emitters=4 engine_parts=45 jet_parts=45 emitter_parts=9
+  OBJ_SHIP_TS      rows=46 scene_text=46 scene_binary=0 scene_missing=0 with_engine_parts=45 with_jet_parts=45 with_main_jet=45 with_emitters=6 engine_parts=86 jet_parts=86 emitter_parts=19
+  OBJ_SHIP_TS_PIRATE rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=0 engine_parts=1 jet_parts=1 emitter_parts=0
+  OBJ_SHIP_UFO     rows=5 scene_text=0 scene_binary=0 scene_missing=5 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SPACEFLY     rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  engine bodies referenced by capital scenes (name, on JET list: parts):
+    fx_engine_xtc_darkblue_nor2 jet=1 parts=32
+    fx_engine_xtc_darkblue_nor3 jet=1 parts=32
+    fx_engine_xtc_magenta_huge jet=1 parts=8
+    fx_engine_xtc_darkblue_big3 jet=1 parts=7
+    fx_engine_xtc_magenta_big3 jet=1 parts=6
+    fx_engine_xtc_white_big2 jet=1 parts=5
+    fx_engine_xtc_green_big3 jet=1 parts=5
+    00127 jet=1 parts=4
+    fx_engine_xtc_yellow_big jet=1 parts=4
+    fx_engine_xtc_white_huge jet=1 parts=3
+    fx_engine_xtc_yellow_big2 jet=1 parts=2
+    fx_engine_xtc_darkblue_big jet=1 parts=2
+  off-list engine bodies (all classes): {'effects\\engines\\xtc_split_m6turbo_fx_mid': 1, 'effects\\engines\\xtc_split_m6turbo_fx_out': 1, 'effects\\engines\\fx_engine_xtc_red_nor3_disable': 1}
+  capital rows: sid scene format source engine/jet/main/emitters eff trail
+    SS_SH_A_TL ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M1 ships\argon\argon_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M2 ships\argon\argon_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M7 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_A_M7M ships\M7\Argon_M7M_scene text 11.cat 0 0 0 0 13 0
+    SS_SH_A_OWP_1 ships\owp\owp_small_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_A_OWP_2 ships\owp\owp_medium_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_A_OWP_3 ships\owp\owp_large_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_S_TL ships\split\split_TL_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M1 ships\split\split_M1_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M2 ships\split\split_M2_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M7 ships\m7\split_m7_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_S_M7M ships\M7\Split_M7M_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_P_TL ships\paranid\paranid_TL_scene text 02.cat 0 0 0 0 9 0
+    SS_SH_P_M1 ships\paranid\Paranid_M1_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_P_M2 ships\paranid\Paranid_M2_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_P_M7 ships\M7\Paranid_M7_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_P_M7M ships\M7\Paranid_M7M_scene text 11.cat 0 0 0 0 13 0
+    SS_SH_B_TL ships\boron\boron_TL_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M1 ships\boron\boron_M1_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M2 ships\boron\boron_M2_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M7 ships\m7\boron_m7_scene text 06.cat 0 0 0 0 13 0
+    SS_SH_B_M7M ships\M7\Boron_M7M_scene text 11.cat 0 0 0 0 13 0
+    SS_SH_T_TL ships\teladi\teladi_TL_scene text 02.cat 0 0 0 0 10 0
+    SS_SH_T_M1 ships\teladi\teladi_M1_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_T_M2 ships\teladi\teladi_M2_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_T_M7 ships\m7\teladi_m7_scene text 07.cat 0 0 0 0 13 0
+    SS_SH_T_M7M ships\M7\Teladi_M7M_scene text 02.cat 0 0 0 0 13 0
+    SS_SH_X_M1 ships\xenon\Xenon_Carrier_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_X_M2 ships\xenon\xenon_M1_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_X_M7 ships\xenon\xenon_m7_scene text 06.cat 0 0 0 0 10 0
+    SS_SH_PI_M7_P ships\Pirate\Pirate_M7_scene text 11.cat 0 0 0 0 11 1
+    SS_SH_TR_M1 ships\terran\terran_M2_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M2 ships\m2\terran_m2tyr_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M7 ships\m7\terran_m7_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M7M ships\terran\atf_m7m_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_TR_M1H ships\terran\atf_m1_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TR_M0 ships\terran\atf_m0_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_USC_M1 ships\usc\terran_m1_scene text 11.cat 0 0 0 0 3 0
+    SS_SH_USC_M2 ships\usc\terran_m2_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_USC_M7 ships\usc\terran_m7_scene text 06.cat 0 0 0 0 3 0
+    SS_SH_TERRAFORMER1 ships\terraformer\terraformer_cpu_scene text 06.cat 0 0 0 0 14 0
+    SS_SH_K_HIVEGUARD ships\khaak\khaak_hive_base_scene text 02.cat 0 0 0 0 5 1
+    SS_SH_GO_TL ships\TL\Goner_TL_scene text 02.cat 0 0 0 0 11 1
+    SS_SH_GO_MSY ships\MX\Goner_MSY_scene text 02.cat 2 2 2 0 5 0
+    SS_SH_OTAS_M2 ships\M2\Otas_M2R_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_OTAS_M7 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 1
+    SS_SH_OTAS_M7M ships\M7\Otas_M7M_scene text 02.cat 0 0 0 0 13 0
+    SS_SH_OTAS_HCF ships\M7\Otas_M7M_scene text 02.cat 0 0 0 0 13 0
+    SS_SH_TL_P ships\others\pirate_TL_var2_scene text 02.cat 0 0 0 0 10 1
+    SS_SH_TL_P2 ships\others\pirate_TL_var2_scene text 02.cat 0 0 0 0 10 1
+    SS_SH_A_MDEMO ships\argon\argonMdemo_scene text 02.cat 0 0 0 0 11 0
+    SS_SH_A_M7_SPECIAL ships\m7\argon_m7s_scene text 12.cat 0 0 0 0 11 1
+    SS_SH_S_M7_SPECIAL ships\m7\split_m7s_scene text 06.cat 0 0 0 0 12 0
+    SS_SH_P_M7_SPECIAL ships\m7\paranid_m7s_scene text 06.cat 0 0 0 0 9 0
+    SS_SH_T_M7_SPECIAL ships\m7\teladi_m7_scene text 07.cat 0 0 0 0 10 0
+    SS_SH_PI_TL_P ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_PI_M1_P ships\pirate\Pirate_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_PI_M2_P ships\pirate\Pirate_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M0 ships\argon\argon_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_TL ships\Yaki\Yaki_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M1 ships\yaki\yaki_M1_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M2 ships\yaki\yaki_M2_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_Y_M7_1 ships\m7\argon_m7_scene text 06.cat 0 0 0 0 11 1
+    SS_SH_Y_M7_2 ships\M7\Paranid_M7_scene text 06.cat 0 0 0 0 11 1
+    SS_SH_Y_M7M ships\M7\Argon_M7M_scene text 11.cat 0 0 0 0 13 0
+    SS_SH_TROOPTRAINER ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_1 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_2 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_3 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_BIGCIV_4 ships\argon\argon_TL_scene text 06.cat 0 0 0 0 11 0
+    SS_SH_REPAIRSHIP ships\MX\Goner_MSY_scene text 02.cat 2 2 2 0 5 0
+    SS_SH_USC_TL ships\terran\terran_TL_atmolifter_scene text 02.cat 0 0 0 0 11 0
+    SS_SH_USC_TL_MINING ships\terran\terran_TL_mining_scene text 02.cat 0 0 0 0 11 0
+    SS_SH_K_WP_1 ships\khaak\khaak_hive_base_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_TR_TURRET ships\terran\terran_turret_scene text 02.cat 0 0 0 0 3 0
+    SS_SH_B_M2P ships\X3AP\boron\XTC_boron_m2_plus_scene text addon/01.cat 7 7 7 7 221 0
+    SS_SH_TR_M2P ships\X3AP\usc\XTC_usc_m2plus_scene text addon/01.cat 3 3 3 3 236 0
+    SS_SH_X_M2P ships\X3AP\xenon\XTC_xenon_M2_plus_scene text addon/02.cat 14 14 14 8 227 0
+    SS_SH_P_DC ships\X3AP\paranid\XTC_paranid_m7s_scene text addon/02.cat 6 6 6 4 235 0
+    SS_SH_TR_DC ships\X3AP\usc\XTC_terran_DC_scene text addon/01.cat 5 5 5 5 235 0
+    SS_SH_A_DC ships\m7\argon_m7s_scene text 12.cat 0 0 0 0 217 0
+    SS_SH_B_DC ships\X3AP\boron\XTC_boron_m7drone_scene text addon/01.cat 66 66 66 2 221 0
+    SS_SH_S_DC ships\m7\split_m7s_scene text 06.cat 0 0 0 0 229 0
+    SS_SH_T_DC ships\X3AP\teladi\XTC_teladi_dc_scene text addon/02.cat 5 5 5 1 211 0
+    SS_SH_S_M2P ships\split\KG_Split_M2+_scene text addon/03.cat 0 0 0 0 12 0
+  big TS rows (TS/TP with >= 4 jet parts or no jet part):
+    SS_SH_OTAS_TS_1 ships\TS\Otas_TS_scene text 02.cat 6 6 6 0 5 1
+    SS_SH_USC_TS_1 patch20\terran_ts_miner_scene text 07.cat 0 0 0 0 5 1
+    SS_SH_T_TSP ships\X3AP\teladi\XTC_teladi_ts_plus_scene text addon/01.cat 6 6 6 4 210 0
+    SS_SH_TR_TSP ships\X3AP\usc\XTC_terran_ts_plus_scene text addon/01.cat 5 5 5 5 234 0
+    SS_SH_A_TSP ships\argon\XTC_argon_ts_plus_scene text addon/03.cat 8 8 8 2 216 0
+== ap-installed: TShips rows 521, JET list 269 unique tokens
+  capital          rows=131 scene_text=131 scene_binary=0 scene_missing=0 with_engine_parts=126 with_jet_parts=126 with_main_jet=126 with_emitters=126 engine_parts=1137 jet_parts=1137 emitter_parts=634
+  OBJ_BEACON       rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_FIGHTDRONE   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=1 engine_parts=1 jet_parts=1 emitter_parts=1
+  OBJ_FIGHTDRONE2  rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=1 engine_parts=1 jet_parts=1 emitter_parts=1
+  OBJ_FIGHTDRONEUSC rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=1 with_jet_parts=1 with_main_jet=1 with_emitters=1 engine_parts=1 jet_parts=1 emitter_parts=1
+  OBJ_FREIGHTDRONE rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_JUMPBEACON   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE         rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE2        rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINE3        rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_MINETR       rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_ORBITALLASER rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SATELLITE    rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SATELLITE2   rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_ASTRONAUT rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_KHAAKCLUSTER rows=4 scene_text=0 scene_binary=0 scene_missing=4 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_M0      rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SHIP_M3      rows=84 scene_text=83 scene_binary=0 scene_missing=1 with_engine_parts=83 with_jet_parts=83 with_main_jet=83 with_emitters=83 engine_parts=1423 jet_parts=1423 emitter_parts=154
+  OBJ_SHIP_M4      rows=57 scene_text=56 scene_binary=0 scene_missing=1 with_engine_parts=56 with_jet_parts=56 with_main_jet=56 with_emitters=56 engine_parts=978 jet_parts=978 emitter_parts=89
+  OBJ_SHIP_M5      rows=44 scene_text=43 scene_binary=0 scene_missing=1 with_engine_parts=43 with_jet_parts=43 with_main_jet=43 with_emitters=43 engine_parts=801 jet_parts=801 emitter_parts=65
+  OBJ_SHIP_M6      rows=62 scene_text=62 scene_binary=0 scene_missing=0 with_engine_parts=62 with_jet_parts=62 with_main_jet=62 with_emitters=62 engine_parts=509 jet_parts=507 emitter_parts=247
+  OBJ_SHIP_M8      rows=13 scene_text=13 scene_binary=0 scene_missing=0 with_engine_parts=13 with_jet_parts=13 with_main_jet=13 with_emitters=13 engine_parts=74 jet_parts=74 emitter_parts=46
+  OBJ_SHIP_TM      rows=18 scene_text=18 scene_binary=0 scene_missing=0 with_engine_parts=18 with_jet_parts=18 with_main_jet=18 with_emitters=18 engine_parts=116 jet_parts=116 emitter_parts=38
+  OBJ_SHIP_TP      rows=22 scene_text=22 scene_binary=0 scene_missing=0 with_engine_parts=22 with_jet_parts=22 with_main_jet=22 with_emitters=22 engine_parts=116 jet_parts=116 emitter_parts=53
+  OBJ_SHIP_TS      rows=69 scene_text=69 scene_binary=0 scene_missing=0 with_engine_parts=69 with_jet_parts=68 with_main_jet=68 with_emitters=68 engine_parts=328 jet_parts=324 emitter_parts=175
+  OBJ_SHIP_UFO     rows=1 scene_text=0 scene_binary=0 scene_missing=1 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  OBJ_SPACEFLY     rows=1 scene_text=1 scene_binary=0 scene_missing=0 with_engine_parts=0 with_jet_parts=0 with_main_jet=0 with_emitters=0 engine_parts=0 jet_parts=0 emitter_parts=0
+  engine bodies referenced by capital scenes (name, on JET list: parts):
+    fx_engine_xtc_orange_big3 jet=1 parts=139
+    fx_engine_xtc_magenta_big2 jet=1 parts=116
+    fx_engine_xtc_white_big3 jet=1 parts=70
+    fx_engine_xtc_magenta_big3 jet=1 parts=54
+    fx_engine_xtc_white_big2 jet=1 parts=49
+    fx_engine_xtc_orange_big4 jet=1 parts=47
+    fx_engine_xtc_green_big3 jet=1 parts=44
+    fx_engine_xtc_yellow_big2 jet=1 parts=40
+    fx_engine_xtc_darkblue_big3 jet=1 parts=38
+    fx_engine_xtc_yellow_nor3 jet=1 parts=36
+    fx_engine_xtc_yellow_big3 jet=1 parts=34
+    fx_engine_xtc_orange_huge jet=1 parts=34
+    fx_engine_xtc_lightblue_nor2 jet=1 parts=32
+    fx_engine_xtc_lightblue_nor3 jet=1 parts=32
+    fx_engine_xtc_peach_big2 jet=1 parts=30
+    fx_engine_xtc_green_big2 jet=1 parts=27
+    fx_engine_xtc_lightblue_big3 jet=1 parts=24
+    fx_engine_xtc_white_big jet=1 parts=24
+    fx_engine_xtc_peach_big3 jet=1 parts=23
+    fx_engine_xtc_darkblue_big2 jet=1 parts=20
+    fx_engine_xtc_darkblue_big jet=1 parts=19
+    fx_engine_xtc_yellow_big jet=1 parts=18
+    fx_engine_xtc_orange_big2 jet=1 parts=17
+    fx_engine_xtc_red_big2 jet=1 parts=16
+    fx_engine_xtc_red_big3 jet=1 parts=16
+    fx_engine_xtc_purple_big3 jet=1 parts=16
+    fx_engine_xtc_white_nor3 jet=1 parts=16
+    fx_engine_xtc_yellow_nor2 jet=1 parts=12
+    fx_engine_xtc_yellow_huge jet=1 parts=12
+    fx_engine_xtc_peach_nor3 jet=1 parts=9
+    fx_engine_xtc_darkblue_big4 jet=1 parts=8
+    fx_engine_xtc_red_nor3 jet=1 parts=8
+    fx_engine_xtc_lime_big3 jet=1 parts=6
+    fx_engine_xtc_magenta_huge jet=1 parts=6
+    fx_engine_xtc_lightblue_huge jet=1 parts=5
+    fx_engine_xtc_lightblue_big jet=1 parts=5
+    fx_engine_xtc_orange_huge2 jet=1 parts=5
+    fx_engine_xtc_peach_big jet=1 parts=5
+    fx_engine_xtc_lightblue_big2 jet=1 parts=4
+    fx_engine_xtc_green_big jet=1 parts=4
+    fx_engine_xtc_white_huge jet=1 parts=4
+    fx_engine_xtc_white_big4 jet=1 parts=3
+    fx_engine_xtc_darkblue_huge2 jet=1 parts=2
+    fx_engine_xtc_darkblue_huge3 jet=1 parts=2
+    fx_engine_xtc_red_big jet=1 parts=2
+    fx_engine_xtc_red_huge jet=1 parts=2
+    fx_engine_xtc_lime_huge3 jet=1 parts=2
+  off-list engine bodies (all classes): {'effects\\engines\\fx_engine_paranid_m6_axeface': 2, 'effects\\engines\\fx_engine_xtraotas_ts1': 2, 'effects\\engines\\fx_engine_xtraotas_ts3': 2}
+  capital rows: sid scene format source engine/jet/main/emitters eff trail
+    SS_SH_A_TL ships\argon\argon_TL_Mammoth_scene text addon/06.cat 2 2 2 2 711 0
+    SS_SH_A_M1 ships\argon\argon_M1_Colossus_scene text addon/06.cat 2 2 2 2 711 0
+    SS_SH_A_M2 ships\argon\argon_M2_titan_scene text addon/06.cat 2 2 2 2 711 0
+    SS_SH_A_M7 ships\argon\argon_m7_Cerberus_scene text addon/06.cat 2 2 2 2 711 0
+    SS_SH_A_M7M ships\argon\argon_m7_minotaur_scene text addon/06.cat 6 6 6 5 711 0
+    SS_SH_A_M2P_EXCALIBUR ships\argon\argon_m2p_excalibur_scene text addon/06.cat 2 2 2 2 711 0
+    SS_SH_T_M2_PTERANODON ships\teladi\teladi_M2_Pteranodon_scene text addon/06.cat 10 10 10 10 702 0
+    SS_SH_A_OWP_1 ships\others\owp_small_scene text addon/06.cat 0 0 0 0 390 0
+    SS_SH_A_OWP_2 ships\others\owp_medium_scene text addon/06.cat 0 0 0 0 390 0
+    SS_SH_A_OWP_3 ships\others\owp_large_scene text addon/06.cat 0 0 0 0 390 0
+    SS_SH_S_TL ships\split\split_tl_elephant_scene text addon/06.cat 3 3 3 3 720 0
+    SS_SH_S_M1 ships\split\split_m1_raptor_scene text addon/06.cat 3 3 3 3 720 0
+    SS_SH_S_M2 ships\split\split_m2_python_scene text addon/06.cat 3 3 3 3 720 0
+    SS_SH_S_M7 ships\split\split_m7_tiger_scene text addon/06.cat 10 10 10 4 720 0
+    SS_SH_S_M7M ships\split\split_m7_cobra_scene text addon/06.cat 2 2 2 2 720 0
+    SS_SH_P_TL ships\paranid\paranid_tl_hercules_scene text addon/06.cat 26 26 26 4 726 0
+    SS_SH_P_M1 ships\paranid\paranid_m1_zeus_scene text addon/06.cat 26 26 26 4 726 0
+    SS_SH_P_M2 ships\paranid\paranid_m2_odysseus_scene text addon/06.cat 26 26 26 4 726 0
+    SS_SH_P_M7 ships\paranid\paranid_m7_deimos_scene text addon/06.cat 14 14 14 2 726 0
+    SS_SH_P_M7M ships\paranid\paranid_m7_ares_scene text addon/06.cat 16 16 16 2 726 0
+    SS_SH_B_TL ships\boron\boron_tl_orca_scene text addon/06.cat 5 5 5 3 708 0
+    SS_SH_B_M1 ships\boron\boron_m1_shark_scene text addon/06.cat 5 5 5 3 708 0
+    SS_SH_B_M2 ships\boron\boron_m2_ray_scene text addon/06.cat 5 5 5 3 708 0
+    SS_SH_B_M7 ships\boron\boron_m7_thresher_scene text addon/06.cat 3 3 3 3 708 0
+    SS_SH_B_M7M ships\boron\boron_m7_kraken_scene text addon/06.cat 1 1 1 1 708 0
+    SS_SH_P_M2P_CYCLOPS ships\paranid\paranid_m2p_cyclops_scene text addon/06.cat 9 9 9 5 726 0
+    SS_SH_T_TL ships\teladi\teladi_tl_albatross_scene text addon/06.cat 8 8 8 4 702 0
+    SS_SH_T_M1 ships\teladi\teladi_m1_condor_scene text addon/06.cat 4 4 4 2 702 0
+    SS_SH_T_M2 ships\teladi\teladi_m2_phoenix_scene text addon/06.cat 4 4 4 2 702 0
+    SS_SH_T_M7 ships\teladi\teladi_m7_shrike_scene text addon/06.cat 4 4 4 4 702 0
+    SS_SH_T_M7M ships\teladi\teladi_m7_gannet_scene text addon/06.cat 3 3 3 3 702 0
+    SS_SH_X_M1 ships\xenon\xenon_m1_j_scene text addon/12.cat 8 8 8 8 717 0
+    SS_SH_X_M2 ships\xenon\xenon_m2_k_scene text addon/06.cat 8 8 8 8 717 0
+    SS_SH_X_M7 ships\xenon\xenon_m7_q_scene text addon/06.cat 24 24 24 12 717 0
+    SS_SH_ATF_M2P_FORSETI ships\atf\atf_m2p_forseti_scene text addon/06.cat 8 8 8 8 723 0
+    SS_SH_PI_M7_CARRACK ships\Pirate\pirate_m7_carrack_scene text addon/06.cat 12 12 12 3 728 0
+    SS_SH_ATF_M1 ships\atf\atf_m1_odin_scene text addon/06.cat 12 12 12 4 723 0
+    SS_SH_ATF_M2 ships\atf\atf_m2_tyr_scene text addon/06.cat 12 12 12 4 723 0
+    SS_SH_ATF_M7 ships\atf\atf_m7_aegir_scene text addon/06.cat 7 7 7 1 723 0
+    SS_SH_ATF_M7M ships\atf\atf_m7_skirnir_scene text addon/06.cat 2 2 2 2 723 0
+    SS_SH_ATF_M1H ships\atf\atf_m1_woden_scene text addon/06.cat 12 12 12 4 723 0
+    SS_SH_ATF_VALHALLA ships\atf\atf_m0_valhalla_scene text addon/06.cat 12 12 12 12 723 0
+    SS_SH_TR_M1 ships\terran\terran_m1_tokyo_scene text addon/06.cat 4 4 4 4 729 0
+    SS_SH_TR_M2 ships\terran\terran_m2_osaka_scene text addon/06.cat 16 16 16 16 729 0
+    SS_SH_TR_M7 ships\terran\terran_m7_yokohama_scene text addon/06.cat 8 8 8 8 729 0
+    SS_SH_TERRAFORMER1 ships\terraformer\terraformer_m1_deca_scene text addon/06.cat 13 13 13 1 723 0
+    SS_SH_K_M2P_HIVEQUEEN ships\khaak\khaak_m2p_hivequeen_scene text addon/06.cat 6 6 6 4 714 0
+    SS_SH_K_M1 ships\khaak\khaak_m1_carrier_scene text addon/06.cat 4 4 4 4 714 0
+    SS_SH_K_M2 ships\khaak\khaak_m2_destroyer_scene text addon/06.cat 1 1 1 1 714 0
+    SS_SH_B_M2P_MEGALODON ships\boron\boron_m2p_megalodon_scene text addon/06.cat 7 7 7 7 708 0
+    SS_SH_S_M2P_OCELOT ships\split\split_m2p_ocelot_scene text addon/06.cat 10 10 10 10 720 0
+    SS_SH_G_TL ships\goner\goner_tl_ozias_scene text addon/06.cat 3 3 3 3 705 0
+    SS_SH_G_ARAN ships\goner\goner_m1_aran_scene text addon/06.cat 2 2 2 2 705 0
+    SS_SH_OTAS_M2 ships\otas\otas_m2_boreas_scene text addon/06.cat 6 6 6 6 729 0
+    SS_SH_X_M2_Z ships\Xenon\xenon_m2_Z_scene text addon/06.cat 14 14 14 6 717 0
+    SS_SH_OTAS_M7M ships\otas\otas_m7_aquilo_scene text addon/06.cat 5 5 5 3 729 0
+    SS_SH_T_M1_EMEUS ships\Teladi\teladi_M1_Emeus_scene text addon/06.cat 7 7 7 4 702 0
+    SS_SH_TR_M1_NAGOYA ships\terran\terran_m1_nagoya_scene text addon/06.cat 12 12 12 8 729 0
+    SS_SH_PI_M1_POLACCA ships\pirate\pirate_m1_polacca_scene text addon/06.cat 13 13 13 6 729 0
+    SS_SH_PI_M2_EXTERMINATOR ships\pirate\pirate_m2_Exterminator_scene text addon/06.cat 24 24 24 8 729 0
+    SS_SH_P_M2_PATROCLUS ships\paranid\paranid_m2_Patroclus_scene text addon/06.cat 3 3 3 3 725 0
+    SS_SH_TR_M2_SOLARIS ships\terran\terran_M2_Solaris_scene text addon/06.cat 12 12 12 4 729 0
+    SS_SH_S_M2_TAIPAN ships\Split\split_M2_Taipan_scene text addon/06.cat 7 7 7 3 720 0
+    SS_SH_T_M2_CORMORANT ships\teladi\teladi_m2_Cormorant_scene text addon/06.cat 8 8 8 4 702 0
+    SS_SH_A_M7_MANDALAY ships\argon\argon_m7_mandalay_scene text addon/06.cat 27 27 27 11 711 0
+    SS_SH_A_M7_SPECIAL ships\argon\argon_m7_griffon_scene text addon/06.cat 6 6 6 2 711 0
+    SS_SH_S_M7_SPECIAL ships\split\split_m7_panther_scene text addon/06.cat 3 3 3 3 720 0
+    SS_SH_P_M7_SPECIAL ships\paranid\paranid_m7_agamemnon_scene text addon/06.cat 6 6 6 2 726 0
+    SS_SH_PI_M1_GALLEON ships\pirate\pirate_m1_galleon_scene text addon/06.cat 3 3 3 1 729 0
+    SS_SH_PI_M2_BRIGANTINE ships\pirate\pirate_m2_brigantine_scene text addon/06.cat 2 2 2 1 729 0
+    SS_SH_Y_TL ships\Yaki\yaki_tl_ryu_scene text addon/06.cat 8 8 8 4 726 0
+    SS_SH_Y_M1 ships\yaki\yaki_m1_hoshi_scene text addon/06.cat 4 4 4 4 726 0
+    SS_SH_Y_M2 ships\yaki\yaki_m2_tenshi_scene text addon/06.cat 4 4 4 4 726 0
+    SS_SH_S_M7_ACINONYX ships\Split\split_M7_Acinonyx_scene text addon/06.cat 3 3 3 3 720 0
+    SS_SH_P_M7_ARIADNE ships\paranid\paranid_m7_Ariadne_scene text addon/06.cat 6 6 6 4 726 0
+    SS_SH_OTAS_M7_AUSTER ships\otas\otas_m7_auster_scene text addon/06.cat 2 2 2 2 728 0
+    SS_SH_X_M7_C ships\xenon\xenon_M7_C_scene text addon/06.cat 24 24 24 6 717 0
+    SS_SH_TR_M7_CHIKYU ships\terran\terran_M7_Chikyu_scene text addon/06.cat 7 7 7 4 729 0
+    SS_SH_B_M7_COELACANTH ships\boron\boron_m7_coelacanth_scene text addon/06.cat 6 6 6 6 708 0
+    SS_SH_T_M7_GEOCHEN ships\Teladi\teladi_M7_Geochen_scene text addon/06.cat 8 8 8 4 702 0
+    SS_SH_K_M7_GUARDIAN ships\khaak\khaak_m7_Guardian_scene text addon/06.cat 5 5 5 1 713 0
+    SS_SH_TR_M7_HAYABUSA ships\terran\terran_M7_Hayabusa_scene text addon/06.cat 5 5 5 5 729 0
+    SS_SH_TR_M7_KARIUDO ships\terran\terran_M7_Kariudo_scene text addon/06.cat 13 13 13 4 729 0
+    SS_SH_TR_TL ships\terran\terran_tl_atmospheric_lifter_scene text addon/06.cat 16 16 16 16 729 0
+    SS_SH_TR_TL_MINING ships\terran\terran_tl_mobile_mining_base-ship_scene text addon/06.cat 32 32 32 8 729 0
+    SS_SH_B_M7_KRAIT ships\boron\boron_m7_krait_scene text addon/06.cat 4 4 4 4 708 0
+    SS_SH_ATF_M7_KVASIR ships\atf\atf_m7_kvasir_scene text addon/06.cat 15 15 15 3 723 0
+    SS_SH_PI_M7_MARAUDER ships\pirate\pirate_m7_Marauder_scene text addon/06.cat 5 5 5 3 728 0
+    SS_SH_T_M7_RAVEN ships\Teladi\teladi_M7_Raven_scene text addon/06.cat 14 14 14 4 702 0
+    SS_SH_T_M7_TERN ships\teladi\teladi_m7_Tern_scene text addon/06.cat 5 5 5 1 702 0
+    SS_SH_TR_M2P_TOBOSAKU ships\terran\terran_M2p_Tobosaku_scene text addon/06.cat 14 14 14 4 729 0
+    SS_SH_Y_M7_WASHI ships\yaki\yaki_m7_Washi_scene text addon/06.cat 4 4 4 4 726 0
+    SS_SH_X_M7_G ships\Xenon\xenon_M7_G_scene text addon/06.cat 8 8 8 8 717 0
+    SS_SH_X_M7_R ships\xenon\xenon_m7_R_scene text addon/06.cat 8 8 8 8 717 0
+    SS_SH_TR_TL_TEPUKEI ships\terran\terran_TL_Tepukei_scene text addon/06.cat 8 8 8 4 729 0
+    SS_SH_OTAS_M2_ASTRAEUS ships\otas\otas_m2_astraeus_scene text addon/06.cat 3 3 3 3 729 0
+    SS_SH_PI_M2_BAYAMON ships\pirate\pirate_m2_bayamon_scene text addon/06.cat 8 8 8 2 729 0
+    SS_SH_X_M2_V ships\Xenon\xenon_m2_V_scene text addon/06.cat 28 28 28 28 716 0
+    SS_SH_A_M2_ATLAS ships\argon\argon_m2_atlas_scene text addon/06.cat 40 40 40 6 711 0
+    SS_SH_X_M2_T ships\xenon\xenon_m2_t_scene text addon/06.cat 22 22 22 6 717 0
+    SS_SH_TR_M2_KYOTO ships\terran\terran_m2_kyoto_scene text addon/06.cat 3 3 3 3 729 0
+    SS_SH_B_M7_SEGARIS ships\boron\boron_m7_segaris_scene text addon/06.cat 66 66 66 2 708 0
+    SS_SH_X_M2_I ships\xenon\xenon_M2_i_scene text addon/06.cat 14 14 14 8 717 0
+    SS_SH_G_TL_RECYCLER ships\goner\goner_tl_ozias_scene text addon/06.cat 3 3 3 3 705 0
+    SS_SH_G_M1_MACHINESCIENCE ships\stellaris\machineScience_scene text addon/12.cat 3 3 3 3 722 0
+    SS_SH_G_TL_MACHINECOLONY ships\stellaris\machineColony_scene text addon/12.cat 4 4 4 4 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_A ships\stellaris\machineFrigateA_scene text addon/12.cat 5 5 5 5 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_B ships\stellaris\machineFrigateB_scene text addon/12.cat 5 5 5 5 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_C ships\stellaris\machineFrigateC_scene text addon/12.cat 4 4 4 4 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_D ships\stellaris\machineFrigateD_scene text addon/12.cat 5 5 5 5 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_E ships\stellaris\machineFrigateE_scene text addon/12.cat 5 5 5 5 722 0
+    SS_SH_G_M7_MACHINEFRIGATE_F ships\stellaris\machineFrigateF_scene text addon/12.cat 5 5 5 5 722 0
+    SS_SH_G_M2_MACHINECRUISER_A ships\stellaris\machineCruiserA_scene text addon/12.cat 4 4 4 4 722 0
+    SS_SH_G_M1_MACHINECRUISER_B ships\stellaris\machineCruiserB_scene text addon/12.cat 4 4 4 4 722 0
+    SS_SH_G_M2_MACHINECRUISER_C ships\stellaris\machineCruiserC_scene text addon/12.cat 6 6 6 6 722 0
+    SS_SH_G_M2_MACHINECRUISER_D ships\stellaris\machineCruiserD_scene text addon/12.cat 8 8 8 8 722 0
+    SS_SH_G_M1_MACHINECRUISER_E ships\stellaris\machineCruiserE_scene text addon/12.cat 8 8 8 8 722 0
+    SS_SH_G_M2_MACHINETITAN_A ships\stellaris\machineTitanA_scene text addon/12.cat 10 10 10 10 722 0
+    SS_SH_G_M2_MACHINECRUISER_F ships\stellaris\machineCruiserF_scene text addon/12.cat 6 6 6 6 722 0
+    SS_SH_G_M2_AUTO_DREADNOUGHT ships\stellaris\automatedDreadnought_scene text addon/12.cat 10 10 10 10 722 0
+    SS_SH_G_M2_MACHINEBATTLESHIP_A ships\stellaris\machineBattleshipA_scene text addon/12.cat 6 6 6 6 722 0
+    SS_SH_G_M2_MACHINEBATTLESHIP_B ships\stellaris\machineBattleshipB_scene text addon/12.cat 10 10 10 10 722 0
+    SS_SH_G_M1_MACHINEBATTLESHIP_C ships\stellaris\machineBattleshipC_scene text addon/12.cat 6 6 6 6 722 0
+    SS_SH_G_M2_MACHINEBATTLESHIP_D ships\stellaris\machineBattleshipD_scene text addon/12.cat 4 4 4 4 722 0
+    SS_SH_G_M2_MACHINEBATTLESHIP_E ships\stellaris\machineBattleshipE_scene text addon/12.cat 12 12 12 12 722 0
+    SS_SH_G_M2_MACHINEBATTLESHIP_F ships\stellaris\machineBattleshipF_scene text addon/12.cat 9 9 9 9 722 0
+    SS_SH_G_M1_MACHINE_FLAGSHIP ships\stellaris\machineFlagship_scene text addon/12.cat 10 10 10 8 722 0
+    SS_SH_G_M1_OWP_1_STARPORT stations\stellaris\owp_starport_scene text addon/12.cat 0 0 0 0 390 0
+    SS_SH_G_M1_OWP_2_STARHOLD stations\stellaris\owp_starhold_scene text addon/12.cat 0 0 0 0 390 0
+    SS_SH_X_M7_H ships\xenon\xenon_m7_h_scene text addon/12.cat 10 10 10 10 716 0
+    SS_SH_X_TL ships\xenon\xenon_m1_j_scene text addon/12.cat 8 8 8 8 717 0
+  big TS rows (TS/TP with >= 4 jet parts or no jet part):
+    SS_SH_A_TS ships\argon\argon_TS_Mercury_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_1 ships\argon\argon_TS_Mercury_Tanker_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_2 ships\argon\argon_TS_Mercury_Hauler_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_3 ships\argon\argon_TS_Mercury_Tanker_XL_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_4 ships\argon\argon_TS_Mercury_SF_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_5 ships\argon\argon_TS_Mercury_SF_XL_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_TR_TS_BALDRIC_SF ships\terran\terran_ts_baldric_sf_scene text addon/06.cat 6 6 6 4 727 36
+    SS_SH_S_TS ships\split\split_ts_caiman_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_1 ships\split\split_ts_caiman_tanker_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_2 ships\split\split_ts_caiman_advanced_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_3 ships\split\split_ts_caiman_tanker_xl_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_4 ships\split\split_ts_caiman_sf_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_5 ships\split\split_ts_caiman_sf_xl_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_S_TS_6 ships\split\split_ts_caiman_advanced_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_P_TS ships\paranid\paranid_ts_demeter_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_P_TS_1 ships\paranid\paranid_ts_demeter_tanker_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_P_TS_2 ships\paranid\paranid_ts_demeter_advanced_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_P_TS_3 ships\paranid\paranid_ts_demeter_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_P_TS_4 ships\paranid\paranid_ts_demeter_sf_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_P_TS_5 ships\paranid\paranid_ts_demeter_sf_xl_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_B_TS ships\boron\boron_ts_dolphin_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_B_TS_1 ships\boron\boron_ts_dolphin_tanker_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_B_TS_2 ships\boron\boron_ts_dolphin_hauler_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_B_TS_3 ships\boron\boron_ts_dolphin_tanker_xl_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_B_TS_4 ships\boron\boron_ts_dolphin_sf_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_B_TS_5 ships\boron\boron_ts_dolphin_sf_xl_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_TR_TS ships\terran\terran_ts_baldric_scene text addon/06.cat 6 6 6 6 727 36
+    SS_SH_OTAS_TS_1 ships\otas\otas_ts_mistral_sf_scene text addon/06.cat 8 8 8 8 727 36
+    SS_SH_A_TS_ADV ships\argon\argon_TS_Mercury_Tanker_XL_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_PROTO ships\argon\argon_TS_Mercury_SF_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_P_TS_PROTO ships\paranid\paranid_ts_demeter_prototype_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_B_TS_ENH ships\boron\boron_ts_dolphin_sf_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_TR_TS_BRAGI ships\terran\terran_ts_Bragi_scene text addon/06.cat 5 5 5 5 727 36
+    SS_SH_T_TS_DRAKE ships\teladi\teladi_ts_Drake_scene text addon/06.cat 6 6 6 6 700 35
+    SS_SH_A_TS_LOTAN ships\argon\argon_ts_lotan_scene text addon/06.cat 8 8 8 2 709 31
+    SS_SH_A_TS_MERCURY_MINER ships\argon\argon_TS_Mercury_Miner_scene text addon/06.cat 8 8 8 3 709 31
+    SS_SH_A_TS_NEXUS_MINER ships\argon\argon_TS_Nexus_Miner_scene text addon/06.cat 4 0 0 0 709 31
+    SS_SH_B_TS_MINER ships\boron\boron_ts_dolphin_miner_scene text addon/06.cat 4 4 4 1 706 32
+    SS_SH_P_TS_MINER ships\paranid\paranid_ts_demeter_miner_scene text addon/06.cat 6 6 6 2 724 34
+    SS_SH_S_TS_MINER ships\split\split_ts_caiman_tanker_xl_scene text addon/06.cat 6 6 6 1 718 33
+    SS_SH_T_TS_DRAKE_1 ships\teladi\teladi_ts_Drake_scene text addon/06.cat 6 6 6 6 700 35
+    SS_SH_TR_TS_BRAGI_1 ships\terran\terran_ts_Bragi_scene text addon/06.cat 5 5 5 5 727 36
+    SS_SH_X_TS_F ships\xenon\xenon_ts_f_scene text addon/12.cat 4 4 4 4 716 38
+    SS_SH_X_TS_XENONMINER ships\xenon\xenon_ts_f_scene text addon/12.cat 4 4 4 4 716 38

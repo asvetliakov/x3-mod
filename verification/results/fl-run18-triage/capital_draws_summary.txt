@@ -1,0 +1,8 @@
+FL run 18 capital-plume triage (frame 15972, /mnt/c/X3FL/x3m.log). Script: capital_draws.py (input: grep -n -E 'frame=1597[012] ' x3m.log filtered to draw/object_context/object_bounds/engine_draw rows).
+Largest scoped object: node 24a60a48 model 0x4f77 (20343), 32 draws idx 39-70, 18075 prims, pairs 4944d81d/c79c3b2c (6) and 4944d81d/16d4af17 (26), flags12c 01001002, flags130 00000040 on all, scope_depth 1, bounds x2650-3451 y195-587 (801x392 px), zmin 0.999323. Model name not logged (no model->name row in the log).
+Other ship-like nodes: 39622ba0 m0x5540 15 draws 135x116px; 2f252c10 m0x4f74 31 draws 103x108px; 2f244330 m0x5654 16 draws 76x46px (pair 37c34a74/b2d8f40c); 2e65f1a0 m0x4fd8 21 draws ~20px.
+Effect pair d5e1c753/8360f422 in frame: 6 draws (396-401), all engine_draw records (argon_M5 x4, boron_TS_A/B), none on the capital.
+Draws with flags130 & 0x4000001 == 0x4000001: exactly those 6. Draws with 0x4000000 only: idx 2 (04000042, m0x54af), 7-10 (04000040, m0x4e6f), flags12c 03001022, frame-start background draws.
+flags130 census frame 15972: 00000040 x220, 00180040 x160, 04180041 x5, 04000001 x1, 04000040 x4, 04000042 x1, others background.
+engine_frame frames 15900-16049: 122x (23/17/6), 17x (25/17/8), 11x (26/17/9) candidates/not_jet/records; unknown_body=0.
+Whole log: 71 engine_draw rows, names only argon_M5/usc_m3/boron_TS_A/B/usc_tp; no fx_engine_xtc_* row ever.

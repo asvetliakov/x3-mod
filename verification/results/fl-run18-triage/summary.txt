@@ -1,0 +1,37 @@
+FL run 18 triage (DLL d89a1666, merge 6ede84be1; log C:\X3FL\x3m.log 91,293 frames) vs run 17 (x3m.prev.log, DLL afd77c47,
+commit 692ee5e7d, 34,182 frames, engine effects off; identical non-default options). All numbers measured unless marked (i).
+Scripts here: extract_frames.py (log -> local pickle), episodes.py, correlate.py, episode_table.py, fog_residual.py,
+multifit.py, segments.py, sector_bins.py. Census sums: awk one-liners over engine_frame / engine_stage (fields summed).
+
+Symptom 1 (plumes missing)
+- engine_frame sums: records 1,167,727 = suppressed 1,167,727; forwarded_* all 0; rows_unknown 298,457 (25.6 %) =
+  order_invalid 298,457; unknown_body 28,933; steering 0; frames with rows_unknown 47,608 of 91,287.
+- engine_stage sums: culled_rows 298,457 (= rows_unknown exactly); culled_small 700,049; culled_behind 80,721;
+  nozzles drawn 82,040 (7.0 % of records); floored 14,520; floor_unknown 227,918 (<= culled_rows in every frame, equal in
+  69,155); far_jets/far_records/node_records 0 (FL draw-only); culled_idle 0; capped 3,537.
+- unknown_body <= rows_unknown in all 4,842 frames that carry unknown_body (the table-missing bodies are no-geometry
+  records too (i)).
+- rows_unknown share by sector visit: avigriega#1 36.6 %, avigriega#2 2.2 %, standardblack 22.1 %, foggreenoutlands 10.8 %.
+- first rows_unknown frame 3085 (6 records) right after two new pixel programs at frame 3083 (a ship class streamed in (i)).
+- No F8 frame in this session (frame_end capture=1: 0); engine_draw rows only frames 7-14 (usc_m3, usc_tp, pair=effect).
+- AP reference (run401 triage_output.txt): rows_unknown 14,928 = steering 14,928 (v/00566, pair=other); AP capital
+  xtc_red_big3/huge drew with the effect pair, order a.
+
+Symptom 2 (steady lower frame rate)
+- Frame interval run 18: p50 4.99 p90 10.28 mean 6.24 ms; run 17: p50 4.66 p90 7.73 mean 5.44 ms (240 fps cap).
+- Per sector visit (run 18 p50/p90/mean ms, draws/frame): avigriega 4.41/8.13/5.37 (349); avigriega 5.77/8.09/5.80 (342);
+  standardblack 6.08/11.42/7.14 (447); foggreenoutlands fog=1 11.20/18.21/11.34 (1,223).
+  Run 17: foggreenoutlands fog=1 5.59/8.07/5.88 (543); standardblack 4.21/7.66/5.16 (265); avigriega 5.37/7.73/5.55 (380).
+- Per-second fit frame_ms = a + b*draws: run 18 a 3.53 b 0.00706 (R2 0.761); run 17 a 3.92 b 0.00417 (R2 0.782).
+- Fog: applied only in foggreenoutlands (run 18 from frame 86041); fog-on seconds sit below the fog-off line
+  (residual p50 -2.68 ms, fog-off p90 +0.90). volumetric_fog_frame cpu_us 0.0 (timing flag off), calls 351.
+- Same sector and draw bin, run 18 minus run 17 mean interval: avigriega <800 draws +0.10..+0.30 ms, 800-1000 +1.27;
+  standardblack 400-600 +1.38, 600-800 +2.08, 800-1000 +1.28, 1000-1300 +3.66; foggreenoutlands 600-800 +1.37,
+  1300-1700 +3.37; <200 draws all sectors -0.01..+0.12.
+- Within run 18 at fixed draws 600-800: engine-light lit draws <40 7.68 ms vs >=200 9.46 ms; plume records 0-10 7.22 vs
+  30-60 9.19 ms. Draws 800-1000: lit 40-80 9.36 vs >=200 11.12 ms. Fit coefficient lit draws 0.0076-0.0105 ms each.
+- Present (telemetry present_normal) in frames > 9 ms: 464 us run 18, 1,001 us run 17; non-present time carries the drop.
+- Absolute per-frame CPU fields (run 18 means by segment): engine_stage stage_us 25-48, taa_run_us 52-84 (run 17 22-24),
+  hdr readback 31-74, writeback 14-17, shadow replay apply 21-23, select 4, shimmer 0.2-1.2, own_sun stage_us 2.4
+  (10 s rows), log format 59.6 us/frame (run 17 50.5), writer thread 5.4 us/frame, dropped 0; fenced=0 everywhere.
+- Hitches > 50 ms outside loads: 12 (max 119 ms), with shader creation or resource rows; not the steady drop.
