@@ -1814,7 +1814,7 @@ not the pipelined frame. It replaces the unmerged timestamp-query attempt (branc
 device used here supports.
 
 - **Mechanism** (`src/renderer/gpu_sync_timing.{h,cpp}`, core `gpu_sync_timing_core.h`): one
-  `D3DQUERYTYPE_EVENT` query per boundary (22 passes x begin/end = 44, created once through the
+  `D3DQUERYTYPE_EVENT` query per boundary (29 passes x begin/end = 58, created once through the
   device's native `CreateQuery`, reused every frame). At a boundary: `Issue(D3DISSUE_END)`, then
   `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
   begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
@@ -1831,12 +1831,21 @@ device used here supports.
   `taa` the sub-passes `taa_copy`, `taa_mask`, `taa_box`, `taa_resolve`, `taa_display` ("TAA stage
   cost" below), and inside `fog_route` the sub-passes `fog_march`, `fog_composite`, `fog_repair`
   (indices 19-21; each around one quad of the stored path: the half-resolution march, the
-  full-resolution composite and repair; [fog-gpu-cost.md, "Step A implemented"](fog-gpu-cost.md#step-a-implemented-2026-09-23)).
+  full-resolution composite and repair; [fog-gpu-cost.md, "Step A implemented"](fog-gpu-cost.md#step-a-implemented-2026-09-23)),
+  inside `taa_mask` the three draws `taa_mask_tests`, `taa_mask_x`, `taa_mask_y` (indices 22-24), and the engine
+  effects' own draws: `engine_plumes` (25; the plume stage's build and draw, the stage callback inside `taa_copy`),
+  `engine_ribbons` (26; the ribbon pass's update and draw, inside `engine_plumes`), `engine_shimmer` (27; the shimmer's
+  copy and rect draws after the resolve, top level inside `scene`, plus its revert before Present inside `present`: two
+  pairs a frame add up) and `engine_light` (28; the native submit of every lit hull draw, inside `engine`: one pair per
+  lit draw, the frame's pairs add up, so `n` counts frames with a lit draw and the median is the frame's sum).
 - **Reading the spans**: nested spans include their inner pass; subtract for the exclusive cost.
   `engine` contains `fog_fill` and `hdr_readback` (the HDR latch) and every mid-scene
   `hdr_writeback` flush with its `meter`; `fog_route` contains `motes`; `hdr_writeback` contains
   `meter`; `taa` contains the five `taa_*` pairs and their sync floors; `fog_route` also contains the
-  three `fog_*` pairs and their sync floors (about 3 x 0.264 ms). `present` begins at the Present hook's entry, before `scene` ends just before the
+  three `fog_*` pairs and their sync floors (about 3 x 0.264 ms); `engine_plumes` contains `engine_ribbons` (and with
+  it nests in `taa_copy` and `taa`); `engine` contains every `engine_light` pair and its sync floor, so a frame with k
+  lit draws adds about k x 0.264 ms to `engine` and `scene` (inferred from the light-pair floor): compare `engine`
+  only between flights with the same option set, and read the light's own cost from `engine_light` minus its floor. `present` begins at the Present hook's entry, before `scene` ends just before the
   native Present, so the proxy's pre-Present work (sector sample, notices, overlay) is counted in
   both. `scene` also carries the `engine` begin sync (both begins run back to back). The
   `shadow_depth` and `sun_apply` spans include their own per-frame log line.
@@ -1870,7 +1879,8 @@ device used here supports.
   `event=cutoff` line). The queries are released in `before_reset` and at the final release
   (their device references are in the final-release accounting) and recreated after a successful
   Reset. Each boundary runs under `PreserveCpuState` (x87/MXCSR and LastError). Off, no object
-  exists and each boundary is one null-pointer branch; nothing is added to the per-draw path.
+  exists and each boundary is one null-pointer branch; the per-draw path gains one null-pointer test (the
+  `engine_light` helper in the four draw hooks).
 - **Portability**: documented D3D9 and Win32 only (event queries, `TestCooperativeLevel`,
   `QueryPerformanceCounter`), so native Windows parity holds by construction; not verified on
   Windows.

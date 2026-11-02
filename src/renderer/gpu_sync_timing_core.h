@@ -57,7 +57,15 @@ enum Pass : unsigned {
     TaaMaskY,     // the separable maxima / minima along y and the composition
     // The engine plumes stage (TemporalPass's stage callback, the first act of the resolve bracket), appended likewise:
     // its pair adds its sync floor to Taa.
-    EnginePlumes, // the plume stage's VB build and its one indexed draw
+    EnginePlumes, // the plume stage's VB build and its one indexed draw (nests EngineRibbons)
+    // The engine effects' own draws, appended likewise (FL run 19: the ribbons and the shimmer had no pass, and the
+    // engine light's lit draws were indistinguishable inside Engine).
+    EngineRibbons, // the ribbon pass's update and its one indexed draw, inside the EnginePlumes pair (its pair adds its
+                   // sync floor to EnginePlumes and Taa)
+    EngineShimmer, // the shimmer's copy and rect draws after the resolve, plus its revert before Present (inside
+                   // Present): two pairs a frame add up
+    EngineLight,   // the native submit of every lit hull draw (the twin bound, the constants uploaded), inside Engine:
+                   // one pair per lit draw, all of a frame's pairs add up (each adds its sync floor to Engine)
     pass_count
 };
 constexpr unsigned boundary_count = 2 * pass_count; // one event query per boundary (begin, end) of every pass
@@ -70,7 +78,7 @@ inline const char* pass_name(unsigned pass) noexcept {
         "meter",         "hdr_readback", "bloom",          "present",     "taa_copy",
         "taa_mask",      "taa_box",      "taa_resolve",    "taa_display", "fog_march",
         "fog_composite", "fog_repair",   "taa_mask_tests", "taa_mask_x",  "taa_mask_y",
-        "engine_plumes"};
+        "engine_plumes", "engine_ribbons", "engine_shimmer", "engine_light"};
     return pass < pass_count ? names[pass] : "?";
 }
 constexpr bool once_per_frame(unsigned pass) noexcept {

@@ -54,6 +54,8 @@ HRESULT MotionOutput::run_engine_ribbons(const renderer::EnginePlumesFrame& in) 
     f.cut = false; // note_cut at the resolve
     f.load_epoch = engine_load_epoch_;
     f.own_ship = ribbons_own_ship_; // X3M_ENGINE_RIBBONS_OWN_SHIP, read at configure_engine_plumes
+    // --gpu-sync-timing only: the ribbon pass's own pair, inside the EnginePlumes pair (an attached pass only).
+    gpu_sync_timing::Span sync_span(gpu_sync_, gpu_sync_timing::EngineRibbons);
     return ribbons_->run(f, &ribbons_report_);
 }
 // The fog law of this frame: on only when the density composite applied this frame (run_volumetric_fog runs before

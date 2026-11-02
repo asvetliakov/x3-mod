@@ -237,3 +237,23 @@ when the option is off: one branch per draw, no device call.
     each); `taa` 2,111 us.
   - The runner's rewritten `gpu-sync-timing.{json,txt}` were restored.
 
+
+## 2026-11-02: `engine_ribbons`, `engine_shimmer`, `engine_light` (FL run 19 follow-up; worktree, not installed)
+
+FL run 19 left the ribbons and the shimmer without a pass and the engine light's lit draws inside `engine`. Three passes
+appended after `engine_plumes` (indices 0-25 unchanged): `engine_ribbons` 26 (one `Span` around `EngineRibbonsPass::run`
+in `run_engine_ribbons`, attached pass only, so it nests inside `engine_plumes`, `taa_copy` and `taa`), `engine_shimmer`
+27 (one pair around `EngineShimmerPass::run` after the resolve, one around its `revert` in `before_present`, inside
+`present`; the two add up) and `engine_light` 28 (one pair around the native submit in each of the four draw hooks,
+through `gpu_sync_light_begin/_end` in `capture.cpp`, only when the route completed its apply chain with the twin bound
+and submits: `routed && engine_light && submit`; inside `engine`, every lit draw of a frame adds up). 29 passes, 58
+event queries (`gpu_sync_timing_mode passes=29 boundaries=58`). Off: no object; one null-pointer test per draw for the
+light, one per run/revert for the shimmer, one per ribbon run.
+
+- Host (measured): `test_gpu_sync_timing` passes 9 tests (new: the light pair's order around the native call in all
+  four hooks). The core fixture's names check requires 29 passes / 58 boundaries and indices 26 / 27 / 28.
+- Build (measured): `build-ap` and `build-fl` RelWithDebInfo, 0 warnings; `check_no_x87.py build-ap/d3d9.dll` PASS
+  (160 roots, 1119 reachable, 0 violations; the draw hooks are roots and now reach `GpuSyncTiming::mark`).
+- Not run: the Wine fixture (`run_gpu_sync_timing.py`) has marked no `engine_*` pass since `engine_plumes` was added,
+  so its `all_full` and `first_syncs_exact` checks expect every pass in every frame and fail on this tree (inferred
+  from the source; not executed).
