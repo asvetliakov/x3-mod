@@ -1,0 +1,344 @@
+{
+ "body_table": {
+  "ap_global_va": 6325528,
+  "ap_id_to_slot_va": 4644704,
+  "bodies_txt": {
+   "ap": {
+    "catalogue": "addon/01.cat",
+    "decoded_sha256": "5793a0ae80f4c1988f92c3bff1cd7a7894c25eb754f019de01ada22beb547fc6",
+    "forward_slash_names": 0,
+    "jet": 247,
+    "member": "addon/types/Bodies.pck",
+    "numeric": 22,
+    "smalljet": 1,
+    "smalljet_tokens": [
+     "566"
+    ],
+    "unique_bodies": 247
+   },
+   "casefold_only_fl": 2,
+   "common": 247,
+   "engine_bodies_default_view_on_fl_root": {
+    "catalogue": "addon/01.cat",
+    "decoded_sha256": "5793a0ae80f4c1988f92c3bff1cd7a7894c25eb754f019de01ada22beb547fc6",
+    "member": "addon/types/Bodies.pck"
+   },
+   "fl": {
+    "catalogue": "addon2/04.cat",
+    "decoded_sha256": "c7226417e14ec1b1e21c81b504348d3df6e68adc7c9208204af5c18a13b241cd",
+    "forward_slash_names": 0,
+    "jet": 249,
+    "member": "addon2/types/Bodies.pck",
+    "named_body_file_source": {
+     "01.cat": 120,
+     "08.cat": 1,
+     "addon2/01.cat": 104,
+     "none": 2
+    },
+    "numeric": 22,
+    "root_types_bodies_shadow": {
+     "catalogue": "08.cat",
+     "jet": 146
+    },
+    "smalljet": 1,
+    "smalljet_tokens": [
+     "566"
+    ],
+    "unique_bodies": 249
+   },
+   "only_ap": [],
+   "only_fl": [
+    "p39\\effects\\engines\\playeryacht_engine",
+    "p39\\effects\\engines\\terran_ts_xl_engine"
+   ]
+  },
+  "dynamic_count_offset": 184,
+  "fixed_count": 11000,
+  "fixed_count_offset": 180,
+  "fixed_count_writer_rva": 566775,
+  "global_rva": 1745152,
+  "id_map": "id<1000: id; <20000: id-9000; else fixed+id-20000 (same as AP)",
+  "id_to_slot_rva": 550848,
+  "name_offset": 12,
+  "slot_stride": 28,
+  "slots_offset": 188,
+  "window": {
+   "end_rva": 550934,
+   "fnv1a32": "5bad5d11",
+   "length": 85,
+   "relocated_dword_rvas": [
+    550851
+   ],
+   "sha256": "6d73329a63b2e5994522a010abd97c1e1124e2f394ab45df6210d2bf8776e4c2",
+   "start_rva": 550849
+  }
+ },
+ "cull": {
+  "ap_site_va": 4706978,
+  "ap_size_cull_va": 4707011,
+  "lens_scene_read_rva": 572196,
+  "measure": "ecx",
+  "model_read_rva": 614940,
+  "node": "esi",
+  "qualified": false,
+  "site_rva": 614867,
+  "size_cull_rva": 614899,
+  "window": {
+   "end_rva": 614940,
+   "fnv1a32": "8f680dbc",
+   "length": 73,
+   "relocated_dword_rvas": [],
+   "sha256": "59a638249270ff5ca0d12fb01b8c2a3c02805dd193c55bc3e9bdac8c4dbea5a9",
+   "start_rva": 614867
+  }
+ },
+ "inputs": {
+  "ap_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "fl_dll_characteristics": "0x8140",
+  "fl_dynamic_base": true,
+  "fl_highlow_fixups": 38327,
+  "fl_sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8"
+ },
+ "jet_flag": {
+  "ap_writer_va": 4409096,
+  "bodies_loader_push_rva": 259835,
+  "bodies_loader_string_rva": 1606980,
+  "classifier_entry_rva": 253392,
+  "jet_list_slot_rva": 1737492,
+  "list_array_rva": 1737468,
+  "model_offset": 324,
+  "offset": 304,
+  "or_writers": {
+   "ap": 53,
+   "fl": 84
+  },
+  "sbtype_jet": 6,
+  "sbtype_smalljet": 12,
+  "smalljet_list_slot_rva": 1737516,
+  "smalljet_threshold": {
+   "offset": 472,
+   "value": 5
+  },
+  "smalljet_writer_rva": 253662,
+  "value": 67108865,
+  "window": {
+   "end_rva": 253629,
+   "fnv1a32": "aa1cc593",
+   "length": 42,
+   "relocated_dword_rvas": [
+    253589
+   ],
+   "sha256": "ade2f0de7ec6fc3cd40cc83a3d04e0d7974fc91c723b6999ab91b4190d046b66",
+   "start_rva": 253587
+  },
+  "writer_rva": 253619,
+  "writers_setting_0x4000000": {
+   "ap": [
+    214792,
+    214832,
+    268578,
+    269122
+   ],
+   "fl": [
+    253619,
+    253662,
+    306733,
+    307275
+   ]
+  },
+  "writers_setting_bit0": {
+   "ap": [
+    86350,
+    214792
+   ],
+   "fl": [
+    88377,
+    253619
+   ]
+  }
+ },
+ "producer": "verification/results/fl-engine-effects/produce.py",
+ "schema": 1,
+ "suppression": {
+  "a": {
+   "call_in_one_aligned_qword": false,
+   "call_rva": 86133,
+   "callee_ret": "ret",
+   "caller_pop": 32,
+   "ecx": "0 (effect-list key component; AP stack arg 1)",
+   "edx": "k, jet ordinal (AP stack arg 2)",
+   "join_rva": 86141,
+   "object_slot_at_entry": 8,
+   "rel32_in_one_aligned_qword": false,
+   "return_rva": 86138,
+   "stack_at_entry": {
+    "+0x18": "&pos",
+    "+0x1c..+0x20": "0",
+    "+0xc..+0x14": "0",
+    "+4": "effect id",
+    "+8": "object"
+   },
+   "target_direct_callers_rva": [
+    81524,
+    82627,
+    82704,
+    84142,
+    84946,
+    85674,
+    86133,
+    86772,
+    86819,
+    325177
+   ],
+   "target_rva": 86240,
+   "window": {
+    "end_rva": 86141,
+    "fnv1a32": "5a69143c",
+    "length": 41,
+    "relocated_dword_rvas": [],
+    "sha256": "6d6333262b2134d56cc431b9b2882cd0cfbd03bdcb0ec792d14332e49871983b",
+    "start_rva": 86100
+   }
+  },
+  "b": {
+   "call_in_one_aligned_qword": true,
+   "call_rva": 86186,
+   "callee_ret": "ret 0x10",
+   "join_rva": 86197,
+   "object_slot_at_entry": 12,
+   "rel32_in_one_aligned_qword": true,
+   "ret_rvas": [
+    79646,
+    79894
+   ],
+   "return_rva": 86191,
+   "stack_at_entry": {
+    "+0x10": "&pos",
+    "+0xc": "object",
+    "+4": "k",
+    "+8": "trail id"
+   },
+   "target_direct_callers_rva": [
+    85733,
+    86186,
+    88493
+   ],
+   "target_rva": 79424,
+   "window": {
+    "end_rva": 86191,
+    "fnv1a32": "601f528c",
+    "length": 42,
+    "relocated_dword_rvas": [
+     86162
+    ],
+    "sha256": "e549a433e8fe4156be40ec4c6f6f8d129f99ff00ecdf8c46653fb32339d298bd",
+    "start_rva": 86149
+   }
+  },
+  "branch_targets_strictly_inside_windows": 0,
+  "class_test": {
+   "ap_type_table_base_va": 6320056,
+   "dispatch_rva": 85511,
+   "offset": 72,
+   "other_child_walk_class": 10,
+   "ship": 7,
+   "type_table_base_rva": 1737672,
+   "width": "int16",
+   "window": {
+    "end_rva": 85532,
+    "fnv1a32": "cfed2a46",
+    "length": 21,
+    "relocated_dword_rvas": [],
+    "sha256": "5e0572d1409027c3b507b3f99a8c0a24c8b9042944b53c07813f25c7b691de8a",
+    "start_rva": 85511
+   }
+  },
+  "dead_after_calls": [
+   "eax",
+   "ecx",
+   "edx",
+   "status flags",
+   "xmm0"
+  ],
+  "direct_edges_censused": 72230,
+  "image_dwords_into_windows": 1,
+  "image_dwords_into_windows_classified": ".CRT$XPA section-name substring",
+  "live_across_calls": [
+   "ebx (k)",
+   "esi (child node)",
+   "edi (object)",
+   "ebp",
+   "esp-relative locals"
+  ],
+  "routine": {
+   "direct_callers_rva": [
+    411069
+   ],
+   "end_rva": 86225,
+   "entry_rva": 85392,
+   "object_kept_in": "edi",
+   "object_register": "ecx"
+  }
+ },
+ "throttle": {
+  "drive": {
+   "ap_range_va": [
+    4566411,
+    4567100
+   ],
+   "endpoints_q16": [
+    16384,
+    131072
+   ],
+   "hide_threshold_q16": 655,
+   "ramp_q16_per_game_ms": 262,
+   "range_rva": [
+    411302,
+    412099
+   ],
+   "setter_call_rva": 412094,
+   "setter_ret": "ret 0xc",
+   "setter_rva": 670432
+  },
+  "game_time": {
+   "ap_clock_offset": 1816,
+   "cfg_slot_rva": 1737648,
+   "clock_offset": 1800,
+   "dt_cap_ms": 1000,
+   "dt_negative_becomes_ms": 1000,
+   "dt_read_rva": 405917,
+   "object_last_offset": 168
+  },
+  "node": {
+   "ap_model": 320,
+   "base_scale": 112,
+   "flags12c_hidden_bit": 1048576,
+   "max_scaled": 160,
+   "model": 324,
+   "radius_cache": 164,
+   "scale_x": 128,
+   "scale_y": 132,
+   "scale_z": 136
+  },
+  "seta": {
+   "ap_mult_offset": 208,
+   "ap_warp_offset": 204,
+   "cfg_load_rva": 1048277,
+   "clock_add_rva": 1048423,
+   "mult_offset": 192,
+   "real_ms_clamp": [
+    1,
+    200
+   ],
+   "site": {
+    "end_rva": 1048370,
+    "fnv1a32": "625a39c5",
+    "length": 12,
+    "relocated_dword_rvas": [],
+    "sha256": "84398aee7b5bfe0434536b2f6daa807a22a5659bf0fb9efba7437bd8ecc3bf4a",
+    "start_rva": 1048358
+   },
+   "warp_offset": 188
+  }
+ }
+}
