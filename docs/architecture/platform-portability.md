@@ -885,6 +885,20 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: field of view on FL (`fov`, default 90, both editions)
+
+The FL edition patches three X3FL.exe sites ([FL field of view](../reverse-engineering/fl/field-of-view.md), "Verified
+2026-11-02"): the registry constructor's imm32 (a plain four-byte write inside the engine_patch install window, because
+it crosses an aligned qword) and two five-byte jumps to emitted integer stubs (one lock cmpxchg8b each), all three or
+none, behind the X3FL.exe identity and six compared windows at the module base (fixups checked against the base).
+Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`; registry reads through `engine_memory`'s
+`VirtualQuery`-validated copies under `sector_background_fl`'s admission, one sample every 64 Presents on the Present
+thread), no Wine/CrossOver dependency, no device call,
+no pin (the stubs live in the never-freed arena). Natively verified on the Windows host through WSL interop (measured
+2026-11-02): the FL fixture 49 + 6 checks, 0 failures (the real case and load bytes against the unpatched image,
+documented register/flag/stack/LastError/XMM/x87/MXCSR contract, every window bit, rollback, late claim, retained
+literal). Not verified: the three sites in game (not flown).
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

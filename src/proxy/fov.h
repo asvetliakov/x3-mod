@@ -59,7 +59,14 @@ bool load_patched();          // the load-store claim is registered
 std::uint32_t configured_focus();
 // The engine's live base: registry+0x24 when the executable was verified at
 // initialize() and the value is readable and plausible (0x106..0x8000), else
-// configured_focus(). Two validated engine reads; any thread.
+// configured_focus(). Two validated engine reads. Present thread only: the
+// registry is freed and its slot cleared by the engine on close (FL RVAs 0x785f1,
+// 0x785f9), so a read is safe only between frames on the thread that runs them.
+// Edition-aware: the FL provider (src/engine/fl/fov_fl.cpp) reads no engine memory
+// here; it returns the focus fov::present() sampled last (every 64th Present, X3FL.exe's
+// slot base+0x1a82e4 under sector_background_fl::admitted(), which is an identity and
+// code-anchor check, not a lifetime lease), else configured_focus(); it never retains
+// the registry pointer.
 std::uint32_t current_focus();
 // Per Present: one fov_confirm row at the first Present (registry+0x24 against
 // the configured value); while the registry does not exist yet, one more row

@@ -135,10 +135,12 @@ set(X3M_SHARED_SOURCES
 # "FL port, step 1"); engine_effects.cpp stays shared. The small-parts cull, the Terran station LOD and the LOD occlusion
 # patches too: the fl target links src/engine/fl/cull_small_parts_fl.cpp, terran_station_lod_fl.cpp and
 # lod_occlusion_fl.cpp (docs/verification/cull-small-parts.md, "FL port").
+# The field of view too: the fl target links src/engine/fl/fov_fl.cpp (docs/reverse-engineering/fl/field-of-view.md,
+# "Verified 2026-11-02"); fov.cpp is AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
-  src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp
+  src/proxy/text_density.cpp src/proxy/cull_census.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
   src/proxy/engine_patch.cpp)
 # AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
@@ -174,6 +176,9 @@ else()
   # The small-parts cull stub and the two one-byte LOD patches (docs/verification/cull-small-parts.md, "FL port").
   target_sources(d3d9 PRIVATE src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
     src/engine/fl/lod_occlusion_fl.cpp)
+  # The field of view: the constructor literal, the INS_SetFocus remap and the load store
+  # (docs/reverse-engineering/fl/field-of-view.md, "Verified 2026-11-02").
+  target_sources(d3d9 PRIVATE src/engine/fl/fov_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -237,6 +242,9 @@ set_source_files_properties(src/engine/fl/engine_effects_fl.cpp PROPERTIES COMPI
 # bookends.
 set_source_files_properties(src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
   src/engine/fl/lod_occlusion_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL field of view (its two stubs are emitted integer code in the arena; the install code runs on the backend-load
+# path, the confirm rows in the Present hook): default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/fov_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

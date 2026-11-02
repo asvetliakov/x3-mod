@@ -372,8 +372,8 @@ void note_scene_projection(float m00, float m11) {
     if (patched_) scene_.note(m00, m11);
 }
 // As on AP: the scene view's P[0]/P[5] latched at its Clear (motion_output read_camera), else the live projection
-// through the FL camera reader with the registry focus. On FL fov::current_focus() returns its configured value, the
-// engine default 0x4000 (fov.cpp is linked but its initialize() is AP only, so it never reads an engine address).
+// through the FL camera reader with the registry focus. On FL fov::current_focus() is src/engine/fl/fov_fl.cpp's: the
+// admitted registry's +0x24 as fov::present() sampled it last (every 64th Present), else the configured value; no read.
 void begin_frame() {
     if (!patched_) return;
     const DWORD error = GetLastError();

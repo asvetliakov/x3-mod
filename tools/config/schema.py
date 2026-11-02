@@ -290,7 +290,8 @@ SETTINGS = [
     entry('camera', 'enum', 'camera', 'The external (back) view. chase = a smoothly following chase camera, vanilla = the game\'s own.',
           'chase', choices=('chase', 'vanilla'), launcher='--camera'),
     entry('fov', 'float', 'camera', 'Field of view in degrees, counted like X4: the horizontal angle on a 16:9 screen, 70 to 100 '
-          '(the same on every screen shape). game = the game\'s own field of view.', '90', range=(70.0, 100.0), choices=('game',),
+          '(the same on every screen shape). game = the game\'s own field of view. X3: Albion Prelude and X3: Farnham\'s '
+          'Legacy.', '90', range=(70.0, 100.0), choices=('game',),
           launcher='--fov'),
     entry('ui_scale', 'float', 'camera', 'Size of the in-game menus, sidebars and HUD panels (not the main menu). 1 = the '
           'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1080 lines = 1, 1440 = 1.5, '
