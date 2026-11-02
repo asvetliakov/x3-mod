@@ -1,0 +1,21 @@
+{
+ "run": 27,
+ "step": "FL loose ends: chase_transition_event rows on FL incl. kind=9 restore row, chase_lead identity from the lifetime service (update=lifetime) [d50b5399d, merge fc2f1fe9c]; far-jet hand-off un-fenced on FL with the far-copy read set verified from X3FL.exe (47 anchors), context scale copied in-pass [30e716e28, merge e9bff9301]; Wine-record-bound host tests accept native drift [fc38aa267, b75313025]",
+ "edition": "fl",
+ "commit": "b75313025",
+ "dll_built_from": "e9bff9301 (b75313025 is test-only)",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "dd4f157c7bcb0127",
+ "dll_bytes": 55585173,
+ "installed_sha256_prefix": "dd4f157c7bcb0127",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run26 (3851f91d)",
+ "game_data": "addon2/06+07 unchanged (136,695 / 38,538 B cat)",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "unchanged since 2026-11-02 (older 1.7.3 template header, every key commented: defaults apply)",
+ "host_tests": "run_host_suite 333 modules 3421 tests 0 failing after the engine-effects hash bump (1 failing before it: the expected far-jet entries); generate.py --check PASS 292/137; check_no_x87 build-ap PASS; FL verifiers PASS on the installed exe: chase_transition, chase_lead, chase_fire, fov, chase_camera --edition fl; read_set.py PASS 18 fields 47 anchors; native fixtures fl_chase_transition 423/0, fl_chase_lead 112/0, fl_cull_chain 193/0 (agents)",
+ "build_warnings": 0,
+ "review": "Opus high x2, no blocker; folded: lead nested-begin hide case (mutant killed), rebuild-after-publish cases, +0x58/+0x1e0 wording, chase-camera dependency paragraph, mode-store rows need restore=1; far-jet: four calls between the selector load and the site documented, borrow waiver ratified and recorded as superseding section 4, dock cut 9098 not covered (named bodies, 4 px threshold), pop-esi writer check",
+ "installed_at": "2026-11-03T02:34:38+04:00"
+}

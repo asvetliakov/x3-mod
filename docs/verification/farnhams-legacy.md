@@ -1932,3 +1932,23 @@ and in `engine_stage` with distant ships in view, `far_jets>0` and `far_records>
 while the stage is armed. A `far_dropped` close to `far_jets` means the context equality does not hold.
 Flight check: a distant ship whose plume falls under 4 px shows a small engine glow, not nothing, and nearby ships
 keep their full plumes, with none missing.
+
+## FL run 27 — chase restore rows, HUD lifetime identity, far-jet hand-off on FL (installed 2026-11-03)
+
+Merges `fc2f1fe9c` (chase follow-ups, `d50b5399d`) and `e9bff9301` (far-jet un-fence, `30e716e28`), each after an
+Opus-high review with no blocker and the fixes folded (sections above); the Wine-record-bound host tests accept the
+native source drift (`fc38aa267`, far-jet entries bumped in `b75313025`). Clean `build-fl` from main `e9bff9301`, 0
+warnings; full host suite 333 modules 3,421 tests 0 failing; the five FL site verifiers and `read_set.py` PASS on the
+installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `dd4f157c…` (55,585,173 B), rollback
+`rollback-d3d9\d3d9.dll.run26` = `3851f91d…`; exe, overlay and ini unchanged. Record `verification/results/fl-run27/candidate.json`.
+
+**FL run 27 A (open):** in the chase view fly through one gate and dock/undock once (restore rows), then find a clear
+sector with ships far away, so that some plumes are only a few pixels, and watch them: a distant ship should show a
+small engine glow, not nothing, and nearby ships keep their full plumes with none missing; one F8 with distant ships
+in view, one F8 with a target selected; tell me before relaunching. Expect `chase_lead installed=1 … edition=fl …
+update=lifetime`, a `chase_transition_event … kind=9 kind_name=restore result=restored cancel=none` row after the gate
+and the undock (with `kind=1`/`kind=3` rows interleaved), `chase_central_hud_window`/`chase_lead_window` keeping
+`admitted>0` in the chase view, `cull_small_parts … far_jets=on edition=fl`, and in `engine_stage` `far_jets>0`,
+`far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`. Report: a HUD or reticle that disappears in
+normal flight (`lifetime=` rising while `admitted` falls would be the log sign), a distant ship with no glow at all, a
+missing plume on a nearby ship, or anything odd at the M6 quick-launch port (cut 9098 follows the 4 px threshold).
