@@ -129,7 +129,7 @@ Sizes are measured bytes per line in run337 unless marked inferred. "F8" means c
 | `--frame-timing-state-stamps N` | sampled state-call stamps | unmeasured | explicit | Sampling knob for the developer |
 | `--frame-phases` (`X3M_FRAME_PHASES`) | `frame_phase_mode`, `frame_phase_site` × 10, `frame_phases` (632 B), `frame_phases_slow` (242 B × 4) per 300 frames | 1.6 KB per 300 frames | perf | Attributes a slow frame to an engine phase; ten byte-verified stamps, flown in every stand run |
 | `--fps-overlay` (`X3M_FPS_OVERLAY`) | `fps_overlay_mode`, `fps_overlay_toggle` | on-screen only | perf | The player sees the number while reproducing; cost is one text draw per frame (inferred small) |
-| `--volumetric-fog-timing` (`X3M_VOLUMETRIC_FOG_TIMING`) | `volumetric_fog_frame` (330 B), `volumetric_fog_cache_frame` (200 B), `volumetric_fog_cards` at stride 1 (203 B) | 733 B per frame | perf | cpu_us and device calls of the pass on the exact frame of a stutter |
+| `--volumetric-fog-timing` (ini `volumetric_fog_timing`, `X3M_VOLUMETRIC_FOG_TIMING`) | `volumetric_fog_frame` (330 B), `volumetric_fog_cache_frame` (200 B), `volumetric_fog_cards` at stride 1 (203 B) | 733 B per frame | perf | cpu_us and device calls of the pass on the exact frame of a stutter |
 | (new) `X3M_SHADOW_TIMING` | `shadow_replay_depth` (505 B, has us=), `sun_shadow_apply_frame` (148 B, has us=) at stride 1 | 653 B per frame | perf | Today unconditional per frame; under the always tier they move into the 60-frame family block |
 | (none today) `shadow_retention_frame`, `shadow_replay_candidates`, `shadow_replay_sun`, `shadow_alpha_casters`, `sun_shadow_lane_frame` | 2.7 KB per frame at stride 1 | today every frame, ungated | family block: perf at 60, debug at 1 | State rows, not cost rows; the same gate as `hdr_frame` |
 | `X3M_MOTION_FRAME_LOG=1` (shell prefix today) | the family block: `motion_output_frame`, `hdr_frame`, `thin_vote_frame`, `fade_route_frame`, `hull_*_frame`, `emission_source_gain_frame`, `original_fill_frame`, `screen_emission_additive_frame`, `shadow_lease_retirement` | 4.6 KB per frame at 1; 77 B per frame at 60 | debug at 1; perf at 60 | Rendering-state rows per frame for a rendering bug; the stutter report only needs the cadence |
@@ -167,7 +167,7 @@ Sizes are measured bytes per line in run337 unless marked inferred. "F8" means c
 | `--resource-read verify` | difference rows | | explicit | Same |
 | `--taa-debug` (`X3M_TAA_DEBUG`) | `taa_age` and raw resolve dumps on F8 | ~40 MB per F8 frame | explicit | Dumps, support-directed |
 | `--own-sun-log` (ini `own_sun_log`, alias `sun_occlusion_log`; formerly `--sun-occlusion-log`) | `sun_probe` rows | one row and the original probe per flare probe of the installed hook | explicit | Row volume; the 1x1 readback, `sun_visibility`, `sun_lens_draw` and the `lens` dumps were deleted with the partial sun occlusion (2026-11-02) |
-| `--gpu-sync-timing` (`X3M_GPU_SYNC_TIMING`) | `gpu_sync_*` rows | | explicit | Halves fps |
+| `--gpu-sync-timing` (ini `gpu_sync_timing`, `X3M_GPU_SYNC_TIMING`) | `gpu_sync_*` rows | | explicit | Halves fps |
 | `--volumetric-fog-everywhere` | none (renders fog everywhere) | | explicit A/B | Not a log option |
 | `--shadow-retention-timing` (`X3M_SHADOW_RETENTION_TIMING`) | none: no DLL read | | drop | Dead variable (measured) |
 | `X3M_LOCKED_PREFIX_LOG` (section 5) | `locked_prefix` per draw | fixtures only | unchanged | Fixture diagnostic |
