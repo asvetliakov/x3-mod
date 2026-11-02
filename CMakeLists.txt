@@ -132,11 +132,13 @@ set(X3M_SHARED_SOURCES
 # src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md). The flare-probe hook module too: the fl
 # target links src/engine/fl/sun_occlusion_fl.cpp (docs/architecture/farnhams-legacy-sun-occlusion.md). The engine-effects
 # call redirects too: the fl target links src/engine/fl/engine_effects_fl.cpp (docs/architecture/engine-effects-modern.md,
-# "FL port, step 1"); engine_effects.cpp stays shared.
+# "FL port, step 1"); engine_effects.cpp stays shared. The small-parts cull, the Terran station LOD and the LOD occlusion
+# patches too: the fl target links src/engine/fl/cull_small_parts_fl.cpp, terran_station_lod_fl.cpp and
+# lod_occlusion_fl.cpp (docs/verification/cull-small-parts.md, "FL port").
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
-  src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
+  src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
   src/proxy/engine_patch.cpp)
 # AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
@@ -169,6 +171,9 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)
   # The engine-effects call redirects (docs/architecture/engine-effects-modern.md, "FL port, step 1").
   target_sources(d3d9 PRIVATE src/engine/fl/engine_effects_fl.cpp)
+  # The small-parts cull stub and the two one-byte LOD patches (docs/verification/cull-small-parts.md, "FL port").
+  target_sources(d3d9 PRIVATE src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
+    src/engine/fl/lod_occlusion_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -225,6 +230,11 @@ set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp
 # The FL engine-effects stubs (src/engine/fl/engine_effects_fl.cpp) are file-scope asm, integer only; the install code
 # runs on the backend-load path: default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/engine_effects_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL small-parts cull (its stub is emitted integer code; the far-jet callee is engine_far_jets.cpp) and the two FL
+# one-byte LOD patches run on the backend-load path and in the Present/Reset hooks: default SSE2 flags, no exception
+# bookends.
+set_source_files_properties(src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
+  src/engine/fl/lod_occlusion_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).
