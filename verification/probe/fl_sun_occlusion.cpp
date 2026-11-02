@@ -1,6 +1,6 @@
-// Original synthetic fixture of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp; since own
-// sun step 3 the probe answers "hidden" for the eligible record in a frame whose own-sun latch is set and forwards every
-// other call, docs/architecture/own-sun-pass.md section 14),
+// Original synthetic fixture of the FL flare-probe hook (src/engine/fl/sun_occlusion_fl.cpp; since own sun step 3 the
+// probe answers "hidden" for the eligible record in a frame whose own-sun latch is set and forwards every other call,
+// docs/architecture/own-sun-pass.md section 14; the lens bracket was deleted on 2026-11-02),
 // docs/architecture/farnhams-legacy-sun-occlusion.md: no game code, no game bytes beyond the generated window/anchor
 // constants, no launch. Built with -DX3M_EDITION_FL=1 -DX3M_SUN_OCCLUSION_FL_FIXTURE by
 // verification/analysis/test_fl_sun_occlusion.py and run natively (WSL interop).
@@ -8,14 +8,12 @@
 // A fake flare walk carries the generated 26-byte probe window (cmp [esi+0x30],0; je; mov edx,ebx; mov ecx,esi;
 // call rel32; test eax,eax; je; mov dword [esi+0x30],0) with the call one qword-aligned word in (site % 8 = 2, as
 // base+0x8af0a), EBX = view, ESI = record, EDI/EBP sentinels, XMM0-7 and one x87 value loaded and DF set; a fake lens
-// pass carries `mov edx,esi; call rel32` with the call straddling a qword (site % 8 = 7, as base+0x8bcb7). The fake
-// targets record their entry registers, EFLAGS, stack, XMM, x87 and LastError and return sentinels. The listeners
-// clobber XMM0-7, the x87 stack/control word, MXCSR and LastError; the hooks must hide all of it.
+// pass carries `mov edx,esi; call rel32` with the call straddling a qword (site % 8 = 7, as base+0x8bcb7) and must stay
+// byte for byte vanilla through every install. The fake targets record their entry registers, EFLAGS, stack, XMM, x87
+// and LastError and return sentinels; the hook must hide everything it touches.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <excpt.h>
 #include <cstdarg>
-#include <csetjmp>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -183,10 +181,11 @@ uint32_t config_slot = 0, main_view_word = 0;
 Walk walk = nullptr;
 Lens lens = nullptr;
 unsigned char *probe_site = nullptr, *lens_site = nullptr;
-unsigned probe_calls = 0, lens_calls = 0, begin_calls = 0, end_calls = 0;
+unsigned char lens_original_bytes[5]; // the fake lens call as emitted: it must never change
+unsigned probe_calls = 0, lens_calls = 0;
 uint32_t native_probe_flags = 0; // the original's entry EFLAGS without the hook (the window's cmp defines them)
-unsigned target_mode = 0;     // 0 checked, 2 raise (lens), 3 timing (no checks)
-bool bracket_at_target = false, clobber = true, check_probe_error = true;
+unsigned target_mode = 0;     // 0 checked, 3 timing (no checks)
+bool check_probe_error = true;
 void make_objects() {
     std::memset(record, 0, sizeof record);
     std::memset(view, 0, sizeof view);
@@ -220,43 +219,12 @@ extern "C" void __cdecl fl_fake_probe_body() {
     if (check_probe_error) check(GetLastError() == 0x145, "probe original entered with the caller's LastError");
     SetLastError(0x246);
 }
-std::jmp_buf outer_jump;
 extern "C" void __cdecl fl_fake_lens_body() {
     ++lens_calls;
     if (target_mode == 3) return;
-    bracket_at_target = so::bracket_open();
     check(GetLastError() == 0x145, "lens original entered with the caller's LastError");
-    if (target_mode == 2) RaiseException(0xe3450001, 0, 0, nullptr);
     SetLastError(0x246);
 }
-// Every volatile piece of CPU state the hooks must hide from the engine.
-void clobber_cpu() {
-    if (!clobber) return;
-    const uint16_t cw = 0x0c7f;
-    const uint32_t mxcsr = 0x9fc0;
-    asm volatile("pcmpeqd %%xmm0,%%xmm0\n\tpcmpeqd %%xmm1,%%xmm1\n\tpxor %%xmm2,%%xmm2\n\tpcmpeqd %%xmm3,%%xmm3\n\t"
-                 "pxor %%xmm4,%%xmm4\n\tpcmpeqd %%xmm5,%%xmm5\n\tpcmpeqd %%xmm6,%%xmm6\n\tpxor %%xmm7,%%xmm7\n\t"
-                 "fldpi\n\tfldpi\n\tfldcw %0\n\tldmxcsr %1" ::"m"(cw),
-                 "m"(mxcsr)
-                 : "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "st", "st(1)");
-    SetLastError(0x999);
-}
-uint16_t listener_sw = 0xffff, listener_cw = 0;
-void listener_check() {
-    asm volatile("fnstsw %0\n\tfnstcw %1" : "=m"(listener_sw), "=m"(listener_cw));
-    if (target_mode != 3) check(listener_sw == 0 && listener_cw == 0x037f, "listener runs on an initialised x87");
-}
-void begin_listener() {
-    ++begin_calls;
-    listener_check();
-    clobber_cpu();
-}
-void end_listener() {
-    ++end_calls;
-    listener_check();
-    clobber_cpu();
-}
-
 // ---- witnessed calls ------------------------------------------------------------------------------------------
 struct Cpu {
     uint16_t cw;
@@ -337,21 +305,20 @@ void probe(uint32_t* v, int expect, const char* label) {
     c(t_cw == test_cw && t_mxcsr == mx && ((t_sw >> 11) & 7) == 7, "x87 CW, MXCSR and the one value reach the original");
     c(a.error == 0x246 && !std::memcmp(xmm_after, xmm_out, sizeof xmm_out), "the original's LastError and XMM returned");
 }
-// One lens call through the fake pass. hooked: the bracket opens around the original.
-void lens_call(uint32_t* v, bool hooked, const char* label) {
+// One lens call through the fake pass: the engine's own call, never redirected (the lens bracket's deletion).
+void lens_call(uint32_t* v, const char* label) {
     char text[200];
     auto c = [&](bool value, const char* what) {
         std::snprintf(text, sizeof text, "%s: %s", label, what);
         check(value, text);
     };
     const uint32_t mx = test_mxcsr();
-    const unsigned calls = lens_calls, begins = begin_calls, ends = end_calls;
+    const unsigned calls = lens_calls;
     const Cpu saved = enter_test_state();
     lens(v);
     const After a = leave_test_state(saved);
     c(lens_calls == calls + 1, "the original ran once");
-    c(begin_calls == begins + (hooked ? 1u : 0u) && end_calls == ends + (hooked ? 1u : 0u), "begin/end once each");
-    c(bracket_at_target == hooked && !so::bracket_open(), "bracket open around the original only");
+    c(lens_site[0] == 0xe8 && !std::memcmp(lens_site, lens_original_bytes, 5), "the lens call byte for byte vanilla");
     c(esp_after == esp_before && ebp_after == 0x5a5a3333 && edi_after == 0x5a5a2222 && ebx_after == 0x5a5a6666 &&
           esi_after == uint32_t(reinterpret_cast<uintptr_t>(v)),
       "stack balanced, EBP/EDI/EBX/ESI kept");
@@ -359,7 +326,7 @@ void lens_call(uint32_t* v, bool hooked, const char* label) {
     c(t_esi == esi_after && t_edi == 0x5a5a2222 && t_ebx == 0x5a5a6666 && t_ebp == 0x5a5a3333,
       "original entered with ESI/EDI/EBX/EBP");
     c(t_flags == flags_before, "original entered with the site's EFLAGS");
-    c((hooked ? t_ret2 : t_ret) == uint32_t(reinterpret_cast<uintptr_t>(lens_site)) + 5, "returns to site + 5");
+    c(t_ret == uint32_t(reinterpret_cast<uintptr_t>(lens_site)) + 5, "returns to site + 5");
     c(!std::memcmp(xmm_at_target, xmm_in, sizeof xmm_in), "XMM0-7 reach the original");
     c(t_cw == test_cw && t_mxcsr == mx && ((t_sw >> 11) & 7) == 7, "x87 CW, MXCSR and the one value reach the original");
     c(eax_after == 0x0aa0beef && ecx_after == 0x0cc0ffee && edx_after == 0x0dd0beef &&
@@ -368,33 +335,13 @@ void lens_call(uint32_t* v, bool hooked, const char* label) {
     c(a.error == 0x246 && !std::memcmp(xmm_after, xmm_out, sizeof xmm_out), "the original's LastError and XMM returned");
     c(x87_after == 1.0 && a.cw == test_cw && a.mxcsr == mx, "x87 value, control word and MXCSR kept");
 }
-// A frame: probe(s), the lens bracket, Present.
+// A frame: probe(s), the engine's lens call, Present.
 void frame(int expect, const char* label, uint32_t* v = view) {
     probe(v, expect, label);
-    lens_call(view, true, label);
+    lens_call(view, label);
     so::present(0);
 }
 
-extern "C" __attribute__((force_align_arg_pointer)) EXCEPTION_DISPOSITION __cdecl fl_fixture_handler(
-    EXCEPTION_RECORD* rec, void* frame_, CONTEXT*, void*) {
-    if (!(rec->ExceptionFlags & (EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND)) && rec->ExceptionCode == 0xe3450001) {
-        RtlUnwind(frame_, nullptr, nullptr, nullptr);
-        void* previous = *static_cast<void**>(frame_);
-        __asm__ __volatile__("movl %0,%%fs:0" ::"r"(previous));
-        std::longjmp(outer_jump, 1);
-    }
-    return ExceptionContinueSearch;
-}
-extern "C" Lens fl_fixture_lens;
-Lens fl_fixture_lens = nullptr;
-// An outer SEH frame beyond the fake lens pass: the raise in the original unwinds through the thunk.
-extern "C" __attribute__((naked)) uint32_t __cdecl catch_outer(uint32_t*) {
-    __asm__ __volatile__("pushl %ebp\n\tmovl %esp,%ebp\n\tsubl $8,%esp\n\t"
-                         "movl %fs:0,%eax\n\tmovl %eax,-8(%ebp)\n\tmovl $_fl_fixture_handler,-4(%ebp)\n\t"
-                         "leal -8(%ebp),%eax\n\tmovl %eax,%fs:0\n\t"
-                         "pushl 8(%ebp)\n\tcall *_fl_fixture_lens\n\taddl $4,%esp\n\t"
-                         "movl -8(%ebp),%edx\n\tmovl %edx,%fs:0\n\tleave\n\tret\n\t");
-}
 DWORD WINAPI foreign_thread(void*) {
     record[L::record_visible / 4] = 1;
     SetLastError(0x145);
@@ -406,8 +353,6 @@ so::Addresses addresses(bool fixture_main_view = true) {
     so::Addresses a{};
     a.probe_site = reinterpret_cast<uintptr_t>(probe_site);
     a.probe_target = reinterpret_cast<uintptr_t>(&fl_fake_probe);
-    a.lens_site = reinterpret_cast<uintptr_t>(lens_site);
-    a.lens_target = reinterpret_cast<uintptr_t>(&fl_fake_lens);
     a.main_view = fixture_main_view ? reinterpret_cast<const uintptr_t*>(&main_view_word) : nullptr;
     return a;
 }
@@ -512,18 +457,6 @@ double time_probes(uint32_t* v, unsigned iterations) {
     asm volatile("fninit");
     return double(end.QuadPart - begin.QuadPart) * 1e9 / double(frequency.QuadPart) / iterations;
 }
-double time_lens(unsigned iterations) {
-    LARGE_INTEGER frequency{}, begin{}, end{};
-    QueryPerformanceFrequency(&frequency);
-    target_mode = 3;
-    QueryPerformanceCounter(&begin);
-    for (unsigned i = 0; i < iterations; ++i) lens(view);
-    QueryPerformanceCounter(&end);
-    target_mode = 0;
-    asm volatile("fninit");
-    return double(end.QuadPart - begin.QuadPart) * 1e9 / double(frequency.QuadPart) / iterations;
-}
-
 int main() {
     setvbuf(stdout, nullptr, _IONBF, 0);
     make_objects();
@@ -536,64 +469,54 @@ int main() {
     VirtualProtect(page, 4096, PAGE_EXECUTE_READWRITE, &old);
     walk = reinterpret_cast<Walk>(page);
     lens = reinterpret_cast<Lens>(lens_page);
-    fl_fixture_lens = lens;
     check((reinterpret_cast<uintptr_t>(probe_site) & 7) == 2 && (reinterpret_cast<uintptr_t>(lens_site) & 7) == 7,
           "probe call one word (as base+0x8af0a), lens call straddling a qword (as base+0x8bcb7)");
-    unsigned char probe_original[5], lens_original[5];
+    unsigned char probe_original[5];
     std::memcpy(probe_original, probe_site, 5);
-    std::memcpy(lens_original, lens_site, 5);
+    std::memcpy(lens_original_bytes, lens_site, 5);
     const auto unchanged = [&]() {
-        return !std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original, 5);
+        return !std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original_bytes, 5);
     };
-    so::set_listener(&begin_listener, &end_listener);
     // Unpatched baseline through the same fake walk and pass.
     probe_answer = 1;
     probe(view, 2, "unpatched probe hide");
     probe_answer = 0;
     probe(view, 2, "unpatched probe show");
-    lens_call(view, false, "unpatched lens");
+    lens_call(view, "unpatched lens");
 
-    // Production initialize in a non-X3FL process, before the own sun is requested: only the bracket (the lens-flare
-    // gain or the fog) installs; the own sun's log alone installs nothing.
-    check(!so::initialize(false) && !std::strcmp(so::state(), "disabled"), "nothing requested: disabled, no row");
+    // Production initialize in a non-X3FL process, before the own sun is requested: nothing installs (the lens-flare
+    // gain and the fog no longer ask for a hook); the own sun's log alone installs nothing.
+    check(!so::initialize() && !std::strcmp(so::state(), "disabled"), "nothing requested: disabled, no row");
     SetEnvironmentVariableW(L"X3M_OWN_SUN_LOG", L"1");
     const unsigned rows_before = rows;
-    check(!so::initialize(false) && !std::strcmp(so::state(), "disabled") && rows == rows_before,
+    check(!so::initialize() && !std::strcmp(so::state(), "disabled") && rows == rows_before,
           "the log alone: disabled, no row");
-    check(!so::initialize(true) && row_has("fl.sun_occlusion status=executable_mismatch ") && row_has(" log=1 bracket=1 "),
-          "bracket for the fog/gain: one row, executable_mismatch");
     SetEnvironmentVariableW(L"X3M_OWN_SUN_LOG", nullptr);
     check(unchanged() && !so::installed(), "refusals wrote nothing");
 
-    // install_at refusals and the rollback of the first claim.
+    // install_at refusals: nothing written.
     {
         so::Addresses a = addresses();
         a.probe_target = reinterpret_cast<uintptr_t>(&fl_other_target);
         check(!so::install_at(a, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged() &&
                   !so::installed(),
-              "probe claim refused after the lens claim: the lens call rolled back byte for byte");
-        a = addresses();
-        a.lens_target = reinterpret_cast<uintptr_t>(&fl_other_target);
-        check(!so::install_at(a, false) && !std::strcmp(so::state(), "target_mismatch") && unchanged(),
-              "lens claim refused, nothing written");
-        a = addresses();
-        a.lens_site += 1;
-        check(!so::install_at(a, false) && unchanged(), "lens site one byte off refused");
+              "probe claim refused: nothing written");
         a = addresses();
         a.probe_site = 0;
         check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(), "no probe site");
     }
 
-    // ---- installed: every probe forwards, the bracket opens around the lens pass ----------------------------------
+    // ---- installed: every probe forwards, the lens call stays the engine's ----------------------------------------
     main_view_cases();
     check(so::install_at(addresses(), false) && so::installed() && !so::logging() && !std::strcmp(so::state(), "active"),
-          "both calls claimed");
-    check(so::bracket_installed() && so::main_view_known(), "both claimed: the bracket installed, the main view known");
+          "the probe call claimed");
+    check(so::main_view_known(), "installed: the main view known");
     so::fixture_log_status();
-    check(row_has("fl.sun_occlusion status=active ") && row_has(" probe=base+0x8af0a lens=base+0x8bcb7 ") &&
-              row_has(" probe_write=atomic lens_write=plain ") && row_has(" log=0 bracket=0 ") && row_has(" anchors=17 "),
-          "status row: sites, write modes, anchors");
-    check(probe_site[0] == 0xe8 && lens_site[0] == 0xe8 && !unchanged(), "only the rel32s rewritten");
+    check(row_has("fl.sun_occlusion status=active ") && row_has(" probe=base+0x8af0a probe_write=atomic log=0 ") &&
+              row_has(" anchors=17 ") && !row_has("lens") && !row_has("bracket"),
+          "status row: site, write mode, anchors; no lens field");
+    check(probe_site[0] == 0xe8 && std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original_bytes, 5),
+          "only the probe rel32 rewritten, the lens call byte for byte vanilla");
     probe_answer = 1;
     frame(2, "eligible probe forwards (hide)");
     probe_answer = 0;
@@ -613,26 +536,12 @@ int main() {
     owner[L::view_flags / 4] = 0x135;
     probe(view, 2, "an owner without the background bit forwards");
     owner[L::view_flags / 4] = 0x00400135;
-    lens_call(view, true, "bracket after the probes");
+    lens_call(view, "lens after the probes: the engine's");
     so::present(0);
-
-    // ---- unwind through the bracket ------------------------------------------------------------------------------
-    {
-        probe_answer = 0;
-        probe(view, 2, "probe before the raise");
-        const unsigned ends = end_calls, calls = lens_calls;
-        target_mode = 2;
-        SetLastError(0x145);
-        const int caught = setjmp(outer_jump);
-        if (!caught) catch_outer(view);
-        target_mode = 0;
-        asm volatile("fninit\n\tcld");
-        check(caught == 1 && lens_calls == calls + 1 && end_calls == ends, "SEH reached the outer handler; no end");
-        check(so::bracket_open(), "an unwind leaves the bracket open until Present");
-        so::present(0);
-        check(!so::bracket_open(), "Present closes the bracket");
-        frame(2, "after the unwind the probe forwards");
-    }
+    probe_answer = 0;
+    probe(view, 2, "probe forwards (show)");
+    so::present(0);
+    frame(2, "the next frame's probe forwards");
 
     // ---- a probe from another thread runs the original ----------------------------------------------------------
     {
@@ -651,11 +560,11 @@ int main() {
         check(so::fixture_arm_sample() == 10, "X3M_FL_SUN_OCCLUSION_LOG unset: 10 s");
         frame(2, "sample frame 1");
         probe(other_view, 2, "sample frame 2 ineligible");
-        lens_call(view, true, "sample frame 2 bracket");
+        lens_call(view, "sample frame 2 lens");
         so::fixture_force_sample();
         so::present(0);
         check(row_has("fl.sun_occlusion_sample row=1 status=active frames=2 probes=2 own=0 hidden=0 original=2 "
-                      "foreign=1 brackets=2 main_view=0x00000000"),
+                      "foreign=1 main_view=0x00000000"),
               "fl.sun_occlusion_sample counts (no main-view walk without the log)");
         SetEnvironmentVariableW(L"X3M_FL_SUN_OCCLUSION_LOG", L"0");
         check(so::fixture_arm_sample() == 0, "X3M_FL_SUN_OCCLUSION_LOG=0: off");
@@ -702,7 +611,7 @@ int main() {
         probe(view, 2, "own-sun frame: an owner without the background bit forwards");
         owner[L::view_flags / 4] = 0x00400135;
         check(!so::own_sun_hidden(), "own-sun frame with ineligible probes only: not hidden");
-        lens_call(view, true, "own-sun frame: the bracket still opens");
+        lens_call(view, "own-sun frame: the lens call is the engine's");
         // The main view unresolved (0): nothing is eligible, the probe forwards.
         main_view_word = 0;
         so::present(0);
@@ -722,27 +631,16 @@ int main() {
                       so::counters().own_sun_hidden == f0.own_sun_hidden && !so::own_sun_hidden(),
                   "own-sun frame: the foreign probe ran the original, nothing answered");
         }
-        // An unwind through the bracket in an own-sun frame: the answer before it stands, Present closes the bracket,
-        // the next frame answers again.
-        probe(view, 1, "own-sun frame: hidden before the raise");
-        {
-            const unsigned ends = end_calls;
-            target_mode = 2;
-            SetLastError(0x145);
-            const int caught = setjmp(outer_jump);
-            if (!caught) catch_outer(view);
-            target_mode = 0;
-            asm volatile("fninit\n\tcld");
-            check(caught == 1 && end_calls == ends && so::bracket_open() && so::own_sun_hidden(),
-                  "own-sun frame: SEH past the bracket, answer kept, bracket open until Present");
-            so::present(0);
-            check(!so::bracket_open() && !so::own_sun_hidden(), "own-sun frame: Present closes the bracket");
-            frame(1, "own-sun frame after the unwind: hidden");
-        }
+        // The answer holds for its frame; Present ends it and the next frame answers again.
+        probe(view, 1, "own-sun frame: hidden");
+        check(so::own_sun_hidden(), "own-sun frame: the answer stands for the frame");
+        so::present(0);
+        check(!so::own_sun_hidden(), "own-sun frame: Present ends the frame's answer");
+        frame(1, "own-sun frame after Present: hidden");
         // The periodic row counts the hidden answers.
         check(so::fixture_arm_sample() == 10, "sample armed for the own-sun frames");
         probe(view, 1, "sampled own-sun frame");
-        lens_call(view, true, "sampled own-sun frame bracket");
+        lens_call(view, "sampled own-sun frame lens");
         so::fixture_force_sample();
         so::present(0);
         check(row_has("fl.sun_occlusion_sample ") && row_has(" probes=1 own=1 hidden=1 original=0 "),
@@ -787,42 +685,31 @@ int main() {
         check(c1.probes == c0.probes + 1 && c1.original == c0.original + 1 && c1.own == c0.own &&
                   c1.own_sun_hidden == c0.own_sun_hidden && !so::own_sun_hidden(),
               "unpatched latch: early forward, no eligibility test, no hidden answer, own_sun_hidden() false");
-        check(!so::bracket_installed() && !so::main_view_known(), "unpatched: no bracket, no main-view source");
+        check(!so::main_view_known(), "unpatched: no main-view source");
     }
-    // The own sun without the bracket: initialize installs (here: refuses on the identity) for the own sun alone.
-    check(!so::initialize(false) && row_has("fl.sun_occlusion status=executable_mismatch ") &&
-              row_has(" bracket=0 own_sun=1 "),
-          "the own sun alone: one row, executable_mismatch");
+    // The own sun requested: initialize installs (here: refuses on the identity) for it.
+    check(!so::initialize() && row_has("fl.sun_occlusion status=executable_mismatch ") && row_has(" own_sun=1 "),
+          "the own sun requested: one row, executable_mismatch");
     so::fixture_slots(reinterpret_cast<uintptr_t>(&registry_slot)); // initialize cleared the admitted registry slot
-    // install_at with no lens addresses: the probe only, the lens call untouched (own-sun-pass.md section 8).
+    // The own sun's install: the probe only, the lens call untouched (own-sun-pass.md section 8).
     {
-        so::Addresses a = addresses();
-        a.lens_site = 0;
-        check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(),
-              "a lens target without its site refused");
-        a = addresses();
-        a.lens_target = 0;
-        check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(),
-              "a lens site without its target refused");
-        a.lens_site = 0;
-        check(so::install_at(a, false) && so::installed() && !std::strcmp(so::state(), "active"), "probe-only install");
+        check(so::install_at(addresses(), false) && so::installed() && !std::strcmp(so::state(), "active"), "probe-only install");
         so::fixture_log_status();
-        check(row_has(" probe_write=atomic lens_write=none ") && row_has(" own_sun=1 "),
-              "probe-only status row: lens_write=none");
-        check(!so::bracket_installed() && so::main_view_known(), "probe-only: no bracket, the main-view source known");
-        check(probe_site[0] == 0xe8 && std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original, 5),
+        check(row_has(" probe_write=atomic ") && row_has(" own_sun=1 "), "probe-only status row");
+        check(so::main_view_known(), "probe-only: the main-view source known");
+        check(probe_site[0] == 0xe8 && std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original_bytes, 5),
               "probe-only: the lens call byte for byte vanilla");
         so::set_own_sun_frame(true);
         so::present(0);
         probe_answer = 0;
         probe(view, 1, "probe-only own-sun frame: hidden");
-        lens_call(view, false, "probe-only: the lens call is the engine's, no bracket");
+        lens_call(view, "probe-only: the lens call is the engine's");
         check(so::own_sun_hidden(), "probe-only: own_sun_hidden() true");
         so::present(0);
         probe(other_view, 2, "probe-only: another view forwards");
         check(so::shutdown() && unchanged() && !so::installed(), "probe-only restore, both calls vanilla");
     }
-    lens_call(view, false, "lens after restore");
+    lens_call(view, "lens after restore");
     probe_answer = 0;
     probe(view, 2, "probe after restore");
 
@@ -847,7 +734,7 @@ int main() {
         check(row_has("sun_probe ") && row_has(" owner_layer=15 ") && row_has(" eligible=1 ") &&
                   row_has(k == 0 ? " vanilla=1 answer=1" : " vanilla=0 answer=0"),
               "sun_probe row: the registry main view, the owner's layer, the original's answer");
-        lens_call(view, true, "log mode bracket");
+        lens_call(view, "log mode: the lens call is the engine's");
         so::present(0);
     }
     // The log mode in an own-sun frame: the hidden answer is not logged and runs no original; an ineligible probe
@@ -877,18 +764,15 @@ int main() {
 
     anchor_cases();
 
-    // Cost per call: unpatched, forwarded (another view's probe and the main view's eligible one); lens unpatched and
-    // bracketed (trivial listeners).
+    // Cost per call: unpatched, forwarded (another view's probe and the main view's eligible one), hidden.
     {
-        clobber = false;
         const unsigned iterations = 200000;
-        const double native_probe = time_probes(view, iterations), native_lens = time_lens(iterations);
+        const double native_probe = time_probes(view, iterations);
         check(so::install_at(addresses(), false), "timing install");
         probe_answer = 0;
         frame(2, "timing warm");
         const double forward = time_probes(other_view, iterations);
         const double eligible = time_probes(view, iterations);
-        const double bracket = time_lens(iterations);
         so::set_own_sun_frame(true);
         so::present(0);
         const double hidden = time_probes(view, iterations);             // the own sun's answer (no original)
@@ -896,24 +780,15 @@ int main() {
         so::set_own_sun_frame(false);
         so::present(0);
         check(so::shutdown() && unchanged(), "timing restore");
-        clobber = true;
-        std::printf("TIMING native_probe_ns=%.1f forward_ns=%.1f eligible_forward_ns=%.1f native_lens_ns=%.1f bracket_ns=%.1f "
-                    "forward_hook_ns=%.1f bracket_hook_ns=%.1f hidden_ns=%.1f own_frame_forward_ns=%.1f\n",
-                    native_probe, forward, eligible, native_lens, bracket, forward - native_probe, bracket - native_lens,
-                    hidden, own_frame_forward);
+        std::printf("TIMING native_probe_ns=%.1f forward_ns=%.1f eligible_forward_ns=%.1f forward_hook_ns=%.1f "
+                    "hidden_ns=%.1f own_frame_forward_ns=%.1f\n",
+                    native_probe, forward, eligible, forward - native_probe, hidden, own_frame_forward);
     }
-    // Late window: after the first Present closes the engine_patch window, both claims are refused, nothing written
-    // (the lens call's plain write is never attempted outside the window).
+    // Late window: after the first Present closes the engine_patch window, the claim is refused, nothing written.
     x3m::engine_patch::close_install_window("fixture_first_present");
     check(!so::install_at(addresses(), false) && !std::strcmp(so::state(), "late_claim") && unchanged() &&
               !so::installed(),
           "late claim refused, nothing written");
-    {
-        so::Addresses a = addresses();
-        a.lens_site = a.lens_target = 0;
-        check(!so::install_at(a, false) && !std::strcmp(so::state(), "late_claim") && unchanged() && !so::installed(),
-              "late probe-only claim refused, nothing written");
-    }
     {
         x3m::engine_patch::CallSite site{};
         check(!x3m::engine_patch::claim_call(site, reinterpret_cast<uintptr_t>(lens_site),

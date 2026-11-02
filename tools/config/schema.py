@@ -156,9 +156,6 @@ SETTINGS = [
     entry('bolt_far_show', 'float', 'graphics', 'How strongly a bolt in front of a distant station shows, 0 to 1. 1 = its full '
           'brightness (the default since Run 94 A), 0.5 = half (about its look over empty space), 0 = the anti-aliased result.', '1', range=(0.0, 1.0),
           requires=('bolt_far_composite',), launcher='--bolt-far-show'),
-    entry('lens_flare_gain', 'float', 'graphics', 'Brightness of the game\'s lens flares around engines and lights (the sun\'s '
-          'flare too), 1 = the game\'s own, down to 0 = the flares are not drawn at all. Some mods draw very large flares.', '1', builtin='1', range=(0.0, 1.0),
-          launcher='--lens-flare-gain', since='2026-09-29'),
     entry('own_sun', 'bool', 'graphics', 'The mod draws its own sun, a small bright centre in a wide soft glow with a few '
           'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
           'sun flare. 1 = on (default), 0 = the game\'s own sun. X3: Albion '

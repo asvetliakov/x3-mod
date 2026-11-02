@@ -1,8 +1,9 @@
 # Sun and lens chain under partial occlusion
 
 > **Superseded by [own-sun-pass.md](own-sun-pass.md) on 2026-11-02; the override described here was deleted in
-> `5d10a8ac2`** (own sun step 2, section 14 of that note). The lens-flare gain and its fog transmittance ("Lens-flare
-> gain" below) remain, carried by the same lens bracket; everything else here is history.
+> `5d10a8ac2`** (own sun step 2, section 14 of that note). The lens-flare gain, its fog transmittance and the gain-0
+> engine cull ("Lens-flare gain" below), carried by the same lens bracket, were deleted on 2026-11-02 (own-sun-pass.md
+> section 14, "Lens-flare bracket deleted"); everything here is history.
 
 2026-09-22. Ratified design; **steps 1 and 2 are implemented behind `--sun-occlusion`, the launcher default on modded `--motion-output` launches since 2026-09-25 (user decision after Run 83; `--no-sun-occlusion` restores the vanilla probe)**; step 1 flew
 once (Run 223) without ever engaging for the sun, which the section "After Run 223" corrects; step 2 is not flown
@@ -445,7 +446,7 @@ flip in the phases that would otherwise have been stable, i.e. the pre-fix behav
 worse. A flight that still sees `f_raw` alternating with `jitter_index` behind a specific occluder should read
 `unjittered_depth_writers` in the same frames first.
 
-## Lens-flare gain (2026-09-29)
+## Lens-flare gain (2026-09-29; deleted 2026-11-02)
 
 A taste knob, default off, for mods whose lens chains are oversized (Mayhem 3: red streaked halos around every
 engine, 113 lens-scene draws per frame in run364 against 0-10 on stock; the vanilla game shows the same halos,

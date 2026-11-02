@@ -1,12 +1,12 @@
-"""Host checks of the own sun's flare-probe hook and the lens bracket (docs/architecture/own-sun-pass.md sections 5, 6
-and 14, step 2).
+"""Host checks of the own sun's flare-probe hook (docs/architecture/own-sun-pass.md sections 5, 6 and 14, step 2).
 
 The probe's eligibility test (the main view's re-probe of a background-view-owned record, run223) and the main-view
 registry walk through the C++ driver verification/probe/own_sun_hook_host.cpp over the production header; the
 production hook's answer (hidden for the eligible record in an own-sun frame, the original for every other probe, no
-read before the latch) and its install conditions; the lens bracket's per-draw step reduced to the lens-flare gain;
-the deletion of the partial-sun-occlusion override (wraps, scan, classification, deferral, visibility pass, settings,
-rows); the static site verifier; the launcher's own-sun log option. No device, no Wine.
+read before the latch) and its install conditions (the own sun only); the deletion of the lens bracket with the
+lens-flare gain and its engine-side cull (2026-11-02) and of the partial-sun-occlusion override (wraps, scan,
+classification, deferral, visibility pass, settings, rows); the static site verifier; the launcher's own-sun log
+option. No device, no Wine.
 """
 import contextlib
 import hashlib
@@ -114,30 +114,39 @@ class OwnSunHookSource(unittest.TestCase):
             self.assertNotIn(gone, decide.replace('return vanilla ? core::Hidden : core::Visible;', ''), gone)
         self.assertIn('void set_own_sun_frame(bool active) {\n    own_sun_frame_ = patched_ && own_sun_wanted_ && active;\n'
                       '    own_sun_late_ = false;\n}', sun)
-        # Installed for the own sun or the bracket; the log alone installs nothing.
-        init = body(sun, 'bool initialize(bool bracket_wanted) {')
-        self.assertIn('if (!bracket_wanted && !own_sun_wanted_) {', init)
-        self.assertLess(init.index('if (!bracket_wanted && !own_sun_wanted_) {'), init.index('L"X3M_OWN_SUN_LOG"'))
-        self.assertRegex(init, r'log\("own_sun_hook own_sun=%u bracket=%u log=%u patched=%u reason=%s ')
+        # Installed for the own sun only; the log alone installs nothing; one claim, the probe call.
+        init = body(sun, 'bool initialize() {')
+        self.assertIn('if (!own_sun_wanted_) {', init)
+        self.assertLess(init.index('if (!own_sun_wanted_) {'), init.index('L"X3M_OWN_SUN_LOG"'))
+        self.assertRegex(init, r'log\("own_sun_hook own_sun=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s",')
         self.assertNotIn('X3M_SUN_OCCLUSION', sun)
-        # The lens thunk's begin / end only open and close the bracket around the listener.
-        begin = body(sun, 'void __cdecl x3m_sun_lens_begin() {')
-        self.assertIn('if (listener_begin_) listener_begin_();\n    detail::bracket_open = true;', begin)
+        self.assertEqual(sun.count('engine_patch::claim_call('), 1)
+        self.assertIn('engine_patch::claim_call(probe_site_, a.probe_site, a.probe_target,', sun)
+        # The lens call's bytes stay in the identity; the call itself is never claimed.
+        for kept in ('state_ = "lens_site_mismatch";', 'state_ = "lens_body_mismatch";'):
+            self.assertIn(kept, init)
+        for gone in ('x3m_sun_lens', 'lens_site_{', 'lens_site_.', 'bracket', 'set_listener', 'PreserveCpuState'):
+            self.assertFalse(gone in sun, gone)
+        # The submit stamp rewrites the lens call's identity bytes: refused by name, before the identity checks.
+        self.assertLess(init.index('state_ = "submit_phases_conflict";'), init.index('state_ = "lens_site_mismatch";'))
 
-    def test_lens_bracket_per_draw_is_the_gain_only(self):
-        inc = source_text(ROOT / 'src/proxy/motion_output_lens_bracket_inc.h')
-        prepare = body(inc, 'void MotionOutput::prepare_lens(MotionRoute& route) noexcept {')
-        self.assertEqual(re.sub(r'\s+', ' ', prepare),
-                         '{ if (!lens_gain_.active) return; ++lens_gain_window_draws_; if (!route.submit) return; const bool plain = '
-                         '!route.routed && !route.composition && !route.fog_card_mask.masked && !route.source_gain && !route.hull_gain && '
-                         '!route.screen_additive; apply_lens_gain(route, plain); }')
-        capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('    if (own_sun_hook::bracket_open())\n        ctx.motion_output.prepare_lens(route);'), 4)
-        self.assertIn('own_sun_hook::set_listener(&sun_lens_begin, nullptr);', capture)
-        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
-        after = body(motion, 'void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {')
-        self.assertLess(after.index('if (route.lens_gain) restore_lens_gain(route);'), after.index('if (route.fog_card_mask.masked)'))
-        self.assertNotIn('finish_lens', motion)
+    def test_lens_bracket_gain_and_cull_are_deleted(self):
+        # 2026-11-02: the own sun replaces the engine sun and the engine plumes remove the small engine flares, so the
+        # lens bracket, the lens-flare gain (and its fog share) and the gain-0 engine cull went together.
+        for path in ('src/proxy/motion_output_lens_bracket_inc.h', 'src/proxy/lens_flare_gain.h', 'src/proxy/lens_flare_cull.h',
+                     'src/proxy/lens_flare_cull.cpp', 'src/proxy/lens_flare_cull_core.h', 'verification/probe/lens_flare_gain_fixture.cpp',
+                     'verification/probe/verify_lens_flare_cull_site.py', 'verification/analysis/test_lens_flare_cull.py'):
+            self.assertFalse((ROOT / path).exists(), path)
+        sources = ''.join(source_text(p) for p in (ROOT / 'src').rglob('*') if p.suffix in ('.h', '.cpp'))
+        for gone in ('lens_flare_gain', 'lens_gain', 'lens_bracket', 'bracket_open', 'bracket_installed', 'lens_flare_cull', 'prepare_lens',
+                     'set_listener', 'sun_lens_begin', 'X3M_LENS_FLARE_GAIN', 'lens_flare_fog'):
+            self.assertFalse(gone in sources, gone)
+        self.assertNotIn('lens_flare_cull', (ROOT / 'CMakeLists.txt').read_text())
+        schema = load('config_schema', 'tools/config/schema.py')
+        self.assertFalse(any(e['key'].startswith('lens_flare') for e in schema.SETTINGS))
+        manage = (ROOT / 'tools/manage.py').read_text()
+        self.assertNotIn("'--lens-flare-gain'", manage)
+        self.assertIn("    'X3M_LENS_FLARE_GAIN',\n)", manage)  # REMOVED_VARIABLES: an inherited value is dropped
 
     def test_partial_sun_occlusion_is_deleted(self):
         for path in ('src/renderer/lens_visibility_variant.h', 'src/renderer/lens_visibility_variant.cpp', 'src/renderer/sun_occlusion_pass.h',
@@ -181,17 +190,14 @@ class OwnSunHookFixtureRunner(unittest.TestCase):
     def test_expected_counts_match_the_fixtures(self):
         runner = load('run_own_sun_hook', 'verification/probe/run_own_sun_hook.py')
         hook = source_text(ROOT / 'verification/probe/own_sun_hook_fixture.cpp')
-        gain = source_text(ROOT / 'verification/probe/lens_flare_gain_fixture.cpp')
         self.assertEqual(runner.EXPECTED_HOOK_CHECKS, len(re.findall(r'\bcheck\("', hook)))
-        # Every require() runs once except the per-case one (three cases) and the G = 0 one inside the loop.
-        self.assertEqual(runner.EXPECTED_GPU_CHECKS, 8)
-        self.assertEqual(len(re.findall(r'\brequire\(', gain)) - 1, 6)  # the definition, four singles, the case, G = 0
-        self.assertEqual(runner.LENS_GAIN_CASES, {'off', 'half', 'zero'})
+        self.assertEqual(runner.EXPECTED_HOOK_CHECKS, 40)  # 46 until the lens bracket's six checks went (2026-11-02)
+        self.assertFalse(hasattr(runner, 'EXPECTED_GPU_CHECKS'))
 
 
 class OwnSunLogLaunchOption(unittest.TestCase):
     NAMES = ('X3M_OWN_SUN_LOG', 'X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_LOG', 'X3M_SUN_OCCLUSION_RADIUS', 'X3M_SUN_OCCLUSION_CURVE',
-             'X3M_SUN_OCCLUSION_CORE_F', 'X3M_SUN_OCCLUSION_DEFAULT')
+             'X3M_SUN_OCCLUSION_CORE_F', 'X3M_SUN_OCCLUSION_DEFAULT', 'X3M_LENS_FLARE_GAIN')
 
     def launch(self, directory, *args, inherited=None):
         module = load('own_sun_hook_manage', 'tools/manage.py')
@@ -232,7 +238,7 @@ class OwnSunLogLaunchOption(unittest.TestCase):
     def test_the_deleted_options_are_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             for args in (('--sun-occlusion',), ('--no-sun-occlusion',), ('--sun-occlusion-log',), ('--sun-occlusion-radius', '0.05'),
-                         ('--sun-occlusion-curve', '2'), ('--sun-occlusion-core-f', 'on')):
+                         ('--sun-occlusion-curve', '2'), ('--sun-occlusion-core-f', 'on'), ('--lens-flare-gain', '0.3')):
                 code, _, error = self.launch(directory, *args)
                 self.assertNotEqual(code, 0, args)
                 self.assertIn('unrecognized arguments', error, args)

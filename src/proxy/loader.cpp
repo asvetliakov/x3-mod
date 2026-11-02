@@ -27,7 +27,6 @@
 #include "collide_memo.h"
 #include "own_sun_hook.h"
 #include "cull_small_parts.h"
-#include "lens_flare_cull.h"
 #include "occlusion_engine_cull.h"
 #include "point_light_admission.h"
 #include "telemetry.h"
@@ -548,7 +547,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
         if (reserved == nullptr)
-            x3m::own_sun_hook::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
+            x3m::own_sun_hook::shutdown(); // same rule: the probe call back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_memo::shutdown(); // same rule: the memo's call back only on FreeLibrary
         if (reserved == nullptr)
             x3m::run_in_background::shutdown(); // same rule: the init call back only on FreeLibrary
@@ -565,9 +564,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr)
             x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
         if (reserved == nullptr)
-            x3m::occlusion_engine_cull::shutdown(); // same rule: disarms the third stub on the small-parts site (below)
-        if (reserved == nullptr)
-            x3m::lens_flare_cull::shutdown(); // same rule: disarms the second stub on the small-parts site (below)
+            x3m::occlusion_engine_cull::shutdown(); // same rule: disarms the second stub on the small-parts site (below)
         if (reserved == nullptr)
             x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
 #endif

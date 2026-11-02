@@ -3268,17 +3268,6 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     log("bolt_far_composite device=%llu requested=%u show=%g show_off=%u additive=%u gain=%g k=%g", device_id,
         unsigned(bolt_far_requested_), double(bolt_far_show_), unsigned(!(bolt_far_show_ > 0.f)),
         unsigned(screen_additive_requested_), double(screen_additive_gain_), double(x3::temporal::kBoltFlagScale));
-    // Lens-flare gain: G strictly between 0 and 1 needs the blend constant (D3DPBLENDCAPS_BLENDFACTOR); 0 skips
-    // the admitted draws (no state, no cap). Checked once here; without the cap every lens draw stays native (one refusal row).
-    lens_gain_blendfactor_ = (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0;
-    lens_gain_caps_ = lens_gain_.active && (!lens_gain_.constant || (caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0);
-    lens_gain_logged_ = 0;
-    if (lens_gain_.active) {
-        log("lens_flare_gain_device device=%llu gain=%.4f factor=%08lx constant=%u blendfactor_cap=%u active=%u", device_id,
-            double(lens_gain_.gain), static_cast<unsigned long>(lens_gain_.factor), unsigned(lens_gain_.constant),
-            unsigned((caps.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR) != 0), unsigned(lens_gain_caps_));
-        if (!lens_gain_caps_) refuse_lens_gain(lens_flare_gain::Caps);
-    }
     bind_direct();
     stats_ = stats;
     lazy_rt1_ = lazy_rt2_ = false;
@@ -9526,8 +9515,6 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
-    if (route.lens_gain) restore_lens_gain(route); // before every other restore: the gain sits on top of the application's
-                                                   // own blend states
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -10655,7 +10642,6 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (bolt_footprint_requested_)
         chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
-    if (lens_gain_.active && ++lens_gain_window_frames_ >= 300u) log_lens_gain_window();
     if (props_on_ && props_ && props_->window.frames >= cull_small_props::core::window_frames)
         log_cull_small_props_window();
     if (occlusion_on_) occlusion_cull_frame_end();
@@ -12920,7 +12906,6 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
-#include "motion_output_lens_bracket_inc.h"
 #include "motion_output_cull_small_props_inc.h"
 #include "motion_output_occlusion_cull_inc.h"
 #include "motion_output_engine_effects_inc.h"

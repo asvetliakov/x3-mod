@@ -912,6 +912,15 @@ of step 1 unchanged. Natively verified on the Windows host through WSL interop (
 answer, forwarding, rollback, late claim, CPU/LastError), the FL hook fixture (464 / 0), and the gain's blend law on the
 native D3D9 HAL device (8 / 0: G = 1, 0.5 through BLENDFACTOR, 0 not issued, state restored byte for byte).
 
+**2026-11-02, the lens-flare bracket deleted (both editions).** The lens-bracket hooks (AP 0x00472491, FL
+base+0x8bcb7) and the lens-flare gain's per-draw `SetRenderState` of `SRCBLEND`/`BLENDFACTOR` (with its
+`D3DPBLENDCAPS_BLENDFACTOR` cap read) are gone with the gain-0 engine cull ([own-sun-pass.md](own-sun-pass.md)
+section 14, "Lens-flare bracket deleted"). What stays: the byte-validated probe hook alone (AP 0x00471630, FL
+base+0x8af0a; the lens call's bytes stay in its identity check and are never written). Natively re-verified on the
+Windows host through WSL interop (measured 2026-11-02): the AP hook fixture 40 checks, 0 failures (the bracket's six
+cases removed, the probe counters unchanged), the FL hook fixture 739 / 0 (806 before; the lens call checked byte for
+byte vanilla in every install); no D3D call remains in either hook.
+
 ## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
 
 The own sun stage ([own-sun-pass.md](own-sun-pass.md) sections 2-4 and 10) uses documented D3D9 only: one vs_3_0 /

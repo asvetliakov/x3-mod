@@ -46,7 +46,7 @@ bool shutdown();   // restores the site (dynamic-unload detach only); true when 
 // far_jets: the far-jet block (initialize(): X3M_ENGINE_EFFECTS=plumes and the pinned
 // writer bytes): a JET node it culls is handed to x3m_engine_far_jet.
 bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool exempt_projectiles, bool far_jets = false);
-// The claim is shared with the lens-flare cull (lens_flare_cull.h): one
+// The claim is shared with the engine-side occlusion skip (occlusion_engine_cull.h): one
 // engine_patch claim of the site carries both stubs (push_front: the later one
 // runs first and continues into the earlier one, then the tail), restored once
 // by shutdown(). chain_stub() verifies the window and claims the site when

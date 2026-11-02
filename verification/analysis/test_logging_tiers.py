@@ -220,7 +220,6 @@ class MovedHeartbeatRows(unittest.TestCase):
     # row -> (file, a fragment unique to its periodic emission)
     ROWS = {
         'chase_camera': ('chase_camera.cpp', 'log("chase_camera frame=%llu status='),
-        'lens_flare_gain_frame': ('motion_output_lens_bracket_inc.h', 'log("lens_flare_gain_frame '),
         'occlusion_cull_session': ('motion_output_occlusion_cull_inc.h', 'log("occlusion_cull_session '),
         'cull_small_props_frame': ('motion_output_cull_small_props_inc.h', 'log("cull_small_props_frame '),
         'motion_unmatched_static_frame': ('motion_output.cpp', 'log("motion_unmatched_static_frame '),
@@ -424,19 +423,14 @@ class StatusRowTiers(unittest.TestCase):
         row = next(line for line in doc.splitlines() if '`scene_graph_census` every 300 frames' in line)
         self.assertEqual(row.split(' | ')[3], 'perf')
 
-    def test_lens_flare_cull_row(self):
-        """2026-09-29: the engine-side lens-flare cull's count row sits under the same perf/debug gate as the
-        dust-leak fix's (one counter word per 300 frames); its status and bodies rows are start-up / change rows."""
-        capture = _strip_comments(source_text(ROOT / 'src/proxy/capture.cpp'))
-        self.assertIn('if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);', capture)
-        self.assertEqual(capture.count('lens_flare_cull::report('), 1)
-        module = _strip_comments(source_text(ROOT / 'src/proxy/lens_flare_cull.cpp'))
-        self.assertEqual(len(re.findall(r'\blog\("lens_flare_cull culled=', module)), 1)
-        report = module[module.index('void report('):]
-        self.assertTrue(report.split('{', 1)[1].lstrip().startswith('if (!installed_) return;'))
+    def test_lens_flare_rows_are_gone(self):
+        """2026-11-02: the lens-flare gain's rows and the engine-side cull's rows went with the lens bracket."""
+        sources = ''.join(source_text(p) for p in (ROOT / 'src').rglob('*') if p.suffix in ('.h', '.cpp'))
+        for row in ('"lens_flare_gain ', '"lens_flare_gain_frame ', '"lens_flare_gain_device ', '"lens_flare_gain_refused ',
+                    '"lens_flare_cull '):
+            self.assertFalse(row in sources, row)
         doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()
-        row = next(line for line in doc.splitlines() if '`lens_flare_cull culled=` every 300 frames' in line)
-        self.assertEqual(row.split(' | ')[3], 'perf')
+        self.assertFalse(any(line.startswith('|') and '`lens_flare_cull culled=`' in line for line in doc.splitlines()))
 
 
 class OwnSunRows(unittest.TestCase):

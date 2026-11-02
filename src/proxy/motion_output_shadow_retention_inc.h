@@ -426,3 +426,36 @@ unsigned MotionOutput::fixture_shadow_retention_stats(std::uint64_t* out, unsign
     return n;
 }
 #endif
+// ---- the retention fixture's RT2 reference (case n_route_lifecycle, the taa_references_ clamp) ----------------------
+// Moved here from the deleted lens bracket (2026-11-02); its only user is x3m_sun_occlusion_fixture_lens_depth.
+void MotionOutput::release_lens_depth() noexcept {
+    if (!lens_depth_) return;
+    IDirect3DTexture9* const depth = lens_depth_;
+    lens_depth_ = nullptr;
+    taa_call([&] { depth->Release(); }, "lens_depth_release");
+}
+// RT2's container (null: no RT2 or the container is unreadable), acquired only by the retention fixture's seam below
+// (the sun bracket's RT2 reference went with own sun step 2; the seam keeps the taa_call accounting case of run336).
+// Under the ownership wrapper GetContainer creates a fresh device-referencing texture node (create_target released the
+// texture's own node after GetSurfaceLevel), which release_lens_depth drops under taa_call: the acquisition runs under
+// the same accounting, so taa_references_ carries +1 for the node's lifetime and -1 at its release
+// (shadow-caster-retention.md, "Final-Release probe drift (2026-09-25)").
+IDirect3DTexture9* MotionOutput::acquire_lens_depth() noexcept {
+    IDirect3DTexture9* depth = nullptr;
+    if (!depth_surface_) return nullptr;
+    taa_call([&] { if (FAILED(depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth)))) depth = nullptr; }, "lens_depth_acquire");
+    return depth;
+}
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// The seam's mid-session lifecycle of an RT2 reference: 1 = the accounted acquisition after releasing the previous one
+// (begin), 0 = release (end); 2 = the acquisition outside the accounting (main's shape before run336: its release under
+// taa_call is one-sided and drives taa_references_ down, the clamp's test); 3 = the reverse one-sided shape (acquired
+// under the accounting, released outside), which restores one. Returns 1 while a reference is held.
+int MotionOutput::fixture_lens_depth(unsigned mode) noexcept {
+    release_lens_depth();
+    if (mode == 1) lens_depth_ = acquire_lens_depth();
+    else if (mode == 2 && depth_surface_ && FAILED(depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&lens_depth_)))) lens_depth_ = nullptr;
+    else if (mode == 3) { IDirect3DTexture9* const depth = acquire_lens_depth(); if (depth) depth->Release(); }
+    return lens_depth_ ? 1 : 0;
+}
+#endif

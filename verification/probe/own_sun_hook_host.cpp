@@ -1,9 +1,8 @@
 // Host double of the own sun hook's pure parts (no Windows, no D3D): the probe's eligibility test and the main-view
-// walk (src/proxy/own_sun_hook_core.h), the sites, and the lens-flare gain through the fog
-// (renderer::fog_sky_lens_gain). Prints key=value lines; the assertions are in
+// walk (src/proxy/own_sun_hook_core.h) and the sites (the fog's transmittance toward the sky is the own sun's
+// fog_scalar, tested through verification/probe/own_sun_host.cpp). Prints key=value lines; the assertions are in
 // verification/analysis/test_own_sun_hook.py and test_fl_sun_occlusion.py.
 #include "../../src/proxy/own_sun_hook_core.h"
-#include "../../src/renderer/fog_transmittance.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -11,7 +10,6 @@
 #include <string>
 
 using namespace x3m::own_sun_hook::core;
-using namespace x3m::renderer;
 namespace {
 long number(const char* text) {
     return std::strtol(text, nullptr, 0);
@@ -74,21 +72,6 @@ int main(int argc, char** argv) {
     const std::string command = argv[1];
     if (command == "eligible" && argc == 6) return eligible_command(argv + 2);
     if (command == "view" && argc == 3) return view_command(argv[2]);
-    // foggain <G> <on> <extinction> <start> <cap> <chroma r g b> <tint>: the lens gain through the fog toward the sky
-    // (renderer::fog_sky_lens_gain, motion_output_lens_bracket_inc.h's lens_bracket_begin).
-    if (command == "foggain" && argc == 11) {
-        FogTransmittanceLaw law;
-        law.on = number(argv[3]) != 0;
-        law.extinction = float(std::atof(argv[4]));
-        const float tint = float(std::atof(argv[10]));
-        for (unsigned i = 0; i < 3; ++i) law.k[i] = 1.f + tint * (1.f - float(std::atof(argv[7 + i])));
-        law.start = float(std::atof(argv[5]));
-        law.cap = float(std::atof(argv[6]));
-        float t = -1.f, gain = -1.f;
-        fog_sky_lens_gain(law, float(std::atof(argv[2])), &t, &gain);
-        std::printf("t=%.9g gain=%.9g\n", double(t), double(gain));
-        return 0;
-    }
     if (command == "sites") {
         std::printf(
             "probe_site=0x%lx probe_target=0x%lx lens_site=0x%lx lens_target=0x%lx gates=0x%llx gates_length=%u\n",

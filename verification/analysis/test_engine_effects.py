@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
     put32(slots + 700 * 0x1c + 0x0c, name("effects\\engines\\FX_A"));
     put32(slots + (fixed + 0) * 0x1c + 0x0c, name("effects\\engines\\fx_b"));
     put32(slots + (fixed + 2) * 0x1c + 0x0c, name("effects\\engines\\other"));
-    const auto et = x3m::lens_flare_cull::core::read_table(&reader, 0x0ffc);
+    const auto et = x3m::engine_body_resolver::read_table(&reader, 0x0ffc);
     static Resolver res; res.clear();
     resolve(&reader, et, table, index, &res, 0, fixed + dynamic);
     expect(et.valid && res.resolved == 4 && res.mapped == 4 && res.dynamic_count == 1, "566, 11 by id; fx_a (fixed 700), fx_b (dynamic 20000) by scan");

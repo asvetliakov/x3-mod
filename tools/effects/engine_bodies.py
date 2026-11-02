@@ -21,7 +21,7 @@ Body list. The SBTYPE_JET and SBTYPE_SMALLJET sections of the winning types/Bodi
 tokens (an id or a name, `;`-separated, `//` comments dropped). Only the first `count` tokens are read (the
 declared count; a surplus or shortfall is recorded under generated_from.lists).
 
-Key rule (the spelling src/proxy/lens_flare_cull_core.h resolves against the engine body table): a name token as
+Key rule (the spelling src/proxy/engine_body_resolver.h resolves against the engine body table): a name token as
 written in types/Bodies (`effects\\engines\\fx_engine_argon_M3`, separators and case kept); a numeric token N as the
 engine's default name of a fixed slot, `v\\%05d` (566 -> `v\\00566`). The consumer compares ASCII
 case-insensitively with `\\` and `/` distinct (name_equal there); two tokens equal under that rule are one entry

@@ -11,8 +11,9 @@ in the slot the plumes and motes already use (after the fog pass, RT1/RT2 unboun
 the sun light poll's colour and position, clipped per pixel against the scene depth lane with a soft edge, and
 attenuated by the fog's far transmittance. The engine's sun chain is suppressed by the probe hook that already
 exists, now answering **hidden** for the sun's record (the engine then destroys the chain's bodies itself: zero
-draws). Everything that wrapped, scanned, classified or deferred lens draws is deleted; the lens bracket stays only
-as the carrier of the user's `lens_flare_gain` for engine halos. One setting, one kill criterion (section 6).
+draws). Everything that wrapped, scanned, classified or deferred lens draws is deleted; the lens bracket, kept for a
+while as the carrier of the user's `lens_flare_gain`, went with the gain on 2026-11-02 (section 14). One setting, one
+kill criterion (section 6).
 
 ## 1. Fact check: are suns different per sector?
 
@@ -193,10 +194,11 @@ restores vanilla in full (no answer, no stage) and the decision is reopened; no 
    (the note stays as RE; the implementation is cancelled).
 2. `sun_occlusion` and `sun_occlusion_log` are renamed into `own_sun` / `own_sun_log`; the probe hook, its static
    verifier, hook fixture and thunk tests stay under the new name.
-3. Kept: the lens bracket claim (`0x00472491`; FL `0x8bcb7`) only for `lens_flare_gain` and its Law::skip, and the
-   engine cull at gain 0 (`lens_flare_cull`), both independent of any classification and both the user's control
-   over engine halos. If the user later drops the gain (plumes' redirect A already removes engine lens flares on
-   AP), the bracket goes with it; that is a separate decision.
+3. Kept until 2026-11-02: the lens bracket claim (`0x00472491`; FL `0x8bcb7`) only for `lens_flare_gain` and its
+   Law::skip, and the engine cull at gain 0 (`lens_flare_cull`). **Deleted 2026-11-02** (user decision recorded in
+   `docs/status.md`, once plumes flew on FL): the engine plumes remove the engine's small lens flares at creation on
+   both editions and the own sun replaces the engine sun, so the bracket, the gain and the gain-0 cull went together
+   (section 14, "Lens-flare bracket deleted").
 
 Lines: of the 2,723 in `lens_visibility_variant.cpp`, `sun_occlusion_pass.cpp`, `sun_occlusion_core.h`,
 `motion_output_sun_occlusion_inc.h` and `sun_occlusion.cpp` [M], about 1,700 go [I], against about 400 added for the
@@ -230,8 +232,8 @@ stage [I]; `capture.cpp` has 42 references to the four features, most of them th
   does not need them, but the install identity still compares the 147-byte prologue (FNV `0x1abcc319ce5e4445`) [S].
 - Eligibility needs FL's main-view identity (FL sun-occlusion note §4) and the owner flag `+0x270 & 0x400000`
   (record and view offsets hold on FL [S]).
-- The lens CALL `0x8bcb7` straddles a qword (non-atomic, install window only) [S]: the own sun does not touch it.
-  It is claimed only if `lens_flare_gain` is ported to FL (section 6, item 3).
+- The lens CALL `0x8bcb7` straddles a qword (non-atomic, install window only) [S]: the own sun does not touch it,
+  and since the lens bracket's deletion (2026-11-02) nothing does.
 - Colour words `+0x154/156/158`, range `+0x15c` (`sun_light_poll_fl.cpp`, step 7, flown and accepted [S]). The
   stage itself is edition-neutral (it reads `Sample` and the frame camera).
 - FL step 9 ("FL sun occlusion plus a fog-transmittance lens gain", status) is replaced by this design: the fog
@@ -434,7 +436,8 @@ Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are d
   parser sets the new key and writes one `config_key key=<old> problem=renamed value=<new>` row; old and new key in one
   file are a duplicate, the last line wins.
 - **The probe hook.** AP: installed when the own sun is requested (setting on, route on, radiance > 0) or the bracket is
-  wanted (`lens_flare_gain` < 1 or the volumetric fog). In a frame whose latch is off and without the log, every probe
+  wanted (`lens_flare_gain` < 1 or the volumetric fog; the bracket and this second condition went on 2026-11-02, see
+  below). In a frame whose latch is off and without the log, every probe
   is forwarded before any read (no main-view walk, no owner read); in an own-sun frame the eligible record is answered
   1 without the original, every other probe forwarded; the log (`own_sun_log`) runs the original itself once per
   logged probe and returns its answer (`sun_probe` row, the own sun's hidden answers are not logged). The 148-byte
@@ -442,21 +445,61 @@ Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are d
   log: runs it itself for the row); the own sun's FL answer is section 8's later step.
 - **The lens bracket.** begin: the fog's share of the gain only (`lens_bracket_begin`); per draw: the gain only
   (`prepare_lens(route)`: one active test, the window count, the `plain` test, `apply_lens_gain`); no end listener.
-  The engine cull at gain 0 (`lens_flare_cull`) is unchanged.
+  The engine cull at gain 0 (`lens_flare_cull`) is unchanged. All of it deleted on 2026-11-02 (below).
 - **No hotkey (user decision, same day).** The Ctrl+Shift+F9 comparison chord, its `Toggle` state, the `own_sun_toggle`
   row and the `key=` field of `own_sun_frame` are deleted (a separate commit): `own_sun` in `x3m.ini` is the only switch,
   and the Present-time latch is `frame_active(setting, stage armed in the last resolve)`. F8 is the only in-game key.
-- **`own_sun = 0`.** Nothing is answered and nothing drawn on either edition: the engine's chain is vanilla. The hook
-  installs only for the gain or the fog, its probe then forwards every call without a read; the bracket scales the
-  lens draws by G (and the fog's transmittance), as every other engine flare.
+- **`own_sun = 0`.** Nothing is answered and nothing drawn on either edition: the engine's chain is vanilla. Until
+  2026-11-02 the hook installed for the gain or the fog and the bracket scaled the lens draws; since then nothing is
+  installed at all.
 - **Kept beyond section 6's list.** The RT2 container acquire/release and `x3m_sun_occlusion_fixture_lens_depth`, now
-  reached only by the retention fixture's case n (the run336 accounting regression; production never acquires); the
+  reached only by the retention fixture's case n (the run336 accounting regression and the `taa_references_` clamp;
+  production never acquires; moved into `motion_output_shadow_retention_inc.h` on 2026-11-02); the
   runners' clearing of `X3M_SUN_OCCLUSION_DEFAULT`; the core header's layout and config constants (FL `+0xec`
   static_assert, the site verifier).
 - **Cost.** Per lens draw the bracket's work is a subset of what it was (the gain path only; before: the state reads,
   the scan and the body classification whenever the override or its log was on). Per frame the visibility pass, the
   RT2 `GetContainer`/`Release` and the frame-inputs latch are gone; per probe, latch-off frames skip the main-view walk.
   FL native fixture: forward 42.6 ns over the native probe [M].
+
+### Lens-flare bracket deleted (2026-11-02, both editions; not flown)
+
+Section 6 item 3's remainder, after AP 1.8.5 (the own sun replaces the engine sun) and FL runs 17 and 18 (own sun and
+engine plumes flown on FL). Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md) and
+[FL ledger](../verification/farnhams-legacy.md), "Lens-flare bracket deleted".
+
+- **Deleted.** The lens claim and thunk (AP `x3m_sun_lens_thunk/_begin/_end` on `0x00472491`, FL
+  `x3m_fl_sun_lens_thunk/_begin/_end` on `base+0x8bcb7`), `set_listener`, `bracket_open()`, `bracket_installed()`,
+  `Counters::brackets`, capture's `sun_lens_begin` and the four per-draw `prepare_lens` calls;
+  `motion_output_lens_bracket_inc.h` (`lens_bracket_begin`, `prepare_lens`, `apply_lens_gain`, `restore_lens_gain`,
+  `refuse_lens_gain`, the `lens_gain_*` state and its blend-shadow request), `lens_flare_gain.h` (the law, `Law::skip`,
+  the ONE/ONE/ADD admission), the fog share (`lens_flare_fog`, `configure_lens_flare_gain`), the gain-0 engine cull
+  (`lens_flare_cull.{h,cpp}`, `lens_flare_cull_core.h`: the stub on the cull/LOD pass's shared small-parts claim and its
+  42-name flare set); the setting `lens_flare_gain` (schema, template, `--lens-flare-gain`), the rows `lens_flare_gain`,
+  `lens_flare_gain_device`, `lens_flare_gain_refused`, `lens_flare_gain_frame`, `lens_flare_cull status=/_bodies/culled=`;
+  the GPU fixture `lens_flare_gain_fixture.cpp`, the site verifier `verify_lens_flare_cull_site.py`,
+  `test_lens_flare_cull.py`, the fixtures' bracket and lens-stub cases.
+- **Moved, not deleted.** The body-name helpers `engine_effects` resolves `engine_bodies.json` through
+  (`read_table`, `slot_name_pointer`, `slot_id`, `default_name_id`, `name_equal`, `id_span`) are
+  `src/proxy/engine_body_resolver.h` with `test_engine_body_resolver.py`. The fog scalar is
+  `renderer::fog_sky_transmittance` (was `fog_sky_lens_gain` with a gain argument), the own sun's `fog_scalar`.
+- **The hook now.** `own_sun_hook::initialize()` has no argument and installs only after `request_own_sun()`; it claims
+  the probe call alone. The probe thunks (AP, FL) are the same instruction sequence (object compare: only the
+  link-time placement of the handler call and the target word differ); the install identity is unchanged (AP: executable,
+  the 21 context bytes of both calls, the 148-byte probe hash and the traversal's entry; FL: the 17 anchors, the
+  `lens_block` one included). The lens call is byte-for-byte vanilla on both editions. The AP refusal
+  `submit_phases_conflict` stays: the submit stamp rewrites the lens call's identity bytes (installed earlier on the
+  same path), so the pair is refused by name rather than as `lens_site_mismatch`; dropping those bytes from the identity
+  would weaken a check that costs nothing.
+  Rows: `own_sun_hook own_sun= log= patched= reason= probe_site= probe_target= probe_write=` (no `bracket=`, no
+  `lens_*`); FL `fl.sun_occlusion status= base= probe= probe_write= log= own_sun= main_view= anchors= failed_anchor=
+  log_s=` and `fl.sun_occlusion_sample` without `brackets=`.
+- **Old settings.** An ini `lens_flare_gain = G` is an unknown key: `config_open … unknown=1` and one
+  `config_key key=lens_flare_gain problem=unknown line=N value=G`; nothing else changes. `X3M_LENS_FLARE_GAIN` is in
+  the launcher's `REMOVED_VARIABLES` (an inherited value is dropped); `--lens-flare-gain` is an unrecognised argument.
+- **Kept.** The RT2 acquire/release seam (the retention fixture's clamp case uses it).
+- **`own_sun = 0` with the fog (user decision).** The vanilla sun's lens flare is no longer dimmed by the fog's
+  transmittance: that share rode on the deleted bracket.
 
 ### Step 3 as built: the FL hidden answer (2026-11-02, FL; not flown)
 
@@ -472,7 +515,7 @@ The own sun draws on Farnham's Legacy (`X3M_EDITION=fl`) with the AP law. Eviden
   is read only with the log. `request_own_sun()`, `set_own_sun_frame()`, `own_sun_hidden()` are the shared
   `own_sun_hook.h` interface; the header fence is gone.
 - **Install.** The probe call is claimed for the own sun or the bracket; the lens call (`0x8bcb7`, non-atomic) only
-  for the bracket (`lens_flare_gain` < 1 or the volumetric fog), as section 8 asks: `install_at` with
+  for the bracket (`lens_flare_gain` < 1 or the volumetric fog; both bracket paths deleted 2026-11-02), as section 8 asks: `install_at` with
   `lens_site = lens_target = 0` claims the probe only (`lens_write=none`; one of the two without the other is
   `invalid_site`). The `fl.sun_occlusion` row gains `own_sun=`.
 - **Wiring.** `capture.cpp`: the request, the three settings, `own_sun_on` and `configure_own_sun` are unfenced;
@@ -484,7 +527,8 @@ The own sun draws on Farnham's Legacy (`X3M_EDITION=fl`) with the AP law. Eviden
   `own_sun_pass.cpp` moved into the shared source list. AP objects unchanged by this part (strip-debug compare).
 - **Review fixes (same day).** `reason=main_view` when the hook installed without a main-view source
   (`own_sun_hook::main_view_known()`; FL: no admitted registry slot): the own sun stays off, the engine's sun is
-  vanilla. `lens_flare_gain … bracket=probe_only` when only the probe is claimed (`bracket_installed()`).
+  vanilla. `lens_flare_gain … bracket=probe_only` when only the probe is claimed (`bracket_installed()`; row and
+  query deleted with the bracket, 2026-11-02).
 - **Late-probe rule (both editions, shared; replaces the run-16 fail-safe).** At the scene-end resolve, a latched
   frame whose main-view probe has not been answered "hidden" (`own_sun::core::latch_after_resolve`) clears the latch
   for the rest of the frame (`own_sun_hook::close_own_sun_frame()`): a probe after the resolve forwards to the engine

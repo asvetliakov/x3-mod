@@ -38,7 +38,6 @@
 #include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/occlusion_cull_pass.h"
 #include "occlusion_engine_core.h"
-#include "lens_flare_gain.h"
 #include "engine_effects_core.h"
 #include "engine_light_core.h"
 #include "lod_texture_mark.h"
@@ -192,8 +191,6 @@ struct MotionRoute {
     IDirect3DVertexShader9* restore_vs = nullptr;
     IDirect3DPixelShader9* restore_ps = nullptr;
     bool restore_held = false;
-    std::uint8_t lens_gain = 0; // Lens-flare gain: render states applied for this draw (lens_flare_gain::steps order);
-                                // put back by after_draw.
     bool sun_receiver = false, sun_color_writer = false;
     bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw
                             // (sun_stamp_call_ holds its arguments)
@@ -1126,11 +1123,10 @@ public:
         return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_;
     }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
-    // for the composition producers and for the source-gain admission, and for the
-    // lens-flare gain (its SRCBLEND / BLENDFACTOR restore values).
+    // for the composition producers and for the source-gain admission.
     bool blend_shadow_requested() const noexcept {
         return composition_requested() || emission_source_gain_requested_ || hull_emission_gain_requested_ ||
-               screen_additive_requested_ || fog_cards_replace_ || lens_gain_.active || lens_gain_fog_ || engine_hook_;
+               screen_additive_requested_ || fog_cards_replace_ || engine_hook_;
     }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept {
@@ -1182,20 +1178,6 @@ public:
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
-    // The lens bracket (motion_output_lens_bracket_inc.h; src/proxy/own_sun_hook.h, the engine's call 0x00472491):
-    // lens_bracket_begin is the bracket's listener (the fog's share of the lens-flare gain), prepare_lens the gain's
-    // per-draw step (the draw hooks call it only while own_sun_hook::bracket_open()).
-    void lens_bracket_begin() noexcept;
-    void prepare_lens(MotionRoute& route) noexcept;
-    // Lens-flare gain (X3M_LENS_FLARE_GAIN, src/proxy/lens_flare_gain.h): process-start value, validated by the caller;
-    // 1 = off (no per-draw work). The blend-constant cap is checked at attach. fog: the lens bracket is installed with
-    // the volumetric fog, and each bracket applies G x T_sun, the fog's transmittance toward the sky
-    // (renderer::fog_sky_lens_gain; T = 1 and G unchanged in a frame without the density composite).
-    void configure_lens_flare_gain(float gain, bool fog = false) noexcept {
-        lens_gain_ = lens_flare_gain::law(gain);
-        lens_gain_base_ = lens_gain_.gain;
-        lens_gain_fog_ = fog;
-    }
     // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; both editions): process-start values, validated
     // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting and
     // own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
@@ -1786,13 +1768,6 @@ private:
     bool ensure_sun_shadow_apply() noexcept;
     // The retention fixture's RT2 reference (fixture_lens_depth only; null in production since own sun step 2).
     IDirect3DTexture9* lens_depth_ = nullptr;
-    // Lens-flare gain: the configured law, the device's BLENDFACTOR cap (attach), this bracket's counts and the
-    // refusal reasons already logged (one row per reason and device).
-    lens_flare_gain::Law lens_gain_{};
-    // The fog's share (configure_lens_flare_gain): the configured G, the last bracket's T_sun, the device's
-    // BLENDFACTOR cap (attach; a fogged G x T between 0 and 1 needs it even when G is 1).
-    float lens_gain_base_ = 1.f, lens_gain_fog_t_ = 1.f;
-    bool lens_gain_fog_ = false, lens_gain_blendfactor_ = false;
     // Engine effects (motion_output_engine_effects_inc.h): the gates, the frame's ring and counts, the pinned c4-6
     // order, the census caps (64 engine_draw rows per frame, rows in the first 8 frames that have any and on every F8
     // capture frame).
@@ -2120,14 +2095,6 @@ private:
     bool attach_engine_shimmer() noexcept;
     void fail_engine_shimmer(const char* step, HRESULT hr) noexcept;
     void log_engine_shimmer() noexcept;
-    bool lens_gain_caps_ = false;
-    unsigned lens_gain_logged_ = 0;
-    // The lens_flare_gain_frame window (every 300 frames while G < 1, every tier): lens draws seen, gained, skipped
-    // (G = 0: admitted and not submitted), refused per reason since the last row. Counters only.
-    unsigned lens_gain_window_frames_ = 0, lens_gain_window_draws_ = 0, lens_gain_window_gained_ = 0,
-             lens_gain_window_skipped_ = 0;
-    unsigned lens_gain_window_refused_[lens_flare_gain::refusal_count]{};
-    void log_lens_gain_window() noexcept;
     // Small-prop cull (motion_output_cull_small_props_inc.h): the decision state (committed at the first scene draw
     // with the option on, never per frame) and the cull_small_props_frame window row every 300 frames.
     bool props_on_ = false, props_attach_failed_ = false;
@@ -2181,9 +2148,6 @@ private:
     std::uint64_t small_prop_rows_frame_ = ~std::uint64_t(0);
     unsigned small_prop_rows_ = 0; // cull_small_prop_box rows this F8 frame (cap 128)
     void log_cull_small_props_window() noexcept;
-    void apply_lens_gain(MotionRoute& route, bool plain) noexcept;
-    void restore_lens_gain(MotionRoute& route) noexcept;
-    void refuse_lens_gain(unsigned reason) noexcept;
     void release_lens_depth() noexcept;
     IDirect3DTexture9* acquire_lens_depth() noexcept; // RT2's container under taa_call (its release is under it too)
     D3DFORMAT sun_lane_depth_formats_[3]{};

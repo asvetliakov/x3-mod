@@ -33,7 +33,6 @@
 #include "own_sun_hook.h"
 #include "own_sun_core.h"
 #include "cull_small_parts.h"
-#include "lens_flare_cull.h"
 #include "occlusion_engine_cull.h"
 #include "engine_effects.h"
 #include "engine_far_jets.h"
@@ -207,15 +206,6 @@ bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusio
 bool occlusion_cull_engine = false; // X3M_OCCLUSION_CULL=engine with the engine-side stub installed
                                     // (occlusion_engine_cull.h): the route publishes the stub's table per frame
 unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X3M_OCCLUSION_CULL_RETEST (1..64, 8)
-float lens_flare_gain_value = 1.f; // X3M_LENS_FLARE_GAIN: the game's lens-flare draws (the lens bracket's ONE/ONE
-                                   // cards) scaled by G, finite 0..1, 1 = off (nothing installed for it); needs
-                                   // X3M_MOTION_OUTPUT=1
-bool lens_flare_fog = false; // the lens bracket installed for the volumetric fog: each bracket applies G x T_sun (the
-                             // fog's transmittance toward the sky, motion_output_lens_bracket_inc.h), both editions
-#if !X3M_EDITION_FL
-bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
-                                   // route or not; the proxy skip stays as the fallback
-#endif
 // The own_sun status row's edition= field (string-literal concatenation: the AP format string is unchanged).
 #if X3M_EDITION_FL
 #define X3M_OWN_SUN_EDITION "fl"
@@ -535,7 +525,7 @@ struct Device : Hooks {
     uint64_t frame = 0;
     uint64_t draws = 0;
     uint64_t issued = 0; // this frame's application draws the proxy forwarded (draws minus the skipped ones: the
-                         // lens-flare gain 0, the bolt single copy, the small-prop cull, a lost motion state)
+                         // bolt single copy, the small-prop cull, a lost motion state)
     uint64_t events = 0;
     uint64_t frame_end_qpc = 0; // stamp of the previous frame_end line (dt_ms)
     telemetry::State stats;
@@ -2187,7 +2177,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // FL scene-end hook: counts this frame with or without a compositor call; one fl.scene_sample row every
     // X3M_FL_SCENE_LOG seconds (scene_hook_fl.cpp).
     scene_hook::fl_sample_row();
-    // FL flare-probe hook and lens bracket (sun_occlusion_fl.cpp): the own sun's latch for the next frame (as AP's,
+    // FL flare-probe hook (sun_occlusion_fl.cpp): the own sun's latch for the next frame (as AP's,
     // before the probe's frame boundary), then the frame boundary; one fl.sun_occlusion_sample row every
     // X3M_FL_SUN_OCCLUSION_LOG seconds.
     if (own_sun_on) {
@@ -2214,8 +2204,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // Ship steering (X3M_SHIP_STEERING=1 only; one flag read otherwise): the stuck witnesses at the always tier, the
     // 1 Hz summary under --perf/--debug and the sampled decision under --debug, drained from the handlers' counters.
     ship_steering::frame_boundary(ctx.frame);
-    // --perf/--debug: the lens-flare cull's count every 300 frames (one counter word read; nothing per frame).
-    if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) lens_flare_cull::report(ctx.frame);
 #endif
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
@@ -2246,12 +2234,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
 #endif
     // Both editions (FL since the engine-effects port, step 1).
     engine_effects::begin_frame(ctx.frame);  // X3M_ENGINE_EFFECTS hook only: engine_bodies.json once, then its names
-                                             // -> ids over the engine's body table (the lens_flare_cull recipe)
-#if !X3M_EDITION_FL // the gain-0 engine cull is AP only (its cull-pass stub is not ported to X3FL.exe)
-    lens_flare_cull::begin_frame(ctx.frame); // X3M_LENS_FLARE_GAIN=0 only: the flare body set from the engine's body
-                                             // table (the header and the mapped dynamic names per frame, a scan only
-                                             // when the table moves, grows or re-binds a name)
-#endif
+                                             // -> ids over the engine's body table (engine_body_resolver.h)
     ctx.scene_depth.begin_frame(d, ctx.id, ctx.frame, ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame, ctx.capture);
     ctx.motion_output.volumetric_fog_begin_frame(); // fog option only (returns at once without it)
@@ -2414,9 +2397,6 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
     const MotionDrawCall draw_call{false, false, t, c, s, 0, 0, 0, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (own_sun_hook::bracket_open())
-        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
-                                               // gain): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
@@ -2476,9 +2456,6 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     } composition_scope(ctx.composition_draw_depth, ctx.motion_output.composition_requested());
     const MotionDrawCall draw_call{true, false, t, c, s, b, m, n, composition_permission};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (own_sun_hook::bracket_open())
-        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
-                                               // gain): one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (route.submit) {
         ++ctx.fixture_emission_source_calls;
@@ -2525,9 +2502,6 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u", data, stride);
     const MotionDrawCall draw_call{false, true, t, c, 0, 0, 0, 0};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (own_sun_hook::bracket_open())
-        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
-                                               // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
@@ -2570,9 +2544,6 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
             stride, indices, f);
     const MotionDrawCall draw_call{true, true, t, c, 0, 0, m, n};
     auto route = ctx.motion_output.before_draw(draw_call);
-    if (own_sun_hook::bracket_open())
-        ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
-                                               // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
     const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
@@ -3478,8 +3449,6 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
                                            own_sun_rays); // X3M_OWN_SUN as installed
-    hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
-                                                                                          // installed for it; fog: G x T_sun
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
     hooked.motion_output.configure_engine_plumes(engine_effects::mode() == engine_effects::core::Mode::plumes &&
@@ -4203,12 +4172,6 @@ bool bolt_footprint_requested_gate() noexcept {
 bool thin_vote_route_gate() noexcept {
     return thin_vote_gate;
 } // the loader's readable policy and bookends; hook_device's enable
-// The lens bracket's listener (src/proxy/own_sun_hook.h): the engine's render thread, inside its
-// `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
-void sun_lens_begin() {
-    CaptureLock lock;
-    for (auto& entry : devices) entry.second->motion_output.lens_bracket_begin();
-}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam only: the render-thread cost of log() (format + append, no file I/O) per row, its worst single call, the calls
 // over 100 us and 1 ms, and the rows the buffer dropped while the writer drained; wall_ms covers the whole burst.
@@ -5769,8 +5732,8 @@ void initialize_log(HMODULE module) {
     residual_phases::initialize(); // X3M_RESIDUAL_PHASES=1 or X3M_DRAW_TRACE=1: two residual stamps through the lean
                                    // stub, needs the frame and pass groups, same window
     light_phases::initialize();    // X3M_LIGHT_PHASES=1 or X3M_DRAW_TRACE=1: R7 whole-call timer
-    submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the own-sun hook's lens
-                                 // call): twenty-two view_submit candidate stamps through the context lean stub, needs
+    submit_phases::initialize();   // X3M_SUBMIT_PHASES=1 only (fixtures; in no group, it claims the engine's lens
+                                 // traversal call 0x00472491): twenty-two view_submit candidate stamps through the context lean stub, needs
                                  // the frame group, same window
     loop_phases::initialize(); // X3M_LOOP_PHASES=1 or X3M_DRAW_TRACE=1: six per-sector update stamps plus four around
                                // the input_part=0 calls through the lean stub, needs the frame group, same window
@@ -5867,39 +5830,17 @@ void initialize_log(HMODULE module) {
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
 #endif
-    // The own sun or the lens bracket (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare
-    // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
-    // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). Both need the route (X3M_MOTION_OUTPUT=1). FL
-    // edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
-    // docs/architecture/own-sun-pass.md section 8), same window: the probe for the own sun or the bracket, the
-    // lens call for the bracket only.
+    // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
+    // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:
+    // base+0x8af0a (src/engine/fl/sun_occlusion_fl.cpp, docs/architecture/own-sun-pass.md section 8), same window.
+    // The engine's lens pass call (AP 0x00472491, FL base+0x8bcb7) is never written since the lens-flare bracket's
+    // deletion (2026-11-02, own-sun-pass.md section 14).
     {
         wchar_t value[32]{};
-        // X3M_LENS_FLARE_GAIN (src/proxy/lens_flare_gain.h): G < 1 needs the lens bracket, so it installs the two
-        // redirects (the probe forwarding) when the own sun does not; 1 (or unset, or invalid) installs nothing.
-        const char* lens_gain_reason = "unset";
-        float lens_gain = 1.f;
-        if (x3m::config::get(L"X3M_LENS_FLARE_GAIN", value, 32) > 0) {
-            wchar_t* end = nullptr;
-            const float v = wcstof(value, &end);
-            if (end != value && *end == L'\0' && v >= lens_flare_gain::gain_min && v <= lens_flare_gain::gain_max) {
-                lens_gain = v;
-                lens_gain_reason = v < 1.f ? "ok" : "one";
-#if !X3M_EDITION_FL
-                lens_flare_gain_zero = v == 0.f;
-#endif
-            } else
-                lens_gain_reason = "invalid";
-        }
-        if (lens_gain < 1.f && !motion_output_requested) lens_gain_reason = "route_off"; // no state shadow for the draw
-        const bool lens_gain_wanted = lens_gain < 1.f && motion_output_requested;
-        // The volumetric fog dims the lens draws by its transmittance toward the sun (G x T_sun per bracket), so it
-        // installs the bracket too.
         // X3M_OWN_SUN (docs/architecture/own-sun-pass.md; on unless "0", the schema default 1): the probe answers
-        // "hidden" for the sun's record in an own-sun frame and the route draws the sun, so it needs the two redirects
-        // and the route's resolve. Off: nothing is answered and nothing drawn, the engine's sun is vanilla (the bracket
-        // stays only for the gain). Both editions (FL since own sun step 3: the probe only, the lens call stays the
-        // bracket's).
+        // "hidden" for the sun's record in an own-sun frame and the route draws the sun, so it needs the probe redirect
+        // and the route's resolve. Off: nothing is installed, nothing answered and nothing drawn; the engine's sun is
+        // vanilla. Both editions (FL since own sun step 3).
         const bool own_sun_requested = !(x3m::config::get(L"X3M_OWN_SUN", value, 32) == 1 && value[0] == L'0');
         if (x3m::config::get(L"X3M_SUN_DISC_RADIUS", value, 32) > 0) {
             wchar_t* end = nullptr;
@@ -5918,8 +5859,7 @@ void initialize_log(HMODULE module) {
         }
         // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
         if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();
-        own_sun_hook::set_listener(&sun_lens_begin, nullptr);
-        const bool sun_installed = own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested);
+        const bool sun_installed = own_sun_hook::initialize();
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
         // Without a main-view source (FL: the registry slot not admitted) nothing is eligible: the stage would never
         // draw, so the own sun stays off and the engine's sun is vanilla.
@@ -5935,22 +5875,12 @@ void initialize_log(HMODULE module) {
             : !sun_installed               ? "probe"
                                            : "main_view",
             own_sun_hook::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
-        if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
-        lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
-        lens_flare_fog = volumetric_fog_requested && sun_installed;
-        // bracket= is the lens claim: the hook's state when the lens call is claimed or nothing installed, probe_only
-        // when only the probe is (FL, the own sun alone).
-        log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s fog=%u", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
-            lens_gain_reason, sun_installed && !own_sun_hook::bracket_installed() ? "probe_only" : own_sun_hook::state(),
-            lens_flare_fog ? 1u : 0u);
     }
 #if !X3M_EDITION_FL
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,
                                // 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2),
                                     // same window, disjoint from the census claims
-    lens_flare_cull::initialize(lens_flare_gain_zero); // X3M_LENS_FLARE_GAIN=0 only; a second stub on the same
-                                                       // 0x0047d2a2 claim (shared with the small-parts cull)
 #endif
     {
         // X3M_CULL_SMALL_PROPS=on|off (cull_small_props_core.h): no patch; the motion route skips the draws of small
@@ -5987,7 +5917,7 @@ void initialize_log(HMODULE module) {
     {
         // X3M_OCCLUSION_CULL=on|off|engine (occlusion_cull_core.h, docs/architecture/occlusion-cull.md): on = no patch;
         // the motion route tests ship sub-part draws with occlusion queries and skips those its previous frame's test
-        // found hidden. engine = the same plus a third stub on the small-parts claim of the cull/LOD pass (0x0047d2a2,
+        // found hidden. engine = the same plus a second stub on the small-parts claim of the cull/LOD pass (0x0047d2a2,
         // occlusion_engine_cull.h) that skips a part's whole render visit when the route skipped every draw of it in
         // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means on; one
         // occlusion_cull_config row on every launch (requested=unset when absent). A device that refuses occlusion
@@ -6008,7 +5938,7 @@ void initialize_log(HMODULE module) {
             reason = "route_off"; // the test and the skip live in the motion route's draw path
         occlusion_cull_on = !std::strcmp(reason, "ok");
         // The engine-side stub: claimed here, on the backend-load path inside the install window, after the
-        // small-parts and lens-flare stubs on the same claim (the chain runs the later stub first).
+        // small-parts stub on the same claim (the chain runs the later stub first).
 #if !X3M_EDITION_FL
         occlusion_cull_engine =
             occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine) && occlusion_cull_on;

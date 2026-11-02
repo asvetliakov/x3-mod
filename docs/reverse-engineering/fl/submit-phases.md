@@ -242,9 +242,12 @@ The four direct call fields are `rel32_offset=3`; inverse `rel32_offset=0`
 copies the already-relocated IAT operand. No hot validation, allocation, new
 lock, logging, ownership registry or per-draw profile lookup is needed.
 
-**Sun conflict and exact precedence.** FL sun owns
-`[0x48bcb7,0x48bcbc)`, inside submit sort-return B
-`[0x48bcb5,0x48bcbc)`. Moving the close past that CALL would include queue
+**Sun conflict and exact precedence.** Until the lens bracket's deletion
+(2026-11-02) FL sun owned `[0x48bcb7,0x48bcbc)`, inside submit sort-return B
+`[0x48bcb5,0x48bcbc)`; since then FL sun claims only the probe call, but its
+17-anchor identity still includes `lens_block` over those bytes, so the
+conflict below still holds (a submit write there refuses sun as
+`anchor_mismatch` unless the named refusal is ported first). Moving the close past that CALL would include queue
 drain time in sort, so it would change the diagnostic. AP
 `sun_occlusion::initialize` checks explicit `X3M_SUBMIT_PHASES=1` after
 establishing sun/bracket demand, refuses sun with `submit_phases_conflict`,

@@ -428,10 +428,11 @@ class OwnSunWiring(unittest.TestCase):
         self.assertIn('#if X3M_EDITION_FL\n#define X3M_OWN_SUN_EDITION "fl"\n#else\n#define X3M_OWN_SUN_EDITION "ap"\n#endif', capture)
         configure = capture.index('hooked.motion_output.configure_own_sun(')
         self.assertLess(capture.rfind('#if !X3M_EDITION_FL', 0, configure), capture.rfind('#endif', 0, configure))
-        # Review F4/F5: no main-view source -> reason=main_view and the own sun off; the gain row's bracket= is the lens claim.
+        # Review F4/F5: no main-view source -> reason=main_view and the own sun off (the lens-flare gain row went with the
+        # lens bracket, 2026-11-02).
         self.assertIn('own_sun_on = own_sun_on && own_sun_main_view;', capture)
         self.assertIn(': !sun_installed               ? "probe"\n                                           : "main_view",', capture)
-        self.assertIn('sun_installed && !own_sun_hook::bracket_installed() ? "probe_only" : own_sun_hook::state()', capture)
+        self.assertNotIn('"lens_flare_gain value=', capture)
         hook = source_text(ROOT / 'src/proxy/own_sun_hook.h')
         self.assertNotIn('#if !X3M_EDITION_FL', hook[:hook.index('bool own_sun_hidden();')][-600:])
 

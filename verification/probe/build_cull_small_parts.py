@@ -45,7 +45,6 @@ def build():
     objects = []
     for source, stem, extra in [('verification/probe/cull_small_parts_fixture.cpp', 'fixture', ['-I', str(BUILD), FIXTURE_DEFINE]),
                                 ('src/proxy/cull_small_parts.cpp', 'small_parts', []),
-                                ('src/proxy/lens_flare_cull.cpp', 'lens_flare_cull', [FIXTURE_DEFINE]),
                                 ('src/proxy/occlusion_engine_cull.cpp', 'occlusion_engine_cull', []),
                                 ('src/proxy/cull_census.cpp', 'census', NO_SSE),
                                 ('src/proxy/engine_far_jets.cpp', 'far_jets', [*NO_SSE, '-fno-exceptions']),

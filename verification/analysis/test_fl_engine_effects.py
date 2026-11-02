@@ -105,11 +105,10 @@ class FlEngineEffectsWiring(unittest.TestCase):
         fl = capture[capture.index('#if X3M_EDITION_FL\n    \n    \n    \n    engine_effects::initialize();'):]
         fl = fl[:fl.index('#endif')]
         self.assertLess(fl.index('engine_effects::initialize();'), fl.index('engine_effects_patch::initialize();'))
-        # begin_frame outside every fence; lens_flare_cull stays AP.
+        # begin_frame outside every fence (the AP-only lens_flare_cull that followed it went on 2026-11-02).
         frame = capture[capture.index('engine_effects::begin_frame(ctx.frame);') - 200:]
         self.assertIn('#endif', frame[:200])
-        self.assertIn('#if !X3M_EDITION_FL', frame[200:400])
-        self.assertIn('lens_flare_cull::begin_frame(ctx.frame);', frame[200:600])
+        self.assertNotIn('lens_flare_cull', capture)
 
     def test_provider_contract(self):
         code = strip(PROVIDER.read_text())

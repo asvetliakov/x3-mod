@@ -35,8 +35,9 @@ inline bool perf() noexcept {
 // unless set), X3M_PASS_PHASES, X3M_RESIDUAL_PHASES, X3M_LIGHT_PHASES,
 // X3M_LOOP_PHASES, with the frame phases they pair with. It needs telemetry and
 // the frame boundary from --perf or --debug (the launcher refuses it alone).
-// X3M_SUBMIT_PHASES is in no group: it claims the lens traversal call the
-// own-sun hook patches; it stays a fixture-only read.
+// X3M_SUBMIT_PHASES is in no group: it claims the lens traversal call whose
+// bytes are part of the own-sun hook's install identity (the hook refuses the
+// pair); it stays a fixture-only read.
 inline bool draw_trace() noexcept {
     return env_flag(L"X3M_DRAW_TRACE");
 }

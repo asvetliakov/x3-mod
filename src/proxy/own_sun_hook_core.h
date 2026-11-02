@@ -1,5 +1,5 @@
 #pragma once
-// The own sun's flare-probe hook and the lens bracket: the pure part (docs/architecture/own-sun-pass.md section 5;
+// The own sun's flare-probe hook: the pure part (docs/architecture/own-sun-pass.md section 5;
 // sites, layouts and the probe's ABI from docs/reverse-engineering/lens-flare-visibility.md, sections 11-16). No
 // Windows/D3D dependency, no allocation, no engine call, integer only: eligible() and main_view() run inside the probe
 // thunk at 0x00471630, in the middle of the engine's record loop, where the x87 stack and MXCSR belong to the engine.
@@ -10,6 +10,8 @@
 namespace x3m::own_sun_hook::core {
 // ---- Sites (preferred base 0x00400000; X3AP.exe per executable_identity.h, shipped SHA-256 fdbf3418...f8ab) ----
 constexpr std::uintptr_t probe_site_va = 0x00471630, probe_target_va = 0x00488720;
+// The lens-scene call: never written since the lens bracket's deletion (2026-11-02); its bytes and the traversal's
+// entry stay in the install's identity check.
 constexpr std::uintptr_t lens_site_va = 0x00472491, lens_target_va = 0x0047e6e0;
 // Whole instructions around the probe call, from 0x0047162a: mov ecx,[esp+0x14]; push ecx;
 // push esi; CALL; add esp,8; test eax,eax; jz +3; mov [esi+0x30],ebp.
@@ -29,7 +31,8 @@ constexpr std::uint64_t probe_gates_fnv1a = 0x0e5f40888a926996ull;
 constexpr unsigned char probe_entry[] = {0x55, 0x8b, 0xec, 0x83, 0xe4, 0xf0, 0x83, 0xec, 0x44};
 // mov eax,[0x608518]; push ebx; push ebp; mov ebp,[esp+0xc] (one stack argument, caller cleans).
 constexpr unsigned char lens_entry[] = {0xa1, 0x18, 0x85, 0x60, 0x00, 0x53, 0x55, 0x8b, 0x6c, 0x24, 0x0c};
-// The X3M_SUBMIT_PHASES diagnostic claims 0x00472490 (six bytes: push esi + this call).
+// The X3M_SUBMIT_PHASES diagnostic claims 0x00472490 (six bytes: push esi + this call): the lens call is not claimed
+// any more, but its bytes are part of the install identity, so the pair is refused by name (submit_phases_conflict).
 constexpr std::uintptr_t conflicting_submit_phase_va = 0x00472490;
 
 // ---- Engine layout ----
