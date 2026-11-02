@@ -26,10 +26,31 @@ void MotionOutput::resolve_own_ship() noexcept {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_own_ship_set_) { own_ship_node_ = fixture_own_ship_node_; own_ship_handle_ = fixture_own_ship_handle_; own_ship_status_ = unsigned(object_capture::Status::Ready); return; }
 #endif
+#if X3M_EDITION_FL
+    // FL: the same walk over X3FL.exe's cockpit registry slot (RVA 0x1a82e4 at the module base), admitted with sector_background_fl's
+    // anchors (registry +0/+0x10, map {buckets, capacity}, links {next, key, cockpit}); cockpit +0xc = the reference
+    // object, ref +0x70 = its render root (cockpit updater 0x421f50: 0x42241c, 0x422441), node +0x28 handle and +0x18
+    // parent (object_trace_fl_inc.h). verification/results/fl-engine-effects/own_ship_offsets.py decodes the two.
+    if (!fl::sector_background_fl::admitted()) {
+        own_ship_status_ = ~0u;
+        static bool logged = false;
+        if (!logged) {
+            logged = true;
+            log("own_ship status=unavailable edition=fl reason=registry_not_admitted sector=%s",
+                fl::sector_background_fl::status());
+        }
+        return;
+    }
+    const DWORD error = GetLastError();
+    auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
+    const auto s = object_capture::own_ship(
+        read, std::uint32_t(fl::module_base() + fl::sector_background_fl::cockpit_registry_slot_rva));
+#else
     if (!object_trace::executable_verified()) { own_ship_status_ = ~0u; return; }
     const DWORD error = GetLastError();
     auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
     const auto s = object_capture::own_ship(read, 0x608504);
+#endif
     own_ship_status_ = unsigned(s.status);
     if (s.status == object_capture::Status::Ready) { own_ship_node_ = s.node; own_ship_handle_ = s.node_handle; }
     SetLastError(error);

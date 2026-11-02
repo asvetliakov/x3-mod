@@ -2232,8 +2232,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
                                            // projection (else the registry F) and the back-buffer width
+#endif
+    // Both editions (FL since the engine-effects port, step 1).
     engine_effects::begin_frame(ctx.frame);  // X3M_ENGINE_EFFECTS hook only: engine_bodies.json once, then its names
                                              // -> ids over the engine's body table (the lens_flare_cull recipe)
+#if !X3M_EDITION_FL // the gain-0 engine cull is AP only (its cull-pass stub is not ported to X3FL.exe)
     lens_flare_cull::begin_frame(ctx.frame); // X3M_LENS_FLARE_GAIN=0 only: the flare body set from the engine's body
                                              // table (the header and the mapped dynamic names per frame, a scan only
                                              // when the table moves, grows or re-binds a name)
@@ -5763,6 +5766,13 @@ void initialize_log(HMODULE module) {
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
 #endif
     frame_timing::initialize();       // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
+#if X3M_EDITION_FL
+    // FL engine-effects port, step 1 (docs/architecture/engine-effects-modern.md): the option, the identity and the
+    // body-table binding (engine_effects.cpp), then X3FL.exe's two call redirects (src/engine/fl/engine_effects_fl.cpp)
+    // in the same install window; one engine_effects_patch row per site with edition=fl.
+    engine_effects::initialize();
+    engine_effects_patch::initialize();
+#endif
 #if !X3M_EDITION_FL
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
                                       // 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other

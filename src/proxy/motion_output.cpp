@@ -14,6 +14,21 @@
 #include "../renderer/object_bounds_projection.h"
 #include "engine_memory.h"
 #include "object_capture.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/executable_identity_fl.h"
+#include "../engine/fl/sector_background_fl.h"
+#include "../engine/fl/sector_background_fl_inc.h"
+namespace x3m::fl::own_ship_trace { // the generated fragment has no namespace of its own (object_trace_fl.cpp)
+#include "../engine/fl/object_trace_fl_inc.h"
+}
+namespace fl_own_ship = x3m::fl::sector_background_fl;
+static_assert(fl_own_ship::registry_map == 0 && fl_own_ship::registry_active_handle == 0x10 &&
+                  fl_own_ship::map_buckets == 0 && fl_own_ship::map_capacity == 4 && fl_own_ship::link_next == 0 &&
+                  fl_own_ship::link_key == 4 && fl_own_ship::link_value == 8,
+              "object_capture::own_ship's registry walk is X3FL.exe's (resolve_own_ship)");
+static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_trace::node_handle == 0x28,
+              "object_capture::own_ship / own_ship_descends read X3FL.exe's node handle and parent");
+#endif
 #include "camera_state.h"
 #include "cull_small_parts.h"
 #include "occlusion_engine_cull.h"

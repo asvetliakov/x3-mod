@@ -130,10 +130,12 @@ set(X3M_SHARED_SOURCES
 # links src/engine/fl/scene_hook_fl.cpp and src/engine/fl/compositor_owner_fl.cpp
 # (docs/architecture/farnhams-legacy-scene.md). sun_light_poll.cpp too: the fl target links
 # src/engine/fl/sun_light_poll_fl.cpp (docs/architecture/farnhams-legacy-sun-light.md). The flare-probe hook module too: the fl
-# target links src/engine/fl/sun_occlusion_fl.cpp (docs/architecture/farnhams-legacy-sun-occlusion.md).
+# target links src/engine/fl/sun_occlusion_fl.cpp (docs/architecture/farnhams-legacy-sun-occlusion.md). The engine-effects
+# call redirects too: the fl target links src/engine/fl/engine_effects_fl.cpp (docs/architecture/engine-effects-modern.md,
+# "FL port, step 1"); engine_effects.cpp stays shared.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
-  src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/engine_effects_patch.cpp
+  src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
   src/proxy/fov.cpp src/proxy/text_density.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
   src/proxy/engine_patch.cpp)
@@ -165,6 +167,8 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/fog_prefill_fl.cpp)
   # The flare probe override and the lens bracket (docs/architecture/farnhams-legacy-sun-occlusion.md).
   target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)
+  # The engine-effects call redirects (docs/architecture/engine-effects-modern.md, "FL port, step 1").
+  target_sources(d3d9 PRIVATE src/engine/fl/engine_effects_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -218,6 +222,9 @@ set_source_files_properties(src/engine/fl/fog_prefill_fl.cpp PROPERTIES COMPILE_
 # image (cpu_state.h) around the SSE listener, the probe handler XMM0-7 and LastError.
 set_source_files_properties(src/engine/fl/sun_occlusion_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL engine-effects stubs (src/engine/fl/engine_effects_fl.cpp) are file-scope asm, integer only; the install code
+# runs on the backend-load path: default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/engine_effects_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

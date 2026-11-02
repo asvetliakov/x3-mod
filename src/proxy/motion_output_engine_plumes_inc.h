@@ -32,6 +32,13 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         engine_nozzle::core::Source source = engine_nozzle::core::default_source;
         const bool ok = !n || (n < 8 && engine_nozzle::core::parse_source(text, n, &source));
         engine_nozzle_source_ = ok ? source : engine_nozzle::core::default_source;
+#if X3M_EDITION_FL
+        // FL: the node walk's read-window guarantee is not established on X3FL.exe (docs/reverse-engineering/fl/
+        // engine-effects.md rule 4): draw-sourced nozzles only, whatever the setting (status fl_draw_only; a refused setting keeps
+        // invalid_setting / too_long).
+        const bool fl_forced = engine_nozzle_source_ != engine_nozzle::core::Source::draw;
+        engine_nozzle_source_ = engine_nozzle::core::Source::draw;
+#endif
         engine_node_roots_frame_ = ~std::uint64_t(0);
         engine_node_appended_ = false;
         engine_node_walked_count_ = 0;
@@ -39,7 +46,11 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         engine_scene_camera_frame_ = 0;
         engine_node_ = {};
         log("engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u",
-            id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
+            id_, n ? shown : "-",
+#if X3M_EDITION_FL
+            ok && fl_forced ? "fl_draw_only" :
+#endif
+            ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
             engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),
             engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity);
     }

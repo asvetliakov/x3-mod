@@ -1,0 +1,1 @@
+{"stubs": {"_x3m_engine_effects_stub_a": {"instructions": 8, "matches_contract": true, "mnemonics": ["push", "mov", "cmpw", "pop", "je", "jmp", "xor", "ret"]}, "_x3m_engine_effects_stub_b": {"instructions": 8, "matches_contract": true, "mnemonics": ["push", "mov", "cmpw", "pop", "je", "jmp", "xor", "ret"]}}, "findings": []}

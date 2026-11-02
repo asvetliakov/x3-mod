@@ -5,6 +5,11 @@
 #include "engine_memory.h"
 #include "object_trace.h"
 #include "log_tiers.h"
+#if X3M_EDITION_FL
+#include "object_lifetime.h"
+#include "../engine/fl/engine_effects_sites_fl.h"
+#include "../engine/fl/executable_identity_fl.h"
+#endif
 #include <windows.h>
 #include <cstring>
 #include <new>
@@ -21,13 +26,28 @@ float nozzle_ = x3m::engine_plumes::default_look.nozzle_width;
 float floor_ = x3m::engine_plumes::default_look.floor_scale;
 bool identity_ = false, hook_ = false, initialized_ = false;
 const char* status_ = "not_initialized";
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
+#if X3M_EDITION_FL
+// FL: X3FL.exe is relocatable, so the body manager slot and the SETA site/slot are bound to fl::module_base() at
+// initialize (0 until then and without the identity: nothing is read). The 12 SETA bytes and the warp offset are FL's
+// (engine_effects_sites_fl.h); a load (object_lifetime's load epoch) clears the resolution.
+namespace flee = x3m::fl::engine_effects_fl;
+std::uintptr_t body_global_ = 0, seta_site_ = 0, seta_slot_ = 0;
+std::uint64_t load_epoch_ = 0;
+constexpr const unsigned char (&seta_expected_)[flee::seta_site_length] = flee::expected_seta_site;
+constexpr std::uint32_t seta_warp_offset_ = flee::seta_warp_offset;
+static_assert(flee::seta_site_length == x3m::engine_plumes::seta_site_length, "the shared 12-byte compare");
+static_assert(flee::seta_warp_offset + 4 == 0xc0, "warp and the governor are adjacent dwords");
+#elif defined(X3M_MOTION_OUTPUT_FIXTURE)
 bool fixture_identity_ = false, fixture_redirects_ = false;
 std::uintptr_t body_global_ = lfc::census::body_global_va;
 std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
 #else
 constexpr std::uintptr_t body_global_ = lfc::census::body_global_va;
 constexpr std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
+#endif
+#if !X3M_EDITION_FL
+constexpr const unsigned char (&seta_expected_)[x3m::engine_plumes::seta_site_length] = x3m::engine_plumes::expected_seta_site;
+constexpr std::uint32_t seta_warp_offset_ = x3m::engine_plumes::seta_warp_offset;
 #endif
 // The SETA site's compare: 0 not yet, 1 matched, 2 refused (for the session).
 unsigned char seta_site_state_ = 0;
@@ -179,7 +199,15 @@ void initialize() {
     core::Mode parsed = length ? core::Mode::native : core::Mode::plumes;
     const bool valid = !length || (printable && core::parse_mode(setting, length, &parsed));
     mode_ = valid ? parsed : core::Mode::native;
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
+#if X3M_EDITION_FL
+    {
+        const std::uintptr_t base = x3m::fl::module_base(); // 0 unless X3FL.exe's identity holds
+        identity_ = base != 0;
+        body_global_ = base ? base + flee::body_slot_rva : 0;
+        seta_site_ = base ? base + flee::seta_site_rva : 0;
+        seta_slot_ = base ? base + flee::config_slot_rva : 0;
+    }
+#elif defined(X3M_MOTION_OUTPUT_FIXTURE)
     identity_ = fixture_identity_ || object_trace::executable_verified();
 #else
     identity_ = object_trace::executable_verified();
@@ -267,6 +295,16 @@ void begin_frame(unsigned long long frame) {
     if (!hook_) return;
     const DWORD error = GetLastError();
     if (!load_attempted_) load_table(frame);
+#if X3M_EDITION_FL
+    // A load reallocates the slot array and rewrites names (restore, reset, registration; docs/reverse-engineering/fl/
+    // engine-effects.md rule 5): a new load epoch drops every mapping and the next refresh rescans from the header.
+    const std::uint64_t epoch = object_lifetime::stats().load_epoch;
+    if (epoch != load_epoch_) {
+        load_epoch_ = epoch;
+        engine_table_ = lfc::Table{};
+        if (state_) state_->resolver.clear();
+    }
+#endif
     refresh(frame);
     SetLastError(error);
 }
@@ -310,7 +348,7 @@ SetaStatus seta_read(std::uint32_t* warp, std::uint32_t* mult) {
     if (!seta_site_state_) {
         unsigned char bytes[ep::seta_site_length]{};
         if (x3m::engine_memory::read(seta_site_, bytes, sizeof bytes))
-            seta_site_state_ = !std::memcmp(bytes, ep::expected_seta_site, sizeof bytes) ? 1 : 2;
+            seta_site_state_ = !std::memcmp(bytes, seta_expected_, sizeof bytes) ? 1 : 2;
     }
     std::uint32_t cfg = 0, pair[2] = {0, 0};
     if (!seta_site_state_)
@@ -319,7 +357,7 @@ SetaStatus seta_read(std::uint32_t* warp, std::uint32_t* mult) {
         status = SetaStatus::site;
     else if (!x3m::engine_memory::read(seta_slot_, &cfg, sizeof cfg) || !cfg)
         status = SetaStatus::pointer;
-    else if (!x3m::engine_memory::read(std::uintptr_t(cfg) + ep::seta_warp_offset, pair, sizeof pair))
+    else if (!x3m::engine_memory::read(std::uintptr_t(cfg) + seta_warp_offset_, pair, sizeof pair))
         status = SetaStatus::read;
     else {
         *warp = pair[0];
