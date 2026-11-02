@@ -960,3 +960,18 @@ through interop, no Wine, no game.
   (`own_sun_frame … starved=1 retries=`, with `--debug` one `own_sun_state … reason=no_probe` row). With the registry
   not admitted (`fl.sun_occlusion … main_view=none`) the own sun stays off: `own_sun status=unavailable
   reason=main_view`.
+
+## FL run 16 — own sun step 3 installed (2026-11-02)
+
+Merge `1c885bc44` (code `7997ebdf6`, docs `69eae3449`, review fixes `91eccff4b`/`0f5774a1b`; review Opus high, no
+blocker). `build-fl` 0 warnings, `generate.py --check` PASS, eight host modules 99 tests 0 failing, native FL fixture
+766/0 with 9/9 mutations failing (measured). Installed `C:\X3FL\d3d9.dll` = `ed8d50c7…` (55,327,198 B, bytes verified),
+rollback `rollback-d3d9\d3d9.dll.run15` = `c48809c8…`; `X3FL.exe` unchanged (`e7f3aad8…`); `x3m.ini` unchanged (no
+`own_sun` key, so default on; `debug = 1`). Record: `verification/results/fl-run16/candidate.json`. Also carries the
+no-probe fail-safe for AP (not installed on AP; AP stays on release 1.8.5).
+
+**FL run 16 A (open), The Hole:** the same procedural sun as AP 1.8.5 should replace the engine sun and its lens chain;
+the grey lens over fog of run 15 should be gone. Fly the hull and a station across the sun once; cross into fog.
+Expect `own_sun status=ready edition=fl … reason=ok`, `own_sun_frame … drawn>0 starved=0`, no `starved=1`. If the sun
+is the engine's instead, the fail-safe fired (`own_sun_state reason=no_probe` once, `starved=1` on the frame rows):
+the FL main view is probed after the resolve, and step 3 needs the probe order fixed.
