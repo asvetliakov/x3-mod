@@ -879,6 +879,19 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: own sun, step 2 (`own_sun` default on; the partial sun occlusion deleted)
+
+The partial sun occlusion's D3D side is gone ([own-sun-pass.md](own-sun-pass.md) section 14, "Step 2 as built"): the
+two 1x1 `A16B16G16R16F` targets, their state blocks and ps_3_0 program, the per-lens-draw `GetFunction` /
+`CreatePixelShader` wraps (SM2/SM3), the bracket's `GetContainer` of RT2 and the log's `GetRenderTargetData` readbacks;
+the entry below ("partial sun occlusion, step 1") is history. What stays on both targets: the byte-validated probe and
+lens-bracket hooks (AP 0x00471630 / 0x00472491, FL base+0x8af0a / base+0x8bcb7), the lens-flare gain's per-draw
+`SetRenderState` of `SRCBLEND`/`BLENDFACTOR` under the documented `D3DPBLENDCAPS_BLENDFACTOR` cap, and the own sun stage
+of step 1 unchanged. Natively verified on the Windows host through WSL interop (measured 2026-11-02,
+`verification/results/own-sun-pass/step2/`): the hook fixture's synthetic sites (46 checks, 0 failures: the hidden
+answer, forwarding, rollback, late claim, CPU/LastError), the FL hook fixture (464 / 0), and the gain's blend law on the
+native D3D9 HAL device (8 / 0: G = 1, 0.5 through BLENDFACTOR, 0 not issued, state restored byte for byte).
+
 ## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
 
 The own sun stage ([own-sun-pass.md](own-sun-pass.md) sections 2-4 and 10) uses documented D3D9 only: one vs_3_0 /
