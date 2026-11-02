@@ -909,6 +909,18 @@ no pin (the stubs live in the never-freed arena). Natively verified on the Windo
 2026-11-02): the FL fixture 49 + 6 checks, 0 failures (the real case and load bytes against the unpatched image,
 documented register/flag/stack/LastError/XMM/x87/MXCSR contract, every window bit, rollback, late claim, retained
 literal). Not verified: the three sites in game (not flown).
+## 2026-11-02: chase camera pose seam on FL (`camera = chase` on FL)
+
+The FL edition installs the same cockpit-updater pose seam as AP in X3FL.exe at module base + RVA `0x0227ad`
+([chase-camera.md](../reverse-engineering/fl/chase-camera.md), section 6): `engine_patch::claim` with the re-based
+`je` rel32, the shared generated stub (PUSHFD/PUSHAD, XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError) around the
+shared SSE2 handler, behind the X3FL.exe identity and three compared windows (the plane-slot fixup checked against the
+base). Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery`, `QueryPerformanceCounter`), no
+Wine/CrossOver dependency, no device call. The view restore, lead marker, cursor fire and aim trace stay AP-only on FL
+(one `ap_only` row each). Natively verified on the Windows host through WSL interop (measured 2026-11-02): the FL
+fixture 41 checks, 0 failures (both branch outcomes, every GPR/EFLAGS/ESP/XMM/x87/MXCSR/LastError at the native
+continuation for each 4-byte ESP skew, the pose written through EBX, every window bit, read-back rollback restored and
+failed, shutdown, late claim) and 4 / 4 mutations. Not verified: the FL pose in game (not flown).
 
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 

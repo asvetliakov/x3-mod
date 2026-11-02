@@ -1,0 +1,4 @@
+no_cpu_state_boundary exit=1 failed_checks=11 first=bound_fallthrough_skew0,bound_taken_skew0,bound_fallthrough_skew4,bound_taken_skew4
+unbound_admitted_on_fl exit=1 failed_checks=2 first=inactive_and_unbound_not_written,pose_write_count
+no_readback_check exit=1 failed_checks=5 first=readback_rollback,readback_rollback_failed_registered,foreign_bytes_undone,install_row
+restore_only_owned_bytes exit=1 failed_checks=5 first=readback_rollback,readback_rollback_failed_registered,foreign_bytes_undone,install_row

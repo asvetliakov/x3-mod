@@ -92,6 +92,15 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // one entry JMP inside the same install window, gated by the identity, the entry bytes and the body hash; the
     // replacement clamps a quotient the engine's idiv would trap on. It logs its own fl.scale_fix row.
     x3m::fl::scale_fix::initialize();
+    // X3M_CAMERA=chase (the FL ini default): the cockpit updater's pose seam (src/proxy/chase_camera.cpp, FL branch;
+    // docs/reverse-engineering/fl/chase-camera.md), same install window, before the game loop first runs the updater;
+    // one chase_camera row with edition=fl. The view restore, the lead marker, cursor fire and the aim trace stay
+    // AP-only: one refusal row each, nothing claimed.
+    if (x3m::chase_camera::wanted()) {
+        x3m::chase_camera::initialize();
+        for (const char* name : {"chase_transition", "chase_lead", "chase_fire", "chase_aim_trace"})
+            x3m::log("%s installed=0 status=ap_only edition=fl reason=ap_only", name);
+    }
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",

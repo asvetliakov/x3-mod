@@ -287,7 +287,8 @@ SETTINGS = [
     entry('fog_handover_prefill', 'bool', 'fog', 'Prepares the next sector\'s fog while the jump is still under way. 1 = on, 0 = off.',
           '1', requires=('volumetric_fog_range',), launcher='--fog-handover-prefill'),
     # ---------------------------------------------------------------- camera
-    entry('camera', 'enum', 'camera', 'The external (back) view. chase = a smoothly following chase camera, vanilla = the game\'s own.',
+    entry('camera', 'enum', 'camera', 'The external (back) view. chase = a smoothly following chase camera, vanilla = the game\'s own. '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.',
           'chase', choices=('chase', 'vanilla'), launcher='--camera'),
     entry('fov', 'float', 'camera', 'Field of view in degrees, counted like X4: the horizontal angle on a 16:9 screen, 70 to 100 '
           '(the same on every screen shape). game = the game\'s own field of view. X3: Albion Prelude and X3: Farnham\'s '
@@ -303,20 +304,25 @@ SETTINGS = [
           'next to X3AP.exe (shipped in the mod\'s zip and installed by manage.py install); if any of them is missing, the '
           'setting turns itself off and the log says which file.', 'auto', choices=('auto', '1', '2', '3'),
           launcher='--text-density'),
-    entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30.', '0.5',
+    entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30. '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '0.5',
           range=(0.0, 30.0), requires=('camera',), launcher='--chase-pitch-down-deg'),
     entry('chase_offset_y', 'float', 'camera', 'Where your ship sits on screen in the chase view: 0 = centre, 0.5 = halfway down, '
-          'negative = above centre. -1 to 1.', '0.5', range=(-1.0, 1.0), requires=('camera',), launcher='--chase-offset-y'),
+          'negative = above centre. -1 to 1. X3: Albion Prelude and X3: Farnham\'s Legacy.', '0.5', range=(-1.0, 1.0),
+          requires=('camera',), launcher='--chase-offset-y'),
     entry('chase_distance_scale', 'float', 'camera', 'Distance of the chase camera as a multiple of the game\'s. Larger = farther '
-          'back. Above 0, up to 10.', '1.05', range=[R(0, 10, True)], requires=('camera',), launcher='--chase-distance-scale'),
+          'back. Above 0, up to 10. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1.05', range=[R(0, 10, True)],
+          requires=('camera',), launcher='--chase-distance-scale'),
     entry('chase_fov_compensate', 'bool', 'camera', 'Keeps your ship the same size on screen in the chase view whatever the field of '
-          'view. 1 = on, 0 = off.', '1', requires=('camera',), launcher='--chase-fov-compensate'),
-    entry('chase_hud_anchor', 'enum', 'camera', 'Where the aiming reticle sits in the chase view. forward = where the ship points, '
-          'centre = the screen centre.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
-    entry('chase_view_restore', 'bool', 'camera', 'Returns to the chase view after a gate jump or jumpdrive. 1 = on, 0 = off.', '1',
+          'view. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', requires=('camera',),
+          launcher='--chase-fov-compensate'),
+    entry('chase_hud_anchor', 'enum', 'camera', 'X3: Albion Prelude only, ignored on Farnham\'s Legacy. Where the aiming reticle '
+          'sits in the chase view. forward = where the ship points, centre = the screen centre.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
+    entry('chase_view_restore', 'bool', 'camera', 'X3: Albion Prelude only, ignored on Farnham\'s Legacy. Returns to the chase '
+          'view after a gate jump or jumpdrive. 1 = on, 0 = off.', '1',
           requires=('camera',), launcher='--chase-view-restore'),
-    entry('chase_view_restore_retries', 'int', 'camera', 'How many more times the chase-view restore asks the game for the chase view '
-          'when a first request after a jump changed nothing. 0 to 5.', '3', range=(0, 5), requires=('chase_view_restore',),
+    entry('chase_view_restore_retries', 'int', 'camera', 'X3: Albion Prelude only, ignored on Farnham\'s Legacy. How many more '
+          'times the chase-view restore asks the game for the chase view when a first request after a jump changed nothing. 0 to 5.', '3', range=(0, 5), requires=('chase_view_restore',),
           launcher='--chase-view-restore-retries', since='2026-10-12'),
     entry('chase_scene_fix', 'bool', 'camera', 'Experimental: moves the cockpit-layer scene with the smoothed chase view. 1 = on, '
           '0 = off.', '0', requires=('camera',), launcher='--chase-scene-fix'),

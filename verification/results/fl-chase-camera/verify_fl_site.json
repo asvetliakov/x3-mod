@@ -1,0 +1,188 @@
+{
+  "result": "PASS",
+  "edition": "fl",
+  "checks": {
+    "fl_identity": {
+      "ok": true,
+      "timestamp": "0x618416c8",
+      "image_size": "0x00391000"
+    },
+    "relocatable": {
+      "ok": true,
+      "dll_characteristics": "0x8140",
+      "highlow": 38327,
+      "highlow_expected": 38327,
+      "other_types": 0
+    },
+    "site_bytes": {
+      "ok": true,
+      "value": "837b54000f8471010000",
+      "rva": "0x0227ad"
+    },
+    "span_decode": {
+      "ok": true,
+      "seam": [
+        {
+          "rva": "0x0227a4",
+          "ok": true,
+          "got": "movups xmm0, xmmword ptr [esp + 0x20]"
+        },
+        {
+          "rva": "0x0227a9",
+          "ok": true,
+          "got": "movups xmmword ptr [ecx + 0x30], xmm0"
+        },
+        {
+          "rva": "0x0227ad",
+          "ok": true,
+          "got": "cmp dword ptr [ebx + 0x54], 0"
+        },
+        {
+          "rva": "0x0227b1",
+          "ok": true,
+          "got": "je 0x422928"
+        },
+        {
+          "rva": "0x0227b7",
+          "ok": true,
+          "got": "xor ecx, ecx"
+        },
+        {
+          "rva": "0x0227c6",
+          "ok": true,
+          "got": "mov eax, dword ptr [ebx + 0x54]"
+        },
+        {
+          "rva": "0x0227e3",
+          "ok": true,
+          "got": "mov ecx, dword ptr [ebx + 0x58]"
+        },
+        {
+          "rva": "0x022928",
+          "ok": true,
+          "got": "mov ecx, ebx"
+        },
+        {
+          "rva": "0x02292a",
+          "ok": true,
+          "got": "call 0x422fb0"
+        },
+        {
+          "rva": "0x02293f",
+          "ok": true,
+          "got": "mov dword ptr [ebx + 0x1fc], 0"
+        }
+      ],
+      "span_lengths": [
+        4,
+        6
+      ],
+      "rel32_offset": 6,
+      "window_whole_instructions": true
+    },
+    "reloc_span": {
+      "ok": true,
+      "fixups_touching_span": []
+    },
+    "reloc_plane_slot": {
+      "ok": true,
+      "value": "0x005a82f8"
+    },
+    "windows": {
+      "ok": true,
+      "seam": {
+        "ok": true,
+        "fnv1a32": "391b90a2",
+        "relocated": []
+      },
+      "target": {
+        "ok": true,
+        "fnv1a32": "466a42e2",
+        "relocated": []
+      },
+      "plane": {
+        "ok": true,
+        "fnv1a32": "2df2f1ce",
+        "relocated": [
+          "0x0dec8d"
+        ]
+      }
+    },
+    "inbound_edges": {
+      "ok": true,
+      "to_start": [
+        "0x022141",
+        "0x022597",
+        "0x0225a6",
+        "0x0225af",
+        "0x0225b8",
+        "0x0225c1",
+        "0x0225ca"
+      ],
+      "interior": [],
+      "direct_edges": 72230,
+      "to_branch_target": [
+        "0x0227b1"
+      ],
+      "updater_callers": [
+        "0x01e5b0"
+      ]
+    },
+    "interior_branches_raw": {
+      "ok": true,
+      "updater_whole_instructions": true,
+      "updater_instructions": 1082,
+      "at_instruction_start": [],
+      "aliased_in_operands": [
+        {
+          "at": "0x004227b3",
+          "target": "0x004227b6"
+        }
+      ]
+    },
+    "ebx_cockpit": {
+      "ok": true,
+      "anchors": [
+        {
+          "rva": "0x021f5e",
+          "ok": true
+        },
+        {
+          "rva": "0x021f63",
+          "ok": true
+        },
+        {
+          "rva": "0x0226d8",
+          "ok": true
+        }
+      ],
+      "ebx_writes": [
+        "0x02268d",
+        "0x0226bd",
+        "0x0226d8"
+      ],
+      "slot_stores": [
+        "0x021f63"
+      ],
+      "foreign_loop_edges": [],
+      "reload": "0x0226d8",
+      "stack_depth_equal": "inferred: the engine itself uses EBX as the cockpit after the seam on both branches"
+    },
+    "field_anchors": {
+      "ok": true,
+      "count": 43,
+      "failed": []
+    },
+    "atomic_write": {
+      "ok": true,
+      "qword_aligned_span": false,
+      "site_mod_8": 5,
+      "note": "crosses a qword: plain copy inside the install window (64 KB base keeps RVA & 7)"
+    }
+  },
+  "exe_info": {
+    "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+    "known": true
+  },
+  "exe": "/mnt/c/X3FL/X3FL.exe"
+}

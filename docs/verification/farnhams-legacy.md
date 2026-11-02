@@ -1538,3 +1538,43 @@ Not verified: the in-game FL path. A user run should show the `fov … edition=f
 `fov_confirm … kind=constructor` row on a new game (or the save's value, `kind=remapped` for a vanilla save, after a
 load), `kind=remapped` rows on menu steps, and the wider view; mode 6 and the saved cockpit+0x240 cache stay unpatched
 (note section 3).
+## Chase camera pose hook on FL, host evidence (2026-11-02, not installed, not flown)
+
+`camera = chase` is the FL ini default, but FL logged no `chase_camera` row: the module's initializer and report sat
+in AP-only fences. Now the FL build installs the same pose seam in X3FL.exe's cockpit updater at base + RVA `0x0227ad`
+(ten bytes `cmp dword [ebx+0x54],0; je`, rel32 at +6, continuation `0x0227b7`, plain copy inside the install window
+because the jump crosses a qword), with the shared spring/elevated handler (`offset_y`, `pitch_down_deg`,
+`distance_scale`, `fov_compensate`). Sites, field anchors and the dependency boundary:
+[fl/chase-camera.md](../reverse-engineering/fl/chase-camera.md), section 6. `chase_transition`, `chase_lead`,
+`chase_fire` and `chase_aim_trace` stay AP-only: compiled out of the FL handler, one
+`<module> installed=0 status=ap_only edition=fl reason=ap_only` row each; the unbound (`+0x10 == 0`) phase is never
+admitted on FL. AP object code of `chase_camera.cpp` is unchanged (objdump `.text` and `.rdata` diff against the base
+build: 0 lines). Base `9446e7a3b`. All measured on the WSL2 host (native Windows through interop), no Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| FL site | `python3 verification/probe/verify_chase_camera_site.py --edition fl --json` (`verification/results/fl-chase-camera/verify_fl_site.json`) | PASS: bytes, Capstone `[4, 6]`, no HIGHLOW in the span (38,327 total), the seven inbound edges and no interior edge (72,230 direct edges), sole updater caller `0x01e5b0`, qword crossing (`& 7 == 5`), EBX = cockpit to the seam, 43 field anchors, three window FNV-1a values, plane fixup `0x005a82f8`; AP mode still PASS |
+| Native fixture | `python3 -I verification/results/fl-chase-camera/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_camera.cpp`) | `RESULT PASS checks=41 failures=0`: both outcomes of the replayed `je` (re-based rel32) for ESP skews 0/4/8/12, every GPR, EFLAGS (= the native compare's), ESP, XMM0-7, x87 CW `007f` with one loaded register, MXCSR `bfe0` and LastError intact at the continuation/target; pose written through EBX (vanilla `0,200,-2000` → `0,808,-3778`, row padding kept), `frames=9 applied=8 refused=1 inactive=2 unbound=0`; 528/56/88 window bit flips refused before any write; read-back faults written into the synthetic span: a byte inside the jump → original ten bytes, `installed=0 … rollback=restored`; bytes inside and beyond it → `installed=1 status=readback_mismatch rollback=failed`, site registered and inert, `installed()` agrees; shutdown restores and a re-claim works; `late_claim` after `close_install_window` |
+| Mutations | `python3 -I verification/results/fl-chase-camera/mutation_check.py` (`mutation_check.txt`) | 4 / 4 killed: no `PreserveCpuState` (11 failed checks), unbound admitted (2), read-back check skipped (5), rollback through `engine_patch::restore` only (5: the not-owned refusal) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_camera test_chase_camera_site test_fl_chase_camera test_config_schema` | 97 tests, 0 failing; `test_bolt_footprint` pin updated to the fenced inactive return (25 tests, 0 failing) |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (`camera` and the four geometry keys marked for both editions; `chase_hud_anchor`, `chase_view_restore` and `chase_view_restore_retries` open with "X3: Albion Prelude only, ignored on Farnham's Legacy."; template text only) |
+
+Expected in game (not verified): `chase_camera requested=1 installed=1 status=active site=0x<base+0227ad> length=10
+rel32_offset=6 atomic_write=0 … edition=fl rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=none`, then
+the four `ap_only` rows, `chase_camera first_applied …` at the first applied frame and `chase_camera_last_device kept=1`
+at exit. The raised rear framing, boom scaling and smoothness on FL need a flight.
+
+Known FL gaps to expect in this flight (not defects of the pose hook):
+
+- After each gate transit (and jumpdrive) the FL chase view shows vanilla framing for a short while, then jumps to the
+  chase pose with a TAA history cut. A fresh cockpit generation reaches the seam with `+0x10 == 0` for tens of updates
+  (AP Run 78: 12–36 updates, 0.4–1.1 s; the FL figures are inferred from that, not measured), and FL never admits that
+  unbound phase because its proof is `chase_transition`'s registry walk, AP-only. This is the known gap the
+  `chase_transition` FL step closes.
+- The native centre crosshair is a false aim cue on FL: with `chase_offset_y = 0.5` the ship sits halfway down the
+  screen, so the screen centre is not where the ship points, and the true-forward reticle (`chase_hud_anchor`) is
+  `chase_lead`, AP-only until it is ported. `chase_hud_anchor`, `chase_view_restore` and `chase_view_restore_retries` are
+  ignored on FL (the template says so on their first line).
+- The bolt footprint's view gate (`chase_camera::pose_applied_since`) can open on FL for the first time with this build,
+  so its `plan_draw`/substitute-buffer path runs on FL for the first time (inferred from the source: the gate was always
+  closed while the FL site was never installed; unflown).
