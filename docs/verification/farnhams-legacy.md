@@ -1148,3 +1148,9 @@ or redirects: vanilla FL capitals have no engine glow, and giving them plumes ne
 per-hull nozzle table), a design item, not a port gap (`capital_scenes.py`, `capital_scenes_summary.txt`; measured).
 The Teladi freight transporter is likely the same case (the four new FL heavy TS have 0 engine parts) but was not in
 the capture.
+
+**User decision (2026-11-02):** "Yes i miss them": plumes are to be added to ships whose scenes carry no glow parts
+(stock capitals and heavy TS on both editions), from an offline per-hull nozzle table; queued after the frame-rate
+work and the lens bracket cleanup. Design item: `docs/architecture/engine-effects-modern.md` phase 4 ("emitter-site
+anchor records") is the nearest planned shape; stock capital scenes have no emitter sites either, so the table must
+come from hull geometry (rear-facing nozzle meshes / engine dummies) scanned offline.
