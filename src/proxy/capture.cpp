@@ -202,7 +202,7 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the render-only small-prop draw skip,
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
-bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
+bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default off): the occlusion-query skip of hidden ship sub-parts;
                                 // needs X3M_MOTION_OUTPUT=1 (occlusion_cull_core.h)
 bool occlusion_cull_engine = false; // X3M_OCCLUSION_CULL=engine with the engine-side stub installed
                                     // (occlusion_engine_cull.h): the route publishes the stub's table per frame
@@ -5941,7 +5941,8 @@ void initialize_log(HMODULE module) {
         // the motion route tests ship sub-part draws with occlusion queries and skips those its previous frame's test
         // found hidden. engine = the same plus a second stub on the small-parts claim of the cull/LOD pass (0x0047d2a2,
         // occlusion_engine_cull.h) that skips a part's whole render visit when the route skipped every draw of it in
-        // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means on; one
+        // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means off (the documented default; the
+        // code defaulted to on until 2026-11-02, so every flight before that ran the cull); one
         // occlusion_cull_config row on every launch (requested=unset when absent). A device that refuses occlusion
         // queries logs its own occlusion_cull_device attached=0 row and stays off.
         wchar_t mode_text[16]{};

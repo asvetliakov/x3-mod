@@ -46,13 +46,14 @@ static_assert((memo_slots & (memo_slots - 1)) == 0 && (owner_slots & (owner_slot
 inline std::uint32_t slot_of(std::uint32_t value, std::uint32_t slots) {
     return (value * 2654435761u) >> 16 & (slots - 1);
 }
-// `on` or unset/empty enables (the default), `off` disables, anything else is refused.
+// `off` or unset/empty disables (the documented default since 2026-10-08; the code said on until 2026-11-02), `on`
+// enables, anything else is refused.
 inline bool parse_mode(const char* text, bool* on) {
-    if (text && !std::strcmp(text, "off")) {
+    if (!text || !*text || !std::strcmp(text, "off")) {
         *on = false;
         return true;
     }
-    if (!text || !*text || !std::strcmp(text, "on")) {
+    if (!std::strcmp(text, "on")) {
         *on = true;
         return true;
     }

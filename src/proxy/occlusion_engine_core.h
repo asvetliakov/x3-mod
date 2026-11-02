@@ -37,13 +37,14 @@
 
 namespace x3m::occlusion_cull::engine {
 enum class Mode : std::uint8_t { off = 0, on = 1, engine = 2 };
-// `on` (also unset or empty), `off`, or `engine` (the draw-level cull plus the engine-side skip); anything else refused.
+// `off` (also unset or empty: the documented default since the 2026-10-08 A/B; the code said `on` until 2026-11-02,
+// user decision that day), `on`, or `engine` (the draw-level cull plus the engine-side skip); anything else refused.
 inline bool parse_mode(const char* text, Mode* mode) {
-    if (!text || !*text || !std::strcmp(text, "on")) {
+    if (!std::strcmp(text ? text : "", "on")) {
         *mode = Mode::on;
         return true;
     }
-    if (!std::strcmp(text, "off")) {
+    if (!text || !*text || !std::strcmp(text, "off")) {
         *mode = Mode::off;
         return true;
     }

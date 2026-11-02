@@ -27,7 +27,9 @@ INC = ROOT / 'src/proxy/motion_output_occlusion_cull_inc.h'
 MOTION = ROOT / 'src/proxy/motion_output.cpp'
 ENGINE_CORE = ROOT / 'src/proxy/occlusion_engine_core.h'
 # occlusion_cull_core.h after the edition node layout (2026-11-02); test_batched_records accepts it beside the recorded one.
-OCCLUSION_CORE_SHA256_2026_11_02 = '0c57c7ded68ee635c6c8ad2dcc5347c108af847e68fce7a28f37ba3e0c2f3903'
+OCCLUSION_CORE_SHA256_2026_11_02 = '862a8c473a41cb2777af4abc46b89949f4af554be143f61ce007966447459ee1'  # + default off (parse_mode)
+# occlusion_engine_core.h after the default-off change (2026-11-02): parse_mode alone; the stub encoder is unchanged.
+ENGINE_CORE_SHA256_2026_11_02 = '997bc6448bae167d1f44af347af61ff7aa1237d47290ad8347ad3b1459f2f6ef'
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_small_parts_site as small  # noqa: E402
 
@@ -369,9 +371,12 @@ class OcclusionCullHost(unittest.TestCase):
             self.assertTrue(record['passed'], backend)
             self.assertEqual(record['result']['failed'], 0)
             # Bound to the production sources it ran (the pass, the core) and the fixture.
-            for source in ('src/renderer/occlusion_cull_pass.h', 'src/proxy/occlusion_engine_core.h',
-                           'verification/probe/occlusion_cull_fixture.cpp'):
+            for source in ('src/renderer/occlusion_cull_pass.h', 'verification/probe/occlusion_cull_fixture.cpp'):
                 self.assertEqual(record['sources'][source], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), source)
+            # The engine core: the records ran the 2026-10-08 source; the only change since is parse_mode's default
+            # (unset = off, 2026-11-02), which the Wine fixture never calls (it drives the encoder and the ledger).
+            self.assertIn(hashlib.sha256(ENGINE_CORE.read_bytes()).hexdigest(),
+                          (record['sources']['src/proxy/occlusion_engine_core.h'], ENGINE_CORE_SHA256_2026_11_02))
             # The core: the records ran the 2026-10-08 source; the only change since is the edition node layout of
             # 2026-11-02 (Classifier::layout, AP's offsets unchanged: test_core_driver's AP build), which needs a Wine
             # host to rerun. Until then the records stay bound to that recorded source and the current one is named here.

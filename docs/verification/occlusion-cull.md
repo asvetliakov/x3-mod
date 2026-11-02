@@ -274,3 +274,14 @@ Evidence: `verification/results/hull-widen-native-validator/occlusion_programs.p
 the source), `native_validate.cpp`, and the validator output `occlusion_native.txt` (project bytes, not game bytes). The fixture that qualified the pass would catch this only on native D3D9.
 
 2026-10-16 (fix): `rect_mad_vs_words` is now `mov r0, c253; mad o0, v0, r0, c252` (16 DWORDs; vs_3_0 temporaries need no declaration). Native validator, `verification/results/hull-widen-native-validator/rerun_round2.sh` -> `result-round2.json` (measured): `rect_mad_vs_words`, `rect_vs_words` and the pixel program with 1-4 oC MOVs, 6/6 pass with 0 messages. Host guard `test_native_validator_rules` parses these programs from the source (fails on the pre-fix mad: constant port, c252/c253). `test_occlusion_cull.test_batched_records` now fails on the source hash binding of `occlusion-cull-batched/fixture-{wined3d,dxvk}.json` until that Wine fixture is rerun (not runnable on this host); a native flight must show `occlusion_cull_device ... attached=1`.
+
+## 2026-11-02: the code default was `on`; now `off` as documented
+
+`parse_mode` treated unset or empty `X3M_OCCLUSION_CULL` as `on` (`occlusion_engine_core.h`), so every AP flight since
+2026-10-08 and FL run 22 ran the draw-level cull although the schema, the ini template and this ledger record `off` as
+the default (user decision 2026-10-08, confirmed 2026-11-02: "leave it off by default"). Unset and empty now mean `off`;
+the status row for an untouched ini reads `occlusion_cull_config requested=unset configured=0 reason=off`. The host
+check in `occlusion_cull_host.cpp` pins it. Evidence of the old behaviour: AP run 227 log `occlusion_cull_config
+requested=unset configured=1 reason=ok` with `occlusion_cull_session … hidden=21576` per 300 frames (measured); FL
+run 22 `attached=1 … hidden=2101` over 33,000 frames (`verification/results/fl-run22/triage_run22.txt`). The cull
+stays available as `occlusion_cull = on` on both editions (FL since run 22).

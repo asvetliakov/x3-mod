@@ -216,9 +216,10 @@ static void skip_rule() {
               draw_key(1, 2, 3, 4, 5) != draw_key(2, 2, 3, 4, 5) && draw_key(1, 2, 3, 4, 5) == draw_key(1, 2, 3, 4, 5),
           "the draw key separates geometry, model and node");
     bool on = false;
-    check(parse_mode(nullptr, &on) && on && parse_mode("", &on) && on && parse_mode("off", &on) && !on &&
+    on = true;
+    check(parse_mode(nullptr, &on) && !on && (on = true, parse_mode("", &on)) && !on && parse_mode("off", &on) && !on &&
               parse_mode("on", &on) && on && !parse_mode("yes", &on),
-          "X3M_OCCLUSION_CULL: unset/empty/on = on, off = off, anything else refused");
+          "X3M_OCCLUSION_CULL: unset/empty/off = off (the documented default), on = on, anything else refused");
 }
 
 static void classifier() {
@@ -619,11 +620,12 @@ static void batching() {
 static void engine_table() {
     namespace oe = x3m::occlusion_cull::engine;
     oe::Mode m = oe::Mode::off;
-    check(oe::parse_mode(nullptr, &m) && m == oe::Mode::on && oe::parse_mode("", &m) && m == oe::Mode::on &&
-              oe::parse_mode("on", &m) && m == oe::Mode::on && oe::parse_mode("off", &m) && m == oe::Mode::off &&
-              oe::parse_mode("engine", &m) && m == oe::Mode::engine && !oe::parse_mode("Engine", &m) &&
-              !oe::parse_mode("engine ", &m) && !oe::parse_mode("1", &m),
-          "engine: X3M_OCCLUSION_CULL unset/empty/on = on, off, engine; anything else refused");
+    m = oe::Mode::on;
+    check(oe::parse_mode(nullptr, &m) && m == oe::Mode::off && (m = oe::Mode::on, oe::parse_mode("", &m)) &&
+              m == oe::Mode::off && oe::parse_mode("on", &m) && m == oe::Mode::on && oe::parse_mode("off", &m) &&
+              m == oe::Mode::off && oe::parse_mode("engine", &m) && m == oe::Mode::engine &&
+              !oe::parse_mode("Engine", &m) && !oe::parse_mode("engine ", &m) && !oe::parse_mode("1", &m),
+          "engine: X3M_OCCLUSION_CULL unset/empty/off = off (the documented default), on, engine; anything else refused");
     check(!std::strcmp(oe::mode_name(oe::Mode::engine), "engine") && !std::strcmp(oe::mode_name(oe::Mode::on), "on") &&
               !std::strcmp(oe::mode_name(oe::Mode::off), "off"),
           "engine: mode names");
