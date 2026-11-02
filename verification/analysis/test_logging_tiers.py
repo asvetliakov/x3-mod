@@ -466,6 +466,29 @@ class OwnSunRows(unittest.TestCase):
         self.assertEqual(next(l for l in doc.splitlines() if l.startswith('| `--own-sun on`')).split(' | ')[3], 'always')
 
 
+class WindowFocusRows(unittest.TestCase):
+    """2026-11-02 (black main menu after exit): window_focus_lost / window_focus_gained and window_pump_gap are --debug
+    rows of the window trace (X3M_WINDOW_TRACE, a --debug member): recorded only by hook code under enabled_, no new
+    switch, and outside the tier the hooks cost one flag test per message."""
+
+    def test_focus_and_pump_gap_rows(self):
+        trace = _strip_comments((ROOT / 'src/proxy/window_trace.cpp').read_text(errors='replace'))
+        self.assertIn('requested_ = log_tier::debug_flag(L"X3M_WINDOW_TRACE");', trace)
+        self.assertIn('log("window_focus_%s hwnd=%p foreground=%p fg_pid=%u fg_tid=%u fg_class=\\"%s\\" fg_title_len=%d '
+                      'same_process=%u ghost=%u activating_tid=%lu our_tid=%lu "\n            "lost_ms=%d tick_ms=%lu elapsed_ms=%lu target=%p"',
+                      trace)
+        self.assertIn('log("window_pump_gap max_ms=%u at_elapsed_ms=%u end_elapsed_ms=%u tick_ms=%lu msg=%04x source=%s '
+                      'over_hung=%u hung_ms=%u process_max_ms=%u"', trace)
+        self.assertIn('if (enabled_) note_pump(m.message, false);', trace)
+        self.assertIn('if (code == HC_ACTION && lparam && enabled_)', trace)
+        self.assertIn('if (enabled_) record_return(m);', trace)
+        self.assertIn('if (message == core::wm_activateapp) record_focus(m);', trace)
+        self.assertNotIn('X3M_PUMP', trace)  # no new setting
+        doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()
+        row = next(l for l in doc.splitlines() if l.startswith('| (none) `window_focus_lost`'))
+        self.assertEqual(row.split(' | ')[3], 'debug')
+
+
 class SessionLogContracts(unittest.TestCase):
     """Review of 2026-09-26: the exit path, the crash filter and the game-thread I/O rule, pinned in the source."""
 

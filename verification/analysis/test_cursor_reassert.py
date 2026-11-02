@@ -274,6 +274,59 @@ class CursorReassertCore(unittest.TestCase):
             self.assertNotIn('#include <windows.h>', source_text(ROOT / 'src/proxy' / name))
 
 
+FOCUS_HARNESS = r'''
+#include "window_trace_core.h"
+#include <cstdio>
+using namespace x3m::window_trace::core;
+int main() {
+    PumpGap g;
+    const unsigned ticks[] = {1000u, 1016u, 2015u, 2016u, 31516u, 31520u};
+    for (unsigned t : ticks) std::printf("gap %u %u\n", pump_observe(g, t), g.process_max);
+    PumpGap w;
+    const unsigned wrap[] = {0xFFFFFF00u, 0x00000300u};
+    for (unsigned t : wrap) std::printf("gap %u %u\n", pump_observe(w, t), w.process_max);
+    std::uint32_t state = 0;
+    const bool seq[] = {false, false, true, true, false};
+    for (bool a : seq) std::printf("focus %d %u\n", int(focus_row(state, a)), state);
+    std::printf("ghost %d %d %d %d\n", int(ghost_class("Ghost")), int(ghost_class("Ghos")), int(ghost_class("Ghosts")), int(ghost_class("")));
+    return 0;
+}
+'''
+
+
+class WindowFocusAndPumpGap(unittest.TestCase):
+    """2026-11-02 (black main menu after exit): the pump-gap rule, the one-row-per-state-change focus rule and the
+    Ghost class test compiled on the host; the hook wiring of the two rows."""
+
+    def test_core(self):
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        self.assertIsNotNone(compiler, 'A host C++ compiler is required')
+        with tempfile.TemporaryDirectory(prefix='x3-window-focus-') as temporary:
+            directory = Path(temporary)
+            (directory / 'harness.cpp').write_text(FOCUS_HARNESS)
+            build = subprocess.run([compiler, '-std=c++17', '-O1', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/proxy'),
+                                    str(directory / 'harness.cpp'), '-o', str(directory / 'core')], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(directory / 'core')], capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.stdout.splitlines(), [
+            'gap 0 0', 'gap 0 16', 'gap 0 999', 'gap 0 999', 'gap 29500 29500', 'gap 0 29500',
+            'gap 0 0', 'gap 1024 1024',  # a 1024 ms gap across the GetTickCount wrap still closes a row
+            'focus 1 2', 'focus 0 2', 'focus 1 1', 'focus 0 1', 'focus 1 2',
+            'ghost 1 0 0 0'])
+
+    def test_wiring(self):
+        trace = source_text(ROOT / 'src/proxy/window_trace.cpp')
+        focus = trace[trace.index('void record_focus(const CWPRETSTRUCT& m) {'):trace.index('void note_pump(')]
+        for needle in ('GetForegroundWindow()', 'GetWindowThreadProcessId(fg, &pid)', 'GetClassNameA(fg, name, focus_class_len)',
+                       'if (fg && !same)', 'GetWindowTextW(fg, text, 256)', 'core::ghost_class(name)', 'static_cast<std::uint32_t>(m.lParam)'):
+            self.assertIn(needle, focus)
+        self.assertNotIn('GetWindowTextLength', trace)
+        # The pump gap and focus rows survive the 4 s expiry and request their own flush.
+        self.assertIn('e.kind != Kind::focus && e.kind != Kind::pump_gap', trace)
+        self.assertIn('first_present_pending_ || transition_pending_ || diag_pending_', trace)
+        self.assertIn('pump_.any = false;', trace)
+
+
 class WindowHookWiring(unittest.TestCase):
     def test_hooks_and_lifetime(self):
         trace = source_text(ROOT / 'src/proxy/window_trace.cpp')

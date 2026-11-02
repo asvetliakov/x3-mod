@@ -38,7 +38,7 @@ Observed observed_;
 unsigned depth_ = 0;
 unsigned long long current_frame_ = 0;
 
-enum class Kind : unsigned char { message, setcursor, frame, cursor_set, cursor_pos };
+enum class Kind : unsigned char { message, setcursor, frame, cursor_set, cursor_pos, focus, pump_gap };
 enum class Slot : unsigned char { empty, pending, written };
 struct Entry {
     Slot slot = Slot::empty;
@@ -64,6 +64,15 @@ core::SetCursorSummary setcursor_;
 std::uint32_t frame_mousemove_ = 0, frame_ncmousemove_ = 0, frame_setcursor_ = 0;
 std::uint32_t cursor_seen_ = 0;
 unsigned burst_left_ = 0, burst_index_ = 0;
+// The focus and pump-gap rows (window_focus_lost / _gained, window_pump_gap): written by the
+// hooks on the window thread, flushed at the next Present whatever their age (diag_pending_).
+bool diag_pending_ = false;
+std::uint32_t origin_tick_ = 0; // GetTickCount at initialize(): the rows' elapsed_ms origin
+core::PumpGap pump_;
+std::uint32_t focus_state_ = 0, focus_rows_ = 0, lost_tick_ = 0;
+bool lost_valid_ = false;
+constexpr unsigned focus_slots = 8, focus_class_len = 64;
+char focus_class_[focus_slots][focus_class_len];
 
 Entry& push(Kind kind) {
     Entry& e = ring_[ring_next_ % ring_capacity];
@@ -75,6 +84,65 @@ Entry& push(Kind kind) {
     e.frame = current_frame_;
     ++ring_next_;
     return e;
+}
+// WM_ACTIVATEAPP (trace on, window thread, inside the hook's LightCallBoundary): who has the
+// foreground now. Documented user32 reads only; the title is never read for a window of this
+// process (GetWindowText would send WM_GETTEXT to it) and only its length is kept otherwise
+// (GetWindowText reads another process's caption without a message).
+void record_focus(const CWPRETSTRUCT& m) {
+    const bool active = m.wParam != 0;
+    if (!core::focus_row(focus_state_, active)) return;
+    const std::uint32_t now = GetTickCount();
+    const HWND fg = GetForegroundWindow();
+    DWORD pid = 0;
+    const DWORD tid = fg ? GetWindowThreadProcessId(fg, &pid) : 0;
+    const unsigned slot = focus_rows_++ % focus_slots;
+    char* name = focus_class_[slot];
+    name[0] = 0;
+    if (fg && GetClassNameA(fg, name, focus_class_len) <= 0) name[0] = 0;
+    for (char* c = name; *c; ++c)
+        if (*c == '"' || static_cast<unsigned char>(*c) < 0x20) *c = '?';
+    const bool same = fg && pid == GetCurrentProcessId();
+    int title = -1;
+    if (fg && !same) {
+        wchar_t text[256];
+        title = GetWindowTextW(fg, text, 256);
+    }
+    Entry& e = push(Kind::focus);
+    e.tick = now;
+    e.message = active ? 1u : 0u;
+    e.hwnd = m.hwnd;
+    e.lparam = reinterpret_cast<LPARAM>(fg);
+    e.wparam = static_cast<WPARAM>(static_cast<std::uint32_t>(m.lParam)); // the other thread (WM_ACTIVATEAPP lParam)
+    e.a = pid;
+    e.b = tid;
+    e.c = static_cast<std::uint32_t>(title);
+    e.d = slot;
+    e.e = (same ? 1u : 0u) | (core::ghost_class(name) ? 2u : 0u);
+    e.f = 0xffffffffu;
+    if (!active) {
+        lost_tick_ = now;
+        lost_valid_ = true;
+    } else if (lost_valid_) {
+        e.f = now - lost_tick_;
+        lost_valid_ = false;
+    }
+    diag_pending_ = true;
+}
+// Every message the hooks see (trace on): closes a pump gap of core::pump_gap_row_ms or more.
+void note_pump(std::uint32_t message, bool posted) {
+    const std::uint32_t now = GetTickCount();
+    const std::uint32_t gap = core::pump_observe(pump_, now);
+    if (!gap) return;
+    Entry& e = push(Kind::pump_gap);
+    e.tick = now;
+    e.message = message;
+    e.a = gap;
+    e.b = now - gap - origin_tick_;
+    e.c = now - origin_tick_;
+    e.d = posted ? 1u : 0u;
+    e.e = pump_.process_max;
+    diag_pending_ = true;
 }
 // Hook side (window thread, LightCallBoundary): integer stores only.
 void record_return(const CWPRETSTRUCT& m) {
@@ -89,6 +157,7 @@ void record_return(const CWPRETSTRUCT& m) {
         e.lparam = m.lParam;
         e.result = m.lResult;
         if (m.hwnd == target_) transition_pending_ = true;
+        if (message == core::wm_activateapp) record_focus(m);
     } else if (message == core::wm_setcursor) {
         ++frame_setcursor_;
         const std::uint32_t hit = static_cast<std::uint32_t>(m.lParam) & 0xffffu,
@@ -135,6 +204,19 @@ void write(const Entry& e) {
         log("cursor_call seq=%u frame=%llu tick_ms=%lu thread=%u op=pos x=%d y=%d result=%u count=%u", e.seq, e.frame,
             static_cast<unsigned long>(e.tick), e.d, static_cast<int>(e.a), static_cast<int>(e.b), e.c, e.e);
         break;
+    case Kind::focus:
+        log("window_focus_%s hwnd=%p foreground=%p fg_pid=%u fg_tid=%u fg_class=\"%s\" fg_title_len=%d same_process=%u ghost=%u activating_tid=%lu our_tid=%lu "
+            "lost_ms=%d tick_ms=%lu elapsed_ms=%lu target=%p",
+            e.message ? "gained" : "lost", static_cast<void*>(e.hwnd), reinterpret_cast<void*>(e.lparam), e.a, e.b,
+            focus_class_[e.d], static_cast<int>(e.c), e.e & 1u, (e.e >> 1) & 1u, static_cast<unsigned long>(e.wparam),
+            static_cast<unsigned long>(hook_thread_), static_cast<int>(e.f), static_cast<unsigned long>(e.tick),
+            static_cast<unsigned long>(e.tick - origin_tick_), static_cast<void*>(target_));
+        break;
+    case Kind::pump_gap:
+        log("window_pump_gap max_ms=%u at_elapsed_ms=%u end_elapsed_ms=%u tick_ms=%lu msg=%04x source=%s over_hung=%u hung_ms=%u process_max_ms=%u",
+            e.a, e.b, e.c, static_cast<unsigned long>(e.tick), e.message, e.d ? "posted" : "sent",
+            unsigned(e.a >= core::hung_ms), core::hung_ms, e.e);
+        break;
     }
 }
 void flush(const char* reason, unsigned long long frame) {
@@ -145,7 +227,7 @@ void flush(const char* reason, unsigned long long frame) {
         Entry& e = ring_[i % ring_capacity];
         if (e.slot != Slot::pending) continue;
         e.slot = Slot::written;
-        if (now - e.tick > core::ring_ms) {
+        if (now - e.tick > core::ring_ms && e.kind != Kind::focus && e.kind != Kind::pump_gap) {
             ++expired;
             continue;
         }
@@ -239,6 +321,7 @@ void initialize(bool telemetry, CursorSource source) {
     requested_ = log_tier::debug_flag(L"X3M_WINDOW_TRACE"); // X3M_WINDOW_TRACE=1 or X3M_DEBUG=1
     enabled_ = requested_ && telemetry;
     cursor_source_ = enabled_ ? source : nullptr;
+    origin_tick_ = GetTickCount();
     if (requested_)
         log("window_trace_scope requested=1 enabled=%u telemetry=%u reason=%s hooks=callwndproc,callwndprocret,getmessage cursor_iat=%u snapshot_frames=%u ring=%u ring_ms=%u "
             "setcursor_ms=%u flush=first_present,transition excludes=dinput_user32,cocoa",
@@ -311,7 +394,10 @@ void attach(HWND window, unsigned long long device) {
     }
     observed_.installed = complete;
     if (complete) hook_device_ = device;
-    if (complete && enabled_) first_present_pending_ = true;
+    if (complete && enabled_) {
+        first_present_pending_ = true;
+        pump_.any = false; // no gap across a time without hooks
+    }
     const bool launch_arm = complete && reassert && !launch_armed_;
     if (launch_arm) {
         launch_armed_ = true;
@@ -396,13 +482,13 @@ void present(HWND window, unsigned long long device, unsigned long long frame) {
             e.f = counts.dropped;
             frame_mousemove_ = frame_ncmousemove_ = frame_setcursor_ = 0;
         }
-        if (first_present_pending_ || transition_pending_) {
-            flush(first_present_pending_ ? "first_present" : "transition", frame);
+        if (first_present_pending_ || transition_pending_ || diag_pending_) {
+            flush(first_present_pending_ ? "first_present" : transition_pending_ ? "transition" : "focus_or_pump_gap", frame);
             if (first_present_pending_ || transition_pending_) {
                 burst_left_ = core::snapshot_frames;
                 burst_index_ = 0;
             }
-            first_present_pending_ = transition_pending_ = false;
+            first_present_pending_ = transition_pending_ = diag_pending_ = false;
         }
         if (burst_left_ && window) {
             snapshot(window, device, frame);
@@ -427,6 +513,7 @@ extern "C" LRESULT CALLBACK x3m_window_hook_call(int code, WPARAM wparam, LPARAM
         const auto& m = *reinterpret_cast<const CWPSTRUCT*>(lparam);
         ++observed_.calls;
         ++depth_;
+        if (enabled_) note_pump(m.message, false);
         if (m.hwnd == target_) x3m::cursor_reassert::observe(m.message, m.wParam);
     }
     cpu.before_original();
@@ -451,6 +538,8 @@ extern "C" LRESULT CALLBACK x3m_window_hook_ret(int code, WPARAM wparam, LPARAM 
 }
 extern "C" LRESULT CALLBACK x3m_window_hook_get(int code, WPARAM wparam, LPARAM lparam) {
     x3m::LightCallBoundary cpu;
+    if (code == HC_ACTION && lparam && enabled_) // a peek without removal is pumping too
+        note_pump(reinterpret_cast<const MSG*>(lparam)->message, true);
     if (code == HC_ACTION && wparam == PM_REMOVE && lparam) {
         const auto& m = *reinterpret_cast<const MSG*>(lparam);
         ++observed_.gets;
