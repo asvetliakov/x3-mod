@@ -42,8 +42,12 @@ int main() {
     std::uint32_t values[5] = {50, 10, 40, 20, 30};
     const g::Stat exact = g::Tracker::exact_of(values, 5);
     check(exact.n == 5 && exact.median == 30 && exact.p90 == 50, "exact nearest-rank median and p90");
-    check(g::pass_count == 26 && g::boundary_count == 52 && g::EnginePlumes == 25 &&
-              std::string_view(g::pass_name(g::EnginePlumes)) == "engine_plumes" &&
+    check(g::pass_count == 29 && g::boundary_count == 58 && g::EnginePlumes == 25 &&
+              std::string_view(g::pass_name(g::EnginePlumes)) == "engine_plumes" && g::EngineRibbons == 26 &&
+              g::EngineShimmer == 27 && g::EngineLight == 28 &&
+              std::string_view(g::pass_name(g::EngineRibbons)) == "engine_ribbons" &&
+              std::string_view(g::pass_name(g::EngineShimmer)) == "engine_shimmer" &&
+              std::string_view(g::pass_name(g::EngineLight)) == "engine_light" &&
               std::string_view(g::pass_name(g::FogRoute)) == "fog_route" &&
               std::string_view(g::pass_name(g::Present)) == "present" &&
               std::string_view(g::pass_name(g::TaaCopy)) == "taa_copy" &&

@@ -134,18 +134,22 @@ class GpuSyncTimingWiring(unittest.TestCase):
     # end site (a Span is both); Engine has two ends (the hook scene end and the copy
     # fallback), SunApply one Span (the cascades; the single map's went on 2026-09-25), Bloom two pairs (prepare, commit); the five taa_* sub-passes
     # one pair each inside TemporalPass::run; the three fog_* sub-passes one Span each inside FogPass::execute; the three
-    # taa_mask_* draws one Span (its pass chosen per loop iteration) inside TemporalPass::run's mask loop.
+    # taa_mask_* draws one Span (its pass chosen per loop iteration) inside TemporalPass::run's mask loop; EngineRibbons
+    # one Span around the ribbon draw; EngineShimmer two pairs (the run, the revert); EngineLight one pair in the
+    # capture helpers every draw hook calls around the native submit.
     SITES = {'Scene': (1, 1, 0), 'Engine': (1, 2, 0), 'ShadowDepth': (0, 0, 1), 'SunApply': (0, 0, 1), 'Retention': (0, 0, 1),
              'FogFill': (0, 0, 1), 'FogRoute': (1, 1, 0), 'Motes': (0, 0, 1), 'Taa': (1, 1, 0), 'HdrWriteback': (1, 1, 0),
              'Meter': (1, 1, 0), 'HdrReadback': (1, 1, 0), 'Bloom': (2, 2, 0), 'Present': (1, 1, 0),
              'TaaCopy': (1, 1, 0), 'TaaMask': (1, 1, 0), 'TaaBox': (1, 1, 0), 'TaaResolve': (1, 1, 0), 'TaaDisplay': (1, 1, 0),
              'FogMarch': (0, 0, 1), 'FogComposite': (0, 0, 1), 'FogRepair': (0, 0, 1),
-             'TaaMaskTests': (0, 0, 1), 'TaaMaskX': (0, 0, 1), 'TaaMaskY': (0, 0, 1), 'EnginePlumes': (1, 1, 0)}
+             'TaaMaskTests': (0, 0, 1), 'TaaMaskX': (0, 0, 1), 'TaaMaskY': (0, 0, 1), 'EnginePlumes': (1, 1, 0),
+             'EngineRibbons': (0, 0, 1), 'EngineShimmer': (2, 2, 0), 'EngineLight': (1, 1, 0)}
 
     def test_every_pass_has_begin_and_end_sites_in_production(self):
         sources = ''.join(source_text(ROOT / path) for path in (
             'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp',
-            'src/renderer/temporal_pass.cpp', 'src/proxy/motion_output_engine_plumes_inc.h'))
+            'src/renderer/temporal_pass.cpp', 'src/proxy/motion_output_engine_plumes_inc.h',
+            'src/proxy/motion_output_engine_ribbons_inc.h', 'src/proxy/motion_output_engine_shimmer_inc.h'))
         names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', source_text(CORE).split('enum Pass')[1].split('pass_count')[0], re.M)
         self.assertEqual(names, list(self.SITES))
         for name in names:
@@ -155,6 +159,17 @@ class GpuSyncTimingWiring(unittest.TestCase):
             self.assertEqual((begins, ends, spans), self.SITES[name], name)
             self.assertGreaterEqual(begins + spans, 1, name)
             self.assertGreaterEqual(ends + spans, 1, name)
+
+    def test_engine_light_pair_brackets_each_lit_submit(self):
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        # Off: the helper's first test is the null owner; on, only a completed lit route that submits is bracketed.
+        self.assertIn('if (!ctx.gpu_sync || !route.engine_light || !route.routed || !route.submit) return false;', capture)
+        for hook, native in (('draw_primitive(', '(81)'), ('draw_indexed(', '(82)'), ('draw_up(', '(83)'), ('draw_indexed_up(', '(84)')):
+            body = capture[capture.index(f'HRESULT WINAPI {hook}IDirect3DDevice9* d'):]
+            body = body[:body.index('\n}\n')]
+            order = [body.index(s) for s in ('const bool lit_sync = gpu_sync_light_begin(ctx, route);', native,
+                                             'timer.end();', 'gpu_sync_light_end(ctx, lit_sync);', 'ctx.motion_output.after_draw(route, result);')]
+            self.assertEqual(order, sorted(order), hook)
 
     def test_lifetime_and_off_cost(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')

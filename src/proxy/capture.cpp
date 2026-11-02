@@ -1350,6 +1350,17 @@ void gpu_sync_mark(Device& ctx, unsigned pass, bool begin) noexcept {
     else
         ctx.gpu_sync->end(pass);
 }
+// --gpu-sync-timing only: one EngineLight pair around a lit hull draw's native submit (route.engine_light: the twin
+// bound and its constants uploaded, on a route whose apply chain completed and that submits); a frame's pairs add up
+// inside Engine. Off: one null-pointer test per draw.
+inline bool gpu_sync_light_begin(Device& ctx, const MotionRoute& route) noexcept {
+    if (!ctx.gpu_sync || !route.engine_light || !route.routed || !route.submit) return false;
+    ctx.gpu_sync->begin(gpu_sync_timing::EngineLight);
+    return true;
+}
+inline void gpu_sync_light_end(Device& ctx, bool lit) noexcept {
+    if (lit) ctx.gpu_sync->end(gpu_sync_timing::EngineLight);
+}
 void gpu_sync_log_summary(Device& ctx) {
     if (!ctx.gpu_sync || ctx.gpu_sync_summary_logged) return;
     ctx.gpu_sync_summary_logged = true;
@@ -2410,6 +2421,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     if (route.submit) ++ctx.fixture_primitive_source_calls;
 #endif
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
+    const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2420,6 +2432,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT s, U
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    gpu_sync_light_end(ctx, lit_sync);
     if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
@@ -2474,6 +2487,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
 #endif
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d: LINEAR
                                                                                       // on the flagged text textures
+    const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2484,6 +2498,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, INT b, UINT
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    gpu_sync_light_end(ctx, lit_sync);
     if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
@@ -2514,6 +2529,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
         ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
                                                // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
+    const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2524,6 +2540,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const vo
     cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();
+    gpu_sync_light_end(ctx, lit_sync);
     if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
@@ -2557,6 +2574,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
         ctx.motion_output.prepare_lens(route); // lens-scene draws inside the installed bracket only (the lens-flare
                                                // gain): one flag test otherwise
     const bool text_filter = route.submit && text_density::draw_filter_override(d, ctx.get<text_density::SamplerGet>(68), ctx.get<text_density::SamplerSet>(69)); // X3M_TEXT_DENSITY, s != d
+    const bool lit_sync = gpu_sync_light_begin(ctx, route); // --gpu-sync-timing only
     frame_timing::draw_native_begin();                    // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2569,6 +2587,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT m, 
     if (text_filter) text_density::draw_filter_restore(d, ctx.get<text_density::SamplerSet>(69));
     frame_timing::draw_native_end();
     timer.end();
+    gpu_sync_light_end(ctx, lit_sync);
     telemetry::record(ctx.stats, telemetry::Metric::DrawBackend, timer.backend_ticks, FAILED(result));
     if (route.submit) ++ctx.issued; // reached the device (frame_end issued=, the overlay's DRAWS)
     ctx.motion_output.after_draw(route, result);

@@ -197,7 +197,9 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
         const bool probing = fixture_shimmer_probe_.stage == 1;
         const std::uint64_t pre = probing ? fixture_shimmer_hash(output) : 0;
 #endif
+        if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::EngineShimmer); // --gpu-sync-timing only (the revert adds)
         hr = shimmer_->run(f, &shimmer_report_);
+        if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::EngineShimmer);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if (probing && shimmer_report_.drew) {
             auto& p = fixture_shimmer_probe_;
@@ -230,7 +232,9 @@ void MotionOutput::revert_engine_shimmer() noexcept {
     if (!shimmer_ || !shimmer_->revert_pending()) return;
     LARGE_INTEGER begin{}, end{};
     QueryPerformanceCounter(&begin);
+    if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::EngineShimmer); // --gpu-sync-timing only: adds to the run's pair
     shimmer_revert_ = shimmer_->revert();
+    if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::EngineShimmer);
     QueryPerformanceCounter(&end);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_shimmer_probe_.stage == 2 && shimmer_revert_ == S_OK) {
