@@ -1888,3 +1888,47 @@ event rows is expected (`+0x1fc`, as in run 25). HUD: no visible change expected
 to 0 would mean the token is refused in normal flight: report it with the rows around it. User check: one gate, one dock
 and undock in the rear chase view, then a stretch with a target selected; the view comes back by itself as in run 25,
 and the crosshair, panels and lead reticle stay where the ship points.
+
+## Far-jet hand-off on FL, host evidence (2026-11-03, not installed, not flown)
+
+The FL small-parts stub's far-copy block is no longer fenced. With `engine_effects = plumes` a JET node culled
+under the small-parts threshold goes to the shared handler `engine_far_jets.cpp`, and the plume stage draws
+it as a far plume, as on AP. The read set comes from X3FL.exe's bytes
+([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) "Verified 2026-11-03"). The model moves to
+`+0x144`; every other field sits at the AP offset. On FL the context scale is owned at the site (node `+0x1c`
+→ `+0x2c`, the selector's own dominating loads, kept only when the node's context equals the view's), so the
+stage never reads `context+0x2c` later. A changed JET writer drops only the far block (`far_jets=writer_mismatch`).
+
+Merged onto main `2c3d32ffa`; the model id and the FL node context `fl_context` (`+0x1c`) live in the shared edition
+layout `src/proxy/engine_node_layout.h`. Everything below was measured on the WSL2 host (native Windows through
+interop) after the merge, with no Wine and no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Read set | `python3 -I verification/results/fl-far-jets/read_set.py` (`read_set.json`) | PASS. 18 fields, 47 whole-instruction anchors (46 FL, 1 AP). `0x495fc7` dominates the site `0x4961d3` (407-instruction CFG). ESI writers (all Capstone-reported, `pop esi` included: 5) reaching the site: only `0x495e5e`. Selector stores to copied fields: 0; that check covers the selector's own instructions only, and four calls lie between `0x495fc7` and the site (`0x4e9000`, `0x4a39b0`, `0x412a80`, `0x412b50`) |
+| Dock cut ids | `python3 -I verification/results/fl-far-jets/dock_cut_ids_fl.py` (`dock_cut_ids_fl.json`) | PASS. `addon2/04.cat` Dummies (`b0c8e5ebbaf9`, AP stock hash) map 19026/19027/19098/19099 → 9013/9014/9098/9099. Cuts 9013, 9014 and 9099: inline-body ids 901300000/1/3, 901400003..5 and 909900003..5, all in the stub's ranges. Cut 9098 (M6 quick-launch): `not_covered_named_bodies`; its three named body files resolve in `addon2`, and their body-table ids lie outside the ranges [i], so those port parts follow the 4 px threshold, not 12 px (as on AP) |
+| Native fixture | `test_fl_cull_chain` (`verification/probe/fl_cull_chain.cpp`, now linking the production handler under a renamed symbol with its CMake no-SSE flags) | `RESULT PASS checks=193 failures=0` (184 before). The decision cases are unchanged (`DECISIONS culled=20 dock=10 exempt=6 far=3 native=41`). `initialize()` with plumes: `far_jets=on`, the stub's far block present. Changed JET writer: `far_jets=writer_mismatch`, far block patched out, rest installed. Far chain through the live stub into the real handler: one entry with every field from the FL offsets, owned scale `3c23d70a` (0.01), the node culled and the frame kept. `far_record` (the stage's FL call): `origin=1000,-2000,3000 size=2.0`. Node context ≠ view context, or null: scale 0, `far_record` invalid. Real model at AP `+0x140` with 566 at `+0x144`: steering, no entry. Disarmed: no entry. Frame row `… far_jets=on edition=fl` |
+| Mutations | `python3 verification/results/fl-cull-chain/mutation_check.py` (`mutation_check.json`) | 24 / 24 killed, including the new `far_writer_not_pinned`, `far_never_requested`, `handler_ap_model_offset` and `handler_scale_unbound` |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_cull_chain test_cull_small_parts test_engine_far_jets test_fl_engine_effects test_config_schema` | 51 tests, 0 failing; with `test_fl_chase_lead`, `test_fl_chase_transition`, `test_fl_chase_fire`, `test_fl_chase_camera`, `test_fl_fov`, `test_fl_material_strength_hook`, `test_occlusion_cull`: 12 modules, 93 tests, 0 failing |
+| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (RelWithDebInfo, mingw-i686; incremental after the merge) | 0 warnings each. `check_no_x87.py build-ap/d3d9.dll` PASS. `far_jet_no_x87.py build-fl/d3d9.dll` PASS (`far_jet_no_x87_fl.json`, model offset read `0x144`). `tools/config/generate.py --check` PASS (no setting changed) |
+| AP objects | `python3 verification/results/fl-far-jets/ap_object_compare.py build-ap <scratch> 2c3d32ffa` (`ap_object_compare.json`) | identical, 5 / 5: `engine_far_jets.cpp`, `motion_output.cpp`, `cull_small_parts.cpp`, `capture.cpp`, `engine_effects.cpp` |
+
+Limits:
+
+- The copy relies on the selector's synchronous native borrow, as the stub does on AP. It does not use
+  `fl_render_admission` (ratified by the orchestrator, 2026-11-03).
+- The plume floor's parent radius (`+0xa4`) is read at the stage, as the FL draw route already does (ratified).
+- That `node+0x1c == camera+0x1c` on the main view is inferred (reparent copy, sector walker argument), not
+  measured. If it fails in flight, far copies get scale 0 and land in `far_dropped`.
+- The FL branch of `engine_far_append` is checked by source assertions and by the fixture's direct `far_record`
+  call on the handler's output. The `owned_scale[i]`/`raw[i]` loop itself is not executed by a fixture.
+- The far stub needs `engine_effects = plumes` set explicitly (cull-small-parts.md "FL port").
+
+Expected rows in an FL run with `cull_small_parts_px` 4 and `engine_effects = plumes`:
+`cull_small_parts requested=4 px=4 patched=1 edition=fl state=active reason=ok … write=atomic … projectiles=on
+dock_px=12 dock_requested=12 far_jets=on`; on capture frames `cull_small_parts_frame … far_jets=on edition=fl`;
+and in `engine_stage` with distant ships in view, `far_jets>0` and `far_records>0`, with `far_dropped` small against
+`far_jets` (copies from views the stage does not draw, such as the lens scene, land there) and `far_disarmed=0`
+while the stage is armed. A `far_dropped` close to `far_jets` means the context equality does not hold.
+Flight check: a distant ship whose plume falls under 4 px shows a small engine glow, not nothing, and nearby ships
+keep their full plumes, with none missing.

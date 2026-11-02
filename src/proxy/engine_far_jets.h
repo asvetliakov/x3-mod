@@ -19,6 +19,11 @@ bool clears(const void* device) noexcept;
 void begin_frame() noexcept;
 unsigned count() noexcept;
 const core::Raw* entries() noexcept;
+#if X3M_EDITION_FL
+// FL: entry i's owned context scale, the float's bits copied at the site (engine_node_layout.h fl_context); 0 when the
+// node's context is not the view's. The plume stage reads it instead of the view context's +0x2c.
+const std::uint32_t* context_scale_bits() noexcept;
+#endif
 core::Stats stats() noexcept;
 // The frame's engine-culled (node handle, view handle) pairs (core::CulledPair; the node-sourced walk's exclusion
 // list, engine_nozzle_walk_core.h), emptied with the buffer.

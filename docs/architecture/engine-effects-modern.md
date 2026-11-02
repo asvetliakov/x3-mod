@@ -754,12 +754,17 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
   provider constants (static_asserts in `motion_output.cpp`). Without admission one `own_ship status=unavailable
   edition=fl reason=registry_not_admitted` row and no own ship.
 - **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
-  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull `lens_flare_cull` was AP-only and is deleted (2026-11-02). The far-jet feed: the FL small-parts stub is ported (2026-11-02,
-  [cull-small-parts.md](../verification/cull-small-parts.md) "FL port") and culls far JET nodes like any small node, but
-  its far-copy block is fenced on FL (`cull_small_parts … far_jets=fenced_fl`): the FL far route must run under fresh
-  `fl_render_admission` with an owned context scale, not a later `context+0x2c` read
-  ([fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md) section 2, [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md)
-  section 4). So on FL a ship whose jets fall under the small-parts threshold shows no plume.
+  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull `lens_flare_cull` was AP-only and is deleted (2026-11-02).
+- **Far-jet feed on FL (fence removed 2026-11-03, not flown).** The FL small-parts stub carries the far-copy block
+  with `engine_effects = plumes` (`cull_small_parts … far_jets=on`, `cull_small_parts_frame … far_jets=on edition=fl`;
+  a changed JET writer gives `far_jets=writer_mismatch`). The handler reads the read set verified from X3FL.exe's bytes
+  ([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) "Verified 2026-11-03"): model `+0x144`, every other
+  field at the AP offset. It also owns the context scale at the site (node `+0x1c` → `+0x2c`, the selector's own
+  dominating loads, kept only when the node's context is the view's). The plume stage builds the far record from that
+  owned value instead of a later `context+0x2c` read (`engine_node_layout.h` `fl_context`, `engine_far_append`'s FL branch).
+  The copy relies on the selector's synchronous native borrow, as the stub does on AP, not on `fl_render_admission`
+  (an integer-only callee inside the pass cannot query it). The parent radius for the floor is read at the stage as
+  the FL draw route does. A ship whose jets fall under the small-parts threshold now gets a far plume on FL too.
 - **Body table.** `tools/effects/engine_bodies.py` detects FL (`X3FL.exe` + `addon2/01.cat`, or `--edition fl`) and
   reads `addon2/types/Bodies` over X3FL.exe's mounts (root + `addon2/`, no loose files); `manage.py install` and
   `x3m-regenerate` produce the FL table through the same auto-detection.

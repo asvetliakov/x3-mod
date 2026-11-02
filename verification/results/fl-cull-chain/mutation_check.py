@@ -19,6 +19,7 @@ import test_fl_cull_chain as t  # noqa: E402
 PROVIDER = ROOT / 'src/engine/fl/cull_small_parts_fl.cpp'
 SITES = ROOT / 'src/engine/fl/cull_small_parts_sites_fl.h'
 LOD = ROOT / 'src/engine/fl/lod_patch_sites_fl.h'
+HANDLER = ROOT / 'src/proxy/engine_far_jets.cpp'
 MUTATIONS = {
     # The stub (cull_small_parts_sites_fl.h encode_stub).
     'stub_ap_s_slot': (SITES, 'constexpr unsigned s_slot = 0x10;', 'constexpr unsigned s_slot = 0x2c;'),
@@ -43,8 +44,15 @@ MUTATIONS = {
     'no_readback': (PROVIDER, 'if (!engine_patch::read_code(spec.address, now, 5) || std::memcmp(now, site_.patched, 5))',
                     'if (now[0] == 0xe9 && false)'),
     'chain_failure_not_rolled_back': (PROVIDER, 'return done(roll_back("chain_failed"));', 'return done("chain_failed");'),
-    'far_unfenced': (PROVIDER, 'applied = install_base(base, exempt, false);',
-                     'applied = install_base(base, exempt, far_requested);'),
+    'far_writer_not_pinned': (PROVIDER, 'if (far_jets && !bytes_match(base + S::jet_writer_rva, S::jet_writer, S::jet_writer_length)) {',
+                              'if (false) {'),
+    'far_never_requested': (PROVIDER, 'applied = install_base(base, exempt, far_jets);',
+                            'applied = install_base(base, exempt, false);'),
+    # The far-jet handler (engine_far_jets.cpp, FL read set 2026-11-03).
+    'handler_ap_model_offset': (HANDLER, 'constexpr unsigned model_at = layout::edition.model;',
+                                'constexpr unsigned model_at = layout::ap.model;'),
+    'handler_scale_unbound': (HANDLER, 'node_context && node_context == r.context ? word(', 'node_context ? word('),
+
     'marker_not_pinned': (PROVIDER, 'bytes_match(base + S::marker_or_rva, S::marker_or, S::marker_or_length)', 'true'),
     # The one-byte patches (lod_patch_sites_fl.h).
     'occlusion_fixup_unchecked': (LOD, '    if (w.fixup_offset && u32(current + w.fixup_offset) != std::uint32_t(base + w.fixup_rva)) return "bytes_mismatch";\n', '    (void)base;\n'),

@@ -1,0 +1,401 @@
+{
+ "fl_sha256": "e7f3aad8d728e021",
+ "ap_sha256": "fdbf3418d8f0a897",
+ "fields": 18,
+ "calls_between_context_load_and_site": [
+  "0x095fd3->0x4e9000",
+  "0x095feb->0x4a39b0",
+  "0x096038->0x412a80",
+  "0x096133->0x412b50"
+ ],
+ "anchors": 47,
+ "selector_instructions": 407,
+ "node_context_dominates_site": true,
+ "esi_writers": [
+  "0x095e5e",
+  "0x095ecb",
+  "0x095f27",
+  "0x095f3c",
+  "0x095f44"
+ ],
+ "esi_writers_reaching_site": [],
+ "copied_field_stores": [],
+ "failures": [],
+ "passed": true,
+ "table": [
+  {
+   "field": "node parent",
+   "ap_offset": "0x18",
+   "fl_offset": "0x18",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0961d3",
+     "role": "selector loads the parent at the site",
+     "ok": true
+    },
+    {
+     "rva": "0x0a5809",
+     "role": "reparent stores the parent",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node handle",
+   "ap_offset": "0x28",
+   "fl_offset": "0x28",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0a22a8",
+     "role": "node allocation stores the registered handle",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node base scale",
+   "ap_offset": "0x70",
+   "fl_offset": "0x70",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0de59a",
+     "role": "world matrix base factor",
+     "ok": true
+    },
+    {
+     "rva": "0x0a3b28",
+     "role": "scale setter: +0xa0 = +0x70 x max axis",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node x scale",
+   "ap_offset": "0x80",
+   "fl_offset": "0x80",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0a3af8",
+     "role": "scale setter writes x",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node z scale (throttle)",
+   "ap_offset": "0x88",
+   "fl_offset": "0x88",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0a3b09",
+     "role": "scale setter writes z",
+     "ok": true
+    },
+    {
+     "rva": "0x064932",
+     "role": "jet drive reads the current z",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node position x/y/z",
+   "ap_offset": "0xb0",
+   "fl_offset": "0xb0",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0deb15",
+     "role": "world matrix position x",
+     "ok": true
+    },
+    {
+     "rva": "0x0deb2a",
+     "role": "position y",
+     "ok": true
+    },
+    {
+     "rva": "0x0deb3f",
+     "role": "position z",
+     "ok": true
+    },
+    {
+     "rva": "0x0deb20",
+     "role": "position x context scale",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node basis row 0 (model x)",
+   "ap_offset": "0xc0",
+   "fl_offset": "0xc0",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0de9ef",
+     "role": "world matrix basis row 0",
+     "ok": true
+    },
+    {
+     "rva": "0x0dea02",
+     "role": "row 0 y",
+     "ok": true
+    },
+    {
+     "rva": "0x0dea16",
+     "role": "row 0 z",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node basis row 2 (model z)",
+   "ap_offset": "0xe0",
+   "fl_offset": "0xe0",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0dea66",
+     "role": "world matrix basis row 2",
+     "ok": true
+    },
+    {
+     "rva": "0x0dea7a",
+     "role": "row 2 y",
+     "ok": true
+    },
+    {
+     "rva": "0x0dea8e",
+     "role": "row 2 z",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node flags +0x12c (bit 26: measure<1 rule)",
+   "ap_offset": "0x12c",
+   "fl_offset": "0x12c",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0961fc",
+     "role": "measure < 1 ?",
+     "ok": true
+    },
+    {
+     "rva": "0x096201",
+     "role": "selector loads +0x12c",
+     "ok": true
+    },
+    {
+     "rva": "0x096207",
+     "role": "bit 26 keeps a sub-1 measure",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node flags +0x130 (JET pair, stub)",
+   "ap_offset": "0x130",
+   "fl_offset": "0x130",
+   "side": "stub",
+   "anchors": [
+    {
+     "rva": "0x03deb3",
+     "role": "JET classifier writes the pair",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node model id",
+   "ap_offset": "0x140",
+   "fl_offset": "0x144",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x09621c",
+     "role": "selector model read after the verdict",
+     "ok": true
+    },
+    {
+     "rva": "0x0a365d",
+     "role": "model setter",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node own threshold",
+   "ap_offset": "0x1d8",
+   "fl_offset": "0x1d8",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0961d6",
+     "role": "selector own threshold at the site",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "parent threshold",
+   "ap_offset": "0x1d8",
+   "fl_offset": "0x1d8",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0961e0",
+     "role": "selector parent threshold",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node context (FL owned scale, new)",
+   "ap_offset": null,
+   "fl_offset": "0x1c",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x095fc7",
+     "role": "selector loads the node context before the frustum test",
+     "ok": true
+    },
+    {
+     "rva": "0x095fce",
+     "role": "selector reads the context scale",
+     "ok": true
+    },
+    {
+     "rva": "0x0a5824",
+     "role": "reparent copies the parent context ...",
+     "ok": true
+    },
+    {
+     "rva": "0x0a5827",
+     "role": "... into the child",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "camera handle",
+   "ap_offset": "0x28",
+   "fl_offset": "0x28",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x0a45d6",
+     "role": "camera block 0x790 bytes (memset)",
+     "ok": true
+    },
+    {
+     "rva": "0x0a4606",
+     "role": "camera allocation stores the registered handle",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "camera context",
+   "ap_offset": "0x1c",
+   "fl_offset": "0x1c",
+   "side": "handler",
+   "anchors": [
+    {
+     "rva": "0x08ba48",
+     "role": "sector scene: walker context = camera +0x1c",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba4b",
+     "role": "camera pushed",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba4c",
+     "role": "walker",
+     "ok": true
+    },
+    {
+     "rva": "0x09772a",
+     "role": "walker camera argument",
+     "ok": true
+    },
+    {
+     "rva": "0x097742",
+     "role": "camera to the selector",
+     "ok": true
+    },
+    {
+     "rva": "0x097745",
+     "role": "selector",
+     "ok": true
+    },
+    {
+     "rva": "0x0960d5",
+     "role": "selector camera -> EBX (the stub pushes EBX)",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "context scale (float)",
+   "ap_offset": "0x2c",
+   "fl_offset": "0x2c",
+   "side": "handler (FL) / consumer (AP)",
+   "anchors": [
+    {
+     "rva": "0x08ba3f",
+     "role": "camera publication context",
+     "ok": true
+    },
+    {
+     "rva": "0x095687",
+     "role": "ordinary setter, ECX = context",
+     "ok": true
+    },
+    {
+     "rva": "0x0deda3",
+     "role": "setter keeps the context in ESI",
+     "ok": true
+    },
+    {
+     "rva": "0x0def18",
+     "role": "view translation x context scale",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "parent radius (plume floor)",
+   "ap_offset": "0xa4",
+   "fl_offset": "0xa4",
+   "side": "consumer",
+   "anchors": [
+    {
+     "rva": "0x0a39c3",
+     "role": "radius cache reads the cached subtree radius",
+     "ok": true
+    },
+    {
+     "rva": "0x0a3b1b",
+     "role": "scale setter marks it dirty",
+     "ok": true
+    },
+    {
+     "rva": "0x0a580f",
+     "role": "reparent marks the new parent dirty",
+     "ok": true
+    }
+   ]
+  }
+ ]
+}

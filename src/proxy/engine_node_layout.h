@@ -18,4 +18,10 @@ constexpr Layout edition = fl;
 #else
 constexpr Layout edition = ap;
 #endif
+// FL only: the node's scene context. The FL selector loads it and its +0x2c (the context scale) on every node before
+// its frustum test (X3FL.exe 0x495fc7 / 0x495fce, on every path to the cull site), and reparent copies it from the
+// parent (0x4a5824 / 0x4a5827). The far-jet handler owns that scale at the cull site (engine_far_jets.cpp;
+// docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03", verification/results/fl-far-jets/read_set.py). Not
+// established on X3AP.exe.
+constexpr unsigned fl_context = 0x1c;
 } // namespace x3m::engine_node_layout

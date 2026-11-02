@@ -1,4 +1,5 @@
 #include "engine_far_jets.h"
+#include "engine_node_layout.h"
 
 // Inside the engine's cull/LOD pass (cull_small_parts_core.h stub, the far block): integer loads from the node and the
 // view the pass itself dereferences, integer stores into a static buffer, no call, no floating point, no Win32.
@@ -11,12 +12,24 @@ core::CulledPair culled_[core::capacity]; // the engine-culled (node handle, vie
 unsigned culled_count_ = 0;
 core::Stats stats_{};
 core::Requests requests_{};
-// The node's model id: +0x140 on X3AP.exe, +0x144 on X3FL.exe (docs/reverse-engineering/fl/cull-chain.md, "Node layout";
-// every other field the handler reads is at the same offset in both editions).
+// The node's model id: the edition layout's (engine_node_layout.h: +0x140 on X3AP.exe, +0x144 on X3FL.exe). Every other
+// field the handler reads is at the same offset in both editions (docs/reverse-engineering/fl/cull-chain.md, "Verified
+// 2026-11-03": 18 fields, 47 anchors, verification/results/fl-far-jets/read_set.py).
+namespace layout = x3m::engine_node_layout;
+constexpr unsigned model_at = layout::edition.model;
+static_assert(layout::ap.model == core::model_offset && layout::edition.parent == core::parent_offset &&
+                  layout::edition.handle == core::handle_offset,
+              "the shared node fields are the edition layout's");
 #if X3M_EDITION_FL
-constexpr unsigned model_at = 0x144;
-#else
-constexpr unsigned model_at = core::model_offset;
+static_assert(core::scale70_offset == 0x70 && core::scale80_offset == 0x80 && core::scale88_offset == 0x88 &&
+                  core::position_offset == 0xb0 && core::basis_x_offset == 0xc0 && core::basis_z_offset == 0xe0 &&
+                  core::flags12c_offset == 0x12c && core::threshold_1d8_offset == 0x1d8 &&
+                  core::view_handle_offset == 0x28 && core::view_context_offset == 0x1c &&
+                  core::context_scale_offset == 0x2c,
+              "every other far-copy field sits at the AP offset on X3FL.exe (read_set.json)");
+// FL owns the context scale at the site (engine_node_layout.h fl_context): one dword per entry, the float's bits
+// (an integer copy, no floating point here).
+std::uint32_t scale_bits_[core::capacity];
 #endif
 inline std::uint32_t word(std::uint32_t base, unsigned offset) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(base + offset);
@@ -68,6 +81,14 @@ extern "C" void x3m_engine_far_jet(std::uint32_t node, std::int32_t measure, std
         r.basis_x[i] = std::int32_t(word(node, core::basis_x_offset + 4 * i));
         r.basis_z[i] = std::int32_t(word(node, core::basis_z_offset + 4 * i));
     }
+#if X3M_EDITION_FL
+    // The node's context and its scale, the fields the selector loaded on this node at 0x095fc7/0x095fce, read again
+    // here (calls run in between, so the values are this read's, not provably the selector's); kept only when that
+    // context is the view's (the world matrix's scale), otherwise 0, which far_record refuses.
+    const std::uint32_t node_context = word(node, layout::fl_context);
+    scale_bits_[count_ - 1] =
+        node_context && node_context == r.context ? word(node_context, core::context_scale_offset) : 0u;
+#endif
     ++stats_.written;
 }
 
@@ -99,6 +120,11 @@ unsigned count() noexcept {
 const core::Raw* entries() noexcept {
     return buffer_;
 }
+#if X3M_EDITION_FL
+const std::uint32_t* context_scale_bits() noexcept {
+    return scale_bits_;
+}
+#endif
 core::Stats stats() noexcept {
     return stats_;
 }
