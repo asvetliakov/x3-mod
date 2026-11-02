@@ -1452,3 +1452,19 @@ rows end in `edition=fl`; the descriptor part box (F8 diagnostic) and the engine
 The occlusion GPU fixture records (`occlusion-cull-batched/fixture-*.json`) ran the 2026-10-08 `occlusion_cull_core.h`;
 `test_batched_records` now accepts that recorded hash or the 2026-11-02 one (AP offsets unchanged, proven by the AP
 build of the host driver); a rerun needs a Wine host. Not verified: either cull on FL in game; the FL saving.
+
+## FL run 22 — material-strength hook and proxy culls on FL (installed 2026-11-02)
+
+Merge `e1a43c4ab` (hook `9446e7a3b`, culls `e1a43c4ab`), two Opus-high reviews with no blocker (fixes folded, sections
+above). Clean `build-fl` from main, 0 warnings; 12 host modules 140 tests 0 failing; `generate.py --check` PASS (measured).
+Installed `C:\X3FL\d3d9.dll` = `81dd4fb5…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run21` = `af2d404f…`
+(runs 20–21); overlay `addon2/06+07` and ini unchanged. Record `verification/results/fl-run22/candidate.json`.
+
+**FL run 22 A (open):** the fogged spot of runs 19–21 plus a clear sector with ships, one F8 each; tell me before
+relaunching. Expect `lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll … edition=fl`,
+`lod_material_strength_configured enabled=1 texture_hook=1`, `lod_strength_texture`/`lod_strength_frame seen>0`
+(atlases marked at load), `cull_small_props_device … attached=1 edition=fl model_offset=0x144`,
+`cull_small_props_frame … draws>0 culled>0`, `occlusion_cull_device … attached=1`, `occlusion_cull_session … hidden>0`,
+fogged `frame_end draws=` below run 21's 191 median, no `attached=0`/`refused` rows. Visual: distant station trims no
+longer pale/flat (material strength), nothing visible missing near ships or stations (small props, occlusion), own
+ship and target intact in chase view, no pop-in when turning (occlusion retest).
