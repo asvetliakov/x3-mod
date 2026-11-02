@@ -885,6 +885,23 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-03: far-jet hand-off on FL (`cull_small_parts … far_jets=on edition=fl`)
+
+The FL small-parts stub now carries its far-copy block, which calls the shared integer-only handler
+`engine_far_jets.cpp`. The handler is built without SSE/MMX, makes no Win32 call and leaves LastError untouched.
+It uses the read set verified from X3FL.exe's bytes ([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md),
+"Verified 2026-11-03"). The context scale is owned at the site, so the plume stage needs no later engine read
+for it. Nothing new is Windows- or Wine-specific: same identity, window and JET-writer compare, same documented
+Win32 install path, and no device call in the handler. Natively verified on the Windows host through WSL interop
+(measured 2026-11-03):
+
+- the FL fixture: 193 checks, 0 failures, with the live stub's far block running into the production handler on
+  FL-layout nodes (decoys at the AP offsets) and the consumer's `far_record`;
+- 24 / 24 mutations killed;
+- `far_jet_no_x87.py` PASS on the fl DLL.
+
+Not verified: the far route in game (not flown); native Windows game behaviour.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

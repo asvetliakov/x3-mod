@@ -214,6 +214,8 @@ not authorize an arbitrary pointer chase or bind a stale frame token.
 Foreign writer exclusion and ready owner admission remain the existing
 renderer contract, not a property inferred from readable pages [u/i].
 
+**Superseded 2026-11-03 for the far route (orchestrator ruling).** The far-jet copy relies on the selector's synchronous native borrow, the same model as AP: the integer-only handler runs inside the pass, called by the stub, and cannot query `fl_render_admission`. The later parent `+0xa4` read follows the shipped FL draw route (`engine_memory::read`, `≤ 0` → no floor). Only the context scale became an owned value ([Verified 2026-11-03](#verified-2026-11-03-far-jet-hand-off-read-set)).
+
 The copied node, parent and context addresses remain identity tokens. A later
 far-to-plume conversion must use the matching **owned context scale** from
 camera publication, not dereference saved camera+0x1c or context+0x2c. A later
@@ -223,6 +225,8 @@ its existing FL input adapter/owned camera association, not an unrestricted
 later native read. The root/list/no-stage fallback gap is unchanged. Denied,
 stale, overflowing or unwound samples must leave no newly published partial
 record; no new native sample is a valid failure outcome [i].
+The owned-value requirement for the parent radius and the `fl_render_admission` requirement above are
+superseded for the far route on 2026-11-03 (see the note above).
 
 ## 5. Minimal binding, installation and performance
 
@@ -600,3 +604,89 @@ sectors with 10–13 stations each. AP figures are measured
   callers, and the dock cut-scene bodies 9013/9014/9098/9099 in FL's assets.
 - The FL draw saving of every module (§7) is inferred from AP flights. A flown
   FL census with a small-parts stub is the first measurement.
+
+## Verified 2026-11-03: far-jet hand-off read set
+
+Input: the live `C:\X3FL\X3FL.exe` (`e7f3aad8…`) and `X3AP-orig/X3AP.exe` (`fdbf3418…`). Static only.
+
+```sh
+python3 -I verification/results/fl-far-jets/read_set.py        # writes read_set.json, exit 1 on any failure
+python3 -I verification/results/fl-far-jets/dock_cut_ids_fl.py # the dock cut-scene ids in FL's mounts
+```
+
+The [producer](../../../verification/results/fl-far-jets/read_set.py) reuses the `Image` and `Cfg` classes of
+this note's 2026-11-02 producer. It asserts 47 whole-instruction anchors (46 FL, 1 AP) for 18 fields, the
+far-jet handler (`src/proxy/engine_far_jets.cpp`) reads in the pass and the plume stage
+(`motion_output_engine_plumes_inc.h` `engine_far_append`) reads outside it. It also checks three structural
+facts over the selector's 407-instruction CFG (all **measured**):
+
+- `0x495fc7 mov eax,[esi+0x1c]` / `0x495fce movss xmm2,[eax+0x2c]` (the node's context and its scale, read
+  before the frustum test `0x495fd3`) **dominate** the site `0x4961d3`. With `0x495fc7` removed, the site is
+  unreachable from `0x495e50`.
+- ESI's writers (every instruction Capstone reports as writing ESI, `pop esi` included) that reach the
+  site: only `0x495e5e mov esi,ecx`. The child-loop writers (`0x495f27`, `0x495f3c`) and the epilogue
+  `pop esi` instructions do not reach it. No selector instruction stores to node `+0x18`, `+0x1c`, `+0x28`,
+  `+0x70`, `+0x80..+0x88`, `+0xb0..+0xe8`, `+0x144` or `+0x1d8`. That check covers the selector's own
+  instructions only. Four calls lie between `0x495fc7` and the site (frustum `0x4e9000` at `0x495fd3`,
+  radius cache `0x4a39b0` at `0x495feb`, `0x412a80` at `0x496038`, measure helper `0x412b50` at
+  `0x496133`), and their stores were not checked.
+- The walker forwards its camera argument unchanged (`0x49772a`, `0x497742`, `0x497745`), and the selector
+  loads it into EBX at `0x4960d5`, which is the register the stub pushes as the view. The sector scene
+  passes camera `+0x1c` as the walker's context (`0x48ba48`). Camera publication reads that context's
+  `+0x2c` (`0x48ba3f → 0x495687 → 0x4ded90`, `0x4deda3 mov esi,ecx`, `0x4def18 mulss xmm1,[esi+0x2c]`).
+  Reparent copies the parent's context into the child (`0x4a5824/0x4a5827`), so every node below a scene
+  root carries that root's context [i, from the copy; the scene-attach writer was not traced].
+
+| Field | AP offset | FL offset | FL anchor (VA at `0x400000`) | Side |
+| --- | --- | --- | --- | --- |
+| Node parent | `+0x18` | `+0x18` | `0x4961d3` load at the site; reparent store `0x4a5809` | handler |
+| Node handle | `+0x28` | `+0x28` | node allocation store `0x4a22a8` | handler |
+| Base scale | `+0x70` | `+0x70` | world matrix `0x4de59a imul [edi+0x70]`; setter `0x4a3b28` | handler |
+| x scale | `+0x80` | `+0x80` | setter `0x4a3af8` | handler |
+| z scale (throttle) | `+0x88` | `+0x88` | setter `0x4a3b09`; jet drive `0x464932` | handler |
+| Position | `+0xb0..+0xb8` | same | world matrix `0x4deb15/2a/3f`, scaled by `[ebx+0x2c]` at `0x4deb20` | handler |
+| Basis row 0 (model x) | `+0xc0..+0xc8` | same | world matrix `0x4de9ef/0x4dea02/0x4dea16` | handler |
+| Basis row 2 (model z) | `+0xe0..+0xe8` | same | world matrix `0x4dea66/7a/8e` | handler |
+| Flags `+0x12c` bit 26 (measure < 1 rule) | `+0x12c` | `+0x12c` | `0x4961fc cmp ecx,1`; `0x496201` load; `0x496207 test eax,0x4000000` | handler |
+| Flags `+0x130` JET pair | `+0x130` | `+0x130` | classifier `0x43deb3 or [ecx+0x130],0x4000001` | stub |
+| Model id | `+0x140` (AP `0x47d2ec`) | **`+0x144`** | `0x49621c mov ecx,[esi+0x144]`; setter `0x4a365d` | handler |
+| Own threshold | `+0x1d8` | `+0x1d8` | `0x4961d6` | handler |
+| Parent threshold | `+0x1d8` | `+0x1d8` | `0x4961e0 mov eax,[eax+0x1d8]` | handler |
+| Node context (owned scale) | – (AP reads none) | **`+0x1c`, new** | `0x495fc7`/`0x495fce` (dominating); reparent copy `0x4a5824/27` | handler (FL) |
+| Camera handle | `+0x28` | `+0x28` | camera block `0x790` bytes (`0x4a45d6`), handle store `0x4a4606` | handler |
+| Camera context | `+0x1c` | `+0x1c` | `0x48ba48` → walker `0x49772a/42/45` → `0x4960d5 mov ebx,[ebp+8]` | handler |
+| Context scale (float) | `+0x2c` | `+0x2c` | `0x4def18` (via `0x48ba3f`, `0x495687`, `0x4deda3`); `0x495fce` | handler (FL) / consumer (AP) |
+| Parent radius (plume floor) | `+0xa4` | `+0xa4` | radius cache `0x4a39c3`; dirty `-1` at `0x4a3b1b`, `0x4a580f` | consumer |
+
+The far route reads nothing else. The selected LOD (`+0x14c → +0x150`) and the object class word
+(`obj+0x48`) belong to the LOD/occlusion patches and the emitter stubs, not to this route. The body table
+behind `body_for_model` is already FL-bound (`base+0x1aa100`,
+[engine-effects.md](engine-effects.md) "Verified 2026-11-02" §4). The own-ship tag uses node `+0x18` and
+the FL own-ship walk ([own_ship_offsets.py](../../../verification/results/fl-engine-effects/own_ship_offsets.py)).
+
+**Consequence for the handler (implemented, `engine_far_jets_layout_fl.h`).** On FL the handler reads the
+model at `+0x144` and every other field at the AP offset. It also copies, still inside the pass, node
+`+0x1c` and, when that equals the view's context (camera `+0x1c`), the context's `+0x2c` as raw bits. The
+handler makes these reads itself, inside the pass. They are the same fields the selector loaded on this node
+at `0x495fc7`/`0x495fce`, but four calls run in between (above). That the handler sees the value the selector
+loaded is therefore unproven, and nothing relies on it. The handler compares the node's context with the
+view's own `+0x1c` instead. That `node+0x1c == camera+0x1c` holds on the main view is inferred from the
+reparent copy and the sector walker's context argument, not measured. The plume stage turns the bits into
+the far record's context scale. It does not
+dereference the saved context later, which section 4 ruled out. When the node's context differs from the
+view's (the lens scene passes manager `+0x64`, not camera `+0x1c`), or is null, the bits are 0 and
+`far_record` refuses the copy (`far_dropped`). Those copies belong to views the stage does not draw.
+
+**Dock cut-scene ids (measured, [dock_cut_ids_fl.json](../../../verification/results/fl-far-jets/dock_cut_ids_fl.json)).**
+FL's `addon2/04.cat` `types/Dummies` maps `19026/19027/19098/19099` to cuts `9013/9014/9098/9099`. That table's
+decoded SHA-256 prefix `b0c8e5ebbaf9` matches AP's stock table. `types/CutData` names the same four scenes. The scenes
+resolve to the stock members (`02.cat` `34f58000…`, `ebad8942…`, `1eaa10b5…`; the M6 quick-launch scene
+`addon2/01.cat` `f5e97497…`). The inline bodies of 9013, 9014 and 9099 give ids `901300000/1/3`, `901400003..5`
+and `909900003..5`, all inside the stub's two ranges. Cut **9098 is not covered.** Its scene has no inline
+body: it names three body files (`stations\docks\M6dockCarrier_quicklaunch_doorlower`, `_body`, `_doorupper`,
+all present in FL's mounts) plus body `535`. Named bodies take body-table ids (below 20000 for the fixed
+table, `20000 + n` for dynamic registrations; id → slot map `0x4867c0`), not `local + (cut−1)·100000` [i, from the id map; their runtime ids were not
+read]. So on FL, as on AP, the M6 quick-launch port parts follow the 4 px small-parts threshold, not the 12 px
+dock threshold. This closes the "dock cut-scene bodies" item under Unknown above.
+
+Still open: none of this has run in the game, and the far route on FL has not flown.

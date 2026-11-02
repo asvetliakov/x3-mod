@@ -219,8 +219,8 @@ std::uint64_t MotionOutput::engine_qpc_frequency() noexcept {
 // eligible (scene 1) and the stage's view filter decides by the handle alone (run_engine_plumes: the view rule
 // ignores far records unless no drawn record is in the scene phase). A copy of a (node handle, view handle) pair
 // already appended this frame is dropped (far_duplicates: the cull pass may run more than once per view). One bounded
-// read of context +0x2c per view context (memo); the parent's +0xa4 only with the floor on. The ring's cap applies
-// (far_overflow with the handler's own full buffer).
+// read of context +0x2c per view context (memo; FL: none, the handler's owned scale instead); the parent's +0xa4 only
+// with the floor on. The ring's cap applies (far_overflow with the handler's own full buffer).
 float MotionOutput::engine_far_context_scale(std::uint32_t context) noexcept {
     if (frame_ != engine_far_context_frame_) {
         for (unsigned i = 0; i < engine_far_context_slots; ++i) engine_far_context_[i] = 0;
@@ -249,6 +249,11 @@ void MotionOutput::engine_far_append() noexcept {
     namespace ee = engine_effects::core;
     const unsigned count = engine_far_jets::count();
     const engine_far_jets::core::Raw* raw = engine_far_jets::entries();
+#if X3M_EDITION_FL
+    // FL: the context scale the handler owned at the site (engine_far_jets_layout_fl.h), never a later context +0x2c
+    // read (docs/reverse-engineering/fl/engine-effects.md, "Verified 2026-11-03").
+    const std::uint32_t* owned_scale = engine_far_jets::context_scale_bits();
+#endif
     const bool floors = plumes_look_.floor_scale > 0.f;
     for (unsigned i = 0; i < count; ++i) {
         const auto& f = raw[i];
@@ -263,8 +268,14 @@ void MotionOutput::engine_far_append() noexcept {
         const int body = engine_effects::body_for_model(f.model);
         const ee::Body* entry = engine_effects::body(body);
         ee::Record record{};
+#if X3M_EDITION_FL
+        float scale = 0.f;
+        std::memcpy(&scale, &owned_scale[i], sizeof scale);
+        const ee::FarVerdict verdict = ee::far_record(f, scale, body, entry, frame_, &record);
+#else
         const ee::FarVerdict verdict =
             ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);
+#endif
         if (verdict != ee::FarVerdict::record) {
             ++(verdict == ee::FarVerdict::steering ? engine_far_.steering : engine_far_.invalid);
             continue;

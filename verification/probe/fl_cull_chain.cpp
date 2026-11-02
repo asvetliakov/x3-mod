@@ -10,6 +10,12 @@
 // enters a site with the FL selector's frame (ESP = align_down(EBP,8) - 0x28, s at [ESP+0x10]/[ESP+0x18], camera at
 // [EBP+8] and in EBX, node in ESI, live native measure in ECX, garbage EAX/EDX, chosen EFLAGS); the real window bytes
 // then run to an exit, which records every register, EFLAGS, ESP/EBP and the locals.
+//
+// The far-jet hand-off (docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03"): the production handler
+// src/proxy/engine_far_jets.cpp is linked under the name x3m_engine_far_jet_real (-D at its compile, its own no-SSE
+// flags); the recording fake below forwards to it when far_forward is set, so the stub's far block reaches the real
+// handler with FL-layout nodes (decoys at the AP offsets) and the copy is turned into a plume record by the consumer's
+// own call (engine_effects_core.h far_record with the owned context scale, as motion_output_engine_plumes_inc.h does).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -23,6 +29,7 @@
 #include "../../src/engine/fl/lod_patches_fl.h"
 #include "../../src/proxy/camera_state.h"
 #include "../../src/proxy/cull_census.h"
+#include "../../src/proxy/engine_effects_core.h"
 #include "../../src/proxy/engine_far_jets.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/proxy/fov.h"
@@ -122,7 +129,8 @@ uint32_t out_eax, out_ebx, out_ecx, out_edx, out_esi, out_edi, out_ebp, out_esp,
 uint32_t out_s10, out_m14, out_s18, out_l1c, out_l24, out_cam, out_ebp_m2c;
 uint32_t site_esp, site_ebp, saved_esp;
 // The far-jet fake: its cdecl arguments, ESP and EFLAGS at entry; it clobbers EAX/ECX/EDX as any cdecl callee may.
-uint32_t far_calls = 0, far_node, far_measure, far_view, far_esp, far_flags;
+uint32_t far_calls = 0, far_node, far_measure, far_view, far_esp, far_flags, far_forward = 0;
+void x3m_engine_far_jet_real(uint32_t node, int32_t measure, uint32_t view); // engine_far_jets.cpp, renamed
 void flc_run();
 void flc_exit_a();
 void flc_exit_b();
@@ -155,6 +163,7 @@ asm(".text\n\t"
     "movl %esp,_far_esp\n\tpushfl\n\tpopl _far_flags\n\tincl _far_calls\n\t"
     "movl 4(%esp),%eax\n\tmovl %eax,_far_node\n\tmovl 8(%esp),%eax\n\tmovl %eax,_far_measure\n\t"
     "movl 12(%esp),%eax\n\tmovl %eax,_far_view\n\t"
+    "cmpl $0,_far_forward\n\tje 3f\n\tjmp _x3m_engine_far_jet_real\n3:\n\t" // the real handler: a cdecl tail jump
     "movl $0xdead0001,%eax\n\tmovl $0xdead0002,%ecx\n\tmovl $0xdead0003,%edx\n\tret\n\t");
 
 std::uintptr_t base = 0;
@@ -234,7 +243,8 @@ struct Out {
     uint32_t site_esp, site_ebp;
 };
 constexpr uint32_t camera_value = 0x00ca3e7a, d_value = 0x0000d00d;
-Out run_cull(const Case& c, uint32_t flags, uint32_t skew = 4) {
+void (*node_fields)(Node& n) = nullptr; // the far-chain cases' further node fields (after the decision fields)
+Out run_cull(const Case& c, uint32_t flags, uint32_t skew = 4, uint32_t camera = camera_value) {
     std::memset(&node, 0x5a, sizeof node);
     std::memset(&parent, 0x6b, sizeof parent);
     put(node, S::parent_offset, c.has_parent ? u32(&parent) : 0);
@@ -243,9 +253,10 @@ Out run_cull(const Case& c, uint32_t flags, uint32_t skew = 4) {
     put(node, S::model_offset, c.model);
     put(node, S::threshold_1d8_offset, uint32_t(c.own));
     put(parent, S::threshold_1d8_offset, uint32_t(c.parent_threshold));
-    in_eax = 0xeaeaeaea, in_edx = 0xedededed, in_ebx = camera_value, in_ecx = c.ecx, in_esi = u32(&node);
+    if (node_fields) node_fields(node);
+    in_eax = 0xeaeaeaea, in_edx = 0xedededed, in_ebx = camera, in_ecx = c.ecx, in_esi = u32(&node);
     in_edi = d_value, in_flags = flags, in_ebp_skew = skew, in_entry = uint32_t(base + S::site_rva);
-    in_s = c.s, in_m14 = c.ecx, in_l1c = 0x1c1c1c1c, in_l24 = 0x24242424, in_cam = camera_value, in_ebp_m1c = 0;
+    in_s = c.s, in_m14 = c.ecx, in_l1c = 0x1c1c1c1c, in_l24 = 0x24242424, in_cam = camera, in_ebp_m1c = 0;
     SetLastError(sentinel_error);
     flc_run();
     Out o{out_eax, out_ebx, out_ecx, out_edx, out_esi, out_edi, out_ebp, out_esp, out_flags, out_kind, out_s10, out_m14,
@@ -563,6 +574,130 @@ bool shutdown_restores(const char* label) {
     return ok;
 }
 
+// The far-jet hand-off under the FL layout: a camera (0x790-byte block, handle +0x28, context +0x1c), two contexts
+// (+0x2c the float scale) and the node fields the handler copies. Decoys at the AP offsets: +0x140 holds the RCS model
+// 566 (a handler reading AP's model offset counts the jet as steering and writes nothing) unless a case swaps them.
+namespace far_chain {
+namespace ee = x3m::engine_effects::core;
+namespace fj = x3m::engine_far_jets;
+struct alignas(16) Block {
+    unsigned char bytes[0x790];
+};
+Block camera{}, context{}, other_context{};
+constexpr uint32_t view_handle = 0x0000cafe, node_handle = 0x00001111, real_model = 1234;
+constexpr float scale = 0.01f, other_scale = 0.5f;
+uint32_t node_context = 0;   // node +0x1c
+bool swap_models = false;    // +0x144 = 566, +0x140 = the real model
+void put_block(Block& b, unsigned offset, uint32_t value) {
+    std::memcpy(b.bytes + offset, &value, 4);
+}
+uint32_t bits(float f) {
+    uint32_t v = 0;
+    std::memcpy(&v, &f, 4);
+    return v;
+}
+void fields(Node& n) {
+    put(n, x3m::engine_far_jets::core::model_offset, swap_models ? real_model : 566u); // AP +0x140: the decoy
+    put(n, S::model_offset, swap_models ? 566u : real_model);                          // FL +0x144
+    put(n, 0x1c, node_context);
+    put(n, 0x28, node_handle);
+    put(n, 0x70, 200);
+    put(n, 0x80, 0x10000);
+    put(n, 0x84, 0x10000);
+    put(n, 0x88, 0x18000);
+    const int32_t position[3] = {100000, -200000, 300000};
+    for (unsigned i = 0; i < 3; ++i) {
+        put(n, 0xb0 + 4 * i, uint32_t(position[i]));
+        put(n, 0xc0 + 4 * i, i == 0 ? 0x10000u : 0u); // basis row 0: model x
+        put(n, 0xd0 + 4 * i, i == 1 ? 0x10000u : 0u);
+        put(n, 0xe0 + 4 * i, i == 2 ? 0x10000u : 0u); // basis row 2: model z
+    }
+}
+// s = 2 below T: the small path; +0x130 the JET pair; ECX 640 above the native limit (no engine verdict).
+const Case jet = {"far_chain_jet", 2, 640, 0x00000004, 0x04000001, 0 /* fields() */, 1, true, 1};
+Out run(uint32_t context_of_node, bool swap) {
+    node_context = context_of_node;
+    swap_models = swap;
+    node_fields = &fields;
+    far_forward = 1;
+    fj::begin_frame();
+    const Out o = run_cull(jet, 0x046, 4, u32(&camera));
+    far_forward = 0;
+    node_fields = nullptr;
+    return o;
+}
+void checks() {
+    std::memset(&camera, 0x3c, sizeof camera);
+    std::memset(&context, 0x4d, sizeof context);
+    std::memset(&other_context, 0x5e, sizeof other_context);
+    put_block(camera, 0x28, view_handle);
+    put_block(camera, 0x1c, u32(&context));
+    put_block(context, 0x2c, bits(scale));
+    put_block(other_context, 0x2c, bits(other_scale));
+    bool counted = false;
+    const int device = 0;
+    fj::request(&counted, true, &device);
+    x3m_cull_small_parts_threshold = T;
+    x3m_cull_small_parts_upper = U;
+    // 1. Same context on node and view: one entry, every field from the FL offsets, the owned scale; the stub's frame
+    // kept and the node culled exactly as without the handler.
+    const uint32_t calls0 = far_calls, culled0 = x3m_cull_small_parts_culled;
+    Out o = run(u32(&context), false);
+    const fj::core::Raw* raw = fj::entries();
+    const fj::core::Stats st = fj::stats();
+    char detail[320];
+    std::snprintf(detail, sizeof detail, "count=%u written=%u steering=%u engine=%u disarmed=%u model=%u scale=%08x kind=%u",
+                  fj::count(), st.written, st.steering, st.engine, st.disarmed, fj::count() ? raw[0].model : 0u,
+                  fj::count() ? fj::context_scale_bits()[0] : 0u, o.kind);
+    const bool copied =
+        fj::count() == 1 && st.written == 1 && raw[0].node == u32(&node) && raw[0].view_handle == view_handle &&
+        raw[0].context == u32(&context) && raw[0].parent == u32(&parent) && raw[0].handle == node_handle &&
+        raw[0].model == real_model && raw[0].scale70 == 200 && raw[0].scale80 == 0x10000 &&
+        raw[0].scale88 == 0x18000 && raw[0].position[0] == 100000 && raw[0].position[1] == -200000 &&
+        raw[0].position[2] == 300000 && raw[0].basis_x[0] == 0x10000 && raw[0].basis_z[2] == 0x10000 &&
+        fj::context_scale_bits()[0] == bits(scale);
+    check(copied && far_calls == calls0 + 1 && x3m_cull_small_parts_culled == culled0 + 1 && o.kind == 2 &&
+              o.ebx == u32(&camera) && o.esi == u32(&node) && o.ecx == jet.ecx && o.edi == d_value &&
+              o.esp == o.site_esp && o.ebp == o.site_ebp && o.f12c == (jet.f12c & ~2u) && !(o.flags & df) &&
+              o.error == sentinel_error && far_view == u32(&camera),
+          "far_chain_fl_layout_copied", detail);
+    // 2. The consumer's call (motion_output_engine_plumes_inc.h engine_far_append on FL): far_record with the owned
+    // scale -> a far plume record at position x 0.01.
+    float owned = 0.f;
+    std::memcpy(&owned, &fj::context_scale_bits()[0], 4);
+    ee::Record record{};
+    const ee::FarVerdict verdict = ee::far_record(raw[0], owned, -1, nullptr, 9, &record);
+    std::snprintf(detail, sizeof detail, "verdict=%u origin=%.3f,%.3f,%.3f size=%.4f axis_z=%.3f flags=%04x",
+                  unsigned(verdict), double(record.origin[0]), double(record.origin[1]), double(record.origin[2]),
+                  double(record.size), double(record.axis[2]), unsigned(record.flags));
+    const auto close_to = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+    check(verdict == ee::FarVerdict::record && close_to(record.origin[0], 1000.f) && close_to(record.origin[1], -2000.f) &&
+              close_to(record.origin[2], 3000.f) && close_to(record.size, 2.f) && record.axis[2] == -1.f &&
+              (record.flags & ee::flag_far) && record.node_handle == node_handle && record.model == real_model,
+          "far_chain_record_reaches_consumer", detail);
+    std::printf("FARCHAIN record origin=%.1f,%.1f,%.1f size=%.4f scale=%08x\n", double(record.origin[0]),
+                double(record.origin[1]), double(record.origin[2]), double(record.size), fj::context_scale_bits()[0]);
+    // 3. The node's context differs from the view's: the entry stays, its owned scale is 0 and the consumer refuses.
+    o = run(u32(&other_context), false);
+    std::memcpy(&owned, &fj::context_scale_bits()[0], 4);
+    check(fj::count() == 1 && fj::context_scale_bits()[0] == 0 &&
+              ee::far_record(fj::entries()[0], owned, -1, nullptr, 9, &record) == ee::FarVerdict::invalid && o.kind == 2,
+          "far_chain_foreign_context_refused");
+    // 4. No node context: the same refusal (no read through a null context).
+    o = run(0, false);
+    check(fj::count() == 1 && fj::context_scale_bits()[0] == 0 && o.kind == 2, "far_chain_null_context_refused");
+    // 5. The AP model offset holds the real id, FL's holds the RCS 566: the handler reads FL's, skips it as steering.
+    o = run(u32(&context), true);
+    check(fj::count() == 0 && fj::stats().steering == 1 && o.kind == 2, "far_chain_model_is_fl_offset");
+    // 6. Disarmed (no device requests the stage): nothing copied, the node still culled.
+    fj::request(&counted, false, &device);
+    o = run(u32(&context), false);
+    check(fj::count() == 0 && fj::stats().disarmed == 1 && o.kind == 2, "far_chain_disarmed");
+    x3m_cull_small_parts_threshold = 0;
+    x3m_cull_small_parts_upper = 0;
+}
+} // namespace far_chain
+
 int main() {
     image = static_cast<unsigned char*>(VirtualAlloc(nullptr, image_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
     base = reinterpret_cast<std::uintptr_t>(image);
@@ -740,12 +875,24 @@ int main() {
         SetLastError(sentinel_error);
         bool applied = csp::initialize();
         const char* mismatch[] = {"edition=fl state=active reason=ok", "write=atomic", "projectiles=marker_mismatch",
-                                  "far_jets=fenced_fl", "rva=0x0961d3"};
-        check(applied && GetLastError() == sentinel_error && !csp::projectiles_exempt() && !csp::far_jets(),
+                                  "far_jets=on", "rva=0x0961d3"};
+        check(applied && GetLastError() == sentinel_error && !csp::projectiles_exempt() && csp::far_jets(),
               "init_mismatched_marker_drops_exemption", last_row);
         row_has("init_mismatch_row", before, 1, mismatch, 5);
         shutdown_restores("init_mismatch_restored");
         poke(S::marker_or_rva + 9, S::marker_or[9]);
+        // A changed JET writer drops only the far block (as on AP: far_jets=writer_mismatch).
+        poke(S::jet_writer_rva + 6, 0x02);
+        before = rows;
+        SetLastError(sentinel_error);
+        applied = csp::initialize();
+        const char* writer[] = {"edition=fl state=active reason=ok", "projectiles=on", "far_jets=writer_mismatch"};
+        check(applied && GetLastError() == sentinel_error && csp::projectiles_exempt() && !csp::far_jets() &&
+                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far] == 0xeb,
+              "init_jet_writer_mismatch_drops_far", last_row);
+        row_has("init_writer_mismatch_row", before, 1, writer, 3);
+        shutdown_restores("init_writer_mismatch_restored");
+        poke(S::jet_writer_rva + 6, S::jet_writer[6]);
         before = rows;
         SetLastError(sentinel_error);
         applied = csp::initialize();
@@ -753,13 +900,13 @@ int main() {
         std::snprintf(want, sizeof want, "site=0x%08lx rva=0x0961d3 cull=0x%08lx write=atomic",
                       static_cast<unsigned long>(base + S::site_rva), static_cast<unsigned long>(base + S::cull_rva));
         const char* active[] = {"cull_small_parts requested=4 px=4 patched=1 edition=fl state=active reason=ok", want,
-                                "projectiles=on dock_px=12 dock_requested=12 far_jets=fenced_fl"};
-        // Far jets fenced on FL: plumes requested, the stub carries no far block (nothing called).
-        check(applied && GetLastError() == sentinel_error && csp::projectiles_exempt() && !csp::far_jets() &&
-                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far] == 0xeb &&
-                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far + 1] == S::stub_far_length - 2,
-              "init_installs_far_fenced", last_row);
+                                "projectiles=on dock_px=12 dock_requested=12 far_jets=on"};
+        // Far jets on FL: plumes requested and the JET writer verified, the stub carries the far block.
+        check(applied && GetLastError() == sentinel_error && csp::projectiles_exempt() && csp::far_jets() &&
+                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far] == 0xf7,
+              "init_installs_far_block", last_row);
         row_has("init_active_row", before, 1, active, 3);
+        far_chain::checks(); // the live stub's far block into the real handler, then the consumer's record
         check(csp::initialize() && rows == before + 1, "init_again_no_row");
         // The frame side: a vanilla frame (no camera) publishes 0; a valid projection the AP threshold rule.
         csp::set_backbuffer_width(1920);
@@ -783,7 +930,7 @@ int main() {
         csp::present(1, 77, true);
         check(rows == before + 1 && std::strstr(last_row, "cull_small_parts_frame device=1 frame=77 px=4 ") &&
                   std::strstr(last_row, " culled=3 ") && std::strstr(last_row, " exempt_bullet=1 ") &&
-                  std::strstr(last_row, " dock_culled=2 far_jets=off edition=fl") && x3m_cull_small_parts_culled == 0 &&
+                  std::strstr(last_row, " dock_culled=2 far_jets=on edition=fl") && x3m_cull_small_parts_culled == 0 &&
                   x3m_cull_small_parts_dock_culled == 0 && x3m_cull_small_parts_exempt == 0,
               "frame_row_and_counters", last_row);
         csp::present(1, 78, false);
