@@ -1718,7 +1718,18 @@ with no blocker, fixes folded (sections above). Clean `build-fl` from main `f8bd
 (55,597,305 B), rollback `rollback-d3d9\d3d9.dll.run24` = `440dbe52…`; overlay and ini unchanged (template defaults:
 `camera = chase`, `chase_hud_anchor = forward`, `chase_view_restore = 1`). Record `verification/results/fl-run25/candidate.json`.
 
-**FL run 25 A (open):** load a game in the chase view; fly through two gates, jump once if you have a jumpdrive, dock and
+**FL run 25 A (flown 2026-11-03, accepted):** user: "chase view restore is okay, tested gate and dock; crosshair is okay".
+Log `/home/asvetl/x3m-logs/fl-run25-restore-hud.log` (692 MB, measured): `chase_transition installed=1 status=active
+edition=fl … diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2`, 8
+`chase_transition_site` rows, 1,768 `chase_transition_timing` rows; `chase_lead installed=1 status=active
+scope=applied_main_chase_same_sector native_solver=retained edition=fl rva=0x02c7b9,0x02cbe7,0x022cf5 update=pose_seam`,
+221 `chase_lead_window` and 125 `chase_lead_sample` rows; no `installed=0`, `refused` or `rollback=failed` on the chase
+rows. The restore's per-event rows (`chase_transition_event`/`_detail`) are not emitted on FL (diagnostics are AP-only),
+so the restore is accepted on the user's report alone; the SelectMode-store assumption therefore holds in practice but
+is not witnessed in the log (open: enable the event rows on FL or add one FL counter row). Still AP-only: `chase_fire`
+(cursor fire in the chase view), `chase_aim_trace` (its diagnostic).
+
+Original brief: load a game in the chase view; fly through two gates, jump once if you have a jumpdrive, dock and
 undock once, select a target and fire at it; one F8 in flight with a target selected; tell me before relaunching. Expect
 `chase_transition installed=1 … edition=fl` (three groups), `chase_lead installed=1 … edition=fl` (HUD gate, lead gate,
 publish, final FOV), `chase_camera … unbound_phase=active_control dependencies=chase_lead,chase_transition`,
