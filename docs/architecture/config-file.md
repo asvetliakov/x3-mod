@@ -238,7 +238,7 @@ examples as they would appear in the template:
 Developer-only (`developer=True`): parseable from file and environment, absent from the template, listed in
 a `docs/` table instead: the tier internals (`telemetry`, `frame_timing`, `frame_phases`, the 41
 `TIERED_VARIABLES`), `draw_trace` and its families (`telemetry_draw`, `game/pass/residual/light/loop_phases`),
-`gpu_sync_timing`, `taa_debug`, `profile*`, `own_sun_log` (`sun_occlusion_radius/curve` until 2026-11-02), the capture controls
+`taa_debug`, `profile*`, `own_sun_log` (`sun_occlusion_radius/curve` until 2026-11-02), the capture controls
 (`capture_start`, `capture_dir`), the marker variables (`window_monitor_rect_default`), the ownership and
 motion-output prerequisites (`ownership`, `object_trace`, `object_lifetime`, `motion_output`, `depth_copy`,
 `finite_positions`, `shadow_replay_candidates`, `sun_shadow_lane` stays user-facing as the shadow switch), and

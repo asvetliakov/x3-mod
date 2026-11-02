@@ -506,6 +506,24 @@ bool scope_node(uintptr_t* descriptor, uintptr_t* node) {
     SetLastError(error);
     return scope != nullptr;
 }
+// current()'s node read alone (object_trace.h): the same span, so the same validation decides Node. Not counted in
+// current_calls / current_scoped (those count current()).
+bool scope_flags(uint32_t* flags130, bool* node_known) {
+    if (flags130) *flags130 = 0;
+    if (node_known) *node_known = false;
+    if (!flags130 || !node_known || !observation.load()) return false;
+    const DWORD error = GetLastError();
+    Scope* scope = top();
+    if (scope && scope->args[1]) {
+        uint32_t node[node_span / 4];
+        if (read_memory(scope->args[1], node, sizeof node)) {
+            *flags130 = node[layout::node_flags130 / 4];
+            *node_known = true;
+        }
+    }
+    SetLastError(error);
+    return scope != nullptr;
+}
 // Inside the scope the engine is still using the node and camera it passed: one bounded read of the node's
 // first 0x154 bytes, the camera handle, the engine pointer and the registry. FL has no established world/
 // view/projection slots for this snapshot and no established +0x13c alpha: `matrices` reads nothing more and

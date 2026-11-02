@@ -498,6 +498,11 @@ SETTINGS = [
     entry('capture_frames', 'int', 'logging', 'Frames recorded by one F8 capture (with debug = 1). 0 to 64 (more counts as 64).', '8',
           range=(0, 4294967295),
           requires=('debug',), launcher='--capture-frames'),
+    entry('gpu_sync_timing', 'bool', 'logging', 'Measurement only: times the GPU work of each of the mod\'s passes by waiting for '
+          'the graphics card at every pass boundary (gpu_sync_* log rows). Roughly halves the frame rate while on; turn it off '
+          'again afterwards. 1 = on, 0 = off.', builtin='0', launcher='--gpu-sync-timing'),
+    entry('volumetric_fog_timing', 'bool', 'logging', 'Measurement only: the volumetric fog\'s per-frame CPU time (cpu_us in the '
+          'volumetric_fog_frame log row; perf = 1 includes it). 1 = on, 0 = off.', builtin='0'),
     entry('log_file', 'path', 'logging', 'Writes the log to this file instead of x3m.log next to the mod. Empty = the default.',
           builtin=''),
 
@@ -619,7 +624,6 @@ SETTINGS = [
     dev('fog_families', 'path', 'fog', 'Fog family file override (0 or none = disabled; default <game>\\x3m\\fog-families.bin).'),
     dev('engine_bodies', 'path', 'engine', 'Engine body table override (0 or none = disabled; default <game>\\x3m\\engine_bodies.json).',
         since='2026-10-01'),
-    dev('volumetric_fog_timing', 'bool', 'logging', 'Fog cost rows (member of the perf group).'),
     dev('chase_combat_tightness', 'float', 'camera', 'Chase combat tightening (unverified in game).', '0.0',
         launcher='--chase-combat-tightness', range=(0, 1)),
     dev('chase_rot_tau', 'float', 'camera', 'Chase rotation spring time constant (DLL compiled default).', launcher='--chase-rot-tau', range=[R(0, 10, True)]),
@@ -680,7 +684,6 @@ SETTINGS = [
     dev('music_trace', 'bool', 'logging', 'Music keep trace (member of debug).'),
     dev('window_trace', 'bool', 'logging', 'Window trace (member of debug).'),
     dev('locked_prefix_log', 'bool', 'logging', 'Per-draw locked_prefix row every frame (run_locked_prefix_live.py).'),
-    dev('gpu_sync_timing', 'bool', 'logging', 'Serialised GPU cost per proxy pass; halves the frame rate.', launcher='--gpu-sync-timing'),
     dev('profile', 'bool', 'logging', 'Sampling profiler thread.', launcher='--profile'),
     dev('profile_interval_us', 'int', 'logging', 'Sampling profiler interval (DLL default 2000 us).', launcher='--profile-interval-us', range=(100, 1000000)),
     dev('profile_report_s', 'int', 'logging', 'Sampling profiler report period (DLL default 5 s).', range=(1, 3600)),

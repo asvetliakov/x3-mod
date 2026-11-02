@@ -1082,3 +1082,35 @@ monitor while others fly in the main view (the own-ship tag replaces the majorit
 `engine_effects_mode status=armed`, `engine_effects_bodies event=loaded bodies=226`, `engine_effects_device redirects=1`,
 `engine_plumes_state`, no `own_ship status=unavailable`. A refusal is `engine_effects_patch … reason=<…>` with
 `redirects=0` and `engine_plumes_state … suppression_off` (ships then keep the vanilla effects).
+
+## FL run 18 performance — flag-first recogniser and GPU timing keys (2026-11-02, not flown)
+
+From the run 18 triage and the code reviews; design paragraph in `docs/architecture/engine-frame-time.md`, "FL run 18:
+per-frame CPU mitigations". No look change. Evidence: `verification/results/fl-run18-triage/perf_mitigations.txt`
+(with `candidate_counts.py`, `read_cost.py`, `verification/probe/fl_run18_read_bench.cpp`).
+
+| Run 18, per frame (measured) | p50 | p99 | mean |
+| --- | --- | --- | --- |
+| recogniser candidates | 51 | 995 | 88.3 |
+| of them `not_jet` | 45 | 977 | 75.5 |
+| FL trace `current()` calls | | | 440.9 |
+| FL lifetime `current()` calls | | | 328.2 |
+| `engine_memory` reads / `VirtualQuery` | | | 5,170 / 63.2 |
+
+Taken: (1) flag-first recogniser (`object_trace::scope_flags`, both editions): the not-jet path 67.6 → 20.0 ns and
+4 → 1 validated reads (measured natively), 2.1 µs a frame at p50 and 46.5 µs at p99 (inferred); a jet pays one extra
+node read (~20 ns). (4) The ini template carries `gpu_sync_timing` (`gpu_sync_*` rows, halves fps) and
+`volumetric_fog_timing` (`volumetric_fog_frame` `cpu_us`) in `[logging]`, both off, read through `config::get`.
+Evaluated and not taken: (2) a per-frame FL engine/registry pointer cache (21.1 → 4.4 ns per call, ~11.6 µs a frame)
+because an unhooked registry rebind would be seen one frame late; (3) spin backoff with `VirtualQuery` outside the
+`engine_memory` lock (one read 10.5 → 9.8 ns, noise; contention not measured) because nothing measured justifies it
+and it would void the Wine-bound `fov-patch` record. Log rows: `fl.trace_sample current_calls` / `current_scoped`
+drop by the `not_jet` count (`scope_flags` is not counted); `engine_memory reads=` grow more slowly; `engine_frame`
+census fields unchanged.
+
+Checks (measured): `build-ap` and `build-fl` RelWithDebInfo 0 warnings; `generate.py --check` PASS (293 settings, 138
+in the template); 54 affected host modules, 625 tests: only the stale-record failures known on main
+(`test_engine_effects`, `test_engine_plumes`, `test_engine_ribbons`), `test_fov_patch_result` passes; native FL
+fixtures `fl_object_trace` (new `scope_flags` agreement checks) and `fl_engine_effects` pass; `motion_output.cpp` under
+`X3M_MOTION_OUTPUT_FIXTURE` compiles `-Werror` in both editions; AP objects 120, differ 4 (motion_output, object_trace,
+config, the `-dirty` stamp in proxy_identity), all intended.

@@ -1,0 +1,34 @@
+FL run 18 performance (docs/verification/farnhams-legacy.md, "FL run 18 performance"). All measured unless (i).
+Taken: item 1 (flag-first recogniser read), item 4 (ini keys). Evaluated, not taken: item 2 (per-frame FL pointer
+cache), item 3 (spin backoff, VirtualQuery outside the engine_memory lock); their code lived on unmerged commits
+8306b2d18 and 0d1a9616c.
+
+Counts: python3 verification/results/fl-run18-triage/candidate_counts.py /mnt/c/X3FL/x3m.prev.log
+  (run 18 log, proxy_identity d89a1666, 91,283 Presents)
+  engine_frame rows=91287
+  candidates p50=51 p90=135 p99=995 max=1257 mean=88.3
+  not_jet p50=45 p90=109 p99=977 max=1232 mean=75.5
+  fl.lifetime_sample current=29,957,993 (328.2 per frame)
+  fl.trace_sample current_calls=40,246,070 (440.9 per frame)
+  engine_memory last reads=471,952,064 queries=5,768,315 (5,170 reads, 63.2 queries per frame)
+
+Read costs: python3 verification/results/fl-run18-triage/read_cost.py <scratch> [engine_memory.cpp]
+  (verification/probe/fl_run18_read_bench.cpp, MinGW i686, native through WSL interop, medians of 5 x 2,000,000 calls)
+  main engine_memory.cpp (final bench, bench-local frame counter):
+    not_jet_before 67.1  not_jet_after 19.8  registry_reads 20.6  registry_cached 4.0  one_read 10.0 ns
+  evaluation run, main engine_memory.cpp: not_jet 67.4 -> 20.0, registry 21.3 -> 4.8, one_read 10.5 ns
+  evaluation run, item-3 engine_memory.cpp: not_jet 67.6 -> 20.0, registry 21.1 -> 4.4, one_read 9.8 ns
+
+Per-frame estimates (i):
+  (1) taken: 47.6 ns and 3 validated reads saved per not-jet candidate; a jet pays one extra node read (~20 ns).
+      p50: 45 not_jet -> 2.1 us, 135 reads.  p99: 977 not_jet -> 46.5 us, 2,931 reads.
+  (2) not taken: ~16.7 ns and 2 reads per current() call after the frame's first; trace ~365 calls (after item 1) and
+      lifetime 328 calls -> ~11.6 us, ~1,390 reads per frame; cost: an unhooked registry rebind seen one frame late.
+  (3) not taken: uncontended read 10.5 -> 9.8 ns (noise); contention not measured; would void the Wine-bound
+      fov-patch record (engine_memory source hashes).
+
+AP object identity: python3 verification/results/own-sun-pass/compare_objects.py <build-ap d3d9.dir copy at 5de5569c0>
+  build-ap/CMakeFiles/d3d9.dir <scratch> (RelWithDebInfo, cmake/mingw-i686.cmake, debug sections stripped)
+  objects 120 differ 4 added [] removed []
+    object_trace.cpp (scope_flags), motion_output.cpp (flag-first recogniser), config.cpp (two keys moved into the
+    template, regenerated schema), proxy_identity.cpp (the -dirty source-commit stamp). Intended; the other 116 identical.
