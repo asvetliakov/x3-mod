@@ -1,0 +1,30 @@
+{
+ "run": 228,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: lens-flare bracket, lens_flare_gain, fog lens gain and gain-0 engine cull deleted; probe hook claims only the probe call; body-name resolver moved to engine_body_resolver.h; gpu sync passes engine_ribbons/engine_shimmer/engine_light; recogniser flag-first read (merge aa99fe173)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run227; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "commit": "aa99fe173",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS 1110 reachable"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256_prefix": "0093e660e44a322e",
+  "bytes": 62675497,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 227,
+  "release": "1.8.5",
+  "sha256_prefix": "42b07eba",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run227"
+ },
+ "host_tests": "run_host_suite modules own_sun_hook, fl_sun_occlusion, own_sun, engine_body_resolver, config_schema, launcher_defaults, logging_tiers, cull_small_parts, gpu_sync_timing: 117 tests, 0 failing; generate.py --check PASS 292/137; AP hook fixture native 40/0 (agent); review Opus high: no blocker, F1-F4 fixed (1c55b9f55)",
+ "ini": "C:\\X3\\x3m.ini: removed lens_flare_gain = 1 (key deleted), gpu_sync_timing = 1 and volumetric_fog_timing = 1 (measurement flight over); copy x3m.ini.run227",
+ "producer": "main session",
+ "installed_at": "2026-11-02T16:11:31+04:00"
+}
