@@ -29,9 +29,11 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_fov_site as verifier  # noqa: E402
+import verify_fov_site_fl as fl_verifier  # noqa: E402
 from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
+FL_EXE = Path(fl_verifier.DEFAULT_EXE)
 
 HARNESS = r'''
 #include "fov_sites.h"
@@ -384,10 +386,11 @@ class FovCore(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('fov::initialize();'), 1)
+        # Two calls each since the FL port: AP's first, then src/engine/fl/fov_fl.cpp's in an X3M_EDITION_FL branch.
+        self.assertEqual(capture.count('fov::initialize();'), 2)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('fov::initialize();'))
-        self.assertLess(capture.index('fov::initialize();'), capture.index('cull_small_parts::initialize();'))
-        self.assertEqual(capture.count('fov::present(ctx.frame);'), 1)
+        self.assertLess(capture.index('fov::initialize();'), capture.rindex('cull_small_parts::initialize();'))  # AP's (the FL block's comes first)
+        self.assertEqual(capture.count('fov::present(ctx.frame);'), 2)
         self.assertLess(capture.index('close_install_window("first_present");'), capture.index('fov::present(ctx.frame);'))
         # one fov_confirm row per save_load_complete marker, on the same Present path
         self.assertEqual(capture.count('const bool save_loaded=game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame);'), 1)
@@ -498,6 +501,59 @@ class FovSite(unittest.TestCase):
             self.assertEqual(report['result'], 'FAIL')
             self.assertTrue(report['checks']['exe_identity'] and report['checks']['window_bytes'] and report['checks']['setfocus_case_bytes'])
             self.assertFalse(report['checks']['load_window_bytes'])
+
+
+@unittest.skipUnless(FL_EXE.is_file(), 'installed FL executable not present')
+class FovSiteFl(unittest.TestCase):
+    """verify_fov_site_fl.py on the installed X3FL.exe (read only) and on mutated in-memory copies."""
+
+    def test_installed_executable(self):
+        report = fl_verifier.verify(FL_EXE)
+        self.assertEqual(report['result'], 'PASS', report['failed'])
+        self.assertEqual(len(report['checks']), 31)
+        windows = report['windows']
+        self.assertEqual({k: (w['rva'], w['length'], w['fnv1a'], w['fixups'], w['targets']) for k, w in windows.items()}, {
+            'constructor_mismatch': ('0x1e076', 34, '0x3edcd964', [], []),
+            'setfocus_mismatch': ('0x30e9f', 35, '0x234b68a8', ['0xc', '0x15'], ['0x1a82e4', '0x1aa174']),
+            'callee_mismatch': ('0xc1940', 24, '0xd3cdd4e6', [], []),
+            'load_mismatch': ('0x1dedc', 56, '0xa2a1cf6b', [], []),
+            'load_caller_mismatch': ('0x20db6', 9, '0x4130196b', [], []),
+            'reader_mismatch': ('0x22a1c', 12, '0x5f1bce8a', ['0x1'], ['0x1a82e4'])})
+        self.assertEqual(report['imm32'], {'rva': '0x1e08d', 'qword_offset': 5, 'bytes': '00400000'})
+        self.assertEqual((report['constructor_callers'], report['serializer_callers']),
+                         (['0x77e21', '0x798a5'], ['0x20c62', '0x20db6']))
+        self.assertEqual(report['jump_table'], {'table': '0x32488', 'entry': '0x3250c', 'case': '0x30e9f', 'name': 'INS_SetFocus'})
+        interior = report['interior']
+        for span in ('setfocus_span', 'load_span', 'imm32'):
+            self.assertEqual(interior[span]['raw_hits'], [], span)
+        self.assertEqual(sum(len(r['raw_hits']) for r in interior.values()), 3)  # each starts mid-instruction
+        self.assertTrue(all(not r['not_mid_instruction'] and not r['pointers_inside'] for r in interior.values()))
+        self.assertEqual(report['remap_table_70_80_90_100'], ['0x2768', '0x2dc5', '0x3470', '0x3b6f'])
+
+    def mutated(self, rva, xor, length=1):
+        data = bytearray(FL_EXE.read_bytes())
+        offset = fl_verifier.PE32(bytes(data)).offset(rva)
+        for k in range(length):
+            data[offset + k] ^= xor
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / 'X3FL.exe'
+            copy.write_bytes(bytes(data))
+            return fl_verifier.verify(copy, sha256=None), fl_verifier.verify(copy)
+
+    def test_mutated_copies_fail(self):
+        cases = (
+            (0x01e08e, 0x01, {'window_constructor'}),                        # imm32 0x4000 -> 0x4100
+            (0x030eaa, 0x01, {'window_setfocus', 'setfocus_span'}),          # a1 -> a0: MOV AL,[abs]
+            (0x01df0b, 0x01, {'window_load', 'load_span'}),                  # 89 57 24 -> 88 57 24: a byte store
+            (0x020dbb, 0x01, {'window_load_caller', 'load_callers_test_al'}),  # TEST AL,AL -> TEST EAX,EAX
+            (0x0c1952, 0x01, {'window_callee', 'setfocus_flags_dead'}),      # CMP byte -> CMP dword
+        )
+        for rva, xor, expected in cases:
+            unhashed, hashed = self.mutated(rva, xor)
+            self.assertEqual(unhashed['result'], 'FAIL', hex(rva))
+            self.assertTrue(expected <= set(unhashed['failed']), (hex(rva), unhashed['failed']))
+            self.assertNotIn('identity', unhashed['failed'])
+            self.assertIn('identity', hashed['failed'])
 
 
 class FovLaunchOption(unittest.TestCase):

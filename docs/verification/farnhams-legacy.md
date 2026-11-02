@@ -1505,3 +1505,36 @@ gate (inferred). No new fault, invalid or `attached=0` rows.
 Original brief: any flight; fire a few shots at a distant target in open space (bolt recogniser check:
 `screen_emission_additive_refused_window pair_draws>0`, `bolt_far_composite` rows). Expect `occlusion_cull_config
 requested=unset configured=0 reason=off edition=fl` and no `occlusion_cull_device` row. Tell me before relaunching.
+## FOV on FL, host evidence (2026-11-02, not installed, not flown)
+
+`fov` (`X3M_FOV`, schema default 90) now runs on FL: `src/engine/fl/fov_fl.cpp` provides `fov.h` for X3FL.exe (AP keeps
+`fov.cpp`, unchanged): the constructor imm32 at base+`0x01e08d` (plain write, crosses a qword), INS_SetFocus's
+`mov eax, [base+0x1a82e4]` at base+`0x030eaa` and the load store at base+`0x01df09` (lock cmpxchg8b each), with AP's
+remap table and exact-match load rule in FL register variants; all three or none. Sites, ABI and what held:
+[FL field of view](../reverse-engineering/fl/field-of-view.md), "Verified 2026-11-02". Rows: one
+`fov site=… rva=01e08d edition=fl status=patched reason=ok value=0x3470 … write=plain registry=none setfocus=active
+setfocus_write=atomic load=active load_write=atomic`, then up to 16 `fov_confirm frame=… edition=fl registry=… focus=…
+expected=… match=… kind=constructor|remapped|vanilla|other …` rows, one per change of the admitted registry's +0x24
+(FL has no save_load_complete marker). `fov::present()` samples the admitted registry's +0x24 once every 64 Presents
+(Present thread only) and `fov::current_focus()` returns that sample, else the configured value, with no read of its own;
+the small-parts cull's fallback uses it (the chase camera reads camera +0x298 and does not call it). The imm32 plain
+write runs at backend load inside the install window, not in the note's static-load transaction (the note's
+"Verified 2026-11-02" section: why it is safe, inferred). All measured on the WSL2 host, no Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Sites on the installed exe | `sh verification/results/fl-fov/reproduce.sh` (`verify_fov_site_fl.json`) | PASS, 31 checks: six windows (FNV-1a with fixups zeroed, `.reloc` census = declared fixups), decodes, liveness, anchors, callers, interior entries (0 into the detours), the shared table (70/80/90/100 → `0x2768`/`0x2dc5`/`0x3470`/`0x3b6f`) |
+| Native fixture | `test_fl_fov` (`verification/probe/fl_fov.cpp`, `fl_fov_shim.h`) | full run `RESULT PASS checks=49 failures=0`: one sample per 64 `present()` calls, a change seen only at the next sample, 16-row cap (`SAMPLES interval=64 frames=2817 rows=16`); 1360/1360 window bits and 96/96 fixup bits refused with nothing emitted; 196 SetFocus vectors (86 remapped) and 358 load vectors (83 remapped) through the real bytes, every register as documented, non-arithmetic flags, DF, XMM7, x87 CW, MXCSR, LastError kept; 9 seam faults (literal read-back, both read-backs, both chains, a refused SetFocus rollback, an unreadable literal restore) all-or-none or registered; `initialize()` rows; `late_claim`. `retain` run 6/6: after the window closes the jumps restore, the literal stays (`literal_retained`) |
+| Stub audit | `test_fl_fov.FlFovNativeFixture.test_emitted_stubs` (Capstone) | SetFocus 9 instructions writing only EAX, ECX, EFLAGS; load 11 writing only ECX, EDX, EFLAGS; no memory write, push/pop or call |
+| Mutations | `test_fov_site.FovSiteFl.test_mutated_copies_fail` | 5/5 mutated copies (imm32, SetFocus opcode, load store, caller TEST, callee CMP) fail their specific check |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fov_site test_fl_fov test_config_schema` | 38 tests, 0 failing; neighbours (engine_effects_sites, ui_scale, fl_cull_chain, logging_tiers, runner_housekeeping and eight test_fl_*) 95 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, `cmake --build build-ap -j` (fresh trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1110 reachable functions); `tools/config/generate.py --check` PASS (`fov` described for both editions) |
+
+User-run note: `fov` is on by default (schema 90), so the first FL launch with this build narrows the view: the
+constructor's focus becomes `0x3470` instead of the engine's `0x4000` (90° horizontal on 16:9 instead of 90° on 4:3),
+unless the ini says `fov = game`.
+
+Not verified: the in-game FL path. A user run should show the `fov … edition=fl status=patched` row, a first
+`fov_confirm … kind=constructor` row on a new game (or the save's value, `kind=remapped` for a vanilla save, after a
+load), `kind=remapped` rows on menu steps, and the wider view; mode 6 and the saved cockpit+0x240 cache stay unpatched
+(note section 3).

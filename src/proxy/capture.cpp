@@ -2098,6 +2098,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (save_loaded) fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     if (save_loaded) music_alert::loaded(); // the same marker: the trigger's fire/hit counters are a new baseline on the next frame
     if (save_loaded) music_keep::loaded(); // the same marker: the track queue's KC patch load gate opens for the next check
+#else
+    fov::present(ctx.frame); // FL: a counter test; every 64th Present one sample of the admitted registry's +0x24
+                             // (fov::current_focus() returns it) and, up to 16 times, a fov_confirm row on a change
+                             // (no save_load_complete marker on FL: a load is a change)
 #endif
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
 #if !X3M_EDITION_FL
@@ -5851,6 +5855,13 @@ void initialize_log(HMODULE module) {
                                      // 0x004033c9, right after the game wrote the -runinbg bit, redirected to a thunk
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
+#endif
+#if X3M_EDITION_FL
+    // FL field of view (docs/reverse-engineering/fl/field-of-view.md, "Verified 2026-11-02"; src/engine/fl/fov_fl.cpp):
+    // X3M_FOV=game|N as on AP. The constructor imm32 at base+0x01e08d (plain write), INS_SetFocus's MOV EAX at
+    // base+0x030eaa and the load store at base+0x01df09 (one lock cmpxchg8b each), all three or none; same window,
+    // disjoint from every other FL claim; one fov row with edition=fl.
+    fov::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

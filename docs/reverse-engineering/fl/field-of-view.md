@@ -387,3 +387,67 @@ winner receipts, commands' selectors and the bounded lifecycle call lists;
 no raw script, decompiler output or game bytes are written. Runtime first-update,
 mode 6/cache and menu/save/reload acceptance remain with the eventual fixture
 and user-run checks.
+
+## Verified 2026-11-02 against X3FL.exe
+
+Read-only re-check of sections 1–4 on the **installed** `/mnt/c/X3FL/X3FL.exe` (SHA-256 `e7f3aad8…`, the same image the
+study decoded; `/mnt/c/X3FL-orig` is not present on this host) with
+[verify_fov_site_fl.py](../../../verification/probe/verify_fov_site_fl.py) (Capstone over `inspect_x3.PE32`, its own
+`.reloc` census). The study's producer `verify_fl_fov_sites.py` and `verification/results/fl-port/fov-sites/` named in
+section 5 are not on this branch; the new verifier replaces them for the production sites. Producer and compact report:
+[verification/results/fl-fov/](../../../verification/results/fl-fov/) (`reproduce.sh`, `verify_fov_site_fl.json`).
+Measured: 31 checks PASS, about 1 s.
+
+**Held.** Every address and contract production relies on, as RVAs (base + RVA at run time):
+
+| RVA | Fact | How verified |
+| --- | --- | --- |
+| `0x01df90` / `0x01dfac` | constructor entry; `mov esi, ecx`, ESI not written before the site | decode from the entry to `0x01e098` |
+| `0x01e076` (34 bytes) | constructor window, no HIGHLOW, FNV-1a `3edcd964` | bytes + `.reloc` census |
+| `0x01e08a` / `0x01e08d` | `mov dword ptr [esi + 0x24], 0x4000`, imm32 = its last 4 bytes, qword offset 5 (crosses) | Capstone `imm_offset` 3 |
+| `0x077e21`, `0x0798a5` | the only direct constructor callers | raw E8 scan of `.text` |
+| `0x030e9f` (35 bytes) | INS_SetFocus case, HIGHLOW at +0x0c → `0x1a82e4`, +0x15 → `0x1aa174`, FNV-1a `234b68a8` | bytes + census |
+| `0x030eaa`–`0x030eaf` | one 5-byte `mov eax, [base+0x1a82e4]`, qword offset 2 | decode |
+| `0x030eaf` / `0x030eb2` | `mov [eax+0x24], ecx`, then `mov ecx, [VM]`: ECX dead after the store | Capstone register access |
+| `0x0c1940` (24 bytes) | callee prefix; its CMP is the first EFLAGS access after the span: flags dead | register access along the call path |
+| `0x030540`, `0x032488`, `0x03250c`, `0x1a3e1c` | dispatcher `cmp eax, 0x70` / `jmp [eax*4+table]`; entry 0x21 = case start (HIGHLOW); name entry = `INS_SetFocus`; no table entry inside the case | decode + census |
+| `0x01d9a0`, `0x01dedc` (56 bytes) | serializer; load window, no HIGHLOW, FNV-1a `a2a1cf6b`, decoded from the serializer entry | decode + census |
+| `0x01df09`–`0x01df0e` | `mov al, 1` (2) + `mov [edi+0x24], edx` (3), qword offset 1, no HIGHLOW; then `pop edi/esi/ebx; ret 8` | decode |
+| `0x020c62`, `0x020db6` | the only serializer callers, each followed by `test al, al`; the load caller writes ECX before reading it | raw E8 scan + register access |
+| `0x022a1c` (12 bytes) | update reader `mov eax, [slot]; …; mov esi, [eax+0x24]`, HIGHLOW +1 → `0x1a82e4` | decode + census |
+| `0x1a82e4`, `0x1aa174` | cockpit registry slot (focus at +0x24), VM slot | HIGHLOW targets above |
+
+Interior entries: no raw E8/E9/EB/7x/0F8x encoding in `.text` lands strictly inside either detour span or the imm32;
+the three raw hits inside the windows (`0x01e010`, `0x030ea5`, `0x01deda`) all start mid-instruction; no relocated
+dword points strictly inside any window. Five mutated copies (imm32, SetFocus opcode, load store, caller TEST, callee
+CMP) each fail their specific check (`test_fov_site.FovSiteFl`).
+
+**Did not hold as worded.** "No relocation inside the two detour spans" holds for the load span and the imm32 only: the
+SetFocus span's `mov eax, [abs]` carries its own HIGHLOW at `+1` (`0x030eab`), as section 2 already states. That is
+safe: the loader applies it before the claim, the tail copies the live five bytes and replays them once, and the claim's
+expected bytes are `a1` + base+`0x1a82e4`. Nothing else in sections 1–4 failed.
+
+**Implementation** (`src/engine/fl/fov_fl.cpp`, `fov_sites_fl.h`): the note's register variants, byte for byte AP's
+stub layouts with EAX for EDX (SetFocus, 45 bytes, ECX in/out) and with EDX in/out and ECX scratch (load, 55 bytes,
+`cmp edx, imm32` six bytes each); shared tables and math from `fov_sites.h`. Install order: all six windows (fixups bound
+to base) before anything is emitted; both stubs and tables published; the literal (plain write inside the install
+window, read back), the SetFocus claim, the load claim (one lock cmpxchg8b each, read back), all three or none. No
+registry write and no registry pointer retained. `shutdown()` (fixture only on FL) restores the jumps and the literal
+only while the install window is open, else `literal_retained`. `fov::present()` (Present thread) samples the slot
+under `sector_background_fl::admitted()` on its first call and every 64th call after, and logs at most 16
+`fov_confirm … edition=fl … kind=` rows, one per changed (registry, focus); `fov::current_focus()` returns that sample
+and reads nothing. `admitted()` is an identity and code-anchor check, not a lifetime lease (close frees the registry at
+`0x0785f1` and clears the slot at `0x0785f9`): the two reads are safe only because they run on the Present thread between
+frames. Native fixture `verification/probe/fl_fov.cpp`: 49 + 6 checks, 0 failures (measured).
+
+**Deviation from section 4 (install boundary).** The note asks for the FL initial-static-load entry transaction (after
+cookie initialization, before the game CRT). That transaction exists only on the abandoned `fl-codex` branch; production
+FL installs every engine patch at backend load (`load_backend` → `initialize_log`, the first `Direct3DCreate9`) inside
+`engine_patch::install_window_open()`, closed at the first Present, and the FOV sites follow it, including the plain
+write of the crossing imm32. Why the plain write is safe there: the constructor's only two direct callers, `0x077e21`
+(new-registry publication) and `0x0798a5` (save restore), run when a game is created or loaded, which needs the device
+the backend has not created yet, so no thread can be executing the constructor's immediate during the write. This is
+**inferred** from the call tree one level up (the two callers and their publication/restore roles in section 4), not
+proven by a whole-program reachability census; the same argument covers the absent registry at install (no registry
+write is done).
+Not verified: the game (not flown), the cockpit+0x240 cache (section 3), native Windows beyond the WSL-interop fixture.
