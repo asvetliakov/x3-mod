@@ -1,0 +1,19 @@
+{
+ "run": 22,
+ "step": "material-strength texture hook on FL (D3DX import slot, d3dx9_43) + proxy culls on FL (small props, GPU occlusion) via the FL seam scope and FL node layout (model +0x144); merge e1a43c4ab (9446e7a3b hook, e1a43c4ab culls)",
+ "edition": "fl",
+ "commit": "e1a43c4ab",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "81dd4fb5c7a0b9bb",
+ "dll_bytes": 55536571,
+ "installed_sha256_prefix": "81dd4fb5c7a0b9bb",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run21 (af2d404f, runs 20-21)",
+ "game_data": "addon2/06+07 overlay from run 21 unchanged",
+ "ini": "unchanged",
+ "host_tests": "run_host_suite 12 modules (material_strength, fl_material_strength_hook, cull_small_parts, occlusion_cull, fl_object_trace, exe_identity, fl_identity, logging_tiers, own_sun_hook, fl_cull_chain, fl_engine_effects, config_schema): 140 tests, 0 failing on e1a43c4ab; generate.py --check PASS 292/137; native hook fixture 61/0 (agent); check_no_x87 AP PASS (agent), FL not checkable (tool needs AP gz symbols)",
+ "build_warnings": 0,
+ "review": "Opus high x2: hook no blocker (rollback-state fix folded); culls no blocker (unreachable refusal row, engine ap_only reason, cosmetic field folded)",
+ "installed_at": "2026-11-02T20:34:46+04:00"
+}

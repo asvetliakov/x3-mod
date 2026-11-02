@@ -56,6 +56,16 @@ bool scope_node(uintptr_t* descriptor, uintptr_t* node);
 // registry reads. Returns false exactly when current() would (no observation or scope); *node_known is false exactly
 // when current() would leave Node clear (a null node or an unreadable span; *flags130 is 0 then). LastError preserved.
 bool scope_flags(uint32_t* flags130, bool* node_known);
+// The edition's scope seam is usable: the gate of the proxy-side draw culls (motion_output_cull_small_props_inc.h,
+// motion_output_occlusion_cull_inc.h), which then ask scope_node(). AP: executable_verified() (the X3AP.exe identity
+// and its engine-global anchors; the scope node itself is from the AP callsite hook). FL: active() (object_trace_fl.cpp:
+// the X3FL.exe identity, the site and target bytes and the engine anchor at engine_slot_rva matched and the redirect is
+// installed). No memory read; LastError preserved.
+#if X3M_EDITION_FL
+inline bool scope_available() { return active(); }
+#else
+inline bool scope_available() { return executable_verified(); }
+#endif
 bool shutdown(); // restore only our own displacement, while no submission can run
 #if defined(X3M_OBJECT_TRACE_FIXTURE) && X3M_EDITION_FL
 // FL fixture seam (src/engine/fl/object_trace_fl.cpp): the same site gate as initialize() (a call rel32 to

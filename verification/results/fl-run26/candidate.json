@@ -1,0 +1,19 @@
+{
+ "run": 26,
+ "step": "chase cursor fire on FL (chase_fire: one relocated je at RVA 0x4ecad; early-filter refusal counters on the FL row); chase_aim_trace stays ap_only (diagnostic_not_ported); commit b3b0e30c0",
+ "edition": "fl",
+ "commit": "b4ea9ff1d",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "3851f91d833a4929",
+ "dll_bytes": 55621875,
+ "installed_sha256_prefix": "3851f91d833a4929",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run25 (413eb49b)",
+ "game_data": "addon2/06+07 unchanged",
+ "ini": "unchanged",
+ "host_tests": "run_host_suite 10 modules 147 tests 0 failing on main after the transition wiring test accepted the fire report line (b4ea9ff1d); generate.py --check PASS 292/137; verify_chase_fire_sites_fl.py PASS (5 windows, 481 bytes, 11 relocated dwords, no fixup into the fire function, FuncInfo nTry=0); native fixture fl_chase_fire 89/0 (agent)",
+ "build_warnings": 0,
+ "review": "Opus high: no blocker; folded: evidence wording (model checks), engine_memory wording, FL refusal counters, shutdown symmetry, two verifier checks, cursor-cell exposure recorded",
+ "installed_at": "2026-11-03T01:32:36+04:00"
+}

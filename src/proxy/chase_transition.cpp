@@ -11,12 +11,49 @@
 #include "cpu_state.h"
 #include "capture.h"
 #include "telemetry.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/chase_camera_sites_fl.h"
+#include "../engine/fl/chase_transition_sites_fl.h"
+#include "../engine/fl/executable_identity_fl.h"
+#endif
 #include <atomic>
 #include <cstring>
 
 static_assert(sizeof(void*) == 4, "Verified x86 game ABI only");
 namespace x3m::chase_transition {
 namespace {
+#if X3M_EDITION_FL
+// FL (X3FL.exe, relocatable; src/engine/fl/chase_transition_sites_fl.h, docs/reverse-engineering/fl/
+// chase-transition.md "Verified 2026-11-02"): the same witness/observer/restore groups bound to the loaded base by
+// fl_admit() once every identity window matches. Eight sites: the six mandatory witnesses and the script/load mode
+// stores (AP's connect observer, kind 8, is a diagnostic only and is not claimed: diagnostics stay off on FL, their
+// provenance and identity readers are AP-bound). Register ABI differences are local to handle(),
+// restore_on_mode_store() and restore_inject(); native return addresses are normalized to preferred-base VAs.
+namespace S = x3m::fl::chase_transition_fl;
+constexpr unsigned mandatory = S::mandatory, site_count = S::site_count;
+engine_patch::SiteSpec specs[site_count]{};
+constexpr unsigned restore_site_count = S::restore_site_count, restore_inject_kind = 0, restore_eh_kind = 3;
+engine_patch::SiteSpec restore_specs[restore_site_count]{};
+std::uintptr_t fl_base = 0;                // the admitted base (0 until fl_admit succeeds)
+std::uint32_t fl_native_return = 0;        // base + S::native_return_rva
+const char* fl_refusal = "not_initialized"; // initialize()'s FL status
+unsigned fl_failed_window = S::window_count;
+#ifdef X3M_CHASE_TRANSITION_FL_FIXTURE
+std::uintptr_t fixture_base_ = 0;  // initialize()'s base instead of fl::module_base() when nonzero
+unsigned fixture_fault_claim_ = ~0u; // one-shot: the n-th claim's read-back sees a foreign byte
+unsigned fixture_claims_ = 0;
+#endif
+static_assert(S::sites[6].bytes[1] == 0x88 && S::sites[7].bytes[1] == 0x97,
+              "mode stores: [eax+0x150]=ecx (script), [edi+0x150]=edx (load)");
+static_assert(x3m::fl::chase_camera_fl::cockpit_view_mode == 0x150 &&
+                  x3m::fl::chase_camera_fl::cockpit_connect_mode == 0x1c0 &&
+                  x3m::fl::chase_camera_fl::cockpit_flags == 0x1a0 &&
+                  x3m::fl::chase_camera_fl::cockpit_ref_object == 0xc &&
+                  x3m::fl::chase_camera_fl::cockpit_view_object == 0x10 &&
+                  x3m::fl::chase_camera_fl::cockpit_sector == 0x1fc &&
+                  x3m::fl::chase_camera_fl::cockpit_sector_object == 0x54,
+              "restore_read_frame's cockpit offsets are the FL-verified ones");
+#else
 // All spans are whole instructions, plain-copy relocations. The constructor
 // has one successful exit; the updater has two. See the focused site probe.
 // clang-format off
@@ -48,6 +85,7 @@ constexpr engine_patch::SiteSpec restore_specs[] = {
 };
 // clang-format on
 constexpr unsigned restore_site_count = 4, restore_inject_kind = 0, restore_eh_kind = 3;
+#endif
 engine_patch::Site sites[site_count], restore_sites[restore_site_count];
 std::atomic<bool> enabled{false}, diagnostic{false}, restore_enabled{false};
 bool initialized = false, timing = false;
@@ -108,7 +146,11 @@ void snapshot(std::uintptr_t c, Snapshot& s) {
     if (field(c, 0x130, s.boom)) s.valid |= 128;
 }
 // Process roots; the CPU fixture aliases them to fixture-owned memory.
+#if X3M_EDITION_FL
+std::uint32_t native_registry_root = 0, cockpit_registry_root = 0; // base + slot RVA once admitted
+#else
 std::uint32_t native_registry_root = 0x60850c, cockpit_registry_root = 0x608504;
+#endif
 bool active_handle(std::uintptr_t cockpit, std::uint32_t& handle) {
     std::uint32_t registry = 0, table = 0, bucket[2]{}, link = 0;
     if (!field(cockpit_registry_root, 0, registry) || !field(registry, 0, table) || !field(registry, 0x10, handle) ||
@@ -231,8 +273,13 @@ std::uint64_t restore_report_frame = 0; // the last reported frame, for the outc
 // keys, as the script's class-static calls do), the method by a content strcmp
 // over the object's class chain (0x004b0740); AL 0 when object or method is
 // missing. The wrapper reads argc dwords after argc (0x0049f5d0..0x0049f5fc).
+#if X3M_EDITION_FL
+std::uint32_t game_root = 0;               // base + S::game_root_rva once admitted
+std::uintptr_t script_call_address = 0;    // base + S::script_call_rva once admitted
+#else
 std::uint32_t game_root = detail::restore_game_root;
 std::uintptr_t script_call_address = detail::restore_script_call;
+#endif
 using ScriptCall0 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
                                             std::uint32_t);
 using ScriptCall1 = std::uint32_t(__cdecl*)(std::uint32_t, std::uint32_t, std::uint32_t, const char*, std::uint32_t,
@@ -354,10 +401,21 @@ void restore_on_complete(std::uintptr_t cockpit) {
 void restore_on_mode_store(std::uint32_t* regs, std::uint32_t thread) {
     if (!restore_enabled.load(std::memory_order_relaxed) || restore.phase < detail::phase_pending) return;
     const std::uintptr_t cockpit = regs[7];
+#if X3M_EDITION_FL
+    // FL: the dispatcher's argument frame is EBX (entry ESP - 4), not EBP; the native-call return is base-relative
+    // and the command word must be the mode case 0x30.
+    const std::uint32_t requested = regs[6], ebp = regs[4];
+    const auto* life = state.find(cockpit);
+    std::uint32_t return_pc = 0, task = 0, context = 0, id = 0, desc = 0, class_id = 0, command = 0;
+    if (!(field(ebp, S::frame_return, return_pc) && return_pc == fl_native_return && fl_native_return &&
+          field(ebp, S::frame_command, command) && command == S::mode_command &&
+          field(ebp, S::frame_task, task) && task && !(task & 3) &&
+#else
     const std::uint32_t requested = regs[6], ebp = regs[2];
     const auto* life = state.find(cockpit);
     std::uint32_t return_pc = 0, task = 0, context = 0, id = 0, desc = 0, class_id = 0;
     if (!(field(ebp, 4, return_pc) && return_pc == 0x4a3909 && field(ebp, 0xc, task) && task && !(task & 3) &&
+#endif
           field(task, 0x3c, context) && context && !(context & 3) && field(context, 0, id) &&
           std::int32_t(id) < 0 && field(context, 8, desc) && desc && !(desc & 3) && field(desc, 0, class_id))) {
         id = 0;
@@ -426,7 +484,12 @@ __attribute__((noinline)) void restore_inject(std::uint32_t* regs, x3m::CpuState
             detail::RestoreFrame fresh;
             std::uint32_t controlled = 0, game = 0, pause_bits = 0;
             restore_read_frame(restore.bound_cockpit, fresh);
+#if X3M_EDITION_FL
+            (void)esp;
+            controlled = regs[6]; // FL input worker: ECX = the controlled object (spilled at 0x0cfd0f)
+#else
             field(esp, 4, controlled);
+#endif
             if (field(game_root, 0, game) && game) field(game, 0x4a0, pause_bits);
             EngineProbe probe{restore.bound_cockpit};
             call = restore.on_inject_entry(thread, fresh, controlled, controlled ? pause_bits : 1, probe,
@@ -519,6 +582,52 @@ void handle(unsigned kind, std::uint32_t* regs) {
     RestoreRows rows;
     {
         Guard guard;
+#if X3M_EDITION_FL
+        // FL register ABI (chase_transition_sites_fl.h): constructor, wrapper and updater take the cockpit in ECX
+        // (regs[6]); the mode store has EAX = cockpit, ECX = mode; the load store EDI = cockpit, EDX = mode. Return
+        // addresses are normalized to preferred-base VAs for the core. Diagnostics (record) are never on here.
+        switch (kind) {
+        case 0:
+            chase_lead::native_timing_invalidate(0, thread);
+            cockpit = regs[6];
+            if (field(esp, 0, caller)) caller = S::preferred(caller, fl_base);
+            chase_lead::native_timing_invalidate(cockpit, thread);
+            state.construct(cockpit, thread, caller);
+            record(0, cockpit, thread, caller); // diagnostics are never on for FL: one relaxed load
+            break;
+        case 1:
+            cockpit = regs[7];
+            if (state.complete(cockpit, thread)) restore_on_complete(cockpit);
+            break;
+        case 2:
+            chase_lead::native_timing_invalidate(0, thread);
+            cockpit = regs[6];
+            if (cockpit) {
+                if (field(esp, 0, caller)) caller = S::preferred(caller, fl_base);
+                restore_on_destroy(cockpit, caller);
+                chase_lead::native_timing_invalidate(cockpit, thread);
+                state.destroy(cockpit);
+            }
+            break;
+        case 3:
+            chase_lead::native_timing_invalidate(0, thread);
+            cockpit = regs[6];
+            state.begin(cockpit, esp, thread);
+            restore_on_update();
+            break;
+        case 4:
+        case 5:
+            chase_lead::native_timing_invalidate(0, thread);
+            state.end(regs[2] + 4, thread);
+            break;
+        case 6:
+            restore_on_mode_store(regs, thread);
+            break;
+        case 7:
+            restore_on_load();
+            break;
+        }
+#else
         switch (kind) {
         case 0:
             // Reentry retires this thread even if the constructor argument is unreadable.
@@ -573,6 +682,7 @@ void handle(unsigned kind, std::uint32_t* regs) {
             record(8, regs[1], thread, caller, regs[7]);
             break;
         }
+#endif
         rows.take();
     }
     rows.emit(); // never under the Guard
@@ -700,12 +810,48 @@ bool restore_group(unsigned first, unsigned end) {
         if (sites[i].patched_in && !engine_patch::restore(sites[i])) okay = false;
     return okay;
 }
+#if X3M_EDITION_FL
+// The FL read-back after a successful claim (the chase_camera/engine_effects FL convention): the site must hold this
+// module's jump before a stub is chained. Otherwise, inside the install window, the original first five bytes go back
+// over whatever is there; the site is released only when the whole span then reads back as the original (else it
+// stays registered and inert: nothing was chained, so a jump that is still ours reaches the plain tail).
+bool fl_confirm(engine_patch::Site& s) {
+#ifdef X3M_CHASE_TRANSITION_FL_FIXTURE
+    if (fixture_claims_++ == fixture_fault_claim_) *reinterpret_cast<volatile unsigned char*>(s.spec.address + 1) ^= 0xff;
+#endif
+    unsigned char now[5]{};
+    if (engine_patch::read_code(s.spec.address, now, 5) && !std::memcmp(now, s.patched, 5)) return true;
+    // The restore is a plain write when the span crosses a qword: only while the install window is still open (no
+    // engine thread can be inside the span). claim() just checked it on this thread, but re-check rather than rely on
+    // that; a closed window leaves the site registered and inert (readback_rollback_failed).
+    auto* code = reinterpret_cast<void*>(s.spec.address);
+    DWORD writable = 0, unused = 0;
+    if (engine_patch::install_window_open() && VirtualProtect(code, s.spec.length, PAGE_EXECUTE_READWRITE, &writable)) {
+        engine_patch::write_code(s.spec.address, s.original, 5);
+        FlushInstructionCache(GetCurrentProcess(), code, s.spec.length);
+        VirtualProtect(code, s.spec.length, s.protection, &unused);
+    }
+    unsigned char back[engine_patch::max_prologue]{};
+    if (engine_patch::read_code(s.spec.address, back, s.spec.length) && !std::memcmp(back, s.original, s.spec.length)) {
+        s.patched_in = false;
+        s.status = "readback_restored";
+    } else
+        s.status = "readback_rollback_failed";
+    return false;
+}
+#endif
 bool install_group(unsigned first, unsigned end) {
     for (unsigned i = first; i < end; ++i) {
         if (!engine_patch::claim(sites[i], specs[i])) {
             restore_group(first, end);
             return false;
         }
+#if X3M_EDITION_FL
+        if (!fl_confirm(sites[i])) {
+            restore_group(first, end);
+            return false;
+        }
+#endif
         void** next = nullptr;
         void* stub = emit(i, &next);
         if (!stub || !next || !engine_patch::store_pointer(next, *sites[i].entry) ||
@@ -729,6 +875,12 @@ bool restore_sites_install(const engine_patch::SiteSpec* table) {
             restore_sites_restore();
             return false;
         }
+#if X3M_EDITION_FL
+        if (!fl_confirm(restore_sites[i])) {
+            restore_sites_restore();
+            return false;
+        }
+#endif
         void** next = nullptr;
         void* stub = emit_restore(i, &next);
         if (!stub || !next || !engine_patch::store_pointer(next, *restore_sites[i].entry) ||
@@ -770,6 +922,38 @@ bool inject_release_if_unused() {
     inject_live = false;
     return true;
 }
+#if X3M_EDITION_FL
+std::uintptr_t fl_module_base() {
+#ifdef X3M_CHASE_TRANSITION_FL_FIXTURE
+    if (fixture_base_) return fixture_base_;
+#endif
+    return x3m::fl::module_base();
+}
+// Every identity window at base + RVA, before any write: nullptr when all are exactly the engine's (then the twelve
+// specs, the roots, the call target and the native return are bound to this base), else the refusal.
+const char* fl_admit(std::uintptr_t base) {
+    auto read = [](std::uintptr_t at, void* out, unsigned n) {
+        return engine_patch::read_code(at, static_cast<unsigned char*>(out), n);
+    };
+    if (const char* refusal = S::plan(base, read, &fl_failed_window)) return refusal;
+    auto bind = [base](const S::SiteRow& row, engine_patch::SiteSpec& spec) {
+        spec = engine_patch::SiteSpec{};
+        spec.name = row.name;
+        spec.address = base + row.rva;
+        S::expected(row, base, spec.expected);
+        spec.length = row.length;
+    };
+    for (unsigned i = 0; i < site_count; ++i) bind(S::sites[i], specs[i]);
+    for (unsigned i = 0; i < restore_site_count; ++i) bind(S::restore_sites[i], restore_specs[i]);
+    native_registry_root = std::uint32_t(base + S::sim_registry_rva);
+    cockpit_registry_root = std::uint32_t(base + S::cockpit_registry_rva);
+    game_root = std::uint32_t(base + S::game_root_rva);
+    script_call_address = base + S::script_call_rva;
+    fl_native_return = std::uint32_t(base + S::native_return_rva);
+    fl_base = base;
+    return nullptr;
+}
+#endif
 bool restore_wanted() {
     wchar_t setting[8]{};
     return x3m::config::get(L"X3M_CHASE_VIEW_RESTORE", setting, 8) == 1 && setting[0] == L'1';
@@ -787,6 +971,88 @@ bool restore_retries(unsigned& out) {
     return true;
 }
 }
+#if X3M_EDITION_FL
+// FL: the same three groups as AP (mandatory witnesses with the chase camera; the two mode-store observers and the
+// four restore sites only with X3M_CHASE_VIEW_RESTORE=1), bound to the admitted base after every identity window
+// matched, each group both-or-none. Diagnostics stay off (diagnostics=0 reason=ap_only). Rows carry edition=fl.
+bool initialize() {
+    const DWORD error = GetLastError();
+    if (initialized) {
+        SetLastError(error);
+        return installed();
+    }
+    initialized = true;
+    const bool wanted = chase_camera::wanted() && chase_camera::installed();
+    const std::uintptr_t base = wanted ? fl_module_base() : 0;
+    if (!wanted)
+        fl_refusal = "camera_not_installed";
+    else if (!base)
+        fl_refusal = "executable_mismatch";
+    else if (!engine_patch::install_window_open())
+        fl_refusal = "late_claim";
+    else if (const char* refusal = fl_admit(base))
+        fl_refusal = refusal;
+    else if (!install_group(0, mandatory))
+        fl_refusal = "claim_failed";
+    else
+        fl_refusal = "active";
+    const bool okay = !std::strcmp(fl_refusal, "active");
+    LARGE_INTEGER f{};
+    timing = okay && telemetry::enabled() && QueryPerformanceFrequency(&f) && f.QuadPart > 0;
+    frequency = timing ? std::uint64_t(f.QuadPart) : 0;
+    enabled.store(okay, std::memory_order_release);
+    const bool restore_requested = restore_wanted();
+    unsigned retries = detail::restore_default_retries;
+    const bool retries_ok = restore_retries(retries);
+    // Both or none: the two observers serve only the restore here, so a refused restore group takes them back too.
+    const bool observers_claimed = okay && restore_requested && retries_ok && install_group(mandatory, site_count);
+    const char* inject_status = "unclaimed";
+    const bool restore_okay = observers_claimed && inject_acquire(&inject_status);
+    if (observers_claimed && !restore_okay) restore_group(mandatory, site_count);
+    const bool observers = restore_okay;
+    inject_chase = restore_okay;
+    diagnostic.store(false, std::memory_order_release);
+    log("chase_transition installed=%u status=%s edition=fl base=0x%08lx window=%s window_closed_by=%s diagnostics=0 diagnostics_reason=ap_only observers=%u mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=%u",
+        unsigned(okay), fl_refusal, static_cast<unsigned long>(base),
+        fl_failed_window < S::window_count ? S::window_names[fl_failed_window] : "-",
+        engine_patch::install_window_reason() ? engine_patch::install_window_reason() : "-", unsigned(observers),
+        unsigned(timing));
+    for (unsigned i = 0; i < site_count; ++i)
+        if (sites[i].patched_in || (okay && (i < mandatory || restore_requested)))
+            log("chase_transition_site index=%u site=0x%08lx rva=0x%06lx patched=%u atomic_write=%u status=%s edition=fl",
+                i, static_cast<unsigned long>(specs[i].address), static_cast<unsigned long>(S::sites[i].rva),
+                unsigned(sites[i].patched_in), unsigned(sites[i].atomic_write), sites[i].status);
+    {
+        Guard guard;
+        restore = {};
+        restore.retries = retries;
+        restore_filter_publish();
+    }
+    restore_enabled.store(restore_okay, std::memory_order_release);
+    if (restore_requested || restore_okay) {
+        const char* reason = !okay                ? fl_refusal
+                             : !retries_ok        ? "invalid_retries"
+                             : !observers_claimed ? "observers_failed"
+                             : !restore_okay      ? inject_status
+                                                  : "ok";
+        log("chase_view_restore installed=%u requested=%u status=%s edition=fl path=engine sites=1 cancel_sites=%u inject_site=0x%08lx inject_rva=0x%06lx call=0x%08lx call_rva=0x%06lx callback=%u method=SelectMode mode=%u refresh=UpdateVisibility refresh_scan_cells=%u observers=%u retries=%u retries_valid=%u expiry_updates=%u due_frames=%u retry_spacing=%u",
+            unsigned(restore_okay), unsigned(restore_requested), reason, restore_site_count - 1,
+            static_cast<unsigned long>(restore_specs[0].address), static_cast<unsigned long>(S::restore_sites[0].rva),
+            static_cast<unsigned long>(script_call_address), static_cast<unsigned long>(S::script_call_rva),
+            detail::restore_callback_none, detail::restore_rear_mode, detail::restore_caller_scan_cells,
+            unsigned(observers), retries, unsigned(retries_ok), detail::restore_pending_update_expiry,
+            detail::restore_due_frames, detail::restore_retry_spacing);
+        for (unsigned i = 0; i < restore_site_count; ++i)
+            if (restore_sites[i].patched_in || okay)
+                log("chase_view_restore_site index=%u site=0x%08lx rva=0x%06lx patched=%u atomic_write=%u status=%s edition=fl",
+                    i, static_cast<unsigned long>(restore_specs[i].address),
+                    static_cast<unsigned long>(S::restore_sites[i].rva), unsigned(restore_sites[i].patched_in),
+                    unsigned(restore_sites[i].atomic_write), restore_sites[i].status);
+    }
+    SetLastError(error);
+    return okay;
+}
+#else
 bool initialize() {
     const DWORD error = GetLastError();
     if (initialized) {
@@ -846,7 +1112,14 @@ bool initialize() {
     SetLastError(error);
     return okay;
 }
+#endif
 bool inject_attach(const InjectConsumer* consumer, const char** status) noexcept {
+#if X3M_EDITION_FL
+    // FL: no second consumer (the SETA restore's poll, call target and [ESP+4] controlled-object read are AP-bound).
+    (void)consumer;
+    *status = "ap_only";
+    return false;
+#endif
     const DWORD error = GetLastError();
     const char* reason = "invalid_consumer";
     bool ok = consumer && consumer->poll && consumer->result && consumer->vm && consumer->unwind &&

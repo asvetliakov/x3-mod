@@ -2100,6 +2100,7 @@ private:
     bool props_on_ = false, props_attach_failed_ = false;
     float props_px_ = 0.f;
     cull_small_props::core::Culler* props_ = nullptr;
+    cull_small_props::core::Addresses props_addresses_{}; // AP: the fixed VAs; FL: filled at attach (module base + RVA)
     bool attach_small_props() noexcept;
     bool cull_small_prop(const MotionDrawCall& call,
                          MotionRoute& route); // not noexcept: no terminate region (SJLJ registration) per scene draw
@@ -2115,6 +2116,7 @@ private:
     // row under --debug).
     bool occlusion_on_ = false, occlusion_attach_failed_ = false, occlusion_pass_failed_ = false;
     occlusion_cull::core::Classifier* occlusion_classifier_ = nullptr;
+    std::uintptr_t occlusion_body_global_ = 0; // the body manager slot the classifier reads (set with the classifier)
     occlusion_cull::core::Batcher* occlusion_batcher_ = nullptr; // the per-ship batching tables (~0.5 MB, one allocation)
     unsigned occlusion_retest_ = occlusion_cull::core::retest_default;
     occlusion_cull::core::CadenceSpread occlusion_cadence_spread_{}; // re-tests per frame over the last retest frames

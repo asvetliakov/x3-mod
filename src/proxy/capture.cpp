@@ -65,6 +65,7 @@
 #include "object_capture.h"
 #include "sector_background.h"
 #if X3M_EDITION_FL
+#include "chase_fire.h"
 #include "../engine/fl/fog_prefill_fl.h"
 #include "../engine/fl/sector_background_fl.h"
 #endif
@@ -202,7 +203,7 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 bool cull_small_props_on = false; // X3M_CULL_SMALL_PROPS (default on): the render-only small-prop draw skip,
 float cull_small_props_px = 0.f;  // at X3M_CULL_SMALL_PARTS_PX pixels; needs X3M_MOTION_OUTPUT=1 (cull_small_props_core.h)
-bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default on): the occlusion-query skip of hidden ship sub-parts;
+bool occlusion_cull_on = false; // X3M_OCCLUSION_CULL (default off): the occlusion-query skip of hidden ship sub-parts;
                                 // needs X3M_MOTION_OUTPUT=1 (occlusion_cull_core.h)
 bool occlusion_cull_engine = false; // X3M_OCCLUSION_CULL=engine with the engine-side stub installed
                                     // (occlusion_engine_cull.h): the route publishes the stub's table per frame
@@ -212,6 +213,12 @@ unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X
 #define X3M_OWN_SUN_EDITION "fl"
 #else
 #define X3M_OWN_SUN_EDITION "ap"
+#endif
+// The proxy culls' config rows (cull_small_props, occlusion_cull_config): " edition=fl" appended on FL, AP unchanged.
+#if X3M_EDITION_FL
+#define X3M_CULL_EDITION_FIELD " edition=fl"
+#else
+#define X3M_CULL_EDITION_FIELD ""
 #endif
 // Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; both editions since step 3): the setting as
 // installed (the probe redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS,
@@ -1514,6 +1521,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process
                                                       // exit
         voice_dmo_fallback::shutdown();     // disarms the fault witness; the site patch stays with the other claims
+#else
+        chase_camera::note_last_device(); // FL pose seam: kept for the process lifetime, as on AP
 #endif
         session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
                                             // drain cost)
@@ -2092,6 +2101,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (save_loaded) fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     if (save_loaded) music_alert::loaded(); // the same marker: the trigger's fire/hit counters are a new baseline on the next frame
     if (save_loaded) music_keep::loaded(); // the same marker: the track queue's KC patch load gate opens for the next check
+#else
+    fov::present(ctx.frame); // FL: a counter test; every 64th Present one sample of the admitted registry's +0x24
+                             // (fov::current_focus() returns it) and, up to 16 times, a fov_confirm row on a change
+                             // (no save_load_complete marker on FL: a load is a change)
 #endif
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
 #if !X3M_EDITION_FL
@@ -2135,6 +2148,13 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         chase_aim_trace::report(ctx.frame);  // bounded cursor-fire diagnostics with telemetry
         chase_transition::report(ctx.frame); // bounded native view/lifetime observations
         chase_lead::report(ctx.frame);       // predictive marker results, no per-draw reporting
+    }
+#else
+    if (ctx.capture || ctx.frame % 300 == 0) {
+        chase_camera::report(ctx.frame);     // FL: the pose seam (no line otherwise)
+        chase_lead::report(ctx.frame);       // FL: lead marker and central HUD windows (telemetry only)
+        chase_transition::report(ctx.frame); // FL: the view restore's state/timing rows (telemetry only)
+        chase_fire::report(ctx.frame);       // FL: cursor-fire override/refusal window (telemetry only)
     }
 #endif
     if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
@@ -5846,6 +5866,13 @@ void initialize_log(HMODULE module) {
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
 #endif
+#if X3M_EDITION_FL
+    // FL field of view (docs/reverse-engineering/fl/field-of-view.md, "Verified 2026-11-02"; src/engine/fl/fov_fl.cpp):
+    // X3M_FOV=game|N as on AP. The constructor imm32 at base+0x01e08d (plain write), INS_SetFocus's MOV EAX at
+    // base+0x030eaa and the load store at base+0x01df09 (one lock cmpxchg8b each), all three or none; same window,
+    // disjoint from every other FL claim; one fov row with edition=fl.
+    fov::initialize();
+#endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:
     // base+0x8af0a (src/engine/fl/sun_occlusion_fl.cpp, docs/architecture/own-sun-pass.md section 8), same window.
@@ -5926,8 +5953,8 @@ void initialize_log(HMODULE module) {
                 reason = "route_off"; // the skip lives in the motion route's draw path
             cull_small_props_on = !std::strcmp(reason, "ok");
             cull_small_props_px = cull_small_props_on ? float(px) : 0.f;
-            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s", mode_length ? mode : "unset", px,
-                cull_small_props_on ? 1u : 0u, reason);
+            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s" X3M_CULL_EDITION_FIELD,
+                mode_length ? mode : "unset", px, cull_small_props_on ? 1u : 0u, reason);
         }
     }
     {
@@ -5935,7 +5962,8 @@ void initialize_log(HMODULE module) {
         // the motion route tests ship sub-part draws with occlusion queries and skips those its previous frame's test
         // found hidden. engine = the same plus a second stub on the small-parts claim of the cull/LOD pass (0x0047d2a2,
         // occlusion_engine_cull.h) that skips a part's whole render visit when the route skipped every draw of it in
-        // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means on; one
+        // the previous frame; refused (draw-level cull alone) when the claim fails. Unset or empty means off (the documented default; the
+        // code defaulted to on until 2026-11-02, so every flight before that ran the cull); one
         // occlusion_cull_config row on every launch (requested=unset when absent). A device that refuses occlusion
         // queries logs its own occlusion_cull_device attached=0 row and stays off.
         wchar_t mode_text[16]{};
@@ -5958,6 +5986,10 @@ void initialize_log(HMODULE module) {
 #if !X3M_EDITION_FL
         occlusion_cull_engine =
             occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine) && occlusion_cull_on;
+        const char* engine_status = occlusion_engine_cull::state();
+#else
+        // The engine-side stub is X3AP.exe's: on FL `engine` runs the draw-level cull alone and says why.
+        const char* engine_status = parsed == engine::Mode::engine ? "ap_only" : occlusion_engine_cull::state();
 #endif
         // X3M_OCCLUSION_CULL_RETEST: frames between tests of a part last read visible (1..64; unset = 8); anything
         // else keeps the default (retest_status=invalid_setting or too_long).
@@ -5970,11 +6002,11 @@ void initialize_log(HMODULE module) {
         const bool retest_ok = retest_length < 16 && occlusion_cull::core::parse_retest(retest, &frames);
         occlusion_cull_retest = retest_ok ? frames : occlusion_cull::core::retest_default;
         log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u retest=%u retest_setting=%s "
-            "retest_status=%s engine=%u engine_status=%s",
+            "retest_status=%s engine=%u engine_status=%s" X3M_CULL_EDITION_FIELD,
             mode_length ? mode : "unset", occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size,
             occlusion_cull_retest, retest_length ? retest : "-",
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
-            occlusion_engine_cull::state());
+            engine_status);
     }
     // Merged-LOD material strength: the D3DX texture row is patched for the atlas marks alone (texture_created below).
     if (lod_material_strength_requested) {

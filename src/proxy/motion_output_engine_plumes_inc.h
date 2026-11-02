@@ -250,7 +250,7 @@ void MotionOutput::engine_far_append() noexcept {
     const unsigned count = engine_far_jets::count();
     const engine_far_jets::core::Raw* raw = engine_far_jets::entries();
 #if X3M_EDITION_FL
-    // FL: the context scale the handler owned at the site (engine_far_jets_layout_fl.h), never a later context +0x2c
+    // FL: the context scale the handler owned at the site (engine_far_jets.cpp), never a later context +0x2c
     // read (docs/reverse-engineering/fl/engine-effects.md, "Verified 2026-11-03").
     const std::uint32_t* owned_scale = engine_far_jets::context_scale_bits();
 #endif

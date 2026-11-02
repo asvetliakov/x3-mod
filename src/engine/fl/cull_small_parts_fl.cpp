@@ -6,7 +6,7 @@
 //
 // Far jets (X3M_ENGINE_EFFECTS exactly plumes, as on AP): the stub hands culled JET nodes (+0x130 & 0x4000001) to
 // x3m_engine_far_jet (src/proxy/engine_far_jets.cpp) with (node ESI, measure ECX, view EBX). Its FL read set is verified
-// from X3FL.exe's bytes (docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03", engine_far_jets_layout_fl.h):
+// from X3FL.exe's bytes (docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03", engine_node_layout.h):
 // model +0x144, every other field at the AP offset, and the context scale owned at the site rather than read later. A
 // JET writer whose bytes differ (base+0x03deb3) drops only the far block (far_jets=writer_mismatch), as on AP.
 //
@@ -379,8 +379,8 @@ void note_scene_projection(float m00, float m11) {
     if (patched_) scene_.note(m00, m11);
 }
 // As on AP: the scene view's P[0]/P[5] latched at its Clear (motion_output read_camera), else the live projection
-// through the FL camera reader with the registry focus. On FL fov::current_focus() returns its configured value, the
-// engine default 0x4000 (fov.cpp is linked but its initialize() is AP only, so it never reads an engine address).
+// through the FL camera reader with the registry focus. On FL fov::current_focus() is src/engine/fl/fov_fl.cpp's: the
+// admitted registry's +0x24 as fov::present() sampled it last (every 64th Present), else the configured value; no read.
 void begin_frame() {
     if (!patched_) return;
     const DWORD error = GetLastError();

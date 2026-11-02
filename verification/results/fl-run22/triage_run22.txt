@@ -1,0 +1,91 @@
+log=/home/asvetl/x3m-logs/fl-run22-culls-strength.log frames=34100
+== Q1 captures (draws=application draws, issued=reached device)
+capture1 frames=5870-5877 draws=58-58 not_issued=1-1 dt_median60=4.0 fog=0
+capture2 frames=31537-31544 draws=182-185 not_issued=1-1 dt_median60=4.0 fog=1
+fogged draws: n=5194 min=1 med=187.0 p90=212 max=226
+fogged draws-issued: n=5194 min=0 med=1.0 p90=3 max=6
+fogged dt_ms: n=5194 min=3 med=4.0 p90=5 max=3016
+clear(>20) draws: n=28895 min=24 med=72 p90=154 max=817
+clear(>20) draws-issued: n=28895 min=0 med=1 p90=3 max=28
+clear(>20) dt_ms: n=28895 min=1 med=4 p90=4 max=12144
+== once rows
+  lod_material_strength_mode requested=unset enabled=1
+  cull_small_props requested=unset px=4.0000 configured=1 reason=ok edition=fl
+  occlusion_cull_config requested=unset configured=1 reason=ok pool=1024 retest=8 retest_setting=- retest_status=ok engine=0 engine_status=off edition=fl
+  lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll slot_rva=0x00150374 edition=fl
+  lod_material_strength_configured enabled=1 texture_hook=1
+  cull_small_props_device device=1 attached=1 px=4.0000 edition=fl model_offset=0x144
+  occlusion_cull_device device=1 attached=1 reason=ok result=00000000 pool=1024 edition=fl
+  lod_strength_session device=1 twins=14 refused=0 failed=0 transform_ms=2.54 create_ms=11.85 draws=366984 marked_seen=82,82,82,82,0 marked=366984 no_twin=0 no_twin_keys=0 no_twin_keys_dropped=0 at=exit
+== Q2 lod_strength_texture rows=16 distinct_textures=16
+  (slot,lane,k,payload,stored,size): {('0', '0', '0', '0', '0', '699192'): 4, ('2', '0', '0', '0', '0', '1398256'): 4, ('3', '3', '2', '1', '1', '1398256'): 4, ('1', '0', '0', '0', '0', '1398256'): 4}
+  lod_strength_frame rows=30 seen_first=3,3,3,3,0 seen_max=82,82,82,82,0 table_max=76 twins_last=14 session_draws_last=366984 rows_with_no_twin/refused/failed=0
+  lod_strength_variant rows=14 forms={'swiden': 8, 'owiden': 3, 'eswiden': 3} refusals={'none': 14}
+== Q3 cull_small_props_frame rows=109
+  totals: {'draws': 69733, 'culled': 2089, 'kept': 67644, 'kept_size': 67617, 'no_bounds': 27, 'unbounded': 0, 'unresolved': 0, 'deferred': 0, 'exempt_own': 0, 'exempt_target': 0, 'no_scope': 32700, 'resolves': 2413, 'walks': 20, 'frames': 32700}
+  draws per window: {'600': 98, '1099': 1, '1228': 1, '922': 1, '1061': 1, '2014': 1, '666': 1, '614': 1, '1065': 1, '904': 1, '702': 1, '658': 1} no_scope per window: n=109 min=300 med=300 p90=300 max=300
+  resolves per window: n=109 min=5 med=11 p90=21 max=611
+== Q4 occlusion_cull_session rows=110 (cumulative)
+  frame 1126 {'frames': '300', 'candidates': '2932', 'tested': '0', 'hidden': '0', 'skipped': '0', 'ready': '0', 'not_ready': '0', 'unstable': '0', 'no_hull': '2932', 'no_bounds': '68', 'unbounded': '0', 'retest_skipped': '0', 'pool_truncated': '0', 'errors': '0', 'drawn_late': '0', 'refused': '0', 'failed': '0', 'state': '0', 'blocks': '0', 'resolves': '12', 'walks': '1200'}
+  frame 17626 {'frames': '16800', 'candidates': '145394', 'tested': '11655', 'hidden': '1959', 'skipped': '1579', 'ready': '11654', 'not_ready': '84', 'unstable': '204', 'no_hull': '83697', 'no_bounds': '284', 'unbounded': '0', 'retest_skipped': '50035', 'pool_truncated': '0', 'errors': '0', 'drawn_late': '44', 'refused': '0', 'failed': '0', 'state': '0', 'blocks': '5279', 'resolves': '554', 'walks': '53756'}
+  frame 33826 {'frames': '33000', 'candidates': '180272', 'tested': '15881', 'hidden': '2101', 'skipped': '1601', 'ready': '15878', 'not_ready': '88', 'unstable': '309', 'no_hull': '86293', 'no_bounds': '376', 'unbounded': '0', 'retest_skipped': '78084', 'pool_truncated': '0', 'errors': '0', 'drawn_late': '44', 'refused': '0', 'failed': '0', 'state': '0', 'blocks': '9344', 'resolves': '1174', 'walks': '87366'}
+  per-frame occlusion_cull rows fogged: n=5193 {'candidates': 10386, 'tested': 1298, 'hidden': 0, 'skipped': 0, 'no_hull': 0, 'retest_skipped': 9088, 'unstable': 0, 'no_bounds': 0}
+  per-frame occlusion_cull rows clear: n=27637 {'candidates': 169886, 'tested': 14583, 'hidden': 2101, 'skipped': 1601, 'no_hull': 86293, 'retest_skipped': 68996, 'unstable': 309, 'no_bounds': 376}
+  capture1 occlusion_cull per frame: [('10', '0', '0', '0', '8'), ('10', '0', '0', '0', '8'), ('10', '0', '0', '0', '8')]
+  capture2 occlusion_cull per frame: [('2', '1', '0', '0', '0'), ('2', '0', '0', '0', '0'), ('2', '1', '0', '0', '0')]
+== Q5 attached=0 rows: 0
+== Q5 reason= not ok:
+   33273 engine_stage:reason=armed ex: engine_stage device=1 frame=827 armed=1 reason=armed ran=0 records=0 nozzles=0 vertices=0 discs=0 floored=0 floor_unknown=0 unfloored=0 far=0 far_jets=0 far_records=0 far_engine=0 far_overflow=0 far_dropped=0 far_disarmed=0 far_duplicates=0
+   32830 shadow_sun_frame:reason=point ex: shadow_sun_frame device=1 frame=827 source=point reason=point poll=ok rederived=5 rederived_mask=31 carried=0 checks=8 disagreements=0 agreement_deg=0.000672 distance=15714318.3 cascades=5
+   32820 camera_state:reason=0 ex: camera_state device=1 frame=828 status=active reads=2 valid=1 read_failure=0 failure=0 projection=05afc250 view=05afc010 p00=0.3750014 p11=1.333333 p20=0 p21=0 r00=-0.3095551 r01=-0.2926483 r02=0.9045105 r10=-0.9506531 r11=0.09596252 r12=-0
+    1270 camera_state:reason=1 ex: camera_state device=1 frame=0 status=active reads=1 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0
+     821 engine_stage:reason=pending ex: engine_stage device=1 frame=0 armed=0 reason=pending ran=0 records=0 nozzles=0 vertices=0 discs=0 floored=0 floor_unknown=0 unfloored=0 far=0 far_jets=0 far_records=0 far_engine=0 far_overflow=0 far_dropped=0 far_disarmed=0 far_duplicates=0
+     357 telemetry_summary:reason=interval ex: telemetry_summary device=0 frame=0 reason=interval qpc=821219199879 since_start_us=3450635.000 interval_us=3450635.000 position_suppressed=0 cursor_changes_suppressed=0
+     352 shadow_replay_sun_point:reason=point ex: shadow_replay_sun_point device=1 frame=827 source=point reason=point poll=ok light=-13787498.8,3221116.23,-6788207.75 native=-1378749877,322111623,-678820775 distance=15714318.3 checks=8 disagreements=0 agreement_deg=0.000672 rederived=5 ca
+      96 hull_lightmap_widen_held:reason=levels ex: hull_lightmap_widen_held device=1 frame=5870 index=12 ps=1b54cbfa2155b61c stage=3 reason=levels levels=1 size=32x32
+      55 volumetric_fog_memory:reason=periodic ex: volumetric_fog_memory device=1 frame=1200 reason=periodic private_bytes=1670381568 avail_virtual=1866170368 avail_phys=1000022016 texture_mem=2874146816 largest_free_virtual=-1 walk_us=0 capped=0
+      47 volumetric_fog_frame:reason=card_refused ex: volumetric_fog_frame device=1 frame=827 applied=0 reason=card_refused strength=0.0200 density_scale=1.000 cards=0 profile=0 field_generation=0 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=0 mote_c
+      33 window_trace_flush:reason=focus_or_pump_gap ex: window_trace_flush frame=7 reason=focus_or_pump_gap written=1 expired=0 overwritten=0
+      32 hull_emission_refused:reason=blend ex: hull_emission_refused device=1 frame=827 vs=4944d81dfe531b37 ps=740346590fe7bff5 reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+      19 log_writer:reason=period ex: log_writer reason=period frames=187 rows=3218 bytes=1356841 dropped_total=0 format_us=11729.1 format_max_us=211.20 format_us_per_frame=62.72 writes=49 write_bytes=1365794 write_us=1376.1 write_max_us=102.0 write_failures=0 write_hist=8,40,1
+      17 own_sun_frame:reason=armed ex: own_sun_frame device=1 frame=827 active=1 armed=1 reason=armed frames=828 active_frames=0 drawn=0 no_probe=0 answered=0 forwarded=0 late=0 ev=0.000 ev_limit=17.162 poll=ok poll_source=lane skip=none u=0.00000 v=0.00000 view_z=0 radius_px=0.
+      16 shadow_cascade_set:reason=capture ex: shadow_cascade_set device=1 frame=5870 reason=capture own_node=23c5b468 own_status=0 own_radius=59.1918182 e0=250 texel0=0.244140625 depth_behind0=512 active_mask=31 apply_slots=0,1,2,3,4 slid=0 changed=0 extents=250,1500,7500,37500,150000 
+       8 camera_state:reason=3 ex: camera_state device=1 frame=827 status=active reads=2 valid=1 read_failure=0 failure=0 projection=05afc250 view=05afc010 p00=0.3750014 p11=1.333333 p20=0 p21=0 r00=-0.3095551 r01=-0.2926483 r02=0.9045105 r10=-0.9506531 r11=0.09596252 r12=-0
+       8 shadow_replay_depth_refused:reason=state ex: shadow_replay_depth_refused device=1 frame=23248 reason=state detail=sun_changing result=00000000 stage=0
+       5 volumetric_fog_sector:reason=no_cockpit ex: volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+       4 window_trace_flush:reason=transition ex: window_trace_flush frame=5 reason=transition written=1 expired=0 overwritten=0
+       4 shadow_cascade_set:reason=node ex: shadow_cascade_set device=1 frame=833 reason=node own_node=23c5b468 own_status=0 own_radius=59.1918182 e0=250 texel0=0.244140625 depth_behind0=512 active_mask=31 apply_slots=0,1,2,3,4 slid=0 changed=0 extents=250,1500,7500,37500,150000 caps
+       3 volumetric_fog_sector:reason=clear ex: volumetric_fog_sector device=1 frame=827 profile=0 reason=clear sector=1e739c78 index=99 generation=1 density_scale=1.000
+       2 camera_state:reason=4 ex: camera_state device=1 frame=22586 status=active reads=2 valid=1 read_failure=0 failure=0 projection=05afc250 view=05afc010 p00=0.3750014 p11=1.333333 p20=0 p21=0 r00=0.3018494 r01=0.0491333 r02=0.9520721 r10=-0.2657013 r11=0.9634247 r12=0.0
+       2 volumetric_fog_sector:reason=foggreenoutlands ex: volumetric_fog_sector device=1 frame=28362 profile=2 reason=foggreenoutlands sector=852169f0 index=14 generation=1 density_scale=1.000
+       2 volumetric_fog_frame:reason=density_filling ex: volumetric_fog_frame device=1 frame=28363 applied=0 reason=density_filling strength=0.0200 density_scale=1.000 cards=1 profile=2 field_generation=1 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=0 m
+       1 motion_capture_mode:reason=write_exclusion_unavailable ex: motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
+       1 engine_light_mode:reason=requested ex: engine_light_mode device=0 setting=- status=ok mode=on requested=1 reason=requested behind=0.50 reach=3.00 colour_scale=0.25 cap=1 constants=c55-c202 ships_max=256 plates_max=72 hold=60 hold_setting=- hold_status=ok
+       1 shadow_retention_device:reason=journal ex: shadow_retention_device device=1 mode=live enabled=0 reason=journal age_cap=7200 eps=0.05 orphan_probe=0 nodes=1024 records=4096 resources=1024 bytes=1850528
+       1 volumetric_fog_memory:reason=field_upload ex: volumetric_fog_memory device=1 frame=0 reason=field_upload private_bytes=115912704 avail_virtual=3616854016 avail_phys=2668589056 texture_mem=4205838336 largest_free_virtual=2136686592 walk_us=2778 capped=0 image=360914944 mapped=64229376 p
+       1 volumetric_fog_families:reason=absent ex: volumetric_fog_families device=1 frame=0 event=absent families=0 packets=0 rows_disabled=0 bytes=0 reason=absent fallback=compiled_only path="C:\X3FL\x3m\fog-families.bin"
+       1 window_trace_flush:reason=first_present ex: window_trace_flush frame=0 reason=first_present written=0 expired=0 overwritten=0
+       1 bloom_refusal:reason=glow_off ex: bloom_refusal reason=glow_off count=1 device=1 ordinary_signal=1
+       1 bloom_refusal:reason=scene_handoff ex: bloom_refusal reason=scene_handoff count=1 device=1 ordinary_signal=1
+       1 shadow_replay_sun_source:reason=point ex: shadow_replay_sun_source device=1 frame=827 source=point reason=point previous=none poll=ok
+       1 engine_plumes_state:reason=armed ex: engine_plumes_state device=1 frame=827 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+       1 own_sun_state:reason=armed ex: own_sun_state device=1 frame=827 armed=1 reason=armed sun=own
+       1 motion_output_taa_depth_fold:reason=resolve_mrt ex: motion_output_taa_depth_fold device=1 depth_fold=1 reason=resolve_mrt
+       1 motion_output_taa_box_resolution:reason=half ex: motion_output_taa_box_resolution device=1 frame=827 drawn=half reason=half width=5120 height=1440 target_create=00000000
+       1 volumetric_fog_cache:reason=prefill ex: volumetric_fog_cache device=1 frame=28361 event=epoch reason=prefill sector_key=0000000000000000 offset=0,0,0
+       1 volumetric_fog_frame:reason=density_unprepared ex: volumetric_fog_frame device=1 frame=28362 applied=0 reason=density_unprepared strength=0.0200 density_scale=1.000 cards=1 profile=2 field_generation=1 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=
+       1 surface_container_cache:reason=reset ex: surface_container_cache reason=reset hits=494709 misses=136 resets=0
+       1 telemetry_summary:reason=reset ex: telemetry_summary device=1 frame=33249 reason=reset qpc=823035490756 since_start_us=185079722.700 interval_us=315298.700 position_suppressed=0 cursor_changes_suppressed=0
+       1 volumetric_fog_cache:reason=residency ex: volumetric_fog_cache device=1 frame=33249 event=epoch reason=residency sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+       1 volumetric_fog_cache:reason=sample_gap ex: volumetric_fog_cache device=1 frame=33661 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+== Q5 nonzero flags (new kinds)
+       1 original_fill_mode:default ex: original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+       1 window_mode_config:default ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+       1 lod_occlusion:default ex: lod_occlusion site=00b956c1 rva=0e56c1 edition=fl state=patched reason=ok mode=all setting=all write=atomic default=1
+       1 taa_thin_vote_configured:default ex: taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+       1 fade_rt2_owner_configured:default ex: fade_rt2_owner_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested=1
+       1 motion_output_taa_box_resolution:default ex: motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+       1 taa_thin_region_source:default ex: taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+       1 motion_output_taa:default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 motion_output_taa:far_clip_default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 emission_source_gain_frame:refused_state ex: emission_source_gain_frame device=1 frame=28362 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0

@@ -277,3 +277,63 @@ pending/failed/completed KC; actual captured mode result and visibility refresh;
 shared injection-consumer ordering/cancellation. No production edits, build,
 Wine/native/game execution, installation or commit was performed. This source
 mapping does not establish native Windows runtime or FL gameplay acceptance.
+
+## Verified 2026-11-02 against X3FL.exe
+
+Decoded from the installed `C:\X3FL\X3FL.exe` (SHA-256 `e7f3aad8…`, read-only) with Capstone and the `.reloc`
+census by `verification/probe/verify_chase_transition_sites_fl.py` (PASS; record
+`verification/results/fl-chase-transition/verify_fl_sites.json`). All values below are RVAs (runtime = module base +
+RVA) or field offsets; "anchor" means the exact Capstone text at that RVA is checked; "window" means the bytes are one
+of the 26 identity windows the module compares at the loaded base before any write
+(`src/engine/fl/chase_transition_sites_fl.h`, FNV-1a with relocated dwords zeroed, each fixup checked against base +
+its target). Every span: exact bytes, whole instructions of the listed lengths, no relative control flow, no
+HIGHLOW inside (except the EH immediate), no direct edge into an interior (72,230 direct edges surveyed), no relocated
+pointer into an interior. Production binding: `src/proxy/chase_transition.cpp`, `#if X3M_EDITION_FL` blocks.
+
+| Kind | RVA, lengths | Register ABI used by the handler | Inbound edges to start | Write | How verified |
+| --- | --- | --- | --- | --- | --- |
+| 0 construct | `0x020ec0` 1+2+3 | ECX = cockpit (`mov edi,ecx` `0x020ef1`), `[ESP]` = caller return | 2 (`0x020e0d`, `0x0305a6`, the only callers) | cmpxchg8b | bytes, anchors, caller census, window `construct` |
+| 1 complete | `0x0215c6` 1+2+1+2 | EAX = cockpit (`mov eax,edi` `0x021534`; 21 instructions to the span, no EAX write, no edge from outside into `[0x021536,0x0215c6]`); plain RET `0x0215cd` | 0 | plain (qword crossing) | regs_access sweep, window `complete` |
+| 2 destroy | `0x01e3f0` 1+2+3 | ECX = cockpit (`mov esi,ecx` `0x01e3f8`), `[ESP]` = caller; calls the destructor `0x021820` (its only caller), frees `0x8c0`, `ret 4` | 13 calls, no HIGHLOW | cmpxchg8b | anchors, caller census, window `destroy` |
+| 3 update begin | `0x021f50` 1+2+3 | ECX = cockpit (`mov ebx,ecx` `0x021f5e`), frame = entry ESP | 1 (`0x01e5b0`, the only caller) | cmpxchg8b | anchors, window `update_begin` |
+| 4 / 5 exits | `0x022f9b` / `0x022fa9` 1+1+1+2 | entry ESP = EBP + 4 (`pop ebp; ret` at `0x022fa0/1`, `0x022fae/f`) | 0 / 3 | cmpxchg8b | anchors, window `update_end` |
+| 6 script mode store | `0x031abc` 6 | EAX = cockpit, ECX = mode, EBX = dispatcher argument frame (`mov esi,[ebx+0x18]` `0x031a9b`, `push [ebx+0xc]` `0x031ab9`) | 0 | plain | anchors, jump-table entry `0x032548` (HIGHLOW) = base + `0x031a9b` (case `0x30`), window `mode_script` |
+| 7 load mode store | `0x01bf6e` 6 | EDI = cockpit, EDX = mode | 0 | plain | anchor, window `mode_load` |
+| R0 inject | `0x0cfd00` 1+2+3 | ECX = controlled object (spill `0x0cfd0f`; both callers `0x0787c8/0x0787dc` set `mov ecx,esi` `0x0787b9`) | 2 | cmpxchg8b | anchors, caller census, windows `inject`, `inject_callers` |
+| R1 VM clear | `0x0ba6b0` 3+1+1 | ECX = VM (`mov edi,ecx` `0x0ba6b7`); handler ignores registers | 3 | cmpxchg8b | callers `0x07861b`, `0x0b30cb`, `0x0b9aef`, window `vm_clear` |
+| R2 VM load | `0x0bcb10` 1+2+2 | none read | 1 (`0x07983c`) | cmpxchg8b | window `vm_load` |
+| R3 EH adapter | `0x14e80a` 5 | none read; `mov eax,<base+0x19e520>`: HIGHLOW at +1, the expected bytes are bound to the base, the tail copy is the live relocated instruction | 0; HIGHLOW publication `0x0bed96` only | cmpxchg8b | fixup census, anchor `jmp 0x521368`, window `eh_adapter` |
+
+| Fact | Value | How verified |
+| --- | --- | --- |
+| Caller provenance (preferred VAs the core compares) | alloc `0x4305ab` (call `0x0305a6`), load chain `0x420e12` (call `0x020e0d`), free `0x430612` (wrapper call `0x03060d`, after the registry removal `call 0x50d040` `0x030605`) | anchors, windows `alloc_call`, `load_call`, `free_call` (static asserts tie each return to its window end) |
+| Mode-store frame | `[EBX+4]` = native return RVA `0x0c0785` (after `call eax` `0x0c0783`, `add esp,0x14`), `[EBX+0xc]` = task, `[EBX+0x10]` = command `0x30`; dispatcher `0x030540` `push ebx; mov ebx,esp`, published only by HIGHLOW `0x01df32`, no direct caller | anchors, windows `dispatcher`, `native_call`, publication census |
+| Task / context layout | task `+0x3c` context (`0x0bedbc`), `+0x18` signed index (`0x0bb620`), `+0x14` 5-byte cell base (`0x0bb62e`); context `+0` id, `+8` class descriptor (`0x0c0824`); return records tag 10 then tag 3 (`0x0c0836`, `0x0c083a`) | anchors. Task `+0x10` capacity is the offline note's value, not re-anchored: it bounds only the manager scan (HUD refresh), never the restore call |
+| Named dispatcher | `0x0bb5b0` cdecl `(selector, token, key, name, kind, argc, args…)`, lookup `call 0x4bb310`, run `call 0x4bb470`; selector `32` = no callback (`cmp edx,0x20; jge` `0x0be9ee`, `cmp eax,0x20; jge` `0x0bb248`); the input worker itself calls it at `0x0cfd95` | anchors, windows `script_call`, `callback_bound_ok`, `callback_bound_fail`, `worker_call` |
+| Game object | slot `0x2243cc`; controller `+0x418` (pushed by the worker `0x0cfd88`), pause bits `+0x4a0` bit 0 (`0x0786bd`, `0x0786c3`) | anchors, windows `worker_call`, `pause` |
+| Cockpit registry | slot `0x1a82e4`; `+0x10` active handle, `+0` map `{buckets, count}`, row `{next, key +4, value +8}` (`0x0cf46f..0x0cf4a3`) | anchors, window `active_control` |
+| Simulation registry / ship | slot `0x1a82ec`; `+0x14` object map keyed by object `+8` (`0x0495f1..0x0495fd`, the removal path); resolver `0x043d30` (map `+0x14`, value `+8`); script id `+0x94` (`0x06a836`); excluded flag `+0x40 & 0x08000000` (`0x065313`) | anchors, windows `sim_registry`, `ship_script_id`, `ship_flag` |
+| Cockpit fields | `+0x150` mode, `+0x1c0` connect, `+0x1a0` flags, `+0xc` ref, `+0x10` view, `+0x1fc` / `+0x54` sectors | the chase-camera FL anchors (`fl/chase-camera.md`, "Verified 2026-11-02"), static-asserted in `chase_transition.cpp` |
+
+View-mode writers: FL has no equivalent of AP's census of `+0x150` writers. A Capstone sweep of `.text` (`verification/results/fl-chase-transition/census_mode_writers.py`,
+`.txt`) finds 34
+dword writes at displacement `+0x150` (measured), 4 of them ESP-relative locals, so 30
+register-relative writers; 3 are known cockpit writers (constructor zeroing `0x0212ab`, the load store `0x01bf6e`, the
+script store `0x031abc`); the review checked 2 others as non-cockpit objects; 25 are unclassified (open). The restore
+does not depend on that census (it acts on the observed script store and the fresh cockpit's frames), but an
+unclassified engine writer of a cockpit's mode would show as `cancel=mode_left`, not as a restore failure.
+
+Injection cadence: the input worker `0x0cfd00` is reached from `0x0787c8`/`0x0787dc` only. Pause bit 0 of
+`[game+0x4a0]` branches past that path (`test cl,1; jne 0x4787ee` at `0x0786c3/0x0786c6`, anchored); the review reads
+the `[game+0x499] == -1` exit of the command loop (`cmp edi,-1` at `0x07877b`, falls through to `xor eax,eax` at
+`0x078797`) as a second skip (instruction anchors measured; the full CFG claim is the review's, not re-derived here).
+A due ticket simply waits at such frames: the pending/due clock runs on cockpit updates, so the worst case is the
+expiry at 600 updates (inferred, not measured in game).
+
+Not claimed on FL: AP's connect observer (kind 8; diagnostics only) and the diagnostic event/identity readers
+(`diagnostics=0 diagnostics_reason=ap_only`): their provenance and `IdentityReader` roots stay AP-bound. The second
+injection consumer (SETA restore) is refused on FL (`inject_attach` → `ap_only`).
+
+Not verified (inferred): that `SelectMode(258)` runs to its native mode store inside the dispatcher's `call 0x4bb470`
+on FL, as on AP (the state machine requires the observed store, so a deferred store reads as `no_effect`, retried, and
+never as a restored result); the FL story's behaviour under a modified story; anything at runtime (not flown).

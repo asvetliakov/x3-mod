@@ -1318,7 +1318,8 @@ class Wiring(unittest.TestCase):
         publish = chase[chase.index('void publish_pose('):chase.index('void handle(')]
         self.assertIn('    pose_written.store(written, std::memory_order_relaxed);\n    if (written) pose_writes.fetch_add(1, std::memory_order_relaxed);', publish)
         self.assertIn('if (bolt_footprint_requested_) chase_pose_mark_ = chase_camera::pose_write_count();', motion, 'the mark is taken at Present')
-        self.assertIn('if (!active) { chase_fire::invalidate_camera(cockpit); return; }', chase, 'inactive cockpits never publish')
+        self.assertIn('if (!active) {\n        chase_fire::invalidate_camera(cockpit);\n        return;\n    }',
+                      chase, 'inactive cockpits never publish (both editions invalidate the cursor-fire witness)')
         self.assertIn('bolt_footprint_hist device=%llu', motion)
         self.assertIn('if (++screen_additive_window_frames_ >= 300u) log_screen_additive_window();', motion)
         self.assertIn('screen_emission_additive_refused_window device=%llu', motion)

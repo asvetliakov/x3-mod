@@ -173,13 +173,13 @@ class FlCullChainWiring(unittest.TestCase):
         self.assertIn('"cull_small_parts requested=%s px=%.4g patched=%u edition=fl state=%s reason=%s site=0x%08lx '
                       'rva=0x%06lx cull=0x%08lx write=%s', code)
         far = strip((ROOT / 'src/proxy/engine_far_jets.cpp').read_text())
-        self.assertIn('constexpr unsigned model_at = fl_layout::model_offset;', far)
+        self.assertIn('constexpr unsigned model_at = layout::edition.model;', far)
         self.assertIn('word(node, model_at)', far)
         self.assertIn('node_context && node_context == r.context ? word(node_context, core::context_scale_offset) : 0u;',
                       far)
-        layout = strip((ROOT / 'src/engine/fl/engine_far_jets_layout_fl.h').read_text())
-        self.assertIn('constexpr unsigned model_offset = 0x144;', layout)
-        self.assertIn('constexpr unsigned node_context_offset = 0x1c;', layout)
+        layout = strip((ROOT / 'src/proxy/engine_node_layout.h').read_text())
+        self.assertIn('constexpr Layout fl{0x18, 0x28, 0x144};', layout)
+        self.assertIn('constexpr unsigned fl_context = 0x1c;', layout)
         # The plume stage on FL: the owned scale, no later context +0x2c read for far records.
         plumes = strip((ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text())
         append = plumes[plumes.index('void MotionOutput::engine_far_append()'):plumes.index('bool MotionOutput::engine_node_read(')]

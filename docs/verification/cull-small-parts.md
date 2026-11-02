@@ -278,7 +278,7 @@ The far-jet hand-off runs on FL since 2026-11-03 (below). Sites and ABI:
   (`far_jets=on`; a changed JET writer `far_jets=writer_mismatch`, else `off`). The 2026-11-02 fence is removed now that
   the read set is verified from X3FL.exe's bytes ([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md)
   "Verified 2026-11-03": 18 fields, 47 anchors). The handler (`engine_far_jets.cpp`, shared; AP object unchanged)
-  reads the model at `+0x144` and owns the context scale at the site (`engine_far_jets_layout_fl.h`); the plume stage
+  reads the model at `+0x144` and owns the context scale at the site (`engine_node_layout.h` `fl_context`); the plume stage
   uses that value instead of a later `context+0x2c` read. Host evidence: [farnhams-legacy.md](farnhams-legacy.md),
   "Far-jet hand-off on FL, host evidence".
 - **Far jets need `engine_effects` set explicitly (both editions).** The stub's own read of `X3M_ENGINE_EFFECTS` takes
@@ -304,6 +304,16 @@ The far-jet hand-off runs on FL since 2026-11-03 (below). Sites and ABI:
   the five bytes, the chain push; any later failure restores the five bytes (`readback_rolled_back`, `chain_failed`) or
   stays registered (`rollback_failed`, `state=patched_unverified`). No other consumer chains on FL (`chain_stub` and
   `site_chainable` refuse `edition_fl`). Small props (`ships\props\`) stay a draw-hook rule, not part of this stub.
+- **Small props on FL (2026-11-02, not flown).** The draw-hook rule runs on FL too: gate
+  `object_trace::scope_available()` (FL `active()`), node fields from `engine_node_layout.h` (`Culler::layout`, model
+  `+0x144`), body manager `*(base+0x1aa100)` and cockpit registry `base+0x1a82e4` filled once at attach
+  (`props_addresses_`); without the scope seam or the admitted registry the device logs
+  `cull_small_props_device … attached=0 edition=fl reason=scope_unavailable|registry_not_admitted` and stays off.
+  Attached: `cull_small_props_device … edition=fl model_offset=0x144`; the config row ends in `edition=fl`. The
+  F8 `cull_small_prop_box` row prints `part_px=-1` on FL (the AP descriptor part box is not read). Defaults unchanged
+  (4 px). FL run 21 before the change: `cull_small_props_frame … draws=0 culled=0` on all 133 rows, 2,463,523 draws
+  `no_scope` (measured, `verification/results/fl-proxy-culls/run21_baseline.sh`). Reads and sources: [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Proxy culls'
+  engine reads (2026-11-02)"; host evidence: [farnhams-legacy.md](farnhams-legacy.md), "Proxy culls on FL".
 - **Rows.** `cull_small_parts requested= px= patched= edition=fl state=active|off|refused|patched_unverified reason=
   site= rva=0x0961d3 cull= write=atomic stub= camera= scope=all projectiles= dock_px= dock_requested=
   far_jets=on|off|writer_mismatch`;

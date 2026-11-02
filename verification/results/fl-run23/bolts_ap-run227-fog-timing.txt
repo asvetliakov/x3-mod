@@ -1,0 +1,12 @@
+window sums nonzero: {'frames': 11100, 'pair_draws': 4712, 'admitted': 2415, 'refused': 2297, 'state': 2297}
+frame sums: {'admitted': 2415, 'refused': 2297, 'bolt_flag': 2415, 'bolt_flag_refused': 0}
+bolt_footprint last session: {'session_draws': '2415', 'session_written': '2199', 'session_expanded': '15529', 'session_gated': '0', 'buffer_bytes': '147456'}
+1 screen_emission_additive_mode requested=1 enabled=1 gain=2 gain_valid=1 motion=1 hdr=1 packed_conflict=0 alpha=0 alpha_requested=1 alpha_valid=1
+1 bolt_footprint_mode requested=1 enabled=1 w=3 l=12 valid=1 additive=1 ownership=1 view_gate=chase_camera
+1 bolt_far_composite_mode requested=1 enabled=1 show=1 show_valid=1 show_off=0 additive=1 hdr=1
+1 bolt_far_composite device=1 requested=1 show=1 show_off=0 additive=1 gain=2 k=32
+3 screen_emission_additive_variant device=1 original=ec1f5c4a2f4e1445 transform=0 create=00000000 words=73 gain=2
+3 screen_emission_additive_flag_variant device=1 original=ec1f5c4a2f4e1445 transform=0 create=00000000 words=91 gain=2 k=32
+1 bolt_footprint_refused device=1 frame=1610 index=64 reason=buffer detail=1 primitives=32 stream0_bytes=1179648
+1 bolt_footprint_buffer device=1 frame=1610 bytes=147456 hr=00000000
+1 screen_emission_additive_refused device=1 frame=7927 index=23 reason=state

@@ -195,6 +195,18 @@ parts the cadence left untested); in every tier one `occlusion_cull_session` row
 every 300 frames with the session totals (the same new fields, `test_us` summed, and `retest=`).
 `occlusion_cull_config` carries `retest= retest_setting= retest_status=`.
 
+## Editions (2026-11-02)
+
+The draw-level cull runs on both editions. Gate: `object_trace::scope_available()` (AP `executable_verified()`, FL
+`active()`), then `scope_node()`. Node fields: `Classifier::layout` from `engine_node_layout.h` (model `+0x140` AP,
+`+0x144` FL; parent `+0x18` both). Body manager slot: AP `*0x608518`; FL `*(base+0x1aa100)`, the slot whose anchor
+`object_trace_fl` checked, set once at attach (`occlusion_body_global_`). Without the FL scope seam (object trace off
+or refused) the first candidate draw logs one `occlusion_cull_device … attached=0 edition=fl reason=scope_unavailable
+scope=<object_trace status>` row and the cull is off on that device. FL rows end in `edition=fl`
+(`occlusion_cull_config`, every `occlusion_cull_device`); AP rows are unchanged. The engine-side skip below stays AP
+only: `occlusion_cull = engine` on FL runs the draw-level cull and logs `engine=0 engine_status=ap_only`. FL reads and their sources:
+[fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Proxy culls' engine reads (2026-11-02)". Not flown on FL.
+
 ## Known limits
 
 - A skipped part is not a shadow-replay caster that frame: a hidden turret's sun shadow on visible hull disappears

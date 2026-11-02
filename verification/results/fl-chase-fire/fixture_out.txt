@@ -1,0 +1,19 @@
+WINDOWS count=5 bytes=481 seam_mod8=5
+LOG chase_fire installed=0 status=executable_mismatch scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=none
+LOG chase_fire installed=0 status=chase_camera_unavailable scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=none
+LOG chase_fire installed=0 status=invalid_base scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=none
+FLIPS bits=3848 refused=3848 reloc_bits=352
+LOG chase_fire installed=0 status=readback_mismatch scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=restored
+LOG chase_fire installed=0 status=readback_mismatch scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=failed
+LOG chase_fire installed=1 status=active scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=none
+COUNTS override=22 stale=3 identity=5 view=4 cursor=4 read=2
+EARLY native_active=4 no_witness=5 group=1 flags=2 other_ship=1 read=0
+SWEEP cursors=3600 inside=1448 agreed=3600
+AIM cursor=1271,409 offset_16_16=10616,-7949 ray_to_target_deg=0.0805 pixel_deg=0.0391 boresight_deg=14.43
+LOG chase_fire_window frame=300 native_inactive_override=1476 refused_stale=3 refused_identity=5 refused_view=4 refused_cursor=2156 refused_read=2 timed_calls=4 total_us=<us> max_us=<us> timing_scope=eligible_handler_after_first_qpc excludes=stub_cpu_boundary_first_qpc_early_filter native_input_writes=0 downstream_constraints=native native_active=4 early_no_witness=5 early_group=1 early_flags=2 early_other_ship=1 early_read=0 edition=fl
+TIMING n=5000 harness_us=<us> native_active_us=<us> non_player_us=<us> admitted_us=<us> (harness included in each)
+LOG chase_fire_shutdown restored=1 status=restored edition=fl
+LOG chase_fire_shutdown restored=1 status=restored edition=fl
+LOG chase_fire installed=0 status=late_claim scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl base=0x<addr> rva=0x04ecad window=- rollback=none
+RESULT PASS checks=89 failures=0
+# exit=0

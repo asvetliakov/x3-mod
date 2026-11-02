@@ -1,0 +1,220 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "fl_identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "highlow": 38327
+  },
+  "windows": {
+   "ok": true,
+   "call": {
+    "ok": true,
+    "fnv1a32": "a26fea9a",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "fov": {
+    "ok": true,
+    "fnv1a32": "247c90cb",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "prologue": {
+    "ok": true,
+    "fnv1a32": "c6e1e559",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "gate": {
+    "ok": true,
+    "fnv1a32": "f2edff5d",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "solver": {
+    "ok": true,
+    "fnv1a32": "7ece295a",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "publish": {
+    "ok": true,
+    "fnv1a32": "457c74a0",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "cleanup": {
+    "ok": true,
+    "fnv1a32": "08143880",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "hide": {
+    "ok": true,
+    "fnv1a32": "8da11c57",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "distance": {
+    "ok": true,
+    "fnv1a32": "61976064",
+    "whole_instructions": true,
+    "relocs": {
+     "0x02487e": "0x1a82e4"
+    }
+   },
+   "producer": {
+    "ok": true,
+    "fnv1a32": "728ce072",
+    "whole_instructions": true,
+    "relocs": {}
+   },
+   "texture": {
+    "ok": true,
+    "fnv1a32": "56445803",
+    "whole_instructions": true,
+    "relocs": {
+     "0x1123ac": "0x21b410",
+     "0x1123bd": "0x21b418",
+     "0x1123cc": "0x1fb404",
+     "0x1123d3": "0x21b40c",
+     "0x1123e1": "0x1cb3f4",
+     "0x1123fc": "0x1cb3f4"
+    }
+   },
+   "projection": {
+    "ok": true,
+    "fnv1a32": "bdd984e9",
+    "whole_instructions": true,
+    "relocs": {
+     "0x02cac6": "0x1a82f8",
+     "0x02cb48": "0x1a82f8"
+    }
+   }
+  },
+  "seams": {
+   "ok": true,
+   "direct_edges": 72230,
+   "gate": {
+    "ok": true,
+    "bytes": "0f8436040000",
+    "decode": "je 0x42cbf5",
+    "interior_edges": [],
+    "edges_to_start": [],
+    "fixups": [],
+    "qword": "fits",
+    "rva_mod_8": 1
+   },
+   "publish": {
+    "ok": true,
+    "bytes": "898be0030000",
+    "decode": "mov dword ptr [ebx + 0x3e0], ecx",
+    "interior_edges": [],
+    "edges_to_start": [
+     "0x02cbdb"
+    ],
+    "fixups": [],
+    "qword": "crosses",
+    "rva_mod_8": 7
+   },
+   "final_fov": {
+    "ok": true,
+    "bytes": "39b340020000",
+    "decode": "cmp dword ptr [ebx + 0x240], esi",
+    "interior_edges": [],
+    "edges_to_start": [
+     "0x022ce5",
+     "0x022ced"
+    ],
+    "fixups": [],
+    "qword": "crosses",
+    "rva_mod_8": 5
+   },
+   "hud_gate": {
+    "ok": true,
+    "bytes": "0f84f5030000",
+    "decode": "je 0x42d019",
+    "interior_edges": [],
+    "edges_to_start": [],
+    "fixups": [],
+    "qword": "crosses",
+    "rva_mod_8": 6
+   }
+  },
+  "overlay_caller": {
+   "ok": true,
+   "callers": [
+    "0x0229c2"
+   ],
+   "hide_helper_call_sites": 25
+  },
+  "updater_cfg": {
+   "ok": true,
+   "unresolved": [],
+   "reachable": {
+    "0x0229c2": true,
+    "0x022cf5": true
+   },
+   "reachable_without_pose_seam": {
+    "0x0229c2": false,
+    "0x022cf5": false
+   },
+   "ebx_writes": [
+    "0x021f5e",
+    "0x02268d",
+    "0x0226bd",
+    "0x0226d8",
+    "0x022f9d",
+    "0x022fab"
+   ],
+   "instructions": 1082
+  },
+  "overlay_stack": {
+   "ok": true,
+   "depth_at": {
+    "0x02c7b9": 0,
+    "0x02c842": 0,
+    "0x02c87b": -20,
+    "0x02c880": 0,
+    "0x02cbe7": 0,
+    "0x02cbf5": 0,
+    "0x02cc11": 0,
+    "0x02cc1e": 0,
+    "0x02d019": 0,
+    "0x02d06d": 0
+   },
+   "conflicts": [],
+   "other_stops": [
+    "0x02eb70 callee pops [0, 12]"
+   ],
+   "reached": 3061
+  },
+  "anchors": {
+   "ok": true,
+   "count": 82,
+   "failed": []
+  },
+  "source_header": {
+   "ok": true,
+   "call": true,
+   "fov": true,
+   "prologue": true,
+   "gate": true,
+   "solver": true,
+   "publish": true,
+   "cleanup": true,
+   "hide": true,
+   "distance": true,
+   "producer": true,
+   "texture": true,
+   "projection": true
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe"
+}

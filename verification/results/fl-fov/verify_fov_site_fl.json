@@ -1,0 +1,165 @@
+{
+ "checks": {
+  "constructor_callers": true,
+  "constructor_decode": true,
+  "constructor_esi": true,
+  "constructor_site": true,
+  "identity": true,
+  "imm32_crosses_qword": true,
+  "load_caller_ecx_dead": true,
+  "load_callers_test_al": true,
+  "load_qword": true,
+  "load_span": true,
+  "load_tail_epilogue": true,
+  "no_entry_into_detours": true,
+  "no_pointer_into_windows": true,
+  "no_table_entry_inside_case": true,
+  "reader_reads_focus": true,
+  "serializer_callers": true,
+  "setfocus_anchors": true,
+  "setfocus_flags_dead": true,
+  "setfocus_qword": true,
+  "setfocus_span": true,
+  "setfocus_span_one_relocation_operand": true,
+  "setfocus_store_then_ecx_dead": true,
+  "shared_remap_table": true,
+  "window_callee": true,
+  "window_constructor": true,
+  "window_hashes_match_header": true,
+  "window_hits_mid_instruction": true,
+  "window_load": true,
+  "window_load_caller": true,
+  "window_reader": true,
+  "window_setfocus": true
+ },
+ "constructor_callers": [
+  "0x77e21",
+  "0x798a5"
+ ],
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "failed": [],
+ "imm32": {
+  "bytes": "00400000",
+  "qword_offset": 5,
+  "rva": "0x1e08d"
+ },
+ "interior": {
+  "constructor_window": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": [
+    [
+     "0x1e010",
+     "0x1e083"
+    ]
+   ]
+  },
+  "imm32": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": []
+  },
+  "load_span": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": []
+  },
+  "load_window": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": [
+    [
+     "0x1deda",
+     "0x1defc"
+    ]
+   ]
+  },
+  "setfocus_case": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": [
+    [
+     "0x30ea5",
+     "0x30eb3"
+    ]
+   ]
+  },
+  "setfocus_span": {
+   "not_mid_instruction": [],
+   "pointers_inside": [],
+   "raw_hits": []
+  }
+ },
+ "jump_table": {
+  "case": "0x30e9f",
+  "entry": "0x3250c",
+  "name": "INS_SetFocus",
+  "table": "0x32488"
+ },
+ "remap_table_70_80_90_100": [
+  "0x2768",
+  "0x2dc5",
+  "0x3470",
+  "0x3b6f"
+ ],
+ "result": "PASS",
+ "serializer_callers": [
+  "0x20c62",
+  "0x20db6"
+ ],
+ "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "windows": {
+  "callee_mismatch": {
+   "fixups": [],
+   "fnv1a": "0xd3cdd4e6",
+   "length": 24,
+   "rva": "0xc1940",
+   "targets": []
+  },
+  "constructor_mismatch": {
+   "fixups": [],
+   "fnv1a": "0x3edcd964",
+   "length": 34,
+   "rva": "0x1e076",
+   "targets": []
+  },
+  "load_caller_mismatch": {
+   "fixups": [],
+   "fnv1a": "0x4130196b",
+   "length": 9,
+   "rva": "0x20db6",
+   "targets": []
+  },
+  "load_mismatch": {
+   "fixups": [],
+   "fnv1a": "0xa2a1cf6b",
+   "length": 56,
+   "rva": "0x1dedc",
+   "targets": []
+  },
+  "reader_mismatch": {
+   "fixups": [
+    "0x1"
+   ],
+   "fnv1a": "0x5f1bce8a",
+   "length": 12,
+   "rva": "0x22a1c",
+   "targets": [
+    "0x1a82e4"
+   ]
+  },
+  "setfocus_mismatch": {
+   "fixups": [
+    "0xc",
+    "0x15"
+   ],
+   "fnv1a": "0x234b68a8",
+   "length": 35,
+   "rva": "0x30e9f",
+   "targets": [
+    "0x1a82e4",
+    "0x1aa174"
+   ]
+  }
+ }
+}

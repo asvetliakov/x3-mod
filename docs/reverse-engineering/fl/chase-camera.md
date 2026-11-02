@@ -243,3 +243,53 @@ User-only FL flight acceptance must establish the actual rear view, raised
 framing/boom scaling and smoothness across supported view changes; forward HUD
 and restore additionally require their separately owned adapters. No production
 code, game launch, Wine/native run, build, installation or commit was performed.
+
+## 6. Verified 2026-11-02 against X3FL.exe
+
+Re-checked on the installed `C:\X3FL\X3FL.exe` (SHA-256 `e7f3aad8…`, DllCharacteristics `0x8140`, 38,327
+HIGHLOW fixups, no other relocation type; all measured) by `verification/probe/verify_chase_camera_site.py --edition
+fl` (Capstone over the file, read-only; compact result `verification/results/fl-chase-camera/verify_fl_site.json`).
+Every claim of sections 1–3 that the pose seam relies on holds; none had to be corrected. The implementation is the
+FL branch of `src/proxy/chase_camera.cpp` (the scope line above names `src/engine/ap/`; the file is in `src/proxy/`) with its constants in
+`src/engine/fl/chase_camera_sites_fl.h`.
+
+| RVA / field | Fact | How verified |
+| --- | --- | --- |
+| `0x0227ad..0x0227b7` | `83 7b 54 00` `cmp dword [ebx+0x54],0` (4) + `0f 84 71 01 00 00` `je 0x022928` (6); rel32 at +6 | exact bytes; Capstone, whole instructions `[4, 6]` |
+| `0x0227b7` / `0x022928` | continuation `xor ecx,ecx`; branch target `mov ecx,ebx; call 0x022fb0`, then `mov [ebx+0x1fc],0` at `0x02293f` | Capstone anchors |
+| `0x0227a9`, `0x0227e3` | last native position copy `movups [ecx+0x30],xmm0`; first camera load after the seam `mov ecx,[ebx+0x58]` | Capstone anchors; both inside the 66-byte seam window |
+| span relocations | no HIGHLOW fixup touching `[0x0227aa, 0x0227b7)` | `.reloc` census |
+| inbound edges | exactly `0x022141 0x0225(97,a6,af,b8,c1,ca)` to the start, none into the interior (72,230 direct edges in `.text`); the raw rel8/rel32 scan of the updater (1,082 whole instructions, `0x021f50..0x022fb0`) has one hit, `71 01` inside the span's own `je` rel32 (an operand alias, no instruction start); sole updater caller `0x01e5b0` | linear-sweep census; raw byte scan classified against the decode |
+| qword | `0x0227ad & 7 == 5`: the five-byte jump crosses the qword at `0x0227b0`; the 64 KB module base keeps it | arithmetic; `engine_patch::claim` takes the plain copy, install window only |
+| EBX = cockpit | `mov ebx,ecx` `0x021f5e`; one store `mov [esp+0x1c],ebx` `0x021f63`; the other EBX writes (`0x02268d`, `0x0226bd`) lie in the loop `[0x02268d, 0x0226d8)` whose only exit falls through to `mov ebx,[esp+0x1c]` `0x0226d8` | linear decode with Capstone register-write sets; stack-depth equality inferred (the engine uses EBX as the cockpit after the seam on both branches) |
+| plane slot `0x1a82f8` | `mov eax,[0x5a82f8]` at `0x0dec8c` (HIGHLOW at `0x0dec8d`, value preferred base + `0x1a82f8`), then `+0x28`/`+0x2c` | `.reloc` + Capstone; checked again at run time against the loaded base |
+| cockpit `+0x08 +0x0c +0x10 +0x54 +0x58 +0xf0/+0x100/+0x110 +0x150 +0x1a0 +0x1c0 +0x1d8 +0x1e0 +0x1e4 +0x1fc` | the offsets the shared handler reads (and `+0xf0` rows it writes) | 43 Capstone field anchors (`FL_FIELDS` in the verifier), e.g. `0x0224f9` `[ebx+0x58]`, `0x022539..0x022556` the verbatim `+0xf0` rows to camera `+0x40/+0x50/+0x60`, `0x0224e1` `[ebx+0x1a0]`,4, `0x030fc4` `[eax+0x1e4]`,4 |
+| camera `+0x30 +0x40 +0x298 +0x300 +0x304`; tracked `+8` | position, basis rows, FOV, plane W/H | anchors `0x0227a9`, `0x0224fe`, `0x03074a`/`0x0dec97`, `0x0dec76`, `0x0dec82`, `0x03107d` |
+| reference `+0x48 +0x50 +0x54 +0x70`; owner `+0x48`; node `+0x30 +0x40 +0xb0 +0xc0`; data `+0x870` | the anchor selection of `chase_camera_native.h` | anchors `0x059780..0x059787`, `0x059fc0..0x059fd3`, `0x022441/0x022447`, `0x02246f/0x022478/0x022483` |
+
+Run-time identity: before any write, three windows at base + RVA must match byte for byte: the seam
+`[0x0227a4, 0x0227e6)` (FNV-1a `391b90a2`), the branch target `[0x022928, 0x02292f)` (`466a42e2`) and the plane load
+`[0x0dec8c, 0x0dec97)` with its fixup zeroed (`2df2f1ce`) and equal to base + `0x1a82f8`; then `engine_patch::claim`
+compares the ten span bytes again. Refusals: `executable_mismatch`, `invalid_base`, `unreadable`, `seam_mismatch`,
+`target_mismatch`, `plane_slot_mismatch`, `plane_window_mismatch`, `late_claim`, `invalid_tunables`. After the
+write: `readback_mismatch` (the five bytes do not read back as this module's jump, before the stub is chained) writes
+the original five bytes back over whatever is there, inside the install window (the `engine_effects_fl` convention;
+`engine_patch::restore` would refuse foreign bytes as not owned), and counts as `rollback=restored` only when all ten
+span bytes then read back as the original; otherwise `rollback=failed` and the row says `installed=1
+status=readback_mismatch`: the site stays registered for `shutdown()` and is inert (no stub chained; `installed()`
+agrees with the row). `stub_failed`/`chain_write_failed`/`chain_failed` (the jump is ours) use `engine_patch::restore`.
+The fixture injects the read-back fault as real writes into the synthetic span: one byte inside the jump →
+`rollback=restored`, bytes inside and beyond it → `rollback=failed`.
+
+Dependency boundary chosen (section 3's second option): in the FL build the handler compiles out every call into
+`chase_lead`, `chase_fire` and `chase_aim_trace`. Since the chase view restore port (2026-11-02,
+[chase-transition.md](chase-transition.md), "Verified 2026-11-02") it calls `chase_transition`'s FL binding for
+`restore_observe_frame` and, as on AP, for the unbound-phase proof: a `+0x10 == 0` visit is admitted only when
+`active_control_cockpit` holds (a complete witnessed lifetime whose cockpit-registry active handle, slot base +
+`0x1a82e4`, maps to this cockpit; false while `chase_transition` is not installed). The FL object references
+`chase_transition` only for those two functions, and none of the other three modules nor `object_trace` (checked with
+`nm`); the install row says `unbound_phase=active_control dependencies=chase_transition`. The loader logs one row each,
+`<module> installed=0 status=ap_only edition=fl reason=ap_only`. The handler calls no native function, so the FL
+updater's `ECX`/plain-RET ABI is not used. The FOV is read from camera `+0x298` as on AP (no `fov.h` accessor needed).
+Not verified: the pose in game on FL (not flown), native Windows game execution, foreign-SEH unwinding through the
+callback.

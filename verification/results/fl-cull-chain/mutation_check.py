@@ -49,8 +49,8 @@ MUTATIONS = {
     'far_never_requested': (PROVIDER, 'applied = install_base(base, exempt, far_jets);',
                             'applied = install_base(base, exempt, false);'),
     # The far-jet handler (engine_far_jets.cpp, FL read set 2026-11-03).
-    'handler_ap_model_offset': (HANDLER, 'constexpr unsigned model_at = fl_layout::model_offset;',
-                                'constexpr unsigned model_at = core::model_offset;'),
+    'handler_ap_model_offset': (HANDLER, 'constexpr unsigned model_at = layout::edition.model;',
+                                'constexpr unsigned model_at = layout::ap.model;'),
     'handler_scale_unbound': (HANDLER, 'node_context && node_context == r.context ? word(', 'node_context ? word('),
 
     'marker_not_pinned': (PROVIDER, 'bytes_match(base + S::marker_or_rva, S::marker_or, S::marker_or_length)', 'true'),

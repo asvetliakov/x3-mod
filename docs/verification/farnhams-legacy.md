@@ -1418,6 +1418,398 @@ Not verified: the in-game FL path (rows `lod_material_strength_texture_hook stat
 slot_rva=0x00150374 edition=fl`, `texture_hook=1`, then the debug-tier `lod_strength_texture` rows for the `addon2`
 atlases and `lod_strength_frame` marked draws) waits for an FL run with the overlay catalogue installed.
 
+## Proxy culls on FL (small props, GPU occlusion), host evidence (2026-11-02, not flown)
+
+Before: FL run 21 logged `cull_small_props_frame … draws=0 culled=0` on all 133 rows (2,463,523 draws `no_scope`) and
+`occlusion_cull_config configured=1` with no `occlusion_cull_device`/`occlusion_cull_session` row (measured,
+[run21_baseline.sh](../../verification/results/fl-proxy-culls/run21_baseline.sh)): both draw-hook culls were gated on
+`object_trace::executable_verified()`, constant false on FL. AP run 227 for scale: `draws=15154 culled=12154` and
+`candidates=44329 tested=24542 hidden=21576` per 300 frames (from the brief, not re-measured).
+
+Change (base `e6c9d03b5`): gate `object_trace::scope_available()` (AP `executable_verified()`, FL `active()`);
+`engine_node_layout.h` (AP model `+0x140`, FL `+0x144`, parent `+0x18`, handle `+0x28`) read through
+`Culler::layout` / `Classifier::layout`; FL globals at attach: body manager `base+0x1aa100`, cockpit registry
+`base+0x1a82e4`. Without the FL scope seam (object trace off or refused) each cull logs one
+`… attached=0 edition=fl reason=scope_unavailable` device row and stays off on that device (small props at its first
+scene draw, occlusion at its first candidate draw); small props also refuse with `reason=registry_not_admitted`. FL
+rows end in `edition=fl`; the descriptor part box (F8 diagnostic) and the engine-side skip stay AP only
+(`occlusion_cull = engine` on FL logs `engine=0 engine_status=ap_only`). Defaults unchanged
+(4 px, pool 1024, retest 8). Every FL read and its source:
+[fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Proxy culls' engine reads (2026-11-02)".
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL offsets not generated elsewhere, decoded from `C:\X3FL\X3FL.exe` (`e7f3aad8…`) | `python3 -I verification/results/fl-proxy-culls/offsets.py` | 19 / 19 anchors ([offsets.json](../../verification/results/fl-proxy-culls/offsets.json)) |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (worktree, not candidates) | 0 warnings each; FL `eb1f007d…` 55,472,094 B, AP `473fddf4…` 62,700,157 B (after review fixes) |
+| x87 | `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | PASS |
+| x87, FL (tool gap) | `python3 verification/probe/check_no_x87.py build-fl/d3d9.dll` | not checkable: the tool requires the AP-only gz hook symbols (`gz_read: 0 symbols`); not a pass |
+| Config | `python3 tools/config/generate.py --check` | PASS, 292 settings |
+| Host | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_cull_small_parts test_occlusion_cull test_fl_object_trace test_exe_identity test_fl_identity test_logging_tiers` | 6 modules, 89 tests, 0 failing |
+| Cores under both layouts | `test_cull_small_parts.CullSmallPropsCore.test_core_compiled`, `test_occlusion_cull.test_core_driver`: each core compiled without a define (AP) and with `-DX3M_EDITION_FL=1`; every node carries a decoy model id at the other edition's offset | both editions 0 failures; occlusion driver 133 checks per edition |
+| Mutation: the FL build forced onto AP's layout | scratch copy of `src/proxy` with `edition = ap` under `X3M_EDITION_FL` | props harness 15 failures, occlusion driver 17 failures (killed) |
+| Wiring | `test_edition_gate_and_addresses` in both modules | gate, attach addresses, AP-only ledger and part box, `edition=fl` rows pinned |
+
+The occlusion GPU fixture records (`occlusion-cull-batched/fixture-*.json`) ran the 2026-10-08 `occlusion_cull_core.h`;
+`test_batched_records` now accepts that recorded hash or the 2026-11-02 one (AP offsets unchanged, proven by the AP
+build of the host driver); a rerun needs a Wine host. Not verified: either cull on FL in game; the FL saving.
+
+## FL run 22 — material-strength hook and proxy culls on FL (installed 2026-11-02)
+
+Merge `e1a43c4ab` (hook `9446e7a3b`, culls `e1a43c4ab`), two Opus-high reviews with no blocker (fixes folded, sections
+above). Clean `build-fl` from main, 0 warnings; 12 host modules 140 tests 0 failing; `generate.py --check` PASS (measured).
+Installed `C:\X3FL\d3d9.dll` = `81dd4fb5…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run21` = `af2d404f…`
+(runs 20–21); overlay `addon2/06+07` and ini unchanged. Record `verification/results/fl-run22/candidate.json`.
+
+**FL run 22 A (flown 2026-11-02, accepted):** two F8 (clear with ships; fogged with stations); user: nothing wrong by eye.
+Log `/home/asvetl/x3m-logs/fl-run22-culls-strength.log`, triage `verification/results/fl-run22/triage_log.py` (Opus medium,
+measured): hook `state=installed dll=d3dx9_43.dll slot_rva=0x00150374`, `texture_hook=1`, 328 marked atlas loads (82 per
+slot; the 16 `lod_strength_texture` rows are the log cap), 14 twins, `marked=366,984 no_twin=0` (same shape as AP run
+204); small props `attached=1 model_offset=0x144`, 69,733 prop verdicts, 2,089 culled, 0 unresolved (two own-ship props
+at 173 px kept every frame, inferred); occlusion `attached=1`, 180,272 candidates, 15,881 tested, 2,101 hidden, 1,601
+skipped, 48 % `no_hull` (station dock/turret-named parts or parts drawn before their hull, inferred, open); fogged
+frames: neither proxy cull skipped anything. `frame_end draws=` counts skipped draws too; the proxy culls show in
+`issued=` (fogged not-issued median 1). Fogged draws median 187 vs run 21's 191 (same content). One device Reset at
+frame 33,249, recovered. Bolt features: `screen_emission_additive … pair_draws=0` over the whole flight (AP flights:
+thousands), chase camera not ported (`bolt_footprint view_gate=chase_camera`): whether the bolt recogniser matches FL
+bullets is open until a flight with weapons fired.
+
+Original brief: the fogged spot of runs 19–21 plus a clear sector with ships, one F8 each; tell me before
+relaunching. Expect `lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll … edition=fl`,
+`lod_material_strength_configured enabled=1 texture_hook=1`, `lod_strength_texture`/`lod_strength_frame seen>0`
+(atlases marked at load), `cull_small_props_device … attached=1 edition=fl model_offset=0x144`,
+`cull_small_props_frame … draws>0 culled>0`, `occlusion_cull_device … attached=1`, `occlusion_cull_session … hidden>0`,
+fogged `frame_end draws=` below run 21's 191 median, no `attached=0`/`refused` rows. Visual: distant station trims no
+longer pale/flat (material strength), nothing visible missing near ships or stations (small props, occlusion), own
+ship and target intact in chase view, no pop-in when turning (occlusion retest).
+
+## FL run 23 — occlusion_cull default off (installed 2026-11-02)
+
+Commit `ba32f497f`: unset/empty `X3M_OCCLUSION_CULL` now means off, the documented default (the code said on since 2026-10-08:
+every AP flight since then and FL run 22 ran the draw-level cull; `docs/verification/occlusion-cull.md`, 2026-11-02
+section; user decision 2026-11-02 "leave it off by default too"). Host: 4 modules 72 tests 0 failing; `build-fl` 0
+warnings (measured). Installed `C:\X3FL\d3d9.dll` = `647e8ebc…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run22` =
+`81dd4fb5…`. Record `verification/results/fl-run23/candidate.json`.
+
+**FL run 23 A (flown 2026-11-02, accepted):** three F8 (clear with distant capitals; same while firing; fogged sector).
+Log `/home/asvetl/x3m-logs/fl-run23-occlusion-off.log`, triage `verification/results/fl-run23/triage_log.py`, `bolts.py`
+(Opus low, measured): `occlusion_cull_config requested=unset configured=0 reason=off edition=fl`, no device row.
+Occlusion A/B at matched load (run 22 on vs run 23 off, `dt_ms` binned by issued draws in 20s, clear and fogged apart):
+p50 4 ms in every bin of both runs; p90 4–7 (on) vs 4–6 (off) clear, 5–7 (on) vs 4 (off) fogged at 160–240 issued:
+indistinguishable at the log's 1 ms resolution, if anything on is one quantum worse at p90 (inferred), the same verdict
+as the AP A/B of 2026-10-08; decision: default stays off, `occlusion_cull = on` remains the opt-in. Draws: fogged median
+176 (p90 297, n 14,108), clear 83. Bolts: `pair_draws=15,158 admitted=13,455 refused=1,703` (all `state`, 11 % vs AP's
+49 %), `bolt_flag=13,455`, `bolt_dropped=0` (AP 0 too), `bolt_footprint … gated=13,453` (chase camera not ported, so the
+footprint never writes), `bolt_copy` rows on the firing capture: the bolt pipeline behaves as on AP apart from the chase
+gate (inferred). No new fault, invalid or `attached=0` rows.
+
+Original brief: any flight; fire a few shots at a distant target in open space (bolt recogniser check:
+`screen_emission_additive_refused_window pair_draws>0`, `bolt_far_composite` rows). Expect `occlusion_cull_config
+requested=unset configured=0 reason=off edition=fl` and no `occlusion_cull_device` row. Tell me before relaunching.
+## FOV on FL, host evidence (2026-11-02, not installed, not flown)
+
+`fov` (`X3M_FOV`, schema default 90) now runs on FL: `src/engine/fl/fov_fl.cpp` provides `fov.h` for X3FL.exe (AP keeps
+`fov.cpp`, unchanged): the constructor imm32 at base+`0x01e08d` (plain write, crosses a qword), INS_SetFocus's
+`mov eax, [base+0x1a82e4]` at base+`0x030eaa` and the load store at base+`0x01df09` (lock cmpxchg8b each), with AP's
+remap table and exact-match load rule in FL register variants; all three or none. Sites, ABI and what held:
+[FL field of view](../reverse-engineering/fl/field-of-view.md), "Verified 2026-11-02". Rows: one
+`fov site=… rva=01e08d edition=fl status=patched reason=ok value=0x3470 … write=plain registry=none setfocus=active
+setfocus_write=atomic load=active load_write=atomic`, then up to 16 `fov_confirm frame=… edition=fl registry=… focus=…
+expected=… match=… kind=constructor|remapped|vanilla|other …` rows, one per change of the admitted registry's +0x24
+(FL has no save_load_complete marker). `fov::present()` samples the admitted registry's +0x24 once every 64 Presents
+(Present thread only) and `fov::current_focus()` returns that sample, else the configured value, with no read of its own;
+the small-parts cull's fallback uses it (the chase camera reads camera +0x298 and does not call it). The imm32 plain
+write runs at backend load inside the install window, not in the note's static-load transaction (the note's
+"Verified 2026-11-02" section: why it is safe, inferred). All measured on the WSL2 host, no Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Sites on the installed exe | `sh verification/results/fl-fov/reproduce.sh` (`verify_fov_site_fl.json`) | PASS, 31 checks: six windows (FNV-1a with fixups zeroed, `.reloc` census = declared fixups), decodes, liveness, anchors, callers, interior entries (0 into the detours), the shared table (70/80/90/100 → `0x2768`/`0x2dc5`/`0x3470`/`0x3b6f`) |
+| Native fixture | `test_fl_fov` (`verification/probe/fl_fov.cpp`, `fl_fov_shim.h`) | full run `RESULT PASS checks=49 failures=0`: one sample per 64 `present()` calls, a change seen only at the next sample, 16-row cap (`SAMPLES interval=64 frames=2817 rows=16`); 1360/1360 window bits and 96/96 fixup bits refused with nothing emitted; 196 SetFocus vectors (86 remapped) and 358 load vectors (83 remapped) through the real bytes, every register as documented, non-arithmetic flags, DF, XMM7, x87 CW, MXCSR, LastError kept; 9 seam faults (literal read-back, both read-backs, both chains, a refused SetFocus rollback, an unreadable literal restore) all-or-none or registered; `initialize()` rows; `late_claim`. `retain` run 6/6: after the window closes the jumps restore, the literal stays (`literal_retained`) |
+| Stub audit | `test_fl_fov.FlFovNativeFixture.test_emitted_stubs` (Capstone) | SetFocus 9 instructions writing only EAX, ECX, EFLAGS; load 11 writing only ECX, EDX, EFLAGS; no memory write, push/pop or call |
+| Mutations | `test_fov_site.FovSiteFl.test_mutated_copies_fail` | 5/5 mutated copies (imm32, SetFocus opcode, load store, caller TEST, callee CMP) fail their specific check |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fov_site test_fl_fov test_config_schema` | 38 tests, 0 failing; neighbours (engine_effects_sites, ui_scale, fl_cull_chain, logging_tiers, runner_housekeeping and eight test_fl_*) 95 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, `cmake --build build-ap -j` (fresh trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1110 reachable functions); `tools/config/generate.py --check` PASS (`fov` described for both editions) |
+
+User-run note: `fov` is on by default (schema 90), so the first FL launch with this build narrows the view: the
+constructor's focus becomes `0x3470` instead of the engine's `0x4000` (90° horizontal on 16:9 instead of 90° on 4:3),
+unless the ini says `fov = game`.
+
+Not verified: the in-game FL path. A user run should show the `fov … edition=fl status=patched` row, a first
+`fov_confirm … kind=constructor` row on a new game (or the save's value, `kind=remapped` for a vanilla save, after a
+load), `kind=remapped` rows on menu steps, and the wider view; mode 6 and the saved cockpit+0x240 cache stay unpatched
+(note section 3).
+## Chase camera pose hook on FL, host evidence (2026-11-02, not installed, not flown)
+
+`camera = chase` is the FL ini default, but FL logged no `chase_camera` row: the module's initializer and report sat
+in AP-only fences. Now the FL build installs the same pose seam in X3FL.exe's cockpit updater at base + RVA `0x0227ad`
+(ten bytes `cmp dword [ebx+0x54],0; je`, rel32 at +6, continuation `0x0227b7`, plain copy inside the install window
+because the jump crosses a qword), with the shared spring/elevated handler (`offset_y`, `pitch_down_deg`,
+`distance_scale`, `fov_compensate`). Sites, field anchors and the dependency boundary:
+[fl/chase-camera.md](../reverse-engineering/fl/chase-camera.md), section 6. `chase_transition`, `chase_lead`,
+`chase_fire` and `chase_aim_trace` stay AP-only: compiled out of the FL handler, one
+`<module> installed=0 status=ap_only edition=fl reason=ap_only` row each; the unbound (`+0x10 == 0`) phase is never
+admitted on FL. AP object code of `chase_camera.cpp` is unchanged (objdump `.text` and `.rdata` diff against the base
+build: 0 lines). Base `9446e7a3b`. All measured on the WSL2 host (native Windows through interop), no Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| FL site | `python3 verification/probe/verify_chase_camera_site.py --edition fl --json` (`verification/results/fl-chase-camera/verify_fl_site.json`) | PASS: bytes, Capstone `[4, 6]`, no HIGHLOW in the span (38,327 total), the seven inbound edges and no interior edge (72,230 direct edges), sole updater caller `0x01e5b0`, qword crossing (`& 7 == 5`), EBX = cockpit to the seam, 43 field anchors, three window FNV-1a values, plane fixup `0x005a82f8`; AP mode still PASS |
+| Native fixture | `python3 -I verification/results/fl-chase-camera/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_camera.cpp`) | `RESULT PASS checks=41 failures=0`: both outcomes of the replayed `je` (re-based rel32) for ESP skews 0/4/8/12, every GPR, EFLAGS (= the native compare's), ESP, XMM0-7, x87 CW `007f` with one loaded register, MXCSR `bfe0` and LastError intact at the continuation/target; pose written through EBX (vanilla `0,200,-2000` → `0,808,-3778`, row padding kept), `frames=9 applied=8 refused=1 inactive=2 unbound=0`; 528/56/88 window bit flips refused before any write; read-back faults written into the synthetic span: a byte inside the jump → original ten bytes, `installed=0 … rollback=restored`; bytes inside and beyond it → `installed=1 status=readback_mismatch rollback=failed`, site registered and inert, `installed()` agrees; shutdown restores and a re-claim works; `late_claim` after `close_install_window` |
+| Mutations | `python3 -I verification/results/fl-chase-camera/mutation_check.py` (`mutation_check.txt`) | 4 / 4 killed: no `PreserveCpuState` (11 failed checks), unbound admitted (2), read-back check skipped (5), rollback through `engine_patch::restore` only (5: the not-owned refusal) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_camera test_chase_camera_site test_fl_chase_camera test_config_schema` | 97 tests, 0 failing; `test_bolt_footprint` pin updated to the fenced inactive return (25 tests, 0 failing) |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (`camera` and the four geometry keys marked for both editions; `chase_hud_anchor`, `chase_view_restore` and `chase_view_restore_retries` open with "X3: Albion Prelude only, ignored on Farnham's Legacy."; template text only) |
+
+Expected in game (not verified): `chase_camera requested=1 installed=1 status=active site=0x<base+0227ad> length=10
+rel32_offset=6 atomic_write=0 … edition=fl rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=none`, then
+the four `ap_only` rows, `chase_camera first_applied …` at the first applied frame and `chase_camera_last_device kept=1`
+at exit. The raised rear framing, boom scaling and smoothness on FL need a flight.
+
+Known FL gaps to expect in this flight (not defects of the pose hook):
+
+- After each gate transit (and jumpdrive) the FL chase view shows vanilla framing for a short while, then jumps to the
+  chase pose with a TAA history cut. A fresh cockpit generation reaches the seam with `+0x10 == 0` for tens of updates
+  (AP Run 78: 12–36 updates, 0.4–1.1 s; the FL figures are inferred from that, not measured), and FL never admits that
+  unbound phase because its proof is `chase_transition`'s registry walk, AP-only. This is the known gap the
+  `chase_transition` FL step closes.
+- The native centre crosshair is a false aim cue on FL: with `chase_offset_y = 0.5` the ship sits halfway down the
+  screen, so the screen centre is not where the ship points, and the true-forward reticle (`chase_hud_anchor`) is
+  `chase_lead`, AP-only until it is ported. `chase_hud_anchor`, `chase_view_restore` and `chase_view_restore_retries` are
+  ignored on FL (the template says so on their first line).
+- The bolt footprint's view gate (`chase_camera::pose_applied_since`) can open on FL for the first time with this build,
+  so its `plan_draw`/substitute-buffer path runs on FL for the first time (inferred from the source: the gate was always
+  closed while the FL site was never installed; unflown).
+
+## FL run 24 — field of view and chase camera pose hook on FL (installed 2026-11-02)
+
+Merges `17f8ef034` (FOV, worktree commit `be484d7c8`) and `caae7e209` (chase camera, `4490db3e6`), two Opus-high reviews
+with no blocker, fixes folded (sections above). Clean `build-fl` from main `caae7e209`, 0 warnings; 11 host modules 188 tests
+0 failing; both FL site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `440dbe52…`
+(55,579,145 B), rollback `rollback-d3d9\d3d9.dll.run23` = `647e8ebc…`; overlay and ini unchanged (template defaults: `fov = 90`,
+`camera = chase`). Record `verification/results/fl-run24/candidate.json`.
+
+**FL run 24 A (flown 2026-11-02, accepted for FOV and the camera pose):** user: "fov and chase camera works"; a sector
+change switched the view back to first person and did not restore; the HUD elements of the chase view (crosshair, distance
+icon, target overlay, possibly the lead reticle) are not shown. Both are the documented AP-only gaps (`chase_transition`,
+`chase_lead`), now **user decision 2026-11-02: port the view restore and the central HUD / `chase_hud_anchor` and the other
+UI elements so the chase view shows them as on AP**. Log `/home/asvetl/x3m-logs/fl-run24-fov-chase.log` (measured):
+`fov … edition=fl status=patched value=0x3470 write=plain setfocus=active setfocus_write=atomic load=active
+load_write=atomic`; `fov_confirm` rows `match=1 kind=constructor` at frames 64 and 2240, then `focus=0x351f
+kind=remapped` (a script/menu SetFocus remapped through the table, so the setter site works); `chase_camera installed=1
+status=active site=0x00dd27ad` with 198 window/timing rows; `chase_transition`/`chase_lead`/`chase_fire`/`chase_aim_trace
+installed=0 status=ap_only edition=fl`; `bolt_footprint session_draws=8274 written=5660 expanded=42,158 gated=1,355`
+(the footprint path ran on FL for the first time; no refusal). No `installed=0`, `refused` or `rollback=failed` on the
+FOV or camera rows.
+
+Original brief: load a game, fly in open space and through one gate, dock once if convenient, take one F8 in flight;
+tell me before relaunching. Expect `fov … edition=fl status=active` with the constructor literal, SetFocus and load sites
+claimed (`write=plain setfocus=atomic load=atomic` or the row's equivalents), `fov_confirm` rows showing `0x3470`
+(90 on 16:9) after load, `chase_camera requested=1 installed=1 status=active edition=fl rva=0x0227ad`, four
+`… status=ap_only edition=fl` rows (chase_transition, chase_lead, chase_fire, chase_aim_trace), `bolt_footprint …
+written>0` when firing, no `installed=0`/`refused` on these. Visual: the view is wider than before (90 horizontal on
+16:9; set `fov = game` to compare), the ship is seen from behind and slightly above with the spring lag as on AP;
+**known gap:** after a gate transit or jump the first ~0.4–1.1 s show vanilla framing, then the chase pose snaps in
+(view restore is the next step); the centre crosshair is not the aim point under the raised camera until the lead marker
+is ported. Report anything that looks like a camera jump, wrong FOV in menus or on load, or missing HUD.
+
+## Chase HUD on FL, host evidence (2026-11-02, not installed, not flown)
+
+Run 24's missing chase HUD (crosshair, speed/distance panels, lead reticle) is AP's `chase_lead` module, AP-only on FL
+until now. Ported as `src/engine/fl/chase_lead_fl.cpp` + `chase_lead_sites_fl.h` (AP `src/proxy/chase_lead.cpp`
+unchanged and no longer linked into FL): the HUD gate (the five central nodes: crosshair, target speed, own speed,
+target distance, status icon), the lead gate, publish and final FOV (the predictive reticle at the chase-projected
+point, and the true-forward placement of the five nodes for `chase_hud_anchor = forward`). The target brackets need no
+hook (native mode test `& 3`, which chase mode 258 passes). The update binding is the chase camera's pose seam, closed at
+the final FOV (no `chase_transition` dependency); the five native-timing sites are not ported (telemetry only). Facts:
+[chase-lead.md](../reverse-engineering/fl/chase-lead.md), section 7. The template's `chase_hud_anchor` now reads
+"X3: Albion Prelude and X3: Farnham's Legacy."
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_lead_sites_fl.py --out verification/results/fl-chase-lead/verify_fl_sites.json` | PASS: 12 windows (823 bytes) FNV-1a with 9 HIGHLOW dwords at their targets (distance 1, texture 6, projection 2), whole instructions; 4 seams exact bytes and Capstone decode, no fixup in any span, no direct edge into any interior (72,230 edges), qword fits/crosses as declared; overlay sole caller `0x0229c2`; pose seam `0x0227ad` dominates `0x0229c2` and `0x022cf5` (1,082-instruction CFG, no unresolved edge); overlay ESP = P at every seam (3,061 instructions, no conflict); 82 field/ABI anchors; header bytes = executable |
+| Native fixture | `python3 -I verification/results/fl-chase-lead/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_lead.cpp`) | `RESULT PASS checks=79 failures=0`: the four thunks for ESP skews 0/4/8/12 with every GPR, EFLAGS incl. DF, ESP, XMM0-7, x87 CW `007f` + one register, MXCSR `bfe0`, LastError intact except ZF (gates) and ECX/EDX (publish); publish `231,-65` from P+0xe0 (decoy at AP's P+0xc0 would give `0,0`), node and O+0x3e0 written; zoom finalization `316,-89`; forward anchor `-232,0` added to all five native positions; failed projection hides through the real 31-byte helper (detacher got ECX = marker, argument = scene), ECX/EDX = -1; HUD refusals (extra entry active, texture missing, 2D off, foreign backpointer) leave the native branch; pose closed after final FOV; 6,584 / 6,584 window bit flips refused before any write (288 in relocated dwords); fault in each marker seam → all three restored; HUD seam fault keeps the marker; unrecoverable fault → `rollback=failed`, inert; flags off: each stub's byte test forwards with the native branch and full CPU state, nothing counted; shutdown and re-install; `late_claim`. `fixture_out.txt` is normalised (addresses, thread ids, µs) and byte-stable across reruns |
+| AP unchanged | `python3 -I verification/results/fl-chase-lead/ap_objects_identical.py chase_camera.cpp loader.cpp capture.cpp chase_lead.cpp` (`ap_objects.txt`; `--base` defaults to the parent `f8b255b17`, `--head` to the working tree) | identical AP disassembly against the parent (6,660 / 3,070 / 41,169 / 6,614 lines) |
+| Cost (diagnostic) | the fixture's `TIMING` row (`run_fixture.py` prints it; 2,000 calls each, this host, not game FPS) | harness alone 0.13 µs; final-FOV visit of another cockpit with the module on 0.45–0.47 µs (≈0.33 µs over the harness: what each non-chase cockpit of the registry walk pays per update); same visit with the flags off 0.14–0.26 µs; one admitted chase update (pose, gate, publish, HUD gate, final FOV with anchor) 9.4–9.8 µs including four harness calls, once per frame |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_lead test_chase_lead_sites test_chase_central_hud_install test_fl_chase_lead test_config_schema` | 47 tests, 0 failing; plus 14 related modules (`test_fl_chase_camera`, `test_chase_camera`, `test_bolt_footprint`, `test_launcher_defaults`, …) 174 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected in game (not verified), with `camera = chase`: `chase_camera requested=1 installed=1 status=active … edition=fl
+rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=chase_lead`, then `chase_native_timing installed=0
+status=not_ported sites=0 edition=fl reason=telemetry_only`, `chase_central_hud installed=1 status=active
+cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none`, `chase_lead installed=1
+status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=<0|1> edition=fl base=0x<base>
+rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam`, and `chase_fire`/`chase_aim_trace` (and
+`chase_transition` unless its port lands first) `installed=0 status=ap_only edition=fl`. With telemetry on, every 300
+frames: `chase_central_hud_window … admitted>0 … anchor_applied>0 … edition=fl` in the chase view and, with a target
+selected in gun range, `chase_lead_window … committed>0 …` plus `chase_lead_sample` rows. Visual: in the chase view the
+crosshair and the speed panels appear where the ship points (not at screen centre), the distance panel appears when an
+object is selected, the predictive reticle appears on a targeted ship in range and bolts fly to it; zoom keeps the
+reticle on target; first-person view unchanged; no `installed=0`, `window_mismatch`, `slot_mismatch` or
+`rollback=failed` on these rows.
+
+Open items: once `chase_transition` is on FL (a parallel worktree, same build), `current_update()`/`generation()` in
+`chase_lead_fl.cpp` should take the cockpit-lifetime generation and update serial from it as AP does
+(`src/proxy/chase_lead.cpp`, `camera_context`/`scope`), which also closes the destroy-and-rebuild-within-one-update gap
+of the pose-seam binding; that integration is a follow-up, not in this commit. The path `0x022a0d je 0x022fa9`
+(cockpit+0xc == 0 after the HUD calls) skips the final-FOV seam: that pose stays open until the next pose-seam visit,
+and a leftover ticket fails at `scope`/`owned_marker`, so nothing is written from it.
+
+## Chase view restore on FL, host evidence (2026-11-02, not installed, not flown)
+
+FL run 24 A: a sector change switched the chase view back to first person and nothing restored it, because
+`chase_transition` was AP-only. Now the FL build installs the AP restore in X3FL.exe: six cockpit lifetime/update
+witnesses, the script/load mode-store observers, and the input-worker injection plus three VM cancel sites, twelve
+spans bound to the module base after 26 identity windows match, each group both or none
+([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md), "Verified 2026-11-02"). The portable state
+machine is unchanged and single-sourced. FL native return addresses are normalized to preferred-base VAs (alloc
+`0x4305ab`, load `0x420e12`, free `0x430612`). The FL register ABI is local to the handler: ECX cockpit, the EBX
+dispatcher frame, ECX as the controlled object. The engine call uses selector 32. The chase camera's FL handler now
+hands every visit to `restore_observe_frame` and, as on AP, admits the unbound `+0x10 == 0` phase of a fresh cockpit
+on `active_control_cockpit` (the run78 pose gap; previously never admitted on FL). Diagnostics (connect observer, event/identity readers) stay off on FL.
+AP object code is unchanged. Base `f8b255b17`. All measured on the WSL2 host (native Windows through interop), no
+Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_transition_sites_fl.py --json` (`verification/results/fl-chase-transition/verify_fl_sites.json`, written by `run_fixture.py`) | PASS: 12 spans (bytes, Capstone lengths, no relative flow, no interior edge in 72,230 direct edges, no relocated pointer into an interior, only the EH HIGHLOW of 38,327), 26 windows, 63 anchors, caller sets, case-`0x30` table entry, EH publication `0x0bed96`, dispatcher publication `0x01df32` |
+| Native fixture | `python3 -I verification/results/fl-chase-transition/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_transition.cpp`) | `RESULT PASS checks=402 failures=0`. CPU contract, 96 runs: 12 thunks × ESP skews 0/4/8/12 × flags+DF set/clear, each against a reference copy of the original span (GPRs, ESP, EFLAGS, XMM0-7, x87 CW/ST0, MXCSR `ffc0`, LastError, pushed words, the stored mode). The injection also ran with a hostile engine call inside, 4 runs. Scenarios through the thunks: gate (restored, `hud_refresh=ok`), dock (restored, `skipped`), undock (stays armed, no call), jump (36 unbound updates, then restored on the new ship), retries (`no_effect cancel=retries attempts=3` after 124 updates), refused call, and six cancels (load, VM clear, VM load, EH epoch, load constructor, foreign frame → `no_monitor`). Install: 52/52 window flips refused with nothing written, unrelocated EH immediate refused, read-back faults roll back per group, `late_claim`. Arena 1,840 of 24,576 bytes; 9 cmpxchg8b + 3 plain |
+| Restore core under FL constants | `test_fl_chase_transition.FlRestoreCoreHarness` (the AP harness `chase_transition_restore_host.cpp` compiled with `-DX3M_EDITION_FL=1`, its two selector-0 checks and case 22's load return substituted) | `checks PASS` |
+| Mutations | `python3 -I verification/results/fl-chase-transition/mutation_check.py` (`mutation_check.txt`) | 8 / 8 killed: constructor cockpit from `[ESP+4]` (28 failed checks), mode-store frame from EBP (14), controlled object from `[ESP+4]` (14), selector 0 (2), callers not normalized (25), read-back skipped (3), observers kept after a refused restore group (1), windows not checked (50) |
+| FL camera, unbound phase | `python3 -I verification/results/fl-chase-camera/run_fixture.py` and `mutation_check.py` (`fixture_out.txt`, `mutation_check.txt` regenerated) | `RESULT PASS checks=44 failures=0`: a `+0x10 == 0` visit without the proof is inactive and asks the proof once; with it the visit is admitted and the pose written (`frames=10 applied=9 refused=1 inactive=2 unbound=1`); 5 / 5 mutations killed (the former `unbound_admitted_on_fl` replaced by `unbound_admitted_without_proof` and `unbound_never_admitted`, 3 failed checks each) |
+| AP objects | `python3 verification/results/fl-chase-transition/ap_object_compare.py <build-ap Makefiles tree> <scratch>` (`ap_object_compare.json`) | 4 / 4 identical against `f8b255b17` (`chase_transition.cpp`, `chase_camera.cpp`, `loader.cpp`, `capture.cpp`, debug stripped) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_transition test_chase_transition_sites test_chase_restore_sites test_fl_chase_transition test_config_schema`; also `test_fl_chase_camera test_chase_camera test_launcher_defaults test_chase_native_timing_install test_chase_central_hud_install` | 44 tests, 0 failing; 75 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (`chase_view_restore` and `chase_view_restore_retries` no longer say "Albion Prelude only") |
+
+Expected in the flight log (not verified): `chase_camera requested=1 installed=1 status=active … edition=fl rva=0x0227ad
+rollback=none unbound_phase=active_control dependencies=chase_lead,chase_transition`, then:
+
+```
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+chase_transition_site index=0 site=0x<base+020ec0> rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl   (indices 0-7; atomic_write=0 at 1, 6, 7)
+chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x<base+0cfd00> inject_rva=0x0cfd00 call=0x<base+0bb5b0> call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
+chase_view_restore_site index=0 site=0x<base+0cfd00> rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl   (indices 0-3)
+chase_fire installed=0 status=ap_only edition=fl reason=ap_only   (and chase_aim_trace; chase_lead and chase_central_hud log their FL rows, section above)
+```
+
+After each gate transit, jumpdrive jump and docking taken in the rear chase view, one row:
+`chase_view_restore result=restored cancel=none attempts=1 monitor=0x<negative id> … hud_refresh=ok|skipped … mode_seen=258 …`.
+Undocking writes no view mode, so no row is expected. If the view is not restored, report the row. Each pattern points
+to one cause:
+
+- `result=no_effect cancel=retries`: the store did not happen inside the call.
+- `result=cancelled cancel=mode_left` right after a call, with the chase view actually back: the store was deferred
+  (the script task yielded and stored 258 after the call returned), so the attempt read as `no_effect` and the next
+  candidate frame at 258 cancelled the ticket. The restore landed, but each earlier retry may have left a deferred
+  `SelectMode` task behind (at most `retries` + 1 calls per ticket); report it with the rows around it.
+- `cancel=no_monitor`: the mode store was not captured.
+- `result=call_refused`: the method or the receiver is missing.
+- `chase_view_restore_arm_refused reason=…`: the rear frame did not arm.
+- `chase_transition installed=0 status=… window=<name>`: a window mismatch.
+
+With `--perf`, `chase_view_restore_state` every 300 frames carries the counters. The former gap (vanilla framing for
+~0.4–1.1 s after a gate transit or jump, then a snap to the chase pose) closes: the unbound phase is admitted on the
+active-control proof as on AP, so the chase pose should apply from the fresh cockpit's first updates (inferred from AP
+Run 78 and the fixture; not flown on FL). `chase_camera … unbound=` in the report rows counts those visits.
+
+## FL run 25 — chase view restore and chase HUD on FL (installed 2026-11-03)
+
+Merges `7e0a02cb8` (chase_lead FL port) and `f8bdad9c8` (chase_transition FL port merged with it), two Opus-high reviews
+with no blocker, fixes folded (sections above). Clean `build-fl` from main `f8bdad9c8`, 0 warnings; 17 host modules 206 tests
+0 failing; the four FL site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `413eb49b…`
+(55,597,305 B), rollback `rollback-d3d9\d3d9.dll.run24` = `440dbe52…`; overlay and ini unchanged (template defaults:
+`camera = chase`, `chase_hud_anchor = forward`, `chase_view_restore = 1`). Record `verification/results/fl-run25/candidate.json`.
+
+**FL run 25 A (flown 2026-11-03, accepted):** user: "chase view restore is okay, tested gate and dock; crosshair is okay".
+Log `/home/asvetl/x3m-logs/fl-run25-restore-hud.log` (692 MB, measured): `chase_transition installed=1 status=active
+edition=fl … diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2`, 8
+`chase_transition_site` rows, 1,768 `chase_transition_timing` rows; `chase_lead installed=1 status=active
+scope=applied_main_chase_same_sector native_solver=retained edition=fl rva=0x02c7b9,0x02cbe7,0x022cf5 update=pose_seam`,
+221 `chase_lead_window` and 125 `chase_lead_sample` rows; no `installed=0`, `refused` or `rollback=failed` on the chase
+rows. The restore's per-event rows (`chase_transition_event`/`_detail`) are not emitted on FL (diagnostics are AP-only),
+so the restore is accepted on the user's report alone; the SelectMode-store assumption therefore holds in practice but
+is not witnessed in the log (open: enable the event rows on FL or add one FL counter row). Still AP-only: `chase_fire`
+(cursor fire in the chase view), `chase_aim_trace` (its diagnostic).
+
+Original brief: load a game in the chase view; fly through two gates, jump once if you have a jumpdrive, dock and
+undock once, select a target and fire at it; one F8 in flight with a target selected; tell me before relaunching. Expect
+`chase_transition installed=1 … edition=fl` (three groups), `chase_lead installed=1 … edition=fl` (HUD gate, lead gate,
+publish, final FOV), `chase_camera … unbound_phase=active_control dependencies=chase_lead,chase_transition`,
+`chase_transition_event … result=restored` after each gate/jump/dock, no `cancel=retries`/`no_effect` (that would mean
+the script setter did not land, the one unverified assumption), and `chase_lead` rows with marker/anchor writes. Visual:
+the chase view returns by itself after a gate, jump or undock with no second of first-person framing; crosshair, speed
+and distance panels, status icon and the lead reticle visible in the chase view and anchored where the ship points;
+target brackets as before. Report: any first-person fallback that stays, a HUD element still missing, a reticle that
+does not match where bolts go, or a camera jump outside sector changes.
+
+## Chase cursor fire on FL, host evidence (2026-11-03, not installed, not flown)
+
+Run 25's remaining AP-only chase gap was `chase_fire`: right-mouse cursor fire in the chase view aims along the ray from
+the chase camera through the cursor. Ported as `src/engine/fl/chase_fire_fl.cpp` + `chase_fire_sites_fl.h` (AP
+`src/proxy/chase_fire.cpp` no longer linked into FL; its decision moved into the shared `src/proxy/chase_fire_core.h`
+with an identical AP object). One relocated `je` at RVA `0x04ecad` in the native fire function; only the saved ZF
+changes, and only for the player's main-group cursor-flag call (`[EBX+0xc]`, `[EBX+0x10]`, ship `[EBP−0x3c]`) with a
+fresh applied chase witness from the pose seam, the same cockpit/ship/camera, mode 258, and the real cursor inside
+the camera's viewport. Gun, range, cone and the unprojection stay native. `chase_aim_trace` stays AP-only
+(`reason=diagnostic_not_ported`): not needed for the first flight (fire row counters plus the visual check). Facts:
+[chase-fire-aim.md](../reverse-engineering/fl/chase-fire-aim.md), section 9.
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_fire_sites_fl.py --out verification/results/fl-chase-fire/verify_fl_sites.json` | PASS: 5 windows (481 bytes) FNV-1a with 11 HIGHLOW dwords at their targets, whole instructions; seam exact bytes and decode, no fixup, no direct edge to its start or interior (72,230 edges), qword crosses; fire function 1,843 instructions, EBX/EBP writers only prologue/epilogue, `[EBP−0x3c]` sole writer `0x04e350`, only `[EBX+8]` stored, four callers, no outside edge into it, no HIGHLOW dword pointing into it, EH FuncInfo `0x19c8b8` (magic `0x19930522`, maxState 1) with no try block; cursor-active HIGHLOW refs exactly `0x04eca8`, `0x07bc49`; 62 anchors; header bytes = executable |
+| Native fixture | `python3 -I verification/results/fl-chase-fire/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_fire.cpp`) | `RESULT PASS checks=89 failures=0`: thunk entered through the native `cmp [cursor active],0` for ESP skews 0/4/8/12, every GPR, EFLAGS incl. DF, ESP, XMM0-7, x87 CW `007f` + one register, MXCSR `bfe0`, LastError intact except ZF (admitted only); no witness / natively active cursor → original branch, no override (the stub's `lock inc` counts the natively active visits: 4; early filters by reason: no witness 5, group 1, flags 2, other ship 1); cursor cells, steering and stack words never written; refusals: flags `0x02`/`0x28`, group 1, other ship in `[EBP−0x3c]` with the player ship as decoy in AP's `[EBX+8]`, view 1/257, connect, flag 4, camera/ref/view-object/registry mismatch, zero active handle, new ship id, stale/future/other-thread witness, cursor off screen/negative/outside viewport, invalid/unreadable screen (counts stale 3, identity 5, view 4, cursor 4, read 2); witness cleared by an unapplied update, a zero stamp and the same cockpit's invalidation, kept by another's; 3,600 / 3,600 cursor positions agree with the fixture's model of the native unprojection's first stage (pixel·65536/dimension inside the normalized bounds; the native code has no in-viewport test, so this checks the handler's reads and arithmetic, not native behaviour; off-centre viewport, both axes); aim model check (production forward projection plus a fixture pinhole inverse, not a test of the native ray): a target 14.4° off boresight in a rotated chase camera, projected through `chase_lead_core::project`, gives cursor `1271,409` and a camera ray 0.08° (≈2 px) from the target; 3,848 / 3,848 window bit flips refused before any write (352 in relocated dwords); read-back fault → `rollback=restored`, unrecoverable → `rollback=failed`, inert; shutdown, re-install, `late_claim` |
+| AP unchanged | `python3 -I verification/results/fl-chase-fire/ap_objects_identical.py chase_fire.cpp chase_camera.cpp loader.cpp capture.cpp` (`ap_objects.txt`; base `549aba334`) | identical AP disassembly (1,238 / 6,660 / 3,070 / 41,169 lines) |
+| Cost (diagnostic) | the fixture's `TIMING` row (5,000 calls each, this host, not game FPS) | harness alone 0.14 µs; natively active cursor 0.13 µs (the stub's byte tests and one `lock inc`); non-player call 0.33 µs; admitted call 0.51 µs (≈0.37 µs over the harness: lock, QPC, registry walk, fields); per fire call, no per-draw work |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_fire_site test_fl_chase_fire test_fl_chase_camera test_fl_chase_lead test_config_schema` | 40 tests, 0 failing; plus `test_bolt_footprint`, `test_game_phase_sites`, `test_chase_aim_sites` 57 tests, 0 failing |
+| Builds | `cmake --build build-fl -j --clean-first`, then `cmake --build build-ap -j --clean-first` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected in game (not verified), with `camera = chase`: `chase_camera requested=1 installed=1 status=active … edition=fl
+rva=0x0227ad rollback=none unbound_phase=active_control dependencies=chase_lead,chase_fire,chase_transition`, the
+`chase_lead`/`chase_central_hud`/`chase_transition` rows as in run 25, then `chase_fire installed=1 status=active
+scope=applied_chase_258_player_main_cursor lifetime=process telemetry_required=0 native_input_writes=0 edition=fl
+base=0x<base> rva=0x04ecad window=- rollback=none` and `chase_aim_trace installed=0 status=ap_only edition=fl
+reason=diagnostic_not_ported`. With telemetry on, every 300 frames: `chase_fire_window frame=… native_inactive_override=<n>
+refused_stale=… refused_identity=… refused_view=… refused_cursor=… refused_read=… … native_active=<n> early_no_witness=<n>
+early_group=<n> early_flags=<n> early_other_ship=<n> early_read=<n> edition=fl`, with `native_inactive_override > 0` in
+windows where you fired with the right mouse in the chase view. Reading the fire row: `native_active > 0` with `native_inactive_override = 0` means FL already treats the cursor as active in the chase view (the native cursor ray runs without the hook); `early_no_witness`, `early_other_ship` or the `refused_*` counts rising instead mean the call reached the seam but was never admitted (no applied chase witness, another ship, or a stale/identity/view/cursor refusal). No `installed=0`,
+`window_mismatch`, `slot_mismatch` or `rollback=failed` on the `chase_fire` row.
+
+User flight check: in the chase view, put the mouse cursor on a target away from the screen centre and fire with the
+right mouse; the bolts should go to the cursor (toward the target), not straight ahead. Also fire with the right mouse
+in first-person view (unchanged) and once with the normal fire key in the chase view (straight ahead, unchanged).
+Report where the bolts went; if they do not follow the cursor, the `chase_fire_window` rows of that stretch tell which
+case it was (reading above). Bolts come from the guns, not the camera, so a target very close behind the
+cursor shows a small offset (the camera-to-gun parallax, as on AP).
+
+Open items: when the active cell is 0 the cursor x/y cells may be stale or meaningless (the cursor is hidden during
+mouse steering); (0,0) lies inside a full viewport, so an admitted shot could go toward the top-left corner. Same
+exposure as AP; the flight check covers it (report any bolts that go to a screen corner). The witness is bound by the
+two-second QPC window, not by `chase_transition`'s cockpit-lifetime generation (as on AP). `check_no_x87.py` cannot
+check the FL DLL (it roots at the AP-only `gz_read`).
+
+## FL run 26 — chase cursor fire on FL (installed 2026-11-03)
+
+Commit `b3b0e30c0` (fast-forward), Opus-high review with no blocker, fixes folded (section above); the transition wiring
+test accepts the fire report line (`b4ea9ff1d`). Clean `build-fl` from main `b4ea9ff1d`, 0 warnings; 10 host modules 147 tests
+0 failing; `verify_chase_fire_sites_fl.py` PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` =
+`3851f91d…` (55,621,875 B), rollback `rollback-d3d9\d3d9.dll.run25` = `413eb49b…`; overlay and ini unchanged. Record
+`verification/results/fl-run26/candidate.json`.
+
+**FL run 26 A (flown 2026-11-03, accepted):** user: "Works fine. Mouse steering doesn't hide cursor so it works fine too".
+Log `/home/asvetl/x3m-logs/fl-run26-cursor-fire.log` (165 MB, measured): `chase_fire installed=1 status=active
+scope=applied_chase_258_player_main_cursor edition=fl rva=0x04ecad rollback=none`; over 62 `chase_fire_window` rows
+`native_inactive_override=517 timed_calls=517`, every `refused_*`, `early_*` and `native_active` counter 0: FL does not
+aim cursor fire at the cursor natively in the chase view, the hook did it on every admitted call, and nothing was
+refused. Bolt pipeline during the bursts: `pair_draws=21,030 admitted=10,515`, `bolt_footprint session_written=9,282
+gated=0` (the chase gate open). The (0,0) exposure is moot on FL: mouse steering keeps the cursor visible (user). The chase
+family is complete on FL except `chase_aim_trace` (`status=ap_only reason=diagnostic_not_ported`), kept AP-only.
+
+Original brief: in the chase view, select a target well off-centre, hold the right mouse button with the cursor on it
+and fire a few bursts; also fire once with the cursor hidden (mouse steering) to probe the (0,0) exposure; one F8 while
+firing; tell me before relaunching. Expect `chase_fire installed=1 … edition=fl`, the fire row's `native_inactive_override`
+rising while firing at the cursor (or `native_active > 0` with override 0 if FL already aims at the cursor natively),
+`early_*`/`refused_*` not rising during those bursts, `chase_camera … dependencies=chase_lead,chase_fire,chase_transition`.
+Visual: bolts go to the cursor, not straight ahead; with the cursor hidden nothing aims at the top-left corner. Report a
+shot that goes somewhere other than the cursor or the boresight.
+
 ## Far-jet hand-off on FL, host evidence (2026-11-03, not installed, not flown)
 
 The FL small-parts stub's far-copy block is no longer fenced. With `engine_effects = plumes` a JET node culled
@@ -1428,8 +1820,9 @@ it as a far plume, as on AP. The read set comes from X3FL.exe's bytes
 → `+0x2c`, the selector's own dominating loads, kept only when the node's context equals the view's), so the
 stage never reads `context+0x2c` later. A changed JET writer drops only the far block (`far_jets=writer_mismatch`).
 
-Base `9446e7a3b`. Everything below was measured on the WSL2 host (native Windows through interop), with no Wine
-and no game.
+Merged onto main `2c3d32ffa`; the model id and the FL node context `fl_context` (`+0x1c`) live in the shared edition
+layout `src/proxy/engine_node_layout.h`. Everything below was measured on the WSL2 host (native Windows through
+interop) after the merge, with no Wine and no game.
 
 | Check | Command | Result |
 | --- | --- | --- |
@@ -1437,9 +1830,9 @@ and no game.
 | Dock cut ids | `python3 -I verification/results/fl-far-jets/dock_cut_ids_fl.py` (`dock_cut_ids_fl.json`) | PASS. `addon2/04.cat` Dummies (`b0c8e5ebbaf9`, AP stock hash) map 19026/19027/19098/19099 → 9013/9014/9098/9099. Cuts 9013, 9014 and 9099: inline-body ids 901300000/1/3, 901400003..5 and 909900003..5, all in the stub's ranges. Cut 9098 (M6 quick-launch): `not_covered_named_bodies`; its three named body files resolve in `addon2`, and their body-table ids lie outside the ranges [i], so those port parts follow the 4 px threshold, not 12 px (as on AP) |
 | Native fixture | `test_fl_cull_chain` (`verification/probe/fl_cull_chain.cpp`, now linking the production handler under a renamed symbol with its CMake no-SSE flags) | `RESULT PASS checks=193 failures=0` (184 before). The decision cases are unchanged (`DECISIONS culled=20 dock=10 exempt=6 far=3 native=41`). `initialize()` with plumes: `far_jets=on`, the stub's far block present. Changed JET writer: `far_jets=writer_mismatch`, far block patched out, rest installed. Far chain through the live stub into the real handler: one entry with every field from the FL offsets, owned scale `3c23d70a` (0.01), the node culled and the frame kept. `far_record` (the stage's FL call): `origin=1000,-2000,3000 size=2.0`. Node context ≠ view context, or null: scale 0, `far_record` invalid. Real model at AP `+0x140` with 566 at `+0x144`: steering, no entry. Disarmed: no entry. Frame row `… far_jets=on edition=fl` |
 | Mutations | `python3 verification/results/fl-cull-chain/mutation_check.py` (`mutation_check.json`) | 24 / 24 killed, including the new `far_writer_not_pinned`, `far_never_requested`, `handler_ap_model_offset` and `handler_scale_unbound` |
-| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_cull_chain test_cull_small_parts test_engine_far_jets test_fl_engine_effects test_config_schema` | 51 tests, 0 failing |
-| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (fresh trees, RelWithDebInfo, mingw-i686) | 0 warnings each. `check_no_x87.py build-ap/d3d9.dll` PASS. `far_jet_no_x87.py build-fl/d3d9.dll` PASS (`far_jet_no_x87_fl.json`, model offset read `0x144`). `tools/config/generate.py --check` PASS (no setting changed) |
-| AP objects | `python3 verification/results/fl-far-jets/ap_object_compare.py build-ap <scratch> 9446e7a3b` (`ap_object_compare.json`) | identical, 5 / 5: `engine_far_jets.cpp`, `motion_output.cpp`, `cull_small_parts.cpp`, `capture.cpp`, `engine_effects.cpp` |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_cull_chain test_cull_small_parts test_engine_far_jets test_fl_engine_effects test_config_schema` | 51 tests, 0 failing; with `test_fl_chase_lead`, `test_fl_chase_transition`, `test_fl_chase_fire`, `test_fl_chase_camera`, `test_fl_fov`, `test_fl_material_strength_hook`, `test_occlusion_cull`: 12 modules, 93 tests, 0 failing |
+| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (RelWithDebInfo, mingw-i686; incremental after the merge) | 0 warnings each. `check_no_x87.py build-ap/d3d9.dll` PASS. `far_jet_no_x87.py build-fl/d3d9.dll` PASS (`far_jet_no_x87_fl.json`, model offset read `0x144`). `tools/config/generate.py --check` PASS (no setting changed) |
+| AP objects | `python3 verification/results/fl-far-jets/ap_object_compare.py build-ap <scratch> 2c3d32ffa` (`ap_object_compare.json`) | identical, 5 / 5: `engine_far_jets.cpp`, `motion_output.cpp`, `cull_small_parts.cpp`, `capture.cpp`, `engine_effects.cpp` |
 
 Limits:
 

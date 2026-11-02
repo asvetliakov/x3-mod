@@ -761,7 +761,7 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
   ([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) "Verified 2026-11-03"): model `+0x144`, every other
   field at the AP offset. It also owns the context scale at the site (node `+0x1c` → `+0x2c`, the selector's own
   dominating loads, kept only when the node's context is the view's). The plume stage builds the far record from that
-  owned value instead of a later `context+0x2c` read (`engine_far_jets_layout_fl.h`, `engine_far_append`'s FL branch).
+  owned value instead of a later `context+0x2c` read (`engine_node_layout.h` `fl_context`, `engine_far_append`'s FL branch).
   The copy relies on the selector's synchronous native borrow, as the stub does on AP, not on `fl_render_admission`
   (an integer-only callee inside the pass cannot query it). The parent radius for the floor is read at the stage as
   the FL draw route does. A ship whose jets fall under the small-parts threshold now gets a far plume on FL too.

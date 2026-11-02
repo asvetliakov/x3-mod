@@ -1,0 +1,18 @@
+{
+ "run": 23,
+ "step": "occlusion_cull unset/empty = off (documented default; code said on since 2026-10-08); otherwise run 22",
+ "edition": "fl",
+ "commit": "ba32f497f",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "dll_sha256_prefix": "647e8ebc7f15b61f",
+ "dll_bytes": 55536571,
+ "installed_sha256_prefix": "647e8ebc7f15b61f",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run22 (81dd4fb5)",
+ "game_data": "addon2/06+07 unchanged",
+ "ini": "unchanged",
+ "host_tests": "test_occlusion_cull, test_cull_small_parts, test_config_schema, test_logging_tiers: 72 tests 0 failing",
+ "build_warnings": 0,
+ "review": "small change (default), delta reviewed by the main session",
+ "installed_at": "2026-11-02T20:51:01+04:00"
+}

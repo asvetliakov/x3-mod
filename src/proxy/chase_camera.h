@@ -133,4 +133,12 @@ void shutdown(); // restores the site's bytes; explicit teardown only, not on th
 // One `chase_camera` log line (frame_end cadence, from the Present path); the
 // first applied frame's inferences are logged once before it.
 void report(std::uint64_t frame);
+#if defined(X3M_CHASE_CAMERA_FL_FIXTURE) && X3M_EDITION_FL
+// verification/probe/fl_chase_camera.cpp only: the image base initialize() uses instead of fl::module_base(), a fresh
+// initialize() (the site record cleared; the arena and the pipeline are kept), and a one-shot foreign write: the site
+// bytes at `offset` and `second` (10 = none) flipped in memory between the claim and the read-back.
+void fixture_base(std::uintptr_t base);
+void fixture_reset();
+void fixture_fault_readback(unsigned offset, unsigned second = 10);
+#endif
 }

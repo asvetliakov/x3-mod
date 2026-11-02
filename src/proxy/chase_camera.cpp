@@ -1,6 +1,8 @@
 #include "chase_camera.h"
 #include "config.h"
+#if !X3M_EDITION_FL
 #include "chase_aim_trace.h"
+#endif
 #include "chase_fire.h"
 #include "chase_lead.h"
 #include "chase_camera_math.h"
@@ -8,7 +10,12 @@
 #include "chase_transition.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/chase_camera_sites_fl.h"
+#include "../engine/fl/executable_identity_fl.h"
+#else
 #include "object_trace.h"
+#endif
 #include "capture.h"
 #include "cpu_state.h"
 #include "telemetry.h"
@@ -29,11 +36,32 @@ namespace {
 //   00420e0a  0f 84 09 02 00 00  jz 0x00421019
 // EBX = the cockpit object throughout FUN_004205e0. The jz's rel32 (offset 6)
 // is re-based by engine_patch when the two instructions move into the tail.
+#if X3M_EDITION_FL
+// FL (X3FL.exe, relocatable): the same ten-byte shape at module base + RVA 0x0227ad inside the cockpit updater RVA
+// 0x021f50 (EBX = cockpit), rel32 at +6, continuation RVA 0x0227b7, branch target RVA 0x022928. The spec and the
+// default-plane slot (base + RVA 0x1a82f8) are filled by initialize() from the admitted base once the three identity
+// windows of chase_camera_sites_fl.h match (docs/reverse-engineering/fl/chase-camera.md, "Verified 2026-11-02"). The
+// handler below is shared; its AP-only dependency (chase_aim_trace) is compiled out, so the FL module reaches no AP
+// address. It publishes two downstream contexts: chase_lead's FL edition (src/engine/fl/chase_lead_fl.cpp), whose update
+// binding is this seam's visit (invalidate_pose, camera_context), and chase_fire's FL edition
+// (src/engine/fl/chase_fire_fl.cpp), whose witness is this visit's applied bound pose and QPC. The restore observer and the
+// unbound-phase proof (chase_transition::restore_observe_frame, active_control_cockpit) run on FL too, bound by
+// chase_transition's own FL module.
+namespace S = x3m::fl::chase_camera_fl;
+uintptr_t site_va = 0;
+engine_patch::SiteSpec site_spec{};
+uintptr_t default_view_plane_slot = 0; // -> struct; +0x28/+0x2c view-plane W/H (16.16)
+#ifdef X3M_CHASE_CAMERA_FL_FIXTURE
+uintptr_t fixture_base_ = 0;          // initialize()'s base instead of fl::module_base() when nonzero
+unsigned fixture_fault_offset_[2] = {S::site_length, S::site_length}; // one-shot: site bytes flipped before the read-back
+#endif
+#else
 constexpr uintptr_t site_va = 0x00420e06;
 constexpr engine_patch::SiteSpec site_spec = {
     "cockpit_update_pose", site_va, {0x83, 0x7b, 0x54, 0x00, 0x0f, 0x84, 0x09, 0x02, 0x00, 0x00}, 10, 0, 6};
 // Engine layout used by the handler (all from the study; offsets in bytes).
 constexpr uintptr_t default_view_plane_slot = 0x00606f38; // -> struct; +0x28/+0x2c view-plane W/H (16.16)
+#endif
 constexpr unsigned cockpit_block = 0x200, camera_block = 0x310, scene_camera_block = 0x70;
 constexpr unsigned cockpit_scene_camera = 0x08, cockpit_ref_object = 0x0c, cockpit_view_object = 0x10,
                    cockpit_camera = 0x58, cockpit_view_rel = 0xf0;
@@ -43,6 +71,19 @@ constexpr unsigned cockpit_view_mode = 0x150, cockpit_flags = 0x1a0, cockpit_con
 constexpr unsigned camera_position = 0x30, camera_basis = 0x40, camera_fov = 0x298, camera_plane_w = 0x300,
                    camera_plane_h = 0x304;
 constexpr unsigned max_cockpits_seen = 8;
+#if X3M_EDITION_FL
+static_assert(cockpit_scene_camera == S::cockpit_scene_camera && cockpit_ref_object == S::cockpit_ref_object &&
+                  cockpit_view_object == S::cockpit_view_object && cockpit_camera == S::cockpit_camera &&
+                  cockpit_view_rel == S::cockpit_view_rel && cockpit_view_mode == S::cockpit_view_mode &&
+                  cockpit_flags == S::cockpit_flags && cockpit_connect_mode == S::cockpit_connect_mode &&
+                  cockpit_aim_gun == S::cockpit_aim_gun && cockpit_tracked == S::cockpit_tracked &&
+                  cockpit_tracking_mode == S::cockpit_tracking_mode && cockpit_sector == S::cockpit_sector &&
+                  cockpit_sector_object == S::cockpit_sector_object,
+              "every cockpit field the handler touches is an FL-verified offset");
+static_assert(camera_position == S::camera_position && camera_basis == S::camera_basis && camera_fov == S::camera_fov &&
+                  camera_plane_w == S::camera_plane_w && camera_plane_h == S::camera_plane_h,
+              "every camera field the handler touches is an FL-verified offset");
+#endif
 
 engine_patch::Site site;
 bool requested_ = false, initialized_ = false, scene_fix_enabled = false, timing_enabled = false;
@@ -153,6 +194,7 @@ void publish_pose(bool written, bool snapped = false) {
     if (continuity.update(written, snapped)) snap_epoch.fetch_add(1, std::memory_order_relaxed);
 }
 void handle(uint32_t* regs) {
+    // FL too (src/engine/fl/chase_lead_fl.cpp): this visit's invalidation opens the lead's update binding.
     chase_lead::invalidate_pose();
     const uintptr_t cockpit = regs[4]; // EBX after pushad: EDI ESI EBP ESP EBX EDX ECX EAX
     chase::Input in;
@@ -175,7 +217,9 @@ void handle(uint32_t* regs) {
         // takes a gap (the next applied frame snaps) rather than trusting it.
         chase::note_gap(pipeline);
         publish_pose(false);
+#if !X3M_EDITION_FL
         chase_aim_trace::invalidate_camera(cockpit);
+#endif
         chase_fire::invalidate_camera(cockpit);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames;
@@ -199,6 +243,8 @@ void handle(uint32_t* regs) {
     // unbound phase only on the registry active-control proof (complete
     // lifetime, handle row maps to this cockpit); the bounded walk runs only
     // for +0x10 == 0 visits. Fire, lead and aim contexts stay on `bound`.
+    // FL too: the proof is chase_transition's FL binding (cockpit registry slot base + 0x1a82e4, lifetime witnesses);
+    // false whenever that module is not installed.
     const bool active = admits_pose(ref_object, view_object,
                                     view_object == 0 && chase_transition::active_control_cockpit(cockpit));
     AcquireSRWLockExclusive(&stats_lock);
@@ -211,6 +257,7 @@ void handle(uint32_t* regs) {
     // Restore ticket (X3M_CHASE_VIEW_RESTORE): every visit, with the fields
     // already in hand; the observer returns at one atomic load when the
     // option is off and makes its registry walks only on frames that matter.
+    // FL too (src/engine/fl/chase_transition_sites_fl.h): the same fields at the FL-verified offsets.
     {
         chase_transition::AppliedFrame observed;
         observed.cockpit = cockpit;
@@ -259,7 +306,9 @@ void handle(uint32_t* regs) {
         stats_.last_verdict = 100;
         stats_.dt_ms = dt * 1000.0;
         ReleaseSRWLockExclusive(&stats_lock);
+#if !X3M_EDITION_FL
         chase_aim_trace::camera_context(0, 0, 0, 0, false);
+#endif
         chase_fire::camera_context(0, 0, 0, 0, 0, 0, false, 0);
         return;
     }
@@ -426,6 +475,14 @@ void handle(uint32_t* regs) {
             f.domain_delta = stats_.domain_delta;
         }
     }
+#if X3M_EDITION_FL
+    ReleaseSRWLockExclusive(&stats_lock); // FL: the lead/central HUD and cursor-fire contexts (aim trace is AP-only)
+    const bool context_ok = written && bound;
+    chase_lead::camera_context(cockpit, ref_object, camera, context_ok, context_ok ? &pose.basis : nullptr,
+                               context_ok ? &pose.view_rel : nullptr);
+    chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, context_ok,
+                               now);
+#else
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
     // Cursor fire, lead and aim keep the fire control's own predicate: an
@@ -436,6 +493,7 @@ void handle(uint32_t* regs) {
     chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, context_ok,
                                now);
     chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, context_ok, handler_frame);
+#endif
 }
 // Unlike telemetry::State, this state is protected by the camera's own lock:
 // the engine update runs outside capture.cpp's mutex. Only aggregate handler
@@ -539,7 +597,83 @@ void* emit_stub(void*** next_out) {
     e.dword(0);
     return e.finish() ? start : nullptr;
 }
+#if X3M_EDITION_FL
+std::uintptr_t fl_base() {
+#ifdef X3M_CHASE_CAMERA_FL_FIXTURE
+    if (fixture_base_) return fixture_base_;
+#endif
+    return x3m::fl::module_base();
 }
+// The three identity windows at base + RVA, before any write: nullptr when they are exactly the engine's (then the
+// site spec and the default-plane slot are bound to this base), else the refusal.
+const char* fl_admit(std::uintptr_t base) {
+    if (!base || (base & 0xffff)) return "invalid_base";
+    unsigned char seam[S::seam_window_length]{}, target[S::target_window_length]{}, plane[S::plane_window_length]{};
+    if (!engine_patch::read_code(base + S::seam_window_rva, seam, S::seam_window_length) ||
+        !engine_patch::read_code(base + S::target_window_rva, target, S::target_window_length) ||
+        !engine_patch::read_code(base + S::plane_window_rva, plane, S::plane_window_length))
+        return "unreadable";
+    if (const char* refusal = S::plan(seam, target, plane, base)) return refusal;
+    site_va = base + S::site_rva;
+    site_spec = engine_patch::SiteSpec{};
+    site_spec.name = "cockpit_update_pose_fl";
+    site_spec.address = site_va;
+    std::memcpy(site_spec.expected, S::expected_site, S::site_length);
+    site_spec.length = S::site_length;
+    site_spec.ret_pop = 0;
+    site_spec.rel32_offset = S::rel32_offset;
+    default_view_plane_slot = base + S::default_view_plane_slot_rva;
+    return nullptr;
+}
+// After a successful claim: whether the site does not read back as this module's jump (then the install rolls back).
+bool fl_readback_differs() {
+#ifdef X3M_CHASE_CAMERA_FL_FIXTURE
+    for (unsigned& offset : fixture_fault_offset_) { // a foreign write between the claim and the read-back
+        if (offset < S::site_length) *reinterpret_cast<unsigned char*>(site_va + offset) ^= 0xff;
+        offset = S::site_length;
+    }
+#endif
+    unsigned char now[5]{};
+    const bool read = engine_patch::read_code(site_va, now, 5);
+    return !read || std::memcmp(now, site.patched, 5) != 0;
+}
+// The read-back rollback (the engine_effects_fl convention): the site does not hold this module's jump, so
+// engine_patch::restore() would refuse it as not owned. Inside the install window the original first five bytes go back
+// over whatever is there; the rollback succeeded only when all ten bytes then read back as the original span. Otherwise
+// the site stays registered (patched_in) and inert: the stub was never chained, so a jump that is still ours reaches the
+// plain tail.
+bool fl_force_restore() {
+    auto* code = reinterpret_cast<void*>(site_va);
+    DWORD writable = 0, unused = 0;
+    if (VirtualProtect(code, S::site_length, PAGE_EXECUTE_READWRITE, &writable)) {
+        engine_patch::write_code(site_va, site.original, 5);
+        FlushInstructionCache(GetCurrentProcess(), code, S::site_length);
+        VirtualProtect(code, S::site_length, site.protection, &unused);
+    }
+    unsigned char back[S::site_length]{};
+    if (!engine_patch::read_code(site_va, back, S::site_length) || std::memcmp(back, site.original, S::site_length))
+        return false;
+    site.patched_in = false;
+    return true;
+}
+#endif
+}
+#if defined(X3M_CHASE_CAMERA_FL_FIXTURE) && X3M_EDITION_FL
+void fixture_base(std::uintptr_t base) {
+    fixture_base_ = base;
+}
+void fixture_reset() {
+    initialized_ = false;
+    site = engine_patch::Site{};
+    site_va = 0;
+    default_view_plane_slot = 0;
+    state = "disabled";
+}
+void fixture_fault_readback(unsigned offset, unsigned second) {
+    fixture_fault_offset_[0] = offset;
+    fixture_fault_offset_[1] = second;
+}
+#endif
 bool wanted() {
     wchar_t setting[16]{};
     const DWORD n = x3m::config::get(L"X3M_CAMERA", setting, 16);
@@ -579,6 +713,25 @@ bool initialize() {
         refusal = "invalid_tunables";
     else if (!qpc_frequency)
         refusal = "no_qpc";
+#if X3M_EDITION_FL
+    const std::uintptr_t base = fl_base();
+    if (refusal)
+        ;
+    else if (!base)
+        refusal = "executable_mismatch";
+    else if (!engine_patch::install_window_open())
+        refusal = "late_claim";
+    else
+        refusal = fl_admit(base);
+    if (refusal) {
+        state = refusal;
+        log("chase_camera requested=1 installed=0 status=%s window_closed_by=%s edition=fl site=0x%08lx rva=0x%06lx",
+            refusal, engine_patch::install_window_reason() ? engine_patch::install_window_reason() : "-",
+            static_cast<unsigned long>(base ? base + S::site_rva : 0), static_cast<unsigned long>(S::site_rva));
+        SetLastError(error);
+        return false;
+    }
+#else
     else if (!object_trace::executable_verified())
         refusal = "executable_mismatch";
     else if (!engine_patch::install_window_open())
@@ -590,7 +743,55 @@ bool initialize() {
         SetLastError(error);
         return false;
     }
+#endif
     timing_enabled = telemetry::enabled();
+#if X3M_EDITION_FL
+    // The site's five-byte jump crosses an aligned qword (S static_assert): engine_patch::claim takes the plain copy,
+    // admitted only inside the install window checked above (the cockpit updater runs from the game loop, after the
+    // first Present). Read back, then chain the stub; any later failure puts the original bytes back and keeps its
+    // reason as the status (rollback= says whether the restore succeeded). installed= is site.patched_in, what
+    // installed() reports: 1 with a failure status only when the rollback failed and the site stays registered, inert
+    // (no stub chained).
+    bool okay = engine_patch::claim(site, site_spec);
+    const char* failure = nullptr;
+    const char* rollback = "none";
+    if (okay && fl_readback_differs()) {
+        failure = "readback_mismatch";
+        rollback = fl_force_restore() ? "restored" : "failed";
+    }
+    if (okay && !failure) {
+        void** next = nullptr;
+        void* stub = emit_stub(&next);
+        if (!stub || !next)
+            failure = "stub_failed";
+        else if (!engine_patch::store_pointer(next, *site.entry))
+            failure = "chain_write_failed";
+        else if (!engine_patch::push_front(site, stub))
+            failure = "chain_failed";
+    }
+    if (failure) {
+        okay = false;
+        if (!std::strcmp(rollback, "none")) rollback = engine_patch::restore(site) ? "restored" : "failed";
+        site.status = failure;
+    } else if (!okay && site.patched_in)
+        rollback = "failed"; // claim's own rollback_failed: the jump stays registered for shutdown()
+    else if (!okay && !std::strcmp(site.status, "patch_rolled_back"))
+        rollback = "restored";
+    state = okay ? "active" : site.status;
+    log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
+        "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f fov_compensate=%u lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
+        "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view "
+        "edition=fl rva=0x%06lx rollback=%s unbound_phase=active_control dependencies=chase_lead,chase_fire,chase_transition",
+        unsigned(site.patched_in), state.load(), static_cast<unsigned long>(site_va), site_spec.length,
+        site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(), tunables.rot_tau, tunables.pos_tau,
+        tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, unsigned(tunables.fov_compensate),
+        tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
+        tunables.combat_tightness > 0 ? "tracking_1e4_unverified" : "off", tunables.max_dt,
+        tunables.snap_coalesce_frames, unsigned(scene_fix_enabled), unsigned(timing_enabled),
+        static_cast<unsigned long>(S::site_rva), rollback);
+    SetLastError(error);
+    return okay;
+#else
     bool okay = engine_patch::claim(site, site_spec);
     if (okay) {
         void** next = nullptr;
@@ -621,6 +822,7 @@ bool initialize() {
     if (okay) chase_fire::initialize();
     SetLastError(error);
     return okay;
+#endif
 }
 bool installed() {
     return site.patched_in;
@@ -650,7 +852,9 @@ bool pose_applied_since(std::uint32_t mark) {
 }
 void report(std::uint64_t frame) {
     if (!site.patched_in) return;
+#if !X3M_EDITION_FL
     chase_fire::report(frame);
+#endif
     Stats s;
     double deviation = 0;
     AcquireSRWLockExclusive(&stats_lock);

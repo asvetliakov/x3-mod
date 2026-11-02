@@ -13,10 +13,17 @@
 // engine's state is read back or written, so the cull/LOD pass, the renderable
 // bit and every simulation consumer see the frame as vanilla.
 //
+// Editions: the node fields are engine_node_layout.h's (Culler::layout, the
+// build's layout by default: model +0x140 on X3AP.exe, +0x144 on X3FL.exe); the
+// two engine globals are Addresses (AP: the fixed VAs below; FL: module base
+// plus RVA, filled by the caller, 0 by default so an unfilled one reads nothing
+// and the draw is kept).
+//
 // Pure: no D3D, no Windows; the engine reads go through the caller's `read`
 // (engine_memory::read in production, a synthetic image in the fixture and on
 // the host). Integer and float scalar arithmetic only, no allocation.
 #include "cull_census_core.h"
+#include "engine_node_layout.h"
 #include "object_capture.h"
 #include <cmath>
 #include <cstddef>
@@ -24,8 +31,7 @@
 #include <cstring>
 
 namespace x3m::cull_small_props::core {
-constexpr std::uintptr_t cockpit_registry_root = 0x608504; // object_capture::own_ship / target
-constexpr unsigned model_offset = 0x140, parent_offset = 0x18, handle_offset = 0x28;
+constexpr std::uintptr_t cockpit_registry_root = 0x608504; // X3AP.exe; object_capture::own_ship / target
 // Mesh part: centre +0x40/+0x44/+0x48, (+0x4c unused), half-extent +0x50/+0x54/+0x58, both x4 int16 units; / 65536
 // gives POSITION0 units (render-node-bounds.md 2, "Units line up exactly with the submitted world matrix"). Diagnostics
 // only since run376: projected, this box measured every prop at or above 4 px where the drawn vertex range spans
@@ -131,10 +137,15 @@ inline bool prop_verdict(Verdict v) {
     return v != Verdict::no_scope && v != Verdict::not_prop && v < Verdict::count;
 }
 
-// Production and fixture engine addresses.
+// Production and fixture engine addresses: AP's fixed VAs; on FL none (the caller fills them from the module base).
 struct Addresses {
+#if X3M_EDITION_FL
+    std::uintptr_t body_global = 0;
+    std::uintptr_t cockpit_slot = 0;
+#else
     std::uintptr_t body_global = x3m::cull_census::core::body_global_va;
     std::uintptr_t cockpit_slot = cockpit_registry_root;
+#endif
 };
 
 // Per-device state: the model-id class cache (flushed every window), the per-frame node
@@ -161,6 +172,7 @@ struct Culler {
             unbounded, no_scope, nodes_culled, resolves, walks;
     };
     float px = 0.f;
+    engine_node_layout::Layout layout = engine_node_layout::edition; // the node's parent, handle and model offsets
     std::uint32_t frame = 0;
     bool frame_started = false;
     ClassSlot classes[class_slots]{};
@@ -244,8 +256,8 @@ struct Culler {
     template <class Read> std::uint8_t walk(Read& read, std::uint32_t node) {
         ++window.walks;
         for (unsigned depth = 0; depth < walk_depth && node && !(node & 3); ++depth) {
-            std::uint32_t words[5]{}; // +0x18 parent .. +0x28 handle
-            if (!read(std::uintptr_t(node) + parent_offset, words, sizeof words)) return 0;
+            std::uint32_t words[5]{}; // parent .. handle (parent + 0x10, engine_node_layout.h)
+            if (!read(std::uintptr_t(node) + layout.parent, words, sizeof words)) return 0;
             if (own && node == own && words[4] == own_handle) return 2;
             if (target && node == target && words[4] == target_handle) return 3;
             node = words[0];
@@ -255,7 +267,7 @@ struct Culler {
     template <class Read> Verdict ancestry(Read& read, std::uint32_t node) {
         if (!own && !target) return Verdict::culled;
         std::uint32_t handle = 0;
-        if (!read(std::uintptr_t(node) + handle_offset, &handle, 4)) return Verdict::deferred;
+        if (!read(std::uintptr_t(node) + layout.handle, &handle, 4)) return Verdict::deferred;
         WalkSlot& s = walks[slot_of(node, walk_slots)];
         std::uint8_t v = 0;
         if (s.verdict && s.node == node && s.handle == handle && frame - s.stamp < walk_frames)
@@ -283,7 +295,7 @@ struct Culler {
                    unsigned width, unsigned height) {
         if (!node || (node & 3)) return Verdict::no_scope;
         std::uint32_t model = 0;
-        if (!read(std::uintptr_t(node) + model_offset, &model, 4)) return Verdict::no_scope;
+        if (!read(std::uintptr_t(node) + layout.model, &model, 4)) return Verdict::no_scope;
         if (!is_prop(read, a, model)) return Verdict::not_prop;
         const Box* extent = extent_of();
         if (!extent) return Verdict::no_bounds;

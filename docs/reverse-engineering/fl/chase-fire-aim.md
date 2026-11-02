@@ -328,3 +328,53 @@ UI coordinate owner. User-only FL runs must compare internal/chase cursor fire,
 cone behavior, actual writer inputs and marker/impact alignment. No production
 edits, build, native/Wine/game run, install or commit was performed. Native
 Windows behavior and finite-convergence accuracy remain unverified.
+
+## 9. Verified 2026-11-03 against X3FL.exe
+
+Re-checked on the installed `C:\X3FL\X3FL.exe` (SHA-256 `e7f3aad8…`, 38,327 HIGHLOW fixups, no other type; measured)
+by `verification/probe/verify_chase_fire_sites_fl.py` (Capstone over the file, read-only; compact result
+`verification/results/fl-chase-fire/verify_fl_sites.json`, PASS). Every claim of sections 2–4 that the admission branch
+relies on holds; none had to be corrected. The `fl-port/chase-fire-aim-contract/` producer named in section 8 is not on
+this branch; the verifier replaces it for this subset. Implementation: `src/engine/fl/chase_fire_fl.cpp` (it provides
+`chase_fire.h` on FL in place of `src/proxy/chase_fire.cpp`, which stays AP-only with an unchanged object) with its
+constants in `src/engine/fl/chase_fire_sites_fl.h`; the decision (witness freshness, identity, view, cursor/viewport) is
+single-sourced in `src/proxy/chase_fire_core.h` and used by both editions. RVAs below (preferred VA = `0x400000` + RVA).
+
+| RVA / field | Fact | How verified |
+| --- | --- | --- |
+| fire `[0x04e310, 0x04ff46)` | 1,843 instructions decode exactly to the end; `ret 0x10` at `0x04ff43`; four direct callers `0x06bb81`, `0x06bb9f`, `0x06bbe4`, `0x06bc03` (dispatcher: mask, flags, group, target pushed; ECX = the ship resolved by `0x443d30` from command record +1: `0x06bb49` (kept across the target lookup, tested at `0x06bb68`) or `0x06bbe2`/`0x06bc01`); no direct edge into the function's interior from outside and no HIGHLOW dword pointing into it; the SEH handler the prologue pushes (`0x14d3b5`: `mov eax,0x59c8b8; jmp`) loads FuncInfo RVA `0x19c8b8` (magic `0x19930522`, maxState 1, nTryBlocks 0, no try map): no catch resumes inside the function | linear decode, `.text` direct-edge census (72,230 edges), `.reloc` census by value, FuncInfo read; anchors |
+| EBX / EBP | written only at `0x04e311` (`mov ebx,esp`: EBX = entry ESP − 4), `0x04e31d`/`0x04e324` (aligned frame), `0x04ff3f`/`0x04ff42` (epilogue pops) | Capstone register-write sets over the whole function |
+| stack words | `[EBX+8]` target, `[EBX+0xc]` gun group (`0x04e343`, compared with the gun mapping at `0x04ed07`), `[EBX+0x10]` fire flags (`0x04ec82`), `[EBX+0x14]` mask. Only `[EBX+8]` is ever stored (`0x04e3fd`, `0x04ed24`, `0x04ed40`, the picker); no `lea` of EBX | store census over the function |
+| ship `[EBP−0x3c]` | sole writer `0x04e350` (`mov [ebp-0x3c],edi` after `mov edi,ecx` `0x04e34e`), straight-line prologue, no edge into `(0x04e310, 0x04e353]`; reloaded at `0x04ecc9` after the resolver | store census, edge census; window `prologue` `5347c1f5` |
+| seam `0x04ecad` | `0f 84 ec 02 00 00` `je 0x44ef9f`, rel32 +2; preceded by `cmp dword [0x5aa184],0` (`0x04eca6`, 7 bytes) and the native flag test `and eax,0x22; cmp al,0x22; jne` (`0x04ec94..0x04eca0`); the next flag writer is `test ecx,ecx` `0x04ecb9`; no HIGHLOW in `[rva−3, rva+6)`; no direct edge to its start or interior; RVA mod 8 = 5: the five-byte jump crosses an aligned qword (plain copy inside the install window) | exact bytes, Capstone, `.reloc` census, edge census; window `admission` `56a65ba8` |
+| branch target `0x04ef9f` | `mov edi,[ebp-0x3c]` then the boresight path; reached only from `0x04eca0` and the seam | edge census, anchor |
+| cursor cells | x `0x1aa180`, active `0x1aa184`, y `0x1aa188` (one 12-byte block x/active/y; the handler reads it once and permutes to active/x/y); steering `0x1aaa10`. Writer `0x07bc3a..0x07bc5d` stores record +1 steering, +6 active, +0xb x, +0x10 y with no call between; the cursor ray pushes y (`0x04edeb`) then x (`0x04edf1`) | window `cursor_writer` `e849e23a` (four HIGHLOW dwords), window `unproject_call` `f6c4c372`; anchors |
+| cursor-active references | exactly two HIGHLOW dwords hold base + `0x1aa184`: `0x04eca8` (the seam's compare) and `0x07bc49` (the writer) | `.reloc` census by value |
+| registry | slot `0x1a82e4` loaded at `0x04ecb3`; `push [ecx+0x10]; call 0x41e420` (`0x04ecc1`); resolver map +0, count +4, link next +0/key +4/value +8 (`0x01e420..0x01e450`). The FL walk refuses handle 0 (section 4) | window `admission` (HIGHLOW), anchors |
+| native checks after the seam (kept native, not duplicated) | `cmp [esi+0x10],edi` view object = ship (`0x04ecd9`); aim gun `[esi+0x1d8]` ≥ 0 and < `0x45a930`'s count (`0x04ece2..0x04ecf9`); mapping `0x45a9e0` = group (`0x04ed07`); lead-pair helper `0x427170` / picker `0x426d70`; range helper `0x43d6a0` (`0x04ed4c`); depth floor 5000 (`0x04edd5`); unprojection `0x4a50f0` with ECX = `[cockpit+0x58]` (`0x04ede7`); main-group relative transform (`0x04edfc`); cone `imul [0x6243c8]` (`0x04ee56`) | anchors; window `admission`, `unproject_call` |
+| unprojection screen/viewport | `0x0a50f0`: ECX = camera (`0x0a50fd`), defaults slot `0x1a82f8` (`0x0a50f4`, `0x0a51ef`, `0x0a5222`); screen record `[[slot]]` width `+4` (`0x0a51fb`, signed `0x0a51ff`) with x0/x1 `+0x290/+0x294` (`0x0a522a/0x0a5230`), height `+6` (`0x0a5270`) with y0/y1 `+0x288/+0x28c` (`0x0a5299/0x0a529f`): normalized viewport order y0, y1, x0, x1 as on AP; offset = pixel·65536/dimension (signed IDIV) − centre | window `screen` `c013bc5c` (two HIGHLOW dwords = base + `0x1a82f8`); anchors |
+| cockpit/ship fields | +0xc/+0x10 refs, +0x58 camera, +0x150 mode, +0x1a0 flags, +0x1c0 connect, ship +8 id: the chase camera and chase lead verifiers' anchors (`verify_chase_camera_site.py`, `verify_chase_lead_sites_fl.py`) | reused, unchanged |
+
+Run-time identity: before any write, the five windows (481 bytes) must match at base + RVA with each of their eleven
+relocated dwords equal to base + its target; refusals `executable_mismatch`, `chase_camera_unavailable`,
+`prerequisite_failed`, `invalid_base`, `unreadable`, `window_mismatch`, `slot_mismatch` (the row names the window),
+`late_claim`. Install is all or nothing: claim, read-back, stub chain; a read-back mismatch writes the original five
+bytes back inside the install window and counts as restored only when all six read back original.
+
+**Handler on FL:** the stub tests the one-byte enable flag and the saved ZF before the CPU envelope (a natively active
+cursor or a disabled module costs one byte test; a natively active cursor also bumps the stub's `lock inc`
+counter `native_active`). Then `[EBX+0xc] == 0`, `([EBX+0x10] & 0x22) == 0x22` and
+`[EBP−0x3c] ==` the witness ship, before any lock or QPC; the shared decision follows. AP's `[EBX+8]` ship read would
+read the target on FL; the native fixture places the player ship there as a decoy and the call is refused. The early
+filters count by reason (`early_no_witness`, `early_group`, `early_flags`, `early_other_ship`, `early_read`) on the FL
+`chase_fire_window` row only (AP's row is unchanged).
+
+**Aim trace decision:** `chase_aim_trace` stays AP-only (`reason=diagnostic_not_ported`). Its four read-only sites
+need FL-specific stack extraction (section 5) and add nothing the first flight needs: the fire row's
+`native_inactive_override` count shows the branch decision, and the user sees where bolts go. Port it if the flight
+shows bolts not following the cursor despite overrides (it then separates cone/range refusals from aim error).
+
+Not verified: the seam in game (not flown); FL's native cursor-active value in the chase view (AP's capture showed 0;
+if FL leaves it 1 the native path already fires at the cursor: `native_active > 0` with
+`native_inactive_override = 0`; if instead `early_*`/`refused_*` rise, the calls were never admitted); finite
+camera-to-muzzle convergence (section 6: native endpoint = gun origin + camera-ray direction, as on AP).

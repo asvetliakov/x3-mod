@@ -1,4 +1,5 @@
 #include "chase_fire.h"
+#include "chase_fire_core.h"
 #include "chase_camera.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
@@ -17,7 +18,7 @@ namespace {
 // Full-function decode: no incoming direct branch into these six bytes.
 constexpr engine_patch::SiteSpec spec = {
     "chase_cursor_admission", 0x00445a41, {0x0f, 0x84, 0x64, 0x02, 0x00, 0x00}, 6, 0, 2};
-constexpr std::uint32_t zero_flag = 0x40;
+constexpr std::uint32_t zero_flag = core::zero_flag;
 engine_patch::Site site;
 std::atomic<bool> enabled{false};
 std::atomic<std::uint32_t> player{0};
@@ -25,13 +26,9 @@ bool initialized = false, timing = false;
 const char* status = "disabled";
 std::uint64_t frequency = 0;
 SRWLOCK lock = SRWLOCK_INIT;
-struct Context {
-    std::uintptr_t cockpit = 0, ship = 0, camera = 0;
-    std::uint32_t ship_id = 0, thread = 0;
-    std::uint64_t qpc = 0;
-};
+using core::Context;
+using core::Result;
 Context context;
-enum class Result : unsigned { Override, Stale, Identity, View, Cursor, Read, Count };
 struct Counts {
     std::uint64_t result[unsigned(Result::Count)]{};
     std::uint64_t timed = 0, ticks = 0, max_ticks = 0;
@@ -71,39 +68,23 @@ bool active_cockpit(std::uintptr_t& cockpit) {
     }
     return false;
 }
-Result decide(const Context& witness, std::uint32_t ship, std::uint64_t stamp) {
-    if (!witness.qpc || !stamp || stamp < witness.qpc || stamp - witness.qpc > frequency * 2 ||
-        witness.thread != GetCurrentThreadId())
-        return Result::Stale;
-    std::uintptr_t cockpit = 0;
-    if (!active_cockpit(cockpit)) return Result::Read;
-    if (cockpit != witness.cockpit || ship != witness.ship) return Result::Identity;
-    std::uint32_t refs[2]{}, camera = 0, id = 0, mode = 0, connect = 0, flags = 0;
-    if (!field(cockpit, 0xc, refs) || !field(cockpit, 0x58, camera) || !field(ship, 8, id) ||
-        !field(cockpit, 0x150, mode) || !field(cockpit, 0x1c0, connect) || !field(cockpit, 0x1a0, flags))
-        return Result::Read;
-    if (refs[0] != ship || refs[1] != ship || camera != witness.camera || id != witness.ship_id)
-        return Result::Identity;
-    if (mode != 258 || connect != 0 || (flags & 4)) return Result::View;
+// X3AP.exe bindings of the shared policy (chase_fire_core.h): cursor cells active/x/y contiguous at 607ce8, the
+// default screen record behind 606f38.
+struct Env {
+    static bool active_cockpit(std::uintptr_t& cockpit) { return chase_fire::active_cockpit(cockpit); }
+    template <class T> static bool field(std::uintptr_t base, unsigned offset, T& out) {
+        return chase_fire::field(base, offset, out);
+    }
+    static bool cursor(std::int32_t (&cursor)[3]) { return chase_fire::field(0x00607ce8, 0, cursor); }
     // Native unprojection at 489780 uses normalized 16.16 viewport bounds in
-    // y0,y1,x0,x1 order, and signed screen shorts at **606f38 +4/+6. The default
-    // view-plane block itself is NOT the screen structure (extra dereference).
-    std::int32_t cursor[3]{}, viewport[4]{};
-    std::uint32_t defaults = 0, screen = 0;
-    std::int16_t dimensions[2]{};
-    if (!field(0x00607ce8, 0, cursor) || !field(camera, 0x288, viewport) || !field(0x00606f38, 0, defaults) ||
-        !field(defaults, 0, screen) || !field(screen, 4, dimensions))
-        return Result::Read;
-    if (cursor[0] != 0 || dimensions[0] <= 0 || dimensions[1] <= 0 || viewport[0] < 0 || viewport[0] >= viewport[1] ||
-        viewport[1] > 65536 || viewport[2] < 0 || viewport[2] >= viewport[3] || viewport[3] > 65536 || cursor[1] < 0 ||
-        cursor[1] >= dimensions[0] || cursor[2] < 0 || cursor[2] >= dimensions[1])
-        return Result::Cursor;
-    // The signed-16 screen bound and x/y checks above keep these products
-    // below INT32_MAX; native-style integer division needs no wide CRT helper.
-    const auto x = cursor[1] * 65536 / dimensions[0];
-    const auto y = cursor[2] * 65536 / dimensions[1];
-    if (x < viewport[2] || x > viewport[3] || y < viewport[0] || y > viewport[1]) return Result::Cursor;
-    return Result::Override;
+    // y0,y1,x0,x1 order, and signed screen shorts at **606f38 +4/+6.
+    static std::uintptr_t defaults_slot() { return 0x00606f38; }
+    static std::uint32_t thread() { return GetCurrentThreadId(); }
+    static std::uint64_t frequency() { return chase_fire::frequency; }
+};
+Result decide(const Context& witness, std::uint32_t ship, std::uint64_t stamp) {
+    Env env;
+    return core::decide(witness, ship, stamp, env);
 }
 void handle(std::uint32_t* regs) {
     // Almost all native/AI calls leave before any context lock, QPC or registry
@@ -244,8 +225,8 @@ void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t 
                     std::uint32_t connect, std::uint32_t flags, bool applied, std::uint64_t stamp) {
     if (!enabled.load(std::memory_order_acquire)) return;
     Context next;
-    if (applied && mode == 258 && connect == 0 && !(flags & 4) && stamp && cockpit && ship && camera &&
-        !((cockpit | ship | camera) & 3) && field(ship, 8, next.ship_id)) {
+    if (core::publishable(applied, mode, connect, flags, stamp, cockpit, ship, camera) &&
+        field(ship, 8, next.ship_id)) {
         next.cockpit = cockpit;
         next.ship = ship;
         next.camera = camera;

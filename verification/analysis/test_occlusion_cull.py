@@ -26,6 +26,10 @@ PASS_CPP = ROOT / 'src/renderer/occlusion_cull_pass.cpp'
 INC = ROOT / 'src/proxy/motion_output_occlusion_cull_inc.h'
 MOTION = ROOT / 'src/proxy/motion_output.cpp'
 ENGINE_CORE = ROOT / 'src/proxy/occlusion_engine_core.h'
+# occlusion_cull_core.h after the edition node layout (2026-11-02); test_batched_records accepts it beside the recorded one.
+OCCLUSION_CORE_SHA256_2026_11_02 = '862a8c473a41cb2777af4abc46b89949f4af554be143f61ce007966447459ee1'  # + default off (parse_mode)
+# occlusion_engine_core.h after the default-off change (2026-11-02): parse_mode alone; the stub encoder is unchanged.
+ENGINE_CORE_SHA256_2026_11_02 = '997bc6448bae167d1f44af347af61ff7aa1237d47290ad8347ad3b1459f2f6ef'
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_small_parts_site as small  # noqa: E402
 
@@ -98,21 +102,64 @@ ENGINE_STUB_ARGS = (0x10000000, 0x10002000, 0x10002004, 0x10002008, 0x10003000, 
 
 class OcclusionCullHost(unittest.TestCase):
     def test_core_driver(self):
+        """Compiled twice: without an edition define (AP: the classifier reads model +0x140) and with X3M_EDITION_FL=1
+        (FL: +0x144); the driver writes each node's model at the build's offset and a decoy at the other's."""
         compiler = shutil.which('clang++') or shutil.which('c++')
-        with tempfile.TemporaryDirectory(prefix='x3-occlusion-cull-') as d:
-            exe = Path(d) / 'occlusion_cull_host'
-            subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/proxy'),
-                            str(ROOT / 'verification/probe/occlusion_cull_host.cpp'), '-o', str(exe)], check=True)
-            run = subprocess.run([str(exe)], capture_output=True, text=True)
-        failed = [line for line in run.stdout.splitlines() if line.startswith('CHECK') and line.endswith('FAIL')]
-        self.assertEqual(failed, [])
-        result = dict(re.findall(r'(\w+)=(\d+)', run.stdout.splitlines()[-1]))
-        self.assertEqual(run.returncode, 0)
-        self.assertEqual(result['failed'], '0')
-        self.assertGreaterEqual(int(result['checks']), 125)
-        # The engine-side stub the C++ encoder emits is the twin's, byte for byte.
-        stub = next(line[5:] for line in run.stdout.splitlines() if line.startswith('STUB '))
-        self.assertEqual(bytes.fromhex(stub), encode_engine_stub(*ENGINE_STUB_ARGS))
+        for edition, defines in (('ap', []), ('fl', ['-DX3M_EDITION_FL=1'])):
+            with self.subTest(edition=edition), tempfile.TemporaryDirectory(prefix='x3-occlusion-cull-') as d:
+                exe = Path(d) / 'occlusion_cull_host'
+                subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', *defines, '-I',
+                                str(ROOT / 'src/proxy'), str(ROOT / 'verification/probe/occlusion_cull_host.cpp'), '-o',
+                                str(exe)], check=True)
+                run = subprocess.run([str(exe)], capture_output=True, text=True)
+                failed = [line for line in run.stdout.splitlines() if line.startswith('CHECK') and line.endswith('FAIL')]
+                self.assertEqual(failed, [])
+                result = dict(re.findall(r'(\w+)=(\d+)', run.stdout.splitlines()[-1]))
+                self.assertEqual(run.returncode, 0)
+                self.assertEqual(result['failed'], '0')
+                self.assertGreaterEqual(int(result['checks']), 128)
+                self.assertIn(f'EDITION {edition}\n', run.stdout)
+                self.assertIn('CHECK layout: the other edition\'s model offset reads the decoy PASS', run.stdout)
+                # The engine-side stub the C++ encoder emits is the twin's, byte for byte (AP's +0x140 in both builds).
+                stub = next(line[5:] for line in run.stdout.splitlines() if line.startswith('STUB '))
+                self.assertEqual(bytes.fromhex(stub), encode_engine_stub(*ENGINE_STUB_ARGS))
+
+    def test_edition_gate_and_addresses(self):
+        """The draw-level cull runs on both editions: gated on object_trace::scope_available() (AP executable_verified,
+        FL active), the body manager slot per edition, the engine-side ledger AP only, edition=fl on the FL rows."""
+        inc = INC.read_text()
+        body = inc[inc.index('bool MotionOutput::cull_occluded('):inc.index('void MotionOutput::occlusion_ledger_scene_draw(')]
+        self.assertIn('if (!object_trace::scope_available() || !object_trace::scope_node(&descriptor, &node)) return false;',
+                      body)
+        self.assertNotIn('executable_verified', body)
+        self.assertIn('k.evaluate(read, occlusion_body_global_,', body)
+        # FL without the scope seam: one scope_unavailable row through attach before the per-draw scope gate.
+        early = body[body.index('#if X3M_EDITION_FL'):body.index('if (!object_trace::scope_available() || !object_trace::scope_node(')]
+        self.assertIn('if (!occlusion_classifier_) attach_occlusion_cull();', early)
+        self.assertNotIn('body_global_va', body)
+        attach = inc[inc.index('bool MotionOutput::attach_occlusion_cull()'):inc.index('void MotionOutput::release_occlusion_cull()')]
+        self.assertIn('base + fl::own_ship_trace::engine_slot_rva', attach)
+        self.assertIn('occlusion_body_global_ = x3m::cull_census::core::body_global_va;', attach)
+        self.assertIn('edition=fl reason=scope_unavailable', attach)
+        ledger = inc[inc.index('void MotionOutput::occlusion_ledger_scene_draw('):inc.index('void MotionOutput::occlusion_engine_publish(')]
+        self.assertIn('object_trace::executable_verified()', ledger)  # the engine-side skip stays AP only
+        self.assertEqual(inc.count('log("occlusion_cull_device '), 5)
+        self.assertEqual(inc.count('X3M_CULL_EDITION_FIELD'), 4)  # every other occlusion_cull_device row
+        trace = (ROOT / 'src/proxy/object_trace.h').read_text()
+        self.assertIn('inline bool scope_available() { return active(); }', trace)
+        self.assertIn('inline bool scope_available() { return executable_verified(); }', trace)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('"retest_status=%s engine=%u engine_status=%s" X3M_CULL_EDITION_FIELD', capture)
+        engine_init = capture[capture.index('occlusion_cull_engine =\n') - 40:capture.index('occlusion_cull_engine =\n')]
+        self.assertIn('#if !X3M_EDITION_FL', engine_init)
+        self.assertIn('const char* engine_status = parsed == engine::Mode::engine ? "ap_only" : occlusion_engine_cull::state();',
+                      capture)
+        layout = (ROOT / 'src/proxy/engine_node_layout.h').read_text()
+        self.assertIn('constexpr Layout ap{0x18, 0x28, 0x140};', layout)
+        self.assertIn('constexpr Layout fl{0x18, 0x28, 0x144};', layout)
+        generated = (ROOT / 'src/engine/fl/object_trace_fl_inc.h').read_text()
+        for line in ('node_parent = 0x18;', 'node_handle = 0x28;', 'node_model = 0x144;', 'engine_slot_rva = 0x001aa100'):
+            self.assertIn(line, generated)
 
     def test_engine_stub_twin(self):
         twin = encode_engine_stub(*ENGINE_STUB_ARGS)
@@ -324,10 +371,18 @@ class OcclusionCullHost(unittest.TestCase):
             self.assertTrue(record['passed'], backend)
             self.assertEqual(record['result']['failed'], 0)
             # Bound to the production sources it ran (the pass, the core) and the fixture.
-            for source in ('src/renderer/occlusion_cull_pass.h',
-                           'src/proxy/occlusion_cull_core.h', 'src/proxy/occlusion_engine_core.h',
-                           'verification/probe/occlusion_cull_fixture.cpp'):
+            for source in ('src/renderer/occlusion_cull_pass.h', 'verification/probe/occlusion_cull_fixture.cpp'):
                 self.assertEqual(record['sources'][source], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), source)
+            # The engine core: the records ran the 2026-10-08 source; the only change since is parse_mode's default
+            # (unset = off, 2026-11-02), which the Wine fixture never calls (it drives the encoder and the ledger).
+            self.assertIn(hashlib.sha256(ENGINE_CORE.read_bytes()).hexdigest(),
+                          (record['sources']['src/proxy/occlusion_engine_core.h'], ENGINE_CORE_SHA256_2026_11_02))
+            # The core: the records ran the 2026-10-08 source; the only change since is the edition node layout of
+            # 2026-11-02 (Classifier::layout, AP's offsets unchanged: test_core_driver's AP build), which needs a Wine
+            # host to rerun. Until then the records stay bound to that recorded source and the current one is named here.
+            core = 'src/proxy/occlusion_cull_core.h'
+            self.assertIn(hashlib.sha256((ROOT / core).read_bytes()).hexdigest(),
+                          (record['sources'][core], OCCLUSION_CORE_SHA256_2026_11_02))
             # The pass: the records ran the 2026-10-08 source; the only change since is the constants-mode vertex
             # shader's one-read-port form of 2026-10-16 (docs/verification/occlusion-cull.md), which needs a Wine host
             # to rerun. Until then the records stay bound to that recorded source and the current source is named here.

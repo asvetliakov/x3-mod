@@ -12,7 +12,10 @@
 //
 // Pure: no D3D, no Windows; the engine reads go through the caller's `read` (engine_memory::read in production, a
 // synthetic image on the host and in the fixtures). Scalar float and integer arithmetic only, no allocation.
+// Editions: the Classifier reads the node through engine_node_layout.h (Classifier::layout, the build's layout by
+// default: model +0x140 on X3AP.exe, +0x144 on X3FL.exe) and the body manager slot its caller passes.
 #include "cull_census_core.h"
+#include "engine_node_layout.h"
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -22,7 +25,9 @@ namespace x3m::occlusion_cull::core {
 // The query pool: sized once per device, two frame slots (the ring), no per-frame allocation (user 2026-10-08:
 // every candidate is tested every frame, limited only by the pool).
 constexpr unsigned pool_size = 1024, pool_per_frame = pool_size / 2;
-constexpr unsigned model_offset = 0x140, parent_offset = 0x18;
+// X3AP.exe's node fields: the engine-side skip's stub (occlusion_engine_core.h, AP only) encodes the model offset.
+constexpr unsigned model_offset = engine_node_layout::ap.model, parent_offset = engine_node_layout::ap.parent;
+static_assert(model_offset == 0x140 && parent_offset == 0x18, "X3AP.exe node layout");
 constexpr unsigned name_read = 96; // body-path bytes classified (the rules look at the leading directories and words)
 constexpr unsigned class_slots = 1024, memo_slots = 1024, owner_slots = 1024, result_slots = 2048;
 constexpr unsigned walk_depth = 6; // part -> dummy -> ship root is two links (ship-scene-parts.md); turrets one more
@@ -41,13 +46,14 @@ static_assert((memo_slots & (memo_slots - 1)) == 0 && (owner_slots & (owner_slot
 inline std::uint32_t slot_of(std::uint32_t value, std::uint32_t slots) {
     return (value * 2654435761u) >> 16 & (slots - 1);
 }
-// `on` or unset/empty enables (the default), `off` disables, anything else is refused.
+// `off` or unset/empty disables (the documented default since 2026-10-08; the code said on until 2026-11-02), `on`
+// enables, anything else is refused.
 inline bool parse_mode(const char* text, bool* on) {
-    if (text && !std::strcmp(text, "off")) {
+    if (!text || !*text || !std::strcmp(text, "off")) {
         *on = false;
         return true;
     }
-    if (!text || !*text || !std::strcmp(text, "on")) {
+    if (!std::strcmp(text, "on")) {
         *on = true;
         return true;
     }
@@ -307,6 +313,7 @@ struct Classifier {
     ClassSlot classes[class_slots]{};
     OwnerSlot owners[owner_slots]{};
     MemoSlot memo[memo_slots]{};
+    engine_node_layout::Layout layout = engine_node_layout::edition; // the node's parent and model offsets
     std::uint32_t frame = 0;
     unsigned resolves = 0, walks = 0;
     void begin(std::uint32_t f) { frame = f; }
@@ -385,8 +392,8 @@ struct Classifier {
     // of another object) can own a hull. Returns the hull's ship: its top-level parent, else the hull node itself.
     template <class Read> std::uint32_t note_hull(Read& read, std::uint32_t node) {
         std::uint32_t parent = 0, grandparent = 1;
-        const bool root = read(std::uintptr_t(node) + parent_offset, &parent, 4) && parent && !(parent & 3) &&
-                          read(std::uintptr_t(parent) + parent_offset, &grandparent, 4) && !grandparent;
+        const bool root = read(std::uintptr_t(node) + layout.parent, &parent, 4) && parent && !(parent & 3) &&
+                          read(std::uintptr_t(parent) + layout.parent, &grandparent, 4) && !grandparent;
         const std::uint32_t ship = root ? parent : node;
         add_owner(node, ship);
         if (root) add_owner(parent, parent);
@@ -398,7 +405,7 @@ struct Classifier {
         ++walks;
         for (unsigned depth = 0; depth < walk_depth && node && !(node & 3); ++depth) {
             std::uint32_t parent = 0;
-            if (!read(std::uintptr_t(node) + parent_offset, &parent, 4)) return false;
+            if (!read(std::uintptr_t(node) + layout.parent, &parent, 4)) return false;
             if (parent && is_owner(parent, ship)) return true;
             node = parent; // a null parent: the node was the ship root, the walk ends
         }
@@ -423,7 +430,7 @@ struct Classifier {
             if (ship) *ship = m.ship;
             return m.cls;
         }
-        if (!read(std::uintptr_t(node) + model_offset, model, 4)) return Class::other;
+        if (!read(std::uintptr_t(node) + layout.model, model, 4)) return Class::other;
         const Class c = class_of(read, body_global, *model);
         bool h = false;
         std::uint32_t owner_ship = 0;

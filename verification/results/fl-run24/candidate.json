@@ -1,0 +1,19 @@
+{
+ "run": 24,
+ "step": "field of view on FL (constructor literal, SetFocus remap, load store; fov default 90) + chase camera pose hook on FL (camera = chase; transition/lead/fire/aim stay ap_only); merge 17f8ef034 (fov be484d7c8) and caae7e209 (chase 4490db3e6)",
+ "edition": "fl",
+ "commit": "caae7e209",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "440dbe52ee165dbf",
+ "dll_bytes": 55579145,
+ "installed_sha256_prefix": "440dbe52ee165dbf",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run23 (647e8ebc)",
+ "game_data": "addon2/06+07 unchanged",
+ "ini": "unchanged (fov and camera at template defaults: fov 90, camera chase)",
+ "host_tests": "run_host_suite 11 modules (fov_site, fl_fov, chase_camera, chase_camera_site, fl_chase_camera, bolt_footprint, config_schema, fl_cull_chain, own_sun_hook, cull_small_parts, occlusion_cull): 188 tests 0 failing on main; generate.py --check PASS 292/137; verify_fov_site_fl.py PASS (31 checks); verify_chase_camera_site.py --edition fl PASS; native fixtures fl_fov 49+6/0, fl_chase_camera 41/0 (agents)",
+ "build_warnings": 0,
+ "review": "Opus high x2: FOV no blocker (polling bounded to 1/64 Presents, table hoisted, boundary deviation recorded); chase no blocker (readback rollback made consistent, gate-transit gap documented, AP-only keys marked in template)",
+ "installed_at": "2026-11-02T22:17:03+04:00"
+}

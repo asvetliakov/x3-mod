@@ -4,6 +4,8 @@ A synthetic PE image carries the documented bytes at the documented VAs; the
 probe must pass on it and fail closed on each corruption (changed site bytes,
 a short branch inside the span, a jump into the interior, the wrong main-loop
 order). The installed X3AP.exe, when present, is checked as well (read-only).
+The FL verifier (--edition fl) runs on the installed X3FL.exe, when present, and on in-memory mutations of its bytes
+(site byte, an injected interior edge, a relocation inside the span, the EBX reload, a field offset, the plane slot).
 """
 import struct
 import sys
@@ -107,6 +109,75 @@ class InstalledExecutable(unittest.TestCase):
         report = probe.verify(probe.DEFAULT_EXE.read_bytes())
         self.assertEqual(report['result'], 'PASS', report)
         self.assertFalse(report['checks']['atomic_write']['qword_aligned_span'])  # documented: plain copy in the install window
+
+
+class InstalledFlExecutable(unittest.TestCase):
+    """The --edition fl verifier on the installed X3FL.exe (read-only) and on in-memory mutations of its bytes."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not probe.FL_DEFAULT_EXE.is_file():
+            raise unittest.SkipTest('installed X3FL.exe not found')
+        cls.data = probe.FL_DEFAULT_EXE.read_bytes()
+        cls.image = probe.FlImage(cls.data)
+
+    def mutate(self, rva, new):
+        data = bytearray(self.data)
+        o = self.image.file_offset(probe.IMAGE_BASE + rva)
+        data[o:o + len(new)] = new
+        return probe.verify_fl(bytes(data))
+
+    def test_installed_fl_game_matches_the_study(self):
+        report = probe.verify_fl(self.data)
+        self.assertEqual(report['result'], 'PASS', {k: v for k, v in report['checks'].items() if not v.get('ok')})
+        checks = report['checks']
+        self.assertEqual(checks['inbound_edges']['to_start'], [f'{a:#08x}' for a in probe.FL_INBOUND_EDGES])
+        self.assertEqual(checks['inbound_edges']['updater_callers'], ['0x01e5b0'])
+        self.assertEqual(checks['relocatable']['highlow'], probe.FL_HIGHLOW_COUNT)
+        self.assertEqual(checks['span_decode']['span_lengths'], [4, 6])
+        self.assertFalse(checks['atomic_write']['qword_aligned_span'])
+        self.assertEqual(checks['field_anchors']['count'], len(probe.FL_FIELDS))
+
+    def test_changed_site_byte_fails(self):
+        checks = self.mutate(probe.FL_SITE_RVA + 2, b'\x58')['checks']
+        self.assertFalse(checks['site_bytes']['ok'])
+        self.assertFalse(checks['windows']['ok'])
+
+    def test_injected_interior_edge_fails(self):
+        # The first inbound je (0f 84 rel32 at 0x022141) re-aimed at the span's je (site+4).
+        at = probe.FL_INBOUND_EDGES[0]
+        rel = probe.FL_SITE_RVA + 4 - (at + 6)
+        checks = self.mutate(at + 2, struct.pack('<i', rel))['checks']
+        self.assertFalse(checks['inbound_edges']['ok'])
+        self.assertEqual(checks['inbound_edges']['interior'], [f'{at:#08x}->{probe.FL_SITE_RVA + 4:#08x}'])
+
+    def test_relocation_inside_the_span_fails(self):
+        # The first HIGHLOW entry of the span's page re-pointed into the span (site+2).
+        pe = struct.unpack_from('<I', self.data, 0x3c)[0]
+        reloc_rva, size = struct.unpack_from('<II', self.data, pe + 24 + 96 + 5 * 8)
+        o = self.image.file_offset(probe.IMAGE_BASE + reloc_rva)
+        end, page = o + size, probe.FL_SITE_RVA & ~0xfff
+        while struct.unpack_from('<I', self.data, o)[0] != page:
+            o += struct.unpack_from('<I', self.data, o + 4)[0]
+            self.assertLess(o, end)
+        data = bytearray(self.data)
+        struct.pack_into('<H', data, o + 8, 0x3000 | ((probe.FL_SITE_RVA + 2) & 0xfff))
+        checks = probe.verify_fl(bytes(data))['checks']
+        self.assertFalse(checks['reloc_span']['ok'])
+        self.assertEqual(checks['reloc_span']['fixups_touching_span'], [f'{probe.FL_SITE_RVA + 2:#08x}'])
+
+    def test_ebx_reload_from_another_slot_fails(self):
+        checks = self.mutate(0x0226d8 + 3, b'\x18')['checks']  # mov ebx,[esp+0x18]
+        self.assertFalse(checks['ebx_cockpit']['ok'])
+
+    def test_changed_field_offset_fails(self):
+        checks = self.mutate(0x0224f9 + 2, b'\x5c')['checks']  # mov eax,[ebx+0x5c]
+        self.assertFalse(checks['field_anchors']['ok'])
+        self.assertEqual(checks['field_anchors']['failed'][0]['rva'], '0x0224f9')
+
+    def test_moved_plane_slot_fails(self):
+        checks = self.mutate(0x0dec8d, struct.pack('<I', probe.IMAGE_BASE + probe.FL_PLANE_SLOT_RVA + 4))['checks']
+        self.assertFalse(checks['reloc_plane_slot']['ok'])
 
 
 if __name__ == '__main__':

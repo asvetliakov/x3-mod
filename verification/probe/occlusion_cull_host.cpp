@@ -216,9 +216,10 @@ static void skip_rule() {
               draw_key(1, 2, 3, 4, 5) != draw_key(2, 2, 3, 4, 5) && draw_key(1, 2, 3, 4, 5) == draw_key(1, 2, 3, 4, 5),
           "the draw key separates geometry, model and node");
     bool on = false;
-    check(parse_mode(nullptr, &on) && on && parse_mode("", &on) && on && parse_mode("off", &on) && !on &&
+    on = true;
+    check(parse_mode(nullptr, &on) && !on && (on = true, parse_mode("", &on)) && !on && parse_mode("off", &on) && !on &&
               parse_mode("on", &on) && on && !parse_mode("yes", &on),
-          "X3M_OCCLUSION_CULL: unset/empty/on = on, off = off, anything else refused");
+          "X3M_OCCLUSION_CULL: unset/empty/off = off (the documented default), on = on, anything else refused");
 }
 
 static void classifier() {
@@ -241,10 +242,27 @@ static void classifier() {
     body(12, 0x30002000, "effects\\engines\\jet");
     // Nodes: root 0x40000000 (no parent); hull 0x40001000 child of root; dummy 0x40002000 child of root; part
     // 0x40003000 child of the dummy; a stray part 0x40004000 whose chain never meets an owner.
+    // The build's node layout (engine_node_layout.h: model +0x140 without an edition define, +0x144 with
+    // X3M_EDITION_FL=1); the other edition's model offset holds a decoy, the effect body 12, so a read at the wrong
+    // offset changes every hull and part verdict below.
+    namespace layouts = x3m::engine_node_layout;
+#if X3M_EDITION_FL
+    constexpr layouts::Layout layout = layouts::fl, other = layouts::ap;
+    std::printf("EDITION fl\n");
+#else
+    constexpr layouts::Layout layout = layouts::ap, other = layouts::fl;
+    std::printf("EDITION ap\n");
+#endif
+    static_assert(layout.model != other.model && layout.parent == other.parent, "the editions differ in the model only");
+    check(layouts::edition.model == layout.model && layouts::edition.parent == layout.parent && model_offset == 0x140 &&
+              parent_offset == 0x18,
+          "layout: the build's edition (AP +0x140, FL +0x144); the engine stub's constants stay AP's");
     auto node = [&](std::uint32_t at, std::uint32_t parent, std::uint32_t model) {
         std::vector<std::uint8_t> bytes(0x200, 0);
-        std::memcpy(bytes.data() + parent_offset, &parent, 4);
-        std::memcpy(bytes.data() + model_offset, &model, 4);
+        const std::uint32_t decoy = 12;
+        std::memcpy(bytes.data() + layout.parent, &parent, 4);
+        std::memcpy(bytes.data() + other.model, &decoy, 4);
+        std::memcpy(bytes.data() + layout.model, &model, 4);
         img.put(at, bytes.data(), bytes.size());
     };
     node(0x40000000, 0, 0);
@@ -324,6 +342,18 @@ static void classifier() {
     check(k.evaluate(read, census::body_global_va, 0x40004000, &model, &hull, &ship, &fresh) == Class::part && !hull &&
               ship == 0,
           "a part without a drawn hull has no ship");
+    // The classifier reads its layout member: the default is the build's; the other edition's reads the decoy.
+    check(k.layout.model == layout.model && k.layout.parent == layout.parent, "layout: the classifier's default");
+    k.layout = other;
+    k.flush_classes();
+    k.begin(6);
+    check(k.evaluate(read, census::body_global_va, 0x40001000, &model, &hull) == Class::effect && model == 12,
+          "layout: the other edition's model offset reads the decoy");
+    k.layout = layout;
+    k.flush_classes();
+    k.begin(7);
+    check(k.evaluate(read, census::body_global_va, 0x40001000, &model, &hull) == Class::hull && model == 10,
+          "layout: back on the build's offset, the hull again");
 }
 
 // Row-major clip rows P x V x W for a perspective camera at `eye` looking down +z, a model at `pos` scaled by `scale`
@@ -590,11 +620,12 @@ static void batching() {
 static void engine_table() {
     namespace oe = x3m::occlusion_cull::engine;
     oe::Mode m = oe::Mode::off;
-    check(oe::parse_mode(nullptr, &m) && m == oe::Mode::on && oe::parse_mode("", &m) && m == oe::Mode::on &&
-              oe::parse_mode("on", &m) && m == oe::Mode::on && oe::parse_mode("off", &m) && m == oe::Mode::off &&
-              oe::parse_mode("engine", &m) && m == oe::Mode::engine && !oe::parse_mode("Engine", &m) &&
-              !oe::parse_mode("engine ", &m) && !oe::parse_mode("1", &m),
-          "engine: X3M_OCCLUSION_CULL unset/empty/on = on, off, engine; anything else refused");
+    m = oe::Mode::on;
+    check(oe::parse_mode(nullptr, &m) && m == oe::Mode::off && (m = oe::Mode::on, oe::parse_mode("", &m)) &&
+              m == oe::Mode::off && oe::parse_mode("on", &m) && m == oe::Mode::on && oe::parse_mode("off", &m) &&
+              m == oe::Mode::off && oe::parse_mode("engine", &m) && m == oe::Mode::engine &&
+              !oe::parse_mode("Engine", &m) && !oe::parse_mode("engine ", &m) && !oe::parse_mode("1", &m),
+          "engine: X3M_OCCLUSION_CULL unset/empty/off = off (the documented default), on, engine; anything else refused");
     check(!std::strcmp(oe::mode_name(oe::Mode::engine), "engine") && !std::strcmp(oe::mode_name(oe::Mode::on), "on") &&
               !std::strcmp(oe::mode_name(oe::Mode::off), "off"),
           "engine: mode names");

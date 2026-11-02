@@ -885,6 +885,97 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: proxy culls on FL (`cull_small_props`, `occlusion_cull` on FL)
+
+The small-prop skip and the GPU occlusion cull of ship sub-parts now run on the FL edition. No new engine site, no
+patch and no new D3D call: the gate is `object_trace::scope_available()` (AP the X3AP.exe identity, FL the installed
+material-submit scope seam behind the X3FL.exe identity and its byte gates), the node fields are the edition layout
+(`engine_node_layout.h`, model `+0x144` on FL), and the two engine globals are the module base plus RVAs whose anchors
+`object_trace_fl` and `sector_background_fl` already check. Engine reads stay `engine_memory::read` (documented
+`VirtualQuery` validation); the occlusion test keeps its documented D3D9 path (entry 2026-10-08 below). Verified: both
+editions cross-compiled 0 warnings, AP x87 PASS, the host cores under both layouts (measured, ledger
+[farnhams-legacy.md](../verification/farnhams-legacy.md), "Proxy culls on FL"). Not verified: either cull on FL in
+game (not flown), native Windows execution of the occlusion queries on FL.
+## 2026-11-02: field of view on FL (`fov`, default 90, both editions)
+
+The FL edition patches three X3FL.exe sites ([FL field of view](../reverse-engineering/fl/field-of-view.md), "Verified
+2026-11-02"): the registry constructor's imm32 (a plain four-byte write inside the engine_patch install window, because
+it crosses an aligned qword) and two five-byte jumps to emitted integer stubs (one lock cmpxchg8b each), all three or
+none, behind the X3FL.exe identity and six compared windows at the module base (fixups checked against the base).
+Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`; registry reads through `engine_memory`'s
+`VirtualQuery`-validated copies under `sector_background_fl`'s admission, one sample every 64 Presents on the Present
+thread), no Wine/CrossOver dependency, no device call,
+no pin (the stubs live in the never-freed arena). Natively verified on the Windows host through WSL interop (measured
+2026-11-02): the FL fixture 49 + 6 checks, 0 failures (the real case and load bytes against the unpatched image,
+documented register/flag/stack/LastError/XMM/x87/MXCSR contract, every window bit, rollback, late claim, retained
+literal). Not verified: the three sites in game (not flown).
+## 2026-11-02: chase camera pose seam on FL (`camera = chase` on FL)
+
+The FL edition installs the same cockpit-updater pose seam as AP in X3FL.exe at module base + RVA `0x0227ad`
+([chase-camera.md](../reverse-engineering/fl/chase-camera.md), section 6): `engine_patch::claim` with the re-based
+`je` rel32, the shared generated stub (PUSHFD/PUSHAD, XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError) around the
+shared SSE2 handler, behind the X3FL.exe identity and three compared windows (the plane-slot fixup checked against the
+base). Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery`, `QueryPerformanceCounter`), no
+Wine/CrossOver dependency, no device call. The view restore, lead marker, cursor fire and aim trace stay AP-only on FL
+(one `ap_only` row each). Natively verified on the Windows host through WSL interop (measured 2026-11-02): the FL
+fixture 41 checks, 0 failures (both branch outcomes, every GPR/EFLAGS/ESP/XMM/x87/MXCSR/LastError at the native
+continuation for each 4-byte ESP skew, the pose written through EBX, every window bit, read-back rollback restored and
+failed, shutdown, late claim) and 4 / 4 mutations. Not verified: the FL pose in game (not flown).
+
+## 2026-11-02: chase lead marker and central HUD on FL (`chase_lead`, `chase_hud_anchor` on FL)
+
+The FL edition installs four of AP's nine lead/HUD seams in X3FL.exe at module base + RVA (gate `0x02c7b9`, publish
+`0x02cbe7`, final FOV `0x022cf5`, HUD gate `0x02cc1e`; [chase-lead.md](../reverse-engineering/fl/chase-lead.md),
+section 7): `engine_patch::claim` (one `lock cmpxchg8b`, three plain copies inside the install window), the AP module's
+generated stub (PUSHFD/PUSHAD/CLD, XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError) around the shared SSE2
+policy (`chase_lead_core.h`), behind the X3FL.exe identity and twelve compared windows (nine relocated dwords checked
+against the base). It calls one native routine, the game's own five-entry hide helper (ECX ABI). Documented Win32 only
+(`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery`, `ReadProcessMemory`, `QueryPerformanceCounter`), no
+Wine/CrossOver dependency, no device call; the update binding is the chase camera's pose seam, not a
+`chase_transition` service. The five AP timing sites are not ported (telemetry only). Each stub tests its one-byte enable flag before the
+CPU envelope. Natively verified on the Windows
+host through WSL interop (measured 2026-11-02): the FL fixture 79 checks, 0 failures (all four thunks with the real
+window bytes, the native hide helper executed through a recorded detacher, every GPR/EFLAGS with DF/ESP/XMM/x87/MXCSR/
+LastError at the native continuation for each 4-byte ESP skew, every window bit, all-or-none marker rollback, the
+independent HUD seam, shutdown, late claim). Not verified: the four seams in game (not flown).
+
+## 2026-11-02: chase view restore on FL (`chase_view_restore = 1` on FL)
+
+The FL edition installs the AP view restore's three groups in X3FL.exe ([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md),
+"Verified 2026-11-02"): six cockpit lifetime/update witnesses, the script and load mode-store observers, and the
+input-worker injection plus three VM cancel boundaries, twelve whole-instruction spans claimed through
+`engine_patch::claim` (nine by lock cmpxchg8b, three plain copies inside the install window), each group both or none,
+behind the X3FL.exe identity and 26 compared windows at the module base (every fixup checked against the base; the EH
+adapter's relocated immediate bound to it). The shared generated stubs (PUSHFD/PUSHAD, XMM0-7, the injection site's
+one-word prefilter) and `PreserveCpuState`/`CpuState` (x87, MXCSR, LastError) wrap the shared SSE2 handlers; the restore
+drives the engine's own named script call (`SelectMode(258)`, then `UpdateVisibility()`) with FL's callback-free
+selector 32, under the engine's incoming FP/LastError image. The FL pose hook now admits the unbound `+0x10 == 0` phase on the same
+active-control proof as AP. Documented Win32 only (`VirtualProtect`,
+`FlushInstructionCache`, `VirtualQuery`, SRW locks, `QueryPerformanceCounter`), no Wine/CrossOver dependency, no
+device call. Natively verified on the Windows host through WSL interop (measured 2026-11-02): the FL fixture 402
+checks, 0 failures (every thunk against a reference copy of its original span for each 4-byte ESP skew with all
+flags/DF set and clear: GPRs, ESP, EFLAGS, XMM0-7, x87 CW and ST0, MXCSR, LastError, the pushed stack words; the
+injection also with a hostile engine call inside it; gate, dock, undock, jump, retries, refused call and six cancels
+through the thunks; every window refusing a changed byte; read-back faults rolled back per group; late claim), and the
+AP restore-core harness's 28 cases with the FL constants. Not verified: the FL restore in game (not flown).
+
+## 2026-11-03: chase cursor fire on FL (`chase_fire` on FL)
+
+The FL edition installs AP's one cursor-fire seam in X3FL.exe at module base + RVA (`je` at `0x04ecad` in the native
+fire function; [fl/chase-fire-aim.md](../reverse-engineering/fl/chase-fire-aim.md), section 9): a plain five-byte copy
+inside the install window (the span crosses an aligned qword), read back, the AP module's generated stub shape
+(PUSHFD, one-byte enable and saved-ZF test, then PUSHAD/CLD and XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError)
+around the shared policy (`chase_fire_core.h`, integer only), behind the X3FL.exe identity and five compared windows
+(eleven relocated dwords checked against the base). It writes only the saved ZF; no engine call, no device call.
+Documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery` + `rep movsb` through `engine_memory`,
+SRW locks, `QueryPerformanceCounter`), no Wine/CrossOver dependency. Natively verified on the Windows host through WSL
+interop (measured 2026-11-03): the FL fixture 89 checks, 0 failures (the thunk entered through the native compare for
+each 4-byte ESP skew with every GPR/EFLAGS incl. DF/ESP/XMM0-7/x87/MXCSR/LastError at the continuation, the JE both
+ways, 3,600 cursor positions against the fixture's model of the native unprojection's first stage (the native code
+has no in-viewport test itself), every window bit, read-back rollback restored
+and failed, shutdown, late claim). `chase_aim_trace` stays AP-only (diagnostic). Not verified: the seam in game (not
+flown).
+
 ## 2026-11-03: far-jet hand-off on FL (`cull_small_parts … far_jets=on edition=fl`)
 
 The FL small-parts stub now carries its far-copy block, which calls the shared integer-only handler
