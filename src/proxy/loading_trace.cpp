@@ -10,6 +10,7 @@
 #include "loading_trace_light.h"
 #include "loading_probes.h"
 #include "resource_reader.h"
+#include "d3dx_texture_hook.h"
 #include <new>
 #include <d3dx9.h>
 #include <cpuid.h>
@@ -904,11 +905,8 @@ HRESULT WINAPI texture(IDirect3DDevice9* d, const void* data, UINT size, UINT wi
     cpu.after_original();
     const DWORD error = GetLastError();
     // The overlay atlas marks (set_texture_observer): the created texture with the bytes the engine passed; the
-    // original's LastError is restored after the observer's own API calls.
-    if (texture_observer && SUCCEEDED(result) && out && *out) {
-        texture_observer(d, data, size, *out);
-        SetLastError(error);
-    }
+    // original's LastError is restored after the observer's own API calls (the step FL's import-slot stub shares).
+    d3dx_texture_hook::observe_created(texture_observer, d, data, size, result, out, error);
     const auto end = tick();
     span.finish(end, error, FAILED(result), size);
     return result;

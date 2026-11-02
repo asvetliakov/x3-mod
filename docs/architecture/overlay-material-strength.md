@@ -245,7 +245,8 @@ existing IAT hook on the game's `d3dx9_37.dll` import, the twin is a `ps_3_0` pr
 `CreatePixelShader` and checked by the native validator in the WSL harness before any flight, the per-draw choice is
 the existing variant selection, and the alpha lane's linear sampling under `SRGBTEXTURE` is specified by D3D9. No
 Wine-specific export, layout or hash. The user plays native Windows, so the flight in section 7 is the native
-evidence; the gap to record in platform-portability.md is only that the hook's install condition changes.
+evidence; the gap to record in platform-portability.md is only that the hook's install condition changes. On
+Farnham's Legacy the row is the import-slot stub of section 13 (the game's `d3dx9_43.dll` import), same contracts.
 
 ## 10. Unknown, and what settles it
 
@@ -329,6 +330,40 @@ Implemented as designed with these deviations and settled unknowns:
   -> 28 rows (inferred). `lod_strength_session` is written once, at release or at process exit. Each creation gets two
   `lod_strength_variant_frame` rows (after its frame's Present and after the next frame's) for the first-use compile
   question.
+
+## 13. Farnham's Legacy (2026-11-02, host evidence; not installed, not flown)
+
+FL compiled the twin path (`enabled=1`) but logged `texture_hook=0`: `loading_trace.cpp` is AP-only (AP addresses,
+probe rows), so no texture row was patched and marked atlases drew at the merged strength. Now:
+
+- **Shared step.** `src/proxy/d3dx_texture_hook.h` holds `observe_created`, the step after the original returns (the
+  observer only on success with a texture; the original's LastError put back after the observer's API calls). AP's
+  `loading_trace` texture row calls it (same code it inlined before; AP keeps its row, span and install path).
+- **FL hook** (`d3dx_texture_hook.cpp`, fl target only, `-fno-exceptions`). `install(GetModuleHandleW(nullptr),
+  texture_created)` in `initialize_log`, inside the engine-patch install window: walks the main module's import
+  descriptors for a `d3dx9_<digits>.dll` name (any case) with a name table, finds `D3DXCreateTextureFromFileInMemoryEx`
+  by name (exactly one match), requires the slot aligned and holding `GetProcAddress(GetModuleHandleA(dll), name)`, pins
+  the DLL, then exchanges the slot under a temporary `PAGE_READWRITE` with one interlocked compare-exchange; a failed
+  protection restore rolls the exchange back, unless another hook already wrote over the stub in that window: then
+  nothing is undone (`foreign_chained`), the stub stays in that chain forwarding only and the observer is detached. The
+  temporary `PAGE_READWRITE` covers the whole 4 KB page holding the slot, X3FL.exe's first `.rdata` page (the IAT at
+  RVA `0x150000`), once at startup; the original protection is put back right after the exchange. The hooked function
+  has 15 stdcall arguments (the stub ends in `ret 0x3c`, measured in `build-fl`). The stub: `CpuCallBoundary`, `ApplicationAdmissionAbi`, the original with
+  the caller's state, then `observe_created`; the caller gets the original's result, LastError, MXCSR and x87 state.
+  `restore()` (fixture only; the DLL is pinned in production) exchanges back only over the stub; the stub stays callable.
+- **Rows.** `lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll slot_rva=0x00150374 edition=fl`, or
+  `state=refused reason=<already_installed|no_observer|late_claim|bad_image|import_absent|ambiguous_import|
+  slot_misaligned|dll_not_loaded|foreign_redirect|pin_failed|slot_not_writable|protect_restore_failed|
+  foreign_chained> dll=… slot_rva=…`; then `lod_material_strength_configured enabled=1 texture_hook=1` (the hook's
+  install-time state, not the request; written at device creation and never re-read, so a later foreign rewrite of
+  the slot is not reflected).
+- **Cost** (inferred, not measured on FL): per D3DX texture load the boundary (two FNSAVE/FRSTOR pairs), one null
+  admission check and the observer's 12-byte header compare; no lock, allocation or row on an unmarked load. AP's row
+  additionally pays its span when telemetry is on.
+- **Evidence.** Ledger [farnhams-legacy.md](../verification/farnhams-legacy.md), "Material-strength texture hook on
+  FL, host evidence". The native fixture skips (does not fail) on a host without `i686-w64-mingw32-g++` or WSL
+  interop. Open for the flight: the `lod_strength_texture` / `lod_strength_frame` rows on FL against the
+  `addon2` atlases.
 
 ## 11. Alternatives considered
 

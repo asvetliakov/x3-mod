@@ -1,0 +1,52 @@
+exe=/mnt/c/X3FL/X3FL.exe sha256=e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8 image_base=0x00400000 dll_characteristics=0x8140 dynamic_base=1
+  descriptor dll=d3dx9_43.dll original_first_thunk=0x001a09c8 first_thunk=0x00150328 imports=22
+    D3DXCheckCubeTextureRequirements
+    D3DXGetDeclVertexSize
+    D3DXCreateEffect
+    D3DXCreateMesh
+    D3DXMatrixInverse
+    D3DXSaveSurfaceToFileA
+    D3DXMatrixMultiply
+    D3DXCreateRenderToEnvMap
+    D3DXCleanMesh
+    D3DXMatrixTranspose
+    D3DXVec3Transform
+    D3DXMatrixLookAtLH
+    D3DXVec3Normalize
+    D3DXVec3Project
+    D3DXVec3ProjectArray
+    D3DXGetPixelShaderProfile
+    D3DXLoadSurfaceFromSurface
+    D3DXCheckTextureRequirements
+    D3DXCreateCubeTextureFromFileInMemoryEx
+    D3DXCreateTextureFromFileInMemoryEx
+    D3DXGetImageInfoFromFileInMemory
+    D3DXLoadSurfaceFromFileInMemory
+  target=D3DXCreateTextureFromFileInMemoryEx dll=d3dx9_43.dll slot_rva=0x00150374 by_name_table=1
+  resolvable=1 matches=1
+exe=/mnt/c/X3/X3AP.exe sha256=fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab image_base=0x00400000 dll_characteristics=0x0000 dynamic_base=0
+  descriptor dll=d3dx9_37.dll original_first_thunk=0x0017149c first_thunk=0x0013231c imports=22
+    D3DXMatrixLookAtLH
+    D3DXVec3ProjectArray
+    D3DXCreateEffect
+    D3DXVec3Normalize
+    D3DXGetDeclVertexSize
+    D3DXLoadSurfaceFromFileInMemory
+    D3DXCreateTextureFromFileInMemoryEx
+    D3DXCreateCubeTextureFromFileInMemoryEx
+    D3DXGetImageInfoFromFileInMemory
+    D3DXLoadSurfaceFromSurface
+    D3DXCheckTextureRequirements
+    D3DXGetPixelShaderProfile
+    D3DXCheckCubeTextureRequirements
+    D3DXSaveSurfaceToFileA
+    D3DXCreateRenderToEnvMap
+    D3DXMatrixTranspose
+    D3DXCleanMesh
+    D3DXCreateMesh
+    D3DXMatrixInverse
+    D3DXVec3Transform
+    D3DXMatrixMultiply
+    D3DXVec3Project
+  target=D3DXCreateTextureFromFileInMemoryEx dll=d3dx9_37.dll slot_rva=0x00132334 by_name_table=1
+  resolvable=1 matches=1
