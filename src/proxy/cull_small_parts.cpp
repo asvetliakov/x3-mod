@@ -232,13 +232,14 @@ bool initialize() {
     double dock_px = 0;
     const bool dock_ok =
         !dock_set || (core::parse_px(dock_text, &dock_px) && (dock_px == 0.0 || core::valid_px(dock_px)));
-    // Far engine jets: only with X3M_ENGINE_EFFECTS exactly `plumes` (the engine_effects option's parser; unset,
-    // native, off or a refused word leave the jet bits unread and nothing called).
+    // Far engine jets: only when X3M_ENGINE_EFFECTS resolves to plumes by the engine_effects option's own rule
+    // (option::resolve_mode: unset or empty = plumes, the default; native, off or a refused word leave the jet bits
+    // unread and nothing called). A too-long or non-printable value reads back as "?", refused.
     char effects_text[32]{};
     namespace option = x3m::engine_effects::option;
-    option::Mode effects = option::Mode::native;
-    bool far_jets = read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) &&
-                    option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes;
+    const std::size_t effects_length =
+        read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) ? std::strlen(effects_text) : 0;
+    bool far_jets = option::resolve_mode(effects_text, effects_length) == option::Mode::plumes;
     far_jets_state_ = far_jets ? "on" : "off";
     double px = 0;
     const bool parsed = core::parse_px(setting, &px);

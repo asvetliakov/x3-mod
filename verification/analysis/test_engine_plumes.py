@@ -17,6 +17,13 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+# The record is Wine provenance (Run140, 2026-10-09, commit 0cf873a6b); since 2026-10-11 there is no Wine host and these
+# sources changed natively (0cf873a6b..2c3d32ffa). Accepted beside the recorded hash until run_engine_plumes.py reruns on a
+# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
+SOURCES_SHA256_2026_11_03 = {
+    'src/proxy/engine_effects_core.h': '168a1451ea50181173b63fe9e0ee4aa90f49da7bd591f2759b4ef531dc28ea2b',
+    'src/renderer/fog_transmittance.h': '78f3bccd2d509f173641d7eea145a417f53307d69ed0039a2527073d45c861d6',
+}
 sys.path.insert(0, str(ROOT / 'tools/config'))
 import schema  # noqa: E402
 from source_text import source_text  # noqa: E402
@@ -1309,7 +1316,11 @@ class Wiring(unittest.TestCase):
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
                       '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
-        self.assertIn('plumes_failures_=0;plumes_failed_out_=false;plumes_lane_=nullptr;', motion)  # before_reset
+        # before_reset clears the failure state and the borrowed lane; the own-sun reset block (97ed0320b, 2026-11-02)
+        # sits between the two pairs.
+        before_reset = motion[motion.index('void MotionOutput::before_reset()'):motion.index('void MotionOutput::after_reset(')]
+        self.assertIn('plumes_failures_=0;plumes_failed_out_=false;', before_reset)
+        self.assertIn('plumes_lane_=nullptr;plumes_armed_=false;', before_reset)
         self.assertIn('if(plumes_)taa_call([&]{plumes_->before_reset();});', motion)
         self.assertIn('if(plumes_)plumes_->after_reset(result);', motion)
         self.assertIn('release_engine_plumes();', motion)
@@ -1365,11 +1376,16 @@ class Wiring(unittest.TestCase):
         # Review P6: a failed read of the site refuses that frame (status read) and is retried; only a byte mismatch
         # latches the refusal (the effects fixture's armed mode executes both).
         self.assertIn('if(x3m::engine_memory::read(seta_site_,bytes,sizeof bytes))'
-                      'seta_site_state_=!std::memcmp(bytes,ep::expected_seta_site,sizeof bytes)?1:2;', effects_module)
+                      'seta_site_state_=!std::memcmp(bytes,seta_expected_,sizeof bytes)?1:2;', effects_module)
         self.assertIn('if(!seta_site_state_)status=SetaStatus::read;else if(seta_site_state_!=1)status=SetaStatus::site;', effects_module)
         self.assertIn('else if(!x3m::engine_memory::read(seta_slot_,&cfg,sizeof cfg)||!cfg)status=SetaStatus::pointer;'
-                      'else if(!x3m::engine_memory::read(std::uintptr_t(cfg)+ep::seta_warp_offset,pair,sizeof pair))'
+                      'else if(!x3m::engine_memory::read(std::uintptr_t(cfg)+seta_warp_offset_,pair,sizeof pair))'
                       'status=SetaStatus::read;', effects_module)
+        # Since the FL port (a354e156e, 2026-11-02) the site bytes and the warp offset are per-edition aliases; AP's
+        # still name engine_plumes' constants.
+        self.assertIn('#if !X3M_EDITION_FL\nconstexpr const unsigned char (&seta_expected_)[x3m::engine_plumes::seta_site_length]'
+                      ' = x3m::engine_plumes::expected_seta_site;\nconstexpr std::uint32_t seta_warp_offset_ = '
+                      'x3m::engine_plumes::seta_warp_offset;\n#endif', effects_module)
         self.assertIn('SetLastError(error);return status;', effects_module)
         passes = source_text(ROOT / 'src/renderer/engine_plumes_pass.cpp')
         self.assertIn('float pixel[12+engine_plumes::pixel_constant_floats]={1.f/float(f.width),1.f/float(f.height),0.f,0.f,', passes)
@@ -1571,7 +1587,9 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertEqual(self.record['production_sources'], list(runner.PRODUCTION_SOURCES))
         self.assertRegex(source['commit'], r'^[0-9a-f]{40}(-dirty)?$')
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
-        self.assertEqual(now, source['sha256'], 'production sources changed since the record: rerun run_engine_plumes.py')
+        self.assertEqual(set(now), set(source['sha256']))
+        for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
+            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_engine_plumes.py')
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -215,9 +216,13 @@ class TerranLodCore(unittest.TestCase):
         self.assertEqual(older['body'], 'stations\\usc_small_station_d')
 
     def test_production_wiring(self):
-        capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('terran_station_lod::initialize();'), 1)
-        self.assertLess(capture.index('game_phases::initialize();'), capture.index('terran_station_lod::initialize();'))
+        # One call per edition since the FL culls (cffb327f2, 2026-11-02), each after game_phases.
+        raw = (ROOT / 'src/proxy/capture.cpp').read_text()
+        calls = [m.start() for m in re.finditer(r'\bterran_station_lod::initialize\(\);', raw)]
+        self.assertEqual(len(calls), 2)
+        self.assertEqual([re.findall(r'^#(?:if|else|endif)\b.*$', raw[:at], re.M)[-1].strip() for at in calls],
+                         ['#if X3M_EDITION_FL', '#if !X3M_EDITION_FL'])
+        self.assertTrue(all(raw.index('game_phases::initialize();') < at for at in calls))
         self.assertIn('if (reserved == nullptr) x3m::terran_station_lod::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/terran_station_lod.cpp', source_text(ROOT / 'CMakeLists.txt'))
         module = source_text(ROOT / 'src/proxy/terran_station_lod.cpp')

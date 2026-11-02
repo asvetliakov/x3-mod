@@ -23,8 +23,8 @@ MUTATIONS = (
     ('constructor cockpit from [ESP+4] (AP ABI)', CT,
      '        case 0:\n            chase_lead::native_timing_invalidate(0, thread);\n            cockpit = regs[6];',
      '        case 0:\n            chase_lead::native_timing_invalidate(0, thread);\n            field(esp, 4, cockpit);'),
-    ('mode-store frame from EBP (AP ABI)', CT, 'const std::uint32_t requested = regs[6], ebp = regs[4];',
-     'const std::uint32_t requested = regs[6], ebp = regs[2];'),
+    ('mode-store frame from EBP (AP ABI)', CT, 'const StoreFrame frame = fl_store_frame(regs[4]);',
+     'const StoreFrame frame = fl_store_frame(regs[2]);'),
     ('controlled object from [ESP+4] (AP ABI)', CT, 'controlled = regs[6];', 'field(esp, 4, controlled);'),
     ('callback selector 0 (AP value)', CORE, 'constexpr std::uint32_t restore_callback_none = 32;',
      'constexpr std::uint32_t restore_callback_none = 0;'),
@@ -35,6 +35,14 @@ MUTATIONS = (
      '    if (observers_claimed && !restore_okay) restore_group(mandatory, site_count);\n', ''),
     ('windows not checked before the claims', CT, 'if (const char* refusal = S::plan(base, read, &fl_failed_window)) return refusal;',
      'S::plan(base, read, &fl_failed_window);'),
+    # 2026-11-03: the FL event window (telemetry) and its kind-9 restore row.
+    ('FL event window kept off with telemetry', CT, 'const bool diag = okay && telemetry::enabled();',
+     'const bool diag = false;'),
+    ('finished ticket not entered as a kind-9 event', CT, '            record_outcome(o);\n',
+     '            (void)&record_outcome;\n'),
+    ('kind-6 event frame chain from EBP (AP ABI)', CT,
+     'record(6, regs[7], thread, S::preferred_base + S::sites[6].rva, regs[6], regs[4]);',
+     'record(6, regs[7], thread, S::preferred_base + S::sites[6].rva, regs[6], regs[2]);'),
 )
 
 

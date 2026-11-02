@@ -224,6 +224,7 @@ renderer::EnginePlumesPass::~EnginePlumesPass() = default;     // likewise (engi
 renderer::OcclusionCullPass::~OcclusionCullPass() = default; // likewise (occlusion cull)
 renderer::EngineRibbonsPass::~EngineRibbonsPass() = default;   // likewise (engine ribbons, phase 3)
 renderer::EngineShimmerPass::~EngineShimmerPass() = default;   // likewise (engine heat shimmer, exhaust gap 9)
+renderer::OwnSunPass::~OwnSunPass() = default;                 // likewise (own sun, 5d10a8ac2)
 // The scene-end apply quad is gated on sun_apply_requested_, which no scenario
 // here sets; inert so it cannot perturb the recorded call sequences.
 void MotionOutput::run_sun_shadow_apply() noexcept {}

@@ -42,7 +42,7 @@
 // view's handle and context, the scene tag, and a record (far_record) with the
 // expected origin, axis, size and throttle; the buffer's cap; registers, flags
 // and LastError preserved across the call; the per-node cost with and without
-// a far record; initialize() requests the block only for exactly `plumes` and
+// a far record; initialize() requests the block for plumes or unset (the default) and
 // leaves it out when the JET writer 0x00434708 is not the verified bytes.
 // Diagnostic timings only; not game FPS. Never launches the game.
 #include "../../src/proxy/cull_small_parts.h"
@@ -1580,11 +1580,15 @@ int main() {
               install_lines.back().find(" projectiles=off") != std::string::npos,
           "projectiles off: parsed and logged, the marker not consulted");
     SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", nullptr);
-    // Far engine jets: requested only by X3M_ENGINE_EFFECTS exactly `plumes`; the JET writer's bytes are absent in this
-    // process, so even then the block is left out (writer_mismatch).
-    SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", nullptr);
-    check(!small::initialize() && install_lines.back().find(" far_jets=off") != std::string::npos,
-          "far jets: X3M_ENGINE_EFFECTS unset: far_jets=off");
+    // Far engine jets: requested when X3M_ENGINE_EFFECTS resolves to plumes as the engine_effects option resolves it
+    // (option::resolve_mode: unset or empty = plumes, the default; 2026-11-03); the JET writer's bytes are absent in
+    // this process, so a request shows as writer_mismatch and a refusal as off.
+    for (const wchar_t* mode : {static_cast<const wchar_t*>(nullptr), L""}) {
+        SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", mode);
+        check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") &&
+                  install_lines.back().find(" far_jets=writer_mismatch") != std::string::npos,
+              "far jets: X3M_ENGINE_EFFECTS unset or empty is the default plumes: the block requested (writer_mismatch)");
+    }
     for (const wchar_t* mode : {L"native", L"off", L"Plumes", L"plumes2"}) {
         SetEnvironmentVariableW(L"X3M_ENGINE_EFFECTS", mode);
         check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") &&

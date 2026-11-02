@@ -65,6 +65,17 @@ void restore_observe_frame(const AppliedFrame& frame) noexcept {
     ++observed_frames;
     observed_mode = frame.mode;
 }
+// The lifetime/update token the linked FL lead module asks for (src/engine/fl/chase_lead_fl.cpp): reported as not
+// installed, so the lead keeps its pose-seam binding here (fl_chase_lead.cpp covers both bindings).
+bool installed() {
+    return false;
+}
+std::uint64_t generation(std::uintptr_t) noexcept {
+    return 0;
+}
+Update current_update(std::uintptr_t) noexcept {
+    return {};
+}
 }
 }
 

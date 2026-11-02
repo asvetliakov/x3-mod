@@ -86,7 +86,9 @@ class HdrDitherLaunch(unittest.TestCase):
         bloom = source_text(ROOT / 'src/renderer/bloom_pass.cpp')
         self.assertIn('if (p.sharpen > 0) agx.exposure[2] = 0.f;', bloom)
         self.assertIn('sharp.values[3] = p.agx.exposure[2];', bloom)
-        self.assertIn('p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return E_INVALIDARG;', bloom)
+        # validate_inputs refuses any other amplitude with E_INVALIDARG through its numbered clause (b156415a3, 2026-11-01).
+        self.assertIn('p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return fail(16);', bloom)
+        self.assertIn('const auto fail = [&clause](unsigned n, HRESULT hr = E_INVALIDARG) noexcept {', bloom)
         # The 8-bit route's sharpen keeps c23.w = 0 (prepare_sharpen).
         self.assertIn('out.values[3] = 0.f;', source_text(ROOT / 'src/temporal/sharpen.h'))
 

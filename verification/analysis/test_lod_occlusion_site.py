@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -212,10 +213,18 @@ class LodOcclusionCore(unittest.TestCase):
         self.assertIsNone(verifier.parse_restore_line('lod_occlusion_restore site=004c34f7 status=restored'))
 
     def test_production_wiring(self):
-        capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('lod_occlusion::initialize();'), 1)
-        self.assertLess(capture.index('game_phases::initialize();'), capture.index('lod_occlusion::initialize();'))
-        self.assertLess(capture.index('terran_station_lod::initialize();'), capture.index('lod_occlusion::initialize();'))
+        # One call per edition since the FL culls (cffb327f2, 2026-11-02): the FL branch and the AP branch each call
+        # terran_station_lod first, then lod_occlusion, after game_phases.
+        raw = (ROOT / 'src/proxy/capture.cpp').read_text()
+        calls = [m.start() for m in re.finditer(r'\blod_occlusion::initialize\(\);', raw)]
+        terran = [m.start() for m in re.finditer(r'\bterran_station_lod::initialize\(\);', raw)]
+        self.assertEqual((len(calls), len(terran)), (2, 2))
+        self.assertEqual([re.findall(r'^#(?:if|else|endif)\b.*$', raw[:at], re.M)[-1].strip() for at in calls],
+                         ['#if X3M_EDITION_FL', '#if !X3M_EDITION_FL'])
+        for first, second in zip(terran, calls):
+            self.assertLess(raw.index('game_phases::initialize();'), first)
+            self.assertLess(first, second)
+            self.assertNotRegex(raw[first:second], r'(?m)^#', 'terran_station_lod and lod_occlusion share one branch')
         self.assertIn('if (reserved == nullptr) x3m::lod_occlusion::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/lod_occlusion.cpp', source_text(ROOT / 'CMakeLists.txt'))
         module = source_text(ROOT / 'src/proxy/lod_occlusion.cpp')

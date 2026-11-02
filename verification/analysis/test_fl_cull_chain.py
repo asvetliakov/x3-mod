@@ -10,8 +10,12 @@ kept, EAX/EDX as the native max-threshold block leaves them at 0x0961f3, the nat
 locals, DF, LastError), the three stub variants, every single-bit window change refused (the occlusion fixup zeroed or
 rebased too), read-back / chain / restore faults, shutdown, initialize()'s rows and refusals, the frame side, the two
 one-byte patches' executed paths, and the late-window refusal. The emitted stubs are walked instruction by instruction
-(verification/results/fl-cull-chain/stub_cpu_state_audit.py). (b) Edition wiring: the CMake lists, the capture.cpp
-un-fencing, the far-jet handler's FL model offset and the FL constants against the verified contract.json.
+(verification/results/fl-cull-chain/stub_cpu_state_audit.py). The far-jet hand-off (cull-chain.md "Verified
+2026-11-03"): the live stub's far block reaches the production handler (src/proxy/engine_far_jets.cpp, linked under a
+renamed symbol with its own no-SSE flags) with FL-layout nodes and AP-offset decoys, and the copy becomes a plume record
+through the consumer's far_record with the owned context scale. (b) Edition wiring: the CMake lists, the capture.cpp
+un-fencing, the far-jet handler's FL read set, the plume stage's FL scale source and the FL constants against the
+verified contract.json and read_set.json.
 """
 import json
 from pathlib import Path
@@ -28,6 +32,7 @@ LOD_SITES = ROOT / 'src/engine/fl/lod_patch_sites_fl.h'
 FIXTURE = ROOT / 'verification/probe/fl_cull_chain.cpp'
 SHIM = ROOT / 'verification/probe/fl_cull_chain_shim.h'
 AUDIT = ROOT / 'verification/results/fl-cull-chain/stub_cpu_state_audit.py'
+READ_SET = ROOT / 'verification/results/fl-far-jets/read_set.json'
 CONTRACT = ROOT / 'verification/results/fl-cull-chain/contract.json'
 
 
@@ -47,7 +52,10 @@ def build_and_run(tmp):
               ['-fno-exceptions', '-include', str(SHIM), '-DX3M_CULL_SMALL_PARTS_FL_SHIM']),
              ('src/engine/fl/terran_station_lod_fl.cpp', ['-fno-exceptions']),
              ('src/engine/fl/lod_occlusion_fl.cpp', ['-fno-exceptions']),
-             ('src/proxy/engine_patch.cpp', []), ('src/engine/fl/executable_identity_fl.cpp', []))
+             ('src/proxy/engine_patch.cpp', []), ('src/engine/fl/executable_identity_fl.cpp', []),
+             # The production far-jet handler with its CMake flags, renamed so the fixture's recording fake forwards.
+             ('src/proxy/engine_far_jets.cpp', ['-fno-exceptions', '-mno-sse', '-mno-mmx', '-mfpmath=387',
+                                                '-Dx3m_engine_far_jet=x3m_engine_far_jet_real']))
     for source, flags in units:
         obj = tmp / (Path(source).stem + '.o')
         subprocess.run([compiler, *common, *flags, '-c', str(ROOT / source), '-o', str(obj)], check=True)
@@ -78,8 +86,18 @@ class FlCullChainNativeFixture(unittest.TestCase):
         self.assertIn('FLIPS cull=440 refused=440', out)
         self.assertIn('FLIPS terran=248 refused=248 occlusion=160 refused=160 fixup=32 fixup_refused=32', out)
         self.assertIn('DECISIONS culled=20 dock=10 exempt=6 far=3 native=41', out)
+        self.assertIn('FARCHAIN record origin=1000.0,-2000.0,3000.0 size=2.0000 scale=3c23d70a', out)
+        for label in ('init_installs_far_block', 'init_jet_writer_mismatch_drops_far', 'far_chain_fl_layout_copied',
+                      'far_chain_record_reaches_consumer', 'far_chain_foreign_context_refused',
+                      'far_chain_null_context_refused', 'far_chain_model_is_fl_offset', 'far_chain_disarmed',
+                      'init_far_gate_unset_on', 'init_far_gate_empty_on', 'init_far_gate_plumes_on',
+                      'init_far_gate_native_off', 'init_far_gate_off_off', 'init_far_gate_mixed_case_off',
+                      'init_far_gate_invalid_off'):
+            self.assertNotIn('FAIL ' + label, out)
+        self.assertIn('LOG cull_small_parts_frame device=1 frame=77 px=4 ', out)
+        self.assertRegex(out, r'LOG cull_small_parts_frame [^\n]* far_jets=on edition=fl\n')
         self.assertEqual(len(re.findall(r'^LOG cull_small_parts requested=\S+ px=\S+ patched=[01] edition=fl state=',
-                                        out, re.M)), 8)
+                                        out, re.M)), 16)  # 9 + the seven far-gate settings
         self.assertEqual(audit.returncode, 0, audit.stdout[-3000:] + audit.stderr[-1000:])
         variants = json.loads(audit.stdout)['variants']
         self.assertEqual({k: (v['calls'], v['exits']['continue'] > 0, v['exits']['cull'] > 0) for k, v in variants.items()},
@@ -149,14 +167,48 @@ class FlCullChainWiring(unittest.TestCase):
         self.assertIn('spec.length = S::site_length;', code)
         self.assertIn('if (const char* refused = S::plan(window)) return done(refused);', code)
         self.assertIn('return done(roll_back("readback_rolled_back"));', code)
-        # Far jets fenced on FL: initialize() never carries the far block (far_jets=fenced_fl on the row).
-        self.assertIn('applied = install_base(base, exempt, false);', code)
-        self.assertIn('far_jets_state_ = far_requested ? "fenced_fl" : "off";', code)
+        # Far jets on FL as on AP: plumes asks for the far block, a changed JET writer drops it.
+        self.assertIn('applied = install_base(base, exempt, far_jets);', code)
+        self.assertIn('far_jets_state_ = far_jets ? "on" : "off";', code)
+        self.assertIn('if (far_jets && !bytes_match(base + S::jet_writer_rva, S::jet_writer, S::jet_writer_length)) {', code)
+        self.assertIn('far_jets_state_ = "writer_mismatch";', code)
+        self.assertNotIn('fenced_fl', code)
         self.assertIn('"cull_small_parts requested=%s px=%.4g patched=%u edition=fl state=%s reason=%s site=0x%08lx '
                       'rva=0x%06lx cull=0x%08lx write=%s', code)
         far = strip((ROOT / 'src/proxy/engine_far_jets.cpp').read_text())
-        self.assertIn('#if X3M_EDITION_FL\nconstexpr unsigned model_at = 0x144;', far)
+        self.assertIn('constexpr unsigned model_at = layout::edition.model;', far)
         self.assertIn('word(node, model_at)', far)
+        self.assertIn('node_context && node_context == r.context ? word(node_context, core::context_scale_offset) : 0u;',
+                      far)
+        layout = strip((ROOT / 'src/proxy/engine_node_layout.h').read_text())
+        self.assertIn('constexpr Layout fl{0x18, 0x28, 0x144};', layout)
+        self.assertIn('constexpr unsigned fl_context = 0x1c;', layout)
+        # The plume stage on FL: the owned scale, no later context +0x2c read for far records.
+        plumes = strip((ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text())
+        append = plumes[plumes.index('void MotionOutput::engine_far_append()'):plumes.index('bool MotionOutput::engine_node_read(')]
+        fl, ap = append.split('#else', 1)[0], append.split('#else', 1)[1]
+        self.assertIn('const std::uint32_t* owned_scale = engine_far_jets::context_scale_bits();', fl)
+        self.assertIn('ee::far_record(f, scale, body, entry, frame_, &record);', fl)
+        self.assertNotIn('engine_far_context_scale', fl)
+        self.assertIn('ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);', ap)
+
+    def test_read_set_matches_the_verified_bytes(self):
+        read_set = json.loads(READ_SET.read_text())
+        self.assertTrue(read_set['passed'])
+        self.assertEqual(read_set['fl_sha256'], 'e7f3aad8d728e021')
+        self.assertTrue(read_set['node_context_dominates_site'])
+        self.assertEqual(read_set['copied_field_stores'], [])
+        self.assertEqual(read_set['esi_writers_reaching_site'], [])
+        self.assertIn('0x095e5e', read_set['esi_writers'])
+        self.assertEqual(len(read_set['calls_between_context_load_and_site']), 4)
+        self.assertGreaterEqual(read_set['anchors'], 47)
+        offsets = {row['field']: (row['ap_offset'], row['fl_offset']) for row in read_set['table']}
+        self.assertEqual(offsets['node model id'], ('0x140', '0x144'))
+        self.assertEqual(offsets['node context (FL owned scale, new)'], (None, '0x1c'))
+        for row in read_set['table']:
+            self.assertTrue(all(a['ok'] for a in row['anchors']), row['field'])
+            if row['ap_offset'] and row['field'] != 'node model id':
+                self.assertEqual(row['ap_offset'], row['fl_offset'], row['field'])
         for name in ('terran_station_lod_fl.cpp', 'lod_occlusion_fl.cpp'):
             text = strip((ROOT / 'src/engine/fl' / name).read_text())
             self.assertIn('x3m::fl::module_base()', text)

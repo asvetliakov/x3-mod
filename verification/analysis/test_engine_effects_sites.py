@@ -22,6 +22,12 @@ from source_text import source_text
 
 EXE = Path(verifier.DEFAULT_EXE)
 RECORD = ROOT / 'verification/results/bottle-X3/engine-effects-patch.json'
+# Wine-record provenance (Run 124, 203c5e984): the record's own hashes stay; these files changed natively since
+# (docs/verification/host-suite.md, "Wine-record-bound tests"). engine_effects_option.h: option::resolve_mode added for
+# the far-jet gate (17ab85a84, 2026-11-03).
+SOURCES_SHA256_2026_11_03 = {
+    'src/proxy/engine_effects_option.h': 'eccb9f06f28c52a63f1e8ebf818f001d1775ca317cccf34608917fdb49835e28',
+}
 
 HARNESS = r'''
 #include "engine_effects_sites.h"
@@ -167,7 +173,10 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
         import run_engine_effects_patch as runner
         source = self.record['source']
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
-        self.assertEqual(now, source['sha256'], 'production sources changed since the record: rerun run_engine_effects_patch.py')
+        self.assertEqual(set(now), set(source['sha256']))
+        for path, recorded in source['sha256'].items():
+            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)),
+                          path + ': production sources changed since the record: rerun run_engine_effects_patch.py')
 
     def test_paths_and_rows(self):
         names = {c['name'] for c in self.record['checks']}

@@ -1,25 +1,37 @@
-LOG chase_transition installed=1 status=active edition=fl base=0x01b70000 window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=0
-LOG chase_transition_site index=0 site=0x01b90ec0 rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=1 site=0x01b915c6 rva=0x0215c6 patched=1 atomic_write=0 status=active edition=fl
-LOG chase_transition_site index=2 site=0x01b8e3f0 rva=0x01e3f0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=3 site=0x01b91f50 rva=0x021f50 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=4 site=0x01b92f9b rva=0x022f9b patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=5 site=0x01b92fa9 rva=0x022fa9 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=6 site=0x01ba1abc rva=0x031abc patched=1 atomic_write=0 status=active edition=fl
-LOG chase_transition_site index=7 site=0x01b8bf6e rva=0x01bf6e patched=1 atomic_write=0 status=active edition=fl
-LOG chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x01c3fd00 inject_rva=0x0cfd00 call=0x01c2b5b0 call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
-LOG chase_view_restore_site index=0 site=0x01c3fd00 rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=1 site=0x01c2a6b0 rva=0x0ba6b0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=2 site=0x01c2cb10 rva=0x0bcb10 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=3 site=0x01cbe80a rva=0x14e80a patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition installed=1 status=active edition=fl base=0x013f0000 window=- window_closed_by=- diagnostics=0 diagnostics_reason=telemetry_off diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=0
+LOG chase_transition_site index=0 site=0x01410ec0 rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=1 site=0x014115c6 rva=0x0215c6 patched=1 atomic_write=0 status=active edition=fl
+LOG chase_transition_site index=2 site=0x0140e3f0 rva=0x01e3f0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=3 site=0x01411f50 rva=0x021f50 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=4 site=0x01412f9b rva=0x022f9b patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=5 site=0x01412fa9 rva=0x022fa9 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=6 site=0x01421abc rva=0x031abc patched=1 atomic_write=0 status=active edition=fl
+LOG chase_transition_site index=7 site=0x0140bf6e rva=0x01bf6e patched=1 atomic_write=0 status=active edition=fl
+LOG chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x014bfd00 inject_rva=0x0cfd00 call=0x014ab5b0 call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
+LOG chase_view_restore_site index=0 site=0x014bfd00 rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=1 site=0x014aa6b0 rva=0x0ba6b0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=2 site=0x014acb10 rva=0x0bcb10 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=3 site=0x0153e80a rva=0x14e80a patched=1 atomic_write=1 status=active edition=fl
 WINDOWS count=26 base_aligned=1
 ATOMIC cmpxchg8b=9 plain=3
 ARENA used=1840 capacity=24576
 SCENARIO gate chase_view_restore result=restored cancel=none attempts=1 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=ok manager=0xfffffde0 manager_class=0x25d manager_scan=found mode_seen=258 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffee sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=2 frame=0 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=0 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=0,0x00000000,0x00000000,0,0
-SCENARIO dock chase_view_restore result=restored cancel=none attempts=1 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=skipped manager=0x00000000 manager_class=0x0 manager_scan=bottom mode_seen=258 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffee sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=2 frame=0 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=0 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=0,0x00000000,0x00000000,0,0
-SCENARIO jump chase_view_restore result=restored cancel=none attempts=1 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=ok manager=0xfffffde0 manager_class=0x25d manager_scan=found mode_seen=258 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffef sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=38 frame=0 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=36 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=3,0x00000022,0x5a5a0022,1,0
-SCENARIO retries updates=124 chase_view_restore result=no_effect cancel=retries attempts=3 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=none manager=0xfffffde0 manager_class=0x25d manager_scan=found mode_seen=0 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffee sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=124 frame=0 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=0 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=0,0x00000000,0x00000000,0,0
+EVENT gate events: kind 9 result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258
+SCENARIO dock chase_view_restore result=restored cancel=none attempts=1 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=skipped manager=0x00000000 manager_class=0x0 manager_scan=bottom mode_seen=258 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffee sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=2 frame=300 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=0 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=0,0x00000000,0x00000000,0,0
+EVENT dock events: kind 9 result=restored cancel=none attempts=1 hud_refresh=skipped mode_seen=258
+SCENARIO jump chase_view_restore result=restored cancel=none attempts=1 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=ok manager=0xfffffde0 manager_class=0x25d manager_scan=found mode_seen=258 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffef sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=38 frame=900 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=36 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=3,0x00000022,0x5a5a0022,1,0
+EVENT jump events: kind 9 result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258
+SCENARIO retries updates=124 chase_view_restore result=no_effect cancel=retries attempts=3 monitor=0xfffffde8 monitor_class=0x25e hud_refresh=none manager=0xfffffde0 manager_class=0x25d manager_scan=found mode_seen=0 generation_from=1 generation_to=2 ship_id_from=0x00c0ffee ship_id_to=0x00c0ffee sector_from=0x00000011 sector_to=0x00000022 sector54_from=0x5a5a0011 sector54_to=0x5a5a0022 wait_updates=124 frame=1200 soft_unreadable=0 soft_mode_zero=0 soft_connect_flags_view=0 soft_no_handle=0 soft_ship_dead=0 skip_caller=0 first_skip_caller=0x00000000 first_soft=0,0x00000000,0x00000000,0,0
+EVENT retries events: kind 9 result=no_effect cancel=retries attempts=3 hud_refresh=none mode_seen=0
+EVENT refused events: kind 9 result=call_refused cancel=call_refused attempts=1 hud_refresh=none mode_seen=258
+EVENT cancel events: load store -> kind 9 cancel=load result=cancelled cancel=load attempts=0 hud_refresh=none mode_seen=0
+EVENT cancel events: VM clear -> kind 9 cancel=epoch result=cancelled cancel=epoch attempts=0 hud_refresh=none mode_seen=0
+EVENT cancel events: VM load -> kind 9 cancel=epoch result=cancelled cancel=epoch attempts=0 hud_refresh=none mode_seen=0
+EVENT cancel events: EH adapter -> kind 9 cancel=epoch result=cancelled cancel=epoch attempts=0 hud_refresh=none mode_seen=0
+EVENT cancel events: load constructor -> kind 9 cancel=lifetime result=cancelled cancel=lifetime attempts=0 hud_refresh=none mode_seen=0
+EVENT cancel events: foreign frame -> kind 9 cancel=no_monitor result=cancelled cancel=no_monitor attempts=0 hud_refresh=none mode_seen=0
+TIMING n=2000 update_us diagnostics_off=0.606 on_unchanged=0.899 on_changing=0.954 (harness included: 2 thunk entries + the frame observation per update)
 FLIPS windows=52 refused=52
 CONTRACT runs=96
-RESULT PASS checks=402 failures=0
-# exit=0 run_seconds=0.60 lines=278
+RESULT PASS checks=423 failures=0
+# exit=0 run_seconds=0.36 lines=332

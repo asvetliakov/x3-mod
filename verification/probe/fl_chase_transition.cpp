@@ -12,6 +12,9 @@
 // sentinel and every 4-byte ESP skew mod 16; the recorder captures what the native continuation would see. The same
 // input runs once more through a reference copy of the original span (plain bytes + jmp ct_record): registers, flags,
 // ESP, XMM, x87, MXCSR, LastError and the stack/cockpit words the span writes must be identical.
+//
+// The restore scenarios run with telemetry on (the FL event window): each asserts the chase_transition_event rows its
+// witnesses and its finished ticket (kind 9: result, cancel, attempts, hud_refresh, mode_seen) emit at the report.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "../../src/proxy/chase_transition.cpp"
@@ -31,9 +34,12 @@ void check(bool value, const char* label, const char* detail = "") {
         std::printf("FAIL %s %s\n", label, detail);
     }
 }
-char last_row[4096], outcome_row[4096], transition_row[4096], restore_row[4096];
+char last_row[4096], outcome_row[4096], transition_row[4096], restore_row[4096], window_row[1024];
 unsigned rows = 0, outcome_rows = 0, rows_under_lock = 0;
-bool quiet = false;
+bool quiet = false, telemetry_on = false;
+// The chase_transition_event rows of the last report, in emission order (first 16 + last 32 of the window).
+char event_rows[64][1024];
+unsigned event_count = 0, detail_rows = 0;
 namespace x3m {
 void log(const char* format, ...) {
     if (TryAcquireSRWLockExclusive(&x3m::chase_transition::lock))
@@ -51,11 +57,16 @@ void log(const char* format, ...) {
         std::memcpy(outcome_row, last_row, sizeof outcome_row);
         ++outcome_rows;
     }
+    if (!std::strncmp(last_row, "chase_transition_event ", 23) && event_count < 64)
+        std::snprintf(event_rows[event_count++], sizeof event_rows[0], "%s", last_row);
+    if (!std::strncmp(last_row, "chase_transition_window ", 24))
+        std::snprintf(window_row, sizeof window_row, "%s", last_row);
+    if (!std::strncmp(last_row, "chase_transition_detail ", 24)) ++detail_rows;
     if (!quiet) std::printf("LOG %s\n", last_row);
 }
 namespace telemetry {
 bool enabled() {
-    return false;
+    return telemetry_on;
 }
 }
 namespace chase_camera {
@@ -441,6 +452,11 @@ void reset_module() {
     T::restore_epoch.store(1);
     T::restore_inject_filter.store(0);
     T::restore_eh_bumps.store(0);
+    T::window = {};
+    for (auto& category : T::seen)
+        for (auto& row : category) row = {};
+    for (auto& row : T::unknown_updates) row = {};
+    T::sequence = T::read_failures = T::suppressed = 0;
     T::fl_base = 0;
     T::fl_native_return = 0;
     T::fl_refusal = "not_initialized";
@@ -622,6 +638,55 @@ const char* field_of(const char* row, const char* key, char* out, unsigned n) {
     out[i] = 0;
     return out;
 }
+// The report's event rows: drain the window (report clears it) and keep the rows.
+std::uint64_t report_frame = 0;
+void drain() {
+    event_count = 0;
+    detail_rows = 0;
+    window_row[0] = 0;
+    const bool q = quiet;
+    quiet = true;
+    T::report(report_frame += 300);
+    quiet = q;
+}
+// Index of the first event row containing every non-null text, or -1.
+int event_at(const char* a, const char* b = nullptr, const char* c = nullptr, const char* d = nullptr,
+             const char* e = nullptr) {
+    for (unsigned i = 0; i < event_count; ++i) {
+        const char* r = event_rows[i];
+        if (std::strstr(r, a) && (!b || std::strstr(r, b)) && (!c || std::strstr(r, c)) && (!d || std::strstr(r, d)) &&
+            (!e || std::strstr(r, e)))
+            return int(i);
+    }
+    return -1;
+}
+unsigned events_with(const char* a) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < event_count; ++i) n += std::strstr(event_rows[i], a) != nullptr;
+    return n;
+}
+// The kind-9 row of the scenario: result, cancel, attempts and hud_refresh as the outcome row has them.
+bool restore_event(const char* label, const char* result, const char* cancel, const char* attempts = nullptr,
+                   const char* hud = nullptr) {
+    char want[4][48];
+    std::snprintf(want[0], sizeof want[0], " result=%s ", result);
+    std::snprintf(want[1], sizeof want[1], " cancel=%s ", cancel);
+    std::snprintf(want[2], sizeof want[2], " attempts=%s ", attempts ? attempts : "");
+    std::snprintf(want[3], sizeof want[3], " hud_refresh=%s ", hud ? hud : "");
+    const int at = event_at(" kind=9 kind_name=restore ", want[0], want[1], attempts ? want[2] : nullptr,
+                            hud ? want[3] : nullptr);
+    const bool ok = at >= 0 && events_with(" kind=9 ") == 1 && std::strstr(event_rows[at], " edition=fl");
+    check(ok, label, at >= 0 ? event_rows[at] : (event_count ? event_rows[event_count - 1] : "no event rows"));
+    if (at >= 0) {
+        char r[24], c[24], a[8], h[12], m[12];
+        std::printf("EVENT %s result=%s cancel=%s attempts=%s hud_refresh=%s mode_seen=%s\n", label,
+                    field_of(event_rows[at], "result=", r, sizeof r), field_of(event_rows[at], "cancel=", c, sizeof c),
+                    field_of(event_rows[at], "attempts=", a, sizeof a),
+                    field_of(event_rows[at], "hud_refresh=", h, sizeof h),
+                    field_of(event_rows[at], "mode_seen=", m, sizeof m));
+    }
+    return ok;
+}
 // Gate transit / dock: the rear frame arms on cockpit A, the free command destroys it, the alloc command builds B
 // whose monitor stores mode 1, two eligible updates make it due, the input-worker entry consumes it.
 void transit(bool manager, unsigned ship_off = w_ship) {
@@ -640,8 +705,12 @@ void transit(bool manager, unsigned ship_off = w_ship) {
 }
 void scenarios() {
     char v[64];
+    telemetry_on = true; // the event window (diagnostics=1) for every restore case below
     // 1. Gate transit: restored, then UpdateVisibility on the captured manager.
     check(install(true), "install with the restore", last_row);
+    check(row_has(transition_row, "diagnostics=1 diagnostics_reason=fl_verified_reads diagnostics_off=connect_observer,"
+                                  "origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 "),
+          "telemetry: the FL event window is on, unported readers named", transition_row);
     arm_recorders();
     fake_calls = 0;
     outcome_rows = 0;
@@ -679,6 +748,33 @@ void scenarios() {
           "gate: outcome restored, hud_refresh=ok", outcome_row);
     check(rows_under_lock == 0, "no row is logged under the module lock");
     std::printf("SCENARIO gate %s\n", outcome_row);
+    drain();
+    {
+        char cockpit_a[24], cockpit_b[24], script[48];
+        std::snprintf(cockpit_a, sizeof cockpit_a, " cockpit=0x%08lx ", static_cast<unsigned long>(W(w_cockpit_a)));
+        std::snprintf(cockpit_b, sizeof cockpit_b, " cockpit=0x%08lx ", static_cast<unsigned long>(W(w_cockpit_b)));
+        std::snprintf(script, sizeof script, " script_id=0x%08lx script_class=0x%lx ",
+                      static_cast<unsigned long>(monitor_id), static_cast<unsigned long>(monitor_class));
+        const int built = event_at(" kind=0 kind_name=construct ", cockpit_b, " caller=0x004305ab ");
+        const int freed = event_at(" kind=2 kind_name=destroy ", cockpit_a, " caller=0x00430612 ");
+        const int armed = event_at(" kind=3 kind_name=update ", cockpit_a, " mode=258 ", " snapshot_valid=815 ",
+                                   " active_handle=119 ");
+        const int store1 = event_at(" kind=6 kind_name=mode_script ", cockpit_b, " caller=0x00431abc requested=1 ",
+                                    " frame=ok ", script);
+        const int store258 = event_at(" kind=6 kind_name=mode_script ", cockpit_b, " requested=258 ", " frame=ok ", script);
+        const int done = event_at(" kind=9 kind_name=restore ", " result=restored cancel=none attempts=1 ",
+                                  " hud_refresh=ok mode_seen=258 ");
+        char order[96];
+        std::snprintf(order, sizeof order, "armed=%d freed=%d built=%d store1=%d store258=%d done=%d of %u", armed, freed,
+                      built, store1, store258, done, event_count);
+        check(armed >= 0 && freed > armed && built > freed && store1 > built && store258 > store1 && done > store258,
+              "gate events: arm update, free, alloc, the monitor's store 1, SelectMode's store 258, then the restore",
+              order);
+        check(detail_rows == 0 && row_has(window_row, " detail=off diagnostics_off=connect_observer,") &&
+                  row_has(window_row, " frame_refusals_total=0 ") && row_has(window_row, " edition=fl"),
+              "gate events: window row, no detail row on FL", window_row);
+        restore_event("gate events: kind 9", "restored", "none", "1", "ok");
+    }
 
     // 2. Docking: the same cockpit replacement at the dock reset; no manager frame (bottom) -> hud_refresh=skipped.
     install(true);
@@ -693,6 +789,8 @@ void scenarios() {
               !std::strcmp(field_of(outcome_row, "manager_scan=", v, sizeof v), "bottom"),
           "dock: restored, no manager: hud_refresh=skipped", outcome_row);
     std::printf("SCENARIO dock %s\n", outcome_row);
+    drain();
+    restore_event("dock events: kind 9", "restored", "none", "1", "skipped");
 
     // 3. Undock: no cockpit recreation and no mode store: the armed ticket stays armed, no call, no row.
     install(true);
@@ -705,6 +803,10 @@ void scenarios() {
     inject(w_ship);
     check(T::restore.phase == D::phase_armed && fake_calls == 0 && outcome_rows == 0 && T::restore.arms == 1,
           "undock: armed, nothing called, no row");
+    drain();
+    check(events_with(" kind=9 ") == 0 && events_with(" kind=3 kind_name=update ") == 1 &&
+              row_has(window_row, " suppressed_total=79 "),
+          "undock events: one update row (79 identical updates suppressed), no restore row", window_row);
 
     // 4. Jump drive (ship change, run78 shape): B's view object stays 0 for 36 updates, due only after it binds.
     install(true);
@@ -724,6 +826,16 @@ void scenarios() {
               !std::strcmp(field_of(outcome_row, "ship_id_to=", v, sizeof v), "0x00c0ffef"),
           "jump: restored on the new ship", outcome_row);
     std::printf("SCENARIO jump %s\n", outcome_row);
+    drain();
+    {
+        char unbound[64], bound[64];
+        std::snprintf(unbound, sizeof unbound, " cockpit=0x%08lx ", static_cast<unsigned long>(W(w_cockpit_b)));
+        std::snprintf(bound, sizeof bound, " view=0x%08lx ", static_cast<unsigned long>(W(w_ship2)));
+        const int waiting = event_at(" kind=3 kind_name=update ", unbound, " mode=1 ", " view=0x00000000 ");
+        const int ready = event_at(" kind=3 kind_name=update ", unbound, " mode=1 ", bound);
+        check(waiting >= 0 && ready > waiting, "jump events: the unbound then the bound update of the new cockpit");
+    }
+    restore_event("jump events: kind 9", "restored", "none", "1", "ok");
 
     // 5. Retries exhausted: SelectMode accepted (AL 1) but no store: no_effect, spaced >= 60 updates, then retries.
     install(true, "2");
@@ -742,6 +854,8 @@ void scenarios() {
               !std::strcmp(field_of(outcome_row, "attempts=", v, sizeof v), "3") && updates > 120,
           "retries: three attempts (1 + retries 2), spaced, then cancel=retries", outcome_row);
     std::printf("SCENARIO retries updates=%u %s\n", updates, outcome_row);
+    drain();
+    restore_event("retries events: kind 9", "no_effect", "retries", "3", "none");
     fake_store = 258;
 
     // 6. Refused call (receiver or method missing: AL 0): call_refused, no refresh.
@@ -757,6 +871,8 @@ void scenarios() {
               !std::strcmp(field_of(outcome_row, "result=", v, sizeof v), "call_refused"),
           "refused: AL 0 is call_refused", outcome_row);
     fake_select_al = 1;
+    drain();
+    restore_event("refused events: kind 9", "call_refused", "call_refused", "1", "none");
 
     // 7. Cancels through the thunks: the load store (kind 7), the VM clear and the EH adapter epoch, a load-chain
     // constructor, a mode store outside the interpreter frame captures nothing (no monitor -> cancel at injection).
@@ -793,6 +909,19 @@ void scenarios() {
         std::snprintf(label, sizeof label, "cancel: %s -> %s", k.label, k.cancel);
         check(fake_calls == 0 && outcome_rows == 1 && !std::strcmp(field_of(outcome_row, "cancel=", v, sizeof v), k.cancel),
               label, outcome_row);
+        drain();
+        std::snprintf(label, sizeof label, "cancel events: %s -> kind 9 cancel=%s", k.label, k.cancel);
+        restore_event(label, "cancelled", k.cancel);
+        if (k.how == 0)
+            check(event_at(" kind=7 kind_name=mode_load ", " caller=0x0041bf6e requested=1 ") >= 0,
+                  "cancel events: the load store's kind 7 row");
+        if (k.how == 4)
+            check(event_at(" kind=0 kind_name=construct ", " caller=0x00420e12 ") >= 0,
+                  "cancel events: the load-chain constructor row");
+        if (k.how == 5)
+            check(event_at(" kind=6 kind_name=mode_script ", " frame=refused ", " script_id=0x00000000 ") >= 0 &&
+                      row_has(window_row, " frame_refusals_total=1 "),
+                  "cancel events: the foreign frame's kind 6 row is refused and counted", window_row);
     }
     check(T::restore_eh_bumps.load() == 0, "the last scenario did not pass the EH adapter");
 
@@ -819,11 +948,61 @@ void scenarios() {
     set_active(W(w_cockpit_a));
     check(T::active_control_cockpit(W(w_cockpit_a)) && !T::active_control_cockpit(W(w_cockpit_b)),
           "lifetime: active-control proof through the FL cockpit registry");
+    // The cockpit destroyed and rebuilt at the same address inside one update: the open token is revoked and the
+    // generation moves, which is what chase_lead's update=lifetime binding refuses on (fl_chase_lead.cpp).
+    {
+        const auto g0 = T::generation(W(w_cockpit_a));
+        Cpu c = at_stack(0x401234);
+        c.ecx = uint32_t(W(w_cockpit_a));
+        call_site(S::sites[3].rva, c);
+        const T::Update u0 = T::current_update(W(w_cockpit_a));
+        destroy(w_cockpit_a, S::free_return_va);
+        construct(w_cockpit_a, S::alloc_return_va);
+        const T::Update u1 = T::current_update(W(w_cockpit_a));
+        const auto g1 = T::generation(W(w_cockpit_a));
+        check(u0.serial && u0.generation == g0 && !u1.serial && !u1.generation && g1 && g1 != g0,
+              "lifetime: a rebuild inside one update revokes the token and moves the generation");
+    }
     destroy(w_cockpit_a, S::free_return_va);
     check(!T::generation(W(w_cockpit_a)) && !T::state.find(W(w_cockpit_a)), "lifetime: the wrapper destroys it");
     // Only that the witness handlers keep calling the hook, as on AP; the FL lead module defines it empty (no native
     // timing sites on FL), so nothing is revoked in production.
     check(x3m::chase_lead::invalidations > 0, "lifetime: the handlers still call chase_lead::native_timing_invalidate");
+
+    // 9. Cost of the event window (diagnostic, this host, not game FPS): one cockpit update (begin, the chase hook's
+    // frame observation, exit, through the thunks) of a cockpit at mode 1 (nothing arms), with telemetry off, on with
+    // an unchanged snapshot (the suppressed path: reads, registry walk, compare), and on with a changing sector (every
+    // update enters the window).
+    {
+        constexpr unsigned n = 2000;
+        LARGE_INTEGER f{}, t0{}, t1{};
+        QueryPerformanceFrequency(&f);
+        double us[3]{};
+        for (unsigned mode = 0; mode < 3; ++mode) {
+            telemetry_on = mode != 0;
+            install(true);
+            arm_recorders();
+            construct(w_cockpit_a, S::alloc_return_va);
+            cockpit_fields(w_cockpit_a, 1, uint32_t(W(w_ship)), uint32_t(W(w_ship)), 0x11);
+            set_active(W(w_cockpit_a));
+            QueryPerformanceCounter(&t0);
+            for (unsigned i = 0; i < n; ++i) {
+                if (mode == 2) put32(W(w_cockpit_a) + 0x1fc, i);
+                update(w_cockpit_a);
+            }
+            QueryPerformanceCounter(&t1);
+            us[mode] = double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) / n;
+            drain();
+            if (mode == 2)
+                check(event_count == 48 && row_has(window_row, " dropped=1954 "),
+                      "cost: a changing update fills the bounded window (construct, complete and 2,000 updates: 16 first, 32 last, 1,954 dropped)",
+                      window_row);
+        }
+        std::printf("TIMING n=%u update_us diagnostics_off=%.3f on_unchanged=%.3f on_changing=%.3f "
+                    "(harness included: 2 thunk entries + the frame observation per update)\n",
+                    n, us[0], us[1], us[2]);
+    }
+    telemetry_on = false;
 }
 
 // ---------------- install refusals and rollback ----------------

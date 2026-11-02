@@ -330,10 +330,30 @@ the `[game+0x499] == -1` exit of the command loop (`cmp edi,-1` at `0x07877b`, f
 A due ticket simply waits at such frames: the pending/due clock runs on cockpit updates, so the worst case is the
 expiry at 600 updates (inferred, not measured in game).
 
-Not claimed on FL: AP's connect observer (kind 8; diagnostics only) and the diagnostic event/identity readers
-(`diagnostics=0 diagnostics_reason=ap_only`): their provenance and `IdentityReader` roots stay AP-bound. The second
-injection consumer (SETA restore) is refused on FL (`inject_attach` → `ap_only`).
+Event window on FL (2026-11-03): with telemetry the FL install sets `diagnostics=1
+diagnostics_reason=fl_verified_reads` and the AP event window runs on FL inputs only. Each `chase_transition_event`
+row (first 16 and last 32 changes per report, identical consecutive witnesses of a cockpit suppressed, as on AP)
+carries the witness kind (`kind_name=construct|complete|destroy|update|mode_script|mode_load`; the two mode-store
+kinds 6/7 only with `chase_view_restore = 1`, because on FL their observer sites are claimed only with the restore), the
+lifetime
+generation and update serial, the normalized caller (alloc `0x4305ab`, load `0x420e12`, free `0x430612`; the mode
+stores carry their own preferred VAs `0x431abc`, `0x41bf6e`), the requested mode, the active-control handle and a
+snapshot of the verified cockpit fields only (`snapshot_valid` bits 1 mode `+0x150`, 2 connect `+0x1c0`, 4 ref `+0xc`,
+8 view `+0x10`, 32 sector `+0x1fc`, 256 flags `+0x1a0`, 512 sector `+0x54`). A script mode store (kind 6) adds the
+dispatcher frame chain the restore already reads (`frame=ok|refused`, task, context, `script_id`, `script_class`;
+`fl_store_frame()`, one reader for both). A finished restore ticket adds one `kind=9 kind_name=restore` row with
+`result`, `cancel`, `attempts`, `hud_refresh`, `mode_seen` and both generations, in sequence with the witnesses that
+led to it. Still not ported, named in the install and window rows as `diagnostics_off=`: the connect observer (kind 8,
+not claimed), the VM return-record and destructor provenance, `IdentityReader` and geometry (`+0xa8/+0x160/+0x120`),
+whose FL contracts are unverified; the `+0x130` boom field (unverified on FL); and the `+0x58` world camera and
+`+0x1e0` target, which are FL-verified ([chase-camera.md](chase-camera.md), [chase-lead.md](chase-lead.md) section 7)
+but kept out of the row deliberately so it carries the restore's field set. No `chase_transition_detail` row on FL. The second injection consumer (SETA restore) is refused on FL (`inject_attach` →
+`ap_only`).
 
-Not verified (inferred): that `SelectMode(258)` runs to its native mode store inside the dispatcher's `call 0x4bb470`
-on FL, as on AP (the state machine requires the observed store, so a deferred store reads as `no_effect`, retried, and
-never as a restored result); the FL story's behaviour under a modified story; anything at runtime (not flown).
+Witnessed in FL run 25 (measured, `/home/asvetl/x3m-logs/fl-run25-restore-hud.log`): three
+`chase_view_restore result=restored cancel=none attempts=1 hud_refresh=ok manager_scan=found mode_seen=258` rows.
+`result=restored` requires the mode-store observer to have seen 258 stored into the bound cockpit on the calling
+thread during the call (`on_call_result`), so `SelectMode(258)` does reach its native store inside the dispatcher's
+`call 0x4bb470` on FL. `sector_from`/`sector_to` (`+0x1fc`) read 0 in all three rows (script-published, as under AP's
+Mayhem); `+0x54` changed in two. Not verified: the FL story's behaviour under a modified story; the event window in
+game (not flown).

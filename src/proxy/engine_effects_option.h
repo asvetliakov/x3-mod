@@ -36,4 +36,14 @@ template <class Char> inline bool parse_mode(const Char* text, Mode* out) noexce
     if (text[n]) return false; // 16 or more characters
     return parse_mode(text, n, out);
 }
+// The resolved mode of the setting's first n characters, the one rule for every reader that asks what mode is in force
+// (engine_effects.cpp's own option and both editions' small-parts far-jet gate, so they cannot diverge): n == 0 (unset
+// or empty) is plumes, the default since Run 123 A; a word parse_mode accepts is that mode; anything else (another
+// word, mixed case, 16 or more characters) is refused: native, *valid false (fail closed).
+template <class Char> inline Mode resolve_mode(const Char* text, std::size_t n, bool* valid = nullptr) noexcept {
+    Mode m = Mode::plumes;
+    const bool ok = n == 0 || (n < 16 && parse_mode(text, n, &m));
+    if (valid) *valid = ok;
+    return ok ? m : Mode::native;
+}
 }

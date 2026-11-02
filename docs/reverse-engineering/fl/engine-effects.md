@@ -212,6 +212,8 @@ unwind cleanup closes them. A binding/serial is owned metadata, not a
 native-memory lease. `fl_render_admission.h` explicitly limits BorrowStamp
 to one admitted invocation. Reuse these existing mechanisms.
 
+**Superseded 2026-11-03 for the far route (orchestrator ruling).** The far-jet copy relies on the selector's synchronous native borrow, the same model as AP: the integer-only handler runs inside the pass, called by the stub, and cannot query `fl_render_admission`. The later parent `+0xa4` read follows the shipped FL draw route (`engine_memory::read`, `≤ 0` → no floor). Only the context scale became an owned value ([Verified 2026-11-03](cull-chain.md#verified-2026-11-03-far-jet-hand-off-read-set)).
+
 **The precise AP consumer mismatch [s].** `MotionOutput::sample_scope`
 currently calls `engine_node_gather` only for Edition::AP. That gathers
 native root/camera/registry **tokens** into `RootSet`. Later
@@ -511,3 +513,27 @@ the lens walk are **not qualified**. This is needed only for gain 0.
 | §4 `+0x708` at `0x46301c`, `+0xa8` at `0x46319d`, cap 1000 (negative → 1000), gate `0x4645ad..0x4645bd`, SETA `+0xbc/+0xc0`, clock `+0x708` at `0x4fff67`; AP `+0xcc/+0xd0/+0x718` | **confirmed** |
 | Sector caller `0x443b76`, render-preparation order `0x48ba3a/43/4c` | unverified |
 | Material/lifetime grant and the missing read window (§4 tail), §5 walk bounds | not re-checked here (source-level claims) |
+
+## Verified 2026-11-03: far-jet consumer inputs
+
+The far-jet hand-off's full read set (18 fields, 47 anchors, and the dominance of the selector's own
+node-context loads over the cull site) is in
+[cull-chain.md](cull-chain.md#verified-2026-11-03-far-jet-hand-off-read-set). Producer:
+[read_set.py](../../../verification/results/fl-far-jets/read_set.py). The rows below are what the plume stage
+(`engine_far_append`) consumes on FL.
+
+| Field | AP offset | FL offset | FL anchor | How FL consumes it |
+| --- | --- | --- | --- | --- |
+| Context scale | context `+0x2c`, read at the stage (memo, `engine_memory::read`) | `+0x2c`, **owned at the site** | `0x495fc7`/`0x495fce` (selector, same node), `0x4def18` (camera publication) | `engine_far_jets::context_scale_bits()[i]` bit-cast; 0 → `far_record` refuses |
+| Model id → body | `+0x140` | `+0x144` | `0x49621c`, setter `0x4a365d` | `body_for_model` through `base+0x1aa100` (§4 above) |
+| Parent radius | parent `+0xa4` | `+0xa4` | `0x4a39c3`; dirty `0x4a3b1b`, `0x4a580f` | read at the stage with the floor on, as the FL draw route already does; `≤ 0` → no floor |
+| View handle | camera `+0x28` | `+0x28` | `0x4a4606` | the stage's view filter (same handle the FL draw records carry) |
+| Throttle, scales, position, basis | `+0x70/+0x80/+0x88`, `+0xb0..`, `+0xc0..`, `+0xe0..` | same | §3 above; world matrix `0x4de59a`, `0x4de9ef..0x4dea99`, `0x4deb15..` | `far_record` unchanged |
+
+For the context scale only, this meets [cull-chain.md](cull-chain.md) section 4's requirement that a far-to-plume
+conversion use an owned value: the handler copies it inside the native borrow, and the stage no longer reads
+`context+0x2c` later. The rest of that requirement (fresh `fl_render_admission`, an owned parent radius) is
+superseded for the far route (note in section 4 above). The node walk (`engine_node_append`) stays
+fenced (`fl_draw_only`), so its later `camera+0x1c → +0x2c` read never runs on FL. The parent radius is read
+later. That is the same read and the same `engine_memory::read` validation as the FL draw route (FL run 18
+onward); no owned value has been established for it [i].

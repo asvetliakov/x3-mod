@@ -376,22 +376,35 @@ telemetry only; they are not ported (`chase_native_timing installed=0 status=not
 | scope fields | +0xc/+0x10 refs, +0x150 mode, +0x1a0 flags (`0x0224e1`), +0x1c0 connect (`0x0224c5`), +0x1d8 gun (`0x02c88e`), +0x1e0 target, +0x1e4 tracking, +0x54 sector, +0x58 camera; object +8 id (`0x03107d`), +0x54 owner (`0x059780`), +0x48 type 1/7 (`0x059787`, `0x059fc0`) | anchors (with the chase camera verifier's) |
 | aim publication | the native fire-control helper reads cockpit+0x79c/+0x7a0 = O+0x3e0/+0x3e4 (`0x027173`, `0x027195`); the extension's publication therefore also feeds native fire aiming, as on AP | anchors |
 
-**Update binding (FL decision, not the note's transition binding):** `chase_transition` (constructor generation,
-update serial) is not available on FL. The FL module binds each update to the chase camera's pose-seam visit instead:
-`invalidate_pose()` on every visit, `camera_context()` publishes `{generation = serial = a per-publication counter,
-thread}` for the applied bound cockpit, and the final-FOV seam closes it. The dominance result above makes this sound
-within one updater invocation: no gate can be reached in an invocation without that invocation's pose visit and
-the cockpit is the invocation's live `this` (EBX). One path leaves the token open: `0x022a0d je 0x022fa9`
-(cockpit+0xc == 0 after the HUD calls) skips the final-FOV seam. That pose stays open until the next pose-seam visit
-invalidates it; no gate can use it first, a leftover lead ticket fails at `scope`/`owned_marker` (the token no longer
-matches) so nothing is written from it, and its anchor slot is reclaimed at that visit. It does not detect a cockpit destroyed and
-reallocated by a callback inside the same invocation (the native hide helper and the solver can reach callbacks); the
-native continuation would then also resume on a destroyed owner, the limit section 5 already states.
+**Update binding (2026-11-03: the transition's token, as AP; pose seam as fallback).** The choice is fixed at
+`initialize()` and logged as `update=lifetime|pose_seam` on the `chase_lead` row.
+
+- `update=lifetime` (`chase_transition` installed, which the loader initializes first; the normal FL path): as AP's
+  `camera_context`/`scope`. The pose visit takes the cockpit-lifetime generation and the update serial from
+  `chase_transition::current_update()` and publishes nothing when no update of that cockpit is open on this thread;
+  every gate, publish, HUD gate and final FOV re-checks that token, and `generation()` is
+  `chase_transition::generation()`. The token ends at the transition's update exits `0x022f9b`/`0x022fa9` (the latter
+  is also where the `0x022a0d je 0x022fa9` skip of the final-FOV seam lands), at a nested update begin on the thread,
+  and at the cockpit's destroy and construct witnesses. A cockpit destroyed and rebuilt at the same address within one
+  update therefore fails every later check: no HUD node, marker or anchor write follows (fixture case "rebuild"). The
+  final-FOV `close_update()` is not used in this mode.
+- `update=pose_seam` (fallback when `chase_transition` is not installed): `invalidate_pose()` on every visit,
+  `camera_context()` publishes `{generation = serial = a per-publication counter, thread}` for the applied bound
+  cockpit, and the final-FOV seam closes it. The dominance result above makes this sound within one updater
+  invocation: no gate can be reached in an invocation without that invocation's pose visit and the cockpit is the
+  invocation's live `this` (EBX). The `0x022a0d je 0x022fa9` path leaves that pose open until the next pose-seam visit
+  invalidates it; a leftover lead ticket fails at `scope`/`owned_marker`, and its anchor slot is reclaimed at that
+  visit. This binding does not detect a cockpit destroyed and reallocated inside the same invocation.
+
+In both modes the native continuation itself would resume on a destroyed owner if a callback (the native hide helper,
+the solver) destroyed the cockpit, the limit section 5 already states; the lifetime token only guarantees that this
+module writes nothing after such a destroy.
 
 Run-time identity: before any write, the twelve windows (823 bytes) must match at base + RVA with each relocated dword
 equal to base + its target (nine relocated dwords); refusals `executable_mismatch`, `chase_camera_unavailable`, `invalid_base`, `unreadable`,
 `window_mismatch`, `slot_mismatch` (the row names the window), `late_claim`. The marker's three seams install all or
 none: a read-back mismatch writes the original five bytes back inside the install window and counts as restored only
 when all six read back original; earlier seams go back through `engine_patch::restore`. The HUD gate is a separate
-transaction that never disables the marker. Not verified: the four seams in game (not flown), foreign-SEH unwinding
-through the callbacks, a callback-driven cockpit destruction inside one updater invocation.
+transaction that never disables the marker. Not verified: foreign-SEH unwinding through the callbacks, a
+callback-driven cockpit destruction inside one updater invocation in game (the refusal is fixture-verified), the
+`update=lifetime` binding in game (not flown; the four seams flew in FL run 25 under `update=pose_seam`).

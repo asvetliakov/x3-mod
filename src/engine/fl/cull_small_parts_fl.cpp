@@ -4,10 +4,11 @@
 // cull_small_parts_sites_fl.h). The policy is AP's (cull_small_parts_core.h: threshold_for, upper_for, the scene latch,
 // the dock ranges, the flag words); the site, registers and offsets are FL's.
 //
-// Far jets are fenced on FL (far_jets=fenced_fl): the stub culls far JET nodes like any small node but carries no
-// far-copy block, whatever X3M_ENGINE_EFFECTS says. The FL far route must run under fresh fl_render_admission with an
-// owned context scale instead of a later context+0x2c read (docs/reverse-engineering/fl/engine-effects.md, cull-chain.md
-// section 4), and none of it has flown. The encoder's far block stays (install_base's far_jets: the fixture only).
+// Far jets (X3M_ENGINE_EFFECTS resolving to plumes, unset included, as on AP): the stub hands culled JET nodes (+0x130 & 0x4000001) to
+// x3m_engine_far_jet (src/proxy/engine_far_jets.cpp) with (node ESI, measure ECX, view EBX). Its FL read set is verified
+// from X3FL.exe's bytes (docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03", engine_node_layout.h):
+// model +0x144, every other field at the AP offset, and the context scale owned at the site rather than read later. A
+// JET writer whose bytes differ (base+0x03deb3) drops only the far block (far_jets=writer_mismatch), as on AP.
 //
 // Install (backend-load path, in the engine_patch install window): X3FL.exe identity (fl::module_base() != 0), the
 // 55-byte window at base+0x0961c5 compared before anything is emitted, the projectile marker writers (base+0x049b1d,
@@ -17,7 +18,7 @@
 // of the tail. Any failure after the write puts the original five bytes back (readback_rolled_back, chain_failed), or
 // keeps the site registered when even that fails (rollback_failed; shutdown() tries again). No other consumer chains
 // on FL (the gain-0 engine cull was deleted on 2026-11-02 and occlusion_engine_cull is not ported: chain_stub/site_chainable refuse, edition_fl).
-// Nothing here runs inside the engine's pass but the emitted stub (it calls nothing while far jets are fenced). shutdown() is for the fixture: the FL loader's DLL_PROCESS_DETACH unload calls are AP only, and the module is
+// Nothing here runs inside the engine's pass but the emitted stub and the far-jet handler it calls. shutdown() is for the fixture: the FL loader's DLL_PROCESS_DETACH unload calls are AP only, and the module is
 // pinned before the jump goes live, so on FL the stub stays until process exit.
 #include "cull_small_parts_fl.h"
 #include "../../proxy/camera_state.h"
@@ -60,7 +61,7 @@ core::SceneLatch scene_{}; // render thread only (the scene Clear and the Presen
 bool projectiles_ = true;
 const char* projectiles_state_ = "on"; // on, off, marker_mismatch, invalid
 bool far_jets_ = false;
-const char* far_jets_state_ = "off"; // off, fenced_fl (initialize); on only through the fixture's install_base
+const char* far_jets_state_ = "off"; // install-line value: on, off, writer_mismatch
 #ifdef X3M_CULL_SMALL_PARTS_FL_FIXTURE
 std::uintptr_t fixture_base_ = 0;
 #endif
@@ -241,11 +242,12 @@ bool initialize() {
         !dock_set || (core::parse_px(dock_text, &dock_px) && (dock_px == 0.0 || core::valid_px(dock_px)));
     char effects_text[32]{};
     namespace option = x3m::engine_effects::option;
-    option::Mode effects = option::Mode::native;
-    // The AP rule (X3M_ENGINE_EFFECTS exactly plumes asks for the far block), then the FL fence: never carried.
-    const bool far_requested = read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) &&
-                               option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes;
-    far_jets_state_ = far_requested ? "fenced_fl" : "off";
+    // The AP rule: X3M_ENGINE_EFFECTS resolving to plumes (option::resolve_mode: unset or empty = plumes, the default)
+    // asks for the far block; native, off or a refused word do not.
+    const std::size_t effects_length =
+        read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) ? std::strlen(effects_text) : 0;
+    bool far_jets = option::resolve_mode(effects_text, effects_length) == option::Mode::plumes;
+    far_jets_state_ = far_jets ? "on" : "off";
 #ifdef X3M_CULL_SMALL_PARTS_FL_FIXTURE
     const std::uintptr_t base = fixture_base_ ? fixture_base_ : x3m::fl::module_base();
 #else
@@ -270,9 +272,15 @@ bool initialize() {
             exempt = false;
             projectiles_state_ = "marker_mismatch";
         }
+        // The far block relies on the engine's JET flag pair: its writer must be the verified bytes, else the block
+        // stays out (the rest of the stub installs).
+        if (far_jets && !bytes_match(base + S::jet_writer_rva, S::jet_writer, S::jet_writer_length)) {
+            far_jets = false;
+            far_jets_state_ = "writer_mismatch";
+        }
         px_ = px;
         dock_px_ = dock_px;
-        applied = install_base(base, exempt, false); // far jets fenced on FL
+        applied = install_base(base, exempt, far_jets);
     }
     // state: active (the stub is live), off (explicit 0), refused (nothing written), patched_unverified (a rollback
     // failed: the jump may still be in place, registered).

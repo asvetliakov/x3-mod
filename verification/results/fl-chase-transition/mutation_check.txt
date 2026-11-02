@@ -1,9 +1,12 @@
-killed constructor cockpit from [ESP+4] (AP ABI): FAIL failures=28
-killed mode-store frame from EBP (AP ABI): FAIL failures=14
-killed controlled object from [ESP+4] (AP ABI): FAIL failures=14
+killed constructor cockpit from [ESP+4] (AP ABI): FAIL failures=43
+killed mode-store frame from EBP (AP ABI): FAIL failures=20
+killed controlled object from [ESP+4] (AP ABI): FAIL failures=21
 killed callback selector 0 (AP value): FAIL failures=2
-killed caller not normalized to preferred VAs: FAIL failures=25
+killed caller not normalized to preferred VAs: FAIL failures=38
 killed read-back check skipped: FAIL failures=3
 killed observers kept after a refused restore group: FAIL failures=1
 killed windows not checked before the claims: FAIL failures=50
-8 / 8 killed
+killed FL event window kept off with telemetry: FAIL failures=20
+killed finished ticket not entered as a kind-9 event: FAIL failures=12
+killed kind-6 event frame chain from EBP (AP ABI): FAIL failures=2
+11 / 11 killed

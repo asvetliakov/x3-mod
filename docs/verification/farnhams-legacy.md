@@ -1683,7 +1683,8 @@ Expected in the flight log (not verified): `chase_camera requested=1 installed=1
 rollback=none unbound_phase=active_control dependencies=chase_lead,chase_transition`, then:
 
 ```
-chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=<0|1> diagnostics_reason=<telemetry_off|fl_verified_reads> diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+   (updated 2026-11-03; until then diagnostics=0 diagnostics_reason=ap_only, as run 25 logged)
 chase_transition_site index=0 site=0x<base+020ec0> rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl   (indices 0-7; atomic_write=0 at 1, 6, 7)
 chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x<base+0cfd00> inject_rva=0x0cfd00 call=0x<base+0bb5b0> call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
 chase_view_restore_site index=0 site=0x<base+0cfd00> rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl   (indices 0-3)
@@ -1695,14 +1696,23 @@ After each gate transit, jumpdrive jump and docking taken in the rear chase view
 Undocking writes no view mode, so no row is expected. If the view is not restored, report the row. Each pattern points
 to one cause:
 
-- `result=no_effect cancel=retries`: the store did not happen inside the call.
+Since 2026-11-03 (section "FL chase follow-ups" below) each finished ticket also appears in the telemetry event
+window as `chase_transition_event … kind=9 kind_name=restore result=… cancel=…`, in sequence with the cockpit
+witnesses (`kind_name=destroy|construct|update|mode_script|mode_load`); the readings below name the event rows to look
+at next to each outcome.
+
+- `result=no_effect cancel=retries`: the store did not happen inside the call (no `kind_name=mode_script
+  requested=258` row for the bound cockpit before the `kind=9` row).
 - `result=cancelled cancel=mode_left` right after a call, with the chase view actually back: the store was deferred
   (the script task yielded and stored 258 after the call returned), so the attempt read as `no_effect` and the next
   candidate frame at 258 cancelled the ticket. The restore landed, but each earlier retry may have left a deferred
   `SelectMode` task behind (at most `retries` + 1 calls per ticket); report it with the rows around it.
-- `cancel=no_monitor`: the mode store was not captured.
+- `cancel=no_monitor`: the mode store was not captured (`kind_name=mode_script … frame=refused`: the dispatcher frame
+  chain did not match; no `mode_script` row at all: no script store into the fresh cockpit).
 - `result=call_refused`: the method or the receiver is missing.
 - `chase_view_restore_arm_refused reason=…`: the rear frame did not arm.
+- `cancel=lifetime` or `cancel=destructor`: the `kind_name=construct` / `destroy` rows around it give the callers
+  (`0x4305ab` alloc, `0x420e12` load chain, `0x430612` free).
 - `chase_transition installed=0 status=… window=<name>`: a window mismatch.
 
 With `--perf`, `chase_view_restore_state` every 300 frames carries the counters. The former gap (vanilla framing for
@@ -1810,14 +1820,207 @@ rising while firing at the cursor (or `native_active > 0` with override 0 if FL 
 Visual: bolts go to the cursor, not straight ahead; with the cursor hidden nothing aims at the top-left corner. Report a
 shot that goes somewhere other than the cursor or the boresight.
 
+## FL chase follow-ups: restore witness, HUD lifetime identity (2026-11-03, host evidence, not installed, not flown)
+
+Correction to run 25: the restore was witnessed in that log after all. `/home/asvetl/x3m-logs/fl-run25-restore-hud.log`
+holds three `chase_view_restore result=restored cancel=none attempts=1 hud_refresh=ok manager_scan=found mode_seen=258`
+rows (measured; `chase_view_restore_state … results=0,3,0,0,0,0`). These outcome rows were never fenced on FL. Only the
+`chase_transition_event`/`_detail` diagnostics were. `result=restored` requires the mode-store observer to have seen 258
+stored into the bound cockpit during the call, so the SelectMode-store assumption is witnessed on FL (measured).
+`sector_from/to` (`+0x1fc`) read 0 in all three rows. That field is script-published, so 0 is expected.
+
+Two changes, FL only (AP object code identical):
+
+1. **Event window on FL.** With telemetry, `chase_transition` on FL now sets `diagnostics=1
+   diagnostics_reason=fl_verified_reads`. It emits the AP event window (first 16 and last 32 changes per report,
+   identical consecutive witnesses suppressed) from FL-verified reads only. Witness rows cover construct, complete,
+   destroy, update, the script store and the load store, with generation, update serial, normalized caller, requested
+   mode and active handle. The two mode-store rows (`mode_script`, `mode_load`) appear only with
+   `chase_view_restore = 1`: on FL their observer sites are claimed only with the restore. The snapshot reads
+   `+0x150 +0x1c0 +0xc +0x10 +0x1fc +0x1a0 +0x54`. The kind-6 row adds the
+   dispatcher frame chain (`frame=ok|refused`, `script_id`, `script_class`; one reader, `fl_store_frame`, shared with the
+   restore). A finished ticket adds one `kind=9 kind_name=restore` row with result, cancel, attempts, hud_refresh and
+   mode_seen. Not ported, listed as `diagnostics_off=` in the install and window rows: the connect observer, VM
+   return-record and destructor provenance, `IdentityReader` and geometry (FL contracts unverified), the `+0x130` boom
+   (unverified on FL), and the `+0x58` world camera and `+0x1e0` target (FL-verified, kept out deliberately so the row
+   carries the restore's field set). FL emits no `chase_transition_detail` row
+   ([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md), "Event window on FL").
+2. **Chase HUD identity from the lifetime service.** `chase_lead` on FL now takes its token as AP does whenever
+   `chase_transition` is installed (`update=lifetime`). The generation and update serial come from
+   `chase_transition::current_update()`, `generation()` from the cockpit lifetime, and `camera_context` publishes
+   nothing without an open update. The token ends at the transition's update exits (`0x022f9b`, `0x022fa9`, the latter
+   also covering the `0x022a0d` skip of the final-FOV seam), so `close_update` is not used in this mode. A cockpit
+   destroyed and rebuilt inside one update fails every later check. A nested update begin revokes the token but
+   keeps the generation, so a marker published earlier in the update is still owned and the final FOV hides it through
+   the native helper. Without `chase_transition` the pose-seam binding
+   stays as before (`update=pose_seam`) ([fl/chase-lead.md](../reverse-engineering/fl/chase-lead.md), section 7).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL transition fixture | `python3 -I verification/results/fl-chase-transition/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_transition.cpp`) | `RESULT PASS checks=423 failures=0` (402 before). Telemetry on for every restore case, which asserts its event rows. Gate: in order, the arm update (`snapshot_valid=815 active_handle=119`), free (`caller=0x00430612`), alloc construct (`0x004305ab`), the monitor's store 1 and SelectMode's store 258 (`frame=ok script_id=0xfffffde8 script_class=0x25e`), then `kind=9 result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258`. Dock `hud_refresh=skipped`; undock one update row, 79 suppressed, no kind 9; jump the unbound then the bound update of the new cockpit, `restored`; retries `no_effect cancel=retries attempts=3`; refused `call_refused`; cancels `load` (with its `mode_load` row, caller `0x0041bf6e`), `epoch` ×3, `lifetime` (the load-chain construct row, `0x00420e12`), `no_monitor` (the `frame=refused` row, `frame_refusals_total=1`). No `chase_transition_detail` row. 2,002 changing events keep 48 and count `dropped=1954`. Lifetime: a destroy and construct inside one open update revokes the token and moves the generation |
+| FL lead fixture | `python3 -I verification/results/fl-chase-lead/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_lead.cpp`) | `RESULT PASS checks=112 failures=0` (79 before). Main path `update=lifetime` with a fake lifetime service. After the update exit, a held witness is refused as `lifetime` (gate and HUD gate take the native branch). `camera_context` with no open update publishes nothing. Nested update begin (token revoked, generation kept) after a publish: the final FOV hides the owned marker through the native helper (one detacher call, cached pair −1, `lifetime` counted). Marker published, then a rebuild (generation G→G+1) before the final FOV, or before a second publish visit: refused as `lifetime`, `owned_marker` fails, so no detacher call, no hide, the marker keeps the pixel published before the rebuild and ECX/EDX stay native. Rebuild after gate and HUD gate (nothing published): the final FOV anchors no HUD node. In the rebuilt cockpit's next update without a pose visit, HUD gate and gate are refused as `lifetime` with the nodes native. Its next pose is admitted again. Fallback (service absent): `update=pose_seam` install row, one admitted update with marker and anchor, pose closed at the final FOV, a later gate `no_pose` |
+| Mutations | `python3 -I verification/results/fl-chase-transition/mutation_check.py` (`mutation_check.txt`); `python3 -I verification/results/fl-chase-followups/lead_mutation_check.py` (`lead_mutation_check.txt`) | Transition 11 / 11 killed, among them three new: event window kept off (20 failed checks), kind 9 not recorded (12), kind-6 frame from EBP (2). Lead 3 / 4 killed: token from the pose despite the transition (52), `generation()` from the pose token (1: the nested-begin hide), fallback never closing (3). The survivor (publishing without an open update) is an equivalent mutant: such a pose has serial 0, which every gate reads as no pose |
+| AP unchanged | `python3 -I verification/results/fl-chase-lead/ap_objects_identical.py --base 2c3d32ffa --head <commit> chase_transition.cpp chase_camera.cpp chase_lead.cpp loader.cpp capture.cpp chase_fire.cpp`, against the committed tree (copy and commit hash in `verification/results/fl-chase-followups/ap_objects.txt`) | 6 / 6 identical AP disassembly (10,393 / 6,660 / 6,614 / 3,070 / 41,169 / 1,238 lines) |
+| Cost (diagnostic) | the transition fixture's `TIMING` row (2,000 cockpit updates through the begin and exit thunks plus the frame observation, this host, not game FPS) | telemetry off 0.58–0.67 µs per update; on, unchanged snapshot (reads, registry walk, compare, suppressed) 0.88–0.91 µs; on, every update entering the window 0.94–0.97 µs. That is ≈0.25–0.36 µs per cockpit update, with telemetry only. The lead's admitted update is 9.9 µs with the lifetime token (9.4–9.8 µs before; harness included) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_transition test_fl_chase_transition test_chase_lead test_fl_chase_lead test_fl_chase_camera test_fl_chase_fire test_config_schema` | 7 modules, 46 tests, 0 failing (`fl_chase_camera.cpp` now stubs the three token functions the linked lead object references; transition reported not installed there) |
+| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected log rows for the user's flight (not verified), with telemetry on as in runs 25/26 and the template defaults:
+
+```
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=1 diagnostics_reason=fl_verified_reads diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=1
+chase_lead installed=1 status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<base> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=lifetime
+chase_view_restore result=restored cancel=none attempts=1 … hud_refresh=ok|skipped … mode_seen=258 …   (once per gate, jump or dock in the rear chase view, as in run 25)
+chase_transition_window frame=<n> first=<≤16> last=<≤32> dropped=<n> … frame_refusals_total=<n> suppressed_total=<n> detail=off diagnostics_off=… edition=fl   (every 300 frames)
+chase_transition_event … kind=2 kind_name=destroy cockpit=0x<old> caller=0x00430612 …
+chase_transition_event … kind=0 kind_name=construct cockpit=0x<new> caller=0x004305ab …
+chase_transition_event … kind=6 kind_name=mode_script cockpit=0x<new> caller=0x00431abc requested=1 … frame=ok … script_id=0x<negative> …
+chase_transition_event … kind=6 kind_name=mode_script cockpit=0x<new> caller=0x00431abc requested=258 … frame=ok …
+chase_transition_event … generation=<new> update=0 … kind=9 kind_name=restore result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258 … edition=fl
+```
+
+The listed event rows are not consecutive: `kind=1 kind_name=complete` and `kind=3 kind_name=update` rows of both
+cockpits interleave with them. The two `mode_script` rows need `chase_view_restore = 1` (the template default). The
+restore's event rows appear in the window of the 300-frame report that follows the transit. In a busy stretch the
+middle of a window is dropped (`dropped=`), but the first 16 and last 32 changes are kept. `sector=0x00000000` on the
+event rows is expected (`+0x1fc`, as in run 25). HUD: no visible change expected. `chase_central_hud_window` and
+`chase_lead_window` keep `admitted>0`/`committed>0` in the chase view. `lifetime=` rising there with `admitted` falling
+to 0 would mean the token is refused in normal flight: report it with the rows around it. User check: one gate, one dock
+and undock in the rear chase view, then a stretch with a target selected; the view comes back by itself as in run 25,
+and the crosshair, panels and lead reticle stay where the ship points.
+
+## Far-jet hand-off on FL, host evidence (2026-11-03, not installed, not flown)
+
+The FL small-parts stub's far-copy block is no longer fenced. With `engine_effects = plumes` a JET node culled
+under the small-parts threshold goes to the shared handler `engine_far_jets.cpp`, and the plume stage draws
+it as a far plume, as on AP. The read set comes from X3FL.exe's bytes
+([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) "Verified 2026-11-03"). The model moves to
+`+0x144`; every other field sits at the AP offset. On FL the context scale is owned at the site (node `+0x1c`
+→ `+0x2c`, the selector's own dominating loads, kept only when the node's context equals the view's), so the
+stage never reads `context+0x2c` later. A changed JET writer drops only the far block (`far_jets=writer_mismatch`).
+
+Merged onto main `2c3d32ffa`; the model id and the FL node context `fl_context` (`+0x1c`) live in the shared edition
+layout `src/proxy/engine_node_layout.h`. Everything below was measured on the WSL2 host (native Windows through
+interop) after the merge, with no Wine and no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Read set | `python3 -I verification/results/fl-far-jets/read_set.py` (`read_set.json`) | PASS. 18 fields, 47 whole-instruction anchors (46 FL, 1 AP). `0x495fc7` dominates the site `0x4961d3` (407-instruction CFG). ESI writers (all Capstone-reported, `pop esi` included: 5) reaching the site: only `0x495e5e`. Selector stores to copied fields: 0; that check covers the selector's own instructions only, and four calls lie between `0x495fc7` and the site (`0x4e9000`, `0x4a39b0`, `0x412a80`, `0x412b50`) |
+| Dock cut ids | `python3 -I verification/results/fl-far-jets/dock_cut_ids_fl.py` (`dock_cut_ids_fl.json`) | PASS. `addon2/04.cat` Dummies (`b0c8e5ebbaf9`, AP stock hash) map 19026/19027/19098/19099 → 9013/9014/9098/9099. Cuts 9013, 9014 and 9099: inline-body ids 901300000/1/3, 901400003..5 and 909900003..5, all in the stub's ranges. Cut 9098 (M6 quick-launch): `not_covered_named_bodies`; its three named body files resolve in `addon2`, and their body-table ids lie outside the ranges [i], so those port parts follow the 4 px threshold, not 12 px (as on AP) |
+| Native fixture | `test_fl_cull_chain` (`verification/probe/fl_cull_chain.cpp`, now linking the production handler under a renamed symbol with its CMake no-SSE flags) | `RESULT PASS checks=193 failures=0` (184 before). The decision cases are unchanged (`DECISIONS culled=20 dock=10 exempt=6 far=3 native=41`). `initialize()` with plumes: `far_jets=on`, the stub's far block present. Changed JET writer: `far_jets=writer_mismatch`, far block patched out, rest installed. Far chain through the live stub into the real handler: one entry with every field from the FL offsets, owned scale `3c23d70a` (0.01), the node culled and the frame kept. `far_record` (the stage's FL call): `origin=1000,-2000,3000 size=2.0`. Node context ≠ view context, or null: scale 0, `far_record` invalid. Real model at AP `+0x140` with 566 at `+0x144`: steering, no entry. Disarmed: no entry. Frame row `… far_jets=on edition=fl` |
+| Mutations | `python3 verification/results/fl-cull-chain/mutation_check.py` (`mutation_check.json`) | 24 / 24 killed, including the new `far_writer_not_pinned`, `far_never_requested`, `handler_ap_model_offset` and `handler_scale_unbound` |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_cull_chain test_cull_small_parts test_engine_far_jets test_fl_engine_effects test_config_schema` | 51 tests, 0 failing; with `test_fl_chase_lead`, `test_fl_chase_transition`, `test_fl_chase_fire`, `test_fl_chase_camera`, `test_fl_fov`, `test_fl_material_strength_hook`, `test_occlusion_cull`: 12 modules, 93 tests, 0 failing |
+| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (RelWithDebInfo, mingw-i686; incremental after the merge) | 0 warnings each. `check_no_x87.py build-ap/d3d9.dll` PASS. `far_jet_no_x87.py build-fl/d3d9.dll` PASS (`far_jet_no_x87_fl.json`, model offset read `0x144`). `tools/config/generate.py --check` PASS (no setting changed) |
+| AP objects | `python3 verification/results/fl-far-jets/ap_object_compare.py build-ap <scratch> 2c3d32ffa` (`ap_object_compare.json`) | identical, 5 / 5: `engine_far_jets.cpp`, `motion_output.cpp`, `cull_small_parts.cpp`, `capture.cpp`, `engine_effects.cpp` |
+
+Limits:
+
+- The copy relies on the selector's synchronous native borrow, as the stub does on AP. It does not use
+  `fl_render_admission` (ratified by the orchestrator, 2026-11-03).
+- The plume floor's parent radius (`+0xa4`) is read at the stage, as the FL draw route already does (ratified).
+- That `node+0x1c == camera+0x1c` on the main view is inferred (reparent copy, sector walker argument), not
+  measured. If it fails in flight, far copies get scale 0 and land in `far_dropped`.
+- The FL branch of `engine_far_append` is checked by source assertions and by the fixture's direct `far_record`
+  call on the handler's output. The `owned_scale[i]`/`raw[i]` loop itself is not executed by a fixture.
+- The far stub needs `engine_effects = plumes` set explicitly (cull-small-parts.md "FL port"). Superseded
+  2026-11-03: see "Far-jet gate: default mode" below.
+
+Expected rows in an FL run with `cull_small_parts_px` 4 and `engine_effects = plumes`:
+`cull_small_parts requested=4 px=4 patched=1 edition=fl state=active reason=ok … write=atomic … projectiles=on
+dock_px=12 dock_requested=12 far_jets=on`; on capture frames `cull_small_parts_frame … far_jets=on edition=fl`;
+and in `engine_stage` with distant ships in view, `far_jets>0` and `far_records>0`, with `far_dropped` small against
+`far_jets` (copies from views the stage does not draw, such as the lens scene, land there) and `far_disarmed=0`
+while the stage is armed. A `far_dropped` close to `far_jets` means the context equality does not hold.
+Flight check: a distant ship whose plume falls under 4 px shows a small engine glow, not nothing, and nearby ships
+keep their full plumes, with none missing.
+
+### Far-jet gate: default mode (2026-11-03)
+
+Run 27 logged `cull_small_parts … far_jets=off` and `engine_stage far_jets=0` on every row beside
+`engine_effects_mode setting=- mode=plumes`: the ini leaves `engine_effects` commented, and the stub's gate took only an
+exact `plumes`, while the effects option resolves unset or empty to plumes, so the far hand-off never installed (AP runs
+had the same gap). Both editions' gates and `engine_effects.cpp` now share `engine_effects_option.h`
+`option::resolve_mode` (unset or empty = plumes; a word by `parse_mode`; anything else native). Host evidence
+(measured, WSL2, no Wine, no game): `fl_cull_chain` gains seven `init_far_gate_*` cases (unset, empty, `plumes` → far
+block present and `far_jets=on`; `native`, `off`, `Plumes`, `plumes2` → block patched out and `far_jets=off`),
+`RESULT PASS checks=214 failures=0` (193 before) and 16 install rows; the AP CPU fixture run natively passes 226 / 0 with unset and empty
+requesting the block (`writer_mismatch` in that process); `test_cull_small_parts` compiles `resolve_mode` on the host
+(`far_jet_gate`). Builds 0 warnings each; the AP `cull_small_parts.cpp` and `engine_effects.cpp` objects change
+(intended). Not flown: the next FL run with the key commented should show `far_jets=on`.
+
+## FL run 27 — chase restore rows, HUD lifetime identity, far-jet hand-off on FL (installed 2026-11-03)
+
+Merges `fc2f1fe9c` (chase follow-ups, `d50b5399d`) and `e9bff9301` (far-jet un-fence, `30e716e28`), each after an
+Opus-high review with no blocker and the fixes folded (sections above); the Wine-record-bound host tests accept the
+native source drift (`fc38aa267`, far-jet entries bumped in `b75313025`). Clean `build-fl` from main `e9bff9301`, 0
+warnings; full host suite 333 modules 3,421 tests 0 failing; the five FL site verifiers and `read_set.py` PASS on the
+installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `dd4f157c…` (55,585,173 B), rollback
+`rollback-d3d9\d3d9.dll.run26` = `3851f91d…`; exe, overlay and ini unchanged. Record `verification/results/fl-run27/candidate.json`.
+
+**FL run 27 A (flown 2026-11-03, accepted for the chase part; far jets not exercised):** user: "No issues". Log
+`/home/asvetl/x3m-logs/fl-run27-farjets-restore.log` (476 MB, measured; `verification/results/fl-run27/triage_log.py`):
+`chase_lead installed=1 status=active edition=fl update=lifetime`, `chase_transition installed=1 … diagnostics=1
+diagnostics_reason=fl_verified_reads`; 33 `chase_transition_event` rows (3 construct, 3 complete, 3 destroy, 6 update,
+15 mode_script, 1 mode_load, 2 restore), both `kind=9` rows `result=restored cancel=none attempts=1 hud_refresh=ok
+mode_seen=258`; 170 HUD and lead windows with `lifetime=0` throughout; `frame_end` dt_ms p50 4 / p90 4 (n=43,539). The
+far-jet hand-off did not run: every `cull_small_parts` row `far_jets=off`, every `engine_stage` row `far_jets=0`, because
+the gate required the key written as `plumes` while the ini leaves it commented (the "Far-jet gate: default mode"
+paragraph; the same holds on AP run 227). Fixed in `17ab85a84`, installed as run 28. Also reported: a merged-LOD station
+green at distance (captures 2/3; the "Green station" paragraph below).
+
+Original brief: in the chase view fly through one gate and dock/undock once (restore rows), then find a clear
+sector with ships far away, so that some plumes are only a few pixels, and watch them: a distant ship should show a
+small engine glow, not nothing, and nearby ships keep their full plumes with none missing; one F8 with distant ships
+in view, one F8 with a target selected; tell me before relaunching. Expect `chase_lead installed=1 … edition=fl …
+update=lifetime`, a `chase_transition_event … kind=9 kind_name=restore result=restored cancel=none` row after the gate
+and the undock (with `kind=1`/`kind=3` rows interleaved), `chase_central_hud_window`/`chase_lead_window` keeping
+`admitted>0` in the chase view, `cull_small_parts … far_jets=on edition=fl`, and in `engine_stage` `far_jets>0`,
+`far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`. Report: a HUD or reticle that disappears in
+normal flight (`lifetime=` rising while `admitted` falls would be the log sign), a distant ship with no glow at all, a
+missing plume on a nearby ship, or anything odd at the M6 quick-launch port (cut 9098 follows the 4 px threshold).
+
+## FL run 28 — far-jet gate honours the default plumes mode (installed 2026-11-03)
+
+`17ab85a84` (both editions: `option::resolve_mode` in `engine_effects_option.h`, used by `engine_effects.cpp` and both
+cull modules; unset or empty = plumes, a parsed word = that mode, anything else = native, refused). FL native fixture
+214 checks with seven far-gate cases (unset, empty, `plumes` on; `native`, `off`, `Plumes`, `plumes2` off), AP cull
+fixture 226 checks (measured, agent). Clean `build-fl` from `17ab85a84`, 0 warnings; full host suite 333 modules 3,422
+tests 0 failing after the engine-effects-patch record accepted `engine_effects_option.h` (`ea08670dc`). Installed
+`C:\X3FL\d3d9.dll` = `23cad71c…` (55,585,673 B), rollback `rollback-d3d9\d3d9.dll.run27` = `dd4f157c…`; exe, overlay
+and ini unchanged (the key stays commented on purpose). Record `verification/results/fl-run28/candidate.json`. The next
+AP candidate carries this fix together with the occlusion default (`docs/status.md`).
+
+**Green station (open, 2026-11-03):** captures 2/3 of run 27, target model `0x5583` = `argon_food_S_factory_B`
+(overlay `addon2/06.cat`, body index 407, sector avigriega). At `lod=1` the merged draw's pixel constants c1–c3 carry a
+colour matrix and c19–c24 the `g_Color_*` palette of source material 26 `metal_argon_vent` (hue 217.9°, saturation
+7.21, `colormatrix=1`), the dominant material by face count (8,212 of 36,418 faces); the baker copies the dominant
+material's non-texture parameters onto the whole merged material, so the vent's grade tints the whole atlas at distance
+while LOD0 applies it to the vent parts only. Atlas tiles, UVs (109,254/109,254 inside content), formats, bindings and
+the strength twin are excluded as causes (measured, `verification/results/fl-lod-overlay/green_station/`). Census over
+the 637 FL bodies: 126 merge materials with differing grades, 39 spread a graded dominant onto ungraded parts (median
+0.47 of faces), 87 lose a graded part's tint; the vent grade spreads in four bodies. Fix: split merged materials by
+colour grade in `tools/analysis/lod_atlas.py` (`atlas_material`, class split), one extra draw per extra grade, then
+rebake; host check: a fixture with a graded dominant plus an ungraded member, and `colormatrix_census.py
+mismatch_bodies=0` on the rebaked candidate. AP overlay not yet checked for the same.
+
 **Baker fix (2026-11-03):** `lod_atlas.material_class_key` now splits the opaque merged-material classes by colour
 grade (`grade_key`: `colormatrix`, `Brightness`, `contrast`, `saturation`, `hue`, `g_Brightness`, `g_Contrast`,
-`g_Saturation`, `g_Hue` and every `g_Color_*`, exact parsed values), so each merged material carries the grade of every
-material it absorbs (`docs/architecture/lod-overlay-mods.md`, "Merged-material class rule"). Rebake of the four
-vent-grade bodies with `--edition fl --out` (FL mounts read-only; `verification/results/fl-lod-overlay/green_station/rebake/`):
-atlas merged materials `argon_food_S_factory_B` 1→4, `argon_food_M_factory_B` 1→4, `argon_food_S_factory_D` 1→5,
-`ships/props/m6maingun_moving` 1→2 (draws 2→5, 3→5, 3→7, 2→3); `tools/analysis/lod_grade_census.py --candidate` on it:
-`mismatch_bodies=0` (measured). Draw cost on the installed pre-fix overlays (census, measured): FL 781→1,342 merged
-materials (+561, 252 bodies), AP 1,154 bodies 1,463→2,390 (+927, 471 bodies); the colour-matrix set alone is +158 / +293,
-the rest is `g_Color_*`. The next `--batch --sync` / regenerate rebakes every body of both editions (`tool_sha256`).
-Open until flown: the rebaked station at distance in game.
+`g_Saturation`, `g_Hue`, plus `g_bColor_Mixing` and the `g_Color_*` palette unless the material declares
+`g_bColor_Mixing` 0; exact parsed values), so each merged material carries the grade of every material it absorbs
+(`docs/architecture/lod-overlay-mods.md`, "Merged-material class rule"). The palette is gated because the XT programs
+read c19–c25 only under `if b1` = `g_bColor_Mixing`, 0 on every run-27 draw, while the c1–c3 grade rows tint the
+diffuse texel before lighting ([FL materials](../reverse-engineering/fl/materials.md#grading-preshader-palette-gate-and-merged-lod-visibility-2026-11-03)).
+Rebake of the four vent-grade bodies with `--edition fl --out` (FL mounts read-only;
+`verification/results/fl-lod-overlay/green_station/rebake/`): atlas merged materials 1→2 each for
+`argon_food_S_factory_B`, `argon_food_M_factory_B`, `argon_food_S_factory_D` and `ships/props/m6maingun_moving`
+(draws 2→3, 3→3, 3→4, 2→3); `tools/analysis/lod_grade_census.py --candidate` on it: `mismatch_bodies=0` (measured).
+Draw cost on the installed pre-fix overlays (census, measured): FL 781→1,112 merged materials (+331, 187 bodies; ships
++185, stations +146), AP 1,463→2,084 (+621, 373 bodies; ships +474, stations +147). Source material records with
+mixing on: FL 992, AP 2,122 (off 6,995 / 9,413; palette without the bool 648 / 911). The next `--batch --sync` /
+regenerate rebakes every body of both editions (`tool_sha256`). Open until flown: the rebaked station at distance in game.
+
+**FL run 28 A (open):** clear sector, ships far enough that some plumes are a few pixels; one F8 with such ships in
+view; tell me before relaunching. Expect `cull_small_parts … far_jets=on edition=fl`, `cull_small_parts_frame …
+far_jets=on`, `engine_stage far_jets>0 far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`.
+Visual: distant ships show a small engine glow instead of nothing; nearby plumes unchanged. Report a distant ship with no
+glow, a missing nearby plume, or any new flicker on engine glows.

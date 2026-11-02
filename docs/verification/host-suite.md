@@ -85,7 +85,35 @@ records to production source hashes (`engine_ribbons_core.h`,
 `engine_ribbons_pass.{h,cpp}` and the engine-effects set changed since the
 last Wine run); they stay red until `run_engine_ribbons.py` and
 `run_engine_effects.py` run again, which needs a D3D9 fixture host (Wine on the
-Mac, or a native runner that does not exist yet).
+Mac, or a native runner that does not exist yet); accepted beside their
+records on 2026-11-03 (next section).
+
+## Wine-record-bound tests (2026-11-03)
+
+These modules bind a retained Wine fixture record (`verification/results/bottle-X3/`)
+to the SHA-256 of its production sources. Since 2026-10-11 there is no Wine host,
+so the records cannot be re-recorded while the sources keep changing natively:
+
+| Module | Record (Wine run) | Sources drifted |
+| --- | --- | --- |
+| `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09) | 12 of 21 |
+| `test_engine_plumes` | `engine-plumes/summary.json` (0cf873a6b, Run140) | 2 of 11 |
+| `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140) | 5 of 14 |
+| `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140) | 1 of 9 |
+| `test_fov_patch_result` | `fov-patch.json` (ecf0215ee, 2026-09-26) | 1 of 7 |
+| `test_engine_effects_sites` | `engine-effects-patch.json` (203c5e984, Run124) | 1 of 7 (`engine_effects_option.h`, 17ab85a84) |
+| `test_occlusion_cull` | occlusion records (2026-10-08) | accepted 2026-11-02 |
+
+Pattern (as `test_occlusion_cull`'s 2026-11-02 constants): a dated constant
+`SOURCES_SHA256_2026_11_03` names the current hash of each drifted file, and the
+check accepts either the record's own hash or that one; the record stays as
+provenance and nothing is skipped. A further native change fails the test again
+and needs a new dated entry with its commit range. The engine-effects entries for
+`engine_far_jets.{h,cpp}` and `motion_output_engine_plumes_inc.h` were taken while
+those files were under concurrent change and move on the next merge. The next
+re-record (and removal of the constants) needs a Wine or native D3D9 fixture run
+of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
+`run_engine_shimmer.py` and `run_fov_patch.py`.
 
 ## Tests that read production source
 
