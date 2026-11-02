@@ -18,7 +18,9 @@ SOURCE = ROOT / 'src/proxy/chase_camera.cpp'
 MUTANT = ROOT / 'src/proxy/chase_camera_fl_mutant.cpp'
 MUTATIONS = {
     'no_cpu_state_boundary': ('    x3m::PreserveCpuState cpu;\n', '\n'),
-    'unbound_admitted_on_fl': ('admits_pose(ref_object, view_object, false)', 'admits_pose(ref_object, view_object, true)'),
+    'unbound_admitted_without_proof': ('view_object == 0 && chase_transition::active_control_cockpit(cockpit)',
+                                       'view_object == 0'),
+    'unbound_never_admitted': ('view_object == 0 && chase_transition::active_control_cockpit(cockpit)', 'false'),
     'no_readback_check': ('if (okay && fl_readback_differs()) {', 'if (okay && fl_readback_differs() && false) {'),
     'restore_only_owned_bytes': ('rollback = fl_force_restore() ? "restored" : "failed";',
                                  'rollback = (false && fl_force_restore()) || engine_patch::restore(site) ? "restored" : "failed";'),

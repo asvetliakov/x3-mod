@@ -922,6 +922,26 @@ fixture 41 checks, 0 failures (both branch outcomes, every GPR/EFLAGS/ESP/XMM/x8
 continuation for each 4-byte ESP skew, the pose written through EBX, every window bit, read-back rollback restored and
 failed, shutdown, late claim) and 4 / 4 mutations. Not verified: the FL pose in game (not flown).
 
+## 2026-11-02: chase view restore on FL (`chase_view_restore = 1` on FL)
+
+The FL edition installs the AP view restore's three groups in X3FL.exe ([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md),
+"Verified 2026-11-02"): six cockpit lifetime/update witnesses, the script and load mode-store observers, and the
+input-worker injection plus three VM cancel boundaries, twelve whole-instruction spans claimed through
+`engine_patch::claim` (nine by lock cmpxchg8b, three plain copies inside the install window), each group both or none,
+behind the X3FL.exe identity and 26 compared windows at the module base (every fixup checked against the base; the EH
+adapter's relocated immediate bound to it). The shared generated stubs (PUSHFD/PUSHAD, XMM0-7, the injection site's
+one-word prefilter) and `PreserveCpuState`/`CpuState` (x87, MXCSR, LastError) wrap the shared SSE2 handlers; the restore
+drives the engine's own named script call (`SelectMode(258)`, then `UpdateVisibility()`) with FL's callback-free
+selector 32, under the engine's incoming FP/LastError image. The FL pose hook now admits the unbound `+0x10 == 0` phase on the same
+active-control proof as AP. Documented Win32 only (`VirtualProtect`,
+`FlushInstructionCache`, `VirtualQuery`, SRW locks, `QueryPerformanceCounter`), no Wine/CrossOver dependency, no
+device call. Natively verified on the Windows host through WSL interop (measured 2026-11-02): the FL fixture 402
+checks, 0 failures (every thunk against a reference copy of its original span for each 4-byte ESP skew with all
+flags/DF set and clear: GPRs, ESP, EFLAGS, XMM0-7, x87 CW and ST0, MXCSR, LastError, the pushed stack words; the
+injection also with a hostile engine call inside it; gate, dock, undock, jump, retries, refused call and six cancels
+through the thunks; every window refusing a changed byte; read-back faults rolled back per group; late claim), and the
+AP restore-core harness's 28 cases with the FL constants. Not verified: the FL restore in game (not flown).
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

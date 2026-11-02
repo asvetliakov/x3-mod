@@ -1610,3 +1610,56 @@ written>0` when firing, no `installed=0`/`refused` on these. Visual: the view is
 **known gap:** after a gate transit or jump the first ~0.4–1.1 s show vanilla framing, then the chase pose snaps in
 (view restore is the next step); the centre crosshair is not the aim point under the raised camera until the lead marker
 is ported. Report anything that looks like a camera jump, wrong FOV in menus or on load, or missing HUD.
+
+## Chase view restore on FL, host evidence (2026-11-02, not installed, not flown)
+
+FL run 24 A: a sector change switched the chase view back to first person and nothing restored it, because
+`chase_transition` was AP-only. Now the FL build installs the AP restore in X3FL.exe: six cockpit lifetime/update
+witnesses, the script/load mode-store observers, and the input-worker injection plus three VM cancel sites, twelve
+spans bound to the module base after 26 identity windows match, each group both or none
+([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md), "Verified 2026-11-02"). The portable state
+machine is unchanged and single-sourced. FL native return addresses are normalized to preferred-base VAs (alloc
+`0x4305ab`, load `0x420e12`, free `0x430612`). The FL register ABI is local to the handler: ECX cockpit, the EBX
+dispatcher frame, ECX as the controlled object. The engine call uses selector 32. The chase camera's FL handler now
+hands every visit to `restore_observe_frame` and, as on AP, admits the unbound `+0x10 == 0` phase of a fresh cockpit
+on `active_control_cockpit` (the run78 pose gap; previously never admitted on FL). Diagnostics (connect observer, event/identity readers) stay off on FL.
+AP object code is unchanged. Base `f8b255b17`. All measured on the WSL2 host (native Windows through interop), no
+Wine, no game.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_transition_sites_fl.py --json` (`verification/results/fl-chase-transition/verify_fl_sites.json`, written by `run_fixture.py`) | PASS: 12 spans (bytes, Capstone lengths, no relative flow, no interior edge in 72,230 direct edges, no relocated pointer into an interior, only the EH HIGHLOW of 38,327), 26 windows, 63 anchors, caller sets, case-`0x30` table entry, EH publication `0x0bed96`, dispatcher publication `0x01df32` |
+| Native fixture | `python3 -I verification/results/fl-chase-transition/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_transition.cpp`) | `RESULT PASS checks=402 failures=0`. CPU contract, 96 runs: 12 thunks × ESP skews 0/4/8/12 × flags+DF set/clear, each against a reference copy of the original span (GPRs, ESP, EFLAGS, XMM0-7, x87 CW/ST0, MXCSR `ffc0`, LastError, pushed words, the stored mode). The injection also ran with a hostile engine call inside, 4 runs. Scenarios through the thunks: gate (restored, `hud_refresh=ok`), dock (restored, `skipped`), undock (stays armed, no call), jump (36 unbound updates, then restored on the new ship), retries (`no_effect cancel=retries attempts=3` after 124 updates), refused call, and six cancels (load, VM clear, VM load, EH epoch, load constructor, foreign frame → `no_monitor`). Install: 52/52 window flips refused with nothing written, unrelocated EH immediate refused, read-back faults roll back per group, `late_claim`. Arena 1,840 of 24,576 bytes; 9 cmpxchg8b + 3 plain |
+| Restore core under FL constants | `test_fl_chase_transition.FlRestoreCoreHarness` (the AP harness `chase_transition_restore_host.cpp` compiled with `-DX3M_EDITION_FL=1`, its two selector-0 checks and case 22's load return substituted) | `checks PASS` |
+| Mutations | `python3 -I verification/results/fl-chase-transition/mutation_check.py` (`mutation_check.txt`) | 8 / 8 killed: constructor cockpit from `[ESP+4]` (28 failed checks), mode-store frame from EBP (14), controlled object from `[ESP+4]` (14), selector 0 (2), callers not normalized (25), read-back skipped (3), observers kept after a refused restore group (1), windows not checked (50) |
+| FL camera, unbound phase | `python3 -I verification/results/fl-chase-camera/run_fixture.py` and `mutation_check.py` (`fixture_out.txt`, `mutation_check.txt` regenerated) | `RESULT PASS checks=44 failures=0`: a `+0x10 == 0` visit without the proof is inactive and asks the proof once; with it the visit is admitted and the pose written (`frames=10 applied=9 refused=1 inactive=2 unbound=1`); 5 / 5 mutations killed (the former `unbound_admitted_on_fl` replaced by `unbound_admitted_without_proof` and `unbound_never_admitted`, 3 failed checks each) |
+| AP objects | `python3 verification/results/fl-chase-transition/ap_object_compare.py <build-ap Makefiles tree> <scratch>` (`ap_object_compare.json`) | 4 / 4 identical against `f8b255b17` (`chase_transition.cpp`, `chase_camera.cpp`, `loader.cpp`, `capture.cpp`, debug stripped) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_transition test_chase_transition_sites test_chase_restore_sites test_fl_chase_transition test_config_schema`; also `test_fl_chase_camera test_chase_camera test_launcher_defaults test_chase_native_timing_install test_chase_central_hud_install` | 44 tests, 0 failing; 75 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (`chase_view_restore` and `chase_view_restore_retries` no longer say "Albion Prelude only") |
+
+Expected in the flight log (not verified): `chase_camera requested=1 installed=1 status=active … edition=fl rva=0x0227ad
+rollback=none unbound_phase=active_control dependencies=chase_transition`, then:
+
+```
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+chase_transition_site index=0 site=0x<base+020ec0> rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl   (indices 0-7; atomic_write=0 at 1, 6, 7)
+chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x<base+0cfd00> inject_rva=0x0cfd00 call=0x<base+0bb5b0> call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
+chase_view_restore_site index=0 site=0x<base+0cfd00> rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl   (indices 0-3)
+chase_fire installed=0 status=ap_only edition=fl reason=ap_only   (and chase_aim_trace; chase_lead logs its own FL row once its parallel port lands in the same build)
+```
+
+After each gate transit, jumpdrive jump and docking taken in the rear chase view, one row:
+`chase_view_restore result=restored cancel=none attempts=1 monitor=0x<negative id> … hud_refresh=ok|skipped … mode_seen=258 …`.
+Undocking writes no view mode, so no row is expected. If the view is not restored, report the row. Each pattern points
+to one cause:
+
+- `result=no_effect cancel=retries`: the store did not happen inside the call.
+- `cancel=no_monitor`: the mode store was not captured.
+- `result=call_refused`: the method or the receiver is missing.
+- `chase_view_restore_arm_refused reason=…`: the rear frame did not arm.
+- `chase_transition installed=0 status=… window=<name>`: a window mismatch.
+
+With `--perf`, `chase_view_restore_state` every 300 frames carries the counters. The former gap (vanilla framing for
+~0.4–1.1 s after a gate transit or jump, then a snap to the chase pose) closes: the unbound phase is admitted on the
+active-control proof as on AP, so the chase pose should apply from the fresh cockpit's first updates (inferred from AP
+Run 78 and the fixture; not flown on FL). `chase_camera … unbound=` in the report rows counts those visits.

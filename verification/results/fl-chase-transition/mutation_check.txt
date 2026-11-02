@@ -1,0 +1,9 @@
+killed constructor cockpit from [ESP+4] (AP ABI): FAIL failures=28
+killed mode-store frame from EBP (AP ABI): FAIL failures=14
+killed controlled object from [ESP+4] (AP ABI): FAIL failures=14
+killed callback selector 0 (AP value): FAIL failures=2
+killed caller not normalized to preferred VAs: FAIL failures=25
+killed read-back check skipped: FAIL failures=3
+killed observers kept after a refused restore group: FAIL failures=1
+killed windows not checked before the claims: FAIL failures=50
+8 / 8 killed

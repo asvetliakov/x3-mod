@@ -7,9 +7,7 @@
 #endif
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
-#if !X3M_EDITION_FL
 #include "chase_transition.h"
-#endif
 #include "engine_patch.h"
 #include "engine_memory.h"
 #if X3M_EDITION_FL
@@ -43,8 +41,9 @@ namespace {
 // 0x021f50 (EBX = cockpit), rel32 at +6, continuation RVA 0x0227b7, branch target RVA 0x022928. The spec and the
 // default-plane slot (base + RVA 0x1a82f8) are filled by initialize() from the admitted base once the three identity
 // windows of chase_camera_sites_fl.h match (docs/reverse-engineering/fl/chase-camera.md, "Verified 2026-11-02"). The
-// handler below is shared; its AP-only dependencies (chase_transition, chase_lead, chase_fire, chase_aim_trace) are
-// compiled out, so the FL module reaches no AP address and publishes no downstream context.
+// handler below is shared; its AP-only dependencies (chase_lead, chase_fire, chase_aim_trace) are compiled out, so the
+// FL module reaches no AP address and publishes no downstream context. The restore observer and the unbound-phase
+// proof (chase_transition::restore_observe_frame, active_control_cockpit) run on FL too, bound by its own FL module.
 namespace S = x3m::fl::chase_camera_fl;
 uintptr_t site_va = 0;
 engine_patch::SiteSpec site_spec{};
@@ -242,14 +241,10 @@ void handle(uint32_t* regs) {
     // unbound phase only on the registry active-control proof (complete
     // lifetime, handle row maps to this cockpit); the bounded walk runs only
     // for +0x10 == 0 visits. Fire, lead and aim contexts stay on `bound`.
-#if X3M_EDITION_FL
-    // FL: the unbound phase's proof is chase_transition's registry walk, AP-only (edition=fl reason=ap_only), so a
-    // +0x10 == 0 visit is never admitted here; only the bound predicate applies.
-    const bool active = admits_pose(ref_object, view_object, false);
-#else
+    // FL too: the proof is chase_transition's FL binding (cockpit registry slot base + 0x1a82e4, lifetime witnesses);
+    // false whenever that module is not installed.
     const bool active = admits_pose(ref_object, view_object,
                                     view_object == 0 && chase_transition::active_control_cockpit(cockpit));
-#endif
     AcquireSRWLockExclusive(&stats_lock);
     note_cockpit_seen(cockpit);
     if (!active)
@@ -257,10 +252,10 @@ void handle(uint32_t* regs) {
     else if (!bound)
         ++stats_.unbound;
     ReleaseSRWLockExclusive(&stats_lock);
-#if !X3M_EDITION_FL
     // Restore ticket (X3M_CHASE_VIEW_RESTORE): every visit, with the fields
     // already in hand; the observer returns at one atomic load when the
     // option is off and makes its registry walks only on frames that matter.
+    // FL too (src/engine/fl/chase_transition_sites_fl.h): the same fields at the FL-verified offsets.
     {
         chase_transition::AppliedFrame observed;
         observed.cockpit = cockpit;
@@ -273,7 +268,6 @@ void handle(uint32_t* regs) {
         observed.sector54 = u32(cockpit_bytes, cockpit_sector_object);
         chase_transition::restore_observe_frame(observed);
     }
-#endif
     if (!active) {
 #if !X3M_EDITION_FL
         chase_fire::invalidate_camera(cockpit);
@@ -782,7 +776,7 @@ bool initialize() {
     log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
         "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f fov_compensate=%u lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
         "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view "
-        "edition=fl rva=0x%06lx rollback=%s unbound_phase=ap_only dependencies=none",
+        "edition=fl rva=0x%06lx rollback=%s unbound_phase=active_control dependencies=chase_transition",
         unsigned(site.patched_in), state.load(), static_cast<unsigned long>(site_va), site_spec.length,
         site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(), tunables.rot_tau, tunables.pos_tau,
         tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, unsigned(tunables.fov_compensate),

@@ -1,0 +1,649 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "fl_identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "image_size": "0x00391000"
+  },
+  "sites": {
+   "ok": true,
+   "count": 12,
+   "direct_edges": 72230,
+   "highlow": 38327,
+   "failed": [],
+   "all": [
+    {
+     "name": "chase_cockpit_construct_fl",
+     "group": "mandatory",
+     "kind": 0,
+     "rva": "0x020ec0",
+     "ok": true,
+     "bytes": "538bdc83ec08",
+     "lengths": [
+      1,
+      2,
+      3
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 2,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_cockpit_complete_fl",
+     "group": "mandatory",
+     "kind": 1,
+     "rva": "0x0215c6",
+     "ok": true,
+     "bytes": "5e8be55d8be3",
+     "lengths": [
+      1,
+      2,
+      1,
+      2
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 0,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": true,
+     "write": "plain"
+    },
+    {
+     "name": "chase_cockpit_destroy_fl",
+     "group": "mandatory",
+     "kind": 2,
+     "rva": "0x01e3f0",
+     "ok": true,
+     "bytes": "558bec83e4f8",
+     "lengths": [
+      1,
+      2,
+      3
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 13,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_update_begin_fl",
+     "group": "mandatory",
+     "kind": 3,
+     "rva": "0x021f50",
+     "ok": true,
+     "bytes": "558bec83e4f0",
+     "lengths": [
+      1,
+      2,
+      3
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 1,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_update_end_internal_fl",
+     "group": "mandatory",
+     "kind": 4,
+     "rva": "0x022f9b",
+     "ok": true,
+     "bytes": "5f5e5b8be5",
+     "lengths": [
+      1,
+      1,
+      1,
+      2
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 0,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_update_end_fl",
+     "group": "mandatory",
+     "kind": 5,
+     "rva": "0x022fa9",
+     "ok": true,
+     "bytes": "5f5e5b8be5",
+     "lengths": [
+      1,
+      1,
+      1,
+      2
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 3,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_mode_script_fl",
+     "group": "observer",
+     "kind": 6,
+     "rva": "0x031abc",
+     "ok": true,
+     "bytes": "898850010000",
+     "lengths": [
+      6
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 0,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": true,
+     "write": "plain"
+    },
+    {
+     "name": "chase_mode_load_fl",
+     "group": "observer",
+     "kind": 7,
+     "rva": "0x01bf6e",
+     "ok": true,
+     "bytes": "899750010000",
+     "lengths": [
+      6
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 0,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": true,
+     "write": "plain"
+    },
+    {
+     "name": "chase_restore_inject_fl",
+     "group": "restore",
+     "kind": 0,
+     "rva": "0x0cfd00",
+     "ok": true,
+     "bytes": "558bec83e4f0",
+     "lengths": [
+      1,
+      2,
+      3
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 2,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_restore_vm_clear_fl",
+     "group": "restore",
+     "kind": 1,
+     "rva": "0x0ba6b0",
+     "ok": true,
+     "bytes": "83ec0c5355",
+     "lengths": [
+      3,
+      1,
+      1
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 3,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_restore_vm_load_fl",
+     "group": "restore",
+     "kind": 2,
+     "rva": "0x0bcb10",
+     "ok": true,
+     "bytes": "558bec6aff",
+     "lengths": [
+      1,
+      2,
+      2
+     ],
+     "span_fixups": [],
+     "interior_edges": [],
+     "edges_to_start": 1,
+     "pointers_to_start": [],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    },
+    {
+     "name": "chase_restore_eh_adapter_fl",
+     "group": "restore",
+     "kind": 3,
+     "rva": "0x14e80a",
+     "ok": true,
+     "bytes": "b820e55900",
+     "lengths": [
+      5
+     ],
+     "span_fixups": [
+      1
+     ],
+     "interior_edges": [],
+     "edges_to_start": 0,
+     "pointers_to_start": [
+      "0x0bed96"
+     ],
+     "pointers_into_interior": [],
+     "qword_crossing": false,
+     "write": "cmpxchg8b"
+    }
+   ]
+  },
+  "windows": {
+   "ok": true,
+   "count": 26,
+   "construct": {
+    "ok": true,
+    "rva": "0x020ec0",
+    "length": 51,
+    "fnv1a32": "e87f46da",
+    "fixups": [
+     [
+      25,
+      "0x14cd0e"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "complete": {
+    "ok": true,
+    "rva": "0x021534",
+    "length": 154,
+    "fnv1a32": "d52546c4",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "destroy": {
+    "ok": true,
+    "rva": "0x01e3f0",
+    "length": 38,
+    "fnv1a32": "68e3baad",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "update_begin": {
+    "ok": true,
+    "rva": "0x021f50",
+    "length": 16,
+    "fnv1a32": "0dea0dc8",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "update_end": {
+    "ok": true,
+    "rva": "0x022f9b",
+    "length": 21,
+    "fnv1a32": "3dcd7a34",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "mode_script": {
+    "ok": true,
+    "rva": "0x031a9b",
+    "length": 50,
+    "fnv1a32": "7b258809",
+    "fixups": [
+     [
+      5,
+      "0x1a82e4"
+     ],
+     [
+      41,
+      "0x1aa174"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "mode_load": {
+    "ok": true,
+    "rva": "0x01bf68",
+    "length": 20,
+    "fnv1a32": "54fde459",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "dispatcher": {
+    "ok": true,
+    "rva": "0x030540",
+    "length": 39,
+    "fnv1a32": "a0e7bfa1",
+    "fixups": [
+     [
+      31,
+      "0x14cf42"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "native_call": {
+    "ok": true,
+    "rva": "0x0c0751",
+    "length": 57,
+    "fnv1a32": "c499b6a6",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "script_call": {
+    "ok": true,
+    "rva": "0x0bb5b0",
+    "length": 68,
+    "fnv1a32": "48b31836",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "callback_bound_ok": {
+    "ok": true,
+    "rva": "0x0be9de",
+    "length": 21,
+    "fnv1a32": "35d4f389",
+    "fixups": [
+     [
+      2,
+      "0x1aa174"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "callback_bound_fail": {
+    "ok": true,
+    "rva": "0x0bb22d",
+    "length": 36,
+    "fnv1a32": "c0fd6a92",
+    "fixups": [
+     [
+      2,
+      "0x1aa174"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "inject": {
+    "ok": true,
+    "rva": "0x0cfd00",
+    "length": 19,
+    "fnv1a32": "447ade5c",
+    "fixups": [
+     [
+      11,
+      "0x1a8478"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "inject_callers": {
+    "ok": true,
+    "rva": "0x0787a8",
+    "length": 57,
+    "fnv1a32": "f1870d6f",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "worker_call": {
+    "ok": true,
+    "rva": "0x0cfd48",
+    "length": 82,
+    "fnv1a32": "ff582e77",
+    "fixups": [
+     [
+      2,
+      "0x2243cc"
+     ],
+     [
+      25,
+      "0x1aa190"
+     ],
+     [
+      54,
+      "0x18b6dc"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "pause": {
+    "ok": true,
+    "rva": "0x0786ad",
+    "length": 31,
+    "fnv1a32": "a8cd2037",
+    "fixups": [
+     [
+      2,
+      "0x2243cc"
+     ],
+     [
+      12,
+      "0x22ddf0"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "vm_clear": {
+    "ok": true,
+    "rva": "0x0ba6b0",
+    "length": 9,
+    "fnv1a32": "34e30cb5",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "vm_load": {
+    "ok": true,
+    "rva": "0x0bcb10",
+    "length": 10,
+    "fnv1a32": "6644b0a0",
+    "fixups": [
+     [
+      6,
+      "0x14e7dc"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "eh_adapter": {
+    "ok": true,
+    "rva": "0x14e80a",
+    "length": 10,
+    "fnv1a32": "3f08a20f",
+    "fixups": [
+     [
+      1,
+      "0x19e520"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "active_control": {
+    "ok": true,
+    "rva": "0x0cf46f",
+    "length": 55,
+    "fnv1a32": "9a0b354f",
+    "fixups": [
+     [
+      1,
+      "0x1a82e4"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "sim_registry": {
+    "ok": true,
+    "rva": "0x0495f1",
+    "length": 17,
+    "fnv1a32": "993bde9c",
+    "fixups": [
+     [
+      2,
+      "0x1a82ec"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "ship_script_id": {
+    "ok": true,
+    "rva": "0x06a81d",
+    "length": 31,
+    "fnv1a32": "080cce92",
+    "fixups": [
+     [
+      5,
+      "0x1a82ec"
+     ]
+    ],
+    "whole_instructions": true
+   },
+   "ship_flag": {
+    "ok": true,
+    "rva": "0x065313",
+    "length": 13,
+    "fnv1a32": "c8d8e996",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "alloc_call": {
+    "ok": true,
+    "rva": "0x0305a0",
+    "length": 11,
+    "fnv1a32": "cff63cf2",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "load_call": {
+    "ok": true,
+    "rva": "0x020e07",
+    "length": 11,
+    "fnv1a32": "7083e6b4",
+    "fixups": [],
+    "whole_instructions": true
+   },
+   "free_call": {
+    "ok": true,
+    "rva": "0x0305e8",
+    "length": 42,
+    "fnv1a32": "33ec7b4a",
+    "fixups": [
+     [
+      5,
+      "0x1a82e4"
+     ]
+    ],
+    "whole_instructions": true
+   }
+  },
+  "anchors": {
+   "ok": true,
+   "count": 63,
+   "failed": []
+  },
+  "callers": {
+   "ok": true,
+   "0x020ec0": {
+    "ok": true,
+    "callers": [
+     "0x020e0d",
+     "0x0305a6"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x021820": {
+    "ok": true,
+    "callers": [
+     "0x01e3fa"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x021f50": {
+    "ok": true,
+    "callers": [
+     "0x01e5b0"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x0cfd00": {
+    "ok": true,
+    "callers": [
+     "0x0787c8",
+     "0x0787dc"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x0bcb10": {
+    "ok": true,
+    "callers": [
+     "0x07983c"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x0ba6b0": {
+    "ok": true,
+    "callers": [
+     "0x07861b",
+     "0x0b30cb",
+     "0x0b9aef"
+    ],
+    "pointers_to_entry": []
+   },
+   "0x01e3f0": {
+    "ok": true,
+    "count": 13,
+    "free_caller": "0x03060d",
+    "free_return": "0x030612"
+   },
+   "returns": {
+    "ok": true,
+    "alloc": "0x0305ab",
+    "load": "0x020e12",
+    "free": "0x030612"
+   }
+  },
+  "complete_eax": {
+   "ok": true,
+   "instructions": 21,
+   "eax_writes": [],
+   "foreign_edges": []
+  },
+  "mode_case": {
+   "ok": true,
+   "entry": "0x00431a9b"
+  },
+  "eh_registration": {
+   "ok": true
+  },
+  "dispatcher_publication": {
+   "ok": true,
+   "pointers": [
+    "0x01df32"
+   ]
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe"
+}

@@ -17,12 +17,25 @@
 // retained across callbacks.
 namespace x3m::chase_transition::detail {
 constexpr std::uint32_t restore_rear_mode = 258, restore_internal_mode = 1;
+#if X3M_EDITION_FL
+// FL (X3FL.exe, relocatable; src/engine/fl/chase_transition_sites_fl.h): preferred-base VAs (0x400000 + RVA).
+// chase_transition.cpp normalizes the native return addresses to this form before they reach the core; the
+// remaining four are log values only (the module binds the live addresses to the loaded base). The engine's
+// named dispatcher takes selector 32 as "no completion callback" (0 would index callback slot 0).
+constexpr std::uint32_t restore_free_caller = 0x430612, restore_alloc_caller = 0x4305ab,
+                        restore_load_constructor_caller = 0x420e12;
+constexpr std::uint32_t restore_inject_site = 0x4cfd00, restore_script_call = 0x4bb5b0;
+constexpr std::uint32_t restore_game_root = 0x6243cc, restore_cockpit_registry_root = 0x5a82e4;
+constexpr std::uint32_t restore_callback_none = 32;
+#else
 // Constructor/destructor callers are native return addresses (call + 5): the load chain's
 // constructor call sits at 0x0041f83b and returns to 0x0041f840.
 constexpr std::uint32_t restore_free_caller = 0x42d402, restore_alloc_caller = 0x42d397,
                         restore_load_constructor_caller = 0x41f840;
 constexpr std::uint32_t restore_inject_site = 0x410100, restore_script_call = 0x49f570;
 constexpr std::uint32_t restore_game_root = 0x57fc60, restore_cockpit_registry_root = 0x608504;
+constexpr std::uint32_t restore_callback_none = 0;
+#endif
 constexpr std::uint32_t restore_ship_delete_flag = 0x08000000; // [ship+0x40], deferred delete (sweep 0x0045b660)
 constexpr unsigned restore_pending_update_expiry = 600, restore_due_frames = 2, restore_retry_spacing = 60,
                    restore_retry_cap = 5, restore_default_retries = 3;
@@ -197,10 +210,10 @@ struct RestoreRefresh {
     std::uint32_t manager = 0, manager_class = 0;
 };
 inline RestoreEngineCall restore_select_call(const RestoreCall& c) noexcept {
-    return {0, 0, c.monitor, restore_select_mode_name, 1, 1, restore_rear_mode};
+    return {restore_callback_none, 0, c.monitor, restore_select_mode_name, 1, 1, restore_rear_mode};
 }
 inline RestoreEngineCall restore_refresh_call(const RestoreRefresh& r) noexcept {
-    return {0, 0, r.manager, restore_update_visibility_name, 1, 0, 0};
+    return {restore_callback_none, 0, r.manager, restore_update_visibility_name, 1, 0, 0};
 }
 struct RestoreOutcome {
     bool wanted = false;

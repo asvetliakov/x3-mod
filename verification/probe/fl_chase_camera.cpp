@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include "../../src/proxy/chase_camera.h"
+#include "../../src/proxy/chase_transition.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/engine/fl/chase_camera_sites_fl.h"
@@ -47,6 +48,22 @@ void log(const char* format, ...) {
 namespace telemetry {
 bool enabled() {
     return false;
+}
+}
+// The view restore's observer (src/proxy/chase_transition.cpp, FL branch): the handler hands it every readable visit.
+namespace chase_transition {
+unsigned observed_frames = 0, control_queries = 0;
+std::uint32_t observed_mode = 0;
+bool active_control = false; // the fixture's answer to the unbound-phase proof
+std::uintptr_t control_cockpit = 0;
+bool active_control_cockpit(std::uintptr_t cockpit) noexcept {
+    ++control_queries;
+    control_cockpit = cockpit;
+    return active_control;
+}
+void restore_observe_frame(const AppliedFrame& frame) noexcept {
+    ++observed_frames;
+    observed_mode = frame.mode;
 }
 }
 }
@@ -394,21 +411,34 @@ int main() {
     // LastError: engine_memory::read keeps it around its own VirtualQuery, and the handler's other calls succeed, so
     // the preserved value above shows no leak on this path; it does not exercise PreserveCpuState's restore.
 
-    // Inactive (view object != reference object) and unbound (+0x10 == 0: AP-only proof, never admitted on FL)
-    // visits: counted, nothing written, the native branch still replayed.
+    // Inactive (view object != reference object) and unbound (+0x10 == 0) without the active-control proof: counted,
+    // nothing written, the native branch still replayed; the proof is asked only for the +0x10 == 0 visit.
     std::memcpy(scene.camera, vanilla, sizeof vanilla);
     put32(scene.cockpit, 0x54, 0x00a0b0c0);
     put32(scene.cockpit, 0x10, addr(scene.data));
     auto s0 = cc::stats();
     Visit v = visit(scene.cockpit, 4);
     report_visit("inactive_view_object", v, 1);
+    check(x3m::chase_transition::control_queries == 0, "proof_not_asked_for_a_bound_or_inactive_view");
     put32(scene.cockpit, 0x10, 0);
     v = visit(scene.cockpit, 8);
     report_visit("unbound_view_object", v, 1);
     auto s1 = cc::stats();
     check(s1.inactive == s0.inactive + 2 && s1.unbound == s0.unbound && s1.frames == s0.frames &&
-              !std::memcmp(scene.camera, vanilla, sizeof vanilla),
+              !std::memcmp(scene.camera, vanilla, sizeof vanilla) && x3m::chase_transition::control_queries == 1 &&
+              x3m::chase_transition::control_cockpit == addr(scene.cockpit),
           "inactive_and_unbound_not_written");
+    // Unbound with the active-control proof (the run78 pose gap after a restore): admitted, the pose written.
+    x3m::chase_transition::active_control = true;
+    v = visit(scene.cockpit, 12);
+    report_visit("unbound_with_control", v, 1);
+    auto s1b = cc::stats();
+    check(s1b.unbound == s1.unbound + 1 && s1b.frames == s1.frames + 1 && s1b.applied == s1.applied + 1 &&
+              s1b.inactive == s1.inactive && std::memcmp(scene.camera, vanilla, sizeof vanilla) != 0 &&
+              x3m::chase_transition::control_queries == 2,
+          "unbound_with_control_admitted_and_written");
+    x3m::chase_transition::active_control = false;
+    s1 = s1b;
     put32(scene.cockpit, 0x10, addr(scene.ship));
     // An unaligned EBX: refused (verdict 100) before any read; the compare still runs on the native address.
     v = visit(scene.cockpit + 1, 12);
@@ -421,7 +451,7 @@ int main() {
                 static_cast<unsigned long long>(st.refused), static_cast<unsigned long long>(st.inactive),
                 static_cast<unsigned long long>(st.unbound), static_cast<unsigned long long>(st.snaps));
     cc::report(300);
-    check(cc::pose_write_count() == 8, "pose_write_count");
+    check(cc::pose_write_count() == 9, "pose_write_count");
 
     // Explicit teardown: the recorders (fixture-only) go first, then shutdown() puts the original ten bytes back.
     std::memcpy(image + S::continuation_rva, seam_now + (S::continuation_rva - S::seam_window_rva), 6);
@@ -442,6 +472,8 @@ int main() {
     x3m::engine_patch::close_install_window("fixture_present");
     refused("late_claim", base, "late_claim");
     check(row_has("window_closed_by=fixture_present"), "late_claim_reason", last_row);
+    std::printf("OBSERVED frames=%u mode=%u\n", x3m::chase_transition::observed_frames,
+                unsigned(x3m::chase_transition::observed_mode));
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;
 }
