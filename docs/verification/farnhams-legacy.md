@@ -1114,3 +1114,27 @@ in the template); 54 affected host modules, 625 tests: only the stale-record fai
 fixtures `fl_object_trace` (new `scope_flags` agreement checks) and `fl_engine_effects` pass; `motion_output.cpp` under
 `X3M_MOTION_OUTPUT_FIXTURE` compiles `-Werror` in both editions; AP objects 120, differ 4 (motion_output, object_trace,
 config, the `-dirty` stamp in proxy_identity), all intended.
+
+## FL run 18 result and FL run 19 — measurement build (installed 2026-11-02)
+
+**Run 18 flown.** User: plumes and trails work; capital ships and the Teladi freight transporter show no plume; a
+lower steady frame rate. Triage (`verification/results/fl-run18-triage/`): the capital in capture frame 15972 drew
+32 hull draws and no JET-flagged or effect-pair draw at all (not a recogniser refusal; upstream in FL's engine glow
+creation, under offline investigation); frame time follows the game's draw count (r 0.87), fog adds no residual, run
+18 is +0.2 ms (quiet) to +1.3–3.7 ms (busy) per frame over run 17 at equal draw count, growing with engine-light lit
+draws (~8–10 µs each, inferred) and plume records; the shadow lane's five cascades (three 4096²) correlate r 0.45; CPU
+costs of the ported stages are all < 0.1 ms. Three code reviews (engine effects, fog/prefill, sun/TAA/providers/log)
+found no frame-path allocation, lock wait or readback stall; their CPU items were measured at 14 µs/frame total
+(`perf_mitigations.txt`) and only the recogniser flag-first read was kept.
+
+**Run 19** merge `0da44e3e7`: flag-first read, `gpu_sync_timing` and `volumetric_fog_timing` ini keys. `build-fl`
+0 warnings, seven host modules 80 tests 0 failing (measured). Installed `C:\X3FL\d3d9.dll` = `2171cdb2…`
+(55,346,639 B), rollback `rollback-d3d9\d3d9.dll.run18` = `d89a1666…`; ini copy `x3m.ini.run18`, then
+`gpu_sync_timing = 1` and `volumetric_fog_timing = 1` added under `[logging]` for this flight only. Record:
+`verification/results/fl-run19/candidate.json`.
+
+**FL run 19 A (open), measurement:** two launches in the same busy sector (many ships), about two minutes each,
+same spot and heading: (a) as installed; (b) with `engine_light = off` added under `[engine]`. GPU sync timing halves
+the frame rate by design; judge nothing by eye. Afterwards remove the two timing keys (or restore `x3m.ini.run18`
+and keep `engine_light` as wanted). Rows: `gpu_sync_*` per pass, `volumetric_fog_frame cpu_us`, `engine_light_frame`,
+`shadow_replay_*`, `hdr_frame dt_ms`.

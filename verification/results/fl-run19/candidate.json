@@ -1,0 +1,18 @@
+{
+ "run": 19,
+ "step": "measurement build after the run 18 frame-rate report: recogniser flag-first read (not-jet draws no longer take the full node snapshot), ini keys gpu_sync_timing / volumetric_fog_timing; merge 0da44e3e7 (fcb9eef05, b5300f840, 6157a92cb)",
+ "edition": "fl",
+ "commit": "0da44e3e7",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256": "2171cdb242f04693be239bc22310a0b61db12cbb9c0f45dee41059e3b7a0b27e",
+ "dll_bytes": 55346639,
+ "installed_sha256": "2171cdb242f04693be239bc22310a0b61db12cbb9c0f45dee41059e3b7a0b27e",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run18 (d89a1666, run 18)",
+ "host_tests": "run_host_suite modules fl_engine_effects, engine_effects_sites, config_schema, launcher_defaults, logging_tiers, fov_patch_result, fl_object_trace: 80 tests, 0 failing; generate.py --check PASS 293/138; native fl_object_trace and fl_engine_effects fixtures pass (agent run); AP objects differ only in motion_output, object_trace, config, proxy_identity",
+ "build_warnings": 0,
+ "review": "main session: perf-only change inside the reviewed recogniser; evaluated and dropped: FL provider pointer cache (11.6 us/frame, one-frame staleness) and spin-lock backoff (no measured contention)",
+ "ini": "C:\\X3FL\\x3m.ini: gpu_sync_timing = 1 and volumetric_fog_timing = 1 added under [logging] for the measurement flight (copy x3m.ini.run18); to be removed after",
+ "installed_at": "2026-11-02T14:53:44+04:00"
+}
