@@ -1,0 +1,19 @@
+{
+ "run": 20,
+ "step": "lens-flare bracket deleted (probe hook claims only the probe call); engine-side culls ported: cull_small_parts (4 px, dock 12 px, projectile exemption; far-jet hand-off fenced on FL), terran_station_lod size, lod_occlusion all; gpu sync passes engine_ribbons/engine_shimmer/engine_light; recogniser flag-first read; merge 33bf9d045 (aa99fe173 bracket, cffb327f2 culls, b07192ecc passes)",
+ "edition": "fl",
+ "commit": "33bf9d045",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "af2d404f84877515",
+ "dll_bytes": 55376665,
+ "installed_sha256_prefix": "af2d404f84877515",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run19 (2171cdb2, run 19)",
+ "host_tests": "run_host_suite modules fl_cull_chain, cull_small_parts, engine_far_jets, own_sun_hook, fl_sun_occlusion, fl_engine_effects, logging_tiers, config_schema, launcher_defaults, gpu_sync_timing: 103 tests, 0 failing after the comment fix; generate.py --check PASS 292/137; native FL cull fixture 184/0, 21/21 mutations, AP objects 5/5 identical; FL sun fixture 739/0; AP hook fixture 40/0 (agent runs)",
+ "build_warnings": 0,
+ "review": "Opus high x2 (bracket deletion: no blocker, F1-F4 fixed; cull port: no blocker, far-jet feed fenced, docs fixed)",
+ "ini": "C:\\X3FL\\x3m.ini unchanged (user restored after run 19: no timing keys, engine_effects default plumes)",
+ "game_data": "merged-LOD overlay addon2/06.cat pending (bake in progress); to be added to this run when ready",
+ "installed_at": "2026-11-02T16:51:05+04:00"
+}

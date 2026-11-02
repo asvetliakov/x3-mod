@@ -1280,3 +1280,19 @@ and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not 
   natively): 285 checks; its two `engine: engine stub first/last` checks failed intermittently (3 / 12 runs on the base
   sources, 4 / 12 with this change: the pass exit's PF differed, dead after RET 8), a pre-existing flake. Fixed
   test-only (PF and AF masked in that comparison): 10 / 10 runs `checks=285 failures=0`.
+
+## FL run 20 — bracket deleted, engine-side culls, timing passes (installed 2026-11-02)
+
+Merge `33bf9d045` (bracket deletion `aa99fe173`, culls `cffb327f2`, gpu sync passes `b07192ecc`, flag-first read
+`0da44e3e7`). Two reviews (Opus high), no blocker. `build-fl` 0 warnings, ten host modules 103 tests 0 failing, FL
+cull fixture 184/0 with 21/21 mutations, FL sun fixture 739/0 (measured). Installed `C:\X3FL\d3d9.dll` = `af2d404f…`
+(55,376,665 B), rollback `rollback-d3d9\d3d9.dll.run19` = `2171cdb2…`; ini unchanged. The merged-LOD overlay
+catalogue (`addon2\06.cat`) joins this run when the bake lands. Record: `verification/results/fl-run20/candidate.json`.
+
+**FL run 20 A (open):** the heavy fogged sector of runs 18/19, same spot: judge the frame rate by eye against run 18/19
+(no timing keys this time), take one F8 there and **tell me before relaunching** (log rotation). Expect
+`cull_small_parts … edition=fl state=active reason=ok write=atomic far_jets=fenced_fl`, `terran_station_lod … state=patched`,
+`lod_occlusion … state=patched`, `cull_small_parts_frame culled=… dock_culled=…` on the capture frame, `frame_end draws=`
+lower than run 19's 1,500–1,980 at the same spot, and no `state=refused`. Visual check: no missing parts on nearby
+ships, projectiles still visible, Terran stations drop detail by size. The engine lens flares of vanilla ships are gone
+anyway (plumes); nothing else should change.
