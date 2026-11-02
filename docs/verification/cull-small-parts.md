@@ -237,10 +237,12 @@ uses the callee-saved EBX/ESI/EDI (and EBP when the compiler allocates it) and r
 `mov` rather than `push` (after the review fixes: 110 instructions, EBX/ESI/EDI, no EBP; `i686-w64-mingw32-objdump -d`
 of `engine_far_jets.cpp.obj`). It copies nothing while no device
 requests the plume stage (`x3m_engine_far_armed`, a count of requesting devices), skips v/00566 and a jet the engine would cull itself (the window's
-size limit or the degenerate test), and keeps at most 1,024 copies a frame. Without `engine_effects = plumes` (the
-default) the block is `jmp +39` and int3 padding: the jet bits are not read and nothing is called. `initialize()`
-reads `X3M_ENGINE_EFFECTS` with the engine_effects option's exact parser and pins the JET writer `0x00434708` (`or
-dword [esi+0x130],0x4000001`); a mismatch leaves the block out. Rows: `cull_small_parts … far_jets=on|off|writer_mismatch`,
+size limit or the degenerate test), and keeps at most 1,024 copies a frame. When `engine_effects` does not resolve to
+plumes (`native`, `off` or a refused word) the block is `jmp +39` and int3 padding: the jet bits are not read and
+nothing is called. `initialize()` resolves `X3M_ENGINE_EFFECTS` with the engine_effects option's own rule
+(`engine_effects_option.h` `resolve_mode`, shared with `engine_effects.cpp` and the FL stub since 2026-11-03: unset or
+empty = plumes, the default since Run 123 A) and pins the JET writer `0x00434708` (`or dword [esi+0x130],0x4000001`);
+a mismatch leaves the block out. Rows: `cull_small_parts … far_jets=on|off|writer_mismatch`,
 `cull_small_parts_frame … far_jets=`; the copies are counted in `engine_stage` (`far_jets=`, `far_records=`,
 `far_engine=`, `far_overflow=`, `far_dropped=`, `far_disarmed=`, `far_duplicates=`). The census still names these rows
 `culled_small`. The copies carry the view's handle but no scene phase; the plume stage decides by the handle
@@ -281,12 +283,13 @@ The far-jet hand-off runs on FL since 2026-11-03 (below). Sites and ABI:
   reads the model at `+0x144` and owns the context scale at the site (`engine_node_layout.h` `fl_context`); the plume stage
   uses that value instead of a later `context+0x2c` read. Host evidence: [farnhams-legacy.md](farnhams-legacy.md),
   "Far-jet hand-off on FL, host evidence".
-- **Far jets need `engine_effects` set explicitly (both editions).** The stub's own read of `X3M_ENGINE_EFFECTS` takes
-  only an exact `plumes` as the request; unset counts as off for the stub, although `engine_effects` itself treats unset
-  as plumes. The launcher sends `X3M_ENGINE_EFFECTS` only when `--engine-effects` is given (`tools/manage.py`), so a
-  default AP launch draws plumes but its stub carries no far block (`far_jets=off`): far jets need
-  `engine_effects = plumes` set explicitly. Kept as is: making unset mean plumes would change the AP module's object and
-  its default behaviour, which needs its own flight.
+- **Far-jet gate follows the default mode (both editions, 2026-11-03).** Until 2026-11-03 the stub's own read of
+  `X3M_ENGINE_EFFECTS` took only an exact `plumes`, while `engine_effects` treats unset as plumes; with the key
+  commented in both shipped inis (the launcher sends it only with `--engine-effects`), every AP run and FL run 27 logged
+  `cull_small_parts … far_jets=off` and `engine_stage far_jets=0` beside `engine_effects_mode setting=- mode=plumes`.
+  Both stubs now resolve the setting with the shared `option::resolve_mode` (`engine_effects_option.h`), the rule
+  `engine_effects.cpp` uses: unset or empty requests the far block, as `plumes` does; `native`, `off`, mixed case or
+  another word do not. The AP object of `cull_small_parts.cpp` changes (intended); not flown.
 - **Dock ids on FL (measured 2026-11-03).** The rule compares the stock cut-scene ids 9013/9014/9098/9099
   (`local + (cut−1)·100000`; formula at `base+0x0ae169`, `base+0x0ad62d`). FL's `addon2/types/Dummies` maps the four
   dock-port dummies to exactly those cuts, and `addon2/types/CutData` names the stock scenes. The inline bodies of

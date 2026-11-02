@@ -893,6 +893,34 @@ int main() {
         row_has("init_writer_mismatch_row", before, 1, writer, 3);
         shutdown_restores("init_writer_mismatch_restored");
         poke(S::jet_writer_rva + 6, S::jet_writer[6]);
+        // The far-block gate resolves X3M_ENGINE_EFFECTS as the engine_effects option does (option::resolve_mode):
+        // unset or empty = plumes (the default) and plumes request the block; native, off and refused words do not.
+        {
+            struct Gate {
+                const char* label;
+                const wchar_t* value;
+                bool far_on;
+            } gates[] = {
+                {"init_far_gate_unset_on", nullptr, true},   {"init_far_gate_empty_on", L"", true},
+                {"init_far_gate_plumes_on", L"plumes", true}, {"init_far_gate_native_off", L"native", false},
+                {"init_far_gate_off_off", L"off", false},     {"init_far_gate_mixed_case_off", L"Plumes", false},
+                {"init_far_gate_invalid_off", L"plumes2", false},
+            };
+            for (const Gate& g : gates) {
+                set_env(L"X3M_ENGINE_EFFECTS", g.value);
+                before = rows;
+                SetLastError(sentinel_error);
+                applied = csp::initialize();
+                const char* row[] = {"edition=fl state=active reason=ok", g.far_on ? " far_jets=on" : " far_jets=off"};
+                check(applied && GetLastError() == sentinel_error && csp::far_jets() == g.far_on &&
+                          reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far] ==
+                              (g.far_on ? 0xf7 : 0xeb),
+                      g.label, last_row);
+                row_has(g.label, before, 1, row, 2);
+                shutdown_restores(g.label);
+            }
+            set_env(L"X3M_ENGINE_EFFECTS", L"plumes");
+        }
         before = rows;
         SetLastError(sentinel_error);
         applied = csp::initialize();

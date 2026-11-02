@@ -27,8 +27,11 @@ ROOT = Path(__file__).resolve().parents[2]
 # Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
 # engine_far_jets.* and motion_output_engine_plumes_inc.h: entries bumped to the FL far-jet un-fence merge (e9bff9301,
 # 2026-11-03), still native-only since the record.
+# engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
+# default plumes mode, both editions, 2026-11-03).
 SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_effects.cpp': 'c08ac8a219656635934c0c380d127542a33e3478b9d635e3ce90ef6baf3998b4',
+    'src/proxy/engine_effects.cpp': 'c1758e435321db074c875ab565ae031182c98148ae3a2f7255c71fdf8c9f95a8',
+    'src/proxy/engine_effects_option.h': 'eccb9f06f28c52a63f1e8ebf818f001d1775ca317cccf34608917fdb49835e28',
     'src/proxy/engine_effects.h': '9bfc75be3b480a0a808c034577eeca5a2767155b89fdca2c645a9339c115e7ba',
     'src/proxy/engine_effects_core.h': '168a1451ea50181173b63fe9e0ee4aa90f49da7bd591f2759b4ef531dc28ea2b',
     'src/proxy/motion_output_engine_effects_inc.h': '2b13d9eb003f451611bdbfdd3d439da091c2bcad65fe8ff5b0da10e3287843c6',

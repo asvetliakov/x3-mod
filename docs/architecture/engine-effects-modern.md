@@ -609,7 +609,9 @@ never exceeds the body at any throttle. All constants are in `engine_plumes_core
 (`cull_small_parts`, 4 px, threshold 3) culled every far jet node (s = 1..2) before the engine submitted its glow, so
 the recogniser never saw them. User decisions: keep culling them (the engine's submission work per jet, about 10 us, is
 what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint sparks.
-- *Far jets from the cull.* With `engine_effects = plumes` the cull stub carries a far block
+- *Far jets from the cull.* With `engine_effects` resolving to plumes (unset included: both cull stubs resolve the
+  setting with `engine_effects_option.h` `resolve_mode`, the rule this module uses, since 2026-11-03) the cull stub
+  carries a far block
   ([cull-small-parts.md](../verification/cull-small-parts.md) "Far engine jets"): a node it culls whose +0x130
   carries the JET flag pair 0x4000001 is handed to `x3m_engine_far_jet` (`engine_far_jets.cpp`, integer only, no SSE,
   no Win32, inside the pass) before the cull, which copies the node's raw fields into a per-frame buffer of 1,024. It
@@ -756,7 +758,8 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
 - **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
   read-window guarantee is not established on X3FL.exe. The gain-0 engine cull `lens_flare_cull` was AP-only and is deleted (2026-11-02).
 - **Far-jet feed on FL (fence removed 2026-11-03, not flown).** The FL small-parts stub carries the far-copy block
-  with `engine_effects = plumes` (`cull_small_parts … far_jets=on`, `cull_small_parts_frame … far_jets=on edition=fl`;
+  with `engine_effects` resolving to plumes, unset included (`cull_small_parts … far_jets=on`,
+  `cull_small_parts_frame … far_jets=on edition=fl`;
   a changed JET writer gives `far_jets=writer_mismatch`). The handler reads the read set verified from X3FL.exe's bytes
   ([fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) "Verified 2026-11-03"): model `+0x144`, every other
   field at the AP offset. It also owns the context scale at the site (node `+0x1c` → `+0x2c`, the selector's own

@@ -4,7 +4,7 @@
 // cull_small_parts_sites_fl.h). The policy is AP's (cull_small_parts_core.h: threshold_for, upper_for, the scene latch,
 // the dock ranges, the flag words); the site, registers and offsets are FL's.
 //
-// Far jets (X3M_ENGINE_EFFECTS exactly plumes, as on AP): the stub hands culled JET nodes (+0x130 & 0x4000001) to
+// Far jets (X3M_ENGINE_EFFECTS resolving to plumes, unset included, as on AP): the stub hands culled JET nodes (+0x130 & 0x4000001) to
 // x3m_engine_far_jet (src/proxy/engine_far_jets.cpp) with (node ESI, measure ECX, view EBX). Its FL read set is verified
 // from X3FL.exe's bytes (docs/reverse-engineering/fl/cull-chain.md "Verified 2026-11-03", engine_node_layout.h):
 // model +0x144, every other field at the AP offset, and the context scale owned at the site rather than read later. A
@@ -242,10 +242,11 @@ bool initialize() {
         !dock_set || (core::parse_px(dock_text, &dock_px) && (dock_px == 0.0 || core::valid_px(dock_px)));
     char effects_text[32]{};
     namespace option = x3m::engine_effects::option;
-    option::Mode effects = option::Mode::native;
-    // The AP rule: X3M_ENGINE_EFFECTS exactly plumes asks for the far block.
-    bool far_jets = read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) &&
-                    option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes;
+    // The AP rule: X3M_ENGINE_EFFECTS resolving to plumes (option::resolve_mode: unset or empty = plumes, the default)
+    // asks for the far block; native, off or a refused word do not.
+    const std::size_t effects_length =
+        read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) ? std::strlen(effects_text) : 0;
+    bool far_jets = option::resolve_mode(effects_text, effects_length) == option::Mode::plumes;
     far_jets_state_ = far_jets ? "on" : "off";
 #ifdef X3M_CULL_SMALL_PARTS_FL_FIXTURE
     const std::uintptr_t base = fixture_base_ ? fixture_base_ : x3m::fl::module_base();

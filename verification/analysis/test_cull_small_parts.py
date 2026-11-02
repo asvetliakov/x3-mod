@@ -422,7 +422,7 @@ class CullSmallPartsSite(unittest.TestCase):
         # The far-jet block tests exactly the recogniser's JET flag pair, and only with the plumes mode.
         self.assertIn('constexpr std::uint32_t jet_flags = 0x4000001u;', source_text(ROOT / 'src/proxy/engine_effects_core.h'))
         module = source_text(ROOT / 'src/proxy/cull_small_parts.cpp')
-        self.assertIn('option::parse_mode(effects_text, &effects) && effects == option::Mode::plumes', module)
+        self.assertIn('bool far_jets = option::resolve_mode(effects_text, effects_length) == option::Mode::plumes;', module)
         self.assertIn('bytes_match(core::jet_writer_va, core::jet_writer, core::jet_writer_length)', module)
 
     def test_encoder_and_threshold(self):
@@ -544,6 +544,59 @@ class CullSmallPartsSite(unittest.TestCase):
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertEqual(run.stdout, 'cull_small_parts_core checks_failed=0\n')
+
+    def test_far_jet_gate_resolves_the_default_mode(self):
+        """The far-jet gate of both editions and the engine_effects option resolve X3M_ENGINE_EFFECTS by one rule
+        (engine_effects_option.h resolve_mode): unset or empty = plumes (far block requested), plumes on; native, off,
+        mixed case, another word and 16+ characters off. Run 27 (FL) and the AP runs logged far_jets=off with the key
+        commented because the gate wanted the word written out (2026-11-03)."""
+        harness = r"""
+#include "engine_effects_option.h"
+#include <cstdio>
+#include <cstring>
+namespace option = x3m::engine_effects::option;
+static int failed = 0;
+static void expect(const char* text, bool far_on, bool valid_want) {
+    bool valid = !valid_want;
+    const bool on = option::resolve_mode(text, std::strlen(text), &valid) == option::Mode::plumes;
+    if (on != far_on || valid != valid_want) { ++failed; std::printf("FAIL '%s' on=%d valid=%d\n", text, on, valid); }
+}
+int main() {
+    expect("", true, true);
+    expect("plumes", true, true);
+    expect("native", false, true);
+    expect("off", false, true);
+    expect("Plumes", false, false);
+    expect("plumes2", false, false);
+    expect("?", false, false);
+    expect("plumesplumesplumes", false, false);
+    const wchar_t wide[] = L"plumes";
+    if (option::resolve_mode(wide, 6) != option::Mode::plumes || option::resolve_mode(wide, 0) != option::Mode::plumes ||
+        option::resolve_mode(L"off", 3) != option::Mode::off) { ++failed; std::printf("FAIL wide\n"); }
+    std::printf("far_gate failed=%d\n", failed);
+    return failed != 0;
+}
+"""
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        self.assertIsNotNone(compiler, 'A host C++ compiler is required')
+        with tempfile.TemporaryDirectory(prefix='x3-cull-far-gate-') as temporary:
+            directory = Path(temporary)
+            (directory / 'harness.cpp').write_text(harness)
+            executable = directory / 'far_gate'
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/proxy'),
+                                    str(directory / 'harness.cpp'), '-o', str(executable)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(executable)], capture_output=True, text=True)
+            self.assertEqual((run.returncode, run.stdout), (0, 'far_gate failed=0\n'), run.stderr)
+        rule = 'option::resolve_mode(effects_text, effects_length) == option::Mode::plumes;'
+        for path in ('src/proxy/cull_small_parts.cpp', 'src/engine/fl/cull_small_parts_fl.cpp'):
+            with self.subTest(path=path):
+                module = source_text(ROOT / path)
+                self.assertIn(rule, module)
+                self.assertIn('read_setting(L"X3M_ENGINE_EFFECTS", effects_text, sizeof effects_text) ? std::strlen(effects_text) : 0;',
+                              module)
+        self.assertIn('mode_ = option::resolve_mode(setting, printable ? length : 16, &valid);',
+                      source_text(ROOT / 'src/proxy/engine_effects.cpp'))
 
     def test_scene_projection_hand_over(self):
         # The cull's FOV source is the motion route's scene-phase camera read (run309: the live buffer at Present is the HUD view).

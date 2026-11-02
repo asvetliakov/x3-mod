@@ -1922,7 +1922,8 @@ Limits:
   measured. If it fails in flight, far copies get scale 0 and land in `far_dropped`.
 - The FL branch of `engine_far_append` is checked by source assertions and by the fixture's direct `far_record`
   call on the handler's output. The `owned_scale[i]`/`raw[i]` loop itself is not executed by a fixture.
-- The far stub needs `engine_effects = plumes` set explicitly (cull-small-parts.md "FL port").
+- The far stub needs `engine_effects = plumes` set explicitly (cull-small-parts.md "FL port"). Superseded
+  2026-11-03: see "Far-jet gate: default mode" below.
 
 Expected rows in an FL run with `cull_small_parts_px` 4 and `engine_effects = plumes`:
 `cull_small_parts requested=4 px=4 patched=1 edition=fl state=active reason=ok … write=atomic … projectiles=on
@@ -1932,6 +1933,20 @@ and in `engine_stage` with distant ships in view, `far_jets>0` and `far_records>
 while the stage is armed. A `far_dropped` close to `far_jets` means the context equality does not hold.
 Flight check: a distant ship whose plume falls under 4 px shows a small engine glow, not nothing, and nearby ships
 keep their full plumes, with none missing.
+
+### Far-jet gate: default mode (2026-11-03)
+
+Run 27 logged `cull_small_parts … far_jets=off` and `engine_stage far_jets=0` on every row beside
+`engine_effects_mode setting=- mode=plumes`: the ini leaves `engine_effects` commented, and the stub's gate took only an
+exact `plumes`, while the effects option resolves unset or empty to plumes, so the far hand-off never installed (AP runs
+had the same gap). Both editions' gates and `engine_effects.cpp` now share `engine_effects_option.h`
+`option::resolve_mode` (unset or empty = plumes; a word by `parse_mode`; anything else native). Host evidence
+(measured, WSL2, no Wine, no game): `fl_cull_chain` gains seven `init_far_gate_*` cases (unset, empty, `plumes` → far
+block present and `far_jets=on`; `native`, `off`, `Plumes`, `plumes2` → block patched out and `far_jets=off`),
+`RESULT PASS checks=214 failures=0` (193 before) and 16 install rows; the AP CPU fixture run natively passes 226 / 0 with unset and empty
+requesting the block (`writer_mismatch` in that process); `test_cull_small_parts` compiles `resolve_mode` on the host
+(`far_jet_gate`). Builds 0 warnings each; the AP `cull_small_parts.cpp` and `engine_effects.cpp` objects change
+(intended). Not flown: the next FL run with the key commented should show `far_jets=on`.
 
 ## FL run 27 — chase restore rows, HUD lifetime identity, far-jet hand-off on FL (installed 2026-11-03)
 

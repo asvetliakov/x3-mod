@@ -196,9 +196,8 @@ void initialize() {
         printable = printable && text[i] > 0x20 && text[i] < 0x7f;
         setting[i] = text[i] > 0x20 && text[i] < 0x7f ? char(text[i]) : '?';
     }
-    core::Mode parsed = length ? core::Mode::native : core::Mode::plumes;
-    const bool valid = !length || (printable && core::parse_mode(setting, length, &parsed));
-    mode_ = valid ? parsed : core::Mode::native;
+    bool valid = false;
+    mode_ = option::resolve_mode(setting, printable ? length : 16, &valid); // the shared rule (engine_effects_option.h)
 #if X3M_EDITION_FL
     {
         const std::uintptr_t base = x3m::fl::module_base(); // 0 unless X3FL.exe's identity holds

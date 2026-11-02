@@ -89,12 +89,15 @@ class FlCullChainNativeFixture(unittest.TestCase):
         self.assertIn('FARCHAIN record origin=1000.0,-2000.0,3000.0 size=2.0000 scale=3c23d70a', out)
         for label in ('init_installs_far_block', 'init_jet_writer_mismatch_drops_far', 'far_chain_fl_layout_copied',
                       'far_chain_record_reaches_consumer', 'far_chain_foreign_context_refused',
-                      'far_chain_null_context_refused', 'far_chain_model_is_fl_offset', 'far_chain_disarmed'):
+                      'far_chain_null_context_refused', 'far_chain_model_is_fl_offset', 'far_chain_disarmed',
+                      'init_far_gate_unset_on', 'init_far_gate_empty_on', 'init_far_gate_plumes_on',
+                      'init_far_gate_native_off', 'init_far_gate_off_off', 'init_far_gate_mixed_case_off',
+                      'init_far_gate_invalid_off'):
             self.assertNotIn('FAIL ' + label, out)
         self.assertIn('LOG cull_small_parts_frame device=1 frame=77 px=4 ', out)
         self.assertRegex(out, r'LOG cull_small_parts_frame [^\n]* far_jets=on edition=fl\n')
         self.assertEqual(len(re.findall(r'^LOG cull_small_parts requested=\S+ px=\S+ patched=[01] edition=fl state=',
-                                        out, re.M)), 9)
+                                        out, re.M)), 16)  # 9 + the seven far-gate settings
         self.assertEqual(audit.returncode, 0, audit.stdout[-3000:] + audit.stderr[-1000:])
         variants = json.loads(audit.stdout)['variants']
         self.assertEqual({k: (v['calls'], v['exits']['continue'] > 0, v['exits']['cull'] > 0) for k, v in variants.items()},
