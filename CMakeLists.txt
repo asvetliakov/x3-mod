@@ -136,10 +136,12 @@ set(X3M_SHARED_SOURCES
 # patches too: the fl target links src/engine/fl/cull_small_parts_fl.cpp, terran_station_lod_fl.cpp and
 # lod_occlusion_fl.cpp (docs/verification/cull-small-parts.md, "FL port").
 # The field of view too: the fl target links src/engine/fl/fov_fl.cpp (docs/reverse-engineering/fl/field-of-view.md,
-# "Verified 2026-11-02"); fov.cpp is AP only.
+# "Verified 2026-11-02"); fov.cpp is AP only. The chase lead marker and central HUD too: the fl target links
+# src/engine/fl/chase_lead_fl.cpp (docs/reverse-engineering/fl/chase-lead.md, "Verified 2026-11-02"); chase_lead.cpp is
+# AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/engine_memory.cpp
-  src/proxy/fade_region.cpp src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
+  src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
   src/proxy/text_density.cpp src/proxy/cull_census.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
   src/proxy/engine_patch.cpp)
@@ -179,6 +181,10 @@ else()
   # The field of view: the constructor literal, the INS_SetFocus remap and the load store
   # (docs/reverse-engineering/fl/field-of-view.md, "Verified 2026-11-02").
   target_sources(d3d9 PRIVATE src/engine/fl/fov_fl.cpp)
+  # The chase lead marker and central HUD: four seams in the cockpit and overlay updaters, the AP policy on FL bindings
+  # (docs/reverse-engineering/fl/chase-lead.md, "Verified 2026-11-02"); it provides chase_lead.h in place of the AP
+  # src/proxy/chase_lead.cpp.
+  target_sources(d3d9 PRIVATE src/engine/fl/chase_lead_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -245,6 +251,9 @@ set_source_files_properties(src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/
 # The FL field of view (its two stubs are emitted integer code in the arena; the install code runs on the backend-load
 # path, the confirm rows in the Present hook): default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/fov_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL chase lead (src/engine/fl/chase_lead_fl.cpp): its handler runs inside the emitted PUSHFD/PUSHAD/XMM stub under
+# PreserveCpuState like the AP module: default SSE2 flags, no exception bookends inside the CPU-state boundary.
+set_source_files_properties(src/engine/fl/chase_lead_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

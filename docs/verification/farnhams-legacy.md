@@ -1611,6 +1611,48 @@ written>0` when firing, no `installed=0`/`refused` on these. Visual: the view is
 (view restore is the next step); the centre crosshair is not the aim point under the raised camera until the lead marker
 is ported. Report anything that looks like a camera jump, wrong FOV in menus or on load, or missing HUD.
 
+## Chase HUD on FL, host evidence (2026-11-02, not installed, not flown)
+
+Run 24's missing chase HUD (crosshair, speed/distance panels, lead reticle) is AP's `chase_lead` module, AP-only on FL
+until now. Ported as `src/engine/fl/chase_lead_fl.cpp` + `chase_lead_sites_fl.h` (AP `src/proxy/chase_lead.cpp`
+unchanged and no longer linked into FL): the HUD gate (the five central nodes: crosshair, target speed, own speed,
+target distance, status icon), the lead gate, publish and final FOV (the predictive reticle at the chase-projected
+point, and the true-forward placement of the five nodes for `chase_hud_anchor = forward`). The target brackets need no
+hook (native mode test `& 3`, which chase mode 258 passes). The update binding is the chase camera's pose seam, closed at
+the final FOV (no `chase_transition` dependency); the five native-timing sites are not ported (telemetry only). Facts:
+[chase-lead.md](../reverse-engineering/fl/chase-lead.md), section 7. The template's `chase_hud_anchor` now reads
+"X3: Albion Prelude and X3: Farnham's Legacy."
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_chase_lead_sites_fl.py --out verification/results/fl-chase-lead/verify_fl_sites.json` | PASS: 12 windows (823 bytes) FNV-1a with 9 HIGHLOW dwords at their targets (distance 1, texture 6, projection 2), whole instructions; 4 seams exact bytes and Capstone decode, no fixup in any span, no direct edge into any interior (72,230 edges), qword fits/crosses as declared; overlay sole caller `0x0229c2`; pose seam `0x0227ad` dominates `0x0229c2` and `0x022cf5` (1,082-instruction CFG, no unresolved edge); overlay ESP = P at every seam (3,061 instructions, no conflict); 82 field/ABI anchors; header bytes = executable |
+| Native fixture | `python3 -I verification/results/fl-chase-lead/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_lead.cpp`) | `RESULT PASS checks=79 failures=0`: the four thunks for ESP skews 0/4/8/12 with every GPR, EFLAGS incl. DF, ESP, XMM0-7, x87 CW `007f` + one register, MXCSR `bfe0`, LastError intact except ZF (gates) and ECX/EDX (publish); publish `231,-65` from P+0xe0 (decoy at AP's P+0xc0 would give `0,0`), node and O+0x3e0 written; zoom finalization `316,-89`; forward anchor `-232,0` added to all five native positions; failed projection hides through the real 31-byte helper (detacher got ECX = marker, argument = scene), ECX/EDX = -1; HUD refusals (extra entry active, texture missing, 2D off, foreign backpointer) leave the native branch; pose closed after final FOV; 6,584 / 6,584 window bit flips refused before any write (288 in relocated dwords); fault in each marker seam → all three restored; HUD seam fault keeps the marker; unrecoverable fault → `rollback=failed`, inert; flags off: each stub's byte test forwards with the native branch and full CPU state, nothing counted; shutdown and re-install; `late_claim`. `fixture_out.txt` is normalised (addresses, thread ids, µs) and byte-stable across reruns |
+| AP unchanged | `python3 -I verification/results/fl-chase-lead/ap_objects_identical.py chase_camera.cpp loader.cpp capture.cpp chase_lead.cpp` (`ap_objects.txt`; `--base` defaults to the parent `f8b255b17`, `--head` to the working tree) | identical AP disassembly against the parent (6,660 / 3,070 / 41,169 / 6,614 lines) |
+| Cost (diagnostic) | the fixture's `TIMING` row (`run_fixture.py` prints it; 2,000 calls each, this host, not game FPS) | harness alone 0.13 µs; final-FOV visit of another cockpit with the module on 0.45–0.47 µs (≈0.33 µs over the harness: what each non-chase cockpit of the registry walk pays per update); same visit with the flags off 0.14–0.26 µs; one admitted chase update (pose, gate, publish, HUD gate, final FOV with anchor) 9.4–9.8 µs including four harness calls, once per frame |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_lead test_chase_lead_sites test_chase_central_hud_install test_fl_chase_lead test_config_schema` | 47 tests, 0 failing; plus 14 related modules (`test_fl_chase_camera`, `test_chase_camera`, `test_bolt_footprint`, `test_launcher_defaults`, …) 174 tests, 0 failing |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected in game (not verified), with `camera = chase`: `chase_camera requested=1 installed=1 status=active … edition=fl
+rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=chase_lead`, then `chase_native_timing installed=0
+status=not_ported sites=0 edition=fl reason=telemetry_only`, `chase_central_hud installed=1 status=active
+cleanup=native_when_extra_active hud_anchor=forward edition=fl rva=0x02cc1e rollback=none`, `chase_lead installed=1
+status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=<0|1> edition=fl base=0x<base>
+rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam`, and `chase_fire`/`chase_aim_trace` (and
+`chase_transition` unless its port lands first) `installed=0 status=ap_only edition=fl`. With telemetry on, every 300
+frames: `chase_central_hud_window … admitted>0 … anchor_applied>0 … edition=fl` in the chase view and, with a target
+selected in gun range, `chase_lead_window … committed>0 …` plus `chase_lead_sample` rows. Visual: in the chase view the
+crosshair and the speed panels appear where the ship points (not at screen centre), the distance panel appears when an
+object is selected, the predictive reticle appears on a targeted ship in range and bolts fly to it; zoom keeps the
+reticle on target; first-person view unchanged; no `installed=0`, `window_mismatch`, `slot_mismatch` or
+`rollback=failed` on these rows.
+
+Open items: once `chase_transition` is on FL (a parallel worktree, same build), `current_update()`/`generation()` in
+`chase_lead_fl.cpp` should take the cockpit-lifetime generation and update serial from it as AP does
+(`src/proxy/chase_lead.cpp`, `camera_context`/`scope`), which also closes the destroy-and-rebuild-within-one-update gap
+of the pose-seam binding; that integration is a follow-up, not in this commit. The path `0x022a0d je 0x022fa9`
+(cockpit+0xc == 0 after the HUD calls) skips the final-FOV seam: that pose stays open until the next pose-seam visit,
+and a leftover ticket fails at `scope`/`owned_marker`, so nothing is written from it.
+
 ## Chase view restore on FL, host evidence (2026-11-02, not installed, not flown)
 
 FL run 24 A: a sector change switched the chase view back to first person and nothing restored it, because
@@ -1638,14 +1680,14 @@ Wine, no game.
 | Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (`chase_view_restore` and `chase_view_restore_retries` no longer say "Albion Prelude only") |
 
 Expected in the flight log (not verified): `chase_camera requested=1 installed=1 status=active … edition=fl rva=0x0227ad
-rollback=none unbound_phase=active_control dependencies=chase_transition`, then:
+rollback=none unbound_phase=active_control dependencies=chase_lead,chase_transition`, then:
 
 ```
 chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
 chase_transition_site index=0 site=0x<base+020ec0> rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl   (indices 0-7; atomic_write=0 at 1, 6, 7)
 chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x<base+0cfd00> inject_rva=0x0cfd00 call=0x<base+0bb5b0> call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
 chase_view_restore_site index=0 site=0x<base+0cfd00> rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl   (indices 0-3)
-chase_fire installed=0 status=ap_only edition=fl reason=ap_only   (and chase_aim_trace; chase_lead logs its own FL row once its parallel port lands in the same build)
+chase_fire installed=0 status=ap_only edition=fl reason=ap_only   (and chase_aim_trace; chase_lead and chase_central_hud log their FL rows, section above)
 ```
 
 After each gate transit, jumpdrive jump and docking taken in the rear chase view, one row:
@@ -1654,6 +1696,10 @@ Undocking writes no view mode, so no row is expected. If the view is not restore
 to one cause:
 
 - `result=no_effect cancel=retries`: the store did not happen inside the call.
+- `result=cancelled cancel=mode_left` right after a call, with the chase view actually back: the store was deferred
+  (the script task yielded and stored 258 after the call returned), so the attempt read as `no_effect` and the next
+  candidate frame at 258 cancelled the ticket. The restore landed, but each earlier retry may have left a deferred
+  `SelectMode` task behind (at most `retries` + 1 calls per ticket); report it with the rows around it.
 - `cancel=no_monitor`: the mode store was not captured.
 - `result=call_refused`: the method or the receiver is missing.
 - `chase_view_restore_arm_refused reason=…`: the rear frame did not arm.

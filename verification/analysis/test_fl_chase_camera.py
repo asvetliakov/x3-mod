@@ -26,7 +26,7 @@ COMMON = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-functio
 # CMake's per-file flags for the production sources the fixture links.
 SOURCES = (('src/proxy/chase_camera.cpp', ['-fno-exceptions']), ('src/proxy/engine_patch.cpp', []),
            ('src/proxy/engine_memory.cpp', ['-mno-sse', '-mno-mmx', '-mfpmath=387']),
-           ('src/engine/fl/executable_identity_fl.cpp', []))
+           ('src/engine/fl/executable_identity_fl.cpp', []), ('src/engine/fl/chase_lead_fl.cpp', ['-fno-exceptions']))
 
 
 def compiler():
@@ -63,7 +63,7 @@ class FlChaseCameraNativeFixture(unittest.TestCase):
         self.assertIn('FLIPS seam=528 refused=528 target=56 refused=56 plane=88 refused=88', out)
         self.assertRegex(out, r'(?m)^LOG chase_camera requested=1 installed=1 status=active site=0x[0-9a-f]{8} length=10 '
                               r'rel32_offset=6 atomic_write=0 .* edition=fl rva=0x0227ad rollback=none '
-                              r'unbound_phase=active_control dependencies=chase_transition$')
+                              r'unbound_phase=active_control dependencies=chase_lead,chase_transition$')
         self.assertRegex(out, r'(?m)^LOG chase_camera requested=1 installed=0 status=readback_mismatch .* rollback=restored ')
         self.assertRegex(out, r'(?m)^LOG chase_camera requested=1 installed=1 status=readback_mismatch .* rollback=failed ')
         self.assertRegex(out, r'(?m)^LOG chase_camera requested=1 installed=0 status=late_claim '
@@ -71,9 +71,9 @@ class FlChaseCameraNativeFixture(unittest.TestCase):
         self.assertIn('STATS frames=10 applied=9 refused=1 inactive=2 unbound=1', out)
         # Every readable visit reaches the view restore's observer (src/proxy/chase_transition.cpp, FL branch).
         self.assertRegex(out, r'(?m)^OBSERVED frames=[1-9]\d* mode=258$')
-        # The FL module reaches none of the AP-only camera modules and no AP executable identity; of chase_transition
-        # only the restore observer.
-        for name in ('chase_lead', 'chase_fire', 'chase_aim_trace', 'object_trace'):
+        # The FL module reaches none of the AP-only camera modules and no AP executable identity (chase_lead is the FL
+        # edition, src/engine/fl/chase_lead_fl.cpp); of chase_transition only the restore observer and the proof.
+        for name in ('chase_fire', 'chase_aim_trace', 'object_trace'):
             self.assertNotIn(f'x3m::{name}::', undefined)
         transition = sorted(l.split('x3m::chase_transition::')[1].split('(')[0] for l in undefined.splitlines()
                             if 'x3m::chase_transition::' in l)
@@ -118,8 +118,10 @@ class FlChaseCameraWiring(unittest.TestCase):
             elif active[-1]:
                 fl.append(line)
         fl = strip('\n'.join(fl))
-        for name in ('chase_lead::', 'chase_fire::', 'chase_aim_trace::', 'object_trace::', '0x00420e06', '0x00606f38'):
+        for name in ('chase_fire::', 'chase_aim_trace::', 'object_trace::', '0x00420e06', '0x00606f38'):
             self.assertNotIn(name, fl)
+        self.assertIn('chase_lead::invalidate_pose();', fl)
+        self.assertIn('chase_lead::camera_context(cockpit, ref_object, camera, context_ok', fl)
         # chase_transition: the restore observer and the unbound-phase proof (its FL branch binds its own sites).
         self.assertEqual(sorted(set(re.findall(r'chase_transition::(\w+)', fl))),
                          ['AppliedFrame', 'active_control_cockpit', 'restore_observe_frame'])
@@ -131,12 +133,14 @@ class FlChaseCameraWiring(unittest.TestCase):
         fl = loader[loader.index('#if X3M_EDITION_FL\n    \n    \n    if (x3m::fl::verified())'):]
         fl = fl[:fl.index('#endif')]
         self.assertIn('if (x3m::chase_camera::initialize()) x3m::chase_transition::initialize();', fl)
-        self.assertIn('{"chase_lead", "chase_fire", "chase_aim_trace"}', fl)
+        self.assertIn('x3m::chase_lead::initialize();', fl)
+        self.assertIn('{"chase_fire", "chase_aim_trace"}', fl)
         self.assertIn('"%s installed=0 status=ap_only edition=fl reason=ap_only"', fl)
         self.assertLess(fl.index('x3m::fl::scale_fix::initialize();'), fl.index('x3m::chase_camera::initialize()'))
         capture = strip((ROOT / 'src/proxy/capture.cpp').read_text())
-        self.assertRegex(capture, r'#else\n    if \(ctx\.capture \|\| ctx\.frame % 300 == 0\) \{\n        chase_camera::report\(ctx\.frame\); *\n'
-                                  r'        chase_transition::report\(ctx\.frame\); *\n    \}\n#endif')
+        self.assertIn('#else\n    if (ctx.capture || ctx.frame % 300 == 0) {\n        chase_camera::report(ctx.frame);     \n'
+                      '        chase_lead::report(ctx.frame);       \n        chase_transition::report(ctx.frame); \n    }\n#endif',
+                      capture)
         cmake = (ROOT / 'CMakeLists.txt').read_text()
         linked = re.search(r'set\(X3M_AP_ENGINE_LINKED_SOURCES\n(.*?)\)\n', cmake, re.S).group(1)
         self.assertIn('src/proxy/chase_camera.cpp', linked)

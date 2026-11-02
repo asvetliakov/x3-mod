@@ -821,7 +821,9 @@ void scenarios() {
           "lifetime: active-control proof through the FL cockpit registry");
     destroy(w_cockpit_a, S::free_return_va);
     check(!T::generation(W(w_cockpit_a)) && !T::state.find(W(w_cockpit_a)), "lifetime: the wrapper destroys it");
-    check(x3m::chase_lead::invalidations > 0, "lifetime: the lead timing revocations still run");
+    // Only that the witness handlers keep calling the hook, as on AP; the FL lead module defines it empty (no native
+    // timing sites on FL), so nothing is revoked in production.
+    check(x3m::chase_lead::invalidations > 0, "lifetime: the handlers still call chase_lead::native_timing_invalidate");
 }
 
 // ---------------- install refusals and rollback ----------------

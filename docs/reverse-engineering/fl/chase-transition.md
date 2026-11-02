@@ -315,6 +315,21 @@ pointer into an interior. Production binding: `src/proxy/chase_transition.cpp`, 
 | Simulation registry / ship | slot `0x1a82ec`; `+0x14` object map keyed by object `+8` (`0x0495f1..0x0495fd`, the removal path); resolver `0x043d30` (map `+0x14`, value `+8`); script id `+0x94` (`0x06a836`); excluded flag `+0x40 & 0x08000000` (`0x065313`) | anchors, windows `sim_registry`, `ship_script_id`, `ship_flag` |
 | Cockpit fields | `+0x150` mode, `+0x1c0` connect, `+0x1a0` flags, `+0xc` ref, `+0x10` view, `+0x1fc` / `+0x54` sectors | the chase-camera FL anchors (`fl/chase-camera.md`, "Verified 2026-11-02"), static-asserted in `chase_transition.cpp` |
 
+View-mode writers: FL has no equivalent of AP's census of `+0x150` writers. A Capstone sweep of `.text` (`verification/results/fl-chase-transition/census_mode_writers.py`,
+`.txt`) finds 34
+dword writes at displacement `+0x150` (measured), 4 of them ESP-relative locals, so 30
+register-relative writers; 3 are known cockpit writers (constructor zeroing `0x0212ab`, the load store `0x01bf6e`, the
+script store `0x031abc`); the review checked 2 others as non-cockpit objects; 25 are unclassified (open). The restore
+does not depend on that census (it acts on the observed script store and the fresh cockpit's frames), but an
+unclassified engine writer of a cockpit's mode would show as `cancel=mode_left`, not as a restore failure.
+
+Injection cadence: the input worker `0x0cfd00` is reached from `0x0787c8`/`0x0787dc` only. Pause bit 0 of
+`[game+0x4a0]` branches past that path (`test cl,1; jne 0x4787ee` at `0x0786c3/0x0786c6`, anchored); the review reads
+the `[game+0x499] == -1` exit of the command loop (`cmp edi,-1` at `0x07877b`, falls through to `xor eax,eax` at
+`0x078797`) as a second skip (instruction anchors measured; the full CFG claim is the review's, not re-derived here).
+A due ticket simply waits at such frames: the pending/due clock runs on cockpit updates, so the worst case is the
+expiry at 600 updates (inferred, not measured in game).
+
 Not claimed on FL: AP's connect observer (kind 8; diagnostics only) and the diagnostic event/identity readers
 (`diagnostics=0 diagnostics_reason=ap_only`): their provenance and `IdentityReader` roots stay AP-bound. The second
 injection consumer (SETA restore) is refused on FL (`inject_attach` → `ap_only`).

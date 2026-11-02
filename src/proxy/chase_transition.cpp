@@ -821,9 +821,12 @@ bool fl_confirm(engine_patch::Site& s) {
 #endif
     unsigned char now[5]{};
     if (engine_patch::read_code(s.spec.address, now, 5) && !std::memcmp(now, s.patched, 5)) return true;
+    // The restore is a plain write when the span crosses a qword: only while the install window is still open (no
+    // engine thread can be inside the span). claim() just checked it on this thread, but re-check rather than rely on
+    // that; a closed window leaves the site registered and inert (readback_rollback_failed).
     auto* code = reinterpret_cast<void*>(s.spec.address);
     DWORD writable = 0, unused = 0;
-    if (VirtualProtect(code, s.spec.length, PAGE_EXECUTE_READWRITE, &writable)) {
+    if (engine_patch::install_window_open() && VirtualProtect(code, s.spec.length, PAGE_EXECUTE_READWRITE, &writable)) {
         engine_patch::write_code(s.spec.address, s.original, 5);
         FlushInstructionCache(GetCurrentProcess(), code, s.spec.length);
         VirtualProtect(code, s.spec.length, s.protection, &unused);

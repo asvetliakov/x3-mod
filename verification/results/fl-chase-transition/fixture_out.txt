@@ -1,17 +1,17 @@
-LOG chase_transition installed=1 status=active edition=fl base=0x00e10000 window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=0
-LOG chase_transition_site index=0 site=0x00e30ec0 rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=1 site=0x00e315c6 rva=0x0215c6 patched=1 atomic_write=0 status=active edition=fl
-LOG chase_transition_site index=2 site=0x00e2e3f0 rva=0x01e3f0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=3 site=0x00e31f50 rva=0x021f50 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=4 site=0x00e32f9b rva=0x022f9b patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=5 site=0x00e32fa9 rva=0x022fa9 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_transition_site index=6 site=0x00e41abc rva=0x031abc patched=1 atomic_write=0 status=active edition=fl
-LOG chase_transition_site index=7 site=0x00e2bf6e rva=0x01bf6e patched=1 atomic_write=0 status=active edition=fl
-LOG chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x00edfd00 inject_rva=0x0cfd00 call=0x00ecb5b0 call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
-LOG chase_view_restore_site index=0 site=0x00edfd00 rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=1 site=0x00eca6b0 rva=0x0ba6b0 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=2 site=0x00eccb10 rva=0x0bcb10 patched=1 atomic_write=1 status=active edition=fl
-LOG chase_view_restore_site index=3 site=0x00f5e80a rva=0x14e80a patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition installed=1 status=active edition=fl base=0x01b70000 window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=0
+LOG chase_transition_site index=0 site=0x01b90ec0 rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=1 site=0x01b915c6 rva=0x0215c6 patched=1 atomic_write=0 status=active edition=fl
+LOG chase_transition_site index=2 site=0x01b8e3f0 rva=0x01e3f0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=3 site=0x01b91f50 rva=0x021f50 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=4 site=0x01b92f9b rva=0x022f9b patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=5 site=0x01b92fa9 rva=0x022fa9 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_transition_site index=6 site=0x01ba1abc rva=0x031abc patched=1 atomic_write=0 status=active edition=fl
+LOG chase_transition_site index=7 site=0x01b8bf6e rva=0x01bf6e patched=1 atomic_write=0 status=active edition=fl
+LOG chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x01c3fd00 inject_rva=0x0cfd00 call=0x01c2b5b0 call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
+LOG chase_view_restore_site index=0 site=0x01c3fd00 rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=1 site=0x01c2a6b0 rva=0x0ba6b0 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=2 site=0x01c2cb10 rva=0x0bcb10 patched=1 atomic_write=1 status=active edition=fl
+LOG chase_view_restore_site index=3 site=0x01cbe80a rva=0x14e80a patched=1 atomic_write=1 status=active edition=fl
 WINDOWS count=26 base_aligned=1
 ATOMIC cmpxchg8b=9 plain=3
 ARENA used=1840 capacity=24576
@@ -22,4 +22,4 @@ SCENARIO retries updates=124 chase_view_restore result=no_effect cancel=retries 
 FLIPS windows=52 refused=52
 CONTRACT runs=96
 RESULT PASS checks=402 failures=0
-# exit=0 run_seconds=0.63 lines=278
+# exit=0 run_seconds=0.60 lines=278

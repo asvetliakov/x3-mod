@@ -156,6 +156,7 @@ class FlChaseTransitionWiring(unittest.TestCase):
         capture = strip((ROOT / 'src/proxy/capture.cpp').read_text())
         self.assertRegex(capture, r'#else\n    if \(ctx\.capture \|\| ctx\.frame % 300 == 0\) \{\n'
                                   r'        chase_camera::report\(ctx\.frame\); *\n'
+                                  r'        chase_lead::report\(ctx\.frame\); *\n'
                                   r'        chase_transition::report\(ctx\.frame\); *\n    \}\n#endif')
         camera = (ROOT / 'src/proxy/chase_camera.cpp').read_text()
         observer = camera[camera.index('chase_transition::AppliedFrame observed;') - 400:

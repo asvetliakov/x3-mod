@@ -2151,6 +2151,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
 #else
     if (ctx.capture || ctx.frame % 300 == 0) {
         chase_camera::report(ctx.frame);     // FL: the pose seam (no line otherwise)
+        chase_lead::report(ctx.frame);       // FL: lead marker and central HUD windows (telemetry only)
         chase_transition::report(ctx.frame); // FL: the view restore's state/timing rows (telemetry only)
     }
 #endif

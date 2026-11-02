@@ -922,6 +922,23 @@ fixture 41 checks, 0 failures (both branch outcomes, every GPR/EFLAGS/ESP/XMM/x8
 continuation for each 4-byte ESP skew, the pose written through EBX, every window bit, read-back rollback restored and
 failed, shutdown, late claim) and 4 / 4 mutations. Not verified: the FL pose in game (not flown).
 
+## 2026-11-02: chase lead marker and central HUD on FL (`chase_lead`, `chase_hud_anchor` on FL)
+
+The FL edition installs four of AP's nine lead/HUD seams in X3FL.exe at module base + RVA (gate `0x02c7b9`, publish
+`0x02cbe7`, final FOV `0x022cf5`, HUD gate `0x02cc1e`; [chase-lead.md](../reverse-engineering/fl/chase-lead.md),
+section 7): `engine_patch::claim` (one `lock cmpxchg8b`, three plain copies inside the install window), the AP module's
+generated stub (PUSHFD/PUSHAD/CLD, XMM0-7) and `PreserveCpuState` (x87, MXCSR, LastError) around the shared SSE2
+policy (`chase_lead_core.h`), behind the X3FL.exe identity and twelve compared windows (nine relocated dwords checked
+against the base). It calls one native routine, the game's own five-entry hide helper (ECX ABI). Documented Win32 only
+(`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery`, `ReadProcessMemory`, `QueryPerformanceCounter`), no
+Wine/CrossOver dependency, no device call; the update binding is the chase camera's pose seam, not a
+`chase_transition` service. The five AP timing sites are not ported (telemetry only). Each stub tests its one-byte enable flag before the
+CPU envelope. Natively verified on the Windows
+host through WSL interop (measured 2026-11-02): the FL fixture 79 checks, 0 failures (all four thunks with the real
+window bytes, the native hide helper executed through a recorded detacher, every GPR/EFLAGS with DF/ESP/XMM/x87/MXCSR/
+LastError at the native continuation for each 4-byte ESP skew, every window bit, all-or-none marker rollback, the
+independent HUD seam, shutdown, late claim). Not verified: the four seams in game (not flown).
+
 ## 2026-11-02: chase view restore on FL (`chase_view_restore = 1` on FL)
 
 The FL edition installs the AP view restore's three groups in X3FL.exe ([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md),

@@ -316,8 +316,8 @@ SETTINGS = [
     entry('chase_fov_compensate', 'bool', 'camera', 'Keeps your ship the same size on screen in the chase view whatever the field of '
           'view. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', requires=('camera',),
           launcher='--chase-fov-compensate'),
-    entry('chase_hud_anchor', 'enum', 'camera', 'X3: Albion Prelude only, ignored on Farnham\'s Legacy. Where the aiming reticle '
-          'sits in the chase view. forward = where the ship points, centre = the screen centre.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
+    entry('chase_hud_anchor', 'enum', 'camera', 'Where the aiming reticle sits in the chase view. forward = where the ship '
+          'points, centre = the screen centre. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
     entry('chase_view_restore', 'bool', 'camera', 'Returns to the chase '
           'view after a gate jump or jumpdrive. 1 = on, 0 = off.', '1',
           requires=('camera',), launcher='--chase-view-restore'),
