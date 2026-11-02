@@ -1,0 +1,283 @@
+MISMATCH 06 ships/argon/argon_M2_OCC_N dom=20 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.012 strong=0
+ABSORBED_GRADE_LOST 06 ships/argon/argon_M2_OCC_N dominant=20 graded=[43] graded_share=0.012
+MISMATCH 06 ships/argon/XTC_argon_ts_plus dom=9 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.010 strong=0
+ABSORBED_GRADE_LOST 06 ships/argon/XTC_argon_ts_plus dominant=9 graded=[20] graded_share=0.010
+MISMATCH 06 ships/boron/boron_M1 dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.318 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_M1 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.682 graded_share=1.000 atlas_mats=12
+MISMATCH 06 ships/boron/boron_M2 dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.299 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_M2 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.701 graded_share=1.000 atlas_mats=12
+DOMINANT_GRADED 06 ships/boron/boron_M3 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.979 graded_share=0.982 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M3_var1 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.980 graded_share=0.982 atlas_mats=2
+MISMATCH 06 ships/boron/boron_M3_var2 dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.002 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_M3_var2 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.980 graded_share=0.980 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M3_var3 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.984 graded_share=0.986 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M4 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.994 graded_share=0.995 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M4_var1 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.995 graded_share=0.996 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M4_var2 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.994 graded_share=0.995 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M4_var3 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.994 graded_share=0.995 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M5 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.992 graded_share=0.994 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M5_var1 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.992 graded_share=0.993 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M5_var2 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.989 graded_share=0.991 atlas_mats=2
+DOMINANT_GRADED 06 ships/boron/boron_M5_var3 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.991 graded_share=0.992 atlas_mats=2
+MISMATCH 06 ships/boron/boron_M6 dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.530 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_M6 dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.470 graded_share=1.000 atlas_mats=13
+MISMATCH 06 ships/boron/boron_TL dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.358 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TL dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.642 graded_share=1.000 atlas_mats=12
+MISMATCH 06 ships/boron/boron_TP_L dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.482 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TP_L dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.248 graded_share=0.518 atlas_mats=22
+MISMATCH 06 ships/boron/boron_TP_S dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.334 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TP_S dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.455 graded_share=0.666 atlas_mats=20
+MISMATCH 06 ships/boron/boron_TS_liquid_M dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.493 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_liquid_M dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.346 graded_share=0.507 atlas_mats=17
+MISMATCH 06 ships/boron/boron_TS_liquid_S dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.442 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_liquid_S dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.422 graded_share=0.558 atlas_mats=17
+MISMATCH 06 ships/boron/boron_TS_liquidstorage_L dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.553 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_liquidstorage_L dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.214 graded_share=0.447 atlas_mats=19
+MISMATCH 06 ships/boron/boron_TS_liquidstorage_M dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.497 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_liquidstorage_M dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.343 graded_share=0.503 atlas_mats=19
+MISMATCH 06 ships/boron/boron_TS_storage_M dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.501 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_storage_M dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.341 graded_share=0.499 atlas_mats=18
+MISMATCH 06 ships/boron/boron_TS_storage_S dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.449 strong=0
+DOMINANT_GRADED 06 ships/boron/boron_TS_storage_S dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.416 graded_share=0.551 atlas_mats=18
+UNREAD ships/khaak/khaak_M5 IndexError('list index out of range')
+MISMATCH 06 ships/M2/Otas_M2R dom=31 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.031 strong=0
+ABSORBED_GRADE_LOST 06 ships/M2/Otas_M2R dominant=31 graded=[43] graded_share=0.031
+DOMINANT_GRADED 06 ships/M3/Boron_M3P dominant=0 hue=0.0 sat=1.00 bright=1.000 dom_share=0.994 graded_share=0.994 atlas_mats=2
+MISMATCH 06 ships/M3/Otas_M3 dom=1 grade=(1, 177.7, 1.0, 1.0, 1.5) mismatch_share=0.588 strong=1
+DOMINANT_GRADED 06 ships/M3/Otas_M3 dominant=1 hue=177.7 sat=1.00 bright=1.000 dom_share=0.412 graded_share=1.000 atlas_mats=4
+MISMATCH 06 ships/M3/Pirate_m3p dom=0 grade=(1, 0.0, 1.03, 1.374, 0.858) mismatch_share=0.201 strong=0
+DOMINANT_GRADED 06 ships/M3/Pirate_m3p dominant=0 hue=0.0 sat=1.03 bright=1.374 dom_share=0.799 graded_share=0.809 atlas_mats=3
+MISMATCH 06 ships/M4/Argon_m4p dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.009 strong=0
+ABSORBED_GRADE_LOST 06 ships/M4/Argon_m4p dominant=0 graded=[1] graded_share=0.009
+MISMATCH 06 ships/M4/Argon_m4p_pirate dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.008 strong=0
+ABSORBED_GRADE_LOST 06 ships/M4/Argon_m4p_pirate dominant=0 graded=[1] graded_share=0.008
+MISMATCH 06 ships/M4/Otas_M4 dom=2 grade=(1, 330.0, 1.2, 0.9, 1.2) mismatch_share=0.445 strong=1
+DOMINANT_GRADED 06 ships/M4/Otas_M4 dominant=2 hue=330.0 sat=1.20 bright=0.900 dom_share=0.555 graded_share=1.000 atlas_mats=5
+MISMATCH 06 ships/M4/Split_m4_pirate dom=0 grade=(1, 0.0, 1.2, 1.0, 1.25) mismatch_share=0.002 strong=0
+DOMINANT_GRADED 06 ships/M4/Split_m4_pirate dominant=0 hue=0.0 sat=1.20 bright=1.000 dom_share=0.918 graded_share=1.000 atlas_mats=3
+MISMATCH 06 ships/M6/Boron_M6X dom=13 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.201 strong=0
+ABSORBED_GRADE_LOST 06 ships/M6/Boron_M6X dominant=13 graded=[0, 7, 9, 10, 11] graded_share=0.201
+MISMATCH 06 ships/M6/Khaak_M6Main dom=1 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.296 strong=0
+ABSORBED_GRADE_LOST 06 ships/M6/Khaak_M6Main dominant=1 graded=[2] graded_share=0.296
+DOMINANT_GRADED 06 ships/M6/Khaak_M6Sec dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.914 graded_share=0.914 atlas_mats=1
+MISMATCH 06 ships/M6/Terran_M6 dom=0 grade=(1, 0.0, 1.0, 0.686, 1.0) mismatch_share=0.595 strong=0
+DOMINANT_GRADED 06 ships/M6/Terran_M6 dominant=0 hue=0.0 sat=1.00 bright=0.686 dom_share=0.405 graded_share=1.000 atlas_mats=4
+MISMATCH 06 ships/M7/Argon_m7m dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.027 strong=0
+ABSORBED_GRADE_LOST 06 ships/M7/Argon_m7m dominant=17 graded=[43, 50] graded_share=0.027
+DOMINANT_GRADED 06 ships/M7/Boron_M7 dominant=2 hue=0.0 sat=1.20 bright=1.200 dom_share=0.935 graded_share=1.000 atlas_mats=10
+DOMINANT_GRADED 06 ships/M7/Boron_M7M dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.632 graded_share=1.000 atlas_mats=9
+MISMATCH 06 ships/M7/Otas_M7M dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 ships/M7/Otas_M7M dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 ships/M8/Argon_m8 dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.052 strong=0
+ABSORBED_GRADE_LOST 06 ships/M8/Argon_m8 dominant=0 graded=[1, 2] graded_share=0.052
+MISMATCH 06 ships/MM6/Otas_M6M dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.021 strong=0
+ABSORBED_GRADE_LOST 06 ships/MM6/Otas_M6M dominant=17 graded=[43, 50] graded_share=0.021
+MISMATCH 06 ships/MX/Goner_MSY dom=17 grade=(1, 0.0, 1.0, 1.0, 1.5) mismatch_share=0.877 strong=0
+DOMINANT_GRADED 06 ships/MX/Goner_MSY dominant=17 hue=0.0 sat=1.00 bright=1.000 dom_share=0.123 graded_share=0.589 atlas_mats=17
+MISMATCH 06 ships/others/goner_M6 dom=46 grade=(1, 0.0, 1.802, 8.89, 0.258) mismatch_share=0.220 strong=0
+DOMINANT_GRADED 06 ships/others/goner_M6 dominant=46 hue=0.0 sat=1.80 bright=8.890 dom_share=0.780 graded_share=0.809 atlas_mats=14
+MISMATCH 06 ships/others/training_M2 dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.008 strong=0
+ABSORBED_GRADE_LOST 06 ships/others/training_M2 dominant=17 graded=[43] graded_share=0.008
+MISMATCH 06 ships/owp/owp_large dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 ships/owp/owp_large dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 ships/Pirate/Pirate_M1 dom=19 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.305 strong=0
+ABSORBED_GRADE_LOST 06 ships/Pirate/Pirate_M1 dominant=19 graded=[18] graded_share=0.305
+UNREAD ships/props/KG_Split_turret_frame IndexError('list index out of range')
+MISMATCH 06 ships/props/m6maingun_moving dom=2 grade=(1, 217.87, 7.21, 1.03, 1.002) mismatch_share=0.561 strong=1
+DOMINANT_GRADED 06 ships/props/m6maingun_moving dominant=2 hue=217.9 sat=7.21 bright=1.030 dom_share=0.439 graded_share=0.439 atlas_mats=3
+DOMINANT_GRADED 06 ships/STATIONS/Argon_owpmain dominant=13 hue=0.0 sat=1.00 bright=1.000 dom_share=0.514 graded_share=0.605 atlas_mats=11
+DOMINANT_GRADED 06 ships/STATIONS/Argon_owpsec dominant=13 hue=0.0 sat=1.00 bright=1.000 dom_share=0.199 graded_share=0.560 atlas_mats=11
+MISMATCH 06 ships/teladi/teladi_m5p dom=1 grade=(1, 339.91, 1.0, 1.0, 1.25) mismatch_share=0.200 strong=1
+DOMINANT_GRADED 06 ships/teladi/teladi_m5p dominant=1 hue=339.9 sat=1.00 bright=1.000 dom_share=0.800 graded_share=0.804 atlas_mats=3
+MISMATCH 06 ships/teladi/teladi_m5p_pirate dom=2 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.004 strong=0
+ABSORBED_GRADE_LOST 06 ships/teladi/teladi_m5p_pirate dominant=2 graded=[0] graded_share=0.004
+MISMATCH 06 ships/terran/terran_M2 dom=0 grade=(1, 0.0, 1.0, 1.5, 1.5) mismatch_share=0.164 strong=0
+DOMINANT_GRADED 06 ships/terran/terran_M2 dominant=0 hue=0.0 sat=1.00 bright=1.500 dom_share=0.836 graded_share=0.836 atlas_mats=4
+MISMATCH 06 ships/terran/terran_M3 dom=3 grade=(1, 0.0, 1.0, 1.3, 1.5) mismatch_share=0.010 strong=0
+DOMINANT_GRADED 06 ships/terran/terran_M3 dominant=3 hue=0.0 sat=1.00 bright=1.300 dom_share=0.711 graded_share=1.000 atlas_mats=4
+MISMATCH 06 ships/terran/terran_M5 dom=3 grade=(1, 0.0, 1.0, 1.3, 1.5) mismatch_share=0.011 strong=0
+DOMINANT_GRADED 06 ships/terran/terran_M5 dominant=3 hue=0.0 sat=1.00 bright=1.300 dom_share=0.631 graded_share=0.989 atlas_mats=5
+MISMATCH 06 ships/TM/Argon_TM dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 ships/TM/Argon_TM dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 ships/TM/Boron_TM dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.231 strong=0
+DOMINANT_GRADED 06 ships/TM/Boron_TM dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.407 graded_share=0.769 atlas_mats=28
+MISMATCH 06 ships/TM/Otas_TM dom=16 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.027 strong=0
+ABSORBED_GRADE_LOST 06 ships/TM/Otas_TM dominant=16 graded=[43] graded_share=0.027
+MISMATCH 06 ships/TM/Paranid_TM dom=3 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 ships/TM/Paranid_TM dominant=3 graded=[30] graded_share=0.002
+MISMATCH 06 ships/TM/Teladi_TM dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.004 strong=0
+ABSORBED_GRADE_LOST 06 ships/TM/Teladi_TM dominant=0 graded=[72] graded_share=0.004
+MISMATCH 06 ships/TS/Boron_QY dom=2 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.003 strong=0
+DOMINANT_GRADED 06 ships/TS/Boron_QY dominant=2 hue=0.0 sat=1.20 bright=1.200 dom_share=0.656 graded_share=0.997 atlas_mats=7
+MISMATCH 06 ships/TS/Otas_TS dom=33 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.047 strong=0
+ABSORBED_GRADE_LOST 06 ships/TS/Otas_TS dominant=33 graded=[43] graded_share=0.047
+MISMATCH 06 ships/TS/OTAS_TS_small dom=31 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.003 strong=0
+ABSORBED_GRADE_LOST 06 ships/TS/OTAS_TS_small dominant=31 graded=[43] graded_share=0.003
+MISMATCH 06 ships/x3ap/argon/XTC_argon_tp_plus dom=5 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.038 strong=0
+ABSORBED_GRADE_LOST 06 ships/x3ap/argon/XTC_argon_tp_plus dominant=5 graded=[26] graded_share=0.038
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_drone dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.462 graded_share=1.000 atlas_mats=9
+MISMATCH 06 ships/x3ap/boron/XTC_boron_m2_plus dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.533 strong=0
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_m2_plus dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.467 graded_share=1.000 atlas_mats=11
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_m2_plus_engine dominant=11 hue=0.0 sat=1.00 bright=1.000 dom_share=0.609 graded_share=1.000 atlas_mats=3
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_m4p dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.993 graded_share=0.996 atlas_mats=2
+MISMATCH 06 ships/x3ap/boron/XTC_boron_m7drone dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.473 strong=0
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_m7drone dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.176 graded_share=1.000 atlas_mats=14
+MISMATCH 06 ships/x3ap/boron/XTC_boron_m8 dom=5 grade=(1, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.254 strong=0
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_m8 dominant=5 hue=0.0 sat=1.00 bright=1.000 dom_share=0.426 graded_share=1.000 atlas_mats=17
+MISMATCH 06 ships/x3ap/boron/XTC_boron_ts_plus dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.307 strong=0
+DOMINANT_GRADED 06 ships/x3ap/boron/XTC_boron_ts_plus dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.305 graded_share=0.693 atlas_mats=25
+MISMATCH 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_body dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.563 strong=0
+DOMINANT_GRADED 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_body dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.437 graded_share=1.000 atlas_mats=4
+DOMINANT_GRADED 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_Innerdoor dominant=0 hue=0.0 sat=1.00 bright=1.000 dom_share=0.524 graded_share=1.000 atlas_mats=3
+DOMINANT_GRADED 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_Innerdoor2 dominant=0 hue=0.0 sat=1.00 bright=1.000 dom_share=0.524 graded_share=1.000 atlas_mats=3
+MISMATCH 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_Outerdoor dom=0 grade=(1, 0.0, 1.2, 1.2, 1.3) mismatch_share=0.496 strong=0
+DOMINANT_GRADED 06 ships/x3ap/props/XTC_boron_dock_quicklaunch_Outerdoor dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.504 graded_share=1.000 atlas_mats=3
+UNREAD stations/docks/dock5ports_arm_dummy IndexError('list index out of range')
+MISMATCH 06 stations/goner/temple_arms dom=16 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.100 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_arms dominant=16 graded=[43] graded_share=0.100
+MISMATCH 06 stations/goner/temple_bottom dom=18 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.093 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_bottom dominant=18 graded=[43] graded_share=0.093
+MISMATCH 06 stations/goner/temple_innerring dom=16 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.037 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_innerring dominant=16 graded=[43] graded_share=0.037
+MISMATCH 06 stations/goner/temple_pagoda dom=19 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.032 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_pagoda dominant=19 graded=[43] graded_share=0.032
+MISMATCH 06 stations/goner/temple_pagodes dom=19 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.032 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_pagodes dominant=19 graded=[43] graded_share=0.032
+MISMATCH 06 stations/goner/temple_partialA dom=1 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.099 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_partialA dominant=1 graded=[20] graded_share=0.099
+MISMATCH 06 stations/goner/temple_partialB dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.020 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_partialB dominant=0 graded=[27] graded_share=0.020
+MISMATCH 06 stations/goner/temple_partialC dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.018 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_partialC dominant=7 graded=[26] graded_share=0.018
+MISMATCH 06 stations/goner/temple_partialD dom=10 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.055 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_partialD dominant=10 graded=[23] graded_share=0.055
+MISMATCH 06 stations/goner/temple_partialE dom=11 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.190 strong=0
+ABSORBED_GRADE_LOST 06 stations/goner/temple_partialE dominant=11 graded=[15] graded_share=0.190
+MISMATCH 06 stations/others/military_outpost_middleb dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.007 strong=0
+ABSORBED_GRADE_LOST 06 stations/others/military_outpost_middleb dominant=17 graded=[43] graded_share=0.007
+UNREAD stations/others/paranid_stealth_generator IndexError('list index out of range')
+MISMATCH 06 stations/ringstations/ringstation_a_core dom=24 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.032 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_a_core dominant=24 graded=[43] graded_share=0.032
+MISMATCH 06 stations/ringstations/ringstation_a_outer_pylons dom=24 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.017 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_a_outer_pylons dominant=24 graded=[43] graded_share=0.017
+MISMATCH 06 stations/ringstations/ringstation_a_ring dom=14 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.031 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_a_ring dominant=14 graded=[43] graded_share=0.031
+MISMATCH 06 stations/ringstations/ringstation_b_core dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.095 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_b_core dominant=7 graded=[16, 17] graded_share=0.095
+MISMATCH 06 stations/ringstations/ringstation_b_ring dom=16 grade=(1, 0.0, 1.0, 1.1, 2.06) mismatch_share=0.928 strong=0
+DOMINANT_GRADED 06 stations/ringstations/ringstation_b_ring dominant=16 hue=0.0 sat=1.00 bright=1.100 dom_share=0.072 graded_share=0.127 atlas_mats=22
+MISMATCH 06 stations/ringstations/ringstation_c_core dom=18 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.045 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_c_core dominant=18 graded=[16, 17] graded_share=0.045
+MISMATCH 06 stations/ringstations/ringstation_c_innerpillars dom=17 grade=(1, 0.0, 1.4, 0.9, 1.1) mismatch_share=0.957 strong=0
+DOMINANT_GRADED 06 stations/ringstations/ringstation_c_innerpillars dominant=17 hue=0.0 sat=1.40 bright=0.900 dom_share=0.043 graded_share=0.120 atlas_mats=22
+MISMATCH 06 stations/ringstations/ringstation_c_ring dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.156 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_c_ring dominant=7 graded=[16, 17] graded_share=0.156
+MISMATCH 06 stations/ringstations/ringstation_c_ringpillars dom=19 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.112 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_c_ringpillars dominant=19 graded=[16, 17] graded_share=0.112
+MISMATCH 06 stations/ringstations/ringstation_d_core_bottom dom=18 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.117 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_d_core_bottom dominant=18 graded=[16, 17] graded_share=0.117
+MISMATCH 06 stations/ringstations/ringstation_d_core_middle dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.096 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_d_core_middle dominant=7 graded=[16, 17] graded_share=0.096
+MISMATCH 06 stations/ringstations/ringstation_d_core_top dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.037 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_d_core_top dominant=7 graded=[16, 17] graded_share=0.037
+MISMATCH 06 stations/ringstations/ringstation_d_ring dom=19 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.128 strong=0
+ABSORBED_GRADE_LOST 06 stations/ringstations/ringstation_d_ring dominant=19 graded=[16, 17] graded_share=0.128
+MISMATCH 06 stations/Shipyards/Argon_SYhigh dom=33 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.033 strong=0
+ABSORBED_GRADE_LOST 06 stations/Shipyards/Argon_SYhigh dominant=33 graded=[43] graded_share=0.033
+MISMATCH 06 stations/Shipyards/Argon_SYlow dom=47 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.065 strong=0
+ABSORBED_GRADE_LOST 06 stations/Shipyards/Argon_SYlow dominant=47 graded=[43] graded_share=0.065
+MISMATCH 06 stations/Shipyards/Argon_SYmain dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.012 strong=0
+ABSORBED_GRADE_LOST 06 stations/Shipyards/Argon_SYmain dominant=7 graded=[43] graded_share=0.012
+MISMATCH 06 stations/Shipyards/Argon_SYtop dom=7 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.007 strong=0
+ABSORBED_GRADE_LOST 06 stations/Shipyards/Argon_SYtop dominant=7 graded=[43] graded_share=0.007
+DOMINANT_GRADED 06 stations/Shipyards/Boron_SY_arms dominant=1 hue=0.0 sat=1.20 bright=1.200 dom_share=0.665 graded_share=1.000 atlas_mats=9
+DOMINANT_GRADED 06 stations/Shipyards/Boron_SY_top dominant=0 hue=0.0 sat=1.20 bright=1.200 dom_share=0.386 graded_share=1.000 atlas_mats=9
+MISMATCH 06 stations/station_scenes/farm/argon_farm_M_factory_I dom=24 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.004 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/farm/argon_farm_M_factory_I dominant=24 graded=[30] graded_share=0.004
+MISMATCH 06 stations/station_scenes/food/argon_food_M_factory_B dom=26 grade=(1, 217.87, 7.21, 1.03, 1.002) mismatch_share=0.879 strong=1
+DOMINANT_GRADED 06 stations/station_scenes/food/argon_food_M_factory_B dominant=26 hue=217.9 sat=7.21 bright=1.030 dom_share=0.121 graded_share=0.121 atlas_mats=23
+MISMATCH 06 stations/station_scenes/food/argon_food_M_factory_D dom=34 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.043 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/food/argon_food_M_factory_D dominant=34 graded=[32] graded_share=0.043
+MISMATCH 06 stations/station_scenes/food/argon_food_S_factory_B dom=26 grade=(1, 217.87, 7.21, 1.03, 1.002) mismatch_share=0.890 strong=1
+DOMINANT_GRADED 06 stations/station_scenes/food/argon_food_S_factory_B dominant=26 hue=217.9 sat=7.21 bright=1.030 dom_share=0.110 graded_share=0.110 atlas_mats=23
+MISMATCH 06 stations/station_scenes/food/argon_food_S_factory_D dom=30 grade=(1, 217.87, 7.21, 1.03, 1.002) mismatch_share=0.949 strong=1
+DOMINANT_GRADED 06 stations/station_scenes/food/argon_food_S_factory_D dominant=30 hue=217.9 sat=7.21 bright=1.030 dom_share=0.051 graded_share=0.051 atlas_mats=27
+MISMATCH 06 stations/station_scenes/others/argon_equipmentdock dom=27 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.021 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/others/argon_equipmentdock dominant=27 graded=[43] graded_share=0.021
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_laser_aa dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_laser_aa dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_laser_bb dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_laser_bb dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_f dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_f dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_g dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_g dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_h dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_h dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_i dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_i dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_j dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_j dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_L_missile_k dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_L_missile_k dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_M_laser_aa dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_M_laser_aa dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 stations/station_scenes/tech/argon_tech_M_laser_bb dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_M_laser_bb dominant=17 graded=[43] graded_share=0.002
+MISMATCH 06 stations/station_scenes/tech/argon_tech_M_laser_cc dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_M_laser_cc dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_M_laser_dd dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_M_laser_dd dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_E dom=15 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.003 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_E dominant=15 graded=[34] graded_share=0.003
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_I dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_I dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_J dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_J dominant=17 graded=[43] graded_share=0.000
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_K dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_K dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_L dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.039 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_L dominant=17 graded=[43] graded_share=0.039
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_M dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.055 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_M dominant=17 graded=[43] graded_share=0.055
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_factory_N dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.004 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_factory_N dominant=17 graded=[43] graded_share=0.004
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_laser_aa dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_laser_aa dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_laser_bb dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_laser_bb dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_laser_cc dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_laser_cc dominant=17 graded=[43] graded_share=0.001
+MISMATCH 06 stations/station_scenes/tech/argon_tech_S_laser_dd dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 06 stations/station_scenes/tech/argon_tech_S_laser_dd dominant=17 graded=[43] graded_share=0.001
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_g dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_g dominant=17 graded=[43] graded_share=0.001
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_h dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.029 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_h dominant=17 graded=[43] graded_share=0.029
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_i dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.000 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_i dominant=17 graded=[43] graded_share=0.000
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_j dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_j dominant=17 graded=[43] graded_share=0.001
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_k dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.003 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_k dominant=17 graded=[43] graded_share=0.003
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_l dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_l dominant=17 graded=[43] graded_share=0.001
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_m dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.016 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_m dominant=17 graded=[43] graded_share=0.016
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_n dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.001 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_n dominant=17 graded=[43] graded_share=0.001
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_P dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.002 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_P dominant=17 graded=[43] graded_share=0.002
+MISMATCH 07 stations/station_scenes/tech/argon_tech_S_missile_Q dom=17 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.055 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/argon_tech_S_missile_Q dominant=17 graded=[43] graded_share=0.055
+MISMATCH 07 stations/station_scenes/tech/terraformer_hub_C dom=2 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.281 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/terraformer_hub_C dominant=2 graded=[4] graded_share=0.281
+MISMATCH 07 stations/station_scenes/tech/terraformer_hub_z dom=2 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.281 strong=0
+ABSORBED_GRADE_LOST 07 stations/station_scenes/tech/terraformer_hub_z dominant=2 graded=[4] graded_share=0.281
+DOMINANT_GRADED 07 stations/x3ap/others/XTC_boron_EQD dominant=12 hue=0.0 sat=1.20 bright=1.200 dom_share=0.001 graded_share=0.021 atlas_mats=2
+DOMINANT_GRADED 07 stations/x3tc/terran_spp_panel dominant=17 hue=298.2 sat=1.00 bright=4.000 dom_share=0.121 graded_share=1.000 atlas_mats=16
+MISMATCH 07 stations/x3tc/xstation_part_a dom=0 grade=(0, 0.0, 1.0, 1.0, 1.0) mismatch_share=0.296 strong=0
+ABSORBED_GRADE_LOST 07 stations/x3tc/xstation_part_a dominant=0 graded=[2, 3, 6, 9] graded_share=0.296
+MISMATCH 07 stations/x3tc/xstation_part_b dom=2 grade=(1, 0.0, 0.0, 1.0, 1.0) mismatch_share=0.510 strong=0
+DOMINANT_GRADED 07 stations/x3tc/xstation_part_b dominant=2 hue=0.0 sat=0.00 bright=1.000 dom_share=0.452 graded_share=0.490 atlas_mats=6
+TOTAL {'bodies': 637, 'atlas': 777, 'dom_cm': 65, 'absorbed_cm_lost': 87, 'unread': 4, 'mismatch_bodies': 126, 'strong_dominant_grade_spread': 6}

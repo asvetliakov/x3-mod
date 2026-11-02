@@ -2001,7 +2001,11 @@ the 637 FL bodies: 126 merge materials with differing grades, 39 spread a graded
 0.47 of faces), 87 lose a graded part's tint; the vent grade spreads in four bodies. Fix: split merged materials by
 colour grade in `tools/analysis/lod_atlas.py` (`atlas_material`, class split), one extra draw per extra grade, then
 rebake; host check: a fixture with a graded dominant plus an ungraded member, and `colormatrix_census.py
-mismatch_bodies=0` on the rebaked candidate. AP overlay not yet checked for the same.
+mismatch_bodies=0` on the rebaked candidate. AP overlay not yet checked for the same. Shader reading (2026-11-03,
+[FL materials](../reverse-engineering/fl/materials.md#grading-preshader-palette-gate-and-merged-lod-visibility-2026-11-03)):
+the grade rows act on the albedo before lighting and map grey to grey; the green is the node's warm
+`g_MatQualityColor` (shared by source and merged draws) through the vent's saturation 7.2 / hue 218°; the
+`g_Color_*` palette is gated by `g_bColor_Mixing`, 0 on every captured draw, so only the grade needs to split classes.
 
 **FL run 28 A (open):** clear sector, ships far enough that some plumes are a few pixels; one F8 with such ships in
 view; tell me before relaunching. Expect `cull_small_parts … far_jets=on edition=fl`, `cull_small_parts_frame …
