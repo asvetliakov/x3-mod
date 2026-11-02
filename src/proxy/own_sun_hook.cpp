@@ -11,11 +11,10 @@
 
 static_assert(sizeof(void*) == 4, "x86 code patching only");
 namespace {
-using namespace x3m::sun_occlusion;
+using namespace x3m::own_sun_hook;
 namespace engine_patch = x3m::engine_patch;
-bool patched_ = false, override_ = false, log_ = false;
+bool patched_ = false, log_ = false;
 const char* state_ = "disabled";
-const char* block_reason_ = "";
 engine_patch::CallSite probe_site_{}, lens_site_{};
 Addresses addresses_{};
 void (*listener_begin_)() = nullptr;
@@ -25,21 +24,15 @@ volatile unsigned long long device_frame_ = 0; // the capture layer's number of 
                                                // only)
 volatile LONG owner_thread_ = 0;               // the first thread through the probe thunk
 volatile LONG foreign_thread_ = 0;             // counted by the foreign threads themselves
-volatile LONG reset_requested_ = 0;            // device Reset: consumed by the owner at its next probe or bracket
 // Owner thread only from here on.
-core::Ready ready_;
-#if !X3M_EDITION_FL
-core::Deferral deferral_; // a record whose lens body the scan cannot classify: the vanilla probe decides for it
-#endif
-core::Latch latch_;
 Counters counters_{};
-bool own_sun_wanted_ = false;      // request_own_sun(): install for the own sun
+bool own_sun_wanted_ = false;         // request_own_sun(): install for the own sun
 volatile bool own_sun_frame_ = false; // set_own_sun_frame(): this frame's own-sun answer (Present thread = owner thread)
-bool own_sun_hidden_seen_ = false;     // the answer branch ran at least once; with own_sun_hidden_frame_ its frame
+bool own_sun_hidden_seen_ = false;    // the answer branch ran at least once; with own_sun_hidden_frame_ its frame
 std::uint32_t own_sun_hidden_frame_ = 0;
 std::uint32_t seen_frame_ = 0;
 std::uintptr_t main_view_ = 0;
-bool multi_counted_ = false, frame_started_ = false, foreign_logged_ = false;
+bool frame_started_ = false, foreign_logged_ = false;
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[32]{};
@@ -65,19 +58,10 @@ bool owner_thread() {
     if (owner == 0) owner = InterlockedCompareExchange(&owner_thread_, thread, 0) == 0 ? thread : owner_thread_;
     return owner == thread;
 }
-// Once per frame, at the frame's first probe: the state machine advances (twice over a gap, so a
-// frame without any probe leaves no "previous frame" behind) and the main view is resolved.
+// Once per frame, at the frame's first probe that needs it: the main view is resolved.
 void begin_frame(std::uint32_t frame) {
-    if (InterlockedExchange(&reset_requested_, 0) != 0) {
-        ready_.reset();
-        block_reason_ = "";
-    }
-    ready_.begin_frame();
-    if (frame_started_ && frame - seen_frame_ > 1u) ready_.begin_frame();
     seen_frame_ = frame;
     frame_started_ = true;
-    latch_ = core::Latch{};
-    multi_counted_ = false;
     if (addresses_.main_view)
         main_view_ = *addresses_.main_view;
     else {
@@ -90,7 +74,7 @@ inline std::uint32_t word(const std::uint32_t* base, unsigned offset) {
 }
 }
 
-namespace x3m::sun_occlusion::detail {
+namespace x3m::own_sun_hook::detail {
 volatile bool bracket_open = false;
 }
 
@@ -117,122 +101,56 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
         return core::Original;
     }
     ++counters_.probes;
-    if (!record || !view) {
+    // Nothing to answer in this frame (the own sun's latch off: hotkey, unarmed stage, not requested, the bracket-only
+    // install) and no log: the original, before any read.
+    if (!record || !view || (!own_sun_frame_ && !log_)) {
         ++counters_.original;
         return core::Original;
     }
     const std::uint32_t frame = frame_;
     if (!frame_started_ || frame != seen_frame_) begin_frame(frame);
-    core::ProbeInputs in;
-    in.record_owner = word(record, core::record_view);
-    in.view = reinterpret_cast<std::uintptr_t>(view);
-    in.main_view = main_view_;
-    in.x = std::int32_t(word(record, core::record_x));
-    in.y = std::int32_t(word(record, core::record_y));
-    in.view_flags = word(view, core::view_flags);
-    in.top = std::int32_t(word(view, core::view_rect_top));
-    in.bottom = std::int32_t(word(view, core::view_rect_bottom));
-    in.left = std::int32_t(word(view, core::view_rect_left));
-    in.right = std::int32_t(word(view, core::view_rect_right));
+    const std::uintptr_t record_owner = word(record, core::record_view);
+    const std::uintptr_t probing = reinterpret_cast<std::uintptr_t>(view);
     // The owner's flags decide eligibility (core::eligible): read through engine_memory (validated, cached per
     // region and frame) only where the cheap tests already hold, so main-view-owned records and other views'
     // probes cost no read. The layer is for the log only.
     std::uint32_t owner_flags = 0;
     std::int32_t owner_layer = -1;
-    if (main_view_ != 0 && in.view == main_view_ && in.record_owner != 0 && in.record_owner != in.view &&
-        !(in.record_owner & 3)) {
-        if (!x3m::engine_memory::read(in.record_owner + core::view_flags, &owner_flags, 4)) owner_flags = 0;
-        if (log_ && !x3m::engine_memory::read(in.record_owner + 0x29c, &owner_layer, 4)) owner_layer = -1;
+    if (main_view_ != 0 && probing == main_view_ && record_owner != 0 && record_owner != probing &&
+        !(record_owner & 3)) {
+        if (!x3m::engine_memory::read(record_owner + core::view_flags, &owner_flags, 4)) owner_flags = 0;
+        if (log_ && !x3m::engine_memory::read(record_owner + 0x29c, &owner_layer, 4)) owner_layer = -1;
     }
-    in.owner_flags = owner_flags;
-    const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);
-    // Own sun (own_sun_core.h): the sun's eligible record is "hidden" in an own-sun frame, before the readiness state
-    // machine and the latch (the visibility pass and the lens wraps then see no record); the engine destroys the
+    const bool own = core::eligible(record_owner, probing, main_view_, owner_flags);
+    if (own) ++counters_.own;
+    // Own sun (own_sun_core.h): the sun's eligible record is "hidden" in an own-sun frame; the engine destroys the
     // record's bodies (0x00471660). Integer only, like everything on this path.
     if (own && x3m::own_sun::core::answer(own_sun_frame_, own) == x3m::own_sun::core::answer_hidden) {
-        ++counters_.own;
         ++counters_.own_sun_hidden;
         own_sun_hidden_seen_ = true;
         own_sun_hidden_frame_ = frame;
         return core::Hidden;
     }
-    if (own) {
-        ++counters_.own;
-#if !X3M_EDITION_FL
-        in.ready = ready_.probe(reinterpret_cast<std::uintptr_t>(record),
-                                override_ && deferral_.answers(reinterpret_cast<std::uintptr_t>(record)));
-#else
-        in.ready = ready_.probe(reinterpret_cast<std::uintptr_t>(record), override_);
-#endif
-        if (ready_.records == 1) {
-            latch_.record = reinterpret_cast<std::uintptr_t>(record);
-            latch_.x = in.x;
-            latch_.y = in.y;
-            latch_.size = std::int32_t(word(record, core::record_size));
-            latch_.accumulator = std::int32_t(word(record, core::record_accumulator));
-            latch_.top = in.top;
-            latch_.bottom = in.bottom;
-            latch_.left = in.left;
-            latch_.right = in.right;
-            latch_.fov = word(view, core::view_fov);
-            latch_.owner = in.record_owner;
-            latch_.owner_flags = owner_flags;
-            latch_.owner_layer = owner_layer;
-            std::int32_t scale = std::int32_t(word(view, core::view_scale_x));
-            if (scale <= 0) { // the engine's fallback pair: *0x00606f38 + 0x28
-                std::uint32_t mode = 0, value = 0;
-                if (!addresses_.main_view && x3m::engine_memory::read(core::mode_global_va, &mode, 4) && mode &&
-                    !(mode & 3) && x3m::engine_memory::read(mode + 0x28, &value, 4))
-                    scale = std::int32_t(value);
-            }
-            latch_.scale_x = scale;
-            latch_.valid = true;
-        } else {
-            latch_.valid = false; // more than one background-owned sun probed by the main view: vanilla
-            if (!multi_counted_) {
-                multi_counted_ = true;
-                ++counters_.multi_record_frames;
-            }
-        }
-        if (in.ready) { // gate 1's word, read as the probe itself reads it
-            const std::uint32_t config = addresses_.config_global
-                                             ? *reinterpret_cast<const std::uint32_t*>(addresses_.config_global)
-                                             : 0;
-            if (config && !(config & 3))
-                in.video_flags = word(reinterpret_cast<const std::uint32_t*>(config), core::config_video_flags);
-            else
-                in.ready = false;
-        }
-    }
-    int decision = core::decide(in);
-    if (decision == core::Visible) {
-        ++counters_.answered_visible;
-        ready_.answered = true;
-    } else if (decision == core::Hidden) {
-        ++counters_.answered_hidden;
-        ready_.answered = true;
-    } else
-        ++counters_.original;
-    if (log_) {
-        // The diagnostic always runs the original (its side effects are its own: RE note section 13) and
-        // returns its answer itself where the decision was "original", so it never runs twice.
-        const int vanilla = reinterpret_cast<int(__cdecl*)(const std::uint32_t*, const std::uint32_t*)>(
-            x3m_sun_probe_target)(record, view);
-        x3m::log(
-            "sun_probe frame=%llu view=%08lx record=%08lx owner=%08lx owner_flags270=%08lx owner_layer=%ld main=%08lx eligible=%u acc=%ld x=%ld y=%ld visible=%lu size=%ld group=%lu flags270=%08lx layer=%ld records=%u ready=%u vanilla=%d answer=%d",
-            static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(in.view),
-            static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(record)),
-            static_cast<unsigned long>(in.record_owner), static_cast<unsigned long>(owner_flags),
-            static_cast<long>(owner_layer), static_cast<unsigned long>(main_view_), own ? 1u : 0u,
-            static_cast<long>(std::int32_t(word(record, core::record_accumulator))), static_cast<long>(in.x),
-            static_cast<long>(in.y), static_cast<unsigned long>(word(record, core::record_visible)),
-            static_cast<long>(std::int32_t(word(record, core::record_size))),
-            static_cast<unsigned long>(word(record, core::record_group)), static_cast<unsigned long>(in.view_flags),
-            static_cast<long>(std::int32_t(word(view, 0x29c))), ready_.records, in.ready ? 1u : 0u, vanilla,
-            decision == core::Original ? vanilla : decision);
-        if (decision == core::Original) decision = vanilla ? core::Hidden : core::Visible;
-    }
-    return decision;
+    ++counters_.original;
+    if (!log_) return core::Original;
+    // The diagnostic runs the original itself (its side effects are its own: RE note section 13) and returns its
+    // answer, so it never runs twice.
+    const int vanilla =
+        reinterpret_cast<int(__cdecl*)(const std::uint32_t*, const std::uint32_t*)>(x3m_sun_probe_target)(record, view);
+    x3m::log(
+        "sun_probe frame=%llu view=%08lx record=%08lx owner=%08lx owner_flags270=%08lx owner_layer=%ld main=%08lx eligible=%u acc=%ld x=%ld y=%ld visible=%lu size=%ld group=%lu flags270=%08lx layer=%ld vanilla=%d answer=%d",
+        static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(probing),
+        static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(record)), static_cast<unsigned long>(record_owner),
+        static_cast<unsigned long>(owner_flags), static_cast<long>(owner_layer), static_cast<unsigned long>(main_view_),
+        own ? 1u : 0u, static_cast<long>(std::int32_t(word(record, core::record_accumulator))),
+        static_cast<long>(std::int32_t(word(record, core::record_x))),
+        static_cast<long>(std::int32_t(word(record, core::record_y))),
+        static_cast<unsigned long>(word(record, core::record_visible)),
+        static_cast<long>(std::int32_t(word(record, core::record_size))),
+        static_cast<unsigned long>(word(record, core::record_group)),
+        static_cast<unsigned long>(word(view, core::view_flags)), static_cast<long>(std::int32_t(word(view, 0x29c))),
+        vanilla, vanilla);
+    return vanilla ? core::Hidden : core::Visible;
 }
 }
 extern "C" {
@@ -242,17 +160,6 @@ void __cdecl x3m_sun_lens_begin() {
         return; // no probe yet, or not the render thread: no bracket
     ++counters_.brackets;
     if (listener_begin_) listener_begin_();
-#if !X3M_EDITION_FL
-    // After the listener: its frame_inputs() consumes a pending device Reset, which leaves no record for this frame.
-    // While the record is deferred the original probe ran for it, so record+0x30 is the vanilla verdict (the probe
-    // loop 0x004715d0 clears it on "hide"): one validated read per bracket, only then.
-    const std::uintptr_t single =
-        override_ && frame_started_ && seen_frame_ == frame_ && ready_.single() && latch_.valid ? ready_.record : 0;
-    std::uint32_t visible = 0;
-    if (deferral_.deferred(single) && !x3m::engine_memory::read(single + core::record_visible, &visible, 4))
-        visible = 0;
-    deferral_.bracket_begin(single, visible != 0);
-#endif
     detail::bracket_open = true;
 }
 void __cdecl x3m_sun_lens_end() {
@@ -260,13 +167,6 @@ void __cdecl x3m_sun_lens_end() {
     if (!detail::bracket_open) return;
     detail::bracket_open = false;
     if (listener_end_) listener_end_();
-#if !X3M_EDITION_FL
-    const std::uintptr_t record = deferral_.record;
-    if (deferral_.bracket_end() && deferral_.lift_logged())
-        x3m::log("sun_occlusion_released frame=%llu record=%08lx lifts=%u starts=%u note=body_classified_vanilla_visible",
-            static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(record), deferral_.lifts,
-            deferral_.starts);
-#endif
 }
 }
 // In: [ESP] = the engine's return address, [ESP+4] = record, [ESP+8] = view. decide() = 0 / 1: that is the probe's
@@ -310,8 +210,8 @@ _x3m_sun_lens_thunk:
     .att_syntax
 )");
 
-namespace x3m::sun_occlusion {
-bool install_at(const Addresses& a, bool override_enabled_value, bool log_enabled) {
+namespace x3m::own_sun_hook {
+bool install_at(const Addresses& a, bool log_enabled) {
     const DWORD error = GetLastError();
     const auto done = [&](const char* reason, bool ok) {
         state_ = reason;
@@ -319,32 +219,23 @@ bool install_at(const Addresses& a, bool override_enabled_value, bool log_enable
         return ok;
     };
     if (patched_) return done("already_installed", false);
-    if (!a.probe_site || !a.probe_target || !a.lens_site || !a.lens_target ||
-        (!a.config_global && override_enabled_value))
-        return done("invalid_site", false);
+    if (!a.probe_site || !a.probe_target || !a.lens_site || !a.lens_target) return done("invalid_site", false);
     if (!engine_patch::install_window_open()) return done("late_claim", false);
     if (!pin_self()) return done("pin_failed", false);
     addresses_ = a;
-    override_ = override_enabled_value;
     log_ = log_enabled;
     x3m_sun_probe_target = static_cast<std::uint32_t>(a.probe_target);
     x3m_sun_lens_target = static_cast<std::uint32_t>(a.lens_target);
-    ready_ = core::Ready{};
-#if !X3M_EDITION_FL
-    deferral_ = core::Deferral{};
-#endif
-    latch_ = core::Latch{};
     counters_ = Counters{};
     foreign_logged_ = false;
     owner_thread_ = 0;
     foreign_thread_ = 0;
-    reset_requested_ = 0;
     seen_frame_ = frame_;
     main_view_ = 0;
     frame_started_ = false;
-    multi_counted_ = false;
+    own_sun_frame_ = false;
+    own_sun_hidden_seen_ = false;
     detail::bracket_open = false;
-    block_reason_ = "";
     probe_site_ = engine_patch::CallSite{};
     lens_site_ = engine_patch::CallSite{};
     if (!engine_patch::claim_call(lens_site_, a.lens_site, a.lens_target,
@@ -374,14 +265,13 @@ bool initialize(bool bracket_wanted) {
         SetLastError(error);
         return true;
     }
-    wchar_t setting[4]{};
-    const bool requested = x3m::config::get(L"X3M_SUN_OCCLUSION", setting, 4) == 1 && setting[0] == L'1';
-    const bool log_requested = x3m::config::get(L"X3M_SUN_OCCLUSION_LOG", setting, 4) == 1 && setting[0] == L'1';
-    if (!requested && !log_requested && !bracket_wanted && !own_sun_wanted_) {
+    if (!bracket_wanted && !own_sun_wanted_) {
         state_ = "disabled";
         SetLastError(error);
         return false;
     }
+    wchar_t setting[4]{};
+    const bool log_requested = x3m::config::get(L"X3M_OWN_SUN_LOG", setting, 4) == 1 && setting[0] == L'1';
     bool applied = false;
     if (x3m::config::get(L"X3M_SUBMIT_PHASES", setting, 4) == 1 && setting[0] == L'1')
         state_ = "submit_phases_conflict"; // its stamp claims 0x00472490..0x00472495
@@ -397,15 +287,14 @@ bool initialize(bool bracket_wanted) {
         state_ = "lens_body_mismatch";
     else
         applied = install_at(Addresses{core::probe_site_va, core::probe_target_va, core::lens_site_va,
-                                       core::lens_target_va, core::config_global_va, nullptr},
-                             requested, log_requested);
-    log("sun_occlusion requested=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s lens_gain=%u own_sun=%u",
-        requested ? 1u : 0u, log_requested ? 1u : 0u, patched_ ? 1u : 0u, state_,
+                                       core::lens_target_va, nullptr},
+                             log_requested);
+    log("own_sun_hook own_sun=%u bracket=%u log=%u patched=%u reason=%s probe_site=0x%08lx probe_target=0x%08lx probe_write=%s lens_site=0x%08lx lens_target=0x%08lx lens_write=%s",
+        own_sun_wanted_ ? 1u : 0u, bracket_wanted ? 1u : 0u, log_requested ? 1u : 0u, patched_ ? 1u : 0u, state_,
         static_cast<unsigned long>(core::probe_site_va), static_cast<unsigned long>(core::probe_target_va),
         probe_site_.patched_in ? (probe_site_.atomic_write ? "atomic" : "plain") : "none",
         static_cast<unsigned long>(core::lens_site_va), static_cast<unsigned long>(core::lens_target_va),
-        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none", bracket_wanted ? 1u : 0u,
-        own_sun_wanted_ ? 1u : 0u);
+        lens_site_.patched_in ? (lens_site_.atomic_write ? "atomic" : "plain") : "none");
     SetLastError(error);
     return applied;
 }
@@ -416,6 +305,7 @@ bool shutdown() {
     const bool lens_back = engine_patch::restore_call(lens_site_);
     patched_ = probe_site_.patched_in || lens_site_.patched_in; // retain a failed restoration for a later detach retry
     detail::bracket_open = false;
+    own_sun_frame_ = false;
     state_ = probe_back && lens_back ? "restored" : "restore_failed";
     SetLastError(error);
     return probe_back && lens_back;
@@ -425,9 +315,6 @@ const char* state() {
 }
 bool installed() {
     return patched_;
-}
-bool override_enabled() {
-    return patched_ && override_;
 }
 bool logging() {
     return patched_ && log_;
@@ -445,62 +332,19 @@ void present(unsigned long long next_device_frame) {
     // original's; said once, from the Present thread.
     if (!foreign_logged_ && foreign_thread_ != 0) {
         foreign_logged_ = true;
-        log("sun_occlusion_foreign_thread frame=%llu owner=%lu calls=%ld note=probes_from_other_threads_run_the_original",
+        log("own_sun_hook_foreign_thread frame=%llu owner=%lu calls=%ld note=probes_from_other_threads_run_the_original",
             next_device_frame, static_cast<unsigned long>(owner_thread_), static_cast<long>(foreign_thread_));
     }
-}
-void device_reset() {
-    if (patched_) InterlockedExchange(&reset_requested_, 1);
 }
 void request_own_sun() {
     own_sun_wanted_ = true;
 }
 void set_own_sun_frame(bool active) {
-    own_sun_frame_ = patched_ && active;
+    own_sun_frame_ = patched_ && own_sun_wanted_ && active;
 }
 bool own_sun_hidden() {
     return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;
 }
-FrameInputs frame_inputs() {
-    FrameInputs out;
-    out.frame = frame_;
-    if (!patched_) return out;
-    if (InterlockedExchange(&reset_requested_, 0) != 0) {
-        ready_.reset();
-        latch_ = core::Latch{};
-        block_reason_ = "";
-        return out;
-    }
-    if (!frame_started_ || seen_frame_ != frame_) return out; // no probe in this frame: nothing latched
-    out.latch = latch_;
-    out.single = ready_.single() && latch_.valid;
-    out.answered = ready_.answered;
-    return out;
-}
-void report_pass(bool ok) {
-    if (patched_ && frame_started_ && seen_frame_ == frame_) ready_.pass_ok = ok;
-}
-void block(const char* reason) {
-    if (!patched_ || ready_.blocked) return;
-    ready_.blocked = true;
-    block_reason_ = reason ? reason : "";
-    ++counters_.blocked;
-    log("sun_occlusion_blocked frame=%llu reason=%s", static_cast<unsigned long long>(device_frame_), block_reason_);
-}
-#if !X3M_EDITION_FL
-bool lens_attributable() {
-    return patched_ && detail::bracket_open && deferral_.bracket_record != 0;
-}
-int lens_body_unclassifiable(bool first_or_cache_full, bool* row) {
-    const core::Deferral::Result r =
-        patched_ && detail::bracket_open ? deferral_.body_unclassifiable() : core::Deferral::NotAttributed;
-    *row = deferral_.logged(first_or_cache_full, r);
-    return int(r);
-}
-void lens_body_core() {
-    if (patched_ && detail::bracket_open) deferral_.body_core();
-}
-#endif
 Counters counters() {
     Counters c = counters_;
     c.foreign_thread = static_cast<std::uint32_t>(foreign_thread_);

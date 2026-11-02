@@ -281,12 +281,13 @@ class ConfigSchema(unittest.TestCase):
 
 
 OFF = (None, '0', 'off', 'vanilla', 'native', 'keep', 'legacy', 'identity')
-# Keys the DLL turns on when the variable is absent or empty (on by default since 2026-10-16): the opt-out must send an explicit 0.
-STRICT_ZERO = ('X3M_SHIP_STEERING', 'X3M_SHIP_AVOIDANCE')
+# Keys the DLL turns on when the variable is absent or empty (steering since 2026-10-16, the own sun since 2026-11-02): the
+# opt-out must send an explicit 0.
+STRICT_ZERO = ('X3M_SHIP_STEERING', 'X3M_SHIP_AVOIDANCE', 'X3M_OWN_SUN')
 # Opt-outs and the variables that must end up off (docs/architecture/config-file.md; the reviewer's list of 2026-09-26 and
 # test_launcher_defaults.OPT_OUTS).
 OPT_OUTS = {
-    ('--no-sun-occlusion',): ('X3M_SUN_OCCLUSION',), ('--no-music-keep',): ('X3M_MUSIC_KEEP', 'X3M_MUSIC_QUEUE', 'X3M_MUSIC_DOCK_KEEP'),
+    ('--own-sun', 'off'): ('X3M_OWN_SUN',), ('--no-music-keep',): ('X3M_MUSIC_KEEP', 'X3M_MUSIC_QUEUE', 'X3M_MUSIC_DOCK_KEEP'),
     ('--no-music-queue',): ('X3M_MUSIC_QUEUE', 'X3M_MUSIC_DOCK_KEEP'), ('--no-music-dock-keep',): ('X3M_MUSIC_DOCK_KEEP',),
     ('--cull-small-parts', '0'): ('X3M_CULL_SMALL_PARTS_PX', 'X3M_CULL_DOCK_PARTS_PX'), ('--cull-dock-parts', '0'): ('X3M_CULL_DOCK_PARTS_PX',), ('--no-shadow-cascades',): ('X3M_SHADOW_CASCADES', 'X3M_VOLUMETRIC_FOG'),
     ('--no-hdr',): ('X3M_HDR', 'X3M_HDR_BLOOM', 'X3M_HDR_TONEMAP'), ('--no-taa',): ('X3M_TAA', 'X3M_VOLUMETRIC_FOG', 'X3M_SUN_SHADOW_LANE'),
@@ -411,6 +412,20 @@ class ConfigParser(unittest.TestCase):
                                     (17, 'invalid', 'capture_frames'), (18, 'invalid', 'taa_mip_bias'),
                                     (19, 'env_only', 'taa_far_clip_default'), (20, 'too_long', ''), (23, 'invalid', 'hdr_tonemap'),
                                     (24, 'invalid', 'shadow_cascade_sizes')])
+
+    def test_renamed_keys_are_accepted_through_their_alias(self):
+        # Own sun step 2 (own-sun-pass.md section 14): sun_occlusion -> own_sun, sun_occlusion_log -> own_sun_log. The old
+        # key sets the new one and writes one renamed row naming it; both in one file are a duplicate, the last wins.
+        r = self.parse('own_sun_log = 0\nsun_occlusion = off\nsun_occlusion_log = 1\n')
+        self.assertEqual(r['values'], {'own_sun': '0', 'own_sun_log': '1'})
+        self.assertEqual((r['counts']['keys'], r['counts']['renamed'], r['counts']['duplicate'], r['counts']['unknown']), (2, 2, 1, 0))
+        self.assertEqual([(int(line), problem, key, value) for line, problem, key, value in r['issues']],
+                         [(2, 'renamed', 'sun_occlusion', 'own_sun'), (3, 'renamed', 'sun_occlusion_log', 'own_sun_log'),
+                          (3, 'duplicate', 'sun_occlusion_log', '1')])
+        self.assertEqual({e['key']: e['aliases'] for e in schema.SETTINGS if e['aliases']},
+                         {'own_sun': ('sun_occlusion',), 'own_sun_log': ('sun_occlusion_log',)})
+        for gone in ('sun_occlusion_core_f', 'sun_occlusion_radius', 'sun_occlusion_curve', 'sun_occlusion_default'):
+            self.assertEqual(self.parse(f'{gone} = 1\n')['counts']['unknown'], 1, gone)
 
     def test_issue_rows_are_bounded(self):
         r = self.parse(''.join(f'unknown_{i} = 1\n' for i in range(40)))

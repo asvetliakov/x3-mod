@@ -126,7 +126,7 @@ class LauncherGroups(unittest.TestCase):
         _, empty, _ = self.launch()
         for args, added in ((('--gpu-sync-timing',), {'X3M_GPU_SYNC_TIMING': '1'}),
                             (('--profile',), {'X3M_PROFILE': '1', 'X3M_PROFILE_INTERVAL_US': '2000'}),
-                            (('--taa-debug',), {'X3M_TAA_DEBUG': '1'}), (('--sun-occlusion-log',), {'X3M_SUN_OCCLUSION_LOG': '1'}),
+                            (('--taa-debug',), {'X3M_TAA_DEBUG': '1'}), (('--own-sun-log',), {'X3M_OWN_SUN_LOG': '1'}),
                             (('--perf',), {'X3M_PERF': '1'})):
             with self.subTest(args=args):
                 code, env, error = self.launch(*args)
@@ -180,7 +180,7 @@ class DllGroupReads(unittest.TestCase):
                 for path, i in reads:
                     self.assertIn('log_tier::', enclosing_function(sources[path], i), f'{path.name}:{i + 1} reads {name} without the group')
         self.assertFalse([p.name for p, lines in sources.items() if any('L"X3M_TELEMETRY"' in l for l in lines)])
-        # The submit stamps stay outside --perf: they claim the lens traversal call the sun-occlusion default patches.
+        # The submit stamps stay outside --perf: they claim the lens traversal call the own-sun hook patches.
         submit = source_text(ROOT / 'src/proxy/submit_phases.cpp').splitlines()
         reads = [i for i, line in enumerate(submit) if 'L"X3M_SUBMIT_PHASES"' in line]
         self.assertEqual(len(reads), 1)

@@ -1,11 +1,11 @@
-// CPU fixture of the partial-sun-occlusion hooks (src/proxy/own_sun_hook.cpp) over two synthetic
-// call sites with the engine's shapes (RE note section 16): `push view; push record; call probe;
-// add esp,8` with EBX / EBP / ESI / EDI live (EBP a value), and `push view; call traversal; ...;
-// add esp,4` with the argument still on the stack after the call. Checks the redirect bytes, the
-// original reached on the caller's exact frame, the answers without the original, callee-saved
-// registers, stack balance, x87 stack / MXCSR / LastError across both thunks (the listener is
-// deliberately dirty), bracket ordering, the foreign-thread and no-probe-yet paths, the log mode
-// (the original runs exactly once), second-claim rollback, restore and late-claim refusal.
+// CPU fixture of the own sun hook (src/proxy/own_sun_hook.cpp) over two synthetic call sites with the engine's
+// shapes (RE note section 16): `push view; push record; call probe; add esp,8` with EBX / EBP / ESI / EDI live (EBP a
+// value), and `push view; call traversal; ...; add esp,4` with the argument still on the stack after the call. Checks
+// the redirect bytes, the original reached on the caller's exact frame, the own sun's "hidden" answer without the
+// original (eligible record, latch on) and every other probe forwarded, the bracket-only install (latch ignored),
+// callee-saved registers, stack balance, x87 stack / MXCSR / LastError across both thunks (the listener is deliberately
+// dirty), bracket ordering, the foreign-thread and no-probe-yet paths, the log mode (the original runs exactly once),
+// second-claim rollback, restore and late-claim refusal.
 // Built by build_own_sun_hook.py with the production module and engine_patch.cpp.
 #include "../../src/proxy/own_sun_hook.h"
 #include "../../src/proxy/engine_patch.h"
@@ -17,8 +17,8 @@
 #include <cstring>
 #include <string>
 
-namespace so = x3m::sun_occlusion;
-namespace core = x3m::sun_occlusion::core;
+namespace so = x3m::own_sun_hook;
+namespace core = x3m::own_sun_hook::core;
 static std::string last_probe_line;
 static unsigned probe_lines = 0;
 namespace x3m {
@@ -170,9 +170,7 @@ bool check(const char* label, bool ok) {
 // 0x400000) that owns the sun's record (run223). other_view: a view with neither (a monitor). late_view: a later
 // full-screen view.
 std::uint32_t view_block[0x308 / 4], background_view[0x308 / 4], other_view[0x308 / 4], late_view[0x308 / 4];
-std::uint32_t record_block[0x70 / 4], second_record[0x70 / 4], foreign_record[0x70 / 4], main_owned_record[0x70 / 4],
-    config_block[0x100 / 4];
-std::uint32_t config_pointer;
+std::uint32_t record_block[0x70 / 4], foreign_record[0x70 / 4], main_owned_record[0x70 / 4];
 std::uintptr_t main_view_value;
 unsigned begins = 0, ends = 0, listener_df = 0;
 bool dirty_listener = false;
@@ -273,16 +271,13 @@ so::Addresses addresses() {
     a.probe_target = reinterpret_cast<std::uintptr_t>(&fx_probe_original);
     a.lens_site = reinterpret_cast<std::uintptr_t>(fx_lens_site);
     a.lens_target = reinterpret_cast<std::uintptr_t>(&fx_lens_original);
-    a.config_global = reinterpret_cast<std::uintptr_t>(&config_pointer);
     a.main_view = &main_view_value;
     return a;
 }
-// A full "frame": the probe for `record`, then the bracket reporting a pass.
-void frame(const std::uint32_t* record, int expected_eax, unsigned originals, const char* label, bool pass = true) {
+// A frame boundary with the next frame's own-sun latch (capture.cpp sets it before present()).
+void next_frame(bool own_sun) {
+    so::set_own_sun_frame(own_sun);
     so::present();
-    check(label, probe(record, view_block, expected_eax, originals));
-    const so::FrameInputs in = so::frame_inputs();
-    so::report_pass(pass && in.single);
 }
 }
 int main() {
@@ -295,12 +290,8 @@ int main() {
     set_view(other_view, 1, 20);
     set_view(late_view, 1, 100);
     set_record(record_block, background_view, 0x2000, -0x1000);
-    set_record(second_record, background_view, 0, 0);
     set_record(foreign_record, other_view, 0, 0);
     set_record(main_owned_record, view_block, 0x1000, 0x1000);
-    std::memset(config_block, 0, sizeof config_block);
-    config_block[core::config_video_flags / 4] = core::video_flag_flares;
-    config_pointer = std::uint32_t(reinterpret_cast<std::uintptr_t>(config_block));
     main_view_value = reinterpret_cast<std::uintptr_t>(view_block);
     so::set_listener(&listener_begin, &listener_end);
 
@@ -309,12 +300,13 @@ int main() {
         so::Addresses bad = addresses();
         bad.probe_target = reinterpret_cast<std::uintptr_t>(&fx_other_target);
         check("rollback_refused",
-              !so::install_at(bad, true, false) && !std::strcmp(so::state(), "target_mismatch") && !so::installed());
+              !so::install_at(bad, false) && !std::strcmp(so::state(), "target_mismatch") && !so::installed());
         check("rollback_bytes",
               !std::memcmp(probe_before, fx_probe_site, 5) && !std::memcmp(lens_before, fx_lens_site, 5));
     }
-    check("install",
-          so::install_at(addresses(), true, false) && so::installed() && so::override_enabled() && !so::logging());
+    // The bracket-only install (the lens-flare gain or the fog, the own sun not requested): the latch cannot be set, every
+    // probe is the original's on the caller's frame, the bracket runs.
+    check("install_bracket_only", so::install_at(addresses(), false) && so::installed() && !so::logging());
     {
         std::int32_t rel = 0;
         std::memcpy(&rel, fx_probe_site + 1, 4);
@@ -324,96 +316,57 @@ int main() {
         check("lens_redirect", fx_lens_site[0] == 0xe8 &&
                                    fx_lens_site + 5 + rel == reinterpret_cast<unsigned char*>(&x3m_sun_lens_thunk));
     }
-    check("install_twice", !so::install_at(addresses(), true, false) && so::installed());
-
-    // No probe yet on this thread: the traversal runs, no bracket.
-    check("lens_before_any_probe", lens(view_block, 0, false));
-    // Frame 1: not ready, the original answers on the caller's frame (both answers).
-    fx_probe_answer = 1;
-    frame(record_block, 1, 1, "frame1_original_hidden");
+    check("install_twice", !so::install_at(addresses(), false) && so::installed());
+    check("lens_before_any_probe", lens(view_block, 0, false)); // no probe yet on this thread: no bracket
+    fx_probe_answer = 0;
+    next_frame(true); // not requested: ignored
+    check("bracket_only_original_visible", probe(record_block, view_block, 0, 1));
     check("original_return_address", fx_probe_return == fx_probe_site + 5);
-    check("latch", so::frame_inputs().single &&
-                       so::frame_inputs().latch.record == reinterpret_cast<std::uintptr_t>(record_block) &&
-                       so::frame_inputs().latch.x == 0x2000 && so::frame_inputs().latch.y == -0x1000 &&
-                       so::frame_inputs().latch.size == 655 && so::frame_inputs().latch.accumulator == 200 &&
-                       so::frame_inputs().latch.fov == 0x2aaa && so::frame_inputs().latch.scale_x == 0x10000 &&
-                       !so::frame_inputs().answered);
-    // Frame 2: ready. The override answers "visible" although the original would hide; the original does not run.
-    frame(record_block, 0, 0, "frame2_override_visible");
-    check("answered", so::frame_inputs().answered);
+    fx_probe_answer = 1;
+    check("bracket_only_original_hidden", probe(record_block, view_block, 1, 1) && !so::own_sun_hidden());
+    check("bracket_only_lens", lens(view_block, 1, true));
+    check("shutdown_bracket_only", so::shutdown() && !so::installed() && !std::memcmp(probe_before, fx_probe_site, 5) &&
+                                       !std::memcmp(lens_before, fx_lens_site, 5));
+
+    // The own sun requested.
+    so::request_own_sun();
+    check("install", so::install_at(addresses(), false) && so::installed() && !so::logging());
+    // Latch off (the hotkey, an unarmed stage): the original answers on the caller's frame, both answers.
+    fx_probe_answer = 1;
+    next_frame(false);
+    check("latch_off_original_hidden", probe(record_block, view_block, 1, 1) && !so::own_sun_hidden());
+    fx_probe_answer = 0;
+    check("latch_off_original_visible", probe(record_block, view_block, 0, 1) && !so::own_sun_hidden());
+    // Latch on: the sun's eligible record is "hidden" without running the original (although it would show it).
+    next_frame(true);
+    check("own_sun_hidden_without_the_original", probe(record_block, view_block, 1, 0) && so::own_sun_hidden());
+    // Every other probe is the original's: the owner's own probe (layer 15), a record the main view owns, a foreign
+    // record whose owner is not a background view, a later view's re-probe, another view's own record.
+    check("owner_own_probe", probe(record_block, background_view, 0, 1));
+    check("main_owned_record", probe(main_owned_record, view_block, 0, 1));
+    check("foreign_record", probe(foreign_record, view_block, 0, 1));
+    check("late_view_reprobe", probe(record_block, late_view, 0, 1));
+    check("foreign_view_own_record", probe(foreign_record, other_view, 0, 1));
+    check("hidden_holds_for_the_frame", so::own_sun_hidden());
     dirty_listener = true;
     check("lens_bracket", lens(view_block, 1, true));
     dirty_listener = false;
-    // Gates, vanilla order.
-    config_block[core::config_video_flags / 4] = 0;
-    frame(record_block, 1, 0, "gate1_flares_off_hidden");
-    config_block[core::config_video_flags / 4] = core::video_flag_flares;
-    view_block[core::view_flags / 4] |= core::view_flag_probe_hidden;
-    frame(record_block, 1, 0, "gate3_hidden");
-    record_block[core::record_x / 4] = 0x9000;
-    frame(record_block, 0, 0, "gate2_before_gate3_outside_rect_visible");
-    record_block[core::record_x / 4] = 0x2000;
-    view_block[core::view_flags / 4] &= ~core::view_flag_probe_hidden;
-    // The owner's own probe (layer 15), a later view's re-probe, a foreign record whose owner is not a background view
-    // and a record the main view owns itself are the original's, and do not disturb readiness or count as suns (run223:
-    // the main view's group-25 records must not turn the sun's frame into a dropped bracket).
-    fx_probe_answer = 0;
-    so::present();
-    check("owner_own_probe", probe(record_block, background_view, 0, 1));
-    check("main_owned_record_before", probe(main_owned_record, view_block, 0, 1));
-    check("eligible_after_main_owned", probe(record_block, view_block, 0, 0));
-    check("foreign_record", probe(foreign_record, view_block, 0, 1));
-    check("main_owned_record_after", probe(main_owned_record, view_block, 0, 1));
-    check("late_view_reprobe", probe(record_block, late_view, 0, 1));
-    check("foreign_view_own_record", probe(foreign_record, other_view, 0, 1));
-    check("still_single", so::frame_inputs().single &&
-                              so::frame_inputs().latch.record == reinterpret_cast<std::uintptr_t>(record_block) &&
-                              so::frame_inputs().latch.owner == reinterpret_cast<std::uintptr_t>(background_view) &&
-                              so::frame_inputs().latch.owner_flags == 0x400001 &&
-                              so::frame_inputs().latch.fov == 0x2aaa);
-    so::report_pass(true);
-    frame(record_block, 0, 0, "eligible_next_frame");
-    fx_probe_answer = 1;
-    // The owner loses the background flag: the record is nobody's to answer; back with it.
+    // The next frame without a probe: nothing hidden in it.
+    next_frame(true);
+    check("hidden_is_per_frame", !so::own_sun_hidden());
+    // The owner loses the background flag: nobody's record, the original; back with it.
     background_view[core::view_flags / 4] = 1;
-    frame(record_block, 1, 1, "owner_without_background_flag_original");
+    check("owner_without_background_flag_original", probe(record_block, view_block, 0, 1) && !so::own_sun_hidden());
     background_view[core::view_flags / 4] = 0x400001;
-    frame(record_block, 1, 1, "eligible_again_warm");
-    frame(record_block, 0, 0, "eligible_again");
-    // A second background-owned sun probed by the main view: the second record is the original's, and so is everything
-    // in the next frame.
-    fx_probe_answer = 1;
-    so::present();
-    check("multi_first", probe(record_block, view_block, 0, 0));
-    check("multi_second", probe(second_record, view_block, 1, 1));
-    check("multi_not_single", !so::frame_inputs().single);
-    so::report_pass(true);
-    frame(record_block, 1, 1, "multi_next_frame_original");
-    frame(record_block, 0, 0, "single_again");
-    // The pass did not run: vanilla in the next frame.
-    frame(record_block, 0, 0, "pass_failed_this_frame", false);
-    frame(record_block, 1, 1, "pass_failed_next_frame_original");
-    frame(record_block, 0, 0, "recovered");
-    so::device_reset();
-    frame(record_block, 1, 1, "reset_frame_original");
-    frame(record_block, 0, 0, "after_reset_ready_again");
-    so::device_reset();
-    frame(record_block, 1, 1, "reset_drops_readiness");
-    // A frame without any probe leaves no previous frame behind.
-    frame(record_block, 0, 0, "ready_before_gap");
-    so::present();
-    so::present();
-    frame(record_block, 1, 1, "gap_original");
-    // Main view unknown.
-    frame(record_block, 0, 0, "ready_before_unknown_main");
+    next_frame(true);
+    check("eligible_again", probe(record_block, view_block, 1, 0) && so::own_sun_hidden());
+    // Main view unknown: the original.
     main_view_value = 0;
-    frame(record_block, 1, 1, "unknown_main_original");
+    next_frame(true);
+    check("unknown_main_original", probe(record_block, view_block, 0, 1) && !so::own_sun_hidden());
     main_view_value = reinterpret_cast<std::uintptr_t>(view_block);
-    // The 4-byte stack contract and a hostile direction flag: every alignment of ESP at the site, DF clear and set,
-    // on the override path, the original's path and the bracket. The handlers run with DF clear; the site gets its
-    // flags back.
-    fx_probe_answer = 1;
-    frame(record_block, 1, 1, "warm_before_abi_matrix");
+    // The 4-byte stack contract and a hostile direction flag: every alignment of ESP at the site, DF clear and set, on
+    // the hidden path, the original's path and the bracket. The handlers run with DF clear; the site gets its flags back.
     {
         bool ok = true;
         unsigned handlers_df = 0;
@@ -421,14 +374,15 @@ int main() {
             for (unsigned df = 0; df < 2; ++df) {
                 fx_pad = pad;
                 fx_df = df;
-                fx_probe_answer = 1;
-                so::present();
-                ok = probe(record_block, view_block, 0, 0) && ok;
-                so::report_pass(true);
-                ok = probe(foreign_record, view_block, 1, 1) && ok;
+                fx_probe_answer = 0;
+                next_frame(true);
+                ok = probe(record_block, view_block, 1, 0) && ok;
+                ok = probe(foreign_record, view_block, 0, 1) && ok;
                 listener_df = 0;
                 ok = lens(view_block, 1, true) && ok;
                 handlers_df += listener_df;
+                next_frame(false);
+                ok = probe(record_block, view_block, 0, 1) && ok;
             }
         fx_pad = 0;
         fx_df = 0;
@@ -437,9 +391,9 @@ int main() {
     // present() closes a bracket an unwind left open.
     x3m_sun_lens_begin();
     check("bracket_left_open", so::bracket_open());
-    so::present();
+    next_frame(true);
     check("present_closes_bracket", !so::bracket_open());
-    // Another thread: straight to the original, counted.
+    // Another thread: straight to the original, counted, never hidden.
     {
         const unsigned before = fx_probe_calls;
         HANDLE t = CreateThread(nullptr, 0, &foreign_thread, nullptr, 0, nullptr);
@@ -447,72 +401,57 @@ int main() {
         CloseHandle(t);
         check("foreign_thread", fx_probe_calls - before == 1 && so::counters().foreign_thread == 1 && fx_out[0] == 1);
     }
-    // A lens draw that can never carry the fraction blocks the override for the process: a Reset does not lift it.
-    fx_probe_answer = 1;
-    frame(record_block, 1, 1, "warm_before_block");
-    frame(record_block, 0, 0, "ready_before_block");
-    so::block("fixture");
-    frame(record_block, 1, 1, "blocked_original");
-    frame(record_block, 1, 1, "blocked_stays");
-    so::device_reset();
-    frame(record_block, 1, 1, "blocked_reset_frame");
-    frame(record_block, 1, 1, "blocked_survives_reset");
-    check("blocked_counted", so::counters().blocked == 1);
     const so::Counters totals = so::counters();
-    std::printf("COUNTERS probes=%u own=%u visible=%u hidden=%u original=%u brackets=%u multi=%u blocked=%u\n",
-                totals.probes, totals.own, totals.answered_visible, totals.answered_hidden, totals.original,
-                totals.brackets, totals.multi_record_frames, totals.blocked);
-    check("counters", totals.answered_hidden == 2 && totals.multi_record_frames == 1 && totals.blocked == 1 &&
-                          totals.probes == totals.answered_visible + totals.answered_hidden + totals.original);
-
-    // Restore, then the log mode: the original runs exactly once per probe; an overridden answer stays the override's.
+    std::printf("COUNTERS probes=%u own=%u hidden=%u original=%u brackets=%u foreign=%u\n", totals.probes, totals.own,
+                totals.own_sun_hidden, totals.original, totals.brackets, totals.foreign_thread);
+    check("counters", totals.own_sun_hidden == 10 && totals.probes == totals.own_sun_hidden + totals.original &&
+                          totals.own == totals.own_sun_hidden && totals.brackets == 10 && totals.foreign_thread == 1);
     check("shutdown", so::shutdown() && !so::installed() && !std::memcmp(probe_before, fx_probe_site, 5) &&
-                          !std::memcmp(lens_before, fx_lens_site, 5));
-    check("install_log", so::install_at(addresses(), true, true) && so::logging());
+                          !std::memcmp(lens_before, fx_lens_site, 5) && !so::own_sun_hidden());
+
+    // The log mode (X3M_OWN_SUN_LOG=1): the original runs exactly once per logged probe and its answer is returned; the
+    // own sun's hidden answer is not logged and runs no original.
+    check("install_log", so::install_at(addresses(), true) && so::logging());
     fx_probe_answer = 1;
     probe_lines = 0;
-    frame(record_block, 1, 1, "log_frame1_original_once");
+    next_frame(false);
+    check("log_latch_off_original_once", probe(record_block, view_block, 1, 1));
     check("log_line_original",
           probe_lines == 1 && last_probe_line.find(" vanilla=1 answer=1") != std::string::npos &&
               last_probe_line.find(" eligible=1 acc=200 x=8192 y=-4096 visible=1 size=655 group=3 ") !=
                   std::string::npos &&
               last_probe_line.find(" owner_flags270=00400001 owner_layer=15 ") != std::string::npos &&
               last_probe_line.find(" layer=16 ") != std::string::npos);
-    probe(main_owned_record, view_block, 1, 1);
-    check("log_line_main_owned",
-          probe_lines == 2 && last_probe_line.find(" eligible=0 ") != std::string::npos &&
-              last_probe_line.find(" owner_flags270=00000000 owner_layer=-1 ") != std::string::npos &&
-              last_probe_line.find(" records=1 ") != std::string::npos);
-    probe_lines = 1;
-    frame(record_block, 0, 1, "log_frame2_override_and_original_once");
-    check("log_line_override",
-          probe_lines == 2 && last_probe_line.find(" ready=1 vanilla=1 answer=0") != std::string::npos);
+    fx_probe_answer = 0;
+    check("log_main_owned_once", probe(main_owned_record, view_block, 0, 1));
+    check("log_line_main_owned", probe_lines == 2 && last_probe_line.find(" eligible=0 ") != std::string::npos &&
+                                     last_probe_line.find(" owner_flags270=00000000 owner_layer=-1 ") != std::string::npos &&
+                                     last_probe_line.find(" vanilla=0 answer=0") != std::string::npos);
+    next_frame(true);
+    check("log_own_sun_hidden_not_logged", probe(record_block, view_block, 1, 0) && probe_lines == 2);
     check("shutdown_log", so::shutdown());
-    // Observe-only (X3M_SUN_OCCLUSION_LOG=1 without the feature): never answers.
-    check("install_observe", so::install_at(addresses(), false, true) && !so::override_enabled());
-    frame(record_block, 1, 1, "observe_frame1");
-    frame(record_block, 1, 1, "observe_frame2_still_original");
-    check("shutdown_observe", so::shutdown());
     // The production resolution of the main view: no override pointer, so the frame's first probe walks the cockpit
     // registry through the real engine_memory (the engine's globals are not mapped here: VirtualQuery refuses the
     // span, the main view is unknown, the original answers). probe() holds LastError, MXCSR and the x87 stack hostile.
     {
         so::Addresses production = addresses();
         production.main_view = nullptr;
-        check("install_production_walk", so::install_at(production, true, false));
+        check("install_production_walk", so::install_at(production, false));
         const auto before = x3m::engine_memory::stats();
         fx_probe_answer = 1;
-        frame(record_block, 1, 1, "production_walk_frame1");
+        next_frame(true);
+        check("production_walk_frame1", probe(record_block, view_block, 1, 1));
         fx_probe_answer = 0;
-        frame(record_block, 0, 1, "production_walk_frame2");
+        next_frame(true);
+        check("production_walk_frame2", probe(record_block, view_block, 0, 1) && !so::own_sun_hidden());
         const auto after = x3m::engine_memory::stats();
         check("production_walk_reached_the_reader", after.rejected > before.rejected || after.queries > before.queries);
         check("shutdown_production_walk", so::shutdown());
     }
     // Late claim.
     x3m::engine_patch::close_install_window("fixture");
-    check("late_claim", !so::install_at(addresses(), true, false) && !std::strcmp(so::state(), "late_claim") &&
+    check("late_claim", !so::install_at(addresses(), false) && !std::strcmp(so::state(), "late_claim") &&
                             !std::memcmp(probe_before, fx_probe_site, 5) && !std::memcmp(lens_before, fx_lens_site, 5));
-    std::printf("SUN OCCLUSION HOOK checks=%u failures=%u\n", checks, failures);
+    std::printf("OWN SUN HOOK checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

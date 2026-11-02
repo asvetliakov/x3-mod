@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only qualification of the two partial-sun-occlusion call sites against the installed X3AP.exe.
+"""Read-only qualification of the own sun hook's two call sites (the flare probe and the lens bracket) against the installed X3AP.exe.
 
 Sites and claims of src/proxy/own_sun_hook_core.h (docs/reverse-engineering/lens-flare-visibility.md,
 sections 12 and 16): the flare probe's call 0x00471630 -> 0x00488720 and the lens traversal's call

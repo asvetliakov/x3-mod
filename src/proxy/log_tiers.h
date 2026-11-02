@@ -36,7 +36,7 @@ inline bool perf() noexcept {
 // X3M_LOOP_PHASES, with the frame phases they pair with. It needs telemetry and
 // the frame boundary from --perf or --debug (the launcher refuses it alone).
 // X3M_SUBMIT_PHASES is in no group: it claims the lens traversal call the
-// sun-occlusion default patches; it stays a fixture-only read.
+// own-sun hook patches; it stays a fixture-only read.
 inline bool draw_trace() noexcept {
     return env_flag(L"X3M_DRAW_TRACE");
 }

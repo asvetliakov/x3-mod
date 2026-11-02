@@ -33,7 +33,8 @@ Fields of an entry (plain data, no logic):
   resolved value of the named key (1 = off when that key is off); no schema default (the resolver returns unset).
 - launcher: the tools/manage.py option that sends it, or None.
 - since: the date the key appeared.
-- aliases: earlier keys accepted for this one after a rename (none yet).
+- aliases: earlier keys accepted for this one after a rename (the DLL's parser logs one config_key problem=renamed
+  row naming the new key).
 """
 
 import re
@@ -158,10 +159,11 @@ SETTINGS = [
     entry('lens_flare_gain', 'float', 'graphics', 'Brightness of the game\'s lens flares around engines and lights (the sun\'s '
           'flare too), 1 = the game\'s own, down to 0 = the flares are not drawn at all. Some mods draw very large flares.', '1', builtin='1', range=(0.0, 1.0),
           launcher='--lens-flare-gain', since='2026-09-29'),
-    entry('own_sun', 'bool', 'graphics', 'Experimental: the mod draws its own sun, a small bright centre in a wide soft glow with a few '
+    entry('own_sun', 'bool', 'graphics', 'The mod draws its own sun, a small bright centre in a wide soft glow with a few '
           'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
-          'sun flare. Ctrl+Shift+F9 switches between the two in flight. 1 = on, 0 = the game\'s own sun. X3: Albion Prelude '
-          'only for now.', '0', builtin='0', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02'),
+          'sun flare. Ctrl+Shift+F9 switches between the two in flight. 1 = on (default), 0 = the game\'s own sun. X3: Albion '
+          'Prelude only for now.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
+          aliases=('sun_occlusion',)),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the bright centre of the mod\'s own sun (own_sun = 1): its radius as a '
           'fraction of the screen height, 0.005 to 0.25; 0.012 = 9 pixels on a 768-row screen, 17 on a 1440-row one. The glow and '
           'rays scale with it. Height, because the game keeps its vertical field of view fixed (as far as is '
@@ -320,8 +322,6 @@ SETTINGS = [
           launcher='--chase-view-restore-retries', since='2026-10-12'),
     entry('chase_scene_fix', 'bool', 'camera', 'Experimental: moves the cockpit-layer scene with the smoothed chase view. 1 = on, '
           '0 = off.', '0', requires=('camera',), launcher='--chase-scene-fix'),
-    entry('sun_occlusion', 'bool', 'camera', 'The sun\'s flare fades gradually as a ship or station covers the sun, instead of '
-          'switching off at once. 1 = on, 0 = the game\'s own.', '1', launcher='--sun-occlusion'),
     # ---------------------------------------------------------------- window
     entry('window_monitor_rect', 'bool', 'window', 'Places the borderless game window over the whole monitor (on a Mac: under the '
           'menu bar). 1 = on, 0 = the game\'s own placement.', '1', launcher='--window-monitor-rect'),
@@ -626,10 +626,6 @@ SETTINGS = [
     dev('chase_pos_tau', 'float', 'camera', 'Chase position spring time constant (DLL compiled default).', launcher='--chase-pos-tau', range=[R(0, 10, True)]),
     dev('chase_lag_clamp_deg', 'float', 'camera', 'Chase rotation lag clamp (DLL compiled default).', launcher='--chase-lag-clamp-deg', range=(0, 90)),
     dev('chase_pos_lag_clamp', 'float', 'camera', 'Chase position lag clamp (DLL compiled default).', launcher='--chase-pos-lag-clamp', range=(0, 1)),
-    dev('sun_occlusion_core_f', 'bool', 'camera', 'Core dimming of the sun occlusion (only 0 restores clip-only).', '1',
-        launcher='--sun-occlusion-core-f'),
-    dev('sun_occlusion_radius', 'float', 'camera', 'Sun occlusion probe radius.', launcher='--sun-occlusion-radius', range=(0.005, 0.25)),
-    dev('sun_occlusion_curve', 'float', 'camera', 'Sun occlusion response curve.', launcher='--sun-occlusion-curve', range=(0.25, 4)),
     dev('media_cue_cache', 'bool', 'audio', 'Negative cache of the sector selector\'s media cue restart.', '1', launcher='--media-cue-cache'),
     dev('media_cue_retry_s', 'int', 'audio', 'Seconds before a cached media-cue failure is retried, 1..3600.', '30',
         launcher='--media-cue-retry-s', range=(1, 3600)),
@@ -688,12 +684,12 @@ SETTINGS = [
     dev('profile', 'bool', 'logging', 'Sampling profiler thread.', launcher='--profile'),
     dev('profile_interval_us', 'int', 'logging', 'Sampling profiler interval (DLL default 2000 us).', launcher='--profile-interval-us', range=(100, 1000000)),
     dev('profile_report_s', 'int', 'logging', 'Sampling profiler report period (DLL default 5 s).', range=(1, 3600)),
-    dev('sun_occlusion_log', 'bool', 'logging', 'Sun occlusion readback row per frame and lens dumps on F8.', launcher='--sun-occlusion-log'),
+    dev('own_sun_log', 'bool', 'logging', 'One sun_probe row per flare probe of an installed own-sun hook, every frame (heavy).',
+        launcher='--own-sun-log', since='2026-11-02', aliases=('sun_occlusion_log',)),
     # The launcher's default markers (env only; resolved from the source of the key they mark).
     marker('fade_rt2_owner_default', 'fade_rt2_owner', '--fade-rt2-owner'),
     marker('lod_occlusion_default', 'lod_occlusion', '--lod-occlusion'),
     marker('original_fill_default', 'original_fill', '--original-fill'),
-    marker('sun_occlusion_default', 'sun_occlusion', '--sun-occlusion'),
     marker('taa_box_resolution_default', 'taa_box_resolution', '--taa-box-resolution'),
     marker('taa_far_clip_default', 'taa_far_clip', '--taa-far-clip'),
     marker('taa_far_gate_default', 'taa_far_gate', '--taa-far-gate'),

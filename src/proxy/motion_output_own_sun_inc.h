@@ -12,7 +12,7 @@
 // Reset when it fails), not within 64 frames of a failed stage frame (the third consecutive failure refuses until
 // Reset) and this frame's sun poll Ok (the shadow lane's, else one at the scene end). An unarmed device answers nothing
 // (the engine's chain), so a refused stage or a missing poll never leaves the sky without a sun. The stage draws only in
-// a frame whose main-view probe the own sun answered "hidden" (sun_occlusion::own_sun_hidden()): a sun the probe did not
+// a frame whose main-view probe the own sun answered "hidden" (own_sun_hook::own_sun_hidden()): a sun the probe did not
 // reach (another view, the flare video option off, the main view unresolved) stays the engine's or none, never two;
 // such armed, active frames count no_probe on the own_sun_frame row and the first one writes own_sun_no_probe.
 // One own_sun_state row per change of the armed state or its reason; one own_sun_device row per attach; --debug: one
@@ -239,7 +239,7 @@ void MotionOutput::own_sun_frame(bool active, bool key_on) noexcept {
         if (due) own_sun_row_qpc_ = std::uint64_t(now.QuadPart);
     }
     if (!due) return;
-    const sun_occlusion::Counters c = sun_occlusion::counters();
+    const own_sun_hook::Counters c = own_sun_hook::counters();
     const auto& d = own_sun_disc_;
     const auto& r = own_sun_colour_;
     // The meter's reaction (note section 2): the EV the tonemap consumes and the highlight guard's limit of the last meter.

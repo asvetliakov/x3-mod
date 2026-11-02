@@ -69,7 +69,7 @@ EXPECTED_EMPTY = {
     # 2026-10-23: the combat-music trigger narrowed to engagement (music-combat-trigger.md), hold 20 game seconds
     'X3M_MUSIC_COMBAT_TRIGGER': 'engaged', 'X3M_MUSIC_COMBAT_HOLD_S': '20',
     'X3M_ORIGINAL_FILL_DEFAULT': '1', 'X3M_OWNERSHIP': '1', 'X3M_PAUSE_KEY_ONLY': '1',
-    'X3M_OWN_SUN': '0',  # 2026-11-02: the own sun, off for its first flight (own-sun-pass.md, step 1)
+    'X3M_OWN_SUN': '1',  # 2026-11-02: the own sun, on since step 2 (Run 225 accepted; own-sun-pass.md section 14)
     'X3M_RESOURCE_READ': 'fast', 'X3M_RUN_IN_BACKGROUND': '1', 'X3M_SCENE_HOOK': '1',  # run in background since 2026-09-27
     'X3M_SETA_RESTORE': '1',  # SETA back on after a gate since 2026-10-23 (docs/architecture/seta-restore.md)
     'X3M_SETA_MANUAL_FLIGHT': '2',  # manual flight keeps SETA, real-time steering, since 2026-10-24 (seta-manual-flight.md)
@@ -83,7 +83,7 @@ EXPECTED_EMPTY = {
     # Ship steering, avoidance, the gate approach and its capital half on by default since 2026-10-16 (Run178's accepted state)
     'X3M_SHIP_STEERING': '1', 'X3M_SHIP_AVOIDANCE': '1', 'X3M_SHIP_STEERING_GATES': '1', 'X3M_SHIP_STEERING_GATES_CAPITAL': '1',
     'X3M_SHIP_STEERING_GATES_LANE': '1',  # the lane's schema default since 2026-10-15 (sent like the motion-cut defaults)
-    'X3M_SUN_FLARE_FIX': 'on', 'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_CORE_F': '1', 'X3M_SUN_OCCLUSION_DEFAULT': '1',
+    'X3M_SUN_FLARE_FIX': 'on',  # the partial sun occlusion's four variables went with own sun step 2 (2026-11-02)
     'X3M_SUN_SHADOW_APPLY': '1', 'X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS': '20.97152', 'X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS': '0.2',
     'X3M_SUN_SHADOW_BIAS_UNITS': '0.53571875', 'X3M_SUN_SHADOW_LANE': '1', 'X3M_TAA': '1', 'X3M_TAA_BOX_RESOLUTION': 'half',
     'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1', 'X3M_TAA_FAR_CLIP': '7x7', 'X3M_TAA_FAR_CLIP_DEFAULT': '1',
@@ -279,12 +279,13 @@ class LauncherDefaults(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn('--lens-flare-gain cannot be combined with --vanilla', error)
 
-    def test_own_sun_default_off(self):
-        # 2026-11-02 (own-sun-pass.md, step 1): sent explicitly on every modded launch, off unless --own-sun on, so a stale
-        # shell value cannot arm the probe answer; nothing under --vanilla; the tunables only when given.
-        self.assertEqual(self.env()['X3M_OWN_SUN'], '0')
-        self.assertEqual(self.env(inherited={'X3M_OWN_SUN': '1'})['X3M_OWN_SUN'], '0')
-        on = self.env('--own-sun', 'on', '--sun-disc-radius', '0.03')
+    def test_own_sun_default_on(self):
+        # 2026-11-02 (own-sun-pass.md section 14, step 2): sent explicitly on every modded launch, on unless --own-sun off,
+        # so a stale shell value cannot change it; nothing under --vanilla; the tunables only when given.
+        self.assertEqual(self.env()['X3M_OWN_SUN'], '1')
+        self.assertEqual(self.env(inherited={'X3M_OWN_SUN': '0'})['X3M_OWN_SUN'], '1')
+        self.assertEqual(self.env('--own-sun', 'off', inherited={'X3M_OWN_SUN': '1'})['X3M_OWN_SUN'], '0')
+        on = self.env('--sun-disc-radius', '0.03')
         self.assertEqual((on['X3M_OWN_SUN'], on['X3M_SUN_DISC_RADIUS']), ('1', '0.03'))
         self.assertNotIn('X3M_SUN_DISC_RADIANCE', on)
         self.assertNotIn('X3M_OWN_SUN', self.env(vanilla=True))

@@ -71,7 +71,7 @@ inline void accept_rays(float value, float* rays) noexcept {
     if (value == value && value >= rays_min && value <= rays_max) *rays = value;
 }
 
-// ---- The probe answer (integer only; sun_occlusion::core::Decision values) ----
+// ---- The probe answer (integer only; own_sun_hook::core::Decision values) ----
 // Hidden (1) for the sun's eligible record (core::eligible: the main view's re-probe of a record owned by a background
 // view) while the own sun is active in this frame; every other probe is the original's (2). Returning 1 is always safe:
 // the engine's own first gate returns it whenever the flare video option is off; downstream 0x00471660 destroys the
@@ -104,7 +104,7 @@ inline bool frame_active(bool configured, bool key_on, bool stage_ready) noexcep
 // The camera of renderer::CameraState: view_j = sum_i world_i r[i*3+j] + t_j, clip x = view_x m00 + view_z m20,
 // clip y = view_y m11 + view_z m21, w = view_z. The quad uses the jittered m20 / m21 (the routed draws' projection, so
 // the disc is on the lane's raster: m20 + 2 jx / W, m21 - 2 jy / H); u / v are the unjittered position (the log, and the
-// sun_visibility lane_u / lane_v it compares with).
+// former sun_visibility row's lane_u / lane_v).
 struct Camera {
     float r[9]{}, t[3]{};
     float m00 = 0.f, m11 = 0.f, m20 = 0.f, m21 = 0.f;
