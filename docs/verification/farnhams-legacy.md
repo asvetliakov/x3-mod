@@ -1578,3 +1578,22 @@ Known FL gaps to expect in this flight (not defects of the pose hook):
 - The bolt footprint's view gate (`chase_camera::pose_applied_since`) can open on FL for the first time with this build,
   so its `plan_draw`/substitute-buffer path runs on FL for the first time (inferred from the source: the gate was always
   closed while the FL site was never installed; unflown).
+
+## FL run 24 — field of view and chase camera pose hook on FL (installed 2026-11-02)
+
+Merges `17f8ef034` (FOV, worktree commit `be484d7c8`) and `caae7e209` (chase camera, `4490db3e6`), two Opus-high reviews
+with no blocker, fixes folded (sections above). Clean `build-fl` from main `caae7e209`, 0 warnings; 11 host modules 188 tests
+0 failing; both FL site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `440dbe52…`
+(55,579,145 B), rollback `rollback-d3d9\d3d9.dll.run23` = `647e8ebc…`; overlay and ini unchanged (template defaults: `fov = 90`,
+`camera = chase`). Record `verification/results/fl-run24/candidate.json`.
+
+**FL run 24 A (open):** load a game, fly in open space and through one gate, dock once if convenient, take one F8 in flight;
+tell me before relaunching. Expect `fov … edition=fl status=active` with the constructor literal, SetFocus and load sites
+claimed (`write=plain setfocus=atomic load=atomic` or the row's equivalents), `fov_confirm` rows showing `0x3470`
+(90 on 16:9) after load, `chase_camera requested=1 installed=1 status=active edition=fl rva=0x0227ad`, four
+`… status=ap_only edition=fl` rows (chase_transition, chase_lead, chase_fire, chase_aim_trace), `bolt_footprint …
+written>0` when firing, no `installed=0`/`refused` on these. Visual: the view is wider than before (90 horizontal on
+16:9; set `fov = game` to compare), the ship is seen from behind and slightly above with the spring lag as on AP;
+**known gap:** after a gate transit or jump the first ~0.4–1.1 s show vanilla framing, then the chase pose snaps in
+(view restore is the next step); the centre crosshair is not the aim point under the raised camera until the lead marker
+is ported. Report anything that looks like a camera jump, wrong FOV in menus or on load, or missing HUD.
