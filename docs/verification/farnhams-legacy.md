@@ -1709,3 +1709,22 @@ With `--perf`, `chase_view_restore_state` every 300 frames carries the counters.
 ~0.4–1.1 s after a gate transit or jump, then a snap to the chase pose) closes: the unbound phase is admitted on the
 active-control proof as on AP, so the chase pose should apply from the fresh cockpit's first updates (inferred from AP
 Run 78 and the fixture; not flown on FL). `chase_camera … unbound=` in the report rows counts those visits.
+
+## FL run 25 — chase view restore and chase HUD on FL (installed 2026-11-03)
+
+Merges `7e0a02cb8` (chase_lead FL port) and `f8bdad9c8` (chase_transition FL port merged with it), two Opus-high reviews
+with no blocker, fixes folded (sections above). Clean `build-fl` from main `f8bdad9c8`, 0 warnings; 17 host modules 206 tests
+0 failing; the four FL site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `413eb49b…`
+(55,597,305 B), rollback `rollback-d3d9\d3d9.dll.run24` = `440dbe52…`; overlay and ini unchanged (template defaults:
+`camera = chase`, `chase_hud_anchor = forward`, `chase_view_restore = 1`). Record `verification/results/fl-run25/candidate.json`.
+
+**FL run 25 A (open):** load a game in the chase view; fly through two gates, jump once if you have a jumpdrive, dock and
+undock once, select a target and fire at it; one F8 in flight with a target selected; tell me before relaunching. Expect
+`chase_transition installed=1 … edition=fl` (three groups), `chase_lead installed=1 … edition=fl` (HUD gate, lead gate,
+publish, final FOV), `chase_camera … unbound_phase=active_control dependencies=chase_lead,chase_transition`,
+`chase_transition_event … result=restored` after each gate/jump/dock, no `cancel=retries`/`no_effect` (that would mean
+the script setter did not land, the one unverified assumption), and `chase_lead` rows with marker/anchor writes. Visual:
+the chase view returns by itself after a gate, jump or undock with no second of first-person framing; crosshair, speed
+and distance panels, status icon and the lead reticle visible in the chase view and anchored where the ship points;
+target brackets as before. Report: any first-person fallback that stays, a HUD element still missing, a reticle that
+does not match where bolts go, or a camera jump outside sector changes.

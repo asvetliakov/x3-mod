@@ -1,0 +1,19 @@
+{
+ "run": 25,
+ "step": "chase view restore on FL (chase_transition: 12 spans, 3 groups; pose admitted under active control) + chase central HUD and lead reticle on FL (chase_lead: 4 seams, chase_hud_anchor forward); chase_fire and chase_aim_trace stay ap_only; merges 7e0a02cb8 (lead) and f8bdad9c8 (transition)",
+ "edition": "fl",
+ "commit": "f8bdad9c8",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "413eb49bf52529ec",
+ "dll_bytes": 55597305,
+ "installed_sha256_prefix": "413eb49bf52529ec",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run24 (440dbe52)",
+ "game_data": "addon2/06+07 unchanged",
+ "ini": "unchanged (template defaults: camera chase, chase_hud_anchor forward, chase_view_restore 1)",
+ "host_tests": "run_host_suite 17 modules 206 tests 0 failing on main; generate.py --check PASS 292/137; FL verifiers PASS: fov, chase_camera, chase_lead (12 windows), chase_transition (12 spans, 26 windows); native fixtures fl_chase_lead 79/0, fl_chase_transition 402/0, fl_chase_camera 44/0 (agents)",
+ "build_warnings": 0,
+ "review": "Opus high x2: chase_lead no blocker (F1-F5 folded: docs, evidence scripts, enable-flag early-out, cost row); chase_transition no blocker (merge resolution, fl_confirm window re-check, diagnosis list, +0x150 writer census and inject cadence recorded)",
+ "installed_at": "2026-11-03T00:10:25+04:00"
+}
