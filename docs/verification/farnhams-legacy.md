@@ -1138,3 +1138,13 @@ same spot and heading: (a) as installed; (b) with `engine_light = off` added und
 the frame rate by design; judge nothing by eye. Afterwards remove the two timing keys (or restore `x3m.ini.run18`
 and keep `engine_light` as wanted). Rows: `gpu_sync_*` per pass, `volumetric_fog_frame cpu_us`, `engine_light_frame`,
 `shadow_replay_*`, `hdr_frame dt_ms`.
+
+**Capital plumes, resolved offline (2026-11-02).** The capital in capture frame 15972 is the Argon Colossus (M1;
+matched by draw fingerprint, `hull_fingerprint.py`). Its scene has no engine glow parts, as do almost all stock capital
+scenes on FL (5 of 79 capital rows carry engine parts) and on stock AP (9 of 95); the Mayhem-modded AP install swaps
+in capital scenes with glow parts (126 of 131), which is why AP capitals have plumes there. FL's few capitals with jets
+(Goner MSY, Boron/USC/Xenon M2+, TS+) use bodies that are on the FL JET list. Nothing to fix in the recogniser, table
+or redirects: vanilla FL capitals have no engine glow, and giving them plumes needs a new nozzle source (offline
+per-hull nozzle table), a design item, not a port gap (`capital_scenes.py`, `capital_scenes_summary.txt`; measured).
+The Teladi freight transporter is likely the same case (the four new FL heavy TS have 0 engine parts) but was not in
+the capture.

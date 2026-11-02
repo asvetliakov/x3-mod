@@ -1,0 +1,11 @@
+bodies scanned (objects/**, .bob and text .bod): 2428
+0x4f77: draws=32 prims=18075 exact=[] near=[]
+   best overlap (matched draws, body, lod, groups, faces): 32 objects/ships/argon/argon_m1.bob lod0 33 18087; 14 objects/ships/argon/argon_tl.bob lod0 37 15296; 13 objects/ships/others/training_m2.bob lod0 32 21768
+0x4f74: draws=31 prims=15284 exact=[] near=[('objects/stations/station_scenes/tech/argon_tech_m_laser_cc.bob', '02.cat', 2, 15092)]
+   best overlap (matched draws, body, lod, groups, faces): 31 objects/ships/argon/argon_tl.bob lod0 37 15296; 14 objects/ships/argon/argon_m1.bob lod0 33 18087; 13 objects/ships/others/training_m2.bob lod0 32 21768
+0x4fd8: draws=21 prims=10315 exact=[('objects/ships/boron/boron_ts_liquidstorage_l.bob', '02.cat', 1)] near=[]
+   best overlap (matched draws, body, lod, groups, faces): 21 objects/ships/boron/boron_ts_liquidstorage_l.bob lod1 21 10315; 5 objects/stations/station_scenes/tech/argon_tech_s_missile_f.bob lod0 38 53593; 5 objects/stations/station_scenes/tech/argon_tech_l_missile_e.bob lod0 39 87148
+0x5654: draws=16 prims=25204 exact=[('objects/ships/m7/argon_m7.bob', '02.cat', 0)] near=[]
+   best overlap (matched draws, body, lod, groups, faces): 16 objects/ships/m7/argon_m7.bob lod0 16 25204; 5 objects/stations/station_scenes/tech/argon_tech_s_laser_cc.bob lod0 38 84145; 4 objects/stations/x3ap/others/xtc_teladi_eqd_main.bob lod2 22 15524
+0x5540: draws=15 prims=14681 exact=[('objects/stations/station_scenes/tech/argon_tech_s_factory_a.bob', '02.cat', 2)] near=[('objects/stations/station_scenes/tech/argon_tech_l_laser_j.bob', '02.cat', 2, 14662), ('objects/stations/station_scenes/tech/argon_tech_l_missile_c.bob', '02.cat', 2, 14900), ('objects/ships/x3ap/teladi/xtc_teladi_ts_plus.bob', 'addon2/01.cat', 0, 14788)]
+   best overlap (matched draws, body, lod, groups, faces): 15 objects/stations/station_scenes/tech/argon_tech_s_factory_a.bob lod2 15 14681; 5 objects/stations/station_scenes/tech/argon_tech_s_factory_a.bob lod1 25 33002; 5 objects/stations/station_scenes/tech/argon_tech_s_factory_a.bob lod0 38 66128
