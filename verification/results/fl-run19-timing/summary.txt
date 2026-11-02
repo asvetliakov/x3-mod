@@ -1,0 +1,46 @@
+(1) session GPU time per pass, us (last window's session_* fields; measured)
+pass               A_med   A_p90     A_n   B_med   B_p90     B_n    dMed  A_winIQR
+scene               6016   12032   17993    6272   12032   18293    -256      3678
+engine              2496    7296   16889    2368    6784   17260     128      2724
+fog_route           1632    1888    3000    1632    1824    4851       0       171
+taa                 1248    1376   16889    1312    1504   17260     -64        40
+taa_resolve          976    1008   16889     976    1008   17260       0        30
+fog_march            688     784    3000     688     784    4851       0       156
+hdr_writeback        488     528   16891     488     560   17390       0         8
+bloom                472     528   16889     472     560   17260       0        45
+fog_repair           472     656    3000     424     528    4851      48       115
+present              296     344   18000     244     296   18300      52        16
+sun_apply            212     228   16873     204     236   17244       8         2
+shadow_depth         164     312   16889     164     296   17260       0        70
+fog_composite        148     156    3000     148     196    4851       0         1
+taa_copy              98     156   16889     102     180   17260      -4        39
+meter                 86      94   16891      86      98   17390       0         2
+taa_box               82      94   16889      82      94   17260       0         2
+hdr_readback          66      94   16891      66      94   17390       0        24
+engine_plumes         60     110   16487      62     114   16889      -2        28
+motes                 28      36    3000      29      86    4851      -1         1
+fog_fill              14      19   16891      13      18   17390       1         1
+sum of session medians: A=15742 B=15832
+A window dt_median_us: median-of-windows=8356 dt_p90 median-of-windows=10512 windows=60
+B window dt_median_us: median-of-windows=8339 dt_p90 median-of-windows=10087 windows=61
+(2) frame interval hdr_frame dt_ms; draws per frame (frame_end draws=)
+A dt_ms p50=9.1 p90=15.3 mean=10.3 n=17233 | draws p50=235.0 p90=1228.0 mean=407.7 n=18205
+B dt_ms p50=8.8 p90=14.6 mean=10.0 n=18369 | draws p50=242.0 p90=1236.0 mean=424.8 n=18374
+(4) shadow_replay_depth us (CPU) / draws / apply_us
+A us p50=63.8 p90=140.8 mean=74.7 n=16889 | draws p50=83.0 p90=177.0 mean=91.1 n=16889 | apply_us p50=230.1 p90=262.4 mean=242.5 n=16889
+B us p50=59.7 p90=113.8 mean=70.7 n=17260 | draws p50=84.0 p90=158.0 mean=90.4 n=17260 | apply_us p50=227.0 p90=272.1 mean=245.5 n=17260
+(5) fog
+A fog rows=16889 applied=1 3000 (17.8%) cpu_us p50=0.0 p90=1631.8 mean=303.0 n=16889
+B fog rows=17260 applied=1 4851 (28.1%) cpu_us p50=0.0 p90=1695.5 mean=476.3 n=17260
+engine light / engine_frame
+A engine_light_frame rows=16670 draws_lit p50=51.0 p90=128.0 mean=58.4 n=16670 frames_with_lit=16664 | engine_frame candidates p50=59.0 p90=639.0 mean=146.3 n=18200 records p50=12.0 p90=27.0 mean=12.3 n=18200
+B engine_light_frame rows=0 draws_lit p50=nan p90=nan mean=0.0 n=0 frames_with_lit=0 | engine_frame candidates p50=65.0 p90=632.0 mean=174.0 n=18241 records p50=12.0 p90=21.0 mean=11.4 n=18241
+
+Notes (inferred from the measured rows above + engine-frame-time.md "GPU sync timing" nesting rules):
+- Spans nest: scene contains all; engine contains fog_fill, hdr_readback, mid-scene hdr_writeback+meter;
+  taa contains taa_*; fog_route contains fog_march/composite/repair/motes. Sum of medians double-counts.
+- No engine_light pass exists; lit draws run inside `engine`. engine A-B = +128 us vs window IQR 2724 us: within noise.
+- Sync timing serialises the frame (~250 us per boundary); absolute us are inflated vs a normal flight.
+- Exclusive top five (A, session medians): engine 2496 (41% of scene 6016, incl. ~640 hdr flush/latch),
+  fog_route 1632 on 17.8% of frames (~290/frame amortised), taa 1248 (resolve 976), hdr_writeback 488, bloom 472.
+- Shadow lane: shadow_depth 164 + sun_apply 212 = 376 us = 6.3% of scene; replayed depth draws p50 83.

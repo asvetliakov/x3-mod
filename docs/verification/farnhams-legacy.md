@@ -1154,3 +1154,16 @@ the capture.
 work and the lens bracket cleanup. Design item: `docs/architecture/engine-effects-modern.md` phase 4 ("emitter-site
 anchor records") is the nearest planned shape; stock capital scenes have no emitter sites either, so the table must
 come from hull geometry (rear-facing nozzle meshes / engine dummies) scanned offline.
+
+**FL run 19 A/B flown (2026-11-02; logs `/home/asvetl/x3m-logs/fl-run19a-engine-light-on.log`, `fl-run19b-engine-light-off.log`;
+`verification/results/fl-run19-timing/compare.py`, `summary.txt`).** Same sector, 18,205 / 18,374 frames, draws per frame
+p50 235 / 242 (comparable). Engine light off changes nothing beyond noise: `engine` pass +128 µs against a 2.7 ms
+window spread, frame p50 9.1 vs 8.8 ms (sync timing on, so absolute times are inflated). Per-pass session medians (A):
+`scene` 6,016 µs, of which the game's own `engine` draws 2,496 (41 %, incl. ~640 µs HDR flushes), `fog_route` 1,632 on
+fogged frames (march 688, repair 472, composite 148, motes 28; fog applied on 18 % / 28 % of frames), `taa` 1,248
+(resolve 976), `hdr_writeback` 488, `bloom` 472, shadows 376 (`shadow_depth` 164 + `sun_apply` 212, 6.3 %), own sun
+inside `sun_apply`, `engine_plumes` 60, meter/readback/copy ~230. Ribbons and shimmer have no timing pass (measured).
+Conclusion: neither the engine light nor the shadow cascades explain the run 17→18 regression; the unmeasured
+candidates are the ribbons and the shimmer (inside the resolve bracket; run 18's `taa_run_us` CPU doubled over run 17).
+Next: segment C with `engine_effects = native` at the same spot (whole plumes package), then timing passes for ribbons
+and shimmer if it is large.
