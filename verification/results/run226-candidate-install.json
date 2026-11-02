@@ -1,0 +1,31 @@
+{
+ "run": 226,
+ "what": "dev candidate (unstripped build-ap) installed into native C:\\X3: own sun step 2, the partial sun occlusion machinery deleted (lens visibility variant, occlusion pass, classifier, deferral, readback, five settings), own_sun the one setting (default on, aliases sun_occlusion / sun_occlusion_log), Ctrl+Shift+F9 removed (merge 90e228d46)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run225; cp build-ap/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T04:41:54+04:00",
+ "commit": "90e228d46",
+ "dirty": false,
+ "build": {
+  "dir": "build-ap",
+  "type": "RelWithDebInfo",
+  "warnings": 0,
+  "x87": "PASS 1116 reachable"
+ },
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "d7440bae633a2fce6b3089b515b06eed522faa62916be1173dc20b3cdd3f949b",
+  "bytes": 62744650,
+  "stripped": false,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 225,
+  "sha256_prefix": "2090be1b",
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run225"
+ },
+ "exe_sha256_prefix": "fdbf3418d8f0a897",
+ "host_tests": "run_host_suite modules own_sun, own_sun_hook, logging_tiers, config_schema, comparison_hotkeys, cursor_reassert, launcher_defaults, fl_sun_occlusion, own_sun_lab: 106 tests, 0 failing; generate.py --check PASS 293/136; native AP hook fixture 46/0, lens gain fixture 8/0, FL fixture 464/0 (agent and reviewer runs, verification/results/own-sun-pass/step2/)",
+ "review": "review agent, high: no blocker; F1 doc wording, F2 README, N1 N3 fixed in bec78f20a; N2 (unbuildable fixture double) and the sun_visibility generator entry left, documented",
+ "ini": "C:\\X3\\x3m.ini: sun_occlusion_log = 1 renamed to own_sun_log = 1 (line 654); own_sun = 1 unchanged",
+ "producer": "main session"
+}

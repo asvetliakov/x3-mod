@@ -1023,3 +1023,19 @@ its three `GetAsyncKeyState` polls (`capture.cpp`), `own_sun::core::Toggle`, the
 `own_sun_frame`, `hotkey=` on the `own_sun status` row, the host driver's `toggle` command; `frame_active` takes the
 setting and the armed stage only. Builds 0 warnings both editions, `generate.py --check` PASS, AP hook fixture native,
 host modules: see the commit's evidence in the report (measured).
+
+## Run 226 — own sun step 2 installed (2026-11-02, dev candidate)
+
+Merge `90e228d46` (branch commits `acbb1a3ed` rename, `5d10a8ac2` deletion, `8a7712331` docs, `cb6a83f8e` hotkey
+removal, `bec78f20a` review fixes). Review (Opus, high): no blocker; two should-fix (doc wording on the generator
+entry, README feature row) and three nits fixed; the `linear_material_live_fixture.cpp` double keeps stale members
+because nothing builds it; the `sun_visibility` generator entry waits for the next re-record. Build `build-ap`
+0 warnings, x87 PASS (1,116 reachable), `generate.py --check` PASS 293/136, nine host modules 106 tests 0 failing
+(measured). Installed `C:\X3\d3d9.dll` = `d7440bae…` (62,744,650 B, bytes verified), rollback
+`rollback-d3d9\d3d9.dll.run225` = `2090be1b…`; EXE unchanged (`fdbf3418…`). The user's ini: `sun_occlusion_log = 1`
+renamed to `own_sun_log = 1` (the alias would have worked; the rename avoids the `config_key … renamed` row);
+`own_sun = 1` kept. Record: `verification/results/run226-candidate-install.json`.
+
+**Run 226 A (open):** same sun as run 225 (no look change). Expect: `own_sun status=on` row without `hotkey=`,
+no `sun_occlusion_config`, `sun_visibility`, `sun_lens_draw` or `own_sun_toggle` rows, no `config_key … renamed`
+row. Check the sun across a hull and a station once, and that F8 is the only key that reacts. Then step 3 (FL).
