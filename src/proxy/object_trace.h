@@ -51,6 +51,11 @@ bool scope_descriptor(uintptr_t* descriptor, uint32_t* depth);
 // arguments) without any memory read; false (outputs zero) without observation
 // or scope. LastError preserved. The small-prop cull's per-draw key.
 bool scope_node(uintptr_t* descriptor, uintptr_t* node);
+// The engine-effects recogniser's flag-first test (engine-frame-time.md, "FL run 18"): the innermost scope's node
+// flags word (+0x130) from one validated read of the same node span current() reads, without its camera, engine and
+// registry reads. Returns false exactly when current() would (no observation or scope); *node_known is false exactly
+// when current() would leave Node clear (a null node or an unreadable span; *flags130 is 0 then). LastError preserved.
+bool scope_flags(uint32_t* flags130, bool* node_known);
 bool shutdown(); // restore only our own displacement, while no submission can run
 #if defined(X3M_OBJECT_TRACE_FIXTURE) && X3M_EDITION_FL
 // FL fixture seam (src/engine/fl/object_trace_fl.cpp): the same site gate as initialize() (a call rel32 to

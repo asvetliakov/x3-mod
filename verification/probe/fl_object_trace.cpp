@@ -155,6 +155,13 @@ extern "C" uint64_t __cdecl fl_fake_body(uintptr_t descriptor, uintptr_t n, uint
     uint32_t depth = 0;
     check(ot::scope_node(&d, &nd) == expect_scope && ot::scope_descriptor(&d, &depth) == expect_scope,
           "scope_node/scope_descriptor availability");
+    // The recogniser's flag-first read agrees with current(): availability, the Node bit and flags130.
+    uint32_t flags130 = 0xdead;
+    bool node_known = true;
+    SetLastError(0x145);
+    check(ot::scope_flags(&flags130, &node_known) == scoped && GetLastError() == 0x145, "scope_flags availability, LastError");
+    check(node_known == ((snap.valid & ot::Node) != 0) && flags130 == (node_known ? snap.flags130 : 0u),
+          "scope_flags agrees with current(): Node bit and flags130");
     if (expect_scope) {
         check(snap.mesh == descriptor && snap.node == n && snap.camera == c, "scope args exact (ECX, EDX, [esp+4])");
         check(d == descriptor && nd == n && depth == expect_depth, "scope_node/scope_descriptor values");

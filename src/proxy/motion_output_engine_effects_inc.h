@@ -207,16 +207,29 @@ bool MotionOutput::engine_effects_draw(const MotionDrawCall& call, MotionRoute& 
             scope.camera_handle = f.camera_handle;
             if (f.camera_handle) scope.valid |= object_trace::Camera;
         }
+        facts.snapshot = facts.scoped && (scope.valid & object_trace::Node) && scope.node;
+        facts.flags130 = scope.flags130;
     } else
 #endif
     {
-        facts.scoped = object_trace::current(&scope, false);
-        // object_trace::current copies node+0x18 from the node block it reads (Snapshot::parent): no second read.
-        parent_known = facts.scoped && (scope.valid & object_trace::Node);
-        scope_parent = parent_known ? scope.parent : 0u;
+        // Flag-first (engine-frame-time.md, "FL run 18"): most candidates are not jets (run 18 p99: 977 of 995), and
+        // their verdict needs only the scope and node+0x130. scope_flags validates the same node span current() does,
+        // so scoped, snapshot and flags130 (hence the verdict and the census) are the ones current() would give; the
+        // full snapshot (camera, engine, registry) is taken only when the verdict is not decided as not_jet here.
+        std::uint32_t flags = 0;
+        bool node_known = false;
+        facts.scoped = object_trace::scope_flags(&flags, &node_known);
+        facts.snapshot = facts.scoped && node_known;
+        facts.flags130 = flags;
+        if (ee::classify(st, facts) != ee::Verdict::not_jet) {
+            facts.scoped = object_trace::current(&scope, false);
+            // object_trace::current copies node+0x18 from the node block it reads (Snapshot::parent): no second read.
+            parent_known = facts.scoped && (scope.valid & object_trace::Node);
+            scope_parent = parent_known ? scope.parent : 0u;
+            facts.snapshot = facts.scoped && (scope.valid & object_trace::Node) && scope.node;
+            facts.flags130 = scope.flags130;
+        }
     }
-    facts.snapshot = facts.scoped && (scope.valid & object_trace::Node) && scope.node;
-    facts.flags130 = scope.flags130;
     const ee::Verdict verdict = ee::classify(st, facts);
     if (verdict == ee::Verdict::none) return false;
     if (verdict == ee::Verdict::not_jet) {

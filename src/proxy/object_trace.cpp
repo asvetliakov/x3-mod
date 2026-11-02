@@ -276,6 +276,22 @@ bool scope_node(uintptr_t* descriptor, uintptr_t* node) {
     SetLastError(error);
     return scope != nullptr;
 }
+bool scope_flags(uint32_t* flags130, bool* node_known) {
+    if (flags130) *flags130 = 0;
+    if (node_known) *node_known = false;
+    if (!flags130 || !node_known || !observation.load()) return false;
+    const DWORD error = GetLastError(); // TlsGetValue writes ERROR_SUCCESS on success
+    Scope* scope = top();
+    if (scope) {
+        uint32_t node[0x150 / 4]; // current()'s span: the same validation decides Node
+        if (read_memory(scope->args[1], node, sizeof node)) {
+            *flags130 = node[0x130 / 4];
+            *node_known = true;
+        }
+    }
+    SetLastError(error);
+    return scope != nullptr;
+}
 bool current(Snapshot* out, bool matrices) {
     if (!out) return false;
     const DWORD error = GetLastError();
