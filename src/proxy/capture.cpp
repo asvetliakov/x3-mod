@@ -2044,6 +2044,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     seta_manual_flight::present(ctx.frame); // part B under debug = 1 only: the frame counter of its scale row
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
                                                                // and culled count on a captured frame
+#else
+    cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
 #endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
@@ -2231,6 +2233,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
     cull_small_parts::begin_frame();       // X3M_CULL_SMALL_PARTS_PX only: this frame's threshold from the scene view's
                                            // projection (else the registry F) and the back-buffer width
+#else
+    cull_small_parts::begin_frame(); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
 #endif
     // Both editions (FL since the engine-effects port, step 1).
     engine_effects::begin_frame(ctx.frame);  // X3M_ENGINE_EFFECTS hook only: engine_bodies.json once, then its names
@@ -2330,6 +2334,8 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
                                                                                        // follows the new height (cells only)
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next
                                                                 // frame's projection read; new back-buffer width
+#else
+    cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
 #endif
     ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
     finite_upload_metrics(d, ctx, "reset_after");
@@ -4149,6 +4155,8 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
                                                                                 // hold the largest flagged row: cfg+0x784, the
                                                                                 // style imm32 when d = 3, the Materials rows
     }
+#else
+    if (SUCCEEDED(hr) && p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // FL provider
 #endif
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
@@ -5754,6 +5762,12 @@ void initialize_log(HMODULE module) {
     // in the same install window; one engine_effects_patch row per site with edition=fl.
     engine_effects::initialize();
     engine_effects_patch::initialize();
+    // The cull/LOD selector's engine-side culls (docs/verification/cull-small-parts.md, "FL port"): the two one-byte
+    // patches (src/engine/fl/terran_station_lod_fl.cpp, lod_occlusion_fl.cpp) and the small-parts stub
+    // (src/engine/fl/cull_small_parts_fl.cpp), same window, disjoint sites; one row each with edition=fl.
+    terran_station_lod::initialize();
+    lod_occlusion::initialize();
+    cull_small_parts::initialize();
 #endif
 #if !X3M_EDITION_FL
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
