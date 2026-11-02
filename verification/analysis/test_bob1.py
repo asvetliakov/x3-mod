@@ -1548,6 +1548,60 @@ class LodAtlas(unittest.TestCase):
             self.assertEqual(res['strength'], [])
             self.assertFalse(res['layout'].get('strength'))
 
+    # FL vent material of argon_food_S_factory_B (material 26) and a neutral one, both as the game data declares them
+    VENT_GRADE = [(b'Brightness', 2, [67502]), (b'contrast', 2, [65667]), (b'saturation', 2, [472514]),
+                  (b'hue', 2, [14278459]), (b'colormatrix', 1, [1]), (b'g_Brightness', 2, [67502]),
+                  (b'g_Hue', 2, [14278459]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
+    NEUTRAL_GRADE = [(b'Brightness', 2, [65536]), (b'contrast', 2, [65536]), (b'saturation', 2, [65536]),
+                     (b'hue', 2, [0]), (b'colormatrix', 1, [0]), (b'g_Brightness', 2, [65536]),
+                     (b'g_Hue', 2, [0]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
+
+    def grade_body(self, grades):
+        """atlas_tree's materials and coarse record with grades[i] appended to material i's parameters; material 0
+        gets a fourth face so that it is the dominant."""
+        tree = atlas_tree()
+        mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+        for m, extra in zip(mats, grades):
+            m['params'] = m['params'] + [(b'g_ColorWriteEnable', 0, [15])] + list(extra)
+        coarse['parts'][0]['groups'][0]['faces'].append((0, 1, 2, 1))
+        return mats, coarse
+
+    def test_classes_split_by_colour_grade(self):
+        """A graded dominant (the FL vent: hue 217.9, saturation 7.21, colormatrix 1) and an ungraded member get a
+        merged material each (2026-11-03, FL run 27 green station), and every merged material's grade parameters
+        equal those of each member it absorbs; materials that differ only in their textures still share one, and a
+        grade value that differs by one 16.16 word splits (exact values, no tolerance)."""
+        grade = lambda m: lod_atlas.grade_key(m)
+        self.assertEqual([n for n, _, _ in grade({'params': self.VENT_GRADE + [(b'g_ColorWriteEnable', 0, [15])]})],
+                         [b'brightness', b'colormatrix', b'contrast', b'g_brightness', b'g_color_1', b'g_hue', b'hue',
+                          b'saturation'])                                       # g_ColorWriteEnable is no grade
+        bumped = [(n, t, [v[0] + 1] if n == b'saturation' else v) for n, t, v in self.NEUTRAL_GRADE]
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            for grades, classes in (((self.VENT_GRADE, self.NEUTRAL_GRADE), 2),      # graded dominant + neutral
+                                    ((self.NEUTRAL_GRADE, self.VENT_GRADE), 2),      # neutral dominant + graded
+                                    ((self.NEUTRAL_GRADE, bumped), 2),               # one word apart
+                                    ((self.VENT_GRADE, self.VENT_GRADE), 1),         # only the textures differ
+                                    ((self.NEUTRAL_GRADE, self.NEUTRAL_GRADE), 1),
+                                    ((), 1)):                                         # no grade declared at all
+                mats, coarse = self.grade_body(grades)
+                self.assertNotEqual(mats[0]['params'][:2], mats[1]['params'][:2])     # the textures differ
+                out = list(mats)
+                res = lod_atlas.collapse(assets, 'b', out, coarse, set(), 8, (64,))
+                self.assertEqual(len(res['atlas_indices']), classes, grades)
+                self.assertEqual(sorted(res['atlas_of']), [0, 1])
+                self.assertEqual(res['synth'][0]['dominant'], 0)                       # material 0 dominates
+                for m, a in res['atlas_of'].items():
+                    self.assertEqual(grade(out[a]), grade(mats[m]))
+                for row in res['synth']:
+                    for m in row['absorbed']:
+                        self.assertEqual(grade(out[row['index']]), grade(mats[m]))
+                groups = res['record']['parts'][0]['groups']
+                self.assertEqual(sorted(g['material'] for g in groups), sorted(res['atlas_indices']))
+                for a in res['atlas_indices']:                                         # one atlas set either way
+                    p = {n: v for n, t, v in out[a]['params'] if t == 8}
+                    self.assertEqual(p[b't_DiffuseTexture'], b'x3m_lod\\x3m_lod_b_diffuse.tga')
+
     def test_merged_strength_rule_and_alpha_byte(self):
         """s_merged = max(mean, s_max / 2): the mean when every ratio fits below 2 (freighter_base's classes), s_max / 2
         when one member is more than twice the mean (fleet: 20 classes under the plain mean, 0 under the rule); the

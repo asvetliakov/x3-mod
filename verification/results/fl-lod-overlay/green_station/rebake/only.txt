@@ -1,0 +1,4 @@
+stations/station_scenes/food/argon_food_S_factory_B
+stations/station_scenes/food/argon_food_M_factory_B
+stations/station_scenes/food/argon_food_S_factory_D
+ships/props/m6maingun_moving

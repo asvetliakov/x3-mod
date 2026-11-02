@@ -1809,3 +1809,15 @@ rising while firing at the cursor (or `native_active > 0` with override 0 if FL 
 `early_*`/`refused_*` not rising during those bursts, `chase_camera … dependencies=chase_lead,chase_fire,chase_transition`.
 Visual: bolts go to the cursor, not straight ahead; with the cursor hidden nothing aims at the top-left corner. Report a
 shot that goes somewhere other than the cursor or the boresight.
+
+**Baker fix (2026-11-03):** `lod_atlas.material_class_key` now splits the opaque merged-material classes by colour
+grade (`grade_key`: `colormatrix`, `Brightness`, `contrast`, `saturation`, `hue`, `g_Brightness`, `g_Contrast`,
+`g_Saturation`, `g_Hue` and every `g_Color_*`, exact parsed values), so each merged material carries the grade of every
+material it absorbs (`docs/architecture/lod-overlay-mods.md`, "Merged-material class rule"). Rebake of the four
+vent-grade bodies with `--edition fl --out` (FL mounts read-only; `verification/results/fl-lod-overlay/green_station/rebake/`):
+atlas merged materials `argon_food_S_factory_B` 1→4, `argon_food_M_factory_B` 1→4, `argon_food_S_factory_D` 1→5,
+`ships/props/m6maingun_moving` 1→2 (draws 2→5, 3→5, 3→7, 2→3); `tools/analysis/lod_grade_census.py --candidate` on it:
+`mismatch_bodies=0` (measured). Draw cost on the installed pre-fix overlays (census, measured): FL 781→1,342 merged
+materials (+561, 252 bodies), AP 1,154 bodies 1,463→2,390 (+927, 471 bodies); the colour-matrix set alone is +158 / +293,
+the rest is `g_Color_*`. The next `--batch --sync` / regenerate rebakes every body of both editions (`tool_sha256`).
+Open until flown: the rebaked station at distance in game.

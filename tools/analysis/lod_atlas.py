@@ -3,7 +3,7 @@
 
 The coarse record C (a copy of the body's coarsest record, or of the lod_overlay.py
 --source-record) is drawn with one opaque merged material per class (effect file, occlusion
-map, raw g_CullMode; effect_classes) whose diffuse and light-map textures are atlases baked from
+map, raw g_CullMode, colour grade; effect_classes) whose diffuse and light-map textures are atlases baked from
 the materials it replaces (one atlas set per body, shared by every class; each member's diffuse-
 strength ratio rides in the specular atlas alpha, module notes 2026-10-25); alpha-tested/blended
 materials keep one merged group per part as in --collapse two (the dominant alpha material, remapped
@@ -260,6 +260,12 @@ tooling"; census: tools/analysis/atlas_census.py):
   the atlas by the baker's own signature and binds a pixel-program twin that multiplies the diffuse term by
   2 a (specular texel .w); without the DLL or with lod_material_strength = 0 the body draws at s_merged, the
   mean for most classes. Specular atlas: always DXT5 now.
+- 2026-11-03 change (FL run 27 green station, docs/verification/farnhams-legacy.md): opaque classes also split by
+  colour grade (grade_key: the exact parsed values of colormatrix, Brightness, contrast, saturation, hue,
+  g_Brightness, g_Contrast, g_Saturation, g_Hue and every g_Color_* parameter). The merged material copied its
+  dominant's grade, so argon_food_S_factory_B's vent material (hue 217.9, saturation 7.21, colormatrix 1) tinted
+  the whole atlas green. One extra draw per extra grade per body; tool_sha256 changes, so --sync rebuilds every
+  body.
 """
 import gzip
 import hashlib
@@ -1890,15 +1896,31 @@ def param_word(material, name):
 
 
 CLASS_PARAMS = (b'g_CullMode',)
+# colour-grade parameters (the engine uploads them as ps c1..c3 and c19..c24): names compared case-insensitively,
+# plus every name starting with GRADE_PREFIX (g_Color_1/2/3, _Lines, _LinesPower, _Highlight, _HighlightPower,
+# _Weighting, _Envipaint; g_ColorWriteEnable does not match, it is a render state)
+GRADE_PARAMS = frozenset(n.lower() for n in (b'colormatrix', b'Brightness', b'contrast', b'saturation', b'hue',
+                                             b'g_Brightness', b'g_Contrast', b'g_Saturation', b'g_Hue'))
+GRADE_PREFIX = b'g_color_'
+
+
+def grade_key(material):
+    """Colour grade of a material: the sorted (lower-case name, type, values) of every numeric GRADE_PARAMS /
+    GRADE_PREFIX parameter it declares, values exactly as parsed (16.16 words, no tolerance); a parameter the
+    material omits is absent from the key (not filled with a default)."""
+    return tuple(sorted((n.lower(), t, tuple(v)) for n, t, v in material.get('params', ())
+                        if t != 8 and (n.lower() in GRADE_PARAMS or n.lower().startswith(GRADE_PREFIX))))
 
 
 def material_class_key(material):
-    """(g_CullMode,) of an effect material, the raw word (None when absent): materials that differ in it never
-    share a merged material, since the merged material copies its dominant's g_CullMode and a two-sided (1)
-    material in a one-sided class lost its back faces (Run 202, freighter_base trims 12-16). g_MatDiffuseStrength
-    left the key on 2026-10-25 (option B): the merged material carries class_strength's s_merged and each
-    member's ratio rides in the specular atlas alpha, read by the proxy's pixel-program twin."""
-    return tuple(param_word(material, n) for n in CLASS_PARAMS)
+    """(g_CullMode, grade_key) of an effect material, the raw cull word (None when absent): materials that differ
+    in either never share a merged material, since the merged material copies its dominant's parameters. A
+    two-sided (1) material in a one-sided class lost its back faces (Run 202, freighter_base trims 12-16); a
+    material in a class of another colour grade drew with that grade (2026-11-03, FL run 27: the vent material's
+    hue 217.9 / saturation 7.21 tinted argon_food_S_factory_B green). g_MatDiffuseStrength left the key on
+    2026-10-25 (option B): the merged material carries class_strength's s_merged and each member's ratio rides in
+    the specular atlas alpha, read by the proxy's pixel-program twin."""
+    return tuple(param_word(material, n) for n in CLASS_PARAMS) + (grade_key(material),)
 
 
 def merged_strength(values, areas):
@@ -1934,10 +1956,10 @@ def class_strength(mats, mis, areas):
 def effect_classes(mats, opaque, textures=None):
     """[(effect, occlusion key, [material indices in first-use order])] of the opaque groups: one class per effect
     file, bound occlusion texture (occlusion_key: 'none' for absent / NULL, else the entry the engine binds
-    with `textures`), cull mode and diffuse strength (material_class_key; since 2026-10-25), largest face count
-    first (ties: first use); one (effect, occlusion) pair may therefore appear in several classes. The classic
-    records of a planning view (classic_view) form their own classes, one per constant set (classic_key; their
-    two-sided records are kept, classic_shape). Refuses a group material index outside the table."""
+    with `textures`), cull mode (since 2026-10-25) and colour grade (since 2026-11-03; material_class_key),
+    largest face count first (ties: first use); one (effect, occlusion) pair may therefore appear in several
+    classes. The classic records of a planning view (classic_view) form their own classes, one per constant set
+    (classic_key; their two-sided records are kept, classic_shape). Refuses a group material index outside the table."""
     faces, order, key_of = {}, {}, {}
     for g in opaque:
         m = g['material']
@@ -1959,7 +1981,7 @@ def effect_classes(mats, opaque, textures=None):
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
              gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None, keep=frozenset(),
              layout=None):
-    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map, cull mode)
+    """Atlas collapse of `record`: appends one atlas material per opaque (effect file, occlusion map, cull mode, grade)
     class (effect_classes; then any synthesized alpha material) to `mats` in place. Returns dict(record, layout,
     atlas_index (the largest class's), atlas_indices, atlas_of, names, members, synth, strength, uv2, occlusion,
     kept, ...). With the specular slot each class's diffuse strength is merged by class_strength and every member's

@@ -494,3 +494,27 @@ X3FL.exe mounts by itself. Evidence and counts: [farnhams-legacy.md](../verifica
   from `d3dx9_43.dll`. Without it every merged material draws at the class's merged diffuse strength
   (`lod_material_strength_configured … texture_hook=0`, FL runs 20–21). The occlusion bind for coarse records
   (`lod_occlusion`) and the Terran distance branch are patched on FL since run 20.
+
+## Merged-material class rule: colour grade (2026-11-03)
+
+An atlas body draws one merged material per opaque class, and the merged material is a copy of the class's
+dominant material (face count) with the atlas textures and the area-weighted `g_Mat*` means. Until 2026-11-03 the
+class key was (effect file, bound occlusion map, raw `g_CullMode`), so the dominant's colour grade applied to every
+absorbed material: FL run 27 drew `argon_food_S_factory_B` green at distance, its vent material 26 (hue 217.9°,
+saturation 7.21, `colormatrix=1`; 8,212 of 36,418 faces) being the dominant
+(`docs/verification/farnhams-legacy.md`, "Green station" and "Baker fix").
+
+The key now also holds `lod_atlas.grade_key`: the sorted (lower-case name, type, values) of every numeric parameter
+named `colormatrix`, `Brightness`, `contrast`, `saturation`, `hue`, `g_Brightness`, `g_Contrast`, `g_Saturation`,
+`g_Hue` or starting with `g_Color_` (`g_ColorWriteEnable` does not match), compared exactly as parsed (16.16 words,
+no tolerance; an omitted parameter is absent from the key, not filled with a default). Every merged material's grade
+therefore equals the grade of each material it absorbs; materials that differ only in textures still share one.
+The alpha path (one merged group per part) and the classic classes are unchanged.
+
+Cost, measured with `tools/analysis/lod_grade_census.py` on the installed pre-fix overlays: FL 637 bodies, 781 atlas
+merged materials become 1,342 (+561 draws when the bodies sit at the merged LOD, 252 bodies affected, at most +12 on
+`ships/M7/Paranid_M7M`); AP 1,154 bodies, 1,463 become 2,390 (+927, 471 bodies). The `g_Color_*` parameters account
+for most of it (colour-matrix set alone: FL +158, AP +293). No near-duplicate grades (values within 1/256) occur;
+treating a `colormatrix=0` material's matrix values as neutral would save 2 of the 561 FL draws, so the exact key
+stays. The change alters `tool_sha256`, so the next `--batch --sync` (and `x3m-regenerate`) rebakes every body
+of both editions.

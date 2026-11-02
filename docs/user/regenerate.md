@@ -89,7 +89,11 @@ with little memory free, and about 20 minutes with most of the RAM free
 Closing other programs first shortens it. The fog step
 takes seconds to a few minutes. Later runs only rebake bodies whose inputs
 changed, so they are much shorter. Updating x3-modern itself can make every body
-count as changed once (the baker records its own version). The program unpacks
+count as changed once (the baker records its own version). The 2026-11-03 update
+does: merged models now keep each part's colour grading (a station no longer turns
+green at distance), so the first run after it rebakes every model of Albion Prelude
+and of Farnham's Legacy, which takes as long as a first run. The rebaked models draw a
+little more (one extra draw for each extra colour grade of a model at distance). The program unpacks
 itself to a temporary folder at each start: on macOS the first line appears
 after about 8 seconds and the fog step starts about 6 seconds later; the Windows
 build starts in about 1.5 seconds under CrossOver (measured; not measured on a

@@ -1,0 +1,20 @@
+Baker fix 2026-11-03 (merged materials split by colour grade, lod_atlas.grade_key). Run from the repository root.
+out/ (baked candidate, game-derived bytes) and bake.log stay local.
+
+rebake (four vent-grade bodies, FL mounts read-only):
+  python3 tools/analysis/lod_overlay.py --game /mnt/c/X3FL --edition fl --batch \
+      --only verification/results/fl-lod-overlay/green_station/rebake/only.txt \
+      --out verification/results/fl-lod-overlay/green_station/rebake/out > .../rebake/bake.log   (exit 0, 104 s)
+merged materials per body, installed vs rebake:
+  cd verification/results/fl-lod-overlay/green_station/rebake && python3 merged_counts.py only.txt \
+      installed=/mnt/c/X3FL/addon2/06.x3m-lod.json,/mnt/c/X3FL/addon2/07.x3m-lod.json \
+      rebake=out/addon2/06.x3m-lod.json > merged_counts_out.txt
+census on the rebake:
+  X3M_EDITION=fl python3 tools/analysis/lod_grade_census.py --game /mnt/c/X3FL --edition fl \
+      --candidate verification/results/fl-lod-overlay/green_station/rebake/out > census_rebake_out.txt
+draw sweep on the installed (pre-fix) overlays:
+  X3M_EDITION=fl python3 tools/analysis/lod_grade_census.py --game /mnt/c/X3FL --edition fl \
+      /mnt/c/X3FL/addon2/06.x3m-lod.json /mnt/c/X3FL/addon2/07.x3m-lod.json > census_fl_installed_out.txt
+  X3M_EDITION=ap python3 tools/analysis/lod_grade_census.py --game /mnt/c/X3 --edition ap \
+      /mnt/c/X3/addon/13.x3m-lod.json /mnt/c/X3/addon/14.x3m-lod.json /mnt/c/X3/addon/15.x3m-lod.json \
+      > census_ap_installed_out.txt
