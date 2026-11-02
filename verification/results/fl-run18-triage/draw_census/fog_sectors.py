@@ -12,7 +12,7 @@ from sector_fog_census import Assets  # noqa: E402
 R = Path('/mnt/c/X3FL')
 a = Assets(R, catalogues=[p.relative_to(R).as_posix() for p in catalogue_mounts.mounted_catalogues(R, 'fl')])
 idx = sys.argv[1] if len(sys.argv) > 1 else '14'
-data, prov = a.get('addon2/maps/x3_universe.txt')
+data, prov = a.get('addon2/maps/x3_universe.xml')
 root = ET.fromstring(data)
 print('source', prov['source'], prov['member'])
 for sec in root.iter('o'):

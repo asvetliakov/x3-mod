@@ -781,8 +781,10 @@ def body_stem(name):
         if low.endswith(ext):
             stem = stem[:-len(ext)]; low = low[:-len(ext)]
             break
-    if low.startswith('addon/'):
-        stem = stem[6:]; low = low[6:]
+    for xp in ('addon/', 'addon2/'):          # AP and FL expansion namespaces
+        if low.startswith(xp):
+            stem = stem[len(xp):]; low = low[len(xp):]
+            break
     if not low.startswith('objects/'):
         stem = 'objects/' + stem
     return stem
@@ -797,13 +799,27 @@ class BodyRefused(FormatError):
 
 REFUSAL_REASONS = ('loose_root_unverified', 'lang_variant')
 _LANG_KEY = re.compile(r'(.*)-l\d{3}\.(?:bob|bod)')
+_NUMBERED = re.compile(r'((?:addon|addon2)/)?(\d\d)\.cat')     # NN.cat, AP addon/NN.cat, FL addon2/NN.cat
+
+
+def _expansion(assets):
+    """The assets' expansion directory: AP 'addon', FL 'addon2' (sector_fog_census.Assets.expansion)."""
+    return getattr(assets, 'expansion', 'addon')
+
+
+def _strip_expansion(key):
+    for xp in ('addon/', 'addon2/'):
+        if key.startswith(xp):
+            return key[len(xp):]
+    return key
 
 
 def mount_key(assets, source):
     """Sort key of a catalogue layer in the engine's mount order (0x004ec9e0): NN.cat, then addon/NN.cat by
-    number, then the selected packages (Assets mods, in their layer order) above every numbered slot. A source
-    not among assets.layers (a slot the overlay is about to write) ranks by its number."""
-    m = re.fullmatch(r'(addon/)?(\d\d)\.cat', source)
+    number (FL: addon2/NN.cat, X3FL.exe 0x50a609..0x50a93d), then the selected packages (Assets mods, in their
+    layer order) above every numbered slot. A source not among assets.layers (a slot the overlay is about to
+    write) ranks by its number."""
+    m = _NUMBERED.fullmatch(source)
     if m:
         return (1 if m.group(1) else 0, int(m.group(2)))
     layers = getattr(assets, 'layers', [])
@@ -815,13 +831,13 @@ def mounted(assets, entry):
     loop (0x004ec9e0) stops there (Assets itself reads every NN.cat; only the body resolver drops them)."""
     if 'loose' in entry:
         return True
-    m = re.fullmatch(r'(addon/)?(\d\d)\.cat', entry['source'])
+    m = _NUMBERED.fullmatch(entry['source'])
     if not m:
         return True
     runs = assets.__dict__.get('_x3m_mounted')
     if runs is None:
         layers, runs = set(getattr(assets, 'layers', [])), {}
-        for prefix in ('', 'addon/'):
+        for prefix in ('', 'addon/', 'addon2/'):
             n = 0
             while f'{prefix}{n + 1:02d}.cat' in layers:
                 n += 1
@@ -831,17 +847,18 @@ def mounted(assets, entry):
 
 
 def _stem_key(name):
-    return body_stem(name).lower().removeprefix('addon/')
+    return _strip_expansion(body_stem(name).lower())
 
 
 def body_members(assets, name):
     """Every mounted entry of a body stem under the four body extensions (.pbb/.bob share one canonical key,
-    .pbd/.bod the other), from both the objects/ and the addon/objects/ key (selected packages and loose files
-    under <game>/addon/objects sit under the latter), loose files included."""
+    .pbd/.bod the other), from both the objects/ and the addon/objects/ key (FL: addon2/objects/; selected packages
+    and loose files under <game>/addon/objects sit under the latter), loose files included."""
     key = _stem_key(name)
+    xp = _expansion(assets) + '/'
     out = []
     for ext in ('.bob', '.bod'):
-        for k in ('addon/' + key + ext, key + ext):
+        for k in (xp + key + ext, key + ext):
             out += [e for e in assets.entries.get(k, []) if mounted(assets, e)]
     return out
 
@@ -854,7 +871,7 @@ def lang_variants(assets, name):
         for k, v in assets.entries.items():
             m = _LANG_KEY.fullmatch(k)
             if m:
-                index.setdefault(m.group(1).removeprefix('addon/'), []).extend(v)
+                index.setdefault(_strip_expansion(m.group(1)), []).extend(v)
         assets._x3m_lang = index
     return [e for e in index.get(_stem_key(name), []) if mounted(assets, e)]
 
@@ -880,8 +897,9 @@ def resolve_body(assets, name):
     if not members:
         raise FileNotFoundError(f'no body resource for {body_stem(name)}')
     pool = [e for e in members if 'loose' in e]
-    if any(e['path'].lower().startswith('addon/') for e in pool):
-        raise BodyRefused('loose_root_unverified', f'{body_stem(name)} has a loose member under addon/objects'
+    xp = _expansion(assets)
+    if any(e['path'].lower().startswith(xp + '/') for e in pool):
+        raise BodyRefused('loose_root_unverified', f'{body_stem(name)} has a loose member under {xp}/objects'
                           f' ({", ".join(sorted(e["path"] for e in pool))}); the engine\'s loose phase is only'
                           ' established for <game>/objects')
     if not pool:

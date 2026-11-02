@@ -1,0 +1,17 @@
+game /mnt/c/X3FL; enumerated 2542 {'other': 1410, 'station': 576, 'ship': 556}; eligible 637; built 637 + reused 0 = 637 overlay bodies
+ship: enumerated 556, baked 317 (single-LOD among them 36), not baked 239: single-LOD 128, unreadable 4
+  refused [('no_opaque', 21), ('mat3', 4), ('texel_floor', 4)]
+  filtered [('no_draw_gain', 134), ('classic_nothing_to_atlas', 76)]
+station: enumerated 576, baked 320 (single-LOD among them 28), not baked 256: single-LOD 64, unreadable 2
+  refused [('no_opaque', 199), ('texture_animation_unsupported', 11), ('excluded_effect', 6), ('no_diffuse', 5), ('parse_error', 1), ('text_parse_error', 1), ('texel_floor', 1)]
+  filtered [('no_draw_gain', 29), ('classic_nothing_to_atlas', 3)]
+all refused {'no_opaque': 662, 'texture_animation_unsupported': 161, 'mat3': 158, 'excluded_effect': 32, 'material_outside_table': 16, 'text_parse_error': 13, 'classic_unsupported': 10, 'no_diffuse': 5, 'texel_floor': 5, 'parse_error': 1, 'texture_generated': 1}
+all filtered {'category_other': 615, 'no_draw_gain': 374, 'classic_nothing_to_atlas': 263, 'helper_body': 8}
+slots [{'slot': 6, 'bodies': 506, 'members': 2530, 'bytes': 1996148766}, {'slot': 7, 'bodies': 131, 'members': 655, 'bytes': 755549336}]
+bytes {'atlas': 543110388, 'members': 2208587714, 'dat': 2751698102} draws {'record0': 10415, 'overlay': 1633}
+06.cat 136695 B sha256 c7a362a5984c7d612af407942eaa0124216336f5e8e3aabeda93c8563bcbda05
+06.dat 1996148766 B sha256 aeafd068a1eff742fa0de77cf0cdb3efce755f48a9b1272c727c6d8eccb9d09e
+07.cat 38538 B sha256 69c1e0cac10bd7077b4881e36b310a71b47fdc987a26eb0f9fcda1510df9be64
+07.dat 755549336 B sha256 6eca6e0bca9b94ee3f4db37813075ecc96bb908524130b31f4613dfd7d0004c2
+settings tool_sha256 d736dc9fb59dc64d9a3bbb6b10309ca368ae08c72f55a5cfe7a7c8e36dcd22bc
+timing {'census_s': 115.01, 'bake_s': 2755.02, 'per_body_s': 4.325, 'extrapolated_full_s': 2755.0, 'total_s': 2870.16}

@@ -445,3 +445,51 @@ only skips FEX app config. X3AP.exe (32-bit, wow64 FEX) is not on this path. Nat
 A file name of 15 characters or fewer (e.g. `x3m-regen.exe`) keeps `C:\X3\<name>` within 22 characters and
 cannot hit the bug in any directory; not verified by a probe because it needs a temporary file directly in
 `C:\X3`. Producing commands, analysis script and counts: `verification/results/regenerate-start-crossover/`.
+
+## FL (addon2) mode (2026-11-02)
+
+The overlay family works on a Farnham's Legacy install with no DLL change: the catalogue pair is game data that
+X3FL.exe mounts by itself. Evidence and counts: [farnhams-legacy.md](../verification/farnhams-legacy.md),
+"Merged-LOD overlay, host evidence".
+
+- **Edition.** `catalogue_mounts.game_edition(game, which)`: an explicit `--edition ap|fl`, else the
+  `X3M_EDITION` environment variable, else the install (FL when `X3FL.exe` and `addon2/01.cat` exist; the FL
+  folder also carries `X3AP.exe` and AP's `addon/`). `lod_overlay.py`, `lod_batch_census.py` and
+  `lod_overlay_check.py` take `--edition`; `lod_overlay.py` sets `X3M_EDITION` for its own run so the spawned
+  census and bake workers resolve the same edition, and restores it afterwards. Default `auto`: every AP path is
+  unchanged (the AP tests pass unmodified).
+- **Mounts.** X3FL.exe mounts root `NN.cat` then `addon2/NN.cat`, each up to its first gap, and no physical
+  `addon/` ([resolver](../reverse-engineering/fl/resource-resolver.md) §1). `sector_fog_census.Assets` reads
+  `Assets.expansion` (`addon` or `addon2`) for the numbered layers, the loose roots, the selected-package
+  rebasing and the namespace preference (`addon2/types/...` before `types/...`, as X3FL.exe's own callers build
+  `addon2\types\<name>`); `bob1.mount_key`/`mounted`/`body_members`/`resolve_body` and the census keys follow it.
+  A pinned catalogue list is FL when it names an `addon2/` layer.
+- **Slot, markers, outputs.** `next_slot` counts the contiguous `addon2/NN.cat` run (FL 1.3 ships `addon2/01..05`,
+  so the overlay starts at `addon2/06`; the full FL fleet needs `06` and `07`, because one dat stays below the
+  engine's 2^31 - 1 offset limit and the default cap is 2,000,000,000 B); markers `addon2/NN.x3m-lod.json` carry `edition: fl` (AP markers keep their
+  field set); `--out DIR` writes `DIR/addon2/NN.cat/.dat` and the marker, `--install` writes beside the game's
+  `addon2/` catalogues; packages are `addon2/mods/NAME.cat` and the derived copy `addon2/mods/NAME-x3m-lod`.
+- **Registry.** `HKCU\Software\EGOSOFT\X3FL\ModName` is an ordered semicolon list (resolver §2): no entry is no
+  package, one entry is that package, several are reported unknown and bake no package (a package list is not
+  modelled; `lod_overlay_check.fl_mod_name`).
+- **Process check.** `--install`, `--remove-package` and `x3m_regenerate` refuse while `X3FL.exe` runs
+  (`game_guard.FL_COMMANDS`; `tasklist` on Windows).
+- **Terran stations.** No FL-specific rule: the FL DLL patches the engine's Terran station distance branch at the
+  same site as AP (`src/engine/fl/terran_station_lod_fl.cpp`, run 20; status row `terran_station_lod ...
+  edition=fl state=patched`), so race-18 station parts take the size loop and draw the merged record like on AP
+  ([feasibility](merged-lod-feasibility.md), "Slot 06 LOD switch").
+- **Launch and pre-install check.** `lod_overlay_check.py --game C:\X3FL` reports the installed FL overlay
+  from `addon2/`. `lod_overlay_check.py --game G --candidate OUT` checks a baked, not yet installed pair: the
+  marker's edition, marker hashes and one consecutive slot group, the slot is the next free `addon2` number (or
+  replaces our own top slots), no foreign file at the slot, no non-body member colliding with a mounted
+  catalogue member (bodies are the intended overrides and are counted) and unchanged sources (the marker's
+  `originals_fingerprints`); exit 1 when refused.
+- **Regenerate.** `x3m_regenerate` on an FL folder runs recovery under `addon2/`, the LOD overlay (the same
+  `--batch --sync --mod auto --install` call, so with unchanged inputs and tool sources it produces the same
+  pair as a manual `--batch` run) and engine bodies (`engine_bodies.generate`'s FL view); it skips the fog family
+  steps, which read the AP view only (one log line). Not built or run as the frozen executable on FL.
+- **Cosmetic gaps that need DLL sites on FL** (the AP DLL covers them; neither blocks the draw saving):
+  the occlusion bind for coarse records (`lod_occlusion`: records other than 0 bind the `NONE_OCCL_DECAL`
+  placeholder, so the merged record draws without its occlusion map) and the material-strength twin
+  (`overlay-material-strength.md`: without it every merged material draws at the class's merged diffuse
+  strength). The Terran distance branch, the third site, is patched on FL since run 20.

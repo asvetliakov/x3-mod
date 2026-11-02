@@ -1,0 +1,2 @@
+lod overlay candidate: ok (edition fl (addon2/); slot 06/07 free (game addon2/ run 01..05); no member collision (637 body members, 637 of them override a mounted body); sources unchanged)
+lod overlay: none (no overlay installed; ModName unknown (no user.reg))

@@ -82,6 +82,20 @@ class CatalogueMountTests(unittest.TestCase):
         (self.game / 'X3FL.exe').unlink()
         self.assertEqual(edition(self.game), 'ap')
 
+    def test_game_edition_explicit_then_environment_then_installation(self):
+        import os
+        from unittest import mock
+        from catalogue_mounts import EDITION_ENV, expansion, game_edition
+        self.install(fl=True)
+        with mock.patch.dict(os.environ, {EDITION_ENV: ''}):
+            self.assertEqual((game_edition(self.game), expansion(self.game)), ('fl', 'addon2'))
+            self.assertEqual(game_edition(self.game, 'ap'), 'ap')
+        with mock.patch.dict(os.environ, {EDITION_ENV: 'ap'}):
+            self.assertEqual((game_edition(self.game), game_edition(self.game, 'auto')), ('ap', 'ap'))
+            self.assertEqual(expansion(self.game, 'fl'), 'addon2')
+        with mock.patch.dict(os.environ, {EDITION_ENV: 'tc'}), self.assertRaises(ValueError):
+            game_edition(self.game)
+
     def test_last_mounted_catalogue_wins_in_every_scan(self):
         self.install(fl=True)
         resolved = list(_archive_effects(self.game))

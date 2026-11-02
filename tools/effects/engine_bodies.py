@@ -372,7 +372,7 @@ def load_assets(game_root, stock_only, edition='ap'):
         return Assets(game_root, catalogues=cats), []
     if stock_only:
         return Assets(game_root, catalogues=STOCK_AP_CATALOGUES), []
-    return lod_overlay.original_assets(game_root)
+    return lod_overlay.original_assets(game_root, edition='ap')
 
 
 def resolve_edition(game_root, edition):

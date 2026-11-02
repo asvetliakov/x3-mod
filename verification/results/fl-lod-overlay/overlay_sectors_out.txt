@@ -1,0 +1,6 @@
+sector x=2 y=0 coarsest_stock_draws=66 lod0_draws=439 overlay_coarse_draws=105 parts=75 parts_overlay_covered=15 parts_single_lod=33 parts_unread=23 stations=11 terran_stations=0
+sector x=3 y=1 coarsest_stock_draws=170 lod0_draws=507 overlay_coarse_draws=156 parts=136 parts_overlay_covered=13 parts_single_lod=106 parts_unread=17 stations=12 terran_stations=0
+sector x=2 y=2 coarsest_stock_draws=87 lod0_draws=448 overlay_coarse_draws=87 parts=81 parts_overlay_covered=13 parts_single_lod=42 parts_unread=26 stations=10 terran_stations=0
+sector x=3 y=2 coarsest_stock_draws=151 lod0_draws=540 overlay_coarse_draws=163 parts=91 parts_overlay_covered=22 parts_single_lod=31 parts_unread=33 stations=13 terran_stations=0
+total coarsest_stock_draws=474 lod0_draws=1934 overlay_coarse_draws=511 parts=383 parts_overlay_covered=63 parts_single_lod=212 parts_unread=99 stations=46
+overlay 06.cat, 07.cat: station LOD0 draws 1934 -> overlay coarse 511 (1423 fewer, 74 %); stock coarsest 474

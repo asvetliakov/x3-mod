@@ -383,6 +383,17 @@ their share, kept_light_bleed, remedy; the per-body rows print light_bleed=<tile
 ignored=<tiles> kept=<materials>, the summary lists
 the affected bodies, the record's light_bleed.bodies), and a *-bodies.txt log with every body's plan.
 
+Farnham's Legacy (--edition auto|ap|fl, default auto: fl when X3FL.exe and addon2/01.cat exist;
+catalogue_mounts.game_edition; docs/architecture/lod-overlay-mods.md, "FL (addon2) mode"): X3FL.exe mounts root
+NN.cat then addon2/NN.cat, each up to its first gap, and no physical addon/ (resource-resolver.md section 1), so
+every addon/ above reads addon2/: the source view (Assets edition fl), the next free slot, the markers
+addon2/NN.x3m-lod.json (they record edition fl), the outputs (--out DIR receives DIR/addon2/NN.cat/.dat), the
+record beside them on --install, addon2/mods packages, HKCU\\Software\\EGOSOFT\\X3FL\\ModName (an ordered semicolon
+list: one entry is the package, several bake none, lod_overlay_check.fl_mod_name) and the running-game check
+(X3FL.exe). The rule set, flags and member names are the AP ones (Terran stations: both DLLs patch the
+engine's distance branch, terran_station_lod / terran_station_lod_fl). An explicit --edition is passed to the
+spawned census and bake workers through X3M_EDITION for the run.
+
   python3 tools/analysis/lod_overlay.py --dry-run --threshold 50 ships/argon/argon_TL
   python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod ships/argon/argon_TL=50 stations/others/military_outpost_middleb=100
   python3 tools/analysis/lod_overlay.py --batch --dry-run --only verification/results/lod-overlay-batch/sectors.txt --out /tmp/x3m-batch
@@ -399,6 +410,7 @@ import json
 import math
 import multiprocessing
 import os
+import re
 import sys
 import struct
 import time
@@ -407,6 +419,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bob1  # noqa: E402
+import catalogue_mounts  # noqa: E402
 import lod_recipes  # noqa: E402
 from inspect_x3 import read_catalogue  # noqa: E402
 from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
@@ -463,14 +476,14 @@ def parse_display(text):
     return w, h
 
 
-def running_game():
-    """Process lines of a running X3AP game (verification/probe/game_guard.py); raises
+def running_game(edition='ap'):
+    """Process lines of a running X3AP game (FL: X3FL; verification/probe/game_guard.py); raises
     RuntimeError when the process table cannot be read (callers refuse)."""
     probe = str(Path(__file__).resolve().parents[2] / 'verification' / 'probe')
     if probe not in sys.path:
         sys.path.insert(0, probe)
-    from game_guard import game_running
-    return game_running()
+    import game_guard
+    return game_guard.game_running(game_guard.FL_COMMANDS if edition == 'fl' else game_guard.GAME_COMMANDS)
 
 
 def our_slots(markers):
@@ -493,16 +506,16 @@ def dat_bytes(members):
     return sum(len(d) for _, d in members)
 
 
-def check_dat_limit(slot, members):
+def check_dat_limit(slot, members, xp='addon'):
     """Hard refusal: the engine cannot reach a member ending past 2^31 - 1 (fseek(long)); regardless of
     --max-dat-bytes no such dat is written."""
     n = dat_bytes(members)
     if n > DAT_LIMIT:
-        raise SystemExit(f'addon/{slot:02d}.dat would be {n} bytes, above 2^31 - 1 = {DAT_LIMIT} (the engine seeks'
+        raise SystemExit(f'{xp}/{slot:02d}.dat would be {n} bytes, above 2^31 - 1 = {DAT_LIMIT} (the engine seeks'
                          ' catalogue members with a signed 32-bit offset); refusing, nothing written')
 
 
-def pack_slots(plans, max_bytes, first=1):
+def pack_slots(plans, max_bytes, first=1, xp='addon'):
     """[[plan, ...], ...]: the plans in order, each body's members (its .pbb/.bob and its atlas members)
     in one archive; the next archive starts when a body would push the current dat past the cap,
     min(max_bytes, DAT_LIMIT) (a larger --max-dat-bytes splits at the limit). SystemExit when one body
@@ -521,18 +534,18 @@ def pack_slots(plans, max_bytes, first=1):
         out[-1].append(p)
         size += n
     for i, group in enumerate(out):
-        check_dat_limit(first + i, [m for p in group for m in p['members']])
+        check_dat_limit(first + i, [m for p in group for m in p['members']], xp)
     return out
 
 
-def slot_plan(prev_slots, nxt, count, start):
+def slot_plan(prev_slots, nxt, count, start, xp='addon'):
     """(new, replaced, retired, removed) for an overlay of count archives at start..start+count-1 given the
     previous overlay's live slots and the next free slot nxt: replaced = previous slots inside the new range;
     removed = previous slots above it when every slot from its end up to nxt - 1 is ours (deleting them keeps
     the numbering contiguous); retired = the other previous slots (kept as retired catalogues)."""
     new = list(range(start, start + count))
     if new[-1] > 99:
-        raise SystemExit(f'the overlay needs addon/{start:02d}..{new[-1]:02d}; addon numbers stop at 99')
+        raise SystemExit(f'the overlay needs {xp}/{start:02d}..{new[-1]:02d}; {xp} numbers stop at 99')
     prev = sorted(slot_set(prev_slots))
     above = list(range(new[-1] + 1, nxt))
     removed = above if above and all(s in prev for s in above) else []
@@ -541,7 +554,7 @@ def slot_plan(prev_slots, nxt, count, start):
     return new, replaced, retired, removed
 
 
-def installed_markers(game):
+def installed_markers(game, edition=None):
     """[dict(path, slot, manifest, status)] for every addon/NN.x3m-lod.json, status one of
     'valid' (the marker's overlay cat/dat sha256 match the files beside it), 'legacy' (a marker
     without overlay hashes, from before 2026-09-23, whose every recorded body member is present
@@ -552,7 +565,7 @@ def installed_markers(game):
     marker's overlay_slots list (all slots of a multi-slot overlay, consecutive, containing its own slot)
     or [slot] for a single-slot, legacy or retired marker; a malformed list makes the marker unreadable."""
     out = []
-    for path in sorted((Path(game) / 'addon').glob('*' + MARKER_SUFFIX)):
+    for path in sorted((Path(game) / catalogue_mounts.expansion(game, edition)).glob('*' + MARKER_SUFFIX)):
         m = dict(path=path, slot=None, manifest=None, status='unreadable', overlay_slots=None)
         try:
             manifest = json.loads(path.read_text())
@@ -610,13 +623,13 @@ def legacy_verified(cat, manifest):
     return True
 
 
-def original_assets(game, markers=None, mods=()):
+def original_assets(game, markers=None, mods=(), edition=None):
     """(Assets, skipped sources): every catalogue with a live, retired or unreadable marker beside
     it is left out; an orphaned marker's catalogue (a mod overwrote the slot) is read as a source. mods are
     selected addon/mods packages layered on top (the package view of --mod); a derived package copy is ours
-    and is never passed here."""
-    assets = Assets(Path(game), mods=[Path(m) for m in mods])
-    markers = installed_markers(game) if markers is None else markers
+    and is never passed here. edition forces 'ap' or 'fl' (default: catalogue_mounts.game_edition)."""
+    assets = Assets(Path(game), mods=[Path(m) for m in mods], edition=edition)
+    markers = installed_markers(game, edition) if markers is None else markers
     ours = {m['path'].with_name(f'{m["slot"]:02d}.cat') for m in markers if m['slot'] and m['status'] in OURS_MARKERS}
     ours |= {m['path'].with_name(m['path'].name[:-len(MARKER_SUFFIX)] + '.cat') for m in markers
              if m['status'] == 'unreadable'}
@@ -642,12 +655,13 @@ def archive_digest(game, exclude_slot, mode):
 def next_slot(game, count=1):
     """The next contiguous free addon number (the engine mounts addon/01.cat upwards until the first missing
     number, 0x004ec9e0); count consecutive free numbers must fit below 100. A multi-slot overlay counts like
-    any other catalogues here."""
-    nums = sorted(int(p.stem) for p in (game / 'addon').glob('[0-9][0-9].cat'))
+    any other catalogues here. FL: addon2/NN.cat (X3FL.exe 0x50a734..0x50a7c5, the same contiguous count)."""
+    xp = lod_overlay_check.expansion(game)
+    nums = sorted(int(p.stem) for p in (game / xp).glob('[0-9][0-9].cat'))
     if nums != list(range(1, len(nums) + 1)):
-        raise SystemExit(f'addon catalogues are not contiguous from 01: {nums}')
+        raise SystemExit(f'{xp} catalogues are not contiguous from 01: {nums}')
     if len(nums) + count > 99:
-        raise SystemExit('no free addon slot' if count == 1 else f'no {count} free consecutive addon slots')
+        raise SystemExit(f'no free {xp} slot' if count == 1 else f'no {count} free consecutive {xp} slots')
     return len(nums) + 1
 
 
@@ -1989,6 +2003,7 @@ def build_parser():
                     help='hash every installed .dat before and after the run (default: cat sha256 plus dat'
                          ' size and mtime)')
     ap.add_argument('--game', type=Path, default=bob1.DEFAULT_GAME)
+    catalogue_mounts.add_edition_argument(ap)   # module notes, "Farnham's Legacy"
     ap.add_argument('--out', type=Path, help='output root (receives addon/NN.cat/.dat)')
     ap.add_argument('--install', action='store_true', help='write into the game directory (never overwrites)')
     ap.add_argument('--slot', type=int, help='addon catalogue number 1..99 (default and required: the next'
@@ -2096,6 +2111,20 @@ def build_parser():
 def main(argv=None):
     ap = build_parser()
     a = ap.parse_args(join_collapse(sys.argv[1:] if argv is None else argv))
+    if a.edition == 'auto':
+        return _main(ap, a)
+    saved = os.environ.get(catalogue_mounts.EDITION_ENV)   # spawned census and bake workers inherit the choice
+    os.environ[catalogue_mounts.EDITION_ENV] = a.edition
+    try:
+        return _main(ap, a)
+    finally:
+        if saved is None:
+            os.environ.pop(catalogue_mounts.EDITION_ENV, None)
+        else:
+            os.environ[catalogue_mounts.EDITION_ENV] = saved
+
+
+def _main(ap, a):
     a.collapse, a.area_percent = a.collapse
     if a.check:
         print(lod_overlay_check.overlay_line(a.game, a.registry, a.hash_archives))
@@ -2156,13 +2185,15 @@ def main(argv=None):
                         widen=dict(px=a.widen_px, divisor=a.widen_design_divisor) if a.widen else None)
     a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
+    edition = catalogue_mounts.game_edition(game)
+    xp = catalogue_mounts.EXPANSIONS[edition]
     root = None
     if not a.dry_run:
         if a.install == (a.out is not None):
             raise SystemExit('pass exactly one of --out DIR or --install')
         if a.install and not a.force_running:
             try:
-                lines = running_game()
+                lines = running_game(edition)
             except RuntimeError as exc:
                 raise SystemExit(f'--install: cannot tell whether the game is running ({exc});'
                                  ' pass --force-running to override') from None
@@ -2177,7 +2208,7 @@ def main(argv=None):
     markers = installed_markers(game)
     for m in markers:
         if m['status'] == 'orphaned':
-            print(f'warning: marker {m["path"].name} is orphaned (addon/{m["slot"]:02d}.cat/.dat do not match its'
+            print(f'warning: marker {m["path"].name} is orphaned ({xp}/{m["slot"]:02d}.cat/.dat do not match its'
                   ' hashes: a mod overwrote the slot); that catalogue is read as a mod source'
                   + (' and the marker is removed on --install' if a.install else ''))
         elif m['status'] == 'unreadable':
@@ -2218,12 +2249,12 @@ def main(argv=None):
         if not a.force_slot and slot != next_slot(game):
             raise SystemExit(f'--slot {slot}: the next contiguous free slot is {next_slot(game)}'
                              ' (pass --force-slot to override)')
-    cat_rel = f'addon/{slot:02d}.cat'
-    for rel in (cat_rel, f'addon/{slot:02d}.dat', f'addon/{slot:02d}{MARKER_SUFFIX}'):
+    cat_rel = f'{xp}/{slot:02d}.cat'
+    for rel in (cat_rel, f'{xp}/{slot:02d}.dat', f'{xp}/{slot:02d}{MARKER_SUFFIX}'):
         if (game / rel).exists() and replace_slot is None:
             raise SystemExit(f'{rel} already exists in the game directory')
 
-    new, _, retire, remove = slot_plan(prev_slots, next_slot(game), 1, slot)
+    new, _, retire, remove = slot_plan(prev_slots, next_slot(game), 1, slot, xp)
     before = None if a.dry_run else archive_digest(game, exclude, a.hash_mode)[1]
     assets, skipped = original_assets(game, markers)
     if skipped:
@@ -2254,7 +2285,7 @@ def main(argv=None):
     if dat_bytes(members) > a.max_dat_bytes:
         raise SystemExit(f'{cat_rel}: {dat_bytes(members)} dat bytes exceed --max-dat-bytes {a.max_dat_bytes} (the'
                          ' single-body mode writes one archive; name fewer bodies or use --batch); nothing written')
-    check_dat_limit(slot, members)
+    check_dat_limit(slot, members, xp)
     if a.dry_run:
         print('dry run: nothing written')
         return 0
@@ -2271,7 +2302,7 @@ def main(argv=None):
                     level = lod_atlas.preview(e['dds'], p['atlas_build']['layout'], path)
                     print(f'preview {path} (mip {level})')
     print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
-          + (f'; replaced the installed addon/{slot:02d} overlay' if moved else ''))
+          + (f'; replaced the installed {xp}/{slot:02d} overlay' if moved else ''))
     return 0
 
 
@@ -2318,8 +2349,8 @@ def body_manifest(p):
         members=[dict(path=m, sha256=hashlib.sha256(d).hexdigest(), bytes=len(d)) for m, d in p['members']])
 
 
-def slot_files(root, slot):
-    cat = root / f'addon/{slot:02d}.cat'
+def slot_files(root, slot, xp='addon'):
+    cat = root / f'{xp}/{slot:02d}.cat'
     return [cat, cat.with_suffix('.dat'), cat.with_name(cat.stem + MARKER_SUFFIX)]
 
 
@@ -2333,18 +2364,19 @@ def commit_outputs(a, game, root, layout, prev_slots, before, exclude, manifest_
     exclude is the slot set left out of the originals check. On --install the orphaned markers in
     remove_markers are deleted last. Returns (targets, moved)."""
     retire, remove = list(retire), list(remove)
+    xp = lod_overlay_check.expansion(game)
     new = [s for s, _, _ in layout]
     ours = slot_set(prev_slots) | set(retire) | set(remove)
-    written = [slot_files(root, s) for s in new]
-    retired_files = [slot_files(root, s) for s in retire]
+    written = [slot_files(root, s, xp) for s in new]
+    retired_files = [slot_files(root, s, xp) for s in retire]
     targets = [p for fs in written + retired_files for p in fs]
-    removed = [p for s in remove for p in slot_files(root, s)] if a.install else []
-    slot_of = {p: s for s in new + retire + remove for p in slot_files(root, s)}
+    removed = [p for s in remove for p in slot_files(root, s, xp)] if a.install else []
+    slot_of = {p: s for s in new + retire + remove for p in slot_files(root, s, xp)}
     replacing = a.install and bool(ours)
     asides = [(w, w.with_name(w.name + REPLACED_SUFFIX)) for w in targets + removed]
     for w in targets:
         if w.exists() and not (replacing and slot_of[w] in ours):
-            raise SystemExit(f'refusing to overwrite existing addon/{slot_of[w]:02d} outputs under {root}')
+            raise SystemExit(f'refusing to overwrite existing {xp}/{slot_of[w]:02d} outputs under {root}')
     if replacing:
         for _, aside in asides:
             if aside.exists():
@@ -2402,16 +2434,17 @@ def commit_outputs(a, game, root, layout, prev_slots, before, exclude, manifest_
     return targets, moved
 
 
-def retired_member(retire, slot):
+def retired_member(retire, slot, xp='addon'):
     """The one member of a retired catalogue: a tiny text file under a unique x3m_lod/ name that no
     engine loader resolves, so no zero-entry CAT / 0-byte DAT is ever mounted."""
     return (f'x3m_lod/retired_{retire:02d}.txt',
-            f'x3m-lod overlay slot {retire:02d} retired; the overlay lives in addon/{slot:02d}\n'.encode())
+            f'x3m-lod overlay slot {retire:02d} retired; the overlay lives in {xp}/{slot:02d}\n'.encode())
 
 
 def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None, retired_files=(), retire=()):
+    xp = lod_overlay_check.expansion(game)
     for slot, members, _ in layout:        # every archive checked before the first byte is written
-        check_dat_limit(slot, members)
+        check_dat_limit(slot, members, xp)
     group = [s for s, _, _ in layout]
     origin_fp = originals_fingerprints(game, original_archives(game, exclude))   # names a changed file at launch
     for (slot, members, bodies), files in zip(layout, written):
@@ -2427,10 +2460,11 @@ def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None
                         originals_mode=a.hash_mode, originals_fingerprints=origin_fp,
                         overlay_sha256={'cat': overlay[str(files[0])], 'dat': overlay[str(files[1])]},
                         overlay_dat_bytes=files[1].stat().st_size,
+                        **({'edition': 'fl'} if xp == 'addon2' else {}),   # AP markers keep their field set
                         **(manifest_extra or {}))
         files[2].write_text(json.dumps(manifest, indent=1) + '\n')
     for rslot, files in zip(retire, retired_files):
-        write_catalogue(files[0], [retired_member(rslot, group[0])])
+        write_catalogue(files[0], [retired_member(rslot, group[0], xp)])
         rh = hash_files(files[:2])
         files[2].write_text(json.dumps(dict(
             tool='tools/analysis/lod_overlay.py', slot=rslot, retired=True, retired_by=group[0],
@@ -2723,11 +2757,11 @@ def settings_match(recorded, settings, trust_tool=False):
     return False, False
 
 
-def source_label(key):
-    return f'addon/{key:02d}' if isinstance(key, int) else f'addon/mods/{key}'
+def source_label(key, xp='addon'):
+    return f'{xp}/{key:02d}' if isinstance(key, int) else f'{xp}/mods/{key}'
 
 
-def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=()):
+def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=(), xp='addon'):
     """{name: plan} of the eligible bodies whose members can be copied from the previous overlay:
     same batch settings (--trust-tool: except tool_sha256), same inputs_sha256, every member present with its
     recorded sha256. prev is dict(slots, markers) of the previous overlay's live slots (or None); extra are
@@ -2740,21 +2774,21 @@ def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=()):
         checks = [settings_match((m['manifest'].get('batch') or {}).get('settings'), settings, trust_tool)
                   for m in prev['markers']]
         if not all(ok for ok, _ in checks):
-            notes.append(f'--sync: the previous overlay addon/{names} was built with different settings'
+            notes.append(f'--sync: the previous overlay {xp}/{names} was built with different settings'
                          ' (rule, width or atlas options' + ('' if trust_tool else ', or tool sources: --trust-tool'
                                                              ' reuses across a tool change') + '); every body is rebuilt')
         else:
             if any(t for _, t in checks):
-                notes.append(f'--trust-tool: the previous overlay addon/{names} was built with other tool sources'
+                notes.append(f'--trust-tool: the previous overlay {xp}/{names} was built with other tool sources'
                              ' (tool_sha256 differs); its bodies are reused where their inputs_sha256 match')
             sources += [(m['slot'], m['path'].with_name(f'{m["slot"]:02d}.cat'), m['manifest']) for m in prev['markers']]
     for key, cat, manifest in extra:
         ok, trusted = settings_match((manifest.get('batch') or {}).get('settings'), settings, trust_tool)
         if not ok:
-            notes.append(f'--sync: {source_label(key)} was built with different settings; its bodies are rebuilt')
+            notes.append(f'--sync: {source_label(key, xp)} was built with different settings; its bodies are rebuilt')
             continue
         if trusted:
-            notes.append(f'--trust-tool: {source_label(key)} was built with other tool sources; reused where the'
+            notes.append(f'--trust-tool: {source_label(key, xp)} was built with other tool sources; reused where the'
                          ' inputs match')
         sources.append((key, cat, manifest))
     entries, dats, cats = {}, {}, {}       # key -> {path: entry}; key -> open dat; key -> cat path
@@ -2763,7 +2797,7 @@ def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=()):
             entries[key] = {e['path']: e for e in read_catalogue(cat)}
             cats[key] = cat
         except (ValueError, OSError) as exc:
-            notes.append(f'--sync: cannot read {source_label(key)}.cat ({exc}); its bodies are rebuilt')
+            notes.append(f'--sync: cannot read {source_label(key, xp)}.cat ({exc}); its bodies are rebuilt')
     old = {}
     for key, _, manifest in sources:
         if key in entries:
@@ -2799,7 +2833,7 @@ def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=()):
                                               manifest=dict(b, reused_from=came), draws=b.get('draws'),
                                               atlas=b.get('atlas'), reused=True, trailing=b.get('trailing_bytes', 0),
                                               guard_waived=b.get('guard_waived', False), seconds=0.0,
-                                              text=f'{r["name"]}: reused from {source_label(came)} ({len(got)} members,'
+                                              text=f'{r["name"]}: reused from {source_label(came, xp)} ({len(got)} members,'
                                                    f' inputs {r["inputs_sha256"][:16]})\n')
                         break
     return out
@@ -2839,16 +2873,17 @@ def select_package(a, game):
         name = src
     if not lod_overlay_check.valid_package_name(name):
         return refuse(f'package name {name!r} is not an ASCII stem without dots or path separators')
-    cat = game / 'addon' / 'mods' / f'{name}.cat'
+    xp = lod_overlay_check.expansion(game)
+    cat = game / xp / 'mods' / f'{name}.cat'
     if not cat.is_file() or not cat.with_suffix('.dat').is_file():
-        return refuse(f'addon/mods/{name}.cat/.dat not found')
+        return refuse(f'{xp}/mods/{name}.cat/.dat not found')
     return name, notes
 
 
 def resource_stem(path):
     """Resource identity of a member path for the texture-override test: lower case, no addon/, no extension
     (a package texture under another extension counts as an override: conservative)."""
-    p = path.replace('\\', '/').lower().removeprefix('addon/')
+    p = re.sub(r'^addon2?/', '', path.replace('\\', '/').lower())
     head, _, tail = p.rpartition('/')
     return (head + '/' if head else '') + (tail.rsplit('.', 1)[0] if '.' in tail else tail)
 
@@ -2901,6 +2936,7 @@ def package_layout(pkg_cat, derived, pkg_plans, restored):
     .bod) of the stems we replace, then the merged bodies with their atlases, then the restored original bodies.
     Refuses (nothing written) a duplicate name or a dat above 2^31 - 1: a package cannot be split."""
     import lod_batch_census as census
+    xp = pkg_cat.parent.parent.name        # <game>/<expansion>/mods/<name>.cat
     entries = read_catalogue(pkg_cat)
     replaced = {census.body_key(p['name']) for p in pkg_plans} | {census.body_key(r['name']) for r in restored}
     is_replaced = lambda e: e['path'].lower().endswith(bob1.BODY_EXTENSIONS) and census.body_key(e['path']) in replaced
@@ -2909,11 +2945,11 @@ def package_layout(pkg_cat, derived, pkg_plans, restored):
     added = [m for p in pkg_plans for m in p['members']] + [(r['member'], r['stored']) for r in restored]
     names = [e['path'].lower() for e in kept] + [m.lower() for m, _ in added]
     if len(set(names)) != len(names):
-        raise SystemExit(f'addon/mods/{derived}: a merged member name is already in the package; refusing, nothing'
+        raise SystemExit(f'{xp}/mods/{derived}: a merged member name is already in the package; refusing, nothing'
                          ' written')
     total = sum(e['size'] for e in kept) + dat_bytes(added)
     if total > DAT_LIMIT:
-        raise SystemExit(f'addon/mods/{derived}.dat would be {total} bytes, above 2^31 - 1 = {DAT_LIMIT} (the engine'
+        raise SystemExit(f'{xp}/mods/{derived}.dat would be {total} bytes, above 2^31 - 1 = {DAT_LIMIT} (the engine'
                          ' seeks catalogue members with a signed 32-bit offset, and only one package is mounted, so it'
                          ' cannot be split); refusing, nothing written')
     return dict(entries=len(entries), kept=kept, removed=removed, added=added, bytes=total)
@@ -2944,17 +2980,18 @@ def commit_package(a, root, pkg_cat, derived, layout, manifest, pkg_before, prev
     """Write addon/mods/<derived>.cat/.dat + marker under root. On --install an existing copy is moved aside first
     and put back on any failure: ours (valid) is superseded; stale needs --sync or --replace; a foreign file at
     our name (orphaned, unreadable or no marker) needs --replace. Returns (targets, restore, finish)."""
-    targets = list(lod_overlay_check.package_files(root, derived))
+    xp = pkg_cat.parent.parent.name        # the source package's expansion: the copy goes beside it
+    targets = list(lod_overlay_check.package_files(root, derived, xp))
     existing = [t for t in targets if t.exists()]
     if existing and not a.install:
-        raise SystemExit(f'refusing to overwrite existing addon/mods/{derived} outputs under {root}')
+        raise SystemExit(f'refusing to overwrite existing {xp}/mods/{derived} outputs under {root}')
     if existing:
         status = previous['status'] if previous else None
         if status in (None, 'orphaned', 'unreadable') and not a.replace:
-            raise SystemExit(f'addon/mods/{derived}.cat exists and is not a valid x3m-lod package copy'
+            raise SystemExit(f'{xp}/mods/{derived}.cat exists and is not a valid x3m-lod package copy'
                              f' ({status or "no marker"}); pass --replace to overwrite it')
         if status == 'stale' and not (a.sync or a.replace):
-            raise SystemExit(f'addon/mods/{derived} is stale ({previous["reason"]}); pass --sync or --replace')
+            raise SystemExit(f'{xp}/mods/{derived} is stale ({previous["reason"]}); pass --sync or --replace')
     asides = [(t, t.with_name(t.name + REPLACED_SUFFIX)) for t in existing]
     for _, aside in asides:
         if aside.exists():
@@ -2985,7 +3022,7 @@ def commit_package(a, root, pkg_cat, derived, layout, manifest, pkg_before, prev
                         overlay_dat_bytes=targets[1].stat().st_size)
         targets[2].write_text(json.dumps(manifest, indent=1) + '\n')
         if lod_overlay_check.package_fingerprint(pkg_cat, a.hash_archives) != pkg_before:
-            raise SystemExit(f'addon/mods/{pkg_cat.name} changed during the run; outputs removed')
+            raise SystemExit(f'{xp}/mods/{pkg_cat.name} changed during the run; outputs removed')
     except BaseException:
         restore()
         raise
@@ -2997,14 +3034,15 @@ def remove_package(a, game):
     marker goes)."""
     name = a.remove_package
     derived = name if name.endswith(lod_overlay_check.PACKAGE_SUFFIX) else lod_overlay_check.derived_name(name)
+    xp = lod_overlay_check.expansion(game)
     cat, dat, marker = lod_overlay_check.package_files(game, derived)
     found = {p['derived']: p for p in lod_overlay_check.package_markers(game)}.get(derived)
     if found is None:
-        raise SystemExit(f'--remove-package: addon/mods/{derived}{MARKER_SUFFIX} not found; nothing removed'
+        raise SystemExit(f'--remove-package: {xp}/mods/{derived}{MARKER_SUFFIX} not found; nothing removed'
                          ' (only a derived package with its x3m-lod marker is ours)')
     if not a.force_running:
         try:
-            lines = running_game()
+            lines = running_game(catalogue_mounts.game_edition(game))
         except RuntimeError as exc:
             raise SystemExit(f'--remove-package: cannot tell whether the game is running ({exc});'
                              ' pass --force-running to override') from None
@@ -3012,11 +3050,11 @@ def remove_package(a, game):
             raise SystemExit(f'--remove-package: the game is running ({lines[0]}); quit it first')
     if found['status'] in ('orphaned', 'unreadable'):
         marker.unlink()
-        print(f'removed the marker {marker.name} only: addon/mods/{derived}.cat/.dat do not match it (not ours)')
+        print(f'removed the marker {marker.name} only: {xp}/mods/{derived}.cat/.dat do not match it (not ours)')
         return 0
     for f in (cat, dat, marker):
         f.unlink(missing_ok=True)
-    print(f'removed addon/mods/{derived}.cat, .dat and {marker.name}; select {found["package"]} (or no package)'
+    print(f'removed {xp}/mods/{derived}.cat, .dat and {marker.name}; select {found["package"]} (or no package)'
           ' in the start menu')
     return 0
 
@@ -3026,6 +3064,7 @@ def batch(a, game, root, markers):
     import lod_batch_census as census
     t_start = time.time()
     notes = []
+    xp = lod_overlay_check.expansion(game)
     orphaned = [m for m in markers if m['status'] == 'orphaned']
     groups = live_overlays(markers)
     if len(groups) > 1:
@@ -3049,14 +3088,14 @@ def batch(a, game, root, markers):
                              ' the engine does not mount past (0x004ec9e0)')
     exclude = our_slots(markers)           # the originals hash leaves out every slot of ours
     for m in orphaned:
-        notes.append(f'orphaned marker {m["path"].name}: addon/{m["slot"]:02d} was overwritten by a mod; read as a'
+        notes.append(f'orphaned marker {m["path"].name}: {xp}/{m["slot"]:02d} was overwritten by a mod; read as a'
                      ' source' + ('; the marker is removed on --install' if a.install else ''))
     pkg_markers = lod_overlay_check.package_markers(game, a.hash_archives)
     derived_ours = {p['derived'] for p in pkg_markers if p['status'] != 'unreadable'}
-    mods = [m for m in sorted((game / 'addon' / 'mods').glob('*.cat')) if m.stem not in derived_ours]
+    mods = [m for m in sorted((game / xp / 'mods').glob('*.cat')) if m.stem not in derived_ours]
     package, pkg_notes = select_package(a, game)
     notes += pkg_notes
-    pkg_cat = game / 'addon' / 'mods' / f'{package}.cat' if package else None
+    pkg_cat = game / xp / 'mods' / f'{package}.cat' if package else None
     derived = lod_overlay_check.derived_name(package) if package else None
     pkg_previous = next((p for p in pkg_markers if p['derived'] == derived), None)
     pkg_before = lod_overlay_check.package_fingerprint(pkg_cat, a.hash_archives) if package else None
@@ -3066,7 +3105,7 @@ def batch(a, game, root, markers):
                 texel=dict(min_texels=a.min_texels, floor_share=a.texel_floor_share, fallback=a.texel_fallback),
                 rule=dict(census.RULE, aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0],
                           aspect_station=a.aspect_cap[1]),
-                overlay_target=f'addon/{slot:02d}.cat')   # a stem mounted above it is overlay_cannot_win
+                overlay_target=f'{xp}/{slot:02d}.cat')   # a stem mounted above it is overlay_cannot_win
     settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
                     source_record=0, placement='compact', include_other=a.include_other,
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
@@ -3117,12 +3156,12 @@ def batch(a, game, root, markers):
         if prev is None:
             notes.append('--sync: no previous overlay; every body is built')
         else:
-            reused = reuse_previous(prev, eligible, settings, notes, a.trust_tool)
+            reused = reuse_previous(prev, eligible, settings, notes, a.trust_tool, xp=xp)
         if package:
             extra = [(derived, lod_overlay_check.package_files(game, derived)[0], pkg_previous['manifest'])] \
                 if pkg_previous and pkg_previous['status'] in ('valid', 'stale') else []
             pnotes = []
-            pkg_reused = reuse_previous(prev, pkg_eligible, settings, pnotes, a.trust_tool, extra)
+            pkg_reused = reuse_previous(prev, pkg_eligible, settings, pnotes, a.trust_tool, extra, xp)
             notes += [n for n in pnotes if n not in notes]
     to_bake = [r for r in eligible if r['name'] not in reused]
     pkg_to_bake = [r for r in pkg_eligible if r['name'] not in pkg_reused]
@@ -3195,18 +3234,18 @@ def batch(a, game, root, markers):
                 restored.append(dict(name=n, member=e['path'], source=e['source'], stored=stored))
         if pkg_plans or restored:
             pkg_layout = package_layout(pkg_cat, derived, pkg_plans, restored)
-    packed = pack_slots(plans, a.max_dat_bytes, slot)   # refuses before the record or any archive is written
+    packed = pack_slots(plans, a.max_dat_bytes, slot, xp)   # refuses before the record or any archive is written
     cap = min(a.max_dat_bytes, DAT_LIMIT)
     if cap < a.max_dat_bytes:
         notes.append(f'--max-dat-bytes {a.max_dat_bytes} is above 2^31 - 1; the overlay is split at {cap} (the'
                      ' engine seeks catalogue members with a signed 32-bit offset)')
-    new, replaced, retire, remove = slot_plan(prev['slots'] if prev else (), nxt, max(1, len(packed)), slot)
+    new, replaced, retire, remove = slot_plan(prev['slots'] if prev else (), nxt, max(1, len(packed)), slot, xp)
     layout = [(s, [m for p in ps for m in p['members']], [p['manifest'] for p in ps]) for s, ps in zip(new, packed)]
     slot_rows = [dict(slot=s, bodies=len(bs), members=len(ms), bytes=dat_bytes(ms)) for s, ms, bs in layout]
     if retire:
-        notes.append(f'previous overlay addon/{"/".join(f"{s:02d}" for s in prev["slots"])} is no longer at the top of'
-                     f' the addon numbering (mod catalogues up to addon/{nxt - 1:02d}); the new overlay takes'
-                     f' addon/{new[0]:02d}..{new[-1]:02d} and {", ".join(f"addon/{s:02d}" for s in retire)} become'
+        notes.append(f'previous overlay {xp}/{"/".join(f"{s:02d}" for s in prev["slots"])} is no longer at the top of'
+                     f' the addon numbering (mod catalogues up to {xp}/{nxt - 1:02d}); the new overlay takes'
+                     f' {xp}/{new[0]:02d}..{new[-1]:02d} and {", ".join(f"{xp}/{s:02d}" for s in retire)} become'
                      ' valid empty catalogues (marker: retired)')
     for p in plans:
         row = by_name[p['name']]
@@ -3240,11 +3279,11 @@ def batch(a, game, root, markers):
     if package:
         pb = sum(1 for p in pkg_plans if p['reused'])
         mod_notes.append(
-            f'package {package}: addon/mods/{package}.cat {pkg_info["members"]} members, {pkg_info["held"]} body stems;'
+            f'package {package}: {xp}/mods/{package}.cat {pkg_info["members"]} members, {pkg_info["held"]} body stems;'
             f' affected {pkg_info["affected"]} (held {pkg_info["held"]}, texture overrides {len(pkg_info["texture"])});'
             f' package view enumerated {len(pkg_rows)}, eligible {sum(1 for r in pkg_rows if r["eligible"])};'
             f' built {len(pkg_plans) - pb} + reused {pb} = {len(pkg_plans)} merged, restored {len(restored)} original'
-            + (f'; derived addon/mods/{derived}.cat/.dat: {len(pkg_layout["kept"])} of {pkg_layout["entries"]}'
+            + (f'; derived {xp}/mods/{derived}.cat/.dat: {len(pkg_layout["kept"])} of {pkg_layout["entries"]}'
                f' package members kept, {len(pkg_layout["removed"])} body members replaced,'
                f' {len(pkg_layout["added"])} members added, dat {pkg_layout["bytes"]} B; select {derived} in the start'
                ' menu' if pkg_layout else '; no derived package needed (nothing merged or restored)'))
@@ -3255,10 +3294,10 @@ def batch(a, game, root, markers):
             keys = {census.body_key(e['path']) for e in read_catalogue(mc)
                     if e['path'].lower().endswith(bob1.BODY_EXTENSIONS)}
         except (ValueError, OSError) as exc:
-            mod_notes.append(f'warning: addon/mods/{mc.name}: unreadable ({exc})')
+            mod_notes.append(f'warning: {xp}/mods/{mc.name}: unreadable ({exc})')
             continue
         hit = sum(1 for p in plans if census.body_key(p['name']) in keys)
-        mod_notes.append(f'warning: addon/mods/{mc.name} ({len(keys)} bodies) overrides the overlay for {hit} of its'
+        mod_notes.append(f'warning: {xp}/mods/{mc.name} ({len(keys)} bodies) overrides the overlay for {hit} of its'
                          f' {len(plans)} bodies while that mod is selected in the launcher; --mod {mc.stem} bakes its'
                          f' derived package {mc.stem}-x3m-lod')
     # summary
@@ -3375,13 +3414,13 @@ def batch(a, game, root, markers):
         f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
         + (f' (this run x {len(rows)} enumerated / {len(built)} built; upper bound, every candidate baked)'
            if only is not None else ' (this run is the full set)') + f'; total {time.time() - t_start:.1f} s',
-        f'target addon/{slot:02d}.cat + .dat' + (f' .. addon/{new[-1]:02d}' if len(new) > 1 else '')
+        f'target {xp}/{slot:02d}.cat + .dat' + (f' .. {xp}/{new[-1]:02d}' if len(new) > 1 else '')
         + f' ({len(new)} slot{"s" if len(new) > 1 else ""}, dat cap {cap}): '
-        + ', '.join(f'addon/{r["slot"]:02d} {r["bodies"]} bodies {r["members"]} members {r["bytes"]} B'
+        + ', '.join(f'{xp}/{r["slot"]:02d} {r["bodies"]} bodies {r["members"]} members {r["bytes"]} B'
                     for r in slot_rows)
-        + (f'; replaces the previous overlay in {", ".join(f"addon/{s:02d}" for s in replaced)}' if replaced else '')
-        + ''.join(f'; addon/{s:02d} retired to an empty catalogue' for s in retire)
-        + (f'; previous overlay slots removed on --install: {", ".join(f"addon/{s:02d}" for s in remove)}'
+        + (f'; replaces the previous overlay in {", ".join(f"{xp}/{s:02d}" for s in replaced)}' if replaced else '')
+        + ''.join(f'; {xp}/{s:02d} retired to an empty catalogue' for s in retire)
+        + (f'; previous overlay slots removed on --install: {", ".join(f"{xp}/{s:02d}" for s in remove)}'
            if remove else '')
         + (f'; orphaned markers: {[m["path"].name for m in orphaned]}' if orphaned else '')]
     summary += notes + mod_notes + sector_lines + budget + texel_lines
@@ -3391,7 +3430,7 @@ def batch(a, game, root, markers):
     if a.record is not None:
         record_path = a.record
     elif root is not None:                 # --out DIR, or the game's addon/ on --install (beside the marker)
-        record_path = (root / 'addon' if a.install else root) / 'x3m-lod-batch.json'
+        record_path = (root / xp if a.install else root) / 'x3m-lod-batch.json'
     else:
         record_path = Path.cwd() / f'x3m-lod-batch-{slot:02d}.json'
     record = dict(
@@ -3512,21 +3551,21 @@ def batch(a, game, root, markers):
             files = lod_overlay_check.package_files(game, pm['derived'])
             if pm['status'] in ('orphaned', 'unreadable'):
                 pm['path'].unlink(missing_ok=True)
-                print(f'removed orphaned package marker {pm["path"].name} (addon/mods/{pm["derived"]}.cat is not ours)')
+                print(f'removed orphaned package marker {pm["path"].name} ({xp}/mods/{pm["derived"]}.cat is not ours)')
             elif pm['status'] == 'source_missing' and not a.keep_package_copy:
                 for f in files:
                     f.unlink(missing_ok=True)
-                print(f'removed addon/mods/{pm["derived"]}: its source package is gone (--keep-package-copy keeps it)')
+                print(f'removed {xp}/mods/{pm["derived"]}: its source package is gone (--keep-package-copy keeps it)')
             elif pm['derived'] == derived and not pkg_layout:
                 for f in files:
                     f.unlink(missing_ok=True)
-                print(f'removed addon/mods/{derived}: the package no longer needs a derived copy')
+                print(f'removed {xp}/mods/{derived}: the package no longer needs a derived copy')
     write_record()
     print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
-          + (f'; replaced the installed {", ".join(f"addon/{s:02d}" for s in replaced)} overlay'
+          + (f'; replaced the installed {", ".join(f"{xp}/{s:02d}" for s in replaced)} overlay'
              if moved and replaced else '')
-          + ''.join(f'; retired addon/{s:02d}' for s in retire)
-          + (f'; removed the previous overlay slots {", ".join(f"addon/{s:02d}" for s in remove)}'
+          + ''.join(f'; retired {xp}/{s:02d}' for s in retire)
+          + (f'; removed the previous overlay slots {", ".join(f"{xp}/{s:02d}" for s in remove)}'
              if remove and a.install else ''))
     return 0
 

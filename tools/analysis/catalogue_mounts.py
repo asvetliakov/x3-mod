@@ -17,16 +17,41 @@ user choice and are not mounted here.
 
 An FL installation still carries AP's `addon/` directory on disk; the edition
 is FL when `X3FL.exe` and `addon2/01.cat` are both present, AP otherwise.
+
+The merged-LOD overlay family (sector_fog_census.Assets, bob1, lod_batch_census,
+lod_overlay, lod_overlay_check, x3m_regenerate) resolves its edition through
+game_edition: an explicit choice, else the X3M_EDITION environment variable
+(lod_overlay --edition sets it for its own run, so spawned bake and census
+workers see the same choice), else the installation.
 """
+import os
 from pathlib import Path
 
 EXPANSIONS = {'ap': 'addon', 'fl': 'addon2'}
+EDITION_ENV = 'X3M_EDITION'
+GAME_EXES = {'ap': 'X3AP.exe', 'fl': 'X3FL.exe'}
+REGISTRY_KEYS = {'ap': 'Software\\EGOSOFT\\X3AP', 'fl': 'Software\\EGOSOFT\\X3FL'}
 
 
 def edition(game):
     """'fl' for a Farnham's Legacy installation, 'ap' otherwise."""
     game = Path(game)
     return 'fl' if (game / 'X3FL.exe').is_file() and (game / 'addon2' / '01.cat').is_file() else 'ap'
+
+
+def game_edition(game, which=None):
+    """'ap' or 'fl': which when it names an edition, else X3M_EDITION when it does, else edition(game)."""
+    for choice in (which, os.environ.get(EDITION_ENV)):
+        if choice in EXPANSIONS:
+            return choice
+        if choice not in (None, '', 'auto'):
+            raise ValueError('unknown edition %r' % choice)
+    return edition(game)
+
+
+def expansion(game, which=None):
+    """The edition's expansion directory: 'addon' (AP) or 'addon2' (FL)."""
+    return EXPANSIONS[game_edition(game, which)]
 
 
 def numbered_run(directory):

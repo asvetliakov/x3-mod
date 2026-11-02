@@ -1310,3 +1310,55 @@ Original brief: the heavy fogged sector of runs 18/19, same spot: judge the fram
 lower than run 19's 1,500–1,980 at the same spot, and no `state=refused`. Visual check: no missing parts on nearby
 ships, projectiles still visible, Terran stations drop detail by size. The engine lens flares of vanilla ships are gone
 anyway (plumes); nothing else should change.
+## Merged-LOD overlay, host evidence (2026-11-02, not installed)
+
+Tooling: the overlay family gains an FL (addon2) mode ([lod-overlay-mods.md](../architecture/lod-overlay-mods.md),
+"FL (addon2) mode"); AP behaviour unchanged (7 host modules test_bob1, test_catalogue_mounts, test_game_guard, test_lod_overlay_batch, test_regenerate, test_lod_overlay_check, test_engine_bodies: 186 tests, 0 failing, measured by the reviewer). Bake: `lod_overlay.py
+--game /mnt/c/X3FL --batch --mod none --out OUT` with the AP regenerate defaults (rule ships T_class = min(200, max(80,
+2.5 T_1)), stations 150, aspect caps 1.5/2.0, reference width 1800, atlases 1024–2048 DXT, specular and bump on), the
+same rule set as AP with no FL-only refusal (Terran stations: the FL DLL patches the distance branch since run 20).
+48:42 wall, census 115 s, bake 2,755 s for 637 bodies, at most 9 at once (measured). Two earlier bakes with the same
+rule set wrote byte-identical catalogues (measured), so the bake is deterministic. Scripts and outputs:
+`verification/results/fl-lod-overlay/` (`commands.txt`). The catalogues stay in the session scratchpad; the user
+installs them.
+
+| Item | Ships | Stations | Source |
+| --- | --- | --- | --- |
+| enumerated (winning bodies) | 556 | 576 | `bake_counts_out.txt` (m) |
+| baked | 317 (36 single-LOD) | 320 (28 single-LOD) | (m) |
+| not baked and single-LOD (no draw gain, nothing to atlas, no opaque material, format) | 128 | 64 | (m) |
+| not baked: unreadable (ships mat3 4; stations parse_error 1, text_parse_error 1) | 4 | 2 | (m) |
+| draws below T_pad, summed over the overlay bodies (record 0 → merged record) | 10,415 → 1,633 together | | (m) |
+
+The rows overlap; a single-LOD ladder is not a skip reason as such: the AP rule adds the merged record to it when that
+saves draws (64 baked).
+
+- **Output.** Two slots, not one: the fleet's dat is 2,751,698,102 B (atlases 543,110,388 B), above the engine's
+  2^31 − 1 member offset limit, so the default cap splits it: `addon2/06` 506 bodies 1,996,148,766 B and `addon2/07`
+  131 bodies 755,549,336 B (measured). sha256 `06.cat` `c7a362a5…`, `06.dat` `aeafd068…`, `07.cat` `69c1e0ca…`,
+  `07.dat` `6eca6e0b…`; `tool_sha256` `d736dc9f…` equals the committed tool sources (full hashes in
+  `bake_counts_out.txt`).
+- **Pre-install check** (`lod_overlay_check.py --candidate`): ok — edition fl, slots 06/07 free (game addon2 run
+  01..05), no member collision (637 body members, every one an intended override), sources unchanged (measured).
+- **Fogged-background sectors** (TBackgrounds row 14, the four sectors of the draw census; `overlay_sectors.py`, the
+  `station_sectors.py` method): 46 stations, 383 parts, station draws at LOD 0 **1,934 → 511** with the overlay's
+  merged records (−1,423, −74 %); 63 parts covered, 99 parts unread by the method, 212 single-LOD parts (inferred:
+  sums over parts, no distance bands, culling or hidden parts modelled; none of the four sectors has a Terran
+  station). Equal to the installed AP overlay's 511 on the same parts (`coverage_diff_out.txt`: no part covered by
+  one and not the other, measured). The stock coarsest records sum to 474 but are drawn only past the last stock
+  threshold; the merged record replaces LOD 0 from T_pad (80–200 px ship radius, 150 px stations) on.
+- **Format refusals** (`format_refusals_out.txt`): 183 bodies refused for a format reason (mat3 158,
+  material_outside_table 16, text_parse_error 13, classic_unsupported 10, parse_error 1, texture_generated 1;
+  177 category other, mostly `v/NNNNN` and menu effects). 170 are refused identically in the installed AP batch;
+  7 are FL-only (`others/hsap`, a station: "text line 11: expected parameter value, got an empty value"; the six
+  `nebula_kfs_dust_part0N`: "expected vertex z, got '0.000500'"), 6 differ from AP (two FL `fx_engine_xtc_lightblue`
+  engine effects mat3 in FL vs no_opaque in AP; `v/00094`, `v/00096`, `v/00127`, `v/00779`). The only ships are the
+  four `ships/props/extern_*_dock` mat3 props, refused on AP too.
+- **Regenerate.** `x3m_regenerate` on `C:\X3FL` runs the same `--batch --sync --mod auto --install` call into
+  `addon2/` (fog family steps skipped, logged), so with unchanged inputs and tool sources it writes the same pair
+  (inferred from the identical call and the measured determinism; the synthetic FL run passes, the real-folder
+  regenerate was not run because it writes into `C:\X3FL`).
+- **Install** (user): copy all six files `addon2/06.cat/.dat/.x3m-lod.json` and `addon2/07.cat/.dat/.x3m-lod.json`
+  into `C:\X3FL\addon2\`. Afterwards `python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL` should read
+  `lod overlay: ok (637 bodies in slots 06/07, 2.75 GB; sources unchanged; …)`. Flight check: a heavy fogged sector
+  (run 19 D windows) against its 1,742-draw median; draws, not frame time, are the first number to compare.

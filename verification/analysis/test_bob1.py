@@ -1914,5 +1914,58 @@ class Installed(unittest.TestCase):
         self.assertEqual(lod_overlay.hash_files(originals), before)
 
 
+
+class FlMounts(unittest.TestCase):
+    """The FL edition of the mount helpers (resource-resolver.md section 1): root NN.cat then addon2/NN.cat up to
+    the first gap, no physical addon/, the addon2/ namespace preferred like AP's addon/."""
+
+    def tearDown(self):
+        import os
+        os.environ.pop('X3M_EDITION', None)
+
+    def tree(self, folder):
+        game = Path(folder)
+        (game / 'X3FL.exe').write_bytes(b'MZ')
+        body = gzip.compress(bob1.serialise(atlas_tree_lod0()), mtime=0)
+        write_catalogue(game / '01.cat', [('objects/ships/a.pbb', body), ('types/TShips.txt', b'root')])
+        write_catalogue(game / 'addon2/01.cat', [('objects/ships/b.pbb', body), ('addon2/types/TShips.txt', b'fl')])
+        write_catalogue(game / 'addon2/02.cat', [('objects/ships/a.pbd', b'BODY 0\n')])     # higher: wins on FL
+        write_catalogue(game / 'addon2/04.cat', [('objects/ships/c.pbb', body)])           # after a gap
+        write_catalogue(game / 'addon/01.cat', [('objects/ships/b.pbd', b'BODY 0\n'),     # AP's, never mounted
+                                                ('objects/ships/ap.pbb', body)])
+        return game
+
+    def test_assets_mounts_and_resolver(self):
+        import os
+        with tempfile.TemporaryDirectory() as folder:
+            game = self.tree(folder)
+            a = Assets(game)
+            self.assertEqual((a.edition, a.expansion), ('fl', 'addon2'))
+            self.assertEqual(a.layers, ['01.cat', 'addon2/01.cat', 'addon2/02.cat', 'addon2/04.cat'])
+            self.assertEqual(a.get('types/TShips.txt')[0], b'fl')                       # addon2/ namespace first
+            self.assertEqual(bob1.resolve_body(a, 'ships/a')['source'], 'addon2/02.cat')
+            self.assertEqual(bob1.resolve_body(a, 'ships/b')['source'], 'addon2/01.cat')
+            with self.assertRaises(FileNotFoundError):
+                bob1.resolve_body(a, 'ships/c')                                         # addon2/04 after the gap
+            with self.assertRaises(FileNotFoundError):
+                bob1.resolve_body(a, 'ships/ap')                                        # physical addon/ ignored
+            self.assertGreater(bob1.mount_key(a, 'addon2/06.cat'), bob1.mount_key(a, 'addon2/02.cat'))
+            self.assertGreater(bob1.mount_key(a, 'addon2/01.cat'), bob1.mount_key(a, '13.cat'))
+            self.assertEqual([e['source'] for e in bob1.overlay_outranked(a, 'ships/a', 'addon2/02.cat')],
+                             ['addon2/02.cat'])                                        # a foreign target slot
+            self.assertEqual(bob1.body_stem('addon2/objects/ships/a.pbb'), 'objects/ships/a')
+            (game / 'objects/ships').mkdir(parents=True)
+            (game / 'addon2/objects/ships').mkdir(parents=True)
+            (game / 'addon2/objects/ships/b.pbb').write_bytes(b'x')
+            with self.assertRaisesRegex(bob1.BodyRefused, 'loose member under addon2/objects'):
+                bob1.resolve_body(Assets(game), 'ships/b')
+            ap = Assets(game, edition='ap')                                             # the AP view of the folder
+            self.assertEqual(bob1.resolve_body(ap, 'ships/b')['source'], 'addon/01.cat')
+            os.environ['X3M_EDITION'] = 'ap'
+            self.assertEqual(Assets(game).expansion, 'addon')
+            pinned = Assets(game, catalogues=['01.cat', 'addon2/01.cat'])               # a pinned FL view
+            self.assertEqual(pinned.expansion, 'addon2')
+
+
 if __name__ == '__main__':
     unittest.main()
