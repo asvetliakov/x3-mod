@@ -14,6 +14,6 @@
  "build_warnings": 0,
  "review": "Opus high x2 (bracket deletion: no blocker, F1-F4 fixed; cull port: no blocker, far-jet feed fenced, docs fixed)",
  "ini": "C:\\X3FL\\x3m.ini unchanged (user restored after run 19: no timing keys, engine_effects default plumes)",
- "game_data": "merged-LOD overlay addon2/06.cat pending (bake in progress); to be added to this run when ready",
+ "game_data": "none in this run; the merged-LOD overlay (addon2/06+07) installed separately as FL run 21 after run 20 was flown",
  "installed_at": "2026-11-02T16:51:05+04:00"
 }

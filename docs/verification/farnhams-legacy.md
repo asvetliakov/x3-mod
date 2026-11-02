@@ -1310,7 +1310,7 @@ Original brief: the heavy fogged sector of runs 18/19, same spot: judge the fram
 lower than run 19's 1,500–1,980 at the same spot, and no `state=refused`. Visual check: no missing parts on nearby
 ships, projectiles still visible, Terran stations drop detail by size. The engine lens flares of vanilla ships are gone
 anyway (plumes); nothing else should change.
-## Merged-LOD overlay, host evidence (2026-11-02, not installed)
+## Merged-LOD overlay, host evidence (2026-11-02; installed as FL run 21, below)
 
 Tooling: the overlay family gains an FL (addon2) mode ([lod-overlay-mods.md](../architecture/lod-overlay-mods.md),
 "FL (addon2) mode"); AP behaviour unchanged (7 host modules test_bob1, test_catalogue_mounts, test_game_guard, test_lod_overlay_batch, test_regenerate, test_lod_overlay_check, test_engine_bodies: 186 tests, 0 failing, measured by the reviewer). Bake: `lod_overlay.py
@@ -1362,3 +1362,22 @@ saves draws (64 baked).
   into `C:\X3FL\addon2\`. Afterwards `python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL` should read
   `lod overlay: ok (637 bodies in slots 06/07, 2.75 GB; sources unchanged; …)`. Flight check: a heavy fogged sector
   (run 19 D windows) against its 1,742-draw median; draws, not frame time, are the first number to compare.
+
+## FL run 21 — merged-LOD overlay catalogue installed (2026-11-02)
+
+Game data only; the DLL stays run 20's `af2d404f…`. Tooling merge `41443182a` (worktree commit `10dd4a40d`, review Opus
+medium, no blocker; fixes folded: size figure, test count, marker-type guard in `lod_overlay_check.py`). Installed
+`C:\X3FL\addon2\06.cat/.dat/.x3m-lod.json` and `07.*` (637 bodies: 317 ships, 320 stations incl. the 63 Terran-only
+ones; 2.75 GB; hashes in `verification/results/fl-lod-overlay/bake_counts_out.txt`, re-verified with `sha256sum -c`
+after the copy and the move, measured). Installed-state check `lod_overlay_check.py --game /mnt/c/X3FL`: ok (measured).
+Rollback: delete the six files. Record `verification/results/fl-run21/candidate.json`. Expected (inferred from the census):
+stations in the fogged background sectors 1,934 → 511 draws, so the fogged `frame_end draws=` median should fall again
+from run 20's 468. Fleet coverage (`coverage_fleet.py`): every body the AP batch bakes is baked on FL; FL-only skips are
+`others/hsap` (text parse, empty parameter) and effect parts; 187 `*_wreck` bodies are refused no_opaque on both editions
+(alpha-flagged materials; whether their textures are opaque is unexamined; candidate for shared baker work).
+
+**FL run 21 A (open):** the same fogged spot as runs 19/20, one F8 there, and if convenient a look at a Terran station and
+a wreck at distance; tell me before relaunching. Expect `lod_overlay` rows at load naming slots 06/07 and 637 bodies,
+no `lod_overlay … refused`, fogged draws below run 20's 468 median; visual check: distant stations and ships keep their
+silhouette with no missing or untextured parts (an untextured distant body means its atlas failed to load), close-up
+unchanged, loading time not noticeably longer.

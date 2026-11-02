@@ -1,0 +1,42 @@
+{
+ "run": 21,
+ "step": "merged-LOD overlay catalogue for FL (addon2/06+07, 637 bodies: 317 ships, 320 stations incl. 63 Terran-only), game data only; DLL unchanged from run 20 (af2d404f)",
+ "edition": "fl",
+ "commit": "41443182a",
+ "dirty": false,
+ "dll_sha256_prefix": "af2d404f84877515",
+ "dll_unchanged_from": "run 20",
+ "rollback": "delete the six addon2/06*,07* files (DLL rollback stays run19 2171cdb2)",
+ "game_data": {
+  "06.cat": {
+   "bytes": 136695,
+   "sha256": "c7a362a5984c7d612af407942eaa0124216336f5e8e3aabeda93c8563bcbda05"
+  },
+  "06.x3m-lod.json": {
+   "bytes": 13369926,
+   "sha256": "9a94821c2b04ceeb67b3c88eaf897913f5013e574bc9f3c437c8f3bb5cff59e7"
+  },
+  "07.cat": {
+   "bytes": 38538,
+   "sha256": "69c1e0cac10bd7077b4881e36b310a71b47fdc987a26eb0f9fcda1510df9be64"
+  },
+  "07.x3m-lod.json": {
+   "bytes": 2463457,
+   "sha256": "a96922c87702a1b4c105acc9bfb946494f68edd8701c46594c60d1be845ea18c"
+  },
+  "06.dat": {
+   "bytes": 1996148766,
+   "sha256": null
+  },
+  "07.dat": {
+   "bytes": 755549336,
+   "sha256": null
+  }
+ },
+ "dat_sha256_from_source_check": "06.dat aeafd068\u2026, 07.dat 6eca6e0b\u2026 (full in verification/results/fl-lod-overlay/bake_counts_out.txt; sha256sum -c against the scratch bake passed after copy and after move)",
+ "bake": "lod_overlay.py --game /mnt/c/X3FL --batch --mod none, 48:42 wall, tool_sha256 d736dc9f\u2026 = committed tools (worktree commit 10dd4a40d)",
+ "checks": "lod_overlay_check.py --candidate ok (slots 06/07 free, 637 members, no collision, sources unchanged); installed-state check ok (637 bodies in slots 06/07, 2.75 GB); split_check.py: both dats below 2^31-1, no body split across the pair; 7 host modules 186 tests 0 failing",
+ "review": "Opus medium: no blocker; fixed: regenerate.md size figure, ledger test count, lod_overlay_check marker-type guard; open: multi-package ModName bakes base silently, X3M_EDITION env override, next AP regenerate rebuilds all bodies (tool hash changed)",
+ "ini": "unchanged",
+ "installed_at": "2026-11-02T19:26:02+04:00"
+}
