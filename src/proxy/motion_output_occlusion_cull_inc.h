@@ -35,6 +35,22 @@
 
 __attribute__((noinline)) bool MotionOutput::attach_occlusion_cull() noexcept {
     if (occlusion_attach_failed_) return false;
+    // The body manager slot the classifier reads: AP's fixed VA; FL: object_trace_fl's engine slot at the module base
+    // (its anchor matched when the scope seam is up; without the seam cull_occluded calls this once to log the refusal).
+    // The node fields are the classifier's edition layout (engine_node_layout.h).
+#if X3M_EDITION_FL
+    const std::uintptr_t base = fl::module_base();
+    occlusion_body_global_ = base && object_trace::scope_available() ? base + fl::own_ship_trace::engine_slot_rva : 0;
+    if (!occlusion_body_global_) {
+        occlusion_attach_failed_ = true;
+        occlusion_on_ = false;
+        log("occlusion_cull_device device=%llu attached=0 edition=fl reason=scope_unavailable scope=%s", id_,
+            object_trace::status());
+        return false;
+    }
+#else
+    occlusion_body_global_ = x3m::cull_census::core::body_global_va;
+#endif
     occlusion_classifier_ = new (std::nothrow) occlusion_cull::core::Classifier();
     occlusion_batcher_ = new (std::nothrow) occlusion_cull::core::Batcher();
     if (occlusion_batcher_) occlusion_batcher_->retest = occlusion_retest_;
@@ -49,7 +65,7 @@ __attribute__((noinline)) bool MotionOutput::attach_occlusion_cull() noexcept {
         occlusion_attach_failed_ = true;
         occlusion_on_ = false;
         occlusion_engine_ = false;
-        log("occlusion_cull_device device=%llu attached=0 reason=out_of_memory", id_);
+        log("occlusion_cull_device device=%llu attached=0 reason=out_of_memory" X3M_CULL_EDITION_FIELD, id_);
         return false;
     }
     return true;
@@ -68,11 +84,21 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         // The vertex extents come from the shadow-replay candidate counter, which runs only with a cascade set (or the
         // diagnostic counter): without it no part has bounds, so the cull is off on this device (one row).
         occlusion_on_ = false;
-        log("occlusion_cull_device device=%llu attached=0 configured=0 reason=no_bounds_source", id_);
+        log("occlusion_cull_device device=%llu attached=0 configured=0 reason=no_bounds_source" X3M_CULL_EDITION_FIELD,
+            id_);
         return false;
     }
+#if X3M_EDITION_FL
+    // FL: the scope seam is decided at install (object_trace_fl's redirect). Without it the cull is off on this device
+    // with one row (attach_occlusion_cull's scope_unavailable refusal), not a silent no-op behind
+    // occlusion_cull_config reason=ok.
+    if (!object_trace::scope_available()) {
+        if (!occlusion_classifier_) attach_occlusion_cull();
+        return false;
+    }
+#endif
     std::uintptr_t descriptor = 0, node = 0;
-    if (!object_trace::executable_verified() || !object_trace::scope_node(&descriptor, &node)) return false;
+    if (!object_trace::scope_available() || !object_trace::scope_node(&descriptor, &node)) return false;
     // The engine-side skip's ledger slot of this draw (occlusion_ledger_scene_draw, taken at the scene gate before the
     // small-prop cull and every refusal above and below): a skipped verdict counts against it at the end.
     occlusion_cull::engine::Ledger::Slot* ledger_slot = occlusion_ledger_slot_;
@@ -96,7 +122,7 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
     std::uint32_t model = 0, ship = 0;
     bool hull = false, fresh = false;
     const oc::Class cls =
-        k.evaluate(read, x3m::cull_census::core::body_global_va, std::uint32_t(node), &model, &hull, &ship, &fresh);
+        k.evaluate(read, occlusion_body_global_, std::uint32_t(node), &model, &hull, &ship, &fresh);
     if (cls != oc::Class::part && !(cls == oc::Class::hull && fresh)) {
         SetLastError(error);
         return false;
@@ -173,7 +199,7 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         HRESULT hr = E_OUTOFMEMORY;
         occlusion_pass_.reset(new (std::nothrow) renderer::OcclusionCullPass());
         if (occlusion_pass_) taa_call([&] { hr = occlusion_pass_->attach(device_, native_); }, "occlusion_cull_attach");
-        log("occlusion_cull_device device=%llu attached=%u reason=%s result=%08lx pool=%u", id_,
+        log("occlusion_cull_device device=%llu attached=%u reason=%s result=%08lx pool=%u" X3M_CULL_EDITION_FIELD, id_,
             SUCCEEDED(hr) ? 1u : 0u, occlusion_pass_ ? occlusion_pass_->reason() : "out_of_memory", hr,
             occlusion_cull::core::pool_size);
         if (FAILED(hr)) {
@@ -188,7 +214,8 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
         HRESULT hr = S_OK;
         taa_call([&] { hr = occlusion_pass_->recreate(); }, "occlusion_cull_recreate");
         if (FAILED(hr)) {
-            log("occlusion_cull_device device=%llu attached=0 reason=%s result=%08lx", id_, occlusion_pass_->reason(), hr);
+            log("occlusion_cull_device device=%llu attached=0 reason=%s result=%08lx" X3M_CULL_EDITION_FIELD, id_,
+                occlusion_pass_->reason(), hr);
             release_occlusion_cull();
             occlusion_pass_failed_ = true;
             SetLastError(error);
@@ -241,6 +268,8 @@ bool MotionOutput::cull_occluded(const MotionDrawCall& call, MotionRoute& route)
 // occlusion_ledger_slot_ (one draw at a time on the render thread).
 void MotionOutput::occlusion_ledger_scene_draw() noexcept {
     occlusion_ledger_slot_ = nullptr;
+    // AP only: the ledger feeds the engine-side stub, which is X3AP.exe's (capture.cpp never sets occlusion_cull_engine
+    // on FL, and the gate is the constant false there besides).
     if (!occlusion_ledger_ || !object_trace::executable_verified()) return;
     std::uintptr_t descriptor = 0, node = 0;
     if (!object_trace::scope_node(&descriptor, &node) || !node) return;

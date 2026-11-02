@@ -600,3 +600,41 @@ sectors with 10–13 stations each. AP figures are measured
   callers, and the dock cut-scene bodies 9013/9014/9098/9099 in FL's assets.
 - The FL draw saving of every module (§7) is inferred from AP flights. A flown
   FL census with a small-parts stub is the first measurement.
+
+## Proxy culls' engine reads (2026-11-02)
+
+The two draw-hook culls (small props, `cull_small_props_core.h`; GPU occlusion of ship sub-parts,
+`occlusion_cull_core.h`) patch nothing: per scene draw they take the scope node from `object_trace::scope_node()` and
+read engine memory through `engine_memory::read`. On FL the gate is `object_trace::scope_available()` (= `active()`:
+X3FL.exe identity, the material-submit site and target bytes and the engine anchor matched, redirect installed). Every
+FL read, with its source; VAs at the preferred base, production adds the RVA to the module base:
+
+| Read | AP | FL | Source of the FL value |
+| --- | --- | --- | --- |
+| Node model id | `+0x140` | **`+0x144`** | `object_trace_fl_inc.h` `node_model` (generated, operand RVA `0x0968e1`); §5 |
+| Node parent / handle | `+0x18` / `+0x28` | same | `object_trace_fl_inc.h` `node_parent` (RVA `0x0a5809`), `node_handle` (RVA `0x0a22a8`) |
+| Body manager slot | `*0x608518` | **`*(base+0x1aa100)`** | `object_trace_fl_inc.h` `engine_slot_rva`, its anchor checked by `initialize()`; getter `0x4867c1` |
+| Body table: fixed `+0xb4` = 11000, dynamic `+0xb8`, slots `+0xbc`, stride `0x1c`, name `+0xc` | same | same | getter `0x4867c0`: `0x4867e9/f3/f9/0x486803/09/10/12`; factory `0x48a5f7` |
+| Id → slot: `<1000` id, `<20000` id−9000, else fixed+id−20000, bounded by fixed+dynamic | `0x46df60` | same | getter `0x4867c7/d3/db/e3`, bound `0x4867ff` |
+| Cockpit registry slot, registry `+0/+0x10`, map `{buckets,capacity}`, link `{next,key,value}` | `0x608504` | **`base+0x1a82e4`**, same layout | `sector_background_fl_inc.h`, anchors checked by `sector_background_fl::admitted()` |
+| Cockpit camera `+0x58` (read by `object_capture::target`) | same | same | `sector_background_fl_inc.h` `cockpit_camera` (RVA `0x022e42`) |
+| Cockpit reference object `+0xc`, its render root `+0x70` | same | same | `fl-engine-effects/own_ship_offsets.py` (6 anchors) |
+| Selected target cockpit `+0x1e0` | same | same | command load `0x43106f`, setter store `0x4275ed`, invalidator `0x427672/0x42767a` |
+| Target object id `+8`, render root `+0x70` | same | same | `0x43107d`; solver `0x4506d8` |
+| Descriptor → mesh part `+0x40` box (capture-only diagnostic row) | AP | **not read** | FL's ECX descriptor is not established as a mesh part ([small-props-inputs.md](small-props-inputs.md) §4) |
+| Engine-side skip ledger: view position `+0xf0..+0xf8`, stub | AP | **off** | `occlusion_engine_cull` stays AP only (§6 item 6) |
+
+Reproduce (static, read-only, the live `C:\X3FL\X3FL.exe`, SHA-256 `e7f3aad8…01dfbb8`):
+
+```sh
+python3 -I verification/results/fl-proxy-culls/offsets.py > verification/results/fl-proxy-culls/offsets.json
+```
+
+[offsets.py](../../../verification/results/fl-proxy-culls/offsets.py) decodes 19 whole instructions with Capstone and
+checks mnemonic, displacement, immediate and scale: **19 / 19 pass** (measured,
+[offsets.json](../../../verification/results/fl-proxy-culls/offsets.json)). Together with the generated
+`object_trace_fl_inc.h` / `sector_background_fl_inc.h` constants and `own_ship_offsets.py`, every engine read of the two
+culls on FL has a decoded FL source; none is carried over from AP by assumption. Not established here: the lifetime of
+the target and own roots between the registry walk and the ancestry walk is the AP contract (validated reads, handle
+confirmation, fail closed to `unresolved`), not the owned-copy contract of [small-props-inputs.md](small-props-inputs.md)
+§1–2 [i].

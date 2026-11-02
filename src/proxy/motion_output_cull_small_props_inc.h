@@ -18,18 +18,51 @@
 
 // The decision state, committed once at the first scene draw with the option on (kept out of line so the per-draw
 // function carries no allocation and no exception registration).
+// FL (X3FL.exe is relocatable): the two engine globals at the module base, the body manager slot of object_trace_fl
+// (its anchor matched when the scope seam is up) and the cockpit registry slot of sector_background_fl (its anchors
+// admitted); without either the cull is off on this device (one row) rather than drawing every prop as unresolved.
+// The FL engine reads are listed with their sources in docs/reverse-engineering/fl/cull-chain.md, "Proxy culls'
+// engine reads (2026-11-02)".
+#if X3M_EDITION_FL
+static_assert(engine_node_layout::fl.model == fl::own_ship_trace::node_model &&
+                  engine_node_layout::fl.parent == fl::own_ship_trace::node_parent &&
+                  engine_node_layout::fl.handle == fl::own_ship_trace::node_handle,
+              "the culls' FL node layout is the one generated from X3FL.exe (object_trace_fl_inc.h)");
+static_assert(engine_node_layout::edition.model == engine_node_layout::fl.model, "the FL build reads the FL layout");
+#else
+static_assert(engine_node_layout::edition.model == engine_node_layout::ap.model, "the AP build reads the AP layout");
+#endif
 __attribute__((noinline)) bool MotionOutput::attach_small_props() noexcept {
     if (props_attach_failed_) return false;
+#if X3M_EDITION_FL
+    const std::uintptr_t base = fl::module_base();
+    props_addresses_.body_global = base && object_trace::scope_available() ? base + fl::own_ship_trace::engine_slot_rva : 0;
+    props_addresses_.cockpit_slot =
+        base && fl::sector_background_fl::admitted() ? base + fl::sector_background_fl::cockpit_registry_slot_rva : 0;
+    if (!props_addresses_.body_global || !props_addresses_.cockpit_slot) {
+        props_attach_failed_ = true;
+        props_on_ = false;
+        log("cull_small_props_device device=%llu attached=0 edition=fl reason=%s scope=%s sector=%s", id_,
+            !props_addresses_.body_global ? "scope_unavailable" : "registry_not_admitted", object_trace::status(),
+            fl::sector_background_fl::status());
+        return false;
+    }
+#endif
     props_ = new (std::nothrow) cull_small_props::core::Culler();
     if (!props_) {
         props_attach_failed_ = true;
         props_on_ = false;
-        log("cull_small_props_device device=%llu attached=0 reason=out_of_memory", id_);
+        log("cull_small_props_device device=%llu attached=0 reason=out_of_memory" X3M_CULL_EDITION_FIELD, id_);
         return false;
     }
     props_->px = props_px_;
+#if X3M_EDITION_FL
+    log("cull_small_props_device device=%llu attached=1 px=%.4f edition=fl model_offset=0x%x", id_, double(props_px_),
+        props_->layout.model);
+#else
     log("cull_small_props_device device=%llu attached=1 px=%.4f executable=%u", id_, double(props_px_),
         object_trace::executable_verified() ? 1u : 0u);
+#endif
     return true;
 }
 // The object-space AABB of this draw's POSITION0 range from the shadow-replay extent cache (the box the
@@ -84,7 +117,7 @@ bool MotionOutput::cull_small_prop(const MotionDrawCall& call, MotionRoute& rout
     const std::uint32_t frame = std::uint32_t(frame_);
     if (!c.frame_started || c.frame != frame) c.begin_frame(frame);
     std::uintptr_t descriptor = 0, node = 0;
-    if (!object_trace::executable_verified() || !object_trace::scope_node(&descriptor, &node)) {
+    if (!object_trace::scope_available() || !object_trace::scope_node(&descriptor, &node)) {
         c.count(props::Verdict::no_scope);
         return false;
     }
@@ -100,7 +133,7 @@ bool MotionOutput::cull_small_prop(const MotionDrawCall& call, MotionRoute& rout
     props::Box extent_box{};
     const props::Box* extent = nullptr;
     const auto extent_of = [&]() noexcept { return extent = small_prop_extent(call, extent_box); };
-    const auto verdict = c.evaluate(read, props::Addresses{}, std::uint32_t(node), extent_of, rows, target_width_,
+    const auto verdict = c.evaluate(read, props_addresses_, std::uint32_t(node), extent_of, rows, target_width_,
                                     target_height_, &first);
     // F8 frames: one row per prop node decided this frame (capped), the vertex-extent radius the decision used beside
     // the engine's mesh-part box radius (diagnostic; the run376 gap).
@@ -113,8 +146,10 @@ bool MotionOutput::cull_small_prop(const MotionDrawCall& call, MotionRoute& rout
         float vb_px = -1.f, part_px = -1.f;
         props::Box part{};
         if (extent && rows) props::screen_radius(rows, *extent, target_width_, target_height_, &vb_px);
+#if !X3M_EDITION_FL // AP's descriptor -> mesh part box; FL's ECX descriptor is not established as one: part_px -1
         if (rows && props::Culler::engine_part_box(read, std::uint32_t(descriptor), part))
             props::screen_radius(rows, part, target_width_, target_height_, &part_px);
+#endif
         log("cull_small_prop_box device=%llu frame=%llu index=%lu node=%08lx verdict=%s extent_px=%.3f part_px=%.3f extent_lo=%g,%g,%g extent_hi=%g,%g,%g part_lo=%g,%g,%g part_hi=%g,%g,%g",
             id_, frame_, static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(node),
             props::verdict_name(verdict), double(vb_px), double(part_px), extent ? double(extent->lo[0]) : 0.,
