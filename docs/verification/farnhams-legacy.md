@@ -1793,7 +1793,16 @@ test accepts the fire report line (`b4ea9ff1d`). Clean `build-fl` from main `b4e
 `3851f91d…` (55,621,875 B), rollback `rollback-d3d9\d3d9.dll.run25` = `413eb49b…`; overlay and ini unchanged. Record
 `verification/results/fl-run26/candidate.json`.
 
-**FL run 26 A (open):** in the chase view, select a target well off-centre, hold the right mouse button with the cursor on it
+**FL run 26 A (flown 2026-11-03, accepted):** user: "Works fine. Mouse steering doesn't hide cursor so it works fine too".
+Log `/home/asvetl/x3m-logs/fl-run26-cursor-fire.log` (165 MB, measured): `chase_fire installed=1 status=active
+scope=applied_chase_258_player_main_cursor edition=fl rva=0x04ecad rollback=none`; over 62 `chase_fire_window` rows
+`native_inactive_override=517 timed_calls=517`, every `refused_*`, `early_*` and `native_active` counter 0: FL does not
+aim cursor fire at the cursor natively in the chase view, the hook did it on every admitted call, and nothing was
+refused. Bolt pipeline during the bursts: `pair_draws=21,030 admitted=10,515`, `bolt_footprint session_written=9,282
+gated=0` (the chase gate open). The (0,0) exposure is moot on FL: mouse steering keeps the cursor visible (user). The chase
+family is complete on FL except `chase_aim_trace` (`status=ap_only reason=diagnostic_not_ported`), kept AP-only.
+
+Original brief: in the chase view, select a target well off-centre, hold the right mouse button with the cursor on it
 and fire a few bursts; also fire once with the cursor hidden (mouse steering) to probe the (0,0) exposure; one F8 while
 firing; tell me before relaunching. Expect `chase_fire installed=1 … edition=fl`, the fire row's `native_inactive_override`
 rising while firing at the cursor (or `native_active > 0` with override 0 if FL already aims at the cursor natively),
