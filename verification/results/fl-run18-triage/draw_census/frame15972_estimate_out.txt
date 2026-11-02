@@ -1,0 +1,7 @@
+px_radius per s unit = 1.50
+argon_m1 (M1): draws=32 bbox=801x392 s~267 stock band LOD0 (fingerprint LOD0) overlay T_pad=120 (radius 180 px) -> 32 draws
+argon_tl (TL): draws=31 bbox=103x108 s~36 stock band LOD0 (fingerprint LOD0) overlay T_pad=120 (radius 180 px) -> 8 draws
+argon_tech_s_factory_a (station part): draws=15 bbox=135x116 s~45 stock band LOD2 (fingerprint LOD2) overlay T_pad=163 (radius 244 px) -> 3 draws
+argon_m7 (M7): draws=16 bbox=76x46 s~25 stock band LOD0 (fingerprint LOD0) overlay T_pad=120 (radius 180 px) -> 2 draws
+boron_ts_liquidstorage_l (TS part): draws=21 bbox=20x20 s~7 stock band LOD1 (fingerprint LOD1) overlay T_pad=120 (radius 180 px) -> 2 draws
+five nodes: before=115 after=47 saved=68

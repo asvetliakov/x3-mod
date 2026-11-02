@@ -1,0 +1,5 @@
+FL ships stems=559 baked by the installed AP overlay=317
+FL stations stems=189 baked by the installed AP overlay=115
+batch: game C:\X3; display 1920x1080 -> reference width 1800; rule ships T_class = min(200, max(80, 2.5 x T_1)), stations/others 150; aspect factor K_max ships 1.5 stations 2 (2535 bodies with T_pad != T_class); source record 0, compact (T_1 guard waived: 113 
+bodies enumerated 4611: other 2730, ship 1266, station 615; eligible 1154; built 0 + reused 1154 = 1154 overlay bodies
+draws below T_pad per instance, summed over the overlay bodies: 15331 -> 2526 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies whose atlased materials use more than one effect file, one atlas material per effect (215): s

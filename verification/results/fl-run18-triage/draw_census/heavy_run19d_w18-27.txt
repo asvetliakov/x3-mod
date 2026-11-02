@@ -1,0 +1,15 @@
+median/p90 per window; frame_end.draws motion_output_frame.routed hull_lightmap_frame.admitted engine_frame.candidates engine_frame.not_jet engine_frame.bodies shadow_replay_candidates.leased hull_emission_frame.alpha hull_emission_frame.opaque volumetric_fog_cards.observed
+w18 standardblack n=300 draws=94/985 routed=39/755 admitted=37/742 candidates=47/132 not_jet=43/93 bodies=226/226 leased=38/248 alpha=0/5 opaque=8/154 observed=0/0
+w19 standardblack n=300 draws=80/82 routed=24/24 admitted=21/21 candidates=46/47 not_jet=43/43 bodies=226/226 leased=22/22 alpha=0/0 opaque=4/4 observed=0/0
+w20 standardblack n=300 draws=64/71 routed=19/19 admitted=18/18 candidates=33/39 not_jet=32/38 bodies=226/226 leased=19/19 alpha=0/0 opaque=3/3 observed=0/0
+w21 foggreenoutlands n=300 draws=1980/1983 routed=965/968 admitted=960/963 candidates=1002/1013 not_jet=975/982 bodies=226/226 leased=292/305 alpha=258/263 opaque=18/24 observed=8/8
+w22 foggreenoutlands n=300 draws=1866/1960 routed=886/931 admitted=880/926 candidates=970/1019 not_jet=935/983 bodies=226/226 leased=260/273 alpha=254/260 opaque=3/3 observed=8/9
+w23 foggreenoutlands n=300 draws=1622/1843 routed=770/867 admitted=765/862 candidates=842/965 not_jet=818/936 bodies=226/226 leased=185/229 alpha=215/238 opaque=3/3 observed=7/9
+w24 foggreenoutlands n=300 draws=1598/1618 routed=770/770 admitted=765/765 candidates=826/838 not_jet=806/818 bodies=226/226 leased=185/185 alpha=186/186 opaque=3/3 observed=7/9
+w25 foggreenoutlands n=300 draws=1548/1603 routed=749/774 admitted=745/769 candidates=790/817 not_jet=766/792 bodies=226/226 leased=184/199 alpha=186/203 opaque=3/3 observed=7/9
+w26 foggreenoutlands n=300 draws=653/658 routed=312/312 admitted=310/310 candidates=332/337 not_jet=325/330 bodies=226/226 leased=45/45 alpha=91/91 opaque=3/3 observed=8/9
+w27 foggreenoutlands n=300 draws=142/656 routed=0/312 admitted=0/310 candidates=69/334 not_jet=67/327 bodies=226/226 leased=0/44 alpha=0/91 opaque=0/3 observed=0/7
+range n=3000 draws=990/1959 routed=694/931 admitted=689/926 candidates=339/997 not_jet=332/965 bodies=226/226 leased=171/276 alpha=91/258 opaque=3/18 observed=6/8
+draws>=1500 n=1406 draws=1742/1980 routed=825/965 admitted=820/960 candidates=906/1004 not_jet=877/978 bodies=226/226 leased=208/294 alpha=218/259 opaque=3/18 observed=8/9
+draws>=1500: (routed + engine candidates) / draws median=0.994
+max frame 6218 {'shadow_replay_candidates.leased': 294, 'volumetric_fog_cards.observed': 8, 'engine_frame.candidates': 1018, 'engine_frame.not_jet': 987, 'engine_frame.bodies': 226, 'hull_emission_frame.alpha': 257, 'hull_emission_frame.opaque': 24, 'hull_lightmap_frame.admitted': 958, 'motion_output_frame.routed': 965, 'frame_end.draws': 2007}

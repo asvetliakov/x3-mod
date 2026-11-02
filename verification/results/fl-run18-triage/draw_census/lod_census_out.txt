@@ -1,0 +1,38 @@
+FL ships: bodies=552 lod_count={1: 160, 2: 1, 3: 28, 4: 359, 5: 4} single_lod=160 (29.0%) lod0_draws p50=3.0 mean=7.7 | multi-LOD: T1 p50=30.0 coarsest/lod0 draws p50=0.78
+FL stations: bodies=185 lod_count={1: 58, 2: 24, 3: 16, 4: 77, 5: 9, 9: 1} single_lod=58 (31.4%) lod0_draws p50=6 mean=10.3 | multi-LOD: T1 p50=30 coarsest/lod0 draws p50=0.83
+AP-stock ships: bodies=552 lod_count={1: 160, 2: 1, 3: 28, 4: 359, 5: 4} single_lod=160 (29.0%) lod0_draws p50=3.0 mean=7.8 | multi-LOD: T1 p50=30.0 coarsest/lod0 draws p50=0.78
+AP-stock stations: bodies=185 lod_count={1: 58, 2: 24, 3: 16, 4: 77, 5: 9, 9: 1} single_lod=58 (31.4%) lod0_draws p50=6 mean=10.3 | multi-LOD: T1 p50=30 coarsest/lod0 draws p50=0.83
+common stems=737 same winning catalogue=476 identical ladder (count, thresholds, draws)=732
+FL-only stems=0 AP-only stems=0
+FL winning catalogue per stem: {'02.cat': 471, 'addon2/01.cat': 256, 'addon2/02.cat': 5, '11.cat': 3, '08.cat': 1, '04.cat': 1}
+AP winning catalogue per stem: {'02.cat': 476, 'addon/01.cat': 213, 'addon/03.cat': 43, '11.cat': 3, '08.cat': 1, '04.cat': 1}
+common stems with different LOD count or thresholds=0; examples:
+FL-only stems: 
+
+bodies seen in run-18 frame 15972 (drawn draws, drawn LOD, bbox px) and their ladders
+M1 capital ships/argon/argon_m1 drawn=32 lod0 bbox=801x392
+   FL: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[33, 32, 29, 24] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-stock: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[33, 32, 29, 24] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-mayhem: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[33, 32, 29, 24] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-installed+overlay: addon/13.cat n=3 thr=[30, 120] draws/LOD=[33, 3, 24] very-high bands: s<120:LOD1 s>=120:LOD0
+TL ships/argon/argon_tl drawn=31 lod0 bbox=103x108
+   FL: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[37, 31, 28, 23] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-stock: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[37, 31, 28, 23] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-mayhem: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[37, 31, 28, 23] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-installed+overlay: addon/13.cat n=3 thr=[30, 120] draws/LOD=[37, 8, 23] very-high bands: s<120:LOD1 s>=120:LOD0
+station part stations/station_scenes/tech/argon_tech_s_factory_a drawn=15 lod2 bbox=135x116
+   FL: 02.cat n=5 thr=[250, 150, 80, 30] draws/LOD=[38, 25, 15, 1, 1] very-high bands: s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0
+   AP-stock: 02.cat n=5 thr=[250, 150, 80, 30] draws/LOD=[38, 25, 15, 1, 1] very-high bands: s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0
+   AP-mayhem: 02.cat n=5 thr=[250, 150, 80, 30] draws/LOD=[38, 25, 15, 1, 1] very-high bands: s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0
+   AP-installed+overlay: addon/15.cat n=3 thr=[250, 163] draws/LOD=[38, 3, 1] very-high bands: s<163:LOD1 s>=163:LOD0
+M7 ships/m7/argon_m7 drawn=16 lod0 bbox=76x46
+   FL: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[16, 16, 16, 11] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-stock: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[16, 16, 16, 11] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-mayhem: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[16, 16, 16, 11] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-installed+overlay: addon/13.cat n=3 thr=[30, 120] draws/LOD=[16, 2, 11] very-high bands: s<120:LOD1 s>=120:LOD0
+TS part ships/boron/boron_ts_liquidstorage_l drawn=21 lod1 bbox=~20
+   FL: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[21, 21, 20, 13] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-stock: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[21, 21, 20, 13] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-mayhem: 02.cat n=4 thr=[30, 15, 5] draws/LOD=[21, 21, 20, 13] very-high bands: s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0
+   AP-installed+overlay: addon/13.cat n=3 thr=[30, 120] draws/LOD=[21, 2, 13] very-high bands: s<120:LOD1 s>=120:LOD0
+(AP-mayhem = installed AP minus overlay catalogues ['addon/13.cat', 'addon/14.cat', 'addon/15.cat'])

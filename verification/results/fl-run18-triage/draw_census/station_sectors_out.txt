@@ -1,0 +1,5 @@
+sector x=2 y=0 stations=11 parts=75 lod0_draws=439 coarsest_stock_draws=66 overlay_coarse_draws=105 parts_overlay_covered=15 parts_unread=23
+sector x=3 y=1 stations=12 parts=136 lod0_draws=507 coarsest_stock_draws=170 overlay_coarse_draws=156 parts_overlay_covered=13 parts_unread=17 component_parts=20
+sector x=2 y=2 stations=10 parts=81 parts_unread=26 lod0_draws=448 coarsest_stock_draws=87 overlay_coarse_draws=87 parts_overlay_covered=13 component_parts=6
+sector x=3 y=2 stations=13 parts=91 lod0_draws=540 coarsest_stock_draws=151 overlay_coarse_draws=163 parts_overlay_covered=22 parts_unread=33 component_parts=27
+total stations=46 parts=383 lod0_draws=1934 coarsest_stock_draws=474 overlay_coarse_draws=511 parts_overlay_covered=63 parts_unread=99 component_parts=53

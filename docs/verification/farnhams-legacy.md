@@ -1191,3 +1191,15 @@ rows, which this instrument cannot separate from vanilla. Conclusion of the run 
 is anomalous; the fixed mod cost is ~4 ms per fogged frame at 5120x1440 on both editions (TAA resolve 1.0, fog 1.1–1.7,
 bloom + writeback 1.0, shadows 0.35, sun 0.2) and the heavy FL sectors are draw-bound. Levers if wanted later: TAA
 resolve, fog march/repair resolution, per-draw material cost (needs a vanilla-comparable instrument).
+
+**Draw census (2026-11-02; `verification/results/fl-run18-triage/draw_census/`).** FL ship/station LOD data is identical
+to stock AP's (732 of 737 ladders byte-equal, same switch thresholds); stock LODs cut triangles, not draws (an M1 draws
+33/32/29/24 across its four levels; the AP merged-LOD overlay makes it 3). FL is unoptimised only relative to Mayhem plus
+the overlay. Frame 15972's five identified objects: 115 draws, ~47 with the AP overlay rule (inferred). Heavy windows
+(1,742 draws median): 825 opaque + 906 blended object draws; the four fogged-background sectors' 46 stations total up
+to ~540 draws at LOD 0 per sector, the rest ships, debris (230 one-draw objects in one sector) and blended parts
+(inferred). The AP overlay already bakes 317 of FL's 559 ship stems and 115 of 189 station stems. An FL overlay is
+game data in `addon2/06.cat` (no DLL change); the bake tooling (`tools/analysis/lod_overlay.py`, mounts, census,
+regenerate) is AP-only and needs an addon2 mount and the FL slot rule; three cosmetic gaps need DLL sites later
+(occlusion placeholder texture, Terran station distance branch, material strength texture hook). The run 18 capture
+log was lost to rotation; the next heavy-sector F8 must be copied before relaunch.
