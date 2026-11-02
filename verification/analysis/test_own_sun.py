@@ -288,6 +288,39 @@ class OwnSunHost(unittest.TestCase):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
         self.assertEqual(table, {(0, 0): 2, (0, 1): 2, (1, 0): 2, (1, 1): 1})  # hidden only for the eligible record
 
+    def test_no_probe_guard_frame_model(self):
+        # Step 3 review F3: 8 consecutive active frames without the hidden answer withhold the latch, a retry is let
+        # through every 600 frames, one hit re-arms. Frame 0 latches, frames 1.. are active while the latch holds.
+        never = self.run_driver('guard', 2000, 10, 10**9)
+        latch = never['latch']
+        self.assertEqual(latch[:17], '1' * 17)              # frames 0..16 latch; 10..17 are the 8 active misses
+        self.assertEqual(never['starved_at'], '17')         # the eighth miss withholds frame 17's latch
+        self.assertEqual(latch[17:617], '0' * 600)          # the engine's sun for 600 frames
+        self.assertEqual(latch[617], '1')                   # the retry: frame 618 active, misses again
+        self.assertEqual(latch[618:1218], '0' * 600)
+        self.assertEqual(latch[1218], '1')
+        self.assertEqual((never['starts'], never['retries'], never['starved']), ('1', '3', '1'))
+        self.assertEqual(never['active_frames'], str(17 + 3))  # 1..17 and the retry frames 618, 1219, 1820
+        # A transient (a menu or load from frame 10 to 700): the second retry (frame 1219) hits and re-arms for good.
+        transient = self.run_driver('guard', 2000, 10, 700)
+        self.assertEqual(transient['latch'][1218:], '1' * (2000 - 1218))
+        self.assertEqual((transient['starts'], transient['retries'], transient['starved'], transient['misses']),
+                         ('1', '2', '0', '0'))
+        # Seven misses in a row never withhold the latch; a hit clears the count.
+        seven = self.run_driver('guard', 100, 10, 17)
+        self.assertEqual(seven['latch'], '1' * 100)
+        self.assertEqual((seven['starts'], seven['starved_at'], seven['misses']), ('0', '-1', '0'))
+        # The production wiring: the outcome at the resolve, then the guard on the readiness; the row is --debug.
+        motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
+        wiring = wiring[:wiring.index('// Phase timing of the run')]
+        self.assertLess(wiring.index('own_sun::core::probe_outcome(own_sun_guard_, true, frame_);'),
+                        wiring.index('if (!own_sun::core::latch_allowed(own_sun_guard_, frame_)) own_sun_ready_ = false;'))
+        stage = (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text()
+        self.assertIn('if (own_sun::core::probe_outcome(own_sun_guard_, false, frame_) && log_tier::cached_debug)', stage)
+        self.assertIn('no_probe=%u starved=%u retries=%u', stage)
+        self.assertIn('own_sun_guard_ = {};', motion)  # Reset
+
     def test_frame_active_is_the_setting_and_the_armed_stage(self):
         # Step 2: the Ctrl+Shift+F9 hotkey is gone; the setting and the armed stage alone decide the frame.
         for configured, ready in ((a, b) for a in (0, 1) for b in (0, 1)):
@@ -379,24 +412,41 @@ def constant_table(words):
 
 
 class OwnSunWiring(unittest.TestCase):
-    def test_ap_latch_and_fl_row(self):
+    def test_latch_and_status_row_both_editions(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        latch = capture.index('    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());')
+        latch_text = '    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());'
+        latch = capture.index(latch_text)
         self.assertLess(latch, capture.index('    own_sun_hook::present(ctx.frame + 1); // installed hook only'))
+        # Own sun step 3: FL's Present block latches before its own frame boundary, as AP's.
+        fl_present = capture.index('    object_lifetime::fl_sample_row();')
+        fl_latch = capture.index(latch_text, fl_present)
+        self.assertLess(fl_latch, capture.index('    own_sun_hook::present(ctx.frame + 1);\n#endif', fl_present))
         for gone in ('own_sun_chord_down', 'own_sun_key', 'own_sun_toggle', 'hotkey=', 'VK_F9'):  # no hotkey since step 2
             self.assertNotIn(gone, capture)
         self.assertNotIn('struct Toggle', source_text(ROOT / 'src/proxy/own_sun_core.h'))
-        self.assertIn('log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending"', capture)
+        self.assertNotIn('fl_step_pending', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
-        fl_row = capture.index('log("own_sun status=unavailable edition=fl')
-        self.assertEqual(capture.rindex('#else', 0, fl_row) > capture.rindex('#if !X3M_EDITION_FL', 0, fl_row), True)
+        row = capture.index('log("own_sun status=%s edition=" X3M_OWN_SUN_EDITION " requested=%u reason=%s probe=%s')
+        self.assertEqual(capture.count('log("own_sun status='), 1)
+        # Nothing of the own sun's install is fenced to one edition any more.
+        install = capture[capture.index('const bool own_sun_requested = '):row]
+        self.assertNotIn('X3M_EDITION_FL', install)
+        self.assertIn('#if X3M_EDITION_FL\n#define X3M_OWN_SUN_EDITION "fl"\n#else\n#define X3M_OWN_SUN_EDITION "ap"\n#endif', capture)
+        configure = capture.index('hooked.motion_output.configure_own_sun(')
+        self.assertLess(capture.rfind('#if !X3M_EDITION_FL', 0, configure), capture.rfind('#endif', 0, configure))
+        # Review F4/F5: no main-view source -> reason=main_view and the own sun off; the gain row's bracket= is the lens claim.
+        self.assertIn('own_sun_on = own_sun_on && own_sun_main_view;', capture)
+        self.assertIn(': !sun_installed               ? "probe"\n                                           : "main_view",', capture)
+        self.assertIn('sun_installed && !own_sun_hook::bracket_installed() ? "probe_only" : own_sun_hook::state()', capture)
+        hook = source_text(ROOT / 'src/proxy/own_sun_hook.h')
+        self.assertNotIn('#if !X3M_EDITION_FL', hook[:hook.index('bool own_sun_hidden();')][-600:])
 
     def test_stage_draws_only_after_a_hidden_answer(self):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         wiring = motion[motion.index('if (own_sun_requested_ && own_sun_arm('):]
         wiring = wiring[:wiring.index('#endif')]
         self.assertLess(wiring.index('if (own_sun_hook::own_sun_hidden()) {'), wiring.index('in.stage_callback = &MotionOutput::own_sun_stage_callback;'))
-        self.assertIn('} else\n                    own_sun_no_probe();', wiring)
+        self.assertIn('} else\n                        own_sun_no_probe();', wiring)
         sun = (ROOT / 'src/proxy/own_sun_hook.cpp').read_text()
         self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', sun)
         branch = sun[sun.index('++counters_.own_sun_hidden;'):]
@@ -411,19 +461,23 @@ class OwnSunWiring(unittest.TestCase):
         self.assertIn('if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
 
-    def test_stage_is_ap_only(self):
+    def test_stage_is_edition_neutral(self):
+        # Own sun step 3: the stage links into both editions and nothing of it is fenced.
         cmake = (ROOT / 'CMakeLists.txt').read_text()
         shared = cmake[cmake.index('set(X3M_SHARED_SOURCES'):cmake.index('set(X3M_AP_ENGINE_SOURCES')]
-        self.assertNotIn('own_sun', shared)
+        self.assertIn('src/renderer/own_sun_pass.cpp', shared)
+        self.assertNotIn('own_sun_hook.cpp', shared)
         self.assertIn('src/renderer/own_sun_pass.cpp', cmake[cmake.index('set(X3M_AP_SOURCES'):cmake.index('set(X3M_SHARED_SOURCES')])
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         for needle in ('#include "motion_output_own_sun_inc.h"', 'release_own_sun();', 'own_sun_->before_reset()',
                        'own_sun_->after_reset(result)', 'in.stage_callback = &MotionOutput::own_sun_stage_callback;'):
             at = motion.index(needle)
-            self.assertGreater(motion.rfind('#if !X3M_EDITION_FL', 0, at), motion.rfind('#endif', 0, at), needle)
+            self.assertLessEqual(motion.rfind("#if !X3M_EDITION_FL", 0, at), motion.rfind("#endif", 0, at), needle)
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        at = header.index('bool own_sun_requested_ = false')
-        self.assertGreater(header.rfind('#if !X3M_EDITION_FL', 0, at), header.rfind('#endif', 0, at))
+        for needle in ('bool own_sun_requested_ = false', 'void configure_own_sun(', '#include "../renderer/own_sun_pass.h"'):
+            at = header.index(needle)
+            self.assertLessEqual(header.rfind("#if !X3M_EDITION_FL", 0, at), header.rfind("#endif", 0, at), needle)
+        self.assertNotIn('X3M_EDITION', (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text())
 
 
 class OwnSunLaunchOption(unittest.TestCase):

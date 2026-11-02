@@ -68,9 +68,7 @@
 #include "shadow_caster_class.h"
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
-#if !X3M_EDITION_FL
-#include "../renderer/own_sun_pass.h" // the own sun (AP edition only, docs/architecture/own-sun-pass.md)
-#endif
+#include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -1198,15 +1196,13 @@ public:
         lens_gain_base_ = lens_gain_.gain;
         lens_gain_fog_ = fog;
     }
-#if !X3M_EDITION_FL
-    // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; AP edition only): process-start values, validated
+    // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; both editions): process-start values, validated
     // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting and
     // own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
     // own_sun_ready: the stage armed in this device's last resolve (the probe answers "hidden" only then).
     void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
     void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
-#endif
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2037,7 +2033,6 @@ private:
     bool engine_ribbons_live() const noexcept { return ribbons_ && ribbons_->live() != 0; }
     HRESULT run_engine_ribbons(const renderer::EnginePlumesFrame& frame) noexcept;
     void engine_plumes_fog(x3m::renderer::FogTransmittanceLaw* law) noexcept;
-#if !X3M_EDITION_FL
     // Own sun (motion_output_own_sun_inc.h): the setting, the pass (attached at the first armed resolve; refused until
     // Reset with one own_sun_device row; a failed stage frame disarms 64 frames, the third consecutive one refuses until
     // Reset), this frame's latch, the lane the callback borrows, the last stage frame's inputs and report for the
@@ -2067,6 +2062,7 @@ private:
         unsigned frames = 0, active = 0, drawn = 0, no_probe = 0;
     } own_sun_period_{};
     bool own_sun_no_probe_logged_ = false; // the first armed, active frame without a hidden answer wrote its row
+    own_sun::core::ProbeGuard own_sun_guard_{}; // the no-probe fail-safe (8 misses withhold the latch, retry per 600)
     std::uint32_t own_sun_answered_seen_ = 0, own_sun_forwarded_seen_ = 0;
     bool own_sun_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
     bool attach_own_sun() noexcept;
@@ -2075,7 +2071,6 @@ private:
     static HRESULT own_sun_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_own_sun() noexcept;
     void own_sun_no_probe() noexcept;
-#endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.

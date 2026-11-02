@@ -1,0 +1,9 @@
+Own sun step 3: AP object identity (docs/verification/farnhams-legacy.md, "Own sun step 3").
+Baseline: build-ap (RelWithDebInfo, cmake/mingw-i686.cmake) at c6b232a09, objects copied before any edit:
+  src/proxy/capture.cpp.obj src/proxy/motion_output.cpp.obj src/proxy/own_sun_hook.cpp.obj src/renderer/own_sun_pass.cpp.obj
+After: the same build tree rebuilt with the step-3 sources (0 warnings).
+Command: python3 verification/results/own-sun-pass/compare_objects.py <baseline d3d9.dir copy> build-ap/CMakeFiles/d3d9.dir <scratch>
+  (debug sections stripped; line tables move with any edit; the other 116 objects had no baseline copy)
+Step 3 code commit 7997ebdf6: compared 4, differ 0.
+After the review fixes (no-probe guard, main_view_known/bracket_installed, the two capture rows): compared 4, differ 3
+  (capture.cpp, motion_output.cpp, own_sun_hook.cpp; intended), own_sun_pass.cpp identical.

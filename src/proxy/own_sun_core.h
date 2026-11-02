@@ -89,6 +89,47 @@ inline bool frame_active(bool configured, bool stage_ready) noexcept {
     return configured && stage_ready;
 }
 
+// ---- The no-probe fail-safe (step 3 review F3) ----
+// The stage draws only in a frame whose main-view probe was answered "hidden" before the resolve. If that probe never
+// comes (it runs after the resolve, or the main view is unresolved), every active frame hides nothing and draws nothing,
+// yet the latch keeps the engine's chain hidden from any record that is answered. After no_probe_limit consecutive
+// active frames without the answer the guard withholds the latch (the engine's sun returns) and lets it through once
+// every no_probe_retry_frames frames, so a transient (menu, load) recovers; one hit re-arms. Integer only.
+constexpr unsigned no_probe_limit = 8;
+constexpr std::uint64_t no_probe_retry_frames = 600;
+struct ProbeGuard {
+    unsigned misses = 0;        // consecutive active frames without a hidden answer
+    bool starved = false;       // misses reached the limit: the latch is withheld
+    std::uint64_t retry_at = 0; // starved: the frame whose readiness is let through once
+    unsigned retries = 0;       // retries let through since the guard was reset
+};
+// One active frame's outcome at the resolve (hit: the main-view probe was answered "hidden"). True when this frame
+// starts the starved state (the caller logs it once).
+inline bool probe_outcome(ProbeGuard& g, bool hit, std::uint64_t frame) noexcept {
+    if (hit) {
+        g.misses = 0;
+        g.starved = false;
+        return false;
+    }
+    if (g.misses < no_probe_limit) ++g.misses;
+    if (g.starved) {
+        g.retry_at = frame + no_probe_retry_frames; // a failed retry waits another period
+        return false;
+    }
+    if (g.misses < no_probe_limit) return false;
+    g.starved = true;
+    g.retry_at = frame + no_probe_retry_frames;
+    return true;
+}
+// After an armed resolve: may this frame's readiness set the next frame's latch?
+inline bool latch_allowed(ProbeGuard& g, std::uint64_t frame) noexcept {
+    if (!g.starved) return true;
+    if (frame < g.retry_at) return false;
+    ++g.retries;
+    g.retry_at = frame + no_probe_retry_frames;
+    return true;
+}
+
 // ---- Projection of the polled sun with the frame camera ----
 // The camera of renderer::CameraState: view_j = sum_i world_i r[i*3+j] + t_j, clip x = view_x m00 + view_z m20,
 // clip y = view_y m11 + view_z m21, w = view_z. The quad uses the jittered m20 / m21 (the routed draws' projection, so

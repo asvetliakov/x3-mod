@@ -1,12 +1,14 @@
 """Host tests of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp).
 
-docs/architecture/farnhams-legacy-sun-occlusion.md; since own sun step 2 (docs/architecture/own-sun-pass.md section 14)
-the FL probe forwards every call (the own sun's FL answer is a later step) and the hook installs for the lens bracket
-only. (a) The native fixture verification/probe/fl_sun_occlusion.cpp (MinGW i686, run natively through WSL interop)
+docs/architecture/farnhams-legacy-sun-occlusion.md; since own sun step 3 (docs/architecture/own-sun-pass.md section 14)
+the FL probe answers "hidden" for the eligible record in a frame whose own-sun latch is set and forwards every other
+call; the probe installs for the own sun or the bracket, the lens call for the bracket only. (a) The native fixture verification/probe/fl_sun_occlusion.cpp (MinGW i686, run natively through WSL interop)
 claims a fake flare walk's probe call (one qword word, as base+0x8af0a) and a fake lens pass's call (straddling a qword,
 as base+0x8bcb7) with the production engine_patch::claim_call and checks: the probe thunk's forward path (ECX/EDX and
 EFLAGS into the original, `popfd; jmp` with ESP at the return address, LastError, XMM, x87) for eligible and ineligible
-probes, the log mode's answer path (the original through the register ABI, EAX 0/1, LastError, XMM), the lens bracket
+probes, the own sun's hidden answer (EAX 1 through the plain RET, ECX/EDX/EFLAGS/LastError/XMM as at the call, counters,
+own_sun_hidden() per frame; latch clear, not requested, ineligible, foreign thread and unwind cases), the probe-only
+install that leaves the lens call vanilla, the log mode's answer path (the original through the register ABI, EAX 0/1, LastError, XMM), the lens bracket
 around the original with ECX/EDX and EFLAGS restored, an SEH unwind through the bracket, a foreign thread, the registry
 main view, the 17-anchor gate on a synthetic relocated image, restore and late-window refusal; the hook paths are
 audited for x87 and XMM use. (b) Edition wiring and the shared fog-transmittance lens gain.
@@ -67,11 +69,13 @@ class FlSunOcclusionNativeFixture(unittest.TestCase):
         self.assertEqual(result.returncode, 0, "\n".join(l for l in out.splitlines() if l.startswith("FAIL"))[:6000] + result.stderr[-1000:])
         self.assertRegex(out, r'RESULT PASS checks=\d+ failures=0 ')
         self.assertNotIn('FAIL ', out)
-        self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ eligible_forward_ns=[\d.]+ ')
+        self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ eligible_forward_ns=[\d.]+ .* '
+                              r'hidden_ns=[\d.]+ own_frame_forward_ns=[\d.]+')
+        self.assertGreaterEqual(int(re.search(r'RESULT PASS checks=(\d+)', out).group(1)), 766)  # step 3: 464 -> 766
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
         # 874 anchor bytes: 822 outside the 13 relocated operands, 52 inside; every single-bit flip refused.
         self.assertIn('ANCHOR anchors=17 flips=822 refused=822 operand_flips=52 operand_refused=52', out)
-        self.assertEqual(len(re.findall(r'^LOG fl\.sun_occlusion_sample ', out, re.M)), 1)
+        self.assertEqual(len(re.findall(r'^LOG fl\.sun_occlusion_sample ', out, re.M)), 2)  # step 3 adds the own-sun row
         self.assertEqual(len(re.findall(r'^LOG sun_occlusion_released ', out, re.M)), 0)  # the deferral went with step 2
 
 
@@ -93,7 +97,11 @@ class FlSunOcclusionWiring(unittest.TestCase):
         capture = strip((ROOT / 'src/proxy/capture.cpp').read_text())
         # The FL Present block calls the frame boundary; the Reset and the install are outside every AP fence.
         fl_present = capture[capture.index('scene_hook::fl_sample_row();'):]
-        self.assertIn('own_sun_hook::present(ctx.frame + 1);', fl_present[:fl_present.index('#endif')])
+        fl_present = fl_present[:fl_present.index('#endif')]
+        self.assertIn('own_sun_hook::present(ctx.frame + 1);', fl_present)
+        # Own sun step 3: the latch precedes the frame boundary, as on AP.
+        self.assertLess(fl_present.index('own_sun_hook::set_own_sun_frame(active);'),
+                        fl_present.index('own_sun_hook::present(ctx.frame + 1);'))
 
         def fenced_ap(text, needle):
             before = text[:text.index(needle)]
@@ -102,7 +110,9 @@ class FlSunOcclusionWiring(unittest.TestCase):
             return bool(opened) and (not closed or opened[-1] > closed[-1])
         self.assertNotIn('own_sun_hook::device_reset', capture)  # nothing of the hook survives a Reset since step 2
         for needle in ('own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested)',
-                       'lens_flare_fog = volumetric_fog_requested && sun_installed;'):
+                       'lens_flare_fog = volumetric_fog_requested && sun_installed;',
+                       'own_sun_hook::request_own_sun();',
+                       'hooked.motion_output.configure_own_sun('):
             self.assertIn(needle, capture)
             self.assertFalse(fenced_ap(capture, needle), needle)
         self.assertIn('configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog)', capture)
@@ -127,6 +137,20 @@ class FlSunOcclusionWiring(unittest.TestCase):
             self.assertNotIn(banned, code)
         # Both thunks: EFLAGS saved, DF cleared around the C handlers; the probe forwards with popfd; jmp.
         self.assertTrue('1:  popfd\n    jmp dword ptr [_x3m_fl_sun_probe_target]' in code, 'probe forward')
+        # The answers (0 / 1, also the own sun's hidden one) leave through the same popfd; ret after ECX/EDX are popped.
+        self.assertTrue('    pop edx\n    pop ecx\n    cmp eax, 2\n    je 1f\n    popfd\n    ret\n1:' in code, 'answer path')
+        # Own sun step 3: the hidden answer gated by the latch and the eligibility, recorded for own_sun_hidden().
+        decide = code[code.index('int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {\n    if'):]
+        self.assertIn('if (!record || !view || (!own_sun_frame_ && !log_)) {', decide)
+        self.assertIn('    if (own && own_sun_frame_) {\n        ++counters_.own_sun_hidden;\n        own_sun_hidden_seen_ = true;\n'
+                      '        own_sun_hidden_frame_ = frame;\n        return core::Hidden;\n    }', decide)
+        self.assertLess(decide.index('return core::Hidden;\n    }'), decide.index('const int vanilla ='))
+        self.assertIn('own_sun_frame_ = patched_ && own_sun_wanted_ && active;', code)
+        self.assertIn('return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;', code)
+        # The lens call is claimed for the bracket only (own-sun-pass.md section 8).
+        self.assertIn('if (!bracket_wanted && !own_sun_wanted_) {', code)
+        self.assertIn('bracket_wanted ? base + L::lens_site_rva : 0,', code)
+        self.assertIn('if (with_lens && !engine_patch::claim_call(lens_site_', code)
         self.assertTrue('    popfd\n    call dword ptr [_x3m_fl_sun_lens_target]\n    pushfd\n    push eax\n    push ecx\n'
                         '    push edx\n    cld\n    call _x3m_fl_sun_lens_end\n    pop edx\n    pop ecx\n    pop eax\n'
                         '    popfd\n    ret' in code, 'lens epilogue')

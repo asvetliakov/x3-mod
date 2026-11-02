@@ -1,5 +1,11 @@
 # FL sun occlusion hooks (step 9)
 
+> **Superseded (2026-11-02, own sun steps 2 and 3).** The partial-occlusion override this note describes is deleted
+> (its files, `core::decide`, the deferral, the `override=1` rows), and the hook no longer always claims both calls.
+> Current design and as-built state: [own-sun-pass.md](own-sun-pass.md) section 8 ("FL differences") and section 14
+> ("Step 3 as built: the FL hidden answer"); hook sites, ABI and main-view facts:
+> [FL sun occlusion RE note](../reverse-engineering/fl/sun-occlusion.md). The text below is kept as history.
+
 AP's flare probe override and lens bracket ([sun partial occlusion](sun-partial-occlusion.md), AP contract
 [lens-flare visibility](../reverse-engineering/lens-flare-visibility.md)) on X3FL.exe:
 [`sun_occlusion_fl.cpp`](../../src/engine/fl/sun_occlusion_fl.cpp) provides `sun_occlusion.h` for the fl target (the ap

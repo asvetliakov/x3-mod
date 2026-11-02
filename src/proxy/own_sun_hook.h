@@ -58,10 +58,10 @@ bool logging();
 void set_listener(void (*begin)(), void (*end)());
 void present(unsigned long long next_device_frame = 0); // frame boundary (the Present hook; the number labels the log
                                                         // lines): also closes a bracket an unwind left open
-#if !X3M_EDITION_FL
-// Own sun (docs/architecture/own-sun-pass.md; X3M_OWN_SUN, AP edition): request_own_sun() before initialize() makes it
-// install both redirects; set_own_sun_frame() is the Present-time latch for the next frame (own_sun::core::frame_active):
-// while it is set, the probe answers "hidden" for the sun's eligible record (core::eligible), every other probe is the
+// Own sun (docs/architecture/own-sun-pass.md; X3M_OWN_SUN, both editions): request_own_sun() before initialize() makes
+// it install the probe redirect (AP: both redirects; FL: the lens call is claimed only when the bracket, gain or fog,
+// is wanted); set_own_sun_frame() is the Present-time latch for the next frame (own_sun::core::frame_active): while it
+// is set, the probe answers "hidden" for the sun's eligible record (core::eligible), every other probe is the
 // original's. own_sun_hidden(): this frame's main-view eligible probe was answered "hidden" (owner thread; the main view
 // is probed before the scene-end hook, lens-flare-visibility.md section 14): the stage draws only then, so the engine's
 // chain and the own sun never show together and a sun the probe did not reach (another view, the flare option off) is
@@ -69,7 +69,8 @@ void present(unsigned long long next_device_frame = 0); // frame boundary (the P
 void request_own_sun();
 void set_own_sun_frame(bool active);
 bool own_sun_hidden();
-#endif
+bool bracket_installed(); // the lens call is claimed (AP: with every install; FL: only for the bracket)
+bool main_view_known();   // installed with a main-view source (FL: the admitted registry slot; AP: always)
 namespace detail {
 extern volatile bool bracket_open;
 }

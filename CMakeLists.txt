@@ -111,6 +111,7 @@ set(X3M_SHARED_SOURCES
   src/proxy/draw_input.cpp src/proxy/mesh_adjacency_fast.cpp src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp
   src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp
   src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp src/renderer/gpu_sync_timing.cpp
+  src/renderer/own_sun_pass.cpp
   src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp
   src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp
   src/renderer/occlusion_cull_pass.cpp src/renderer/motion_history.cpp

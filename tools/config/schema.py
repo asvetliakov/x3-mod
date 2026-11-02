@@ -162,7 +162,7 @@ SETTINGS = [
     entry('own_sun', 'bool', 'graphics', 'The mod draws its own sun, a small bright centre in a wide soft glow with a few '
           'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
           'sun flare. 1 = on (default), 0 = the game\'s own sun. X3: Albion '
-          'Prelude only for now.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
+          'Prelude and X3: Farnham\'s Legacy.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
           aliases=('sun_occlusion',)),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the bright centre of the mod\'s own sun (own_sun = 1): its radius as a '
           'fraction of the screen height, 0.005 to 0.25; 0.012 = 9 pixels on a 768-row screen, 17 on a 1440-row one. The glow and '

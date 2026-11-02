@@ -20,7 +20,7 @@ it has not been run on a Windows PC yet
 | HDR look | The scene renders into an FP16 target; auto exposure and an AgX tonemap write it back to the display (SDR output); bloom from the HDR scene; bright emitters (engines, bolts, hull lights) above 1.0 |
 | Shadows | Sun shadows for ships and stations from five cascades, with caster retention and alpha-tested casters |
 | Fog | Volumetric nebula fog with a stored range, replacing the game's flat fog cards, with light shafts and dust motes |
-| Sun | The mod's own sun (X3: Albion Prelude): a small bright core in a soft glow with a few rays, in the sector's sun colour, covered exactly by ships and stations and dimmed by fog, in place of the game's flare (`own_sun`, on by default); a fix for the flare vanishing near the centre of wide displays |
+| Sun | The mod's own sun (X3: Albion Prelude and X3: Farnham's Legacy): a small bright core in a soft glow with a few rays, in the sector's sun colour, covered exactly by ships and stations and dimmed by fog, in place of the game's flare (`own_sun`, on by default); a fix for the flare vanishing near the centre of wide displays |
 | Distant objects | A merged-LOD overlay (one draw instead of dozens for distant ships and stations), Terran stations choosing their LOD by screen size, and station occlusion kept on the coarse models |
 | Camera | A field-of-view remap in X4-style units (default 90), a raised third-person chase camera with the HUD reticle at the true forward point, and the chase view restored after a gate jump |
 | Media and sound | Speech through a process-local WMA decoder, sector music kept across alt-tab, save and pause, and media stability (the ID2 video skip) |

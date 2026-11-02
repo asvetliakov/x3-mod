@@ -345,6 +345,12 @@ void set_own_sun_frame(bool active) {
 bool own_sun_hidden() {
     return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;
 }
+bool bracket_installed() {
+    return patched_ && lens_site_.patched_in;
+}
+bool main_view_known() {
+    return patched_; // the cockpit registry walk at fixed X3AP.exe addresses (or the fixture's word)
+}
 Counters counters() {
     Counters c = counters_;
     c.foreign_thread = static_cast<std::uint32_t>(foreign_thread_);

@@ -216,14 +216,19 @@ bool lens_flare_fog = false; // the lens bracket installed for the volumetric fo
 bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side cull (lens_flare_cull.h) is claimed too,
                                    // route or not; the proxy skip stays as the fallback
 #endif
-#if !X3M_EDITION_FL
-// Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; AP edition): the setting as installed (the probe
-// redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; out of range keeps
-// the default). The setting is the only switch (the Ctrl+Shift+F9 comparison hotkey was removed in step 2).
+// The own_sun status row's edition= field (string-literal concatenation: the AP format string is unchanged).
+#if X3M_EDITION_FL
+#define X3M_OWN_SUN_EDITION "fl"
+#else
+#define X3M_OWN_SUN_EDITION "ap"
+#endif
+// Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; both editions since step 3): the setting as
+// installed (the probe redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS,
+// X3M_SUN_DISC_RADIANCE; out of range keeps the default). The setting is the only switch (the Ctrl+Shift+F9 comparison
+// hotkey was removed in step 2).
 bool own_sun_on = false;
 float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default,
       own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' share (step 1c: six soft rays, no streaks)
-#endif
 bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the
                                                // light-map fetch of the gained hull variants widens to k x k px, k =
                                                // clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by
@@ -2171,8 +2176,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // FL scene-end hook: counts this frame with or without a compositor call; one fl.scene_sample row every
     // X3M_FL_SCENE_LOG seconds (scene_hook_fl.cpp).
     scene_hook::fl_sample_row();
-    // FL flare-probe hook and lens bracket (sun_occlusion_fl.cpp): the frame boundary; one fl.sun_occlusion_sample row
-    // every X3M_FL_SUN_OCCLUSION_LOG seconds.
+    // FL flare-probe hook and lens bracket (sun_occlusion_fl.cpp): the own sun's latch for the next frame (as AP's,
+    // before the probe's frame boundary), then the frame boundary; one fl.sun_occlusion_sample row every
+    // X3M_FL_SUN_OCCLUSION_LOG seconds.
+    if (own_sun_on) {
+        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());
+        own_sun_hook::set_own_sun_frame(active);
+        ctx.motion_output.own_sun_frame(active);
+    }
     own_sun_hook::present(ctx.frame + 1);
 #endif
 #if !X3M_EDITION_FL
@@ -3443,10 +3454,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
-#if !X3M_EDITION_FL
     hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
                                            own_sun_rays); // X3M_OWN_SUN as installed
-#endif
     hooked.motion_output.configure_lens_flare_gain(lens_flare_gain_value, lens_flare_fog); // 1 unless the bracket is
                                                                                           // installed for it; fog: G x T_sun
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
@@ -5833,7 +5842,8 @@ void initialize_log(HMODULE module) {
     // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
     // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). Both need the route (X3M_MOTION_OUTPUT=1). FL
     // edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
-    // docs/architecture/farnhams-legacy-sun-occlusion.md), same window, for the bracket only.
+    // docs/architecture/own-sun-pass.md section 8), same window: the probe for the own sun or the bracket, the
+    // lens call for the bracket only.
     {
         wchar_t value[32]{};
         // X3M_LENS_FLARE_GAIN (src/proxy/lens_flare_gain.h): G < 1 needs the lens bracket, so it installs the two
@@ -5859,9 +5869,9 @@ void initialize_log(HMODULE module) {
         // X3M_OWN_SUN (docs/architecture/own-sun-pass.md; on unless "0", the schema default 1): the probe answers
         // "hidden" for the sun's record in an own-sun frame and the route draws the sun, so it needs the two redirects
         // and the route's resolve. Off: nothing is answered and nothing drawn, the engine's sun is vanilla (the bracket
-        // stays only for the gain). FL: inert in this step (no probe answer on FL yet): one row, nothing else.
+        // stays only for the gain). Both editions (FL since own sun step 3: the probe only, the lens call stays the
+        // bracket's).
         const bool own_sun_requested = !(x3m::config::get(L"X3M_OWN_SUN", value, 32) == 1 && value[0] == L'0');
-#if !X3M_EDITION_FL
         if (x3m::config::get(L"X3M_SUN_DISC_RADIUS", value, 32) > 0) {
             wchar_t* end = nullptr;
             const float v = wcstof(value, &end);
@@ -5879,27 +5889,31 @@ void initialize_log(HMODULE module) {
         }
         // Radiance 0 draws nothing, so it must not hide the engine's chain either: nothing is requested.
         if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();
-#endif
         own_sun_hook::set_listener(&sun_lens_begin, nullptr);
         const bool sun_installed = own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested);
-#if !X3M_EDITION_FL
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
-        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f",
+        // Without a main-view source (FL: the registry slot not admitted) nothing is eligible: the stage would never
+        // draw, so the own sun stays off and the engine's sun is vanilla.
+        const bool own_sun_main_view = own_sun_hook::main_view_known();
+        own_sun_on = own_sun_on && own_sun_main_view;
+        // probe= is the hook's state: AP the own_sun_hook row's reason, FL the fl.sun_occlusion row's status.
+        log("own_sun status=%s edition=" X3M_OWN_SUN_EDITION " requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
             own_sun_on                     ? "ok"
             : !own_sun_requested           ? "setting"
             : !motion_output_requested     ? "route_off"
             : !(own_sun_radiance > 0.f)    ? "radiance_zero"
-                                           : "probe",
+            : !sun_installed               ? "probe"
+                                           : "main_view",
             own_sun_hook::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
-#else
-        log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending", own_sun_requested ? 1u : 0u);
-#endif
         if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
         lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
         lens_flare_fog = volumetric_fog_requested && sun_installed;
+        // bracket= is the lens claim: the hook's state when the lens call is claimed or nothing installed, probe_only
+        // when only the probe is (FL, the own sun alone).
         log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s fog=%u", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
-            lens_gain_reason, own_sun_hook::state(), lens_flare_fog ? 1u : 0u);
+            lens_gain_reason, sun_installed && !own_sun_hook::bracket_installed() ? "probe_only" : own_sun_hook::state(),
+            lens_flare_fog ? 1u : 0u);
     }
 #if !X3M_EDITION_FL
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,
