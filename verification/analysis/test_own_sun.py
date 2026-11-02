@@ -379,17 +379,30 @@ def constant_table(words):
 
 
 class OwnSunWiring(unittest.TestCase):
-    def test_ap_latch_and_fl_row(self):
+    def test_latch_and_status_row_both_editions(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        latch = capture.index('    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());')
+        latch_text = '    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());'
+        latch = capture.index(latch_text)
         self.assertLess(latch, capture.index('    own_sun_hook::present(ctx.frame + 1); // installed hook only'))
+        # Own sun step 3: FL's Present block latches before its own frame boundary, as AP's.
+        fl_present = capture.index('    object_lifetime::fl_sample_row();')
+        fl_latch = capture.index(latch_text, fl_present)
+        self.assertLess(fl_latch, capture.index('    own_sun_hook::present(ctx.frame + 1);\n#endif', fl_present))
         for gone in ('own_sun_chord_down', 'own_sun_key', 'own_sun_toggle', 'hotkey=', 'VK_F9'):  # no hotkey since step 2
             self.assertNotIn(gone, capture)
         self.assertNotIn('struct Toggle', source_text(ROOT / 'src/proxy/own_sun_core.h'))
-        self.assertIn('log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending"', capture)
+        self.assertNotIn('fl_step_pending', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
-        fl_row = capture.index('log("own_sun status=unavailable edition=fl')
-        self.assertEqual(capture.rindex('#else', 0, fl_row) > capture.rindex('#if !X3M_EDITION_FL', 0, fl_row), True)
+        row = capture.index('log("own_sun status=%s edition=" X3M_OWN_SUN_EDITION " requested=%u reason=%s probe=%s')
+        self.assertEqual(capture.count('log("own_sun status='), 1)
+        # Nothing of the own sun's install is fenced to one edition any more.
+        install = capture[capture.index('const bool own_sun_requested = '):row]
+        self.assertNotIn('X3M_EDITION_FL', install)
+        self.assertIn('#if X3M_EDITION_FL\n#define X3M_OWN_SUN_EDITION "fl"\n#else\n#define X3M_OWN_SUN_EDITION "ap"\n#endif', capture)
+        configure = capture.index('hooked.motion_output.configure_own_sun(')
+        self.assertLess(capture.rfind('#if !X3M_EDITION_FL', 0, configure), capture.rfind('#endif', 0, configure))
+        hook = source_text(ROOT / 'src/proxy/own_sun_hook.h')
+        self.assertNotIn('#if !X3M_EDITION_FL', hook[:hook.index('bool own_sun_hidden();')][-600:])
 
     def test_stage_draws_only_after_a_hidden_answer(self):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
@@ -411,19 +424,23 @@ class OwnSunWiring(unittest.TestCase):
         self.assertIn('if (own_sun_requested && motion_output_requested && own_sun_radiance > 0.f) own_sun_hook::request_own_sun();', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
 
-    def test_stage_is_ap_only(self):
+    def test_stage_is_edition_neutral(self):
+        # Own sun step 3: the stage links into both editions and nothing of it is fenced.
         cmake = (ROOT / 'CMakeLists.txt').read_text()
         shared = cmake[cmake.index('set(X3M_SHARED_SOURCES'):cmake.index('set(X3M_AP_ENGINE_SOURCES')]
-        self.assertNotIn('own_sun', shared)
+        self.assertIn('src/renderer/own_sun_pass.cpp', shared)
+        self.assertNotIn('own_sun_hook.cpp', shared)
         self.assertIn('src/renderer/own_sun_pass.cpp', cmake[cmake.index('set(X3M_AP_SOURCES'):cmake.index('set(X3M_SHARED_SOURCES')])
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         for needle in ('#include "motion_output_own_sun_inc.h"', 'release_own_sun();', 'own_sun_->before_reset()',
                        'own_sun_->after_reset(result)', 'in.stage_callback = &MotionOutput::own_sun_stage_callback;'):
             at = motion.index(needle)
-            self.assertGreater(motion.rfind('#if !X3M_EDITION_FL', 0, at), motion.rfind('#endif', 0, at), needle)
+            self.assertLessEqual(motion.rfind("#if !X3M_EDITION_FL", 0, at), motion.rfind("#endif", 0, at), needle)
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        at = header.index('bool own_sun_requested_ = false')
-        self.assertGreater(header.rfind('#if !X3M_EDITION_FL', 0, at), header.rfind('#endif', 0, at))
+        for needle in ('bool own_sun_requested_ = false', 'void configure_own_sun(', '#include "../renderer/own_sun_pass.h"'):
+            at = header.index(needle)
+            self.assertLessEqual(header.rfind("#if !X3M_EDITION_FL", 0, at), header.rfind("#endif", 0, at), needle)
+        self.assertNotIn('X3M_EDITION', (ROOT / 'src/proxy/motion_output_own_sun_inc.h').read_text())
 
 
 class OwnSunLaunchOption(unittest.TestCase):

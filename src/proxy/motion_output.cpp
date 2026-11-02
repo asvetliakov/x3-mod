@@ -567,9 +567,7 @@ void MotionOutput::release_resources() noexcept {
         fog_frame_ = ~std::uint64_t(0);
     }
     release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
-#if !X3M_EDITION_FL
     release_own_sun(); // the own sun's programs and declaration (motion_output_own_sun_inc.h)
-#endif
     release_engine_shimmer(); // the heat shimmer's programs, block and scratch (motion_output_engine_shimmer_inc.h)
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
         false; // a new pass may be refused for another reason
@@ -2466,7 +2464,6 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
             }
-#if !X3M_EDITION_FL
             // Own sun (motion_output_own_sun_inc.h): armed at every resolve (own_sun_ready() feeds the next frame's latch);
             // drawn only in a frame the latch made active and whose main-view probe was
             // answered "hidden", then before the plumes when both draw (one callback slot).
@@ -2478,7 +2475,6 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 } else
                     own_sun_no_probe();
             }
-#endif
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
@@ -4240,7 +4236,6 @@ void MotionOutput::before_reset() noexcept {
     plumes_disarmed_until_ = 0;
     plumes_failures_ = 0;
     plumes_failed_out_ = false;
-#if !X3M_EDITION_FL
     // Own sun: the programs and declaration go; the answer returns to the engine's chain until the next armed resolve
     // after a successful Reset recreates them; the refusal, the disarm window and the failure count start over.
     if (own_sun_) taa_call([&] { own_sun_->before_reset(); });
@@ -4249,7 +4244,6 @@ void MotionOutput::before_reset() noexcept {
     own_sun_attach_failed_ = own_sun_failed_out_ = false;
     own_sun_disarmed_until_ = 0;
     own_sun_failures_ = 0;
-#endif
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     engine_scene_camera_last_ = 0; // node-sourced nozzles: the root filter's view is forgotten (a mode or load boundary)
@@ -4298,9 +4292,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
         fog_frame_ = ~std::uint64_t(0);
     }
     if (plumes_) plumes_->after_reset(result);
-#if !X3M_EDITION_FL
     if (own_sun_) own_sun_->after_reset(result);
-#endif
     if (ribbons_) ribbons_->after_reset(result);
     engine_shimmer_after_reset(result);
     sun_apply_frame_ = ~std::uint64_t(0);
@@ -12917,7 +12909,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_engine_light_inc.h"
 #include "motion_output_material_strength_inc.h"
 #include "motion_output_engine_shimmer_inc.h"
-#if !X3M_EDITION_FL
 #include "motion_output_own_sun_inc.h"
-#endif
 } // namespace x3m

@@ -1,0 +1,98 @@
+{
+ "no_hidden_branch": {
+  "result": "FAIL",
+  "checks": 782,
+  "failures": 50,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.7 forward_ns=70.2 eligible_forward_ns=69.9 native_lens_ns=36.1 bracket_ns=263.0 forward_hook_ns=37.6 bracket_hook_ns=226.9 hidden_ns=91.4 own_frame_forward_ns=73.4",
+  "first_failures": [
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
+  ]
+ },
+ "answer_ignores_latch": {
+  "result": "FAIL",
+  "checks": 776,
+  "failures": 5,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=34.6 forward_ns=80.3 eligible_forward_ns=74.3 native_lens_ns=42.1 bracket_ns=258.1 forward_hook_ns=45.7 bracket_hook_ns=216.0 hidden_ns=69.4 own_frame_forward_ns=75.6",
+  "first_failures": [
+   "log mode: the original ran once through the register ABI",
+   "sun_probe row: the registry main view, the owner's layer, the original's answer"
+  ]
+ },
+ "answer_ignores_eligibility": {
+  "result": "FAIL",
+  "checks": 771,
+  "failures": 37,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=33.5 forward_ns=71.1 eligible_forward_ns=70.5 native_lens_ns=43.8 bracket_ns=250.8 forward_hook_ns=37.6 bracket_hook_ns=206.9 hidden_ns=82.5 own_frame_forward_ns=66.7",
+  "first_failures": [
+   "own-sun frame: another view's probe forwards: the original ran once and its EAX returned",
+   "own-sun frame: another view's probe forwards: original entered with ECX record, EDX view"
+  ]
+ },
+ "hidden_answers_visible": {
+  "result": "FAIL",
+  "checks": 776,
+  "failures": 19,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.7 forward_ns=70.8 eligible_forward_ns=69.3 native_lens_ns=35.4 bracket_ns=252.6 forward_hook_ns=38.2 bracket_hook_ns=217.2 hidden_ns=69.7 own_frame_forward_ns=71.7",
+  "first_failures": [
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
+  ]
+ },
+ "hidden_not_recorded": {
+  "result": "FAIL",
+  "checks": 776,
+  "failures": 4,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.6 forward_ns=70.1 eligible_forward_ns=72.8 native_lens_ns=36.2 bracket_ns=246.9 forward_hook_ns=37.5 bracket_hook_ns=210.7 hidden_ns=73.6 own_frame_forward_ns=71.2",
+  "first_failures": [
+   "own_sun_hidden() true in the frame of the answer",
+   "own-sun frame: SEH past the bracket, answer kept, bracket open until Present"
+  ]
+ },
+ "latch_without_request": {
+  "result": "FAIL",
+  "checks": 775,
+  "failures": 8,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=34.5 forward_ns=74.8 eligible_forward_ns=71.2 native_lens_ns=35.4 bracket_ns=254.4 forward_hook_ns=40.3 bracket_hook_ns=219.1 hidden_ns=71.0 own_frame_forward_ns=72.7",
+  "first_failures": [
+   "latch without the request: the eligible probe forwards: record+0x30 cleared exactly on a nonzero answer",
+   "latch without the request: the eligible probe forwards: the walk's test eax,eax saw the answer"
+  ]
+ },
+ "lens_claimed_without_bracket": {
+  "result": "FAIL",
+  "checks": 777,
+  "failures": 11,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=40.0 forward_ns=70.9 eligible_forward_ns=71.4 native_lens_ns=40.6 bracket_ns=258.7 forward_hook_ns=30.9 bracket_hook_ns=218.1 hidden_ns=73.5 own_frame_forward_ns=71.4",
+  "first_failures": [
+   "probe-only install",
+   "probe-only status row: lens_write=none"
+  ]
+ },
+ "early_exit_ignores_latch": {
+  "result": "FAIL",
+  "checks": 782,
+  "failures": 48,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=33.2 forward_ns=70.9 eligible_forward_ns=71.5 native_lens_ns=36.4 bracket_ns=259.7 forward_hook_ns=37.7 bracket_hook_ns=223.4 hidden_ns=70.5 own_frame_forward_ns=70.5",
+  "first_failures": [
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): record+0x30 cleared exactly on a nonzero answer",
+   "own-sun frame: the eligible record answered hidden (EAX 1, plain RET): the walk's test eax,eax saw the answer"
+  ]
+ },
+ "unmutated": {
+  "result": "PASS",
+  "checks": 776,
+  "failures": 0,
+  "audit_exit": 0,
+  "timing": "TIMING native_probe_ns=32.7 forward_ns=70.5 eligible_forward_ns=76.4 native_lens_ns=36.7 bracket_ns=249.5 forward_hook_ns=37.9 bracket_hook_ns=212.8 hidden_ns=69.5 own_frame_forward_ns=75.5",
+  "first_failures": []
+ }
+}

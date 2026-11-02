@@ -1,8 +1,9 @@
-// Own sun, step 1 (included by motion_output.cpp inside namespace x3m, AP edition only; own_sun_core.h,
+// Own sun, step 1 (included by motion_output.cpp inside namespace x3m, both editions; own_sun_core.h,
 // renderer/own_sun_pass.h; docs/architecture/own-sun-pass.md). X3M_OWN_SUN=1: the mod draws its own sun disc and corona
 // as an act of the temporal resolve's stage bracket (TemporalPass FrameInputs::stage_callback: after the fog pass, RT1/RT2
 // and the depth surface unbound, RT0 the FP16 scene the resolve reads), beside the engine plumes, while the flare probe
-// answers "hidden" for the sun's eligible record (own_sun_hook.cpp) so the engine destroys its own lens chain.
+// answers "hidden" for the sun's eligible record (AP own_sun_hook.cpp, FL src/engine/fl/sun_occlusion_fl.cpp) so the
+// engine destroys its own lens chain.
 //
 // The frame's decision (own_sun::core::frame_active) is latched at Present for the next frame by capture.cpp from the
 // setting and own_sun_ready(): this device's stage armed in its last resolve. Both the probe answer and the stage read

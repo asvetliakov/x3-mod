@@ -1,5 +1,6 @@
-// Original synthetic fixture of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp; the probe
-// forwards every call since own sun step 2, docs/architecture/own-sun-pass.md section 14),
+// Original synthetic fixture of the FL flare-probe hook and lens bracket (src/engine/fl/sun_occlusion_fl.cpp; since own
+// sun step 3 the probe answers "hidden" for the eligible record in a frame whose own-sun latch is set and forwards every
+// other call, docs/architecture/own-sun-pass.md section 14),
 // docs/architecture/farnhams-legacy-sun-occlusion.md: no game code, no game bytes beyond the generated window/anchor
 // constants, no launch. Built with -DX3M_EDITION_FL=1 -DX3M_SUN_OCCLUSION_FL_FIXTURE by
 // verification/analysis/test_fl_sun_occlusion.py and run natively (WSL interop).
@@ -551,8 +552,8 @@ int main() {
     probe(view, 2, "unpatched probe show");
     lens_call(view, false, "unpatched lens");
 
-    // Production initialize in a non-X3FL process. Only the bracket (the lens-flare gain or the fog) installs on FL: the
-    // own sun is inert here and its log alone installs nothing.
+    // Production initialize in a non-X3FL process, before the own sun is requested: only the bracket (the lens-flare
+    // gain or the fog) installs; the own sun's log alone installs nothing.
     check(!so::initialize(false) && !std::strcmp(so::state(), "disabled"), "nothing requested: disabled, no row");
     SetEnvironmentVariableW(L"X3M_OWN_SUN_LOG", L"1");
     const unsigned rows_before = rows;
@@ -662,7 +663,132 @@ int main() {
         check(rows == before, "no row when off");
         SetEnvironmentVariableW(L"X3M_FL_SUN_OCCLUSION_LOG", nullptr);
     }
+    // ---- own sun step 3: the hidden answer --------------------------------------------------------------------------
+    {
+        // The latch needs the request: set_own_sun_frame(true) before request_own_sun() keeps every probe forwarding.
+        so::set_own_sun_frame(true);
+        so::present(0);
+        probe_answer = 0;
+        frame(2, "latch without the request: the eligible probe forwards");
+        check(!so::own_sun_hidden(), "latch without the request: not hidden");
+        so::request_own_sun();
+        so::set_own_sun_frame(true); // Present-time latch for the next frame (capture.cpp)
+        so::present(0);
+        const so::Counters before = so::counters();
+        const unsigned calls = probe_calls;
+        check(!so::own_sun_hidden(), "own-sun frame before its probe: not hidden yet");
+        probe_answer = 0; // the original would show it: the answer is the hook's
+        frame(1, "own-sun frame: the eligible record answered hidden (EAX 1, plain RET)");
+        check(probe_calls == calls, "own-sun frame: the original never ran");
+        const so::Counters after = so::counters();
+        check(after.own_sun_hidden == before.own_sun_hidden + 1 && after.own == before.own + 1 &&
+                  after.probes == before.probes + 1 && after.original == before.original,
+              "own-sun frame: probes +1, own +1, own_sun_hidden +1, original +0");
+        // frame() ran Present: the next frame has not been answered yet.
+        check(!so::own_sun_hidden(), "own_sun_hidden() false after the frame advances");
+        probe(view, 1, "own-sun frame 2: hidden again");
+        check(so::own_sun_hidden(), "own_sun_hidden() true in the frame of the answer");
+        // Ineligible probes in an own-sun frame forward: another view, a record the main view owns, an owner without
+        // the background bit; with only those, the frame is not hidden.
+        so::present(0);
+        probe_answer = 1;
+        probe(other_view, 2, "own-sun frame: another view's probe forwards");
+        record[L::record_owner / 4] = uint32_t(reinterpret_cast<uintptr_t>(view));
+        probe(view, 2, "own-sun frame: a record the main view owns forwards");
+        record[L::record_owner / 4] = uint32_t(reinterpret_cast<uintptr_t>(owner));
+        owner[L::view_flags / 4] = 0x135;
+        probe(view, 2, "own-sun frame: an owner without the background bit forwards");
+        owner[L::view_flags / 4] = 0x00400135;
+        check(!so::own_sun_hidden(), "own-sun frame with ineligible probes only: not hidden");
+        lens_call(view, true, "own-sun frame: the bracket still opens");
+        // The main view unresolved (0): nothing is eligible, the probe forwards.
+        main_view_word = 0;
+        so::present(0);
+        probe_answer = 0;
+        probe(view, 2, "own-sun frame, main view unresolved: forwards");
+        check(!so::own_sun_hidden(), "main view unresolved: not hidden");
+        main_view_word = uint32_t(reinterpret_cast<uintptr_t>(view));
+        // A probe from another thread in an own-sun frame: the original.
+        so::present(0);
+        {
+            const unsigned foreign_calls = probe_calls;
+            const so::Counters f0 = so::counters();
+            HANDLE thread = CreateThread(nullptr, 0, &foreign_thread, nullptr, 0, nullptr);
+            check(thread && WaitForSingleObject(thread, 10000) == WAIT_OBJECT_0, "foreign thread ran (own-sun frame)");
+            if (thread) CloseHandle(thread);
+            check(probe_calls == foreign_calls + 1 && so::counters().foreign_thread == f0.foreign_thread + 1 &&
+                      so::counters().own_sun_hidden == f0.own_sun_hidden && !so::own_sun_hidden(),
+                  "own-sun frame: the foreign probe ran the original, nothing answered");
+        }
+        // An unwind through the bracket in an own-sun frame: the answer before it stands, Present closes the bracket,
+        // the next frame answers again.
+        probe(view, 1, "own-sun frame: hidden before the raise");
+        {
+            const unsigned ends = end_calls;
+            target_mode = 2;
+            SetLastError(0x145);
+            const int caught = setjmp(outer_jump);
+            if (!caught) catch_outer(view);
+            target_mode = 0;
+            asm volatile("fninit\n\tcld");
+            check(caught == 1 && end_calls == ends && so::bracket_open() && so::own_sun_hidden(),
+                  "own-sun frame: SEH past the bracket, answer kept, bracket open until Present");
+            so::present(0);
+            check(!so::bracket_open() && !so::own_sun_hidden(), "own-sun frame: Present closes the bracket");
+            frame(1, "own-sun frame after the unwind: hidden");
+        }
+        // The periodic row counts the hidden answers.
+        check(so::fixture_arm_sample() == 10, "sample armed for the own-sun frames");
+        probe(view, 1, "sampled own-sun frame");
+        lens_call(view, true, "sampled own-sun frame bracket");
+        so::fixture_force_sample();
+        so::present(0);
+        check(row_has("fl.sun_occlusion_sample ") && row_has(" probes=1 own=1 hidden=1 original=0 "),
+              "fl.sun_occlusion_sample: own=1 hidden=1 original=0");
+        // Latch cleared: forwards again.
+        so::set_own_sun_frame(false);
+        so::present(0);
+        frame(2, "latch cleared: the eligible probe forwards");
+        check(!so::own_sun_hidden(), "latch cleared: not hidden");
+        so::set_own_sun_frame(true);
+    }
     check(so::shutdown() && unchanged() && !so::installed() && !std::strcmp(so::state(), "restored"), "exact restore");
+    so::set_own_sun_frame(true);
+    probe_answer = 0;
+    probe(view, 2, "after restore the latch is refused (nothing installed): the vanilla call");
+    check(!so::own_sun_hidden(), "after restore: not hidden");
+    // The own sun without the bracket: initialize installs (here: refuses on the identity) for the own sun alone.
+    check(!so::initialize(false) && row_has("fl.sun_occlusion status=executable_mismatch ") &&
+              row_has(" bracket=0 own_sun=1 "),
+          "the own sun alone: one row, executable_mismatch");
+    so::fixture_slots(reinterpret_cast<uintptr_t>(&registry_slot)); // initialize cleared the admitted registry slot
+    // install_at with no lens addresses: the probe only, the lens call untouched (own-sun-pass.md section 8).
+    {
+        so::Addresses a = addresses();
+        a.lens_site = 0;
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(),
+              "a lens target without its site refused");
+        a = addresses();
+        a.lens_target = 0;
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "invalid_site") && unchanged(),
+              "a lens site without its target refused");
+        a.lens_site = 0;
+        check(so::install_at(a, false) && so::installed() && !std::strcmp(so::state(), "active"), "probe-only install");
+        so::fixture_log_status();
+        check(row_has(" probe_write=atomic lens_write=none ") && row_has(" own_sun=1 "),
+              "probe-only status row: lens_write=none");
+        check(probe_site[0] == 0xe8 && std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original, 5),
+              "probe-only: the lens call byte for byte vanilla");
+        so::set_own_sun_frame(true);
+        so::present(0);
+        probe_answer = 0;
+        probe(view, 1, "probe-only own-sun frame: hidden");
+        lens_call(view, false, "probe-only: the lens call is the engine's, no bracket");
+        check(so::own_sun_hidden(), "probe-only: own_sun_hidden() true");
+        so::present(0);
+        probe(other_view, 2, "probe-only: another view forwards");
+        check(so::shutdown() && unchanged() && !so::installed(), "probe-only restore, both calls vanilla");
+    }
     lens_call(view, false, "lens after restore");
     probe_answer = 0;
     probe(view, 2, "probe after restore");
@@ -691,6 +817,28 @@ int main() {
         lens_call(view, true, "log mode bracket");
         so::present(0);
     }
+    // The log mode in an own-sun frame: the hidden answer is not logged and runs no original; an ineligible probe
+    // still runs the original for its row.
+    {
+        so::set_own_sun_frame(true);
+        so::present(0);
+        const unsigned calls = probe_calls, before = rows;
+        probe_answer = 0;
+        record[L::record_visible / 4] = 1;
+        const Cpu saved = enter_test_state();
+        const uint32_t visible = walk(record, view);
+        const After a = leave_test_state(saved);
+        check(probe_calls == calls && eax_after == 1 && visible == 0 && rows == before && a.error == 0x145 &&
+                  !std::memcmp(xmm_after, xmm_in, sizeof xmm_in) && esp_after == esp_before && so::own_sun_hidden(),
+              "log mode, own-sun frame: hidden without the original, no row, LastError and XMM kept");
+        probe_answer = 1;
+        record[L::record_visible / 4] = 1;
+        walk(record, other_view);
+        check(probe_calls == calls + 1 && rows == before + 1 && row_has(" eligible=0 ") && row_has(" vanilla=1 answer=1"),
+              "log mode, own-sun frame: another view's probe logged with the original's answer");
+        so::set_own_sun_frame(false);
+        so::present(0);
+    }
     check_probe_error = true;
     check(so::shutdown() && unchanged(), "restore after the log mode");
 
@@ -708,12 +856,18 @@ int main() {
         const double forward = time_probes(other_view, iterations);
         const double eligible = time_probes(view, iterations);
         const double bracket = time_lens(iterations);
+        so::set_own_sun_frame(true);
+        so::present(0);
+        const double hidden = time_probes(view, iterations);             // the own sun's answer (no original)
+        const double own_frame_forward = time_probes(other_view, iterations); // another view in an own-sun frame
+        so::set_own_sun_frame(false);
         so::present(0);
         check(so::shutdown() && unchanged(), "timing restore");
         clobber = true;
         std::printf("TIMING native_probe_ns=%.1f forward_ns=%.1f eligible_forward_ns=%.1f native_lens_ns=%.1f bracket_ns=%.1f "
-                    "forward_hook_ns=%.1f bracket_hook_ns=%.1f\n",
-                    native_probe, forward, eligible, native_lens, bracket, forward - native_probe, bracket - native_lens);
+                    "forward_hook_ns=%.1f bracket_hook_ns=%.1f hidden_ns=%.1f own_frame_forward_ns=%.1f\n",
+                    native_probe, forward, eligible, native_lens, bracket, forward - native_probe, bracket - native_lens,
+                    hidden, own_frame_forward);
     }
     // Late window: after the first Present closes the engine_patch window, both claims are refused, nothing written
     // (the lens call's plain write is never attempted outside the window).
@@ -721,6 +875,12 @@ int main() {
     check(!so::install_at(addresses(), false) && !std::strcmp(so::state(), "late_claim") && unchanged() &&
               !so::installed(),
           "late claim refused, nothing written");
+    {
+        so::Addresses a = addresses();
+        a.lens_site = a.lens_target = 0;
+        check(!so::install_at(a, false) && !std::strcmp(so::state(), "late_claim") && unchanged() && !so::installed(),
+              "late probe-only claim refused, nothing written");
+    }
     {
         x3m::engine_patch::CallSite site{};
         check(!x3m::engine_patch::claim_call(site, reinterpret_cast<uintptr_t>(lens_site),
