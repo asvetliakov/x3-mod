@@ -999,3 +999,8 @@ to the engine; eligible probes forwarded that way are counted as `late=` on `own
 **FL run 17 A (open), The Hole:** look away from the sun and back several times, in a clear and a foggy sector: ours
 must be there on the first frame the sun re-enters the view, with no engine sun in between. Expect `own_sun_frame …
 drawn>0 late=0`; `late>0` with the engine's sun visible would mean a probe after the resolve.
+
+**FL run 17 A accepted (2026-11-02).** User: "looks like it's good/working now." Log: 34,182 frames, 219 s, exception 0,
+resets 0; `own_sun status=ready edition=fl reason=ok probe=active`; over the 20 frame rows drawn 6,821, `late=0`
+throughout, no `own_sun_state` beyond the armed row (`no_probe` 24,540 is now only the off-screen count) (measured).
+Own sun step 3 (FL port) accepted; FL run 15's grey lens over fog is closed by it.
