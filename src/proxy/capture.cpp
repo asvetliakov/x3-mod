@@ -1514,6 +1514,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process
                                                       // exit
         voice_dmo_fallback::shutdown();     // disarms the fault witness; the site patch stays with the other claims
+#else
+        chase_camera::note_last_device(); // FL pose seam: kept for the process lifetime, as on AP
 #endif
         session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
                                             // drain cost)
@@ -2136,6 +2138,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         chase_transition::report(ctx.frame); // bounded native view/lifetime observations
         chase_lead::report(ctx.frame);       // predictive marker results, no per-draw reporting
     }
+#else
+    if (ctx.capture || ctx.frame % 300 == 0) chase_camera::report(ctx.frame); // FL: the pose seam only (no line otherwise)
 #endif
     if (ctx.capture || ctx.frame % 300 == 0) finite_upload_metrics(d, ctx, "present");
     // With the route requested, log the wrapper's copy-depth epochs per capture

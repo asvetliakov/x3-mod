@@ -1,0 +1,19 @@
+WINDOWS seam_fnv1a=391b90a2 target_fnv1a=466a42e2 plane_fnv1a_masked=2df2f1ce site_mod8=5
+LOG chase_camera requested=1 installed=0 status=executable_mismatch window_closed_by=- edition=fl site=0x00000000 rva=0x0227ad
+LOG chase_camera requested=1 installed=0 status=invalid_base window_closed_by=- edition=fl site=0x018937ad rva=0x0227ad
+LOG chase_camera requested=1 installed=0 status=invalid_tunables window_closed_by=- edition=fl site=0x018927ad rva=0x0227ad
+FLIPS seam=528 refused=528 target=56 refused=56 plane=88 refused=88
+LOG chase_camera requested=1 installed=0 status=readback_mismatch site=0x018927ad length=10 rel32_offset=6 atomic_write=0 arena_used=28 rot_tau=0.280 pos_tau=0.380 offset_y=0.500 pitch_down_deg=0.50 distance_scale=1.050 fov_compensate=1 lag_clamp_deg=8.00 pos_lag_clamp=0.100 combat_tightness=0.000 combat=off max_dt=0.100 snap_coalesce_frames=3 scene_fix=0 handler_timing=0 predicate=view_object_is_ref_object lifetime=process scope=external_back_view edition=fl rva=0x0227ad rollback=restored unbound_phase=ap_only dependencies=none
+LOG chase_camera requested=1 installed=1 status=readback_mismatch site=0x018927ad length=10 rel32_offset=6 atomic_write=0 arena_used=56 rot_tau=0.280 pos_tau=0.380 offset_y=0.500 pitch_down_deg=0.50 distance_scale=1.050 fov_compensate=1 lag_clamp_deg=8.00 pos_lag_clamp=0.100 combat_tightness=0.000 combat=off max_dt=0.100 snap_coalesce_frames=3 scene_fix=0 handler_timing=0 predicate=view_object_is_ref_object lifetime=process scope=external_back_view edition=fl rva=0x0227ad rollback=failed unbound_phase=ap_only dependencies=none
+LOG chase_camera requested=1 installed=1 status=active site=0x018927ad length=10 rel32_offset=6 atomic_write=0 arena_used=208 rot_tau=0.280 pos_tau=0.380 offset_y=0.500 pitch_down_deg=0.50 distance_scale=1.050 fov_compensate=1 lag_clamp_deg=8.00 pos_lag_clamp=0.100 combat_tightness=0.000 combat=off max_dt=0.100 snap_coalesce_frames=3 scene_fix=0 handler_timing=0 predicate=view_object_is_ref_object lifetime=process scope=external_back_view edition=fl rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=none
+TRAMPOLINE dispatcher=0181004c stub=01810054
+POSE vanilla=0,200,-2000 written=0,808,-3778
+STATS frames=9 applied=8 refused=1 inactive=2 unbound=0 snaps=1
+LOG chase_camera first_applied frame=300 handler_frame=1 half_vfov_tan=0.4097 fov298=0x28be plane_w=0x10000 plane_h=0xc000 default_plane_h=0xc000 mode=258 connect=0 flags_1a0=0x0 tracking=0 aim_gun=0x0 tracked=0xfffff000 locked=0 ref=0x01802000 view_obj=0x01802000 boom_local=0.0,200.0,-2000.0 cockpits_seen=2 native_branch=render domain_delta=0.0
+LOG chase_fov_compensate frame=300 handler_frame=1 factor=1.8306 half_vfov_tan=0.4097 enabled=1 distance_scale=1.050 boom_scale=1.9221 changes=1 row=1/32
+LOG chase_camera_shutdown restored=1 status=restored
+LOG chase_camera requested=1 installed=1 status=active site=0x018927ad length=10 rel32_offset=6 atomic_write=0 arena_used=360 rot_tau=0.280 pos_tau=0.380 offset_y=0.500 pitch_down_deg=0.50 distance_scale=1.050 fov_compensate=1 lag_clamp_deg=8.00 pos_lag_clamp=0.100 combat_tightness=0.000 combat=off max_dt=0.100 snap_coalesce_frames=3 scene_fix=0 handler_timing=0 predicate=view_object_is_ref_object lifetime=process scope=external_back_view edition=fl rva=0x0227ad rollback=none unbound_phase=ap_only dependencies=none
+LOG chase_camera_shutdown restored=1 status=restored
+LOG chase_camera requested=1 installed=0 status=late_claim window_closed_by=fixture_present edition=fl site=0x018927ad rva=0x0227ad
+RESULT PASS checks=41 failures=0
+# exit=0 run_seconds=0.07
