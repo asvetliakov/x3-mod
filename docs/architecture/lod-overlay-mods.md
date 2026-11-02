@@ -488,8 +488,9 @@ X3FL.exe mounts by itself. Evidence and counts: [farnhams-legacy.md](../verifica
   `--batch --sync --mod auto --install` call, so with unchanged inputs and tool sources it produces the same
   pair as a manual `--batch` run) and engine bodies (`engine_bodies.generate`'s FL view); it skips the fog family
   steps, which read the AP view only (one log line). Not built or run as the frozen executable on FL.
-- **Cosmetic gaps that need DLL sites on FL** (the AP DLL covers them; neither blocks the draw saving):
-  the occlusion bind for coarse records (`lod_occlusion`: records other than 0 bind the `NONE_OCCL_DECAL`
-  placeholder, so the merged record draws without its occlusion map) and the material-strength twin
-  (`overlay-material-strength.md`: without it every merged material draws at the class's merged diffuse
-  strength). The Terran distance branch, the third site, is patched on FL since run 20.
+- **Cosmetic gap that needs a DLL site on FL** (the AP DLL covers it; it does not block the draw saving): the
+  material-strength twin (`overlay-material-strength.md`): its texture mark is read in the D3DX texture-row IAT patch,
+  which is AP-only (`loading_trace`, `d3dx9_37.dll`); X3FL.exe imports the same `D3DXCreateTextureFromFileInMemoryEx`
+  from `d3dx9_43.dll`. Without it every merged material draws at the class's merged diffuse strength
+  (`lod_material_strength_configured … texture_hook=0`, FL runs 20–21). The occlusion bind for coarse records
+  (`lod_occlusion`) and the Terran distance branch are patched on FL since run 20.

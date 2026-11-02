@@ -1,0 +1,64 @@
+log=/home/asvetl/x3m-logs/fl-run20-culls.log frames=27902
+== Q1 captures
+capture1 frames=7296-7303 draws=354-354 dt_median60=10.0 fog=0
+capture2 frames=9864-9871 draws=72-130 dt_median60=5.0 fog=0
+capture3 frames=25483-25490 draws=544-555 dt_median60=9.0 fog=1
+capture4 frames=26925-26932 draws=426-429 dt_median60=6.0 fog=1
+fogged draws: n=3517 min=1 med=468 p90=545 max=570
+clear draws(>20): n=24374 min=24 med=123.5 p90=320 max=528
+fogged dt_ms: n=3517 min=4 med=7 p90=12 max=916
+clear dt_ms(>20 draws): n=24374 min=1 med=5.0 p90=9 max=14557
+== Q2 status rows
+  original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+  lod_material_strength_mode requested=unset enabled=1
+  terran_station_lod site=01045e98 rva=095e98 edition=fl state=patched reason=ok mode=size setting=size write=atomic
+  lod_occlusion site=010956c1 rva=0e56c1 edition=fl state=patched reason=ok mode=all setting=all write=atomic default=1
+  lod_material_strength_configured enabled=1 texture_hook=0
+  original_fill_variant device=1 original=3c39d45636d95744 transform=0 create=00000000 words=1685 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=1b54cbfa2155b61c transform=0 create=00000000 words=1696 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=ced7edef48059e84 transform=0 create=00000000 words=1628 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=e326b2b1363c9886 transform=0 create=00000000 words=1717 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=740346590fe7bff5 transform=0 create=00000000 words=1728 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=0d5848c8489b6630 transform=0 create=00000000 words=1660 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=c79c3b2c6749df10 transform=0 create=00000000 words=1690 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=1455079b3f18aa88 transform=0 create=00000000 words=1622 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=16d4af171035acd1 transform=0 create=00000000 words=1658 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=1835f5e1ba07b1aa transform=0 create=00000000 words=1596 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=ba08f36b160527a5 transform=0 create=00000000 words=2078 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=b2d8f40cc7a03904 transform=0 create=00000000 words=2089 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=c17114ca9752ab62 transform=0 create=00000000 words=1966 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=6f745daaf928a297 transform=0 create=00000000 words=2110 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=e57c48fc06198e20 transform=0 create=00000000 words=2121 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=f06b626708db3c7e transform=0 create=00000000 words=1998 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=a66fb1981ba755b2 transform=0 create=00000000 words=519 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=3c39d45636d95744 transform=0 create=00000000 words=1685 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=1b54cbfa2155b61c transform=0 create=00000000 words=1696 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=ced7edef48059e84 transform=0 create=00000000 words=1628 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=20c3851a4cac4213 transform=0 create=00000000 words=1662 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=33826e49b53b88dc transform=0 create=00000000 words=1600 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=20c3851a4cac4213 transform=0 create=00000000 words=1662 depth=1 fill=0.01 fill_applied=1
+  original_fill_variant device=1 original=33826e49b53b88dc transform=0 create=00000000 words=1600 depth=1 fill=0.01 fill_applied=1
+== Q3 nonzero flags (new kinds)
+      24 engine_light_variant:refused ex: engine_light_variant device=1 original=3c39d45636d95744 created=7f refused=00 mismatched=00 failed=00 words_max=4544 slots_max=821 slot_budget=4096 depth=1
+      24 engine_light_variant:mismatched ex: engine_light_variant device=1 original=3c39d45636d95744 created=7f refused=00 mismatched=00 failed=00 words_max=4544 slots_max=821 slot_budget=4096 depth=1
+       1 original_fill_mode:default ex: original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+       1 window_mode_config:default ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+       1 lod_occlusion:default ex: lod_occlusion site=010956c1 rva=0e56c1 edition=fl state=patched reason=ok mode=all setting=all write=atomic default=1
+       1 taa_thin_vote_configured:default ex: taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+       1 fade_rt2_owner_configured:default ex: fade_rt2_owner_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested=1
+       1 motion_output_taa_box_resolution:default ex: motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+       1 taa_thin_region_source:default ex: taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+       1 motion_output_taa:default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 motion_output_taa:far_clip_default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 emission_source_gain_frame:refused_other ex: emission_source_gain_frame device=1 frame=23991 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+       1 emission_source_gain_frame:refused_state ex: emission_source_gain_frame device=1 frame=23991 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+== Q4 fade_route_frame rows=27902
+  fade_fill sum=956348 nonzero_rows=21312
+  fade_receiver sum=790666 nonzero_rows=8885
+  fade_caster sum=464577 nonzero_rows=8098
+  fade_gain sum=956348 nonzero_rows=21312
+  fade_widen sum=634732 nonzero_rows=8885
+  fade_routed sum=956348 nonzero_rows=21312
+  overlay_routed sum=0 nonzero_rows=0
+original_fill_frame rows=26914 admitted: n=26914 min=5 med=106.0 p90=258 max=338
+== Q5 first_present since_start_us=3537963.700 first_frame_draws>100=(7, '11223')

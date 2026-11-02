@@ -1376,7 +1376,21 @@ from run 20's 468. Fleet coverage (`coverage_fleet.py`): every body the AP batch
 `others/hsap` (text parse, empty parameter) and effect parts; 187 `*_wreck` bodies are refused no_opaque on both editions
 (alpha-flagged materials; whether their textures are opaque is unexamined; candidate for shared baker work).
 
-**FL run 21 A (open):** the same fogged spot as runs 19/20, one F8 there, and if convenient a look at a Terran station and
+**FL run 21 A (flown 2026-11-02, accepted):** two F8 captures (clear sector with capitals; fogged sector with stations); the
+user: "FPS is much much better now". Log `/home/asvetl/x3m-logs/fl-run21-overlay.log` (466 MB), triage
+`verification/results/fl-run21/triage_log.py` → `triage_run21.txt`, `triage_run20.txt` (Opus low, measured unless marked):
+fogged frames draws median 191 (p90 212, max 255, n 6,259) against run 20's 468 (p90 545; same DLL), 2.4x fewer; clear
+frames (draws > 20) median 61 against 123.5; fogged dt median/p90 4/5 ms against 7/12 ms (different flight paths, so the
+span comparison is inferred); fogged capture 190–192 draws, clear capture 56. No new refused/failed/missing row kinds; the
+load reached the first drawn frame 0.4–0.6 s sooner. The DLL writes no overlay load row on either edition, so the overlay's
+presence is inferred from the draws alone. Shading rows confirm the fade-band fill and the fade-owner shadow receivers and
+casters run on FL (`fade_fill` non-zero on 15,717 frames, `fade_receiver` 14,136, `fade_caster` 10,004; `original_fill`
+fill 0.01 applied on all 24 variants). `lod_material_strength_configured enabled=1 texture_hook=0`: the material-strength
+twin's texture mark is not read on FL (the D3DX texture-row IAT patch is AP-only; X3FL.exe imports the same
+`D3DXCreateTextureFromFileInMemoryEx` from `d3dx9_43.dll` instead of `d3dx9_37.dll`), so merged materials draw at the
+class's averaged strength on FL; port queued. Terran stations/ships: the user is checking in a new game.
+
+Original brief: the same fogged spot as runs 19/20, one F8 there, and if convenient a look at a Terran station and
 a wreck at distance; tell me before relaunching. Expect `lod_overlay` rows at load naming slots 06/07 and 637 bodies,
 no `lod_overlay … refused`, fogged draws below run 20's 468 median; visual check: distant stations and ships keep their
 silhouette with no missing or untextured parts (an untextured distant body means its atlas failed to load), close-up
