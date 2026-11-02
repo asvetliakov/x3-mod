@@ -1,10 +1,10 @@
-Baker fix 2026-11-03 (merged materials split by colour grade, lod_atlas.grade_key). Run from the repository root.
+Baker fix 2026-11-03 (merged materials split by colour grade, lod_atlas.grade_key: colour matrix, palette only with g_bColor_Mixing not 0). Run from the repository root.
 out/ (baked candidate, game-derived bytes) and bake.log stay local.
 
 rebake (four vent-grade bodies, FL mounts read-only):
   python3 tools/analysis/lod_overlay.py --game /mnt/c/X3FL --edition fl --batch \
       --only verification/results/fl-lod-overlay/green_station/rebake/only.txt \
-      --out verification/results/fl-lod-overlay/green_station/rebake/out > .../rebake/bake.log   (exit 0, 104 s)
+      --out verification/results/fl-lod-overlay/green_station/rebake/out > .../rebake/bake.log   (exit 0, 91 s; an existing out/ is removed first)
 merged materials per body, installed vs rebake:
   cd verification/results/fl-lod-overlay/green_station/rebake && python3 merged_counts.py only.txt \
       installed=/mnt/c/X3FL/addon2/06.x3m-lod.json,/mnt/c/X3FL/addon2/07.x3m-lod.json \

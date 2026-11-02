@@ -262,7 +262,8 @@ tooling"; census: tools/analysis/atlas_census.py):
   mean for most classes. Specular atlas: always DXT5 now.
 - 2026-11-03 change (FL run 27 green station, docs/verification/farnhams-legacy.md): opaque classes also split by
   colour grade (grade_key: the exact parsed values of colormatrix, Brightness, contrast, saturation, hue,
-  g_Brightness, g_Contrast, g_Saturation, g_Hue and every g_Color_* parameter). The merged material copied its
+  g_Brightness, g_Contrast, g_Saturation, g_Hue, plus g_bColor_Mixing and the g_Color_* palette unless the material
+  declares g_bColor_Mixing 0: the XT programs read the palette only under that bool). The merged material copied its
   dominant's grade, so argon_food_S_factory_B's vent material (hue 217.9, saturation 7.21, colormatrix 1) tinted
   the whole atlas green. One extra draw per extra grade per body; tool_sha256 changes, so --sync rebuilds every
   body.
@@ -1896,20 +1897,27 @@ def param_word(material, name):
 
 
 CLASS_PARAMS = (b'g_CullMode',)
-# colour-grade parameters (the engine uploads them as ps c1..c3 and c19..c24): names compared case-insensitively,
-# plus every name starting with GRADE_PREFIX (g_Color_1/2/3, _Lines, _LinesPower, _Highlight, _HighlightPower,
-# _Weighting, _Envipaint; g_ColorWriteEnable does not match, it is a render state)
+# colour-matrix parameters (the preshader turns them into the grade rows ps c1..c3, applied to the diffuse texel before
+# lighting; docs/reverse-engineering/fl/materials.md, "Grading preshader"), names compared case-insensitively
 GRADE_PARAMS = frozenset(n.lower() for n in (b'colormatrix', b'Brightness', b'contrast', b'saturation', b'hue',
                                              b'g_Brightness', b'g_Contrast', b'g_Saturation', b'g_Hue'))
+# the XT palette (g_Color_1/2/3, _Lines, _LinesPower, _Highlight, _HighlightPower, _Weighting, _Envipaint; ps c19..c25
+# FL) is read only under `if b1` = g_bColor_Mixing; g_ColorWriteEnable does not match the prefix (a render state)
 GRADE_PREFIX = b'g_color_'
+MIXING_PARAM = b'g_bcolor_mixing'
 
 
 def grade_key(material):
-    """Colour grade of a material: the sorted (lower-case name, type, values) of every numeric GRADE_PARAMS /
-    GRADE_PREFIX parameter it declares, values exactly as parsed (16.16 words, no tolerance); a parameter the
-    material omits is absent from the key (not filled with a default)."""
-    return tuple(sorted((n.lower(), t, tuple(v)) for n, t, v in material.get('params', ())
-                        if t != 8 and (n.lower() in GRADE_PARAMS or n.lower().startswith(GRADE_PREFIX))))
+    """Colour grade of a material: the sorted (lower-case name, type, values) of every numeric GRADE_PARAMS parameter
+    it declares and, unless it declares g_bColor_Mixing 0, also of g_bColor_Mixing and every GRADE_PREFIX (palette)
+    parameter. A material without the bool keeps its palette in the key (an omitted effect parameter keeps the
+    instance's last value, so its gate is not known). Values exactly as parsed (16.16 words, no tolerance); a
+    parameter the material omits is absent from the key (not filled with a default)."""
+    params = [(n.lower(), t, tuple(v)) for n, t, v in material.get('params', ()) if t != 8]
+    mixing = next((v for n, _, v in params if n == MIXING_PARAM), None)
+    palette = mixing is None or any(mixing)
+    return tuple(sorted(p for p in params if p[0] in GRADE_PARAMS or
+                        palette and (p[0] == MIXING_PARAM or p[0].startswith(GRADE_PREFIX))))
 
 
 def material_class_key(material):

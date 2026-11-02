@@ -504,17 +504,24 @@ absorbed material: FL run 27 drew `argon_food_S_factory_B` green at distance, it
 saturation 7.21, `colormatrix=1`; 8,212 of 36,418 faces) being the dominant
 (`docs/verification/farnhams-legacy.md`, "Green station" and "Baker fix").
 
-The key now also holds `lod_atlas.grade_key`: the sorted (lower-case name, type, values) of every numeric parameter
-named `colormatrix`, `Brightness`, `contrast`, `saturation`, `hue`, `g_Brightness`, `g_Contrast`, `g_Saturation`,
-`g_Hue` or starting with `g_Color_` (`g_ColorWriteEnable` does not match), compared exactly as parsed (16.16 words,
-no tolerance; an omitted parameter is absent from the key, not filled with a default). Every merged material's grade
-therefore equals the grade of each material it absorbs; materials that differ only in textures still share one.
+The key now also holds `lod_atlas.grade_key`: the sorted (lower-case name, type, values) of every numeric
+colour-matrix parameter (`colormatrix`, `Brightness`, `contrast`, `saturation`, `hue`, `g_Brightness`, `g_Contrast`,
+`g_Saturation`, `g_Hue`; the preshader turns them into the grade rows c1–c3, applied to the diffuse texel before
+lighting) and, unless the material declares `g_bColor_Mixing` 0, also `g_bColor_Mixing` and every parameter starting
+with `g_Color_` (the XT palette, read only under `if b1` = `g_bColor_Mixing`;
+[FL materials](../reverse-engineering/fl/materials.md#grading-preshader-palette-gate-and-merged-lod-visibility-2026-11-03)).
+A material that omits the bool keeps its palette in the key: an omitted effect parameter keeps the instance's last
+value, so its gate is unknown. Values are compared exactly as parsed (16.16 words, no tolerance; an omitted parameter
+is absent from the key, not filled with a default). Every merged material's grade therefore equals the grade of each
+material it absorbs; materials that differ only in textures, or only in a palette with mixing off, still share one.
 The alpha path (one merged group per part) and the classic classes are unchanged.
 
-Cost, measured with `tools/analysis/lod_grade_census.py` on the installed pre-fix overlays: FL 637 bodies, 781 atlas
-merged materials become 1,342 (+561 draws when the bodies sit at the merged LOD, 252 bodies affected, at most +12 on
-`ships/M7/Paranid_M7M`); AP 1,154 bodies, 1,463 become 2,390 (+927, 471 bodies). The `g_Color_*` parameters account
-for most of it (colour-matrix set alone: FL +158, AP +293). No near-duplicate grades (values within 1/256) occur;
-treating a `colormatrix=0` material's matrix values as neutral would save 2 of the 561 FL draws, so the exact key
-stays. The change alters `tool_sha256`, so the next `--batch --sync` (and `x3m-regenerate`) rebakes every body
-of both editions.
+Cost, measured with `tools/analysis/lod_grade_census.py` on the installed pre-fix overlays
+(`verification/results/fl-lod-overlay/green_station/rebake/`): FL 637 bodies, 781 atlas merged materials become
+1,112 (+331 draws when the bodies sit at the merged LOD; 187 bodies, at most +12 on `ships/M7/Paranid_M7M`); AP 1,154
+bodies, 1,463 become 2,084 (+621, 373 bodies). Per class, FL: 317 ships 389 → 574 (+185, 107 affected), 315 stations
+387 → 533 (+146, 80 affected, at most +4); AP: 816 ships 1,038 → 1,512 (+474, 292 affected), 335 stations 422 → 569
+(+147, 81 affected). An affected body goes from about 1.2 to 2.9 merged materials on average in both classes. The
+colour-matrix set alone is FL +158, AP +293; no near-duplicate grades (within 1/256) occur; treating an omitted
+`g_bColor_Mixing` as off would save 7 (FL) and 8 (AP) draws. The change alters `tool_sha256`, so the next
+`--batch --sync` (and `x3m-regenerate`) rebakes every body of both editions.

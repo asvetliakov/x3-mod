@@ -32,9 +32,10 @@ def body(mats):
 
 
 class GradeCensus(unittest.TestCase):
-    def bake(self, folder, merged, synth):
-        """Game (02.cat: the vent + plain source body) and candidate OUT/addon/16.cat with `merged` appended."""
-        src = [mat(b'a.tga', VENT), mat(b'b.tga', PLAIN)]
+    def bake(self, folder, merged, synth, src=None):
+        """Game (02.cat: the vent + plain source body, or `src`) and candidate OUT/addon/16.cat with `merged`
+        appended."""
+        src = src or [mat(b'a.tga', VENT), mat(b'b.tga', PLAIN)]
         game, out = Path(folder) / 'game', Path(folder) / 'out'
         write_catalogue(game / '01.cat', [('t/x.txt', b'x')])                 # catalogues mount from 01 on
         write_catalogue(game / '02.cat', [(MEMBER, body(src))])
@@ -63,6 +64,11 @@ class GradeCensus(unittest.TestCase):
                              (1, 1, {'1': 1}, [1, 'ships/x/b']))
             self.assertEqual((tot['merged_materials'], tot['merged_materials_split'], tot['unread']), (1, 2, 0))
             self.assertIn('wrong=[1] source=baked', rows[0])
+            ships = tot['per_class']['ships']
+            self.assertEqual((ships['bodies'], ships['affected'], ships['merged_before'], ships['merged_after'],
+                              ships['hist'], ships['max'], ships['affected_only']['after_median']),
+                             (1, 1, 1, 2, {'1': 1}, [1, 'ships/x/b'], 2))
+            self.assertEqual(list(tot['per_class']), ['ships'])
 
     def test_split_bake_has_no_mismatch(self):
         """A merged material per grade (the fixed bake): no mismatch, no extra draw."""
@@ -72,6 +78,19 @@ class GradeCensus(unittest.TestCase):
                                       {'index': 3, 'dominant': 1, 'absorbed': [1], 'atlas': True}])
             tot, rows = self.run_census(game, out)
             self.assertEqual((tot['mismatch_bodies'], tot['extra_draws'], tot['atlas_rows'], rows), (0, 0, 2, []))
+
+    def test_palette_counts_only_with_mixing(self):
+        """Two palettes over one merged material: no mismatch with g_bColor_Mixing 0, a mismatch with it 1."""
+        for mixing, wrong in ((0, 0), (1, 1)):
+            pal = lambda c: PLAIN + [(b'g_bColor_Mixing', 1, [mixing]), (b'g_Color_1', 5, [c, c, c, 0])]
+            src = [mat(b'a.tga', pal(100)), mat(b'b.tga', pal(200))]
+            with tempfile.TemporaryDirectory() as folder:
+                game, out, _ = self.bake(folder, [mat(b'x.tga', pal(100))],
+                                         [{'index': 2, 'dominant': 0, 'absorbed': [0, 1], 'atlas': True}], src)
+                tot, _ = self.run_census(game, out)
+                self.assertEqual((tot['mismatch_bodies'], tot['extra_draws'], tot['extra_draws_colormatrix_family']),
+                                 (wrong, wrong, 0))
+                self.assertEqual((tot['mixing_on'], tot['mixing_off']), (2, 0) if mixing else (0, 2))   # source records
 
 
 if __name__ == '__main__':

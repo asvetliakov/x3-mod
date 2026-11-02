@@ -3,9 +3,10 @@
 material it absorbs?
 
 Since 2026-11-03 lod_atlas splits the opaque classes by colour grade (lod_atlas.grade_key: colormatrix, Brightness,
-contrast, saturation, hue, g_Brightness, g_Contrast, g_Saturation, g_Hue and every g_Color_* parameter, exact parsed
-values). Before that a merged material copied its dominant's grade onto every absorbed material (FL run 27: the vent
-material of argon_food_S_factory_B tinted the whole station green; docs/verification/farnhams-legacy.md).
+contrast, saturation, hue, g_Brightness, g_Contrast, g_Saturation, g_Hue, plus g_bColor_Mixing and the g_Color_*
+palette unless g_bColor_Mixing is declared 0; exact parsed values). Before that a merged material copied its
+dominant's grade onto every absorbed material (FL run 27: the vent material of argon_food_S_factory_B tinted the
+whole station green; docs/verification/farnhams-legacy.md).
 
 For each atlas body of the markers it reads the source material table (the marker's source catalogue in GAME) and
 the merged material: the baked one from the overlay catalogue beside the marker when it holds the body, else the
@@ -21,11 +22,15 @@ absorbed materials do not all share its grade is a mismatch. Totals:
   near_duplicate_rows                         rows with two member grades that declare the same parameters and whose
                                               values all lie within 1/256 relative of each other
   presence_only_rows                          rows with two member grades that agree on every parameter both declare
-  extra_draws_colormatrix_family              extra_draws counted on the grade key without its g_Color_* parameters
+  extra_draws_colormatrix_family              extra_draws counted on the colour-matrix parameters alone (no palette)
+  mixing_on, mixing_off,                      source material records (per atlas body, repeats across bodies counted)
+  mixing_absent_with_palette                  declaring g_bColor_Mixing non-zero / 0, or a g_Color_* palette without it
   split_bodies, extra_per_body, extra_max     bodies with extra_draws > 0, their count per extra ("1": n, ...), the
                                               largest and its body
   merged_materials, merged_materials_split    atlas merged materials of the markers, and of the same bodies split
                                               (merged_materials + extra_draws)
+  per_class                                   ships / stations / other: bodies, affected, extra, merged_before/after,
+                                              per-body mean and median (all bodies, affected only), hist, max
   alpha_mismatch_rows                         non-atlas (alpha) merged rows whose members differ in grade (not split;
                                               the alpha path keeps one group per part)
 
@@ -107,8 +112,8 @@ def overlay_table(index, body):
 
 
 def family(key):
-    """A grade key without its g_Color_* parameters (the colormatrix / Brightness / contrast / saturation / hue set)."""
-    return tuple(p for p in key if not p[0].startswith(lod_atlas.GRADE_PREFIX))
+    """A grade key without its palette part (g_bColor_Mixing, g_Color_*): the colour-matrix set alone."""
+    return tuple(p for p in key if p[0] in lod_atlas.GRADE_PARAMS)
 
 
 def colormatrix_on(key):
@@ -128,11 +133,42 @@ def presence_only(a, b):
     return da != db and all(da[k] == db[k] for k in set(da) & set(db))
 
 
+def body_class(name):
+    """'ships', 'stations' or 'other' by the body's first path component."""
+    top = name.replace('\\', '/').split('/', 1)[0].lower()
+    return top if top in ('ships', 'stations') else 'other'
+
+
+def class_stats(per_body):
+    """Per body class: bodies, affected (extra > 0), merged materials per body before / after the split (mean and
+    median over the class and over its affected bodies), extra-draw histogram and the largest extra with its body."""
+    import statistics
+    out = {}
+    for cls in sorted({body_class(n) for n, _, _ in per_body}):
+        rows = [(n, r, e) for n, r, e in per_body if body_class(n) == cls]
+        hit = [x for x in rows if x[2]]
+        stat = lambda xs, f: round(f(xs), 2) if xs else None
+        side = lambda xs: dict(before_mean=stat([r for _, r, _ in xs], statistics.mean),
+                               after_mean=stat([r + e for _, r, e in xs], statistics.mean),
+                               before_median=stat([r for _, r, _ in xs], statistics.median),
+                               after_median=stat([r + e for _, r, e in xs], statistics.median))
+        hist = {}
+        for _, _, e in hit:
+            hist[str(e)] = hist.get(str(e), 0) + 1
+        top = max(rows, key=lambda x: x[2], default=None)
+        out[cls] = dict(bodies=len(rows), affected=len(hit), extra=sum(e for _, _, e in rows),
+                        merged_before=sum(r for _, r, _ in rows), merged_after=sum(r + e for _, r, e in rows),
+                        all=side(rows), affected_only=side(hit), hist=hist,
+                        max=[top[2], top[0]] if top and top[2] else [0, None])
+    return out
+
+
 def census(assets, markers, out=print):
     tot = dict(bodies=0, atlas_bodies=0, atlas_rows=0, unread=0, mismatch_bodies=0, mismatch_rows=0,
                dominant_graded_spread=0, graded_lost=0, extra_draws=0, near_duplicate_rows=0, presence_only_rows=0,
                alpha_mismatch_rows=0, extra_draws_colormatrix_family=0, split_bodies=0, extra_per_body={},
-               extra_max=[0, None])
+               extra_max=[0, None], mixing_on=0, mixing_off=0, mixing_absent_with_palette=0)
+    per_body = []
     for marker in markers:
         marker = Path(marker)
         index = overlay_index(marker.parent)
@@ -150,7 +186,13 @@ def census(assets, markers, out=print):
                 out(f'UNREAD {tag} {b["name"]} {ex!r:.100}')
                 continue
             grade = lambda i: lod_atlas.grade_key(mats[i])
-            body_mismatch, body_extra = False, 0
+            for m in mats:
+                mix = [v for n, t, v in m.get('params', ()) if t != 8 and n.lower() == lod_atlas.MIXING_PARAM]
+                if mix:
+                    tot['mixing_on' if any(mix[0]) else 'mixing_off'] += 1
+                elif any(t != 8 and n.lower().startswith(lod_atlas.GRADE_PREFIX) for n, t, _ in m.get('params', ())):
+                    tot['mixing_absent_with_palette'] += 1
+            body_mismatch, body_extra, body_rows = False, 0, 0
             for s in b.get('synth', []):
                 members = sorted(set(s['absorbed']) | {s['dominant']})
                 if not s.get('atlas'):
@@ -160,6 +202,7 @@ def census(assets, markers, out=print):
                 if s.get('widened'):
                     continue
                 tot['atlas_rows'] += 1
+                body_rows += 1
                 merged = lod_atlas.grade_key(baked[s['index']]) if baked is not None else grade(s['dominant'])
                 keys = sorted({grade(m) for m in s['absorbed']})
                 tot['extra_draws'] += len(keys) - 1
@@ -179,12 +222,14 @@ def census(assets, markers, out=print):
                 out(f'MISMATCH {tag} {b["name"]} merged={s["index"]} dominant={s["dominant"]} '
                     f'grades={len(keys)} wrong={wrong} source={"baked" if baked is not None else "dominant"}')
             tot['mismatch_bodies'] += body_mismatch
+            per_body.append((b['name'], body_rows, body_extra))
             if body_extra:
                 tot['split_bodies'] += 1
                 hist = tot['extra_per_body']
                 hist[str(body_extra)] = hist.get(str(body_extra), 0) + 1
                 if body_extra > tot['extra_max'][0]:
                     tot['extra_max'] = [body_extra, b['name']]
+    tot['per_class'] = class_stats(per_body)
     tot['merged_materials'] = tot['atlas_rows']                       # atlas merged materials of the markers
     tot['merged_materials_split'] = tot['atlas_rows'] + tot['extra_draws']   # the same bodies baked with the split
     return tot

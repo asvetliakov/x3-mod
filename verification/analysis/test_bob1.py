@@ -1551,10 +1551,16 @@ class LodAtlas(unittest.TestCase):
     # FL vent material of argon_food_S_factory_B (material 26) and a neutral one, both as the game data declares them
     VENT_GRADE = [(b'Brightness', 2, [67502]), (b'contrast', 2, [65667]), (b'saturation', 2, [472514]),
                   (b'hue', 2, [14278459]), (b'colormatrix', 1, [1]), (b'g_Brightness', 2, [67502]),
-                  (b'g_Hue', 2, [14278459]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
+                  (b'g_Hue', 2, [14278459]), (b'g_bColor_Mixing', 1, [0]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
     NEUTRAL_GRADE = [(b'Brightness', 2, [65536]), (b'contrast', 2, [65536]), (b'saturation', 2, [65536]),
                      (b'hue', 2, [0]), (b'colormatrix', 1, [0]), (b'g_Brightness', 2, [65536]),
-                     (b'g_Hue', 2, [0]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
+                     (b'g_Hue', 2, [0]), (b'g_bColor_Mixing', 1, [0]), (b'g_Color_1', 5, [20316, 19660, 4587, 0])]
+
+    @staticmethod
+    def palette(grade, mixing, color):
+        """`grade` with g_bColor_Mixing set to `mixing` (None: left out) and g_Color_1 to `color`."""
+        out = [(n, t, [color] * 3 + [0] if n == b'g_Color_1' else v) for n, t, v in grade if n != b'g_bColor_Mixing']
+        return out + ([(b'g_bColor_Mixing', 1, [mixing])] if mixing is not None else [])
 
     def grade_body(self, grades):
         """atlas_tree's materials and coarse record with grades[i] appended to material i's parameters; material 0
@@ -1570,11 +1576,16 @@ class LodAtlas(unittest.TestCase):
         """A graded dominant (the FL vent: hue 217.9, saturation 7.21, colormatrix 1) and an ungraded member get a
         merged material each (2026-11-03, FL run 27 green station), and every merged material's grade parameters
         equal those of each member it absorbs; materials that differ only in their textures still share one, and a
-        grade value that differs by one 16.16 word splits (exact values, no tolerance)."""
+        grade value that differs by one 16.16 word splits (exact values, no tolerance). The g_Color_* palette counts
+        only where the XT programs read it, under g_bColor_Mixing (fl/materials.md, "Palette gate"): palettes that
+        differ split with mixing on (or the bool omitted), not with mixing off."""
         grade = lambda m: lod_atlas.grade_key(m)
         self.assertEqual([n for n, _, _ in grade({'params': self.VENT_GRADE + [(b'g_ColorWriteEnable', 0, [15])]})],
-                         [b'brightness', b'colormatrix', b'contrast', b'g_brightness', b'g_color_1', b'g_hue', b'hue',
-                          b'saturation'])                                       # g_ColorWriteEnable is no grade
+                         [b'brightness', b'colormatrix', b'contrast', b'g_brightness', b'g_hue', b'hue',
+                          b'saturation'])                       # mixing off: no palette; g_ColorWriteEnable is no grade
+        self.assertEqual([n for n, _, _ in grade({'params': self.palette(self.VENT_GRADE, 1, 7)})][3:6],
+                         [b'g_bcolor_mixing', b'g_brightness', b'g_color_1'])
+        pal = lambda mixing, color: self.palette(self.NEUTRAL_GRADE, mixing, color)
         bumped = [(n, t, [v[0] + 1] if n == b'saturation' else v) for n, t, v in self.NEUTRAL_GRADE]
         with tempfile.TemporaryDirectory() as folder:
             assets, _ = lod_overlay.original_assets(self.game(folder))
@@ -1583,6 +1594,11 @@ class LodAtlas(unittest.TestCase):
                                     ((self.NEUTRAL_GRADE, bumped), 2),               # one word apart
                                     ((self.VENT_GRADE, self.VENT_GRADE), 1),         # only the textures differ
                                     ((self.NEUTRAL_GRADE, self.NEUTRAL_GRADE), 1),
+                                    ((pal(0, 100), pal(0, 200)), 1),                 # same matrix, palette off
+                                    ((pal(1, 100), pal(1, 200)), 2),                 # same matrix, palette on
+                                    ((pal(1, 100), pal(1, 100)), 1),
+                                    ((pal(0, 100), pal(1, 100)), 2),                 # the gate itself differs
+                                    ((pal(None, 100), pal(None, 200)), 2),           # gate omitted: palette counts
                                     ((), 1)):                                         # no grade declared at all
                 mats, coarse = self.grade_body(grades)
                 self.assertNotEqual(mats[0]['params'][:2], mats[1]['params'][:2])     # the textures differ
