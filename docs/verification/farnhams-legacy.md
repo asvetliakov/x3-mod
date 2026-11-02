@@ -1683,7 +1683,8 @@ Expected in the flight log (not verified): `chase_camera requested=1 installed=1
 rollback=none unbound_phase=active_control dependencies=chase_lead,chase_transition`, then:
 
 ```
-chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=0 diagnostics_reason=ap_only observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=<0|1> diagnostics_reason=<telemetry_off|fl_verified_reads> diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=<0|1>
+   (updated 2026-11-03; until then diagnostics=0 diagnostics_reason=ap_only, as run 25 logged)
 chase_transition_site index=0 site=0x<base+020ec0> rva=0x020ec0 patched=1 atomic_write=1 status=active edition=fl   (indices 0-7; atomic_write=0 at 1, 6, 7)
 chase_view_restore installed=1 requested=1 status=ok edition=fl path=engine sites=1 cancel_sites=3 inject_site=0x<base+0cfd00> inject_rva=0x0cfd00 call=0x<base+0bb5b0> call_rva=0x0bb5b0 callback=32 method=SelectMode mode=258 refresh=UpdateVisibility refresh_scan_cells=128 observers=1 retries=3 retries_valid=1 expiry_updates=600 due_frames=2 retry_spacing=60
 chase_view_restore_site index=0 site=0x<base+0cfd00> rva=0x0cfd00 patched=1 atomic_write=1 status=active edition=fl   (indices 0-3)
@@ -1695,14 +1696,23 @@ After each gate transit, jumpdrive jump and docking taken in the rear chase view
 Undocking writes no view mode, so no row is expected. If the view is not restored, report the row. Each pattern points
 to one cause:
 
-- `result=no_effect cancel=retries`: the store did not happen inside the call.
+Since 2026-11-03 (section "FL chase follow-ups" below) each finished ticket also appears in the telemetry event
+window as `chase_transition_event … kind=9 kind_name=restore result=… cancel=…`, in sequence with the cockpit
+witnesses (`kind_name=destroy|construct|update|mode_script|mode_load`); the readings below name the event rows to look
+at next to each outcome.
+
+- `result=no_effect cancel=retries`: the store did not happen inside the call (no `kind_name=mode_script
+  requested=258` row for the bound cockpit before the `kind=9` row).
 - `result=cancelled cancel=mode_left` right after a call, with the chase view actually back: the store was deferred
   (the script task yielded and stored 258 after the call returned), so the attempt read as `no_effect` and the next
   candidate frame at 258 cancelled the ticket. The restore landed, but each earlier retry may have left a deferred
   `SelectMode` task behind (at most `retries` + 1 calls per ticket); report it with the rows around it.
-- `cancel=no_monitor`: the mode store was not captured.
+- `cancel=no_monitor`: the mode store was not captured (`kind_name=mode_script … frame=refused`: the dispatcher frame
+  chain did not match; no `mode_script` row at all: no script store into the fresh cockpit).
 - `result=call_refused`: the method or the receiver is missing.
 - `chase_view_restore_arm_refused reason=…`: the rear frame did not arm.
+- `cancel=lifetime` or `cancel=destructor`: the `kind_name=construct` / `destroy` rows around it give the callers
+  (`0x4305ab` alloc, `0x420e12` load chain, `0x430612` free).
 - `chase_transition installed=0 status=… window=<name>`: a window mismatch.
 
 With `--perf`, `chase_view_restore_state` every 300 frames carries the counters. The former gap (vanilla framing for
@@ -1809,3 +1819,72 @@ rising while firing at the cursor (or `native_active > 0` with override 0 if FL 
 `early_*`/`refused_*` not rising during those bursts, `chase_camera … dependencies=chase_lead,chase_fire,chase_transition`.
 Visual: bolts go to the cursor, not straight ahead; with the cursor hidden nothing aims at the top-left corner. Report a
 shot that goes somewhere other than the cursor or the boresight.
+
+## FL chase follow-ups: restore witness, HUD lifetime identity (2026-11-03, host evidence, not installed, not flown)
+
+Correction to run 25: the restore was witnessed in that log after all. `/home/asvetl/x3m-logs/fl-run25-restore-hud.log`
+holds three `chase_view_restore result=restored cancel=none attempts=1 hud_refresh=ok manager_scan=found mode_seen=258`
+rows (measured; `chase_view_restore_state … results=0,3,0,0,0,0`). These outcome rows were never fenced on FL. Only the
+`chase_transition_event`/`_detail` diagnostics were. `result=restored` requires the mode-store observer to have seen 258
+stored into the bound cockpit during the call, so the SelectMode-store assumption is witnessed on FL (measured).
+`sector_from/to` (`+0x1fc`) read 0 in all three rows. That field is script-published, so 0 is expected.
+
+Two changes, FL only (AP object code identical):
+
+1. **Event window on FL.** With telemetry, `chase_transition` on FL now sets `diagnostics=1
+   diagnostics_reason=fl_verified_reads`. It emits the AP event window (first 16 and last 32 changes per report,
+   identical consecutive witnesses suppressed) from FL-verified reads only. Witness rows cover construct, complete,
+   destroy, update, the script store and the load store, with generation, update serial, normalized caller, requested
+   mode and active handle. The two mode-store rows (`mode_script`, `mode_load`) appear only with
+   `chase_view_restore = 1`: on FL their observer sites are claimed only with the restore. The snapshot reads
+   `+0x150 +0x1c0 +0xc +0x10 +0x1fc +0x1a0 +0x54`. The kind-6 row adds the
+   dispatcher frame chain (`frame=ok|refused`, `script_id`, `script_class`; one reader, `fl_store_frame`, shared with the
+   restore). A finished ticket adds one `kind=9 kind_name=restore` row with result, cancel, attempts, hud_refresh and
+   mode_seen. Not ported, listed as `diagnostics_off=` in the install and window rows: the connect observer, VM
+   return-record and destructor provenance, `IdentityReader` and geometry (FL contracts unverified), the `+0x130` boom
+   (unverified on FL), and the `+0x58` world camera and `+0x1e0` target (FL-verified, kept out deliberately so the row
+   carries the restore's field set). FL emits no `chase_transition_detail` row
+   ([fl/chase-transition.md](../reverse-engineering/fl/chase-transition.md), "Event window on FL").
+2. **Chase HUD identity from the lifetime service.** `chase_lead` on FL now takes its token as AP does whenever
+   `chase_transition` is installed (`update=lifetime`). The generation and update serial come from
+   `chase_transition::current_update()`, `generation()` from the cockpit lifetime, and `camera_context` publishes
+   nothing without an open update. The token ends at the transition's update exits (`0x022f9b`, `0x022fa9`, the latter
+   also covering the `0x022a0d` skip of the final-FOV seam), so `close_update` is not used in this mode. A cockpit
+   destroyed and rebuilt inside one update fails every later check. A nested update begin revokes the token but
+   keeps the generation, so a marker published earlier in the update is still owned and the final FOV hides it through
+   the native helper. Without `chase_transition` the pose-seam binding
+   stays as before (`update=pose_seam`) ([fl/chase-lead.md](../reverse-engineering/fl/chase-lead.md), section 7).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL transition fixture | `python3 -I verification/results/fl-chase-transition/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_transition.cpp`) | `RESULT PASS checks=423 failures=0` (402 before). Telemetry on for every restore case, which asserts its event rows. Gate: in order, the arm update (`snapshot_valid=815 active_handle=119`), free (`caller=0x00430612`), alloc construct (`0x004305ab`), the monitor's store 1 and SelectMode's store 258 (`frame=ok script_id=0xfffffde8 script_class=0x25e`), then `kind=9 result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258`. Dock `hud_refresh=skipped`; undock one update row, 79 suppressed, no kind 9; jump the unbound then the bound update of the new cockpit, `restored`; retries `no_effect cancel=retries attempts=3`; refused `call_refused`; cancels `load` (with its `mode_load` row, caller `0x0041bf6e`), `epoch` ×3, `lifetime` (the load-chain construct row, `0x00420e12`), `no_monitor` (the `frame=refused` row, `frame_refusals_total=1`). No `chase_transition_detail` row. 2,002 changing events keep 48 and count `dropped=1954`. Lifetime: a destroy and construct inside one open update revokes the token and moves the generation |
+| FL lead fixture | `python3 -I verification/results/fl-chase-lead/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_chase_lead.cpp`) | `RESULT PASS checks=112 failures=0` (79 before). Main path `update=lifetime` with a fake lifetime service. After the update exit, a held witness is refused as `lifetime` (gate and HUD gate take the native branch). `camera_context` with no open update publishes nothing. Nested update begin (token revoked, generation kept) after a publish: the final FOV hides the owned marker through the native helper (one detacher call, cached pair −1, `lifetime` counted). Marker published, then a rebuild (generation G→G+1) before the final FOV, or before a second publish visit: refused as `lifetime`, `owned_marker` fails, so no detacher call, no hide, the marker keeps the pixel published before the rebuild and ECX/EDX stay native. Rebuild after gate and HUD gate (nothing published): the final FOV anchors no HUD node. In the rebuilt cockpit's next update without a pose visit, HUD gate and gate are refused as `lifetime` with the nodes native. Its next pose is admitted again. Fallback (service absent): `update=pose_seam` install row, one admitted update with marker and anchor, pose closed at the final FOV, a later gate `no_pose` |
+| Mutations | `python3 -I verification/results/fl-chase-transition/mutation_check.py` (`mutation_check.txt`); `python3 -I verification/results/fl-chase-followups/lead_mutation_check.py` (`lead_mutation_check.txt`) | Transition 11 / 11 killed, among them three new: event window kept off (20 failed checks), kind 9 not recorded (12), kind-6 frame from EBP (2). Lead 3 / 4 killed: token from the pose despite the transition (52), `generation()` from the pose token (1: the nested-begin hide), fallback never closing (3). The survivor (publishing without an open update) is an equivalent mutant: such a pose has serial 0, which every gate reads as no pose |
+| AP unchanged | `python3 -I verification/results/fl-chase-lead/ap_objects_identical.py --base 2c3d32ffa --head <commit> chase_transition.cpp chase_camera.cpp chase_lead.cpp loader.cpp capture.cpp chase_fire.cpp`, against the committed tree (copy and commit hash in `verification/results/fl-chase-followups/ap_objects.txt`) | 6 / 6 identical AP disassembly (10,393 / 6,660 / 6,614 / 3,070 / 41,169 / 1,238 lines) |
+| Cost (diagnostic) | the transition fixture's `TIMING` row (2,000 cockpit updates through the begin and exit thunks plus the frame observation, this host, not game FPS) | telemetry off 0.58–0.67 µs per update; on, unchanged snapshot (reads, registry walk, compare, suppressed) 0.88–0.91 µs; on, every update entering the window 0.94–0.97 µs. That is ≈0.25–0.36 µs per cockpit update, with telemetry only. The lead's admitted update is 9.9 µs with the lifetime token (9.4–9.8 µs before; harness included) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_chase_transition test_fl_chase_transition test_chase_lead test_fl_chase_lead test_fl_chase_camera test_fl_chase_fire test_config_schema` | 7 modules, 46 tests, 0 failing (`fl_chase_camera.cpp` now stubs the three token functions the linked lead object references; transition reported not installed there) |
+| Builds | `cmake --build build-fl -j8`, then `cmake --build build-ap -j8` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected log rows for the user's flight (not verified), with telemetry on as in runs 25/26 and the template defaults:
+
+```
+chase_transition installed=1 status=active edition=fl base=0x<base> window=- window_closed_by=- diagnostics=1 diagnostics_reason=fl_verified_reads diagnostics_off=connect_observer,origin_returns,destructor_origin,identity,geometry,camera_58,target_1e0,boom_130 observers=1 mandatory_sites=6 observer_sites=2 lifetime_capacity=64 thread_capacity=8 timing=1
+chase_lead installed=1 status=active scope=applied_main_chase_same_sector native_solver=retained telemetry=1 edition=fl base=0x<base> rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=lifetime
+chase_view_restore result=restored cancel=none attempts=1 … hud_refresh=ok|skipped … mode_seen=258 …   (once per gate, jump or dock in the rear chase view, as in run 25)
+chase_transition_window frame=<n> first=<≤16> last=<≤32> dropped=<n> … frame_refusals_total=<n> suppressed_total=<n> detail=off diagnostics_off=… edition=fl   (every 300 frames)
+chase_transition_event … kind=2 kind_name=destroy cockpit=0x<old> caller=0x00430612 …
+chase_transition_event … kind=0 kind_name=construct cockpit=0x<new> caller=0x004305ab …
+chase_transition_event … kind=6 kind_name=mode_script cockpit=0x<new> caller=0x00431abc requested=1 … frame=ok … script_id=0x<negative> …
+chase_transition_event … kind=6 kind_name=mode_script cockpit=0x<new> caller=0x00431abc requested=258 … frame=ok …
+chase_transition_event … generation=<new> update=0 … kind=9 kind_name=restore result=restored cancel=none attempts=1 hud_refresh=ok mode_seen=258 … edition=fl
+```
+
+The listed event rows are not consecutive: `kind=1 kind_name=complete` and `kind=3 kind_name=update` rows of both
+cockpits interleave with them. The two `mode_script` rows need `chase_view_restore = 1` (the template default). The
+restore's event rows appear in the window of the 300-frame report that follows the transit. In a busy stretch the
+middle of a window is dropped (`dropped=`), but the first 16 and last 32 changes are kept. `sector=0x00000000` on the
+event rows is expected (`+0x1fc`, as in run 25). HUD: no visible change expected. `chase_central_hud_window` and
+`chase_lead_window` keep `admitted>0`/`committed>0` in the chase view. `lifetime=` rising there with `admitted` falling
+to 0 would mean the token is refused in normal flight: report it with the rows around it. User check: one gate, one dock
+and undock in the rear chase view, then a stretch with a target selected; the view comes back by itself as in run 25,
+and the crosshair, panels and lead reticle stay where the ship points.

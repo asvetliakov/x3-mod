@@ -12,6 +12,10 @@
 // decoy at AP's P+0xc0) with the seam's register ABI, sentinels elsewhere, all arithmetic flags and DF set, eight XMM
 // sentinels, a loaded x87 stack with a non-default control word, a non-default MXCSR, a LastError sentinel and every
 // 4-byte ESP skew; the recorders capture what the native continuation would see.
+//
+// The update binding: a fake chase_transition lifetime service below (generation per cockpit lifetime, serial per
+// update, revoked at the update exit and at destroy/construct) drives the normal FL path (`update=lifetime`); the last
+// section re-installs with the service absent and checks the pose-seam fallback (`update=pose_seam`).
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cmath>
@@ -21,6 +25,7 @@
 #include <cstring>
 #include <initializer_list>
 #include "../../src/proxy/chase_lead.h"
+#include "../../src/proxy/chase_transition.h"
 #include "../../src/proxy/chase_camera_math.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/engine/fl/chase_lead_sites_fl.h"
@@ -58,6 +63,46 @@ bool installed() {
     return camera_installed;
 }
 }
+}
+
+// The fake lifetime service (the subset of src/proxy/chase_transition.h the FL lead uses). One cockpit; begin_update()
+// opens an update of the current lifetime on this thread, end_update() is the updater's exit, rebuild() is a destroy
+// plus construct at the same address (new generation, the open update revoked), as chase_transition's State does.
+struct FakeLifetime {
+    bool installed = true, open = false;
+    std::uintptr_t cockpit = 0;
+    std::uint64_t generation = 1, serial = 0;
+    std::uint32_t thread = 0;
+} life;
+namespace x3m::chase_transition {
+bool installed() {
+    return life.installed;
+}
+std::uint64_t generation(std::uintptr_t cockpit) noexcept {
+    return life.installed && cockpit && cockpit == life.cockpit ? life.generation : 0;
+}
+Update current_update(std::uintptr_t cockpit) noexcept {
+    if (!life.installed || !life.open || !cockpit || cockpit != life.cockpit || GetCurrentThreadId() != life.thread)
+        return {};
+    return {life.generation, life.serial, life.thread};
+}
+}
+void begin_update() {
+    life.open = true;
+    ++life.serial;
+    life.thread = GetCurrentThreadId();
+}
+void end_update() {
+    life.open = false;
+}
+void rebuild() {
+    ++life.generation;
+    life.open = false;
+}
+// Another update begins on this thread (a nested updater): this cockpit's token is revoked, its lifetime and generation
+// unchanged (chase_transition's State::begin on the same thread).
+void nested_begin() {
+    life.open = false;
 }
 
 extern "C" {
@@ -145,6 +190,15 @@ void recorder(std::uint32_t rva, void (*target)()) {
     put32(p, 1, addr(reinterpret_cast<void*>(target)));
     p[5] = 0xc3;
     FlushInstructionCache(GetCurrentProcess(), p, 6);
+}
+void place_recorders() { // after an install: each seam's continuation and branch target, and the detacher
+    recorder(S::gate.rva + 6, &fl_cl_fall);
+    recorder(S::gate_target_rva, &fl_cl_taken);
+    recorder(S::publish.rva + 6, &fl_cl_fall);
+    recorder(S::final_fov.rva + 6, &fl_cl_fall);
+    recorder(S::hud_gate.rva + 6, &fl_cl_fall);
+    recorder(S::hud_target_rva, &fl_cl_taken);
+    recorder(S::detach_rva, &fl_cl_detach);
 }
 
 // The synthetic engine objects.
@@ -358,7 +412,8 @@ x3m::chase::Mat3 view_rel_rotation(double a) {
 }
 const x3m::chase::Mat3 identity{};
 const x3m::chase::Mat3 view_rel = view_rel_rotation(0.1);
-void pose() { // what the chase camera's pose seam does on an applied bound visit
+void pose() { // the transition's update begin (when installed), then the chase camera's pose seam on an applied visit
+    if (life.installed) begin_update();
     cl::invalidate_pose();
     cl::camera_context(addr(sc.cockpit), addr(sc.ship), addr(sc.camera), true, &identity, &view_rel);
 }
@@ -414,6 +469,7 @@ int main() {
     std::memset(image, 0xcc, image_size);
     lay_out();
     build_scene();
+    life.cockpit = addr(sc.cockpit);
     for (unsigned i = 0; i < 4; ++i) std::memcpy(original_seam[i], image + seams[i]->rva, 6);
     unsigned total = 0;
     for (const auto& w : S::windows) total += w.length;
@@ -502,7 +558,8 @@ int main() {
     const bool installed = cl::initialize();
     check(installed && cl::installed() && cl::hud_installed() && GetLastError() == sentinel && rows == before + 3 &&
               row_has("chase_lead installed=1 status=active ") && row_has(" edition=fl ") &&
-              row_has(" rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam"),
+              row_has(" rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=lifetime") &&
+              cl::fixture_counts().lifetime,
           "install_row", last_row);
     for (unsigned i = 0; i < 4; ++i) {
         char label[32];
@@ -513,13 +570,7 @@ int main() {
         std::printf("RESULT FAIL checks=%u failures=%u\n", checks, failures);
         return 1;
     }
-    recorder(S::gate.rva + 6, &fl_cl_fall);
-    recorder(S::gate_target_rva, &fl_cl_taken);
-    recorder(S::publish.rva + 6, &fl_cl_fall);
-    recorder(S::final_fov.rva + 6, &fl_cl_fall);
-    recorder(S::hud_gate.rva + 6, &fl_cl_fall);
-    recorder(S::hud_target_rva, &fl_cl_taken);
-    recorder(S::detach_rva, &fl_cl_detach);
+    place_recorders();
 
     // Expected pixels.
     std::int32_t lx = 0, ly = 0, fx = 0, fy = 0;
@@ -568,13 +619,14 @@ int main() {
         v = visit(S::final_fov, fov_entry(), skew, fov);
         std::snprintf(label, sizeof label, "final_fov_skew%u", skew);
         report_visit(label, v, 1);
+        end_update();
         const auto c1 = cl::fixture_counts();
         bool anchored = true;
         for (unsigned i = 0; i < 5; ++i)
             anchored &= gets(sc.nodes[i], 0x30) == native_hud[i][0] + fx && gets(sc.nodes[i], 0x34) == native_hud[i][1] + fy;
         std::snprintf(label, sizeof label, "counts_skew%u", skew);
         check(c1.lead[0] == c0.lead[0] + 1 && c1.lead[1] == c0.lead[1] + 1 && c1.lead[11] == c0.lead[11] + 1 &&
-                  c1.hud[0] == c0.hud[0] + 1 && c1.anchor_applied == c0.anchor_applied + 1 && !c1.pose_open,
+                  c1.hud[0] == c0.hud[0] + 1 && c1.anchor_applied == c0.anchor_applied + 1,
               label);
         std::snprintf(label, sizeof label, "anchor_nodes_skew%u", skew);
         check(anchored && c1.anchor_x == fx && c1.anchor_y == fy, label);
@@ -583,15 +635,155 @@ int main() {
                 gets(sc.nodes[0], 0x34), gets(sc.nodes[3], 0x30), gets(sc.nodes[3], 0x34), gets(sc.marker, 0x30),
                 gets(sc.marker, 0x34), gets(sc.overlay, S::overlay_cached));
 
-    // The pose is closed after the final FOV: a later gate without a pose visit is refused (native branch taken).
+    // The update ended (the transition's exit): the witness still held from that update is refused by its token, a
+    // later gate without a new update takes the native branch (counted as lifetime, not no_pose).
     {
         const auto c0 = cl::fixture_counts();
         Visit v = visit(S::gate, gate_entry(0xb0b0c000), 0, Expect{2, all_flags});
-        report_visit("gate_after_close_not_admitted", v, 2);
+        report_visit("gate_after_update_end_not_admitted", v, 2);
         v = visit(S::hud_gate, hud_entry(0xb0b0c000), 0, Expect{2, all_flags});
-        report_visit("hud_after_close_not_admitted", v, 2);
+        report_visit("hud_after_update_end_not_admitted", v, 2);
         const auto c1 = cl::fixture_counts();
-        check(c1.lead[3] == c0.lead[3] + 1 && c1.hud[3] == c0.hud[3] + 1, "no_pose_counted");
+        check(c1.lead[4] == c0.lead[4] + 1 && c1.hud[4] == c0.hud[4] + 1 && c1.pose_open,
+              "update_end_counted_as_lifetime");
+    }
+    // camera_context with no open update publishes nothing: the gate finds no witness.
+    {
+        cl::invalidate_pose();
+        cl::camera_context(addr(sc.cockpit), addr(sc.ship), addr(sc.camera), true, &identity, &view_rel);
+        const auto c0 = cl::fixture_counts();
+        Visit v = visit(S::gate, gate_entry(0xb0b0c010), 0, Expect{2, all_flags});
+        report_visit("no_open_update_gate_native", v, 2);
+        const auto c1 = cl::fixture_counts();
+        check(!c1.pose_open && c1.lead[3] == c0.lead[3] + 1, "no_open_update_publishes_nothing");
+    }
+    // A nested update begin revokes the token with the generation unchanged: the published marker is still owned under
+    // the real lifetime generation, so the final FOV hides it through the native helper (overlay cached pair -1).
+    {
+        reset_nodes();
+        pose();
+        Expect admit;
+        admit.flags = all_flags & ~0x40u;
+        Visit v = visit(S::gate, gate_entry(0xb0b0c014), 0, admit);
+        report_visit("nested_gate_admitted", v, 1);
+        put_point(0, point, decoy);
+        Expect pub;
+        pub.ecx_changes = pub.edx_changes = true;
+        pub.ecx = uint32_t(lx);
+        pub.edx = uint32_t(ly);
+        v = visit(S::publish, publish_entry(0xb0b0c014), 0, pub);
+        report_visit("nested_publish", v, 1);
+        const uint32_t calls = detach_calls;
+        const auto c0 = cl::fixture_counts();
+        nested_begin();
+        Expect fov;
+        fov.cmp_flags = true;
+        v = visit(S::final_fov, fov_entry(), 0, fov);
+        report_visit("nested_final_fov", v, 1);
+        const auto c1 = cl::fixture_counts();
+        check(detach_calls == calls + 1 && detach_ecx == addr(sc.marker) && gets(sc.overlay, S::overlay_cached) == -1 &&
+                  gets(sc.overlay, S::overlay_cached + 4) == -1 && c1.lead[4] == c0.lead[4] + 1 &&
+                  c1.lead[2] == c0.lead[2],
+              "nested_revoke_final_fov_hides_owned_marker");
+    }
+    // A published marker, then the cockpit destroyed and rebuilt at the same address (generation G -> G+1) before
+    // (a) the final FOV or (b) a second publish visit: the ticket is refused (lifetime) and owned_marker fails because
+    // the generation moved, so nothing is hidden or written (no detacher call, marker keeps the published pixel, the
+    // cached pair not set to -1, ECX/EDX native).
+    for (unsigned path = 0; path < 2; ++path) {
+        reset_nodes();
+        pose();
+        Expect admit;
+        admit.flags = all_flags & ~0x40u;
+        const uint32_t frame = 0xb0b0c018 + 0x10 * path;
+        Visit v = visit(S::gate, gate_entry(frame), 4, admit);
+        report_visit(path ? "rebuild_publish_gate" : "rebuild_fov_gate", v, 1);
+        put_point(4, point, decoy);
+        Expect pub;
+        pub.ecx_changes = pub.edx_changes = true;
+        pub.ecx = uint32_t(lx);
+        pub.edx = uint32_t(ly);
+        v = visit(S::publish, publish_entry(frame), 4, pub);
+        report_visit(path ? "rebuild_publish_first" : "rebuild_fov_publish", v, 1);
+        const uint32_t calls = detach_calls;
+        const auto c0 = cl::fixture_counts();
+        rebuild();
+        if (path) {
+            v = visit(S::publish, publish_entry(frame), 4, Expect{});
+            report_visit("rebuild_publish_again_native", v, 1);
+        }
+        Expect fov;
+        fov.cmp_flags = true;
+        v = visit(S::final_fov, fov_entry(), 4, fov);
+        report_visit(path ? "rebuild_publish_final_fov" : "rebuild_fov_final_fov", v, 1);
+        const auto c1 = cl::fixture_counts();
+        char detail[160];
+        std::snprintf(detail, sizeof detail, "detach=%u/%u marker=%d,%d cached=%d entry=%u lifetime=%llu/%llu final=%llu/%llu",
+                      detach_calls, calls, gets(sc.marker, 0x30), gets(sc.marker, 0x34), gets(sc.overlay, S::overlay_cached),
+                      get32(sc.overlay, S::lead_entry), static_cast<unsigned long long>(c1.lead[4]),
+                      static_cast<unsigned long long>(c0.lead[4]), static_cast<unsigned long long>(c1.lead[2]),
+                      static_cast<unsigned long long>(c0.lead[2]));
+        // The cached pair holds what the native publication stored from ECX: the published pixel in (a), the native
+        // x passed through untouched in (b); never the hide's -1.
+        check(detach_calls == calls && gets(sc.marker, 0x30) == lx && gets(sc.marker, 0x34) == ly &&
+                  get32(sc.overlay, S::overlay_cached) == (path ? 0x11110001u : uint32_t(lx)) &&
+                  get32(sc.overlay, S::lead_entry) == 1 &&
+                  c1.lead[4] == c0.lead[4] + 1 && c1.lead[2] == c0.lead[2],
+              path ? "rebuild_after_publish_publish_refused_nothing_written"
+                   : "rebuild_after_publish_final_fov_refused_nothing_written",
+              detail);
+    }
+    // The cockpit destroyed and rebuilt at the same address inside one update (generation G -> G+1). (a) Gate and HUD
+    // gate admitted under G (nothing published yet), then the rebuild: the final FOV finds no open token, so the five
+    // HUD nodes are not anchored. (b) A new update of the rebuilt cockpit without a pose visit: the HUD gate holding the
+    // G witness is refused (lifetime), the native branch runs, the nodes stay native.
+    {
+        reset_nodes();
+        pose();
+        Expect admit;
+        admit.flags = all_flags & ~0x40u;
+        Visit v = visit(S::gate, gate_entry(0xb0b0c020), 4, admit);
+        report_visit("rebuild_gate_admitted", v, 1);
+        v = visit(S::hud_gate, hud_entry(0xb0b0c020), 4, admit);
+        report_visit("rebuild_hud_admitted", v, 1);
+        const auto c0 = cl::fixture_counts();
+        rebuild();
+        Expect fov;
+        fov.cmp_flags = true;
+        v = visit(S::final_fov, fov_entry(), 4, fov);
+        report_visit("rebuild_final_fov", v, 1);
+        const auto c1 = cl::fixture_counts();
+        bool native = true;
+        for (unsigned i = 0; i < 5; ++i)
+            native &= gets(sc.nodes[i], 0x30) == native_hud[i][0] && gets(sc.nodes[i], 0x34) == native_hud[i][1];
+        check(native && c1.anchor_applied == c0.anchor_applied && c1.lead[2] == c0.lead[2] &&
+                  gets(sc.marker, 0x30) == 0x0bad && gets(sc.overlay, S::overlay_cached) == 0x0bad,
+              "rebuild_mid_update_hud_not_anchored");
+        begin_update(); // the rebuilt cockpit's next update, no pose visit yet
+        const auto c2 = cl::fixture_counts();
+        v = visit(S::hud_gate, hud_entry(0xb0b0c030), 8, Expect{2, all_flags});
+        report_visit("rebuild_new_update_hud_refused", v, 2);
+        v = visit(S::gate, gate_entry(0xb0b0c030), 8, Expect{2, all_flags});
+        report_visit("rebuild_new_update_gate_refused", v, 2);
+        visit(S::final_fov, fov_entry(), 8, fov);
+        end_update();
+        const auto c3 = cl::fixture_counts();
+        native = true;
+        for (unsigned i = 0; i < 5; ++i)
+            native &= gets(sc.nodes[i], 0x30) == native_hud[i][0] && gets(sc.nodes[i], 0x34) == native_hud[i][1];
+        check(c3.hud[4] == c2.hud[4] + 1 && c3.lead[4] == c2.lead[4] + 1 && c3.hud[0] == c2.hud[0] &&
+                  c3.anchor_applied == c2.anchor_applied && native,
+              "rebuild_generation_refused_as_lifetime");
+        // The rebuilt cockpit with its own pose visit is admitted again (generation G+1).
+        reset_nodes();
+        pose();
+        v = visit(S::hud_gate, hud_entry(0xb0b0c040), 12, admit);
+        report_visit("rebuild_next_pose_admitted", v, 1);
+        visit(S::final_fov, fov_entry(), 12, fov);
+        end_update();
+        const auto c4 = cl::fixture_counts();
+        check(c4.anchor_applied == c3.anchor_applied + 1 && gets(sc.nodes[0], 0x30) == native_hud[0][0] + fx,
+              "rebuild_next_pose_anchors");
     }
     // Native bit set (ZF clear: first-person view): untouched, not counted.
     {
@@ -788,6 +980,52 @@ int main() {
     quiet = false;
     cl::shutdown();
     check(seams_original(), "second_restore");
+
+    // Fallback: chase_transition not installed -> update=pose_seam. The pose visit is the token, the final FOV closes it.
+    {
+        lay_out();
+        life.installed = false;
+        end_update();
+        cl::fixture_reset();
+        cl::fixture_base(base);
+        before = rows;
+        check(cl::initialize() && cl::installed() && !cl::fixture_counts().lifetime && rows == before + 3 &&
+                  row_has("chase_lead installed=1 status=active ") &&
+                  row_has(" rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam"),
+              "fallback_install_row", last_row);
+        place_recorders();
+        reset_nodes();
+        pose(); // no update begin: the pose seam alone
+        const auto c0 = cl::fixture_counts();
+        Expect admit;
+        admit.flags = all_flags & ~0x40u;
+        Visit v = visit(S::gate, gate_entry(0xb0b0e000), 4, admit);
+        report_visit("fallback_gate_admitted", v, 1);
+        put_point(4, point, decoy);
+        Expect pub;
+        pub.ecx_changes = pub.edx_changes = true;
+        pub.ecx = uint32_t(lx);
+        pub.edx = uint32_t(ly);
+        v = visit(S::publish, publish_entry(0xb0b0e000), 4, pub);
+        report_visit("fallback_publish", v, 1);
+        v = visit(S::hud_gate, hud_entry(0xb0b0e000), 4, admit);
+        report_visit("fallback_hud_admitted", v, 1);
+        Expect fov;
+        fov.cmp_flags = true;
+        v = visit(S::final_fov, fov_entry(), 4, fov);
+        report_visit("fallback_final_fov", v, 1);
+        const auto c1 = cl::fixture_counts();
+        check(c1.lead[1] == c0.lead[1] + 1 && c1.hud[0] == c0.hud[0] + 1 && c1.anchor_applied == c0.anchor_applied + 1 &&
+                  gets(sc.marker, 0x30) == lx && gets(sc.nodes[0], 0x30) == native_hud[0][0] + fx && !c1.pose_open,
+              "fallback_update_admitted_and_closed");
+        v = visit(S::gate, gate_entry(0xb0b0e010), 0, Expect{2, all_flags});
+        report_visit("fallback_gate_after_close", v, 2);
+        const auto c2 = cl::fixture_counts();
+        check(c2.lead[3] == c1.lead[3] + 1, "fallback_after_close_no_pose");
+        cl::shutdown();
+        check(seams_original(), "fallback_shutdown_restores");
+        life.installed = true;
+    }
 
     // Late window: after the first Present nothing is claimed.
     x3m::engine_patch::close_install_window("fixture_present");

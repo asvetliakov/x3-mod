@@ -8,7 +8,9 @@ the publication (ECX/EDX replaced, the solver point read at P+0xe0 and not at AP
 compare's flags, zoom finalization, the five-node forward anchor), the native hide helper through the detacher, the
 HUD refusals; every GPR, EFLAGS with DF, ESP, XMM0-7, x87 control word and stack, MXCSR and LastError at the native
 continuation for every 4-byte ESP skew; every window bit flip refused before any write, both-or-neither rollback of the
-marker's three seams, the independent HUD seam, shutdown and the late-window refusal.
+marker's three seams, the independent HUD seam, shutdown and the late-window refusal; both update bindings
+(`update=lifetime` against a fake chase_transition token service, including a cockpit rebuilt inside one update, and
+the `update=pose_seam` fallback without it).
 (b) The FL verifier on the installed X3FL.exe (skipped without it) and the header/verifier constants.
 (c) Edition wiring: the loader, capture, CMake and chase camera FL calls; the AP module untouched.
 """
@@ -64,9 +66,10 @@ class FlChaseLeadNativeFixture(unittest.TestCase):
         self.assertIn('WINDOWS count=12 bytes=823 gate_mod8=1 publish_mod8=7 fov_mod8=5 hud_mod8=6', out)
         self.assertIn('FLIPS bits=6584 refused=6584 reloc_bits=288', out)
         self.assertIn('EXPECT lead=231,-65 ', out)
-        self.assertRegex(out, r'(?m)^LOG chase_lead installed=1 status=active scope=applied_main_chase_same_sector '
-                              r'native_solver=retained telemetry=1 edition=fl base=0x[0-9a-f]{8} '
-                              r'rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update=pose_seam$')
+        for source in ('lifetime', 'pose_seam'):  # chase_transition installed; the fallback without it
+            self.assertRegex(out, r'(?m)^LOG chase_lead installed=1 status=active scope=applied_main_chase_same_sector '
+                                  r'native_solver=retained telemetry=1 edition=fl base=0x[0-9a-f]{8} '
+                                  rf'rva=0x02c7b9,0x02cbe7,0x022cf5 window=- rollback=none update={source}$')
         self.assertRegex(out, r'(?m)^LOG chase_central_hud installed=1 status=active cleanup=native_when_extra_active '
                               r'hud_anchor=forward edition=fl rva=0x02cc1e rollback=none$')
         self.assertIn('LOG chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only',
@@ -74,9 +77,12 @@ class FlChaseLeadNativeFixture(unittest.TestCase):
         self.assertRegex(out, r'(?m)^LOG chase_lead installed=0 status=readback_mismatch .* rollback=failed ')
         self.assertRegex(out, r'(?m)^LOG chase_lead installed=0 status=late_claim ')
         self.assertRegex(out, r'(?m)^LOG chase_lead_window frame=300 ready=\d+ committed=\d+ final_fov=1 ')
-        # The FL module reaches no AP-only module, no AP executable identity and no transition service.
-        for name in ('chase_transition', 'chase_fire', 'chase_aim_trace', 'object_trace'):
+        # The FL module reaches no AP-only module and no AP executable identity; of the transition service only the
+        # lifetime/update token (installed, current_update, generation).
+        for name in ('chase_fire', 'chase_aim_trace', 'object_trace'):
             self.assertNotIn(f'x3m::{name}::', undefined)
+        used = set(re.findall(r'x3m::chase_transition::(\w+)\(', undefined))
+        self.assertEqual(used, {'installed', 'current_update', 'generation'}, undefined)
 
 
 class FlChaseLeadSites(unittest.TestCase):
@@ -142,8 +148,11 @@ class FlChaseLeadWiring(unittest.TestCase):
         ap = (ROOT / 'src/proxy/chase_lead.cpp').read_text()
         self.assertNotIn('X3M_EDITION_FL', ap)
         fl = (ROOT / 'src/engine/fl/chase_lead_fl.cpp').read_text()
-        for literal in ('0x608504', '0x606f38', '0x426280', '0x3ac', '0xc4,', 'chase_transition::'):
+        for literal in ('0x608504', '0x606f38', '0x426280', '0x3ac', '0xc4,'):
             self.assertNotIn(literal, strip(fl))
+        # The transition is reached only through its token API, never its restore/inject/report surface.
+        self.assertEqual(set(re.findall(r'chase_transition::(\w+)', strip(fl))),
+                         {'installed', 'current_update', 'generation'})
 
 
 if __name__ == '__main__':

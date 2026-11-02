@@ -6,21 +6,30 @@
 // publication in ECX/EDX, the solver point at saved ESP + 0xe4, the ECX hide helper, and the update binding below.
 // The five AP timing sites are telemetry only and are not ported (one refusal row).
 //
-// Update binding (the pose seam, not chase_transition's FL lifetime/update service, which the view-restore port added
-// in the same build; taking the generation/serial from it as AP does is a follow-up): the chase camera's pose seam (updater RVA
-// 0x0227ad) calls invalidate_pose() then, for an applied bound pose, camera_context() on every visit. That seam
-// dominates the overlay call (0x0229c2) and the final-FOV seam (0x022cf5) in the updater's complete CFG (verifier), so
-// every gate reached in an updater invocation was preceded by that invocation's pose visit. The published pose is the
-// update token: {generation = serial = a per-publication counter, thread}, valid for that cockpit on that thread until
-// the next pose visit or the final-FOV seam, which closes it. EBX (the cockpit) is the live `this` of the enclosing
-// updater invocation throughout. One path leaves a token open: 0x022a0d `je 0x022fa9` (cockpit+0xc == 0 after the HUD
-// calls) skips the final-FOV seam, so that pose stays open until the next pose-seam visit invalidates it. A gate cannot
-// reach it first (the next overlay call is dominated by that visit); a leftover ticket fails at scope()/owned_marker()
-// (the token no longer matches), so nothing is written from it, and its anchor slot is reclaimed at that visit.
+// Update binding, fixed at initialize() and logged as `update=`:
+// - lifetime (chase_transition installed, the normal FL path): as AP. camera_context() takes the cockpit-lifetime
+//   generation and the update serial from chase_transition::current_update() and publishes nothing when no update of
+//   that cockpit is open on this thread; every gate, publish, HUD gate and final FOV re-checks that token, and
+//   generation() is chase_transition::generation(). The token ends at the transition's update exits (RVAs 0x022f9b,
+//   0x022fa9, the latter also the 0x022a0d `je 0x022fa9` skip of the final-FOV seam), at a nested update begin on the
+//   thread and at the cockpit's destroy/construct, so a cockpit destroyed and rebuilt within one update fails every
+//   later check. close_update() is not needed.
+// - pose_seam (fallback when chase_transition is not installed): the chase camera's pose seam (updater RVA 0x0227ad)
+//   calls invalidate_pose() then, for an applied bound pose, camera_context() on every visit. That seam dominates the
+//   overlay call (0x0229c2) and the final-FOV seam (0x022cf5) in the updater's complete CFG (verifier), so every gate
+//   reached in an updater invocation was preceded by that invocation's pose visit. The published pose is the update
+//   token: {generation = serial = a per-publication counter, thread}, valid for that cockpit on that thread until the
+//   next pose visit or the final-FOV seam, which closes it (close_update). One path leaves a token open: 0x022a0d
+//   `je 0x022fa9` (cockpit+0xc == 0 after the HUD calls) skips the final-FOV seam, so that pose stays open until the
+//   next pose-seam visit invalidates it; a leftover ticket fails at scope()/owned_marker() (the token no longer
+//   matches), so nothing is written from it, and its anchor slot is reclaimed at that visit. This binding cannot see a
+//   cockpit destroyed and rebuilt at the same address within one update.
+// EBX (the cockpit) is the live `this` of the enclosing updater invocation throughout.
 #include "../../proxy/chase_lead.h"
 #include "../../proxy/config.h"
 #include "../../proxy/chase_lead_core.h"
 #include "../../proxy/chase_camera.h"
+#include "../../proxy/chase_transition.h"
 #include "../../proxy/engine_patch.h"
 #include "../../proxy/engine_memory.h"
 #include "../../proxy/cpu_state.h"
@@ -50,8 +59,9 @@ std::atomic<bool> hud_enabled{false};
 std::atomic<bool> enabled{false};
 bool initialized = false;
 SRWLOCK lock = SRWLOCK_INIT;
-core::Identity pose{}; // also the update token (see the header comment)
+core::Identity pose{}; // the published witness; with update=pose_seam also the update token (header comment)
 std::uint64_t pose_counter = 0;
+bool lifetime = false; // update=lifetime: tokens from chase_transition (set once by initialize())
 std::int32_t pose_forward[3]{};
 bool pose_forward_valid = false;
 struct Slot {
@@ -97,9 +107,15 @@ struct Update {
     std::uint64_t generation = 0, serial = 0;
     std::uint32_t thread = 0;
 };
-// The open update token of `cockpit` on this thread, or zeros.
+// The open update token of `cockpit` on this thread, or zeros. Never called under `lock` (the lifetime service takes
+// its own lock and calls into this module under it: native_timing_invalidate, a no-op here).
 Update current_update(std::uint32_t cockpit) {
     Update u;
+    if (lifetime) {
+        const auto t = chase_transition::current_update(cockpit);
+        u = {t.generation, t.serial, t.thread};
+        return u;
+    }
     const auto thread = GetCurrentThreadId();
     AcquireSRWLockExclusive(&lock);
     if (pose.serial && pose.cockpit == cockpit && pose.thread == thread) u = {pose.generation, pose.serial, pose.thread};
@@ -107,7 +123,7 @@ Update current_update(std::uint32_t cockpit) {
     return u;
 }
 std::uint64_t generation(std::uint32_t cockpit) {
-    return current_update(cockpit).generation;
+    return lifetime ? chase_transition::generation(cockpit) : current_update(cockpit).generation;
 }
 bool read(std::uintptr_t base, unsigned offset, void* out, unsigned size) {
     return base && !(base & 3) && offset <= UINT32_MAX - base && size <= UINT32_MAX - base - offset &&
@@ -586,7 +602,7 @@ void handle(unsigned index, std::uint32_t* regs) {
         publish(regs);
     else if (index == 2) {
         final_fov(regs);
-        close_update(regs[4]);
+        if (!lifetime) close_update(regs[4]); // update=lifetime: the transition's update exit ends the token
     } else
         central_hud(regs);
     if (timing) {
@@ -803,6 +819,7 @@ FixtureCounts fixture_counts() {
     f.anchor_x = hud_anchor_counts.last_x;
     f.anchor_y = hud_anchor_counts.last_y;
     f.pose_open = pose.serial != 0;
+    f.lifetime = lifetime;
     ReleaseSRWLockExclusive(&lock);
     return f;
 }
@@ -828,6 +845,7 @@ bool initialize() {
     const bool anchor_present = anchor_length != 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
     hud_anchor_forward = core::anchor_forward_setting(anchor_present, anchor, anchor_length);
     timing = telemetry::enabled();
+    lifetime = chase_transition::installed(); // initialized first by the loader (both need the chase camera)
     LARGE_INTEGER f{};
     if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) frequency = f.QuadPart;
     const std::uintptr_t base = fl_base();
@@ -872,10 +890,11 @@ bool initialize() {
         unsigned(hud_ok), hud_ok ? "active" : hud_status, hud_anchor_forward ? "forward" : "centre",
         static_cast<unsigned long>(S::hud_gate.rva), hud_rollback);
     log("chase_lead installed=%u status=%s scope=applied_main_chase_same_sector native_solver=retained telemetry=%u "
-        "edition=fl base=0x%08lx rva=0x%06lx,0x%06lx,0x%06lx window=%s rollback=%s update=pose_seam",
+        "edition=fl base=0x%08lx rva=0x%06lx,0x%06lx,0x%06lx window=%s rollback=%s update=%s",
         unsigned(ok), ok ? "active" : status, unsigned(timing), static_cast<unsigned long>(base),
         static_cast<unsigned long>(S::gate.rva), static_cast<unsigned long>(S::publish.rva),
-        static_cast<unsigned long>(S::final_fov.rva), refused_window, lead_rollback);
+        static_cast<unsigned long>(S::final_fov.rva), refused_window, lead_rollback,
+        lifetime ? "lifetime" : "pose_seam");
     SetLastError(error);
     return ok;
 }
@@ -895,6 +914,10 @@ void invalidate_pose() {
 void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t camera, bool applied,
                     const chase::Mat3* camera_basis, const chase::Mat3* view_rel) {
     if (!installed() || !applied) return;
+    // update=lifetime: no open update of this cockpit on this thread publishes nothing (the seam's invalidate_pose()
+    // already cleared the old witness), as on AP.
+    const Update update = lifetime ? current_update(std::uint32_t(cockpit)) : Update{};
+    if (lifetime && (!update.generation || !update.serial)) return;
     std::uint32_t expected = 0;
     owner_thread.compare_exchange_strong(expected, GetCurrentThreadId());
     if (owner_thread.load() != GetCurrentThreadId()) return;
@@ -906,6 +929,8 @@ void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t 
         next.ship = std::uint32_t(ship);
         next.camera = std::uint32_t(camera);
         next.thread = GetCurrentThreadId();
+        next.generation = update.generation;
+        next.serial = update.serial;
         if (hud_anchor_forward && camera_basis && view_rel) {
             auto ship_basis = chase::mul(chase::transpose(*view_rel), *camera_basis);
             std::int32_t rows[12]{};
@@ -918,7 +943,7 @@ void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t 
         }
     }
     AcquireSRWLockExclusive(&lock);
-    if (next.cockpit) next.generation = next.serial = ++pose_counter;
+    if (next.cockpit && !lifetime) next.generation = next.serial = ++pose_counter;
     pose = next;
     std::memcpy(pose_forward, forward, sizeof forward);
     pose_forward_valid = forward_valid;

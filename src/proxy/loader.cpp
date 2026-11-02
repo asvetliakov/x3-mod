@@ -97,12 +97,12 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // docs/reverse-engineering/fl/chase-camera.md), same install window, before the game loop first runs the updater;
     // one chase_camera row with edition=fl. With the pose seam installed, the cockpit lifetime witnesses and the view
     // restore (src/proxy/chase_transition.cpp, FL branch; docs/reverse-engineering/fl/chase-transition.md) in the same
-    // window, then the lead marker and central HUD (src/engine/fl/chase_lead_fl.cpp; its update binding is the pose
-    // seam, so it needs the camera installed), which claim their four seams there and log their own rows; then the cursor
-    // fire (src/engine/fl/chase_fire_fl.cpp; docs/reverse-engineering/fl/chase-fire-aim.md), one relocated JE in the
-    // native fire function, witness published by the same pose seam; it logs its own row. The aim trace (four read-only
-    // telemetry sites) stays AP-only: one refusal row, nothing claimed; the fire row's counters and the user's flight
-    // check verify the aim instead.
+    // window, then the lead marker and central HUD (src/engine/fl/chase_lead_fl.cpp; its update binding is that
+    // lifetime/update token, update=lifetime, else the pose seam), which claim their four seams there and log their own
+    // rows; then the cursor fire (src/engine/fl/chase_fire_fl.cpp; docs/reverse-engineering/fl/chase-fire-aim.md), one
+    // relocated JE in the native fire function, witness published by the pose seam; it logs its own row. The aim
+    // trace (four read-only telemetry sites) stays AP-only: one refusal row, nothing claimed; the fire row's counters
+    // and the user's flight check verify the aim instead.
     if (x3m::chase_camera::wanted()) {
         if (x3m::chase_camera::initialize()) x3m::chase_transition::initialize();
         x3m::chase_lead::initialize();

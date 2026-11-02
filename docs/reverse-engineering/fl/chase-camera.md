@@ -281,15 +281,14 @@ agrees with the row). `stub_failed`/`chain_write_failed`/`chain_failed` (the jum
 The fixture injects the read-back fault as real writes into the synthetic span: one byte inside the jump →
 `rollback=restored`, bytes inside and beyond it → `rollback=failed`.
 
-Dependency boundary chosen (section 3's second option): in the FL build the handler compiles out every call into
-`chase_lead`, `chase_fire` and `chase_aim_trace`. Since the chase view restore port (2026-11-02,
-[chase-transition.md](chase-transition.md), "Verified 2026-11-02") it calls `chase_transition`'s FL binding for
-`restore_observe_frame` and, as on AP, for the unbound-phase proof: a `+0x10 == 0` visit is admitted only when
-`active_control_cockpit` holds (a complete witnessed lifetime whose cockpit-registry active handle, slot base +
-`0x1a82e4`, maps to this cockpit; false while `chase_transition` is not installed). The FL object references
-`chase_transition` only for those two functions, and none of the other three modules nor `object_trace` (checked with
-`nm`); the install row says `unbound_phase=active_control dependencies=chase_transition`. The loader logs one row each,
-`<module> installed=0 status=ap_only edition=fl reason=ap_only`. The handler calls no native function, so the FL
+Dependency boundary (updated 2026-11-03): in the FL build the handler calls `chase_lead` (`invalidate_pose`,
+`camera_context`; [chase-lead.md](chase-lead.md) section 7), `chase_fire` (`invalidate_camera`, `camera_context`;
+[chase-fire-aim.md](chase-fire-aim.md) section 9) and `chase_transition` (`restore_observe_frame`, and, as on AP, the
+unbound-phase proof `active_control_cockpit`: a `+0x10 == 0` visit is admitted only when a complete witnessed lifetime's
+cockpit-registry active handle, slot base + `0x1a82e4`, maps to this cockpit; false while `chase_transition` is not
+installed; [chase-transition.md](chase-transition.md)). Only `chase_aim_trace` is compiled out (the loader logs
+`chase_aim_trace installed=0 status=ap_only edition=fl reason=diagnostic_not_ported`). The install row says
+`unbound_phase=active_control dependencies=chase_lead,chase_fire,chase_transition`. The handler calls no native function, so the FL
 updater's `ECX`/plain-RET ABI is not used. The FOV is read from camera `+0x298` as on AP (no `fov.h` accessor needed).
 Not verified: the pose in game on FL (not flown), native Windows game execution, foreign-SEH unwinding through the
 callback.

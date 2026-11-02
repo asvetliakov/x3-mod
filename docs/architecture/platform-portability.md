@@ -931,8 +931,8 @@ generated stub (PUSHFD/PUSHAD/CLD, XMM0-7) and `PreserveCpuState` (x87, MXCSR, L
 policy (`chase_lead_core.h`), behind the X3FL.exe identity and twelve compared windows (nine relocated dwords checked
 against the base). It calls one native routine, the game's own five-entry hide helper (ECX ABI). Documented Win32 only
 (`VirtualProtect`, `FlushInstructionCache`, `VirtualQuery`, `ReadProcessMemory`, `QueryPerformanceCounter`), no
-Wine/CrossOver dependency, no device call; the update binding is the chase camera's pose seam, not a
-`chase_transition` service. The five AP timing sites are not ported (telemetry only). Each stub tests its one-byte enable flag before the
+Wine/CrossOver dependency, no device call; the update binding is `chase_transition`'s lifetime/update token when
+that module is installed (as AP, 2026-11-03), else the chase camera's pose seam (`update=lifetime|pose_seam`). The five AP timing sites are not ported (telemetry only). Each stub tests its one-byte enable flag before the
 CPU envelope. Natively verified on the Windows
 host through WSL interop (measured 2026-11-02): the FL fixture 79 checks, 0 failures (all four thunks with the real
 window bytes, the native hide helper executed through a recorded detacher, every GPR/EFLAGS with DF/ESP/XMM/x87/MXCSR/

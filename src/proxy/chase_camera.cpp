@@ -194,7 +194,7 @@ void publish_pose(bool written, bool snapped = false) {
     if (continuity.update(written, snapped)) snap_epoch.fetch_add(1, std::memory_order_relaxed);
 }
 void handle(uint32_t* regs) {
-    // FL too (src/engine/fl/chase_lead_fl.cpp): this visit's invalidation opens the lead's update binding.
+    // FL too (src/engine/fl/chase_lead_fl.cpp): this visit drops the lead's old witness (update=lifetime or pose_seam).
     chase_lead::invalidate_pose();
     const uintptr_t cockpit = regs[4]; // EBX after pushad: EDI ESI EBP ESP EBX EDX ECX EAX
     chase::Input in;

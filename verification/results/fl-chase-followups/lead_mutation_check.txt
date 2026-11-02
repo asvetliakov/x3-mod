@@ -1,0 +1,4 @@
+RESULT FAIL checks=112 failures=52 | token from the pose even with the transition | FAIL gate_admitted_skew0 branch=2 want=1 regs=1 flags=0(00000ed7) xmm=; FAIL publish_skew0 branch=1 want=1 regs=0 flags=1(00000ed7) xmm=1 x87=; FAIL publish_writes_skew0 ; FAIL hud_gate_admitted_skew0 branch=2 want=1 regs=1 flags=0(00000ed7) 
+RESULT PASS checks=112 failures=0 | camera_context publishes without an open update |   [equivalent: without an open update the published pose has serial 0, which every gate reads as no pose]
+RESULT FAIL checks=112 failures=1 | generation from the pose token | FAIL nested_revoke_final_fov_hides_owned_marker 
+RESULT FAIL checks=112 failures=3 | fallback never closes at the final FOV | FAIL fallback_update_admitted_and_closed ; FAIL fallback_gate_after_close branch=1 want=2 regs=1 flags=0(00000e97; FAIL fallback_after_close_no_pose 
