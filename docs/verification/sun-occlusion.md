@@ -1008,5 +1008,14 @@ lens-gain checks are now the gain fixture's eight (the `half_wrapped` case had n
 Flight (AP, default launch): rows `own_sun_hook own_sun=1 bracket=1 log=0 patched=1 reason=ok` and `own_sun status=ready
 … probe=ok`; no `sun_occlusion_config`, `sun_visibility` or `sun_lens_draw` row; with `own_sun_log = 1` (the user's ini,
 alias `sun_occlusion_log`) one `config_key key=sun_occlusion_log problem=renamed value=own_sun_log` row and `sun_probe`
-rows without `records=`/`ready=`. Ctrl+Shift+F9 now compares with the engine's unmodified chain (no partial occlusion
-behind it). `--own-sun off`: the engine's sun pops at about half cover as in vanilla.
+rows without `records=`/`ready=`; no `own_sun_toggle` row and no `key=` field on `own_sun_frame` (the Ctrl+Shift+F9 hotkey
+was removed the same day by user decision, below). `--own-sun off` / `own_sun = 0`: the engine's unmodified sun, which
+pops at about half cover as in vanilla.
+
+### Step 2 — Ctrl+Shift+F9 removed (2026-11-02; separate commit on the same branch; not flown)
+
+User decision: the comparison hotkey is not needed; `own_sun` in `x3m.ini` is the only switch. Deleted: the chord and
+its three `GetAsyncKeyState` polls (`capture.cpp`), `own_sun::core::Toggle`, the `own_sun_toggle` row, the `key=` field of
+`own_sun_frame`, `hotkey=` on the `own_sun status` row, the host driver's `toggle` command; `frame_active` takes the
+setting and the armed stage only. Builds 0 warnings both editions, `generate.py --check` PASS, AP hook fixture native,
+host modules: see the commit's evidence in the report (measured).

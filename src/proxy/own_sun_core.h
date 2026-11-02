@@ -6,7 +6,7 @@
 // allocation, no engine call: verification/analysis/test_own_sun.py compiles exactly this header.
 //
 // Two CPU contracts:
-//   * answer(), Toggle, frame_active(): integer only. answer() runs inside the probe thunk at 0x00471630, in the middle
+//   * answer(), frame_active(): integer only. answer() runs inside the probe thunk at 0x00471630, in the middle
 //     of the engine's record loop, where the x87 stack and MXCSR belong to the engine.
 //   * project(), radiance(), fog_scalar(), quad(), pixel_constants(): float (SSE2 in the DLL), once per frame inside the
 //     temporal resolve's stage bracket under a full CPU-state boundary. No float is returned by value (an out-of-line
@@ -81,23 +81,12 @@ inline int answer(bool frame_active, bool eligible) noexcept {
     return frame_active && eligible ? answer_hidden : answer_original;
 }
 
-// ---- The comparison hotkey (Ctrl+Shift+F9; comparison-hotkeys.md, "Own sun") ----
-// One press edge flips the own sun for the whole frame: the probe answer and the stage together. Starts on; a held key
-// is one press.
-struct Toggle {
-    bool on = true, down = false;
-    // True on a press edge (the state flipped).
-    bool step(bool pressed) noexcept {
-        const bool edge = pressed && !down;
-        down = pressed;
-        if (edge) on = !on;
-        return edge;
-    }
-};
-// The frame's decision, latched at Present for the next frame (both the answer and the stage read it): the setting on,
-// the hotkey on, and a stage that could draw in the last resolve (attached, armed). Otherwise the engine's chain stays.
-inline bool frame_active(bool configured, bool key_on, bool stage_ready) noexcept {
-    return configured && key_on && stage_ready;
+// ---- The frame's decision ----
+// Latched at Present for the next frame (both the answer and the stage read it): the setting on and a stage that could
+// draw in the last resolve (attached, armed). Otherwise the engine's chain stays. (The Ctrl+Shift+F9 comparison hotkey
+// was removed in step 2 by user decision: own_sun in x3m.ini is the only switch.)
+inline bool frame_active(bool configured, bool stage_ready) noexcept {
+    return configured && stage_ready;
 }
 
 // ---- Projection of the polled sun with the frame camera ----

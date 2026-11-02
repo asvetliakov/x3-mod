@@ -219,16 +219,10 @@ bool lens_flare_gain_zero = false; // ... parsed as exactly 0: the engine-side c
 #if !X3M_EDITION_FL
 // Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; AP edition): the setting as installed (the probe
 // redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS, X3M_SUN_DISC_RADIANCE; out of range keeps
-// the default) and the comparison hotkey Ctrl+Shift+F9 (comparison-hotkeys.md, "Own sun"), polled only while it is on.
+// the default). The setting is the only switch (the Ctrl+Shift+F9 comparison hotkey was removed in step 2).
 bool own_sun_on = false;
 float own_sun_radius = own_sun::core::radius_default_u, own_sun_radiance = own_sun::core::radiance_default,
       own_sun_rays = own_sun::core::rays_default; // X3M_SUN_RAYS: the rays' share (step 1c: six soft rays, no streaks)
-own_sun::core::Toggle own_sun_key;
-// The chord, F9 first so an idle frame costs one call.
-bool own_sun_chord_down() {
-    return (GetAsyncKeyState(VK_F9) & 0x8000) != 0 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 &&
-           (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-}
 #endif
 bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the
                                                // light-map fetch of the gained hull variants widens to k x k px, k =
@@ -2027,15 +2021,12 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                     // accepted-pair ring; one collide_narrow line per
                                                                     // 300 frames, collide_narrow_pair rows on a capture
                                                                     // frame
-    // Own sun (X3M_OWN_SUN installed only): the hotkey's press edge flips it; the next frame's latch (the setting, the key, this
-    // device's stage armed in its last resolve) goes to the probe answer and the stage together, before the probe's
-    // frame boundary.
+    // Own sun (X3M_OWN_SUN installed only): the next frame's latch (the setting, this device's stage armed in its last
+    // resolve) goes to the probe answer and the stage together, before the probe's frame boundary.
     if (own_sun_on) {
-        if (own_sun_key.step(own_sun_chord_down()))
-            log("own_sun_toggle device=%llu frame=%llu on=%u", ctx.id, ctx.frame, own_sun_key.on ? 1u : 0u);
-        const bool active = own_sun::core::frame_active(true, own_sun_key.on, ctx.motion_output.own_sun_ready());
+        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());
         own_sun_hook::set_own_sun_frame(active);
-        ctx.motion_output.own_sun_frame(active, own_sun_key.on);
+        ctx.motion_output.own_sun_frame(active);
     }
     own_sun_hook::present(ctx.frame + 1); // installed hook only: the probe answer's frame boundary
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
@@ -5893,7 +5884,7 @@ void initialize_log(HMODULE module) {
         const bool sun_installed = own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested);
 #if !X3M_EDITION_FL
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
-        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f hotkey=ctrl+shift+f9",
+        log("own_sun status=%s edition=ap requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
             own_sun_on                     ? "ok"
             : !own_sun_requested           ? "setting"

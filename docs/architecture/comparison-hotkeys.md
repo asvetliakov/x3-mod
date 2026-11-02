@@ -28,22 +28,15 @@ executed with and without the debug tier). Ledger lines (`docs/verification/`): 
 `directional-shadows.md`, `volumetric-fog.md`, `telemetry.md`, `window-and-cursor.md`, `screen-emission.md`,
 `hdr-scene-path.md`.
 
-## Own sun (2026-11-02)
+## Own sun (added and removed 2026-11-02)
 
-**Ctrl+Shift+F9**, polled only while `own_sun` is installed (`--own-sun on`, AP edition; not tied to `--debug`), flips
-the own sun against the engine's sun for the A/B of [own-sun-pass.md](own-sun-pass.md) step 1. Each press edge (a held
-chord is one press) toggles one state that starts on and writes one `own_sun_toggle device= frame= on=` row. At every
-Present the next frame's latch is `own_sun::core::frame_active(setting, key, stage armed in the last resolve)`; the
-flare probe's "hidden" answer for the sun's record and the stage's draw both read that one latch, so the two switch
-together in the same frame (the engine re-instantiates its chain within about two frames after the answer returns to
-the original). F9 is polled first, the modifiers only while it is down. The "off" state is the engine's own chain,
-unmodified since own sun step 2 (2026-11-02) deleted the partial sun occlusion; only `lens_flare_gain` below 1 and the
-fog's transmittance still scale its draws, as for every other lens flare. `GetAsyncKeyState`
-reads the physical key state whether or not the game has the focus, as for F8: a chord pressed in another window
-flips it too. Host proof: `test_own_sun.OwnSunHost.
-test_hotkey_flips_per_frame` (the production `Toggle` and `frame_active`) and `test_comparison_hotkeys` (the chord is
-the only other `GetAsyncKeyState` use, in one function, polled at one site under `own_sun_on`). Ledger:
-[sun-occlusion.md](../verification/sun-occlusion.md), "Own sun step 1".
+**Ctrl+Shift+F9** flipped the own sun against the engine's sun for the step-1 A/B of [own-sun-pass.md](own-sun-pass.md)
+(one `own_sun_toggle` row per press). Removed in own sun step 2 by user decision: the chord, its `GetAsyncKeyState`
+polls, the `own_sun::core::Toggle` state, the row and the `key=` field of `own_sun_frame` are gone; `own_sun` in
+`x3m.ini` (or `--own-sun on|off`) is the only switch, and the frame's latch is the setting and the stage armed in the
+device's last resolve. F8 is again the only in-game key. Host proof: `test_comparison_hotkeys` (one
+`GetAsyncKeyState` call in `src/`), `test_own_sun`. Ledger: [sun-occlusion.md](../verification/sun-occlusion.md),
+"Step 2 — deletion".
 
 ## Removed 2026-10-04: engine plume preset and heat shimmer keys
 

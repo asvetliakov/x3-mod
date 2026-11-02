@@ -458,7 +458,8 @@ class OwnSunRows(unittest.TestCase):
             at = text.index('log("' + row)
             self.assertNotIn('log_tier', PerFrameRowTiers._context(text, at)[0], row)
         capture = _strip_comments((ROOT / 'src/proxy/capture.cpp').read_text(errors='replace'))
-        for row in ('own_sun status=%s edition=ap', 'own_sun status=unavailable edition=fl', 'own_sun_toggle '):
+        self.assertNotIn('own_sun_toggle', capture)  # the hotkey and its row went with own sun step 2
+        for row in ('own_sun status=%s edition=ap', 'own_sun status=unavailable edition=fl'):
             self.assertEqual(capture.count('log("' + row), 1, row)
             self.assertNotIn('log_tier', PerFrameRowTiers._context(capture, capture.index('log("' + row))[0], row)
         doc = (ROOT / 'docs/architecture/logging-tiers.md').read_text()

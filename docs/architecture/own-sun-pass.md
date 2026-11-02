@@ -349,7 +349,7 @@ Evidence: [sun-occlusion ledger](../verification/sun-occlusion.md), "Own sun ste
   Not Ok (no directional light, unavailable) leaves the stage unarmed (`own_sun_state reason=poll`), so the next
   frame's probe forwards to the engine (review F2).
 - **Hotkey.** Ctrl+Shift+F9, polled only while the own sun is installed ([comparison-hotkeys.md](comparison-hotkeys.md),
-  "Own sun").
+  "Own sun"). Removed in step 2.
 - **FL.** Inert in this step (one `own_sun status=unavailable edition=fl` row), although main has carried the FL probe
   hook since FL step 9; enabling it there is a separate step.
 - **Not built.** Section 11's real-device fixture and a hook-fixture case for the answer (no Wine on the native host);
@@ -441,6 +441,9 @@ Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are d
 - **The lens bracket.** begin: the fog's share of the gain only (`lens_bracket_begin`); per draw: the gain only
   (`prepare_lens(route)`: one active test, the window count, the `plain` test, `apply_lens_gain`); no end listener.
   The engine cull at gain 0 (`lens_flare_cull`) is unchanged.
+- **No hotkey (user decision, same day).** The Ctrl+Shift+F9 comparison chord, its `Toggle` state, the `own_sun_toggle`
+  row and the `key=` field of `own_sun_frame` are deleted (a separate commit): `own_sun` in `x3m.ini` is the only switch,
+  and the Present-time latch is `frame_active(setting, stage armed in the last resolve)`. F8 is the only in-game key.
 - **`own_sun = 0`.** Nothing is answered and nothing drawn on either edition: the engine's chain is vanilla. The hook
   installs only for the gain or the fog, its probe then forwards every call without a read; the bracket scales the
   lens draws by G (and the fog's transmittance), as every other engine flare.

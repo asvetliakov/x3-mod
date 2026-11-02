@@ -288,15 +288,10 @@ class OwnSunHost(unittest.TestCase):
         table = {(a, e): int(self.run_driver('answer', a, e)['answer']) for a in (0, 1) for e in (0, 1)}
         self.assertEqual(table, {(0, 0): 2, (0, 1): 2, (1, 0): 2, (1, 1): 1})  # hidden only for the eligible record
 
-    def test_hotkey_flips_per_frame(self):
-        t = self.run_driver('toggle', '00011110001101')
-        self.assertEqual(t['initial'], '1')
-        # A held key is one press; release and press again flips back; the state holds between presses.
-        self.assertEqual(t['on'], '11100000001110')
-        self.assertEqual(t['edges'], '3')
-        for configured, key, ready in ((a, b, c) for a in (0, 1) for b in (0, 1) for c in (0, 1)):
-            self.assertEqual(self.run_driver('frame_active', configured, key, ready)['active'],
-                             '1' if configured and key and ready else '0')
+    def test_frame_active_is_the_setting_and_the_armed_stage(self):
+        # Step 2: the Ctrl+Shift+F9 hotkey is gone; the setting and the armed stage alone decide the frame.
+        for configured, ready in ((a, b) for a in (0, 1) for b in (0, 1)):
+            self.assertEqual(self.run_driver('frame_active', configured, ready)['active'], '1' if configured and ready else '0')
 
     def test_quad_strip(self):
         q = self.run_driver('quad', .25, -.5, .1, .2)
@@ -386,9 +381,11 @@ def constant_table(words):
 class OwnSunWiring(unittest.TestCase):
     def test_ap_latch_and_fl_row(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        latch = capture.index('    if (own_sun_on) {\n        if (own_sun_key.step(own_sun_chord_down()))')
+        latch = capture.index('    if (own_sun_on) {\n        const bool active = own_sun::core::frame_active(true, ctx.motion_output.own_sun_ready());')
         self.assertLess(latch, capture.index('    own_sun_hook::present(ctx.frame + 1); // installed hook only'))
-        self.assertEqual(capture.count('own_sun_chord_down()'), 2)        # the definition and the one poll under own_sun_on
+        for gone in ('own_sun_chord_down', 'own_sun_key', 'own_sun_toggle', 'hotkey=', 'VK_F9'):  # no hotkey since step 2
+            self.assertNotIn(gone, capture)
+        self.assertNotIn('struct Toggle', source_text(ROOT / 'src/proxy/own_sun_core.h'))
         self.assertIn('log("own_sun status=unavailable edition=fl requested=%u reason=fl_step_pending"', capture)
         self.assertIn('own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;', capture)
         fl_row = capture.index('log("own_sun status=unavailable edition=fl')

@@ -1200,11 +1200,11 @@ public:
     }
 #if !X3M_EDITION_FL
     // Own sun, step 1 (X3M_OWN_SUN, motion_output_own_sun_inc.h; AP edition only): process-start values, validated
-    // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting, the
-    // comparison hotkey and own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
+    // here (out of range keeps the note's default). own_sun_frame: Present, the next frame's latch (the setting and
+    // own_sun_ready() together, own_sun::core::frame_active) and the --debug own_sun_frame row.
     // own_sun_ready: the stage armed in this device's last resolve (the probe answers "hidden" only then).
     void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
-    void own_sun_frame(bool active, bool key_on) noexcept;
+    void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
 #endif
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet

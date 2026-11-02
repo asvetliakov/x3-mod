@@ -101,7 +101,7 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
         return core::Original;
     }
     ++counters_.probes;
-    // Nothing to answer in this frame (the own sun's latch off: hotkey, unarmed stage, not requested, the bracket-only
+    // Nothing to answer in this frame (the own sun's latch off: unarmed stage, not requested, the bracket-only
     // install) and no log: the original, before any read.
     if (!record || !view || (!own_sun_frame_ && !log_)) {
         ++counters_.original;

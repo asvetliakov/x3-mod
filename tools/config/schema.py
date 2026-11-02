@@ -161,7 +161,7 @@ SETTINGS = [
           launcher='--lens-flare-gain', since='2026-09-29'),
     entry('own_sun', 'bool', 'graphics', 'The mod draws its own sun, a small bright centre in a wide soft glow with a few '
           'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
-          'sun flare. Ctrl+Shift+F9 switches between the two in flight. 1 = on (default), 0 = the game\'s own sun. X3: Albion '
+          'sun flare. 1 = on (default), 0 = the game\'s own sun. X3: Albion '
           'Prelude only for now.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
           aliases=('sun_occlusion',)),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the bright centre of the mod\'s own sun (own_sun = 1): its radius as a '
