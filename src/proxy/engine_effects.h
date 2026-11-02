@@ -13,7 +13,7 @@
 // - the body table <EXE directory>\x3m\engine_bodies.json (X3M_ENGINE_BODIES overrides the path, 0 or none disables),
 //   loaded once on the render thread at the first begin_frame, like the fog family table; a malformed file leaves
 //   count 0 (every record unknown_body) and one engine_effects_bodies row;
-// - the names -> ids resolution over the engine's body table (the lens_flare_cull recipe) at begin_frame: the table
+// - the names -> ids resolution over the engine's body table (engine_body_resolver.h) at begin_frame: the table
 //   header every frame, at most 32 mapped dynamic names re-read per frame round-robin, a scan when the table moves,
 //   shrinks, grows or re-binds a name. Render thread only (the one that draws), so no synchronisation.
 namespace x3m::engine_effects {

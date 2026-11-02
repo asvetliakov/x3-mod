@@ -19,7 +19,7 @@
 // draw hooks), the only writer and reader of the table and the resolution after initialize.
 namespace {
 namespace core = x3m::engine_effects::core;
-namespace lfc = x3m::lens_flare_cull::core;
+namespace ebr = x3m::engine_body_resolver;
 core::Mode mode_ = core::Mode::native;
 x3m::engine_plumes::Preset preset_ = x3m::engine_plumes::default_preset;
 float nozzle_ = x3m::engine_plumes::default_look.nozzle_width;
@@ -39,10 +39,10 @@ static_assert(flee::seta_site_length == x3m::engine_plumes::seta_site_length, "t
 static_assert(flee::seta_warp_offset + 4 == 0xc0, "warp and the governor are adjacent dwords");
 #elif defined(X3M_MOTION_OUTPUT_FIXTURE)
 bool fixture_identity_ = false, fixture_redirects_ = false;
-std::uintptr_t body_global_ = lfc::census::body_global_va;
+std::uintptr_t body_global_ = ebr::census::body_global_va;
 std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
 #else
-constexpr std::uintptr_t body_global_ = lfc::census::body_global_va;
+constexpr std::uintptr_t body_global_ = ebr::census::body_global_va;
 constexpr std::uintptr_t seta_site_ = x3m::engine_plumes::seta_site_va, seta_slot_ = x3m::engine_plumes::seta_slot_va;
 #endif
 #if !X3M_EDITION_FL
@@ -59,7 +59,7 @@ struct State {
 };
 State* state_ = nullptr;
 bool load_attempted_ = false, table_loaded_ = false;
-lfc::Table engine_table_{};
+ebr::Table engine_table_{};
 std::uint32_t scanned_dynamic_ = 0, restarts_ = 0;
 unsigned body_rows_ = 0;
 std::uint32_t logged_mapped_ = 0xffffffffu;
@@ -143,14 +143,14 @@ void load_table(unsigned long long frame) {
              state_->table.count, named, steering, state_->table.refused, static_cast<unsigned long>(size),
              static_cast<unsigned long>(fault), frame, path);
 }
-lfc::Reader reader() {
+ebr::Reader reader() {
     return &x3m::engine_memory::read;
 }
-// lens_flare_cull.cpp refresh(), generalised: restart when the engine table moved, shrank or re-bound a mapped name;
+// The body table's refresh: restart when the engine table moved, shrank or re-bound a mapped name;
 // scan only the new dynamic slots (and the newest again) when it grew.
 void refresh(unsigned long long frame) {
     if (!state_ || !state_->table.count) return;
-    const lfc::Table t = lfc::read_table(reader(), body_global_);
+    const ebr::Table t = ebr::read_table(reader(), body_global_);
     if (!t.valid) return;
     core::Resolver& r = state_->resolver;
     const bool restart = !engine_table_.valid || t.slots != engine_table_.slots || t.fixed != engine_table_.fixed ||
@@ -301,7 +301,7 @@ void begin_frame(unsigned long long frame) {
     const std::uint64_t epoch = object_lifetime::stats().load_epoch;
     if (epoch != load_epoch_) {
         load_epoch_ = epoch;
-        engine_table_ = lfc::Table{};
+        engine_table_ = ebr::Table{};
         if (state_) state_->resolver.clear();
     }
 #endif
@@ -380,7 +380,7 @@ void fixture_redirects(bool live) {
 }
 void fixture_body_global(std::uintptr_t va) {
     body_global_ = va;
-    engine_table_ = lfc::Table{};
+    engine_table_ = ebr::Table{};
 }
 #endif
 }

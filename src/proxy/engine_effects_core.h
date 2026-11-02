@@ -3,19 +3,19 @@
 #include <cstdint>
 #include <cstring>
 #include "sse_scalar.h"
-#include "lens_flare_cull_core.h"
+#include "engine_body_resolver.h"
 #include "engine_effects_option.h"
 #include "engine_far_jets_core.h"
 
 // Portable core of the engine-effects phase 1a (docs/architecture/engine-effects-modern.md sections 1, 2 and 5;
 // docs/reverse-engineering/engine-effects.md sections 2-4): the glow-jet recogniser's truth table, the throttle and
 // geometry of one recognised draw, its 64-byte record and the per-frame ring, the engine_bodies.json parser (schema 1
-// of tools/effects/engine_bodies.py) and the name -> id resolver over the engine's body table (the lens_flare_cull
-// recipe: its table header, slot and name helpers, generalised to a loaded name list of any length). No Windows
+// of tools/effects/engine_bodies.py) and the name -> id resolver over the engine's body table (engine_body_resolver.h:
+// its table header, slot and name helpers, generalised to a loaded name list of any length). No Windows
 // dependency: the host tests compile it. No x87: float work only through SSE scalars, no float returned by value from
 // a function that may stay out of line (i686 returns those in st(0)).
 namespace x3m::engine_effects::core {
-namespace lfc = x3m::lens_flare_cull::core;
+namespace ebr = x3m::engine_body_resolver;
 namespace census = x3m::cull_census::core;
 
 // --------------------------------------------------------------------------- option
@@ -647,12 +647,12 @@ struct NameIndex {
         for (std::uint32_t h = name_hash(name);; ++h) {
             const unsigned e = slots[h & (index_slots - 1)];
             if (!e) return -1;
-            if (lfc::name_equal(t.bodies[e - 1].name, name)) return int(e - 1);
+            if (ebr::name_equal(t.bodies[e - 1].name, name)) return int(e - 1);
         }
     }
 };
-// Up to cap bytes at p in page-bounded pieces; false without a NUL inside cap bytes (lfc::read_short_name for any cap).
-inline bool read_name(lfc::Reader read, std::uint32_t p, char* out, unsigned cap) noexcept {
+// Up to cap bytes at p in page-bounded pieces; false without a NUL inside cap bytes (any cap).
+inline bool read_name(ebr::Reader read, std::uint32_t p, char* out, unsigned cap) noexcept {
     unsigned have = 0;
     while (have < cap) {
         const std::uintptr_t at = std::uintptr_t(p) + have;
@@ -666,11 +666,11 @@ inline bool read_name(lfc::Reader read, std::uint32_t p, char* out, unsigned cap
     return false;
 }
 // The slot's name as the engine prints it (its +0x0c string, or `v\%05d` of its id when null).
-inline bool body_slot_name(lfc::Reader read, const lfc::Table& t, std::uint32_t slot, char out[body_name_capacity]) noexcept {
+inline bool body_slot_name(ebr::Reader read, const ebr::Table& t, std::uint32_t slot, char out[body_name_capacity]) noexcept {
     std::uint32_t p = 0;
-    if (!lfc::slot_name_pointer(read, t, slot, &p)) return false;
+    if (!ebr::slot_name_pointer(read, t, slot, &p)) return false;
     if (!p) {
-        census::body_default_name(lfc::slot_id(slot, t.fixed), out);
+        census::body_default_name(ebr::slot_id(slot, t.fixed), out);
         return true;
     }
     return read_name(read, p, out, body_name_capacity);
@@ -678,7 +678,7 @@ inline bool body_slot_name(lfc::Reader read, const lfc::Table& t, std::uint32_t 
 // The resolution state: id -> entry (the per-draw lookup), the entries found, the dynamic-slot mappings that a game
 // load can re-bind (checked round-robin per frame).
 struct Resolver {
-    std::int16_t id_entry[lfc::id_span]; // -1 unknown
+    std::int16_t id_entry[ebr::id_span]; // -1 unknown
     bool found[body_capacity];
     struct Mapping {
         std::uint32_t slot;
@@ -692,11 +692,11 @@ struct Resolver {
         dynamic_count = check_cursor = 0;
         resolved = mapped = scanned = 0;
     }
-    int entry(std::uint32_t model) const noexcept { return model < lfc::id_span ? id_entry[model] : -1; }
+    int entry(std::uint32_t model) const noexcept { return model < ebr::id_span ? id_entry[model] : -1; }
 };
 // Resolves the entries not found yet: first by the id of a default-form name (`v\00566` is slot 566 when that slot's
 // name is null or equal), then by scanning [slot_from, slot_to) by name through the index. Bounded by the reader.
-inline void resolve(lfc::Reader read, const lfc::Table& t, const BodyTable& bodies, const NameIndex& index, Resolver* r,
+inline void resolve(ebr::Reader read, const ebr::Table& t, const BodyTable& bodies, const NameIndex& index, Resolver* r,
                     std::uint32_t slot_from, std::uint32_t slot_to) noexcept {
     if (!t.valid) return;
     const std::uint32_t slot_count = std::uint32_t(t.fixed) + std::uint32_t(t.dynamic);
@@ -705,7 +705,7 @@ inline void resolve(lfc::Reader read, const lfc::Table& t, const BodyTable& bodi
     auto take = [&](unsigned e, std::uint32_t slot, std::int32_t id) {
         r->found[e] = true;
         ++r->resolved;
-        if (id >= 0 && std::uint32_t(id) < lfc::id_span) {
+        if (id >= 0 && std::uint32_t(id) < ebr::id_span) {
             r->id_entry[id] = std::int16_t(e);
             ++r->mapped;
         }
@@ -716,8 +716,8 @@ inline void resolve(lfc::Reader read, const lfc::Table& t, const BodyTable& bodi
         if (r->found[e]) continue;
         std::int32_t id = 0;
         std::uint32_t slot = 0;
-        if (lfc::default_name_id(bodies.bodies[e].name, &id) && census::body_slot(id, t.fixed, t.dynamic, &slot) &&
-            body_slot_name(read, t, slot, name) && lfc::name_equal(name, bodies.bodies[e].name))
+        if (ebr::default_name_id(bodies.bodies[e].name, &id) && census::body_slot(id, t.fixed, t.dynamic, &slot) &&
+            body_slot_name(read, t, slot, name) && ebr::name_equal(name, bodies.bodies[e].name))
             take(e, slot, id);
         else
             ++missing;
@@ -725,24 +725,24 @@ inline void resolve(lfc::Reader read, const lfc::Table& t, const BodyTable& bodi
     if (slot_to > slot_count) slot_to = slot_count;
     for (std::uint32_t slot = slot_from; missing && slot < slot_to; ++slot) {
         std::uint32_t p = 0;
-        if (!lfc::slot_name_pointer(read, t, slot, &p) || !p || !read_name(read, p, name, body_name_capacity)) continue;
+        if (!ebr::slot_name_pointer(read, t, slot, &p) || !p || !read_name(read, p, name, body_name_capacity)) continue;
         ++r->scanned;
         const int e = index.find(bodies, name);
         if (e < 0 || r->found[e]) continue;
-        take(unsigned(e), slot, lfc::slot_id(slot, t.fixed));
+        take(unsigned(e), slot, ebr::slot_id(slot, t.fixed));
         --missing;
     }
 }
 // Up to `budget` dynamic mappings re-read from the cursor on (round-robin): false when one lies beyond the table, is
 // unreadable or carries another name (the caller restarts the resolution).
-inline bool mappings_hold(lfc::Reader read, const lfc::Table& t, const BodyTable& bodies, Resolver* r,
+inline bool mappings_hold(ebr::Reader read, const ebr::Table& t, const BodyTable& bodies, Resolver* r,
                           unsigned budget) noexcept {
     char name[body_name_capacity];
     const std::uint32_t slot_count = std::uint32_t(t.fixed) + std::uint32_t(t.dynamic);
     for (unsigned n = 0; n < budget && n < r->dynamic_count; ++n) {
         if (r->check_cursor >= r->dynamic_count) r->check_cursor = 0;
         const auto& m = r->dynamic[r->check_cursor++];
-        if (m.slot >= slot_count || !body_slot_name(read, t, m.slot, name) || !lfc::name_equal(name, bodies.bodies[m.entry].name))
+        if (m.slot >= slot_count || !body_slot_name(read, t, m.slot, name) || !ebr::name_equal(name, bodies.bodies[m.entry].name))
             return false;
     }
     return true;
