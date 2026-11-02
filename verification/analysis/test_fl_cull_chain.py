@@ -149,6 +149,9 @@ class FlCullChainWiring(unittest.TestCase):
         self.assertIn('spec.length = S::site_length;', code)
         self.assertIn('if (const char* refused = S::plan(window)) return done(refused);', code)
         self.assertIn('return done(roll_back("readback_rolled_back"));', code)
+        # Far jets fenced on FL: initialize() never carries the far block (far_jets=fenced_fl on the row).
+        self.assertIn('applied = install_base(base, exempt, false);', code)
+        self.assertIn('far_jets_state_ = far_requested ? "fenced_fl" : "off";', code)
         self.assertIn('"cull_small_parts requested=%s px=%.4g patched=%u edition=fl state=%s reason=%s site=0x%08lx '
                       'rva=0x%06lx cull=0x%08lx write=%s', code)
         far = strip((ROOT / 'src/proxy/engine_far_jets.cpp').read_text())

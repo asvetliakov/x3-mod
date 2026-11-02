@@ -256,9 +256,9 @@ dword [esi+0x130],0x4000001`); a mismatch leaves the block out. Rows: `cull_smal
 
 ## FL port (2026-11-02, not flown)
 
-Farnham's Legacy (`X3M_EDITION=fl`) now runs the small-parts cull, the dock-port rule, the projectile exemption and the
-far-jet hand-off on X3FL.exe's cull/LOD selector, with the AP defaults (`cull_small_parts_px` 4, projectiles `on`,
-`cull_dock_parts_px` 12; far jets with `engine_effects = plumes`). Sites and ABI:
+Farnham's Legacy (`X3M_EDITION=fl`) now runs the small-parts cull, the dock-port rule and the projectile exemption on
+X3FL.exe's cull/LOD selector, with the AP defaults (`cull_small_parts_px` 4, projectiles `on`, `cull_dock_parts_px` 12).
+The far-jet hand-off is fenced on FL (below). Sites and ABI:
 [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Verified 2026-11-02 against X3FL.exe"; host evidence:
 [farnhams-legacy.md](farnhams-legacy.md), "Cull/LOD selector ports".
 
@@ -273,8 +273,29 @@ far-jet hand-off on X3FL.exe's cull/LOD selector, with the AP defaults (`cull_sm
   (`cmovg edx,eax`) and jumps to the engine's `and dword [esi+0x12c],~2` at `base+0x0961f3`.
 - **Stub (176 bytes).** s is read at site `[ESP+0x10]` (no push precedes it); EAX/EDX scratch; ECX (the live native
   measure) never written except by the `push ecx`/`pop ecx` around the far-jet call; dock id `[esi+0x144]`; marker and
-  JET bits `[esi+0x130]`; far-jet call `(node ESI, measure ECX, view EBX)`. The far-jet handler
-  (`engine_far_jets.cpp`, shared) reads the model at `+0x144` on FL (`#if X3M_EDITION_FL`; AP object unchanged).
+  JET bits `[esi+0x130]`; far-jet call `(node ESI, measure ECX, view EBX)`.
+- **Far jets fenced on FL.** `initialize()` never carries the far-copy block: with `engine_effects = plumes` the row says
+  `far_jets=fenced_fl` (else `off`) and far JET nodes below the threshold are culled like any small node, nothing
+  called, so such ships show no plume on FL. The FL far route must run under fresh `fl_render_admission` with an owned
+  context scale, not a later `context+0x2c` read ([fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md)
+  section 2, [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md) section 4), and the far-copy read set
+  (`+0x28`, `+0x70/+0x80/+0x88`, `+0xb0..`, `+0xc0..`, `+0xe0..`, camera `+0x28/+0x1c`) is unverified on X3FL.exe [u];
+  none of it has flown. The encoder's far block is kept and exercised by the fixture only. The far-jet handler
+  (`engine_far_jets.cpp`, shared) reads the model at `+0x144` under `X3M_EDITION_FL` (AP object unchanged), unreached
+  while the fence holds.
+- **Far jets need `engine_effects` set explicitly (both editions).** The stub's own read of `X3M_ENGINE_EFFECTS` takes
+  only an exact `plumes` as the request; unset counts as off for the stub, although `engine_effects` itself treats unset
+  as plumes. The launcher sends `X3M_ENGINE_EFFECTS` only when `--engine-effects` is given (`tools/manage.py`), so a
+  default AP launch draws plumes but its stub carries no far block (`far_jets=off`): far jets need
+  `engine_effects = plumes` set explicitly. Kept as is: making unset mean plumes would change the AP module's object and
+  its default behaviour, which needs its own flight.
+- **Dock ids on FL [u].** The rule compares the stock cut-scene ids 9013/9014/9098/9099 (`local + (cut−1)·100000`); the
+  formula and constants are present in X3FL.exe (`base+0x0ae169`, `base+0x0ad62d`), but those four cut-scene bodies were
+  not checked in FL's `addon2` assets. If FL's carriers use other cut scenes the dock rule removes nothing extra
+  (nodes then follow the small-parts threshold).
+- **Focus fallback on FL.** When the scene projection latch is unusable (no scene Clear for 8 frames, after a Reset, a
+  menu), the threshold uses the registry focus, which on FL is the constant default `0x4000` (`fov` is not ported), so
+  a changed FOV or zoom scales that frame's threshold by the wrong factor.
 - **Install.** X3FL.exe identity (`fl::module_base()`), the window, the projectile marker writers (`base+0x049b1d`,
   `base+0x04a807`) and the JET writer (`base+0x03deb3`) compared like AP (a mismatch drops only that block:
   `projectiles=marker_mismatch`, `far_jets=writer_mismatch`), the stub emitted, `engine_patch::claim`, a read-back of
@@ -282,9 +303,11 @@ far-jet hand-off on X3FL.exe's cull/LOD selector, with the AP defaults (`cull_sm
   stays registered (`rollback_failed`, `state=patched_unverified`). No other consumer chains on FL (`chain_stub` and
   `site_chainable` refuse `edition_fl`). Small props (`ships\props\`) stay a draw-hook rule, not part of this stub.
 - **Rows.** `cull_small_parts requested= px= patched= edition=fl state=active|off|refused|patched_unverified reason=
-  site= rva=0x0961d3 cull= write=atomic stub= camera= scope=all projectiles= dock_px= dock_requested= far_jets=`;
+  site= rva=0x0961d3 cull= write=atomic stub= camera= scope=all projectiles= dock_px= dock_requested=
+  far_jets=fenced_fl|off`;
   `cull_small_parts_value … edition=fl` per change; `cull_small_parts_frame … far_jets= edition=fl` on capture frames.
 - **Host evidence.** Native fixture `verification/probe/fl_cull_chain.cpp` (`test_fl_cull_chain`): 184 checks, 0
-  failures; 80 executed decisions (20 culled, 10 dock, 6 exempt, 3 far, 41 native) against the unpatched image; 440 / 440
-  window-bit flips refused; stub audit of the three emitted variants clean; 20 / 20 mutations killed. Not flown: no FL
+  failures; 80 executed decisions (20 culled, 10 dock, 6 exempt, 3 far through the fixture-only far variant, 41 native)
+  against the unpatched image; `initialize()` with plumes installs the fenced stub; 440 / 440 window-bit flips refused;
+  stub audit of the three emitted variants clean; 21 / 21 mutations killed. Not flown: no FL
   draw saving is measured yet.

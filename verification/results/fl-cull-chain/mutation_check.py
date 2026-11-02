@@ -43,6 +43,8 @@ MUTATIONS = {
     'no_readback': (PROVIDER, 'if (!engine_patch::read_code(spec.address, now, 5) || std::memcmp(now, site_.patched, 5))',
                     'if (now[0] == 0xe9 && false)'),
     'chain_failure_not_rolled_back': (PROVIDER, 'return done(roll_back("chain_failed"));', 'return done("chain_failed");'),
+    'far_unfenced': (PROVIDER, 'applied = install_base(base, exempt, false);',
+                     'applied = install_base(base, exempt, far_requested);'),
     'marker_not_pinned': (PROVIDER, 'bytes_match(base + S::marker_or_rva, S::marker_or, S::marker_or_length)', 'true'),
     # The one-byte patches (lod_patch_sites_fl.h).
     'occlusion_fixup_unchecked': (LOD, '    if (w.fixup_offset && u32(current + w.fixup_offset) != std::uint32_t(base + w.fixup_rva)) return "bytes_mismatch";\n', '    (void)base;\n'),

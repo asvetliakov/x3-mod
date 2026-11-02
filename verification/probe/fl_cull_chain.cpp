@@ -736,18 +736,16 @@ int main() {
         set_env(L"X3M_CULL_SMALL_PARTS_PX", L"4");
         set_env(L"X3M_CULL_DOCK_PARTS_PX", L"12");
         poke(S::marker_or_rva + 9, 0x31);
-        poke(S::jet_writer_rva + 9, 0x05);
         before = rows;
         SetLastError(sentinel_error);
         bool applied = csp::initialize();
         const char* mismatch[] = {"edition=fl state=active reason=ok", "write=atomic", "projectiles=marker_mismatch",
-                                  "far_jets=writer_mismatch", "rva=0x0961d3"};
+                                  "far_jets=fenced_fl", "rva=0x0961d3"};
         check(applied && GetLastError() == sentinel_error && !csp::projectiles_exempt() && !csp::far_jets(),
-              "init_mismatched_writers_drop_blocks", last_row);
+              "init_mismatched_marker_drops_exemption", last_row);
         row_has("init_mismatch_row", before, 1, mismatch, 5);
         shutdown_restores("init_mismatch_restored");
         poke(S::marker_or_rva + 9, S::marker_or[9]);
-        poke(S::jet_writer_rva + 9, S::jet_writer[9]);
         before = rows;
         SetLastError(sentinel_error);
         applied = csp::initialize();
@@ -755,9 +753,12 @@ int main() {
         std::snprintf(want, sizeof want, "site=0x%08lx rva=0x0961d3 cull=0x%08lx write=atomic",
                       static_cast<unsigned long>(base + S::site_rva), static_cast<unsigned long>(base + S::cull_rva));
         const char* active[] = {"cull_small_parts requested=4 px=4 patched=1 edition=fl state=active reason=ok", want,
-                                "projectiles=on dock_px=12 dock_requested=12 far_jets=on"};
-        check(applied && GetLastError() == sentinel_error && csp::projectiles_exempt() && csp::far_jets(),
-              "init_installs_all_blocks", last_row);
+                                "projectiles=on dock_px=12 dock_requested=12 far_jets=fenced_fl"};
+        // Far jets fenced on FL: plumes requested, the stub carries no far block (nothing called).
+        check(applied && GetLastError() == sentinel_error && csp::projectiles_exempt() && !csp::far_jets() &&
+                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far] == 0xeb &&
+                  reinterpret_cast<const unsigned char*>(csp::stub_address())[S::stub_far + 1] == S::stub_far_length - 2,
+              "init_installs_far_fenced", last_row);
         row_has("init_active_row", before, 1, active, 3);
         check(csp::initialize() && rows == before + 1, "init_again_no_row");
         // The frame side: a vanilla frame (no camera) publishes 0; a valid projection the AP threshold rule.
@@ -782,7 +783,7 @@ int main() {
         csp::present(1, 77, true);
         check(rows == before + 1 && std::strstr(last_row, "cull_small_parts_frame device=1 frame=77 px=4 ") &&
                   std::strstr(last_row, " culled=3 ") && std::strstr(last_row, " exempt_bullet=1 ") &&
-                  std::strstr(last_row, " dock_culled=2 far_jets=on edition=fl") && x3m_cull_small_parts_culled == 0 &&
+                  std::strstr(last_row, " dock_culled=2 far_jets=off edition=fl") && x3m_cull_small_parts_culled == 0 &&
                   x3m_cull_small_parts_dock_culled == 0 && x3m_cull_small_parts_exempt == 0,
               "frame_row_and_counters", last_row);
         csp::present(1, 78, false);

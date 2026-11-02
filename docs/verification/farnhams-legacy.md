@@ -1206,8 +1206,8 @@ log was lost to rotation; the next heavy-sector F8 must be copied before relaunc
 
 ## Cull/LOD selector ports — host evidence (2026-11-02, not flown)
 
-`cull_small_parts` (with dock ports, the projectile exemption and the far-jet hand-off), `terran_station_lod` and
-`lod_occlusion` on X3FL.exe, AP defaults (4 px / projectiles on / dock 12 px, `size`, `all` from the launcher). Design
+`cull_small_parts` (with dock ports and the projectile exemption; the far-jet hand-off fenced, `far_jets=fenced_fl`),
+`terran_station_lod` and `lod_occlusion` on X3FL.exe, AP defaults (4 px / projectiles on / dock 12 px, `size`, `all` from the launcher). Design
 and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not flown)"; sites:
 [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Verified 2026-11-02 against X3FL.exe". Base main
 `d8b71cbfe`. All measured on the WSL2 host (native through interop), no Wine, no game.
@@ -1216,8 +1216,10 @@ and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not 
   `terran_station_lod_fl.cpp`, `lod_occlusion_fl.cpp` (+ `lod_patch_sites_fl.h`, `lod_patches_fl.h`) provide the AP
   headers for the fl target; `cull_small_parts.cpp` left `X3M_AP_ENGINE_LINKED_SOURCES` (AP only now). capture.cpp:
   the three `initialize()` calls in the FL engine-effects block, and an `#else` beside each AP frame call
-  (`present`, `begin_frame`, `after_reset`, `set_backbuffer_width`). `engine_far_jets.cpp` reads the model at `+0x144`
-  under `X3M_EDITION_FL`.
+  (`present`, `begin_frame`, `after_reset`, `set_backbuffer_width`). Far jets: `initialize()` installs the stub without
+  its far-copy block on FL (review 2026-11-02: the FL far route needs fresh `fl_render_admission` and an owned context
+  scale; dock cut-scene ids and the far-copy read set unchecked on FL, [cull-small-parts.md](cull-small-parts.md) "FL
+  port"). `engine_far_jets.cpp` reads the model at `+0x144` under `X3M_EDITION_FL`, unreached while fenced.
 - **Builds.** `build-fl` and `build-ap` (RelWithDebInfo, `cmake/mingw-i686.cmake`, `-j8`): 0 compiler warnings each; the
   fl DLL carries the four `edition=fl state=%s reason=%s` formats (engine_effects_patch and the three ports);
   `tools/config/generate.py --check` PASS (293 settings). Far-jet handler in the fl DLL
@@ -1239,7 +1241,8 @@ and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not 
   sequences (buffer Ops): `patch_rolled_back`, `rollback_failed` registered, `rollback_unprotected`, `protect_failed`,
   `restore_not_owned`, `restored`. Executed LOD paths: Terran root with bit 31 stores 1 natively, 0 patched; LOD 2
   takes the placeholder bind natively, the LOD-0 path patched. Rows: 8 `cull_small_parts` rows (`off`, `invalid_px` ×2,
-  `invalid_projectiles`, `invalid_dock_px`, `executable_mismatch`, `marker_mismatch`/`writer_mismatch`, `active`),
+  `invalid_projectiles`, `invalid_dock_px`, `executable_mismatch`, `marker_mismatch`, `active … far_jets=fenced_fl`
+  with the stub's far block patched out),
   value and frame rows with `edition=fl`, the terran/occlusion rows `off`/`refused`/`executable_mismatch`/`patched
   write=atomic`. Late window: all three refused, no arena growth, windows unchanged. Timing (fixture loop, harness
   included, noisy): 11–14 ns native, 13–22 ns disarmed, 11–21 ns armed continue, 11–14 ns armed cull per site pass.
@@ -1248,7 +1251,8 @@ and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not 
   x87/SIMD, no EBX/ESI/EDI/EBP write, ECX written only by the `pop ecx` of its own push, memory written only by the three
   counters, stack slot read only `[ESP+0x10]`, every exit at the site ESP (`jmp [slot]` or `jmp base+0x0961f3`).
 - **Mutations** ([`mutation_check.py`](../../verification/results/fl-cull-chain/mutation_check.py),
-  [json](../../verification/results/fl-cull-chain/mutation_check.json)): 20 / 20 killed by `FAIL` rows (AP s slot,
+  [json](../../verification/results/fl-cull-chain/mutation_check.json)): 21 / 21 killed by `FAIL` rows (far block
+  unfenced, AP s slot,
   ECX clobbered / not restored, AP model offset, no `cmovg` replay, cull past the engine's AND, far arguments swapped,
   inclusive upper / threshold, marker never set, far bit 0 unchecked, no late window, no window check, no read-back,
   chain failure not rolled back, marker unpinned, occlusion fixup unchecked, Terran ModRM `c8`, no one-byte rollback
@@ -1257,5 +1261,6 @@ and rows: [cull-small-parts.md](cull-small-parts.md), "FL port (2026-11-02, not 
   [json](../../verification/results/fl-cull-chain/ap_object_compare.json)): `cull_small_parts.cpp`,
   `terran_station_lod.cpp`, `lod_occlusion.cpp`, `capture.cpp`, `engine_far_jets.cpp` against `d8b71cbfe`, build-ap
   flags without `-g`, debug stripped: 5 / 5 identical. AP small-parts CPU fixture (`build_cull_small_parts.py`, run
-  natively): 285 checks; its two `engine: engine stub first/last` checks fail intermittently (measured 3 / 12 runs on
-  the base sources, 4 / 12 with this change; `same_outputs` false), a pre-existing flake, not this port.
+  natively): 285 checks; its two `engine: engine stub first/last` checks failed intermittently (3 / 12 runs on the base
+  sources, 4 / 12 with this change: the pass exit's PF differed, dead after RET 8), a pre-existing flake. Fixed
+  test-only (PF and AF masked in that comparison): 10 / 10 runs `checks=285 failures=0`.

@@ -753,8 +753,13 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
   provider constants (static_asserts in `motion_output.cpp`). Without admission one `own_ship status=unavailable
   edition=fl reason=registry_not_admitted` row and no own ship.
 - **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
-  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull (`lens_flare_cull`) and the far-jet
-  feed (`cull_small_parts`): their cull-pass stub is not ported.
+  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull (`lens_flare_cull`): its cull-pass stub
+  is not ported. The far-jet feed: the FL small-parts stub is ported (2026-11-02,
+  [cull-small-parts.md](../verification/cull-small-parts.md) "FL port") and culls far JET nodes like any small node, but
+  its far-copy block is fenced on FL (`cull_small_parts … far_jets=fenced_fl`): the FL far route must run under fresh
+  `fl_render_admission` with an owned context scale, not a later `context+0x2c` read
+  ([fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md) section 2, [fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md)
+  section 4). So on FL a ship whose jets fall under the small-parts threshold shows no plume.
 - **Body table.** `tools/effects/engine_bodies.py` detects FL (`X3FL.exe` + `addon2/01.cat`, or `--edition fl`) and
   reads `addon2/types/Bodies` over X3FL.exe's mounts (root + `addon2/`, no loose files); `manage.py install` and
   `x3m-regenerate` produce the FL table through the same auto-detection.
