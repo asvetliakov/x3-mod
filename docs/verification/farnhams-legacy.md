@@ -1018,7 +1018,7 @@ measured on the WSL2 host (native through interop), no Wine, no game.
   stub is exactly `push eax; mov eax,[esp+0xc|0x10]; cmpw $7,0x48(eax); pop eax; je; jmp *continue; xor eax,eax;
   ret|ret 0x10` (8 instructions): no call, no x87/MMX/XMM, no ECX/EDX/EBX/ESI/EDI/EBP operand.
 - **Native fixture** (`verification/probe/fl_engine_effects.cpp` via `test_fl_engine_effects.build_and_run`):
-  `RESULT PASS checks=58 failures=0`. Windows laid into a 64 KB-aligned image, B's fixup relocated to it:
+  `RESULT PASS checks=69 failures=0`. Windows laid into a 64 KB-aligned image, B's fixup relocated to it:
   `a_fnv1a=5a69143c b_fnv1a_masked=601f528c`. Native image: both callees run for classes 7 and 10. Redirected: class 7
   skipped on A (EAX 0, callee not entered, ECX/EDX untouched, ESP balanced by the caller's `add esp,0x20`) and on B
   (`ret 0x10`); class 10 forwarded with ECX, EDX, EAX, EBX, ESI, EDI, EBP, ESP, the return address (`base+0x01507a` /
@@ -1029,12 +1029,16 @@ measured on the WSL2 host (native through interop), no Wine, no game.
   back A and restores B; B's read-back fault rolls back B, A not attempted; A fails and B's restore is refused →
   `rollback_failed`, B registered (`already_installed`), ships lose only the trail, `shutdown()` restores. `shutdown()`
   restores both; `late_claim` after `close_install_window`; `initialize()` rows (10) with `edition=fl` for unset/off
-  (`executable_mismatch`: the fixture is not X3FL.exe), `native`, `invalid_setting`, `too_long`, nothing written.
+  (`executable_mismatch`: the fixture is not X3FL.exe), `native`, `invalid_setting`, `too_long`, nothing written; and
+  with the fixture image as base (seam `fixture_base`) unset reaches `install_base`: `site=A … state=active reason=ok
+  mode=plumes setting=- write=plain`, `site=B … write=atomic`, a second call logs nothing, shutdown restores.
   Timing (fixture loop, harness included): skip A 37 ns, forward A 50 ns per call.
 - **Mutations** ([`mutation_check.py`](../../verification/results/fl-engine-effects/mutation_check.py),
-  [json](../../verification/results/fl-engine-effects/mutation_check.json)): 10 / 10 killed (AP's A offset `0x14`, B
-  offset, ECX or EDX clobbered on A's forward, A `ret 0x20`, B plain `ret`, class 10 skipped, no B rollback, the late
-  window, B's fixup unchecked).
+  [json](../../verification/results/fl-engine-effects/mutation_check.json)): 10 / 10 killed. The two offset mutations
+  (AP's A offset `0x14`, B offset `0xc`) are killed by the fixture's crash on the wrong stack slot plus the stub audit,
+  without a `FAIL` row; the other eight by `FAIL` rows (ECX or EDX clobbered on A's forward, A `ret 0x20`, B plain
+  `ret` and class 10 skipped also by the audit; no B rollback, the late window and B's fixup unchecked by the fixture
+  alone).
 - **AP objects** ([`ap_object_compare.py`](../../verification/results/fl-engine-effects/ap_object_compare.py),
   [json](../../verification/results/fl-engine-effects/ap_object_compare.json)): `engine_effects.cpp`,
   `engine_effects_patch.cpp`, `motion_output.cpp`, `capture.cpp` compiled with build-ap's flags without `-g`, base
@@ -1049,3 +1053,15 @@ measured on the WSL2 host (native through interop), no Wine, no game.
   [`install_paths_check.py`](../../verification/results/fl-engine-effects/install_paths_check.py): `manage.py`'s
   `install_engine_bodies` and `x3m_regenerate.engine_step` write `x3m/engine_bodies.json` (edition fl) on a synthetic
   FL layout.
+- **Review fixes (own ship, effect pair).** Own-ship walk offsets
+  ([`own_ship_offsets.py`](../../verification/results/fl-engine-effects/own_ship_offsets.py),
+  [json](../../verification/results/fl-engine-effects/own_ship_offsets.json)): 6 / 6 anchors decode as expected in
+  X3FL.exe's cockpit updater `0x421f50` (cockpit in EBX, the function that reads the verified `+0x58`):
+  `0x42241c mov esi,[ebx+0xc]`, `0x422441 mov ecx,[esi+0x70]`, `0x42246f mov esi,[esi+0x70]`, stores
+  `0x430911`/`0x41a727 mov [edi+0xc],eax`, `0x449bdf mov [esi+0x70],eax`; registry slot/layout and node `+0x18`/`+0x28`
+  are generated constants (static_asserts). Effects pair
+  ([`effect_pair_check.py`](../../verification/results/fl-engine-effects/effect_pair_check.py),
+  [json](../../verification/results/fl-engine-effects/effect_pair_check.json), over a fresh `inventory.py` run: 755
+  FL programs): VS `d5e1c753…`, `89193868…` and PS `8360f422…` are FL members (`addon2/01.cat`, `shader/2_0/effects.fb`,
+  shared with AP); all 16 FL engine/effects pixel shaders are shared with AP. No recogniser change. Rebuilt clean: 0
+  warnings each; AP objects 4 / 4 identical again (the own-ship branch is `#if X3M_EDITION_FL`).

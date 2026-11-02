@@ -31,12 +31,13 @@ void check(bool value, const char* label, const char* detail = "") {
         std::printf("FAIL %s %s\n", label, detail);
     }
 }
-char last_row[1024];
+char last_row[1024], prev_row[1024];
 unsigned rows = 0;
 namespace x3m {
 void log(const char* format, ...) {
     va_list args;
     va_start(args, format);
+    std::memcpy(prev_row, last_row, sizeof prev_row);
     std::vsnprintf(last_row, sizeof last_row, format, args);
     va_end(args);
     ++rows;
@@ -381,6 +382,32 @@ int main() {
               !std::strcmp(eep::site_state(1), "restored"),
           "shutdown_restores_both", eep::state());
     run_cases(false);
+
+    // initialize() past the identity (seam: the fixture image's base instead of fl::module_base()): unset = plumes
+    // reaches install_base, both redirects go live, the two rows carry the live VA, the RVA and the write paths.
+    {
+        x3m::engine_effects_patch::fixture_base(base);
+        set_setting(nullptr);
+        const unsigned before = rows;
+        SetLastError(sentinel_error);
+        const bool applied = eep::initialize();
+        char want_a[160], want_b[160];
+        std::snprintf(want_a, sizeof want_a,
+                      "engine_effects_patch site=A va=%08lx rva=015075 edition=fl state=active reason=ok mode=plumes "
+                      "setting=- write=plain",
+                      static_cast<unsigned long>(base + S::a_site_rva));
+        std::snprintf(want_b, sizeof want_b,
+                      "engine_effects_patch site=B va=%08lx rva=0150aa edition=fl state=active reason=ok mode=plumes "
+                      "setting=- write=atomic",
+                      static_cast<unsigned long>(base + S::b_site_rva));
+        check(applied && GetLastError() == sentinel_error && rows == before + 2 && !std::strcmp(prev_row, want_a) &&
+                  !std::strcmp(last_row, want_b) && eep::installed(),
+              "init_nonzero_base_installs", last_row);
+        check(eep::initialize() && rows == before + 2, "init_again_no_rows");
+        run_cases(true);
+        check(eep::shutdown() && windows_original(), "init_install_restored", eep::state());
+        x3m::engine_effects_patch::fixture_base(0);
+    }
 
     // Partial installs (seam faults): A's read-back fails after B is live -> A rolled back by the module, B restored.
     fault_read_at = base + S::a_site_rva;

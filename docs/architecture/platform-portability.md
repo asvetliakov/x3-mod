@@ -885,7 +885,7 @@ The FL edition links the shared plume stage and recogniser (documented D3D9 only
 call redirects in X3FL.exe ([engine-effects-modern.md](engine-effects-modern.md), "FL port, step 1"): engine code
 behind the X3FL.exe identity and two compared windows at the module base, documented Win32 only (`VirtualProtect`,
 `FlushInstructionCache`, `GetModuleHandleExW` pin), no Wine/CrossOver dependency. Natively verified on the Windows host
-through WSL interop (measured 2026-11-02): the FL redirect fixture 58 checks, 0 failures (skip/forward register and
+through WSL interop (measured 2026-11-02): the FL redirect fixture 69 checks, 0 failures (skip/forward register and
 stack contract, write paths, every window bit, rollback, late claim). Not verified: the FL redirects and the plumes in
 game (not flown).
 

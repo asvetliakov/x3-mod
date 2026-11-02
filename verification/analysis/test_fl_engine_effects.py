@@ -37,7 +37,8 @@ def build_and_run(tmp, provider=None):
         return None
     tmp = Path(tmp)
     common = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function-type', '-mstackrealign',
-              '-mincoming-stack-boundary=2', '-DX3M_EDITION_FL=1', '-msse2', '-mfpmath=sse']
+              '-mincoming-stack-boundary=2', '-DX3M_EDITION_FL=1', '-DX3M_ENGINE_EFFECTS_FL_FIXTURE', '-msse2',
+              '-mfpmath=sse']
     objects = []
     for source, flags in ((provider or 'src/engine/fl/engine_effects_fl.cpp',
                            ['-fno-exceptions', '-include', str(SHIM), '-DX3M_ENGINE_EFFECTS_SHIM']),
@@ -68,6 +69,8 @@ class FlEngineEffectsNativeFixture(unittest.TestCase):
         self.assertRegex(out, r'WINDOWS a_fnv1a=5a69143c b_fnv1a_masked=601f528c ')
         self.assertEqual(len(re.findall(r'^LOG engine_effects_patch site=[AB] va=00000000 rva=0150(?:75|aa) edition=fl ',
                                         out, re.M)), 10)
+        self.assertEqual(len(re.findall(r'^LOG engine_effects_patch site=[AB] va=[0-9a-f]{8} rva=0150(?:75|aa) edition=fl '
+                                        r'state=active reason=ok mode=plumes setting=- write=(?:plain|atomic)$', out, re.M)), 2)
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
         stubs = json.loads(audit.stdout)['stubs']
         self.assertEqual({k: v['instructions'] for k, v in stubs.items()},

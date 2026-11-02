@@ -741,11 +741,20 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
   resolver reads the manager through `base+0x1aa100` every frame (header, mapped names round-robin, same layout as AP)
   and drops every mapping when object_lifetime's load epoch changes; the SETA read uses FL's 12-byte tick compare at
   `base+0x0fff26` and cfg `+0xbc/+0xc0`. The recogniser reads the FL object_trace snapshot (flags130, model `+0x144`,
-  scale) and the plumes stage arms exactly as on AP.
+  scale) and the same effects pair: the three ids (VS `d5e1c753…`, `89193868…`, PS `8360f422…`) are programs X3FL.exe
+  creates from `addon2/01.cat`, shared with AP, and every FL engine/effects pixel shader is shared with AP (offline
+  inventory, [`effect_pair_check.py`](../../verification/results/fl-engine-effects/effect_pair_check.py)), so no FL
+  pair is added. The plumes stage's arming conditions are AP's (not exercised on an FL device yet).
+- **Own ship on FL.** `MotionOutput::resolve_own_ship` walks X3FL.exe's cockpit registry (`base+0x1a82e4`, admitted
+  by sector_background_fl's anchors; the same `object_capture::own_ship` walk): cockpit `+0xc` reference object,
+  `+0x70` render root, node `+0x28` handle, `+0x18` parent. The two cockpit/object offsets are decoded from the cockpit
+  updater `0x421f50` (`0x42241c`, `0x422441`, `0x42246f`; stores `0x430911`, `0x41a727`, `0x449bdf`;
+  [`own_ship_offsets.py`](../../verification/results/fl-engine-effects/own_ship_offsets.py)), the rest are generated
+  provider constants (static_asserts in `motion_output.cpp`). Without admission one `own_ship status=unavailable
+  edition=fl reason=registry_not_admitted` row and no own ship.
 - **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
   read-window guarantee is not established on X3FL.exe. The gain-0 engine cull (`lens_flare_cull`) and the far-jet
-  feed (`cull_small_parts`): their cull-pass stub is not ported. Own-ship tagging stays off on FL (`resolve_own_ship`
-  is AP-only), so the own ship's records carry `own=0`.
+  feed (`cull_small_parts`): their cull-pass stub is not ported.
 - **Body table.** `tools/effects/engine_bodies.py` detects FL (`X3FL.exe` + `addon2/01.cat`, or `--edition fl`) and
   reads `addon2/types/Bodies` over X3FL.exe's mounts (root + `addon2/`, no loose files); `manage.py install` and
   `x3m-regenerate` produce the FL table through the same auto-detection.

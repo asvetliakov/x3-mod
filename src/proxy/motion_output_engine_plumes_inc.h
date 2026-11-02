@@ -34,7 +34,8 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         engine_nozzle_source_ = ok ? source : engine_nozzle::core::default_source;
 #if X3M_EDITION_FL
         // FL: the node walk's read-window guarantee is not established on X3FL.exe (docs/reverse-engineering/fl/
-        // engine-effects.md rule 4): draw-sourced nozzles only, whatever the setting (status fl_draw_only).
+        // engine-effects.md rule 4): draw-sourced nozzles only, whatever the setting (status fl_draw_only; a refused setting keeps
+        // invalid_setting / too_long).
         const bool fl_forced = engine_nozzle_source_ != engine_nozzle::core::Source::draw;
         engine_nozzle_source_ = engine_nozzle::core::Source::draw;
 #endif
@@ -47,7 +48,7 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         log("engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u",
             id_, n ? shown : "-",
 #if X3M_EDITION_FL
-            fl_forced ? "fl_draw_only" :
+            ok && fl_forced ? "fl_draw_only" :
 #endif
             ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
             engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),

@@ -10,14 +10,17 @@
 // Each stub compares the int16 class word obj+0x48 with 7: a ship returns at once (A `xor eax,eax; ret`, B
 // `xor eax,eax; ret 0x10`), every other class (10, missiles) tail-jumps to the original callee with ECX, EDX, EAX,
 // EBX, ESI, EDI, EBP and the stack exactly as the call left them (EAX is saved around the test; only the status flags
-// differ, which both callees write before reading). No Win32 call, no x87/SSE, no memory written: LastError, XMM,
-// x87, MXCSR and DF stay the engine's. Integer-only and stateless, so reentrant.
+// differ, which both callees write before reading). No Win32 call, no x87/SSE, and no memory written but the EAX save
+// below the return address (popped again before either exit): LastError, XMM, x87, MXCSR and DF stay the engine's.
+// Integer-only and stateless, so reentrant.
 //
 // Install (backend-load path, inside the engine_patch install window): X3FL.exe identity (fl::module_base() != 0),
 // then both windows at base + RVA before any write (A's 41 bytes exactly; B's 42 with its one fixup equal to base +
 // 0x1a83b0), then B with one lock cmpxchg8b and A with the plain copy (its rel32 crosses a qword: only while the
 // routine cannot run, before the first Present), each read back. Both or none: when A fails, B is restored.
-// shutdown() (dynamic unload only) restores A then B, each only over this module's five bytes.
+// shutdown() restores A then B, each only over this module's five bytes; the fixture calls it. The FL loader does not
+// (its DLL_PROCESS_DETACH unload calls are AP-only, as for sun_occlusion_fl), and the module is pinned before the first
+// redirect goes live, so on FL the redirects stay until process exit.
 #include "engine_effects_fl.h"
 #include "../../proxy/config.h"
 #include "../../proxy/engine_effects_option.h"
@@ -42,6 +45,9 @@ const char* state_ = "not_initialized";
 const char* site_state_[2] = {"not_initialized", "not_initialized"};
 bool written_[2] = {false, false};
 engine_patch::CallSite site_[2]{}; // 0 = A, 1 = B
+#ifdef X3M_ENGINE_EFFECTS_FL_FIXTURE
+std::uintptr_t fixture_base_ = 0; // initialize()'s base instead of fl::module_base() when nonzero
+#endif
 
 // Pins this DLL for the process lifetime (documented: GET_MODULE_HANDLE_EX_FLAG_PIN): the engine calls into it.
 bool pin_self() {
@@ -196,7 +202,11 @@ bool initialize() {
     option::Mode mode = option::Mode::plumes;
     bool applied = false, parsed = true;
     const char* reason = nullptr;
+#ifdef X3M_ENGINE_EFFECTS_FL_FIXTURE
+    const std::uintptr_t base = fixture_base_ ? fixture_base_ : x3m::fl::module_base();
+#else
     const std::uintptr_t base = x3m::fl::module_base();
+#endif
     if (length >= setting_capacity) {
         reason = "too_long";
         parsed = false;
@@ -238,6 +248,11 @@ bool shutdown() {
 bool installed() {
     return installed_;
 }
+#ifdef X3M_ENGINE_EFFECTS_FL_FIXTURE
+void fixture_base(std::uintptr_t base) {
+    fixture_base_ = base;
+}
+#endif
 const char* state() {
     return state_;
 }
