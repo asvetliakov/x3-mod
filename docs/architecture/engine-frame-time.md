@@ -2115,3 +2115,21 @@ Steps 0 and 1 of [taa-high-resolution.md](taa-high-resolution.md) ("S1 / S2 impl
 - **S2 stopped.** RT2 `.g` carries the sun share and `.b` the view depth, both read beside `.r`, so `G32R32F` cannot
   hold the lane.
 
+
+## FL run 18: per-frame CPU mitigations (2026-11-02)
+
+FL run 18 (engine plumes port step 1) ran at p50 4.99 / p90 10.28 ms against run 17's 4.66 / 7.73 ms; per sector and
+draw bin the gap grows with draws and with lit and plume records (the run 18 triage; counts and costs in
+`verification/results/fl-run18-triage/perf_mitigations.txt`). The code reviews named three avoidable per-frame CPU
+items. Taken: the plume recogniser took the full `object_trace::current` snapshot (four validated reads, two atomics)
+for every blended Z-write-off draw inside an object scope before the `flags130 & 0x4000001` test rejected it (run 18:
+75.5 of 88.3 candidates a frame on average, 977 of 995 at p99); it now reads the node span alone
+(`object_trace::scope_flags`, the same validation, so verdicts and census are unchanged) and takes the snapshot only
+for a draw not decided as `not_jet`: 67.6 → 20.0 ns per not-jet draw (measured natively), about 2.1 µs a frame at the
+p50 candidate count and 46.5 µs at p99 (inferred). Evaluated and not taken: caching the FL engine and registry
+pointers once per frame (two reads 21.1 → 4.4 ns per `current()` call, about 11.6 µs a frame) because an unhooked
+registry change would be seen one frame late; and a spin-lock backoff with `VirtualQuery` outside the `engine_memory`
+lock (one read 10.5 → 9.8 ns, noise; no contention measured) because the gain is unmeasured and the change would void
+Wine-bound records of `engine_memory.cpp`. All of these are a small share of the 0.3–3.7 ms regression, so the steady
+drop is not these CPU items; the `gpu_sync_timing` and `volumetric_fog_timing` ini keys (now in the template) let the
+next flight measure the GPU stages. Ledger: `docs/verification/farnhams-legacy.md`, "FL run 18 performance".
