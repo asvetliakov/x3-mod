@@ -978,8 +978,24 @@ rollback `rollback-d3d9\d3d9.dll.run15` = `c48809c8…`; `X3FL.exe` unchanged (`
 `own_sun` key, so default on; `debug = 1`). Record: `verification/results/fl-run16/candidate.json`. Also carries the
 no-probe fail-safe for AP (not installed on AP; AP stays on release 1.8.5).
 
-**FL run 16 A (open), The Hole:** the same procedural sun as AP 1.8.5 should replace the engine sun and its lens chain;
-the grey lens over fog of run 15 should be gone. Fly the hull and a station across the sun once; cross into fog.
-Expect `own_sun status=ready edition=fl … reason=ok`, `own_sun_frame … drawn>0 starved=0`, no `starved=1`. If the sun
-is the engine's instead, the fail-safe fired (`own_sun_state reason=no_probe` once, `starved=1` on the frame rows):
-the FL main view is probed after the resolve, and step 3 needs the probe order fixed.
+**FL run 16 A flown (2026-11-02).** User: "It works but one issue": after looking away from the sun and back, the
+engine's sun shows for 3–4 s before ours replaces it, in foggy and clear sectors. Log (session 05:2x, 29,681 frames,
+225 s, exception 0): `own_sun status=ready edition=fl reason=ok probe=active`; with the sun on screen the stage drew
+every active frame (936/936), so the FL probe order is correct; `own_sun_state reason=no_probe sun=engine misses=8
+retry_frames=600` 12 times, `starved=1` on most frame rows, 35 retries (measured). Cause: the engine does not probe an
+off-screen sun, so the no-probe guard (review finding F3) counted the normal off-screen case as a misorder, withheld
+the latch and let it through only every 600 frames (about 4.5 s at the flight's frame rate). Fix in FL run 17.
+## FL run 17 — late-probe rule replaces the no-probe guard (installed 2026-11-02)
+
+Merge `692ee5e7d` (`2ab985419`): `own_sun::core::ProbeGuard`, the `starved=`/`retries=` fields and the
+`own_sun_state reason=no_probe` row deleted on both editions; at the scene-end resolve a latched frame without a hidden
+answer clears the latch until Present (`own_sun_hook::close_own_sun_frame()`), so a probe after the resolve forwards
+to the engine; eligible probes forwarded that way are counted as `late=` on `own_sun_frame`. Build 0 warnings,
+`generate.py --check` PASS, five host modules 78 tests 0 failing, native FL fixture 806/0 with 11/11 mutations failing
+(measured). Installed `C:\X3FL\d3d9.dll` = `afd77c47…` (55,324,774 B), rollback `rollback-d3d9\d3d9.dll.run16` =
+`ed8d50c7…`; `x3m.ini` unchanged. Record: `verification/results/fl-run17/candidate.json`. AP is not reinstalled
+(release 1.8.5 never carried the guard; the late rule reaches AP with its next build).
+
+**FL run 17 A (open), The Hole:** look away from the sun and back several times, in a clear and a foggy sector: ours
+must be there on the first frame the sun re-enters the view, with no engine sun in between. Expect `own_sun_frame …
+drawn>0 late=0`; `late>0` with the engine's sun visible would mean a probe after the resolve.
