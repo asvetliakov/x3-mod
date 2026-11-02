@@ -1,0 +1,143 @@
+log=/home/asvetl/x3m-logs/fl-run23-occlusion-off.log frames=39482
+== Q1 captures (draws=application draws, issued=reached device)
+capture1 frames=5025-5032 draws=61-61 not_issued=1-1 dt_median60=4.0 fog=0
+capture2 frames=5548-5555 draws=66-67 not_issued=1-1 dt_median60=4.0 fog=0
+capture3 frames=26863-26870 draws=201-211 not_issued=3-3 dt_median60=4.0 fog=1
+fogged draws: n=14108 min=1 med=176.0 p90=297 max=381
+fogged draws-issued: n=14108 min=0 med=1.0 p90=4 max=17
+fogged dt_ms: n=14108 min=3 med=4.0 p90=4 max=788
+clear(>20) draws: n=25364 min=24 med=83.0 p90=178 max=238
+clear(>20) draws-issued: n=25364 min=0 med=1.0 p90=3 max=10
+clear(>20) dt_ms: n=25364 min=1 med=4.0 p90=4 max=9268
+== once rows
+  lod_material_strength_mode requested=unset enabled=1
+  cull_small_props requested=unset px=4.0000 configured=1 reason=ok edition=fl
+  occlusion_cull_config requested=unset configured=0 reason=off pool=1024 retest=8 retest_setting=- retest_status=ok engine=0 engine_status=off edition=fl
+  lod_material_strength_texture_hook state=installed dll=d3dx9_43.dll slot_rva=0x00150374 edition=fl
+  lod_material_strength_configured enabled=1 texture_hook=1
+  cull_small_props_device device=1 attached=1 px=4.0000 edition=fl model_offset=0x144
+  lod_strength_session device=1 twins=15 refused=0 failed=0 transform_ms=2.79 create_ms=11.64 draws=513230 marked_seen=86,86,86,86,0 marked=513230 no_twin=0 no_twin_keys=0 no_twin_keys_dropped=0 at=exit
+== Q2 lod_strength_texture rows=16 distinct_textures=16
+  (slot,lane,k,payload,stored,size): {('0', '0', '0', '0', '0', '699192'): 4, ('2', '0', '0', '0', '0', '1398256'): 4, ('3', '3', '2', '1', '1', '1398256'): 4, ('1', '0', '0', '0', '0', '1398256'): 4}
+  lod_strength_frame rows=38 seen_first=3,3,3,3,0 seen_max=86,86,86,86,0 table_max=80 twins_last=15 session_draws_last=513230 rows_with_no_twin/refused/failed=0
+  lod_strength_variant rows=15 forms={'swiden': 8, 'eswiden': 5, 'owiden': 2} refusals={'none': 15}
+== Q3 cull_small_props_frame rows=128
+  totals: {'draws': 78466, 'culled': 64, 'kept': 78402, 'kept_size': 78389, 'no_bounds': 13, 'unbounded': 0, 'unresolved': 0, 'deferred': 0, 'exempt_own': 0, 'exempt_target': 0, 'no_scope': 53558, 'resolves': 3685, 'walks': 4, 'frames': 38400}
+  draws per window: {'600': 121, '764': 1, '900': 1, '697': 1, '1057': 1, '1029': 1, '760': 1, '659': 1} no_scope per window: n=128 min=300 med=300.0 p90=900 max=900
+  resolves per window: n=128 min=6 med=13.5 p90=24 max=620
+== Q4 occlusion_cull_session rows=0 (cumulative)
+== Q5 attached=0 rows: 0
+== Q5 reason= not ok:
+   38867 engine_stage:reason=armed ex: engine_stage device=1 frame=615 armed=1 reason=armed ran=0 records=0 nozzles=0 vertices=0 discs=0 floored=0 floor_unknown=0 unfloored=0 far=0 far_jets=0 far_records=0 far_engine=0 far_overflow=0 far_dropped=0 far_disarmed=0 far_duplicates=0
+   38531 shadow_sun_frame:reason=point ex: shadow_sun_frame device=1 frame=615 source=point reason=point poll=ok rederived=5 rederived_mask=31 carried=0 checks=8 disagreements=0 agreement_deg=0.000672 distance=15714318.3 cascades=5
+   38526 camera_state:reason=0 ex: camera_state device=1 frame=616 status=active reads=2 valid=1 read_failure=0 failure=0 projection=055d1818 view=055d1230 p00=0.3750014 p11=1.333333 p20=0 p21=0 r00=-0.3095551 r01=-0.2926483 r02=0.9045105 r10=-0.9506531 r11=0.09596252 r12=-0
+     951 camera_state:reason=1 ex: camera_state device=1 frame=0 status=active reads=1 valid=0 read_failure=0 failure=0 projection=00000000 view=00000000 p00=0 p11=0 p20=0 p21=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 t=0,0,0 background_valid=0 background_p00=0
+     610 engine_stage:reason=pending ex: engine_stage device=1 frame=0 armed=0 reason=pending ran=0 records=0 nozzles=0 vertices=0 discs=0 floored=0 floor_unknown=0 unfloored=0 far=0 far_jets=0 far_records=0 far_engine=0 far_overflow=0 far_dropped=0 far_disarmed=0 far_duplicates=0
+     400 telemetry_summary:reason=interval ex: telemetry_summary device=0 frame=0 reason=interval qpc=830707747806 since_start_us=10142719.400 interval_us=10142719.400 position_suppressed=0 cursor_changes_suppressed=0
+     380 shadow_replay_sun_point:reason=point ex: shadow_replay_sun_point device=1 frame=615 source=point reason=point poll=ok light=-13787498.8,3221116.23,-6788207.75 native=-1378749877,322111623,-678820775 distance=15714318.3 checks=8 disagreements=0 agreement_deg=0.000672 rederived=5 ca
+     114 hull_lightmap_widen_held:reason=levels ex: hull_lightmap_widen_held device=1 frame=5025 index=18 ps=1b54cbfa2155b61c stage=3 reason=levels levels=1 size=32x32
+      64 volumetric_fog_memory:reason=periodic ex: volumetric_fog_memory device=1 frame=1200 reason=periodic private_bytes=1662889984 avail_virtual=1820516352 avail_phys=10327924736 texture_mem=2852126720 largest_free_virtual=-1 walk_us=0 capped=0
+      41 volumetric_fog_frame:reason=card_refused ex: volumetric_fog_frame device=1 frame=615 applied=0 reason=card_refused strength=0.0200 density_scale=1.000 cards=0 profile=0 field_generation=0 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=0 mote_c
+      39 window_trace_flush:reason=focus_or_pump_gap ex: window_trace_flush frame=6 reason=focus_or_pump_gap written=1 expired=0 overwritten=0
+      24 shadow_cascade_set:reason=capture ex: shadow_cascade_set device=1 frame=5025 reason=capture own_node=34124960 own_status=0 own_radius=59.1918182 e0=250 texel0=0.244140625 depth_behind0=512 active_mask=31 apply_slots=0,1,2,3,4 slid=0 changed=0 extents=250,1500,7500,37500,150000 
+      21 log_writer:reason=period ex: log_writer reason=period frames=0 rows=36 bytes=4785 dropped_total=0 format_us=49.2 format_max_us=8.10 format_us_per_frame=0.00 writes=3 write_bytes=13738 write_us=107.8 write_max_us=86.7 write_failures=0 write_hist=1,2,0,0,0,0 buffer_bytes
+      20 own_sun_frame:reason=armed ex: own_sun_frame device=1 frame=615 active=1 armed=1 reason=armed frames=616 active_frames=0 drawn=0 no_probe=0 answered=0 forwarded=0 late=0 ev=0.000 ev_limit=17.162 poll=ok poll_source=lane skip=none u=0.00000 v=0.00000 view_z=0 radius_px=0.
+      16 hull_emission_refused:reason=blend ex: hull_emission_refused device=1 frame=615 vs=4944d81dfe531b37 ps=740346590fe7bff5 reason=blend blend=1 src=5 dst=6 op=1 sepalpha=0 srgb=0
+       8 shadow_replay_depth_refused:reason=state ex: shadow_replay_depth_refused device=1 frame=20077 reason=state detail=sun_changing result=00000000 stage=0
+       5 volumetric_fog_sector:reason=no_cockpit ex: volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000
+       5 camera_state:reason=3 ex: camera_state device=1 frame=615 status=active reads=2 valid=1 read_failure=0 failure=0 projection=055d1818 view=055d1230 p00=0.3750014 p11=1.333333 p20=0 p21=0 r00=-0.3095551 r01=-0.2926483 r02=0.9045105 r10=-0.9506531 r11=0.09596252 r12=-0
+       4 shadow_cascade_set:reason=node ex: shadow_cascade_set device=1 frame=617 reason=node own_node=34124960 own_status=0 own_radius=59.1918182 e0=250 texel0=0.244140625 depth_behind0=512 active_mask=31 apply_slots=0,1,2,3,4 slid=0 changed=0 extents=250,1500,7500,37500,150000 caps
+       3 volumetric_fog_sector:reason=clear ex: volumetric_fog_sector device=1 frame=615 profile=0 reason=clear sector=0e7f0900 index=99 generation=1 density_scale=1.000
+       2 telemetry_summary:reason=periodic ex: telemetry_summary device=1 frame=19560 reason=periodic qpc=831754374861 since_start_us=114805424.900 interval_us=26.700 position_suppressed=0 cursor_changes_suppressed=0
+       1 motion_capture_mode:reason=write_exclusion_unavailable ex: motion_capture_mode requested=0 enabled=0 reason=write_exclusion_unavailable scope=private_rigid_diagnostic temporal_consumer=0
+       1 occlusion_cull_config:reason=off ex: occlusion_cull_config requested=unset configured=0 reason=off pool=1024 retest=8 retest_setting=- retest_status=ok engine=0 engine_status=off edition=fl
+       1 engine_light_mode:reason=requested ex: engine_light_mode device=0 setting=- status=ok mode=on requested=1 reason=requested behind=0.50 reach=3.00 colour_scale=0.25 cap=1 constants=c55-c202 ships_max=256 plates_max=72 hold=60 hold_setting=- hold_status=ok
+       1 shadow_retention_device:reason=journal ex: shadow_retention_device device=1 mode=live enabled=0 reason=journal age_cap=7200 eps=0.05 orphan_probe=0 nodes=1024 records=4096 resources=1024 bytes=1850528
+       1 volumetric_fog_memory:reason=field_upload ex: volumetric_fog_memory device=1 frame=0 reason=field_upload private_bytes=108408832 avail_virtual=3616886784 avail_phys=11966672896 texture_mem=4205838336 largest_free_virtual=2141798400 walk_us=1625 capped=0 image=360914944 mapped=64229376 
+       1 volumetric_fog_families:reason=absent ex: volumetric_fog_families device=1 frame=0 event=absent families=0 packets=0 rows_disabled=0 bytes=0 reason=absent fallback=compiled_only path="C:\X3FL\x3m\fog-families.bin"
+       1 window_trace_flush:reason=first_present ex: window_trace_flush frame=0 reason=first_present written=0 expired=0 overwritten=0
+       1 window_trace_flush:reason=transition ex: window_trace_flush frame=5 reason=transition written=1 expired=0 overwritten=0
+       1 bloom_refusal:reason=scene_handoff ex: bloom_refusal reason=scene_handoff count=1 device=1 ordinary_signal=1
+       1 shadow_replay_sun_source:reason=point ex: shadow_replay_sun_source device=1 frame=615 source=point reason=point previous=none poll=ok
+       1 engine_plumes_state:reason=armed ex: engine_plumes_state device=1 frame=615 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+       1 own_sun_state:reason=armed ex: own_sun_state device=1 frame=615 armed=1 reason=armed sun=own
+       1 motion_output_taa_depth_fold:reason=resolve_mrt ex: motion_output_taa_depth_fold device=1 depth_fold=1 reason=resolve_mrt
+       1 motion_output_taa_box_resolution:reason=half ex: motion_output_taa_box_resolution device=1 frame=615 drawn=half reason=half width=5120 height=1440 target_create=00000000
+       1 screen_emission_additive_refused:reason=state ex: screen_emission_additive_refused device=1 frame=1500 index=11 reason=state
+       1 bolt_footprint_refused:reason=buffer ex: bolt_footprint_refused device=1 frame=1500 index=75 reason=buffer detail=1 primitives=66 stream0_bytes=1622016
+       1 volumetric_fog_cache:reason=prefill ex: volumetric_fog_cache device=1 frame=24940 event=epoch reason=prefill sector_key=0000000000000000 offset=0,0,0
+       1 volumetric_fog_sector:reason=foggreenoutlands ex: volumetric_fog_sector device=1 frame=24941 profile=2 reason=foggreenoutlands sector=bb9a8190 index=14 generation=1 density_scale=1.000
+       1 volumetric_fog_frame:reason=density_unprepared ex: volumetric_fog_frame device=1 frame=24941 applied=0 reason=density_unprepared strength=0.0200 density_scale=1.000 cards=1 profile=2 field_generation=1 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=
+       1 volumetric_fog_frame:reason=density_filling ex: volumetric_fog_frame device=1 frame=24942 applied=0 reason=density_filling strength=0.0200 density_scale=1.000 cards=1 profile=2 field_generation=1 sun=none shadow_maps=0 cpu_us=0.0 calls=0 result=00000001 restore=00000001 stage=0 motes=0 m
+       1 volumetric_fog_cache:reason=sample_gap ex: volumetric_fog_cache device=1 frame=39150 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+== Q5 nonzero flags (new kinds)
+    1703 screen_emission_additive_frame:refused ex: screen_emission_additive_frame device=1 frame=1500 admitted=1 refused=1 pairs=001 bolt_flag=1 bolt_flag_refused=0
+       7 screen_emission_additive_refused_window:refused ex: screen_emission_additive_refused_window device=1 frame=1799 frames=300 pair_draws=600 admitted=300 refused=300 apply_failures=0 not_reached=0 state=300 draw_shape=0 scene=0 no_fp16_target=0 no_variant=0 srgb_sampler=0 projected=0 dither=0 a
+       2 bolt_footprint:refused_buffer ex: bolt_footprint device=1 frame=1799 frames=300 draws=300 written=0 untouched=0 gated=299 instances=0 expanded=0 lengthened=0 widened=0 world_axis=0 disc=0 refused_period=0 refused_w=0 refused_buffer=1 refused_rows=0 refused_shape=0 refused_r
+       1 original_fill_mode:default ex: original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+       1 window_mode_config:default ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+       1 lod_occlusion:default ex: lod_occlusion site=002256c1 rva=0e56c1 edition=fl state=patched reason=ok mode=all setting=all write=atomic default=1
+       1 taa_thin_vote_configured:default ex: taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+       1 fade_rt2_owner_configured:default ex: fade_rt2_owner_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested=1
+       1 motion_output_taa_box_resolution:default ex: motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+       1 taa_thin_region_source:default ex: taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+       1 motion_output_taa:default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 motion_output_taa:far_clip_default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 emission_source_gain_frame:refused_state ex: emission_source_gain_frame device=1 frame=24941 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+== A/B load bins (draws>20, frame>=300, dt_ms<=100)
+clear overall dt: n=25049 p50=4 p90=4
+  clear issued[20,40) n=753 p50=4 p90=4
+  clear issued[40,60) n=5437 p50=4 p90=4
+  clear issued[60,80) n=6093 p50=4 p90=4
+  clear issued[80,100) n=3261 p50=4 p90=4
+  clear issued[100,120) n=1328 p50=4 p90=4
+  clear issued[120,140) n=2525 p50=4 p90=4
+  clear issued[140,160) n=1831 p50=4 p90=4
+  clear issued[160,180) n=1575 p50=4 p90=5
+  clear issued[180,200) n=1347 p50=4 p90=5
+  clear issued[200,220) n=523 p50=4 p90=6
+  clear issued[220,240) n=376 p50=4 p90=5
+  clear draws[20,40) n=605 p50=4 p90=4
+  clear draws[40,60) n=5468 p50=4 p90=4
+  clear draws[60,80) n=6028 p50=4 p90=4
+  clear draws[80,100) n=3425 p50=4 p90=4
+  clear draws[100,120) n=1336 p50=4 p90=4
+  clear draws[120,140) n=2270 p50=4 p90=4
+  clear draws[140,160) n=1952 p50=4 p90=4
+  clear draws[160,180) n=1573 p50=4 p90=5
+  clear draws[180,200) n=1339 p50=4 p90=4
+  clear draws[200,220) n=674 p50=4 p90=6
+  clear draws[220,240) n=379 p50=4 p90=5
+fogged overall dt: n=14099 p50=4 p90=4
+  fogged issued[80,100) n=589 p50=4 p90=4
+  fogged issued[100,120) n=3731 p50=4 p90=4
+  fogged issued[120,140) n=773 p50=4 p90=4
+  fogged issued[140,160) n=674 p50=4 p90=4
+  fogged issued[160,180) n=2768 p50=4 p90=4
+  fogged issued[180,200) n=1108 p50=4 p90=4
+  fogged issued[200,220) n=2375 p50=4 p90=4
+  fogged issued[220,240) n=110 p50=4 p90=4
+  fogged issued[240,260) n=294 p50=4 p90=4
+  fogged issued[260,280) n=90 p50=4 p90=4
+  fogged issued[280,300) n=321 p50=4 p90=4
+  fogged issued[300,320) n=512 p50=4 p90=4
+  fogged issued[320,340) n=113 p50=4 p90=5
+  fogged issued[340,360) n=482 p50=4 p90=5
+  fogged issued[360,380) n=140 p50=4 p90=5
+  fogged draws[80,100) n=305 p50=4 p90=4
+  fogged draws[100,120) n=3690 p50=4 p90=4
+  fogged draws[120,140) n=961 p50=4 p90=4
+  fogged draws[140,160) n=808 p50=4 p90=4
+  fogged draws[160,180) n=2541 p50=4 p90=4
+  fogged draws[180,200) n=701 p50=4 p90=4
+  fogged draws[200,220) n=2983 p50=4 p90=4
+  fogged draws[220,240) n=119 p50=4 p90=4
+  fogged draws[240,260) n=314 p50=4 p90=4
+  fogged draws[260,280) n=90 p50=4 p90=4
+  fogged draws[280,300) n=284 p50=4 p90=4
+  fogged draws[300,320) n=534 p50=4 p90=4
+  fogged draws[320,340) n=128 p50=4 p90=5
+  fogged draws[340,360) n=474 p50=4 p90=5
+  fogged draws[360,380) n=123 p50=4 p90=5
+  fogged draws[380,400) n=44 p50=4 p90=4
+== bolts

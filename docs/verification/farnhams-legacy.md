@@ -1490,6 +1490,18 @@ section; user decision 2026-11-02 "leave it off by default too"). Host: 4 module
 warnings (measured). Installed `C:\X3FL\d3d9.dll` = `647e8ebc…` (55,536,571 B), rollback `rollback-d3d9\d3d9.dll.run22` =
 `81dd4fb5…`. Record `verification/results/fl-run23/candidate.json`.
 
-**FL run 23 A (open):** any flight; fire a few shots at a distant target in open space (bolt recogniser check:
+**FL run 23 A (flown 2026-11-02, accepted):** three F8 (clear with distant capitals; same while firing; fogged sector).
+Log `/home/asvetl/x3m-logs/fl-run23-occlusion-off.log`, triage `verification/results/fl-run23/triage_log.py`, `bolts.py`
+(Opus low, measured): `occlusion_cull_config requested=unset configured=0 reason=off edition=fl`, no device row.
+Occlusion A/B at matched load (run 22 on vs run 23 off, `dt_ms` binned by issued draws in 20s, clear and fogged apart):
+p50 4 ms in every bin of both runs; p90 4–7 (on) vs 4–6 (off) clear, 5–7 (on) vs 4 (off) fogged at 160–240 issued:
+indistinguishable at the log's 1 ms resolution, if anything on is one quantum worse at p90 (inferred), the same verdict
+as the AP A/B of 2026-10-08; decision: default stays off, `occlusion_cull = on` remains the opt-in. Draws: fogged median
+176 (p90 297, n 14,108), clear 83. Bolts: `pair_draws=15,158 admitted=13,455 refused=1,703` (all `state`, 11 % vs AP's
+49 %), `bolt_flag=13,455`, `bolt_dropped=0` (AP 0 too), `bolt_footprint … gated=13,453` (chase camera not ported, so the
+footprint never writes), `bolt_copy` rows on the firing capture: the bolt pipeline behaves as on AP apart from the chase
+gate (inferred). No new fault, invalid or `attached=0` rows.
+
+Original brief: any flight; fire a few shots at a distant target in open space (bolt recogniser check:
 `screen_emission_additive_refused_window pair_draws>0`, `bolt_far_composite` rows). Expect `occlusion_cull_config
 requested=unset configured=0 reason=off edition=fl` and no `occlusion_cull_device` row. Tell me before relaunching.
