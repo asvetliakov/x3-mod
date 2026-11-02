@@ -12,7 +12,7 @@
 // also WH_CALLWNDPROCRET (the original handler's result, no subclassing) and
 // WH_GETMESSAGE (posted WM_MOUSEMOVE / WM_NCMOUSEMOVE counts). The hook
 // procedures keep the thread's last error and MXCSR (LightCallBoundary), make
-// no Win32 call besides CallNextHookEx and GetTickCount, and never log: they
+// no Win32 call besides CallNextHookEx and GetTickCount (the WM_ACTIVATEAPP focus read below excepted), and never log: they
 // write a bounded ring (1024 entries) that the Present flushes at the device's
 // first Present (reason=first_present), on a transition message to the device
 // window (entries older than 4 s are dropped); messages to the thread's other windows (the
@@ -20,7 +20,12 @@
 // Removed at device destruction and at DLL detach.
 //
 // Rows: window_trace_scope (once), window_trace_hooks (install / remove),
-// window_msg, window_msg_frame, cursor_call (the EXE's SetCursor/SetCursorPos
+// window_msg, window_msg_frame, window_focus_lost / window_focus_gained (one per
+// WM_ACTIVATEAPP state change: the foreground window's pid, tid, class and title
+// length read in the return hook with documented user32 calls; the only Win32 reads
+// in a hook procedure besides GetTickCount), window_pump_gap (a gap of 1 s or more
+// between two messages the hooks see, the message that closed it), both flushed at
+// the next Present whatever their age, cursor_call (the EXE's SetCursor/SetCursorPos
 // imports through the light IAT rows), window_trace_flush, and cursor_snapshot
 // (change-only, every Present for 120 frames after the first Present and after
 // each transition). The first complete installation per process also arms

@@ -73,6 +73,40 @@ inline bool setcursor_row(SetCursorSummary& s, std::uint32_t now_ms, std::uint32
     return row;
 }
 
+// Message-pump gap watch (2026-11-02, the black main menu after exit): the time between
+// consecutive messages the window thread's hooks see (sent messages through WH_CALLWNDPROC,
+// retrievals through WH_GETMESSAGE). A gap of pump_gap_row_ms or more is one window_pump_gap
+// row when it closes; Windows treats a top-level window whose thread has not retrieved a
+// message for 5 s as not responding (IsHungAppWindow) and may replace it with a ghost.
+// The gap is an upper bound on the time without pumping: an empty queue is not seen.
+constexpr std::uint32_t pump_gap_row_ms = 1000, hung_ms = 5000;
+struct PumpGap {
+    bool any = false;
+    std::uint32_t last = 0, process_max = 0;
+};
+// Returns the gap that the message at now closes when it is at least pump_gap_row_ms, else 0.
+inline std::uint32_t pump_observe(PumpGap& g, std::uint32_t now) {
+    const std::uint32_t gap = g.any ? now - g.last : 0;
+    g.any = true;
+    g.last = now;
+    if (gap > g.process_max) g.process_max = gap;
+    return gap >= pump_gap_row_ms ? gap : 0;
+}
+// WM_ACTIVATEAPP rows: one per change of the thread's activation state (the message goes to
+// every top-level window of the thread). state: 0 unknown, 1 active, 2 inactive.
+inline bool focus_row(std::uint32_t& state, bool active) {
+    const std::uint32_t next = active ? 1u : 2u;
+    if (state == next) return false;
+    state = next;
+    return true;
+}
+// The class name Windows gives the "not responding" stand-in window (Ghost).
+inline bool ghost_class(const char* name) {
+    const char* g = "Ghost";
+    while (*g && *name == *g) ++g, ++name;
+    return !*g && !*name;
+}
+
 // One Win32 cursor call by the game (the EXE's SetCursor / SetCursorPos imports),
 // recorded by the light rows only when the value changes; the per-op counts
 // cover every call. seq is written last (0 = empty slot).
