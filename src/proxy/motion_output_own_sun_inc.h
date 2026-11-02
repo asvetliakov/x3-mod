@@ -29,6 +29,7 @@ void MotionOutput::configure_own_sun(bool requested, float radius_u, float radia
     own_sun_armed_ = own_sun_ready_ = own_sun_frame_active_ = false;
     own_sun_failures_ = 0;
     own_sun_failed_out_ = false;
+    own_sun_guard_ = {};
     own_sun_reason_ = requested ? "pending" : "off";
     own_sun_state_logged_ = false;
     own_sun_no_probe_logged_ = false;
@@ -156,6 +157,10 @@ HRESULT MotionOutput::own_sun_stage_callback(void* context, IDirect3DDevice9*) n
 void MotionOutput::own_sun_no_probe() noexcept {
     ++own_sun_period_.no_probe;
     own_sun_skip_ = "no_probe";
+    // The fail-safe: the eighth consecutive miss withholds the latch (the engine's sun returns), one --debug row.
+    if (own_sun::core::probe_outcome(own_sun_guard_, false, frame_) && log_tier::cached_debug)
+        log("own_sun_state device=%llu frame=%llu armed=1 reason=no_probe sun=engine misses=%u retry_frames=%llu", id_,
+            frame_, own_sun_guard_.misses, static_cast<unsigned long long>(own_sun::core::no_probe_retry_frames));
     if (own_sun_no_probe_logged_) return;
     own_sun_no_probe_logged_ = true;
     log("own_sun_no_probe device=%llu frame=%llu note=chain_not_hidden_stage_off", id_, frame_);
@@ -246,9 +251,10 @@ void MotionOutput::own_sun_frame(bool active) noexcept {
     // The meter's reaction (note section 2): the EV the tonemap consumes and the highlight guard's limit of the last meter.
     const float ev = hdr_ ? hdr_->exposure().ev() : 0.f, ev_limit = hdr_ ? hdr_->exposure().ev_limit() : 0.f;
     if (log_tier::cached_debug)
-        log("own_sun_frame device=%llu frame=%llu active=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f core=%.3f,%.3f,%.3f glow=%.3f,%.3f,%.3f rays=%.2f result=%08lx calls=%u stage_us=%.1f",
+        log("own_sun_frame device=%llu frame=%llu active=%u armed=%u reason=%s frames=%u active_frames=%u drawn=%u no_probe=%u starved=%u retries=%u answered=%lu forwarded=%lu ev=%.3f ev_limit=%.3f poll=%s poll_source=%s skip=%s u=%.5f v=%.5f view_z=%.0f radius_px=%.1f colour=%.4f,%.4f,%.4f fog_t=%.4f core=%.3f,%.3f,%.3f glow=%.3f,%.3f,%.3f rays=%.2f result=%08lx calls=%u stage_us=%.1f",
         id_, frame_, unsigned(active), unsigned(own_sun_armed_), own_sun_reason_, own_sun_period_.frames,
-        own_sun_period_.active, own_sun_period_.drawn, own_sun_period_.no_probe,
+        own_sun_period_.active, own_sun_period_.drawn, own_sun_period_.no_probe, unsigned(own_sun_guard_.starved),
+        own_sun_guard_.retries,
         static_cast<unsigned long>(c.own_sun_hidden - own_sun_answered_seen_),
         static_cast<unsigned long>(c.original - own_sun_forwarded_seen_), double(ev), double(ev_limit),
         sun_light_poll::status_name(own_sun_sample_.status), own_sun_poll_source_, own_sun_skip_, double(d.u), double(d.v),

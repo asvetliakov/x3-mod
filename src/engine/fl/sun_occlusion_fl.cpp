@@ -1,5 +1,5 @@
 // FL edition of x3m::own_sun_hook (src/proxy/own_sun_hook.h; the ap target keeps src/proxy/own_sun_hook.cpp):
-// the flare probe hook and the lens bracket in X3FL.exe (docs/architecture/farnhams-legacy-sun-occlusion.md;
+// the flare probe hook and the lens bracket in X3FL.exe (docs/architecture/own-sun-pass.md sections 8 and 14;
 // sites, ABI and gates: docs/reverse-engineering/fl/sun-occlusion.md, "Verified hook sites and ABI"). The probe call is
 // claimed when the own sun is requested (request_own_sun()) or the lens bracket is wanted (the lens-flare gain or the
 // fog's transmittance); the lens call only for the bracket (the own sun never touches it, own-sun-pass.md section 8).
@@ -575,6 +575,12 @@ void set_own_sun_frame(bool active) {
 }
 bool own_sun_hidden() {
     return patched_ && own_sun_hidden_seen_ && own_sun_hidden_frame_ == frame_;
+}
+bool bracket_installed() {
+    return patched_ && lens_site_.patched_in;
+}
+bool main_view_known() {
+    return patched_ && (addresses_.main_view != nullptr || registry_slot_ != 0);
 }
 Counters counters() {
     Counters c = counters_;

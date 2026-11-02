@@ -5842,7 +5842,7 @@ void initialize_log(HMODULE module) {
     // probe's call 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim
     // except X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). Both need the route (X3M_MOTION_OUTPUT=1). FL
     // edition: base+0x8af0a and base+0x8bcb7 (src/engine/fl/sun_occlusion_fl.cpp,
-    // docs/architecture/farnhams-legacy-sun-occlusion.md), same window: the probe for the own sun or the bracket, the
+    // docs/architecture/own-sun-pass.md section 8), same window: the probe for the own sun or the bracket, the
     // lens call for the bracket only.
     {
         wchar_t value[32]{};
@@ -5892,6 +5892,10 @@ void initialize_log(HMODULE module) {
         own_sun_hook::set_listener(&sun_lens_begin, nullptr);
         const bool sun_installed = own_sun_hook::initialize(lens_gain_wanted || volumetric_fog_requested);
         own_sun_on = own_sun_requested && motion_output_requested && own_sun_radiance > 0.f && sun_installed;
+        // Without a main-view source (FL: the registry slot not admitted) nothing is eligible: the stage would never
+        // draw, so the own sun stays off and the engine's sun is vanilla.
+        const bool own_sun_main_view = own_sun_hook::main_view_known();
+        own_sun_on = own_sun_on && own_sun_main_view;
         // probe= is the hook's state: AP the own_sun_hook row's reason, FL the fl.sun_occlusion row's status.
         log("own_sun status=%s edition=" X3M_OWN_SUN_EDITION " requested=%u reason=%s probe=%s radius_u=%.4f radiance=%.3f rays=%.2f",
             own_sun_on ? "ready" : own_sun_requested ? "unavailable" : "off", own_sun_requested ? 1u : 0u,
@@ -5899,13 +5903,17 @@ void initialize_log(HMODULE module) {
             : !own_sun_requested           ? "setting"
             : !motion_output_requested     ? "route_off"
             : !(own_sun_radiance > 0.f)    ? "radiance_zero"
-                                           : "probe",
+            : !sun_installed               ? "probe"
+                                           : "main_view",
             own_sun_hook::state(), double(own_sun_radius), double(own_sun_radiance), double(own_sun_rays));
         if (lens_gain_wanted && !sun_installed) lens_gain_reason = "bracket_unavailable";
         lens_flare_gain_value = lens_gain_wanted && sun_installed ? lens_gain : 1.f;
         lens_flare_fog = volumetric_fog_requested && sun_installed;
+        // bracket= is the lens claim: the hook's state when the lens call is claimed or nothing installed, probe_only
+        // when only the probe is (FL, the own sun alone).
         log("lens_flare_gain value=%.4f configured=%u reason=%s bracket=%s fog=%u", double(lens_gain), lens_flare_gain_value < 1.f ? 1u : 0u,
-            lens_gain_reason, own_sun_hook::state(), lens_flare_fog ? 1u : 0u);
+            lens_gain_reason, sun_installed && !own_sun_hook::bracket_installed() ? "probe_only" : own_sun_hook::state(),
+            lens_flare_fog ? 1u : 0u);
     }
 #if !X3M_EDITION_FL
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258,

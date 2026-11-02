@@ -88,6 +88,7 @@ asm(".text\n\t.globl _fl_fake_probe\n_fl_fake_probe:\n\t" RECORD_ENTRY
     "movl $0x0aa0beef,%eax\n\tret\n\t"
     // Another callee (the claims must refuse a rel32 that names it).
     ".globl _fl_other_target\n_fl_other_target:\n\tret\n\t");
+extern "C" int __cdecl x3m_fl_sun_probe_decide(const uint32_t* record, const uint32_t* view); // the probe handler
 extern "C" void fl_fake_probe();
 extern "C" void fl_fake_lens();
 extern "C" void fl_other_target();
@@ -587,6 +588,7 @@ int main() {
     main_view_cases();
     check(so::install_at(addresses(), false) && so::installed() && !so::logging() && !std::strcmp(so::state(), "active"),
           "both calls claimed");
+    check(so::bracket_installed() && so::main_view_known(), "both claimed: the bracket installed, the main view known");
     so::fixture_log_status();
     check(row_has("fl.sun_occlusion status=active ") && row_has(" probe=base+0x8af0a lens=base+0x8bcb7 ") &&
               row_has(" probe_write=atomic lens_write=plain ") && row_has(" log=0 bracket=0 ") && row_has(" anchors=17 "),
@@ -753,10 +755,21 @@ int main() {
         so::set_own_sun_frame(true);
     }
     check(so::shutdown() && unchanged() && !so::installed() && !std::strcmp(so::state(), "restored"), "exact restore");
-    so::set_own_sun_frame(true);
-    probe_answer = 0;
-    probe(view, 2, "after restore the latch is refused (nothing installed): the vanilla call");
-    check(!so::own_sun_hidden(), "after restore: not hidden");
+    // Unpatched, the latch is refused: the handler (called directly, as the thunk would) takes the early forward
+    // before any read and answers nothing; the counters show no eligibility test and no hidden answer.
+    {
+        so::set_own_sun_frame(true);
+        so::present(0);
+        const so::Counters c0 = so::counters();
+        SetLastError(0x145);
+        const int decision = x3m_fl_sun_probe_decide(record, view);
+        const so::Counters c1 = so::counters();
+        check(decision == 2 && GetLastError() == 0x145, "unpatched latch: the handler forwards, LastError kept");
+        check(c1.probes == c0.probes + 1 && c1.original == c0.original + 1 && c1.own == c0.own &&
+                  c1.own_sun_hidden == c0.own_sun_hidden && !so::own_sun_hidden(),
+              "unpatched latch: early forward, no eligibility test, no hidden answer, own_sun_hidden() false");
+        check(!so::bracket_installed() && !so::main_view_known(), "unpatched: no bracket, no main-view source");
+    }
     // The own sun without the bracket: initialize installs (here: refuses on the identity) for the own sun alone.
     check(!so::initialize(false) && row_has("fl.sun_occlusion status=executable_mismatch ") &&
               row_has(" bracket=0 own_sun=1 "),
@@ -777,6 +790,7 @@ int main() {
         so::fixture_log_status();
         check(row_has(" probe_write=atomic lens_write=none ") && row_has(" own_sun=1 "),
               "probe-only status row: lens_write=none");
+        check(!so::bracket_installed() && so::main_view_known(), "probe-only: no bracket, the main-view source known");
         check(probe_site[0] == 0xe8 && std::memcmp(probe_site, probe_original, 5) && !std::memcmp(lens_site, lens_original, 5),
               "probe-only: the lens call byte for byte vanilla");
         so::set_own_sun_frame(true);

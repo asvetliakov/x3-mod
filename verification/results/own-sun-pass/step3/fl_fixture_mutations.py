@@ -28,6 +28,8 @@ MUTATIONS = {
     'lens_claimed_without_bracket': ('    if (with_lens && !engine_patch::claim_call(lens_site_',
                                      '    if (!engine_patch::claim_call(lens_site_'),
     'early_exit_ignores_latch': ('(!own_sun_frame_ && !log_)', '(!log_)'),
+    'latch_while_unpatched': ('    own_sun_frame_ = patched_ && own_sun_wanted_ && active;',
+                              '    own_sun_frame_ = own_sun_wanted_ && active;'),
 }
 spec = importlib.util.spec_from_file_location('test_fl_sun_occlusion',
                                               ROOT / 'verification/analysis/test_fl_sun_occlusion.py')

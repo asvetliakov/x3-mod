@@ -71,7 +71,7 @@ class FlSunOcclusionNativeFixture(unittest.TestCase):
         self.assertNotIn('FAIL ', out)
         self.assertRegex(out, r'TIMING native_probe_ns=[\d.]+ forward_ns=[\d.]+ eligible_forward_ns=[\d.]+ .* '
                               r'hidden_ns=[\d.]+ own_frame_forward_ns=[\d.]+')
-        self.assertGreaterEqual(int(re.search(r'RESULT PASS checks=(\d+)', out).group(1)), 776)  # step 3: 464 -> 776
+        self.assertGreaterEqual(int(re.search(r'RESULT PASS checks=(\d+)', out).group(1)), 766)  # step 3: 464 -> 766
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
         # 874 anchor bytes: 822 outside the 13 relocated operands, 52 inside; every single-bit flip refused.
         self.assertIn('ANCHOR anchors=17 flips=822 refused=822 operand_flips=52 operand_refused=52', out)
