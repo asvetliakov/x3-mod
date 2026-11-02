@@ -16,7 +16,7 @@
 // five jump bytes in one aligned qword: lock cmpxchg8b), a read-back of those five bytes, and the stub pushed in front
 // of the tail. Any failure after the write puts the original five bytes back (readback_rolled_back, chain_failed), or
 // keeps the site registered when even that fails (rollback_failed; shutdown() tries again). No other consumer chains
-// on FL (lens_flare_cull and occlusion_engine_cull are not ported: chain_stub/site_chainable refuse, edition_fl).
+// on FL (the gain-0 engine cull was deleted on 2026-11-02 and occlusion_engine_cull is not ported: chain_stub/site_chainable refuse, edition_fl).
 // Nothing here runs inside the engine's pass but the emitted stub (it calls nothing while far jets are fenced). shutdown() is for the fixture: the FL loader's DLL_PROCESS_DETACH unload calls are AP only, and the module is
 // pinned before the jump goes live, so on FL the stub stays until process exit.
 #include "cull_small_parts_fl.h"
