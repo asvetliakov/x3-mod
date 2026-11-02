@@ -1,0 +1,44 @@
+log=/home/asvetl/x3m-logs/fl-run20-culls.log frames=27902 fog_rows=48 fog_rows_applied=6
+== Q1 captures
+capture1 frames=7296-7303 draws_first=354 draws_range=354-354 dt_median60=10.0 fog=0 fogrow_near={6600: 0, 7200: 0, 7800: 0}
+capture2 frames=9864-9871 draws_first=130 draws_range=72-130 dt_median60=5.0 fog=0 fogrow_near={9600: 0, 10200: 0}
+capture3 frames=25483-25490 draws_first=554 draws_range=544-555 dt_median60=9.0 fog=1 fogrow_near={25200: 1, 25800: 1}
+capture4 frames=26925-26932 draws_first=428 draws_range=426-429 dt_median60=6.0 fog=1 fogrow_near={26400: 1, 27000: 1}
+fogged_span=24053-27569
+fogged draws: n=3517 min=1 med=468 p90=545 max=570
+== Q5 fogged dt_ms: n=3517 min=4 med=7 p90=12 max=916
+== Q2 watch kinds: {'terran_station_lod': 1, 'lod_occlusion': 1, 'cull_small_parts': 1, 'cull_small_parts_value': 3, 'cull_small_parts_frame': 32}
+cull_small_parts_frame culled: n=32 min=2 med=486.0 p90=606 max=628
+cull_small_parts_frame dock_culled: n=32 min=0 med=0.0 p90=0 max=0
+cull_small_parts_frame exempt_bullet: n=32 min=0 med=0.0 p90=0 max=0
+cull_small_parts_frame frames: [7296, 7297, 7298]... sources=Counter({'scene': 32}) fallbacks=Counter({'none': 32})
+== Q3 nonzero flags
+   26914 hull_emission_frame:refused_blend ex: hull_emission_frame device=1 frame=652 gain=1 admitted=2 refused_blend=38 refused_variant=0 programs=100000 refused_other=0 refused_routed=0 refused_unknown=0 refused_state=0 bind_failures=0 opaque=36 alpha=2 toggled=1
+   26910 shadow_replay_candidates:footprint_refused3 ex: shadow_replay_candidates device=1 frame=653 routed=185 zwrite=183 slice0=141 bounds=26 origin=7 fallback=115 managed=141 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=141 capped=0 reads=19 serial_changed=0 readonly_
+   26910 shadow_replay_candidates:footprint_refused4 ex: shadow_replay_candidates device=1 frame=653 routed=185 zwrite=183 slice0=141 bounds=26 origin=7 fallback=115 managed=141 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=141 capped=0 reads=19 serial_changed=0 readonly_
+   26310 shadow_replay_candidates:footprint_refused2 ex: shadow_replay_candidates device=1 frame=654 routed=185 zwrite=183 slice0=140 bounds=45 origin=7 fallback=95 managed=140 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=140 capped=0 reads=9 serial_changed=0 readonly_af
+   13027 thin_vote_frame:invalidated ex: thin_vote_frame device=1 frame=14875 lane=1 draws=140 opaque=48 known=0 voted=0 min_alpha=1.0000 max_unvoted_fraction=0.0000 unreadable=0 missed=48 queued=16 dropped=31 no_scale=0 draw_us=0.00 reads=815 measured=814 unreadable_total=1 retri
+    4157 engine_frame:order_invalid ex: engine_frame device=1 frame=998 mode=plumes candidates=23 not_jet=21 records=2 suppressed=2 forwarded_unscoped=0 forwarded_snapshot=0 forwarded_opaque=0 forwarded_state=0 forwarded_overflow=0 forwarded_native=0 forwarded_patch_missing=0 for
+    2162 hull_emission_frame:refused_other ex: hull_emission_frame device=1 frame=5 gain=1 admitted=0 refused_blend=0 refused_variant=0 programs=000 refused_other=2 refused_routed=0 refused_unknown=0 refused_state=2 bind_failures=0 opaque=0 alpha=0 toggled=1
+    2162 hull_emission_frame:refused_state ex: hull_emission_frame device=1 frame=5 gain=1 admitted=0 refused_blend=0 refused_variant=0 programs=000 refused_other=2 refused_routed=0 refused_unknown=0 refused_state=2 bind_failures=0 opaque=0 alpha=0 toggled=1
+    1269 engine_light_frame:invalid ex: engine_light_frame device=1 frame=11736 ships=1 ships_drawn=1 nodes=3 candidates=5 draws_lit=5 no_twin=0 no_rows=0 records=4 main=1 rcs=0 brake=0 other_view=0 invalid=3 orphan=0 ships_dropped=0 logged=3 log_dropped=0 matched=3 singular=0 no
+     585 engine_shimmer:refused ex: engine_shimmer device=1 frame=5848 failed=0 ran=1 rects=0 candidates=4 small=1 behind=1 refused=2 offscreen=0 capped=0 scissor_px=0 copy_px=0 drew=0 px=1.50 result=00000001 step=0 skipped=no_rects calls=0 cpu_us=1.2 revert=00000001 revert_u
+      24 engine_light_variant:refused ex: engine_light_variant device=1 original=3c39d45636d95744 created=7f refused=00 mismatched=00 failed=00 words_max=4544 slots_max=821 slot_budget=4096 depth=1
+      24 engine_light_variant:mismatched ex: engine_light_variant device=1 original=3c39d45636d95744 created=7f refused=00 mismatched=00 failed=00 words_max=4544 slots_max=821 slot_budget=4096 depth=1
+       3 shadow_replay_candidates:footprint_refused1 ex: shadow_replay_candidates device=1 frame=23112 routed=104 zwrite=102 slice0=93 bounds=93 origin=5 fallback=0 managed=93 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=93 capped=0 reads=0 serial_changed=0 readonly_afte
+       1 original_fill_mode:default ex: original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+       1 window_mode_config:default ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+       1 lod_occlusion:default ex: lod_occlusion site=010956c1 rva=0e56c1 edition=fl state=patched reason=ok mode=all setting=all write=atomic default=1
+       1 taa_thin_vote_configured:default ex: taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+       1 fade_rt2_owner_configured:default ex: fade_rt2_owner_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested=1
+       1 motion_output_taa_box_resolution:default ex: motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+       1 taa_thin_region_source:default ex: taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+       1 motion_output_taa:default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 motion_output_taa:far_clip_default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 emission_source_gain_frame:refused_other ex: emission_source_gain_frame device=1 frame=23991 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+       1 emission_source_gain_frame:refused_state ex: emission_source_gain_frame device=1 frame=23991 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+== Q4 engine_stage/effects in capture frames
+capture1 engine_stage armed/records/far_records=Counter({('1', '1', '0'): 8}) engine_effects_rows=0
+capture2 engine_stage armed/records/far_records=Counter({('1', '1', '0'): 8}) engine_effects_rows=0
+capture3 engine_stage armed/records/far_records=Counter({('1', '3', '0'): 8}) engine_effects_rows=0
+capture4 engine_stage armed/records/far_records=Counter({('1', '1', '0'): 8}) engine_effects_rows=0

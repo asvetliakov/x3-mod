@@ -1,0 +1,33 @@
+log=/home/asvetl/x3m-logs/fl-run19a-engine-light-on.log frames=18205 fog_rows=16889 fog_rows_applied=3000
+== Q1 captures
+fogged_span=14864-17864
+fogged draws: n=3001 min=1 med=1317 p90=1533 max=1622
+== Q5 fogged dt_ms: n=3001 min=8 med=14 p90=18 max=833
+== Q2 watch kinds: {}
+== Q3 nonzero flags
+   16889 hull_emission_frame:refused_blend ex: hull_emission_frame device=1 frame=972 gain=1 admitted=2 refused_blend=66 refused_variant=0 programs=100000 refused_other=0 refused_routed=0 refused_unknown=0 refused_state=0 bind_failures=0 opaque=64 alpha=2 toggled=1
+   16885 shadow_replay_candidates:footprint_refused3 ex: shadow_replay_candidates device=1 frame=973 routed=408 zwrite=405 slice0=242 bounds=27 origin=7 fallback=215 managed=242 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=242 capped=0 reads=19 serial_changed=0 readonly_
+   16885 shadow_replay_candidates:footprint_refused4 ex: shadow_replay_candidates device=1 frame=973 routed=408 zwrite=405 slice0=242 bounds=27 origin=7 fallback=215 managed=242 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=242 capped=0 reads=19 serial_changed=0 readonly_
+   13841 shadow_replay_candidates:footprint_refused2 ex: shadow_replay_candidates device=1 frame=974 routed=408 zwrite=405 slice0=241 bounds=46 origin=7 fallback=195 managed=241 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=241 capped=0 reads=9 serial_changed=0 readonly_a
+   10847 thin_vote_frame:invalidated ex: thin_vote_frame device=1 frame=7358 lane=1 draws=489 opaque=215 known=0 voted=0 min_alpha=1.0000 max_unvoted_fraction=0.0000 unreadable=0 missed=215 queued=16 dropped=195 no_scale=0 draw_us=0.00 reads=460 measured=459 unreadable_total=1 ret
+    9275 engine_frame:order_invalid ex: engine_frame device=1 frame=1142 mode=plumes candidates=132 not_jet=116 records=16 suppressed=16 forwarded_unscoped=0 forwarded_snapshot=0 forwarded_opaque=0 forwarded_state=0 forwarded_overflow=0 forwarded_native=0 forwarded_patch_missing=
+    8165 engine_light_frame:invalid ex: engine_light_frame device=1 frame=1143 ships=10 ships_drawn=10 nodes=10 candidates=52 draws_lit=52 no_twin=0 no_rows=0 records=16 main=10 rcs=0 brake=0 other_view=0 invalid=6 orphan=0 ships_dropped=0 logged=10 log_dropped=0 matched=10 singu
+    5709 engine_shimmer:refused ex: engine_shimmer device=1 frame=1180 failed=0 ran=1 rects=0 candidates=13 small=7 behind=0 refused=6 offscreen=0 capped=0 scissor_px=0 copy_px=0 drew=0 px=1.50 result=00000001 step=0 skipped=no_rects calls=0 cpu_us=1.4 revert=00000001 revert_
+    2208 hull_emission_frame:refused_other ex: hull_emission_frame device=1 frame=6 gain=1 admitted=0 refused_blend=0 refused_variant=0 programs=000 refused_other=79 refused_routed=0 refused_unknown=0 refused_state=79 bind_failures=0 opaque=0 alpha=0 toggled=1
+    2208 hull_emission_frame:refused_state ex: hull_emission_frame device=1 frame=6 gain=1 admitted=0 refused_blend=0 refused_variant=0 programs=000 refused_other=79 refused_routed=0 refused_unknown=0 refused_state=79 bind_failures=0 opaque=0 alpha=0 toggled=1
+     144 shadow_replay_candidates:footprint_refused1 ex: shadow_replay_candidates device=1 frame=11416 routed=191 zwrite=188 slice0=120 bounds=120 origin=5 fallback=0 managed=120 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=120 capped=0 reads=0 serial_changed=0 readonly_
+      35 shadow_replay_candidates:footprint_refused0 ex: shadow_replay_candidates device=1 frame=11511 routed=125 zwrite=124 slice0=90 bounds=90 origin=5 fallback=0 managed=90 dynamic=0 default_pool=0 excluded=0 unknown=0 shadow_mismatch=0 leased=90 capped=0 reads=0 serial_changed=0 readonly_afte
+      24 engine_light_variant:refused ex: engine_light_variant device=1 original=e326b2b1363c9886 created=7f refused=00 mismatched=00 failed=00 words_max=4576 slots_max=826 slot_budget=4096 depth=1
+      24 engine_light_variant:mismatched ex: engine_light_variant device=1 original=e326b2b1363c9886 created=7f refused=00 mismatched=00 failed=00 words_max=4576 slots_max=826 slot_budget=4096 depth=1
+       1 original_fill_mode:default ex: original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill=0.01 fill_valid=1 default=1
+       1 window_mode_config:default ex: window_mode_config requested=1 default=1 phases=create_before,reset_before flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER
+       1 taa_thin_vote_configured:default ex: taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+       1 fade_rt2_owner_configured:default ex: fade_rt2_owner_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested=1
+       1 motion_output_taa_box_resolution:default ex: motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1
+       1 taa_thin_region_source:default ex: taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1 default=1
+       1 motion_output_taa:default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 motion_output_taa:far_clip_default ex: motion_output_taa device=1 initialize=00000000 references=35 sharpen=0.750 history_weight=0.850 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=30.0 far_f1=34.0 far_speed_lo=0.030 far_speed_hi=0.
+       1 bolt_footprint:refused_buffer ex: bolt_footprint device=1 frame=11699 frames=300 draws=165 written=0 untouched=0 gated=164 instances=0 expanded=0 lengthened=0 widened=0 world_axis=0 disc=0 refused_period=0 refused_w=0 refused_buffer=1 refused_rows=0 refused_shape=0 refused_
+       1 emission_source_gain_frame:refused_other ex: emission_source_gain_frame device=1 frame=14836 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+       1 emission_source_gain_frame:refused_state ex: emission_source_gain_frame device=1 frame=14836 gain=1 admitted=6 admitted_screen=0 refused_blend=0 refused_screen=0 refused_other=11 refused_unknown=0 refused_state=11 bind_failures=0
+== Q4 engine_stage/effects in capture frames

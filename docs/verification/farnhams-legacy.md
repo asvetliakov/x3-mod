@@ -1289,7 +1289,21 @@ cull fixture 184/0 with 21/21 mutations, FL sun fixture 739/0 (measured). Instal
 (55,376,665 B), rollback `rollback-d3d9\d3d9.dll.run19` = `2171cdb2…`; ini unchanged. The merged-LOD overlay
 catalogue (`addon2\06.cat`) joins this run when the bake lands. Record: `verification/results/fl-run20/candidate.json`.
 
-**FL run 20 A (open):** the heavy fogged sector of runs 18/19, same spot: judge the frame rate by eye against run 18/19
+**FL run 20 A (flown 2026-11-02, accepted):** four F8 captures (four distant capitals; near one capital; twice in the heavy
+fogged sector); the user judged the fogged frame rate "somehow better". Log `/home/asvetl/x3m-logs/fl-run20-culls.log`
+(507 MB), triage `verification/results/fl-run20/triage_log.py` → `triage_run20.txt`, `triage_run19.txt` (Opus low,
+measured unless marked): status rows `terran_station_lod … edition=fl state=patched write=atomic`, `lod_occlusion …
+state=patched`, `cull_small_parts … edition=fl state=active write=atomic projectiles=on dock_px=12 far_jets=off`; no
+cull row with a fault, rollback, disarm or mismatch. Fogged frames: draws median 468 (p90 545, max 570, n 3,517; span
+reconstructed from the 600-frame `volumetric_fog_frame` cadence, inferred) against run 19's 1,317 (p90 1,533, max 1,622,
+n 3,001), 2.8x fewer. Capture frames: (1) 354 draws, 403 parts culled; (2) 130→72 draws, 2 culled; (3) 544–555 draws,
+610 culled; (4) 426–429 draws, 549 culled; `dock_culled=0 exempt_bullet=0 source=scene fallback=none` on all 32
+`cull_small_parts_frame` rows. Fogged dt median 7 ms / p90 12 ms against run 19's 14 / 18 ms (run 19 carried the GPU
+sync timing cost, so context only). Plumes armed on every capital capture frame (`records=1`, the own ship; capitals
+have no glow parts, known). The split between the three culls is not measurable: the two LOD patches have no per-frame
+counters and `cull_small_parts_frame` logs only on capture frames. Terran stations not visually checked; folded into run 21.
+
+Original brief: the heavy fogged sector of runs 18/19, same spot: judge the frame rate by eye against run 18/19
 (no timing keys this time), take one F8 there and **tell me before relaunching** (log rotation). Expect
 `cull_small_parts … edition=fl state=active reason=ok write=atomic far_jets=fenced_fl`, `terran_station_lod … state=patched`,
 `lod_occlusion … state=patched`, `cull_small_parts_frame culled=… dock_culled=…` on the capture frame, `frame_end draws=`
