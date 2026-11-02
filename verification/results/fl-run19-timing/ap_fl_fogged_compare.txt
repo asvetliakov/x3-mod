@@ -1,0 +1,22 @@
+AP run 227 (1.8.5, C:\X3, Mayhem) fogged-sector timing segment, 2026-11-02, gpu_sync_timing=1, log /home/asvetl/x3m-logs/ap-run227-fog-timing.log
+FL run 19 C (engine_effects=native) fogged windows 31-42, log /home/asvetl/x3m-logs/fl-run19c-engine-effects-native.log
+Per 300-frame window medians, us (sync timing inflates absolutes; compare across games, not against normal flight)
+
+                    AP fogged (win 24-36)   FL fogged (win 31-42)   FL clear (win 10-15)
+draws/frame p50     ~105                    ~1200 (run 18 triage)   ~250
+dt                  9,200-9,700             11,000-27,000           6,800-7,700
+scene               6,800-7,200             8,400-21,000            4,700-5,100
+engine (game draws) 1,600-2,000             2,800-15,200            1,100-1,500
+fog_route           1,320-1,370             1,600-1,920             0
+fog_march           565-580                 620-800                 0
+taa                 1,240-1,260             1,190-1,330             1,230-1,330
+bloom               470-490                 490-570                 440-500
+hdr_writeback       475                     490-540                 490-500
+shadow_depth        146-166                 130-380                 115-150
+sun_apply           206                     209-238                 207-217
+present             590-600                 270-390                 233-242
+
+Conclusion: every proxy stage costs the same on both games within noise (fog +0.3 ms on FL, TAA/bloom/writeback/sun identical).
+The FL fogged sector is slower because its game-draw pass is 2-8x AP's: ~10x the draws, larger objects on screen.
+Per-draw cost (engine pass / draws): AP ~16 us, FL ~4-12 us: FL is not slower per draw.
+Script: compare.py (A/B), the window tables were printed by an inline python over gpu_sync_timing rows (see the ledger entry).

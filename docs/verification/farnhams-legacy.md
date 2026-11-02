@@ -1167,3 +1167,16 @@ Conclusion: neither the engine light nor the shadow cascades explain the run 17�
 candidates are the ribbons and the shimmer (inside the resolve bracket; run 18's `taa_run_us` CPU doubled over run 17).
 Next: segment C with `engine_effects = native` at the same spot (whole plumes package), then timing passes for ribbons
 and shimmer if it is large.
+
+**FL run 19 C and AP fogged comparison (2026-11-02).** Segment C (`engine_effects = native`, same spot) was not faster
+(dt p50 11.2 vs 8.9 ms, more fogged frames), so the plumes package is not the cost. Split by window, FL clear frames run
+7–9 ms and fogged 11–27 ms (sync on), with the game-draw `engine` pass at 1.1–1.5 ms clear vs 2.8–15 ms fogged while
+`fog_route` is a steady 1.6–1.9 ms. An AP 1.8.5 segment in a fogged Mayhem sector (`ap-run227-fog-timing.log`) shows
+every proxy stage at the same cost as FL (TAA 1.25, bloom 0.48, writeback 0.48, sun 0.21, fog 1.3 vs 1.7 ms) and the
+`engine` pass at 1.6–2.0 ms for ~105 draws; FL's fogged sector draws ~1,200 per frame. FL is not slower per draw
+(~4–12 µs vs AP ~16 µs); the sector draws about ten times more (`ap_fl_fogged_compare.txt`, measured). The steady
+mod cost per frame at 5120x1440 is therefore ~4 ms (TAA 1.25, fog 1.3–1.7 on fogged frames, bloom + writeback 1.0,
+shadows 0.35, sun 0.2, present/meter) on both editions, plus the per-draw additions inside `engine`. Candidates for a
+real gain, both editions: the TAA resolve (0.98 ms), the fog march/repair (1.1 ms), and the per-draw hull work (shadow
+receiver sampling of five cascades, material rows) in draw-heavy sectors; the last needs a shadows-off A/B segment to
+size (`sun_shadow_lane = 0`).
