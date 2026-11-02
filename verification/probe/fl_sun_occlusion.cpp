@@ -467,8 +467,7 @@ void anchor_cases() {
     VirtualFree(base, 0, MEM_RELEASE);
 }
 // The FL registry walk (cockpit registry -> active handle -> bucket chain -> cockpit +0x58 -> sector camera).
-uint32_t registry_obj[0x20 / 4], map_header[2], buckets[4], link_a[3], link_b[3], cockpit[0x60 / 4], registry_slot,
-    mode_obj[0x30 / 4], mode_slot;
+uint32_t registry_obj[0x20 / 4], map_header[2], buckets[4], link_a[3], link_b[3], cockpit[0x60 / 4], registry_slot;
 void main_view_cases() {
     const auto u = [](const void* p) { return uint32_t(reinterpret_cast<uintptr_t>(p)); };
     registry_slot = u(registry_obj);
@@ -481,9 +480,7 @@ void main_view_cases() {
     link_b[0] = 0, link_b[1] = 0x1235, link_b[2] = u(cockpit);
     cockpit[0x58 / 4] = u(view);
     view[L::view_flags / 4] = 0x10001; // sector camera
-    mode_slot = u(mode_obj);
-    mode_obj[L::mode_scale_x / 4] = 0x7777;
-    so::fixture_slots(u(&registry_slot), u(&mode_slot));
+    so::fixture_slots(u(&registry_slot));
     check(so::fixture_main_view() == reinterpret_cast<uintptr_t>(view), "registry walk finds the cockpit camera");
     view[L::view_flags / 4] = 0x1;
     check(so::fixture_main_view() == 0, "no sector-camera bit: no main view");
@@ -494,9 +491,9 @@ void main_view_cases() {
     link_b[1] = 0x1236;
     check(so::fixture_main_view() == 0, "handle not in the chain: no main view");
     link_b[1] = 0x1235;
-    so::fixture_slots(0, 0);
+    so::fixture_slots(0);
     check(so::fixture_main_view() == 0, "no admitted registry slot: no main view");
-    so::fixture_slots(u(&registry_slot), u(&mode_slot));
+    so::fixture_slots(u(&registry_slot));
 }
 
 double time_probes(uint32_t* v, unsigned iterations) {

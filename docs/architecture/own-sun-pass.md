@@ -411,8 +411,10 @@ Run225 accepted the look (constants of `870a00fd6`); section 6's items 1-3 are d
 "Own sun step 2 — deletion".
 
 - **Deleted.** `src/renderer/lens_visibility_variant.{h,cpp}`, `src/renderer/sun_occlusion_pass.{h,cpp}`, the
-  visibility program (`sun_visibility_ps.hlsl`, its `_program_inc.h`, `_taps_inc.h`, generator entry and provenance
-  record); in the core header `classify_body`, `footprint`, `Deferral`, `Hold`, `Ready`, `Latch`, `decide` (the
+  visibility program (`sun_visibility_ps.hlsl`, its `_program_inc.h`, `_taps_inc.h` and provenance record
+  `verification/results/sun-visibility-program.json`). Its entry in `tools/shaders/generate_rigid_motion_pixel.py`
+  (lines 158-160) is a documented leftover pointing at the deleted files: removing it changes the generator's digest,
+  which 64 provenance records pin (`test_bloom_programs`), so it goes at the next generator re-record. In the core header `classify_body`, `footprint`, `Deferral`, `Hold`, `Ready`, `Latch`, `decide` (the
   replicated gates and the "visible" answer), `classify_blend`, the smoothing and jitter helpers; in the bracket inc the
   wrap, scan, classification, refusal/block and drop paths, `sun_lane_uv`, the RT2 reference per bracket; the settings
   `sun_occlusion_core_f`, `sun_occlusion_curve`, `sun_occlusion_radius`, the marker `sun_occlusion_default`; the rows

@@ -103,7 +103,7 @@ const char* state_ = "disabled";
 const char* failed_anchor_ = "none";
 engine_patch::CallSite probe_site_{}, lens_site_{};
 Addresses addresses_{};
-std::uintptr_t install_base_ = 0, registry_slot_ = 0, mode_slot_ = 0;
+std::uintptr_t install_base_ = 0, registry_slot_ = 0;
 void (*listener_begin_)() = nullptr;
 void (*listener_end_)() = nullptr;
 volatile std::uint32_t frame_ = 0;             // written by present() only
@@ -459,7 +459,7 @@ bool initialize(bool bracket_wanted) {
     wchar_t setting[4]{};
     const bool log_requested = x3m::config::get(L"X3M_OWN_SUN_LOG", setting, 4) == 1 && setting[0] == L'1';
     bool applied = false;
-    install_base_ = registry_slot_ = mode_slot_ = 0;
+    install_base_ = registry_slot_ = 0;
     failed_anchor_ = "none";
     if (!x3m::fl::verified())
         state_ = "executable_mismatch";
@@ -473,7 +473,6 @@ bool initialize(bool bracket_wanted) {
             // The main view needs the cockpit registry slot, admitted by the sector-background anchors; without it
             // nothing is eligible (the bracket and the forwarding probe stay).
             registry_slot_ = x3m::fl::sector_background_fl::admitted() ? base + R::cockpit_registry_slot_rva : 0;
-            mode_slot_ = base + L::mode_slot_rva;
             applied = install_at(Addresses{base + L::probe_site_rva, base + L::probe_target_rva,
                                            base + L::lens_site_rva, base + L::lens_target_rva, nullptr},
                                  log_requested);
@@ -553,9 +552,8 @@ Counters counters() {
 const char* fixture_gate(std::uintptr_t base) {
     return gate(base);
 }
-void fixture_slots(std::uintptr_t registry_slot, std::uintptr_t mode_slot) {
+void fixture_slots(std::uintptr_t registry_slot) {
     registry_slot_ = registry_slot;
-    mode_slot_ = mode_slot;
 }
 std::uintptr_t fixture_main_view() {
     return main_view_walk(registry_slot_);

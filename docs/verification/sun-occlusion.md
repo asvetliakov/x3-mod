@@ -1001,6 +1001,10 @@ answer, no wraps, no visibility pass, no deferral. `own_sun` is on by default (i
 | FL hook fixture, native | `test_fl_sun_occlusion` (builds and runs `verification/probe/fl_sun_occlusion.cpp` natively, CPU-state audit) | 464 checks, 0 failures; forward 42.6 ns over the native probe, bracket 242.9 ns over the native lens call with trivial listeners (measured) |
 | Host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` (worktree; baseline the same command on a `git archive` export of main `3302c92b`) | 325 modules, 3,366 tests, 7 failing, all failing on main too: `test_motion_hdr_scene`, `test_engine_plumes`, `test_engine_ribbons`, `test_volumetric_fog`, `test_linear_emission_hull_gain`, `test_engine_effects`, `test_hdr_dither_launch` (main: those 7 plus `test_proxy_identity`, which needs a git checkout and fails only in the export); `test_own_sun_hook` 11, `test_own_sun` 22, `test_fl_sun_occlusion` 5, `test_config_schema` 20 (new alias test), `test_launcher_defaults` 11, `test_logging_tiers` 18 green (measured) |
 
+Leftover: the `sun_visibility` entry of `tools/shaders/generate_rigid_motion_pixel.py` (lines 158-160) still points at
+the deleted program files; it stays so the 64 provenance records pinning the generator's digest remain valid, and is
+removed at the next generator re-record.
+
 Not run: the Wine form of the two fixtures (`run_own_sun_hook.py`, no Wine on this host; the native runs above
 replace it as evidence), any flight. The step-1 GPU fixture's pass and wrap cases went with the code; its nine
 lens-gain checks are now the gain fixture's eight (the `half_wrapped` case had no wrap left to compose with).
