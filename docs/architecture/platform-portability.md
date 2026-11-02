@@ -879,6 +879,18 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-11-02: proxy culls on FL (`cull_small_props`, `occlusion_cull` on FL)
+
+The small-prop skip and the GPU occlusion cull of ship sub-parts now run on the FL edition. No new engine site, no
+patch and no new D3D call: the gate is `object_trace::scope_available()` (AP the X3AP.exe identity, FL the installed
+material-submit scope seam behind the X3FL.exe identity and its byte gates), the node fields are the edition layout
+(`engine_node_layout.h`, model `+0x144` on FL), and the two engine globals are the module base plus RVAs whose anchors
+`object_trace_fl` and `sector_background_fl` already check. Engine reads stay `engine_memory::read` (documented
+`VirtualQuery` validation); the occlusion test keeps its documented D3D9 path (entry 2026-10-08 below). Verified: both
+editions cross-compiled 0 warnings, AP x87 PASS, the host cores under both layouts (measured, ledger
+[farnhams-legacy.md](../verification/farnhams-legacy.md), "Proxy culls on FL"). Not verified: either cull on FL in
+game (not flown), native Windows execution of the occlusion queries on FL.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

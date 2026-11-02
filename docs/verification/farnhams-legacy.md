@@ -1296,3 +1296,38 @@ catalogue (`addon2\06.cat`) joins this run when the bake lands. Record: `verific
 lower than run 19's 1,500–1,980 at the same spot, and no `state=refused`. Visual check: no missing parts on nearby
 ships, projectiles still visible, Terran stations drop detail by size. The engine lens flares of vanilla ships are gone
 anyway (plumes); nothing else should change.
+
+## Proxy culls on FL (small props, GPU occlusion), host evidence (2026-11-02, not flown)
+
+Before: FL run 21 logged `cull_small_props_frame … draws=0 culled=0` on all 133 rows (2,463,523 draws `no_scope`) and
+`occlusion_cull_config configured=1` with no `occlusion_cull_device`/`occlusion_cull_session` row (measured,
+[run21_baseline.sh](../../verification/results/fl-proxy-culls/run21_baseline.sh)): both draw-hook culls were gated on
+`object_trace::executable_verified()`, constant false on FL. AP run 227 for scale: `draws=15154 culled=12154` and
+`candidates=44329 tested=24542 hidden=21576` per 300 frames (from the brief, not re-measured).
+
+Change (base `e6c9d03b5`): gate `object_trace::scope_available()` (AP `executable_verified()`, FL `active()`);
+`engine_node_layout.h` (AP model `+0x140`, FL `+0x144`, parent `+0x18`, handle `+0x28`) read through
+`Culler::layout` / `Classifier::layout`; FL globals at attach: body manager `base+0x1aa100`, cockpit registry
+`base+0x1a82e4`. Without the FL scope seam (object trace off or refused) each cull logs one
+`… attached=0 edition=fl reason=scope_unavailable` device row and stays off on that device (small props at its first
+scene draw, occlusion at its first candidate draw); small props also refuse with `reason=registry_not_admitted`. FL
+rows end in `edition=fl`; the descriptor part box (F8 diagnostic) and the engine-side skip stay AP only
+(`occlusion_cull = engine` on FL logs `engine=0 engine_status=ap_only`). Defaults unchanged
+(4 px, pool 1024, retest 8). Every FL read and its source:
+[fl/cull-chain.md](../reverse-engineering/fl/cull-chain.md), "Proxy culls' engine reads (2026-11-02)".
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL offsets not generated elsewhere, decoded from `C:\X3FL\X3FL.exe` (`e7f3aad8…`) | `python3 -I verification/results/fl-proxy-culls/offsets.py` | 19 / 19 anchors ([offsets.json](../../verification/results/fl-proxy-culls/offsets.json)) |
+| Builds | `cmake --build build-fl -j`, then `cmake --build build-ap -j` (worktree, not candidates) | 0 warnings each; FL `eb1f007d…` 55,472,094 B, AP `473fddf4…` 62,700,157 B (after review fixes) |
+| x87 | `python3 verification/probe/check_no_x87.py build-ap/d3d9.dll` | PASS |
+| x87, FL (tool gap) | `python3 verification/probe/check_no_x87.py build-fl/d3d9.dll` | not checkable: the tool requires the AP-only gz hook symbols (`gz_read: 0 symbols`); not a pass |
+| Config | `python3 tools/config/generate.py --check` | PASS, 292 settings |
+| Host | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_cull_small_parts test_occlusion_cull test_fl_object_trace test_exe_identity test_fl_identity test_logging_tiers` | 6 modules, 89 tests, 0 failing |
+| Cores under both layouts | `test_cull_small_parts.CullSmallPropsCore.test_core_compiled`, `test_occlusion_cull.test_core_driver`: each core compiled without a define (AP) and with `-DX3M_EDITION_FL=1`; every node carries a decoy model id at the other edition's offset | both editions 0 failures; occlusion driver 133 checks per edition |
+| Mutation: the FL build forced onto AP's layout | scratch copy of `src/proxy` with `edition = ap` under `X3M_EDITION_FL` | props harness 15 failures, occlusion driver 17 failures (killed) |
+| Wiring | `test_edition_gate_and_addresses` in both modules | gate, attach addresses, AP-only ledger and part box, `edition=fl` rows pinned |
+
+The occlusion GPU fixture records (`occlusion-cull-batched/fixture-*.json`) ran the 2026-10-08 `occlusion_cull_core.h`;
+`test_batched_records` now accepts that recorded hash or the 2026-11-02 one (AP offsets unchanged, proven by the AP
+build of the host driver); a rerun needs a Wine host. Not verified: either cull on FL in game; the FL saving.

@@ -212,6 +212,12 @@ unsigned occlusion_cull_retest = x3m::occlusion_cull::core::retest_default; // X
 #else
 #define X3M_OWN_SUN_EDITION "ap"
 #endif
+// The proxy culls' config rows (cull_small_props, occlusion_cull_config): " edition=fl" appended on FL, AP unchanged.
+#if X3M_EDITION_FL
+#define X3M_CULL_EDITION_FIELD " edition=fl"
+#else
+#define X3M_CULL_EDITION_FIELD ""
+#endif
 // Own sun (X3M_OWN_SUN, on unless "0", docs/architecture/own-sun-pass.md; both editions since step 3): the setting as
 // installed (the probe redirect in place and the route on), its two tunables (X3M_SUN_DISC_RADIUS,
 // X3M_SUN_DISC_RADIANCE; out of range keeps the default). The setting is the only switch (the Ctrl+Shift+F9 comparison
@@ -5924,8 +5930,8 @@ void initialize_log(HMODULE module) {
                 reason = "route_off"; // the skip lives in the motion route's draw path
             cull_small_props_on = !std::strcmp(reason, "ok");
             cull_small_props_px = cull_small_props_on ? float(px) : 0.f;
-            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s", mode_length ? mode : "unset", px,
-                cull_small_props_on ? 1u : 0u, reason);
+            log("cull_small_props requested=%s px=%.4f configured=%u reason=%s" X3M_CULL_EDITION_FIELD,
+                mode_length ? mode : "unset", px, cull_small_props_on ? 1u : 0u, reason);
         }
     }
     {
@@ -5956,6 +5962,10 @@ void initialize_log(HMODULE module) {
 #if !X3M_EDITION_FL
         occlusion_cull_engine =
             occlusion_engine_cull::initialize(occlusion_cull_on && parsed == engine::Mode::engine) && occlusion_cull_on;
+        const char* engine_status = occlusion_engine_cull::state();
+#else
+        // The engine-side stub is X3AP.exe's: on FL `engine` runs the draw-level cull alone and says why.
+        const char* engine_status = parsed == engine::Mode::engine ? "ap_only" : occlusion_engine_cull::state();
 #endif
         // X3M_OCCLUSION_CULL_RETEST: frames between tests of a part last read visible (1..64; unset = 8); anything
         // else keeps the default (retest_status=invalid_setting or too_long).
@@ -5968,11 +5978,11 @@ void initialize_log(HMODULE module) {
         const bool retest_ok = retest_length < 16 && occlusion_cull::core::parse_retest(retest, &frames);
         occlusion_cull_retest = retest_ok ? frames : occlusion_cull::core::retest_default;
         log("occlusion_cull_config requested=%s configured=%u reason=%s pool=%u retest=%u retest_setting=%s "
-            "retest_status=%s engine=%u engine_status=%s",
+            "retest_status=%s engine=%u engine_status=%s" X3M_CULL_EDITION_FIELD,
             mode_length ? mode : "unset", occlusion_cull_on ? 1u : 0u, reason, occlusion_cull::core::pool_size,
             occlusion_cull_retest, retest_length ? retest : "-",
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
-            occlusion_engine_cull::state());
+            engine_status);
     }
     // Merged-LOD material strength: the D3DX texture row is patched for the atlas marks alone (texture_created below).
     if (lod_material_strength_requested) {

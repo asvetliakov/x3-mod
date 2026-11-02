@@ -28,6 +28,9 @@ static_assert(fl_own_ship::registry_map == 0 && fl_own_ship::registry_active_han
               "object_capture::own_ship's registry walk is X3FL.exe's (resolve_own_ship)");
 static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_trace::node_handle == 0x28,
               "object_capture::own_ship / own_ship_descends read X3FL.exe's node handle and parent");
+#define X3M_CULL_EDITION_FIELD " edition=fl" // the proxy culls' status rows (cull_small_props_device, occlusion_cull_device)
+#else
+#define X3M_CULL_EDITION_FIELD ""
 #endif
 #include "camera_state.h"
 #include "cull_small_parts.h"

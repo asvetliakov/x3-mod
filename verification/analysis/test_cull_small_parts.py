@@ -185,13 +185,24 @@ int main() {
 
 
 # The small-prop draw skip's decision (src/proxy/cull_small_props_core.h) on a synthetic memory map: the read callback
-# refuses anything outside the mapped blocks, as engine_memory::read refuses uncommitted memory.
+# refuses anything outside the mapped blocks, as engine_memory::read refuses uncommitted memory. Compiled once per
+# edition: no define (AP, model +0x140) and X3M_EDITION_FL=1 (FL, +0x144); each node carries a decoy model id at the
+# other edition's offset (a prop node the hull body, a hull node the prop body), so a read at the wrong offset flips
+# every prop verdict below.
 PROPS_HARNESS = r"""
 #include "cull_small_props_core.h"
 #include <cstdio>
 #include <cstring>
 #include <vector>
 using namespace x3m::cull_small_props::core;
+namespace layouts = x3m::engine_node_layout;
+#if X3M_EDITION_FL
+constexpr layouts::Layout layout = layouts::fl, other = layouts::ap;
+constexpr const char* edition = "fl";
+#else
+constexpr layouts::Layout layout = layouts::ap, other = layouts::fl;
+constexpr const char* edition = "ap";
+#endif
 static unsigned failures = 0;
 static void check(bool ok, const char* what) { if (!ok) { ++failures; std::printf("FAIL %s\n", what); } }
 // A flat 32-bit address space: base 0x10000, 64 KB, anything else unreadable.
@@ -246,9 +257,23 @@ int main() {
     put(0x11800 + 0x70, 0x12200);                  // target object -> target root node
     const auto node = [](unsigned i, std::uint32_t parent, std::uint32_t handle, std::uint32_t model) {
         const std::uint32_t n = 0x12000 + 0x200 * i;
-        put(n + 0x18, parent); put(n + 0x28, handle); put(n + 0x140, model);
+        put(n + layout.parent, parent); put(n + layout.handle, handle);
+        put(n + other.model, model == 5 ? 6 : 5); put(n + layout.model, model); // the decoy first: AP and FL differ
         return n;
     };
+    {
+        static Culler fresh;
+        const Addresses unfilled{};
+        check(fresh.layout.model == layout.model && fresh.layout.parent == layout.parent &&
+              fresh.layout.handle == layout.handle && layout.parent == 0x18 && layout.handle == 0x28 &&
+              layout.model == (std::strcmp(edition, "fl") ? 0x140u : 0x144u),
+              "layout: the culler's default is the build's edition (AP model +0x140, FL +0x144)");
+#if X3M_EDITION_FL
+        check(unfilled.body_global == 0 && unfilled.cockpit_slot == 0, "FL: no AP VA by default (the caller fills them)");
+#else
+        check(unfilled.body_global == 0x608518 && unfilled.cockpit_slot == 0x608504, "AP: the fixed VAs by default");
+#endif
+    }
     const std::uint32_t own_root = node(0, 0, 0x10, 6), target_root = node(1, 0, 0x20, 6), far_root = node(2, 0, 0x30, 6);
     const std::uint32_t own_prop = node(3, own_root, 0x11, 5), target_prop = node(4, target_root, 0x21, 5);
     const std::uint32_t far_prop = node(5, far_root, 0x31, 5), far_hull = node(6, far_root, 0x32, 6);
@@ -308,7 +333,24 @@ int main() {
     check(c.evaluate(read, a, far_hull, ext, rows, 5120, 1440) == Verdict::not_prop, "evaluate: hull");
     check(c.window.draws == 2 && c.window.culled == 2 && c.window.kept == 0 && c.window.nodes_culled == 1 && c.window.frames == 1,
           "evaluate: window counts");
-    std::printf("cull_small_props_core checks_failed=%u\n", failures);
+    // The culler reads its layout member: the other edition's model offset reads the decoys (prop <-> hull).
+    c.layout = other; c.flush_classes(); c.begin_frame(5);
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::not_prop &&
+          c.decide(read, a, far_hull, ext, rows, 5120, 1440) == Verdict::culled, "layout: the other edition's offset reads the decoy");
+    c.layout = layout; c.flush_classes(); c.begin_frame(6);
+    check(c.decide(read, a, far_prop, ext, rows, 5120, 1440) == Verdict::culled, "layout: back on the build's offset");
+    // Unfilled addresses (FL's default before attach fills them): no body table, nothing classified as a prop.
+    {
+        Addresses none_filled{};
+        none_filled.body_global = 0; none_filled.cockpit_slot = 0;
+        c.flush_classes(); c.begin_frame(7);
+        check(c.decide(read, none_filled, far_prop, ext, rows, 5120, 1440) == Verdict::not_prop, "no body slot: drawn");
+        c.flush_classes(); c.begin_frame(8);
+        Addresses no_registry = a;
+        no_registry.cockpit_slot = 0;
+        check(c.decide(read, no_registry, far_prop, ext, rows, 5120, 1440) == Verdict::unresolved, "no cockpit slot: drawn (unresolved)");
+    }
+    std::printf("cull_small_props_core edition=%s checks_failed=%u\n", edition, failures);
     return failures ? 1 : 0;
 }
 """
@@ -545,16 +587,18 @@ class CullSmallPropsCore(unittest.TestCase):
     def test_core_compiled(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler, 'A host C++ compiler is required')
-        with tempfile.TemporaryDirectory(prefix='x3-cull-small-props-host-') as temporary:
-            directory = Path(temporary)
-            (directory / 'harness.cpp').write_text(PROPS_HARNESS)
-            executable = directory / 'cull_small_props_host'
-            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src/proxy'),
-                                    str(directory / 'harness.cpp'), '-o', str(executable)], capture_output=True, text=True)
-            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
-            run = subprocess.run([str(executable)], capture_output=True, text=True)
-            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'cull_small_props_core checks_failed=0\n')
+        for edition, defines in (('ap', []), ('fl', ['-DX3M_EDITION_FL=1'])):
+            with self.subTest(edition=edition), tempfile.TemporaryDirectory(prefix='x3-cull-small-props-host-') as temporary:
+                directory = Path(temporary)
+                (directory / 'harness.cpp').write_text(PROPS_HARNESS)
+                executable = directory / 'cull_small_props_host'
+                build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', *defines, '-I',
+                                        str(ROOT / 'src/proxy'), str(directory / 'harness.cpp'), '-o', str(executable)],
+                                       capture_output=True, text=True)
+                self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+                run = subprocess.run([str(executable)], capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertEqual(run.stdout, f'cull_small_props_core edition={edition} checks_failed=0\n')
 
     def test_draw_path_wiring(self):
         """The skip sits after gate 2 and before the jitter, returns D3D_OK without forwarding, and reports the node to
@@ -581,6 +625,29 @@ class CullSmallPropsCore(unittest.TestCase):
         self.assertNotIn('if (mode_length)', block)
         self.assertIn('mode_length ? mode : "unset"', capture)
         self.assertIn('configure_cull_small_props(cull_small_props_on, cull_small_props_px)', capture)
+
+    def test_edition_gate_and_addresses(self):
+        """Both editions: the gate is object_trace::scope_available() (AP executable_verified, FL active); the engine
+        globals are the device's props_addresses_ (AP: the fixed VAs; FL: module base + the generated RVAs, off with a
+        reason row when either is not admitted); FL skips the AP-only descriptor part box; edition=fl on the FL rows."""
+        inc = source_text(ROOT / 'src/proxy/motion_output_cull_small_props_inc.h')
+        self.assertIn('if (!object_trace::scope_available() || !object_trace::scope_node(&descriptor, &node)) {', inc)
+        self.assertIn('c.evaluate(read, props_addresses_, std::uint32_t(node)', inc)
+        self.assertNotIn('props::Addresses{}', inc)
+        for needle in ('base + fl::own_ship_trace::engine_slot_rva', 'fl::sector_background_fl::admitted()',
+                       'base + fl::sector_background_fl::cockpit_registry_slot_rva',
+                       '"scope_unavailable" : "registry_not_admitted"',
+                       'log("cull_small_props_device device=%llu attached=1 px=%.4f edition=fl model_offset=0x%x"',
+                       'engine_node_layout::fl.model == fl::own_ship_trace::node_model',
+                       '#if !X3M_EDITION_FL // AP\'s descriptor -> mesh part box'):
+            self.assertIn(needle, inc)
+        capture = source_text(ROOT / 'src/proxy/capture.cpp')
+        self.assertIn('log("cull_small_props requested=%s px=%.4f configured=%u reason=%s" X3M_CULL_EDITION_FIELD,', capture)
+        motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        self.assertIn('#define X3M_CULL_EDITION_FIELD " edition=fl"', motion)
+        core = source_text(ROOT / 'src/proxy/cull_small_props_core.h')
+        self.assertIn('engine_node_layout::Layout layout = engine_node_layout::edition;', core)
+        self.assertNotIn('model_offset', core)  # every node read goes through the layout member
 
 
 class CullSmallPartsLaunchOption(unittest.TestCase):
