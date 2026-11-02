@@ -35,6 +35,13 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.idle = patch.object(snapshot, 'game_running', return_value=[])
         self.idle.start(); self.addCleanup(self.idle.stop)
 
+    def recreate_log(self):
+        # The launcher starts before the proxy creates its log: with real birth times (statx on WSL2, 50a7a2d4f) a
+        # launcher file written after setUp's log is born later and is refused as a later launch's once the two
+        # writes fall in different timestamp ticks (seen under the parallel host suite).
+        self.log.unlink()
+        self.log.write_text('')
+
     def save(self, **kwargs):
         return snapshot.snapshot(capture_dir=self.capture, destination_root=self.output, **kwargs)
 
@@ -92,6 +99,7 @@ class SnapshotX3RunTests(unittest.TestCase):
     def test_launcher_stderr_is_preserved_and_counted(self):
         launcher = self.capture / snapshot.LAUNCHER_STDERR
         launcher.write_text('[2026-09-16T10:00:00.000Z] GStreamer-CRITICAL\n')
+        self.recreate_log()
         touched = snapshot.created_ns(self.log.stat()) + 1
         os.utime(launcher, ns=(touched, touched))
         destination, count, issues = self.save(log=self.log)
@@ -117,6 +125,7 @@ class SnapshotX3RunTests(unittest.TestCase):
     def test_launcher_stderr_untouched_after_the_log_is_preserved_with_a_note(self):
         launcher = self.capture / snapshot.LAUNCHER_STDERR
         launcher.write_text('[2026-09-16T10:00:00.000Z] launcher_tee pid=42\n')
+        self.recreate_log()
         older = self.log.stat().st_mtime_ns - 1_000_000
         os.utime(launcher, ns=(older, older))
         destination, count, issues = self.save(log=self.log)

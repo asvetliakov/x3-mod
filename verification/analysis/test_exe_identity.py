@@ -40,7 +40,12 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
             0x00640000: 'engine_plumes_core.h: the SETA warp bound 100.0 in 16.16 (a value, not an address)',
             0x00573000: 'music_alert_core.h: start of the .data range named in a comment',
             0x0057ff0b: 'seta_key_latch_core.h: static_assert value of action_counters_va + 675; no instruction names the '
-                        'byte (the engine indexes the array), the array is anchored at 0x0057fc68'}
+                        'byte (the engine indexes the array), the array is anchored at 0x0057fc68',
+            # X3FL.exe preferred-base VAs (754e804ef, 2026-11-02) that fall inside X3AP.exe's .data window: the FL
+            # branch of chase_transition_restore_core.h (#if X3M_EDITION_FL) and comments in chase_camera.cpp and
+            # fov.h naming the FL slot base + 0x1a82e4. The FL build binds them to X3FL.exe, not to this gate.
+            0x005a82e4: 'chase_transition_restore_core.h: FL cockpit registry root (X3FL.exe VA, FL branch only)',
+            0x006243cc: 'chase_transition_restore_core.h: FL game root (X3FL.exe VA, FL branch only)'}
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
