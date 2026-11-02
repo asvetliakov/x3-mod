@@ -69,9 +69,10 @@ A.z = dot((G,1), c3)
 This equation is lane-proved for **every** new program, including XT before its
 native decal/palette processing. The three final matrix rows can appear in
 z/x/y order; the analyzer proves their lane mapping rather than shifting an AP
-site by a constant. K's preshader relationship to Q is **not established** here;
-do not replace K with an assumed complement or evaluate a newly invented CPU
-colour formula. Preserve original comments, GPU operations and uploads.
+site by a constant. K's preshader relationship to Q was established on 2026-11-03
+(K = 2(1 - Q), see [the grading preshader](#grading-preshader-palette-gate-and-merged-lod-visibility-2026-11-03));
+still do not evaluate a newly invented CPU colour formula. Preserve original
+comments, GPU operations and uploads.
 
 For a conventional converted material, decode the completed A after the last
 matrix row; do not decode T before this encoded-space law. XT conversion decodes
@@ -97,6 +98,55 @@ an application colour input, **not** one of the Boron/Paranid immutable palette
 literals in `PaletteProgram`. No new Boron/Paranid `PaletteProgram` rows are
 needed for this 34-program set. XT's five native palette uses must be updated
 with their actual registers, not aliases to AP hashes.
+
+## Grading preshader, palette gate and merged-LOD visibility (2026-11-03)
+
+Derived from the D3DX disassembly (`tools/analysis/disassemble_shaders.cpp` through `C:\X3FL\d3dx9_37.dll`) of the
+43 FL and 37 AP `ps_*.bin` in the F8 capture directories, read with the run-27 green-station constants
+(`verification/results/fl-lod-overlay/green_station/`). The preshader closes the open K question above.
+
+**Preshader (measured, all 20 FL quality-colour programs).** The effect evaluates the preshader on the CPU and
+uploads its results: K = c0.xyz = `2*(1 - g_MatQualityColor.xyz)` (the four captured b2d8f40c draws satisfy
+c0 = 2(1 - c13) to the logged precision), and the rows c1–c3 are `Hue x (g_Brightness*g_Contrast*Sat)` with the
+fourth column `0.5*(1 - g_Contrast)`. Sat is the Haeberli matrix with luminance weights (0.3086, 0.6094, 0.082) and
+`g_Saturation`; Hue is the rotation about the grey axis by `g_Hue` degrees (wrapped to [-180, 180)), circulant rows
+`((1-cos)/3 + sin/sqrt3, (1-cos)/3 - sin/sqrt3, cos + (1-cos)/3)`. Every row of Sat and Hue sums to 1, so the matrix
+maps grey to grey (scaled by B*C, offset by the fourth column); it amplifies and rotates only chroma. The same
+literal set (hue scale, 2*pi, 1/sqrt3, the three luminance weights) is in every graded program of both editions; FL `ps_3_0` hull programs write
+c1–c3 + K, AP hull programs and FL `18d37296`/`9d27e7ba` (no `g_MatQualityColor`) write the same matrix to c0–c2.
+In XT programs the preshader also writes c4.x = `1 - g_Color_Weighting` (AP: c3.x).
+
+**Stage (measured, b2d8f40c).** `dp4 r1.z/x/y, (G,1), c3/c1/c2` runs immediately after the quality overlay G of the
+s0 diffuse texel, before the decal branch (b0, s5 RGB), before lighting, palette and reflection. A therefore scales
+the directional lobes and the vertex RGB, and the reflection term (`A * v7.x * g_MatReflectionStrength * spec.r *
+cube`); only the s3 light-map RGB (added last) and the alpha (`lerp(diffuse.a, light.a, g_EnableGlow) * v0.w`) are
+ungraded.
+
+**Palette gate (measured).** c19–c23 (`g_Color_1/2/3/Lines/Highlight`), c24 (`g_Color_LinesPower`) and c25
+(`g_Color_Weighting`) are read only inside `if b1` (`g_bColor_Mixing`): `P = v6.x*c19 + v6.y*c20 + v6.z*c21 +
+v7.y*c23 + pow(1 - |V.R|, c24)*c22`, then `A' = A*((1-W) + W*P)`. The weights are not texture masks: VS
+`37c34a74` writes v6 = |reflection vector| per axis, v7.y = `(N.V)^g_Color_HighlightPower`; the Lines term is a
+band where N.V is near 0.707, thin at power 50. The same gate and expression hold in all six FL XT programs
+(`6f745daa`, `b2d8f40c`, `ba08f36b`, `c17114ca`, `e57c48fc`, `f06b6267`) and the six AP XT programs (`496049ce`,
+`5f82ecac`, `6733b119`, `e6794b6e`, `f1b0e820`, `fffdabd9`, palette c17–c22). The proxy's per-draw bool snapshot
+shows b1 = 0 on every draw of run-27 captures 2 and 3 (44 + 74 draws, any program; `ps_bools.py`), so
+the palette registers had no effect on any captured draw.
+
+**Green station arithmetic (measured constants, inferred image).** Source vent draw 48 (LOD 0) and merged draw 16
+(LOD 1) of `0x5583` carry the same rows (row sums 1.032, offset -0.001; fit B 1.030, C 1.002, S 7.2, hue -142 deg
+= 218 deg) and the node's Q = c13 = (0.955, 0.637, 0.538); source draw 50 carries identity rows and the same Q.
+A grey texel g = 0.5 becomes G = Q, then A = (-1.08, 2.15, 0.79) with the vent rows against (0.955, 0.637, 0.538)
+with identity; g = 0.2 gives (-0.43, 0.86, 0.32). The green comes from the node's warm Q (chroma) pushed through
+the vent's saturation x7.2 and hue 218 deg; a grey texel with neutral Q (0.5) stays grey (x1.03). With the other
+node's Q (0.972, 0.96, 0.915, draw 14) the same rows give a cyan-grey (0.65, 0.99, 1.08). `g_MatQualityColor` is a
+node value (`0x4e4f7e..5191`, above), identical on the source and merged draws, so the baker controls only the
+rows. Script: `colormatrix_math.py` (output `colormatrix_math_out.txt`).
+
+Consequence for merged-LOD keys: a differing colour grade (`g_Brightness/Contrast/Saturation/Hue`) is visible on
+every lit texel and in the reflection, except the light-map addition; a differing `g_Color_*` palette is invisible
+while `g_bColor_Mixing` is 0 and, when it is 1, visible over the whole material (view-dependent weights), not only
+where a light map or emissive mask is non-zero. `g_bColor_Mixing` itself belongs in the key whenever palettes differ.
+Not established: whether any shipped FL/AP material sets `g_bColor_Mixing = 1`; the run-27 captures never did.
 
 ## Lightmap, lobe sums and sun share
 

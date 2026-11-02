@@ -1,0 +1,11 @@
+FL run 27 green station triage (2026-11-03). Log /home/asvetl/x3m-logs/fl-run27-farjets-restore.log (local, 476 MB).
+Capture 2 = frames 36229.. (log lines 1005138-1020866), capture 3 = frames 38938.. (lines 1196861-1223167).
+
+per-draw summary:     python3 capture_draws.py LOG 1005138 1020866            (and 1196861 1223167)
+colour-matrix rows:   python3 colormatrix_draws.py LOG 1005138 1020866          > colormatrix_draws_cap2_out.txt
+                      python3 colormatrix_draws.py LOG 1196861 1223167 00005583 > colormatrix_draws_cap3_out.txt
+ps constants diff:    python3 ps_constants.py LOG 1005138:1020866:16,14 1196861:1223167:50,48 > ps_constants_out.txt
+body identity/mats:   X3M_EDITION=fl python3 body_materials.py /mnt/c/X3FL stations/station_scenes/food/argon_food_S_factory_B
+atlas channel means:  X3M_EDITION=fl python3 atlas_stats.py /mnt/c/X3FL /mnt/c/X3FL/addon2/06.x3m-lod.json stations/station_scenes/food/argon_food_S_factory_B <scratch>
+source textures:      X3M_EDITION=fl python3 source_tex.py /mnt/c/X3FL metal_argon_smooth_plating_bump.dds ...
+fleet census:         X3M_EDITION=fl python3 colormatrix_census.py /mnt/c/X3FL /mnt/c/X3FL/addon2/06.x3m-lod.json /mnt/c/X3FL/addon2/07.x3m-lod.json > colormatrix_census_out.txt
