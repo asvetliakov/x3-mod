@@ -1957,7 +1957,18 @@ warnings; full host suite 333 modules 3,421 tests 0 failing; the five FL site ve
 installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `dd4f157c…` (55,585,173 B), rollback
 `rollback-d3d9\d3d9.dll.run26` = `3851f91d…`; exe, overlay and ini unchanged. Record `verification/results/fl-run27/candidate.json`.
 
-**FL run 27 A (open):** in the chase view fly through one gate and dock/undock once (restore rows), then find a clear
+**FL run 27 A (flown 2026-11-03, accepted for the chase part; far jets not exercised):** user: "No issues". Log
+`/home/asvetl/x3m-logs/fl-run27-farjets-restore.log` (476 MB, measured; `verification/results/fl-run27/triage_log.py`):
+`chase_lead installed=1 status=active edition=fl update=lifetime`, `chase_transition installed=1 … diagnostics=1
+diagnostics_reason=fl_verified_reads`; 33 `chase_transition_event` rows (3 construct, 3 complete, 3 destroy, 6 update,
+15 mode_script, 1 mode_load, 2 restore), both `kind=9` rows `result=restored cancel=none attempts=1 hud_refresh=ok
+mode_seen=258`; 170 HUD and lead windows with `lifetime=0` throughout; `frame_end` dt_ms p50 4 / p90 4 (n=43,539). The
+far-jet hand-off did not run: every `cull_small_parts` row `far_jets=off`, every `engine_stage` row `far_jets=0`, because
+the gate required the key written as `plumes` while the ini leaves it commented (the "Far-jet gate: default mode"
+paragraph; the same holds on AP run 227). Fixed in `17ab85a84`, installed as run 28. Also reported: a merged-LOD station
+green at distance (captures 2/3; the "Green station" paragraph below).
+
+Original brief: in the chase view fly through one gate and dock/undock once (restore rows), then find a clear
 sector with ships far away, so that some plumes are only a few pixels, and watch them: a distant ship should show a
 small engine glow, not nothing, and nearby ships keep their full plumes with none missing; one F8 with distant ships
 in view, one F8 with a target selected; tell me before relaunching. Expect `chase_lead installed=1 … edition=fl …
@@ -1967,3 +1978,33 @@ and the undock (with `kind=1`/`kind=3` rows interleaved), `chase_central_hud_win
 `far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`. Report: a HUD or reticle that disappears in
 normal flight (`lifetime=` rising while `admitted` falls would be the log sign), a distant ship with no glow at all, a
 missing plume on a nearby ship, or anything odd at the M6 quick-launch port (cut 9098 follows the 4 px threshold).
+
+## FL run 28 — far-jet gate honours the default plumes mode (installed 2026-11-03)
+
+`17ab85a84` (both editions: `option::resolve_mode` in `engine_effects_option.h`, used by `engine_effects.cpp` and both
+cull modules; unset or empty = plumes, a parsed word = that mode, anything else = native, refused). FL native fixture
+214 checks with seven far-gate cases (unset, empty, `plumes` on; `native`, `off`, `Plumes`, `plumes2` off), AP cull
+fixture 226 checks (measured, agent). Clean `build-fl` from `17ab85a84`, 0 warnings; full host suite 333 modules 3,422
+tests 0 failing after the engine-effects-patch record accepted `engine_effects_option.h` (`ea08670dc`). Installed
+`C:\X3FL\d3d9.dll` = `23cad71c…` (55,585,673 B), rollback `rollback-d3d9\d3d9.dll.run27` = `dd4f157c…`; exe, overlay
+and ini unchanged (the key stays commented on purpose). Record `verification/results/fl-run28/candidate.json`. The next
+AP candidate carries this fix together with the occlusion default (`docs/status.md`).
+
+**Green station (open, 2026-11-03):** captures 2/3 of run 27, target model `0x5583` = `argon_food_S_factory_B`
+(overlay `addon2/06.cat`, body index 407, sector avigriega). At `lod=1` the merged draw's pixel constants c1–c3 carry a
+colour matrix and c19–c24 the `g_Color_*` palette of source material 26 `metal_argon_vent` (hue 217.9°, saturation
+7.21, `colormatrix=1`), the dominant material by face count (8,212 of 36,418 faces); the baker copies the dominant
+material's non-texture parameters onto the whole merged material, so the vent's grade tints the whole atlas at distance
+while LOD0 applies it to the vent parts only. Atlas tiles, UVs (109,254/109,254 inside content), formats, bindings and
+the strength twin are excluded as causes (measured, `verification/results/fl-lod-overlay/green_station/`). Census over
+the 637 FL bodies: 126 merge materials with differing grades, 39 spread a graded dominant onto ungraded parts (median
+0.47 of faces), 87 lose a graded part's tint; the vent grade spreads in four bodies. Fix: split merged materials by
+colour grade in `tools/analysis/lod_atlas.py` (`atlas_material`, class split), one extra draw per extra grade, then
+rebake; host check: a fixture with a graded dominant plus an ungraded member, and `colormatrix_census.py
+mismatch_bodies=0` on the rebaked candidate. AP overlay not yet checked for the same.
+
+**FL run 28 A (open):** clear sector, ships far enough that some plumes are a few pixels; one F8 with such ships in
+view; tell me before relaunching. Expect `cull_small_parts … far_jets=on edition=fl`, `cull_small_parts_frame …
+far_jets=on`, `engine_stage far_jets>0 far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`.
+Visual: distant ships show a small engine glow instead of nothing; nearby plumes unchanged. Report a distant ship with no
+glow, a missing nearby plume, or any new flicker on engine glows.

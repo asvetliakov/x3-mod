@@ -1,0 +1,21 @@
+{
+ "run": 28,
+ "step": "far-jet gate honours the default plumes mode (both editions; option::resolve_mode shared by engine_effects.cpp and both cull modules) [17ab85a84]; run 27 had far_jets=off on every row because the key is commented in the ini (same on AP run 227)",
+ "edition": "fl",
+ "commit": "ea08670dc",
+ "dll_built_from": "17ab85a84 (ea08670dc is test-only)",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "23cad71c16132381",
+ "dll_bytes": 55585673,
+ "installed_sha256_prefix": "23cad71c16132381",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run27 (dd4f157c)",
+ "game_data": "addon2/06+07 unchanged",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "unchanged (engine_effects stays commented: the point of the test)",
+ "host_tests": "run_host_suite 333 modules 3422 tests 0 failing (engine-effects-patch record accepts engine_effects_option.h, ea08670dc); generate.py --check PASS 292/137; check_no_x87 build-ap PASS; fl_cull_chain native fixture 214/0 with seven far-gate cases, AP cull fixture 226/0 (agent)",
+ "build_warnings": 0,
+ "review": "main session delta review (config-parse change, fixture-verified): resolve_mode equivalent to engine_effects.cpp's previous rule incl. the too-long case",
+ "installed_at": "2026-11-03T02:59:48+04:00"
+}
