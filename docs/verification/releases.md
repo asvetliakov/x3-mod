@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.8.5
+
+2026-11-02, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.5 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 67.7 s wall: dll 65.2 s, package 2.4 s), clean main `6b21f46b` ([record](../../verification/results/release-1.8.5.json)). Requested by the user after run 226 ("didn't notice anything wrong").
+
+- Over 1.8.4: **the own procedural sun** (steps 1–2, [own-sun-pass.md](../architecture/own-sun-pass.md), [own-sun-look.md](../architecture/own-sun-look.md), [ledger](sun-occlusion.md)): the mod draws its own sun disc, corona, halo and nine rays in the scene-end stage with per-pixel depth visibility (37-tap core visibility), while the probe hook answers hidden so the engine destroys its lens chain; the partial sun occlusion of 1.8.3/1.8.4 (visibility pass, classifier, deferral, SM3 wrap) is deleted; `own_sun` (default on) is the one setting, `own_sun = 0` is pure vanilla, `sun_occlusion`/`sun_occlusion_log` are aliases; Ctrl+Shift+F9 removed. Also: the XT fade-route row and the fade-owner sun-shadow receivers/casters (the remote outpost's colour and band/opaque switch, runs 218/220, [fill-light.md](fill-light.md), [fade-owner-shadow-receiver.md](../architecture/fade-owner-shadow-receiver.md)); debug-tier `window_focus_lost/gained` and `window_pump_gap` rows ([run 225 black menu](sun-occlusion.md)). Flown as dev runs 218–226; look accepted at run 225, step 2 flown clean at run 226 (log: `own_sun status=ready`, drawn on every answered frame, no deleted-row names, exception 0).
+- DLL: stripped `42b07eba…` (42,521,000 B; x87 0 / 1116 reachable, strip identity PASS), unstripped and `d3d9.debug` kept at /home/asvetl/x3m-releases/1.8.5/. Installed into native `C:\X3` as Run227, rollback `rollback-d3d9\d3d9.dll.run226` (the run 226 dev DLL) ([install](../../verification/results/run227-release-install.json)); X3AP.exe unchanged.
+- Zip `x3m-1.8.5.zip` `52cefbe5…` (60,212,861 B); copied to `C:\Users\asvet\Downloads\`. `x3m.ini` begins `; X3 Modern Renderer 1.8.5`. The user's `x3m.ini` header bumped to 1.8.5, body unchanged (`x3m.ini.run226` kept).
+- No flight check open: same source as run 226 apart from the version string.
+- `x3m-regenerate.exe` is the 1.7.0 binary reused (`373a4c3b…`).
+
 ## Release 1.8.4
 
 2026-11-02, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --out /home/asvetl/x3m-releases/1.8.4 --regenerate-dir /home/asvetl/x3m-releases/1.7.0-regenerate` (exit 0, 61.4 s wall: dll 58.9 s, package 2.4 s), clean main `a05818f2` ([record](../../verification/results/release-1.8.4.json)).

@@ -1,0 +1,34 @@
+{
+ "run": 227,
+ "what": "release 1.8.5 stripped DLL installed into native C:\\X3 (own sun step 2; same source as run 226 plus the version bump)",
+ "command": "manual: cp -p C:\\X3\\d3d9.dll C:\\X3\\rollback-d3d9\\d3d9.dll.run226; cp ~/x3m-releases/1.8.5/d3d9.dll C:\\X3\\d3d9.dll; sha256 compare",
+ "installed_at": "2026-11-02T04:48:53+04:00",
+ "commit": "6b21f46b9",
+ "release_record": "verification/results/release-1.8.5.json",
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256": "42b07eba604101a2d8d8ceb9adc7be655eea7e92ab1eb124d73fc11d46ddd8ef",
+  "bytes": 42521000,
+  "stripped": true,
+  "verified_bytes": true
+ },
+ "previous": {
+  "run": 226,
+  "sha256_prefix": "d7440bae",
+  "bytes": 62744650,
+  "rollback_copy": "C:\\X3\\rollback-d3d9\\d3d9.dll.run226"
+ },
+ "zip": {
+  "path": "C:\\Users\\asvet\\Downloads\\x3m-1.8.5.zip",
+  "sha256": "52cefbe5fb218fa93b5e2adffac5fc26921948d0a2d4d99a6103575f0efddd4f",
+  "bytes": 60212861,
+  "verified_bytes": true
+ },
+ "x3m_ini": "header bumped to 1.8.5, body unchanged (previous file x3m.ini.run226; own_sun_log rename done at run 226)",
+ "unchanged": [
+  "X3AP.exe fdbf3418\u2026",
+  "x3m-regenerate.exe (1.7.0 reused)"
+ ],
+ "run226_log": "C:\\X3\\x3m.log session 20261102-044258: 20,824 frames, 132.7 s, exception 0, resets 0; own_sun status=ready probe=ok; own_sun_frame drawn on every answered frame (e.g. 1940/1940); 0 sun_occlusion_config / sun_visibility / sun_lens_draw / own_sun_toggle / config_key rows; window_pump_gap rows only during loads (over_hung during the 22-23 s save loads), no device_lost",
+ "producer": "main session"
+}

@@ -1039,3 +1039,10 @@ renamed to `own_sun_log = 1` (the alias would have worked; the rename avoids the
 **Run 226 A (open):** same sun as run 225 (no look change). Expect: `own_sun status=on` row without `hotkey=`,
 no `sun_occlusion_config`, `sun_visibility`, `sun_lens_draw` or `own_sun_toggle` rows, no `config_key … renamed`
 row. Check the sun across a hull and a station once, and that F8 is the only key that reacts. Then step 3 (FL).
+
+**Run 226 A completed (2026-11-02).** User: "Didn't notice anything wrong." Log (session 20261102-044258, 20,824 frames,
+132.7 s, exception 0, resets 0): `own_sun status=ready edition=ap requested=1 reason=ok probe=ok`; `own_sun_frame`
+drawn on every answered frame (`active_frames=1940 drawn=1940 answered=1940`), 29,534 `sun_probe` rows; zero
+`sun_occlusion_config`, `sun_visibility`, `sun_lens_draw`, `own_sun_toggle` or `config_key` rows; `window_pump_gap`
+rows only during the save loads (22–23 s `over_hung=1`), no `device_lost` (measured). Step 2 accepted; released as
+1.8.5 (Run227, [releases](releases.md)). Step 3 (FL port) starts.
