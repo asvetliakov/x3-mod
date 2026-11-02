@@ -1049,6 +1049,8 @@ rows only during the save loads (22–23 s `over_hung=1`), no `device_lost` (mea
 
 ## Lens-flare bracket deleted (2026-11-02, both editions; host evidence, not flown)
 
+**Accepted on AP (run 228, 2026-11-02):** the user flew the run 228 dev candidate (DLL `0093e660…`) and reported "looks like it's working fine", nothing changed visibly. FL acceptance follows FL run 20.
+
 The lens bracket on the engine's lens pass call (AP `0x00472491`, FL `base+0x8bcb7`), the lens-flare gain with its fog
 share and the gain-0 engine cull are deleted (user decision recorded in `docs/status.md`; design note
 [own-sun-pass.md](../architecture/own-sun-pass.md) section 14, "Lens-flare bracket deleted"). The flare-probe hook installs
