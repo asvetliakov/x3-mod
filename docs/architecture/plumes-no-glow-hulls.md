@@ -243,6 +243,17 @@ after the root loop, so no file write sits between two list reads.
   `engine_plumes_hidden_emitter_hull … root= first_handle= anchors= candidates= not_emitter= rejected= probed= own=
   radius= size= s= scale=` once per newly anchored hull, at most 32 per configure. `engine_stage` (`--debug`) gains
   `node_anchors= node_anchor_roots= node_probes=`.
+- **Probe diagnostics** (FL run 34 build, 2026-11-03; telemetry only). The window row gains, after
+  `hull_rows_dropped=`, the probe walks' own subtotals: `probe_walks=` (anchors-only walks of probe-admitted roots;
+  `probes=` counts admissions at the gather, and an admitted root without a context scale is not walked),
+  `probe_children=`, `probe_hidden=`, `probe_mode_reads=`, `probe_candidates=`, `probe_glow=` (walks that met a glow
+  part), `probe_none=` (walks that found no JET child at all), `probe_rows=` and `probe_rows_dropped=`.
+  `engine_plumes_probe_root … root= model=0x verdict=none|glow|anchored|rejected children= hidden= jets= candidates=`
+  once per root walked by a probe that the probe table did not hold yet, at most 8 per 300-frame window
+  (`engine_nozzle_walk_core.h` ProbeRootRows), logged after the append's root loop; `model` is the admitting hull
+  draw's model id (RootSet::model). Verdict: `anchored` an anchor record appended; `glow` a glow part withheld the
+  emitters; `rejected` an emitter candidate or a handed anchor yielded no record (guard, capacity, unreadable C, no
+  floor size); `none` otherwise (a station, an asteroid, a hull whose hidden children are other bodies).
 - **Rollback**: `engine_plume_emitters = 0` (`X3M_ENGINE_PLUME_EMITTERS`, builtin 1) leaves the walk and the gather
   as before; so does `engine_nozzle_source = draw`.
 - **Section 6, settled for step 1** [m, [`hidden_emitter_reads.py`](../../verification/results/plumes-no-glow/hidden_emitter_reads.py)

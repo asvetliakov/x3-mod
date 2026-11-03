@@ -637,6 +637,7 @@ struct BuildStats {
     unsigned floor_unknown = 0; // main jets without a ship radius (no floor) while the floor is on
     unsigned unfloored = 0;     // records at their natural value: a smaller co-located layer of another (merge_layers)
     unsigned far_nozzles = 0;   // nozzles drawn under Look::far_px_full (the distance law scaled their radiance)
+    unsigned far_drawn = 0;     // nozzles drawn whose record carries flag_far (a far-jet copy, not a node or draw record)
     unsigned attacks = 0;       // steering or brake records under an attack (gap 6), drawn or not
     unsigned transient_overflow = 0; // records without a slot in the per-nozzle memory (no attack; the shared phase)
     unsigned flow_factor_changes = 0; // nozzles whose phase advanced under another flow factor than their last frame's
@@ -1620,8 +1621,10 @@ inline unsigned build(const ee::Record* records, unsigned count, BodyLookup body
                 ++st.floor_unknown;
         }
         if (build_nozzle(r, b, view, k, *tables, scale, seconds, floor_value, out + written * vertices_per_nozzle, &st, &pulses,
-                         dynamics, own && own[i]))
+                         dynamics, own && own[i])) {
+            if (r.flags & ee::flag_far) ++st.far_drawn;
             ++written;
+        }
     }
     if (dynamics && dynamics->transients) {
         st.transient_overflow = dynamics->transients->overflow;

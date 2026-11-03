@@ -79,6 +79,8 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         engine_anchor_window_ = {};
         engine_anchor_window_.start = frame_;
         engine_anchor_hull_rows_ = engine_anchor_hull_rows_dropped_ = 0;
+        engine_probe_rows_.flushed();
+        engine_probe_rows_.window();
         log("engine_plumes_hidden_emitters device=%llu frame=%llu event=configure setting=%s status=%s rule=%s reason=%s edition=%s anchors=0 ships=0",
             id_, frame_, !n ? "-" : !ok ? "?" : engine_anchors_setting_ ? "1" : "0",
             ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_anchors_on_ ? "on" : "off",
@@ -309,13 +311,12 @@ void MotionOutput::engine_far_append() noexcept {
 #if X3M_EDITION_FL
         float scale = 0.f;
         std::memcpy(&scale, &owned_scale[i], sizeof scale);
-        const ee::FarVerdict verdict = ee::far_record(f, scale, body, entry, frame_, &record);
 #else
-        const ee::FarVerdict verdict =
-            ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);
+        const float scale = engine_far_context_scale(f.context);
 #endif
+        const ee::FarVerdict verdict = ee::far_record(f, scale, body, entry, frame_, &record);
         if (verdict != ee::FarVerdict::record) {
-            ++(verdict == ee::FarVerdict::steering ? engine_far_.steering : engine_far_.invalid);
+            engine_far_.refused.note(verdict, scale); // far_steering / far_invalid / far_invalid_scale0
             continue;
         }
         float radius = 0.f;
@@ -419,9 +420,10 @@ void MotionOutput::engine_anchor_window_row(bool anchored_frame) noexcept {
     w.rejected += engine_node_.anchor_rejected;
     w.no_floor += engine_node_.anchor_no_floor;
     w.mode_reads += engine_node_.mode_reads;
+    w.probe_walks.add(engine_node_.probe_walks);
     if (engine_node_.walk_us > w.walk_us_max) w.walk_us_max = engine_node_.walk_us;
     if (frame_ < w.start + engine_anchor_window_frames) return;
-    log("engine_plumes_hidden_emitters device=%llu frame=%llu event=window rule=%s edition=%s emitter_body=%d anchors=%u ships=%u frames=%u anchored_frames=%u probes=%u probe_deferred=%u glow=%u not_emitter=%u rejected=%u no_floor=%u mode_reads=%u new_hulls=%u hull_rows_dropped=%u walk_us_max=%.1f",
+    log("engine_plumes_hidden_emitters device=%llu frame=%llu event=window rule=%s edition=%s emitter_body=%d anchors=%u ships=%u frames=%u anchored_frames=%u probes=%u probe_deferred=%u glow=%u not_emitter=%u rejected=%u no_floor=%u mode_reads=%u new_hulls=%u hull_rows_dropped=%u probe_walks=%u probe_children=%u probe_hidden=%u probe_mode_reads=%u probe_candidates=%u probe_glow=%u probe_none=%u probe_rows=%u probe_rows_dropped=%u walk_us_max=%.1f",
         id_, frame_, engine_anchors_live_ ? "on" : "off",
 #if X3M_EDITION_FL
         "fl",
@@ -430,8 +432,11 @@ void MotionOutput::engine_anchor_window_row(bool anchored_frame) noexcept {
 #endif
         engine_emitter_body_, w.anchors, w.ships_max, w.frames, w.anchored_frames, w.probes, w.probe_deferred, w.glow,
         w.not_emitter, w.rejected, w.no_floor, w.mode_reads, w.new_hulls, engine_anchor_hull_rows_dropped_,
-        double(w.walk_us_max));
+        w.probe_walks.walks, w.probe_walks.children, w.probe_walks.hidden, w.probe_walks.mode_reads,
+        w.probe_walks.candidates, w.probe_walks.glow, w.probe_walks.none, engine_probe_rows_.written,
+        engine_probe_rows_.dropped, double(w.walk_us_max));
     w = {};
+    engine_probe_rows_.window();
     w.start = frame_;
 }
 // The gather, per routed scene draw: the draw's root is admitted when it is a ship (engine_nozzle_walk_core.h
@@ -440,7 +445,7 @@ void MotionOutput::engine_anchor_window_row(bool anchored_frame) noexcept {
 // (target-monitor ships are not walked). The view filter clears after engine_scene_camera_hold frames without a scene
 // tally, at Reset and on a load epoch change (review S3), so a stale view cannot starve the gather.
 void MotionOutput::engine_node_gather(std::uintptr_t node, std::uint32_t parent, std::uintptr_t camera,
-                                      std::uint32_t camera_handle, std::uintptr_t registry) noexcept {
+                                      std::uint32_t camera_handle, std::uintptr_t registry, std::uint32_t model) noexcept {
     if (engine_nozzle_source_ != engine_nozzle::core::Source::node || !plumes_requested_ || !engine_ring_ || !node) return;
     if (selector_.state() != renderer::BoundaryState::Scene) return;
     if (engine_node_roots_frame_ != frame_) {
@@ -473,7 +478,7 @@ void MotionOutput::engine_node_gather(std::uintptr_t node, std::uint32_t parent,
 #if X3M_EDITION_FL
     const unsigned admitted = engine_node_roots_.count;
 #endif
-    if (engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry), probed) && probed)
+    if (engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry), probed, model) && probed)
         ++engine_node_.probes;
 #if X3M_EDITION_FL
     // FL: a newly admitted root owns its context scale now, while the engine is submitting the draw that names this
@@ -557,6 +562,7 @@ void MotionOutput::engine_node_append() noexcept {
     }
     nz::RootSet& roots = engine_node_roots_;
     engine_anchor_hull_pending_count_ = 0;
+    engine_probe_rows_.flushed();
     const bool gathered = engine_node_roots_frame_ == engine_ring_frame_;
     engine_node_.roots = gathered ? roots.count : 0u;
     engine_node_.root_overflow = gathered ? roots.overflow : 0u;
@@ -697,6 +703,13 @@ void MotionOutput::engine_node_append() noexcept {
             const auto outcome = anchors_here ? nz::AnchorProbes::anchored
                                  : st.glow    ? nz::AnchorProbes::glow
                                               : nz::AnchorProbes::none;
+            // Probe walks (FL run 34 diagnostics): the window's subtotals, and one row per root the probe table did not
+            // hold yet (at most probe_root_row_cap per window; the rest counted), written after the loop.
+            if (probed) {
+                engine_node_.probe_walks.add(st);
+                if (engine_anchor_probes_.find(root) < 0)
+                    engine_probe_rows_.offer(nz::probe_root_row(root, roots.model[slot], st, anchors_here));
+            }
             // The table holds probe walks and anchored (or anchor-less) roots, never a recent glow ship: writes per
             // frame <= engine_anchor_probe_cap + the anchored hulls in view, so stations and asteroids keep their entries
             // (and their 2,000 game ms retry) beside a fleet of glow ships.
@@ -730,8 +743,14 @@ void MotionOutput::engine_node_append() noexcept {
             id_, frame_, h.root, h.first_handle, h.anchors, h.candidates, h.not_emitter, h.rejected, h.probed, h.own,
             double(h.radius), double(h.size), double(h.s), double(h.scale));
     }
-    if (engine_anchor_hull_pending_count_) SetLastError(error);
+    for (unsigned i = 0; i < engine_probe_rows_.pending_count; ++i) {
+        const nz::ProbeRootRow& p = engine_probe_rows_.pending[i];
+        log(X3M_ENGINE_PLUMES_PROBE_ROOT_FORMAT, id_, frame_, p.root, p.model, nz::probe_verdict_name(p.verdict),
+            p.children, p.hidden, p.jets, p.candidates);
+    }
+    if (engine_anchor_hull_pending_count_ || engine_probe_rows_.pending_count) SetLastError(error);
     engine_anchor_hull_pending_count_ = 0;
+    engine_probe_rows_.flushed();
     if (engine_anchors_on_) { // the window row (a log write at most once per 300 frames), LastError kept
         engine_anchor_window_row(engine_node_.anchors != 0);
         SetLastError(error);
@@ -961,10 +980,13 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_anchors=%u node_anchor_roots=%u node_probes=%u node_walk_us=%.1f node_no_boundary=%u node_unreadable_total=%llu steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_steering=%u far_invalid=%u far_invalid_scale0=%u far_drawn=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_anchors=%u node_anchor_roots=%u node_probes=%u node_walk_us=%.1f node_no_boundary=%u node_unreadable_total=%llu steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.unfloored, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
-            jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates,
+            jets.overflow + engine_far_.ring_full,
+            jets.steering + engine_far_.refused.steering + engine_far_.refused.invalid, // far_dropped: the sum, as before
+            jets.steering + engine_far_.refused.steering, engine_far_.refused.invalid, engine_far_.refused.invalid_scale0,
+            s.far_drawn, jets.disarmed, engine_far_.duplicates,
             engine_node_.roots, engine_node_.walked, engine_node_.records, engine_node_.duplicates, engine_node_.guard_rejected,
             engine_node_.hidden, engine_node_.overflow, engine_node_.unreadable, engine_node_.engine_culled, engine_node_.no_scale,
             engine_node_.root_overflow, engine_node_.children, engine_node_.skipped_other_view, engine_node_.not_ship,

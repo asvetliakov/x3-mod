@@ -5770,7 +5770,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
         route.observer_epoch = s.observer_epoch;
         route.scope_parent = s.parent; // engine light: the synthetic node+0x18
         key.draw_domain = (((s.load_epoch & 0xffffffffull) << 32) | (s.registry_epoch & 0xffffffffull)) + 1;
-        engine_node_gather(s.node, s.parent, s.camera, s.camera_handle, s.registry); // the ship's root (node-sourced nozzles)
+        engine_node_gather(s.node, s.parent, s.camera, s.camera_handle, s.registry, s.model); // the ship's root (node-sourced nozzles)
         return true;
     }
 #endif
@@ -5781,7 +5781,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     constexpr std::uint32_t required = object_trace::Node | object_trace::Camera | object_trace::Registry;
     if ((scope.valid & required) != required || !scope.node || !scope.camera) return false;
     // The ship's root for the node-sourced nozzles (engine_node_gather: one set probe, no read; the same block).
-    engine_node_gather(scope.node, scope.parent, scope.camera, scope.camera_handle, scope.registry);
+    engine_node_gather(scope.node, scope.parent, scope.camera, scope.camera_handle, scope.registry, scope.model);
     object_lifetime::Snapshot lifetime{};
     if (!object_lifetime::current(scope.registry, scope.node, scope.node_handle, scope.camera, scope.camera_handle,
                                   &lifetime) ||

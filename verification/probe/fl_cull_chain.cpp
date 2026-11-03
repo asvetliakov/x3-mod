@@ -42,6 +42,7 @@
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/proxy/engine_node_layout.h"
 #include "../../src/proxy/engine_nozzle_walk_core.h"
+#include "../../src/proxy/engine_plumes_core.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/proxy/fov.h"
 namespace csp = x3m::cull_small_parts;
@@ -682,6 +683,10 @@ void checks() {
                   unsigned(verdict), double(record.origin[0]), double(record.origin[1]), double(record.origin[2]),
                   double(record.size), double(record.axis[2]), unsigned(record.flags));
     const auto close_to = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+    const ee::Record far_copy = record; // drawn below (far_chain_counter_split)
+    const fj::core::Raw far_raw = raw[0];
+    ee::FarRefusals refused;           // the stage's tally (engine_stage far_steering / far_invalid / far_invalid_scale0)
+    refused.note(verdict, owned);
     check(verdict == ee::FarVerdict::record && close_to(record.origin[0], 1000.f) && close_to(record.origin[1], -2000.f) &&
               close_to(record.origin[2], 3000.f) && close_to(record.size, 2.f) && record.axis[2] == -1.f &&
               (record.flags & ee::flag_far) && record.node_handle == node_handle && record.model == real_model,
@@ -691,8 +696,9 @@ void checks() {
     // 3. The node's context differs from the view's: the entry stays, its owned scale is 0 and the consumer refuses.
     o = run(u32(&other_context), false);
     std::memcpy(&owned, &fj::context_scale_bits()[0], 4);
-    check(fj::count() == 1 && fj::context_scale_bits()[0] == 0 &&
-              ee::far_record(fj::entries()[0], owned, -1, nullptr, 9, &record) == ee::FarVerdict::invalid && o.kind == 2,
+    const ee::FarVerdict foreign = ee::far_record(fj::entries()[0], owned, -1, nullptr, 9, &record);
+    refused.note(foreign, owned);
+    check(fj::count() == 1 && fj::context_scale_bits()[0] == 0 && foreign == ee::FarVerdict::invalid && o.kind == 2,
           "far_chain_foreign_context_refused");
     // 4. No node context: the same refusal (no read through a null context).
     o = run(0, false);
@@ -700,6 +706,38 @@ void checks() {
     // 5. The AP model offset holds the real id, FL's holds the RCS 566: the handler reads FL's, skips it as steering.
     o = run(u32(&context), true);
     check(fj::count() == 0 && fj::stats().steering == 1 && o.kind == 2, "far_chain_model_is_fl_offset");
+    // The engine_stage far counters (FL run 34 diagnostics; motion_output_engine_plumes_inc.h log_engine_stage): the
+    // handler's steering skip (case 5), the stage's scale-0 invalid (case 3) and a non-zero-scale invalid (a zero
+    // +0x70 at the owned 0.01) apart; far_dropped stays the sum. The case-2 record drawn by the plume builder
+    // (engine_plumes_core.h build, a view 10 units in front of it) counts far_drawn; a node record does not.
+    {
+        fj::core::Raw bad = far_raw;
+        bad.scale70 = 0;
+        refused.note(ee::far_record(bad, scale, -1, nullptr, 9, &record), scale);
+        const unsigned handler_steering = fj::stats().steering;
+        const unsigned far_steering = handler_steering + refused.steering, far_invalid = refused.invalid;
+        const unsigned far_dropped = handler_steering + refused.steering + refused.invalid;
+        namespace ep = x3m::engine_plumes;
+        ep::View view{};
+        const float rows[12] = {1, 0, 0, -1000.f, 0, 1, 0, 2000.f, 0, 0, 1, -2990.f};
+        std::memcpy(view.rows, rows, sizeof rows);
+        view.m00 = view.m11 = 1.f;
+        view.height = 1440.f;
+        view.near_z = 1.f;
+        ee::Record frame_records[2] = {far_copy, far_copy};
+        frame_records[1].node_handle = node_handle + 1;
+        frame_records[1].flags = std::uint16_t((frame_records[1].flags & ~ee::flag_far) | ee::flag_node);
+        static ep::Vertex vertices[2 * ep::vertices_per_nozzle];
+        ep::BuildStats bs{};
+        const unsigned drawn = ep::build(frame_records, 2, nullptr, view, ep::Preset::standard, 0.f, vertices, 2, &bs);
+        std::snprintf(detail, sizeof detail, "far_dropped=%u far_steering=%u far_invalid=%u far_invalid_scale0=%u "
+                      "far_drawn=%u nozzles=%u", far_dropped, far_steering, far_invalid, refused.invalid_scale0,
+                      bs.far_drawn, drawn);
+        check(handler_steering == 1 && refused.steering == 0 && far_invalid == 2 && refused.invalid_scale0 == 1 &&
+                  far_dropped == far_steering + far_invalid && drawn == 2 && bs.far_drawn == 1,
+              "far_chain_counter_split", detail);
+        std::printf("FARSPLIT %s\n", detail);
+    }
     // 6. Disarmed (no device requests the stage): nothing copied, the node still culled.
     fj::request(&counted, false, &device);
     o = run(u32(&context), false);

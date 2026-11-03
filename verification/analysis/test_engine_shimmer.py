@@ -19,8 +19,10 @@ ROOT = Path(__file__).resolve().parents[2]
 # The record is Wine provenance (Run140, 2026-10-09, commit 0cf873a6b); since 2026-10-11 there is no Wine host and these
 # sources changed natively (0cf873a6b..2c3d32ffa). Accepted beside the recorded hash until run_engine_shimmer.py reruns on a
 # Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
+# Bumped for the FL run 34 diagnostics (probe rows, far-jet counter split; telemetry only, 2026-11-03).
 SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_effects_core.h': '168a1451ea50181173b63fe9e0ee4aa90f49da7bd591f2759b4ef531dc28ea2b',
+    'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
+    'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
 }
 sys.path.insert(0, str(ROOT / 'tools/config'))
 import schema  # noqa: E402

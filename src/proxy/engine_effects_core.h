@@ -853,4 +853,18 @@ inline FarVerdict far_record(const x3m::engine_far_jets::core::Raw& raw, float c
     r->frame = std::uint32_t(frame);
     return FarVerdict::record;
 }
+// The far stage's refusals of far_record (the engine_stage row: far_steering adds the handler's own steering skips to
+// `steering`, far_invalid = `invalid`, far_invalid_scale0 = `invalid_scale0`, the invalid verdicts given a context
+// scale of exactly 0: the FL owned scale of a node whose context is not the view's, or AP's failed context read).
+struct FarRefusals {
+    unsigned steering = 0, invalid = 0, invalid_scale0 = 0;
+    void note(FarVerdict v, float context_scale) noexcept {
+        if (v == FarVerdict::steering) {
+            ++steering;
+        } else if (v == FarVerdict::invalid) {
+            ++invalid;
+            if (context_scale == 0.f) ++invalid_scale0;
+        }
+    }
+};
 } // namespace x3m::engine_effects::core

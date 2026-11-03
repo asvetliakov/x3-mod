@@ -91,9 +91,13 @@ class FlCullChainNativeFixture(unittest.TestCase):
         self.assertIn('FLIPS terran=248 refused=248 occlusion=160 refused=160 fixup=32 fixup_refused=32', out)
         self.assertIn('DECISIONS culled=20 dock=10 exempt=6 far=3 native=41', out)
         self.assertIn('FARCHAIN record origin=1000.0,-2000.0,3000.0 size=2.0000 scale=3c23d70a', out)
+        # FL run 34 diagnostics: the engine_stage far counters split (handler steering, stage invalid with its scale-0
+        # sub-count, far_dropped their sum) and far_drawn (a drawn record carrying flag_far; the node record beside it not).
+        self.assertIn('FARSPLIT far_dropped=3 far_steering=1 far_invalid=2 far_invalid_scale0=1 far_drawn=1 nozzles=2', out)
         for label in ('init_installs_far_block', 'init_jet_writer_mismatch_drops_far', 'far_chain_fl_layout_copied',
                       'far_chain_record_reaches_consumer', 'far_chain_foreign_context_refused',
-                      'far_chain_null_context_refused', 'far_chain_model_is_fl_offset', 'far_chain_disarmed',
+                      'far_chain_null_context_refused', 'far_chain_model_is_fl_offset', 'far_chain_counter_split',
+                      'far_chain_disarmed',
                       'init_far_gate_unset_on', 'init_far_gate_empty_on', 'init_far_gate_plumes_on',
                       'init_far_gate_native_off', 'init_far_gate_off_off', 'init_far_gate_mixed_case_off',
                       'init_far_gate_invalid_off'):
@@ -208,11 +212,15 @@ class FlCullChainWiring(unittest.TestCase):
         # The plume stage on FL: the owned scale, no later context +0x2c read for far records.
         plumes = strip((ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text())
         append = plumes[plumes.index('void MotionOutput::engine_far_append()'):plumes.index('bool MotionOutput::engine_node_read(')]
-        fl, ap = append.split('#else', 1)[0], append.split('#else', 1)[1]
+        fl, rest = append.split('#else', 1)
+        ap, shared = rest.split('#endif', 1)
         self.assertIn('const std::uint32_t* owned_scale = engine_far_jets::context_scale_bits();', fl)
-        self.assertIn('ee::far_record(f, scale, body, entry, frame_, &record);', fl)
+        self.assertIn('std::memcpy(&scale, &owned_scale[i], sizeof scale);', fl)
         self.assertNotIn('engine_far_context_scale', fl)
-        self.assertIn('ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);', ap)
+        self.assertIn('const float scale = engine_far_context_scale(f.context);', ap)
+        # One far_record call on the edition's scale; its refusals tallied with that scale (FL run 34 far counters).
+        self.assertIn('ee::far_record(f, scale, body, entry, frame_, &record);', shared)
+        self.assertIn('engine_far_.refused.note(verdict, scale);', shared)
 
     def test_node_walk_on_fl(self):
         """The FL node walk's production wiring (fl-nozzle-walk-activation.md; the fixture's node_walk section mirrors it)."""

@@ -652,7 +652,13 @@ what the cull saves; 100 far jets would cost about 1 ms) and draw them as faint 
   - A frame whose only jets are far ones runs the stage too (the resolve installs the callback for buffered copies).
   - The engine's own culls stay: a hull culled whole takes its jets with it (their children never reach the site).
   - Counts in `engine_stage`: `far_jets` (copies), `far_records` (appended), `far_engine`, `far_overflow`,
-    `far_dropped`, `far_disarmed`, `far_duplicates`; the cull's rows say `far_jets=on|off|writer_mismatch`.
+    `far_dropped`, `far_disarmed`, `far_duplicates`; the cull's rows say `far_jets=on|off|writer_mismatch`. Since the
+    FL run 34 build (2026-11-03) `far_dropped` is split: `far_steering` (the handler's steering skips, v/00566, plus the
+    stage's far_record steering verdicts on SMALLJET bodies), `far_invalid` (the stage's far_record invalid verdicts),
+    `far_dropped` = `far_steering` + `far_invalid` as before; `far_invalid_scale0` (the invalid verdicts given a context
+    scale of exactly 0: FL's owned scale of a node whose context is not the view's, AP's failed context read) and
+    `far_drawn` (nozzles the builder wrote whose record carries `flag_far`; node and anchor records do not). Totals:
+    `engine_effects_core.h` FarRefusals, `engine_plumes_core.h` BuildStats::far_drawn.
   - Not verified in flight (Run 123 acceptance checks): far records are drawn by their view handle, i.e. the view's
     +0x28 equals the draw scope's camera handle (`engine_stage far=` > 0 with far ships in view, `skipped_other_view=`
     not rising by the far count, `view_rule=` own or majority with draws and `far` on draw-free frames); how many
