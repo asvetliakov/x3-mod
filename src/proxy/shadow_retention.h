@@ -54,11 +54,17 @@ struct ShadowRetention {
     // This frame's transaction: issues per cascade from live and retained records.
     unsigned replayed_live[renderer::shadow_cascade_max]{}, replayed_retained[renderer::shadow_cascade_max]{};
     unsigned retained_issues = 0;
+    // Of those, the retained alpha-tested records' issues (alpha program); and the admitted alpha-tested records
+    // skipped because the device has no alpha programs (never expected: such records are only made while it has).
+    unsigned retained_alpha_issues = 0, retained_alpha_skipped = 0;
+    // Set by note_refused_sighting around its note_retention_draw: the draw's alpha source was refused this time,
+    // so the sighting only keeps a record of its range alive (shadow_retention::Sighting::keep_alpha).
+    bool keep_alpha = false;
     // The session's engagement (shadow_retention_summary): published frames, frames with a static node / an unseen node
     // / a retained issue, the node-frame sums of the three levels and the peaks. Counted at publish, five adds a frame.
     struct Session {
         std::uint64_t frames = 0, static_frames = 0, unseen_frames = 0, retained_frames = 0;
-        std::uint64_t statics = 0, moving = 0, unseen = 0, retained_issues = 0;
+        std::uint64_t statics = 0, moving = 0, unseen = 0, retained_issues = 0, retained_alpha_issues = 0;
         std::uint32_t unseen_max = 0, retained_issues_max = 0;
         bool logged_final = false;
     } session{};
