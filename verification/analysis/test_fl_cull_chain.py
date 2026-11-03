@@ -156,7 +156,9 @@ class FlCullChainWiring(unittest.TestCase):
             self.assertEqual(capture.count(call), 2, call)
             second = capture.rindex(call)
             self.assertIn('#else', capture[second - 120:second])
-            self.assertIn('#endif', capture[second:second + 320])
+            end = capture.index('#endif', second)  # the FL branch closes next; other FL providers may sit beside the call
+            self.assertNotIn('#else', capture[second:end])
+            self.assertNotIn('#if', capture[second:end])
 
     def test_provider_contract(self):
         code = strip(PROVIDER.read_text())
