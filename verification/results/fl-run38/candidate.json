@@ -1,0 +1,20 @@
+{
+ "run": 38,
+ "step": "music family on FL (music_keep, music_queue, music_dock_keep, music_combat_trigger, media-cue ID2 skip); merge 0c05f2ac4",
+ "edition": "fl",
+ "commit": "0c05f2ac4",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "aeed7282caec4003",
+ "dll_bytes": 56522972,
+ "installed_sha256_prefix": "aeed7282caec4003",
+ "note": "DLL built at main 0c05f2ac4 before the SETA merge d6c2e23cd so this flight tests music only",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run37 (56e92313)",
+ "game_data": "unchanged",
+ "ini": "unchanged (music keys default on)",
+ "host_tests": "run_host_suite at 0c05f2ac4: 343 modules 3,491 tests 0 failing; verifiers media_cue 22 / music_keep 42 / music_alert 17 PASS on the installed exe; native fixtures 20/0, 55/0, 26/0; story detection on the offline x3story.obj model fail=none",
+ "build_warnings": 0,
+ "review": "Opus high: merge, non-blocking items folded (AP key static_asserts, slot ownership text, story check recorded)",
+ "installed_at": "2026-11-03T20:10:17+04:00"
+}

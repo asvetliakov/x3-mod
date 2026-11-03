@@ -2541,7 +2541,12 @@ reviewed commit); both site verifiers PASS on the installed exe (measured). Inst
 (55,991,163 B), rollback `rollback-d3d9\d3d9.dll.run36` = `6551d9bc…`; overlay and ini unchanged (both keys default on).
 Record `verification/results/fl-run37/candidate.json`.
 
-**FL run 37 A (open):** pause with the Pause key, press a few other keys and move the mouse (the pause must hold), then
+**FL run 37 A (flown 2026-11-03, accepted):** user: "works fine, didn't notice any issues". Log
+`/home/asvetl/x3m-logs/fl-run37-window.log` (75 MB, 7,873 frames, measured): `pause_key_only patched=1 key=0x1b5 reason=ok
+rva=0x07880c edition=fl write=plain`, `run_in_background rva=0x0776ec edition=fl status=armed reason=ok setting=1
+write=atomic`. No wrong-key pause end, no stall unfocused, no double cursor reported.
+
+Original brief: pause with the Pause key, press a few other keys and move the mouse (the pause must hold), then
 Pause again (it must end); alt-tab away and back while paused, and look for a second cursor afterwards; alt-tab away
 while flying and listen whether the game keeps running (SETA or a moving ship visible on return). Expect
 `pause_key_only … edition=fl status=patched` and `run_in_background … edition=fl status=patched` at start. Report a pause
@@ -2614,3 +2619,18 @@ write=plain … inject=ok … call_rva=0x0bb500 selector=32 key=0x96 method=Star
 pitch=active:atomic roll=active:atomic strafe_y=active:plain strafe_x=active:atomic …` and `seta_manual_flight key_latch
 installed=1 reason=ok edition=fl`. Not verified: in game (not flown), native Windows game behaviour, the 60 s ticket
 expiry, and the engine's own interpreter behind the wrapper (the fixtures use stand-ins).
+
+## FL run 38 — music family on FL (installed 2026-11-03)
+
+Merge `0c05f2ac4` (Opus-high review: merge; non-blocking items folded). The DLL was built at `0c05f2ac4`, before the SETA
+merge `d6c2e23cd`, so this flight tests the music family alone. Host suite at that commit 343 modules 3,491 tests 0
+failing; the three site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `aeed7282…`
+(56,522,972 B), rollback `rollback-d3d9\d3d9.dll.run37` = `56e92313…`; overlay and ini unchanged. Record
+`verification/results/fl-run38/candidate.json`.
+
+**FL run 38 A (open):** while sector music plays: alt-tab away and back (music must continue where it was), pause and
+unpause (same), save (same), fly through a gate (the current track finishes before the new sector's starts), dock at a
+station (the track keeps playing instead of the docking music) and undock, and get into or near a fight (combat music
+starts only once you or your ships are engaged, and stays about 20 game seconds after the last hit). Expect
+`music_keep … edition=fl status=patched`, `media_cue … edition=fl`, `music_alert … edition=fl status=patched` at start.
+Report a track that restarts where it should not, silence after a dock or jump, or combat music that never starts.
