@@ -2400,7 +2400,15 @@ anchors, without a way to tell an empty probe from an emitter hull that failed.
 `rollback-d3d9\d3d9.dll.run32` = `9330f61b…`; game data and ini unchanged (`engine_plume_emitters` commented: on).
 Record `verification/results/fl-run34/candidate.json`.
 
-**FL run 34 A (open, decides step 1):** new custom game, player ship **Heavy Centaur** (`SS_SH_A_M6M`, not the plain
+**FL run 34 A (flown 2026-11-03, step 1 works; placement defect):** user: "heavy centaur is working but some plumes are
+misplaced. Edge plumes are okay, but 2 plumes in center are misplaced around their horizontal axis, left center a little
+to the left, right center a little to the right". Log `/home/asvetl/x3m-logs/fl-run34-heavy-centaur.log` (436 MB,
+measured): `engine_plumes_hidden_emitter_hull … anchors=4 candidates=4 own=1 radius=321.78 size=46.11 scale=0.0100`,
+windows `anchors=1200 ships=1 anchored_frames=300 mode_reads=1200 rejected=0`, probe rows `verdict=none` on stations
+(`probe_none=14`); captures 17465/17466. Step 1 anchors and the walk are confirmed on FL; the centre pair's lateral offset
+is under triage (`verification/results/fl-run34/plume_offset_triage.py`).
+
+Original brief: new custom game, player ship **Heavy Centaur** (`SS_SH_A_M6M`, not the plain
 Centaur, which has no jets on FL), chase view, fly for a minute with throttle changes; one F8 looking at the stern; tell me
 before relaunching. Pass: plumes, a hull light and a trail at the four engine points following throttle, and
 `engine_plumes_hidden_emitters … anchors>0 ships>0` with `engine_plumes_hidden_emitter_hull` rows. Fail: no plume; then
