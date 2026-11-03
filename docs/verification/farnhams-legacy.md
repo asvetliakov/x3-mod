@@ -3026,9 +3026,40 @@ mutants fail 11 and 5 checks (measured). Installed `C:\X3FL\d3d9.dll` = `edfb7ab
 `rollback-d3d9\d3d9.dll.run43` = `75735147…`; exe, overlay and ini unchanged (`shadow_caster_retention` default on).
 Record `verification/results/fl-run44/candidate.json`.
 
-**FL run 44 A (open):** fly near a large station with the sun low, so a station arm behind or beside you casts onto
+**FL run 44 A (flown 2026-11-04, retention works, shadow still drops; cause found):** user: the station's shadow on the
+hull disappears when the station is strictly behind the ship and returns at an angle; three F8 captures. Log
+`/home/asvetl/x3m-logs/fl-run44-retention.log` (407 MB, 31,649 frames, measured): `shadow_retention_device device=1
+mode=live enabled=1 reason=ok` (the journal port works), 30,539 `shadow_retention_frame` rows with retained records
+while the station is unseen (`records_unseen=18`), `excluded_class=0 buffer_gone=0 retired=0 journal_overflow=0`.
+Triage (`verification/results/fl-run44-retention-triage/triage.py`, measured): the station (node 52942, 28.7 km,
+toward the sun) is drawn in 25 calls, 7 alpha-tested including its largest (26,884 primitives); the store never took
+alpha-tested draws (shared exclusion from before the alpha caster programs), so the 18 retained opaque records replay
+correctly (97 % texel agreement with the live frame) but cover cascade 0 at 0.007 against 0.72 live, cascades 1-2 at
+0.07 against 0.85 and 0.51. "Behind" versus "at an angle" is the engine culling the station versus still drawing it.
+Fixed on both editions as run 45 (alpha-tested casters retained). Not an FL-specific defect: AP has the same gap.
+
+Original brief: fly near a large station with the sun low, so a station arm behind or beside you casts onto
 your ship, then turn the camera (chase view and cockpit) through the arm leaving the view; also one sector change via a
 gate and one dock. Expect `shadow_retention_device … enabled=1 reason=ok` (no `reason=journal`) and
 `shadow_retention_frame` rows with `known` above 0 and `retained` rising while the caster is out of view. Visual: the
 shadow stays on your hull when the caster leaves the view, as on AP; report a shadow that lingers after its station or
 ship is gone (a ghost shadow), a shadow that still drops on turning, or flicker.
+
+## FL run 45 — alpha-tested casters retained (installed 2026-11-04)
+
+Merge `c65b155f6` (`eecdb1aa1` + fold `89da12a05`; shared code, AP gets the same): the retention store holds an
+alpha-tested caster's stage-0 texture as a fourth resource (AddRef once per texture, released through the owed queue,
+orphan-probed like a buffer), replays retained alpha records in each cascade's alpha tail with the alpha-tested depth
+program, refreshes a record in place on a texture or threshold change (`retextured=`, streak kept), treats a refused
+alpha source on a known range as a keep sighting (`alpha_kept=`), and skips retained alpha records when the alpha
+programs are unavailable (`retained_alpha_skipped=`). The replay row's buffer grew so `replayed_live<k>/replayed_retained<k>`
+appear again. Two Opus-high reviews (fix-first, then merge on the fold; `docs/verification/directional-shadows.md` holds
+the host evidence). Store driver `RESULT PASS checks=7819` (7,750 before), focused host tests OK, both editions 0
+warnings (measured). Installed `C:\X3FL\d3d9.dll` = `38422f62…` (59,072,425 B), rollback `rollback-d3d9\d3d9.dll.run44` =
+`edfb7ab5…`; exe, overlay and ini unchanged. Record `verification/results/fl-run45/candidate.json`.
+
+**FL run 45 A (open):** the run 44 flight again: near a large station with the sun low, turn until the station leaves
+the view in chase view and cockpit, one gate transit, one dock, F8 on a frame where the station is unseen. Expect
+`shadow_retention_frame … retained_alpha` above 0 while the station is unseen, `retained_alpha_skipped=0`, and the
+hull shadow staying when the station is behind you. Report a shadow that still drops, a ghost shadow after the station
+or a ship is gone, flicker, or a frame-rate change near stations.

@@ -1,0 +1,19 @@
+{
+ "run": 45,
+ "step": "shadow caster retention keeps alpha-tested casters (shared, both editions): texture as fourth held resource, alpha tail replay, retexture in place, keep sightings; merge c65b155f6 (eecdb1aa1, 89da12a05)",
+ "edition": "fl",
+ "commit": "c65b155f6",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "38422f6252c0cb52",
+ "dll_bytes": 59072425,
+ "installed_sha256_prefix": "38422f6252c0cb52",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run44 (edfb7ab5)",
+ "game_data": "unchanged",
+ "ini": "unchanged",
+ "host_tests": "focused: test_shadow_retention, test_shadow_replay_candidates, test_shadow_alpha_casters, test_fl_object_lifetime, test_engine_effects OK (1 skipped); store driver RESULT PASS checks=7819 (7,750 before); both editions 0 warnings; full host suite started at install (result in the ledger)",
+ "build_warnings": 0,
+ "review": "Opus high twice: first pass fix-first (branch base, retexture resets the node streak), fold reviewed: merge, notes only",
+ "installed_at": "2026-11-04T02:39:03+04:00"
+}
