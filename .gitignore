@@ -92,3 +92,6 @@ verification/results/run192-flight/x3m.log
 # Green station rebake (2026-11-03): the baked candidate and its log stay local.
 verification/results/fl-lod-overlay/green_station/rebake/out/
 verification/results/fl-lod-overlay/green_station/rebake/bake.log
+
+# plumes-no-glow census: regenerate with census.py (153 KB per-ship detail)
+verification/results/plumes-no-glow/census_out.json

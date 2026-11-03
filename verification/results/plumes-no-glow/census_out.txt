@@ -1,0 +1,272 @@
+== ap (C:\X3 installed, Mayhem 3; skipped ['addon/13.cat', 'addon/14.cat', 'addon/15.cat']): TShips addon/12.cat (521 rows, 20 non-ship), Bodies addon/12.cat (269 JET tokens); ship rows 497, readable scenes 497, unreadable {'missing': 4}
+   no glow: 6  by class {'M1': '5/27', 'M2': '0/45', 'M3': '0/83', 'M4': '0/56', 'M5': '0/43', 'M6': '0/62', 'M7': '0/46', 'M8': '0/13', 'TL': '0/13', 'TM': '0/18', 'TP': '0/22', 'TS': '1/69'}
+   by race {'race12': 3, 'race15': 2, 'Argon': 1}
+   col-11 kind {'absent': 5, 'sprite': 1}  spawn sites {'a=False b=False': 6}  trail col set 1  emitter parts 0
+   hull readable 6  engine-material faces 4  named engine/exhaust parts (cand. a) 1
+   name survey (no-glow scenes): {'ships/props/bigturret4_dummy': 48, 'ships/props/cameradummy': 36, 'ships/props/argon_m1turreta_dummy': 18, 'ships/props/argon_m1turretb_dummy': 7, 'ships/props/m6turret4_dummy': 4, 'ships/props/weapondummy': 4, 'effects/engines/fx_engine_xtraotas_ts1': 2, 'effects/engines/fx_engine_xtraotas_ts3': 2}
+   calibration from glow ships (per class: jets, rear z fraction median/p90, |x|/halfwidth, value/halfwidth):
+      M1: {'jets': 165, 'zfrac_median': 0.077, 'zfrac_p90': np.float64(0.246), 'xfrac_median': 0.271, 'value_over_halfwidth_median': 0.096, 'value_over_halfwidth_p10_p90': [0.028, 0.375]}
+      M2: {'jets': 431, 'zfrac_median': 0.037, 'zfrac_p90': np.float64(0.247), 'xfrac_median': 0.319, 'value_over_halfwidth_median': 0.076, 'value_over_halfwidth_p10_p90': [0.025, 0.263]}
+      M3: {'jets': 277, 'zfrac_median': 0.062, 'zfrac_p90': np.float64(0.221), 'xfrac_median': 0.205, 'value_over_halfwidth_median': 0.214, 'value_over_halfwidth_p10_p90': [0.118, 0.335]}
+      M4: {'jets': 168, 'zfrac_median': 0.074, 'zfrac_p90': np.float64(0.18), 'xfrac_median': 0.129, 'value_over_halfwidth_median': 0.237, 'value_over_halfwidth_p10_p90': [0.109, 0.473]}
+      M5: {'jets': 170, 'zfrac_median': 0.026, 'zfrac_p90': np.float64(0.284), 'xfrac_median': 0.101, 'value_over_halfwidth_median': 0.146, 'value_over_halfwidth_p10_p90': [0.106, 0.372]}
+      M6: {'jets': 507, 'zfrac_median': 0.133, 'zfrac_p90': np.float64(0.306), 'xfrac_median': 0.331, 'value_over_halfwidth_median': 0.162, 'value_over_halfwidth_p10_p90': [0.049, 0.313]}
+      M7: {'jets': 408, 'zfrac_median': 0.079, 'zfrac_p90': np.float64(0.344), 'xfrac_median': 0.238, 'value_over_halfwidth_median': 0.085, 'value_over_halfwidth_p10_p90': [0.038, 0.248]}
+      M8: {'jets': 74, 'zfrac_median': 0.102, 'zfrac_p90': np.float64(0.184), 'xfrac_median': 0.173, 'value_over_halfwidth_median': 0.108, 'value_over_halfwidth_p10_p90': [0.071, 0.194]}
+      TL: {'jets': 126, 'zfrac_median': 0.043, 'zfrac_p90': np.float64(0.215), 'xfrac_median': 0.399, 'value_over_halfwidth_median': 0.05, 'value_over_halfwidth_p10_p90': [0.025, 0.256]}
+      TM: {'jets': 116, 'zfrac_median': 0.072, 'zfrac_p90': np.float64(0.154), 'xfrac_median': 0.248, 'value_over_halfwidth_median': 0.093, 'value_over_halfwidth_p10_p90': [0.077, 0.327]}
+      TP: {'jets': 112, 'zfrac_median': 0.021, 'zfrac_p90': np.float64(0.153), 'xfrac_median': 0.193, 'value_over_halfwidth_median': 0.191, 'value_over_halfwidth_p10_p90': [0.076, 0.452]}
+      TS: {'jets': 324, 'zfrac_median': 0.036, 'zfrac_p90': np.float64(0.107), 'xfrac_median': 0.238, 'value_over_halfwidth_median': 0.191, 'value_over_halfwidth_p10_p90': [0.113, 0.594]}
+   no-glow ships:
+      SS_SH_A_OWP_1 M1 race12 eff=390(absent) trail=0 em=0 rcs=0 hull=ships\others\owp_small\hull value=404579 z=[-270302,230693] engfaces=128 engz=0.535 named=[] 
+      SS_SH_A_OWP_2 M1 race12 eff=390(absent) trail=0 em=0 rcs=0 hull=ships\others\OWP_medium\hull value=483401 z=[-363805,363805] engfaces=80 engz=0.499 named=[] 
+      SS_SH_A_OWP_3 M1 race12 eff=390(absent) trail=0 em=0 rcs=0 hull=ships\others\owp_large\hull value=568030 z=[-360358,360358] engfaces=176 engz=0.368 named=[] 
+      SS_SH_A_TS_NEXUS_MINER TS Argon eff=709(sprite) trail=31 em=0 rcs=0 hull=ships\argon\argon_ts_nexus\hull value=26251 z=[-26251,25198] engfaces=134 engz=0.431 named=['effects/engines/fx_engine_xtraotas_ts1', 'effects/engines/fx_engine_xtraotas_ts3'] 
+      SS_SH_G_M1_OWP_1_STARPORT M1 race15 eff=390(absent) trail=0 em=0 rcs=0 hull=stations\stellaris\starbase\machine_01_starport value=897419 z=[-443506,443506] engfaces=0 engz=None named=[] 
+      SS_SH_G_M1_OWP_2_STARHOLD M1 race15 eff=390(absent) trail=0 em=0 rcs=0 hull=stations\stellaris\starbase\machine_01_starhold value=1506868 z=[-701309,701309] engfaces=0 engz=None named=[] 
+== ap_stock (STOCK_AP_CATALOGUES): TShips addon/03.cat (404 rows, 35 non-ship), Bodies addon/01.cat (247 JET tokens); ship rows 354, readable scenes 354, unreadable {'missing': 15}
+   no glow: 104  by class {'GONER': '0/1', 'M1': '22/22', 'M2': '13/16', 'M3': '1/63', 'M4': '0/52', 'M5': '5/43', 'M6': '18/28', 'M7': '27/31', 'M8': '0/7', 'TL': '17/17', 'TM': '0/10', 'TP': '0/18', 'TS': '1/46'}
+   by race {'Argon': 28, 'Terran': 13, 'Split': 11, 'Yaki': 10, 'Teladi': 9, 'Paranid': 7, 'Boron': 6, 'ATF': 6, 'Pirate': 5, 'Xenon': 4, 'Goner': 3, "Kha'ak": 2}
+   col-11 kind {'sprite': 102, 'absent': 2}  spawn sites {'a=False b=False': 91, 'a=True b=True': 13}  trail col set 26  emitter parts 11
+   hull readable 103  engine-material faces 48  named engine/exhaust parts (cand. a) 13
+   name survey (no-glow scenes): {'ships/props/cameradummy': 476, 'ships/props/bigturret_dummy': 306, 'ships/props/bigturret4_dummy': 174, 'ships/props/bigturret2_dummy': 146, 'ships/props/bigturret5_dummy': 66, 'ships/props/turretdummy': 51, 'ships/props/weapondummy': 32, 'effects/engines/fx_engine_emitter': 26, 'ships/props/m6turret4_dummy': 17, 'ships/props/turretdummy3': 16, 'ships/props/m7turret_dummy': 10, 'ships/props/kg_split_turret_dummy': 5, 'ships/props/weapondummy6': 4, 'ships/props/weapondummy3': 4, 'ships/xtc/props/xtc_split_m6aturret_dummy1': 4, 'ships/props/turretdummy2': 3, 'effects/engines/fx_engine_terran_transportdrone': 2, 'effects/engines/fx_engine_terran_transportdrone_small': 2, 'ships/tl/goner_tlenginebeams': 1, 'ships/xtc/props/xtc_split_m6a_gdummy_r': 1, 'ships/xtc/props/xtc_split_m6a_gdummy_l': 1, 'ships/xtc/props/xtc_split_m6aturret_dummy2': 1, 'effects/engines/xtc_split_m6turbo_fx_mid': 1, 'effects/engines/xtc_split_m6turbo_fx_out': 1, 'effects/engines/fx_engine_xtc_red_nor3_disable': 1}
+   calibration from glow ships (per class: jets, rear z fraction median/p90, |x|/halfwidth, value/halfwidth):
+      M2: {'jets': 17, 'zfrac_median': 0.116, 'zfrac_p90': np.float64(0.135), 'xfrac_median': 0.196, 'value_over_halfwidth_median': 0.594, 'value_over_halfwidth_p10_p90': [0.119, 0.657]}
+      M3: {'jets': 67, 'zfrac_median': 0.068, 'zfrac_p90': np.float64(0.456), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.938, 'value_over_halfwidth_p10_p90': [0.583, 1.26]}
+      M4: {'jets': 81, 'zfrac_median': 0.064, 'zfrac_p90': np.float64(0.223), 'xfrac_median': 0.002, 'value_over_halfwidth_median': 0.867, 'value_over_halfwidth_p10_p90': [0.311, 1.396]}
+      M5: {'jets': 53, 'zfrac_median': 0.051, 'zfrac_p90': np.float64(0.202), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.832, 'value_over_halfwidth_p10_p90': [0.589, 1.497]}
+      M6: {'jets': 12, 'zfrac_median': 0.171, 'zfrac_p90': np.float64(0.417), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.61, 'value_over_halfwidth_p10_p90': [0.297, 1.058]}
+      M7: {'jets': 82, 'zfrac_median': 0.048, 'zfrac_p90': np.float64(0.094), 'xfrac_median': 0.198, 'value_over_halfwidth_median': 0.152, 'value_over_halfwidth_p10_p90': [0.076, 0.183]}
+      M8: {'jets': 14, 'zfrac_median': 0.138, 'zfrac_p90': np.float64(0.184), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.413, 'value_over_halfwidth_p10_p90': [0.247, 0.511]}
+      TM: {'jets': 18, 'zfrac_median': 0.027, 'zfrac_p90': np.float64(0.092), 'xfrac_median': 0.001, 'value_over_halfwidth_median': 0.593, 'value_over_halfwidth_p10_p90': [0.363, 1.04]}
+      TP: {'jets': 41, 'zfrac_median': 0.047, 'zfrac_p90': np.float64(0.158), 'xfrac_median': 0.002, 'value_over_halfwidth_median': 0.468, 'value_over_halfwidth_p10_p90': [0.259, 0.913]}
+      TS: {'jets': 80, 'zfrac_median': 0.036, 'zfrac_p90': np.float64(0.111), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.674, 'value_over_halfwidth_p10_p90': [0.395, 0.934]}
+   no-glow ships:
+      SS_SH_A_TL TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_A_M1 M1 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M1 value=511093 z=[-511093,511093] engfaces=2285 engz=0.453 named=[] 
+      SS_SH_A_M2 M2 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M2 value=528422 z=[-528422,528422] engfaces=2443 engz=0.452 named=[] 
+      SS_SH_A_M6 M6 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\argon\argon_M6 value=32212 z=[-32212,32212] engfaces=310 engz=0.228 named=[] 
+      SS_SH_A_M6M M6 Argon eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_A_M7 M7 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_A_M7M M7 Argon eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_m7m value=206941 z=[-206941,206941] engfaces=1400 engz=0.536 named=[] 
+      SS_SH_A_OWP_1 M1 Argon eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\owp_small value=404579 z=[-270302,230693] engfaces=128 engz=0.535 named=[] 
+      SS_SH_A_OWP_2 M1 Argon eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\OWP_medium value=483401 z=[-363805,363805] engfaces=80 engz=0.499 named=[] 
+      SS_SH_A_OWP_3 M1 Argon eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\owp_large value=568030 z=[-360358,360358] engfaces=176 engz=0.368 named=[] 
+      SS_SH_S_TL TL Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_TL value=567343 z=[-567343,567343] engfaces=0 engz=None named=[] 
+      SS_SH_S_M1 M1 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_M1 value=539786 z=[-539786,539786] engfaces=0 engz=None named=[] 
+      SS_SH_S_M2 M2 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_M2 value=534080 z=[-534080,534080] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6 M6 Split eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\split\split_M6 value=44112 z=[-44112,44112] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6M M6 Split eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\mm6\split_mm6 value=45416 z=[-45416,45416] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_S_M7 M7 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Split_M7 value=422636 z=[-422636,422636] engfaces=0 engz=None named=[] 
+      SS_SH_S_M7M M7 Split eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\split_M7M value=208882 z=[-208799,208882] engfaces=0 engz=None named=[] 
+      SS_SH_P_TL TL Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_TL value=444463 z=[-444463,444463] engfaces=0 engz=None named=[] 
+      SS_SH_P_M1 M1 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_M1 value=387985 z=[-387985,387985] engfaces=0 engz=None named=[] 
+      SS_SH_P_M2 M2 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_M2 value=462283 z=[-462283,462283] engfaces=0 engz=None named=[] 
+      SS_SH_P_M6 M6 Paranid eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\paranid\paranid_M6 value=45282 z=[-45282,45282] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7 M7 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Paranid_M7 value=395014 z=[-395014,293289] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7M M7 Paranid eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\paranid_m7m value=456877 z=[-456877,456877] engfaces=0 engz=None named=[] 
+      SS_SH_B_TL TL Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\boron_TL value=714102 z=[-714102,714102] engfaces=0 engz=None named=[] 
+      SS_SH_B_M1 M1 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\boron_M1 value=730701 z=[-730701,730701] engfaces=0 engz=None named=[] 
+      SS_SH_B_M2 M2 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\Boron_M2 value=725047 z=[-725047,725047] engfaces=0 engz=None named=[] 
+      SS_SH_B_M6 M6 Boron eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\boron\boron_M6 value=37762 z=[-37762,37762] engfaces=0 engz=None named=[] 
+      SS_SH_B_M7 M7 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Boron_M7 value=715431 z=[-715431,377595] engfaces=0 engz=None named=[] 
+      SS_SH_B_M7M M7 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Boron_M7M value=308085 z=[-308085,308085] engfaces=0 engz=None named=[] 
+      SS_SH_T_TL TL Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_TL value=902859 z=[-902859,902831] engfaces=0 engz=None named=[] 
+      SS_SH_T_M1 M1 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_M1 value=523963 z=[-523963,523963] engfaces=0 engz=None named=[] 
+      SS_SH_T_M2 M2 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_M2 value=1189220 z=[-1189220,1189220] engfaces=0 engz=None named=[] 
+      SS_SH_T_M6 M6 Teladi eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\teladi\teladi_M6 value=43294 z=[-43294,43294] engfaces=0 engz=None named=[] 
+      SS_SH_T_M6M M6 Teladi eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\mm6\teladi_mm6 value=70000 z=[-70000,70000] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_T_M7 M7 Teladi eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\teladi_m7 value=318401 z=[-284436,318401] engfaces=0 engz=None named=[] 
+      SS_SH_T_M7M M7 Teladi eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\teladi_M7M value=211625 z=[-211625,211625] engfaces=0 engz=None named=[] 
+      SS_SH_X_M1 M1 Xenon eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\xenon_carrier value=598414 z=[-598414,598414] engfaces=0 engz=None named=[] 
+      SS_SH_X_M2 M2 Xenon eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\Xenon_M1 value=572393 z=[-572393,572393] engfaces=0 engz=None named=[] 
+      SS_SH_X_M7 M7 Xenon eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\xenon_m7 value=226218 z=[-226218,226218] engfaces=0 engz=None named=[] 
+      SS_SH_A_M6_P M6 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Argon_m6_pirate value=32212 z=[-32212,32212] engfaces=310 engz=0.203 named=[] 
+      SS_SH_T_M6_P M6 Teladi eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Teladi_m6_pirate value=43249 z=[-43249,43249] engfaces=0 engz=None named=[] 
+      SS_SH_PI_M7_P M7 Pirate eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\Pirate\Pirate_M7 value=235529 z=[-235529,235529] engfaces=1092 engz=0.412 named=[] 
+      SS_SH_TR_M1 M1 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_M2 value=394599 z=[-394599,394599] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M2 M2 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\M2\Terran_M2TYR value=458387 z=[-428724,458387] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M7 M7 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Terran_M7 value=316114 z=[-316114,316114] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M7M M7 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M7M value=161739 z=[-161739,161739] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M1H M1 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M1 value=474166 z=[-474166,474166] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M0 M2 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M0 value=1090107 z=[-1090107,200935] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M1 M1 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_m1 value=975836 z=[-475827,975836] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M2 M2 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_M2 value=595398 z=[-326462,595398] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M6 M6 Terran eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\usc\terran_m6 value=41218 z=[-41218,41217] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_USC_M7 M7 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_m7 value=117939 z=[-117937,117939] engfaces=0 engz=None named=[] 
+      SS_SH_TERRAFORMER1 M1 Terran eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\terraformer\terraformer_CPU value=981392 z=[-981392,981392] engfaces=1050 engz=0.736 named=[] 
+      SS_SH_Y_M6M M6 Yaki eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_K_M6 M6 Kha'ak eff=5(sprite) trail=0 em=0 rcs=0 hull=ships\m6\khaak_m6main value=14642 z=[-14642,14642] engfaces=0 engz=None named=[] 
+      SS_SH_K_HIVEGUARD M1 Kha'ak eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\khaak\khaak_hive_base value=193253 z=[-193253,193250] engfaces=5306 engz=0.504 named=[] 
+      SS_SH_GO_TL TL Goner eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\TL\Goner_TL value=440621 z=[-440621,440621] engfaces=8146 engz=0.547 named=['ships/tl/goner_tlenginebeams'] 
+      SS_SH_GO_MSY M1 Goner eff=5(sprite) trail=0 em=0 rcs=2 hull=ships\MX\Goner_MSY value=1057286 z=[-1057286,1057286] engfaces=3752 engz=0.476 named=[] 
+      SS_SH_OTAS_M2 M2 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\M2\Otas_M2R value=335290 z=[-335290,335290] engfaces=9234 engz=0.228 named=[] 
+      SS_SH_OTAS_M6M M6 Argon eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\MM6\OTAS_M6M value=43235 z=[-43235,43234] engfaces=1918 engz=0.433 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_OTAS_M7 M7 Argon eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_OTAS_M7M M7 Argon eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\otas_m7m value=222197 z=[-222197,222197] engfaces=1027 engz=0.45 named=[] 
+      SS_SH_OTAS_HCF M7 Argon eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\otas_m7m value=222197 z=[-222197,222197] engfaces=1027 engz=0.45 named=[] 
+      SS_SH_TL_P TL Yaki eff=10(sprite) trail=1 em=0 rcs=0 hull=ships\others\pirate_TL_var2 value=623307 z=[-623307,623307] engfaces=1273 engz=0.245 named=[] 
+      SS_SH_TLS M6 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\others\goner_M6 value=32212 z=[-32212,32212] engfaces=310 engz=0.228 named=[] 
+      SS_SH_TL_P2 TL Yaki eff=10(sprite) trail=1 em=0 rcs=0 hull=ships\others\pirate_TL_var2 value=623307 z=[-623307,623307] engfaces=1273 engz=0.245 named=[] 
+      SS_SH_SARGON M3 Xenon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\others\sargon value=12386 z=[-12386,12386] engfaces=3244 engz=0.504 named=[] 
+      SS_SH_A_MDEMO M1 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argonMdemo value=511093 z=[-511093,510929] engfaces=920 engz=0.468 named=[] 
+      SS_SH_A_M7_SPECIAL M7 Argon eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_m7s value=107899 z=[-107181,107899] engfaces=1805 engz=0.31 named=[] 
+      SS_SH_S_M7_SPECIAL M7 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\m7\split_m7s value=659918 z=[-225538,659918] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7_SPECIAL M7 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Paranid_M7s value=202598 z=[-202598,202598] engfaces=0 engz=None named=[] 
+      SS_SH_T_M7_SPECIAL M7 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\m7\teladi_m7 value=318401 z=[-284436,318401] engfaces=0 engz=None named=[] 
+      SS_SH_PI_TL_P TL Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_PI_M1_P M1 Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\pirate\pirate_m1 value=452108 z=[-452108,452108] engfaces=584 engz=0.525 named=[] 
+      SS_SH_PI_M2_P M2 Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\pirate\pirate_m2 value=528715 z=[-528715,528715] engfaces=638 engz=0.766 named=[] 
+      SS_SH_Y_M0 M1 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M1 value=511093 z=[-511093,511093] engfaces=2285 engz=0.453 named=[] 
+      SS_SH_Y_TL TL Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\Yaki\Yaki_TL value=747555 z=[-597293,747555] engfaces=656 engz=0.11 named=[] 
+      SS_SH_Y_M1 M1 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\Yaki\Yaki_M1 value=731341 z=[-731341,731341] engfaces=3413 engz=0.143 named=[] 
+      SS_SH_Y_M2 M2 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\yaki\Yaki_M2 value=814651 z=[-814651,814651] engfaces=3373 engz=0.135 named=[] 
+      SS_SH_Y_M7_1 M7 Yaki eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_Y_M7_2 M7 Yaki eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Paranid_M7 value=395014 z=[-395014,293289] engfaces=0 engz=None named=[] 
+      SS_SH_Y_M7M M7 Yaki eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_m7m value=206941 z=[-206941,206941] engfaces=1400 engz=0.536 named=[] 
+      SS_SH_TROOPTRAINER TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_1 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_2 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_3 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_4 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_REPAIRSHIP M1 Goner eff=5(sprite) trail=0 em=0 rcs=2 hull=ships\MX\Goner_MSY value=1057286 z=[-1057286,1057286] engfaces=3752 engz=0.476 named=[] 
+      SS_SH_PI_M6_P M6 Pirate eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Argon_m6_pirate value=32212 z=[-32212,32212] engfaces=310 engz=0.203 named=[] 
+      SS_SH_USC_TL TL Terran eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_TL_atmolifter value=372590 z=[-154941,154941] engfaces=0 engz=None named=[] 
+      SS_SH_USC_TL_MINING TL Terran eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_TL_mining value=895481 z=[-481859,895481] engfaces=0 engz=None named=[] 
+      SS_SH_A_M6M_PROTO M6 Argon eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_MESSAGEDRONE M5 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\others\TSdrone_container value=8448 z=[-8448,8448] engfaces=62 engz=0.174 named=[] 
+      SS_SH_TR_FREIGHTDRONE1 M5 Terran eff=5(sprite) trail=1 em=1 rcs=1 hull=ships\terran\terran_supplydrone value=3662 z=[-3662,3662] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter', 'effects/engines/fx_engine_terran_transportdrone'] 
+      SS_SH_TR_FREIGHTDRONE1_2 M5 Terran eff=5(sprite) trail=1 em=1 rcs=1 hull=ships\terran\terran_transportdrone value=2910 z=[-2910,2910] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter', 'effects/engines/fx_engine_terran_transportdrone'] 
+      SS_SH_TR_FREIGHTDRONE2 M5 Terran eff=5(sprite) trail=1 em=1 rcs=1 hull=ships\terran\terran_transportdrone_small value=1407 z=[-1407,1407] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter', 'effects/engines/fx_engine_terran_transportdrone_small'] 
+      SS_SH_K_WP_1 M1 Argon eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\khaak\khaak_hive_base value=193253 z=[-193253,193250] engfaces=5306 engz=0.504 named=[] 
+      SS_SH_TR_FREIGHTDRONE2_2 M5 Terran eff=5(sprite) trail=1 em=1 rcs=1 hull=ships\terran\terran_transportdrone_small value=1407 z=[-1407,1407] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter', 'effects/engines/fx_engine_terran_transportdrone_small'] 
+      SS_SH_TR_TURRET M1 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=None value=None z=[None,None] engfaces=0 engz=None named=[] no hull part
+      SS_SH_USC_TS_1 TS Terran eff=5(sprite) trail=1 em=0 rcs=0 hull=patch20\terran_ts_miner value=26810 z=[-26810,26810] engfaces=0 engz=None named=[] 
+      SS_SH_A_DC M7 Argon eff=217(absent) trail=0 em=0 rcs=0 hull=ships\M7\Argon_m7s value=107899 z=[-107181,107899] engfaces=1805 engz=0.31 named=[] 
+      SS_SH_S_DC M7 Split eff=229(absent) trail=0 em=0 rcs=0 hull=ships\m7\split_m7s value=659918 z=[-225538,659918] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6_SPECIAL M6 Split eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\XTC\split\XTC_split_m6turbo value=36357 z=[-26371,36357] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter_disable', 'effects/engines/fx_engine_xtc_red_nor3_disable', 'effects/engines/xtc_split_m6turbo_fx_mid', 'effects/engines/xtc_split_m6turbo_fx_out'] 
+      SS_SH_S_M2P M2 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\KG_Split_M2+ value=629322 z=[-629322,629322] engfaces=0 engz=None named=[] 
+== fl (C:\X3FL installed; skipped ['addon2/06.cat', 'addon2/07.cat']): TShips addon2/04.cat (426 rows, 42 non-ship), Bodies addon2/04.cat (249 JET tokens); ship rows 370, readable scenes 370, unreadable {'missing': 14}
+   no glow: 105  by class {'DRONECARRIER': '3/7', 'GONER': '0/1', 'M1': '22/22', 'M2': '13/16', 'M3': '1/66', 'M4': '0/47', 'M5': '0/40', 'M6': '21/33', 'M7': '15/15', 'M8': '0/7', 'MISSILE_FRIGATE': '8/8', 'SPECIALDRONE': '0/7', 'TL': '17/17', 'TM': '0/11', 'TP': '0/19', 'TS': '5/54'}
+   by race {'Argon': 18, 'Split': 12, 'Teladi': 10, 'Terran': 9, 'Yaki': 9, 'Paranid': 8, 'Boron': 6, 'Pirate': 6, 'ATF': 6, 'Goner': 4, '20': 4, 'race13': 3, 'Xenon': 3, 'race14': 2, "Kha'ak": 2, 'race12': 1, '22': 1, '24': 1}
+   col-11 kind {'sprite': 104, 'absent': 1}  spawn sites {'a=False b=False': 94, 'a=True b=True': 11}  trail col set 27  emitter parts 9
+   hull readable 104  engine-material faces 47  named engine/exhaust parts (cand. a) 11
+   name survey (no-glow scenes): {'ships/props/cameradummy': 497, 'ships/props/bigturret_dummy': 306, 'ships/props/bigturret4_dummy': 174, 'ships/props/bigturret2_dummy': 146, 'ships/props/turretdummy': 68, 'ships/props/bigturret5_dummy': 66, 'ships/props/weapondummy': 32, 'effects/engines/fx_engine_emitter': 28, 'ships/props/m6turret4_dummy': 19, 'ships/props/turretdummy3': 17, 'ships/props/m7turret_dummy': 10, 'ships/props/kg_split_turret_dummy': 5, 'ships/props/weapondummy6': 4, 'ships/props/weapondummy3': 4, 'ships/xtc/props/xtc_split_m6aturret_dummy1': 4, 'ships/props/turretdummy2': 3, 'ships/tl/goner_tlenginebeams': 1, 'ships/xtc/props/xtc_split_m6a_gdummy_r': 1, 'ships/xtc/props/xtc_split_m6a_gdummy_l': 1, 'ships/xtc/props/xtc_split_m6aturret_dummy2': 1, 'effects/engines/xtc_split_m6turbo_fx_mid': 1, 'effects/engines/xtc_split_m6turbo_fx_out': 1, 'effects/engines/fx_engine_xtc_red_nor3_disable': 1, 'effects/engines/fx_engine_emitter_disable': 1}
+   calibration from glow ships (per class: jets, rear z fraction median/p90, |x|/halfwidth, value/halfwidth):
+      DRONECARRIER: {'jets': 82, 'zfrac_median': 0.048, 'zfrac_p90': np.float64(0.094), 'xfrac_median': 0.198, 'value_over_halfwidth_median': 0.152, 'value_over_halfwidth_p10_p90': [0.076, 0.183]}
+      M2: {'jets': 17, 'zfrac_median': 0.116, 'zfrac_p90': np.float64(0.135), 'xfrac_median': 0.196, 'value_over_halfwidth_median': 0.594, 'value_over_halfwidth_p10_p90': [0.119, 0.657]}
+      M3: {'jets': 70, 'zfrac_median': 0.062, 'zfrac_p90': np.float64(0.408), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.938, 'value_over_halfwidth_p10_p90': [0.474, 1.26]}
+      M4: {'jets': 75, 'zfrac_median': 0.063, 'zfrac_p90': np.float64(0.207), 'xfrac_median': 0.002, 'value_over_halfwidth_median': 0.867, 'value_over_halfwidth_p10_p90': [0.311, 1.397]}
+      M5: {'jets': 55, 'zfrac_median': 0.049, 'zfrac_p90': np.float64(0.2), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.832, 'value_over_halfwidth_p10_p90': [0.587, 1.46]}
+      M6: {'jets': 13, 'zfrac_median': 0.178, 'zfrac_p90': np.float64(0.415), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.66, 'value_over_halfwidth_p10_p90': [0.302, 1.063]}
+      M8: {'jets': 14, 'zfrac_median': 0.138, 'zfrac_p90': np.float64(0.184), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.413, 'value_over_halfwidth_p10_p90': [0.247, 0.511]}
+      SPECIALDRONE: {'jets': 7, 'zfrac_median': 0.487, 'zfrac_p90': np.float64(0.533), 'xfrac_median': 0.001, 'value_over_halfwidth_median': 0.569, 'value_over_halfwidth_p10_p90': [0.516, 1.16]}
+      TM: {'jets': 19, 'zfrac_median': 0.026, 'zfrac_p90': np.float64(0.088), 'xfrac_median': 0.001, 'value_over_halfwidth_median': 0.521, 'value_over_halfwidth_p10_p90': [0.364, 1.029]}
+      TP: {'jets': 48, 'zfrac_median': 0.065, 'zfrac_p90': np.float64(0.12), 'xfrac_median': 0.102, 'value_over_halfwidth_median': 0.447, 'value_over_halfwidth_p10_p90': [0.234, 0.913]}
+      TS: {'jets': 92, 'zfrac_median': 0.031, 'zfrac_p90': np.float64(0.103), 'xfrac_median': 0.0, 'value_over_halfwidth_median': 0.674, 'value_over_halfwidth_p10_p90': [0.395, 0.934]}
+   no-glow ships:
+      SS_SH_A_TL TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_A_M1 M1 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M1 value=511093 z=[-511093,511093] engfaces=2285 engz=0.453 named=[] 
+      SS_SH_A_M2 M2 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M2 value=528422 z=[-528422,528422] engfaces=2443 engz=0.452 named=[] 
+      SS_SH_A_M6 M6 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\argon\argon_M6 value=32212 z=[-32212,32212] engfaces=310 engz=0.228 named=[] 
+      SS_SH_A_M6M M6 Argon eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_A_M7 M7 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_A_M7M MISSILE_FRIGATE Argon eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_m7m value=206941 z=[-206941,206941] engfaces=1400 engz=0.536 named=[] 
+      SS_SH_A_OWP_1 M1 race13 eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\owp_small value=404579 z=[-270302,230693] engfaces=128 engz=0.535 named=[] 
+      SS_SH_A_OWP_2 M1 race13 eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\OWP_medium value=483401 z=[-363805,363805] engfaces=80 engz=0.499 named=[] 
+      SS_SH_A_OWP_3 M1 race13 eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\owp\owp_large value=568030 z=[-360358,360358] engfaces=176 engz=0.368 named=[] 
+      SS_SH_S_TL TL Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_TL value=567343 z=[-567343,567343] engfaces=0 engz=None named=[] 
+      SS_SH_S_M1 M1 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_M1 value=539786 z=[-539786,539786] engfaces=0 engz=None named=[] 
+      SS_SH_S_M2 M2 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\split_M2 value=534080 z=[-534080,534080] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6 M6 Split eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\split\split_M6 value=44112 z=[-44112,44112] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6M M6 Split eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\mm6\split_mm6 value=45416 z=[-45416,45416] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_S_M7 M7 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Split_M7 value=422636 z=[-422636,422636] engfaces=0 engz=None named=[] 
+      SS_SH_S_M7M MISSILE_FRIGATE Split eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\split_M7M value=208882 z=[-208799,208882] engfaces=0 engz=None named=[] 
+      SS_SH_P_TL TL Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_TL value=444463 z=[-444463,444463] engfaces=0 engz=None named=[] 
+      SS_SH_P_M1 M1 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_M1 value=387985 z=[-387985,387985] engfaces=0 engz=None named=[] 
+      SS_SH_P_M2 M2 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\paranid\paranid_M2 value=462283 z=[-462283,462283] engfaces=0 engz=None named=[] 
+      SS_SH_P_M6 M6 Paranid eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\paranid\paranid_M6 value=45282 z=[-45282,45282] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7 M7 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Paranid_M7 value=395014 z=[-395014,293289] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7M MISSILE_FRIGATE Paranid eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\paranid_m7m value=456877 z=[-456877,456877] engfaces=0 engz=None named=[] 
+      SS_SH_B_TL TL Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\boron_TL value=714102 z=[-714102,714102] engfaces=0 engz=None named=[] 
+      SS_SH_B_M1 M1 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\boron_M1 value=730701 z=[-730701,730701] engfaces=0 engz=None named=[] 
+      SS_SH_B_M2 M2 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\boron\Boron_M2 value=725047 z=[-725047,725047] engfaces=0 engz=None named=[] 
+      SS_SH_B_M6 M6 Boron eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\boron\boron_M6 value=37762 z=[-37762,37762] engfaces=0 engz=None named=[] 
+      SS_SH_B_M7 M7 Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Boron_M7 value=715431 z=[-715431,377595] engfaces=0 engz=None named=[] 
+      SS_SH_B_M7M MISSILE_FRIGATE Boron eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Boron_M7M value=308085 z=[-308085,308085] engfaces=0 engz=None named=[] 
+      SS_SH_T_TL TL Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_TL value=902859 z=[-902859,902831] engfaces=0 engz=None named=[] 
+      SS_SH_T_M1 M1 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_M1 value=523963 z=[-523963,523963] engfaces=0 engz=None named=[] 
+      SS_SH_T_M2 M2 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\teladi\teladi_M2 value=1189220 z=[-1189220,1189220] engfaces=0 engz=None named=[] 
+      SS_SH_T_M6 M6 Teladi eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\teladi\teladi_M6 value=43294 z=[-43294,43294] engfaces=0 engz=None named=[] 
+      SS_SH_T_M6M M6 Teladi eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\mm6\teladi_mm6 value=70000 z=[-70000,70000] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_T_M7 M7 Teladi eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\teladi_m7 value=318401 z=[-284436,318401] engfaces=0 engz=None named=[] 
+      SS_SH_T_M7M MISSILE_FRIGATE Teladi eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\teladi_M7M value=211625 z=[-211625,211625] engfaces=0 engz=None named=[] 
+      SS_SH_X_M1 M1 Xenon eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\xenon_carrier value=598414 z=[-598414,598414] engfaces=0 engz=None named=[] 
+      SS_SH_X_M2 M2 Xenon eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\Xenon_M1 value=572393 z=[-572393,572393] engfaces=0 engz=None named=[] 
+      SS_SH_X_M7 M7 Xenon eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\xenon\xenon_m7 value=226218 z=[-226218,226218] engfaces=0 engz=None named=[] 
+      SS_SH_A_M6_P M6 Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Argon_m6_pirate value=32212 z=[-32212,32212] engfaces=310 engz=0.203 named=[] 
+      SS_SH_T_M6_P M6 Teladi eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Teladi_m6_pirate value=43249 z=[-43249,43249] engfaces=0 engz=None named=[] 
+      SS_SH_PI_M7_P M7 Pirate eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\Pirate\Pirate_M7 value=235529 z=[-235529,235529] engfaces=1092 engz=0.412 named=[] 
+      SS_SH_TR_M1 M1 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_M2 value=394599 z=[-394599,394599] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M2 M2 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\M2\Terran_M2TYR value=458387 z=[-428724,458387] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M7 M7 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Terran_M7 value=316114 z=[-316114,316114] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M7M MISSILE_FRIGATE ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M7M value=161739 z=[-161739,161739] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M1H M1 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M1 value=474166 z=[-474166,474166] engfaces=0 engz=None named=[] 
+      SS_SH_TR_M0 M2 ATF eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\terran\ATF_M0 value=1090107 z=[-1090107,200935] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M1 M1 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_m1 value=975836 z=[-475827,975836] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M2 M2 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_M2 value=595398 z=[-326462,595398] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M6 M6 Terran eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\usc\terran_m6 value=41218 z=[-41218,41217] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_USC_M7 M7 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\usc\terran_m7 value=117939 z=[-117937,117939] engfaces=0 engz=None named=[] 
+      SS_SH_TERRAFORMER1 M1 race14 eff=14(sprite) trail=0 em=0 rcs=0 hull=ships\terraformer\terraformer_CPU value=981392 z=[-981392,981392] engfaces=1050 engz=0.736 named=[] 
+      SS_SH_Y_M6M M6 Yaki eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_K_M6 M6 Kha'ak eff=5(sprite) trail=0 em=0 rcs=0 hull=ships\m6\khaak_m6main value=14642 z=[-14642,14642] engfaces=0 engz=None named=[] 
+      SS_SH_K_HIVEGUARD M1 Kha'ak eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\khaak\khaak_hive_base value=193253 z=[-193253,193250] engfaces=5306 engz=0.504 named=[] 
+      SS_SH_GO_TL TL Goner eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\TL\Goner_TL value=440621 z=[-440621,440621] engfaces=8146 engz=0.547 named=['ships/tl/goner_tlenginebeams'] 
+      SS_SH_GO_MSY M1 Goner eff=5(sprite) trail=0 em=0 rcs=2 hull=ships\MX\Goner_MSY value=1057286 z=[-1057286,1057286] engfaces=3752 engz=0.476 named=[] 
+      SS_SH_OTAS_M2 M2 20 eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\M2\Otas_M2R value=335290 z=[-335290,335290] engfaces=9234 engz=0.228 named=[] 
+      SS_SH_OTAS_M6M M6 20 eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\MM6\OTAS_M6M value=43235 z=[-43235,43234] engfaces=1918 engz=0.433 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_OTAS_M7 M7 20 eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_OTAS_M7M MISSILE_FRIGATE 20 eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\m7\otas_m7m value=222197 z=[-222197,222197] engfaces=1027 engz=0.45 named=[] 
+      SS_SH_TL_P TL Pirate eff=10(sprite) trail=1 em=0 rcs=0 hull=ships\others\pirate_TL_var2 value=623307 z=[-623307,623307] engfaces=1273 engz=0.245 named=[] 
+      SS_SH_TLS M6 Goner eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\others\goner_M6 value=32212 z=[-32212,32212] engfaces=310 engz=0.228 named=[] 
+      SS_SH_TL_P2 TL Yaki eff=10(sprite) trail=1 em=0 rcs=0 hull=ships\others\pirate_TL_var2 value=623307 z=[-623307,623307] engfaces=1273 engz=0.245 named=[] 
+      SS_SH_SARGON M3 race14 eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\others\sargon value=12386 z=[-12386,12386] engfaces=3244 engz=0.504 named=[] 
+      SS_SH_A_MDEMO M1 Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argonMdemo value=511093 z=[-511093,510929] engfaces=920 engz=0.468 named=[] 
+      SS_SH_A_M7_SPECIAL M7 Argon eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_m7s value=107899 z=[-107181,107899] engfaces=1805 engz=0.31 named=[] 
+      SS_SH_S_M7_SPECIAL M7 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\m7\split_m7s value=659918 z=[-225538,659918] engfaces=0 engz=None named=[] 
+      SS_SH_P_M7_SPECIAL M7 Paranid eff=9(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Paranid_M7s value=202598 z=[-202598,202598] engfaces=0 engz=None named=[] 
+      SS_SH_T_M7_SPECIAL M7 Teladi eff=10(sprite) trail=0 em=0 rcs=0 hull=ships\m7\teladi_m7 value=318401 z=[-284436,318401] engfaces=0 engz=None named=[] 
+      SS_SH_PI_TL_P TL Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_PI_M1_P M1 Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\pirate\pirate_m1 value=452108 z=[-452108,452108] engfaces=584 engz=0.525 named=[] 
+      SS_SH_PI_M2_P M2 Pirate eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\pirate\pirate_m2 value=528715 z=[-528715,528715] engfaces=638 engz=0.766 named=[] 
+      SS_SH_Y_M0 M1 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_M1 value=511093 z=[-511093,511093] engfaces=2285 engz=0.453 named=[] 
+      SS_SH_Y_TL TL Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\Yaki\Yaki_TL value=747555 z=[-597293,747555] engfaces=656 engz=0.11 named=[] 
+      SS_SH_Y_M1 M1 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\Yaki\Yaki_M1 value=731341 z=[-731341,731341] engfaces=3413 engz=0.143 named=[] 
+      SS_SH_Y_M2 M2 Yaki eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\yaki\Yaki_M2 value=814651 z=[-814651,814651] engfaces=3373 engz=0.135 named=[] 
+      SS_SH_Y_M7_1 M7 Yaki eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_M7 value=401434 z=[-401434,316542] engfaces=294 engz=0.359 named=[] 
+      SS_SH_Y_M7_2 DRONECARRIER Yaki eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Paranid_M7 value=395014 z=[-395014,293289] engfaces=0 engz=None named=[] 
+      SS_SH_Y_M7M MISSILE_FRIGATE Yaki eff=13(sprite) trail=0 em=0 rcs=0 hull=ships\M7\Argon_m7m value=206941 z=[-206941,206941] engfaces=1400 engz=0.536 named=[] 
+      SS_SH_TROOPTRAINER TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_1 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_2 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_3 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_BIGCIV_4 TL Argon eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\argon\argon_TL value=606393 z=[-606393,606393] engfaces=2153 engz=0.517 named=[] 
+      SS_SH_REPAIRSHIP M1 Goner eff=5(sprite) trail=0 em=0 rcs=2 hull=ships\MX\Goner_MSY value=1057286 z=[-1057286,1057286] engfaces=3752 engz=0.476 named=[] 
+      SS_SH_PI_M6_P M6 Pirate eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\M6\Argon_m6_pirate value=32212 z=[-32212,32212] engfaces=310 engz=0.203 named=[] 
+      SS_SH_USC_TL TL Terran eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_TL_atmolifter value=372590 z=[-154941,154941] engfaces=0 engz=None named=[] 
+      SS_SH_USC_TL_MINING TL Terran eff=11(sprite) trail=0 em=0 rcs=0 hull=ships\terran\terran_TL_mining value=895481 z=[-481859,895481] engfaces=0 engz=None named=[] 
+      SS_SH_A_M6M_PROTO M6 Argon eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\mm6\argon_mm6 value=31646 z=[-31646,31646] engfaces=3831 engz=0.35 named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_K_WP_1 M1 race12 eff=3(sprite) trail=0 em=0 rcs=0 hull=ships\khaak\khaak_hive_base value=193253 z=[-193253,193250] engfaces=5306 engz=0.504 named=[] 
+      SS_SH_TR_TURRET M1 Terran eff=3(sprite) trail=0 em=0 rcs=0 hull=None value=None z=[None,None] engfaces=0 engz=None named=[] no hull part
+      SS_SH_USC_TS_1 TS Terran eff=5(sprite) trail=1 em=0 rcs=0 hull=patch20\terran_ts_miner value=26810 z=[-26810,26810] engfaces=0 engz=None named=[] 
+      SS_SH_A_DC DRONECARRIER Argon eff=11(sprite) trail=1 em=0 rcs=0 hull=ships\M7\Argon_m7s value=107899 z=[-107181,107899] engfaces=1805 engz=0.31 named=[] 
+      SS_SH_S_DC DRONECARRIER Split eff=229(absent) trail=0 em=0 rcs=0 hull=ships\m7\split_m7s value=659918 z=[-225538,659918] engfaces=0 engz=None named=[] 
+      SS_SH_S_M6_SPECIAL M6 Split eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\XTC\split\XTC_split_m6turbo value=36357 z=[-26371,36357] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter_disable', 'effects/engines/fx_engine_xtc_red_nor3_disable', 'effects/engines/xtc_split_m6turbo_fx_mid', 'effects/engines/xtc_split_m6turbo_fx_out'] 
+      SS_SH_S_M2P M2 Split eff=12(sprite) trail=0 em=0 rcs=0 hull=ships\split\KG_Split_M2+ value=629322 z=[-629322,629322] engfaces=0 engz=None named=[] 
+      SS_SH_B_M6_PROTO M6 22 eff=5(sprite) trail=1 em=0 rcs=0 hull=ships\boron\boron_M6 value=37762 z=[-37762,37762] engfaces=0 engz=None named=[] 
+      SS_SH_USC_M6_PROTO M6 Terran eff=5(sprite) trail=0 em=4 rcs=0 hull=ships\usc\terran_m6 value=41218 z=[-41218,41217] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_S_M6M_ENH M6 24 eff=5(sprite) trail=0 em=2 rcs=0 hull=ships\mm6\split_mm6 value=45416 z=[-45416,45416] engfaces=0 engz=None named=['effects/engines/fx_engine_emitter'] 
+      SS_SH_A_TS_HT TS Argon eff=5(sprite) trail=1 em=0 rcs=0 hull=p39\ships\argon_consus_TS value=44132 z=[-39818,44132] engfaces=310 engz=0.214 named=[] 
+      SS_SH_P_TS_HT TS Paranid eff=5(sprite) trail=1 em=0 rcs=0 hull=p39\ships\paranid_athena_TS value=44060 z=[-44060,44060] engfaces=0 engz=None named=[] 
+      SS_SH_S_TS_HT TS Split eff=5(sprite) trail=1 em=0 rcs=0 hull=p39\ships\split_mule_TS_front value=10738 z=[-10738,10738] engfaces=0 engz=None named=[] 
+      SS_SH_T_TS_HT TS Teladi eff=5(sprite) trail=1 em=0 rcs=0 hull=p39\ships\teladi_moa_TS value=68836 z=[-43295,68836] engfaces=0 engz=None named=[] 
