@@ -3073,3 +3073,11 @@ the view in chase view and cockpit, one gate transit, one dock, F8 on a frame wh
 `shadow_retention_frame … retained_alpha` above 0 while the station is unseen, `retained_alpha_skipped=0`, and the
 hull shadow staying when the station is behind you. Report a shadow that still drops, a ghost shadow after the station
 or a ship is gone, flicker, or a frame-rate change near stations.
+
+## FL run 46 — release 1.9.0 (installed 2026-11-04)
+
+The 1.9.0 FL release DLL (stripped, `release.py --edition fl`, clean main `8b604d6f7`; [releases ledger](releases.md)):
+same source as run 45 apart from the version bump and the release tooling. Installed `C:\X3FL\d3d9.dll` =
+`8e607386…` (41,158,490 B), rollback `rollback-d3d9\d3d9.dll.run45` = `38422f62…`;
+`x3m-regenerate.exe` `dc0a4052…` added to `C:\X3FL`; ini header 1.7.3 → 1.9.0, body unchanged (`x3m.ini.run45`
+kept). Record `verification/results/fl-run46/candidate.json`. No flight check open.
