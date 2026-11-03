@@ -2056,6 +2056,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                // and culled count on a captured frame
 #else
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
+    music_keep::present(ctx.id, ctx.frame, ctx.capture); // FL provider (src/engine/fl/music_keep_fl.cpp): the frame
+                                                         // counter, the KC patch, the queue's Present work
 #endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
@@ -2116,6 +2118,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                     // 300-frame window
     media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains
                                  // the trace ring
+#else
+    media_cue::frame(ctx.frame); // FL provider (src/engine/fl/media_cue_fl.cpp): X3M_MEDIA_CUE_* only, as on AP
 #endif
     // Programs the game compiled that are in none of the proxy's tables
     // (docs/architecture/mod-compatibility.md, "Making unknown programs
@@ -5906,6 +5910,15 @@ void initialize_log(HMODULE module) {
     // window, disjoint from every other FL claim; one row each with edition=fl.
     pause_key_only::initialize();
     run_in_background::initialize();
+    // FL music family (docs/reverse-engineering/fl/media-cue.md, music-keep.md, music-alert.md, "Port (2026-11-03)"):
+    // the default ID2 skip and optional media trace on the allocator base+0x0b4080 (src/engine/fl/media_cue_fl.cpp); the
+    // keep's stop-all classifier, seek/status/Run redirects, stop-all and MOV_StopMovie entries, the queue's play entry
+    // and the gzwrite/gzclose import slots (src/engine/fl/music_keep_fl.cpp); the combat trigger's seam base+0x02fada
+    // (src/engine/fl/music_alert_fl.cpp). Same window, disjoint sites; one row each with edition=fl.
+    media_cue::initialize();
+    if (const auto observer = media_cue::video_lock_observer()) ownership::set_surface_lock_observer(observer);
+    music_keep::initialize(); // with its music_keep_save_pump_hook row (the FL import slots are bound in here)
+    music_alert::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

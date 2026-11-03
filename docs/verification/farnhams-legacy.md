@@ -2546,3 +2546,38 @@ Pause again (it must end); alt-tab away and back while paused, and look for a se
 while flying and listen whether the game keeps running (SETA or a moving ship visible on return). Expect
 `pause_key_only … edition=fl status=patched` and `run_in_background … edition=fl status=patched` at start. Report a pause
 that ends on a wrong key, a game that stalls while unfocused, or a double cursor.
+
+## music family on FL (host evidence, 2026-11-03)
+
+Port of `music_keep`, `music_queue`, `music_dock_keep`, `music_combat_trigger`/`music_combat_hold_s` and the media-cue
+ID2 skip (`src/engine/fl/{media_cue,music_keep,music_alert}_fl.cpp`; sites, register contracts and limits in
+[fl/media-cue.md](../reverse-engineering/fl/media-cue.md), [fl/music-keep.md](../reverse-engineering/fl/music-keep.md),
+[fl/music-alert.md](../reverse-engineering/fl/music-alert.md), "Port (2026-11-03)"). Measured 2026-11-03 on X3FL.exe
+`e7f3aad8…dfbb8`; producing scripts in `verification/results/fl-music/` (`generate_windows.py`, `reproduce.py` →
+`summary.json`, `ap_objects_identical.py` → `ap_objects.txt`, `ap_object_compare.py` → `ap_object_compare.json`).
+
+| Check | Result |
+| --- | --- |
+| `build-fl` RelWithDebInfo, mingw-i686 | 0 compiler warnings, 0 errors (measured) |
+| `generate_windows.py --check` | the checked-in `music_windows_fl_inc.h` equals the exe's 42 windows (media 7 / keep 22 / alert 13; 7 / 26 / 13 HIGHLOW fixups) (measured) |
+| `verify_media_cue_sites_fl.py` | PASS, 22 checks: windows, the 91-instruction allocator with no ESP operand and ECX/EDX copied first, the claimed span (one qword, no edge inside), allocator 1 / wrapper 6 callers, selector kind 0x5a, video lock range, AP refused (measured) |
+| `verify_music_keep_sites_fl.py` | PASS, 42 checks: windows, seven spans (A and C cross a qword: plain writes in the window), the A/T2/T3/free/pause/pump/status contracts, callers stop-all 6, play 4, MOV_StopMovie 2, free 1, seek 3, status 1, Run 2, pause 1, the zlib import slots and close edges, KC witnesses, MOV dispatcher, AP refused (measured) |
+| `verify_music_alert_sites_fl.py` | PASS, 17 checks: windows, 235 instructions, EBX/EBP contract by CFG walk, the seam span with its one edge `0x02fad5`, callers, the cfg −0x10 binding, AP refused (measured) |
+| `fl_media_cue` (native, real relocated bytes) | 20 checks, 0 failures; 28 / 28 window changes refused; refusal flags and CPU state; observed returns keep the allocator's EFLAGS (measured) |
+| `fl_music_keep` (native) | 55 checks, 0 failures; 92 / 92 window changes refused; alt-tab, pause, save pump, resume (61,500 ms), queue defer/park/end with the FL free, dock keep, KC patch (measured) |
+| `fl_music_alert` (native) | 26 checks, 0 failures; 52 / 52 window changes refused; triggers b/d, hold 20,000 game ms on `cfg+0x708`, rewound clock (measured) |
+| story detection, offline model ([`fl_story.py`](../../verification/results/fl-music/fl_story.py) → `fl_story.txt`) | production `story_detect.h` over the `story_vm_image.py` model of FL's `x3story.obj` (SHA-256 `dbb73271…`): `fail=none`, warp/fork/continue `0x19cfc`/`0x19d97`/`0x19dab`, play IP `0x0f2df`, stop IP `0x0f23c`, depth 19, 2,401 reads (measured; a model of the loaded object, not a game capture) |
+| `test_fl_media_cue`, `test_fl_music_keep`, `test_fl_music_alert`, `test_music_keep`, `test_music_alert`, `test_media_cue` | 53 tests OK (measured); `test_music_keep` now counts one `music_keep::initialize()` / `present` per edition |
+| `generate.py --check` | PASS, 293 settings, 138 in the template (measured) |
+| `run_host_suite.py` (full) | 343 modules, 3,491 tests, 0 failing (measured, after bumping `test_engine_effects`'s `capture.cpp` pin in `SOURCES_SHA256_2026_11_03`; the first run failed that pin only) |
+| AP objects vs `main` (`ap_objects_identical.py`, disassembly; `ap_object_compare.py`, stripped objects) | `capture.cpp`, `media_cue.cpp`, `music_keep.cpp`, `music_alert.cpp` identical by both methods (measured) |
+
+Expected rows on the next FL launch with the defaults: `media_cue_mode … id2_video_skip=1 status=ok … edition=fl`,
+`media_cue_site index=0 … rva=0b4080 … patched=1 write=atomic`; `music_keep requested=1 patched=1 armed=1 reason=ok …
+status_gate=ok … alt_tab_mode=skip_all patch_e=ok … save_pump=bound resume=ok … edition=fl`, `music_queue requested=1
+armed=1 reason=ok … dock_keep=1 edition=fl`, `music_keep_save_pump_hook reason=ok save_mode=keep_running write_row=1
+close_row=1 … edition=fl`; `music_alert trigger=engaged hold_ms=20000 … patched=1 armed=1 reason=ok … edition=fl`; and,
+after a story load, `music_queue_kc … action=applied … window=0x19d97 … edition=fl` (the offline model above; `no_sites`
+naming the method would mean the live object differs from it: the queue off, the keep on). Not verified: in game (not flown): music continuing
+through alt-tab, pause, save and dock; the queue across sector changes; combat music only on engagement and its hold;
+the double cursor after alt-tab. Native Windows game behaviour not verified.

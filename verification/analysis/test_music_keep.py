@@ -1278,8 +1278,9 @@ class MusicSites(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('music_keep::initialize();'), 1)
-        self.assertEqual(capture.count('music_keep::present(ctx.id,ctx.frame,ctx.capture);'), 1)
+        # The AP call and the FL provider's (src/engine/fl/music_keep_fl.cpp, test_fl_music_keep.py), one per edition.
+        self.assertEqual(capture.count('music_keep::initialize();'), 2)
+        self.assertEqual(capture.count('music_keep::present(ctx.id,ctx.frame,ctx.capture);'), 2)
         self.assertLess(capture.index('collide_memo::initialize();'), capture.index('music_keep::initialize();'))
         self.assertIn('x3m::music_keep::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/music_keep.cpp', source_text(ROOT / 'CMakeLists.txt'))

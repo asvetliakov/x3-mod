@@ -344,23 +344,28 @@ SETTINGS = [
           launcher='--run-in-background', since='2026-09-27'),
     # ---------------------------------------------------------------- audio
     entry('music_keep', 'bool', 'audio', 'Sector music keeps playing where it was across switching windows, saving and pausing, '
-          'instead of restarting. 1 = on, 0 = off.', '1', launcher='--music-keep'),
+          'instead of restarting. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          launcher='--music-keep'),
     entry('music_queue', 'bool', 'audio', 'When you change sector, the music track that is playing finishes before the new '
           'sector\'s track starts; several sector changes before that end go straight to the newest sector\'s track. '
-          'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off.', '1',
+          'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off. X3: Albion Prelude '
+          'and X3: Farnham\'s Legacy.', '1',
           requires=('music_keep',), launcher='--music-queue', since='2026-10-23'),
     entry('music_dock_keep', 'bool', 'audio', 'When you dock, the track that is playing keeps playing instead of the landing and '
           'docking music, and undocking leaves it playing too. Combat music still starts at once. Does nothing when '
-          'music_queue = 0. 1 = on, 0 = off.', '1', requires=('music_queue',), launcher='--music-dock-keep',
+          'music_queue = 0. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          requires=('music_queue',), launcher='--music-dock-keep',
           since='2026-10-25'),
     entry('voice_dmo_fallback', 'bool', 'audio', 'Makes speech play when the system lacks the game\'s speech decoder, by using the '
           'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off.', '1', launcher='--voice-decoder'),
     entry('music_combat_trigger', 'enum', 'audio', 'When combat music starts. engaged = only while you or one of your ships near '
           'you is fighting (hit, or firing at or ordered to attack an enemy), and an enemy is in the game\'s own alert range; '
-          'vanilla = whenever an enemy is in range, as the game does.', 'engaged', choices=('engaged', 'vanilla'),
+          'vanilla = whenever an enemy is in range, as the game does. X3: Albion Prelude and X3: Farnham\'s Legacy.',
+          'engaged', choices=('engaged', 'vanilla'),
           launcher='--music-combat-trigger', since='2026-10-23'),
     entry('music_combat_hold_s', 'int', 'audio', 'Game seconds the combat music stays after the last fighting event '
-          '(music_combat_trigger = engaged), 1..600. Game time: SETA shortens the real wait.', '20', range=(1, 600),
+          '(music_combat_trigger = engaged), 1..600. Game time: SETA shortens the real wait. X3: Albion Prelude and '
+          'X3: Farnham\'s Legacy.', '20', range=(1, 600),
           requires=('music_combat_trigger',), launcher='--music-combat-hold-s', since='2026-10-23'),
     # ---------------------------------------------------------------- loading
     entry('crypt_cache', 'bool', 'loading', 'Faster loading: reuses the game\'s file-signature checks instead of repeating them. '

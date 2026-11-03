@@ -255,3 +255,35 @@ unchanged `loaded()` signal. Actual gates are exact profile/claim and emitted
 CPU/stack/state qualification, affected policy/read-refusal checks and the
 ordinary user combat/load/pause/SETA run. New owner admission, reentry machinery
 or native load hooks are not gates absent a concrete new failure witness.
+
+## Port (2026-11-03)
+
+**Outcome:** `music_combat_trigger` and `music_combat_hold_s` work on FL through
+[`music_alert_fl.cpp`](../../../src/engine/fl/music_alert_fl.cpp) and
+[`music_alert_sites_fl.h`](../../../src/engine/fl/music_alert_sites_fl.h), providing `music_alert.h` in place of the
+AP module; `core::frame` and the whole engagement policy are AP's `music_alert_core.h`, unchanged.
+
+- **Site.** `base+0x02fada`, `mov ecx,[ebp+8]; mov eax,[ebp+4]` claimed (6 bytes, the jump in one qword, one lock
+  cmpxchg8b). The stub saves EFLAGS, clears DF, saves EAX/ECX/EDX, calls `handler(registry = EBP, player = EBX)` and
+  leaves through the claim tail, which replays the two moves and resumes at `base+0x02fae0`.
+- **Binding, the smallest adapter of section 4.** The two image loads `core::frame` makes answer FL's values: AP
+  `cfg_va` returns `*(base+0x1a83b0) - 0x10` and AP `player_root_va` returns `*(base+0x1a82ec)`. The four FL clock
+  fields (`+0x704` step, `+0x708` clock, `+0xbc/+0xc0` SETA) sit exactly 0x10 below AP's, so the core's own offsets read
+  the FL fields (a `static_assert` pins the common offset; the verifier compares the two headers). No per-read address
+  rewriting; every object, list, cockpit and counter offset is AP's.
+- **Admission.** X3FL.exe identity, thirteen identity windows (the whole alert routine, the registry update, the clock
+  frame, `TI_GetAbsTime`, stance, relation, the cockpit resolver and six layout witnesses) and the main loop's call,
+  before the one claim; read back; rollback on failure; late claims refused. FL has no `save_load_complete` marker
+  (capture.cpp calls `loaded()` on AP only); the counters re-baseline on a changed player pointer or a backward clock.
+- **Rows.** `music_alert trigger=… site=… rva=0x02fada … edition=fl` and the edge / suppressed / episode rows with
+  `edition=fl`.
+
+Verified (measured, 2026-11-03): [`verify_music_alert_sites_fl.py`](../../../verification/probe/verify_music_alert_sites_fl.py)
+PASS (17 checks: windows; 235 instructions, three plain RETs, no SIMD/x87; EBX = player never written after the head,
+EBP = registry on every path to the seam by a CFG walk over its five clobbers; the seam span, its one incoming edge
+`0x02fad5`; caller sets; clock offsets; AP refusal); the native fixture
+[`fl_music_alert.cpp`](../../../verification/probe/fl_music_alert.cpp) 26 checks, 0 failures on the real seam bytes
+(52 of 52 window changes refused; the quiet level lowered, the player-hit and missile reasons, the hold read from
+`cfg+0x708` with AP's `+0x718` holding garbage, expiry at 20,000 ms, a rewound clock; registers, EFLAGS, DF, XMM7,
+x87 CW, MXCSR, LastError; rollback; late window). Not verified: not flown (combat, pause, SETA, load); native Windows
+game behaviour; rule (a) (fire counters with a selected hostile) runs only in the shared host tests.

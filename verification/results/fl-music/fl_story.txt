@@ -1,0 +1,3 @@
+member sha256 dbb732716e1acab6b8cc7f87f5d31324fb4764dfc22d1cec808749a4f45ec7b9
+queue {'fail': 'none', 'where': '', 'build': '1636047691', 'warp_entry': '0x19cfc', 'fork': '0x19d97', 'cont': '0x19dab', 'window': '6f33ab9d0100', 'patch': '32ab9d010001', 'play_stop': '0x0f23c', 'fade_stop': '0x0f0ff', 'play': '0x0f2df', 'loop_return': '0x0f36c', 'change_return': '0x0f3c3', 'depth': '19', 'reads': '2401'}
+seta {'fail': 'none', 'where': '', 'reads': '2923'}

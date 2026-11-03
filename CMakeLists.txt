@@ -217,6 +217,12 @@ else()
   # (docs/reverse-engineering/fl/pause-background.md, "Port (2026-11-03)"); they provide pause_key_only.h and
   # run_in_background.h in place of the AP src/proxy/pause_key_only.cpp and run_in_background.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/pause_key_only_fl.cpp src/engine/fl/run_in_background_fl.cpp)
+  # The music family: the ID2 skip / media trace gate, the music keep with its queue, dock keep and save pump, and the
+  # combat trigger, the AP policy cores on FL bindings (docs/reverse-engineering/fl/media-cue.md, music-keep.md,
+  # music-alert.md, "Port (2026-11-03)"); they provide media_cue.h, music_keep.h and music_alert.h in place of the AP
+  # providers of the same names under src/proxy.
+  target_sources(d3d9 PRIVATE src/engine/fl/media_cue_fl.cpp src/engine/fl/music_keep_fl.cpp
+    src/engine/fl/music_alert_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -307,6 +313,10 @@ set_source_files_properties(src/engine/fl/circle_fill_fl.cpp
 # the backend-load path): default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/pause_key_only_fl.cpp src/engine/fl/run_in_background_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL music family (src/engine/fl/media_cue_fl.cpp, music_keep_fl.cpp, music_alert_fl.cpp): handlers inside the
+# integer stubs' envelopes and the gate's PUSHFD/XMM envelope, same rule as their AP twins.
+set_source_files_properties(src/engine/fl/media_cue_fl.cpp src/engine/fl/music_keep_fl.cpp
+  src/engine/fl/music_alert_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
