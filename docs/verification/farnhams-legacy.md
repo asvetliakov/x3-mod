@@ -2485,3 +2485,20 @@ setting=… write=atomic threshold=813 continue=…`, and one `circle_fill_wide 
 
 Producer: `verification/results/fl-circle-fill/reproduce.py` (writes `summary.json` beside it). Not verified: not
 flown; native Windows rendering unverified.
+
+## FL run 36 — dust leak fix and scanner disc fill on FL (installed 2026-11-03)
+
+The first two engine-side ports after the audit of 2026-11-03 found that the FL build compiles out one whole block of
+AP initialisers (music, SETA, ship steering, window, collision, loading, the three fixes and the point-light admission).
+Merges `1ef802f88` (dust leak, review clean, two non-blocking items folded) and `b0f79e056` (scanner disc, one blocker
+fixed: the `capture.cpp` hash pin). Clean RelWithDebInfo `build-fl` from main `b0f79e056`, 0 warnings; host suite 338 modules
+3,466 tests 0 failing; `verify_dust_leak_fix_site_fl.py` PASS 19/19 and `verify_circle_fill_site_fl.py` PASS 29/29 on
+the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `6551d9bc…` (55,929,019 B), rollback
+`rollback-d3d9\d3d9.dll.run35` = `154c8669…`; overlay and ini unchanged (both keys default on). Record
+`verification/results/fl-run36/candidate.json`.
+
+**FL run 36 A (open):** an ordinary flight; open the sector map and zoom so the scanner disc is large (radius above about
+800 texels on screen), and visit a sector whose background names missing dust models if one is known. Expect
+`dust_leak_fix site=… edition=fl status=patched reason=ok` and `circle_fill site=… rva=10c940 edition=fl status=patched`
+at start, `dust_leak_fix_window` rows every 300 frames with a hit count that stops rising, and no visual change anywhere
+except the large scanner disc staying round. Report any crash at sector entry (the release path) and the log.

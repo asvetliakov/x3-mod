@@ -1,0 +1,19 @@
+{
+ "run": 36,
+ "step": "dust_leak_fix and circle_fill_fix on FL (first two engine-side ports; merges 1ef802f88 and b0f79e056)",
+ "edition": "fl",
+ "commit": "b0f79e056",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "6551d9bc178542d3",
+ "dll_bytes": 55929019,
+ "installed_sha256_prefix": "6551d9bc178542d3",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run35 (154c8669)",
+ "game_data": "addon2/06+07 unchanged (overlay v2)",
+ "ini": "unchanged (both keys default on)",
+ "host_tests": "run_host_suite 338 modules 3,466 tests 0 failing on main b0f79e056; verify_dust_leak_fix_site_fl PASS 19/19; verify_circle_fill_site_fl PASS 29/29 on the installed exe e7f3aad8; generate.py --check PASS 293/138; native fixtures (agents): fl_dust_leak_fix 48+4/0, fl_circle_fill 962/0 with 1,225,682 ordered records equal to the model",
+ "build_warnings": 0,
+ "review": "Opus high, both ports: dust leak merge with two non-blocking items folded (unreachable FL shutdown line dropped, ledger --base main); circle fill fix-first (capture.cpp hash pin) plus four notes folded",
+ "installed_at": "2026-11-03T15:25:54+04:00"
+}
