@@ -1,0 +1,21 @@
+{
+ "run": 31,
+ "step": "text_density on FL (font entry, two blits, Materials seam 0x0a69fb, image block retained inert once the VM exists, cfg+0x774, four cockpit-constructor bytes, style byte at d=3; -L081 refused umeplusclp_missing; recorder first-pass row) [737a1a2ae]; 16 density font files installed into C:\\X3FL\\f by manage.py density-fonts --edition fl",
+ "edition": "fl",
+ "commit": "3e9f6cde7",
+ "dll_built_from": "737a1a2ae (3e9f6cde7 is test-only)",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "b4d4e4976a8970df",
+ "dll_bytes": 55773863,
+ "installed_sha256_prefix": "b4d4e4976a8970df",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run30 (d96fff23); fonts: delete C:\\X3FL\\f (manage.py density-fonts --edition fl --game-dir /mnt/c/X3FL --remove)",
+ "game_data": "overlay v2 (run 29) unchanged; new C:\\X3FL\\f: 16 font files + x3m-fonts.json (manifest records X3FL.exe e7f3aad8)",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "unchanged (ui_scale auto -> 1.5 at 1440 rows; text_density auto -> 2)",
+ "host_tests": "run_host_suite 336 modules 3438 tests 0 failing after the capture.cpp record bump (3e9f6cde7); verify_text_density_sites_fl.py PASS; emit_header_windows --check 30 windows; generate.py --check PASS 292/137; check_no_x87 build-ap PASS; native fixture fl_text_density 276+41 checks 0 failures (agent); AP objects identical (capture, loader, text_density, ui_scale)",
+ "build_warnings": 0,
+ "review": "Opus high: no blocker; folded: image-block claim retained inert instead of a plain restore once the VM exists, field stays at 3 while the style byte is ours (double-failure fixture case), recorder first-pass row, manage.py refusal tests",
+ "installed_at": "2026-11-03T06:53:15+04:00"
+}

@@ -2173,3 +2173,22 @@ look thinner than the scaled UI around them (the engine's `TexLine`; same on AP)
 text suddenly at 2/3 size in some menu: report it; the `text_density_recorder` row names the frame (the engine's blit
 recorder was on and the module left those blits to it). Report any
 missing or misplaced text, a black square where an icon belongs, or a crash in a menu.
+
+## FL run 31 — text_density on FL (installed 2026-11-03)
+
+`737a1a2ae`, Opus-high review with no blocker, fixes folded (section above). Clean `build-fl` from `737a1a2ae`, 0
+warnings; full host suite 336 modules 3,438 tests 0 failing after the capture.cpp record bump (`3e9f6cde7`);
+`verify_text_density_sites_fl.py` PASS and `emit_header_windows.py --check` 30 windows on the installed exe (measured).
+Fonts: `python3 tools/manage.py density-fonts --edition fl --game-dir /mnt/c/X3FL --install` wrote the 16 density files
+and `x3m-fonts.json` into `C:\X3FL\f` (manifest bound to X3FL.exe `e7f3aad8…`; `--check` reports all present).
+Installed `C:\X3FL\d3d9.dll` = `b4d4e497…` (55,773,863 B), rollback `rollback-d3d9\d3d9.dll.run30` = `d96fff23…`; overlay
+v2, exe and ini unchanged (`text_density` commented = `auto` = 2 under `ui_scale` 1.5). Record
+`verification/results/fl-run31/candidate.json`.
+
+**FL run 31 A (open):** same tour as run 30 (sidebar, property menu, galaxy map, a graph menu, a tooltip, an encyclopedia
+or message page with a lot of text); one F8 with a text-heavy menu open; tell me before relaunching. Expect
+`text_density installed=1 … edition=fl density=2 image_claim=active`, a `text_density_rows` row with `flagged` in the
+20s–30s, `ui_scale … scale=1.5`, no `refused`/`late_window`/`umeplusclp_missing`. Visual: text crisp at 1.5x (not the
+blurry enlargement of run 30), every letter present, even stroke weight, icons at full size. Report: a missing or wrong
+glyph, uneven strokes, any menu whose icons or text suddenly appear at 2/3 size (the `text_density_recorder first_pass`
+row names the frame), graph strokes thinner than before (one-texel lines; a known visual item).
