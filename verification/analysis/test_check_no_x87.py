@@ -20,7 +20,7 @@ ENCLOSED = '__ZZN3x3m14call_preservedIZZN3x3m12_GLOBAL__N_1L12draw_indexedEP16ID
 THUNKS = [ENCLOSED % '', ENCLOSED % '0']
 
 
-def roots():
+def roots(edition='ap'):
     result = {}
     for names, namespace in [(audit.LIGHT_HOOKS, '3x3m'),
                              (audit.GZ_HOOKS + audit.CRYPT_HOOKS, '3x3m13loading_trace')]:
@@ -30,15 +30,15 @@ def roots():
         result['light::' + name] = f'{audit.LIGHT_NAMESPACE}{len(name)}{name}Ev'
     for name in audit.CRYPT_FUNCTIONS:
         result['crypt_cache::' + name] = f'{audit.CRYPT_NAMESPACE}{len(name)}{name}Ev'
-    result.update((name, name) for name in audit.EXTERN_ROOTS)
+    result.update((name, name) for name in audit.EXTERN_ROOTS + audit.EDITION_ROOTS[edition])
     result['ownership::get_buffer_lock_view_light'] = audit.OWNERSHIP_LIGHT + 'v'
     return result
 
 
-def run_audit(functions):
+def run_audit(functions, *options):
     out = io.StringIO()
     with patch.object(audit, 'disassemble', return_value=functions), \
-            patch.object(audit.sys, 'argv', ['check_no_x87.py', 'synthetic.dll']), \
+            patch.object(audit.sys, 'argv', ['check_no_x87.py', *options, 'synthetic.dll']), \
             contextlib.redirect_stdout(out):
         result = audit.main()
     return result, json.loads(out.getvalue())
@@ -115,6 +115,36 @@ class NoX87RootTests(unittest.TestCase):
         result, summary = run_audit(functions)
         self.assertEqual(result, 0)
         self.assertEqual(summary['result'], 'PASS')
+
+    def test_edition_selects_the_extern_roots(self):
+        # The shared roots are checked for both editions; each edition requires exactly its own extra roots.
+        self.assertFalse(set(audit.EXTERN_ROOTS) & set(audit.AP_EXTERN_ROOTS))
+        self.assertFalse(set(audit.EXTERN_ROOTS) & set(audit.FL_EXTERN_ROOTS))
+        self.assertFalse(set(audit.AP_EXTERN_ROOTS) & set(audit.FL_EXTERN_ROOTS))
+        self.assertIn('_x3m_point_light_root_admits', audit.AP_EXTERN_ROOTS)
+        fl = roots('fl')
+        functions = dict.fromkeys(fl.values(), [])
+        result, summary = run_audit(functions, '--edition', 'fl')
+        self.assertEqual((result, summary['result'], summary['edition']), (0, 'PASS', 'fl'))
+        self.assertEqual(summary['roots'], fl)
+        result, summary = run_audit(functions)  # the default edition is ap: an FL DLL lacks its roots
+        self.assertEqual(result, 1)
+        self.assertEqual(summary['error'], '_x3m_point_light_root_admits: not found')
+        ap = dict.fromkeys(roots('ap').values(), [])
+        result, summary = run_audit(ap, '--edition', 'fl')
+        self.assertEqual(result, 1)
+        self.assertEqual(summary['error'], f'{audit.FL_EXTERN_ROOTS[0]}: not found')
+        result, summary = run_audit(ap, '--edition', 'ap')
+        self.assertEqual((result, summary['edition']), (0, 'ap'))
+        # an FL root is walked: its x87 arithmetic fails, FXSAVE-image transport around a row does not
+        functions['_x3m_circle_fill_fl_wide'] = [' 100: fxsave 0x714c5180', ' 104: fxrstor 0x714c5180']
+        self.assertEqual(run_audit(functions, '--edition', 'fl')[0], 0)
+        functions['_x3m_circle_fill_fl_wide'].append(' 108: fild 0x8(%esp)')
+        result, summary = run_audit(functions, '--edition', 'fl')
+        self.assertEqual(result, 1)
+        self.assertEqual(summary['violations'], {'_x3m_circle_fill_fl_wide': ['108: fild 0x8(%esp)']})
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            run_audit(functions, '--edition', 'tc')
 
 
 if __name__ == '__main__':

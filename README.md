@@ -56,8 +56,8 @@ overlay catalogues beside an `addon/NN.x3m-lod.json` marker, and
 `addon/mods/<mod>-x3m-lod.*`); the exact list is in the
 [regenerate guide](docs/user/regenerate.md#removing-the-results).
 
-The release zip is built by `python3 tools/release/release.py --out DIR` (see Build);
-`tools/release/package.py --dll build/d3d9.dll --out DIR` only packages existing binaries.
+The release zips are built by `python3 tools/release/release.py --edition ap|fl --out DIR` (see Build);
+`tools/release/package.py --edition ap|fl --dll build-ap/d3d9.dll --out DIR` only packages existing binaries.
 Both refuse a stale settings template.
 
 ## Configure
@@ -138,18 +138,22 @@ when a generated file is stale. `x3m-regenerate` is built separately with
 `python3 tools/regenerate/build.py` (`--windows` for the `.exe`;
 [details](docs/user/regenerate.md#building-the-executable)).
 
-One-command release from a clean, committed tree:
+One-command release from a clean, committed tree, one run per edition (`--edition` is required; use a separate
+`--out` per edition):
 
 ```sh
-python3 tools/release/release.py --out DIR     # --dry-run: plan and toolchain check only
+python3 tools/release/release.py --edition ap --out DIR-ap   # X3: Albion Prelude -> DIR-ap/x3m-<version>-ap.zip
+python3 tools/release/release.py --edition fl --out DIR-fl   # X3: Farnham's Legacy -> DIR-fl/x3m-<version>-fl.zip
+# --dry-run: plan and toolchain check only
 ```
 
-It checks the template (`generate.py --check`), builds the DLL fresh in `DIR/build-release`
-(0 warnings, x87 audit 0 violations), ships it stripped of its debug sections (`DIR/d3d9.dll`; the
+It checks the template (`generate.py --check`), builds the DLL fresh in `DIR/build-release` with
+`-DX3M_EDITION=<edition>` (0 warnings, x87 audit `check_no_x87.py --edition <edition>` 0 violations), ships it stripped of its debug sections (`DIR/d3d9.dll`; the
 unstripped build and `DIR/d3d9.debug` stay in `DIR` for symbolisation, `--no-strip` opts out),
 builds and smoke-tests `x3m-regenerate` for the host and for Windows (the Windows step from WSL2 with the
-native Windows Python at `C:\Python312`, `tools/regenerate/build.py --windows`), packages `DIR/x3m-<version>.zip` (exactly `d3d9.dll`,
-`x3m.ini`, `x3m-regenerate.exe`, `README.txt`), re-hashes its binaries and writes `DIR/release-<version>.json`
+native Windows Python at `C:\Python312`, `tools/regenerate/build.py --windows`), packages `DIR/x3m-<version>-<edition>.zip` (the same entries for
+both editions; its `README.txt` names the edition's game and `X3AP.exe` or `X3FL.exe`), re-hashes its binaries and
+writes `DIR/release-<version>-<edition>.json`
 ([details](docs/architecture/config-file.md#6-release-packaging-and-the-upgrade-story)). The
 version is `project(VERSION)` in `CMakeLists.txt`.
 

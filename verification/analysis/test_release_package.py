@@ -31,7 +31,7 @@ class ReleasePackage(unittest.TestCase):
     def setUpClass(cls):
         cls.package = load_package()
 
-    def build(self, directory, *, windows=True, mac=True, debug=None, **patches):
+    def build(self, directory, *, windows=True, mac=True, debug=None, edition='ap', **patches):
         base = Path(directory)
         dll = base / 'd3d9.dll'
         dll.write_bytes(b'MZ fake proxy')
@@ -47,9 +47,9 @@ class ReleasePackage(unittest.TestCase):
                 stack.enter_context(mock.patch.object(self.package, name, value))
             stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
             stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
-            code = self.package.main(['--dll', str(dll), '--out', str(out), '--regenerate-dir', str(regenerate),
+            code = self.package.main(['--edition', edition, '--dll', str(dll), '--out', str(out), '--regenerate-dir', str(regenerate),
                                       *(['--debug-file', str(debug)] if debug else [])])
-        return code, out / f'x3m-{self.package.generate.version()}.zip'
+        return code, out / f'x3m-{self.package.generate.version()}-{edition}.zip'
 
     def test_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -79,6 +79,30 @@ class ReleasePackage(unittest.TestCase):
             first = path.read_bytes()
             self.assertEqual(self.build(directory, source_commit=lambda: 'f' * 40)[0], 0)
             self.assertEqual(path.read_bytes(), first)  # fixed timestamps: the same inputs give the same zip
+            with zipfile.ZipFile(path) as archive:
+                readme = archive.read('README.txt').decode()
+            for text in ('X3: Albion Prelude', 'the folder with X3AP.exe', "with CrossOver: in the game's bottle"):
+                self.assertIn(text, readme)
+            self.assertNotIn('X3FL', readme)
+
+    def test_fl_edition(self):
+        # Same entries, the FL game name and executable, Windows wording only, and the -fl zip name.
+        with tempfile.TemporaryDirectory() as directory:
+            code, path = self.build(directory, edition='fl', source_commit=lambda: 'f' * 40)
+            self.assertEqual(code, 0)
+            self.assertEqual(path.name, f'x3m-{self.package.generate.version()}-fl.zip')
+            self.assertFalse(path.with_name(f'x3m-{self.package.generate.version()}-ap.zip').exists())
+            with zipfile.ZipFile(path) as archive:
+                self.assertEqual(archive.namelist(), ENTRIES)
+                readme = archive.read('README.txt').decode()
+            for text in ("A renderer mod for X3: Farnham's Legacy:", 'the folder with X3FL.exe.', 'next to X3FL.exe',
+                         'Run x3m-regenerate.exe once from that folder.'):
+                self.assertIn(text, readme)
+            for text in ('Albion Prelude', 'X3AP.exe', 'CrossOver', '{'):
+                self.assertNotIn(text, readme)
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):  # --edition is required
+                self.package.main(['--dll', str(Path(directory) / 'd3d9.dll'), '--out', directory])
 
     def test_debug_file_line(self):
         with tempfile.TemporaryDirectory() as directory:

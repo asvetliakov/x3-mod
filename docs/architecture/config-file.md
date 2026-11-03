@@ -301,7 +301,7 @@ version/commit it was generated from), `x3m-regenerate.exe` (from `tools/regener
 the 16 committed density fonts as `f/<Name><S*d>.abc/.tga` (`assets/fonts/generated/F`,
 [font-assets.md](font-assets.md); the directory must hold exactly those 16) and `OFL-NotoSans.txt`, `OFL-Exo2.txt`
 (their source fonts' SIL OFL 1.1 texts, which the licence requires with a derivative), and `README.txt` (a short
-version of `docs/user/`: unpack next to `X3AP.exe`, run `x3m-regenerate.exe` once, edit `x3m.ini` to change a setting,
+version of `docs/user/`: unpack next to `X3AP.exe` (FL: `X3FL.exe`), run `x3m-regenerate.exe` once, edit `x3m.ini` to change a setting,
 what `ui_scale`/`text_density` do and that both are `auto`, that `f/` goes next to `X3AP.exe`, the font licence, send
 `x3m.log` when reporting a problem). `release.py` re-hashes the zip's fonts against the committed files. The DLL must run without the
 file, and does: every default is compiled in from the schema; the template only documents them. A packaging
@@ -312,10 +312,25 @@ line: the DLL is stripped and the developer keeps `d3d9.debug`, with its SHA-256
 decision 2026-09-27): no host `x3m-regenerate` binary (built for the smoke test only) and no `x3m/voice-decoder/`
 tree (a developer path through `manage.py voice-decoder --install`).
 
-`python3 tools/release/release.py --out DIR` runs the whole release in order: (1) refuses tracked changes in
+Editions (2026-11-04): one release run per edition, each with its own output directory:
+
+```sh
+python3 tools/release/release.py --edition ap --out DIR-ap   # DIR-ap/x3m-<version>-ap.zip, DIR-ap/release-<version>-ap.json
+python3 tools/release/release.py --edition fl --out DIR-fl   # DIR-fl/x3m-<version>-fl.zip, DIR-fl/release-<version>-fl.json
+```
+
+`--edition` has no default, so an invocation without it fails. It adds `-DX3M_EDITION=<edition>` to the CMake
+configure, runs `check_no_x87.py --edition <edition>` (the shared roots plus the edition's own: AP's
+`AP_EXTERN_ROOTS`, FL's `FL_EXTERN_ROOTS`, the `src/engine/fl/*_fl.cpp` counterparts), passes `--edition` to
+`package.py` and records `"edition"`. The zip's entry list is the same for both editions; `README.txt` names
+X3: Albion Prelude and `X3AP.exe` with the CrossOver notes for ap, X3: Farnham's Legacy and `X3FL.exe` with the
+Windows wording only for fl. The build directory, `d3d9.dll`, `d3d9.debug` and `unstripped/` carry no edition in
+their names, hence the separate `--out`.
+
+`python3 tools/release/release.py --edition ap|fl --out DIR` runs the whole release in order: (1) refuses tracked changes in
 `git status --porcelain` unless `--allow-dirty` (the zip's `README.txt` names the source commit); (2)
-`generate.py --check`; (3) a fresh CMake build in `DIR/build-release` (a previous one is deleted, never reused;
-any compiler, linker or CMake warning fails), `check_no_x87.py` with 0 violations, the `X3M_SOURCE_COMMIT=` marker
+`generate.py --check`; (3) a fresh CMake build in `DIR/build-release` with `-DX3M_EDITION=<edition>` (a previous one is deleted, never
+reused; any compiler, linker or CMake warning fails), `check_no_x87.py --edition <edition>` with 0 violations, the `X3M_SOURCE_COMMIT=` marker
 once and naming the commit, then the strip: the unstripped build is kept as `DIR/unstripped/d3d9.dll`,
 `i686-w64-mingw32-objcopy --only-keep-debug` writes `DIR/d3d9.debug` and `--strip-debug
 --add-gnu-debuglink=DIR/d3d9.debug` writes the shipped `DIR/d3d9.dll`. The stripped file must keep every loaded
@@ -329,9 +344,10 @@ loader has not seen. `--no-strip` (alias `--keep-debug-in-zip`) ships the unstri
 `tools/regenerate/build.py --dist DIR/regenerate` for the host, then `build.py --windows`, each with its smoke test
 (since 2026-10-25 `build.py --windows` runs directly, with no `wine_lock.py` wrapper and no game guard: it
 uses the native Windows Python from WSL2 and never touches the game, see its docstring); `--regenerate-dir PATH` ships existing binaries instead, `--skip-windows` builds and smoke-tests
-the host binary only and makes no zip; (5) `package.py`, then the zip is CRC-tested, its entry list must be
+the host binary only and makes no zip; (5) `package.py --edition <edition>` writes
+`DIR/x3m-<version>-<edition>.zip`, then the zip is CRC-tested, its entry list must be
 exactly the four files and its `d3d9.dll` and `x3m-regenerate.exe` are re-hashed against the built files; (6)
-`DIR/release-<version>.json` (schema 2: commit, dirty flag, toolchain lines, `source_commit_marker`, `dll` = the
+`DIR/release-<version>-<edition>.json` (schema 2: edition, commit, dirty flag, toolchain lines, `source_commit_marker`, `dll` = the
 shipped DLL, `dll_unstripped`, `debug_file`, `strip` (identity result, compared sections, export count, x87 on
 the stripped file), regenerate/zip hashes and bytes, `generate --check` and x87 results, wall seconds per step)
 and a final listing. `--dry-run` prints the plan and the toolchain and bottle check. The version
