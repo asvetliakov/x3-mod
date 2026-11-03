@@ -1,0 +1,3 @@
+vm_slot 0x1aa174 ['0x077561 mov dword ptr [0x5aa174], eax', '0x077681 mov dword ptr [0x5aa174], eax']
+rows_count 0x21b410 ['0x111755 mov dword ptr [0x61b410], eax']
+.data rva=0x1a2000 raw_size=0x5600 virtual_size=0xe4744

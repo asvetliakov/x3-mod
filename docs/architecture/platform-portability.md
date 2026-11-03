@@ -993,6 +993,27 @@ Win32 install path, and no device call in the handler. Natively verified on the 
 
 Not verified: the far route in game (not flown); native Windows game behaviour.
 
+## 2026-11-03: text density on FL (`text_density` on FL)
+
+The FL edition (`src/engine/fl/text_density_fl.cpp`; [fl/text-density.md](../reverse-engineering/fl/text-density.md),
+"Verified 2026-11-03") claims five X3FL.exe sites at module base + RVA on the backend-load path (font entry, the two
+block blits, the call after the Materials load, KC's image block; two diagnostic entries under `--debug`), all or none
+with read-back and rollback, behind the X3FL.exe identity and 30 compared windows (relocated dwords checked against the
+base). Four jumps sit inside one aligned qword (`lock cmpxchg8b`); the image block crosses one and is written plainly,
+admitted only while the KC VM slot and the Materials row count are still zero (the code that executes it does not exist
+yet). That holds for the install only: a rollback or shutdown after the VM exists does not write the span back but keeps
+the claim in place, inert (`image_claim=retained_inert`). At `CreateDevice` (refused after the first Present) the config field, four cockpit operand bytes and the style
+displacement byte are single-byte writes with read-back, rolled back with the claims. The thunks are asm in the pinned
+DLL: EFLAGS, GPRs, XMM0-7, the x87 image (FNSAVE/FRSTOR, not FXRSTOR) and MXCSR saved around one cdecl C side, which
+saves LastError; the C side calls the engine's own helpers through register-ABI shims and reads engine memory through
+`engine_memory` (documented `VirtualQuery`/`ReadProcessMemory`); the font check is `GetFileAttributesW` on loose
+files; the filter override uses documented `GetSamplerState`/`SetSamplerState` and `GetDeviceCaps`. Documented Win32 and
+D3D9 only, no Wine/CrossOver dependency. Natively verified on the Windows host through WSL interop (measured 2026-11-03):
+the FL fixture 264 + 39 checks, 0 failures (every claimed span against the vanilla span or the documented outputs:
+GPRs, EFLAGS with DF, ESP, stack words, XMM0-7, the x87 image, MXCSR, LastError; the edits' write order; refusals,
+one flipped byte per window, the order witness, read-back/chain/restore faults in both groups, late window). Not
+verified: in game (not flown); native Windows game behaviour; the `-L081` path with real UmePlusCLP files.
+
 ## 2026-11-03: UI scale on FL (`ui_scale` on FL; `text_density` stays AP only)
 
 The FL edition claims eleven X3FL.exe sites at module base + RVA ([fl/ui-scale.md](../reverse-engineering/fl/ui-scale.md),
@@ -1006,7 +1027,8 @@ Wine/CrossOver dependency. Natively verified on the Windows host through WSL int
 fixture 904 + 34 checks, 0 failures (the real span bytes of all eleven sites on the vanilla image and at s = 1.5, 1.25,
 2 and the identity cells, every register, the outgoing stack, DF and the projection's flags, XMM1/XMM4/XMM7, x87 CW,
 MXCSR and LastError as documented; refusals, one flipped byte per window, read-back/chain/restore faults, late claim).
-Not verified: in game (not flown); native Windows game behaviour. `text_density` logs one `ap_only` row on FL.
+Not verified: in game (not flown); native Windows game behaviour. `text_density` logged one `ap_only` row on FL until
+its port (section above).
 
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 

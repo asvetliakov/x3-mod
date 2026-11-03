@@ -167,7 +167,7 @@ class FlUiScaleWiring(unittest.TestCase):
         fl_block = loader[loader.index('#if X3M_EDITION_FL\n    // FL edition: the X3FL.exe identity row'):]
         fl_block = fl_block[:fl_block.index('#endif')]
         self.assertIn('x3m::ui_scale::initialize();', fl_block)
-        self.assertIn('x3m::log("text_density installed=0 status=ap_only edition=fl reason=not_ported");', fl_block)
+        self.assertIn('x3m::text_density::initialize();', fl_block)  # the FL text density follows (test_fl_text_density)
         self.assertLess(fl_block.index('x3m::chase_fire::initialize();'), fl_block.index('x3m::ui_scale::initialize();'))
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         flat = source_text(ROOT / 'src/proxy/capture.cpp')

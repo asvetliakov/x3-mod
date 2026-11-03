@@ -386,15 +386,18 @@ def _read_fonts_manifest(game):
         return {}
 
 
-def _write_fonts_manifest(manifest, owned):
-    manifest.write_text(json.dumps({'schema': 1, 'project': 'x3-modern-renderer', 'files': owned}, indent=1, sort_keys=True) + '\n')
+def _write_fonts_manifest(manifest, owned, record=None):
+    body = {'schema': 1, 'project': 'x3-modern-renderer', 'files': owned}
+    body.update(record or {})
+    manifest.write_text(json.dumps(body, indent=1, sort_keys=True) + '\n')
 
 
-def install_density_fonts(game, fonts_dir):
+def install_density_fonts(game, fonts_dir, record=None):
     """Copies the density fonts into <game>/f as loose files. A file already there that the mod did not write (absent
     from the manifest, or changed since) is left alone and reported. The manifest is rewritten after every copy, so a
     copy that fails half-way leaves nothing unowned. Returns {'copied': [...], 'retained': [...], 'manifest': path,
-    'files': {name: sha256}}; nothing is written when the build holds no fonts."""
+    'files': {name: sha256}}; nothing is written when the build holds no fonts. `record` (density-fonts --edition)
+    adds its keys (the edition and the executable's provenance) to the manifest."""
     game = Path(game)
     names = density_font_files(fonts_dir)
     if not names:
@@ -412,10 +415,10 @@ def install_density_fonts(game, fonts_dir):
             retained.append(name)
             continue
         owned[name] = ''  # owned from this moment: a copy that fails half-way is still ours to remove
-        _write_fonts_manifest(manifest, owned)
+        _write_fonts_manifest(manifest, owned, record)
         shutil.copyfile(Path(fonts_dir) / name, destination)
         owned[name] = digest(destination)
-        _write_fonts_manifest(manifest, owned)
+        _write_fonts_manifest(manifest, owned, record)
         copied.append(name)
     return {'copied': copied, 'retained': retained, 'manifest': manifest, 'files': {n: owned[n] for n in copied}}
 
@@ -1117,6 +1120,90 @@ def voice_decoder_command(argv):
     return 0 if state == 'valid' else 1
 
 
+# density-fonts: the loose density fonts alone, for either edition (X3: Farnham's Legacy has no `manage.py install`: its
+# proxy is installed by the candidate procedure; FL requests the same four families, and its 12 stock f/ files are
+# byte-identical to AP's, so the same 16 files serve both). Provenance only, never a gate: the known X3FL.exe hash.
+DENSITY_FONT_EDITIONS = {'ap': 'X3AP.exe', 'fl': 'X3FL.exe'}
+FL_EXE_SHA256 = 'e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8'
+
+
+def _image_running(image):
+    """Whether a Windows process with this image name runs (tasklist; tasklist.exe through WSL interop). None when the
+    process list cannot be read."""
+    for command in (['tasklist', '/FI', f'IMAGENAME eq {image}', '/FO', 'CSV', '/NH'],
+                    ['tasklist.exe', '/FI', f'IMAGENAME eq {image}', '/FO', 'CSV', '/NH']):
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, check=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        return any(line.strip().strip('"').split('","')[0].casefold() == image.casefold()
+                   for line in result.stdout.splitlines() if line.strip())
+    return None
+
+
+def density_fonts_command(argv):
+    """`manage.py density-fonts [--edition ap|fl] --game-dir DIR [--check | --install | --remove] [--fonts-dir DIR]`:
+    the density fonts as loose <game>/f files with their manifest (x3m-fonts.json), the same copy, ownership and removal
+    rules as `install`/`uninstall` (install_density_fonts, remove_density_fonts). --edition names the executable the
+    directory must hold (X3AP.exe or X3FL.exe); the manifest records the edition and that executable's SHA-256 and size.
+    --check (the default) lists which files are present, owned or missing and exits 0 only when all are present;
+    --install and --remove need the game closed. Returns the exit code."""
+    parser = argparse.ArgumentParser(prog='manage.py density-fonts', allow_abbrev=False,
+                                     description='Install, check or remove the text-density fonts (<game>/f) for X3: Albion '
+                                                 'Prelude or X3: Farnham\'s Legacy (docs/architecture/text-density.md).')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='list present/owned/missing files (the default); exit 0 only when all are present')
+    mode.add_argument('--install', action='store_true', help='copy the fonts into <game>/f with the manifest (files the mod did not '
+                      'write are left alone and reported)')
+    mode.add_argument('--remove', action='store_true', help='remove the files the manifest owns, then the manifest')
+    parser.add_argument('--edition', choices=sorted(DENSITY_FONT_EDITIONS), default='ap',
+                        help='the game the directory holds: ap (X3AP.exe, default) or fl (X3FL.exe)')
+    parser.add_argument('--game-dir', type=Path, required=True, help='the game directory (the folder with the executable)')
+    parser.add_argument('--fonts-dir', type=Path, default=ROOT / 'assets/fonts/generated/F',
+                        help='the generated fonts (default: the committed assets/fonts/generated/F)')
+    args = parser.parse_args(argv)
+    game = args.game_dir.resolve()
+    exe = game / DENSITY_FONT_EDITIONS[args.edition]
+    if not exe.is_file():
+        print(f'density fonts: refused: {exe.name} not found in {game}', file=sys.stderr)
+        return 2
+    names = density_font_files(args.fonts_dir)
+    if (args.install or args.remove):
+        running = _image_running(exe.name)
+        if running is None and args.edition == 'ap':
+            try:
+                media_package.assert_game_closed()
+                running = False
+            except media_package.PackageError:
+                running = True
+        if running is not False:
+            why = 'is running' if running else 'cannot be confirmed closed (the process list is unreadable)'
+            print(f'density fonts: refused: {exe.name} {why}', file=sys.stderr)
+            return 2
+    if args.install:
+        if not names:
+            print(f'density fonts: refused: no .abc/.tga files in {args.fonts_dir}', file=sys.stderr)
+            return 2
+        data = exe.read_bytes()
+        sha = hashlib.sha256(data).hexdigest()
+        record = {'edition': args.edition, 'executable': {'name': exe.name, 'sha256': sha, 'bytes': len(data),
+                                                           'known': sha == FL_EXE_SHA256 if args.edition == 'fl' else None}}
+        fonts = install_density_fonts(game, args.fonts_dir, record)
+        print(json.dumps({'action': 'install', 'game': str(game), 'edition': args.edition, 'copied': fonts['copied'],
+                          'retained': fonts['retained'], 'files': fonts['files'], 'executable': record['executable']}, indent=1))
+        return 0
+    if args.remove:
+        print(json.dumps({'action': 'remove', 'game': str(game), 'edition': args.edition, **remove_density_fonts(game)}, indent=1))
+        return 0
+    owned = _read_fonts_manifest(game)
+    present = [n for n in names if (game / 'f' / n).is_file()]
+    missing = [n for n in names if n not in present]
+    mine = [n for n in present if owned.get(n) and digest(game / 'f' / n) == owned[n]]
+    print(json.dumps({'action': 'check', 'game': str(game), 'edition': args.edition, 'present': present, 'owned': mine,
+                      'missing': missing}, indent=1))
+    return 0 if names and not missing else 1
+
+
 def main():
     # `fog-families` is a thin wrapper with its own options (fog_families_command): split the first positional
     # and the verbatim rest before the full parse (argparse reads the command line itself; main names no `sys`).
@@ -1128,17 +1215,21 @@ def main():
         raise SystemExit(subprocess.call(fog_families_command(first.rest)))
     if first.action == 'voice-decoder':
         raise SystemExit(voice_decoder_command(first.rest))
+    if first.action == 'density-fonts':
+        raise SystemExit(density_fonts_command(first.rest))
     # allow_abbrev=False (2026-09-26): a removed option is an unknown argument, never a prefix of a longer one
     # (--capture no longer resolves to --capture-frames, --telemetry needs no refusal stub).
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('action', choices=['install', 'uninstall', 'rollback', 'recover', 'launch', 'status', 'fog-families',
-                                           'voice-decoder'],
+                                           'voice-decoder', 'density-fonts'],
                         help='fog-families [--bottle B] [--check | --install [--replace] | --dry-run] [fog_families.py options]: '
                              'generate, install or check <game>/x3m/fog-families.bin for mod nebula families through '
                              'tools/analysis/fog_families.py on the bottle\'s game directory (default --check; see manage.py fog-families --help). '
                              'voice-decoder [--check | --install | --bottle-env check|apply|remove] [--game-dir DIR | --bottle B]: '
                              'check or install the WMA speech decoder <game>/x3m/voice-decoder from tools/voice-decoder/v4, or its '
-                             'CrossOver bottle environment entries (see manage.py voice-decoder --help)')
+                             'CrossOver bottle environment entries (see manage.py voice-decoder --help). '
+                             'density-fonts [--edition ap|fl] --game-dir DIR [--check | --install | --remove]: the text-density '
+                             'fonts as loose <game>/f files for either edition (see manage.py density-fonts --help)')
     parser.add_argument('--game-dir', type=Path, default=GAME)
     parser.add_argument('--bottle', default=BOTTLE, help='CrossOver bottle (default: X3, the arm64/FEX bottle; X3M_BOTTLE overrides; the old x86_64/Rosetta bottle is Steam)')
     parser.add_argument('--dll-source', type=Path, default=ROOT / 'build/d3d9.dll',

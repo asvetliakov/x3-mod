@@ -2111,3 +2111,65 @@ Visual: menus, sidebar and HUD panels 1.5x, the main menu unchanged, text enlarg
 next), clicks land on the enlarged icons, map pick and labels right, graph menus scaled with their menu. Known limits to
 report but not be surprised by: a tooltip at the right or bottom edge may run off-screen (both editions), a drag-rotate
 in a menu turns 1/1.5 as fast.
+
+## Text density on FL, host evidence (2026-11-03)
+
+`text_density` (the in-game text drawn at the integer density `d = ceil(s)` through the engine's own `-fontscale`
+path with the mod's `d x` fonts, so the UI scale minifies sharp text instead of magnifying 1x bitmaps) ported as
+`src/engine/fl/text_density_fl.cpp` + `text_density_sites_fl.h`. Claims on the backend-load path, all or none: font entry
+`0x0a8990`, block/alpha blits `0x0a7b30`/`0x0a7f80`, the call after the Materials load `0x0a69fb`, KC's image block
+`0x0b22f4` (qword-crossing plain write, admitted only while the KC VM slot `0x1aa174` and the row count `0x21b410` are
+zero, else `late_window`; never written back once the VM exists: a later rollback or shutdown keeps it in place, inert,
+`image_claim=retained_inert`), text line/rect fill `0x0a6d90`/`0x0a6b60` under `--debug`. At `CreateDevice`: `cfg+0x774 = d`,
+the cockpit opener's four bytes (`0x01dfda`, `0x01e001`, `0x01e005`, `0x01e00c`), at `d = 3` the style byte `0x1151b8`
+after the field (restored before it); any failure puts back style, cockpit, field and claims (the field stays 3 while the
+style byte cannot go back). `-L081` refused
+(`umeplusclp_missing`) unless `f\UmePlusCLP{23d}` exists. While the blit recorder (`*0x1aa100+0x24` bit 0) runs, shadowed
+blits are left to the engine (one `text_density_recorder first_pass` row at the next Present). Facts: [fl/text-density.md](../reverse-engineering/fl/text-density.md), "Verified
+2026-11-03" and "Learned while porting"; design: [text-density.md](../architecture/text-density.md), "Editions".
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_text_density_sites_fl.py` | PASS (13 sites, the 22 verified windows, callers, writers, liveness, init order) |
+| Header = executable | `python3 -I verification/results/fl-text-density/emit_header_windows.py --check` | `header windows match (30 windows)`: the 22 verified plus 8 the port adds (language store, both blits' clip and recorder test, image case slots, creator flags `0x402c`, object `+0x34`, VM and row-count stores) |
+| Order-witness cells | `python3 -I verification/results/fl-text-density/store_census.py` (`store_census.txt`) | VM slot written only at `0x077561`, `0x077681`; row count only at `0x111755`; `.data` raw `0x5600` (both cells zero at load) |
+| Native fixture | `python3 -I verification/results/fl-text-density/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_text_density.cpp`) | `RESULT checks=276 failures=0`, late run `checks=41 failures=0`: every claimed span against the vanilla span or the documented outputs (GPRs, EFLAGS with DF, ESP, 32 stack words, XMM0-7, x87 image, MXCSR, LastError); font request scaled (EDX, size, y offset) or `missing`; blits drawn from the 2x shadow through the FL helper ABIs (colour, alpha, plain; clip model; one shadow per id), pass-through for flagged/generated/unknown sources, unflagged destinations, negative ids and the recorder; image block N=1 equal to the engine's own copy arguments, N=d from the image shadow, clamped, pass-through for a null image or factor 5; Materials rows of a 40-row FL table per `plan_row` (9 flagged, 4 unflagged, 4 NOFILTERING cleared), AP-layout decoy table and `cfg+0x784` untouched; cockpit bytes written after the field and restored before it; style byte only while the field is 3, restored first, also when texture limits lower 3 to 2 at the Materials seam (`caps_limited_d=2`, cockpit rewritten to d2); the style byte unreadable twice during that fall: field kept at 3 with the
+byte 02, cockpit and claims back, shutdown then restores byte before field; with the VM present at `CreateDevice` every
+rollback and shutdown keeps the image claim in place (`image_claim=retained_inert`, the inert claim equal to the vanilla
+span) and releases it once the VM slot and rows are zero again; recorder row once at the next Present; filter set from `+0x34`, LINEAR raised and restored; Reset frees both shadows; refusals (settings, identity, one flipped byte per window and a fixup at another base, order witness x3, missing `Zekton52.tga`, `-L081` without/with `UmePlusCLP46`, density 1, late window at device and at initialize); read-back/chain faults at 6 claims and 5 edits roll everything back (image byte-equal, field 1); a failed restore stays registered until shutdown |
+| Cost (diagnostic) | the fixture's `timing` mode (200,000 calls, this host, not game FPS) | block blit through the harness: vanilla 482.5 ns, inactive fast path 486.6 ns, active pass-through 557.0 ns (+75 ns: the envelope and the row checks), handled draw 309.8 ns against 106.4 ns for the harness alone (+203 ns incl. the fake 8x4 leaf copy; earlier run +166 ns); per text-texture blit, not per draw; no allocation on the blit path |
+| Fonts | `python3 tools/manage.py density-fonts --edition fl --game-dir /mnt/c/X3FL --check` | 16 of 16 missing (`C:\X3FL\f` absent); nothing written. `test_fl_text_density.FlDensityFontsCommand`: install/check/remove on a temporary FL directory; `--install` and `--remove` refused while X3FL.exe runs or when the process list cannot be read |
+| AP unchanged | `python3 -I verification/results/fl-text-density/ap_objects_identical.py --head a64391a3f capture.cpp loader.cpp text_density.cpp ui_scale.cpp` (`ap_objects.txt`, base `93658e53c`; the evidence-only amend keeps the source blobs it records) | identical AP disassembly (41,169 / 3,070 / 5,768 / 2,870 lines) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_text_density test_text_density test_fl_ui_scale test_config_schema` | 4 modules, 43 tests, 0 failing (rerun after the review fixes) |
+| Builds | `cmake --build build-fl -j8`, `cmake --build build-ap -j8` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Install (orchestrator): the fonts with `python3 tools/manage.py density-fonts --edition fl --game-dir /mnt/c/X3FL
+--install` (game closed; copies the 16 `assets/fonts/generated/F` files into `C:\X3FL\f` with `x3m-fonts.json`
+recording `edition=fl` and `X3FL.exe`'s SHA-256), then the DLL by the candidate procedure.
+
+Expected log rows (not verified in game), `ui_scale = auto` and `text_density = auto` at 1440 lines: `text_density
+setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=-
+writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<base> site_rva=0x0a8990 edition=fl`; at device creation, after the `ui_scale_install`
+row, `text_density_install density=2 scale=1.5000 status=patched reason=ok mode=auto config_before=1 config=2
+language=44 cockpit=patched style=stock edit_failed=- rows=pending fonts=Tahoma26,Zekton52,ZektonES52,Harrier48
+missing=- caps_limited_d=0 max_texture=<W>x<H> image_claim=active arena_used=<n> edition=fl`; then `text_density_rows status=applied
+reason=ok density=2 rows=1239 flagged=<n> unflagged=8 nofilter_cleared=<n> caps_limited_d=0 largest_row=1024x2048
+missing=- image_claim=active edition=fl` (36 generated writeable rows, 10 of them already FONTSCALE: `flagged` 26..36; inferred from the
+census); `text_density_font name=Tahoma size=13 density=2 status=scaled file=f\Tahoma26.abc cell_width=32 y_offset=2
+edition=fl` and `name=Zekton size=26 … status=scaled file=f\Zekton52.abc … y_offset=16 edition=fl` (the cockpit's own
+Tahoma opener logs no row: its bytes are edited); `text_density_shadow src=<id> status=built …` for menu icons; one
+`text_density_filter status=active … edition=fl` at the first text draw. No `refused`, `window_mismatch`,
+`slot_mismatch`, `late_claim`, `late_window`, `fonts_missing` or `patched_unverified`. Without a UI scale (`auto` at
+1080 lines) the install row reads `status=off reason=density_1 … image_claim=retained_inert`. A
+`text_density_recorder first_pass frame=<n> recorded_passes=<n> edition=fl` row appears only if a script turned the
+engine's blit recorder on.
+
+User flight check (1440-line screen, `ui_scale = auto`, fonts installed): menu, sidebar, HUD panel and cockpit text is
+crisp at 1.5x (not the soft magnified text of run 30); every letter present (no gaps, no cut tops of capitals or
+descenders), no uneven stroke weight between letters; menu icons at their usual size and place; the New Game menu
+opens without a crash and its picture is at its usual size; tooltips and the ticker laid out as before. Visual
+acceptance item: graph menus (station or net-worth graph) draw their lines as one-texel strokes at density 2, so they
+look thinner than the scaled UI around them (the engine's `TexLine`; same on AP); report if they disappear. Icons or
+text suddenly at 2/3 size in some menu: report it; the `text_density_recorder` row names the frame (the engine's blit
+recorder was on and the module left those blits to it). Report any
+missing or misplaced text, a black square where an icon belongs, or a crash in a menu.

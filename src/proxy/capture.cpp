@@ -2105,6 +2105,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     fov::present(ctx.frame); // FL: a counter test; every 64th Present one sample of the admitted registry's +0x24
                              // (fov::current_focus() returns it) and, up to 16 times, a fov_confirm row on a change
                              // (no save_load_complete marker on FL: a load is a change)
+    text_density::present(ctx.frame); // FL (src/engine/fl/text_density_fl.cpp), s != d: the flagged rows' D3D textures
+                                      // for the filter override
     ui_scale::present(ctx.frame); // FL (src/engine/fl/ui_scale_fl.cpp): the excluded HUD camera for the next frame; under
                                   // --debug one ui_scale_frame row (the projection counters) every 300 Presents
 #endif
@@ -2311,6 +2313,9 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
 #if !X3M_EDITION_FL
     text_density::before_reset(); // X3M_TEXT_DENSITY: the d x shadow surfaces (engine texture objects) go before the
                                   // Reset and are rebuilt on demand
+#else
+    text_density::before_reset(); // FL (src/engine/fl/text_density_fl.cpp): the same shadow surfaces through X3FL.exe's
+                                  // free
 #endif
     presentation_parameters("reset_before", ctx.id, ctx.stats.focus_window, p);
     // X3M_WINDOW_MONITOR_RECT=1 only: the game repositioned at the work-area origin before this Reset (0x4dac90's
@@ -4183,11 +4188,17 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     }
 #else
     if (SUCCEEDED(hr) && p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // FL provider
-    if (SUCCEEDED(hr) && p)
+    if (SUCCEEDED(hr) && p) {
         ui_scale::device_created(p->BackBufferWidth, p->BackBufferHeight); // FL provider (src/engine/fl/ui_scale_fl.cpp):
                                                                             // the scale from the back buffer, the eleven
                                                                             // claims (all or none) inside the still-open
                                                                             // install window
+        text_density::device_created(ui_scale::scale(), out ? *out : nullptr); // FL provider (src/engine/fl/
+                                                                                // text_density_fl.cpp): d = ceil(s) (auto);
+                                                                                // cfg+0x774, the cockpit bytes, the style
+                                                                                // byte at d = 3; the rows at the
+                                                                                // Materials seam
+    }
 #endif
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {

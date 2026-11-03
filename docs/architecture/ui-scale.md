@@ -140,6 +140,6 @@ entry point.
   AP's arithmetic with FL registers (the label offsets come from SSE truncation, the pick needs no flag replay); A
   reads the flags from the instance (`EDI+0x130`), compares the camera in EBX and keeps EFLAGS, ECX, XMM1 and MXCSR.
   The excluded camera is published only while it is attached to the cockpit's HUD scene. Not ported: the `--debug`
-  entry counter F (the projection counters are printed instead, `cameras=-`) and `text_density` (one
-  `text_density installed=0 status=ap_only edition=fl reason=not_ported` row; FL text is magnified, not redrawn
-  denser). The FL graph menus are ordinary `0x200` instances and scale with the rest.
+  entry counter F (the projection counters are printed instead, `cameras=-`). `text_density` is on FL since
+  2026-11-03 ([text-density.md](text-density.md), "Editions"). The FL graph menus are ordinary `0x200` instances and
+  scale with the rest.

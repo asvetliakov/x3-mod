@@ -322,10 +322,10 @@ class TextDensityCore(unittest.TestCase):
         self.assertEqual(capture.count('text_density::initialize();'), 1)
         self.assertLess(capture.index('ui_scale::initialize();'), capture.index('text_density::initialize();'))
         self.assertLess(capture.index('text_density::initialize();'), capture.index('sun_flare_fix::initialize();'))
-        self.assertEqual(capture.count('text_density::device_created(ui_scale::scale(),out?*out:nullptr);'), 1)
+        self.assertEqual(capture.count('text_density::device_created(ui_scale::scale(),out?*out:nullptr);'), 2)  # AP, FL
         self.assertLess(capture.index('ui_scale::device_created('), capture.index('text_density::device_created('))
         self.assertLess(capture.index('text_density::device_created('), capture.index('log("create_device_result hr=%08lx",hr);'))
-        self.assertEqual(capture.count('text_density::before_reset();'), 1)
+        self.assertEqual(capture.count('text_density::before_reset();'), 2)  # AP, FL
         self.assertLess(capture.index('text_density::before_reset();'), capture.index('presentation_parameters("reset_before"'))
         self.assertIn('if (reserved == nullptr) x3m::text_density::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/text_density.cpp', source_text(ROOT / 'CMakeLists.txt'))
@@ -387,7 +387,7 @@ class TextDensityCore(unittest.TestCase):
         self.assertEqual(capture.count('const bool text_filter = route.submit && text_density::draw_filter_override(d,ctx.get<text_density::SamplerGet>(68),ctx.get<text_density::SamplerSet>(69));'), 4)
         self.assertEqual(capture.count('if (text_filter) text_density::draw_filter_restore(d,ctx.get<text_density::SamplerSet>(69));'), 4)
         self.assertEqual(capture.count('text_density::bound_texture(stage,texture);'), 1)
-        self.assertEqual(capture.count('text_density::present(ctx.frame);'), 1)
+        self.assertEqual(capture.count('text_density::present(ctx.frame);'), 2)  # AP, FL
         self.assertIn('text_density::filter_hooks_wanted())', capture)
         self.assertLess(capture.index('text_density::filter_hooks_wanted())'), capture.index('hooked.set(65,set_texture);'))
         # The production claims in order: the font open, the two blits, then the Materials call; the diagnostics last.

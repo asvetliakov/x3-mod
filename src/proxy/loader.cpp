@@ -112,10 +112,14 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // X3M_UI_SCALE=auto|1..3 (src/engine/fl/ui_scale_fl.cpp; docs/reverse-engineering/fl/ui-scale.md, "Verified
     // 2026-11-03"): the setting, the X3FL.exe identity and every identity window checked here, inside the install
     // window; the eleven claims (all or none) follow at CreateDevice, where `auto` takes the back-buffer height. One
-    // ui_scale row with edition=fl. The text density (the d x fonts through the engine's -fontscale path) is AP only
-    // until its port: one refusal row, nothing claimed.
+    // ui_scale row with edition=fl.
     x3m::ui_scale::initialize();
-    x3m::log("text_density installed=0 status=ap_only edition=fl reason=not_ported");
+    // X3M_TEXT_DENSITY=auto|1|2|3, unset = auto (src/engine/fl/text_density_fl.cpp; docs/reverse-engineering/fl/
+    // text-density.md, "Verified 2026-11-03"): the setting, the identity and 30 windows, then the font entry, the two
+    // block blits, the Materials seam and KC's image block (the one qword-crossing write, admitted only while neither the
+    // KC VM nor the Materials rows exist) claimed here, inert; the density applied at CreateDevice from ui_scale's scale.
+    // One text_density row with edition=fl.
+    x3m::text_density::initialize();
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",

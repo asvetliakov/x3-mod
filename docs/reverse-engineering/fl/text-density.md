@@ -384,7 +384,10 @@ Hook-site summary: every detour span is whole instructions with no relative cont
 edge and no relocated pointer into its interior. Qword-contained five-byte writes: font entry, both blits, text line,
 rect fill, `0x0a69fb`. Crossing: `0x0a69f6`, `0x0b22f4` (plain write only while no thread can execute them: the
 backend-load window inside `Direct3DCreate9` at `0x0772bc`, before the KC VM and the Materials load run; inferred from
-the init order). Edits (`0x1151b8`, the four cockpit bytes) are single bytes, atomic, and no edge or pointer reaches the
+the init order). The port installs `0x0b22f4` under that rule (run-time witness: the VM slot `0x1aa174` and the row count
+`0x21b410` still zero) and never writes it back once the witness lapses: a rollback or shutdown after the VM exists
+(already at `CreateDevice`, `0x077561` < `0x07765a`) leaves the claim in place, inert (the thunk goes straight to the tail
+while the module is inactive; `image_claim=retained_inert`). Edits (`0x1151b8`, the four cockpit bytes) are single bytes, atomic, and no edge or pointer reaches the
 edited instructions. Reentrancy: all sites run on the init/main thread (as AP); not re-proved here.
 
 ### Font assets on FL
@@ -411,11 +414,30 @@ unchanged.
 3. The style edit is not inert at N=1: order it after the field and restore it first.
 4. `-L081`: the four-family font gate passes while UmePlusCLP{23d} is missing, and HUD Tahoma asks y offset 2:
    refuse density under `-L081` (or add a verified UmePlusCLP set and a language-aware Tahoma policy).
-5. `auto` resolves from `ui_scale::scale()`; `ui_scale` has no FL port (`src/engine/fl` has none), so only a forced
-   `text_density=2|3` can be exercised on FL until it does.
+5. `auto` resolves from `ui_scale::scale()`; `ui_scale` is on FL since `69be37f27` (`src/engine/fl/ui_scale_fl.cpp`), so
+   `auto` gives `d = ceil(s)` as on AP.
 6. Graph strokes: `TexLine` multiplies endpoints by N into a flagged row (`0x0a7795`, `0x0a779d..0x0a77ab`) and draws
    one-texel lines; AP's engine does the same and the AP module neither touches nor depends on it. FL's chart class
    2327 (rows 20/1236, [ui-graphs](ui-graphs.md)) makes it visible: a visual acceptance item, not a port blocker.
+
+### Learned while porting (2026-11-03, static, read-only)
+
+Facts the port (`src/engine/fl/text_density_fl.cpp`, `text_density_sites_fl.h`) rests on beyond the tables above. Each
+was read from `X3FL.exe` with Capstone and is pinned by one of the module's eight extra identity windows (30 in all;
+`verification/results/fl-text-density/emit_header_windows.py --check`: header = executable).
+
+| Item | FL RVA | How confirmed | Consequence |
+| --- | --- | --- | --- |
+| blit recorder | `0x0a7e3a` / `0x0a828a` `mov eax,[0x5aa100]; test byte [eax+0x24],1` -> `call 0x08ed70` / `0x08ee30` (writes `RTBB` / `RTBA` chunks through `[*0x1aa100+0xa0]`) | disassembly; windows `blt_block_clip`, `blt_alpha_clip` | the FL form of AP's blit trace (`[0x00608518]+0x24 & 1`, which AP's shadowed blits skip): on FL a blit the module would draw itself is left to the engine while bit 0 is set (1x source at the scaled position), so a recording stays complete |
+| destination clip | `0x0a7d88..0x0a7e2e` (block), `0x0a81d8..0x0a827e` (alpha): clip word `[esp+0x64]`, W/N and H/N from the destination object | disassembly, same two windows | identical to AP's `clip_destination` (incl. the left/top overhang quirk); reused unchanged |
+| alloc stack order | `0x110c90`: `[esp+4]` = bpp (`movzx [esp+0x20]` after the prologue), `[esp+8]` = flags (`[esp+0x24]`); caller `0x076128` pushes flags then bpp | disassembly | the shim pushes flags, bpp; CX/DX = width/height |
+| plain copy | `0x0f4590` keeps ECX (`push ecx` .. `pop ecx`) and calls `0x10bc10(ECX=src, EDX=dst, 6 words)` | window `plain_copy` | called as cdecl |
+| generated surface flags | `0x1114a1` `mov edi,0x402c` for a row with `0x60100`; `| 0x4000000` when `0x0db710` returns non-zero, `| 0x20000000` for entry bit `0x200000` | window `creator_flags` | the shadow uses AP's `(32 bpp, 0x402c)` |
+| image case | `0x0b21f8..0x0b22c0`: path `*0x1aa0a4` (a heap copy), object `*0x1aa070`, `[ebp-0x50]` = image, `[ebp-0x20]` = `lookup(dst)`, both null-checked at `0x0b22ab..0x0b22ba`; the block pushes each product as `movzx eax,cx` (16-bit) | window `image_case` | AP's record words (uint16) and plan carry over |
+| KC VM slot | `0x1aa174` written only at `0x077561` and `0x077681` (init routine, after `Direct3DCreate9` at `0x0772bc`) | store census over `.text` (`a3 74 a1 5a 00` / `mov [..],r`) | with the row count it is the run-time order witness for the qword-crossing image write |
+| row count | `0x21b410` written only at `0x111755` (Materials loader) | same census | zero before the load (`.bss`: `.data` raw size `0x5600` from `0x1a2000`) |
+| language | `cfg+0x75c` default 44 at `0x109ec4`; final before display `0x07765a` ([font-selector-readiness](font-selector-readiness.md)) | window `config_language` | read at `CreateDevice` for the `-L081` rule |
+| Materials seam | `0x0a69fb` `call 0x1125c0` (the call after the load), qword-contained | window `materials` | claimed in place of `0x0a69f6`: the row edit runs right after the load, the callee then runs with the game's stack |
 
 Reproduce: `python3 verification/probe/verify_text_density_sites_fl.py [--json|--emit-windows]`;
 `python3 verification/results/fl-text-density/mutation_check.py`;

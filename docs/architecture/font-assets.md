@@ -23,7 +23,10 @@ assets/fonts/generated/F/Harrier{24d}.abc/.tga   LARGE, -L007 Russian         (H
 Since 0.9.0 the 16 files (about 23 MB) are committed as ordinary repository files (no LFS,
 marked `binary` in `.gitattributes`): `tools/manage.py install` copies them from there by
 default (`--fonts-dir`), and the release zip (`tools/release/package.py`) ships them as `f/`,
-to be extracted next to `X3AP.exe`. A default regeneration rewrites them in place;
+to be extracted next to `X3AP.exe`. X3: Farnham's Legacy asks for the same four families and its 12 stock `f/` files
+are byte-identical to AP's, so the same 16 files serve it: `python3 tools/manage.py density-fonts --edition fl
+--game-dir <FL game dir> --install` copies them into its `f/` with the same manifest (recording the edition and
+`X3FL.exe`'s SHA-256). A default regeneration rewrites them in place;
 `test_font_generator` (`CommittedFontsTest`) regenerates into a temp dir and requires every
 committed file to match by sha256.
 

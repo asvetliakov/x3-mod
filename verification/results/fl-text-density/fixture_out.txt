@@ -1,0 +1,134 @@
+# run full
+LOG text_density setting=1 status=off reason=off mode=off value=1 diagnostic=0 failed_site=- window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=abc status=refused reason=invalid_setting mode=off value=1 diagnostic=0 failed_site=- window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=4 status=refused reason=invalid_setting mode=off value=1 diagnostic=0 failed_site=- window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=? status=refused reason=too_long mode=off value=1 diagnostic=0 failed_site=- window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=- status=refused reason=executable_mismatch mode=off value=1 diagnostic=0 failed_site=- window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=font_entry writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=font_entry writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=materials writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=style writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=style writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_block writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_block_reads writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_block_reads writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_alpha writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=image_scale writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=image_scale writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=image_block writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=text_line writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=rect_fill writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=lookup writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=lookup writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=alloc writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=alloc_fields writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=free writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=plain_copy writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=copy_dispatch writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=copy_dispatch writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=colour writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=alpha writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=config_default writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=config_atol writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=config_atol writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=cockpit_literals writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=cockpit_literals writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=font_loader_path writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=font_loader_path writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=config_language writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_block_clip writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_block_clip writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_alpha_clip writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=blt_alpha_clip writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=image_case writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=image_case writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=creator_flags writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=object_texture writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=vm_store writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=vm_store writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=window_mismatch mode=off value=1 diagnostic=0 failed_site=- window=rows_store writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=slot_mismatch mode=off value=1 diagnostic=0 failed_site=- window=rows_store writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=late_window mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,none,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=late_window mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,none,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=late_window mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,none,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=1 failed_site=- window=- writes=atomic,atomic,atomic,plain,atomic,atomic,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=1 failed_site=- window=- writes=atomic,atomic,atomic,plain,atomic,atomic,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=2 scale=1.5000 status=patched reason=ok mode=auto config_before=1 config=2 language=44 cockpit=patched style=stock edit_failed=- rows=pending fonts=Tahoma26,Zekton52,ZektonES52,Harrier48 missing=- caps_limited_d=0 max_texture=0x0 image_claim=active arena_used=504 edition=fl
+LOG text_density_font name=Tahoma size=13 density=2 status=scaled file=f\Tahoma26.abc cell_width=32 y_offset=2 edition=fl
+LOG text_density_font name=Zekton size=26 density=2 status=scaled file=f\Zekton52.abc cell_width=44 y_offset=16 edition=fl
+LOG text_density_font name=Zekton size=30 density=2 status=missing file=f\Zekton60.abc cell_width=22 y_offset=8 edition=fl
+LOG text_density_rows status=applied reason=ok density=2 rows=40 flagged=9 unflagged=4 nofilter_cleared=4 caps_limited_d=0 largest_row=256x2048 missing=- image_claim=active edition=fl
+LOG text_density_shadow src=10 status=built reason=ok size=8x4 density=2 bytes=512 total=512 slots=0 ms=<n> image=- edition=fl
+LOG text_density_draw fn=blt_block src=10 dst=3 dst_flagged=1 src_flagged=0 src_generated=0 handled=1 edition=fl
+LOG text_density_draw fn=blt_alpha src=10 dst=3 dst_flagged=1 src_flagged=0 src_generated=0 handled=1 edition=fl
+LOG text_density_draw fn=blt_block src=4 dst=3 dst_flagged=1 src_flagged=1 src_generated=1 handled=0 edition=fl
+LOG text_density_draw fn=blt_block src=10 dst=20 dst_flagged=0 src_flagged=0 src_generated=0 handled=0 edition=fl
+LOG text_density_draw fn=blt_alpha src=9 dst=3 dst_flagged=1 src_flagged=0 src_generated=1 handled=0 edition=fl
+LOG text_density_draw fn=blt_block src=51 dst=3 dst_flagged=1 src_flagged=0 src_generated=1 handled=0 edition=fl
+LOG text_density_recorder first_pass frame=77 recorded_passes=2 edition=fl
+LOG text_density_draw fn=blt_image src=-1 dst=20 dst_flagged=0 src_flagged=0 src_generated=0 handled=0 edition=fl
+LOG text_density_shadow src=-1 status=built reason=ok size=6x5 density=2 bytes=480 total=992 slots=1 ms=<n> image=textures/kc/icon.dds edition=fl
+LOG text_density_draw fn=blt_image src=-1 dst=3 dst_flagged=1 src_flagged=0 src_generated=0 handled=1 edition=fl
+LOG text_density_draw fn=text_line font=2 x=17 dst=3 dst_flagged=1 edition=fl
+LOG text_density_draw fn=rect_fill src=-1 dst=3 dst_flagged=1 src_flagged=0 src_generated=0 handled=0 edition=fl
+LOG text_density_filter_frame frame=300 textures=1 overridden=0 already_linear=0 edition=fl
+LOG text_density_filter status=active min_before=1 mag_before=1 aniso=0 raised=both textures=1 edition=fl
+LOG text_density_reset shadows=2 bytes=992 recorded_passes=2 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=retained_inert edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=3 status=pending reason=pending mode=fixed value=3 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=3 scale=1.2500 status=patched reason=ok mode=fixed config_before=1 config=3 language=44 cockpit=patched style=patched edit_failed=- rows=pending fonts=Tahoma39,Zekton78,ZektonES78,Harrier72 missing=- caps_limited_d=0 max_texture=0x0 image_claim=active arena_used=600 edition=fl
+LOG text_density_font name=Tahoma size=13 density=3 status=scaled file=f\Tahoma39.abc cell_width=48 y_offset=3 edition=fl
+LOG text_density_rows status=applied reason=ok density=3 rows=40 flagged=9 unflagged=4 nofilter_cleared=4 caps_limited_d=0 largest_row=256x2048 missing=- image_claim=active edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=retained_inert edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=3 status=pending reason=pending mode=fixed value=3 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=3 scale=1.2500 status=patched reason=ok mode=fixed config_before=1 config=3 language=44 cockpit=patched style=patched edit_failed=- rows=pending fonts=Tahoma39,Zekton78,ZektonES78,Harrier72 missing=- caps_limited_d=0 max_texture=4096x4096 image_claim=active arena_used=696 edition=fl
+LOG text_density_rows status=applied reason=ok density=2 rows=40 flagged=9 unflagged=4 nofilter_cleared=4 caps_limited_d=2 largest_row=256x2048 missing=- image_claim=active edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=retained_inert edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=3 status=pending reason=pending mode=fixed value=3 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=3 scale=1.2500 status=patched reason=ok mode=fixed config_before=1 config=3 language=44 cockpit=patched style=patched edit_failed=- rows=pending fonts=Tahoma39,Zekton78,ZektonES78,Harrier72 missing=- caps_limited_d=0 max_texture=4096x4096 image_claim=active arena_used=792 edition=fl
+LOG text_density_rows status=refused reason=style_failed density=1 rows=0 flagged=0 unflagged=0 nofilter_cleared=0 caps_limited_d=0 largest_row=256x2048 missing=- image_claim=retained_inert edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=retained_inert edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=fonts_missing mode=auto config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=- rows=pending fonts=-0,-0,-0,-0 missing=Zekton52 caps_limited_d=0 max_texture=0x0 image_claim=retained_inert arena_used=888 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=umeplusclp_missing mode=auto config_before=1 config=1 language=81 cockpit=stock style=stock edit_failed=- rows=pending fonts=-0,-0,-0,-0 missing=UmePlusCLP46 caps_limited_d=0 max_texture=0x0 image_claim=retained_inert arena_used=984 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=2 scale=1.5000 status=patched reason=ok mode=auto config_before=1 config=2 language=81 cockpit=patched style=stock edit_failed=- rows=pending fonts=Tahoma26,Zekton52,ZektonES52,Harrier48 missing=- caps_limited_d=0 max_texture=0x0 image_claim=active arena_used=1080 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.0000 status=off reason=density_1 mode=auto config_before=0 config=1 language=44 cockpit=stock style=stock edit_failed=- rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=retained_inert arena_used=1176 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=refused reason=readback_failed mode=auto value=1 diagnostic=0 failed_site=text_density_font_fl window=- writes=atomic,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=chain_failed mode=auto value=1 diagnostic=0 failed_site=text_density_blt_alpha_fl window=- writes=atomic,atomic,atomic,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=readback_failed mode=auto value=1 diagnostic=0 failed_site=text_density_materials_fl window=- writes=atomic,atomic,atomic,none,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=readback_failed mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=chain_failed mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=readback_failed mode=auto value=1 diagnostic=0 failed_site=text_density_rect_fill_fl window=- writes=atomic,atomic,atomic,plain,atomic,atomic,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density setting=auto status=refused reason=chain_failed mode=auto value=1 diagnostic=0 failed_site=text_density_blt_image_fl window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=config_unwritable mode=auto config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=- rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=none arena_used=1872 edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=cockpit_failed mode=auto config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=cockpit_name_size rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=none arena_used=1968 edition=fl
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=cockpit_readback_failed mode=auto config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=cockpit_cell_width rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=none arena_used=2064 edition=fl
+LOG text_density setting=3 status=pending reason=pending mode=fixed value=3 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=cockpit_readback_failed mode=fixed config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=cockpit_size rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=none arena_used=2160 edition=fl
+LOG text_density setting=3 status=pending reason=pending mode=fixed value=3 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=style_failed mode=fixed config_before=1 config=1 language=44 cockpit=stock style=stock edit_failed=style_factor rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=none arena_used=2256 edition=fl
+RESULT checks=276 failures=0
+# exit=0
+# run late
+LOG text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=0 failed_site=- window=- writes=atomic,atomic,atomic,plain,none,none,atomic base=0x<addr> site_rva=0x0a8990 edition=fl
+LOG text_density_install density=1 scale=1.5000 status=refused reason=late_claim mode=auto config_before=0 config=1 language=44 cockpit=stock style=stock edit_failed=- rows=pending fonts=-0,-0,-0,-0 missing=- caps_limited_d=0 max_texture=0x0 image_claim=retained_inert arena_used=96 edition=fl
+LOG text_density_restore status=restored registered=0 image_claim=none edition=fl
+LOG text_density setting=auto status=refused reason=late_claim mode=auto value=1 diagnostic=0 failed_site=text_density_font_fl window=- writes=none,none,none,none,none,none,none base=0x<addr> site_rva=0x0a8990 edition=fl
+RESULT checks=41 failures=0
+# exit=0

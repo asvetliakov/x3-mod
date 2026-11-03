@@ -141,11 +141,12 @@ set(X3M_SHARED_SOURCES
 # AP only. The chase cursor fire too: the fl target links src/engine/fl/chase_fire_fl.cpp
 # (docs/reverse-engineering/fl/chase-fire-aim.md, "Verified 2026-11-03"); chase_fire.cpp is AP only. The UI scale too:
 # the fl target links src/engine/fl/ui_scale_fl.cpp (docs/reverse-engineering/fl/ui-scale.md, "Verified 2026-11-03");
-# ui_scale.cpp is AP only.
+# ui_scale.cpp is AP only. The text density too: the fl target links src/engine/fl/text_density_fl.cpp
+# (docs/reverse-engineering/fl/text-density.md, "Verified 2026-11-03"); text_density.cpp is AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
-  src/proxy/text_density.cpp src/proxy/cull_census.cpp
+  src/proxy/cull_census.cpp
   src/proxy/engine_far_jets.cpp src/proxy/occlusion_engine_cull.cpp src/proxy/engine_effects.cpp
   src/proxy/engine_patch.cpp)
 # AP-only engine modules (derived: the ap list minus both groups): hooks, patches and reads at X3AP.exe
@@ -195,8 +196,13 @@ else()
   # The UI scale: eleven claims (script screen size, the two mouse-delta callbacks, the cursor stores, the overlay/aim
   # click points, the galaxy-map label and pick, the 2D projection), the AP policy on FL bindings
   # (docs/reverse-engineering/fl/ui-scale.md, "Verified 2026-11-03"); it provides ui_scale.h in place of the AP
-  # src/proxy/ui_scale.cpp. text_density stays AP only (one refusal row from the loader).
+  # src/proxy/ui_scale.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/ui_scale_fl.cpp)
+  # The text density: the font entry, the two block blits, the Materials seam and KC's image block claimed, the config
+  # field, the cockpit opener's four bytes and the style factor edited at CreateDevice, the AP policy on FL bindings
+  # (docs/reverse-engineering/fl/text-density.md, "Verified 2026-11-03"); it provides text_density.h in place of the AP
+  # src/proxy/text_density.cpp.
+  target_sources(d3d9 PRIVATE src/engine/fl/text_density_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -272,6 +278,9 @@ set_source_files_properties(src/engine/fl/chase_fire_fl.cpp PROPERTIES COMPILE_O
 # The FL UI scale (src/engine/fl/ui_scale_fl.cpp): emitted integer/SSE stubs, no callout; the install and Present code
 # throws nothing.
 set_source_files_properties(src/engine/fl/ui_scale_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL text density (src/engine/fl/text_density_fl.cpp): its C sides run inside the asm thunks' envelope (EFLAGS, GPRs,
+# XMM0-7, FNSAVE image, MXCSR; LastError in the C side): default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/text_density_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

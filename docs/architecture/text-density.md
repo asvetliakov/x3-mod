@@ -153,7 +153,8 @@ manifest does not own (or whose bytes changed since) is left alone and reported.
 (the previous DLL does not ask for them). The install row lists which of the four
 families the game directory holds at the resolved density (`fonts=`) and, when the gate
 refused, the missing names (`missing=`); with the gate the per-open guard only matters
-for a font added by a mod, which is opened at `1x` and logged.
+for a font added by a mod, which is opened at `1x` and logged. `tools/manage.py density-fonts --edition ap|fl
+--game-dir DIR [--check | --install | --remove]` does the font step alone, for either edition (FL: see "Editions").
 
 ## Oversized disc
 
@@ -191,6 +192,38 @@ span walk for r = 1633 on the host (x86-64, without the leaves' pixel stores, wh
 the same as a correct stock disc's; i686 inferred a small factor slower), at most two leaf
 calls per row. No x87 or SSE in the C side (built `-mno-sse -mfpmath=387`, walked by
 `check_no_x87.py`); engine code and calls only, no Wine dependency.
+
+## Editions
+
+- **AP** (`X3AP.exe`): the sites above, `src/proxy/text_density.cpp`.
+- **FL** (`X3FL.exe`, since 2026-11-03, host evidence only, not flown): `src/engine/fl/text_density_fl.cpp` provides
+  `text_density.h` with the same option, `auto` mapping (from the FL `ui_scale`), font gate, Materials row plan, shadow
+  cache, `TexBltImage` plan, on-screen filter, `Reset` handling and log rows (each ending in `edition=fl`); sites,
+  windows and edits in `src/engine/fl/text_density_sites_fl.h`, verified in
+  [FL text density](../reverse-engineering/fl/text-density.md) ("Verified 2026-11-03"). Differences from AP:
+  - Register ABIs (font entry ECX name / EDX cell width; blits ECX/EDX ids with eight caller-cleaned words; helpers
+    with CX/DX or ECX/EDX arguments) through asm shims; the thunks save EFLAGS, the GPRs, XMM0-7, the x87 image
+    (FNSAVE/FRSTOR) and MXCSR around the C side, which saves LastError.
+  - The Materials seam is the call right after the load (`0x0a69fb`, qword-contained) instead of the load call itself.
+  - KC's image block (`0x0b22f4`) crosses a qword: it is written on the backend-load path only while the KC VM slot and
+    the Materials row count are still zero (else `late_window`, all claims back). A later rollback or shutdown does not
+    rewrite it: the claim stays in place, inert (`image_claim=retained_inert`; with `auto` and no UI scale this is the
+    usual state after `CreateDevice`).
+  - `cfg+0x774` (AP `+0x784`); the native cockpit opener (`0x01df90`) formats `Tahoma13` itself, so its four operand
+    bytes (name size, y offset, cell width, size) are edited with the field; the style factor is one displacement byte
+    (`0x1151b8`) that would give factor 2 at `N = 1`, so it is written after the field holds 3 and put back before the
+    field changes. A failure anywhere puts back the style byte, the cockpit bytes, the field and every claim; a style
+    byte that cannot go back keeps the field at 3 (factor 3, consistent with the byte).
+  - Under `-L081` (language `cfg+0x75c` = 81) the LARGE font is `UmePlusCLP 23`, which neither FL nor the mod ships:
+    the density is refused (`umeplusclp_missing`) unless `f\UmePlusCLP{23d}.abc/.tga` exist.
+  - While the engine's blit recorder runs (`*0x1aa100 + 0x24` bit 0; script-started) a blit the module would draw from a
+    shadow is left to the engine, which draws the 1x source at the `d x` position (icons or text at `1/d` size); AP skips
+    its trace for those blits instead. The first such pass logs `text_density_recorder first_pass frame=…` at the next
+    Present.
+  - Fonts: FL requests the same four families (its 12 stock `f/` files are byte-identical to AP's), so the same 16
+    files serve both; FL has no `manage.py install`, the fonts go in with
+    `python3 tools/manage.py density-fonts --edition fl --game-dir <C:\X3FL> --install` (same copy, manifest and
+    ownership rules; the manifest records `edition` and the executable's SHA-256).
 
 ## Known limitations and open items
 
