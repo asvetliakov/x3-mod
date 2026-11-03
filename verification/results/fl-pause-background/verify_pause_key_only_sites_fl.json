@@ -1,0 +1,180 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "fl_identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "highlow": 38327
+  },
+  "windows": {
+   "ok": true,
+   "entry": {
+    "ok": true,
+    "fnv1a32": "87e58492",
+    "whole_instructions": true,
+    "relocs": {
+     "0x07869d": "0x22ddf0",
+     "0x0786af": "0x2243cc",
+     "0x0786b9": "0x22ddf0"
+    }
+   },
+   "loop": {
+    "ok": true,
+    "fnv1a32": "8180c9b7",
+    "whole_instructions": true,
+    "relocs": {
+     "0x0787ef": "0x1a8478",
+     "0x07882f": "0x1a8478",
+     "0x078860": "0x2243cc"
+    }
+   }
+  },
+  "site": {
+   "ok": true,
+   "bytes": "8bc633442414a9ff0f00007545",
+   "decode": [
+    "mov eax, esi",
+    "xor eax, dword ptr [esp + 0x14]",
+    "test eax, 0xfff",
+    "jne 0x47885e"
+   ],
+   "writes": [
+    "eax",
+    "eflags"
+   ],
+   "previous": "je 0x478819",
+   "interior_edges": [],
+   "edges_to_start": [],
+   "fixups": [],
+   "direct_edges": 72230,
+   "qword": "crosses"
+  },
+  "replacement": {
+   "ok": true,
+   "0x1b5": {
+    "ok": true,
+    "bytes": "6681feb50175063b7424147545",
+    "decode": [
+     "cmp si, 0x1b5",
+     "jne 0x478819",
+     "cmp esi, dword ptr [esp + 0x14]",
+     "jne 0x47885e"
+    ],
+    "writes": [
+     "eflags"
+    ]
+   },
+   "0x11b5": {
+    "ok": true,
+    "bytes": "6681feb51175063b7424147545",
+    "decode": [
+     "cmp si, 0x11b5",
+     "jne 0x478819",
+     "cmp esi, dword ptr [esp + 0x14]",
+     "jne 0x47885e"
+    ],
+    "writes": [
+     "eflags"
+    ]
+   },
+   "0x1fff": {
+    "ok": true,
+    "bytes": "6681feff1f75063b7424147545",
+    "decode": [
+     "cmp si, 0x1fff",
+     "jne 0x478819",
+     "cmp esi, dword ptr [esp + 0x14]",
+     "jne 0x47885e"
+    ],
+    "writes": [
+     "eflags"
+    ]
+   },
+   "0x2c": {
+    "ok": true,
+    "bytes": "6681fe2c0075063b7424147545",
+    "decode": [
+     "cmp si, 0x2c",
+     "jne 0x478819",
+     "cmp esi, dword ptr [esp + 0x14]",
+     "jne 0x47885e"
+    ],
+    "writes": [
+     "eflags"
+    ]
+   }
+  },
+  "loop_edges": {
+   "ok": true,
+   "instructions": 172,
+   "callers": [
+    "0x078150"
+   ],
+   "edges_from_outside": [],
+   "exit_edges": [
+    "0x078817",
+    "0x07881f",
+    "0x078827"
+   ],
+   "mouse_test_edges": [
+    "0x07880a"
+   ],
+   "loop_head_edges": [
+    "0x07885c"
+   ],
+   "loop_entry_edges": [
+    "0x0786c6"
+   ],
+   "previous_key_writes": {
+    "0x0786a4": "ebx",
+    "0x07884c": "eax"
+   },
+   "zero_extended_sources": true,
+   "esi_writes": [
+    "0x0786b3",
+    "0x078859"
+   ]
+  },
+  "context_flag_writers": {
+   "ok": true,
+   "writers": [
+    "0x075ec9",
+    "0x07819c",
+    "0x0786e8",
+    "0x078870",
+    "0x07b5b5",
+    "0x07b7c4"
+   ]
+  },
+  "pause_key_code": {
+   "ok": true,
+   "index": 118,
+   "slot": "0x0f00c8",
+   "target": "0x0efe4f"
+  },
+  "anchors": {
+   "ok": true,
+   "count": 45,
+   "failed": []
+  },
+  "ap_refused": {
+   "ok": true,
+   "ap_window_hits": 0,
+   "ap_site_hits": 0,
+   "bytes_at_ap_va_equal": false
+  },
+  "source_header": {
+   "ok": true,
+   "entry": true,
+   "loop": true,
+   "site": true,
+   "no_ap_address": true
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe"
+}

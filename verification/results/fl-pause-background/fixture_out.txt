@@ -1,0 +1,44 @@
+# fl_pause_key_only exit=0
+IMAGE base=<base>
+SWEEP vanilla keys=8191 exits=8190 bad=0
+FLIPS windows=2 bits=1568 refused=1568 fixups=6 fixups_refused=6
+SITE patched=6681feb50175063b7424147545
+SWEEP patched key=0x1b5 keys=8191 exits=1 bad=0
+PARITY key_exit esi=000001b5 ebx=00000000 ebp=00000000 s14=00000000
+LOG pause_key_only patched=0 key=0x1b5 reason=disabled requested=0 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=1 key=0x1b5 reason=ok requested=1 site=0x<addr> rva=0x07880c edition=fl write=plain
+LOG pause_key_only patched=1 key=0x2c reason=ok requested=1 site=0x<addr> rva=0x07880c edition=fl write=plain
+LOG pause_key_only patched=1 key=0x2c reason=ok requested=1 site=0x<addr> rva=0x07880c edition=fl write=plain
+LOG pause_key_only patched=1 key=0x11b5 reason=ok requested=1 site=0x<addr> rva=0x07880c edition=fl write=plain
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x0 reason=bad_key requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=1 key=0x2c reason=ok requested=1 site=0x<addr> rva=0x07880c edition=fl write=plain
+SWEEP patched key=0x2c keys=8191 exits=1 bad=0
+LOG pause_key_only patched=0 key=0x1b5 reason=executable_mismatch requested=1 site=0x00000000 rva=0x07880c edition=fl write=none
+LOG pause_key_only patched=0 key=0x1b5 reason=late_claim requested=1 site=0x<addr> rva=0x07880c edition=fl write=none
+RESULT PASS checks=94 failures=0
+# fl_run_in_background exit=0
+IMAGE base=<base>
+DECIDE vanilla cases=40 bad=0 bit_set=30
+GATE cases=10 bad=0
+FLIPS windows=2 bits=752 refused=752 fixups=5 fixups_refused=5
+DECIDE patched cases=40 bad=0 bit_set=40
+PARITY cases=40 bad=0 words_changed=10
+UNFOCUSED shortcut_word=00005000 noruninbg_word=00005000 path=peek
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=off reason=unset setting=- value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=off reason=setting_off setting=0 value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=armed reason=ok setting=1 value_before=- value_after=- write=atomic handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=invalid_setting setting=? value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=invalid_setting setting=? value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=invalid_setting setting=? value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=invalid_setting setting=? value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=invalid_setting setting=? value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x00000000 rva=0x0776ec edition=fl status=refused reason=executable_mismatch setting=1 value_before=- value_after=- write=none handler=none
+LOG run_in_background site=0x<addr> rva=0x0776ec edition=fl status=refused reason=late_claim setting=1 value_before=- value_after=- write=none handler=none
+RESULT PASS checks=36 failures=0

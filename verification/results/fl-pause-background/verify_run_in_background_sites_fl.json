@@ -1,0 +1,159 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "fl_identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "highlow": 38327
+  },
+  "windows": {
+   "ok": true,
+   "decision": {
+    "ok": true,
+    "fnv1a32": "d9802844",
+    "whole_instructions": true,
+    "relocs": {
+     "0x0776c3": "0x1a8478",
+     "0x0776d6": "0x18b9e8",
+     "0x0776e3": "0x1a8478"
+    }
+   },
+   "pump_gate": {
+    "ok": true,
+    "fnv1a32": "f620f8e2",
+    "whole_instructions": true,
+    "relocs": {
+     "0x0ec634": "0x1aaf34",
+     "0x0ec641": "0x1a8478"
+    }
+   }
+  },
+  "site": {
+   "ok": true,
+   "bytes": "7408",
+   "decode": "je 0x4776f6",
+   "replacement": [
+    "nop",
+    "nop"
+   ],
+   "interior_edges": [],
+   "edges_to_start": [],
+   "edges_to_or": [],
+   "edges_to_and": [
+    489196
+   ],
+   "fixups": [],
+   "direct_edges": 72230,
+   "qword": "0x0776e8"
+  },
+  "choice_local": {
+   "ok": true,
+   "startup_instructions": 1005,
+   "uses": {
+    "0x076bfd": "w",
+    "0x077118": "w",
+    "0x077124": "w",
+    "0x0776c7": "r",
+    "0x0776df": "w",
+    "0x0776e7": "r"
+   },
+   "aliases": {
+    "0x18b854": "/runinbg",
+    "0x18b860": "-runinbg",
+    "0x18b86c": "/noruninbg",
+    "0x18b878": "-noruninbg"
+   },
+   "alias_refs": {
+    "0x18b854": [
+     "0x077021"
+    ],
+    "0x18b860": [
+     "0x077039"
+    ],
+    "0x18b86c": [
+     "0x077051"
+    ],
+    "0x18b878": [
+     "0x077069"
+    ]
+   },
+   "store_edges": {
+    "0x077124": [
+     "0x077032",
+     "0x07704a"
+    ],
+    "0x077118": [
+     "0x077062",
+     "0x07707a"
+    ]
+   }
+  },
+  "registry_read": {
+   "ok": true,
+   "imports_called": [
+    "RegOpenKeyExA",
+    "RegQueryValueExA",
+    "RegCloseKey"
+   ],
+   "callers": [
+    "0x0776da",
+    "0x07bd65"
+   ]
+  },
+  "input_lifetime": {
+   "ok": true,
+   "slot_stores": [
+    "0x076a07",
+    "0x0ebf0a",
+    "0x0ec004"
+   ],
+   "initializer_callers": [
+    "0x0776b1"
+   ]
+  },
+  "flag_readers_writers": {
+   "ok": true,
+   "bit_ops": {
+    "0x0776ee": "or",
+    "0x0776f6": "and",
+    "0x07bd94": "or",
+    "0x07bda4": "and",
+    "0x0ec645": "test",
+    "0x0ff598": "test"
+   },
+   "setup_callers": [
+    "0x0776fc"
+   ],
+   "imports": {
+    "0x5502b4": "GetMessageA",
+    "0x5502d4": "PeekMessageA",
+    "0x5502cc": "TranslateMessage",
+    "0x5502b8": "DispatchMessageA",
+    "0x550320": "Direct3DCreate9"
+   }
+  },
+  "anchors": {
+   "ok": true,
+   "count": 46,
+   "failed": []
+  },
+  "ap_refused": {
+   "ok": true,
+   "ap_window_hits": 0,
+   "bytes_at_ap_va_equal": false
+  },
+  "source_header": {
+   "ok": true,
+   "decision": true,
+   "pump_gate": true,
+   "site": true,
+   "no_ap_address": true
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe"
+}

@@ -5899,6 +5899,13 @@ void initialize_log(HMODULE module) {
     // dust_leak_fix row with edition=fl.
     dust_leak_fix::initialize();
     circle_fill::initialize(); // X3M_CIRCLE_FILL_FIX: base+0x10c940 (six bytes; circle_fill_fl.cpp), edition=fl row
+    // FL pause key and run in background (docs/reverse-engineering/fl/pause-background.md, "Port (2026-11-03)";
+    // src/engine/fl/pause_key_only_fl.cpp, run_in_background_fl.cpp): X3M_PAUSE_KEY_ONLY=1 (+ X3M_PAUSE_KEY) rewrites
+    // the pause wait's 13-byte key exit at base+0x07880c (plain write); X3M_RUN_IN_BACKGROUND=1 turns the startup
+    // decision's JE at base+0x0776ec into two NOPs (one lock cmpxchg8b), before the startup routine reaches it; same
+    // window, disjoint from every other FL claim; one row each with edition=fl.
+    pause_key_only::initialize();
+    run_in_background::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

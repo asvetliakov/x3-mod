@@ -334,11 +334,13 @@ SETTINGS = [
     entry('cursor_reassert', 'bool', 'window', 'Re-hides the system mouse cursor after switching back to the game, against a '
           'second cursor. 1 = on, 0 = off.', builtin='0', launcher='--cursor-reassert'),
     entry('pause_key_only', 'bool', 'window', 'Only the Pause key (or a click) ends the pause; other keys and switching windows '
-          'do not. 1 = on, 0 = the game\'s own.', '1', launcher='--pause-key-only'),
-    entry('pause_key', 'string', 'window', 'The game\'s key code of a rebound pause key (decimal or 0x hex). Empty = the Pause key.',
+          'do not. 1 = on, 0 = the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', launcher='--pause-key-only'),
+    entry('pause_key', 'string', 'window', 'The game\'s key code of a rebound pause key (decimal or 0x hex). Empty = the Pause key. '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.',
           builtin='', requires=('pause_key_only',), launcher='--pause-key'),
     entry('run_in_background', 'bool', 'window', 'Keeps the game running while another window is active, as the -runinbg start '
-          'option does, so switching back to the game does not stall. 1 = on, 0 = the game\'s own.', '1',
+          'option does, so switching back to the game does not stall. 1 = on, 0 = the game\'s own. X3: Albion Prelude and '
+          'X3: Farnham\'s Legacy.', '1',
           launcher='--run-in-background', since='2026-09-27'),
     # ---------------------------------------------------------------- audio
     entry('music_keep', 'bool', 'audio', 'Sector music keeps playing where it was across switching windows, saving and pausing, '
