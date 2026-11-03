@@ -68,6 +68,8 @@
 #include "chase_fire.h"
 #include "../engine/fl/fog_prefill_fl.h"
 #include "../engine/fl/sector_background_fl.h"
+#include "../engine/fl/gz_buffer_fl.h"
+#include "../engine/fl/crypt_cache_fl.h"
 #endif
 #include "scene_hook.h"
 #include "compositor_bridge.h"
@@ -1523,6 +1525,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         voice_dmo_fallback::shutdown();     // disarms the fault witness; the site patch stays with the other claims
 #else
         chase_camera::note_last_device(); // FL pose seam: kept for the process lifetime, as on AP
+        fl::crypt_cache_fl::report("session"); // FL loading quintet: the cache's cumulative totals, as on AP
 #endif
         session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
                                             // drain cost)
@@ -6104,6 +6107,29 @@ void initialize_log(HMODULE module) {
     music_keep::save_pump_report();  // one music_keep_save_pump_hook row when the keep is armed: bound or the refusal
     resource_reader::initialize();   // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub
                                      // chains behind theirs
+#endif
+#if X3M_EDITION_FL
+    // FL loading quintet (docs/architecture/platform-portability.md, "2026-11-03: loading quintet on FL"): after the
+    // music keep, which may already hold X3FL.exe's gzclose slot (gz_close_share_fl.h), inside the same install window.
+    // X3M_GZ_BUFFER=1: the six zlib1.dll slots (src/engine/fl/gz_buffer_fl.cpp); X3M_CRYPT_CACHE=1: the four ADVAPI32.dll
+    // lifecycle slots, admitted from the checker's six returns (src/engine/fl/crypt_cache_fl.cpp); X3M_MESH_ADJACENCY=
+    // fast: loading_trace's two mesh rows on d3dx9_43.dll at the pinned slots. One row each with edition=fl.
+    fl::gz_buffer_fl::initialize();
+    fl::crypt_cache_fl::initialize();
+    if (loading_trace::mesh_adjacency_requested()) loading_trace::initialize();
+    {
+        // X3M_RESOURCE_READ / X3M_DAT_HANDLES: X3FL.exe's reader and DAT pool are not ported (the game reads natively);
+        // one refusal row each when asked for.
+        wchar_t read_mode[16]{}, pool[8]{};
+        const DWORD read_length = x3m::config::get(L"X3M_RESOURCE_READ", read_mode, 16);
+        const bool read_asked = read_length && read_length < 16 &&
+                                (!lstrcmpiW(read_mode, L"fast") || !lstrcmpiW(read_mode, L"verify"));
+        if (read_asked)
+            log("resource_reader mode=%s installed=0 status=ap_only reason=not_ported edition=fl",
+                !lstrcmpiW(read_mode, L"fast") ? "fast" : "verify");
+        if (x3m::config::get(L"X3M_DAT_HANDLES", pool, 8) == 1 && pool[0] == L'1')
+            log("dat_handle_pool requested=1 installed=0 status=ap_only reason=not_ported edition=fl");
+    }
 #endif
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }

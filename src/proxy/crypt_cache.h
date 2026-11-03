@@ -51,6 +51,15 @@ BOOL WINAPI destroy_key(HCRYPTKEY key);
 // Explicit quiescent cleanup only; NEVER call from DllMain. Refuses known
 // outstanding provider/key ownership. Native operations happen outside the lock.
 bool shutdown() noexcept;
+#if X3M_EDITION_FL
+// FL only (src/engine/fl/crypt_cache_fl.cpp; docs/reverse-engineering/fl/loading-hooks.md, "Port (2026-11-03)"):
+// X3FL.exe's sibling signer deletes, recreates and deletes the same named scratch container natively. Before such an
+// unqualified acquire, every cached object leaves the cache: idle keys destroyed, idle providers released and a
+// logically deleted container deleted for real (the native namespace native alone would have); in-use entries are
+// dropped from tracking, so their owner's later release/destroy/delete go native. No CSP call under the lock; LastError
+// is the caller's to restore. Returns the entries retired.
+unsigned retire_foreign() noexcept;
+#endif
 struct Statistics {
     uint64_t acquires = 0, hits = 0, misses = 0, failed_passthrough = 0, busy_passthrough = 0, deletes_emulated = 0,
              deletes_passthrough = 0, evictions = 0;

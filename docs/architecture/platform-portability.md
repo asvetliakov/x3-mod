@@ -1424,3 +1424,36 @@ shared sources (capture.cpp) compile to byte-identical AP objects
 (`verification/results/fl-collision/ap_objects_identical.py`). The FL ini text for `collide_sat_sse2` records that the
 setting changes nothing on Farnham's Legacy. Native Windows behaviour is cross-compiled and host-verified, not flown;
 the CrossOver and native-Windows runtime acceptance of these hooks remains open as for the other FL hooks.
+
+## 2026-11-03: loading quintet on FL (`crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` on FL)
+
+Three of the five loading optimizations now ship in the fl edition;
+`resource_read` and `dat_handles` stay AP only (the game reads natively on FL).
+The shared production cores are reused unchanged — `src/proxy/gz_buffer.cpp`,
+`crypt_cache.cpp` and `mesh_adjacency_fast.cpp` are AP byte-identical
+(`verification/results/fl-loading/ap_objects_identical.py --base main`) and now
+also linked into the fl target — behind new FL transactions that own X3FL.exe's
+import slots and mesh rows.
+
+- `gz_buffer` (`src/engine/fl/gz_buffer_fl.cpp`): the six zlib1.dll slots point
+  at the shared read-ahead buffer; the `gzclose` slot is shared with the FL music
+  keep (`gz_close_share_fl.h`), each install order keeping the keep's save-close
+  observation ahead of the buffer's unregister-before-close, never exchanging a
+  slot the keep holds.
+- `crypt_cache` (`src/engine/fl/crypt_cache_fl.cpp`): the four ADVAPI32.dll
+  lifecycle slots admit the shared signature cache only from the six checker
+  return sites; the sibling signer's native keyset delete/create retires the
+  cache first (`crypt_cache::retire_foreign`), so no cached object survives a
+  native namespace mutation it does not observe.
+- `mesh_adjacency`: `loading_trace.cpp` matches `d3dx9_43.dll` in the fl build
+  and a new `fl_mesh_contract` admits the two factory rows at the pinned slots;
+  the shared COM vtable hooks and the pure algorithm are unchanged.
+
+Documented D3D9/Win32 and zlib/CryptoAPI contracts only; no Wine/CrossOver
+export, private layout or DLL-hash prerequisite (hashes are provenance). Site
+reasoning in `docs/reverse-engineering/fl/{loading-hooks,mesh-adjacency,`
+`resource-reader}.md`, "Port (2026-11-03)"; host evidence in
+`docs/verification/farnhams-legacy.md`, "loading quintet on FL (host evidence,
+2026-11-03)". Verified: offline site verifiers, the native fixture, the host
+suite and a 0/0 fl build. Not verified: not flown; native Windows behavior;
+loading time not measured.

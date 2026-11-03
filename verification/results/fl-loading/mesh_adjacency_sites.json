@@ -1,0 +1,58 @@
+{
+ "ap_windows_admitted": [],
+ "census": {
+  "D3DXCleanMesh": [
+   "0xdcd35"
+  ],
+  "D3DXCreateMesh": [
+   "0xdbbdb"
+  ]
+ },
+ "checks": {
+  "adjacency_abi": true,
+  "ap_addresses_refused": true,
+  "clean_type_3": true,
+  "identity": true,
+  "mesh_windows_match_exe": true,
+  "named_import_slots": true,
+  "no_d3dx9_37_import": true,
+  "reference_census": true,
+  "window_mutations_refused": true
+ },
+ "dlls": [
+  "ADVAPI32.dll",
+  "COMCTL32.dll",
+  "DINPUT8.dll",
+  "DSOUND.dll",
+  "GDI32.dll",
+  "IMGDLL.dll",
+  "KERNEL32.dll",
+  "OLEAUT32.dll",
+  "SHELL32.dll",
+  "USER32.dll",
+  "VERSION.dll",
+  "WINMM.dll",
+  "XINPUT1_3.dll",
+  "d3d9.dll",
+  "d3dx9_43.dll",
+  "dbghelp.dll",
+  "libxml2.dll",
+  "ole32.dll",
+  "zlib1.dll"
+ ],
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "failed": [],
+ "mesh_fixup_count": 2,
+ "mesh_window_count": 4,
+ "mesh_window_failures": [],
+ "mutations": {
+  "cases": 14,
+  "refused": 14
+ },
+ "result": "PASS",
+ "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "slots": {
+  "D3DXCleanMesh": "0x150348",
+  "D3DXCreateMesh": "0x150334"
+ }
+}

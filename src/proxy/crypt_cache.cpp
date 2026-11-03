@@ -398,6 +398,52 @@ bool shutdown() noexcept {
     }
     return true;
 }
+#if X3M_EDITION_FL
+unsigned retire_foreign() noexcept {
+    if (!is_enabled) return 0;
+    HCRYPTKEY retired_keys[key_slots]{};
+    ProviderEntry retired_providers[provider_slots];
+    unsigned key_count = 0, provider_count = 0, retired = 0;
+    {
+        Lock lock;
+        ++mutation_generation;
+        for (auto& k : keys)
+            if (k.used) {
+                if (!k.outstanding) retired_keys[key_count++] = k.key;
+                k.used = false;
+                k.key = 0;
+                k.outstanding = 0;
+                --totals.keys_cached;
+                ++retired;
+            }
+        for (auto& e : providers)
+            if (e.used) {
+                if (e.handle) {
+                    if (e.phase != InUse) retired_providers[provider_count++] = e;
+                    --totals.providers_cached;
+                    ++totals.evictions;
+                }
+                e.used = false;
+                e.handle = 0;
+                e.phase = Absent;
+                e.flags = 0;
+                e.owner_thread = 0;
+                ++retired;
+            }
+    }
+    for (unsigned i = 0; i < key_count; ++i) real.destroy_key(retired_keys[i]);
+    for (unsigned i = 0; i < provider_count; ++i) {
+        const auto& e = retired_providers[i];
+        real.release(e.handle, 0);
+        if (e.phase == Absent) {
+            HCRYPTPROV scratch = 0;
+            real.acquire(&scratch, e.container_null ? nullptr : e.container, e.provider_null ? nullptr : e.provider,
+                         e.type, CRYPT_DELETEKEYSET);
+        }
+    }
+    return retired;
+}
+#endif
 Statistics statistics() noexcept {
     Lock lock;
     Statistics copy;

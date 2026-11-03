@@ -2796,3 +2796,33 @@ Measured results (`verification/results/fl-collision/results.json`):
 The FL build (`cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
 -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4`) is 0 warnings, 0 errors. These are host and
 cross-compilation checks; CrossOver and native-Windows runtime collision acceptance on FL remain open.
+
+## loading quintet on FL (host evidence, 2026-11-03)
+
+The loading quintet port to the fl edition. Ported: `gz_buffer`, `crypt_cache`,
+`mesh_adjacency`. AP only (native on FL, one refusal row each): `resource_read`,
+`dat_handles`. All figures measured on this checkout; none flown.
+
+- `cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4`: 0 warnings, 0 errors.
+- Site verifiers on `/mnt/c/X3FL/X3FL.exe` (results under
+  `verification/results/fl-loading/`): `verify_gz_buffer_sites_fl.py` PASS
+  (20 windows, 60 mutation cases all refused, census gzclose 11 / gzgetc 4 /
+  gzwrite 21 kept for the keep, AP refused), `verify_crypt_cache_sites_fl.py`
+  PASS (4 windows, 44 mutations refused, six gates, sibling acquire via EBX, AP
+  refused), `verify_mesh_adjacency_sites_fl.py` PASS (4 windows, 14 mutations
+  refused, `_43` slots, no `_37` import).
+- Native fixture `verification/probe/fl_loading.cpp` (real relocated X3FL.exe,
+  MinGW i686 `-mstackrealign -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`,
+  WSL interop, no Wine): `RESULT PASS checks=22 failures=0`, `GZFLIPS windows=20
+  cases=60 refused=60`; the crypt session row shows `hits=1 misses=2
+  import_hits=1 foreign_acquires=1 foreign_retired=2`.
+- `python3 -m unittest test_fl_loading` (fixture + three verifiers + header
+  regeneration + wiring) OK; `tools/config/generate.py --check` PASS; the full
+  host suite `run_host_suite.py`: 346 modules, 3513 tests, 0 failing (147 s). The
+  `capture.cpp` pin in `test_engine_effects.py` was updated for the FL init block.
+
+Producers: `verification/results/fl-loading/generate_windows.py` (identity
+windows), `ap_objects_identical.py` (AP objects byte-identical to main), the
+three `verify_*_sites_fl.py` and the fixture. Not verified: not flown; native
+Windows/CrossOver behavior; a live zlib/CSP/`d3dx9_43` loading run; loading time.

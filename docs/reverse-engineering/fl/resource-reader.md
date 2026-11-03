@@ -248,3 +248,17 @@ FL ECX bridge/canonical site, complete closer binding, rollback and seeded ABI,
 FL accepted-format comparison including cursor/error restoration cases, and
 native Windows/CrossOver execution through the established queue owner. This
 analysis does not establish an FL speedup or claim the enhancements are active.
+
+## Port (2026-11-03): not ported
+
+The loading-quintet FL port shipped `gz_buffer`, `crypt_cache` and
+`mesh_adjacency` on FL but **left the fast resource reader and the DAT handle
+pool AP only**. X3FL.exe reads its archives natively; `capture.cpp`'s FL block
+logs one refusal row each when asked — `resource_reader mode=… installed=0
+status=ap_only reason=not_ported edition=fl` and `dat_handle_pool requested=1
+installed=0 status=ap_only reason=not_ported edition=fl` — and nothing is
+claimed. The ECX-input entry bridge, the canonical reader Site shared with the
+probes, the eighteen-closer pool binding and the FL FILE flag parameters
+(`{0x0c,0x10}`) remain the open implementation evidence above; the ini text for
+`resource_read`/`dat_handles` says "X3: Albion Prelude (on Farnham's Legacy the
+game reads natively)." No FL reader speedup is claimed.
