@@ -1,0 +1,19 @@
+{
+ "run": 37,
+ "step": "pause_key_only and run_in_background on FL (merge 7a4ddc51e)",
+ "edition": "fl",
+ "commit": "7a4ddc51e",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "56e92313862af653",
+ "dll_bytes": 55991163,
+ "installed_sha256_prefix": "56e92313862af653",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run36 (6551d9bc)",
+ "game_data": "unchanged",
+ "ini": "unchanged (both keys default on)",
+ "host_tests": "agent: run_host_suite 340 modules 3,477 tests 0 failing at 07982dbdb; main: test_fl_pause_key_only + test_fl_run_in_background + test_engine_effects OK; verifiers PASS on the installed exe; native fixtures 94/0 and 36/0",
+ "build_warnings": 0,
+ "review": "Opus high: fix-first (capture.cpp hash pin) plus three wording items, all folded",
+ "installed_at": "2026-11-03T15:49:42+04:00"
+}

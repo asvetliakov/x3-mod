@@ -2532,3 +2532,17 @@ site=… rva=0x07880c edition=fl write=plain` and `run_in_background site=… rv
 reason=ok setting=1 … write=atomic handler=none`. Not verified: in game (not flown): Pause and only Pause or a
 click/joystick button ends the flight pause; alt-tab while paused keeps it; the game keeps running while another window
 is active; the double cursor after alt-tab. Native Windows game behaviour not verified.
+
+## FL run 37 — pause key and run in background on FL (installed 2026-11-03)
+
+Merge `7a4ddc51e` (Opus-high review: one blocker, the `capture.cpp` hash pin, plus three wording items, all folded). Clean
+RelWithDebInfo `build-fl` from main `7a4ddc51e`, 0 warnings; host suite 340 modules 3,477 tests 0 failing (agent, at the
+reviewed commit); both site verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `56e92313…`
+(55,991,163 B), rollback `rollback-d3d9\d3d9.dll.run36` = `6551d9bc…`; overlay and ini unchanged (both keys default on).
+Record `verification/results/fl-run37/candidate.json`.
+
+**FL run 37 A (open):** pause with the Pause key, press a few other keys and move the mouse (the pause must hold), then
+Pause again (it must end); alt-tab away and back while paused, and look for a second cursor afterwards; alt-tab away
+while flying and listen whether the game keeps running (SETA or a moving ship visible on return). Expect
+`pause_key_only … edition=fl status=patched` and `run_in_background … edition=fl status=patched` at start. Report a pause
+that ends on a wrong key, a game that stalls while unfocused, or a double cursor.
