@@ -259,3 +259,11 @@ after the root loop, so no file write sits between two list reads.
 ## Ratification (2026-11-03, main session)
 
 Step 1 (accept the hidden `fx_engine_emitter` JET children as plume anchors with the engine's own throttle; no file, no new site) is ratified as the first flown step, on FL first (`SS_SH_A_M6M`), then AP. Step 2 (the offline per-hull nozzle table for the capitals) waits for step 1's flight and the TShips speed-unit question in section 6. `census_out.json` (153 KB) is kept local; `census.py` regenerates it, the tracked `census_out.txt` holds the counts.
+
+## Step 2 closed (2026-11-03, user decision)
+
+The offline per-hull nozzle table for hulls with neither glow parts nor hidden emitters (the capitals) is not pursued:
+those hulls never had an exhaust effect natively, the table would be a geometric guess that is wrong exactly on the
+asymmetric sterns where it matters, and keeping it right means a hand-maintained override list. Step 1 (hidden
+`fx_engine_emitter` anchors) is the whole feature. The census (`verification/results/plumes-no-glow/`) stays as the
+record of which hulls that leaves untouched.
