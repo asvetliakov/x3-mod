@@ -89,6 +89,18 @@ units** (the part key × the root's per-axis scale, 4th dword uninitialised), an
 `TShips[obj+0x4a]+0x44` (`vmax`) are safe reads at that point [m, §7] — which gives plumes for those ships and a
 per-race tint on stock; the proxy transforms `pos` with the root's draw-time matrix itself.
 
+**Anchor rule (2026-11-03, [plumes-no-glow-hulls.md](plumes-no-glow-hulls.md) step 1, not flown; AP runtime only, FL
+fenced with the node walk).** The node walk keeps hidden `effects\engines\fx_engine_emitter` JET children as plume
+anchors instead of the stub's `(obj, k, pos)`. A child qualifies when its mode word C (`+0x260`) has neither the
+visible bit `0x1000` nor a steering/alternate bit in `0xffe`, its model resolves to the emitter's table entry, and its
+`+0x88` lies in the driven main range `0x4000..0x20000` (the ship-only gate: only class 7 is driven off the placement
+value `0x28f`). Anchors count only when the walk completes and the root
+shows no glow part: no JET child with C's visible bit and no shown non-steering jet. Each anchor becomes a node record
+with the emitter's own origin, axis and throttle, size `k(R)·R` (the floor law, uncapped), the cyan cluster and
+`flag_anchor`. Like any node record, an anchor also feeds the engine light and a ribbon trail. A root that no record
+names is admitted for an anchors-only walk by a game-time probe table (one probe per such routed draw, at most 4 new
+roots a frame; an anchored root is always due). `engine_plume_emitters = 0` restores the walk as before.
+
 ## 3. Rendering (requirements 2.1, 3, 5)
 
 **Geometry, one stage, two draws.**

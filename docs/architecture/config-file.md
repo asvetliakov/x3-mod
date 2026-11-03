@@ -618,6 +618,17 @@ point; no sign, exponent or padding); anything else is refused to 0.5 with `floo
 `plumes`. The launcher sends it only when given (finite 0..3, as a plain decimal); an inherited shell value is
 dropped, and it is refused under `--vanilla`.
 
+## `engine_plume_emitters` (2026-11-03, plumes step 1)
+
+Key `engine_plume_emitters`, environment `X3M_ENGINE_PLUME_EMITTERS`, no launcher option
+([plumes-no-glow-hulls.md](plumes-no-glow-hulls.md) section 7, "As built"). Under `engine_effects = plumes` with
+`engine_nozzle_source = node`, **1** (the default) gives ships without glow parts but with hidden
+`fx_engine_emitter` points (the M6M family, the Terran drones) plumes at those points, at the engine's own throttle,
+sized by the plume floor's law (so `engine_plume_floor = 0` gives none). **0** leaves the node walk and its gather as
+before. The read site takes `0` or `1`; anything else is refused to 1 with `status=invalid_setting` on the
+`engine_plumes_hidden_emitters … event=configure` row. Read once per configure. On FL the rule stays off with the
+node walk (`reason=fl_draw_only`).
+
 ## `engine_ribbons_own_ship` (2026-10-14, after Run 171)
 
 Key `engine_ribbons_own_ship`, environment `X3M_ENGINE_RIBBONS_OWN_SHIP`, no launcher option

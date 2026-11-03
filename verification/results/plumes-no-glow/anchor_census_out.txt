@@ -1,0 +1,33 @@
+fl (C:\X3FL installed): anchored ships 16, anchors 35; {'emitters_beside_glow': 181, 'scene_missing': 42}
+   SS_SH_A_M6M emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_A_MK2DRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_S_M6M emitters=2 C=0x0 other_jet_bodies=-
+   SS_SH_T_M6M emitters=2 C=0x0 other_jet_bodies=-
+   SS_SH_USC_M6 emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_Y_M6M emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_OTAS_M6M emitters=2 C=0x1 other_jet_bodies=-
+   SS_SH_FIGHTDRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_RECONDRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_A_M6M_PROTO emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_TR_FREIGHTDRONE1 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone
+   SS_SH_TR_FREIGHTDRONE1_2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone
+   SS_SH_TR_FREIGHTDRONE2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone_small
+   SS_SH_TR_FREIGHTDRONE2_2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone_small
+   SS_SH_USC_M6_PROTO emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_S_M6M_ENH emitters=2 C=0x0 other_jet_bodies=-
+ap_stock (STOCK_AP_CATALOGUES): anchored ships 14, anchors 29; {'emitters_beside_glow': 172, 'scene_missing': 41}
+   SS_SH_A_M6M emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_A_MK2DRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_S_M6M emitters=2 C=0x0 other_jet_bodies=-
+   SS_SH_T_M6M emitters=2 C=0x0 other_jet_bodies=-
+   SS_SH_USC_M6 emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_Y_M6M emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_OTAS_M6M emitters=2 C=0x1 other_jet_bodies=-
+   SS_SH_FIGHTDRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_RECONDRONE emitters=1 C=0x1 other_jet_bodies=-
+   SS_SH_A_M6M_PROTO emitters=4 C=0x0 other_jet_bodies=-
+   SS_SH_TR_FREIGHTDRONE1 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone
+   SS_SH_TR_FREIGHTDRONE1_2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone
+   SS_SH_TR_FREIGHTDRONE2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone_small
+   SS_SH_TR_FREIGHTDRONE2_2 emitters=1 C=0x1 other_jet_bodies=fx_engine_terran_transportdrone_small
+ap (C:\X3 installed, Mayhem 3): anchored ships 0, anchors 0; {'emitters_beside_glow': 494, 'scene_missing': 9}

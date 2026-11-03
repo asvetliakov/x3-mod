@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include "engine_effects_core.h"
 #include "engine_far_jets_core.h"
 
 // Portable core of the node-sourced engine nozzles (docs/architecture/engine-nozzle-source.md, ini
@@ -75,10 +76,11 @@ struct RootSet {
     std::uint32_t camera[slots];
     std::uint32_t registry[slots];
     std::uint32_t stamp[slots];
+    std::uint8_t probe[slots];     // 1: admitted by the anchor probe (AnchorProbes), walked for anchors only
     std::uint16_t order[capacity]; // the slots in insertion order
     unsigned count = 0, overflow = 0;
     std::uint32_t generation = 1;
-    RootSet() noexcept : root{}, camera_handle{}, camera{}, registry{}, stamp{}, order{} {}
+    RootSet() noexcept : root{}, camera_handle{}, camera{}, registry{}, stamp{}, probe{}, order{} {}
     void begin() noexcept {
         count = overflow = 0;
         if (++generation) return;
@@ -97,7 +99,8 @@ struct RootSet {
         return -1;
     }
     // true when `r` is new this generation (inserted), false when present already or when the set is full (overflow).
-    bool insert(std::uint32_t r, std::uint32_t handle, std::uint32_t cam, std::uint32_t reg) noexcept {
+    // `probed`: admitted by the anchor probe (the walk emits anchors only, plumes-no-glow-hulls.md step 1).
+    bool insert(std::uint32_t r, std::uint32_t handle, std::uint32_t cam, std::uint32_t reg, bool probed = false) noexcept {
         if (!r) return false;
         unsigned i = hash(r);
         for (unsigned n = 0; n < slots; ++n, i = (i + 1) & (slots - 1)) {
@@ -114,6 +117,7 @@ struct RootSet {
             camera_handle[i] = handle;
             camera[i] = cam;
             registry[i] = reg;
+            probe[i] = probed ? 1u : 0u;
             order[count++] = std::uint16_t(i);
             return true;
         }
@@ -162,6 +166,121 @@ struct ShipRoots {
     }
 };
 
+// Hidden-emitter anchors (docs/architecture/plumes-no-glow-hulls.md, step 1). A hull without a glow part has no draw,
+// far or node record; the M6M family and the drones carry hidden `effects\engines\fx_engine_emitter` JET children instead
+// (C = 0 or 1: main, never visible, no steering bits; the drive hides them and still drives +0x88 toward its base, AP
+// 0x0045af0a..0x0045b09a, FL 0x46484b..0x4649be). A complete walk of a root that found no glow part keeps those
+// children as anchors. The mode word C is node +0x260 on both editions (the drive's read, AP 0x0045ad85, FL 0x4646b6),
+// outside the node_bytes block: one 4-byte read per hidden JET child until the root shows a glow part. Glow = a JET
+// child the drive shows: a hidden one whose C has the visible bit (the main set while a travel-mode swap shows the
+// alternate one), or a child shown now whose body is not a steering body (RCS v/00566 or a SMALLJET entry; a brake jet
+// shown while braking counts as glow). An anchor also needs the emitter body identity (the caller's predicate over the
+// model id), unit x/y scales and a throttle the drive has reached (the main target range 0x4000 .. 0x20000). That guard
+// is the rule's ship-only gate: placement sets every object's JET children to (1, 1, 0x28f) and hidden (AP 0x451cd5,
+// FL 0x45b830, no class test) and only the class-7 branch of the sector update drives them (AP jump table 0x45b634 /
+// 0x45b64c, FL 0x464fa8 / 0x464fc0: class 7 alone reaches the drive), so a station's, missile's or debris' hidden
+// emitter stays at 0x28f and never anchors. The walk has no object pointer, so the class word obj+0x48 is not read.
+constexpr unsigned mode_offset = 0x260;
+constexpr std::uint32_t mode_visible = 0x1000u, mode_not_main = 0xffeu;
+constexpr std::uint32_t anchor_z_min = 0x4000u, anchor_z_max = 0x20000u;
+constexpr unsigned anchor_capacity = 8; // anchors kept per root (stock maximum 4); more count anchor_overflow
+static_assert(mode_offset >= node_bytes, "C lies outside the node block (its own 4-byte read)");
+// The record flag of an anchor (engine_effects_core.h RecordFlag: bits 0..10 taken, 12..15 the cluster).
+constexpr std::uint16_t flag_anchor = 1u << 11;
+static_assert(flag_anchor > x3m::engine_effects::core::flag_node &&
+                  flag_anchor < (1u << x3m::engine_effects::core::cluster_shift),
+              "flag_anchor sits between the last RecordFlag and the cluster bits");
+
+// An anchor's record from the emitter's far_record (its origin = +0xb0 x the context scale, axis = -basis z, z and s
+// from its own +0x88, the drive's throttle; serial and identity as a node record): size = k x R, the plume floor's
+// ratio k(R) at the ship radius R in record units (engine_plumes_core.h floor_ratio_at) without the floor's cap, since
+// the emitter body's value (17) means nothing; body -1 in the cyan cluster of the stock engines; flag_far and
+// flag_unknown_body cleared, flag_node and flag_anchor set. false (no record) when k x R is not a positive finite size
+// (the floor off, or the radius unknown).
+inline bool anchor_record(float k, float radius, x3m::engine_effects::core::Record* r) noexcept {
+    namespace ee = x3m::engine_effects::core;
+    const float size = k * radius;
+    if (!(size > 0.f) || !ee::finite_f(size)) return false;
+    constexpr std::uint16_t dropped = std::uint16_t(ee::flag_far | ee::flag_unknown_body | (15u << ee::cluster_shift));
+    r->size = size;
+    r->body = -1;
+    r->flags = std::uint16_t((r->flags & ~dropped) | ee::flag_node | flag_anchor | (unsigned(ee::cyan) << ee::cluster_shift));
+    return true;
+}
+
+// The walk's options. `anchors`: keep hidden emitters as anchors (the rule above); `jets`: emit the ordinary main jets
+// (false for a root the anchor probe admitted: anchors only); `model_offset`: the node's model id (the build's
+// engine_node_layout: AP +0x140, FL +0x144). The two predicates take the model id: the emitter body, a steering body.
+struct Options {
+    bool anchors = false;
+    bool jets = true;
+    unsigned model_offset = fj::model_offset;
+    bool (*is_emitter)(void* context, std::uint32_t model) = nullptr;
+    bool (*is_steering)(void* context, std::uint32_t model) = nullptr;
+    void* context = nullptr;
+};
+
+// The anchor probe (step 1's admission): a root no record named within ShipRoots::recent_window frames is walked for
+// anchors when it has no entry here, its last walk anchored, or its last walk is older than retry_ms of game time (the plume stage's
+// SETA-scaled step, summed by the caller) or retry_frames frames (a clock that does not advance). An anchored root is
+// kept recent by its own records' marks, so the probe matters at first sight and after a root's address is reused.
+// The verdict keeps the last walk's outcome (the newly-admitted row). Open addressing, bounded probes, the stalest of a
+// probe run replaced; clear() on a load. 512 slots, 12 KB.
+struct AnchorProbes {
+    static constexpr unsigned slots = 512, probes = 8;
+    static constexpr double retry_ms = 2000.;
+    static constexpr std::uint64_t retry_frames = 600;
+    enum Verdict : std::uint8_t { none = 0, anchored = 1, glow = 2 };
+    std::uint32_t root[slots];
+    std::uint64_t frame[slots]; // the frame of the last walk, plus one; 0 empty
+    double clock[slots];        // the probe clock (game ms) at the last walk
+    std::uint8_t verdict[slots];
+    AnchorProbes() noexcept : root{}, frame{}, clock{}, verdict{} {}
+    static unsigned hash(std::uint32_t r) noexcept { return unsigned((r * 0xc2b2ae35u) >> 23); }
+    void clear() noexcept {
+        for (unsigned i = 0; i < slots; ++i) frame[i] = 0;
+    }
+    int find(std::uint32_t r) const noexcept {
+        if (!r) return -1;
+        unsigned i = hash(r);
+        for (unsigned n = 0; n < probes; ++n, i = (i + 1) & (slots - 1)) {
+            if (!frame[i]) return -1;
+            if (root[i] == r) return int(i);
+        }
+        return -1;
+    }
+    // One probe per non-recent routed draw: whether `r` is due for an anchor walk. An anchored root is always due: a
+    // frame without its anchor records (hull not drawn, ring full, no camera scale, a view switch) lets its recent
+    // window lapse, and it is walked again at its next draw, not after retry_ms (the per-frame probe cap bounds it).
+    bool due(std::uint32_t r, std::uint64_t now_frame, double now_ms) const noexcept {
+        if (!r) return false;
+        const int i = find(r);
+        if (i < 0 || verdict[i] == anchored) return true;
+        return now_ms - clock[i] >= retry_ms || now_frame + 1 >= frame[i] + retry_frames;
+    }
+    // After a walk of `r`: records it and returns the previous verdict (none for a new entry).
+    Verdict note(std::uint32_t r, std::uint64_t now_frame, double now_ms, Verdict v) noexcept {
+        if (!r) return none;
+        unsigned i = hash(r), oldest = i;
+        for (unsigned n = 0; n < probes; ++n, i = (i + 1) & (slots - 1)) {
+            if (!frame[i] || root[i] == r) {
+                const Verdict previous = frame[i] && root[i] == r ? Verdict(verdict[i]) : none;
+                root[i] = r;
+                frame[i] = now_frame + 1;
+                clock[i] = now_ms;
+                verdict[i] = v;
+                return previous;
+            }
+            if (frame[i] < frame[oldest]) oldest = i;
+        }
+        root[oldest] = r;
+        frame[oldest] = now_frame + 1;
+        clock[oldest] = now_ms;
+        verdict[oldest] = v;
+        return none;
+    }
+};
+
 // One root's walk: the counts.
 struct WalkStats {
     unsigned children = 0;       // list elements read (the sentinel excluded)
@@ -173,32 +292,73 @@ struct WalkStats {
     unsigned unreadable = 0;     // the list was cut by an unreadable element (1 at most per root)
     unsigned overflow = 0;       // the list was cut at walk_bound (1 at most per root)
     unsigned emitted = 0;        // jets handed to the caller
+    // With Options::anchors (all 0 otherwise):
+    unsigned mode_reads = 0;      // C words read (hidden JET children before the first glow part)
+    unsigned mode_unreadable = 0; // C words that could not be read: that child is no anchor
+    unsigned candidates = 0;      // hidden children whose C has neither the visible bit nor a bit in 0xffe
+    unsigned not_emitter = 0;     // candidates whose model is not the emitter body
+    unsigned anchor_rejected = 0; // emitters failing the unit-scale or driven-throttle guard
+    unsigned anchor_overflow = 0; // emitters beyond anchor_capacity
+    unsigned glow = 0;            // 1: the root has a glow part (anchors withheld)
+    unsigned anchors = 0;         // anchors handed to the caller (after the list's end)
 };
+namespace detail {
+inline void fill_raw(const std::uint32_t* block, std::uint32_t here, std::uint32_t root, std::uint32_t view_handle,
+                     unsigned model_offset, fj::Raw* raw) noexcept {
+    *raw = fj::Raw{};
+    raw->node = here;
+    raw->view_handle = view_handle;
+    raw->context = 0;
+    raw->parent = root;
+    raw->handle = block[handle_offset / 4];
+    raw->model = block[model_offset / 4];
+    raw->scale70 = block[scale70_offset / 4];
+    raw->scale80 = block[scale80_offset / 4];
+    raw->scale88 = block[scale88_offset / 4];
+    for (unsigned i = 0; i < 3; ++i) {
+        raw->position[i] = std::int32_t(block[position_offset / 4 + i]);
+        raw->basis_x[i] = std::int32_t(block[basis_x_offset / 4 + i]);
+        raw->basis_z[i] = std::int32_t(block[basis_z_offset / 4 + i]);
+    }
+}
+} // namespace detail
 // Walks `root`'s child list through `read`, filling a Raw per main jet that passes the guards (node, parent = root,
 // handle, model, scales, position, basis rows x and z; view_handle = `view_handle`, context 0) and calling
 // emit(const Raw&). Returns true when the list's end was reached (the sentinel) within the bound and every element
 // read: the walk is then authoritative for the root (a ship with no emitted jet has no live nozzle). Bounded reads
 // per element: its next pointer (the sentinel is told by it alone, so no other read crosses its end), its flag pair
 // at +0x12c (a part without the JET pair ends there: two cache lines, the common case on a ship of tens of parts) and,
-// for a jet, its first node_bytes (the host harness: the cost is cache misses, about 6 lines per block).
-template <class Emit>
+// for a jet, its first node_bytes (the host harness: the cost is cache misses, about 6 lines per block). With
+// opt.anchors also C of a hidden jet (above) and, after a complete walk of a root without a glow part, anchor(const
+// Raw&) per kept emitter in list order; with !opt.jets no jet is emitted. Default options: the walk before step 1,
+// read for read.
+template <class Emit, class Anchor>
 inline bool walk(std::uint32_t root, std::uint32_t view_handle, Reader read, void* context, WalkStats* st,
-                 Emit&& emit) noexcept {
+                 const Options& opt, Emit&& emit, Anchor&& anchor) noexcept {
     *st = WalkStats{};
+    const unsigned model_offset = opt.model_offset;
+    if (model_offset + 4 > node_bytes || (model_offset & 3u)) {
+        st->unreadable = 1;
+        return false;
+    }
     std::uint32_t child = 0;
     if (!root || !read(context, root + child_offset, &child, 4)) {
         st->unreadable = 1;
         return false;
     }
+    const bool anchors = opt.anchors && opt.is_emitter && opt.is_steering;
     std::uint32_t block[node_bytes / 4];
+    fj::Raw kept[anchor_capacity];
+    unsigned kept_count = 0;
+    bool glow = false;
     for (unsigned n = 0;; ++n) {
-        if (!child) return true; // an empty list: the root's +0xc is the sentinel's address, never 0 in the game
+        if (!child) break; // an empty list: the root's +0xc is the sentinel's address, never 0 in the game
         std::uint32_t next = 0;
         if (!read(context, child + next_offset, &next, 4)) {
             st->unreadable = 1;
             return false;
         }
-        if (!next) return true; // the sentinel
+        if (!next) break; // the sentinel
         if (n >= walk_bound) {
             st->overflow = 1;
             return false;
@@ -223,8 +383,37 @@ inline bool walk(std::uint32_t root, std::uint32_t view_handle, Reader read, voi
         }
         if (block[flags12c_offset / 4] & hidden_flag) {
             ++st->hidden;
+            if (!anchors || glow) continue;
+            std::uint32_t mode = 0;
+            ++st->mode_reads;
+            if (!read(context, here + mode_offset, &mode, 4)) {
+                ++st->mode_unreadable;
+                continue;
+            }
+            if (mode & mode_visible) {
+                glow = true;
+                continue;
+            }
+            if (mode & mode_not_main) continue;
+            ++st->candidates;
+            if (!opt.is_emitter(opt.context, block[model_offset / 4])) {
+                ++st->not_emitter;
+                continue;
+            }
+            const std::uint32_t z = block[scale88_offset / 4];
+            if (block[scale80_offset / 4] != scale_one || block[scale84_offset / 4] != scale_one || z < anchor_z_min ||
+                z > anchor_z_max) {
+                ++st->anchor_rejected;
+                continue;
+            }
+            if (kept_count >= anchor_capacity) {
+                ++st->anchor_overflow;
+                continue;
+            }
+            detail::fill_raw(block, here, root, view_handle, model_offset, &kept[kept_count++]);
             continue;
         }
+        if (anchors && !glow && !opt.is_steering(opt.context, block[model_offset / 4])) glow = true;
         if (block[scale80_offset / 4] != scale_one || block[scale84_offset / 4] != scale_one) {
             ++st->guard_scale;
             continue;
@@ -234,23 +423,27 @@ inline bool walk(std::uint32_t root, std::uint32_t view_handle, Reader read, voi
             ++st->guard_throttle;
             continue;
         }
-        fj::Raw raw{};
-        raw.node = here;
-        raw.view_handle = view_handle;
-        raw.context = 0;
-        raw.parent = root;
-        raw.handle = block[handle_offset / 4];
-        raw.model = block[model_offset / 4];
-        raw.scale70 = block[scale70_offset / 4];
-        raw.scale80 = block[scale80_offset / 4];
-        raw.scale88 = z;
-        for (unsigned i = 0; i < 3; ++i) {
-            raw.position[i] = std::int32_t(block[position_offset / 4 + i]);
-            raw.basis_x[i] = std::int32_t(block[basis_x_offset / 4 + i]);
-            raw.basis_z[i] = std::int32_t(block[basis_z_offset / 4 + i]);
-        }
+        if (!opt.jets) continue;
+        fj::Raw raw;
+        detail::fill_raw(block, here, root, view_handle, model_offset, &raw);
         ++st->emitted;
         emit(raw);
     }
+    // The list's end: the walk is complete. Anchors only when no part of the root is a glow part.
+    if (anchors) {
+        st->glow = glow ? 1u : 0u;
+        if (!glow)
+            for (unsigned i = 0; i < kept_count; ++i) {
+                ++st->anchors;
+                anchor(static_cast<const fj::Raw&>(kept[i]));
+            }
+    }
+    return true;
+}
+// The walk before step 1 (default Options: AP's model offset, every main jet emitted, no anchor).
+template <class Emit>
+inline bool walk(std::uint32_t root, std::uint32_t view_handle, Reader read, void* context, WalkStats* st,
+                 Emit&& emit) noexcept {
+    return walk(root, view_handle, read, context, st, Options{}, static_cast<Emit&&>(emit), [](const fj::Raw&) {});
 }
 } // namespace x3m::engine_nozzle::core

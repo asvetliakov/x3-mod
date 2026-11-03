@@ -2192,3 +2192,50 @@ or message page with a lot of text); one F8 with a text-heavy menu open; tell me
 blurry enlargement of run 30), every letter present, even stroke weight, icons at full size. Report: a missing or wrong
 glyph, uneven strokes, any menu whose icons or text suddenly appear at 2/3 size (the `text_density_recorder first_pass`
 row names the frame), graph strokes thinner than before (one-texel lines; a known visual item).
+
+## Plumes step 1: hidden emitter anchors, host evidence (2026-11-03)
+
+Design and as-built: [plumes-no-glow-hulls.md](../architecture/plumes-no-glow-hulls.md) section 7, "As built". The
+node walk keeps hidden `fx_engine_emitter` JET children as plume anchors on roots without a glow part
+(`engine_nozzle_walk_core.h` `Options::anchors`, `anchor_record`, `AnchorProbes`; `motion_output_engine_plumes_inc.h`
+gather probe and append). New setting `engine_plume_emitters` (builtin 1). No new patched site, no file. **On FL the
+rule is compiled but off**: the node walk stays fenced (`fl_draw_only`), and its activation
+([fl/nozzle-scene-window.md](../reverse-engineering/fl/nozzle-scene-window.md)) is a separate decision. On AP it is
+live; only stock content has anchored hulls.
+
+| check | result |
+| --- | --- |
+| `cmake --build build-ap -j8`, `build-fl -j8` (fresh worktree build dirs, MinGW i686) | 0 warnings each (measured) |
+| `check_no_x87.py build-ap/d3d9.dll` | PASS (measured). On `build-fl` the tool fails at its `gz_read` anchor, as it does on the main checkout's `build-fl` (pre-existing) |
+| `tools/config/generate.py --check` | PASS, 293 settings, 138 in the template (measured) |
+| `run_host_suite.py --modules test_engine_plumes test_engine_effects test_engine_nozzle_walk test_fl_engine_effects test_fl_cull_chain test_engine_far_jets test_config_schema` | 7 modules, 87 tests, 0 failing (measured) |
+| neighbours (`test_engine_light test_engine_shimmer test_engine_ribbons test_bolt_footprint test_engine_effects_sites`) | 5 modules, 74 tests, 0 failing (measured) |
+| `engine_nozzle_walk_host.cpp` | 58 checks, 0 failures (measured) |
+| anchors on the AP (`+0x140`) and FL (`+0x144`) layouts, decoy model at the other offset | 4 of 4 emitters anchored on each; the other offset reads the decoy, 0 anchors, 5 `not_emitter`; a hidden `C = 0` child of another body (the drones' transportdrone glow) refused for identity (measured) |
+| record | origin = `+0xb0` × 0.01 (−10, 2, −48.82); axis −basis z, a turned emitter gives −x; size 45.93 = k(320) × 320 at floor 0.5, equal to the independent reference; `s`/`z` from the emitter's `+0x88` (0.4286 at z 1, 1.0 at z 2, 0 at idle 0.25); flags `flag_node | flag_anchor | cyan`, body −1 (measured) |
+| refusals | an undriven dummy at `0x28f` (rejected); a list cut by an unreadable element (no anchor); default options (5 hidden, 0 C reads, 0 anchors) (measured) |
+| visible-jet hull parity | records byte-identical (`memcmp`) to the walk before step 1, walk counts equal, no anchor; a hidden `C 0x7001` main set (travel swap) is glow; a shown RCS puff is not; a probe walk emits nothing (measured) |
+| probe table (SETA) | due at first sight, not after a walk without anchors; retry after 2,000 game ms = 100 frames at 20 ms, 10 under SETA ×10, 600 when the clock stalls; cleared on load (measured) |
+| review fixes | an anchored hull skipped one frame is re-walked at frame 13 (as soon as its recent window lapses), where a glow verdict waits for the retry; recent glow ships are not written into the probe table (writes per frame ≤ 4 + anchored hulls); a non-ship root's undriven emitters (`0x28f`) give 0 anchors, 2 rejected (measured) |
+| cost (host, 256 scattered roots × 108 parts, one run) | 1.19 µs per root before, 1.19 with the rule on, 1.18 for an anchors-only probe walk; probe 0.9 ns per draw (measured; same set as the design note) |
+| who anchors ([`anchor_census.py`](../../verification/results/plumes-no-glow/anchor_census.py)) | FL 16 ships / 35 emitters (M6M family `C = 0`, drones `C = 1`), stock AP 14 / 29, Mayhem 0; 181 FL / 172 stock / 494 Mayhem ships carry emitters beside glow parts and stay unchanged (measured) |
+| section 6 ([`hidden_emitter_reads.py`](../../verification/results/plumes-no-glow/hidden_emitter_reads.py)) | 24 PASS on both documented EXE hashes: C at `+0x260`, hidden main jets driven to the setter, no hidden-bit test in the transform walks, class 7 alone driven and placement at `0x28f` for every class (the ship-only gate) (measured, static) |
+
+Expected rows on AP with `engine_effects = plumes` (default): `engine_plumes_hidden_emitters … event=configure
+setting=- status=ok rule=on reason=pending_body_table edition=ap anchors=0 ships=0`, then `… event=body rule=on
+emitter_body=<n> bodies=<n>`, then per 300 frames `… event=window rule=on edition=ap … anchors=N ships=N … probes=N
+probe_deferred=N glow=N …`. Per newly anchored hull, at most 32 per configure: `engine_plumes_hidden_emitter_hull …
+root=… anchors=4 … radius=… size=… s=…`. On FL: one `… event=configure … rule=off reason=fl_draw_only edition=fl`
+and nothing else. On Mayhem AP: windows with `anchors=0 ships=0` and `probes` > 0. Probe walks there raise
+`node_children`, `node_hidden` and `node_guard_rejected` in `engine_stage` (`--debug`) against earlier runs, with
+`node_records` and every record unchanged.
+
+**Flight check (blocked).** Nothing is flyable as built: FL needs the node walk activated, and the user's AP install
+(Mayhem) has no anchored hull. After the FL walk is activated: fly near or watch an Argon Heavy Centaur
+(`SS_SH_A_M6M`, four emitters) or Terran drones under plumes. Expected: plumes at the four emitter points (rear of the
+hull, not floating off it), dim and short when docked or stationary, brightening and lengthening with speed (the hull
+row's `s` varies with speed). A hull light on the plates around the nozzles and an engine trail behind the ship appear
+too (anchor records feed the engine light and the ribbons). No plume on hulls that had none and carry no emitters (capitals, TLs). Ships with
+visible jets look unchanged. One F8 capture frame cross-checks an anchor origin against the hull draw's c4–6 rows.
+**Kill criterion** (design section 4): a plume floating off the hull, or glowing while parked, after one flight →
+drop step 1 (`engine_plume_emitters = 0` is the rollback) and keep step 2's plan.

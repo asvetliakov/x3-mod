@@ -42,6 +42,7 @@
 #include "engine_light_core.h"
 #include "lod_texture_mark.h"
 #include "engine_nozzle_walk_core.h"
+#include "engine_node_layout.h"
 #include "../renderer/engine_plumes_pass.h"
 #include "../renderer/engine_ribbons_pass.h"
 #include "../renderer/engine_shimmer_pass.h"
@@ -1836,8 +1837,40 @@ private:
         unsigned roots = 0, walked = 0, records = 0, duplicates = 0, hidden = 0, guard_rejected = 0, overflow = 0;
         unsigned unreadable = 0, engine_culled = 0, ring_full = 0, steering = 0, invalid = 0, no_scale = 0;
         unsigned root_overflow = 0, children = 0, skipped_other_view = 0, not_ship = 0, seen_full = 0;
+        // Hidden-emitter anchors (plumes-no-glow-hulls.md step 1): records, roots with one, probe admissions (gather),
+        // probes refused by the per-frame cap (gather), roots whose glow part withheld their emitters, hidden
+        // candidates that are not the emitter body, emitters failing a guard, anchors without a floor size, C reads.
+        unsigned anchors = 0, anchor_roots = 0, probes = 0, probe_deferred = 0, anchor_glow = 0, anchor_not_emitter = 0;
+        unsigned anchor_rejected = 0, anchor_no_floor = 0, mode_reads = 0;
         float walk_us = 0.f;
     } engine_node_{};
+    // Hidden-emitter anchors (engine_nozzle_walk_core.h Options::anchors; docs/architecture/plumes-no-glow-hulls.md step
+    // 1): X3M_ENGINE_PLUME_EMITTERS=0|1 (ini engine_plume_emitters, unset = 1), read at configure. Live only with the node
+    // walk (AP: engine_nozzle_source = node; FL: fenced with the walk, fl_draw_only) and the emitter body resolved in the
+    // body table. A root no record names is admitted for an anchors-only walk by the probe table (one probe per such
+    // routed draw, at most engine_anchor_probe_cap new roots a frame, retried after AnchorProbes::retry_ms game ms).
+    bool engine_anchors_setting_ = true;  // the setting (refused values keep 1)
+    bool engine_anchors_on_ = false;      // setting, stage requested and node walk: the rule applies
+    bool engine_anchors_live_ = false;    // on and the emitter body resolved (the gather's probe gate)
+    int engine_emitter_body_ = -2;        // the emitter's body-table index; -2 the table not loaded yet, -1 missing
+    static constexpr unsigned engine_anchor_probe_cap = 4;
+    engine_nozzle::core::AnchorProbes engine_anchor_probes_;
+    double engine_anchor_clock_ms_ = 0.;  // game ms summed over the appends (the stage's step x the SETA rate)
+    std::uint64_t engine_anchor_epoch_ = 0;
+    // The engine_plumes_hidden_emitters window (300 frames): sums and the busiest frame; and the bounded hull rows.
+    static constexpr std::uint64_t engine_anchor_window_frames = 300;
+    static constexpr unsigned engine_anchor_hull_row_cap = 32;
+    struct EngineAnchorWindow {
+        std::uint64_t start = 0;
+        unsigned frames = 0, anchored_frames = 0, anchors = 0, ships_max = 0, probes = 0, probe_deferred = 0, glow = 0;
+        unsigned not_emitter = 0, rejected = 0, no_floor = 0, mode_reads = 0, new_hulls = 0;
+        float walk_us_max = 0.f;
+    } engine_anchor_window_{};
+    unsigned engine_anchor_hull_rows_ = 0, engine_anchor_hull_rows_dropped_ = 0;
+    static bool engine_anchor_is_emitter(void* self, std::uint32_t model) noexcept;
+    static bool engine_anchor_is_steering(void* self, std::uint32_t model) noexcept;
+    void engine_anchor_resolve_body() noexcept;
+    void engine_anchor_window_row(bool anchored_frame) noexcept;
     static constexpr unsigned engine_node_camera_slots = 4; // the frame's cameras -> their context pointers
     std::uint32_t engine_node_camera_[engine_node_camera_slots]{};
     std::uint32_t engine_node_context_[engine_node_camera_slots]{};

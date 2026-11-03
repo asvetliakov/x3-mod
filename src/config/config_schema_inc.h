@@ -180,7 +180,7 @@ constexpr ElementRange element_ranges[element_range_count] = {
     {125, 1},
     {126, 1},
 };
-constexpr unsigned entry_count = 292;
+constexpr unsigned entry_count = 293;
 constexpr const char schema_date[] = "2026-09-26";
 constexpr Entry entries[entry_count] = {
     {"X3M_ADMISSION", "admission", Type::Bool, nullptr, nullptr, 0, 0, 0, 0, 0, "", 1, -1},
@@ -237,6 +237,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_ENGINE_LIGHT", "engine_light", Type::Enum, nullptr, nullptr, 24, 0, 2, 0, 0, "on|off", 0, -1},
     {"X3M_ENGINE_LIGHT_HOLD", "engine_light_hold", Type::Int, nullptr, nullptr, 24, 1, 2, 0, 0, "", 0, -1},
     {"X3M_ENGINE_NOZZLE_SOURCE", "engine_nozzle_source", Type::Enum, nullptr, nullptr, 25, 0, 2, 0, 0, "node|draw", 0, -1},
+    {"X3M_ENGINE_PLUME_EMITTERS", "engine_plume_emitters", Type::Bool, nullptr, nullptr, 25, 0, 2, 0, 0, "", 0, -1},
     {"X3M_ENGINE_PLUME_FLOOR", "engine_plume_floor", Type::Float, nullptr, nullptr, 25, 1, 2, 0, 0, "", 0, -1},
     {"X3M_ENGINE_PLUME_NOZZLE", "engine_plume_nozzle", Type::Float, nullptr, nullptr, 26, 1, 2, 0, 0, "", 0, -1},
     {"X3M_ENGINE_RIBBONS_OWN_SHIP", "engine_ribbons_own_ship", Type::Bool, nullptr, nullptr, 27, 0, 2, 0, 0, "", 0, -1},
@@ -245,7 +246,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_ENGINE_SHIMMER_PX", "engine_shimmer_px", Type::Float, nullptr, nullptr, 28, 1, 2, 0, 0, "", 0, -1},
     {"X3M_FADE_ROUTE", "fade_route", Type::String, nullptr, nullptr, 29, 0, 2, 0, 0, "", 1, -1},
     {"X3M_FADE_RT2_OWNER", "fade_rt2_owner", Type::Enum, "on", nullptr, 29, 0, 2, 0, 0, "on|off", 1, -1},
-    {"X3M_FADE_RT2_OWNER_DEFAULT", "fade_rt2_owner_default", Type::Bool, "1", nullptr, 29, 0, 2, 0, 0, "", 3, 61},
+    {"X3M_FADE_RT2_OWNER_DEFAULT", "fade_rt2_owner_default", Type::Bool, "1", nullptr, 29, 0, 2, 0, 0, "", 3, 62},
     {"X3M_FADE_WITNESS", "fade_witness", Type::String, nullptr, nullptr, 29, 0, 2, 0, 0, "", 1, -1},
     {"X3M_FINITE_POSITIONS", "finite_positions", Type::Bool, nullptr, nullptr, 29, 0, 2, 0, 0, "", 1, -1},
     {"X3M_FIXTURE_EXCEPTION", "fixture_exception", Type::String, nullptr, nullptr, 29, 0, 2, 0, 0, "", 3, -1},
@@ -328,7 +329,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_LOCKED_PREFIX_LOG", "locked_prefix_log", Type::Bool, nullptr, nullptr, 70, 0, 8, 0, 0, "", 1, -1},
     {"X3M_LOD_MATERIAL_STRENGTH", "lod_material_strength", Type::Bool, nullptr, nullptr, 70, 0, 8, 0, 0, "", 0, -1},
     {"X3M_LOD_OCCLUSION", "lod_occlusion", Type::Enum, "all", nullptr, 70, 0, 8, 0, 0, "off|record0|all", 0, -1},
-    {"X3M_LOD_OCCLUSION_DEFAULT", "lod_occlusion_default", Type::Bool, "1", nullptr, 70, 0, 8, 0, 0, "", 3, 144},
+    {"X3M_LOD_OCCLUSION_DEFAULT", "lod_occlusion_default", Type::Bool, "1", nullptr, 70, 0, 8, 0, 0, "", 3, 145},
     {"X3M_LOD_SWITCH_LOG", "lod_switch_log", Type::Int, nullptr, nullptr, 70, 1, 8, 0, 0, "", 1, -1},
     {"X3M_LOG_FILE", "log_file", Type::Path, nullptr, nullptr, 71, 0, 8, 0, 0, "", 0, -1},
     {"X3M_LOOP_PHASES", "loop_phases", Type::Bool, nullptr, nullptr, 71, 0, 8, 0, 0, "", 1, -1},
@@ -359,7 +360,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_OCCLUSION_CULL", "occlusion_cull", Type::Enum, nullptr, nullptr, 78, 0, 8, 0, 0, "on|off|engine", 0, -1},
     {"X3M_OCCLUSION_CULL_RETEST", "occlusion_cull_retest", Type::Int, nullptr, nullptr, 78, 1, 8, 0, 0, "", 0, -1},
     {"X3M_ORIGINAL_FILL", "original_fill", Type::Float, "0.01", nullptr, 79, 1, 8, 0, 0, "", 0, -1},
-    {"X3M_ORIGINAL_FILL_DEFAULT", "original_fill_default", Type::Bool, "1", nullptr, 80, 0, 8, 0, 0, "", 3, 175},
+    {"X3M_ORIGINAL_FILL_DEFAULT", "original_fill_default", Type::Bool, "1", nullptr, 80, 0, 8, 0, 0, "", 3, 176},
     {"X3M_OWNERSHIP", "ownership", Type::Bool, "1", nullptr, 80, 0, 8, 0, 0, "", 1, -1},
     {"X3M_OWN_SUN", "own_sun", Type::Bool, "1", nullptr, 80, 0, 8, 0, 0, "", 0, -1},
     {"X3M_OWN_SUN_LOG", "own_sun_log", Type::Bool, nullptr, nullptr, 80, 0, 8, 0, 0, "", 1, -1},
@@ -437,12 +438,12 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA", "taa", Type::Bool, "1", nullptr, 106, 0, 8, 0, 0, "", 0, -1},
     {"X3M_TAA_ALPHA_HISTORY", "taa_alpha_history", Type::Bool, nullptr, nullptr, 106, 0, 8, 0, 0, "", 0, -1},
     {"X3M_TAA_BOX_RESOLUTION", "taa_box_resolution", Type::Enum, "half", nullptr, 106, 0, 8, 0, 0, "half|full", 1, -1},
-    {"X3M_TAA_BOX_RESOLUTION_DEFAULT", "taa_box_resolution_default", Type::Bool, "1", nullptr, 106, 0, 8, 0, 0, "", 3, 253},
+    {"X3M_TAA_BOX_RESOLUTION_DEFAULT", "taa_box_resolution_default", Type::Bool, "1", nullptr, 106, 0, 8, 0, 0, "", 3, 254},
     {"X3M_TAA_DEBUG", "taa_debug", Type::Int, nullptr, nullptr, 106, 1, 8, 0, 0, "", 1, -1},
     {"X3M_TAA_FAR_CLIP", "taa_far_clip", Type::Enum, "7x7", nullptr, 107, 0, 8, 0, 0, "7x7|3x3", 1, -1},
-    {"X3M_TAA_FAR_CLIP_DEFAULT", "taa_far_clip_default", Type::Bool, "1", nullptr, 107, 0, 8, 0, 0, "", 3, 256},
+    {"X3M_TAA_FAR_CLIP_DEFAULT", "taa_far_clip_default", Type::Bool, "1", nullptr, 107, 0, 8, 0, 0, "", 3, 257},
     {"X3M_TAA_FAR_GATE", "taa_far_gate", Type::Enum, "camera", nullptr, 107, 0, 8, 0, 0, "camera|screen", 1, -1},
-    {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 107, 0, 8, 0, 0, "", 3, 258},
+    {"X3M_TAA_FAR_GATE_DEFAULT", "taa_far_gate_default", Type::Bool, "1", nullptr, 107, 0, 8, 0, 0, "", 3, 259},
     {"X3M_TAA_FAR_STABILISER", "taa_far_stabiliser", Type::FloatList, "0.985,0,30,34,0.03,0.25", nullptr, 107, 0, 8, 6, 86, "", 0, -1},
     {"X3M_TAA_HISTORY_WEIGHT", "taa_history_weight", Type::Float, nullptr, nullptr, 113, 1, 14, 0, 0, "", 0, -1},
     {"X3M_TAA_LUMA_LOCK", "taa_luma_lock", Type::FloatList, "16,0.25,3", nullptr, 114, 0, 14, 3, 10, "", 0, -1},
@@ -459,7 +460,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_TAA_THIN_REGION", "taa_thin_region", Type::FloatList, "0.97,1", nullptr, 123, 0, 17, 4, 22, "", 0, -1},
     {"X3M_TAA_THIN_REGION_EMISSIVE", "taa_thin_region_emissive", Type::Float, "1", nullptr, 127, 1, 21, 0, 0, "", 0, -1},
     {"X3M_TAA_THIN_VOTE", "taa_thin_vote", Type::Enum, "on", nullptr, 128, 0, 21, 0, 0, "on|off", 1, -1},
-    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 128, 0, 21, 0, 0, "", 3, 275},
+    {"X3M_TAA_THIN_VOTE_DEFAULT", "taa_thin_vote_default", Type::Bool, "1", nullptr, 128, 0, 21, 0, 0, "", 3, 276},
     {"X3M_TAA_UNMATCHED_STATIC", "taa_unmatched_static", Type::String, "node", nullptr, 128, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY", "telemetry", Type::Bool, nullptr, nullptr, 128, 0, 21, 0, 0, "", 1, -1},
     {"X3M_TELEMETRY_DRAW", "telemetry_draw", Type::Bool, nullptr, nullptr, 128, 0, 21, 0, 0, "", 1, -1},
@@ -473,13 +474,13 @@ constexpr Entry entries[entry_count] = {
     {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 129, 1, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 130, 0, 21, 0, 0, "", 0, -1},
     {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 130, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 130, 0, 21, 0, 0, "", 3, 289},
+    {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 130, 0, 21, 0, 0, "", 3, 290},
     {"X3M_WINDOW_TRACE", "window_trace", Type::Bool, nullptr, nullptr, 130, 0, 21, 0, 0, "", 1, -1},
 };
 constexpr unsigned alias_count = 2;
 constexpr Alias aliases[alias_count] = {
-    {"sun_occlusion", 178},
-    {"sun_occlusion_log", 179},
+    {"sun_occlusion", 179},
+    {"sun_occlusion_log", 180},
 };
 }
 

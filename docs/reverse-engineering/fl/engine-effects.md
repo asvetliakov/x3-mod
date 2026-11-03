@@ -537,3 +537,27 @@ superseded for the far route (note in section 4 above). The node walk (`engine_n
 fenced (`fl_draw_only`), so its later `camera+0x1c → +0x2c` read never runs on FL. The parent radius is read
 later. That is the same read and the same `engine_memory::read` validation as the FL draw route (FL run 18
 onward); no owned value has been established for it [i].
+
+## Verified 2026-11-03: hidden emitter anchors (plumes step 1)
+
+Inputs of the anchor rule ([plumes-no-glow-hulls.md](../../architecture/plumes-no-glow-hulls.md) section 7, "As
+built"), checked statically on X3FL.exe (SHA-256 `e7f3aad8…`) and X3AP.exe (`fdbf3418…`) by
+[hidden_emitter_reads.py](../../../verification/results/plumes-no-glow/hidden_emitter_reads.py) →
+`hidden_emitter_reads_out.txt` (24 PASS; addresses and verdicts only). **[s]** throughout.
+
+| Read | FL | AP | Consequence for a hidden `fx_engine_emitter` (C = 0 or 1) |
+| --- | --- | --- | --- |
+| Mode word C | node `+0x260`, drive `0x4646b6` | `+0x260`, `0x45ad85` | the one extra 4-byte read per hidden JET child (outside the 0x150 block) |
+| Main branch | `C & 1` or `C == 0` (`0x46484f..0x464855`); marker `[esp+0x80] = 0` at `0x464857` | `0x45af0e..0x45af1f`; `[esp+0x38] = 0` at `0x45af2a` | target = `base` (speed remap `0x4000..0x20000`) |
+| Hide | `+0x12c \|= 0x100000` at `0x464880` and `0x4648ce` (no `0x1000`) | `0x45af51`, `0x45afae` | hidden every frame; nothing tests that bit before the setter |
+| Throttle | `+0x88` read `0x464932`, rate limit, `je 0x4649b1` at `0x46496d` skips the non-main show step, setter `0x4a3ae0` at `0x4649be` | `0x45b00c`, `0x45b047`, setter `0x488270` at `0x45b09a` | `+0x88` is driven toward `base` while hidden; `(1, 1, z)` keeps x/y unit |
+| Transform | whole-scene world `0x494370` (from `0x4951f0`), camera preparation `0x4947b0` and `0x494b00`: no hidden-bit test | `0x47b800`, `0x47bc20`: none | `+0xb0` and the basis are written by the same code as for visible siblings |
+| Who is driven | sector-update class switch `0x4645c2..0x4645d9` (index `0x464fc0`, targets `0x464fa8`): class 7 alone reaches the drive `0x4645e0` | `0x45ac82..0x45ac9c` (`0x45b64c`, `0x45b634`): class 7 alone → `0x45aca3` | non-ship objects never move their jets off the placement value |
+| Placement | every JET child to `(1, 1, 0x28f)` and hidden, no class test, `0x45b830..0x45b852` | `0x451cd5..0x451cf7` | with the row above, `+0x88 ≥ 0x4000` on a hidden emitter means a ship's drive moved it: the rule's ship-only gate |
+
+FL node layout for the rule: model `+0x144` (`engine_node_layout.h`; the walk's `Options::model_offset`), every other
+field at the AP offset. **The FL walk itself stays fenced** (`fl_draw_only`, section 4's missing read window and
+[nozzle-scene-window.md](nozzle-scene-window.md)), so none of these reads runs on FL until that activation. Not
+established: whether the drive gate `*0x5a82ec != 0` (`0x4645ad`, section 4) can leave a hidden
+emitter at its placement value `0x28f` for a whole flight; the rule's driven-range guard (`0x4000..0x20000`) refuses
+such a node rather than drawing it idle [i].

@@ -30,16 +30,19 @@ ROOT = Path(__file__).resolve().parents[2]
 # native-only since the record.
 # engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
 # default plumes mode, both editions, 2026-11-03).
+# engine_nozzle_walk_core.h, motion_output.h, motion_output_engine_plumes_inc.h: bumped for plumes step 1, the hidden
+# fx_engine_emitter anchors (2026-11-03; parity in test_engine_nozzle_walk AnchorTests).
 SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_effects.cpp': 'c1758e435321db074c875ab565ae031182c98148ae3a2f7255c71fdf8c9f95a8',
     'src/proxy/engine_effects_option.h': 'eccb9f06f28c52a63f1e8ebf818f001d1775ca317cccf34608917fdb49835e28',
     'src/proxy/engine_effects.h': '9bfc75be3b480a0a808c034577eeca5a2767155b89fdca2c645a9339c115e7ba',
     'src/proxy/engine_effects_core.h': '168a1451ea50181173b63fe9e0ee4aa90f49da7bd591f2759b4ef531dc28ea2b',
     'src/proxy/motion_output_engine_effects_inc.h': '2b13d9eb003f451611bdbfdd3d439da091c2bcad65fe8ff5b0da10e3287843c6',
-    'src/proxy/motion_output_engine_plumes_inc.h': '235ad72aa3c73a19c55500f2fe98ba91e129512a018efca616d15dd2ed57e97b',
+    'src/proxy/motion_output_engine_plumes_inc.h': '167e4996d3a3bbf501d5892c7016759de79c32ec934219202d4d0fd904aa7e61',
     'src/proxy/motion_output_engine_ribbons_inc.h': '418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599',
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
-    'src/proxy/motion_output.h': 'f28f926e5afac4f36a3dc86b653f9adcd775cdd3972da9cd4477f8e2878dcffa',
+    'src/proxy/motion_output.h': '83444b59ea884b30662e5fbc027b7f482ff50b99ca9033cbf497f76ca291c368',
+    'src/proxy/engine_nozzle_walk_core.h': '90e911636799b6bf62cbde043f336f0001b2d59ab19d135b05ef15b340540d93',
     'src/proxy/capture.cpp': 'b2fec7794766fa5b27d4a675908d7ca4e432cbc42eb7cc633004093bdebaa785',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',

@@ -10,6 +10,8 @@
 // children (the ledger figure). No Windows dependency, no game bytes.
 #include "../../src/proxy/engine_nozzle_walk_core.h"
 #include "../../src/proxy/engine_light_core.h"
+#include "../../src/proxy/engine_node_layout.h"
+#include <cmath>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -356,6 +358,328 @@ int main() {
         std::printf("\"hold\":{\"walked_skipped\":%u,\"held_unwalked\":%u,\"without_walked_held\":%u},", unsigned(rule),
                     unsigned(rule), unsigned(unchanged));
     }
+    // ---- hidden-emitter anchors (plumes-no-glow-hulls.md step 1) on both edition layouts
+    {
+        // A node block as far as C (+0x260): the model at the layout's offset, a decoy model at the other edition's.
+        struct Ext {
+            std::uint32_t handle, model, parent, flags12c = nz::hidden_flag, flags130 = nz::jet_pair, mode = 0;
+            std::uint32_t scale70 = 17, scale80 = nz::scale_one, scale84 = nz::scale_one, scale88 = 0x10000; // z 1.0
+            std::int32_t position[3] = {0, 0, 0};
+            std::int32_t bx[3] = {0x10000, 0, 0}, bz[3] = {0, 0, 0x10000};
+        };
+        constexpr std::uint32_t emitter_model = 30000, decoy_model = 31000, glow_model = 20000;
+        const auto make_ext = [](Image& im, const Ext& n, unsigned model_offset, unsigned decoy_offset) {
+            const std::uint32_t at = im.alloc(0x270);
+            std::uint32_t* b = im.at(at);
+            b[nz::parent_offset / 4] = n.parent;
+            b[nz::handle_offset / 4] = n.handle;
+            b[nz::scale70_offset / 4] = n.scale70;
+            b[nz::scale80_offset / 4] = n.scale80;
+            b[nz::scale84_offset / 4] = n.scale84;
+            b[nz::scale88_offset / 4] = n.scale88;
+            for (unsigned i = 0; i < 3; ++i) {
+                b[nz::position_offset / 4 + i] = std::uint32_t(n.position[i]);
+                b[nz::basis_x_offset / 4 + i] = std::uint32_t(n.bx[i]);
+                b[nz::basis_z_offset / 4 + i] = std::uint32_t(n.bz[i]);
+            }
+            b[0xd0 / 4 + 1] = nz::scale_one;
+            b[nz::flags12c_offset / 4] = n.flags12c;
+            b[nz::flags130_offset / 4] = n.flags130;
+            b[decoy_offset / 4] = decoy_model;
+            b[model_offset / 4] = n.model;
+            b[nz::mode_offset / 4] = n.mode;
+            return at;
+        };
+        struct Predicates {
+            static bool emitter(void*, std::uint32_t model) { return model == emitter_model; }
+            static bool steering(void*, std::uint32_t model) { return model == ee::steering_model; }
+        };
+        const auto options = [&](unsigned model_offset) {
+            nz::Options o;
+            o.anchors = true;
+            o.model_offset = model_offset;
+            o.is_emitter = &Predicates::emitter;
+            o.is_steering = &Predicates::steering;
+            return o;
+        };
+        const x3m::engine_node_layout::Layout layouts[2] = {x3m::engine_node_layout::ap, x3m::engine_node_layout::fl};
+        const char* names[2] = {"ap", "fl"};
+        // The reference size: k(R) from the documented anchors (0.35 at 150, 0.25 at 500, log-linear) x floor_scale 0.5
+        // at R = 32000 x 0.01 = 320 record units, in double, independent of floor_ratio_at.
+        const double R = 320., k_ref = .5 * (.35 + (.25 - .35) * std::log(R / 150.) / std::log(500. / 150.));
+        std::printf("\"anchors\":{");
+        for (unsigned e = 0; e < 2; ++e) {
+            const unsigned mo = layouts[e].model, other = layouts[1 - e].model;
+            Image im(1 << 20);
+            const std::uint32_t root = im.alloc(0x270), view = 9;
+            NodeSpec hull{0x50, 0x11, root};
+            hull.flags130 = 0;
+            // The Argon Heavy Centaur's shape: four hidden emitters (C = 0, the M6M family; C = 1, the drones), the
+            // second turned to point along -x, the third at full throttle; a fifth hidden C = 0 child of another body
+            // (the drones' fx_engine_terran_transportdrone): no emitter identity.
+            Ext a{0x70, emitter_model, root};
+            a.position[0] = -1000; a.position[1] = 200; a.position[2] = -4882;
+            Ext b{0x71, emitter_model, root};
+            b.mode = 1;
+            b.position[0] = 1000; b.position[2] = -4882;
+            b.bx[0] = 0; b.bx[2] = 0x10000; b.bz[0] = 0x10000; b.bz[2] = 0; // model z along +x: the plume along -x
+            Ext c{0x72, emitter_model, root};
+            c.scale88 = 0x20000; // z 2.0: s 1
+            c.position[1] = -300; c.position[2] = -4800;
+            Ext d{0x73, emitter_model, root};
+            d.position[2] = -4900;
+            Ext other_body{0x74, glow_model, root};
+            const std::vector<std::uint32_t> nodes = {make_node(im, hull), make_ext(im, a, mo, other), make_ext(im, b, mo, other),
+                                                      make_ext(im, c, mo, other), make_ext(im, d, mo, other),
+                                                      make_ext(im, other_body, mo, other)};
+            link(im, root, nodes);
+            nz::WalkStats st;
+            std::vector<fj::Raw> anchors;
+            unsigned jets = 0;
+            const bool complete = nz::walk(root, view, &Image::read, &im, &st, options(mo), [&](const fj::Raw&) { ++jets; },
+                                           [&](const fj::Raw& raw) { anchors.push_back(raw); });
+            check(complete && st.anchors == 4 && anchors.size() == 4 && jets == 0 && st.hidden == 5 && st.mode_reads == 5 &&
+                      st.candidates == 5 && st.not_emitter == 1 && !st.glow && !st.anchor_rejected,
+                  "four emitters anchored, the fifth hidden body refused for its identity");
+            // The record law (the stage's: far_record, the ship radius, anchor_record).
+            ee::Body body{};
+            body.value = 17.f;
+            body.lists = ee::list_jet;
+            body.cluster = ee::grey;
+            std::vector<ee::Record> records;
+            for (const fj::Raw& raw : anchors) {
+                ee::Record r{};
+                check(ee::far_record(raw, .01f, 7, &body, 11, &r) == ee::FarVerdict::record, "the emitter's far_record");
+                float radius = 0.f, k = 0.f;
+                ee::parent_radius_in_record(32000, raw.scale70, raw.scale80, r.size, &radius);
+                x3m::engine_plumes::floor_ratio_at(x3m::engine_plumes::default_look, radius, &k);
+                check(nz::anchor_record(k, radius, &r), "anchor_record");
+                records.push_back(r);
+            }
+            const ee::Record& r0 = records[0];
+            const ee::Record& r1 = records[1];
+            const ee::Record& r2 = records[2];
+            const bool origin = std::fabs(r0.origin[0] + 10.f) < 1e-4f && std::fabs(r0.origin[1] - 2.f) < 1e-4f &&
+                                std::fabs(r0.origin[2] + 48.82f) < 1e-3f;
+            const bool axis = r0.axis[0] == 0.f && r0.axis[1] == 0.f && r0.axis[2] == -1.f && r1.axis[0] == -1.f &&
+                              r1.axis[1] == 0.f && r1.axis[2] == 0.f;
+            const bool size = std::fabs(double(r0.size) - k_ref * R) < 1e-3 && r0.size == r1.size && r0.size == r2.size;
+            const bool throttle = std::fabs(r0.s - .75f / 1.75f) < 1e-6f && r0.z == 1.f && r2.s == 1.f && r2.z == 2.f;
+            const std::uint16_t want = std::uint16_t(ee::flag_node | nz::flag_anchor | (unsigned(ee::cyan) << ee::cluster_shift));
+            const bool flags = r0.flags == want && r0.body == -1 && r0.node_handle == 0x70 && r0.model == emitter_model &&
+                               r1.node_handle == 0x71 && records[3].node_handle == 0x73;
+            check(origin && axis && size && throttle && flags, "the anchor records' origin, axis, size, throttle and flags");
+            // The other edition's offset reads the decoy: no emitter, no anchor.
+            nz::WalkStats wrong;
+            unsigned wrong_anchors = 0;
+            nz::walk(root, view, &Image::read, &im, &wrong, options(other), [](const fj::Raw&) {},
+                     [&](const fj::Raw&) { ++wrong_anchors; });
+            check(wrong_anchors == 0 && wrong.not_emitter == 5 && wrong.candidates == 5, "the other edition's offset: the decoy");
+            // The throttle source: the drive's +0x88 of the emitter (0.25 idle -> 2.0), and the placement value 0x28f of an
+            // undriven dummy refused.
+            im.at(nodes[1])[nz::scale88_offset / 4] = 0x4000;
+            im.at(nodes[4])[nz::scale88_offset / 4] = 0x28f;
+            std::vector<fj::Raw> idle;
+            nz::WalkStats st_idle;
+            nz::walk(root, view, &Image::read, &im, &st_idle, options(mo), [](const fj::Raw&) {},
+                     [&](const fj::Raw& raw) { idle.push_back(raw); });
+            ee::Record ri{};
+            ee::far_record(idle[0], .01f, 7, &body, 12, &ri);
+            check(idle.size() == 3 && st_idle.anchor_rejected == 1 && ri.s == 0.f && ri.z == .25f,
+                  "s follows the emitter's +0x88; an undriven 0x28f dummy is refused");
+            // Anchors only after the list's end: a cut list (an unreadable element after the emitters) gives none.
+            im.at(nodes[1])[nz::scale88_offset / 4] = 0x10000;
+            im.at(nodes[4])[nz::scale88_offset / 4] = 0x10000;
+            im.holes.push_back({nodes[5], nodes[5] + 4});
+            nz::WalkStats st_cut;
+            unsigned cut_anchors = 0;
+            const bool cut_complete = nz::walk(root, view, &Image::read, &im, &st_cut, options(mo), [](const fj::Raw&) {},
+                                               [&](const fj::Raw&) { ++cut_anchors; });
+            im.holes.clear();
+            check(!cut_complete && cut_anchors == 0 && st_cut.unreadable == 1, "an incomplete walk keeps no anchor");
+            // The default options (the walk before step 1) see five hidden jets and emit nothing.
+            nz::WalkStats st_old;
+            unsigned old_emitted = 0;
+            nz::walk(root, view, &Image::read, &im, &st_old, [&](const fj::Raw&) { ++old_emitted; });
+            check(old_emitted == 0 && st_old.hidden == 5 && st_old.mode_reads == 0 && st_old.anchors == 0,
+                  "without anchors the hidden emitters stay dropped, no C read");
+            std::printf("%s\"%s\":{\"model_offset\":%u,\"complete\":%u,\"anchors\":%u,\"candidates\":%u,\"not_emitter\":%u,"
+                        "\"mode_reads\":%u,\"origin\":[%.4f,%.4f,%.4f],\"axis\":[%.1f,%.1f,%.1f],\"axis_turned\":[%.1f,%.1f,%.1f],"
+                        "\"size\":%.4f,\"size_ref\":%.4f,\"s\":[%.4f,%.4f],\"z\":[%.3f,%.3f],\"flags\":%u,\"body\":%d,"
+                        "\"decoy_anchors\":%u,\"decoy_not_emitter\":%u,\"idle_s\":%.3f,\"undriven_rejected\":%u,"
+                        "\"cut_anchors\":%u,\"old_hidden\":%u}",
+                        e ? "," : "", names[e], mo, unsigned(complete), st.anchors, st.candidates, st.not_emitter, st.mode_reads,
+                        double(r0.origin[0]), double(r0.origin[1]), double(r0.origin[2]), double(r0.axis[0]), double(r0.axis[1]),
+                        double(r0.axis[2]), double(r1.axis[0]), double(r1.axis[1]), double(r1.axis[2]), double(r0.size),
+                        k_ref * R, double(r0.s), double(r2.s), double(r0.z), double(r2.z), unsigned(r0.flags), int(r0.body),
+                        wrong_anchors, wrong.not_emitter, double(ri.s), st_idle.anchor_rejected, cut_anchors, st_old.hidden);
+        }
+        // A visible-jet hull (the 181 FL / 172 stock ships that carry emitters beside their glow parts): its records with
+        // the rule on are byte-identical to the walk before step 1, and its emitters stay dropped. Also the travel-mode
+        // swap (the main set hidden with C 0x7001, nothing shown): glow by C, no anchor; a hull whose only shown jet is
+        // an RCS puff: the emitters anchor; a probe walk (jets off) of the glow hull: nothing.
+        {
+            const unsigned mo = x3m::engine_node_layout::ap.model, other = x3m::engine_node_layout::fl.model;
+            Image im(1 << 20);
+            const std::uint32_t root = im.alloc(0x270), view = 9;
+            Ext main1{0x80, glow_model, root};
+            main1.flags12c = 0;
+            main1.mode = 0x7001;
+            main1.scale70 = 4000;
+            main1.position[2] = -5000;
+            Ext main2 = main1;
+            main2.handle = 0x81;
+            main2.scale88 = 0x18000;
+            main2.position[0] = 700;
+            Ext emitter{0x82, emitter_model, root};
+            emitter.mode = 1;
+            Ext rcs_hidden{0x83, ee::steering_model, root};
+            rcs_hidden.mode = 0x10;
+            rcs_hidden.scale88 = 0x28f;
+            Ext rcs_shown{0x84, ee::steering_model, root};
+            rcs_shown.flags12c = 0;
+            rcs_shown.mode = 0x20;
+            rcs_shown.scale88 = 0x8000;
+            const std::vector<std::uint32_t> nodes = {make_ext(im, emitter, mo, other), make_ext(im, rcs_hidden, mo, other),
+                                                      make_ext(im, main1, mo, other), make_ext(im, rcs_shown, mo, other),
+                                                      make_ext(im, main2, mo, other)};
+            link(im, root, nodes);
+            const auto records_of = [&](bool with_rule, nz::WalkStats* st, unsigned* anchors) {
+                std::vector<ee::Record> out;
+                const auto to_record = [&](const fj::Raw& raw) {
+                    ee::Record r{};
+                    if (ee::far_record(raw, .01f, -1, nullptr, 21, &r) == ee::FarVerdict::record) out.push_back(r);
+                };
+                *anchors = 0;
+                if (with_rule)
+                    nz::walk(root, view, &Image::read, &im, st, options(mo), to_record, [&](const fj::Raw&) { ++*anchors; });
+                else
+                    nz::walk(root, view, &Image::read, &im, st, to_record);
+                return out;
+            };
+            nz::WalkStats st_old, st_new;
+            unsigned anchors_old = 0, anchors_new = 0;
+            const std::vector<ee::Record> before = records_of(false, &st_old, &anchors_old);
+            const std::vector<ee::Record> after = records_of(true, &st_new, &anchors_new);
+            const bool identical = before.size() == 2 && after.size() == before.size() &&
+                                   !std::memcmp(before.data(), after.data(), before.size() * sizeof(ee::Record));
+            const bool stats_same = st_old.children == st_new.children && st_old.jets == st_new.jets &&
+                                    st_old.hidden == st_new.hidden && st_old.guard_parent == st_new.guard_parent &&
+                                    st_old.guard_scale == st_new.guard_scale && st_old.guard_throttle == st_new.guard_throttle &&
+                                    st_old.emitted == st_new.emitted && st_old.unreadable == st_new.unreadable;
+            check(identical && stats_same && anchors_new == 0 && st_new.glow == 1, "a visible-jet hull: records byte-identical, no anchor");
+            // The travel-mode swap: the main pair hidden (C 0x7001 keeps the visible bit), the RCS puff hidden too.
+            for (unsigned i : {2u, 3u, 4u}) im.at(nodes[i])[nz::flags12c_offset / 4] = nz::hidden_flag;
+            nz::WalkStats st_travel;
+            unsigned travel_anchors = 0;
+            records_of(true, &st_travel, &travel_anchors);
+            check(travel_anchors == 0 && st_travel.glow == 1, "a hidden 0x1000 main set is a glow part");
+            // Only an RCS puff shown (a steering body) beside the emitter: not glow; the emitter anchors.
+            im.at(nodes[2])[nz::flags130_offset / 4] = 0;
+            im.at(nodes[4])[nz::flags130_offset / 4] = 0;
+            im.at(nodes[3])[nz::flags12c_offset / 4] = 0;
+            nz::WalkStats st_rcs;
+            unsigned rcs_anchors = 0;
+            records_of(true, &st_rcs, &rcs_anchors);
+            check(rcs_anchors == 1 && st_rcs.glow == 0, "a shown RCS puff is no glow part");
+            // A probe walk of the glow hull (main jets restored): no jet record, no anchor.
+            im.at(nodes[2])[nz::flags130_offset / 4] = nz::jet_pair;
+            im.at(nodes[4])[nz::flags130_offset / 4] = nz::jet_pair;
+            im.at(nodes[2])[nz::flags12c_offset / 4] = 0;
+            im.at(nodes[4])[nz::flags12c_offset / 4] = 0;
+            nz::Options probe = options(mo);
+            probe.jets = false;
+            nz::WalkStats st_probe;
+            unsigned probe_jets = 0, probe_anchors = 0;
+            nz::walk(root, view, &Image::read, &im, &st_probe, probe, [&](const fj::Raw&) { ++probe_jets; },
+                     [&](const fj::Raw&) { ++probe_anchors; });
+            check(probe_jets == 0 && probe_anchors == 0 && st_probe.glow == 1 && st_probe.emitted == 0, "a probe walk emits anchors only");
+            std::printf(",\"parity\":{\"records\":%u,\"identical\":%u,\"stats_same\":%u,\"anchors\":%u,\"glow\":%u,"
+                        "\"travel_anchors\":%u,\"rcs_only_anchors\":%u,\"probe_jets\":%u,\"probe_anchors\":%u}",
+                        unsigned(after.size()), unsigned(identical), unsigned(stats_same), anchors_new, st_new.glow,
+                        travel_anchors, rcs_anchors, probe_jets, probe_anchors);
+        }
+        // The ship-only gate: a non-ship root (a station, a missile, debris) whose hidden emitters placement left at
+        // (1, 1, 0x28f) and no drive ever moved (class 7 alone is driven): no anchor, every emitter rejected.
+        {
+            const unsigned mo = x3m::engine_node_layout::ap.model, other = x3m::engine_node_layout::fl.model;
+            Image im(1 << 20);
+            const std::uint32_t root = im.alloc(0x270);
+            Ext e1{0x90, emitter_model, root};
+            e1.scale88 = 0x28f;
+            Ext e2 = e1;
+            e2.handle = 0x91;
+            e2.mode = 1;
+            link(im, root, {make_ext(im, e1, mo, other), make_ext(im, e2, mo, other)});
+            nz::WalkStats st;
+            unsigned n = 0;
+            const bool complete = nz::walk(root, 9, &Image::read, &im, &st, options(mo), [](const fj::Raw&) {},
+                                           [&](const fj::Raw&) { ++n; });
+            check(complete && n == 0 && st.anchor_rejected == 2 && st.candidates == 2 && !st.glow, "a non-ship root's undriven emitters");
+            std::printf(",\"non_ship\":{\"anchors\":%u,\"rejected\":%u}", n, st.anchor_rejected);
+        }
+        // The probe table: due at first sight, not after a walk without anchors, again after retry_ms of game time
+        // (frames to retry at 50 fps, 20 ms a frame: SETA 1x vs 10x), or retry_frames without the clock; an anchored root
+        // always due; a load clears it; note returns the last verdict.
+        {
+            auto probes = std::make_unique<nz::AnchorProbes>();
+            const std::uint32_t r = 0x4000;
+            const bool first = probes->due(r, 10, 0.);
+            const auto none = probes->note(r, 10, 0., nz::AnchorProbes::none);
+            const bool after = !probes->due(r, 11, 16.7);
+            probes->note(r, 11, 16.7, nz::AnchorProbes::anchored);
+            const auto again = probes->note(r, 11, 16.7, nz::AnchorProbes::anchored);
+            // An anchored hull skipped one frame (drawn at 10, not at 11: no anchor record, so ShipRoots lapses after
+            // frame 12): the gather's next probe at frame 13 is due at once; a glow verdict waits for retry_ms.
+            auto ships = std::make_unique<nz::ShipRoots>();
+            auto table = std::make_unique<nz::AnchorProbes>();
+            const std::uint32_t hull = 0x5000, glow_root = 0x6000;
+            ships->mark(hull, 10);
+            ships->mark(glow_root, 10);
+            table->note(hull, 10, 200., nz::AnchorProbes::anchored);
+            table->note(glow_root, 10, 200., nz::AnchorProbes::glow);
+            unsigned rewalk = 0, glow_rewalk = 0;
+            for (unsigned f = 11; f < 40; ++f) {
+                const double clock = 200. + 20. * (f - 10);
+                if (!rewalk && !ships->recent(hull, f) && table->due(hull, f, clock)) rewalk = f;
+                if (!glow_rewalk && !ships->recent(glow_root, f) && table->due(glow_root, f, clock)) glow_rewalk = f;
+            }
+            const auto frames_to_retry = [&](double step_ms) {
+                auto t = std::make_unique<nz::AnchorProbes>();
+                t->note(r, 0, 0., nz::AnchorProbes::none);
+                double clock = 0.;
+                for (unsigned f = 1; f < 10000; ++f) {
+                    clock += step_ms;
+                    if (t->due(r, f, clock)) return f;
+                }
+                return 0u;
+            };
+            const unsigned seta1 = frames_to_retry(20.), seta10 = frames_to_retry(10. * 20.), stalled = frames_to_retry(0.);
+            probes->clear();
+            const bool cleared = probes->due(r, 12, 33.);
+            check(first && none == nz::AnchorProbes::none && after && again == nz::AnchorProbes::anchored && seta1 == 100 &&
+                      seta10 == 10 && stalled == nz::AnchorProbes::retry_frames && cleared && rewalk == 13 && !glow_rewalk,
+                  "the probe table; an anchored hull skipped one frame is re-walked at once");
+            // The probe's cost per non-recent routed draw (300 draws over 60 roots, half of them present).
+            for (unsigned i = 0; i < 30; ++i) probes->note(0x10000 + i * 0x270, 1, 0., nz::AnchorProbes::none);
+            volatile unsigned long long hits = 0;
+            double best = 1e30;
+            for (unsigned round = 0; round < 200; ++round) {
+                const double t0 = now_us();
+                unsigned h = 0;
+                for (unsigned d = 0; d < 300; ++d) h += probes->due(0x10000 + (d % 60) * 0x270, 2, 10.);
+                const double dt = now_us() - t0;
+                hits = hits + h;
+                best = dt < best ? dt : best;
+            }
+            std::printf(",\"probe\":{\"first_due\":%u,\"after_walk_due\":%u,\"previous\":%u,\"frames_to_retry_seta1\":%u,"
+                        "\"frames_to_retry_seta10\":%u,\"frames_to_retry_stalled\":%u,\"cleared_due\":%u,\"ns_per_draw\":%.1f,"
+                        "\"anchored_rewalk_frame\":%u,\"glow_rewalk_frame\":%u}}",
+                        unsigned(first), unsigned(!after), unsigned(again), seta1, seta10, stalled, unsigned(cleared),
+                        best * 1000. / 300, rewalk, glow_rewalk);
+        }
+        std::printf(",");
+    }
     // ---- cost: 256 roots of 108 children (the installed maximum), 4 of them main jets (the capitals' share), through a
     // reader the compiler cannot inline (an opaque pointer) with the results sunk: contiguous nodes (each ship's parts
     // one after another, the prefetcher's case) and scattered nodes (a random permutation of the same blocks: every
@@ -364,7 +688,20 @@ int main() {
         constexpr unsigned ships = 256, parts = 108;
         volatile nz::Reader opaque_reader = &Image::read;
         volatile unsigned long long sink = 0;
-        const auto measure = [&](bool scattered, double* per_root, double* per_root_mean, double* warm) {
+        // Step 1's walks over the same image: the rule on (one predicate per shown jet; no hidden jet here, so no C read)
+        // and the anchors-only walk of a probe-admitted root.
+        struct CostPredicates {
+            static bool emitter(void*, std::uint32_t model) { return model == 30000; }
+            static bool steering(void*, std::uint32_t model) { return model == ee::steering_model; }
+        };
+        nz::Options rule_on;
+        rule_on.anchors = true;
+        rule_on.is_emitter = &CostPredicates::emitter;
+        rule_on.is_steering = &CostPredicates::steering;
+        nz::Options probe_walk = rule_on;
+        probe_walk.jets = false;
+        const auto measure = [&](bool scattered, double* per_root, double* per_root_mean, double* warm,
+                                 const nz::Options* opt = nullptr, unsigned jets_per_root = 4) {
             const unsigned blocks = ships * (parts + 2);
             Image im(std::size_t(blocks) * nz::node_bytes + (1 << 16));
             std::vector<std::uint32_t> slots(blocks);
@@ -414,9 +751,11 @@ int main() {
                 const double t0 = now_us();
                 for (std::uint32_t root : roots) {
                     nz::WalkStats st;
-                    nz::walk(root, 9, opaque_reader, &im, &st, [&](const fj::Raw& raw) {
-                        emitted += seen->insert(raw.handle, raw.view_handle);
-                    });
+                    const auto emit = [&](const fj::Raw& raw) { emitted += seen->insert(raw.handle, raw.view_handle); };
+                    if (opt)
+                        nz::walk(root, 9, opaque_reader, &im, &st, *opt, emit, [&](const fj::Raw&) { ++emitted; });
+                    else
+                        nz::walk(root, 9, opaque_reader, &im, &st, emit);
                     children += st.children;
                 }
                 const double dt = now_us() - t0;
@@ -424,7 +763,8 @@ int main() {
                 best = dt < best ? dt : best;
             }
             sink = sink + emitted + children;
-            check(emitted == rounds * ships * 4ull && children == rounds * ships * parts, "the cost run walked every part once per round");
+            check(emitted == rounds * ships * std::uint64_t(jets_per_root) && children == rounds * ships * parts,
+                  "the cost run walked every part once per round");
             *per_root = best / ships;
             *per_root_mean = total / rounds / ships;
             double warm_best = 1e30;
@@ -445,6 +785,9 @@ int main() {
         double contiguous = 0, contiguous_mean = 0, contiguous_warm = 0, scattered = 0, scattered_mean = 0, scattered_warm = 0;
         measure(false, &contiguous, &contiguous_mean, &contiguous_warm);
         measure(true, &scattered, &scattered_mean, &scattered_warm);
+        double rule_scattered = 0, rule_mean = 0, rule_warm = 0, probe_scattered = 0, probe_mean = 0, probe_warm = 0;
+        measure(true, &rule_scattered, &rule_mean, &rule_warm, &rule_on, 4);
+        measure(true, &probe_scattered, &probe_mean, &probe_warm, &probe_walk, 0);
         // The root set's probe: 250 routed draws of 5 ships per frame (every draw a hit after its ship's first).
         auto set = std::make_unique<nz::RootSet>();
         double probe_best = 1e30;
@@ -460,9 +803,11 @@ int main() {
         std::printf("\"cost\":{\"roots\":%u,\"children\":%u,\"jets_per_root\":%u,\"us_per_root\":%.3f,\"us_per_root_mean\":%.3f,"
                     "\"ns_per_child\":%.1f,\"us_per_root_warm\":%.3f,\"us_per_root_contiguous\":%.3f,\"us_per_root_contiguous_mean\":%.3f,"
                     "\"us_per_root_contiguous_warm\":%.3f,\"us_per_frame_2_ships\":%.3f,\"us_per_frame_5_ships\":%.3f,"
-                    "\"us_per_frame_256_ships\":%.1f,\"probe_ns_per_draw\":%.1f,\"rounds\":40},",
+                    "\"us_per_frame_256_ships\":%.1f,\"probe_ns_per_draw\":%.1f,\"rounds\":40,\"us_per_root_rule_on\":%.3f,"
+                    "\"us_per_root_rule_on_mean\":%.3f,\"us_per_root_probe_walk\":%.3f,\"us_per_root_probe_walk_mean\":%.3f},",
                     ships, parts, 4u, scattered, scattered_mean, scattered * 1000. / parts, scattered_warm, contiguous, contiguous_mean,
-                    contiguous_warm, 2 * scattered, 5 * scattered, scattered * ships, probe_best * 1000. / 250);
+                    contiguous_warm, 2 * scattered, 5 * scattered, scattered * ships, probe_best * 1000. / 250, rule_scattered,
+                    rule_mean, probe_scattered, probe_mean);
     }
     std::printf("\"checks\":%u,\"failures\":%u}\n", checks, failures);
     return failures ? 1 : 0;
