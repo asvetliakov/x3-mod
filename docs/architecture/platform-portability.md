@@ -1112,6 +1112,29 @@ GetMessageA/PeekMessageA gate unfocused; register, stack, DF and LastError parit
 late claim). Not verified: in game (not flown); native Windows game behaviour; alt-tab and the double cursor with the
 pause key only.
 
+## 2026-11-03: SETA restore and manual flight on FL (`seta_restore`, `seta_manual_flight` on FL)
+
+The FL edition (`src/engine/fl/seta_restore_fl.cpp`, `seta_manual_flight_fl.cpp`;
+[fl/seta.md](../reverse-engineering/fl/seta.md), "Port (2026-11-03)") claims X3FL.exe sites at module base + RVA on the
+backend-load path, right after the chase family (`loader.cpp`), so the chase transition plans and claims first. Each feature installs all or none, with read-back and rollback, behind the X3FL.exe identity and its
+compared windows (22 and 20, relocated dwords checked against the base). The restore claims the record-only factor hook
+`0x0ce09e`. Its jump crosses a qword, so it is a plain write inside the install window, read back. It also attaches to
+the chase restore's shared injection and VM/EH cancel sites (the FL consumer is admitted through `fl_admit()`, ECX =
+controlled object, selector 32). It requires the FL destination-Ready provider (`fog_prefill_fl`) to be admitted.
+Manual flight rewrites eight two-byte stop Jcc: seven with `lock cmpxchg8b`, the qword-straddling pitch row plain, each
+checked against its predicted write path. At mode 2 it claims five SSE spans (strafe Y plain). The stubs are asm in the
+pinned DLL (`GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN)`): EFLAGS, GPRs, XMM0-7, the x87 image (FNSAVE/FRSTOR)
+and MXCSR are saved around one cdecl C side, which saves LastError (documented `GetLastError`/`SetLastError`). The
+apply path replays the native SSE span on the restored registers before POPFD, so no GPR or flag changes. Engine reads
+go through `engine_memory` (documented `VirtualQuery`/`ReadProcessMemory`) or, inside the input routine, are the same
+plain loads the native span makes. Documented Win32 only, no Wine/CrossOver dependency. Natively verified on the
+Windows host through WSL interop (measured 2026-11-03): manual flight 1,414 checks and restore 213 checks, 0 failures.
+Both run on X3FL.exe mapped and relocated into a private image; the restore reads the real FL story through a VM image.
+Coverage: the real spans and stop rows against reference copies and an independent scale reference at every ESP skew,
+one flipped byte and one foreign fixup per window refused before any write, read-back and attach rollbacks, the gate
+ticket and key latch through stand-ins of the wrapper and the Ready provider, and the late window. Not verified: in
+game (not flown); native Windows game behaviour; the 60 s ticket expiry.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

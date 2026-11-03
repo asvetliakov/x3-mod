@@ -628,10 +628,18 @@ __attribute__((noinline)) void consumer_inject(std::uint32_t* regs, x3m::CpuStat
     const InjectConsumer* consumer = inject_consumer.load(std::memory_order_acquire);
     if (!consumer) return;
     std::uint32_t controlled = 0;
+#if X3M_EDITION_FL
+    // FL input worker: ECX = the controlled object (as restore_inject); the engine's named dispatchers take selector 32
+    // as "no completion callback" (detail::restore_callback_none; 0 would index callback slot 0).
+    controlled = regs[6];
+    constexpr std::uint32_t callback = detail::restore_callback_none;
+#else
     if (!field(regs[3] + 4, 4, controlled)) controlled = 0;
+    constexpr std::uint32_t callback = 0;
+#endif
     InjectCall call;
     if (!consumer->poll(controlled, call) || !call.target || !call.name) return;
-    const detail::RestoreEngineCall engine{0, 0, call.key, call.name, call.return_kind, call.argc, call.value};
+    const detail::RestoreEngineCall engine{callback, 0, call.key, call.name, call.return_kind, call.argc, call.value};
     consumer->result(script_call(call.target, engine, cpu));
 }
 __attribute__((noinline)) void inject_handle(std::uint32_t* regs, x3m::CpuState& cpu) {
@@ -1226,16 +1234,26 @@ bool initialize() {
 }
 #endif
 bool inject_attach(const InjectConsumer* consumer, const char** status) noexcept {
-#if X3M_EDITION_FL
-    // FL: no second consumer (the SETA restore's poll, call target and [ESP+4] controlled-object read are AP-bound).
-    (void)consumer;
-    *status = "ap_only";
-    return false;
-#endif
     const DWORD error = GetLastError();
     const char* reason = "invalid_consumer";
+#if X3M_EDITION_FL
+    // FL (the SETA restore, src/engine/fl/seta_restore_fl.cpp): the consumer's edition is admitted before it attaches.
+    // The four sites are bound to the loaded base by fl_admit() (every identity window of chase_transition_sites_fl.h
+    // checked first), here when the chase restore has not admitted it (camera off or not yet initialized); the call
+    // target and selector are the consumer's (consumer_inject), the controlled object ECX.
+    if (!fl_base && consumer) {
+        const std::uintptr_t base = fl_module_base();
+        if (!base)
+            reason = "executable_mismatch";
+        else if (const char* refusal = fl_admit(base))
+            reason = refusal;
+    }
+    bool ok = consumer && consumer->poll && consumer->result && consumer->vm && consumer->unwind && fl_base &&
+              !inject_consumer.load(std::memory_order_acquire) && inject_acquire(&reason);
+#else
     bool ok = consumer && consumer->poll && consumer->result && consumer->vm && consumer->unwind &&
               !inject_consumer.load(std::memory_order_acquire) && inject_acquire(&reason);
+#endif
     if (ok) inject_consumer.store(consumer, std::memory_order_release);
     *status = reason;
     SetLastError(error);

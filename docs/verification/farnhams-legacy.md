@@ -2581,3 +2581,36 @@ after a story load, `music_queue_kc … action=applied … window=0x19d97 … ed
 naming the method would mean the live object differs from it: the queue off, the keep on). Not verified: in game (not flown): music continuing
 through alt-tab, pause, save and dock; the queue across sector changes; combat music only on engagement and its hold;
 the double cursor after alt-tab. Native Windows game behaviour not verified.
+
+## seta_restore and seta_manual_flight on FL (host evidence, 2026-11-03)
+
+`seta_restore` (turns SETA back on after an autopilot gate transit) and `seta_manual_flight` (manual steering keeps
+SETA; turn and strafe rates at their real-time values under SETA) now have FL bodies:
+`src/engine/fl/seta_restore_fl.cpp` + `seta_restore_sites_fl.h`, `seta_manual_flight_fl.cpp` +
+`seta_manual_flight_sites_fl.h`, with the shared window form in `seta_windows_fl.h`. They use the AP state machine,
+story detector, latch and per-axis decision unchanged. `chase_transition.cpp` admits the shared injection consumer on
+FL (ECX, selector 32). Before this, FL compiled both initializers out and logged no row. `loader.cpp` initializes
+both right after the chase family: the review found that an attach before `chase_transition::initialize()` claims the
+shared injection entry and makes the chase transition's own window plan refuse (`window_mismatch`, window 12; witness
+`chase_order_probe.cpp`), so the chase transition, the view restore and the lead marker's lifetime binding were lost on
+every FL launch with the defaults. An out-of-order call while the chase camera is wanted but not yet initialized is now
+refused before any write (`chase_pending`). Facts:
+[fl/seta.md](../reverse-engineering/fl/seta.md), "Port (2026-11-03)". Producers: `verification/results/fl-seta/`
+(`reproduce.sh`, `run_fixtures.py` → `results.json`, `ap_objects_identical.py`).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_seta_restore_sites_fl.py`; `python3 verification/probe/verify_seta_manual_flight_sites_fl.py` | both PASS on `e7f3aad8…`. Restore: 8/8 check groups. Hook `0x0ce09e` = `mov ecx,[eax+1]` (3) + `mov eax,[0x1a83b0]` (5), one fixup at +4, plain write. TI name slot 9 = `TI_SetTimeWarpFactor`, table entry 9 → `0x0ce097`. Injection callers `0x0787c8`/`0x0787dc`. 64 anchors, 22 windows equal to the header. Manual flight: 7/7 groups. Nine rows, only `0x0d218f` straddling; five SSE spans 4+5+3+4 / 4+3+4+4; controller callers `0x0d1e90`/`0x0d1e9b`/`0x0d1ea6`; three pinned false encodings; constants 2^-16, 0.001, 20000.0; 28 anchors; 20 windows equal to the header. AP addresses refused in both |
+| Native fixtures | `python3 verification/results/fl-seta/run_fixtures.py` (`verification/probe/fl_seta_manual_flight.cpp`, `fl_seta_restore.cpp`; MinGW i686, `-mstackrealign -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`, WSL interop) | manual flight `RESULT PASS checks=1414 failures=0`, restore `RESULT PASS checks=213 failures=0`. Manual flight: `FLIPS windows=20 flips=37 refused=37`; rollbacks on 4 row and 5 claim read-back faults; install `stop_write=atomic:7,plain:1`, strafe Y plain; part A routes on the real rows; `CONTRACT original_runs=104 apply_runs=160` (warp off, rate below 1, mouse delta, k = 4/10/1.5/1000, contract skips); late claim; shutdown restores every byte. Restore: `FLIPS windows=22 flips=36 refused=36`; `ready_provider_refused`; chase-window refusal rolls the hook back; hook read-back fault rolled back; factor hook CPU state equal to the live span at four skews; FL story stop `0x18d39` / gate `0x199d6`; Ready defer (one walk per presented frame), other-sector Ready not due, two frames, remote view waits, selector-32 `StartFastForward` → `restored` (no factor write), AL 0 → `restore_failed`; cancels `factor_write`, `vm_clear`, `vm_load`, `epoch`, `ship_change`, `call_unwound`; `rebind_pending` → `rebound` → restored; latch held 3 + tail 8 = 11 selector-32 `StopFastForward` calls with one nested fire, ramp guard, `new_press`, `vm`, escaped dispatch `call_unwound`, `call_unresolved`; late claim |
+| Init order | `python3 verification/results/fl-seta/run_fixtures.py` (fixture modes `chase_only`, `chase_first`, `seta_first`) | 3/9/11 checks, 0 failures. The chase plan admits before the chase install in all three. The chase family's 14 install rows (addresses masked; `chase_transition installed=1 status=active`, `chase_view_restore installed=1 requested=1 status=ok`) are identical alone, with SETA attaching after it (`inject=ok`, both consumers on the shared sites, one entry through them) and after an out-of-order SETA call refused with `chase_pending` (hook and entry untouched) then attached |
+| AP unchanged | `python3 -I verification/results/fl-seta/ap_objects_identical.py --base main` | `capture.cpp` (40,696 lines), `loader.cpp` (2,825) and `chase_transition.cpp` (10,460) disassembly identical to main (`0c05f2ac4`, the music family merged); the nine AP SETA sources identical |
+| Music disjointness | `python3 verification/results/fl-seta/overlap_check.py` | 49 SETA windows/claims against 79 music windows, alert-routine range and RVA points: 0 conflicts; two shared read-only windows (the VM loader's `+0x143c` and CODE stores at `0x0b90af`/`0x0b9122`, compared by both, written by neither); the player-ship window `[0x059d58,0x059d67)` lies outside the alert routine `[0x02f910,0x02fbe7)` |
+| FL build | `cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4` (worktree) | 0 warnings, 0 errors |
+| Host tests | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest verification/analysis/test_fl_seta_restore.py verification/analysis/test_fl_seta_manual_flight.py verification/analysis/test_seta_restore.py verification/analysis/test_seta_manual_flight.py verification/analysis/test_engine_effects.py verification/analysis/test_fl_chase_transition.py verification/analysis/test_fl_chase_lead.py verification/analysis/test_fl_chase_camera.py`; `python3 tools/config/generate.py --check` | 71 tests OK, 1 skipped (the loader-order wiring test pins the chase block's lines; `test_engine_effects`' capture.cpp pin bumped) (the AP manual-flight template test now expects the three-line comment that the editions sentence makes); `PASS 293 settings, 138 in the template` |
+
+Expected rows on an FL launch (not verified in game): `seta_restore installed=1 edition=fl … hook_rva=0x0ce09e
+write=plain … inject=ok … call_rva=0x0bb500 selector=32 key=0x96 method=StartFastForward ready=ready`, then
+`seta_manual_flight installed=1 mode=2 edition=fl … stop_write=atomic:7,plain:1 stop_plain_rva=0x0d218f yaw=active:atomic
+pitch=active:atomic roll=active:atomic strafe_y=active:plain strafe_x=active:atomic …` and `seta_manual_flight key_latch
+installed=1 reason=ok edition=fl`. Not verified: in game (not flown), native Windows game behaviour, the 60 s ticket
+expiry, and the engine's own interpreter behind the wrapper (the fixtures use stand-ins).

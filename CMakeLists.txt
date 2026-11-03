@@ -145,6 +145,9 @@ set(X3M_SHARED_SOURCES
 # (docs/reverse-engineering/fl/text-density.md, "Verified 2026-11-03"); text_density.cpp is AP only.
 # The dust leak fix too: the fl target links src/engine/fl/dust_leak_fix_fl.cpp
 # (docs/reverse-engineering/fl/dust-light.md, "Port (2026-11-03)"); dust_leak_fix.cpp is AP only.
+# The SETA restore and manual flight too: the fl target links src/engine/fl/seta_restore_fl.cpp and
+# seta_manual_flight_fl.cpp (docs/reverse-engineering/fl/seta.md, "Port (2026-11-03)"); seta_restore.cpp and
+# seta_manual_flight.cpp are AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
@@ -223,6 +226,10 @@ else()
   # providers of the same names under src/proxy.
   target_sources(d3d9 PRIVATE src/engine/fl/media_cue_fl.cpp src/engine/fl/music_keep_fl.cpp
     src/engine/fl/music_alert_fl.cpp)
+  # The SETA restore (record-only factor hook, the shared injection consumer) and manual flight (the eight stop rows, the
+  # five SSE spans), the AP policy on FL bindings (docs/reverse-engineering/fl/seta.md, "Port (2026-11-03)"); they
+  # provide seta_restore.h and seta_manual_flight.h in place of the two AP modules of the same names.
+  target_sources(d3d9 PRIVATE src/engine/fl/seta_restore_fl.cpp src/engine/fl/seta_manual_flight_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -317,6 +324,11 @@ set_source_files_properties(src/engine/fl/pause_key_only_fl.cpp src/engine/fl/ru
 # integer stubs' envelopes and the gate's PUSHFD/XMM envelope, same rule as their AP twins.
 set_source_files_properties(src/engine/fl/media_cue_fl.cpp src/engine/fl/music_keep_fl.cpp
   src/engine/fl/music_alert_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL SETA restore and manual flight (src/engine/fl/seta_restore_fl.cpp, seta_manual_flight_fl.cpp): their handlers run
+# inside file-scope asm stubs (PUSHFD, GPRs, XMM0-7, FNSAVE, MXCSR; LastError in the C side): default SSE2 flags, no
+# exception bookends inside the CPU-state boundary.
+set_source_files_properties(src/engine/fl/seta_restore_fl.cpp src/engine/fl/seta_manual_flight_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

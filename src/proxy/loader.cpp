@@ -109,6 +109,16 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::chase_fire::initialize();
         x3m::log("chase_aim_trace installed=0 status=ap_only edition=fl reason=diagnostic_not_ported");
     }
+    // FL SETA restore and manual flight (docs/reverse-engineering/fl/seta.md, "Port (2026-11-03)";
+    // src/engine/fl/seta_restore_fl.cpp, seta_manual_flight_fl.cpp): X3M_SETA_RESTORE / X3M_SETA_MANUAL_FLIGHT as on AP.
+    // After the chase family, so the chase transition admits its windows and claims the shared injection entry
+    // base+0x0cfd00 (with its three VM/EH cancel sites) first when it restores the view; the SETA consumer attaches to
+    // the live sites, or claims them when the chase restore did not. The record-only TI_SetTimeWarpFactor hook
+    // base+0x0ce09e, then the eight stop rows base+0x0d2186..0x0d21ce and, at 2, the five SSE spans
+    // base+0x0ce878/0x0ceb88/0x0ced98/0x0d1f04/0x0d1f8b; restore first (the key latch needs it armed); same install
+    // window, disjoint from every other FL claim; one row each with edition=fl.
+    x3m::seta_restore::initialize();
+    x3m::seta_manual_flight::initialize();
     // X3M_UI_SCALE=auto|1..3 (src/engine/fl/ui_scale_fl.cpp; docs/reverse-engineering/fl/ui-scale.md, "Verified
     // 2026-11-03"): the setting, the X3FL.exe identity and every identity window checked here, inside the install
     // window; the eleven claims (all or none) follow at CreateDevice, where `auto` takes the back-buffer height. One
