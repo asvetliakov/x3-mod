@@ -2497,7 +2497,13 @@ the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `6551d9bc…` (55,9
 `rollback-d3d9\d3d9.dll.run35` = `154c8669…`; overlay and ini unchanged (both keys default on). Record
 `verification/results/fl-run36/candidate.json`.
 
-**FL run 36 A (open):** an ordinary flight; open the sector map and zoom so the scanner disc is large (radius above about
+**FL run 36 A (flown 2026-11-03, accepted):** user: "seems fine". Log `/home/asvetl/x3m-logs/fl-run36-fixes.log`
+(1.1 GB, 103,297 frames, measured): `dust_leak_fix site=00740ac4 rva=020ac4 edition=fl status=patched reason=ok mode=on
+write=plain` and `circle_fill site=0082c940 rva=10c940 edition=fl status=patched reason=ok mode=on write=atomic
+threshold=813`; 344 `dust_leak_fix hits=0 total=0` window rows: no sector visited named a missing dust model, so the
+release path was not exercised in flight (the fixture covers it). No crash, no visual report. Both ports stay on.
+
+Original brief: an ordinary flight; open the sector map and zoom so the scanner disc is large (radius above about
 800 texels on screen), and visit a sector whose background names missing dust models if one is known. Expect
 `dust_leak_fix site=… edition=fl status=patched reason=ok` and `circle_fill site=… rva=10c940 edition=fl status=patched`
 at start, `dust_leak_fix_window` rows every 300 frames with a hit count that stops rising, and no visual change anywhere
