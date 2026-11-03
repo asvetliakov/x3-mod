@@ -457,14 +457,14 @@ SETTINGS = [
           'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
           choices=('on', 'off'), launcher='--circle-fill-fix', since='2026-10-27'),
     entry('ship_steering', 'bool', 'engine', 'Smoother steering for computer-flown ships: turns follow one curve instead of '
-          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off.', '1',
+          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
           builtin='1', launcher='--ship-steering', since='2026-10-12'),
     entry('ship_steering_classes', 'string', 'engine', 'Ship classes the smoother steering leaves to the game, as a comma list '
-          'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class.',
+          'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class. X3: Albion Prelude and X3: Farnham\'s Legacy.',
           builtin='', requires=('ship_steering',), launcher='--ship-steering-classes', since='2026-10-12'),
     entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
           'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). '
-          '1 = on (default), 0 = off.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
+          '1 = on (default), 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
     entry('ship_trace', 'bool', 'logging', 'Diagnostic: follows a few computer-flown ships through a gate or dock approach and '
           'writes one ship_trace log row per frame for each (positions, heading, rates, speeds, the steering point given and '
           'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off.', builtin='0',
@@ -474,28 +474,28 @@ SETTINGS = [
     entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
           'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '
-          '1 = on, 0 = off.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
+          '1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
     entry('ship_steering_gates_capital', 'bool', 'engine', 'Capital ships (M1, M2, TL and the like) fly the gate approach the same '
           'way: they line up with the gate axis on the way to their waiting point and, when they arrive facing the gate, keep '
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
-          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off.', '1', builtin='1',
+          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
     entry('ship_steering_gates_traffic', 'bool', 'engine', 'Capital ships at the same gate are coordinated by one traffic controller per '
           'gate: it predicts every capital\'s path for the next 30 seconds, lets the game skip its own collision warning between two of '
           'them only while their hulls provably stay apart, slows the lower-priority ship when they would not, and places capital '
           'ships arriving through the gate above the middle so they do not appear in the departure lane (needs '
-          'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off.', builtin='1',
+          'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('ship_steering_gates_lane', 'bool', 'engine', 'Capital ships bound for the same gate fly one departure lane, one behind the '
           'other at hull spacing, instead of each approaching the gate on its own: a ship that would reach the lane level with another '
           'eases off (or stops briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before '
           'the gate so the next one does not wait for the previous jump (needs ship_steering_gates_traffic). 1 = the departure lane '
-          '(default), 0 = stage A certificate only.', '1', builtin='1', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
+          '(default), 0 = stage A certificate only. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
     entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
           'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '
           'waiting near a station for a free dock also steer around its parts (needs ship_avoidance; 0 = docking ships behave as '
-          'before). 1 = on, 0 = off.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
+          'before). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
     entry('seta_restore', 'bool', 'engine', 'Turns SETA back on after your ship passes a gate when SETA was running as you '
           'entered it (the game switches it off at every gate). Using the SETA key yourself, changing ships or loading '
           'a game before you arrive cancels it. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',

@@ -2234,11 +2234,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // --perf/--debug: the dust-leak fix's detour count every 300 frames (one module word read; nothing per frame). Both
     // editions (FL: src/engine/fl/dust_leak_fix_fl.cpp, the row carries edition=fl).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
-#if !X3M_EDITION_FL
     // Ship steering (X3M_SHIP_STEERING=1 only; one flag read otherwise): the stuck witnesses at the always tier, the
-    // 1 Hz summary under --perf/--debug and the sampled decision under --debug, drained from the handlers' counters.
+    // 1 Hz summary under --perf/--debug and the sampled decision under --debug, drained from the handlers' counters. Both
+    // editions (FL: src/engine/fl/ship_steering_fl.cpp, the base group; its rows carry edition=fl).
     ship_steering::frame_boundary(ctx.frame);
-#endif
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame;
     ctx.draws = 0;
@@ -5921,6 +5920,12 @@ void initialize_log(HMODULE module) {
     if (const auto observer = media_cue::video_lock_observer()) ownership::set_surface_lock_observer(observer);
     music_keep::initialize(); // with its music_keep_save_pump_hook row (the FL import slots are bound in here)
     music_alert::initialize();
+    // FL base ship steering and avoidance (docs/reverse-engineering/fl/ship-steering.md, ship-avoidance.md, "Port (2026-11-03)";
+    // src/engine/fl/ship_steering_fl.cpp, ship_avoidance_fl.cpp): X3M_SHIP_STEERING (+ _CLASSES) and X3M_SHIP_AVOIDANCE as on AP.
+    // The three steering-leaf entries base+0x056450/0x055cd0/0x056090 and the object-loop continue base+0x062c72 (all four or
+    // none), then the warn test base+0x057600 (E, alone); same window, disjoint from every other FL claim; the gate, capital,
+    // traffic, lane and dock groups log one ap_only row each.
+    ship_steering::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

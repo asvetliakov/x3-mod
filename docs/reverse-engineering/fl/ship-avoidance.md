@@ -376,3 +376,46 @@ new helper reentrancy or exception-safe call capabilities. A raw memory fault
 or foreign unwind across the naked hook is not a normal fallback. Existing
 guarding and refusal behavior remains required; this static study adds no
 runtime/native-Windows, threading, unwind or flight qualification.
+
+## Port (2026-11-03)
+
+`ship_avoidance` now runs on FL: `src/engine/fl/ship_avoidance_fl.cpp` with `ship_avoidance_sites_fl.h`, entered from the
+FL steering (see [ship-steering.md](ship-steering.md), "Port (2026-11-03)"). The snapshot is `wk::fill_snapshot`, the
+target adjustment `av::resolve`, E's verdict `av::site_e_verdict` (all shared); the FL glue is the AP `snapshot_for`,
+`avoid_adjust` and `e_verdict` with the gate, traffic, lane and dock rows off (their groups are not ported; their state
+is never set on FL). The walk core reads the TShips slot through its reader's `ship_table()` when the reader has one
+(`ship_table_of`, `ship_avoidance_walk_core.h`); every AP reader keeps `kShipTypeTableSlot`, AP objects measured
+identical. Docking inputs (section 6) are out of scope.
+
+Install, after the steering's four claims: 6 part-2 windows (the collision reset and pair masks, the bucket helper, the
+subtree-radius getter, the integrator's velocity) or the avoidance stays off (`ship_avoidance_refused
+reason=window_mismatch`); then 10 part-3 windows (E's entry, class tests and radii, its five `ret 0xc`, the proximity and
+avoid-order call sites) and E's claim at `base+0x057600` (six bytes, read back, `lock cmpxchg8b`), or E stays unclaimed
+and the target adjustment runs with the native warn untouched. The E stub pushes B (`[entry esp+4]`) and A (saved ECX),
+answers a suppressed pair with EAX = 0 and `ret 0xc`, and leaves every other register and the flags as they entered.
+
+Section 4's lifetime limits are handled as the deliberate FL differences of the steering port: a recycled A is not
+answered from the previous object's decision, and each resolved B carries its native id from the resolve (`+0x08`, read
+while the snapshot's objects are live); a B whose id changed is not suppressed. The station part cache key is unchanged
+(pointer, root-radius bits, pose stamp): a tree replaced behind the same pointer, radius and pose keeps the cached model
+(measured: `STATION_REPLACED rebuilt=0`), the inherited AP behaviour.
+
+Verified (host, measured 2026-11-03): `verify_ship_avoidance_sites_fl.py` PASS; the native fixture
+`verification/probe/fl_ship_avoidance.cpp` runs the engine-model harness's avoidance unit cases (the head-on asteroid with
+and without the clearing slip, the station fallback, the M5 head-on ship at 45–400 m, the capital/small-ship row) and an
+asteroid sweep over lateral offset and slip, 46 cases, against the shared cores: snapshot, detour point and E verdict
+46/46 equal; 19 resolved-row suppressions (1 table case, 18 sweep cases), each with the detour path keeping the hulls
+apart (19/19); the walk check's station tree
+gives the native getter's radius (125,000 units both); E through the three real callers' bytes 3/3; E CPU state 16/16;
+16/16 window flips refused (6 turn the avoidance off, 10 E alone); recycled A and B; the E window under SETA steps 9/9.
+Not verified: in game (not flown), native Windows game behaviour, station populations, runtime ordering and threading,
+abnormal unwind across the stubs.
+
+The "skipped only while the detour path keeps the hulls apart" property holds for the resolved row only. The small-ship
+and formation-member rows of `site_e_verdict` (a capital A against a small or member B) skip the native warning with no
+detour-path proof, the inherited AP rule (the small ship or the member avoids the capital itself); the fixture compares
+their verdict with the core (the capital/small case: `suppress_small` through the FL TShips slot) but does not count them
+for the property. Known cap, shared with AP's site E: `av::fresh_window_ms` caps the step at 250 ms (`ship_avoidance_core.h`), so no
+window exceeds 1 s; at game-time frame steps above 1 s the E window, B clamp, port hold and leader lookahead are stale on the
+next frame (the engine's own speed and leaf law then stand). The shared core is unchanged
+(AP objects identical).

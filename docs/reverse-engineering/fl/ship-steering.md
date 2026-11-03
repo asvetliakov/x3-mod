@@ -246,3 +246,71 @@ and no FL time/FPS claim is made.
 Independent consequential review accepted this four-site contract as implementation
 input, including targeted instruction/getter verification. The expiry-write
 clarification above records the review finding; runtime qualification remains open.
+
+## Port (2026-11-03)
+
+`ship_steering` (+ `ship_steering_classes`) now runs on FL: `src/engine/fl/ship_steering_fl.cpp` with
+`ship_steering_sites_fl.h` and the state header `ship_steering_fl_internal.h`, linked in place of the AP
+`src/proxy/ship_steering_*.cpp` (AP only). The FL glue is the AP base path of `decide()` / `clamp_apply()` on the FL
+bindings; the decision `core::steer`, the clamp `core::clamp_for` / `clamp_units`, the servo `core::servo_tick`, the
+class parser and every policy constant are the shared `ship_steering_core.h`. The gate, capital, traffic, lane and
+dock groups are deliberately **not ported**: each logs one row `<group> installed=0 edition=fl status=ap_only
+reason=not_ported` at initialize (`ship_steering_gates`, `_gates_capital`, `_gates_traffic`, `_gates_lane`,
+`ship_steering_dock`), nothing read or claimed; their ini text says "X3: Albion Prelude only for now". `X3M_SHIP_TRACE`
+logs the same `ap_only` row when set.
+
+Bindings as established above: the four spans at base + RVA (A0 `0x056450`, A1 `0x055cd0`, A2 `0x056090`, 7 B; B
+`0x062c72`, 9 B), each claimed through `engine_patch::claim` inside the install window, read back and its write path
+checked (all four `lock cmpxchg8b`); obj in ECX and the target at the entry's stack argument (a detour redirects that
+argument to the module's ring, never EDX or the caller's buffer); the five getters called with obj in ECX; the TShips
+slot `base+0x1a83e4`; the clock `base+0x1a83b0` with game time `+0x708` and frame step `+0x704`. Before any write the
+install compares 24 identity windows (FNV-1a with the relocated dwords zeroed and their targets bound to the loaded
+base): the leaf entries and their remainder stores, the loop continue, the slew's read and write, the five getters, the
+two class predicates and tables, the order switch and its byte table, the command pass's clock read and the integrator's
+plant. All four or none: a failure rolls the claimed sites back in reverse. The FL loader has no unload path; `shutdown()`
+serves the fixture.
+
+Stub envelope (every stub, A/B/E): PUSHFD, EAX/ECX/EDX, XMM0–7 (`movdqu`), FNSAVE (the whole x87 image; the handler
+runs on a reset FPU), STMXCSR, CLD; the C handler under `LightCallBoundary` (LastError and MXCSR, MXCSR 0x1f80 inside)
+and `force_align_arg_pointer` at four-byte incoming alignment; then LDMXCSR, FRSTOR, XMM, GPRs, POPFD. B tests class 7 and
+the autopilot bit under its own PUSHFD/POPFD before the envelope. The built objects contain x87 only outside or inside
+that FNSAVE boundary (6 `fildll`, 6 `fstpl`, 4 `fadds`, in the row formatting and float returns; measured with objdump).
+
+**Deliberate FL differences** (measured by the native fixtures; AP is unchanged):
+
+1. **Game-time scaled bounds.** Site B's decision age, the order-5 port hold's gap and the leader's lookahead age use
+   `max(250 ms, 4 × frame step)` (step capped at 250 ms, `av::fresh_window_ms`), so a SETA frame step does not leave every
+   B call stale. AP keeps the fixed 250 ms. With steps ≤ 62 ms both are 250 ms.
+2. **Recycled pointer.** A table entry carries the native id `obj+0x08` of its object. When a decision finds another id
+   behind the same address, the ship's steering and avoidance state are reset (`recycled=` in the summary); B does not
+   clamp from a decision of another id, and E does not answer from it (`e_recycled_a`); a resolved B whose id changed
+   since the resolve is not suppressed (`e_resolved_id_mismatch`). AP has no such reset.
+
+Known cap, shared with AP's site E: `av::fresh_window_ms` caps the step at 250 ms (`ship_avoidance_core.h`), so no
+window exceeds 1 s; at game-time frame steps above 1 s every B clamp, port hold and leader lookahead is stale on the
+next frame (the engine's own speed and leaf law then stand), as AP's E window already is. The shared core is unchanged
+(AP objects identical).
+
+Bindings no window or verifier check covers, resting on the earlier RE above and on the X3FL.exe identity (timestamp and
+image size at load): the docked word `obj+0xf8`, the flight target `f+0x224`, port index `f+0x250` and arrival distance
+`f+0x260`, and the rotation rates `obj+0x24..+0x2c`. The windows pin the spans, the getters, the predicates, the order
+switch, the clock reads, the slew and the integrator plant; these other fields are plain loads of the AP layout.
+The max-speed getter's equipment branch (`0x4581c0`, `0x419fc0`; taken when `obj+0x40` lacks `0x40000000` and the
+flight override `+0x27c` is negative) runs in game but is not executed by the fixture: it reads equipment tables the
+mapped image leaves empty, so the fixture sets that flag. The verifier walks it statically (no x87, SIMD or indirect call).
+
+Verified (host, measured 2026-11-03): `verify_ship_steering_sites_fl.py` PASS; the native fixture
+`verification/probe/fl_ship_steering.cpp` replays the 7,093 `ship_trace` rows the engine-model harness emits
+(`ship_steering_host.cpp --emit-trace`) through the claimed stubs and the real FL getters against the shared core with the
+AP glue's input construction: 5,689/5,689 A calls equal (remainders and the 64-byte ship entry), 7,093/7,093 B calls equal
+(373 clamps), the class filter `TS` (3,961 rows excluded, all equal), 16 SETA cases, a recycled pointer, CPU state 32/32,
+24/24 window flips and 4/4 read-back faults refused without a write. Evidence:
+[farnhams-legacy.md](../../verification/farnhams-legacy.md), "ship_steering and ship_avoidance on FL (host evidence,
+2026-11-03)". Not verified: in game (not flown), native Windows game behaviour, the max-speed getter's equipment path
+(`0x4581c0`/`0x419fc0`, skipped in the fixture by flag `0x40000000`), dynamic call frequency and FPS cost.
+
+Per-call cost (inferred, not measured): the envelope adds PUSHFD/POPFD, three push/pop pairs, 16 unaligned XMM moves,
+FNSAVE + FRSTOR, STMXCSR/LDMXCSR and the LastError pair, about 300–450 cycles (≈0.1 µs at 3.5 GHz) per A, steered B or
+E call, dominated by FNSAVE/FRSTOR; B's filtered path (every non-ship or manual object) costs PUSHFD, two compares and
+POPFD, about 25 cycles. The handler's own work is the AP base path (five getter calls, the core, no allocation, no
+lock). At 200 AI ships with three leaf calls each that is roughly 60–90 µs per frame of envelope (inferred).
