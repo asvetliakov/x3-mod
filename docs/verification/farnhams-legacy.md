@@ -2923,8 +2923,33 @@ Opus-high reviews (section above). Clean `build-fl` from main `3bf585604`, 0 war
 measured). Installed `C:\X3FL\d3d9.dll` = `f259d644…` (58,278,775 B), rollback `rollback-d3d9\d3d9.dll.run40` =
 `0a81e9de…`; exe `e7f3aad8…`, overlay and ini unchanged. Record `verification/results/fl-run41/candidate.json`.
 
-**FL run 41 A (open):** fly a busy sector for a few minutes (station traffic, an asteroid field, a fight if one is on),
+**FL run 41 A (flown 2026-11-04, accepted):** user: "Run 41 done", nothing reported. Log
+`/home/asvetl/x3m-logs/fl-run41-collision.log` (385 MB, 36,078 frames, 231 s, `exception=0`, measured): `collide_memo
+requested=1 patched=1 edition=fl`, `collide_box_cull requested=1 patched=1 edition=fl write_p1=plain write_p2=atomic`,
+`collide_sat_sse2 patched=0 status=native_sse reason=engine_already_sse`. Over 121 memo windows: 585,578 queries,
+49,300 hits, 321 contacts, `verify_mismatches=0`, `stuck_busy=0`, `foreign_thread=0`, `reentered=0`. Over 120 census
+windows: 361.7 M P1 pairs, 353.7 M rejected by the box cull (97.8 %); `p2_cands=0` throughout, as on AP
+(`collide-box-cull.md`: P2 never entered in flight). The collision trio is live on FL.
+
+Original brief: fly a busy sector for a few minutes (station traffic, an asteroid field, a fight if one is on),
 under SETA as well, and dock once. Expect at start `collide_memo installed=1 … edition=fl`, `collide_box_cull installed=1 …
 edition=fl` and `collide_sat_sse2 … edition=fl status=native_sse`. Report ships or shots passing through hulls, stations
 or asteroids, a collision that does not register (no damage, no warning), docking that fails to connect, or a frame-rate
 change in a crowded sector either way; tell me before relaunching.
+
+## FL run 42 — loading quintet on FL (installed 2026-11-04)
+
+Merge `d95da1e02` (gz_buffer, crypt_cache, mesh_adjacency, resource reader with 17+1 pool sites, dat handles; two
+Opus-high reviews, section above). Clean `build-fl` from main `d95da1e02`, 0 warnings; host suite 351 modules 3,537
+tests 0 failing; the four site verifiers PASS on the installed exe at install time (8, 10, 9 and 19 checks, measured).
+Installed `C:\X3FL\d3d9.dll` = `143d94ec…` (59,059,164 B), rollback `rollback-d3d9\d3d9.dll.run41` = `f259d644…`; exe
+`e7f3aad8…` and overlay unchanged. Ini: `resource_read = verify` for this first flight so the log compares the mod's
+reader against the native path on real FL records (previous ini at `/home/asvetl/x3m-logs/fl-run41-x3m.ini`; the line
+goes back to the commented default `fast` after the flight). Record `verification/results/fl-run42/candidate.json`.
+
+**FL run 42 A (open):** time the launch to the main menu and one save load with a stopwatch, then play normally for a
+few minutes with at least one sector change and one dock. Expect at start `gz_buffer … edition=fl` installed,
+`crypt_cache … edition=fl`, `mesh_adjacency … edition=fl`, `resource_reader … edition=fl mode=verify`, `dat_handles …
+edition=fl`, and no `mismatch` or `rollback` rows. Report a load that hangs or crashes, missing or wrong models or
+textures, a save that fails to load, and the two stopwatch times (previous runs are the baseline); tell me before
+relaunching.

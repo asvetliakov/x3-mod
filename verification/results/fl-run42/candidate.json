@@ -1,0 +1,19 @@
+{
+ "run": 42,
+ "step": "loading quintet on FL: gz_buffer, crypt_cache, mesh_adjacency, resource_read, dat_handles; merge d95da1e02",
+ "edition": "fl",
+ "commit": "d95da1e02",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "143d94ecb72d0273",
+ "dll_bytes": 59059164,
+ "installed_sha256_prefix": "143d94ecb72d0273",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run41 (f259d644)",
+ "game_data": "unchanged",
+ "ini": "resource_read = verify for the first flight (was commented, default fast); previous ini saved as /home/asvetl/x3m-logs/fl-run41-x3m.ini",
+ "host_tests": "run_host_suite 351 modules 3,537 tests 0 failing at d95da1e02; on the installed exe at install time: verify_gz_buffer_sites_fl, verify_crypt_cache_sites_fl, verify_mesh_adjacency_sites_fl, verify_resource_reader_sites_fl all PASS (8, 10, 9, 19 checks); native fixtures per the loading quintet ledger section",
+ "build_warnings": 0,
+ "review": "Opus high twice (quintet, then resource reader and dat handles), merge",
+ "installed_at": "2026-11-04T00:46:46+04:00"
+}
