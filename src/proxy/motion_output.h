@@ -1807,8 +1807,9 @@ private:
     unsigned engine_far_context_next_ = 0;
     std::uint64_t engine_far_frame_ = ~std::uint64_t(0); // the frame whose buffer was appended
     struct EngineFarCounts {
-        unsigned records = 0, ring_full = 0, steering = 0, invalid = 0;
+        unsigned records = 0, ring_full = 0;
         unsigned duplicates = 0; // copies of a (node handle, view handle) pair already appended this frame
+        engine_effects::core::FarRefusals refused; // far_record's steering / invalid (scale 0 apart) verdicts
     } engine_far_{};
     bool engine_far_counted_ = false;            // this device is among the far block's requesting devices
     engine_far_jets::core::Seen engine_far_seen_; // the append's (node handle, view handle) dedupe, one generation a frame
@@ -1844,6 +1845,7 @@ private:
         // candidates that are not the emitter body, emitters failing a guard, anchors without a floor size, C reads.
         unsigned anchors = 0, anchor_roots = 0, probes = 0, probe_deferred = 0, anchor_glow = 0, anchor_not_emitter = 0;
         unsigned anchor_rejected = 0, anchor_no_floor = 0, mode_reads = 0;
+        engine_nozzle::core::ProbeSubtotals probe_walks; // this append's anchors-only walks of probe-admitted roots
         float walk_us = 0.f;
     } engine_node_{};
     // Hidden-emitter anchors (engine_nozzle_walk_core.h Options::anchors; docs/architecture/plumes-no-glow-hulls.md step
@@ -1866,6 +1868,7 @@ private:
         std::uint64_t start = 0;
         unsigned frames = 0, anchored_frames = 0, anchors = 0, ships_max = 0, probes = 0, probe_deferred = 0, glow = 0;
         unsigned not_emitter = 0, rejected = 0, no_floor = 0, mode_reads = 0, new_hulls = 0;
+        engine_nozzle::core::ProbeSubtotals probe_walks; // the probe walks' subtotals (FL run 34 diagnostics)
         float walk_us_max = 0.f;
     } engine_anchor_window_{};
     unsigned engine_anchor_hull_rows_ = 0, engine_anchor_hull_rows_dropped_ = 0;
@@ -1877,6 +1880,9 @@ private:
     };
     EngineAnchorHullRow engine_anchor_hull_pending_[engine_anchor_hull_row_cap]{};
     unsigned engine_anchor_hull_pending_count_ = 0;
+    // The newly probed roots' engine_plumes_probe_root rows (FL run 34 diagnostics): queued in the append's root loop,
+    // logged after it, at most probe_root_row_cap per report window (engine_nozzle_walk_core.h ProbeRootRows).
+    engine_nozzle::core::ProbeRootRows engine_probe_rows_;
     static bool engine_anchor_is_emitter(void* self, std::uint32_t model) noexcept;
     static bool engine_anchor_is_steering(void* self, std::uint32_t model) noexcept;
     void engine_anchor_resolve_body() noexcept;
@@ -1904,7 +1910,7 @@ private:
     void engine_node_window_row(bool walked, bool refused) noexcept;
 #endif
     void engine_node_gather(std::uintptr_t node, std::uint32_t parent, std::uintptr_t camera, std::uint32_t camera_handle,
-                            std::uintptr_t registry) noexcept;
+                            std::uintptr_t registry, std::uint32_t model = 0) noexcept;
     void engine_node_append() noexcept;
     float engine_node_context_scale(std::uint32_t camera) noexcept;
     static bool engine_node_read(void* context, std::uint32_t address, void* out, unsigned size) noexcept;

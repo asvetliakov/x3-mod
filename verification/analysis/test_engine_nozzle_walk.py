@@ -196,6 +196,22 @@ class AnchorTests(unittest.TestCase):
         # (review fix); a glow root waits for retry_ms (not due within the 30 frames simulated).
         self.assertEqual((p['anchored_rewalk_frame'], p['glow_rewalk_frame']), (13, 0))
 
+    def test_probe_walk_diagnostics(self):
+        # FL run 34 (farnhams-legacy.md "Diagnostic build for run 34"): a station-like root (three parts, no JET), the
+        # Heavy Centaur's emitter hull and a glow capital probed once each, the station again: four walks, the
+        # subtotals of the window row, one engine_plumes_probe_root row per newly probed root (the station's second walk
+        # adds none).
+        p = self.r['anchors']['probe_rows']
+        self.assertEqual({k: p[k] for k in ('walks', 'children', 'hidden', 'mode_reads', 'candidates', 'glow', 'none')},
+                         dict(walks=4, children=12, hidden=5, mode_reads=5, candidates=5, glow=1, none=2))
+        self.assertEqual((p['written'], p['dropped']), (3, 0))
+        self.assertEqual([(r['root_index'], r['head'], r['row']) for r in p['rows']], [
+            (0, 1, 'model=0x1234 verdict=none children=3 hidden=0 jets=0 candidates=0'),
+            (1, 1, 'model=0x5678 verdict=anchored children=4 hidden=4 jets=4 candidates=4'),
+            (2, 1, 'model=0x9abc verdict=glow children=2 hidden=1 jets=2 candidates=1')])
+        # At most 8 rows per report window: 12 more fresh roots give 5 rows and 7 dropped; the next window reopens.
+        self.assertEqual(p['cap'], dict(written=8, pending=5, dropped=7, reopened=1))
+
     def test_non_ship_gate(self):
         # Undriven hidden emitters (placement's 0x28f; only class 7 is driven): no anchor.
         self.assertEqual(self.r['anchors']['non_ship'], dict(anchors=0, rejected=2))
@@ -221,7 +237,7 @@ class AnchorWiringTests(unittest.TestCase):
         gather = self.body('void MotionOutput::engine_node_gather(')
         self.assertIn('engine_anchor_probes_.due(root, frame_, engine_anchor_clock_ms_)', gather)
         self.assertIn('engine_node_.probes >= engine_anchor_probe_cap', gather)
-        self.assertIn('std::uint32_t(registry), probed)', gather)
+        self.assertIn('std::uint32_t(registry), probed, model)', gather)  # the draw's model for the probe row
         self.assertIn('static constexpr unsigned engine_anchor_probe_cap = 4;', self.header)
 
     def test_append_options_and_record(self):
@@ -252,6 +268,19 @@ class AnchorWiringTests(unittest.TestCase):
         for field in ('anchors=%u', 'ships=%u', 'edition=%s', 'probes=%u', 'probe_deferred=%u', 'glow=%u', 'no_floor=%u'):
             self.assertIn(field, window)
         self.assertIn('engine_anchor_hull_rows_ < engine_anchor_hull_row_cap', self.plumes)
+        # FL run 34: the probe walks' subtotals and the bounded per-root row (engine_nozzle_walk_core.h ProbeRootRows).
+        self.assertIn('probe_walks=%u probe_children=%u probe_hidden=%u probe_mode_reads=%u probe_candidates=%u '
+                      'probe_glow=%u probe_none=%u probe_rows=%u probe_rows_dropped=%u', window)
+        core = (ROOT / 'src/proxy/engine_nozzle_walk_core.h').read_text()
+        self.assertIn('"engine_plumes_probe_root device=%llu frame=%llu root=%08x model=0x%x verdict=%s children=%u '
+                      'hidden=%u jets=%u "', core)
+        self.assertIn('constexpr unsigned probe_root_row_cap = 8;', core)
+        append = self.body('void MotionOutput::engine_node_append()')
+        self.assertIn('engine_node_.probe_walks.add(st);', append)
+        self.assertIn('if (engine_anchor_probes_.find(root) < 0)', append)
+        self.assertIn('nz::probe_root_row(root, roots.model[slot], st, anchors_here)', append)
+        self.assertIn('log(X3M_ENGINE_PLUMES_PROBE_ROOT_FORMAT,', append)
+        self.assertIn('engine_probe_rows_.window();', self.body('void MotionOutput::engine_anchor_window_row('))
         stage = re.search(r'log\("engine_stage device=.*?"', self.plumes, re.S).group(0)
         self.assertIn('node_anchors=%u node_anchor_roots=%u node_probes=%u', stage)
 

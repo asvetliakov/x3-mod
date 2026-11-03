@@ -618,6 +618,82 @@ int main() {
             check(complete && n == 0 && st.anchor_rejected == 2 && st.candidates == 2 && !st.glow, "a non-ship root's undriven emitters");
             std::printf(",\"non_ship\":{\"anchors\":%u,\"rejected\":%u}", n, st.anchor_rejected);
         }
+        // The probe walks' diagnostics (FL run 34): the window subtotals and the engine_plumes_probe_root rows of three
+        // newly probed roots, as the stage forms them (an anchors-only walk, probe_verdict over the anchors appended, a row
+        // only for a root the probe table does not hold yet), then the per-window cap. A station-like root (three parts,
+        // no JET): verdict none, probe_none 1. The Heavy Centaur's emitter hull: anchored. A capital with a shown main jet
+        // beside a hidden emitter: glow. A second walk of the station (its table entry now present): no row.
+        {
+            const unsigned mo = x3m::engine_node_layout::ap.model, other = x3m::engine_node_layout::fl.model;
+            Image im(1 << 20);
+            const std::uint32_t station = im.alloc(0x270), hull = im.alloc(0x270), capital = im.alloc(0x270);
+            std::vector<std::uint32_t> parts;
+            for (unsigned i = 0; i < 3; ++i) {
+                NodeSpec part{0xa0 + i, 50000 + i, station};
+                part.flags130 = 0;
+                parts.push_back(make_node(im, part));
+            }
+            link(im, station, parts);
+            std::vector<std::uint32_t> emitters;
+            for (unsigned i = 0; i < 4; ++i) {
+                Ext e{0xb0 + i, emitter_model, hull};
+                e.position[2] = -4882 - 10 * std::int32_t(i);
+                emitters.push_back(make_ext(im, e, mo, other));
+            }
+            link(im, hull, emitters);
+            Ext shown{0xc0, glow_model, capital};
+            shown.flags12c = 0;
+            shown.mode = 0x7001;
+            shown.scale70 = 4000;
+            Ext hidden_emitter{0xc1, emitter_model, capital};
+            link(im, capital, {make_ext(im, hidden_emitter, mo, other), make_ext(im, shown, mo, other)});
+            auto probes = std::make_unique<nz::AnchorProbes>();
+            nz::ProbeSubtotals window;
+            nz::ProbeRootRows rows;
+            nz::Options probe = options(mo);
+            probe.jets = false;
+            const auto walk_probe = [&](std::uint32_t root, std::uint32_t model, std::uint64_t frame) {
+                nz::WalkStats st;
+                unsigned anchors = 0;
+                nz::walk(root, 9, &Image::read, &im, &st, probe, [](const fj::Raw&) {}, [&](const fj::Raw&) { ++anchors; });
+                window.add(st);
+                if (probes->find(root) < 0) rows.offer(nz::probe_root_row(root, model, st, anchors));
+                probes->note(root, frame, 0., anchors ? nz::AnchorProbes::anchored
+                                              : st.glow ? nz::AnchorProbes::glow
+                                                        : nz::AnchorProbes::none);
+            };
+            walk_probe(station, 0x1234, 5);
+            walk_probe(hull, 0x5678, 5);
+            walk_probe(capital, 0x9abc, 5);
+            walk_probe(station, 0x1234, 6); // present in the table: subtotals only
+            std::printf(",\"probe_rows\":{\"walks\":%u,\"children\":%u,\"hidden\":%u,\"mode_reads\":%u,\"candidates\":%u,"
+                        "\"glow\":%u,\"none\":%u,\"written\":%u,\"dropped\":%u,\"rows\":[",
+                        window.walks, window.children, window.hidden, window.mode_reads, window.candidates, window.glow,
+                        window.none, rows.written, rows.dropped);
+            const std::uint32_t roots_of[3] = {station, hull, capital};
+            static const char head[] = "engine_plumes_probe_root device=1 frame=77 root=";
+            for (unsigned i = 0; i < rows.pending_count; ++i) {
+                const nz::ProbeRootRow& r = rows.pending[i];
+                char line[256];
+                std::snprintf(line, sizeof line, X3M_ENGINE_PLUMES_PROBE_ROOT_FORMAT, 1ull, 77ull, r.root, r.model,
+                              nz::probe_verdict_name(r.verdict), r.children, r.hidden, r.jets, r.candidates);
+                // The root's address is the image's: the test compares the row from model= on.
+                const char* tail = std::strstr(line, " model=");
+                std::printf("%s{\"root_index\":%d,\"head\":%u,\"row\":\"%s\"}", i ? "," : "",
+                            r.root == roots_of[0] ? 0 : r.root == roots_of[1] ? 1 : r.root == roots_of[2] ? 2 : -1,
+                            unsigned(std::strncmp(line, head, sizeof head - 1) == 0),
+                            tail ? tail + 1 : line);
+            }
+            // The cap: twelve more fresh roots in the same window give 8 - 3 = 5 rows and 7 dropped; window() reopens it.
+            rows.flushed();
+            for (unsigned i = 0; i < 12; ++i) rows.offer(nz::probe_root_row(0x9000 + i, 0, nz::WalkStats{}, 0));
+            const unsigned capped_written = rows.written, capped_pending = rows.pending_count, capped_dropped = rows.dropped;
+            rows.flushed();
+            rows.window();
+            const bool reopened = rows.offer(nz::probe_root_row(0x9100, 0, nz::WalkStats{}, 0));
+            std::printf("],\"cap\":{\"written\":%u,\"pending\":%u,\"dropped\":%u,\"reopened\":%u}}", capped_written,
+                        capped_pending, capped_dropped, unsigned(reopened));
+        }
         // The probe table: due at first sight, not after a walk without anchors, again after retry_ms of game time
         // (frames to retry at 50 fps, 20 ms a frame: SETA 1x vs 10x), or retry_frames without the clock; an anchored root
         // always due; a load clears it; note returns the last verdict.

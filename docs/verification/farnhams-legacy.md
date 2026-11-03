@@ -2355,3 +2355,28 @@ exception row, `walk_us_p99 > 500` (or over 10 % of the frame p50), or a floatin
 Heavy Centaur (`SS_SH_A_M6M`) or Terran drones: they gain plumes, a hull light and a trail at their hidden emitter points,
 following throttle; ships that already had plumes unchanged; hulls with neither glow nor emitters unchanged. Expect
 `engine_plumes_hidden_emitters anchors>0 ships>0 edition=fl` and `engine_plumes_hidden_emitter_hull` rows.
+
+## Diagnostic build for run 34 (2026-11-03)
+
+Telemetry only (no behaviour change), both editions build; settles the two open questions of runs 32 and 33 from the
+next FL flight's log alone. Run 33 triage (`verification/results/fl-run33/triage_out.txt`): 1,951 probe walks and 0
+anchors, without a way to tell an empty probe from an emitter hull that failed.
+
+- **Probe walks** (`engine_plumes_hidden_emitters … event=window`): new `probe_walks= probe_children= probe_hidden=
+  probe_mode_reads= probe_candidates= probe_glow= probe_none= probe_rows= probe_rows_dropped=`. `probe_none` counts
+  walks that found no JET child (stations, asteroids); `probe_candidates` > 0 with `anchors=0` and `probe_glow` below
+  `probe_walks` points at emitter hulls whose anchors failed (then `rejected=` / `no_floor=` say why). New row
+  `engine_plumes_probe_root … root= model=0x… verdict=none|glow|anchored|rejected children= hidden= jets=
+  candidates=` per newly probed root, at most 8 per 300-frame window; `model` identifies the hull (look it up in the
+  body table or the census): a no-glow ship hull with `verdict=none` and `hidden=0` means the probe saw no hidden
+  emitters there; `verdict=glow` a capital whose shown jets withhold its emitters by design.
+- **Far jets** (`engine_stage`, `--debug`): new `far_steering=` (handler v/00566 skips plus stage SMALLJET verdicts),
+  `far_invalid=` (stage far_record refusals), `far_invalid_scale0=` (of those, a context scale of exactly 0),
+  `far_drawn=` (drawn nozzles whose record carries `flag_far`). `far_dropped` stays `far_steering + far_invalid`.
+  Reading: `far_invalid` ≈ `far_invalid_scale0` means the run 32 stage drops were the node-context ≠ view-context
+  refusal; `far_drawn / far_records` is the share of far records that drew (run 32 inferred ~9 %, the rest under
+  `culled_small`).
+- Evidence (measured, 2026-11-03): `test_engine_nozzle_walk` AnchorTests.test_probe_walk_diagnostics (station root
+  `verdict=none`, `probe_none` 2 of 4 walks; Centaur emitter hull `verdict=anchored`; glow capital `verdict=glow`; cap 8
+  rows, 7 dropped of 15); `test_fl_cull_chain` native fixture `FARSPLIT far_dropped=3 far_steering=1 far_invalid=2
+  far_invalid_scale0=1 far_drawn=1 nozzles=2`.

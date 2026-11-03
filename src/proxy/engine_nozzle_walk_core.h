@@ -77,11 +77,12 @@ struct RootSet {
     std::uint32_t camera[slots];
     std::uint32_t registry[slots];
     std::uint32_t stamp[slots];
+    std::uint32_t model[slots];    // the admitting draw's model id (the engine_plumes_probe_root row only)
     std::uint8_t probe[slots];     // 1: admitted by the anchor probe (AnchorProbes), walked for anchors only
     std::uint16_t order[capacity]; // the slots in insertion order
     unsigned count = 0, overflow = 0;
     std::uint32_t generation = 1;
-    RootSet() noexcept : root{}, camera_handle{}, camera{}, registry{}, stamp{}, probe{}, order{} {}
+    RootSet() noexcept : root{}, camera_handle{}, camera{}, registry{}, stamp{}, model{}, probe{}, order{} {}
     void begin() noexcept {
         count = overflow = 0;
         if (++generation) return;
@@ -100,8 +101,10 @@ struct RootSet {
         return -1;
     }
     // true when `r` is new this generation (inserted), false when present already or when the set is full (overflow).
-    // `probed`: admitted by the anchor probe (the walk emits anchors only, plumes-no-glow-hulls.md step 1).
-    bool insert(std::uint32_t r, std::uint32_t handle, std::uint32_t cam, std::uint32_t reg, bool probed = false) noexcept {
+    // `probed`: admitted by the anchor probe (the walk emits anchors only, plumes-no-glow-hulls.md step 1); `draw_model`:
+    // the admitting draw's model id, kept for the probe's diagnostic row.
+    bool insert(std::uint32_t r, std::uint32_t handle, std::uint32_t cam, std::uint32_t reg, bool probed = false,
+                std::uint32_t draw_model = 0) noexcept {
         if (!r) return false;
         unsigned i = hash(r);
         for (unsigned n = 0; n < slots; ++n, i = (i + 1) & (slots - 1)) {
@@ -118,6 +121,7 @@ struct RootSet {
             camera_handle[i] = handle;
             camera[i] = cam;
             registry[i] = reg;
+            model[i] = draw_model;
             probe[i] = probed ? 1u : 0u;
             order[count++] = std::uint16_t(i);
             return true;
@@ -406,6 +410,93 @@ struct WalkStats {
     unsigned glow = 0;            // 1: the root has a glow part (anchors withheld)
     unsigned anchors = 0;         // anchors handed to the caller (after the list's end)
 };
+
+// The probe walks' diagnostics (FL run 34; plumes-no-glow-hulls.md "As built"): one verdict per anchors-only walk of a
+// probe-admitted root and the window's subtotals over those walks, so an empty probe (a station, a capital whose glow
+// part withholds its emitters) reads apart from an emitter hull whose anchors failed. anchored: an anchor record was
+// appended; glow: a glow part withheld the emitters; rejected: an emitter (a candidate of the emitter body, or an anchor
+// handed over) yielded no record (a guard, the anchor capacity, an unreadable C word, no floor size); none: otherwise.
+enum class ProbeVerdict : std::uint8_t { none = 0, glow = 1, anchored = 2, rejected = 3 };
+inline ProbeVerdict probe_verdict(const WalkStats& st, unsigned anchors_appended) noexcept {
+    if (anchors_appended) return ProbeVerdict::anchored;
+    if (st.glow) return ProbeVerdict::glow;
+    if (st.anchors || st.candidates > st.not_emitter || st.anchor_rejected || st.anchor_overflow || st.mode_unreadable)
+        return ProbeVerdict::rejected;
+    return ProbeVerdict::none;
+}
+inline const char* probe_verdict_name(ProbeVerdict v) noexcept {
+    switch (v) {
+    case ProbeVerdict::glow: return "glow";
+    case ProbeVerdict::anchored: return "anchored";
+    case ProbeVerdict::rejected: return "rejected";
+    default: return "none";
+    }
+}
+// Sums over probe walks: walks, list elements read, hidden JETs, C reads, hidden candidates, walks with a glow part,
+// walks that found no JET child at all (jets 0: a station or an asteroid; a hull with hidden emitters has jets > 0).
+struct ProbeSubtotals {
+    unsigned walks = 0, children = 0, hidden = 0, mode_reads = 0, candidates = 0, glow = 0, none = 0;
+    void add(const WalkStats& st) noexcept {
+        ++walks;
+        children += st.children;
+        hidden += st.hidden;
+        mode_reads += st.mode_reads;
+        candidates += st.candidates;
+        glow += st.glow ? 1u : 0u;
+        none += st.jets ? 0u : 1u;
+    }
+    void add(const ProbeSubtotals& o) noexcept {
+        walks += o.walks;
+        children += o.children;
+        hidden += o.hidden;
+        mode_reads += o.mode_reads;
+        candidates += o.candidates;
+        glow += o.glow;
+        none += o.none;
+    }
+};
+// One newly probed root (no probe-table entry before its walk): the engine_plumes_probe_root row's fields, the model
+// the admitting hull draw carried. probe_root_row_cap rows per report window at most; the rest are counted dropped.
+struct ProbeRootRow {
+    std::uint32_t root = 0, model = 0;
+    ProbeVerdict verdict = ProbeVerdict::none;
+    unsigned children = 0, hidden = 0, jets = 0, candidates = 0;
+};
+constexpr unsigned probe_root_row_cap = 8;
+inline ProbeRootRow probe_root_row(std::uint32_t root, std::uint32_t model, const WalkStats& st,
+                                   unsigned anchors_appended) noexcept {
+    ProbeRootRow r;
+    r.root = root;
+    r.model = model;
+    r.verdict = probe_verdict(st, anchors_appended);
+    r.children = st.children;
+    r.hidden = st.hidden;
+    r.jets = st.jets;
+    r.candidates = st.candidates;
+    return r;
+}
+// The rows of newly probed roots: queued during the append (no file write between two list reads), logged after its
+// root loop (flush), at most probe_root_row_cap per report window (window() at the window row); the rest dropped.
+struct ProbeRootRows {
+    ProbeRootRow pending[probe_root_row_cap];
+    unsigned pending_count = 0, written = 0, dropped = 0;
+    bool offer(const ProbeRootRow& r) noexcept {
+        if (written >= probe_root_row_cap || pending_count >= probe_root_row_cap) {
+            ++dropped;
+            return false;
+        }
+        pending[pending_count++] = r;
+        ++written;
+        return true;
+    }
+    void flushed() noexcept { pending_count = 0; }
+    void window() noexcept { written = dropped = 0; }
+};
+// The row's format (a literal for the format checks; the host fixture formats with the same one): device, frame, then
+// root, model, verdict name, children, hidden, jets, candidates.
+#define X3M_ENGINE_PLUMES_PROBE_ROOT_FORMAT                                                                                \
+    "engine_plumes_probe_root device=%llu frame=%llu root=%08x model=0x%x verdict=%s children=%u hidden=%u jets=%u "     \
+    "candidates=%u"
 namespace detail {
 inline void fill_raw(const std::uint32_t* block, std::uint32_t here, std::uint32_t root, std::uint32_t view_handle,
                      unsigned model_offset, fj::Raw* raw) noexcept {
