@@ -1,0 +1,26 @@
+ap: /mnt/c/X3/X3AP.exe sha256 fdbf3418d8f0a897… (documented)
+  PASS C read at +0x260
+  PASS both hide stores set 0x100000 on +0x12c
+  PASS rate limit reads +0x88
+  PASS setter call 0x488270
+  PASS the main branch clears the non-main marker
+  PASS a main jet skips the non-main show/hide step straight to the setter
+  PASS no +0x12c hidden-bit memory test in the drive window
+  PASS walk 0x47b800..0x47bc1f: 282 instructions, +0xb0 stores 1, hidden-bit tests none
+  PASS walk 0x47bc20..0x47c3c9: 537 instructions, +0xb0 stores 2, hidden-bit tests none
+  PASS class switch: classes reaching the drive 0x45aca3: [7]
+  PASS placement: JET test, push 0x28f, setter, hide; no class read
+fl: /mnt/c/X3FL/X3FL.exe sha256 e7f3aad8d728e021… (documented)
+  PASS C read at +0x260
+  PASS both hide stores set 0x100000 on +0x12c
+  PASS rate limit reads +0x88
+  PASS setter call 0x4a3ae0
+  PASS the main branch clears the non-main marker
+  PASS a main jet skips the non-main show/hide step straight to the setter
+  PASS no +0x12c hidden-bit memory test in the drive window
+  PASS walk 0x494370..0x494534: 120 instructions, +0xb0 stores 1, hidden-bit tests none
+  PASS walk 0x4947b0..0x494af9: 230 instructions, +0xb0 stores 1, hidden-bit tests none
+  PASS walk 0x494b00..0x494f7f: 280 instructions, +0xb0 stores 2, hidden-bit tests none
+  PASS class switch: classes reaching the drive 0x4645e0: [7]
+  PASS placement: JET test, push 0x28f, setter, hide; no class read
+PASS

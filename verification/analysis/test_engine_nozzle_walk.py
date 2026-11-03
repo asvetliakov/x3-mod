@@ -13,6 +13,7 @@
   boundary, the stage's view tally treating node records as far records, the handler's culled list, the stage row.
 """
 import json
+import math
 import os
 import re
 import shutil
@@ -59,20 +60,30 @@ class OptionTests(unittest.TestCase):
                 launch_env(module, game, wine, '--vanilla', '--engine-nozzle-source', 'draw')
 
 
+_HOST = {}
+
+
+def host_result():
+    """verification/probe/engine_nozzle_walk_host.cpp built and run once per process (CoreTests and AnchorTests)."""
+    if 'r' not in _HOST:
+        with tempfile.TemporaryDirectory(prefix='x3-engine-nozzle-') as temporary:
+            exe = Path(temporary) / 'host'
+            build = subprocess.run([compiler(), '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                    str(ROOT / 'verification/probe/engine_nozzle_walk_host.cpp'), '-o', str(exe)],
+                                   capture_output=True, text=True)
+            if build.returncode:
+                raise AssertionError(build.stdout + build.stderr)
+            run = subprocess.run([str(exe)], capture_output=True, text=True)
+            if run.returncode:
+                raise AssertionError(run.stdout + run.stderr)
+            _HOST['r'] = json.loads(run.stdout)
+    return _HOST['r']
+
+
 class CoreTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        temporary = tempfile.TemporaryDirectory(prefix='x3-engine-nozzle-')
-        cls.addClassCleanup(temporary.cleanup)
-        exe = Path(temporary.name) / 'host'
-        build = subprocess.run([compiler(), '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
-                                str(ROOT / 'verification/probe/engine_nozzle_walk_host.cpp'), '-o', str(exe)], capture_output=True, text=True)
-        if build.returncode:
-            raise AssertionError(build.stdout + build.stderr)
-        run = subprocess.run([str(exe)], capture_output=True, text=True)
-        if run.returncode:
-            raise AssertionError(run.stdout + run.stderr)
-        cls.r = json.loads(run.stdout)
+        cls.r = host_result()
 
     def test_harness_checks(self):
         self.assertEqual(self.r['failures'], 0)
@@ -131,6 +142,115 @@ class CoreTests(unittest.TestCase):
         self.assertLess(c['us_per_frame_5_ships'], 50.0)
         self.assertLess(c['us_per_root_contiguous'], c['us_per_root'] * 2)
         self.assertLess(c['probe_ns_per_draw'], 20.0)
+
+
+class AnchorTests(unittest.TestCase):
+    """Hidden-emitter anchors (docs/architecture/plumes-no-glow-hulls.md step 1) through the same host driver: a hull
+    whose only JET children are hidden fx_engine_emitter dummies, on both edition layouts with a decoy model at the
+    other edition's offset; the record law; identity, throttle and completeness refusals; a visible-jet hull's records
+    byte-identical to the walk before step 1; the probe table and its SETA-scaled retry; the cost."""
+    @classmethod
+    def setUpClass(cls):
+        cls.r = host_result()
+
+    def test_option(self):
+        e = schema.BY_KEY['engine_plume_emitters']
+        self.assertEqual((e['type'], e['section'], e['builtin'], e['launcher'], e['env']),
+                         ('bool', 'engine', '1', None, 'X3M_ENGINE_PLUME_EMITTERS'))
+        self.assertIn('{"X3M_ENGINE_PLUME_EMITTERS", "engine_plume_emitters", Type::Bool',
+                      (ROOT / 'src/config/config_schema_inc.h').read_text())
+        self.assertIn(';engine_plume_emitters = 1', (ROOT / 'assets/x3m.ini').read_text())
+
+    def test_anchors_on_both_layouts(self):
+        size_k = 0.5 * (0.35 + (0.25 - 0.35) * math.log(320 / 150) / math.log(500 / 150)) * 320
+        flags = (1 << 10) | (1 << 11) | (11 << 12)  # flag_node | flag_anchor | cyan
+        for edition, offset in (('ap', 0x140), ('fl', 0x144)):
+            a = self.r['anchors'][edition]
+            self.assertEqual(a['model_offset'], offset)
+            # Four emitters anchored; the fifth hidden C = 0 child (another body) refused for its identity.
+            self.assertEqual((a['complete'], a['anchors'], a['candidates'], a['not_emitter'], a['mode_reads']), (1, 4, 5, 1, 5))
+            self.assertEqual(a['origin'], [-10.0, 2.0, -48.82])  # +0xb0 x 0.01
+            self.assertEqual([abs(v) for v in a['axis']], [0.0, 0.0, 1.0])
+            self.assertEqual(a['axis'][2], -1.0)
+            self.assertEqual(a['axis_turned'][0], -1.0)
+            self.assertAlmostEqual(a['size'], size_k, places=3)  # k(R) x R at R = 320, no cap
+            self.assertAlmostEqual(a['size'], a['size_ref'], places=3)
+            self.assertEqual((a['s'], a['z']), ([0.4286, 1.0], [1.0, 2.0]))  # the emitter's own +0x88
+            self.assertEqual((a['flags'], a['body']), (flags, -1))
+            # The other edition's model offset reads the decoy: nothing anchors.
+            self.assertEqual((a['decoy_anchors'], a['decoy_not_emitter']), (0, 5))
+            self.assertEqual((a['idle_s'], a['undriven_rejected'], a['cut_anchors'], a['old_hidden']), (0.0, 1, 0, 5))
+
+    def test_visible_jet_hull_unchanged(self):
+        p = self.r['anchors']['parity']
+        self.assertEqual((p['records'], p['identical'], p['stats_same'], p['anchors'], p['glow']), (2, 1, 1, 0, 1))
+        self.assertEqual((p['travel_anchors'], p['rcs_only_anchors'], p['probe_jets'], p['probe_anchors']), (0, 1, 0, 0))
+
+    def test_probe_table(self):
+        p = self.r['anchors']['probe']
+        self.assertEqual((p['first_due'], p['after_walk_due'], p['previous'], p['cleared_due']), (1, 0, 1, 1))
+        # 2 s of game time: 100 frames at 20 ms, 10 under SETA x10; 600 frames when the clock stalls.
+        self.assertEqual((p['frames_to_retry_seta1'], p['frames_to_retry_seta10'], p['frames_to_retry_stalled']), (100, 10, 600))
+        self.assertLess(p['ns_per_draw'], 20.0)
+        # An anchored hull skipped one frame: its recent window lapses after frame 12 and the probe at 13 is due at once
+        # (review fix); a glow root waits for retry_ms (not due within the 30 frames simulated).
+        self.assertEqual((p['anchored_rewalk_frame'], p['glow_rewalk_frame']), (13, 0))
+
+    def test_non_ship_gate(self):
+        # Undriven hidden emitters (placement's 0x28f; only class 7 is driven): no anchor.
+        self.assertEqual(self.r['anchors']['non_ship'], dict(anchors=0, rejected=2))
+
+    def test_cost(self):
+        c = self.r['cost']
+        # The rule on a 108-part capital (four shown jets) and the anchors-only probe walk stay within the walk's budget.
+        self.assertLess(c['us_per_root_rule_on'], 10.0)
+        self.assertLess(c['us_per_root_probe_walk'], 10.0)
+
+
+class AnchorWiringTests(unittest.TestCase):
+    """Source checks of step 1's wiring: the gather's probe, the append's options and record law, the FL fence, rows."""
+    def setUp(self):
+        self.plumes = (ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text()
+        self.header = (ROOT / 'src/proxy/motion_output.h').read_text()
+
+    def body(self, signature):
+        text = self.plumes[self.plumes.index(signature):]
+        return text[:text.index('\n}\n')]
+
+    def test_gather_probe(self):
+        gather = self.body('void MotionOutput::engine_node_gather(')
+        self.assertIn('engine_anchor_probes_.due(root, frame_, engine_anchor_clock_ms_)', gather)
+        self.assertIn('engine_node_.probes >= engine_anchor_probe_cap', gather)
+        self.assertIn('std::uint32_t(registry), probed)', gather)
+        self.assertIn('static constexpr unsigned engine_anchor_probe_cap = 4;', self.header)
+
+    def test_append_options_and_record(self):
+        append = self.body('void MotionOutput::engine_node_append()')
+        self.assertIn('walk_options.model_offset = engine_node_layout::edition.model;', append)
+        self.assertIn('walk_options.jets = !probed;', append)
+        self.assertIn('nz::anchor_record(k, radius, &record)', append)
+        self.assertIn('engine_plumes::floor_ratio_at(plumes_look_, radius, &k)', append)
+        self.assertIn('if (complete && !ring_full && !probed)', append)
+        self.assertIn('engine_load_epoch_ != engine_anchor_epoch_', append)
+        self.assertIn('engine_clock_.last_step * 1000. * double(seta_rate_)', append)
+        # Recent glow ships never enter the probe table (review fix): only probe walks and non-glow outcomes are noted.
+        self.assertIn('probed || outcome != nz::AnchorProbes::glow', append)
+        core = (ROOT / 'src/proxy/engine_nozzle_walk_core.h').read_text()
+        self.assertIn('if (i < 0 || verdict[i] == anchored) return true;', core)
+
+    def test_fl_fence_and_rows(self):
+        self.assertIn('engine_anchors_on_ = engine_anchors_setting_ && plumes_requested_ && node;', self.plumes)
+        self.assertIn(': "fl_draw_only",', self.plumes)
+        for row in ('engine_plumes_hidden_emitters device=%llu frame=%llu event=configure',
+                    'engine_plumes_hidden_emitters device=%llu frame=%llu event=window',
+                    'engine_plumes_hidden_emitter_hull device=%llu'):
+            self.assertIn(row, self.plumes)
+        window = re.search(r'log\("engine_plumes_hidden_emitters device=%llu frame=%llu event=window.*?"', self.plumes, re.S).group(0)
+        for field in ('anchors=%u', 'ships=%u', 'edition=%s', 'probes=%u', 'probe_deferred=%u', 'glow=%u', 'no_floor=%u'):
+            self.assertIn(field, window)
+        self.assertIn('engine_anchor_hull_rows_ < engine_anchor_hull_row_cap', self.plumes)
+        stage = re.search(r'log\("engine_stage device=.*?"', self.plumes, re.S).group(0)
+        self.assertIn('node_anchors=%u node_anchor_roots=%u node_probes=%u', stage)
 
 
 class ProductionReaderCostTests(unittest.TestCase):

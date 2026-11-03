@@ -54,6 +54,38 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
             engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),
             engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity);
     }
+    // Hidden-emitter anchors (plumes-no-glow-hulls.md step 1): X3M_ENGINE_PLUME_EMITTERS=0|1, unset = 1, anything else
+    // refused to 1. They ride on the node walk: AP with engine_nozzle_source = node; FL keeps the walk fenced
+    // (fl_draw_only above), so the rule stays off there (reason fl_draw_only). 0 = the walk and the gather as before
+    // step 1, read for read. One engine_plumes_hidden_emitters row per configure, then one per 300-frame window.
+    {
+        wchar_t text[8]{};
+        const DWORD n = x3m::config::get(L"X3M_ENGINE_PLUME_EMITTERS", text, 8);
+        const bool ok = !n || (n == 1 && (text[0] == L'0' || text[0] == L'1'));
+        engine_anchors_setting_ = !(ok && n == 1 && text[0] == L'0');
+        const bool node = engine_nozzle_source_ == engine_nozzle::core::Source::node;
+        engine_anchors_on_ = engine_anchors_setting_ && plumes_requested_ && node;
+        engine_anchors_live_ = false;
+        engine_emitter_body_ = -2;
+        engine_anchor_probes_.clear();
+        engine_anchor_clock_ms_ = 0.;
+        engine_anchor_epoch_ = engine_load_epoch_;
+        engine_anchor_window_ = {};
+        engine_anchor_window_.start = frame_;
+        engine_anchor_hull_rows_ = engine_anchor_hull_rows_dropped_ = 0;
+        log("engine_plumes_hidden_emitters device=%llu frame=%llu event=configure setting=%s status=%s rule=%s reason=%s edition=%s anchors=0 ships=0",
+            id_, frame_, !n ? "-" : !ok ? "?" : engine_anchors_setting_ ? "1" : "0",
+            ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_anchors_on_ ? "on" : "off",
+            engine_anchors_on_ ? "pending_body_table" : !engine_anchors_setting_ ? "setting" : !plumes_requested_ ? "plumes_off"
+#if X3M_EDITION_FL
+            : "fl_draw_only",
+            "fl"
+#else
+            : "nozzle_source_draw",
+            "ap"
+#endif
+        );
+    }
     // The own ship's ribbon (engine_ribbons_core.h update's `own`): X3M_ENGINE_RIBBONS_OWN_SHIP=0|1, unset = 0 (no
     // ribbon behind the player's ship, its plume stays); anything else refused to 0. One row per configure.
     {
@@ -329,6 +361,70 @@ float MotionOutput::engine_node_context_scale(std::uint32_t camera) noexcept {
     engine_node_context_[slot] = context;
     return context ? engine_far_context_scale(context) : 0.f;
 }
+// Hidden-emitter anchors (engine_nozzle_walk_core.h Options; plumes-no-glow-hulls.md step 1). The emitter identity:
+// the node's model resolves (engine_body_resolver.h, the same per-draw map the records use) to the body-table entry
+// `effects\engines\fx_engine_emitter` (value 17, lists ["jet"] in both editions' tables), looked up once per configure
+// after the table loads. A steering body: v/00566 or a SMALLJET entry (far_record's rule). Both O(1), no memory read.
+bool MotionOutput::engine_anchor_is_emitter(void* self, std::uint32_t model) noexcept {
+    const int body = engine_effects::body_for_model(model);
+    return body >= 0 && body == static_cast<const MotionOutput*>(self)->engine_emitter_body_;
+}
+bool MotionOutput::engine_anchor_is_steering(void*, std::uint32_t model) noexcept {
+    if (model == engine_effects::core::steering_model) return true;
+    const engine_effects::core::Body* entry = engine_effects::body(engine_effects::body_for_model(model));
+    return entry && (entry->lists & engine_effects::core::list_smalljet);
+}
+void MotionOutput::engine_anchor_resolve_body() noexcept {
+    const engine_effects::Stats table = engine_effects::stats();
+    if (!table.table_loaded) return; // -2: the table loads at the first begin_frame; asked again at the next append
+    static const char emitter[] = "effects\\engines\\fx_engine_emitter";
+    engine_emitter_body_ = -1;
+    for (unsigned i = 0; i < table.bodies && engine_emitter_body_ < 0; ++i) {
+        const engine_effects::core::Body* b = engine_effects::body(int(i));
+        if (!b) continue;
+        unsigned j = 0;
+        for (; emitter[j]; ++j) {
+            char c = b->name[j];
+            if (c >= 'A' && c <= 'Z') c = char(c - 'A' + 'a');
+            if (c != emitter[j]) break;
+        }
+        if (!emitter[j] && !b->name[j]) engine_emitter_body_ = int(i);
+    }
+    log("engine_plumes_hidden_emitters device=%llu frame=%llu event=body rule=%s emitter_body=%d bodies=%u", id_, frame_,
+        engine_emitter_body_ >= 0 ? "on" : "off", engine_emitter_body_, table.bodies);
+}
+// The status row, once per 300-frame window of appends while the rule is on: anchors appended and roots holding them
+// (window sums; ships = the busiest frame's roots), frames with an anchor, probe walks and the cap's refusals, roots
+// whose glow part withheld their emitters, hidden candidates that are not the emitter, emitters failing a guard or
+// without a floor size, C reads, newly admitted hulls and the rows the cap dropped, the slowest append (node_walk_us).
+void MotionOutput::engine_anchor_window_row(bool anchored_frame) noexcept {
+    auto& w = engine_anchor_window_;
+    ++w.frames;
+    w.anchored_frames += anchored_frame ? 1u : 0u;
+    w.anchors += engine_node_.anchors;
+    if (engine_node_.anchor_roots > w.ships_max) w.ships_max = engine_node_.anchor_roots;
+    w.probes += engine_node_.probes;
+    w.probe_deferred += engine_node_.probe_deferred;
+    w.glow += engine_node_.anchor_glow;
+    w.not_emitter += engine_node_.anchor_not_emitter;
+    w.rejected += engine_node_.anchor_rejected;
+    w.no_floor += engine_node_.anchor_no_floor;
+    w.mode_reads += engine_node_.mode_reads;
+    if (engine_node_.walk_us > w.walk_us_max) w.walk_us_max = engine_node_.walk_us;
+    if (frame_ < w.start + engine_anchor_window_frames) return;
+    log("engine_plumes_hidden_emitters device=%llu frame=%llu event=window rule=%s edition=%s emitter_body=%d anchors=%u ships=%u frames=%u anchored_frames=%u probes=%u probe_deferred=%u glow=%u not_emitter=%u rejected=%u no_floor=%u mode_reads=%u new_hulls=%u hull_rows_dropped=%u walk_us_max=%.1f",
+        id_, frame_, engine_anchors_live_ ? "on" : "off",
+#if X3M_EDITION_FL
+        "fl",
+#else
+        "ap",
+#endif
+        engine_emitter_body_, w.anchors, w.ships_max, w.frames, w.anchored_frames, w.probes, w.probe_deferred, w.glow,
+        w.not_emitter, w.rejected, w.no_floor, w.mode_reads, w.new_hulls, engine_anchor_hull_rows_dropped_,
+        double(w.walk_us_max));
+    w = {};
+    w.start = frame_;
+}
 // The gather, per routed scene draw: the draw's root is admitted when it is a ship (engine_nozzle_walk_core.h
 // ShipRoots: a record named it as parent within two frames, or it is the own ship's root; stations, asteroids and
 // debris never enter the set, review S1) and, when a scene view is known, when the draw's camera is that view
@@ -341,29 +437,43 @@ void MotionOutput::engine_node_gather(std::uintptr_t node, std::uint32_t parent,
     if (engine_node_roots_frame_ != frame_) {
         engine_node_roots_.begin();
         engine_node_roots_frame_ = frame_;
-        engine_node_.skipped_other_view = engine_node_.not_ship = 0;
+        engine_node_.skipped_other_view = engine_node_.not_ship = engine_node_.probes = engine_node_.probe_deferred = 0;
         if (engine_scene_camera_last_ && frame_ > engine_scene_camera_frame_ + engine_scene_camera_hold)
             engine_scene_camera_last_ = 0; // no scene tally for 120 frames: gather every view again
         resolve_own_ship(); // once per frame (LastError preserved there)
     }
     const std::uint32_t root = parent ? parent : std::uint32_t(node);
+    bool probed = false;
     if (!(own_ship_node_ && std::uintptr_t(root) == own_ship_node_) && !engine_ship_roots_.recent(root, frame_)) {
-        ++engine_node_.not_ship;
-        return;
+        // No record named the root: a hull without a glow part is walked for its hidden emitters when the probe table
+        // says it is due (one probe per such draw; plumes-no-glow-hulls.md step 1). Otherwise not a ship (review S1).
+        if (!engine_anchors_live_ || !engine_anchor_probes_.due(root, frame_, engine_anchor_clock_ms_)) {
+            ++engine_node_.not_ship;
+            return;
+        }
+        probed = true;
     }
     if (engine_scene_camera_last_ && camera_handle != engine_scene_camera_last_) {
         ++engine_node_.skipped_other_view;
         return;
     }
-    engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry));
+    if (probed && engine_node_.probes >= engine_anchor_probe_cap && engine_node_roots_.find(root) < 0) {
+        ++engine_node_.probe_deferred; // the next frames' draws probe it again
+        return;
+    }
+    if (engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry), probed) && probed)
+        ++engine_node_.probes;
 }
 void MotionOutput::engine_node_append() noexcept {
     if (engine_node_appended_) return;
     engine_node_appended_ = true;
     const unsigned skipped = engine_node_.skipped_other_view, not_ship = engine_node_.not_ship;
+    const unsigned probes = engine_node_.probes, probe_deferred = engine_node_.probe_deferred;
     engine_node_ = {};
     engine_node_.skipped_other_view = skipped;
     engine_node_.not_ship = not_ship;
+    engine_node_.probes = probes;
+    engine_node_.probe_deferred = probe_deferred;
     engine_node_walked_count_ = 0;
     if (engine_nozzle_source_ != engine_nozzle::core::Source::node || !plumes_requested_ || !engine_ring_) return;
     namespace ee = engine_effects::core;
@@ -374,6 +484,26 @@ void MotionOutput::engine_node_append() noexcept {
     if (engine_load_epoch_ != engine_node_epoch_) { // a load: the previous sector's scene view is forgotten
         engine_node_epoch_ = engine_load_epoch_;
         engine_scene_camera_last_ = 0;
+    }
+    // Hidden-emitter anchors: the probe clock advances by the stage's last step in game ms (the SETA rate the travel
+    // ramp uses; capped at 1 s as the engine caps its own step), a load forgets the probe table, and the emitter body is
+    // looked up once the body table is loaded.
+    nz::Options walk_options;
+    if (engine_anchors_on_) {
+        double step_ms = engine_clock_.last_step * 1000. * double(seta_rate_);
+        if (!(step_ms > 0.)) step_ms = 0.;
+        engine_anchor_clock_ms_ += step_ms < 1000. ? step_ms : 1000.;
+        if (engine_load_epoch_ != engine_anchor_epoch_) {
+            engine_anchor_epoch_ = engine_load_epoch_;
+            engine_anchor_probes_.clear();
+        }
+        if (engine_emitter_body_ == -2) engine_anchor_resolve_body();
+        engine_anchors_live_ = engine_emitter_body_ >= 0;
+        walk_options.anchors = engine_anchors_live_;
+        walk_options.model_offset = engine_node_layout::edition.model;
+        walk_options.is_emitter = &MotionOutput::engine_anchor_is_emitter;
+        walk_options.is_steering = &MotionOutput::engine_anchor_is_steering;
+        walk_options.context = this;
     }
     nz::RootSet& roots = engine_node_roots_;
     const bool gathered = engine_node_roots_frame_ == engine_ring_frame_;
@@ -414,7 +544,17 @@ void MotionOutput::engine_node_append() noexcept {
         }
         nz::WalkStats st;
         bool ring_full = false;
-        const bool complete = nz::walk(root, view_handle, &engine_node_read, nullptr, &st, [&](const engine_far_jets::core::Raw& raw) {
+        const bool probed = roots.probe[slot] != 0;
+        if (probed && !walk_options.anchors) continue; // admitted while the rule was live: nothing to look for now
+        walk_options.jets = !probed; // a probe-admitted root: anchors only (no record named it, so it is no known ship)
+        unsigned anchors_here = 0;
+        float anchor_size = 0.f, anchor_s = 0.f, anchor_radius = 0.f;
+        std::uint32_t anchor_handle = 0;
+        // One record per main jet (anchor false), or per kept hidden emitter after the root's list end (anchor true:
+        // plumes-no-glow-hulls.md step 1; the emitter's own position, axis and throttle, size k(R) x R, the plume
+        // floor's law without its cap, since the emitter body's value means nothing; body -1 in the cyan cluster of
+        // the stock engines; flag_anchor).
+        const auto append = [&](const engine_far_jets::core::Raw& raw, bool anchor) {
             if (seen_inserts >= engine_far_jets::core::Seen::slots) {
                 ++engine_node_.seen_full;
                 ++engine_node_.ring_full;
@@ -439,7 +579,19 @@ void MotionOutput::engine_node_append() noexcept {
                 ++(verdict == ee::FarVerdict::steering ? engine_node_.steering : engine_node_.invalid);
                 return;
             }
-            record.flags = std::uint16_t((record.flags & ~std::uint16_t(ee::flag_far)) | ee::flag_node);
+            float radius = 0.f;
+            if (anchor) {
+                float k = 0.f;
+                if (floors) {
+                    ee::parent_radius_in_record(engine_parent_radius(root), raw.scale70, raw.scale80, record.size, &radius);
+                    engine_plumes::floor_ratio_at(plumes_look_, radius, &k);
+                }
+                if (!nz::anchor_record(k, radius, &record)) {
+                    ++engine_node_.anchor_no_floor;
+                    return;
+                }
+            } else
+                record.flags = std::uint16_t((record.flags & ~std::uint16_t(ee::flag_far)) | ee::flag_node);
             if (lifetimes && registry && camera) {
                 object_lifetime::Snapshot life{};
                 if (object_lifetime::current(registry, raw.node, raw.handle, camera, view_handle, &life) && life.known &&
@@ -448,8 +600,7 @@ void MotionOutput::engine_node_append() noexcept {
                     record.flags |= ee::flag_serial;
                 }
             }
-            float radius = 0.f;
-            if (floors)
+            if (floors && !anchor)
                 ee::parent_radius_in_record(engine_parent_radius(root), raw.scale70, raw.scale80, record.size, &radius);
             const unsigned at = engine_ring_->count;
             *engine_ring_->push() = record;
@@ -459,16 +610,55 @@ void MotionOutput::engine_node_append() noexcept {
             engine_ring_->parent_radius[at] = radius;
             engine_ring_->own[at] = engine_record_own(raw.node, raw.handle, true, root) ? 1u : 0u;
             ++engine_node_.records;
-            if (!entry) ++engine_counts_.unknown_body;
-        });
+            if (anchor) {
+                ++engine_node_.anchors;
+                if (!anchors_here++) {
+                    anchor_size = record.size;
+                    anchor_s = record.s;
+                    anchor_radius = radius;
+                    anchor_handle = raw.handle;
+                }
+            } else if (!entry)
+                ++engine_counts_.unknown_body;
+        };
+        const bool complete = nz::walk(root, view_handle, &engine_node_read, nullptr, &st, walk_options,
+                                       [&](const engine_far_jets::core::Raw& raw) { append(raw, false); },
+                                       [&](const engine_far_jets::core::Raw& raw) { append(raw, true); });
         engine_node_.children += st.children;
         engine_node_.hidden += st.hidden;
         engine_node_.guard_rejected += st.guard_parent + st.guard_scale + st.guard_throttle;
         engine_node_.overflow += st.overflow;
         engine_node_.unreadable += st.unreadable;
-        if (complete && !ring_full) {
+        if (complete && !ring_full && !probed) { // a probe walk is no ship's authoritative walk (the light's hold)
             engine_node_walked_[engine_node_walked_count_++] = root;
             ++engine_node_.walked;
+        }
+        if (walk_options.anchors) {
+            engine_node_.mode_reads += st.mode_reads;
+            engine_node_.anchor_not_emitter += st.not_emitter;
+            engine_node_.anchor_rejected += st.anchor_rejected + st.anchor_overflow + st.mode_unreadable;
+            if (st.glow && st.candidates > st.not_emitter) ++engine_node_.anchor_glow;
+            if (anchors_here) ++engine_node_.anchor_roots;
+            const auto outcome = anchors_here ? nz::AnchorProbes::anchored
+                                 : st.glow    ? nz::AnchorProbes::glow
+                                              : nz::AnchorProbes::none;
+            // The table holds probe walks and anchored (or anchor-less) roots, never a recent glow ship: writes per
+            // frame <= engine_anchor_probe_cap + the anchored hulls in view, so stations and asteroids keep their entries
+            // (and their 2,000 game ms retry) beside a fleet of glow ships.
+            const auto previous = probed || outcome != nz::AnchorProbes::glow
+                                      ? engine_anchor_probes_.note(root, engine_ring_frame_, engine_anchor_clock_ms_, outcome)
+                                      : nz::AnchorProbes::glow;
+            if (anchors_here && previous != nz::AnchorProbes::anchored) { // a newly admitted hull: one row, bounded
+                ++engine_anchor_window_.new_hulls;
+                if (engine_anchor_hull_rows_ < engine_anchor_hull_row_cap) {
+                    ++engine_anchor_hull_rows_;
+                    log("engine_plumes_hidden_emitter_hull device=%llu frame=%llu root=%08x first_handle=%08x anchors=%u candidates=%u not_emitter=%u rejected=%u probed=%u own=%u radius=%.2f size=%.2f s=%.3f scale=%.4f",
+                        id_, frame_, root, anchor_handle, anchors_here, st.candidates, st.not_emitter, st.anchor_rejected,
+                        unsigned(probed), unsigned(own_ship_node_ && std::uintptr_t(root) == own_ship_node_),
+                        double(anchor_radius), double(anchor_size), double(anchor_s), double(scale));
+                } else
+                    ++engine_anchor_hull_rows_dropped_;
+            }
         }
     }
     // The ship roots for the next frames' gather: every record's parent (draw, far and node records alike).
@@ -477,6 +667,10 @@ void MotionOutput::engine_node_append() noexcept {
     QueryPerformanceCounter(&end);
     const std::uint64_t frequency = engine_qpc_frequency();
     engine_node_.walk_us = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
+    if (engine_anchors_on_) { // the window row (a log write at most once per 300 frames), LastError kept
+        engine_anchor_window_row(engine_node_.anchors != 0);
+        SetLastError(error);
+    }
 }
 // The travel look under SETA (gap 7; engine_plumes_core.h TravelRamp, docs/reverse-engineering/engine-effects.md
 // section 8): one bounded read of the SETA dwords per stage frame (engine_effects::seta_read: refused without the
@@ -662,7 +856,7 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_walk_us=%.1f steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_anchors=%u node_anchor_roots=%u node_probes=%u node_walk_us=%.1f steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.unfloored, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
             jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates,
@@ -670,7 +864,7 @@ void MotionOutput::log_engine_stage() noexcept {
             engine_node_.hidden, engine_node_.overflow, engine_node_.unreadable, engine_node_.engine_culled, engine_node_.no_scale,
             engine_node_.root_overflow, engine_node_.children, engine_node_.skipped_other_view, engine_node_.not_ship,
             engine_node_.invalid + engine_node_.steering + engine_node_.ring_full, // node_invalid: far_record refusals, RCS, ring or set full
-            double(engine_node_.walk_us), s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            engine_node_.anchors, engine_node_.anchor_roots, engine_node_.probes, double(engine_node_.walk_us), s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, s.skipped_other_view, plumes_view_far_ ? "far" : engine_plumes::view_rule_name(plumes_view_rule_),
             total(plumes_view_own_total_), total(plumes_view_majority_total_), total(plumes_view_far_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,

@@ -117,7 +117,14 @@ Mode word bits seen in data: `0x7001` = main | `0x1000` visible | `0x2000` no tr
 (§3); `0x3001` = main, visible, no trail, *with* emitter effect; `0xf001` = alternate-mode nozzle. `0x2000`/`0x4000`
 are read only by `0x00414590` [m]. A jet without `0x1000` is never shown by this drive: the `fx_engine_emitter` dummies (`C` 0
 or 1, a 12-face `standard_lighting.fx` ONE/ONE body) only mark positions for §3 [m: rule; i: that none of them ever
-draws].
+draws]. Such a hidden main emitter is still driven (2026-11-03 [m]): the main branch clears the non-main marker at
+`0x0045af2a`, a main jet skips the non-main show/hide step (`0x0045b047`), and the setter `0x00488270` writes the
+rate-limited `z` toward `base`; the transform walks `0x0047b800`/`0x0047bc20` never test the hidden bit, so its
+`+0xb0`/basis are current like its siblings'. Only class 7 reaches this drive (the class switch at `0x0045ac82`:
+index `0x0045b64c`, targets `0x0045b634`), while placement (`0x00451cd5`) sets every object's jets to `0x28f` and
+hides them, so a driven `z` on a hidden emitter marks a ship. This is the input of the plume anchor rule
+([plumes-no-glow-hulls.md](../architecture/plumes-no-glow-hulls.md) step 1;
+[`hidden_emitter_reads.py`](../../verification/results/plumes-no-glow/hidden_emitter_reads.py)).
 
 Other writers of jet state:
 

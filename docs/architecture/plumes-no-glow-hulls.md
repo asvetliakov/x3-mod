@@ -180,6 +180,80 @@ M6M. No file, no baker, no new site; the AP build takes the same rule (its one a
 line on stock; Mayhem has none). Step 2 (the table, TL class first on FL) only after step 1 is accepted and has shown
 the size law on a real hull.
 
+### As built (step 1, 2026-11-03, not flown)
+
+**AP only at runtime; FL is fenced.** The rule rides on the node walk, and FL keeps `engine_nozzle_source` forced to
+`draw` (`fl_draw_only`): the FL walk's read window is the open activation of
+[fl/nozzle-scene-window.md](../reverse-engineering/fl/nozzle-scene-window.md) (seam-time zero-call copy, owned
+context scale, missing-seam policy; "require parent decision before activation"). The FL build compiles the rule with
+FL's model offset `+0x144` (`engine_node_layout.h`) and the host fixture runs it on the FL layout, but no FL list is
+read and the configure row says `reason=fl_draw_only`. On AP the rule is live, and only stock content has anchored
+hulls: Mayhem 3 has none [m, `anchor_census_out.txt`]. Nothing in step 1 is flyable until the FL walk is activated
+or a stock AP install is flown.
+
+- **Who** [m, [`anchor_census.py`](../../verification/results/plumes-no-glow/anchor_census.py) →
+  `anchor_census_out.txt`]: FL 16 ships / 35 emitters, stock AP 14 / 29, Mayhem 0. More than the 11 / 13 above
+  because the drones (`SS_SH_FIGHTDRONE`, `_RECONDRONE`, `_A_MK2DRONE`) carry one `C = 1` emitter and no glow part.
+  The M6M family's emitters carry **`C = 0`**, not 1 (both count as main: the drive's `C & 1 || C == 0`). 181 FL / 172
+  stock / 494 Mayhem ships carry emitters **beside** glow parts; the rule leaves them unchanged.
+- **Rule** (`engine_nozzle_walk_core.h`, `Options::anchors`): per hidden JET child, until the root shows a glow part,
+  one 4-byte read of C at `+0x260`. A child with `C & 0x1000` is glow (a hidden travel-swap set). A shown child counts
+  as glow unless its body is a steering body (`v/00566` or a SMALLJET entry), so a shown RCS puff does not cancel the
+  anchors and a shown brake jet does. Anchors are children with `C & 0x1ffe == 0`, the emitter body identity (the
+  model resolves to the `effects\engines\fx_engine_emitter` table entry, so the drones' hidden `C = 0`
+  `fx_engine_terran_transportdrone` glow body is refused), unit x/y scales, and `+0x88` in `0x4000..0x20000`. That
+  driven-throttle guard is the **ship-only gate**: placement sets every object's JET children to `(1, 1, 0x28f)` and
+  hides them, with no class test (AP `0x451cd5`, FL `0x45b830`). Only class 7 reaches the jet drive through the sector
+  update's class switch (AP `0x45b634/0x45b64c`, FL `0x464fa8/0x464fc0`). A station's, missile's or debris' hidden
+  emitter therefore stays at `0x28f` and never anchors, so the uncapped `k(R)·R` is only ever applied to ships
+  [m, fixture `non_ship`]. The walk has no object pointer, so the class word `obj+0x48` itself is not read. Anchors are handed out only after the list's end
+  of a **complete** walk, and only when no glow part was seen. Without the option the walk is the one before step 1,
+  read for read (the old two-argument `walk()`).
+- **Record** (`anchor_record`): the emitter's `far_record` (origin `+0xb0` × context scale, axis −basis z, `z`/`s`
+  from its own `+0x88`), then size = `k(R)·R` from `floor_ratio_at` at the ship radius in record units, with no
+  `floor_cap`. `engine_plume_floor = 0` therefore means no anchor (`no_floor`). Body −1 in the **cyan** cluster (the
+  stock engine family: the emitter entry's black material would read white), `flag_node | flag_anchor` (bit 11), the
+  node's lifetime serial as node records. At the default floor 0.5 an M6M (R = 320) gets size 45.9 [m, fixture], about
+  half the 95 estimated above (that estimate used floor 1).
+- **Admission**: the gather's ship filter is unchanged for recent roots. A root no record named in two frames gets
+  one `AnchorProbes::due` probe per routed scene draw (0.9 ns on the host [m]). It is admitted for an
+  **anchors-only** walk when it has no entry, its last walk **anchored**, or its last walk is ≥ 2,000 game ms old (the
+  stage step × the SETA rate; 100 frames at 20 ms, 10 frames under SETA ×10 [m]) or ≥ 600 frames old. At most 4 new
+  probe roots per frame (`probe_deferred` counts the rest). An anchored root is due at once, so a frame without its
+  anchor records (hull not drawn, ring full, no camera scale, a view switch) costs its plume at most until the next
+  draw, not 2 s (fixture: skipped at 11, re-walked at 13 [m]). A probe walk never emits a jet and never enters the
+  light's walked set, so stations, asteroids and glow ships seen through a probe keep today's records and hold. Their
+  lists **are** now read, once per 2 game seconds each, which revises review S1's "no list of theirs is read". An
+  anchored root's records mark it recent, so from the next frame it takes the ordinary full walk. The table holds
+  probe walks and anchored (or anchor-less) roots only, never a recent glow ship, so writes per frame are ≤ 4 + the
+  anchored hulls in view, and a fleet of glow ships cannot evict the stations' entries. A load clears it.
+- **Light and trail**: anchor records are node records in the ring, so the engine light (`engine_light_core.h`
+  ship table) lights the hull plates around them and the ribbons (`engine_ribbons_core.h`) draw a trail behind them,
+  as for any plume. Natively these ships had an `EEDF_LIGHT` row 5 hull light only.
+- **Cost** [m, host fixture, scattered 108-part roots, one run]: 1.19 µs per root before, 1.19 with the rule on (4
+  shown jets, one predicate each), 1.18 for an anchors-only probe walk; probe 0.9 ns per draw. Probe walks add to
+  `node_children`, `node_hidden` and `node_guard_rejected` in `engine_stage` (Mayhem included) with no record change. The production reader's per-read cost applies to the
+  extra C reads, one per hidden JET child before the first shown glow part. No allocation; 12 KB probe table, 576 B of
+  stack per walk.
+- **Rows**: `engine_plumes_hidden_emitters … event=configure setting= status= rule= reason= edition=` once per
+  configure; `… event=body rule= emitter_body= bodies=` once the body table is loaded; `… event=window rule=
+  edition= emitter_body= anchors= ships= frames= anchored_frames= probes= probe_deferred= glow= not_emitter=
+  rejected= no_floor= mode_reads= new_hulls= hull_rows_dropped= walk_us_max=` per 300 frames;
+  `engine_plumes_hidden_emitter_hull … root= first_handle= anchors= candidates= not_emitter= rejected= probed= own=
+  radius= size= s= scale=` once per newly anchored hull, at most 32 per configure. `engine_stage` (`--debug`) gains
+  `node_anchors= node_anchor_roots= node_probes=`.
+- **Rollback**: `engine_plume_emitters = 0` (`X3M_ENGINE_PLUME_EMITTERS`, builtin 1) leaves the walk and the gather
+  as before; so does `engine_nozzle_source = draw`.
+- **Section 6, settled for step 1** [m, [`hidden_emitter_reads.py`](../../verification/results/plumes-no-glow/hidden_emitter_reads.py)
+  → `hidden_emitter_reads_out.txt`, 24 PASS on the documented EXE hashes]. Hidden-node transform currency: the
+  world/camera transform walks (AP `0x47b800`, `0x47bc20`; FL `0x494370`, `0x4947b0`, `0x494b00`) contain no
+  hidden-bit test, so a hidden child's `+0xb0`/basis are written by the same code as its siblings'. Throttle while
+  hidden: both drives read C at `+0x260`, hide a main jet without `0x1000`, clear the non-main marker, skip the
+  non-main show step and call the setter (AP `0x488270`, FL `0x4a3ae0`) with the rate-limited `z` toward `base`. The
+  flight still confirms both: the hull row's `s` must vary with speed, and a capture frame's anchor origin must sit on
+  the hull draw's rows. LOD-point scaling and the TShips speed unit are not used by step 1 (step 2's). Per-axis unit
+  scales: the setter writes `(1, 1, z)` (the walk's guard counts `rejected` otherwise).
+
 
 ## Ratification (2026-11-03, main session)
 
