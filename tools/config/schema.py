@@ -296,7 +296,8 @@ SETTINGS = [
           launcher='--fov'),
     entry('ui_scale', 'float', 'camera', 'Size of the in-game menus, sidebars and HUD panels (not the main menu). 1 = the '
           'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1080 lines = 1, 1440 = 1.5, '
-          '2160 = 2). Text is drawn sharper by text_density.',
+          '2160 = 2). X3: Albion Prelude and X3: Farnham\'s Legacy. On Albion Prelude text_density draws the text '
+          'sharper; on Farnham\'s Legacy the text is enlarged as it is (text_density is Albion Prelude only for now).',
           'auto', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale'),
     entry('text_density', 'enum', 'camera', 'Sharpness of the in-game text under ui_scale: the text is drawn at this whole-number '
           'density and shrunk to the UI size instead of being enlarged from the game\'s 1x fonts. auto = the smallest whole number '

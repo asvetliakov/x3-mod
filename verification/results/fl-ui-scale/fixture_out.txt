@@ -1,0 +1,72 @@
+# run full
+LOG ui_scale setting=- status=off reason=off mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=1 status=off reason=off mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=abc status=refused reason=invalid_setting mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=3.5 status=refused reason=out_of_range mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=0.5 status=refused reason=out_of_range mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=? status=refused reason=too_long mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=executable_mismatch mode=off scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=proj_entry base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=proj_matrix base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=proj_tail base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=proj_caller1 base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=proj_caller2 base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=size_cases base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=size_callee base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=delta_direct base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=delta_mapped base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=callback_direct base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=callback_mapped base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=cursor base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=cursor_tail base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=overlay_case base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=overlay_callee base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=aim_case base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=map_label base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=pick_case base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=pick_callee base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=cockpit_walk base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=cockpit_init base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=camera_attach base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=b3d_entries base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=ins_aim_entry base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=ins_pick_entry base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=ins_overlay_entry base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=x2_cursor_entry base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=window_mismatch mode=off scale=1.0000 diagnostic=none window=x2_cursor_index base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=refused reason=slot_mismatch mode=off scale=1.0000 diagnostic=none window=cursor base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=counters window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_camera frame=0 excluded_camera=00000000 previous=00000000 edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.5000 status=patched reason=ok failed_site=- window=- mode=auto virtual=3413x960 inverse16=43691 fixed256=384 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=1024 edition=fl
+LOG ui_scale_camera frame=1 excluded_camera=<addr> previous=00000000 edition=fl
+LOG ui_scale_camera frame=2 excluded_camera=00000000 previous=<addr> edition=fl
+LOG ui_scale_frame frame=300 frames=5 scale=1.5000 scaled=20 excluded=10 excluded_camera=00000000 cameras=- edition=fl
+LOG ui_scale_reset width=1920 height=1080 scale=1.0000 virtual=1920x1080 inverse16=65536 fixed256=256 edition=fl
+LOG ui_scale_reset width=3840 height=2160 scale=2.0000 virtual=1920x1080 inverse16=32768 fixed256=512 edition=fl
+LOG ui_scale_restore status=restored registered=0 diagnostic=none edition=fl
+LOG ui_scale setting=1.25 status=pending reason=pending mode=fixed scale=1.2500 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_camera frame=0 excluded_camera=00000000 previous=00000000 edition=fl
+LOG ui_scale_install width=1920 height=1080 scale=1.2500 status=patched reason=ok failed_site=- window=- mode=fixed virtual=1536x864 inverse16=52429 fixed256=320 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=2048 edition=fl
+LOG ui_scale_restore status=restored registered=0 diagnostic=none edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=2560 height=1080 scale=1.0000 status=off reason=off_auto failed_site=- window=- mode=auto virtual=2560x1080 inverse16=65536 fixed256=256 writes=none,none,none,none,none,none,none,none,none,none,none arena_used=2048 edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=chain_failed failed_site=ui_scale_width_fl window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=atomic,none,none,none,none,none,none,none,none,none,none arena_used=2104 edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=readback_failed failed_site=ui_scale_cursor_y_fl window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=atomic,atomic,atomic,atomic,atomic,atomic,none,none,none,none,none arena_used=2560 edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=readback_failed failed_site=ui_scale_map_pick_fl window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,none arena_used=3364 edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=chain_failed failed_site=ui_scale_projection_fl window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=4388 edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=patched_unverified reason=chain_failed failed_site=ui_scale_projection_fl window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=5412 edition=fl
+LOG ui_scale_restore status=restored registered=0 diagnostic=none edition=fl
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=window_mismatch failed_site=- window=pick_callee mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=none,none,none,none,none,none,none,none,none,none,none arena_used=5412 edition=fl
+RESULT checks=905 failures=0
+# exit=0
+# run late
+LOG ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<addr> site_rva=0x0de91b edition=fl
+LOG ui_scale_install width=5120 height=1440 scale=1.0000 status=refused reason=late_claim failed_site=- window=- mode=auto virtual=5120x1440 inverse16=65536 fixed256=256 writes=none,none,none,none,none,none,none,none,none,none,none arena_used=0 edition=fl
+RESULT checks=34 failures=0
+# exit=0

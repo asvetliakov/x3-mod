@@ -2105,6 +2105,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     fov::present(ctx.frame); // FL: a counter test; every 64th Present one sample of the admitted registry's +0x24
                              // (fov::current_focus() returns it) and, up to 16 times, a fov_confirm row on a change
                              // (no save_load_complete marker on FL: a load is a change)
+    ui_scale::present(ctx.frame); // FL (src/engine/fl/ui_scale_fl.cpp): the excluded HUD camera for the next frame; under
+                                  // --debug one ui_scale_frame row (the projection counters) every 300 Presents
 #endif
     frame_timing::frame(ctx.frame, ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
 #if !X3M_EDITION_FL
@@ -2357,6 +2359,8 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
                                                                 // frame's projection read; new back-buffer width
 #else
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
+    ui_scale::after_reset(p ? p->BackBufferWidth : 0u, p ? p->BackBufferHeight : 0u); // FL provider: X3M_UI_SCALE=auto
+                                                                                       // follows the new height (cells only)
 #endif
     ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
     finite_upload_metrics(d, ctx, "reset_after");
@@ -4179,6 +4183,11 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
     }
 #else
     if (SUCCEEDED(hr) && p) cull_small_parts::set_backbuffer_width(p->BackBufferWidth); // FL provider
+    if (SUCCEEDED(hr) && p)
+        ui_scale::device_created(p->BackBufferWidth, p->BackBufferHeight); // FL provider (src/engine/fl/ui_scale_fl.cpp):
+                                                                            // the scale from the back buffer, the eleven
+                                                                            // claims (all or none) inside the still-open
+                                                                            // install window
 #endif
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {

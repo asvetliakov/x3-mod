@@ -586,11 +586,12 @@ class UiScaleCore(unittest.TestCase):
         self.assertLess(capture.index('fov::initialize();'), capture.index('ui_scale::initialize();'))
         self.assertLess(capture.index('ui_scale::initialize();'), capture.index('sun_flare_fix::initialize();'))
         self.assertLess(capture.index('submit_phases::initialize();'), capture.index('ui_scale::initialize();'))  # the shared entry bytes
-        self.assertEqual(capture.count('ui_scale::device_created(p->BackBufferWidth,p->BackBufferHeight);'), 1)
+        # One call per edition (the AP block here, the FL #else branch: test_fl_ui_scale.py).
+        self.assertEqual(capture.count('ui_scale::device_created(p->BackBufferWidth,p->BackBufferHeight);'), 2)
         self.assertLess(capture.index('cull_small_parts::set_backbuffer_width(p->BackBufferWidth);'), capture.index('ui_scale::device_created('))
         self.assertLess(capture.index('ui_scale::device_created('), capture.index('log("create_device_result hr=%08lx",hr);'))
-        self.assertEqual(capture.count('ui_scale::after_reset(p?p->BackBufferWidth:0u,p?p->BackBufferHeight:0u);'), 1)
-        self.assertEqual(capture.count('ui_scale::present(ctx.frame);'), 1)
+        self.assertEqual(capture.count('ui_scale::after_reset(p?p->BackBufferWidth:0u,p?p->BackBufferHeight:0u);'), 2)
+        self.assertEqual(capture.count('ui_scale::present(ctx.frame);'), 2)
         self.assertLess(capture.index('close_install_window("first_present");'), capture.index('ui_scale::present(ctx.frame);'))
         self.assertIn('if (reserved == nullptr) x3m::ui_scale::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/ui_scale.cpp', source_text(ROOT / 'CMakeLists.txt'))

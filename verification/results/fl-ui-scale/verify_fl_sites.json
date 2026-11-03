@@ -1,0 +1,1377 @@
+{
+ "result": "PASS",
+ "edition": "fl",
+ "checks": {
+  "identity": {
+   "ok": true,
+   "timestamp": "0x618416c8",
+   "image_size": "0x391000",
+   "dynamic_base": true
+  },
+  "window_proj_entry": {
+   "ok": true,
+   "rva": "0xde570",
+   "length": 79,
+   "fnv": "0xfebcb923",
+   "fixups": {}
+  },
+  "window_proj_matrix": {
+   "ok": true,
+   "rva": "0xde760",
+   "length": 11,
+   "fnv": "0xac9d8770",
+   "fixups": {
+    "0xde761": "0x1aae64",
+    "0xde767": "0x1aae4c"
+   }
+  },
+  "window_proj_tail": {
+   "ok": true,
+   "rva": "0xde885",
+   "length": 232,
+   "fnv": "0x7b12b36b",
+   "fixups": {}
+  },
+  "window_proj_caller1": {
+   "ok": true,
+   "rva": "0x96fb1",
+   "length": 37,
+   "fnv": "0xfd43acb",
+   "fixups": {}
+  },
+  "window_proj_caller2": {
+   "ok": true,
+   "rva": "0x9769b",
+   "length": 37,
+   "fnv": "0xf050a5f4",
+   "fixups": {}
+  },
+  "window_size_cases": {
+   "ok": true,
+   "rva": "0xb23c6",
+   "length": 74,
+   "fnv": "0xd0a9ca3e",
+   "fixups": {
+    "0xb23c7": "0x1a82f8",
+    "0xb23d7": "0x1aa174",
+    "0xb23ec": "0x1a82f8",
+    "0xb23fc": "0x1aa174"
+   }
+  },
+  "window_size_callee": {
+   "ok": true,
+   "rva": "0xc1940",
+   "length": 24,
+   "fnv": "0xd3cdd4e6",
+   "fixups": {}
+  },
+  "window_delta_direct": {
+   "ok": true,
+   "rva": "0x77fa9",
+   "length": 76,
+   "fnv": "0x584fd3bc",
+   "fixups": {
+    "0x77fdb": "0x18ba3c"
+   }
+  },
+  "window_delta_mapped": {
+   "ok": true,
+   "rva": "0xd22d6",
+   "length": 87,
+   "fnv": "0xbf3857c8",
+   "fixups": {
+    "0xd22d8": "0x21c880",
+    "0xd22e1": "0x21c884",
+    "0xd22ea": "0x21c884",
+    "0xd22f0": "0x21c880",
+    "0xd22f9": "0x18ba3c",
+    "0xd2311": "0x21c880",
+    "0xd2320": "0x21c884"
+   }
+  },
+  "window_callback_direct": {
+   "ok": true,
+   "rva": "0xbb5b0",
+   "length": 19,
+   "fnv": "0x94721cec",
+   "fixups": {}
+  },
+  "window_callback_mapped": {
+   "ok": true,
+   "rva": "0xbb500",
+   "length": 19,
+   "fnv": "0x94721cec",
+   "fixups": {}
+  },
+  "window_cursor": {
+   "ok": true,
+   "rva": "0x7bc3a",
+   "length": 40,
+   "fnv": "0xe849e23a",
+   "fixups": {
+    "0x7bc41": "0x1aaa10",
+    "0x7bc49": "0x1aa184",
+    "0x7bc51": "0x1aa180",
+    "0x7bc59": "0x1aa188"
+   }
+  },
+  "window_cursor_tail": {
+   "ok": true,
+   "rva": "0x7b71e",
+   "length": 16,
+   "fnv": "0xb256acb7",
+   "fixups": {
+    "0x7b720": "0x1aa174"
+   }
+  },
+  "window_overlay_case": {
+   "ok": true,
+   "rva": "0x320aa",
+   "length": 72,
+   "fnv": "0x762045",
+   "fixups": {
+    "0x320af": "0x1a82e4",
+    "0x320e1": "0x1aa174"
+   }
+  },
+  "window_overlay_callee": {
+   "ok": true,
+   "rva": "0x2bae0",
+   "length": 21,
+   "fnv": "0xbc9c09be",
+   "fixups": {}
+  },
+  "window_aim_case": {
+   "ok": true,
+   "rva": "0x31093",
+   "length": 112,
+   "fnv": "0x950d7f40",
+   "fixups": {
+    "0x31098": "0x1a82e4",
+    "0x310f2": "0x1aa174"
+   }
+  },
+  "window_map_label": {
+   "ok": true,
+   "rva": "0x20138",
+   "length": 78,
+   "fnv": "0xec6eb408",
+   "fixups": {
+    "0x2016b": "0x185150",
+    "0x20175": "0x1a82e8"
+   }
+  },
+  "window_pick_case": {
+   "ok": true,
+   "rva": "0x31cd8",
+   "length": 61,
+   "fnv": "0x88b2903f",
+   "fixups": {}
+  },
+  "window_pick_callee": {
+   "ok": true,
+   "rva": "0x1f6b0",
+   "length": 51,
+   "fnv": "0x665022eb",
+   "fixups": {
+    "0x1f6be": "0x1a82e0",
+    "0x1f6df": "0x1a82f8"
+   }
+  },
+  "window_cockpit_walk": {
+   "ok": true,
+   "rva": "0xce57e",
+   "length": 36,
+   "fnv": "0xd8f33df6",
+   "fixups": {
+    "0xce580": "0x1a82e4"
+   }
+  },
+  "window_cockpit_init": {
+   "ok": true,
+   "rva": "0x21b60",
+   "length": 102,
+   "fnv": "0x11bfef38",
+   "fixups": {
+    "0x21b7b": "0x185194"
+   }
+  },
+  "window_camera_attach": {
+   "ok": true,
+   "rva": "0xa5860",
+   "length": 58,
+   "fnv": "0x8712fc0a",
+   "fixups": {}
+  },
+  "window_b3d_entries": {
+   "ok": true,
+   "rva": "0xb2b48",
+   "length": 8,
+   "fnv": "0x9be17165",
+   "fixups": {
+    "0xb2b48": "0xb23c6",
+    "0xb2b4c": "0xb23eb"
+   }
+  },
+  "window_ins_aim_entry": {
+   "ok": true,
+   "rva": "0x32528",
+   "length": 4,
+   "fnv": "0x4b95f515",
+   "fixups": {
+    "0x32528": "0x31093"
+   }
+  },
+  "window_ins_pick_entry": {
+   "ok": true,
+   "rva": "0x32580",
+   "length": 4,
+   "fnv": "0x4b95f515",
+   "fixups": {
+    "0x32580": "0x31cd8"
+   }
+  },
+  "window_ins_overlay_entry": {
+   "ok": true,
+   "rva": "0x32618",
+   "length": 4,
+   "fnv": "0x4b95f515",
+   "fixups": {
+    "0x32618": "0x320aa"
+   }
+  },
+  "window_x2_cursor_entry": {
+   "ok": true,
+   "rva": "0x7beac",
+   "length": 4,
+   "fnv": "0x4b95f515",
+   "fixups": {
+    "0x7beac": "0x7bc3a"
+   }
+  },
+  "window_x2_cursor_index": {
+   "ok": true,
+   "rva": "0x7bef7",
+   "length": 1,
+   "fnv": "0x1d0c82e7",
+   "fixups": {}
+  },
+  "site_ui_scale_width_fl": {
+   "ok": true,
+   "rva": "0xb23db",
+   "length": 5,
+   "bypass": true,
+   "text": [
+    "movsx eax, word ptr [eax + 4]",
+    "push eax"
+   ],
+   "qword_offset": 3,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0xafbf0",
+    "0xb297c"
+   ]
+  },
+  "site_ui_scale_height_fl": {
+   "ok": true,
+   "rva": "0xb2400",
+   "length": 5,
+   "bypass": true,
+   "text": [
+    "movsx eax, word ptr [eax + 6]",
+    "push eax"
+   ],
+   "qword_offset": 0,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0xafbf0",
+    "0xb297c"
+   ]
+  },
+  "site_ui_scale_delta_direct_fl": {
+   "ok": true,
+   "rva": "0x77fda",
+   "length": 5,
+   "bypass": false,
+   "text": [
+    "push 0x58ba3c"
+   ],
+   "qword_offset": 2,
+   "fixups": {
+    "0x1": "0x18ba3c"
+   },
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x77ba0",
+    "0x78688"
+   ]
+  },
+  "site_ui_scale_delta_mapped_fl": {
+   "ok": true,
+   "rva": "0xd22f8",
+   "length": 5,
+   "bypass": false,
+   "text": [
+    "push 0x58ba3c"
+   ],
+   "qword_offset": 0,
+   "fixups": {
+    "0x1": "0x18ba3c"
+   },
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0xcfd00",
+    "0xd2478"
+   ]
+  },
+  "site_ui_scale_cursor_x_fl": {
+   "ok": true,
+   "rva": "0x7bc50",
+   "length": 5,
+   "bypass": false,
+   "text": [
+    "mov dword ptr [0x5aa180], eax"
+   ],
+   "qword_offset": 0,
+   "fixups": {
+    "0x1": "0x1aa180"
+   },
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x7b560",
+    "0x7be4c"
+   ]
+  },
+  "site_ui_scale_cursor_y_fl": {
+   "ok": true,
+   "rva": "0x7bc58",
+   "length": 5,
+   "bypass": false,
+   "text": [
+    "mov dword ptr [0x5aa188], eax"
+   ],
+   "qword_offset": 0,
+   "fixups": {
+    "0x1": "0x1aa188"
+   },
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x7b560",
+    "0x7be4c"
+   ]
+  },
+  "site_ui_scale_overlay_icon_fl": {
+   "ok": true,
+   "rva": "0x320c3",
+   "length": 12,
+   "bypass": true,
+   "text": [
+    "push dword ptr [esi + 0xb]",
+    "lea ecx, [eax + 0x3bc]",
+    "push dword ptr [esi + 6]"
+   ],
+   "qword_offset": 3,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 1,
+   "function": [
+    "0x30540",
+    "0x32488"
+   ]
+  },
+  "site_ui_scale_cursor_aim_fl": {
+   "ok": true,
+   "rva": "0x310c0",
+   "length": 6,
+   "bypass": true,
+   "text": [
+    "mov edx, dword ptr [esi + 6]",
+    "mov edi, dword ptr [esi + 0xb]"
+   ],
+   "qword_offset": 0,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x30540",
+    "0x32488"
+   ]
+  },
+  "site_ui_scale_map_label_fl": {
+   "ok": true,
+   "rva": "0x20158",
+   "length": 10,
+   "bypass": true,
+   "text": [
+    "cvttsd2si eax, xmm1",
+    "push eax",
+    "cvttsd2si eax, xmm4",
+    "push eax"
+   ],
+   "qword_offset": 0,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x1fa30",
+    "0x201c7"
+   ]
+  },
+  "site_ui_scale_map_pick_fl": {
+   "ok": true,
+   "rva": "0x31d01",
+   "length": 7,
+   "bypass": true,
+   "text": [
+    "push dword ptr [esi + 0xb]",
+    "push dword ptr [esi + 6]",
+    "push eax"
+   ],
+   "qword_offset": 1,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0x30540",
+    "0x32488"
+   ]
+  },
+  "site_ui_scale_projection_fl": {
+   "ok": true,
+   "rva": "0xde91b",
+   "length": 5,
+   "bypass": false,
+   "text": [
+    "mov eax, 1"
+   ],
+   "qword_offset": 3,
+   "fixups": {},
+   "edges_into": [],
+   "raw_encodings_into": [],
+   "operand_aliases": 0,
+   "function": [
+    "0xde570",
+    "0xdec68"
+   ]
+  },
+  "image_dwords": {
+   "ok": true,
+   "scanned": 38327,
+   "hits": []
+  },
+  "name_B3D_ScreenGetWidth": {
+   "ok": true,
+   "table": "0x1a5e78",
+   "index": "0x73",
+   "got": "B3D_ScreenGetWidth"
+  },
+  "name_B3D_ScreenGetHeight": {
+   "ok": true,
+   "table": "0x1a5e78",
+   "index": "0x74",
+   "got": "B3D_ScreenGetHeight"
+  },
+  "name_INS_CockpitGetCursorAim": {
+   "ok": true,
+   "table": "0x1a3d98",
+   "index": "0x28",
+   "got": "INS_CockpitGetCursorAim"
+  },
+  "name_INS_GalaxyMapFindSector": {
+   "ok": true,
+   "table": "0x1a3d98",
+   "index": "0x3e",
+   "got": "INS_GalaxyMapFindSector"
+  },
+  "name_INS_CockpitGetObjectByTargetOverlayIconPos": {
+   "ok": true,
+   "table": "0x1a3d98",
+   "index": "0x64",
+   "got": "INS_CockpitGetObjectByTargetOverlayIconPos"
+  },
+  "name_X2_UpdateCursorSteering": {
+   "ok": true,
+   "table": "0x1a5d60",
+   "index": "0x1e",
+   "got": "X2_UpdateCursorSteering"
+  },
+  "string_InputMouseDelta": {
+   "ok": true,
+   "rva": "0x18ba3c",
+   "got": "InputMouseDelta"
+  },
+  "string_WriteGalaxyMapSectorName": {
+   "ok": true,
+   "rva": "0x185150",
+   "got": "WriteGalaxyMapSectorName"
+  },
+  "float_191aa0": {
+   "ok": true,
+   "got": 1.0
+  },
+  "float_1919e0": {
+   "ok": true,
+   "got": 0.25
+  },
+  "projection_callers": {
+   "ok": true,
+   "callers": [
+    "0x96fb9",
+    "0x976a0"
+   ]
+  },
+  "projection_suffix": {
+   "ok": true,
+   "instructions": 16,
+   "unexpected": []
+  },
+  "projection_register_writers": {
+   "ok": true,
+   "writers": [
+    "0xde57c",
+    "0xde581",
+    "0xde58e",
+    "0xde58f",
+    "0xde590",
+    "0xde59d",
+    "0xde59f",
+    "0xde5a8",
+    "0xde765"
+   ],
+   "branches_past_p_load": []
+  },
+  "anchor_0de577": {
+   "ok": true,
+   "text": "cmp dword ptr [ecx + 0x3c], 0",
+   "expected": "cmp dword ptr [ecx + 0x3c], 0",
+   "meaning": "ECX = the object at entry"
+  },
+  "anchor_0de57c": {
+   "ok": true,
+   "text": "mov ebx, dword ptr [ebp + 8]",
+   "expected": "mov ebx, dword ptr [ebp + 8]",
+   "meaning": "EBX = the camera (first stack argument)"
+  },
+  "anchor_0de581": {
+   "ok": true,
+   "text": "mov edi, edx",
+   "expected": "mov edi, edx",
+   "meaning": "EDI = the instance (EDX at entry)"
+  },
+  "anchor_0de583": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ebx + 0x1c]",
+   "expected": "mov eax, dword ptr [ebx + 0x1c]",
+   "meaning": "camera+0x1c = its attached scene"
+  },
+  "anchor_0de5af": {
+   "ok": true,
+   "text": "test dword ptr [edi + 0x130], 0x200",
+   "expected": "test dword ptr [edi + 0x130], 0x200",
+   "meaning": "instance+0x130 bit 0x200 selects the 2D branch"
+  },
+  "anchor_0de5b9": {
+   "ok": true,
+   "text": "je 0x4de96d",
+   "expected": "je 0x4de96d",
+   "meaning": "the perspective branch leaves at 0x0de96d, past the site"
+  },
+  "anchor_0de5cc": {
+   "ok": true,
+   "text": "movss xmm5, dword ptr [0x591aa0]",
+   "expected": "movss xmm5, dword ptr [0x591aa0]",
+   "meaning": "XMM5 = the anchor unit (1.0f, checked below)"
+  },
+  "anchor_0de765": {
+   "ok": true,
+   "text": "mov esi, dword ptr [0x5aae4c]",
+   "expected": "mov esi, dword ptr [0x5aae4c]",
+   "meaning": "ESI = P, the 2D projection matrix"
+  },
+  "anchor_0de76b": {
+   "ok": true,
+   "text": "movss xmm2, dword ptr [0x5919e0]",
+   "expected": "movss xmm2, dword ptr [0x5919e0]",
+   "meaning": "XMM2 = the 0.25 pixel bias"
+  },
+  "anchor_0de7fd": {
+   "ok": true,
+   "text": "movss dword ptr [esi], xmm1",
+   "expected": "movss dword ptr [esi], xmm1",
+   "meaning": "P[0] = 2/Wvp"
+  },
+  "anchor_0de83b": {
+   "ok": true,
+   "text": "addss xmm1, xmm1",
+   "expected": "addss xmm1, xmm1",
+   "meaning": "P[5] = 2/Hvp (stored at +0x14 next)"
+  },
+  "anchor_0de880": {
+   "ok": true,
+   "text": "movss dword ptr [esi + 0x30], xmm1",
+   "expected": "movss dword ptr [esi + 0x30], xmm1",
+   "meaning": "P[12] before the anchor"
+  },
+  "anchor_0de885": {
+   "ok": true,
+   "text": "mov eax, dword ptr [edi + 0x130]",
+   "expected": "mov eax, dword ptr [edi + 0x130]",
+   "meaning": "the flag word"
+  },
+  "anchor_0de88b": {
+   "ok": true,
+   "text": "test eax, 0x1000",
+   "expected": "test eax, 0x1000",
+   "meaning": "left anchor tested first"
+  },
+  "anchor_0de892": {
+   "ok": true,
+   "text": "subss xmm1, xmm5",
+   "expected": "subss xmm1, xmm5",
+   "meaning": "left: P[12] - 1"
+  },
+  "anchor_0de898": {
+   "ok": true,
+   "text": "test eax, 0x2000",
+   "expected": "test eax, 0x2000",
+   "meaning": "right anchor second"
+  },
+  "anchor_0de89f": {
+   "ok": true,
+   "text": "addss xmm1, xmm5",
+   "expected": "addss xmm1, xmm5",
+   "meaning": "right: P[12] + 1"
+  },
+  "anchor_0de8ec": {
+   "ok": true,
+   "text": "movss dword ptr [esi + 0x34], xmm1",
+   "expected": "movss dword ptr [esi + 0x34], xmm1",
+   "meaning": "P[13] before the anchor"
+  },
+  "anchor_0de8f7": {
+   "ok": true,
+   "text": "test eax, 0x4000",
+   "expected": "test eax, 0x4000",
+   "meaning": "top anchor tested first"
+  },
+  "anchor_0de8fe": {
+   "ok": true,
+   "text": "addss xmm1, xmm5",
+   "expected": "addss xmm1, xmm5",
+   "meaning": "top: P[13] + 1"
+  },
+  "anchor_0de904": {
+   "ok": true,
+   "text": "test eax, 0x8000",
+   "expected": "test eax, 0x8000",
+   "meaning": "bottom anchor second"
+  },
+  "anchor_0de90b": {
+   "ok": true,
+   "text": "subss xmm1, xmm5",
+   "expected": "subss xmm1, xmm5",
+   "meaning": "bottom: P[13] - 1"
+  },
+  "anchor_0de914": {
+   "ok": true,
+   "text": "mov dword ptr [esi + 0x38], 0x3f800000",
+   "expected": "mov dword ptr [esi + 0x38], 0x3f800000",
+   "meaning": "P[14] = 1 before the site"
+  },
+  "anchor_0de91b": {
+   "ok": true,
+   "text": "mov eax, 1",
+   "expected": "mov eax, 1",
+   "meaning": "A: the 2D branch exit (EAX dead, the tail loads 1)"
+  },
+  "anchor_0de966": {
+   "ok": true,
+   "text": "pop edi",
+   "expected": "pop edi",
+   "meaning": "the epilogue"
+  },
+  "anchor_0de96c": {
+   "ok": true,
+   "text": "ret",
+   "expected": "ret",
+   "meaning": "plain ret: the callers clean the stack"
+  },
+  "anchor_096fb9": {
+   "ok": true,
+   "text": "call 0x4de570",
+   "expected": "call 0x4de570",
+   "meaning": "caller 1"
+  },
+  "anchor_096fc4": {
+   "ok": true,
+   "text": "add esp, 8",
+   "expected": "add esp, 8",
+   "meaning": "caller 1 cleans and writes EFLAGS"
+  },
+  "anchor_0976a0": {
+   "ok": true,
+   "text": "call 0x4de570",
+   "expected": "call 0x4de570",
+   "meaning": "caller 2"
+  },
+  "anchor_0976a8": {
+   "ok": true,
+   "text": "add esp, 8",
+   "expected": "add esp, 8",
+   "meaning": "caller 2 cleans and writes EFLAGS"
+  },
+  "anchor_0afc23": {
+   "ok": true,
+   "text": "mov esi, dword ptr [ebx + 0x10]",
+   "expected": "mov esi, dword ptr [ebx + 0x10]",
+   "meaning": "B3D dispatcher: ESI = the opcode"
+  },
+  "anchor_0afc35": {
+   "ok": true,
+   "text": "cmp esi, 0xa9",
+   "expected": "cmp esi, 0xa9",
+   "meaning": "0xaa cases"
+  },
+  "anchor_0afc41": {
+   "ok": true,
+   "text": "jmp dword ptr [esi*4 + 0x4b297c]",
+   "expected": "jmp dword ptr [esi*4 + 0x4b297c]",
+   "meaning": "jump table base+0x0b297c"
+  },
+  "anchor_082897": {
+   "ok": true,
+   "text": "mov dword ptr [edx + eax*8], 0x4afbf0",
+   "expected": "mov dword ptr [edx + eax*8], 0x4afbf0",
+   "meaning": "registration: the dispatcher"
+  },
+  "anchor_0828ce": {
+   "ok": true,
+   "text": "mov dword ptr [edx + eax*8 + 0x40], 0x5a5e78",
+   "expected": "mov dword ptr [edx + eax*8 + 0x40], 0x5a5e78",
+   "meaning": "registration: its names table"
+  },
+  "anchor_0b23c6": {
+   "ok": true,
+   "text": "mov eax, dword ptr [0x5a82f8]",
+   "expected": "mov eax, dword ptr [0x5a82f8]",
+   "meaning": "case 0x73: the display slot"
+  },
+  "anchor_0b23d3": {
+   "ok": true,
+   "text": "mov eax, dword ptr [eax]",
+   "expected": "mov eax, dword ptr [eax]",
+   "meaning": "EAX = the display record"
+  },
+  "anchor_0b23d5": {
+   "ok": true,
+   "text": "mov ecx, dword ptr [0x5aa174]",
+   "expected": "mov ecx, dword ptr [0x5aa174]",
+   "meaning": "ECX = the VM, loaded before the site"
+  },
+  "anchor_0b23e0": {
+   "ok": true,
+   "text": "push edi",
+   "expected": "push edi",
+   "meaning": "EDI = the return record"
+  },
+  "anchor_0b23e1": {
+   "ok": true,
+   "text": "call 0x4c1940",
+   "expected": "call 0x4c1940",
+   "meaning": "the return helper"
+  },
+  "anchor_0b23fa": {
+   "ok": true,
+   "text": "mov ecx, dword ptr [0x5aa174]",
+   "expected": "mov ecx, dword ptr [0x5aa174]",
+   "meaning": "case 0x74: ECX = the VM"
+  },
+  "anchor_0b2406": {
+   "ok": true,
+   "text": "call 0x4c1940",
+   "expected": "call 0x4c1940",
+   "meaning": "the return helper"
+  },
+  "anchor_0c194c": {
+   "ok": true,
+   "text": "mov ebx, ecx",
+   "expected": "mov ebx, ecx",
+   "meaning": "the helper takes ECX = VM"
+  },
+  "anchor_077fa9": {
+   "ok": true,
+   "text": "cmp word ptr [edx + 0x414], 0",
+   "expected": "cmp word ptr [edx + 0x414], 0",
+   "meaning": "EDX = the input context, +0x414 dx"
+  },
+  "anchor_077fc6": {
+   "ok": true,
+   "text": "movsx eax, word ptr [edx + 0x416]",
+   "expected": "movsx eax, word ptr [edx + 0x416]",
+   "meaning": "dy pushed first (signed dword)"
+  },
+  "anchor_077fce": {
+   "ok": true,
+   "text": "movsx eax, word ptr [edx + 0x414]",
+   "expected": "movsx eax, word ptr [edx + 0x414]",
+   "meaning": "dx pushed second"
+  },
+  "anchor_077fd6": {
+   "ok": true,
+   "text": "push 2",
+   "expected": "push 2",
+   "meaning": "[esp+4] at the site"
+  },
+  "anchor_077fd8": {
+   "ok": true,
+   "text": "push 1",
+   "expected": "push 1",
+   "meaning": "[esp] at the site"
+  },
+  "anchor_077fed": {
+   "ok": true,
+   "text": "call 0x4bb5b0",
+   "expected": "call 0x4bb5b0",
+   "meaning": "the direct callback wrapper"
+  },
+  "anchor_077ff2": {
+   "ok": true,
+   "text": "add esp, 0x20",
+   "expected": "add esp, 0x20",
+   "meaning": "eight caller-cleaned words"
+  },
+  "anchor_0d22e8": {
+   "ok": true,
+   "text": "push dword ptr [0x61c884]",
+   "expected": "push dword ptr [0x61c884]",
+   "meaning": "the mapped y sum pushed first"
+  },
+  "anchor_0d22ee": {
+   "ok": true,
+   "text": "push dword ptr [0x61c880]",
+   "expected": "push dword ptr [0x61c880]",
+   "meaning": "the mapped x sum"
+  },
+  "anchor_0d2306": {
+   "ok": true,
+   "text": "call 0x4bb500",
+   "expected": "call 0x4bb500",
+   "meaning": "the callback wrapper"
+  },
+  "anchor_0d230f": {
+   "ok": true,
+   "text": "mov dword ptr [0x61c880], 0",
+   "expected": "mov dword ptr [0x61c880], 0",
+   "meaning": "the native sums cleared after the send"
+  },
+  "anchor_07b580": {
+   "ok": true,
+   "text": "add eax, -3",
+   "expected": "add eax, -3",
+   "meaning": "X2 dispatcher: opcode - 3"
+  },
+  "anchor_07b598": {
+   "ok": true,
+   "text": "movzx eax, byte ptr [eax + 0x47bedc]",
+   "expected": "movzx eax, byte ptr [eax + 0x47bedc]",
+   "meaning": "the index byte table"
+  },
+  "anchor_07b59f": {
+   "ok": true,
+   "text": "jmp dword ptr [eax*4 + 0x47be4c]",
+   "expected": "jmp dword ptr [eax*4 + 0x47be4c]",
+   "meaning": "the jump table"
+  },
+  "anchor_0778d8": {
+   "ok": true,
+   "text": "push 0x5a5d60",
+   "expected": "push 0x5a5d60",
+   "meaning": "registration: the X2 names table"
+  },
+  "anchor_07bc3a": {
+   "ok": true,
+   "text": "mov ecx, dword ptr [ebp + 0x18]",
+   "expected": "mov ecx, dword ptr [ebp + 0x18]",
+   "meaning": "ECX = the argument records"
+  },
+  "anchor_07bc4d": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ecx + 0xb]",
+   "expected": "mov eax, dword ptr [ecx + 0xb]",
+   "meaning": "x"
+  },
+  "anchor_07bc55": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ecx + 0x10]",
+   "expected": "mov eax, dword ptr [ecx + 0x10]",
+   "meaning": "y"
+  },
+  "anchor_07bc5d": {
+   "ok": true,
+   "text": "jmp 0x47b71e",
+   "expected": "jmp 0x47b71e",
+   "meaning": "the common return"
+  },
+  "anchor_0ce5b0": {
+   "ok": true,
+   "text": "push dword ptr [0x5aa188]",
+   "expected": "push dword ptr [0x5aa188]",
+   "meaning": "the unprojection reads the cursor cells (real pixels)"
+  },
+  "anchor_0ce5b6": {
+   "ok": true,
+   "text": "push dword ptr [0x5aa180]",
+   "expected": "push dword ptr [0x5aa180]",
+   "meaning": "the unprojection reads the cursor cells (real pixels)"
+  },
+  "anchor_030564": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ebx + 0x10]",
+   "expected": "mov eax, dword ptr [ebx + 0x10]",
+   "meaning": "INS dispatcher: EAX = the opcode"
+  },
+  "anchor_030579": {
+   "ok": true,
+   "text": "cmp eax, 0x70",
+   "expected": "cmp eax, 0x70",
+   "meaning": "0x71 cases"
+  },
+  "anchor_030582": {
+   "ok": true,
+   "text": "jmp dword ptr [eax*4 + 0x432488]",
+   "expected": "jmp dword ptr [eax*4 + 0x432488]",
+   "meaning": "the jump table"
+  },
+  "anchor_01df2f": {
+   "ok": true,
+   "text": "mov dword ptr [ecx + eax*8], 0x430540",
+   "expected": "mov dword ptr [ecx + eax*8], 0x430540",
+   "meaning": "registration: the INS dispatcher"
+  },
+  "anchor_01df66": {
+   "ok": true,
+   "text": "mov dword ptr [ecx + eax*8 + 0x40], 0x5a3d98",
+   "expected": "mov dword ptr [ecx + eax*8 + 0x40], 0x5a3d98",
+   "meaning": "registration: its names table"
+  },
+  "anchor_0320aa": {
+   "ok": true,
+   "text": "mov esi, dword ptr [ebx + 0x18]",
+   "expected": "mov esi, dword ptr [ebx + 0x18]",
+   "meaning": "G: ESI = the argument records"
+  },
+  "anchor_0320b6": {
+   "ok": true,
+   "text": "call 0x41e420",
+   "expected": "call 0x41e420",
+   "meaning": "G: EAX = the cockpit (registry resolver)"
+  },
+  "anchor_0320cf": {
+   "ok": true,
+   "text": "call 0x42bae0",
+   "expected": "call 0x42bae0",
+   "meaning": "G: the overlay icon hit test"
+  },
+  "anchor_02bae0": {
+   "ok": true,
+   "text": "sub esp, 0x14",
+   "expected": "sub esp, 0x14",
+   "meaning": "the hit test writes EFLAGS first"
+  },
+  "anchor_02bafe": {
+   "ok": true,
+   "text": "mov eax, dword ptr [0x5a82f8]",
+   "expected": "mov eax, dword ptr [0x5a82f8]",
+   "meaning": "the hit test reads the real display size"
+  },
+  "anchor_0310af": {
+   "ok": true,
+   "text": "mov ecx, dword ptr [ebx + 0x14]",
+   "expected": "mov ecx, dword ptr [ebx + 0x14]",
+   "meaning": "H: ECX = the argument count"
+  },
+  "anchor_0310bb": {
+   "ok": true,
+   "text": "cmp ecx, 3",
+   "expected": "cmp ecx, 3",
+   "meaning": "H: short argument lists"
+  },
+  "anchor_0310be": {
+   "ok": true,
+   "text": "jl 0x4310d9",
+   "expected": "jl 0x4310d9",
+   "meaning": "H: the -1/-1 path jumps past the span"
+  },
+  "anchor_0310c6": {
+   "ok": true,
+   "text": "cmp ecx, 4",
+   "expected": "cmp ecx, 4",
+   "meaning": "H: EFLAGS regenerated at the continuation"
+  },
+  "anchor_0310de": {
+   "ok": true,
+   "text": "push edi",
+   "expected": "push edi",
+   "meaning": "H: y"
+  },
+  "anchor_0310df": {
+   "ok": true,
+   "text": "push edx",
+   "expected": "push edx",
+   "meaning": "H: x"
+  },
+  "anchor_0310e0": {
+   "ok": true,
+   "text": "call 0x426d70",
+   "expected": "call 0x426d70",
+   "meaning": "H: the native cursor aim"
+  },
+  "anchor_031cd8": {
+   "ok": true,
+   "text": "mov esi, dword ptr [ebx + 0x18]",
+   "expected": "mov esi, dword ptr [ebx + 0x18]",
+   "meaning": "J: ESI = the argument records"
+  },
+  "anchor_031cde": {
+   "ok": true,
+   "text": "call 0x4a49f0",
+   "expected": "call 0x4a49f0",
+   "meaning": "J: EAX = the scene"
+  },
+  "anchor_031d08": {
+   "ok": true,
+   "text": "call 0x41f6b0",
+   "expected": "call 0x41f6b0",
+   "meaning": "J: the map pick"
+  },
+  "anchor_01f6b3": {
+   "ok": true,
+   "text": "and esp, 0xfffffff8",
+   "expected": "and esp, 0xfffffff8",
+   "meaning": "the pick writes EFLAGS first"
+  },
+  "anchor_01f6bc": {
+   "ok": true,
+   "text": "cmp dword ptr [0x5a82e0], 0",
+   "expected": "cmp dword ptr [0x5a82e0], 0",
+   "meaning": "the pick tests the map state itself"
+  },
+  "anchor_01f6f8": {
+   "ok": true,
+   "text": "movsx ecx, word ptr [esi + 4]",
+   "expected": "movsx ecx, word ptr [esi + 4]",
+   "meaning": "the pick reads the real display width"
+  },
+  "anchor_02016a": {
+   "ok": true,
+   "text": "push 0x585150",
+   "expected": "push 0x585150",
+   "meaning": "WriteGalaxyMapSectorName (string checked below)"
+  },
+  "anchor_020179": {
+   "ok": true,
+   "text": "call 0x4bb500",
+   "expected": "call 0x4bb500",
+   "meaning": "the callback wrapper"
+  },
+  "anchor_02017e": {
+   "ok": true,
+   "text": "add esp, 0x28",
+   "expected": "add esp, 0x28",
+   "meaning": "ten caller-cleaned words"
+  },
+  "anchor_0ce57e": {
+   "ok": true,
+   "text": "mov ecx, dword ptr [0x5a82e4]",
+   "expected": "mov ecx, dword ptr [0x5a82e4]",
+   "meaning": "the cockpit registry slot"
+  },
+  "anchor_0ce58c": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ecx + 0x10]",
+   "expected": "mov eax, dword ptr [ecx + 0x10]",
+   "meaning": "registry+0x10 = the active handle"
+  },
+  "anchor_0ce594": {
+   "ok": true,
+   "text": "call 0x41e420",
+   "expected": "call 0x41e420",
+   "meaning": "the resolver"
+  },
+  "anchor_01e420": {
+   "ok": true,
+   "text": "mov eax, dword ptr [ecx]",
+   "expected": "mov eax, dword ptr [ecx]",
+   "meaning": "resolver: registry+0 = the map"
+  },
+  "anchor_01e428": {
+   "ok": true,
+   "text": "mov eax, dword ptr [eax + 4]",
+   "expected": "mov eax, dword ptr [eax + 4]",
+   "meaning": "map+4 = the bucket count"
+  },
+  "anchor_01e430": {
+   "ok": true,
+   "text": "and eax, ecx",
+   "expected": "and eax, ecx",
+   "meaning": "bucket = handle & (count - 1)"
+  },
+  "anchor_01e440": {
+   "ok": true,
+   "text": "cmp dword ptr [eax + 4], ecx",
+   "expected": "cmp dword ptr [eax + 4], ecx",
+   "meaning": "row+4 = the handle"
+  },
+  "anchor_01e445": {
+   "ok": true,
+   "text": "mov eax, dword ptr [eax]",
+   "expected": "mov eax, dword ptr [eax]",
+   "meaning": "row+0 = next"
+  },
+  "anchor_01e450": {
+   "ok": true,
+   "text": "mov eax, dword ptr [eax + 8]",
+   "expected": "mov eax, dword ptr [eax + 8]",
+   "meaning": "row+8 = the cockpit"
+  },
+  "anchor_021b6c": {
+   "ok": true,
+   "text": "mov dword ptr [esi + 4], edi",
+   "expected": "mov dword ptr [esi + 4], edi",
+   "meaning": "cockpit+4 = its HUD scene"
+  },
+  "anchor_021b96": {
+   "ok": true,
+   "text": "mov dword ptr [esi + 8], eax",
+   "expected": "mov dword ptr [esi + 8], eax",
+   "meaning": "cockpit+8 = its HUD camera"
+  },
+  "anchor_021bbb": {
+   "ok": true,
+   "text": "push dword ptr [esi + 4]",
+   "expected": "push dword ptr [esi + 4]",
+   "meaning": "attach the camera to the HUD scene"
+  },
+  "anchor_021bc1": {
+   "ok": true,
+   "text": "call 0x4a5860",
+   "expected": "call 0x4a5860",
+   "meaning": "the attach"
+  },
+  "anchor_0a5897": {
+   "ok": true,
+   "text": "mov dword ptr [esi + 0x1c], ecx",
+   "expected": "mov dword ptr [esi + 0x1c], ecx",
+   "meaning": "attach: camera+0x1c = the scene"
+  },
+  "dead_width": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "0c1947 mov eax, 1",
+    "0c194c mov ebx, ecx",
+    "0c194e mov word ptr [edi + 0x20], ax",
+    "0c1952 cmp byte ptr [edi + 0x28], 8"
+   ]
+  },
+  "dead_height": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "0c1947 mov eax, 1",
+    "0c194c mov ebx, ecx",
+    "0c194e mov word ptr [edi + 0x20], ax",
+    "0c1952 cmp byte ptr [edi + 0x28], 8"
+   ]
+  },
+  "dead_width_eax_after_push": {
+   "ok": true,
+   "registers": [
+    "eax"
+   ],
+   "path": [
+    "0c1941 push esi",
+    "0c1942 push edi",
+    "0c1943 mov edi, dword ptr [esp + 0x10]",
+    "0c1947 mov eax, 1"
+   ]
+  },
+  "dead_height_eax_after_push": {
+   "ok": true,
+   "registers": [
+    "eax"
+   ],
+   "path": [
+    "0c1941 push esi",
+    "0c1942 push edi",
+    "0c1943 mov edi, dword ptr [esp + 0x10]",
+    "0c1947 mov eax, 1"
+   ]
+  },
+  "dead_delta_direct": {
+   "ok": true,
+   "registers": [
+    "eax",
+    "edx",
+    "eflags"
+   ],
+   "path": [
+    "077fed call 0x4bb5b0",
+    "0bb5b0 sub esp, 0xc",
+    "0bb5b3 mov edx, dword ptr [esp + 0x14]",
+    "0bb5b7 lea eax, [esp + 8]"
+   ]
+  },
+  "dead_delta_mapped": {
+   "ok": true,
+   "registers": [
+    "eax",
+    "edx",
+    "eflags"
+   ],
+   "path": [
+    "0d2306 call 0x4bb500",
+    "0bb500 sub esp, 0xc",
+    "0bb503 mov edx, dword ptr [esp + 0x14]",
+    "0bb507 lea eax, [esp + 8]"
+   ]
+  },
+  "dead_cursor_x": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "0c1947 mov eax, 1",
+    "0c194c mov ebx, ecx",
+    "0c194e mov word ptr [edi + 0x20], ax",
+    "0c1952 cmp byte ptr [edi + 0x28], 8"
+   ]
+  },
+  "dead_cursor_x_after_store": {
+   "ok": true,
+   "registers": [
+    "eax"
+   ],
+   "path": [
+    "07bc55 mov eax, dword ptr [ecx + 0x10]"
+   ]
+  },
+  "dead_cursor_y": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "0c1947 mov eax, 1",
+    "0c194c mov ebx, ecx",
+    "0c194e mov word ptr [edi + 0x20], ax",
+    "0c1952 cmp byte ptr [edi + 0x28], 8"
+   ]
+  },
+  "dead_cursor_y_after_store": {
+   "ok": true,
+   "registers": [
+    "eax"
+   ],
+   "path": [
+    "0c1941 push esi",
+    "0c1942 push edi",
+    "0c1943 mov edi, dword ptr [esp + 0x10]",
+    "0c1947 mov eax, 1"
+   ]
+  },
+  "dead_overlay_icon": {
+   "ok": true,
+   "registers": [
+    "ecx",
+    "eflags"
+   ],
+   "path": [
+    "0320c6 lea ecx, [eax + 0x3bc]",
+    "0320cc push dword ptr [esi + 6]",
+    "0320cf call 0x42bae0",
+    "02bae0 sub esp, 0x14"
+   ]
+  },
+  "dead_cursor_aim": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "0310c0 mov edx, dword ptr [esi + 6]",
+    "0310c3 mov edi, dword ptr [esi + 0xb]",
+    "0310c6 cmp ecx, 4"
+   ]
+  },
+  "dead_map_label": {
+   "ok": true,
+   "registers": [
+    "eax",
+    "edx",
+    "eflags"
+   ],
+   "path": [
+    "020173 push dword ptr [0x5a82e8]",
+    "020179 call 0x4bb500",
+    "0bb500 sub esp, 0xc",
+    "0bb503 mov edx, dword ptr [esp + 0x14]"
+   ]
+  },
+  "dead_map_pick": {
+   "ok": true,
+   "registers": [
+    "eflags"
+   ],
+   "path": [
+    "031d08 call 0x41f6b0",
+    "01f6b0 push ebp",
+    "01f6b1 mov ebp, esp",
+    "01f6b3 and esp, 0xfffffff8"
+   ]
+  },
+  "dead_projection": {
+   "ok": true,
+   "registers": [
+    "eax"
+   ],
+   "path": [
+    "0de91b mov eax, 1"
+   ]
+  },
+  "source": {
+   "ok": true,
+   "problems": []
+  }
+ },
+ "exe_info": {
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "known": true
+ },
+ "direct_edges": 72230,
+ "instructions_decoded": 616,
+ "check_count": 174
+}

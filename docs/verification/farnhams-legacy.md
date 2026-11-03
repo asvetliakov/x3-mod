@@ -2028,3 +2028,45 @@ view; tell me before relaunching. Expect `cull_small_parts … far_jets=on editi
 far_jets=on`, `engine_stage far_jets>0 far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`.
 Visual: distant ships show a small engine glow instead of nothing; nearby plumes unchanged. Report a distant ship with no
 glow, a missing nearby plume, or any new flicker on engine glows.
+
+## UI scale on FL, host evidence (2026-11-03)
+
+`ui_scale` (menus, sidebars, HUD panels drawn `s` times larger; `auto` = back-buffer height / 1080 rounded to the half)
+ported as `src/engine/fl/ui_scale_fl.cpp` + `ui_scale_sites_fl.h`: eleven X3FL.exe claims at module base + RVA, all or
+none, at `CreateDevice` inside the install window (B/C screen size `0x0b23db`/`0x0b2400`, D1/D2 the two
+`InputMouseDelta` sends `0x077fda`/`0x0d22f8`, E1/E2 cursor stores `0x07bc50`/`0x07bc58`, G overlay click `0x0320c3`,
+H cursor aim `0x0310c0`, I map label `0x020158`, J map pick `0x031d01`, A projection `0x0de91b` last). AP's `--debug`
+entry counter F is not ported (the projection counters are printed instead); `text_density` logs one `ap_only` row.
+Facts and AP differences: [fl/ui-scale.md](../reverse-engineering/fl/ui-scale.md), "Verified 2026-11-03".
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `cd verification/probe && python3 verify_ui_scale_sites_fl.py --source --out ../results/fl-ui-scale/verify_fl_sites.json` | PASS, 174 checks: 28 windows (1,367 bytes) FNV-1a with exactly their 35 HIGHLOW dwords at the declared targets; 11 spans exact bytes, whole instructions from a known boundary, expected text, only the 4 declared fixups (D1, D2, E1, E2 imm/abs), first five bytes inside one aligned qword; no direct edge into a span interior (72,230 edges), no raw rel8/rel32 encoding into one in the containing functions (1 operand-byte alias explained by the decode), no relocated dword among 38,327 pointing into one; 6 dispatch names (`B3D_ScreenGetWidth/Height` 0x73/0x74, `INS_*` 0x28/0x3e/0x64, `X2_UpdateCursorSteering` 0x1e), 2 strings, 2 float constants; projection callers exactly `0x096fb9`, `0x0976a0`, suffix only immediate stores to other P elements, EBX/EDI/ESI writers on the 2D path; 104 anchors; 15 liveness walks (every clobbered register/flag written before read, into the callee; B/C EAX dead after the push: `0x0c1940` loads `mov eax,1` first); header = executable |
+| Native fixture | `python3 -I verification/results/fl-ui-scale/run_fixture.py` (`fixture_out.txt`; `verification/probe/fl_ui_scale.cpp`) | `RESULT checks=905 failures=0` and late run `checks=34 failures=0`: the real span bytes of all eleven sites in a 64 KB-aligned image, vanilla and at s = 1.5 (auto 1440), 1.25 (fixed), 2 (Reset 2160) and the identity cells (Reset 1080) against the AP models (`virtual_size`, the 16.16 remainder through a 64-bit product, `cursor_real`, `map_offset`, `scale_projection` exact; identity equal to vanilla, A within one ulp), every GPR, outgoing stack words, DF, the projection's arithmetic flags, XMM1/XMM4/XMM7, x87 CW, MXCSR and LastError as documented; native deltas, mapped sums and the click record untouched; excluded camera published only while attached to the HUD scene (stale → 0, no cockpit for the handle → 0), excluded instances unscaled; one flipped byte per window refused naming it (28), a fixup at another base → `slot_mismatch`; read-back/chain faults at the first, sixth, tenth and last claim roll everything back (image byte-equal); a failed restore leaves `patched_unverified` at the identity cells, shutdown restores; window re-checked at the device; `late_claim` writes nothing |
+| Stub decode | `test_fl_ui_scale.test_stubs_decode` (Capstone) | every stub writes only its documented registers and memory, no call, no x87; projection stub saves/restores EFLAGS, ECX, XMM1, MXCSR |
+| Cost (diagnostic) | the fixture's `timing` mode (200,000 calls, this host, not game FPS) | harness + site 489.2 ns vanilla / 479.5 ns patched (projection), 479.4 / 484.7 ns (delta send): the harness noise (about 475–490 ns per call) hides the stubs, so the per-call stub cost is inferred from instruction count, not measured: projection 37 instructions on the scaled path (pushfd/popfd and stmxcsr/ldmxcsr included) per 2D instance per frame, delta 17 per mouse callback, the others 4–16 per script call; no allocation, no lock |
+| AP unchanged | `python3 -I verification/results/fl-ui-scale/ap_objects_identical.py --head <commit> capture.cpp loader.cpp ui_scale.cpp text_density.cpp` (`ap_objects.txt`; base `2ed4da17e`; the output records the commit and each source's blob hash, which the final evidence-only amend keeps) | identical AP disassembly (41,169 / 3,070 / 2,870 / 5,768 lines) |
+| Host modules | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_fl_ui_scale test_ui_scale test_config_schema test_fl_chase_camera` | 39 tests, 0 failing |
+| Builds | `cmake --build build-fl -j8`, `cmake --build build-ap -j8` (worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each; `check_no_x87.py build-ap/d3d9.dll` PASS (1,110 functions); `tools/config/generate.py --check` PASS (292 settings, 137 in the template) |
+
+Expected log rows (not verified in game), `ui_scale = auto` at 1440 lines: `ui_scale setting=auto status=pending
+reason=pending mode=auto scale=1.0000 diagnostic=none window=- base=0x<base> site_rva=0x0de91b edition=fl`, `text_density
+installed=0 status=ap_only edition=fl reason=not_ported`, then at device creation `ui_scale_camera frame=0
+excluded_camera=00000000 previous=00000000 edition=fl` and `ui_scale_install width=<W> height=1440 scale=1.5000
+status=patched reason=ok failed_site=- window=- mode=auto virtual=<round(W/1.5)>x960 inverse16=43691 fixed256=384
+writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=<n> edition=fl`; one
+`ui_scale_camera … excluded_camera=<camera> previous=00000000 edition=fl` once the cockpit exists. Under `--debug`,
+every 300 Presents `ui_scale_frame frame=… frames=300 scale=1.5000 scaled=<n> excluded=<n> excluded_camera=<camera>
+cameras=- edition=fl` (`excluded > 0` in flight: the cockpit HUD scene is kept at real size). No `refused`,
+`window_mismatch`, `slot_mismatch`, `late_claim` or `patched_unverified`.
+
+User flight check (1440-line screen, `ui_scale = auto`): the main menu looks unchanged; in game the menus, sidebars
+and HUD panels (ticker, gravidar, info panels) are 1.5 times larger and anchored to their screen edges; the crosshair,
+target brackets and cockpit text panels stay at their normal size and place; the mouse cursor moves at its usual
+speed and clicks land on the enlarged icons, menu rows and target brackets; right-mouse cursor fire in the chase view
+still goes to the cursor; on the galaxy map the sector names sit on their rings and clicking a sector or its name
+selects that sector; a graph menu (station or net-worth graph) opens enlarged with its lines and legend in place
+(blocky, not sharper). Known gap (AP and FL): a tooltip at the right or bottom edge may run off-screen, because the
+native clamp compares the script's virtual position with the real screen size; report it if you see one. Scripts that
+rotate a view by dragging with the mouse in direct mode turn `1/s` as fast. Report any element at the wrong size or
+place, a cursor that runs ahead of or behind the mouse, or clicks that miss.

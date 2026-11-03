@@ -139,7 +139,9 @@ set(X3M_SHARED_SOURCES
 # "Verified 2026-11-02"); fov.cpp is AP only. The chase lead marker and central HUD too: the fl target links
 # src/engine/fl/chase_lead_fl.cpp (docs/reverse-engineering/fl/chase-lead.md, "Verified 2026-11-02"); chase_lead.cpp is
 # AP only. The chase cursor fire too: the fl target links src/engine/fl/chase_fire_fl.cpp
-# (docs/reverse-engineering/fl/chase-fire-aim.md, "Verified 2026-11-03"); chase_fire.cpp is AP only.
+# (docs/reverse-engineering/fl/chase-fire-aim.md, "Verified 2026-11-03"); chase_fire.cpp is AP only. The UI scale too:
+# the fl target links src/engine/fl/ui_scale_fl.cpp (docs/reverse-engineering/fl/ui-scale.md, "Verified 2026-11-03");
+# ui_scale.cpp is AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
@@ -190,6 +192,11 @@ else()
   # (docs/reverse-engineering/fl/chase-fire-aim.md, "Verified 2026-11-03"); it provides chase_fire.h in place of the AP
   # src/proxy/chase_fire.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/chase_fire_fl.cpp)
+  # The UI scale: eleven claims (script screen size, the two mouse-delta callbacks, the cursor stores, the overlay/aim
+  # click points, the galaxy-map label and pick, the 2D projection), the AP policy on FL bindings
+  # (docs/reverse-engineering/fl/ui-scale.md, "Verified 2026-11-03"); it provides ui_scale.h in place of the AP
+  # src/proxy/ui_scale.cpp. text_density stays AP only (one refusal row from the loader).
+  target_sources(d3d9 PRIVATE src/engine/fl/ui_scale_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -262,6 +269,9 @@ set_source_files_properties(src/engine/fl/chase_lead_fl.cpp PROPERTIES COMPILE_O
 # The FL chase cursor fire (src/engine/fl/chase_fire_fl.cpp): its handler runs inside the emitted PUSHFD/PUSHAD/XMM stub
 # under PreserveCpuState like the AP module: default SSE2 flags, no exception bookends inside the CPU-state boundary.
 set_source_files_properties(src/engine/fl/chase_fire_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL UI scale (src/engine/fl/ui_scale_fl.cpp): emitted integer/SSE stubs, no callout; the install and Present code
+# throws nothing.
+set_source_files_properties(src/engine/fl/ui_scale_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
