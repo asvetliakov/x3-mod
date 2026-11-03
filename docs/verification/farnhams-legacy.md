@@ -2302,3 +2302,28 @@ off a hull. Then set `engine_nozzle_source = draw` (no rebuild), and option (c) 
 their emitter points (the rear of the hull, not floating off it). Each gets a hull light on the plates around the
 nozzles and an engine trail. The plumes are dim when docked or still and grow with speed. Ships with visible jets
 look as in run 32. Kill: an anchor plume off the hull or glowing while parked → `engine_plume_emitters = 0`.
+
+## FL run 32 — engine node walk honoured on FL (installed 2026-11-03)
+
+`62c3fe8cf` (design `architecture/fl-nozzle-walk-activation.md`, option (b) ratified), Opus-high review with no
+blocker, fixes folded (section above). Clean `build-fl` from `62c3fe8cf`, 0 warnings; full host suite 336 modules 3,448 tests 0
+failing; `fl-nozzle-walk/read_set.py` 36 anchors PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` =
+`9330f61b…` (55,825,445 B), rollback `rollback-d3d9\d3d9.dll.run31` = `b4d4e497…`. Ini: `engine_plume_emitters = 0` appended
+(the only uncommented key; previous ini kept as `rollback-ini\x3m.ini.run31`), so this run flies the walk alone; the
+hidden-emitter plumes of step 1 follow as run 33 by removing that line. Rollback without a DLL swap: `engine_nozzle_source
+= draw`. Record `verification/results/fl-run32/candidate.json`.
+
+**FL run 32 A (open):** a clear sector with several ships under way, including one that flies partly off the screen edge
+(so a nozzle leaves the frustum while the hull stays in view), then an Argon shipyard or any busy station with 200+
+objects in view; one F8 in each; `--debug` not required; tell me before relaunching. Expect `engine_nozzle_source …
+source=node edition=fl rule=hook_only`, `engine_node_walk_window` rows every 300 frames with `unreadable=0`,
+`walk_us_p99` well under 500 (µs), `refused` small (menu/load frames), and no `engine_plumes_hidden_emitters` anchors
+(`engine_plume_emitters=0`). Visual: plumes look as before, but an engine that leaves the screen edge keeps its plume
+and hull light while the ship stays in view; no floating or parked-glowing plume. Kill criterion: `unreadable > 0`, an
+exception row, `walk_us_p99 > 500` (or over 10 % of the frame p50), or a floating/parked anchor → `engine_nozzle_source
+= draw` in the ini and report.
+
+**FL run 33 (queued, after 32 is accepted):** remove the `engine_plume_emitters = 0` line (defaults to 1). Find an Argon
+Heavy Centaur (`SS_SH_A_M6M`) or Terran drones: they gain plumes, a hull light and a trail at their hidden emitter points,
+following throttle; ships that already had plumes unchanged; hulls with neither glow nor emitters unchanged. Expect
+`engine_plumes_hidden_emitters anchors>0 ships>0 edition=fl` and `engine_plumes_hidden_emitter_hull` rows.

@@ -1,0 +1,21 @@
+{
+ "run": 32,
+ "step": "FL engine node walk honoured (engine_nozzle_source = node: owned context scale at the gather, hook-only append, stage arms on gathered roots, model offset on every walk, engine_node_walk_window row every 300 frames) [62c3fe8cf]; plumes step 1 (hidden emitter anchors, 17233a189) compiled but held off by the ini line engine_plume_emitters = 0 for this run",
+ "edition": "fl",
+ "commit": "62c3fe8cf",
+ "dll_built_from": "62c3fe8cf",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "9330f61ba60f2486",
+ "dll_bytes": 55825445,
+ "installed_sha256_prefix": "9330f61ba60f2486",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run31 (b4d4e497); ini: C:\\X3FL\\rollback-ini\\x3m.ini.run31 (or set engine_nozzle_source = draw)",
+ "game_data": "overlay v2 and fonts unchanged",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "C:\\X3FL\\x3m.ini: appended `engine_plume_emitters = 0` (run 32 only); everything else commented (defaults)",
+ "host_tests": "run_host_suite 336 modules 3448 tests 0 failing; read_set.py 36 anchors + 46 far anchors PASS; generate.py --check PASS 293/138; check_no_x87 build-ap PASS; fl_cull_chain native fixture 228 checks 0 failures (agent); AP objects: motion_output.cpp and capture.cpp differ by design (row fields, hull-row buffering, probe-step helper; AP behaviour unchanged), 3 identical",
+ "build_warnings": 0,
+ "review": "Opus high: no blocker; folded: ship roots marked on refused frames, AP arm condition pinned exactly, decommit wording (VirtualQuery region cache, not a fault guard), refusal row re-armed per 300 frames, node_walk_us timing note, engine_node_walk_window row at any log tier",
+ "installed_at": "2026-11-03T08:49:48+04:00"
+}
