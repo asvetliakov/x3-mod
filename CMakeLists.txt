@@ -209,6 +209,10 @@ else()
   # bindings (docs/reverse-engineering/fl/dust-light.md, "Port (2026-11-03)"); it provides dust_leak_fix.h in place of
   # the AP src/proxy/dust_leak_fix.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/dust_leak_fix_fl.cpp)
+  # The oversized scanner disc: the filled-ellipse entry claimed, large or non-unit discs through the 64-bit port
+  # (docs/reverse-engineering/fl/circle-fill.md, "Port (2026-11-03)"); it provides circle_fill.h in place of the AP
+  # src/proxy/circle_fill.cpp.
+  target_sources(d3d9 PRIVATE src/engine/fl/circle_fill_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -290,6 +294,11 @@ set_source_files_properties(src/engine/fl/text_density_fl.cpp PROPERTIES COMPILE
 # The FL dust leak fix (src/engine/fl/dust_leak_fix_fl.cpp): its stub is emitted code in the arena (no C side runs inside
 # the engine); the install code runs on the backend-load path: default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/dust_leak_fix_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL oversized-disc port (src/engine/fl/circle_fill_fl.cpp) runs inside the engine's filled-ellipse entry behind a
+# pushad/pushfd stub that saves no XMM or x87 state: the same rule as the AP module, integer arithmetic only (the
+# engine's B conversion is file-scope asm).
+set_source_files_properties(src/engine/fl/circle_fill_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

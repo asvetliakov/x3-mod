@@ -1063,6 +1063,22 @@ quantiles, and the SETA probe clock. Both decommit cases put a frame boundary be
 decommitted within the same frame is not caught (as on the AP walk). Not verified: the walk in game (not flown,
 runs 32 and 33); native Windows game behaviour.
 
+## 2026-11-03: scanner disc fill on FL (`circle_fill_fix` on FL)
+
+The FL edition claims the filled-ellipse rasterizer's six-byte prologue at X3FL.exe module base + `0x10c940`
+([fl/circle-fill.md](../reverse-engineering/fl/circle-fill.md), "Port (2026-11-03)") on the backend-load path inside the
+install window: one `lock cmpxchg8b`, read back, rolled back on failure, behind the X3FL.exe identity and eleven compared
+windows (24 relocated dwords checked against the base); the module is pinned. The stub is asm in the DLL (PUSHFD/PUSHAD,
+CLD; the C side is built without SSE/MMX/x87); it calls the engine's own lock, class function, diagnostic and span leaves
+through register-ABI shims and reproduces the engine's SSE2 B conversion under the caller's MXCSR. No device call, no
+allocation; LastError and an FXSAVE image are kept around the one diagnostic row. Documented Win32 only
+(`VirtualProtect`, `FlushInstructionCache`, `GetModuleHandleExW`), no Wine/CrossOver dependency. Natively verified on
+the Windows host through WSL interop (measured 2026-11-03): the FL fixture, 962 checks, 0 failures, executing X3FL.exe's
+relocated rasterizer, lock, class function, class-0 leaf and CRT fill (871 plain runs, 1,225,682 ordered leaf records
+equal to an independent model; every register, DF, x87 CW, XMM7, MXCSR controls and LastError at four stack
+alignments; five MXCSR modes; lock failure/recovery; canary-backed leaf writes; every window bit; faults; late claim).
+Not verified: in game (not flown); native Windows game behaviour.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

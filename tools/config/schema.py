@@ -446,7 +446,8 @@ SETTINGS = [
           'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
           choices=('on', 'off'), launcher='--dust-leak-fix'),
     entry('circle_fill_fix', 'enum', 'engine', 'The game\'s sector-map scanner disc collapses above a radius of about 800 texels; '
-          'this runs a 64-bit copy of the engine\'s circle fill for large discs. on or off (off = stock behaviour).', 'on',
+          'this runs a 64-bit copy of the engine\'s circle fill for large discs. on or off (off = stock behaviour). '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
           choices=('on', 'off'), launcher='--circle-fill-fix', since='2026-10-27'),
     entry('ship_steering', 'bool', 'engine', 'Smoother steering for computer-flown ships: turns follow one curve instead of '
           'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off.', '1',

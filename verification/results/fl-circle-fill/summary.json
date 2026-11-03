@@ -1,0 +1,67 @@
+{
+ "dll_walk": {
+  "build_type": "RelWithDebInfo",
+  "result": "PASS",
+  "walked": 8,
+  "x87_users": [],
+  "xmm_users": [
+   "_x3m_circle_fill_fl_axis"
+  ]
+ },
+ "exe_sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "fixture": {
+  "canary": "CANARY cases=12 good=12 pixels=8157959",
+  "faults": "FAULTS taken=5",
+  "flips": "FLIPS windows=11 bits=22448 refused=22448 relocs=24 relocs_refused=24",
+  "model_matched_runs": 871,
+  "model_plain_runs": 871,
+  "model_records": 1225682,
+  "mxcsr": "MXCSR modes=5 inputs=6 same=30/30",
+  "regs_ok": 993,
+  "result": "RESULT PASS checks=962 failures=0",
+  "returncode": 0,
+  "routes": [
+   "stock_axis",
+   "stock_extent",
+   "stock_fast",
+   "stock_quotient",
+   "unpatched",
+   "wide"
+  ],
+  "run_lines": 993,
+  "summary": "SUMMARY runs=993 records=1294530 cases=621",
+  "wide_rows": 1
+ },
+ "verifier": {
+  "checks": 29,
+  "direct_callers": [
+   "0xa7b19"
+  ],
+  "directed_rounding_bounds": 458745,
+  "failed": [],
+  "mutation_guards": {
+   "and_prologue_truncated": true,
+   "caller_ecx_load": true,
+   "caller_edx_from_ecx": true,
+   "class_body": true,
+   "leaf24_body": true,
+   "lock_body": true,
+   "ret16_exit": true,
+   "stale_ap_entry": true
+  },
+  "result": "PASS",
+  "windows": {
+   "caller_mismatch": "0xab78945d",
+   "class_mismatch": "0x2ac0b97d",
+   "diagnostic_mismatch": "0xe6fb2212",
+   "leaf0_mismatch": "0xdf8d3607",
+   "leaf10_mismatch": "0x7bc9e402",
+   "leaf15_mismatch": "0xff15ebfe",
+   "leaf24_mismatch": "0x33de1b09",
+   "leaf5_mismatch": "0xaecc0586",
+   "lock_mismatch": "0xa44ad4f",
+   "routine_mismatch": "0x2c12c5f0",
+   "scale_mismatch": "0x13586a00"
+  }
+ }
+}
