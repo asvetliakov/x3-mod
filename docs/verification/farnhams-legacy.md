@@ -2028,3 +2028,26 @@ view; tell me before relaunching. Expect `cull_small_parts … far_jets=on editi
 far_jets=on`, `engine_stage far_jets>0 far_records>0`, `far_dropped` small against `far_jets`, `far_disarmed=0`.
 Visual: distant ships show a small engine glow instead of nothing; nearby plumes unchanged. Report a distant ship with no
 glow, a missing nearby plume, or any new flicker on engine glows.
+
+## FL run 29 — merged-LOD overlay v2, merged materials split by colour grade (installed 2026-11-03)
+
+Baker `2b777827a` (grade key: colour-matrix parameters always, the `g_Color_*` palette only where `g_bColor_Mixing` is
+not 0; `docs/architecture/lod-overlay-mods.md`, shader finding in `docs/reverse-engineering/fl/materials.md`). Full FL
+rebake 77:38 wall (7.6 s/body; the first bake took 48:42), exit 0 (measured; `verification/results/fl-lod-overlay/v2-grade-split/`).
+Result: 613 bodies (293 ships, 320 stations) against 637 before; 24 ships left the overlay as `no_draw_gain` because
+their grade count now equals their draw count (Boron M3/M4/M5 and variants, Otas M3/M4, Argon M4P/M8, Paranid M7M/MM6, LC
+M3, Teladi M5P, XTC Boron M4P; they draw their own LODs as without the mod). Merged draws 1,633 -> 1,867 over the fleet
+(+234; the sweep predicted +331 before the 24 drops). Checks: candidate check ok, split check 0 bodies across slots,
+`lod_grade_census mismatch_bodies=0 extra_draws=0` (2 alpha rows still mix grades, known), installed check ok (613
+bodies, 2.68 GB). Installed `C:\X3FL\addon2\06.cat/.dat` = `99406237…`/`bc4ee85e…` (1,999,995,716 B), `07.cat/.dat` =
+`db31c744…`/`0c2add0e…` (683,135,612 B), markers alongside; rollback: the six run 21 files in
+`C:\X3FL\rollback-overlay-run21\`. DLL unchanged (run 28). Record `verification/results/fl-run29/candidate.json`.
+AP: the same baker change applies on the next regenerate (tool hash changed: full rebake, about 2x the previous AP time);
+not yet done.
+
+**FL run 29 A (open):** fly to the Argon food factory in Avigriega (the station of run 27 captures 2/3, or any Argon
+food/bio factory) and look at it from far enough that the merged LOD is in use (the whole station a few hundred pixels
+wide), then approach; one F8 at distance with it selected; also one F8 in a clear sector with several ships and stations
+at distance (frame-time comparison with run 27). Expect: no green cast at distance, the station's colour the same as
+when near; `frame_end` dt_ms unchanged at p50 (4 ms) with `issued=` up by a few draws per affected body. Report any
+station or ship whose colour still changes with distance, and any body that visibly pops between LODs more than before.

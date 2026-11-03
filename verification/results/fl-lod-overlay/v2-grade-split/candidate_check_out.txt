@@ -1,0 +1,1 @@
+lod overlay candidate: ok (edition fl (addon2/); slot 06/07 free (game addon2/ run 01..07, replaces our installed 06/07); no member collision (613 body members, 613 of them override a mounted body); sources unchanged)

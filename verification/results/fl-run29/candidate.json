@@ -1,0 +1,22 @@
+{
+ "run": 29,
+ "step": "FL merged-LOD overlay v2: merged materials split by colour grade (green station fix; baker 2b777827a); DLL unchanged (run 28 23cad71c)",
+ "edition": "fl",
+ "commit": "2ed4da17e",
+ "dirty": false,
+ "dll": "unchanged: C:\\X3FL\\d3d9.dll = run 28 23cad71c",
+ "game_data": {
+  "addon2/06.cat": "99406237",
+  "addon2/06.dat": "bc4ee85e (1,999,995,716 B)",
+  "addon2/07.cat": "db31c744",
+  "addon2/07.dat": "0c2add0e (683,135,612 B)",
+  "bodies": 613,
+  "merged_draws": 1867,
+  "previous": "637 bodies, 1633 merged draws (run 21)"
+ },
+ "rollback": "C:\\X3FL\\rollback-overlay-run21\\ (the six run 21 files)",
+ "ini": "unchanged",
+ "checks": "lod_overlay_check --candidate ok; split_check 0; lod_grade_census mismatch_bodies=0 extra_draws=0 alpha_mismatch_rows=2; installed check ok 613 bodies 2.68 GB; host modules test_bob1 test_lod_grade_census test_lod_overlay_batch test_regenerate test_lod_overlay_check 167 tests 0 failing",
+ "dropped": "24 ships now refuse=no_draw_gain (their grade count reaches their draw count): Boron M3/M4/M5 and variants, Otas M3/M4, Argon M4P/M8, Paranid M7M/MM6, LC M3, Teladi M5P, XTC Boron M4P",
+ "installed_at": "2026-11-03T05:08:43+04:00"
+}

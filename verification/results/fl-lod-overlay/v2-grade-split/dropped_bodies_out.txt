@@ -1,0 +1,26 @@
+record keys ['tool', 'dry_run', 'install', 'game', 'slot', 'slots', 'max_dat_bytes', 'dat_cap', 'retired_slot', 'retired_slots']
+dropped 24
+ships/M3/Boron_M3P {}
+ships/M3/Otas_M3 {}
+ships/M3/Pirate_m3p {}
+ships/M4/Argon_m4p {}
+ships/M4/Argon_m4p_pirate {}
+ships/M4/Otas_M4 {}
+ships/M7/Paranid_M7M {}
+ships/M8/Argon_m8 {}
+ships/MM6/Paranid_MM6 {}
+ships/boron/boron_M3 {}
+ships/boron/boron_M3_var1 {}
+ships/boron/boron_M3_var2 {}
+ships/boron/boron_M3_var3 {}
+ships/boron/boron_M4 {}
+ships/boron/boron_M4_var1 {}
+ships/boron/boron_M4_var2 {}
+ships/boron/boron_M4_var3 {}
+ships/boron/boron_M5 {}
+ships/boron/boron_M5_var1 {}
+ships/boron/boron_M5_var2 {}
+ships/boron/boron_M5_var3 {}
+ships/lc/lc_m3 {}
+ships/teladi/teladi_m5p {}
+ships/x3ap/boron/XTC_boron_m4p {}

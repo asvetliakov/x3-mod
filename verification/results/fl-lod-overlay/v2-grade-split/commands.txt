@@ -1,0 +1,8 @@
+FL merged-LOD overlay v2 (grade split, baker 2b777827a), 2026-11-03. OUT = scratchpad fl-lod-overlay-v2 (derived from game data, local).
+bake (4658 s = 77:38 wall, 7.6 s/body, exit 0): python3 tools/analysis/lod_overlay.py --game /mnt/c/X3FL --batch --mod none --out OUT
+counts/hashes:   python3 verification/results/fl-lod-overlay/bake_counts.py OUT > bake_counts_out.txt
+candidate check: python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL --candidate OUT > candidate_check_out.txt (ok, 613 members)
+split check:     python3 verification/results/fl-lod-overlay/split_check.py OUT > split_check_out.txt (0 bodies split across slots)
+grade census:    python3 tools/analysis/lod_grade_census.py --game /mnt/c/X3FL --edition fl --candidate OUT > grade_census_out.txt (mismatch 0, extra_draws 0, alpha_mismatch_rows 2)
+dropped bodies:  installed markers vs OUT markers -> dropped_bodies_out.txt (24 ships, all refuse=no_draw_gain in x3m-lod-batch-bodies.txt)
+install: rollback copy of the six installed files to C:\X3FL\rollback-overlay-run21\, then the six OUT/addon2 files into C:\X3FL\addon2\; installed check: python3 tools/analysis/lod_overlay_check.py --game /mnt/c/X3FL (ok, 613 bodies, 2.68 GB)
