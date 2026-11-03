@@ -2947,9 +2947,32 @@ Installed `C:\X3FL\d3d9.dll` = `143d94ec…` (59,059,164 B), rollback `rollback-
 reader against the native path on real FL records (previous ini at `/home/asvetl/x3m-logs/fl-run41-x3m.ini`; the line
 goes back to the commented default `fast` after the flight). Record `verification/results/fl-run42/candidate.json`.
 
-**FL run 42 A (open):** time the launch to the main menu and one save load with a stopwatch, then play normally for a
+**FL run 42 A (flown 2026-11-04, functional pass, figures missing):** user: "done", nothing reported; no stopwatch
+times given. Log `/home/asvetl/x3m-logs/fl-run42-loading.log` (173 MB, 16,518 frames, 115 s, `exception=0`, measured):
+`gz_buffer requested=1 enabled=1 … live=6 edition=fl`, `crypt_cache requested=1 enabled=1 … live=4 gates=6 edition=fl`,
+`mesh_adjacency_config requested=fast enabled=1 … dll=d3dx9_43.dll edition=fl`, `resource_reader mode=verify installed=1
+status=active … edition=fl`, `dat_handle_pool requested=1 installed=1 status=ok close_sites=17 live=18 edition=fl`; the
+game loaded and played. The log carries no `resource_reader_metric`, `dat_handle_pool_metric` or `crypt_cache scope=`
+row, so the verify comparison (`verify_equal`/`verify_mismatched`, `fast_us` vs `original_us`) is unknown: those rows
+come from `loading_trace::report` under telemetry (AP-only block in `telemetry.cpp`) or from the last device release,
+and this session ended without either. Fixed as run 43 (the rows every 300 frames on the FL Present path).
+
+Original brief: time the launch to the main menu and one save load with a stopwatch, then play normally for a
 few minutes with at least one sector change and one dock. Expect at start `gz_buffer … edition=fl` installed,
 `crypt_cache … edition=fl`, `mesh_adjacency … edition=fl`, `resource_reader … edition=fl mode=verify`, `dat_handles …
 edition=fl`, and no `mismatch` or `rollback` rows. Report a load that hangs or crashes, missing or wrong models or
 textures, a save that fails to load, and the two stopwatch times (previous runs are the baseline); tell me before
 relaunching.
+
+## FL run 43 — loading quintet rows on the Present cadence (installed 2026-11-04)
+
+Commit `6fe9432cf`: on FL, `resource_reader::report()` and `fl::crypt_cache_fl::report("window")` run every 300 frames from
+the Present path next to the collide_memo row (the reader row only when its call count changed); `capture.cpp` re-pinned
+in `test_engine_effects.py` (13 tests OK, measured). Clean `build-fl`, 0 warnings. Installed `C:\X3FL\d3d9.dll` =
+`75735147…` (59,059,164 B), rollback `rollback-d3d9\d3d9.dll.run42` = `143d94ec…`; exe, overlay unchanged; ini keeps
+`resource_read = verify`. Record `verification/results/fl-run43/candidate.json`.
+
+**FL run 43 A (open):** same flight as run 42 (launch, one save load, a sector change, a dock, a few minutes), plus the
+two stopwatch times. Expect `resource_reader_metric cumulative=1 mode=verify … verify_mismatched=0 … edition=fl`,
+`dat_handle_pool_metric … edition=fl` and `crypt_cache scope=window … edition=fl` rows; the reader row's `fast_us`
+against `original_us` and its `fallbacks` are the figures this run exists for.

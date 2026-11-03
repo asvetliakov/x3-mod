@@ -1,0 +1,19 @@
+{
+ "run": 43,
+ "step": "loading quintet reporting: resource_reader_metric, dat_handle_pool_metric and crypt_cache rows every 300 frames on FL (run 42 carried none); commit 6fe9432cf",
+ "edition": "fl",
+ "commit": "6fe9432cf",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "757351478329492d",
+ "dll_bytes": 59059164,
+ "installed_sha256_prefix": "757351478329492d",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run42 (143d94ec)",
+ "game_data": "unchanged",
+ "ini": "resource_read = verify kept from run 42 for the comparison figures",
+ "host_tests": "test_engine_effects 13 tests OK after the capture.cpp re-pin; loading verifiers unchanged from run 42 (same exe, same sites)",
+ "build_warnings": 0,
+ "review": "small change (two report calls on an existing cadence), delta reviewed by the main session",
+ "installed_at": "2026-11-04T01:07:05+04:00"
+}
