@@ -1,0 +1,44 @@
+// font_entry
+{0x0a8990, 44, 0x67f45fd1u, 1, {{11, 0x18cc38}}},
+// materials
+{0x0a69f0, 16, 0x8341b02au, 0, {}},
+// style
+{0x115190, 76, 0x05567b3du, 5, {{1, 0x1a83b0}, {34, 0x1a66b8}, {44, 0x1a66bc}, {50, 0x21b420}, {57, 0x21b424}}},
+// blt_block
+{0x0a7b30, 29, 0x96503828u, 0, {}},
+// blt_block_reads
+{0x0a7d24, 80, 0x4ab03f91u, 3, {{2, 0x21b410}, {48, 0x21b418}, {70, 0x1a83b0}}},
+// blt_alpha
+{0x0a7f80, 29, 0x29787984u, 0, {}},
+// image_scale
+{0x0b22c0, 52, 0xad294a72u, 3, {{3, 0x21b410}, {27, 0x21b418}, {42, 0x1a83b0}}},
+// image_block
+{0x0b22f4, 107, 0x7af8ae3fu, 0, {}},
+// text_line
+{0x0a6d90, 21, 0x4696efbbu, 0, {}},
+// rect_fill
+{0x0a6b60, 10, 0x0902712du, 0, {}},
+// lookup
+{0x1123a0, 106, 0x6d2c198bu, 6, {{12, 0x21b410}, {29, 0x21b418}, {44, 0x1fb404}, {51, 0x21b40c}, {65, 0x1cb3f4}, {92, 0x1cb3f4}}},
+// alloc
+{0x110c90, 39, 0xb23cdd14u, 0, {}},
+// alloc_fields
+{0x110cb7, 133, 0xd9f56247u, 0, {}},
+// free
+{0x110c10, 17, 0x7c006a28u, 0, {}},
+// plain_copy
+{0x0f4590, 43, 0x7a9f121au, 0, {}},
+// copy_dispatch
+{0x10bc10, 53, 0x17972211u, 2, {{42, 0x10bcfc}, {49, 0x10bce4}}},
+// colour
+{0x10bd20, 14, 0x0322b09cu, 0, {}},
+// alpha
+{0x10cde0, 14, 0xacdca337u, 0, {}},
+// config_default
+{0x109ed5, 10, 0x1cf23d07u, 0, {}},
+// config_atol
+{0x10a35f, 24, 0x4d3ca5e8u, 1, {{11, 0x1a83b0}}},
+// cockpit_literals
+{0x01dfd8, 60, 0xb567ae78u, 2, {{4, 0x184fdc}, {9, 0x18cc38}}},
+// font_loader_path
+{0x114a91, 27, 0xb66084b1u, 1, {{1, 0x1a83b0}}},

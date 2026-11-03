@@ -1,0 +1,881 @@
+{
+  "result": "PASS",
+  "edition": "fl",
+  "checks": {
+    "fl_identity": {
+      "ok": true,
+      "timestamp": "0x618416c8",
+      "image_size": "0x00391000"
+    },
+    "sites": {
+      "ok": true,
+      "count": 13,
+      "direct_edges": 72230,
+      "highlow": 38327,
+      "failed": [],
+      "all": [
+        {
+          "name": "font_entry",
+          "kind": "detour",
+          "rva": "0x0a8990",
+          "ap_va": "0x0048cdc0",
+          "ok": true,
+          "bytes": "5153568b742410",
+          "lengths": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x020dd0",
+            "0x0b2394"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "push ecx",
+            "push ebx",
+            "push esi",
+            "mov esi, dword ptr [esp + 0x10]"
+          ]
+        },
+        {
+          "name": "materials_call",
+          "kind": "call",
+          "rva": "0x0a69f6",
+          "ap_va": "0x0048af71",
+          "ok": true,
+          "bytes": "e8c5ac0600",
+          "lengths": [
+            5
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": true,
+          "text": [
+            "call 0x5116c0"
+          ]
+        },
+        {
+          "name": "materials_next_call",
+          "kind": "call",
+          "rva": "0x0a69fb",
+          "ap_va": "0x0048af76",
+          "ok": true,
+          "bytes": "e8c0bb0600",
+          "lengths": [
+            5
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "call 0x5125c0"
+          ]
+        },
+        {
+          "name": "blt_block",
+          "kind": "detour",
+          "rva": "0x0a7b30",
+          "ap_va": "0x0048c090",
+          "ok": true,
+          "bytes": "83ec34535556",
+          "lengths": [
+            3,
+            1,
+            1,
+            1
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x0301f2",
+            "0x030234",
+            "0x0302bd",
+            "0x0302f8",
+            "0x09102c",
+            "0x0910aa",
+            "0x0a7cca",
+            "0x0a83fc",
+            "0x0a8436",
+            "0x0a8484",
+            "0x0a84c5",
+            "0x0b20f5"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "sub esp, 0x34",
+            "push ebx",
+            "push ebp",
+            "push esi"
+          ]
+        },
+        {
+          "name": "blt_alpha",
+          "kind": "detour",
+          "rva": "0x0a7f80",
+          "ap_va": "0x0048c460",
+          "ok": true,
+          "bytes": "83ec34535556",
+          "lengths": [
+            3,
+            1,
+            1,
+            1
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x01ea57",
+            "0x01eab6",
+            "0x01eba4",
+            "0x01ebfa",
+            "0x091128",
+            "0x0a811a",
+            "0x0a853c",
+            "0x0a8576",
+            "0x0a85c4",
+            "0x0a8605",
+            "0x0b213c"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "sub esp, 0x34",
+            "push ebx",
+            "push ebp",
+            "push esi"
+          ]
+        },
+        {
+          "name": "blt_image",
+          "kind": "detour",
+          "rva": "0x0b22f4",
+          "ap_va": "0x004960c0",
+          "ok": true,
+          "bytes": "0fbf4e240fbfc2",
+          "lengths": [
+            4,
+            3
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x0b22d1",
+            "0x0b22e7"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": true,
+          "text": [
+            "movsx ecx, word ptr [esi + 0x24]",
+            "movsx eax, dx"
+          ]
+        },
+        {
+          "name": "text_line",
+          "kind": "detour",
+          "rva": "0x0a6d90",
+          "ap_va": "0x0048b2d0",
+          "ok": true,
+          "bytes": "83ec14535556",
+          "lengths": [
+            3,
+            1,
+            1,
+            1
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x030320",
+            "0x090bc7",
+            "0x0a6e6e",
+            "0x0a7197",
+            "0x0a73c0"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "sub esp, 0x14",
+            "push ebx",
+            "push ebp",
+            "push esi"
+          ]
+        },
+        {
+          "name": "rect_fill",
+          "kind": "detour",
+          "rva": "0x0a6b60",
+          "ap_va": "0x0048b0b0",
+          "ok": true,
+          "bytes": "83ec2c535556",
+          "lengths": [
+            3,
+            1,
+            1,
+            1
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [
+            "0x025223",
+            "0x026ae1",
+            "0x026b49",
+            "0x026be5",
+            "0x026bf7",
+            "0x026c0c",
+            "0x026caf",
+            "0x0287fa",
+            "0x028c5e",
+            "0x02927d",
+            "0x0301c1",
+            "0x090aee",
+            "0x0a6ca9",
+            "0x0b1ea6"
+          ],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": false,
+          "text": [
+            "sub esp, 0x2c",
+            "push ebx",
+            "push ebp",
+            "push esi"
+          ]
+        },
+        {
+          "name": "style_factor_lea",
+          "kind": "edit",
+          "rva": "0x1151b6",
+          "ap_va": "0x004f813a",
+          "ok": true,
+          "bytes": "8d5301",
+          "lengths": [
+            3
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": null,
+          "text": [
+            "lea edx, [ebx + 1]"
+          ]
+        },
+        {
+          "name": "cockpit_name_size",
+          "kind": "edit",
+          "rva": "0x01dfd9",
+          "ap_va": null,
+          "ok": true,
+          "bytes": "6a0d",
+          "lengths": [
+            2
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": null,
+          "text": [
+            "push 0xd"
+          ]
+        },
+        {
+          "name": "cockpit_yoff",
+          "kind": "edit",
+          "rva": "0x01e000",
+          "ap_va": null,
+          "ok": true,
+          "bytes": "6a01",
+          "lengths": [
+            2
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": null,
+          "text": [
+            "push 1"
+          ]
+        },
+        {
+          "name": "cockpit_cell_width",
+          "kind": "edit",
+          "rva": "0x01e004",
+          "ap_va": null,
+          "ok": true,
+          "bytes": "ba10000000",
+          "lengths": [
+            5
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": null,
+          "text": [
+            "mov edx, 0x10"
+          ]
+        },
+        {
+          "name": "cockpit_size",
+          "kind": "edit",
+          "rva": "0x01e00b",
+          "ap_va": null,
+          "ok": true,
+          "bytes": "6a0d",
+          "lengths": [
+            2
+          ],
+          "span_fixups": [],
+          "interior_edges": [],
+          "edges_to_start": [],
+          "pointers_to_start": [],
+          "pointers_into_interior": [],
+          "qword_crossing_jmp5": null,
+          "text": [
+            "push 0xd"
+          ]
+        }
+      ]
+    },
+    "anchors": {
+      "ok": true,
+      "count": 168,
+      "failed": []
+    },
+    "data": {
+      "ok": true,
+      "strings": [
+        {
+          "rva": "0x18cc38",
+          "ok": true,
+          "text": "%s%d"
+        },
+        {
+          "rva": "0x18b104",
+          "ok": true,
+          "text": "F\\%s"
+        },
+        {
+          "rva": "0x19140c",
+          "ok": true,
+          "text": "Materials"
+        },
+        {
+          "rva": "0x190f0c",
+          "ok": true,
+          "text": "-fontscale"
+        },
+        {
+          "rva": "0x184fdc",
+          "ok": true,
+          "text": "Tahoma"
+        },
+        {
+          "rva": "0x1918c0",
+          "ok": true,
+          "text": "tga bmp"
+        },
+        {
+          "rva": "0x1918c8",
+          "ok": true,
+          "text": "abc siz"
+        }
+      ],
+      "relocated": [
+        {
+          "at": "0x1a5cdc",
+          "what": "descriptor +0x3c -> \"F\\%s\"",
+          "ok": true
+        },
+        {
+          "at": "0x109e9b",
+          "what": "config +0xc8 descriptor",
+          "ok": true
+        },
+        {
+          "at": "0x0a899b",
+          "what": "font entry \"%s%d\"",
+          "ok": true
+        },
+        {
+          "at": "0x01dfe1",
+          "what": "cockpit \"%s%d\"",
+          "ok": true
+        },
+        {
+          "at": "0x0b2b38",
+          "what": "KC jump table entry 111 -> image case",
+          "ok": true
+        }
+      ],
+      "iat_direct3dcreate9": true,
+      "class_table": "00050505050105050505020505050503050505050505050504",
+      "slots": [
+        "0x10bc45",
+        "0x10bc6c",
+        "0x10bc93",
+        "0x10bcde",
+        "0x10bcba",
+        "0x10bcde"
+      ],
+      "image_case_entry": "0x0b21ed"
+    },
+    "callers": {
+      "ok": true,
+      "0x0a8990": {
+        "ok": true,
+        "callers": [
+          "0x020dd0",
+          "0x0b2394"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x115190": {
+        "ok": true,
+        "callers": [
+          "0x01e00f",
+          "0x0a89b7"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x1116c0": {
+        "ok": true,
+        "callers": [
+          "0x0a69f6"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x1125c0": {
+        "ok": true,
+        "callers": [
+          "0x0a69fb"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x0a69f0": {
+        "ok": true,
+        "callers": [
+          "0x0777db"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x109e00": {
+        "ok": true,
+        "callers": [
+          "0x076c96"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x076bc0": {
+        "ok": true,
+        "callers": [
+          "0x076b68"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x116890": {
+        "ok": true,
+        "callers": [
+          "0x07765a"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x01df90": {
+        "ok": true,
+        "callers": [
+          "0x077e21",
+          "0x0798a5"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x020d30": {
+        "ok": true,
+        "callers": [
+          "0x0798bf"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x079430": {
+        "ok": true,
+        "callers": [
+          "0x077c52"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x0f13b0": {
+        "ok": true,
+        "callers": [
+          "0x0772bc",
+          "0x0f3c38"
+        ],
+        "jumps": [],
+        "pointers": []
+      },
+      "0x1123a0": {
+        "ok": true,
+        "callers": 39,
+        "jumps": [
+          "0x0a6d7d",
+          "0x0a765b",
+          "0x0a7809",
+          "0x0a799a",
+          "0x0a7b2a",
+          "0x0a7f50",
+          "0x0a7f74",
+          "0x0a8397"
+        ],
+        "pointers": []
+      }
+    },
+    "config_writers": {
+      "ok": true,
+      "writers": [
+        "0x109ed5",
+        "0x10a371"
+      ]
+    },
+    "style_ebx": {
+      "ok": true,
+      "reads": [
+        "0x1151b6"
+      ],
+      "writes": [
+        "0x1154aa"
+      ]
+    },
+    "image_liveness": {
+      "ok": true,
+      "lookup_eax_reads": []
+    },
+    "blt_block_eax_dead": {
+      "ok": true,
+      "early_reads": []
+    },
+    "blt_alpha_eax_dead": {
+      "ok": true,
+      "early_reads": []
+    },
+    "init_order": {
+      "ok": true,
+      "order": [
+        "config constructor",
+        "Direct3DCreate9",
+        "display + CreateDevice",
+        "Materials",
+        "game start (native fonts)",
+        "cockpit constructor"
+      ],
+      "sites": [
+        "0x076c96",
+        "0x0772bc",
+        "0x07765a",
+        "0x0777db",
+        "0x077c52",
+        "0x077e21"
+      ],
+      "routine_ends_with": "ret"
+    },
+    "windows": {
+      "ok": true,
+      "count": 22,
+      "font_entry": {
+        "ok": true,
+        "rva": "0x0a8990",
+        "length": 44,
+        "fnv1a32": "67f45fd1",
+        "fixups": [
+          [
+            11,
+            "0x18cc38"
+          ]
+        ]
+      },
+      "materials": {
+        "ok": true,
+        "rva": "0x0a69f0",
+        "length": 16,
+        "fnv1a32": "8341b02a",
+        "fixups": []
+      },
+      "style": {
+        "ok": true,
+        "rva": "0x115190",
+        "length": 76,
+        "fnv1a32": "05567b3d",
+        "fixups": [
+          [
+            1,
+            "0x1a83b0"
+          ],
+          [
+            34,
+            "0x1a66b8"
+          ],
+          [
+            44,
+            "0x1a66bc"
+          ],
+          [
+            50,
+            "0x21b420"
+          ],
+          [
+            57,
+            "0x21b424"
+          ]
+        ]
+      },
+      "blt_block": {
+        "ok": true,
+        "rva": "0x0a7b30",
+        "length": 29,
+        "fnv1a32": "96503828",
+        "fixups": []
+      },
+      "blt_block_reads": {
+        "ok": true,
+        "rva": "0x0a7d24",
+        "length": 80,
+        "fnv1a32": "4ab03f91",
+        "fixups": [
+          [
+            2,
+            "0x21b410"
+          ],
+          [
+            48,
+            "0x21b418"
+          ],
+          [
+            70,
+            "0x1a83b0"
+          ]
+        ]
+      },
+      "blt_alpha": {
+        "ok": true,
+        "rva": "0x0a7f80",
+        "length": 29,
+        "fnv1a32": "29787984",
+        "fixups": []
+      },
+      "image_scale": {
+        "ok": true,
+        "rva": "0x0b22c0",
+        "length": 52,
+        "fnv1a32": "ad294a72",
+        "fixups": [
+          [
+            3,
+            "0x21b410"
+          ],
+          [
+            27,
+            "0x21b418"
+          ],
+          [
+            42,
+            "0x1a83b0"
+          ]
+        ]
+      },
+      "image_block": {
+        "ok": true,
+        "rva": "0x0b22f4",
+        "length": 107,
+        "fnv1a32": "7af8ae3f",
+        "fixups": []
+      },
+      "text_line": {
+        "ok": true,
+        "rva": "0x0a6d90",
+        "length": 21,
+        "fnv1a32": "4696efbb",
+        "fixups": []
+      },
+      "rect_fill": {
+        "ok": true,
+        "rva": "0x0a6b60",
+        "length": 10,
+        "fnv1a32": "0902712d",
+        "fixups": []
+      },
+      "lookup": {
+        "ok": true,
+        "rva": "0x1123a0",
+        "length": 106,
+        "fnv1a32": "6d2c198b",
+        "fixups": [
+          [
+            12,
+            "0x21b410"
+          ],
+          [
+            29,
+            "0x21b418"
+          ],
+          [
+            44,
+            "0x1fb404"
+          ],
+          [
+            51,
+            "0x21b40c"
+          ],
+          [
+            65,
+            "0x1cb3f4"
+          ],
+          [
+            92,
+            "0x1cb3f4"
+          ]
+        ]
+      },
+      "alloc": {
+        "ok": true,
+        "rva": "0x110c90",
+        "length": 39,
+        "fnv1a32": "b23cdd14",
+        "fixups": []
+      },
+      "alloc_fields": {
+        "ok": true,
+        "rva": "0x110cb7",
+        "length": 133,
+        "fnv1a32": "d9f56247",
+        "fixups": []
+      },
+      "free": {
+        "ok": true,
+        "rva": "0x110c10",
+        "length": 17,
+        "fnv1a32": "7c006a28",
+        "fixups": []
+      },
+      "plain_copy": {
+        "ok": true,
+        "rva": "0x0f4590",
+        "length": 43,
+        "fnv1a32": "7a9f121a",
+        "fixups": []
+      },
+      "copy_dispatch": {
+        "ok": true,
+        "rva": "0x10bc10",
+        "length": 53,
+        "fnv1a32": "17972211",
+        "fixups": [
+          [
+            42,
+            "0x10bcfc"
+          ],
+          [
+            49,
+            "0x10bce4"
+          ]
+        ]
+      },
+      "colour": {
+        "ok": true,
+        "rva": "0x10bd20",
+        "length": 14,
+        "fnv1a32": "0322b09c",
+        "fixups": []
+      },
+      "alpha": {
+        "ok": true,
+        "rva": "0x10cde0",
+        "length": 14,
+        "fnv1a32": "acdca337",
+        "fixups": []
+      },
+      "config_default": {
+        "ok": true,
+        "rva": "0x109ed5",
+        "length": 10,
+        "fnv1a32": "1cf23d07",
+        "fixups": []
+      },
+      "config_atol": {
+        "ok": true,
+        "rva": "0x10a35f",
+        "length": 24,
+        "fnv1a32": "4d3ca5e8",
+        "fixups": [
+          [
+            11,
+            "0x1a83b0"
+          ]
+        ]
+      },
+      "cockpit_literals": {
+        "ok": true,
+        "rva": "0x01dfd8",
+        "length": 60,
+        "fnv1a32": "b567ae78",
+        "fixups": [
+          [
+            4,
+            "0x184fdc"
+          ],
+          [
+            9,
+            "0x18cc38"
+          ]
+        ]
+      },
+      "font_loader_path": {
+        "ok": true,
+        "rva": "0x114a91",
+        "length": 27,
+        "fnv1a32": "b66084b1",
+        "fixups": [
+          [
+            1,
+            "0x1a83b0"
+          ]
+        ]
+      }
+    }
+  },
+  "exe_info": {
+    "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+    "known": true
+  },
+  "exe": "/mnt/c/X3FL/X3FL.exe"
+}

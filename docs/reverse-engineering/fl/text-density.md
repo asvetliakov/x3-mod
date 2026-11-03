@@ -10,6 +10,10 @@ All addresses are **preferred VAs**, requiring the qualified FL base/RVA and
 HIGHLOW normalization at runtime. Measurements below are static; rendering,
 Windows/CrossOver execution and hook publication were not tested.
 
+**Byte-verified 2026-11-03** against `/mnt/c/X3FL/X3FL.exe` (same SHA-256): every site and data item of the AP
+module, as RVAs, is in [Verified 2026-11-03](#verified-2026-11-03-against-x3flexe) at the end of this note, with the
+corrections to the sections below. Addresses in sections 1-4 are preferred VAs (RVA + `0x400000`).
+
 Owners reused: [AP fonts](../font-rendering.md),
 [FL graphs](ui-graphs.md),
 [initial UI owner](ui-layout-generation.md),
@@ -316,3 +320,103 @@ witnesses, 38 rejected mutations, nine instruction spans and 12 matching font
 assets. The font entry uses ECX/EDX with three caller-cleaned stack arguments;
 it must not be declared compiler fastcall. Resource policy, allocation/recovery
 and graph-stroke implementation remain open as described above.
+
+## Verified 2026-11-03 against X3FL.exe
+
+Static, read-only, against `/mnt/c/X3FL/X3FL.exe` (SHA-256 `e7f3aad8…dfbb8`, link stamp `0x618416c8`, image size
+`0x391000`, 38,327 HIGHLOW fixups, 72,230 direct edges in the linear sweep). Every address below is an **RVA**
+(preferred base `0x400000`, ASLR: the module rebases them). Verifier
+[`verify_text_density_sites_fl.py`](../../../verification/probe/verify_text_density_sites_fl.py): **PASS** (13 sites,
+168 Capstone anchors, 22 identity windows, data, exact caller sets, config-writer census, EBX/EAX liveness, init
+order); 23 single-byte in-memory mutations at the pinned sites all turn it to FAIL. Output, census and mutation
+scripts: `verification/results/fl-text-density/`. Nothing ran in the game; no runtime behaviour is claimed.
+
+"Verified" = bytes, instruction boundaries and the stated register/layout facts match; "differs" = verified, but the
+FL shape is not the AP one and the AP code cannot be reused unchanged; "not mapped" = no one-to-one counterpart needed.
+
+### Sites (`text_density_sites.h`)
+
+| Item | AP VA | FL RVA | Bytes / anchor | How confirmed | Differences |
+| --- | --- | --- | --- | --- | --- |
+| font entry (claim) | `0x48cdc0` (6 B) | `0x0a8990` (7 B, continue `0x0a8997`) | `51 53 56 8b 74 24 10` push ecx/ebx/esi; mov esi,[esp+0x10] | bytes, lengths 1/1/1/4, no edge or pointer inside, qword-contained; callers exactly `0x020dd0` (native Tahoma13) and `0x0b2394` (KC `B3D_OpenFont`) | **differs**: ECX = name, **EDX = cell width**, stack `[esp+4]` size, `+8` flags, `+0xc` y offset (AP: EAX name, ECX size, stack cell/flags/yoff). Scale EDX, `[esp+4]`, `[esp+0xc]`. Two direct callers (AP four) |
+| "%s%d" request name | `0x48cdc8` | `0x0a899a` push `0x58cc38` (fixup `0x0a899b` -> RVA `0x18cc38` = `%s%d`) | formatter `0x10b890(0, "%s%d", name, size)` at `0x0a89a3` | anchors + relocated-dword check | verified; the name carries the **stack** size, so the size argument must be scaled before the replayed span |
+| font open / cache | `0x4f8120`, cache `0x606f0c` | `0x115190`; cache `0x1a8c98` (10 slots, name-only compare `0x115445..`) | callers exactly `0x01e00f`, `0x0a89b7` | anchors, caller set | verified (inherited name-only cache claim holds) |
+| native cockpit inline opener | (AP opens through the entry) | `0x01df90`: four literal bytes `0x01dfda` (push 13), `0x01e001` (push 1 = y offset), `0x01e005` (low byte of mov edx,16), `0x01e00c` (push 13) | `6a 0d` / `6a 01` / `ba 10 00 00 00` / `6a 0d`, flags `0x21` at `0x01e009` | bytes, lengths, no edge/pointer to the edited instructions; callers of `0x01df90` exactly `0x077e21`, `0x0798a5` | **FL-only**: formats `Tahoma13` and calls `0x115190` itself, bypassing the entry. Four single-byte edits (d2: `1a/02/20/1a`, d3: `27/03/30/27`); write only the imm32's low byte (the imm32 `0x01e005..8` crosses the qword at `0x01e008`) |
+| style factor | imm32 at `0x4f813b` | disp8 of `lea edx,[ebx+1]` at `0x1151b6`: byte `0x1151b8` | `cmp [eax+0x774],1` `0x11519b`, `setg bl` `0x1151a4`, `lea edx,[ebx+1]` `0x1151b6`; type 1/4 keep 1 (`0x1151cd..0x1151d7`) | bytes; EBX written at `0x115197`/`0x1151a4`, read only at `0x1151b6` until `pop ebx` `0x1154aa` (Capstone regs census); no edge into `0x1151b6..8` | **differs**: factor = `(N>1) + disp8`. One byte `01 -> 02` gives 3 at N=3, but unlike AP's `mov edi,2` it is **not inert at N=1** (factor 2): apply after `cfg+0x774 = 3`, restore before the field goes back to 1. The type 1/4 exception is the same in AP (`0x4f8160..0x4f8167`) |
+| Materials call (claim) | `0x48af71` (5 B, qword-contained) | `0x0a69f6` `call 0x1116c0`, return `0x0a69fb` | `e8 c5 ac 06 00` | bytes, call target; sole caller of `0x1116c0`; wrapper `0x0a69f0` sole caller `0x0777db` | **differs**: crosses the qword at `0x0a69f8` (rel32 at `0x0a69f7..a`). Equivalent post-load seam with no crossing: the next instruction `0x0a69fb` `call 0x1125c0` (`e8 c0 bb 06 00`, Animations load, AP `0x4f5460`; sole caller). Wrapper frame is `push ebp; mov ebp,esp; and esp,-8`; returns 1/0 |
+| block blit (claim) | `0x48c090` (7 B) | `0x0a7b30` (6 B, continue `0x0a7b36`) | `83 ec 34 53 55 56` | bytes, lengths 3/1/1/1, 12 direct callers, none inside, no pointer | **differs**: ECX = source id, EDX = destination id, 8 caller-cleaned stack words sx,sy,dx,dy,w,h,colour,clip (AP: 10 cdecl words). EAX dead at entry (first access a write on both paths: `0x0a7b53` / lookup); result = tail `jmp 0x1123a0` with ECX = dst |
+| alpha blit (claim) | `0x48c460` | `0x0a7f80` (6 B, continue `0x0a7f86`) | `83 ec 34 53 55 56` | as above, 11 callers | as block; leaf `0x10cde0` at `0x0a8386`, tail `0x0a8397` |
+| blit row count read | `0x48c265` | `0x0a7d24` `mov ax,[0x61b410]` + `cwde` | fixup -> RVA `0x21b410` | window `blt_block_reads` | differs in form (mov+cwde vs movsx) |
+| blit row flag test | `0x48c28b` | `0x0a7d53..0x0a7d67` `mov eax,[rows]; ...; test [eax+ecx*4+0x10],0x10000; je` | fixup -> `0x21b418` | anchors | verified |
+| blit config read | `0x48c29a` | `0x0a7d69` `mov eax,[0x5a83b0]`; `0x0a7d6e` `mov ecx,[eax+0x774]` | fixup -> `0x1a83b0` | anchors | verified; destination W/H divided by N (`idiv` `0x0a7d77`) as AP |
+| image block (claim) | `0x4960c0` (8 B) | `0x0b22f4` (7 B, continue `0x0b22fb`) | `0f bf 4e 24 0f bf c2` movsx ecx,[esi+0x24]; movsx eax,dx | bytes, lengths 4/3; inbound edges exactly `0x0b22d1`, `0x0b22e7` (to the start); displaced loads write ECX/EAX, `imul` `0x0b22fb` writes EFLAGS | **differs**: factor in **EDX** (AP CX), source object `[ebp-0x50]`, destination object `[ebp-0x20]` (AP EBX, `[esp+0x10]`), ESI = record (dst `+1`, six words from `+0xb` stride 5, unchanged); words sign-extended. Crosses the qword at `0x0b22f8` |
+| image scale block | `0x49608b` | `0x0b22c0..0x0b22f4` | edx=1; row flagged -> `edx=[cfg+0x774]` `0x0b22ee` | window `image_scale` | verified |
+| image call / return | `0x4960fc` / `0x496101` | `call 0x0f4590` `0x0b234e`; return `0x0b2353` (`mov cx,[esi+1]; add esp,0x20; call lookup`) or `0x0b235a` (after the `add`) | anchors | lookup `0x1123a0` reads no EAX before writing it | verified; handled path: reserve 0x20 and resume `0x0b2353`, or keep ESP, set CX and resume `0x0b235a` |
+| image case, table | `0x495fc1`; table `0x49679c`, native **109** | case `0x0b21ed`; dispatcher `0x0afbf0` (published by pointer `0x08289a`), `cmp esi,0xa9` `0x0afc35`, table `0x0b297c`, **index 111** (fixup `0x0b2b38`) | anchors, relocated entry | **differs**: case index 111 of 0xaa (AP 109 of 0xa8) |
+| image object / path slots | `0x6085cc` / `0x6085c8` | `0x1aa070` / `0x1aa0a4` | stores `0x0b228b` / `0x0b2295`; free `0x0b2225 -> 0x110c10` | anchors | verified |
+| text line diag | `0x48b2d0` (6 B) | `0x0a6d90` (6 B, continue `0x0a6d96`) | `83 ec 14 53 55 56` | bytes, 5 callers, none inside | **differs**: ECX = dst, EDX = text, `[esp+4]` font slot (`0x0a6dd7` indexes `0x1a8c98`), x, y, right, colour, flags |
+| rect fill diag | `0x48b0b0` (8 B) | `0x0a6b60` (6 B, continue `0x0a6b66`) | `83 ec 2c 53 55 56` | bytes, 14 callers, none inside | **differs**: ECX = dst, EDX = x; stack y,w,h,colour (from the prologue; rest inherited) |
+| lookup | `0x4f5110` | `0x1123a0` (whole, `0x6a` B window) | CX = id; rows `0x21b410`/`0x21b418` (+0xc valid), named `0x1fb404` + fixed `0x21b40c`, table `0x1cb3f4` +8, lazy `0x1113b0` | window, 48 direct callers | differs in form (`mov dx,cx`; `+0xc` row test); same contract |
+| alloc | `0x4f3950` (EAX bpp; cdecl w,h,flags) | `0x110c90` | CX = width, DX = height, stack bpp, flags; caller pops 8 (`0x07612e`); 0x64-byte object; `+0x10` flags, `+4/+6` dims, `+0xc` bytes/pixel; bpp 32 adds `0x2000` (cmov chain `0x110cc0..0x110d1b`) | anchors, windows | **differs** (register ABI) |
+| free | `0x4f38d0` (cdecl object**) | `0x110c10` | ECX = object**; `dec [eax+0x60]` refcount | anchors | **differs** (ECX) |
+| plain copy | `0x4dbbe0` | `0x0f4590` | cdecl src,dst,sx,sy,dx,dy,w,h -> leaf wrapper `0x10bc10(ECX=src, EDX=dst, 6 words)` | anchors, window | verified |
+| colour / alpha | leaves `0x4ee990` / `0x4efa70` (EAX dst, EDI src) | wrappers `0x10bd20` / `0x10cde0` | ECX = src, EDX = dst, 7 caller-cleaned words; pair lock `0x0f5b70` first | anchors | **differs**: call the wrappers as the native blits do |
+| copy class / slots | `0x4ee6e0`, `0x4ee934`, `0x4ee91c`, `0x4ee916` | classifier `0x10ba70`; class table `0x10bcfc` (25 bytes, identical to AP), slot table `0x10bce4` (6 relocated entries), nothing `0x10bcde` | byte compare, fixups | verified; same-depth classes 0/5/10/24, so the image-shadow predicate is unchanged |
+| alloc depth block | `0x4f39b6` | `0x110cb7..0x110d21` | cmov form | window `alloc_fields` | differs in form only |
+| object texture / surface | `+0x34` / `+0x30` | same | store `0x0f59c7`; clear `0x0f5a64`; Release `call [eax+8]` `0x0f5a75` | anchors | verified |
+| config flag test anchor | `0x472315` | not mapped | `a1 b0 83 5a 00 f7 40 04 00 01 00 00` occurs 4x (`0x08bae6`, `0x08bc01`, `0x08bcce`, `0x095693`) | byte search | diagnostic slot anchor only; any occurrence or the constructor store serves |
+
+### Data items and order proof
+
+| Item | AP | FL RVA | How confirmed | Differences |
+| --- | --- | --- | --- | --- |
+| config slot | `0x606f34` | `0x1a83b0` | constructor store `0x109e4d`, init store `0x076c9e`, 943 HIGHLOW-fixed references (measured) | verified |
+| density field | `cfg+0x784` | **`cfg+0x774`** | default `0x109ed5` `mov dword [edi+0x774],1` (10 B imm store), atol `0x10a371` `mov [ecx+0x774],eax` after `-fontscale` (`0x10a34b`, string `0x190f0c`) | writer census over `.text`: exactly these two writers |
+| config object | ctor `0x4ec9e0` | ctor `0x109e00` (0x7a0 bytes), sole caller `0x076c96` | anchors | verified |
+| Materials rows | `0x608dac`/`0x608db0`, stride 0x3c | count `0x21b410` (i16, `0x111754`), rows `0x21b418` (`0x111780`), stride 0x3c (`*15*4`); `+0xc` id, `+0x10` flags, `+0x14/+0x16` w/h (`0x1118fb..0x1119dd`) | anchors | verified |
+| texture table | `0x6069ac`, `+4`/`+8` | `0x1cb3f4` (`0x111cf5`, capacity rows+1000), entry `+4` flags (`0x1122b5`: row flags `|` old `& 0x20000000`), `+8` object | anchors | verified |
+| named / fixed count | `0x6069b4` / `0x6069b0` | `0x1fb404` (zeroed `0x111cca`, `++` `0x1121ae`) / `0x21b40c` (= rows, `0x111cd1`) | anchors | verified |
+| `F\%s` path | descriptor | config `+0xc8` = `0x1a5ca0` (`0x109e95`); `+0x3c` dword `0x1a5cdc` -> `0x18b104` `F\%s`; loader `0x114a91..0x114aa7`, `tga bmp` `0x1918c0`, `abc siz` `0x1918c8` | anchors, fixups | verified; loose-first resolver exit `0x1053e6` byte-matches the inherited claim (semantics from [font-admission](font-admission.md), not re-traced) |
+| order | ctor `0x40283a` < D3DCreate9 `0x402edc` < Materials `0x403497` < first font `0x403a26` | init routine `0x076bc0..0x078687` (sole caller `0x076b68`): ctor `0x076c96` < `Direct3DCreate9` helper `0x0772bc` (`0x0f13cd` IAT `0x150320`) < display `0x07765a` (-> `0x1168c5` -> `0x0f3e0a` -> CreateDevice `0x0f2489` `call [ecx+0x40]`), return `0x07765f` < Materials `0x0777db` < game start `0x077c52` (native opens `0x0798a5 -> 0x01df90`, `0x0798bf -> 0x020d30 -> 0x020dd0`) < cockpit `0x077e21` | linear decode order + exact caller sets (static; not a control-flow proof) | **differs**: CreateDevice always precedes the Materials load, so the FL port takes AP's "rows applied in the Materials thunk" branch; every native font open is below `0x077c52`/`0x077e21` |
+| display / Reset return | proxy CreateDevice / Reset hooks | display return `0x07765f` (container stored `0x077662` -> `0x1a82f8`) | anchors | no engine site needed for Reset (proxy) |
+
+Hook-site summary: every detour span is whole instructions with no relative control flow, no HIGHLOW fixup, no direct
+edge and no relocated pointer into its interior. Qword-contained five-byte writes: font entry, both blits, text line,
+rect fill, `0x0a69fb`. Crossing: `0x0a69f6`, `0x0b22f4` (plain write only while no thread can execute them: the
+backend-load window inside `Direct3DCreate9` at `0x0772bc`, before the KC VM and the Materials load run; inferred from
+the init order). Edits (`0x1151b8`, the four cockpit bytes) are single bytes, atomic, and no edge or pointer reaches the
+edited instructions. Reentrancy: all sites run on the init/main thread (as AP); not re-proved here.
+
+### Font assets on FL
+
+FL requests (measured, `font_material_census.py` over the FL mounts, `addon2/04.cat`): `types/Fonts` LARGE
+`Zekton 26/8`, `-L007 Harrier 24/5`, `-L034 ZektonES 26/0`, **`-L081 UmePlusCLP 23/0`**, HUD `Tahoma 13/1`
+(**`13/2` under `-L081`**); the executable's only font literal is `Tahoma` (`0x184fdc`, used by `0x01dfdb` and
+`0x020dcb`, both 13/16/1/`0x21`). The 12 stock `f/` members are byte-identical to clean AP (decoded SHA-256), so
+the AP generated set `assets/fonts/generated/F` (Tahoma26/39, Zekton52/78, ZektonES52/78, Harrier48/72, `.abc` +
+`.tga`, 16 files) covers every FL request except UmePlusCLP (46/69), and FL's catalogues hold no UmePlusCLP font at
+any size (the stock `-L081` LARGE font is missing at 1x too). `C:\X3FL\f` does not exist (measured), and
+`tools/manage.py install` is AP-only (records `X3AP.exe`), so an FL install must copy the 16 files into
+`C:\X3FL\f` with their manifest. Materials (FL, `addon2/04.cat`): 1239 rows, 36 GENERATED|WRITEABLE (AP clean 34; new
+rows 1237 512x64, 1238 512x1024), 10 of them already FONTSCALE, 29 NOFILTERING; the same 8 file-backed FONTSCALE
+rows (46, 47, 56, 158, 219, 327, 568, 705); largest 1024 wide, 2048 high (row 8): the generic `plan_row` applies
+unchanged.
+
+### FL-only items for the implementer
+
+1. Register ABIs of the font entry, blits, image block, diagnostics and helpers differ (tables above); AP frame
+   indices (`font_arg_*`, `BlitArg`, `image_frame_dst`, `frame_ebx`) do not carry over.
+2. The cockpit inline opener needs the four literal bytes, applied/restored with the config field (the name cache
+   keys on the formatted name, so the first opener decides).
+3. The style edit is not inert at N=1: order it after the field and restore it first.
+4. `-L081`: the four-family font gate passes while UmePlusCLP{23d} is missing, and HUD Tahoma asks y offset 2:
+   refuse density under `-L081` (or add a verified UmePlusCLP set and a language-aware Tahoma policy).
+5. `auto` resolves from `ui_scale::scale()`; `ui_scale` has no FL port (`src/engine/fl` has none), so only a forced
+   `text_density=2|3` can be exercised on FL until it does.
+6. Graph strokes: `TexLine` multiplies endpoints by N into a flagged row (`0x0a7795`, `0x0a779d..0x0a77ab`) and draws
+   one-texel lines; AP's engine does the same and the AP module neither touches nor depends on it. FL's chart class
+   2327 (rows 20/1236, [ui-graphs](ui-graphs.md)) makes it visible: a visual acceptance item, not a port blocker.
+
+Reproduce: `python3 verification/probe/verify_text_density_sites_fl.py [--json|--emit-windows]`;
+`python3 verification/results/fl-text-density/mutation_check.py`;
+`python3 verification/results/fl-text-density/font_material_census.py`.

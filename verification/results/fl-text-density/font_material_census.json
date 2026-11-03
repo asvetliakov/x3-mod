@@ -1,0 +1,371 @@
+{
+ "fl": {
+  "fonts_tables": {
+   "addon2/types/fonts-l007.txt": [
+    {
+     "role": "LARGE",
+     "family": "Harrier",
+     "size": 24,
+     "yoff": 5
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "addon2/types/fonts-l034.txt": [
+    {
+     "role": "LARGE",
+     "family": "ZektonES",
+     "size": 26,
+     "yoff": 0
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "addon2/types/fonts-l081.txt": [
+    {
+     "role": "LARGE",
+     "family": "UmePlusCLP",
+     "size": 23,
+     "yoff": 0
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 2
+    }
+   ],
+   "addon2/types/fonts.txt": [
+    {
+     "role": "LARGE",
+     "family": "Zekton",
+     "size": 26,
+     "yoff": 8
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ]
+  },
+  "fonts_tables_root": {
+   "types/fonts-l007.txt": [
+    {
+     "role": "LARGE",
+     "family": "Harrier",
+     "size": 24,
+     "yoff": 5
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "types/fonts-l034.txt": [
+    {
+     "role": "LARGE",
+     "family": "ZektonES",
+     "size": 26,
+     "yoff": 0
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "types/fonts.txt": [
+    {
+     "role": "LARGE",
+     "family": "Zekton",
+     "size": 26,
+     "yoff": 8
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ]
+  },
+  "materials": {
+   "member": "addon2/types/materials.txt",
+   "source": "addon2/04.cat",
+   "rows": 1239,
+   "parsed": 1239,
+   "generated_writeable": 36,
+   "gw_ids": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    90,
+    236,
+    340,
+    342,
+    579,
+    922,
+    923,
+    1230,
+    1235,
+    1236,
+    1237,
+    1238
+   ],
+   "gw_already_fontscale": 10,
+   "gw_nofiltering": 29,
+   "file_backed_fontscale": [
+    46,
+    47,
+    56,
+    158,
+    219,
+    327,
+    568,
+    705
+   ],
+   "gw_max_width": 1024,
+   "gw_max_height": 2048,
+   "gw_max_height_ids": [
+    8
+   ]
+  },
+  "loose_f_dir": false
+ },
+ "ap": {
+  "fonts_tables": {
+   "addon/types/fonts-l007.txt": [
+    {
+     "role": "LARGE",
+     "family": "Harrier",
+     "size": 24,
+     "yoff": 5
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "addon/types/fonts-l034.txt": [
+    {
+     "role": "LARGE",
+     "family": "ZektonES",
+     "size": 26,
+     "yoff": 0
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ],
+   "addon/types/fonts.txt": [
+    {
+     "role": "LARGE",
+     "family": "Zekton",
+     "size": 26,
+     "yoff": 8
+    },
+    {
+     "role": "HUD",
+     "family": "Tahoma",
+     "size": 13,
+     "yoff": 1
+    }
+   ]
+  },
+  "materials": {
+   "member": "addon/types/materials.txt",
+   "source": "addon/01.cat",
+   "rows": 1237,
+   "parsed": 1237,
+   "generated_writeable": 34,
+   "gw_ids": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    90,
+    236,
+    340,
+    342,
+    579,
+    922,
+    923,
+    1230,
+    1235,
+    1236
+   ],
+   "gw_already_fontscale": 10,
+   "gw_nofiltering": 27,
+   "file_backed_fontscale": [
+    46,
+    47,
+    56,
+    158,
+    219,
+    327,
+    568,
+    705
+   ],
+   "gw_max_width": 1024,
+   "gw_max_height": 2048,
+   "gw_max_height_ids": [
+    8
+   ]
+  }
+ },
+ "stock_f_members": {
+  "f/bz22.abc": {
+   "fl": "acaa3aab0e32261b",
+   "ap": "acaa3aab0e32261b",
+   "fl_source": "01.cat"
+  },
+  "f/bz22.bmp": {
+   "fl": "83c9309a5421d649",
+   "ap": "83c9309a5421d649",
+   "fl_source": "01.cat"
+  },
+  "f/harrier tygra_16.abc": {
+   "fl": "86d833bae1780a1f",
+   "ap": "86d833bae1780a1f",
+   "fl_source": "01.cat"
+  },
+  "f/harrier tygra_16.tga": {
+   "fl": "5ff1501c7545a227",
+   "ap": "5ff1501c7545a227",
+   "fl_source": "01.cat"
+  },
+  "f/harrier24.abc": {
+   "fl": "86d833bae1780a1f",
+   "ap": "86d833bae1780a1f",
+   "fl_source": "01.cat"
+  },
+  "f/harrier24.tga": {
+   "fl": "5ff1501c7545a227",
+   "ap": "5ff1501c7545a227",
+   "fl_source": "01.cat"
+  },
+  "f/tahoma13.abc": {
+   "fl": "19a8b253937c8a06",
+   "ap": "19a8b253937c8a06",
+   "fl_source": "01.cat"
+  },
+  "f/tahoma13.tga": {
+   "fl": "ac90ecef235cc49f",
+   "ap": "ac90ecef235cc49f",
+   "fl_source": "01.cat"
+  },
+  "f/zekton26.abc": {
+   "fl": "6b161f8343b741e5",
+   "ap": "6b161f8343b741e5",
+   "fl_source": "01.cat"
+  },
+  "f/zekton26.tga": {
+   "fl": "893ed062cabd7791",
+   "ap": "893ed062cabd7791",
+   "fl_source": "01.cat"
+  },
+  "f/zektones26.abc": {
+   "fl": "3fc139ae9938400c",
+   "ap": "3fc139ae9938400c",
+   "fl_source": "01.cat"
+  },
+  "f/zektones26.tga": {
+   "fl": "2dec949dd80946e5",
+   "ap": "2dec949dd80946e5",
+   "fl_source": "01.cat"
+  }
+ },
+ "stock_f_identical": 12,
+ "fl_requests": [
+  "Harrier24",
+  "Tahoma13",
+  "UmePlusCLP23",
+  "Zekton26",
+  "ZektonES26"
+ ],
+ "shipped": [
+  "Harrier48.abc",
+  "Harrier48.tga",
+  "Harrier72.abc",
+  "Harrier72.tga",
+  "Tahoma26.abc",
+  "Tahoma26.tga",
+  "Tahoma39.abc",
+  "Tahoma39.tga",
+  "Zekton52.abc",
+  "Zekton52.tga",
+  "Zekton78.abc",
+  "Zekton78.tga",
+  "ZektonES52.abc",
+  "ZektonES52.tga",
+  "ZektonES78.abc",
+  "ZektonES78.tga"
+ ],
+ "missing_for_fl": {
+  "2": [
+   "UmePlusCLP46"
+  ],
+  "3": [
+   "UmePlusCLP69"
+  ]
+ }
+}
