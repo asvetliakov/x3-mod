@@ -357,7 +357,7 @@ class Config(unittest.TestCase):
         template = (ROOT / 'assets/x3m.ini').read_text()
         block = re.search(r'((?:^; .*\n)+);seta_manual_flight = 2$', template, re.M)
         self.assertIsNotNone(block)
-        self.assertEqual(len(block.group(1).splitlines()), 3)  # a three-line comment (the editions sentence since the FL port)
+        self.assertEqual(len(block.group(1).splitlines()), 2)  # a two-line comment (no edition sentence: works on both editions, convention 2026-11-04)
 
     def test_read_site(self):
         source = (ROOT / 'src/proxy/seta_manual_flight.cpp').read_text()

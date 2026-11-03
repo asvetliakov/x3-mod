@@ -3058,7 +3058,17 @@ the host evidence). Store driver `RESULT PASS checks=7819` (7,750 before), focus
 warnings (measured). Installed `C:\X3FL\d3d9.dll` = `38422f62…` (59,072,425 B), rollback `rollback-d3d9\d3d9.dll.run44` =
 `edfb7ab5…`; exe, overlay and ini unchanged. Record `verification/results/fl-run45/candidate.json`.
 
-**FL run 45 A (open):** the run 44 flight again: near a large station with the sun low, turn until the station leaves
+**FL run 45 A (flown 2026-11-04, accepted):** user: "yeah i think it's working". Log
+`/home/asvetl/x3m-logs/fl-run45-alpha-retention.log` (325 MB, 27,032 frames, 202 s, `exception=0`, measured):
+`shadow_retention_device … enabled=1 reason=ok`; over 26,018 frame rows `retained_alpha` between 3 and 39 while
+nodes were unseen (`records_unseen` up to 100), `retained_alpha_skipped=0`, `retextured=0`, `alpha_kept=0`; final
+summary `unseen_frames=25322 retained_frames=25322 retained_issues=3,078,033 retained_alpha_issues=372,920 promoted=223
+evicted=0 retired=0 box_exit=0`. The hull shadow stays when the station leaves the view. Shadow caster retention is
+complete on FL, with alpha-tested casters on both editions. Host suite after the merge: 351 modules, 3,540 tests, two
+source-text assertions updated to the new code shape and the ini convention (`test_hull_emissive_widening`,
+`test_seta_manual_flight`), then 0 failing.
+
+Original brief: the run 44 flight again: near a large station with the sun low, turn until the station leaves
 the view in chase view and cockpit, one gate transit, one dock, F8 on a frame where the station is unseen. Expect
 `shadow_retention_frame … retained_alpha` above 0 while the station is unseen, `retained_alpha_skipped=0`, and the
 hull shadow staying when the station is behind you. Report a shadow that still drops, a ghost shadow after the station
