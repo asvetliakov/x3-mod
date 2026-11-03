@@ -3016,3 +3016,19 @@ The ini note "X3: Albion Prelude only." is gone from `shadow_caster_retention`. 
 Reproduce: `verification/results/fl-shadow-retention/reproduce.sh`. Not verified: a flight (run 44 should show
 `shadow_retention_device … enabled=1 reason=ok` and `shadow_retention_frame` rows with `known` above 0); native Windows
 behaviour.
+
+## FL run 44 — shadow caster retention on FL (installed 2026-11-04)
+
+Merge `9711544c4` (`ca31d59a8`: the retirement journal in the FL lifetime observer, AP semantics, host-evidence section
+above), Opus-high review: merge, no code finding. Clean `build-fl`, 0 warnings; `test_fl_object_lifetime` and
+`test_shadow_retention` 15 tests OK; the native fixture 336 checks (257 before), 12 journal cases, the two append
+mutants fail 11 and 5 checks (measured). Installed `C:\X3FL\d3d9.dll` = `edfb7ab5…` (59,064,120 B), rollback
+`rollback-d3d9\d3d9.dll.run43` = `75735147…`; exe, overlay and ini unchanged (`shadow_caster_retention` default on).
+Record `verification/results/fl-run44/candidate.json`.
+
+**FL run 44 A (open):** fly near a large station with the sun low, so a station arm behind or beside you casts onto
+your ship, then turn the camera (chase view and cockpit) through the arm leaving the view; also one sector change via a
+gate and one dock. Expect `shadow_retention_device … enabled=1 reason=ok` (no `reason=journal`) and
+`shadow_retention_frame` rows with `known` above 0 and `retained` rising while the caster is out of view. Visual: the
+shadow stays on your hull when the caster leaves the view, as on AP; report a shadow that lingers after its station or
+ship is gone (a ghost shadow), a shadow that still drops on turning, or flicker.

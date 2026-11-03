@@ -1,0 +1,19 @@
+{
+ "run": 44,
+ "step": "shadow_caster_retention on FL: retirement journal in the FL lifetime observer (ca31d59a8, merge 9711544c4)",
+ "edition": "fl",
+ "commit": "9711544c4",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "edfb7ab55e34c69a",
+ "dll_bytes": 59064120,
+ "installed_sha256_prefix": "edfb7ab55e34c69a",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run43 (75735147)",
+ "game_data": "unchanged",
+ "ini": "unchanged (shadow_caster_retention default 1)",
+ "host_tests": "test_fl_object_lifetime + test_shadow_retention 15 OK; native fixture fl_object_lifetime RESULT PASS checks=336 (257 before), 12 journal cases, two mutants fail 11 and 5 checks (agent and reviewer, measured); AP objects identical 4/4; generate.py --check PASS",
+ "build_warnings": 0,
+ "review": "Opus high: merge; one status line to update (done at install)",
+ "installed_at": "2026-11-04T01:48:41+04:00"
+}
