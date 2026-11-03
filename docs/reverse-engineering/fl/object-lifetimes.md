@@ -316,3 +316,52 @@ empty) and a post-load re-baseline under the observer lock with no hooked mutati
 Still open: coverage of every registry writer beyond the hooked helpers (computed or aliased
 writes), thread confinement of engine writers versus unhooked readers, the factory
 constructor-unwind seam, and in-game qualification on native Windows and CrossOver.
+
+## Port (2026-11-04): the retirement journal
+
+`src/engine/fl/object_lifetime_fl.cpp` now carries the retirement journal of
+`src/proxy/object_lifetime.h` with AP semantics, so `shadow_caster_retention`
+registers on FL instead of logging `shadow_retention_device … enabled=0
+reason=journal` (FL run 43). The ring is AP's: 2,048 entries of 32 bytes, static,
+written under `model_lock` only while a consumer is registered; `Retired(serial)` in
+`retire()` (insert and remove entry, failed membership in `current()`), `FlushAll` in
+`clear_entries()` (load and foreign unwind, registry rebind, destroy and loss,
+ownership loss, capacity exhaustion, install, shutdown); `journal_register`,
+`journal_unregister`, `journal_stats` and `journal_drain` are the AP functions. The
+file's `-fno-exceptions -mno-sse -mno-mmx -mfpmath=387` build holds: the journal is
+integer only, and the dispatch-path audit still finds no x87/XMM use.
+
+**Unpublished inserts.** A consumer retains a node only from a Known `current()`
+result, which needs a published serial. An insert that finishes nested or with a
+failed membership lookup (`unpublished_nested`, `unpublished_lookup`), a dormant or
+other-map birth, is never in the table, so nothing can hold it and its later
+removal finds no key and appends nothing. A published serial leaves the table only
+through `retire()`, `clear_entries()` or `occupy()` over a live key, and all three
+journal it. `occupy()` over a live key cannot happen under the mutation-depth rule
+(an insert in flight keeps `mutations > 0`, so neither another publish nor the load
+re-baseline can make its key live before it finishes); it appends `Retired(old
+serial)` anyway, so the never-lose rule is enforced at that single write.
+
+**Load.** No FlushAll point beyond AP's: the load's `enter()` appends one with the
+clear before forwarding; survivors are absent from the table until
+`rebaseline_after_load()` adopts them with fresh serials, under the same lock that
+ends the load's `in_flight` (`current()` answers `MutationInProgress` until then),
+so no consumer can hold a serial issued between the flush and the adoption. Keys
+the load itself removes were already cleared and append nothing.
+
+**Fixture** (`verification/probe/fl_object_lifetime.cpp`, `journal_cases`, 12 cases,
+measured): `RESULT PASS checks=336` (257 before; +79), `JOURNAL cases=12`. Cases:
+no consumer (nothing written, drain overflow/unavailable), retire in order (two
+removals, overwrite, failed membership node then camera, serials exact, LastError
+kept), unpublished insert (nested key's removal appends nothing, outer key's its
+serial), partial drain (`more`), invalid drain (null buffer / zero capacity invalid
+and cursor unmoved; invalid cursor overflow), FlushAll on foreign unwind (load
+epoch +1), registry rebind and destroy (registry epoch +1), the load (one FlushAll,
+re-adopted survivors' serials newer than every pre-load and in-load serial, removal
+of a re-adopted survivor journals its fresh serial), overflow after 2,136
+retirements (cursor at the head) and an exact 2,048-entry ring without overflow,
+unregister (no writes, overflow; re-registration orphans old cursors), shutdown
+with a consumer (one FlushAll, unavailable). Mutants on a scratch copy (measured):
+without the `Retired` append 11 checks fail in 6 cases; without the `FlushAll`
+append 5 fail in 5 cases. Ledger: [farnhams-legacy.md](../../verification/farnhams-legacy.md),
+"shadow caster retention on FL (host evidence, 2026-11-04)". Not flown.

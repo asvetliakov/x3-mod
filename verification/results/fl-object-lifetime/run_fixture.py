@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds and runs the FL registry-observer native fixture (verification/probe/fl_object_lifetime.cpp) through the
 host test's build_and_run (verification/analysis/test_fl_object_lifetime.py) and writes fixture.json beside this
-script: the RESULT, TIMING and ANCHOR lines, failures, the fl.lifetime rows and the dispatch-path CPU-state audit of
+script: the RESULT, TIMING, ANCHOR and JOURNAL lines, failures, the fl.lifetime rows and the dispatch-path CPU-state audit of
 the fixture image. WSL2 with interop only."""
 import importlib.util
 import json
@@ -29,11 +29,12 @@ def main():
               'timing': next((l for l in lines if l.startswith('TIMING ')), None),
               'anchor': next((l for l in lines if l.startswith('ANCHOR ')), None),
               'rebaseline': next((l for l in lines if l.startswith('REBASELINE ')), None),
+              'journal': [l for l in lines if l.startswith('JOURNAL')],
               'failures': [l for l in lines if l.startswith('FAIL ')],
               'rows': [re.sub(r'^LOG ', '', l) for l in lines if l.startswith('LOG fl.lifetime')],
               'audit_exit': audit.returncode, 'audit': json.loads(audit.stdout) if audit.stdout.strip() else None}
     (HERE / 'fixture.json').write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('exit_code', 'result', 'timing', 'anchor', 'rebaseline', 'audit_exit')}))
+    print(json.dumps({k: record[k] for k in ('exit_code', 'result', 'timing', 'anchor', 'rebaseline', 'journal', 'audit_exit')}))
     return 0 if run.returncode == 0 and audit.returncode == 0 else 1
 
 
