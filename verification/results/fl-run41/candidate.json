@@ -1,0 +1,20 @@
+{
+ "run": 41,
+ "step": "collision trio on FL: collide_memo and collide_box_cull hooked, collide_sat_sse2 reports native_sse (FL SAT already scalar SSE); merge 3bf585604",
+ "edition": "fl",
+ "commit": "3bf585604",
+ "built_from": "main 3bf585604 (status commits since are docs only)",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "f259d6448e3c90f8",
+ "dll_bytes": 58278775,
+ "installed_sha256_prefix": "f259d6448e3c90f8",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run40 (0a81e9de)",
+ "game_data": "unchanged",
+ "ini": "unchanged (collide_memo 1, collide_box_cull 1, collide_sat_sse2 1 defaults)",
+ "host_tests": "run_host_suite 351 modules 3,537 tests 0 failing at d95da1e02; on the installed exe at install time: verify_collide_memo_sites_fl PASS 14 checks, verify_collide_box_cull_sites_fl PASS 18, verify_collide_sat_fl PASS 7; native fixtures (ledger): fl_collide_memo 36,054 checks over two mapped images with negative control, fl_collide_box_cull 301,887 checks, fl_collide_sat 27",
+ "build_warnings": 0,
+ "review": "Opus high twice: first review blocked on the LCG class skew and the unfalsifiable memo comparison, reworked; second review merge",
+ "installed_at": "2026-11-04T00:40:42+04:00"
+}

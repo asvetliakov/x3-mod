@@ -2722,7 +2722,15 @@ a recycled object pointer resets that ship's steering state. Host suite 347 modu
 verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `0a81e9de…` (58,098,703 B), rollback
 `rollback-d3d9\d3d9.dll.run39` = `431c2bb5…`; overlay and ini unchanged. Record `verification/results/fl-run40/candidate.json`.
 
-**FL run 40 A (open):** watch computer-flown ships for a while, ideally near a busy station or in a sector with traffic:
+**FL run 40 A (flown 2026-11-03/04, accepted):** user: "Run 40 done", nothing reported. Log
+`/home/asvetl/x3m-logs/fl-run40-steering.log` (1.05 GB, 98,146 frames, 519 s, `exception=0`, measured): `ship_steering
+installed=1 edition=fl sites=4`, `ship_avoidance installed=1 edition=fl warn_status=active`, the five gate/capital/traffic/
+lane/dock rows `ap_only reason=not_ported`; 453 `ship_steering_summary` rows, last interval 109 ships, 3,742 calls, 3,315
+handled, every `pass_not_finite`, `pass_table_full`, `pass_no_record` 0, `recycled=31` (pointer reuse handled), handler
+p50 1.6 us, p99 6.4 us, max 12.2 us; 13,579 `ship_avoid_detour` rows and 6 station/census rows (143 objects, no overflow).
+The base steering and avoidance groups are live on FL.
+
+Original brief: watch computer-flown ships for a while, ideally near a busy station or in a sector with traffic:
 turns should follow one curve instead of yaw-then-pitch, ships should slow for their arrival point, and ships on a
 collision course with a station, asteroid or another ship should steer around it instead of stopping for the collision
 warning. Under SETA as well. Expect `ship_steering … edition=fl status=patched`, `ship_avoidance … edition=fl` and five
@@ -2906,3 +2914,17 @@ partially rolled back stays bound so its sites still close through the CRT; the
 install order around `close_wrapper` is documented in `music-keep.md` section 3
 and `loading-hooks.md`. Not verified: not flown; native Windows/CrossOver;
 loading time in game; the real keep's share code in either install order.
+
+## FL run 41 — collision trio on FL (installed 2026-11-04)
+
+Merge `3bf585604` (memo and box cull hooked; SAT already scalar SSE on FL, `collide_sat_sse2 … status=native_sse`), two
+Opus-high reviews (section above). Clean `build-fl` from main `3bf585604`, 0 warnings; host suite 351 modules 3,537 tests
+0 failing at `d95da1e02`; the three site verifiers PASS on the installed exe at install time (14, 18 and 7 checks,
+measured). Installed `C:\X3FL\d3d9.dll` = `f259d644…` (58,278,775 B), rollback `rollback-d3d9\d3d9.dll.run40` =
+`0a81e9de…`; exe `e7f3aad8…`, overlay and ini unchanged. Record `verification/results/fl-run41/candidate.json`.
+
+**FL run 41 A (open):** fly a busy sector for a few minutes (station traffic, an asteroid field, a fight if one is on),
+under SETA as well, and dock once. Expect at start `collide_memo installed=1 … edition=fl`, `collide_box_cull installed=1 …
+edition=fl` and `collide_sat_sse2 … edition=fl status=native_sse`. Report ships or shots passing through hulls, stations
+or asteroids, a collision that does not register (no damage, no warning), docking that fails to connect, or a frame-rate
+change in a crowded sector either way; tell me before relaunching.
