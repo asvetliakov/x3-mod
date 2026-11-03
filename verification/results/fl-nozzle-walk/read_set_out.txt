@@ -1,0 +1,1 @@
+{"fl_sha256": "e7f3aad8d728e021", "fields": 10, "anchors": 36, "far_fields": 18, "far_anchors": 46, "far_anchors_ok": true, "constants": {"node_bytes_0x150": true, "mode_offset_0x260": true, "fl_model_0x144": true, "prefix_inside_block": true}, "failures": [], "passed": true}

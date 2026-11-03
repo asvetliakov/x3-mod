@@ -15,7 +15,9 @@ one-byte patches' executed paths, and the late-window refusal. The emitted stubs
 renamed symbol with its own no-SSE flags) with FL-layout nodes and AP-offset decoys, and the copy becomes a plume record
 through the consumer's far_record with the owned context scale. (b) Edition wiring: the CMake lists, the capture.cpp
 un-fencing, the far-jet handler's FL read set, the plume stage's FL scale source and the FL constants against the
-verified contract.json and read_set.json.
+verified contract.json and read_set.json. The FL node walk (docs/architecture/fl-nozzle-walk-activation.md): the
+fixture's node_walk section (owned scale, hook-only boundary, FL layout past AP decoys, unreadable child, emitter
+setting, SETA probe clock) and the plume stage's FL wiring.
 """
 import json
 from pathlib import Path
@@ -55,7 +57,9 @@ def build_and_run(tmp):
              ('src/proxy/engine_patch.cpp', []), ('src/engine/fl/executable_identity_fl.cpp', []),
              # The production far-jet handler with its CMake flags, renamed so the fixture's recording fake forwards.
              ('src/proxy/engine_far_jets.cpp', ['-fno-exceptions', '-mno-sse', '-mno-mmx', '-mfpmath=387',
-                                                '-Dx3m_engine_far_jet=x3m_engine_far_jet_real']))
+                                                '-Dx3m_engine_far_jet=x3m_engine_far_jet_real']),
+             # The production reader of the FL node walk's section (its CMake flags).
+             ('src/proxy/engine_memory.cpp', ['-mno-sse', '-mno-mmx', '-mfpmath=387']))
     for source, flags in units:
         obj = tmp / (Path(source).stem + '.o')
         subprocess.run([compiler, *common, *flags, '-c', str(ROOT / source), '-o', str(obj)], check=True)
@@ -94,6 +98,22 @@ class FlCullChainNativeFixture(unittest.TestCase):
                       'init_far_gate_native_off', 'init_far_gate_off_off', 'init_far_gate_mixed_case_off',
                       'init_far_gate_invalid_off'):
             self.assertNotIn('FAIL ' + label, out)
+        # The FL node walk (fl-nozzle-walk-activation.md): the scale owned at the gather (one camera chain), nothing read
+        # outside the hook, FL model offsets past AP decoys, the owned 0.01 with the camera page decommitted across a
+        # frame boundary (the reader's region cache re-queries per frame; a same-frame decommit is not caught), B's child
+        # decommitted the same way abandoning B only, the emitter setting, the SETA-scaled probe clock (120 / 12 frames,
+        # 600 stopped), refused frames keeping the ship roots marked, and the report window's quantiles.
+        for label in ('node_walk_gather_owns_scale', 'node_walk_decommit_across_frames',
+                      'node_walk_camera_unreadable_at_append', 'node_walk_present_reads_nothing', 'node_walk_boundary_rule',
+                      'node_walk_hook_fl_layout_owned_scale', 'node_walk_decommit_across_frames_abandons_root',
+                      'node_walk_emitters_off_no_c_read', 'node_walk_emitters_on_fl_layout',
+                      'node_walk_no_context_no_scale', 'node_walk_seta_probe_clock',
+                      'node_walk_refused_frames_keep_ship_roots', 'node_walk_window_quantiles'):
+            self.assertNotIn('FAIL ' + label, out)
+        self.assertRegex(out, r'NODEWALK owned_scale=3c23d70a chains=1 hook_records=4 walked=3 unreadable=1 '
+                              r'camera_reads_at_append=0 present_reads=0 no_boundary=2 anchors=2 '
+                              r'origin=1000\.0,-2000\.0,3000\.0 seta_frames=12[01],1[23],600 refused_keep_roots=1 '
+                              r'window=151,298,301\n')
         self.assertIn('LOG cull_small_parts_frame device=1 frame=77 px=4 ', out)
         self.assertRegex(out, r'LOG cull_small_parts_frame [^\n]* far_jets=on edition=fl\n')
         self.assertEqual(len(re.findall(r'^LOG cull_small_parts requested=\S+ px=\S+ patched=[01] edition=fl state=',
@@ -193,6 +213,81 @@ class FlCullChainWiring(unittest.TestCase):
         self.assertIn('ee::far_record(f, scale, body, entry, frame_, &record);', fl)
         self.assertNotIn('engine_far_context_scale', fl)
         self.assertIn('ee::far_record(f, engine_far_context_scale(f.context), body, entry, frame_, &record);', ap)
+
+    def test_node_walk_on_fl(self):
+        """The FL node walk's production wiring (fl-nozzle-walk-activation.md; the fixture's node_walk section mirrors it)."""
+        plumes = strip((ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text())
+        self.assertNotIn('fl_draw_only', plumes)
+        self.assertNotIn('engine_nozzle_source_ = engine_nozzle::core::Source::draw;', plumes)
+        gather = plumes[plumes.index('void MotionOutput::engine_node_gather('):plumes.index('void MotionOutput::engine_node_append()')]
+        fl = gather[gather.index('#if X3M_EDITION_FL\n    const unsigned admitted'):]
+        self.assertIn('engine_node_scales_.own(engine_node_roots_.order[admitted], std::uint32_t(camera), frame_, '
+                      '&engine_node_read, nullptr);', fl)
+        self.assertLess(fl.index('const DWORD error = GetLastError();'), fl.index('engine_node_scales_.own('))
+        self.assertLess(fl.index('engine_node_scales_.own('), fl.index('SetLastError(error);'))
+        append = plumes[plumes.index('void MotionOutput::engine_node_append()'):]
+        append = append[:append.index('\n}\n')]
+        # The boundary first: refused before the timer, the dedupe and any read.
+        gate = append.index('if (!nz::walk_admitted(true, engine_node_boundary_)) {')
+        self.assertLess(gate, append.index('QueryPerformanceCounter(&begin);'))
+        self.assertLess(gate, append.index('nz::walk('))
+        refused = append[gate:append.index('#endif', gate)]
+        self.assertIn('++engine_node_no_boundary_;', refused)
+        self.assertNotIn('engine_node_read', refused)
+        # The ring's parents stay ship roots on a refused frame (review F1), before the refusal returns.
+        self.assertLess(refused.index('engine_ship_roots_.mark(engine_ring_->parent[i], engine_ring_frame_);'),
+                        refused.index('return;'))
+        # The refusal row per kind, re-armed once per report window (review F5), and the window row on every path.
+        self.assertIn('"engine_node_walk_refused device=%llu frame=%llu reason=no_boundary end=%s roots=%u refused=%u '
+                      'edition=fl"', refused)
+        self.assertIn('if (frame_ >= engine_node_refused_next_[kind]) {', refused)
+        self.assertIn('engine_node_refused_next_[kind] = frame_ + nz::WalkWindow::frames;', refused)
+        self.assertIn('engine_node_window_row(false, gathered_roots);', refused)
+        self.assertTrue(append.rstrip().endswith('engine_node_window_row(true, false);\n#endif'))
+        self.assertIn('"engine_node_walk_window device=%llu frame=%llu edition=fl appends=%u walked=%u refused=%u '
+                      'roots_max=%u unreadable=%u no_scale=%u walk_us_p50=%.1f walk_us_p99=%.1f walk_us_max=%.1f '
+                      'samples=%u"', plumes)
+        window = plumes[plumes.index('void MotionOutput::engine_node_window_row('):]
+        window = window[:window.index('\n}\n')]
+        self.assertNotIn('cached_debug', window)  # any log tier
+        # The owned scale at the append (FL), the camera memo only on AP.
+        scale = append[append.index('const std::uint32_t camera = roots.camera[slot]'):]
+        scale = scale[:scale.index('if (!(scale > 0.f))')]
+        fl_scale, ap_scale = scale.split('#else', 1)
+        self.assertIn('const float scale = engine_node_scales_.scale(slot);', fl_scale)
+        self.assertNotIn('engine_node_context_scale', fl_scale)
+        self.assertIn('engine_node_context_scale(camera)', ap_scale)
+        # The model offset for every walk, before the anchors' options.
+        self.assertLess(append.index('walk_options.model_offset = engine_node_layout::edition.model;'),
+                        append.index('if (engine_anchors_on_) {'))
+        self.assertIn('engine_anchor_clock_ms_ += nz::probe_step_ms(engine_clock_.last_step, seta_rate_);', append)
+        # The hull rows after the root loop (no file write between two list reads).
+        loop_start = append.index('for (unsigned r = 0; gathered && r < roots.count; ++r)')
+        loop = append[loop_start:append.index('engine_ship_roots_.mark(', loop_start)]
+        self.assertNotIn('log(', loop)
+        self.assertIn('engine_anchor_hull_pending_[engine_anchor_hull_pending_count_++]', loop)
+        # The boundary is set from this resolve's source around the stage's append, and reset after it.
+        run = plumes[plumes.index('HRESULT MotionOutput::run_engine_plumes()'):]
+        run = run[:run.index('    if (!plumes_ || !plumes_armed_')]
+        self.assertIn('engine_node_boundary_ = counters_.hook_scene_end && counters_.taa.source == '
+                      'unsigned(SceneEndSource::Hook)', run)
+        self.assertLess(run.index('? engine_nozzle::core::Boundary::hook'), run.index('engine_node_append();'))
+        self.assertLess(run.index('engine_node_append();'), run.index('engine_node_boundary_ = engine_nozzle::core::Boundary::present;'))
+        # FL arms the stage on gathered roots (the walk runs only there).
+        route = strip((ROOT / 'src/proxy/motion_output.cpp').read_text())
+        self.assertIn('|| (engine_nozzle_source_ == engine_nozzle::core::Source::node && engine_node_roots_frame_ == frame_ &&',
+                      route)
+        header = strip((ROOT / 'src/proxy/motion_output.h').read_text())
+        owned = header.index('engine_nozzle::core::OwnedScales engine_node_scales_;')
+        self.assertEqual(header.rindex('#if', 0, owned), header.rindex('#if X3M_EDITION_FL', 0, owned))  # FL members only
+        self.assertLess(owned, header.index('engine_nozzle::core::Boundary engine_node_boundary_ = '
+                                            'engine_nozzle::core::Boundary::present;'))
+        self.assertLess(header.index('engine_nozzle::core::Boundary engine_node_boundary_'), header.index('#endif', owned))
+        stage = re.search(r'log\("engine_stage device=.*?"', plumes, re.S).group(0)
+        self.assertIn('node_walk_us=%.1f node_no_boundary=%u node_unreadable_total=%llu', stage)
+        self.assertIn('"engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u '
+                      'edition=%s rule=%s"', plumes)
+        self.assertIn('"fl", engine_nozzle_source_ == engine_nozzle::core::Source::node ? "hook_only" : "off"', plumes)
 
     def test_read_set_matches_the_verified_bytes(self):
         read_set = json.loads(READ_SET.read_text())

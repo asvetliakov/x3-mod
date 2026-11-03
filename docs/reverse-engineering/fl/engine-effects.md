@@ -214,8 +214,15 @@ to one admitted invocation. Reuse these existing mechanisms.
 
 **Superseded 2026-11-03 for the far route (orchestrator ruling).** The far-jet copy relies on the selector's synchronous native borrow, the same model as AP: the integer-only handler runs inside the pass, called by the stub, and cannot query `fl_render_admission`. The later parent `+0xa4` read follows the shipped FL draw route (`engine_memory::read`, `≤ 0` → no floor). Only the context scale became an owned value ([Verified 2026-11-03](cull-chain.md#verified-2026-11-03-far-jet-hand-off-read-set)).
 
+**Superseded 2026-11-03 for the node walk (design ratified, implemented; not flown).** The walk runs on FL under the
+same synchronous borrow, at the hook's scene end only, with the context scale owned at the gather
+([fl-nozzle-walk-activation.md](../../architecture/fl-nozzle-walk-activation.md), and
+[Verified 2026-11-03: node walk](#verified-2026-11-03-node-walk) below). The paragraphs below record the gap as it
+stood before that ruling. One correction to them: `sample_scope` calls `engine_node_gather` on both editions (the FL
+gather returned at once while the source was forced to `draw`); it was never limited to Edition::AP.
+
 **The precise AP consumer mismatch [s].** `MotionOutput::sample_scope`
-currently calls `engine_node_gather` only for Edition::AP. That gathers
+calls `engine_node_gather` on both editions (corrected 2026-11-03; see above). That gathers
 native root/camera/registry **tokens** into `RootSet`. Later
 `run_engine_plumes` calls `engine_node_append` after `engine_far_append`;
 if the stage did not run, `engine_light_frame` can instead call it at the
@@ -533,8 +540,9 @@ node-context loads over the cull site) is in
 For the context scale only, this meets [cull-chain.md](cull-chain.md) section 4's requirement that a far-to-plume
 conversion use an owned value: the handler copies it inside the native borrow, and the stage no longer reads
 `context+0x2c` later. The rest of that requirement (fresh `fl_render_admission`, an owned parent radius) is
-superseded for the far route (note in section 4 above). The node walk (`engine_node_append`) stays
-fenced (`fl_draw_only`), so its later `camera+0x1c → +0x2c` read never runs on FL. The parent radius is read
+superseded for the far route (note in section 4 above). The node walk (`engine_node_append`) owns its
+`camera+0x1c → +0x2c` scale at the gather since 2026-11-03 ([below](#verified-2026-11-03-node-walk)), so no later
+camera read runs on FL either. The parent radius is read
 later. That is the same read and the same `engine_memory::read` validation as the FL draw route (FL run 18
 onward); no owned value has been established for it [i].
 
@@ -556,8 +564,38 @@ built"), checked statically on X3FL.exe (SHA-256 `e7f3aad8…`) and X3AP.exe (`f
 | Placement | every JET child to `(1, 1, 0x28f)` and hidden, no class test, `0x45b830..0x45b852` | `0x451cd5..0x451cf7` | with the row above, `+0x88 ≥ 0x4000` on a hidden emitter means a ship's drive moved it: the rule's ship-only gate |
 
 FL node layout for the rule: model `+0x144` (`engine_node_layout.h`; the walk's `Options::model_offset`), every other
-field at the AP offset. **The FL walk itself stays fenced** (`fl_draw_only`, section 4's missing read window and
-[nozzle-scene-window.md](nozzle-scene-window.md)), so none of these reads runs on FL until that activation. Not
-established: whether the drive gate `*0x5a82ec != 0` (`0x4645ad`, section 4) can leave a hidden
+field at the AP offset. The FL walk runs since 2026-11-03 (next section); with `engine_plume_emitters = 0` none of
+the C reads runs. Not established: whether the drive gate `*0x5a82ec != 0` (`0x4645ad`, section 4) can leave a hidden
 emitter at its placement value `0x28f` for a whole flight; the rule's driven-range guard (`0x4000..0x20000`) refuses
 such a node rather than drawing it idle [i].
+
+## Verified 2026-11-03: node walk
+
+Read set of the FL node walk ([fl-nozzle-walk-activation.md](../../architecture/fl-nozzle-walk-activation.md), "As
+built"), each field pinned by whole-instruction anchors on X3FL.exe (SHA-256 `e7f3aad8…`) by
+[read_set.py](../../../verification/results/fl-nozzle-walk/read_set.py) → `read_set.json`, `read_set_out.txt`:
+10 fields, 36 anchors PASS, and the far-jet read set's 46 FL anchors re-asserted on the same image (its own
+producer: 47 with the AP twin, PASS). **[s]** for the fields; the window argument is
+[nozzle-scene-window.md](nozzle-scene-window.md)'s, whose 20 executable regions were rehashed against the 276bd2d62
+contract: 20 of 20 identical, 7 negative controls
+([scene_window_rerun.py](../../../verification/results/fl-nozzle-walk/scene_window_rerun.py) → `scene_window_rerun_out.txt`;
+its source-clause checks describe a different branch and were not rerun).
+
+| Walk read | Offset | FL anchors | How the proxy uses it |
+| --- | --- | --- | --- |
+| Child list head, sentinel | root `+0xc`; sentinel embedded at `+0x10`, `[+0] == 0` | constructor `0x4a22ab..0x4a22b8`; emitter walk `0x414eff`/`0x414f02`; jet drive `0x464630` | first read of every root |
+| Next | child `+0` | jet drive `0x464bc4`, end test `0x464bd2`; destructor `0x4a33b0..0x4a33b8` | one read per element; an unreadable one ends the root's walk (`node_unreadable`) |
+| Node block | `0x270` bytes | allocation `0x4a2203` (`push 0x270`), `0x4a2208` | the 0x150-byte prefix and C `+0x260` lie inside it |
+| JET pair, hidden flag | `+0x130` bit 0 / pair `0x4000001`; `+0x12c` `0x100000` | drive filter `0x4646a6`; shows `0x464874`/`0x4648c2`, hides `0x464880`/`0x4648ce`; classifier `0x43deb3` (far set) | the walk's two filters |
+| Parent, handle, scales, throttle, position, basis | `+0x18`, `+0x28`, `+0x70`, `+0x80`, `+0x84`, `+0x88`, `+0xb0..`, `+0xc0..`, `+0xe0..` | far set; y scale writer `0x4a3b01` | `far_record`, unchanged |
+| Model id | `+0x144` (AP `+0x140`) | `0x49621c`, setter `0x4a365d` (far set) | `Options::model_offset = engine_node_layout::edition.model` for every walk |
+| Mode word C | `+0x260` | drive `0x4646b6` | only with `engine_plume_emitters = 1`, hidden JET children |
+| Owned scale: draw camera → context | camera `+0x1c` | sector scene `0x48ba48`/`0x48ba78` (ECX = camera `+0x1c`), camera to the material traversal `0x48ba7e`/`0x48ba7f`, `0x48ba8b`/`0x48ba8d`, traversal's camera argument `0x49795b`, submissions push it `0x497030` (EDI) and `0x497701` (EBX) | read at the gather, inside the hull draw's material scope (`object_trace_fl` `args[2]`) |
+| Owned scale: the float | context `+0x2c` | camera publication `0x4def18`; the submission wrapper's own `+0x1c` → `+0x2c` at `0x4e7041`/`0x4e7048` | bit-copied into the root's slot; the append bit-casts it |
+| Boundary | the call at `0x48b929` (`call 0x4e6770`) | the scene hook site | the append walks only inside it |
+
+The link from the material traversal's camera argument (`0x49795b`) to the submission's pushed camera
+(`0x497030`/`0x497701`) passes through `0x485700` and the queue producer; its register flow is
+[material-submit.md](material-submit.md) section 1's [s], not re-derived here. That the draw's camera `+0x1c` equals
+the context the selector uses for that hull's nodes is the same equality the AP walk relies on; for FL it is [i]
+(design §5), and a mismatch would show as plumes off the hull in flight.

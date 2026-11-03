@@ -224,7 +224,9 @@ void MotionOutput::engine_light_frame() noexcept {
     // `previous` (its draws are the logged ones) and the older buffer takes this boundary's table.
     std::uint32_t scene_camera = 0;
     const bool attached = engine_ring_ && !engine_plumes_stage_off();
-    // The node-sourced append for a frame whose stage did not run (engine_node_append is a no-op after the stage's).
+    // The node-sourced append for a frame whose stage did not run (engine_node_append is a no-op after the stage's). On
+    // FL this Present-time boundary reads nothing (engine_node_boundary_ is `present` here: node_no_boundary), so the
+    // frame's light holds as with the draw source.
     if (attached) engine_node_append();
     std::swap(s.ships, s.previous);
     const bool records = attached && engine_ring_->count &&

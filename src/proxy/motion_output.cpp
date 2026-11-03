@@ -2477,8 +2477,15 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (in.cut && ribbons_) ribbons_->note_cut();
             // This device's resolve takes the stage's decision: it owns the far buffer's frame (engine_far_jets.h).
             if (plumes_requested_) engine_far_jets::claim(this);
+            // FL: roots gathered this frame arm it too, since the walk runs only here (the hook's resolve) and a frame
+            // whose ships drew no glow (hidden-emitter hulls, every nozzle frustum-culled) has no record yet.
             if (plumes_requested_ && engine_plumes_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
-                (engine_ring_->count || engine_far_jets::count() || engine_ribbons_live())) {
+                (engine_ring_->count || engine_far_jets::count() || engine_ribbons_live()
+#if X3M_EDITION_FL
+                 || (engine_nozzle_source_ == engine_nozzle::core::Source::node && engine_node_roots_frame_ == frame_ &&
+                     engine_node_roots_.count)
+#endif
+                     )) {
                 in.stage_callback = &MotionOutput::engine_plumes_callback;
                 in.stage_context = this;
             }

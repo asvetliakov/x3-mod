@@ -626,8 +626,14 @@ class Wiring(unittest.TestCase):
     def test_wiring(self):
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         self.assertIn('if(in.cut&&ribbons_)ribbons_->note_cut();', motion)
+        # A frame whose ribbons are live arms the stage: AP's expression exactly, FL's gathered-roots term in its fence.
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
-                      '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+                      '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live()'
+                      '#if X3M_EDITION_FL'
+                      '||(engine_nozzle_source_==engine_nozzle::core::Source::node&&engine_node_roots_frame_==frame_&&'
+                      'engine_node_roots_.count)'
+                      '#endif'
+                      ')){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # the ribbons take the plumes' scene-view filter
         self.assertIn('scale,&r.update,f.filter.camera&&f.filter.scene?&f.filter:nullptr,f.look,f.radii,f.travel,f.parents,'
                       'frame.own_ship?nullptr:f.own);',

@@ -1030,6 +1030,22 @@ MXCSR and LastError as documented; refusals, one flipped byte per window, read-b
 Not verified: in game (not flown); native Windows game behaviour. `text_density` logged one `ap_only` row on FL until
 its port (section above).
 
+## 2026-11-03: engine node walk on FL (`engine_nozzle_source = node` honoured on FL)
+
+The FL build walks ship part lists at the plume stage, as AP does
+([fl-nozzle-walk-activation.md](fl-nozzle-walk-activation.md), "As built"). No new engine site, patch or device call.
+The reads go through `engine_memory::read` (`VirtualQuery` plus a copy, documented Win32), inside the already-installed
+FL scene hook's synchronous call. The context scale is copied at the gather inside the material-submission scope that
+`object_trace_fl` already uses. Nothing is Wine- or CrossOver-specific, and the walk calls no engine function. Natively
+verified on the Windows host through WSL interop (measured 2026-11-03): the FL cull-chain fixture, 228 checks,
+0 failures. Its `node_walk` section covers FL-layout lists in committed pages read through the production reader,
+the owned scale with the camera page decommitted before the append, zero reads at a Present-time or StretchRect
+append, a decommitted child ending only its root's walk, refused frames keeping the ship roots, the report window's
+quantiles, and the SETA probe clock. Both decommit cases put a frame boundary between the decommit and the append:
+`engine_memory::read` is a `VirtualQuery` check with a per-frame region cache, not a fault guard, so a page
+decommitted within the same frame is not caught (as on the AP walk). Not verified: the walk in game (not flown,
+runs 32 and 33); native Windows game behaviour.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

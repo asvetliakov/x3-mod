@@ -16,6 +16,14 @@
 // flags); the recording fake below forwards to it when far_forward is set, so the stub's far block reaches the real
 // handler with FL-layout nodes (decoys at the AP offsets) and the copy is turned into a plume record by the consumer's
 // own call (engine_effects_core.h far_record with the owned context scale, as motion_output_engine_plumes_inc.h does).
+//
+// The FL node walk (docs/architecture/fl-nozzle-walk-activation.md, namespace node_walk below): FL-layout root lists in
+// committed pages read through the production reader (src/proxy/engine_memory.cpp, linked with its no-SSE flags), the
+// gather's owned context scale (engine_nozzle_walk_core.h OwnedScales) taken while the camera is readable and used at
+// the append after the camera page is decommitted, the hook-only boundary (a Present-time or StretchRect append reads
+// nothing), decoys at the AP model offset, a decommitted child that abandons its root's walk, the emitter setting off
+// (no C read, no anchor) and on, and the anchor probe clock under SETA. The append sequence mirrors
+// motion_output_engine_plumes_inc.h engine_node_append's FL branch; test_fl_cull_chain.py pins the production wiring.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <cstdarg>
@@ -31,6 +39,9 @@
 #include "../../src/proxy/cull_census.h"
 #include "../../src/proxy/engine_effects_core.h"
 #include "../../src/proxy/engine_far_jets.h"
+#include "../../src/proxy/engine_memory.h"
+#include "../../src/proxy/engine_node_layout.h"
+#include "../../src/proxy/engine_nozzle_walk_core.h"
 #include "../../src/proxy/engine_patch.h"
 #include "../../src/proxy/fov.h"
 namespace csp = x3m::cull_small_parts;
@@ -698,6 +709,314 @@ void checks() {
 }
 } // namespace far_chain
 
+namespace node_walk {
+namespace ee = x3m::engine_effects::core;
+namespace nz = x3m::engine_nozzle::core;
+constexpr unsigned page = 0x1000, pages = 16;
+constexpr uint32_t view_handle = 0x0000beef, emitter_model = 4242;
+unsigned char* arena = nullptr;
+uint32_t at(unsigned page_index, unsigned offset) {
+    return u32(arena) + page_index * page + offset;
+}
+void put32(uint32_t address, uint32_t value) {
+    std::memcpy(reinterpret_cast<void*>(std::uintptr_t(address)), &value, 4);
+}
+uint32_t bits(float f) {
+    uint32_t v = 0;
+    std::memcpy(&v, &f, 4);
+    return v;
+}
+// The production reader, counting every read and those that touch the camera's page.
+unsigned reads = 0, camera_reads = 0;
+uint32_t camera_page = 0;
+bool reader(void*, uint32_t address, void* out, unsigned size) {
+    ++reads;
+    if (address >= camera_page && address < camera_page + page) ++camera_reads;
+    return x3m::engine_memory::read(address, out, size);
+}
+// An FL root as the native constructor leaves it (0x4a22ab..0x4a22b8: +0xc = &+0x10, [+0x10] = 0, +0x14 = &+0xc), then
+// the children linked head-first, the last one's next = the sentinel.
+void link(uint32_t root, std::initializer_list<uint32_t> children) {
+    put32(root + 0x10, 0);
+    put32(root + 0x14, root + 0xc);
+    uint32_t* previous = reinterpret_cast<uint32_t*>(std::uintptr_t(root + 0xc));
+    for (uint32_t child : children) {
+        *previous = child;
+        previous = reinterpret_cast<uint32_t*>(std::uintptr_t(child));
+    }
+    *previous = root + 0x10;
+}
+// A JET child in FL layout: the model id at +0x144 and a decoy at AP's +0x140.
+void jet(uint32_t node, uint32_t root, uint32_t handle, uint32_t fl_model, uint32_t ap_decoy, uint32_t flags12c,
+         uint32_t z, int32_t x) {
+    put32(node + 0x18, root);
+    put32(node + 0x28, handle);
+    put32(node + 0x70, 200);
+    put32(node + 0x80, 0x10000);
+    put32(node + 0x84, 0x10000);
+    put32(node + 0x88, z);
+    const int32_t position[3] = {x, -200000, 300000};
+    for (unsigned i = 0; i < 3; ++i) {
+        put32(node + 0xb0 + 4 * i, uint32_t(position[i]));
+        put32(node + 0xc0 + 4 * i, i == 0 ? 0x10000u : 0u);
+        put32(node + 0xe0 + 4 * i, i == 2 ? 0x10000u : 0u);
+    }
+    put32(node + 0x12c, flags12c);
+    put32(node + 0x130, 0x04000001);
+    put32(node + 0x140, ap_decoy);
+    put32(node + 0x144, fl_model);
+    put32(node + 0x260, 0); // C: the main set without the visible bit (a hidden emitter's mode)
+}
+bool is_emitter(void*, uint32_t model) {
+    return model == emitter_model;
+}
+bool is_steering(void*, uint32_t model) {
+    return model == ee::steering_model;
+}
+struct Out {
+    unsigned no_boundary = 0, no_scale = 0, walked = 0, records = 0, steering = 0, unreadable = 0, anchors = 0;
+    unsigned mode_reads = 0, hidden = 0;
+    bool complete[8]{};
+    unsigned root_unreadable[8]{};
+    uint32_t models[16]{}, anchor_models[8]{};
+    ee::Record first{};
+};
+// The gather's ship filter and the frame's ring parents (the records' parents, draw and far).
+nz::ShipRoots ships;
+const uint32_t* ring_parents = nullptr;
+unsigned ring_count = 0;
+std::uint64_t ring_frame = 0;
+void mark_ring() {
+    for (unsigned i = 0; i < ring_count; ++i) ships.mark(ring_parents[i], ring_frame);
+}
+// engine_node_append's FL sequence: the boundary first (outside the hook nothing is read, the ring's parents are still
+// marked as ship roots), then per root the owned scale (no camera read), the walk at the build's model offset (anchors
+// only with the setting on), far_record; the ring's parents marked after the walk.
+Out append(const nz::RootSet& roots, const nz::OwnedScales& scales, nz::Boundary boundary, bool anchors_on) {
+    Out o;
+    if (!nz::walk_admitted(true, boundary)) {
+        mark_ring();
+        if (roots.count) ++o.no_boundary;
+        return o;
+    }
+    nz::Options options;
+    options.model_offset = x3m::engine_node_layout::edition.model;
+    if (anchors_on) {
+        options.anchors = true;
+        options.is_emitter = &is_emitter;
+        options.is_steering = &is_steering;
+    }
+    for (unsigned r = 0; r < roots.count && r < 8; ++r) {
+        const unsigned slot = roots.order[r];
+        const float scale = scales.scale(slot);
+        if (!(scale > 0.f)) {
+            ++o.no_scale;
+            continue;
+        }
+        nz::WalkStats st;
+        const auto emit = [&](const x3m::engine_far_jets::core::Raw& raw) {
+            ee::Record record{};
+            const ee::FarVerdict verdict = ee::far_record(raw, scale, -1, nullptr, 9, &record);
+            if (verdict == ee::FarVerdict::steering) ++o.steering;
+            if (verdict != ee::FarVerdict::record) return;
+            if (!o.records) o.first = record;
+            if (o.records < 16) o.models[o.records] = raw.model;
+            ++o.records;
+        };
+        const auto anchor = [&](const x3m::engine_far_jets::core::Raw& raw) {
+            if (o.anchors < 8) o.anchor_models[o.anchors] = raw.model;
+            ++o.anchors;
+        };
+        o.complete[r] = nz::walk(roots.root[slot], roots.camera_handle[slot], &reader, nullptr, &st, options, emit, anchor);
+        o.root_unreadable[r] = st.unreadable;
+        o.unreadable += st.unreadable;
+        o.mode_reads += st.mode_reads;
+        o.hidden += st.hidden;
+        o.walked += o.complete[r] ? 1u : 0u;
+    }
+    mark_ring();
+    return o;
+}
+// The gather's FL step (engine_node_gather): insert, and a newly admitted root owns its scale.
+void gather(nz::RootSet& roots, nz::OwnedScales& scales, uint32_t root, uint32_t camera, std::uint64_t frame) {
+    const unsigned admitted = roots.count;
+    roots.insert(root, view_handle, camera, 0, false);
+    if (roots.count != admitted) scales.own(roots.order[admitted], camera, frame, &reader, nullptr);
+}
+// Game frames until the anchor probe's retry (AnchorProbes::retry_ms of game time) at 60 fps and a SETA rate.
+unsigned frames_until_due(float rate) {
+    static nz::AnchorProbes probes;
+    probes.clear();
+    const uint32_t root = 0x00123450;
+    probes.note(root, 0, 0., nz::AnchorProbes::none);
+    double clock = 0.;
+    for (unsigned f = 1; f < 2000; ++f) {
+        clock += nz::probe_step_ms(1. / 60., rate);
+        if (probes.due(root, f, clock)) return f;
+    }
+    return 0;
+}
+void checks() {
+    arena = static_cast<unsigned char*>(VirtualAlloc(nullptr, pages * page, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+    check(arena != nullptr, "node_walk_arena");
+    if (!arena) return;
+    x3m::engine_memory::reset();
+    // Page 0 the camera (0x790 bytes, +0x1c the context, +0x28 the handle), page 1 the contexts and a camera without
+    // one, page 2 the roots A..D, pages 3.. the children (page 10 alone holds B's second child).
+    camera_page = at(0, 0);
+    const uint32_t camera = at(0, 0), context = at(1, 0), other_context = at(1, 0x400), bare_camera = at(1, 0x800);
+    put32(camera + 0x1c, context);
+    put32(camera + 0x28, view_handle);
+    put32(context + 0x2c, bits(0.01f));
+    put32(other_context + 0x2c, bits(0.5f));
+    put32(bare_camera + 0x1c, 0);
+    const uint32_t A = at(2, 0), B = at(2, 0x400), C = at(2, 0x800), D = at(2, 0xc00);
+    const uint32_t j1 = at(3, 0), p1 = at(3, 0x400), j2 = at(3, 0x800);
+    const uint32_t j3 = at(4, 0), x = at(10, 0), j4 = at(4, 0x400);
+    const uint32_t j5 = at(5, 0), e1 = at(6, 0), e2 = at(6, 0x400);
+    jet(j1, A, 0x101, 1234, ee::steering_model, 0, 0x18000, 100000); // AP's +0x140 says RCS: read there, no record
+    put32(p1 + 0x18, A);                                             // a hull part: no JET pair
+    put32(p1 + 0x130, 0);
+    jet(j2, A, 0x102, 777, ee::steering_model, 0, 0x18000, 110000);
+    jet(j3, B, 0x103, 1234, ee::steering_model, 0, 0x18000, 120000);
+    jet(x, B, 0x104, 1234, ee::steering_model, 0, 0x18000, 130000);
+    jet(j4, B, 0x105, 1234, ee::steering_model, 0, 0x18000, 140000);
+    jet(j5, C, 0x106, 1234, ee::steering_model, 0, 0x18000, 150000);
+    jet(e1, D, 0x107, emitter_model, 1234, 0x100000, 0x8000, 160000); // hidden emitters, decoy a real jet at +0x140
+    jet(e2, D, 0x108, emitter_model, 1234, 0x100000, 0x8000, 170000);
+    link(A, {j1, p1, j2});
+    link(B, {j3, x, j4});
+    link(C, {j5});
+    link(D, {e1, e2});
+    // 1. The gather (frame 7): A twice, B, C, D under one camera. One camera -> context -> scale chain (two reads).
+    nz::RootSet roots;
+    nz::OwnedScales scales;
+    roots.begin();
+    reads = camera_reads = 0;
+    for (uint32_t root : {A, A, B, C, D}) gather(roots, scales, root, camera, 7);
+    bool owned = roots.count == 4 && scales.chains == 1 && reads == 2 && camera_reads == 1;
+    for (unsigned r = 0; r < roots.count; ++r) owned = owned && scales.bits[roots.order[r]] == bits(0.01f);
+    char detail[256];
+    std::snprintf(detail, sizeof detail, "roots=%u chains=%u reads=%u camera_reads=%u", roots.count, scales.chains, reads,
+                  camera_reads);
+    check(owned, "node_walk_gather_owns_scale", detail);
+    const unsigned gather_chains = scales.chains;
+    // 2. decommit_across_frames: between the gather and the append the camera's page goes (and B's second child), with
+    // a frame boundary between (engine_memory::next_frame: its region cache re-queries). engine_memory::read is a
+    // VirtualQuery check with a per-frame region cache (~100 ms), not a fault guard, so a page decommitted within the
+    // same frame after its region was validated is not caught; the AP walk has the same property. The case shows the
+    // append needs no camera read and that an unreadable child, once the reader sees it, ends only its own root.
+    put32(camera + 0x1c, other_context);
+    check(VirtualFree(arena, page, MEM_DECOMMIT) && VirtualFree(arena + 10 * page, page, MEM_DECOMMIT),
+          "node_walk_decommit_across_frames");
+    x3m::engine_memory::next_frame();
+    uint32_t probe = 0;
+    check(!x3m::engine_memory::read(camera + 0x1c, &probe, 4), "node_walk_camera_unreadable_at_append");
+    // 3. Present-time (engine_light_frame) and StretchRect appends: nothing read, node_no_boundary.
+    reads = camera_reads = 0;
+    const Out present = append(roots, scales, nz::Boundary::present, false);
+    const Out copy = append(roots, scales, nz::Boundary::stretch_rect, true);
+    std::snprintf(detail, sizeof detail, "reads=%u no_boundary=%u,%u records=%u,%u", reads, present.no_boundary,
+                  copy.no_boundary, present.records, copy.records);
+    check(reads == 0 && present.no_boundary == 1 && copy.no_boundary == 1 && !present.records && !copy.records,
+          "node_walk_present_reads_nothing", detail);
+    const unsigned boundary_reads = reads;
+    check(nz::walk_admitted(true, nz::Boundary::hook) && nz::walk_admitted(false, nz::Boundary::present) &&
+              !std::strcmp(nz::boundary_name(nz::Boundary::present), "present") &&
+              !std::strcmp(nz::boundary_name(nz::Boundary::stretch_rect), "stretchrect"),
+          "node_walk_boundary_rule");
+    // 4. The hook's append, emitters off (engine_plume_emitters = 0): FL offsets, the owned 0.01, no camera read; A's two
+    // jets, B's first jet then the cut, C's jet; D's hidden emitters give nothing and their C is never read.
+    reads = camera_reads = 0;
+    const Out hook = append(roots, scales, nz::Boundary::hook, false);
+    const unsigned hook_camera_reads = camera_reads;
+    const auto close_to = [](float a, float b) { return a - b < 1e-3f && b - a < 1e-3f; };
+    std::snprintf(detail, sizeof detail,
+                  "records=%u steering=%u walked=%u unreadable=%u camera_reads=%u models=%u,%u,%u,%u origin=%.2f "
+                  "hidden=%u mode_reads=%u anchors=%u",
+                  hook.records, hook.steering, hook.walked, hook.unreadable, camera_reads, hook.models[0], hook.models[1],
+                  hook.models[2], hook.models[3], double(hook.first.origin[0]), hook.hidden, hook.mode_reads, hook.anchors);
+    check(hook.records == 4 && hook.steering == 0 && hook.models[0] == 1234 && hook.models[1] == 777 &&
+              hook.models[2] == 1234 && hook.models[3] == 1234 && camera_reads == 0 && reads > 0 &&
+              close_to(hook.first.origin[0], 1000.f) && close_to(hook.first.origin[1], -2000.f) &&
+              close_to(hook.first.origin[2], 3000.f) && (hook.first.flags & ee::flag_far) &&
+              hook.first.node_handle == 0x101,
+          "node_walk_hook_fl_layout_owned_scale", detail);
+    // 5. B's child decommitted across frames: counted once, B's walk abandoned (not walked: no light hold), C after it
+    // walked.
+    check(hook.complete[0] && !hook.complete[1] && hook.root_unreadable[1] == 1 && hook.complete[2] && hook.complete[3] &&
+              hook.unreadable == 1 && hook.walked == 3,
+          "node_walk_decommit_across_frames_abandons_root", detail);
+    check(hook.hidden == 2 && hook.mode_reads == 0 && hook.anchors == 0, "node_walk_emitters_off_no_c_read", detail);
+    // 6. Emitters on: D's two hidden emitters become anchors by their FL model (C read twice); A's shown jets withhold
+    // nothing from D; A, C keep their records.
+    const Out anchored = append(roots, scales, nz::Boundary::hook, true);
+    std::snprintf(detail, sizeof detail, "anchors=%u models=%u,%u mode_reads=%u records=%u", anchored.anchors,
+                  anchored.anchor_models[0], anchored.anchor_models[1], anchored.mode_reads, anchored.records);
+    check(anchored.anchors == 2 && anchored.anchor_models[0] == emitter_model &&
+              anchored.anchor_models[1] == emitter_model && anchored.mode_reads == 2 && anchored.records == 4,
+          "node_walk_emitters_on_fl_layout", detail);
+    // 7. A root gathered under a camera without a context owns 0: no_scale, nothing walked.
+    nz::RootSet bare_roots;
+    bare_roots.begin();
+    gather(bare_roots, scales, C, bare_camera, 8);
+    reads = 0;
+    const Out bare = append(bare_roots, scales, nz::Boundary::hook, false);
+    check(bare_roots.count == 1 && scales.bits[bare_roots.order[0]] == 0 && bare.no_scale == 1 && !bare.records &&
+              reads == 0,
+          "node_walk_no_context_no_scale");
+    // 8. SETA: the probe clock is game time (wall step x rate, capped at 1 s a step); the frame bound is not scaled.
+    const unsigned at_1 = frames_until_due(1.f), at_10 = frames_until_due(10.f), stopped = frames_until_due(0.f);
+    std::snprintf(detail, sizeof detail, "frames=%u,%u,%u", at_1, at_10, stopped);
+    check(at_1 >= 120 && at_1 <= 121 && at_10 >= 12 && at_10 <= 13 && stopped == 600 &&
+              nz::probe_step_ms(0.5, 10.f) == 1000. && nz::probe_step_ms(-1., 1.f) == 0. &&
+              nz::probe_step_ms(__builtin_nan(""), 1.f) == 0.,
+          "node_walk_seta_probe_clock", detail);
+    // 9. Refused frames keep the ship roots (review F1): the hook append at frame 10 and three refused (Present-time)
+    // appends at 11..13 with the glow ships A and C in the ring; the gather at frame 14 still finds them recent (B, not
+    // in the ring, is not). Marked only at the walking append (the refusal returning first), they lapse by frame 14.
+    const uint32_t parents[2] = {A, C};
+    ring_parents = parents;
+    ring_count = 2;
+    ships = nz::ShipRoots{};
+    nz::ShipRoots walked_only{};
+    ring_frame = 10;
+    reads = 0;
+    append(roots, scales, nz::Boundary::hook, false);
+    for (uint32_t p : parents) walked_only.mark(p, 10);
+    for (std::uint64_t f = 11; f <= 13; ++f) {
+        ring_frame = f;
+        append(roots, scales, nz::Boundary::present, false);
+    }
+    const bool kept = ships.recent(A, 14) && ships.recent(C, 14) && !ships.recent(B, 14);
+    const bool lapsed = !walked_only.recent(A, 14) && !walked_only.recent(C, 14);
+    check(kept && lapsed, "node_walk_refused_frames_keep_ship_roots");
+    ring_parents = nullptr;
+    ring_count = 0;
+    // 10. The report window's quantiles (engine_node_walk_window): nearest rank over at most 300 samples.
+    static nz::WalkWindow window;
+    window.reset(0);
+    float p50 = -1.f, p99 = -1.f, max = -1.f;
+    window.quantiles(&p50, &p99, &max);
+    const bool empty = p50 == 0.f && p99 == 0.f && max == 0.f;
+    for (unsigned v = 301; v >= 1; --v) window.add(float(v)); // 301 .. 2 kept (capacity 300), 1 dropped
+    window.quantiles(&p50, &p99, &max);
+    std::snprintf(detail, sizeof detail, "count=%u p50=%.1f p99=%.1f max=%.1f", window.count, double(p50), double(p99),
+                  double(max));
+    check(empty && window.count == 300 && p50 == 151.f && p99 == 298.f && max == 301.f, "node_walk_window_quantiles",
+          detail);
+    std::printf("NODEWALK owned_scale=%08x chains=%u hook_records=%u walked=%u unreadable=%u camera_reads_at_append=%u "
+                "present_reads=%u no_boundary=%u anchors=%u origin=%.1f,%.1f,%.1f seta_frames=%u,%u,%u "
+                "refused_keep_roots=%u window=%.0f,%.0f,%.0f\n",
+                scales.bits[roots.order[0]], gather_chains, hook.records, hook.walked, hook.unreadable, hook_camera_reads,
+                boundary_reads, present.no_boundary + copy.no_boundary, anchored.anchors, double(hook.first.origin[0]),
+                double(hook.first.origin[1]), double(hook.first.origin[2]), at_1, at_10, stopped, unsigned(kept && lapsed),
+                double(p50), double(p99), double(max));
+    VirtualFree(arena, 0, MEM_RELEASE);
+    x3m::engine_memory::reset();
+}
+} // namespace node_walk
+
 int main() {
     image = static_cast<unsigned char*>(VirtualAlloc(nullptr, image_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
     base = reinterpret_cast<std::uintptr_t>(image);
@@ -1102,6 +1421,7 @@ int main() {
               cull_window_original() && lod_windows_original(),
           "late_claim_refused");
 
+    node_walk::checks(); // the FL node walk: owned scale, hook-only boundary, FL layout, unreadable node, SETA clock
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;
 }

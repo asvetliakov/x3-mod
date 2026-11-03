@@ -23,7 +23,10 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
     engine_far_jets::request(&engine_far_counted_, plumes_requested_, this);
     engine_far_frame_ = ~std::uint64_t(0);
     // Node-sourced nozzles (engine_nozzle_walk_core.h): X3M_ENGINE_NOZZLE_SOURCE=node|draw, unset = node, anything
-    // else refused (node, status invalid_setting). One row per configure.
+    // else refused (node, status invalid_setting). One row per configure; rule= the append's boundary: on FL
+    // (docs/architecture/fl-nozzle-walk-activation.md) the walk runs only at the hook's scene end (hook_only; the context
+    // scale owned at the gather), on AP at the stage or the next frame's light boundary (stage_or_light). Rollback on FL:
+    // engine_nozzle_source = draw.
     {
         wchar_t text[8]{};
         const DWORD n = x3m::config::get(L"X3M_ENGINE_NOZZLE_SOURCE", text, 8);
@@ -32,32 +35,35 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
         engine_nozzle::core::Source source = engine_nozzle::core::default_source;
         const bool ok = !n || (n < 8 && engine_nozzle::core::parse_source(text, n, &source));
         engine_nozzle_source_ = ok ? source : engine_nozzle::core::default_source;
-#if X3M_EDITION_FL
-        // FL: the node walk's read-window guarantee is not established on X3FL.exe (docs/reverse-engineering/fl/
-        // engine-effects.md rule 4): draw-sourced nozzles only, whatever the setting (status fl_draw_only; a refused setting keeps
-        // invalid_setting / too_long).
-        const bool fl_forced = engine_nozzle_source_ != engine_nozzle::core::Source::draw;
-        engine_nozzle_source_ = engine_nozzle::core::Source::draw;
-#endif
         engine_node_roots_frame_ = ~std::uint64_t(0);
         engine_node_appended_ = false;
         engine_node_walked_count_ = 0;
         engine_scene_camera_last_ = 0;
         engine_scene_camera_frame_ = 0;
         engine_node_ = {};
-        log("engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u",
-            id_, n ? shown : "-",
+        engine_node_no_boundary_ = 0;
+        engine_node_unreadable_total_ = 0;
 #if X3M_EDITION_FL
-            ok && fl_forced ? "fl_draw_only" :
+        engine_node_scales_.frame = ~std::uint64_t(0);
+        engine_node_boundary_ = engine_nozzle::core::Boundary::present;
+        for (unsigned i = 0; i < 3; ++i) engine_node_refused_next_[i] = engine_node_refused_since_[i] = 0;
+        engine_node_window_.reset(frame_);
 #endif
-            ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
+        log("engine_nozzle_source device=%llu setting=%s status=%s source=%s requested=%u bound=%u roots_max=%u edition=%s rule=%s",
+            id_, n ? shown : "-", ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting",
             engine_nozzle::core::source_name(engine_nozzle_source_), unsigned(plumes_requested_),
-            engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity);
+            engine_nozzle::core::walk_bound, engine_nozzle::core::RootSet::capacity,
+#if X3M_EDITION_FL
+            "fl", engine_nozzle_source_ == engine_nozzle::core::Source::node ? "hook_only" : "off"
+#else
+            "ap", engine_nozzle_source_ == engine_nozzle::core::Source::node ? "stage_or_light" : "off"
+#endif
+        );
     }
     // Hidden-emitter anchors (plumes-no-glow-hulls.md step 1): X3M_ENGINE_PLUME_EMITTERS=0|1, unset = 1, anything else
-    // refused to 1. They ride on the node walk: AP with engine_nozzle_source = node; FL keeps the walk fenced
-    // (fl_draw_only above), so the rule stays off there (reason fl_draw_only). 0 = the walk and the gather as before
-    // step 1, read for read. One engine_plumes_hidden_emitters row per configure, then one per 300-frame window.
+    // refused to 1. They ride on the node walk (engine_nozzle_source = node, both editions; on FL at the hook boundary
+    // only). 0 = the walk and the gather as before step 1, read for read: no probe admission, no C read, no anchor, no
+    // window row. One engine_plumes_hidden_emitters row per configure, then one per 300-frame window.
     {
         wchar_t text[8]{};
         const DWORD n = x3m::config::get(L"X3M_ENGINE_PLUME_EMITTERS", text, 8);
@@ -77,14 +83,14 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
             id_, frame_, !n ? "-" : !ok ? "?" : engine_anchors_setting_ ? "1" : "0",
             ok ? "ok" : n >= 8 ? "too_long" : "invalid_setting", engine_anchors_on_ ? "on" : "off",
             engine_anchors_on_ ? "pending_body_table" : !engine_anchors_setting_ ? "setting" : !plumes_requested_ ? "plumes_off"
+            : "nozzle_source_draw",
 #if X3M_EDITION_FL
-            : "fl_draw_only",
             "fl"
 #else
-            : "nozzle_source_draw",
             "ap"
 #endif
         );
+        engine_anchor_hull_pending_count_ = 0;
     }
     // The own ship's ribbon (engine_ribbons_core.h update's `own`): X3M_ENGINE_RIBBONS_OWN_SHIP=0|1, unset = 0 (no
     // ribbon behind the player's ship, its plume stays); anything else refused to 0. One row per configure.
@@ -336,13 +342,16 @@ void MotionOutput::engine_far_append() noexcept {
 // parent) with flag_node in place of flag_far, scene 1 (the view filter decides by the handle, as for far records),
 // the parent radius through the memo, the own tag, and the lifetime serial through object_lifetime (the ribbons' key
 // continues across draw -> node -> draw frames). The roots whose walk reached the list's end are the light's walked
-// set (hold_ships). All reads through engine_memory::read; LastError preserved; no allocation.
+// set (hold_ships). All reads through engine_memory::read; LastError preserved; no allocation. On FL
+// (docs/architecture/fl-nozzle-walk-activation.md) the append walks only at the hook's scene end (node_no_boundary
+// elsewhere: nothing read) and takes each root's context scale owned at the gather (engine_node_scales_), never the
+// camera's later.
 bool MotionOutput::engine_node_read(void*, std::uint32_t address, void* out, unsigned size) noexcept {
     return engine_memory::read(std::uintptr_t(address), out, size);
 }
 // The context scale of a hull draw's camera: camera+0x1c is the view's context (engine_far_jets_core.h
 // view_context_offset), whose +0x2c the far memo reads (engine_far_context_scale). One bounded read per camera among
-// the frame's four most recent; 0 when unreadable.
+// the frame's four most recent; 0 when unreadable. AP only (FL owns the scale at the gather).
 float MotionOutput::engine_node_context_scale(std::uint32_t camera) noexcept {
     if (!camera) return 0.f;
     if (frame_ != engine_node_camera_frame_) {
@@ -461,8 +470,21 @@ void MotionOutput::engine_node_gather(std::uintptr_t node, std::uint32_t parent,
         ++engine_node_.probe_deferred; // the next frames' draws probe it again
         return;
     }
+#if X3M_EDITION_FL
+    const unsigned admitted = engine_node_roots_.count;
+#endif
     if (engine_node_roots_.insert(root, camera_handle, std::uint32_t(camera), std::uint32_t(registry), probed) && probed)
         ++engine_node_.probes;
+#if X3M_EDITION_FL
+    // FL: a newly admitted root owns its context scale now, while the engine is submitting the draw that names this
+    // camera (engine_nozzle_walk_core.h OwnedScales: camera +0x1c, context +0x2c, memoised per camera this frame); the
+    // append never reads the camera. LastError kept (engine_memory::read may query pages).
+    if (engine_node_roots_.count != admitted) {
+        const DWORD error = GetLastError();
+        engine_node_scales_.own(engine_node_roots_.order[admitted], std::uint32_t(camera), frame_, &engine_node_read, nullptr);
+        SetLastError(error);
+    }
+#endif
 }
 void MotionOutput::engine_node_append() noexcept {
     if (engine_node_appended_) return;
@@ -478,6 +500,35 @@ void MotionOutput::engine_node_append() noexcept {
     if (engine_nozzle_source_ != engine_nozzle::core::Source::node || !plumes_requested_ || !engine_ring_) return;
     namespace ee = engine_effects::core;
     namespace nz = engine_nozzle::core;
+#if X3M_EDITION_FL
+    // FL: only inside the hook's scene end (engine_nozzle_walk_core.h Boundary). Elsewhere no engine memory is read:
+    // the frame keeps its draw and far records (the draw source's look) and the light holds as for draw. The ring's
+    // parents are still marked as ship roots (proxy memory only), so a run of refused frames does not drop the glow
+    // ships from the next frames' gather. One engine_node_walk_refused row per kind of end at most once per
+    // WalkWindow::frames frames, with the refusals of that kind since its previous row.
+    if (!nz::walk_admitted(true, engine_node_boundary_)) {
+        for (unsigned i = 0; i < engine_ring_->count; ++i)
+            engine_ship_roots_.mark(engine_ring_->parent[i], engine_ring_frame_);
+        const bool gathered_roots = engine_node_roots_frame_ == engine_ring_frame_ && engine_node_roots_.count;
+        engine_node_.roots = gathered_roots ? engine_node_roots_.count : 0u;
+        if (gathered_roots) {
+            ++engine_node_no_boundary_;
+            const unsigned kind = unsigned(engine_node_boundary_);
+            ++engine_node_refused_since_[kind];
+            if (frame_ >= engine_node_refused_next_[kind]) {
+                const DWORD error = GetLastError();
+                log("engine_node_walk_refused device=%llu frame=%llu reason=no_boundary end=%s roots=%u refused=%u edition=fl",
+                    id_, frame_, nz::boundary_name(engine_node_boundary_), engine_node_.roots,
+                    engine_node_refused_since_[kind]);
+                SetLastError(error);
+                engine_node_refused_next_[kind] = frame_ + nz::WalkWindow::frames;
+                engine_node_refused_since_[kind] = 0;
+            }
+        }
+        engine_node_window_row(false, gathered_roots);
+        return;
+    }
+#endif
     LARGE_INTEGER begin{}, end{};
     QueryPerformanceCounter(&begin);
     const DWORD error = GetLastError();
@@ -488,11 +539,11 @@ void MotionOutput::engine_node_append() noexcept {
     // Hidden-emitter anchors: the probe clock advances by the stage's last step in game ms (the SETA rate the travel
     // ramp uses; capped at 1 s as the engine caps its own step), a load forgets the probe table, and the emitter body is
     // looked up once the body table is loaded.
+    // The node's model id at the build's offset (AP +0x140, FL +0x144) for every walk, anchors or not.
     nz::Options walk_options;
+    walk_options.model_offset = engine_node_layout::edition.model;
     if (engine_anchors_on_) {
-        double step_ms = engine_clock_.last_step * 1000. * double(seta_rate_);
-        if (!(step_ms > 0.)) step_ms = 0.;
-        engine_anchor_clock_ms_ += step_ms < 1000. ? step_ms : 1000.;
+        engine_anchor_clock_ms_ += nz::probe_step_ms(engine_clock_.last_step, seta_rate_);
         if (engine_load_epoch_ != engine_anchor_epoch_) {
             engine_anchor_epoch_ = engine_load_epoch_;
             engine_anchor_probes_.clear();
@@ -500,12 +551,12 @@ void MotionOutput::engine_node_append() noexcept {
         if (engine_emitter_body_ == -2) engine_anchor_resolve_body();
         engine_anchors_live_ = engine_emitter_body_ >= 0;
         walk_options.anchors = engine_anchors_live_;
-        walk_options.model_offset = engine_node_layout::edition.model;
         walk_options.is_emitter = &MotionOutput::engine_anchor_is_emitter;
         walk_options.is_steering = &MotionOutput::engine_anchor_is_steering;
         walk_options.context = this;
     }
     nz::RootSet& roots = engine_node_roots_;
+    engine_anchor_hull_pending_count_ = 0;
     const bool gathered = engine_node_roots_frame_ == engine_ring_frame_;
     engine_node_.roots = gathered ? roots.count : 0u;
     engine_node_.root_overflow = gathered ? roots.overflow : 0u;
@@ -537,7 +588,11 @@ void MotionOutput::engine_node_append() noexcept {
         const unsigned slot = roots.order[r];
         const std::uint32_t root = roots.root[slot], view_handle = roots.camera_handle[slot];
         const std::uint32_t camera = roots.camera[slot], registry = roots.registry[slot];
+#if X3M_EDITION_FL
+        const float scale = engine_node_scales_.scale(slot); // owned at the gather: no camera read here
+#else
         const float scale = engine_node_context_scale(camera);
+#endif
         if (!(scale > 0.f)) {
             ++engine_node_.no_scale;
             continue;
@@ -650,12 +705,12 @@ void MotionOutput::engine_node_append() noexcept {
                                       : nz::AnchorProbes::glow;
             if (anchors_here && previous != nz::AnchorProbes::anchored) { // a newly admitted hull: one row, bounded
                 ++engine_anchor_window_.new_hulls;
-                if (engine_anchor_hull_rows_ < engine_anchor_hull_row_cap) {
+                if (engine_anchor_hull_rows_ < engine_anchor_hull_row_cap) { // the row is written after the loop
                     ++engine_anchor_hull_rows_;
-                    log("engine_plumes_hidden_emitter_hull device=%llu frame=%llu root=%08x first_handle=%08x anchors=%u candidates=%u not_emitter=%u rejected=%u probed=%u own=%u radius=%.2f size=%.2f s=%.3f scale=%.4f",
-                        id_, frame_, root, anchor_handle, anchors_here, st.candidates, st.not_emitter, st.anchor_rejected,
+                    engine_anchor_hull_pending_[engine_anchor_hull_pending_count_++] = {
+                        root, anchor_handle, anchors_here, st.candidates, st.not_emitter, st.anchor_rejected,
                         unsigned(probed), unsigned(own_ship_node_ && std::uintptr_t(root) == own_ship_node_),
-                        double(anchor_radius), double(anchor_size), double(anchor_s), double(scale));
+                        anchor_radius, anchor_size, anchor_s, scale};
                 } else
                     ++engine_anchor_hull_rows_dropped_;
             }
@@ -663,15 +718,55 @@ void MotionOutput::engine_node_append() noexcept {
     }
     // The ship roots for the next frames' gather: every record's parent (draw, far and node records alike).
     for (unsigned i = 0; i < engine_ring_->count; ++i) engine_ship_roots_.mark(engine_ring_->parent[i], engine_ring_frame_);
+    engine_node_unreadable_total_ += engine_node_.unreadable;
     SetLastError(error);
     QueryPerformanceCounter(&end);
     const std::uint64_t frequency = engine_qpc_frequency();
     engine_node_.walk_us = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
+    // The newly admitted hulls' rows, after every list read (the loop holds no file write); LastError kept.
+    for (unsigned i = 0; i < engine_anchor_hull_pending_count_; ++i) {
+        const EngineAnchorHullRow& h = engine_anchor_hull_pending_[i];
+        log("engine_plumes_hidden_emitter_hull device=%llu frame=%llu root=%08x first_handle=%08x anchors=%u candidates=%u not_emitter=%u rejected=%u probed=%u own=%u radius=%.2f size=%.2f s=%.3f scale=%.4f",
+            id_, frame_, h.root, h.first_handle, h.anchors, h.candidates, h.not_emitter, h.rejected, h.probed, h.own,
+            double(h.radius), double(h.size), double(h.s), double(h.scale));
+    }
+    if (engine_anchor_hull_pending_count_) SetLastError(error);
+    engine_anchor_hull_pending_count_ = 0;
     if (engine_anchors_on_) { // the window row (a log write at most once per 300 frames), LastError kept
         engine_anchor_window_row(engine_node_.anchors != 0);
         SetLastError(error);
     }
+#if X3M_EDITION_FL
+    engine_node_window_row(true, false);
+#endif
 }
+#if X3M_EDITION_FL
+// FL: the walk's report row, at any log tier (engine_stage needs --debug and is quiet without glow candidates): one
+// engine_node_walk_window row per WalkWindow::frames frames of appends with the appends, the hook appends (walked),
+// the refused appends with roots, the busiest frame's roots, the unreadable and no_scale sums, and node_walk_us's p50,
+// p99 and maximum over the walked appends (the append time without the hull rows' file writes). LastError kept.
+void MotionOutput::engine_node_window_row(bool walked, bool refused) noexcept {
+    auto& w = engine_node_window_;
+    ++w.appends;
+    if (walked) {
+        ++w.walked;
+        w.add(engine_node_.walk_us);
+        w.unreadable += engine_node_.unreadable;
+        w.no_scale += engine_node_.no_scale;
+    }
+    w.refused += refused ? 1u : 0u;
+    if (engine_node_.roots > w.roots_max) w.roots_max = engine_node_.roots;
+    if (frame_ < w.start + engine_nozzle::core::WalkWindow::frames) return;
+    float p50 = 0.f, p99 = 0.f, max = 0.f;
+    w.quantiles(&p50, &p99, &max);
+    const DWORD error = GetLastError();
+    log("engine_node_walk_window device=%llu frame=%llu edition=fl appends=%u walked=%u refused=%u roots_max=%u unreadable=%u no_scale=%u walk_us_p50=%.1f walk_us_p99=%.1f walk_us_max=%.1f samples=%u",
+        id_, frame_, w.appends, w.walked, w.refused, w.roots_max, w.unreadable, w.no_scale, double(p50), double(p99),
+        double(max), w.count);
+    SetLastError(error);
+    w.reset(frame_);
+}
+#endif
 // The travel look under SETA (gap 7; engine_plumes_core.h TravelRamp, docs/reverse-engineering/engine-effects.md
 // section 8): one bounded read of the SETA dwords per stage frame (engine_effects::seta_read: refused without the
 // identity, on a site mismatch or a failed read), validated by seta_decode (out of range: 1.0, counted invalid); the
@@ -718,7 +813,17 @@ HRESULT MotionOutput::run_engine_plumes() noexcept {
     plumes_ran_ = true;
     if (plumes_ && plumes_armed_ && plumes_lane_) {
         engine_far_append();  // after the frame's draws, before the scene view
+#if X3M_EDITION_FL
+        // FL: the walk's boundary is this resolve's source. Hook: the stage runs inside scene_end_hook's resolve (the
+        // pre-compositor callback 0x48b929, synchronous); StretchRect: the bloom copy after the compositor (no walk).
+        engine_node_boundary_ = counters_.hook_scene_end && counters_.taa.source == unsigned(SceneEndSource::Hook)
+                                    ? engine_nozzle::core::Boundary::hook
+                                    : engine_nozzle::core::Boundary::stretch_rect;
+#endif
         engine_node_append(); // then the drawn ships' jet lists (engine-nozzle-source.md)
+#if X3M_EDITION_FL
+        engine_node_boundary_ = engine_nozzle::core::Boundary::present; // any later append (engine_light_frame) refuses
+#endif
     }
     if (!plumes_ || !plumes_armed_ || !plumes_lane_ || !engine_ring_ || (!engine_ring_->count && !engine_ribbons_live()))
         return S_FALSE; // phase 3: a frame without records still runs while ribbons fade
@@ -856,7 +961,7 @@ void MotionOutput::log_engine_stage() noexcept {
     const auto total = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     const engine_far_jets::core::Stats jets = engine_far_jets::stats(); // this frame's far jets (the cull stub's copies)
     if (log_tier::cached_debug)
-        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_anchors=%u node_anchor_roots=%u node_probes=%u node_walk_us=%.1f steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
+        log("engine_stage device=%llu frame=%llu armed=%u reason=%s ran=%u records=%u nozzles=%u vertices=%u discs=%u floored=%u floor_unknown=%u unfloored=%u far=%u far_jets=%u far_records=%u far_engine=%u far_overflow=%u far_dropped=%u far_disarmed=%u far_duplicates=%u node_roots=%u node_walked=%u node_records=%u node_dupes=%u node_guard_rejected=%u node_hidden=%u node_overflow=%u node_unreadable=%u node_engine_culled=%u node_no_scale=%u node_root_overflow=%u node_children=%u node_other_view=%u node_not_ship=%u node_invalid=%u node_anchors=%u node_anchor_roots=%u node_probes=%u node_walk_us=%.1f node_no_boundary=%u node_unreadable_total=%llu steering=%u capped=%u faded=%u culled_small=%u culled_behind=%u culled_rows=%u culled_idle=%u skipped_other_view=%u view_rule=%s view_own_total=%llu view_majority_total=%llu view_far_total=%llu result=%08lx step=%u calls=%u stage_us=%.1f fenced=%u preset=%s ribbons=%u ribbon_samples=%u ribbons_live=%u ribbons_fading=%u ribbon_created=%u ribbon_appended=%u ribbon_overflow=%u ribbon_skipped_other_view=%u ribbon_evicted=%u ribbon_cut_clear=%u ribbon_load_clear=%u ribbon_result=%08lx ribbon_step=%u ribbon_calls=%u ribbon_evictions_total=%llu ribbon_cut_clears_total=%llu ribbon_load_clears_total=%llu ribbon_reset_clears_total=%llu ribbon_jumps_total=%llu ribbon_overflow_total=%llu fog=%u fogged=%u fog_min=%.4f attacks=%u attack_overflow=%u flow_factor_changes=%u travel=%.3f seta=%u seta_read=%s seta_reads=%llu seta_refused=%llu seta_invalid=%llu",
             id_, frame_, unsigned(plumes_armed_), plumes_reason_, unsigned(plumes_ran_), engine_ring_ ? engine_ring_->count : 0u,
             s.nozzles, s.vertices, s.discs, s.floored, s.floor_unknown, s.unfloored, s.far_nozzles, jets.written, engine_far_.records, jets.engine,
             jets.overflow + engine_far_.ring_full, jets.steering + engine_far_.steering + engine_far_.invalid, jets.disarmed, engine_far_.duplicates,
@@ -864,7 +969,7 @@ void MotionOutput::log_engine_stage() noexcept {
             engine_node_.hidden, engine_node_.overflow, engine_node_.unreadable, engine_node_.engine_culled, engine_node_.no_scale,
             engine_node_.root_overflow, engine_node_.children, engine_node_.skipped_other_view, engine_node_.not_ship,
             engine_node_.invalid + engine_node_.steering + engine_node_.ring_full, // node_invalid: far_record refusals, RCS, ring or set full
-            engine_node_.anchors, engine_node_.anchor_roots, engine_node_.probes, double(engine_node_.walk_us), s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
+            engine_node_.anchors, engine_node_.anchor_roots, engine_node_.probes, double(engine_node_.walk_us), engine_node_no_boundary_, total(engine_node_unreadable_total_), s.steering, s.capped, s.faded, s.culled_small, s.culled_behind, s.culled_rows,
             s.culled_idle, s.skipped_other_view, plumes_view_far_ ? "far" : engine_plumes::view_rule_name(plumes_view_rule_),
             total(plumes_view_own_total_), total(plumes_view_majority_total_), total(plumes_view_far_total_), plumes_report_.operation, unsigned(plumes_report_.failed), plumes_report_.calls,
             double(plumes_stage_us_), unsigned(plumes_fenced_), engine_plumes::preset_name(plumes_preset_), rb.ribbons,
@@ -876,4 +981,5 @@ void MotionOutput::log_engine_stage() noexcept {
             s.transient_overflow, s.flow_factor_changes, double(engine_travel_weight_), unsigned(engine_travel_.engaged),
             engine_effects::seta_status_name(engine_effects::SetaStatus(seta_status_)), total(seta_reads_),
             total(seta_refused_), total(seta_invalid_));
+    engine_node_no_boundary_ = 0; // node_no_boundary counts the frames since the previous engine_stage row
 }

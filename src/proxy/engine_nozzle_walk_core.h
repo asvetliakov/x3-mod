@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include "engine_effects_core.h"
 #include "engine_far_jets_core.h"
 
@@ -125,6 +126,109 @@ struct RootSet {
         return false;
     }
 };
+
+// The walk on Farnham's Legacy (docs/architecture/fl-nozzle-walk-activation.md, option (b) ratified 2026-11-03). Two
+// rules the AP route does not apply, both used only by the FL build:
+//
+// The owned context scale. The gather owns each newly admitted root's scale while the engine is still submitting the
+// hull draw that named it (sample_scope inside the FL material scope): the draw's camera +0x1c is the view's scene
+// context (X3FL.exe 0x48ba48 `mov ecx,[esi+0x1c]`, the sector scene's camera ESI), whose +0x2c is the float the world
+// matrix scales positions by (0x4def18 `mulss xmm1,[esi+0x2c]`). Two bounded reads per camera, memoised over the
+// frame's four most recent cameras; the float bits go into the slot's entry (indexed like RootSet's slots) and the
+// append bit-casts them, so it never dereferences a camera or a context later. 0 (either read failed, a null context)
+// makes the append count no_scale for that root, as before.
+constexpr unsigned camera_context_offset = fj::view_context_offset, context_scale_offset = fj::context_scale_offset;
+struct OwnedScales {
+    static constexpr unsigned cameras = 4;
+    std::uint32_t bits[RootSet::slots];
+    std::uint32_t camera[cameras];
+    std::uint32_t camera_bits[cameras];
+    std::uint64_t frame = ~std::uint64_t(0);
+    unsigned next = 0;
+    unsigned chains = 0; // camera -> context -> scale chains read (memo misses), never cleared here
+    OwnedScales() noexcept : bits{}, camera{}, camera_bits{} {}
+    // The scale bits of `cam`'s context this frame: the memo, else camera +0x1c then context +0x2c through `read`.
+    std::uint32_t of(std::uint32_t cam, std::uint64_t now, Reader read, void* context) noexcept {
+        if (!cam) return 0;
+        if (now != frame) {
+            for (unsigned i = 0; i < cameras; ++i) camera[i] = 0;
+            frame = now;
+            next = 0;
+        } else
+            for (unsigned i = 0; i < cameras; ++i)
+                if (camera[i] == cam) return camera_bits[i];
+        ++chains;
+        std::uint32_t scene = 0, value = 0;
+        if (!read(context, cam + camera_context_offset, &scene, 4) || !scene ||
+            !read(context, scene + context_scale_offset, &value, 4))
+            value = 0;
+        camera[next] = cam;
+        camera_bits[next] = value;
+        next = (next + 1) % cameras;
+        return value;
+    }
+    // At the gather, for the RootSet slot just admitted.
+    void own(unsigned slot, std::uint32_t cam, std::uint64_t now, Reader read, void* context) noexcept {
+        if (slot < RootSet::slots) bits[slot] = of(cam, now, read, context);
+    }
+    // At the append: the owned value (0.f when none; the append counts no_scale, far_record refuses it).
+    float scale(unsigned slot) const noexcept {
+        float f = 0.f;
+        if (slot < RootSet::slots) std::memcpy(&f, &bits[slot], sizeof f);
+        return f;
+    }
+};
+// The boundary. On FL the append walks only inside the frame's pre-compositor scene end (scene_end_hook ->
+// resolve_hdr(SceneEndSource::Hook) -> the temporal stage -> run_engine_plumes; FL site 0x48b929), the synchronous
+// native borrow under which the accepted main scene's roots are still submitted and unmutated
+// (docs/reverse-engineering/fl/nozzle-scene-window.md). The StretchRect resolve (the bloom copy, after the compositor
+// ran) and the next frame's Present-time light boundary (engine_light_frame) read nothing: node_no_boundary.
+enum class Boundary : std::uint8_t { hook = 0, stretch_rect = 1, present = 2 };
+inline const char* boundary_name(Boundary b) noexcept {
+    return b == Boundary::hook ? "hook" : b == Boundary::stretch_rect ? "stretchrect" : "present";
+}
+inline bool walk_admitted(bool hook_only, Boundary b) noexcept {
+    return !hook_only || b == Boundary::hook;
+}
+// The FL walk's report window (engine_node_walk_window, one row per `frames` frames of appends, written at any log
+// tier): the walked appends' times and the window's counts. At most one append per frame, so `capacity` samples hold a
+// whole window; quantiles() sorts them in place (insertion sort, at most 300 values once per window) and returns the
+// nearest-rank p50 and p99 and the maximum.
+struct WalkWindow {
+    static constexpr unsigned capacity = 300;
+    static constexpr std::uint64_t frames = 300;
+    float us[capacity];
+    unsigned count = 0;
+    std::uint64_t start = 0;
+    unsigned appends = 0, walked = 0, refused = 0, roots_max = 0, unreadable = 0, no_scale = 0;
+    WalkWindow() noexcept : us{} {}
+    void reset(std::uint64_t now) noexcept {
+        count = appends = walked = refused = roots_max = unreadable = no_scale = 0;
+        start = now;
+    }
+    void add(float v) noexcept {
+        if (count < capacity) us[count++] = v;
+    }
+    void quantiles(float* p50, float* p99, float* max) noexcept {
+        for (unsigned i = 1; i < count; ++i) {
+            const float v = us[i];
+            unsigned j = i;
+            for (; j > 0 && us[j - 1] > v; --j) us[j] = us[j - 1];
+            us[j] = v;
+        }
+        const auto rank = [&](unsigned percent) { return count ? us[(count * percent + 99) / 100 - 1] : 0.f; };
+        *p50 = rank(50);
+        *p99 = rank(99);
+        *max = count ? us[count - 1] : 0.f;
+    }
+};
+// The anchor probe clock's step (AnchorProbes::retry_ms is game time): the plume stage's wall step in seconds x the
+// SETA rate, in game ms; 0 for a non-positive or NaN step, capped at 1 s as the engine caps its own step.
+inline double probe_step_ms(double step_seconds, float seta_rate) noexcept {
+    double ms = step_seconds * 1000. * double(seta_rate);
+    if (!(ms > 0.)) ms = 0.;
+    return ms < 1000. ? ms : 1000.;
+}
 
 // The ship roots (engine-nozzle-source.md "Implementation", review S1): the gather admits a root only when it is a
 // ship, i.e. a root some engine record (draw, far or node) named as its parent within the last `recent_window` frames,

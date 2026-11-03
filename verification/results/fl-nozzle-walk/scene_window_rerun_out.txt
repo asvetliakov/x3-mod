@@ -1,0 +1,1 @@
+{"regions": 20, "contract_regions": 20, "identical": 20, "negative_controls": 7, "passed": true}

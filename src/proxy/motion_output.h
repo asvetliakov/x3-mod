@@ -1819,7 +1819,9 @@ private:
     // found becomes a far record tagged flag_node unless its (node handle, view handle) pair is already in the ring
     // (draw and far records win) or in the far handler's engine-culled list. The context scale per root comes from the
     // hull draw's camera node (+0x1c, the view's context; +0x2c there, engine_far_context_scale's memo), one bounded
-    // read per camera per frame. The roots whose walk completed go to the light's hold (hold_ships: never held).
+    // read per camera per frame; on FL owned at the gather instead (engine_node_scales_), and the FL append walks only
+    // at the hook's scene end (engine_node_boundary_). The roots whose walk completed go to the light's hold
+    // (hold_ships: never held).
     engine_nozzle::core::Source engine_nozzle_source_ = engine_nozzle::core::default_source;
     engine_nozzle::core::RootSet engine_node_roots_;
     engine_nozzle::core::ShipRoots engine_ship_roots_; // roots a record named within two frames: the gather's ship filter
@@ -1846,7 +1848,7 @@ private:
     } engine_node_{};
     // Hidden-emitter anchors (engine_nozzle_walk_core.h Options::anchors; docs/architecture/plumes-no-glow-hulls.md step
     // 1): X3M_ENGINE_PLUME_EMITTERS=0|1 (ini engine_plume_emitters, unset = 1), read at configure. Live only with the node
-    // walk (AP: engine_nozzle_source = node; FL: fenced with the walk, fl_draw_only) and the emitter body resolved in the
+    // walk (engine_nozzle_source = node, both editions; FL walks at the hook boundary only) and the emitter body resolved in the
     // body table. A root no record names is admitted for an anchors-only walk by the probe table (one probe per such
     // routed draw, at most engine_anchor_probe_cap new roots a frame, retried after AnchorProbes::retry_ms game ms).
     bool engine_anchors_setting_ = true;  // the setting (refused values keep 1)
@@ -1867,6 +1869,14 @@ private:
         float walk_us_max = 0.f;
     } engine_anchor_window_{};
     unsigned engine_anchor_hull_rows_ = 0, engine_anchor_hull_rows_dropped_ = 0;
+    // The newly admitted hulls' rows of this append, logged after the root loop (no file write between two list reads).
+    struct EngineAnchorHullRow {
+        std::uint32_t root, first_handle;
+        unsigned anchors, candidates, not_emitter, rejected, probed, own;
+        float radius, size, s, scale;
+    };
+    EngineAnchorHullRow engine_anchor_hull_pending_[engine_anchor_hull_row_cap]{};
+    unsigned engine_anchor_hull_pending_count_ = 0;
     static bool engine_anchor_is_emitter(void* self, std::uint32_t model) noexcept;
     static bool engine_anchor_is_steering(void* self, std::uint32_t model) noexcept;
     void engine_anchor_resolve_body() noexcept;
@@ -1876,6 +1886,23 @@ private:
     std::uint32_t engine_node_context_[engine_node_camera_slots]{};
     std::uint64_t engine_node_camera_frame_ = ~std::uint64_t(0);
     unsigned engine_node_camera_next_ = 0;
+    // The walk's boundary rule (engine_nozzle_walk_core.h Boundary): appends refused for want of the hook boundary while
+    // roots were gathered, since the last engine_stage row (always 0 on AP); node_unreadable summed over the session.
+    unsigned engine_node_no_boundary_ = 0;
+    std::uint64_t engine_node_unreadable_total_ = 0;
+#if X3M_EDITION_FL
+    // FL (docs/architecture/fl-nozzle-walk-activation.md): each admitted root's context scale, owned at the gather inside
+    // the draw's material scope; where the current append runs (hook only inside run_engine_plumes at the hook's
+    // resolve); the refusal rows already written this configure (a bit per Boundary).
+    engine_nozzle::core::OwnedScales engine_node_scales_;
+    engine_nozzle::core::Boundary engine_node_boundary_ = engine_nozzle::core::Boundary::present;
+    // The refusal row per kind (Boundary index): the earliest frame for the next row (one per WalkWindow::frames at
+    // most) and the refusals since the kind's previous row. The report window row (any log tier).
+    std::uint64_t engine_node_refused_next_[3]{};
+    unsigned engine_node_refused_since_[3]{};
+    engine_nozzle::core::WalkWindow engine_node_window_;
+    void engine_node_window_row(bool walked, bool refused) noexcept;
+#endif
     void engine_node_gather(std::uintptr_t node, std::uint32_t parent, std::uintptr_t camera, std::uint32_t camera_handle,
                             std::uintptr_t registry) noexcept;
     void engine_node_append() noexcept;

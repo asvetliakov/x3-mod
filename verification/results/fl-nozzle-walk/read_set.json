@@ -1,0 +1,278 @@
+{
+ "fl_sha256": "e7f3aad8d728e021",
+ "fields": 10,
+ "anchors": 36,
+ "far_fields": 18,
+ "far_anchors": 46,
+ "far_anchors_ok": true,
+ "constants": {
+  "node_bytes_0x150": true,
+  "mode_offset_0x260": true,
+  "fl_model_0x144": true,
+  "prefix_inside_block": true
+ },
+ "failures": [],
+ "passed": true,
+ "table": [
+  {
+   "field": "root child list head +0xc, sentinel at +0x10",
+   "ap_offset": "0xc",
+   "fl_offset": "0xc",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x0a22ab",
+     "role": "node constructor: list header at +0xc",
+     "ok": true
+    },
+    {
+     "rva": "0x0a22ae",
+     "role": "tail (+0x14) = header",
+     "ok": true
+    },
+    {
+     "rva": "0x0a22b1",
+     "role": "embedded sentinel at +0x10",
+     "ok": true
+    },
+    {
+     "rva": "0x0a22b4",
+     "role": "head = sentinel (empty list)",
+     "ok": true
+    },
+    {
+     "rva": "0x0a22b8",
+     "role": "sentinel +0 = 0: the end test",
+     "ok": true
+    },
+    {
+     "rva": "0x014eff",
+     "role": "emitter walk loads the head",
+     "ok": true
+    },
+    {
+     "rva": "0x014f02",
+     "role": "emitter walk ends at [child+0] == 0 (EBX = 0)",
+     "ok": true
+    },
+    {
+     "rva": "0x064630",
+     "role": "jet drive loads the head",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "child next +0",
+   "ap_offset": "0x0",
+   "fl_offset": "0x0",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x064bc4",
+     "role": "jet drive: next",
+     "ok": true
+    },
+    {
+     "rva": "0x064bd2",
+     "role": "jet drive: sentinel test",
+     "ok": true
+    },
+    {
+     "rva": "0x0a33b0",
+     "role": "node destructor loads the head",
+     "ok": true
+    },
+    {
+     "rva": "0x0a33b3",
+     "role": "destructor sentinel test",
+     "ok": true
+    },
+    {
+     "rva": "0x0a33b8",
+     "role": "destructor: next",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node block 0x270 bytes (0x150 prefix and C at +0x260 inside)",
+   "ap_offset": null,
+   "fl_offset": "0x270",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x0a2203",
+     "role": "node allocation size",
+     "ok": true
+    },
+    {
+     "rva": "0x0a2208",
+     "role": "allocator",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "JET bit +0x130 (drive filter)",
+   "ap_offset": "0x130",
+   "fl_offset": "0x130",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x0646a6",
+     "role": "jet drive skips a non-JET child",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "hidden flag +0x12c 0x100000",
+   "ap_offset": "0x12c",
+   "fl_offset": "0x12c",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x064874",
+     "role": "drive shows (main branch)",
+     "ok": true
+    },
+    {
+     "rva": "0x064880",
+     "role": "drive hides (main branch)",
+     "ok": true
+    },
+    {
+     "rva": "0x0648c2",
+     "role": "drive shows (other branch)",
+     "ok": true
+    },
+    {
+     "rva": "0x0648ce",
+     "role": "drive hides (other branch)",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "node y scale +0x84",
+   "ap_offset": "0x84",
+   "fl_offset": "0x84",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x0a3b01",
+     "role": "scale setter writes y",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "mode word C +0x260 (anchor rule)",
+   "ap_offset": "0x260",
+   "fl_offset": "0x260",
+   "side": "walk",
+   "anchors": [
+    {
+     "rva": "0x0646b6",
+     "role": "jet drive reads C",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "draw camera -> context +0x1c (gather, owned scale)",
+   "ap_offset": "0x1c",
+   "fl_offset": "0x1c",
+   "side": "gather",
+   "anchors": [
+    {
+     "rva": "0x08ba48",
+     "role": "sector scene: ECX = camera +0x1c for the selection walk",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba78",
+     "role": "ECX = camera +0x1c for the material traversal",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba7e",
+     "role": "camera pushed",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba7f",
+     "role": "material traversal",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba8b",
+     "role": "camera in EDX",
+     "ok": true
+    },
+    {
+     "rva": "0x08ba8d",
+     "role": "deferred traversal",
+     "ok": true
+    },
+    {
+     "rva": "0x09795b",
+     "role": "material traversal: EDI = its camera argument",
+     "ok": true
+    },
+    {
+     "rva": "0x097030",
+     "role": "immediate submission pushes EDI = camera (material-submit.md section 1)",
+     "ok": true
+    },
+    {
+     "rva": "0x097701",
+     "role": "deferred submission pushes EBX = camera (material-submit.md section 1)",
+     "ok": true
+    },
+    {
+     "rva": "0x097702",
+     "role": "submission wrapper",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "context scale +0x2c (gather, owned scale)",
+   "ap_offset": "0x2c",
+   "fl_offset": "0x2c",
+   "side": "gather",
+   "anchors": [
+    {
+     "rva": "0x0def18",
+     "role": "camera publication: view translation x context scale",
+     "ok": true
+    },
+    {
+     "rva": "0x0e7041",
+     "role": "submission wrapper: the node context +0x1c ...",
+     "ok": true
+    },
+    {
+     "rva": "0x0e7048",
+     "role": "... and its +0x2c scale",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "field": "hook boundary (pre-compositor call)",
+   "ap_offset": null,
+   "fl_offset": null,
+   "side": "append",
+   "anchors": [
+    {
+     "rva": "0x08b929",
+     "role": "the scene hook site: the append runs inside this call on FL",
+     "ok": true
+    }
+   ]
+  }
+ ]
+}

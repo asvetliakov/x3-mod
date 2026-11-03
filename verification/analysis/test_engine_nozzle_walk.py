@@ -232,7 +232,9 @@ class AnchorWiringTests(unittest.TestCase):
         self.assertIn('engine_plumes::floor_ratio_at(plumes_look_, radius, &k)', append)
         self.assertIn('if (complete && !ring_full && !probed)', append)
         self.assertIn('engine_load_epoch_ != engine_anchor_epoch_', append)
-        self.assertIn('engine_clock_.last_step * 1000. * double(seta_rate_)', append)
+        self.assertIn('nz::probe_step_ms(engine_clock_.last_step, seta_rate_)', append)
+        core = (ROOT / 'src/proxy/engine_nozzle_walk_core.h').read_text()
+        self.assertIn('double ms = step_seconds * 1000. * double(seta_rate);', core)
         # Recent glow ships never enter the probe table (review fix): only probe walks and non-glow outcomes are noted.
         self.assertIn('probed || outcome != nz::AnchorProbes::glow', append)
         core = (ROOT / 'src/proxy/engine_nozzle_walk_core.h').read_text()
@@ -240,7 +242,8 @@ class AnchorWiringTests(unittest.TestCase):
 
     def test_fl_fence_and_rows(self):
         self.assertIn('engine_anchors_on_ = engine_anchors_setting_ && plumes_requested_ && node;', self.plumes)
-        self.assertIn(': "fl_draw_only",', self.plumes)
+        self.assertNotIn('fl_draw_only', self.plumes)  # the FL walk is honoured (fl-nozzle-walk-activation.md)
+        self.assertIn(': "nozzle_source_draw",', self.plumes)
         for row in ('engine_plumes_hidden_emitters device=%llu frame=%llu event=configure',
                     'engine_plumes_hidden_emitters device=%llu frame=%llu event=window',
                     'engine_plumes_hidden_emitter_hull device=%llu'):

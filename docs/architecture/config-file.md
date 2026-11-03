@@ -626,8 +626,9 @@ Key `engine_plume_emitters`, environment `X3M_ENGINE_PLUME_EMITTERS`, no launche
 `fx_engine_emitter` points (the M6M family, the Terran drones) plumes at those points, at the engine's own throttle,
 sized by the plume floor's law (so `engine_plume_floor = 0` gives none). **0** leaves the node walk and its gather as
 before. The read site takes `0` or `1`; anything else is refused to 1 with `status=invalid_setting` on the
-`engine_plumes_hidden_emitters … event=configure` row. Read once per configure. On FL the rule stays off with the
-node walk (`reason=fl_draw_only`).
+`engine_plumes_hidden_emitters … event=configure` row. Read once per configure. On FL the rule runs with the node walk
+since 2026-11-03 ([fl-nozzle-walk-activation.md](fl-nozzle-walk-activation.md)); `0` there turns off the probe
+admissions, the C reads and the anchors, and the walk itself stays on.
 
 ## `engine_ribbons_own_ship` (2026-10-14, after Run 171)
 

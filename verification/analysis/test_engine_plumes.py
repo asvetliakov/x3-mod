@@ -1314,8 +1314,15 @@ class Wiring(unittest.TestCase):
         self.assertIn('configure_engine_plumes(engine_effects::mode()==engine_effects::core::Mode::plumes&&engine_effects::suppress(),'
                       'engine_effects::preset(),engine_effects::plume_nozzle(),engine_effects::plume_floor());', capture)
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
+        # The whole condition: AP's expression outside the fence, exactly, and FL's gathered-roots term inside it
+        # (fl-nozzle-walk-activation.md).
         self.assertIn('if(plumes_requested_&&engine_plumes_arm(hdr_scene!=nullptr,depth,in.width,in.height)&&'
-                      '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live())){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
+                      '(engine_ring_->count||engine_far_jets::count()||engine_ribbons_live()'
+                      '#if X3M_EDITION_FL'
+                      '||(engine_nozzle_source_==engine_nozzle::core::Source::node&&engine_node_roots_frame_==frame_&&'
+                      'engine_node_roots_.count)'
+                      '#endif'
+                      ')){in.stage_callback=&MotionOutput::engine_plumes_callback;', motion)
         # before_reset clears the failure state and the borrowed lane; the own-sun reset block (97ed0320b, 2026-11-02)
         # sits between the two pairs.
         before_reset = motion[motion.index('void MotionOutput::before_reset()'):motion.index('void MotionOutput::after_reset(')]

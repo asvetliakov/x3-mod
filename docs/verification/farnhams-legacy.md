@@ -2239,3 +2239,66 @@ too (anchor records feed the engine light and the ribbons). No plume on hulls th
 visible jets look unchanged. One F8 capture frame cross-checks an anchor origin against the hull draw's c4–6 rows.
 **Kill criterion** (design section 4): a plume floating off the hull, or glowing while parked, after one flight →
 drop step 1 (`engine_plume_emitters = 0` is the rollback) and keep step 2's plan.
+
+## FL node walk activation, host evidence (2026-11-03)
+
+[fl-nozzle-walk-activation.md](../architecture/fl-nozzle-walk-activation.md) option (b), "As built": the walk runs on
+FL (`engine_nozzle_source = node`, the default; rows say `source=node`). The context scale is owned at the gather,
+the append walks only at the hook's scene end, and the stage arms on gathered roots. The FL walk's reads are pinned in
+[fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md) "Verified 2026-11-03: node walk". Not flown.
+
+| Check | Result |
+| --- | --- |
+| `cmake --build build-fl -j8`, `cmake --build build-ap -j8` (fresh worktree trees, RelWithDebInfo, mingw-i686) | 0 warnings each (measured) |
+| `run_host_suite.py --modules test_fl_engine_effects test_engine_nozzle_walk test_engine_plumes test_engine_effects test_fl_cull_chain test_engine_far_jets test_config_schema test_engine_ribbons` | 8 modules, 95 tests, 0 failing (measured, after the review fixes); `SOURCES_SHA256_2026_11_03` bumped for `motion_output_engine_plumes_inc.h`, `motion_output.h`, `engine_nozzle_walk_core.h` |
+| the 44 modules that read `motion_output.h/.cpp`, plus `test_engine_light test_engine_ribbons test_gpu_sync_timing test_original_fill` | 0 failing (measured, after the review fixes); `test_engine_plumes`/`test_engine_ribbons` pin the whole arm condition: AP's expression exactly, FL's gathered-roots term inside `#if X3M_EDITION_FL` |
+| `check_no_x87.py build-ap/d3d9.dll`; `tools/config/generate.py --check` | PASS, 1,110 reachable functions; PASS, 293 settings, 138 in the template (measured) |
+| FL cull-chain native fixture (`verification/probe/fl_cull_chain.cpp`, section `node_walk`, production `engine_memory.cpp` as the reader) | 228 checks, 0 failures (measured). `NODEWALK owned_scale=3c23d70a chains=1 hook_records=4 walked=3 unreadable=1 camera_reads_at_append=0 present_reads=0 no_boundary=2 anchors=2 origin=1000.0,-2000.0,3000.0 seta_frames=120,12,600 refused_keep_roots=1 window=151,298,301` |
+| owned scale (`decommit_across_frames`) | 5 gathers of 4 roots under one camera: 1 camera chain (2 reads), every slot 0.01. The camera `+0x1c` is then repointed and the camera page decommitted, with a frame boundary (`engine_memory::next_frame`) before the append. The hook append still gives `+0xb0` × 0.01 with 0 camera-page reads (measured) |
+| hook-only append | Present-time and StretchRect appends: 0 reads, `node_no_boundary` 1 each, no record (measured) |
+| FL layout | `+0x144` read past AP decoys at `+0x140` (the RCS model 566): 4 records, 0 steering, models 1234/777/1234/1234 (measured) |
+| unreadable node (`decommit_across_frames`) | B's second child decommitted across a frame boundary: B counted unreadable 1, not walked (no light hold), C after it complete; 3 of 4 roots walked (measured). `engine_memory::read` is a `VirtualQuery` check with a per-frame region cache (~100 ms), not a fault guard: a page decommitted within the same frame after its region was validated is not caught, on FL as on the AP walk. That case rests on the scene-window argument (no named path frees a submitted root or child before `0x48b929`) |
+| refused frames keep the ship roots (review F1) | hook append at frame 10, three Present-time refusals at 11..13 with A and C in the ring: A and C still recent at the frame-14 gather, B not; marked only at the walking append they would have lapsed (measured) |
+| report window | nearest-rank p50/p99/max over 300 kept samples (301..2): 151 / 298 / 301; an empty window gives 0 (measured) |
+| `engine_plume_emitters` | off: D's 2 hidden emitters give nothing, 0 C reads; on: 2 anchors by the FL model, 2 C reads, records unchanged (measured) |
+| SETA | probe retry (2,000 game ms) at 60 fps: 120 frames at ×1, 12 at ×10, 600 when the clock stalls; step capped at 1,000 ms, NaN/negative → 0 (measured) |
+| read set ([`read_set.py`](../../verification/results/fl-nozzle-walk/read_set.py) on `/mnt/c/X3FL/X3FL.exe`) | 10 fields, 36 anchors PASS; the far set's 46 FL anchors re-asserted; `fl-far-jets/read_set.py` 47 PASS, `read_set.json` unchanged (measured) |
+| scene window ([`scene_window_rerun.py`](../../verification/results/fl-nozzle-walk/scene_window_rerun.py), producer from `276bd2d62`) | 20 of 20 regions identical to that contract, 7 negative controls; its source-clause checks are another branch's and were not rerun (measured) |
+| AP objects (`fl-far-jets/ap_object_compare.py build-ap <scratch> e688c1572` → [`ap_object_compare.json`](../../verification/results/fl-nozzle-walk/ap_object_compare.json)) | identical: `engine_far_jets.cpp`, `cull_small_parts.cpp`, `engine_effects.cpp`; different: `motion_output.cpp`, `capture.cpp` (row fields, buffered hull rows and the `MotionOutput` layout, the model offset set outside the anchor branch, the probe step helper; AP behaviour unchanged except row text and hull-row timing) (measured). Against `91f96a8d8` (before the review fixes) all five are identical (measured): the fixes are FL-only blocks |
+
+`node_walk_us` (in `engine_stage`, on both editions) no longer includes the hull rows' file writes, which now follow
+the timer. AP's `node_walk_us` on a frame that admits new anchored hulls reads lower than in earlier AP runs; compare
+across that change with care.
+
+Expected rows on FL (`engine_effects = plumes`). Written at any log tier:
+
+- `engine_nozzle_source device=… setting=- status=ok source=node requested=1 bound=256 roots_max=256 edition=fl
+  rule=hook_only`.
+- Every 300 frames of appends: `engine_node_walk_window device=… frame=… edition=fl appends=… walked=… refused=…
+  roots_max=… unreadable=0 no_scale=… walk_us_p50=… walk_us_p99=… walk_us_max=… samples=…`. In flight `walked` is
+  close to `appends`; `refused` is nonzero only around loads and menus.
+- `engine_node_walk_refused … reason=no_boundary end=present|stretchrect roots=… refused=… edition=fl`, at most once
+  per 300 frames per kind, re-armed after that. A load-time row does not use it up; a row in steady flight says the
+  hook did not resolve that frame, and `refused=` counts that kind since its previous row.
+- Run 32 adds `engine_plumes_hidden_emitters … event=configure setting=0 status=ok rule=off reason=setting edition=fl
+  anchors=0 ships=0` and no other `engine_plumes_hidden_emitter*` row.
+
+With `--debug` there is also `engine_stage … node_roots>0 node_walked>0 node_unreadable=0 node_no_scale=0 …
+node_walk_us=… node_no_boundary=… node_unreadable_total=0`. That row is written only on frames with glow candidates,
+or once per quiet interval. Run 33 (the ini line removed): `… event=configure setting=- status=ok rule=on reason=pending_body_table
+edition=fl`, `… event=body rule=on emitter_body=<n>`, windows `edition=fl anchors>0 ships>0` near an M6M, and
+`engine_plumes_hidden_emitter_hull … anchors=4` once for a Heavy Centaur.
+
+**Flight check, run 32** (walk only, `engine_plume_emitters = 0`). Plumes look the same as with the draw source:
+same size, colour and throttle response. They also stay on nozzles the engine frustum-culls while the hull is on
+screen: an engine at the screen edge, or a large ship's rear just off screen. They hold through the light hold.
+`--debug` is not required for the kill criterion: it is read from the `engine_node_walk_window` rows, which are
+written at any log tier. Expected: `walk_us_p99` under 0.5 ms in every window, `unreadable=0` in every window.
+**Kill criterion** (design §3, any one): `unreadable > 0` in a window row, or an exception row with the stage armed;
+`walk_us_p99` above 0.5 ms (or above 10 % of `frame_end dt_ms` p50) in the heavy fogged sector; a plume floating
+off a hull. Then set `engine_nozzle_source = draw` (no rebuild), and option (c) is the next shape.
+
+**Flight check, run 33** (the ini line removed). Argon Heavy Centaur (`SS_SH_A_M6M`) and Terran drones gain plumes at
+their emitter points (the rear of the hull, not floating off it). Each gets a hull light on the plates around the
+nozzles and an engine trail. The plumes are dim when docked or still and grow with speed. Ships with visible jets
+look as in run 32. Kill: an anchor plume off the hull or glowing while parked → `engine_plume_emitters = 0`.

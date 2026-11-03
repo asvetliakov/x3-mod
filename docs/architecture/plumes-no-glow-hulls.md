@@ -182,14 +182,15 @@ the size law on a real hull.
 
 ### As built (step 1, 2026-11-03, not flown)
 
-**AP only at runtime; FL is fenced.** The rule rides on the node walk, and FL keeps `engine_nozzle_source` forced to
-`draw` (`fl_draw_only`): the FL walk's read window is the open activation of
-[fl/nozzle-scene-window.md](../reverse-engineering/fl/nozzle-scene-window.md) (seam-time zero-call copy, owned
-context scale, missing-seam policy; "require parent decision before activation"). The FL build compiles the rule with
-FL's model offset `+0x144` (`engine_node_layout.h`) and the host fixture runs it on the FL layout, but no FL list is
-read and the configure row says `reason=fl_draw_only`. On AP the rule is live, and only stock content has anchored
-hulls: Mayhem 3 has none [m, `anchor_census_out.txt`]. Nothing in step 1 is flyable until the FL walk is activated
-or a stock AP install is flown.
+**Both editions at runtime since the FL walk activation (2026-11-03, not flown).** The rule rides on the node walk,
+which FL honours since [fl-nozzle-walk-activation.md](fl-nozzle-walk-activation.md) ("As built": owned context scale,
+the append at the hook's scene end only). The FL build runs the rule with FL's model offset `+0x144`
+(`engine_node_layout.h`, now set for every walk, anchors or not); the native fixture's `node_walk` section
+(`verification/probe/fl_cull_chain.cpp`) walks hidden emitters on the FL layout with decoys at AP's offset, and
+`engine_plume_emitters = 0` reads no C word and admits no probe there. On AP only stock content has anchored hulls:
+Mayhem 3 has none [m, `anchor_census_out.txt`]. The FL flights: run 32 with `engine_plume_emitters = 0` (the walk
+alone), run 33 without that line (the anchors). The hull rows (`engine_plumes_hidden_emitter_hull`) are now written
+after the root loop, so no file write sits between two list reads.
 
 - **Who** [m, [`anchor_census.py`](../../verification/results/plumes-no-glow/anchor_census.py) →
   `anchor_census_out.txt`]: FL 16 ships / 35 emitters, stock AP 14 / 29, Mayhem 0. More than the 11 / 13 above

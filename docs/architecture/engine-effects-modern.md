@@ -767,8 +767,16 @@ evidence: [farnhams-legacy.md](../verification/farnhams-legacy.md), "Engine effe
   [`own_ship_offsets.py`](../../verification/results/fl-engine-effects/own_ship_offsets.py)), the rest are generated
   provider constants (static_asserts in `motion_output.cpp`). Without admission one `own_ship status=unavailable
   edition=fl reason=registry_not_admitted` row and no own ship.
-- **Fenced on FL, with reason.** The node walk (`engine_nozzle_source` forced to `draw`, row status `fl_draw_only`): its
-  read-window guarantee is not established on X3FL.exe. The gain-0 engine cull `lens_flare_cull` was AP-only and is deleted (2026-11-02).
+- **Node walk on FL (fence removed 2026-11-03, not flown).** `engine_nozzle_source = node` (the default) is honoured
+  on FL ([fl-nozzle-walk-activation.md](fl-nozzle-walk-activation.md), "As built"). Two rules AP does not apply: the
+  context scale is owned at the gather, inside the hull draw's material scope (camera `+0x1c` → context `+0x2c`,
+  `engine_nozzle_walk_core.h` `OwnedScales`), so the append never reads a camera; and the append walks only inside the
+  hook's scene end (`0x48b929`, the frame's resolve with source `Hook`). The StretchRect resolve and the next frame's
+  Present-time light boundary read no engine memory (`node_no_boundary`; an `engine_node_walk_refused` row per kind at
+  most once per 300 frames), but still mark the ring's parents as ship roots. FL also arms the stage on gathered roots,
+  since the walk has no later boundary. `engine_node_walk_window` reports the walk's time (p50/p99/max) every 300
+  frames at any log tier. Rollback: `engine_nozzle_source = draw`.
+  The gain-0 engine cull `lens_flare_cull` was AP-only and is deleted (2026-11-02).
 - **Far-jet feed on FL (fence removed 2026-11-03, not flown).** The FL small-parts stub carries the far-copy block
   with `engine_effects` resolving to plumes, unset included (`cull_small_parts … far_jets=on`,
   `cull_small_parts_frame … far_jets=on edition=fl`;

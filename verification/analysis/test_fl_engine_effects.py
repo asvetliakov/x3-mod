@@ -133,8 +133,11 @@ class FlEngineEffectsWiring(unittest.TestCase):
         effects = (ROOT / 'src/proxy/engine_effects.cpp').read_text()
         self.assertIn('body_global_ = base ? base + flee::body_slot_rva : 0;', effects)
         self.assertIn('const std::uint64_t epoch = object_lifetime::stats().load_epoch;', effects)
+        # The node walk is honoured on FL since 2026-11-03 (fl-nozzle-walk-activation.md): no forced draw source; the
+        # FL wiring (owned scale, hook-only boundary) is pinned by test_fl_cull_chain.FlCullChainWiring.test_node_walk_on_fl.
         plumes = (ROOT / 'src/proxy/motion_output_engine_plumes_inc.h').read_text()
-        self.assertIn('engine_nozzle_source_ = engine_nozzle::core::Source::draw;', plumes)
+        self.assertNotIn('engine_nozzle_source_ = engine_nozzle::core::Source::draw;', plumes)
+        self.assertIn('engine_nozzle_source_ = ok ? source : engine_nozzle::core::default_source;', plumes)
 
 
 if __name__ == '__main__':

@@ -151,3 +151,68 @@ runs only when the frame's scene end came from the hook. Rollback `engine_nozzle
 first the walk alone (`engine_plume_emitters = 0` in the FL ini for that run, so jets come from the walk and nothing
 else changes), then the hidden-emitter anchors of `plumes-no-glow-hulls.md` step 1 (ini line removed). `fl/engine-effects.md`
 §4 ("only for Edition::AP") is corrected by the implementer.
+
+## As built (2026-11-03, not flown)
+
+Implemented as ratified; host evidence in [farnhams-legacy.md](../verification/farnhams-legacy.md), "FL node walk
+activation, host evidence (2026-11-03)". The setting keeps its existing values: the walk is `engine_nozzle_source =
+node` (the default), rows say `source=node`; there is no `walk` value.
+
+- **Configure.** The `fl_draw_only` force is gone. Row: `engine_nozzle_source … status=ok source=node … edition=fl
+  rule=hook_only` (`rule=off` with `draw`; AP rows say `edition=ap rule=stage_or_light`). Rollback
+  `engine_nozzle_source = draw` restores the draw-only path read for read.
+- **Owned scale, FL only.** `engine_nozzle_walk_core.h` `OwnedScales`: when `engine_node_gather` admits a new root
+  (`RootSet::count` grew), it reads the draw camera `+0x1c` and that context's `+0x2c` through `engine_memory::read`,
+  memoised per camera over the frame's last four (one chain per camera per frame), LastError kept, and stores the
+  float bits in the root's slot. The FL append takes `engine_node_scales_.scale(slot)` and never calls
+  `engine_node_context_scale`; 0 counts `node_no_scale`. AP keeps its append-time memo. The scale is FL-only because
+  the AP read is the flown contract (runs 139+) and the change needed no AP behaviour change.
+- **Hook-only append, FL only.** `run_engine_plumes` sets the boundary from this resolve
+  (`counters_.hook_scene_end && taa.source == Hook` → `hook`, else `stretchrect`) around `engine_node_append` and
+  resets it to `present` after; `engine_light_frame`'s call therefore sees `present`. Off the hook the append reads no
+  engine memory: it counts `node_no_boundary` (frames with gathered roots, since the previous `engine_stage` row). It
+  writes `engine_node_walk_refused device=… frame=… reason=no_boundary end=present|stretchrect roots=… refused=…
+  edition=fl` at most once per 300 frames per kind, re-armed after that, with `refused=` the refusals of that kind
+  since its previous row. A load-time refusal therefore does not use up the row for the flight. The frame keeps its
+  draw and far records, and the light holds as with the draw source. The ring's parents are still marked as ship roots
+  (proxy memory only, before the refusal returns), as AP's light-boundary append marks them. Without that, two refused
+  frames in a row would drop every glow ship from the gather (`ShipRoots::recent_window` 2), and anchored hulls would
+  return only through probes (fixture `node_walk_refused_frames_keep_ship_roots`).
+- **Reader limits.** `engine_memory::read` checks pages with `VirtualQuery` against a region cache that is re-validated
+  per frame (at most ~100 ms). It is not a fault guard: a page decommitted within the same frame, after its region was
+  validated, is not caught. The AP walk has the same property. The fixture's decommit cases put a frame boundary
+  (`engine_memory::next_frame`) between the decommit and the append and are labelled `decommit_across_frames`. They show
+  that the append needs no camera read and that an unreadable child, once the reader sees it, ends only its own root.
+  The same-frame case rests on the window argument
+  ([nozzle-scene-window.md](../reverse-engineering/fl/nozzle-scene-window.md): no named path frees a submitted root or
+  child between submission and `0x48b929`).
+- **Report window, FL only.** `engine_node_walk_window device=… frame=… edition=fl appends=… walked=… refused=…
+  roots_max=… unreadable=… no_scale=… walk_us_p50=… walk_us_p99=… walk_us_max=… samples=…` is written once per 300
+  frames of appends at any log tier. `engine_stage` needs `--debug` and is written only on frames with glow candidates,
+  or once per quiet interval, so it under-samples an M6M-only scene. p50/p99 are nearest-rank over the window's walked
+  appends (`WalkWindow`, at most 300 samples, sorted once per window).
+- **Stage arming, FL only.** The resolve also arms the stage when this frame gathered roots, because a frame whose
+  ships drew no glow (hidden-emitter hulls, every nozzle frustum-culled) has no record and FL has no later boundary to
+  walk at. AP keeps its condition (its light-boundary walk covers those frames for the light only).
+- **Shared fixes.** `walk_options.model_offset = engine_node_layout::edition.model` is set for every walk. It was set
+  only inside the anchor branch, so with `engine_plume_emitters = 0` an FL walk would have read the model at AP's
+  `+0x140`. The `engine_plumes_hidden_emitter_hull` rows are buffered (at most 32 per configure) and written after the
+  root loop. The probe clock's step is `nz::probe_step_ms` (wall step × SETA rate, capped 1 s; unchanged arithmetic).
+- **Rows.** `engine_stage` gains `node_no_boundary=%u node_unreadable_total=%llu` after `node_walk_us` (both editions;
+  0 on AP for the first). `node_walk_us` stays the per-frame append time sampled at the row cadence. It no longer
+  includes the hull rows' file writes, which now follow the timer, on AP too. AP telemetry on a frame that admitted new
+  anchored hulls reads lower than before.
+- **`engine_plume_emitters = 0` on FL.** `engine_anchors_on_` stays false: no probe admission at the gather
+  (`not_ship` as before), no C read, no anchor, no window row; the walk itself runs (fixture
+  `node_walk_emitters_off_no_c_read`).
+- **AP objects** (`fl-far-jets/ap_object_compare.py build-ap … e688c1572` →
+  [`ap_object_compare.json`](../../verification/results/fl-nozzle-walk/ap_object_compare.json)): `engine_far_jets.cpp`,
+  `cull_small_parts.cpp`, `engine_effects.cpp` identical; `motion_output.cpp` and `capture.cpp` differ. The reasons are
+  the shared row fields, the configure row's `edition/rule`, the buffered hull rows (a `MotionOutput` layout change
+  that `capture.cpp` sees), the model offset assignment moved out of the anchor branch (same value on AP) and the probe
+  step helper. AP behaviour is unchanged apart from row text and when the hull rows are written. The review fixes
+  (refused-frame marks, re-armed refusal row, report window) are FL-only blocks and add no AP difference.
+- **Not done.** On FL the gather still runs before `sample_scope`'s `object_lifetime::current` check, as on AP.
+  [nozzle-scene-window.md](../reverse-engineering/fl/nozzle-scene-window.md) §2 asks for FL gathering after an
+  owned-camera agreement; no such check (`fl_motion_scope`) exists in the code, and admission rests on the routed
+  scope's Node/Camera/Registry validity.
