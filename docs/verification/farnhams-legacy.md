@@ -2093,3 +2093,21 @@ selects that sector; a graph menu (station or net-worth graph) opens enlarged wi
 native clamp compares the script's virtual position with the real screen size; report it if you see one. Scripts that
 rotate a view by dragging with the mouse in direct mode turn `1/s` as fast. Report any element at the wrong size or
 place, a cursor that runs ahead of or behind the mouse, or clicks that miss.
+
+## FL run 30 — ui_scale on FL (installed 2026-11-03)
+
+`69be37f27` (merge `78bb9b6cd`), Opus-high review with no defect in the spans, ABI, rollback or arithmetic; fixes folded
+(section above). Clean `build-fl` from `78bb9b6cd`, 0 warnings; full host suite 335 modules 3,432 tests 0 failing after
+two wiring/record fixes; `verify_ui_scale_sites_fl.py` PASS (173 checks) on the installed exe (measured). Installed
+`C:\X3FL\d3d9.dll` = `d96fff23…` (55,714,943 B), rollback `rollback-d3d9\d3d9.dll.run28` = `23cad71c…`; overlay v2, exe and
+ini unchanged (`ui_scale` commented = `auto`: 1.5 at 1440 rows; `text_density` stays AP-only on FL, one refusal row).
+Record `verification/results/fl-run30/candidate.json`.
+
+**FL run 30 A (open):** load a game at your usual resolution; open the sidebar, a property menu, the galaxy map and a
+graph menu; hover a few icons and click them; pick a sector on the map and read its label; hover something near the right
+and bottom screen edge for a tooltip; one F8 with a menu open; tell me before relaunching. Expect `ui_scale installed=1
+… edition=fl scale=1.5` (at 1440 rows) and `text_density installed=0 status=ap_only edition=fl reason=not_ported`.
+Visual: menus, sidebar and HUD panels 1.5x, the main menu unchanged, text enlarged but not sharper (text density comes
+next), clicks land on the enlarged icons, map pick and labels right, graph menus scaled with their menu. Known limits to
+report but not be surprised by: a tooltip at the right or bottom edge may run off-screen (both editions), a drag-rotate
+in a menu turns 1/1.5 as fast.

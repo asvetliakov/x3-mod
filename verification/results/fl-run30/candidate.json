@@ -1,0 +1,21 @@
+{
+ "run": 30,
+ "step": "ui_scale on FL (11 claims at CreateDevice: B/C screen size, D1/D2 outgoing mouse deltas, E cursor store x/y, G click icon, H cursor aim, I map label, J map pick, A projection; F diagnostic and text_density stay ap_only) [69be37f27, merge 78bb9b6cd]",
+ "edition": "fl",
+ "commit": "137ee48ad",
+ "dll_built_from": "78bb9b6cd (later commits are test/doc-only)",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "d96fff23555f824b",
+ "dll_bytes": 55714943,
+ "installed_sha256_prefix": "d96fff23555f824b",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run28 (23cad71c)",
+ "game_data": "overlay v2 (run 29) unchanged",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "unchanged (ui_scale commented = auto: 1440 rows -> 1.5; text_density commented, ap_only on FL)",
+ "host_tests": "run_host_suite 335 modules 3432 tests 0 failing after two wiring/record fixes (0928d4348, this commit); verify_ui_scale_sites_fl.py PASS 173 checks on the installed exe; generate.py --check PASS 292/137; check_no_x87 build-ap PASS; native fixture fl_ui_scale 905+34 checks 0 failures (agent); AP objects identical vs 2ed4da17e (capture, loader, ui_scale, text_density)",
+ "build_warnings": 0,
+ "review": "Opus high: no defect in spans/ABI/rollback/arithmetic; folded: tooltip edge clamp documented as a both-edition limit, ini/schema wording, AspectX/Y BorderX/Y and direct-mode delta notes, EAX liveness in the verifier, explicit cockpit==0, commit-bound AP identity",
+ "installed_at": "2026-11-03T05:51:14+04:00"
+}
