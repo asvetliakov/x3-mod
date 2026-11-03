@@ -1,0 +1,21 @@
+{
+ "run": 34,
+ "step": "diagnostic build: hidden-emitter probe subtotals + engine_plumes_probe_root rows (8 per window), far_dropped split (far_steering, far_invalid, far_invalid_scale0, far_drawn) [8374e16e0, merge eb9b44531]; telemetry only",
+ "edition": "fl",
+ "commit": "eb9b44531",
+ "dll_built_from": "eb9b44531",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "51e96d4d22f4874f",
+ "dll_bytes": 55834182,
+ "installed_sha256_prefix": "51e96d4d22f4874f",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run32 (9330f61b)",
+ "game_data": "unchanged",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "engine_plume_emitters line commented out by the user before run 33 (defaults: emitters on, nozzle source node)",
+ "host_tests": "run_host_suite 336 modules 3449 tests 0 failing; generate.py --check PASS 293/138; check_no_x87 build-ap PASS; nozzle-walk host fixture new probe case, fl_cull_chain FARSPLIT case (agent)",
+ "build_warnings": 0,
+ "review": "main session delta review (telemetry only: bounded rows, LastError kept around the flush)",
+ "installed_at": "2026-11-03T13:42:24+04:00"
+}

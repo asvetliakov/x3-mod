@@ -2392,3 +2392,19 @@ anchors, without a way to tell an empty probe from an emitter hull that failed.
   `verdict=none`, `probe_none` 2 of 4 walks; Centaur emitter hull `verdict=anchored`; glow capital `verdict=glow`; cap 8
   rows, 7 dropped of 15); `test_fl_cull_chain` native fixture `FARSPLIT far_dropped=3 far_steering=1 far_invalid=2
   far_invalid_scale0=1 far_drawn=1 nozzles=2`.
+
+## FL run 34 — diagnostic build installed (2026-11-03)
+
+`8374e16e0` (merge `eb9b44531`), telemetry only (section above). Clean `build-fl` from `eb9b44531`, 0 warnings; full host suite
+336 modules 3,449 tests 0 failing (measured). Installed `C:\X3FL\d3d9.dll` = `51e96d4d…` (55,834,182 B), rollback
+`rollback-d3d9\d3d9.dll.run32` = `9330f61b…`; game data and ini unchanged (`engine_plume_emitters` commented: on).
+Record `verification/results/fl-run34/candidate.json`.
+
+**FL run 34 A (open, decides step 1):** new custom game, player ship **Heavy Centaur** (`SS_SH_A_M6M`, not the plain
+Centaur, which has no jets on FL), chase view, fly for a minute with throttle changes; one F8 looking at the stern; tell me
+before relaunching. Pass: plumes, a hull light and a trail at the four engine points following throttle, and
+`engine_plumes_hidden_emitters … anchors>0 ships>0` with `engine_plumes_hidden_emitter_hull` rows. Fail: no plume; then
+the `engine_plumes_probe_root`/own-root rows and the window's `probe_*` subtotals say what the walk saw on the hull, and
+step 1 is dropped (setting default off) per the 2026-11-03 decision rule. Also read: `far_steering`/`far_invalid`/
+`far_invalid_scale0`/`far_drawn` on `engine_stage` (expect `far_invalid ≈ far_invalid_scale0 ≈ 0`, `far_drawn > 0` with
+distant ships in view).
