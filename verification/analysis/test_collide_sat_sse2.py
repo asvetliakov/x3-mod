@@ -218,7 +218,7 @@ class SatSite(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertEqual(capture.count('collide_sat_sse2::initialize();'), 1)
+        self.assertEqual(capture.count('collide_sat_sse2::initialize();'), 2)  # AP block + FL block (collision trio on FL, 2026-11-03)
         self.assertLess(capture.index('collide_narrow_census::initialize();'), capture.index('collide_sat_sse2::initialize();'))
         self.assertIn('x3m::collide_sat_sse2::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
         self.assertIn('src/proxy/collide_sat_sse2.cpp', (ROOT / 'CMakeLists.txt').read_text())

@@ -181,8 +181,8 @@ class MemoSite(unittest.TestCase):
 class MemoWiring(unittest.TestCase):
     def test_production_wiring_and_audit_roots(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('collide_memo::initialize();'), 1)
-        self.assertEqual(capture.count('collide_memo::present(ctx.id,ctx.frame,ctx.capture);'), 1)
+        self.assertEqual(capture.count('collide_memo::initialize();'), 2)  # AP block + FL block (collision trio on FL, 2026-11-03)
+        self.assertEqual(capture.count('collide_memo::present(ctx.id,ctx.frame,ctx.capture);'), 2)  # AP + FL blocks
         self.assertLess(capture.index('collide_sat_sse2::initialize();'), capture.index('collide_memo::initialize();'))
         self.assertLess(capture.index('collide_narrow_census::initialize();'), capture.index('collide_memo::initialize();'))
         self.assertIn('x3m::collide_memo::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
@@ -198,7 +198,7 @@ class MemoWiring(unittest.TestCase):
         present = module[module.index('void present('):]
         self.assertLess(present.index('GetLastError()'), present.index('log("collide_memo device'))
         self.assertLess(present.index('log("collide_memo device'), present.index('SetLastError(error)'))
-        self.assertEqual(capture.count('collide_memo::device_reset();'), 1)
+        self.assertEqual(capture.count('collide_memo::device_reset();'), 2)  # AP + FL blocks
         for forbidden in ('float ', 'double ', '_mm_', 'xmmintrin'):
             self.assertNotIn(forbidden, module, forbidden)   # words only: no floating-point code on the engine's path
         audit = source_text(ROOT / 'verification/probe/check_no_x87.py')

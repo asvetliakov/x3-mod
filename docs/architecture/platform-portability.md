@@ -1406,3 +1406,21 @@ off as the consequence of a refusal. The fog visibility-grid pass
 (`--fog-shadow-pass`, entry "2026-09-22") and its `A8R8G8B8` target left with the pass; the 24-far-bin fog programs
 left with `--fog-far-bins`. No other native requirement changed: the launcher-only removals keep their DLL paths as
 they were.
+
+## 2026-11-03: collision trio on FL (`collide_memo`, `collide_box_cull` on FL; `collide_sat_sse2` native there)
+
+The three AP collision speed-ups now cover Farnham's Legacy. `collide_memo` and `collide_box_cull` install FL-edition
+hooks on X3FL.exe (`src/engine/fl/collide_memo_fl.cpp`, `collide_box_cull_fl.cpp`), reusing the AP policy cores
+(`src/proxy/collide_memo_core.h`, `collide_box_cull_core.h`) behind FL-only engine-boundary adapters
+(`collide_memo_sites_fl.h`, `collide_box_cull_sites_fl.h`); the identity windows are
+`src/engine/fl/collide_windows_fl_inc.h` (generated from the exe, every HIGHLOW dword bound to the loaded base). The
+box-cull margin is 256 (FL-only, proved in `docs/reverse-engineering/fl/collision-box.md`) and its prospective reject is
+gated by a local MXCSR precision check; the memo adds an init-flag gate and an MXCSR-control context to the shared
+table. `collide_sat_sse2` installs nothing on FL: the engine's OBB separating-axis test is already scalar SSE, so the
+module confirms the native body and reports `status=native_sse` (`collide_sat_sse2_fl.cpp`,
+`docs/reverse-engineering/fl/collision-sat.md`). No shared production code gained a Wine/CrossOver prerequisite; the hooks
+use documented PE/Win32 contracts and fail closed on any byte mismatch, late window or partial claim. Both editions'
+shared sources (capture.cpp) compile to byte-identical AP objects
+(`verification/results/fl-collision/ap_objects_identical.py`). The FL ini text for `collide_sat_sse2` records that the
+setting changes nothing on Farnham's Legacy. Native Windows behaviour is cross-compiled and host-verified, not flown;
+the CrossOver and native-Windows runtime acceptance of these hooks remains open as for the other FL hooks.
