@@ -49,7 +49,8 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     'src/proxy/motion_output.h': '522d5d435d0978c2eaec2f8d6a909dad3324ad384f546e1871e6804b605a2d33',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
-    'src/proxy/capture.cpp': 'f971c5a0cc391366a9fea72abd71c1a1a782db5cd9a3ec6f95481448771e1b69',
+    # capture.cpp: the FL music family's FL branches (2026-11-03); AP objects identical.
+    'src/proxy/capture.cpp': '8b377a49cb87ce84181e404c859ac3f680ff55978c6b68c7ce02068aa5776593',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

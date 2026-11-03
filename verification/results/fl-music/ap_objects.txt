@@ -1,0 +1,4 @@
+capture.cpp identical 41169 disassembly lines (base main, head cbdc78ffb, blob 949f150167af)
+media_cue.cpp identical 3327 disassembly lines (base main, head cbdc78ffb, blob a22d060534e6)
+music_keep.cpp identical 12515 disassembly lines (base main, head cbdc78ffb, blob 0babed125d63)
+music_alert.cpp identical 2409 disassembly lines (base main, head cbdc78ffb, blob ac8a94cc9b6f)

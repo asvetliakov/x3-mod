@@ -1047,6 +1047,22 @@ MXCSR and LastError as documented; refusals, one flipped byte per window, read-b
 Not verified: in game (not flown); native Windows game behaviour. `text_density` logged one `ap_only` row on FL until
 its port (section above).
 
+## 2026-11-03: music family on FL (`music_keep`, `music_queue`, `music_dock_keep`, `music_combat_trigger` on FL)
+
+The FL edition installs the music family on X3FL.exe at the module base
+([fl/music-keep.md](../reverse-engineering/fl/music-keep.md), [fl/media-cue.md](../reverse-engineering/fl/media-cue.md),
+[fl/music-alert.md](../reverse-engineering/fl/music-alert.md), "Port (2026-11-03)"). That covers the ID2 skip gate, the
+keep's seven claims and the combat trigger's seam, behind the X3FL.exe identity and 42 identity windows whose HIGHLOW
+dwords are checked against the base. AP's policy cores are reused unchanged. The save pump exchanges the gzwrite and
+gzclose import slots, each only over zlib1.dll's own export, with documented Win32 only (`GetModuleHandleW`,
+`GetProcAddress`, `VirtualProtect`, `InterlockedCompareExchange`, `FlushInstructionCache`, the `GetModuleHandleExW`
+pin, `VirtualQuery` reads), no Wine/CrossOver dependency and no device call. Natively verified on the Windows host
+through WSL interop (measured 2026-11-03): the three FL fixtures, 20 + 55 + 26 checks, 0 failures, on the real
+relocated exe bytes. They cover the stubs' register, ESP, DF, MXCSR, x87 CW and LastError contracts, the policies
+through the real stop-all/play/MOV_StopMovie code and the seam, the import-slot pump, every window change refused,
+rollback, and the late window. The three read-only verifiers pass. Not verified: in game (not flown); native Windows
+game behaviour. `music_trace` stays AP only.
+
 ## 2026-11-03: engine node walk on FL (`engine_nozzle_source = node` honoured on FL)
 
 The FL build walks ship part lists at the plume stage, as AP does

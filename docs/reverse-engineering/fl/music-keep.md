@@ -174,20 +174,16 @@ pair to `(base+0x106963, base+0x079201)`. No AP import thunk exists to relocate:
 FL calls its IAT directly. File wrapper `0x506940` has just two E8 callers,
 the save above and `0x514c6a`; the remaining direct gzclose paths remain excluded.
 
-**One close owner.** The already-ported
-[`loading_hooks_fl.cpp`](../../../src/engine/fl/loading_hooks_fl.cpp) owns six
-read-buffer imports including gzclose, and forwards through shared `gz_buffer`.
-It does not expose a save observer or own gzwrite. AP
-[`loading_trace.cpp`](../../../src/proxy/loading_trace.cpp) deliberately skips
-`gz_buffer_row` on FL, which includes gzclose; it can find gzwrite, but its
-`bind_save_observer` cannot report both rows live. In addition, AP music keep's
-binding compares AP slot addresses. Consequently enabling the AP observer
-unchanged cannot arm FL save pumping. Extend/reuse the existing FL import owner
-and bind its close notification plus the FL gzwrite route as one capability;
-never claim a second competing gzclose slot. Run the observer before the real
-write and before buffer close/unregistration, then preserve
-`gz_buffer::close` unregister-before-real-close and native return/error behavior.
-No second read-ahead cache or new file-lifetime controller is indicated.
+**One slot owner (corrected 2026-11-03).** This note first named an FL import owner, `loading_hooks_fl.cpp`, which
+exists only on the archived `fl-codex` branch, not on main. On main the keep is today the sole owner of X3FL.exe's
+gzwrite and gzclose import slots: AP's [`loading_trace.cpp`](../../../src/proxy/loading_trace.cpp) (the AP observer
+and the `gz_buffer` read rows) is AP only and is not linked into the fl target, and AP music keep's binding compares AP
+slot addresses, so the AP observer cannot arm FL save pumping. The port therefore exchanges both slots itself
+([Port (2026-11-03)](#port-2026-11-03)), each only over zlib1.dll's own export, running the observer before the real
+write and forwarding every call unchanged otherwise. A future FL port of `gz_buffer` (or any other FL import owner of
+these slots) must share them with the keep (one owner forwarding to both, or a chain that keeps the keep's close
+observation ahead of `gz_buffer::close`'s unregister-before-real-close) or defer to it; it must not exchange a slot
+the keep holds. No second read-ahead cache or new file-lifetime controller is indicated.
 
 Reuse AP cadence: sample every 1,024 writes, pump at most every 250 ms on the
 arming thread, bound an episode to 120 s and the replay Run skip to 2.5 s.
@@ -558,3 +554,62 @@ ABIs changed. Native data-only mapping proves actual common preparation,
 profile admission, tamper rejection and complete-image rollback; it does not
 establish audible pause/focus continuity. Producers and compact checks are
 in the [music verification ledger](../../verification/music-keep.md#fl-common-load-admission-correction-2026-11-01).
+
+## Port (2026-11-03)
+
+**Outcome:** `music_keep`, `music_queue` and `music_dock_keep` work on FL through
+[`music_keep_fl.cpp`](../../../src/engine/fl/music_keep_fl.cpp) and
+[`music_keep_sites_fl.h`](../../../src/engine/fl/music_keep_sites_fl.h), providing `music_keep.h` in place of the AP
+module. Every decision is AP's `music_keep_core.h` and `story_detect.h`, unchanged: the holds, `decide_stop/seek/status`,
+the orphan pause, `SavePump`, the resume memory, `TrackQueue` and `KcPatch`. The FL file holds the stubs, the FL
+register and stack indices of sections 1 and 5, the FL engine calls and the import slots. `X3M_MUSIC_TRACE` is AP only
+on FL (one `music_trace … reason=ap_only edition=fl` row).
+
+- **Caller roles.** The policy keys on AP caller returns. The glue maps each FL return to the AP return of the same role
+  before calling it (`stop_callers`, `play_callers`, `stop_movie_callers` in the sites header: alt-tab, save, pause,
+  load, P_Leave, session start; MOV_PlayMovie, MOV_PlayMovieFrom, the helper; MOV_StopMovie, the helper), logs the FL
+  address and name, and maps an unknown return to 0 (vanilla). The FL selector's direct play (section 2) has no AP role:
+  it is "any other music play" and ends a queue.
+- **Sites (section 1).** A `base+0x0b423e` (7 bytes; the jump crosses a qword, so a plain write inside the window), C
+  `base+0x0b4d26` (EDX = start ms, the resume rewrites the saved EDX), D `base+0x0b434a` (optional), E `base+0x0b4d42`
+  (optional), T1 `base+0x0b4210` (7 bytes, the owner operand copied live), T3 `base+0x0b47a0`, and with the queue T2
+  `base+0x0b4c50` (optional). T1/T3/T2 blocks: `[0]` EDX = the context (task id), `[1]` ECX = the slot, `[4]` the caller
+  return, `[5]` the id. A consumed T3/T2 returns with a plain RET. One feature uses these entries on FL, so they are
+  plain claims, not shared sites.
+- **Engine calls.** Pause `0x0b41b0` and the orphan pause take ECX = record; pump `0x0fe7d0` ECX = media (AX
+  zero-extended, as AP); the queue's free is the wrapper `0x0b4640` with ECX = 32, EDX = 0 and the key pushed and popped
+  by the shim (section 6.4). Its result comes from a linked-record lookup before and after the call, never from EAX.
+  Completions go through the VM slot table at `*(base+0x1aa174)`.
+- **Save pump (section 3).** X3FL.exe calls zlib through its IAT directly. With E live, the module exchanges the
+  gzwrite slot `base+0x1503f0` and the gzclose slot `base+0x150408` for two forwarding stubs, both or neither, each only
+  over zlib1.dll's own export (documented `GetModuleHandleW`/`GetProcAddress`, `VirtualProtect`, an interlocked
+  compare-exchange, read back). The idle path is one load and a branch per call. Only `[esp] = base+0x106963` with
+  `[esp+8] = base+0x079201` ends pumping. Nothing else on main owns these slots. AP's `loading_trace` owner is AP only.
+- **KC patch and load gate (sections 5 to 6.5).** Detection at run time on the VM `*(base+0x1aa174)`. Without a marker on
+  FL, the gate opens on two due checks 8 frames apart that agree; T1 from the load and session callers begins a load.
+- **Admission.** X3FL.exe identity, 22 identity windows (stop-all, the manager, retirement, the free wrapper,
+  MOV_StopMovie, play, pause, the seek/Run/pump/status heads and exits, the Run state writes, the close wrapper, the
+  gzwrite call, the KC loader stores and JMP handler, the MOV dispatcher, the alert slot) and every direct caller's
+  rel32 (stop-all 6, play 4, MOV_StopMovie 2, free 1, the C/D/E calls, the save's close call), all checked before any
+  claim. Claims come in AP's order; a failure rolls back every earlier site. The optional D/E/T2 roll back alone, and
+  late claims are refused.
+
+Verified (measured, 2026-11-03): [`verify_music_keep_sites_fl.py`](../../../verification/probe/verify_music_keep_sites_fl.py)
+PASS (42 checks, including the zlib import names, the close wrapper's single pushed handle, the pump's lone tail-jump entry and
+no x87, the status query's no-look exit, the free wrapper's slot guard, the MOV dispatcher's ESI/EDX/ECX, stop-all
+holding no SSE/x87 instruction and AP refusal); the native fixture
+[`fl_music_keep.cpp`](../../../verification/probe/fl_music_keep.cpp) 55 checks, 0 failures. It runs the real stop-all,
+play, MOV_StopMovie, pause, free wrapper and retirement bytes over a synthetic arena and covers alt-tab skip_all and
+the status gate, pause keep_running and resume, the DirectSound pause, the load's orphan pause, the C/E thunks, the save
+pump through the slots with the replay's skipped Run, the combat resume (61,500 ms remembered and sought), defer,
+park, end and the FL free with slot 32, the docking keep's id cell, the KC patch through the gate, 92 of 92 window
+changes refused, six caller mutations, rollback at three sites plus the optional queue site, shutdown and the late
+window. Offline model check (measured, not a game capture):
+[`fl_story.py`](../../../verification/results/fl-music/fl_story.py) runs the production `story_detect.h` over the
+`story_vm_image.py` model of FL's `addon2/L/x3story.obj` (SHA-256 `dbb73271…`, build 1636047691): `fail=none`,
+WarpToSector entry / fork / continue `0x19cfc` / `0x19d97` / `0x19dab`, window `6f33ab9d0100` → `32ab9d010001`, stop IP
+`0x0f23c`, fade stop `0x0f0ff`, play IP `0x0f2df`, returns `0x0f36c` / `0x0f3c3`, depth 19, 2,401 reads
+([`fl_story.txt`](../../../verification/results/fl-music/fl_story.txt)), matching sections 5 and 6. Not verified: not
+flown; native Windows game behaviour; the detection on the live in-memory object (a signature mismatch there refuses
+the queue with `no_sites`, the keep unaffected); COM message dispatch and recovery reentry inside seek/pump (section 4,
+unchanged).

@@ -1,0 +1,88 @@
+{
+ "exe_sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "fixtures": {
+  "media_cue": {
+   "checks": 20,
+   "failed_labels": [],
+   "failures": 0,
+   "result": "PASS",
+   "returncode": 0,
+   "window_flips": [
+    7,
+    28,
+    28
+   ]
+  },
+  "music_alert": {
+   "checks": 26,
+   "failed_labels": [],
+   "failures": 0,
+   "result": "PASS",
+   "returncode": 0,
+   "window_flips": [
+    13,
+    52,
+    52
+   ]
+  },
+  "music_keep": {
+   "checks": 55,
+   "failed_labels": [],
+   "failures": 0,
+   "result": "PASS",
+   "returncode": 0,
+   "window_flips": [
+    22,
+    92,
+    92
+   ]
+  }
+ },
+ "generated_header_current": true,
+ "verifiers": {
+  "media_cue": {
+   "allocator_instructions": 91,
+   "ap_site_bytes_in_fl": [],
+   "ap_windows_admitted": [],
+   "checks": 22,
+   "failed": [],
+   "media_fixup_count": 7,
+   "media_window_count": 7,
+   "result": "PASS"
+  },
+  "music_alert": {
+   "alert_fixup_count": 13,
+   "alert_instructions": 235,
+   "alert_window_count": 13,
+   "ap_site_bytes_in_fl": [],
+   "ap_windows_admitted": [],
+   "checks": 17,
+   "failed": [],
+   "result": "PASS"
+  },
+  "music_keep": {
+   "a_jump_atomic": false,
+   "ap_site_bytes_in_fl": [],
+   "ap_windows_admitted": [],
+   "c_jump_atomic": false,
+   "caller_counts": {
+    "free_wrapper": 1,
+    "pause": 1,
+    "play": 4,
+    "run": 2,
+    "seek": 3,
+    "status": 1,
+    "stop_all": 6,
+    "stop_movie": 2
+   },
+   "checks": 42,
+   "d_jump_atomic": true,
+   "e_jump_atomic": true,
+   "failed": [],
+   "keep_fixup_count": 26,
+   "keep_window_count": 22,
+   "result": "PASS"
+  }
+ },
+ "windows": 42
+}
