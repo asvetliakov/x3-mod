@@ -247,7 +247,7 @@ SETTINGS = [
     entry('shadow_alpha_casters', 'bool', 'shadows', 'Lets see-through cut-out parts (grilles, lattices) cast their real shadow '
           'shape. 1 = on, 0 = off.', '1', requires=('shadow_replay_depth',), launcher='--shadow-alpha-casters'),
     entry('shadow_caster_retention', 'bool', 'shadows', 'Keeps a shadow for a few frames when the game briefly skips drawing its '
-          'object, against flickering shadows. 1 = on, 0 = off. X3: Albion Prelude only.', '1', requires=('shadow_cascades',), launcher='--shadow-caster-retention'),
+          'object, against flickering shadows. 1 = on, 0 = off.', '1', requires=('shadow_cascades',), launcher='--shadow-caster-retention'),
     entry('sun_shadow_bias_units', 'float', 'shadows', 'Shadow offset in game units against speckled self-shadowing ("shadow acne"). '
           'Higher removes speckles but detaches shadows slightly. 0 to 1000.', '0.53571875', range=(0.0, 1000.0), requires=('sun_shadow_apply',),
           launcher='--sun-shadow-bias-units'),

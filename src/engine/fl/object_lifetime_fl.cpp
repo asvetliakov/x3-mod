@@ -21,7 +21,19 @@
 // Publication of an insert additionally waits for mutation depth zero: an insert finishing while another
 // insert/remove/destroy of the bound registry is in flight (an allocator-recovery reentry, another thread's
 // rehash) stays unpublished (the node is UnknownNodeBirth until reinserted), never published from a header
-// another mutation may be rewriting. The journal stays inactive (journal_register refuses).
+// another mutation may be rewriting.
+// Retirement journal (object_lifetime.h, AP semantics): Retired(serial) in retire(), FlushAll in clear_entries(),
+// both under model_lock and only while a consumer is registered. The unpublished-insert rule: a consumer retains a
+// node only from a Known current() result, which needs a published serial, so a key that was never published (an
+// insert finishing nested or with a failed membership lookup, a dormant or other-map birth) has nothing to retire
+// and gets no entry; its later remove finds no key and appends nothing. Every published serial leaves the table
+// only through retire() (insert/remove entry, failed membership), clear_entries() or occupy() over a live key,
+// and all three journal it; occupy() over a live key is unreachable under the mutation-depth rule (an insert in
+// flight holds mutations > 0, so neither another publish nor the load re-baseline can make its key live before it
+// finishes) and appends Retired(old serial) regardless. The load path needs no extra FlushAll: enter() already
+// appends one with the clear before forwarding, and the survivors are absent from the table until the re-baseline
+// adopts them with fresh serials under the same lock that ends the load's in_flight (current() reports
+// MutationInProgress until then), so no consumer can hold a serial issued between the flush and the adoption.
 // A renderer load clears the table and advances load_epoch before forwarding (AP); after its normal return the
 // registry entries that survived it are adopted again with fresh serials (FL identities survive a load,
 // registry-binding.md), the keys born during the load keeping the serials the insert hook gave them.
@@ -152,9 +164,23 @@ bool increment(std::uint64_t& value) {
     ++value;
     return true;
 }
+// Retirement journal (AP file): written only under model_lock and only for a registered consumer. Integer only.
+using x3m::object_lifetime::JournalCapacity;
+using x3m::object_lifetime::JournalKind;
+static_assert(JournalCapacity && !(JournalCapacity & (JournalCapacity - 1)));
+std::array<x3m::object_lifetime::JournalEntry, JournalCapacity> journal{};
+std::uint64_t journal_head = 0;
+unsigned journal_consumers = 0;
+void journal_append(JournalKind kind, std::uint64_t serial) {
+    if (!journal_consumers) return;
+    journal[static_cast<unsigned>(journal_head) & (JournalCapacity - 1)] = {kind, 0, load_epoch, registry_epoch,
+                                                                            serial};
+    ++journal_head;
+}
 void clear_entries() {
     for (auto& entry : entries) entry = {};
     live = 0;
+    journal_append(JournalKind::FlushAll, 0);
 }
 bool read_registry(std::uintptr_t& result) {
     std::uintptr_t engine = 0;
@@ -195,7 +221,10 @@ Entry* find(std::uint32_t key, bool create) {
     return nullptr;
 }
 void occupy(Entry* entry, std::uint32_t key, std::uintptr_t value, std::uint64_t serial) {
-    if (entry->state != 1 && ++live > peak_live) peak_live = live;
+    if (entry->state == 1)
+        journal_append(JournalKind::Retired, entry->serial); // never reached (header comment); never lose a serial
+    else if (++live > peak_live)
+        peak_live = live;
     *entry = {key, value, serial, 1};
 }
 // Backward-shift deletion (Knuth 6.4, Algorithm R), as the AP file.
@@ -216,6 +245,7 @@ void erase(Entry* entry) {
 }
 void retire(std::uint32_t key) {
     if (auto* entry = find(key, false)) {
+        journal_append(JournalKind::Retired, entry->serial);
         erase(entry);
         --live;
     }
@@ -909,24 +939,50 @@ bool current(std::uintptr_t map, std::uintptr_t node, std::uint32_t node_handle,
     SetLastError(error);
     return out->known;
 }
-// Journal inactive in FL: registration is refused (the retention consumer reports reason=journal and stays off).
+// The journal functions (AP file): same calling contract as current(), any thread, never inside an engine call.
 JournalCursor journal_register() {
-    return {};
+    Lock lock;
+    if (journal_consumers == std::numeric_limits<unsigned>::max()) return {};
+    // Skipping more than a whole ring makes every cursor of an earlier registration drain as overflow.
+    if (!journal_consumers) journal_head += JournalCapacity + 1;
+    ++journal_consumers;
+    return {journal_head};
 }
-void journal_unregister() {}
+void journal_unregister() {
+    Lock lock;
+    if (journal_consumers) --journal_consumers;
+}
 JournalStats journal_stats() {
-    return {};
+    Lock lock;
+    return {journal_head, journal_consumers};
 }
-JournalDrain journal_drain(JournalCursor&, JournalEntry* out, std::uint32_t limit) {
+JournalDrain journal_drain(JournalCursor& cursor, JournalEntry* out, std::uint32_t limit) {
     JournalDrain result{};
     Lock lock;
+    result.available = journal_consumers && observation && cursor.valid();
     result.load_epoch = load_epoch;
     result.registry_epoch = registry_epoch;
     result.mutation_revision = revision;
-    if (!out || !limit)
+    if (!out || !limit) {
         result.invalid = true;
-    else
+        return result;
+    }
+    if (!cursor.valid()) {
         result.overflow = true;
+        return result;
+    }
+    if (!journal_consumers || cursor.sequence > journal_head || journal_head - cursor.sequence > JournalCapacity) {
+        result.overflow = true;
+        cursor.sequence = journal_head;
+        return result;
+    }
+    const std::uint64_t pending = journal_head - cursor.sequence;
+    const std::uint32_t count = pending < limit ? static_cast<std::uint32_t>(pending) : limit;
+    for (std::uint32_t i = 0; i < count; ++i)
+        out[i] = journal[static_cast<unsigned>(cursor.sequence + i) & (JournalCapacity - 1)];
+    cursor.sequence += count;
+    result.count = count;
+    result.more = cursor.sequence != journal_head;
     return result;
 }
 bool shutdown() {

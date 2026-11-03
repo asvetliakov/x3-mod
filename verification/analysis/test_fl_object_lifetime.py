@@ -10,7 +10,7 @@ single-byte flip. (b) The native fixture verification/probe/fl_object_lifetime.c
 through WSL interop) drives the real dispatcher through fake helpers with the FL entry bytes and ABI and checks
 publication after return, retirement before free, destroy, load epoch, foreign unwind, nesting, ZF into the
 replayed destroy prologue, register/EFLAGS/XMM/x87/MXCSR/LastError preservation, baseline, overflow, current()
-results, rollback and the late window; its dispatch path is audited for x87 and XMM use. (c) Edition wiring.
+results, the retirement journal (JOURNAL_CASES), rollback and the late window; its dispatch path is audited for x87 and XMM use. (c) Edition wiring.
 X3FL.exe is only read.
 """
 import importlib.util
@@ -29,6 +29,10 @@ PROVIDER = ROOT / 'src/engine/fl/object_lifetime_fl.cpp'
 FIXTURE = ROOT / 'verification/probe/fl_object_lifetime.cpp'
 AUDIT = ROOT / 'verification/results/fl-object-lifetime/hook_cpu_state_audit.py'
 LIVE_BASES = (0x4d0000, 0xfd0000)  # FL runs 1 and 3 (docs/verification/farnhams-legacy.md)
+# The fixture's retirement-journal cases, in order (object_lifetime.h; AP: verification/probe/object_lifetime.cpp).
+JOURNAL_CASES = ('no_consumer', 'retire_in_order', 'unpublished_insert', 'partial_drain', 'invalid_drain',
+                 'flush_unwind', 'flush_registry_rebind', 'flush_registry_destroy', 'load_flush_and_readoption',
+                 'overflow_and_recovery', 'unregister', 'flush_shutdown')
 
 
 def load(name, path):
@@ -206,6 +210,8 @@ class FlLifetimeNativeFixture(unittest.TestCase):
         self.assertIn('ANCHOR flips=84 refused=84', out)
         self.assertRegex(out, r'REBASELINE entries=20002 load_us=\d+ rebaseline_us_max=\d+')
         self.assertEqual(len(re.findall(r'^LOG fl\.lifetime_sample ', out, re.M)), 2)
+        self.assertEqual(re.findall(r'^JOURNAL_CASE name=(\w+) result=PASS$', out, re.M), list(JOURNAL_CASES))
+        self.assertIn(f'JOURNAL cases={len(JOURNAL_CASES)}', out)
         self.assertEqual(audit.returncode, 0, audit.stdout[-2000:] + audit.stderr[-1000:])
 
 
@@ -252,6 +258,16 @@ class FlLifetimeWiring(unittest.TestCase):
         self.assertIn('pushl 12(%eax)', code)
         self.assertIn('pushl 32(%ebp)\\n\\tpopfl', code)
         self.assertIn('movl 4(%esp),%esp\\n\\tleal 40(%esp),%esp\\n\\tret', code)
+        # The retirement journal is live (shadow_caster_retention on FL): appended in retire() and clear_entries().
+        self.assertIn('journal_append(JournalKind::Retired, entry->serial);\n        erase(entry);', code)
+        self.assertIn('live = 0;\n    journal_append(JournalKind::FlushAll, 0);', code)
+
+    def test_retention_setting_has_no_edition_note(self):
+        # shadow_caster_retention works on both editions (convention 2026-11-04): no edition sentence in the ini.
+        ini = (ROOT / 'assets/x3m.ini').read_text()
+        start = ini.index('; Keeps a shadow for a few frames')
+        entry = re.sub(r'\n;\s*', ' ', ini[start:ini.index('shadow_caster_retention =', start)])
+        self.assertNotIn('Albion Prelude', entry)
 
 
 if __name__ == '__main__':

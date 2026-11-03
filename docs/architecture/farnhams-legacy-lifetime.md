@@ -24,7 +24,7 @@ mapped to the value; destroy clears, marks the registry dead, raises `engine_mem
 foreign unwind clear and bump `load_epoch` before forwarding; `current()` re-checks node and camera membership per
 draw; 262144 slots, overflow disables. FL: ECX/EDX and one stack word; an insert finishing while another registry
 mutation is in flight stays unpublished (`unpublished_nested`: no read of a header a rehash may rewrite); the
-journal refuses registration (shadow retention off, `journal`). **Load survivors:** FL identities, the view camera
+journal is live since 2026-11-04 (AP ring; an unpublished insert has nothing to retire, [object lifetimes](../reverse-engineering/fl/object-lifetimes.md) "Port (2026-11-04)"). **Load survivors:** FL identities, the view camera
 among them, survive a load ([registry binding](../reverse-engineering/fl/registry-binding.md)), so after a normal
 load return the install walk runs again under the lock with no mutation in flight (hooked writers wait in
 enter()) and adopts every key not already live with a fresh serial (`rebaselined`); keys born during the load

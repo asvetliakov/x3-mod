@@ -434,6 +434,243 @@ void anchor_cases() {
     std::printf("ANCHOR flips=%u refused=%u\n", flips, refused);
     check(VirtualFree(base, 0, MEM_RELEASE) != 0, "synthetic image released");
 }
+// Retirement journal (object_lifetime.h; the AP fixture's journal cases over the FL dispatcher): written only for a
+// registered consumer; Retired(serial) at every retirement point, FlushAll at every table clear; an unpublished
+// insert (nested) has nothing to retire; the load appends one FlushAll and re-adopts its survivors with fresh serials.
+unsigned journal_case_count = 0;
+// A registry insert whose body raises, caught by an outer original frame (setjmp kept out of journal_cases).
+__attribute__((noinline)) int raise_through(void* insert_fn, uint32_t key, uintptr_t value) {
+    mode = Raise;
+    const int caught = setjmp(outer_jump);
+    if (!caught) catch_outer(insert_fn, reg(), key, value);
+    mode = Plain;
+    return caught;
+}
+void journal_cases(const ol::FixtureSites& sites) {
+    using K = ol::JournalKind;
+    void* const insert_fn = sites.insert_entry;
+    void* const remove_fn = sites.remove_entry;
+    void* const destroy_fn = sites.destroy_entry;
+    static ol::JournalEntry out[ol::JournalCapacity];
+    unsigned case_failures = failures;
+    auto end_case = [&](const char* name) {
+        std::printf("JOURNAL_CASE name=%s result=%s\n", name, failures == case_failures ? "PASS" : "FAIL");
+        case_failures = failures;
+        ++journal_case_count;
+    };
+    auto remove_key = [&](uint32_t key) { fl_raw(remove_fn, reg(), key, 0); };
+    auto serial_of = [&](unsigned i, uint32_t key) {
+        const auto s = query(reg(), node(i), key, cam(0), 7);
+        return s.known ? s.node_serial : 0;
+    };
+    auto drain = [&](ol::JournalCursor& cursor, uint32_t limit = ol::JournalCapacity) {
+        return ol::journal_drain(cursor, out, limit);
+    };
+    mode = Plain;
+    registry_map = new_map();
+    engine[3] = reg();
+    engine_pointer = reinterpret_cast<uintptr_t>(engine);
+    x3m::engine_memory::next_frame();
+    check(ol::fixture_install(sites) && ol::active(), "journal install");
+    birth(registry_map, 7, cam(0));
+
+    // No consumer: retirements, an overwrite and a load write nothing; a drain demands revalidation.
+    const auto idle = ol::journal_stats();
+    birth(registry_map, 500, node(10));
+    birth(registry_map, 500, node(10));
+    remove_key(500);
+    fl_raw(load_thunk, 0x1234, 0, 0);
+    check(ol::journal_stats().head == idle.head && ol::journal_stats().consumers == 0,
+          "no consumer: retirements, overwrite and load write nothing");
+    ol::JournalCursor stale{};
+    auto d = drain(stale);
+    check(d.overflow && !d.available && !d.count && !stale.valid(), "drain without a consumer: overflow, unavailable");
+    end_case("no_consumer");
+
+    // Retired entries: removal, overwrite, failed membership (node then camera); fresh births and absent keys none.
+    auto cursor = ol::journal_register();
+    check(cursor.valid() && ol::journal_stats().consumers == 1, "consumer registered");
+    d = drain(cursor);
+    check(d.available && !d.overflow && !d.count && !d.more, "fresh cursor starts at the head");
+    uint64_t serials[4]{};
+    for (unsigned i = 0; i < 4; ++i) {
+        birth(registry_map, 510 + i, node(10 + i));
+        serials[i] = serial_of(10 + i, 510 + i);
+        check(serials[i] != 0, "journal node born");
+    }
+    check(!drain(cursor).count, "births of fresh keys append nothing");
+    remove_key(510);
+    remove_key(511);
+    remove_key(54321);                  // absent key: nothing retired
+    birth(registry_map, 512, node(12)); // overwrite retires the old lifetime
+    const uint64_t camera_serial = query(reg(), node(13), 513, cam(0), 7).camera_serial;
+    fake_remove(registry_map, 513); // behind the observer's back
+    check(query(reg(), node(13), 513, cam(0), 7).reason == ol::Reason::LookupUnavailable, "failed membership retires");
+    SetLastError(0x321);
+    d = drain(cursor);
+    check(GetLastError() == 0x321, "drain preserves LastError");
+    check(d.available && !d.overflow && !d.more && d.count == 5, "five retirements drained");
+    check(d.count == 5 && out[0].kind == K::Retired && out[0].node_serial == serials[0] &&
+              out[1].node_serial == serials[1] && out[2].node_serial == serials[2] && out[3].node_serial == serials[3] &&
+              out[4].kind == K::Retired && camera_serial && out[4].node_serial == camera_serial &&
+              out[0].load_epoch == d.load_epoch && out[0].registry_epoch == d.registry_epoch,
+          "order and serials: two removals, overwrite, failed membership node then camera");
+    birth(registry_map, 7, cam(0));
+    check(serial_of(12, 512) != 0 && serial_of(12, 512) != serials[2], "overwritten key known with a new serial");
+    end_case("retire_in_order");
+
+    // Unpublished inserts (the FL rule): a nested insert is never published, so its removal appends nothing; the
+    // published outer key's removal appends its serial.
+    drain(cursor);
+    mode = Nested;
+    birth(registry_map, 520, node(4)); // nests key 1520 (node 20)
+    mode = Plain;
+    check(query(reg(), node(20), 1520, cam(0), 7).reason == ol::Reason::UnknownNodeBirth, "nested insert unpublished");
+    const uint64_t outer = serial_of(4, 520);
+    check(outer != 0, "outer insert published");
+    check(!drain(cursor).count, "nested and outer births append nothing");
+    remove_key(1520);
+    remove_key(520);
+    d = drain(cursor);
+    check(d.count == 1 && out[0].kind == K::Retired && out[0].node_serial == outer,
+          "unpublished removal appends nothing, the published one its serial");
+    end_case("unpublished_insert");
+
+    // Small buffer: oldest first, more, then the remainder.
+    birth(registry_map, 530, node(14));
+    birth(registry_map, 531, node(15));
+    birth(registry_map, 532, node(16));
+    const uint64_t a = serial_of(14, 530), b = serial_of(15, 531), c = serial_of(16, 532);
+    remove_key(530);
+    remove_key(531);
+    remove_key(532);
+    d = drain(cursor, 2);
+    check(d.count == 2 && d.more && out[0].node_serial == a && out[1].node_serial == b, "small buffer: oldest first, more");
+    d = drain(cursor, 2);
+    check(d.count == 1 && !d.more && out[0].node_serial == c, "remainder drained");
+    end_case("partial_drain");
+
+    // Null buffer / zero capacity: invalid, cursor unmoved; an invalid cursor drains as overflow, unavailable.
+    birth(registry_map, 540, node(17));
+    remove_key(540);
+    const auto held = cursor;
+    d = ol::journal_drain(cursor, nullptr, ol::JournalCapacity);
+    check(d.invalid && !d.count && !d.more && !d.overflow && cursor.sequence == held.sequence, "null buffer: invalid");
+    d = drain(cursor, 0);
+    check(d.invalid && !d.count && !d.more && !d.overflow && cursor.sequence == held.sequence, "zero capacity: invalid");
+    ol::JournalCursor foreign{};
+    d = drain(foreign);
+    check(d.overflow && !d.available && !d.count && !foreign.valid(), "invalid cursor: overflow, unavailable");
+    d = drain(cursor);
+    check(!d.invalid && d.count == 1, "the entry still reaches a valid drain");
+    end_case("invalid_drain");
+
+    // Whole-table invalidations: foreign unwind, registry rebind, destroy; each one FlushAll with its epoch moved.
+    auto pre = drain(cursor);
+    const int caught = raise_through(insert_fn, 550, node(18));
+    d = drain(cursor);
+    check(caught == 1 && d.count == 1 && out[0].kind == K::FlushAll && d.load_epoch == pre.load_epoch + 1,
+          "foreign unwind: one FlushAll, load epoch +1");
+    end_case("flush_unwind");
+    birth(registry_map, 7, cam(0));
+    pre = drain(cursor);
+    registry_map = new_map();
+    engine[3] = reg();
+    check(query(reg(), node(1), 42, cam(0), 7).reason == ol::Reason::RegistryChanged, "rebind seen");
+    d = drain(cursor);
+    check(d.count == 1 && out[0].kind == K::FlushAll && d.registry_epoch == pre.registry_epoch + 1 && d.available,
+          "registry rebind: one FlushAll, registry epoch +1");
+    end_case("flush_registry_rebind");
+    birth(registry_map, 7, cam(0));
+    birth(registry_map, 560, node(19));
+    pre = drain(cursor);
+    witnessed(destroy_fn, reg(), 0, 0, 0, 0x202, 0x202, "journal destroy");
+    d = drain(cursor);
+    check(d.count == 1 && out[0].kind == K::FlushAll && d.registry_epoch == pre.registry_epoch + 1,
+          "registry destroy: one FlushAll, registry epoch +1");
+    end_case("flush_registry_destroy");
+    x3m::engine_memory::next_frame();
+
+    // The load: one FlushAll at its entry (before forwarding); the key it removes appends nothing; after the normal
+    // return the survivors are known again with serials newer than every serial issued before the load, and the
+    // load's own births keep theirs (no further entry).
+    registry_map = new_map();
+    engine[3] = reg();
+    birth(registry_map, 7, cam(0));
+    birth(registry_map, 9, node(9));
+    birth(registry_map, 8, node(8));
+    const auto before = query(reg(), node(9), 9, cam(0), 7);
+    check(before.known && serial_of(8, 8), "keys 9 and 8 known before the load");
+    pre = drain(cursor);
+    fl_raw(load_thunk, 0x1234, 0, 0);
+    d = drain(cursor);
+    check(d.count == 1 && out[0].kind == K::FlushAll && d.load_epoch == pre.load_epoch + 1,
+          "load: exactly one FlushAll (the removal of key 8 inside it appends nothing)");
+    const auto survivor = query(reg(), node(9), 9, cam(0), 7);
+    const auto born = query(reg(), node(6), 60, cam(2), 61);
+    check(survivor.known && born.known && survivor.node_serial > before.node_serial &&
+              survivor.node_serial > before.camera_serial && survivor.camera_serial > before.camera_serial &&
+              survivor.node_serial > born.node_serial && survivor.node_serial > born.camera_serial,
+          "re-adopted survivors carry fresh serials");
+    check(query(reg(), node(8), 8, cam(0), 7).reason == ol::Reason::UnknownNodeBirth, "key removed by the load unknown");
+    check(!drain(cursor).count, "re-adoption appends nothing");
+    remove_key(9);
+    d = drain(cursor);
+    check(d.count == 1 && out[0].kind == K::Retired && out[0].node_serial == survivor.node_serial,
+          "a re-adopted survivor retires with its fresh serial");
+    end_case("load_flush_and_readoption");
+
+    // Overflow: more retirements than the ring holds between two drains moves the cursor to the head.
+    const uint64_t head_before = ol::journal_stats().head;
+    for (unsigned i = 0; i < ol::JournalCapacity + 88; ++i) {
+        birth(registry_map, 570, node(10));
+        remove_key(570);
+    }
+    check(ol::journal_stats().head - head_before == ol::JournalCapacity + 88, "one entry per retirement");
+    d = drain(cursor);
+    check(d.overflow && d.available && !d.count && !d.more && cursor.sequence == ol::journal_stats().head,
+          "overflow reported, cursor at the head, nothing partial");
+    birth(registry_map, 570, node(10));
+    const uint64_t last = serial_of(10, 570);
+    remove_key(570);
+    d = drain(cursor);
+    check(!d.overflow && d.count == 1 && last && out[0].node_serial == last, "cursor recovers after overflow");
+    for (unsigned i = 0; i < ol::JournalCapacity; ++i) {
+        birth(registry_map, 570, node(10));
+        remove_key(570);
+    }
+    d = drain(cursor);
+    check(!d.overflow && d.count == ol::JournalCapacity && !d.more, "exactly one full ring drains without overflow");
+    end_case("overflow_and_recovery");
+
+    // Unregister: nothing is written, the old cursor drains as overflow; a new registration starts past the ring.
+    birth(registry_map, 580, node(11));
+    remove_key(580);
+    ol::journal_unregister();
+    check(ol::journal_stats().consumers == 0, "unregistered");
+    const uint64_t frozen = ol::journal_stats().head;
+    birth(registry_map, 581, node(11));
+    remove_key(581);
+    check(ol::journal_stats().head == frozen, "nothing written after the last consumer left");
+    auto old = cursor;
+    d = drain(cursor);
+    check(d.overflow && !d.available && !d.count, "unregister then drain: overflow, unavailable");
+    auto fresh = ol::journal_register();
+    d = drain(old);
+    check(d.overflow && !d.count && fresh.valid() && fresh.sequence > frozen + ol::JournalCapacity,
+          "re-registration: earlier cursors overflow, the new one starts past the ring");
+    check(!drain(fresh).count, "fresh cursor empty");
+    end_case("unregister");
+
+    // Shutdown with a consumer still registered: one FlushAll; the drain then reports the observer unavailable.
+    check(ol::fixture_shutdown() && !ol::active(), "journal shutdown");
+    d = drain(fresh);
+    check(d.count == 1 && out[0].kind == K::FlushAll && !d.available, "shutdown: one FlushAll, unavailable");
+    ol::journal_unregister();
+    check(ol::journal_stats().consumers == 0, "consumer count balanced");
+    end_case("flush_shutdown");
+    std::printf("JOURNAL cases=%u\n", journal_case_count);
+}
 
 int main() {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -725,6 +962,7 @@ int main() {
         std::printf("REBASELINE entries=%u load_us=%.0f%s\n", count + 2, load_us, us ? us : "");
         check(ol::fixture_shutdown(), "restore after the re-baseline cost case");
     }
+    journal_cases(sites);
     anchor_cases();
     // Late window: after the first Present closes the engine_patch window, nothing is claimed or written.
     x3m::engine_patch::close_install_window("fixture_first_present");

@@ -385,6 +385,18 @@ export, lock or layout is involved. Windows-compatible source only; native behav
 unverified ([platform-portability.md](platform-portability.md) gets the line when stage 2
 lands).
 
+## Farnham's Legacy (2026-11-04)
+
+FL is covered: the FL lifetime observer (`src/engine/fl/object_lifetime_fl.cpp`) carries the
+same retirement journal (AP ring, appends and drain contract), so the shared consumer in
+`motion_output_shadow_retention_inc.h` registers on FL instead of logging `reason=journal`
+(FL run 43). The FL-specific rule: an insert that the observer never publishes (nested in
+another registry mutation, or with a failed membership lookup) cannot be retained, so its
+removal appends nothing, while every published serial is journaled when it leaves the table;
+a renderer load appends one FlushAll and re-adopts its survivors with fresh serials
+([FL object lifetimes](../reverse-engineering/fl/object-lifetimes.md), "Port (2026-11-04)").
+The consumer and the setting are unchanged; host evidence only, not flown.
+
 ## Implemented (2026-09-17)
 
 Files: the store `src/proxy/shadow_retention_core.h` (pure CPU, host-compiled by

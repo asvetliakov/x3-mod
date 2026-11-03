@@ -1,0 +1,5 @@
+object_lifetime.cpp identical 3357 disassembly lines (base 3c1cf0906 = merge-base of main, head working tree)
+motion_output.cpp identical 134033 disassembly lines (base 3c1cf0906 = merge-base of main, head working tree)
+loader.cpp identical 3070 disassembly lines (base 3c1cf0906 = merge-base of main, head working tree)
+capture.cpp identical 41169 disassembly lines (base 3c1cf0906 = merge-base of main, head working tree)
+src changes 1, AP inputs changed 0 , build-ap compiles 0 file(s) under src/engine/fl: identical inputs
