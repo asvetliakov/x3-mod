@@ -414,8 +414,10 @@ SETTINGS = [
     entry('engine_plume_emitters', 'bool', 'engine', 'Engine plumes for ships without engine glows (engine_effects = plumes, '
           'engine_nozzle_source = node): ships such as the M6M heavy corvettes and the Terran drones mark their nozzles '
           'with hidden engine-effect points instead of glows; 1 = those points get plumes at the engine\'s live throttle, '
-          'sized from the ship\'s size; 0 = no plume on those ships, as before. Default 1. Read when the game starts.',
-          builtin='1', since='2026-11-03'),
+          'sized from the ship\'s size; 0 = no plume on those ships, as before. Default 0: the shipped Argon Heavy Centaur places two of '
+          'its four points off their nozzles, so the plumes sit beside the engines; the game shows nothing there either. Read '
+          'when the game starts.',
+          builtin='0', since='2026-11-03'),
     entry('engine_light_hold', 'int', 'engine', 'How long the engine light on the hull stays on after a ship\'s engines '
           'leave the screen while its hull is still in view (engine_light = on), in frames: the light follows the hull for '
           'this many frames and fades out over the last third. 0 to 600, 0 = goes out at once, default 60. Read when the '

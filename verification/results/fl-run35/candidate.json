@@ -1,0 +1,20 @@
+{
+ "run": 35,
+ "step": "plumes step 1 closed: engine_plume_emitters default 0 (code kept behind the setting); the shipped Heavy Centaur scene places the centre emitters off their nozzles (model data), user decision 2026-11-03",
+ "edition": "fl",
+ "commit": "see git log: committed together with this record",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "154c8669342df002",
+ "dll_bytes": 55834182,
+ "installed_sha256_prefix": "154c8669342df002",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run34 (51e96d4d)",
+ "game_data": "unchanged",
+ "exe": "X3FL.exe e7f3aad8 unchanged",
+ "ini": "unchanged (engine_plume_emitters commented: now off by default)",
+ "host_tests": "run_host_suite 336 modules 3449 tests 0 failing after the plumes_inc.h pin bump; generate.py --check PASS 293/138; check_no_x87 build-ap PASS",
+ "build_warnings": 0,
+ "review": "main session: default flip only (parse: unset or anything but '1' = off), schema/ini regenerated, test updated",
+ "installed_at": "2026-11-03T14:16:20+04:00"
+}

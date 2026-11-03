@@ -2406,7 +2406,11 @@ to the left, right center a little to the right". Log `/home/asvetl/x3m-logs/fl-
 measured): `engine_plumes_hidden_emitter_hull … anchors=4 candidates=4 own=1 radius=321.78 size=46.11 scale=0.0100`,
 windows `anchors=1200 ships=1 anchored_frames=300 mode_reads=1200 rejected=0`, probe rows `verdict=none` on stations
 (`probe_none=14`); captures 17465/17466. Step 1 anchors and the walk are confirmed on FL; the centre pair's lateral offset
-is under triage (`verification/results/fl-run34/plume_offset_triage.py`).
+was triaged (`verification/results/fl-run34/plume_offset_triage.py`, measured): the walk and the record copy the emitter
+position unchanged; in the shipped scene the centre emitters P25/P26 sit 1,144 scene units outward and 1,085 behind their
+nozzles while the edge pair is within 26 units of its nozzles, no rotation, no nesting. A model-data fault, so by the
+user's rule step 1 is closed: `engine_plume_emitters` defaults to 0 (code kept behind the setting), installed as run 35.
+The node walk itself (run 32) stays.
 
 Original brief: new custom game, player ship **Heavy Centaur** (`SS_SH_A_M6M`, not the plain
 Centaur, which has no jets on FL), chase view, fly for a minute with throttle changes; one F8 looking at the stern; tell me
@@ -2416,3 +2420,13 @@ the `engine_plumes_probe_root`/own-root rows and the window's `probe_*` subtotal
 step 1 is dropped (setting default off) per the 2026-11-03 decision rule. Also read: `far_steering`/`far_invalid`/
 `far_invalid_scale0`/`far_drawn` on `engine_stage` (expect `far_invalid ≈ far_invalid_scale0 ≈ 0`, `far_drawn > 0` with
 distant ships in view).
+
+## FL run 35 — plumes step 1 closed, `engine_plume_emitters` default 0 (installed 2026-11-03)
+
+Default flip only (`motion_output_engine_plumes_inc.h`: unset or anything but `1` = off; schema builtin 0, template line
+regenerated; the probe/anchor code stays behind the setting). Clean `build-fl`, 0 warnings; full host suite 336 modules
+3,449 tests 0 failing after the plumes record pin bump (measured). Installed `C:\X3FL\d3d9.dll` = `154c8669…` (55,834,182 B),
+rollback `rollback-d3d9\d3d9.dll.run34` = `51e96d4d…`; game data and ini unchanged. Record
+`verification/results/fl-run35/candidate.json`. No dedicated flight: the next ordinary FL flight should show
+`engine_plumes_hidden_emitters … setting=- rule=off` and no plume on the Heavy Centaur's hidden points. The plume rule on
+both editions is now: an engine glow part gets a plume; a hull without glow parts gets none, as the game ships it.

@@ -278,3 +278,15 @@ those hulls never had an exhaust effect natively, the table would be a geometric
 asymmetric sterns where it matters, and keeping it right means a hand-maintained override list. Step 1 (hidden
 `fx_engine_emitter` anchors) is the whole feature. The census (`verification/results/plumes-no-glow/`) stays as the
 record of which hulls that leaves untouched.
+
+
+## Step 1 closed: default off (2026-11-03, user decision)
+
+Flown on FL run 34 in an Argon Heavy Centaur: the four hidden emitters anchor, and plumes, light and trail follow the
+throttle, so the mechanism works. But the shipped scene (`ships\mm6\Argon_MM6_scene`, parts P25/P26) places the two
+centre emitters 1,144 scene units outward and 1,085 behind their nozzles (the edge pair P23/P24 sits within 26 units of
+its nozzles; `verification/results/fl-run34/plume_offset_triage.py`, measured). The mod copies the emitter position
+unchanged, so the centre plumes sit beside the engines. The user's rule: a model-data fault means the feature is dropped,
+since most players run mods (Mayhem gives every hull proper glow parts) that get plumes through the normal path. Decision:
+`engine_plume_emitters` defaults to 0; the code stays behind the setting for anyone whose models place the emitters
+correctly. The rule for plumes is now simply: an engine glow part gets a plume; nothing else does.

@@ -156,10 +156,10 @@ class AnchorTests(unittest.TestCase):
     def test_option(self):
         e = schema.BY_KEY['engine_plume_emitters']
         self.assertEqual((e['type'], e['section'], e['builtin'], e['launcher'], e['env']),
-                         ('bool', 'engine', '1', None, 'X3M_ENGINE_PLUME_EMITTERS'))
+                         ('bool', 'engine', '0', None, 'X3M_ENGINE_PLUME_EMITTERS'))
         self.assertIn('{"X3M_ENGINE_PLUME_EMITTERS", "engine_plume_emitters", Type::Bool',
                       (ROOT / 'src/config/config_schema_inc.h').read_text())
-        self.assertIn(';engine_plume_emitters = 1', (ROOT / 'assets/x3m.ini').read_text())
+        self.assertIn(';engine_plume_emitters = 0', (ROOT / 'assets/x3m.ini').read_text())
 
     def test_anchors_on_both_layouts(self):
         size_k = 0.5 * (0.35 + (0.25 - 0.35) * math.log(320 / 150) / math.log(500 / 150)) * 320

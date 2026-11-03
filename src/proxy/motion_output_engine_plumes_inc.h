@@ -60,15 +60,15 @@ void MotionOutput::configure_engine_plumes(bool requested, engine_plumes::Preset
 #endif
         );
     }
-    // Hidden-emitter anchors (plumes-no-glow-hulls.md step 1): X3M_ENGINE_PLUME_EMITTERS=0|1, unset = 1, anything else
-    // refused to 1. They ride on the node walk (engine_nozzle_source = node, both editions; on FL at the hook boundary
+    // Hidden-emitter anchors (plumes-no-glow-hulls.md step 1): X3M_ENGINE_PLUME_EMITTERS=0|1, unset = 0 (default off since
+    // 2026-11-03: the shipped Heavy Centaur scene places two emitters off their nozzles, user decision), anything else refused to 0. They ride on the node walk (engine_nozzle_source = node, both editions; on FL at the hook boundary
     // only). 0 = the walk and the gather as before step 1, read for read: no probe admission, no C read, no anchor, no
     // window row. One engine_plumes_hidden_emitters row per configure, then one per 300-frame window.
     {
         wchar_t text[8]{};
         const DWORD n = x3m::config::get(L"X3M_ENGINE_PLUME_EMITTERS", text, 8);
         const bool ok = !n || (n == 1 && (text[0] == L'0' || text[0] == L'1'));
-        engine_anchors_setting_ = !(ok && n == 1 && text[0] == L'0');
+        engine_anchors_setting_ = ok && n == 1 && text[0] == L'1';
         const bool node = engine_nozzle_source_ == engine_nozzle::core::Source::node;
         engine_anchors_on_ = engine_anchors_setting_ && plumes_requested_ && node;
         engine_anchors_live_ = false;

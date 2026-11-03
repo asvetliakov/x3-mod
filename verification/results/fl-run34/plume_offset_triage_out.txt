@@ -1,0 +1,26 @@
+== SS_SH_A_M6M: scene ships\mm6\Argon_MM6_scene, 38 parts; fx_engine_emitter parts 4
+  P23 effects\engines\fx_engine_emitter: pos [7944.0, -1985.0, -28225.0] rot [0.0, 0.0, 0.0, 0.0] flags 0x2002 frames 1 | B effects\engines\fx_engine_emitter; N effects\engines\fx_engine_emitter;
+  P24 effects\engines\fx_engine_emitter: pos [-7944.0, -1985.0, -28225.0] rot [0.0, 0.0, 0.0, 0.0] flags 0x2002 frames 1 | B effects\engines\fx_engine_emitter; N effects\engines\fx_engine_emitter;
+  P25 effects\engines\fx_engine_emitter01: pos [-2944.0, -1985.0, -28225.0] rot [0.0, 0.0, 0.0, 0.0] flags 0x2002 frames 1 | B effects\engines\fx_engine_emitter; N effects\engines\fx_engine_emitter01;
+  P26 effects\engines\fx_engine_emitter02: pos [2944.0, -1985.0, -28225.0] rot [0.0, 0.0, 0.0, 0.0] flags 0x2002 frames 1 | B effects\engines\fx_engine_emitter; N effects\engines\fx_engine_emitter02;
+== hull ships\mm6\argon_mm6: exhaust materials [37, 38, 39, 40, 41]; exhaust components behind z<-25000: 11
+  n= 32 x  -9097.. -6843 y  -2754..  -992 z -28814..-28111 centre ( -7970,  -1873, -28462)
+  n= 32 x   6843..  9097 y  -2754..  -992 z -28814..-28111 centre (  7970,  -1873, -28462)
+  n= 36 x  -1001..  1001 y   1425..  3486 z -28118..-27662 centre (     0,   2456, -27890)
+  n= 44 x  -2919..  -680 y  -2768..  -710 z -27458..-26822 centre ( -1800,  -1739, -27140)
+  n= 44 x    680..  2919 y  -2768..  -710 z -27458..-26822 centre (  1800,  -1739, -27140)
+  n= 45 x  -4172.. -1355 y    507..  2745 z -27127..-26473 centre ( -2764,   1626, -26800)
+  n= 45 x   1355..  4172 y    507..  2745 z -27127..-26473 centre (  2764,   1626, -26800)
+  n=  7 x  -1391..  -305 y   -160..   758 z -25393..-25300 centre (  -848,    299, -25346)
+  n=  7 x    305..  1391 y   -160..   758 z -25393..-25300 centre (   848,    299, -25346)
+  n=  7 x  -3979.. -2743 y  -1188..  -212 z -25267..-25148 centre ( -3361,   -700, -25208)
+  n=  7 x   2743..  3979 y  -1188..  -212 z -25267..-25148 centre (  3361,   -700, -25208)
+== emitter vs nearest exhaust component centre (y within 1000 of the emitter: same deck):
+  emitter            pos(x,y,z)              nozzle centre            dx     dy     dz  |dx| outward?  dx_rec  dy_rec  dz_rec  nozzle half-width
+  effects\engines\fx_engine_emitter (  7944, -1985,-28225)  (  7970, -1873,-28462)     -26   -112    238  no     -0.26   -1.12    2.38    1127
+  effects\engines\fx_engine_emitter ( -7944, -1985,-28225)  ( -7970, -1873,-28462)      26   -112    238  no      0.26   -1.12    2.38    1127
+  effects\engines\fx_engine_emitter01 ( -2944, -1985,-28225)  ( -1800, -1739,-27140)   -1144   -246  -1085  yes   -11.45   -2.46  -10.85    1120
+  effects\engines\fx_engine_emitter02 (  2944, -1985,-28225)  (  1800, -1739,-27140)    1144   -246  -1085  yes    11.45   -2.46  -10.85    1120
+== log rows matching engine_plumes_hidden_emitter_hull: 1
+== log rows matching engine_plumes_anchor: 0
+== log rows matching anchor_record: 0

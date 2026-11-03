@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # sources changed natively (cd479d025..2c3d32ffa). Accepted beside the recorded hash until run_engine_effects.py reruns on a
 # Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
 # engine_far_jets.* and motion_output_engine_plumes_inc.h: bumped at the FL far-jet un-fence merge (e9bff9301); capture.cpp:
-# bumped at the FL ui_scale merge (78bb9b6cd) and again at the FL text_density merge (737a1a2ae); all 2026-11-03,
+# bumped at the FL ui_scale merge (78bb9b6cd) and again at the FL text_density merge (737a1a2ae); plumes_inc.h again
+# for the engine_plume_emitters default flip (step 1 closed, run 35); all 2026-11-03,
 # native-only since the record.
 # engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
 # default plumes mode, both editions, 2026-11-03).
@@ -40,7 +41,7 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_effects.h': '9bfc75be3b480a0a808c034577eeca5a2767155b89fdca2c645a9339c115e7ba',
     'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
     'src/proxy/motion_output_engine_effects_inc.h': '2b13d9eb003f451611bdbfdd3d439da091c2bcad65fe8ff5b0da10e3287843c6',
-    'src/proxy/motion_output_engine_plumes_inc.h': '19b19ca258422d216c48a4c048299db1cfcda65bfd3fc673ce5902cab23a679e',
+    'src/proxy/motion_output_engine_plumes_inc.h': '9cf741d779a9a277235904a05754257b38b5a9af483b8186f33af8864af08466',
     'src/proxy/motion_output_engine_ribbons_inc.h': '418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599',
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     'src/proxy/motion_output.h': '522d5d435d0978c2eaec2f8d6a909dad3324ad384f546e1871e6804b605a2d33',

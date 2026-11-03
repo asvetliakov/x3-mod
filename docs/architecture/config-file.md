@@ -618,7 +618,7 @@ point; no sign, exponent or padding); anything else is refused to 0.5 with `floo
 `plumes`. The launcher sends it only when given (finite 0..3, as a plain decimal); an inherited shell value is
 dropped, and it is refused under `--vanilla`.
 
-## `engine_plume_emitters` (2026-11-03, plumes step 1)
+## `engine_plume_emitters` (2026-11-03, plumes step 1; default 0 since the run 34 decision)
 
 Key `engine_plume_emitters`, environment `X3M_ENGINE_PLUME_EMITTERS`, no launcher option
 ([plumes-no-glow-hulls.md](plumes-no-glow-hulls.md) section 7, "As built"). Under `engine_effects = plumes` with
