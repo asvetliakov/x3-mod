@@ -2628,9 +2628,37 @@ failing; the three site verifiers PASS on the installed exe (measured). Installe
 (56,522,972 B), rollback `rollback-d3d9\d3d9.dll.run37` = `56e92313…`; overlay and ini unchanged. Record
 `verification/results/fl-run38/candidate.json`.
 
-**FL run 38 A (open):** while sector music plays: alt-tab away and back (music must continue where it was), pause and
+**FL run 38 A (flown 2026-11-03, accepted):** user: "All is working", two observations. (1) A few-second jump of the track
+on gate transit and on unpause. Triage (`verification/results/fl-run38/triage_music.py`, log
+`/home/asvetl/x3m-logs/fl-run38-music.log`, 1.3 GB): the unpause path is the same role, mode and `seek action=skip` as
+AP's flown Run 72 B (6 pause pairs, stop→seek 0.19–0.35 ms, pause stalls 1.0–3.6 s); `music-restart.md` §7.1 predicts the
+3–7 s forward jump there (inferred). On gate transit the old track plays through the 2–4 s jump-load stall with the
+DirectSound ring unpumped (FL stalls 3.2–4.1 s at frames 25773/111648/117672; AP run 227 the same shape), giving replay or
+skip (inferred; no position reads in the log). No FL-specific line differs from AP. Cross-edition open item. (2) Pause
+then unpause after a sector change switches to the current sector's track: documented AP queue policy (a pause ends the
+queue, only a same-id episode is handed back; `docs/architecture/music-queue.md` item 6); seq 74 defer → 78 `end
+reason=stop_all caller=pause` → 79 `seek id=27 action=vanilla` (measured). Not an issue by user rule. Nothing else wrong:
+refusals are designed fallbacks, alert armed and fired, `no_sites` on `150::WarpToSector` as on AP.
+
+Original brief: while sector music plays: alt-tab away and back (music must continue where it was), pause and
 unpause (same), save (same), fly through a gate (the current track finishes before the new sector's starts), dock at a
 station (the track keeps playing instead of the docking music) and undock, and get into or near a fight (combat music
 starts only once you or your ships are engaged, and stays about 20 game seconds after the last hit). Expect
 `music_keep … edition=fl status=patched`, `media_cue … edition=fl`, `music_alert … edition=fl status=patched` at start.
 Report a track that restarts where it should not, silence after a dock or jump, or combat music that never starts.
+
+## FL run 39 — SETA restore and manual flight on FL (installed 2026-11-03)
+
+Merge `d6c2e23cd` (Opus-high review: fix-first, the SETA restore claimed the shared injection entry before the chase
+transition's turn and would have refused the whole chase transition on every default launch; fixed by moving the FL SETA
+initialisers after the chase block in `loader.cpp` plus a `chase_pending` guard; the reviewer confirmed the fix). Host
+suite 345 modules 3,504 tests 0 failing; both site verifiers PASS on the installed exe (measured). Installed
+`C:\X3FL\d3d9.dll` = `431c2bb5…` (56,847,837 B), rollback `rollback-d3d9\d3d9.dll.run38` = `aeed7282…`; overlay and ini
+unchanged. Record `verification/results/fl-run39/candidate.json`.
+
+**FL run 39 A (open):** with SETA running, fly through a gate: SETA must come back on after arrival (and the chase view must
+restore as before). Under SETA, steer by hand: SETA must stay on and the ship must turn and strafe at normal-speed rates;
+changing speed by hand still ends it. Also confirm the chase family is unchanged (chase view after a jump, lead reticle).
+Expect `seta_restore … edition=fl status=patched`, `seta_manual_flight … edition=fl`, and `chase_transition installed=1
+status=active` unchanged from run 38. Report SETA not returning after a gate, a sluggish turn under SETA, or any chase
+regression.

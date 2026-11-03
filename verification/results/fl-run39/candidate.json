@@ -1,0 +1,19 @@
+{
+ "run": 39,
+ "step": "SETA restore and manual flight on FL (merge d6c2e23cd; init order after the chase block)",
+ "edition": "fl",
+ "commit": "bafa10f83",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "431c2bb509b89e17",
+ "dll_bytes": 56847837,
+ "installed_sha256_prefix": "431c2bb509b89e17",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run38 (aeed7282)",
+ "game_data": "unchanged",
+ "ini": "unchanged (seta_restore 1, seta_manual_flight 2 defaults)",
+ "host_tests": "run_host_suite at d6c2e23cd: 345 modules 3,504 tests 0 failing; verify_seta_restore_sites_fl and verify_seta_manual_flight_sites_fl PASS on the installed exe; native fixtures manual flight 1,414/0, restore 213/0, three init-order modes PASS",
+ "build_warnings": 0,
+ "review": "Opus high: fix-first (SETA claimed the shared injection entry before the chase transition; fixed by loader order plus chase_pending guard), fix confirmed by the same reviewer: merge",
+ "installed_at": "2026-11-03T20:28:46+04:00"
+}
