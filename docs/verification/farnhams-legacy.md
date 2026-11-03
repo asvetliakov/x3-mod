@@ -2972,7 +2972,19 @@ in `test_engine_effects.py` (13 tests OK, measured). Clean `build-fl`, 0 warning
 `75735147…` (59,059,164 B), rollback `rollback-d3d9\d3d9.dll.run42` = `143d94ec…`; exe, overlay unchanged; ini keeps
 `resource_read = verify`. Record `verification/results/fl-run43/candidate.json`.
 
-**FL run 43 A (open):** same flight as run 42 (launch, one save load, a sector change, a dock, a few minutes), plus the
+**FL run 43 A (flown 2026-11-04, accepted):** user: "done", nothing reported; no stopwatch times given. Log
+`/home/asvetl/x3m-logs/fl-run43-loading.log` (174 MB, 16,419 frames, 122 s, `exception=0`, measured): 25 reader rows,
+25 pool rows, 55 cache rows. Final `resource_reader_metric mode=verify calls=4580 handled=4411 fallbacks=169
+(fallback_not_gzip=169, every other fallback reason 0) bytes_in=768,991,382 bytes_out=2,411,553,806 verify_files=4411
+verify_equal=4411 verify_mismatched=0 verify_original_null=0 catalogue=3437 cursor_short=32`; cumulative `fast_us=4.89 s`
+against `original_us=5.23 s` for the same 4,411 records (the mod's reader 6.5 % faster in total; inflate 4.05 s of the
+4.89 s, read 0.76 s, scan 0.02 s, alloc 0.01 s; `fast_max_us=121 ms` for the largest record). `dat_handle_pool_metric
+opens=3600 reused=3585 real_opens=15 closes=4583 kept=3600 real_closes=983 errors=0 full=0 held=15`. `crypt_cache
+scope=window acquires=3162 hits=1053 misses=1 imports=1054 import_hits=1053 failed_passthrough=0 foreign_acquires=0`.
+Every record the mod's reader produced matched the native reader byte for byte; the loading quintet is live on FL. Ini
+restored to the commented default (`resource_read` fast) after the flight; run 43 stays installed.
+
+Original brief: same flight as run 42 (launch, one save load, a sector change, a dock, a few minutes), plus the
 two stopwatch times. Expect `resource_reader_metric cumulative=1 mode=verify … verify_mismatched=0 … edition=fl`,
 `dat_handle_pool_metric … edition=fl` and `crypt_cache scope=window … edition=fl` rows; the reader row's `fast_us`
 against `original_us` and its `fallbacks` are the figures this run exists for.
