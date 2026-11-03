@@ -115,7 +115,7 @@ class RunInBackgroundCore(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('run_in_background::initialize();'), 1)
+        self.assertEqual(capture.count('run_in_background::initialize();'), 2)  # the AP block, then the FL one (test_fl_run_in_background.py)
         self.assertLess(capture.index('music_keep::initialize();'), capture.index('run_in_background::initialize();'))
         self.assertIn('x3m::run_in_background::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/run_in_background.cpp', source_text(ROOT / 'CMakeLists.txt'))

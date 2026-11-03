@@ -116,7 +116,7 @@ class PauseCore(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertEqual(capture.count('pause_key_only::initialize();'), 1)
+        self.assertEqual(capture.count('pause_key_only::initialize();'), 2)  # the AP block, then the FL one (test_fl_pause_key_only.py)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('pause_key_only::initialize();'))
         self.assertIn('x3m::pause_key_only::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
         self.assertIn('src/proxy/pause_key_only.cpp', (ROOT / 'CMakeLists.txt').read_text())

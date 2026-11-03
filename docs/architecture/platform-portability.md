@@ -1079,6 +1079,23 @@ equal to an independent model; every register, DF, x87 CW, XMM7, MXCSR controls 
 alignments; five MXCSR modes; lock failure/recovery; canary-backed leaf writes; every window bit; faults; late claim).
 Not verified: in game (not flown); native Windows game behaviour.
 
+## 2026-11-03: pause key and run in background on FL (`pause_key_only`, `run_in_background` on FL)
+
+The FL edition rewrites two X3FL.exe instruction spans in place at module base + RVA
+([fl/pause-background.md](../reverse-engineering/fl/pause-background.md), "Port (2026-11-03)"): the pause wait's
+13-byte key exit at `0x07880c` (plain write, the span crosses qwords) and the startup decision's JE at `0x0776ec`
+replaced by two NOPs (`lock cmpxchg8b`), on the backend-load path inside the install window (refused after the first
+Present), behind the X3FL.exe identity and four compared windows (eleven relocated dwords checked against the base),
+each read back and rolled back by a read-back of the original bytes. No stub, no thunk, no pointer into the DLL, no
+runtime code of ours, no device call; the settings and key rule are AP's. Documented Win32 only (`VirtualProtect`,
+`FlushInstructionCache`, `ReadProcessMemory` reads through `engine_patch::read_code`), no Wine/CrossOver dependency.
+Natively verified on the Windows host through WSL interop (measured 2026-11-03): `fl_pause_key_only` 94 checks and
+`fl_run_in_background` 36 checks, 0 failures (the real relocated window bytes run vanilla and patched: all 8,191 keys,
+click, joystick, focus change, Shift and the rebound key; every seed/choice/registry case and the pump's
+GetMessageA/PeekMessageA gate unfocused; register, stack, DF and LastError parity; every window bit; rollback paths;
+late claim). Not verified: in game (not flown); native Windows game behaviour; alt-tab and the double cursor with the
+pause key only.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

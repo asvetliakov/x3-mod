@@ -2508,3 +2508,27 @@ Original brief: an ordinary flight; open the sector map and zoom so the scanner 
 `dust_leak_fix site=… edition=fl status=patched reason=ok` and `circle_fill site=… rva=10c940 edition=fl status=patched`
 at start, `dust_leak_fix_window` rows every 300 frames with a hit count that stops rising, and no visual change anywhere
 except the large scanner disc staying round. Report any crash at sector entry (the release path) and the log.
+
+## pause_key_only and run_in_background on FL (host evidence, 2026-11-03)
+
+Port of the two window fixes (`src/engine/fl/pause_key_only_fl.cpp`, `run_in_background_fl.cpp`; sites and rationale
+[fl/pause-background.md](../reverse-engineering/fl/pause-background.md), "Port (2026-11-03)"). Measured 2026-11-03 on
+X3FL.exe `e7f3aad8…dfbb8`; producing scripts in `verification/results/fl-pause-background/` (`reproduce.sh`,
+`run_fixtures.py`, `ap_objects_identical.py`).
+
+| Check | Result |
+| --- | --- |
+| `build-fl` RelWithDebInfo | 0 warnings, 0 errors |
+| `verify_pause_key_only_sites_fl.py` | PASS: 2 windows, span, 4 replacements, loop edges, `[esp+0x14]`/ESI writers, `+0x4a0` writers, DIK_PAUSE → 0x1b5, 45 anchors, AP refused |
+| `verify_run_in_background_sites_fl.py` | PASS: 2 windows, site, choice local (6 uses), registry read-only helper, input lifetime, bit readers/writers, IAT, 46 anchors, AP refused |
+| `fl_pause_key_only` (native) | 94 checks, 0 failures; sweep vanilla 8,190/8,191 exits, patched 1 (0x1b5), rebound 1 (0x2c); 1,568 flips + 6 fixups refused |
+| `fl_run_in_background` (native) | 36 checks, 0 failures; 40 cases vanilla 30 set, patched 40; parity at the input-setup call 0 bad; unfocused path GetMessageA → PeekMessageA; 752 flips + 5 fixups refused |
+| `test_fl_pause_key_only`, `test_fl_run_in_background`, `test_pause_key_only`, `test_run_in_background` | 29 tests OK, 2 skipped (AP `PauseSites`: X3AP.exe not at the default path) |
+| `generate.py --check` | PASS, 293 settings |
+| AP objects vs `main` | `capture.cpp` (41,169 lines), `pause_key_only.cpp`, `run_in_background.cpp` identical |
+
+Expected rows on the next FL launch with the defaults: `pause_key_only patched=1 key=0x1b5 reason=ok requested=1
+site=… rva=0x07880c edition=fl write=plain` and `run_in_background site=… rva=0x0776ec edition=fl status=armed
+reason=ok setting=1 … write=atomic handler=none`. Not verified: in game (not flown): Pause and only Pause or a
+click/joystick button ends the flight pause; alt-tab while paused keeps it; the game keeps running while another window
+is active; the double cursor after alt-tab. Native Windows game behaviour not verified.

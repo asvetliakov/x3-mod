@@ -285,3 +285,97 @@ incoming-edge scan found zero entries into either proposed span; the reused
 branch scanner does not cover those encodings. This is source-byte evidence,
 not native execution or live control-flow coverage. Production admission,
 rollback and user runtime gates above remain open.
+
+## Port (2026-11-03)
+
+Implemented as the two inline candidates above, unchanged:
+`src/engine/fl/pause_key_only_fl.cpp` + `pause_key_only_sites_fl.h` and
+`src/engine/fl/run_in_background_fl.cpp` + `run_in_background_sites_fl.h`, with
+the write/read-back/rollback/restore sequence shared in `inline_patch_fl.h`.
+They provide the AP namespaces (`pause_key_only.h`, `run_in_background.h`), so
+the settings (`pause_key_only`, `pause_key`, `run_in_background`), the key
+parser and key rule (`pause_key_only_core.h`) and the setting parser
+(`run_in_background_sites.h`) are AP's. Sites are RVAs added to
+`fl::module_base()`.
+
+**Install point.** The capture.cpp FL block on the backend-load path (the first
+d3d9 export, the adapter probe's Direct3DCreate9 reached from startup `0x0772bc`),
+inside the `engine_patch` install window, not the post-cookie owner the
+recommendation names (no such FL owner exists in the current source). For these
+two sites that point is sufficient: the decision window `0x0776c2` lies later on
+the same startup path (the probe dominates display setup, engine factory and
+input creation, [startup](startup.md)), and the wait loop's function has one
+caller, `0x078150`, in the main loop the startup routine has not reached. Both
+sites run only on the main thread. Whichever thread makes the first d3d9 export
+call runs the install, and the main thread blocks in the loader's InitOnce at the
+probe until it is done; the probe precedes the main loop and the decision on
+every startup path, so neither site can execute during the write. A later call
+is refused (`late_claim`).
+
+**Pause key.** Windows `entry` (`0x078690`, 60 bytes, fixups `0x07869d`,
+`0x0786af`, `0x0786b9`) and `loop` (`0x0787ee`, 136 bytes, fixups `0x0787ef`,
+`0x07882f`, `0x078860`) compared with their fixups bound to the base, then the
+13 bytes at `0x07880c` written plainly (the span crosses qwords), read back,
+rolled back by a read-back of the original bytes. Row:
+`pause_key_only patched= key= reason= requested= site= rva=0x07880c edition=fl write=plain`.
+Exact 16-bit compare as on AP: with the default key 0x1b5, a read of 0x1b5
+after a previous read of 0x11b5 (Shift+Pause) exits, which the engine's 12-bit
+compare would not (fixture case `shift_previous`); with `pause_key = 0x11b5` a
+read of 0x1b5 fails `cmp si,KEY` and falls into the mouse test.
+
+**Run in background.** Windows `decision` (`0x0776c2`, 63 bytes, fixups
+`0x0776c3`, `0x0776d6`, `0x0776e3`) and the pump's gate `pump_gate`
+(`0x0ec632`, 31 bytes, fixups `0x0ec634`, `0x0ec641`; the reader the setting
+exists for), then `74 08` → `90 90` at `0x0776ec` with one `lock cmpxchg8b`
+(qword `0x0776e8`). Row:
+`run_in_background site= rva=0x0776ec edition=fl status=armed|off|refused reason= setting= value_before=- value_after=- write=atomic handler=none`.
+No second row: nothing of the proxy runs when the startup decision does, so FL
+has no `status=patched|already` row as AP's thunk writes.
+
+**Verified** (measured 2026-11-03, producing scripts under
+`verification/results/fl-pause-background/`):
+
+- `verify_pause_key_only_sites_fl.py` PASS on `/mnt/c/X3FL/X3FL.exe`: both
+  windows (FNV `87e58492`, `8180c9b7`, exact fixup sets), the span as four whole
+  instructions writing EAX and EFLAGS only, the replacement for 0x1b5, 0x11b5,
+  0x1fff and 0x2c as four whole instructions writing EFLAGS only with the same
+  targets; no edge into the span or its first byte, no fixup in it; exit edges
+  `0x078817/0x07881f/0x078827`, mouse-test edge `0x07880a`, loop-head edge
+  `0x07885c`, loop-entry edge `0x0786c6`, one caller `0x078150`; `[esp+0x14]`
+  written only at `0x0786a4` and `0x07884c`, both zero-extended; ESI written on
+  the reaching paths only by the two MOVZX; context `+0x4a0` writers
+  `0x075ec9/0x07819c/0x0786e8/0x078870/0x07b5b5/0x07b7c4`; DIK_PAUSE through the
+  converter's tables to `0x0efe4f` (`mov eax,0x1b5`); 45 anchors; the AP window
+  and AP site bytes absent from X3FL.exe, no AP address in the header.
+- `verify_run_in_background_sites_fl.py` PASS: both windows (FNV `d9802844`,
+  `f620f8e2`); the JE alone reaching the AND, no edge into the span, NOPs in one
+  qword; the choice local's six uses in the complete startup decode
+  (`0x076bc0..0x077b78`, 1,005 instructions) and the four aliases' store
+  edges; the registry helper calls only RegOpenKeyExA, RegQueryValueExA,
+  RegCloseKey (callers `0x0776da`, `0x07bd65`); slot stores only `0x076a07`,
+  `0x0ebf0a`, `0x0ec004`, the initializer's one caller `0x0776b1`; bit
+  operations through the input word only at the decision, the two script
+  natives, the pump gate and the media query; IAT GetMessageA/PeekMessageA/
+  Direct3DCreate9; input setup's flags dead (`call` then `sub esp,0x410`);
+  46 anchors including the probe `0x0772bc` before the window; AP refused.
+- Native fixtures (MinGW i686, WSL interop, real window bytes relocated to a
+  64 KB-aligned private base): `fl_pause_key_only` 94 checks, 0 failures
+  (the real function from entry: other key then Pause, held/released/pressed,
+  click, held/new mouse, joystick rising/held/lost, focus change, Shift
+  variants, unpaused path; all 8,191 keys vanilla 8,190 exits, patched 1 for
+  0x1b5 and 1 for the rebound 0x2c; register/locals/DF parity at key, mouse
+  and joystick exits; 1,568 window bit flips and 6 fixups refused; rows for
+  unset/off/default/`44`/`0x2C`/`0x11b5`/eight bad keys/not X3FL/late claim;
+  rollback paths). `fl_run_in_background` 36 checks, 0 failures (40
+  seed/choice/registry cases vanilla 30 set, patched 40 set; registers, ESP,
+  return address and DF at the input-setup call identical; the pump gate's
+  rule; shortcut and `-noruninbg` block unfocused before and take PeekMessageA
+  after; 752 bit flips and 5 fixups refused; rows; rollback paths).
+- AP objects of `capture.cpp`, `pause_key_only.cpp`, `run_in_background.cpp`
+  byte-identical in disassembly against `main`.
+
+**Not verified:** not flown (pause exit by key, click and joystick; alt-tab
+while paused; background running unfocused; double cursor after alt-tab);
+native Windows game behaviour. Performance: no runtime code of ours; the
+patched key test is two compare/branch pairs as the study measured, and the
+background change is two startup NOPs.

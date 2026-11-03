@@ -213,6 +213,10 @@ else()
   # (docs/reverse-engineering/fl/circle-fill.md, "Port (2026-11-03)"); it provides circle_fill.h in place of the AP
   # src/proxy/circle_fill.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/circle_fill_fl.cpp)
+  # The pause key and run in background: two in-place instruction patches, the AP policy on FL bindings
+  # (docs/reverse-engineering/fl/pause-background.md, "Port (2026-11-03)"); they provide pause_key_only.h and
+  # run_in_background.h in place of the AP src/proxy/pause_key_only.cpp and run_in_background.cpp.
+  target_sources(d3d9 PRIVATE src/engine/fl/pause_key_only_fl.cpp src/engine/fl/run_in_background_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -299,6 +303,10 @@ set_source_files_properties(src/engine/fl/dust_leak_fix_fl.cpp PROPERTIES COMPIL
 # engine's B conversion is file-scope asm).
 set_source_files_properties(src/engine/fl/circle_fill_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+# The FL pause key and run in background (two in-place instruction patches, no stub, no runtime code of ours; install on
+# the backend-load path): default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/pause_key_only_fl.cpp src/engine/fl/run_in_background_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
