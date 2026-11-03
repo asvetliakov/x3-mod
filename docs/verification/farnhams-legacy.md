@@ -2711,3 +2711,20 @@ Limits: the property "skipped only while the detour path keeps the hulls apart" 
 small-ship and formation-member rows are the inherited AP rule, no detour-path proof). Known cap, shared with AP's site E: `av::fresh_window_ms` caps the step at 250 ms (`ship_avoidance_core.h`), so no window exceeds 1 s; at game-time frame steps above 1 s every B clamp, port hold and leader lookahead is stale on the next frame (the engine's own speed and leaf law then stand), as AP's E window already is. The shared core is unchanged (AP objects identical).
 Bindings no window or verifier checks (`obj+0xf8`, `f+0x224/+0x250/+0x260`, `obj+0x24..`) rest on the earlier RE and the
 exe identity; the max-speed getter's equipment branch runs in game but not in the fixture.
+
+## FL run 40 — base ship steering and avoidance on FL (installed 2026-11-03)
+
+Merge `458f3dae0` (Opus-high review: merge; six evidence and documentation items folded). User decision 2026-11-03: the
+gate, capital, traffic, lane and dock groups are not ported now and log `ap_only` rows on FL. Two deliberate FL
+differences, documented in the steering Port section: the B clamp age, port-hold gap and leader-lookahead age scale with
+the game-time step (max(250 ms, 4 steps), capped at 1 s by the shared `fresh_window_ms`, a cap shared with AP's site E);
+a recycled object pointer resets that ship's steering state. Host suite 347 modules 3,513 tests 0 failing; both site
+verifiers PASS on the installed exe (measured). Installed `C:\X3FL\d3d9.dll` = `0a81e9de…` (58,098,703 B), rollback
+`rollback-d3d9\d3d9.dll.run39` = `431c2bb5…`; overlay and ini unchanged. Record `verification/results/fl-run40/candidate.json`.
+
+**FL run 40 A (open):** watch computer-flown ships for a while, ideally near a busy station or in a sector with traffic:
+turns should follow one curve instead of yaw-then-pitch, ships should slow for their arrival point, and ships on a
+collision course with a station, asteroid or another ship should steer around it instead of stopping for the collision
+warning. Under SETA as well. Expect `ship_steering … edition=fl status=patched`, `ship_avoidance … edition=fl` and five
+`… edition=fl status=ap_only reason=not_ported` rows (gates, capital, traffic, lane, dock) at start. Report ships that
+jitter, spin, stop dead, fly into things, or any frame-rate drop in busy sectors.

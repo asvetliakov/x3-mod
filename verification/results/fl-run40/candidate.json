@@ -1,0 +1,19 @@
+{
+ "run": 40,
+ "step": "base ship_steering (+classes) and ship_avoidance on FL; gate, capital, traffic, lane and dock groups stay AP-only (ap_only rows); merge 458f3dae0",
+ "edition": "fl",
+ "commit": "458f3dae0",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "0a81e9ded4443743",
+ "dll_bytes": 58098703,
+ "installed_sha256_prefix": "0a81e9ded4443743",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run39 (431c2bb5)",
+ "game_data": "unchanged",
+ "ini": "unchanged (ship_steering 1, ship_avoidance 1 defaults)",
+ "host_tests": "run_host_suite at 458f3dae0: 347 modules 3,513 tests 0 failing; both site verifiers PASS on the installed exe; native fixtures: steering A 5,689/5,689 and B 7,093/7,093 equal to the shared core over the harness's trace rows, avoidance 46/46 cases, 19 resolved-row suppressions keep hulls apart",
+ "build_warnings": 0,
+ "review": "Opus high: merge, six evidence/doc items folded (capital case excluded from the property count, resolved-row-only wording, 1 s window cap documented, parity compile standard, unwindowed bindings listed, equipment branch noted)",
+ "installed_at": "2026-11-03T21:53:41+04:00"
+}
