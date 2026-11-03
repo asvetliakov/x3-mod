@@ -2988,3 +2988,47 @@ Original brief: same flight as run 42 (launch, one save load, a sector change, a
 two stopwatch times. Expect `resource_reader_metric cumulative=1 mode=verify … verify_mismatched=0 … edition=fl`,
 `dat_handle_pool_metric … edition=fl` and `crypt_cache scope=window … edition=fl` rows; the reader row's `fast_us`
 against `original_us` and its `fallbacks` are the figures this run exists for.
+
+## shadow caster retention on FL (host evidence, 2026-11-04)
+
+The FL lifetime observer gains the AP retirement journal, so `shadow_caster_retention` registers on FL (run 43 logged
+`shadow_retention_device … enabled=0 reason=journal`). Rule for inserts the observer never publishes: nothing can
+retain them, so their removal appends nothing; every published serial is journaled when it leaves the table; the load
+needs no FlushAll beyond AP's ([object lifetimes](../reverse-engineering/fl/object-lifetimes.md), "Port (2026-11-04)").
+The ini note "X3: Albion Prelude only." is gone from `shadow_caster_retention`. All figures measured on this checkout
+(base `3c1cf0906`); not flown.
+
+- Native fixture `verification/probe/fl_object_lifetime.cpp` (MinGW i686, WSL interop, no Wine): `RESULT PASS
+  checks=336 failures=0` (257 before the journal cases), `JOURNAL cases=12`, every case PASS; dispatch-path CPU-state
+  audit exit 0 (no x87/XMM use outside the FXSAVE envelopes). Mutants on a scratch copy: no `Retired` append in
+  `retire()` fails 11 checks in 6 cases; no `FlushAll` append in `clear_entries()` fails 5 checks in 5 cases.
+  Record: `verification/results/fl-object-lifetime/fixture.json` (`run_fixture.py`).
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fl_object_lifetime
+  verification.analysis.test_shadow_retention`: 15 tests OK, none skipped.
+- `cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j6`: links, 0 warnings.
+- `python3 -I verification/results/fl-shadow-retention/ap_objects_identical.py --base main object_lifetime.cpp
+  motion_output.cpp loader.cpp capture.cpp`: all four disassemblies identical, AP inputs changed 0 (the one changed
+  source is `src/engine/fl/object_lifetime_fl.cpp`), build-ap compiles nothing under `src/engine/fl`
+  (`verification/results/fl-shadow-retention/ap_objects.txt`).
+- `python3 tools/config/generate.py --check`: PASS 293 settings.
+
+Reproduce: `verification/results/fl-shadow-retention/reproduce.sh`. Not verified: a flight (run 44 should show
+`shadow_retention_device … enabled=1 reason=ok` and `shadow_retention_frame` rows with `known` above 0); native Windows
+behaviour.
+
+## FL run 44 — shadow caster retention on FL (installed 2026-11-04)
+
+Merge `9711544c4` (`ca31d59a8`: the retirement journal in the FL lifetime observer, AP semantics, host-evidence section
+above), Opus-high review: merge, no code finding. Clean `build-fl`, 0 warnings; `test_fl_object_lifetime` and
+`test_shadow_retention` 15 tests OK; the native fixture 336 checks (257 before), 12 journal cases, the two append
+mutants fail 11 and 5 checks (measured). Installed `C:\X3FL\d3d9.dll` = `edfb7ab5…` (59,064,120 B), rollback
+`rollback-d3d9\d3d9.dll.run43` = `75735147…`; exe, overlay and ini unchanged (`shadow_caster_retention` default on).
+Record `verification/results/fl-run44/candidate.json`.
+
+**FL run 44 A (open):** fly near a large station with the sun low, so a station arm behind or beside you casts onto
+your ship, then turn the camera (chase view and cockpit) through the arm leaving the view; also one sector change via a
+gate and one dock. Expect `shadow_retention_device … enabled=1 reason=ok` (no `reason=journal`) and
+`shadow_retention_frame` rows with `known` above 0 and `retained` rising while the caster is out of view. Visual: the
+shadow stays on your hull when the caster leaves the view, as on AP; report a shadow that lingers after its station or
+ship is gone (a ghost shadow), a shadow that still drops on turning, or flicker.
