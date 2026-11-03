@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Builds the player's release zip (docs/architecture/config-file.md, section 6).
 
-    python3 tools/release/package.py --dll build/d3d9.dll --out DIR [--regenerate-dir /tmp/x3-regenerate-dist]
-                                     [--debug-file DIR/d3d9.debug]
+    python3 tools/release/package.py --edition ap|fl --dll build-ap/d3d9.dll --out DIR
+                                     [--regenerate-dir /tmp/x3-regenerate-dist] [--debug-file DIR/d3d9.debug]
 
-Writes DIR/x3m-<version>.zip with exactly the entries of ZIP_ENTRIES, in that order: d3d9.dll (the given DLL), x3m.ini
+Writes DIR/x3m-<version>-<edition>.zip with exactly the entries of ZIP_ENTRIES, in that order: d3d9.dll (the given DLL), x3m.ini
 (the generated template assets/x3m.ini), x3m-regenerate.exe from the regenerate directory (built by
 tools/regenerate/build.py --windows), the 16 committed density fonts as f/<Name><S*d>.abc/.tga (assets/fonts/generated/F,
 docs/architecture/font-assets.md; the directory must hold exactly FONT_FILES), the two SIL OFL licence texts of their
 source fonts (assets/fonts/OFL-NotoSans.txt, OFL-Exo2.txt) and README.txt (unpack, keep an edited x3m.ini on update,
 regenerate, edit x3m.ini, the UI scale and text sharpness, send x3m.log; with the DLL's SHA-256 and the source commit,
-and with --debug-file a line saying the DLL is stripped and naming the kept debug file's SHA-256).
+and with --debug-file a line saying the DLL is stripped and naming the kept debug file's SHA-256). The edition (ap:
+X3: Albion Prelude, X3AP.exe, with the CrossOver notes; fl: X3: Farnham's Legacy, X3FL.exe, Windows only) sets the
+README's game name and executable and the zip name; the entry list is the same for both.
 CrossOver/macOS-only files never ship: no host x3m-regenerate binary and no WMA voice decoder tree (the developer bottle
 gets that through `tools/manage.py voice-decoder --install`). Refuses when `tools/config/generate.py --check` fails, so a
 stale template never ships, or when an input is missing. Entries carry a fixed timestamp, so the same inputs give the same
@@ -40,18 +42,17 @@ ZIP_ENTRIES = ['d3d9.dll', 'x3m.ini', REGENERATE_NAME, *(f'f/{name}' for name in
 README = """X3 Modern Renderer {version}
 ===========================
 
-A renderer mod for X3: Albion Prelude: temporal anti-aliasing, HDR with bloom, sun shadows, volumetric
+A renderer mod for {game}: temporal anti-aliasing, HDR with bloom, sun shadows, volumetric
 nebula fog, a chase camera and faster loading.
 
 Install
 -------
-1. Quit the game. Unpack the zip into the game folder, the folder with X3AP.exe
-   (with CrossOver: ~/Library/Application Support/CrossOver/Bottles/<bottle>/drive_c/X3).
+1. Quit the game. Unpack the zip into the game folder, the folder with {exe}{crossover_folder}.
    Updating: let d3d9.dll, x3m-regenerate.exe and README.txt overwrite the old ones, but keep an x3m.ini you
    edited (do not overwrite it) and compare it with the new one for new settings. An older x3m.ini keeps
    working: settings it lacks take their defaults, settings the new version no longer has are ignored
    and named in x3m.log.
-2. Run x3m-regenerate.exe once from that folder (with CrossOver: in the game's bottle). It prepares the fog
+2. Run x3m-regenerate.exe once from that folder{crossover_bottle}. It prepares the fog
    colours and the distant ship and station models for your game and mods, asks nothing and ends with
    "all done". Run it again after installing, updating or removing a mod.
 3. Start the game as usual.
@@ -67,7 +68,7 @@ UI size and text: ui_scale enlarges the in-game menus, sidebars and HUD panels, 
 their text at a whole-number sharpness (2x or 3x fonts) so enlarged text stays crisp. Both are auto by
 default: the UI grows with the screen height (1440 lines = 1.5, 2160 = 2; under 1350 lines = the
 game's own size) and the text density follows it. The sharper fonts are the files in the zip's f folder:
-extract that folder next to X3AP.exe as it is (it becomes the game's f folder); without them the text is
+extract that folder next to {exe} as it is (it becomes the game's f folder); without them the text is
 drawn from the game's own fonts. ui_scale = 1 in x3m.ini keeps the game's own UI size.
 The fonts in f are generated from Noto Sans and Exo 2 and, like them, are under the SIL Open Font
 License 1.1 (OFL-NotoSans.txt, OFL-Exo2.txt).
@@ -87,6 +88,18 @@ No need to run x3m-regenerate afterwards.
 Build: d3d9.dll SHA-256 {sha256}, source commit {commit}.{debug}
 """
 
+# README wording per edition (--edition); FL ships for Windows only, so its README has no CrossOver notes.
+EDITIONS = {
+    'ap': {'game': 'X3: Albion Prelude', 'exe': 'X3AP.exe',
+           'crossover_folder': '\n   (with CrossOver: ~/Library/Application Support/CrossOver/Bottles/<bottle>/drive_c/X3)',
+           'crossover_bottle': " (with CrossOver: in the game's bottle)"},
+    'fl': {'game': "X3: Farnham's Legacy", 'exe': 'X3FL.exe', 'crossover_folder': '', 'crossover_bottle': ''},
+}
+
+
+def zip_name(version, edition):
+    return f'x3m-{version}-{edition}.zip'
+
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
@@ -102,7 +115,7 @@ def source_commit():
     return commit + ('+dirty' if dirty else '')
 
 
-def manifest(dll, regenerate_dir, version, commit, debug_file=None):
+def manifest(dll, regenerate_dir, version, commit, debug_file=None, edition='ap'):
     """[(name in the zip, bytes)] in zip order; ValueError when an input is missing or the template is stale."""
     stale = [path for path, text in generate.outputs().items() if not path.is_file() or path.read_text() != text]
     if stale:
@@ -132,7 +145,8 @@ def manifest(dll, regenerate_dir, version, commit, debug_file=None):
     entries = [('d3d9.dll', dll_bytes), ('x3m.ini', TEMPLATE.read_bytes()), (REGENERATE_NAME, regenerate.read_bytes())]
     entries += [(f'f/{name}', (FONTS_DIR / name).read_bytes()) for name in FONT_FILES]
     entries += [(name, path.read_bytes()) for name, path in licences]
-    readme = README.format(version=version, sha256=sha256(dll_bytes), commit=commit, debug=debug).replace('\n', '\r\n')
+    readme = README.format(version=version, sha256=sha256(dll_bytes), commit=commit, debug=debug,
+                           **EDITIONS[edition]).replace('\n', '\r\n')
     entries.append(('README.txt', readme.encode()))
     assert [name for name, _ in entries] == ZIP_ENTRIES
     return entries
@@ -149,20 +163,22 @@ def write_zip(path, entries):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser.add_argument('--edition', required=True, choices=sorted(EDITIONS),
+                        help='the game edition the DLL was built for (X3M_EDITION): README wording and the zip name')
     parser.add_argument('--dll', required=True, help='the d3d9.dll to ship (a built candidate)')
-    parser.add_argument('--out', required=True, help='directory for x3m-<version>.zip')
+    parser.add_argument('--out', required=True, help='directory for x3m-<version>-<edition>.zip')
     parser.add_argument('--regenerate-dir', default=str(DEFAULT_REGENERATE), help='directory with x3m-regenerate.exe')
     parser.add_argument('--debug-file', help='the d3d9.debug split from a stripped --dll (README.txt names its SHA-256)')
     args = parser.parse_args(argv)
     version = generate.version()
     try:
-        entries = manifest(args.dll, args.regenerate_dir, version, source_commit(), args.debug_file)
+        entries = manifest(args.dll, args.regenerate_dir, version, source_commit(), args.debug_file, args.edition)
     except ValueError as error:
         print(f'package.py: refused: {error}', file=sys.stderr)
         return 1
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f'x3m-{version}.zip'
+    path = out / zip_name(version, args.edition)
     write_zip(path, entries)
     print(path)
     for name, data in entries:

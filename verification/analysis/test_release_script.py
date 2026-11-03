@@ -107,12 +107,17 @@ class ReleaseScript(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 self.release.parse([])  # --out is required
             with self.assertRaises(SystemExit):
-                self.release.parse(['--out', 'x', '--regenerate-dir', 'y', '--skip-windows'])
-        args = self.release.parse(['--out', 'x'])
-        self.assertEqual((args.allow_dirty, args.regenerate_dir, args.skip_windows, args.dry_run), (False, None, False, False))
+                self.release.parse(['--out', 'x'])  # --edition is required: an old invocation fails loudly
+            with self.assertRaises(SystemExit):
+                self.release.parse(['--edition', 'tc', '--out', 'x'])
+            with self.assertRaises(SystemExit):
+                self.release.parse(['--edition', 'ap', '--out', 'x', '--regenerate-dir', 'y', '--skip-windows'])
+        args = self.release.parse(['--edition', 'fl', '--out', 'x'])
+        self.assertEqual((args.edition, args.allow_dirty, args.regenerate_dir, args.skip_windows, args.dry_run),
+                         ('fl', False, None, False, False))
         with contextlib.redirect_stdout(io.StringIO()) as out, self.assertRaises(SystemExit):
             self.release.parse(['-h'])
-        for word in ('--allow-dirty', '--regenerate-dir', '--skip-windows', '--dry-run', 'release-<version>.json'):
+        for word in ('--allow-dirty', '--regenerate-dir', '--skip-windows', '--dry-run', '--edition', 'release-<version>-<edition>.json'):
             self.assertIn(word, out.getvalue())
 
     def test_tracked_changes(self):
@@ -122,12 +127,12 @@ class ReleaseScript(unittest.TestCase):
 
     def test_dirty_tree_refused(self):
         with tempfile.TemporaryDirectory() as out:
-            release = self.release.Release(self.release.parse(['--out', out]))
+            release = self.release.Release(self.release.parse(['--edition', 'ap', '--out', out]))
             status = {'rev-parse': 'a' * 40 + '\n', 'status': ' M CMakeLists.txt\n'}
             with mock.patch.object(self.release, 'git', side_effect=lambda *a: status[a[0]]):
                 with self.assertRaisesRegex(self.release.ReleaseError, 'source commit.*--allow-dirty'):
                     release.tree()
-                allowed = self.release.Release(self.release.parse(['--out', out, '--allow-dirty']))
+                allowed = self.release.Release(self.release.parse(['--edition', 'ap', '--out', out, '--allow-dirty']))
                 quiet(allowed.tree)
             self.assertEqual((allowed.record['dirty'], allowed.record['dirty_files']), (True, ['CMakeLists.txt']))
 
@@ -139,9 +144,16 @@ class ReleaseScript(unittest.TestCase):
                     mock.patch.object(self.release, 'windows_state', return_value=(True, 'bottle ok')), \
                     mock.patch.object(self.release, 'git', return_value=''), \
                     mock.patch.object(self.release, 'run', side_effect=AssertionError('dry run ran a command')):
-                code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run'])
+                code, text, _ = quiet(self.release.main, ['--edition', 'ap', '--out', str(out), '--dry-run'])
                 self.assertEqual(code, 0)
                 self.assertFalse(out.exists())
+                version = self.release.generate.version()
+                self.assertIn(f'edition ap, into {out}', text)
+                self.assertIn(f'zip:    {out / f"x3m-{version}-ap.zip"}', text)
+                self.assertIn(f'record: {out / f"release-{version}-ap.json"}', text)
+                self.assertIn('-DX3M_EDITION=ap', text)
+                self.assertIn('check_no_x87.py --edition ap', text)
+                self.assertIn('package.py --edition ap', text)
                 self.assertIn('build.py --windows --dist', text)
                 self.assertNotIn('wine_lock', text)
                 self.assertIn('gcc 1', text)
@@ -149,12 +161,19 @@ class ReleaseScript(unittest.TestCase):
                 self.assertIn('entries exactly d3d9.dll, x3m.ini, x3m-regenerate.exe, f/Harrier48.abc, f/Harrier48.tga, ', text)
                 self.assertIn('f/ZektonES78.tga, OFL-NotoSans.txt, OFL-Exo2.txt, README.txt;', text)
                 with mock.patch.object(self.release, 'windows_state', return_value=(False, 'Windows Python not found')):
-                    code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run'])
+                    code, text, _ = quiet(self.release.main, ['--edition', 'ap', '--out', str(out), '--dry-run'])
                 self.assertEqual(code, 1)
                 self.assertIn('build.py --windows --dry', text)  # tells the user how to set the Windows Python up
-                code, text, _ = quiet(self.release.main, ['--out', str(out), '--dry-run', '--skip-windows'])
+                code, text, _ = quiet(self.release.main, ['--edition', 'ap', '--out', str(out), '--dry-run', '--skip-windows'])
                 self.assertIn('NO release zip', text)
                 self.assertIn('package  SKIPPED', text)
+                code, text, _ = quiet(self.release.main, ['--edition', 'fl', '--out', str(out), '--dry-run'])
+                self.assertEqual(code, 0)
+                self.assertIn(f'zip:    {out / f"x3m-{version}-fl.zip"}', text)
+                self.assertIn(f'record: {out / f"release-{version}-fl.json"}', text)
+                self.assertIn('-DX3M_EDITION=fl', text)
+                self.assertIn('check_no_x87.py --edition fl', text)
+                self.assertNotIn('-ap.', text)
 
     def fake_run(self, out, calls, stripped=STRIPPED_PE):
         """A stand-in for release.run: fakes each tool's output files and text."""
@@ -213,17 +232,23 @@ class ReleaseScript(unittest.TestCase):
                 self.release.strip_identity(FULL_PE, broken)
 
     def test_record_schema(self):
+        for edition in ('ap', 'fl'):
+            with self.subTest(edition=edition):
+                self.check_record(edition)
+
+    def check_record(self, edition):
         calls = []
         with self.mocked_release(calls) as out:
-            code, text, err = quiet(self.release.main, ['--out', out])
+            code, text, err = quiet(self.release.main, ['--edition', edition, '--out', out])
             self.assertEqual(code, 0, err)
             builds = [(cmd, env) for cmd, env in calls if Path(cmd[1]).name == 'build.py']
             self.assertEqual([('--windows' in cmd, env) for cmd, env in builds], [(False, None), (True, None)])
             self.assertFalse([cmd for cmd, _ in calls if 'wine_lock.py' in ' '.join(cmd)])
             version = self.release.generate.version()
-            record = json.loads((Path(out) / f'release-{version}.json').read_text())
-            self.assertEqual(record['schema'], 2)
-            self.assertEqual(set(record), {'schema', 'version', 'complete', 'commit', 'dirty', 'dirty_files', 'toolchain',
+            record = json.loads((Path(out) / f'release-{version}-{edition}.json').read_text())
+            self.assertFalse((Path(out) / f'release-{version}.json').exists())
+            self.assertEqual((record['schema'], record['edition']), (2, edition))
+            self.assertEqual(set(record), {'schema', 'version', 'edition', 'complete', 'commit', 'dirty', 'dirty_files', 'toolchain',
                                            'generate_check', 'dll_warnings', 'x87', 'source_commit_marker', 'dll',
                                            'dll_unstripped', 'debug_file', 'strip', 'regenerate_source', 'regenerate',
                                            'zip', 'wall_seconds'})
@@ -236,8 +261,14 @@ class ReleaseScript(unittest.TestCase):
             self.assertEqual(objcopy, [[self.release.OBJCOPY, '--only-keep-debug', unstripped, str(base / 'd3d9.debug')],
                                        [self.release.OBJCOPY, '--strip-debug', f'--add-gnu-debuglink={base / "d3d9.debug"}',
                                         unstripped, str(base / 'd3d9.dll')]])
-            x87 = [cmd[2] for cmd, _ in calls if len(cmd) > 1 and Path(cmd[1]).name == 'check_no_x87.py']
-            self.assertEqual(x87, [str(base / 'build-release/d3d9.dll'), str(base / 'd3d9.dll')])
+            x87 = [cmd[2:] for cmd, _ in calls if len(cmd) > 1 and Path(cmd[1]).name == 'check_no_x87.py']
+            self.assertEqual(x87, [['--edition', edition, str(base / 'build-release/d3d9.dll')],
+                                   ['--edition', edition, str(base / 'd3d9.dll')]])
+            configure = [cmd for cmd, _ in calls if cmd[0] == 'cmake' and '-B' in cmd]
+            self.assertEqual(len(configure), 1)
+            self.assertIn(f'-DX3M_EDITION={edition}', configure[0])
+            package = [cmd for cmd, _ in calls if len(cmd) > 1 and Path(cmd[1]).name == 'package.py']
+            self.assertEqual(package[0][2:4], ['--edition', edition])
             sha = lambda data: hashlib.sha256(data).hexdigest()  # noqa: E731
             self.assertEqual((record['dll']['sha256'], record['dll']['bytes'], record['dll']['path']),
                              (sha(STRIPPED_PE), len(STRIPPED_PE), str(base / 'd3d9.dll')))
@@ -251,6 +282,7 @@ class ReleaseScript(unittest.TestCase):
             for step in ('tree', 'config', 'dll', 'regenerate', 'regenerate_host', 'regenerate_windows', 'package', 'total'):
                 self.assertIn(step, record['wall_seconds'])
             zip_path = Path(record['zip']['path'])
+            self.assertEqual(zip_path, base / f'x3m-{version}-{edition}.zip')
             self.assertEqual(record['zip']['sha256'], hashlib.sha256(zip_path.read_bytes()).hexdigest())
             fonts = [f'f/{stem}.{ext}' for stem in ('Harrier48', 'Harrier72', 'Tahoma26', 'Tahoma39', 'Zekton52', 'Zekton78',
                                                     'ZektonES52', 'ZektonES78') for ext in ('abc', 'tga')]
@@ -259,16 +291,18 @@ class ReleaseScript(unittest.TestCase):
             self.assertEqual({e['name']: e['sha256'] for e in record['zip']['entries']}['f/Tahoma26.tga'][:8], 'ef536bbb')
             with zipfile.ZipFile(zip_path) as archive:
                 self.assertEqual(archive.read('d3d9.dll'), STRIPPED_PE)
-                self.assertIn(f'the matching d3d9.debug (SHA-256 {sha(DEBUG_FILE)})', archive.read('README.txt').decode())
-            self.assertIn(f'release {version}', text)
+                readme = archive.read('README.txt').decode()
+                self.assertIn(f'the matching d3d9.debug (SHA-256 {sha(DEBUG_FILE)})', readme)
+                self.assertIn('the folder with X3FL.exe' if edition == 'fl' else 'the folder with X3AP.exe', readme)
+            self.assertIn(f'release {version} ({edition})', text)
 
     def test_no_strip_ships_the_build(self):
         calls = []
         with self.mocked_release(calls) as out:
-            code, text, err = quiet(self.release.main, ['--out', out, '--keep-debug-in-zip'])
+            code, text, err = quiet(self.release.main, ['--edition', 'ap', '--out', out, '--keep-debug-in-zip'])
             self.assertEqual(code, 0, err)
             self.assertFalse(any(cmd[0] == self.release.OBJCOPY for cmd, _ in calls))
-            record = json.loads((Path(out) / f'release-{self.release.generate.version()}.json').read_text())
+            record = json.loads((Path(out) / f'release-{self.release.generate.version()}-ap.json').read_text())
             self.assertEqual((record['strip'], record['debug_file'], record['dll_unstripped']), (None, None, None))
             with zipfile.ZipFile(record['zip']['path']) as archive:
                 self.assertEqual(archive.read('d3d9.dll'), FULL_PE)
@@ -280,7 +314,7 @@ class ReleaseScript(unittest.TestCase):
         broken[broken.index(b'\x55\x89\xe5\xc3') + 1] ^= 0xff  # one .text byte
         calls = []
         with self.mocked_release(calls, bytes(broken)) as out:
-            code, _, err = quiet(self.release.main, ['--out', out])
+            code, _, err = quiet(self.release.main, ['--edition', 'ap', '--out', out])
             self.assertEqual(code, 1)
             self.assertIn('.text bytes differ', err)
             self.assertFalse(any(len(cmd) > 1 and Path(cmd[1]).name == 'package.py' for cmd, _ in calls))
@@ -288,7 +322,7 @@ class ReleaseScript(unittest.TestCase):
 
     def test_build_warning_fails(self):
         with tempfile.TemporaryDirectory() as out:
-            release = self.release.Release(self.release.parse(['--out', out]))
+            release = self.release.Release(self.release.parse(['--edition', 'ap', '--out', out]))
 
             def run(cmd, **_):
                 cmd = [str(c) for c in cmd]
@@ -310,11 +344,11 @@ class ReleaseScript(unittest.TestCase):
                 mock.patch.object(self.release, 'toolchain', return_value={'mingw_gcc': 'gcc', 'cmake': 'cmake', 'python': '3'}):
             calls = []
             with mock.patch.object(self.release, 'run', side_effect=self.fake_run(out, calls)):
-                code, text, _ = quiet(self.release.main, ['--out', out, '--skip-windows'])
+                code, text, _ = quiet(self.release.main, ['--edition', 'fl', '--out', out, '--skip-windows'])
             self.assertEqual(code, 0)
             self.assertFalse(any('--windows' in cmd for cmd, _ in calls))
             self.assertFalse(any(Path(cmd[1]).name == 'package.py' for cmd, _ in calls if len(cmd) > 1))
-            record = json.loads((Path(out) / f'release-{self.release.generate.version()}.json').read_text())
+            record = json.loads((Path(out) / f'release-{self.release.generate.version()}-fl.json').read_text())
             self.assertEqual((record['complete'], record['zip'], record['strip']['result']), (False, None, 'PASS'))
             self.assertIn('NO release zip', text)
 

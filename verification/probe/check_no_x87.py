@@ -10,16 +10,19 @@ from each light hook over every function it can reach through direct calls
 boundary does not cover either, and x3m::call_preserved thunks, which run
 their callee under a full FNSAVE/FRSTOR envelope: cpu_state.h) and fails on
 any x87 opcode other than the state-transport instructions the project itself
-uses (fnsave, the fninit after it in CpuState::capture, frstor, and the
-read-only fnstcw used by diagnostic rounding guards) and the SSE
+uses (fnsave, the fninit after it in CpuState::capture, frstor, fxsave/fxrstor,
+and the read-only fnstcw used by diagnostic rounding guards) and the SSE
 control transfers (stmxcsr/ldmxcsr). Any
 indirect call, through a volatile function pointer or otherwise, is invisible
 to this walk, not only call_preserved's thunk; the runtime FNSAVE/FRSTOR
 envelope, not the audit, is what covers such callees.
 
-usage: check_no_x87.py [dll]   (default build/d3d9.dll); writes a JSON summary
-to stdout and exits non-zero on a violation.
+usage: check_no_x87.py [--edition ap|fl] [dll]   (default build/d3d9.dll, edition
+ap); writes a JSON summary to stdout and exits non-zero on a violation or a
+missing root. The edition selects the extern roots its build defines:
+EXTERN_ROOTS plus AP_EXTERN_ROOTS or FL_EXTERN_ROOTS.
 """
+import argparse
 import json
 import re
 import subprocess
@@ -58,82 +61,19 @@ LIGHT_LOADING_ROWS = ['file_open', 'file_read', 'file_seek', 'cursor_set', 'curs
                       'crypt_get_hash_param', 'crypt_destroy_hash', 'crypt_destroy_key', 'create_directory', 'delete_file',
                       'move_file', 'move_file_ex', 'write_file', 'get_file_type', 'close_handle']
 LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light::<name> (i386 PE: leading underscore)
-# The point-light root-admission handler (src/proxy/point_light_admission.cpp)
-# runs on the engine's submission thread with no boundary: walked too. The
-# pass-phase stamp handler (src/proxy/pass_phases.cpp, X3M_PASS_PHASES=1) runs
-# under LightCallBoundary at ~4,024 dispatches per busy frame: same rule, and
-# the loop-phase handler (src/proxy/loop_phases.cpp, X3M_LOOP_PHASES=1) and
-# the residual handler (src/proxy/residual_phases.cpp, X3M_RESIDUAL_PHASES=1)
-# behind the same lean stub.
+# Roots of both editions (the AP providers under src/proxy/ are shared by the FL build, or FL defines the same
+# symbol: seta_restore_fl.cpp's x3m_seta_restore_factor_write).
 EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
-                '_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter', '_x3m_residual_phase_enter',
-                # the submit-phase handler (src/proxy/submit_phases.cpp, X3M_SUBMIT_PHASES=1) behind the context variant of the lean stub
-                '_x3m_light_phase_enter', '_x3m_submit_phase_enter',
-                '_x3m_media_cue_enter', '_x3m_media_cue_return',
                 # the cull-census handlers (src/proxy/cull_census.cpp, X3M_CULL_CENSUS=1) run inside the cull/LOD pass, no boundary
                 '_x3m_cull_census_measure', '_x3m_cull_census_exit',
                 # the far-jet handler (src/proxy/engine_far_jets.cpp, X3M_ENGINE_EFFECTS=plumes with the small-parts cull) the cull
                 # stub calls inside the same pass for a JET node it culls; integer copies only
                 '_x3m_engine_far_jet',
-                # the oversized-disc port (src/proxy/circle_fill.cpp) behind the filled-ellipse entry's pushad thunk; integer only
-                '_x3m_circle_fill_wide',
-                # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
-                # engine's x87 narrow phase under LightCallBoundary only
-                '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
-                # the SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, X3M_COLLIDE_SAT_SSE2=1): the thunk the engine's
-                # x87 BVH descent calls ~2.3e5 times per frame and its body, no boundary at all (stmxcsr/ldmxcsr only)
-                '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2',
-                # the no-contact memo (src/proxy/collide_memo.cpp, X3M_COLLIDE_MEMO=1): thunk and both handlers run inside the engine's x87 mesh-pair
-                # query with no boundary at all; they compare and copy words and hold no floating-point arithmetic
-                '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store',
-                # Opt-in query clocks under assembly FNSAVE/FRSTOR, MXCSR and XMM transport.
-                '_x3m_collide_query_memo_thunk', '_x3m_collide_query_descent_thunk',
-                '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave',
-                # the own sun hook (src/proxy/own_sun_hook.cpp, X3M_OWN_SUN): the flare-probe thunk and its integer-only handler run
-                # inside the engine's record loop with no boundary (the lens bracket's thunk went on 2026-11-02)
-                '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide',
-                # sector-music keep and trace (src/proxy/music_keep.cpp, X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1): integer stubs and handlers under
-                # LightCallBoundary inside the engine's stop-all, play routine and MOV_StopMovie; the line formatter runs behind call_preserved
-                '_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub',
-                '_x3m_music_trace_stop_stub', '_x3m_music_trace_play_stub', '_x3m_music_trace_stop_movie_stub',
-                '_x3m_music_keep_stop_all', '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie',
-                '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
-                # the status-query gate at 0x004983d9 (per flag-2 record per frame inside the media update)
-                '_x3m_music_keep_status_thunk', '_x3m_music_keep_status',
-                # SETA restore (src/proxy/seta_restore.cpp, X3M_SETA_RESTORE=1): the integer stub at the TI_SetTimeWarpFactor case entry
-                # 0x004b148c and its handler under LightCallBoundary inside the VM's native dispatch; rows behind call_preserved
-                '_x3m_seta_restore_ti_stub', '_x3m_seta_restore_factor_write',
-                # SETA and manual flight (src/proxy/seta_manual_flight.cpp, X3M_SETA_MANUAL_FLIGHT=2): the helper the five controller/strafe
-                # stubs call with the engine's x87 stack live (st0 = accel); the stubs' own fmul/fild are the intended x87 and are not roots
-                '_x3m_seta_manual_flight_axis',
-                # music through the save (music-restart.md section 7): Patch E at 0x00498d71 (thunk + handler), the gzwrite /
-                # gzclose observers the import rows call while the save pump may run, and the integer shim around the engine pump
-                '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close',
-                '_x3m_music_keep_call_pump', '_x3m_music_keep_call_pause',
-                # the track queue (X3M_MUSIC_QUEUE=1): the stub on the shared play entry 0x00498c90 and its handler, the
-                # completion and delete-by-id shims around engine routines
-                '_x3m_music_queue_play_stub', '_x3m_music_queue_play', '_x3m_music_queue_call_completion', '_x3m_music_queue_call_free',
-                # the combat-music trigger (src/proxy/music_alert.cpp, X3M_MUSIC_COMBAT_TRIGGER=engaged): the integer stub at the alert
-                # routine's level site 0x0042c974 and its per-frame handler under LightCallBoundary (validated reads, one word written)
-                '_x3m_music_alert_stub', '_x3m_music_alert_frame',
-                # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
-                # handler, once per process on the game's init thread; its row is formatted behind call_preserved
-                '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',
-                # ship steering (src/proxy/ship_steering_*.cpp, X3M_SHIP_STEERING=1): the three leaf-entry stubs and the loop-continue
-                # stub assembled into the DLL, and the two handlers they call inside the engine's command pass on the light envelope
-                # (MXCSR + LastError): SSE2 only, the engine getters are indirect calls (not walked), no CRT math, no log call
-                '_x3m_ship_steering_a0_stub', '_x3m_ship_steering_a1_stub', '_x3m_ship_steering_a2_stub', '_x3m_ship_steering_b_stub',
-                '_x3m_ship_steering_enter', '_x3m_ship_steering_clamp',
-                # step 2: the warn-test entry stub (site E) and the suppression lookup it calls (X3M_SHIP_AVOIDANCE=1)
-                '_x3m_ship_avoid_e_stub', '_x3m_ship_avoid_suppress',
-                # step 3: the three gate-site stubs (P2 0x00454b91, P4 0x00454700, P5 0x0045526f) and their handlers (X3M_SHIP_STEERING_GATES)
-                '_x3m_ship_gate_p2_stub', '_x3m_ship_gate_p4_stub', '_x3m_ship_gate_p5_stub',
-                '_x3m_ship_gate_stop_a', '_x3m_ship_gate_stop_b', '_x3m_ship_gate_launch',
-                # the gate traffic controller, stage A: the launch window 0x00444606 stub and handler (X3M_SHIP_STEERING_GATES_TRAFFIC)
-                '_x3m_ship_gate_arrival_stub', '_x3m_ship_gate_arrival',
-                # engine-effect call redirects (src/proxy/engine_effects_patch.cpp, X3M_ENGINE_EFFECTS=off|plumes): the two class-test
-                # stubs on 0x004147eb and 0x0041482c, per spawn site per frame on the game thread; integer only, no call
+                # engine-effect call redirects (src/proxy/engine_effects_patch.cpp; FL: engine_effects_fl.cpp defines the same stubs,
+                # X3M_ENGINE_EFFECTS=off|plumes): the two class-test stubs per spawn site per frame on the game thread; integer only, no call
                 '_x3m_engine_effects_stub_a', '_x3m_engine_effects_stub_b',
+                # SETA restore's handler under LightCallBoundary inside the VM's native dispatch (the AP and FL stubs differ below)
+                '_x3m_seta_restore_factor_write',
                 # the window-thread message hooks (src/proxy/window_trace.cpp, X3M_WINDOW_TRACE=1 / X3M_CURSOR_REASSERT=1): run inside
                 # user32's message dispatch under LightCallBoundary; their ring writes and cursor_reassert::observe hold no floating point
                 '_x3m_window_hook_call@12', '_x3m_window_hook_ret@12', '_x3m_window_hook_get@12',
@@ -141,12 +81,113 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # vectored exception witness (any thread, first fatal-class exception) and the process-exit session_end row are
                 # integer-only and format without the CRT; log()'s append runs under the existing roots behind call_preserved
                 '_x3m_session_log_open', '_x3m_exception_witness@4', '_x3m_session_end']
+# AP-only roots (X3M_EDITION=ap). The point-light root-admission handler (src/proxy/point_light_admission.cpp)
+# runs on the engine's submission thread with no boundary: walked too. The
+# pass-phase stamp handler (src/proxy/pass_phases.cpp, X3M_PASS_PHASES=1) runs
+# under LightCallBoundary at ~4,024 dispatches per busy frame: same rule, and
+# the loop-phase handler (src/proxy/loop_phases.cpp, X3M_LOOP_PHASES=1) and
+# the residual handler (src/proxy/residual_phases.cpp, X3M_RESIDUAL_PHASES=1)
+# behind the same lean stub.
+AP_EXTERN_ROOTS = ['_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3m_loop_phase_enter', '_x3m_residual_phase_enter',
+                   # the submit-phase handler (src/proxy/submit_phases.cpp, X3M_SUBMIT_PHASES=1) behind the context variant of the lean stub
+                   '_x3m_light_phase_enter', '_x3m_submit_phase_enter',
+                   '_x3m_media_cue_enter', '_x3m_media_cue_return',
+                   # the oversized-disc port (src/proxy/circle_fill.cpp) behind the filled-ellipse entry's pushad thunk; integer only
+                   '_x3m_circle_fill_wide',
+                   # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
+                   # engine's x87 narrow phase under LightCallBoundary only
+                   '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',
+                   # the SSE2 separating-axis replacement (src/proxy/collide_sat_sse2.cpp, X3M_COLLIDE_SAT_SSE2=1): the thunk the engine's
+                   # x87 BVH descent calls ~2.3e5 times per frame and its body, no boundary at all (stmxcsr/ldmxcsr only)
+                   '_x3m_collide_sat_thunk', '_x3m_collide_sat_sse2',
+                   # the no-contact memo (src/proxy/collide_memo.cpp, X3M_COLLIDE_MEMO=1): thunk and both handlers run inside the engine's x87 mesh-pair
+                   # query with no boundary at all; they compare and copy words and hold no floating-point arithmetic
+                   '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store',
+                   # Opt-in query clocks under assembly FNSAVE/FRSTOR, MXCSR and XMM transport.
+                   '_x3m_collide_query_memo_thunk', '_x3m_collide_query_descent_thunk',
+                   '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave',
+                   # the own sun hook (src/proxy/own_sun_hook.cpp, X3M_OWN_SUN): the flare-probe thunk and its integer-only handler run
+                   # inside the engine's record loop with no boundary (the lens bracket's thunk went on 2026-11-02)
+                   '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide',
+                   # sector-music keep and trace (src/proxy/music_keep.cpp, X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1): integer stubs and handlers under
+                   # LightCallBoundary inside the engine's stop-all, play routine and MOV_StopMovie; the line formatter runs behind call_preserved
+                   '_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub',
+                   '_x3m_music_trace_stop_stub', '_x3m_music_trace_play_stub', '_x3m_music_trace_stop_movie_stub',
+                   '_x3m_music_keep_stop_all', '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie',
+                   '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
+                   # the status-query gate at 0x004983d9 (per flag-2 record per frame inside the media update)
+                   '_x3m_music_keep_status_thunk', '_x3m_music_keep_status',
+                   # SETA restore (src/proxy/seta_restore.cpp, X3M_SETA_RESTORE=1): the integer stub at the TI_SetTimeWarpFactor case entry
+                   # 0x004b148c and its handler under LightCallBoundary inside the VM's native dispatch; rows behind call_preserved
+                   '_x3m_seta_restore_ti_stub',
+                   # SETA and manual flight (src/proxy/seta_manual_flight.cpp, X3M_SETA_MANUAL_FLIGHT=2): the helper the five controller/strafe
+                   # stubs call with the engine's x87 stack live (st0 = accel); the stubs' own fmul/fild are the intended x87 and are not roots
+                   '_x3m_seta_manual_flight_axis',
+                   # music through the save (music-restart.md section 7): Patch E at 0x00498d71 (thunk + handler), the gzwrite /
+                   # gzclose observers the import rows call while the save pump may run, and the integer shim around the engine pump
+                   '_x3m_music_keep_run_thunk', '_x3m_music_keep_run', '_x3m_music_keep_gz_write', '_x3m_music_keep_gz_close',
+                   '_x3m_music_keep_call_pump', '_x3m_music_keep_call_pause',
+                   # the track queue (X3M_MUSIC_QUEUE=1): the stub on the shared play entry 0x00498c90 and its handler, the
+                   # completion and delete-by-id shims around engine routines
+                   '_x3m_music_queue_play_stub', '_x3m_music_queue_play', '_x3m_music_queue_call_completion', '_x3m_music_queue_call_free',
+                   # the combat-music trigger (src/proxy/music_alert.cpp, X3M_MUSIC_COMBAT_TRIGGER=engaged): the integer stub at the alert
+                   # routine's level site 0x0042c974 and its per-frame handler under LightCallBoundary (validated reads, one word written)
+                   '_x3m_music_alert_stub', '_x3m_music_alert_frame',
+                   # run in background (src/proxy/run_in_background.cpp, X3M_RUN_IN_BACKGROUND=1): the init-call thunk and its integer-only
+                   # handler, once per process on the game's init thread; its row is formatted behind call_preserved
+                   '_x3m_run_in_background_thunk', '_x3m_run_in_background_apply',
+                   # ship steering (src/proxy/ship_steering_*.cpp, X3M_SHIP_STEERING=1): the three leaf-entry stubs and the loop-continue
+                   # stub assembled into the DLL, and the two handlers they call inside the engine's command pass on the light envelope
+                   # (MXCSR + LastError): SSE2 only, the engine getters are indirect calls (not walked), no CRT math, no log call
+                   '_x3m_ship_steering_a0_stub', '_x3m_ship_steering_a1_stub', '_x3m_ship_steering_a2_stub', '_x3m_ship_steering_b_stub',
+                   '_x3m_ship_steering_enter', '_x3m_ship_steering_clamp',
+                   # step 2: the warn-test entry stub (site E) and the suppression lookup it calls (X3M_SHIP_AVOIDANCE=1)
+                   '_x3m_ship_avoid_e_stub', '_x3m_ship_avoid_suppress',
+                   # step 3: the three gate-site stubs (P2 0x00454b91, P4 0x00454700, P5 0x0045526f) and their handlers (X3M_SHIP_STEERING_GATES)
+                   '_x3m_ship_gate_p2_stub', '_x3m_ship_gate_p4_stub', '_x3m_ship_gate_p5_stub',
+                   '_x3m_ship_gate_stop_a', '_x3m_ship_gate_stop_b', '_x3m_ship_gate_launch',
+                   # the gate traffic controller, stage A: the launch window 0x00444606 stub and handler (X3M_SHIP_STEERING_GATES_TRAFFIC)
+                   '_x3m_ship_gate_arrival_stub', '_x3m_ship_gate_arrival']
+# FL-only roots (X3M_EDITION=fl): the src/engine/fl/*_fl.cpp counterparts of the AP roots above, same rule.
+FL_EXTERN_ROOTS = [
+    # media cue (media_cue_fl.cpp): entry and return handlers
+    '_x3m_media_cue_fl_enter', '_x3m_media_cue_fl_return',
+    # the oversized-disc port (circle_fill_fl.cpp) behind the filled-ellipse entry's pushad thunk; integer only
+    '_x3m_circle_fill_fl_wide',
+    # the no-contact memo (collide_memo_fl.cpp): thunk and both handlers inside the engine's x87 mesh-pair query
+    '_x3m_collide_memo_fl_thunk', '_x3m_collide_memo_fl_lookup', '_x3m_collide_memo_fl_store',
+    # the own sun's flare-probe thunk and its integer-only handler (sun_occlusion_fl.cpp)
+    '_x3m_fl_sun_probe_thunk', '_x3m_fl_sun_probe_decide',
+    # sector-music keep and queue (music_keep_fl.cpp): stubs, handlers, the gzwrite/gzclose import stubs and observers,
+    # and the integer shims around the engine pump, pause, completion and delete-by-id routines
+    '_x3m_music_keep_fl_a_stub', '_x3m_music_keep_fl_c_thunk', '_x3m_music_keep_fl_entry_stub',
+    '_x3m_music_keep_fl_stop_movie_stub', '_x3m_music_keep_fl_stop_all', '_x3m_music_keep_fl_stop_all_entry',
+    '_x3m_music_keep_fl_stop_movie', '_x3m_music_keep_fl_seek_decide', '_x3m_music_keep_fl_status_thunk',
+    '_x3m_music_keep_fl_status', '_x3m_music_keep_fl_run_thunk', '_x3m_music_keep_fl_run',
+    '_x3m_music_keep_fl_gzwrite_stub', '_x3m_music_keep_fl_gzclose_stub', '_x3m_music_keep_fl_gz_write',
+    '_x3m_music_keep_fl_gz_close', '_x3m_music_keep_fl_call_pump', '_x3m_music_keep_fl_call_pause',
+    '_x3m_music_keep_fl_play_stub', '_x3m_music_keep_fl_queue_play', '_x3m_music_keep_fl_call_completion',
+    '_x3m_music_keep_fl_call_free',
+    # the combat-music trigger (music_alert_fl.cpp): level-site stub and per-frame handler
+    '_x3m_music_alert_fl_stub', '_x3m_music_alert_fl_frame',
+    # SETA restore's TI_SetTimeWarpFactor stub (seta_restore_fl.cpp; the handler is a shared root)
+    '_x3m_fl_seta_restore_ti_stub',
+    # SETA and manual flight (seta_manual_flight_fl.cpp): the helper the controller/strafe stubs call with st0 live; the
+    # stubs' own x87 is intended and they are not roots
+    '_x3m_fl_seta_manual_flight_axis',
+    # ship steering and avoidance (ship_steering_fl.cpp, ship_avoidance_fl.cpp): leaf/loop stubs, handlers, warn-test stub
+    '_x3m_fl_ship_steering_a0_stub', '_x3m_fl_ship_steering_a1_stub', '_x3m_fl_ship_steering_a2_stub',
+    '_x3m_fl_ship_steering_b_stub', '_x3m_fl_ship_steering_enter', '_x3m_fl_ship_steering_clamp',
+    '_x3m_fl_ship_avoid_e_stub', '_x3m_fl_ship_avoid_suppress']
+EDITION_ROOTS = {'ap': AP_EXTERN_ROOTS, 'fl': FL_EXTERN_ROOTS}
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own
 # reachable set must hold no state transport either (the shell is really gone).
 OWNERSHIP_LIGHT = '__ZN3x3m9ownership26get_buffer_lock_view_lightE'
-ALLOWED = {'fnstcw', 'fnsave', 'fninit', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}  # fninit only follows fnsave in CpuState::capture
+# fninit only follows fnsave in CpuState::capture. fxsave/fxrstor are the FXSAVE-image counterparts of fnsave/frstor:
+# state transport around a log row (src/engine/fl/circle_fill_fl.cpp's first-wide row restores the image it saved).
+ALLOWED = {'fnstcw', 'fnsave', 'fninit', 'frstor', 'fxsave', 'fxrstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')
 DIRECT_CALL = re.compile(r'^(?:call|jmp)\s+[0-9a-f]+ <([^>]+)>')
@@ -225,8 +266,13 @@ def walk(functions, roots):
     return seen
 
 
-def main():
-    dll = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'build/d3d9.dll'
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='x87 audit of the light hook roots of a built proxy DLL')
+    parser.add_argument('dll', nargs='?', default=str(ROOT / 'build/d3d9.dll'))
+    parser.add_argument('--edition', choices=sorted(EDITION_ROOTS), default='ap',
+                        help='the X3M_EDITION the DLL was built for: selects the edition-only extern roots (default ap)')
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    dll = Path(args.dll)
     functions = disassemble(dll)
     roots = {}
     for hook in LIGHT_HOOKS + GZ_HOOKS + CRYPT_HOOKS:
@@ -249,7 +295,7 @@ def main():
             print(json.dumps({'result': 'FAIL', 'error': f'crypt_cache::{name}: {len(symbols)} symbols {symbols}'}))
             return 1
         roots['crypt_cache::' + name] = symbols[0]
-    for symbol in EXTERN_ROOTS:
+    for symbol in EXTERN_ROOTS + EDITION_ROOTS[args.edition]:
         if symbol not in functions:
             print(json.dumps({'result': 'FAIL', 'error': f'{symbol}: not found'}))
             return 1
@@ -267,7 +313,7 @@ def main():
         return 1
     seen = walk(functions, roots.values())
     violations = {name: lines for name, lines in seen.items() if lines}
-    summary = {'result': 'FAIL' if violations else 'PASS', 'dll': str(dll), 'roots': roots,
+    summary = {'result': 'FAIL' if violations else 'PASS', 'dll': str(dll), 'edition': args.edition, 'roots': roots,
                'reachable_functions': len(seen), 'violations': violations}
     print(json.dumps(summary, indent=2))
     return 1 if violations else 0

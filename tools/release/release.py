@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """One-command release: build the DLL and x3m-regenerate from this checkout and package the player's zip.
 
-    python3 tools/release/release.py --out DIR [--allow-dirty] [--regenerate-dir PATH | --skip-windows] [--no-strip]
-                                     [--dry-run]
+    python3 tools/release/release.py --edition ap|fl --out DIR [--allow-dirty] [--regenerate-dir PATH | --skip-windows]
+                                     [--no-strip] [--dry-run]
+
+--edition is required (no default): ap builds the X3: Albion Prelude DLL, fl the X3: Farnham's Legacy DLL
+(-DX3M_EDITION=<edition>). Use a separate --out per edition: build-release/, the DLL, the debug file and unstripped/
+carry no edition in their names.
 
 Steps, in order (each one stops the release on failure):
   1. tree     refuse when `git status --porcelain` shows tracked changes (the zip's README.txt records the source
               commit, so it must describe what was built); --allow-dirty builds anyway and records dirty=true
   2. config   tools/config/generate.py --check (the shipped x3m.ini template is current)
-  3. dll      fresh CMake build in DIR/build-release (MinGW i686, RelWithDebInfo); any compiler, linker or CMake
-              warning fails the release; then verification/probe/check_no_x87.py must report 0 violations and the
+  3. dll      fresh CMake build in DIR/build-release (MinGW i686, RelWithDebInfo, -DX3M_EDITION=<edition>); any
+              compiler, linker or CMake warning fails the release; then verification/probe/check_no_x87.py
+              --edition <edition> must report 0 violations and the
               X3M_SOURCE_COMMIT= marker must occur once and name the commit. Then the strip: the unstripped DLL is
               kept as DIR/unstripped/d3d9.dll; `objcopy --only-keep-debug` writes DIR/d3d9.debug and
               `objcopy --strip-debug --add-gnu-debuglink=DIR/d3d9.debug` writes DIR/d3d9.dll, the DLL that ships.
@@ -23,12 +28,12 @@ Steps, in order (each one stops the release on failure):
               --regenerate-dir PATH ships existing binaries instead (no build, no smoke test);
               --skip-windows builds and smoke-tests the host binary only and produces no zip (the zip requires
               x3m-regenerate.exe)
-  5. package  tools/release/package.py, then the zip is listed, its entries must be exactly package.py's ZIP_ENTRIES
+  5. package  tools/release/package.py --edition <edition> -> DIR/x3m-<version>-<edition>.zip, then the zip is listed, its entries must be exactly package.py's ZIP_ENTRIES
               in order: d3d9.dll, x3m.ini, x3m-regenerate.exe, the 16 density fonts f/<Name><S*d>.abc/.tga,
               OFL-NotoSans.txt, OFL-Exo2.txt and README.txt (no macOS binary, no CrossOver voice decoder); its
               d3d9.dll and x3m-regenerate.exe are re-hashed against steps 3 and 4 and its fonts against the committed
               assets/fonts/generated/F
-  6. record   DIR/release-<version>.json (schema 2: commit, dirty, toolchain, hashes of the shipped and the unstripped
+  6. record   DIR/release-<version>-<edition>.json (schema 2: edition, commit, dirty, toolchain, hashes of the shipped and the unstripped
               DLL and of the debug file, the strip identity check, check results, wall times)
 
 --dry-run prints the plan and the toolchain check and builds nothing. The version is project(VERSION) in
@@ -263,11 +268,20 @@ def windows_state():
     return regenerate_build.windows_ready()
 
 
+def zip_path(out, version, edition):
+    return out / PACKAGE.zip_name(version, edition)
+
+
+def record_path(out, version, edition):
+    return out / f'release-{version}-{edition}.json'
+
+
 def plan(args, out, version):
     steps = ['1 tree     git status --porcelain: tracked changes ' + ('allowed (--allow-dirty)' if args.allow_dirty
                                                                        else 'refused'),
              '2 config   tools/config/generate.py --check',
-             f'3 dll      cmake configure + build in {out / "build-release"} (0 warnings), check_no_x87.py (0 violations), '
+             f'3 dll      cmake configure -DX3M_EDITION={args.edition} + build in {out / "build-release"} (0 warnings), '
+             f'check_no_x87.py --edition {args.edition} (0 violations), '
              'X3M_SOURCE_COMMIT marker once']
     if args.no_strip:
         steps.append('           no strip (--no-strip): the zip ships the unstripped RelWithDebInfo DLL')
@@ -285,9 +299,10 @@ def plan(args, out, version):
     if args.skip_windows:
         steps.append('5 package  SKIPPED (--skip-windows: no x3m-regenerate.exe)')
     else:
-        steps.append(f'5 package  package.py -> {out / f"x3m-{version}.zip"}; entries exactly {", ".join(ZIP_ENTRIES)}; '
+        steps.append(f'5 package  package.py --edition {args.edition} -> {zip_path(out, version, args.edition)}; '
+                     f'entries exactly {", ".join(ZIP_ENTRIES)}; '
                      're-hash d3d9.dll, x3m-regenerate.exe and the fonts')
-    steps.append(f'6 record   {out / f"release-{version}.json"}')
+    steps.append(f'6 record   {record_path(out, version, args.edition)}')
     return steps
 
 
@@ -297,7 +312,7 @@ class Release:
         self.out = Path(args.out).resolve()
         self.version = generate.version()
         self.times = {}
-        self.record = {'schema': SCHEMA, 'version': self.version, 'complete': False}
+        self.record = {'schema': SCHEMA, 'version': self.version, 'edition': args.edition, 'complete': False}
 
     def step(self, name, function):
         print(f'\n=== {name} ===', flush=True)
@@ -336,7 +351,8 @@ class Release:
             print(f'removing the previous {build} (a build directory is never reused)')
             shutil.rmtree(build)
         configure = ['cmake', '-S', ROOT, '-B', build, f'-DCMAKE_TOOLCHAIN_FILE={TOOLCHAIN}',
-                     '-DCMAKE_BUILD_TYPE=RelWithDebInfo', f'-DPython3_EXECUTABLE={sys.executable}']
+                     '-DCMAKE_BUILD_TYPE=RelWithDebInfo', f'-DX3M_EDITION={self.args.edition}',
+                     f'-DPython3_EXECUTABLE={sys.executable}']
         code, configure_text = run(configure)
         if code:
             raise ReleaseError(f'cmake configure failed (exit {code})')
@@ -369,7 +385,7 @@ class Release:
 
     def x87_audit(self, dll):
         """check_no_x87.py on one DLL: its summary for the record, ReleaseError unless PASS with 0 violations."""
-        code, text = run([sys.executable, X87_PY, dll], echo=False)
+        code, text = run([sys.executable, X87_PY, '--edition', self.args.edition, dll], echo=False)
         try:
             summary = json.loads(text[text.index('{'):])
         except ValueError:
@@ -451,14 +467,14 @@ class Release:
     # 5
     def package(self):
         debug = ['--debug-file', self.record['debug_file']['path']] if self.record.get('debug_file') else []
-        code, _ = run([sys.executable, PACKAGE_PY, '--dll', self.dll_path, '--out', self.out, '--regenerate-dir',
+        code, _ = run([sys.executable, PACKAGE_PY, '--edition', self.args.edition, '--dll', self.dll_path, '--out', self.out, '--regenerate-dir',
                        self.regenerate_dir, *debug])
-        zip_path = self.out / f'x3m-{self.version}.zip'
-        if code or not zip_path.is_file():
+        zip_file = zip_path(self.out, self.version, self.args.edition)
+        if code or not zip_file.is_file():
             raise ReleaseError(f'package.py failed (exit {code})')
-        with zipfile.ZipFile(zip_path) as archive:
+        with zipfile.ZipFile(zip_file) as archive:
             if archive.testzip() is not None:
-                raise ReleaseError(f'{zip_path}: CRC error')
+                raise ReleaseError(f'{zip_file}: CRC error')
             listing = [(info.filename, info.file_size, hashlib.sha256(archive.read(info.filename)).hexdigest())
                        for info in archive.infolist()]
         names = [name for name, _, _ in listing]
@@ -472,7 +488,7 @@ class Release:
         fonts = [name for name in PACKAGE.FONT_FILES if hashes[f'f/{name}'] != sha256_file(PACKAGE.FONTS_DIR / name)]
         if fonts:
             raise ReleaseError(f'the zip\'s fonts {fonts} do not match {PACKAGE.FONTS_DIR}')
-        self.record['zip'] = {'path': str(zip_path), 'sha256': sha256_file(zip_path), 'bytes': zip_path.stat().st_size,
+        self.record['zip'] = {'path': str(zip_file), 'sha256': sha256_file(zip_file), 'bytes': zip_file.stat().st_size,
                               'entries': [{'name': n, 'bytes': b, 'sha256': d} for n, b, d in listing]}
         print(f'zip verified: exactly {", ".join(ZIP_ENTRIES)}; d3d9.dll and x3m-regenerate.exe match the built files, '
               f'the {len(PACKAGE.FONT_FILES)} fonts match {PACKAGE.FONTS_DIR.relative_to(ROOT)}')
@@ -497,13 +513,13 @@ class Release:
             self.record['complete'] = True
         self.times['total'] = round(time.monotonic() - started, 1)
         self.record['wall_seconds'] = self.times
-        path = self.out / f'release-{self.version}.json'
+        path = record_path(self.out, self.version, self.args.edition)
         path.write_text(json.dumps(self.record, indent=2) + '\n')
         self.listing(path)
 
     def listing(self, record_path):
         record = self.record
-        print(f'\n=== release {self.version} ===')
+        print(f'\n=== release {self.version} ({self.args.edition}) ===')
         print(f'commit             {record["commit"]}{" (dirty)" if record["dirty"] else ""}')
         print(f'toolchain          {record["toolchain"]["mingw_gcc"]}; {record["toolchain"]["cmake"]}')
         print(f'config             generate.py --check {record["generate_check"]}')
@@ -534,7 +550,9 @@ class Release:
 def dry_run(args):
     out = Path(args.out).resolve()
     version = generate.version()
-    print(f'release {version} into {out} (dry run: nothing is built)')
+    print(f'release {version}, edition {args.edition}, into {out} (dry run: nothing is built)')
+    print(f'zip:    {zip_path(out, version, args.edition)}')
+    print(f'record: {record_path(out, version, args.edition)}')
     for line in plan(args, out, version):
         print('  ' + line)
     tools = toolchain()
@@ -561,6 +579,8 @@ def dry_run(args):
 def parse(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0],
                                      epilog=__doc__.split('\n\n', 1)[1], formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--edition', required=True, choices=('ap', 'fl'),
+                        help="game edition: ap (X3: Albion Prelude) or fl (X3: Farnham's Legacy); no default")
     parser.add_argument('--out', required=True, help='output directory (build-release/, regenerate/, the zip, the record)')
     parser.add_argument('--allow-dirty', action='store_true',
                         help='build with tracked changes in the tree (the zip still names HEAD; recorded as dirty)')
