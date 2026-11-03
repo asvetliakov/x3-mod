@@ -134,7 +134,7 @@ class FlSetaManualFlightWiring(unittest.TestCase):
         schema = (ROOT / 'tools/config/schema.py').read_text()
         entry = schema[schema.index("entry('seta_manual_flight',"):]
         entry = entry[:entry.index('\n    entry(')]
-        self.assertIn("X3: Albion Prelude and X3: Farnham\\'s Legacy.", entry)
+        self.assertNotIn('Albion Prelude only', entry)  # both editions: no edition note (convention 2026-11-04)
 
     def test_module_binds_fl_only_and_reuses_the_decision(self):
         module = strip(MODULE.read_text())

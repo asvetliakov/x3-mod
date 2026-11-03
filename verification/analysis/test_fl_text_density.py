@@ -164,7 +164,6 @@ class FlTextDensityWiring(unittest.TestCase):
     def test_schema_wording(self):
         schema = (ROOT / 'tools/config/schema.py').read_text()
         ui = schema[schema.index("entry('ui_scale'"):schema.index("entry('text_density'")]
-        self.assertIn("X3: Albion Prelude and X3: Farnham\\'s Legacy.", ui)
         self.assertNotIn('Albion Prelude only', ui)
         density = schema[schema.index("entry('text_density'"):schema.index("entry('chase_pitch_down_deg'")]
         self.assertIn('X3FL.exe', density)

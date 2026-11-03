@@ -156,7 +156,7 @@ class FlRunInBackgroundWiring(unittest.TestCase):
         spec.loader.exec_module(schema)
         entries = {e['key']: e for e in schema.SETTINGS}
         for key in ('pause_key_only', 'pause_key', 'run_in_background'):
-            self.assertTrue(entries[key]['description'].endswith("X3: Albion Prelude and X3: Farnham's Legacy."), key)
+            self.assertNotIn('Albion Prelude only', entries[key]['description'], key)  # both editions: no note
 
 
 if __name__ == '__main__':

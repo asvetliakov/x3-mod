@@ -628,6 +628,15 @@ CrossOver) sends a host `--config PATH` as the Wine path `Z:<absolute host path>
 `X3M_CONFIG=bare` (no file, no built-in defaults). `proxy_options` now lists the effective settings with their source
 (`NAME=value@env|@file|@default`). Native Windows unverified.
 
+Edition note in the ini comments (convention 2026-11-04, user decision): a setting that works on both X3: Albion Prelude
+and X3: Farnham's Legacy carries no edition sentence; a setting that does nothing on Farnham's Legacy ends with
+"X3: Albion Prelude only." (`tools/config/schema.py` is the source; `generate.py` writes the ini). The AP-only keys after
+the 2026-11-04 sweep of the run 43 FL log and the edition gates: the five steering gate/dock keys, `voice_dmo_fallback`,
+`sun_flare_fix`, `point_light_root_admission` (user decision), `shadow_caster_retention` (the FL lifetime journal refuses
+registration, `shadow_retention_device … reason=journal`), `ship_trace` and `ship_trace_max` (`ap_only reason=not_ported`),
+and the `engine` value of `occlusion_cull` (draw-level cull only on FL, `engine_status=ap_only`). `collide_sat_sse2`
+keeps its own sentence (FL is already SSE). Tests under `verification/analysis/test_fl_*.py` assert the convention.
+
 ## 2026-09-26: bolts through the TAA (`--bolt-far-composite`, default on)
 
 Documented D3D9 throughout (`docs/architecture/bolts-through-taa.md`, "Native Windows"): `SetRenderTarget` on indices

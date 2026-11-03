@@ -239,10 +239,11 @@ class FlLoadingWiring(unittest.TestCase):
         self.assertEqual(subprocess.run(['python3', str(ROOT / 'tools/config/generate.py'), '--check'],
                                         capture_output=True).returncode, 0)
         ini = (ROOT / 'assets/x3m.ini').read_text()
-        # Each of the five loading keys declares both editions; the ini wraps comments, so compare on the unwrapped text.
+        # The five loading keys work on both editions, so none carries the "X3: Albion Prelude only." note
+        # (convention 2026-11-04); the ini wraps comments, so compare on the unwrapped text.
         loading = ini[ini.index('[loading]'):ini.index('[engine]')]
         flat = re.sub(r'\n;\s*', ' ', loading)
-        self.assertEqual(flat.count("X3: Albion Prelude and X3: Farnham's Legacy."), 5)
+        self.assertNotIn('Albion Prelude only', flat)
         self.assertNotIn('reads natively', flat)
 
 

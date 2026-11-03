@@ -144,9 +144,9 @@ class FlShipSteeringWiring(unittest.TestCase):
                           ('ship_steering_gates_lane', False), ('ship_steering_dock', False)):
             entry = schema[schema.index(f"entry('{key}',"):]
             entry = entry[:entry.index('\n    entry(')]
-            want = "X3: Albion Prelude and X3: Farnham\\'s Legacy." if both else \
-                "X3: Albion Prelude only for now; ignored on Farnham\\'s Legacy."
-            self.assertIn(want, entry, key)
+            # Convention (2026-11-04): a setting that works on both editions carries no edition note; an AP-only one
+            # ends with "X3: Albion Prelude only."
+            (self.assertNotIn if both else self.assertIn)('X3: Albion Prelude only.', entry, key)
 
     def test_module_binds_fl_only_and_reuses_the_cores(self):
         text = ''.join(strip(p.read_text()) for p in MODULES) + strip(SITES.read_text())

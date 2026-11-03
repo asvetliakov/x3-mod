@@ -137,7 +137,8 @@ SETTINGS = [
           'that comes into view appears one frame late. Measured on CrossOver/DXVK (2026-10-08): no frame-time change, '
           'so off is the default; on = skip hidden parts, off = draw them, engine = also let the game itself skip '
           'such a part\'s whole render step every other frame (test build; a part coming into view appears one to two '
-          'frames late, a hidden part casts no shadow and its textures pause while skipped).',
+          'frames late, a hidden part casts no shadow and its textures pause while skipped). The engine value is X3: Albion '
+          'Prelude only.',
           builtin='off', choices=('on', 'off', 'engine'), since='2026-10-08'),
     entry('occlusion_cull_retest', 'int', 'graphics', 'How often, in frames, a ship part that the last occlusion test found '
           'visible is tested again (occlusion_cull = on). Hidden parts are tested every frame, and a part that moves or '
@@ -158,8 +159,7 @@ SETTINGS = [
           requires=('bolt_far_composite',), launcher='--bolt-far-show'),
     entry('own_sun', 'bool', 'graphics', 'The mod draws its own sun, a small bright centre in a wide soft glow with a few '
           'soft rays, in the sector\'s sun colour, that ships and stations cover exactly and fog dims, instead of the game\'s '
-          'sun flare. 1 = on (default), 0 = the game\'s own sun. X3: Albion '
-          'Prelude and X3: Farnham\'s Legacy.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
+          'sun flare. 1 = on (default), 0 = the game\'s own sun.', '1', builtin='1', requires=('taa', 'hdr'), launcher='--own-sun', since='2026-11-02',
           aliases=('sun_occlusion',)),
     entry('sun_disc_radius', 'float', 'graphics', 'Size of the bright centre of the mod\'s own sun (own_sun = 1): its radius as a '
           'fraction of the screen height, 0.005 to 0.25; 0.012 = 9 pixels on a 768-row screen, 17 on a 1440-row one. The glow and '
@@ -247,7 +247,7 @@ SETTINGS = [
     entry('shadow_alpha_casters', 'bool', 'shadows', 'Lets see-through cut-out parts (grilles, lattices) cast their real shadow '
           'shape. 1 = on, 0 = off.', '1', requires=('shadow_replay_depth',), launcher='--shadow-alpha-casters'),
     entry('shadow_caster_retention', 'bool', 'shadows', 'Keeps a shadow for a few frames when the game briefly skips drawing its '
-          'object, against flickering shadows. 1 = on, 0 = off.', '1', requires=('shadow_cascades',), launcher='--shadow-caster-retention'),
+          'object, against flickering shadows. 1 = on, 0 = off. X3: Albion Prelude only.', '1', requires=('shadow_cascades',), launcher='--shadow-caster-retention'),
     entry('sun_shadow_bias_units', 'float', 'shadows', 'Shadow offset in game units against speckled self-shadowing ("shadow acne"). '
           'Higher removes speckles but detaches shadows slightly. 0 to 1000.', '0.53571875', range=(0.0, 1000.0), requires=('sun_shadow_apply',),
           launcher='--sun-shadow-bias-units'),
@@ -287,16 +287,14 @@ SETTINGS = [
     entry('fog_handover_prefill', 'bool', 'fog', 'Prepares the next sector\'s fog while the jump is still under way. 1 = on, 0 = off.',
           '1', requires=('volumetric_fog_range',), launcher='--fog-handover-prefill'),
     # ---------------------------------------------------------------- camera
-    entry('camera', 'enum', 'camera', 'The external (back) view. chase = a smoothly following chase camera, vanilla = the game\'s own. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.',
+    entry('camera', 'enum', 'camera', 'The external (back) view. chase = a smoothly following chase camera, vanilla = the game\'s own.',
           'chase', choices=('chase', 'vanilla'), launcher='--camera'),
     entry('fov', 'float', 'camera', 'Field of view in degrees, counted like X4: the horizontal angle on a 16:9 screen, 70 to 100 '
-          '(the same on every screen shape). game = the game\'s own field of view. X3: Albion Prelude and X3: Farnham\'s '
-          'Legacy.', '90', range=(70.0, 100.0), choices=('game',),
+          '(the same on every screen shape). game = the game\'s own field of view.', '90', range=(70.0, 100.0), choices=('game',),
           launcher='--fov'),
     entry('ui_scale', 'float', 'camera', 'Size of the in-game menus, sidebars and HUD panels (not the main menu). 1 = the '
           'game\'s own size, 1.5 = one and a half times, up to 3; auto = from the screen height (1080 lines = 1, 1440 = 1.5, '
-          '2160 = 2). X3: Albion Prelude and X3: Farnham\'s Legacy. text_density draws the text sharper.',
+          '2160 = 2). text_density draws the text sharper.',
           'auto', range=(1.0, 3.0), choices=('auto',), launcher='--ui-scale'),
     entry('text_density', 'enum', 'camera', 'Sharpness of the in-game text under ui_scale: the text is drawn at this whole-number '
           'density and shrunk to the UI size instead of being enlarged from the game\'s 1x fonts. auto = the smallest whole number '
@@ -304,22 +302,21 @@ SETTINGS = [
           'next to X3AP.exe or X3FL.exe (shipped in the mod\'s zip; installed by manage.py install, or by manage.py '
           'density-fonts --edition fl for X3: Farnham\'s Legacy); if any of them is missing, the setting turns itself off and '
           'the log says which file. Farnham\'s Legacy in Japanese (-L081) also needs UmePlusCLP font files the mod does not '
-          'ship, so the setting stays off there. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'auto', choices=('auto', '1', '2', '3'),
+          'ship, so the setting stays off there.', 'auto', choices=('auto', '1', '2', '3'),
           launcher='--text-density'),
-    entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '0.5',
+    entry('chase_pitch_down_deg', 'float', 'camera', 'How far the chase camera looks down on your ship, in degrees. 0 to 30.', '0.5',
           range=(0.0, 30.0), requires=('camera',), launcher='--chase-pitch-down-deg'),
     entry('chase_offset_y', 'float', 'camera', 'Where your ship sits on screen in the chase view: 0 = centre, 0.5 = halfway down, '
-          'negative = above centre. -1 to 1. X3: Albion Prelude and X3: Farnham\'s Legacy.', '0.5', range=(-1.0, 1.0),
+          'negative = above centre. -1 to 1.', '0.5', range=(-1.0, 1.0),
           requires=('camera',), launcher='--chase-offset-y'),
     entry('chase_distance_scale', 'float', 'camera', 'Distance of the chase camera as a multiple of the game\'s. Larger = farther '
-          'back. Above 0, up to 10. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1.05', range=[R(0, 10, True)],
+          'back. Above 0, up to 10.', '1.05', range=[R(0, 10, True)],
           requires=('camera',), launcher='--chase-distance-scale'),
     entry('chase_fov_compensate', 'bool', 'camera', 'Keeps your ship the same size on screen in the chase view whatever the field of '
-          'view. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', requires=('camera',),
+          'view. 1 = on, 0 = off.', '1', requires=('camera',),
           launcher='--chase-fov-compensate'),
     entry('chase_hud_anchor', 'enum', 'camera', 'Where the aiming reticle sits in the chase view. forward = where the ship '
-          'points, centre = the screen centre. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
+          'points, centre = the screen centre.', 'forward', choices=('forward', 'centre'), requires=('camera',), launcher='--chase-hud-anchor'),
     entry('chase_view_restore', 'bool', 'camera', 'Returns to the chase '
           'view after a gate jump or jumpdrive. 1 = on, 0 = off.', '1',
           requires=('camera',), launcher='--chase-view-restore'),
@@ -334,52 +331,47 @@ SETTINGS = [
     entry('cursor_reassert', 'bool', 'window', 'Re-hides the system mouse cursor after switching back to the game, against a '
           'second cursor. 1 = on, 0 = off.', builtin='0', launcher='--cursor-reassert'),
     entry('pause_key_only', 'bool', 'window', 'Only the Pause key (or a click) ends the pause; other keys and switching windows '
-          'do not. 1 = on, 0 = the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', launcher='--pause-key-only'),
-    entry('pause_key', 'string', 'window', 'The game\'s key code of a rebound pause key (decimal or 0x hex). Empty = the Pause key. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.',
+          'do not. 1 = on, 0 = the game\'s own.', '1', launcher='--pause-key-only'),
+    entry('pause_key', 'string', 'window', 'The game\'s key code of a rebound pause key (decimal or 0x hex). Empty = the Pause key. ',
           builtin='', requires=('pause_key_only',), launcher='--pause-key'),
     entry('run_in_background', 'bool', 'window', 'Keeps the game running while another window is active, as the -runinbg start '
-          'option does, so switching back to the game does not stall. 1 = on, 0 = the game\'s own. X3: Albion Prelude and '
-          'X3: Farnham\'s Legacy.', '1',
+          'option does, so switching back to the game does not stall. 1 = on, 0 = the game\'s own.', '1',
           launcher='--run-in-background', since='2026-09-27'),
     # ---------------------------------------------------------------- audio
     entry('music_keep', 'bool', 'audio', 'Sector music keeps playing where it was across switching windows, saving and pausing, '
-          'instead of restarting. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          'instead of restarting. 1 = on, 0 = off.', '1',
           launcher='--music-keep'),
     entry('music_queue', 'bool', 'audio', 'When you change sector, the music track that is playing finishes before the new '
           'sector\'s track starts; several sector changes before that end go straight to the newest sector\'s track. '
-          'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off. X3: Albion Prelude '
-          'and X3: Farnham\'s Legacy.', '1',
+          'Combat music still starts at once. Does nothing when music_keep = 0. 1 = on, 0 = off.', '1',
           requires=('music_keep',), launcher='--music-queue', since='2026-10-23'),
     entry('music_dock_keep', 'bool', 'audio', 'When you dock, the track that is playing keeps playing instead of the landing and '
           'docking music, and undocking leaves it playing too. Combat music still starts at once. Does nothing when '
-          'music_queue = 0. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          'music_queue = 0. 1 = on, 0 = off.', '1',
           requires=('music_queue',), launcher='--music-dock-keep',
           since='2026-10-25'),
     entry('voice_dmo_fallback', 'bool', 'audio', 'Makes speech play when the system lacks the game\'s speech decoder, by using the '
-          'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off.', '1', launcher='--voice-decoder'),
+          'standard Windows one. Does nothing where speech already works. 1 = on, 0 = off. X3: Albion Prelude only.', '1', launcher='--voice-decoder'),
     entry('music_combat_trigger', 'enum', 'audio', 'When combat music starts. engaged = only while you or one of your ships near '
           'you is fighting (hit, or firing at or ordered to attack an enemy), and an enemy is in the game\'s own alert range; '
-          'vanilla = whenever an enemy is in range, as the game does. X3: Albion Prelude and X3: Farnham\'s Legacy.',
+          'vanilla = whenever an enemy is in range, as the game does.',
           'engaged', choices=('engaged', 'vanilla'),
           launcher='--music-combat-trigger', since='2026-10-23'),
     entry('music_combat_hold_s', 'int', 'audio', 'Game seconds the combat music stays after the last fighting event '
-          '(music_combat_trigger = engaged), 1..600. Game time: SETA shortens the real wait. X3: Albion Prelude and '
-          'X3: Farnham\'s Legacy.', '20', range=(1, 600),
+          '(music_combat_trigger = engaged), 1..600. Game time: SETA shortens the real wait.', '20', range=(1, 600),
           requires=('music_combat_trigger',), launcher='--music-combat-hold-s', since='2026-10-23'),
     # ---------------------------------------------------------------- loading
     entry('crypt_cache', 'bool', 'loading', 'Faster loading: reuses the game\'s file-signature checks instead of repeating them. '
-          '1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', launcher='--crypt-cache'),
-    entry('gz_buffer', 'bool', 'loading', 'Faster loading: reads compressed game files in large chunks. 1 = on, 0 = off. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', launcher='--gz-buffer'),
+          '1 = on, 0 = off.', '1', launcher='--crypt-cache'),
+    entry('gz_buffer', 'bool', 'loading', 'Faster loading: reads compressed game files in large chunks. 1 = on, 0 = off. ', '1', launcher='--gz-buffer'),
     entry('resource_read', 'enum', 'loading', 'Faster loading: how game data files are read. fast = the mod\'s reader, native = '
-          'the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'fast',
+          'the game\'s own.', 'fast',
           choices=('fast', 'native', 'verify'), launcher='--resource-read'),
     entry('dat_handles', 'bool', 'loading', 'Faster loading: keeps the game\'s data archives open instead of reopening them. '
-          '1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          '1 = on, 0 = off.', '1',
           launcher='--dat-handles'),
     entry('mesh_adjacency', 'enum', 'loading', 'Faster loading: how model outlines are prepared. fast = the mod\'s method, native = '
-          'the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'fast',
+          'the game\'s own.', 'fast',
           choices=('fast', 'native', 'verify'), launcher='--mesh-adjacency'),
     # ---------------------------------------------------------------- engine
     entry('collide_sat_sse2', 'bool', 'engine', 'Faster collision checks with modern processor instructions. 1 = on, 0 = '
@@ -387,10 +379,9 @@ SETTINGS = [
           'nothing there.', '1',
           launcher='--collide-sat-sse2'),
     entry('collide_memo', 'bool', 'engine', 'Faster collision checks: remembers ship pairs that cannot touch. 1 = on, 0 = '
-          'off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          'off.', '1',
           launcher='--collide-memo'),
-    entry('collide_box_cull', 'bool', 'engine', 'Faster collision checks: a quick box test first. 1 = on, 0 = off. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+    entry('collide_box_cull', 'bool', 'engine', 'Faster collision checks: a quick box test first. 1 = on, 0 = off. ', '1',
           launcher='--collide-box-cull'),
     entry('lod_occlusion', 'enum', 'engine', 'Keeps stations\' shading correct on their simplified distant models. all = on, '
           'record0 = the game\'s own behaviour, off = none.', 'all', choices=('off', 'record0', 'all'), launcher='--lod-occlusion'),
@@ -453,63 +444,60 @@ SETTINGS = [
           '0 = off. Read when the game starts.', builtin='1', since='2026-10-25'),
     entry('terran_station_lod', 'enum', 'engine', 'How Terran stations pick their detail level. size = by their size on screen like '
           'every other station, distance = the game\'s own.', 'size', choices=('size', 'distance'), launcher='--terran-station-lod'),
-    entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',
+    entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off. X3: Albion Prelude only.', 'on',
           choices=('on', 'off'), launcher='--sun-flare-fix'),
     entry('dust_leak_fix', 'enum', 'engine', 'Stops a slowdown in sectors whose background names missing dust models: the game '
-          'would otherwise create a few dozen invisible objects every frame and never remove them. on or off. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
+          'would otherwise create a few dozen invisible objects every frame and never remove them. on or off. ', 'on',
           choices=('on', 'off'), launcher='--dust-leak-fix'),
     entry('circle_fill_fix', 'enum', 'engine', 'The game\'s sector-map scanner disc collapses above a radius of about 800 texels; '
-          'this runs a 64-bit copy of the engine\'s circle fill for large discs. on or off (off = stock behaviour). '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
+          'this runs a 64-bit copy of the engine\'s circle fill for large discs. on or off (off = stock behaviour). ', 'on',
           choices=('on', 'off'), launcher='--circle-fill-fix', since='2026-10-27'),
     entry('ship_steering', 'bool', 'engine', 'Smoother steering for computer-flown ships: turns follow one curve instead of '
-          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          'yaw-then-pitch, and ships slow for their arrival point and for tight corners. 1 = on (default), 0 = off.', '1',
           builtin='1', launcher='--ship-steering', since='2026-10-12'),
     entry('ship_steering_classes', 'string', 'engine', 'Ship classes the smoother steering leaves to the game, as a comma list '
-          'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class. X3: Albion Prelude and X3: Farnham\'s Legacy.',
+          'of class names (TL, TS, M0, M1, M2, M3, M4, M5, TL_P, TS_P, GO, M6, TP, M7, TM, M8). Empty = every class.',
           builtin='', requires=('ship_steering',), launcher='--ship-steering-classes', since='2026-10-12'),
     entry('ship_avoidance', 'bool', 'engine', 'Computer-flown ships steer around ships, stations, asteroids and gates on their '
           'predicted path instead of stopping for the game\'s collision warning (needs ship_steering). '
-          '1 = on (default), 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
+          '1 = on (default), 0 = off.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-avoidance', since='2026-10-12'),
     entry('ship_trace', 'bool', 'logging', 'Diagnostic: follows a few computer-flown ships through a gate or dock approach and '
           'writes one ship_trace log row per frame for each (positions, heading, rates, speeds, the steering point given and '
-          'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off.', builtin='0',
+          'returned) for the model conformance replay. Needs ship_steering and debug. 1 = on, 0 = off. X3: Albion Prelude only.', builtin='0',
           requires=('ship_steering',), since='2026-10-12'),
-    entry('ship_trace_max', 'int', 'logging', 'How many ships ship_trace follows at once (1..16).', builtin='8', range=(1, 16),
+    entry('ship_trace_max', 'int', 'logging', 'How many ships ship_trace follows at once (1..16). X3: Albion Prelude only.', builtin='8', range=(1, 16),
           requires=('ship_trace',), since='2026-10-12'),
     entry('ship_steering_gates', 'bool', 'engine', 'Computer-flown ships other than capital ships fly through gates in one '
           'continuous approach: they line up with the gate on the way in, keep their speed at the approach point and the '
           'pass point instead of stopping twice, and the jump launch continues at that speed (needs ship_steering). '
-          '1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
+          '1 = on, 0 = off. X3: Albion Prelude only.', '1', builtin='1', requires=('ship_steering',), launcher='--ship-steering-gates', since='2026-10-12'),
     entry('ship_steering_gates_capital', 'bool', 'engine', 'Capital ships (M1, M2, TL and the like) fly the gate approach the same '
           'way: they line up with the gate axis on the way to their waiting point and, when they arrive facing the gate, keep '
           'their speed through the alignment step into the final run instead of stopping and turning in place (needs '
-          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1',
+          'ship_steering_gates; 0 = capital ships keep the game\'s own gate steps). 1 = on, 0 = off. X3: Albion Prelude only.', '1', builtin='1',
           requires=('ship_steering_gates',), launcher='--ship-steering-gates-capital', since='2026-10-12'),
     entry('ship_steering_gates_traffic', 'bool', 'engine', 'Capital ships at the same gate are coordinated by one traffic controller per '
           'gate: it predicts every capital\'s path for the next 30 seconds, lets the game skip its own collision warning between two of '
           'them only while their hulls provably stay apart, slows the lower-priority ship when they would not, and places capital '
           'ships arriving through the gate above the middle so they do not appear in the departure lane (needs '
-          'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', builtin='1',
+          'ship_steering_gates_capital; 0 = capital ships at a gate behave as before). 1 = on, 0 = off. X3: Albion Prelude only.', builtin='1',
           requires=('ship_steering_gates_capital',), since='2026-10-13'),
     entry('ship_steering_gates_lane', 'bool', 'engine', 'Capital ships bound for the same gate fly one departure lane, one behind the '
           'other at hull spacing, instead of each approaching the gate on its own: a ship that would reach the lane level with another '
           'eases off (or stops briefly) until it is behind it, the ship ahead never slows, and each capital ends its approach about 2.3 km before '
           'the gate so the next one does not wait for the previous jump (needs ship_steering_gates_traffic). 1 = the departure lane '
-          '(default), 0 = stage A certificate only. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', '1', builtin='1', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
+          '(default), 0 = stage A certificate only. X3: Albion Prelude only.', '1', builtin='1', requires=('ship_steering_gates_traffic',), since='2026-10-14'),
     entry('ship_steering_dock', 'bool', 'engine', 'Ships flying to dock at a station or a carrier steer around its parts on the way '
           'to the docking approach point, and the game skips its collision warning against that station or carrier while the ship\'s '
           'path and heading clear every part with room to spare, so the ship no longer stops and flies away from its own dock; ships '
           'waiting near a station for a free dock also steer around its parts (needs ship_avoidance; 0 = docking ships behave as '
-          'before). 1 = on, 0 = off. X3: Albion Prelude only for now; ignored on Farnham\'s Legacy.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
+          'before). 1 = on, 0 = off. X3: Albion Prelude only.', builtin='1', requires=('ship_avoidance',), since='2026-10-13'),
     entry('seta_restore', 'bool', 'engine', 'Turns SETA back on after your ship passes a gate when SETA was running as you '
           'entered it (the game switches it off at every gate). Using the SETA key yourself, changing ships or loading '
-          'a game before you arrive cancels it. 1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
+          'a game before you arrive cancels it. 1 = on, 0 = off.', '1',
           launcher='--seta-restore', since='2026-10-23'),
     entry('seta_manual_flight', 'enum', 'engine', 'Steering by hand no longer ends SETA (changing speed by hand still does), and '
-          'under SETA the ship turns and strafes as fast as at normal speed. 2 = both, 1 = SETA stays on only, 0 = off. '
-          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '2',
+          'under SETA the ship turns and strafes as fast as at normal speed. 2 = both, 1 = SETA stays on only, 0 = off. ', '2',
           choices=('0', '1', '2'), launcher='--seta-manual-flight', since='2026-10-24'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
@@ -518,7 +506,7 @@ SETTINGS = [
           counts=(2, 3), elements=([R(0, 1e6, True)], [R(0, 1e6, True)], (0, 8)),
           requires=('hull_lightmap_gain',), launcher='--light-map-far-fade'),
     entry('point_light_root_admission', 'bool', 'engine', 'Experimental: lights up small station parts by a light near the whole '
-          'station. May leave some modules darker. 1 = on, 0 = off.', builtin='0', launcher='--point-light-root-admission'),
+          'station. May leave some modules darker. 1 = on, 0 = off. X3: Albion Prelude only.', builtin='0', launcher='--point-light-root-admission'),
     # ---------------------------------------------------------------- logging
     entry('debug', 'bool', 'logging', 'Detailed diagnostic log for a bug report: enable, reproduce the problem, send x3m.log. About '
           '8 KB of log per frame (about 1.7 GB per hour at 60 fps), so turn it off again afterwards. 1 = on, 0 = off. F8 then records a '

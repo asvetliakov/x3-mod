@@ -194,7 +194,7 @@ class FlUiScaleWiring(unittest.TestCase):
     def test_schema_wording(self):
         schema = (ROOT / 'tools/config/schema.py').read_text()
         entry = schema[schema.index("entry('ui_scale'"):schema.index("entry('text_density'")]
-        self.assertIn("X3: Albion Prelude and X3: Farnham\\'s Legacy.", entry)
+        self.assertNotIn('Albion Prelude only', entry)  # both editions: no edition note (convention 2026-11-04)
 
 
 @unittest.skipUnless(EXE.is_file(), 'installed X3FL.exe not present')
