@@ -1135,6 +1135,27 @@ one flipped byte and one foreign fixup per window refused before any write, read
 ticket and key latch through stand-ins of the wrapper and the Ready provider, and the late window. Not verified: in
 game (not flown); native Windows game behaviour; the 60 s ticket expiry.
 
+## 2026-11-03: base ship steering and avoidance on FL (`ship_steering`, `ship_avoidance` on FL; gate, traffic, lane and dock groups stay AP only)
+
+The FL edition (`src/engine/fl/ship_steering_fl.cpp`, `ship_avoidance_fl.cpp`; [fl/ship-steering.md](../reverse-engineering/fl/ship-steering.md)
+and [fl/ship-avoidance.md](../reverse-engineering/fl/ship-avoidance.md), "Port (2026-11-03)") claims the three steering-leaf
+entries and the command pass's object-loop continue (all four or none) and, separately, the native warn test E, at module
+base + RVA on the backend-load path, behind the X3FL.exe identity and 24 + 16 compared windows (relocated dwords checked
+against the base), each claim read back with its write path checked and rolled back on failure. The decision, clamp,
+snapshot, target adjustment and E verdict are the shared AP cores. The stubs are asm in the pinned DLL
+(`GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN)`): EFLAGS (DF included), EAX/ECX/EDX, XMM0-7, the x87 image
+(FNSAVE/FRSTOR) and MXCSR around one cdecl C side, which saves LastError (documented `GetLastError`/`SetLastError`) and
+realigns its stack from the four-byte incoming contract. The handlers call the game's five getters (ECX ABI) and make
+the same plain loads the native leaves make; no device call, no allocation, no lock. Documented Win32 only
+(`VirtualProtect`, `FlushInstructionCache`, `QueryPerformanceCounter`), no Wine/CrossOver dependency. Two deliberate FL
+differences: the B clamp age, the port-hold gap and the leader-lookahead age scale with the game-time frame step (SETA),
+and a recycled object pointer (another native id) resets that ship's state. The gate, capital, traffic, lane and dock
+groups are not ported (one `ap_only` row each). Natively verified on the Windows host through WSL interop (measured
+2026-11-03): the steering fixture replays 7,093 harness `ship_trace` rows through the real stubs and getters against the
+shared core (5,689 A and 7,093 B calls equal) with CPU state 32/32 at every ESP skew; the avoidance fixture 46/46 cases
+equal, E through the three real callers 3/3, E CPU state 16/16. Not verified: in game (not flown); native Windows game
+behaviour.
+
 ## 2026-11-02: FL cull/LOD selector ports (`cull_small_parts`, `terran_station_lod`, `lod_occlusion` on FL)
 
 The FL edition patches X3FL.exe's cull/LOD selector and material submission

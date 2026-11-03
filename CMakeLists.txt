@@ -230,6 +230,11 @@ else()
   # five SSE spans), the AP policy on FL bindings (docs/reverse-engineering/fl/seta.md, "Port (2026-11-03)"); they
   # provide seta_restore.h and seta_manual_flight.h in place of the two AP modules of the same names.
   target_sources(d3d9 PRIVATE src/engine/fl/seta_restore_fl.cpp src/engine/fl/seta_manual_flight_fl.cpp)
+  # The base ship steering and avoidance: the three steering-leaf entries, the object-loop continue and the warn test E, the AP
+  # decision, clamp, snapshot and E-verdict cores on FL bindings (docs/reverse-engineering/fl/ship-steering.md,
+  # ship-avoidance.md, "Port (2026-11-03)"); they provide ship_steering.h in place of the AP src/proxy/ship_steering_*.cpp. The
+  # gate, capital, traffic, lane and dock groups stay AP only (one ap_only row each).
+  target_sources(d3d9 PRIVATE src/engine/fl/ship_steering_fl.cpp src/engine/fl/ship_avoidance_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -328,6 +333,11 @@ set_source_files_properties(src/engine/fl/media_cue_fl.cpp src/engine/fl/music_k
 # inside file-scope asm stubs (PUSHFD, GPRs, XMM0-7, FNSAVE, MXCSR; LastError in the C side): default SSE2 flags, no
 # exception bookends inside the CPU-state boundary.
 set_source_files_properties(src/engine/fl/seta_restore_fl.cpp src/engine/fl/seta_manual_flight_fl.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL base ship steering and avoidance (src/engine/fl/ship_steering_fl.cpp, ship_avoidance_fl.cpp): their handlers run inside
+# file-scope asm stubs (PUSHFD, EAX/ECX/EDX, XMM0-7, FNSAVE, MXCSR, CLD; LastError in the C side): default SSE2 flags, no exception
+# bookends inside the CPU-state boundary.
+set_source_files_properties(src/engine/fl/ship_steering_fl.cpp src/engine/fl/ship_avoidance_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.

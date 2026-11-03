@@ -267,6 +267,15 @@ inline unsigned station_parts(Mem& mem, PartCache& cache, std::uint32_t obj, std
 }
 // The sector snapshot: the obstacle classes' buckets only; the walk limit marks the snapshot overflow (the
 // layer passes the point through rather than acting on a partial picture).
+// The TShips table pointer the snapshot reads per ship: a reader with ship_table() binds it (the FL edition, whose slot is an
+// RVA of its loaded base: src/engine/fl/ship_avoidance_fl.cpp); every other reader reads the AP slot kShipTypeTableSlot.
+template <class Mem>
+__attribute__((always_inline)) inline auto ship_table_of(Mem& mem, int) noexcept -> decltype(std::uint32_t(mem.ship_table())) {
+    return mem.ship_table();
+}
+template <class Mem> __attribute__((always_inline)) inline std::uint32_t ship_table_of(Mem& mem, long) noexcept {
+    return mem.u32(kShipTypeTableSlot);
+}
 template <class Mem>
 inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av::Snapshot& s, PartCache& cache, Stats& stats,
                           Census* census, av::Members* members = nullptr, av::MemberStats* member_stats = nullptr) noexcept {
@@ -338,7 +347,7 @@ inline void fill_snapshot(Mem& mem, std::uint32_t sector, std::uint32_t now, av:
                 // the record code -> capital-coded (amendment 13: a capital keeps every capital-coded ship and ignores other
                 // ships below r / 3); 2 when it cannot be read
                 const std::int32_t type = std::int16_t(mem.u16(o + kObjType));
-                const std::uint32_t table = mem.u32(kShipTypeTableSlot);
+                const std::uint32_t table = ship_table_of(mem, 0);
                 if (table && type >= 0) {
                     const std::uint32_t code = mem.u32(table + std::uint32_t(type) * kRecordStride + kRecordClassCode);
                     it.size = code < sc::kClassCount ? std::uint8_t((sc::kCapitalMask >> code) & 1u) : std::uint8_t(2);

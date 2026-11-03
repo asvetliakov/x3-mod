@@ -2671,3 +2671,43 @@ changing speed by hand still ends it. Also confirm the chase family is unchanged
 Expect `seta_restore … edition=fl status=patched`, `seta_manual_flight … edition=fl`, and `chase_transition installed=1
 status=active` unchanged from run 38. Report SETA not returning after a gate, a sluggish turn under SETA, or any chase
 regression.
+
+## ship_steering and ship_avoidance on FL (host evidence, 2026-11-03)
+
+`ship_steering` (+ `ship_steering_classes`) and `ship_avoidance` now have FL bodies: `src/engine/fl/ship_steering_fl.cpp` +
+`ship_steering_sites_fl.h`, `ship_avoidance_fl.cpp` + `ship_avoidance_sites_fl.h`, with the shared state in
+`ship_steering_fl_internal.h`. They run the AP base path on the FL bindings over the shared cores (`core::steer`,
+`clamp_for`/`clamp_units`, `servo_tick`, `wk::fill_snapshot`, `av::resolve`, `av::site_e_verdict`). The walk core reads
+the TShips slot through the reader's `ship_table()` when present (`ship_table_of`); AP objects are unchanged. Before
+this, nothing of the steering family logged a row on FL. The gate, capital, traffic, lane and dock groups are
+deliberately not ported: one `<group> installed=0 edition=fl status=ap_only reason=not_ported` row each at initialize,
+and their ini text says "X3: Albion Prelude only for now; ignored on Farnham's Legacy." Two deliberate FL differences:
+(1) site B's decision age, the port hold's gap and the leader's lookahead age are `max(250 ms, 4 × frame step)` (SETA;
+AP keeps 250 ms, equal below 62.5 ms steps); (2) a recycled object pointer (another native id at `obj+0x08`) resets the
+ship's steering and avoidance state, B does not clamp and E does not answer from the old object's decision, and a
+resolved B whose id changed is not suppressed. Facts: [fl/ship-steering.md](../reverse-engineering/fl/ship-steering.md)
+and [fl/ship-avoidance.md](../reverse-engineering/fl/ship-avoidance.md), "Port (2026-11-03)". Producers:
+`verification/results/fl-steering/` (`reproduce.sh`, `ap_objects_identical.py`).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL sites | `python3 verification/probe/verify_ship_steering_sites_fl.py`; `python3 verification/probe/verify_ship_avoidance_sites_fl.py` | both PASS on `e7f3aad8…`. Steering: the four spans 3+4 / 4+3 / 4+3 / 2+7 with no relocation, relative flow or interior edge; B entered from 18 direct branches (the 13-byte candidate refused) and one table entry at its first byte; leaves `ret 4` with 16/2/2 callers; the getter graph 9 functions, 480 instructions, 4 switch tables, no x87/SIMD/indirect call, its only global stores flight `+0x914/+0x918`; masks `0xe91d`/`0x211d`; the 14 steered orders handled; 68 anchors; 24 windows equal to the header. Avoidance: E `55 8b ec 83 e4 f0` (1+2+3), five `ret 0xc`, callers `0x057db5`/`0x057dd0`/`0x060581` each testing EAX at once; 59 anchors; 16 windows equal to the header. AP addresses refused in both |
+| Native steering fixture | `verification/probe/fl_ship_steering.cpp` (through `test_fl_ship_steering.py`; MinGW i686, `-mstackrealign -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`, WSL interop), input: the 7,093 `ship_trace` rows of `ship_steering_host.cpp --emit-trace` | `RESULT PASS`. `FLIPS windows=24 flips=24 refused=24`; `ROLLBACK claims=4 rolled_back=4`; differential against the shared core with the AP glue's inputs: `a_rows=5689 a_handled=5685 a_passed=4 a_same=5689 ship_same=5689 b_rows=7093 b_clamped=373 b_same=7093`; class filter `TS`: 3,961 rows excluded, all A/B equal; SETA: 16 cases equal, 4 clamps beyond 250 ms that AP's fixed bound would have dropped, none beyond the scaled window; recycled pointer: no clamp, one reset; CPU state (GPRs, EFLAGS with DF, XMM0-7, x87 CW/stack, MXCSR, LastError, ESP) of A handled/refused and B filtered/clamping `runs=32 ok=32`; shutdown restores the spans; late claim refused |
+| Native avoidance fixture | `verification/probe/fl_ship_avoidance.cpp` (through `test_fl_ship_avoidance.py`), input: the harness's avoidance unit cases, an asteroid sweep (offset −40..40 m, slip 0..60 m/s) and the walk check's station tree | `RESULT PASS`. `FLIPS windows=16 avoidance_refused=6 e_refused=10`; E read-back fault rolled back with the avoidance on; `CASES cases=46 same=46 detours=45 suppressed=19 table_suppressed=1 m5_suppressed=0 sweep_suppressed=18 never_toward_skipped=19` (snapshot, detour point with the caller's buffer untouched, resolved set and E verdict against the shared cores; each of the 19 resolved-row suppressions keeps the hulls apart along its detour path; the capital/small case is compared but not counted: the small-ship and member rows skip the warning with no detour-path proof, the inherited AP rule); capital/small row `suppress_small` through the FL TShips slot; recycled A and B answered by the native warn; E window under SETA `9/9`; `RADIUS replicated=125000 native=125000` (the native getter `0x0a39b0` on the unfilled child); `STATION_REPLACED rebuilt=0` (the inherited cache key); E through the three real callers `3/3`; E CPU state `16/16`; late claim refused |
+| AP unchanged | `python3 -I verification/results/fl-steering/ap_objects_identical.py --base main` | `capture.cpp` (41,169 lines) and the seven AP steering translation units (install 2,323, decide 22,496, clamp 8,006, warn 14,306, rows 5,332, gate glue 27,706, dock glue 486 lines) disassembly identical to main at the production standard (the compiler's default gnu++20, no forced `-std`), compiled from a `git archive` of main so the walk-core header is the base's; the 12 AP steering sources unchanged |
+| FL build | `cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4` (worktree) | 0 warnings, 0 errors |
+| Host tests | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest test_fl_ship_steering test_fl_ship_avoidance test_ship_steering test_ship_steering_sites test_engine_effects`; `python3 tools/config/generate.py --check` | 9 FL tests OK (20.6 s, both fixtures run); AP steering modules and `test_engine_effects` (capture.cpp pin bumped) 24 tests OK, 1 skipped; `PASS 293 settings, 138 in the template`; full suite `run_host_suite.py`: 347 modules, 3,513 tests, 0 failing (143.7 s wall, 12 jobs) |
+
+The engine-model conformance replay (`ship_trace_replay.py` over `ship_steering_host.cpp`) is not edition-parameterised;
+the steering fixture uses the harness's emitted rows as its inputs instead. Expected rows on an FL launch (not verified
+in game): five `… edition=fl status=ap_only reason=not_ported` rows, `ship_avoidance installed=1 edition=fl … warn_rva=0x057600
+warn_status=active write=atomic`, `ship_steering installed=1 edition=fl … sites=4 …` and four `ship_steering_site …
+status=… write=atomic` rows; under `--perf` a 1 Hz `ship_steering_summary frame=… edition=fl …`. Per-call cost of the
+envelope (inferred): about 300–450 cycles per A, steered B or E call, about 25 cycles per filtered B object. Not
+verified: in game (not flown), native Windows game behaviour, the max-speed getter's equipment path, dynamic call
+frequency and FPS cost.
+
+Limits: the property "skipped only while the detour path keeps the hulls apart" holds for E's resolved row only (the
+small-ship and formation-member rows are the inherited AP rule, no detour-path proof). Known cap, shared with AP's site E: `av::fresh_window_ms` caps the step at 250 ms (`ship_avoidance_core.h`), so no window exceeds 1 s; at game-time frame steps above 1 s every B clamp, port hold and leader lookahead is stale on the next frame (the engine's own speed and leaf law then stand), as AP's E window already is. The shared core is unchanged (AP objects identical).
+Bindings no window or verifier checks (`obj+0xf8`, `f+0x224/+0x250/+0x260`, `obj+0x24..`) rest on the earlier RE and the
+exe identity; the max-speed getter's equipment branch runs in game but not in the fixture.
