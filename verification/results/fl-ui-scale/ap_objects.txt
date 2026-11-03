@@ -1,0 +1,4 @@
+capture.cpp identical 41169 disassembly lines (base 2ed4da17e, head 1efed1821, blob d73e698bb00f)
+loader.cpp identical 3070 disassembly lines (base 2ed4da17e, head 1efed1821, blob 037c7293ba83)
+ui_scale.cpp identical 2870 disassembly lines (base 2ed4da17e, head 1efed1821, blob 0189ff6baa36)
+text_density.cpp identical 5768 disassembly lines (base 2ed4da17e, head 1efed1821, blob f3d007b80b93)

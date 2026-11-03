@@ -109,6 +109,13 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::chase_fire::initialize();
         x3m::log("chase_aim_trace installed=0 status=ap_only edition=fl reason=diagnostic_not_ported");
     }
+    // X3M_UI_SCALE=auto|1..3 (src/engine/fl/ui_scale_fl.cpp; docs/reverse-engineering/fl/ui-scale.md, "Verified
+    // 2026-11-03"): the setting, the X3FL.exe identity and every identity window checked here, inside the install
+    // window; the eleven claims (all or none) follow at CreateDevice, where `auto` takes the back-buffer height. One
+    // ui_scale row with edition=fl. The text density (the d x fonts through the engine's -fontscale path) is AP only
+    // until its port: one refusal row, nothing claimed.
+    x3m::ui_scale::initialize();
+    x3m::log("text_density installed=0 status=ap_only edition=fl reason=not_ported");
 #endif
     const bool admission_requested = x3m::ownership::process_admission_monitor() != nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",

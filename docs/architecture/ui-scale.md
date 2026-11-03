@@ -118,8 +118,28 @@ entry point.
 - Script code that hands a pixel size to a native call that works in real
   pixels (a screen-sized texture, a viewport in pixels) would get the virtual
   size; none is known, the first flight must look.
+- Tooltips near the right or bottom edge: `INS_ShowTooltip` (case `0x6a` → `0x0042cc10`) clamps the tooltip against
+  the real screen width/height (`0x0042cd31`, `0x0042cd58`) while its position is in the script's virtual pixels, so
+  at `s > 1` the clamp never fires and an edge tooltip runs off-screen. Not claimed on either edition (FL: `0x02ff32`,
+  `0x02ff58`; [FL UI scale](../reverse-engineering/fl/ui-scale.md), "Limits").
 - Open item 1 of the note (which scenes carry the main menu, the gravidar and
   the ticker) is what the `ui_scale_frame` row (one per 300 Presents under
   `--debug` with the option on) settles: the excluded camera must appear in
   its `cameras=` list with `0x200` instances in flight, and the main menu's
   rows should show no scaled instances.
+
+## Editions
+
+- **AP** (`X3AP.exe`): the twelve sites above, `src/proxy/ui_scale.cpp`.
+- **FL** (`X3FL.exe`, since 2026-11-03, host evidence only, not flown): `src/engine/fl/ui_scale_fl.cpp` provides
+  `ui_scale.h` with the same option, scale, fixed-point cells, rounding, order (projection last), all-or-none rollback,
+  `CreateDevice` claim inside the install window and `Reset` behaviour; every row carries `edition=fl`. Eleven claims
+  at module base + RVA, verified in [FL UI scale](../reverse-engineering/fl/ui-scale.md) ("Verified 2026-11-03"):
+  B/C as on AP; the four AP mouse readers become the two `InputMouseDelta` callback sends (FL's script cursor moves by
+  those arguments; the native deltas and flight axes are untouched); E is two five-byte stores (x and y); G/H/J/I keep
+  AP's arithmetic with FL registers (the label offsets come from SSE truncation, the pick needs no flag replay); A
+  reads the flags from the instance (`EDI+0x130`), compares the camera in EBX and keeps EFLAGS, ECX, XMM1 and MXCSR.
+  The excluded camera is published only while it is attached to the cockpit's HUD scene. Not ported: the `--debug`
+  entry counter F (the projection counters are printed instead, `cameras=-`) and `text_density` (one
+  `text_density installed=0 status=ap_only edition=fl reason=not_ported` row; FL text is magnified, not redrawn
+  denser). The FL graph menus are ordinary `0x200` instances and scale with the rest.
