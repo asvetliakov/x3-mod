@@ -5898,6 +5898,7 @@ void initialize_log(HMODULE module) {
     // of the jump) claimed with the release-and-leave stub, same window, disjoint from every other FL claim; one
     // dust_leak_fix row with edition=fl.
     dust_leak_fix::initialize();
+    circle_fill::initialize(); // X3M_CIRCLE_FILL_FIX: base+0x10c940 (six bytes; circle_fill_fl.cpp), edition=fl row
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

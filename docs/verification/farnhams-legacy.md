@@ -2461,3 +2461,27 @@ names a missing dust body, `dust_leak_fix hits=` grows by at most one per dust-u
 cockpit caller). It stays 0 elsewhere. Not verified: in game (not flown). Also open: the real release's
 external-reference scan and recursive cleanup on a failed newborn, the release cost, a stable unattached-node
 population, and native Windows game behaviour.
+
+## circle_fill_fix on FL (host evidence, 2026-11-03)
+
+`circle_fill_fix` (`X3M_CIRCLE_FILL_FIX`, unset = on) now claims X3FL.exe's filled-ellipse rasterizer at base+`0x10c940`
+(`src/engine/fl/circle_fill_fl.cpp`, `circle_fill_sites_fl.h`; [fl/circle-fill.md](../reverse-engineering/fl/circle-fill.md),
+"Port (2026-11-03)"); before this FL logged no `circle_fill` row and the sector map's scanner disc still collapsed above a
+radius of about 800 texels. Expected row: `circle_fill site=… rva=10c940 edition=fl status=patched reason=ok mode=on
+setting=… write=atomic threshold=813 continue=…`, and one `circle_fill_wide edition=fl` row at the first large disc.
+
+| Check | Result (measured 2026-11-03) |
+| --- | --- |
+| `cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j6` (clean) | 0 warnings, 0 errors |
+| `python3 verification/probe/verify_circle_fill_site_fl.py /mnt/c/X3FL/X3FL.exe` | PASS, 29 checks, 8/8 mutation guards |
+| Native fixture `fl_circle_fill.cpp` (WSL interop, real relocated engine code) | 962 checks, 0 failures; 993 calls, 1,294,530 leaf records |
+| Model differential (`test_fl_circle_fill.py`) | 871/871 plain runs, 1,225,682 ordered records equal |
+| MXCSR modes (RC 0..3, FTZ+DAZ) × 6 inputs | 30/30 patched = native |
+| Window bits / rebound relocations refused | 22,448 / 24 |
+| Canary-backed class-0 leaf writes | 12/12 inputs, 8,157,959 pixels |
+| `walk_wide.py` on the RelWithDebInfo `build-fl/d3d9.dll` | PASS: 8 functions walked, no x87, XMM only in the asm B conversion |
+| `ap_objects_identical.py --base main` (build-ap flags) | `capture.cpp`, `loader.cpp`, `circle_fill.cpp` disassembly identical; `X3M_AP_SOURCES` identical |
+| `test_fl_circle_fill.py` (incl. the verifier on the installed exe) + `test_circle_fill.py` (`PYTHONPATH=verification/probe:verification/analysis`) | 21 tests OK |
+
+Producer: `verification/results/fl-circle-fill/reproduce.py` (writes `summary.json` beside it). Not verified: not
+flown; native Windows rendering unverified.

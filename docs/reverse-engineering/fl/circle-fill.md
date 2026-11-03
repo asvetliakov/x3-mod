@@ -349,3 +349,67 @@ no speedup; this is a maintenance simplification with no allocations, locks or
 indirect dispatch added. Native game/CrossOver execution is not newly qualified.
 The [review](../../../verification/results/fl-port/complexity-audit/circle-sharing-review.md)
 covers source and producing evidence together.
+
+## Port (2026-11-03)
+
+Implemented: `src/engine/fl/circle_fill_fl.cpp` provides the `x3m::circle_fill` functions for the fl target
+(`circle_fill_fix = on|off`, `X3M_CIRCLE_FILL_FIX`, unset = on); the sites, windows, routing, 64-bit recurrence and row
+emitter are in `src/engine/fl/circle_fill_sites_fl.h`. AP's `circle_fill.cpp`/`circle_fill_sites.h` are unchanged; the
+shared core and `engine_profile` layer of the 2026-10-28 attempt (section above, `fl-codex`) are not used. The
+verifier is now `verification/probe/verify_circle_fill_site_fl.py` (it keeps the study's thirteen region hashes and
+named operands); `verify_fl_circle_fill.py` never reached `main`.
+
+| Item | As built |
+| --- | --- |
+| Claim | base+`0x10c940`, six bytes (`push ebp; mov ebp,esp; and esp,-8`), `engine_patch::claim` (one `lock cmpxchg8b`), tail replays all three, resumes at base+`0x10c946` |
+| Identity | X3FL.exe identity (`fl::module_base()`), eleven windows (FNV-1a 32, relocated dwords zeroed; 24 relocations each checked equal to base + target): rasterizer with both tables, class function, lock, five leaves, diagnostic entry, caller block `0x0a7b0c..2e`, the float 2^-16 |
+| Stub | `movsx eax, word [esp+8]`; r <= 0, or r <= 813 with aspect exactly 65536, jumps to the tail with ECX/EDX untouched; else `pushfd; pushad; cld`, C side, `popad; popfd`, then `ret` (handled) or the tail (stock from the first instruction) |
+| Routing | `route()` before any native helper: `stock_fast`, `stock_quotient` (q <= 0), `stock_axis` (exact B > 32767²), `stock_extent` (unclipped, B > A, a span of the exact recurrence leaves the surface), else `wide` |
+| Wide | no-draw checks, lock (asm shim: ECX = backing, EDX = out[0x1c], push 0, caller pops), surface +0/+0x10 as native, class (ECX = 0, EDX = surface), unsupported class: `0x075110(base+0x190fc0)` with the class call's ECX, then the engine's B sequence (asm: `cvtdq2pd`, `cvtdq2ps`, `mulss`, `cvtps2pd`, `divsd`, `cvttsd2si` twice) under the caller's MXCSR, then the spans through the native leaf with 64-bit d/A/B and the native emitter (pre-lock clip flag, width once per pair, height before each span) |
+| Diagnostic | one `circle_fill_wide edition=fl` row after the last span, LastError (after native work) and an FXSAVE image restored around it |
+| Row | `circle_fill site=… rva=10c940 edition=fl status=… reason=… mode=… setting=… write=… threshold=813 continue=…` |
+| Shutdown | restores the six bytes only over our jump (`restore_not_owned` otherwise); fixture-only like every FL module (the FL loader has no unload calls; the module is pinned at install) |
+
+Build: `circle_fill_fl.cpp` has AP's per-file options (`-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387`), so the
+compiled C side is integer only; the B conversion and the register shims are file-scope asm.
+
+Facts established while porting (measured on X3FL.exe and by executing its relocated code in the fixture):
+
+- With ECX = 0 and EDX = surface the class function returns only 0, 5, 10, 15 or 24 (flags bit 4 clear: 15; bit 4 with
+  0x200: 10, with 0x100: 5, with 0x2000: 24, alone: 0). The unsupported-class diagnostic is unreachable from this
+  caller; the port keeps it anyway (fixture: a fake class function).
+- The diagnostic `0x075110` reads ECX (`push ecx`) besides its stack argument; native passes the class function's
+  leftover ECX, so the port passes the same value.
+- Coordinates stay the engine's 16-bit words. Near y = 0 a span of a disc with r close to 32767 has one end beyond
+  ±32767 and wraps; the stock routine and the port both drop it (x0 > x1). The exact recurrence removes the 32-bit
+  decision overflow (the scanner-disc collapse from r 826), not the 16-bit coordinate range.
+- The lock's two LockRect attempts, the recovery callback per out-of-memory result and the guard word reset between
+  them run unchanged inside the port (fixture: real lock code, fake COM backing).
+
+Verified (measured 2026-11-03, `verification/results/fl-circle-fill/summary.json`, producer `reproduce.py` beside it):
+
+- `verify_circle_fill_site_fl.py /mnt/c/X3FL/X3FL.exe`: PASS, 29 checks (windows and relocation census, the study's
+  13 SHA-256 regions, entry span and qword, only caller `0x0a7b19`, upstream callers, no entry into the span, 66 named
+  operands incl. ECX/EDX convention and `add esp,0x10`, 12 plain returns, class table, B witness 2572/2573, 458,745
+  directed-rounding bounds, eight mutation guards: ret 16, caller EDX from ECX, caller ECX load, truncated AND, class,
+  lock and leaf bodies, entry at the AP address).
+- Native fixture `verification/probe/fl_circle_fill.cpp` (MinGW i686, project flags, run through WSL interop on the
+  Windows host; X3FL.exe mapped relocated at a 64 KB base ≠ 0x400000; the real rasterizer, lock, class function,
+  class-0 leaf and CRT fill execute): 962 checks, 0 failures. 22,448 window bits and 24 rebound relocations refused,
+  six named mutations, stale and misaligned bases, an unreadable window; claim/read-back/chain/rollback-failure/
+  not-owned/shutdown with 5 faults; six initialize rows plus `late_claim`. 993 calls kept EBX/ESI/EDI/EBP, ESP (plain
+  `ret`, caller pops 16), the stack words, DF, x87 CW, XMM7, MXCSR controls and LastError, at four incoming alignments.
+  871 plain runs (1,225,682 ordered leaf records) equal `test_fl_circle_fill.py`'s independent Python model: native
+  runs the wrapping routine, patched runs by route (stock: wrapping, wide: exact), routes equal the note's routing.
+  Radii 813/814/825/826/1290/1291/32767 at all four edges, unclipped and cap placements; aspects 32768, 98304, 131072,
+  1051682, -65536, 65535, 65537, 46341, 0, 0x7fffffff, 256. MXCSR RC 0..3 and FTZ|DAZ: 30/30 patched = native (spans,
+  effects, MXCSR out). Lock ok / OOM then ok / OOM twice / vidmem twice / E_FAIL twice / no backing / no-draw flag at
+  r 500/820/1291, dimension changes by a leaf or the recovery callback, unsupported classes 3/25/-1/0x7fff: patched =
+  native. Canary-backed real class-0 leaf writes: 12/12 inputs, 8,157,959 pixels, no byte outside the spans.
+- Static walk of the RelWithDebInfo FL DLL from `_x3m_circle_fill_fl_wide` (`walk_wide.py`): no x87; XMM only in
+  the asm B conversion. AP objects (`capture.cpp`, `loader.cpp`, `circle_fill.cpp`) disassemble identically to `main`
+  (`ap_objects_identical.py`).
+
+Not verified: not flown (no FL scanner disc seen in game); native Windows rendering unverified (the fixture executes
+the engine's code natively but not the game); unmasked floating-point exceptions and exception propagation through the
+stub not exercised; general-aspect ellipses are routed as documented but the scripts' aspect in game is unobserved.
