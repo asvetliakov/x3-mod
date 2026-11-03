@@ -104,7 +104,8 @@ class DustLeakFixCore(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('dust_leak_fix::initialize();'), 1)
+        # One call per edition: AP's here, FL's in the #if X3M_EDITION_FL block after fov (test_fl_dust_leak_fix.py).
+        self.assertEqual(capture.count('dust_leak_fix::initialize();'), 2)
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('dust_leak_fix::initialize();'))
         self.assertIn('if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);', capture)
         self.assertEqual(capture.count('dust_leak_fix::report('), 1)

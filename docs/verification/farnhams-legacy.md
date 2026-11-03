@@ -2430,3 +2430,34 @@ rollback `rollback-d3d9\d3d9.dll.run34` = `51e96d4d…`; game data and ini uncha
 `verification/results/fl-run35/candidate.json`. No dedicated flight: the next ordinary FL flight should show
 `engine_plumes_hidden_emitters … setting=- rule=off` and no plume on the Heavy Centaur's hidden points. The plume rule on
 both editions is now: an engine glow part gets a plume; a hull without glow parts gets none, as the game ships it.
+
+## dust_leak_fix on FL (host evidence, 2026-11-03)
+
+`dust_leak_fix` (stops the dust-scene fill from leaking one never-attached scene node per missing dust body per frame)
+now has an FL body: `src/engine/fl/dust_leak_fix_fl.cpp` + `dust_leak_fix_sites_fl.h`, using the AP parser and counter
+rules. It claims the fill loop's tail `0x020ac4` (CMP/JL, ten bytes, `rel32_offset=6`, a plain write because the jump
+crosses a qword) on the backend-load path, behind eight windows. A failed newborn (ESI != 0, `+0x1c == 0`) goes to the
+engine's release `0x0a3300` with ECX = node, and EBX = count ends the fill for that invocation. One row
+`dust_leak_fix site=… rva=020ac4 edition=fl status=… reason=… mode=… setting=… write=plain stub=…`. The `--perf/--debug`
+300-frame row `dust_leak_fix hits=… total=… frame=… edition=fl` is shared with AP (the `report()` call is no longer
+fenced to AP). `shutdown()` is for the fixture: the FL loader's unload calls are AP only, as for the other FL
+ports (the DLL is pinned before the stub is emitted). Facts:
+[fl/dust-light.md](../reverse-engineering/fl/dust-light.md), "Port (2026-11-03)". Producers:
+`verification/results/fl-dust-leak-fix/` (`reproduce.sh`, `run_fixture.py`, `ap_objects_identical.py`).
+
+| Check | Command | Result (measured) |
+| --- | --- | --- |
+| FL site | `python3 verification/probe/verify_dust_leak_fix_site_fl.py /mnt/c/X3FL/X3FL.exe` (`verify_dust_leak_fix_site_fl.json`) | PASS 19/19 on `e7f3aad8…`. Checks: 8 windows (bytes, one fixup, FNV-1a); updater decode 413 instructions to `ret 0xc`; span = CMP (4) + JL (6), no relocation, qword-crossing; the five arrivals (je/js/jne/je + attach fall-through), raw edges to the site exactly those four, none into the interior; `0x020ac5`/`0x0e4908` interior; stack depth 0 at all five; newborn memset 0x270; attach stores +0x18/+0x1c and returns `ret 4`; release ECX = node, two plain `ret`s, 65 direct callers; manager clear `mov ecx,eax; call`; exit: EBP/EBX written first, ESI redefined at `0x020b28`, no count-slot read; stub decode (75 bytes, 28 instructions) |
+| Native fixture | `python3 verification/results/fl-dust-leak-fix/run_fixture.py` (`fixture.json`; `verification/probe/fl_dust_leak_fix.cpp`, MinGW i686, `-mstackrealign -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`, WSL interop) | full `RESULT PASS checks=48 failures=0`, retain `checks=4 failures=0`. Stock tail leaks (loop on, no release). Patched: null and attached arrivals identical to stock; each failed node released once with ECX = EBP = node, DF clear and LastError = sentinel at the call, then the loop exits with EBX = count; EAX/ECX/EDX/ESI/EDI/EBP, ESP, the 0x60-byte frame, XMM7, x87 CW, MXCSR and LastError kept although the fake release clobbers all of them; recorder (slot redirected) keeps CF/PF/AF/ZF/SF/OF and DF; 5 hits = 5 releases. `FLIPS windows=8 bits=1856 refused=1856 fixup=32`. Refusals: base 0/unaligned, `install_at` at the interior or with a wrong release, a tail laid one byte later (`tail_mismatch`). `FAULTS taken=5`: push/store → `chain_failed`, read-back → `readback_mismatch`, read-back + restore → `rollback_failed` registered until shutdown restores. initialize rows: executable_mismatch, off, invalid (`yes`, `ON`), too_long, patched `write=plain`, late_claim. Shutdown: foreign bytes left (`restore_not_owned`), ours restored, engine bytes with no write; retain run: window closed, the stub still releases, the jump kept (`restore_retained registered=1`) |
+| Stub audit | `test_fl_dust_leak_fix.FlDustLeakFixNativeFixture.test_emitted_stub` | live stub's three calls = GetLastError, base + `0x0a3300`, SetLastError; INC target outside the arena; JMP [slot] inside it; no ESI memory operand after the release call |
+| AP unchanged | `python3 -I verification/results/fl-dust-leak-fix/ap_objects_identical.py --base main` | `capture.cpp` (40,696 lines) and `loader.cpp` (2,825 lines) disassembly identical to main (`80a705582`); `dust_leak_fix.cpp.obj` sha256 `410f0d7e…` before and after |
+| Builds | `cmake -S . -B build-fl -DX3M_EDITION=fl …; cmake --build build-fl -j`; `cmake --build build-ap -j` (worktree, RelWithDebInfo, mingw-i686) | fl clean build 0 warnings, 0 errors (`d3d9.dll` `15cd0039…`, 55,892,689 B); ap 0 warnings |
+| Host tests | `PYTHONPATH=verification/probe:verification/analysis python3 -m unittest verification/analysis/test_fl_dust_leak_fix.py verification/analysis/test_dust_leak_fix_site.py`; `python3 tools/config/generate.py --check` | 15 tests OK (the AP wiring test now counts one `initialize()` per edition; the brief's `PYTHONPATH=verification/probe` alone cannot import the AP module's `source_text`, unchanged); `PASS 293 settings, 138 in the template` |
+| Host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` | 337 modules, 3,456 tests, 0 failing (after bumping `test_engine_effects`' capture.cpp pin, as at the ui_scale and text_density merges) |
+
+Expected row on an FL launch (not verified in game): `dust_leak_fix site=<base+020ac4> rva=020ac4 edition=fl
+status=patched reason=ok mode=on setting=on write=plain stub=<arena>`. Under `--perf`, in a sector whose background
+names a missing dust body, `dust_leak_fix hits=` grows by at most one per dust-updater call (one per frame for the
+cockpit caller). It stays 0 elsewhere. Not verified: in game (not flown). Also open: the real release's
+external-reference scan and recursive cleanup on a failed newborn, the release cost, a stable unattached-node
+population, and native Windows game behaviour.
