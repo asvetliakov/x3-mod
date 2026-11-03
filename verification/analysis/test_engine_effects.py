@@ -26,7 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # sources changed natively (cd479d025..2c3d32ffa). Accepted beside the recorded hash until run_engine_effects.py reruns on a
 # Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
 # engine_far_jets.* and motion_output_engine_plumes_inc.h: bumped at the FL far-jet un-fence merge (e9bff9301); capture.cpp:
-# bumped at the FL ui_scale merge (78bb9b6cd) and again at the FL text_density merge (737a1a2ae); plumes_inc.h again
+# bumped at the FL ui_scale merge (78bb9b6cd), again at the FL text_density merge (737a1a2ae) and for the FL
+# dust_leak_fix port (FL-fenced initialize, report() unfenced; AP disassembly identical); plumes_inc.h again
 # for the engine_plume_emitters default flip (step 1 closed, run 35); all 2026-11-03,
 # native-only since the record.
 # engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
@@ -46,7 +47,7 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     'src/proxy/motion_output.h': '522d5d435d0978c2eaec2f8d6a909dad3324ad384f546e1871e6804b605a2d33',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
-    'src/proxy/capture.cpp': 'b2fec7794766fa5b27d4a675908d7ca4e432cbc42eb7cc633004093bdebaa785',
+    'src/proxy/capture.cpp': '1093deb1cff0f3ed06e55cb979aef4b874bed19a2fc8b41f500ef3cbb31d122f',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

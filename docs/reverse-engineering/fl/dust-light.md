@@ -236,3 +236,30 @@ Independent review reproduced all 24 checks and accepted the static hook/ABI
 contract after the external-reference scan and EDI-arrival qualifications above.
 The proposed fixture remains a transport/state check, not proof of real release
 cost or recursive cleanup. No production implementation or activation is accepted.
+
+## Port (2026-11-03)
+
+`dust_leak_fix` now has an FL body: `src/engine/fl/dust_leak_fix_fl.cpp` with sites in
+`dust_leak_fix_sites_fl.h`, the AP parser and counter rules shared from `src/proxy/dust_leak_fix_sites.h`. The hook is
+the section-1 candidate. The ten-byte tail `[0x020ac4,0x020ace)` (CMP EBX,[ESP+0x18]; JL 0x020950) is claimed through
+`engine_patch` with `rel32_offset=6` and `ret_pop=12`. The five-byte jump crosses the qword at `0x020ac0`, so it is a
+plain write, made only inside the install window. The 75-byte stub runs first. For ESI != 0 with node+0x1c == 0 it
+saves EFLAGS, EAX/ECX/EDX/EBP, the FXSAVE image and LastError (GetLastError/SetLastError), calls the release
+`0x0a3300` with ECX = node, then sets EBX = [ESP+0x18], so the displaced CMP/JL falls through to the loop exit. Every
+other arrival only passes through PUSHFD/POPFD. As on AP, the hit counter is a module global in the pinned DLL.
+Install refuses unless eight windows match at base + RVA: alloc, body, tail, release entry, both release exits, attach
+up to the scene store, and the manager clear (its one fixup bound to base + `0x1aa100`). Shutdown restores the CMP only
+over our jump and only while the window is open; afterwards the jump stays (`restore_retained`). It is called by
+the fixture only: the FL loader's unload calls are AP only.
+
+Verified (measured): `verify_dust_leak_fix_site_fl.py` passes 19 of 19 checks on the installed X3FL.exe
+(`e7f3aad8…`). These are the window bytes and hashes, the two-instruction span, the five arrivals, no raw edge into
+the span interior, `0x020ac5`/`0x0e4908` not instruction starts, stack depth 0 at every arrival, the newborn's
+zeroed `+0x1c`, attach's scene store, the release's ECX/plain-RET contract and its 65 direct callers, exit liveness
+(ESI redefined at `0x020b28`, no count-slot read) and the stub's decode. The native fixture `fl_dust_leak_fix.cpp`
+passes 48 + 4 checks with 0 failures (see the ledger). The pristine `/mnt/c/X3FL-orig/X3FL.exe` was not present on
+this host; the installed exe carries the measured hash.
+
+Not verified: the real release on a real failed newborn (its external-reference scan and recursive cleanup; the
+fixture's release is a stand-in behind the real prologue and epilogue), the failure-release cost, bounded hits and a
+stable unattached-node population in an FL missing-resource sector (not flown), and native Windows game behaviour.

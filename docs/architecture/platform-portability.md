@@ -993,6 +993,23 @@ Win32 install path, and no device call in the handler. Natively verified on the 
 
 Not verified: the far route in game (not flown); native Windows game behaviour.
 
+## 2026-11-03: dust leak fix on FL (`dust_leak_fix` on FL)
+
+The FL edition (`src/engine/fl/dust_leak_fix_fl.cpp`; [fl/dust-light.md](../reverse-engineering/fl/dust-light.md),
+"Port (2026-11-03)") claims the fill loop's ten-byte tail at X3FL.exe base + `0x020ac4` on the backend-load path,
+behind the X3FL.exe identity and eight compared windows (the relocated dword checked against the base). The claim reads
+back and rolls back on failure. The five-byte jump crosses a qword, so it is a plain write inside the install window
+and is never rewritten after the window closes (`restore_retained`). The stub is emitted code. For a never-attached
+node it keeps EFLAGS, EAX/ECX/EDX/EBP, the FXSAVE image and LastError (documented `GetLastError`/`SetLastError`) around
+the engine's own release (ECX = node). Its counter lives in the DLL, pinned with
+`GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN)`. Documented Win32 only, no Wine/CrossOver dependency. Natively
+verified on the Windows host through WSL interop (measured 2026-11-03): the FL fixture passes 48 + 4 checks with
+0 failures. It runs the real tail and the real release prologue/epilogue and checks one release per failed node with
+ECX = node, EBX = the count, every other register, ESP, the frame, XMM7, x87 CW, MXCSR, LastError and the tail's flags
+(with DF) kept. It also covers refusals, every flipped window bit, chain/read-back/restore faults, shutdown over our
+bytes only, late claim and the retained jump. Not verified: in game (not flown); native Windows game behaviour; the
+real release's external-reference scan on a failed newborn.
+
 ## 2026-11-03: text density on FL (`text_density` on FL)
 
 The FL edition (`src/engine/fl/text_density_fl.cpp`; [fl/text-density.md](../reverse-engineering/fl/text-density.md),

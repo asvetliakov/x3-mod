@@ -2225,9 +2225,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     // range (address_space.h); the address_space row is emitted when a pass covers the whole range (ticks=, us=).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 30 == 0)
         address_space::tick(ctx.id, ctx.frame);
-#if !X3M_EDITION_FL
-    // --perf/--debug: the dust-leak fix's detour count every 300 frames (one module word read; nothing per frame).
+    // --perf/--debug: the dust-leak fix's detour count every 300 frames (one module word read; nothing per frame). Both
+    // editions (FL: src/engine/fl/dust_leak_fix_fl.cpp, the row carries edition=fl).
     if ((log_tier::cached_perf || log_tier::cached_debug) && ctx.frame % 300 == 0) dust_leak_fix::report(ctx.frame);
+#if !X3M_EDITION_FL
     // Ship steering (X3M_SHIP_STEERING=1 only; one flag read otherwise): the stuck witnesses at the always tier, the
     // 1 Hz summary under --perf/--debug and the sampled decision under --debug, drained from the handlers' counters.
     ship_steering::frame_boundary(ctx.frame);
@@ -5892,6 +5893,11 @@ void initialize_log(HMODULE module) {
     // base+0x030eaa and the load store at base+0x01df09 (one lock cmpxchg8b each), all three or none; same window,
     // disjoint from every other FL claim; one fov row with edition=fl.
     fov::initialize();
+    // FL dust leak fix (docs/reverse-engineering/fl/dust-light.md, "Port (2026-11-03)"; src/engine/fl/dust_leak_fix_fl.cpp):
+    // X3M_DUST_LEAK_FIX=on|off as on AP, unset = on. The fill loop's tail CMP/JL at base+0x020ac4 (ten bytes, plain write
+    // of the jump) claimed with the release-and-leave stub, same window, disjoint from every other FL claim; one
+    // dust_leak_fix row with edition=fl.
+    dust_leak_fix::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:

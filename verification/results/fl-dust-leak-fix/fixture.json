@@ -1,0 +1,31 @@
+{
+ "build_s": 1.25,
+ "full": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 48,
+  "failures": 0,
+  "elapsed_s": 0.2,
+  "summary": [
+   "WINDOWS alloc_mismatch@020950=ea6c5d54 body_mismatch@020a17=11cd18f1 tail_mismatch@020aba=fda11cf4 release_mismatch@0a3300=267af6be release_exit_mismatch@0a359a=efe79144 release_exit_mismatch@0a35cf=efe79144 attach_mismatch@0a56b0=b3a1cfde clear_mismatch@08a875=6bcaf233",
+   "FLIPS windows=8 bits=1856 refused=1856 fixup=32 fixup_refused=32",
+   "FAULTS taken=5",
+   "RUNS hits=5 releases=5",
+   "RECORDER null=1 attached=1 failed=1 clear=1",
+   "RESULT PASS checks=48 failures=0"
+  ],
+  "fail_lines": []
+ },
+ "retain": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 4,
+  "failures": 0,
+  "elapsed_s": 0.15,
+  "summary": [
+   "RETAIN span=e99bf5b2ff",
+   "RESULT PASS checks=4 failures=0"
+  ],
+  "fail_lines": []
+ }
+}

@@ -143,6 +143,8 @@ set(X3M_SHARED_SOURCES
 # the fl target links src/engine/fl/ui_scale_fl.cpp (docs/reverse-engineering/fl/ui-scale.md, "Verified 2026-11-03");
 # ui_scale.cpp is AP only. The text density too: the fl target links src/engine/fl/text_density_fl.cpp
 # (docs/reverse-engineering/fl/text-density.md, "Verified 2026-11-03"); text_density.cpp is AP only.
+# The dust leak fix too: the fl target links src/engine/fl/dust_leak_fix_fl.cpp
+# (docs/reverse-engineering/fl/dust-light.md, "Port (2026-11-03)"); dust_leak_fix.cpp is AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
@@ -203,6 +205,10 @@ else()
   # (docs/reverse-engineering/fl/text-density.md, "Verified 2026-11-03"); it provides text_density.h in place of the AP
   # src/proxy/text_density.cpp.
   target_sources(d3d9 PRIVATE src/engine/fl/text_density_fl.cpp)
+  # The dust leak fix: the fill loop's common tail claimed with the release-and-leave stub, the AP policy on FL
+  # bindings (docs/reverse-engineering/fl/dust-light.md, "Port (2026-11-03)"); it provides dust_leak_fix.h in place of
+  # the AP src/proxy/dust_leak_fix.cpp.
+  target_sources(d3d9 PRIVATE src/engine/fl/dust_leak_fix_fl.cpp)
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
@@ -281,6 +287,9 @@ set_source_files_properties(src/engine/fl/ui_scale_fl.cpp PROPERTIES COMPILE_OPT
 # The FL text density (src/engine/fl/text_density_fl.cpp): its C sides run inside the asm thunks' envelope (EFLAGS, GPRs,
 # XMM0-7, FNSAVE image, MXCSR; LastError in the C side): default SSE2 flags, no exception bookends.
 set_source_files_properties(src/engine/fl/text_density_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL dust leak fix (src/engine/fl/dust_leak_fix_fl.cpp): its stub is emitted code in the arena (no C side runs inside
+# the engine); the install code runs on the backend-load path: default SSE2 flags, no exception bookends.
+set_source_files_properties(src/engine/fl/dust_leak_fix_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

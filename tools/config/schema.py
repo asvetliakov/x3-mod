@@ -442,7 +442,8 @@ SETTINGS = [
     entry('sun_flare_fix', 'enum', 'engine', 'Keeps the sun flare visible near the screen centre on wide screens. on or off.', 'on',
           choices=('on', 'off'), launcher='--sun-flare-fix'),
     entry('dust_leak_fix', 'enum', 'engine', 'Stops a slowdown in sectors whose background names missing dust models: the game '
-          'would otherwise create a few dozen invisible objects every frame and never remove them. on or off.', 'on',
+          'would otherwise create a few dozen invisible objects every frame and never remove them. on or off. '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.', 'on',
           choices=('on', 'off'), launcher='--dust-leak-fix'),
     entry('circle_fill_fix', 'enum', 'engine', 'The game\'s sector-map scanner disc collapses above a radius of about 800 texels; '
           'this runs a 64-bit copy of the engine\'s circle fill for large discs. on or off (off = stock behaviour).', 'on',
