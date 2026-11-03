@@ -1,0 +1,45 @@
+== hidden-emitter window rows: 118
+  frames: sum=35101 max=300 rows_nonzero=118
+  probes: sum=1951 max=76 rows_nonzero=114
+  probe_deferred: sum=196 max=51 rows_nonzero=12
+  glow: sum=11426 max=437 rows_nonzero=49
+  not_emitter: sum=0 max=0 rows_nonzero=0
+  rejected: sum=0 max=0 rows_nonzero=0
+  no_floor: sum=0 max=0 rows_nonzero=0
+  mode_reads: sum=19349 max=900 rows_nonzero=53
+  new_hulls: sum=0 max=0 rows_nonzero=0
+  anchors: sum=0 max=0 rows_nonzero=0
+  ships: sum=0 max=0 rows_nonzero=0
+  rows with probes==1: 9  last 5 probes: ['29', '3', '3', '1', '1']
+  walk_us_max max: 21.2
+== engine_plumes_hidden_emitter_hull rows: 0
+== engine_stage rows: 36610
+  node_roots: sum=73295 max=8
+  node_walked: sum=71344 max=7
+  node_not_ship: sum=2075618 max=196
+  node_probes: sum=1951 max=4
+  node_anchors: sum=0 max=0
+  node_anchor_roots: sum=0 max=0
+  node_other_view: sum=0 max=0
+  node_no_scale: sum=0 max=0
+  node_children: sum=1526027 max=168
+  node_hidden: sum=820140 max=57
+  node_records: sum=1168 max=9
+  node_unreadable: sum=0 max=0
+  node_no_boundary: sum=0 max=0
+  frames with node_probes>0: 1378  frames with node_not_ship>0: 34302
+  node_roots histogram (9 = >=9): {0: 1485, 1: 12975, 2: 10281, 3: 9274, 4: 1482, 5: 732, 6: 322, 7: 56, 8: 3}
+== engine_node_walk_window rows: 122
+  appends: sum=36601 max=301 rows_nonzero=122
+  walked: sum=35124 max=300 rows_nonzero=118
+  refused: sum=0 max=0 rows_nonzero=0
+  unreadable: sum=0 max=0 rows_nonzero=0
+  no_scale: sum=0 max=0 rows_nonzero=0
+  samples: sum=35124 max=300 rows_nonzero=118
+  roots_max max: 8  rows by roots_max: {0: 4, 5: 30, 1: 3, 7: 11, 6: 20, 4: 21, 3: 15, 2: 16, 8: 2}
+  walk_us_p99 max: 12.8  walk_us_max max: 21.2
+== engine_node_walk_refused rows: 0 []
+== rows mentioning exception or fault=1 by tag: {'original_fill_mode': 1, 'window_mode_config': 1, 'lod_occlusion': 1, 'taa_thin_vote_configured': 1, 'fade_rt2_owner_configured': 1, 'motion_output_taa_box_resolution': 1, 'taa_thin_region_source': 1, 'motion_output_taa': 1, 'session_end': 1}
+== engine_stage silent-drop sums: {'node_overflow': 0, 'node_invalid': 35909, 'node_dupes': 192583, 'node_guard_rejected': 0, 'far_overflow': 0, 'far_dropped': 474437}
+== node_invalid by probe frame: {'no_probe_frame.frames': 35232, 'no_probe_frame.invalid_frames': 6182, 'no_probe_frame.invalid_sum': 34644, 'probe_frame.frames': 1378, 'probe_frame.invalid_frames': 210, 'probe_frame.invalid_sum': 1265}
+== frame_end dt_ms: n=36771 p50=4.000 -> 10% = 400.0 us

@@ -2351,7 +2351,19 @@ and hull light while the ship stays in view; no floating or parked-glowing plume
 exception row, `walk_us_p99 > 500` (or over 10 % of the frame p50), or a floating/parked anchor → `engine_nozzle_source
 = draw` in the ini and report.
 
-**FL run 33 (queued, after 32 is accepted):** remove the `engine_plume_emitters = 0` line (defaults to 1). Find an Argon
+**FL run 33 (flown 2026-11-03, inconclusive, no defect):** user removed the ini line and flew near a Cerberus, a Colossus
+and a Mammoth: "no changes" (expected: those hulls have neither glow parts nor emitters; step 2 closed by user decision).
+Log `/home/asvetl/x3m-logs/fl-run33-emitters.log` (384 MB; `verification/results/fl-run33/triage_log.py`, measured):
+`engine_plume_emitters` unset → `rule=on emitter_body=33`; 1,951 probe walks over 118 windows (max 76 per window, 196
+deferred by the 4-per-frame cap); every probe found no JET candidate (`anchors=not_emitter=rejected=no_floor=0`, 0 hull
+rows), `glow=11,426` glow ships resolved their hidden candidates to the emitter body correctly; no class test exists in
+the path, admission is not limited to gathered roots; `roots_max=1`/`probes=1` only in the shutdown windows. Walk:
+`unreadable=0`, `walk_us_p99` max 12.8 µs, 0 refusals, `exception=0`. Conclusion: no emitter hull (M6M, Terran drone) was
+in view, so step 1 is still unflown; the window row cannot distinguish an empty probe from a missed hull, so run 34 is a
+diagnostic build (probe subtotals, one row per newly probed root with its model id, far_dropped split). Next flight: find
+an Argon Heavy Centaur (`SS_SH_A_M6M`, shipyards/Argon military sectors) or Terran drones and keep them in view.
+
+**FL run 33 original brief:** remove the `engine_plume_emitters = 0` line (defaults to 1). Find an Argon
 Heavy Centaur (`SS_SH_A_M6M`) or Terran drones: they gain plumes, a hull light and a trail at their hidden emitter points,
 following throttle; ships that already had plumes unchanged; hulls with neither glow nor emitters unchanged. Expect
 `engine_plumes_hidden_emitters anchors>0 ships>0 edition=fl` and `engine_plumes_hidden_emitter_hull` rows.
