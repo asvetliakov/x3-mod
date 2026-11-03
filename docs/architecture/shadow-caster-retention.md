@@ -675,25 +675,38 @@ probe drift"; the run336 trajectory script `verification/results/run336-shadow-p
 FL run 44 lost the hull shadow of a station whose covering draws are alpha-tested: of its 25
 draws 7 are alpha-tested, its largest (26,884 primitives) among them, and the store never took
 an alpha-tested draw (the exclusion predated the alpha caster programs), so the unseen station
-replayed only its 18 opaque records, about 10 % of the live footprint and none of the 250-unit
-cascade around the ship (measured, `verification/results/fl-run44-retention-triage/triage.py`).
+replayed only its 18 opaque records: unseen coverage 0.0073 / 0.0704 / 0.0688 in cascades
+0 / 1 / 2 against 0.7217 / 0.8460 / 0.5075 drawn (frame 28990 against 21221), about 1 % of
+the live coverage in cascade 0, the 250-unit cascade around the ship, and 8–14 % in cascades
+1–2 (measured, `verification/results/fl-run44-retention-triage/triage.py`).
 Since 2026-11-04 both editions retain alpha-tested casters:
 
 - **Sighting.** A leased alpha-tested caster (`alpha_caster_source` accepted it: a 2D managed
   stage-0 texture, a supported ALPHAFUNC) passes its texture identity and discard threshold with
-  the sighting; one the alpha source refused, or any alpha-tested draw while the alpha programs
-  are not ready (`alpha_excluded`), is still never a candidate and never a sighting. A draw the
-  static or footprint gate refused (`note_refused_sighting`) reads its own alpha source on every
-  sighting and is noted only when accepted; the texture is never inferred from an earlier record
-  of the range (a retextured range would replay another texture's holes). That read does not
-  touch the `shadow_alpha_casters` counters, which stay the candidates'.
+  the sighting. Any alpha-tested draw while the alpha programs are not ready (`alpha_excluded`
+  before the source is read) is never a candidate and never a sighting. A draw the static or
+  footprint gate refused (`note_refused_sighting`) reads its own alpha source on every sighting;
+  the texture is never inferred from an earlier record of the range (a retextured range would
+  replay another texture's holes). That read does not touch the `shadow_alpha_casters` counters,
+  which stay the candidates'.
+- **Keep sightings.** A draw whose alpha source is refused this time (leased path or gate path)
+  is no candidate, but it is a keep sighting (`Sighting::keep_alpha`): when the store holds a
+  record of its range (key, buffers, declaration) the record is refreshed (rows, stamp) with its
+  last accepted texture and threshold, counted `alpha_kept=`; with no such record nothing is made,
+  no node is created and no node is marked seen (`Seen::Unmatched`; live mode returns before any
+  geometry query when the range has no known declaration). Without it a source alternating
+  between accepted and refused would supersede the record every refusal and keep the whole node,
+  its opaque parts included, from ever counting static. The replay of such a record while the
+  node is unseen uses the last accepted texture, which the store still holds.
 - **Resources.** The texture is the record's fourth held resource (`Draw::resource[3]`) under
   the rule above: the store asks for one `AddRef` per distinct texture at the draw (`Acquired`),
   every use is counted in the held-resource table, the last record naming it leaves one owed
   `Release` in the table (`pop_owed`), and every flush (Reset, device loss, teardown, sun, epoch,
-  observer, idle) releases it with the rest. Texture and threshold are part of the record's
-  identity: another texture or threshold for the same range is a new record and the old one is
-  superseded at that sighting (its texture released if nothing else names it). A texture the
+  observer, idle) releases it with the rest. Texture and threshold are payload, not identity:
+  another texture or threshold for the same range updates the record in place and keeps its
+  streak (`retextured=`); the new texture is acquired before the old one's use is dropped (its
+  Release owed, as any other), and a full table refusing the new texture leaves the record
+  unstamped, superseded at the scene end with every reference balanced. A texture the
   game released is found by the orphan probe (count 1) and drops every node naming it
   (`buffer_orphaned`), exactly as a buffer; a full table refusing the texture rolls the whole
   record back. Texture content is not tracked (no lock view): the live path's accepted
@@ -707,16 +720,19 @@ Since 2026-11-04 both editions retain alpha-tested casters:
   none is expected, because such records are made only while the programs are ready and every
   Reset, device loss and teardown flushes the store before the pass is re-created.
 - **Rows.** `shadow_retention_frame` ends with `retained_alpha=` (this frame's retained alpha
-  issues) and `retained_alpha_skipped=`; `shadow_retention_summary` ends with
+  issues), `retained_alpha_skipped=`, `retextured=` and `alpha_kept=`; `shadow_retention_summary` ends with
   `retained_alpha_issues=`. The `shadow_replay_depth` tail buffer grew from 192 to 320 bytes:
   five cascades of `replayed_live<k>= replayed_retained<k>=` with 4-digit counts overflowed it
   and blanked the tail.
 - **Cost.** Per retained alpha record one more held resource and one more pointer compare in the
   sighting match; per issue nothing beyond a live alpha issue (texture and threshold set only when
-  they change in the pass). A refused alpha-tested sighting adds the alpha source read (two
-  state-shadow reads, `GetTexture`, `GetType`, `GetLevelDesc`, `Release`). No allocation was added:
-  the store's fixed storage grows 32,768 bytes (`Draw` 392 -> 400 bytes on i686, 4,096 records;
-  measured with `sizeof` under the MinGW i686 compiler), allocated once at attach.
+  they change in the pass). A gate-refused alpha-tested sighting adds the alpha source read (two
+  state-shadow reads, `GetTexture`, `GetType`, `GetLevelDesc`, `Release`); a leased-path draw
+  whose source was refused reads it a second time inside the keep sighting (the refusal cases
+  that reach `GetTexture` pay it twice). No allocation was added: the store's fixed storage grows
+  32,776 bytes (`Draw` 392 -> 400 bytes on i686, 4,096 records, and two frame counters; measured
+  with `sizeof` under the MinGW i686 compiler), allocated once at attach. Open: the census reads
+  the alpha source too (cost without a replay), and texture content stays untracked.
   Host evidence: directional-shadows.md, "Alpha-tested casters retained".
 
 ## Open RE (not blocking stages 1–2)

@@ -56,7 +56,8 @@ DRIVER = r'''
 using namespace x3m;
 namespace sr = x3m::shadow_retention;
 static int failures = 0;
-#define CHECK(x) do { if (!(x)) { std::printf("FAIL %d %s\n", __LINE__, #x); ++failures; } } while (0)
+static long checks = 0; // executed CHECKs (a loop's check counts per pass)
+#define CHECK(x) do { ++checks; if (!(x)) { std::printf("FAIL %d %s\n", __LINE__, #x); ++failures; } } while (0)
 static const float sun[4] = {0.30151134f, 0.90453403f, -0.30151134f, 0.f};
 struct Pose { double yaw, pitch, pos[3]; };
 static bool quantised = false; // the engine's basis: every rotation element rounded to 16.16, not renormalised (run222)
@@ -95,6 +96,7 @@ struct Rig {
     unsigned views = 0;           // registry lookups the view callback answered
     const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
     std::uintptr_t alpha = 0; float threshold = 0.f; // the sightings' stage-0 texture and discard threshold (0: depth-only)
+    bool keep = false; // keep sightings: the alpha source refused (Sighting::keep_alpha)
     double eps_cascade1 = sr::eps_default; // cascade 1's classification tier (renderer::shadow_cascade_class_eps in production)
     Rig(bool hold = true) { const float extents[2] = {250.f, 1500.f}; renderer::shadow_cascade_set(extents, 2, nullptr, nullptr, 640, set); store->configure(hold); }
     sr::Seen draw(std::uint64_t serial, const float world[12], std::uint64_t vb = 100, std::uint32_t lod = 0, std::uint32_t flags12c = 0, std::uint32_t flags130 = 0, std::uint64_t epoch = 1, std::uint64_t revision = 1) {
@@ -103,7 +105,7 @@ struct Rig {
         sr::Sighting s; s.serial = serial; s.load_epoch = epoch; s.registry_epoch = 1; s.observer_epoch = 1; s.node = 0x1000 + serial; s.handle = std::uint32_t(serial); s.model = 7; s.lod = lod;
         s.flags12c = flags12c; s.flags130 = flags130; s.key.vb = vb; s.key.ib = vb + 1; s.key.declaration = 5; s.key.stride = 24; s.key.primitives = 12; s.key.vertex_count = 8; s.key.indexed = 1; s.key.topology = 4;
         s.vb = {std::uintptr_t(0x100000 + vb), vb, 1, revision}; s.ib = {std::uintptr_t(0x200000 + vb), vb + 1, 1, 1}; s.declaration = 0x300000; s.rows = rows; s.lo = lo; s.hi = hi;
-        s.alpha_texture = alpha; s.alpha_threshold = threshold;
+        s.alpha_texture = keep ? 0 : alpha; s.alpha_threshold = keep ? 0.f : threshold; s.keep_alpha = keep;
         sr::Acquired acquired; store->set_eye(camera(pose));
         const sr::Seen result = store->seen(s, frame, acquired);
         for (unsigned i = 0; i < acquired.count; ++i) ++refs[acquired.identity[i]];
@@ -404,13 +406,18 @@ int main() {
         CHECK(r.store->nodes_used == 0 && r.store->draws_used == 0 && r.held() == 0 && r.store->references() == 0 && r.refs.empty() && r.store->totals.buffer_orphaned == 1);
         r.end(); CHECK(r.store->admitted_count == 0); r.next();
     }
-    { // a retextured range (another texture, then another threshold) is another record: the old one is superseded, its texture released
+    { // a retextured range (another texture, then another threshold) updates its record in place: the streak and the static class stay,
+      // the old texture's reference is released, a texture alternating every sighting never resets the node
         Rig r; place(w, 20, 0, 60); r.alpha = 0x400000; r.threshold = .5f; r.settle(51, w);
-        CHECK(r.held() == 4 && r.store->draws_used == 1);
-        r.alpha = 0x410000; CHECK(r.draw(51, w) == sr::Seen::New); r.end(); auto f = r.next();
-        CHECK(f.superseded == 1 && r.store->draws_used == 1 && r.refs.count(0x400000) == 0 && r.refs[0x410000] == 1 && r.held() == 4);
-        r.threshold = .25f; CHECK(r.draw(51, w) == sr::Seen::New); r.end(); f = r.next(); // the held texture is reused: no second AddRef
-        CHECK(f.superseded == 1 && r.store->draws_used == 1 && r.refs[0x410000] == 1 && r.held() == 4 && r.store->draws[r.store->nodes[r.store->find_node(51)].head].alpha_threshold == .25f);
+        const auto n51 = [&]() -> const sr::Node& { return r.store->nodes[r.store->find_node(51)]; };
+        CHECK(r.held() == 4 && r.store->draws_used == 1 && n51().is_static);
+        r.alpha = 0x410000; CHECK(r.draw(51, w) == sr::Seen::Known); r.end(); auto f = r.next();
+        CHECK(f.retextured == 1 && f.superseded == 0 && n51().is_static && r.store->draws_used == 1 && r.refs.count(0x400000) == 0 && r.refs[0x410000] == 1 && r.held() == 4);
+        r.threshold = .25f; CHECK(r.draw(51, w) == sr::Seen::Known); r.end(); f = r.next(); // threshold only: no reference moves
+        CHECK(f.retextured == 1 && n51().is_static && r.refs[0x410000] == 1 && r.held() == 4 && r.store->draws[n51().head].alpha_threshold == .25f);
+        for (unsigned i = 0; i < 12; ++i) { r.alpha = i % 2 ? 0x410000 : 0x400000; r.draw(51, w); r.end(); f = r.next(); CHECK(f.retextured == 1 && f.promoted == 0 && n51().is_static); }
+        CHECK(r.held() == 4 && r.store->references() == 4 && r.refs[0x410000] == 1 && r.refs.count(0x400000) == 0 && r.store->draws[n51().head].alpha_texture == 0x410000);
+        r.pose.yaw = 2.5; r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].alpha_texture == 0x410000); r.next(); r.pose.yaw = 0;
         // Two nodes sharing the texture: one reference; one node retired leaves it held for the other.
         place(w2, -40, 10, 90); r.draw(51, w); CHECK(r.draw(52, w2, 300) == sr::Seen::New && r.refs[0x410000] == 1 && r.store->references() == 6); r.end(); r.next();
         CHECK(r.store->retire(51, r.frame)); r.release(); CHECK(r.refs[0x410000] == 1 && r.held() == 4);
@@ -420,6 +427,31 @@ int main() {
         CHECK(opaque.alpha_texture == 0 && opaque.resource[3] == sr::none && r.held() == 6 && r.store->references() == 6); // its own VB and IB, the shared declaration
         r.end(); r.next();
         r.store->flush(sr::Flush::Reset); r.release(); CHECK(r.held() == 0 && r.refs.empty() && r.store->references() == 0);
+    }
+    { // keep sightings (the alpha source refused this time): a held range is refreshed with its texture, nothing else is made or marked seen
+        Rig r; place(w, 20, 0, 60); r.alpha = 0x400000; r.threshold = .5f;
+        for (unsigned i = 0; i < 10; ++i) { r.draw(54, w, 100); r.alpha = 0; r.draw(54, w, 110); r.alpha = 0x400000; r.end(); r.next(); } // an alpha part and an opaque part
+        const auto n54 = [&]() -> const sr::Node& { return r.store->nodes[r.store->find_node(54)]; };
+        CHECK(n54().is_static && r.store->draws_used == 2 && r.held() == 6);
+        for (unsigned i = 0; i < 12; ++i) { // the source alternates: accepted, refused, accepted ...
+            r.keep = i % 2 == 1; r.draw(54, w, 100); r.keep = false; r.alpha = 0; r.draw(54, w, 110); r.alpha = 0x400000; r.end(); const auto f = r.next();
+            CHECK(f.alpha_kept == (i % 2 ? 1u : 0u) && f.superseded == 0 && f.retextured == 0 && n54().is_static && r.store->draws_used == 2);
+        }
+        CHECK(r.held() == 6 && r.store->draws[n54().head].alpha_texture == 0x400000 && r.store->draws[n54().head].alpha_threshold == .5f);
+        // No record of the range: Unmatched, no node, no record, no reference; the unseen node keeps its retained set.
+        r.keep = true; place(w2, -40, 10, 90);
+        CHECK(r.draw(55, w2, 300) == sr::Seen::Unmatched && r.store->find_node(55) == sr::none && r.held() == 6);
+        CHECK(r.draw(54, w, 120) == sr::Seen::Unmatched); // another range of the held node
+        r.end(); auto f = r.next(); CHECK(f.nodes_unseen == 1 && r.store->admitted_count == 2 && r.store->draws_used == 2 && f.alpha_kept == 0);
+        r.keep = false; r.store->flush(sr::Flush::Teardown); r.release(); CHECK(r.held() == 0);
+    }
+    { // a retexture the full table refuses leaves the record unstamped: superseded at the scene end, every reference balanced
+        Rig r; place(w, 20, 0, 60); r.alpha = 0x400000; r.threshold = .5f; r.settle(56, w); r.alpha = 0;
+        for (unsigned i = 0; i < 510; ++i) r.draw(3000 + i, w, 10000 + 4 * i); // 1,020 more: 1,024 held
+        r.alpha = 0x440000; r.end(); r.next(); CHECK(r.store->references() == 1024);
+        CHECK(r.draw(56, w) == sr::Seen::Refused && r.refs.count(0x440000) == 0 && r.store->frame.refused == 1);
+        r.end(); r.next(); CHECK(r.store->find_node(56) == sr::none && r.refs.count(0x400000) == 0 && r.refs.count(0x440000) == 0 && r.held() == int(r.store->references()));
+        r.store->flush(sr::Flush::Teardown); r.release(); CHECK(r.held() == 0 && r.store->references() == 0);
     }
     { // a full resource table refusing the texture rolls the whole record back: the shared VB, IB and declaration keep their counts
         Rig r; place(w, 20, 0, 60);
@@ -452,7 +484,7 @@ int main() {
         }
         CHECK(map->find(12345678901ull, key_of) == sr::none);
     }
-    std::printf("RESULT %s failures=%d\n", failures ? "FAIL" : "PASS", failures);
+    std::printf("RESULT %s failures=%d checks=%ld\n", failures ? "FAIL" : "PASS", failures, checks);
     return failures != 0;
 }
 '''
@@ -525,12 +557,16 @@ class Lines(unittest.TestCase):
             retention.parse_resight_line(resight_line().replace(' b0_moved=0', ''))
 
     def test_frame_alpha_fields(self):
-        row = retention.parse_frame_line(frame_line(mode='live', refs_held=4, orphan_probe=1, retained_alpha=7, retained_alpha_skipped=0))
-        self.assertEqual((row['retained_alpha'], row['retained_alpha_skipped']), (7, 0))
-        older = ' '.join(frame_line().split(' ')[:-2])  # a log before 2026-11-04: no alpha fields, read as 0
+        row = retention.parse_frame_line(frame_line(mode='live', refs_held=4, orphan_probe=1, retained_alpha=7, retained_alpha_skipped=0, retextured=2, alpha_kept=3))
+        self.assertEqual((row['retained_alpha'], row['retained_alpha_skipped'], row['retextured'], row['alpha_kept']), (7, 0, 2, 3))
+        older = ' '.join(frame_line().split(' ')[:-len(retention.ALPHA_FIELDS)])  # a log before 2026-11-04: no alpha fields, read as 0
         self.assertEqual(retention.parse_frame_line(older)['retained_alpha'], 0)
-        with self.assertRaises(retention.MalformedLine):  # the census issues nothing
-            retention.parse_frame_line(frame_line(retained_alpha=1))
+        self.assertEqual(retention.parse_frame_line(frame_line(alpha_kept=1))['alpha_kept'], 1)  # the census keeps records too
+        for field in ('retained_alpha', 'retextured'):  # the census issues nothing and holds no texture
+            with self.assertRaises(retention.MalformedLine):
+                retention.parse_frame_line(frame_line(**{field: 1}))
+        with self.assertRaises(retention.MalformedLine):  # all four or none
+            retention.parse_frame_line(' '.join(frame_line().split(' ')[:-1]))
         self.assertEqual(retention.summary([row], [])['totals']['retained_alpha'], 7)
 
     def test_retained_alpha_reaches_the_issue(self):

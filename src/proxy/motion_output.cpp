@@ -11942,8 +11942,15 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // reference becomes the lease: alpha_caster_source). Refused: excluded.
     IDirect3DBaseTexture9* alpha_texture = nullptr;
     float alpha_threshold = 0.f;
-    if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed)
+    if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed) {
         alpha_excluded = !alpha_caster_source(alpha_texture, alpha_threshold);
+        // A refused alpha source is no candidate, but it is a keep sighting for a range the retention store
+        // already holds (texture and threshold kept): a source alternating between accepted and refused must
+        // not reset the node's streaks (note_refused_sighting).
+        if (alpha_excluded && cascades && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ &&
+            vb_known)
+            note_refused_sighting(route, vb, exact_extent);
+    }
     if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, alpha_excluded, shadow_ok, shadow_.stream0_pool,
                           shadow_.indices_pool, route.key.indexed,
                           cascades ? candidate_capacity_ : shadow_replay::default_cap,

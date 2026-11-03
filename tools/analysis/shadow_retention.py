@@ -38,10 +38,11 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views', 'idle_frames',
                 # per-cascade reclassifications at that cascade's eps tier and the static gate's refused-draw sightings (2026-09-18, run 40 A)
                 'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings', 'gate_us',
-                # retained alpha-tested casters (2026-11-04): their issues this frame, and admitted ones skipped without
-                # the alpha programs; absent from earlier logs (read as 0)
-                'retained_alpha', 'retained_alpha_skipped')
-ALPHA_FIELDS = ('retained_alpha', 'retained_alpha_skipped')
+                # retained alpha-tested casters (2026-11-04): their issues this frame, admitted ones skipped without the
+                # alpha programs, records retextured in place, keep sightings (alpha source refused) that refreshed a
+                # record; absent from earlier logs (read as 0)
+                'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')
+ALPHA_FIELDS = ('retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')
 FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us', 'gate_us')
 TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
 CASCADES = 5  # c0..c4; the per-cascade would/capped/live tail carries one entry per cascade
@@ -96,7 +97,7 @@ def check_frame(row):
     if any(row[f'capped_c{c}'] > row[f'would_c{c}'] for c in range(CASCADES)):
         raise MalformedLine(f'capped exceeds would: {row}')
     if row['mode'] == 'census' and (row['refs_held'] or row['buffer_orphaned'] or row['orphan_probe'] or row['retained_alpha']
-                                    or row['retained_alpha_skipped']):
+                                    or row['retained_alpha_skipped'] or row['retextured']):
         raise MalformedLine(f'the census holds no references and probes nothing: {row}')
     if row['drift_p99'] > row['drift_max'] + 1e-9 or (not row['drift_n'] and row['drift_max']):
         raise MalformedLine(f'drift inconsistent: {row}')
@@ -169,7 +170,7 @@ def summary(frames, resights, eps=0.05):
                                             'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred',
                                             'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views',
                                             'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings',
-                                            'retained_alpha', 'retained_alpha_skipped')},
+                                            'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')},
            'flushes': {name: sum(1 for r in frames if r['flush'] == name) for name in TEXT_FIELDS['flush'] if name != 'none'},
            'retired_burst_peak': peak('retired'),
            'drift': {'frames': len(verified), 'samples': sum(r['drift_n'] for r in verified), 'max': max((r['drift_max'] for r in verified), default=0.0),

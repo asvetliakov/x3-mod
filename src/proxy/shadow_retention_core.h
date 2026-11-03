@@ -70,7 +70,8 @@ enum class Revalidation : std::uint8_t {
     Dead = 1,
     ContextLost = 2
 }; // ContextLost: the node's recorded registry or camera is gone; the node cannot be confirmed
-enum class Seen : std::uint8_t { Excluded, Deferred, Refused, Known, New };
+enum class Seen : std::uint8_t { Excluded, Deferred, Refused, Known, New, Unmatched }; // Unmatched: a keep sighting
+                                                                                       // with no record of its range
 enum class BufferState : std::uint8_t { Quiet = 0, Changed = 1, Gone = 2 };
 
 inline double abs_d(double v) noexcept {
@@ -167,8 +168,8 @@ struct Draw {
     BufferStamp vb{}, ib{};
     std::uintptr_t declaration = 0; // the declaration interface (live mode; its own held reference)
     // The alpha-tested caster's stage-0 texture (live mode; its own held reference, resource[3]) and its
-    // discard threshold. 0: a depth-only record. Part of the record's identity under hold: another texture
-    // or threshold for the same range is another record (the old one is superseded at that sighting).
+    // discard threshold. 0: a depth-only record. Not part of the record's identity: another texture or
+    // threshold for the same range updates the record in place and keeps its streak (FrameStats::retextured).
     std::uintptr_t alpha_texture = 0;
     float alpha_threshold = 0.f;
     std::uint32_t cull_mode = 0;
@@ -223,6 +224,10 @@ struct Sighting {
     std::uintptr_t declaration = 0;
     std::uintptr_t alpha_texture = 0; // the alpha-tested caster's stage-0 texture (0: depth-only)
     float alpha_threshold = 0.f;
+    // A keep sighting: an alpha-tested draw whose alpha source was refused this time. It refreshes a record
+    // of its range (rows, stamp; texture and threshold stay the last accepted ones) and never makes a node
+    // or a record, so a source alternating between accepted and refused does not reset the node's streaks.
+    bool keep_alpha = false;
     std::uint32_t cull_mode = 0;
     const float* rows = nullptr; // 16 floats
     const float* lo = nullptr;
@@ -274,6 +279,8 @@ struct FrameStats {
     std::uint32_t footprint_refused[renderer::shadow_cascade_max]{}; // retained records cascade c's minimum-footprint
                                                                      // gate dropped this frame (the live counterpart is
                                                                      // FrameCounts::footprint_refused)
+    std::uint32_t retextured = 0; // records whose alpha texture or threshold a sighting changed in place (streak kept)
+    std::uint32_t alpha_kept = 0; // keep sightings (alpha source refused) that refreshed a record of their range
 };
 // Cumulative since attach: the shadow_retention_resight line and the fixture's checks.
 struct Totals {
@@ -453,6 +460,19 @@ struct Store {
         return 0;
     }
     unsigned references() const noexcept { return resources_used; }
+    // The record of this sighting's range not yet seen this frame (none: no such record). The range is the key,
+    // the buffers and, holding references, the declaration; the alpha texture and threshold are payload.
+    std::uint16_t find_range(std::uint16_t node, const Sighting& s, std::uint64_t now,
+                             std::uint16_t hint = none) const noexcept {
+        const auto matches = [&](const Draw& d) noexcept {
+            return d.stamp != now && d.key == s.key && d.vb.same_object(s.vb) && d.ib.same_object(s.ib) &&
+                   (!hold || d.declaration == s.declaration);
+        };
+        if (hint != none && matches(draws[hint])) return hint;
+        for (std::uint16_t i = nodes[node].head; i != none; i = draws[i].next)
+            if (matches(draws[i])) return i;
+        return none;
+    }
 
     // ---- the seen path (per recorded caster draw) ------------------------------
     Seen seen(const Sighting& s, std::uint64_t now, Acquired& acquired) noexcept {
@@ -476,6 +496,12 @@ struct Store {
             flush_pending = Flush::Epoch;
             ++frame.deferred;
             return Seen::Deferred;
+        }
+        if (s.keep_alpha) { // only an existing record of the range is refreshed; nothing is made, nothing marked seen
+            const std::uint16_t known = find_node(s.serial);
+            if (known == none || find_range(known, s, now, nodes[known].last_seen == now ? nodes[known].cursor : none) ==
+                                     none)
+                return Seen::Unmatched;
         }
         std::uint16_t index = find_node(s.serial);
         if (index == none) {
@@ -526,22 +552,29 @@ struct Store {
                 if (dirty_count < node_capacity) dirty[dirty_count++] = index;
             }
         }
-        const auto matches = [&](const Draw& d) noexcept {
-            return d.stamp != now && d.key == s.key && d.vb.same_object(s.vb) && d.ib.same_object(s.ib) &&
-                   (!hold || (d.declaration == s.declaration && d.alpha_texture == s.alpha_texture &&
-                              d.alpha_threshold == s.alpha_threshold));
-        };
-        std::uint16_t found = none;
-        if (n.cursor != none && matches(draws[n.cursor]))
-            found = n.cursor;
-        else
-            for (std::uint16_t i = n.head; i != none; i = draws[i].next)
-                if (matches(draws[i])) {
-                    found = i;
-                    break;
-                }
+        const std::uint16_t found = find_range(index, s, now, n.cursor);
         if (found != none) {
             Draw& d = draws[found];
+            // Retextured (another texture or threshold for the same range): updated in place, the streak kept. The
+            // new texture is acquired before the old one's use is dropped (owed, released by the owner as any
+            // other); a full table leaves the record unstamped, superseded at the scene end. A keep sighting
+            // leaves texture and threshold as they are.
+            if (hold && !s.keep_alpha && (d.alpha_texture != s.alpha_texture || d.alpha_threshold != s.alpha_threshold)) {
+                if (d.alpha_texture != s.alpha_texture) {
+                    std::uint16_t texture = none;
+                    if (s.alpha_texture && !acquire(s.alpha_texture, texture, acquired, index)) {
+                        n.partial = true;
+                        count_refused();
+                        return Seen::Refused;
+                    }
+                    if (d.resource[3] != none && !--resources[d.resource[3]].uses) free_resource(d.resource[3], true);
+                    d.resource[3] = texture;
+                    d.alpha_texture = s.alpha_texture;
+                }
+                d.alpha_threshold = s.alpha_threshold;
+                ++frame.retextured;
+            }
+            if (s.keep_alpha) ++frame.alpha_kept;
             d.stamp = now;
             d.cascades = 0;
             n.cursor = d.next;

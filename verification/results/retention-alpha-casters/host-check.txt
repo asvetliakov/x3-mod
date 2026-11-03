@@ -1,6 +1,10 @@
-Ran 55 tests in 1.753s
+Ran 35 tests in 5.062s
+
+OK
+Ran 28 tests in 0.643s
 
 OK (skipped=1)
-retention tests: 9 driver CHECKs: 115
+retention tests: 9
+RESULT PASS failures=0 checks=7819
 build-ap: 0 warning lines
 build-fl: 0 warning lines

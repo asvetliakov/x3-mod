@@ -110,18 +110,40 @@ bool MotionOutput::alpha_caster_source(IDirect3DBaseTexture9*& texture, float& t
 // alpha-tested draw (reaching here only while the alpha programs are ready)
 // reads its own alpha source every sighting, as the leased path does
 // (alpha_caster_source: the stage-0 texture is never inferred from an earlier
-// record, a range retextured since would replay the wrong holes); a refused
-// source is no sighting, exactly as it is no candidate. The texture reference
-// is released here: the store takes its own on a new record.
+// record, a range retextured since would replay the wrong holes). A refused
+// source makes a keep sighting: it only refreshes a record the store already
+// holds for the range (texture and threshold stay the last accepted ones), so
+// an alternating source does not reset the node's streaks; with no such record
+// (live mode: no known declaration) nothing is queried. The leased path feeds
+// its own refused sources here too. The texture reference is released here:
+// the store takes its own on a new record or a retexture.
 // LastError: the light lock view saves nothing; the draw hook's LightCallBoundary
 // restores it (and MXCSR) on every exit.
 void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept {
     ownership::BufferLockView ib{};
     if (route.key.indexed && !(shadow_.indices_identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(shadow_.indices_identity), &ib)) && ib.known)) return;
     auto& st = *retention_;
-    LARGE_INTEGER t0{}, t1{}; // retention_ticks lives in the retention include, which follows this one
-    if (st.timing) QueryPerformanceCounter(&t0);
+    // Every exit from here is timed (gate_us, gate_calls); retention_ticks lives in the retention include, which
+    // follows this one. The alpha source's reference is released on every exit (the store takes its own).
+    struct Exit {
+        ShadowRetention& st;
+        IDirect3DBaseTexture9* alpha = nullptr;
+        LARGE_INTEGER t0{};
+        explicit Exit(ShadowRetention& s) noexcept : st(s) { if (st.timing) QueryPerformanceCounter(&t0); }
+        ~Exit() {
+            if (alpha) alpha->Release();
+            if (st.timing) { LARGE_INTEGER t1{}; QueryPerformanceCounter(&t1); st.gate_ticks += t1.QuadPart - t0.QuadPart; ++st.gate_calls; }
+        }
+    } scope(st);
     const auto& k = route.key;
+    // An alpha-tested draw's own alpha source, read first (fill_depth_geometry resets the geometry): refused, a keep sighting.
+    float alpha_threshold = 0.f;
+    bool keep = false;
+    if (route.alpha_tested) {
+        const shadow_replay::AlphaCasterCounts counts = alpha_caster_counts_;
+        keep = !alpha_caster_source(scope.alpha, alpha_threshold);
+        alpha_caster_counts_ = counts; // a sighting is no candidate: the alpha caster counters stay the candidates'
+    }
     shadow_replay::DepthGeometry g{};
     bool queried = false;
     // A range the live store already holds for this node keeps its declaration identity, and the
@@ -136,6 +158,7 @@ void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownersh
         const shadow_retention::BufferStamp vs{shadow_.stream0_identity, vb.allocation_id, vb.generation, vb.revision}, is{k.indexed ? shadow_.indices_identity : 0, k.indexed ? ib.allocation_id : 0, k.indexed ? ib.generation : 0, k.indexed ? ib.revision : 0};
         g.declaration = reinterpret_cast<IDirect3DVertexDeclaration9*>(st.store.known_declaration(k.object_lifetime, key, vs, is));
         declaration_needed = g.declaration == nullptr;
+        if (keep && declaration_needed) return; // no record of this range to keep alive
     }
     if (!declaration_needed) {
         const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass ? shadow_.vs_prepass->matrix_register : ~0u;
@@ -155,18 +178,13 @@ void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownersh
     r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
     r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
     r.vb_generation = vb.generation; r.ib_generation = ib.generation;
-    if (route.alpha_tested) {
-        const shadow_replay::AlphaCasterCounts counts = alpha_caster_counts_;
-        const bool source = alpha_caster_source(g.alpha_texture, g.alpha_threshold);
-        alpha_caster_counts_ = counts; // a sighting is no candidate: the alpha caster counters stay the candidates'
-        if (!source) { if (queried) release(g.declaration); return; }
-    }
+    g.alpha_texture = scope.alpha; g.alpha_threshold = alpha_threshold; // borrowed: `scope` releases it
     g.leased = true; // the sighting is complete (rows, declaration); no lease is held, the draw is not issued
+    st.keep_alpha = keep;
     note_retention_draw(route, r, g, extent);
-    ++st.store.frame.gate_sightings;
+    st.keep_alpha = false;
+    if (!keep) ++st.store.frame.gate_sightings; // a keep sighting counts alpha_kept (when it refreshed a record)
     if (queried) release(g.declaration); // a reused identity is the store's reference, not ours
-    release(g.alpha_texture); // alpha_caster_source's reference; the store holds its own
-    if (st.timing) { QueryPerformanceCounter(&t1); st.gate_ticks += t1.QuadPart - t0.QuadPart; ++st.gate_calls; } // the whole refused-draw path (the IB view, the geometry queries, the store)
 }
 // Retires every lease (after the scene end, at a frame begin without a scene
 // end, before Reset and at teardown). The caller holds the capture mutex, so a

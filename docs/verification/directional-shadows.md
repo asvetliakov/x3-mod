@@ -3867,14 +3867,19 @@ Change: the retention store keeps alpha-tested casters with their stage-0 textur
 threshold, and the cascade transaction replays them in the alpha tail with the alpha-tested depth program
 (`docs/architecture/shadow-caster-retention.md`, "Alpha-tested casters retained (2026-11-04)"). Both editions.
 Cause: FL run 44, an unseen station replayed only its 18 opaque records of 25 draws (`verification/results/fl-run44-retention-triage/triage.py`).
+Review fixes (same day, after merging main 508393018): texture and threshold are payload, not identity (a retexture
+updates the record in place and keeps its streak, `retextured=`); a refused alpha source is a keep sighting that
+refreshes an existing record of the range (`alpha_kept=`), so an alternating source no longer keeps the node from
+counting static; every exit of `note_refused_sighting` is timed.
 
 | Check | Result |
 |---|---|
-| Store driver (`test_shadow_retention.Core`, host C++ `-Wall -Wextra -Werror`) | 115 CHECKs, 0 failures (91 before) [M]: an alpha sighting takes 4 references (texture 1), the admitted record carries texture and threshold; the orphan verdict on the texture drops the node, 0 references left; another texture, then another threshold at the same range supersede the record with the texture's count balanced; a shared texture is one reference; an opaque sighting keeps 3 resources and no texture; a full table refusing the texture rolls back (1,024 references unchanged); the issue order live opaque / retained opaque / live alpha / retained alpha |
-| Retention module | 9 tests (7 before) [M]; the new `test_frame_alpha_fields` (the two frame fields, pre-2026-11-04 lines still parse, census with a retained alpha issue is malformed) and `test_retained_alpha_reaches_the_issue` (source: the retained entry's texture/threshold, `issue_slot`, the skip, the 320-byte tail) |
-| Brief's set (`test_shadow_retention`, `_replay_candidates`, `_replay_depth`, `_alpha_casters`, `test_engine_effects`) | 55 tests OK, 1 skipped (installed game tree unavailable) [M]; no hash re-pin needed (`motion_output.h` unchanged) |
+| Store driver (`test_shadow_retention.Core`, host C++ `-Wall -Wextra -Werror`) | `RESULT PASS failures=0 checks=7819` (7,750 executed before the change) [M]: an alpha sighting takes 4 references (texture 1) and the admitted record carries texture and threshold; the orphan verdict on the texture drops the node, 0 references left; another texture, then another threshold, then a texture alternating for 12 sightings keep the record (`Seen::Known`, `retextured` 1 per change, the node static throughout, the old texture released); a shared texture is one reference; an opaque sighting keeps 3 resources and no texture; keep sightings alternating with accepted ones for 12 frames keep the node static with its texture (`alpha_kept` 1 per refusal, nothing superseded); a keep sighting with no record is `Unmatched` and makes no node, no record and does not mark the unseen node seen; a full table refuses a new record's texture (rollback, 1,024 references unchanged) and a retexture (record superseded at the scene end, references balanced); the issue order live opaque / retained opaque / live alpha / retained alpha |
+| Retention module | 9 tests (7 before) [M]; `test_frame_alpha_fields` (the four frame fields, pre-2026-11-04 lines still parse, census with a retained alpha issue or a retexture is malformed) and `test_retained_alpha_reaches_the_issue` (source: the retained entry's texture/threshold, `issue_slot`, the skip, the 320-byte tail) |
+| Focused set (`test_shadow_retention`, `_replay_candidates`, `_alpha_casters`, `test_fl_object_lifetime`) | 35 tests OK [M]; `test_shadow_replay_depth` + `test_engine_effects` 28 OK, 1 skipped (installed game tree unavailable) [M]; no hash re-pin needed (`motion_output.h` unchanged) |
 | Builds | `build-ap` and `build-fl` (MinGW i686, RelWithDebInfo) link, 0 warning lines each [M] |
 
-Producer: `verification/results/retention-alpha-casters/host-check.sh` -> `host-check.txt`. Not run: the Wine seam
-fixture (`run_motion_output.py`; no Wine host since 2026-10-11) and native D3D9; not flown (FL run 45 is the flight check:
-`retained_alpha=` on `shadow_retention_frame` must be non-zero while the station is unseen).
+Producers: `verification/results/retention-alpha-casters/host-check.sh` -> `host-check.txt` (`driver_result.py` prints
+the driver's RESULT line). Not run: the Wine seam fixture (`run_motion_output.py`; no Wine host since 2026-10-11) and
+native D3D9; not flown (FL run 45 is the flight check: `retained_alpha=` on `shadow_retention_frame` must be non-zero
+while the station is unseen).
