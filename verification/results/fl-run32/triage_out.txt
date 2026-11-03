@@ -1,0 +1,62 @@
+overall: n=77608 draws p50/p90 73/155 issued p50/p90 71/150 dt p50/p90 4/4
+ sector "avigriega": n=67485 draws p50/p90 68/109 issued p50/p90 65/106 dt p50/p90 4/4
+ sector "standardblack": n=4810 draws p50/p90 89/184 issued p50/p90 85/180 dt p50/p90 4/5
+ sector "foggreenoutlands": n=4020 draws p50/p90 164/173 issued p50/p90 161/168 dt p50/p90 4/4
+ sector "": n=1293 draws p50/p90 131/133 issued p50/p90 130/132 dt p50/p90 4/4
+fog rows 131 applied=1 7 reasons {'card_refused': 122, 'density_unprepared': 1, 'density_filling': 1, 'ok': 7}
+ fog-applied (+300 after applied row): n=2092 draws p50/p90 164/172 issued p50/p90 161/168 dt p50/p90 4/4
+ no-fog: n=75516 draws p50/p90 72/142 issued p50/p90 70/139 dt p50/p90 4/4
+capture 48727 - 48734 cap frames draws/issued/dt [(48, 47, 331), (48, 47, 340), (48, 47, 319)]
+  pre-capture 600 frames: n=600 draws p50/p90 48/48 issued p50/p90 47/47 dt p50/p90 4/4
+capture 76463 - 76470 cap frames draws/issued/dt [(153, 149, 344), (154, 149, 348), (154, 149, 353)]
+  pre-capture 600 frames: n=600 draws p50/p90 154/155 issued p50/p90 150/151 dt p50/p90 4/4
+ ctx frame 48727 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48728 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48729 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48730 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48731 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48732 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48733 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 48734 draws 48 lod!=0 (model,lod,draws): [('00005583', '00000001', 3), ('00005570', '00000001', 3), ('0000556f', '00000001', 3), ('00005584', '00000001', 3), ('00004fb1', '00000001', 2)]
+ ctx frame 76463 draws 153 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76464 draws 154 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76465 draws 154 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76466 draws 152 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76467 draws 152 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76468 draws 155 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76469 draws 156 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ ctx frame 76470 draws 157 lod!=0 (model,lod,draws): [('0000556d', '00000001', 32), ('00005597', '00000001', 24), ('0000556f', '00000001', 12), ('000057df', '00000001', 8), ('000054d6', '00000001', 8), ('000056bd', '00000001', 6), ('000056bb', '00000002', 5), ('000054ca', '00000001', 4), ('000054cb', '00000001', 4), ('00004fb0', '00000001', 4), ('00004fb1', '00000001', 4)]
+ROW terran_station_lod 1 terran_station_lod site=003a5e98 rva=095e98 edition=fl state=patched reason=ok mode=size setting=size write=atomic
+ROW cull_small_parts 1 cull_small_parts requested=4.0000 px=4 patched=1 edition=fl state=active reason=ok site=0x003a61d3 rva=0x0961d3 cull=0x003a61f3 write=atomic stub=0x043e0000 camera=active scope=all projectiles=on dock_px=12 dock_requested=12.0000 far_jets=on
+ROW ui_scale 1 ui_scale setting=auto status=pending reason=pending mode=auto scale=1.0000 diagnostic=counters window=- base=0x00310000 site_rva=0x0de91b edition=fl
+ROW text_density 1 text_density setting=auto status=pending reason=pending mode=auto value=1 diagnostic=1 failed_site=- window=- writes=atomic,atomic,atomic,plain,atomic,atomic,atomic base=0x00310000 site_rva=0x0a8990 edition=fl
+ROW ui_scale_install 1 ui_scale_install width=5120 height=1440 scale=1.5000 status=patched reason=ok failed_site=- window=- mode=auto virtual=3413x960 inverse16=43691 fixed256=384 writes=atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic,atomic arena_used=4800 edition=fl
+ROW text_density_install 1 text_density_install density=2 scale=1.5000 status=patched reason=ok mode=auto config_before=1 config=2 language=44 cockpit=patched style=stock edit_failed=- rows=pending fonts=Tahoma26,Zekton52,ZektonES52,Harrier48 missing=- caps_limited_d=0 max_texture=16384x16384 image_claim=active arena_used=4800 edition=fl
+ROW engine_nozzle_source 1 engine_nozzle_source device=0 setting=- status=ok source=node requested=1 bound=256 roots_max=256 edition=fl rule=hook_only
+ROW engine_plumes_hidden_emitters 1 engine_plumes_hidden_emitters device=0 frame=0 event=configure setting=0 status=ok rule=off reason=setting edition=fl anchors=0 ships=0
+ROW text_density_rows 1 text_density_rows status=applied reason=ok density=2 rows=1239 flagged=33 unflagged=8 nofilter_cleared=29 caps_limited_d=0 largest_row=1024x2048 missing=- image_claim=active edition=fl
+ROW text_density_filter 1 text_density_filter status=active min_before=3 mag_before=2 aniso=16 raised=none textures=3 edition=fl
+ROW engine_plumes_device 1 engine_plumes_device device=1 frame=983 attached=1 reason=ok result=00000000 fp16_blending=00000000 vs_slots=12 ps_slots=924 max_ps_slots=4096 vb_bytes=622592 retry=reset
+ROW engine_plumes_state 1 engine_plumes_state device=1 frame=983 armed=1 reason=armed glow=suppressed drawn=plumes preset=default
+node_walk_window rows 258 unreadable max 0 refused sum 0 roots_max 8 p99 max 41.3 max max 50.1
+  walk_us_p50 over 255 rows with samples: p50 2.1 p90 4.1 max 28.8
+  walk_us_p99 over 255 rows with samples: p50 3.1 p90 6.7 max 41.3
+  walk_us_max over 255 rows with samples: p50 4.8 p90 16.3 max 50.1
+  walked over 255 rows with samples: p50 300.0 p90 300.0 max 300.0
+  appends over 255 rows with samples: p50 300.0 p90 300.0 max 301.0
+node_walk_refused {}
+engine_stage 77527 far_jets>0 66077 node_unreadable max 0 node_anchors max 0
+  far_jets min/p50/p90/max 1/10/23/43 sum 808432
+  far_records min/p50/p90/max 0/10/23/43 sum 807263
+  far_dropped min/p50/p90/max 0/8/44/314 sum 1018758
+  far_disarmed min/p50/p90/max 0/0/0/0 sum 0
+  far_overflow min/p50/p90/max 0/0/0/0 sum 0
+  dropped/jets 1.2602
+chase events (kind,result) {('0', None): 4, ('1', None): 4, ('7', None): 1, ('6', None): 75, ('3', None): 8, ('2', None): 4, ('9', 'restored'): 3} view_restore {None: 1, 'restored': 3} installed {('chase_camera', '1'): 1, ('chase_transition', '1'): 1, ('chase_view_restore', '1'): 1, ('chase_native_timing', '0'): 1, ('chase_central_hud', '1'): 1, ('chase_lead', '1'): 1, ('chase_fire', '1'): 1, ('chase_aim_trace', '0'): 1}
+bad {'chase_aim_trace|installed=0': 1, 'chase_camera|refused=[1-9]': 271, 'chase_native_timing|installed=0': 1, 'engine_shimmer|refused=[1-9]': 14774, 'state_hooks|installed=0': 1, 'thin_vote_frame|unreadable=[1-9]': 11005}
+  ('chase_aim_trace', 'installed=0') chase_aim_trace installed=0 status=ap_only edition=fl reason=diagnostic_not_ported
+  ('chase_camera', 'refused=[1-9]') chase_camera frame=1200 status=active frames=218 applied=0 refused=218 refused_inactive=0 admitted_unbound=0 cockpits_seen=1 snaps=0 coalesced=0 clamps=0 write_refused=0 verdict=1 snap_reason=0 mode=1 connect=0 flags_1a0=0x0 tracking=0 locked=0 locked_frames=0
+  ('chase_native_timing', 'installed=0') chase_native_timing installed=0 status=not_ported sites=0 edition=fl reason=telemetry_only
+  ('engine_shimmer', 'refused=[1-9]') engine_shimmer device=1 frame=1974 failed=0 ran=1 rects=0 candidates=13 small=10 behind=1 refused=2 offscreen=0 capped=0 scissor_px=0 copy_px=0 drew=0 px=1.50 result=00000001 step=0 skipped=no_rects calls=0 cpu_us=0.7 revert=00000001 revert_us=0.0 stale_revert
+  ('state_hooks', 'installed=0') state_hooks device=1 installed=0 reason=none state_shadow=0 rs_mode=get
+  ('thin_vote_frame', 'unreadable=[1-9]') thin_vote_frame device=1 frame=1797 lane=1 draws=72 opaque=59 known=58 voted=0 min_alpha=1.0000 max_unvoted_fraction=0.4570 unreadable=1 missed=0 queued=0 dropped=0 no_scale=0 draw_us=0.00 reads=50 measured=49 unreadable_total=1 retries=0 not_managed=0 not_rea

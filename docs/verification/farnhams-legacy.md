@@ -2045,7 +2045,14 @@ bodies, 2.68 GB). Installed `C:\X3FL\addon2\06.cat/.dat` = `99406237…`/`bc4ee8
 AP: the same baker change applies on the next regenerate (tool hash changed: full rebake, about 2x the previous AP time);
 not yet done.
 
-**FL run 29 A (open):** fly to the Argon food factory in Avigriega (the station of run 27 captures 2/3, or any Argon
+**FL run 29 A (flown 2026-11-03 on the run 32 DLL, accepted):** user: "Station is normal now". Log
+`/home/asvetl/x3m-logs/fl-run29-32-overlay-ui-walk.log` (859 MB; `verification/results/fl-run32/triage_log.py`, measured):
+station capture frame 48727 (Avigriega) 47 issued draws, dt 4/4 ms; `argon_food_S_factory_B` (`0x5583`) draws 3 times at
+lod 1 (2 in run 27 capture 2), the other overlay bodies in view unchanged: the grade split cost one draw in this view.
+Fog capture frame 76463 (Foggreen Outlands) 147–152 issued, dt 4/4; the 2,092 fogged frames issued p50/p90 161/168
+(below the 191 of runs 21/23, sector not matched). No overlay refusal row; `terran_station_lod state=patched`.
+
+Original brief: fly to the Argon food factory in Avigriega (the station of run 27 captures 2/3, or any Argon
 food/bio factory) and look at it from far enough that the merged LOD is in use (the whole station a few hundred pixels
 wide), then approach; one F8 at distance with it selected; also one F8 in a clear sector with several ships and stations
 at distance (frame-time comparison with run 27). Expect: no green cast at distance, the station's colour the same as
@@ -2103,7 +2110,10 @@ two wiring/record fixes; `verify_ui_scale_sites_fl.py` PASS (173 checks) on the 
 ini unchanged (`ui_scale` commented = `auto`: 1.5 at 1440 rows; `text_density` stays AP-only on FL, one refusal row).
 Record `verification/results/fl-run30/candidate.json`.
 
-**FL run 30 A (open):** load a game at your usual resolution; open the sidebar, a property menu, the galaxy map and a
+**FL run 30 A (flown 2026-11-03, accepted):** user: "UI scale and text density work okay, didn't notice any issues".
+`ui_scale_install … scale=1.5000 status=patched reason=ok edition=fl` (5120x1440, virtual 3413x960); no refusal (measured).
+
+Original brief: load a game at your usual resolution; open the sidebar, a property menu, the galaxy map and a
 graph menu; hover a few icons and click them; pick a sector on the map and read its label; hover something near the right
 and bottom screen edge for a tooltip; one F8 with a menu open; tell me before relaunching. Expect `ui_scale installed=1
 … edition=fl scale=1.5` (at 1440 rows) and `text_density installed=0 status=ap_only edition=fl reason=not_ported`.
@@ -2185,7 +2195,11 @@ Installed `C:\X3FL\d3d9.dll` = `b4d4e497…` (55,773,863 B), rollback `rollback-
 v2, exe and ini unchanged (`text_density` commented = `auto` = 2 under `ui_scale` 1.5). Record
 `verification/results/fl-run31/candidate.json`.
 
-**FL run 31 A (open):** same tour as run 30 (sidebar, property menu, galaxy map, a graph menu, a tooltip, an encyclopedia
+**FL run 31 A (flown 2026-11-03, accepted):** same flight. `text_density_install density=2 status=patched
+image_claim=active`, `text_density_rows status=applied flagged=33 rows=1239`, `text_density_filter status=active`; 0
+`refused`/`late_window`/`umeplusclp_missing`/`text_density_recorder` rows (measured).
+
+Original brief: same tour as run 30 (sidebar, property menu, galaxy map, a graph menu, a tooltip, an encyclopedia
 or message page with a lot of text); one F8 with a text-heavy menu open; tell me before relaunching. Expect
 `text_density installed=1 … edition=fl density=2 image_claim=active`, a `text_density_rows` row with `flagged` in the
 20s–30s, `ui_scale … scale=1.5`, no `refused`/`late_window`/`umeplusclp_missing`. Visual: text crisp at 1.5x (not the
@@ -2313,7 +2327,21 @@ failing; `fl-nozzle-walk/read_set.py` 36 anchors PASS on the installed exe (meas
 hidden-emitter plumes of step 1 follow as run 33 by removing that line. Rollback without a DLL swap: `engine_nozzle_source
 = draw`. Record `verification/results/fl-run32/candidate.json`.
 
-**FL run 32 A (open):** a clear sector with several ships under way, including one that flies partly off the screen edge
+**FL run 32 A (flown 2026-11-03, accepted):** same flight, no visual issue reported. `engine_nozzle_source status=ok
+source=node edition=fl rule=hook_only`; 258 `engine_node_walk_window` rows: `unreadable` max 0, `refused` sum 0,
+`roots_max` 8, `walk_us_p99` p50/p90/max 3.1/6.7/41.3 µs (limit 500), `walk_us_max` peak 50.1 µs; 0
+`engine_node_walk_refused` rows; `session_end exception=0`. Kill criterion passed (measured). Far jets (run 28 fix, first
+flight with it): `cull_small_parts … far_jets=on`, 66,077 of 77,527 stage rows with `far_jets>0`, far_jets = far_records
+on every row (p50/p90/max 10/23/43). **Correction to the run 28 and host-evidence paragraphs:** `far_dropped` is the sum
+of handler steering refusals (RCS jets, model `v/00566`, never copied), stage steering and stage `invalid`; it does not
+count other views' copies, and a value above `far_jets` is normal with RCS-heavy ships in view. Stage drops = jets −
+records = 1,169 of 808,432 copies (0.14 %), so the context equality `node+0x1c == camera+0x1c` holds in practice
+(`verification/results/fl-run32/far_jets_triage.py`, measured). About 91 % of far records fall under the plume pixel
+cull (`culled_small`), as intended for sub-4-px jets; whether a far record drew cannot be read from the current counters.
+Diagnostic follow-up for the next build: split `far_dropped` into `far_steering`/`far_invalid` with a scale-0 sub-count,
+and count drawn nozzles carrying `flag_far`.
+
+Original brief: a clear sector with several ships under way, including one that flies partly off the screen edge
 (so a nozzle leaves the frustum while the hull stays in view), then an Argon shipyard or any busy station with 200+
 objects in view; one F8 in each; `--debug` not required; tell me before relaunching. Expect `engine_nozzle_source …
 source=node edition=fl rule=hook_only`, `engine_node_walk_window` rows every 300 frames with `unreadable=0`,
