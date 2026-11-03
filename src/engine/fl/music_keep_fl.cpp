@@ -32,6 +32,7 @@
 #include "../../proxy/log_tiers.h"
 #include "../../proxy/session_log.h"
 #include "executable_identity_fl.h"
+#include "gz_close_share_fl.h"
 #include "music_keep_sites_fl.h"
 #include <windows.h>
 #include <cstdarg>
@@ -438,7 +439,9 @@ volatile std::uint32_t x3m_music_keep_fl_pump_fn = 0;       // base+0x0fe7d0
 volatile std::uint32_t x3m_music_keep_fl_free_fn = 0;       // base+0x0b4640
 volatile std::uint32_t x3m_music_keep_fl_entry_continue = 0, x3m_music_keep_fl_stop_movie_continue = 0,
                        x3m_music_keep_fl_play_continue = 0; // the three entry claims' tails
-volatile std::uint32_t x3m_music_keep_fl_gzwrite = 0, x3m_music_keep_fl_gzclose = 0; // zlib1.dll's own exports
+// The stubs' forward words: zlib1.dll's gzwrite; for gzclose zlib1.dll's export, or gz_buffer's close entry when the
+// buffer held the slot first (gz_close_share_fl.h), which gz_buffer may later rewrite to chain itself behind the keep.
+volatile std::uint32_t x3m_music_keep_fl_gzwrite = 0, x3m_music_keep_fl_gzclose = 0;
 std::uint32_t x3m_music_keep_fl_resume_ms = 0;
 std::uint32_t x3m_music_keep_fl_pause_record = 0;
 
@@ -1239,8 +1242,13 @@ const char* bind_save_pump() {
                             &close_slot_live_},
                            {F::gzwrite_iat_rva, "gzwrite", &x3m_music_keep_fl_gzwrite_stub, &x3m_music_keep_fl_gzwrite,
                             &write_slot_live_}};
-    const std::uint32_t exports[2] = {address_of(reinterpret_cast<void*>(close)),
-                                      address_of(reinterpret_cast<void*>(write))};
+    std::uint32_t exports[2] = {address_of(reinterpret_cast<void*>(close)), address_of(reinterpret_cast<void*>(write))};
+    // gzclose shared with gz_buffer (gz_close_share_fl.h): when the buffer already holds the slot over zlib's own
+    // gzclose, the keep takes the slot and forwards to the buffer's entry instead (its close observation stays first).
+    namespace share = x3m::fl::gz_close_share;
+    const bool behind_buffer = share::buffer_holds_slot && share::buffer_entry && share::buffer_forward == exports[0] &&
+                               load32(std::uint32_t(base_ + slots[0].rva)) == share::buffer_entry;
+    if (behind_buffer) exports[0] = share::buffer_entry;
     for (unsigned i = 0; i < 2; ++i)
         if (load32(std::uint32_t(base_ + slots[i].rva)) != exports[i]) return "original_mismatch";
     x3m_music_keep_fl_gzclose = exports[0];
@@ -1256,6 +1264,9 @@ const char* bind_save_pump() {
                 *slots[j].live = false;
         return close_slot_live_ || write_slot_live_ ? "rollback_failed" : "slot_not_writable";
     }
+    if (behind_buffer) share::buffer_holds_slot = 0;
+    share::keep_forward = &x3m_music_keep_fl_gzclose;
+    share::keep_stub = address_of(&x3m_music_keep_fl_gzclose_stub);
     return "ok";
 }
 bool install_keep(const char** reason) {
@@ -1465,8 +1476,14 @@ bool shutdown() {
                                           x3m_music_keep_fl_gzwrite))
         write_slot_live_ = false;
     if (close_slot_live_ && exchange_slot(base_ + F::gzclose_iat_rva, address_of(&x3m_music_keep_fl_gzclose_stub),
-                                          x3m_music_keep_fl_gzclose))
+                                          x3m_music_keep_fl_gzclose)) {
         close_slot_live_ = false;
+        // The slot back to what the stub forwarded to: gz_buffer's entry holds it again when the buffer was chained.
+        namespace share = x3m::fl::gz_close_share;
+        share::keep_stub = 0;
+        share::keep_forward = nullptr;
+        if (share::buffer_entry && x3m_music_keep_fl_gzclose == share::buffer_entry) share::buffer_holds_slot = 1;
+    }
     ok = !write_slot_live_ && !close_slot_live_;
     const x3m::story::QueueSites* s = kc_.applied_story;
     if ((kc_.result == KcResult::applied || kc_.result == KcResult::already) && s && kc_.story == s) {

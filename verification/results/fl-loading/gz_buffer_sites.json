@@ -1,0 +1,43 @@
+{
+ "ap_slots_in_fl": [],
+ "ap_windows_admitted": [],
+ "census": {
+  "gzclose": 11,
+  "gzgetc": 4,
+  "gzopen": 1,
+  "gzread": 1,
+  "gzseek": 1,
+  "gztell": 1,
+  "gzwrite": 21
+ },
+ "checks": {
+  "ap_addresses_refused": true,
+  "claimed_references_are_witnesses": true,
+  "gz_windows_match_exe": true,
+  "identity": true,
+  "keep_slots_shared": true,
+  "named_import_slots": true,
+  "reference_census": true,
+  "window_mutations_refused": true
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "failed": [],
+ "gz_fixup_count": 20,
+ "gz_window_count": 20,
+ "gz_window_failures": [],
+ "mutations": {
+  "cases": 80,
+  "refused": 80
+ },
+ "result": "PASS",
+ "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "slots": {
+  "gzclose": "0x150408",
+  "gzgetc": "0x1503f4",
+  "gzopen": "0x1503e4",
+  "gzread": "0x1503f8",
+  "gzseek": "0x1503e8",
+  "gztell": "0x1503ec"
+ },
+ "witness_fixups": 20
+}

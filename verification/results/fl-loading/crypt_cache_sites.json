@@ -1,0 +1,62 @@
+{
+ "ap_gates_in_fl": [],
+ "ap_windows_admitted": [],
+ "census": {
+  "CryptAcquireContextA": [
+   "0xf7c9e",
+   "0xf8b3a",
+   "0xf8bbc",
+   "0xf8bd5",
+   "0xf8dd0"
+  ],
+  "CryptDestroyKey": [
+   "0xf8b15",
+   "0xf8dab"
+  ],
+  "CryptImportKey": [
+   "0xf8a02",
+   "0xf8c02"
+  ],
+  "CryptReleaseContext": [
+   "0xf8b21",
+   "0xf8db7"
+  ]
+ },
+ "checks": {
+  "ap_addresses_refused": true,
+  "checker_flags": true,
+  "crypt_windows_match_exe": true,
+  "gates_call_their_slots": true,
+  "identity": true,
+  "named_import_slots": true,
+  "reference_census": true,
+  "sibling_acquire_via_ebx": true,
+  "strings": true,
+  "window_mutations_refused": true
+ },
+ "crypt_fixup_count": 32,
+ "crypt_window_count": 4,
+ "crypt_window_failures": [],
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "failed": [],
+ "gates": [
+  "0xf8bc2",
+  "0xf8bdb",
+  "0xf8c08",
+  "0xf8db1",
+  "0xf8dbd",
+  "0xf8dd6"
+ ],
+ "mutations": {
+  "cases": 44,
+  "refused": 44
+ },
+ "result": "PASS",
+ "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "slots": {
+  "CryptAcquireContextA": "0x150010",
+  "CryptDestroyKey": "0x150008",
+  "CryptImportKey": "0x150000",
+  "CryptReleaseContext": "0x150034"
+ }
+}

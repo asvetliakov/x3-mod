@@ -174,16 +174,28 @@ pair to `(base+0x106963, base+0x079201)`. No AP import thunk exists to relocate:
 FL calls its IAT directly. File wrapper `0x506940` has just two E8 callers,
 the save above and `0x514c6a`; the remaining direct gzclose paths remain excluded.
 
-**One slot owner (corrected 2026-11-03).** This note first named an FL import owner, `loading_hooks_fl.cpp`, which
-exists only on the archived `fl-codex` branch, not on main. On main the keep is today the sole owner of X3FL.exe's
-gzwrite and gzclose import slots: AP's [`loading_trace.cpp`](../../../src/proxy/loading_trace.cpp) (the AP observer
-and the `gz_buffer` read rows) is AP only and is not linked into the fl target, and AP music keep's binding compares AP
-slot addresses, so the AP observer cannot arm FL save pumping. The port therefore exchanges both slots itself
-([Port (2026-11-03)](#port-2026-11-03)), each only over zlib1.dll's own export, running the observer before the real
-write and forwarding every call unchanged otherwise. A future FL port of `gz_buffer` (or any other FL import owner of
-these slots) must share them with the keep (one owner forwarding to both, or a chain that keeps the keep's close
-observation ahead of `gz_buffer::close`'s unregister-before-real-close) or defer to it; it must not exchange a slot
-the keep holds. No second read-ahead cache or new file-lifetime controller is indicated.
+**Slot ownership (corrected again 2026-11-03, loading quintet merge).** This note first named an FL import owner,
+`loading_hooks_fl.cpp`, which exists only on the archived `fl-codex` branch. On main the keep owns X3FL.exe's gzwrite
+slot alone and **shares the gzclose slot with the FL `gz_buffer`** ([`gz_buffer_fl.cpp`](../../../src/engine/fl/gz_buffer_fl.cpp),
+[`gz_close_share_fl.h`](../../../src/engine/fl/gz_close_share_fl.h)) through the keep's forward word: in production the
+keep installs first (capture.cpp's music block precedes the loading quintet), holds the slot with its stub, and
+`gz_buffer` chains behind it by compare-exchanging the keep's forward word from zlib's gzclose to `gz_buffer::close`,
+so the keep's close observation stays ahead of the buffer's unregister-before-real-close. The buffer-first order is
+supported by the code (the keep then takes the slot over the buffer's entry and forwards to it), but no fixture runs
+the real keep in either order (`fl_loading.cpp` models the keep with a hand-written forward stub). Neither writer ever
+exchanges a slot the other holds. AP's [`loading_trace.cpp`](../../../src/proxy/loading_trace.cpp) **is now linked
+into the fl target** (the two FL mesh rows); its AP observer and AP `gz_buffer` rows still compare AP slot addresses,
+so they cannot arm FL save pumping or claim FL slots. No second read-ahead cache or new file-lifetime controller is
+indicated.
+
+**The DAT pool writes inside `close_wrapper` (2026-11-03).** The FL DAT handle pool
+([`resource_reader_fl.cpp`](../../../src/engine/fl/resource_reader_fl.cpp), [resource-reader.md](resource-reader.md),
+"Port (2026-11-03)") rewrites the rel32 of the wrapper's `call fclose` at base+0x10696c (window offset +0x2d..+0x30) to
+the pool's close. That span is inside the keep's `close_wrapper` identity window (0x106940+0x3a), so the keep, and
+`gz_buffer`, which checks the same window, must install first: `capture.cpp`'s FL block runs the keep, then
+`gz_buffer`, then the reader and pool, and each window is checked once, at its owner's initialize. The rewrite leaves
+the window's relocated gzclose operand (+0x1f), the gzclose call at 0x10695d and its return 0x106963 that the keep's
+stub compares unchanged; a re-check of the window after the pool is installed would refuse.
 
 Reuse AP cadence: sample every 1,024 writes, pump at most every 250 ms on the
 arming thread, bound an episode to 120 s and the replay Run skip to 2.5 s.

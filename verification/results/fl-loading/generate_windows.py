@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Generates src/engine/fl/loading_windows_fl_inc.h, the identity windows of the FL loading quintet, from X3FL.exe.
+
+Same convention as verification/results/fl-music/generate_windows.py (whose Image / window / fnv1a it reuses): every
+window is a whole-instruction span of the installed X3FL.exe identified by FNV-1a 32 over its bytes with every
+base-relocation HIGHLOW dword zeroed; each such dword is recorded with the RVA base + which it must hold at run time.
+Roles: docs/reverse-engineering/fl/loading-hooks.md (gz, crypt), mesh-adjacency.md (mesh) and resource-reader.md (reader,
+pool), each "Port (2026-11-03)".
+
+usage: python3 verification/results/fl-loading/generate_windows.py [--exe X3FL.exe] [--check]
+  --check  compares the generated text with the checked-in header (exit 1 on a difference); writes nothing.
+"""
+import argparse
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'verification/results/fl-music'))
+import generate_windows as music  # noqa: E402
+
+OUT = ROOT / 'src/engine/fl/loading_windows_fl_inc.h'
+DEFAULT_EXE = music.DEFAULT_EXE
+FL_SHA256 = music.FL_SHA256
+MAX_WINDOW = 0x300
+
+# gzclose's eleven import references (every one `call [IAT]`, inlined closers included).
+GZCLOSE_CALLS = (0x079d9e, 0x0c29df, 0x0c2ee5, 0x1048f2, 0x1049bd, 0x105e48, 0x106408, 0x1065fe, 0x10695d, 0x10a68a,
+                 0x10a77f)
+# fclose's direct callers the pool redirects: every E8 in .text whose target is fclose base+0x12fb6e (18) but 0x1397e4,
+# the CRT's exit-time fcloseall loop (resource_reader_sites_fl.h).
+FCLOSE_CALLS = (0x079da6, 0x0819af, 0x0c29e7, 0x0c2f12, 0x1048fa, 0x1049c5, 0x105e50, 0x106410, 0x106606, 0x10696c,
+                0x10a512, 0x10a6e5, 0x10a787, 0x1149ee, 0x114a23, 0x114a2f, 0x11d9be)
+# (table, name, rva, length). Names are the refusal reasons (<name>_mismatch in the rows).
+WINDOWS = [
+    # gz_buffer: the one gzopen/gzread/gzseek/gztell call each, gzgetc's call and its three register loads (the
+    # header-field readers cache the pointer in EDX), gzclose's eleven calls and the file object's close wrapper.
+    ('gz', 'gzopen_call', 0x106627, 6),
+    ('gz', 'gzread_call', 0x1067b0, 6),
+    ('gz', 'gzseek_call', 0x106926, 6),
+    ('gz', 'gzgetc_call', 0x1066ec, 6),
+    ('gz', 'gzgetc_load_a', 0x106174, 6),
+    ('gz', 'gzgetc_load_b', 0x1061d0, 6),
+    ('gz', 'gzgetc_load_c', 0x106234, 6),
+    ('gz', 'gztell_call', 0x106077, 6),
+    *[('gz', f'gzclose_call_{rva:06x}', rva, 6) for rva in GZCLOSE_CALLS],
+    ('gz', 'close_wrapper', 0x106940, 0x3a),
+    # crypt_cache: the signature checker (whole: the six gated calls, the strings, the argument pushes) and the
+    # sibling signer's acquire load (EBX), its private-key import and its destroy/release/final-delete tail.
+    ('crypt', 'checker', 0x0f8b50, 0x29e),
+    ('crypt', 'signer_head', 0x0f7c90, 0x5e),
+    ('crypt', 'signer_import', 0x0f89f0, 0x18),
+    ('crypt', 'signer_tail', 0x0f8b15, 0x36),
+    # mesh_adjacency: the D3DXCreateMesh and D3DXCleanMesh calls with their pushes, the GenerateAdjacency call (slot
+    # 22, epsilon 1e-6f written to the stack) and its ConvertPointRepsToAdjacency fallback (slot 20).
+    ('mesh', 'create_call', 0x0dbbd0, 0x11),
+    ('mesh', 'clean_call', 0x0dcd2a, 0x11),
+    ('mesh', 'adjacency_call', 0x0dcc40, 0x12),
+    ('mesh', 'point_reps_call', 0x0dcc98, 0x0c),
+    # resource reader (docs/reverse-engineering/fl/resource-reader.md, "Port (2026-11-03)"): the whole reader (two
+    # halves: the ECX contract and prologue, the size-global stores, the failure rollback of the live pair), the
+    # dispatcher, seek and byte reader it calls, the allocator whose counters the core fills, the CRT heads it binds.
+    ('reader', 'reader_a', 0x105f40, 0x1e8),
+    ('reader', 'reader_b', 0x106128, 0x221),
+    ('reader', 'dispatcher', 0x106700, 0x114),
+    ('reader', 'seek', 0x1068a0, 0x99),
+    ('reader', 'byte_reader', 0x1066b0, 0x4f),
+    ('reader', 'allocator', 0x0d8fc0, 0xff),
+    ('reader', 'crt_fread', 0x132c9e, 0x1d),
+    ('reader', 'crt_fseek', 0x13074e, 0x1b),
+    ('reader', 'crt_ftell', 0x131fb0, 0x0b),
+    ('reader', 'crt_malloc', 0x131395, 0x0b),
+    ('reader', 'crt_free', 0x12f4e5, 0x05),
+    # DAT handle pool: the extension open's DAT fopen ("rb" push, call, record fseek), the CRT fopen/fclose heads, the
+    # FILE flag word's address (+0x0c) and fread's error (0x10) / EOF (0x08) writes, and the seventeen redirected
+    # fclose calls (every E8 to fclose in .text but the exit-time fcloseall loop; resource-reader.md "Port").
+    ('pool', 'dat_open', 0x105ea8, 0x45),
+    ('pool', 'crt_fopen', 0x132087, 0x17),
+    ('pool', 'crt_fclose', 0x12fb6e, 0x73),
+    ('pool', 'file_flag_offset', 0x132b44, 0x06),
+    ('pool', 'file_error_flag', 0x132c83, 0x1b),
+    *[('pool', f'fclose_call_{rva:06x}', rva, 5) for rva in FCLOSE_CALLS],
+]
+
+
+def generate(exe):
+    im = music.Image(exe)
+    lines = ['// Generated by verification/results/fl-loading/generate_windows.py from X3FL.exe; do not edit.',
+             f'// X3FL.exe SHA-256 {im.sha256} (provenance, never a gate).',
+             '// Each window: RVA, length, FNV-1a 32 of the bytes with every HIGHLOW dword zeroed, and those dwords',
+             '// (offset in the window, the RVA base + which they must hold). Included by loading_windows_fl.h only.',
+             '// clang-format off']
+    tables = {}
+    for table, name, rva, length in WINDOWS:
+        if length > MAX_WINDOW:
+            raise SystemExit(f'{name}: {length:#x} exceeds the {MAX_WINDOW:#x} window bound')
+        masked, fixups, whole = music.window(im, rva, length)
+        if not whole:
+            raise SystemExit(f'{name}: {rva:#x}+{length:#x} is not a whole-instruction span')
+        tables.setdefault(table, []).append((name, rva, length, music.fnv1a(masked), fixups))
+    for table, rows in tables.items():
+        fx = []
+        lines.append(f'constexpr CodeWindow {table}_windows[] = {{')
+        for name, rva, length, h, fixups in rows:
+            lines.append(f'    {{"{name}", 0x{rva:06x}, 0x{length:03x}, {len(fx)}, {len(fixups)}, 0x{h:08x}}},')
+            fx.extend(fixups)
+        lines.append('};')
+        lines.append(f'constexpr Fixup {table}_fixups[] = {{')
+        body = ', '.join(f'{{0x{o:03x}, 0x{t:06x}}}' for o, t in fx) or '{0, 0}'
+        while body:
+            cut = body[:110].rfind('}, ') + 2 if len(body) > 110 else len(body)
+            lines.append('    ' + body[:cut].strip())
+            body = body[cut:].strip()
+        lines.append('};')
+        lines.append(f'constexpr unsigned {table}_fixup_count = {len(fx)};')
+    lines.append('// clang-format on')
+    return '\n'.join(lines) + '\n', im
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--exe', type=Path, default=DEFAULT_EXE)
+    parser.add_argument('--check', action='store_true')
+    args = parser.parse_args()
+    text, im = generate(args.exe)
+    if im.sha256 != FL_SHA256:
+        print(f'warning: {args.exe} SHA-256 {im.sha256} is not the measured image', file=sys.stderr)
+    if args.check:
+        same = OUT.exists() and OUT.read_text() == text
+        print('match' if same else 'differs')
+        return 0 if same else 1
+    OUT.write_text(text)
+    print(f'wrote {OUT.relative_to(ROOT)} ({len(WINDOWS)} windows)')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

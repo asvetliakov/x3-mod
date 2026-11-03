@@ -288,3 +288,25 @@ gates, not new tests added by this documentation checkpoint. Native Windows
 and CrossOver must both retain the enhancement; unknown D3DX cases may fall
 back per mesh, but forwarding every FL mesh is not support. Actual FL/CrossOver
 module selection, user loading time and live behavior remain unverified.
+
+## Port (2026-11-03)
+
+Shipped in the fl edition. `loading_trace.cpp` now matches `d3dx9_43.dll` in the
+fl build (`X3M_LOADING_D3DX`), so the two mesh import rows (`D3DXCreateMesh` IAT
+`0x150334`, `D3DXCleanMesh` IAT `0x150348`, found by name) admit on FL; the shared
+`observe_mesh` patches slots 20/22/27 of the public `ID3DXMesh` vtables as on AP.
+A new `fl_mesh_contract` gate (`src/engine/fl/mesh_adjacency_sites_fl.h`) requires
+the X3FL.exe identity, the install window, every mesh window (the two factory
+calls at `0x0dbbdb`/`0x0dcd35`, the slot-22 adjacency call at `0x0dcc4f` with
+epsilon `0x358637bd`, the slot-20 fallback at `0x0dcca1`) and the name-found slots
+at exactly `base + RVA`; otherwise it refuses before any slot is touched and logs
+`mesh_adjacency_config … reason=… edition=fl`. `X3M_MESH_ADJACENCY=fast` arms it
+through `capture.cpp`'s FL block (`loading_trace::initialize()`).
+
+Verified (offline): the site verifier `verification/probe/verify_mesh_adjacency_sites_fl.py`
+(windows, mutation refusals, the `_43` named slots, no `d3dx9_37` import, the
+call/vtable ABI, AP refusal) PASS; `cmake -DX3M_EDITION=fl` builds with 0
+warnings; the shared algorithm's differential against the reference is unchanged
+(`test_mesh_adjacency_fast.py`). Not verified: not flown; native Windows and
+CrossOver `_43` module selection; a device-level `_43` differential (needs a D3D9
+device, out of scope here); loading time.

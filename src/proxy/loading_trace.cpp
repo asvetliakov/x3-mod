@@ -20,6 +20,17 @@
 #include <type_traits>
 #include <cwchar>
 #include "log_tiers.h"
+#if X3M_EDITION_FL
+// FL: the two mesh rows only, d3dx9_43.dll at the pinned slots (docs/reverse-engineering/fl/mesh-adjacency.md, "Port
+// (2026-11-03)"); gz_buffer and crypt_cache have their own FL transactions (src/engine/fl/gz_buffer_fl.cpp,
+// crypt_cache_fl.cpp), the telemetry rows and probes stay AP only.
+#include "engine_patch.h"
+#include "../engine/fl/executable_identity_fl.h"
+#include "../engine/fl/mesh_adjacency_sites_fl.h"
+#define X3M_LOADING_D3DX "d3dx9_43.dll"
+#else
+#define X3M_LOADING_D3DX "d3dx9_37.dll"
+#endif
 
 namespace x3m::loading_trace {
 namespace {
@@ -758,10 +769,10 @@ Hook hooks[]={
     {"KERNEL32.dll","CreateFileA",reinterpret_cast<PVOID>(light::file_open)},
     {"KERNEL32.dll","ReadFile",reinterpret_cast<PVOID>(light::file_read)},
     {"KERNEL32.dll","SetFilePointer",reinterpret_cast<PVOID>(light::file_seek)},
-    {"d3dx9_37.dll","D3DXCreateEffect",reinterpret_cast<PVOID>(effect)},
-    {"d3dx9_37.dll","D3DXCreateTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(texture)},
-    {"d3dx9_37.dll","D3DXCreateCubeTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(cube)},
-    {"d3dx9_37.dll","D3DXLoadSurfaceFromFileInMemory",reinterpret_cast<PVOID>(surface)},
+    {X3M_LOADING_D3DX,"D3DXCreateEffect",reinterpret_cast<PVOID>(effect)},
+    {X3M_LOADING_D3DX,"D3DXCreateTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(texture)},
+    {X3M_LOADING_D3DX,"D3DXCreateCubeTextureFromFileInMemoryEx",reinterpret_cast<PVOID>(cube)},
+    {X3M_LOADING_D3DX,"D3DXLoadSurfaceFromFileInMemory",reinterpret_cast<PVOID>(surface)},
     {"USER32.dll","SetCursor",reinterpret_cast<PVOID>(light::cursor_set)},
     {"USER32.dll","SetCursorPos",reinterpret_cast<PVOID>(light::cursor_position)},
     {"zlib1.dll","gzopen",reinterpret_cast<PVOID>(gz_open)},
@@ -769,8 +780,8 @@ Hook hooks[]={
     {"zlib1.dll","gzseek",reinterpret_cast<PVOID>(gz_seek)},
     {"zlib1.dll","inflate",reinterpret_cast<PVOID>(light::inflate_stream)},
     {"libxml2.dll","xmlReadMemory",reinterpret_cast<PVOID>(light::xml_read)},
-    {"d3dx9_37.dll","D3DXCreateMesh",reinterpret_cast<PVOID>(mesh_create)},
-    {"d3dx9_37.dll","D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)},
+    {X3M_LOADING_D3DX,"D3DXCreateMesh",reinterpret_cast<PVOID>(mesh_create)},
+    {X3M_LOADING_D3DX,"D3DXCleanMesh",reinterpret_cast<PVOID>(mesh_clean)},
     {"KERNEL32.dll","FindFirstFileA",reinterpret_cast<PVOID>(light::find_first)},
     {"KERNEL32.dll","FindNextFileA",reinterpret_cast<PVOID>(light::find_next)},
     {"KERNEL32.dll","FindClose",reinterpret_cast<PVOID>(light::find_close)},
@@ -1321,7 +1332,7 @@ void observe_mesh(ID3DXMesh* mesh) {
         row.table = table;
         for (unsigned i = 0; i < 11; ++i) row.contract[i] = table[mesh_contract_slots[i]];
         for (unsigned i = 0; i < 3; ++i)
-            row.slots[i] = {"d3dx9_37.dll", method_names[i], mesh_replacements[index][i], table[mesh_slot_indices[i]],
+            row.slots[i] = {X3M_LOADING_D3DX, method_names[i], mesh_replacements[index][i], table[mesh_slot_indices[i]],
                             &table[mesh_slot_indices[i]]};
     }
     bool already = true;
@@ -1468,6 +1479,46 @@ AdjacencyMode adjacency_requested_mode() {
 // One mesh_adjacency_config row per process: enabled=1 when a non-native mode is
 // armed and at least one mesh import row routes meshes to the vtable hooks.
 bool adjacency_config_logged = false;
+#if X3M_EDITION_FL
+// FL admission of the two mesh rows: the X3FL.exe identity (the target is the main module), the install window, every
+// mesh window (the two factory calls through the pinned slots, the slot 22 / slot 20 calls) and the name-found slots at
+// exactly base + the pinned RVAs. Anything else refuses before a slot is written.
+namespace mesh_fl = x3m::fl::mesh_adjacency_fl;
+const char* fl_mesh_reason = "not_requested";
+const char* fl_mesh_window = "-";
+uintptr_t fl_mesh_base = 0;
+bool fl_mesh_read(uintptr_t at, void* out, size_t n) {
+    return engine_patch::read_code(at, static_cast<unsigned char*>(out), unsigned(n));
+}
+bool fl_mesh_contract(HMODULE target, PVOID* const* slots) {
+    fl_mesh_base = reinterpret_cast<uintptr_t>(target);
+#ifndef X3M_LOADING_TRACE_FIXTURE
+    if (!x3m::fl::verified() || fl_mesh_base != x3m::fl::module_base()) {
+        fl_mesh_reason = "executable_mismatch";
+        return false;
+    }
+#endif
+    if (!engine_patch::install_window_open()) {
+        fl_mesh_reason = "late_claim";
+        return false;
+    }
+    namespace W = x3m::fl::loading_windows;
+    if (const char* bad = W::first_mismatch(fl_mesh_read, fl_mesh_base, W::mesh_windows, W::mesh_fixups)) {
+        fl_mesh_window = bad;
+        fl_mesh_reason = "bytes_mismatch";
+        return false;
+    }
+    if (reinterpret_cast<uintptr_t>(slots[static_cast<unsigned>(Operation::MeshCreate)]) !=
+            fl_mesh_base + mesh_fl::create_slot_rva ||
+        reinterpret_cast<uintptr_t>(slots[static_cast<unsigned>(Operation::MeshClean)]) !=
+            fl_mesh_base + mesh_fl::clean_slot_rva) {
+        fl_mesh_reason = "import_mismatch";
+        return false;
+    }
+    fl_mesh_reason = "ok";
+    return true;
+}
+#endif
 void log_adjacency_config(AdjacencyMode requested_mode, bool trace) {
     if (adjacency_config_logged) return;
     adjacency_config_logged = true;
@@ -1475,8 +1526,16 @@ void log_adjacency_config(AdjacencyMode requested_mode, bool trace) {
     for (const auto& hook : hooks) rows |= mesh_row(hook) && hook.slot && *hook.slot == hook.replacement;
     const bool enabled = rows && mesh_observation_enabled.load(std::memory_order_acquire) &&
                          adjacency_mode.load(std::memory_order_acquire) != AdjacencyMode::Native;
+#if X3M_EDITION_FL
+    log("mesh_adjacency_config requested=%s enabled=%u telemetry=%u reason=%s window=%s dll=%s slot_create=0x%08lx "
+        "slot_clean=0x%08lx edition=fl",
+        adjacency_fast::mode_name(requested_mode), unsigned(enabled), unsigned(trace), fl_mesh_reason, fl_mesh_window,
+        mesh_fl::dll, static_cast<unsigned long>(fl_mesh_base + mesh_fl::create_slot_rva),
+        static_cast<unsigned long>(fl_mesh_base + mesh_fl::clean_slot_rva));
+#else
     log("mesh_adjacency_config requested=%s enabled=%u telemetry=%u", adjacency_fast::mode_name(requested_mode),
         unsigned(enabled), unsigned(trace));
+#endif
 }
 bool install(HMODULE target) {
     if (installed.load()) return true;
@@ -1484,8 +1543,12 @@ bool install(HMODULE target) {
         log("loading_trace disabled=reinitialization_not_supported");
         return false;
     }
+#if X3M_EDITION_FL
+    const bool trace = false && requested(), buffer = false, crypt = false, music = false, marks = false;
+#else
     const bool trace = requested(), buffer = gz_buffer::requested(), crypt = crypt_cache::requested(),
                music = save_observer_set(), marks = texture_observer != nullptr;
+#endif
     // X3M_MESH_ADJACENCY=fast arms without telemetry: only the two mesh import
     // rows are patched then, and no metric row is written (report() runs from
     // the telemetry summary only). With telemetry the full set is patched below.
@@ -1544,6 +1607,12 @@ bool install(HMODULE target) {
             }
         }
     }
+#if X3M_EDITION_FL
+    if (!fl_mesh_contract(target, slots)) {
+        log_adjacency_config(adjacency_request, trace);
+        return false;
+    }
+#endif
     bool found = false;
     for (auto* slot : slots) found |= slot != nullptr;
     if (!found) return false;
@@ -1682,7 +1751,9 @@ bool install(HMODULE target) {
     installed.store(hook_count != 0);
     log("loading_trace coverage_begin=%llu frequency=%llu hooks=%u module=main inclusive=1 paths=0 qualification=named_pe32_imports light_rows=1 nesting=%u probes=%u crypt_cache=%u",
         coverage_start, clock_frequency, hook_count, unsigned(nesting), unsigned(probes), unsigned(crypt_cache_active));
+#if !X3M_EDITION_FL
     if (probes) loading_probes::initialize();
+#endif
     log_adjacency_config(adjacency_request, trace);
     bind_save_observer();
     return installed.load();
@@ -1738,8 +1809,10 @@ void report() {
             double(s.overhead_ticks) * 1e6 / clock_frequency);
     }
     adjacency_report();
+#if !X3M_EDITION_FL
     loading_probes::report();
-    resource_reader::report();
+#endif
+    resource_reader::report(); // FL: src/engine/fl/resource_reader_fl.cpp
     crypt_cache_report("window");
     restore_computational_state(fp);
     SetLastError(error);
@@ -1787,7 +1860,9 @@ void shutdown() {
         crypt_cache_report("session");
         log("crypt_cache_shutdown released=%u", unsigned(crypt_cache::shutdown()));
     }
+#if !X3M_EDITION_FL
     loading_probes::shutdown();
+#endif
     restore_mesh_hooks();
     for (auto& hook : hooks)
         if (hook.slot) {
