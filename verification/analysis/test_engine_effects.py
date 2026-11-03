@@ -52,7 +52,7 @@ SOURCES_SHA256_2026_11_03 = {
     # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
     # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report
     # (2026-11-03); AP objects identical.
-    'src/proxy/capture.cpp': '7cce8d3d8d4115bffb82576c8d5163b77bdf502bf5337830276211e98ffd64fb',
+    'src/proxy/capture.cpp': '319365a988a7b5d5dc226622857c60227b9ce1fda635d173e178ea239d22b0a1',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

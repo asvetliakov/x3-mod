@@ -2068,6 +2068,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                                // counters, the collide_census rows with edition=fl
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // FL provider (collide_memo_fl.cpp): the memo's frame, one
                                                            // collide_memo line per 300 frames with edition=fl
+    if (ctx.frame % 300 == 0) { // FL loading quintet: the cumulative reader, pool and cache rows on the memo's cadence.
+                                // AP gets them from loading_trace::report under telemetry, which the FL build does not
+                                // run; without this the rows appear only when the last device is destroyed, and the
+                                // run 42 log (exit without a device release) carried none.
+        resource_reader::report();              // resource_reader_metric / dat_handle_pool_metric, only when the
+                                                // counts changed since the last row
+        fl::crypt_cache_fl::report("window");   // crypt_cache scope=window cumulative totals
+    }
 #endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
