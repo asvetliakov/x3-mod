@@ -2656,7 +2656,16 @@ suite 345 modules 3,504 tests 0 failing; both site verifiers PASS on the install
 `C:\X3FL\d3d9.dll` = `431c2bb5…` (56,847,837 B), rollback `rollback-d3d9\d3d9.dll.run38` = `aeed7282…`; overlay and ini
 unchanged. Record `verification/results/fl-run39/candidate.json`.
 
-**FL run 39 A (open):** with SETA running, fly through a gate: SETA must come back on after arrival (and the chase view must
+**FL run 39 A (flown 2026-11-03, accepted):** user: "SETA works fine". Log `/home/asvetl/x3m-logs/fl-run39-seta.log`
+(317 MB, 29,969 frames, measured): `seta_restore installed=1 edition=fl hook_rva=0x0ce09e write=plain inject=ok
+inject_rva=0x0cfd00 call_rva=0x0bb500`, `seta_manual_flight installed=1 mode=2 edition=fl stop=speed_only stop_sites=8
+stop_status=active stop_write=atomic:7,plain:1`, `chase_transition installed=1 status=active edition=fl` unchanged from
+run 38 (the init-order fix holds in game). SETA returned after gates and manual steering kept it; no chase regression.
+**With run 39 the engine-side gap list of 2026-11-03 is closed except the ship steering family, the collision trio, the
+loading quintet, voice_dmo_fallback (CrossOver-only need), sun_flare_fix (moot while own_sun is on) and
+point_light_root_admission (skipped by user decision).**
+
+Original brief: with SETA running, fly through a gate: SETA must come back on after arrival (and the chase view must
 restore as before). Under SETA, steer by hand: SETA must stay on and the ship must turn and strafe at normal-speed rates;
 changing speed by hand still ends it. Also confirm the chase family is unchanged (chase view after a jump, lead reticle).
 Expect `seta_restore … edition=fl status=patched`, `seta_manual_flight … edition=fl`, and `chase_transition installed=1
