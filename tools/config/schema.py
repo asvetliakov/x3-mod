@@ -373,10 +373,10 @@ SETTINGS = [
     entry('gz_buffer', 'bool', 'loading', 'Faster loading: reads compressed game files in large chunks. 1 = on, 0 = off. '
           'X3: Albion Prelude and X3: Farnham\'s Legacy.', '1', launcher='--gz-buffer'),
     entry('resource_read', 'enum', 'loading', 'Faster loading: how game data files are read. fast = the mod\'s reader, native = '
-          'the game\'s own. X3: Albion Prelude (on Farnham\'s Legacy the game reads natively).', 'fast',
+          'the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'fast',
           choices=('fast', 'native', 'verify'), launcher='--resource-read'),
     entry('dat_handles', 'bool', 'loading', 'Faster loading: keeps the game\'s data archives open instead of reopening them. '
-          '1 = on, 0 = off. X3: Albion Prelude (on Farnham\'s Legacy the game reads natively).', '1',
+          '1 = on, 0 = off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
           launcher='--dat-handles'),
     entry('mesh_adjacency', 'enum', 'loading', 'Faster loading: how model outlines are prepared. fast = the mod\'s method, native = '
           'the game\'s own. X3: Albion Prelude and X3: Farnham\'s Legacy.', 'fast',

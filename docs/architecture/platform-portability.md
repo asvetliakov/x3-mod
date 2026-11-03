@@ -1427,13 +1427,15 @@ the CrossOver and native-Windows runtime acceptance of these hooks remains open 
 
 ## 2026-11-03: loading quintet on FL (`crypt_cache`, `gz_buffer`, `resource_read`, `dat_handles`, `mesh_adjacency` on FL)
 
-Three of the five loading optimizations now ship in the fl edition;
-`resource_read` and `dat_handles` stay AP only (the game reads natively on FL).
-The shared production cores are reused unchanged — `src/proxy/gz_buffer.cpp`,
-`crypt_cache.cpp` and `mesh_adjacency_fast.cpp` are AP byte-identical
+All five loading optimizations ship in the fl edition (`resource_read` and
+`dat_handles` joined the same day; corrected: the earlier "the game reads natively
+on FL" was no reason, AP also reads natively until the mod's faster reader
+replaces it). The shared production cores are reused unchanged —
+`src/proxy/gz_buffer.cpp`, `crypt_cache.cpp`, `mesh_adjacency_fast.cpp` and
+`resource_reader_core.cpp` are AP byte-identical
 (`verification/results/fl-loading/ap_objects_identical.py --base main`) and now
 also linked into the fl target — behind new FL transactions that own X3FL.exe's
-import slots and mesh rows.
+import slots, mesh rows, reader entry and pool call sites.
 
 - `gz_buffer` (`src/engine/fl/gz_buffer_fl.cpp`): the six zlib1.dll slots point
   at the shared read-ahead buffer; the `gzclose` slot is shared with the FL music
@@ -1448,12 +1450,25 @@ import slots and mesh rows.
 - `mesh_adjacency`: `loading_trace.cpp` matches `d3dx9_43.dll` in the fl build
   and a new `fl_mesh_contract` admits the two factory rows at the pinned slots;
   the shared COM vtable hooks and the pure algorithm are unchanged.
+- `resource_read` (`src/engine/fl/resource_reader_fl.cpp`): the reader entry
+  base+0x105f40 claimed through `engine_patch` with an FL stub that moves the
+  object from ECX (FL) into the core's EAX slot and restores the caller's EAX
+  before any fallback; verify mode reaches the original through a
+  `mov ecx,eax` bridge. Bindings to X3FL.exe's static CRT, raw malloc, the
+  allocator's four counters and the two size globals.
+- `dat_handles` (same module): seventeen of the eighteen direct `call fclose`
+  sites redirected to the shared pool's close (the CRT's exit-time fcloseall call
+  stays native), then the DAT `call fopen`, all or none; FL's FILE error flag 0x10
+  (not AP's 0x20). Claims after the music keep and `gz_buffer`, whose
+  `close_wrapper` window holds one of the redirected calls.
 
 Documented D3D9/Win32 and zlib/CryptoAPI contracts only; no Wine/CrossOver
 export, private layout or DLL-hash prerequisite (hashes are provenance). Site
 reasoning in `docs/reverse-engineering/fl/{loading-hooks,mesh-adjacency,`
 `resource-reader}.md`, "Port (2026-11-03)"; host evidence in
 `docs/verification/farnhams-legacy.md`, "loading quintet on FL (host evidence,
-2026-11-03)". Verified: offline site verifiers, the native fixture, the host
-suite and a 0/0 fl build. Not verified: not flown; native Windows behavior;
-loading time not measured.
+2026-11-03)" and "resource reader and DAT handles on FL (host evidence,
+2026-11-03)". Verified: offline site verifiers, the native fixtures (the reader's
+runs the real relocated FL reader as the native route), the host suite and a 0/0
+fl build. Not verified: not flown; native Windows behavior; loading time not
+measured in game.

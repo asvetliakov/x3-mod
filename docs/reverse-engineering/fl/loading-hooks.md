@@ -427,10 +427,24 @@ Verified (offline/host): the two site verifiers
 (`verify_gz_buffer_sites_fl.py`, `verify_crypt_cache_sites_fl.py`) PASS (windows,
 mutation refusals, named slots and their other users, the gate return sites, AP
 refusal); the native fixture `verification/probe/fl_loading.cpp` (real relocated
-X3FL.exe, MinGW i686, no Wine) PASS: gz claim/read-back/rollback, LastError and
-register preservation, a buffered read byte-identical to a synthetic stream, the
-gzclose share in both install orders; the crypt cache hit/miss, the sibling
-retire, hit-path LastError preservation. `cmake -DX3M_EDITION=fl` builds 0/0.
+X3FL.exe, MinGW i686, no Wine) PASS: gz claim/read-back/rollback, LastError kept
+across install, a buffered read byte-identical to a synthetic stream, nonvolatile
+registers / ESP / XMM7 / x87 CW / MXCSR / LastError kept across a read, a buffered
+hit and a close entered from the register harness (added 2026-11-03 after review),
+the gzclose share in both install orders with the keep modelled by a hand-written
+forward stub (the real keep's share code, `music_keep_fl.cpp`'s behind-buffer
+claim and uninstall, is not executed by any fixture; production installs the keep
+first); the crypt cache hit/miss, the sibling retire (the post-retire miss check
+corrected after review), hit-path LastError preservation.
+
+Install order with the DAT pool (2026-11-03): the FL DAT handle pool
+(`src/engine/fl/resource_reader_fl.cpp`, [resource-reader.md](resource-reader.md),
+"Port (2026-11-03)") rewrites the rel32 of the `call fclose` at base+0x10696c,
+inside the `close_wrapper` window (0x106940+0x3a) that `gz_buffer` and the music
+keep check. Both must therefore install first: `capture.cpp`'s FL block runs the
+keep, then `gz_buffer`, then the reader and pool, and each window is checked once,
+at its owner's initialize. The gzclose call at 0x10695d and the window's slot
+operand are not touched; a window re-check after the pool would refuse. `cmake -DX3M_EDITION=fl` builds 0/0.
 Not verified: not flown; native Windows and CrossOver; a real zlib/CSP loading
 run; loading time. Frontiers (2) early grouped-transaction fault-testing and (3)
 the native valid-use gzip fixture are covered at the FL window/transaction level

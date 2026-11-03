@@ -248,10 +248,12 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/collide_box_cull_fl.cpp src/engine/fl/collide_sat_sse2_fl.cpp
     src/engine/fl/collide_memo_fl.cpp)
   # The loading quintet on FL: gz_buffer's six zlib1.dll slots and crypt_cache's four ADVAPI32.dll slots (their own FL
-  # transactions over the shared cores), loading_trace's two mesh rows on d3dx9_43.dll; resource_read and dat_handles
-  # stay AP only (docs/architecture/platform-portability.md, "2026-11-03: loading quintet on FL").
+  # transactions over the shared cores), loading_trace's two mesh rows on d3dx9_43.dll, the resource reader's ECX entry
+  # stub and the DAT pool's eighteen call sites over the shared reader core (docs/architecture/platform-portability.md,
+  # "2026-11-03: loading quintet on FL"; docs/reverse-engineering/fl/resource-reader.md, "Port (2026-11-03)").
   target_sources(d3d9 PRIVATE src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/loading_trace.cpp
-    src/proxy/loading_trace_light.cpp src/engine/fl/gz_buffer_fl.cpp src/engine/fl/crypt_cache_fl.cpp)
+    src/proxy/loading_trace_light.cpp src/engine/fl/gz_buffer_fl.cpp src/engine/fl/crypt_cache_fl.cpp
+    src/proxy/resource_reader_core.cpp src/engine/fl/resource_reader_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -365,6 +367,10 @@ set_source_files_properties(src/engine/fl/collide_box_cull_fl.cpp src/engine/fl/
 set_source_files_properties(src/engine/fl/crypt_cache_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
 set_source_files_properties(src/engine/fl/gz_buffer_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL resource reader module (src/engine/fl/resource_reader_fl.cpp) installs on the backend-load path; inside the
+# loader thread only its verify sink runs, under PreserveCpuState: default SSE2 flags, no exception bookends. The entry
+# handler and the pool it binds live in the shared no-SSE core (src/proxy/resource_reader_core.cpp).
+set_source_files_properties(src/engine/fl/resource_reader_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

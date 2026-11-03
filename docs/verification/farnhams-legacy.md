@@ -2807,11 +2807,14 @@ The loading quintet port to the fl edition. Ported: `gz_buffer`, `crypt_cache`,
   -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4`: 0 warnings, 0 errors.
 - Site verifiers on `/mnt/c/X3FL/X3FL.exe` (results under
   `verification/results/fl-loading/`): `verify_gz_buffer_sites_fl.py` PASS
-  (20 windows, 60 mutation cases all refused, census gzclose 11 / gzgetc 4 /
+  (20 windows, 80 mutation cases all refused (corrected 2026-11-03: 60 is the
+  fixture's `GZFLIPS` count), census gzclose 11 / gzgetc 4 /
   gzwrite 21 kept for the keep, AP refused), `verify_crypt_cache_sites_fl.py`
   PASS (4 windows, 44 mutations refused, six gates, sibling acquire via EBX, AP
   refused), `verify_mesh_adjacency_sites_fl.py` PASS (4 windows, 14 mutations
-  refused, `_43` slots, no `_37` import).
+  refused, `_43` slots, no `_37` import). The crypt (44) and mesh (14) mutations
+  run through the verifiers' Python model of the window decision only; only the
+  gz windows are also flipped in the native fixture.
 - Native fixture `verification/probe/fl_loading.cpp` (real relocated X3FL.exe,
   MinGW i686 `-mstackrealign -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`,
   WSL interop, no Wine): `RESULT PASS checks=22 failures=0`, `GZFLIPS windows=20
@@ -2826,3 +2829,80 @@ Producers: `verification/results/fl-loading/generate_windows.py` (identity
 windows), `ap_objects_identical.py` (AP objects byte-identical to main), the
 three `verify_*_sites_fl.py` and the fixture. Not verified: not flown; native
 Windows/CrossOver behavior; a live zlib/CSP/`d3dx9_43` loading run; loading time.
+
+## resource reader and DAT handles on FL (host evidence, 2026-11-03)
+
+`resource_read` (fast/verify) and `dat_handles` now install on FL
+(`src/engine/fl/resource_reader_fl.cpp` over the unchanged shared core
+`src/proxy/resource_reader_core.cpp`); this supersedes the "AP only (native on
+FL, one refusal row each)" line of the loading-quintet section, whose reason was
+wrong (AP also reads natively until the mod's reader replaces it). Contract and
+reasoning: `docs/reverse-engineering/fl/resource-reader.md`, "Port (2026-11-03)".
+All figures measured on this checkout (rebased on `d007e0884`); none flown.
+
+- `cmake -S . -B build-fl -DX3M_EDITION=fl … && cmake --build build-fl -j4`:
+  0 warnings, 0 errors.
+- `verification/probe/verify_resource_reader_sites_fl.py --exe
+  /mnt/c/X3FL/X3FL.exe` PASS, 19 checks (record
+  `verification/results/fl-loading/resource_reader_sites.json`): reader 11 / pool
+  22 windows equal to the exe, 69 / 68 window mutations refused; entry six bytes
+  whole, no relocation, no interior branch, ECX moved to EDI at 0x105f61 and not
+  written before, EAX written at 0x105f54 and not read before, 12 direct callers,
+  no pointer or E9 to it; CRT bindings, the four counters (allocator operands,
+  EDX=0 at both calls), the live-pair rollback, the two size globals and the
+  three inflate slots taken from the bytes; the `.text` scan finds 18 E8 calls to
+  fclose, identical to the `fl-codex` list (no difference either way), each a
+  whole instruction on its function's linear decode (one raw byte pattern at
+  0x10642a is no instruction), no E9 or relocated pointer to fclose. 17 are
+  redirected; the 18th, 0x1397e4, is excluded because it is the CRT's fcloseall
+  loop 0x13979c, whose only caller 0x12ee7a sits in the exit-time stdio teardown
+  0x12ee72, which has no direct caller and one relocated pointer, at .rdata
+  0x150480. Through the pool that loop would close kept handles left listed as
+  kept, so a DAT open racing exit could get a closed FILE. Also checked: the DAT
+  fopen with its "rb" push and string; FILE flags at +0x0c, error 0x10, EOF 0x08;
+  the only window overlaps are the keep's and gz_buffer's `close_wrapper` with
+  the call at 0x10696c (rel32 only, clear of its fixup and the gzclose call and
+  return), and the reader installs after both in `capture.cpp`; the AP image and
+  the AP reader/pool/CRT addresses refused. Mutated copies (a close call's rel32,
+  an entry byte, the error-flag immediate) FAIL it.
+- Native fixture `verification/probe/fl_resource_reader.cpp` (real relocated
+  X3FL.exe as the native route, an in-memory CRT with FL's FILE layout, the game's
+  zlib1.dll copied to a temp dir; MinGW i686 `-mstackrealign
+  -mincoming-stack-boundary=2 -msse2 -mfpmath=sse`; WSL interop, no Wine):
+  `RESULT PASS checks=69 failures=0`; `RRFLIPS windows=33 cases=99 refused=99`;
+  `INSTALL redirected=17` with the exit call still decoding to fclose (the
+  per-site redirection proof); `FAST cases=14 equal=14 handled=10 fallbacks=4
+  cursor_short=2` (bytes, both size globals, four counter deltas, cursor,
+  position vs the native route); `SEEKING reads=16 equal=16`; `VERIFY files=10
+  equal=10 mismatched=0`; `CLOSES site_targets=17 pool_close_calls=34 pooled=17
+  released=17`: the pool close (the same function behind every site) called once
+  per site target with a DAT handle (kept) and once with an unpooled handle
+  (released), plus the close wrapper and the destructor executed as engine code;
+  `ROLLBACK steps=20 rolled_back=20`; `CRT opens=1137 closes=1137 open_now=0
+  dead_use=0`; register / DF / XMM7 / x87 CW / MXCSR / LastError / errno kept on
+  the handled and fallback paths; late window refused. Producer:
+  `verification/results/fl-loading/run_resource_reader_fixture.py --runs 3`.
+  Timing (fixture, not game; fast vs native µs per read, three runs): 200 KB text
+  13.3–17.0 vs 32.9–37.1 (about 2.4× faster); 70 KB random taken as parity (this
+  checkout 24.1–24.3 vs 31.0–42.4, the reviewer 31.60 vs 31.44; the fixture's
+  byte-loop fread dominates both); 5 KB text slower, 5.0–5.5 vs 2.5–2.7; 100 B
+  1.6–1.7 vs 1.4; one game allocation per read on both routes.
+- `ap_objects_identical.py --base main`: capture.cpp, loader.cpp,
+  loading_trace.cpp, crypt_cache.cpp disassembly identical; the 11 AP loading
+  sources (reader, core, header included) byte-identical.
+- `python3 -m unittest test_fl_loading test_resource_reader test_engine_effects`:
+  35 tests OK (1 skip: the engine-effects installed-table test, no installed AP
+  tree); `tools/config/generate.py --check` PASS; `generate_windows.py --check`
+  match; `run_host_suite.py`: 351 modules, 3537 tests, 0 failing (131.4 s). The
+  `capture.cpp` pin in `test_engine_effects.py` is
+  `7cce8d3d8d4115bffb82576c8d5163b77bdf502bf5337830276211e98ffd64fb`.
+
+Review fixes folded in the same change. For the previous section: the gz
+verifier figure corrected to 80; `fl_loading.cpp` now checks registers and
+LastError across a read, a buffered hit and a close (`RESULT PASS checks=25`),
+and its post-retire miss check samples the native count after the unadmitted
+acquire. For this port: the exit-time fcloseall call is excluded; a pool left
+partially rolled back stays bound so its sites still close through the CRT; the
+install order around `close_wrapper` is documented in `music-keep.md` section 3
+and `loading-hooks.md`. Not verified: not flown; native Windows/CrossOver;
+loading time in game; the real keep's share code in either install order.

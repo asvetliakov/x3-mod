@@ -439,7 +439,9 @@ volatile std::uint32_t x3m_music_keep_fl_pump_fn = 0;       // base+0x0fe7d0
 volatile std::uint32_t x3m_music_keep_fl_free_fn = 0;       // base+0x0b4640
 volatile std::uint32_t x3m_music_keep_fl_entry_continue = 0, x3m_music_keep_fl_stop_movie_continue = 0,
                        x3m_music_keep_fl_play_continue = 0; // the three entry claims' tails
-volatile std::uint32_t x3m_music_keep_fl_gzwrite = 0, x3m_music_keep_fl_gzclose = 0; // zlib1.dll's own exports
+// The stubs' forward words: zlib1.dll's gzwrite; for gzclose zlib1.dll's export, or gz_buffer's close entry when the
+// buffer held the slot first (gz_close_share_fl.h), which gz_buffer may later rewrite to chain itself behind the keep.
+volatile std::uint32_t x3m_music_keep_fl_gzwrite = 0, x3m_music_keep_fl_gzclose = 0;
 std::uint32_t x3m_music_keep_fl_resume_ms = 0;
 std::uint32_t x3m_music_keep_fl_pause_record = 0;
 

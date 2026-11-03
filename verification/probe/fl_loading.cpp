@@ -4,8 +4,10 @@
 // verification/analysis/test_fl_loading.py (no force-include; the modules take a fixture base and fake exports) and run
 // natively through WSL interop: ./fl_loading.exe <X3FL.exe>. It maps and relocates the installed X3FL.exe to a private
 // 64 KB-aligned base (fl_music_fixture.h), binds the six zlib and four CryptoAPI entries to fakes, and exercises:
-// gz_buffer claim / read-back / rollback, LastError and nonvolatile preservation, a buffered read byte-identical to the
-// fake stream, the gzclose share with the music keep in both install orders; crypt_cache admission from the checker's
+// gz_buffer claim / read-back / rollback, LastError kept across install, a buffered read byte-identical to the fake
+// stream, nonvolatiles / ESP / XMM7 / x87 CW / MXCSR / LastError kept across a read, a buffered hit and a close entered
+// from the register harness, the gzclose share in both install orders (the keep modelled by a hand-written forward stub;
+// the real keep's share code in music_keep_fl.cpp does not run here); crypt_cache admission from the checker's
 // return sites (hit / miss, an unadmitted caller forwarding, the sibling signer retiring the cache), LastError
 // preservation. The X3FL.exe bytes are never copied into the repository.
 #include "fl_music_fixture.h"
@@ -246,6 +248,31 @@ int main(int argc, char** argv) {
         fx::check(real_reads >= 1, "gz_real_read_chunked");
         close(h);
         fx::check(fake_close_calls >= 1, "gz_close_forwarded");
+        // The slot entries entered from the register harness (cdecl: DF clear on entry): nonvolatiles, ESP, XMM7, the
+        // x87 control word, MXCSR and the caller's LastError kept across a buffered read and a close.
+        auto state_kept = [] {
+            return fx::kept({fx::ebx, fx::esi, fx::edi, fx::ebp}) && fx_out_esp == fx_esp_before + 4 &&
+                   !std::memcmp(fx_in_xmm, fx_out_xmm, 16) && fx_out_fcw == fx_in_fcw && fx_out_mxcsr == fx_in_mxcsr;
+        };
+        void* h2 = open("res2.pck", "rb");
+        static unsigned char small[32];
+        fx_df = 0;
+        fx::Call c = fx::enter(addr(reinterpret_cast<void*>(read)), {0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666,
+                                                                     0x7777},
+                               {addr(h2), addr(small), 16});
+        fx::check(fx_out[0] == 16 && !std::memcmp(small, stream_bytes, 16) && state_kept() &&
+                      c.error == fx::sentinel_error,
+                  "gz_read_registers_lasterror_kept");
+        c = fx::enter(addr(reinterpret_cast<void*>(read)), {0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777},
+                      {addr(h2), addr(small), 16});
+        fx::check(fx_out[0] == 16 && !std::memcmp(small, stream_bytes + 16, 16) && state_kept() &&
+                      c.error == fx::sentinel_error,
+                  "gz_buffered_hit_registers_lasterror_kept");
+        const unsigned closes = fake_close_calls;
+        c = fx::enter(addr(reinterpret_cast<void*>(close)), {0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777},
+                      {addr(h2)});
+        fx::check(fake_close_calls == closes + 1 && state_kept() && c.error == fx::sentinel_error,
+                  "gz_close_registers_lasterror_kept");
     }
 
     // (4) keep-first install: the keep holds the close slot (its stub forwards to zlib's gzclose through a word);
@@ -357,14 +384,16 @@ int main(int argc, char** argv) {
     acq(&p2, container, provider, PROV_RSA_FULL, CRYPT_DELETEKEYSET);
 
     // An unadmitted acquire (no gate RVA) naming the scratch container retires the cache; the next admitted pass misses.
-    unsigned a2 = native_acquire;
     at(0);
     acq(&p2, container, provider, PROV_RSA_FULL, CRYPT_DELETEKEYSET);
     fx::check(CC::fixture_foreign_acquires() >= 1, "crypt_foreign_acquire_counted");
+    // Sampled after the unadmitted acquire (which reaches the native function itself): the admitted acquire must now
+    // reach it too, with a fresh provider, where the second pass above was served from the cache.
+    const unsigned a2 = native_acquire;
     HCRYPTPROV p3 = 0;
     at(0x0f8bdb);
     acq(&p3, container, provider, PROV_RSA_FULL, CRYPT_NEWKEYSET);
-    fx::check(native_acquire > a2, "crypt_after_foreign_misses");
+    fx::check(native_acquire == a2 + 1 && p3 != p1, "crypt_after_foreign_misses");
     at(0x0f8dbd);
     rel(p3, 0);
     at(0);

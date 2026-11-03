@@ -4,7 +4,8 @@
 Same convention as verification/results/fl-music/generate_windows.py (whose Image / window / fnv1a it reuses): every
 window is a whole-instruction span of the installed X3FL.exe identified by FNV-1a 32 over its bytes with every
 base-relocation HIGHLOW dword zeroed; each such dword is recorded with the RVA base + which it must hold at run time.
-Roles: docs/reverse-engineering/fl/loading-hooks.md (gz, crypt) and mesh-adjacency.md (mesh), each "Port (2026-11-03)".
+Roles: docs/reverse-engineering/fl/loading-hooks.md (gz, crypt), mesh-adjacency.md (mesh) and resource-reader.md (reader,
+pool), each "Port (2026-11-03)".
 
 usage: python3 verification/results/fl-loading/generate_windows.py [--exe X3FL.exe] [--check]
   --check  compares the generated text with the checked-in header (exit 1 on a difference); writes nothing.
@@ -25,6 +26,10 @@ MAX_WINDOW = 0x300
 # gzclose's eleven import references (every one `call [IAT]`, inlined closers included).
 GZCLOSE_CALLS = (0x079d9e, 0x0c29df, 0x0c2ee5, 0x1048f2, 0x1049bd, 0x105e48, 0x106408, 0x1065fe, 0x10695d, 0x10a68a,
                  0x10a77f)
+# fclose's direct callers the pool redirects: every E8 in .text whose target is fclose base+0x12fb6e (18) but 0x1397e4,
+# the CRT's exit-time fcloseall loop (resource_reader_sites_fl.h).
+FCLOSE_CALLS = (0x079da6, 0x0819af, 0x0c29e7, 0x0c2f12, 0x1048fa, 0x1049c5, 0x105e50, 0x106410, 0x106606, 0x10696c,
+                0x10a512, 0x10a6e5, 0x10a787, 0x1149ee, 0x114a23, 0x114a2f, 0x11d9be)
 # (table, name, rva, length). Names are the refusal reasons (<name>_mismatch in the rows).
 WINDOWS = [
     # gz_buffer: the one gzopen/gzread/gzseek/gztell call each, gzgetc's call and its three register loads (the
@@ -51,6 +56,29 @@ WINDOWS = [
     ('mesh', 'clean_call', 0x0dcd2a, 0x11),
     ('mesh', 'adjacency_call', 0x0dcc40, 0x12),
     ('mesh', 'point_reps_call', 0x0dcc98, 0x0c),
+    # resource reader (docs/reverse-engineering/fl/resource-reader.md, "Port (2026-11-03)"): the whole reader (two
+    # halves: the ECX contract and prologue, the size-global stores, the failure rollback of the live pair), the
+    # dispatcher, seek and byte reader it calls, the allocator whose counters the core fills, the CRT heads it binds.
+    ('reader', 'reader_a', 0x105f40, 0x1e8),
+    ('reader', 'reader_b', 0x106128, 0x221),
+    ('reader', 'dispatcher', 0x106700, 0x114),
+    ('reader', 'seek', 0x1068a0, 0x99),
+    ('reader', 'byte_reader', 0x1066b0, 0x4f),
+    ('reader', 'allocator', 0x0d8fc0, 0xff),
+    ('reader', 'crt_fread', 0x132c9e, 0x1d),
+    ('reader', 'crt_fseek', 0x13074e, 0x1b),
+    ('reader', 'crt_ftell', 0x131fb0, 0x0b),
+    ('reader', 'crt_malloc', 0x131395, 0x0b),
+    ('reader', 'crt_free', 0x12f4e5, 0x05),
+    # DAT handle pool: the extension open's DAT fopen ("rb" push, call, record fseek), the CRT fopen/fclose heads, the
+    # FILE flag word's address (+0x0c) and fread's error (0x10) / EOF (0x08) writes, and the seventeen redirected
+    # fclose calls (every E8 to fclose in .text but the exit-time fcloseall loop; resource-reader.md "Port").
+    ('pool', 'dat_open', 0x105ea8, 0x45),
+    ('pool', 'crt_fopen', 0x132087, 0x17),
+    ('pool', 'crt_fclose', 0x12fb6e, 0x73),
+    ('pool', 'file_flag_offset', 0x132b44, 0x06),
+    ('pool', 'file_error_flag', 0x132c83, 0x1b),
+    *[('pool', f'fclose_call_{rva:06x}', rva, 5) for rva in FCLOSE_CALLS],
 ]
 
 

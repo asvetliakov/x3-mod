@@ -1811,8 +1811,8 @@ void report() {
     adjacency_report();
 #if !X3M_EDITION_FL
     loading_probes::report();
-    resource_reader::report();
 #endif
+    resource_reader::report(); // FL: src/engine/fl/resource_reader_fl.cpp
     crypt_cache_report("window");
     restore_computational_state(fp);
     SetLastError(error);

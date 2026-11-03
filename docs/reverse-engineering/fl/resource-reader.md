@@ -249,16 +249,114 @@ FL accepted-format comparison including cursor/error restoration cases, and
 native Windows/CrossOver execution through the established queue owner. This
 analysis does not establish an FL speedup or claim the enhancements are active.
 
-## Port (2026-11-03): not ported
+## Port (2026-11-03)
 
-The loading-quintet FL port shipped `gz_buffer`, `crypt_cache` and
-`mesh_adjacency` on FL but **left the fast resource reader and the DAT handle
-pool AP only**. X3FL.exe reads its archives natively; `capture.cpp`'s FL block
-logs one refusal row each when asked — `resource_reader mode=… installed=0
-status=ap_only reason=not_ported edition=fl` and `dat_handle_pool requested=1
-installed=0 status=ap_only reason=not_ported edition=fl` — and nothing is
-claimed. The ECX-input entry bridge, the canonical reader Site shared with the
-probes, the eighteen-closer pool binding and the FL FILE flag parameters
-(`{0x0c,0x10}`) remain the open implementation evidence above; the ini text for
-`resource_read`/`dat_handles` says "X3: Albion Prelude (on Farnham's Legacy the
-game reads natively)." No FL reader speedup is claimed.
+Both settings now work on FL (`src/engine/fl/resource_reader_fl.cpp`, sites in
+`resource_reader_sites_fl.h`, identity windows in `loading_windows_fl_inc.h`
+tables `reader` and `pool`). The decoder, the entry handler and the pool are the
+shared `src/proxy/resource_reader_core.cpp`, unchanged and AP byte-identical; the
+FL module provides `resource_reader::initialize/report` in place of the AP hook
+module. The earlier "not ported" state (one `ap_only reason=not_ported` row each,
+ini text "on Farnham's Legacy the game reads natively") is withdrawn: AP also reads
+natively until the mod's reader replaces it; the settings exist because the
+reader is faster.
+
+**Reader.** `engine_patch::claim` on base+0x105f40 (the six bytes above, atomic
+five-byte jump, the tail re-executes them) with the FL stub in front: `pushfd;
+cld; pushad`, copy saved ECX into the saved-EAX slot the core reads (`regs[7]`)
+while keeping the caller's EAX in EDX, call `x3m_resource_read_entry`; handled →
+`popad; popfd; ret` with EAX = the buffer; fallback → the caller's EAX written
+back into the slot, `popad; popfd; jmp [next]`, so the original sees the caller's
+EAX, ECX and EFLAGS (DF included). Verify mode: the core's `call_original` passes
+the object in EAX, so its continuation is a bridge `mov ecx,eax; jmp [next]`.
+Bindings (RVAs, each checked from the bytes by the verifier, not from a list):
+fread 0x132c9e (the dispatcher's calls), fseek 0x13074e (seek, DAT open), ftell
+0x131fb0, raw malloc 0x131395 (the allocator's own calls; the allocator 0xd8fc0
+is not bound: it would double-count and zero-fill), free 0x12f4e5; counters
+{0x1aae20, 0x1aaa18, 0x1aaa14, 0x1aae1c} as the allocator's `add` / `add
+[ebx*4+…]` / `inc` operands with EDX=0 at both reader calls; size globals
+0x1ab3e8/0x1ab3ec (the reader's two stores); inflate from zlib1.dll by name,
+refused unless the reader's own slots 0x1503fc/0x150400/0x150404 hold the same
+exports. Install checks the eleven `reader` windows (the whole reader,
+dispatcher, seek, byte reader, allocator, five CRT heads) first; the jump is read
+back; any later failure restores the entry and reads it back as the original
+(`rollback_failed` otherwise). Row: `resource_reader mode=… installed= status=
+site= input=ecx … window= edition=fl`; `resource_reader_metric … edition=fl`
+from the telemetry report and at last-device teardown.
+
+**Pool.** The `.text` scan finds 18 E8 calls to fclose (base+0x12fb6e), equal to
+the `fl-codex` reference list, no E9 and no relocated pointer to it. Seventeen
+are redirected to `x3m_pool_fclose` (unknown handles pass through to the CRT
+fclose), then the DAT open's `call fopen` at 0x105eb0 (the `"rb"` push before
+it, the string at 0x18bb9c) to `x3m_pool_fopen`: close coverage is live before a
+pooled handle can exist. The eighteenth, 0x1397e4, is **not redirected**: it is
+the static CRT's fcloseall loop (0x13979c), whose only caller is the exit-time
+stdio teardown 0x12ee72, which nothing calls directly and only the `.rdata`
+pointer at 0x150480 reaches. Through the pool it would close kept handles while
+they stay listed as kept (and skip in-use ones), so a DAT open racing process
+exit could be handed a closed FILE; left native it closes every stream at exit,
+which is what the CRT does without the pool. Each write is read back; any
+failure puts every write of the transaction back, newest first, each read back
+as the original call (`live=0`). If even that fails (`rollback_failed`) the pool
+stays bound, so a site left redirected still reaches the CRT's fclose for every
+handle it does not keep (an unbound core pool close returns -1 without
+closing). The pool tests FL's error flag 0x10 at FILE+0x0c (fread's `lock or`);
+EOF 0x08 alone keeps the handle. Row: `dat_handle_pool requested=1 installed=
+status= open_site= open_status= close_sites=17 live=18 window= entries=32
+error_flag=0x10 … edition=fl`.
+
+**Order and the keep.** The fclose call at 0x10696c lies inside the
+`close_wrapper` window (0x106940+0x3a) that the music keep and `gz_buffer` both
+check at their own install. Both run first in `capture.cpp`'s FL block; this
+module claims last (the order is fixed in `capture.cpp` and each window is
+checked once, at its owner's initialize). The pool rewrites only that call's
+rel32 (window +0x2d..+0x30), clear of the window's relocated gzclose operand
+(+0x1f), the gzclose call at 0x10695d and its return 0x106963 that the keep's
+stub compares at run time. A re-check of the keep's window after this install
+refuses, so neither the keep nor `gz_buffer` may initialize after it (no FL
+path re-initializes them). Cross-references: `music-keep.md` section 3,
+`loading-hooks.md` "Port (2026-11-03)".
+
+**Evidence (host, 2026-11-03).** `verify_resource_reader_sites_fl.py` PASS (19
+checks; reader 69 / pool 68 window mutations refused; the exit-time exclusion
+proven from the bytes; the AP image and AP addresses refused). Native fixture
+`fl_resource_reader.cpp` PASS (69 checks): it runs the real relocated FL reader
+as the native route over an in-memory CRT with FL's FILE layout and the game's
+zlib1.dll, then the production install over it. 14 cases (11 catalogue records
+in one 88,816-byte `.dat`, 3 loose files: plain, scrambled,
+FNAME/FEXTRA/FCOMMENT/FHCRC, 100 B to 200 KB, two short-cursor records, the last
+record ending at EOF, not-gzip, empty, cut streams) are identical to the native
+route in bytes, both size globals, all four counter deltas, cursor and position
+(10 handled, 4 fallbacks); 16 sequential and out-of-order reads on one handle
+identical; verify mode 10/10 equal; registers, EFLAGS/DF, XMM7, x87 CW, MXCSR,
+LastError and errno kept on the handled and the fallback path (the original
+receives the caller's EAX/ECX). Per-site redirection is proven by the install
+read-back (17 calls decode to the pool close, the exit call still to fclose);
+the close wrapper and the destructor (engine code) pool a DAT handle; the pool
+close, reached once through each of the 17 site targets (all the same
+function), pools the DAT handle and releases an unpooled one; reuse across
+reopen, distinct handles for concurrent opens, error-flag release, non-`rb`
+pass-through; 20 fault points each roll back their transaction; the late window
+refuses with nothing written. Ledger: `docs/verification/farnhams-legacy.md`,
+"resource reader and DAT handles on FL (host evidence, 2026-11-03)".
+
+**Cost.** The FL adapter adds the stub (about twenty instructions per call) and
+no allocation; per handled read the shared core keeps its AP shape: one scratch
+`HeapAlloc` of the extent plus the one game `malloc` the native allocator also
+makes (fixture: 1.00 game allocation per read on both routes). Fixture timing
+(native Windows via WSL interop, in-memory CRT, not game time;
+`verification/results/fl-loading/run_resource_reader_fixture.py --runs 3`):
+200 KB text about 2.4× faster (13.3–17.0 µs vs 32.9–37.1 µs); 70 KB random
+taken as parity (this checkout's runs 24.1–24.3 µs vs 31.0–42.4 µs, the
+reviewer's 31.60 vs 31.44 µs; the fixture's byte-loop fread dominates both);
+5 KB text slower, 5.0–5.5 µs vs 2.5–2.7 µs; 100 B 1.6–1.7 µs vs 1.4 µs. Small
+records are slower in the fixture (its `HeapAlloc`-based allocator shows
+1.3–1.7 µs in the core's allocation phase at 5 KB, plus the core's fixed scratch
+and QPC work); AP's fixture ratio was 1.11× on a 31 KB file. No FL loading-time
+gain is claimed until a flight's `resource_reader_metric` (verify: `original_us`
+vs `fast_us`) measures it.
+
+**Limits.** Not flown; native Windows and CrossOver not run. The restore guard
+still ignores a failed restoring fseek (above). The pool scope is the extension
+open's DAT fopen only (the exact-name open 0x1064d8 is not pooled, as on AP).
+Handles still kept at process exit are closed by the CRT's own fcloseall.

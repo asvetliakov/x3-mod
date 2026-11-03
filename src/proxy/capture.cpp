@@ -1526,6 +1526,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
 #else
         chase_camera::note_last_device(); // FL pose seam: kept for the process lifetime, as on AP
         fl::crypt_cache_fl::report("session"); // FL loading quintet: the cache's cumulative totals, as on AP
+        resource_reader::report(); // FL reader and pool: final summary without telemetry; both stay installed
 #endif
         session_log::report("last_device"); // telemetry on: the log writer's last window (render-side format cost,
                                             // drain cost)
@@ -6117,19 +6118,11 @@ void initialize_log(HMODULE module) {
     fl::gz_buffer_fl::initialize();
     fl::crypt_cache_fl::initialize();
     if (loading_trace::mesh_adjacency_requested()) loading_trace::initialize();
-    {
-        // X3M_RESOURCE_READ / X3M_DAT_HANDLES: X3FL.exe's reader and DAT pool are not ported (the game reads natively);
-        // one refusal row each when asked for.
-        wchar_t read_mode[16]{}, pool[8]{};
-        const DWORD read_length = x3m::config::get(L"X3M_RESOURCE_READ", read_mode, 16);
-        const bool read_asked = read_length && read_length < 16 &&
-                                (!lstrcmpiW(read_mode, L"fast") || !lstrcmpiW(read_mode, L"verify"));
-        if (read_asked)
-            log("resource_reader mode=%s installed=0 status=ap_only reason=not_ported edition=fl",
-                !lstrcmpiW(read_mode, L"fast") ? "fast" : "verify");
-        if (x3m::config::get(L"X3M_DAT_HANDLES", pool, 8) == 1 && pool[0] == L'1')
-            log("dat_handle_pool requested=1 installed=0 status=ap_only reason=not_ported edition=fl");
-    }
+    // X3M_RESOURCE_READ=verify|fast / X3M_DAT_HANDLES=1 (docs/reverse-engineering/fl/resource-reader.md, "Port
+    // (2026-11-03)"; src/engine/fl/resource_reader_fl.cpp): the reader entry base+0x105f40 (the ECX-input stub over the
+    // shared core) and the pool's seventeen fclose calls then the DAT fopen call, all or none each. After the music keep
+    // and gz_buffer: their close_wrapper window holds the fclose call at base+0x10696c. One row each with edition=fl.
+    resource_reader::initialize();
 #endif
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }

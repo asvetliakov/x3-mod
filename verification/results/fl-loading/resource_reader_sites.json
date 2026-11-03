@@ -1,0 +1,210 @@
+{
+ "ap": {
+  "address_collisions": [],
+  "ap_entry_bytes_in_fl": false,
+  "ap_pool_call_targets": [
+   "0x112a18",
+   "0x10f8d4"
+  ],
+  "windows_admitted": []
+ },
+ "bindings": {
+  "allocator": [
+   "0xd8fc0",
+   "0xd8fc0"
+  ],
+  "fread": [
+   "0x132c9e",
+   "0x132c9e"
+  ],
+  "free": [
+   "0x12f4e5"
+  ],
+  "fseek": [
+   "0x13074e",
+   "0x13074e"
+  ],
+  "ftell": [
+   "0x131fb0"
+  ],
+  "malloc": [
+   "0x131395",
+   "0x131395"
+  ]
+ },
+ "checks": {
+  "ap_addresses_refused": true,
+  "close_sites": true,
+  "counters": true,
+  "crt_bindings": true,
+  "dat_fopen": true,
+  "ecx_contract": true,
+  "entry_bytes": true,
+  "exit_close_excluded": true,
+  "fclose_no_other_reference": true,
+  "file_flags": true,
+  "identity": true,
+  "inflate_slots": true,
+  "keep_window_untouched": true,
+  "live_pair_rollback": true,
+  "pool_windows_match_exe": true,
+  "reader_callers": true,
+  "reader_windows_match_exe": true,
+  "size_globals": true,
+  "window_mutations_refused": true
+ },
+ "close_interior_hits": [],
+ "close_raw_pattern_not_instruction": [
+  [
+   "0x10642a",
+   "0x106414"
+  ]
+ ],
+ "close_sites_scanned": 18,
+ "close_sites_vs_codex": {
+  "only_codex": [],
+  "only_scan": []
+ },
+ "counters_from_bytes": [
+  "0x1aae20",
+  "0x1aaa18",
+  "0x1aaa14",
+  "0x1aae1c"
+ ],
+ "entry": {
+  "insns": [
+   [
+    1072960,
+    "push",
+    "ebp"
+   ],
+   [
+    1072961,
+    "mov",
+    "ebp, esp"
+   ],
+   [
+    1072963,
+    "and",
+    "esp, 0xfffffff8"
+   ]
+  ],
+  "interior_hits": []
+ },
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "exit_close": {
+  "callers": [
+   "0x12ee7a"
+  ],
+  "function": "0x13979c",
+  "site": "0x1397e4",
+  "teardown": "0x12ee72",
+  "teardown_callers": [],
+  "teardown_pointers": [
+   "0x150480"
+  ]
+ },
+ "failed": [],
+ "file_flags": [
+  [
+   1256260,
+   "lea",
+   "eax, [ecx + 0xc]"
+  ],
+  [
+   1256579,
+   "push",
+   "0x10"
+  ],
+  [
+   1256581,
+   "mov",
+   "eax, dword ptr [ebp - 0x10]"
+  ],
+  [
+   1256584,
+   "pop",
+   "ecx"
+  ],
+  [
+   1256585,
+   "lock or",
+   "dword ptr [eax], ecx"
+  ],
+  [
+   1256602,
+   "push",
+   "8"
+  ],
+  [
+   1256604,
+   "jmp",
+   "0x532c85"
+  ]
+ ],
+ "fopen_callers": [
+  "0x105eb0",
+  "0x105f0f",
+  "0x1064d8",
+  "0x106532",
+  "0x10a421",
+  "0x1147e6",
+  "0x1147fb",
+  "0x1148b9"
+ ],
+ "globals_from_bytes": [
+  "0x1ab3ec",
+  "0x1ab3e8"
+ ],
+ "keep_window": {
+  "claimed_rel32": "0x10696d..0x106970",
+  "fixup": "+0x1f",
+  "gzclose_call": "0x10695d",
+  "return": "0x106963",
+  "window": "0x106940+0x3a"
+ },
+ "mutations": {
+  "pool": [
+   68,
+   68
+  ],
+  "reader": [
+   69,
+   69
+  ]
+ },
+ "pool_fixup_count": 2,
+ "pool_window_count": 22,
+ "pool_window_failures": [],
+ "reader_callers": [
+  "0xb56e7",
+  "0xb8f07",
+  "0xdb3da",
+  "0xf5368",
+  "0xf6108",
+  "0xf7698",
+  "0x106392",
+  "0x106d81",
+  "0x109f6a",
+  "0x1111d1",
+  "0x114be5",
+  "0x114d48"
+ ],
+ "reader_fixup_count": 36,
+ "reader_window_count": 11,
+ "reader_window_failures": [],
+ "result": "PASS",
+ "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "window_overlaps": [
+  [
+   "music.keep",
+   "close_wrapper",
+   "fclose_10696c"
+  ],
+  [
+   "loading.gz",
+   "close_wrapper",
+   "fclose_10696c"
+  ]
+ ]
+}
