@@ -11894,10 +11894,11 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             cascade_mask = std::uint8_t(kept);
             const bool was_admitted = admitted;
             admitted = cascade_mask != 0;
+            // An alpha-tested draw is a sighting while the alpha programs are ready (not alpha_excluded); the
+            // sighting takes its own alpha source (note_refused_sighting).
             if (was_admitted && !admitted && retention_ && depth_replay_requested_ &&
-                candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested)
-                note_refused_sighting(route, vb, exact_extent); // an alpha-tested draw is never retained (it would be
-                                                                // re-issued without its test)
+                candidates_published_frame_ != frame_ && vb_known && !alpha_excluded)
+                note_refused_sighting(route, vb, exact_extent);
         }
     }
     // Static-only cascades (shadow-cascade-extents.md, "Caster pool control"): a
@@ -11926,7 +11927,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 // it the node would be unseen at the scene end, dropped as moving, and readmitted fresh
                 // by the ring next frame (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1).
                 if (was_admitted && !admitted && retention_ && depth_replay_requested_ &&
-                    candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested)
+                    candidates_published_frame_ != frame_ && vb_known)
                     note_refused_sighting(route, vb, exact_extent);
             }
         }
@@ -11992,9 +11993,10 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             g.alpha_threshold = alpha_threshold;
             alpha_texture = nullptr;
         } // the texture joins the lease
-        // A draw after the frame's scene end is not a sighting; an alpha-tested caster is never
-        // retained (the store re-issues its records with the depth-only program).
-        if (retention_ && candidates_published_frame_ != frame_ && !route.alpha_tested)
+        // A draw after the frame's scene end is not a sighting. An alpha-tested caster is retained with
+        // its texture and threshold (g.alpha_texture: the store takes its own reference) and re-issued
+        // with the alpha-tested depth program (shadow-caster-retention.md, "Alpha-tested casters retained").
+        if (retention_ && candidates_published_frame_ != frame_)
             note_retention_draw(route, r, g, exact_extent);
     }
     release(alpha_texture); // not leased (no cascade map, or an unleased record)

@@ -7,6 +7,8 @@
 // AddRef the store asks for at the draw (Acquired) and the Releases it queues
 // (pending), and consumes the admitted list in the cascade transaction.
 // Identity is the node serial of the lifetime observer; VB/IB/range is payload.
+// An alpha-tested record also holds its stage-0 texture (a fourth resource) and
+// its discard threshold; one without a texture is the depth-only record.
 // No libm call the i686 build would route through x87 (no fabs, floor, sqrt).
 #include <algorithm>
 #include <cmath>
@@ -164,13 +166,18 @@ struct Draw {
     DrawKey key{};
     BufferStamp vb{}, ib{};
     std::uintptr_t declaration = 0; // the declaration interface (live mode; its own held reference)
+    // The alpha-tested caster's stage-0 texture (live mode; its own held reference, resource[3]) and its
+    // discard threshold. 0: a depth-only record. Part of the record's identity under hold: another texture
+    // or threshold for the same range is another record (the old one is superseded at that sighting).
+    std::uintptr_t alpha_texture = 0;
+    float alpha_threshold = 0.f;
     std::uint32_t cull_mode = 0;
     float rows[16]{};   // the submitted clip rows of the last sighting
     double world[12]{}; // object -> world (W . A), double
     double centre[3]{}; // world AABB
     float half[3]{}, lo[3]{}, hi[3]{};
     std::uint64_t stamp = 0; // frame of the last sighting
-    std::uint16_t next = none, node = none, resource[3] = {none, none, none};
+    std::uint16_t next = none, node = none, resource[4] = {none, none, none, none}; // VB, IB, declaration, alpha texture
     std::uint8_t streak = 0, cascades = 0; // cascades: this frame's mask while the node is unseen
     // Per cascade the streak under that cascade's own eps (FrameInput::eps_cascade: the texel-scaled
     // law of the static-only cascades, the base eps elsewhere, where it equals `streak`).
@@ -214,6 +221,8 @@ struct Sighting {
     DrawKey key{};
     BufferStamp vb{}, ib{};
     std::uintptr_t declaration = 0;
+    std::uintptr_t alpha_texture = 0; // the alpha-tested caster's stage-0 texture (0: depth-only)
+    float alpha_threshold = 0.f;
     std::uint32_t cull_mode = 0;
     const float* rows = nullptr; // 16 floats
     const float* lo = nullptr;
@@ -221,7 +230,7 @@ struct Sighting {
 };
 // Resources the owner must AddRef now (at the draw, while the application's binding is live).
 struct Acquired {
-    std::uintptr_t identity[3]{};
+    std::uintptr_t identity[4]{};
     unsigned count = 0;
 };
 
@@ -296,6 +305,15 @@ struct FrameInput {
     // cleared law (the option off) drops nothing.
     renderer::ShadowCascadeFootprintLaw footprint{};
 };
+
+// One cascade list's issue slot in the cascade transaction (motion_output_shadow_replay_inc.h): opaque issues fill
+// the list from its start (live, then retained), alpha-tested ones its tail (live, then retained), so a map switches
+// to the alpha program once. `total` / `alpha`: the list's issues and its alpha-tested issues; `fill` / `alpha_fill`:
+// the opaque and alpha-tested issues placed so far.
+inline unsigned issue_slot(unsigned total, unsigned alpha, unsigned& fill, unsigned& alpha_fill,
+                           bool alpha_tested) noexcept {
+    return alpha_tested ? total - alpha + alpha_fill++ : fill++;
+}
 
 // Object -> world rows (W . A) of a draw: clip = rows . pos; view = (clip.x / m00,
 // clip.y / m11, clip.w); world_i = sum_j (view_j - t_j) wv[i*3+j], wv the latch's exact
@@ -510,7 +528,8 @@ struct Store {
         }
         const auto matches = [&](const Draw& d) noexcept {
             return d.stamp != now && d.key == s.key && d.vb.same_object(s.vb) && d.ib.same_object(s.ib) &&
-                   (!hold || d.declaration == s.declaration);
+                   (!hold || (d.declaration == s.declaration && d.alpha_texture == s.alpha_texture &&
+                              d.alpha_threshold == s.alpha_threshold));
         };
         std::uint16_t found = none;
         if (n.cursor != none && matches(draws[n.cursor]))
@@ -561,12 +580,15 @@ struct Store {
         if (s.lo && s.hi) set_extent(d, s.lo, s.hi);
         if (hold) {
             d.declaration = s.declaration;
-            const std::uintptr_t wanted[3] = {s.vb.identity, s.key.indexed ? s.ib.identity : 0, s.declaration};
+            d.alpha_texture = s.alpha_texture;
+            d.alpha_threshold = s.alpha_threshold;
+            const std::uintptr_t wanted[4] = {s.vb.identity, s.key.indexed ? s.ib.identity : 0, s.declaration,
+                                              s.alpha_texture}; // the texture only for an alpha-tested caster
             bool ok = wanted[0] != 0 && wanted[2] != 0 && (!s.key.indexed || wanted[1] != 0);
-            for (unsigned i = 0; ok && i < 3; ++i)
+            for (unsigned i = 0; ok && i < 4; ++i)
                 if (wanted[i]) ok = acquire(wanted[i], d.resource[i], acquired, index);
             if (!ok) { // table full or an identity missing: nothing was AddRef'd yet, so the fresh entries simply leave
-                for (unsigned i = 0; i < 3; ++i)
+                for (unsigned i = 0; i < 4; ++i)
                     if (d.resource[i] != none) unacquire(d.resource[i], acquired);
                 acquired.count = 0;
                 d = Draw{};
@@ -633,7 +655,9 @@ struct Store {
         }
         for (unsigned i = 0; i < draw_capacity; ++i) {
             const Draw& d = draws[i];
-            if (!d.used || (d.resource[0] != slot && d.resource[1] != slot && d.resource[2] != slot)) continue;
+            if (!d.used || (d.resource[0] != slot && d.resource[1] != slot && d.resource[2] != slot &&
+                            d.resource[3] != slot))
+                continue;
             remove_node(d.node, Expiry::BufferOrphaned, now);
         }
     }
@@ -787,7 +811,7 @@ private:
     unsigned owed_cursor_ = 0;
     void free_draw(std::uint16_t slot) noexcept {
         Draw& d = draws[slot];
-        for (unsigned i = 0; i < 3; ++i)
+        for (unsigned i = 0; i < 4; ++i)
             if (d.resource[i] != none && !--resources[d.resource[i]].uses) free_resource(d.resource[i], true);
         d = Draw{};
         draw_free[draw_free_count++] = slot;

@@ -198,7 +198,8 @@ released VB address can be re-issued to another mesh), and never reads the retur
   that name it (390 distinct VBs for 833 records here), so that the store's own reference
   count on a resource is exactly 1. Nothing in the store is keyed on, or dereferences, a
   pointer it does not hold a reference to. A foreign long-lived reference is not observable to
-  the engine, so no owned vertex copy is needed.
+  the engine, so no owned vertex copy is needed. Since 2026-11-04 an alpha-tested record also
+  holds its stage-0 texture under the same rule ("Alpha-tested casters retained (2026-11-04)").
 - A reference is released when the last record naming the resource expires, and all of them in
   every flush. Releases happen only where leases retire today: at scene end or in the flush,
   under the capture mutex, with the replay token already released, because a final native
@@ -656,6 +657,55 @@ frames; `RETENTION_TAA_CLAMP taa_references=8 one_sided_cycles=9 clamped=0 devic
 also checks the probe rows: 1..16 in live (11 measured: the clamp cycles change the device term), none in
 census or off, one `fired=1` row and only at the teardown flush's frame with `now` equal to the sum. Evidence: directional-shadows.md, "Final-Release
 probe drift"; the run336 trajectory script `verification/results/run336-shadow-pop/taa_references_drift.py`.
+
+## Alpha-tested casters retained (2026-11-04)
+
+FL run 44 lost the hull shadow of a station whose covering draws are alpha-tested: of its 25
+draws 7 are alpha-tested, its largest (26,884 primitives) among them, and the store never took
+an alpha-tested draw (the exclusion predated the alpha caster programs), so the unseen station
+replayed only its 18 opaque records, about 10 % of the live footprint and none of the 250-unit
+cascade around the ship (measured, `verification/results/fl-run44-retention-triage/triage.py`).
+Since 2026-11-04 both editions retain alpha-tested casters:
+
+- **Sighting.** A leased alpha-tested caster (`alpha_caster_source` accepted it: a 2D managed
+  stage-0 texture, a supported ALPHAFUNC) passes its texture identity and discard threshold with
+  the sighting; one the alpha source refused, or any alpha-tested draw while the alpha programs
+  are not ready (`alpha_excluded`), is still never a candidate and never a sighting. A draw the
+  static or footprint gate refused (`note_refused_sighting`) reads its own alpha source on every
+  sighting and is noted only when accepted; the texture is never inferred from an earlier record
+  of the range (a retextured range would replay another texture's holes). That read does not
+  touch the `shadow_alpha_casters` counters, which stay the candidates'.
+- **Resources.** The texture is the record's fourth held resource (`Draw::resource[3]`) under
+  the rule above: the store asks for one `AddRef` per distinct texture at the draw (`Acquired`),
+  every use is counted in the held-resource table, the last record naming it leaves one owed
+  `Release` in the table (`pop_owed`), and every flush (Reset, device loss, teardown, sun, epoch,
+  observer, idle) releases it with the rest. Texture and threshold are part of the record's
+  identity: another texture or threshold for the same range is a new record and the old one is
+  superseded at that sighting (its texture released if nothing else names it). A texture the
+  game released is found by the orphan probe (count 1) and drops every node naming it
+  (`buffer_orphaned`), exactly as a buffer; a full table refusing the texture rolls the whole
+  record back. Texture content is not tracked (no lock view): the live path's accepted
+  approximation, managed material textures are written at load. Census mode holds no texture.
+- **Replay.** A retained alpha record sets the draw entry's texture and threshold and takes its
+  slot in the alpha tail of each cascade list: live opaque, retained opaque, live alpha,
+  retained alpha (`shadow_retention::issue_slot`), so a map still switches to the alpha program
+  once. `alpha_cascade` and `per_cascade` count retained alpha issues, so the budget and the far
+  cascade's alternation see them. Without the alpha programs (`alpha_casters_ready()` false) a
+  retained alpha record is skipped, not issued depth-only, and counted `retained_alpha_skipped`;
+  none is expected, because such records are made only while the programs are ready and every
+  Reset, device loss and teardown flushes the store before the pass is re-created.
+- **Rows.** `shadow_retention_frame` ends with `retained_alpha=` (this frame's retained alpha
+  issues) and `retained_alpha_skipped=`; `shadow_retention_summary` ends with
+  `retained_alpha_issues=`. The `shadow_replay_depth` tail buffer grew from 192 to 320 bytes:
+  five cascades of `replayed_live<k>= replayed_retained<k>=` with 4-digit counts overflowed it
+  and blanked the tail.
+- **Cost.** Per retained alpha record one more held resource and one more pointer compare in the
+  sighting match; per issue nothing beyond a live alpha issue (texture and threshold set only when
+  they change in the pass). A refused alpha-tested sighting adds the alpha source read (two
+  state-shadow reads, `GetTexture`, `GetType`, `GetLevelDesc`, `Release`). No allocation was added:
+  the store's fixed storage grows 32,768 bytes (`Draw` 392 -> 400 bytes on i686, 4,096 records;
+  measured with `sizeof` under the MinGW i686 compiler), allocated once at attach.
+  Host evidence: directional-shadows.md, "Alpha-tested casters retained".
 
 ## Open RE (not blocking stages 1–2)
 

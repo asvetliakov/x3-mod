@@ -6,7 +6,8 @@
 // inside namespace x3m. Off: retention_ is null and no code runs (every site
 // tests it). On, per recorded caster draw: one class mask test, one node probe,
 // a 64-byte rows copy; a new record in live mode takes the store's own AddRef
-// on its VB, IB and declaration (one native reference per distinct resource).
+// on its VB, IB and declaration, and an alpha-tested caster's on its stage-0
+// texture (one native reference per distinct resource).
 // At the scene end, before the replay: the journal drain, the sun flush, the
 // orphan probe slice, the seen nodes' classification and the unseen walk; the
 // cascade transaction then issues the admitted records behind the live ones.
@@ -244,6 +245,9 @@ void MotionOutput::note_retention_draw(const MotionRoute& route, const shadow_re
     s.vb = {record.vb_identity, record.vb_view.allocation_id, record.vb_generation, record.vb_view.revision};
     if (k.indexed) s.ib = {record.ib_identity, record.ib_view.allocation_id, record.ib_generation, record.ib_view.revision};
     s.declaration = reinterpret_cast<std::uintptr_t>(g.declaration); s.cull_mode = g.cull_mode; s.rows = g.rows;
+    // An alpha-tested caster: its stage-0 texture (the lease's, or the refused sighting's own) and threshold. The store
+    // takes its own reference on a new record; the replay re-issues it with the alpha-tested depth program.
+    s.alpha_texture = reinterpret_cast<std::uintptr_t>(g.alpha_texture); s.alpha_threshold = g.alpha_threshold;
     if (extent) { s.lo = extent->lo; s.hi = extent->hi; }
     if (st.eye_frame != frame_) { st.eye_frame = frame_; st.store.set_eye(camera_scene_); } // capacity eviction measures from this frame's eye
     shadow_retention::Acquired acquired;
@@ -326,7 +330,7 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     const std::int64_t t2 = retention_ticks();
     st.journal_us = retention_us(t1 - t0); st.walk_us = retention_us(t2 - t1); st.us = retention_us(t2 - t0);
     for (unsigned c = 0; c < renderer::shadow_cascade_max; ++c) st.replayed_live[c] = st.replayed_retained[c] = 0;
-    st.retained_issues = 0;
+    st.retained_issues = st.retained_alpha_issues = st.retained_alpha_skipped = 0;
 }
 // After the replay: the frame line, the capture lines, the 300-frame resight line.
 void MotionOutput::publish_shadow_retention() noexcept {
@@ -344,7 +348,8 @@ void MotionOutput::publish_shadow_retention() noexcept {
         " age_max=%llu refs_held=%u sun_relatch=%u cam_jump=%u transit_survivors=%u us=%.1f"
         " refused=%u moving_dropped=%u abandoned=%u deferred=%u journal_us=%.1f walk_us=%.1f draw_us=%.1f draw_calls=%u"
         " far_alternate_due_to_retained=%u revalidate_context_lost=%u release_queue_full=%u reclassified_after_unseen=%u admitted_checked=%u buffer_views=%u idle_frames=%u"
-        " reclassified_c0=%u reclassified_c1=%u reclassified_c2=%u reclassified_c3=%u reclassified_c4=%u gate_sightings=%u gate_us=%.1f",
+        " reclassified_c0=%u reclassified_c1=%u reclassified_c2=%u reclassified_c3=%u reclassified_c4=%u gate_sightings=%u gate_us=%.1f"
+        " retained_alpha=%u retained_alpha_skipped=%u",
         id_, frame_, live ? "live" : "census", unsigned(st.registered && st.available), f.nodes_live, f.nodes_unseen, f.records, f.records_unseen, f.statics, f.moving,
         f.excluded_class, f.unscoped, f.new_nodes, f.first_seen_in_range, f.promoted, f.superseded, f.lod_replaced, f.model_replaced, f.reclassified,
         f.retired, f.journal_overflow, f.revalidated, static_cast<unsigned long long>(f.mutation_delta), f.buffer_changed, f.buffer_gone, f.buffer_orphaned, unsigned(live && st.orphan_probe),
@@ -353,7 +358,8 @@ void MotionOutput::publish_shadow_retention() noexcept {
         static_cast<unsigned long long>(f.age_max), store.references(), f.sun_relatch, f.cam_jump, f.transit_survivors, st.us,
         f.refused, f.moving_dropped, f.abandoned, f.deferred, st.journal_us, st.walk_us, retention_us(st.draw_ticks), st.draw_calls,
         f.far_alternate_due_to_retained, f.revalidate_context_lost, f.release_queue_full, f.reclassified_after_unseen, f.admitted_checked, f.buffer_views, st.idle_frames,
-        f.reclassified_cascade[0], f.reclassified_cascade[1], f.reclassified_cascade[2], f.reclassified_cascade[3], f.reclassified_cascade[4], f.gate_sightings, retention_us(st.gate_ticks));
+        f.reclassified_cascade[0], f.reclassified_cascade[1], f.reclassified_cascade[2], f.reclassified_cascade[3], f.reclassified_cascade[4], f.gate_sightings, retention_us(st.gate_ticks),
+        st.retained_alpha_issues, st.retained_alpha_skipped);
     if (capture_) {
         for (unsigned i = 0; i < shadow_retention::node_capacity; ++i) {
             const auto& n = store.nodes[i];
@@ -373,7 +379,7 @@ void MotionOutput::publish_shadow_retention() noexcept {
     {
         auto& s = st.session;
         ++s.frames; s.static_frames += f.statics != 0; s.unseen_frames += f.nodes_unseen != 0; s.retained_frames += st.retained_issues != 0;
-        s.statics += f.statics; s.moving += f.moving; s.unseen += f.nodes_unseen; s.retained_issues += st.retained_issues;
+        s.statics += f.statics; s.moving += f.moving; s.unseen += f.nodes_unseen; s.retained_issues += st.retained_issues; s.retained_alpha_issues += st.retained_alpha_issues;
         if (f.nodes_unseen > s.unseen_max) s.unseen_max = f.nodes_unseen;
         if (st.retained_issues > s.retained_issues_max) s.retained_issues_max = st.retained_issues;
     }
@@ -398,9 +404,11 @@ void MotionOutput::log_shadow_retention_summary(bool final) noexcept {
     const auto& s = retention_->session; const auto& t = retention_->store.totals;
     const auto u = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
     log("shadow_retention_summary device=%llu frame=%llu final=%u mode=%s frames=%llu static_frames=%llu unseen_frames=%llu retained_frames=%llu static_nodes=%llu moving_nodes=%llu unseen_nodes=%llu"
-        " unseen_max=%u retained_issues=%llu retained_issues_max=%u promoted=%llu reclassified=%llu reclassified_after_unseen=%llu moving_dropped=%llu retired=%llu box_exit=%llu age=%llu evicted=%llu",
+        " unseen_max=%u retained_issues=%llu retained_issues_max=%u promoted=%llu reclassified=%llu reclassified_after_unseen=%llu moving_dropped=%llu retired=%llu box_exit=%llu age=%llu evicted=%llu"
+        " retained_alpha_issues=%llu",
         id_, frame_, unsigned(final), retention_->mode == shadow_retention::Mode::Live ? "live" : "census", u(s.frames), u(s.static_frames), u(s.unseen_frames), u(s.retained_frames), u(s.statics), u(s.moving), u(s.unseen),
-        unsigned(s.unseen_max), u(s.retained_issues), unsigned(s.retained_issues_max), u(t.promoted), u(t.reclassified), u(t.reclassified_after_unseen), u(t.moving_dropped), u(t.retired), u(t.box_exit), u(t.age), u(t.evicted));
+        unsigned(s.unseen_max), u(s.retained_issues), unsigned(s.retained_issues_max), u(t.promoted), u(t.reclassified), u(t.reclassified_after_unseen), u(t.moving_dropped), u(t.retired), u(t.box_exit), u(t.age), u(t.evicted),
+        u(s.retained_alpha_issues));
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: 0 enabled, 1 mode, 2 nodes, 3 records, 4 refs_held, 5 static nodes, 6 unseen nodes, 7 retained issues of the last replay,

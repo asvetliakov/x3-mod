@@ -106,7 +106,13 @@ bool MotionOutput::alpha_caster_source(IDirect3DBaseTexture9*& texture, float& t
 // references in live mode as for any sighting; the geometry lease is not
 // taken and nothing is issued. A range the live store already holds reuses
 // its declaration identity (rows and cull mode only); otherwise the geometry
-// is queried once and the declaration's reference released here.
+// is queried once and the declaration's reference released here. An
+// alpha-tested draw (reaching here only while the alpha programs are ready)
+// reads its own alpha source every sighting, as the leased path does
+// (alpha_caster_source: the stage-0 texture is never inferred from an earlier
+// record, a range retextured since would replay the wrong holes); a refused
+// source is no sighting, exactly as it is no candidate. The texture reference
+// is released here: the store takes its own on a new record.
 // LastError: the light lock view saves nothing; the draw hook's LightCallBoundary
 // restores it (and MXCSR) on every exit.
 void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownership::BufferLockView& vb, const shadow_replay::ExtentEntry* extent) noexcept {
@@ -149,10 +155,17 @@ void MotionOutput::note_refused_sighting(const MotionRoute& route, const ownersh
     r.vb_view = static_cast<const ownership::BufferLockObservation&>(vb);
     r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
     r.vb_generation = vb.generation; r.ib_generation = ib.generation;
+    if (route.alpha_tested) {
+        const shadow_replay::AlphaCasterCounts counts = alpha_caster_counts_;
+        const bool source = alpha_caster_source(g.alpha_texture, g.alpha_threshold);
+        alpha_caster_counts_ = counts; // a sighting is no candidate: the alpha caster counters stay the candidates'
+        if (!source) { if (queried) release(g.declaration); return; }
+    }
     g.leased = true; // the sighting is complete (rows, declaration); no lease is held, the draw is not issued
     note_retention_draw(route, r, g, extent);
     ++st.store.frame.gate_sightings;
     if (queried) release(g.declaration); // a reused identity is the store's reference, not ours
+    release(g.alpha_texture); // alpha_caster_source's reference; the store holds its own
     if (st.timing) { QueryPerformanceCounter(&t1); st.gate_ticks += t1.QuadPart - t0.QuadPart; ++st.gate_calls; } // the whole refused-draw path (the IB view, the geometry queries, the store)
 }
 // Retires every lease (after the scene end, at a frame begin without a scene
@@ -253,8 +266,12 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     // inside each cascade's cap behind the live records) are issued after the
     // live ones from the store's own references and retained world rows; they
     // count in the issues and the budget. Off: m = 0 and nothing below differs.
+    // A retained alpha-tested record (its texture held by the store) joins the
+    // alpha tail like a live one; without the alpha programs it is skipped, as a
+    // live alpha-tested draw is never a candidate then (alpha_excluded).
     const bool retained_on = retention_live();
     const unsigned m = retained_on ? retention_->store.admitted_count : 0;
+    const bool retained_alpha_ok = retained_on && alpha_casters_ready();
     renderer::ShadowReplayDraw* const draws = retained_on ? retention_->draws.get() : depth_draws_;
     // The latch's verdict gates the frame; each cascade's basis takes its own sun (cascade_sun: one held direction per
     // cascade from the polled sun position, else the latch's sun for all).
@@ -270,9 +287,11 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
         for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; alpha_cascade[k] += g.alpha_texture != nullptr; }
     }
     const unsigned live_issues = issues;
+    if (retained_on) retention_->retained_alpha_skipped = 0;
     for (unsigned q = 0; q < m; ++q) {
-        const unsigned mask = retention_->store.draws[retention_->store.admitted[q]].cascades;
-        for (unsigned k = 0; k < cascades; ++k) if (mask & (1u << k)) { ++per_cascade[k]; ++issues; }
+        const auto& r = retention_->store.draws[retention_->store.admitted[q]];
+        if (r.alpha_texture && !retained_alpha_ok) { ++retention_->retained_alpha_skipped; continue; }
+        for (unsigned k = 0; k < cascades; ++k) if (r.cascades & (1u << k)) { ++per_cascade[k]; ++issues; alpha_cascade[k] += r.alpha_texture != 0; }
     }
     bool refused = c.draws == 0 && m == 0;
     if (!refused && c.skipped_lease) { refused = true; log_depth_refusal(shadow_replay::DepthReason::Lease, "bookends", S_OK, 0); }
@@ -329,14 +348,15 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                     if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[k], base)) { state = "rows"; break; }
                     base_of = k;
                 }
-                // Opaque issues fill the list from its start (the retained records follow them), alpha-tested ones its tail.
-                auto& issue = depth_issues_[offsets[k] + (g.alpha_texture ? per_cascade[k] - alpha_cascade[k] + alpha_fill[k]++ : fill[k]++)];
+                // Opaque issues fill the list from its start (the retained opaque records follow them), alpha-tested
+                // ones its tail (the retained alpha-tested records follow those).
+                auto& issue = depth_issues_[offsets[k] + shadow_retention::issue_slot(per_cascade[k], alpha_cascade[k], fill[k], alpha_fill[k], g.alpha_texture != nullptr)];
                 issue.draw = std::uint16_t(i); count_cull(k, g.cull_mode);
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
             }
         }
-        unsigned live_fill[renderer::shadow_cascade_max]{};
-        for (unsigned k = 0; k < cascades; ++k) live_fill[k] = fill[k] + alpha_fill[k];
+        unsigned live_fill[renderer::shadow_cascade_max]{}, live_alpha[renderer::shadow_cascade_max]{};
+        for (unsigned k = 0; k < cascades; ++k) { live_fill[k] = fill[k] + alpha_fill[k]; live_alpha[k] = alpha_fill[k]; }
         for (unsigned q = 0; q < m && !state; ++q) {
             const auto& r = retention_->store.draws[retention_->store.admitted[q]];
             auto& d = draws[n + q];
@@ -345,19 +365,23 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             d.index_buffer = r.key.indexed ? reinterpret_cast<IDirect3DIndexBuffer9*>(r.ib.identity) : nullptr;
             d.stream_offset = r.key.stream_offset; d.stride = r.key.stride; d.topology = static_cast<D3DPRIMITIVETYPE>(r.key.topology); d.primitives = r.key.primitives; d.first = r.key.first;
             d.min_vertex = r.key.min_vertex; d.vertex_count = r.key.vertex_count; d.base_vertex = r.key.base_vertex; d.indexed = r.key.indexed != 0; d.cull_mode = r.cull_mode;
+            // Skipped without the alpha programs: the entry stays a valid depth-only draw no list names (the pass
+            // validates every entry and refuses a texture it has no program for).
+            if (r.alpha_texture && !retained_alpha_ok) continue;
+            d.alpha_texture = reinterpret_cast<IDirect3DBaseTexture9*>(r.alpha_texture); d.alpha_threshold = r.alpha_threshold;
             double base[3][4];
             unsigned base_of = 0; // as the live loop: one product while the cascades share their axes, another per cascade whose sun differs
             shadow_retention::sun_rows(r.world, bases[0], base); // S(sun basis) . W_retained: no camera enters
             for (unsigned k = 0; k < cascades; ++k) {
                 if (!replays[k] || !(r.cascades & (1u << k))) continue;
                 if (k != base_of && !renderer::shadow_replay_axes_equal(bases[k], bases[base_of])) { shadow_retention::sun_rows(r.world, bases[k], base); base_of = k; }
-                auto& issue = depth_issues_[offsets[k] + fill[k]++];
+                auto& issue = depth_issues_[offsets[k] + shadow_retention::issue_slot(per_cascade[k], alpha_cascade[k], fill[k], alpha_fill[k], r.alpha_texture != 0)];
                 issue.draw = std::uint16_t(n + q); count_cull(k, r.cull_mode);
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
             }
         }
         for (unsigned k = 0; k < cascades; ++k) fill[k] += alpha_fill[k];
-        if (retained_on) for (unsigned k = 0; k < cascades; ++k) { retention_->replayed_live[k] = live_fill[k]; retention_->replayed_retained[k] = fill[k] - live_fill[k]; retention_->retained_issues += fill[k] - live_fill[k]; }
+        if (retained_on) for (unsigned k = 0; k < cascades; ++k) { retention_->replayed_live[k] = live_fill[k]; retention_->replayed_retained[k] = fill[k] - live_fill[k]; retention_->retained_issues += fill[k] - live_fill[k]; retention_->retained_alpha_issues += alpha_fill[k] - live_alpha[k]; }
         for (unsigned l = 0; l < list_count; ++l) lists[l].count = fill[lists[l].map];
     }
     if (!refused && state) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, state, S_OK, 0); }
@@ -406,10 +430,12 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     if (used < 0 || used >= int(sizeof text)) text[0] = 0;
     const auto* far_kept = depth_replay_ && cascades ? depth_replay_->retained(cascades - 1) : nullptr;
     // Live retention: the issues each replayed cascade took from live and from retained records (absent while the option is off).
-    char retained_text[192]; retained_text[0] = 0;
+    // Five cascades of " replayed_live<k>=<u> replayed_retained<k>=<u>", at most 56 characters each at full
+    // %u width: 280 and the terminator (192 blanked the row once five cascades carried 4-digit counts).
+    char retained_text[320]; retained_text[0] = 0;
     if (retained_on) {
         int length = 0;
-        if (refused) { retention_->retained_issues = 0; for (unsigned k = 0; k < cascades; ++k) retention_->replayed_live[k] = retention_->replayed_retained[k] = 0; }
+        if (refused) { retention_->retained_issues = retention_->retained_alpha_issues = 0; for (unsigned k = 0; k < cascades; ++k) retention_->replayed_live[k] = retention_->replayed_retained[k] = 0; }
         for (unsigned k = 0; k < cascades && length >= 0 && length < int(sizeof retained_text); ++k)
             length += std::snprintf(retained_text + length, sizeof retained_text - length, " replayed_live%u=%u replayed_retained%u=%u", k, retention_->replayed_live[k], k, retention_->replayed_retained[k]);
         if (length < 0 || length >= int(sizeof retained_text)) retained_text[0] = 0;
