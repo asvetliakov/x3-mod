@@ -2058,6 +2058,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
     music_keep::present(ctx.id, ctx.frame, ctx.capture); // FL provider (src/engine/fl/music_keep_fl.cpp): the frame
                                                          // counter, the KC patch, the queue's Present work
+    seta_restore::present(ctx.frame);       // FL: X3M_SETA_RESTORE=1 only, the frame counter the restore counts in
+    seta_manual_flight::present(ctx.frame); // FL: part B under debug = 1 only, the frame counter of its scale row
 #endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the

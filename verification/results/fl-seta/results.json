@@ -1,0 +1,76 @@
+{
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "verify_seta_manual_flight_sites_fl": {
+  "result": "PASS",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "checks": {
+   "fl_identity": true,
+   "sse_spans": true,
+   "stop_rows": true,
+   "anchors": true,
+   "constants": true,
+   "windows": true,
+   "ap_refused": true
+  },
+  "windows": 20,
+  "anchors": 28
+ },
+ "verify_seta_restore_sites_fl": {
+  "result": "PASS",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "checks": {
+   "fl_identity": true,
+   "factor_hook": true,
+   "ti_case": true,
+   "callers": true,
+   "anchors": true,
+   "constants": true,
+   "windows": true,
+   "ap_refused": true
+  },
+  "windows": 22,
+  "anchors": 64
+ },
+ "fl_seta_manual_flight": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 1414,
+  "failures": 0,
+  "build_and_run_s": 1.32,
+  "summary": [
+   "IMAGE",
+   "FLIPS windows=20 flips=37 refused=37",
+   "CONTRACT original_runs=104 apply_runs=160",
+   "ARENA used=700 capacity=24576",
+   "RESULT PASS checks=1414 failures=0"
+  ],
+  "install_row": "LOG seta_manual_flight installed=1 mode=2 edition=fl base=0x........ stop=speed_only stop_sites=8 stop_rows_rva=0x0d217f stop_status=active stop_write=atomic:7,plain:1 stop_plain_rva=0x0d218f yaw=active:atomic pitch=active:atomic roll=active:atomic strafe_y=active:plain strafe_x=active:atomic gate=factor>0x10000,rate>0x10000 k=rate/65536 rate=(factor*governor+0x8000)>>16 step=1/k^2 target=1/k stra",
+  "failed": []
+ },
+ "fl_seta_restore": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 213,
+  "failures": 0,
+  "build_and_run_s": 3.01,
+  "summary": [
+   "IMAGE",
+   "FLIPS windows=22 flips=36 refused=36",
+   "CALLS total_harness_runs=163",
+   "RESULT PASS checks=213 failures=0"
+  ],
+  "install_row": "LOG seta_restore installed=1 edition=fl base=0x........ hook=0x........ hook_rva=0x0ce09e write=plain stub=0x........ inject_site=0x........ inject_rva=0x0cfd00 inject=ok call=0x........ call_rva=0x0bb500 selector=32 key=0x96 method=StartFastForward ready=ready detect=runtime expected=mayhem:1462141839:0x1558d:0x15ef8,stock_ap:1510658513:0x157a6:0x160d1 due_frames=2 expiry_ms=60000",
+  "failed": []
+ },
+ "init_orders": {
+  "result": "PASS",
+  "chase_rows_identical": true,
+  "chase_rows": 14,
+  "checks": {
+   "chase_only": "RESULT PASS checks=3 failures=0",
+   "chase_first": "RESULT PASS checks=9 failures=0",
+   "seta_first": "RESULT PASS checks=11 failures=0"
+  },
+  "chase_install_row": "chase_transition installed=1 status=active edition=fl base=0xXXXXXXXX window=- window_closed_by=- diagnostics=0 diagnost"
+ }
+}

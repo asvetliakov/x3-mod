@@ -9,8 +9,8 @@ is the existing host story-detector harness against a synthetic VM image.
 
 Scope is the currently supported `seta_restore.cpp` and
 `seta_manual_flight.cpp`, including the key-stop latch and debug input readers.
-Reuse the ratified [shared injection/SETA contract](../../architecture/farnhams-legacy-chase-binding.md#3-shared-injection-and-seta-dependency),
-[transition contract](chase-transition.md), and existing common
+Reuse the shared injection consumer and the [transition contract](chase-transition.md)
+(the shared injection/SETA contract this study cited, `farnhams-legacy-chase-binding.md`, is not in the tree), and existing common
 owner/load/close admission. No second lifetime table, render token, scheduler
 pump or task-completion service is proposed.
 
@@ -144,7 +144,7 @@ the helper FP state afterward, as shared transport already does.
 | cfg root / requested warp / governor / step | **`*0x5a83b0`, +0xbc, +0xc0, +0x704**. Native TI cases `0x4ce097/0x4ce0c0/0x4ce0e0`; angular loads `0x4ce85e/0x4ceb6e/0x4ced7e`. AP uses +0xcc/+0xd0/+0x714. |
 | Effective rate | Preserve signed Q16 `(factor*governor+0x8000)>>16`. FL tick `0x4fff26/0x4fff2c` and clock `+0x708`; [clock contract](music-alert.md#3-clock-lifecycle-thread-and-reentrancy). |
 | Simulation manager / player | **`*0x5a82ec`, +0x38**; e.g. alert `0x42f913/0x42f91b`. Not the cockpit/control/render identity. |
-| Game / pause | **`*0x6243cc`, +0x4a0, bit1**; input `0x4786ad/0x4786bd`. |
+| Game / pause | **`*0x6243cc`, +0x4a0, bit 0 (mask 1, `test cl,1`)**; input `0x4786ad/0x4786bd`. |
 | VM / object key | **`*0x5aa174`**; CODE+8, size+0x10, STRG+0x14, size+0x18, classes count+0x1c/base+0x20, build+0x143c. Loader `0x4b90af/0x4b9122/0x4b913b`; string resolver `0x4bb16b/0x4bb197`. |
 | Ship rebind / recorded speeds | Keep native ID+8, speeds+0x10/+0x14, Flags1+0x40 and autopilot `0x80000`, class WORD+0x48 (ship7/sector1), parent+0x54, script ID+0x94, marker WORD+0x9c=`0xcafe`. Native input reads autopilot `0x4ce7d1/0x4d21fb`, clears it `0x4d227b`; ship script read `0x46a836`. Other common fields reuse [sector layout](sector-fog.md#1-identity-globals-and-record-layout). |
 | Return scanner | Task capacity+0x10, cells+0x14, signed index+0x18, next IP+0x1c; five-byte cells. FL return `0x4c0836..0x4c085c` tests tag10 above tag3, reads context+1/return+6, stops at return0 and skips null/classless context. Existing 128-cell/640-byte bounded scanner applies. |
@@ -387,3 +387,67 @@ Independent consequential RE review reproduced the scoped producer checks and
 accepted the contract after correcting the relocation count and narrowing the
 arity-recognition claim above. This remains static/synthetic evidence, not an
 implemented adapter or native gameplay qualification.
+
+## Port (2026-11-03)
+
+Both options now have FL bodies: `src/engine/fl/seta_restore_fl.cpp` + `seta_restore_sites_fl.h` and
+`src/engine/fl/seta_manual_flight_fl.cpp` + `seta_manual_flight_sites_fl.h` (shared window form
+`seta_windows_fl.h`). The state machine, story recognition, return scan, key latch and per-axis decision are the AP
+headers, included unchanged; the FL files bind them to the loaded base and carry the glue with `edition=fl` rows.
+`loader.cpp` calls `seta_restore::initialize()` then `seta_manual_flight::initialize()` in the FL install window right
+after the chase family (the latch needs the restore armed); `capture.cpp` makes both `present()` calls. The order
+matters: the chase transition plans its identity windows, the shared injection entry's included, before any claim,
+so a SETA attach that claimed the entry first made the whole chase transition refuse (`window_mismatch`, window 12; the
+review's witness is `verification/results/fl-seta/chase_order_probe.cpp`). After it, the SETA consumer attaches to the
+sites the chase restore claimed, or claims them itself. An out-of-order call while the chase camera is wanted but not yet
+initialized is refused before any write (`chase_pending`). The shared consumer of `chase_transition.cpp` is admitted
+on FL: `inject_attach` binds the four shared sites through `fl_admit()` when the chase restore has not, and
+`consumer_inject` passes ECX as the controlled object and selector 32 (`detail::restore_callback_none`). How the
+section 6 contract is met:
+
+| Contract item | Implementation (verified on the host, 2026-11-03) |
+| --- | --- |
+| Factor hook, EAX/ESI | `0x0ce09e`, 8 bytes, expected bytes = the live relocated span (`+4` = base + `0x1a83b0`); the asm stub passes EAX (cells) and ESI (task). It saves EFLAGS, GPRs, XMM0-7 (128 bits), FNSAVE image and MXCSR; the C side keeps LastError. The jump straddles a qword (offset 6): plain write in the install window, read back, and refused unless the write path was the plain one (`write_path_mismatch`). |
+| Wrapper `0x0bb500`, selector 32 | `call_rva=0x0bb500 selector=32 key=0x96`, six cdecl words. AL 1 = accepted dispatch → `restored` (AP policy, no factor observer); AL 0 → `restore_failed` / latch `call_unresolved`. |
+| Eight stop rewrites | Seven JNE → `66 90`, look JE → JMP; seven through `lock cmpxchg8b`, the pitch row `0x0d218f` plain. The install refuses (rolled back) unless each row took the path its qword geometry predicts. Speed row kept. |
+| Five SSE spans | Claimed through `engine_patch` (strafe Y `0x0d1f04` plain, read back; the other four atomic). Apply path: rotation `mulsd xmm0,[1/k^2]` then the replay with `round(record+0x24/k)` in place of the MOVD; strafe `mulsd xmm0,[1/k]` before the final CVTPD2PS. The replay runs on the restored engine registers before POPFD, so every GPR, EFLAGS and DF leave unchanged on both paths. Rotation EDI must be the axis record, strafe ESI the cfg pointer; any other value takes the original path (`contract`). |
+| Destination Ready | `fog_prefill_fl::walk` (the FL provider); `install()` refuses with `ready_provider_refused` unless `fog_prefill_fl::admitted()`. |
+| Story reader, latch scalars | VM `*0x1aa174`, cfg `*0x1a83b0` +0xbc, manager `*0x1a82ec` +0x38, game `*0x2243cc` +0x4a0 bit 0, counters `0x22d0d8` (SETA `0x22d37b`, steering `0x22d2e4`), ring `0x22ddf0`/`0x1a65e8`/`0x1a65a4`/`0x1ab14c`, input context `*0x1a8478`. Each is a fixup target of a compared window. |
+
+Windows checked at base + RVA before any write: 22 for the restore (TI case, table entry, thunk/dispatcher, ready-list
+callee, wrapper and its run, both selector bounds, native stop call and its string, return scan, interpreter IP,
+manager, pause, injection head, counter increment, ring reader/slots, ship script, autopilot, VM build/CODE) and 20
+for manual flight (nine stop rows, stop block, three controllers from entry through the COMISS, axis calls, strafe
+block, mouse dispatcher and table entries 1-3, and the constants 2^-16, 0.001 and 20000.0). Mode 1 compares only part
+A's ten.
+
+Verified (host, measured 2026-11-03):
+
+- `verify_seta_restore_sites_fl.py` and `verify_seta_manual_flight_sites_fl.py` PASS on `e7f3aad8…`: 64 and 28
+  Capstone anchors; the header rows equal the emitted windows; the AP addresses do not match their AP bytes in
+  X3FL.exe. Three raw branch encodings that land inside a claim are pinned and proven not to be instruction starts
+  of the input routine: `0x0d1f1d → 0x0d1f12`, `0x0d1f80 → 0x0d1f91` (LOOPE/LOOP inside SSE operands) and
+  `0x0d215b → 0x0d21a5` (JS inside a MOV).
+- `fl_seta_manual_flight.cpp` 1,414 checks, 0 failures; `fl_seta_restore.cpp` 213 checks, 0 failures. Both run
+  natively through WSL interop on X3FL.exe mapped and relocated into a private image.
+- The real FL story (build 1636047691, read from the local `addon2/03.cat` into a temporary VM image) is recognized by
+  the production detector: stop IP `0x18d39`, gate return `0x199d6`, toggle return inside ToggleFastForward.
+- Part A executed on the real rows: before the install every set flag reaches the stop; after it only the speed flag
+  does.
+- Part B on the real spans at four ESP skews with flags/DF set and clear. Original path equals a reference copy of the
+  span (GPRs, EFLAGS, ESP, XMM0-7, x87 CW/TOP/st0, MXCSR, LastError). Apply path equals an independent reference: k =
+  4, 10, 1.5 and 1000; step within one float ulp, target exact, strafe limit 320 per frame at 16 ms real; XMM3 lane 1
+  as CVTPD2PS leaves it.
+
+Init order (fixture modes, measured): the chase family's 14 install rows (addresses masked) are identical alone, with
+the SETA consumer attaching after it, and after an out-of-order SETA call that was refused (`chase_pending`) and then
+attached; the chase plan admits (no failed window) before the chase install in all three.
+
+Open (Q4): the ticket expiry (60 s, `GetTickCount64`) and the latch bounds (8 tail and 2,048 cap input-loop entries,
+4-frame ramp guard) are real-time and input-entry clocks, unchanged from AP, not scaled by the game-time frame step.
+The expiry starts at the arm, when the factor is already 1.0; the latch follows the real-time key path.
+
+Not verified: in game (not flown), native Windows game behaviour, the 60 s wall-clock ticket expiry (not driven by the
+fixture), modified or other FL story revisions, and the ring-slot byte as a DIK code (diagnostic rows only). The
+restore and latch semantics are exercised against engine stand-ins (fake wrapper, Ready stub), not the engine's own
+interpreter.
