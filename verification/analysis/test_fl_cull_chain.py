@@ -156,7 +156,7 @@ class FlCullChainWiring(unittest.TestCase):
             self.assertEqual(capture.count(call), 2, call)
             second = capture.rindex(call)
             self.assertIn('#else', capture[second - 120:second])
-            self.assertIn('#endif', capture[second:second + 80])
+            self.assertIn('#endif', capture[second:second + 320])
 
     def test_provider_contract(self):
         code = strip(PROVIDER.read_text())

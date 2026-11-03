@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # The record is Wine provenance (2026-10-09, commit cd479d025); since 2026-10-11 there is no Wine host and these
 # sources changed natively (cd479d025..2c3d32ffa). Accepted beside the recorded hash until run_engine_effects.py reruns on a
 # Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-# engine_far_jets.* and motion_output_engine_plumes_inc.h: entries bumped to the FL far-jet un-fence merge (e9bff9301,
-# 2026-11-03), still native-only since the record.
+# engine_far_jets.* and motion_output_engine_plumes_inc.h: bumped at the FL far-jet un-fence merge (e9bff9301); capture.cpp:
+# bumped at the FL ui_scale merge (78bb9b6cd); all 2026-11-03, native-only since the record.
 # engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
 # default plumes mode, both editions, 2026-11-03).
 SOURCES_SHA256_2026_11_03 = {
@@ -39,7 +39,7 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/motion_output_engine_ribbons_inc.h': '418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599',
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     'src/proxy/motion_output.h': 'f28f926e5afac4f36a3dc86b653f9adcd775cdd3972da9cd4477f8e2878dcffa',
-    'src/proxy/capture.cpp': '6f493a07af6caf111b9e94d7c7f5e0b56f7d63d51c82a0fcd3eab6bd4a6244ac',
+    'src/proxy/capture.cpp': 'c0a682da619e256979e29bc5b4bea07703ed6aa628f919644afc8270f70a23c7',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',
