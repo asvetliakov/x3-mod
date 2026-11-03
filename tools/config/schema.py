@@ -379,11 +379,15 @@ SETTINGS = [
     entry('mesh_adjacency', 'enum', 'loading', 'Faster loading: how model outlines are prepared. fast = the mod\'s method, native = '
           'the game\'s own.', 'fast', choices=('fast', 'native', 'verify'), launcher='--mesh-adjacency'),
     # ---------------------------------------------------------------- engine
-    entry('collide_sat_sse2', 'bool', 'engine', 'Faster collision checks with modern processor instructions. 1 = on, 0 = off.', '1',
+    entry('collide_sat_sse2', 'bool', 'engine', 'Faster collision checks with modern processor instructions. 1 = on, 0 = '
+          'off. X3: Albion Prelude only; X3: Farnham\'s Legacy already uses these instructions, so the setting changes '
+          'nothing there.', '1',
           launcher='--collide-sat-sse2'),
-    entry('collide_memo', 'bool', 'engine', 'Faster collision checks: remembers ship pairs that cannot touch. 1 = on, 0 = off.', '1',
+    entry('collide_memo', 'bool', 'engine', 'Faster collision checks: remembers ship pairs that cannot touch. 1 = on, 0 = '
+          'off. X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
           launcher='--collide-memo'),
-    entry('collide_box_cull', 'bool', 'engine', 'Faster collision checks: a quick box test first. 1 = on, 0 = off.', '1',
+    entry('collide_box_cull', 'bool', 'engine', 'Faster collision checks: a quick box test first. 1 = on, 0 = off. '
+          'X3: Albion Prelude and X3: Farnham\'s Legacy.', '1',
           launcher='--collide-box-cull'),
     entry('lod_occlusion', 'enum', 'engine', 'Keeps stations\' shading correct on their simplified distant models. all = on, '
           'record0 = the game\'s own behaviour, off = none.', 'all', choices=('off', 'record0', 'all'), launcher='--lod-occlusion'),

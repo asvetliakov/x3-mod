@@ -338,3 +338,40 @@ cross-control reuse. [The verification ledger](../../verification/collide-memo.m
 records the exact field witness, CPU/ABI fixtures at preferred/rebased addresses,
 context lifecycle checks and measured added cost. Geometry below root/header
 stamps remains subject to the inherited ABA limitation described above.
+
+## Port (2026-11-03): FL memo adapter implemented
+
+The minimal six-word-call adapter above is implemented: `src/engine/fl/collide_memo_fl.cpp` provides
+`collide_memo::initialize()/install_base()/shutdown()/present()/device_reset()/counters()` for the FL edition, reusing
+the shared AP table, hash, minimum relaxation, 4-way eviction, one-frame sliding expiry, owner/busy gate and miss
+classes from `src/proxy/collide_memo_core.h` unchanged (`collide_memo_sites_fl.h` is the FL boundary only). On the
+backend-load path it verifies the fourteen closure bodies (`memo` table of `collide_windows_fl_inc.h`, every HIGHLOW
+dword bound to base), pins the DLL and redirects the sole call `base+0x09853a -> base+0x11aae0` through `claim_call`
+(one `lock cmpxchg8b`, read back). The FL thunk saves ECX/EDX and XMM0-7 around the C lookup, builds AP's 81-word key
+from FL's register inputs (ECX=&R1, EDX=&T1, XMM2=s1), the six stack words (model A, &R2, &T2, s2, model B, flags&~0xc)
+and the caller's literal mode globals, and normalizes the scattered root state (T 0x61b988, first-contact flag
+0x61b980, scale 0x61b9b8, R 0x61b994) into AP's `root_block`. Two FL-only gates sit in front of the shared table: the
+init flag `0x61b9bc` must be set (the one-time writes stay native), and MXCSR must mask every SIMD exception, with a
+change of control bits `0xffc0` clearing the table (the `fp_unmasked` / `fp_context_clears` counters, from "Implemented
+FP context correction"). One row `collide_memo … edition=fl …`; the FL loader has no unload path.
+
+Verifier `verification/probe/verify_collide_memo_sites_fl.py` (PASS, 14 checks): the fourteen window hashes/relocation
+census, the call and its sole encoded caller, the register/stack/literal key inputs against the query's reads, the
+complete enumeration of a no-contact query's writes (exactly the replayed set, the init-only pair only inside the init
+block, the contact record only after the leaf's intersection gate), the minimum-value relaxation (the sole minimum load
+is after the leaf's unconditional triangle-count increment), the model layout and the built-state invalidation edges,
+the closure's absence of x87/MXCSR/FS, and the AP addresses refused. Native fixture
+`verification/probe/fl_collide_memo.cpp` (PASS, 36054 checks): it maps two relocated private X3FL.exe copies, M with
+the real module installed and N untouched, and fires every key (two synthetic built models; far keys separate at the
+root, near keys reach the leaf; boolean and distance mode) on both, N's real query/descent/leaf/SAT being the ground
+truth. Phase A, production verify mode: 7200 queries, 4474 would-be hits re-run and compared by store() (visits,
+triangles, tolerance, 14-word root block, contacts == 0), **0 verify mismatches**; every M run equals N's outputs and
+CPU image (0 differences); the negative control, a below-root triangle change under an unchanged key (the inherited ABA
+blind spot), gives exactly 1 mismatch. Phase B, replay mode: 7200 queries, 4452 replays, each compared field by field
+with N's engine run of the same key (contacts, visits, triangles, first-contact flag, 13 root words, the contact record
+and the running minimum): **0 replay disagreements**, 0 miss disagreements; every replay preserves callee-saved GPRs,
+stack balance, x87, MXCSR and XMM exactly, every miss equals N's CPU image including MXCSR status (0 differences); the
+same below-root control is detected (N 1 contact, M replays 0). Contact results are never stored (the shared policy):
+174 contact pairs ran as misses and matched N. Plus claim_call/read-back/rollback, invalidation on movement / ship
+change / root-box change / two-frame gap, the unmasked-exception bypass, the control-change clear, device_reset and
+late_claim. The inherited below-root ABA and FP-control assumptions still stand; no FL gameplay speedup is claimed.

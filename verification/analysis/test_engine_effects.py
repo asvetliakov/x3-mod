@@ -49,8 +49,9 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     'src/proxy/motion_output.h': '522d5d435d0978c2eaec2f8d6a909dad3324ad384f546e1871e6804b605a2d33',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
-    # capture.cpp: the FL base ship steering's initializer and frame boundary (2026-11-03); AP objects identical.
-    'src/proxy/capture.cpp': '2de956062a9c74d79753bb7fe6b28e821c5097d1274b35b6ea8d7c90b5f06c4d',
+    # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
+    # branches (2026-11-03); AP objects identical.
+    'src/proxy/capture.cpp': '9a3e565b63e2b714cff2e5bdd42667e086e3e08ba1154a1d036f1fc869e1358f',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

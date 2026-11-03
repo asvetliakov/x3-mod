@@ -1,0 +1,72 @@
+{
+ "exe": "/mnt/c/X3FL/X3FL.exe",
+ "verify_collide_sat_fl": {
+  "result": "PASS",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "checks": 7,
+  "failed": []
+ },
+ "verify_collide_memo_sites_fl": {
+  "result": "PASS",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "checks": 14,
+  "failed": []
+ },
+ "verify_collide_box_cull_sites_fl": {
+  "result": "PASS",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "checks": 18,
+  "failed": []
+ },
+ "fl_collide_sat": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 27,
+  "failures": 0,
+  "run_s": 0.1,
+  "summary": [],
+  "failed": []
+ },
+ "fl_collide_box_cull": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 301887,
+  "failures": 0,
+  "run_s": 0.4,
+  "summary": [
+   "IMAGE size=3739648 relocated=38327",
+   "DIFFERENTIAL site=1 mxcsr=1fa0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=1fa0 pairs=4015 native_rejected=3542 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=3fa0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=3fa0 pairs=4015 native_rejected=3541 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=5fa0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=5fa0 pairs=4015 native_rejected=3542 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=7fa0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=7fa0 pairs=4015 native_rejected=3541 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=9fe0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=9fe0 pairs=4015 native_rejected=3542 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=ffe0 pairs=4015 native_rejected=3548 box_culled=2476 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=ffe0 pairs=4015 native_rejected=3541 box_culled=3518 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=1f80 pairs=4015 native_rejected=3548 box_culled=0 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=1f80 pairs=4015 native_rejected=3542 box_culled=0 over_culled=0",
+   "DIFFERENTIAL site=1 mxcsr=0fa0 pairs=4015 native_rejected=3548 box_culled=0 over_culled=0 class7_pairs=955 class7_culled=0",
+   "DIFFERENTIAL site=2 mxcsr=0fa0 pairs=4015 native_rejected=3542 box_culled=0 over_culled=0",
+   "DIFFERENTIAL_TOTAL modes=8 over_culled=0 p1_culled=14856 p2_culled=21108 class7_culled=0 refused_mode_culls=0",
+   "BENCH harness_ns=138.541 native_reject_ns=156.543 stub_reject_ns=146.788 native_keep_ns=140.469 stub_keep_ns=144.510 reject_saving_ns=9.755 keep_overhead_ns=4.041"
+  ],
+  "failed": []
+ },
+ "fl_collide_memo": {
+  "exit": 0,
+  "result": "PASS",
+  "checks": 36054,
+  "failures": 0,
+  "run_s": 0.1,
+  "summary": [
+   "IMAGE size=3739648 relocated=38327 images=2",
+   "VERIFY queries=7200 contact_runs=489 verified=4474 verify_mismatches=0 miss_cpu_differences=0 aba_control_mismatches=1",
+   "DIFFERENTIAL queries=7200 hits=4452 misses=2748 stored=2226 contacts=522 contact_pairs=174 replays=4452 replay_disagreements=0 miss_disagreements=0 replay_cpu_differences=0 miss_cpu_differences=0 aba_control_detected=1"
+  ],
+  "failed": []
+ }
+}

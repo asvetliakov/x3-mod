@@ -148,6 +148,9 @@ set(X3M_SHARED_SOURCES
 # The SETA restore and manual flight too: the fl target links src/engine/fl/seta_restore_fl.cpp and
 # seta_manual_flight_fl.cpp (docs/reverse-engineering/fl/seta.md, "Port (2026-11-03)"); seta_restore.cpp and
 # seta_manual_flight.cpp are AP only.
+# The collision trio too: the fl target links src/engine/fl/collide_box_cull_fl.cpp, collide_sat_sse2_fl.cpp and
+# collide_memo_fl.cpp (docs/reverse-engineering/fl/collision-box.md, collision-sat.md, collision-memo.md, "Port
+# (2026-11-03)"); collide_box_cull.cpp, collide_sat_sse2.cpp and collide_memo.cpp are AP only.
 set(X3M_AP_ENGINE_LINKED_SOURCES
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/engine_memory.cpp
   src/proxy/fade_region.cpp src/proxy/chase_transition.cpp
@@ -238,6 +241,12 @@ else()
   # The material-strength texture hook: X3FL.exe's D3DXCreateTextureFromFileInMemoryEx import slot (AP patches the
   # same row through loading_trace.cpp; docs/architecture/overlay-material-strength.md, "Farnham's Legacy").
   target_sources(d3d9 PRIVATE src/proxy/d3dx_texture_hook.cpp)
+  # The collision trio: the box early-out (two integer stubs, FL margin 256, local MXCSR admission), the native SSE SAT
+  # report (nothing patched) and the no-contact memo (the FL call boundary on AP's table), the AP policy cores on FL
+  # bindings; they provide collide_box_cull.h, collide_sat_sse2.h and collide_memo.h in place of the AP modules of the
+  # same names.
+  target_sources(d3d9 PRIVATE src/engine/fl/collide_box_cull_fl.cpp src/engine/fl/collide_sat_sse2_fl.cpp
+    src/engine/fl/collide_memo_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
 endif()
 x3m_add_fog_field_assets(d3d9)
@@ -339,6 +348,12 @@ set_source_files_properties(src/engine/fl/seta_restore_fl.cpp src/engine/fl/seta
 # bookends inside the CPU-state boundary.
 set_source_files_properties(src/engine/fl/ship_steering_fl.cpp src/engine/fl/ship_avoidance_fl.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The FL collision trio (src/engine/fl/collide_box_cull_fl.cpp, collide_sat_sse2_fl.cpp, collide_memo_fl.cpp): the box
+# stubs are emitted integer code (no C side inside the engine); the memo's C lookup/store run inside its asm thunk's
+# envelope (ECX/EDX, XMM0-7; callee-saved GPRs by the C ABI; no FP arithmetic, MXCSR read only); the SAT report is
+# cold: default SSE2 flags, no exception bookends inside the CPU-state boundary.
+set_source_files_properties(src/engine/fl/collide_box_cull_fl.cpp src/engine/fl/collide_sat_sse2_fl.cpp
+  src/engine/fl/collide_memo_fl.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")

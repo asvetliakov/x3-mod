@@ -372,3 +372,38 @@ values and masked/unmasked precision, including native trap forwarding.
 Measure prospective-reject savings, kept-pair overhead and fallback overhead
 separately. No FP observer, whole-game audit or per-pair state-restoration
 framework is required. Actual game benefit remains unmeasured.
+
+## Port (2026-11-03): FL box-cull implemented
+
+The binding plan above is implemented: `src/engine/fl/collide_box_cull_fl.cpp` provides
+`collide_box_cull::initialize()/install_base()/shutdown()/present()/set_enabled()/take_counters()` for the FL edition,
+reusing AP's integer `box_reject`, the 2^30 cap, the `Counters` and the 300-frame `Window` from
+`src/proxy/collide_box_cull_core.h` unchanged; `collide_box_cull_sites_fl.h` carries the FL margin 256, the two sites,
+the stub encoders and the host models. On the backend-load path it verifies the nine windows (`box` table of
+`collide_windows_fl_inc.h`), pins the DLL, emits both stubs and claims P1 `base+0x06723f` (plain write, crosses a qword)
+and P2 `base+0x066859` (atomic), both or none, each read back. The P1 stub preserves the live ESI across its box test
+and jumps to `base+0x067e7e`; the P2 stub restores ESI = the candidate count `[ESP+0x14]` and jumps to `base+0x066a1b`.
+Class 7 on either object at P1 always takes the native path. On a prospective reject both stubs read MXCSR and require
+`(mxcsr & 0x1020) == 0x1020` (precision masked and already sticky) before skipping the inexact SSE distance
+("Local FP admission decision"); otherwise the native path runs. One row `collide_box_cull … edition=fl … margin=256`.
+
+Verifier `verification/probe/verify_collide_box_cull_sites_fl.py` (PASS, 18 checks): the nine windows, both sites as two
+whole MOVs, the native SSE distance (3 CVTDQ2PS / 3 MULSS / 2 ADDSS / the sqrt helper / CVTTSS2SI, no x87), the native
+thresholds and compares, the class-7 exemption on either object at `0x0673ae`, the sqrt helper, the interior-entry
+exclusions, the reject-continuation liveness over every path (EAX/ECX/EDX/EFLAGS, XMM0-2 and the omitted stack slots
+written before any read; the first calls reached exactly the contract's), the qword geometry and the AP addresses
+refused. Native fixture `verification/probe/fl_collide_box_cull.cpp` (PASS, 301887 checks): it maps a relocated private
+X3FL.exe, installs the real module and drives the two real sites with a full CPU image, the disarmed run of each pair
+(pure native) being the ground truth. 4015 pairs per site (15 deterministic edge cases, 4000 random with independent
+coordinate, radius and class draws: 955 P1 pairs carry class 7 on either object) under eight MXCSR modes: precision
+masked and sticky with each rounding control (0x1fa0/3fa0/5fa0/7fa0), DAZ+FZ (0x9fe0), all at once (0xffe0), and the two
+modes the FP gate refuses (0x1f80 sticky clear, 0x0fa0 precision unmasked). Measured per admitting mode: P1 3548 native
+rejects, 2476 culled; P2 3541-3542 native rejects (directed rounding moves one verdict), 3518 culled; **0 over-culls**
+in all 16 site/mode runs (a cull of a pair the native distance keeps), 0 class-7 culls at P1, 0 culls in the refused
+modes; the hardware verdict matches the stub model in every mode and the native verdict matches the host model under
+nearest rounding. So the every-rounding-mode bound is now executed on the real bytes for these pairs, not only analytic.
+Plus claim/read-back/rollback, register/x87/MXCSR/LastError/XMM preservation on skip and full CPU-image parity with the
+disarmed run on keep, the counters/census row, shutdown and late_claim. Timing (performance pass, diagnostic, not game
+FPS): every sample carries the harness's FXSAVE/FXRSTOR and frame copies (harness alone 109-139 ns over two runs);
+against the disarmed run of the same pair the stub saves 9.8-10.3 ns on a reject and adds 1.0-4.0 ns on a keep,
+measured over two runs (200,000 iterations each; the spread is run-to-run noise). No FL gameplay speedup is claimed.

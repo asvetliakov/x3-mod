@@ -2728,3 +2728,71 @@ collision course with a station, asteroid or another ship should steer around it
 warning. Under SETA as well. Expect `ship_steering … edition=fl status=patched`, `ship_avoidance … edition=fl` and five
 `… edition=fl status=ap_only reason=not_ported` rows (gates, capital, traffic, lane, dock) at start. Report ships that
 jitter, spin, stop dead, fly into things, or any frame-rate drop in busy sectors.
+
+## collision trio on FL (host evidence, 2026-11-03)
+
+Reproduce (read-only on X3FL.exe SHA-256 `e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8`; the
+three native fixtures build with MinGW i686 and run through WSL interop, no Wine):
+
+```sh
+python3 verification/probe/verify_collide_sat_fl.py
+python3 verification/probe/verify_collide_memo_sites_fl.py
+python3 verification/probe/verify_collide_box_cull_sites_fl.py
+python3 verification/results/fl-collision/run_fixtures.py
+python3 verification/results/fl-collision/generate_windows.py --check
+PYTHONPATH=verification/probe:verification/analysis python3 -m unittest \
+  verification.analysis.test_fl_collide_box_cull verification.analysis.test_fl_collide_memo \
+  verification.analysis.test_fl_collide_sat
+python3 -I verification/results/fl-collision/ap_objects_identical.py --base main
+```
+
+Measured results (`verification/results/fl-collision/results.json`):
+
+- `verify_collide_sat_fl` PASS, 7 checks: the native SAT body is scalar SSE only (465 instructions, 81 MULSS / 60 ADDSS
+  / 9 SUBSS / 24 ANDPS / 15 COMISS / 15 plain RETs, no x87), its sole encoded caller at `base+0x11a744`, the AP SAT/call
+  RVAs refused. So `collide_sat_sse2` patches nothing on FL (`status=native_sse`).
+- `verify_collide_memo_sites_fl` PASS, 14 checks: the fourteen closure bodies, the call and its sole caller, the key
+  inputs and the complete no-contact write set, the minimum relaxation, the model layout and built-state invalidation
+  edges, the AP addresses refused.
+- `verify_collide_box_cull_sites_fl` PASS, 18 checks: the nine windows, both whole-MOV sites, the native SSE distance
+  and thresholds, the class-7 exemption on either object, the reject-continuation liveness, the qword geometry, the AP
+  addresses refused.
+- `fl_collide_sat` PASS, 27 checks: the production initialize() on a relocated private X3FL.exe writes the
+  `status=native_sse reason=engine_already_sse` row for a set, unset and off setting, one row per load, nothing claimed
+  (no arena use, the whole image byte-identical), LastError kept; a body byte, a call-window byte and a shifted
+  relocated operand are refused with their window's reason, no identity as `executable_mismatch`.
+- `fl_collide_box_cull` PASS, 301887 checks: 4015 pairs per site (15 edge cases, 4000 random with independent
+  coordinate / radius / class draws, 955 P1 pairs with class 7) under eight MXCSR modes, the disarmed run of each pair the
+  ground truth:
+
+  | MXCSR | P1 native-rejected | P1 culled | P2 native-rejected | P2 culled | over-culled |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | 0x1fa0 nearest | 3548 | 2476 | 3542 | 3518 | 0 |
+  | 0x3fa0 down | 3548 | 2476 | 3541 | 3518 | 0 |
+  | 0x5fa0 up | 3548 | 2476 | 3542 | 3518 | 0 |
+  | 0x7fa0 toward zero | 3548 | 2476 | 3541 | 3518 | 0 |
+  | 0x9fe0 DAZ+FZ | 3548 | 2476 | 3542 | 3518 | 0 |
+  | 0xffe0 all | 3548 | 2476 | 3541 | 3518 | 0 |
+  | 0x1f80 sticky clear (gate refuses) | 3548 | 0 | 3542 | 0 | 0 |
+  | 0x0fa0 precision unmasked (gate refuses) | 3548 | 0 | 3542 | 0 | 0 |
+
+  0 class-7 culls at P1 in every mode; the hardware verdict matches the stub model in every mode, the native verdict the
+  host model under nearest rounding; claim/read-back/rollback, register/x87/MXCSR/LastError/XMM preservation on skip and
+  full CPU-image parity with the disarmed run on keep, the census row, shutdown and late_claim. Timing (diagnostic, not
+  game FPS; every sample includes the harness's FXSAVE/FXRSTOR, harness alone 109-139 ns): against the disarmed run of
+  the same pair the stub saves 9.8-10.3 ns on a reject and adds 1.0-4.0 ns on a keep (two runs, run-to-run noise).
+- `fl_collide_memo` PASS, 36054 checks, two relocated images (M with the memo, N the untouched native reference), every
+  key fired on both. Verify mode: 7200 queries, 4474 would-be hits re-run and compared by the production store(),
+  **0 verify mismatches**, 0 CPU-image differences from N; the below-root negative control gives exactly 1 mismatch.
+  Replay mode: 7200 queries, 4452 replays each compared field by field with N's engine run (contacts, visits, triangles,
+  first-contact flag, root block, contact record, running minimum): **0 replay disagreements**, 0 miss disagreements,
+  0 CPU differences on replays (x87, MXCSR, XMM, callee-saved, stack) and on misses (equal to N, MXCSR status included);
+  the below-root control is detected. Contacts are never stored (policy): 174 contact pairs ran as misses and matched N.
+  Plus claim_call/read-back/rollback, invalidation on movement / ship change / root-box change / two-frame gap, the
+  unmasked-exception bypass, the MXCSR-control clear, device_reset, the 300-frame `edition=fl` row and late_claim.
+- `ap_objects_identical.py --base main`: capture.cpp and loader.cpp compile to byte-identical AP objects; the AP
+  collision sources are unchanged.
+
+The FL build (`cmake -S . -B build-fl -DX3M_EDITION=fl -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+-DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build-fl -j4`) is 0 warnings, 0 errors. These are host and
+cross-compilation checks; CrossOver and native-Windows runtime collision acceptance on FL remain open.

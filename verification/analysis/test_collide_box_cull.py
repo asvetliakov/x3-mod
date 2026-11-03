@@ -208,8 +208,8 @@ class CollideSites(unittest.TestCase):
 
     def test_production_wiring(self):
         capture = source_text(ROOT / 'src/proxy/capture.cpp')
-        self.assertEqual(capture.count('collide_box_cull::initialize();'), 1)
-        self.assertEqual(capture.count('collide_box_cull::present(ctx.id,ctx.frame,ctx.capture);'), 1)
+        self.assertEqual(capture.count('collide_box_cull::initialize();'), 2)  # AP block + FL block (collision trio on FL, 2026-11-03)
+        self.assertEqual(capture.count('collide_box_cull::present(ctx.id,ctx.frame,ctx.capture);'), 2)  # AP + FL blocks
         self.assertLess(capture.index('game_phases::initialize();'), capture.index('collide_box_cull::initialize();'))
         self.assertIn('x3m::collide_box_cull::shutdown();', source_text(ROOT / 'src/proxy/loader.cpp'))
         self.assertIn('src/proxy/collide_box_cull.cpp', source_text(ROOT / 'CMakeLists.txt'))

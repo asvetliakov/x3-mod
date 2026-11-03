@@ -2060,6 +2060,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                          // counter, the KC patch, the queue's Present work
     seta_restore::present(ctx.frame);       // FL: X3M_SETA_RESTORE=1 only, the frame counter the restore counts in
     seta_manual_flight::present(ctx.frame); // FL: part B under debug = 1 only, the frame counter of its scale row
+    collide_box_cull::present(ctx.id, ctx.frame, ctx.capture); // FL provider (collide_box_cull_fl.cpp): the four pair
+                                                               // counters, the collide_census rows with edition=fl
+    collide_memo::present(ctx.id, ctx.frame, ctx.capture); // FL provider (collide_memo_fl.cpp): the memo's frame, one
+                                                           // collide_memo line per 300 frames with edition=fl
 #endif
     telemetry::present(ctx.stats, ctx.frame, ctx.capture, begin, end, hr);
     window_trace::present(ctx.stats.window, ctx.id, ctx.frame); // hooks installed only: the cursor re-assert step, the
@@ -2372,6 +2376,7 @@ HRESULT reset_common(IDirect3DDevice9* d, D3DPRESENT_PARAMETERS* p, D3DDISPLAYMO
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // FL provider (src/engine/fl/cull_small_parts_fl.cpp)
     ui_scale::after_reset(p ? p->BackBufferWidth : 0u, p ? p->BackBufferHeight : 0u); // FL provider: X3M_UI_SCALE=auto
                                                                                        // follows the new height (cells only)
+    collide_memo::device_reset(); // FL provider (collide_memo_fl.cpp): the owner thread drops the whole memo
 #endif
     ownership_depth_info(d, ctx.id, ctx.frame, "reset_after");
     finite_upload_metrics(d, ctx, "reset_after");
@@ -5926,6 +5931,14 @@ void initialize_log(HMODULE module) {
     // none), then the warn test base+0x057600 (E, alone); same window, disjoint from every other FL claim; the gate, capital,
     // traffic, lane and dock groups log one ap_only row each.
     ship_steering::initialize();
+    // FL collision trio (docs/reverse-engineering/fl/collision-box.md, collision-sat.md, collision-memo.md, "Port
+    // (2026-11-03)"; src/engine/fl/collide_box_cull_fl.cpp, collide_sat_sse2_fl.cpp, collide_memo_fl.cpp): X3M_COLLIDE_*
+    // as on AP. The box early-out claims P1 base+0x06723f and P2 base+0x066859 (both or neither); the SAT patches nothing
+    // (FL's engine already runs it in SSE: one collide_sat_sse2 row, status=native_sse); the memo redirects the query's
+    // sole call base+0x09853a. Same window, disjoint from every other FL claim; one row each with edition=fl.
+    collide_box_cull::initialize();
+    collide_sat_sse2::initialize();
+    collide_memo::initialize();
 #endif
     // The own sun (docs/architecture/own-sun-pass.md section 5, src/proxy/own_sun_hook.h): the flare probe's call
     // 0x00471630, same window, disjoint from every other claim; needs the route (X3M_MOTION_OUTPUT=1). FL edition:
