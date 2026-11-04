@@ -56,23 +56,29 @@ struct Key {
 inline uint32_t normalize_zero(uint32_t bits) noexcept {
     return bits == 0x80000000u ? 0u : bits;
 }
-inline uint64_t mix(uint64_t h) noexcept {
-    h ^= h >> 33;
-    h *= 0xff51afd7ed558ccdull;
-    h ^= h >> 33;
-    h *= 0xc4ceb9fe1a85ec53ull;
-    h ^= h >> 33;
+// 32-bit hashing (murmur3's fmix32): the target is i386, where a 64-bit
+// multiply costs three. A hash only places a key in an open-addressed table;
+// every probe compares the full key, so the slot never changes a result, and the
+// order of a directed-edge chain is its own linked list, not the probe order.
+inline uint32_t mix(uint32_t h) noexcept {
+    h ^= h >> 16;
+    h *= 0x85ebca6bu;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35u;
+    h ^= h >> 16;
     return h;
+}
+inline uint32_t rotl(uint32_t v, unsigned r) noexcept {
+    return (v << r) | (v >> (32u - r));
 }
 // Position key: the three bit patterns of the 2^-14 grid share their low mantissa
 // bits (zero) and differ in a few high bits; each component is spread by its own
-// odd multiplier before the 64-bit finalizer (fmix64), whose low bits select the slot.
-inline uint64_t hash_key(const Key& k) noexcept {
-    return mix((uint64_t(k.x) << 32 | k.y) * 0x9e3779b97f4a7c15ull ^ (uint64_t(k.z) * 0xbf58476d1ce4e5b9ull));
+// odd multiplier and rotation before the finalizer, whose low bits select the slot.
+inline uint32_t hash_key(const Key& k) noexcept {
+    return mix(k.x * 0x9e3779b1u ^ rotl(k.y * 0x85ebca77u, 11) ^ rotl(k.z * 0xc2b2ae3du, 22));
 }
-inline uint64_t hash_cell(int32_t x, int32_t y, int32_t z) noexcept {
-    return mix(uint64_t(uint32_t(x)) * 0x9e3779b97f4a7c15ull ^ mix(uint64_t(uint32_t(y))) ^
-               mix(uint64_t(uint32_t(z)) * 0x94d049bb133111ebull));
+inline uint32_t hash_cell(int32_t x, int32_t y, int32_t z) noexcept {
+    return mix(uint32_t(x) * 0x9e3779b1u ^ rotl(uint32_t(y) * 0x85ebca77u, 11) ^ rotl(uint32_t(z) * 0xc2b2ae3du, 22));
 }
 inline uint64_t table_size(uint64_t count) noexcept {
     uint64_t n = 16;
@@ -338,12 +344,16 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
     if (!in.indices_32bit && V > 0xffffu) return report;
     // The 4x squared-distance margin of the gate needs a normal float epsilon^2.
     if (in.epsilon > 0.f && !std::isnormal(in.epsilon * in.epsilon)) return report;
+    // A refusal can happen during matching only when a lookup must score a
+    // second candidate (refuse_competing_normals): matching then writes into
+    // arena scratch, copied out on Ok, so the caller's array stays untouched.
+    const bool late_refusal = policy.refuse_competing_normals && policy.normal_selection;
     // Arena layout (bytes): persistent arrays, then the larger of the two phase
     // scratches (representative table; unquantized-gate cell hash).
     const uint64_t E = uint64_t(F) * 3, vertex_slots = table_size(V), edge_slots = table_size(E);
     const uint64_t persistent = padded(uint64_t(V) * sizeof(Vec)) * (in.position_offset ? 2 : 1) +
-                                padded(uint64_t(V) * 4) * 5 + padded(E * 4) * 4 + padded(F) + padded(E) +
-                                padded(edge_slots * sizeof(Slot));
+                                padded(uint64_t(V) * 4) * 5 + padded(E * 4) * (late_refusal ? 5 : 4) + padded(F) +
+                                padded(E) + padded(edge_slots * sizeof(Slot));
     const uint64_t phase_rep = padded(vertex_slots * 4) > padded(uint64_t(V) * 8)
                                    ? padded(vertex_slots * 4)
                                    : padded(uint64_t(V) * 8); // representative table; heapsort elements
@@ -354,9 +364,17 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
         return report;
     }
     if (arena.capacity < size_t(total)) {
+        // Geometric growth up to the retention limit, so a burst of growing
+        // meshes reallocates (and first-touches) O(log n) times instead of per mesh.
+        size_t grown = arena.capacity < retained_scratch_limit / 2 ? arena.capacity * 2 : retained_scratch_limit;
+        if (grown < size_t(total)) grown = size_t(total);
         std::free(arena.base);
-        arena.base = static_cast<unsigned char*>(std::malloc(size_t(total)));
-        arena.capacity = arena.base ? size_t(total) : 0;
+        arena.base = static_cast<unsigned char*>(std::malloc(grown));
+        if (!arena.base && grown > size_t(total)) {
+            grown = size_t(total);
+            arena.base = static_cast<unsigned char*>(std::malloc(grown));
+        }
+        arena.capacity = arena.base ? grown : 0;
         if (!arena.base) {
             report.status = Status::Allocation;
             return report;
@@ -385,6 +403,7 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
     auto* active = scratch.array<unsigned char>(F);
     auto* retired = scratch.array<unsigned char>(size_t(E));
     auto* slots = scratch.array<Slot>(size_t(edge_slots));
+    uint32_t* const out = late_refusal ? scratch.array<uint32_t>(size_t(E)) : adjacency;
     const size_t persistent_mark = scratch.mark();
     if (scratch.overflow()) {
         report.status = Status::Allocation;
@@ -689,18 +708,16 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
         return corners[size_t(f) * 3 + (k + 2) % 3];
     };
     auto slot_of = [&](uint32_t a, uint32_t b) noexcept { // slot holding key (a,b), or its first free slot
-        size_t s = size_t(mix((uint64_t(a) << 32 | b) * 0x9e3779b97f4a7c15ull)) & edge_mask;
+        size_t s = size_t(mix(a * 0x9e3779b1u ^ rotl(b * 0x85ebca77u, 16))) & edge_mask;
         for (;;) {
             const uint32_t anchor = slots[s].anchor;
             if (anchor == unused || (edge_v1(anchor) == a && edge_v2(anchor) == b)) return s;
             s = (s + 1) & edge_mask;
         }
     };
-    bool duplicate_edges = false;
     auto insert = [&](uint32_t id) noexcept {
         const size_t s = slot_of(edge_v1(id), edge_v2(id));
         if (slots[s].anchor == unused) slots[s].anchor = id;
-        duplicate_edges |= slots[s].head != unused;
         if (policy.head_insertion || slots[s].head == unused) {
             next[id] = slots[s].head;
             slots[s].head = id;
@@ -715,23 +732,6 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
         if (!active[f]) continue;
         for (uint32_t k = 0; k < 3; ++k) insert(f * 3 + k);
     }
-    // No output has been touched. A single candidate needs no normal score;
-    // duplicate keys without a reverse also need none. Only ambiguous meshes
-    // pay this scan, and rejection happens before any normal allocation/math.
-    if ((policy.refuse_competing_normals || policy.normalize == Normalize::Sse2) && duplicate_edges) {
-        for (size_t s = 0; s < size_t(edge_slots); ++s) {
-            const uint32_t first = slots[s].head;
-            if (first == unused || next[first] == unused) continue;
-            if (slots[slot_of(edge_v2(first), edge_v1(first))].head != unused) {
-                report.potential_competing_normals = true;
-                if (policy.refuse_competing_normals) {
-                    report.status = Status::CompetingNormals;
-                    return report;
-                }
-                break;
-            }
-        }
-    }
     // D3DX unlinks a matched entry inside the lookup and removes the querying
     // edge's own entry (FUN_0058a8ff, a chain walk) after a successful lookup. A
     // retired flag hides an entry from the scans instead: the remaining entries
@@ -739,7 +739,7 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
     // clearing the flag puts a refused entry back at its old chain position, which
     // is where D3DX relinks it.
     std::memset(retired, 0, size_t(E));
-    for (size_t i = 0; i < size_t(E); ++i) adjacency[i] = unused;
+    std::memset(out, 0xff, size_t(E) * sizeof(uint32_t));
     // Face normals are needed only where a chain offers several candidates; they
     // are then computed once per edge (from the edge's own corner order, as D3DX).
     // The output contract (written whole only on Ok) forbids failing here, so a
@@ -755,7 +755,7 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
     };
     for (uint32_t f = 0; f < F; ++f) {
         if (!active[f]) continue;
-        uint32_t* row = adjacency + size_t(f) * 3;
+        uint32_t* row = out + size_t(f) * 3;
         for (uint32_t k = 0; k < 3; ++k) {
             const uint32_t own = f * 3 + k;
             if (row[k] != unused) continue;
@@ -774,6 +774,15 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
                         continue;
                     }
                     if (!policy.normal_selection) continue;
+                    // D3DX scores here and only here: a second live entry of the
+                    // same directed edge (docs/reverse-engineering/d3dx-generate-adjacency.md,
+                    // section 3). Production SSE2 refuses at this point, before any
+                    // normal is computed; nothing has reached the caller's array.
+                    report.potential_competing_normals = true;
+                    if (policy.refuse_competing_normals) {
+                        report.status = Status::CompetingNormals;
+                        return report;
+                    }
                     cache.acquire(size_t(E));
                     if (!scored) {
                         best = score(normal_of(found), normal_of(own));
@@ -807,11 +816,11 @@ Report generate(const Input& in, uint32_t* adjacency, const Policy& policy) noex
                 continue;
             }
             row[k] = g;
-            adjacency[found] = f; // the found face's slot is its corner whose representative starts the reverse edge:
-                                  // the entry's own point
+            out[found] = f; // the found face's slot is its corner whose representative starts the reverse edge:
+                            // the entry's own point
         }
     }
-    for (size_t i = 0; i < size_t(E); ++i) report.unmatched += adjacency[i] == unused;
+    if (out != adjacency) std::memcpy(adjacency, out, size_t(E) * sizeof(uint32_t));
     report.status = Status::Ok;
     return report;
 }

@@ -60,9 +60,11 @@ bool supported_fp_domain(uint32_t x87_control, uint32_t x87_tag, uint32_t mxcsr)
 // demonstrate that they are distinguishable and wrong.
 struct Policy {
     Normalize normalize = Normalize::Sse2; // The D3DXVec3Normalize D3DX dispatched in this process (see above).
-    // Production SSE2 admission: refuse before writing output when a directed
-    // edge has multiple candidates and its reverse exists. Conservative: some
-    // candidates might otherwise be consumed earlier. Verify leaves this off.
+    // Production SSE2 admission: refuse (CompetingNormals) at the first lookup
+    // that meets a second live candidate for its directed edge, the only point
+    // where D3DX scores normals; meshes whose candidates are all consumed one at a
+    // time are admitted without a normal. Matching then runs in arena scratch, so
+    // the caller's array is untouched on refusal. Verify leaves this off.
     bool refuse_competing_normals = false;
     bool head_insertion = true;   // Later faces precede earlier ones in an edge chain.
     bool normal_selection = true; // Among several reverse edges prefer the most parallel face normal (first found on
@@ -81,9 +83,10 @@ struct Report {
     Status status = Status::Input;
     uint32_t representatives = 0, welded = 0; // D3DX point representatives; vertices mapped onto another vertex.
     bool quantized = false;                   // All coordinates on the power-of-two grid coarser than 2*epsilon.
-    bool potential_competing_normals = false; // Conservative preflight, also recorded by SSE2 diagnostics.
+    bool potential_competing_normals = false; // A lookup scored a second candidate (normal_selection): exactly
+                                              // the meshes refuse_competing_normals refuses (late, in matching).
     uint32_t degenerate_faces = 0, welded_degenerate_faces = 0, refused_welds = 0, multi_candidates = 0,
-             normal_selected = 0, repeated_neighbours = 0, unmatched = 0;
+             normal_selected = 0, repeated_neighbours = 0;
 };
 // Writes all 3*face_count entries only on Ok; the array is untouched otherwise.
 Report generate(const Input& input, uint32_t* adjacency, const Policy& policy = {}) noexcept;

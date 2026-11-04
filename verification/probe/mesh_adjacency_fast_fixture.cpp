@@ -228,6 +228,22 @@ static std::vector<Case> cases() {
         push_face(c, 0, 1, 2);
         all.push_back(c);
     }
+    // Lazy refusal (2026-11-04): edge 0-1 in A (0,1,2) and B (0,1,3), both 0->1,
+    // and C (1,0,4). abc: A's lookup finds C alone and pairs it, B then finds
+    // nothing, so D3DX never scores and production admits; cab: C's lookup meets
+    // A and B, D3DX scores and production refuses late.
+    for (const char* order : {"abc", "cab"}) {
+        Case c;
+        c.name = std::string("same-side-") + order;
+        push_vertex(c, 0, 0, 0);
+        push_vertex(c, grid(16), 0, 0);
+        push_vertex(c, grid(8), grid(16), 0);
+        push_vertex(c, grid(8), grid(16), grid(8));
+        push_vertex(c, grid(8), grid(-16), 0);
+        const uint32_t faces[3][3] = {{0, 1, 2}, {0, 1, 3}, {1, 0, 4}};
+        for (const char* f = order; *f; ++f) push_face(c, faces[*f - 'a'][0], faces[*f - 'a'][1], faces[*f - 'a'][2]);
+        all.push_back(c);
+    }
     {
         Case c = quad("degenerate-aba-aaa");
         c.tie_evidence = true;
@@ -743,6 +759,23 @@ static Fast fast_generate(ID3DXMesh* mesh, const Case& c, const fast::Policy& po
     ok(mesh->UnlockVertexBuffer(), "fast unlock vb");
     return f;
 }
+// Production SSE2 admission (refuse_competing_normals) on a mesh the verify
+// policy computed: refused exactly when that run scored a lookup, with the output
+// untouched, and byte-equal to native D3DX when admitted. Returns admitted.
+static bool production_admission(ID3DXMesh* mesh, const Case& c, const Fast& verify, const std::vector<DWORD>& native) {
+    fast::Policy production = default_policy();
+    production.refuse_competing_normals = true;
+    const Fast p = fast_generate(mesh, c, production);
+    const bool scored = verify.report.potential_competing_normals;
+    require(p.report.status == (scored ? fast::Status::CompetingNormals : fast::Status::Ok),
+            "production refuses exactly the meshes whose lookups score normals");
+    if (scored)
+        require(std::all_of(p.adjacency.begin(), p.adjacency.end(), [](DWORD v) { return v == 0xabcdefu; }),
+                "late refusal leaves the output untouched");
+    else
+        require(p.adjacency == native, "production-admitted output equals native D3DX");
+    return !scored;
+}
 static size_t mismatches(const std::vector<DWORD>& a, const std::vector<DWORD>& b, size_t& first) {
     first = a.size();
     size_t n = 0;
@@ -1222,7 +1255,8 @@ int main(int argc, char** argv) {
                 DWORD(fa.report.representatives), DWORD(fa.report.welded), DWORD(fa.report.multi_candidates),
                 DWORD(fa.report.normal_selected), DWORD(fa.report.degenerate_faces),
                 DWORD(fa.report.welded_degenerate_faces), DWORD(fa.report.refused_welds),
-                DWORD(fa.report.repeated_neighbours), DWORD(fa.report.unmatched),
+                DWORD(fa.report.repeated_neighbours),
+                DWORD(std::count(fa.adjacency.begin(), fa.adjacency.end(), DWORD(0xffffffffu))),
                 fast::normalize_name(default_policy().normalize));
             if (c.tie_evidence || !equal) {
                 print_adjacency("NATIVE_ADJACENCY", n.adjacency);
@@ -1257,7 +1291,12 @@ int main(int argc, char** argv) {
                     if (alt_diff) print_adjacency("POLICY_ADJACENCY", alt.adjacency);
                 }
             }
-            if (fa.report.status == fast::Status::Ok) require(equal, "module output equals native D3DX");
+            if (fa.report.status == fast::Status::Ok) {
+                require(equal, "module output equals native D3DX");
+                const bool admitted = production_admission(mesh, c, fa, n.adjacency);
+                if (c.name == "same-side-abc") require(admitted, "same-side-abc admitted without a score");
+                if (c.name == "same-side-cab") require(!admitted, "same-side-cab refused at its scored lookup");
+            }
             if (c.name == "fan-tilted-abc") {
                 // Dump writer/reader round trip on this mesh (the format of the in-game dumps
                 // written until 2026-09-26; the writer stays for this self-test); the replay
@@ -1292,7 +1331,7 @@ int main(int argc, char** argv) {
                 return uint32_t(seed >> 33);
             };
             const unsigned trials = 2000;
-            unsigned equal_count = 0, printed = 0, multi = 0, refused = 0;
+            unsigned equal_count = 0, printed = 0, multi = 0, refused = 0, admitted_production = 0;
             for (unsigned t = 0; t < trials; ++t) {
                 Case c;
                 c.name = "random-" + std::to_string(t);
@@ -1316,6 +1355,7 @@ int main(int argc, char** argv) {
                 const size_t diff = mismatches(n.adjacency, fa.adjacency, first);
                 multi += fa.report.multi_candidates != 0;
                 refused += fa.report.refused_welds != 0;
+                admitted_production += production_admission(mesh, c, fa, n.adjacency);
                 if (!diff)
                     ++equal_count;
                 else if (printed < 3) {
@@ -1341,8 +1381,9 @@ int main(int argc, char** argv) {
                 require(mesh->Release() == 0, "random mesh released");
             }
             printf(
-                "ADJACENCY_RANDOM trials=%u equal=%u mismatched=%u multi_candidate_meshes=%u refused_weld_meshes=%u\n",
-                trials, equal_count, trials - equal_count, multi, refused);
+                "ADJACENCY_RANDOM trials=%u equal=%u mismatched=%u multi_candidate_meshes=%u refused_weld_meshes=%u production_admitted=%u production_refused=%u\n",
+                trials, equal_count, trials - equal_count, multi, refused, admitted_production,
+                trials - admitted_production);
             require(equal_count == trials, "random differential sweep equals native D3DX");
         }
         // Native D3DX under computational states: the game's 0x027f/0x9fc0
@@ -1442,6 +1483,7 @@ int main(int argc, char** argv) {
                     stats.module_status[5] == 1,
                 "verify: NaN and near-neighbour cases fell back with their module status");
         const unsigned expected_fast_ok = expected_ok - expected_fast_refused;
+        const uint64_t native_ticks_before_fast = stats.native_ticks;
         // Fast mode: fresh content is computed by the module; the caller's LastError is preserved.
         fixture_adjacency_mode(2);
         for (size_t i = 0; i < all.size(); ++i) {
@@ -1458,6 +1500,8 @@ int main(int argc, char** argv) {
             stats.calls == 2 * all.size() && stats.computed == expected_ok + expected_fast_ok &&
                 stats.fallbacks == 2 * (all.size() - expected_ok) + expected_fast_refused,
             "fast: every computable case computed (verify computed them once already), the rest fell back to native");
+        require(stats.native_ticks > native_ticks_before_fast, "fast mode times its native fallbacks");
+        fixture_adjacency_report(); // the cumulative metric row after the verify and fast passes
         // Fresh content in fast mode: computed by the module.
         {
             Case c = quad("fresh-fast");

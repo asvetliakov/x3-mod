@@ -130,6 +130,21 @@ into a later face's slot makes that slot skip its own lookup. These three
 lifetimes are what the pre-review-26 module got wrong (it retired every queried
 entry, kept refused candidates and checked all three slots).
 
+**When the normal score decides.** The comparison `score(best) < score(entry)`
+exists only inside one lookup, between the entries that match the **same
+directed edge** `(v1, v2)` and are **still linked** at that moment. So the
+output depends on a score exactly when some lookup meets a second live entry of
+its reverse directed edge; nothing else reads a normal. It is not a property of
+the undirected edge or of the table after phase 1: an edge with one face on
+each side never scores, and neither does an edge whose same-direction entries
+are consumed one at a time. Example (2026-11-04 fixture case `same-side-*`):
+A `(0,1,2)` and B `(0,1,3)` both insert `0->1`, C `(1,0,4)` inserts `1->0`. In
+the order A, B, C, A's lookup of `1->0` finds C alone and pairs it, which writes
+C's slot, and B's lookup then finds nothing: no score. In the order C, A, B,
+C's lookup of `0->1` meets B and A: the score picks. Whether D3DX also computes
+the first candidate's score before a second one appears does not change the
+output and was not established.
+
 `E_FAIL` is returned when more entries were inserted than `3 * faces` (cannot
 happen); the output has been fully written by then.
 
@@ -280,8 +295,13 @@ identical while avoiding D3DX's cost:
   `unlink_refused=false` variant. The relative order of the live entries is
   D3DX's.
 
-The score reads the byte-0 triple like D3DX and normalizes with the table D3DX
-installed in the process: the service mirrors the dispatch of section 4 from the
+Production fast mode on the SSE2 table (`Policy::refuse_competing_normals`)
+refuses at the first lookup that meets a second live candidate, the point above
+where a score would decide, so an admitted mesh never evaluates a normal; the
+matching then runs in arena scratch and is copied out only when admitted (until
+2026-11-04 a preflight refused every mesh with a duplicated directed edge whose
+reverse existed, a superset). The score reads the byte-0 triple like D3DX and
+normalizes with the table D3DX installed in the process: the service mirrors the dispatch of section 4 from the
 same documented inputs (`loading_trace.cpp`, `d3dx_math_table`: the registry
 values, `IsProcessorFeaturePresent(7)`/`(6)` and CPUID) and selects
 `Policy::normalize` (`Sse2`: `rsqrtss` through `_mm_rsqrt_ss`, so the

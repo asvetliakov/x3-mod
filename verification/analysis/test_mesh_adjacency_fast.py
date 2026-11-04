@@ -37,6 +37,19 @@ def quad():
     return [P(0, 0, 0), P(16, 0, 0), P(16, 16, 0), P(0, 16, 0)], [(0, 1, 2), (0, 2, 3)]
 
 
+def same_side(order=(0, 1, 2)):
+    """Edge 0-1 in three faces: A (0,1,2) and B (0,1,3) both use 0->1, C (1,0,4) uses 1->0.
+
+    `order` places A, B, C in the index buffer. When A or B looks up the reverse
+    edge first, its chain holds C alone (no score) and C's slot is filled by the
+    pairing, so the second same-side face finds nothing: D3DX never scores. When
+    C comes first, its lookup of 0->1 meets A and B: D3DX scores normals.
+    """
+    vertices = [P(0, 0, 0), P(16, 0, 0), P(8, 16, 0), P(8, 16, 8), P(8, -16, 0)]
+    faces = {0: (0, 1, 2), 1: (0, 1, 3), 2: (1, 0, 4)}
+    return vertices, [faces[i] for i in order]
+
+
 def fan(third_normal_tilt, order=(0, 1, 2)):
     """Three faces on one edge 0-1: face A uses 0->1, faces B and C use 1->0.
 
@@ -314,19 +327,54 @@ class HostModule(unittest.TestCase):
             self.assertEqual(self.run_driver(v, [f[1], f[2]], 1e-6, bits=bits, refuse_competing=True)[0], 'ok')
             v, f = quad()
             self.assertEqual(self.run_driver(v, f, 1e-6, bits=bits, refuse_competing=True)[0], 'ok')
+            # Without normal selection nothing is scored, so nothing is refused.
+            v, f = fan(16)
+            self.assertEqual(self.run_driver(v, f, 1e-6, bits=bits, refuse_competing=True, normal_selection=False)[0], 'ok')
 
-    def test_preflight_covers_later_normal_selection(self):
+    def test_lazy_refusal(self):
+        # Competing candidates on one edge that D3DX resolves without a score are
+        # admitted (the pre-2026-11-04 preflight refused them: a duplicated
+        # directed edge whose reverse exists); the order where a lookup meets two
+        # live candidates is refused late, with the caller's array untouched (the
+        # driver exits 3 otherwise).
+        for order in ((0, 1, 2), (1, 0, 2), (0, 2, 1), (1, 2, 0)):
+            v, f = same_side(order)
+            status, report, adjacency = self.check(v, f, 1e-6, refuse_competing=True)
+            self.assertEqual((status, report['multi_candidates']), ('ok', 0), order)
+            self.assertEqual(adjacency, self.check(v, f, 1e-6)[2], order)
+        for order in ((2, 0, 1), (2, 1, 0)):
+            v, f = same_side(order)
+            self.assertEqual(self.check(v, f, 1e-6, refuse_competing=True)[0], 'competing_normals', order)
+            diagnostic = self.check(v, f, 1e-6)
+            self.assertEqual((diagnostic[0], diagnostic[1]['multi_candidates']), ('ok', 1), order)
+        # The refusing lookup can come after pairings: a quad first, then the fan.
+        v, f = fan(16)
+        base = len(v)
+        quad_vertices = [P(100, 0, 0), P(116, 0, 0), P(116, 16, 0), P(100, 16, 0)]
+        faces = [(base, base + 1, base + 2), (base, base + 2, base + 3)] + f
+        self.assertEqual(self.check(v + quad_vertices, faces, 1e-6, refuse_competing=True)[0], 'competing_normals')
+
+    def test_refusal_iff_scoring(self):
+        # The refusal is exact: refused exactly when the unguarded run scored a
+        # lookup, and an admitted mesh equals the unguarded output.
         rng = random.Random(3101)
-        for _ in range(100):
+        admitted_with_duplicates = 0
+        for trial in range(160):
             vertices = [P(rng.randrange(3), rng.randrange(3), rng.randrange(2)) for _ in range(12)]
-            faces = [tuple(rng.randrange(12) for _ in range(3)) for _ in range(20)]
-            diagnostic = self.run_driver(vertices, faces, 1e-6)
-            guarded = self.run_driver(vertices, faces, 1e-6, refuse_competing=True)
-            if diagnostic[1]['multi_candidates']:
-                self.assertEqual(guarded[0], 'competing_normals')
+            faces = [tuple(rng.randrange(12) for _ in range(3)) for _ in range(rng.choice((6, 12, 20)))]
+            diagnostic = self.check(vertices, faces, 1e-6)
+            guarded = self.check(vertices, faces, 1e-6, refuse_competing=True)
+            self.assertEqual(guarded[0] == 'competing_normals', diagnostic[1]['multi_candidates'] > 0, trial)
             if guarded[0] == 'ok':
                 self.assertEqual(guarded[2], diagnostic[2])
-                self.assertEqual(diagnostic[1]['multi_candidates'], 0)
+                # A directed edge used by two active faces whose reverse exists: the old preflight's refusal.
+                directed = {}
+                for a, b, c in faces:
+                    if len({vertices[a], vertices[b], vertices[c]}) == 3:
+                        for x, y in ((a, b), (b, c), (c, a)):
+                            directed.setdefault((vertices[x], vertices[y]), []).append(1)
+                admitted_with_duplicates += any(len(n) > 1 and (y, x) in directed for (x, y), n in directed.items())
+        self.assertGreater(admitted_with_duplicates, 0)
 
     def test_fp_admission_domain(self):
         check = lambda cw, tag, mx: subprocess.check_output([str(self.exe), 'fp-domain', f'{cw:x}', f'{tag:x}', f'{mx:x}'], text=True).strip() == '1'
@@ -352,14 +400,14 @@ class HostModule(unittest.TestCase):
             for telemetry in (0, 1):
                 self.assertEqual(config(value, telemetry), 'requested=native armed=native')
 
-    def check(self, vertices, faces, epsilon, offset=0, heads=None, **policy):
+    def check(self, vertices, faces, epsilon, offset=0, heads=None, refuse_competing=False, **policy):
         head_bits = heads if heads is not None else ([(ZERO,) * 3] * len(vertices) if offset else None)
         # The reference sees what the driver's vertex holds at bytes 0-11: the head
         # triple, overwritten by the position where the two overlap (offset < 12).
         effective = None if head_bits is None else [tuple(h[i] if i * 4 < offset else p[(i * 4 - offset) // 4] for i in range(3)) for h, p in zip(head_bits, vertices)]
-        expected = ref.generate(vertices, faces, epsilon, head_bits=effective, **policy)
+        expected = ref.generate(vertices, faces, epsilon, head_bits=effective, refuse_competing_normals=refuse_competing, **policy)
         for bits in (16, 32):
-            actual = self.run_driver(vertices, faces, epsilon, bits=bits, offset=offset, heads=head_bits, **policy)
+            actual = self.run_driver(vertices, faces, epsilon, bits=bits, offset=offset, heads=head_bits, refuse_competing=refuse_competing, **policy)
             self.assertEqual(actual, expected, (bits, offset, policy))
         return expected
 

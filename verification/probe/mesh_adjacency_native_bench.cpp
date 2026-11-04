@@ -7,7 +7,9 @@
 // generate() on the locked buffers (QueryPerformanceCounter); byte equality of
 // every native output against the module's (`equal`: the verify policy, D3DX rules with the dispatched normalize;
 // `served_equal`: what fast mode returns, the module's output when production admission accepts the mesh, else
-// native's; only a served mismatch counts as a failure).
+// native's; only a served mismatch counts as a failure). `production_min_us` times fast mode's own policy (SSE2:
+// refuse_competing_normals) on the same buffers: the module time of an admitted mesh, or the module work up to
+// the refusal of a refused one (which fast mode then pays on top of native).
 // argv: [--reps N] [--meshes a,b,...] [--dll d3dx9_37.dll,d3dx9_43.dll] [--normalize sse2|generic]
 // N (default 20) is the minimum; a mesh whose warm-up native call is short repeats until about 0.25 s of
 // native time (at most 2000 calls) so that the small realistic meshes are not dominated by timer noise.
@@ -339,7 +341,7 @@ int main(int argc, char** argv) {
             ok(mesh->GenerateAdjacency(1e-6f, first.data()), "warm-up GenerateAdjacency");
             const double warm_us = std::max(1.0, us(qpc() - w0));
             const unsigned count = std::max(reps, unsigned(std::min(2000.0, 250000.0 / warm_us)));
-            Stats nat, fst, locked;
+            Stats nat, fst, locked, prod;
             bool native_stable = true;
             for (unsigned r = 0; r < count; ++r) {
                 std::fill(native.begin(), native.end(), 0xabcdefu);
@@ -380,6 +382,11 @@ int main(int argc, char** argv) {
             std::vector<uint32_t> scratch(n);
             const fast::Report admitted = fast::generate(in, scratch.data(), production);
             const bool scratch_equal = std::memcmp(first.data(), scratch.data(), n * 4) == 0;
+            for (unsigned r = 0; r < count; ++r) {
+                const uint64_t t0 = qpc();
+                fast::generate(in, scratch.data(), production);
+                prod.add(qpc() - t0);
+            }
             ok(mesh->UnlockIndexBuffer(), "fast unlock ib");
             ok(mesh->UnlockVertexBuffer(), "fast unlock vb");
             // Lock + generate + unlock: the service's public-buffer path without the gate checks.
@@ -401,15 +408,17 @@ int main(int argc, char** argv) {
             failures += !served_equal;
             unsigned mismatches = 0;
             for (size_t i = 0; i < n; ++i) mismatches += first[i] != module_out[i];
-            std::printf("BENCH_ROW dll=%s mesh=%s faces=%u vertices=%u bits=%u native_min_us=%.1f native_mean_us=%.1f "
-                        "fast_min_us=%.1f fast_mean_us=%.1f speedup_min=%.2f equal=%u served_equal=%u reps=%u mismatches=%u locked_min_us=%.1f "
-                        "locked_mean_us=%.1f status=%s production_status=%s welded=%u representatives=%u "
-                        "multi_candidates=%u normal_selected=%u quantized=%u\n",
-                        dll.c_str(), m.name.c_str(), m.face_count(), m.vertex_count(), m.bits32() ? 32u : 16u,
-                        nat.min_us, nat.sum_us / count, fst.min_us, fst.sum_us / count, nat.min_us / fst.min_us,
-                        unsigned(equal), unsigned(served_equal), count, mismatches, locked.min_us, locked.sum_us / count, fast::status_name(unsigned(report.status)),
-                        fast::status_name(unsigned(admitted.status)), report.welded, report.representatives,
-                        report.multi_candidates, report.normal_selected, unsigned(report.quantized));
+            std::printf(
+                "BENCH_ROW dll=%s mesh=%s faces=%u vertices=%u bits=%u native_min_us=%.1f native_mean_us=%.1f "
+                "fast_min_us=%.1f fast_mean_us=%.1f speedup_min=%.2f equal=%u served_equal=%u reps=%u mismatches=%u locked_min_us=%.1f "
+                "locked_mean_us=%.1f status=%s production_status=%s welded=%u representatives=%u "
+                "multi_candidates=%u normal_selected=%u quantized=%u production_min_us=%.1f\n",
+                dll.c_str(), m.name.c_str(), m.face_count(), m.vertex_count(), m.bits32() ? 32u : 16u, nat.min_us,
+                nat.sum_us / count, fst.min_us, fst.sum_us / count, nat.min_us / fst.min_us, unsigned(equal),
+                unsigned(served_equal), count, mismatches, locked.min_us, locked.sum_us / count,
+                fast::status_name(unsigned(report.status)), fast::status_name(unsigned(admitted.status)), report.welded,
+                report.representatives, report.multi_candidates, report.normal_selected, unsigned(report.quantized),
+                prod.min_us);
             mesh->Release();
         }
     }

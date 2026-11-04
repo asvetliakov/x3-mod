@@ -81,9 +81,12 @@ int main(int argc, char** argv) {
                                  : x3m::mesh_adjacency_fast::Normalize::Sse2;
     std::vector<uint32_t> adjacency(size_t(F) * 3, 0xabcdefu);
     const auto r = x3m::mesh_adjacency_fast::generate(in, adjacency.data(), policy);
+    unsigned unmatched = 0; // counted here from the output (the module no longer does)
+    if (r.status == x3m::mesh_adjacency_fast::Status::Ok)
+        for (auto a : adjacency) unmatched += a == 0xffffffffu;
     std::printf("%s %u %u %u %u %u %u %u %u %u %u %s %s\n", x3m::mesh_adjacency_fast::status_name(unsigned(r.status)),
                 r.representatives, r.welded, unsigned(r.quantized), r.degenerate_faces, r.welded_degenerate_faces,
-                r.refused_welds, r.multi_candidates, r.normal_selected, r.repeated_neighbours, r.unmatched,
+                r.refused_welds, r.multi_candidates, r.normal_selected, r.repeated_neighbours, unmatched,
                 x3m::mesh_adjacency_fast::rsqrt_implementation(),
                 x3m::mesh_adjacency_fast::normalize_name(policy.normalize));
     if (r.status == x3m::mesh_adjacency_fast::Status::Ok) {

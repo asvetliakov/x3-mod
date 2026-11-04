@@ -24,7 +24,9 @@ FLAGS = ['-std=gnu++20', '-O2', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mi
          '-static', '-Wall', '-Wextra', '-Werror']
 COLUMNS = ['dll', 'mesh', 'faces', 'vertices', 'native_min_us', 'native_mean_us', 'fast_min_us', 'fast_mean_us',
            'speedup_min', 'equal', 'served_equal', 'production_status', 'reps', 'mismatches', 'welded_pct',
-           'locked_min_us']
+           'locked_min_us', 'production_min_us']
+# Columns added after the first record (bench.txt, 2026-11-04); parse_table accepts a table without them.
+LATER_COLUMNS = ('production_min_us',)
 
 
 def toolchain():
@@ -70,19 +72,21 @@ def table(rows_):
 def parse_table(text):
     """Rows of a table written by table(), keyed by COLUMNS."""
     lines = [l for l in text.splitlines() if l.startswith('| ')]
-    if not lines or [c.strip() for c in lines[0].strip('|').split('|')] != COLUMNS:
+    header = [c.strip() for c in lines[0].strip('|').split('|')] if lines else []
+    if header not in (COLUMNS, [c for c in COLUMNS if c not in LATER_COLUMNS]):
         raise ValueError('no benchmark table')
     out = []
     for l in lines[1:]:
         cells = [c.strip() for c in l.strip('|').split('|')]
-        if len(cells) != len(COLUMNS):
+        if len(cells) != len(header):
             raise ValueError(f'row width {len(cells)}')
-        r = dict(zip(COLUMNS, cells))
+        r = dict(zip(header, cells))
         for c in ('faces', 'vertices', 'equal', 'served_equal', 'reps', 'mismatches'):
             int(r[c])
         for c in ('native_min_us', 'native_mean_us', 'fast_min_us', 'fast_mean_us', 'speedup_min', 'welded_pct',
-                  'locked_min_us'):
-            float(r[c])
+                  'locked_min_us', *LATER_COLUMNS):
+            if c in r:
+                float(r[c])
         out.append(r)
     return out
 
@@ -137,7 +141,8 @@ def main():
         '# times in microseconds over `reps` timed calls after one untimed warm-up each; fast = module generate()',
         '# on locked buffers (locked_min_us adds LockVertexBuffer/LockIndexBuffer/unlock); epsilon 1e-6;',
         '# equal = verify-policy module output byte-equal to native; served_equal = what fast mode returns',
-        '# (module output if production admission accepts, else native); exit rc=%d' % result.returncode,
+        '# (module output if production admission accepts, else native); production_min_us = fast mode\'s policy',
+        '# (time to the result, or to the refusal of a refused mesh); exit rc=%d' % result.returncode,
     ]
     a.out.write_text('\n'.join(header) + '\n\n' + table(rows(result.stdout)) + '\n')
     print(a.out)
