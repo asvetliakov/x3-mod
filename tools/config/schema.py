@@ -182,9 +182,9 @@ SETTINGS = [
     entry('sky_stars_density', 'float', 'graphics', 'How many procedural stars (sky_stars = 1), 0.25 to 4; 2 = the default '
           'field, 1 = half as many. The count also follows the painted texture\'s own star count.', builtin='2',
           range=(0.25, 4.0), requires=('sky_stars',), since='2026-11-05'),
-    entry('sky_stars_brightness', 'float', 'graphics', 'How bright the procedural stars are (sky_stars = 1), 0.5 to 8; 2 = the '
-          'default, 1 = half as bright. The brightest stars also grow a little instead of turning into flat white squares.',
-          builtin='2', range=(0.5, 8.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_brightness', 'float', 'graphics', 'How bright the procedural stars are (sky_stars = 1), 0.5 to 8; 1.5 = '
+          'the default, 3 = twice as bright. The brightest stars also grow a little instead of turning into flat white '
+          'squares.', builtin='1.5', range=(0.5, 8.0), requires=('sky_stars',), since='2026-11-05'),
     entry('sky_stars_size', 'float', 'graphics', 'How much larger the bright procedural stars are than the dim ones '
           '(sky_stars = 1), 0 to 3; 1 = the brightest star is about 1.4 pixels wider on each side than the dimmest, 0 = all '
           'stars the same size.', builtin='1', range=(0.0, 3.0), requires=('sky_stars',), since='2026-11-05'),
@@ -194,6 +194,10 @@ SETTINGS = [
     entry('sky_stars_twinkle', 'float', 'graphics', 'How strongly about one procedural star in four twinkles (sky_stars = 1), '
           '0 to 1; 0.3 = a subtle flicker, 0 = all stars steady. The twinkle follows real time, so SETA does not speed it '
           'up.', builtin='0.3', range=(0.0, 1.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_clustering', 'float', 'graphics', 'How unevenly the procedural stars spread over the sky (sky_stars = 1), '
+          '0 to 2; 1 = the default, a few dense star clouds and some nearly empty patches, 2 = denser clouds and deeper '
+          'gaps, 0 = evenly spread. The pattern is the same for every value; only its strength changes.', builtin='1',
+          range=(0.0, 2.0), requires=('sky_stars',), since='2026-11-05'),
     dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
         '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),
     # ---------------------------------------------------------------- hdr

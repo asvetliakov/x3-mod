@@ -1,8 +1,9 @@
 // Host check of src/proxy/sky_stars_core.h with src/proxy/lod_texture_mark.h and the installed exposure meter
 // (src/renderer/exposure.cpp) for verification/analysis/test_sky_stars.py. Prints one JSON object: the mark parse of a
 // payload-2 descriptor and the table round trip of K, the seed and N derivation, the settings' ranges, the vertex-buffer
-// builder (count, stride, magnitude law, peak cap, size law, the first law at min_size 1 / size 0 / gain 1, twinkle lanes
-// and c251, determinism), the kernel's energy at sub-pixel offsets, and the meter replay on star-only
+// builder (count, stride, magnitude law, peak cap, size law, the first law at min_size 1 / size 0 / gain 1 / clustering
+// 0, the clustering law in 48 equal-area bins, the sector-key seed fold, twinkle lanes and c251, determinism), the
+// kernel's energy at sub-pixel offsets, and the meter replay on star-only
 // frames (invariant 5 of docs/architecture/sector-background-modern.md). No D3D, no Windows.
 #include "../../src/proxy/sky_stars_core.h"
 #include "../../src/renderer/exposure.h"
@@ -10,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -172,9 +174,19 @@ int main() {
           "accept_density");
     setting = core::brightness_default;
     check(!core::accept_brightness(.25f, &setting) && !core::accept_brightness(9.f, &setting) &&
-              !core::accept_brightness(NAN, &setting) && setting == 2.f && core::accept_brightness(8.f, &setting) &&
+              !core::accept_brightness(NAN, &setting) && setting == 1.5f && core::accept_brightness(8.f, &setting) &&
               setting == 8.f,
           "accept_brightness");
+    setting = core::clustering_default;
+    check(!core::accept_clustering(-.1f, &setting) && !core::accept_clustering(2.5f, &setting) &&
+              !core::accept_clustering(NAN, &setting) && setting == 1.f && core::accept_clustering(0.f, &setting) &&
+              setting == 0.f && core::accept_clustering(2.f, &setting) && setting == 2.f,
+          "accept_clustering");
+    // The seed fold: sector key 0 is the mark seed itself; a key gives seed64 = mark ^ key x 0x9e3779b97f4a7c15 folded.
+    check(core::generator_seed(0x014101a7u, 0) == 0x014101a7u && core::generator_seed(core::seed_valid, 0) == core::seed_valid &&
+              core::generator_seed(0xffffffffu, 0) == 0xffffffffu && core::generator_seed(0x014101a7u, 1) == 0xe03c040bu &&
+              core::generator_seed(0x014101a7u, 0x123456789abcdef0ull) == 0x66a1f36eu,
+          "generator_seed_fold");
     setting = core::size_default;
     check(!core::accept_size(-.1f, &setting) && !core::accept_size(3.5f, &setting) && setting == 1.f &&
               core::accept_size(0.f, &setting) && setting == 0.f,
@@ -189,8 +201,11 @@ int main() {
           "accept_twinkle");
     // ---- 3. Builder at the defaults: count, stride, unit directions, quad corners, peak cap, tint, law, determinism.
     const std::uint32_t seed = 0xa7u | 1u << 8 | 65u << 16 | core::seed_valid;
-    const core::Look look{}; // density 2, brightness 2, size 1, min_size 1.5
-    std::vector<core::Vertex> vb(core::vertex_capacity), again(core::vertex_capacity);
+    const core::Look look{}; // density 2, brightness 1.5, size 1, min_size 1.5, clustering 1
+    core::Look uniform_look = look;
+    uniform_look.clustering = 0.f;
+    std::vector<core::Vertex> vb(core::vertex_capacity), again(core::vertex_capacity), flat_vb(core::vertex_capacity);
+    core::build(seed, uniform_look, flat_vb.data(), core::stars_max);
     core::BuildStats stats;
     const unsigned n = core::build(seed, look, vb.data(), core::stars_max, &stats);
     check(n == 6240 && stats.stars == n, "build_count");
@@ -203,6 +218,11 @@ int main() {
               std::memcmp(vb.data(), again.data(), n * 4 * sizeof(core::Vertex)),
           "seeds_differ");
     check(!core::build(0, look, again.data(), core::stars_max) && !core::build(seed, look, again.data(), 100), "refusals");
+    check(core::build(seed, look, again.data(), core::stars_max, nullptr, 0) == n &&
+              !std::memcmp(vb.data(), again.data(), n * 4 * sizeof(core::Vertex)) &&
+              core::build(seed, look, again.data(), core::stars_max, nullptr, 1) == n &&
+              std::memcmp(vb.data(), again.data(), n * 4 * sizeof(core::Vertex)),
+          "sector_key_0_is_the_mark_field");
     double peak_max = 0, unit_err = 0, hemi = 0, a_min = 1e9, a_max = 0;
     unsigned bins[4] = {0, 0, 0, 0}, tint_ok = 0, corners_ok = 0;
     std::vector<double> decoded(n), target(n), support(n);
@@ -210,7 +230,7 @@ int main() {
         const auto& v = vb[i * 4];
         const double len = std::sqrt(double(v.dir[0]) * v.dir[0] + double(v.dir[1]) * v.dir[1] + double(v.dir[2]) * v.dir[2]);
         unit_err = std::fmax(unit_err, std::fabs(len - 1.));
-        hemi += v.dir[2] > 0;
+        hemi += flat_vb[i * 4].dir[2] > 0; // the uniform field (clustering 0)
         const double h = std::fabs(v.corner[0]), a = h - core::quad_margin;
         support[i] = a;
         a_min = std::fmin(a_min, a);
@@ -237,8 +257,9 @@ int main() {
     const double median_decoded = sorted[n / 2];
     check(unit_err < 1e-5, "unit_directions");
     check(hemi > n * .46 && hemi < n * .54, "sphere_uniform_hemisphere");
-    check(peak_max <= core::peak_cap + 1e-6 && peak_max > core::peak_cap * .98 &&
-              std::fabs(stats.peak_max - peak_max) < 1e-5,
+    // At gain 1.5 the brightest star (target peak 1.0) keeps its centred peak at 1.5, under peak_cap: no cap growth.
+    check(peak_max <= core::peak_cap + 1e-6 && peak_max <= core::brightness_default + 1e-6 &&
+              peak_max > core::brightness_default * .98 && std::fabs(stats.peak_max - peak_max) < 1e-5,
           "peak_cap");
     check(tint_ok == n && corners_ok == n, "tint_and_corners");
     const double r1 = double(bins[1]) / bins[0], r2 = double(bins[2]) / bins[1], r3 = double(bins[3]) / bins[2];
@@ -294,11 +315,12 @@ int main() {
                 corner_peak = std::fmax(corner_peak, std::fmax(worst, cs.peak_max));
             }
     check(corner_peak <= core::peak_cap * (1. + 1e-6) && corner_support <= core::half_support_max, "peak_cap_corners");
-    // ---- 3c. min_size 1, size 0, gain 1 reproduces the first law's vertices (the 28-byte layout of 2026-11-05), and
-    // the field (directions, tint) is the same in every look.
+    // ---- 3c. min_size 1, size 0, gain 1, clustering 0 reproduces the first law's vertices (the 28-byte layout of
+    // 2026-11-05) and its directions byte for byte; the field (tint, twinkle) is the same in every look, the directions
+    // in every look of the same clustering.
     unsigned legacy_mismatch = 0, field_mismatch = 0;
     {
-        const core::Look legacy{1.f, 1.f, 0.f, 1.f};
+        const core::Look legacy{1.f, 1.f, 0.f, 1.f, 0.f};
         std::vector<core::Vertex> old(core::vertex_capacity);
         const unsigned m = core::build(seed, legacy, old.data(), core::stars_max);
         // The first law, verbatim: energy = peak / centre_fraction(1), a = 1 (its cap 1.0 never grew a).
@@ -342,7 +364,7 @@ int main() {
         }
         legacy_mismatch += m != 3120;
         for (unsigned i = 0; i < m; ++i)
-            field_mismatch += std::memcmp(old[i * 4].dir, vb[i * 4].dir, sizeof vb[i * 4].dir) != 0 ||
+            field_mismatch += std::memcmp(old[i * 4].dir, flat_vb[i * 4].dir, sizeof vb[i * 4].dir) != 0 ||
                               old[i * 4].tint != vb[i * 4].tint || old[i * 4].twinkle != vb[i * 4].twinkle;
     }
     check(!legacy_mismatch, "legacy_look_reproduces_first_law");
@@ -391,6 +413,67 @@ int main() {
     for (double x = 1. / 39.0625; x <= 1.; x *= 1.01)
         pow_err = std::fmax(pow_err, std::fabs(core::exp2_bounded(core::log2_positive(x) / 2.2) - std::pow(x, 1. / 2.2)));
     check(pow_err < 1e-9, "pow_without_crt");
+    // ---- 3e. Clustering: 48 equal-area bins (6 bands of equal z x 8 longitude sectors of 45 degrees, binned here by
+    // atan2, independently of core::sphere_bin) over 16 seeds of 16384 stars. Clustering 0: near uniform (chi-square of 47
+    // degrees of freedom); 1: fullest / emptiest bin >= 4 for every seed and no empty bin; 2 reported. Clustering moves
+    // the directions only. Host rebuild times are reported, not asserted (the fixture's COST row is the device figure).
+    unsigned only_dirs_differ = 0;
+    for (unsigned i = 0; i < n; ++i)
+        for (unsigned k = 0; k < 4; ++k) {
+            const auto &p = vb[i * 4 + k], &q = flat_vb[i * 4 + k];
+            only_dirs_differ += p.energy != q.energy || p.tint != q.tint || p.twinkle != q.twinkle ||
+                                p.corner[0] != q.corner[0] || p.corner[1] != q.corner[1];
+        }
+    check(!only_dirs_differ, "clustering_moves_directions_only");
+    struct ClusterRun {
+        double ratio_min = 1e30, ratio_max = 0, chi2_max = 0, reject_sum = 0, build_us = 1e30;
+        unsigned bin_min = ~0u, exhausted = 0, stat_mismatch = 0;
+    };
+    auto cluster_run = [&](float clustering) {
+        ClusterRun run;
+        core::Look l = look;
+        l.clustering = clustering;
+        for (unsigned s = 0; s < 16; ++s) {
+            const std::uint32_t sd = (0x10u + 37u * s) % 256u | (s % 7u) << 8 | 255u << 16 | core::seed_valid;
+            core::BuildStats st;
+            const auto t0 = std::chrono::steady_clock::now();
+            const unsigned m = core::build(sd, l, again.data(), core::stars_max, &st);
+            const auto t1 = std::chrono::steady_clock::now();
+            run.build_us = std::fmin(run.build_us, std::chrono::duration<double, std::micro>(t1 - t0).count());
+            unsigned bin[core::sphere_bins] = {};
+            for (unsigned i = 0; i < m; ++i) {
+                const float* d = again[i * 4].dir;
+                int band = int((double(d[2]) + 1.) * 3.);
+                band = band < 0 ? 0 : band > 5 ? 5 : band;
+                double phi = std::atan2(double(d[1]), double(d[0]));
+                if (phi < 0) phi += 2. * 3.14159265358979323846;
+                int sector = int(phi / (3.14159265358979323846 / 4.));
+                sector = sector > 7 ? 7 : sector;
+                ++bin[band * 8 + sector];
+            }
+            const unsigned lo = *std::min_element(bin, bin + core::sphere_bins);
+            const unsigned hi = *std::max_element(bin, bin + core::sphere_bins);
+            const double expect = double(m) / core::sphere_bins;
+            double chi2 = 0;
+            for (unsigned b : bin) chi2 += (b - expect) * (b - expect) / expect;
+            const double ratio = double(hi) / double(lo ? lo : 1u);
+            run.stat_mismatch += st.bin_min != lo || st.bin_max != hi || std::fabs(st.cluster_max_min - ratio) > 1e-12 ||
+                                 m != core::stars_max;
+            run.ratio_min = std::fmin(run.ratio_min, ratio);
+            run.ratio_max = std::fmax(run.ratio_max, ratio);
+            run.chi2_max = std::fmax(run.chi2_max, chi2);
+            run.bin_min = std::min(run.bin_min, lo);
+            run.reject_sum += st.reject_rate;
+            run.exhausted += st.exhausted;
+        }
+        return run;
+    };
+    const ClusterRun c0 = cluster_run(0.f), c1 = cluster_run(1.f), c2 = cluster_run(2.f);
+    check(!c0.stat_mismatch && !c1.stat_mismatch && !c2.stat_mismatch, "cluster_stats_match_independent_bins");
+    // 47 degrees of freedom: mean 47, sd 9.7; 47 + 5 sd = 95.5 bounds the worst of 16 seeds.
+    check(c0.chi2_max < 95.5 && c0.reject_sum == 0. && !c0.exhausted, "clustering0_uniform_chi2");
+    check(c1.ratio_min >= 4. && c1.bin_min > 0, "clustering1_max_min_ge_4");
+    check(c2.ratio_min >= c1.ratio_min && c2.bin_min > 0, "clustering2_stronger");
     // ---- 4. Kernel: the covered pixels sum to the energy at any sub-pixel offset, peak <= peak_cap, nothing outside.
     double energy_err = 0, splat_peak = 0;
     const double offsets[6][2] = {{0, 0}, {.25, .5}, {.5, .5}, {.37, .81}, {.999, .001}, {.5, 0}};
@@ -442,6 +525,17 @@ int main() {
     std::printf(" \"corners\": {\"peak_max\": %.6f, \"support_max\": %.4f, \"stars_at_bound\": %u},\n", corner_peak,
                 corner_support, corners_bounded);
     std::printf(" \"legacy\": {\"mismatches\": %u, \"field_mismatches\": %u},\n", legacy_mismatch, field_mismatch);
+    auto cluster_json = [](const char* name, const ClusterRun& c) {
+        std::printf(" \"%s\": {\"seeds\": 16, \"stars\": %u, \"ratio_min\": %.3f, \"ratio_max\": %.3f, \"bin_min\": %u,"
+                    " \"chi2_max\": %.2f, \"reject_rate_mean\": %.4f, \"exhausted\": %u, \"host_build_us_best\": %.0f},\n",
+                    name, core::stars_max, c.ratio_min, c.ratio_max, c.bin_min, c.chi2_max, c.reject_sum / 16., c.exhausted,
+                    c.build_us);
+    };
+    cluster_json("clustering0", c0);
+    cluster_json("clustering1", c1);
+    cluster_json("clustering2", c2);
+    std::printf(" \"clustering_default_build\": {\"cluster_max_min\": %.3f, \"reject_rate\": %.4f, \"only_dirs_differ\": %u},\n",
+                stats.cluster_max_min, stats.reject_rate, only_dirs_differ);
     std::printf(" \"twinkle\": {\"stars\": %u, \"share\": %.4f, \"bright_quarter_share\": %.4f, \"rate_min\": %u,"
                 " \"rate_max\": %u, \"bad_lanes\": %u},\n",
                 twinkling, twinkle_share, bright_share, rate_lo, rate_hi, bad_lanes);

@@ -433,3 +433,48 @@ unchanged (90 / 11); the native validator accepts both with End() S_OK and 0 mes
 min_size_setting= twinkle= twinkle_setting= mask= edition=` (the setting tags are now `ok|default`, where they were
 `ok|invalid_setting`); the `sky_stars` row gains `peak_max=` (the largest centred pixel), `support_max=` (px) and
 `twinkling=`; `stars=` and `build_us=` follow the new count and law.
+
+## Implementation A, clustering and brightness 1.5 (2026-11-05)
+
+After FL run 51 (look controls accepted): `sky_stars_brightness` default 2 -> 1.5 (the brightest star's centred peak
+is now 1.5, so the cap search does not run at the defaults), and the directions are no longer uniform. Built, not flown.
+
+**Law.** New setting `sky_stars_clustering` = c (default 1, range 0-2, `requires=sky_stars`, same `ok|default` tag,
+part of `Look`, so a change rebuilds the buffer). The directions follow a seeded density on the sphere:
+`density(d) = min(bound, max(floor, 1 + sum_clusters c w S(d) - sum_voids c v S(d)))`, with
+`S(d) = smootherstep((d.n - cos r) / (1 - cos r))` (1 at the cap centre, 0 at its rim). The cap stream (a third
+generator stream, `seed ^ 0x3c6ef372`) draws 6-10 cluster caps (radius uniform 8-35 degrees, w uniform 1-4) and 2-4
+void caps (radius `10 + 15 sqrt(u)` degrees, so 10-25 leaning large; v 2-3; each void centre redrawn up to 16 times
+until it lies outside every cluster cap). At c = 1 a void sits on the floor over the inner part of its cap; c = 2
+doubles every weight, so the clouds are twice as strong and the floor covers most of each void cap. `floor = 0.08 x (1 + sum c w (1 - cos r) / 4)` (the
+void-free mean; the cap average of S is (1 - cos r) / 4), so a void keeps a few stars. `bound` = the largest density
+at the cluster centres and at the weighted midpoints of every cluster pair. The law is the density clipped at that bound,
+so rejection against it is exact for the clipped law; the clip only flattens a crest where overlapping clusters peak
+between the probes. Each star's first candidate is the first law's uniform draw from the seed's stream. It is kept with
+probability density / bound; otherwise the cap stream supplies a new uniform candidate. After 64 candidates the last
+one is kept, so `build()` always ends. N is unchanged. Brightness, tint, twinkle and the footprint come from the first two streams as before, so
+clustering moves only the directions. c = 0 skips the test entirely: the directions are the first law's, byte for byte
+(host check `legacy`: 0 mismatches against the verbatim first law). The cap layout comes from the seed alone, so
+moving the slider strengthens or weakens the same pattern.
+CRT-free: `cos_bounded` (Taylor, |x| <= pi/2), `scalar::sqrt`, no atan2.
+
+**Seed hook for a per-sector field (not used yet).** `generator_seed(mark_seed, sector_key)` folds
+`seed64 = mark_seed ^ (sector_key x 0x9e3779b97f4a7c15)` to 32 bits (low ^ high). `build()` takes a trailing
+`sector_key` (default 0), and key 0 returns the mark seed itself, so every field is unchanged today. A later change only
+supplies the key (and adds it to the pass's rebuild key). Host check `generator_seed_fold`: key 0 identity, key 1 on
+0x014101a7 = 0xe03c040b, and `sector_key_0_is_the_mark_field`.
+
+**Evidence (measured).** Host check (`host_check.json`, 58 checks, 16 seeds x 16,384 stars, 48 equal-area bins = 6
+bands of equal z x 8 longitude sectors of 45 degrees, binned independently with atan2): c = 0 chi-square at most 63.7
+(47 dof), fullest/emptiest 1.20-1.36, no rejections; c = 1 fullest/emptiest 5.48-15.3, emptiest bin 74 stars, mean reject
+rate 0.784, no candidate cap reached; c = 2 9.35-34.5, emptiest bin 47, reject rate 0.850, 32 of 262,144 stars kept
+their 64th candidate. K 65 at the defaults: 6,240 stars, centred peak max 1.4988, cluster_max_min 10.1, reject rate
+0.707. Native fixture (`fixture_out.txt`, RTX 5070 Ti) rebuild of a full 16,384-star buffer, best of 5: 1.15 ms at
+c = 0, 3.05 ms at c = 1 (reject rate 0.804), 3.79 ms at c = 2 (0.861); before this change it was 1.04 ms. The
+extra 0.11 ms at c = 0 is the 48-bin count of the row statistics (branch-free sector selection). The rebuild runs
+once per seed or look change, not per frame. Meter replay at the new default: EV 0, neutral, `ev_limit` +4.01 (K 65)
+and +2.99 (K 143, density 4). Programs unchanged.
+
+**Rows.** `sky_stars_config` gains `clustering= clustering_setting=`. The `sky_stars` row gains `clustering=`,
+`cluster_max_min=` (the fullest of the 48 bins over the emptiest; an empty bin counts as 1) and `reject_rate=`
+(rejected candidates / all candidates).

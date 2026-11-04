@@ -228,7 +228,7 @@ int main() {
         return 1;
     }
     const std::uint32_t seed = 0xa7u | 1u << 8 | 65u << 16 | core::seed_valid;
-    const core::Look look{}; // the defaults: density 2, brightness 2, size 1, min_size 1.5
+    const core::Look look{}; // the defaults: density 2, brightness 1.5, size 1, min_size 1.5, clustering 1
     const float steady[4] = {0.f, 0.f, 0.f, 0.f}; // c251 with amplitude 0
     bool rebuilt = false;
     LARGE_INTEGER f{}, t0{}, t1{};
@@ -247,7 +247,12 @@ int main() {
         pass.prepare(seed, other, &again);
         bool back = false;
         pass.prepare(seed, look, &back);
-        check(again && back, "prepare_rebuilds_on_look_change");
+        core::Look uniform = look;
+        uniform.clustering = 0.f;
+        bool flat = false, clustered = false;
+        pass.prepare(seed, uniform, &flat);
+        pass.prepare(seed, look, &clustered);
+        check(again && back && flat && clustered, "prepare_rebuilds_on_look_change");
     }
     std::vector<core::Vertex> vb(core::vertex_capacity);
     core::build(seed, look, vb.data(), core::stars_max);
@@ -620,20 +625,28 @@ int main() {
             std::printf("COST target=5120x1440 stars=%u reps=%u batch_ms_upper_bound=%.4f draw_cpu_us=%.2f\n", stars, reps,
                         total_ms / reps, cpu * 1e6 / double(f.QuadPart) / reps);
         }
-        // The rebuild of a full buffer (K 200 x 48 x 2 = 19200, capped at 16384): the Lock, the generator, the Unlock.
-        double best_us = 1e30;
-        for (unsigned rep = 0; rep < 5; ++rep) {
-            core::Look rebuild_look = look;
-            rebuild_look.brightness = 2.f + .25f * float(rep); // a new look each time: a real rebuild
-            QueryPerformanceCounter(&t0);
-            bool rb = false;
-            pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, rebuild_look, &rb);
-            QueryPerformanceCounter(&t1);
-            best_us = std::min(best_us, double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart));
+        // The rebuild of a full buffer (K 200 x 48 x 2 = 19200, capped at 16384): the Lock, the generator, the Unlock;
+        // at clustering 0 (the first law's cost), 1 (the default) and 2 (the most rejections).
+        bool full = true;
+        for (float clustering : {0.f, core::clustering_default, core::clustering_max}) {
+            double best_us = 1e30;
+            for (unsigned rep = 0; rep < 5; ++rep) {
+                core::Look rebuild_look = look;
+                rebuild_look.clustering = clustering;
+                rebuild_look.brightness = 2.f + .25f * float(rep); // a new look each time: a real rebuild
+                QueryPerformanceCounter(&t0);
+                bool rb = false;
+                pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, rebuild_look, &rb);
+                QueryPerformanceCounter(&t1);
+                best_us = std::min(best_us, double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart));
+            }
+            std::printf("COST rebuild stars=%u vb_bytes=%u clustering=%.1f reject_rate=%.3f cluster_max_min=%.2f"
+                        " build_us_best_of_5=%.1f\n",
+                        pass.stars(), unsigned(core::vertex_capacity * core::vertex_stride), double(clustering),
+                        pass.stats().reject_rate, pass.stats().cluster_max_min, best_us);
+            full = full && pass.stars() == core::stars_max;
         }
-        std::printf("COST rebuild stars=%u vb_bytes=%u build_us_best_of_5=%.1f\n", pass.stars(),
-                    unsigned(core::vertex_capacity * core::vertex_stride), best_us);
-        check(pass.stars() == core::stars_max, "rebuild_full_buffer");
+        check(full, "rebuild_full_buffer");
         q->Release();
         big.release();
     }

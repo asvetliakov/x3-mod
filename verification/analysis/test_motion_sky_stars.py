@@ -82,7 +82,7 @@ class MotionSkyStarsTests(unittest.TestCase):
         core = (ROOT / 'src/proxy/sky_stars_core.h').read_text()
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         ini = (ROOT / 'assets/x3m.ini').read_text()
-        for name in ('density', 'brightness', 'size', 'min_size', 'twinkle'):
+        for name in ('density', 'brightness', 'size', 'min_size', 'twinkle', 'clustering'):
             key = 'sky_stars_' + name
             e = entries[key]
             m = re.search(r'constexpr float %s_default = ([0-9.]+)f, %s_min = ([0-9.]+)f, %s_max = ([0-9.]+)f;'
