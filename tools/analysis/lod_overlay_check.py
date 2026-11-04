@@ -608,8 +608,10 @@ def candidate_state(game, out, full=False):
         except (ValueError, OSError) as exc:
             states.append('refused')
             clauses.append(f'{c.relative_to(game).as_posix()} unreadable ({exc})')
-    bodies = overrides = 0
+    bodies = overrides = sky = 0
     clash = []
+    sky_names = {str(r.get('member', '')).replace('\\', '/').lower() for _, _, m in cands
+                 for r in ((m.get('sky') or {}).get('rows') or ()) if isinstance(r, dict)}
     for slot in slots:
         cat = out / xp / f'{slot:02d}.cat'
         try:
@@ -623,6 +625,8 @@ def candidate_state(game, out, full=False):
             if low.endswith(BODY_EXTENSIONS):
                 bodies += 1
                 overrides += low in existing or any(low[:-4] + e in existing for e in BODY_EXTENSIONS)
+            elif low in sky_names:             # the sky row group re-authors the stock texture under its name
+                sky += 1
             elif low in existing:
                 clash.append(n)
     if clash:
@@ -630,7 +634,8 @@ def candidate_state(game, out, full=False):
         clauses.append(f'{len(clash)} non-body member(s) collide with mounted game members ({", ".join(clash[:4])}'
                        f'{", ..." if len(clash) > 4 else ""})')
     else:
-        clauses.append(f'no member collision ({bodies} body members, {overrides} of them override a mounted body)')
+        clauses.append(f'no member collision ({bodies} body members, {overrides} of them override a mounted body'
+                       + (f'; {sky} sky texture members override their stock textures' if sky else '') + ')')
     changed, text = sources_clause(game, cands[0][2], ours, set(), full)
     clauses.append(text)
     if changed:

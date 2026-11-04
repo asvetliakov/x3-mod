@@ -1,0 +1,17 @@
+recipe sky-nebula-1 tool_sha256 b66a663ea7261ec5f027e5583895879af19de5c05c27e9f1cb05fc5a87a7fc90 options {"bracket_length": 10.0, "deband_edge": 8.0, "deband_radius": 8, "deband_ramp": 4.0, "deband_range": 12.0, "detail": false, "detail_amplitude": 0.04, "detail_octaves": 3, "detail_period": 64, "dither": 1.0, "pca_spread": 16.0, "uncompressed": "skip", "upsample": true}
+member | kind | size | s | stored B (source B) | plateau src->bake | run src->bake (info) | PSNR | hue deg | zero viol | wrap src->bake | verdict
+dds/nebula_avdustysol_background_part_01_diff.pck | part | 4096x2048 | 4.57 | 356655 (90849) | 0.809->0.725 | 19.11->2.21 | 52.53 | 0.416 | 0 | 61.904->61.846 | PASS
+dds/nebula_avdustysol_background_part_02_diff.pck | part | 4096x2048 | 4.587 | 356083 (88364) | 0.811->0.725 | 19.62->2.22 | 52.8 | 0.414 | 0 | 61.943->61.954 | PASS
+dds/nebula_avdustysol_background_part_03_diff.pck | part | 4096x2048 | 4.646 | 376071 (96935) | 0.806->0.726 | 18.58->2.21 | 52.47 | 0.413 | 0 | 59.145->59.098 | PASS
+dds/nebula_avdustysol_background_part_04_diff.pck | part | 4096x2048 | 4.59 | 352047 (87668) | 0.811->0.728 | 19.75->2.21 | 52.81 | 0.412 | 0 | 59.195->59.221 | PASS
+dds/nebula_avdustysol_stars_orange_diff.pck | stars | 1024x1024 | 0.077 | 25967 (25950) | mark slot 9 lane 3 K 60 payload 2 | PASS
+dds/nebula_bluewell_background_part_01_diff.pck | part | 4096x2048 | 3.007 | 787211 (278087) | 0.081->0.018 | 2.10->2.37 | 46.04 | 1.31 | 0 | 5.74->5.736 | PASS
+dds/nebula_bluewell_background_part_02_diff.pck | part | 4096x2048 | 2.881 | 570304 (208259) | 0.153->0.033 | 2.38->2.80 | 46.02 | 1.455 | 0 | 5.735->5.721 | PASS
+dds/nebula_bluewell_background_part_03_diff.pck | part | 4096x2048 | 2.484 | 193654 (76592) | 0.132->0.047 | 1.98->2.46 | 44.94 | 1.615 | 0 | 0.519->0.516 | PASS
+dds/nebula_bluewell_background_part_04_diff.pck | part | 4096x2048 | 2.75 | 449895 (169423) | 0.145->0.038 | 2.23->2.69 | 45.65 | 1.433 | 0 | 0.542->0.545 | PASS
+dds/nebula_bluewell_stars_blue_diff.pck | stars | 1024x1024 | 0.215 | 123745 (124417) | mark slot 81 lane 1 K 126 payload 2 | PASS
+textures 10 (parts 8), passing 10, failing 0; part bake s per part min 2.48 median 4.57 max 4.65; stored 3591632 B (the overlay members) against 1246544 B of stock members
+  plateau_share: min 0.0178 max 0.7281 (limit <= 0.1 or <= 0.9 x source; source >= 0.5: bake <= source and run <= source run / 3)
+  run: min 2.21 max 2.804 (limit none, informational (near-uniform branch above))
+  psnr: min 44.94 max 52.81 (limit >= 40.0)
+  hue_shift_deg: min 0.412 max 1.615 (limit <= 2.0)
