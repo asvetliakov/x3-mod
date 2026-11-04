@@ -3081,3 +3081,17 @@ same source as run 45 apart from the version bump and the release tooling. Insta
 `8e607386…` (41,158,490 B), rollback `rollback-d3d9\d3d9.dll.run45` = `38422f62…`;
 `x3m-regenerate.exe` `dc0a4052…` added to `C:\X3FL`; ini header 1.7.3 → 1.9.0, body unchanged (`x3m.ini.run45`
 kept). Record `verification/results/fl-run46/candidate.json`. No flight check open.
+
+## FL run 49 — nebula sky bake, regenerate only (installed 2026-11-04)
+
+DLL unchanged (FL run 48 stays). `C:\X3FL\x3m-regenerate.exe` replaced by the build of clean main `90cf62f08`
+(`5c7cb116…`, 29,855,421 B; `build.py --windows`, smoke test PASS 11.7 s), previous `dc0a4052…` kept as
+`x3m-regenerate.exe.1.9.1`. New step after the LOD overlay: the `sky` group re-authors the 2048x1024 DXT1 nebula
+parts (deband, 2x to 4096x2048, dithered DXT1, no mips, mark payload 3) and stamps the star textures with mark
+payload 2, auto on FL ([design](../architecture/sector-background-modern.md), Decision B). Offline gate 10 of 10
+on the bluewell and avdustysol scratch bake (`verification/results/sector-background-textures/sky_bake_metrics_fl.txt`,
+PSNR 44.9–52.8 dB, hue ≤ 1.62°, zero violations 0); 110 host tests. Record `verification/results/fl-run49/candidate.json`.
+**Open flight check:** after one regenerate run, Argon Prime (bluewell): loading row `sky_textures family=bluewell
+parts=4 marked=4 4096x2048 DXT1` (invariant 6: the engine accepts the size), sector load within 150 ms of run 48,
+pilot judgement on gradients, noise, halos, colour, part seams. Kill: visible noise, halos or colour change, or
+more than 0.5 s added load time, turns the group off by default.

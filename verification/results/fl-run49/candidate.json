@@ -1,0 +1,17 @@
+{
+ "run": "fl-run49",
+ "kind": "regenerate only, DLL unchanged (FL run 48 DLL stays)",
+ "commit": "90cf62f08ae85d4022c2dfe516cb1a99e44b9f49",
+ "dirty": "clean",
+ "exe": {
+  "path": "C:\\X3FL\\x3m-regenerate.exe",
+  "sha256": "5c7cb116d55b29e021edb4b23ff4d7da568d7b6ab6720cd5c70acee7b74d0651",
+  "bytes": 29855421,
+  "previous": "x3m-regenerate.exe.1.9.1",
+  "previous_sha256": "dc0a4052d29b58cedf91b1a0ad403edcb0ee2f23785c2682cd4e8c87b506d186"
+ },
+ "built": "tools/regenerate/build.py --windows 2026-11-04 19:39, smoke test PASS 11.7 s",
+ "tests": "110 OK: test_sky_textures, test_lod_overlay_batch, test_lod_overlay_check, test_regenerate",
+ "offline": "verification/results/sector-background-textures/sky_bake_metrics_fl.txt (10 of 10 pass, bluewell + avdustysol scratch bake)",
+ "recorded": "2026-11-04T19:40"
+}
