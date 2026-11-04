@@ -177,6 +177,7 @@ void fixture_adjacency_math_table(int table); // -1 restores real process dispat
 bool fixture_adjacency_registry_dword(LSTATUS status, DWORD type, DWORD size);
 bool fixture_adjacency_registry_ambiguous(LSTATUS status, DWORD type, DWORD size);
 HRESULT fixture_adjacency_fast(ID3DXMesh*, FLOAT, DWORD*, HRESULT(WINAPI*)(ID3DXMesh*, FLOAT, DWORD*));
+HRESULT fixture_adjacency_verify(ID3DXMesh*, FLOAT, DWORD*, HRESULT(WINAPI*)(ID3DXMesh*, FLOAT, DWORD*));
 struct AdjacencyStatistics {
     uint64_t calls = 0, computed = 0, fallbacks = 0, faults = 0, fast_ticks = 0, native_ticks = 0;
     uint64_t verify_admitted = 0, verify_admitted_mismatched = 0, verify_refused_fp = 0, verify_refused_competing = 0;

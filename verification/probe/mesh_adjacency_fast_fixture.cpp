@@ -823,6 +823,64 @@ static HRESULT WINAPI refused_original(ID3DXMesh*, FLOAT, DWORD* output) {
     SetLastError(0x2468);
     return E_FAIL;
 }
+// Verify mode computes before native (2026-11-04): real D3DX re-locks the buffers
+// nested inside its call, which the ownership tracker makes sticky-ambiguous, so
+// the module must have finished when native is entered. The witness original
+// records the counters, caller state and output at entry, then fails.
+static uint64_t order_computed = 0, order_verify_meshes = 0;
+static HRESULT WINAPI order_original(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output) {
+    const DWORD error = GetLastError();
+    const FpState state = read_state();
+    const auto s = fixture_adjacency_statistics();
+    order_computed = s.computed;
+    order_verify_meshes = s.verify_meshes;
+    const HRESULT hr = refused_original(mesh, epsilon, output);
+    fallback_error = error; // the state at entry, before the counter snapshot
+    fallback_observed = state;
+    return hr;
+}
+static void verify_order_control(IDirect3DDevice9* device) {
+    const unsigned before = checks;
+    Case c = fan("verify-order", 16, {0, 1, 2});
+    ID3DXMesh* mesh = nullptr;
+    create_mesh(&D3DXCreateMesh, device, c, &mesh);
+    fixture_adjacency_mode(1);
+    const FpState saved = read_state();
+    FpState seed = saved;
+    seed.x87.control = (seed.x87.control & 0xffff0000) | 0x027f;
+    seed.x87.status &= 0xffff0000;
+    seed.x87.tag |= 0xffff;
+    seed.mxcsr = 0x9fc0; // the game's incoming MXCSR; the module runs under 0x1f80
+    DWORD output[9];
+    for (auto& v : output) v = 0xabcdefu;
+    const auto stats = fixture_adjacency_statistics();
+    const unsigned calls = fallback_calls;
+    write_state(seed);
+    fallback_expected = read_state();
+    SetLastError(0x1357);
+    const HRESULT hr = fixture_adjacency_verify(mesh, c.epsilon, output, order_original);
+    const DWORD error = GetLastError();
+    const FpState after = read_state();
+    write_state(saved);
+    const auto final = fixture_adjacency_statistics();
+    require(fallback_calls == calls + 1 && order_computed == stats.computed + 1 &&
+                final.computed == stats.computed + 1,
+            "verify: module computed before native was entered");
+    require(fallback_untouched, "verify: module answer stays in scratch, caller output untouched before native");
+    require(fallback_error == 0x1357 && fallback_observed.x87.control == fallback_expected.x87.control &&
+                fallback_observed.x87.status == fallback_expected.x87.status &&
+                fallback_observed.x87.tag == fallback_expected.x87.tag &&
+                fallback_observed.mxcsr == fallback_expected.mxcsr,
+            "verify: native receives incoming computational state and LastError");
+    require(hr == E_FAIL && error == 0x2468 && output[0] == 0x12345678 &&
+                after.x87.control == fallback_observed.x87.control && after.mxcsr == fallback_observed.mxcsr,
+            "verify: native failure, output, LastError and outgoing state forwarded");
+    require(order_verify_meshes == stats.verify_meshes && final.verify_meshes == stats.verify_meshes,
+            "verify: failed native is not compared");
+    require(mesh->Release() == 0, "verify order mesh released");
+    printf("ADJACENCY_VERIFY_ORDER compute_before_native=1 incoming_preserved=1 native_failure_forwarded=1 checks=%u\n",
+           checks - before);
+}
 static void admission_controls(IDirect3DDevice9* device) {
     const unsigned before = checks;
     require(fixture_adjacency_registry_dword(ERROR_SUCCESS, REG_DWORD, 4), "registry valid DWORD");
@@ -1635,6 +1693,7 @@ int main(int argc, char** argv) {
                    unsigned(2 * 6), verified, fast_equal, restored);
         }
         admission_controls(device);
+        verify_order_control(device);
         // Native mode leaves the module idle.
         fixture_adjacency_mode(0);
         {

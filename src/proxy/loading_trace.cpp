@@ -107,6 +107,7 @@ struct GateCounter {
 };
 GateCounter cache_gate_reasons[gate_reason_count];
 uint64_t cache_gate_last_counts[gate_reason_count]{};
+bool cache_gate_first_reported[gate_reason_count]{};
 bool reject_gate(GateReason reason, const GateDetail& detail = {}) {
     auto& row = cache_gate_reasons[static_cast<unsigned>(reason)];
     row.count.fetch_add(1, std::memory_order_relaxed);
@@ -460,13 +461,13 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output
     adjacency_counters.degenerate_faces.fetch_add(r.report.degenerate_faces, std::memory_order_relaxed);
     return r;
 }
-void adjacency_fault(HRESULT hr) {
+void adjacency_fault(HRESULT hr, bool native_fallback) {
     adjacency_counters.faults.fetch_add(1, std::memory_order_relaxed);
     bool expected = false;
     if (adjacency_faulted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
         adjacency_mode.store(AdjacencyMode::Native, std::memory_order_release);
-        log("mesh_adjacency_fault origin=acquisition_cleanup_failure hr=%08lx mode=native restart_required=1 native_fallback=0 lock_repaired=0",
-            hr);
+        log("mesh_adjacency_fault origin=acquisition_cleanup_failure hr=%08lx mode=native restart_required=1 native_fallback=%u lock_repaired=0",
+            hr, unsigned(native_fallback));
     }
 }
 // Serves as the adjacency cache's "original": preserves LastError and the
@@ -485,7 +486,7 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh, FLOAT epsilon, DWORD* adj
     restore_computational_state(fp);
     SetLastError(error);
     if (r.fault) {
-        adjacency_fault(r.fault_hr);
+        adjacency_fault(r.fault_hr, false);
         return r.fault_hr;
     }
     if (r.computed) return S_OK;
@@ -565,78 +566,84 @@ bool adjacency_write_dump(const wchar_t* path, ID3DXMesh* mesh, FLOAT epsilon, c
 }
 namespace {
 HRESULT WINAPI adjacency_verify_service(ID3DXMesh* mesh, FLOAT epsilon, DWORD* adjacency) {
+    // Computes first, as the fast service does: real d3dx9 holds both buffers
+    // READONLY for its whole call and locks them again (nested) before the
+    // point-reps converter, which the ownership tracker records as sticky
+    // ambiguity, so a compute after native always failed the buffer gate (AP run
+    // 230). The module answers into scratch; native then receives exactly the
+    // caller's incoming state and LastError, and its output, HRESULT, outgoing
+    // state and LastError are what the caller gets.
     const AdjacencyFn original = adjacency_thread_original;
     if (!original) return E_POINTER;
+    const DWORD error = GetLastError();
     const auto incoming = computational_state();
     adjacency_counters.calls.fetch_add(1, std::memory_order_relaxed);
     adjacency_note_fp(incoming);
-    const auto native_begin = tick();
-    const HRESULT hr = original(mesh, epsilon, adjacency);
-    const uint64_t native_ticks = tick() - native_begin;
-    const DWORD error = GetLastError();
-    const auto fp = computational_state();
     set_default_mxcsr();
-    adjacency_counters.native_ticks.fetch_add(native_ticks, std::memory_order_relaxed);
-    adjacency_note_max(adjacency_counters.native_max_ticks, native_ticks);
-    if (FAILED(hr)) {
-        adjacency_counters.verify_native_failures.fetch_add(1, std::memory_order_relaxed);
-        restore_computational_state(fp);
-        SetLastError(error);
-        return hr;
-    }
     const DWORD faces = mesh ? mesh->GetNumFaces() : 0;
     DWORD* scratch = faces && faces <= 0x0fffffffu
                          ? static_cast<DWORD*>(HeapAlloc(GetProcessHeap(), 0, size_t(faces) * 3 * sizeof(DWORD)))
                          : nullptr;
-    if (scratch) {
-        const AdjacencyCompute r = adjacency_compute(mesh, epsilon, scratch, false, incoming);
-        if (r.fault) {
-            HeapFree(GetProcessHeap(), 0, scratch);
-            restore_computational_state(fp);
-            SetLastError(error);
-            adjacency_fault(r.fault_hr);
-            return r.fault_hr;
-        }
-        if (r.computed) {
-            const size_t entries = size_t(faces) * 3;
-            uint64_t mismatches = 0;
-            size_t first = entries;
-            for (size_t i = 0; i < entries; ++i)
-                if (scratch[i] != adjacency[i]) {
-                    if (!mismatches) first = i;
-                    ++mismatches;
-                }
-            adjacency_counters.verify_meshes.fetch_add(1, std::memory_order_relaxed);
-            adjacency_counters.verify_entries.fetch_add(entries, std::memory_order_relaxed);
-            const bool fp_supported = adjacency_fast::supported_fp_domain(incoming.x87.control, incoming.x87.tag,
-                                                                          incoming.mxcsr);
-            const bool competing = r.report.potential_competing_normals && d3dx_math_table() == D3dxMathTable::Sse2;
-            if (!fp_supported) adjacency_counters.verify_refused_fp.fetch_add(1, std::memory_order_relaxed);
-            if (competing) adjacency_counters.verify_refused_competing.fetch_add(1, std::memory_order_relaxed);
-            if (fp_supported && !competing) {
-                adjacency_counters.verify_admitted.fetch_add(1, std::memory_order_relaxed);
-                adjacency_counters.verify_admitted_mismatched.fetch_add(mismatches != 0, std::memory_order_relaxed);
-            }
-            if (!mismatches)
-                adjacency_counters.verify_equal.fetch_add(1, std::memory_order_relaxed);
-            else {
-                adjacency_counters.verify_mismatched.fetch_add(1, std::memory_order_relaxed);
-                adjacency_counters.verify_mismatch_entries.fetch_add(mismatches, std::memory_order_relaxed);
-                if (adjacency_counters.mismatch_lines.fetch_add(1, std::memory_order_relaxed) <
-                    adjacency_mismatch_line_limit)
-                    log("mesh_adjacency verify faces=%lu vertices=%lu equal=0 mismatches=%llu first=%lu native=%08lx fast=%08lx native_us=%.3f fast_us=%.3f quantized=%u welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu",
-                        faces, r.vertices, mismatches, DWORD(first), adjacency[first], scratch[first],
-                        double(native_ticks) * 1e6 / clock_frequency, double(r.ticks) * 1e6 / clock_frequency,
-                        unsigned(r.report.quantized), DWORD(r.report.welded), DWORD(r.report.multi_candidates),
-                        DWORD(r.report.normal_selected), DWORD(r.report.degenerate_faces),
-                        DWORD(r.report.welded_degenerate_faces), DWORD(r.report.refused_welds),
-                        DWORD(r.report.repeated_neighbours));
-            }
-        }
+    AdjacencyCompute r;
+    if (scratch) r = adjacency_compute(mesh, epsilon, scratch, false, incoming);
+    if (r.fault) {
+        // The caller still gets an answer: native runs after the fault is published.
         HeapFree(GetProcessHeap(), 0, scratch);
+        scratch = nullptr;
+        adjacency_fault(r.fault_hr, true);
     }
-    restore_computational_state(fp);
+    // The clock starts before the caller's state is restored, as in the fast service.
+    const uint64_t native_begin = tick();
+    restore_computational_state(incoming);
     SetLastError(error);
+    const HRESULT hr = original(mesh, epsilon, adjacency);
+    const DWORD native_error = GetLastError();
+    const auto native_fp = computational_state();
+    const uint64_t native_ticks = tick() - native_begin;
+    set_default_mxcsr();
+    adjacency_counters.native_ticks.fetch_add(native_ticks, std::memory_order_relaxed);
+    adjacency_note_max(adjacency_counters.native_max_ticks, native_ticks);
+    if (FAILED(hr))
+        adjacency_counters.verify_native_failures.fetch_add(1, std::memory_order_relaxed);
+    else if (scratch && r.computed) {
+        const size_t entries = size_t(faces) * 3;
+        uint64_t mismatches = 0;
+        size_t first = entries;
+        for (size_t i = 0; i < entries; ++i)
+            if (scratch[i] != adjacency[i]) {
+                if (!mismatches) first = i;
+                ++mismatches;
+            }
+        adjacency_counters.verify_meshes.fetch_add(1, std::memory_order_relaxed);
+        adjacency_counters.verify_entries.fetch_add(entries, std::memory_order_relaxed);
+        const bool fp_supported = adjacency_fast::supported_fp_domain(incoming.x87.control, incoming.x87.tag,
+                                                                      incoming.mxcsr);
+        const bool competing = r.report.potential_competing_normals && d3dx_math_table() == D3dxMathTable::Sse2;
+        if (!fp_supported) adjacency_counters.verify_refused_fp.fetch_add(1, std::memory_order_relaxed);
+        if (competing) adjacency_counters.verify_refused_competing.fetch_add(1, std::memory_order_relaxed);
+        if (fp_supported && !competing) {
+            adjacency_counters.verify_admitted.fetch_add(1, std::memory_order_relaxed);
+            adjacency_counters.verify_admitted_mismatched.fetch_add(mismatches != 0, std::memory_order_relaxed);
+        }
+        if (!mismatches)
+            adjacency_counters.verify_equal.fetch_add(1, std::memory_order_relaxed);
+        else {
+            adjacency_counters.verify_mismatched.fetch_add(1, std::memory_order_relaxed);
+            adjacency_counters.verify_mismatch_entries.fetch_add(mismatches, std::memory_order_relaxed);
+            if (adjacency_counters.mismatch_lines.fetch_add(1, std::memory_order_relaxed) <
+                adjacency_mismatch_line_limit)
+                log("mesh_adjacency verify faces=%lu vertices=%lu equal=0 mismatches=%llu first=%lu native=%08lx fast=%08lx native_us=%.3f fast_us=%.3f quantized=%u welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu",
+                    faces, r.vertices, mismatches, DWORD(first), adjacency[first], scratch[first],
+                    double(native_ticks) * 1e6 / clock_frequency, double(r.ticks) * 1e6 / clock_frequency,
+                    unsigned(r.report.quantized), DWORD(r.report.welded), DWORD(r.report.multi_candidates),
+                    DWORD(r.report.normal_selected), DWORD(r.report.degenerate_faces),
+                    DWORD(r.report.welded_degenerate_faces), DWORD(r.report.refused_welds),
+                    DWORD(r.report.repeated_neighbours));
+        }
+    }
+    if (scratch) HeapFree(GetProcessHeap(), 0, scratch);
+    restore_computational_state(native_fp);
+    SetLastError(native_error);
     return hr;
 }
 void adjacency_report() {
@@ -677,6 +684,14 @@ void adjacency_report() {
         if (count != cache_gate_last_counts[i]) {
             cache_gate_last_counts[i] = count;
             log("mesh_adjacency_gate cumulative=1 reason=%s count=%llu", gate_reason_name(i), count);
+        }
+        // The first rejection's detail, once per reason, as soon as it is published.
+        if (!cache_gate_first_reported[i] && row.publication.load(std::memory_order_acquire) == 2) {
+            cache_gate_first_reported[i] = true;
+            const GateDetail& d = row.first;
+            log("mesh_adjacency_gate_first reason=%s scope=%u status=%08lx known=%u pending=%llu pool=%lu usage=%08lx format=%lu size=%llu required=%llu options=%08lx slot=%lu actual=%08lx expected=%08lx",
+                gate_reason_name(i), d.scope, d.status, unsigned(d.known), d.pending, d.pool, d.usage, d.format,
+                d.size_bytes, d.required_bytes, d.options, d.slot, d.actual_entry, d.expected_entry);
         }
     }
 }
@@ -1747,8 +1762,13 @@ bool install(HMODULE target) {
     }
     const AdjacencyMode requested_mode = adjacency_armed; // with telemetry every parsed mode arms
     adjacency_mode.store(requested_mode, std::memory_order_release);
-    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_refuse_at_first_score gate=public_systemmem_readonly+declaration_float3+contiguous_attribute_ranges order=compute native_fallback=1 rsqrt=%s math_table=%s normalize=%s",
-        adjacency_mode_name(requested_mode), adjacency_fast::rsqrt_implementation(),
+    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_refuse_at_first_score gate=public_systemmem_readonly+declaration_float3+contiguous_attribute_ranges order=%s native_fallback=1 rsqrt=%s math_table=%s normalize=%s",
+        adjacency_mode_name(requested_mode),
+        // Both module modes compute before native touches the buffers.
+        requested_mode == AdjacencyMode::Fast     ? "compute,native_on_refusal"
+        : requested_mode == AdjacencyMode::Verify ? "compute,native,compare"
+                                                  : "native",
+        adjacency_fast::rsqrt_implementation(),
         d3dx_math_table_name(d3dx_math_table()),
         d3dx_math_table() == D3dxMathTable::Sse2      ? "sse2"
         : d3dx_math_table() == D3dxMathTable::Generic ? "generic"
@@ -1949,6 +1969,17 @@ HRESULT fixture_adjacency_fast(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output,
     adjacency_thread_original = original;
     cpu.before_original();
     const HRESULT hr = adjacency_fast_service(mesh, epsilon, output);
+    cpu.after_original();
+    adjacency_thread_original = saved;
+    return hr;
+}
+HRESULT fixture_adjacency_verify(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output,
+                                 HRESULT(WINAPI* original)(ID3DXMesh*, FLOAT, DWORD*)) {
+    CpuCallBoundary cpu;
+    const auto saved = adjacency_thread_original;
+    adjacency_thread_original = original;
+    cpu.before_original();
+    const HRESULT hr = adjacency_verify_service(mesh, epsilon, output);
     cpu.after_original();
     adjacency_thread_original = saved;
     return hr;

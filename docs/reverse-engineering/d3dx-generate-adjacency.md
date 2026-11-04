@@ -39,8 +39,15 @@ default base `0x00400000`; decompiler text stays under `/tmp`.
   usage index 0 and type `FLOAT3` (the parse overwrites on every match; usage
   index 0 is required for every usage other than `TEXCOORD`/`COLOR`, and the
   stream is not checked). The vertex size comes from `D3DXGetDeclVertexSize`.
-* The index and vertex buffers are locked read-only for the whole call. The
-  16-bit class reads `WORD` indices; both classes treat a face whose **first**
+* The index and vertex buffers are locked read-only for the whole call, and the
+  converter stage (`0x0059f24b` / `0x0059ed23`) locks them again while those
+  outer locks are held: on real D3DX the buffers see **nested** locks. Through
+  the proxy's buffer wrappers the ownership tracker marks a nested lock sticky
+  ambiguous, so any buffer qualification after a native call refuses with
+  `tracker` (AP run 230, native Windows); Wine's d3dx9 did not nest. The
+  verify and fast services therefore compute before native
+  ([mesh-adjacency-fast.md](../verification/mesh-adjacency-fast.md), "Verify
+  mode computes before native"). The 16-bit class reads `WORD` indices; both classes treat a face whose **first**
   index is `0xffff` (16-bit) or `0xffffffff` (32-bit) as absent in the adjacency
   stage only (the representative stage would index out of range).
 

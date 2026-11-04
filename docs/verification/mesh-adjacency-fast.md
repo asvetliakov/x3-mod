@@ -7,8 +7,10 @@ native table, [loading-performance.md](../reverse-engineering/loading-performanc
 does with the engine's call at `0x004bc76a`:
 
 * `native` forwards, as before (timing only).
-* `verify` calls the native method, recomputes the adjacency with the module
-  below, compares all `3 * faces` entries and returns the native result. A
+* `verify` computes the adjacency with the module below into scratch, then calls
+  the native method with the caller's incoming state and LastError, compares all
+  `3 * faces` entries and returns the native result (compute-first since
+  2026-11-04, "Verify mode computes before native"). A
   mismatching mesh logs one full `mesh_adjacency verify ... equal=0` line (at most
   64 lines per process); everything else is aggregated in the periodic
   `mesh_adjacency_metric` line.
@@ -329,8 +331,9 @@ native_ticks= native_us= verify_meshes= verify_equal= verify_mismatched=
 verify_entries= verify_mismatch_entries= quantized= unquantized= welded_vertices=
 multi_candidate_meshes= normal_selected= degenerate_edges= fallback_<reason>=
 module_<status>=` with the periodic telemetry summary (only when the counters
-changed); `mesh_adjacency_gate reason= count=` for the shared public-buffer gate
-when the cache is off (the cache prints them as `mesh_cache_gate` otherwise);
+changed); `mesh_adjacency_gate reason= count=` for the shared public-buffer gate,
+followed once per reason by `mesh_adjacency_gate_first` with that reason's first
+rejection detail (see "Verify mode computes before native");
 `mesh_adjacency verify faces= vertices= equal=0 mismatches= first= native= fast=
 native_us= fast_us= ... welded_degenerate_faces= refused_welds=
 repeated_neighbours=` per mismatching mesh (bounded). `native_us` in verify mode
@@ -713,3 +716,50 @@ Not verified: the flight's 1,791 refusals were not reproduced offline, so how ma
 lazy rule is unknown (a refused mesh still pays its module time to the refusal plus native); the next flight's
 `refused_us`, `native_us` and `fallback_faces` show it. Game load, the Wine X3 fixture run and the generic
 table on native hardware are not run.
+
+## Verify mode computes before native (2026-11-04)
+
+Cause (AP run 230, native Windows, `mesh_adjacency = verify`): all 5,980 calls fell back at the buffer gate
+(`calls=5980 computed=0 fallback_gate=5980`, `mesh_adjacency_gate reason=tracker count=5980`); run 229 in fast
+mode on the same machine had no gate rows. Verify called native D3DX first. Real d3dx9 locks both buffers
+read-only for the whole call and locks them again before the point-reps converter
+([d3dx-generate-adjacency.md](../reverse-engineering/d3dx-generate-adjacency.md), section 1); the ownership
+tracker records that nested lock as sticky ambiguity (`record_buffer_event`), so the module's later
+`buffer_contract` saw `requested && !known` and refused with `tracker`. Wine's d3dx9 does not nest, which is
+why the September bottle flights worked; fast mode computes before native and never saw it.
+
+**Change** (`adjacency_verify_service`, `src/proxy/loading_trace.cpp`): verify now follows the fast service's
+CPU-state contract. It captures LastError and the incoming x87/MXCSR state, loads MXCSR `0x1f80`, computes into
+the existing per-call `HeapAlloc` scratch (no other allocation), restores the incoming state and LastError and
+then calls native (its clock starts before the restore, as in fast mode). Native's output, HRESULT, outgoing
+state and LastError reach the caller unchanged; comparison and every `verify_*` counter and the
+`mesh_adjacency verify ...` mismatch row keep their meaning, and a native failure counts
+`verify_native_failures` without a comparison. `computed`, `fallback_*` and `module_*` now also count calls
+whose native call then fails (previously the module did not run for them). Fault decision: a module fault
+(an unlock that a retry cannot repair) publishes `mesh_adjacency_fault ... native_fallback=1`, reverts the
+process to native mode and still calls native so the caller gets D3DX's answer; the fast service keeps
+returning the fault HRESULT (`native_fallback=0`). The startup row's `order=` is now mode-specific:
+`compute,native,compare` (verify), `compute,native_on_refusal` (fast), `native`.
+
+**Gate detail row.** `adjacency_report` logs each reason's first published `GateDetail` once:
+`mesh_adjacency_gate_first reason=%s scope=%u status=%08lx known=%u pending=%llu pool=%lu usage=%08lx
+format=%lu size=%llu required=%llu options=%08lx slot=%lu actual=%08lx expected=%08lx` (scope 0 mesh, 1 vertex
+buffer, 2 index buffer; `slot/actual/expected` are the vtable fields of `mesh_method`). Run 230 would have shown (inferred:
+the vertex buffer is qualified first) `reason=tracker scope=1 known=0`.
+
+**Evidence** (measured, native Windows through WSL interop, system `d3dx9_37.dll`, no Wine):
+`python3 verification/results/mesh-adjacency-native-windows/fixture_native.py` → `fixture-native.txt`:
+**50,548 checks, 0 failures** (50,534 + 14 from the new `verify_order_control`:
+`ADJACENCY_VERIFY_ORDER compute_before_native=1 incoming_preserved=1 native_failure_forwarded=1 checks=14`).
+The control drives `adjacency_verify_service` through the new `fixture_adjacency_verify` seam with a witness
+original that snapshots the counters and the caller state at entry: `computed` had already grown by one, the
+caller's array was untouched (the answer stays in scratch), native received LastError `0x1357` and the incoming
+x87/MXCSR `0x9fc0` state, and native's `E_FAIL`, output and LastError were forwarded with no comparison.
+`VERIFY_STATS calls=56 computed=54 verify_meshes=54 verify_equal=54 verify_mismatched=0` is unchanged through
+the real hook. `run_loading_trace.py` pins `MESH_ADJACENCY_CHECKS=50548`; the Wine X3 run was not repeated.
+`check_no_x87.py --edition ap` on the AP build: PASS, 157 roots, 1,112 reachable functions, 0 violations.
+
+Not verified: the fixture's device buffers are not proxy-wrapped, so neither the nested-lock refusal nor the
+`mesh_adjacency_gate_first` row is exercised offline; the next verify flight shows both. A mesh whose
+`GenerateAdjacency` runs a second time after a native call on the same buffers still meets the sticky
+ambiguity and falls back with `tracker` (now explained by the detail row).
