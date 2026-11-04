@@ -1,0 +1,17 @@
+{
+ "run": 231,
+ "what": "mesh adjacency verify mode computes before native (real D3DX re-locks the buffers nested, which left the ownership tracker sticky-ambiguous and gated all 5,980 run-230 calls with reason=tracker); one-time mesh_adjacency_gate_first detail row per gate reason; flown again with mesh_adjacency = verify to count mismatches and what the lazy competing-normal rule admits",
+ "commit": "e916bbcf3",
+ "dirty": false,
+ "build_dir": "build-ap",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "5f6e0e1e6fd32203",
+ "dll_bytes": 62755981,
+ "installed": {"path": "C:\\X3\\d3d9.dll", "sha256_prefix": "5f6e0e1e6fd32203"},
+ "previous": "C:\\X3\\rollback-d3d9\\d3d9.dll.run230 (befe282e, run 230)",
+ "x3m_ini": "mesh_adjacency = verify kept for this flight; perf = 1 as the user set it; x3m.ini.run229 kept",
+ "host_tests": "worktree: test_mesh_adjacency_fast, test_engine_effects, test_check_no_x87 48 OK 1 skipped; native D3DX fixture 50,548 checks 0 failures (MESH_ADJACENCY_CHECKS re-pinned); main build: check_no_x87 --edition ap 0 violations (measured)",
+ "review": "Opus high: no blocking finding; open: fixture does not exercise the nested-lock refusal or the gate_first row (proxy-unwrapped buffers), verify fault path untested, startup row shows native_fallback=1 in native mode (cosmetic)",
+ "run230_outcome": "no verify data: calls=5980 computed=0 fallback_gate=5980 reason=tracker; native_us=3154784.7 (mean 528 us, max 41476.7 us) measured",
+ "installed_at": "2026-11-04T06:04:35+04:00"
+}
