@@ -1,0 +1,5 @@
+calls=5712 computed=5712 fallbacks=0 verify_meshes=5712 verify_equal=5712 verify_mismatched=0 verify_entries=17646798
+verify_admitted=4684 verify_refused_competing=1028 refused_share=0.180
+module_us=600584 mean=105.1 max=9914.3
+native_us=1824821 mean=319.5 max=25712.3 ratio=3.04
+gate_rows=0 mismatch_rows=0

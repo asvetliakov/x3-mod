@@ -763,3 +763,25 @@ Not verified: the fixture's device buffers are not proxy-wrapped, so neither the
 `mesh_adjacency_gate_first` row is exercised offline; the next verify flight shows both. A mesh whose
 `GenerateAdjacency` runs a second time after a native call on the same buffers still meets the sticky
 ambiguity and falls back with `tracker` (now explained by the detail row).
+
+## Run 231: verify flight on native Windows (2026-11-04)
+
+AP run 231 (DLL `5f6e0e1e…`, `e916bbcf3`, `mesh_adjacency = verify`, `perf = 1`; log
+`~/x3m-logs/ap-run231-adjacency-verify.log`, figures by
+`verification/results/ap-run231-mesh-adjacency/summary.py`, all measured). Run 230 had produced no verify data
+(every call gated `tracker`, see the previous section).
+
+* 5,712 `GenerateAdjacency` calls, 5,712 computed, 0 fallbacks, 0 `mesh_adjacency_gate` rows, 0 faults.
+* **`verify_mismatched=0`**: all 5,712 meshes (17,646,798 adjacency entries) byte-equal to real D3DX
+  (`d3dx9_43`, SSE2 table). That includes the 1,028 meshes the lazy rule marks as competing-normal
+  (`verify_refused_competing`), so on this flight's meshes the refusal was purely conservative: no mesh reached
+  a normal score whose SSE2 outcome differed from ours.
+* Admission under the lazy rule: 4,684 of 5,712 admitted (82 %); 18 % would still fall back in fast mode,
+  against 24 % (1,791 of 7,402) under the old preflight in run 229 (different sectors, so an indication, not a
+  controlled comparison).
+* Time for the same meshes, module against native in the same process: module 600.6 ms (mean 105 µs, max 9.9 ms)
+  against native 1,824.8 ms (mean 320 µs, max 25.7 ms), ratio 3.0; mean mesh 1,030 faces.
+
+Fast mode stays the default (`;mesh_adjacency = fast` restored in `C:\X3\x3m.ini`). Open: the 1,028 competing
+meshes are refused in fast mode although none mismatched here; admitting them needs the SSE2 normal-score
+reproduction (the fan mismatch), not flight evidence.
