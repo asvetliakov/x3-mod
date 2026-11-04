@@ -581,3 +581,54 @@ gz-buffer or crypt-cache; a `fast`-only launch needs
 Fixture after the cache removal (2026-09-25, bottle X3): `run_loading_trace.py` PASS, `mesh-adjacency` 36,091 checks (the former `mesh-adjacency-cache-off` case, 36,093 before; the cache-on case, 36,150, went with the cache), `loading-trace` 112 and `loading-mesh` 123 unchanged; `run_crypt_cache.py` passed (measured).
 
 **Removed from the launcher 2026-09-26** (user decision, developer options trimmed to four): `--mesh-adjacency verify` (choices are `native` / `fast`; the fixture still sets `X3M_MESH_ADJACENCY=verify`) and `--mesh-adjacency-dump` together with the in-game dump code (`X3M_MESH_ADJACENCY_DUMP`, the capture-folder path resolver and its call in the verify service; the `mesh_adjacency` row lost its `dump=` field). `adjacency_write_dump` and the `X3MADJ01` format stay for the fixture self-test and `tools/analysis/replay_mesh_adjacency.py` on existing dumps. `run_loading_trace.py` after the removal (bottle X3): PASS, mesh-adjacency 36,091 checks (the pinned inventory), loading-trace 112, loading-mesh 123, self-test dump replay `dumps=1 failures=0` (measured).
+
+## Native Windows benchmark (2026-11-04)
+
+First timing against D3DX on native Windows (the earlier numbers are arm64 Wine/host only).
+`verification/probe/mesh_adjacency_native_bench.cpp` links the module, loads each D3DX by name and builds
+the meshes with that DLL's own `D3DXCreateMesh` (HAL device, `SYSTEMMEM`), then times one untimed warm-up and
+at least 20 calls each of native `GenerateAdjacency(1e-6)` (the engine's epsilon) and the module's
+`generate()` on the locked buffers with `QueryPerformanceCounter`; meshes under 0.25 s native repeat up to
+2,000 times. `equal` is the verify policy (D3DX rules, SSE2 normalize as the dispatch mirror selects on this
+CPU) byte-equal to native; `served_equal` is what fast mode returns (the module's output when production
+admission accepts the mesh, else native's). The module exposes no stage timers, so only totals are reported.
+The `fan-same-edge` and `unquantized-grid-150` meshes are rebuilt from the arm64 record's counts; the
+realistic family is disjoint 3x4-quad islands split into six 1x2-quad charts (44.4 % of vertices welded,
+1.5 vertices per face, quantized to 1/16384, stride 32, 16-bit indices), matching the AP flight's mean of
+630 faces / 940 vertices / 44 % welded. Producer and record:
+`verification/results/mesh-adjacency-native-windows/{bench.py,bench.txt}` (`python3 .../bench.py --reps 20`,
+1 min 55 s). Machine: AMD Ryzen 7 9850X3D, Windows 10.0.26300.9818, MinGW GCC 16 i686, SysWOW64
+`d3dx9_37.dll` (SHA-256 `c2ccb84c…`, identical to `C:\X3\d3dx9_37.dll`, AP's import) and `d3dx9_43.dll`
+(`0b28546b…`, FL's import). Host test: `test_mesh_adjacency_native_bench` (short run plus record check).
+
+Minimum of the timed calls, microseconds (measured; means in `bench.txt`):
+
+| mesh | faces | vertices | 37 native | 37 fast | 37 speedup | 43 native | 43 fast | 43 speedup | equal | served_equal |
+|---|---|---|---|---|---|---|---|---|---|---|
+| grid-224x224-32 | 99458 | 50176 | 31549 | 8557 | 3.69 | 29845 | 8609 | 3.47 | 1 | 1 |
+| split-150x150-32 | 44402 | 133206 | 65056 | 4096 | 15.9 | 59830 | 4049 | 14.8 | 1 | 1 |
+| star-20000-32 | 20000 | 40000 | 159177 | 1781 | 89.4 | 157414 | 1769 | 89.0 | 1 | 1 |
+| split-16 | 19602 | 58806 | 21407 | 1689 | 12.7 | 19774 | 1688 | 11.7 | 1 | 1 |
+| fan-same-edge-2000 | 4000 | 2002 | 96786 | 15580 | 6.21 | 95601 | 14976 | 6.38 | 0 (68) | 1 |
+| fan-same-edge-8000 | 16000 | 8002 | 1565536 | 242522 | 6.46 | 1575464 | 236376 | 6.67 | 0 (4816) | 1 |
+| unquantized-grid-150 | 44402 | 22500 | 10385 | 10797 | 0.96 | 10463 | 12213 | 0.86 | 1 | 1 |
+| realistic-200 | 200 | 300 | 13.0 | 9.9 | 1.31 | 13.2 | 10.0 | 1.32 | 1 | 1 |
+| realistic-630 | 630 | 948 | 41.0 | 31.1 | 1.32 | 43.6 | 31.2 | 1.40 | 1 | 1 |
+| realistic-2000 | 2000 | 3000 | 329.7 | 103.2 | 3.19 | 316.5 | 101.5 | 3.12 | 1 | 1 |
+| realistic-8000 | 8000 | 12000 | 2839 | 516 | 5.50 | 2662 | 520 | 5.12 | 1 | 1 |
+| realistic-30000 | 30000 | 45000 | 25093 | 2451 | 10.2 | 24054 | 2457 | 9.79 | 1 | 1 |
+
+Interpretation. Native times of the two DLLs agree within 10 % and both equal the module on the same ten meshes (so they agree with each other there; inferred, not compared directly). The
+synthetic speedups match the arm64 X3 bottle (FEX; grid 3.7x, split-150 18x, star 101x, split-16 14x)
+within about 15 %, so FEX did not distort the ratio (the Rosetta Steam bottle's 90-400x is, by inference, its
+x87 emulation cost). Native D3DX grows superlinearly (13 us at 200 faces, 25 ms at 30,000) while the module is about
+linear (50-80 ns per face), so the gain is small at the flight's mean size (1.3-1.4x at 630 faces, 10 us
+saved per call, about 0.07 s over 7,402 calls) and large only on big or heavily welded meshes; the
+unquantized grid (cell-scan gate) is 4-14 % slower than native. At 630 faces native costs 41-44 us, so
+1,791 native fallbacks cost about 0.08 s and even 7,402 native calls about 0.32 s (inferred from the
+mean-size mesh): the mean-size native call does not explain 2.5 s of un-timed wrapper time; that needs a
+fallback mean near 1.4 ms (between the 2,000- and 8,000-face rows) or about 100 meshes at 30,000 faces,
+which the flight's size distribution would have to show. The verify policy mismatches native on the
+multi-candidate fans (68 and 4,816 entries, both DLLs; the SSE2 competing-normal limit of review 31 now
+reproduced on native x86), and production admission refuses exactly those (`competing_normals`), so fast
+mode serves native-equal output on every mesh here.

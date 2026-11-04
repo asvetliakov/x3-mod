@@ -1,0 +1,42 @@
+intervals 168 totals {'calls': 7402, 'computed': 5611, 'fallbacks': 1791, 'fast_us': 476249.3, 'faces': 4665904, 'vertices': 6956018, 'wrap_us': 3007859.7, 'wrap_max_us': 416241.5, 'tail_us': 427.3}
+residual (wrap - fast) ms 2531.6
+fallback-free intervals 8 calls 143 wrap-fast 1543.0 us => 10.79 us/call overhead (lock/decl/copy/state)
+lstsq wrap_us = a*fast_us + b*fallbacks + c*calls: a=3.239 b=1272.1 us c=22.62 us
+lstsq (wrap-fast) = b*fallbacks + c*calls: b=883.3 us c=265.81 us
+computed mesh mean faces 832 vertices 1240 fast_us/mesh 84.9
+wrap max per interval (top 8): [(45.67, 39, 206), (36.06, 30, 336), (34.16, 43, 432), (32.55, 132, 348), (31.18, 96, 428), (29.92, 45, 376), (28.4, 36, 340), (22.18, 30, 258)]
+D3DXCreateEffect count 22 total_ms 242.1 excl_ms 242.1 max_ms 43.66
+D3DXCreateTextureFromFileInMemoryEx count 1999 total_ms 1260.9 excl_ms 1260.9 max_ms 98.30
+D3DXCreateCubeTextureFromFileInMemoryEx count 31 total_ms 8.3 excl_ms 8.3 max_ms 0.37
+D3DXLoadSurfaceFromFileInMemory count 4 total_ms 57.3 excl_ms 57.3 max_ms 18.18
+D3DXCreateMesh count 7402 total_ms 278.2 excl_ms 278.2 max_ms 0.37
+D3DXCleanMesh count 7402 total_ms 692.3 excl_ms 692.3 max_ms 4.69
+ID3DXMesh::OptimizeInplace count 7402 total_ms 1878.2 excl_ms 1878.2 max_ms 18.72
+fallback-free faces/call 3 fast_us/call 1.4
+per-fallback cost (module-to-refusal + native D3DX) 1369 us, total fallback ms 2452, overhead ms 80
+per-interval residual/fallback us: n=80 p10=16 median=19 p90=2196
+fallback share per interval (calls>=20): p10=0.03 median=0.19 p90=0.43
+per-mesh us: fast_module(all calls) 64.3 overhead 10.8 fallback(amortised) 331.2 | CreateMesh 37.6 CleanMesh 93.5 OptimizeInplace 253.7
+top residual intervals: resid_ms fallbacks computed fast_ms faces wrap_max_ms
+  295.1 132 348 22.3 224775 32.55
+  278.6 96 428 60.8 604000 31.18
+  267.2 139 377 29.7 330093 18.89
+  254.9 43 432 62.0 614521 34.16
+  242.4 87 211 16.9 163902 20.05
+  236.3 154 435 27.7 286514 15.79
+  196.6 39 206 20.1 196911 45.67
+  140.8 92 262 23.7 251254 15.08
+  139.6 30 336 56.2 464469 36.06
+  108.6 30 258 50.0 489744 22.18
+  96.5 26 210 37.5 365535 19.80
+  69.7 45 376 18.5 175488 29.92
+cheap intervals: n=147 calls=1838 fallbacks=726 resid_ms=34.1
+expensive intervals: n=21 calls=5564 fallbacks=1065 computed=4499 resid_ms=2497.5 fast_ms=448.5
+expensive intervals: resid = b*fallbacks + d*fast_us: b=1497 us/fallback d=2.13  R2=0.859
+  fallbacks only: coef=2155.98 R2=0.673
+  fast_us only: coef=4.55 R2=0.382
+fast_max rises: new_max_us interval_faces interval_vertices interval_computed interval_fast_us
+  2004.3 175488 282307 376 18516
+  3207.9 196911 330050 206 20119
+  8138.5 464469 752023 336 56163
+  8235.9 489744 679272 258 49954

@@ -1,0 +1,28 @@
+windows after load: 161 median ops 4 median bytes 0 median us 1251
+hitch 8576: window (8569,8779] ops=11 count=212 bytes=535705 us=5842 op_CreateFileA=3 op_ReadFile=48 op_SetFilePointer=69 op_D3DXCreateTextureFromFileInMemoryEx=3 op_D3DXCreateMesh=15 op_D3DXCleanMesh=15 op_FindFirstFileA=23 op_FindNextFileA=3 op_FindClose=3 op_ID3DXMesh::GenerateAdjacency=15 op_ID3DXMesh::OptimizeInplace=15
+hitch 8713: window (8569,8779] ops=11 count=212 bytes=535705 us=5842 op_CreateFileA=3 op_ReadFile=48 op_SetFilePointer=69 op_D3DXCreateTextureFromFileInMemoryEx=3 op_D3DXCreateMesh=15 op_D3DXCleanMesh=15 op_FindFirstFileA=23 op_FindNextFileA=3 op_FindClose=3 op_ID3DXMesh::GenerateAdjacency=15 op_ID3DXMesh::OptimizeInplace=15
+hitch 12123: window (12103,12317] ops=4 count=80 bytes=0 us=24152 op_D3DXCreateMesh=20 op_D3DXCleanMesh=20 op_ID3DXMesh::GenerateAdjacency=20 op_ID3DXMesh::OptimizeInplace=20
+hitch 12446: window (12317,12522] ops=4 count=60 bytes=0 us=2224 op_D3DXCreateMesh=15 op_D3DXCleanMesh=15 op_ID3DXMesh::GenerateAdjacency=15 op_ID3DXMesh::OptimizeInplace=15
+hitch 22938: window (22563,23037] ops=4 count=12 bytes=0 us=360 op_D3DXCreateMesh=3 op_D3DXCleanMesh=3 op_ID3DXMesh::GenerateAdjacency=3 op_ID3DXMesh::OptimizeInplace=3
+hitch 24646: window (24601,24803] ops=8 count=162 bytes=34548652 us=16288 op_ReadFile=38 op_SetFilePointer=54 op_D3DXCreateTextureFromFileInMemoryEx=10 op_D3DXCreateMesh=11 op_D3DXCleanMesh=11 op_FindFirstFileA=16 op_ID3DXMesh::GenerateAdjacency=11 op_ID3DXMesh::OptimizeInplace=11
+hitch 24647: window (24601,24803] ops=8 count=162 bytes=34548652 us=16288 op_ReadFile=38 op_SetFilePointer=54 op_D3DXCreateTextureFromFileInMemoryEx=10 op_D3DXCreateMesh=11 op_D3DXCleanMesh=11 op_FindFirstFileA=16 op_ID3DXMesh::GenerateAdjacency=11 op_ID3DXMesh::OptimizeInplace=11
+hitch 26673: window (26511,26722] ops=4 count=344 bytes=0 us=31706 op_D3DXCreateMesh=86 op_D3DXCleanMesh=86 op_ID3DXMesh::GenerateAdjacency=86 op_ID3DXMesh::OptimizeInplace=86
+hitch 27631: window (27415,27640] ops=4 count=84 bytes=0 us=2898 op_D3DXCreateMesh=21 op_D3DXCleanMesh=21 op_ID3DXMesh::GenerateAdjacency=21 op_ID3DXMesh::OptimizeInplace=21
+hitch 28323: window (28102,28327] ops=4 count=216 bytes=0 us=13151 op_D3DXCreateMesh=54 op_D3DXCleanMesh=54 op_ID3DXMesh::GenerateAdjacency=54 op_ID3DXMesh::OptimizeInplace=54
+hitch 28644: window (28560,28754] ops=4 count=304 bytes=0 us=30083 op_D3DXCreateMesh=76 op_D3DXCleanMesh=76 op_ID3DXMesh::GenerateAdjacency=76 op_ID3DXMesh::OptimizeInplace=76
+hitch 28649: window (28560,28754] ops=4 count=304 bytes=0 us=30083 op_D3DXCreateMesh=76 op_D3DXCleanMesh=76 op_ID3DXMesh::GenerateAdjacency=76 op_ID3DXMesh::OptimizeInplace=76
+hitch 30090: window (30068,30272] ops=4 count=80 bytes=0 us=25910 op_D3DXCreateMesh=20 op_D3DXCleanMesh=20 op_ID3DXMesh::GenerateAdjacency=20 op_ID3DXMesh::OptimizeInplace=20
+hitch 30091: window (30068,30272] ops=4 count=80 bytes=0 us=25910 op_D3DXCreateMesh=20 op_D3DXCleanMesh=20 op_ID3DXMesh::GenerateAdjacency=20 op_ID3DXMesh::OptimizeInplace=20
+hitch 30095: window (30068,30272] ops=4 count=80 bytes=0 us=25910 op_D3DXCreateMesh=20 op_D3DXCleanMesh=20 op_ID3DXMesh::GenerateAdjacency=20 op_ID3DXMesh::OptimizeInplace=20
+hitch 31058: window (30993,31172] ops=4 count=164 bytes=0 us=26059 op_D3DXCreateMesh=41 op_D3DXCleanMesh=41 op_ID3DXMesh::GenerateAdjacency=41 op_ID3DXMesh::OptimizeInplace=41
+hitch 31801: window (31732,31917] ops=4 count=40 bytes=0 us=1494 op_D3DXCreateMesh=10 op_D3DXCleanMesh=10 op_ID3DXMesh::GenerateAdjacency=10 op_ID3DXMesh::OptimizeInplace=10
+hitch 34487: window (34294,34487] ops=4 count=32 bytes=0 us=24551 op_D3DXCreateMesh=8 op_D3DXCleanMesh=8 op_ID3DXMesh::GenerateAdjacency=8 op_ID3DXMesh::OptimizeInplace=8
+hitch 34492: window (34487,34670] ops=12 count=101 bytes=2622464 us=9557 op_ReadFile=2 op_SetFilePointer=3 op_gzopen=13 op_gzread=10 op_D3DXCreateMesh=8 op_D3DXCleanMesh=8 op_FindFirstFileA=11 op_FindClose=10 op_gztell=10 op_gzclose=10 op_ID3DXMesh::GenerateAdjacency=8 op_ID3DXMesh::OptimizeInplace=8
+hitch 1805: window (1637,1847] ops=8 count=17 bytes=97084 us=5425 op_ReadFile=5 op_SetFilePointer=6 op_D3DXCreateEffect=1 op_D3DXCreateMesh=1 op_D3DXCleanMesh=1 op_FindFirstFileA=1 op_ID3DXMesh::GenerateAdjacency=1 op_ID3DXMesh::OptimizeInplace=1
+hitch 1955: window (1847,2040] ops=8 count=34 bytes=97296 us=1587 op_ReadFile=10 op_SetFilePointer=12 op_D3DXCreateEffect=2 op_D3DXCreateMesh=2 op_D3DXCleanMesh=2 op_FindFirstFileA=2 op_ID3DXMesh::GenerateAdjacency=2 op_ID3DXMesh::OptimizeInplace=2
+hitch 1991: window (1847,2040] ops=8 count=34 bytes=97296 us=1587 op_ReadFile=10 op_SetFilePointer=12 op_D3DXCreateEffect=2 op_D3DXCreateMesh=2 op_D3DXCleanMesh=2 op_FindFirstFileA=2 op_ID3DXMesh::GenerateAdjacency=2 op_ID3DXMesh::OptimizeInplace=2
+hitch 2035: window (1847,2040] ops=8 count=34 bytes=97296 us=1587 op_ReadFile=10 op_SetFilePointer=12 op_D3DXCreateEffect=2 op_D3DXCreateMesh=2 op_D3DXCleanMesh=2 op_FindFirstFileA=2 op_ID3DXMesh::GenerateAdjacency=2 op_ID3DXMesh::OptimizeInplace=2
+hitch 2728: window (2694,2888] ops=4 count=4 bytes=0 us=170 op_D3DXCreateMesh=1 op_D3DXCleanMesh=1 op_ID3DXMesh::GenerateAdjacency=1 op_ID3DXMesh::OptimizeInplace=1
+hitch 2767: window (2694,2888] ops=4 count=4 bytes=0 us=170 op_D3DXCreateMesh=1 op_D3DXCleanMesh=1 op_ID3DXMesh::GenerateAdjacency=1 op_ID3DXMesh::OptimizeInplace=1
+hitch 3436: window (3331,3533] ops=7 count=16 bytes=11776 us=321 op_ReadFile=5 op_SetFilePointer=6 op_D3DXCreateMesh=1 op_D3DXCleanMesh=1 op_FindFirstFileA=1 op_ID3DXMesh::GenerateAdjacency=1 op_ID3DXMesh::OptimizeInplace=1
+hitch 10482: window (10344,10500] ops=4 count=28 bytes=0 us=1251 op_D3DXCreateMesh=7 op_D3DXCleanMesh=7 op_ID3DXMesh::GenerateAdjacency=7 op_ID3DXMesh::OptimizeInplace=7
