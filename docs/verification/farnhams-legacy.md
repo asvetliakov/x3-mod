@@ -3133,3 +3133,25 @@ one `sky_stars_match` row: pair `7b6393fe…/6109cf64…`, `index=0 blend=0 mask
 build_us=190.5`. `outside=1180` is benign: every outside row is `hdr=0 selector=9` at frames 55-56, the star body
 drawn before HDR latches (loading screen), where the pass does nothing. Pilot: accepted; no defect reported.
 Follow-up requested: denser, brighter, size variation, subtle twinkle (FL run 51).
+
+## FL run 51 — star pass look controls (installed 2026-11-05)
+
+Dev candidate from clean main `8bd488031` (merge of `1409fb8b6` + review fix `e819cc0e9`; `build-fl` RelWithDebInfo,
+mingw-i686, 0 warnings, `check_no_x87 --edition fl` PASS): `C:\X3FL\d3d9.dll` = `a3b366e6…` (59,315,865 B), rollback
+`rollback-d3d9\d3d9.dll.run50` = `6dac80a4…`; `x3m.ini` unchanged (copy `x3m.ini.run50`), so the five new look
+controls run at their defaults: `sky_stars_density` 2 (cap 16384), `sky_stars_brightness` 2 (peak cap 2.0 target
+value), `sky_stars_size` 1, `sky_stars_min_size` 1.5 px, `sky_stars_twinkle` 0.3 (one star in four, 0.4-1.5 Hz,
+wall clock so SETA does not speed it; c251). Record `verification/results/fl-run51/candidate.json`. Offline
+evidence (measured): host check 50/50 incl. `peak_cap_corners` (peak max 2.000000 at all eight range corners),
+native fixture 15/15 (energy error 0.15 %, twinkle within 0.09 %, state restored under injected faults), full
+16,384-star rebuild 1.04 ms once per sector, draw() 0.75 µs CPU, one draw call; footprints at the defaults 3.0 to
+5.75 px across. Review (medium): F1 cap not enforced at the 8 px support bound (single-star peak 6.47 at the range
+maxima) fixed; F2 doc cause corrected; F3 twinkle multiplies after the cap (instantaneous peak 2.6 at the default)
+documented, not capped. Known limit: bloom extraction clamps its source at `bloom_source_clamp` (default 1.0), so
+stars above white reach the screen brighter but do not glow more than a white pixel.
+**Open flight check:** Argon Prime and one more sector. Rows: `sky_stars_config … density=2.00 brightness=2.00
+size=1.00 min_size=1.50 twinkle=0.30` with every `_setting=ok`, `sky_stars status=ready stars=5760 matched=1
+masked=1 draw=ok`. Pilot: denser and brighter field, bright stars visibly larger than dim ones, a quarter of the
+stars breathing slowly at the same rate with and without SETA, no shimmer under SETA rotation, exposure steady when
+turning to black sky. Tuning in the ini without a rebuild. Kill: twinkle reads as flicker under TAA, or exposure
+reacts to the star field.

@@ -1,0 +1,25 @@
+{
+ "run": "fl-run51",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "8bd4880316b01812d149b9c24b7e294d566ab100",
+ "dirty": false,
+ "build": "build-fl RelWithDebInfo mingw-i686, 0 warnings, check_no_x87 --edition fl PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "a3b366e6e7198d6e5b2149306e0feda848e6fa7b4b9bd18d6fa746820f49d4e0",
+  "bytes": 59315865
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run50",
+  "sha256_prefix": "6dac80a4b851808d"
+ },
+ "ini": "x3m.ini unchanged from run 50 (sky_stars = 1; look controls at their defaults); copy x3m.ini.run50",
+ "exe_sha256_prefix": "e7f3aad8",
+ "evidence": [
+  "verification/results/sky-stars/host_check.json (50/50)",
+  "verification/results/sky-stars/fixture_out.txt (15/15)",
+  "verification/results/sky-stars/native/result.json",
+  "review: F1 cap at support bound fixed in e819cc0e9"
+ ]
+}
