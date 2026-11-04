@@ -174,6 +174,15 @@ SETTINGS = [
     entry('sun_rays', 'float', 'graphics', 'How strong the six soft rays of the mod\'s own sun are (own_sun = 1), 0 to 1; 1 = full, '
           '0 = no rays, only the bright centre and its glow.', builtin='1', range=(0.0, 1.0),
           requires=('own_sun',), launcher='--sun-rays', since='2026-11-02'),
+    entry('sky_stars', 'bool', 'graphics', 'Sharp procedural stars in place of the painted star layer of the sector '
+          'background: small, steady points that keep their brightness when the view turns, also under SETA. Needs the '
+          'star textures marked by x3m-regenerate. 1 = on, 0 = the game\'s painted stars (default).', builtin='0',
+          requires=('taa', 'hdr'), since='2026-11-05'),
+    entry('sky_stars_density', 'float', 'graphics', 'How many procedural stars (sky_stars = 1) relative to the default, '
+          '0.25 to 4; the count also follows the painted texture\'s own star count.', builtin='1', range=(0.25, 4.0),
+          requires=('sky_stars',), since='2026-11-05'),
+    dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
+        '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),

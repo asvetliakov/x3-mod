@@ -1,0 +1,24 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, WSL interop, no device)",
+ "harness": "verification/results/hull-widen-native-validator/native_validate.cpp",
+ "slot_counter": "src/renderer/ps3_program_slots.h",
+ "passed": true,
+ "programs": [
+  {
+   "program": "sky_stars_vs",
+   "words": 116,
+   "messages": [],
+   "end": "00000000",
+   "slots": 14,
+   "source_header": "src/renderer/sky_stars_vertex_program_inc.h"
+  },
+  {
+   "program": "sky_stars_ps",
+   "words": 90,
+   "messages": [],
+   "end": "00000000",
+   "slots": 11,
+   "source_header": "src/renderer/sky_stars_pixel_program_inc.h"
+  }
+ ]
+}

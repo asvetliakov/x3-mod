@@ -1188,6 +1188,20 @@ through WSL interop (measured 2026-11-02): the FL redirect fixture 69 checks, 0 
 stack contract, write paths, every window bit, rollback, late claim). Not verified: the FL redirects and the plumes in
 game (not flown).
 
+## 2026-11-05: sky stars (`sky_stars`, default off; both editions)
+
+The procedural star pass of [sector-background-modern.md](sector-background-modern.md) ("Implementation A") is shared
+code in both editions: the match keys on the X3ML mark the D3DX texture hook already reads (AP: loading_trace row, FL:
+the import-slot stub), the camera comes from the existing `camera_state` providers, and the GPU side
+(`src/renderer/sky_stars_pass.cpp`) is documented D3D9 only: `CreateVertexShader`/`CreatePixelShader`, a vertex
+declaration, MANAGED vertex and index buffers, `Get*`/`Set*` of the states it touches and one `DrawIndexedPrimitive`;
+`COLORWRITEENABLE` masks the native star body (the fog-card mechanism). No Wine/CrossOver dependency. A D3D9Ex device has
+no MANAGED pool: the pass then refuses at attach (`sky_stars_device reason=create`); the game creates a plain device.
+Natively verified on the Windows host through WSL interop (measured 2026-11-05, RTX 5070 Ti, plain D3D9 device with the
+MANAGED buffers): energy, sub-pixel invariance, peak cap, no pixel outside the quads, every touched state restored with
+a draw and a restore fault, 12 checks, 0 failures; both programs pass the native shader validator. The fixture falls back
+to D3D9Ex with DEFAULT buffers only while another process holds exclusive fullscreen. Not verified: in game on either edition (not flown).
+
 ## 2026-11-02: own sun, step 3 (FL edition draws the own sun)
 
 The FL edition now links the same own sun stage (documented D3D9 only, as step 1 below) and its probe hook answers

@@ -1,0 +1,80 @@
+{
+ "ok": true,
+ "checks": 33,
+ "failures": 0,
+ "failed": "",
+ "star_count": {
+  "k0": 512,
+  "k65": 3120,
+  "k143": 6864,
+  "k255": 8192,
+  "k65_d0.25": 780,
+  "k65_d4": 8192
+ },
+ "build": {
+  "seed": "014101a7",
+  "stars": 3120,
+  "bytes": 349440,
+  "peak_max": 0.999207,
+  "median_decoded": 0.05094,
+  "bins_decoded": [
+   129,
+   317,
+   798,
+   1876
+  ],
+  "bin_ratios": [
+   2.457,
+   2.517,
+   2.351
+  ],
+  "unit_err": 8.51e-08,
+  "support_max": 1.0,
+  "pow_err": 4.25e-14
+ },
+ "kernel": {
+  "energy_rel_err": 4.88e-16,
+  "peak_max": 0.945308,
+  "outside": 0,
+  "centre_fraction_a1": 0.628799
+ },
+ "meter_k65_d1": {
+  "ev_target": 0.0,
+  "ev_key": 0.0,
+  "ev_limit": 5.9131,
+  "p99_max_log": -2.039,
+  "neutral": true,
+  "lit": 0,
+  "tiles": 1840,
+  "tile_image": "80x23",
+  "visible_stars": 459,
+  "frame_max": 0.93762,
+  "star_peak": 0.93762
+ },
+ "meter_k143_d4": {
+  "ev_target": 0.0,
+  "ev_key": 0.0,
+  "ev_limit": 5.2511,
+  "p99_max_log": -1.377,
+  "neutral": true,
+  "lit": 0,
+  "tiles": 1840,
+  "tile_image": "80x23",
+  "visible_stars": 1213,
+  "frame_max": 0.90124,
+  "star_peak": 0.90124
+ },
+ "meter_control_lum64": {
+  "ev_target": -2.1259,
+  "ev_key": 0.0,
+  "ev_limit": -2.1259,
+  "p99_max_log": 6.0,
+  "neutral": true,
+  "lit": 0,
+  "tiles": 1840,
+  "tile_image": "80x23",
+  "visible_stars": 0,
+  "frame_max": 6.62203,
+  "star_peak": 0.0
+ }
+}
