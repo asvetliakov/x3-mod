@@ -1,0 +1,42 @@
+scratch FL root: 40 stock catalogue files symlinked from /mnt/c/X3FL; addon2/08.cat written (33 members, 3796553 B .dat): TBackgrounds = FL addon2/04.cat (110 rows) + 2 AP rows from loose:addon/types/TBackgrounds.txt
+  copied greenspot2: 1 records, 8 dust parts, 8 textures
+  copied deepred2: 1 records, 8 dust parts, 8 textures
+edition detected: fl
+fog_families.py --install --replace: exit 0; wrote /tmp/claude-1000/-home-asvetl-x3-mod/a02cc50a-524d-4526-ac3c-227919cc374d/scratchpad/fl-mod-root/x3m/fog-families.bin bytes=4562568 families=2 packets=2
+fog_families.py --check: exit 0; PASS /tmp/claude-1000/-home-asvetl-x3-mod/a02cc50a-524d-4526-ac3c-227919cc374d/scratchpad/fl-mod-root/x3m/fog-families.bin families=2 packets=2 bytes=4562568
+record: edition=fl counts={"covered_by_build": 14, "ok": 2, "refused:no_dust_bodies": 1, "refused:texture_missing": 1} file=4562568 B families=2 packets=2 sha256=0f6806235cbf4638b26869b608e05243de3e4dcb326ff0048dd04d195af4be1d
+layers: 01.cat, 02.cat, 03.cat, 04.cat, 05.cat, 06.cat, 07.cat, 08.cat, 09.cat, 10.cat, 11.cat, 12.cat, 13.cat, addon2/01.cat, addon2/02.cat, addon2/03.cat, addon2/04.cat, addon2/05.cat, addon2/06.cat, addon2/07.cat, addon2/08.cat
+families baked = 2
+  deepred2: profile_id=0x8e576c7c packet=0 packet_bytes=2281060 decoded_sha256=43dfaa1be948d14c nonzero_texels=258371 parts_from=['addon2/08.cat'] same_atlas_as_AP_install=True (AP profile_id=0x8e576c7c)
+  greenspot2: profile_id=0x5fc73b12 packet=1 packet_bytes=2281060 decoded_sha256=0fe2f19e8cbeb393 nonzero_texels=258371 parts_from=['addon2/08.cat'] same_atlas_as_AP_install=True (AP profile_id=0x5fc73b12)
+FL stock dust sectors (verification/results/fl-port/sector-background/fogged_sectors.txt): 48, by family status {"covered_by_build": 48}; families ['bluewell', 'fogbluedistance', 'fogcyancorner', 'fogdeepred', 'foggreeneye', 'foggreenoutlands', 'fogparanid', 'fogred', 'uranus', 'uranus3', 'whitenexus']
+x3m_regenerate run (LOD overlay stubbed): exit 0
+  edition: Farnham's Legacy (X3FL.exe, addon2/)
+  == fog families
+  fog families: reading TBackgrounds and the nebula catalogues
+  processing fog fogbluedistance (1/16) palette checked (built-in profile)
+  processing fog fogblue (2/16) palette checked (built-in profile)
+  processing fog fogkhaak (3/16) palette checked (built-in profile)
+  processing fog fogcyancorner (4/16) palette checked (built-in profile)
+  processing fog fogparanid (5/16) palette checked (built-in profile)
+  processing fog uranus (6/16) palette checked (built-in profile)
+  processing fog uranus3 (7/16) palette checked (built-in profile)
+  processing fog fogred (8/16) palette checked (built-in profile)
+  processing fog bluewell (9/16) palette checked (built-in profile)
+  processing fog whitenexus (10/16) palette checked (built-in profile)
+  processing fog foggreeneye (11/16) palette checked (built-in profile)
+  processing fog foggreenoutlands (12/16) palette checked (built-in profile)
+  processing fog fogdeepred (13/16) palette checked (built-in profile)
+  processing fog khaakhive (14/16) palette checked (built-in profile)
+  processing fog deepred2 (15/16) baked
+  processing fog greenspot2 (16/16) baked
+  fog layers: 01.cat, 02.cat, 03.cat, 04.cat, 05.cat, 06.cat, 07.cat, 08.cat, 09.cat, 10.cat, 11.cat, 12.cat, 13.cat, addon2/01.cat, addon2/02.cat, addon2/03.cat, addon2/04.cat, addon2/05.cat, addon2/06.cat, addon2/07.cat, addon2/08.cat
+  refused fog earth: texture_missing
+  refused fog xtmgreenring: no_dust_bodies
+  fog summary: 2 families added (2 packets, 4562568 B), 14 covered by the built-in profiles, 2 refused; wrote x3m/fog-families.bin
+  fog families: done in 15 s
+  LOD overlay: stubbed by synthetic_fl_mod.py (not part of the fog proof)
+  LOD overlay: done in 0 s
+  == fog families check
+  fog families: check passed after the LOD overlay (launch fingerprint current)
+  all done: fog families, LOD overlay and engine bodies regenerated in 0.3 min

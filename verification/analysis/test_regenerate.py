@@ -253,8 +253,9 @@ class Regenerate(unittest.TestCase):
             self.assertIn('baking with up to', (game / regen.LOG_NAME).read_text())
 
     def test_fl_install(self):
-        """An FL directory (X3FL.exe, addon2/01.cat): the overlay goes to the next addon2 slot, the fog steps are
-        skipped, engine bodies come from addon2/types/Bodies, the process check asks for X3FL.exe."""
+        """An FL directory (X3FL.exe, addon2/01.cat): the fog family bake reads the addon2 view (step 1 before the
+        overlay, the check after it), the overlay goes to the next addon2 slot, engine bodies come from
+        addon2/types/Bodies, the process check asks for X3FL.exe."""
         with tempfile.TemporaryDirectory() as folder:
             game = Path(folder) / 'drive_c' / 'X3FL'
             game.mkdir(parents=True)
@@ -264,7 +265,8 @@ class Regenerate(unittest.TestCase):
             write_catalogue(game / '01.cat', atlas_textures() + engine)
             write_catalogue(game / 'addon2/01.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
                                                      ('objects/stations/y/good.pbb',
-                                                      packed(with_threshold(atlas_tree_lod0(), 160)))])
+                                                      packed(with_threshold(atlas_tree_lod0(), 160)))]
+                            + [('addon2/' + m, d) for m, d in fog_members()])
             write_catalogue(game / 'addon/01.cat', [('objects/ships/x/aponly.pbb', packed(atlas_tree_lod0()))])
             out = io.StringIO()
             with mock.patch.object(regen, 'running_game', return_value=[]) as running, \
@@ -274,17 +276,24 @@ class Regenerate(unittest.TestCase):
             self.assertEqual(code, 0, log)
             running.assert_any_call('fl')
             self.assertIn("edition: Farnham's Legacy (X3FL.exe, addon2/)", text)
-            self.assertIn('fog families: skipped on FL', text)
-            self.assertNotIn('== fog families', text)
+            self.assertNotIn('skipped on FL', text)
+            order = [text.index(line) for line in ('== fog families\n', '== LOD overlay', '== fog families check')]
+            self.assertEqual(order, sorted(order))
+            self.assertRegex(text, r'processing fog zzmod \(1/1\) baked')
+            self.assertIn('fog layers: 01.cat, addon2/01.cat', text)
+            self.assertIn('refused fog zznobody: no_dust_bodies', text)
+            self.assertIn('fog families: check passed after the LOD overlay (launch fingerprint current)', text)
             self.assertIn('slot plan: addon2/02 1 bodies', text)                  # the station: texel_floor
-            self.assertIn('all done: LOD overlay and engine bodies regenerated', text)
+            self.assertIn('all done: fog families, LOD overlay and engine bodies regenerated', text)
             # the sky step runs after the LOD overlay and before the engine bodies; nothing eligible here
             self.assertLess(text.index('== LOD overlay'), text.index('== sky textures'))
             self.assertLess(text.index('== sky textures'), text.index('== engine bodies'))
             self.assertIn('sky textures: skipped (no eligible nebula part or star texture)', text)
             self.assertTrue((game / 'addon2/02.cat').is_file() and (game / 'addon2/02.x3m-lod.json').is_file())
             self.assertEqual(sorted(p.name for p in (game / 'addon').iterdir()), ['01.cat', '01.dat'])
-            self.assertFalse((game / 'x3m' / 'fog-families.bin').exists())
+            fog = json.loads((game / 'x3m' / 'fog-families.json').read_text())
+            self.assertEqual((fog['edition'], fog['file']['families']), ('fl', 1))
+            self.assertIn('addon2/02.cat', fog['launch_inputs']['layers'])     # refreshed after the overlay
             table = json.loads((game / 'x3m' / 'engine_bodies.json').read_text())
             self.assertEqual(table['generated_from']['edition'], 'fl')
             with mock.patch.object(regen, 'running_game', return_value=['1 X3FL.exe']), \

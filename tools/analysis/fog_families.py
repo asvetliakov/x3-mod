@@ -7,7 +7,10 @@ file once at the first fog sector sample and one packet per family switch; the 1
 profiles always win and stay in force when the file is absent or invalid.
 
 Inputs, through sector_fog_census.Assets (the resolver bob1.py and lod_batch_census.py use;
-installed catalogues, loose files, then --mod-cat layers):
+installed catalogues, loose files, then --mod-cat layers) in the installation's edition
+(catalogue_mounts.game_edition: X3AP.exe mounts root NN.cat then addon/NN.cat; Farnham's Legacy,
+X3FL.exe beside addon2/01.cat, root NN.cat then addon2/NN.cat and no addon/; X3M_EDITION overrides).
+The record carries the edition; --check resolves the same view and refuses an edition change.
 
 - TBackgrounds rows with NumDustInstances > 0, grouped by family name (column 7). Families the
   build compiles (tools/fog_field_recipe.py PROFILES) are reported `covered_by_build` and never
@@ -64,7 +67,8 @@ File layout (little endian; the DLL validates every field, src/renderer/fog_fiel
 Usage (NumPy 2.x required, as for the build; the pinned recipe atlas hashes enforce identity):
   fog_families.py --dry-run [--game DIR]                  family table and refusals, no bake
   fog_families.py --out DIR [--jobs N]                     DIR/x3m/fog-families.bin + .json
-  fog_families.py --install [--replace] [--force-running]  into <game>/x3m/ (one .previous kept)
+  fog_families.py --install [--replace] [--force-running]  into <game>/x3m/ (one .previous kept; refuses while
+                                                           the edition's game runs, X3AP.exe or X3FL.exe)
   fog_families.py --check [--out DIR]                      installed (or DIR's) file vs catalogues; a PASS
                                                            refreshes the launch fingerprint (fog_family_inputs.py)
 tools/manage.py fog-families --bottle X3 [--check|--install ...] forwards here with the bottle's game directory.
@@ -72,7 +76,7 @@ Options: --mod-cat PATH ... (extra catalogue layers), --family NAME ..., --profi
 NAME=occupancy,sigma, --background-palette NAME ..., --jobs N (parallel palette + bake).
 Removing <game>/x3m/fog-families.bin (and .json) reverts to the compiled 14; so does
 X3M_FOG_FAMILIES=0 in the DLL's environment. Native Windows: the same Python and NumPy with
---game pointing at the install; the DLL looks next to X3AP.exe.
+--game pointing at the install; the DLL looks in x3m\\ next to the running EXE (X3AP.exe or X3FL.exe).
 """
 from __future__ import annotations
 
@@ -96,6 +100,7 @@ for _path in (HERE, ROOT / 'tools', ROOT / 'tools' / 'build'):
         sys.path.insert(0, str(_path))
 import bake_fog_fields as baker  # noqa: E402
 import bob1  # noqa: E402
+import catalogue_mounts  # noqa: E402
 import fog_family_inputs  # noqa: E402
 import fog_field_recipe as recipe  # noqa: E402
 import lod_atlas  # noqa: E402
@@ -565,19 +570,20 @@ def write_atomic(path, data):
 
 # --- driver --------------------------------------------------------------------------------
 
-def running_game():
+def running_game(edition='ap'):
+    """Process lines of a running X3AP game (FL: X3FL; verification/probe/game_guard.py)."""
     probe = str(ROOT / 'verification' / 'probe')
     if probe not in sys.path:
         sys.path.insert(0, probe)
-    from game_guard import game_running
-    return game_running()
+    import game_guard
+    return game_guard.game_running(game_guard.FL_COMMANDS if edition == 'fl' else game_guard.GAME_COMMANDS)
 
 
-def refuse_if_running(args):
+def refuse_if_running(args, edition='ap'):
     if args.force_running:
         return
     try:
-        lines = running_game()
+        lines = running_game(edition)
     except RuntimeError as exc:
         raise SystemExit(f'--install: cannot tell whether the game is running ({exc}); pass --force-running to override') from None
     if lines:
@@ -639,7 +645,8 @@ def generate(args):
     started = time.monotonic()
     game = Path(args.game).resolve()
     mods = [Path(m).resolve() for m in args.mod_cat or ()]
-    assets = sfc.Assets(game, mods=mods)
+    edition = catalogue_mounts.game_edition(game)
+    assets = sfc.Assets(game, mods=mods, edition=edition)
     grouped, tbackgrounds = enumerate_families(assets)
     names = sorted(grouped)
     if args.family:
@@ -705,8 +712,8 @@ def generate(args):
     data = None if args.dry_run else build_file(rows, packets)
     record = dict(schema=1, tool='tools/analysis/fog_families.py', tool_sha256=sha256(Path(__file__).read_bytes()),
                   baker_sha256=sha256(Path(baker.__file__).read_bytes()), recipe_sha256=sha256(Path(recipe.__file__).read_bytes()),
-                  numpy=np.__version__, recipe_id=recipe.RECIPE_ID, game=str(game), catalogue_layers=assets.layers,
-                  mod_cats=[str(m) for m in mods], launch_inputs=fog_family_inputs.launch_inputs(game, mods),
+                  numpy=np.__version__, recipe_id=recipe.RECIPE_ID, game=str(game), edition=edition, catalogue_layers=assets.layers,
+                  mod_cats=[str(m) for m in mods], launch_inputs=fog_family_inputs.launch_inputs(game, mods, edition),
                   tbackgrounds=tbackgrounds, jobs=max(1, args.jobs), dry_run=args.dry_run,
                   palette_rule='fog-family-data.md §3; floor-565 DXT decode, inclusive numpy-linear percentile bands, 9-decimal stops',
                   counts=counts, families=[{k: v for k, v in p.items()} for p in plans],
@@ -757,7 +764,10 @@ def check(args):
     for key, module in (('baker_sha256', baker), ('recipe_sha256', recipe)):
         if record.get(key) != sha256(Path(module.__file__).read_bytes()):
             problems.append(f'{key} changed since generation')
-    assets = sfc.Assets(game, mods=[Path(m) for m in record.get('mod_cats', ())])
+    edition = catalogue_mounts.game_edition(game)
+    if record.get('edition', 'ap') != edition:   # records before the edition field are AP
+        problems.append(f"edition changed ({record.get('edition', 'ap')} -> {edition})")
+    assets = sfc.Assets(game, mods=[Path(m) for m in record.get('mod_cats', ())], edition=edition)
     grouped, tbackgrounds = enumerate_families(assets)
     if tbackgrounds['decoded_sha256'] != record['tbackgrounds']['decoded_sha256']:
         problems.append('TBackgrounds changed')
@@ -783,7 +793,7 @@ def check(args):
         # or re-copied catalogue does not keep the launch line at 'stale'.
         stale = fog_family_inputs.launch_difference(game, record)
         if stale is not None or 'launch_inputs' not in record:
-            record['launch_inputs'] = fog_family_inputs.launch_inputs(game, record.get('mod_cats') or ())
+            record['launch_inputs'] = fog_family_inputs.launch_inputs(game, record.get('mod_cats') or (), edition)
             write_atomic(record_path, (json.dumps(record, indent=1, sort_keys=True) + '\n').encode())
             print(f'launch fingerprint refreshed ({stale or "record predates it"})')
     return 1 if problems else 0
@@ -797,7 +807,7 @@ def main(argv=None):
     parser.add_argument('--profile', action='append', metavar='NAME=OCCUPANCY,SIGMA', help='per-family density override (recorded)')
     parser.add_argument('--background-palette', nargs='+', metavar='NAME', help='derive NAME\'s palette from its sky (opt-in; earth, xtmgreenring)')
     parser.add_argument('--out', type=Path, help='output root outside the game directory: writes OUT/x3m/fog-families.bin and .json')
-    parser.add_argument('--install', action='store_true', help='write into <game>/x3m/ (refuses while X3AP runs)')
+    parser.add_argument('--install', action='store_true', help='write into <game>/x3m/ (refuses while the game runs: X3AP, or X3FL on FL)')
     parser.add_argument('--replace', action='store_true', help='with --install: replace an installed file, keeping one .previous')
     parser.add_argument('--force-running', action='store_true', help='with --install: skip the running-game refusal')
     parser.add_argument('--dry-run', action='store_true', help='resolve and derive palettes, print the table; no bake, no write')
@@ -816,8 +826,9 @@ def main(argv=None):
         if out == game or out.is_relative_to(game):
             raise SystemExit('--out must be outside the game directory (use --install to target it)')
     target = game / 'x3m' if args.install else (args.out.resolve() / 'x3m' if args.out else None)
+    edition = catalogue_mounts.game_edition(game)
     if args.install and not args.dry_run:
-        refuse_if_running(args)
+        refuse_if_running(args, edition)
         if (target / FILE_NAME).exists() and not args.replace:
             raise SystemExit(f'{target / FILE_NAME} exists; pass --replace (the current file is kept as .previous)')
     plans, record, data = generate(args)
@@ -825,7 +836,7 @@ def main(argv=None):
     if args.dry_run:
         return 0
     if args.install:
-        refuse_if_running(args)  # again: the bake can take minutes
+        refuse_if_running(args, edition)  # again: the bake can take minutes
         if (target / FILE_NAME).exists() and not args.replace:
             raise SystemExit(f'{target / FILE_NAME} appeared during the bake; pass --replace')
     target.mkdir(parents=True, exist_ok=True)

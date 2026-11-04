@@ -212,7 +212,8 @@ class BakeAndFileTests(unittest.TestCase):
 class EndToEndTests(unittest.TestCase):
     """A synthetic game root: TBackgrounds, text bodies and DDS members in one catalogue."""
 
-    def make_game(self, root, tex_a_value=180, family='zzmod'):
+    def make_game(self, root, tex_a_value=180, family='zzmod', cat='01.cat', prefix=''):
+        """Every member in root/cat; prefix 'addon2/' puts them in FL's expansion namespace."""
         rows = [background_line(family, [3, 1, 0, 0, 0, 0, 0, 0], 5, 1),
                 background_line('zzmissing', [1, 0, 0, 0, 0, 0, 0, 0], 3, 2),
                 background_line('zznobody', [1, 0, 0, 0, 0, 0, 0, 0], 2, 3),
@@ -229,7 +230,7 @@ class EndToEndTests(unittest.TestCase):
                    (f'{nebula}/zzmissing/nebula_zzmissing_dust_part01.pbd', body([r'environments\nebulae\zzmissing\gone.tga'])),
                    ('dds/tex_a.pck', dds_rgb24(grey)),
                    ('dds/tex_b.pck', dds_rgb24(np.full((16, 16, 3), [20, 200, 90], np.uint8)))]
-        sfc.write_catalogue(root / '01.cat', members)
+        sfc.write_catalogue(root / cat, [(prefix + path, data) for path, data in members])
 
     def run_tool(self, *argv):
         stdout = io.StringIO()
@@ -268,11 +269,11 @@ class EndToEndTests(unittest.TestCase):
             # Install: refused while the game runs, refused over an existing file, --replace keeps one .previous.
             original = ff.running_game
             try:
-                ff.running_game = lambda: ['123 C:\\X3\\X3AP.exe']
+                ff.running_game = lambda edition='ap': ['123 C:\\X3\\X3AP.exe']
                 with self.assertRaises(SystemExit) as caught:
                     self.run_tool('--game', game, '--install')
                 self.assertIn('game is running', str(caught.exception))
-                ff.running_game = lambda: []
+                ff.running_game = lambda edition='ap': []
                 (game / 'x3m').mkdir()
                 (game / 'x3m' / ff.FILE_NAME).write_bytes(b'old')
                 with self.assertRaises(SystemExit) as caught:
@@ -286,14 +287,14 @@ class EndToEndTests(unittest.TestCase):
                 installed = {n: (game / 'x3m' / n).read_bytes() for n in (ff.FILE_NAME, ff.RECORD_NAME)}
                 # The game starts during the bake: the second check refuses before anything moves.
                 calls = []
-                ff.running_game = lambda: calls.append(1) or (['123 X3AP.exe'] if len(calls) > 1 else [])
+                ff.running_game = lambda edition='ap': calls.append(1) or (['123 X3AP.exe'] if len(calls) > 1 else [])
                 with self.assertRaises(SystemExit) as caught:
                     self.run_tool('--game', game, '--install', '--replace', '--jobs', '1')
                 self.assertIn('game is running', str(caught.exception))
                 self.assertEqual(len(calls), 2)
                 self.assertEqual({n: (game / 'x3m' / n).read_bytes() for n in installed}, installed)
                 # A failed post-write validation restores the moved pair.
-                ff.running_game = lambda: []
+                ff.running_game = lambda edition='ap': []
                 with mock.patch.object(ff, 'read_file', return_value=dict(status='rejected', reason='simulated', rows=[])):
                     with self.assertRaises(SystemExit) as caught:
                         self.run_tool('--game', game, '--install', '--replace', '--jobs', '1')
@@ -302,6 +303,66 @@ class EndToEndTests(unittest.TestCase):
                 self.assertFalse(any(p.name.endswith('.tmp') for p in (game / 'x3m').iterdir()))
             finally:
                 ff.running_game = original
+
+
+class FarnhamsLegacyTests(unittest.TestCase):
+    """An FL root (X3FL.exe, addon2/01.cat, no addon/): the addon2 view, x3m/ beside X3FL.exe, the X3FL check."""
+
+    def make_fl_game(self, game):
+        game.mkdir(parents=True)
+        (game / 'X3FL.exe').write_bytes(b'MZ stub')
+        sfc.write_catalogue(game / '01.cat', [('types/Dummy.txt', b'base')])
+        EndToEndTests.make_game(None, game, cat='addon2/01.cat', prefix='addon2/')
+        self.assertFalse((game / 'addon').exists())
+
+    def test_fl_bake_check_and_fingerprint(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}), \
+                mock.patch.object(ff, 'running_game', return_value=[]) as running:
+            os.environ.pop('X3M_EDITION', None)
+            game = Path(tmp) / 'X3FL'
+            self.make_fl_game(game)
+            code, text = EndToEndTests.run_tool(None, '--game', game, '--install', '--jobs', '1')
+            self.assertEqual(code, 0, text)
+            running.assert_any_call('fl')
+            folder = game / 'x3m'
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), [ff.FILE_NAME, ff.RECORD_NAME])
+            self.assertTrue((game / 'X3FL.exe').is_file())                    # x3m/ sits beside X3FL.exe
+            loaded = ff.read_file(folder / ff.FILE_NAME)
+            self.assertEqual([(r['name'], r['profile_id'], r['disabled']) for r in loaded['rows']],
+                             [('zzmod', ff.profile_id('zzmod'), None)])
+            record = json.loads((folder / ff.RECORD_NAME).read_text())
+            self.assertEqual((record['edition'], record['catalogue_layers']), ('fl', ['01.cat', 'addon2/01.cat']))
+            self.assertEqual(record['tbackgrounds']['source'], 'addon2/01.cat')
+            self.assertEqual(record['counts'], {'ok': 1, 'refused:name_invalid': 1, 'refused:no_dust_bodies': 1,
+                                                'refused:texture_missing': 1})
+            inputs = record['launch_inputs']
+            self.assertEqual(inputs['layers'], ['01.cat', 'addon2/01.cat'])
+            self.assertEqual(sorted(n for n in inputs['files'] if 'TBackgrounds' in n),
+                             ['addon2/types/TBackgrounds.pck', 'addon2/types/TBackgrounds.txt',
+                              'types/TBackgrounds.pck', 'types/TBackgrounds.txt'])
+            self.assertIsNone(ff.fog_family_inputs.launch_difference(game, record))
+            code, text = EndToEndTests.run_tool(None, '--game', game, '--check')
+            self.assertEqual(code, 0, text)
+            self.assertIn('PASS', text)
+            # A new addon2 layer turns the fingerprint stale; a new addon/ layer does not (FL never mounts it).
+            sfc.write_catalogue(game / 'addon' / '01.cat', [('types/Dummy.txt', b'ap')])
+            self.assertIsNone(ff.fog_family_inputs.launch_difference(game, record))
+            sfc.write_catalogue(game / 'addon2' / '02.cat', [('addon2/types/Dummy.txt', b'x')])
+            self.assertEqual(ff.fog_family_inputs.launch_difference(game, record), 'catalogue list changed (+addon2/02.cat)')
+
+    def test_fl_install_refused_while_x3fl_runs(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {}):
+            os.environ.pop('X3M_EDITION', None)
+            game = Path(tmp) / 'X3FL'
+            self.make_fl_game(game)
+            asked = []
+            with mock.patch.object(ff, 'running_game', lambda edition='ap': asked.append(edition) or
+                                   (['123 C:\\X3FL\\X3FL.exe'] if edition == 'fl' else [])):
+                with self.assertRaises(SystemExit) as caught:
+                    EndToEndTests.run_tool(None, '--game', game, '--install', '--jobs', '1')
+            self.assertIn('game is running (123 C:\\X3FL\\X3FL.exe)', str(caught.exception))
+            self.assertEqual(asked, ['fl'])
+            self.assertFalse((game / 'x3m').exists())
 
 
 def load_manage():

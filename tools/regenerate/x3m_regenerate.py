@@ -27,9 +27,10 @@ Farnham's Legacy (X3FL.exe beside addon2/01.cat, catalogue_mounts.edition): the 
 addon/ (X3FL.exe mounts root NN.cat then addon2/NN.cat, docs/reverse-engineering/fl/resource-resolver.md): recovery
 under addon2/ and addon2/mods/, the LOD overlay as addon2/NN.cat/.dat + marker at the next free addon2 number,
 engine bodies from addon2/types/Bodies (engine_bodies.generate's own FL view), the selected package from
-HKCU\\Software\\EGOSOFT\\X3FL\\ModName (one entry; a package list bakes no package). The fog family steps (1, 5) are
-skipped on FL: fog_families.py reads the AP view only (a log line says so). The running-game check looks for
-X3FL.exe.
+HKCU\\Software\\EGOSOFT\\X3FL\\ModName (one entry; a package list bakes no package), the fog family steps (1, 4)
+on FL's view (TBackgrounds, dust bodies and textures from root NN.cat then addon2/NN.cat, the selected package
+from addon2/mods/; stock FL's dust families are all compiled in, so the file is the empty table until a mod adds
+a family) into <game>/x3m/ beside X3FL.exe. The running-game check looks for X3FL.exe.
 
 Every console line (timestamped) goes to <game>/x3m-regenerate.log too (rewritten each run); the tools'
 detailed output (the LOD batch summary, the fog family table) goes to the log only, marked '|'. The run
@@ -495,12 +496,10 @@ def run(game, jobs, log, memory_budget=None, sky_preview=None, sky_preview_scale
         log.say(f'warning: could not recover an interrupted overlay write ({exc})')
     name, where = selected_mod(game)
     package_cat = package_layer(game, name, xp)
-    steps = [('fog families', lambda: fog_step(log, game, jobs, package_cat))] if edition == 'ap' else []
-    if edition == 'fl':
-        log.say('fog families: skipped on FL (fog_families.py reads the AP catalogue view only)')
-    steps += [('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp, sky_preview,
-                                               sky_preview_scale)),
-              ('sky textures', lambda: sky_step(log, game, xp, sky_preview)),
+    steps = [('fog families', lambda: fog_step(log, game, jobs, package_cat)),
+             ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp, sky_preview,
+                                              sky_preview_scale)),
+             ('sky textures', lambda: sky_step(log, game, xp, sky_preview)),
               ('engine bodies', lambda: engine_step(log, game))]
     for label, step in steps:
         log.say(f'== {label}')
@@ -518,7 +517,7 @@ def run(game, jobs, log, memory_budget=None, sky_preview=None, sky_preview_scale
             failed.append(label)
             log.say(f'{label}: FAILED with an unexpected error:')
             log.say(traceback.format_exc().rstrip())
-    if edition == 'ap' and not {'fog families', 'LOD overlay'} & set(failed):   # the engine table does not touch the catalogues
+    if not {'fog families', 'LOD overlay'} & set(failed):   # the engine table does not touch the catalogues
         log.say('== fog families check')
         fog_check_step(log, game)
     minutes = (time.monotonic() - started) / 60
@@ -526,7 +525,7 @@ def run(game, jobs, log, memory_budget=None, sky_preview=None, sky_preview_scale
         log.say(f'FAILED: {", ".join(failed)} after {minutes:.1f} min; a failed step keeps its previous results'
                 f' (details above and in {LOG_NAME})')
     else:
-        log.say(f'all done: {"fog families, " if edition == "ap" else ""}LOD overlay and engine bodies'
+        log.say('all done: fog families, LOD overlay and engine bodies'
                 f' regenerated in {minutes:.1f} min')
     return failed
 
