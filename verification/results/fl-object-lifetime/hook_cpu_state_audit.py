@@ -36,12 +36,13 @@ def main():
     for name, hits in seen.items():
         counts = {}
         rest = []
-        for line in hits:
+        # Count the envelope from the function's own listing: check_no_x87 allows fxsave/fxrstor as
+        # state transport since 2026-11-04, so they no longer appear among its hits.
+        for line in functions[name]:
             mnemonic = x87.parse(line)[0]
             if mnemonic in ('fxsave', 'fxrstor'):
                 counts[mnemonic] = counts.get(mnemonic, 0) + 1
-            else:
-                rest.append(line)
+        rest.extend(line for line in hits if x87.parse(line)[0] not in ('fxsave', 'fxrstor'))
         if counts:
             envelopes[name] = counts
             if ENVELOPE.get(name) != counts:
