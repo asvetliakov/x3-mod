@@ -12,6 +12,9 @@ draw, masks its colour writes exactly as the fog cards are masked, and draws one
 energy-conserving star quads in its place, seeded and sized from the mark alone, so A needs no engine-memory
 read on either edition.
 
+**Update 2026-11-04.** B, the nebula part bake, was rejected after the flight-level check (Decision B). The `sky` row
+group now carries only the star-texture marks that A needs (Implementation).
+
 ## Facts the decision rests on (measured unless marked)
 
 - FL stock: 68 star textures `dds/nebula_<family>_stars_<colour>_diff.pck`, 1024x1024 DXT1 with 11 mips; 224
@@ -69,18 +72,34 @@ Options considered:
   (`SRCALPHA/ONE`, alpha 1); extinction would be new art and `INVDESTCOLOR` goes negative on an FP16 target
   with summed parts above 1. Left out (section 6).
 
-## Decision B: offline nebula bake
+## Decision B: offline nebula bake (rejected after flight-level check)
 
-**Chosen: a `sky` row group in the LOD overlay batch.** `tools/analysis/sky_textures.py` (numpy only) bakes each
-eligible part and star texture; `lod_overlay.batch` adds its members to the same `addon/NN` (AP) or `addon2/NN`
-(FL) catalogues and records them in the `.x3m-lod.json` manifest as `sky: {recipe_id, tool_sha256, rows:
-[{member, source, inputs_sha256, member_sha256, metrics}]}`. The engine's resolver takes `dds/<basename>.pck` from
-the highest slot down, so a member with the stock name in the overlay slot wins; a selected mod package gets the
-members through the existing derived `<mod>-x3m-lod` copy. Reuse goes through `reuse_previous` by
-`inputs_sha256 = sha256(decoded source bytes ‖ recipe_id ‖ options)`; the sky tool file is deliberately not in
-`TOOL_FILES`, so a sky recipe change rebakes textures, not bodies, and a body change does not rebake textures.
-`lod_overlay_check` validates the slot by `overlay_sha256` as today; the fog step reads the full catalogue view
-(overlay slots included; see Implementation); the fog check already refreshes the launch fingerprint after the overlay write.
+**Rejected 2026-11-04.** The recipe was implemented and passed its offline gate. At the size the screen shows
+them, though, the baked parts looked worse than the stock parts magnified bilinearly by the GPU:
+
+- Once each 4096 texel covers about 1.75 screen pixels, the ordered dither shows as a regular dot pattern.
+- The 4096 DXT1 blocks quantise more than the GPU's bilinear interpolation of the 2048 blocks.
+- On the bluewell part 01 preview at 4x crop, stock against bake, there were 9.8 against 4.9 mean colours per 8x8
+  block and a plateau share of 3.4 % against 9.3 %.
+
+The offline gate had measured the box-downsampled bake, which hid this. The part pipeline was removed from the
+code.
+
+The only remaining candidate is untested: an uncompressed 2048x1024 8-bit variant with deband, blue-noise ±0.5 LSB
+dither and no upscale, at 8 MiB per part (AP Mayhem already ships parts in that form). The retained evidence is
+listed in `verification/results/sector-background-textures/README.txt`.
+
+The catalogue mechanism chosen for B stays, carrying only the star-texture marks:
+
+- **Sky row group.** `tools/analysis/sky_textures.py` marks each star texture, and `lod_overlay.batch` adds the
+  members to the same `addon/NN` (AP) or `addon2/NN` (FL) catalogues. The `.x3m-lod.json` manifest records them as
+  `sky: {recipe_id, tool_sha256, options, rows: [{member, source, inputs_sha256, member_sha256, metrics}]}`.
+- **Resolution.** The engine's resolver takes `dds/<basename>.pck` from the highest slot down, so a member with
+  the stock name in the overlay slot wins. A selected mod package gets the members through the existing derived
+  `<mod>-x3m-lod` copy.
+- **Reuse.** Reuse is keyed on `inputs_sha256`. The sky tool files are deliberately not in `TOOL_FILES`, so a sky
+  change does not rebake bodies and a body change does not re-mark textures.
+- **Checks.** `lod_overlay_check` validates the slot by `overlay_sha256` as before.
 
 Options considered:
 - *A separate overlay slot with its own marker.* The LOD batch would see it as a mod catalogue (counted in
@@ -213,52 +232,29 @@ magnification.
     header parse on the engine's own D3DX call); behaviour is Windows-compatible source until the user flies it on
     native D3D9, tracked in `platform-portability.md`.
 
-## Implementation (B, 2026-11-04): design facts that proved wrong
+## Implementation (2026-11-04): star-texture marks
 
-Measured on FL `bluewell` and `avdustysol` (8 parts, 2 star textures). Scripts and outputs are in
-`verification/results/sector-background-textures/`: `sky_bake_metrics.py` with `sky_bake_metrics_fl.txt`, and
-`sky_encoder_bound.py` with `sky_encoder_bound_fl.txt`.
+What remains of the sky group is the mark that the star pass (A) needs.
 
-- **The answer-4 banding limits measure 8-bit repetition, not banding.** The exact unbanded ramp, rounded to
-  8 bits, has a mean identical-luma run of 8.0 px. The near-uniform dark red `avdustysol` has a source plateau
-  share of 81 % without any banding. Meeting run ≤ 1.5 px and plateau ≤ 10 % needs noise that survives the 2x
-  box. Even per-texel RGB565 with ordered dither (looser than DXT1) only reaches run 1.49 px at a hue shift of
-  4.4°, and run 2.09 px at 1.98°. Run ≤ 1.5 px, plateau ≤ 10 % and hue < 1° cannot all hold on real parts.
-- **Limits redefined (2026-11-04, orchestrator decision; B continues).** The identical-luma run is informational
-  only. The plateau share passes at ≤ 10 % or at ≤ 90 % of the source's share. Hue shift (chroma > 8) is ≤ 2.0°.
-  PSNR ≥ 40 dB, zero violations 0 and wrap-column luma change ≤ 0.5 are unchanged. The limits live in
-  `sky_textures.THRESHOLDS` and `failures()`. Under them, 9 of 10 textures pass. The one failure is
-  `avdustysol` part 03 at plateau 0.7261 against a cap of 0.7256 (0.9 × 0.8062); that part is a near-uniform
-  colour, so its plateau share measures flatness, not banding. A follow-up decision gives near-uniform textures (source plateau share ≥ 0.5) their own branch (below);
-  with the final tool (`tool_sha256` b66a663e…) the result is 10 of 10.
-- **The fog step does not read a pinned stock view.** `fog_families.py` builds `sfc.Assets(game, mods=...)` (lines
-  642 and 760), the full view including the x3m-lod overlay slots, so it sees the sky members. That is harmless
-  today, because the fog step is skipped on FL and the sky group is off on AP. Once sky is on for AP, `--check`
-  would report changed texture inputs for families that use `--background-palette`.
-- **Near-uniform plateau rule tightened (review F1).** At a source plateau share ≥ 0.5 the bake passes only when
-  its plateau share does not exceed the source's and its run is at most a third of the source's.
-  `sky_metrics_noop_check.py` shows untouched and nearest-neighbour bakes fail, except bluewell part 01
-  untouched, whose source share 0.081 already meets the ≤ 0.10 branch.
-- **The sky tool hash covers lod_atlas.py (review F2).** The sky group's `tool_sha256` hashes
-  `sky_textures.py` and then `lod_atlas.py`, so a decoder or encoder change rebakes the textures but no body.
-- **Hue < 1° is out of DXT1's reach on dark low-chroma parts.** The bake reaches 1.31-1.62° on `bluewell`
-  (chroma 9-32) and 0.41° on `avdustysol`. The answer-3 recipe as written gives 3.4-4.2°: a per-channel guided
-  filter, then ±0.5 LSB dither, then the PCA encoder.
-- **Stage 3 changed.** The guided filter runs on luma and is applied as a gain on RGB, so hue is locked. A
-  per-channel filter alone costs 2.0° on a `bluewell` crop. The filter weight also falls to zero over the r texels
-  next to each border, which keeps the wrap columns: within 0.06 luma on all eight parts.
-- **Stage 6 changed.** An 8-bit ±0.5 LSB dither before the PCA fit is erased by 565 endpoint rounding: flat
-  blocks collapse to one colour, and re-encoding the untouched `avdustysol` source alone costs 5.9°. The dither
-  now moves the palette level (±0.5 palette step, ordered 8x8 Bayer). Low-spread blocks get bracketing endpoints:
-  the 8x8 corners of the two enclosing 565 cells, chosen for the line closest to the block mean. Blocks with a
-  luma spread above 16 keep `lod_atlas._encode_color`.
-- **Invariant 8 holds without refinement.** PCA encoder PSNR is 47.6 dB on `bluewell` and 40.65 dB on
-  `avdustysol`. One least-squares refinement iteration adds 0.01-0.4 dB for +0.35-0.85 s per part, so it is not
-  used.
-- **Overlay growth is about a tenth of the estimate.** Gzip DXT1 at 4096x2048 stores 0.19-0.79 MB per real part,
-  not 3.4 MB. The 8 parts store 3.44 MB against 1.10 MB stock, so FL's 232 parts add roughly 0.1 GB (inferred),
-  not 0.9 GB.
-- **Time and memory are above the estimates.** Bake time is 2.5-4.4 s per part with 4 workers (measured), and
-  the worker peak is 614 MiB RSS, not under 0.5 GB.
-- **The reuse key covers the whole source DDS.** `inputs_sha256` hashes the whole unpacked source DDS (header and
-  every mip), not the decoded level 0. A star texture's output is those bytes plus a header mark.
+- **Members and mark.** `tools/analysis/sky_textures.py` copies each winning
+  `dds/nebula_<family>_stars_<colour>_diff` member byte for byte, texels and every mip, and writes the X3ML mark
+  into `dwReserved1[0..2]`. The mark is version 1 with descriptor `slot = fnv1a32(family) & 0xff`,
+  `lane = colour class`, `K = bright peaks // 8` and `payload = 2`. A host test round-trips it through
+  `lod_texture_mark.h`'s own parser; `lane_of` stays 0, so the strength lane is untouched.
+- **Switch and log.** `lod_overlay.py --batch --sky auto|on|off` (auto: on for FL, off for AP) carries the marks in
+  the overlay slot, and the regenerate step logs one row per family.
+- **Reuse.** `inputs_sha256` hashes the whole unpacked source DDS (header and every mip) together with the recipe
+  id, because the output is those bytes plus the mark. The group's `tool_sha256` hashes `sky_textures.py` and then
+  `lod_atlas.py`.
+- **Budget, packages and candidate check.** Marked textures are never dropped by `--budget-bytes`. A package star
+  texture is marked into the derived copy. `lod_overlay_check.candidate_state` counts the members as intended sky
+  overrides.
+- **Earlier part members.** A nebula part is no longer a member. A `--sync` run therefore drops the part members
+  and their sky rows that an earlier version wrote (the FL run-49 overlay) while keeping the star members.
+- **Fog step.** `fog_families.py` builds `sfc.Assets(game, mods=...)`, the full view including the overlay slots,
+  not a pinned stock view, so it sees the star members. Their texels are identical to stock, so its colours are
+  unaffected. Once the group is on for AP, `--check` may still report changed inputs for families that use
+  `--background-palette`, because the member bytes differ from stock in the header.
+- **Removed.** The part re-authoring pipeline, its options (`--sky-parts`, `--sky-uncompressed`, `--sky-detail`,
+  `--sky-preview`), the previews, the part metrics and `failures()` were removed. Their findings (encoder bound,
+  gate redefinitions) survive only in the retained `.txt` outputs listed in the results `README.txt`.

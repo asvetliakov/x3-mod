@@ -288,7 +288,7 @@ class Regenerate(unittest.TestCase):
             # the sky step runs after the LOD overlay and before the engine bodies; nothing eligible here
             self.assertLess(text.index('== LOD overlay'), text.index('== sky textures'))
             self.assertLess(text.index('== sky textures'), text.index('== engine bodies'))
-            self.assertIn('sky textures: skipped (no eligible nebula part or star texture)', text)
+            self.assertIn('sky textures: skipped (no star texture)', text)
             self.assertTrue((game / 'addon2/02.cat').is_file() and (game / 'addon2/02.x3m-lod.json').is_file())
             self.assertEqual(sorted(p.name for p in (game / 'addon').iterdir()), ['01.cat', '01.dat'])
             fog = json.loads((game / 'x3m' / 'fog-families.json').read_text())
@@ -300,6 +300,23 @@ class Regenerate(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(regen.main(['--game-dir', str(game), '--no-wait']), 1)
             self.assertIn('refused: the game is running (1 X3FL.exe)', (game / regen.LOG_NAME).read_text())
+
+    def test_sky_default(self):
+        """The sky group runs at lod_overlay's default (--sky auto: star marks on FL, off on AP); regenerate has no
+        nebula part or preview options any more."""
+        a = regen.parse_args([])
+        self.assertFalse(any(k.startswith('sky') for k in vars(a)))
+        seen = {}
+
+        def fake_main(argv):
+            seen['argv'] = argv
+            raise SystemExit('stop')
+        with unittest.mock.patch('lod_overlay.main', fake_main), tempfile.TemporaryDirectory() as folder:
+            log = regen.Log(Path(folder) / 'x.log', io.StringIO())
+            with self.assertRaises(regen.StepFailed):
+                regen.lod_step(log, Path(folder), 1, '', 'test', xp='addon2')
+            log.close()
+        self.assertFalse(any(x.startswith('--sky') for x in seen['argv']))
 
     def test_windows_process_check(self):
         csv_text = '"System Idle Process","0","Services","0","8 K"\n"X3AP.exe","4242","Console","1","900,000 K"\n'

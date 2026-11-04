@@ -2106,19 +2106,12 @@ def build_parser():
                    help='batch: record JSON path (default x3m-lod-batch.json under --out or beside the marker on --install, else in the working'
                         ' directory); *-summary.txt and *-bodies.txt are written beside it')
     b.add_argument('--sky', choices=('auto', 'on', 'off'), default='auto',
-                   help='batch: the sky row group (tools/analysis/sky_textures.py; sector-background-modern.md Decision'
-                        ' B): re-authored nebula parts and marked star textures as members of the same overlay slot'
-                        ' (auto: on for FL, off for AP until the AP step; textures are never dropped by --budget-bytes)')
-    b.add_argument('--sky-detail', action='store_true', help='batch: the sky group\'s opt-in detail synthesis')
-    b.add_argument('--sky-uncompressed', choices=('skip', 'dxt1'), default='skip',
-                   help='batch: uncompressed nebula parts stay stock (skip, default) or are re-encoded (dxt1)')
+                   help='batch: the sky row group (tools/analysis/sky_textures.py; sector-background-modern.md): the'
+                        ' painted star textures with the X3ML payload-2 header mark, texels byte-identical, as members'
+                        ' of the overlay slot (auto: on for FL, off for AP; never dropped by --budget-bytes; a --sync'
+                        ' run drops the nebula part members an earlier version wrote)')
     b.add_argument('--sky-families', metavar='A,B',
                    help='batch, developers: restrict the sky group to these families')
-    b.add_argument('--sky-preview', type=Path, metavar='DIR',
-                   help='batch: write DIR/<family>_part_NN.png per nebula part, left the source magnified 2x bilinear,'
-                        ' right the re-authored DXT1 member (package parts under DIR/<mod>-x3m-lod/); default none')
-    b.add_argument('--sky-preview-scale', type=int, default=1, metavar='N',
-                   help='batch: box-downsample both preview halves by N (default 1)')
     return ap
 
 
@@ -2140,8 +2133,6 @@ def main(argv=None):
 
 def _main(ap, a):
     a.collapse, a.area_percent = a.collapse
-    if a.sky_preview_scale < 1:
-        ap.error('--sky-preview-scale must be >= 1')
     if a.check:
         print(lod_overlay_check.overlay_line(a.game, a.registry, a.hash_archives))
         return 0
@@ -2864,10 +2855,10 @@ sky_progress = None   # optional callable(row, done, total): tools/regenerate's 
 
 def sky_settings(a):
     """The sky group's reuse settings: recipe id, the sky tool's own sha256 (sky_textures.py is not in TOOL_FILES,
-    so a sky change rebakes textures, not bodies) and the recipe options."""
+    so a sky change re-marks textures, not bodies) and the (empty) options."""
     import sky_textures
-    options = sky_textures.options_of(dict(detail=bool(a.sky_detail), uncompressed=a.sky_uncompressed))
-    return dict(recipe_id=sky_textures.RECIPE_ID, tool_sha256=sky_textures.tool_sha256(), options=options)
+    return dict(recipe_id=sky_textures.RECIPE_ID, tool_sha256=sky_textures.tool_sha256(),
+                options=sky_textures.options_of())
 
 
 def reuse_sky(sources, rows, settings, notes, trust_tool=False, xp='addon'):
@@ -2916,15 +2907,15 @@ def reuse_sky(sources, rows, settings, notes, trust_tool=False, xp='addon'):
     return out
 
 
-def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='addon', preview_dir=None):
-    """(plans, info) of the sky group over an assets view: every eligible winner (only_source: only members whose
-    winning layer is that source, the package view), reused through reuse_sky when --sync, the rest baked with up
-    to jobs spawned workers. A plan is dict(name, members=[(member, stored)], sky=manifest row). preview_dir
-    (--sky-preview): every part's source/bake PNG, baked or reused."""
+def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='addon'):
+    """(plans, info) of the sky group over an assets view: every star texture the engine would load (only_source:
+    only members whose winning layer is that source, the package view), reused through reuse_sky when --sync, the
+    rest marked with up to jobs spawned workers. A plan is dict(name, members=[(member, stored)], sky=manifest row).
+    Nebula part rows of an earlier version are never matched, so their members leave the overlay."""
     import sky_textures
     fams = {f.strip().lower() for f in a.sky_families.split(',') if f.strip()} if a.sky_families else None
     t0 = time.time()
-    rows, skipped = sky_textures.scan(assets, settings['options'], fams)
+    rows, skipped = sky_textures.scan(assets, fams)
     if only_source is not None:
         rows = [r for r in rows if r['source'] == only_source]
         skipped = []
@@ -2933,13 +2924,7 @@ def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='ad
     saved = sky_textures.progress
     sky_textures.progress = sky_progress
     try:
-        results = sky_textures.bake_rows(todo, settings['options'], jobs, preview_dir=preview_dir,
-                                         preview_scale=a.sky_preview_scale)
-        again = [(r, reused[r['member'].lower()][0]) for r in rows
-                 if preview_dir is not None and r['kind'] == 'part' and r['member'].lower() in reused]
-        if again:                          # reused members get their preview too (decode only, no bake)
-            sky_textures.preview_rows([r for r, _ in again], [m for _, m in again], preview_dir, a.sky_preview_scale,
-                                      jobs)
+        results = sky_textures.bake_rows(todo, jobs)
     finally:
         sky_textures.progress = saved
     baked = {r['member'].lower(): (res['stored'], sky_textures.manifest_row(r, res)) for r, res in zip(todo, results)}
@@ -2947,36 +2932,28 @@ def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='ad
     for r in rows:
         stored, row = reused.get(r['member'].lower()) or baked[r['member'].lower()]
         plans.append(dict(name='sky:' + r['member'], members=[(r['member'], stored)], sky=row))
-        f = families.setdefault(r['family'], dict(parts=0, stars=0, built=0, reused=0, bytes=0, sizes=[]))
-        f['parts' if r['kind'] == 'part' else 'stars'] += 1
+        f = families.setdefault(r['family'], dict(stars=0, built=0, reused=0, bytes=0))
+        f['stars'] += 1
         f['reused' if 'reused_from' in row else 'built'] += 1
         f['bytes'] += len(stored)
-        size = f"{row['metrics']['width']}x{row['metrics']['height']}"
-        if r['kind'] == 'part' and size not in f['sizes']:
-            f['sizes'].append(size)
-    seconds = [p['sky']['metrics'].get('seconds', 0.0) for p in plans if 'reused_from' not in p['sky']]
-    info = dict(eligible=len(rows), parts=sum(r['kind'] == 'part' for r in rows),
-                stars=sum(r['kind'] == 'stars' for r in rows), built=len(todo), reused=len(reused),
-                bytes=dat_bytes([m for p in plans for m in p['members']]), wall_s=round(time.time() - t0, 2),
-                bake_cpu_s=round(sum(seconds), 2), jobs=jobs,
+    info = dict(eligible=len(rows), stars=len(rows), built=len(todo), reused=len(reused),
+                bytes=dat_bytes([m for p in plans for m in p['members']]), wall_s=round(time.time() - t0, 2), jobs=jobs,
                 skipped=dict(Counter(why for _, why in skipped)), families=families)
     return plans, info
 
 
-SKY_WORKER_BYTES = 640 << 20   # sky_textures worker peak at 4096x2048: 614 MiB RSS measured (2026-11-04, bluewell
-                               # and avdustysol part 01, interpreter included); the memory plan bounds the pool by it
+SKY_WORKER_BYTES = 256 << 20   # a star-mark worker decodes one 1024x1024 level 0 (inferred well under this); the
+                               # memory plan bounds the pool by it
 
 
 def sky_summary(a, xp, info, pkg_info, package):
     """One summary line of the sky group."""
     if info is None:
-        return (f'sky group off (--sky {a.sky}' + (', auto: AP waits for the AP step' if a.sky == 'auto' else '')
-                + '; --sky on enables it)')
+        return f'sky group off (--sky {a.sky}' + (', auto: off on AP' if a.sky == 'auto' else '') + ')'
     fams = info['families']
     line = (f'sky group (sky_textures.py, recipe {getattr(sys.modules.get("sky_textures"), "RECIPE_ID", "?")}):'
-            f' {info["eligible"]} textures ({info["parts"]} nebula parts, {info["stars"]} star textures) in'
-            f' {len(fams)} families, built {info["built"]} + reused {info["reused"]}, {info["bytes"]} B stored,'
-            f' {info["wall_s"]:.1f} s wall ({info["bake_cpu_s"]:.1f} s bake CPU, {info["jobs"]} jobs); skipped '
+            f' {info["stars"]} star textures marked in {len(fams)} families, built {info["built"]} + reused'
+            f' {info["reused"]}, {info["bytes"]} B stored, {info["wall_s"]:.1f} s wall ({info["jobs"]} jobs); skipped '
             + (', '.join(f'{k} {v}' for k, v in sorted(info['skipped'].items())) or 'none'))
     if pkg_info is not None:
         line += (f'; package {package}: {pkg_info["eligible"]} textures, built {pkg_info["built"]} + reused'
@@ -3078,7 +3055,7 @@ def apply_budget(limit, items):
 
 def package_layout(pkg_cat, derived, pkg_plans, restored, sky_plans=()):
     """The derived package's members: every package member in DAT order minus the body members (.pbb .bob .pbd
-    .bod) of the stems we replace and the package textures the sky group re-authored, then the merged bodies with
+    .bod) of the stems we replace and the package star textures the sky group marked, then the merged bodies with
     their atlases, then the restored original bodies, then the sky members (under the package's own member names).
     Refuses (nothing written) a duplicate name or a dat above 2^31 - 1: a package cannot be split."""
     import lod_batch_census as census
@@ -3362,15 +3339,13 @@ def batch(a, game, root, markers):
         sky_sources = [(m['slot'], m['path'].with_name(f'{m["slot"]:02d}.cat'), m['manifest'])
                        for m in prev['markers']] if prev else []
         sassets, _ = original_assets(game, markers)
-        sky_plans, sky_info = sky_bake(a, sassets, sky_sources, sky_set, notes, sky_jobs, xp=xp,
-                                       preview_dir=a.sky_preview)
+        sky_plans, sky_info = sky_bake(a, sassets, sky_sources, sky_set, notes, sky_jobs, xp=xp)
         if package:
             pextra = [(derived, lod_overlay_check.package_files(game, derived)[0], pkg_previous['manifest'])] \
                 if pkg_previous and pkg_previous['status'] in ('valid', 'stale') else []
             passets, _ = original_assets(game, markers, mods=[pkg_cat])
             pkg_sky_plans, pkg_sky_info = sky_bake(a, passets, pextra, sky_set, notes, sky_jobs,
-                                                   only_source=pkg_cat.relative_to(game).as_posix(), xp=xp,
-                                                   preview_dir=a.sky_preview / derived if a.sky_preview else None)
+                                                   only_source=pkg_cat.relative_to(game).as_posix(), xp=xp)
     sky_bytes = dat_bytes([m for p in sky_plans + pkg_sky_plans for m in p['members']])
     if a.budget_bytes is not None:         # on the baked (or reused) member bytes: exact, the bake time is spent
         items = [(by_name[p['name']], dat_bytes(p['members']), p) for p in plans] \
