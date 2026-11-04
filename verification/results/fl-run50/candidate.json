@@ -1,0 +1,25 @@
+{
+ "run": 50,
+ "edition": "fl",
+ "step": "runtime star pass (sky_stars=1), dev candidate from clean main d072fb7fc (RelWithDebInfo build-fl, unstripped)",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "6dac80a4b851808dc636f6426816deb989257393cca7c74210d46d2fb28f95b4",
+  "bytes": 59290631
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run48",
+  "sha256": "541a81e42b6b509412f840a56c0c1c555a942f5ccd344aecf8297c76fd78e151"
+ },
+ "ini": "x3m.ini.run48 + sky_stars = 1 under [graphics]",
+ "exe_sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+ "toolchain": "mingw-i686 (cmake/mingw-i686.cmake), 0 warnings, check_no_x87 PASS",
+ "evidence": [
+  "verification/results/sky-stars/fixture_out.txt RESULT PASS checks=12 failures=0",
+  "verification/results/sky-stars/native/result.json (0 validator messages)",
+  "verification/results/sky-stars/host_check.json (EV 0)",
+  "route fixture scenarios=9 checks=48 (test_motion_sky_stars)",
+  "90 host tests over 10 modules"
+ ],
+ "recorded": "2026-11-05T01:11"
+}

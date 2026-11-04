@@ -3102,3 +3102,25 @@ texel-identical, 613 bodies reused, fog families on FL for the first time (0 add
 texture_missing, `xtmgreenring` no_dust_bodies), engine bodies 226. `x3m-regenerate.exe` `130aef9e…`
 (29,822,162 B, clean main `52335f2e5`) installed; rollback `x3m-regenerate.exe.1.9.1`. Nothing to fly; the
 `sky-preview` folder in `C:\X3FL` is the user's and can be deleted.
+
+## FL run 50 — runtime star pass (installed 2026-11-05)
+
+Dev candidate from clean main `d072fb7fc` (merge of `9666c534d`, `build-fl` RelWithDebInfo, mingw-i686, 0 warnings,
+`check_no_x87` PASS, unstripped): `C:\X3FL\d3d9.dll` = `6dac80a4…` (59,290,631 B), rollback
+`rollback-d3d9\d3d9.dll.run48` = `541a81e4…` (release 1.9.1); `x3m.ini.run48` kept, `sky_stars = 1` added under
+`[graphics]`. Record `verification/results/fl-run50/candidate.json`. Decision A of
+[sector-background-modern.md](../architecture/sector-background-modern.md): the background draw that binds a
+payload-2 star texture is forwarded with colour writes masked and one additive batch of 2 px energy-conserving
+star quads (N = clamp(K×48, 512, 8192), seeded from the mark) is drawn in its place. Offline evidence (measured):
+native fixture `RESULT PASS checks=12 failures=0` (energy error 0.17 %, peak 0.9917, state restored under injected
+draw and restore failures), both SM3 programs 0 validator messages, installed meter replay on a star-only frame EV 0,
+route host fixture scenarios=9 checks=48, 90 host tests over 10 modules; batch cost ≤ 2.5 µs in the fixture (not
+game FPS). Reviewed at high effort: F2 (stale bind bit) and F1 (route coverage) fixed, table cap 512 with
+`table_full=` reporting.
+**Open flight check (Argon Prime, bluewell; then any second sector):** rows `sky_stars_texture … mark=81/1/126
+stored=1`, `sky_stars_device attached=1`, one `sky_stars_match` row (invariant 1: pair, blend, phase index,
+1024x1024, Clear colour), `sky_stars status=ready … matched=1 masked=1 draw=ok` with `outside=0 table_full=0`;
+pilot judgement: crisp stars, no shimmer or trails while rotating at SETA 10x, no brightness step turning from
+nebula to black sky, bloom and exposure unchanged. Warning signs: `matched` ≥ 2, `outside` > 0,
+`status=refused`. Fallback `sky_stars_mask = 0` draws over the painted stars. Kill: shimmer or trails under
+SETA rotation or any exposure or bloom response not fixed by one footprint or radiance adjustment.
