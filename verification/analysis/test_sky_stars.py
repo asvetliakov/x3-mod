@@ -3,7 +3,8 @@ src/proxy/sky_stars_core.h and the mark table of src/proxy/lod_texture_mark.h, c
 exposure meter (src/renderer/exposure.cpp) through verification/probe/sky_stars_check.cpp: the payload-2 mark parse and
 seed, N = clamp(K x 48 x density, 512, 16384), the settings' ranges, the static vertex buffer (count, 32-byte stride, the
 2.5x-per-step power law, centred peak <= peak_cap 2.0, the size law monotonic in brightness, the first law reproduced at
-min_size 1 / size 0 / gain 1, the twinkle lanes on about one star in four and the c251 wall-clock constant,
+min_size 1 / size 0 / gain 1 / clustering 0, the clustering law in 48 equal-area bins, the sector-key seed fold, the
+twinkle lanes on about one star in four and the c251 wall-clock constant,
 determinism), the kernel's energy at sub-pixel offsets, and the meter replay on star-only frames (invariant 5). Also the
 baker's constants against the runtime's (tools/analysis/sky_textures.py). No D3D, no game bytes.
 """
@@ -50,8 +51,9 @@ class SkyStarsCoreTests(unittest.TestCase):
     def test_builder(self):
         b = self.report['build']
         self.assertEqual((b['stars'], b['bytes']), (6240, 6240 * 4 * 32))
-        self.assertLessEqual(b['peak_max'], 2.0 + 1e-6)
-        self.assertGreater(b['peak_max'], 1.96)
+        # Gain 1.5 (the default): the brightest star's centred peak is 1.5, under peak_cap 2.0.
+        self.assertLessEqual(b['peak_max'], 1.5 + 1e-6)
+        self.assertGreater(b['peak_max'], 1.47)
         self.assertAlmostEqual(b['median_decoded'], 0.05, delta=0.006)
         for ratio in b['bin_ratios']:
             self.assertAlmostEqual(ratio, 2.5, delta=0.45)
@@ -69,6 +71,18 @@ class SkyStarsCoreTests(unittest.TestCase):
 
     def test_first_law_and_field(self):
         self.assertEqual(self.report['legacy'], {'mismatches': 0, 'field_mismatches': 0})
+
+    def test_clustering(self):
+        # 16 seeds x 16384 stars in 48 equal-area bins: clustering 0 uniform (chi-square, 47 dof), 1 fullest / emptiest
+        # bin >= 4 with no empty bin, 2 stronger; the ready-row statistics equal the independent binning.
+        c0, c1, c2 = (self.report['clustering%d' % i] for i in range(3))
+        self.assertLess(c0['chi2_max'], 95.5)
+        self.assertEqual((c0['reject_rate_mean'], c0['exhausted']), (0.0, 0))
+        self.assertGreaterEqual(c1['ratio_min'], 4.0)
+        self.assertGreater(c1['bin_min'], 0)
+        self.assertGreaterEqual(c2['ratio_min'], c1['ratio_min'])
+        self.assertGreater(c2['bin_min'], 0)
+        self.assertEqual(self.report['clustering_default_build']['only_dirs_differ'], 0)
 
     def test_twinkle_lanes(self):
         t = self.report['twinkle']

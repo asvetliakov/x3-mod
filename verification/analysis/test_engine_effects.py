@@ -49,13 +49,14 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
     # motion_output.h, capture.cpp: bumped for the sky stars (sector-background-modern.md, Implementation A; default off,
     # one bool test per draw; no engine-effects path changed, 2026-11-05); both again for the star look controls
-    # (density, brightness, size, min_size, twinkle settings; no engine-effects path changed, 2026-11-05).
+    # (density, brightness, size, min_size, twinkle settings; no engine-effects path changed, 2026-11-05); capture.cpp
+    # again for sky_stars_clustering (one setting read and its config-row fields; no engine-effects path, 2026-11-05).
     'src/proxy/motion_output.h': 'dc86622553eef6a0deaee609d716bad56ffba4548cf018768d168fe3ca7bd9a9',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
     # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
     # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report
     # (2026-11-03); AP objects identical.
-    'src/proxy/capture.cpp': '19faac45e40c126f2589bfc30c846471e5a59106cd5945e48ef6e4edcd838ab6',
+    'src/proxy/capture.cpp': 'cd8eb4a3bbec662fbc7d611d25d33b054514f108d556b4b1b4754f88d6ac0d6c',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

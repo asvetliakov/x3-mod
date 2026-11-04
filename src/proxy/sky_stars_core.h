@@ -28,6 +28,18 @@
 // centre) receives (C(t(u + 0.5)) - C(t(u - 0.5))) per axis; the sum over every pixel telescopes to C(1) - C(0) = 1
 // exactly when every pixel whose area meets [-a, a] is rasterised, which the quad's half extent a + quad_margin
 // guarantees. With min_size 1, size 0 and gain 1 the law is the first one's: a = 1 px, energy = peak / centre_fraction(1).
+// Clustering (sky_stars_clustering = c): the directions follow a seeded density on the sphere,
+//   density(d) = min(bound, max(floor, 1 + sum_clusters c w_i S_i(d) - sum_voids c v_j S_j(d))),
+//   S(d) = smootherstep((d.n - cos r) / (1 - cos r)) (1 at the cap's centre, 0 at its rim)
+// 6-10 cluster caps (radius uniform in 8-35 degrees, w uniform in [1, 4]) and 2-4 void caps (radius 10 + 15 sqrt(u)
+// degrees, so 10-25 leaning large; v in [2, 3]: at c = 1 a void sits on the floor over the inner part of its cap, at c = 2
+// over most of it). A void's centre is drawn outside every cluster cap (bounded retries). floor = 0.08 x the void-free
+// mean 1 + sum c w_i (1 - cos r_i) / 4 (the cap average of S is (1 - cos r) / 4), so a void keeps a few stars. bound =
+// the largest density at the cluster centres and the weighted midpoints of the cluster pairs. A star's first candidate is
+// the uniform draw of the first law; it is kept with probability density / bound and otherwise replaced by a uniform
+// candidate of a third stream, at most max_candidates per star (the last one is then kept, so build() always ends).
+// c = 0 skips the test: the first law's directions, byte for byte. The caps come from their own stream, so the layout
+// does not move with c, and brightness, tint and twinkle never depend on it.
 #include "lod_texture_mark.h"
 #include "sse_scalar.h"
 #include <cstdint>
@@ -37,10 +49,11 @@ constexpr unsigned payload_sky_stars = lod_texture_mark::payload_sky_stars; // d
 constexpr unsigned lane_count = 8;            // sky_textures.STAR_LANES: white blue red orange yellow green cyan, 7 other
 constexpr unsigned stars_per_k = 48, stars_min = 512, stars_max = 16384;
 constexpr float density_default = 2.f, density_min = .25f, density_max = 4.f;         // sky_stars_density
-constexpr float brightness_default = 2.f, brightness_min = .5f, brightness_max = 8.f; // sky_stars_brightness (gain)
+constexpr float brightness_default = 1.5f, brightness_min = .5f, brightness_max = 8.f; // sky_stars_brightness (gain)
 constexpr float size_default = 1.f, size_min = 0.f, size_max = 3.f;                   // sky_stars_size
 constexpr float min_size_default = 1.5f, min_size_min = 1.f, min_size_max = 3.f;      // sky_stars_min_size (px)
 constexpr float twinkle_default = .3f, twinkle_min = 0.f, twinkle_max = 1.f;          // sky_stars_twinkle (amplitude)
+constexpr float clustering_default = 1.f, clustering_min = 0.f, clustering_max = 2.f; // sky_stars_clustering
 constexpr unsigned vertex_stride = 32, vertices_per_star = 4, indices_per_star = 6;
 constexpr unsigned vertex_capacity = stars_max * vertices_per_star; // 65536: 16-bit indices suffice
 constexpr float flux_step = 2.5f, flux_steps = 4.f, x_max = 39.0625f; // 2.5^4
@@ -55,6 +68,15 @@ constexpr double log2_flux_step = 1.3219280948873624; // log2(2.5)
 // star; 0 on the others. Every rate is a multiple of 1/128 Hz, so 128 s is a common period: t wraps there without a jump.
 constexpr unsigned twinkle_rate_min = 52, twinkle_rate_max = 192; // 0.41 .. 1.5 Hz
 constexpr std::uint64_t twinkle_period_s = 128;
+// Clustering law (the header comment): cap counts and ranges, the floor's share of the mean, the candidate cap.
+constexpr unsigned clusters_min = 6, clusters_max = 10, voids_min = 2, voids_max = 4;
+constexpr unsigned caps_max = clusters_max + voids_max;
+constexpr double cluster_radius_min_deg = 8., cluster_radius_max_deg = 35., cluster_weight_min = 1., cluster_weight_max = 4.;
+constexpr double void_radius_min_deg = 10., void_radius_max_deg = 25., void_weight_min = 2., void_weight_max = 3.;
+constexpr double density_floor_share = .08;
+constexpr unsigned void_centre_tries = 16; // draws of a void centre outside every cluster cap
+constexpr unsigned max_candidates = 64; // per star; the last candidate is kept on exhaustion
+constexpr unsigned sphere_bins = 48;    // the equal-area bins of BuildStats::cluster_max_min (6 z bands x 8 sectors)
 // The packed seed the sampler shadow carries for stage 0: slot | lane << 8 | K << 16 | valid << 24; 0 = not a star texture.
 constexpr std::uint32_t seed_valid = 0x01000000u;
 inline std::uint32_t seed_of(const lod_texture_mark::Mark& m) noexcept {
@@ -77,12 +99,21 @@ inline bool accept_brightness(float v, float* out) noexcept { return accept_rang
 inline bool accept_size(float v, float* out) noexcept { return accept_range(v, size_min, size_max, out); }
 inline bool accept_min_size(float v, float* out) noexcept { return accept_range(v, min_size_min, min_size_max, out); }
 inline bool accept_twinkle(float v, float* out) noexcept { return accept_range(v, twinkle_min, twinkle_max, out); }
+inline bool accept_clustering(float v, float* out) noexcept { return accept_range(v, clustering_min, clustering_max, out); }
+// The generator seed of a field: seed64 = mark_seed ^ (sector_key x 0x9e3779b97f4a7c15), folded to 32 bits (low ^ high).
+// sector_key 0 (every field today) returns mark_seed itself; a per-sector field only has to supply the key to build().
+inline std::uint32_t generator_seed(std::uint32_t mark_seed, std::uint64_t sector_key) noexcept {
+    const std::uint64_t seed64 = std::uint64_t(mark_seed) ^ (sector_key * 0x9e3779b97f4a7c15ull);
+    return std::uint32_t(seed64) ^ std::uint32_t(seed64 >> 32);
+}
 // The settings the vertex buffer depends on (the twinkle amplitude is a constant, c251: no rebuild).
 struct Look {
     float density = density_default, brightness = brightness_default, size = size_default, min_size = min_size_default;
+    float clustering = clustering_default;
 };
 inline bool same_look(const Look& a, const Look& b) noexcept {
-    return a.density == b.density && a.brightness == b.brightness && a.size == b.size && a.min_size == b.min_size;
+    return a.density == b.density && a.brightness == b.brightness && a.size == b.size && a.min_size == b.min_size &&
+           a.clustering == b.clustering;
 }
 // Out-of-range members back to their defaults (the builder's own guard; the settings path has refused them already).
 inline Look sanitized(const Look& v) noexcept {
@@ -91,6 +122,7 @@ inline Look sanitized(const Look& v) noexcept {
     accept_brightness(v.brightness, &out.brightness);
     accept_size(v.size, &out.size);
     accept_min_size(v.min_size, &out.min_size);
+    accept_clustering(v.clustering, &out.clustering);
     return out;
 }
 // N = clamp(round(K x 48 x density), 512, 16384).
@@ -217,7 +249,125 @@ struct BuildStats {
     unsigned stars = 0, twinkling = 0;
     // peak_max: the largest centred pixel (target value, <= peak_cap); support_max: the largest half-width a in px.
     double peak_max = 0., peak_median_decoded = 0., energy_max = 0., support_max = 0.;
+    // cluster_max_min: the fullest of the 48 equal-area bins over the emptiest (an empty bin counts as 1); reject_rate:
+    // rejected candidates / all candidates (0 at clustering 0); exhausted: stars that kept their last candidate.
+    double cluster_max_min = 0., reject_rate = 0.;
+    unsigned bin_min = 0, bin_max = 0, candidates = 0, exhausted = 0;
 };
+// cos x for |x| <= pi / 2 by its Taylor series (no CRT): |error| < 1e-12.
+[[gnu::always_inline]] inline double cos_bounded(double x) noexcept {
+    const double x2 = x * x;
+    double sum = 1., term = 1.;
+    for (unsigned k = 2; k <= 20; k += 2) {
+        term *= -x2 / double((k - 1) * k);
+        sum += term;
+    }
+    return sum;
+}
+// The equal-area bin of a unit direction: 6 bands of equal height in z (Archimedes: equal area) x 8 sectors of 45
+// degrees in longitude, told apart by the signs and |x| against |y| (no atan2; flag arithmetic, no data-dependent
+// branch: the sectors of random directions mispredict).
+inline unsigned sphere_bin(const float d[3]) noexcept {
+    int band = int((double(d[2]) + 1.) * 3.);
+    band = band < 0 ? 0 : band > 5 ? 5 : band;
+    const float x = d[0], y = d[1], ax = x < 0.f ? -x : x, ay = y < 0.f ? -y : y;
+    // Quadrant q (0: x, y >= 0; 1: x < 0 <= y; 2: x, y < 0; 3: y < 0 <= x), then its second 45 degrees.
+    const unsigned ny = y < 0.f, nx = x < 0.f, q = ny * 2u + (nx ^ ny), odd = q & 1u;
+    const unsigned half = (odd & unsigned(ay <= ax)) | ((odd ^ 1u) & unsigned(ay >= ax));
+    return unsigned(band) * 8u + q * 2u + half;
+}
+// A uniform direction on the sphere: Marsaglia (1972), from a point in the unit disc.
+inline void uniform_direction(Rng& rng, float dir[3]) noexcept {
+    double x, y, s;
+    do {
+        rng.uniform(&x);
+        rng.uniform(&y);
+        x = 2. * x - 1.;
+        y = 2. * y - 1.;
+        s = x * x + y * y;
+    } while (!(s > 1e-12 && s < 1.));
+    const double r = double(scalar::sqrt(float(1. - s)));
+    dir[0] = float(2. * x * r);
+    dir[1] = float(2. * y * r);
+    dir[2] = float(1. - 2. * s);
+}
+// The clustering law of one field (the header comment): the caps of the field's cap stream, scaled by c.
+struct ClusterField {
+    struct Cap {
+        double n[3], cos_r, inv_span, weight; // weight > 0: a cluster, < 0: a void
+    };
+    Cap caps[caps_max];
+    unsigned count = 0;
+    double floor = 0., bound = 1.;
+    // The density at a unit direction before the clip at the bound (>= floor).
+    [[gnu::always_inline]] double density(const float d[3]) const noexcept {
+        double sum = 1.;
+        for (unsigned i = 0; i < count; ++i) {
+            const Cap& cap = caps[i];
+            const double dot = double(d[0]) * cap.n[0] + double(d[1]) * cap.n[1] + double(d[2]) * cap.n[2];
+            if (dot > cap.cos_r) sum += cap.weight * smootherstep((dot - cap.cos_r) * cap.inv_span);
+        }
+        return sum < floor ? floor : sum;
+    }
+};
+// Draws the caps (the stream's draws do not depend on c), then the floor and the bound at clustering c > 0.
+inline void cluster_field(Rng& stream, double c, ClusterField* f) noexcept {
+    constexpr double degree = 3.14159265358979323846 / 180.;
+    double u;
+    const unsigned clusters = clusters_min + stream.next() % (clusters_max - clusters_min + 1u);
+    const unsigned voids = voids_min + stream.next() % (voids_max - voids_min + 1u);
+    double mean = 1.;
+    f->count = clusters + voids;
+    for (unsigned i = 0; i < f->count; ++i) {
+        ClusterField::Cap& cap = f->caps[i];
+        const bool cluster = i < clusters;
+        // A void's centre lies outside every cluster cap (voids sit between the clusters; at most void_centre_tries
+        // draws, the last kept).
+        float n[3];
+        for (unsigned tries = 0;;) {
+            uniform_direction(stream, n);
+            bool inside = false;
+            for (unsigned j = 0; !cluster && j < clusters; ++j) {
+                const ClusterField::Cap& b = f->caps[j];
+                inside = inside || double(n[0]) * b.n[0] + double(n[1]) * b.n[1] + double(n[2]) * b.n[2] > b.cos_r;
+            }
+            if (!inside || ++tries == void_centre_tries) break;
+        }
+        cap.n[0] = n[0];
+        cap.n[1] = n[1];
+        cap.n[2] = n[2];
+        stream.uniform(&u);
+        const double radius = cluster ? cluster_radius_min_deg + u * (cluster_radius_max_deg - cluster_radius_min_deg)
+                                      : void_radius_min_deg + double(scalar::sqrt(float(u))) *
+                                                                  (void_radius_max_deg - void_radius_min_deg);
+        cap.cos_r = cos_bounded(radius * degree);
+        cap.inv_span = 1. / (1. - cap.cos_r);
+        stream.uniform(&u);
+        cap.weight = cluster ? c * (cluster_weight_min + u * (cluster_weight_max - cluster_weight_min))
+                             : -c * (void_weight_min + u * (void_weight_max - void_weight_min));
+        if (cluster) mean += cap.weight * (1. - cap.cos_r) * .25;
+    }
+    f->floor = density_floor_share * mean;
+    // The bound: the largest density at the cluster centres and at the weighted midpoints of every pair of clusters.
+    // The law is the density clipped there (a candidate above it is always kept), so the sampling is exact for the
+    // clipped law; the clip only flattens the crest where overlapping clusters peak between their probes.
+    double bound = 1.;
+    for (unsigned i = 0; i < clusters; ++i) {
+        const ClusterField::Cap& a = f->caps[i];
+        for (unsigned j = i; j < clusters; ++j) {
+            const ClusterField::Cap& b = f->caps[j];
+            const double m[3] = {a.n[0] * a.weight + b.n[0] * b.weight, a.n[1] * a.weight + b.n[1] * b.weight,
+                                 a.n[2] * a.weight + b.n[2] * b.weight};
+            const double length2 = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
+            if (!(length2 > 1e-12)) continue;
+            const double inv = 1. / double(scalar::sqrt(float(length2)));
+            const float probe[3] = {float(m[0] * inv), float(m[1] * inv), float(m[2] * inv)};
+            const double v = f->density(probe);
+            if (v > bound) bound = v;
+        }
+    }
+    f->bound = bound;
+}
 // The twinkle lanes of one star (one draw of the twinkle stream per star): one in four on; rate and phase from the
 // same word.
 inline std::uint32_t twinkle_lanes(Rng& stream) noexcept {
@@ -229,30 +379,44 @@ inline std::uint32_t twinkle_lanes(Rng& stream) noexcept {
 }
 // Writes the 4 * N vertices of the seed's field into `out` (room for `capacity_stars` stars). Returns N (0: refused,
 // no seed or no room). Runs once per (seed, look) on the render thread. Directions, brightness and tint come from the
-// seed's stream as in the first law and the twinkle lanes from a second stream, so the field is the same in any look.
+// seed's stream as in the first law and the twinkle lanes from a second stream, so the field is the same in any look
+// except clustering, which moves only the directions of the rejected first candidates (the cap stream, a third).
+// sector_key: the per-sector part of the generator seed (generator_seed; 0 today, the field of the mark alone).
 inline unsigned build(std::uint32_t seed, const Look& requested, Vertex* out, unsigned capacity_stars,
-                      BuildStats* stats = nullptr) noexcept {
+                      BuildStats* stats = nullptr, std::uint64_t sector_key = 0) noexcept {
     if (!(seed & seed_valid) || !out) return 0;
     const Look look = sanitized(requested);
     const unsigned n = star_count(seed_k(seed), look.density);
     if (n > capacity_stars) return 0;
-    Rng rng(seed), twinkle_stream(seed ^ 0x7417c1e5u);
+    const std::uint32_t field = generator_seed(seed, sector_key);
+    Rng rng(field), twinkle_stream(field ^ 0x7417c1e5u), cap_stream(field ^ 0x3c6ef372u);
+    const bool clustered = look.clustering > 0.f;
+    ClusterField law;
+    if (clustered) cluster_field(cap_stream, double(look.clustering), &law);
     double class_tint[3];
     lane_tint(seed_lane(seed), class_tint);
     double peak_max = 0., energy_max = 0., support_max = 0.;
-    unsigned twinkling = 0;
+    unsigned twinkling = 0, candidates = 0, exhausted = 0;
+    unsigned bins[sphere_bins] = {};
     for (unsigned i = 0; i < n; ++i) {
-        // Direction: Marsaglia (1972), uniform on the sphere from a point in the unit disc.
-        double x, y, s;
-        do {
-            rng.uniform(&x);
-            rng.uniform(&y);
-            x = 2. * x - 1.;
-            y = 2. * y - 1.;
-            s = x * x + y * y;
-        } while (!(s > 1e-12 && s < 1.));
-        const double r = double(scalar::sqrt(float(1. - s)));
-        const float dir[3] = {float(2. * x * r), float(2. * y * r), float(1. - 2. * s)};
+        // Direction: the first law's uniform draw; with clustering kept with probability density / bound, otherwise
+        // replaced by a candidate of the cap stream (at most max_candidates per star, the last one kept).
+        float dir[3];
+        uniform_direction(rng, dir);
+        ++candidates;
+        if (clustered)
+            for (unsigned tries = 1;; ++tries) {
+                double u;
+                cap_stream.uniform(&u);
+                if (u * law.bound < law.density(dir)) break;
+                if (tries == max_candidates) {
+                    ++exhausted;
+                    break;
+                }
+                uniform_direction(cap_stream, dir);
+                ++candidates;
+            }
+        ++bins[sphere_bin(dir)];
         // Brightness: decoded peak 1 / X, X uniform in [1, x_max]; the target peak through the decode gamma.
         double u;
         rng.uniform(&u);
@@ -297,6 +461,17 @@ inline unsigned build(std::uint32_t seed, const Look& requested, Vertex* out, un
         if (a > support_max) support_max = a;
     }
     if (stats) {
+        unsigned lo = bins[0], hi = bins[0];
+        for (unsigned b = 1; b < sphere_bins; ++b) {
+            lo = bins[b] < lo ? bins[b] : lo;
+            hi = bins[b] > hi ? bins[b] : hi;
+        }
+        stats->bin_min = lo;
+        stats->bin_max = hi;
+        stats->cluster_max_min = double(int(hi)) / double(int(lo ? lo : 1u));
+        stats->candidates = candidates;
+        stats->exhausted = exhausted;
+        stats->reject_rate = double(int(candidates - n)) / double(int(candidates));
         stats->stars = n;
         stats->twinkling = twinkling;
         stats->peak_max = peak_max;

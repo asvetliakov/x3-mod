@@ -194,17 +194,18 @@ int main() {
         w = &world;
         MotionOutput m;
         setup(m);
-        m.configure_sky_stars(true, sky_stars::core::Look{9.f, .1f, -1.f, 4.f}, 1.5f, true);
+        m.configure_sky_stars(true, sky_stars::core::Look{9.f, .1f, -1.f, 4.f, 2.5f}, 1.5f, true);
         frame(m, BoundaryState::Background);
         check(draw(m, true) == masked_batch, "J refused settings: the pass still runs");
         check(sky_stars::core::same_look(world.look, sky_stars::core::Look{}) && world.twinkle[1] == .3f,
               "J refused settings: defaults");
         MotionOutput n;
         setup(n);
-        n.configure_sky_stars(true, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f}, 0.f, true);
+        n.configure_sky_stars(true, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f, 0.f}, 0.f, true);
         frame(n, BoundaryState::Background);
         draw(n, true);
-        check(sky_stars::core::same_look(world.look, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f}) && world.twinkle[1] == 0.f,
+        check(sky_stars::core::same_look(world.look, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f, 0.f}) &&
+                  world.twinkle[1] == 0.f,
               "J accepted settings reach prepare and c251");
     }
     {   // B (F2): a bind bit taken by a draw that returns early (blocked, state lost, engine draw, UP) cannot make a

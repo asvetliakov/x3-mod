@@ -366,7 +366,8 @@ void MotionOutput::sky_stars_phase_end() noexcept {
             std::snprintf(draw, sizeof draw, "%08lx", static_cast<unsigned long>(sky_stars_frame_hr_));
         log("sky_stars device=%llu frame=%llu status=%s mark=%u/%u/%u stars=%u matched=%u masked=%u draw=%s reason=%s"
             " phase_draws=%u frames=%llu drawn_frames=%llu outside=%llu refused=%llu rebuilds=%u table_full=%u density=%.2f"
-            " mask_mode=%u draw_us=%.1f build_us=%.1f peak_max=%.4f support_max=%.4f twinkling=%u",
+            " mask_mode=%u draw_us=%.1f build_us=%.1f peak_max=%.4f support_max=%.4f twinkling=%u clustering=%.2f"
+            " cluster_max_min=%.2f reject_rate=%.3f",
             id_, frame_, status, sky_stars::core::seed_slot(seed), sky_stars::core::seed_lane(seed),
             sky_stars::core::seed_k(seed), stars, sky_stars_frame_matched_, sky_stars_frame_masked_, draw, reason,
             sky_stars_phase_draws_, static_cast<unsigned long long>(sky_stars_frames_),
@@ -374,7 +375,8 @@ void MotionOutput::sky_stars_phase_end() noexcept {
             static_cast<unsigned long long>(sky_stars_refused_), sky_stars_rebuilds_, full,
             double(sky_stars_look_.density), unsigned(sky_stars_mask_mode_),
             double(sky_stars_draw_ticks_) * 1e6 / double(frequency), double(sky_stars_build_ticks_) * 1e6 / double(frequency),
-            stats.peak_max, stats.support_max, stats.twinkling);
+            stats.peak_max, stats.support_max, stats.twinkling, double(sky_stars_look_.clustering), stats.cluster_max_min,
+            stats.reject_rate);
     });
     sky_stars_frames_ = sky_stars_drawn_frames_ = 0;
 }
