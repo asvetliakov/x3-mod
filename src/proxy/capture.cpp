@@ -239,7 +239,8 @@ float hull_emissive_widening[2] = {1.f, 1.f};
 // docs/architecture/sector-background-modern.md "Implementation A"): requested = the setting and the route; the texture
 // hook row is patched for it as for the material strength (texture_created stores the payload-2 marks).
 bool sky_stars_requested = false, sky_stars_mask = true;
-float sky_stars_density = x3m::sky_stars::core::density_default;
+x3m::sky_stars::core::Look sky_stars_look{}; // X3M_SKY_STARS_DENSITY, _BRIGHTNESS, _SIZE, _MIN_SIZE
+float sky_stars_twinkle = x3m::sky_stars::core::twinkle_default; // X3M_SKY_STARS_TWINKLE
 bool lod_material_strength_requested = false; // X3M_LOD_MATERIAL_STRENGTH=1 (schema default; overlay-material-strength.md):
                                               // the merged-LOD overlay's per-material diffuse strength: the D3DX texture
                                               // hook flags the baker's marked atlases, the hull pixel twins read the ratio
@@ -3606,7 +3607,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     // compose with; the texture hook row is patched in initialize_log (AP: loading_trace::set_texture_observer; FL: the
     // import-slot stub, d3dx_texture_hook::install).
     hooked.motion_output.configure_material_strength(lod_material_strength_requested);
-    hooked.motion_output.configure_sky_stars(sky_stars_requested, sky_stars_density, sky_stars_mask);
+    hooked.motion_output.configure_sky_stars(sky_stars_requested, sky_stars_look, sky_stars_twinkle, sky_stars_mask);
 #if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
@@ -5025,28 +5026,44 @@ void initialize_log(HMODULE module) {
     // X3M_SKY_STARS=1|0 (schema default 0; docs/architecture/sector-background-modern.md, Implementation A): the painted
     // star body of the sector background is masked and one additive batch of procedural star quads drawn in its place,
     // seeded from the baker's payload-2 mark on the star texture. Needs the route (X3M_MOTION_OUTPUT=1); TAA and HDR are
-    // checked per frame (the background camera and the FP16 latch). X3M_SKY_STARS_DENSITY: star count multiplier, 0.25
-    // to 4 (out of range keeps 1). X3M_SKY_STARS_MASK=0: draw over the unmasked native draw (the fallback when the
-    // star body draws more than the star texture). One sky_stars_config row; status=off when the setting is off.
+    // checked per frame (the background camera and the FP16 latch). The look (sky_stars_core.h ranges and defaults):
+    // X3M_SKY_STARS_DENSITY star count multiplier, _BRIGHTNESS energy gain, _SIZE footprint growth with brightness,
+    // _MIN_SIZE the dimmest star's half-width in px, _TWINKLE the twinkle amplitude (0 = steady); a value that does not
+    // parse or is out of range keeps the default and its <name>_setting tag says default. X3M_SKY_STARS_MASK=0: draw
+    // over the unmasked native draw (the fallback when the star body draws more than the star texture). One
+    // sky_stars_config row; status=off when the setting is off.
     {
         wchar_t value[32]{};
         const DWORD n = x3m::config::get(L"X3M_SKY_STARS", value, 32);
         const bool on = n == 1 && value[0] == L'1';
         const bool valid = n == 0 || (n == 1 && (value[0] == L'0' || value[0] == L'1'));
-        bool density_valid = true;
-        if (x3m::config::get(L"X3M_SKY_STARS_DENSITY", value, 32) > 0) {
+        // One float setting: unset or accepted = "ok", present but refused = "default" (the default kept).
+        auto look_setting = [&](const wchar_t* name, bool (*accept)(float, float*), float* out) {
+            const DWORD length = x3m::config::get(name, value, 32);
+            if (!length) return "ok";
             wchar_t* end = nullptr;
-            const float v = wcstof(value, &end);
-            density_valid = end != value && *end == L'\0' &&
-                            x3m::sky_stars::core::accept_density(v, &sky_stars_density);
-        }
+            const float v = length < 32 ? wcstof(value, &end) : 0.f;
+            return length < 32 && end != value && *end == L'\0' && accept(v, out) ? "ok" : "default";
+        };
+        const char* density_tag =
+            look_setting(L"X3M_SKY_STARS_DENSITY", x3m::sky_stars::core::accept_density, &sky_stars_look.density);
+        const char* brightness_tag =
+            look_setting(L"X3M_SKY_STARS_BRIGHTNESS", x3m::sky_stars::core::accept_brightness, &sky_stars_look.brightness);
+        const char* size_tag = look_setting(L"X3M_SKY_STARS_SIZE", x3m::sky_stars::core::accept_size, &sky_stars_look.size);
+        const char* min_size_tag =
+            look_setting(L"X3M_SKY_STARS_MIN_SIZE", x3m::sky_stars::core::accept_min_size, &sky_stars_look.min_size);
+        const char* twinkle_tag =
+            look_setting(L"X3M_SKY_STARS_TWINKLE", x3m::sky_stars::core::accept_twinkle, &sky_stars_twinkle);
         const DWORD m = x3m::config::get(L"X3M_SKY_STARS_MASK", value, 32);
         sky_stars_mask = !(m == 1 && value[0] == L'0');
         sky_stars_requested = on && motion_output_requested;
-        log("sky_stars_config requested=%s enabled=%u reason=%s density=%.2f density_setting=%s mask=%u edition=%s",
+        log("sky_stars_config requested=%s enabled=%u reason=%s density=%.2f density_setting=%s brightness=%.2f"
+            " brightness_setting=%s size=%.2f size_setting=%s min_size=%.2f min_size_setting=%s twinkle=%.2f"
+            " twinkle_setting=%s mask=%u edition=%s",
             n == 0 ? "unset" : valid ? "set" : "invalid_setting", unsigned(sky_stars_requested),
-            sky_stars_requested ? "ok" : !on ? "setting" : "route_off", double(sky_stars_density),
-            density_valid ? "ok" : "invalid_setting", unsigned(sky_stars_mask),
+            sky_stars_requested ? "ok" : !on ? "setting" : "route_off", double(sky_stars_look.density), density_tag,
+            double(sky_stars_look.brightness), brightness_tag, double(sky_stars_look.size), size_tag,
+            double(sky_stars_look.min_size), min_size_tag, double(sky_stars_twinkle), twinkle_tag, unsigned(sky_stars_mask),
 #if X3M_EDITION_FL
             "fl"
 #else

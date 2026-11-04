@@ -36,6 +36,8 @@ struct World {
     HRESULT draw_hr = S_OK, restore_hr = S_OK, mask_hr = S_OK;
     DWORD colour_mask = 7;
     unsigned attaches = 0;
+    float twinkle[4] = {-1.f, -1.f, -1.f, -1.f}; // c251 of the last batch
+    sky_stars::core::Look look{};                // the look of the last prepare
 }* w = nullptr;
 HRESULT set_rs(IDirect3DDevice9*, D3DRENDERSTATETYPE state, DWORD value) {
     w->calls.push_back("rs" + std::to_string(unsigned(state)) + "=" + std::to_string(value));
@@ -93,14 +95,16 @@ HRESULT renderer::SkyStarsPass::attach(IDirect3DDevice9* d, void* const*, const 
 }
 void renderer::SkyStarsPass::detach() noexcept { caps_ = {}; }
 unsigned renderer::SkyStarsPass::references() const noexcept { return 0; }
-unsigned renderer::SkyStarsPass::prepare(std::uint32_t seed, float density, bool* rebuilt) noexcept {
+unsigned renderer::SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, bool* rebuilt) noexcept {
     if (rebuilt) *rebuilt = seed != built_seed_;
     built_seed_ = seed;
-    built_stars_ = sky_stars::core::star_count(sky_stars::core::seed_k(seed), density);
+    w->look = look;
+    built_stars_ = sky_stars::core::star_count(sky_stars::core::seed_k(seed), look.density);
     return built_stars_;
 }
-HRESULT renderer::SkyStarsPass::draw(const float*, SkyStarsReport* report) noexcept {
+HRESULT renderer::SkyStarsPass::draw(const float*, const float* twinkle, SkyStarsReport* report) noexcept {
     w->calls.push_back("batch");
+    std::memcpy(w->twinkle, twinkle, sizeof w->twinkle);
     report->operation = w->draw_hr;
     report->drew = SUCCEEDED(w->draw_hr);
     report->restore = w->restore_hr;
@@ -120,7 +124,7 @@ void setup(MotionOutput& m) {
     m.device_ = &device;
     m.native_ = table;
     m.enabled_ = true;
-    m.configure_sky_stars(true, 1.f, true);
+    m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true);
     m.hdr_ = std::make_unique<renderer::HdrPass>();
     m.hdr_->target_ = &target;
     m.hdr_state_ = MotionOutput::HdrState::Active;
@@ -178,6 +182,30 @@ int main() {
         check(!std::strcmp(m.sky_stars_logged_status_, "ready") && m.sky_stars_frame_matched_ == 2 &&
                   m.sky_stars_frame_masked_ == 2 && world.attaches == 1,
               "A row: ready, matched 2, masked 2, one attach");
+        // c251 of the batch: the wall clock (the stub's QPC ticks at frequency 1) modulo 128 s and the amplitude.
+        check(world.twinkle[0] >= 0.f && world.twinkle[0] < 128.f && world.twinkle[0] == float(int(world.twinkle[0])) &&
+                  world.twinkle[1] == .3f && world.twinkle[2] == 0.f && world.twinkle[3] == 0.f,
+              "A c251 = (wall seconds mod 128, amplitude, 0, 0)");
+        check(sky_stars::core::same_look(world.look, sky_stars::core::Look{}), "A the configured look reaches prepare");
+    }
+    {   // J: refused settings fall back to the defaults (the pass still runs); accepted ones reach prepare and c251.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{9.f, .1f, -1.f, 4.f}, 1.5f, true);
+        frame(m, BoundaryState::Background);
+        check(draw(m, true) == masked_batch, "J refused settings: the pass still runs");
+        check(sky_stars::core::same_look(world.look, sky_stars::core::Look{}) && world.twinkle[1] == .3f,
+              "J refused settings: defaults");
+        MotionOutput n;
+        setup(n);
+        n.configure_sky_stars(true, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f}, 0.f, true);
+        frame(n, BoundaryState::Background);
+        draw(n, true);
+        check(sky_stars::core::same_look(world.look, sky_stars::core::Look{1.f, 4.f, 0.f, 1.f}) && world.twinkle[1] == 0.f,
+              "J accepted settings reach prepare and c251");
     }
     {   // B (F2): a bind bit taken by a draw that returns early (blocked, state lost, engine draw, UP) cannot make a
         // later background draw of another pair count as freshly bound.

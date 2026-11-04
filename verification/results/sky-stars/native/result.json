@@ -6,10 +6,10 @@
  "programs": [
   {
    "program": "sky_stars_vs",
-   "words": 116,
+   "words": 162,
    "messages": [],
    "end": "00000000",
-   "slots": 14,
+   "slots": 27,
    "source_header": "src/renderer/sky_stars_vertex_program_inc.h"
   },
   {

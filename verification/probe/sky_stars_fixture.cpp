@@ -2,11 +2,14 @@
 // production renderer::SkyStarsPass (src/renderer/sky_stars_pass.cpp, built with X3M_SKY_STARS_FIXTURE) on a real
 // device, no game. Renders the seed's batch into an A16B16G16R16F target at four sub-pixel offsets (the TAA jitter
 // input of sky_stars::core::vertex_constants) and two view rotations and checks, per isolated star, the summed RGB
-// against the buffer's energy (within 1 %) and across offsets (within 1 %), every pixel <= 1.0, and no written pixel
-// outside a star's quad; that every state, binding and constant the pass touches is put back (with a draw fault and a
+// against the buffer's energy (within 1 %) and across offsets (within 1 %), every pixel <= peak_cap (2.0), and no written
+// pixel outside a star's quad; the twinkle (c251 at amplitude 1): a twinkling star's sum follows
+// 1 + sin(2 pi frac(rate t + phase) - pi), a steady star's does not move; that every state, binding and constant
+// (c251-c255) the pass touches is put back (with a draw fault and a
 // restore fault injected); a temporal proxy (60 frames, 0.5 and 10 px/frame pans: an exponential history of weight 0.9
 // with exact reprojection and a 3x3 min/max clip, a model of the resolve, not the resolve); and the GPU/CPU cost at
-// 5120x1440. Prints PASS/FAIL lines and one RESULT line. Build: verification/results/sky-stars/run_fixture.py.
+// 5120x1440 and the rebuild of a full 16384-star buffer. Prints PASS/FAIL lines and one RESULT line. Build:
+// verification/results/sky-stars/run_fixture.py.
 #include "../../src/renderer/sky_stars_pass.h"
 #include <windows.h>
 #include <d3d9.h>
@@ -225,17 +228,29 @@ int main() {
         return 1;
     }
     const std::uint32_t seed = 0xa7u | 1u << 8 | 65u << 16 | core::seed_valid;
+    const core::Look look{}; // the defaults: density 2, brightness 2, size 1, min_size 1.5
+    const float steady[4] = {0.f, 0.f, 0.f, 0.f}; // c251 with amplitude 0
     bool rebuilt = false;
     LARGE_INTEGER f{}, t0{}, t1{};
     QueryPerformanceFrequency(&f);
     QueryPerformanceCounter(&t0);
-    const unsigned n = pass.prepare(seed, 1.f, &rebuilt);
+    const unsigned n = pass.prepare(seed, look, &rebuilt);
     QueryPerformanceCounter(&t1);
     const double build_ms = double(t1.QuadPart - t0.QuadPart) * 1e3 / double(f.QuadPart);
-    std::snprintf(detail, sizeof detail, "stars=%u rebuilt=%u build_ms=%.3f", n, unsigned(rebuilt), build_ms);
-    check(n == 3120 && rebuilt && pass.prepare(seed, 1.f, &rebuilt) == n && !rebuilt, "prepare_once_per_seed", detail);
+    std::snprintf(detail, sizeof detail, "stars=%u rebuilt=%u build_ms=%.3f support_max=%.4f peak_max=%.4f twinkling=%u", n,
+                  unsigned(rebuilt), build_ms, pass.stats().support_max, pass.stats().peak_max, pass.stats().twinkling);
+    check(n == 6240 && rebuilt && pass.prepare(seed, look, &rebuilt) == n && !rebuilt, "prepare_once_per_seed", detail);
+    {
+        core::Look other = look;
+        other.brightness = 3.f;
+        bool again = false;
+        pass.prepare(seed, other, &again);
+        bool back = false;
+        pass.prepare(seed, look, &back);
+        check(again && back, "prepare_rebuilds_on_look_change");
+    }
     std::vector<core::Vertex> vb(core::vertex_capacity);
-    core::build(seed, 1.f, vb.data(), core::stars_max);
+    core::build(seed, look, vb.data(), core::stars_max);
 
     // ---- 1. Energy, offsets, rotations, peak, outside pixels.
     const UINT W = 1024, H = 512;
@@ -243,7 +258,7 @@ int main() {
     check(target.create(d, W, H), "target");
     const double m11 = 1. / std::tan(30. * 3.14159265358979 / 180.), m00 = m11 * H / W;
     const double offsets[4][2] = {{0, 0}, {.25, .5}, {.5, .5}, {.75, .125}};
-    double worst_energy = 0, worst_offset_spread = 0, worst_peak = 0, worst_outside_dist = 0;
+    double worst_energy = 0, worst_offset_spread = 0, worst_peak = 0, worst_star_peak = 0, worst_outside_dist = 0;
     unsigned outside_pixels = 0, measured_stars = 0;
     for (unsigned rot = 0; rot < 2; ++rot) {
         float r[9];
@@ -257,7 +272,7 @@ int main() {
             d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
             d->BeginScene();
             SkyStarsReport rep{};
-            pass.draw(c, &rep);
+            pass.draw(c, steady, &rep);
             d->EndScene();
             if (!rot && !o)
                 std::printf("DRAW operation=%08lx restore=%08lx failed=%u calls=%u stars=%u drew=%u\n", rep.operation,
@@ -294,6 +309,7 @@ int main() {
                     continue;
                 }
                 window_sum(rgb, W, *s, sum, &peak);
+                worst_star_peak = std::max(worst_star_peak, peak);
                 double e = 0;
                 for (unsigned c3 = 0; c3 < 3; ++c3) e = std::max(e, std::fabs(sum[c3] - s->expect[c3]) / s->expect[c3]);
                 worst_energy = std::max(worst_energy, e);
@@ -315,10 +331,63 @@ int main() {
     check(measured_stars >= 100 && worst_energy < .01, "energy_within_1pct", detail);
     std::snprintf(detail, sizeof detail, "worst_spread=%.5f", worst_offset_spread);
     check(worst_offset_spread < .01, "energy_offsets_within_1pct", detail);
-    std::snprintf(detail, sizeof detail, "peak=%.5f", worst_peak);
-    check(worst_peak <= 1.0 + 1. / 1024., "peak_le_1", detail);
+    // The cap is per star: an isolated star's largest pixel; quads that overlap add (the image maximum, reported).
+    std::snprintf(detail, sizeof detail, "star_peak=%.5f image_peak=%.5f (overlaps add)", worst_star_peak, worst_peak);
+    check(worst_star_peak <= core::peak_cap * (1. + 1. / 1024.), "star_peak_le_cap", detail);
     std::snprintf(detail, sizeof detail, "outside_pixels=%u worst_dist_px=%.3f", outside_pixels, worst_outside_dist);
     check(outside_pixels == 0, "nothing_outside_quads", detail);
+
+    // ---- 1b. Twinkle: c251 = (t, 1) at three times; per isolated star the sum against the energy times the
+    // modulation the vertex program applies (steady stars: times 1).
+    {
+        float r[9];
+        rotation(0, 0, r);
+        float c[16];
+        core::vertex_constants(r, float(m00), float(m11), 0.f, 0.f, 0.f, 0.f, W, H, c);
+        const auto stars = project(vb, n, c, W, H);
+        std::vector<std::size_t> chosen;
+        for (std::size_t i = 0; i < stars.size(); ++i)
+            if (isolated(stars, i, W, H)) chosen.push_back(i);
+        double worst_twinkle = 0, worst_steady = 0, swing = 0;
+        unsigned twinkling = 0, steady_n = 0;
+        for (double t : {0.37, 17.5, 101.03}) {
+            const float tw[4] = {float(t), 1.f, 0.f, 0.f};
+            d->SetRenderTarget(0, target.surface);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            d->BeginScene();
+            SkyStarsReport rep{};
+            pass.draw(c, tw, &rep);
+            d->EndScene();
+            std::vector<float> rgb;
+            target.read(d, rgb);
+            for (std::size_t k : chosen) {
+                const auto& s = stars[k];
+                const std::uint32_t lanes = vb[s.index * 4].twinkle;
+                double factor = 1.;
+                if (lanes) {
+                    const double rate = double((lanes >> 16) & 255) / 128., phase = double((lanes >> 8) & 255) / 255.;
+                    const double cycles = rate * t + phase - std::floor(rate * t + phase);
+                    factor = 1. + std::sin(6.28318531 * cycles - 3.14159265);
+                }
+                double sum[3], peak = 0;
+                window_sum(rgb, W, s, sum, &peak);
+                const double expect = s.expect[0] + s.expect[1] + s.expect[2];
+                const double got = sum[0] + sum[1] + sum[2];
+                if (lanes) {
+                    ++twinkling;
+                    worst_twinkle = std::max(worst_twinkle, std::fabs(got - expect * factor) / expect);
+                    swing = std::max(swing, std::fabs(factor - 1.));
+                } else {
+                    ++steady_n;
+                    worst_steady = std::max(worst_steady, std::fabs(got - expect) / expect);
+                }
+            }
+        }
+        std::snprintf(detail, sizeof detail, "twinkling=%u steady=%u worst_twinkle_err=%.5f worst_steady_err=%.5f swing_max=%.3f",
+                      twinkling, steady_n, worst_twinkle, worst_steady, swing);
+        check(twinkling >= 30 && steady_n >= 90 && worst_twinkle < .02 && worst_steady < .01 && swing > .5,
+              "twinkle_modulation", detail);
+    }
 
     // ---- 2. State restoration: distinctive application state before the draw, compared after it.
     {
@@ -340,8 +409,8 @@ int main() {
         unsigned mismatches = 0, runs = 0;
         for (unsigned fault = 0; fault < 3; ++fault) {
             for (unsigned i = 0; i < nk; ++i) d->SetRenderState(keys[i], app[i]);
-            const float consts[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-            d->SetVertexShaderConstantF(252, consts, 4);
+            const float consts[20] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+            d->SetVertexShaderConstantF(251, consts, 5);
             d->SetVertexDeclaration(app_decl);
             d->SetStreamSource(0, app_vb, 16, 16);
             d->SetStreamSourceFreq(0, D3DSTREAMSOURCE_INDEXEDDATA | 2u);
@@ -353,9 +422,10 @@ int main() {
             float r[9];
             rotation(0, 0, r);
             core::vertex_constants(r, float(m00), float(m11), 0.f, 0.f, 0.f, 0.f, W, H, c);
+            const float tw[4] = {12.5f, .3f, 0.f, 0.f};
             d->BeginScene();
             SkyStarsReport rep{};
-            pass.draw(c, &rep);
+            pass.draw(c, tw, &rep);
             d->EndScene();
             const bool expect_draw = fault != 1, expect_restore = fault != 2;
             mismatches += (rep.drew != expect_draw) + (SUCCEEDED(rep.restore) != expect_restore);
@@ -365,8 +435,8 @@ int main() {
                 // The injected restore fault skips one restoring SetRenderState: exactly one state may differ then.
                 if (v != app[i] && !(fault == 2)) ++mismatches;
             }
-            float back[16];
-            d->GetVertexShaderConstantF(252, back, 4);
+            float back[20];
+            d->GetVertexShaderConstantF(251, back, 5);
             mismatches += std::memcmp(back, consts, sizeof back) != 0;
             IDirect3DVertexDeclaration9* dd = nullptr;
             IDirect3DVertexBuffer9* sb = nullptr;
@@ -424,7 +494,7 @@ int main() {
                 d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
                 d->BeginScene();
                 SkyStarsReport rep{};
-                pass.draw(c, &rep);
+                pass.draw(c, steady, &rep);
                 d->EndScene();
                 pan.read(d, current);
                 if (!frame) {
@@ -523,8 +593,11 @@ int main() {
         rotation(0, 0, r);
         float c[16];
         core::vertex_constants(r, float(bm00), float(bm11), 0.f, 0.f, 0.f, 0.f, 5120, 1440, c);
+        const float tw[4] = {33.3f, core::twinkle_default, 0.f, 0.f};
         for (std::uint32_t s : {seed, 0x11u | 0u << 8 | 143u << 16 | core::seed_valid}) {
-            const unsigned stars = pass.prepare(s, s == seed ? 1.f : 4.f);
+            core::Look cost_look = look;
+            cost_look.density = s == seed ? core::density_default : 4.f;
+            const unsigned stars = pass.prepare(s, cost_look);
             d->SetRenderTarget(0, big.surface);
             d->BeginScene();
             d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
@@ -536,7 +609,7 @@ int main() {
                 LARGE_INTEGER a{}, b{};
                 QueryPerformanceCounter(&a);
                 SkyStarsReport rep{};
-                pass.draw(c, &rep);
+                pass.draw(c, tw, &rep);
                 QueryPerformanceCounter(&b);
                 cpu += double(b.QuadPart - a.QuadPart);
             }
@@ -547,11 +620,20 @@ int main() {
             std::printf("COST target=5120x1440 stars=%u reps=%u batch_ms_upper_bound=%.4f draw_cpu_us=%.2f\n", stars, reps,
                         total_ms / reps, cpu * 1e6 / double(f.QuadPart) / reps);
         }
-        QueryPerformanceCounter(&t0);
-        bool rb = false;
-        pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, 1.f, &rb);
-        QueryPerformanceCounter(&t1);
-        std::printf("COST rebuild stars=%u ms=%.3f\n", pass.stars(), double(t1.QuadPart - t0.QuadPart) * 1e3 / double(f.QuadPart));
+        // The rebuild of a full buffer (K 200 x 48 x 2 = 19200, capped at 16384): the Lock, the generator, the Unlock.
+        double best_us = 1e30;
+        for (unsigned rep = 0; rep < 5; ++rep) {
+            core::Look rebuild_look = look;
+            rebuild_look.brightness = 2.f + .25f * float(rep); // a new look each time: a real rebuild
+            QueryPerformanceCounter(&t0);
+            bool rb = false;
+            pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, rebuild_look, &rb);
+            QueryPerformanceCounter(&t1);
+            best_us = std::min(best_us, double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart));
+        }
+        std::printf("COST rebuild stars=%u vb_bytes=%u build_us_best_of_5=%.1f\n", pass.stars(),
+                    unsigned(core::vertex_capacity * core::vertex_stride), best_us);
+        check(pass.stars() == core::stars_max, "rebuild_full_buffer");
         q->Release();
         big.release();
     }

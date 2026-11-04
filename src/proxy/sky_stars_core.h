@@ -12,12 +12,22 @@
 //   decoded peak p = 1 / X, X uniform in [1, 2.5^4]   (count per 2.5x flux step rises 2.5x: the power law; the step is
 //                                                        2.5, not Pogson's 2.512, so p needs no CRT pow)
 //   target peak  = p^(1/2.2)                          (brightest 1.0, median decoded 2 / (1 + 39.06) = 0.0499)
-//   energy       = target peak / centre_fraction(a)   (the sum over the covered pixels, any sub-pixel position)
+//   steps        = log_2.5(x_max / X)                 (flux steps above the dimmest star, [0, 4])
+//   a            = min_size + 0.35 size steps         (sky_stars_min_size, sky_stars_size; on the 1/16 px grid)
+//   energy       = gain target peak / centre_fraction(a)   (gain = sky_stars_brightness; the sum over the covered
+//                                                        pixels at any sub-pixel position; the centred peak is gain x
+//                                                        target peak whatever a, so a larger footprint adds light)
+// then a grows in 1/16 px steps while the centred peak energy x centre_fraction(a) exceeds peak_cap (2.0, decoded 4.6);
+// at half_support_max the energy is lowered to the cap instead. The twinkle multiplies after the cap: a twinkling star's
+// instantaneous peak reaches peak_cap x (1 + amplitude).
+// Twinkle: about one star in four (a second generator stream, not by brightness) carries a rate n / 128 Hz, n in
+// [52, 192], and a phase; the vertex program scales the energy by 1 + amplitude sin(2 pi (rate t + phase)), t the wall
+// clock modulo twinkle_period_s (c251, twinkle_constants). Energy only: the footprint does not change.
 // Kernel: separable Beta(3,3) density over [-a, a] px per axis (Gaussian-shaped, sigma = 0.378 a), whose CDF is the
 // quintic smootherstep C(t) = t^3 (t (6 t - 15) + 10), t = (x + a) / (2 a). A pixel at offset u (pixel centre minus star
 // centre) receives (C(t(u + 0.5)) - C(t(u - 0.5))) per axis; the sum over every pixel telescopes to C(1) - C(0) = 1
 // exactly when every pixel whose area meets [-a, a] is rasterised, which the quad's half extent a + quad_margin
-// guarantees. a = max(1 px, the smallest support whose centred peak stays <= 1.0): the footprint is max(2 px, s(m)).
+// guarantees. With min_size 1, size 0 and gain 1 the law is the first one's: a = 1 px, energy = peak / centre_fraction(1).
 #include "lod_texture_mark.h"
 #include "sse_scalar.h"
 #include <cstdint>
@@ -25,15 +35,26 @@
 namespace x3m::sky_stars::core {
 constexpr unsigned payload_sky_stars = lod_texture_mark::payload_sky_stars; // descriptor bits 24-31 of a star texture
 constexpr unsigned lane_count = 8;            // sky_textures.STAR_LANES: white blue red orange yellow green cyan, 7 other
-constexpr unsigned stars_per_k = 48, stars_min = 512, stars_max = 8192;
-constexpr float density_default = 1.f, density_min = .25f, density_max = 4.f; // sky_stars_density
-constexpr unsigned vertex_stride = 28, vertices_per_star = 4, indices_per_star = 6;
-constexpr unsigned vertex_capacity = stars_max * vertices_per_star; // 32768: 16-bit indices suffice
+constexpr unsigned stars_per_k = 48, stars_min = 512, stars_max = 16384;
+constexpr float density_default = 2.f, density_min = .25f, density_max = 4.f;         // sky_stars_density
+constexpr float brightness_default = 2.f, brightness_min = .5f, brightness_max = 8.f; // sky_stars_brightness (gain)
+constexpr float size_default = 1.f, size_min = 0.f, size_max = 3.f;                   // sky_stars_size
+constexpr float min_size_default = 1.5f, min_size_min = 1.f, min_size_max = 3.f;      // sky_stars_min_size (px)
+constexpr float twinkle_default = .3f, twinkle_min = 0.f, twinkle_max = 1.f;          // sky_stars_twinkle (amplitude)
+constexpr unsigned vertex_stride = 32, vertices_per_star = 4, indices_per_star = 6;
+constexpr unsigned vertex_capacity = stars_max * vertices_per_star; // 65536: 16-bit indices suffice
 constexpr float flux_step = 2.5f, flux_steps = 4.f, x_max = 39.0625f; // 2.5^4
 constexpr double decode_gamma = 2.2;                                    // the installed hdr_decode (gamma2.2)
-constexpr float half_support_min = 1.f; // px: the 2 px minimum footprint
-constexpr float half_support_max = 8.f; // px: the cap the support search stops at (never reached by the law above)
+constexpr float half_support_min = 1.f; // px: the 2 px footprint of the first law (min_size_min)
+constexpr float half_support_max = 8.f; // px: the hard bound of the support (the defaults reach 2.875)
 constexpr float quad_margin = .5625f;   // px beyond the support: every pixel with weight has its centre inside the quad
+constexpr double peak_cap = 2.;         // target value of the largest centred pixel (decoded 2^2.2 = 4.6)
+constexpr double size_slope = .35;      // px of half-width per flux step at size 1 (4 steps: 1.4 px)
+constexpr double log2_flux_step = 1.3219280948873624; // log2(2.5)
+// Twinkle lanes (Vertex::twinkle, D3DCOLOR): R = rate n (n / 128 Hz), G = phase (G / 255 cycles), B = 255 on a twinkling
+// star; 0 on the others. Every rate is a multiple of 1/128 Hz, so 128 s is a common period: t wraps there without a jump.
+constexpr unsigned twinkle_rate_min = 52, twinkle_rate_max = 192; // 0.41 .. 1.5 Hz
+constexpr std::uint64_t twinkle_period_s = 128;
 // The packed seed the sampler shadow carries for stage 0: slot | lane << 8 | K << 16 | valid << 24; 0 = not a star texture.
 constexpr std::uint32_t seed_valid = 0x01000000u;
 inline std::uint32_t seed_of(const lod_texture_mark::Mark& m) noexcept {
@@ -45,13 +66,34 @@ inline std::uint32_t seed_of(const lod_texture_mark::Mark& m) noexcept {
 inline unsigned seed_slot(std::uint32_t seed) noexcept { return seed & 255u; }
 inline unsigned seed_lane(std::uint32_t seed) noexcept { return (seed >> 8) & 255u; }
 inline unsigned seed_k(std::uint32_t seed) noexcept { return (seed >> 16) & 255u; }
-// The accepted density (sky_stars_density): a finite value in [density_min, density_max] replaces *out.
-inline bool accept_density(float v, float* out) noexcept {
-    if (!(v >= density_min && v <= density_max)) return false;
+// The accepted settings: a finite value in the setting's range replaces *out (a refusal leaves *out, the default).
+inline bool accept_range(float v, float lo, float hi, float* out) noexcept {
+    if (!(v >= lo && v <= hi)) return false;
     *out = v;
     return true;
 }
-// N = clamp(round(K x 48 x density), 512, 8192).
+inline bool accept_density(float v, float* out) noexcept { return accept_range(v, density_min, density_max, out); }
+inline bool accept_brightness(float v, float* out) noexcept { return accept_range(v, brightness_min, brightness_max, out); }
+inline bool accept_size(float v, float* out) noexcept { return accept_range(v, size_min, size_max, out); }
+inline bool accept_min_size(float v, float* out) noexcept { return accept_range(v, min_size_min, min_size_max, out); }
+inline bool accept_twinkle(float v, float* out) noexcept { return accept_range(v, twinkle_min, twinkle_max, out); }
+// The settings the vertex buffer depends on (the twinkle amplitude is a constant, c251: no rebuild).
+struct Look {
+    float density = density_default, brightness = brightness_default, size = size_default, min_size = min_size_default;
+};
+inline bool same_look(const Look& a, const Look& b) noexcept {
+    return a.density == b.density && a.brightness == b.brightness && a.size == b.size && a.min_size == b.min_size;
+}
+// Out-of-range members back to their defaults (the builder's own guard; the settings path has refused them already).
+inline Look sanitized(const Look& v) noexcept {
+    Look out;
+    accept_density(v.density, &out.density);
+    accept_brightness(v.brightness, &out.brightness);
+    accept_size(v.size, &out.size);
+    accept_min_size(v.min_size, &out.min_size);
+    return out;
+}
+// N = clamp(round(K x 48 x density), 512, 16384).
 inline unsigned star_count(unsigned k, float density) noexcept {
     if (!(density >= density_min && density <= density_max)) density = density_default;
     const float n = float(k) * float(stars_per_k) * density + .5f;
@@ -64,6 +106,7 @@ struct Vertex {
     float corner[2];     // quad corner offset in px, (+-h, +-h), h = a + quad_margin
     float energy;        // the summed target value of the star's brightest channel
     std::uint32_t tint;  // D3DCOLOR (A8R8G8B8), the brightest channel 255
+    std::uint32_t twinkle; // D3DCOLOR lanes: rate n (R), phase (G), on (B); 0 = steady
 };
 static_assert(sizeof(Vertex) == vertex_stride, "the declaration follows the vertex");
 
@@ -82,14 +125,28 @@ static_assert(sizeof(Vertex) == vertex_stride, "the declaration follows the vert
     const double w = axis_weight(0., a);
     return w * w;
 }
-// The support half-width of a star with target peak `peak` (<= 1 by the law; the search keeps the cap a hard rule for
-// any caller): the smallest a >= half_support_min in 1/16 px steps with peak / centre_fraction(1) * centre_fraction(a)
-// <= 1, i.e. the energy fixed at the minimum footprint's and the footprint grown until the centred peak is under 1.0.
-inline void half_support(double energy, double* a_out) noexcept {
-    double a = half_support_min;
-    while (a < half_support_max && energy * centre_fraction(a) > 1. + 1e-9)
-        a += 1. / 16.;
+// The cap search: *a (the start) grows in 1/16 px steps with the energy fixed until the centred peak
+// energy x centre_fraction(a) is at most peak_cap. half_support_max stays a hard bound: a star still above the cap there
+// (a large size term with a high gain) has its energy lowered to peak_cap / centre_fraction(a), so the centred peak is at
+// most peak_cap for every legal setting.
+inline void half_support(double* energy, double* a) noexcept {
+    double s = *a;
+    while (s < half_support_max && *energy * centre_fraction(s) > peak_cap + 1e-9)
+        s += 1. / 16.;
+    const double fraction = centre_fraction(s);
+    if (*energy * fraction > peak_cap) *energy = peak_cap / fraction;
+    *a = s;
+}
+// The support and energy of a star of target peak `peak` (<= 1), `steps` flux steps above the dimmest ([0, 4]): the size
+// term on the 1/16 px grid, the energy that keeps the centred peak at gain x peak there, then the cap search.
+inline void star_support(double peak, double steps, const Look& look, double* a_out, double* energy_out) noexcept {
+    double a = double(look.min_size) + size_slope * double(look.size) * steps;
+    a = scalar::floor(a * 16. + .5) * (1. / 16.);
+    if (a > double(half_support_max)) a = half_support_max;
+    double energy = double(look.brightness) * peak / centre_fraction(a);
+    half_support(&energy, &a);
     *a_out = a;
+    *energy_out = energy;
 }
 
 // ---- Deterministic generator (no CRT) ----
@@ -157,21 +214,33 @@ inline void lane_tint(unsigned lane, double out[3]) noexcept {
     out[2] = t[2];
 }
 struct BuildStats {
-    unsigned stars = 0;
+    unsigned stars = 0, twinkling = 0;
+    // peak_max: the largest centred pixel (target value, <= peak_cap); support_max: the largest half-width a in px.
     double peak_max = 0., peak_median_decoded = 0., energy_max = 0., support_max = 0.;
 };
+// The twinkle lanes of one star (one draw of the twinkle stream per star): one in four on; rate and phase from the
+// same word.
+inline std::uint32_t twinkle_lanes(Rng& stream) noexcept {
+    const std::uint32_t r = stream.next();
+    if (r >> 30) return 0;
+    const std::uint32_t rate = twinkle_rate_min + (((r & 0xffffu) * (twinkle_rate_max - twinkle_rate_min + 1u)) >> 16);
+    const std::uint32_t phase = (r >> 16) & 255u;
+    return rate << 16 | phase << 8 | 255u;
+}
 // Writes the 4 * N vertices of the seed's field into `out` (room for `capacity_stars` stars). Returns N (0: refused,
-// no seed or no room). Runs once per seed on the render thread.
-inline unsigned build(std::uint32_t seed, float density, Vertex* out, unsigned capacity_stars,
+// no seed or no room). Runs once per (seed, look) on the render thread. Directions, brightness and tint come from the
+// seed's stream as in the first law and the twinkle lanes from a second stream, so the field is the same in any look.
+inline unsigned build(std::uint32_t seed, const Look& requested, Vertex* out, unsigned capacity_stars,
                       BuildStats* stats = nullptr) noexcept {
     if (!(seed & seed_valid) || !out) return 0;
-    const unsigned n = star_count(seed_k(seed), density);
+    const Look look = sanitized(requested);
+    const unsigned n = star_count(seed_k(seed), look.density);
     if (n > capacity_stars) return 0;
-    Rng rng(seed);
+    Rng rng(seed), twinkle_stream(seed ^ 0x7417c1e5u);
     double class_tint[3];
     lane_tint(seed_lane(seed), class_tint);
-    const double fraction_min = centre_fraction(half_support_min);
     double peak_max = 0., energy_max = 0., support_max = 0.;
+    unsigned twinkling = 0;
     for (unsigned i = 0; i < n; ++i) {
         // Direction: Marsaglia (1972), uniform on the sphere from a point in the unit disc.
         double x, y, s;
@@ -188,10 +257,15 @@ inline unsigned build(std::uint32_t seed, float density, Vertex* out, unsigned c
         double u;
         rng.uniform(&u);
         const double decoded = 1. / (1. + u * (double(x_max) - 1.));
-        const double peak = exp2_bounded(log2_positive(decoded) / decode_gamma);
-        const double energy = peak / fraction_min;
-        double a;
-        half_support(energy, &a);
+        // One logarithm per star: steps = log_2.5(x_max decoded) = 4 + log2(decoded) / log2(2.5) (x_max = 2.5^4).
+        const double log2_decoded = log2_positive(decoded);
+        const double peak = exp2_bounded(log2_decoded / decode_gamma);
+        double steps = double(flux_steps) + log2_decoded * (1. / log2_flux_step);
+        steps = steps < 0. ? 0. : steps > double(flux_steps) ? double(flux_steps) : steps;
+        double a, energy;
+        star_support(peak, steps, look, &a, &energy);
+        const std::uint32_t twinkle = twinkle_lanes(twinkle_stream);
+        twinkling += twinkle != 0;
         // Tint: the class colour mixed with white by a per-star share in [0.25, 0.75], brightest channel 255.
         double share;
         rng.uniform(&share);
@@ -215,13 +289,16 @@ inline unsigned build(std::uint32_t seed, float density, Vertex* out, unsigned c
             o.corner[1] = corners[v][1];
             o.energy = float(energy);
             o.tint = tint;
+            o.twinkle = twinkle;
         }
-        if (peak > peak_max) peak_max = peak;
+        const double centred = energy * centre_fraction(a);
+        if (centred > peak_max) peak_max = centred;
         if (energy > energy_max) energy_max = energy;
         if (a > support_max) support_max = a;
     }
     if (stats) {
         stats->stars = n;
+        stats->twinkling = twinkling;
         stats->peak_max = peak_max;
         stats->peak_median_decoded = 2. / (1. + double(x_max)); // the law's median (decoded)
         stats->energy_max = energy_max;
@@ -242,7 +319,23 @@ inline void build_indices(std::uint16_t* out, unsigned stars) noexcept {
     }
 }
 
-// ---- Vertex constants (c252-c255) ----
+// ---- Vertex constants (c251 twinkle, c252-c255 projection) ----
+// c251 = (t, amplitude, 0, 0): t the wall clock in seconds modulo twinkle_period_s from QueryPerformanceCounter ticks
+// and frequency (wall time, not game time: SETA must not speed the twinkle up), amplitude = sky_stars_twinkle. The
+// conversion uses 31-bit signed halves only (cvtsi2sd; a 64-bit or unsigned conversion is an x87 fild on i686).
+inline bool twinkle_constants(std::uint64_t ticks, std::uint64_t frequency, float amplitude, float out[4]) noexcept {
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    if (!frequency || frequency >= (std::uint64_t(1) << 50)) return false;
+    if (!(amplitude >= twinkle_min && amplitude <= twinkle_max)) return false;
+    const std::uint64_t wrapped = ticks % (frequency * twinkle_period_s);
+    const double t = (double(int(std::uint32_t(wrapped >> 31))) * 2147483648. +
+                      double(int(std::uint32_t(wrapped) & 0x7fffffffu))) /
+                     (double(int(std::uint32_t(frequency >> 31))) * 2147483648. +
+                      double(int(std::uint32_t(frequency) & 0x7fffffffu)));
+    out[0] = float(t);
+    out[1] = amplitude;
+    return true;
+}
 // The view rotation r (camera_reprojection.h CameraState::r, row-vector: view_j = sum_i world_i r[i*3+j]), the
 // projection terms m00, m11, m20, m21 (P[0], P[5], P[8], P[9]; P[11] = 1, no P[10]/P[14]: the far plane is z = w *
 // far_z), the TAA jitter in raster px (MotionOutput jitter_, the sign of fade_region_math.h jitter_rows) and the target

@@ -21,17 +21,20 @@
 //
 // Costs: per draw one bool test with the setting off; with it on, one compare of sky_stars_stage0_ (zero for every draw
 // without a marked stage-0 texture) and, in the background phase, one counter. Per matched frame: one mask pair, the
-// constants (12 multiplies), one Get/Set/restore bracket of 50 device calls (measured: the fixture's DRAW row) including the DrawIndexedPrimitive. Per seed
-// change: one Lock of the static MANAGED buffer and the generator (N <= 8192 stars). No allocation per frame.
+// constants (12 multiplies; c251's wall time: one QueryPerformanceCounter and a 64-bit modulo), one Get/Set/restore
+// bracket of 50 device calls (measured: the fixture's DRAW row) including the DrawIndexedPrimitive. Per seed
+// change: one Lock of the static MANAGED buffer and the generator (N <= 16384 stars). No allocation per frame.
 //
 // Rows: sky_stars (status, mark, stars, matched, masked, draw, table_full) at the depth-only Clear when the status, the
 // seed, a refusal reason or the table's refusal count changed since the last row; sky_stars_match once per new seed at its first match (invariant 1: the
 // pair, blend and z states, the index in the background phase, the texture's size and levels, the latching Clear's
 // colour, the background camera); sky_stars_outside for the first four outside-phase binds; sky_stars_device at attach.
-void MotionOutput::configure_sky_stars(bool requested, float density, bool mask) noexcept {
+void MotionOutput::configure_sky_stars(bool requested, const sky_stars::core::Look& look, float twinkle,
+                                       bool mask) noexcept {
     sky_stars_requested_ = requested;
-    sky_stars_density_ = sky_stars::core::density_default;
-    sky_stars::core::accept_density(density, &sky_stars_density_);
+    sky_stars_look_ = sky_stars::core::sanitized(look);
+    sky_stars_twinkle_ = sky_stars::core::twinkle_default;
+    sky_stars::core::accept_twinkle(twinkle, &sky_stars_twinkle_);
     sky_stars_mask_mode_ = mask;
     if (requested && !sky_stars_marks_) sky_stars_marks_ = new (std::nothrow) lod_texture_mark::Table<1024>();
     if (!sky_stars_marks_) sky_stars_requested_ = false; // no table: nothing is stored or matched (fail closed)
@@ -170,7 +173,7 @@ void MotionOutput::sky_stars_classify(const MotionDrawCall& call, MotionRoute& r
         unsigned stars = 0;
         call_preserved([&] {
             QueryPerformanceCounter(&begin);
-            stars = sky_stars_->prepare(seed, sky_stars_density_, &rebuilt);
+            stars = sky_stars_->prepare(seed, sky_stars_look_, &rebuilt);
             QueryPerformanceCounter(&end);
         });
         if (rebuilt) {
@@ -295,7 +298,12 @@ void MotionOutput::finish_sky_stars(MotionRoute& route, HRESULT result) noexcept
     LARGE_INTEGER begin{}, end{};
     call_preserved([&] {
         QueryPerformanceCounter(&begin);
-        sky_stars_->draw(constants, &report);
+        // c251: the wall clock (QPC), not the game clock, so SETA does not speed the twinkle up. A failed conversion
+        // (no frequency) leaves (0, 0): every star steady.
+        float twinkle[4];
+        sky_stars::core::twinkle_constants(std::uint64_t(begin.QuadPart), engine_qpc_frequency(), sky_stars_twinkle_,
+                                           twinkle);
+        sky_stars_->draw(constants, twinkle, &report);
         QueryPerformanceCounter(&end);
     });
     sky_stars_draw_ticks_ = std::uint64_t(end.QuadPart - begin.QuadPart);
@@ -346,7 +354,9 @@ void MotionOutput::sky_stars_phase_end() noexcept {
     sky_stars_logged_seed_ = sky_stars_frame_seed_;
     sky_stars_logged_reason_ = reason;
     const std::uint32_t seed = sky_stars_frame_seed_;
-    const unsigned stars = sky_stars_ && seed == sky_stars_->seed() ? sky_stars_->stars() : 0u;
+    const bool built = sky_stars_ && seed == sky_stars_->seed();
+    const unsigned stars = built ? sky_stars_->stars() : 0u;
+    const sky_stars::core::BuildStats stats = built ? sky_stars_->stats() : sky_stars::core::BuildStats{};
     call_preserved([&] {
         const std::uint64_t frequency = engine_qpc_frequency() ? engine_qpc_frequency() : 1;
         char draw[16];
@@ -356,14 +366,15 @@ void MotionOutput::sky_stars_phase_end() noexcept {
             std::snprintf(draw, sizeof draw, "%08lx", static_cast<unsigned long>(sky_stars_frame_hr_));
         log("sky_stars device=%llu frame=%llu status=%s mark=%u/%u/%u stars=%u matched=%u masked=%u draw=%s reason=%s"
             " phase_draws=%u frames=%llu drawn_frames=%llu outside=%llu refused=%llu rebuilds=%u table_full=%u density=%.2f"
-            " mask_mode=%u draw_us=%.1f build_us=%.1f",
+            " mask_mode=%u draw_us=%.1f build_us=%.1f peak_max=%.4f support_max=%.4f twinkling=%u",
             id_, frame_, status, sky_stars::core::seed_slot(seed), sky_stars::core::seed_lane(seed),
             sky_stars::core::seed_k(seed), stars, sky_stars_frame_matched_, sky_stars_frame_masked_, draw, reason,
             sky_stars_phase_draws_, static_cast<unsigned long long>(sky_stars_frames_),
             static_cast<unsigned long long>(sky_stars_drawn_frames_), static_cast<unsigned long long>(sky_stars_outside_),
-            static_cast<unsigned long long>(sky_stars_refused_), sky_stars_rebuilds_, full, double(sky_stars_density_),
-            unsigned(sky_stars_mask_mode_), double(sky_stars_draw_ticks_) * 1e6 / double(frequency),
-            double(sky_stars_build_ticks_) * 1e6 / double(frequency));
+            static_cast<unsigned long long>(sky_stars_refused_), sky_stars_rebuilds_, full,
+            double(sky_stars_look_.density), unsigned(sky_stars_mask_mode_),
+            double(sky_stars_draw_ticks_) * 1e6 / double(frequency), double(sky_stars_build_ticks_) * 1e6 / double(frequency),
+            stats.peak_max, stats.support_max, stats.twinkling);
     });
     sky_stars_frames_ = sky_stars_drawn_frames_ = 0;
 }
