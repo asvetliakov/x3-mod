@@ -140,13 +140,18 @@ def _score(n, m):
 
 def generate(position_bits, faces, epsilon, head_bits=None, head_insertion=True, normal_selection=True,
              weld_refusal=True, heap_order=True, retire_own_entry=False, unlink_refused=True, later_slot_check=False,
-             rsqrt=rsqrt_portable, normalize='sse2'):
+             rsqrt=rsqrt_portable, normalize='sse2', refuse_competing_normals=False):
     """position_bits: list of (xbits, ybits, zbits); faces: list of (i0, i1, i2);
     head_bits: the three float bit patterns at byte 0 of every vertex, which D3DX
     reads for the sweep key (the first) and for the normals of the candidate
     selection (all three); the position itself when it is the first element,
     which is the default. normalize: 'sse2' or 'generic', the D3DXVec3Normalize
     D3DX dispatched in the process that produced the output being reproduced.
+
+    refuse_competing_normals: the production SSE2 admission. 'competing_normals' is
+    returned at the first lookup that finds more than one live entry of the
+    reverse directed edge (with normal_selection, the only point where D3DX scores
+    normals), so no normal is computed for an admitted mesh.
 
     Returns (status, report, adjacency); adjacency is None unless status == 'ok'.
     The keyword policies exist for the fixture and the tests: the defaults are
@@ -280,6 +285,8 @@ def generate(position_bits, faces, epsilon, head_bits=None, head_insertion=True,
             if chain:
                 best = 0
                 if len(chain) > 1:
+                    if normal_selection and refuse_competing_normals:
+                        return 'competing_normals', report, None  # the module counts a lookup after its scan
                     report['multi_candidates'] += 1
                     if normal_selection:
                         query = _face_normal(heads, v2, v1, other, rsqrt, normalize)

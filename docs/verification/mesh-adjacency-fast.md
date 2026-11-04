@@ -632,3 +632,84 @@ which the flight's size distribution would have to show. The verify policy misma
 multi-candidate fans (68 and 4,816 entries, both DLLs; the SSE2 competing-normal limit of review 31 now
 reproduced on native x86), and production admission refuses exactly those (`competing_normals`), so fast
 mode serves native-equal output on every mesh here.
+
+## Lazy competing-normal refusal, fallback timing and hoists (2026-11-04)
+
+Cause (AP run 229, `verification/results/ap-run229-mesh-adjacency/split.{py,txt}`): 1,791 of 7,402 calls fell
+back with `competing_normals` at about 1.37 ms each (module work up to the preflight refusal plus an untimed
+native call; about 81 % of the 3.0 s wrapper time); `native_us=0` because fast mode did not time its fallbacks.
+
+**Rule.** The module refuses (`competing_normals`) at the first lookup that meets a second live entry of its
+reverse directed edge, the only point where D3DX's output depends on a normal score
+([d3dx-generate-adjacency.md](../reverse-engineering/d3dx-generate-adjacency.md), "When the normal score
+decides"). The former preflight refused every mesh with a duplicated directed edge whose reverse existed, which
+includes meshes whose same-direction entries are consumed one at a time and never scored. Contract unchanged:
+an admitted mesh evaluates no normal, so its output is the rule-only output already byte-equal to D3DX. With
+refusal possible (`refuse_competing_normals` and `normal_selection`) matching writes into arena scratch and is
+copied to the caller only on `ok`, so a late refusal leaves the caller's array untouched; otherwise (verify,
+generic table) it writes in place as before. `Report::potential_competing_normals` is now set at that same
+point (exact, no longer a superset), so verify's `verify_refused_competing` counts what fast would refuse. No
+early check remains, so `module_competing_normals` counts late refusals only.
+
+**Metric row** (`mesh_adjacency_metric`, fields appended, existing ones unchanged): `native_us`/`native_max_us`
+now also time fast mode's native fallback (clock from before the caller's state and LastError are restored for
+native to after native returns; native's outgoing state and LastError are captured and restored around the
+bookkeeping); `refused_us`/`refused_max_us` are the module time of runs that ended without `ok` (competing
+normals and the other module statuses), paid on top of native; `fallback_faces`/`fallback_vertices` sum the
+mesh sizes of fallbacks past the gate (input, FP-domain and gate fallbacks add 0). The startup row now reads
+`normal_gate=sse2_refuse_at_first_score gate=public_systemmem_readonly+declaration_float3+contiguous_attribute_ranges order=compute`
+(the cache went on 2026-09-25; contiguous attribute tables are admitted).
+
+**Hoists.** 32-bit hashing (murmur3 `fmix32`) for the position classes, the gate cells and the edge table
+(slots only place keys; every probe compares the full key and chain order is the linked list, so results are
+unchanged: fixture byte equality below); `cache_buffer_contract` no longer calls `VirtualQuery` per call (the
+COM dispatch read the object's vtable pointer; a recorded table was checked readable for 29 slots when recorded
+and its module is pinned; an unrecorded table is refused without being read, as before with reason
+`mesh_table`); arena growth doubles up to the 16 MB retention limit; the `GenerateAdjacency` wrapper's unused
+QPC read and the module's `unmatched` count are gone (the host driver and the fixture count it from the output).
+
+**Evidence** (measured, native Windows, AMD Ryzen 7 9850X3D, MinGW GCC 16 i686, SSE2 table):
+
+* Host: `test_mesh_adjacency_fast` 28 OK (new `test_lazy_refusal`: the `same_side` orders admitted with
+  `multi_candidates=0` and equal to the unguarded output, the C-first orders refused with the array untouched,
+  a refusal after earlier pairings; `test_refusal_iff_scoring`: 160 random meshes refused exactly when the
+  unguarded run scored, admitted output equal, and at least one admitted mesh with a duplicated directed edge
+  whose reverse exists, which the old preflight refused); the
+  Python reference gained `refuse_competing_normals`. Focused modules naming the adjacency or loading trace
+  (17 modules) 241 OK, 1 skipped.
+* D3DX fixture natively through WSL interop (system `d3dx9_37.dll`, no Wine):
+  `python3 verification/results/mesh-adjacency-native-windows/fixture_native.py` →
+  `fixture-native.txt`: 56 named cases (two new: `same-side-abc` admitted, `same-side-cab` refused late),
+  **50,534 checks, 0 failures** (HEAD before the change: 36,091 / 0 natively, the pinned Wine inventory). New
+  checks: on every computable case and every random mesh the production policy refuses exactly when the verify
+  run scored, leaves the output untouched then, and equals native D3DX when admitted; fast mode's
+  `native_ticks` grows. Random sweep `production_admitted=1883 production_refused=117` (= its 117
+  multi-candidate meshes). Of the 52 previous computable named cases fast mode now refuses 13 instead of 24
+  (FAST_STATS computed 94 / fallbacks 18 against 80 / 28; e.g. `fan-tilted-bac` and `-cba` are admitted,
+  byte-equal). The metric row after the fast pass shows the new fields (`refused_us=12.900
+  fallback_faces=75`, native time non-zero). `run_loading_trace.py` pins `MESH_ADJACENCY_CHECKS=50534`; the
+  Wine X3 run (generic table) was not repeated here.
+* Bench, both DLLs: `python3 verification/results/mesh-adjacency-native-windows/bench.py --reps 5 --out
+  .../bench-lazy-refusal.txt` → `BENCH_DONE failures=0`, `served_equal=1` on all 24 rows; the bench gained
+  `production_min_us` (fast mode's policy). No bench mesh changed admission: the two fans are still refused
+  (C-first by construction), now late, after 91-122 us (2,000 faces) and 394-399 us (8,000 faces) of module
+  work; every other mesh was and is admitted byte-equal.
+* Before/after on the same machine, alternating, minimum of two rounds
+  (`ab_module.py HEAD --rounds 2 --reps 5` → `ab-lazy-refusal.txt`), microseconds:
+
+| mesh | 37 before | 37 after | 43 before | 43 after |
+|---|---|---|---|---|
+| realistic-630 (verify / production) | 30.9 / 30.9 | 25.5 / 25.3 | 30.9 / 31.2 | 25.6 / 25.7 |
+| realistic-2000 | 102.2 / 102.6 | 84.4 / 84.2 | 103.2 / 102.9 | 84.1 / 84.3 |
+| realistic-8000 | 517.4 / 515.1 | 443.9 / 439.9 | 533.1 / 522.1 | 452.1 / 440.6 |
+| split-16 | 1701 / 1696 | 1496 / 1493 | 1824 / 1896 | 1500 / 1502 |
+| fan-same-edge-2000 production (to refusal) | 113.5 | 91.5 | 139.7 | 111.3 |
+
+About 18 % less module time per admitted mesh (inferred cause: mostly the 32-bit hashing, which the
+verify column without the scratch copy shows as well; the copy is included in "production"); at the flight's mean size the module is now 1.6-1.7x native (was 1.3-1.4x).
+In `bench-lazy-refusal.txt` the cell-gate mesh `unquantized-grid-150` is now 1.3x native (was 0.86-0.96x).
+
+Not verified: the flight's 1,791 refusals were not reproduced offline, so how many become admissions under the
+lazy rule is unknown (a refused mesh still pays its module time to the refusal plus native); the next flight's
+`refused_us`, `native_us` and `fallback_faces` show it. Game load, the Wine X3 fixture run and the generic
+table on native hardware are not run.

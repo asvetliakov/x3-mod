@@ -1,0 +1,15 @@
+# fixture_native.py: native Windows, system d3dx9_37.dll, rc=0, ADJACENCY_CASE rows=56
+# expected terminal: MESH ADJACENCY RESULT checks=50534 failures=0
+MESH ADJACENCY MATH_TABLE table=sse2 normalize=sse2 rsqrt=rsqrtss
+ADJACENCY_RANDOM trials=2000 equal=2000 mismatched=0 multi_candidate_meshes=117 refused_weld_meshes=460 production_admitted=1883 production_refused=117
+mesh_adjacency mode=verify scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_refuse_at_first_score gate=public_systemmem_readonly+declaration_float3+contiguous_attribute_ranges order=compute native_fallback=1 rsqrt=rsqrtss math_table=sse2 normalize=sse2
+mesh_adjacency_config requested=verify enabled=1 telemetry=1
+mesh_trace module_pinned=1 version_gate=0 scope=shared_public_com_vtables table_limit=8 objects_retained=0
+VERIFY_STATS calls=56 computed=54 fallbacks=2 verify_meshes=54 verify_equal=54 verify_mismatched=0 mismatch_entries=0 quantized=51 unquantized=3 module_non_finite=1 module_epsilon_neighbour=1
+FAST_STATS calls=112 computed=94 fallbacks=18 faults=0 fast_ticks=411809
+mesh_adjacency_metric cumulative=1 qpc=1996497698460 mode=fast faulted=0 calls=112 computed=94 fallbacks=18 faults=0 faces=367179 vertices=564854 fast_ticks=411809 fast_max_ticks=114068 fast_us=41180.900 fast_max_us=11406.800 native_ticks=3141642 native_max_ticks=1679014 native_us=314164.200 native_max_us=167901.400 verify_meshes=54 verify_equal=54 verify_mismatched=0 verify_entries=550869 verify_mismatch_entries=0 verify_native_failures=0 quantized=88 unquantized=6 welded_vertices=359082 multi_candidate_meshes=14 normal_selected=12 degenerate_faces=6 fallback_input=0 fallback_gate=0 fallback_declaration=0 fallback_size=0 fallback_lock=0 fallback_module=4 fallback_math_table=0 module_input=0 module_index_range=0 module_non_finite=2 module_magnitude=0 module_epsilon_neighbour=2 module_allocation=0 module_competing_normals=14 fallback_competing_normals=14 fallback_fp_domain=0 verify_admitted=40 verify_admitted_mismatched=0 verify_refused_fp=0 verify_refused_competing=14 refused_us=14.400 refused_max_us=1.300 fallback_faces=75 fallback_vertices=112
+mesh_adjacency_fp_first control=ffff027f status=ffff0021 tag=ffffffff mxcsr=00001fa0 compute_mxcsr=00001f80 restored=1
+GAME_FP_STATE control=027f mxcsr=9fc0 meshes=12 verify_equal=6 fast_equal=6 restored=12
+ADJACENCY_ADMISSION requested_domains=13 distinct_runtime_domains=13 canonicalized_domains=0 registry=8 checks=109 untouched=1 incoming_preserved=1 diagnostic_refused=1
+ADMISSION_WITNESS requested=0 enabled=0 active_roots=0 waiting_roots=0 admitted_roots=0 promotions=0 vetoes=0 valid=1
+MESH ADJACENCY RESULT checks=50534 failures=0

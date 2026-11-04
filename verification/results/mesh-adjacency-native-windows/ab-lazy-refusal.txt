@@ -1,0 +1,14 @@
+# ab_module.py HEAD --rounds 2 --reps 5 --meshes realistic-630,realistic-2000,realistic-8000,split-16,fan-same-edge-2000
+# minimum over rounds of the per-run minima, microseconds; before = module at REV, after = working tree
+| dll | mesh | fast_before | fast_after | production_before | production_after | status_before | status_after | served_equal |
+|---|---|---|---|---|---|---|---|---|
+| d3dx9_37.dll | fan-same-edge-2000 | 15075.8 | 14147.1 | 113.5 | 91.5 | competing_normals | competing_normals | 1 |
+| d3dx9_37.dll | realistic-2000 | 102.2 | 84.4 | 102.6 | 84.2 | ok | ok | 1 |
+| d3dx9_37.dll | realistic-630 | 30.9 | 25.5 | 30.9 | 25.3 | ok | ok | 1 |
+| d3dx9_37.dll | realistic-8000 | 517.4 | 443.9 | 515.1 | 439.9 | ok | ok | 1 |
+| d3dx9_37.dll | split-16 | 1701.3 | 1496.1 | 1695.6 | 1493.2 | ok | ok | 1 |
+| d3dx9_43.dll | fan-same-edge-2000 | 16727.0 | 14790.0 | 139.7 | 111.3 | competing_normals | competing_normals | 1 |
+| d3dx9_43.dll | realistic-2000 | 103.2 | 84.1 | 102.9 | 84.3 | ok | ok | 1 |
+| d3dx9_43.dll | realistic-630 | 30.9 | 25.6 | 31.2 | 25.7 | ok | ok | 1 |
+| d3dx9_43.dll | realistic-8000 | 533.1 | 452.1 | 522.1 | 440.6 | ok | ok | 1 |
+| d3dx9_43.dll | split-16 | 1824.0 | 1499.9 | 1896.1 | 1502.0 | ok | ok | 1 |

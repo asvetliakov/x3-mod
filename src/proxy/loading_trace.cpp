@@ -285,6 +285,9 @@ const char* adjacency_mode_name(AdjacencyMode mode) {
 struct AdjacencyCounters {
     std::atomic<uint64_t> calls{0}, computed{0}, fallbacks{0}, faults{0}, faces{0}, vertices{0};
     std::atomic<uint64_t> fast_ticks{0}, fast_max_ticks{0}, native_ticks{0}, native_max_ticks{0};
+    // refused: module runs that ended without Ok (their native fallback follows);
+    // fallback_faces/vertices: sizes of the fallbacks that got past the gate.
+    std::atomic<uint64_t> refused_ticks{0}, refused_max_ticks{0}, fallback_faces{0}, fallback_vertices{0};
     std::atomic<uint64_t> verify_meshes{0}, verify_equal{0}, verify_mismatched{0}, verify_entries{0},
         verify_mismatch_entries{0}, verify_native_failures{0};
     std::atomic<uint64_t> verify_admitted{0}, verify_admitted_mismatched{0}, verify_refused_fp{0},
@@ -329,6 +332,8 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output
         r.fallback = reason;
         adjacency_counters.fallbacks.fetch_add(1, std::memory_order_relaxed);
         adjacency_counters.fallback_reasons[unsigned(reason)].fetch_add(1, std::memory_order_relaxed);
+        adjacency_counters.fallback_faces.fetch_add(r.faces, std::memory_order_relaxed);
+        adjacency_counters.fallback_vertices.fetch_add(r.vertices, std::memory_order_relaxed);
         return r;
     };
     if (!mesh || !output) return fall(AdjacencyFallback::Input);
@@ -435,6 +440,10 @@ AdjacencyCompute adjacency_compute(ID3DXMesh* mesh, FLOAT epsilon, DWORD* output
     if (r.fault) return r;
     if (!ran) return fall(AdjacencyFallback::Size);
     adjacency_counters.module_status[unsigned(r.report.status)].fetch_add(1, std::memory_order_relaxed);
+    if (r.report.status != adjacency_fast::Status::Ok) {
+        adjacency_counters.refused_ticks.fetch_add(r.ticks, std::memory_order_relaxed);
+        adjacency_note_max(adjacency_counters.refused_max_ticks, r.ticks);
+    }
     if (r.report.status == adjacency_fast::Status::CompetingNormals) return fall(AdjacencyFallback::CompetingNormals);
     if (r.report.status != adjacency_fast::Status::Ok) return fall(AdjacencyFallback::Module);
     r.computed = true;
@@ -470,6 +479,9 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh, FLOAT epsilon, DWORD* adj
     set_default_mxcsr();
     adjacency_counters.calls.fetch_add(1, std::memory_order_relaxed);
     const AdjacencyCompute r = adjacency_compute(mesh, epsilon, adjacency, true, fp);
+    // The fallback's clock starts before the caller's state is restored, so native
+    // receives exactly the incoming LastError and computational state.
+    const uint64_t native_begin = r.computed || r.fault || !original ? 0 : tick();
     restore_computational_state(fp);
     SetLastError(error);
     if (r.fault) {
@@ -477,7 +489,18 @@ HRESULT WINAPI adjacency_fast_service(ID3DXMesh* mesh, FLOAT epsilon, DWORD* adj
         return r.fault_hr;
     }
     if (r.computed) return S_OK;
-    return original ? original(mesh, epsilon, adjacency) : E_POINTER;
+    if (!original) return E_POINTER;
+    // Native's outgoing state and LastError are handed back unchanged after the
+    // timing bookkeeping.
+    const HRESULT hr = original(mesh, epsilon, adjacency);
+    const DWORD native_error = GetLastError();
+    const auto native_fp = computational_state();
+    const uint64_t native_ticks = tick() - native_begin;
+    adjacency_counters.native_ticks.fetch_add(native_ticks, std::memory_order_relaxed);
+    adjacency_note_max(adjacency_counters.native_max_ticks, native_ticks);
+    restore_computational_state(native_fp);
+    SetLastError(native_error);
+    return hr;
 }
 }
 bool adjacency_write_dump(const wchar_t* path, ID3DXMesh* mesh, FLOAT epsilon, const DWORD* native, const DWORD* module,
@@ -623,7 +646,7 @@ void adjacency_report() {
     const auto calls = c.calls.load(std::memory_order_relaxed);
     if (calls == adjacency_last_report_calls) return;
     adjacency_last_report_calls = calls;
-    log("mesh_adjacency_metric cumulative=1 qpc=%llu mode=%s faulted=%u calls=%llu computed=%llu fallbacks=%llu faults=%llu faces=%llu vertices=%llu fast_ticks=%llu fast_max_ticks=%llu fast_us=%.3f fast_max_us=%.3f native_ticks=%llu native_max_ticks=%llu native_us=%.3f native_max_us=%.3f verify_meshes=%llu verify_equal=%llu verify_mismatched=%llu verify_entries=%llu verify_mismatch_entries=%llu verify_native_failures=%llu quantized=%llu unquantized=%llu welded_vertices=%llu multi_candidate_meshes=%llu normal_selected=%llu degenerate_faces=%llu fallback_input=%llu fallback_gate=%llu fallback_declaration=%llu fallback_size=%llu fallback_lock=%llu fallback_module=%llu fallback_math_table=%llu module_input=%llu module_index_range=%llu module_non_finite=%llu module_magnitude=%llu module_epsilon_neighbour=%llu module_allocation=%llu module_competing_normals=%llu fallback_competing_normals=%llu fallback_fp_domain=%llu verify_admitted=%llu verify_admitted_mismatched=%llu verify_refused_fp=%llu verify_refused_competing=%llu",
+    log("mesh_adjacency_metric cumulative=1 qpc=%llu mode=%s faulted=%u calls=%llu computed=%llu fallbacks=%llu faults=%llu faces=%llu vertices=%llu fast_ticks=%llu fast_max_ticks=%llu fast_us=%.3f fast_max_us=%.3f native_ticks=%llu native_max_ticks=%llu native_us=%.3f native_max_us=%.3f verify_meshes=%llu verify_equal=%llu verify_mismatched=%llu verify_entries=%llu verify_mismatch_entries=%llu verify_native_failures=%llu quantized=%llu unquantized=%llu welded_vertices=%llu multi_candidate_meshes=%llu normal_selected=%llu degenerate_faces=%llu fallback_input=%llu fallback_gate=%llu fallback_declaration=%llu fallback_size=%llu fallback_lock=%llu fallback_module=%llu fallback_math_table=%llu module_input=%llu module_index_range=%llu module_non_finite=%llu module_magnitude=%llu module_epsilon_neighbour=%llu module_allocation=%llu module_competing_normals=%llu fallback_competing_normals=%llu fallback_fp_domain=%llu verify_admitted=%llu verify_admitted_mismatched=%llu verify_refused_fp=%llu verify_refused_competing=%llu refused_us=%.3f refused_max_us=%.3f fallback_faces=%llu fallback_vertices=%llu",
         tick(), adjacency_mode_name(mode), unsigned(adjacency_faulted.load(std::memory_order_relaxed)), calls,
         c.computed.load(), c.fallbacks.load(), c.faults.load(), c.faces.load(), c.vertices.load(), c.fast_ticks.load(),
         c.fast_max_ticks.load(), double(c.fast_ticks.load()) * 1e6 / clock_frequency,
@@ -638,7 +661,10 @@ void adjacency_report() {
         c.fallback_reasons[6].load(), c.module_status[1].load(), c.module_status[2].load(), c.module_status[3].load(),
         c.module_status[4].load(), c.module_status[5].load(), c.module_status[6].load(), c.module_status[7].load(),
         c.fallback_reasons[7].load(), c.fallback_reasons[8].load(), c.verify_admitted.load(),
-        c.verify_admitted_mismatched.load(), c.verify_refused_fp.load(), c.verify_refused_competing.load());
+        c.verify_admitted_mismatched.load(), c.verify_refused_fp.load(), c.verify_refused_competing.load(),
+        double(c.refused_ticks.load()) * 1e6 / clock_frequency,
+        double(c.refused_max_ticks.load()) * 1e6 / clock_frequency, c.fallback_faces.load(),
+        c.fallback_vertices.load());
     if (!adjacency_fp_reported && c.fp_publication.load(std::memory_order_acquire) == 2) {
         adjacency_fp_reported = true;
         const auto& f = c.first_fp;
@@ -670,8 +696,7 @@ template <unsigned Index> HRESULT WINAPI mesh_adjacency(ID3DXMesh* mesh, FLOAT e
     const HRESULT hr = original(mesh, epsilon, adjacency);
     cpu.after_original();
     const DWORD error = GetLastError();
-    const auto end = tick();
-    span.finish(end, error, FAILED(hr));
+    span.finish(0, error, FAILED(hr)); // light::Span times itself; the first argument is unused
     return hr;
 }
 template <unsigned Index>
@@ -1226,9 +1251,12 @@ bool buffer_contract(Buffer* application, uint64_t required_bytes, D3DFORMAT for
 }
 bool cache_buffer_contract(ID3DXMesh* mesh) {
     GateDetail detail{};
-    if (!readable(mesh, sizeof(PVOID))) return reject_gate(GateReason::MeshObject, detail);
+    // No per-call VirtualQuery: the caller reached this service by a COM call
+    // through the object's vtable pointer, so its first word was just read; a
+    // recorded table was readable for 29 slots when observe_mesh recorded it and
+    // its owning module is pinned, so the 19 slots compared below stay mapped. An
+    // unrecorded table is refused without reading it.
     auto table = *reinterpret_cast<PVOID**>(mesh);
-    if (!readable(table, 19 * sizeof(PVOID))) return reject_gate(GateReason::MeshTable, detail);
     const MeshTable* recorded = nullptr;
     for (const auto& row : mesh_tables)
         if (row.table == table) {
@@ -1719,7 +1747,7 @@ bool install(HMODULE target) {
     }
     const AdjacencyMode requested_mode = adjacency_armed; // with telemetry every parsed mode arms
     adjacency_mode.store(requested_mode, std::memory_order_release);
-    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_no_competing gate=public_systemmem_readonly+declaration_float3+no_attribute_table order=cache_lookup,compute,cache_store native_fallback=1 rsqrt=%s math_table=%s normalize=%s",
+    log("mesh_adjacency mode=%s scope=hook_service equivalence=d3dx_rules+exact_position_equality fp_domain=pc53_nearest_masked_empty_mxcsr_1f80_or_9fc0 normal_gate=sse2_refuse_at_first_score gate=public_systemmem_readonly+declaration_float3+contiguous_attribute_ranges order=compute native_fallback=1 rsqrt=%s math_table=%s normalize=%s",
         adjacency_mode_name(requested_mode), adjacency_fast::rsqrt_implementation(),
         d3dx_math_table_name(d3dx_math_table()),
         d3dx_math_table() == D3dxMathTable::Sse2      ? "sse2"
