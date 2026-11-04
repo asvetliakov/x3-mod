@@ -446,6 +446,7 @@ MotionOutput::~MotionOutput() {
     strength_session_row("release"); // lazy twin creation totals (debug / perf tier, once; nothing when nothing was
                                      // created); the game's exit without a release writes it from exit_rows
     delete strength_marks_; // the marked-texture table (lod_texture_mark.h), plain CPU memory
+    delete sky_stars_marks_; // the sky-star marked-texture table, plain CPU memory
 }
 
 unsigned MotionOutput::device_references() const noexcept {
@@ -586,6 +587,7 @@ void MotionOutput::release_resources() noexcept {
     }
     release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
     release_own_sun(); // the own sun's programs and declaration (motion_output_own_sun_inc.h)
+    release_sky_stars(); // the star batch's programs, declaration and MANAGED buffers (motion_output_sky_stars_inc.h)
     release_engine_shimmer(); // the heat shimmer's programs, block and scratch (motion_output_engine_shimmer_inc.h)
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
         false; // a new pass may be refused for another reason
@@ -4263,6 +4265,9 @@ void MotionOutput::before_reset() noexcept {
     own_sun_attach_failed_ = own_sun_failed_out_ = false;
     own_sun_disarmed_until_ = 0;
     own_sun_failures_ = 0;
+    // Sky stars: the MANAGED buffers and the programs survive Reset; the stage-0 seed is forgotten (the application
+    // rebinds after Reset) and a refusal or three failed batches are retried after it (the own sun's rule).
+    sky_stars_before_reset();
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     engine_scene_camera_last_ = 0; // node-sourced nozzles: the root filter's view is forgotten (a mode or load boundary)
@@ -5365,6 +5370,7 @@ void MotionOutput::describe_binding(DWORD index, IDirect3DSurface9* surface) noe
 // constant ranges are conservatively treated as application-written.
 void MotionOutput::resync_shadow() noexcept {
     shadow_ = Shadow{}; // Render states included: they refill lazily from the next query.
+    sky_stars_stage0_ = 0; // an applied state block may rebind stage 0: no star match until the next SetTexture
     ++counters_.rs_resyncs;
     IDirect3DVertexShader9* vs = nullptr;
     IDirect3DPixelShader9* ps = nullptr;
@@ -5632,6 +5638,7 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         read_camera(true);
         // The engine-side occlusion skip's table for the pass that follows this Clear (occlusion_cull = engine).
         if (occlusion_engine_) occlusion_engine_publish();
+        if (sky_stars_requested_) sky_stars_phase_end(); // the frame's sky_stars status (a row on change)
     }
     // D3: a multisampled RT0 never latches (the selector's main-target rule
     // requires a single-sampled A8R8G8B8 surface), so a frame whose initial
@@ -5659,6 +5666,7 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
     if (before == renderer::BoundaryState::AwaitInitialClear &&
         selector_.state() == renderer::BoundaryState::Background) {
         read_camera(false);
+        if (sky_stars_requested_) sky_stars_latch(); // the frame's background-phase record (and the Clear colour)
         // The frame's main color/depth pair is latched: own a matching motion
         // target and schedule the sentinel fill for the next draw.
         main_ = pending_.rt;
@@ -6077,6 +6085,7 @@ void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
 MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     MotionRoute route{};
     ++counters_.draws;
+    sky_stars_draw_begin(); // the stage-0 bind bit belongs to this draw alone, whichever path below returns
     if (motion_state_lost_) {
         route.submit = false;
         route.submission_error = motion_state_error_;
@@ -6116,6 +6125,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
                              (hdr_state_ == HdrState::Active || scene_bound()) &&
                              state_field(4) != 0; // slot 4: COLORWRITEENABLE
     evaluate_draw(call, route);
+    if (sky_stars_requested_) sky_stars_classify(call, route); // one bool test with the setting off
     if (route.sun_color_writer && !route.routed)
         arm_sun_stamp(call, route); // unroutable depth writer: see sun_stamp_draw
     // Step B rectangle before step C's admission: an admitted screen draw
@@ -6146,6 +6156,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
             if (shadow_.fog_card_source) prepare_fog_card(call, route);
+            // Sky stars: a matched star body's colour writes are masked through the card's mask (sky_stars_mask=1), so
+            // a masked star body takes no other preparation, exactly like a masked fog card.
+            if (route.sky_stars && !route.fog_card_mask.masked) prepare_sky_stars(route);
             if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
             // any other draw; never on a draw the bracket already took.
@@ -9525,6 +9538,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
+    if (route.sky_stars) finish_sky_stars(route, result); // its mask back (before the card's finish), then the batch
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -12934,4 +12948,20 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_material_strength_inc.h"
 #include "motion_output_engine_shimmer_inc.h"
 #include "motion_output_own_sun_inc.h"
+namespace {
+// Sky stars, the sky_stars_match row only (invariant 1): the level-0 size, format and level count of the star texture.
+void sky_stars_texture_desc(IDirect3DBaseTexture9* texture, unsigned* width, unsigned* height, unsigned* levels,
+                            unsigned* format) noexcept {
+    *width = *height = *levels = *format = 0;
+    if (!texture || texture->GetType() != D3DRTYPE_TEXTURE) return;
+    D3DSURFACE_DESC desc{};
+    if (SUCCEEDED(static_cast<IDirect3DTexture9*>(texture)->GetLevelDesc(0, &desc))) {
+        *width = desc.Width;
+        *height = desc.Height;
+        *format = unsigned(desc.Format);
+    }
+    *levels = texture->GetLevelCount();
+}
+} // namespace
+#include "motion_output_sky_stars_inc.h"
 } // namespace x3m

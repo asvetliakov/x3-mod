@@ -69,6 +69,7 @@
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
+#include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -152,6 +153,10 @@ struct MotionRoute {
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
     FogCardMask fog_card_mask{};
+    // Sky stars (motion_output_sky_stars_inc.h): the draw is a star body in the frame's background phase (the batch is
+    // drawn after it, once per frame); sky_stars_masked: its colour writes are masked through fog_card_mask
+    // (sky_stars_mask=1), which keeps every other preparation off the draw as for a masked card.
+    bool sky_stars = false, sky_stars_masked = false;
     bool source_gain = false;        // Source-gain PS bound natively for this draw; restored after it.
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen
                                      // substitution); restored after it.
@@ -1215,6 +1220,29 @@ public:
                               std::uint8_t slot) noexcept; // true when stored (the ratio carrier)
     bool strength_mark_forget(const void* texture) noexcept; // final Release: true when an entry was dropped
     std::uint8_t strength_lane(IDirect3DBaseTexture9* texture) noexcept;
+    // Sky stars (X3M_SKY_STARS, motion_output_sky_stars_inc.h; docs/architecture/sector-background-modern.md,
+    // Implementation A): process-start values (density in [0.25, 4], else 1; mask = sky_stars_mask). The texture hook
+    // stores a payload-2 mark's packed seed (sky_stars_core.h seed_of); the SetTexture hook asks sky_stars_lookup for
+    // a stage-0 texture (inside its native section: an identity read on a hit) and passes the answer to sky_stars_bind.
+    void configure_sky_stars(bool requested, float density, bool mask) noexcept;
+    bool sky_stars_requested() const noexcept { return sky_stars_requested_; }
+    bool sky_stars_mark_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, std::uint32_t seed) noexcept;
+    bool sky_stars_mark_forget(const void* texture) noexcept;
+    std::uint32_t sky_stars_lookup(IDirect3DBaseTexture9* texture) noexcept;
+    // Top of before_draw, before any early return (the blocked and UP paths go through before_draw too): the bind bit
+    // moves to this draw and is cleared, so a draw that never reaches the classification cannot leave it for the next.
+    void sky_stars_draw_begin() noexcept {
+        sky_stars_draw_fresh_ = sky_stars_fresh_;
+        sky_stars_fresh_ = false;
+    }
+    void sky_stars_bind(std::uint32_t seed) noexcept {
+        if (shadow_.recording) return; // a recorded SetTexture does not reach the device
+        sky_stars_stage0_ = seed;
+        sky_stars_fresh_ = seed != 0;
+    }
+    // The Clear hook, before before_clear: the colour of the application's Clear (the latching Clear's is logged at a
+    // star-body match, invariant 1).
+    void note_clear_colour(std::uint32_t colour) noexcept { clear_colour_pending_ = colour; }
     // Process exit (capture.cpp abandon_devices_at_exit, DllMain with the other threads gone; the device is never
     // released, so ~MotionOutput never runs): the session rows the release would have written, once.
     void exit_rows() noexcept { strength_session_row("exit"); }
@@ -2088,6 +2116,30 @@ private:
     float own_sun_radius_u_ = own_sun::core::radius_default_u, own_sun_radiance_ = own_sun::core::radiance_default;
     float own_sun_fog_t_ = 1.f, own_sun_stage_us_ = 0.f, own_sun_rays_ = own_sun::core::rays_default;
     std::unique_ptr<renderer::OwnSunPass> own_sun_;
+    // Sky stars (motion_output_sky_stars_inc.h): the settings, the marked-texture table, the stage-0 seed the SetTexture
+    // hook keeps, the pass, this frame's background-phase record and what the last sky_stars row said.
+    bool sky_stars_requested_ = false, sky_stars_mask_mode_ = true, sky_stars_attach_failed_ = false;
+    float sky_stars_density_ = sky_stars::core::density_default;
+    // 1,024 entries, half-full refusal at 512: above AP+Mayhem's 322 star-named textures; refusals reach the row.
+    lod_texture_mark::Table<1024>* sky_stars_marks_ = nullptr;
+    std::uint32_t sky_stars_stage0_ = 0;
+    bool sky_stars_fresh_ = false; // stage 0 bound to a marked texture since the last draw
+    bool sky_stars_draw_fresh_ = false; // ... taken by this draw (sky_stars_draw_begin)
+    std::uint64_t sky_stars_frame_pair_[2] = {0, 0}; // the frame's first matched (vs, ps)
+    std::unique_ptr<renderer::SkyStarsPass> sky_stars_;
+    std::uint32_t clear_colour_pending_ = 0, sky_stars_clear_colour_ = 0; // D3DCOLOR
+    unsigned sky_stars_phase_draws_ = 0, sky_stars_frame_matched_ = 0, sky_stars_frame_masked_ = 0;
+    unsigned sky_stars_width_ = 0, sky_stars_height_ = 0;
+    std::uint32_t sky_stars_frame_seed_ = 0;
+    bool sky_stars_frame_drawn_ = false;
+    HRESULT sky_stars_frame_hr_ = S_FALSE;
+    const char* sky_stars_frame_reason_ = "none";
+    const char* sky_stars_logged_status_ = "";
+    const char* sky_stars_logged_reason_ = "";
+    std::uint32_t sky_stars_logged_seed_ = 0, sky_stars_match_logged_seed_ = 0;
+    std::uint64_t sky_stars_frames_ = 0, sky_stars_drawn_frames_ = 0, sky_stars_outside_ = 0, sky_stars_refused_ = 0;
+    unsigned sky_stars_rebuilds_ = 0, sky_stars_outside_logged_ = 0, sky_stars_failures_ = 0, sky_stars_logged_full_ = 0;
+    std::uint64_t sky_stars_draw_ticks_ = 0, sky_stars_build_ticks_ = 0; // QPC of the last batch draw / VB rebuild
     IDirect3DTexture9* own_sun_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
     UINT own_sun_width_ = 0, own_sun_height_ = 0;
     std::uint64_t own_sun_disarmed_until_ = 0, own_sun_row_qpc_ = 0;
@@ -3478,6 +3530,15 @@ private:
     void fault_fog_cards(const char* reason) noexcept;
     void log_fog_memory(const char* reason, bool walk) noexcept;
     void prepare_fog_card(const MotionDrawCall&, MotionRoute&) noexcept;
+    void sky_stars_classify(const MotionDrawCall&, MotionRoute&) noexcept;
+    void prepare_sky_stars(MotionRoute&) noexcept;
+    void finish_sky_stars(MotionRoute&, HRESULT) noexcept;
+    void sky_stars_latch() noexcept;
+    void sky_stars_before_reset() noexcept;
+    void sky_stars_phase_end() noexcept;
+    bool attach_sky_stars() noexcept;
+    void release_sky_stars() noexcept;
+    void sky_stars_log_match(const MotionDrawCall&) noexcept;
     void finish_fog_card(MotionRoute&, HRESULT) noexcept;
     const char* fog_frame_prerequisite() const noexcept;
     const char* fog_frame_parameters(renderer::FogFrame&, float weight, bool& sun_tracked) noexcept;

@@ -18,6 +18,9 @@ constexpr std::uint32_t magic = 0x4c4d3358u; // 'X3ML' little-endian bytes
 constexpr std::uint32_t version = 1;
 constexpr unsigned header_bytes = 128, mark_offset = 32;
 constexpr unsigned payload_none = 0, payload_strength = 1; // descriptor bits 24-31
+// Payload 2 marks a painted sky star texture (tools/analysis/sky_textures.py; src/proxy/sky_stars_core.h seed_of): slot =
+// fnv1a32(family) & 0xff, lane = colour class, K = bright peaks / 8. lane_of() never returns the strength lane for it.
+constexpr unsigned payload_sky_stars = 2;
 constexpr unsigned lane_w = 3, strength_k = 2;
 constexpr unsigned slot_count = 4; // diffuse, light, bump, specular (descriptor bits 0-7)
 // What the sampler shadow carries per stage: 0 = unmarked (or a marked atlas without a payload), 1 = the specular
@@ -61,7 +64,7 @@ template <unsigned Capacity> struct Table {
     struct Entry {
         std::uintptr_t key = 0;
         std::uint64_t identity = 0;
-        std::uint8_t lane = 0, slot = 0;
+        std::uint8_t lane = 0, slot = 0, k = 0; // k: the descriptor's K (the sky-star table; 0 in the strength table)
     };
     Entry entries[Capacity]{};
     unsigned count = 0, refused_full = 0;
@@ -80,7 +83,7 @@ template <unsigned Capacity> struct Table {
     }
     // true when stored; `added` (optional) tells a new entry from an overwrite.
     bool insert(const void* texture, std::uint64_t identity, std::uint8_t lane, std::uint8_t slot,
-                bool* added = nullptr) noexcept {
+                bool* added = nullptr, std::uint8_t k = 0) noexcept {
         if (added) *added = false;
         const auto key = reinterpret_cast<std::uintptr_t>(texture);
         if (!key) return false;
@@ -88,6 +91,7 @@ template <unsigned Capacity> struct Table {
             e->identity = identity;
             e->lane = lane;
             e->slot = slot;
+            e->k = k;
             return true;
         }
         if (count >= Capacity / 2) { // half full: the probe runs stay short
@@ -96,7 +100,7 @@ template <unsigned Capacity> struct Table {
         }
         for (unsigned i = hash(key);; i = (i + 1) & (Capacity - 1))
             if (!entries[i].key) {
-                entries[i] = {key, identity, lane, slot};
+                entries[i] = {key, identity, lane, slot, k};
                 ++count;
                 live_marks.fetch_add(1, std::memory_order_relaxed);
                 if (added) *added = true;
@@ -119,7 +123,7 @@ template <unsigned Capacity> struct Table {
             entries[j] = {};
             --count;
             live_marks.fetch_sub(1, std::memory_order_relaxed); // the re-insert below adds it back
-            insert(reinterpret_cast<const void*>(moved.key), moved.identity, moved.lane, moved.slot);
+            insert(reinterpret_cast<const void*>(moved.key), moved.identity, moved.lane, moved.slot, nullptr, moved.k);
         }
     }
 };

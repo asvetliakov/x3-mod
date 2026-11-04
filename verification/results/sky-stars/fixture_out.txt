@@ -1,0 +1,22 @@
+DEVICE kind=d3d9ex plain=8876086a created=00000000
+DEVICE adapter="NVIDIA GeForce RTX 5070 Ti"
+PASS attach hr=00000000 reason=ok vs_slots=14 ps_slots=11 references=5
+PASS prepare_once_per_seed stars=3120 rebuilt=1 build_ms=0.264
+PASS target 
+DRAW operation=00000000 restore=00000000 failed=0 calls=50 stars=3120 drew=1
+PASS energy_within_1pct stars=653 worst_rel_err=0.00171
+PASS energy_offsets_within_1pct worst_spread=0.00134
+PASS peak_le_1 peak=0.99170
+PASS nothing_outside_quads outside_pixels=0 worst_dist_px=0.000
+PASS state_restored runs=3 mismatches=0 (clean, draw fault, restore fault)
+PASS pan_target 
+TEMPORAL speed=0.5 stars=317 resolved_peak_cv_median=0.0559 resolved_peak_cv_max=0.0854 current_peak_cv_median=0.1630 current_peak_cv_max=0.2230 (model, frames 20-59)
+TEMPORAL speed=10.0 stars=254 resolved_peak_cv_median=0.0388 resolved_peak_cv_max=0.1145 current_peak_cv_median=0.1845 current_peak_cv_max=0.2269 (model, frames 20-59)
+PASS target_5120x1440 
+COST target=5120x1440 stars=3120 reps=200 batch_ms_upper_bound=0.0025 draw_cpu_us=0.71
+COST target=5120x1440 stars=8192 reps=200 batch_ms_upper_bound=0.0022 draw_cpu_us=0.70
+COST rebuild stars=8192 ms=0.543
+PASS detach_releases 
+DEVICE_RELEASE refs=0
+PASS device_released_clean 
+RESULT PASS checks=12 failures=0

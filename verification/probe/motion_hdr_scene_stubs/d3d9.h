@@ -36,7 +36,9 @@ enum D3DCULL {
     D3DCULL_CCW = 3
 }; // documented D3D9 values; the replay records default to no culling
 enum D3DSAMPLERSTATETYPE { D3DSAMP_MIPMAPLODBIAS };
-struct D3DCAPS9 {};
+struct D3DCAPS9 {
+    DWORD MaxPixelShader30InstructionSlots = 0; // the sky-star fixture's device row reads it
+};
 struct D3DVIEWPORT9 {
     UINT X, Y, Width, Height;
     float MinZ, MaxZ;

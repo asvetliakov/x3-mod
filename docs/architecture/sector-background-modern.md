@@ -15,6 +15,9 @@ read on either edition.
 **Update 2026-11-04.** B, the nebula part bake, was rejected after the flight-level check (Decision B). The `sky` row
 group now carries only the star-texture marks that A needs (Implementation).
 
+**Update 2026-11-05.** A is implemented behind `sky_stars` (default off) on both editions and not flown
+(Implementation A).
+
 ## Facts the decision rests on (measured unless marked)
 
 - FL stock: 68 star textures `dds/nebula_<family>_stars_<colour>_diff.pck`, 1024x1024 DXT1 with 11 mips; 224
@@ -258,3 +261,104 @@ What remains of the sky group is the mark that the star pass (A) needs.
 - **Removed.** The part re-authoring pipeline, its options (`--sky-parts`, `--sky-uncompressed`, `--sky-detail`,
   `--sky-preview`), the previews, the part metrics and `failures()` were removed. Their findings (encoder bound,
   gate redefinitions) survive only in the retained `.txt` outputs listed in the results `README.txt`.
+
+## Implementation A (2026-11-05): runtime star pass
+
+Built, not flown. Evidence: `verification/results/sky-stars/` (`run_fixture.py` -> `fixture_out.txt`, `host_check.py` ->
+`host_check.json`, `native/validate.py` -> `native/result.json`); host test `verification/analysis/test_sky_stars.py`.
+
+**Pieces.** `src/proxy/sky_stars_core.h` (portable: seed, N, generator, kernel, vertex constants; no CRT math, no float
+return), `src/renderer/sky_stars_pass.{h,cpp}` (programs, declaration, MANAGED VB of 8,192 quads rewritten per seed,
+MANAGED 16-bit IB built once, save/set/draw/restore), `src/proxy/motion_output_sky_stars_inc.h` (match, mask, rows),
+`src/effects/sky_stars_{vs,ps}.hlsl` compiled by `tools/shaders/generate_sky_stars_programs.py` (native D3DX, as the own
+sun). Settings `sky_stars` (default off), `sky_stars_density` (0.25-4, default 1), developer `sky_stars_mask` (default 1).
+The D3DX texture hook is patched when either `lod_material_strength` or `sky_stars` is on; payload-2 marks go to a
+separate 1,024-entry table on the device (512 stored before refusals) (the table entry gained a `k` byte; the strength lane is unchanged).
+
+**Where the hook sits and how it is guarded.** `MotionOutput::before_draw`, right after `evaluate_draw` (one bool test
+with the setting off). The SetTexture hook keeps the packed seed of the stage-0 texture and a "bound since the last draw"
+bit. A draw matches when: the seed is non-zero; the selector is in `Background` (after the latching Clear, before the
+depth-only Clear); `hdr_state_ == Active` with the FP16 target and no MSAA (the latch); the texture was bound for this
+draw, or the draw repeats the frame's first match's (vs, ps) and seed (a stale stage-0 binding on an untextured draw is
+not the star body: this guard is not in the design); the bind bit is taken at the top of `before_draw` (`sky_stars_draw_begin`), before
+any early return, so a draw that never reaches the classification (blocked, state lost, engine draw, UP) cannot
+leave it for a later draw; only RT0 with a full viewport; no state block recording, no active
+query; the route left the draw native; the background camera (`camera_background_`, read at the latching Clear) is
+valid; the pass is attached and the seed's VB built. The pass and VB are prepared before the mask is set, so a refusal
+leaves the painted stars. A marked texture bound for a draw outside the phase or the latch is counted (`outside=`), the
+first four logged (`sky_stars_outside`), never masked. Mask mode forwards the native draw with `COLORWRITEENABLE 0`
+(`FogCardMask`, the actual HRESULT returned, Z/stencil untouched); the batch is drawn once per frame after the first
+matched draw (later matches of the same pair are masked only). `sky_stars_mask=0` draws over the unmasked draw and skips
+the batch when a composition, additive or fog-card route took that draw.
+
+**Batch.** Vertex = direction (12 B), corner px (8 B), energy (4 B), D3DCOLOR tint (4 B) = 28 B. VS: `c252-c254` are the
+clip x/y/w rows of `r` (the background view's rotation) times `m00, m11, m20, m21` with the jitter folded in exactly as
+`fade_region_math.h jitter_rows` (`+2 jx / W`, `-2 jy / H`, times w) when `jitter_active_`; `z = 0.99999 w`; the corner
+is added in clip space as `corner x (2/W, 2/H) x w`. States: ONE/ONE ADD, `COLORWRITEENABLE 7`, Z and Z-write off, cull
+none, alpha test, sRGB write, fog, stencil, scissor, user clip planes and `WRAP0/1` off, clipping on, solid fill; VS/PS,
+declaration (or the application's FVF), stream 0 with its frequency, indices and `c252-c255` are read before the first
+write and put back in reverse order; a failed restore latches `motion_state_lost_` and keeps the pass off until Reset.
+Attach refuses a device whose getters fail (a pure device: `reason=getters`) before any star body is masked; three
+failed batches in a row stop the matching (the painted stars return) until the next Reset. The mask uses the route's
+own `fog_card_mask`, so composition, the additive route and the gain variants skip a masked star body exactly as a
+masked fog card.
+
+**Kernel and law (changed from the design).** The PS writes a separable Beta(3,3) kernel over [-a, a] integrated over
+the pixel (`C(t(u+0.5)) - C(t(u-0.5))` per axis, C the quintic smootherstep): Gaussian-shaped (sigma 0.378 a) but with
+compact support and a polynomial CDF, so the covered pixels sum to the energy exactly at any sub-pixel position; an
+erf-based Gaussian could not be exact in the PS. The quad half extent is a + 0.5625 px. Brightness: decoded peak
+`p = 1 / X`, X uniform in [1, 2.5^4], target peak `p^(1/2.2)` (the installed `hdr_decode` gamma 2.2), energy = target
+peak / 0.6288 (the centred share at a = 1). The step is a flux ratio of 2.5 (not Pogson's 2.512), which makes the
+2.5x-per-step count law exact without CRT `pow`. Under this law every star stays at the 2 px minimum footprint: s(m)
+never exceeds it while the peak is capped at 1.0 (`half_support` grows a only if a caller raised the energy). Tint: the
+lane class colour mixed with white by a per-star share in [0.25, 0.75], brightest channel 255. N = clamp(round(K x 48 x
+density), 512, 8192). Caveat (review 2026-11-05), a flight observation to make: the energy is conserved in the
+target's pre-decode values, not in linear light; after the gamma-2.2 decode a star's summed linear energy varies about
+2x with its sub-pixel position (the peak cap and the brightness law hold for a centred star). TAA accumulates the
+pre-decode values, so a still star is steady; watch for a faint pulse on slowly drifting stars.
+
+**Exposure (invariant 5).** The live meter is the installed stage-2 space-aware meter (`src/renderer/exposure.cpp`:
+lit tiles by geometric mean >= 1/512, key rule, p99 tile-maximum guard against 0.9 x 16.29); R1/R2 exist only in the
+offline study. Replayed on star-only 5120x1440 frames (80x23 tiles of 64x64 px; gamma 2.2 decode, `hdr_ev_max` 1.3):
+K 65 / density 1 (459 stars in view) EV 0, neutral, 0 lit tiles, guard `ev_limit` +5.91 (p99 tile max log2 -2.04);
+K 143 / density 4 (8,192 stars, 1,213 in view) EV 0, `ev_limit` +5.25; control (one luminance-64 pixel per tile)
+`ev_limit` -2.13. Measured by `host_check.py`.
+
+**Fixture (native D3D9, RTX 5070 Ti, measured).** 653 isolated stars over 4 sub-pixel offsets x 2 rotations: worst
+per-star energy error 0.17 %, worst spread across offsets 0.13 %, peak 0.9917, 0 written pixels outside the quads; state
+restored on a clean run, an injected draw failure and an injected restore failure (0 mismatches); attach holds 5 objects,
+detach 0, the device releases to 0 references. Cost at 5120x1440: one batch 3,120 stars
+<= 1.5 us and 8,192 stars <= 2.4 us (CPU submission plus GPU, event-flushed over 200 batches: an upper bound),
+`draw()` CPU 0.73-0.78 us (50 device calls, measured by the fixture's DRAW row), VB rebuild 0.22 ms (3,120 stars) and 0.46 ms (8,192) per seed
+change, Lock to Unlock. One run used a plain D3D9 device with the production MANAGED buffers; two others (including
+the retained `fixture_out.txt`) fell back to a D3D9Ex device with DEFAULT buffers (fixture-only `set_pool`) while another
+process held exclusive fullscreen; the checks gave the same figures. Native shader validator: `sky_stars_vs` 116 words / 14 slots, `sky_stars_ps` 90 words / 11 slots,
+End() S_OK, 0 messages.
+
+**TAA.** The resolve replay (`tools/analysis/taa_resolve_replay.py`) is driven by `--taa-debug` capture dumps (1280x768
+with their frame rows) and cannot take a synthetic star frame without fabricating a dump set, so the real resolve is
+left for the flight. The fixture runs a model instead (history weight 0.9, exact bilinear reprojection, 3x3 min/max clip,
+Halton(2,3) jitter, frames 20-59): per-star resolved peak coefficient of variation median 5.6 % / max 8.5 % at 0.5
+px/frame (317 stars) and 3.9 % / 11.5 % at 10 px/frame (254 stars); current-only 16-22 %. Model figures, not the resolve.
+Inferred: the native background draws are unrouted and so unjittered; the batch is jittered as the design asks.
+
+**Rows (always tier).** `sky_stars_config requested= enabled= reason= density= mask= edition=` once; `sky_stars
+status=off` when off; `sky_stars_texture ... mark=slot/lane/K stored=` for the first four marked star textures
+(invariant 2); `sky_stars_device attached= reason= vs_slots= ps_slots= max_ps_slots=` at the first match;
+`sky_stars_match mark= vs= ps= index= blend= src= dst= op= sepalpha= mask= z= zwrite= cull= atest= primitives= vertices=
+indexed= texture=WxH levels= format= clear= target= outside= camera_p00.. scene_p00.. rotation_deg=` once per new seed
+(invariant 1); `sky_stars status=<ready|no_mark|refused> mark= stars= matched= masked= draw=<ok|hr> reason= phase_draws=
+frames= drawn_frames= outside= refused= rebuilds= table_full= density= mask_mode= draw_us= build_us=` at the depth-only
+Clear when the status, seed, reason or table refusal count changed.
+
+**Route test.** `verification/analysis/test_motion_sky_stars.py` (2 tests): the real fragment and `motion_output.h`
+on the host with a scripted SetRenderState and pass (`verification/probe/motion_sky_stars_fixture.cpp`, 9 scenarios,
+48 checks): mask, native, unmask, one batch in that order; a second call of the pair masked without a batch; stale
+bind bit after an early return; outside the phase or the latch counted and unmasked; a second RT refused unmasked; a
+refused attach unmasked and not retried; a failed restore quarantines until Reset; a failed mask restored at once;
+three failed batches stop the matching; the table stores 512 marks (`Table<1024>`, AP+Mayhem has 322 star textures)
+and its refusals reach the row as `table_full=`. It also checks the production call order in `motion_output.cpp`.
+
+**Open.** Invariant 1 is answered by the first `sky_stars_match` row in flight (pair, blend, index, texture size, Clear
+colour); `matched=2` or more per frame, or a pair that is not the star body, means falling back to `sky_stars_mask=0`.
+Invariant 3 by `outside=`. Kill criterion as answer 2.

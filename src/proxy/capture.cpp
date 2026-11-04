@@ -32,6 +32,7 @@
 #include "collide_memo.h"
 #include "own_sun_hook.h"
 #include "own_sun_core.h"
+#include "sky_stars_core.h"
 #include "cull_small_parts.h"
 #include "occlusion_engine_cull.h"
 #include "engine_effects.h"
@@ -234,6 +235,11 @@ bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,
                                                // clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by
                                                // B; needs the gain
 float hull_emissive_widening[2] = {1.f, 1.f};
+// Sky stars (X3M_SKY_STARS, default off; X3M_SKY_STARS_DENSITY, X3M_SKY_STARS_MASK; motion_output_sky_stars_inc.h,
+// docs/architecture/sector-background-modern.md "Implementation A"): requested = the setting and the route; the texture
+// hook row is patched for it as for the material strength (texture_created stores the payload-2 marks).
+bool sky_stars_requested = false, sky_stars_mask = true;
+float sky_stars_density = x3m::sky_stars::core::density_default;
 bool lod_material_strength_requested = false; // X3M_LOD_MATERIAL_STRENGTH=1 (schema default; overlay-material-strength.md):
                                               // the merged-LOD overlay's per-material diffuse strength: the D3DX texture
                                               // hook flags the baker's marked atlases, the hull pixel twins read the ratio
@@ -2644,6 +2650,7 @@ HRESULT WINAPI clear(IDirect3DDevice9* d, DWORD n, const D3DRECT* r, DWORD f, D3
             telemetry::now() - begin, motion.execution.known, unsigned(motion.execution.reason),
             motion.execution.active_queries, motion.continuity_known, motion.color_coverage_known);
     }
+    ctx.motion_output.note_clear_colour(c); // sky stars: the latching Clear's colour (invariant 1)
     ctx.motion_output.before_clear(n, f, z);
     timer.begin();
     cpu.before_original();
@@ -3302,7 +3309,12 @@ HRESULT WINAPI set_texture(IDirect3DDevice9* d, DWORD stage, IDirect3DBaseTextur
     const std::uint8_t atlas_lane = SUCCEEDED(hr) && texture && ctx.motion_output.material_strength_requested()
                                         ? ctx.motion_output.strength_lane(texture)
                                         : std::uint8_t(0);
+    // Sky stars: the packed seed of a marked star texture on stage 0 (one pointer-table probe with marks stored; the
+    // identity read only on a hit), 0 for any other texture.
+    const bool sky_stage = SUCCEEDED(hr) && stage == 0 && ctx.motion_output.sky_stars_requested();
+    const std::uint32_t sky_seed = sky_stage ? ctx.motion_output.sky_stars_lookup(texture) : 0;
     cpu.after_original();
+    if (sky_stage) ctx.motion_output.sky_stars_bind(sky_seed);
     if (SUCCEEDED(hr))
         ctx.motion_output.set_texture(stage, texture, levels, query, reader, width, height, identity, atlas_lane);
     if (SUCCEEDED(hr)) text_density::bound_texture(stage, texture); // X3M_TEXT_DENSITY: the stage-0 pointer (one store)
@@ -3594,6 +3606,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     // compose with; the texture hook row is patched in initialize_log (AP: loading_trace::set_texture_observer; FL: the
     // import-slot stub, d3dx_texture_hook::install).
     hooked.motion_output.configure_material_strength(lod_material_strength_requested);
+    hooked.motion_output.configure_sky_stars(sky_stars_requested, sky_stars_density, sky_stars_mask);
 #if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
@@ -4311,6 +4324,17 @@ void texture_created(IDirect3DDevice9* d, const void* data, UINT size, IDirect3D
     const std::uint8_t lane = lod_texture_mark::lane_of(mark);
     const std::uint64_t identity = resource_id(texture);
     const bool stored = it->second->motion_output.strength_mark_insert(texture, identity, lane, std::uint8_t(mark.slot));
+    // Sky stars: a payload-2 mark (the painted star texture) is stored with its packed seed; the first four are logged in
+    // every tier (invariant 2: the observer fires for sky members on this edition).
+    if (const std::uint32_t seed = sky_stars::core::seed_of(mark)) {
+        const bool sky = it->second->motion_output.sky_stars_mark_insert(texture, identity, seed);
+        static unsigned sky_logged = 0; // under the capture lock
+        if (sky_logged < 4 && it->second->motion_output.sky_stars_requested()) {
+            ++sky_logged;
+            log("sky_stars_texture texture=%p identity=%llu size=%u mark=%u/%u/%u stored=%u", static_cast<void*>(texture),
+                static_cast<unsigned long long>(identity), unsigned(size), mark.slot, mark.lane, mark.k, unsigned(sky));
+        }
+    }
     static unsigned logged = 0; // under the capture lock
     if (log_tier::cached_debug && logged++ < 16)
         log("lod_strength_texture texture=%p identity=%llu size=%u version=%lu slot=%u lane=%u k=%u payload=%u stored=%u",
@@ -4326,6 +4350,7 @@ void texture_released(IDirect3DDevice9* d, void* texture) noexcept {
     const auto it = devices.find(d);
     if (it == devices.end()) return;
     it->second->motion_output.strength_mark_forget(texture);
+    it->second->motion_output.sky_stars_mark_forget(texture);
 }
 void initialize_log(HMODULE module) {
     // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
@@ -4996,6 +5021,39 @@ void initialize_log(HMODULE module) {
         lod_material_strength_requested = !(n == 1 && strength_setting[0] == L'0');
         log("lod_material_strength_mode requested=%s enabled=%u", n == 0 ? "unset" : valid ? "set" : "invalid_setting",
             unsigned(lod_material_strength_requested));
+    }
+    // X3M_SKY_STARS=1|0 (schema default 0; docs/architecture/sector-background-modern.md, Implementation A): the painted
+    // star body of the sector background is masked and one additive batch of procedural star quads drawn in its place,
+    // seeded from the baker's payload-2 mark on the star texture. Needs the route (X3M_MOTION_OUTPUT=1); TAA and HDR are
+    // checked per frame (the background camera and the FP16 latch). X3M_SKY_STARS_DENSITY: star count multiplier, 0.25
+    // to 4 (out of range keeps 1). X3M_SKY_STARS_MASK=0: draw over the unmasked native draw (the fallback when the
+    // star body draws more than the star texture). One sky_stars_config row; status=off when the setting is off.
+    {
+        wchar_t value[32]{};
+        const DWORD n = x3m::config::get(L"X3M_SKY_STARS", value, 32);
+        const bool on = n == 1 && value[0] == L'1';
+        const bool valid = n == 0 || (n == 1 && (value[0] == L'0' || value[0] == L'1'));
+        bool density_valid = true;
+        if (x3m::config::get(L"X3M_SKY_STARS_DENSITY", value, 32) > 0) {
+            wchar_t* end = nullptr;
+            const float v = wcstof(value, &end);
+            density_valid = end != value && *end == L'\0' &&
+                            x3m::sky_stars::core::accept_density(v, &sky_stars_density);
+        }
+        const DWORD m = x3m::config::get(L"X3M_SKY_STARS_MASK", value, 32);
+        sky_stars_mask = !(m == 1 && value[0] == L'0');
+        sky_stars_requested = on && motion_output_requested;
+        log("sky_stars_config requested=%s enabled=%u reason=%s density=%.2f density_setting=%s mask=%u edition=%s",
+            n == 0 ? "unset" : valid ? "set" : "invalid_setting", unsigned(sky_stars_requested),
+            sky_stars_requested ? "ok" : !on ? "setting" : "route_off", double(sky_stars_density),
+            density_valid ? "ok" : "invalid_setting", unsigned(sky_stars_mask),
+#if X3M_EDITION_FL
+            "fl"
+#else
+            "ap"
+#endif
+        );
+        if (!sky_stars_requested) log("sky_stars status=off reason=%s", !on ? "setting" : "route_off");
     }
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull
@@ -6087,8 +6145,8 @@ void initialize_log(HMODULE module) {
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
             engine_status);
     }
-    // Merged-LOD material strength: the D3DX texture row is patched for the atlas marks alone (texture_created below).
-    if (lod_material_strength_requested) {
+    // Merged-LOD material strength and sky stars: the D3DX texture row is patched for the marks alone (texture_created).
+    if (lod_material_strength_requested || sky_stars_requested) {
 #if !X3M_EDITION_FL
         loading_trace::set_texture_observer(texture_created);
 #else

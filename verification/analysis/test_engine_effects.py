@@ -47,12 +47,14 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/motion_output_engine_plumes_inc.h': '9cf741d779a9a277235904a05754257b38b5a9af483b8186f33af8864af08466',
     'src/proxy/motion_output_engine_ribbons_inc.h': '418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599',
     'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
-    'src/proxy/motion_output.h': '522d5d435d0978c2eaec2f8d6a909dad3324ad384f546e1871e6804b605a2d33',
+    # motion_output.h, capture.cpp: bumped for the sky stars (sector-background-modern.md, Implementation A; default off,
+    # one bool test per draw; no engine-effects path changed, 2026-11-05).
+    'src/proxy/motion_output.h': '5c2f3ac5983bfe3f6e66e896d438124e67943f044b91122cbadd86cd7be4f5fd',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
     # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
     # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report
     # (2026-11-03); AP objects identical.
-    'src/proxy/capture.cpp': '319365a988a7b5d5dc226622857c60227b9ce1fda635d173e178ea239d22b0a1',
+    'src/proxy/capture.cpp': 'dcd93186a33e1f9686099bd71fc974adab51a12bbd6b671d5c9f307e2745cf24',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',
