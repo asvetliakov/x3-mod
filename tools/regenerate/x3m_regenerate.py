@@ -12,11 +12,11 @@ double-click it. It starts at once, needs no answers, and runs, in order:
   2. LOD overlay    = tools/analysis/lod_overlay.py --batch --sync --mod auto --install
                       (addon/NN.cat/.dat + marker, the derived addon/mods/<mod>-x3m-lod copy; bodies whose
                       inputs and tool settings are unchanged are reused, every other one is rebaked); on FL the
-                      same write carries the sky row group (tools/analysis/sky_textures.py: re-authored nebula
-                      parts and marked star textures, reused by their inputs_sha256)
+                      same write carries the sky row group (tools/analysis/sky_textures.py): the painted star
+                      textures, texels unchanged, with their X3ML mark for the star pass
   3. sky textures   = reads the sky group of the batch record step 2 wrote: one log row per nebula family
-                      (parts, star textures, size, built/reused); skipped with a line when the group is off (AP
-                      until the AP step) or no eligible texture exists
+                      (star textures marked, built/reused); skipped with a line when the group is off (AP) or no
+                      star texture exists
   4. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
                       <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
                       one .previous kept
@@ -41,8 +41,7 @@ The selected mod (the start menu's package, HKCU\\Software\\EGOSOFT\\X3AP\\ModNa
 Windows and from the CrossOver bottle's user.reg on macOS/Linux; when it cannot be read no package is baked.
 
 Options are for scripted use only: --game-dir DIR (default: the executable's directory when frozen, else
-the current directory), --sky-preview DIR [--sky-preview-scale N] (one source/bake PNG per nebula part; off by
-default), --jobs N (default CPU count - 1; an upper bound, the LOD bake additionally schedules
+the current directory), --jobs N (default CPU count - 1; an upper bound, the LOD bake additionally schedules
 its workers by predicted memory, lod_overlay.worker_plan), --memory-budget GIB (developers: the LOD bake's
 worker memory budget instead of RAM minus the reserve), --no-wait.
 """
@@ -322,7 +321,7 @@ def selected_mod(game):
     return lod_overlay_check.read_mod_name(None, game)
 
 
-def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon', sky_preview=None, sky_preview_scale=1):
+def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon'):
     import lod_overlay
     if name is None:
         log.say(f'selected mod: unknown ({where}); the LOD overlay is baked without a mod package')
@@ -347,9 +346,7 @@ def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon', sky_p
     try:
         code = call_tool(log, lod_overlay.main, ['--game', str(game), '--batch', '--sync', '--mod', 'auto',
                                                  '--install', '--jobs', str(jobs)]
-                                + (['--memory-budget', repr(memory_budget)] if memory_budget is not None else [])
-                                + (['--sky-preview', str(sky_preview), '--sky-preview-scale', str(sky_preview_scale)]
-                                   if sky_preview is not None else []))
+                                + (['--memory-budget', repr(memory_budget)] if memory_budget is not None else []))
     finally:
         lod_overlay.progress = None
         lod_overlay.sky_progress = None
@@ -375,9 +372,10 @@ def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon', sky_p
             + (f"; mod {pkg['name']}: {pkg['built']} baked + {pkg['reused']} unchanged" if pkg else ''))
 
 
-def sky_step(log, game, xp='addon', sky_preview=None):
-    """The sky row group of the batch record the LOD step wrote (lod_overlay --sky; the textures are members of the
-    same overlay write): one row per family, or one skip line when the group is off or nothing is eligible."""
+def sky_step(log, game, xp='addon'):
+    """The sky row group of the batch record the LOD step wrote (lod_overlay --sky; the marked star textures are
+    members of the same overlay write): one row per family, or one skip line when the group is off or nothing is
+    eligible."""
     path = game / xp / 'x3m-lod-batch.json'
     try:
         record = json.loads(path.read_text())
@@ -389,20 +387,14 @@ def sky_step(log, game, xp='addon', sky_preview=None):
         return
     groups = [('', sky)] + ([(' [mod]', sky['package'])] if sky.get('package') else [])
     if not any(g['eligible'] for _, g in groups):
-        log.say('sky textures: skipped (no eligible nebula part or star texture)')
+        log.say('sky textures: skipped (no star texture)')
         return
     for tag, g in groups:
         for fam, f in sorted(g['families'].items()):
-            log.say(f"sky textures family={fam} parts={f['parts']} stars={f['stars']}"
-                    f" {','.join(f['sizes']) or '-'} DXT1 built={f['built']} reused={f['reused']}{tag}")
+            log.say(f"sky textures family={fam} stars={f['stars']} marked built={f['built']} reused={f['reused']}{tag}")
     skipped = ', '.join(f'{k} {v}' for k, v in sorted(sky['skipped'].items())) or 'none'
-    log.say(f"sky summary: {sky['eligible']} textures ({sky['parts']} nebula parts, {sky['stars']} star textures),"
-            f" {sky['built']} baked + {sky['reused']} unchanged, {sky['bytes']} B in the overlay; skipped {skipped}")
-    if sky_preview is not None:
-        pngs = sorted(Path(sky_preview).rglob('*.png'))
-        log.say(f'sky previews: {len(pngs)} PNG files in {sky_preview} (left stock 2x bilinear, right the bake;'
-                ' README.txt)')
-
+    log.say(f"sky summary: {sky['stars']} star textures marked, {sky['built']} new + {sky['reused']} unchanged,"
+            f" {sky['bytes']} B in the overlay; skipped {skipped}")
 
 ENGINE_BODIES_FILE = 'engine_bodies.json'   # tools/manage.py ENGINE_BODIES_GAME_FILE, read by the DLL
 ENGINE_BODIES_MARK = 'tools/effects/engine_bodies.py'  # tools/manage.py ENGINE_BODIES_MARK: the table's own tool field
@@ -459,7 +451,7 @@ def fog_check_step(log, game):
 
 # --- driver ---------------------------------------------------------------------------------------
 
-def run(game, jobs, log, memory_budget=None, sky_preview=None, sky_preview_scale=1):
+def run(game, jobs, log, memory_budget=None):
     """Every step; returns the names of the failed steps."""
     started = time.monotonic()
     log.say(f'x3m-regenerate: game directory {game}')
@@ -497,9 +489,8 @@ def run(game, jobs, log, memory_budget=None, sky_preview=None, sky_preview_scale
     name, where = selected_mod(game)
     package_cat = package_layer(game, name, xp)
     steps = [('fog families', lambda: fog_step(log, game, jobs, package_cat)),
-             ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp, sky_preview,
-                                              sky_preview_scale)),
-             ('sky textures', lambda: sky_step(log, game, xp, sky_preview)),
+             ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp)),
+             ('sky textures', lambda: sky_step(log, game, xp)),
               ('engine bodies', lambda: engine_step(log, game))]
     for label, step in steps:
         log.say(f'== {label}')
@@ -538,15 +529,9 @@ def parse_args(argv):
     ap.add_argument('--no-wait', action='store_true', help='do not wait for a key at the end')
     ap.add_argument('--memory-budget', type=float, metavar='GIB', help='developers: memory the LOD bake workers may'
                     ' hold together (default: RAM minus a reserve)')
-    ap.add_argument('--sky-preview', type=Path, metavar='DIR', help='write one PNG per nebula part into DIR: left the'
-                    ' stock part magnified 2x bilinear, right the re-authored part (default: no previews)')
-    ap.add_argument('--sky-preview-scale', type=int, default=1, metavar='N',
-                    help='box-downsample both preview halves by N (default 1: full resolution)')
     a = ap.parse_args(argv)
     if a.jobs < 1:
         ap.error('--jobs must be >= 1')
-    if a.sky_preview_scale < 1:
-        ap.error('--sky-preview-scale must be >= 1')
     if a.memory_budget is not None and not a.memory_budget > 0:
         ap.error('--memory-budget must be > 0')
     return a
@@ -560,8 +545,7 @@ def main(argv=None):
         console.reconfigure(errors='replace')
     log = Log(game / LOG_NAME, console)
     try:
-        failed = run(game, args.jobs, log, args.memory_budget,
-                     args.sky_preview.resolve() if args.sky_preview else None, args.sky_preview_scale)
+        failed = run(game, args.jobs, log, args.memory_budget)
     except BaseException:                     # KeyboardInterrupt included: still logged, still waits
         log.say('FAILED: interrupted or unexpected error:')
         log.say(traceback.format_exc().rstrip())

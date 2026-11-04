@@ -37,6 +37,11 @@ types with dust fog, which then get fog colours as on AP. The mod package is rea
 several packages are selected at once, no package is baked. It refuses while `X3FL.exe` is running. To remove the
 overlay, delete the `addon2\NN.cat`, `.dat` and `.x3m-lod.json` files it wrote.
 
+**Sky textures (FL):** the same overlay write marks FL's painted star textures for the coming star pass. Their
+pixels are copied unchanged and only a small header tag is added, so the sky looks exactly as before; the nebula
+backgrounds are left as the game has them. If run 49's tool put re-drawn nebula parts into the overlay, the next run
+removes them. On AP this step does nothing (the log says it is skipped).
+
 **CrossOver Preview (macOS, arm64):** double-clicking the executable in a game directory as short
 as `C:\X3` makes it exit at once with no window and no log. That is a bug in the x64 emulator
 CrossOver Preview ships (FEX in `xtajit64.dll`), which drops the executable's name during process

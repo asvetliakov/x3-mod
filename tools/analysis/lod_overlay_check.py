@@ -625,7 +625,7 @@ def candidate_state(game, out, full=False):
             if low.endswith(BODY_EXTENSIONS):
                 bodies += 1
                 overrides += low in existing or any(low[:-4] + e in existing for e in BODY_EXTENSIONS)
-            elif low in sky_names:             # the sky row group re-authors the stock texture under its name
+            elif low in sky_names:             # the sky row group marks the stock star texture under its name
                 sky += 1
             elif low in existing:
                 clash.append(n)
