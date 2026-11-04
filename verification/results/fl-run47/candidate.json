@@ -1,0 +1,17 @@
+{
+ "run": 47,
+ "step": "dev candidate from main e8afc7b78: mesh adjacency lazy competing-normal refusal, fallback timing, hoists (092c57b0a, 2a47fc644), verify-order fix and gate_first row (e916bbcf3), FL lifetime audit fix; same source as AP run 231 (accepted: 5,712 meshes byte-equal to native D3DX)",
+ "edition": "fl",
+ "commit": "e8afc7b78",
+ "dirty": false,
+ "build_dir": "build-fl",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "a6301aeef44d4661",
+ "dll_bytes": 59090420,
+ "installed_sha256_prefix": "a6301aeef44d4661",
+ "rollback": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run46 (8e607386, release 1.9.0)",
+ "ini": "unchanged (;mesh_adjacency = fast default, fast mode)",
+ "game_data": "unchanged",
+ "host_tests": "x87 --edition fl 0 violations on this DLL (measured); AP-side evidence in verification/results/run231-candidate-install.json and docs/verification/mesh-adjacency-fast.md",
+ "installed_at": "2026-11-04T12:58:22+04:00"
+}
