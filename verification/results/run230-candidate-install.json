@@ -1,0 +1,20 @@
+{
+ "run": 230,
+ "what": "mesh adjacency: lazy competing-normals refusal, fallback timing in the metric row, 32-bit hash, no per-call VirtualQuery, geometric arena growth (merge of 092c57b0a + review follow-up 2a47fc644); flown with mesh_adjacency = verify to count what the lazy rule admits on real meshes",
+ "commit": "2a47fc644",
+ "dirty": false,
+ "build_dir": "build-ap",
+ "build_type": "RelWithDebInfo",
+ "dll_sha256_prefix": "befe282e93cf6f50",
+ "dll_bytes": 62752823,
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256_prefix": "befe282e93cf6f50"
+ },
+ "previous": "C:\\X3\\rollback-d3d9\\d3d9.dll.run229 (12b9ca71, release 1.9.0)",
+ "x3m_ini": "mesh_adjacency = verify for this flight (was commented, default fast); perf = 1 as the user set it; x3m.ini.run229 kept",
+ "host_tests": "test_mesh_adjacency_fast 28, test_mesh_adjacency_native_bench 2, test_engine_effects, test_check_no_x87 OK; native D3DX fixture 50,534 checks 0 failures; bench byte-equal both DLLs; module 30.9->25.5 us at 630 faces, 102->84 us at 2,000 (measured, agent); full host suite started at install",
+ "review": "Opus high: merge after two ledger figure fixes (folded in 2a47fc644)",
+ "fl_candidate": "/home/asvetl/x3m-logs/fl-run47-candidate-6e6dc758.dll (6e6dc75877f07e4d) held, not installed",
+ "installed_at": "2026-11-04T05:27:45+04:00"
+}
