@@ -1,68 +1,97 @@
 {
  "ok": true,
- "checks": 33,
+ "checks": 49,
  "failures": 0,
  "failed": "",
  "star_count": {
   "k0": 512,
   "k65": 3120,
   "k143": 6864,
-  "k255": 8192,
+  "k255": 12240,
   "k65_d0.25": 780,
-  "k65_d4": 8192
+  "k65_d4": 12480,
+  "k65_default": 6240,
+  "k255_default": 16384
  },
  "build": {
   "seed": "014101a7",
-  "stars": 3120,
-  "bytes": 349440,
-  "peak_max": 0.999207,
-  "median_decoded": 0.05094,
+  "stars": 6240,
+  "bytes": 798720,
+  "peak_max": 1.998414,
+  "median_decoded": 0.05118,
   "bins_decoded": [
-   129,
-   317,
-   798,
-   1876
+   273,
+   638,
+   1573,
+   3756
   ],
   "bin_ratios": [
-   2.457,
-   2.517,
-   2.351
+   2.337,
+   2.466,
+   2.388
   ],
-  "unit_err": 8.51e-08,
-  "support_max": 1.0,
+  "unit_err": 8.55e-08,
+  "support_min": 1.5,
+  "support_max": 2.875,
+  "hot_support_max": 2.3125,
   "pow_err": 4.25e-14
  },
+ "legacy": {
+  "mismatches": 0,
+  "field_mismatches": 0
+ },
+ "twinkle": {
+  "stars": 1556,
+  "share": 0.2494,
+  "bright_quarter_share": 0.2346,
+  "rate_min": 52,
+  "rate_max": 192,
+  "bad_lanes": 0
+ },
  "kernel": {
-  "energy_rel_err": 4.88e-16,
-  "peak_max": 0.945308,
+  "energy_rel_err": 8e-16,
+  "peak_max": 1.970958,
   "outside": 0,
   "centre_fraction_a1": 0.628799
  },
- "meter_k65_d1": {
+ "meter_k65_defaults": {
   "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": 5.9131,
-  "p99_max_log": -2.039,
+  "ev_limit": 2.7054,
+  "p99_max_log": 1.1687,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
-  "visible_stars": 459,
-  "frame_max": 0.93762,
-  "star_peak": 0.93762
+  "visible_stars": 925,
+  "frame_max": 1.94857,
+  "star_peak": 1.94857
  },
  "meter_k143_d4": {
   "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": 5.2511,
-  "p99_max_log": -1.377,
+  "ev_limit": 2.1635,
+  "p99_max_log": 1.7106,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
-  "visible_stars": 1213,
-  "frame_max": 0.90124,
-  "star_peak": 0.90124
+  "visible_stars": 2505,
+  "frame_max": 1.94394,
+  "star_peak": 1.94394
+ },
+ "meter_k143_max_look": {
+  "ev_target": -1.4565,
+  "ev_key": 0.0,
+  "ev_limit": -1.4565,
+  "p99_max_log": 5.3306,
+  "neutral": true,
+  "lit": 0,
+  "tiles": 1840,
+  "tile_image": "80x23",
+  "visible_stars": 2505,
+  "frame_max": 6.47092,
+  "star_peak": 6.37172
  },
  "meter_control_lum64": {
   "ev_target": -2.1259,

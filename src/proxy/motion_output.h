@@ -1221,10 +1221,11 @@ public:
     bool strength_mark_forget(const void* texture) noexcept; // final Release: true when an entry was dropped
     std::uint8_t strength_lane(IDirect3DBaseTexture9* texture) noexcept;
     // Sky stars (X3M_SKY_STARS, motion_output_sky_stars_inc.h; docs/architecture/sector-background-modern.md,
-    // Implementation A): process-start values (density in [0.25, 4], else 1; mask = sky_stars_mask). The texture hook
+    // Implementation A): process-start values (the look's members and the twinkle amplitude in their ranges, else the
+    // defaults of sky_stars_core.h; mask = sky_stars_mask). The texture hook
     // stores a payload-2 mark's packed seed (sky_stars_core.h seed_of); the SetTexture hook asks sky_stars_lookup for
     // a stage-0 texture (inside its native section: an identity read on a hit) and passes the answer to sky_stars_bind.
-    void configure_sky_stars(bool requested, float density, bool mask) noexcept;
+    void configure_sky_stars(bool requested, const sky_stars::core::Look& look, float twinkle, bool mask) noexcept;
     bool sky_stars_requested() const noexcept { return sky_stars_requested_; }
     bool sky_stars_mark_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, std::uint32_t seed) noexcept;
     bool sky_stars_mark_forget(const void* texture) noexcept;
@@ -2119,7 +2120,8 @@ private:
     // Sky stars (motion_output_sky_stars_inc.h): the settings, the marked-texture table, the stage-0 seed the SetTexture
     // hook keeps, the pass, this frame's background-phase record and what the last sky_stars row said.
     bool sky_stars_requested_ = false, sky_stars_mask_mode_ = true, sky_stars_attach_failed_ = false;
-    float sky_stars_density_ = sky_stars::core::density_default;
+    sky_stars::core::Look sky_stars_look_{};
+    float sky_stars_twinkle_ = sky_stars::core::twinkle_default; // the amplitude in c251.y
     // 1,024 entries, half-full refusal at 512: above AP+Mayhem's 322 star-named textures; refusals reach the row.
     lod_texture_mark::Table<1024>* sky_stars_marks_ = nullptr;
     std::uint32_t sky_stars_stage0_ = 0;

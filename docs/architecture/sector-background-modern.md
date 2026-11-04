@@ -362,3 +362,69 @@ and its refusals reach the row as `table_full=`. It also checks the production c
 **Open.** Invariant 1 is answered by the first `sky_stars_match` row in flight (pair, blend, index, texture size, Clear
 colour); `matched=2` or more per frame, or a pair that is not the star body, means falling back to `sky_stars_mask=0`.
 Invariant 3 by `outside=`. Kill criterion as answer 2.
+
+## Implementation A, look controls (2026-11-05)
+
+Asked for after the first FL flight (run 50: 2,880 stars for Argon Prime, 2 px points read as too sparse, too dim and
+too uniform). Built, not flown. Five settings, all `requires=sky_stars`, read once at process start; a value that does
+not parse or is out of range keeps the default and the `sky_stars_config` row says `<name>_setting=default` (never a
+refusal of the pass):
+
+| Setting | Default | Range | Effect |
+| --- | --- | --- | --- |
+| `sky_stars_density` | 2 (was 1) | 0.25-4 | N = clamp(round(K x 48 x density), 512, 16384); `stars_max` 8,192 -> 16,384 (65,536 vertices, 16-bit indices still suffice) |
+| `sky_stars_brightness` | 2 | 0.5-8 | gain on each star's energy |
+| `sky_stars_size` | 1 | 0-3 | footprint growth with brightness |
+| `sky_stars_min_size` | 1.5 px | 1-3 | half-width of the dimmest star (was the fixed `half_support_min = 1`) |
+| `sky_stars_twinkle` | 0.3 | 0-1 | twinkle amplitude, 0 = steady |
+
+**Law.** With `steps = log_2.5(x_max / X)` in [0, 4] (computed as 4 + log2(decoded) / log2(2.5), one logarithm per star):
+`a = min_size + 0.35 x size x steps`, rounded to the 1/16 px grid; `energy = gain x target peak / centre_fraction(a)`,
+so the centred peak is gain x target peak whatever a (a larger footprint adds light, it does not dim the star); then the
+cap search grows a in 1/16 px steps while `energy x centre_fraction(a)` exceeds `peak_cap = 2.0` (target value, decoded
+2^2.2 = 4.6). `half_support_max = 8` stays a hard bound. At the defaults the half-width runs from 1.5 px (dimmest, a 3 px
+soft point) to 2.875 px (brightest, 1.5 + 1.4 on the grid) and the cap search never runs (gain 2 x peak 1 = 2.0); at
+brightness 8 with size 0 and min_size 1 it grows the brightest stars to 2.31 px. `min_size 1, size 0, brightness 1`
+reproduces the first law's vertices byte for byte (host check `legacy`). The field (directions, tint) comes from the
+seed's stream as before; the twinkle lanes from a second stream (`seed ^ 0x7417c1e5`), so the field is the same in
+every look.
+
+**Twinkle.** One generator word per star: the top two bits zero (one star in four, independent of brightness; host
+check: 24.9 % of 6,240, 23.5 % of the brightest quarter) selects it; rate n in [52, 192] (n / 128 Hz, 0.41-1.5 Hz) and
+a phase byte. The vertex gains a second D3DCOLOR (stride 28 -> 32 B: R = n, G = phase, B = 255 when on; 0 on steady
+stars). The VS scales the energy by `1 + amplitude x sin(2 pi frac(rate t + phase) - pi)` (the half-cycle shift keeps
+the sine argument in [-pi, pi]); energy only, the footprint does not change. `c251 = (t, amplitude, 0, 0)` joins
+c252-c255 in one five-register Get/Set/restore bracket (still 50 device calls per batch). **Why wall time:** t is
+QueryPerformanceCounter seconds, never the game clock. The user flies with SETA at up to 10x; a twinkle driven by game
+time would run at 4-15 Hz under SETA, which reads as flicker. Every rate is a multiple of 1/128 Hz, so t wraps at
+128 s with no jump and stays below 128 in float (the brief's "modulo a day" would leave a 0.008 s float step at the
+end of a day; 128 s divides a day). The tick conversion uses 31-bit signed halves (`cvtsi2sd`); `check_no_x87.py`
+passes on both editions.
+
+**Bloom and exposure (question 1 of the brief).** No code between the background phase and the HDR resolve special-cases
+the sky or the background. The TAA resolve's luminance weighting is reversible and unclamped. The display path's
+`min(v, exposure.y)` is `hdr_clamp` (developer setting, default 0 = off), so stars above 1.0 reach the tone curve. The
+bloom extraction (`src/temporal/bloom_common.hlsl` `bloomExposed`) clamps the decoded value at `bloom_source_clamp`
+(c27.y; user setting, default 1.0) before exposure, and only then applies the threshold (1.0, knee 0.5) in exposed
+luminance. So the brightest stars bloom only as much as a decoded 1.0 pixel does. Brightness above 1.0 makes them
+brighter on screen but does not make the glow bigger. Raising `bloom_source_clamp` would let them glow more, and it
+would do the same for every other light.
+
+**Evidence (measured).** Host check `host_check.json` (49 checks): K 65 at the defaults, 6,240 stars, centred peak max
+1.9984, half-width 1.5-2.875 px, energy error 8e-16 at six sub-pixel offsets, legacy reproduction 0 mismatches. Meter replay
+at 5120x1440: defaults EV 0, neutral, `ev_limit` +2.71; K 143 density 4 (16,384 stars) EV 0, `ev_limit` +2.16, so
+both stay above `hdr_ev_max` 1.3 and the stars do not move the exposure. All five settings at their maximum (brightness 8,
+size 3, min_size 3, density 4) reach image maxima of 6.5 where large quads overlap, and the guard then darkens by 1.46 EV.
+That case is reported, not asserted. Native fixture (`fixture_out.txt`, RTX 5070 Ti, plain D3D9, MANAGED): 945
+isolated stars, energy error 0.15 %, spread across offsets 0.11 %, per-star peak 1.904 (image 2.242 where quads
+overlap), twinkle at amplitude 1 (three times t) matches the modelled factor within 0.09 % of the star energy over 309 twinkling and 1,089 steady star samples
+(steady stars move 0.13 %), state restored with c251-c255 under both injected faults. Cost at 5120x1440: one draw call per
+frame, `draw()` CPU 0.77 us, batch upper bound 2.3 us (6,240 stars) and 6.3 us (16,384); the rebuild of a full
+16,384-star buffer (2,097,152 B VB, Lock to Unlock) takes 1.05 ms (best of 5) per seed or look change, and no time per frame. No
+allocation and no validation are added per frame. Programs: `sky_stars_vs` 162 words / 27 slots, `sky_stars_ps`
+unchanged (90 / 11); the native validator accepts both with End() S_OK and 0 messages.
+
+**Rows.** `sky_stars_config ... density= density_setting= brightness= brightness_setting= size= size_setting= min_size=
+min_size_setting= twinkle= twinkle_setting= mask= edition=` (the setting tags are now `ok|default`, where they were
+`ok|invalid_setting`); the `sky_stars` row gains `peak_max=` (the largest centred pixel), `support_max=` (px) and
+`twinkling=`; `stars=` and `build_us=` follow the new count and law.

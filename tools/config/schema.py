@@ -175,12 +175,25 @@ SETTINGS = [
           '0 = no rays, only the bright centre and its glow.', builtin='1', range=(0.0, 1.0),
           requires=('own_sun',), launcher='--sun-rays', since='2026-11-02'),
     entry('sky_stars', 'bool', 'graphics', 'Sharp procedural stars in place of the painted star layer of the sector '
-          'background: small, steady points that keep their brightness when the view turns, also under SETA. Needs the '
+          'background: small points that keep their brightness when the view turns, also under SETA (a few twinkle '
+          'gently, see sky_stars_twinkle). Needs the '
           'star textures marked by x3m-regenerate. 1 = on, 0 = the game\'s painted stars (default).', builtin='0',
           requires=('taa', 'hdr'), since='2026-11-05'),
-    entry('sky_stars_density', 'float', 'graphics', 'How many procedural stars (sky_stars = 1) relative to the default, '
-          '0.25 to 4; the count also follows the painted texture\'s own star count.', builtin='1', range=(0.25, 4.0),
-          requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_density', 'float', 'graphics', 'How many procedural stars (sky_stars = 1), 0.25 to 4; 2 = the default '
+          'field, 1 = half as many. The count also follows the painted texture\'s own star count.', builtin='2',
+          range=(0.25, 4.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_brightness', 'float', 'graphics', 'How bright the procedural stars are (sky_stars = 1), 0.5 to 8; 2 = the '
+          'default, 1 = half as bright. The brightest stars also grow a little instead of turning into flat white squares.',
+          builtin='2', range=(0.5, 8.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_size', 'float', 'graphics', 'How much larger the bright procedural stars are than the dim ones '
+          '(sky_stars = 1), 0 to 3; 1 = the brightest star is about 1.4 pixels wider on each side than the dimmest, 0 = all '
+          'stars the same size.', builtin='1', range=(0.0, 3.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_min_size', 'float', 'graphics', 'Size of the dimmest procedural stars in pixels from the centre to the '
+          'edge (sky_stars = 1), 1 to 3; 1.5 = a soft point about 3 pixels across, 1 = a sharp 2-pixel dot. Larger stars '
+          'get more light, not dimmer.', builtin='1.5', range=(1.0, 3.0), requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_twinkle', 'float', 'graphics', 'How strongly about one procedural star in four twinkles (sky_stars = 1), '
+          '0 to 1; 0.3 = a subtle flicker, 0 = all stars steady. The twinkle follows real time, so SETA does not speed it '
+          'up.', builtin='0.3', range=(0.0, 1.0), requires=('sky_stars',), since='2026-11-05'),
     dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
         '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),
     # ---------------------------------------------------------------- hdr

@@ -95,6 +95,16 @@ circle fill collapses a disc above a radius of about 800 texels into a dented po
 game's circle fill; smaller ones are untouched. `circle_fill_fix = off` leaves the game's own behaviour. `x3m.log`
 carries one `circle_fill site=004ef620 status=...` line near its top (`patched`, `off` or `refused`).
 
+`sky_stars` (default `off`) replaces the painted star layer of the sector background with sharp procedural stars;
+it needs the star textures marked by x3m-regenerate. Five settings change how they look (all need `sky_stars = 1`):
+`sky_stars_density` (default `2`, 0.25 to 4) sets how many stars there are; `sky_stars_brightness` (default `2`, 0.5
+to 8) sets how bright they are; `sky_stars_size` (default `1`, 0 to 3) makes the bright stars larger than the dim ones
+(`0` = all the same size); `sky_stars_min_size` (default `1.5`, 1 to 3) is the size of the dimmest stars in pixels from
+centre to edge (`1` = the sharp 2-pixel dots of the first version); `sky_stars_twinkle` (default `0.3`, 0 to 1) is how
+strongly about one star in four twinkles (`0` = all steady). The twinkle follows real time, so SETA does not speed it
+up. A value the mod cannot use keeps the default, and the `sky_stars_config` line in `x3m.log` then shows
+`<name>_setting=default`. Stars brighter than white glow only as much as any light that `bloom_source_clamp` caps.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

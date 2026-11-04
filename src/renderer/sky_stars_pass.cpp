@@ -67,12 +67,15 @@ std::uint32_t vs3_program_slots() noexcept {
     copy[0] = ps3_version_token;
     return ps3_program_slots(copy, std::size(copy));
 }
-// sky_stars::core::Vertex: direction, corner px, energy, tint.
+// sky_stars::core::Vertex: direction, corner px, energy, tint, twinkle lanes.
 constexpr D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
                                           {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                           {0, 20, D3DDECLTYPE_FLOAT1, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
                                           {0, 24, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
+                                          {0, 28, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 1},
                                           D3DDECL_END()};
+// The vertex constants the batch owns: c251 (twinkle) and c252-c255 (projection), one Get/Set each.
+constexpr UINT constants_first = 251, constants_count = 5;
 constexpr UINT vertex_bytes = sky_stars::core::vertex_capacity * sky_stars::core::vertex_stride;
 constexpr UINT index_bytes = sky_stars::core::stars_max * sky_stars::core::indices_per_star * 2u;
 // The render states the batch sets (value) and restores: ONE/ONE additive RGB, no depth, no stencil, no cull, no
@@ -104,7 +107,8 @@ void SkyStarsPass::release_objects() noexcept {
     drop(vb_);
     drop(ib_);
     built_seed_ = 0;
-    built_density_ = 0.f;
+    built_look_ = {};
+    built_stats_ = {};
     built_stars_ = 0;
 }
 void SkyStarsPass::detach() noexcept {
@@ -165,7 +169,7 @@ HRESULT SkyStarsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3D
         DWORD value = 0;
         float constants[4];
         if (FAILED(call<GetRsFn>(GetRenderState)(d, D3DRS_COLORWRITEENABLE, &value)) ||
-            FAILED(call<GetConstantsFn>(GetVertexShaderConstantF)(d, 252, constants, 1)))
+            FAILED(call<GetConstantsFn>(GetVertexShaderConstantF)(d, constants_first, constants, 1)))
             return refuse("getters");
     }
     hr = create_objects();
@@ -198,15 +202,17 @@ HRESULT SkyStarsPass::create_objects() noexcept {
     if (FAILED(hr)) release_objects();
     return hr;
 }
-unsigned SkyStarsPass::prepare(std::uint32_t seed, float density, bool* rebuilt) noexcept {
+unsigned SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, bool* rebuilt) noexcept {
     if (rebuilt) *rebuilt = false;
     if (!ready()) return 0;
-    if (seed == built_seed_ && density == built_density_ && built_stars_) return built_stars_;
+    if (seed == built_seed_ && sky_stars::core::same_look(look, built_look_) && built_stars_) return built_stars_;
     PreserveCpuState guard;
     built_seed_ = seed;
-    built_density_ = density;
+    built_look_ = look;
     built_stars_ = 0;
-    const unsigned n = sky_stars::core::star_count(sky_stars::core::seed_k(seed), density);
+    built_stats_ = {};
+    const unsigned n =
+        sky_stars::core::star_count(sky_stars::core::seed_k(seed), sky_stars::core::sanitized(look).density);
     void* mapping = nullptr;
     HRESULT hr = vb_->Lock(0, n * sky_stars::core::vertices_per_star * sky_stars::core::vertex_stride, &mapping, 0);
     if (FAILED(hr) || !mapping) {
@@ -214,18 +220,20 @@ unsigned SkyStarsPass::prepare(std::uint32_t seed, float density, bool* rebuilt)
         if (lost(hr)) lost_ = true;
         return 0;
     }
-    const unsigned built = sky_stars::core::build(seed, density, static_cast<sky_stars::core::Vertex*>(mapping),
-                                                  sky_stars::core::stars_max);
+    sky_stars::core::BuildStats stats;
+    const unsigned built = sky_stars::core::build(seed, look, static_cast<sky_stars::core::Vertex*>(mapping),
+                                                  sky_stars::core::stars_max, &stats);
     hr = vb_->Unlock();
     if (FAILED(hr)) {
         if (lost(hr)) lost_ = true;
         return 0;
     }
     built_stars_ = built;
+    built_stats_ = stats;
     if (rebuilt) *rebuilt = true;
     return built;
 }
-HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) noexcept {
+HRESULT SkyStarsPass::draw(const float constants[16], const float twinkle[4], SkyStarsReport* output) noexcept {
     PreserveCpuState guard;
     SkyStarsReport r{};
     const unsigned initial = calls_;
@@ -240,7 +248,7 @@ HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) no
         r.failed = SkyStarsStep::Resources;
         return finish(lost_ ? D3DERR_DEVICELOST : E_FAIL);
     }
-    if (!built_stars_ || !constants) {
+    if (!built_stars_ || !constants || !twinkle) {
         r.failed = SkyStarsStep::Build;
         return finish(E_INVALIDARG);
     }
@@ -253,7 +261,9 @@ HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) no
     IDirect3DIndexBuffer9* saved_indices = nullptr;
     UINT saved_offset = 0, saved_stride = 0, saved_frequency = 1;
     DWORD saved_fvf = 0, saved_states[touched_count]{};
-    float saved_constants[16]{};
+    float saved_constants[constants_count * 4]{}, batch_constants[constants_count * 4];
+    std::memcpy(batch_constants, twinkle, 4 * sizeof(float));
+    std::memcpy(batch_constants + 4, constants, 16 * sizeof(float));
     auto release_saved = [&] {
         drop(saved_vs);
         drop(saved_ps);
@@ -268,7 +278,8 @@ HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) no
     if (SUCCEEDED(hr)) hr = call<GetStreamFn>(GetStreamSource)(d, 0, &saved_stream, &saved_offset, &saved_stride);
     if (SUCCEEDED(hr)) hr = call<GetFreqFn>(GetStreamSourceFreq)(d, 0, &saved_frequency);
     if (SUCCEEDED(hr)) hr = call<GetIndicesFn>(GetIndices)(d, &saved_indices);
-    if (SUCCEEDED(hr)) hr = call<GetConstantsFn>(GetVertexShaderConstantF)(d, 252, saved_constants, 4);
+    if (SUCCEEDED(hr))
+        hr = call<GetConstantsFn>(GetVertexShaderConstantF)(d, constants_first, saved_constants, constants_count);
     for (unsigned i = 0; i < touched_count && SUCCEEDED(hr); ++i)
         hr = call<GetRsFn>(GetRenderState)(d, touched[i].state, &saved_states[i]);
     if (FAILED(hr)) {
@@ -295,7 +306,8 @@ HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) no
     }
     if (SUCCEEDED(hr)) {
         constants_set = true;
-        step(SkyStarsStep::State, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 252, constants, 4));
+        step(SkyStarsStep::State, call<SetConstantsFn>(SetVertexShaderConstantF)(d, constants_first, batch_constants,
+                                                                                  constants_count));
     }
     if (SUCCEEDED(hr)) {
         declaration_set = true;
@@ -357,7 +369,8 @@ HRESULT SkyStarsPass::draw(const float constants[16], SkyStarsReport* output) no
         else
             put(call<SetDeclarationFn>(SetVertexDeclaration)(d, saved_declaration));
     }
-    if (constants_set) put(call<SetConstantsFn>(SetVertexShaderConstantF)(d, 252, saved_constants, 4));
+    if (constants_set)
+        put(call<SetConstantsFn>(SetVertexShaderConstantF)(d, constants_first, saved_constants, constants_count));
     release_saved();
     r.restore = restore;
     if (lost(hr) || lost(restore)) lost_ = true;

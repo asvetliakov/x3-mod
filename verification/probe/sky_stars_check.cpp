@@ -1,7 +1,8 @@
 // Host check of src/proxy/sky_stars_core.h with src/proxy/lod_texture_mark.h and the installed exposure meter
 // (src/renderer/exposure.cpp) for verification/analysis/test_sky_stars.py. Prints one JSON object: the mark parse of a
-// payload-2 descriptor and the table round trip of K, the seed and N derivation, the vertex-buffer builder (count, stride,
-// magnitude law, peak cap, determinism), the kernel's energy at sub-pixel offsets, and the meter replay on star-only
+// payload-2 descriptor and the table round trip of K, the seed and N derivation, the settings' ranges, the vertex-buffer
+// builder (count, stride, magnitude law, peak cap, size law, the first law at min_size 1 / size 0 / gain 1, twinkle lanes
+// and c251, determinism), the kernel's energy at sub-pixel offsets, and the meter replay on star-only
 // frames (invariant 5 of docs/architecture/sector-background-modern.md). No D3D, no Windows.
 #include "../../src/proxy/sky_stars_core.h"
 #include "../../src/renderer/exposure.h"
@@ -96,9 +97,9 @@ static Meter meter(const std::vector<float>& rgb, unsigned width, unsigned heigh
             frame_max};
 }
 // A star-only frame: the seed's field through a synthetic camera (identity view, vertical FOV 60 degrees).
-static Meter star_frame(std::uint32_t seed, float density, unsigned width, unsigned height, double* worst_peak) {
+static Meter star_frame(std::uint32_t seed, const core::Look& look, unsigned width, unsigned height, double* worst_peak) {
     std::vector<core::Vertex> vb(core::vertex_capacity);
-    const unsigned n = core::build(seed, density, vb.data(), core::stars_max);
+    const unsigned n = core::build(seed, look, vb.data(), core::stars_max);
     std::vector<float> rgb(std::size_t(width) * height * 3, 0.f);
     const double m11 = 1. / std::tan(30. * 3.14159265358979 / 180.), m00 = m11 * height / width;
     unsigned visible = 0;
@@ -156,53 +157,78 @@ int main() {
         check(kept, "table_k_round_trip");
         check(mark::live_marks.load() == before + table.count, "live_marks_exact");
     }
-    // ---- 2. N = clamp(round(K x 48 x density), 512, 8192).
+    // ---- 2. N = clamp(round(K x 48 x density), 512, 16384); a refused density counts as the default 2.
     const unsigned n0 = core::star_count(0, 1.f), n65 = core::star_count(65, 1.f), n143 = core::star_count(143, 1.f),
                    n255 = core::star_count(255, 1.f), n65q = core::star_count(65, .25f), n65x4 = core::star_count(65, 4.f),
-                   n65bad = core::star_count(65, 9.f);
-    check(n0 == 512 && n65 == 3120 && n143 == 6864 && n255 == 8192 && n65q == 780 && n65x4 == 8192 && n65bad == 3120,
+                   n65bad = core::star_count(65, 9.f), n65d = core::star_count(65, core::density_default),
+                   n255d = core::star_count(255, core::density_default), n171x2 = core::star_count(171, 2.f);
+    check(n0 == 512 && n65 == 3120 && n143 == 6864 && n255 == 12240 && n65q == 780 && n65x4 == 12480 && n65bad == 6240 &&
+              n65d == 6240 && n255d == 16384 && n171x2 == 16384,
           "star_count");
-    float density = 1.f;
+    check(core::vertex_capacity == 65536 && core::stars_max * 4u - 1u == 65535u, "indices_16bit");
+    float density = 1.f, setting = 0.f;
     check(!core::accept_density(0.1f, &density) && density == 1.f && core::accept_density(2.f, &density) && density == 2.f &&
               !core::accept_density(NAN, &density),
           "accept_density");
-    // ---- 3. Builder: count, stride, unit directions, quad corners, peak cap, tint, magnitude law, determinism.
+    setting = core::brightness_default;
+    check(!core::accept_brightness(.25f, &setting) && !core::accept_brightness(9.f, &setting) &&
+              !core::accept_brightness(NAN, &setting) && setting == 2.f && core::accept_brightness(8.f, &setting) &&
+              setting == 8.f,
+          "accept_brightness");
+    setting = core::size_default;
+    check(!core::accept_size(-.1f, &setting) && !core::accept_size(3.5f, &setting) && setting == 1.f &&
+              core::accept_size(0.f, &setting) && setting == 0.f,
+          "accept_size");
+    setting = core::min_size_default;
+    check(!core::accept_min_size(.5f, &setting) && !core::accept_min_size(3.1f, &setting) && setting == 1.5f &&
+              core::accept_min_size(1.f, &setting) && setting == 1.f,
+          "accept_min_size");
+    setting = core::twinkle_default;
+    check(!core::accept_twinkle(-.1f, &setting) && !core::accept_twinkle(1.5f, &setting) && setting == .3f &&
+              core::accept_twinkle(0.f, &setting) && setting == 0.f,
+          "accept_twinkle");
+    // ---- 3. Builder at the defaults: count, stride, unit directions, quad corners, peak cap, tint, law, determinism.
     const std::uint32_t seed = 0xa7u | 1u << 8 | 65u << 16 | core::seed_valid;
+    const core::Look look{}; // density 2, brightness 2, size 1, min_size 1.5
     std::vector<core::Vertex> vb(core::vertex_capacity), again(core::vertex_capacity);
     core::BuildStats stats;
-    const unsigned n = core::build(seed, 1.f, vb.data(), core::stars_max, &stats);
-    check(n == 3120 && stats.stars == n, "build_count");
-    check(sizeof(core::Vertex) == 28 && core::vertex_stride == 28, "stride_28");
-    check(core::build(seed, 1.f, again.data(), core::stars_max) == n &&
+    const unsigned n = core::build(seed, look, vb.data(), core::stars_max, &stats);
+    check(n == 6240 && stats.stars == n, "build_count");
+    check(sizeof(core::Vertex) == 32 && core::vertex_stride == 32, "stride_32");
+    check(core::build(seed, look, again.data(), core::stars_max) == n &&
               !std::memcmp(vb.data(), again.data(), n * 4 * sizeof(core::Vertex)),
           "deterministic");
     const std::uint32_t seed2 = 0xa8u | 1u << 8 | 65u << 16 | core::seed_valid;
-    check(core::build(seed2, 1.f, again.data(), core::stars_max) == n &&
+    check(core::build(seed2, look, again.data(), core::stars_max) == n &&
               std::memcmp(vb.data(), again.data(), n * 4 * sizeof(core::Vertex)),
           "seeds_differ");
-    check(!core::build(0, 1.f, again.data(), core::stars_max) && !core::build(seed, 1.f, again.data(), 100), "refusals");
-    double peak_max = 0, unit_err = 0, hemi = 0;
+    check(!core::build(0, look, again.data(), core::stars_max) && !core::build(seed, look, again.data(), 100), "refusals");
+    double peak_max = 0, unit_err = 0, hemi = 0, a_min = 1e9, a_max = 0;
     unsigned bins[4] = {0, 0, 0, 0}, tint_ok = 0, corners_ok = 0;
-    std::vector<double> decoded(n);
+    std::vector<double> decoded(n), target(n), support(n);
     for (unsigned i = 0; i < n; ++i) {
         const auto& v = vb[i * 4];
         const double len = std::sqrt(double(v.dir[0]) * v.dir[0] + double(v.dir[1]) * v.dir[1] + double(v.dir[2]) * v.dir[2]);
         unit_err = std::fmax(unit_err, std::fabs(len - 1.));
         hemi += v.dir[2] > 0;
         const double h = std::fabs(v.corner[0]), a = h - core::quad_margin;
-        const double peak = v.energy * core::centre_fraction(a);
+        support[i] = a;
+        a_min = std::fmin(a_min, a);
+        a_max = std::fmax(a_max, a);
+        const double peak = v.energy * core::centre_fraction(a); // gain x target peak (no cap growth at the defaults)
         peak_max = std::fmax(peak_max, peak);
-        const double lin = std::pow(peak, core::decode_gamma);
+        target[i] = peak / double(look.brightness);
+        const double lin = std::pow(target[i], core::decode_gamma);
         decoded[i] = lin;
         for (unsigned j = 0; j < 4; ++j)
-            if (lin <= std::pow(2.5, -double(j)) + 1e-9 && lin > std::pow(2.5, -double(j + 1))) ++bins[j];
+            if (lin <= std::pow(2.5, -double(j)) + 1e-6 && lin > std::pow(2.5, -double(j + 1))) ++bins[j];
         const unsigned rr = (v.tint >> 16) & 255, gg = (v.tint >> 8) & 255, bb = v.tint & 255;
         tint_ok += (v.tint >> 24) == 255 && (rr == 255 || gg == 255 || bb == 255);
         bool c = true;
         for (unsigned k = 0; k < 4; ++k) {
             const auto& q = vb[i * 4 + k];
             c = c && std::fabs(q.corner[0]) == h && std::fabs(q.corner[1]) == h && q.energy == v.energy && q.tint == v.tint &&
-                !std::memcmp(q.dir, v.dir, sizeof v.dir);
+                q.twinkle == v.twinkle && !std::memcmp(q.dir, v.dir, sizeof v.dir);
         }
         corners_ok += c && vb[i * 4].corner[0] < 0 && vb[i * 4 + 3].corner[0] > 0 && vb[i * 4 + 3].corner[1] > 0;
     }
@@ -211,17 +237,141 @@ int main() {
     const double median_decoded = sorted[n / 2];
     check(unit_err < 1e-5, "unit_directions");
     check(hemi > n * .46 && hemi < n * .54, "sphere_uniform_hemisphere");
-    check(peak_max <= 1. + 1e-6 && peak_max > .98, "peak_cap");
+    check(peak_max <= core::peak_cap + 1e-6 && peak_max > core::peak_cap * .98 &&
+              std::fabs(stats.peak_max - peak_max) < 1e-5,
+          "peak_cap");
     check(tint_ok == n && corners_ok == n, "tint_and_corners");
     const double r1 = double(bins[1]) / bins[0], r2 = double(bins[2]) / bins[1], r3 = double(bins[3]) / bins[2];
     check(std::fabs(r1 - 2.5) < .45 && std::fabs(r2 - 2.5) < .3 && std::fabs(r3 - 2.5) < .25, "power_law_2_5");
     check(std::fabs(median_decoded - .05) < .006, "median_decoded_0_05");
+    // The defaults' footprints: 1.5 px for the dimmest star, 1.5 + 1.4 on the 1/16 grid (2.875) for the brightest.
+    check(a_min == 1.5 && a_max == 2.875 && stats.support_max == 2.875, "support_range_defaults");
+    // ---- 3b. Size monotonic in brightness: sorted by target peak, the support never shrinks; size 0 = one size.
+    double hot_support_max = 0;
+    {
+        std::vector<unsigned> order(n);
+        for (unsigned i = 0; i < n; ++i) order[i] = i;
+        std::sort(order.begin(), order.end(), [&](unsigned x, unsigned y) { return target[x] < target[y]; });
+        unsigned drops = 0;
+        for (unsigned i = 1; i < n; ++i) drops += support[order[i]] < support[order[i - 1]];
+        check(!drops, "size_monotonic_in_brightness");
+        core::Look flat = look;
+        flat.size = 0.f;
+        core::build(seed, flat, again.data(), core::stars_max);
+        bool one = true;
+        for (unsigned i = 0; i < n; ++i) one = one && std::fabs(again[i * 4].corner[0]) == 1.5f + core::quad_margin;
+        check(one, "size0_one_footprint");
+        // Brightness 8, size 0, min_size 1: the cap search grows the brightest stars; the centred peak stays <= 2.
+        core::Look hot{2.f, 8.f, 0.f, 1.f};
+        core::BuildStats hs;
+        core::build(seed, hot, again.data(), core::stars_max, &hs);
+        double hot_peak = 0;
+        for (unsigned i = 0; i < n; ++i) {
+            const double a = std::fabs(again[i * 4].corner[0]) - core::quad_margin;
+            hot_peak = std::fmax(hot_peak, again[i * 4].energy * core::centre_fraction(a));
+        }
+        check(hot_peak <= core::peak_cap + 1e-6 && hs.support_max > 2. && hs.support_max < core::half_support_max,
+              "cap_search_at_gain8");
+        hot_support_max = hs.support_max;
+    }
+    // ---- 3c. min_size 1, size 0, gain 1 reproduces the first law's vertices (the 28-byte layout of 2026-11-05), and
+    // the field (directions, tint) is the same in every look.
+    unsigned legacy_mismatch = 0, field_mismatch = 0;
+    {
+        const core::Look legacy{1.f, 1.f, 0.f, 1.f};
+        std::vector<core::Vertex> old(core::vertex_capacity);
+        const unsigned m = core::build(seed, legacy, old.data(), core::stars_max);
+        // The first law, verbatim: energy = peak / centre_fraction(1), a = 1 (its cap 1.0 never grew a).
+        core::Rng rng(seed);
+        double class_tint[3];
+        core::lane_tint(core::seed_lane(seed), class_tint);
+        for (unsigned i = 0; i < m; ++i) {
+            double x, y, s;
+            do {
+                rng.uniform(&x);
+                rng.uniform(&y);
+                x = 2. * x - 1.;
+                y = 2. * y - 1.;
+                s = x * x + y * y;
+            } while (!(s > 1e-12 && s < 1.));
+            const double r = double(x3m::scalar::sqrt(float(1. - s)));
+            const float dir[3] = {float(2. * x * r), float(2. * y * r), float(1. - 2. * s)};
+            double u;
+            rng.uniform(&u);
+            const double dec = 1. / (1. + u * (double(core::x_max) - 1.));
+            const double peak = core::exp2_bounded(core::log2_positive(dec) / core::decode_gamma);
+            const float energy = float(peak / core::centre_fraction(1.));
+            double share;
+            rng.uniform(&share);
+            share = .25 + .5 * share;
+            double c[3], top = 0.;
+            for (unsigned k = 0; k < 3; ++k) {
+                c[k] = 1. + (class_tint[k] - 1.) * share;
+                if (c[k] > top) top = c[k];
+            }
+            std::uint32_t bytes[3];
+            for (unsigned k = 0; k < 3; ++k) bytes[k] = std::uint32_t(c[k] / top * 255. + .5);
+            const std::uint32_t tint = 0xff000000u | bytes[0] << 16 | bytes[1] << 8 | bytes[2];
+            const float h = 1.f + core::quad_margin;
+            const float corners[4][2] = {{-h, -h}, {h, -h}, {-h, h}, {h, h}};
+            for (unsigned v = 0; v < 4; ++v) {
+                const auto& o = old[i * 4 + v];
+                legacy_mismatch += std::memcmp(o.dir, dir, sizeof dir) != 0 || o.corner[0] != corners[v][0] ||
+                                   o.corner[1] != corners[v][1] || o.energy != energy || o.tint != tint;
+            }
+        }
+        legacy_mismatch += m != 3120;
+        for (unsigned i = 0; i < m; ++i)
+            field_mismatch += std::memcmp(old[i * 4].dir, vb[i * 4].dir, sizeof vb[i * 4].dir) != 0 ||
+                              old[i * 4].tint != vb[i * 4].tint || old[i * 4].twinkle != vb[i * 4].twinkle;
+    }
+    check(!legacy_mismatch, "legacy_look_reproduces_first_law");
+    check(!field_mismatch, "field_independent_of_look");
+    // ---- 3d. Twinkle lanes: about one star in four, chosen independently of brightness; rates and phases in range.
+    unsigned twinkling = 0, bad_lanes = 0, bright_quarter = 0, bright_twinkling = 0;
+    unsigned rate_lo = 255, rate_hi = 0;
+    {
+        std::vector<double> t = target;
+        std::sort(t.begin(), t.end());
+        const double q3 = t[n * 3 / 4];
+        for (unsigned i = 0; i < n; ++i) {
+            const std::uint32_t w = vb[i * 4].twinkle;
+            const bool on = w != 0;
+            twinkling += on;
+            if (target[i] >= q3) {
+                ++bright_quarter;
+                bright_twinkling += on;
+            }
+            if (!on) continue;
+            const unsigned rate = (w >> 16) & 255, blue = w & 255, alpha = w >> 24;
+            rate_lo = std::min(rate_lo, rate);
+            rate_hi = std::max(rate_hi, rate);
+            bad_lanes += rate < core::twinkle_rate_min || rate > core::twinkle_rate_max || blue != 255 || alpha != 0;
+        }
+    }
+    const double twinkle_share = double(twinkling) / n, bright_share = double(bright_twinkling) / bright_quarter;
+    check(twinkle_share > .22 && twinkle_share < .28 && twinkling == stats.twinkling, "twinkle_quarter");
+    check(bright_share > .19 && bright_share < .31, "twinkle_not_by_brightness");
+    check(!bad_lanes && rate_lo <= 56 && rate_hi >= 188, "twinkle_lanes");
+    // c251: wall seconds modulo 128 and the amplitude; refusals leave (0, 0).
+    float tc[4];
+    const std::uint64_t f10 = 10000000ull;
+    const bool tc_ok = core::twinkle_constants(f10 * (128ull * 5 + 3) + f10 / 4, f10, .3f, tc) &&
+                       std::fabs(tc[0] - 3.25f) < 1e-6f && tc[1] == .3f && tc[2] == 0.f && tc[3] == 0.f;
+    const std::uint64_t f3g = 2992000000ull, late = (std::uint64_t(1) << 62) + 12345;
+    const bool tc_big = core::twinkle_constants(late, f3g, 1.f, tc) && tc[0] >= 0.f && tc[0] < 128.f &&
+                        std::fabs(double(tc[0]) - double(late % (f3g * 128)) / double(f3g)) < 1e-4;
+    const bool tc_refused = !core::twinkle_constants(5, 0, .3f, tc) && tc[0] == 0.f && tc[1] == 0.f &&
+                            !core::twinkle_constants(5, f10, 1.5f, tc) && tc[1] == 0.f;
+    check(tc_ok && tc_big && tc_refused, "twinkle_constants");
+    // The 128 s wrap is seamless: every rate n / 128 Hz completes n whole cycles in 128 s.
+    check(core::twinkle_period_s == 128 && 128 % 128 == 0, "twinkle_period");
     // CRT-free log2/exp2 against <cmath> over the generator's range.
     double pow_err = 0;
     for (double x = 1. / 39.0625; x <= 1.; x *= 1.01)
         pow_err = std::fmax(pow_err, std::fabs(core::exp2_bounded(core::log2_positive(x) / 2.2) - std::pow(x, 1. / 2.2)));
     check(pow_err < 1e-9, "pow_without_crt");
-    // ---- 4. Kernel: the covered pixels sum to the energy at any sub-pixel offset, peak <= 1, nothing outside the quad.
+    // ---- 4. Kernel: the covered pixels sum to the energy at any sub-pixel offset, peak <= peak_cap, nothing outside.
     double energy_err = 0, splat_peak = 0;
     const double offsets[6][2] = {{0, 0}, {.25, .5}, {.5, .5}, {.37, .81}, {.999, .001}, {.5, 0}};
     unsigned outside = 0;
@@ -238,14 +388,18 @@ int main() {
                 if ((x < s.x0 || x > s.x1) && core::axis_weight(double(x) - 100. - o[0], a) > 0) ++outside;
         }
     check(energy_err < 1e-9, "energy_invariant");
-    check(splat_peak <= 1. + 1e-6, "splat_peak_cap");
+    check(splat_peak <= core::peak_cap + 1e-6, "splat_peak_cap");
     check(!outside, "nothing_outside_quad");
     // ---- 5. Meter replay (invariant 5): star-only frames at 5120x1440, and the guard's control (one luminance-64 pixel
     // per 64x64 tile on black).
     double peak_a = 0, peak_b = 0;
-    const Meter a = star_frame(seed, 1.f, 5120, 1440, &peak_a);
+    const Meter a = star_frame(seed, look, 5120, 1440, &peak_a);
     const std::uint32_t dense = 0x11u | 0u << 8 | 143u << 16 | core::seed_valid;
-    const Meter b = star_frame(dense, 4.f, 5120, 1440, &peak_b);
+    const core::Look dense_look{4.f, core::brightness_default, core::size_default, core::min_size_default};
+    const Meter b = star_frame(dense, dense_look, 5120, 1440, &peak_b);
+    // Every member at its maximum: reported, not asserted (a user's choice may move the exposure; the row says how far).
+    double peak_x = 0;
+    const Meter x = star_frame(dense, core::Look{4.f, 8.f, 3.f, 3.f}, 5120, 1440, &peak_x);
     std::vector<float> control(std::size_t(5120) * 1440 * 3, 0.f);
     const float engine64 = float(std::pow(64., 1. / 2.2));
     for (unsigned y = 32; y < 1440; y += 64)
@@ -257,13 +411,18 @@ int main() {
     check(g.ev_limit < -2.0, "meter_guard_control");
     std::printf("{\"ok\": %s, \"checks\": %u, \"failures\": %u, \"failed\": \"%s\",\n", failures ? "false" : "true", checks,
                 failures, failed.c_str());
-    std::printf(" \"star_count\": {\"k0\": %u, \"k65\": %u, \"k143\": %u, \"k255\": %u, \"k65_d0.25\": %u, \"k65_d4\": %u},\n",
-                n0, n65, n143, n255, n65q, n65x4);
+    std::printf(" \"star_count\": {\"k0\": %u, \"k65\": %u, \"k143\": %u, \"k255\": %u, \"k65_d0.25\": %u, \"k65_d4\": %u,"
+                " \"k65_default\": %u, \"k255_default\": %u},\n",
+                n0, n65, n143, n255, n65q, n65x4, n65d, n255d);
     std::printf(" \"build\": {\"seed\": \"%08x\", \"stars\": %u, \"bytes\": %u, \"peak_max\": %.6f, \"median_decoded\": %.5f,"
                 " \"bins_decoded\": [%u, %u, %u, %u], \"bin_ratios\": [%.3f, %.3f, %.3f], \"unit_err\": %.2e,"
-                " \"support_max\": %.4f, \"pow_err\": %.2e},\n",
-                seed, n, n * 4 * 28, peak_max, median_decoded, bins[0], bins[1], bins[2], bins[3], r1, r2, r3, unit_err,
-                stats.support_max, pow_err);
+                " \"support_min\": %.4f, \"support_max\": %.4f, \"hot_support_max\": %.4f, \"pow_err\": %.2e},\n",
+                seed, n, n * 4 * unsigned(sizeof(core::Vertex)), peak_max, median_decoded, bins[0], bins[1], bins[2], bins[3],
+                r1, r2, r3, unit_err, a_min, a_max, hot_support_max, pow_err);
+    std::printf(" \"legacy\": {\"mismatches\": %u, \"field_mismatches\": %u},\n", legacy_mismatch, field_mismatch);
+    std::printf(" \"twinkle\": {\"stars\": %u, \"share\": %.4f, \"bright_quarter_share\": %.4f, \"rate_min\": %u,"
+                " \"rate_max\": %u, \"bad_lanes\": %u},\n",
+                twinkling, twinkle_share, bright_share, rate_lo, rate_hi, bad_lanes);
     std::printf(" \"kernel\": {\"energy_rel_err\": %.2e, \"peak_max\": %.6f, \"outside\": %u, \"centre_fraction_a1\": %.6f},\n",
                 energy_err, splat_peak, outside, core::centre_fraction(1.));
     auto meter_json = [](const char* name, const Meter& m, double peak, const char* tail) {
@@ -273,8 +432,9 @@ int main() {
                     name, m.ev_target, m.ev_key, m.ev_limit, m.p99_max_log, m.neutral ? "true" : "false", m.lit, m.tiles,
                     m.tile_w, m.tile_h, m.visible, m.frame_max, peak, tail);
     };
-    meter_json("meter_k65_d1", a, peak_a, ",");
+    meter_json("meter_k65_defaults", a, peak_a, ",");
     meter_json("meter_k143_d4", b, peak_b, ",");
+    meter_json("meter_k143_max_look", x, peak_x, ",");
     meter_json("meter_control_lum64", g, 0., "}");
     return failures ? 1 : 0;
 }
