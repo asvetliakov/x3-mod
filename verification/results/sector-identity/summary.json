@@ -1,0 +1,306 @@
+{
+ "ap": {
+  "exe": "/mnt/c/X3/X3AP.exe",
+  "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "relocatable": false,
+  "windows": [
+   {
+    "name": "player_root",
+    "va": "0x42c890",
+    "length": 15,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "parent_is_sector",
+    "va": "0x42c8a9",
+    "length": 16,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "sa_alloc_sector",
+    "va": "0x46070d",
+    "length": 40,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "sa_set_event_object",
+    "va": "0x46078b",
+    "length": 67,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "sa_get_event_object",
+    "va": "0x4607dc",
+    "length": 36,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_object_lookup",
+    "va": "0x49f1e0",
+    "length": 70,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_ldmem",
+    "va": "0x4a283c",
+    "length": 30,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_this",
+    "va": "0x4a3052",
+    "length": 15,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_new_object_id",
+    "va": "0x4a2e0f",
+    "length": 30,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_class_bsearch",
+    "va": "0x4b06f0",
+    "length": 65,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "object_init_event_zero",
+    "va": "0x44004f",
+    "length": 24,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "restore_event_object",
+    "va": "0x430130",
+    "length": 17,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "vm_create_store",
+    "va": "0x4031e8",
+    "length": 12,
+    "match": true,
+    "highlow_reloc_offsets": []
+   }
+  ]
+ },
+ "fl": {
+  "exe": "/mnt/c/X3FL/X3FL.exe",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "relocatable": true,
+  "windows": [
+   {
+    "name": "player_root",
+    "va": "0x42f913",
+    "length": 11,
+    "match": true,
+    "highlow_reloc_offsets": [
+     1
+    ]
+   },
+   {
+    "name": "parent_is_sector",
+    "va": "0x42f92e",
+    "length": 22,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "sa_alloc_sector",
+    "va": "0x46a71e",
+    "length": 35,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "sa_set_event_object",
+    "va": "0x46a7c1",
+    "length": 92,
+    "match": true,
+    "highlow_reloc_offsets": [
+     5,
+     43,
+     75
+    ]
+   },
+   {
+    "name": "sa_get_event_object",
+    "va": "0x46a81d",
+    "length": 49,
+    "match": true,
+    "highlow_reloc_offsets": [
+     5,
+     33
+    ]
+   },
+   {
+    "name": "kc_object_lookup",
+    "va": "0x4bb1b0",
+    "length": 75,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_ldmem",
+    "va": "0x4bef32",
+    "length": 29,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_this",
+    "va": "0x4bf9eb",
+    "length": 19,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_new_object_id",
+    "va": "0x4bf7b2",
+    "length": 28,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "kc_class_bsearch",
+    "va": "0x4cd180",
+    "length": 65,
+    "match": true,
+    "highlow_reloc_offsets": []
+   },
+   {
+    "name": "restore_event_object",
+    "va": "0x434658",
+    "length": 19,
+    "match": true,
+    "highlow_reloc_offsets": []
+   }
+  ]
+ },
+ "kc_ap_mayhem": {
+  "build": 1462141839,
+  "x_member": 0,
+  "y_member": 1,
+  "create_writes_xy_from_args": true,
+  "xy_writers": [
+   "Create:m0=1",
+   "Create:m1=1"
+  ],
+  "native_id_member": 34,
+  "deactivate_frees_native": true,
+  "music_member": 32,
+  "music_writers": {
+   "Create": 1,
+   "SetMusicTrack": 1
+  },
+  "member_count": 60,
+  "parent": 4294967295
+ },
+ "kc_ap_stock": {
+  "build": 1510658513,
+  "x_member": 0,
+  "y_member": 1,
+  "create_writes_xy_from_args": true,
+  "xy_writers": [
+   "Create:m0=1",
+   "Create:m1=1"
+  ],
+  "native_id_member": 34,
+  "deactivate_frees_native": true,
+  "music_member": 32,
+  "music_writers": {
+   "Create": 1,
+   "SetMusicTrack": 1
+  },
+  "member_count": 56,
+  "parent": 4294967295
+ },
+ "kc_fl": {
+  "build": 1636047691,
+  "x_member": 0,
+  "y_member": 1,
+  "create_writes_xy_from_args": true,
+  "xy_writers": [
+   "Create:m0=1",
+   "Create:m1=1"
+  ],
+  "native_id_member": 36,
+  "deactivate_frees_native": true,
+  "music_member": 33,
+  "music_writers": {
+   "Create": 1,
+   "SetMusicTrack": 1
+  },
+  "member_count": 68,
+  "parent": 4294967295
+ },
+ "map_ap_loaded": {
+  "source": "loose:addon/maps/x3_universe.xml:addon/maps/x3_universe.xml",
+  "decoded_sha256": "2223cd4c28e57857fff26451708e3041aa0557ca82d5d8d153b83601a79ab724",
+  "sectors": 247,
+  "x": [
+   0,
+   19
+  ],
+  "y": [
+   0,
+   18
+  ],
+  "duplicate_xy": 0,
+  "distinct_m": 198,
+  "m_values_shared": 44,
+  "sectors_with_shared_m": 93,
+  "m_zero": 0
+ },
+ "map_ap_stock": {
+  "source": "addon/02.cat:addon/maps/x3_universe.pck",
+  "decoded_sha256": "567c125e42c73608cb4519fee749092faeb7ab6d021770624b5250e762ba3118",
+  "sectors": 239,
+  "x": [
+   0,
+   23
+  ],
+  "y": [
+   0,
+   19
+  ],
+  "duplicate_xy": 0,
+  "distinct_m": 40,
+  "m_values_shared": 5,
+  "sectors_with_shared_m": 204,
+  "m_zero": 188
+ },
+ "map_fl_loaded": {
+  "source": "addon2/04.cat:addon2/maps/x3_universe.pck",
+  "decoded_sha256": "eca3c3ec7c467e5e9fd1399fcff4844e8d306b54c0913117bcb2b6fe97f7b5e5",
+  "sectors": 298,
+  "x": [
+   0,
+   23
+  ],
+  "y": [
+   0,
+   19
+  ],
+  "duplicate_xy": 0,
+  "distinct_m": 48,
+  "m_values_shared": 18,
+  "sectors_with_shared_m": 268,
+  "m_zero": 196
+ },
+ "result": "PASS",
+ "failures": []
+}
