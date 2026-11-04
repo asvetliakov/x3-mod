@@ -3124,3 +3124,12 @@ pilot judgement: crisp stars, no shimmer or trails while rotating at SETA 10x, n
 nebula to black sky, bloom and exposure unchanged. Warning signs: `matched` ≥ 2, `outside` > 0,
 `status=refused`. Fallback `sky_stars_mask = 0` draws over the painted stars. Kill: shimmer or trails under
 SETA rotation or any exposure or bloom response not fixed by one footprint or radiance adjustment.
+
+**Flown 2026-11-05 (log `C:\X3FL\x3m.log`, measured):** `sky_stars_device attached=1 vs_slots=14 ps_slots=11
+max_ps_slots=4096`; Argon Prime texture `mark=78/3/60` (the ledger's 81/1/126 was a different family's mark);
+one `sky_stars_match` row: pair `7b6393fe…/6109cf64…`, `index=0 blend=0 mask=7 z=0 zwrite=0 cull=3`,
+768 primitives / 480 vertices indexed, 1024x1024 DXT1 11 levels, `clear=0000` (invariant 1 settled);
+`sky_stars status=ready stars=2880 matched=1 masked=1 draw=ok refused=0 table_full=0 draw_us=581.8
+build_us=190.5`. `outside=1180` is benign: every outside row is `hdr=0 selector=9` at frames 55-56, the star body
+drawn before HDR latches (loading screen), where the pass does nothing. Pilot: accepted; no defect reported.
+Follow-up requested: denser, brighter, size variation, subtle twinkle (FL run 51).
