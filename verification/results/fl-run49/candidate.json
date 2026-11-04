@@ -1,18 +1,18 @@
 {
  "run": "fl-run49",
  "kind": "regenerate only, DLL unchanged (FL run 48 DLL stays)",
- "commit": "38864ba4062c15f9f819231b1307efd35ce20347",
+ "commit": "52335f2e5",
  "dirty": "clean",
  "exe": {
   "path": "C:\\X3FL\\x3m-regenerate.exe",
-  "sha256": "db6493fd0939c920bb8a837f909fdf71ba256ac60049096b831b1005c05af2be",
-  "bytes": 29864580,
-  "previous": "x3m-regenerate.exe.1.9.1",
-  "previous_sha256": "dc0a4052d29b58cedf91b1a0ad403edcb0ee2f23785c2682cd4e8c87b506d186"
+  "sha256": "130aef9ebac06609627f692bb4555f98342f0c212768085146821bf71c55de7d",
+  "bytes": 29822162,
+  "previous": "x3m-regenerate.exe.1.9.1"
  },
  "built": "tools/regenerate/build.py --windows 2026-11-04 19:39, smoke test PASS 11.7 s",
  "tests": "110 OK: test_sky_textures, test_lod_overlay_batch, test_lod_overlay_check, test_regenerate",
  "offline": "verification/results/sector-background-textures/sky_bake_metrics_fl.txt (10 of 10 pass, bluewell + avdustysol scratch bake)",
  "recorded": "2026-11-04T19:40",
- "note": "rebuilt with --sky-preview (38864ba40); first build 5c7cb116\u2026 superseded before any user run"
+ "note": "rebuilt with --sky-preview (38864ba40); first build 5c7cb116\u2026 superseded before any user run",
+ "outcome": "nebula part bake rejected on the preview set 2026-11-04; parts removed from the overlay; star marks + FL fog families installed; not flown"
 }

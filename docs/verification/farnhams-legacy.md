@@ -3091,7 +3091,14 @@ parts (deband, 2x to 4096x2048, dithered DXT1, no mips, mark payload 3) and stam
 payload 2, auto on FL ([design](../architecture/sector-background-modern.md), Decision B). Offline gate 10 of 10
 on the bluewell and avdustysol scratch bake (`verification/results/sector-background-textures/sky_bake_metrics_fl.txt`,
 PSNR 44.9–52.8 dB, hue ≤ 1.62°, zero violations 0); 110 host tests. Record `verification/results/fl-run49/candidate.json`.
-**Open flight check:** after one regenerate run, Argon Prime (bluewell): loading row `sky_textures family=bluewell
-parts=4 marked=4 4096x2048 DXT1` (invariant 6: the engine accepts the size), sector load within 150 ms of run 48,
-pilot judgement on gradients, noise, halos, colour, part seams. Kill: visible noise, halos or colour change, or
-more than 0.5 s added load time, turns the group off by default.
+**Outcome (2026-11-04, same day): nebula bake rejected before flight, parts removed.** The user's `--sky-preview`
+set (stock magnified 2x bilinear beside the bake) showed no visible change; measured on the Argon Prime part 01
+preview at screen magnification the bake was worse (mean colours per 8x8 block 4.9 vs 9.8, plateau blocks 9.3 % vs
+3.4 %, ordered dither visible as a dot pattern at 1.75 screen px per texel); the offline gate had measured the
+box-downsampled bake. The user dropped the bake; the `sky` group now stamps star marks only (`953291ad5`).
+Installed state after the clean-up run from WSL (`lod_overlay --batch --sync --trust-tool`, then the regenerate
+script, 3.6 min): `addon2/06` 2,450 members and `07` 682 members, 0 nebula parts, 67 star textures marked
+texel-identical, 613 bodies reused, fog families on FL for the first time (0 added, 14 compiled, 2 refused: `earth`
+texture_missing, `xtmgreenring` no_dust_bodies), engine bodies 226. `x3m-regenerate.exe` `130aef9e…`
+(29,822,162 B, clean main `52335f2e5`) installed; rollback `x3m-regenerate.exe.1.9.1`. Nothing to fly; the
+`sky-preview` folder in `C:\X3FL` is the user's and can be deleted.
