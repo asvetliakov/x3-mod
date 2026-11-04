@@ -2114,6 +2114,11 @@ def build_parser():
                    help='batch: uncompressed nebula parts stay stock (skip, default) or are re-encoded (dxt1)')
     b.add_argument('--sky-families', metavar='A,B',
                    help='batch, developers: restrict the sky group to these families')
+    b.add_argument('--sky-preview', type=Path, metavar='DIR',
+                   help='batch: write DIR/<family>_part_NN.png per nebula part, left the source magnified 2x bilinear,'
+                        ' right the re-authored DXT1 member (package parts under DIR/<mod>-x3m-lod/); default none')
+    b.add_argument('--sky-preview-scale', type=int, default=1, metavar='N',
+                   help='batch: box-downsample both preview halves by N (default 1)')
     return ap
 
 
@@ -2135,6 +2140,8 @@ def main(argv=None):
 
 def _main(ap, a):
     a.collapse, a.area_percent = a.collapse
+    if a.sky_preview_scale < 1:
+        ap.error('--sky-preview-scale must be >= 1')
     if a.check:
         print(lod_overlay_check.overlay_line(a.game, a.registry, a.hash_archives))
         return 0
@@ -2909,10 +2916,11 @@ def reuse_sky(sources, rows, settings, notes, trust_tool=False, xp='addon'):
     return out
 
 
-def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='addon'):
+def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='addon', preview_dir=None):
     """(plans, info) of the sky group over an assets view: every eligible winner (only_source: only members whose
     winning layer is that source, the package view), reused through reuse_sky when --sync, the rest baked with up
-    to jobs spawned workers. A plan is dict(name, members=[(member, stored)], sky=manifest row)."""
+    to jobs spawned workers. A plan is dict(name, members=[(member, stored)], sky=manifest row). preview_dir
+    (--sky-preview): every part's source/bake PNG, baked or reused."""
     import sky_textures
     fams = {f.strip().lower() for f in a.sky_families.split(',') if f.strip()} if a.sky_families else None
     t0 = time.time()
@@ -2925,7 +2933,13 @@ def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='ad
     saved = sky_textures.progress
     sky_textures.progress = sky_progress
     try:
-        results = sky_textures.bake_rows(todo, settings['options'], jobs)
+        results = sky_textures.bake_rows(todo, settings['options'], jobs, preview_dir=preview_dir,
+                                         preview_scale=a.sky_preview_scale)
+        again = [(r, reused[r['member'].lower()][0]) for r in rows
+                 if preview_dir is not None and r['kind'] == 'part' and r['member'].lower() in reused]
+        if again:                          # reused members get their preview too (decode only, no bake)
+            sky_textures.preview_rows([r for r, _ in again], [m for _, m in again], preview_dir, a.sky_preview_scale,
+                                      jobs)
     finally:
         sky_textures.progress = saved
     baked = {r['member'].lower(): (res['stored'], sky_textures.manifest_row(r, res)) for r, res in zip(todo, results)}
@@ -3348,13 +3362,15 @@ def batch(a, game, root, markers):
         sky_sources = [(m['slot'], m['path'].with_name(f'{m["slot"]:02d}.cat'), m['manifest'])
                        for m in prev['markers']] if prev else []
         sassets, _ = original_assets(game, markers)
-        sky_plans, sky_info = sky_bake(a, sassets, sky_sources, sky_set, notes, sky_jobs, xp=xp)
+        sky_plans, sky_info = sky_bake(a, sassets, sky_sources, sky_set, notes, sky_jobs, xp=xp,
+                                       preview_dir=a.sky_preview)
         if package:
             pextra = [(derived, lod_overlay_check.package_files(game, derived)[0], pkg_previous['manifest'])] \
                 if pkg_previous and pkg_previous['status'] in ('valid', 'stale') else []
             passets, _ = original_assets(game, markers, mods=[pkg_cat])
             pkg_sky_plans, pkg_sky_info = sky_bake(a, passets, pextra, sky_set, notes, sky_jobs,
-                                                   only_source=pkg_cat.relative_to(game).as_posix(), xp=xp)
+                                                   only_source=pkg_cat.relative_to(game).as_posix(), xp=xp,
+                                                   preview_dir=a.sky_preview / derived if a.sky_preview else None)
     sky_bytes = dat_bytes([m for p in sky_plans + pkg_sky_plans for m in p['members']])
     if a.budget_bytes is not None:         # on the baked (or reused) member bytes: exact, the bake time is spent
         items = [(by_name[p['name']], dat_bytes(p['members']), p) for p in plans] \

@@ -36,6 +36,7 @@ import multiprocessing
 import os
 import re
 import struct
+import zlib
 import sys
 import time
 from pathlib import Path
@@ -495,8 +496,10 @@ def bake_stars(source, family, colour):
         slot=slot, lane=lane, k=k, peaks=peaks, payload=PAYLOAD_SKY_STARS)
 
 
-def bake_part(source, family, number, options, seed_name='', timings=None):
-    """(dds, info) of one nebula part (answer 3, stages 1-8); info carries the output size and encoder PSNR."""
+def bake_part(source, family, number, options, seed_name='', timings=None, preview=None):
+    """(dds, info) of one nebula part (answer 3, stages 1-8); info carries the output size and encoder PSNR.
+    preview = dict(path, scale) writes the source/bake comparison PNG (write_preview) from the decodes the bake
+    already holds; its time goes to timings['preview']."""
     t = timings if timings is not None else {}
     clock = time.perf_counter()
 
@@ -528,14 +531,111 @@ def bake_part(source, family, number, options, seed_name='', timings=None):
     level = encode_dxt1(rgb255, zero, options)
     lap('encode')
     dds = dxt1_header(source, ow, oh, part_mark(family, number)) + level
-    back = lod_atlas.decode_dds(dds)[..., :3].astype(np.float32)
-    violations = int(back[zero].any(-1).sum())
+    back8 = lod_atlas.decode_dds(dds)[..., :3]
+    violations = int(back8[zero].any(-1).sum())
+    back = back8.astype(np.float32)
     back -= rgb255
     np.square(back, out=back)
     nz = ~zero
     mse = float(back.sum(-1)[nz].sum() / (3 * nz.sum())) if nz.any() else 0.0
+    del back
     lap('check')
-    return dds, dict(width=ow, height=oh, encoder_psnr=psnr_of(mse), zero_violations=violations)
+    info = dict(width=ow, height=oh, encoder_psnr=psnr_of(mse), zero_violations=violations)
+    if preview:
+        info['preview'] = write_preview(preview['path'], rgb8, back8, preview.get('scale', 1))
+        lap('preview')
+    return dds, info
+
+
+# --- preview (--sky-preview): source beside bake, for inspection before flying ----------------------------
+
+PREVIEW_DIVIDER = 4
+PREVIEW_GREY = 128
+PREVIEW_README = ('Each PNG: left = the stock nebula part magnified 2x bilinear (what the engine shows at that size),'
+                  ' 4 px grey divider, right = the re-authored part decoded from the DXT1 member written to the overlay.\n')
+
+
+def write_png(path, rgb):
+    """8-bit RGB PNG (filter 0 per row, one IDAT; stdlib zlib, as sky_contact_sheet.py)."""
+    h, w, _ = rgb.shape
+    raw = np.concatenate([np.zeros((h, 1), np.uint8), np.ascontiguousarray(rgb, np.uint8).reshape(h, w * 3)], 1).tobytes()
+
+    def chunk(kind, data):
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+    Path(path).write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+                           + chunk(b'IDAT', zlib.compress(raw, 6)) + chunk(b'IEND', b''))
+
+
+def bilinear2(rgb8):
+    """2x bilinear magnification, texel centres aligned, edges clamped (out[2i] samples x = i - 1/4)."""
+    def along(x, ax):
+        n = x.shape[ax]
+        idx = lambda k: np.take(x, np.clip(np.arange(n) + k, 0, n - 1), ax)
+        out = np.stack([0.25 * idx(-1) + 0.75 * x, 0.75 * x + 0.25 * idx(1)], ax + 1)
+        shape = list(x.shape)
+        shape[ax] = 2 * n
+        return out.reshape(shape)
+    out = np.empty((2 * rgb8.shape[0], 2 * rgb8.shape[1], 3), np.uint8)
+    for c in range(3):
+        out[..., c] = np.clip(np.rint(along(along(rgb8[..., c].astype(np.float32), 0), 1)), 0, 255)
+    return out
+
+
+def _box(img, n):
+    if n <= 1:
+        return img
+    h, w = img.shape[0] // n * n, img.shape[1] // n * n
+    return np.rint(img[:h, :w].reshape(h // n, n, w // n, n, 3).mean((1, 3), dtype=np.float32)).astype(np.uint8)
+
+
+def write_preview(path, src8, bake8, scale=1):
+    """PNG of the source magnified to the bake's size (2x bilinear, or as is when the bake kept the source size),
+    a 4 px mid-grey divider and the decoded bake, both halves box-downsampled by scale. Returns dict(file, bytes,
+    size)."""
+    left = bilinear2(src8) if bake8.shape[0] == 2 * src8.shape[0] else src8
+    left, right = _box(left, scale), _box(bake8, scale)
+    h = min(left.shape[0], right.shape[0])
+    img = np.full((h, left.shape[1] + PREVIEW_DIVIDER + right.shape[1], 3), PREVIEW_GREY, np.uint8)
+    img[:, :left.shape[1]] = left[:h]
+    img[:, left.shape[1] + PREVIEW_DIVIDER:] = right[:h]
+    write_png(path, img)
+    return dict(file=Path(path).name, bytes=Path(path).stat().st_size, size=[img.shape[1], img.shape[0]])
+
+
+def preview_name(row):
+    """<family>_part_NN.png for dds/nebula_<family>_background_part_NN_diff; the member stem otherwise (the fog
+    families' background / background_part1 / background_part1_diff names would collide on a number)."""
+    p = re.sub(r'^addon2?/', '', row['member'].replace('\\', '/').lower())
+    if re.fullmatch(r'dds/nebula_.+?_background_part_\d+_diff\.(pck|dds)', p):
+        return f"{row['family']}_part_{row['number']:02d}.png"
+    return Path(p).stem.removeprefix('nebula_') + '.png'
+
+
+def preview_readme(directory):
+    d = Path(directory)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / 'README.txt').write_text(PREVIEW_README)
+
+
+def _preview_worker(args):
+    """Preview of a reused member (no bake in this run): decode the source and the stored member."""
+    row, source, stored, preview = args
+    t0 = time.perf_counter()
+    info = write_preview(preview['path'], lod_atlas.decode_dds(source)[..., :3],
+                         lod_atlas.decode_dds(gzip.decompress(stored) if stored[:2] == b'\x1f\x8b' else stored)[..., :3],
+                         preview.get('scale', 1))
+    return dict(info, seconds=round(time.perf_counter() - t0, 3))
+
+
+def preview_rows(rows, stored, directory, scale=1, jobs=1):
+    """Previews of parts whose members were reused (stored: their member bytes, in the order of rows)."""
+    args = [({k: v for k, v in r.items() if k != 'data'}, r['data'], m,
+             dict(path=str(Path(directory) / preview_name(r)), scale=scale)) for r, m in zip(rows, stored)]
+    if jobs <= 1 or len(args) <= 1:
+        return [_preview_worker(a) for a in args]
+    ctx = multiprocessing.get_context('spawn')
+    with concurrent.futures.ProcessPoolExecutor(max_workers=min(jobs, len(args)), mp_context=ctx) as pool:
+        return list(pool.map(_preview_worker, args))
 
 
 def psnr_of(mse):
@@ -549,7 +649,8 @@ def bake_one(row, source, options):
     if row['kind'] == 'stars':
         dds, info = bake_stars(source, row['family'], row['colour'])
     else:
-        dds, info = bake_part(source, row['family'], row['number'], options, row['member'], timings)
+        dds, info = bake_part(source, row['family'], row['number'], options, row['member'], timings,
+                              row.get('preview'))
     t1 = time.perf_counter()
     stored = store(dds, row['member'])
     timings['store'] = round(time.perf_counter() - t1, 4)
@@ -602,11 +703,20 @@ def scan(assets, options, families=None):
     return rows, skipped
 
 
-def bake_rows(rows, options, jobs=1, keep_dds=False):
+def bake_rows(rows, options, jobs=1, keep_dds=False, preview_dir=None, preview_scale=1):
     """Results in the order of rows. jobs > 1: a spawned process pool (peak 614 MiB RSS per worker at
-    4096x2048, measured 2026-11-04); progress(row, done, total) as each finishes."""
+    4096x2048, measured 2026-11-04); progress(row, done, total) as each finishes. preview_dir: every nebula part's
+    worker writes preview_dir/preview_name(row) (write_preview) and the README is written once here."""
     total, done, results = len(rows), 0, [None] * len(rows)
-    args = [(dict({k: v for k, v in r.items() if k != 'data'}, keep_dds=keep_dds), r['data'], options) for r in rows]
+    if preview_dir is not None:
+        preview_readme(preview_dir)
+
+    def worker_row(r):
+        w = dict({k: v for k, v in r.items() if k != 'data'}, keep_dds=keep_dds)
+        if preview_dir is not None and r['kind'] == 'part':
+            w['preview'] = dict(path=str(Path(preview_dir) / preview_name(r)), scale=preview_scale)
+        return w
+    args = [(worker_row(r), r['data'], options) for r in rows]
     if jobs <= 1 or len(rows) <= 1:
         for i, a in enumerate(args):
             results[i] = _bake_worker(a)
@@ -772,7 +882,13 @@ def main(argv=None):
     ap.add_argument('--sky-uncompressed', choices=('skip', 'dxt1'), default='skip')
     ap.add_argument('--dither', type=float, default=DEFAULTS['dither'],
                     help='ordered-dither amplitude in palette steps (default 1.0 = +-0.5 step)')
+    ap.add_argument('--sky-preview', type=Path, metavar='DIR',
+                    help='write DIR/<family>_part_NN.png per nebula part: source (2x bilinear) | bake (DXT1 decoded)')
+    ap.add_argument('--sky-preview-scale', type=int, default=1, metavar='N',
+                    help='box-downsample both preview halves by N (default 1: full resolution)')
     a = ap.parse_args(argv)
+    if a.sky_preview_scale < 1:
+        ap.error('--sky-preview-scale must be >= 1')
     game, out = a.game.resolve(), a.out.resolve()
     if out == game or game in out.parents:
         raise SystemExit(f'--out {out} is inside the game directory; refusing')
@@ -785,7 +901,8 @@ def main(argv=None):
     print(f'sky scan: {len(rows)} eligible ({sum(r["kind"] == "part" for r in rows)} parts,'
           f' {sum(r["kind"] == "stars" for r in rows)} star textures), {len(skipped)} skipped; {scan_s:.1f} s', flush=True)
     t1 = time.perf_counter()
-    results = bake_rows(rows, options, a.jobs, keep_dds=True)
+    results = bake_rows(rows, options, a.jobs, keep_dds=True, preview_dir=a.sky_preview,
+                        preview_scale=a.sky_preview_scale)
     bake_s = time.perf_counter() - t1
     (out / 'dds').mkdir(parents=True, exist_ok=True)
     record = []
@@ -794,6 +911,7 @@ def main(argv=None):
         (out / 'dds' / name).write_bytes(res['dds'])
         mr = manifest_row(r, res)
         mr.update(file=f'dds/{name}', timings=res['timings'], source_bytes=len(r['data']),
+                  **({'preview': res['info']['preview']} if 'preview' in res['info'] else {}),
                   source_stored_bytes=next(e['size'] for e in assets.candidates(r['member']) if e['source'] == r['source']))
         record.append(mr)
         print(f"{r['member']}: {r['kind']} {mr['metrics']['width']}x{mr['metrics']['height']}"

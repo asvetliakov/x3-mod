@@ -114,6 +114,44 @@ class Recipe(unittest.TestCase):
         self.assertTrue((back[~zero][:, :3] > 0).any(-1).all())
 
 
+def read_png(path):
+    """RGB uint8 array of a filter-0 8-bit RGB PNG (what sky_textures.write_png writes)."""
+    import zlib
+    data = Path(path).read_bytes()
+    w, h = struct.unpack('>II', data[16:24])
+    pos, idat = 8, b''
+    while pos < len(data):
+        n, = struct.unpack('>I', data[pos:pos + 4])
+        if data[pos + 4:pos + 8] == b'IDAT':
+            idat += data[pos + 8:pos + 8 + n]
+        pos += 12 + n
+    rows = np.frombuffer(zlib.decompress(idat), np.uint8).reshape(h, w * 3 + 1)
+    assert (rows[:, 0] == 0).all()
+    return rows[:, 1:].reshape(h, w, 3)
+
+
+class Preview(unittest.TestCase):
+    def test_part_preview(self):
+        """--sky-preview: one PNG per part (source 2x bilinear | 4 px grey | decoded bake), README, none for stars;
+        --sky-preview-scale 2 halves both sides."""
+        src = banded_part()
+        w, h, _, _ = lod_atlas.dds_format(src)
+        rows = [dict(member=PART, kind='part', family='testfam', number=1, data=src),
+                dict(member=STARS, kind='stars', family='testfam', colour='blue', data=star_texture())]
+        with tempfile.TemporaryDirectory() as folder:
+            d = Path(folder) / 'pv'
+            res = st.bake_rows(rows, st.options_of(), 1, keep_dds=True, preview_dir=d)
+            self.assertEqual(sorted(p.name for p in d.iterdir()), ['README.txt', 'testfam_part_01.png'])
+            img = read_png(d / 'testfam_part_01.png')
+            self.assertEqual(img.shape, (2 * h, 2 * w * 2 + 4, 3))
+            self.assertEqual(img[0, 0].tolist(), lod_atlas.decode_dds(src)[0, 0, :3].tolist())
+            self.assertTrue((img[:, 2 * w:2 * w + 4] == st.PREVIEW_GREY).all())
+            self.assertEqual(img[:, 2 * w + 4:].tolist(), lod_atlas.decode_dds(unpack(res[0]['stored']))[..., :3].tolist())
+            self.assertIn('preview', res[0]['timings'])
+            st.bake_rows(rows[:1], st.options_of(), 1, preview_dir=d, preview_scale=2)
+            self.assertEqual(read_png(d / 'testfam_part_01.png').shape, (h, w * 2 + 4, 3))
+
+
 class Marks(unittest.TestCase):
     CHECK = r'''
 #include "lod_texture_mark.h"
