@@ -686,13 +686,13 @@ QPC read and the module's `unmatched` count are gone (the host driver and the fi
   `native_ticks` grows. Random sweep `production_admitted=1883 production_refused=117` (= its 117
   multi-candidate meshes). Of the 52 previous computable named cases fast mode now refuses 13 instead of 24
   (FAST_STATS computed 94 / fallbacks 18 against 80 / 28; e.g. `fan-tilted-bac` and `-cba` are admitted,
-  byte-equal). The metric row after the fast pass shows the new fields (`refused_us=12.900
+  byte-equal). The metric row after the fast pass shows the new fields (`refused_us=14.400
   fallback_faces=75`, native time non-zero). `run_loading_trace.py` pins `MESH_ADJACENCY_CHECKS=50534`; the
   Wine X3 run (generic table) was not repeated here.
 * Bench, both DLLs: `python3 verification/results/mesh-adjacency-native-windows/bench.py --reps 5 --out
   .../bench-lazy-refusal.txt` → `BENCH_DONE failures=0`, `served_equal=1` on all 24 rows; the bench gained
   `production_min_us` (fast mode's policy). No bench mesh changed admission: the two fans are still refused
-  (C-first by construction), now late, after 91-122 us (2,000 faces) and 394-399 us (8,000 faces) of module
+  (C-first by construction), now late, after 91-122 us (fan-same-edge-2000, 4,000 faces) and 394-399 us (fan-same-edge-8000, 16,000 faces) of module
   work; every other mesh was and is admitted byte-equal.
 * Before/after on the same machine, alternating, minimum of two rounds
   (`ab_module.py HEAD --rounds 2 --reps 5` → `ab-lazy-refusal.txt`), microseconds:

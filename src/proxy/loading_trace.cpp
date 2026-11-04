@@ -1254,7 +1254,7 @@ bool cache_buffer_contract(ID3DXMesh* mesh) {
     // No per-call VirtualQuery: the caller reached this service by a COM call
     // through the object's vtable pointer, so its first word was just read; a
     // recorded table was readable for 29 slots when observe_mesh recorded it and
-    // its owning module is pinned, so the 19 slots compared below stay mapped. An
+    // its owning module is pinned, so the 11 slots compared below stay mapped. An
     // unrecorded table is refused without reading it.
     auto table = *reinterpret_cast<PVOID**>(mesh);
     const MeshTable* recorded = nullptr;
