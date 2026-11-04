@@ -1,6 +1,6 @@
 {
  "ok": true,
- "checks": 58,
+ "checks": 59,
  "failures": 0,
  "failed": "",
  "star_count": {
@@ -54,7 +54,7 @@
   "chi2_max": 63.67,
   "reject_rate_mean": 0.0,
   "exhausted": 0,
-  "host_build_us_best": 915
+  "host_build_us_best": 940
  },
  "clustering1": {
   "seeds": 16,
@@ -65,7 +65,7 @@
   "chi2_max": 9322.99,
   "reject_rate_mean": 0.7841,
   "exhausted": 0,
-  "host_build_us_best": 2284
+  "host_build_us_best": 2320
  },
  "clustering2": {
   "seeds": 16,
@@ -76,7 +76,7 @@
   "chi2_max": 21184.47,
   "reject_rate_mean": 0.85,
   "exhausted": 32,
-  "host_build_us_best": 2771
+  "host_build_us_best": 2895
  },
  "clustering_default_build": {
   "cluster_max_min": 10.122,

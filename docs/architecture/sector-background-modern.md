@@ -348,8 +348,14 @@ status=off` when off; `sky_stars_texture ... mark=slot/lane/K stored=` for the f
 `sky_stars_match mark= vs= ps= index= blend= src= dst= op= sepalpha= mask= z= zwrite= cull= atest= primitives= vertices=
 indexed= texture=WxH levels= format= clear= target= outside= camera_p00.. scene_p00.. rotation_deg=` once per new seed
 (invariant 1); `sky_stars status=<ready|no_mark|refused> mark= stars= matched= masked= draw=<ok|hr> reason= phase_draws=
-frames= drawn_frames= outside= refused= rebuilds= table_full= density= mask_mode= draw_us= build_us=` at the depth-only
-Clear when the status, seed, reason or table refusal count changed.
+frames= drawn_frames= outside= refused= rebuilds= table_full= density= mask_mode= draw_us= build_us= key=` at the depth-only
+Clear when the status, seed, reason, table refusal count or sector key changed. Per-sector seed (2026-11-05, below):
+`sky_stars_sector status=known|unknown reason= edition= S= id= kc= x= y= key= rebuilds= held= links= cached= sample=
+check=` on every change of the read (status, reason, S, key; at most 1,024 per device), `sky_stars_sector_check status=
+edition= base= windows= failed= vm_global= native_id_member=` once per process; `sky_stars_phase_draw field= index= star=
+vs= ps= blend= src= dst= op= sepalpha= srca= dsta= mask= z= zwrite= texture=WxH identity= mark= primitives=` (the star
+body's row adds `c0= c1= c2= c3=` and `background_valid= r=`) for at most 16 background-phase draws of the frame after a
+field's first match, one-shot per field.
 
 **Route test.** `verification/analysis/test_motion_sky_stars.py` (2 tests): the real fragment and `motion_output.h`
 on the host with a scripted SetRenderState and pass (`verification/probe/motion_sky_stars_fixture.cpp`, 9 scenarios,
@@ -478,3 +484,64 @@ and +2.99 (K 143, density 4). Programs unchanged.
 **Rows.** `sky_stars_config` gains `clustering= clustering_setting=`. The `sky_stars` row gains `clustering=`,
 `cluster_max_min=` (the fullest of the 48 bins over the emptiest; an empty bin counts as 1) and `reject_rate=`
 (rejected candidates / all candidates).
+
+## Implementation A, per-sector seed (2026-11-05)
+
+Every sector now draws its own field, and the same one on every return. Built, not flown. The key comes from the
+sector's universe map x/y ([sector-identity.md](../reverse-engineering/sector-identity.md) section 3, static analysis):
+`key = (x + 1) * 0x10000 + (y + 1)`, never 0 for a known sector, so key 0 keeps meaning "no sector" and draws the
+mark's own field (the field of every build before this one). The field seed is `generator_seed(mark_seed, key)`.
+
+**Reader.** `src/proxy/sector_key_core.h` (portable, no CRT, no float) holds both editions' byte windows (the
+verifier's 13 AP and 11 FL windows, 437 / 444 bytes, the 6 FL HIGHLOW fixups rebased from the module base), the VM
+global (`0x006085e4` AP, `0x005aa174` FL) and the native-id member (m34 AP, m36 FL), and the bounded read of section 3,
+steps 4 to 10. `src/proxy/sector_key.cpp` is the edition part, compiled in both DLLs. At the first sample it admits the
+image (`object_trace::executable_verified()` on AP, `fl::verified()` and `fl::module_base()` on FL) and compares every
+window over its whole length through `engine_patch::read_code`. A mismatch turns the key off for the process: every
+read is then `unknown(disabled)` and the pass keeps drawing the key-0 field. It never refuses the pass. The chain is
+read through `engine_memory::read`: one header span `[S+8, S+0x9e)` (class 1, `0xcafe`, id != 0, `[S+0x94]` < 0),
+then, on a cache miss only, the VM global, `[VM+0x12d0]`, the map header (power-of-two capacity <= 2^22), at most 64
+chain nodes, the object (`+0` == kc), its class record (2001), the m0/m1 cells (int, 0..255) and the native-id cell
+(int, == `[S+8]`). The cache is keyed on `(S, [S+8], [S+0x94])`. Every refusal names its reason and clears the cache.
+No hook, no patch, no engine call.
+
+**Start.** The reader starts from the cockpit's sector `[cockpit+0x54]` of `sector_background::sample`, not from the
+player root. That sample is already admitted on both editions (the FL anchors of `sector_background_fl_inc.h`, the AP
+executable identity). It is the sector whose background is being drawn, so it is the right seed source in a remote
+view. It is also already read once per frame (fog default on; `capture.cpp` `sector_background_context` now also runs
+for `sky_stars`), so the start costs no new reads. The reader uses the sample's sector whenever its class word read
+as 1. An empty background table (`Loading`) is `unknown(loading)` and drops the cache, as does a gap of 250 ms or more
+between samples (a load stall), so a load walks the chain again even when `(S, id, kc)` repeat.
+
+**Route.** `MotionOutput::sky_stars_sector_sample` (render thread, once per frame) applies the hold rule
+(`sector_key::core::Hold`): a known key that differs from the held one becomes the held key, and `unknown` keeps it.
+The matched star body calls `SkyStarsPass::prepare(seed, look, held key)` on the render thread, where the rebuild ran
+before. Its cached-build check is now `sky_stars::core::same_build(seed, look, key, ...)`, so a key change rebuilds
+exactly once and a return to a sector rebuilds that sector's field. Main menu and game load: the cockpit sample has no
+class-1 sector (`no_sector`), or the table is empty (`loading`), or a chain step refuses. In every case the read is
+`unknown` and the pass draws the held field whenever a marked star body matches: the field of the last known sector,
+or the key-0 field before any sector is known. It never draws nothing because of the reader. Whether the menu scene has
+a cockpit sector is not established (sector-identity.md section 5); the first `sky_stars_sector` rows answer it.
+
+**Evidence (measured).** Host reader check (`verification/analysis/test_sector_key.py`,
+`verification/probe/sector_key_check.cpp`, 53 checks): both editions' bindings, 30 refusal cases (5 header refusals
+end a warm cache; edits past the header are seen only after a cache miss), object at chain node 64 found and at node 65
+`kc_limit`, a cycle ends at the cap, a freed S (`0xefac`) then reused with a new id and KC id is walked again, the hold
+rule, and the windows at the preferred base and rebased (an unrebased FL image refuses at `player_root`). The test also
+compares the core's tables with the verifier's `WINDOWS` and with `summary.json`'s fixup offsets. Route
+(`motion_sky_stars_fixture.cpp`, 12 scenarios, 106 checks): key 0 before a sector, a rebuild on a known key, the cached
+build on the same key, the held field through `kc_missing`, `no_sector` and `loading` (one cache drop), a second sector
+and the return each rebuild once (the stall drops the cache), one row per change, `key=` on the ready row, the phase
+rows one-shot per field and capped at 16. Native fixture (`fixture_out.txt`, RTX 5070 Ti, plain D3D9): a keyed prepare
+rebuilds once and matches `build()` with that key (twinkling 1,571, candidates 22,826); the drawn keyed buffer has all
+489 isolated stars within 1 % of that build's energy; key 0 rebuilds the mark's field. Cost of the reader through the
+production `engine_memory::read` (20,000 reps): cached check 36 ns warm (the region already validated in the frame, as
+after the cockpit sample's reads of the same sector), 448 ns on the first touch after `next_frame()` (one VirtualQuery),
+full walk 2.2 us on a sector change. A field rebuild stays 1.6 ms (6,240 stars) per sector change, not per frame.
+
+**Phase rows.** The rows are read-only evidence for the open "stars dimmer under the nebula" question. A field's first
+match arms the next background phase, which logs one `sky_stars_phase_draw` per draw (at most 16). The star body's row
+adds its `c0-c3` rows as submitted (the background VS `7b6393fe` writes `oPos` from c0-c3,
+[rigid-position-profiles.md](../reverse-engineering/rigid-position-profiles.md)) and the background camera's rotation
+`r`. A ring of the last 64 logged fields keeps the rows one-shot per field. When idle the cost is one compare per draw
+and one per matched draw.

@@ -70,6 +70,7 @@
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
+#include "sector_key_core.h" // the sky stars' per-sector seed (sector-identity.md section 3)
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
 #include "../renderer/sun_shadow_apply_pass.h"
@@ -1230,6 +1231,11 @@ public:
     bool sky_stars_mark_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, std::uint32_t seed) noexcept;
     bool sky_stars_mark_forget(const void* texture) noexcept;
     std::uint32_t sky_stars_lookup(IDirect3DBaseTexture9* texture) noexcept;
+    // The frame's cockpit-sector sample (capture.cpp sector_background_context, render thread, once per frame): the
+    // sector key reader (sector_key.h) on its class-1 sector; a known key that differs from the held one makes the next
+    // matched star body rebuild the field with it, an unknown read keeps the held field. now_ms: GetTickCount64 (a gap
+    // of 250 ms or more, a load stall, drops the reader's cache). One sky_stars_sector row per change.
+    void sky_stars_sector_sample(const sector_background::Sample& sample, std::uint64_t now_ms) noexcept;
     // Top of before_draw, before any early return (the blocked and UP paths go through before_draw too): the bind bit
     // moves to this draw and is cleared, so a draw that never reaches the classification cannot leave it for the next.
     void sky_stars_draw_begin() noexcept {
@@ -2142,6 +2148,17 @@ private:
     std::uint64_t sky_stars_frames_ = 0, sky_stars_drawn_frames_ = 0, sky_stars_outside_ = 0, sky_stars_refused_ = 0;
     unsigned sky_stars_rebuilds_ = 0, sky_stars_outside_logged_ = 0, sky_stars_failures_ = 0, sky_stars_logged_full_ = 0;
     std::uint64_t sky_stars_draw_ticks_ = 0, sky_stars_build_ticks_ = 0; // QPC of the last batch draw / VB rebuild
+    // The per-sector seed: the held key (0 until a sector is known), the last row's read and the sample clock.
+    sector_key::core::Hold sky_stars_hold_{};
+    sector_key::core::Result sky_stars_sector_logged_{};
+    std::uint64_t sky_stars_sector_ms_ = 0, sky_stars_logged_key_ = 0;
+    unsigned sky_stars_sector_rows_ = 0;
+    // sky_stars_phase_draw: 0 idle, 1 armed by a new field's first match, 2 logging this background phase (at most
+    // sky_stars_phase_rows_max rows); the fields already logged (a ring) and the last field seen at a match.
+    static constexpr unsigned sky_stars_phase_rows_max = 16, sky_stars_phase_fields_max = 64;
+    unsigned sky_stars_phase_log_ = 0, sky_stars_phase_logged_ = 0, sky_stars_phase_fields_ = 0;
+    std::uint32_t sky_stars_phase_field_ = 0, sky_stars_phase_last_field_ = 0;
+    std::uint32_t sky_stars_phase_seen_[sky_stars_phase_fields_max] = {};
     IDirect3DTexture9* own_sun_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
     UINT own_sun_width_ = 0, own_sun_height_ = 0;
     std::uint64_t own_sun_disarmed_until_ = 0, own_sun_row_qpc_ = 0;
@@ -3533,6 +3550,9 @@ private:
     void log_fog_memory(const char* reason, bool walk) noexcept;
     void prepare_fog_card(const MotionDrawCall&, MotionRoute&) noexcept;
     void sky_stars_classify(const MotionDrawCall&, MotionRoute&) noexcept;
+    void sky_stars_classify_draw(const MotionDrawCall&, MotionRoute&) noexcept;
+    void sky_stars_arm_phase_log(std::uint32_t field) noexcept;
+    void sky_stars_log_phase_draw(const MotionDrawCall&, bool star) noexcept;
     void prepare_sky_stars(MotionRoute&) noexcept;
     void finish_sky_stars(MotionRoute&, HRESULT) noexcept;
     void sky_stars_latch() noexcept;

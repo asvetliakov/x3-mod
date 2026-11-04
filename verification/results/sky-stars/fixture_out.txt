@@ -1,9 +1,12 @@
 DEVICE kind=d3d9 plain=00000000 created=00000000
 DEVICE adapter="NVIDIA GeForce RTX 5070 Ti"
 PASS attach hr=00000000 reason=ok vs_slots=27 ps_slots=11 references=5
-PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=1.201 support_max=2.8750 peak_max=1.4988 twinkling=1556
+PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=1.616 support_max=2.8750 peak_max=1.4988 twinkling=1556
 PASS prepare_rebuilds_on_look_change 
+PASS prepare_rebuilds_on_sector_key key=131076 twinkling=1571/1571 candidates=22826/22826
+PASS prepare_key0_is_the_mark_field 
 PASS target 
+PASS keyed_field_drawn isolated=489 within_1pct=489 drew=1
 DRAW operation=00000000 restore=00000000 failed=0 calls=50 stars=6240 drew=1
 PASS energy_within_1pct stars=929 worst_rel_err=0.00143
 PASS energy_offsets_within_1pct worst_spread=0.00099
@@ -15,13 +18,15 @@ PASS pan_target
 TEMPORAL speed=0.5 stars=425 resolved_peak_cv_median=0.0257 resolved_peak_cv_max=0.0486 current_peak_cv_median=0.0563 current_peak_cv_max=0.1020 (model, frames 20-59)
 TEMPORAL speed=10.0 stars=306 resolved_peak_cv_median=0.0137 resolved_peak_cv_max=0.0443 current_peak_cv_median=0.0673 current_peak_cv_max=0.1091 (model, frames 20-59)
 PASS target_5120x1440 
-COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0022 draw_cpu_us=0.75
-COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0059 draw_cpu_us=0.73
-COST rebuild stars=16384 vb_bytes=2097152 clustering=0.0 reject_rate=0.000 cluster_max_min=1.24 build_us_best_of_5=1154.8
-COST rebuild stars=16384 vb_bytes=2097152 clustering=1.0 reject_rate=0.804 cluster_max_min=4.60 build_us_best_of_5=3050.0
-COST rebuild stars=16384 vb_bytes=2097152 clustering=2.0 reject_rate=0.861 cluster_max_min=8.81 build_us_best_of_5=3789.9
+COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0055 draw_cpu_us=0.83
+COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0077 draw_cpu_us=1.15
+COST rebuild stars=16384 vb_bytes=2097152 clustering=0.0 reject_rate=0.000 cluster_max_min=1.24 build_us_best_of_5=1257.4
+COST rebuild stars=16384 vb_bytes=2097152 clustering=1.0 reject_rate=0.804 cluster_max_min=4.60 build_us_best_of_5=3184.4
+COST rebuild stars=16384 vb_bytes=2097152 clustering=2.0 reject_rate=0.861 cluster_max_min=8.81 build_us_best_of_5=3937.4
 PASS rebuild_full_buffer 
+COST sector_key reps=20000 walk_ns=2189 cached_frame_ns=448 cached_warm_ns=36
+PASS sector_key_cached_check 
 PASS detach_releases 
 DEVICE_RELEASE refs=0
 PASS device_released_clean 
-RESULT PASS checks=15 failures=0
+RESULT PASS checks=19 failures=0

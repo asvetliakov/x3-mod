@@ -37,6 +37,7 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "occlusion_engine_cull.h"
 #include "cull_census.h" // X3M_CULL_SMALL_PROPS: the census's culled_prop verdict
 #include "sun_light_poll.h"
+#include "sector_key.h" // the sky stars' per-sector seed (motion_output_sky_stars_inc.h)
 #include "chase_camera.h"
 #include "own_sun_hook.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
@@ -12961,6 +12962,17 @@ void sky_stars_texture_desc(IDirect3DBaseTexture9* texture, unsigned* width, uns
         *format = unsigned(desc.Format);
     }
     *levels = texture->GetLevelCount();
+}
+// Sky stars, the sky_stars_phase_draw row of the star body only: the shadow's c0-c3 rows as submitted (the background
+// VS 7b6393fe's oPos rows, rigid-position-profiles.md), nullptr when c0 is not a shadowed window or not written yet.
+const float* sky_stars_c0_rows(const float (&rows)[motion_matrix_windows_max][16],
+                               const bool (&known)[motion_matrix_windows_max]) noexcept {
+    constexpr std::size_t window = window_of(0);
+    if constexpr (window >= motion_matrix_windows_max) {
+        return nullptr;
+    } else {
+        return known[window] ? rows[window] : nullptr;
+    }
 }
 } // namespace
 #include "motion_output_sky_stars_inc.h"

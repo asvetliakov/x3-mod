@@ -50,7 +50,7 @@ void log(const char* fmt, ...) {
     logs.emplace_back(line);
 }
 bool sector_background_requested = false, volumetric_fog_requested = false, volumetric_fog_docked = false,
-     volumetric_fog_prefill = false;
+     volumetric_fog_prefill = false, sky_stars_requested = false;
 struct Device {
     std::uint64_t id = 1, frame = 0;
     sector_background::Diagnostic sector_background_evidence;
@@ -67,6 +67,16 @@ struct Device {
             ++samples;
             frame = f;
             value = s;
+        }
+        // The sky stars' per-sector seed (motion_output_sky_stars_inc.h): the frame's sample and the clock.
+        unsigned sky_samples = 0;
+        std::uint64_t sky_ms = 0;
+        sector_background::Sample sky_value;
+        void sky_stars_sector_sample(const sector_background::Sample& s, std::uint64_t now_ms) {
+            ++error;
+            ++sky_samples;
+            sky_ms = now_ms;
+            sky_value = s;
         }
     } motion_output;
 };
@@ -194,5 +204,24 @@ int main() {
     sector_background_context(d, true);
     check(error == 123 && logs.size() == undocked + 1 && d.motion_output.value.status == sb::Status::AnchorMismatch &&
           d.motion_output.value.anchor_walk == sb::AnchorWalk::None);
+    // The sky stars alone (no diagnostic, no fog): one sample per frame reaches sky_stars_sector_sample with the clock,
+    // no row, LastError kept; the second call of the frame does no work; off, nothing.
+    memory = setup();
+    volumetric_fog_requested = false;
+    sky_stars_requested = true;
+    clock_ms = 5000;
+    ++d.frame;
+    const auto sky_logs = logs.size();
+    const unsigned fog_samples = d.motion_output.samples;
+    sector_background_context(d, true);
+    check(error == 123 && d.motion_output.sky_samples == 1 && d.motion_output.sky_ms == 5000 &&
+          d.motion_output.sky_value.status == sb::Status::Ready && d.motion_output.sky_value.class48 == 1 &&
+          d.motion_output.samples == fog_samples && logs.size() == sky_logs);
+    sector_background_context(d);
+    check(error == 123 && d.motion_output.sky_samples == 1);
+    sky_stars_requested = false;
+    ++d.frame;
+    sector_background_context(d, true);
+    check(error == 123 && d.motion_output.sky_samples == 1);
     std::printf("sector_background_context_host checks=%u failures=0\n", checks);
 }

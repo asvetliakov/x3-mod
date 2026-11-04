@@ -4,7 +4,9 @@ scripted pass (verification/probe/motion_sky_stars_fixture.cpp): a background dr
 forwarded, unmasked and followed by exactly one batch; outside the phase, without the HDR latch or with a second RT it
 is never masked; a stale bind bit cannot survive an early-returning draw; a refused pass leaves the draw unmasked; a
 failed restore quarantines until Reset; the table's refusals reach the row; c251 carries the wall clock modulo 128 s and
-the twinkle amplitude; refused settings fall back to the defaults. The production order the fixture replays is checked
+the twinkle amplitude; refused settings fall back to the defaults; the per-sector seed (a known key rebuilds once, the
+same key is the cached build, unknown, no sector and loading hold the field, a load or stall drops the reader's cache,
+one sky_stars_sector row per change, key= on the ready row) and the one-shot sky_stars_phase_draw rows. The production order the fixture replays is checked
 here in motion_output.cpp and capture.cpp, and the five look settings across the schema, the core header and the
 settings parse. No D3D, no Wine.
 """
@@ -40,7 +42,7 @@ class MotionSkyStarsTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertRegex(run.stdout, r'^motion_sky_stars scenarios=10 checks=55 failures=0\n$')
+        self.assertRegex(run.stdout, r'^motion_sky_stars scenarios=12 checks=106 failures=0\n$')
 
     def test_production_order(self):
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()

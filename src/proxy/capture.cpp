@@ -996,7 +996,8 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, 
 // First successful BeginScene, with a Present fallback for frames without one.
 // Existing CPU boundary and HookGuard cover this reader; it adds no GPU work.
 void sector_background_context(Device& ctx, bool scene_authority = false) {
-    if (!(sector_background_requested || volumetric_fog_requested) || !ctx.sector_background_evidence.begin(ctx.frame))
+    if (!(sector_background_requested || volumetric_fog_requested || sky_stars_requested) ||
+        !ctx.sector_background_evidence.begin(ctx.frame))
         return;
     const DWORD saved_error = GetLastError();
     struct RestoreError {
@@ -1045,6 +1046,8 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
                 value.anchor_walk == sector_background::AnchorWalk::Found ? "none" : "native_cards");
         ctx.motion_output.volumetric_fog_sector_sample(ctx.frame, value);
     }
+    // The sky stars' per-sector seed (sector_key.h): the cockpit's sector, the one whose background is drawn.
+    if (sky_stars_requested) ctx.motion_output.sky_stars_sector_sample(value, GetTickCount64());
     if (!sector_background_requested || !ctx.sector_background_evidence.emit(value, GetTickCount64())) return;
     log("sector_background device=%llu frame=%llu status=%s registry=%08x active_handle=%u cockpit=%08x sector=%08x class48=%d index=%d count=%d table=%08x R=%08x row_valid=%u name_ptr=%08x name_valid=%u name=\"%s\" dust=%d near=%d far=%d stardust=%d rate0=%d rate1=%d rate2=%d rate3=%d rate4=%d rate5=%d rate6=%d rate7=%d neb=%08x stars=%08x camera=%08x camera_valid=%u cam_near=%d cam_far=%d flags270=%08x camera_check=%s config_valid=%u config768=%d far_floor=%d effective_far=%d ref_object=%08x ref_sector=%08x anchor_check=%s",
         ctx.id, ctx.frame, sector_background::name(value.status), value.registry, value.handle, value.cockpit,
@@ -1982,7 +1985,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         ctx.fog_prefill_gate.present(GetTickCount64());
         ctx.fog_prefill_thread = GetCurrentThreadId();
     } // R3 stall gate
-    if (sector_background_requested || volumetric_fog_requested)
+    if (sector_background_requested || volumetric_fog_requested || sky_stars_requested)
         sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     // The FPS overlay (comparison-hotkeys.md, "FPS overlay"): admitted at a
@@ -2788,7 +2791,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d) {
         ctx.gpu_sync->begin(gpu_sync_timing::Scene);
         ctx.gpu_sync->begin(gpu_sync_timing::Engine);
     } // --gpu-sync-timing only: the frame's first BeginScene opens both (first per frame only)
-    if (SUCCEEDED(hr) && (sector_background_requested || volumetric_fog_requested))
+    if (SUCCEEDED(hr) && (sector_background_requested || volumetric_fog_requested || sky_stars_requested))
         sector_background_context(ctx, true);
     ctx.motion_output.after_begin_scene(hr);
     if (SUCCEEDED(hr)) {

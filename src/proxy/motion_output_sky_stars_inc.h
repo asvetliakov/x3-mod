@@ -29,6 +29,15 @@
 // seed, a refusal reason or the table's refusal count changed since the last row; sky_stars_match once per new seed at its first match (invariant 1: the
 // pair, blend and z states, the index in the background phase, the texture's size and levels, the latching Clear's
 // colour, the background camera); sky_stars_outside for the first four outside-phase binds; sky_stars_device at attach.
+//
+// Per-sector seed (sector_key.h, docs/architecture/sector-background-modern.md "Implementation A, per-sector seed"): the
+// frame's cockpit-sector sample (capture.cpp) runs the sector key reader once per frame; a known key that differs from
+// the held one becomes the held key, an unknown read keeps it (the field of the last known sector; 0, the mark's own
+// field, until one is known). The matched star body prepares the pass with (seed, look, held key): the pass rebuilds
+// only when one of the three differs from its buffer's (sky_stars::core::same_build). Rows: sky_stars_sector on every
+// change of the read (status, reason, sector, key); key= on the sky_stars row; sky_stars_phase_draw for up to 16
+// background-phase draws of the frame after a field's first match (one-shot per field; the star body's row adds its
+// c0-c3 rows and the background camera's rotation).
 void MotionOutput::configure_sky_stars(bool requested, const sky_stars::core::Look& look, float twinkle,
                                        bool mask) noexcept {
     sky_stars_requested_ = requested;
@@ -118,8 +127,20 @@ void MotionOutput::sky_stars_latch() noexcept {
     sky_stars_frame_hr_ = S_FALSE;
     sky_stars_frame_reason_ = "none";
     sky_stars_clear_colour_ = clear_colour_pending_;
+    if (sky_stars_phase_log_ == 1) { // a field's first match armed this phase: its draws are logged
+        sky_stars_phase_log_ = 2;
+        sky_stars_phase_logged_ = 0;
+    }
 }
+// Every draw with the setting on: the classification, then (only in a logging background phase) its phase row.
 void MotionOutput::sky_stars_classify(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    const unsigned matched = sky_stars_frame_matched_;
+    sky_stars_classify_draw(call, route);
+    if (sky_stars_phase_log_ == 2 && sky_stars_phase_logged_ < sky_stars_phase_rows_max &&
+        selector_.state() == renderer::BoundaryState::Background)
+        sky_stars_log_phase_draw(call, sky_stars_frame_matched_ != matched);
+}
+void MotionOutput::sky_stars_classify_draw(const MotionDrawCall& call, MotionRoute& route) noexcept {
     const bool background = selector_.state() == renderer::BoundaryState::Background;
     if (background) ++sky_stars_phase_draws_;
     const std::uint32_t seed = sky_stars_stage0_;
@@ -173,7 +194,7 @@ void MotionOutput::sky_stars_classify(const MotionDrawCall& call, MotionRoute& r
         unsigned stars = 0;
         call_preserved([&] {
             QueryPerformanceCounter(&begin);
-            stars = sky_stars_->prepare(seed, sky_stars_look_, &rebuilt);
+            stars = sky_stars_->prepare(seed, sky_stars_look_, sky_stars_hold_.key, &rebuilt);
             QueryPerformanceCounter(&end);
         });
         if (rebuilt) {
@@ -194,6 +215,109 @@ void MotionOutput::sky_stars_classify(const MotionDrawCall& call, MotionRoute& r
         sky_stars_match_logged_seed_ = seed;
         sky_stars_log_match(call);
     }
+    if (!sky_stars_phase_log_) sky_stars_arm_phase_log(sky_stars::core::generator_seed(seed, sky_stars_hold_.key));
+}
+// A field (the generator seed of mark and held key) matched for the first time arms the next background phase's
+// sky_stars_phase_draw rows; one compare per matched draw while the field holds, a ring scan when it changes.
+void MotionOutput::sky_stars_arm_phase_log(std::uint32_t field) noexcept {
+    if (field == sky_stars_phase_last_field_) return;
+    sky_stars_phase_last_field_ = field;
+    const unsigned known = sky_stars_phase_fields_ < sky_stars_phase_fields_max ? sky_stars_phase_fields_
+                                                                                 : sky_stars_phase_fields_max;
+    for (unsigned i = 0; i < known; ++i)
+        if (sky_stars_phase_seen_[i] == field) return;
+    sky_stars_phase_seen_[sky_stars_phase_fields_++ % sky_stars_phase_fields_max] = field;
+    sky_stars_phase_field_ = field;
+    sky_stars_phase_log_ = 1;
+}
+// One background-phase draw of a logging phase (read-only evidence for "stars dimmer under the nebula"): its pair,
+// blend and depth states, the stage-0 texture, and for the star body (star: this draw matched) the c0-c3 rows as
+// submitted and the background camera's rotation.
+void MotionOutput::sky_stars_log_phase_draw(const MotionDrawCall& call, bool star) noexcept {
+    static constexpr D3DRENDERSTATETYPE keys[] = {D3DRS_ALPHABLENDENABLE, D3DRS_SRCBLEND, D3DRS_DESTBLEND,
+                                                  D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_SRCBLENDALPHA,
+                                                  D3DRS_DESTBLENDALPHA, D3DRS_COLORWRITEENABLE, D3DRS_ZENABLE,
+                                                  D3DRS_ZWRITEENABLE};
+    constexpr unsigned count = sizeof keys / sizeof keys[0];
+    long states[count];
+    for (unsigned i = 0; i < count; ++i) {
+        DWORD value = 0;
+        states[i] = SUCCEEDED(render_state(keys[i], &value)) ? long(value) : -1L;
+    }
+    ++sky_stars_phase_logged_;
+    IDirect3DBaseTexture9* texture = samplers_[0].texture;
+    const std::uint32_t mark = sky_stars_stage0_;
+    const float* c0 = star ? sky_stars_c0_rows(shadow_.rows, shadow_.rows_known) : nullptr;
+    call_preserved([&] {
+        unsigned width = 0, height = 0, levels = 0, format = 0;
+        sky_stars_texture_desc(texture, &width, &height, &levels, &format);
+        const std::uint64_t identity = texture ? resource_id(texture) : 0;
+        char extra[640] = "";
+        if (star) {
+            const auto& b = camera_background_;
+            int used = 0;
+            if (c0)
+                used = std::snprintf(extra, sizeof extra,
+                                     " c0=%.6g,%.6g,%.6g,%.6g c1=%.6g,%.6g,%.6g,%.6g c2=%.6g,%.6g,%.6g,%.6g"
+                                     " c3=%.6g,%.6g,%.6g,%.6g",
+                                     double(c0[0]), double(c0[1]), double(c0[2]), double(c0[3]), double(c0[4]),
+                                     double(c0[5]), double(c0[6]), double(c0[7]), double(c0[8]), double(c0[9]),
+                                     double(c0[10]), double(c0[11]), double(c0[12]), double(c0[13]), double(c0[14]),
+                                     double(c0[15]));
+            else
+                used = std::snprintf(extra, sizeof extra, " c0=unknown");
+            if (used > 0 && unsigned(used) < sizeof extra)
+                std::snprintf(extra + used, sizeof extra - unsigned(used),
+                              " background_valid=%u r=%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g", unsigned(b.valid),
+                              double(b.r[0]), double(b.r[1]), double(b.r[2]), double(b.r[3]), double(b.r[4]),
+                              double(b.r[5]), double(b.r[6]), double(b.r[7]), double(b.r[8]));
+        }
+        log("sky_stars_phase_draw device=%llu frame=%llu field=%08x index=%u star=%u vs=%016llx ps=%016llx blend=%ld src=%ld"
+            " dst=%ld op=%ld sepalpha=%ld srca=%ld dsta=%ld mask=%ld z=%ld zwrite=%ld texture=%ux%u identity=%llu"
+            " mark=%u/%u/%u primitives=%u%s",
+            id_, frame_, static_cast<unsigned>(sky_stars_phase_field_), sky_stars_phase_draws_ - 1u, unsigned(star),
+            shadow_.vs_hash, shadow_.ps_hash, states[0], states[1], states[2], states[3], states[4], states[5],
+            states[6], states[7], states[8], states[9], width, height, static_cast<unsigned long long>(identity),
+            sky_stars::core::seed_slot(mark), sky_stars::core::seed_lane(mark), sky_stars::core::seed_k(mark),
+            call.primitives, extra);
+    });
+}
+// The frame's cockpit-sector sample: the sector key, the held key, one sky_stars_sector row per change.
+void MotionOutput::sky_stars_sector_sample(const sector_background::Sample& sample, std::uint64_t now_ms) noexcept {
+    if (!sky_stars_requested_) return;
+    // A load: an empty background table, or a gap of 250 ms or more between samples (a stall), drops the reader's cache,
+    // so the chain is walked again even when (S, [S+8], [S+0x94]) repeat.
+    const bool stalled = sky_stars_sector_ms_ && now_ms - sky_stars_sector_ms_ >= 250;
+    sky_stars_sector_ms_ = now_ms;
+    sector_key::core::Result r;
+    r.sector = sample.class48 == 1 ? sample.sector : 0;
+    if (sample.status == sector_background::Status::Loading) {
+        sector_key::invalidate();
+        r.reason = sector_key::core::Reason::loading;
+    } else if (!r.sector) {
+        r.reason = sector_key::core::Reason::no_sector;
+    } else {
+        if (stalled) sector_key::invalidate();
+        r = sector_key::sample(r.sector);
+    }
+    sky_stars_hold_.apply(r);
+    const auto& last = sky_stars_sector_logged_;
+    if (sky_stars_sector_rows_ && r.known == last.known && r.reason == last.reason && r.sector == last.sector &&
+        r.key == last.key)
+        return;
+    sky_stars_sector_logged_ = r;
+    if (sky_stars_sector_rows_ >= 1024) return; // a flickering read: the first 1024 changes per device
+    ++sky_stars_sector_rows_;
+    const char* status = sector_background::name(sample.status);
+    call_preserved([&] {
+        log("sky_stars_sector device=%llu frame=%llu status=%s reason=%s edition=%s S=%08x id=%u kc=%d x=%d y=%d key=%llu"
+            " rebuilds=%u held=%llu links=%u cached=%u sample=%s check=%s",
+            id_, frame_, r.known ? "known" : "unknown", sector_key::core::name(r.reason), sector_key::edition(),
+            static_cast<unsigned>(r.sector), static_cast<unsigned>(r.id), static_cast<int>(r.kc), r.x, r.y,
+            static_cast<unsigned long long>(r.key), sky_stars_rebuilds_,
+            static_cast<unsigned long long>(sky_stars_hold_.key), r.links, unsigned(r.cached), status,
+            sector_key::status());
+    });
 }
 // Invariant 1, once per seed at its first match: what the star body is and where it sits.
 void MotionOutput::sky_stars_log_match(const MotionDrawCall& call) noexcept {
@@ -341,15 +465,19 @@ void MotionOutput::finish_sky_stars(MotionRoute& route, HRESULT result) noexcept
 }
 // The depth-only Clear (Background -> Scene): the frame's status; one row when it differs from the last row's.
 void MotionOutput::sky_stars_phase_end() noexcept {
+    if (sky_stars_phase_log_ == 2) sky_stars_phase_log_ = 0; // one logged phase per armed field
     ++sky_stars_frames_;
     if (sky_stars_frame_drawn_) ++sky_stars_drawn_frames_;
     const char* status = sky_stars_frame_drawn_ ? "ready" : sky_stars_frame_matched_ ? "refused" : "no_mark";
     const char* reason = sky_stars_frame_drawn_ ? "ok" : sky_stars_frame_matched_ ? sky_stars_frame_reason_ : "no_mark";
     const unsigned full = sky_stars_marks_ ? sky_stars_marks_->refused_full : 0u;
+    const bool built_now = sky_stars_ && sky_stars_frame_seed_ && sky_stars_frame_seed_ == sky_stars_->seed();
+    const std::uint64_t key = built_now ? sky_stars_->sector_key() : sky_stars_hold_.key;
     if (status == sky_stars_logged_status_ && sky_stars_frame_seed_ == sky_stars_logged_seed_ &&
-        reason == sky_stars_logged_reason_ && full == sky_stars_logged_full_)
+        reason == sky_stars_logged_reason_ && full == sky_stars_logged_full_ && key == sky_stars_logged_key_)
         return;
     sky_stars_logged_full_ = full;
+    sky_stars_logged_key_ = key;
     sky_stars_logged_status_ = status;
     sky_stars_logged_seed_ = sky_stars_frame_seed_;
     sky_stars_logged_reason_ = reason;
@@ -367,7 +495,7 @@ void MotionOutput::sky_stars_phase_end() noexcept {
         log("sky_stars device=%llu frame=%llu status=%s mark=%u/%u/%u stars=%u matched=%u masked=%u draw=%s reason=%s"
             " phase_draws=%u frames=%llu drawn_frames=%llu outside=%llu refused=%llu rebuilds=%u table_full=%u density=%.2f"
             " mask_mode=%u draw_us=%.1f build_us=%.1f peak_max=%.4f support_max=%.4f twinkling=%u clustering=%.2f"
-            " cluster_max_min=%.2f reject_rate=%.3f",
+            " cluster_max_min=%.2f reject_rate=%.3f key=%llu",
             id_, frame_, status, sky_stars::core::seed_slot(seed), sky_stars::core::seed_lane(seed),
             sky_stars::core::seed_k(seed), stars, sky_stars_frame_matched_, sky_stars_frame_masked_, draw, reason,
             sky_stars_phase_draws_, static_cast<unsigned long long>(sky_stars_frames_),
@@ -376,7 +504,7 @@ void MotionOutput::sky_stars_phase_end() noexcept {
             double(sky_stars_look_.density), unsigned(sky_stars_mask_mode_),
             double(sky_stars_draw_ticks_) * 1e6 / double(frequency), double(sky_stars_build_ticks_) * 1e6 / double(frequency),
             stats.peak_max, stats.support_max, stats.twinkling, double(sky_stars_look_.clustering), stats.cluster_max_min,
-            stats.reject_rate);
+            stats.reject_rate, static_cast<unsigned long long>(key));
     });
     sky_stars_frames_ = sky_stars_drawn_frames_ = 0;
 }
