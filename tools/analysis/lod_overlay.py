@@ -343,7 +343,7 @@ saved per member byte) while their members fit in N bytes, and refuses the rest 
 
 Selected package (--mod NAME|auto|none, default auto; docs/architecture/lod-overlay-mods.md): the engine
 mounts one addon/mods/NAME.cat, chosen in the start menu, into a slot above every numbered catalogue, so no
-numbered overlay slot can win over it. auto reads HKCU\Software\EGOSOFT\X3AP\ModName (the bottle's
+numbered overlay slot can win over it. auto reads HKCU\\Software\\EGOSOFT\\X3AP\\ModName (the bottle's
 user.reg found from --game, or --registry; winreg on native Windows); empty means no package; a
 NAME-x3m-lod selection maps back to NAME through its marker. With a package the batch runs a second census
 with the package as the top layer (Assets mods=[...]) over the package-affected bodies: every body stem the
