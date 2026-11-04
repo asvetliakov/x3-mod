@@ -1,0 +1,32 @@
+fl: 68 star textures, 224 nebula parts
+star textures: path, w, h, median luma (0-255), median non-zero luma, % texels luma>24, bright peaks (>96)
+   ('dds/nebula_bluedistance_stars_blue_diff.pck', 1024, 1024, 0.0, 9.5, 0.79, 998)
+   ('dds/nebula_bluenexus_stars_blue_diff.pck', 1024, 1024, 0.0, 8.9, 0.79, 977)
+   ('dds/nebula_bluenova_stars_blue_diff.pck', 1024, 1024, 0.0, 11.2, 0.29, 618)
+   ('dds/nebula_bluewell_stars_blue_diff.pck', 1024, 1024, 0.0, 10.3, 0.8, 1014)
+   ('dds/nebula_rednexus_stars_red_diff.pck', 1024, 1024, 0.0, 8.0, 0.69, 867)
+   ('dds/nebula_redreef_stars_green_diff.pck', 1024, 1024, 0.0, 9.5, 0.78, 1015)
+   ('dds/nebula_redsplit_stars_orange_diff.pck', 1024, 1024, 0.0, 10.0, 0.76, 953)
+   ('dds/nebula_standardblack_stars_white_diff.pck', 1024, 1024, 0.0, 9.2, 0.7, 927)
+   ('dds/nebula_khub_stars_orange_diff.pck', 1024, 1024, 0.0, 65.4, 0.11, 482)
+   ('dds/nebula_ksg_stars_orange_diff.pck', 1024, 1024, 0.0, 56.4, 0.13, 492)
+   ('dds/nebula_orangeblackhole_stars_orange_diff.pck', 1024, 1024, 0.0, 69.5, 0.11, 519)
+   ('dds/nebula_yellowrift_stars_orange_diff.pck', 1024, 1024, 0.0, 69.5, 0.11, 519)
+  median luma: min 0.0 median 0.0 max 0.0; textures with median luma > 4: 0 of 68
+  bright peaks per texture: min 0 median 519 max 1145; % texels > 24: median 0.15 max 0.81
+DXT1 nebula parts measured: 212: path, mean identical-luma run along x (px, non-black), % non-black 8x8 blocks with <=2 colours, % non-black blocks, % black texels
+   ('dds/nebula_avdustysol_background_part_04_diff.pck', 19.75, 81.1, 100.0, 0.0)
+   ('dds/nebula_avdustysol_background_part_02_diff.pck', 19.62, 81.1, 100.0, 0.0)
+   ('dds/nebula_avdustysol_background_part_01_diff.pck', 19.11, 80.9, 100.0, 0.0)
+   ('dds/nebula_reddawn_background_part_04_diff.pck', 2.67, 38.9, 54.3, 63.6)
+   ('dds/nebula_avclashbleached_background_part_04_diff.pck', 2.67, 27.7, 69.9, 48.0)
+   ('dds/nebula_avicydrifts_background_part_04_diff.pck', 2.67, 27.7, 69.9, 48.0)
+   ('dds/nebula_oppositered_background_part_04_diff.pck', 1.68, 11.4, 29.8, 74.7)
+   ('dds/nebula_greeneye_background_part_03_diff.pck', 1.65, 5.6, 90.1, 14.4)
+   ('dds/nebula_redreef_background_part_04_diff.pck', 1.62, 13.3, 80.1, 43.8)
+  run length: median 2.67 p90 4.29; plateau-block share: median 27.9% p90 48.4%; black texels: median 52.2%
+bluewell (Argon Prime) parts: path, mean identical-luma run along x, % plateau blocks, % non-black blocks, % black texels
+   dds/nebula_bluewell_background_part_01_diff.pck 2.1 8.1 43.4 63.9
+   dds/nebula_bluewell_background_part_02_diff.pck 2.38 15.3 36.0 72.0
+   dds/nebula_bluewell_background_part_03_diff.pck 1.98 13.2 12.7 92.1
+   dds/nebula_bluewell_background_part_04_diff.pck 2.23 14.6 28.6 78.9

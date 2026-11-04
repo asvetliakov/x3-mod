@@ -1,0 +1,25 @@
+ap nebula background textures 1106
+   861 (2048, 1024, '\x00\x00\x00\x00', 0, 'pck')
+   104 (2048, 1024, 'DXT1', 0, 'pck')
+   51 (2048, 1024, 'DXT1', 1, 'pck')
+   35 (2048, 2048, '\x00\x00\x00\x00', 0, 'pck')
+   18 (2048, 2048, 'DXT1', 0, 'pck')
+   12 (2048, 1024, 'DXT1', 12, 'pck')
+   8 (1024, 512, 'DXT5', 0, 'pck')
+   8 (2048, 1024, 'DXT3', 12, 'pck')
+   4 (2048, 1024, 'DXT3', 0, 'pck')
+   2 (1024, 1024, 'DXT1', 0, 'pck')
+   1 (64, 64, 'DXT1', 0, 'pck')
+   1 (2048, 2048, 'DXT1', 12, 'pck')
+   1 (4096, 2048, 'DXT1', 1, 'pck')
+  e.g. ['dds/nebula_bluedistance_background_part_01_diff.pck', 'dds/nebula_bluedistance_background_part_02_diff.pck', 'dds/nebula_bluedistance_background_part_03_diff.pck']
+fl nebula background textures 254
+   212 (2048, 1024, 'DXT1', 0, 'pck')
+   18 (2048, 2048, 'DXT1', 0, 'pck')
+   8 (1024, 512, 'DXT5', 0, 'pck')
+   8 (2048, 1024, 'DXT3', 12, 'pck')
+   4 (2048, 1024, 'DXT3', 0, 'pck')
+   2 (1024, 1024, 'DXT1', 0, 'pck')
+   1 (64, 64, 'DXT1', 0, 'pck')
+   1 (2048, 1024, '\x00\x00\x00\x00', 0, 'pck')
+  e.g. ['dds/nebula_bluedistance_background_part_01_diff.pck', 'dds/nebula_bluedistance_background_part_02_diff.pck', 'dds/nebula_bluedistance_background_part_03_diff.pck']
