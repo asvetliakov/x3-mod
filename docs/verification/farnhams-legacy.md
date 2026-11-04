@@ -3084,8 +3084,8 @@ kept). Record `verification/results/fl-run46/candidate.json`. No flight check op
 
 ## FL run 49 — nebula sky bake, regenerate only (installed 2026-11-04)
 
-DLL unchanged (FL run 48 stays). `C:\X3FL\x3m-regenerate.exe` replaced by the build of clean main `90cf62f08`
-(`5c7cb116…`, 29,855,421 B; `build.py --windows`, smoke test PASS 11.7 s), previous `dc0a4052…` kept as
+DLL unchanged (FL run 48 stays). `C:\X3FL\x3m-regenerate.exe` replaced by the build of clean main `38864ba40`
+(`db6493fd…`, 29,855,421 B; `build.py --windows`, smoke test PASS 11.7 s), previous `dc0a4052…` kept as
 `x3m-regenerate.exe.1.9.1`. New step after the LOD overlay: the `sky` group re-authors the 2048x1024 DXT1 nebula
 parts (deband, 2x to 4096x2048, dithered DXT1, no mips, mark payload 3) and stamps the star textures with mark
 payload 2, auto on FL ([design](../architecture/sector-background-modern.md), Decision B). Offline gate 10 of 10
