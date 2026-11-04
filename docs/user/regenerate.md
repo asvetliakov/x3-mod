@@ -31,7 +31,9 @@ executable. The file is rewritten on each run.
 FL folder (`X3FL.exe` plus `addon2\01.cat`; the AP files that FL keeps beside it are ignored) and writes the
 merged-LOD overlay as the next free `addon2\NN.cat/.dat` numbers with their `.x3m-lod.json` markers (a stock FL 1.3
 install gets `addon2\06` and `addon2\07`, about 2.75 GB) and the engine body table from FL's own body list. The
-fog family steps are skipped on FL (the log says so). The mod package is read from FL's start-menu setting; when
+fog family steps read FL's own catalogues (`addon2\`) and write `x3m\fog-families.bin` next to `X3FL.exe`; stock FL's
+nebula types are all built into the renderer, so the file stays empty (`0 families added`) until a mod adds nebula
+types with dust fog, which then get fog colours as on AP. The mod package is read from FL's start-menu setting; when
 several packages are selected at once, no package is baked. It refuses while `X3FL.exe` is running. To remove the
 overlay, delete the `addon2\NN.cat`, `.dat` and `.x3m-lod.json` files it wrote.
 
