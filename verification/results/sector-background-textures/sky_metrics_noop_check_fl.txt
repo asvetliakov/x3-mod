@@ -1,0 +1,17 @@
+dds/nebula_bluewell_background_part_01_diff.pck untouched: PASS
+dds/nebula_bluewell_background_part_01_diff.pck nearest 2x: FAIL hue 2.191 > 2.0
+dds/nebula_bluewell_background_part_02_diff.pck untouched: FAIL plateau 0.1535 > max(0.1, 0.9 x source 0.1535)
+dds/nebula_bluewell_background_part_02_diff.pck nearest 2x: FAIL hue 2.395 > 2.0
+dds/nebula_bluewell_background_part_03_diff.pck untouched: FAIL plateau 0.1317 > max(0.1, 0.9 x source 0.1317)
+dds/nebula_bluewell_background_part_03_diff.pck nearest 2x: FAIL hue 2.562 > 2.0
+dds/nebula_bluewell_background_part_04_diff.pck untouched: FAIL plateau 0.1455 > max(0.1, 0.9 x source 0.1455)
+dds/nebula_bluewell_background_part_04_diff.pck nearest 2x: FAIL hue 2.141 > 2.0
+dds/nebula_avdustysol_background_part_01_diff.pck untouched: FAIL near-uniform: plateau 0.8095 (source 0.8095), run 19.11 > source 19.11 / 3
+dds/nebula_avdustysol_background_part_01_diff.pck nearest 2x: FAIL near-uniform: plateau 0.8436 (source 0.8095), run 21.29 > source 19.11 / 3; hue 5.211 > 2.0; wrap 60.867 vs source 61.904
+dds/nebula_avdustysol_background_part_02_diff.pck untouched: FAIL near-uniform: plateau 0.8112 (source 0.8112), run 19.62 > source 19.62 / 3
+dds/nebula_avdustysol_background_part_02_diff.pck nearest 2x: FAIL near-uniform: plateau 0.8482 (source 0.8112), run 22.08 > source 19.62 / 3; hue 5.216 > 2.0; wrap 60.911 vs source 61.943
+dds/nebula_avdustysol_background_part_03_diff.pck untouched: FAIL near-uniform: plateau 0.8062 (source 0.8062), run 18.58 > source 18.58 / 3
+dds/nebula_avdustysol_background_part_03_diff.pck nearest 2x: FAIL near-uniform: plateau 0.8374 (source 0.8062), run 20.67 > source 18.58 / 3; hue 5.203 > 2.0; wrap 58.109 vs source 59.145
+dds/nebula_avdustysol_background_part_04_diff.pck untouched: FAIL near-uniform: plateau 0.8107 (source 0.8107), run 19.75 > source 19.75 / 3
+dds/nebula_avdustysol_background_part_04_diff.pck nearest 2x: FAIL near-uniform: plateau 0.8460 (source 0.8107), run 22.07 > source 19.75 / 3; hue 5.215 > 2.0; wrap 58.157 vs source 59.195
+no-op bakes passing: 1 (expected 0)

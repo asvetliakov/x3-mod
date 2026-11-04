@@ -11,18 +11,23 @@ double-click it. It starts at once, needs no answers, and runs, in order:
                       has is covered); <game>/x3m/fog-families.bin + .json, one .previous kept
   2. LOD overlay    = tools/analysis/lod_overlay.py --batch --sync --mod auto --install
                       (addon/NN.cat/.dat + marker, the derived addon/mods/<mod>-x3m-lod copy; bodies whose
-                      inputs and tool settings are unchanged are reused, every other one is rebaked)
-  3. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
+                      inputs and tool settings are unchanged are reused, every other one is rebaked); on FL the
+                      same write carries the sky row group (tools/analysis/sky_textures.py: re-authored nebula
+                      parts and marked star textures, reused by their inputs_sha256)
+  3. sky textures   = reads the sky group of the batch record step 2 wrote: one log row per nebula family
+                      (parts, star textures, size, built/reused); skipped with a line when the group is off (AP
+                      until the AP step) or no eligible texture exists
+  4. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
                       <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
                       one .previous kept
-  4. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
+  5. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
                       launch fingerprint is refreshed (otherwise the launcher reports the fog file stale)
 
 Farnham's Legacy (X3FL.exe beside addon2/01.cat, catalogue_mounts.edition): the same run with addon2/ in place of
 addon/ (X3FL.exe mounts root NN.cat then addon2/NN.cat, docs/reverse-engineering/fl/resource-resolver.md): recovery
 under addon2/ and addon2/mods/, the LOD overlay as addon2/NN.cat/.dat + marker at the next free addon2 number,
 engine bodies from addon2/types/Bodies (engine_bodies.generate's own FL view), the selected package from
-HKCU\\Software\\EGOSOFT\\X3FL\\ModName (one entry; a package list bakes no package). The fog family steps (1, 4) are
+HKCU\\Software\\EGOSOFT\\X3FL\\ModName (one entry; a package list bakes no package). The fog family steps (1, 5) are
 skipped on FL: fog_families.py reads the AP view only (a log line says so). The running-game check looks for
 X3FL.exe.
 
@@ -333,13 +338,17 @@ def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon'):
         if 'refused' in result:
             first = (result['refused'].splitlines() or [''])[0][:160]
             log.say(f"refused model {body}: {lod_overlay.bake_reason(result['refused'])} ({first})")
+    def sky_progress(row, done, total):
+        log.say(f"processing sky texture {row['member'].rsplit('/', 1)[-1]} ({done}/{total})")
     lod_overlay.progress = progress
+    lod_overlay.sky_progress = sky_progress
     try:
         code = call_tool(log, lod_overlay.main, ['--game', str(game), '--batch', '--sync', '--mod', 'auto',
                                                  '--install', '--jobs', str(jobs)]
                                 + (['--memory-budget', repr(memory_budget)] if memory_budget is not None else []))
     finally:
         lod_overlay.progress = None
+        lod_overlay.sky_progress = None
     if code:
         raise StepFailed(f'lod_overlay exit code {code}')
     record = json.loads((game / xp / 'x3m-lod-batch.json').read_text())
@@ -360,6 +369,31 @@ def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon'):
     log.say(f"LOD summary: {c['enumerated']} bodies found, {c['eligible']} eligible, {c['built']} baked +"
             f" {c['reused']} unchanged = {c['overlay_bodies']} in the overlay, {refused} refused"
             + (f"; mod {pkg['name']}: {pkg['built']} baked + {pkg['reused']} unchanged" if pkg else ''))
+
+
+def sky_step(log, game, xp='addon'):
+    """The sky row group of the batch record the LOD step wrote (lod_overlay --sky; the textures are members of the
+    same overlay write): one row per family, or one skip line when the group is off or nothing is eligible."""
+    path = game / xp / 'x3m-lod-batch.json'
+    try:
+        record = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise StepFailed(f'cannot read {xp}/x3m-lod-batch.json ({exc})') from None
+    sky = record.get('sky')
+    if not sky:
+        log.say('sky textures: skipped (the sky group is off for this edition; lod_overlay.py --sky on enables it)')
+        return
+    groups = [('', sky)] + ([(' [mod]', sky['package'])] if sky.get('package') else [])
+    if not any(g['eligible'] for _, g in groups):
+        log.say('sky textures: skipped (no eligible nebula part or star texture)')
+        return
+    for tag, g in groups:
+        for fam, f in sorted(g['families'].items()):
+            log.say(f"sky textures family={fam} parts={f['parts']} stars={f['stars']}"
+                    f" {','.join(f['sizes']) or '-'} DXT1 built={f['built']} reused={f['reused']}{tag}")
+    skipped = ', '.join(f'{k} {v}' for k, v in sorted(sky['skipped'].items())) or 'none'
+    log.say(f"sky summary: {sky['eligible']} textures ({sky['parts']} nebula parts, {sky['stars']} star textures),"
+            f" {sky['built']} baked + {sky['reused']} unchanged, {sky['bytes']} B in the overlay; skipped {skipped}")
 
 
 ENGINE_BODIES_FILE = 'engine_bodies.json'   # tools/manage.py ENGINE_BODIES_GAME_FILE, read by the DLL
@@ -458,9 +492,13 @@ def run(game, jobs, log, memory_budget=None):
     if edition == 'fl':
         log.say('fog families: skipped on FL (fog_families.py reads the AP catalogue view only)')
     steps += [('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp)),
+              ('sky textures', lambda: sky_step(log, game, xp)),
               ('engine bodies', lambda: engine_step(log, game))]
     for label, step in steps:
         log.say(f'== {label}')
+        if label == 'sky textures' and 'LOD overlay' in failed:
+            log.say('sky textures: skipped (the LOD overlay step failed; the sky textures are part of its write)')
+            continue
         t0 = time.monotonic()
         try:
             step()

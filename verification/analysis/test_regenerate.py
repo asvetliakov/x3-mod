@@ -119,6 +119,7 @@ class Regenerate(unittest.TestCase):
             self.assertIn('refused model ships/x/badtext: text_parse_error', text)
             self.assertIn('refused model stations/y/good: texel_floor', text)   # production texel floor
             self.assertIn('slot plan: addon/01 2 bodies', text)
+            self.assertIn('sky textures: skipped (the sky group is off for this edition', text)   # AP: --sky auto
             self.assertIn('engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; wrote x3m/engine_bodies.json', text)
             self.assertIn('engine body not loadable: effects\\engines\\gone (not_found)', log)  # log only
             engine = json.loads((game / 'x3m/engine_bodies.json').read_text())
@@ -277,6 +278,10 @@ class Regenerate(unittest.TestCase):
             self.assertNotIn('== fog families', text)
             self.assertIn('slot plan: addon2/02 1 bodies', text)                  # the station: texel_floor
             self.assertIn('all done: LOD overlay and engine bodies regenerated', text)
+            # the sky step runs after the LOD overlay and before the engine bodies; nothing eligible here
+            self.assertLess(text.index('== LOD overlay'), text.index('== sky textures'))
+            self.assertLess(text.index('== sky textures'), text.index('== engine bodies'))
+            self.assertIn('sky textures: skipped (no eligible nebula part or star texture)', text)
             self.assertTrue((game / 'addon2/02.cat').is_file() and (game / 'addon2/02.x3m-lod.json').is_file())
             self.assertEqual(sorted(p.name for p in (game / 'addon').iterdir()), ['01.cat', '01.dat'])
             self.assertFalse((game / 'x3m' / 'fog-families.bin').exists())

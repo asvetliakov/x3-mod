@@ -2105,6 +2105,15 @@ def build_parser():
     b.add_argument('--record', type=Path,
                    help='batch: record JSON path (default x3m-lod-batch.json under --out or beside the marker on --install, else in the working'
                         ' directory); *-summary.txt and *-bodies.txt are written beside it')
+    b.add_argument('--sky', choices=('auto', 'on', 'off'), default='auto',
+                   help='batch: the sky row group (tools/analysis/sky_textures.py; sector-background-modern.md Decision'
+                        ' B): re-authored nebula parts and marked star textures as members of the same overlay slot'
+                        ' (auto: on for FL, off for AP until the AP step; textures are never dropped by --budget-bytes)')
+    b.add_argument('--sky-detail', action='store_true', help='batch: the sky group\'s opt-in detail synthesis')
+    b.add_argument('--sky-uncompressed', choices=('skip', 'dxt1'), default='skip',
+                   help='batch: uncompressed nebula parts stay stock (skip, default) or are re-encoded (dxt1)')
+    b.add_argument('--sky-families', metavar='A,B',
+                   help='batch, developers: restrict the sky group to these families')
     return ap
 
 
@@ -2355,14 +2364,15 @@ def slot_files(root, slot, xp='addon'):
 
 
 def commit_outputs(a, game, root, layout, prev_slots, before, exclude, manifest_extra=None, retire=(), remove=(),
-                   remove_markers=()):
+                   remove_markers=(), sky=None):
     """Write every (slot, members, bodies) of layout as addon/NN.cat/.dat plus its marker under root, turn
     the slots in retire into retired catalogues and, on --install, delete the previous overlay's slots in
     remove, with the move-aside / restore protocol of the module notes over all slots at once: on --install
     every existing file of a previous-overlay slot (prev_slots, retire, remove) is moved aside first; any
     failure puts every moved file back and removes the new outputs. Any other existing target refuses.
     exclude is the slot set left out of the originals check. On --install the orphaned markers in
-    remove_markers are deleted last. Returns (targets, moved)."""
+    remove_markers are deleted last. sky is (group, {slot: rows}) of the sky row group or None. Returns (targets,
+    moved)."""
     retire, remove = list(retire), list(remove)
     xp = lod_overlay_check.expansion(game)
     new = [s for s, _, _ in layout]
@@ -2411,7 +2421,7 @@ def commit_outputs(a, game, root, layout, prev_slots, before, exclude, manifest_
                     w.rename(aside)
                     moved.append((w, aside))
         state['writing'] = True
-        write_overlay(a, game, layout, before, written, exclude, manifest_extra, retired_files, retire)
+        write_overlay(a, game, layout, before, written, exclude, manifest_extra, retired_files, retire, sky)
     except BaseException:
         restore()
         raise
@@ -2441,7 +2451,7 @@ def retired_member(retire, slot, xp='addon'):
             f'x3m-lod overlay slot {retire:02d} retired; the overlay lives in {xp}/{slot:02d}\n'.encode())
 
 
-def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None, retired_files=(), retire=()):
+def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None, retired_files=(), retire=(), sky=None):
     xp = lod_overlay_check.expansion(game)
     for slot, members, _ in layout:        # every archive checked before the first byte is written
         check_dat_limit(slot, members, xp)
@@ -2461,7 +2471,8 @@ def write_overlay(a, game, layout, before, written, exclude, manifest_extra=None
                         overlay_sha256={'cat': overlay[str(files[0])], 'dat': overlay[str(files[1])]},
                         overlay_dat_bytes=files[1].stat().st_size,
                         **({'edition': 'fl'} if xp == 'addon2' else {}),   # AP markers keep their field set
-                        **(manifest_extra or {}))
+                        **(manifest_extra or {}),
+                        **({'sky': dict(sky[0], rows=sky[1].get(slot, []))} if sky else {}))
         files[2].write_text(json.dumps(manifest, indent=1) + '\n')
     for rslot, files in zip(retire, retired_files):
         write_catalogue(files[0], [retired_member(rslot, group[0], xp)])
@@ -2839,6 +2850,126 @@ def reuse_previous(prev, eligible, settings, notes, trust_tool=False, extra=(), 
     return out
 
 
+# --- sky row group (sky_textures.py; docs/architecture/sector-background-modern.md, Decision B) -------------
+
+sky_progress = None   # optional callable(row, done, total): tools/regenerate's per-texture console line
+
+
+def sky_settings(a):
+    """The sky group's reuse settings: recipe id, the sky tool's own sha256 (sky_textures.py is not in TOOL_FILES,
+    so a sky change rebakes textures, not bodies) and the recipe options."""
+    import sky_textures
+    options = sky_textures.options_of(dict(detail=bool(a.sky_detail), uncompressed=a.sky_uncompressed))
+    return dict(recipe_id=sky_textures.RECIPE_ID, tool_sha256=sky_textures.tool_sha256(), options=options)
+
+
+def reuse_sky(sources, rows, settings, notes, trust_tool=False, xp='addon'):
+    """{member (lower case): (stored bytes, manifest row with reused_from)} of the sky rows whose member can be copied
+    from a previous catalogue: its marker's sky group has the same recipe_id and options and (unless --trust-tool) the
+    same tool_sha256, the row's inputs_sha256 matches and the member is present with the recorded member_sha256.
+    sources are (key, cat, manifest) like reuse_previous's; the body settings play no part."""
+    usable, out = [], {}
+    for key, cat, manifest in sources:
+        g = manifest.get('sky') if isinstance(manifest, dict) else None
+        if not isinstance(g, dict):
+            continue
+        if g.get('recipe_id') != settings['recipe_id'] or g.get('options') != settings['options']:
+            notes.append(f'--sync: {source_label(key, xp)} sky textures were baked with another recipe; rebaked')
+            continue
+        if g.get('tool_sha256') != settings['tool_sha256']:
+            if not trust_tool:
+                notes.append(f'--sync: {source_label(key, xp)} sky textures were baked by another sky_textures.py;'
+                             ' rebaked (--trust-tool reuses them)')
+                continue
+            notes.append(f'--trust-tool: {source_label(key, xp)} sky textures reused across a sky tool change')
+        try:
+            entries = {e['path']: e for e in read_catalogue(cat)}
+        except (ValueError, OSError) as exc:
+            notes.append(f'--sync: cannot read {source_label(key, xp)}.cat ({exc}); its sky textures are rebaked')
+            continue
+        usable.append((key, cat, entries, {str(r.get('member', '')).lower(): r for r in g.get('rows') or ()}))
+    with contextlib.ExitStack() as stack:
+        dats = {}
+        for r in rows:
+            for key, cat, entries, old in usable:
+                o = old.get(r['member'].lower())
+                if not o or o.get('inputs_sha256') != r['inputs_sha256']:
+                    continue
+                e = entries.get(o['member'])
+                if e is None:
+                    continue
+                if key not in dats:
+                    dats[key] = stack.enter_context(cat.with_suffix('.dat').open('rb'))
+                dats[key].seek(e['offset'])
+                data = dats[key].read(e['size']).translate(XOR33)
+                if hashlib.sha256(data).hexdigest() == o.get('member_sha256'):
+                    out[r['member'].lower()] = (data, dict({k: v for k, v in o.items() if k != 'reused_from'},
+                                                           reused_from=key))
+                    break
+    return out
+
+
+def sky_bake(a, assets, sources, settings, notes, jobs, only_source=None, xp='addon'):
+    """(plans, info) of the sky group over an assets view: every eligible winner (only_source: only members whose
+    winning layer is that source, the package view), reused through reuse_sky when --sync, the rest baked with up
+    to jobs spawned workers. A plan is dict(name, members=[(member, stored)], sky=manifest row)."""
+    import sky_textures
+    fams = {f.strip().lower() for f in a.sky_families.split(',') if f.strip()} if a.sky_families else None
+    t0 = time.time()
+    rows, skipped = sky_textures.scan(assets, settings['options'], fams)
+    if only_source is not None:
+        rows = [r for r in rows if r['source'] == only_source]
+        skipped = []
+    reused = reuse_sky(sources, rows, settings, notes, a.trust_tool, xp) if a.sync else {}
+    todo = [r for r in rows if r['member'].lower() not in reused]
+    saved = sky_textures.progress
+    sky_textures.progress = sky_progress
+    try:
+        results = sky_textures.bake_rows(todo, settings['options'], jobs)
+    finally:
+        sky_textures.progress = saved
+    baked = {r['member'].lower(): (res['stored'], sky_textures.manifest_row(r, res)) for r, res in zip(todo, results)}
+    plans, families = [], {}
+    for r in rows:
+        stored, row = reused.get(r['member'].lower()) or baked[r['member'].lower()]
+        plans.append(dict(name='sky:' + r['member'], members=[(r['member'], stored)], sky=row))
+        f = families.setdefault(r['family'], dict(parts=0, stars=0, built=0, reused=0, bytes=0, sizes=[]))
+        f['parts' if r['kind'] == 'part' else 'stars'] += 1
+        f['reused' if 'reused_from' in row else 'built'] += 1
+        f['bytes'] += len(stored)
+        size = f"{row['metrics']['width']}x{row['metrics']['height']}"
+        if r['kind'] == 'part' and size not in f['sizes']:
+            f['sizes'].append(size)
+    seconds = [p['sky']['metrics'].get('seconds', 0.0) for p in plans if 'reused_from' not in p['sky']]
+    info = dict(eligible=len(rows), parts=sum(r['kind'] == 'part' for r in rows),
+                stars=sum(r['kind'] == 'stars' for r in rows), built=len(todo), reused=len(reused),
+                bytes=dat_bytes([m for p in plans for m in p['members']]), wall_s=round(time.time() - t0, 2),
+                bake_cpu_s=round(sum(seconds), 2), jobs=jobs,
+                skipped=dict(Counter(why for _, why in skipped)), families=families)
+    return plans, info
+
+
+SKY_WORKER_BYTES = 640 << 20   # sky_textures worker peak at 4096x2048: 614 MiB RSS measured (2026-11-04, bluewell
+                               # and avdustysol part 01, interpreter included); the memory plan bounds the pool by it
+
+
+def sky_summary(a, xp, info, pkg_info, package):
+    """One summary line of the sky group."""
+    if info is None:
+        return (f'sky group off (--sky {a.sky}' + (', auto: AP waits for the AP step' if a.sky == 'auto' else '')
+                + '; --sky on enables it)')
+    fams = info['families']
+    line = (f'sky group (sky_textures.py, recipe {getattr(sys.modules.get("sky_textures"), "RECIPE_ID", "?")}):'
+            f' {info["eligible"]} textures ({info["parts"]} nebula parts, {info["stars"]} star textures) in'
+            f' {len(fams)} families, built {info["built"]} + reused {info["reused"]}, {info["bytes"]} B stored,'
+            f' {info["wall_s"]:.1f} s wall ({info["bake_cpu_s"]:.1f} s bake CPU, {info["jobs"]} jobs); skipped '
+            + (', '.join(f'{k} {v}' for k, v in sorted(info['skipped'].items())) or 'none'))
+    if pkg_info is not None:
+        line += (f'; package {package}: {pkg_info["eligible"]} textures, built {pkg_info["built"]} + reused'
+                 f' {pkg_info["reused"]}, into {xp}/mods/{lod_overlay_check.derived_name(package)}')
+    return line
+
+
 def select_package(a, game):
     """(package name or None, notes) for --mod: none; auto = ModName from the registry (empty: none); NAME. A
     derived NAME-x3m-lod maps back to its source through its marker. An explicit NAME that cannot be used
@@ -2931,18 +3062,22 @@ def apply_budget(limit, items):
     return used, refused
 
 
-def package_layout(pkg_cat, derived, pkg_plans, restored):
+def package_layout(pkg_cat, derived, pkg_plans, restored, sky_plans=()):
     """The derived package's members: every package member in DAT order minus the body members (.pbb .bob .pbd
-    .bod) of the stems we replace, then the merged bodies with their atlases, then the restored original bodies.
+    .bod) of the stems we replace and the package textures the sky group re-authored, then the merged bodies with
+    their atlases, then the restored original bodies, then the sky members (under the package's own member names).
     Refuses (nothing written) a duplicate name or a dat above 2^31 - 1: a package cannot be split."""
     import lod_batch_census as census
     xp = pkg_cat.parent.parent.name        # <game>/<expansion>/mods/<name>.cat
     entries = read_catalogue(pkg_cat)
     replaced = {census.body_key(p['name']) for p in pkg_plans} | {census.body_key(r['name']) for r in restored}
-    is_replaced = lambda e: e['path'].lower().endswith(bob1.BODY_EXTENSIONS) and census.body_key(e['path']) in replaced
+    sky_names = {m.lower() for p in sky_plans for m, _ in p['members']}
+    is_replaced = lambda e: (e['path'].lower().endswith(bob1.BODY_EXTENSIONS) and census.body_key(e['path']) in replaced
+                             or e['path'].replace('\\', '/').lower() in sky_names)
     kept = [e for e in entries if not is_replaced(e)]
     removed = [e['path'] for e in entries if is_replaced(e)]
-    added = [m for p in pkg_plans for m in p['members']] + [(r['member'], r['stored']) for r in restored]
+    added = [m for p in pkg_plans for m in p['members']] + [(r['member'], r['stored']) for r in restored] \
+        + [m for p in sky_plans for m in p['members']]
     names = [e['path'].lower() for e in kept] + [m.lower() for m, _ in added]
     if len(set(names)) != len(names):
         raise SystemExit(f'{xp}/mods/{derived}: a merged member name is already in the package; refusing, nothing'
@@ -3202,15 +3337,37 @@ def batch(a, game, root, markers):
             pkg_plans.append(res)
     pkg_plans += list(pkg_reused.values())
     pkg_plans.sort(key=lambda p: p['name'].lower())
+    # sky row group: same slot(s), own reuse key; never dropped for budget (the bodies make room)
+    sky_on = a.sky == 'on' or (a.sky == 'auto' and xp == 'addon2')
+    sky_plans, pkg_sky_plans, sky_info, pkg_sky_info, sky_group = [], [], None, None, None
+    if sky_on:
+        sky_set = sky_settings(a)
+        sky_group = dict(tool='tools/analysis/sky_textures.py', **sky_set)
+        sky_jobs = max(1, plan['workers'] if not plan.get('budget') else
+                       min(plan['workers'], plan['budget'] // SKY_WORKER_BYTES))
+        sky_sources = [(m['slot'], m['path'].with_name(f'{m["slot"]:02d}.cat'), m['manifest'])
+                       for m in prev['markers']] if prev else []
+        sassets, _ = original_assets(game, markers)
+        sky_plans, sky_info = sky_bake(a, sassets, sky_sources, sky_set, notes, sky_jobs, xp=xp)
+        if package:
+            pextra = [(derived, lod_overlay_check.package_files(game, derived)[0], pkg_previous['manifest'])] \
+                if pkg_previous and pkg_previous['status'] in ('valid', 'stale') else []
+            passets, _ = original_assets(game, markers, mods=[pkg_cat])
+            pkg_sky_plans, pkg_sky_info = sky_bake(a, passets, pextra, sky_set, notes, sky_jobs,
+                                                   only_source=pkg_cat.relative_to(game).as_posix(), xp=xp)
+    sky_bytes = dat_bytes([m for p in sky_plans + pkg_sky_plans for m in p['members']])
     if a.budget_bytes is not None:         # on the baked (or reused) member bytes: exact, the bake time is spent
         items = [(by_name[p['name']], dat_bytes(p['members']), p) for p in plans] \
             + [(pkg_by_name[p['name']], dat_bytes(p['members']), p) for p in pkg_plans]
-        kept_bytes, refused = apply_budget(a.budget_bytes, [(r, n) for r, n, _ in items])
+        kept_bytes, refused = apply_budget(a.budget_bytes - sky_bytes, [(r, n) for r, n, _ in items])
         dropped = {id(p) for r, _, p in items if not r['eligible']}
         plans = [p for p in plans if id(p) not in dropped]
         pkg_plans = [p for p in pkg_plans if id(p) not in dropped]
         budget_info = dict(limit=a.budget_bytes, kept_bytes=kept_bytes, kept_bodies=len(plans) + len(pkg_plans),
-                           refused=refused)
+                           refused=refused, sky_bytes=sky_bytes)
+        if sky_bytes:
+            notes.append(f'--budget-bytes: the sky textures ({sky_bytes} B) are kept outside the budget; the bodies'
+                         f' share the remaining {a.budget_bytes - sky_bytes} B')
         notes.append(f'--budget-bytes {a.budget_bytes}: kept {len(plans) + len(pkg_plans)} bodies ({kept_bytes} B of'
                      f' merged members), refused {len(refused)} (reason budget)'
                      + (': ' + ', '.join(refused[:12]) + (', ...' if len(refused) > 12 else '') if refused else ''))
@@ -3232,16 +3389,19 @@ def batch(a, game, root, markers):
                         f.seek(e['offset'])
                         stored = f.read(e['size']).translate(XOR33)
                 restored.append(dict(name=n, member=e['path'], source=e['source'], stored=stored))
-        if pkg_plans or restored:
-            pkg_layout = package_layout(pkg_cat, derived, pkg_plans, restored)
-    packed = pack_slots(plans, a.max_dat_bytes, slot, xp)   # refuses before the record or any archive is written
+        if pkg_plans or restored or pkg_sky_plans:
+            pkg_layout = package_layout(pkg_cat, derived, pkg_plans, restored, pkg_sky_plans)
+    packed = pack_slots(plans + sky_plans, a.max_dat_bytes, slot, xp)   # refuses before the record or any archive is written
     cap = min(a.max_dat_bytes, DAT_LIMIT)
     if cap < a.max_dat_bytes:
         notes.append(f'--max-dat-bytes {a.max_dat_bytes} is above 2^31 - 1; the overlay is split at {cap} (the'
                      ' engine seeks catalogue members with a signed 32-bit offset)')
     new, replaced, retire, remove = slot_plan(prev['slots'] if prev else (), nxt, max(1, len(packed)), slot, xp)
-    layout = [(s, [m for p in ps for m in p['members']], [p['manifest'] for p in ps]) for s, ps in zip(new, packed)]
-    slot_rows = [dict(slot=s, bodies=len(bs), members=len(ms), bytes=dat_bytes(ms)) for s, ms, bs in layout]
+    layout = [(s, [m for p in ps for m in p['members']], [p['manifest'] for p in ps if 'sky' not in p])
+              for s, ps in zip(new, packed)]
+    slot_sky = {s: [p['sky'] for p in ps if 'sky' in p] for s, ps in zip(new, packed)}
+    slot_rows = [dict(slot=s, bodies=len(bs), members=len(ms), bytes=dat_bytes(ms),
+                      **({'sky': len(slot_sky[s])} if sky_on else {})) for s, ms, bs in layout]
     if retire:
         notes.append(f'previous overlay {xp}/{"/".join(f"{s:02d}" for s in prev["slots"])} is no longer at the top of'
                      f' the addon numbering (mod catalogues up to {xp}/{nxt - 1:02d}); the new overlay takes'
@@ -3409,6 +3569,7 @@ def batch(a, game, root, markers):
          + ''.join(f'; {n}{census.bleed_text(dict(baked=b))} remedy={b["light_bleed_remedy"]}'
                    for n, b in bleed_rows)),
         widen_summary(plans, a.atlas_opts.get('widen')),
+        sky_summary(a, xp, sky_info, pkg_sky_info, package),
         f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with up to {plan["workers"]} workers'
         f' ({schedule_text(plan, sched)})'
         f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
@@ -3464,6 +3625,9 @@ def batch(a, game, root, markers):
                     extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
         sectors=sectors, budget_mb=a.budget_mb, budget_warnings=budget, notes=notes + mod_notes,
         trust_tool=bool(a.trust_tool), budget_bytes=budget_info,
+        sky=None if not sky_on else dict(sky_group, **sky_info, rows=[p['sky'] for p in sky_plans],
+                                         package=None if pkg_sky_info is None else dict(
+                                             pkg_sky_info, rows=[p['sky'] for p in pkg_sky_plans])),
         package=None if not package else dict(
             name=package, derived=derived, fingerprint=pkg_before, **pkg_info,
             built=sum(1 for p in pkg_plans if not p['reused']), reused=sum(1 for p in pkg_plans if p['reused']),
@@ -3510,7 +3674,7 @@ def batch(a, game, root, markers):
         write_record()
         print('dry run: nothing written')
         return 0
-    if not plans and not pkg_layout:
+    if not plans and not sky_plans and not pkg_layout:
         raise SystemExit('--batch: no eligible body; nothing to write')
     before = archive_digest(game, exclude, a.hash_mode)[1]
     extra = dict(batch=dict(settings=settings, counts=record['counts'], timing=record['timing'], slots=slot_rows,
@@ -3527,6 +3691,7 @@ def batch(a, game, root, markers):
             collapse='atlas', display=list(a.display), screen_width=width,
             atlas_options=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])),
             bodies=[p['manifest'] for p in pkg_plans], originals=len(before), originals_sha256=originals_digest(before),
+            **({'sky': dict(sky_group, rows=[p['sky'] for p in pkg_sky_plans])} if sky_on else {}),
             originals_mode=a.hash_mode, originals_fingerprints=originals_fingerprints(game, original_archives(game, exclude)),
             batch=dict(settings=settings, counts=record['package'] and {k: record['package'][k] for k in
                                                                         ('built', 'reused', 'affected', 'held')},
@@ -3534,9 +3699,10 @@ def batch(a, game, root, markers):
         pkg_done = commit_package(a, root, pkg_cat, derived, pkg_layout, manifest, pkg_before, pkg_previous)
     written = moved = []
     try:
-        if plans:
+        if plans or sky_plans:
             written, moved = commit_outputs(a, game, root, layout, prev['slots'] if prev else (), before, exclude,
-                                            extra, retire, remove, [m['path'] for m in orphaned])
+                                            extra, retire, remove, [m['path'] for m in orphaned],
+                                            (sky_group, slot_sky) if sky_on else None)
     except BaseException:
         if pkg_done:
             pkg_done[1]()

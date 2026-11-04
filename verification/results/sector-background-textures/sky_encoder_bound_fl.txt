@@ -1,0 +1,11 @@
+(1) PCA encoder vs one refinement iteration, 2x upsampled stock part 01 (4096x2048):
+  bluewell pca: 0.42 s for 198310 blocks, encoder PSNR 47.63 dB
+  bluewell pca+refine: 0.77 s for 198310 blocks, encoder PSNR 48.03 dB
+  avdustysol pca: 1.03 s for 524288 blocks, encoder PSNR 40.65 dB
+  avdustysol pca+refine: 1.88 s for 524288 blocks, encoder PSNR 40.66 dB
+(2) exact smooth ramp (0.15 level/px), 8-bit: mean identical-luma run 8.00 px, plateau share 0.002 (limits 1.5 px, 0.10)
+(3) per-texel RGB565 + ordered dither on the debanded 2x bluewell part 01 crop (looser than DXT1):
+  bake-res cells, +-0.5 step: run 2.09 px, hue 1.98 deg, plateau 0.080, PSNR 45.33 dB
+  bake-res cells, +-1 step: run 1.65 px, hue 4.32 deg, plateau 0.047, PSNR 42.51 dB
+  source-res cells, +-0.5 step: run 1.49 px, hue 4.44 deg, plateau 0.044, PSNR 40.59 dB
+  source-res cells, +-1 step: run 1.01 px, hue 9.53 deg, plateau 0.050, PSNR 35.71 dB
