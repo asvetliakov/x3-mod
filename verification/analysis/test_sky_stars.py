@@ -40,7 +40,7 @@ class SkyStarsCoreTests(unittest.TestCase):
 
     def test_all_checks_pass(self):
         self.assertEqual((self.rc, self.report['ok'], self.report['failed']), (0, True, ''), self.report)
-        self.assertGreaterEqual(self.report['checks'], 49)
+        self.assertGreaterEqual(self.report['checks'], 50)
 
     def test_star_count(self):
         self.assertEqual(self.report['star_count'], {'k0': 512, 'k65': 3120, 'k143': 6864, 'k255': 12240,
@@ -58,6 +58,14 @@ class SkyStarsCoreTests(unittest.TestCase):
         # The defaults' footprints: half-width 1.5 px (dimmest) to 2.875 px (brightest, 1.5 + 1.4 on the 1/16 grid).
         self.assertEqual((b['support_min'], b['support_max']), (1.5, 2.875))
         self.assertLess(b['hot_support_max'], 8.0)
+
+    def test_peak_cap_at_range_corners(self):
+        # brightness x size x min_size at their limits (density 4): no star's centred peak above peak_cap 2.0, even where
+        # the support stops at half_support_max (8 px) and the energy is lowered instead.
+        c = self.report['corners']
+        self.assertLessEqual(c['peak_max'], 2.0 + 2e-6)
+        self.assertLessEqual(c['support_max'], 8.0)
+        self.assertGreater(c['stars_at_bound'], 0)
 
     def test_first_law_and_field(self):
         self.assertEqual(self.report['legacy'], {'mismatches': 0, 'field_mismatches': 0})

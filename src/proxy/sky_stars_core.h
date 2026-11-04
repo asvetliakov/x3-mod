@@ -17,7 +17,9 @@
 //   energy       = gain target peak / centre_fraction(a)   (gain = sky_stars_brightness; the sum over the covered
 //                                                        pixels at any sub-pixel position; the centred peak is gain x
 //                                                        target peak whatever a, so a larger footprint adds light)
-// then a grows in 1/16 px steps while the centred peak energy x centre_fraction(a) exceeds peak_cap (2.0, decoded 4.6).
+// then a grows in 1/16 px steps while the centred peak energy x centre_fraction(a) exceeds peak_cap (2.0, decoded 4.6);
+// at half_support_max the energy is lowered to the cap instead. The twinkle multiplies after the cap: a twinkling star's
+// instantaneous peak reaches peak_cap x (1 + amplitude).
 // Twinkle: about one star in four (a second generator stream, not by brightness) carries a rate n / 128 Hz, n in
 // [52, 192], and a phase; the vertex program scales the energy by 1 + amplitude sin(2 pi (rate t + phase)), t the wall
 // clock modulo twinkle_period_s (c251, twinkle_constants). Energy only: the footprint does not change.
@@ -124,11 +126,15 @@ static_assert(sizeof(Vertex) == vertex_stride, "the declaration follows the vert
     return w * w;
 }
 // The cap search: *a (the start) grows in 1/16 px steps with the energy fixed until the centred peak
-// energy x centre_fraction(a) is at most peak_cap; half_support_max stays a hard bound.
-inline void half_support(double energy, double* a) noexcept {
+// energy x centre_fraction(a) is at most peak_cap. half_support_max stays a hard bound: a star still above the cap there
+// (a large size term with a high gain) has its energy lowered to peak_cap / centre_fraction(a), so the centred peak is at
+// most peak_cap for every legal setting.
+inline void half_support(double* energy, double* a) noexcept {
     double s = *a;
-    while (s < half_support_max && energy * centre_fraction(s) > peak_cap + 1e-9)
+    while (s < half_support_max && *energy * centre_fraction(s) > peak_cap + 1e-9)
         s += 1. / 16.;
+    const double fraction = centre_fraction(s);
+    if (*energy * fraction > peak_cap) *energy = peak_cap / fraction;
     *a = s;
 }
 // The support and energy of a star of target peak `peak` (<= 1), `steps` flux steps above the dimmest ([0, 4]): the size
@@ -137,8 +143,8 @@ inline void star_support(double peak, double steps, const Look& look, double* a_
     double a = double(look.min_size) + size_slope * double(look.size) * steps;
     a = scalar::floor(a * 16. + .5) * (1. / 16.);
     if (a > double(half_support_max)) a = half_support_max;
-    const double energy = double(look.brightness) * peak / centre_fraction(a);
-    half_support(energy, &a);
+    double energy = double(look.brightness) * peak / centre_fraction(a);
+    half_support(&energy, &a);
     *a_out = a;
     *energy_out = energy;
 }

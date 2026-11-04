@@ -1,6 +1,6 @@
 {
  "ok": true,
- "checks": 49,
+ "checks": 50,
  "failures": 0,
  "failed": "",
  "star_count": {
@@ -35,6 +35,11 @@
   "support_max": 2.875,
   "hot_support_max": 2.3125,
   "pow_err": 4.25e-14
+ },
+ "corners": {
+  "peak_max": 2.0,
+  "support_max": 8.0,
+  "stars_at_bound": 1316
  },
  "legacy": {
   "mismatches": 0,
@@ -81,17 +86,17 @@
   "star_peak": 1.94394
  },
  "meter_k143_max_look": {
-  "ev_target": -1.4565,
+  "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": -1.4565,
-  "p99_max_log": 5.3306,
+  "ev_limit": 0.5938,
+  "p99_max_log": 3.2803,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
   "visible_stars": 2505,
-  "frame_max": 6.47092,
-  "star_peak": 6.37172
+  "frame_max": 4.2256,
+  "star_peak": 1.99999
  },
  "meter_control_lum64": {
   "ev_target": -2.1259,

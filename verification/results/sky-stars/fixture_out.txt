@@ -1,7 +1,7 @@
 DEVICE kind=d3d9 plain=00000000 created=00000000
 DEVICE adapter="NVIDIA GeForce RTX 5070 Ti"
 PASS attach hr=00000000 reason=ok vs_slots=27 ps_slots=11 references=5
-PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=0.560 support_max=2.8750 peak_max=1.9984 twinkling=1556
+PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=0.541 support_max=2.8750 peak_max=1.9984 twinkling=1556
 PASS prepare_rebuilds_on_look_change 
 PASS target 
 DRAW operation=00000000 restore=00000000 failed=0 calls=50 stars=6240 drew=1
@@ -15,9 +15,9 @@ PASS pan_target
 TEMPORAL speed=0.5 stars=474 resolved_peak_cv_median=0.0250 resolved_peak_cv_max=0.0523 current_peak_cv_median=0.0571 current_peak_cv_max=0.1075 (model, frames 20-59)
 TEMPORAL speed=10.0 stars=365 resolved_peak_cv_median=0.0133 resolved_peak_cv_max=0.0425 current_peak_cv_median=0.0657 current_peak_cv_max=0.1102 (model, frames 20-59)
 PASS target_5120x1440 
-COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0023 draw_cpu_us=0.77
-COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0063 draw_cpu_us=0.77
-COST rebuild stars=16384 vb_bytes=2097152 build_us_best_of_5=1053.0
+COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0022 draw_cpu_us=0.75
+COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0069 draw_cpu_us=0.75
+COST rebuild stars=16384 vb_bytes=2097152 build_us_best_of_5=1042.1
 PASS rebuild_full_buffer 
 PASS detach_releases 
 DEVICE_RELEASE refs=0

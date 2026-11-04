@@ -274,6 +274,26 @@ int main() {
               "cap_search_at_gain8");
         hot_support_max = hs.support_max;
     }
+    // ---- 3b'. The cap at the range corners: every combination of brightness, size and min_size at their limits (density
+    // 4): the centred peak of every star <= peak_cap (the support bound lowers the energy), a <= half_support_max.
+    double corner_peak = 0, corner_support = 0;
+    unsigned corners_bounded = 0;
+    for (float gain : {core::brightness_min, core::brightness_max})
+        for (float size : {core::size_min, core::size_max})
+            for (float min_size : {core::min_size_min, core::min_size_max}) {
+                const core::Look corner{core::density_max, gain, size, min_size};
+                core::BuildStats cs;
+                const unsigned m = core::build(seed, corner, again.data(), core::stars_max, &cs);
+                double worst = 0;
+                for (unsigned i = 0; i < m; ++i) {
+                    const double a = std::fabs(again[i * 4].corner[0]) - core::quad_margin;
+                    worst = std::fmax(worst, again[i * 4].energy * core::centre_fraction(a));
+                    corner_support = std::fmax(corner_support, a);
+                    corners_bounded += a >= core::half_support_max;
+                }
+                corner_peak = std::fmax(corner_peak, std::fmax(worst, cs.peak_max));
+            }
+    check(corner_peak <= core::peak_cap * (1. + 1e-6) && corner_support <= core::half_support_max, "peak_cap_corners");
     // ---- 3c. min_size 1, size 0, gain 1 reproduces the first law's vertices (the 28-byte layout of 2026-11-05), and
     // the field (directions, tint) is the same in every look.
     unsigned legacy_mismatch = 0, field_mismatch = 0;
@@ -419,6 +439,8 @@ int main() {
                 " \"support_min\": %.4f, \"support_max\": %.4f, \"hot_support_max\": %.4f, \"pow_err\": %.2e},\n",
                 seed, n, n * 4 * unsigned(sizeof(core::Vertex)), peak_max, median_decoded, bins[0], bins[1], bins[2], bins[3],
                 r1, r2, r3, unit_err, a_min, a_max, hot_support_max, pow_err);
+    std::printf(" \"corners\": {\"peak_max\": %.6f, \"support_max\": %.4f, \"stars_at_bound\": %u},\n", corner_peak,
+                corner_support, corners_bounded);
     std::printf(" \"legacy\": {\"mismatches\": %u, \"field_mismatches\": %u},\n", legacy_mismatch, field_mismatch);
     std::printf(" \"twinkle\": {\"stars\": %u, \"share\": %.4f, \"bright_quarter_share\": %.4f, \"rate_min\": %u,"
                 " \"rate_max\": %u, \"bad_lanes\": %u},\n",

@@ -382,7 +382,10 @@ refusal of the pass):
 `a = min_size + 0.35 x size x steps`, rounded to the 1/16 px grid; `energy = gain x target peak / centre_fraction(a)`,
 so the centred peak is gain x target peak whatever a (a larger footprint adds light, it does not dim the star); then the
 cap search grows a in 1/16 px steps while `energy x centre_fraction(a)` exceeds `peak_cap = 2.0` (target value, decoded
-2^2.2 = 4.6). `half_support_max = 8` stays a hard bound. At the defaults the half-width runs from 1.5 px (dimmest, a 3 px
+2^2.2 = 4.6). `half_support_max = 8` stays a hard bound: a star still above the cap there has its energy lowered to
+`peak_cap / centre_fraction(8)`, so no star's centred peak exceeds 2.0 at any legal setting (host check `corners`: all
+eight combinations of brightness, size and min_size at their limits, density 4, peak max 2.000, 1,316 stars at the
+bound; before this rule brightness 8 / size 3 / min_size 3 left single stars at 6.47). At the defaults the half-width runs from 1.5 px (dimmest, a 3 px
 soft point) to 2.875 px (brightest, 1.5 + 1.4 on the grid) and the cap search never runs (gain 2 x peak 1 = 2.0); at
 brightness 8 with size 0 and min_size 1 it grows the brightest stars to 2.31 px. `min_size 1, size 0, brightness 1`
 reproduces the first law's vertices byte for byte (host check `legacy`). The field (directions, tint) comes from the
@@ -393,7 +396,8 @@ every look.
 check: 24.9 % of 6,240, 23.5 % of the brightest quarter) selects it; rate n in [52, 192] (n / 128 Hz, 0.41-1.5 Hz) and
 a phase byte. The vertex gains a second D3DCOLOR (stride 28 -> 32 B: R = n, G = phase, B = 255 when on; 0 on steady
 stars). The VS scales the energy by `1 + amplitude x sin(2 pi frac(rate t + phase) - pi)` (the half-cycle shift keeps
-the sine argument in [-pi, pi]); energy only, the footprint does not change. `c251 = (t, amplitude, 0, 0)` joins
+the sine argument in [-pi, pi]); energy only, the footprint does not change. The twinkle multiplies after the cap, so
+a twinkling star's instantaneous peak reaches `peak_cap x (1 + twinkle)`: 2.6 at the default 0.3, 4.0 at 1. `c251 = (t, amplitude, 0, 0)` joins
 c252-c255 in one five-register Get/Set/restore bracket (still 50 device calls per batch). **Why wall time:** t is
 QueryPerformanceCounter seconds, never the game clock. The user flies with SETA at up to 10x; a twinkle driven by game
 time would run at 4-15 Hz under SETA, which reads as flicker. Every rate is a multiple of 1/128 Hz, so t wraps at
@@ -410,17 +414,18 @@ luminance. So the brightest stars bloom only as much as a decoded 1.0 pixel does
 brighter on screen but does not make the glow bigger. Raising `bloom_source_clamp` would let them glow more, and it
 would do the same for every other light.
 
-**Evidence (measured).** Host check `host_check.json` (49 checks): K 65 at the defaults, 6,240 stars, centred peak max
+**Evidence (measured).** Host check `host_check.json` (50 checks): K 65 at the defaults, 6,240 stars, centred peak max
 1.9984, half-width 1.5-2.875 px, energy error 8e-16 at six sub-pixel offsets, legacy reproduction 0 mismatches. Meter replay
 at 5120x1440: defaults EV 0, neutral, `ev_limit` +2.71; K 143 density 4 (16,384 stars) EV 0, `ev_limit` +2.16, so
-both stay above `hdr_ev_max` 1.3 and the stars do not move the exposure. All five settings at their maximum (brightness 8,
-size 3, min_size 3, density 4) reach image maxima of 6.5 where large quads overlap, and the guard then darkens by 1.46 EV.
-That case is reported, not asserted. Native fixture (`fixture_out.txt`, RTX 5070 Ti, plain D3D9, MANAGED): 945
+both stay above `hdr_ev_max` 1.3 and the stars do not move the exposure. With every look setting at its maximum
+(brightness 8, size 3, min_size 3, density 4) single stars stay at 2.0 and the image maximum is 4.23 where large quads
+overlap; EV stays 0 and the guard's `ev_limit` drops to +0.59, below `hdr_ev_max`, so in that look a frame of stars
+alone keeps the exposure from rising past +0.59. That case is reported, not asserted. Native fixture (`fixture_out.txt`, RTX 5070 Ti, plain D3D9, MANAGED): 945
 isolated stars, energy error 0.15 %, spread across offsets 0.11 %, per-star peak 1.904 (image 2.242 where quads
 overlap), twinkle at amplitude 1 (three times t) matches the modelled factor within 0.09 % of the star energy over 309 twinkling and 1,089 steady star samples
 (steady stars move 0.13 %), state restored with c251-c255 under both injected faults. Cost at 5120x1440: one draw call per
-frame, `draw()` CPU 0.77 us, batch upper bound 2.3 us (6,240 stars) and 6.3 us (16,384); the rebuild of a full
-16,384-star buffer (2,097,152 B VB, Lock to Unlock) takes 1.05 ms (best of 5) per seed or look change, and no time per frame. No
+frame, `draw()` CPU 0.75 us, batch upper bound 2.2 us (6,240 stars) and 6.9 us (16,384); the rebuild of a full
+16,384-star buffer (2,097,152 B VB, Lock to Unlock) takes 1.04 ms (best of 5) per seed or look change, and no time per frame. No
 allocation and no validation are added per frame. Programs: `sky_stars_vs` 162 words / 27 slots, `sky_stars_ps`
 unchanged (90 / 11); the native validator accepts both with End() S_OK and 0 messages.
 
