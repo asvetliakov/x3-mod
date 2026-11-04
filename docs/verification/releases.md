@@ -4,6 +4,16 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 1.9.1
+
+2026-11-04, `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --edition <ap|fl> --out /home/asvetl/x3m-releases/1.9.1-<edition> --regenerate-dir /home/asvetl/x3m-releases/1.9.0-regenerate` (both exit 0; dll 58.3 s AP / 48.1 s FL, package 2.3 s / 2.2 s; logs `1.9.1-<edition>-release.log`).
+
+- Over 1.9.0: **mesh adjacency lazy competing-normal refusal** (`092c57b0a`, `2a47fc644`; [ledger](mesh-adjacency-fast.md)): the module refuses at the first lookup where a normal score would decide instead of a superset preflight; native fallbacks are timed (`native_us`, `refused_us`, `fallback_faces/vertices`); 32-bit hashing, no per-call `VirtualQuery`, geometric arena growth. **Verify mode computes before native** (`e916bbcf3`): real D3DX re-locks the mesh buffers nested, which left the ownership tracker sticky-ambiguous and gated every call in AP run 230; one-time `mesh_adjacency_gate_first` detail row per gate reason. Flown: AP run 231 (verify: 5,712 meshes byte-equal to native D3DX, 82 % admitted, module 3.0x faster than native in-process), FL run 47 (fast mode, 0 gate rows, 0 exceptions). FL lifetime audit counts its FXSAVE/FXRSTOR envelope from the listing (`0ee2f3da6`).
+- AP: stripped DLL `e1e40b93…` (42,522,953 B; x87 0 violations, strip identity PASS). Installed into `C:\X3` as Run232, rollback `rollback-d3d9\d3d9.dll.run231` (`5f6e0e1e…`). Zip `x3m-1.9.1-ap.zip` `2ea2937c…` (60,229,832 B) in `C:\Users\asvet\Downloads\`. The user's `x3m.ini` header 1.8.2 -> 1.9.1 (it had not been bumped at 1.9.0), body unchanged, `perf = 1` kept.
+- FL: stripped DLL `541a81e4…` (41,163,173 B; x87 0, strip identity PASS). Installed into `C:\X3FL` as FL run 48, rollback `rollback-d3d9\d3d9.dll.run47` (`a6301aee…`). Zip `x3m-1.9.1-fl.zip` `b2a75bb9…` (60,004,864 B) in Downloads. `x3m.ini` header 1.9.0 -> 1.9.1, body unchanged.
+- `x3m-regenerate.exe` is the 1.9.0 binary reused (`dc0a4052…`, no change under `tools/regenerate`).
+- No flight check open: same source as AP run 231 / FL run 47 apart from the version string.
+
 ## Release 1.9.0
 
 2026-11-04, the first two-edition release: `TMPDIR=/home/asvetl/x3m-releases/tmp python3 tools/release/release.py --edition ap --out /home/asvetl/x3m-releases/1.9.0-ap --regenerate-dir /home/asvetl/x3m-releases/1.9.0-regenerate` (exit 0, 61.0 s wall: dll 58.7 s, package 2.2 s) and the same with `--edition fl --out …/1.9.0-fl` (exit 0, 52.0 s: dll 49.6 s), clean main `8b604d6f7` ([ap record](../../verification/results/release-1.9.0-ap.json), [fl record](../../verification/results/release-1.9.0-fl.json)). `x3m-regenerate.exe` rebuilt first (`tools/regenerate/build.py --windows --dist …/1.9.0-regenerate`, Windows Python 3.12.10 / PyInstaller 6.22.3, smoke test PASS 12.1 s; the host build needs PyInstaller for Python 3.14, absent, so the host binary was not built and is not in the zip anyway).
