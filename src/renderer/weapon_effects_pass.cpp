@@ -137,7 +137,6 @@ WeaponLook default_weapon_look() noexcept {
     l.edge_width = wcore::edge_width;
     l.fill_ratio = wcore::fill_ratio;
     l.cell_gain = wcore::cell_gain;
-    l.feather_cells = wcore::feather_cells;
     return l;
 }
 WeaponEffectsPass::~WeaponEffectsPass() {
@@ -261,36 +260,60 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     return create_objects();
 }
 namespace {
-// The pixel constants c2..c14 of one draw (src/effects/weapon_hex_patch.hlsl): lattice, colour, patch, timing, gains,
-// shape, anchor frame, hits. Returns false for a degenerate draw (skipped, never drawn wrong).
-bool hex_block(const WeaponLook& l, float cell, float radius, float seed, float surface2, const float colour[3],
-               const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits, const float (*hit)[2],
-               const float* ages, float out[13 * 4]) noexcept {
-    if (!(cell > 0.f) || !(radius > 0.f) || !finite(cell) || !finite(radius) || !finite(seed) || !finite(surface2) ||
-        !finite_all(colour, 3) || hits < 1 || hits > wcore::hit_slots)
+// The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
+// shape, anchor frame, the ring/core hits and their points; patches add c19..c50, the cell map (four packed keys and
+// four clocks + 1 per register; unused keys -1, so the first block led by -1 ends the program's loop). Returns false for
+// a degenerate draw (skipped, never drawn wrong).
+constexpr unsigned hex_head = 17, hex_registers = hex_head + 32;
+bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float seed, float surface2,
+               const float colour[3], const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits,
+               const float (*hit_cell)[2], const float (*point)[2], const float* ages, float out[hex_registers * 4]) noexcept {
+    if (!(cell > 0.f) || !(radius > 0.f) || !(reach >= 0.f) || !finite(cell) || !finite(radius) || !finite(reach) ||
+        !finite(seed) || !finite(surface2) || !finite_all(colour, 3) || hits > wcore::hit_slots)
         return false;
-    const float v = l.ripple_speed * radius, core_r = l.core_cells * cell, feather = l.feather_cells * cell;
+    const float v = l.ripple_speed * radius, core_r = l.core_cells * cell;
     const float block[9 * 4] = {
         1.f / cell, cell, seed, surface2,                                        // c2 lattice
         colour[0], colour[1], colour[2], 0.f,                                    // c3 colour
         radius, 1.f / radius, 1.f / v, v,                                        // c4 patch
         1.f / l.fade_s, l.stagger, 1.f / l.core_s, l.edge_width,                 // c5 timing
         l.cell_gain, l.fill_ratio, l.ring_gain, l.core_gain,                     // c6 gains
-        0.5f - l.edge_width, 1.f / (l.ring_width * radius), 1.f / feather, 1.f / (core_r * core_r), // c7 shape
+        // c7 shape: the reach with a tolerance of 1e-3 cell (a footprint centre lies exactly on it)
+        0.5f - l.edge_width, 1.f / (l.ring_width * radius), reach + 1e-3f * cell, 1.f / (core_r * core_r),
         anchor[0], anchor[1], anchor[2], 0.f,                                    // c8..c10 the anchor frame
         anchor_u[0], anchor_u[1], anchor_u[2], 0.f,
         anchor_v[0], anchor_v[1], anchor_v[2], 0.f};
     std::memcpy(out, block, sizeof block);
     for (unsigned k = 0; k < 4; ++k) {
-        float* h = out + 36 + 4 * k;
+        float* h = out + 36 + 4 * k;     // c11..c14
+        float* p = out + 52 + 4 * k;     // c15..c18
         const bool on = k < hits;
-        h[0] = on ? hit[k][0] : 0.f;
-        h[1] = on ? hit[k][1] : 0.f;
+        h[0] = on ? hit_cell[k][0] : 0.f;
+        h[1] = on ? hit_cell[k][1] : 0.f;
         h[2] = on ? ages[k] : 0.f;
         h[3] = on ? 1.f : 0.f;
-        if (on && (!finite(h[0]) || !finite(h[1]) || !finite(h[2]))) return false;
+        p[0] = on ? point[k][0] : 0.f;
+        p[1] = on ? point[k][1] : 0.f;
+        p[2] = p[3] = 0.f;
+        if (on && (!finite(h[0]) || !finite(h[1]) || !finite(h[2]) || !finite(p[0]) || !finite(p[1]))) return false;
     }
-    return finite_all(out, 13 * 4);
+    return finite_all(out, hex_head * 4);
+}
+// The cell map of a patch into c19..c50 (keys, clocks + 1); false for a map the program cannot read.
+bool cell_map_block(const WeaponPatch& p, float out[hex_registers * 4]) noexcept {
+    if (p.cells > weapon_patch_cells) return false;
+    float* keys = out + hex_head * 4;
+    float* clocks = keys + 16 * 4;
+    constexpr float key_max = float((2 * weapon_cell_key_bias) * 4096);
+    for (unsigned i = 0; i < weapon_patch_cells; ++i) {
+        const bool on = i < p.cells;
+        if (on && (!(p.cell_key[i] >= 0.f) || !(p.cell_key[i] < key_max) || !(p.cell_since[i] >= 0.f) ||
+                   !finite(p.cell_since[i])))
+            return false;
+        keys[i] = on ? p.cell_key[i] : -1.f;
+        clocks[i] = on ? p.cell_since[i] + 1.f : 0.f;
+    }
+    return true;
 }
 } // namespace
 HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport* output) noexcept {
@@ -317,7 +340,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (!f.patch_count && !f.decal_count) return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !(l.core_s > 0.f) || !(l.core_cells > 0.f) ||
-        !(l.fade_s > 0.f) || !(l.edge_width > 0.f) || !(l.edge_width < 0.5f) || !(l.feather_cells > 0.f) ||
+        !(l.fade_s > 0.f) || !(l.edge_width > 0.f) || !(l.edge_width < 0.5f) ||
         !(l.stagger >= 0.f) || !(l.stagger < 2.f) || !finite(l.ring_gain) || !finite(l.core_gain) ||
         !finite(l.cell_gain) || !finite(l.fill_ratio))
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
@@ -368,15 +391,43 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             bool ok = finite(p.soft) && finite_all(p.centre, 3) && finite_all(p.axes, 9) && finite_all(p.cap_dir, 3) &&
                       finite_all(p.cap_u, 3) && finite_all(p.cap_v, 3) && finite(p.cap_angle) && p.cap_angle > 0.f &&
                       finite(p.surface) && p.surface > 0.f;
-            float ps[13 * 4];
-            ok = ok && hex_block(l, p.cell, p.radius, p.seed, 2.f * p.surface, p.colour, p.anchor, p.anchor_u, p.anchor_v,
-                                 p.hits, p.hit, p.age_s, ps);
+            float ps[(hex_registers + 5) * 4];
+            ok = ok && (p.hits || p.cells) &&
+                 hex_block(l, p.cell, p.radius, p.reach, p.seed, 2.f * p.surface, p.colour, p.anchor, p.anchor_u,
+                           p.anchor_v, p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
+                 cell_map_block(p, ps);
             // The winding of the outward faces on screen (see build_cap): det A0 . (A1 x A2).
             const float* a = p.axes;
             const float det = ok ? a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6]) +
                                        a[2] * (a[3] * a[7] - a[4] * a[6])
                                  : 0.f;
             if (!ok || !finite(det) || det == 0.f) continue; // a degenerate patch is skipped, never drawn wrong
+            {
+                // c51 the projection, c52..c54 the rows of A^-1 (columns A0, A1, A2: rows (A1 x A2, A2 x A0, A0 x A1) /
+                // det), c55 the eye (view origin) in the owner's unit-sphere frame, A^-1 (0 - centre), in double.
+                const double A[9] = {a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]};
+                const double id = 1.0 / double(det);
+                const double rows[9] = {(A[4] * A[8] - A[5] * A[7]) * id, (A[5] * A[6] - A[3] * A[8]) * id,
+                                        (A[3] * A[7] - A[4] * A[6]) * id, (A[7] * A[2] - A[8] * A[1]) * id,
+                                        (A[8] * A[0] - A[6] * A[2]) * id, (A[6] * A[1] - A[7] * A[0]) * id,
+                                        (A[1] * A[5] - A[2] * A[4]) * id, (A[2] * A[3] - A[0] * A[5]) * id,
+                                        (A[0] * A[4] - A[1] * A[3]) * id};
+                float* x = ps + hex_registers * 4;
+                x[0] = f.m00;
+                x[1] = f.m11;
+                x[2] = f.m20;
+                x[3] = f.m21;
+                for (unsigned r = 0; r < 3; ++r) {
+                    x[4 + 4 * r] = float(rows[3 * r]);
+                    x[5 + 4 * r] = float(rows[3 * r + 1]);
+                    x[6 + 4 * r] = float(rows[3 * r + 2]);
+                    x[7 + 4 * r] = 0.f;
+                    x[16 + r] = float(-(rows[3 * r] * double(p.centre[0]) + rows[3 * r + 1] * double(p.centre[1]) +
+                                        rows[3 * r + 2] * double(p.centre[2])));
+                }
+                x[19] = 0.f;
+                if (!finite_all(x, 20)) continue;
+            }
             DWORD want = det > 0.f ? DWORD(D3DCULL_CCW) : DWORD(D3DCULL_CW); // keep the front (outward) faces
             if (faults_ & 16u) want = D3DCULL_NONE; // fixture bit 4: CULLMODE NONE (the cull's A/B)
             if (want != cull && step(WeaponEffectsStep::Patches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, want)))
@@ -387,7 +438,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                      p.cap_dir[0], p.cap_dir[1], p.cap_dir[2], angle,
                                      p.cap_u[0], p.cap_u[1], p.cap_u[2], 0.f, p.cap_v[0], p.cap_v[1], p.cap_v[2], 0.f};
             step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, vs, 7));
-            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, 13));
+            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_registers + 5));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, cap_vertices, cap_triangles, indices_, D3DFMT_INDEX16, cap_,
@@ -412,17 +463,20 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         static constexpr float frame_a[3] = {0.f, 0.f, 1.f}, frame_u[3] = {1.f, 0.f, 0.f}, frame_v[3] = {0.f, 1.f, 0.f};
         for (unsigned i = 0; i < f.decal_count && SUCCEEDED(hr); ++i) {
             const WeaponDecal& c = f.decals[i];
-            float ps[13 * 4];
+            float ps[hex_registers * 4];
             bool ok = finite(c.radius) && c.radius > 0.f && finite(c.age_s) && finite(c.soft) && c.soft > 0.f &&
                       finite_all(c.centre, 3) &&
-                      hex_block(l, c.cell, c.radius, float(12), 0.f, c.colour, frame_a, frame_u, frame_v, 1, origin,
-                                &c.age_s, ps);
+                      hex_block(l, c.cell, c.radius, c.reach, float(12), 0.f, c.colour, frame_a, frame_u, frame_v, 1,
+                                origin, origin, &c.age_s, ps);
             if (!ok) continue;
+            // The quad's half size: the footprint's outermost cell centres plus a cell's circumradius (1 / sqrt 3).
+            const float half = c.reach + 0.5773503f * c.cell;
+            ps[52 + 2] = half; // c15.z: the decal program's corner scale
             DecalVertex v[4];
             for (unsigned k = 0; k < 4; ++k)
-                v[k] = DecalVertex{{c.centre[0], c.centre[1], c.centre[2], c.radius},
+                v[k] = DecalVertex{{c.centre[0], c.centre[1], c.centre[2], half},
                                    {corners[k][0], corners[k][1], c.soft, 1.f}};
-            step(WeaponEffectsStep::Decals, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, 13));
+            step(WeaponEffectsStep::Decals, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw =
                     draw_fault(call<DrawUpFn>(DrawPrimitiveUP)(d, D3DPT_TRIANGLESTRIP, 2, v, UINT(sizeof(DecalVertex))));

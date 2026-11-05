@@ -705,29 +705,30 @@ inline bool expired(std::uint32_t now, const Event& e) noexcept {
     return a > e.lifetime_ms; // a wrapped (future) t0 is a huge age
 }
 // The patch look (docs/architecture/weapon-effects.md 5.1.1), the lab's controls (tools/effects/
-// generate_weapon_effects_lab.py injects every value below by name). A local hex patch on the owner's ellipsoid, lit only
-// within radius_m of the hit point; hexagon cells of cell_m (centre to centre) fixed in world units per PatchTier, each
-// with a deterministic stagger of brightness and fade rate (a hash of the cell index); edges brighter than the fill; a
-// small core at the hit point for core_ms; one soft ring from the point to the rim in 1 / ripple_speed seconds that
-// lights each cell as it passes its centre; then the cell fades over fade_ms; every time is game time (SETA-scaled).
-// Repeated hits re-light cells (the per-cell maximum over the owner's four newest hits). The colour follows the hit
+// generate_weapon_effects_lab.py injects every value below by name). Hexagon cells of cell_m (centre to centre) fixed in
+// world units per PatchTier on a stable grid in the owner's frame (twelve anchor regions, weapon_effects_stage.h); a hit
+// lights the cell containing it and its rings neighbour rings (1 + 3 rings (rings + 1) cells), each cell when the ring
+// front from the hit cell's centre reaches its centre; a lit cell then fades over fade_ms on its own clock (a later hit
+// covering it resets that clock to full, never adds; the per-owner cell map of cell_map_capacity cells is rebuilt from
+// the live hits every frame). Per cell a deterministic stagger of brightness and fade rate (a hash of the cell); edges
+// brighter than the fill; a small core at the hit point for core_ms; the ring reaches the footprint's rim
+// ((rings + 0.5) cells) in 1 / ripple_speed seconds; every time is game time (SETA-scaled). The colour follows the hit
 // object's shield fraction: colour_full at or above colour_high, colour_half at colour_mid, colour_empty at or below
 // colour_low, smoothstep between; weapon_tint mixes the classifier's weapon colour in (an override, off).
 constexpr float engine_units_per_metre = 500.f;
 constexpr float cell_m[patch_tier_count] = {1.5f, 3.0f, 8.0f};     // fighter, corvette, capital/station (metres)
-constexpr float radius_m[patch_tier_count] = {9.0f, 25.0f, 80.0f}; // lit radius about the hit point (metres)
-constexpr float ripple_speed = 3.333f;  // the ring front, patch radii per game second (the rim in 0.3 s)
-constexpr float ring_width = 0.12f;     // the ring's Gaussian width, patch radii
+constexpr unsigned rings[patch_tier_count] = {1, 2, 2};            // neighbour rings a hit lights about its cell
+constexpr float ripple_speed = 3.333f;  // the ring front, footprint radii per game second (the rim in 0.3 s)
+constexpr float ring_width = 0.12f;     // the ring's Gaussian width, footprint radii
 constexpr float ring_gain = 1.0f;       // ring radiance (x the patch colour), fading as the ring nears the rim
 constexpr unsigned core_ms = 100;       // the core's life, game ms (linear fade)
 constexpr float core_cells = 0.8f;      // the core's Gaussian radius, cells
 constexpr float core_gain = 6.0f;       // core radiance at the hit point
-constexpr unsigned fade_ms = 1200;      // a lit cell's fade, game ms (the mean; x (1 +- stagger / 2) per cell)
+constexpr unsigned fade_ms = 2200;      // a lit cell's fade, game ms (the mean; x (1 +- stagger / 2) per cell)
 constexpr float stagger = 0.4f;         // per-cell spread of brightness and fade rate (hash of the cell index)
 constexpr float edge_width = 0.1f;      // the edge band, cells (the hexagon's inradius is 0.5)
 constexpr float fill_ratio = 0.3f;      // fill radiance / edge radiance ("edge versus fill")
 constexpr float cell_gain = 2.0f;       // a fresh cell's edge radiance (x the patch colour)
-constexpr float feather_cells = 0.5f;   // the pixel cut at the patch radius, cells (zero at and beyond the radius)
 constexpr float colour_high = 0.75f, colour_mid = 0.5f, colour_low = 0.35f; // shield fraction bands
 constexpr float colour_full[3] = {0.45f, 0.72f, 1.0f};  // light blue, linear
 constexpr float colour_half[3] = {1.0f, 0.88f, 0.42f};  // light yellow
@@ -740,10 +741,12 @@ constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fa
 static_assert(patch_lifetime_ms > core_ms && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
 // Engine integers to render (view) units: the gameplay context scale (own_sun_core.h context_scale).
 constexpr float world_scale = 0.01f;
-constexpr unsigned max_owners = 16;   // owners drawn per frame (the four newest hits of each)
+constexpr unsigned max_owners = 16;   // owners drawn per frame
 constexpr unsigned max_patches = 32;  // patch draws per frame (one per owner and anchor region)
 constexpr unsigned max_decals = 16;   // flat decals per frame (hits on an owner without a usable ellipsoid)
-constexpr unsigned hit_slots = 4;     // hits per owner (newest first) and per draw
+constexpr unsigned hit_slots = 4;     // ring and core hits per draw (the region's newest hits still in their ring)
+constexpr unsigned owner_hits = 64;   // live hits per owner feeding its cell map (newest first)
+constexpr unsigned cell_map_capacity = 64; // lit cells per draw (one owner and anchor region)
 constexpr unsigned disarm_frames = 64;
 
 // log10 without libm (SSE2 build: no x87): the float's exponent plus ln(m) = 2 atanh((m - 1) / (m + 1)).

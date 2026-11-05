@@ -27,8 +27,11 @@ struct WeaponEffectsCaps {
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
 };
-// One patch draw: an owner's ellipsoid (view space), the cap to rasterize and the lattice of one anchor region with its
-// hits (newest first). Unit-sphere vectors are in the owner's frame (the ellipsoid's local coordinates).
+// One patch draw: an owner's ellipsoid (view space), the cap to rasterize, the lattice of one anchor region, its cell
+// map (the lit cells with their own clocks) and the region's newest hits still in their ring (ring and core).
+// Unit-sphere vectors are in the owner's frame (the ellipsoid's local coordinates).
+constexpr unsigned weapon_patch_hits = 4, weapon_patch_cells = 64;
+constexpr int weapon_cell_key_bias = 2048; // a cell key (kx, ky) packs as (kx + bias) * 4096 + (ky + bias), |k| < bias
 struct WeaponPatch {
     float centre[3]{};    // view space
     float axes[9]{};      // A0, A1, A2 (view space): the owner's local axes x its radius
@@ -40,16 +43,22 @@ struct WeaponPatch {
     float surface = 1.f;  // the stereographic scale: the ellipsoid's mean axis (view units)
     float seed = 0.f;     // the anchor's index (the cell hash's third input)
     float cell = 1.f;     // hex cell, centre to centre (view units)
-    float radius = 1.f;   // the lit radius about each hit (view units, planar)
-    unsigned hits = 0;    // 1..4
-    float hit[4][2]{};    // hit positions in the lattice plane (view units)
-    float age_s[4]{};     // game seconds
+    float radius = 1.f;   // the footprint radius (rings + 0.5) cells (view units, planar): ring speed and width
+    float reach = 1.f;    // a hit's footprint: cell centres within this planar distance of the hit cell's centre
+    unsigned hits = 0;    // 0..4 ring/core hits, newest first
+    float hit[weapon_patch_hits][2]{};      // hit points in the lattice plane (view units): the core
+    float hit_cell[weapon_patch_hits][2]{}; // the hit cells' centres (view units): the ring
+    float age_s[weapon_patch_hits]{};       // game seconds
+    unsigned cells = 0;   // 0..64 lit cells (unique keys)
+    float cell_key[weapon_patch_cells]{};   // packed keys (weapon_cell_key_bias)
+    float cell_since[weapon_patch_cells]{}; // game seconds since the cell was lit (>= 0)
 };
-// A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad of the patch radius with the
-// same hex law, the hit at its centre.
+// A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
+// with the same hex law, the hit at its centre (the one hit's cells are evaluated in the program).
 struct WeaponDecal {
     float centre[3]{};  // view space
-    float radius = 0.f; // view units
+    float radius = 0.f; // the footprint radius (rings + 0.5) cells (view units)
+    float reach = 0.f;  // rings cells (view units)
     float cell = 1.f;   // view units
     float age_s = 0.f;
     float colour[3]{1.f, 1.f, 1.f};
@@ -57,11 +66,10 @@ struct WeaponDecal {
 };
 // The frame's look (weapon_effects_core.h's patch constants by default; the fixture overrides gains to isolate a term).
 struct WeaponLook {
-    float ripple_speed, ring_width, ring_gain;  // patch radii per game second, patch radii, radiance
+    float ripple_speed, ring_width, ring_gain;  // footprint radii per game second, footprint radii, radiance
     float core_s, core_cells, core_gain;        // game seconds, cells, radiance
     float fade_s, stagger;                      // a lit cell's mean fade (game seconds), per-cell spread
     float edge_width, fill_ratio, cell_gain;    // cells (< 0.5), fill / edge, edge radiance
-    float feather_cells;                        // the pixel cut at the patch radius (cells)
 };
 WeaponLook default_weapon_look() noexcept; // the header constants of weapon_effects_core.h
 struct WeaponEffectsFrame {

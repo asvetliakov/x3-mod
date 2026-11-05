@@ -16,13 +16,10 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "604a742c12ce41d5b6c6dac66fbf0996af7623f4-dirty",
+    "commit": "728ff2f0ef9ecd3bae8d3824db3030885e63a83d-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "verification/probe/weapon_effects_hook_fixture.cpp"
+      "src/proxy/weapon_effects_core.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "55b745d35b4aa981ef0c34cdb7ced39b779e9d77ac2d0f09ffe4df430f0293a9",
@@ -31,7 +28,7 @@
       "src/proxy/weapon_effects_patch.cpp": "579079df1cb05ba06c263f7fa6f9067e7902df6a7ff9bcab6058581596d79a33",
       "src/proxy/weapon_effects_patch.h": "2f58af0c1272c4ccac4805304974b67dbb07865fab62dbe377f2c15a957e8094",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "f76c945ddcae76c91dafeaebba49d0d1e864396833d5454e3e7615caaa998dc3",
+      "src/proxy/weapon_effects_core.h": "911f35a60991ae732b57e42a3689b4731f45af94289ae7dea6f790066b715e75",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_table.h": "91b861b8d809c312ee1ed2f946310c855531402993ce1c1b0792764f139d42b4",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
@@ -78,7 +75,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "0ec9ee3ba8f4c4a521d0002e0ccd3e66776bbffb8581e24a04f42c0d8cfe956e"
+    "executable_sha256": "72752c1a5582f28500bbd166452d53dc80a14125d52451f6acb95f070a1865bb"
   },
   "host": {
     "name": "native-windows",
@@ -453,8 +450,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00857640",
     "esp_callee": "00857634",
-    "return": "00d96d8a",
-    "site": "00d96d85"
+    "return": "00d36d8a",
+    "site": "00d36d85"
   },
   "stack_depth": {
     "bytes": 204,
@@ -479,9 +476,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.6,
-    "median_us": 17.7,
-    "worst_us": 34.1,
+    "best_us": 17.0,
+    "median_us": 17.0,
+    "worst_us": 17.2,
     "target_us": 30
   },
   "passed": true

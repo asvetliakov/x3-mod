@@ -19,40 +19,36 @@
     "src/renderer/weapon_decal_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "604a742c12ce41d5b6c6dac66fbf0996af7623f4-dirty",
+    "commit": "728ff2f0ef9ecd3bae8d3824db3030885e63a83d-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/effects/weapon_decal_ps.hlsl",
-      "src/effects/weapon_decal_vs.hlsl",
+      "src/effects/weapon_hex_patch.hlsl",
       "src/effects/weapon_shell_ps.hlsl",
-      "src/effects/weapon_shell_vs.hlsl",
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_stage.h",
       "src/renderer/weapon_decal_pixel_program_inc.h",
-      "src/renderer/weapon_decal_vertex_program_inc.h",
       "src/renderer/weapon_effects_pass.cpp",
       "src/renderer/weapon_effects_pass.h",
-      "src/renderer/weapon_shell_pixel_program_inc.h",
-      "src/renderer/weapon_shell_vertex_program_inc.h",
-      "src/effects/weapon_hex_patch.hlsl"
+      "src/renderer/weapon_shell_pixel_program_inc.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "dbde443f8546cc17479ba7310e86c0bf6142b91bd4de0402d48b6ea491cba468",
-      "src/renderer/weapon_effects_pass.cpp": "807b29e933f7edd5ce121957cc7a7eb2ae78b03ebed6363d8b3b6785ebf7c5e6",
-      "src/proxy/weapon_effects_core.h": "f76c945ddcae76c91dafeaebba49d0d1e864396833d5454e3e7615caaa998dc3",
-      "src/proxy/weapon_effects_stage.h": "cde4d2482e657854559709adf45f4dbe2f45be4faa543f600d19bb5dd60b518e",
+      "src/renderer/weapon_effects_pass.h": "206aed5b201bc919820f44d39cb4905358e8bed294964feb8d50b7f21bf4e40a",
+      "src/renderer/weapon_effects_pass.cpp": "3e7e0fcdf0654eb5f0d5d4c8d44658e59dfda26c549d93801f31426718833ec7",
+      "src/proxy/weapon_effects_core.h": "911f35a60991ae732b57e42a3689b4731f45af94289ae7dea6f790066b715e75",
+      "src/proxy/weapon_effects_stage.h": "c3a308221a83bdfb6806b7901e2c3cfb09ef3b17066daaddd20ba67bed8c4dd9",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b",
       "src/effects/weapon_shell_vs.hlsl": "439c515857a151bedeaaf16947ec79a4cca54511a8f3d92b6574fe357a47d883",
-      "src/effects/weapon_shell_ps.hlsl": "d4ea0e7e750d7adc374b401af5780d4aa723bd4326447a0b925889f930d5ac7a",
+      "src/effects/weapon_shell_ps.hlsl": "7ebf02f5ea1fd6d6b048eb5e090e290c0db10a92bf073548d2fc4a4cadf51d81",
       "src/effects/weapon_decal_vs.hlsl": "926541274fc3a98602d8262781204966607b4fabdf256edad30045894d66b9a9",
-      "src/effects/weapon_decal_ps.hlsl": "23694259418d1113505a3f73a5afb6a3d62515795fee9e2047768113c1069bcc",
+      "src/effects/weapon_decal_ps.hlsl": "790d1fdc8d86324250258ba231a4c8ba02dd28d3c92416841705380af0806b53",
       "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-      "src/effects/weapon_hex_patch.hlsl": "622916cb3f02199dc1468a030e2c27b781b4281c87db02979197eb7cd7ef65e0",
+      "src/effects/weapon_hex_patch.hlsl": "b917b29a2722a5e84df3c132fdbc9e5e6ec32302a640dc7a053cba447bbe922a",
       "src/renderer/weapon_shell_vertex_program_inc.h": "32f9f073c06e70f64959499e2b503e72c9f480a8a6382c0ae8a49271f61edaae",
-      "src/renderer/weapon_shell_pixel_program_inc.h": "11d9cd75292791a936bc102d9d20bc8c8690c3db16c2924ac02b4c1d8083003c",
+      "src/renderer/weapon_shell_pixel_program_inc.h": "5afef021e80f643d97df1d347bc48d3cb02e075571f43f55ef5d921c4956b311",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
-      "src/renderer/weapon_decal_pixel_program_inc.h": "ac1094aaf57254055de835f59e3630be264694cf147c47e85bfa5d4ed508b3ba"
+      "src/renderer/weapon_decal_pixel_program_inc.h": "f0bd0b4e72a046e6d5141ef58bb765eb8fe5fc1907017e64c3d43ee45eb55f54"
     }
   },
   "programs": {
@@ -64,8 +60,8 @@
     },
     "weapon_shell_ps": {
       "source": "src/effects/weapon_shell_ps.hlsl",
-      "word_count": 1249,
-      "bytecode_sha256": "9bc7d99d110f6824f447586c98f5fdc592511dc41ce552c8bfc25fe5ced3f807",
+      "word_count": 1428,
+      "bytecode_sha256": "9afa518d3b4329c5c2bb0fd1f125e0c8d6823e7069d2c3f4af027ead9b07d576",
       "target": "ps_3_0"
     },
     "weapon_decal_vs": {
@@ -76,8 +72,8 @@
     },
     "weapon_decal_ps": {
       "source": "src/effects/weapon_decal_ps.hlsl",
-      "word_count": 687,
-      "bytecode_sha256": "ce58aaeb88cfc135986e8313af12b50e51e6eacc0b5f7b64a1bf19627301e88c",
+      "word_count": 662,
+      "bytecode_sha256": "dbf7e37160fba36dfece6622bed595c2526d7dae956c37eb057135f959721c48",
       "target": "ps_3_0"
     }
   },
@@ -107,16 +103,16 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8e5dab641ec58c9b/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8e5dab641ec58c9b/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8e5dab641ec58c9b/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a3429d662d0f7ee84/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a3429d662d0f7ee84/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a3429d662d0f7ee84/src/renderer/temporal_pass.cpp",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8e5dab641ec58c9b/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a3429d662d0f7ee84/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "da99510cbf8de1faa6d6bc3af76e988e437ceaf7d452c7a6766e19d3f330e2f7"
+    "executable_sha256": "531d8475c2ed35c0f5fa13006490b403a9454f2fdb795dcceb49f79849cf745e"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -149,7 +145,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 27,
+      "checks": 32,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -173,15 +169,19 @@
       true
     ],
     [
-      "lit_area_bounded_by_radius_per_tier",
+      "lit_area_bounded_by_cell_edges_per_tier",
       true
     ],
     [
-      "edge_count_matches_radius_over_cell",
+      "patch_lit_both_sides_both_axes",
       true
     ],
     [
-      "cell_count_order_by_tier",
+      "edge_count_matches_rings",
+      true
+    ],
+    [
+      "ring_count_per_tier",
       true
     ],
     [
@@ -193,7 +193,7 @@
       true
     ],
     [
-      "ring_front_at_two_ages",
+      "ring_moves_by_whole_cells",
       true
     ],
     [
@@ -205,6 +205,10 @@
       true
     ],
     [
+      "per_cell_fade_duration",
+      true
+    ],
+    [
       "colour_bands_blue_yellow_red",
       true
     ],
@@ -213,11 +217,23 @@
       true
     ],
     [
-      "four_hits_accumulate",
+      "adjacent_hit_resets_shared_cells_only",
+      true
+    ],
+    [
+      "no_cell_drawn_twice",
       true
     ],
     [
       "cpu_cap_culls_nothing_lit",
+      true
+    ],
+    [
+      "grid_fixed_on_owner",
+      true
+    ],
+    [
+      "no_pop_at_12_hits_per_second",
       true
     ],
     [
@@ -271,9 +287,9 @@
       {
         "result": 0,
         "shell_vs": 51,
-        "shell_ps": 291,
+        "shell_ps": 317,
         "decal_vs": 21,
-        "decal_ps": 143,
+        "decal_ps": 135,
         "fp16": 0,
         "max_ps": 4096,
         "cap_vertices": 257,
@@ -283,114 +299,224 @@
     "patch": [
       {
         "tier": "fighter",
-        "radius_view": 45.0,
+        "rings": 1,
+        "cells": 7,
+        "expected_cells": 7,
+        "reach_view": 7.5,
         "cell_view": 7.5,
-        "radius_px": 428.2,
+        "reach_px": 79.7,
+        "bound_px": 125.1,
         "cell_px": 79.7,
-        "lit_px": 428.3,
+        "lit_px": 121.6,
         "outside_sum": 0.0,
-        "edges": 12,
-        "expected_edges": 12.0,
-        "lit_pixels": 537957,
-        "peak": 1.4639
+        "edges": 4,
+        "expected_edges": 4,
+        "lit_pixels": 38313,
+        "peak": 2.0039
       },
       {
         "tier": "corvette",
-        "radius_view": 125.0,
+        "rings": 2,
+        "cells": 19,
+        "expected_cells": 19,
+        "reach_view": 30.0,
         "cell_view": 15.0,
-        "radius_px": 447.2,
+        "reach_px": 114.7,
+        "bound_px": 147.4,
         "cell_px": 57.5,
-        "lit_px": 447.5,
+        "lit_px": 144.5,
         "outside_sum": 0.0,
-        "edges": 16,
-        "expected_edges": 16.7,
-        "lit_pixels": 616293,
-        "peak": 1.5088
+        "edges": 6,
+        "expected_edges": 6,
+        "lit_pixels": 53947,
+        "peak": 2.0723
       },
       {
         "tier": "capital",
-        "radius_view": 400.0,
+        "rings": 2,
+        "cells": 19,
+        "expected_cells": 19,
+        "reach_view": 80.0,
         "cell_view": 40.0,
-        "radius_px": 461.0,
+        "reach_px": 95.8,
+        "bound_px": 123.4,
         "cell_px": 48.0,
-        "lit_px": 461.4,
+        "lit_px": 120.9,
         "outside_sum": 0.0,
-        "edges": 20,
-        "expected_edges": 20.0,
-        "lit_pixels": 652990,
-        "peak": 1.5186
+        "edges": 6,
+        "expected_edges": 6,
+        "lit_pixels": 37659,
+        "peak": 2.0723
+      }
+    ],
+    "symmetry": [
+      {
+        "tier": "fighter",
+        "left": 19065,
+        "right": 19248,
+        "up": 19037,
+        "down": 19276,
+        "ext_left": 118.5,
+        "ext_right": 119.5,
+        "ext_up": 113.5,
+        "ext_down": 114.5
+      },
+      {
+        "tier": "corvette",
+        "left": 26841,
+        "right": 27106,
+        "up": 26830,
+        "down": 27117,
+        "ext_left": 142.5,
+        "ext_right": 143.5,
+        "ext_up": 131.5,
+        "ext_down": 132.5
+      },
+      {
+        "tier": "capital",
+        "left": 18719,
+        "right": 18940,
+        "up": 18710,
+        "down": 18949,
+        "ext_left": 118.5,
+        "ext_right": 119.5,
+        "ext_up": 109.5,
+        "ext_down": 110.5
       }
     ],
     "core": [
       {
-        "at05": 3.5742,
-        "at05_no_core": 0.5757,
-        "at20": 0.3799,
-        "at20_no_core": 0.3799
+        "at05": 3.502,
+        "at05_no_core": 0.5024,
+        "at20": 0.4253,
+        "at20_no_core": 0.4253
       }
     ],
     "ring": [
       {
-        "age": 0.1,
-        "r_view": 15.0,
-        "expected_px": 157.9,
-        "ring_peak_px": 157.5,
-        "cell_front_px": 119.5,
-        "cell_window_px": "111.3..203.4"
+        "age": 0.05,
+        "front_cells": 0.25,
+        "hit_cell": 0.0363,
+        "hit_cell_inside": 0.0363,
+        "next_cell": 0.0
       },
       {
         "age": 0.2,
-        "r_view": 30.0,
-        "expected_px": 303.7,
-        "ring_peak_px": 303.5,
-        "cell_front_px": 268.5,
-        "cell_window_px": "261.8..343.6"
+        "front_cells": 1.0,
+        "hit_cell": 0.0,
+        "hit_cell_inside": 0.0,
+        "next_cell": 0.1
+      }
+    ],
+    "ringcells": [
+      {
+        "next_at100": 0.0,
+        "next_at250": 0.4858
+      }
+    ],
+    "fadecell": [
+      {
+        "at500": 0.3435,
+        "at1000": 0.2072,
+        "measured_s": 1.7596,
+        "expected_s": 1.76,
+        "fade_s": 2.2,
+        "min_s": 1.76,
+        "max_s": 2.64
       }
     ],
     "colour": [
       {
         "shield": 0.9,
-        "r": 0.1035,
-        "g": 0.1655,
-        "b": 0.23
+        "r": 0.1545,
+        "g": 0.2473,
+        "b": 0.3435
       },
       {
         "shield": 0.5,
-        "r": 0.23,
-        "g": 0.2024,
-        "b": 0.0966
+        "r": 0.3435,
+        "g": 0.3022,
+        "b": 0.1443
       },
       {
         "shield": 0.2,
-        "r": 0.23,
-        "g": 0.092,
-        "b": 0.0828
+        "r": 0.3435,
+        "g": 0.1375,
+        "b": 0.1237
       }
     ],
     "relight": [
       {
-        "old": 0.1299,
-        "new": 0.3298,
-        "both": 0.3298
+        "old": 0.2891,
+        "new": 0.3979,
+        "both": 0.3979
       }
     ],
-    "accumulate": [
+    "adjacent": [
       {
-        "four_lit": 963593,
-        "single_max_lit": 489283,
-        "fourth_slot": 0.1826,
-        "cap_angle": 0.7229,
-        "cap_vs_wider_rel_diff": 0.001911
+        "cells": 10,
+        "first_m1": 0.3831,
+        "first_0": 0.2072,
+        "first_1": 0.311,
+        "second_0": 0.3979,
+        "second_1": 0.3809,
+        "second_2": 0.4116,
+        "pair_m1": 0.3831,
+        "pair_0": 0.3979,
+        "pair_1": 0.3809,
+        "pair_2": 0.4116,
+        "peak_single": 2.0039,
+        "peak_pair": 2.0039
       }
     ],
     "capcheck": [
       {
-        "cap_lit": 963593,
-        "wider_lit": 961755,
-        "sphere_lit": 907674,
-        "cap_total": 416660.624,
-        "wider_total": 415915.23,
-        "sphere_total": 388597.175
+        "cells": 28,
+        "cap_lit": 146254,
+        "wider_lit": 146254,
+        "sphere_lit": 146254,
+        "cap_total": 117028.555,
+        "wider_total": 117028.555,
+        "sphere_total": 117028.555,
+        "cap_angle": 0.3138,
+        "rel_diff": 0.0
+      }
+    ],
+    "grid": [
+      {
+        "patches": 1,
+        "moved_patches": 1,
+        "cells": 22,
+        "identical": 1,
+        "owner_moved": 1
+      }
+    ],
+    "nopop": [
+      {
+        "hits": 49,
+        "frames": 240,
+        "max_live_hits": 36,
+        "max_patches": 1,
+        "max_cells": 36,
+        "max_drop": 0.02148,
+        "allowed": 0.02273,
+        "excess": 0.0,
+        "popped_pixels": 0,
+        "worst_frame": 45,
+        "worst_x": 864,
+        "worst_y": 552,
+        "worst_prev": 2.2656,
+        "worst_cur": 2.2441
+      }
+    ],
+    "timing_maps": [
+      {
+        "fighter_12hps_cells": 36,
+        "capital_full_map_cells": 64
+      },
+      {
+        "fighter_12hps_cells": 36,
+        "capital_full_map_cells": 64
       }
     ],
     "decal": [
@@ -398,28 +524,29 @@
         "patches": 0,
         "decals": 1,
         "centre_z": 300.0,
-        "radius": 45.0,
+        "radius": 11.25,
         "cell": 7.5,
         "over_sky": 0.0,
-        "on_hull": 79296.7213,
-        "edges": 12
+        "on_hull": 9119.4861,
+        "edges": 4
       }
     ],
     "age": [
       {
-        "lifetime_ms": 1741,
-        "seta6_expected_wall_ms": 290.17,
-        "seta6_wall_ms": 290.69,
-        "last_drawn_ms": 289.68,
-        "frames": 2328,
-        "max_frame_ms": 5.346
+        "lifetime_ms": 2941,
+        "lit_ms": 2840.0,
+        "seta6_expected_wall_ms": 473.34,
+        "seta6_wall_ms": 473.51,
+        "last_drawn_ms": 473.48,
+        "frames": 22771,
+        "max_frame_ms": 0.579
       }
     ],
     "retired": [
       {
         "live_patches": 1,
         "live_drew": 1,
-        "live_sum": 63209.0389,
+        "live_sum": 9020.187,
         "patches": 0,
         "decals": 0,
         "retired": 1,
@@ -435,24 +562,24 @@
         "height": 1080,
         "speed_px": 0,
         "frames": 16,
-        "core": 0.9976,
-        "peak": 4.254
+        "core": 0.9945,
+        "peak": 3.99
       },
       {
         "width": 1920,
         "height": 1080,
         "speed_px": 4,
         "frames": 16,
-        "core": 0.9987,
-        "peak": 4.254
+        "core": 0.9905,
+        "peak": 3.99
       },
       {
         "width": 1920,
         "height": 1080,
         "speed_px": 8,
         "frames": 16,
-        "core": 0.9966,
-        "peak": 4.254
+        "core": 0.9875,
+        "peak": 3.99
       }
     ],
     "refused": [
@@ -473,7 +600,7 @@
         "patches": 0,
         "drawn": 0,
         "lit_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 10.9
       },
       {
         "width": 1920,
@@ -481,8 +608,8 @@
         "case": "fighter_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.038,
-        "gpu_us": 18.8
+        "lit_share": 0.0028,
+        "gpu_us": 15.5
       },
       {
         "width": 1920,
@@ -490,8 +617,8 @@
         "case": "fighter_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.0381,
-        "gpu_us": 18.1
+        "lit_share": 0.0028,
+        "gpu_us": 16.0
       },
       {
         "width": 1920,
@@ -499,8 +626,8 @@
         "case": "capital_close_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 1.0,
-        "gpu_us": 50.0
+        "lit_share": 0.2102,
+        "gpu_us": 39.0
       },
       {
         "width": 1920,
@@ -508,8 +635,8 @@
         "case": "capital_close_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 1.0,
-        "gpu_us": 68.7
+        "lit_share": 0.2102,
+        "gpu_us": 35.3
       },
       {
         "width": 1920,
@@ -517,8 +644,26 @@
         "case": "worst_four_regions",
         "patches": 4,
         "drawn": 4,
-        "lit_share": 1.0,
-        "gpu_us": 116.4
+        "lit_share": 0.2948,
+        "gpu_us": 54.8
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "fighter_12hps_map",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0084,
+        "gpu_us": 16.6
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "capital_close_full_map",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0354,
+        "gpu_us": 78.5
       },
       {
         "width": 5120,
@@ -527,7 +672,7 @@
         "patches": 0,
         "drawn": 0,
         "lit_share": 0.0,
-        "gpu_us": 11.1
+        "gpu_us": 10.7
       },
       {
         "width": 5120,
@@ -535,8 +680,8 @@
         "case": "fighter_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.076,
-        "gpu_us": 33.0
+        "lit_share": 0.0057,
+        "gpu_us": 18.1
       },
       {
         "width": 5120,
@@ -544,8 +689,8 @@
         "case": "fighter_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.0763,
-        "gpu_us": 26.9
+        "lit_share": 0.0057,
+        "gpu_us": 18.4
       },
       {
         "width": 5120,
@@ -553,8 +698,8 @@
         "case": "capital_close_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 1.0,
-        "gpu_us": 129.5
+        "lit_share": 0.4175,
+        "gpu_us": 106.9
       },
       {
         "width": 5120,
@@ -562,8 +707,8 @@
         "case": "capital_close_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 1.0,
-        "gpu_us": 196.1
+        "lit_share": 0.4175,
+        "gpu_us": 113.3
       },
       {
         "width": 5120,
@@ -571,21 +716,40 @@
         "case": "worst_four_regions",
         "patches": 4,
         "drawn": 4,
-        "lit_share": 1.0,
-        "gpu_us": 374.2
+        "lit_share": 0.3666,
+        "gpu_us": 173.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "fighter_12hps_map",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0167,
+        "gpu_us": 21.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "capital_close_full_map",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0,
+        "gpu_us": 233.6
       }
     ],
     "fade": {
-      "t350": 274100.891,
-      "t500": 231743.47,
-      "t700": 175248.793,
-      "t900": 118761.119,
-      "t1100": 63926.397,
-      "t1300": 22689.807,
-      "t1500": 2961.058,
-      "t1700": 1.903,
-      "t1741": 0.0,
-      "lifetime_ms": 1741
+      "t350": 37286.732,
+      "t600": 32054.994,
+      "t900": 25781.95,
+      "t1200": 19508.442,
+      "t1500": 13231.143,
+      "t1800": 7063.291,
+      "t2100": 2350.105,
+      "t2400": 220.475,
+      "t2700": 0.0,
+      "t2941": 0.0,
+      "lifetime_ms": 2941
     }
   },
   "passed": true

@@ -342,10 +342,10 @@ class PageTest(unittest.TestCase):
         self.assertRegex(self.html, r'cell_m: \[[0-9., ]+\]')
         self.assertNotRegex(self.html, r'function renderOurs\(record, t\) \{ // eslint-disable-line no-unused-vars\n\}')
         self.assertIn('function ourControls()', self.html)
-        # docs/architecture/weapon-effects.md 5.1.1's lab controls: cell size and radius per tier, ripple speed, core
+        # docs/architecture/weapon-effects.md 5.1.1's lab controls: cell size and rings per tier, ripple speed, core
         # and fade durations, stagger, edge versus fill, the three colour bands, the SETA rate, the hit player.
-        for cid in ('c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_radius_fighter', 'c_radius_corvette',
-                    'c_radius_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
+        for cid in ('c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_rings_fighter', 'c_rings_corvette',
+                    'c_rings_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
                     'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
                     'c_weapon_tint', 'c_seta', 'c_hits'):
             self.assertIn(f'id="{cid}"', self.html)
@@ -369,11 +369,104 @@ class PageTest(unittest.TestCase):
             Path(f.name).unlink()
 
 
+    def ours_script(self):
+        script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
+        header = script[script.index(gen.HEADER_BEGIN):script.index(gen.END, script.index(gen.HEADER_BEGIN))]
+        ours = script[script.index('// ---------------------------------------------------------------- our renderer'):
+                      script.index('// ---------------------------------------------------------------- helpers')]
+        helpers = script[script.index('function rng('):script.index('function hash(')]
+        return (header + helpers + ours).replace('const HEADER', 'var HEADER')
+
+    def run_node(self, probe):
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
+            f.write(probe)
+        try:
+            r = subprocess.run(['node', f.name], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr[:500])
+            return json.loads(r.stdout)
+        finally:
+            Path(f.name).unlink()
+
+    CONTROLS = r'''
+const W = 480, H = 270; function fmt(v) { return v; } function assets() { return null; }
+function drawBackground() {} function label() {}
+const vals = {c_cell_fighter: HEADER.cell_m[0], c_cell_corvette: HEADER.cell_m[1], c_cell_capital: HEADER.cell_m[2],
+  c_rings_fighter: HEADER.rings[0], c_rings_corvette: HEADER.rings[1], c_rings_capital: HEADER.rings[2],
+  c_ripple_speed: HEADER.ripple_speed, c_core_ms: HEADER.core_ms, c_fade_ms: HEADER.fade_ms, c_stagger: HEADER.stagger,
+  c_fill_ratio: HEADER.fill_ratio, c_colour_high: HEADER.colour_high, c_colour_mid: HEADER.colour_mid,
+  c_colour_low: HEADER.colour_low, c_colour_full: '#a0c0ff', c_colour_half: '#ffff80', c_colour_empty: '#ff8080',
+  c_weapon_tint: 0, c_seta: 1, c_hits: 0, c_tier: 0, c_shield: 100, c_drain: 0, c_frame: 'patch'};
+function $(id) { return {value: vals[id]}; }
+'''
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_impact_patch_is_whole_and_facing(self):
+        """The impact slot's single hit (the user's half circle: the preview's ray-sphere intersection took the wrong
+        root, so pixels mapped off the sphere) lights a patch centred on the canvas, on both sides of the hit in both
+        axes, per tier; the automatic loop covers our patch's lifetime over SETA."""
+        probe = self.ours_script() + self.CONTROLS + r'''
+const out = {};
+for (const tier of [0, 1, 2]) {
+  vals.c_tier = tier;
+  const data = new Uint8ClampedArray(W * H * 4);
+  renderOurs({slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}}, weapon: {}}, 400);
+  const side = [0, 0, 0, 0];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (data[(y * W + x) * 4 + 2] > 0) {
+    if (x + 0.5 < W / 2) side[0]++; else side[1]++;
+    if (y + 0.5 < H / 2) side[2]++; else side[3]++;
+  }
+  out[tier] = side;
+}
+vals.c_tier = 0;
+out.lifetime = patchLifetimeMs(ourControls()); out.loop1 = ourLoopMs();
+vals.c_seta = 6; out.loop6 = ourLoopMs();
+console.log(JSON.stringify(out));
+'''
+        js = self.run_node(probe)
+        for tier in ('0', '1', '2'):
+            side = js[tier]
+            self.assertGreater(min(side), 100, tier)
+            self.assertGreaterEqual(min(side[0], side[1]) / max(side[0], side[1]), 0.95, tier)
+            self.assertGreaterEqual(min(side[2], side[3]) / max(side[2], side[3]), 0.95, tier)
+        self.assertEqual(js['lifetime'], 2941)
+        self.assertAlmostEqual(js['loop1'], 2941)
+        self.assertAlmostEqual(js['loop6'], 2941 / 6, places=3)
+        self.assertIn('ours > 0 ? ours + 250 : 0', self.html)        # loopMs takes our patch into account
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_cell_map_holds_clocks_at_12_hits_per_second(self):
+        """The lab's cell map under the 12 hits/s player at 60 frames per second for 4 s: a cell's clock never jumps
+        ahead by more than the frame (no pop: it fades on its own clock or is reset by a newer hit), a shared cell is
+        held once, and the map stays within its 64 cells."""
+        probe = self.ours_script() + self.CONTROLS + r'''
+vals.c_hits = 12;
+const c = ourControls(), S = PREVIEW_OWNER_M[0], cell = c.cell_m[0];
+let prev = new Map(), worst = 0, maxCells = 0, maxLive = 0;
+for (let f = 0; f <= 240; f++) {
+  const t = f * 1000 / 60, hits = hitSequence(t, c, S, cell), draws = patchDraws(hits, S, c);
+  maxLive = Math.max(maxLive, hits.length);
+  const cur = new Map();
+  for (const d of draws) for (const [k, v] of d.cells) cur.set(d.seed * 1e8 + k, v);
+  maxCells = Math.max(maxCells, ...draws.map(d => d.cells.size), 0);
+  for (const [k, v] of prev) {
+    const now = cur.has(k) ? cur.get(k) : Infinity, fadeMin = c.fade_s * (1 - 0.5 * c.stagger);
+    if (v < fadeMin) worst = Math.max(worst, now - v - 1 / 60);
+  }
+  prev = cur;
+}
+console.log(JSON.stringify({worst, maxCells, maxLive}));
+'''
+        js = self.run_node(probe)
+        self.assertLessEqual(js['worst'], 1e-6)
+        self.assertLessEqual(js['maxCells'], 64)
+        self.assertGreaterEqual(js['maxLive'], 30)
+
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_patch_law_matches_the_gpu(self):
         """The lab's hexLaw at the hit point against the native D3D fixture's readbacks of the same cases (the fighter
-        patch, the hit on a cell centre, seed 0): the core at 0.05 s with and without the core term, 0.2 s, and the
-        cells-only hit point at 0.7 s and 0.3 s. Tolerance: the FP16 target's step (2^-10 relative)."""
+        patch, the hit on a cell centre, seed 0, its cell map from fillCells): the core at 0.05 s with and without the
+        core term, 0.2 s, and the cells-only hit cell at 0.7 s and 0.3 s. Tolerance: the FP16 target's step (2^-10
+        relative)."""
         record = json.loads((ROOT / 'verification/results/native-windows/weapon-effects/summary.json').read_text())
         core, relight = record['metrics']['core'][0], record['metrics']['relight'][0]
         script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
@@ -386,7 +479,8 @@ const c = {stagger: HEADER.stagger, fill_ratio: HEADER.fill_ratio, fade_s: HEADE
 const at = (age, over) => {
   const saved = Object.assign({}, HEADER);
   Object.assign(HEADER, over || {});
-  const v = hexLaw([0, 0], hexCell(0, 0), 1e-3, {radius: 45, cell: 7.5, seed: 0, hits: [{q: [0, 0], age}]}, c);
+  const d = Object.assign({cell: 7.5, seed: 0}, fillCells([{q: [0, 0], age}], 7.5, HEADER.rings[0], c));
+  const v = hexLaw([0, 0], hexCell(0, 0), 1e-3, d, c);
   Object.assign(HEADER, saved);
   return v;
 };

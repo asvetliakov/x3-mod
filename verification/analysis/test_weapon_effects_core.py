@@ -4,7 +4,8 @@ The classifier (style, calibre band, tint source) run over the stock AP census t
 the [M] table of docs/architecture/weapon-effects.md section 4.4, pinned against
 verification/results/weapon-effects-census/classify_preview_out.txt; the ring/overflow/retire and the game-time age
 law; the stage builder of src/proxy/weapon_effects_stage.h (owner validation, the dying bit, retirement, the game-time
-age filter, the decal fallback, the four-hit insertion, one draw per anchor region, the cap bounding every lit point)
+age filter, the decal fallback, the hit ordering and the cell map, one draw per anchor region, the cap bounding every
+lit cell)
 over a fake engine memory; the 5.1.1 shield colour bands, the patch tier tables and the record lifetime; Present's ownership latch
 (core::stage_owned) and the ring's scope (core::ScopeLatch). No Wine, no game. Builds a small harness against the
 headers with a host C++ compiler (a host-only d3d9.h declares the few types weapon_effects_pass.h names).
@@ -113,9 +114,9 @@ static int stage_cases() {
     hit(ring, 0, 1000, 0);
     st::Counts n = build(1100);
     const auto& p = patches[0];
-    std::printf("live patches=%u hits=%u retired=%u decals=%u patch_hits=%u age=%.3f centre_z=%.1f surface=%.1f radius=%.2f cell=%.2f cap=%.4f hit_x=%.3f hit_y=%.3f r=%.3f g=%.3f b=%.3f\n",
-                n.patches, n.hits, n.retired, n.decals, p.hits, p.age_s[0], p.centre[2], p.surface, p.radius, p.cell,
-                p.cap_angle, p.hit[0][0], p.hit[0][1], p.colour[0], p.colour[1], p.colour[2]);
+    std::printf("live patches=%u hits=%u retired=%u decals=%u patch_hits=%u age=%.3f centre_z=%.1f surface=%.1f radius=%.2f reach=%.2f cells=%u cell=%.2f cap=%.4f hit_x=%.3f hit_y=%.3f r=%.3f g=%.3f b=%.3f\n",
+                n.patches, n.hits, n.retired, n.decals, p.hits, p.age_s[0], p.centre[2], p.surface, p.radius, p.reach,
+                p.cells, p.cell, p.cap_angle, p.hit[0][0], p.hit[0][1], p.colour[0], p.colour[1], p.colour[2]);
     // 2..5 validation: a replaced node, a changed handle, the dying bit, an unreadable owner; each retires every record
     // of that owner (three hits) and leaves another owner's hit alone.
     const char* names[4] = {"node_mismatch", "handle_mismatch", "dying", "unreadable"};
@@ -135,11 +136,12 @@ static int stage_cases() {
         n = build(1100);
         std::printf("%s patches=%u retired=%u live=%u ring_retired=%u\n", names[c], n.patches, n.retired, live(ring), ring.retired);
     }
-    // 6 the age filter in game time: L - 1 ms drawn, L + 1 skipped (left for Present), a future t0 (a load) skipped.
+    // 6 the age filter in game time: L - 400 ms drawn (the slowest cells still fading), L + 1 skipped (left for
+    // Present), a future t0 (a load) skipped.
     core::ring_clear(ring);
     owner(0, 40000, 20000);
     hit(ring, 0, 1000, 0);
-    const unsigned before = build(1000 + L - 1).patches, after = build(1000 + L + 1).patches, future = build(900).patches;
+    const unsigned before = build(1000 + L - 400).patches, after = build(1000 + L + 1).patches, future = build(900).patches;
     std::printf("age lifetime=%u before=%u after=%u future=%u live=%u\n", L, before, after, future, live(ring));
     // 7 the decal fallback: an owner without an ellipsoid (radius 0) gets a flat patch at the hit point, no patch.
     core::ring_clear(ring);
@@ -148,8 +150,9 @@ static int stage_cases() {
     n = build(1100);
     std::printf("decal patches=%u decals=%u centre_z=%.1f radius=%.2f cell=%.2f age=%.3f\n", n.patches, n.decals,
                 decals[0].centre[2], decals[0].radius, decals[0].cell, decals[0].age_s);
-    // 8 the four-hit insertion: five hits on one owner in one region aged 300, 100, 500, 50, 200 ms (ring order): one
-    // draw keeps the newest four in age order; the newest hit (half shields) colours it.
+    // 8 the hit ordering: five hits on one owner in one region aged 300, 100, 500, 50, 200 ms (ring order): one draw,
+    // the ring/core slots the newest four (younger than the ring's travel) in age order, every hit's footprint in the cell
+    // map (unique keys); the newest hit (half shields) colours it.
     core::ring_clear(ring);
     owner(0, 40000, 20000);
     const std::uint32_t now = 2000;
@@ -157,32 +160,30 @@ static int stage_cases() {
     for (unsigned i = 0; i < 5; ++i) hit(ring, 0, now - ages[i], std::int32_t(1000 * (i + 1)), i == 3 ? 0x8000 : 0xffff);
     n = build(now);
     const auto& f = patches[0];
-    std::printf("four patches=%u hits=%u patch_hits=%u age0=%.3f age1=%.3f age2=%.3f age3=%.3f r=%.3f g=%.3f b=%.3f cap=%.4f\n",
-                n.patches, n.hits, f.hits, f.age_s[0], f.age_s[1], f.age_s[2], f.age_s[3], f.colour[0], f.colour[1],
-                f.colour[2], f.cap_angle);
-    // The cap bounds every lit point: sample the unit sphere, light a point within the planar radius of any hit (the
-    // pixel program's gate) and count those outside the cap.
+    unsigned dupes = 0;
+    for (unsigned i = 0; i < f.cells; ++i)
+        for (unsigned j = i + 1; j < f.cells; ++j) dupes += f.cell_key[i] == f.cell_key[j];
+    std::printf("four patches=%u hits=%u patch_hits=%u cells=%u dupes=%u age0=%.3f age1=%.3f age2=%.3f age3=%.3f r=%.3f g=%.3f b=%.3f cap=%.4f\n",
+                n.patches, n.hits, f.hits, f.cells, dupes, f.age_s[0], f.age_s[1], f.age_s[2], f.age_s[3], f.colour[0],
+                f.colour[1], f.colour[2], f.cap_angle);
+    // The cap bounds every lit point: sample the unit sphere, light a point whose cell is in the map (the pixel
+    // program's lookup) and count those outside the cap.
     {
-        float hd[4][3];
-        unsigned slot = 0;
-        for (unsigned i = 0; i < 5; ++i) {
-            if (ages[i] == 500) continue;
-            const std::int32_t pos[3] = {std::int32_t(1000 * (i + 1)), 0, -20000};
-            st::hit_direction(pos, hd[slot++]);
-        }
         unsigned lit = 0, outside = 0;
         for (unsigned a = 0; a < 400; ++a)
             for (unsigned b = 0; b < 800; ++b) {
                 const float th = 3.14159265f * (float(a) + 0.5f) / 400.f, ph = 6.2831853f * float(b) / 800.f;
                 const float q3[3] = {float(std::sin(th) * std::cos(ph)), float(std::sin(th) * std::sin(ph)), float(std::cos(th))};
-                float q[2];
+                if (q3[0] * f.anchor[0] + q3[1] * f.anchor[1] + q3[2] * f.anchor[2] < 0.f) continue; // the far side
+                float q[2], g[2], centre[2];
+                int key[2];
                 st::stereo(f.anchor, f.anchor_u, f.anchor_v, f.surface, q3, q);
+                g[0] = q[0] / f.cell;
+                g[1] = q[1] / f.cell;
+                st::hex_key(g, key, centre);
                 bool on = false;
-                for (unsigned h = 0; h < slot; ++h) {
-                    float hq[2];
-                    st::stereo(f.anchor, f.anchor_u, f.anchor_v, f.surface, hd[h], hq);
-                    on |= std::hypot(q[0] - hq[0], q[1] - hq[1]) < f.radius;
-                }
+                if (key[0] > -2048 && key[0] < 2048 && key[1] > -2048 && key[1] < 2048)
+                    for (unsigned h = 0; h < f.cells; ++h) on |= f.cell_key[h] == st::pack_key(key[0], key[1]);
                 if (!on) continue;
                 ++lit;
                 const double c = double(q3[0]) * f.cap_dir[0] + double(q3[1]) * f.cap_dir[1] + double(q3[2]) * f.cap_dir[2];
@@ -360,10 +361,12 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertAlmostEqual(live['age'], 0.1, places=3)             # 100 game ms
         self.assertAlmostEqual(live['centre_z'], 400.0, places=1)      # engine 40000 x world_scale
         self.assertAlmostEqual(live['surface'], 200.0, places=1)       # radius 20000 x world_scale x the unit rows
-        self.assertAlmostEqual(live['radius'], 45.0, places=2)         # 9 m x 500 x 0.01 (fighter)
-        self.assertAlmostEqual(live['cell'], 7.5, places=2)            # 1.5 m
-        # a single hit: the cap is the patch's angle R / S plus the margins (acos and the 32-gon rim)
-        self.assertAlmostEqual(live['cap'], (45.0 / 200.0 + 1e-3) * 1.0049, delta=2e-3)
+        self.assertAlmostEqual(live['cell'], 7.5, places=2)            # 1.5 m x 500 x 0.01 (fighter)
+        self.assertAlmostEqual(live['radius'], 11.25, places=2)        # (1 ring + 0.5) cells: the ring's footprint
+        self.assertAlmostEqual(live['reach'], 7.5, places=2)           # 1 ring
+        self.assertEqual(live['cells'], 1)                             # age 0.1: the hit cell; its ring of six at 0.2 s
+        # a single hit: the cap is the footprint (reach + two circumradii) over S plus the margins (acos, 32-gon rim)
+        self.assertAlmostEqual(live['cap'], ((7.5 + 2 * 0.5773503 * 7.5) / 200.0 + 1e-3) * 1.0049, delta=2e-3)
         self.assertEqual((live['r'], live['g'], live['b']), (0.45, 0.72, 1.0))  # full shields: light blue
         for case in ('node_mismatch', 'handle_mismatch', 'dying', 'unreadable'):
             row = r[case]
@@ -371,15 +374,16 @@ class WeaponEffectsClassifier(unittest.TestCase):
             self.assertEqual((row['patches'], row['retired'], row['live'], row['ring_retired']), (1, 3, 1, 3), case)
         a = r['age']
         self.assertEqual((a['before'], a['after'], a['future'], a['live']), (1, 0, 0, 1))
-        self.assertEqual(a['lifetime'], 1741)  # 1000 / 3.333 + 1200 x 1.2, + 1
+        self.assertEqual(a['lifetime'], 2941)  # 1000 / 3.333 + 2200 x 1.2, + 1
         d = r['decal']
         self.assertEqual((d['patches'], d['decals']), (0, 1))
         self.assertAlmostEqual(d['centre_z'], 2000.0, places=1)       # the hit point: 400000 - 200000 engine units
-        self.assertAlmostEqual(d['radius'], 45.0, places=2)
+        self.assertAlmostEqual(d['radius'], 11.25, places=2)
         self.assertAlmostEqual(d['cell'], 7.5, places=2)
         f = r['four']
-        self.assertEqual((f['patches'], f['hits'], f['patch_hits']), (1, 5, 4))
-        self.assertEqual([f['age0'], f['age1'], f['age2'], f['age3']], [0.05, 0.1, 0.2, 0.3])  # newest first, 500 dropped
+        self.assertEqual((f['patches'], f['hits'], f['patch_hits'], f['dupes']), (1, 5, 4, 0))
+        self.assertEqual([f['age0'], f['age1'], f['age2'], f['age3']], [0.05, 0.1, 0.2, 0.3])  # newest first, 500 past the ring
+        self.assertGreater(f['cells'], 7)                               # the five footprints' union, each cell once
         self.assertEqual((f['r'], f['g'], f['b']), (1.0, 0.88, 0.42))  # the newest hit: half shields, light yellow
         self.assertGreater(r['cap']['lit'], 1000)
         self.assertEqual(r['cap']['outside'], 0)                        # the cap bounds every lit point

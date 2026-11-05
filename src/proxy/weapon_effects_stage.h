@@ -4,15 +4,16 @@
 #include "sse_scalar.h"
 
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
-// stage-owned shield hits (flag_stage) become hex patches. Per owner its hit_slots newest hits; each hit belongs to the
-// anchor region of the nearest of the twelve icosahedron vertices (owner frame), whose tangent frame carries the
-// lattice: cells are fixed on the owner (a repeated hit in the region re-lights the same cells; no seam crosses one
-// hit's patch) and the stereographic plane keeps the hexagons regular within the region (the scale grows at most
-// 2 / (1 + cos 37.4 deg) = 1.11 at its edge). One draw per owner and region, rasterizing only the spherical cap that
-// bounds its hits' patches (the CPU-side cull: the cost follows the patch, not the owner). An owner without a usable
-// ellipsoid (radius 0) gets a flat patch (decal) per hit at the hit point. Cell size and radius are world units per
-// PatchTier (the hook's tier of the hit object), the radius capped at max_radius_share of the owner's mean axis; the
-// colour follows the newest hit's shield fraction (core::shield_colour), with weapon_tint mixing the weapon colour in.
+// stage-owned shield hits (flag_stage) become hex patches. Per owner its owner_hits newest hits; each hit belongs to
+// the anchor region of the nearest of the owner's six axis directions (owner frame), whose tangent frame carries the
+// lattice: the grid is fixed on the owner (every hit in the region lands on the same cells, whatever the owner's
+// motion; no seam crosses one hit's footprint) and the stereographic plane keeps the hexagons regular within the region
+// (the scale grows at most 2 / (1 + cos 54.7 deg) = 1.27 at a cube corner). The cell map of each region is rebuilt from the
+// live hits every frame (fill_patch: a cell's clock is the newest hit that lit it), so it needs no state of its own and
+// a retired owner or a Reset leaves nothing behind. One draw per owner and region, rasterizing only the spherical cap
+// that bounds its lit cells (the CPU-side cull: the cost follows the patch, not the owner). An owner without a usable
+// ellipsoid (radius 0) gets a flat patch (decal) per hit at the hit point. Cell size and footprint rings are per
+// PatchTier (the hook's tier of the hit object); the colour follows the newest hit's shield fraction (core::shield_colour), with weapon_tint mixing the weapon colour in.
 // The owner's rows are read here, at scene end, through the caller's reader (engine_memory::read in production) and
 // validated: obj+0x70 == node, node+0x28 == handle and the dying bit obj+0x40 & 0x8000000 clear, else every record of
 // that owner leaves the ring (a dead or replaced owner draws nothing). Ages are game time (cfg+0x718): SETA shortens the
@@ -112,20 +113,20 @@ inline float acos_approx(float x) noexcept {
     const float r = scalar::sqrt(1.f - a) * (1.5707288f + a * (-0.2121144f + a * (0.0742610f - 0.0187293f * a)));
     return x < 0.f ? 3.14159265f - r : r;
 }
-// The twelve anchor directions (the icosahedron's vertices, owner frame) and their tangent frames: u = z x a
-// normalized (no vertex lies on z), v = a x u, so (u, v, a) is right-handed. The index is the cell hash's seed.
-constexpr unsigned anchor_count = 12;
+// The six anchor directions (the owner's local axes +-z, +-x, +-y: the cube's faces, owner frame) and their tangent
+// frames: u the next axis (z -> x, x -> y, y -> z), v = a x u, so (u, v, a) is right-handed. Centring the regions on
+// the axes puts the nose, tail, flanks, top and belly (where sustained fire lands) mid-region, the seams on the cube's
+// edges 45 deg away; the stereographic scale grows at most 2 / (1 + cos 54.7 deg) = 1.27 at a cube corner. The index
+// is the cell hash's seed.
+constexpr unsigned anchor_count = 6;
 inline void anchor_frame(unsigned k, float a[3], float u[3], float v[3]) noexcept {
-    const float t = 1.6180339887f, n = 1.f / 1.9021130326f; // |(0, 1, t)|
-    const float s1 = (k & 1) ? -1.f : 1.f, s2 = (k & 2) ? -1.f : 1.f;
-    switch ((k >> 2) % 3) {
-    case 0: a[0] = 0.f; a[1] = s1 * n; a[2] = s2 * t * n; break;
-    case 1: a[0] = s1 * n; a[1] = s2 * t * n; a[2] = 0.f; break;
-    default: a[0] = s2 * t * n; a[1] = 0.f; a[2] = s1 * n; break;
+    const unsigned i = (2u + (k >> 1)) % 3u, j = (i + 1u) % 3u; // k 0, 1: z; 2, 3: x; 4, 5: y
+    for (unsigned c = 0; c < 3; ++c) {
+        a[c] = 0.f;
+        u[c] = 0.f;
     }
-    const float z[3] = {0.f, 0.f, 1.f};
-    cross3(z, a, u);
-    normalize3(u);
+    a[i] = (k & 1u) ? -1.f : 1.f;
+    u[j] = 1.f;
     cross3(a, u, v);
 }
 inline unsigned nearest_anchor(const float d[3]) noexcept {
@@ -154,8 +155,10 @@ struct Counts {
 };
 struct Tuning {
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
-    float radius_m[core::patch_tier_count] = {core::radius_m[0], core::radius_m[1], core::radius_m[2]};
-    float max_radius_share = 0.9f; // the patch radius at most this share of the owner's mean axis (cap < 90 deg)
+    unsigned rings[core::patch_tier_count] = {core::rings[0], core::rings[1], core::rings[2]};
+    // The cell clocks' law (the pass's WeaponLook carries the same defaults): ring speed in footprint radii per game
+    // second, the mean fade and its per-cell spread.
+    float ripple_speed = core::ripple_speed, fade_s = float(core::fade_ms) * 1e-3f, stagger = core::stagger;
     core::ShieldBands bands{};
     float weapon_tint = core::weapon_tint, tint_mix = core::tint_mix, soft = core::soft;
 };
@@ -172,23 +175,50 @@ inline void patch_colour(const core::Event& e, const Tuning& t, float out[3]) no
         for (unsigned i = 0; i < 3; ++i) out[i] += (w[i] - out[i]) * k;
     }
 }
+constexpr unsigned max_rings = 6; // a footprint's cell centres within rings cells of the hit cell's centre (exact to 6)
+inline unsigned tier_rings(const Tuning& t, unsigned tier) noexcept {
+    const unsigned r = t.rings[tier < core::patch_tier_count ? tier : unsigned(core::patch_capital)];
+    return r < max_rings ? r : max_rings;
+}
+// The cell of plane point g (cells), weapon_hex_patch.hlsl hex_cell in float: the integer key (2 cx, 2 cy / sqrt 3)
+// and the centre (cells).
+inline void hex_key(const float g[2], int key[2], float centre[2]) noexcept {
+    const float sx = 1.f, sy = 1.7320508f;
+    auto fl = [](float x) { return float(scalar::floor(double(x))); };
+    const float ax = g[0] - sx * fl(g[0] / sx) - 0.5f * sx, ay = g[1] - sy * fl(g[1] / sy) - 0.5f * sy;
+    const float hx = g[0] - 0.5f * sx, hy = g[1] - 0.5f * sy;
+    const float bx = hx - sx * fl(hx / sx) - 0.5f * sx, by = hy - sy * fl(hy / sy) - 0.5f * sy;
+    const bool use_a = ax * ax + ay * ay < bx * bx + by * by;
+    centre[0] = g[0] - (use_a ? ax : bx);
+    centre[1] = g[1] - (use_a ? ay : by);
+    key[0] = int(fl(centre[0] * 2.f + 0.5f));
+    key[1] = int(fl(centre[1] * 1.1547005f + 0.5f));
+}
+inline float pack_key(int kx, int ky) noexcept {
+    return float((kx + renderer::weapon_cell_key_bias) * 4096 + (ky + renderer::weapon_cell_key_bias));
+}
 // One patch draw from the owner's view-space ellipsoid and the hits of one anchor region (unit-sphere directions in
-// the owner's frame, ages in game seconds, newest first): the lattice frame, the planar hits and the cap bounding every
-// lit pixel. Lit pixels lie within the planar radius R of a hit and the plane never shrinks distances, so their angle
-// from that hit is below R / S; the cap is the hits' spread about their mean direction plus R / S, with a margin for
-// acos_approx and the polygonal rim (cos(pi / 32)). False for a degenerate ellipsoid (the caller makes decals).
+// the owner's frame, ages in game seconds, newest first, at most core::owner_hits): the lattice frame, the cell map,
+// the ring/core hits and the cap bounding every lit cell. Each hit lights its footprint, the cells whose centre lies
+// within rings cells of the hit cell's centre, each once the ring front (v = ripple_speed x (rings + 0.5) cells) has
+// reached it; a cell covered by several hits keeps the newest clock (the smallest non-negative time since lit), so a
+// later hit resets a cell to full and never adds; a cell past the slowest fade is dropped; the map holds the first
+// weapon_patch_cells cells, newest hit first (an older hit's cells are dropped when it is full). Ring/core slots: the
+// region's newest hits younger than the ring's travel (1 / ripple_speed). A lit pixel lies within reach + a cell's
+// circumradius (planar) of a contributing hit's cell centre, and the plane never shrinks distances, so its angle from
+// that hit is below that (plus the hit's offset in its cell, under the circumradius) over S: the cap is the
+// contributing hits' spread about their mean direction plus that, with a margin for acos_approx and the polygonal rim
+// (cos(pi / 32)). False for a degenerate ellipsoid or nothing to draw. O(n x footprint x cells), n <= owner_hits.
 inline bool fill_patch(renderer::WeaponPatch& out, const float centre[3], const float axes[9], float soft, unsigned tier,
                        unsigned anchor, const float (*dirs)[3], const float* ages, unsigned n, const float colour[3],
                        const Tuning& t) noexcept {
-    if (n < 1 || n > core::hit_slots || anchor >= anchor_count) return false;
+    if (n < 1 || n > core::owner_hits || anchor >= anchor_count) return false;
     tier = tier < core::patch_tier_count ? tier : unsigned(core::patch_capital);
     const float surface = mean_axis(axes);
     if (!(surface > 0.f)) return false;
-    float radius = metres_to_view(t.radius_m[tier]);
-    const float cap_r = t.max_radius_share * surface;
-    radius = radius < cap_r ? radius : cap_r;
     const float cell = metres_to_view(t.cell_m[tier]);
-    if (!(radius > 0.f) || !(cell > 0.f)) return false;
+    const int rings = int(tier_rings(t, tier));
+    if (!(cell > 0.f) || !(t.ripple_speed > 0.f) || !(t.fade_s > 0.f)) return false;
     std::memcpy(out.centre, centre, 12);
     std::memcpy(out.axes, axes, 36);
     out.soft = soft;
@@ -197,21 +227,68 @@ inline bool fill_patch(renderer::WeaponPatch& out, const float centre[3], const 
     out.surface = surface;
     out.seed = float(anchor);
     out.cell = cell;
-    out.radius = radius;
-    out.hits = n;
+    out.radius = (float(rings) + 0.5f) * cell;
+    out.reach = float(rings) * cell;
+    out.hits = 0;
+    out.cells = 0;
+    const float v = t.ripple_speed * out.radius, ring_life = 1.f / t.ripple_speed;
+    const float max_since = t.fade_s * (1.f + 0.5f * t.stagger);
     float mean[3] = {0.f, 0.f, 0.f};
+    bool used[core::owner_hits] = {};
     for (unsigned i = 0; i < n; ++i) {
-        stereo(out.anchor, out.anchor_u, out.anchor_v, surface, dirs[i], out.hit[i]);
-        out.age_s[i] = ages[i];
-        for (unsigned k = 0; k < 3; ++k) mean[k] += dirs[i][k];
+        float q[2], g[2], c[2];
+        int key[2];
+        stereo(out.anchor, out.anchor_u, out.anchor_v, surface, dirs[i], q);
+        g[0] = q[0] / cell;
+        g[1] = q[1] / cell;
+        hex_key(g, key, c);
+        if (out.hits < renderer::weapon_patch_hits && ages[i] < ring_life) {
+            const unsigned h = out.hits++;
+            out.hit[h][0] = q[0];
+            out.hit[h][1] = q[1];
+            out.hit_cell[h][0] = c[0] * cell;
+            out.hit_cell[h][1] = c[1] * cell;
+            out.age_s[h] = ages[i];
+            used[i] = true;
+        }
+        for (int dy = -rings; dy <= rings; ++dy)
+            for (int dx = -2 * rings; dx <= 2 * rings; ++dx) {
+                const int ady = dy < 0 ? -dy : dy, adx = dx < 0 ? -dx : dx;
+                if (((dx + dy) & 1) || (ady > (adx + ady) / 2 ? ady : (adx + ady) / 2) > rings) continue; // hex distance
+                const int kx = key[0] + dx, ky = key[1] + dy;
+                if (kx <= -renderer::weapon_cell_key_bias || kx >= renderer::weapon_cell_key_bias ||
+                    ky <= -renderer::weapon_cell_key_bias || ky >= renderer::weapon_cell_key_bias)
+                    continue;
+                const float ox = 0.5f * float(dx), oy = 0.8660254f * float(dy);
+                const float since = ages[i] - cell * scalar::sqrt(ox * ox + oy * oy) / v;
+                if (since < 0.f || since > max_since) continue; // not reached yet, or faded out
+                const float packed = pack_key(kx, ky);
+                unsigned at = 0;
+                while (at < out.cells && out.cell_key[at] != packed) ++at;
+                if (at < out.cells) {
+                    if (since < out.cell_since[at]) out.cell_since[at] = since;
+                    used[i] = true;
+                } else if (out.cells < renderer::weapon_patch_cells) {
+                    out.cell_key[out.cells] = packed;
+                    out.cell_since[out.cells++] = since;
+                    used[i] = true;
+                }
+            }
+        if (used[i])
+            for (unsigned k = 0; k < 3; ++k) mean[k] += dirs[i][k];
     }
+    if (!out.cells && !out.hits) return false;
     if (!normalize3(mean)) std::memcpy(mean, dirs[0], 12);
     float spread = 0.f;
     for (unsigned i = 0; i < n; ++i) {
+        if (!used[i]) continue;
         const float a = acos_approx(dot3(mean, dirs[i]));
         spread = a > spread ? a : spread;
     }
-    const float angle = (spread + radius / surface + 1e-3f) * 1.0049f; // 1 / cos(pi / 32)
+    // The outermost centres plus a cell's circumradius, plus the hit's own offset from its cell's centre (under the
+    // circumradius).
+    const float extent = out.reach + 2.f * 0.5773503f * cell;
+    const float angle = (spread + extent / surface + 1e-3f) * 1.0049f; // 1 / cos(pi / 32)
     out.cap_angle = angle < 3.14159265f ? angle : 3.14159265f;
     std::memcpy(out.cap_dir, mean, 12);
     const float ref[3] = {(mean[2] > 0.9f || mean[2] < -0.9f) ? 1.f : 0.f, 0.f,
@@ -231,8 +308,8 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         OwnerStatus status;
         Owner data;
         unsigned count;
-        std::uint32_t age[core::hit_slots];
-        unsigned index[core::hit_slots];
+        std::uint32_t age[core::owner_hits];
+        unsigned index[core::owner_hits];
     };
     Seen seen[core::max_owners];
     unsigned seen_count = 0;
@@ -259,18 +336,18 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
             continue;
         }
         ++n.hits;
-        // The newest hit_slots by age (insertion; an older hit past the fourth is not drawn).
+        // The newest owner_hits by age (insertion; an older hit past them feeds no cell).
         unsigned at = s->count;
         while (at > 0 && s->age[at - 1] > age) --at;
-        if (at >= core::hit_slots) continue;
-        const unsigned last = s->count < core::hit_slots ? s->count : core::hit_slots - 1;
+        if (at >= core::owner_hits) continue;
+        const unsigned last = s->count < core::owner_hits ? s->count : core::owner_hits - 1;
         for (unsigned k = last; k > at; --k) {
             s->age[k] = s->age[k - 1];
             s->index[k] = s->index[k - 1];
         }
         s->age[at] = age;
         s->index[at] = i;
-        if (s->count < core::hit_slots) ++s->count;
+        if (s->count < core::owner_hits) ++s->count;
     }
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
@@ -280,8 +357,8 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         float colour[3];
         patch_colour(newest, t, colour);
         const unsigned tier = newest.patch_tier < core::patch_tier_count ? unsigned(newest.patch_tier) : unsigned(core::patch_capital);
-        float dirs[core::hit_slots][3], ages[core::hit_slots];
-        unsigned anchors[core::hit_slots];
+        float dirs[core::owner_hits][3], ages[core::owner_hits];
+        unsigned anchors[core::owner_hits];
         for (unsigned h = 0; h < s.count; ++h) {
             hit_direction(ring.slots[s.index[h]].pos, dirs[h]);
             ages[h] = float(s.age[h]) * 1e-3f;
@@ -291,10 +368,10 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         const bool shell = shell_geometry(s.data, cam, centre, axes) && mean_axis(axes) > 0.f;
         if (shell) {
             const float soft = t.soft * mean_axis(axes);
-            bool done[core::hit_slots] = {};
+            bool done[core::owner_hits] = {};
             for (unsigned h = 0; h < s.count; ++h) { // one draw per anchor region, newest region first
                 if (done[h]) continue;
-                float gd[core::hit_slots][3], ga[core::hit_slots];
+                float gd[core::owner_hits][3], ga[core::owner_hits];
                 unsigned g = 0;
                 for (unsigned j = h; j < s.count; ++j)
                     if (!done[j] && anchors[j] == anchors[h]) {
@@ -313,16 +390,17 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
             }
             continue;
         }
-        // No usable ellipsoid: a flat patch per hit at the hit point.
-        for (unsigned h = 0; h < s.count; ++h) {
+        // No usable ellipsoid: a flat patch per hit at the hit point (the newest hit_slots).
+        for (unsigned h = 0; h < s.count && h < core::hit_slots; ++h) {
             if (n.decals >= decal_cap) {
                 ++n.dropped;
                 continue;
             }
             renderer::WeaponDecal& d = decals[n.decals++];
             hit_point(s.data, ring.slots[s.index[h]].pos, cam, d.centre);
-            d.radius = metres_to_view(t.radius_m[tier]);
             d.cell = metres_to_view(t.cell_m[tier]);
+            d.radius = (float(tier_rings(t, tier)) + 0.5f) * d.cell;
+            d.reach = float(tier_rings(t, tier)) * d.cell;
             d.age_s = ages[h];
             d.soft = t.soft * d.radius;
             std::memcpy(d.colour, colour, 12);

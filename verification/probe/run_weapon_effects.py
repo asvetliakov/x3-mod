@@ -118,7 +118,8 @@ def fields(line):
 
 
 def parse(text):
-    tags = ('ATTACH', 'PATCH', 'CORE', 'RING', 'COLOUR', 'RELIGHT', 'ACCUMULATE', 'CAPCHECK', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+    tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CORE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
+            'CAPCHECK', 'GRID', 'NOPOP', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -235,7 +236,8 @@ def main():
                      'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
-    record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'core', 'ring', 'colour', 'relight', 'accumulate', 'capcheck',
+    record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'core', 'ring', 'ringcells', 'fadecell',
+                                                 'colour', 'relight', 'adjacent', 'capcheck', 'grid', 'nopop', 'timing_maps',
                                                  'decal', 'age', 'retired', 'resolve', 'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None

@@ -110,14 +110,30 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         m = r['metrics']
         self.assertEqual(sorted(x['speed_px'] for x in m['resolve']), [0, 4, 8])
         self.assertTrue(all(x['core'] >= 0.95 for x in m['resolve']))
-        # 5.1.1 per tier: the lit area inside the radius (1.5 px of slack), nothing outside, the edges in tier order
+        # 5.1.1 per tier: the footprint's cell count, the lit area bounded by hexagon edges (past the outermost cell
+        # centres, inside their circumradius; 1.5 px of slack), nothing outside, lit on both sides in both axes
         tiers = {x['tier']: x for x in m['patch']}
         self.assertEqual(sorted(tiers), ['capital', 'corvette', 'fighter'])
         for x in tiers.values():
-            self.assertLessEqual(x['lit_px'], x['radius_px'] + 1.5)
+            self.assertEqual(x['cells'], x['expected_cells'])
+            self.assertEqual(x['cells'], 1 + 3 * x['rings'] * (x['rings'] + 1))
+            self.assertLessEqual(x['lit_px'], x['bound_px'] + 1.5)
+            self.assertGreater(x['lit_px'], x['reach_px'])
             self.assertEqual(x['outside_sum'], 0.0)
-        self.assertLess(tiers['fighter']['edges'], tiers['corvette']['edges'])
-        self.assertLess(tiers['corvette']['edges'], tiers['capital']['edges'])
+        for x in m['symmetry']:
+            sides = [x['left'], x['right'], x['up'], x['down']]
+            self.assertGreaterEqual(min(sides), 0.8 * max(sides), x['tier'])
+        # the cell-map model: a second adjacent hit resets only the shared cells, no cell drawn twice, the grid fixed
+        # on a moved owner, no pop at 12 hits per second
+        adj = m['adjacent'][0]
+        self.assertEqual(adj['cells'], 10)
+        self.assertLessEqual(adj['peak_pair'], adj['peak_single'] * 1.002)
+        self.assertAlmostEqual(adj['pair_m1'], adj['first_m1'], delta=2e-3 * max(1.0, adj['first_m1']))
+        self.assertAlmostEqual(adj['pair_0'], adj['second_0'], delta=2e-3 * max(1.0, adj['second_0']))
+        self.assertEqual(m['grid'][0]['identical'], 1)
+        nopop = m['nopop'][0]
+        self.assertLessEqual(nopop['excess'], 0.0)
+        self.assertGreaterEqual(nopop['max_live_hits'], 30)
         core = m['core'][0]
         self.assertGreater(core['at05'] - core['at05_no_core'], 1.0)
         self.assertLess(abs(core['at20'] - core['at20_no_core']), 1e-3)
@@ -132,7 +148,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         cases = {(x['width'], x['case']) for x in m['timing']}
         for width in (1920, 5120):
             for case in ('fence', 'fighter_two_hits_one_region', 'fighter_two_regions',
-                         'capital_close_two_hits_one_region', 'capital_close_two_regions', 'worst_four_regions'):
+                         'capital_close_two_hits_one_region', 'capital_close_two_regions', 'worst_four_regions',
+                         'fighter_12hps_map', 'capital_close_full_map'):
                 self.assertIn((width, case), cases)
 
     def test_bound_to_its_production_sources(self):

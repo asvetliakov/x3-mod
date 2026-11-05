@@ -36,13 +36,13 @@ BEGIN, END = '/* @weapon_effects_data */', '/* @end */'
 HEADER_BEGIN, HEADER_END = '/* @weapon_effects_header */', '/* @end */'
 HEADER = REPO / 'src/proxy/weapon_effects_core.h'
 # The shield-hit patch constants the lab's renderOurs() and its controls default to (every control's default is the
-# header's value, docs/architecture/weapon-effects.md 5.1.1). core_ms/fade_ms are unsigned; cell_m, radius_m and the
-# three colours are arrays (`name[N] = {a, b, c}`).
-HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'radius_m', 'ripple_speed', 'ring_width', 'ring_gain', 'core_ms',
-                'core_cells', 'core_gain', 'fade_ms', 'stagger', 'edge_width', 'fill_ratio', 'cell_gain',
-                'feather_cells', 'colour_high', 'colour_mid', 'colour_low', 'colour_full', 'colour_half',
+# header's value, docs/architecture/weapon-effects.md 5.1.1). core_ms/fade_ms are unsigned; cell_m, rings and the
+# three colours are arrays (`name[N] = {a, b, c}`; rings holds integers).
+HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'rings', 'ripple_speed', 'ring_width', 'ring_gain', 'core_ms',
+                'core_cells', 'core_gain', 'fade_ms', 'stagger', 'edge_width', 'fill_ratio', 'cell_gain', 'colour_high', 'colour_mid', 'colour_low', 'colour_full', 'colour_half',
                 'colour_empty', 'weapon_tint', 'tint_mix', 'tracer_min_elongation', 'slug_min_elongation')
 HEADER_INTS = ('core_ms', 'fade_ms')
+HEADER_INT_ARRAYS = ('rings',)
 NUMBER = r'-?[0-9.]+(?:e-?[0-9]+)?'
 
 
@@ -52,6 +52,8 @@ def header_constants(text):
         array = re.search(r'\b%s\[[^\]]*\] = \{([^}]*)\}' % name, text)
         if array:
             values[name] = [float(v.strip().rstrip('f')) for v in array.group(1).split(',')]
+            if name in HEADER_INT_ARRAYS:
+                values[name] = [int(v) for v in values[name]]
             continue
         m = re.search(r'\b%s = (%s)f?\b' % (name, NUMBER), text)
         if not m:

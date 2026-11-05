@@ -93,7 +93,7 @@ and the death callee installs its own [M, §6]: a handler that never unwinds sat
 | Reads (at stub entry) | Stored |
 | --- | --- |
 | `[esp+4]` victim, `[esp+8]` source; `[esp+0x24]` absorbed; `[esp+0x1c]` the routine's running damage total (clamped to 50,000 for a piloted victim) [M, §6] | role = `shield_hit` when `absorbed == 1 && !(source class 0 && TBullets flag 0x20)`, else `hull_hit` [M, §3]; `damage` = the total |
-| source class `+0x48`, subtype `+0x4a`: class 0 → TBullets[subtype] (flags `+0x58`, light `+0x5c..`, shield/hull damage `+0x44`/`+0x80`, speed `+0x54`, size `+0x68/+0x6c`); bullet ext `[source+0x50]`: owner `+4`, laser `+0x70` [M, §2] | `table = bullets`, `row = subtype`, the classifier inputs copied (so the record is self-contained if the bullet dies this frame); `shooter` = owner object |
+| source class `+0x48`, subtype `+0x4a`: class 0 → TBullets[subtype] (flags `+0x58`, light `+0x5c..`, shield/hull damage `+0x44`/`+0x80`, speed `+0x54`, size `+0x68/+0x6c`); bullet ext `[source+0x50]`: owner `+4`, laser `+0x70` [M, §2] | `table = bullets`, `row = subtype`, the classifier inputs copied (so the record is self-contained if the bullet dies this frame); no `shooter` (the bullet extension's owner `+4` is not read, F9): its four bytes carry the hit object's `shield_q` (u16) and `patch_tier` / `tier_source` (u8 each) of the repacked record |
 | class 10 → TMissiles[subtype] (impact row `+0x68`) [M, §3]; the missile extension layout is untraced | `table = missiles`, `row = subtype`, style `missile_hit` (fixed: medium calibre, warm tint) |
 | any other class on both sides | no record; **forward** (the engine spawns nothing either) |
 | victim: class, subtype, root node `obj+0x70`, node handle `node+0x28`, radius `obj+0xa4`, position `node+0x30`, rotation rows `node+0x40` [M, spawn note §4, engine-effects.md §7] | `owner` = {object, node, handle, serial when `object_lifetime` is active}, `radius` |
@@ -244,7 +244,7 @@ Shared by the DLL, the fixture (compiled in) and the lab (its JSON mirror, injec
 | `calibre` | f32 0..1 | `clamp(log10(d / 300) / 2, 0, 1)` with d = max(shield, hull) damage per shot; for impacts the running total replaces d |
 | `tint` | 3 × f32, linear | light colour when saturated, else the body's texture mean colour from the table, else white (4.2) |
 | `t0_game_ms` | u32 | `cfg+0x718` at the hook; **every age and bound is game time**: `age = now_game − t0`, so SETA shortens ripples, sparks and fireballs exactly as it does the engine's own effects |
-| `lifetime_ms` | u16 | the style's timeline (shield patch `patch_lifetime_ms` = 1741, 5.1.1; sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
+| `lifetime_ms` | u16 | the style's timeline (shield patch `patch_lifetime_ms` = 2941, 5.1.1; sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
 | `owner` | object ptr, root node ptr, node handle u32, serial u64 (0 when `object_lifetime` is inactive) | the victim (impact), the ship (muzzle), the dying object (explosion, t0 only) |
 | `shooter`, `slot` | object ptr, u8 | muzzle and bolts. Step 1 does not carry `shooter` (unread, F9); its four bytes hold `shield_q` (u16, current / maximum shield points × 65535, valid with `shield_read`), `patch_tier` (u8, fighter / corvette / capital) and `tier_source` (u8: ship class id, station, radius); a later step that binds the shooter widens the record |
 | `table`, `row` | u8 (`bullets` / `missiles`), u16 | the live record's identity; the override and the table lookup key |
@@ -409,9 +409,9 @@ bolts, muzzle and explosions stay native.
 2. `tools/effects/weapon_effects_table.py` (the generated table, install / uninstall / regenerate wiring as
    `engine_bodies.json`), `tools/effects/weapon_overrides.json` (empty `by_id`, the three known tables listed).
 3. The stage: a `WeaponEffectsPass` fed by `Event` records (owner rows read at scene end as 3.1 says): per owner its
-   four newest stage-owned hits, one draw per anchor region (the nearest of the twelve icosahedron vertices in the
-   owner's frame, whose stereographic tangent plane carries the lattice), each rasterizing only the spherical cap that
-   bounds its hits' patches (a polar mesh of 8 rings x 32 segments bent onto the ellipsoid by the vertex program: the
+   live stage-owned hits (up to 64) build a cell map per anchor region (the nearest of the owner's six axis directions,
+   whose stereographic tangent plane carries the lattice; 5.1.1), one draw per region, each rasterizing only the
+   spherical cap that bounds its lit cells (a polar mesh of 8 rings x 32 segments bent onto the ellipsoid by the vertex program: the
    CPU-side cull); a flat decal of the same law for an owner without a usable ellipsoid; riding the resolve's step-0
    callback after the plumes callback (the `own_sun_with_plumes_` chaining pattern of `motion_output.cpp:2493–2507`
    [S]). Occlusion by the lane alone (unknown 11 of the dropped note was settled: the depth is unbound before the
@@ -419,7 +419,7 @@ bolts, muzzle and explosions stay native.
 4. The lab: **no new page.** The step fills the `renderOurs(record, t)` stub of the existing
    `generate_weapon_effects_lab.py` / `weapon_effects_lab.html` for the `shield_hit` role (the patch on a preview owner
    per tier beside the vanilla sprite the page already plays, the same law as the HLSL and the same grouping and cap as
-   the stage) and adds the controls of 5.1.1: cell size and patch radius per tier, ripple speed, core and fade
+   the stage) and adds the controls of 5.1.1: cell size and rings per tier, ripple speed, core and fade
    durations, stagger, edge versus fill, the three colour bands (thresholds and colours), the weapon-tint override,
    the SETA rate (the age law under warp), a hit-sequence player at 1, 4 and 12 hits per second (with a shield
    preview and drain per hit); every control's default is the header's value, injected by the generator.
@@ -445,16 +445,20 @@ bolts, muzzle and explosions stay native.
 - D3D fixture on the native host (`python3 verification/probe/wine_lock.py python3
   verification/probe/run_weapon_effects.py --host native`, through `native_host.py`; its record under
   `verification/results/native-windows/weapon-effects/` carries the host identity block), structural checks of the
-  patch: per tier the lit area bounded by the patch radius and zero outside, the edge count across the patch ≈ 2 R /
-  cell and ordered fighter < corvette < capital; the core present at 0.05 s and gone by 0.2 s; the ring front at
-  ripple_speed · R · age at two ages and the cells lit as it passes; the fade monotone and zero at the record's
-  lifetime; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the maximum, not the sum) and four
-  hits accumulate; the CPU cap culls nothing lit; the decal fallback (an owner without an ellipsoid) draws on a hull
-  and 0 over sky; the game-time law at SETA 6 measured (the 1741 ms record ends after 290 ms of wall time); the core
+  patch: per tier the footprint's cell count 1 + 3 rings (rings + 1), the lit area bounded by hexagon edges (past
+  the outermost cell centres, inside their circumradius) and zero outside, lit on both sides of the hit in both axes,
+  2 rings + 2 edge bands across it; the core present at 0.05 s and gone by 0.2 s; the ring moving by whole cells and a
+  cell lit when the front reaches its centre; the fade monotone and zero at the record's lifetime, one cell's fade
+  duration against its hash; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the newest clock,
+  not a sum); an adjacent second hit resets only the shared cells and no cell is drawn twice; the CPU cap culls
+  nothing lit; through the production builder the grid fixed on a moved and rotated owner and 12 hits/s without a pop
+  (no pixel drops by more than one frame's fade step); the decal fallback (an owner without an ellipsoid) draws on a
+  hull and 0 over sky; the game-time law at SETA 6 measured (the last lit cell, 2840 game ms, ends after 473 ms of wall
+  time); the core
   keeps ≥ 0.95 through the production TemporalPass at 0 / 4 / 8 px per frame; a retired owner draws nothing; Reset,
   fault and program-create refusal; the pixel program in the low hundreds of slots. Timing at 1080p and 5120x1440
-  (reported, not gated): two patches on a fighter, two on a capital at close range (one and two anchor regions), and
-  the worst case one owner can submit (four regions, each cap over the frame); the flight target is `stage_us` ≤
+  (reported, not gated): two hits on a fighter, two on a capital at close range (one and two anchor regions), the
+  worst case one owner can submit at once (four regions), a fighter under 12 hits/s and a full 64-cell capital map; the flight target is `stage_us` ≤
   0.2 ms at 5120x1440 in a fighter fight.
 - `generate_weapon_effects_lab.py --check` clean; the lab's law at the hit point equals the D3D record's readbacks
   (`test_weapon_effects_lab`); `classify_preview.py` against the header's thresholds gives the table of 4.4 (a host
@@ -484,34 +488,45 @@ User decision 2026-11-06: the weapon's own native impact effect stays visible on
 in addition (the impact is the weapon's energy arriving, the patch the shield's response); when the shield is down
 only the weapon impact shows, which becomes step 2's hull look.
 
-- **Geometry.** Not the whole-ship Fresnel shell. A **patch on the same ellipsoid** lit only within a radius of the
-  hit point, so the pattern wraps the hull and covers the hit area and a margin around it. The radius and the hex
-  cell size scale with the victim's **tier** (fighters: small dense cells, small radius; M6/TS: medium; capitals and
-  stations: large cells, large radius). Cell size is fixed in world units per tier, never per screen.
-  As built: cell 1.5 / 3 / 8 m, radius 9 / 25 / 80 m (the radius capped at 0.9 of the owner's mean axis); the tier is
-  the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius bands below 30 /
-  150 m [I]. The lattice lives on the owner: twelve anchor regions, each a stereographic tangent plane (conformal, the
-  cell scale grows at most 11 % at a region's edge), so a repeated hit in a region re-lights the same cells and no
-  seam crosses one hit's patch; hits in two regions draw twice with their own lattices.
+- **Geometry.** Not the whole-ship Fresnel shell. A **patch of hexagon cells on the same ellipsoid**: the hit
+  lights the cell containing the hit point and its neighbour rings, so the pattern wraps the hull around the hit. The
+  hex cell size and the ring count scale with the victim's **tier**; cell size is fixed in world units per tier,
+  never per screen. As built: cell 1.5 / 3 / 8 m, rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius
+  control is gone); the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and
+  factories, else radius bands below 30 / 150 m [I].
+- **Cell-map model (user decision 2026-11-06, supersedes the per-hit disc and the four-hit slots).** Per owner a
+  **stable hex grid fixed in the owner's object frame**: six anchor regions centred on the owner's local axes (nose,
+  tail, flanks, top, belly mid-region, the seams on the cube's edges), each a stereographic tangent plane (conformal,
+  the cell scale grows at most 27 % at a cube corner), so the cells stay put as the ship moves and every hit in a
+  region lands on the same cells. Each cell has its **own fade clock**: a hit sets the clocks of its footprint cells
+  to "lit now" as its ring front reaches each centre (a cell already lit is reset to full, never drawn twice); cells
+  the new hit does not cover keep their clocks and fade out. The stage rebuilds each region's cell map from the
+  owner's live hits every frame (a cell's clock is the newest hit that lit it; up to 64 hits per owner and 64 cells
+  per draw, an older hit's cells dropped when a map is full), so it holds no state of its own; one draw per owner and
+  region over the cap bounding its lit cells. The pixel program finds the pixel's cell on the exact ray-ellipsoid
+  point (not the facet-interpolated one, which made border pixels change cells when the cap changed) and reads its
+  clock from the map in pixel constants (16 registers of four packed keys and 16 of clocks, a rolled loop). The patch
+  boundary is therefore made of hexagon edges (cells lit as wholes), not a circle. The ripple ring and the 0.1 s core
+  stay per hit (the region's newest four hits still in their ring); hits in two regions draw twice with their own
+  lattices.
 - **Pattern.** Hexagons, cells lit individually: a small random stagger in brightness and fade rate per cell, edges
   brighter than the fill. One pattern for every race and class in step 1. As built: a sine-free hash of the cell key
   and the region (stagger 0.4: × 0.8 to 1.2), edge band 0.1 cell, fill 0.3 of the edge, edges anti-aliased by
-  `fwidth`.
+  `fwidth`; the ring band uses the same edge-versus-fill pattern.
 - **Timing (game time, SETA-scaled).** No hard flash. A small bright core at the hit point for ~0.1 s, one soft ring
-  expanding from the point over ~0.3 s that lights the cells as it passes, then the cells fade over 1.0-1.5 s.
-  Repeated hits re-light cells already lit (accumulation under sustained fire); the 4-hit slots of 3.3 stay. As built:
-  core 100 ms, ring 3.333 patch radii per second (the rim at 0.30 s), fade 1200 ms × (1 ± 0.2) per cell (0.96 to
-  1.44 s), the record's lifetime 1741 ms; cells combine as the maximum over the owner's four newest hits.
+  expanding from the hit cell over ~0.3 s that lights the cells as it reaches their centres (the ring itself moves
+  by whole cells), then each cell fades on its own clock. Repeated hits re-light cells already lit (sustained fire
+  keeps a fed area lit; cells outside it fade). As built: core 100 ms, ring 3.333 footprint radii ((rings + 0.5)
+  cells) per second, fade 2200 ms × (1 ± 0.2) per cell (1.76 to 2.64 s, user decision 2026-11-06: the 1.2 s fade
+  looked too fast), the record's lifetime 2941 ms (the last fighter cell goes dark at 2840 ms).
 - **Colour.** Weapon tint **off by default** (kept as an override, `weapon_tint`). The patch colour follows the
   victim's **shield percentage**, interpolated smoothly: light blue at >= 75 %, through light yellow near 50 %, to light
   red below 35 %. The hook reads the current and maximum shield (spawn note §9, 2.2: capacity-weighted like the HUD
   bar, post-hit); a refused read colours light blue.
 - **Cost.** A patch is a fraction of the full shell (which measured 201.8 us for two shells at 5120x1440 with the
-  winding cull, the ledger). Measured natively: two patches on a fighter 26.9 to 33.0 us fenced at 5120x1440 (the
-  empty fence 11.1 us), so the 0.2 ms target of a fighter fight is met with margin [M]. A capital at close range is a
-  full-frame patch per draw: 129.5 us for one region, 196.1 us for two, 374.2 us for the worst case of one owner
-  (four regions) [M, ledger].
-- **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, patch radius per tier, ripple speed,
+  winding cull, the ledger). The cell-map program is 317 ps_3_0 slots (the map loop rolled); the per-frame figures
+  are in the ledger (cell-map row of 2026-11-06) [M].
+- **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, ripple speed,
   core and fade durations, stagger, edge-versus-fill, the three colour bands, the SETA rate, the hit-sequence player.
 - **Later options, not now:** patterns per race or class; weapon tint.
 

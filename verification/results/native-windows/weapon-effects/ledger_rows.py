@@ -21,7 +21,8 @@ print('d3d', d3d['passed'], d3d['run']['result'], 'commit', d3d['source']['commi
       d3d['host']['adapter']['description'], d3d['host']['adapter']['driver_version'], 'windows',
       d3d['host']['windows']['version'])
 m = d3d['metrics']
-for k in ('attach', 'patch', 'core', 'ring', 'fade', 'colour', 'relight', 'accumulate', 'capcheck', 'decal', 'age',
+for k in ('attach', 'patch', 'symmetry', 'core', 'ring', 'ringcells', 'fade', 'fadecell', 'colour', 'relight', 'adjacent',
+          'capcheck', 'grid', 'nopop', 'timing_maps', 'decal', 'age',
           'retired', 'resolve', 'refused'):
     print(k, m[k])
 print('timing_us (best of 60, fenced):')
