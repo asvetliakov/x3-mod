@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_shell_ps.hlsl",
-  "source_sha256": "7ebf02f5ea1fd6d6b048eb5e090e290c0db10a92bf073548d2fc4a4cadf51d81",
+  "source_sha256": "30128741db79d001a4a755859ca1bed723225e84736f4e5ebda03ee8a5b6ad08",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -11,11 +11,11 @@
   "defines": null,
   "includes": {
     "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-    "src/effects/weapon_hex_patch.hlsl": "b917b29a2722a5e84df3c132fdbc9e5e6ec32302a640dc7a053cba447bbe922a"
+    "src/effects/weapon_hex_patch.hlsl": "57ca4815a481132b1f5391797dc96bf33c39a904415e5794c9e4f34c3ee64bb5"
   },
-  "word_count": 1428,
-  "bytecode_sha256": "9afa518d3b4329c5c2bb0fd1f125e0c8d6823e7069d2c3f4af027ead9b07d576",
-  "header_sha256": "5afef021e80f643d97df1d347bc48d3cb02e075571f43f55ef5d921c4956b311",
+  "word_count": 1566,
+  "bytecode_sha256": "f15db24d2271bf06440dd05b6c1d858a13fa64166da3d11c88ceb59525104a9c",
+  "header_sha256": "3ba2c755b66b34ab3c342468835ae13df2161bf92b8904868a7eaf2af8c214c4",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

@@ -47,9 +47,13 @@ core::HookState& hook_state(); // the game thread's state (ring, latch, counters
 // Present, once per frame on the thread that runs the hooks: the next frame's latch (shields mode: owned), the
 // weapon_event rows (the first 64 events of the run and every event of a capture frame), the forwarded records
 // leaving the ring once logged, expired records (game time) leaving it, weapon_pos_check (observe) and
-// weapon_effects_frame every 300 frames with the stage's period figures.
+// weapon_effects_frame every 300 frames with the stage's period figures (patches, decals, retired, stage_us, and the
+// drops: dropped, cells_dropped, hits_dropped, with spills).
 struct StageFrame {
     unsigned patches = 0, decals = 0, retired = 0;
+    // stage::Counts' drops: regions or decals the budget refused, lit cells no draw carried (the oldest clocks), live
+    // hits past an owner's owner_hits newest; and the regions' spill draws.
+    unsigned dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     float stage_us = 0.f;
     bool drew = false;
 };

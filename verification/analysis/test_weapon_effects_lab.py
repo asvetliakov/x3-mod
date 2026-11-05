@@ -345,11 +345,34 @@ class PageTest(unittest.TestCase):
         # docs/architecture/weapon-effects.md 5.1.1's lab controls: cell size and rings per tier, ripple speed, core
         # and fade durations, stagger, edge versus fill, the three colour bands, the SETA rate, the hit player.
         for cid in ('c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_rings_fighter', 'c_rings_corvette',
-                    'c_rings_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
+                    'c_rings_capital', 'c_ripple_speed', 'c_centre_gain', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
                     'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
                     'c_weapon_tint', 'c_seta', 'c_hits'):
             self.assertIn(f'id="{cid}"', self.html)
-        self.assertRegex(self.html, r'<select id="c_hits">.*value="1".*value="4".*value="12"')
+        self.assertRegex(self.html, r'<select id="c_hits"[^>]*>.*value="1".*value="4".*value="12"')
+        self.assertNotIn('c_core_ms', self.html)                        # the core flash is gone (2026-11-06)
+        self.assertRegex(self.html, r'<select id="c_seta"><option selected>1</option>.*<option>6</option>')
+        # the caption names what the impact slot draws; "later step" only for the slots that draw nothing
+        self.assertIn("s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch", self.html)
+
+    def test_stage_capacities_come_from_the_headers(self):
+        """CELL_KEY_BIAS, PATCH_CELLS, PATCH_HITS, OWNER_HITS and REGION_DRAWS are injected into the HEADER block from
+        the C++ headers (review F11), never literals in the page."""
+        pass_h = (ROOT / 'src/renderer/weapon_effects_pass.h').read_text()
+        core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
+        stage_h = (ROOT / 'src/proxy/weapon_effects_stage.h').read_text()
+        want = {'cell_key_bias': re.search(r'weapon_cell_key_bias = (\d+)', pass_h),
+                'patch_cells': re.search(r'weapon_patch_cells = (\d+)', pass_h),
+                'patch_hits': re.search(r'weapon_patch_hits = (\d+)', pass_h),
+                'owner_hits': re.search(r'\bowner_hits = (\d+)', core_h),
+                'region_draws': re.search(r'\bregion_draws = (\d+)', stage_h)}
+        for name, m in want.items():
+            self.assertIsNotNone(m, name)
+            self.assertIn('  %s: %s' % (name, m.group(1)), self.html, name)
+        self.assertEqual(int(want['patch_cells'].group(1)), 128)
+        self.assertIn('const CELL_KEY_BIAS = HEADER.cell_key_bias, PATCH_CELLS = HEADER.patch_cells, '
+                      'PATCH_HITS = HEADER.patch_hits;', self.html)
+        self.assertIn('const OWNER_HITS = HEADER.owner_hits, REGION_DRAWS = HEADER.region_draws;', self.html)
         self.assertNotRegex(self.html, r'<script[^>]+type="module"|fetch\(|https?://')
         for slot in ('muzzle', 'projectile', 'impact', 'death'):
             self.assertIn(f"key: '{slot}'", self.html)
@@ -392,7 +415,7 @@ const W = 480, H = 270; function fmt(v) { return v; } function assets() { return
 function drawBackground() {} function label() {}
 const vals = {c_cell_fighter: HEADER.cell_m[0], c_cell_corvette: HEADER.cell_m[1], c_cell_capital: HEADER.cell_m[2],
   c_rings_fighter: HEADER.rings[0], c_rings_corvette: HEADER.rings[1], c_rings_capital: HEADER.rings[2],
-  c_ripple_speed: HEADER.ripple_speed, c_core_ms: HEADER.core_ms, c_fade_ms: HEADER.fade_ms, c_stagger: HEADER.stagger,
+  c_ripple_speed: HEADER.ripple_speed, c_centre_gain: HEADER.centre_gain, c_fade_ms: HEADER.fade_ms, c_stagger: HEADER.stagger,
   c_fill_ratio: HEADER.fill_ratio, c_colour_high: HEADER.colour_high, c_colour_mid: HEADER.colour_mid,
   c_colour_low: HEADER.colour_low, c_colour_full: '#a0c0ff', c_colour_half: '#ffff80', c_colour_empty: '#ff8080',
   c_weapon_tint: 0, c_seta: 1, c_hits: 0, c_tier: 0, c_shield: 100, c_drain: 0, c_frame: 'patch'};
@@ -446,7 +469,7 @@ for (let f = 0; f <= 240; f++) {
   const t = f * 1000 / 60, hits = hitSequence(t, c, S, cell), draws = patchDraws(hits, S, c);
   maxLive = Math.max(maxLive, hits.length);
   const cur = new Map();
-  for (const d of draws) for (const [k, v] of d.cells) cur.set(d.seed * 1e8 + k, v);
+  for (const d of draws) for (const [k, v] of d.cells) cur.set(d.seed * 1e8 + k, v.since);
   maxCells = Math.max(maxCells, ...draws.map(d => d.cells.size), 0);
   for (const [k, v] of prev) {
     const now = cur.has(k) ? cur.get(k) : Infinity, fadeMin = c.fade_s * (1 - 0.5 * c.stagger);
@@ -454,38 +477,47 @@ for (let f = 0; f <= 240; f++) {
   }
   prev = cur;
 }
-console.log(JSON.stringify({worst, maxCells, maxLive}));
+// hits per game second: SETA x6 at a sixth of the wall time holds the same live hits at the same game ages
+const at1 = hitSequence(2010, c, S, cell); // between two hits (no rounding at a boundary)
+vals.c_seta = 6;
+const at6 = hitSequence(2010 / 6, ourControls(), S, cell);
+console.log(JSON.stringify({worst, maxCells, maxLive, n1: at1.length, n6: at6.length,
+                            ageGap: Math.max(...at1.map((h, i) => Math.abs(h.age - (at6[i] ? at6[i].age : 1e9))))}));
 '''
         js = self.run_node(probe)
         self.assertLessEqual(js['worst'], 1e-6)
-        self.assertLessEqual(js['maxCells'], 64)
+        self.assertLessEqual(js['maxCells'], 128)
         self.assertGreaterEqual(js['maxLive'], 30)
+        self.assertEqual(js['n1'], js['n6'])
+        self.assertLess(js['ageGap'], 1e-9)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_patch_law_matches_the_gpu(self):
-        """The lab's hexLaw at the hit point against the native D3D fixture's readbacks of the same cases (the fighter
-        patch, the hit on a cell centre, seed 0, its cell map from fillCells): the core at 0.05 s with and without the
-        core term, 0.2 s, and the cells-only hit cell at 0.7 s and 0.3 s. Tolerance: the FP16 target's step (2^-10
-        relative)."""
+        """The lab's hexLaw against the native D3D fixture's readbacks of the same cases (the fighter patch, the hit on
+        a cell centre, seed 0, its cell map from fillCells): the hit point at 0.05 s with and without the ring (no core
+        term), the cells-only hit cell (the marker level) and the next cell (the ring level) at 0.5 s, and the
+        cells-only hit cell at 0.7 s and 0.3 s. Tolerance: the FP16 target's step (2^-10 relative)."""
         record = json.loads((ROOT / 'verification/results/native-windows/weapon-effects/summary.json').read_text())
-        core, relight = record['metrics']['core'][0], record['metrics']['relight'][0]
+        centre, relight = record['metrics']['centre'][0], record['metrics']['relight'][0]
         script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
         header = script[script.index(gen.HEADER_BEGIN):script.index(gen.END, script.index(gen.HEADER_BEGIN))]
         ours = script[script.index('// ---------------------------------------------------------------- our renderer'):
                       script.index('// ---------------------------------------------------------------- helpers')]
         probe = header + ours + r'''
 const c = {stagger: HEADER.stagger, fill_ratio: HEADER.fill_ratio, fade_s: HEADER.fade_ms / 1000,
-           core_s: HEADER.core_ms / 1000, ripple_speed: HEADER.ripple_speed};
-const at = (age, over) => {
+           centre_gain: HEADER.centre_gain, ripple_speed: HEADER.ripple_speed};
+const at = (age, over, x) => {
   const saved = Object.assign({}, HEADER);
   Object.assign(HEADER, over || {});
   const d = Object.assign({cell: 7.5, seed: 0}, fillCells([{q: [0, 0], age}], 7.5, HEADER.rings[0], c));
-  const v = hexLaw([0, 0], hexCell(0, 0), 1e-3, d, c);
+  const q = [x || 0, 0];
+  const v = hexLaw(q, hexCell(q[0] / 7.5, 0), 1e-3, d, c);
   Object.assign(HEADER, saved);
   return v;
 };
-console.log(JSON.stringify({at05: at(0.05), at05_no_core: at(0.05, {core_gain: 0}), at20: at(0.2),
-                            old: at(0.7, {core_gain: 0, ring_gain: 0}), new: at(0.3, {core_gain: 0, ring_gain: 0})}));
+const cells = {ring_gain: 0};
+console.log(JSON.stringify({at05: at(0.05), at05_cells: at(0.05, cells), hit_cell: at(0.5, cells),
+                            ring_cell: at(0.5, cells, 7.5), old: at(0.7, cells), new: at(0.3, cells)}));
 '''
         with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
             f.write(probe.replace('const HEADER', 'var HEADER'))
@@ -495,8 +527,8 @@ console.log(JSON.stringify({at05: at(0.05), at05_no_core: at(0.05, {core_gain: 0
             js = json.loads(r.stdout)
         finally:
             Path(f.name).unlink()
-        gpu = {'at05': core['at05'], 'at05_no_core': core['at05_no_core'], 'at20': core['at20'],
-               'old': relight['old'], 'new': relight['new']}
+        gpu = {'at05': centre['at05'], 'at05_cells': centre['at05_cells'], 'hit_cell': centre['hit_cell'],
+               'ring_cell': centre['ring_cell'], 'old': relight['old'], 'new': relight['new']}
         for key, value in gpu.items():
             self.assertAlmostEqual(js[key], value, delta=max(2e-3, 2 ** -10 * value), msg=key)
 

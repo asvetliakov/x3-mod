@@ -28,9 +28,11 @@ struct WeaponEffectsCaps {
     HRESULT fp16_blending = S_FALSE;
 };
 // One patch draw: an owner's ellipsoid (view space), the cap to rasterize, the lattice of one anchor region, its cell
-// map (the lit cells with their own clocks) and the region's newest hits still in their ring (ring and core).
+// map (the lit cells with their own clocks) and the region's newest hits still in their ring (the ring).
 // Unit-sphere vectors are in the owner's frame (the ellipsoid's local coordinates).
-constexpr unsigned weapon_patch_hits = 4, weapon_patch_cells = 64;
+// The cell map: 128 cells, 32 pixel registers of four packed keys and 32 of their clocks (weapon_hex_patch.hlsl;
+// the patch program uses c2..c91 of ps_3_0's 224, weapon_effects_pass.cpp hex_block).
+constexpr unsigned weapon_patch_hits = 4, weapon_patch_cells = 128;
 constexpr int weapon_cell_key_bias = 2048; // a cell key (kx, ky) packs as (kx + bias) * 4096 + (ky + bias), |k| < bias
 struct WeaponPatch {
     float centre[3]{};    // view space
@@ -45,13 +47,16 @@ struct WeaponPatch {
     float cell = 1.f;     // hex cell, centre to centre (view units)
     float radius = 1.f;   // the footprint radius (rings + 0.5) cells (view units, planar): ring speed and width
     float reach = 1.f;    // a hit's footprint: cell centres within this planar distance of the hit cell's centre
-    unsigned hits = 0;    // 0..4 ring/core hits, newest first
-    float hit[weapon_patch_hits][2]{};      // hit points in the lattice plane (view units): the core
+    unsigned hits = 0;    // 0..4 ring hits, newest first
+    float hit[weapon_patch_hits][2]{};      // hit points in the lattice plane (view units)
     float hit_cell[weapon_patch_hits][2]{}; // the hit cells' centres (view units): the ring
     float age_s[weapon_patch_hits]{};       // game seconds
-    unsigned cells = 0;   // 0..64 lit cells (unique keys)
+    unsigned cells = 0;   // 0..weapon_patch_cells lit cells (unique keys; a region's spill draws carry disjoint cells)
     float cell_key[weapon_patch_cells]{};   // packed keys (weapon_cell_key_bias)
     float cell_since[weapon_patch_cells]{}; // game seconds since the cell was lit (>= 0)
+    std::uint8_t cell_centre[weapon_patch_cells]{}; // 1: lit as its hit's centre cell (the marker level)
+    unsigned seams = 0;   // bit k: the owner's anchor region k draws a cap overlapping this one (the light is shared
+                          // across the seam, weapon_shell_ps.hlsl); 0: no seam
 };
 // A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
 // with the same hex law, the hit at its centre (the one hit's cells are evaluated in the program).
@@ -67,7 +72,7 @@ struct WeaponDecal {
 // The frame's look (weapon_effects_core.h's patch constants by default; the fixture overrides gains to isolate a term).
 struct WeaponLook {
     float ripple_speed, ring_width, ring_gain;  // footprint radii per game second, footprint radii, radiance
-    float core_s, core_cells, core_gain;        // game seconds, cells, radiance
+    float centre_gain, centre_fill;             // the hit cell's radiance over a ring cell's, its fill / edge
     float fade_s, stagger;                      // a lit cell's mean fade (game seconds), per-cell spread
     float edge_width, fill_ratio, cell_gain;    // cells (< 0.5), fill / edge, edge radiance
 };

@@ -419,9 +419,9 @@ bolts, muzzle and explosions stay native.
 4. The lab: **no new page.** The step fills the `renderOurs(record, t)` stub of the existing
    `generate_weapon_effects_lab.py` / `weapon_effects_lab.html` for the `shield_hit` role (the patch on a preview owner
    per tier beside the vanilla sprite the page already plays, the same law as the HLSL and the same grouping and cap as
-   the stage) and adds the controls of 5.1.1: cell size and rings per tier, ripple speed, core and fade
-   durations, stagger, edge versus fill, the three colour bands (thresholds and colours), the weapon-tint override,
-   the SETA rate (the age law under warp), a hit-sequence player at 1, 4 and 12 hits per second (with a shield
+   the stage) and adds the controls of 5.1.1: cell size and rings per tier, ripple speed, centre gain (the marker,
+   replacing the core duration on 2026-11-06) and fade duration, stagger, edge versus fill, the three colour bands (thresholds and colours), the weapon-tint override,
+   the SETA rate (the age law under warp), a hit-sequence player at 1, 4 and 12 hits per game second (with a shield
    preview and drain per hit); every control's default is the header's value, injected by the generator.
 5. Rows: `weapon_effects_patch site= va= state= write=` at install; `weapon_event role= table= row= style= tier=
    calibre= absorbed= damage= forwarded= stage= nested= t0= … shield= shield_read= patch_tier= tier_source=` on
@@ -447,14 +447,16 @@ bolts, muzzle and explosions stay native.
   `verification/results/native-windows/weapon-effects/` carries the host identity block), structural checks of the
   patch: per tier the footprint's cell count 1 + 3 rings (rings + 1), the lit area bounded by hexagon edges (past
   the outermost cell centres, inside their circumradius) and zero outside, lit on both sides of the hit in both axes,
-  2 rings + 2 edge bands across it; the core present at 0.05 s and gone by 0.2 s; the ring moving by whole cells and a
+  2 rings + 2 edge bands across it; the hit's centre cell over a ring cell by the marker law; the ring moving by whole cells and a
   cell lit when the front reaches its centre; the fade monotone and zero at the record's lifetime, one cell's fade
   duration against its hash; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the newest clock,
   not a sum); an adjacent second hit resets only the shared cells and no cell is drawn twice; the CPU cap culls
   nothing lit; through the production builder the grid fixed on a moved and rotated owner and 12 hits/s without a pop
-  (no pixel drops by more than one frame's fade step); the decal fallback (an owner without an ellipsoid) draws on a
+  (no pixel drops by more than one frame's fade step) on a fighter and spread over a capital's face (the region's
+  cells overflow one map and spill into further draws; the one-draw eviction witness is recorded), two hits across a
+  region seam never brighter than one, the stage's CPU cost; the decal fallback (an owner without an ellipsoid) draws on a
   hull and 0 over sky; the game-time law at SETA 6 measured (the last lit cell, 2840 game ms, ends after 473 ms of wall
-  time); the core
+  time); the marker cell
   keeps ≥ 0.95 through the production TemporalPass at 0 / 4 / 8 px per frame; a retired owner draws nothing; Reset,
   fault and program-create refusal; the pixel program in the low hundreds of slots. Timing at 1080p and 5120x1440
   (reported, not gated): two hits on a fighter, two on a capital at close range (one and two anchor regions), the
@@ -472,8 +474,10 @@ visible native shield sprite, `absorbed` and `shield=` consistent with the HUD s
 `tier_source` against the ships hit, the hooks' cost in `weapon_effects_frame` (target ≤ 30 µs per frame at 50 events
 [I]), and `weapon_death` rows with class id, col 47 and radius for the tier table. Flight B (`shields`): what the user
 must see — on every shielded hit the native impact sprite **and** the hex patch over it (the one intentional double
-draw, 2.6), the patch wrapping the hull at the hit point with cells sized by the target's class, a short core and one
-ring from the hit point, the cells fading in about 1.5 s of game time (faster under SETA, never slower), its colour
+draw, 2.6), the patch wrapping the hull at the hit point with cells sized by the target's class, the hit's own cell
+brighter as the marker and one
+ring from the hit point, each cell fading over 1.76 to 2.64 s of game time (2.2 s × (1 ± 0.2) per cell, 5.1.1;
+SETA shortens it in wall time exactly as the engine's own effects), its colour
 walking blue → yellow → red as the target's shield bar drops, no patch on a hull hit (still native), no patch
 lingering after a kill or dock, and the frame time unchanged within noise (`stage_us` ≤ 0.2 ms at 5120x1440 in a
 fighter fight). The user reports with F8 captures at a hit and after a kill.
@@ -501,22 +505,32 @@ only the weapon impact shows, which becomes step 2's hull look.
   region lands on the same cells. Each cell has its **own fade clock**: a hit sets the clocks of its footprint cells
   to "lit now" as its ring front reaches each centre (a cell already lit is reset to full, never drawn twice); cells
   the new hit does not cover keep their clocks and fade out. The stage rebuilds each region's cell map from the
-  owner's live hits every frame (a cell's clock is the newest hit that lit it; up to 64 hits per owner and 64 cells
-  per draw, an older hit's cells dropped when a map is full), so it holds no state of its own; one draw per owner and
-  region over the cap bounding its lit cells. The pixel program finds the pixel's cell on the exact ray-ellipsoid
-  point (not the facet-interpolated one, which made border pixels change cells when the cap changed) and reads its
-  clock from the map in pixel constants (16 registers of four packed keys and 16 of clocks, a rolled loop). The patch
-  boundary is therefore made of hexagon edges (cells lit as wholes), not a circle. The ripple ring and the 0.1 s core
-  stay per hit (the region's newest four hits still in their ring); hits in two regions draw twice with their own
-  lattices.
+  owner's live hits every frame (a cell's clock is the newest hit that lit it; up to 64 hits per owner, the rest
+  counted as `hits_dropped`), so it holds no state of its own; one draw per owner and region over the cap bounding its
+  lit cells, 128 cells per map; a region with more lit cells spills into further draws (`region_draws` = 8 per region,
+  from the frame's 32 after every region's first, each map a compact Morton chunk with its own cap; review F1/F2
+  2026-11-06), and past them the cells with the oldest clocks, the dimmest, are dropped and counted
+  (`cells_dropped`). The pixel program finds the pixel's cell on the exact ray-ellipsoid point (not the
+  facet-interpolated one, which made border pixels change cells when the cap changed) and reads its clock from the map
+  in pixel constants c28..c59 (32 registers of four packed keys) and c60..c91 (their clocks), unrolled in eight groups
+  of four registers behind a uniform branch: this d3dx compiles a rolled loop's `keys[k]` into a compare per register
+  (64 per iteration, no `aL` addressing), so the old rolled loop cost grew with the map's size twice over. The patch
+  boundary is therefore made of hexagon edges (cells lit as wholes), not a circle. The ripple ring stays per hit (the
+  region's newest four hits still in their ring). Hits either side of a region seam draw on two lattices; where two of
+  an owner's region draws have overlapping caps the pixel program shares the light across the seam over one cell
+  (each keeps saturate((s_own - s_other) S / (sqrt 2 cell) + 1/2), the shares summing to one; up to 3/2 within a cell
+  of a cube corner where three regions meet), so the two lattices never add up (review F3; 9 slots).
 - **Pattern.** Hexagons, cells lit individually: a small random stagger in brightness and fade rate per cell, edges
   brighter than the fill. One pattern for every race and class in step 1. As built: a sine-free hash of the cell key
   and the region (stagger 0.4: × 0.8 to 1.2), edge band 0.1 cell, fill 0.3 of the edge, edges anti-aliased by
   `fwidth`; the ring band uses the same edge-versus-fill pattern.
-- **Timing (game time, SETA-scaled).** No hard flash. A small bright core at the hit point for ~0.1 s, one soft ring
+- **Timing (game time, SETA-scaled).** No hard flash. The hit's own cell is the marker (user decision 2026-11-06,
+  replacing the 0.1 s per-pixel core flash): it lights at `centre_gain` 2 × a ring cell's edge and fill with its fill
+  at `centre_fill` 0.6 of the edge (ring cells 0.3), in the shield colour, and fades on the same per-cell law; a cell
+  hit again returns to the full level the newest hit gives it, centre or ring. One soft ring
   expanding from the hit cell over ~0.3 s that lights the cells as it reaches their centres (the ring itself moves
   by whole cells), then each cell fades on its own clock. Repeated hits re-light cells already lit (sustained fire
-  keeps a fed area lit; cells outside it fade). As built: core 100 ms, ring 3.333 footprint radii ((rings + 0.5)
+  keeps a fed area lit; cells outside it fade). As built: ring 3.333 footprint radii ((rings + 0.5)
   cells) per second, fade 2200 ms × (1 ± 0.2) per cell (1.76 to 2.64 s, user decision 2026-11-06: the 1.2 s fade
   looked too fast), the record's lifetime 2941 ms (the last fighter cell goes dark at 2840 ms).
 - **Colour.** Weapon tint **off by default** (kept as an override, `weapon_tint`). The patch colour follows the
@@ -524,10 +538,11 @@ only the weapon impact shows, which becomes step 2's hull look.
   red below 35 %. The hook reads the current and maximum shield (spawn note §9, 2.2: capacity-weighted like the HUD
   bar, post-hit); a refused read colours light blue.
 - **Cost.** A patch is a fraction of the full shell (which measured 201.8 us for two shells at 5120x1440 with the
-  winding cull, the ledger). The cell-map program is 317 ps_3_0 slots (the map loop rolled); the per-frame figures
-  are in the ledger (cell-map row of 2026-11-06) [M].
+  winding cull, the ledger). The cell-map program is 360 ps_3_0 slots (the map unrolled in groups, the seam share,
+  no core); the per-frame figures and the stage's CPU cost are in the ledger (rows of 2026-11-06) [M].
 - **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, ripple speed,
-  core and fade durations, stagger, edge-versus-fill, the three colour bands, the SETA rate, the hit-sequence player.
+  centre gain and fade duration, stagger, edge-versus-fill, the three colour bands, the SETA rate (default 1), the
+  hit-sequence player in hits per game second (so SETA 6 is as dense as the game).
 - **Later options, not now:** patterns per race or class; weapon tint.
 
 ### 5.2 Step 2: hull hit

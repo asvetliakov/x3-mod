@@ -11,9 +11,10 @@ Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponE
 (src/renderer/weapon_effects_pass.cpp; refusing stale embedded programs: each weapon-{shell,decal}-*-program.json must
 match its source and header), runs it once and writes the record: the build, the checkout's commit and the production
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
-radius and edge count per tier, core at 0.05 / 0.2 s, ring front at two ages, the fade, the colour bands, re-light
-and four-hit accumulation, the CPU cap, the decal fallback, the core through the production TemporalPass at 0 / 4 / 8
-px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
+radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
+fade, the colour bands, re-light and four-hit accumulation, the CPU cap, the no-pop runs (fighter, spread capital and
+the one-draw eviction witness, each with its worst pixel), the seam pair, the stage's CPU cost, the decal fallback,
+the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
 fighter, two on a capital at close range, the worst case of one owner). Never launches the game.
 
@@ -118,8 +119,8 @@ def fields(line):
 
 
 def parse(text):
-    tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CORE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'CAPCHECK', 'GRID', 'NOPOP', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+    tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
+            'CAPCHECK', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -236,9 +237,10 @@ def main():
                      'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
-    record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'core', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'capcheck', 'grid', 'nopop', 'timing_maps',
-                                                 'decal', 'age', 'retired', 'resolve', 'refused', 'timing')}
+    record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
+                                                 'colour', 'relight', 'adjacent', 'capcheck', 'grid', 'nopop', 'seam',
+                                                 'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
+                                                 'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

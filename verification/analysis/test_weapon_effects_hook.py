@@ -120,8 +120,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertLessEqual(x['lit_px'], x['bound_px'] + 1.5)
             self.assertGreater(x['lit_px'], x['reach_px'])
             self.assertEqual(x['outside_sum'], 0.0)
+        self.assertEqual(sorted(x['tier'] for x in m['symmetry']), ['capital', 'corvette', 'fighter'])
         for x in m['symmetry']:
             sides = [x['left'], x['right'], x['up'], x['down']]
+            self.assertGreater(min(sides), 0, x['tier'])
             self.assertGreaterEqual(min(sides), 0.8 * max(sides), x['tier'])
         # the cell-map model: a second adjacent hit resets only the shared cells, no cell drawn twice, the grid fixed
         # on a moved owner, no pop at 12 hits per second
@@ -131,12 +133,25 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertAlmostEqual(adj['pair_m1'], adj['first_m1'], delta=2e-3 * max(1.0, adj['first_m1']))
         self.assertAlmostEqual(adj['pair_0'], adj['second_0'], delta=2e-3 * max(1.0, adj['second_0']))
         self.assertEqual(m['grid'][0]['identical'], 1)
-        nopop = m['nopop'][0]
-        self.assertLessEqual(nopop['excess'], 0.0)
-        self.assertGreaterEqual(nopop['max_live_hits'], 30)
-        core = m['core'][0]
-        self.assertGreater(core['at05'] - core['at05_no_core'], 1.0)
-        self.assertLess(abs(core['at20'] - core['at20_no_core']), 1e-3)
+        nopop = {x['case']: x for x in m['nopop']}
+        for case in ('fighter_12hps', 'capital_spread_12hps'):
+            self.assertLessEqual(nopop[case]['excess'], 0.0, case)
+            self.assertEqual(nopop[case]['popped_pixels'], 0, case)
+            self.assertGreaterEqual(nopop[case]['max_live_hits'], 30, case)
+            self.assertEqual(nopop[case]['cells_dropped'], 0, case)
+        cap = nopop['capital_spread_12hps']
+        self.assertGreater(cap['max_region_cells'], 128)                          # the map overflowed: spill draws
+        self.assertGreater(cap['spills'], 0)
+        witness = nopop['capital_spread_one_draw_witness']                         # one draw per region: evictions
+        self.assertGreater(witness['cells_dropped'], 0)
+        self.assertIn('popped_pixels', witness)
+        centre = m['centre'][0]                                                    # the marker cell, no core flash
+        self.assertGreater(centre['ratio'], 1.5)
+        self.assertAlmostEqual(centre['ratio'], centre['expected'], delta=0.02 * centre['expected'])
+        seam = m['seam'][0]
+        self.assertEqual(seam['pair_draws'], 2)
+        self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
+        self.assertEqual(sorted(x['case'] for x in m['stage_cpu']), ['one_capital_64_hits', 'sixteen_capitals_16_hits'])
         fade = m['fade']
         self.assertEqual(fade['t%d' % fade['lifetime_ms']], 0.0)                 # nothing left at the record's lifetime
         age = m['age'][0]
@@ -149,8 +164,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for width in (1920, 5120):
             for case in ('fence', 'fighter_two_hits_one_region', 'fighter_two_regions',
                          'capital_close_two_hits_one_region', 'capital_close_two_regions', 'worst_four_regions',
-                         'fighter_12hps_map', 'capital_close_full_map'):
+                         'fighter_12hps_map', 'capital_close_full_map', 'capital_fill_full_map', 'capital_spread_spill'):
                 self.assertIn((width, case), cases)
+        fill = [x for x in m['timing'] if x['case'] == 'capital_fill_full_map']
+        self.assertTrue(all(x['raster_share'] >= 0.95 for x in fill))             # its cap really fills the frame
 
     def test_bound_to_its_production_sources(self):
         import run_weapon_effects as runner

@@ -21,12 +21,13 @@ print('d3d', d3d['passed'], d3d['run']['result'], 'commit', d3d['source']['commi
       d3d['host']['adapter']['description'], d3d['host']['adapter']['driver_version'], 'windows',
       d3d['host']['windows']['version'])
 m = d3d['metrics']
-for k in ('attach', 'patch', 'symmetry', 'core', 'ring', 'ringcells', 'fade', 'fadecell', 'colour', 'relight', 'adjacent',
-          'capcheck', 'grid', 'nopop', 'timing_maps', 'decal', 'age',
+for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fade', 'fadecell', 'colour', 'relight', 'adjacent',
+          'capcheck', 'grid', 'nopop', 'seam', 'stage_cpu', 'timing_maps', 'decal', 'age',
           'retired', 'resolve', 'refused'):
     print(k, m[k])
 print('timing_us (best of 60, fenced):')
 for t in m['timing']:
-    print(f"  {t['width']}x{t['height']} {t['case']:<34} draws={t['patches']} lit_share={t['lit_share']:.4f} {t['gpu_us']:7.1f}")
+    print(f"  {t['width']}x{t['height']} {t['case']:<34} draws={t['patches']} lit_share={t['lit_share']:.4f} "
+          f"raster_share={t['raster_share']:.4f} {t['gpu_us']:7.1f}")
 pins = d3d.get('shell_pins', {})
 print('full-shell record (bc30d8cf1):', pins)

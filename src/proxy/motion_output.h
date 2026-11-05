@@ -1206,7 +1206,8 @@ public:
     // call, for weapon_effects::present.
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
-    void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew) noexcept;
+    void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
+                                   unsigned drops[4]) noexcept; // dropped, cells_dropped, hits_dropped, spills
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2252,6 +2253,7 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
+    unsigned weapon_drops_[4]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
     static constexpr unsigned weapon_failure_limit = 3;

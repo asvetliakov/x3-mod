@@ -205,6 +205,57 @@ static int stage_cases() {
     hit(ring, 0, 1000, 0)->role = core::role_hull_hit;
     n = build(1100);
     std::printf("skipped patches=%u hits=%u live=%u\n", n.patches, n.hits, live(ring));
+    // 12 a region whose cells have all faded (age 2.9 s: past the slowest cell, inside the 2.941 s lifetime) draws
+    // nothing and is no drop.
+    core::ring_clear(ring);
+    owner(0, 40000, 20000);
+    hit(ring, 0, 1000, 0);
+    n = build(1000 + 2900);
+    std::printf("faded patches=%u dropped=%u hits=%u\n", n.patches, n.dropped, n.hits);
+    // 13 the owner window: 70 live hits on one owner, the newest owner_hits feed the maps, the rest are counted.
+    core::ring_clear(ring);
+    owner(0, 40000, 20000);
+    for (unsigned i = 0; i < 70; ++i) hit(ring, 0, 1000 + 10 * i, std::int32_t(200 * (i % 7)));
+    n = build(1000 + 10 * 70);
+    std::printf("window hits=%u hits_dropped=%u owner_hits=%u\n", n.hits, n.hits_dropped, core::owner_hits);
+    // 14 a full region: 20 disjoint fighter footprints (7 cells each, 140 > 128) on a large owner, ages 0.55 .. 1.5 s.
+    // One draw per region: the 128 cells with the newest clocks stay, the oldest 12 (the oldest hit's 7 and 5 of the
+    // next) are dropped; the default spills into a second draw and drops nothing, every cell once over both.
+    {
+        auto fill = [&](unsigned draws) {
+            core::ring_clear(ring);
+            owner(0, 4000000, 2000000);
+            for (unsigned i = 0; i < 20; ++i) hit(ring, 0, 1000 + 50 * i, std::int32_t(3000 * i), 0xffff, -2000000);
+            st::Tuning t{};
+            t.region_draws = draws;
+            return st::build(ring, 1000 + 50 * 20 + 500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+        };
+        n = fill(1);
+        float kept_max = 0.f;
+        for (unsigned i = 0; i < patches[0].cells; ++i) kept_max = patches[0].cell_since[i] > kept_max ? patches[0].cell_since[i] : kept_max;
+        std::printf("evict patches=%u cells=%u cells_dropped=%u spills=%u kept_max=%.4f oldest=%.4f\n", n.patches,
+                    patches[0].cells, n.cells_dropped, n.spills, kept_max, 1.5f);
+        n = fill(st::region_draws);
+        unsigned total = 0, dupes = 0;
+        for (unsigned a = 0; a < n.patches; ++a) total += patches[a].cells;
+        for (unsigned a = 0; a < n.patches; ++a)
+            for (unsigned i = 0; i < patches[a].cells; ++i)
+                for (unsigned b = a; b < n.patches; ++b)
+                    for (unsigned j = (b == a ? i + 1 : 0); j < patches[b].cells; ++j)
+                        dupes += patches[a].cell_key[i] == patches[b].cell_key[j];
+        std::printf("spill patches=%u cells=%u cells_dropped=%u spills=%u dupes=%u hits0=%u hits1=%u seams0=%u\n",
+                    n.patches, total, n.cells_dropped, n.spills, dupes, patches[0].hits, patches[1].hits, patches[0].seams);
+    }
+    // 15 a seam: hits 1.5 degrees either side of the edge between the -z and +x regions: two draws naming each other.
+    core::ring_clear(ring);
+    owner(0, 40000, 20000);
+    for (int side = -1; side <= 1; side += 2) {
+        const double phi = 0.78539816 + side * 0.0261799;
+        hit(ring, 0, 1000, std::int32_t(20000 * std::sin(phi)), 0xffff, -std::int32_t(20000 * std::cos(phi)));
+    }
+    n = build(1300);
+    std::printf("seams patches=%u seed0=%.0f seams0=%u seed1=%.0f seams1=%u\n", n.patches, patches[0].seed, patches[0].seams,
+                patches[1].seed, patches[1].seams);
     // 11 the shield colour bands (5.1.1) and the patch tier tables.
     const float fr[7] = {0.9f, 0.75f, 0.6f, 0.5f, 0.4f, 0.35f, 0.2f};
     std::printf("colour");
@@ -391,6 +442,19 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual(g['patches'], 2)                               # front and back: two anchor regions, two draws
         self.assertNotEqual(g['seed0'], g['seed1'])
         self.assertEqual((r['skipped']['patches'], r['skipped']['hits'], r['skipped']['live']), (0, 0, 2))
+        self.assertEqual((r['faded']['patches'], r['faded']['dropped'], r['faded']['hits']), (0, 0, 1))  # review F7
+        self.assertEqual((r['window']['hits'], r['window']['hits_dropped']), (70, 70 - r['window']['owner_hits']))
+        e = r['evict']                                   # one draw: the oldest clocks go first (review F1)
+        self.assertEqual((e['patches'], e['cells'], e['cells_dropped'], e['spills']), (1, 128, 12, 0))
+        self.assertLess(e['kept_max'], e['oldest'] - 0.05)
+        sp = r['spill']                                  # the default: a second draw, nothing dropped, each cell once
+        self.assertEqual((sp['patches'], sp['cells'], sp['cells_dropped'], sp['spills'], sp['dupes']), (2, 140, 0, 1, 0))
+        self.assertEqual((sp['hits1'], sp['seams0']), (0, 0))  # ring hits stay with the first draw; one region, no seam
+        sm = r['seams']                                  # review F3: the two regions name each other
+        self.assertEqual(sm['patches'], 2)
+        self.assertEqual({int(sm['seed0']), int(sm['seed1'])}, {1, 2})
+        self.assertEqual(sm['seams0'], 1 << int(sm['seed1']))
+        self.assertEqual(sm['seams1'], 1 << int(sm['seed0']))
 
     def test_shield_colour_bands_and_tiers(self):
         out = subprocess.run([str(self.exe), 'stage'], capture_output=True, text=True, check=True).stdout

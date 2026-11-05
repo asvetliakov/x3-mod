@@ -74,7 +74,7 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>corvette <input id="c_rings_corvette" type="number" min="0" max="6" step="1" style="width:4em"></label>
   <label>capital <input id="c_rings_capital" type="number" min="0" max="6" step="1" style="width:4em"></label>
   <label>ripple speed <input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="footprint radii per game second"></label>
-  <label>core ms <input id="c_core_ms" type="number" step="10" style="width:5em"></label>
+  <label>centre gain <input id="c_centre_gain" type="number" min="0" step="0.1" style="width:4.5em" title="the hit's own cell over a ring cell, edge and fill (the marker; its fill at the header's centre_fill)"></label>
   <label>fade ms <input id="c_fade_ms" type="number" step="50" style="width:5em"></label>
   <label>stagger <input id="c_stagger" type="number" min="0" max="1.5" step="0.05" style="width:4.5em" title="per-cell spread of brightness and fade rate"></label>
   <label>edge vs fill <input id="c_fill_ratio" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="fill radiance / edge radiance"></label>
@@ -85,8 +85,8 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>empty &le; <input id="c_colour_low" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
   <label><input id="c_colour_empty" type="color"></label>
   <label>weapon tint <input id="c_weapon_tint" type="number" min="0" max="1" step="0.1" style="width:4em" title="0 = shield colour, 1 = the weapon's classifier colour (override, off)"></label>
-  <label>SETA rate <select id="c_seta"><option>1</option><option>2</option><option>4</option><option selected>6</option><option>10</option></select></label>
-  <label>hits/s <select id="c_hits"><option value="0">single</option><option value="1">1</option><option value="4">4</option><option value="12">12</option></select></label>
+  <label>SETA rate <select id="c_seta"><option selected>1</option><option>2</option><option>4</option><option>6</option><option>10</option></select></label>
+  <label>hits per game s <select id="c_hits" title="hits per second of game time: at SETA x6 the map is as dense as the game's"><option value="0">single</option><option value="1">1</option><option value="4">4</option><option value="12">12</option></select></label>
   <label>preview: tier <select id="c_tier"><option value="0">fighter (15 m)</option><option value="1">corvette (60 m)</option><option value="2">capital (300 m)</option></select></label>
   <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
   <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
@@ -150,14 +150,17 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera), drawn in addition to the vanilla
         impact on the left (the native sprite stays in the game). The patch law, the cell hash, the stereographic
         lattice of the six axis regions, the per-region cell map (each hit lights its cell and its rings of neighbours,
-        each cell on the clock of the newest hit that lit it), the ring and core of the newest hits, one draw per region
-        and the cap are the HLSL's and the stage's (<code>weapon_hex_patch.hlsl</code>,
+        each cell on the clock of the newest hit that lit it, the hit's own cell brighter as the marker), the ring of
+        the newest hits, the eviction of the oldest clocks past the region's draws, the light shared across a region
+        seam, and the cap are the HLSL's and the stage's (<code>weapon_hex_patch.hlsl</code>,
         <code>weapon_effects_stage.h</code>) in double precision (the GPU's float hash differs below 1e-3).
         <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for the GPU's quad
         <code>fwidth</code>; the cap is a circle (the GPU's rim is a 32-gon); the radiance is shown as 1 - e<sup>-x</sup> per channel added to the background in
         linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the controls (the DLL
         uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear colours as
-        8-bit sRGB. Hits are scattered within two cells of the front's centre; "drain" lowers the shield fraction per
+        8-bit sRGB; a region's spill draws are one pass here (the same cells; the GPU splits them into maps of
+        PATCH_CELLS with their own caps). Hits arrive per second of game time (the SETA rate shortens the wall-time
+        period) and are scattered within two cells of the front's centre; "drain" lowers the shield fraction per
         hit so a sequence walks the colour bands; the newest hit's shield colours the patch. The automatic loop runs to
         the end of our patch (its lifetime / SETA) plus 250 ms, so the patch is not cut at the vanilla sprite's end.</li>
     </ul>
@@ -177,9 +180,8 @@ const HEADER = {
   ripple_speed: 3.333,
   ring_width: 0.12,
   ring_gain: 1.0,
-  core_ms: 100,
-  core_cells: 0.8,
-  core_gain: 6.0,
+  centre_gain: 2.0,
+  centre_fill: 0.6,
   fade_ms: 2200,
   stagger: 0.4,
   edge_width: 0.1,
@@ -194,7 +196,12 @@ const HEADER = {
   weapon_tint: 0.0,
   tint_mix: 0.0,
   tracer_min_elongation: 4.0,
-  slug_min_elongation: 1.5
+  slug_min_elongation: 1.5,
+  cell_key_bias: 2048,
+  patch_cells: 128,
+  patch_hits: 4,
+  owner_hits: 64,
+  region_draws: 8
 };
 /* @end */
 /* @weapon_effects_data */
@@ -225,13 +232,15 @@ const prepCache = {};
 
 // ---------------------------------------------------------------- our renderer: the shield-hit hex patch (5.1.1)
 // The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius) with the same law as
-// src/effects/weapon_hex_patch.hlsl and the same cell map as src/proxy/weapon_effects_stage.h (fill_patch: per owner
-// and anchor region the cells lit by its live hits, each cell on the clock of the newest hit that lit it; the region's
-// newest hits in their ring carry the ring and the core); every length is in metres (the GPU's view units are 5 per
+// src/effects/weapon_hex_patch.hlsl and the same cell map as src/proxy/weapon_effects_stage.h (fill_region: per owner
+// and anchor region the cells lit by its live hits, each cell on the clock and level (centre or ring) of the newest
+// hit that lit it, the oldest clocks dropped past PATCH_CELLS x REGION_DRAWS; the region's newest hits in their ring
+// carry the ring; link_seams shares the light across a seam); every length is in metres (the GPU's view units are 5 per
 // metre; the law is scale-free). The other slots stay native in step 1.
 const PATCH_TIERS = ['fighter', 'corvette', 'capital'];
 const PREVIEW_OWNER_M = [15, 60, 300];
-const CELL_KEY_BIAS = 2048, PATCH_CELLS = 64, PATCH_HITS = 4, OWNER_HITS = 64;
+const CELL_KEY_BIAS = HEADER.cell_key_bias, PATCH_CELLS = HEADER.patch_cells, PATCH_HITS = HEADER.patch_hits;
+const OWNER_HITS = HEADER.owner_hits, REGION_DRAWS = HEADER.region_draws;
 function linearToSrgb(v) {
   v = Math.max(0, Math.min(1, v));
   return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
@@ -248,7 +257,7 @@ function ourControls() {
   const n = id => parseFloat($(id).value);
   return {cell_m: PATCH_TIERS.map(t => n('c_cell_' + t)),
           rings: PATCH_TIERS.map(t => Math.max(0, Math.min(6, Math.round(n('c_rings_' + t)) || 0))),
-          ripple_speed: n('c_ripple_speed'), core_s: n('c_core_ms') / 1000, fade_s: n('c_fade_ms') / 1000,
+          ripple_speed: n('c_ripple_speed'), centre_gain: n('c_centre_gain'), fade_s: n('c_fade_ms') / 1000,
           stagger: n('c_stagger'), fill_ratio: n('c_fill_ratio'),
           bands: {high: n('c_colour_high'), mid: n('c_colour_mid'), low: n('c_colour_low'),
                   full: hexToLinear($('c_colour_full').value), half: hexToLinear($('c_colour_half').value),
@@ -326,17 +335,18 @@ function hexCell(gx, gy) {
   return {lx, ly, hd, kx: Math.floor((gx - lx) * 2 + 0.5), ky: Math.floor((gy - ly) * 1.1547005 + 0.5)};
 }
 const packKey = (kx, ky) => (kx + CELL_KEY_BIAS) * 4096 + (ky + CELL_KEY_BIAS);
-// stage::fill_patch's cell map for one region: plane hits {q, age} newest first; each lights the cells within rings
-// of its cell once the ring front reaches their centre; a shared cell keeps the newest clock; at most 64 cells.
-function fillCells(planeHits, cell, rings, c) {
+// stage::fill_region's cell map for one region: plane hits {q, age} newest first; each lights the cells within rings
+// of its cell once the ring front reaches their centre; a shared cell keeps the newest clock and that hit's level (its
+// own cell: the centre); past room cells (PATCH_CELLS x REGION_DRAWS) the oldest clocks are dropped.
+function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS) {
   const radius = (rings + 0.5) * cell, reach = rings * cell, v = c.ripple_speed * radius;
   const ringLife = 1 / c.ripple_speed, maxSince = c.fade_s * (1 + 0.5 * c.stagger);
-  const cells = new Map(), hits = [], used = [];
-  for (const h of planeHits) {
+  const all = new Map(), hits = [], ringHit = [];
+  planeHits.forEach((h, i) => {
     const cl = hexCell(h.q[0] / cell, h.q[1] / cell);
     const centre = [(h.q[0] / cell - cl.lx) * cell, (h.q[1] / cell - cl.ly) * cell];
-    let u = false;
-    if (hits.length < PATCH_HITS && h.age < ringLife) { hits.push({q: h.q, c: centre, age: h.age}); u = true; }
+    ringHit.push(hits.length < PATCH_HITS && h.age < ringLife);
+    if (ringHit[i]) hits.push({q: h.q, c: centre, age: h.age});
     for (let dy = -rings; dy <= rings; dy++)
       for (let dx = -2 * rings; dx <= 2 * rings; dx++) {
         const ady = Math.abs(dy), adx = Math.abs(dx);
@@ -345,13 +355,19 @@ function fillCells(planeHits, cell, rings, c) {
         if (Math.abs(kx) >= CELL_KEY_BIAS || Math.abs(ky) >= CELL_KEY_BIAS) continue;
         const since = h.age - cell * Math.hypot(0.5 * dx, 0.8660254 * dy) / v;
         if (since < 0 || since > maxSince) continue;
-        const key = packKey(kx, ky);
-        if (cells.has(key)) { cells.set(key, Math.min(cells.get(key), since)); u = true; }
-        else if (cells.size < PATCH_CELLS) { cells.set(key, since); u = true; }
+        const key = packKey(kx, ky), had = all.get(key);
+        if (!had || since < had.since) all.set(key, {since, centre: !dx && !dy, hit: i});
       }
-    used.push(u);
+  });
+  let kept = [...all.entries()], dropped = 0;
+  if (kept.length > room) {
+    kept = kept.map((e, order) => [e, order]).sort((x, y) => x[0][1].since - y[0][1].since || x[1] - y[1]).map(x => x[0]);
+    dropped = kept.length - room;
+    kept = kept.slice(0, room);
   }
-  return {radius, reach, hits, cells, used};
+  const cells = new Map(kept), used = planeHits.map((h, i) => ringHit[i]);
+  for (const v of cells.values()) used[v.hit] = true;
+  return {radius, reach, hits, cells, used, dropped};
 }
 // weapon_hex_patch.hlsl hex_patch for one draw: q the plane point, cl its cell, fw the pixel's fwidth of the hexagon
 // distance; d {seed, cell, radius, reach, hits [{q, c, age}], cells Map(key -> since)}.
@@ -362,30 +378,30 @@ function hexLaw(q, cl, fw, d, c) {
   const edge = Math.max(0, Math.min(1, (cl.hd - h0) / f + 0.5));
   const mask = edge + ((1 - 4 * h0 * h0) - edge) * Math.max(0, Math.min(1, f / ew - 1));
   const pattern = c.fill_ratio + (1 - c.fill_ratio) * mask;
-  const bright = HEADER.cell_gain * (1 + c.stagger * (h[0] - 0.5)) * pattern;
   const invFade = (1 / c.fade_s) / (1 + c.stagger * (h[1] - 0.5));
   const cx = (q[0] / cell - cl.lx) * cell, cy = (q[1] / cell - cl.ly) * cell;
-  const v = c.ripple_speed * R, coreR = HEADER.core_cells * cell;
-  const known = d.cells.get(packKey(cl.kx, cl.ky)), since = known === undefined ? -1 : known;
-  let ring = 0, glow = 0;
+  const v = c.ripple_speed * R;
+  const known = d.cells.get(packKey(cl.kx, cl.ky)), since = known === undefined ? -1 : known.since;
+  const level = known && known.centre ? c.centre_gain * (HEADER.centre_fill + (1 - HEADER.centre_fill) * mask) : pattern;
+  const bright = HEADER.cell_gain * (1 + c.stagger * (h[0] - 0.5)) * level;
+  let ring = 0;
   for (const hit of d.hits) {
     const dc = Math.hypot(cx - hit.c[0], cy - hit.c[1]), age = hit.age;
     const inside = dc <= d.reach + 1e-3 * cell ? 1 : 0;
     const r = v * age, x = (dc - r) / (HEADER.ring_width * R);
     ring += Math.exp(-x * x) * Math.max(0, Math.min(1, 1 - r / R)) * inside;
-    const dq2 = (q[0] - hit.q[0]) ** 2 + (q[1] - hit.q[1]) ** 2;
-    glow += HEADER.core_gain * Math.exp(-dq2 / (coreR * coreR)) * Math.max(0, Math.min(1, 1 - age / c.core_s));
   }
   const cells = since >= 0 ? Math.max(0, Math.min(1, 1 - since * invFade)) : 0;
-  return bright * cells + HEADER.ring_gain * pattern * ring + glow;
+  return bright * cells + HEADER.ring_gain * pattern * ring;
 }
-// The hit sequence: single (one hit at t = 0 on the front) or n hits per second of wall time, each aged in game time
-// (x SETA), scattered deterministically within two cells of the front's centre (sustained fire lands in one area); the
-// drain lowers the shield fraction per hit. Returns the live hits, newest first (age <= the record lifetime), at most
-// the stage's 64 per owner.
+// The hit sequence: single (one hit at t = 0 on the front) or n hits per second of game time (a wall-time period of
+// 1000 / (n x SETA) ms, so at SETA x6 the map is as dense as the game's), each aged in game time (x SETA), scattered
+// deterministically within two cells of the front's centre (sustained fire lands in one area); the drain lowers the
+// shield fraction per hit. Returns the live hits, newest first (age <= the record lifetime), at most the stage's
+// OWNER_HITS per owner.
 function hitSequence(t, c, S, cell) {
   const lifetime = patchLifetimeMs(c);
-  const period = c.hits > 0 ? 1000 / c.hits : 0, out = [];
+  const period = c.hits > 0 ? 1000 / (c.hits * Math.max(c.seta, 1e-3)) : 0, out = [];
   const count = period ? Math.floor(t / period) + 1 : 1;
   for (let k = count - 1; k >= 0 && out.length < OWNER_HITS; k--) {
     const age = (t - k * period) * c.seta / 1000;
@@ -396,7 +412,9 @@ function hitSequence(t, c, S, cell) {
   }
   return out;
 }
-// stage::build for one owner: its live hits by anchor region, one draw per region with its cell map and its cap.
+// stage::build for one owner: its live hits by anchor region, one draw per region with its cell map and its cap
+// (a region past PATCH_CELLS cells counts its spill draws in .draws), and link_seams: the other regions whose caps
+// overlap a draw's.
 function patchDraws(hits, S, c) {
   const cell = c.cell_m[c.tier], rings = c.rings[c.tier], draws = [], done = [];
   const anchors = hits.map(h => nearestAnchor(h.dir));
@@ -411,9 +429,21 @@ function patchDraws(hits, S, c) {
     const spread = Math.max(0, ...live.map(h => acosApprox(dot3(mean, h.dir))));
     const extent = f.reach + 2 * 0.5773503 * cell;
     const capAngle = Math.min(3.14159265, (spread + extent / S + 1e-3) * 1.0049);
-    draws.push(Object.assign({fr, seed: fr.seed, cell, capDir: mean, capCos: Math.cos(capAngle), capAngle}, f));
+    draws.push(Object.assign({fr, seed: fr.seed, cell, capDir: mean, capCos: Math.cos(capAngle), capAngle,
+                              draws: Math.max(1, Math.ceil(f.cells.size / PATCH_CELLS))}, f));
   }
+  for (const d of draws)
+    d.seams = draws.filter(o => o.seed !== d.seed && acosApprox(dot3(d.capDir, o.capDir)) < d.capAngle + o.capAngle)
+                   .map(o => o.seed);
   return draws;
+}
+// weapon_shell_ps.hlsl's seam share of draw d at the unit-sphere point p: saturate((s_own - s_seam) k + 1/2), s the
+// point's score on each region's axis, k = max(1, S / (sqrt 2 cell)).
+function seamShare(d, p, S) {
+  if (!d.seams.length) return 1;
+  const other = Math.max(...d.seams.map(k => dot3(p, anchorFrame(k).a)));
+  const k = Math.max(1, 0.70710678 * S / d.cell);
+  return Math.max(0, Math.min(1, (dot3(p, d.fr.a) - other) * k + 0.5));
 }
 /** Our shield-hit patch for the impact slot (hull hits and the other slots stay native in step 1). t is wall ms
  *  since spawn; ages are game time (x SETA). */
@@ -464,7 +494,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
         if (!cl) continue;
         const dx = x + 1 < W && cellOf[i + 1] ? Math.abs(hd[i + 1] - hd[i]) : 0;
         const dy = y + 1 < H && cellOf[i + W] ? Math.abs(hd[i + W] - hd[i]) : 0;
-        sum[i] += hexLaw(qOf[i], cl, dx + dy, d, c);
+        sum[i] += hexLaw(qOf[i], cl, dx + dy, d, c) * seamShare(d, pOf[i], S);
       }
   }
   for (let i = 0; i < W * H; i++) {
@@ -476,7 +506,8 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   }
   ctx.putImageData(img, 0, 0);
   const f0 = hits.length ? hits[0].shield : 1, lit = draws.reduce((n, d) => n + d.cells.size, 0);
-  label(ctx, `${PATCH_TIERS[c.tier]} owner ${S} m | ${hits.length} live hit(s), ${draws.length} draw(s), ${lit} lit cell(s) | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
+  label(ctx, `${PATCH_TIERS[c.tier]} owner ${S} m | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} lit cell(s)${dropped ? `, ${dropped} dropped` : ''} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
 function ourLoopMs() {
@@ -485,13 +516,13 @@ function ourLoopMs() {
   return patchLifetimeMs(c) / Math.max(c.seta, 1e-3);
 }
 const OUR_IDS = ['c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_rings_fighter', 'c_rings_corvette',
-                 'c_rings_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
+                 'c_rings_capital', 'c_ripple_speed', 'c_centre_gain', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
                  'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
                  'c_weapon_tint'];
 function initOurControls() {
   const set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
   PATCH_TIERS.forEach((t, i) => { set('c_cell_' + t, HEADER.cell_m[i]); set('c_rings_' + t, HEADER.rings[i]); });
-  set('c_ripple_speed', HEADER.ripple_speed); set('c_core_ms', HEADER.core_ms); set('c_fade_ms', HEADER.fade_ms);
+  set('c_ripple_speed', HEADER.ripple_speed); set('c_centre_gain', HEADER.centre_gain); set('c_fade_ms', HEADER.fade_ms);
   set('c_stagger', HEADER.stagger); set('c_fill_ratio', HEADER.fill_ratio); set('c_weapon_tint', HEADER.weapon_tint);
   set('c_colour_high', HEADER.colour_high); set('c_colour_mid', HEADER.colour_mid); set('c_colour_low', HEADER.colour_low);
   // A colour input always holds a value: the header's colours are written once (and again on reset).
@@ -1017,7 +1048,7 @@ function init() {
     div.className = 'slot';
     div.innerHTML = `<h3>${s.label}</h3><div class="sinfo"></div>
       <div class="pair"><figure class="vanilla"><canvas width="${W}" height="${H}"></canvas><figcaption>Vanilla reconstruction</figcaption></figure>
-      <figure class="ours"><canvas width="${W}" height="${H}"></canvas><figcaption>Ours (later step): renderOurs(record, t) draws nothing yet</figcaption></figure></div>
+      <figure class="ours"><canvas width="${W}" height="${H}"></canvas><figcaption>${s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch on a shielded hit, drawn over the native impact' : 'Ours (later step): renderOurs(record, t) draws nothing yet'}</figcaption></figure></div>
       <div class="tbl"></div>`;
     slots.appendChild(div);
     const [vc, oc] = div.querySelectorAll('canvas');

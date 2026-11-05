@@ -7,15 +7,18 @@
 // the screen centre). It reads the FP16 target back and reports the structural relations of 5.1.1 (the cell-map model):
 // per tier the footprint's cell count 1 + 3 rings (rings + 1), the lit area bounded by hexagon edges (the outermost cell
 // centres plus a circumradius) and zero outside, lit on both sides of the hit in both axes, the edge bands across it;
-// the core present at 0.05 s and gone by 0.2 s; the ring moving by whole cells and lighting a cell when the front reaches
+// the hit's centre cell brighter than a ring cell by the marker law; the ring moving by whole cells and lighting a cell when the front reaches
 // its centre; the patch fading monotonically to zero at the record's lifetime and one cell's own fade duration against
 // its hash; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the newest clock, not a sum); a second
 // hit on the next cell resets only the shared cells and no cell is drawn twice; the CPU cap culls nothing lit; through
-// the production builder the grid fixed on a moved and rotated owner and 12 hits per second without a pop; the decal
-// fallback (an owner without an ellipsoid) on a hull and 0 over sky; the game-time law at SETA 6 measured; the core
+// the production builder the grid fixed on a moved and rotated owner, 12 hits per second without a pop on a fighter and
+// spread over a capital's face (the map overflows into spill draws; with one draw per region the evicted cells' pops
+// are the recorded witness), two hits across a region seam never brighter than one hit, the stage's CPU cost; the decal
+// fallback (an owner without an ellipsoid) on a hull and 0 over sky; the game-time law at SETA 6 measured; the marker
 // through the production TemporalPass at 0 / 4 / 8 px per frame; a retired owner draws nothing; Reset recovery, the
 // fault cases, and the stage cost at 1080p and 5120x1440 (two hits on a fighter, two on a capital at close range, the
-// worst case one owner can submit, the 12 hits per second map and a full 64-cell map). Every draw and readback runs inside
+// worst case one owner can submit, the 12 hits per second map, a full 128-cell map, one whose cap fills the frame and
+// the capital spread's spill draws, each with its lit and rasterized screen shares). Every draw and readback runs inside
 // BeginScene/EndScene (native D3D9 refuses a draw outside a scene). Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
@@ -358,14 +361,14 @@ double halton(unsigned i, unsigned b) {
     return r;
 }
 // Another stage-owned shield hit on the staged owner (local engine position, t0 game ms), like stage_owner's.
-void add_stage_hit(std::uint32_t t0, const std::int32_t pos[3]) {
+void add_stage_hit(std::uint32_t t0, const std::int32_t pos[3], std::uint8_t tier = wc::patch_fighter) {
     wc::Event* e = wc::ring_acquire(stage_ring);
     if (!e) return;
     e->role = wc::role_shield_hit;
     e->style = wc::shape_slug;
     e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
     e->shield_q = 0xffff;
-    e->patch_tier = wc::patch_fighter;
+    e->patch_tier = tier;
     e->t0_game_ms = t0;
     e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
     e->damage = 1200;
@@ -385,15 +388,21 @@ float scan_luma(const std::vector<float>& l, const TierScene& s, double q) {
     if (x < 0 || x >= int(g.w)) return -1.f;
     return l[std::size_t(g.h / 2) * g.w + std::size_t(x)];
 }
-// weapon_hex_patch.hlsl hex_hash(key, seed).y in float: the cell's fade-rate stagger input.
-double cell_hash_y(float kx, float ky, float seed) {
+// weapon_hex_patch.hlsl hex_hash(key, seed) in float: .x the cell's brightness stagger input, .y its fade rate's.
+std::pair<double, double> cell_hash(float kx, float ky, float seed) {
     auto fr = [](float v) { return v - std::floor(v); };
     float x = fr(kx * 0.1031f), y = fr(ky * 0.1030f), z = fr((kx + ky + seed * 17.f) * 0.0973f);
     const float d = x * (y + 33.33f) + y * (z + 33.33f) + z * (x + 33.33f);
     x += d;
     y += d;
     z += d;
-    return double(fr((x + z) * y));
+    return {double(fr((x + y) * z)), double(fr((x + z) * y))};
+}
+double cell_hash_x(float kx, float ky, float seed) {
+    return cell_hash(kx, ky, seed).first;
+}
+double cell_hash_y(float kx, float ky, float seed) {
+    return cell_hash(kx, ky, seed).second;
 }
 struct StageContext {
     rr::WeaponEffectsPass* pass;
@@ -603,10 +612,14 @@ int main(int argc, char** argv) {
     report("pixel_program_low_hundreds", pass.caps().shell_ps_slots < 400 && pass.caps().decal_ps_slots < 400, "");
     report("target_1080", make_target(g, 1920, 1080));
     draw_lane(g, 0.f, -1.f);
-    rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, no_core = cells_only;
-    cells_only.ring_gain = cells_only.core_gain = 0.f;
-    ring_only.cell_gain = ring_only.core_gain = 0.f;
-    no_core.core_gain = 0.f;
+    rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, uniform = cells_only;
+    cells_only.ring_gain = 0.f;
+    ring_only.cell_gain = 0.f;
+    // The pop gate's look: cells only, the marker at the ring cells' level, so a re-lit cell never changes level
+    // (the user's rule: a re-hit cell takes the newest hit's centre or ring level) and every drop is the map's.
+    uniform.ring_gain = 0.f;
+    uniform.centre_gain = 1.f;
+    uniform.centre_fill = uniform.fill_ratio;
 
     // Per tier at age 0.5 (every footprint cell lit, core and ring gone): the lit area within the footprint's extent
     // (its outermost cell centres plus a cell's circumradius: the boundary is hexagon edges, lit pixels lie past the
@@ -665,14 +678,30 @@ int main(int argc, char** argv) {
                                           wc::rings[0] <= wc::rings[1] && wc::rings[1] <= wc::rings[2], "");
     }
     const TierScene& fighter = tier_scene[0];
-    // The core: the hit point's pixel with and without the core term, at 0.05 s and at 0.2 s.
+    // The marker (user decision 2026-11-06, no core flash): cells only at 0.5 s, the hit cell's fill (key (0, 0), lit at
+    // 0.5 s) over the next cell's fill (key (2, 0), lit by the ring 0.2 s later) against the law centre_gain centre_fill
+    // / fill_ratio with both cells' brightness and fade hashes; and the hit point at 0.05 s equals the hit cell's level
+    // there (no per-pixel term at the hit point: the core is gone).
     {
-        const rr::WeaponPatch young = make_patch(fighter, {{0.f, 0.f, 0.05f}}), later = make_patch(fighter, {{0.f, 0.f, 0.2f}});
-        const float c05 = centre_luma(render(pass, &young, 1)), n05 = centre_luma(render(pass, &young, 1, &no_core));
-        const float c20 = centre_luma(render(pass, &later, 1)), n20 = centre_luma(render(pass, &later, 1, &no_core));
-        std::printf("CORE at05=%.4f at05_no_core=%.4f at20=%.4f at20_no_core=%.4f\n", c05, n05, c20, n20);
-        report("core_present_at_50ms", c05 - n05 > 1.0f, "");
-        report("core_gone_by_200ms", std::fabs(c20 - n20) < 1e-3f && c20 > 0.f, "");
+        const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.5f}});
+        const std::vector<float> l = render(pass, &p, 1, &cells_only);
+        const double c = planar_cell(fighter);
+        const double hit_cell = scan_luma(l, fighter, 0.0), ring_cell = scan_luma(l, fighter, c);
+        const double travel = 1.0 / (double(wc::ripple_speed) * (double(tier_rings(fighter)) + 0.5));
+        auto level = [](float kx, float ky, double since, double gain) {
+            const double s = double(wc::stagger), fade = double(wc::fade_ms) * 1e-3 * (1.0 + s * (cell_hash_y(kx, ky, 0.f) - 0.5));
+            return gain * (1.0 + s * (cell_hash_x(kx, ky, 0.f) - 0.5)) * (1.0 - since / fade);
+        };
+        const double expected = level(0.f, 0.f, 0.5, double(wc::centre_gain) * double(wc::centre_fill)) /
+                                level(2.f, 0.f, 0.5 - travel, double(wc::fill_ratio));
+        const double ratio = ring_cell > 0.0 ? hit_cell / ring_cell : 0.0;
+        const rr::WeaponPatch young = make_patch(fighter, {{0.f, 0.f, 0.05f}});
+        const double at05 = centre_luma(render(pass, &young, 1)), cells05 = centre_luma(render(pass, &young, 1, &cells_only));
+        std::printf("CENTRE hit_cell=%.4f ring_cell=%.4f ratio=%.4f expected=%.4f centre_gain=%.2f centre_fill=%.2f fill_ratio=%.2f at05=%.4f at05_cells=%.4f\n",
+                    hit_cell, ring_cell, ratio, expected, double(wc::centre_gain), double(wc::centre_fill),
+                    double(wc::fill_ratio), at05, cells05);
+        report("centre_cell_brighter_than_ring_cell", ratio > 1.5 && std::fabs(ratio - expected) <= 0.02 * expected, "");
+        report("no_core_at_the_hit_point", at05 > 0.0 && at05 <= cells05 + 0.25 * cells05, "");
     }
     // The ring moves by whole cells: ring-only at the hit cell's centre, a point inside the same cell's fill and the
     // next cell's centre (plane x = 1 cell) at 0.05 s (front 0.25 cells out: the hit cell) and 0.2 s (front at the next
@@ -778,8 +807,8 @@ int main(int argc, char** argv) {
                     pab.cells, va[0], va[1], va[2], vb[1], vb[2], vb[3], vab[0], vab[1], vab[2], vab[3], peak_single, peak_pair);
         const auto same = [](float x, float y) { return std::fabs(x - y) <= 2e-3f * std::max(std::fabs(y), 1.f); };
         report("adjacent_hit_resets_shared_cells_only", pab.cells == 10 && same(vab[0], va[0]) && same(vab[1], vb[1]) &&
-                                                            same(vab[2], vb[2]) && same(vab[3], vb[3]) && vb[1] > va[1] &&
-                                                            va[0] > 0.f && vb[0] == 0.f, "");
+                                                            same(vab[2], vb[2]) && same(vab[3], vb[3]) &&
+                                                            va[0] > 0.f && vb[0] == 0.f, ""); // x = 0: the second's ring level
         report("no_cell_drawn_twice", peak_pair <= peak_single * (1.f + 2e-3f), "");
         // The cap against a cap 0.25 rad wider (similar facets: a cull of lit pixels would show as more lit pixels and
         // radiance in the wider one), on four hits spread two cells about the hit.
@@ -830,66 +859,232 @@ int main(int argc, char** argv) {
         report("grid_fixed_on_owner", same && moved, "");
     }
     // 12 hits per second on one owner through the production builder, frames of 1/60 s game time for 4 s (the cell
-    // map in steady state, older hits' cells fading on their own clocks), cells only: between consecutive frames no
-    // pixel drops by more than one frame's fade step (the fastest cell: cell_gain (1 + stagger / 2) dt / (fade (1 -
-    // stagger / 2))) plus the FP16 step. Hits land within two cells of a point on the owner's front.
+    // maps in steady state, older hits' cells fading on their own clocks), the uniform-level look: between consecutive
+    // frames no pixel drops by more than one frame's fade step (the fastest cell: cell_gain (1 + stagger / 2) dt / (fade
+    // (1 - stagger / 2))) plus the FP16 step. Fighter: hits within two cells of a point on the owner's front (one map).
+    // Capital spread: a 400 m owner, hits spread over its front face (within 35 degrees of the axis, one anchor
+    // region): its lit cells overflow one map, so the region spills into further draws and nothing is dropped. The
+    // witness: the same capital fire with one draw per region (Tuning::region_draws 1), the cells with the oldest
+    // clocks evicted; its pops are recorded, not gated.
     {
-        stage_owner(400.f, 100.f, 0);
-        wc::ring_clear(stage_ring);
+        struct NoPop {
+            unsigned hits = 0, frames = 0, max_live = 0, max_patches = 0, max_cells = 0, max_region_cells = 0, popped = 0;
+            unsigned spills = 0, cells_dropped = 0, hits_dropped = 0, dropped = 0, worst_frame = 0, worst_x = 0, worst_y = 0;
+            double worst = 0, worst_rel = 0, allowed = 0;
+            float worst_prev = 0.f, worst_cur = 0.f;
+        };
+        auto run_nopop = [&](const char* name, std::uint8_t tier, float owner_r, float owner_z, double spread_rad,
+                             const ws::Tuning& tuning) {
+            NoPop o;
+            stage_owner(owner_z, owner_r, 0);
+            wc::ring_clear(stage_ring);
+            rr::WeaponPatch patches[wc::max_patches];
+            rr::WeaponDecal decals[wc::max_decals];
+            const double dt = 1.0 / 60.0, fade = double(wc::fade_ms) * 1e-3;
+            o.allowed = double(wc::cell_gain) * (1.0 + 0.5 * wc::stagger) * dt / (fade * (1.0 - 0.5 * wc::stagger));
+            const double r_engine = double(owner_r) / double(wc::world_scale);
+            std::vector<float> prev;
+            for (unsigned f = 0; f <= 240; ++f) {
+                const std::uint32_t now = std::uint32_t(double(f) * dt * 1000.0 + 0.5);
+                while (o.hits * 1000u / 12u <= now) {
+                    const double th = spread_rad * std::sqrt(halton(o.hits + 1, 2)), a = 6.2831853 * halton(o.hits + 1, 3);
+                    const std::int32_t pos[3] = {std::int32_t(r_engine * std::sin(th) * std::cos(a)),
+                                                 std::int32_t(r_engine * std::sin(th) * std::sin(a)),
+                                                 -std::int32_t(r_engine * std::cos(th))};
+                    add_stage_hit(o.hits * 1000u / 12u, pos, tier);
+                    ++o.hits;
+                }
+                const ws::Counts n = ws::build(stage_ring, now, &fake_read, identity_camera(), tuning, patches,
+                                               wc::max_patches, decals, wc::max_decals);
+                unsigned cells = 0;
+                for (unsigned i = 0; i < n.patches; ++i) {
+                    cells += patches[i].cells;
+                    o.max_cells = std::max(o.max_cells, patches[i].cells);
+                }
+                o.max_region_cells = std::max(o.max_region_cells, cells);
+                o.max_patches = std::max(o.max_patches, n.patches);
+                o.max_live = std::max(o.max_live, n.hits);
+                o.spills += n.spills;
+                o.cells_dropped += n.cells_dropped;
+                o.hits_dropped += n.hits_dropped;
+                o.dropped += n.dropped;
+                rr::WeaponEffectsFrame fr = base_frame(g);
+                fr.patches = patches;
+                fr.patch_count = n.patches;
+                fr.look = uniform;
+                draw(pass, fr);
+                std::vector<float> l = read_luma(g, g.scene_s.p);
+                if (!prev.empty() && l.size() == prev.size()) {
+                    for (std::size_t i = 0; i < l.size(); ++i) {
+                        const double drop = double(prev[i]) - double(l[i]);
+                        const double over = drop - (o.allowed + 2e-3 * double(prev[i]) + 1e-3);
+                        if (drop > o.worst) {
+                            o.worst = drop;
+                            o.worst_frame = f;
+                            o.worst_x = unsigned(i % g.w);
+                            o.worst_y = unsigned(i / g.w);
+                            o.worst_prev = prev[i];
+                            o.worst_cur = l[i];
+                        }
+                        if (over > o.worst_rel) o.worst_rel = over;
+                        o.popped += over > 0.0;
+                    }
+                    ++o.frames;
+                }
+                prev.swap(l);
+            }
+            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
+                        name, o.hits, o.frames, o.max_live, o.max_patches, o.max_cells, o.max_region_cells, o.spills,
+                        o.cells_dropped, o.hits_dropped, o.dropped, o.worst, o.allowed, o.worst_rel, o.popped,
+                        o.worst_frame, o.worst_x, o.worst_y, double(o.worst_prev), double(o.worst_cur));
+            return o;
+        };
+        const NoPop fighter_fire = run_nopop("fighter_12hps", wc::patch_fighter, 100.f, 400.f, 0.15, ws::Tuning{});
+        report("no_pop_at_12_hits_per_second", fighter_fire.frames == 240 && fighter_fire.worst_rel <= 0.0 &&
+                                                   fighter_fire.max_live >= 30 && fighter_fire.max_patches == 1 &&
+                                                   fighter_fire.cells_dropped == 0, "");
+        const NoPop capital_fire = run_nopop("capital_spread_12hps", wc::patch_capital, 2000.f, 4000.f, 0.61, ws::Tuning{});
+        report("no_pop_spread_capital_map_overflows", capital_fire.frames == 240 && capital_fire.worst_rel <= 0.0 &&
+                                                          capital_fire.max_live >= 30 &&
+                                                          capital_fire.max_region_cells > rr::weapon_patch_cells &&
+                                                          capital_fire.spills > 0 && capital_fire.cells_dropped == 0 &&
+                                                          capital_fire.dropped == 0, "");
+        ws::Tuning one_draw{};
+        one_draw.region_draws = 1;
+        const NoPop witness = run_nopop("capital_spread_one_draw_witness", wc::patch_capital, 2000.f, 4000.f, 0.61, one_draw);
+        report("one_draw_evicts_the_oldest_clocks", witness.cells_dropped > 0 && witness.spills == 0 &&
+                                                        witness.max_cells == rr::weapon_patch_cells, "");
+    }
+    // A region seam (through the production builder): the owner turned 45 degrees about y, so the edge between its -z
+    // and -x regions faces the camera; two hits half a cell either side of the seam (ages 0.5 s, cells only), each
+    // footprint crossing it. Two draws (one per region) that name each other as a seam; the pair's peak never exceeds
+    // the brighter single hit's (the light is shared across the seam, not added); the same pair with its seams cleared
+    // is the witness of the two lattices adding.
+    {
         rr::WeaponPatch patches[wc::max_patches];
         rr::WeaponDecal decals[wc::max_decals];
-        const double dt = 1.0 / 60.0, fade = double(wc::fade_ms) * 1e-3;
-        const double allowed = double(wc::cell_gain) * (1.0 + 0.5 * wc::stagger) * dt / (fade * (1.0 - 0.5 * wc::stagger));
-        std::vector<float> prev;
-        double worst = 0, worst_rel = 0;
-        unsigned frames = 0, hits = 0, max_cells = 0, max_patches = 0, max_live = 0, popped = 0;
-        unsigned worst_frame = 0, worst_x = 0, worst_y = 0;
-        float worst_prev = 0.f, worst_cur = 0.f;
-        for (unsigned f = 0; f <= 240; ++f) {
-            const std::uint32_t now = std::uint32_t(double(f) * dt * 1000.0 + 0.5);
-            while (hits * 1000u / 12u <= now) {
-                const double r = 1500.0 * std::sqrt(halton(hits + 1, 2)), a = 6.2831853 * halton(hits + 1, 3);
-                const double x = r * std::cos(a), y = r * std::sin(a);
-                const std::int32_t pos[3] = {std::int32_t(x), std::int32_t(y), -std::int32_t(std::sqrt(1e8 - x * x - y * y))};
-                add_stage_hit(hits * 1000u / 12u, pos);
-                ++hits;
-            }
-            const ws::Counts n = ws::build(stage_ring, now, &fake_read, identity_camera(), ws::Tuning{}, patches,
+        const float r = 100.f;
+        const double r_engine = double(r) / double(wc::world_scale);
+        auto turned_owner = [&]() {
+            stage_owner(400.f, r, 0);
+            wc::ring_clear(stage_ring);
+            const std::int32_t c = 46341; // 0.7071 x 65536
+            const std::int32_t rows[3][3] = {{c, 0, c}, {0, 65536, 0}, {-c, 0, c}};
+            for (unsigned k = 0; k < 3; ++k)
+                for (unsigned j = 0; j < 3; ++j)
+                    put32(fake_node, wc::layout::node_rot + 16 * k + 4 * j, std::uint32_t(rows[k][j]));
+        };
+        const double half_cell = 0.5 * double(ws::metres_to_view(wc::cell_m[wc::patch_fighter])) / double(r);
+        auto hit_at = [&](double phi) {
+            const std::int32_t pos[3] = {std::int32_t(-r_engine * std::sin(phi)), 0, std::int32_t(-r_engine * std::cos(phi))};
+            add_stage_hit(1000, pos);
+        };
+        const double seam = 0.78539816;
+        auto peak_of = [&](std::initializer_list<double> phis, bool clear_seams, unsigned* drawn, unsigned* seams) {
+            turned_owner();
+            for (double phi : phis) hit_at(phi);
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
+            unsigned bits = 0;
+            for (unsigned i = 0; i < n.patches; ++i) {
+                bits |= patches[i].seams;
+                if (clear_seams) patches[i].seams = 0;
+            }
+            if (drawn) *drawn = n.patches;
+            if (seams) *seams = bits;
+            const std::vector<float> l = render(pass, patches, n.patches, &cells_only);
+            return l.empty() ? 0.0 : double(*std::max_element(l.begin(), l.end()));
+        };
+        unsigned pair_draws = 0, pair_seams = 0, a_draws = 0;
+        const double peak_a = peak_of({seam - half_cell}, false, &a_draws, nullptr);
+        const double peak_b = peak_of({seam + half_cell}, false, nullptr, nullptr);
+        const double peak_pair = peak_of({seam - half_cell, seam + half_cell}, false, &pair_draws, &pair_seams);
+        const double peak_added = peak_of({seam - half_cell, seam + half_cell}, true, nullptr, nullptr);
+        const double single = std::max(peak_a, peak_b);
+        std::printf("SEAM single_draws=%u pair_draws=%u seams=0x%02x peak_a=%.4f peak_b=%.4f peak_pair=%.4f peak_without_sharing=%.4f\n",
+                    a_draws, pair_draws, pair_seams, peak_a, peak_b, peak_pair, peak_added);
+        report("seam_pair_never_above_one_hit", a_draws == 1 && pair_draws == 2 && pair_seams == ((1u << 1) | (1u << 3)) &&
+                                                    single > 0.0 && peak_pair <= single * (1.0 + 2e-3) + 1e-3, "");
+    }
+    // The stage's CPU cost in this i686 build (SSE2, the production flags): ws::build alone, best and mean of 200 calls,
+    // on the worst cases: 64 live hits on one capital owner spread over its front (the region spills), and 16 capital
+    // owners with 16 spread hits each (the ring's 256), against the 0.2 ms stage_us target (which also holds the draws).
+    {
+        struct Fake {
+            unsigned char obj[0x100], node[0x200];
+        };
+        static Fake owners[wc::max_owners];
+        static wc::Ring ring;
+        auto reader = [](std::uintptr_t a, void* out, std::size_t n) {
+            const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(&owners[0]), size = sizeof owners;
+            if (a < b || n > size || a - b > size - n) return false;
+            std::memcpy(out, reinterpret_cast<const void*>(a), n);
+            return true;
+        };
+        const auto engine = [](float v) { return std::uint32_t(std::int32_t(v / wc::world_scale)); };
+        auto make_owner = [&](unsigned k, float x, float z, float radius) {
+            Fake& o = owners[k];
+            std::memset(&o, 0, sizeof o);
+            put32(o.obj, wc::layout::obj_node, addr(o.node));
+            put32(o.obj, wc::layout::obj_radius, engine(radius));
+            put32(o.node, wc::layout::node_handle, 0xe000u + k);
+            put32(o.node, wc::layout::node_pos + 0, engine(x));
+            put32(o.node, wc::layout::node_pos + 8, engine(z));
+            for (unsigned i = 0; i < 3; ++i) put32(o.node, wc::layout::node_rot + 16 * i + 4 * i, 0x10000u);
+        };
+        auto add_hit = [&](unsigned k, unsigned i, std::uint32_t t0, float radius) {
+            wc::Event* e = wc::ring_acquire(ring);
+            if (!e) return;
+            const double r_engine = double(radius) / double(wc::world_scale);
+            const double th = 0.61 * std::sqrt(halton(i + 1, 2)), a = 6.2831853 * halton(i + 1, 3);
+            e->role = wc::role_shield_hit;
+            e->style = wc::shape_slug;
+            e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
+            e->shield_q = 0xffff;
+            e->patch_tier = wc::patch_capital;
+            e->t0_game_ms = t0;
+            e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
+            e->owner = addr(owners[k].obj);
+            e->node = addr(owners[k].node);
+            e->handle = 0xe000u + k;
+            e->pos[0] = std::int32_t(r_engine * std::sin(th) * std::cos(a));
+            e->pos[1] = std::int32_t(r_engine * std::sin(th) * std::sin(a));
+            e->pos[2] = -std::int32_t(r_engine * std::cos(th));
+            e->radius = std::int32_t(engine(radius));
+        };
+        rr::WeaponPatch patches[wc::max_patches];
+        rr::WeaponDecal decals[wc::max_decals];
+        LARGE_INTEGER freq, a, b;
+        QueryPerformanceFrequency(&freq);
+        auto time_build = [&](const char* name, std::uint32_t now) {
+            double best = 1e30, sum = 0;
+            ws::Counts n{};
+            for (unsigned rep = 0; rep < 200; ++rep) {
+                QueryPerformanceCounter(&a);
+                n = ws::build(ring, now, reader, identity_camera(), ws::Tuning{}, patches, wc::max_patches, decals,
+                              wc::max_decals);
+                QueryPerformanceCounter(&b);
+                const double us = ticks_us(a, b, freq);
+                best = std::min(best, us);
+                sum += us;
+            }
             unsigned cells = 0;
             for (unsigned i = 0; i < n.patches; ++i) cells += patches[i].cells;
-            max_cells = std::max(max_cells, cells);
-            max_patches = std::max(max_patches, n.patches);
-            max_live = std::max(max_live, n.hits);
-            rr::WeaponEffectsFrame fr = base_frame(g);
-            fr.patches = patches;
-            fr.patch_count = n.patches;
-            fr.look = cells_only;
-            draw(pass, fr);
-            std::vector<float> l = read_luma(g, g.scene_s.p);
-            if (!prev.empty() && l.size() == prev.size()) {
-                for (std::size_t i = 0; i < l.size(); ++i) {
-                    const double drop = double(prev[i]) - double(l[i]);
-                    const double over = drop - (allowed + 2e-3 * double(prev[i]) + 1e-3);
-                    if (drop > worst) {
-                        worst = drop;
-                        worst_frame = f;
-                        worst_x = unsigned(i % g.w);
-                        worst_y = unsigned(i / g.w);
-                        worst_prev = prev[i];
-                        worst_cur = l[i];
-                    }
-                    if (over > worst_rel) worst_rel = over;
-                    popped += over > 0.0;
-                }
-                ++frames;
-            }
-            prev.swap(l);
+            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u best_us=%.1f mean_us=%.1f target_us=200\n",
+                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, best, sum / 200.0);
+            return best;
+        };
+        wc::ring_clear(ring);
+        make_owner(0, 0.f, 4000.f, 2000.f);
+        for (unsigned i = 0; i < wc::owner_hits; ++i) add_hit(0, i, 1000 + 40 * i, 2000.f); // 25 hits/s over 2.5 s
+        const double one = time_build("one_capital_64_hits", 1000 + 40 * wc::owner_hits);
+        wc::ring_clear(ring);
+        for (unsigned k = 0; k < wc::max_owners; ++k) {
+            make_owner(k, (float(k) - 7.5f) * 5000.f, 20000.f, 2000.f);
+            for (unsigned i = 0; i < 16; ++i) add_hit(k, 16 * k + i, 1000 + 150 * i, 2000.f);
         }
-        std::printf("NOPOP hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
-                    hits, frames, max_live, max_patches, max_cells, worst, allowed, worst_rel, popped, worst_frame, worst_x,
-                    worst_y, worst_prev, worst_cur);
-        report("no_pop_at_12_hits_per_second", frames == 240 && worst_rel <= 0.0 && max_live >= 30 && max_cells <= rr::weapon_patch_cells, "");
+        const double many = time_build("sixteen_capitals_16_hits", 1000 + 150 * 16);
+        report("stage_cpu_measured", one > 0.0 && many > 0.0, "");
     }
     // The decal fallback through the production builder: an owner without an ellipsoid (radius 0) gives one flat
     // patch at the hit point and no patch; it draws on a hull at its depth and 0 over sky.
@@ -1063,8 +1258,11 @@ int main(int argc, char** argv) {
     // fighter (a 20 m owner at 100 m) two cells apart, once in one anchor region (one draw, one cell map) and once as two
     // regions (two draws); the same on a capital at close range (a 400 m owner, the hits 100 m from the camera, three
     // cells apart); the worst one owner can submit at once (that capital hit in four regions: four draws); a fighter
-    // under 12 hits per second (36 live hits within two cells: the steady-state map) and a capital map of all 64 cells,
-    // at 1080p and 5120x1440.
+    // under 12 hits per second (36 live hits within two cells: the steady-state map), a capital map of all 128 cells
+    // (16 disjoint footprints, the newest 128 cells), the same map with the camera 30 m from the hull so its cap fills
+    // the frame, and the capital spread at 12 hits/s through the builder (its spill draws), at 1080p and 5120x1440.
+    // Each row carries lit_share (pixels the patches lit) and raster_share (pixels the draws rasterized, summed over
+    // the draws: an occlusion query, Z off, so every pixel the caps cover counts).
     for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
         Target tt;
         if (!make_target(tt, size.first, size.second)) { report("timing_target", false, ""); continue; }
@@ -1090,7 +1288,28 @@ int main(int argc, char** argv) {
             wide[k] = Hit{(float(k % 4) - 1.5f) * 5.f * cc, (float(k / 4) - 1.5f) * 5.f * 0.8660254f * cc, 0.3f + 0.05f * float(k)};
         const rr::WeaponPatch fighter_burst[1] = {make_patch(fighter_far, burst, 36)};
         const rr::WeaponPatch capital_map[1] = {make_patch(capital_close, wide, 16)};
-        std::printf("TIMING_MAPS fighter_12hps_cells=%u capital_full_map_cells=%u\n", fighter_burst[0].cells, capital_map[0].cells);
+        const TierScene capital_fill{wc::patch_capital, 2000.f, 2150.f};
+        const rr::WeaponPatch capital_fill_map[1] = {make_patch(capital_fill, wide, 16)};
+        // The capital spread at 12 hits/s, 2.5 s in (30 live hits within 35 degrees of the front), through the builder.
+        rr::WeaponPatch spread[wc::max_patches];
+        unsigned spread_count = 0;
+        {
+            rr::WeaponDecal decals[wc::max_decals];
+            stage_owner(4000.f, 2000.f, 0);
+            wc::ring_clear(stage_ring);
+            for (unsigned i = 0; i * 1000u / 12u <= 2500u; ++i) {
+                const double th = 0.61 * std::sqrt(halton(i + 1, 2)), a = 6.2831853 * halton(i + 1, 3), re = 200000.0;
+                const std::int32_t pos[3] = {std::int32_t(re * std::sin(th) * std::cos(a)),
+                                             std::int32_t(re * std::sin(th) * std::sin(a)), -std::int32_t(re * std::cos(th))};
+                add_stage_hit(i * 1000u / 12u, pos, wc::patch_capital);
+            }
+            spread_count = ws::build(stage_ring, 2500, &fake_read, identity_camera(), ws::Tuning{}, spread, wc::max_patches,
+                                     decals, wc::max_decals).patches;
+        }
+        unsigned spread_cells = 0;
+        for (unsigned i = 0; i < spread_count; ++i) spread_cells += spread[i].cells;
+        std::printf("TIMING_MAPS fighter_12hps_cells=%u capital_full_map_cells=%u capital_fill_map_cells=%u capital_spread_draws=%u capital_spread_cells=%u\n",
+                    fighter_burst[0].cells, capital_map[0].cells, capital_fill_map[0].cells, spread_count, spread_cells);
         struct Case {
             const char* name;
             const rr::WeaponPatch* patches;
@@ -1099,9 +1318,11 @@ int main(int argc, char** argv) {
                      {"fighter_two_hits_one_region", fighter_one, 1}, {"fighter_two_regions", fighter_regions, 2},
                      {"capital_close_two_hits_one_region", capital_one, 1},
                      {"capital_close_two_regions", capital_regions, 2}, {"worst_four_regions", worst, 4},
-                     {"fighter_12hps_map", fighter_burst, 1}, {"capital_close_full_map", capital_map, 1}};
-        Com<IDirect3DQuery9> ev;
+                     {"fighter_12hps_map", fighter_burst, 1}, {"capital_close_full_map", capital_map, 1},
+                     {"capital_fill_full_map", capital_fill_map, 1}, {"capital_spread_spill", spread, spread_count}};
+        Com<IDirect3DQuery9> ev, occlusion;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
+        dev->CreateQuery(D3DQUERYTYPE_OCCLUSION, &occlusion.p);
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
         for (const Case& c : cases) {
@@ -1125,19 +1346,30 @@ int main(int argc, char** argv) {
                 const double us = ticks_us(a, b, freq);
                 if (us < best) best = us;
             }
-            // Coverage: the share of the frame the patches lit (one readback after the timed runs).
+            // Coverage: the share of the frame the patches lit (one readback after the timed runs) and the share the
+            // draws rasterized (an occlusion query around the same run).
             dev->BeginScene();
             dev->SetRenderTarget(0, tt.scene_s.p);
             dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            DWORD rasterized = 0;
             if (c.count) {
                 rr::WeaponEffectsReport r{};
+                if (occlusion.p) occlusion.p->Issue(D3DISSUE_BEGIN);
                 pass.run(f, &r);
+                if (occlusion.p) occlusion.p->Issue(D3DISSUE_END);
             }
             dev->EndScene();
+            if (c.count && occlusion.p) {
+                const DWORD start = GetTickCount();
+                while (occlusion.p->GetData(&rasterized, sizeof rasterized, D3DGETDATA_FLUSH) == S_FALSE &&
+                       GetTickCount() - start < 5000) {
+                }
+            }
             const std::vector<float> l = read_luma(tt, tt.scene_s.p);
-            std::printf("TIMING width=%u height=%u case=%s patches=%u drawn=%u lit_share=%.4f gpu_us=%.1f\n", size.first,
-                        size.second, c.name, c.count, drawn, l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
-                        best);
+            std::printf("TIMING width=%u height=%u case=%s patches=%u drawn=%u lit_share=%.4f raster_share=%.4f gpu_us=%.1f\n",
+                        size.first, size.second, c.name, c.count, drawn,
+                        l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
+                        double(rasterized) / (double(size.first) * double(size.second)), best);
         }
         tt.release();
     }

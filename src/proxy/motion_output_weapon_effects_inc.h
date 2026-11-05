@@ -164,6 +164,10 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     f.decals = decals;
     f.decal_count = n.decals;
     weapon_retired_ += n.retired;
+    weapon_drops_[0] += n.dropped;
+    weapon_drops_[1] += n.cells_dropped;
+    weapon_drops_[2] += n.hits_dropped;
+    weapon_drops_[3] += n.spills;
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
     QueryPerformanceCounter(&end);
@@ -197,12 +201,16 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     return hr;
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew) noexcept {
+                                             bool* drew, unsigned drops[4]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
+    for (unsigned i = 0; i < 4; ++i) {
+        drops[i] = weapon_drops_[i];
+        weapon_drops_[i] = 0;
+    }
     weapon_patches_ = weapon_decals_ = weapon_retired_ = 0;
     weapon_stage_us_ = 0.f;
     weapon_drew_ = false;
