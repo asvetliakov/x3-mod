@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Fill the data block of the weapon-effects lab page from the weapon-effects census and the lab asset manifests.
+
+  python3 tools/effects/generate_weapon_effects_lab.py [--check]
+
+Inputs: verification/results/weapon-effects-census/<view>.json (tools/effects/weapon_effects_census.py) and
+verification/results/weapon-effects-lab/<view>/manifest.json (tools/effects/weapon_effects_lab_assets.py) for the
+views stock_ap, mayhem3 and fl. The page tools/effects/weapon_effects_lab.html is hand-written except the block
+`/* @weapon_effects_data */ ... /* @end */`, which this script writes: per view the weapons (TBullets columns the
+page draws), only the Effects rows they reach (muzzle col 21, flight col 19, impact col 20, the flak death row, the
+death rows of the ship tiers, stations and asteroids, and every EEDF_PROPAGATE child, including the rows only the
+manifest's extra_effects carries), the death tiers with their rows and object counts, and the texture/body status
+counts. Body geometry and textures stay in the untracked <view>/assets.js and tex/*.png beside the manifest; the page
+loads them by relative path. The generated page is also copied to verification/results/weapon-effects-lab/
+weapon_effects_lab.html so it opens from the results directory with file://.
+--check writes nothing and fails when either page differs from what the inputs give.
+"""
+import argparse
+import json
+import pathlib
+import sys
+
+REPO = pathlib.Path(__file__).resolve().parents[2]
+HTML = REPO / 'tools/effects/weapon_effects_lab.html'
+CENSUS = REPO / 'verification/results/weapon-effects-census'
+LAB = REPO / 'verification/results/weapon-effects-lab'
+COPY = LAB / 'weapon_effects_lab.html'
+VIEWS = ('stock_ap', 'mayhem3', 'fl')
+VIEW_LABELS = {'stock_ap': 'Stock AP (pinned 01-13 + addon/01-04)', 'mayhem3': 'Mayhem 3 (installed AP layers)',
+               'fl': "Farnham's Legacy (addon2)"}
+BEGIN, END = '/* @weapon_effects_data */', '/* @end */'
+# Death tiers the page offers: (label, TShips classes) or a non-ship source.
+TIERS = (('M5/M4/M3', ('OBJ_SHIP_M5', 'OBJ_SHIP_M4', 'OBJ_SHIP_M3')),
+         ('M6/M8/TS/TP', ('OBJ_SHIP_M6', 'OBJ_SHIP_M8', 'OBJ_SHIP_TS', 'OBJ_SHIP_TP')),
+         ('M1/M2/M7/TL', ('OBJ_SHIP_M1', 'OBJ_SHIP_M2', 'OBJ_SHIP_M7', 'OBJ_SHIP_TL')),
+         ('station', ('TDocks', 'TFactories')),
+         ('asteroid', ('TAsteroids',)))
+ELEMENT_KEYS = (('bodyid', 'bodyid'), ('minsize', 'min'), ('maxsize', 'max'), ('duration', 'dur'),
+                ('rndsize', 'rnd'), ('lensflarenr', 'flare'), ('particlenr', 'particle'), ('atten', 'atten'),
+                ('halfspeed', 'half'), ('timeoffset', 'toff'))
+PROPAGATE_KEYS = (('prop_effect_id', 'pid'), ('min_props', 'pmin'), ('max_props', 'pmax'),
+                  ('min_prop_delay', 'pdmin'), ('max_prop_delay', 'pdmax'), ('prop_length', 'plen'),
+                  ('prop_delay', 'pdelay'), ('prop_steps', 'psteps'), ('timeoffset', 'toff'))
+
+
+def short(names, prefix):
+    return [n.removeprefix(prefix) for n in names]
+
+
+def compact_element(el):
+    out = dict(f=short(el.get('flag_names', []), 'EEDF_'), i3d=el.get('i3dflags'), body=el.get('body_key'))
+    keys = PROPAGATE_KEYS if 'EEDF_PROPAGATE' in el.get('flag_names', []) else ELEMENT_KEYS
+    for src, dst in keys:
+        if src in el:
+            out[dst] = el[src]
+    if any(el.get(k) for k in ('xoffset', 'yoffset', 'zoffset')):
+        out['off'] = [el.get('xoffset'), el.get('yoffset'), el.get('zoffset')]
+    if 'warning' in el:
+        out['warning'] = el['warning']
+    return {k: v for k, v in out.items() if v not in (None, 0, [])}     # absent = 0 / none on the page
+
+
+def compact_effect(e):
+    if e.get('missing'):
+        return dict(missing=True)
+    flags = e.get('effectflags')
+    out = dict(flags=short(flags.split('|'), 'EDF_') if isinstance(flags, str) else [],
+               elements=[compact_element(el) for el in e.get('elements', [])])
+    if 'warning' in e:
+        out['warning'] = e['warning']
+    return out
+
+
+def compact_weapon(w):
+    return dict(id=w['weapon_id'], index=w['index'], body=w['body_key'], life=w['lifetime_ms'], speed=w['speed'],
+                flags=w['flag_bits'], colour=w['light_colour'], size=w['size'], beam=w['beam_length'],
+                flight=w['flight_effect'], impact=w['impact_effect'], muzzle=w['muzzle_effect'],
+                death=w['death_effect'], trail=w['trail_particles'])
+
+
+def tier_rows(death):
+    """[(label, [[row, objects], ...] most objects first)] from the census death_rows."""
+    out = []
+    for label, sources in TIERS:
+        counts = {}
+        for src in sources:
+            if src == 'TAsteroids':
+                for a in death.get('TAsteroids', []):
+                    counts[a['row']] = counts.get(a['row'], 0) + 1
+                continue
+            table = death.get(src) if src in ('TDocks', 'TFactories') else death['ship_classes'].get(src, {})
+            for row, n in (table or {}).items():
+                counts[int(row)] = counts.get(int(row), 0) + n
+        out.append([label, sorted(([r, n] for r, n in counts.items() if isinstance(r, int)),
+                                  key=lambda x: (-x[1], x[0]))])
+    return out
+
+
+def reachable(weapons, tiers, effects):
+    """Effects row ids (str) the page can play: weapon columns, tier rows and PROPAGATE children, recursively."""
+    todo = [r for w in weapons for r in (w['muzzle'], w['flight'], w['impact'], w['death'])
+            if isinstance(r, int) and r > 0]
+    todo += [r for _, rows in tiers for r, _ in rows]
+    seen = set()
+    while todo:
+        k = str(todo.pop())
+        if k in seen:
+            continue
+        seen.add(k)
+        for el in effects.get(k, {}).get('elements', []):
+            if isinstance(el.get('pid'), int) and el['pid'] > 0:
+                todo.append(el['pid'])
+    return sorted(seen, key=int)
+
+
+def view_record(view, census, manifest):
+    effects = {k: compact_effect(e) for k, e in census['effects'].items()}
+    for k, e in manifest.get('extra_effects', {}).items():
+        effects.setdefault(k, dict(compact_effect(e), propagated_only=True))
+    weapons = [compact_weapon(w) for w in census['weapons']]
+    tiers = tier_rows(census['death_rows'])
+    ids = reachable(weapons, tiers, effects)
+    tex = manifest['textures']
+    status = {}
+    for r in tex.values():
+        status[r['status']] = status.get(r['status'], 0) + 1
+    bodies = manifest['bodies']
+    return dict(label=VIEW_LABELS.get(view, view), tables={k: f'{v["source"]}:{v["member"]} {v["sha256"]}'
+                                                          for k, v in census['tables'].items()
+                                                          if k in ('TBullets', 'Effects')},
+                weapons=weapons, effects={k: effects.get(k, dict(missing=True)) for k in ids}, tiers=tiers,
+                default_death_row=census['death_rows'].get('default_row'),
+                status=dict(texture_names=len(tex), texture_status=dict(sorted(status.items())),
+                            placeholder_bound=sorted(n for n, r in tex.items()
+                                                     if any(i.get('placeholder') for i in r['images'].values())),
+                            bodies=len(bodies), body_errors=sorted(k for k, b in bodies.items() if b.get('error')),
+                            truncated_bodies=sorted(k for k, b in bodies.items() if b.get('truncated')),
+                            scene_bodies={src: sorted(k for k, b in bodies.items() if b.get('source') == src)
+                                          for src in ('cut_fallback_inferred', 'scene')}))
+
+
+def block(data):
+    lines = [BEGIN, 'const LAB_DATA = {']
+    for view, rec in data.items():
+        lines.append(f'{json.dumps(view)}: {json.dumps(rec, separators=(",", ":"), sort_keys=True)},')
+    lines.append('};')
+    lines.append(END)
+    return '\n'.join(lines)
+
+
+def render(html, data):
+    start, stop = html.find(BEGIN), html.find(END)
+    if start < 0 or stop < start:
+        raise SystemExit(f'{HTML.relative_to(REPO)}: marked block {BEGIN} ... {END} not found')
+    return html[:start] + block(data) + html[stop + len(END):]
+
+
+def load(views=VIEWS, census_dir=CENSUS, lab_dir=LAB):
+    data = {}
+    for view in views:
+        census = json.loads((census_dir / f'{view}.json').read_text())
+        manifest = json.loads((lab_dir / view / 'manifest.json').read_text())
+        data[view] = view_record(view, census, manifest)
+    return data
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument('--check', action='store_true', help='fail when a page differs from the inputs')
+    args = ap.parse_args(argv)
+    data = load()
+    html = HTML.read_text()
+    fresh = render(html, data)
+    counts = ' '.join(f'{v}: weapons={len(r["weapons"])} effects={len(r["effects"])} '
+                      f'missing_rows={sum(1 for e in r["effects"].values() if e.get("missing"))} '
+                      f'textures={r["status"]["texture_status"]} body_errors={len(r["status"]["body_errors"])};'
+                      for v, r in data.items())
+    stale = [p for p in (HTML, COPY) if not p.exists() or p.read_text() != fresh]
+    if args.check:
+        if stale:
+            print('FAIL: stale ' + ', '.join(str(p.relative_to(REPO)) for p in stale)
+                  + '; run python3 tools/effects/generate_weapon_effects_lab.py')
+            return 1
+        print(f'PASS: {HTML.relative_to(REPO)} and its results copy match the inputs ({len(fresh)} bytes). {counts}')
+        return 0
+    for p in stale:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(fresh)
+    print(f'{"updated " + ", ".join(str(p.relative_to(REPO)) for p in stale) if stale else "already current"} '
+          f'({len(fresh)} bytes). {counts}')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -98,3 +98,7 @@ verification/results/plumes-no-glow/census_out.json
 
 # weapon effects art census: regenerated in ~2 s by tools/effects/weapon_effects_census.py
 verification/results/weapon-effects-census/*.json
+
+# weapon effects lab assets: decoded game textures (PNG) and body geometry, regenerated in ~5 s by
+# tools/effects/weapon_effects_lab_assets.py; copyrighted game bytes, keep local
+verification/results/weapon-effects-lab/
