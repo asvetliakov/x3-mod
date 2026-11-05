@@ -1,0 +1,317 @@
+{
+ "ap": {
+  "exe": "/mnt/c/X3/X3AP.exe",
+  "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "sha_ok": true,
+  "response": {
+   "va": "0x45e130",
+   "size": 3445,
+   "sha256": "3384552fe8c327d116cf7040b4ae1b8a967a3b49c44878d6ee72c8dcea2abab5"
+  },
+  "windows": {
+   "contact_gate": {
+    "va": "0x45e6b0",
+    "len": 46,
+    "relocs": [],
+    "ok": true
+   },
+   "strength_and_floor": {
+    "va": "0x45e9f7",
+    "len": 9,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_law": {
+    "va": "0x45ea6f",
+    "len": 17,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_join_site": {
+    "va": "0x45eaf4",
+    "len": 11,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_damage_calls": {
+    "va": "0x45ebaf",
+    "len": 24,
+    "relocs": [],
+    "ok": true
+   },
+   "planet_gate_site": {
+    "va": "0x45dbaf",
+    "len": 12,
+    "relocs": [],
+    "ok": true
+   },
+   "planet_damage_call": {
+    "va": "0x45dc3a",
+    "len": 14,
+    "relocs": [],
+    "ok": true
+   }
+  },
+  "census": {
+   "damage_fn": [
+    "0x44fab1",
+    "0x45dc43",
+    "0x45e383",
+    "0x45e433",
+    "0x45e569",
+    "0x45e621",
+    "0x45ebb8",
+    "0x45ebc2",
+    "0x45f054",
+    "0x463518"
+   ],
+   "damage_ok": true,
+   "response": [
+    "0x45d233",
+    "0x45d2ff",
+    "0x45d691",
+    "0x45da3c",
+    "0x45df5c"
+   ],
+   "response_ok": true,
+   "hull_fn": [
+    "0x449c52",
+    "0x449cc9"
+   ],
+   "hull_ok": true,
+   "makedamage_push": [
+    "0x45dbf4",
+    "0x45eb49",
+    "0x45eb7e"
+   ],
+   "makedamage_ok": true,
+   "makedamage_string": true
+  },
+  "spans": {
+   "contact_join_site": {
+    "va": "0x45eaf4",
+    "len": 7,
+    "interior_raw_hits": [],
+    "relocs": [],
+    "ok": true
+   },
+   "planet_gate_site": {
+    "va": "0x45dbaf",
+    "len": 2,
+    "interior_raw_hits": [],
+    "relocs": [],
+    "ok": true
+   }
+  },
+  "contact_block_raw_candidates_from_outside": [
+   [
+    "jcc32",
+    "0x454432",
+    "0x45e8bb"
+   ]
+  ],
+  "contact_block_entries_from_outside": [],
+  "contact_block_entries_within_response": [],
+  "hull_writes_in_collision_code": [],
+  "kc": {
+   "mayhem 07.cat (the object this install loads)": {
+    "build": 1462141839,
+    "entries": [
+     "0xdfea0"
+    ],
+    "length": 10,
+    "calls": [
+     "IsInvincible"
+    ],
+    "zero_effect": true,
+    "ok": true
+   },
+   "stock AP 04.cat": {
+    "build": 1510658513,
+    "entries": [
+     "0xc77ad"
+    ],
+    "length": 457,
+    "calls": [
+     "150::NotifyEquipmentDamaged",
+     "150::NotifyEquipmentDestroyed",
+     "2004::AddLaser",
+     "2004::AddMissile",
+     "2004::AddShield",
+     "2004::GetHull",
+     "2004::GetMaxHull",
+     "2004::GetMaxShield",
+     "2004::GetShield",
+     "2004::GetWareTypeCount",
+     "2004::InstallWare",
+     "605::RestartGrid",
+     "AddWare",
+     "IsInvincible",
+     "SA_GetNumSubTypes",
+     "SA_GetShieldTypeEnergyMax",
+     "SE_Random",
+     "SE_TableNext"
+    ],
+    "calls_before_guard": [
+     "2004::GetHull",
+     "2004::GetMaxHull",
+     "2004::GetMaxShield",
+     "2004::GetShield",
+     "IsInvincible"
+    ],
+    "zero_damage_returns_early": true,
+    "ok": true
+   }
+  },
+  "ok": true
+ },
+ "fl": {
+  "exe": "/mnt/c/X3FL/X3FL.exe",
+  "sha256": "e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8",
+  "sha_ok": true,
+  "response": {
+   "va": "0x467f10",
+   "size": 3741,
+   "sha256": "2fa0c2a6e60e2831fd995596b34ee5303141b5e80f572307659d6864d8e746df"
+  },
+  "windows": {
+   "contact_gate": {
+    "va": "0x46859e",
+    "len": 46,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_law": {
+    "va": "0x4689cb",
+    "len": 17,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_join_site": {
+    "va": "0x468a58",
+    "len": 17,
+    "relocs": [],
+    "ok": true
+   },
+   "contact_damage_calls": {
+    "va": "0x468b0d",
+    "len": 28,
+    "relocs": [],
+    "ok": true
+   },
+   "planet_gate_site": {
+    "va": "0x4678b7",
+    "len": 15,
+    "relocs": [],
+    "ok": true
+   },
+   "planet_damage_call": {
+    "va": "0x467970",
+    "len": 18,
+    "relocs": [],
+    "ok": true
+   }
+  },
+  "census": {
+   "damage_fn": [
+    "0x4593ed",
+    "0x46797d",
+    "0x468185",
+    "0x4682b1",
+    "0x4683eb",
+    "0x468517",
+    "0x468b16",
+    "0x468b24",
+    "0x468f41",
+    "0x46d82b"
+   ],
+   "damage_ok": true,
+   "response": [
+    "0x466eac",
+    "0x467377",
+    "0x467d31"
+   ],
+   "response_ok": true,
+   "hull_fn": [
+    "0x45325f",
+    "0x4532a4"
+   ],
+   "hull_ok": true,
+   "makedamage_push": [
+    "0x46790d",
+    "0x468aa8",
+    "0x468adb"
+   ],
+   "makedamage_ok": true,
+   "makedamage_string": true
+  },
+  "spans": {
+   "contact_join_site": {
+    "va": "0x468a58",
+    "len": 8,
+    "interior_raw_hits": [],
+    "relocs": [],
+    "ok": true
+   },
+   "planet_gate_site": {
+    "va": "0x4678bb",
+    "len": 2,
+    "interior_raw_hits": [],
+    "relocs": [],
+    "ok": true
+   }
+  },
+  "contact_block_raw_candidates_from_outside": [
+   [
+    "jcc32",
+    "0x45e174",
+    "0x4685fd"
+   ]
+  ],
+  "contact_block_entries_from_outside": [],
+  "contact_block_entries_within_response": [],
+  "hull_writes_in_collision_code": [],
+  "kc": {
+   "FL addon2/03.cat": {
+    "build": 1636047691,
+    "entries": [
+     "0x15449f"
+    ],
+    "length": 524,
+    "calls": [
+     "150::NotifyEquipmentDamaged",
+     "150::NotifyEquipmentDestroyed",
+     "2004::AddLaser",
+     "2004::AddMissile",
+     "2004::AddShield",
+     "2004::GetHull",
+     "2004::GetMaxHull",
+     "2004::GetMaxShield",
+     "2004::GetShield",
+     "2004::GetWareTypeCount",
+     "2004::GetWareTypeCountWithPredefined",
+     "2004::InstallWare",
+     "2004::Signal_EquipmentDamaged",
+     "605::RestartGrid",
+     "AddWare",
+     "IsInvincible",
+     "SA_GetNumSubTypes",
+     "SA_GetShieldTypeEnergyMax",
+     "SE_Random",
+     "SE_TableNext"
+    ],
+    "calls_before_guard": [
+     "2004::GetHull",
+     "2004::GetMaxHull",
+     "2004::GetMaxShield",
+     "2004::GetShield",
+     "IsInvincible"
+    ],
+    "zero_damage_returns_early": true,
+    "ok": true
+   }
+  },
+  "ok": true
+ },
+ "result": "PASS"
+}
