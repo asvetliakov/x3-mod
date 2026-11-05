@@ -1,0 +1,9 @@
+vtable_copy_repro.cpp, native host (Windows 10.0.26300.9818, SysWOW64\d3d9.dll 1,550,976 B, 2026-10-29), 2026-11-05,
+each run as X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py <scratch>/vtable_copy_repro.exe <mode>:
+mode      table slots  SetRenderTarget(0, back buffer)        exit
+original  backend      00000000                              0
+copy      119          c0000005, eip=00000000                5
+padded    119 + 64     c0000005, eip=5e000094 (sentinel 37 = slot 156 = this->vtbl[0x270])   5
+The faulting site in SysWOW64\d3d9.dll (image base 0x10000000): SetRenderTarget at 0x1011eaf0; for index 0 and a
+non-null surface it builds the viewport {0, 0, W, H, 0, 1} and calls `mov esi,[eax+0x270]; call esi` at
+0x1011ecdc / 0x1011ecef with eax = the device's vtable pointer (i686-w64-mingw32-objdump -d).

@@ -96,7 +96,7 @@ so the records cannot be re-recorded while the sources keep changing natively:
 
 | Module | Record (Wine run) | Sources drifted |
 | --- | --- | --- |
-| `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09); native record 2026-11-05 fails (every mode crashes in `CreateDevice`) | 12 of 21 |
+| `test_engine_effects` | rebound 2026-11-05 to `native-windows/engine-effects/summary.json` (299 checks in 8 modes, exact hashes; Wine record kept as provenance) | none |
 | `test_engine_plumes` | rebound 2026-11-05 to `native-windows/engine-plumes/summary.json` (exact hashes; Wine record kept as provenance) | none |
 | `test_engine_ribbons` | rebound 2026-11-05 to `native-windows/engine-ribbons/summary.json` (44/44 after the fixture's nozzle-anchored expectations were re-derived for the anchored head, [engine-effects ledger](engine-effects.md); exact hashes; Wine record kept as provenance) | none |
 | `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 1 of 43 (host) | 1 of 9 |
@@ -114,8 +114,8 @@ those files were under concurrent change and move on the next merge. The next
 re-record (and removal of the constants) needs a Wine or native D3D9 fixture run
 of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
 `run_engine_shimmer.py` and `run_fov_patch.py`. All five now take `--host native`.
-The plume and FOV tests are bound to their native records. The ribbons, shimmer and
-engine-effects tests keep the Wine record and the constants until their native record
+The plume, FOV and engine-effects tests are bound to their native records. The ribbons and
+shimmer tests keep the Wine record and the constants until their native record
 passes (below, "Native re-record, 2026-11-05").
 
 ## Native Windows fixture host (2026-11-05)
@@ -216,7 +216,7 @@ fixing them changed no gate:
 | --- | --- | --- | --- | --- |
 | engine-ribbons | 14 s | 44, 22 fail; 44, 0 fail after the re-derivation (15 s) | 22 verdicts differ; none after | **native** (after the re-derivation) |
 | engine-shimmer | 5 s | 43, 1 fails | 1 differs | Wine (constants kept) |
-| engine-effects | 59 s (incremental) | 0 in all 8 modes | every mode crashes | Wine (constants kept) |
+| engine-effects | 59 s (incremental); 61 s after the fix below | 0 in all 8 modes; 299, 0 fail after the fix | every mode crashed; after the fix the same counts per mode | **native** (after the fix) |
 | fov-patch | 0.3 s run (Wine 8.7 s) | 268, 0 fail | identical | **native** |
 
 **Ribbons: source drift, not the host.** All 22 failures are the moving-nozzle
@@ -269,6 +269,13 @@ commit cd479d025 does not build on this host (its fog bake needs NumPy 2.0.2). T
 program bytes come from `--programs /mnt/c/X3/x3-modern-captures` (same SHA-256 as the Wine
 record). The seam links a dedicated AP build, `--cmake-build verification/probe/build/engine-effects-cmake-ap`,
 which the runner configures when empty; `build/` holds no configured build on this host.
+
+Fixed 2026-11-05: the fault was the bare configuration's vtable copy on the native device, not the seam build. Windows'
+`d3d9.dll` calls its own private virtual slot 156 from `SetRenderTarget(0, surface)`, and the attach self-test's
+`draw_quad` makes that call through the proxy's 119-slot table. The runner now runs native modes with
+`X3M_OWNERSHIP=1`, the shipped default, and links the fixture at its fixed base. The native record passes 299/299 with
+the Wine record's per-mode counts, and `test_engine_effects` is bound to it
+([engine-effects.md](engine-effects.md), "Native fixture fault").
 
 **FOV: bound.** The 268 check names and verdicts, the constructor, INS_SetFocus and load
 results, the 65,537-input sweep, the install sequence and the confirm rows equal the
