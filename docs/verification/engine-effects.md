@@ -948,3 +948,67 @@ Other `frac` idioms in `src/effects/` and `src/fog/` (checked in the compiled di
   index, not a hash.
 - `own_sun_ps.hlsl` hashes integer ray indices, and `sky_stars_vs.hlsl` and `fog_dust_motes_vs.hlsl` take `frac` of
   per-vertex data. None of them derives a lattice from `frac`.
+
+## Native stream offset: state-block Capture keeps the recorded offset (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+Finding (measured, native host RTX 5070 Ti, driver 32.0.16.2114, d3d9.dll 10.0.26100.9818): after `EngineShimmerPass`
+restored the caller's state, stream 0 came back with the caller's buffer and stride 24 but offset 0 instead of 16
+(`state_stream_indices_restored_outside_untouched`, 42/43; the record's own commit fails the same way). Cause:
+`SavedState` (`src/renderer/engine_shimmer_pass.cpp:86-150` before the fix) relied on the recorded block alone for
+stream 0. `ensure_scratch` records it from `set_states`' `SetStreamSource(0, nullptr, 0, 0)` (line 309 before the fix),
+and `DrawPrimitiveUP` then resets stream 0. On native D3D9, `IDirect3DStateBlock9::Capture` refreshes a stream's buffer and
+stride but not its offset. `Apply` puts back the offset the block was recorded with, or for `CreateStateBlock` the
+offset it was created with. Probe
+(`verification/results/native-windows/engine-shimmer/stateblock_offset_probe.cpp`, output `.txt` beside it):
+
+| Case | Caller tuple at Capture | After Apply |
+| --- | --- | --- |
+| block recorded with `(null, 0, 0)` | `(vb, 16, 24)` | `(vb, 0, 24)` |
+| block recorded with `(vb2, 8, 12)` | `(vb, 16, 24)` | `(vb, 8, 24)` |
+| same, `DrawPrimitiveUP` between | `(vb, 16, 24)` | `(vb, 0, 24)` |
+| `D3DSBT_ALL` created at `(vb, 16, 24)` | `(vb, 40, 24)` | `(vb, 16, 24)` |
+| `D3DSBT_ALL` created at `(vb, 16, 24)` | `(vb2, 0, 12)` | `(vb2, 16, 12)` |
+| `D3DSBT_ALL`, stream 1 created unset | `(vb2, 20, 12)` | `(vb2, 0, 12)` |
+| explicit `GetStreamSource` / `SetStreamSource` | `(vb, 16, 24)` | `(vb, 16, 24)` |
+
+The stream frequency is captured by both kinds of block (`D3DSTREAMSOURCE_INDEXEDDATA | 3` comes back). A block created
+at the moment of use is correct, because creation records the current offset. The documented `Capture` contract is
+broader than this, so the fix relies only on the explicit Get/Set pair. `TemporalPass` and `FogPass` already do this
+(filed for the Preview backend on 2026-09-25, docs/verification/temporal-resolve.md).
+
+Fix: `SavedState::capture` reads stream 0 with `GetStreamSource` after `Capture`. `restore` sets it again right after
+`Apply`, and the buffer reference is released in the destructor. This adds two device calls per run (the STATE row's
+`calls` goes from 97 to 99). The same defect, a block kept across runs and stream 0 restored only by `Apply`, was in
+`SunShadowApplyPass` (its quad goes through `DrawPrimitiveUP`) and `ShadowReplayPass` (each replayed draw binds its own
+stream 0). Both got the same change. They have no native fixture run here, so that part is not verified natively.
+
+Checked without the defect: `TemporalPass` and `FogPass` (explicit per-stream tuples after `Apply`); `BloomPass`,
+`HdrPass`, `SkyStarsPass`, `OcclusionCullPass`, `MotionOutput::save_state` / `restore_state` and the bolt route
+(explicit Get/Set, no block); `RigidMotion` and the sun-share lane (a `D3DSBT_ALL` block created per call, plus the
+explicit restore for the lane); `EnginePlumesPass`, `EngineRibbonsPass` and `OwnSunPass` (they run inside the temporal
+resolve's stage bracket and restore nothing themselves). `WeaponEffectsPass` belongs to another worktree and was not
+checked.
+
+Noise: `vnoise_gradient` in `engine_shimmer_ps.hlsl` now takes `i = floor(floor(p) + 0.5)` and `f = p - i`, as the plume
+fix above does. The program was regenerated through interop with
+`tools/shaders/generate_rigid_motion_pixel_native.py --engine-shimmer`, a new option that runs
+`generate_engine_shimmer_program.py`'s `compile_program` with compile.exe called directly. Before the edit, the
+unchanged source reproduced the committed bytecode `216acef9…` and header byte for byte. Only the record's hash for
+`generate_rigid_motion_pixel.py` was stale, from an earlier tool change. The new program has 6,418 words (6,178 before),
+bytecode `794618eb…`, and the fixture's `ps_slots` is 1,687 (1,623 before). The displacement numbers match the pre-fix
+native run at four digits, so the index was already exact for this caller, as predicted. GPU cost, from an alternating
+3-round A/B of `--only timing` (`native-windows/engine-shimmer/lattice_timing_ab.py`, output `.txt`):
+
+| Size, rects | Old ms | New ms | Ratio |
+| --- | --- | --- | --- |
+| 1920x1080, 1 / 4 / 16 | 0.0193 / 0.0583 / 0.1992 | 0.0206 / 0.0605 / 0.2067 | 1.07 / 1.04 / 1.04 |
+| 5120x1440, 1 / 4 / 16 | 0.0402 / 0.1682 / 0.7096 | 0.0444 / 0.1763 / 0.7279 | 1.10 / 1.05 / 1.03 |
+
+The record's own 16-rect figures (0.361 / 1.397 ms) were run noise: the A/B medians are 0.207 / 0.728 ms.
+
+Outcome (measured; `native-windows/engine-shimmer/summary.json` replaced, 5.2 s under the lock including the build;
+against Wine by `compare_wine.py`): PASS 43/43 with the same labels as the Wine record, and no verdict differs. The STATE
+row shows `offset=16 stride=24 vb_same=1`. Displacement max is 1.1075 / 1.4726 px (Wine 1.1033 / 1.4704); outside and
+band diffs are 0 and the revert is exact. `test_engine_shimmer` is bound to the native record with exact source hashes,
+and its `SOURCES_SHA256_2026_11_03` is removed. `test_engine_effects`, whose native record still crashes, gained one
+dated entry for `engine_shimmer_pass.cpp`. The AP DLL builds with CMake `-j4`, with no warning from the changed files.

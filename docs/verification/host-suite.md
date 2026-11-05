@@ -99,7 +99,7 @@ so the records cannot be re-recorded while the sources keep changing natively:
 | `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09); native record 2026-11-05 fails (every mode crashes in `CreateDevice`) | 12 of 21 |
 | `test_engine_plumes` | rebound 2026-11-05 to `native-windows/engine-plumes/summary.json` (exact hashes; Wine record kept as provenance) | none |
 | `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 22 of 44 (source drift) | 5 of 14 |
-| `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 1 of 43 (host) | 1 of 9 |
+| `test_engine_shimmer` | rebound 2026-11-05 to `native-windows/engine-shimmer/summary.json` (43/43 after the stream-offset fix, exact hashes; Wine record kept as provenance) | none |
 | `test_fov_patch_result` | rebound 2026-11-05 to `native-windows/fov-patch/fov-patch.json` (268/268, exact hashes; Wine record kept as provenance) | none |
 | `test_engine_effects_sites` | `engine-effects-patch.json` (203c5e984, Run124) | 1 of 7 (`engine_effects_option.h`, 17ab85a84) |
 | `test_occlusion_cull` | occlusion records (2026-10-08) | accepted 2026-11-02 |
@@ -114,7 +114,7 @@ those files were under concurrent change and move on the next merge. The next
 re-record (and removal of the constants) needs a Wine or native D3D9 fixture run
 of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
 `run_engine_shimmer.py` and `run_fov_patch.py`. All five now take `--host native`.
-The plume and FOV tests are bound to their native records. The ribbons, shimmer and
+The plume, shimmer and FOV tests are bound to their native records. The ribbons and
 engine-effects tests keep the Wine record and the constants until their native record
 passes (below, "Native re-record, 2026-11-05").
 
@@ -215,7 +215,7 @@ fixing them changed no gate:
 | Fixture | Native (wall, incl. build) | Checks | Against the Wine record | Binding |
 | --- | --- | --- | --- | --- |
 | engine-ribbons | 14 s | 44, 22 fail | 22 verdicts differ | Wine (constants kept) |
-| engine-shimmer | 5 s | 43, 1 fails | 1 differs | Wine (constants kept) |
+| engine-shimmer | 5 s | 43, 0 fail (after the fix; 1 failed before) | identical | **native** |
 | engine-effects | 59 s (incremental) | 0 in all 8 modes | every mode crashes | Wine (constants kept) |
 | fov-patch | 0.3 s run (Wine 8.7 s) | 268, 0 fail | identical | **native** |
 
@@ -247,6 +247,11 @@ a caller whose stream 0 has a nonzero offset would draw from offset 0 after a sh
 Every other check passes: displacement max 1.1075 / 1.4726 px (Wine 1.1033 / 1.4704),
 outside and band byte-equal, revert exact. GPU cost for 16 rects is 0.200 ms at 1920x1080
 and 0.713 ms at 5120x1440 (Wine 0.609 / 1.538).
+
+Fixed 2026-11-05: native `Capture` refreshes a stream's buffer and stride but never its
+offset, so the pass now sets stream 0's tuple again after `Apply`. The same fix went into
+`SunShadowApplyPass` and `ShadowReplayPass`. The native record passes 43/43 and
+`test_engine_shimmer` is bound to it ([engine-effects.md](engine-effects.md), "Native stream offset").
 
 **Engine-effects: the seam crashes natively.** Every mode dies with `c0000005`
 inside the fixture's `create()`, after the proxy's `linear_cutout_device` row and

@@ -1,0 +1,25 @@
+device hr=00000000
+A0 caller set                                hr=00000000 vb=vb offset=16 stride=24
+A1 after recording (null,0,0)                hr=00000000 vb=vb offset=16 stride=24
+A2 overwritten                               hr=00000000 vb=vb2 offset=32 stride=12
+A3 recorded(null) Capture/Apply              hr=00000000 vb=vb offset=0 stride=24
+B recorded(vb2,8,12) Capture/Apply           hr=00000000 vb=vb offset=8 stride=24
+  drawup hr=00000000
+C1 after DrawPrimitiveUP                     hr=00000000 vb=null offset=0 stride=0
+C2 recorded Capture/DrawUP/Apply             hr=00000000 vb=vb offset=0 stride=24
+D0 after CreateStateBlock(ALL)               hr=00000000 vb=vb offset=16 stride=24
+D1 ALL created/Apply                         hr=00000000 vb=vb offset=16 stride=24
+D2 ALL Capture(vb,40)/Apply                  hr=00000000 vb=vb offset=16 stride=24
+  drawup hr=00000000
+D3 ALL Capture/DrawUP/Apply                  hr=00000000 vb=vb offset=16 stride=24
+E VERTEXSTATE created/Apply                  hr=00000000 vb=vb2 offset=32 stride=12
+F recorded Capture/(null)/Apply              hr=00000000 vb=vb offset=0 stride=24
+  decl=08286800
+F2 after SetVertexDeclaration(saved)         hr=00000000 vb=vb offset=0 stride=24
+F3 after SetFVF                              hr=00000000 vb=vb offset=0 stride=24
+  drawup hr=00000000
+G explicit Get/DrawUP/Set                    hr=00000000 vb=vb offset=16 stride=24
+H recorded freq Capture(idx|3)/Apply          freq=40000003
+I ALL freq Capture(idx|3)/Apply               freq=40000003
+J ALL(created vb,16,24) Capture(vb2,0,12)/Apply hr=00000000 vb=vb2 offset=16 stride=12
+K ALL stream1 Capture(vb2,20,12)/Apply vb=vb2 offset=0 stride=12

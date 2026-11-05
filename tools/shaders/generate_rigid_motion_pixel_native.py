@@ -7,6 +7,8 @@ line and tool sources name the base tool, so a bottle --check of the base tool a
 compiler's wine invocation is replaced by a direct WSL-interop run of compile.exe with Windows paths, after
 `tasklist.exe` shows no X3AP.exe / X3FL.exe (failing closed when the list cannot be read). The base tool's digest, and
 with it every record it checks, stays unchanged. --check recompiles and compares without changing anything.
+--engine-shimmer runs tools/shaders/generate_engine_shimmer_program.py's compile_program the same way (its own header
+and record, its Reproduce line naming the shimmer tool).
 """
 import argparse
 import json
@@ -44,16 +46,24 @@ def game_running():
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--check', action='store_true')
-    parser.add_argument('--shader', choices=sorted(base.SHADERS), action='append', required=True,
-                        help='fragment to (re)compile (at least one)')
+    parser.add_argument('--shader', choices=sorted(base.SHADERS), action='append', default=[],
+                        help='fragment to (re)compile (this or --engine-shimmer at least once)')
+    parser.add_argument('--engine-shimmer', action='store_true',
+                        help='also the engine shimmer program (generate_engine_shimmer_program.py)')
     parser.add_argument('--d3dx', type=Path, default=base.bottle.game_dir() / 'd3dx9_37.dll')
     args = parser.parse_args()
+    if not args.shader and not args.engine_shimmer:
+        parser.error('nothing to compile: give --shader or --engine-shimmer')
     if Path(base.bottle.WINE).exists():
         raise RuntimeError('a CrossOver wine exists: run generate_rigid_motion_pixel.py through wine_lock.py instead')
     if game_running():
         raise RuntimeError('X3AP / X3FL running or process inventory failed; postpone compilation')
     base.subprocess = types.SimpleNamespace(run=native_run)
     results = [base.compile_one(name, args) for name in args.shader]
+    if args.engine_shimmer:
+        import generate_engine_shimmer_program as shimmer
+        shimmer.subprocess = types.SimpleNamespace(run=native_run)
+        results.append(shimmer.compile_program(args))
     print(json.dumps(dict(result='PASS', check=args.check, shaders=results)))
 
 

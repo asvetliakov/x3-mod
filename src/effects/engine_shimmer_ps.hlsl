@@ -23,9 +23,12 @@ float4 rect_b[16] : register(c20); // length (px ahead), half-width (px), back (
 float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, the
                                    // occlusion fade (1 / the band's device-depth span)
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
+// The lattice index is exact, as in engine_plume_ps.hlsl vnoise: p - frac(p) is off an integer in its last bit when
+// fxc folds an integer offset out of the frc but keeps it in a mad that the driver fuses (NVIDIA, 2026-11-05);
+// floor(x + 0.5) of a value within half a unit of an integer is that integer whatever the contraction.
 float2 vnoise_gradient(float3 p) {
-    const float3 f = frac(p);
-    const float3 i = p - f;
+    const float3 i = floor(floor(p) + 0.5);
+    const float3 f = p - i;
     const float3 base = i * 0.3183099 + float3(0.1, 0.2, 0.3);
     const float3 a = frac(base), b = frac(base + 0.3183099);
     const float3 u = f * f * (3.0 - 2.0 * f);

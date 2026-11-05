@@ -67,6 +67,9 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',
     'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
+    # The shimmer pass's restore sets stream 0's tuple again after Apply (native D3D9's Capture keeps a block's recorded
+    # stream offset; native-windows/engine-shimmer/summary.json 43/43, 2026-11-05).
+    'src/renderer/engine_shimmer_pass.cpp': '04662b5041e0d80e98d0cdeded3afadde793c83646b9452e229886c233417ef2',
 }
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 sys.path.insert(0, str(ROOT / 'tools/config'))

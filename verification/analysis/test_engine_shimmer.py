@@ -1,8 +1,9 @@
 """Engine heat shimmer (docs/architecture/engine-exhaust-gap-analysis.md gap 9, phase 5): the portable core
 src/proxy/engine_shimmer_core.h compiled on the host (the option parsers, the amplitude law, the
 rects from the plume builder: the 24 px gate, the 16-rect cap and rank, the side-view and end-on geometry, the near-plane
-cut, the view filter, the occlusion depth, the mask law, the constant block and the quads), the schema entries and launcher options, the wiring, and the tracked Wine
-record of run_engine_shimmer.py bound to its production sources.
+cut, the view filter, the occlusion depth, the mask law, the constant block and the quads), the schema entries and launcher options, the wiring, and the tracked native
+Windows record of run_engine_shimmer.py (--host native, 2026-11-05) bound to its production sources; the Wine record stays
+as provenance.
 """
 import hashlib
 import json
@@ -16,14 +17,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The record is Wine provenance (Run140, 2026-10-09, commit 0cf873a6b); since 2026-10-11 there is no Wine host and these
-# sources changed natively (0cf873a6b..2c3d32ffa). Accepted beside the recorded hash until run_engine_shimmer.py reruns on a
-# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-# Bumped for the FL run 34 diagnostics (probe rows, far-jet counter split; telemetry only, 2026-11-03).
-SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
-    'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
-}
 sys.path.insert(0, str(ROOT / 'tools/config'))
 import schema  # noqa: E402
 from source_text import source_text  # noqa: E402
@@ -344,8 +337,10 @@ class Wiring(unittest.TestCase):
 
 
 class EngineShimmerFixtureRecord(unittest.TestCase):
-    """The tracked Wine record of run_engine_shimmer.py, bound to the production sources it exercised."""
-    PATH = ROOT / 'verification/results/bottle-X3/engine-shimmer/summary.json'
+    """The tracked native Windows record of run_engine_shimmer.py (--host native, 2026-11-05), bound to the production
+    sources it exercised; the Wine record (bottle-X3/engine-shimmer/summary.json, Run140) stays as provenance."""
+    PATH = ROOT / 'verification/results/native-windows/engine-shimmer/summary.json'
+    WINE_PATH = ROOT / 'verification/results/bottle-X3/engine-shimmer/summary.json'
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -354,8 +349,14 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         r = self.record
         self.assertTrue(r['passed'])
         self.assertFalse(r['game_launched'])
-        self.assertEqual(r['bottle']['name'], 'X3')
+        self.assertIsNone(r['bottle'])
+        self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
+        self.assertEqual(r['report']['check_count'], 43)
+        # The caller's stream 0 tuple (buffer, offset 16, stride 24) survives the pass's restore (native D3D9's Capture
+        # keeps a block's recorded stream offset: docs/verification/engine-effects.md, "Native stream offset").
+        state = r['report']['state'][0]
+        self.assertEqual((state['stream_indices_outside'], state['vb_same'], state['offset'], state['stride']), (1, 1, 16, 24))
         self.assertEqual(r['build']['warnings'], 0)
         self.assertEqual(len(r['report']['displace']), 2)
         for x in r['report']['displace']:
@@ -373,7 +374,15 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
         self.assertEqual(set(now), set(source['sha256']))
         for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
-            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_engine_shimmer.py')
+            self.assertEqual(now[path], recorded, path + ': production sources changed since the record: rerun run_engine_shimmer.py --host native')
+
+    def test_wine_provenance(self):
+        """The retained Wine record: a clean X3 pass of the same check list."""
+        wine = json.loads(self.WINE_PATH.read_text())
+        self.assertTrue(wine['passed'])
+        self.assertEqual(wine['bottle']['name'], 'X3')
+        self.assertEqual(wine['report']['failed_checks'], [])
+        self.assertEqual([c[0] for c in wine['report']['checks']], [c[0] for c in self.record['report']['checks']])
 
 
 if __name__ == '__main__':

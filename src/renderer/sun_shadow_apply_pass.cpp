@@ -23,7 +23,7 @@ enum Slot : unsigned {
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59, SetTexture = 65,
     SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
     CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
-    CreateVertexShader = 91, SetVertexShader = 92,
+    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSource = 100, GetStreamSource = 101,
     SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 // clang-format on
@@ -53,6 +53,8 @@ using GetFvfFn = HRESULT(WINAPI*)(D, DWORD*);
 using CreateVsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DVertexShader9**);
 using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using SetFreqFn = HRESULT(WINAPI*)(D, UINT, UINT);
+using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
+using GetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9**, UINT*, UINT*);
 using SetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9*);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
@@ -84,13 +86,19 @@ bool depth_share_format(D3DFORMAT format) noexcept {
 // bindings, viewport and scissor (SetRenderTarget resets the latter two), and
 // the vertex input mode: a D3DSBT_ALL block records the declaration but a
 // caller with no declaration bound (FVF mode, or nothing yet) is not restored
-// by Apply alone, so the FVF or the declaration is re-set explicitly.
+// by Apply alone, so the FVF or the declaration is re-set explicitly. Stream 0
+// (DrawPrimitiveUP resets it): native D3D9's Capture takes a stream's buffer
+// and stride but keeps the offset of the block's creation (measured 2026-11-05;
+// docs/verification/engine-effects.md, "Native stream offset"), so the tuple is
+// read with GetStreamSource and set again after Apply.
 struct SunShadowApplyPass::SavedState {
     const SunShadowApplyPass& pass;
     IDirect3DStateBlock9* block;
     IDirect3DSurface9* targets[4]{};
     IDirect3DSurface9* depth = nullptr;
     IDirect3DVertexDeclaration9* declaration = nullptr;
+    IDirect3DVertexBuffer9* stream = nullptr;
+    UINT offset = 0, stride = 0;
     DWORD fvf = 0;
     D3DVIEWPORT9 viewport{};
     RECT scissor{};
@@ -104,9 +112,12 @@ struct SunShadowApplyPass::SavedState {
         for (auto& t : targets) drop(t);
         drop(depth);
         drop(declaration);
+        drop(stream);
     }
     HRESULT capture() noexcept {
         HRESULT hr = block->Capture();
+        if (FAILED(hr)) return hr;
+        hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, 0, &stream, &offset, &stride);
         if (FAILED(hr)) return hr;
         hr = pass.call<GetDeclarationFn>(GetVertexDeclaration)(pass.device_, &declaration);
         if (FAILED(hr)) return hr;
@@ -138,6 +149,7 @@ struct SunShadowApplyPass::SavedState {
             if (!attempt(pass.call<SetRtFn>(SetRenderTarget)(d, i, targets[i]))) return first;
         if (!attempt(pass.call<SetDepthFn>(SetDepthStencilSurface)(d, depth))) return first;
         if (!attempt(block->Apply())) return first;
+        if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, 0, stream, offset, stride))) return first;
         // The declaration object the caller had bound goes back as that object;
         // only a caller without one is restored through its FVF (or to none).
         if (declaration) {
