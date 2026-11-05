@@ -33,9 +33,15 @@ every band that does not name its own (X3M_PLUMES_FIXTURE_DUMP_PRESET; 04 keeps 
 --dump-linear also keeps the resolved FP16 RGB before the tonemap as <name>.pfm under
 verification/probe/build/engine-plumes/dump/ (X3M_PLUMES_FIXTURE_DUMP_LINEAR; about 25 MB each, untracked;
 verification/results/engine-effects/plume_mouth_whiteness.py reads them).
-The fixture's stdout stays under verification/probe/build/engine-plumes/. Run through wine_lock.py with
-X3M_FIXTURE_BOTTLE=X3; --wine-env NAME=VALUE (repeatable, e.g. CX_GRAPHICS_BACKEND=wined3d) goes to
-the wine wrapper as --env and into the record as wine_env. Never launches the game.
+The fixture's stdout stays under verification/probe/build/engine-plumes/. Two hosts, chosen explicitly: the default
+--host bottle runs it in the CrossOver bottle (X3M_FIXTURE_BOTTLE=X3, builtin d3d9) into
+<results>/bottle-X3/engine-plumes/; --wine-env NAME=VALUE (repeatable, e.g. CX_GRAPHICS_BACKEND=wined3d) goes to
+the wine wrapper as --env and into the record as wine_env. --host native (native_host.py; the WSL2 host since
+2026-10-11, where no bottle exists) runs the same binary on the Windows side through WSL interop with the system
+d3d9.dll and the game's C:\\X3\\d3dx9_37.dll, into verification/results/native-windows/engine-plumes/ with the record's
+host block (Windows version, the adapter from GetAdapterIdentifier, the loaded d3d9 / d3dx9_37 modules). Either way
+run through wine_lock.py (one fixture at a time). There is no fallback from one host to the other. Never launches
+the game.
 """
 import statistics
 import argparse
@@ -49,6 +55,7 @@ from pathlib import Path
 
 import png_writer
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import native_host  # --host native: WSL interop, the native-windows results directory and the host block
 from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -244,6 +251,23 @@ def disc_ab_summary(rows):
 PNG_LIMIT = 500 * 1024
 
 
+def run_fixture(args, extra, env_extra, log):
+    """Runs the fixture once on the selected host with the d3dx9_37.dll path and `extra` arguments; its stdout goes to
+    BUILD/<log>.log, stderr to BUILD/<log>.stderr.txt. Returns (exit code, stdout text)."""
+    if args.host == 'native':
+        d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+        done, text = native_host.run_native(EXE, [d3dx, *extra], BUILD, args.timeout, env=env_extra, log=BUILD / log)
+        return done.returncode, text
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll',
+               *extra]
+    env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b', **env_extra)
+    done = subprocess.run(command, capture_output=True, env=env, timeout=args.timeout)
+    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
+    (BUILD / f'{log}.log').write_text(text)
+    (BUILD / f'{log}.stderr.txt').write_bytes(done.stderr)
+    return done.returncode, text
+
+
 def dump_rows(text):
     """The fixture's DUMP rows: per image its description, bands and nozzles, in output order."""
     images = {}
@@ -347,14 +371,8 @@ def dump_images(args, record):
     raw.mkdir(parents=True, exist_ok=True)
     for old in [*raw.glob('*.ppm'), *raw.glob('*.pfm')]:
         old.unlink()
-    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll',
-               '--dump', 'dump']
-    env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b', X3M_PLUMES_FIXTURE_DUMP_PRESET=args.preset,
-               X3M_PLUMES_FIXTURE_DUMP_LINEAR='1' if args.dump_linear else '0')
-    done = subprocess.run(command, capture_output=True, env=env, timeout=args.timeout)
-    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
-    (BUILD / 'dump.log').write_text(text)
-    (BUILD / 'dump.stderr.txt').write_bytes(done.stderr)
+    returncode, text = run_fixture(args, ['--dump', 'dump'], {'X3M_PLUMES_FIXTURE_DUMP_PRESET': args.preset,
+                                                             'X3M_PLUMES_FIXTURE_DUMP_LINEAR': '1' if args.dump_linear else '0'}, 'dump')
     report = parse(text)
     images = dump_rows(text)
     sizes = {}
@@ -369,10 +387,10 @@ def dump_images(args, record):
         sizes['contact_sheet'] = sheet.stat().st_size
     write_readme(out_dir, images, sheet, record)
     over = {k: v for k, v in sizes.items() if v > PNG_LIMIT}
-    ok = (done.returncode == 0 and report['result'] is not None and report['result']['verdict'] == 'PASS' and
+    ok = (returncode == 0 and report['result'] is not None and report['result']['verdict'] == 'PASS' and
           not report['failed_checks'] and images and len(names) == len(images) and all(im.get('drew') == 1 for im in images) and
           not over and record.get('build', {}).get('warnings', 0) == 0)
-    print(json.dumps({'passed': bool(ok), 'exit': done.returncode, 'checks': report['check_count'], 'failed': report['failed_checks'],
+    print(json.dumps({'passed': bool(ok), 'exit': returncode, 'checks': report['check_count'], 'failed': report['failed_checks'],
                       'images': len(names), 'contact_sheet': bool(sheet), 'max_png_kb': round(max(sizes.values(), default=0) / 1024, 1),
                       'over_500kb': over, 'out': str(out_dir), 'log': str((BUILD / 'dump.log').relative_to(ROOT))}, indent=1))
     return 0 if ok else 1
@@ -393,53 +411,62 @@ def main():
     parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
                         help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
                              'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
+    parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
+                        help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
+                             'WSL2 host through interop (native_host.py), never a fallback')
     args = parser.parse_args()
+    if args.host == 'native' and args.wine_env:
+        parser.error('--wine-env applies to --host bottle only')
+    if args.host == 'native' and args.dump_images:
+        parser.error('--dump-images: --host bottle only (its README names the bottle)')
     for item in args.wine_env:
         if '=' not in item or not item.split('=', 1)[0]:
             parser.error(f'--wine-env expects NAME=VALUE: {item}')
     if args.disc_ab:
         args.only = 'timing'
-    if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
-        raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
-    if game_running():
-        raise SystemExit('the game is running')
-    results = bottle.results_dir(ROOT) / 'engine-plumes'
-    results.mkdir(parents=True, exist_ok=True)
-    record = {'bottle': bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
+    native = args.host == 'native'
+    if native:
+        if native_host.missing():
+            raise SystemExit('--host native needs ' + '; '.join(native_host.missing()))
+        if game_running() or native_host.game_running_windows():
+            raise SystemExit('the game is running')
+        results = native_host.results_dir(ROOT, 'engine-plumes')
+    else:
+        if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
+            raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
+        if game_running():
+            raise SystemExit('the game is running')
+        results = bottle.results_dir(ROOT) / 'engine-plumes'
+        results.mkdir(parents=True, exist_ok=True)
+    record = {'bottle': None if native else bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
               'programs': programs_current(), 'gates': GATES, 'game_launched': False, 'wine_env': list(args.wine_env)}
     if not args.no_build:
         record['build'] = build()
-    d3dx = bottle.game_dir() / 'd3dx9_37.dll'
+    d3dx = native_host.GAME_DIR / 'd3dx9_37.dll' if native else bottle.game_dir() / 'd3dx9_37.dll'
     record['d3dx9_37_sha256'] = sha(d3dx)
     if args.dump_images:
         return dump_images(args, record)
-    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE), r'C:\X3\d3dx9_37.dll']
-    if args.only:
-        command += ['--only', args.only]
-    env = dict(os.environ, WINEDLLOVERRIDES='d3d9=b')
-    if args.disc_ab:
-        env['X3M_PLUMES_FIXTURE_DISC_AB'] = '1'
-    done = subprocess.run(command, capture_output=True, env=env, timeout=args.timeout)
-    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
-    (BUILD / 'fixture.log').write_text(text)
-    (BUILD / 'fixture.stderr.txt').write_bytes(done.stderr)
+    returncode, text = run_fixture(args, ['--only', args.only] if args.only else [],
+                                   {'X3M_PLUMES_FIXTURE_DISC_AB': '1'} if args.disc_ab else {}, 'fixture')
     report = parse(text)
+    if native:
+        record['host'] = native_host.identity(text)
     if args.disc_ab:
-        ab = {'bottle': record['bottle'], 'source': record['source'], 'build_warnings': record.get('build', {}).get('warnings'),
+        ab = {'bottle': record['bottle'], **({'host': record['host']} if native else {}), 'source': record['source'], 'build_warnings': record.get('build', {}).get('warnings'),
               'method': 'tail EVENT-fenced, 60 on/off pairs per measurement; three rounds interleaved (on/off, off/on, on/off); '
                         'disc off = the facing band moved past 1 (Look disc_low 1.5, disc_high 2), same source and crowd',
-              'exit_code': done.returncode, 'result': report['result'], 'rows': report['timing_disc'],
+              'exit_code': returncode, 'result': report['result'], 'rows': report['timing_disc'],
               'summary': disc_ab_summary(report['timing_disc']), 'game_launched': False}
-        out_path = ROOT / 'verification/results/engine-effects/plume_disc_ab.json'
+        out_path = results / 'plume_disc_ab.json' if native else ROOT / 'verification/results/engine-effects/plume_disc_ab.json'
         out_path.write_text(json.dumps(ab, indent=2) + '\n')
-        print(json.dumps({'exit': done.returncode, 'summary': {k: {x: v[x] for x in ('median_on_ms', 'median_off_ms', 'disc_ms', 'discs')}
+        print(json.dumps({'exit': returncode, 'summary': {k: {x: v[x] for x in ('median_on_ms', 'median_off_ms', 'disc_ms', 'discs')}
                                                                for k, v in ab['summary'].items()},
                           'results': str(out_path.relative_to(ROOT))}, indent=1))
-        return 0 if done.returncode == 0 and len(report['timing_disc']) == 24 else 1
-    record['run'] = {'exit_code': done.returncode, 'result': report['result'], 'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
+        return 0 if returncode == 0 and len(report['timing_disc']) == 24 else 1
+    record['run'] = {'exit_code': returncode, 'result': report['result'], 'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['report'] = report
     record['gates_met'] = gates(report)
-    record['passed'] = (done.returncode == 0 and not report['failed_checks'] and report['result'] is not None and
+    record['passed'] = (returncode == 0 and not report['failed_checks'] and report['result'] is not None and
                         report['result']['verdict'] == 'PASS' and not args.only and record['gates_met']['core_survival'] and
                         record['gates_met']['trail_dark'] and record['gates_met']['build_100_within'] and
                         record['gates_met']['ps_slots'] is not None and record.get('build', {}).get('warnings', 0) == 0)

@@ -115,6 +115,74 @@ re-record (and removal of the constants) needs a Wine or native D3D9 fixture run
 of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
 `run_engine_shimmer.py` and `run_fov_patch.py`.
 
+## Native Windows fixture host (2026-11-05)
+
+`verification/probe/native_host.py` runs a MinGW-built D3D9 fixture on the
+Windows side of the WSL2 host through interop (binfmt `WSLInterop`): the real
+D3D9 runtime and GPU driver, no Wine. It checks for `i686-w64-mingw32-g++` and
+interop, refuses while `X3AP.exe` / `X3FL.exe` shows in `tasklist.exe` (failing
+closed when the list cannot be read) and refuses to execute a game image. It
+passes paths as Windows paths (`wslpath -w`), forwards fixture variables via
+`WSLENV`, and writes records under `verification/results/native-windows/<fixture>/`.
+The record's `host` block holds the name `native-windows`, the Windows version
+(`cmd.exe /c ver`), the adapter as the fixture's runtime reports it through
+`GetAdapterIdentifier` (vendor, device, subsystem, revision, WHQL level, driver
+version, description, driver DLL), and the path, size, SHA-256 and PE file version
+of the `d3d9.dll` and `d3dx9_37.dll` the fixture loaded (`GetModuleFileNameA`;
+D3DX is the game's `C:\X3\d3dx9_37.dll`). The pilot is `run_engine_plumes.py`:
+
+```sh
+python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_plumes.py --host native
+```
+
+It builds the same binary with the same flags as the bottle path, and the bottle
+stays the default (`--host bottle`; it still requires `X3M_FIXTURE_BOTTLE=X3`), so
+neither host falls back to the other. The record has the Wine schema with `bottle: null` plus
+`host`. `--disc-ab` writes `native-windows/engine-plumes/plume_disc_ab.json`;
+`--dump-images` and `--wine-env` are bottle-only. The fixture prints `ADAPTER`,
+`ADAPTER_DESC`, `ADAPTER_DRIVER`, `D3D9_MODULE` and `D3DX_MODULE` rows on both
+hosts, and the case parser ignores them. Unit test: `test_native_host` (inline fixtures, no interop).
+
+Identity (measured, 2026-11-05):
+
+| Field | Value |
+| --- | --- |
+| Windows | 10.0.26300.9818 |
+| Adapter | NVIDIA GeForce RTX 5070 Ti, vendor 0x10de, device 0x2c05, subsys 0x276219da, rev 161, WHQL 0 |
+| Driver | `nvldumd.dll` 32.0.16.2114 |
+| `d3d9.dll` | `C:\WINDOWS\SYSTEM32\d3d9.dll`, 10.0.26100.9818, 1,799,736 B, sha256 `b5fe0ccd…` |
+| `d3dx9_37.dll` | `C:\X3\d3dx9_37.dll`, 9.22.949.2248, 3,786,760 B, sha256 `c2ccb84c…` |
+
+The first native run stopped at the first rendered case with `FATAL quad draw
+8876086c`. The fixture's `Scene::frame` (and the dump mode's sky quad) drew
+outside `BeginScene` / `EndScene`, which Wine accepts and native D3D9 refuses
+with `D3DERR_INVALIDCALL`. Both now open their own scene; no caller has one open
+at that point. The UNC working directory (`\\wsl.localhost\...`) worked; no
+Windows-local copy is needed.
+
+Outcome (measured; `native-windows/engine-plumes/summary.json`, commit 0e90a8f46,
+1 min 43 s including the build; compared by
+`verification/results/native-windows/engine-plumes/compare_wine.py`): 322 checks,
+the same labels as the Wine record (Run140, 0cf873a6b), **5 failed, all in the flow
+case**. The world displacement of the flow at value 1,500 has ratio 0.853 at 1920
+and 0.862 at 5120 (gate 1 ± 0.05; Wine 1.000). At value 10,000 the ratio is
+1.256 at 1920 (Wine 1.000); 0.957 at 5120 passes. Peak correlation is 0.95–0.98
+against 0.999 under Wine, and the two `flow_same_world_speed_600_1500` checks
+fail as a result. Values 100 and 600 match Wine to four digits, and a
+`--only flow` rerun gave the same digits. Every other check passes as on Wine:
+core survival min 0.9781 (Wine 0.9783), dark trail 0 px, ps slots 924, colour
+error 9e-05. Stage GPU cost in ms, Wine → native:
+
+| Case | 30 nozzles | 100 | 300 (250 far) |
+| --- | --- | --- | --- |
+| 1920x1080 | 0.155 → 0.013 | 0.240 → 0.023 | 0.489 → 0.035 |
+| 5120x1440 | 0.021 → 0.019 | 0.038 → 0.023 | 0.139 → 0.042 |
+
+CPU build cost in µs is close (100 records: 12.99 → 10.68; 1,024: 140.1 → 146.0).
+The record does not pass, so `test_engine_plumes` stays bound to the Wine record
+and to `SOURCES_SHA256_2026_11_03`. The flow failure at high values is open: it
+is deterministic on this GPU and needs a diagnosis, not a looser gate.
+
 ## Tests that read production source
 
 The C/C++ tree is clang-formatted (README, "Formatting"), so a test that pins
