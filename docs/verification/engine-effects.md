@@ -948,3 +948,35 @@ Other `frac` idioms in `src/effects/` and `src/fog/` (checked in the compiled di
   index, not a hash.
 - `own_sun_ps.hlsl` hashes integer ray indices, and `sky_stars_vs.hlsl` and `fog_dust_motes_vs.hlsl` take `frac` of
   per-vertex data. None of them derives a lattice from `frac`.
+
+## Ribbons fixture re-derived for the anchored head (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+The first native run of `run_engine_ribbons.py` failed 22 of 44 checks; the record's own commit 0cf873a6b passed 44/44
+natively, so the cause was the ribbon change since then, not the host ([host-suite.md](host-suite.md), "Native re-record").
+Each failure is an expectation of the head at the nozzle (before 809ad68e8 / 4b4e2eafd), not a broken promise of the
+anchored design that AP Run 171 ("better now") and Run 172 (accepted: "trails attached to the plume end") flew. No
+production source changed. Law (`engine_ribbons_core.h` "Origin"; the fixture's record: value 30 px, s 1, z 2, default
+look, no radii or travel, k 1): `L_bar` 60 px, `u_vis` 0.848, head `A` = 0.6 `L_vis` = 30.5 px behind the nozzle, fade-in
+from 0 at `A` to 1 at `L_vis` 50.9 px, strip `(L_vis - A) + L` from `A`, tail at `L_vis + L` (all measured, record rows).
+The fixture computes `A` and `L_vis` from the production functions (`visible_fraction`, `near_cap_factor`).
+
+| Check (labels kept) | Old expectation (nozzle head) | New expectation (anchored head) | Measured native |
+| --- | --- | --- | --- |
+| `ribbon_no_gap_at_nozzle_*` (8) | share at the nozzle >= 0.5 i0; 0 gaps from the nozzle over 0.9 L | share at the nozzle <= 0.02 i0; share at `L_vis` +- 1 px >= 0.5 i0; 0 gaps from the 0.02 i0 point of the fade-in (+1 px) over 0.9 of the strip | at_nozzle 0.0; at_visible_end 0.759-0.822; gaps 0 (was 31 against the old window) |
+| `ribbon_length_*` (8) | strip length within 0.1 L of L = T v s | trail behind the plume (length - `L_vis`) within 0.1 L of L (same absolute tolerance) | 117.1 / 234.1 px against 120 / 240 (Wine's whole length was 117 / 234) |
+| `ribbon_survival_*` (4 at 4 px failed) | resolved/current >= 0.9 on u 0.05..0.3 of L from the nozzle | the same on u 0.05..0.3 of the strip from the head (the builder's u) | 0.979-1.032 (was 0: the old window lay before the head) |
+| `ribbon_seta_continuous_1920` | 0 dark pixels from the nozzle - 2 px over 0.9 x 800 px | the same from the head - 2 px | gaps 0 (was 29), weakest 0.096 at the start of the fade-in |
+| `ribbon_cut_no_bridge_1920` | 150 px step back: bridge > 50 px without the cut, 0 with it, one more clear | 150 px step forward, bridge between the old head and the first new sample | without 145, with 0, clears 1 / 2 |
+
+The cut control's 0 (Wine 128) was the anchored design's fold rule, not the cut: after a step back along the exhaust
+every old sample lies closer to the nozzle than `A` and is dropped with or without the cut, so that scenario no longer
+produced the bridge the cut must remove; a forward step keeps the old samples and the check again distinguishes the two.
+`run_engine_ribbons.py`'s `length_within` gate takes `length_px - visible_px` against `expected_px` (the row now prints
+`anchor_px`, `visible_px`, `at_visible_end`). Native record (measured, `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_engine_ribbons.py --host native`, 15 s): 44/44, 0 warnings,
+production sources clean (commit df439ff3b-dirty: fixture and runner only), survival min 0.979, stage GPU 0.011-0.021
+ms, CPU 8.16 / 27.82 us at 30 / 100 ribbons. Per-check numbers:
+[rederive_anchor.py](../../verification/results/native-windows/engine-ribbons/rederive_anchor.py); against Wine:
+[compare_wine.py](../../verification/results/native-windows/engine-ribbons/compare_wine.py) (0 verdicts differ).
+`test_engine_ribbons` is bound to the native record with exact hashes (`SOURCES_SHA256_2026_11_03` removed for ribbons;
+the Wine record stays as provenance): 6 tests OK.

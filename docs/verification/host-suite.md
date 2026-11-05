@@ -98,7 +98,7 @@ so the records cannot be re-recorded while the sources keep changing natively:
 | --- | --- | --- |
 | `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09); native record 2026-11-05 fails (every mode crashes in `CreateDevice`) | 12 of 21 |
 | `test_engine_plumes` | rebound 2026-11-05 to `native-windows/engine-plumes/summary.json` (exact hashes; Wine record kept as provenance) | none |
-| `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 22 of 44 (source drift) | 5 of 14 |
+| `test_engine_ribbons` | rebound 2026-11-05 to `native-windows/engine-ribbons/summary.json` (44/44 after the fixture's nozzle-anchored expectations were re-derived for the anchored head, [engine-effects ledger](engine-effects.md); exact hashes; Wine record kept as provenance) | none |
 | `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 1 of 43 (host) | 1 of 9 |
 | `test_fov_patch_result` | rebound 2026-11-05 to `native-windows/fov-patch/fov-patch.json` (268/268, exact hashes; Wine record kept as provenance) | none |
 | `test_engine_effects_sites` | `engine-effects-patch.json` (203c5e984, Run124) | 1 of 7 (`engine_effects_option.h`, 17ab85a84) |
@@ -214,7 +214,7 @@ fixing them changed no gate:
 
 | Fixture | Native (wall, incl. build) | Checks | Against the Wine record | Binding |
 | --- | --- | --- | --- | --- |
-| engine-ribbons | 14 s | 44, 22 fail | 22 verdicts differ | Wine (constants kept) |
+| engine-ribbons | 14 s | 44, 22 fail; 44, 0 fail after the re-derivation (15 s) | 22 verdicts differ; none after | **native** (after the re-derivation) |
 | engine-shimmer | 5 s | 43, 1 fails | 1 differs | Wine (constants kept) |
 | engine-effects | 59 s (incremental) | 0 in all 8 modes | every mode crashes | Wine (constants kept) |
 | fov-patch | 0.3 s run (Wine 8.7 s) | 268, 0 fail | identical | **native** |
@@ -234,6 +234,11 @@ nozzle-anchored expectations predate them. Either those expectations need to be
 re-derived for the anchored head, or this is a regression. That is open, not decided here.
 Fog, timing and CPU pass: stage GPU 0.017-0.034 ms (Wine 0.016-0.139), CPU at 100
 ribbons 23.9 µs (Wine 25.5).
+
+Decided 2026-11-05: all 22 were stale (nozzle-anchored) expectations, none a
+regression. Re-derived for the anchored head, the native record passes 44/44 and
+`test_engine_ribbons` is bound to it ([engine-effects.md](engine-effects.md),
+"Ribbons fixture re-derived for the anchored head").
 
 **Shimmer: native D3D9 state restore.** `state_stream_indices_restored_outside_untouched`
 fails because, after `EngineShimmerPass` restores state, stream 0 comes back with the

@@ -2,8 +2,8 @@
 sections 3-5): the portable cores src/proxy/engine_ribbons_core.h and src/renderer/fog_transmittance.h compiled on the
 host (the ring buffers: distance sampling, the SETA stretch, the length law, cut / load / jump clears, fade and eviction,
 the 256 cap, identity keys, the clock re-base; the strip builder; the fog law: exp, the column, the mean density, the
-compiled occupancy table against tools/fog_field_recipe.py, the plume builder's fog), the wiring, and the tracked Wine
-record of run_engine_ribbons.py bound to its production sources.
+compiled occupancy table against tools/fog_field_recipe.py, the plume builder's fog), the wiring, and the tracked native
+Windows record of run_engine_ribbons.py bound to its production sources.
 """
 import hashlib
 import json
@@ -16,18 +16,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The record is Wine provenance (Run140, 2026-10-09, commit 0cf873a6b); since 2026-10-11 there is no Wine host and these
-# sources changed natively (0cf873a6b..2c3d32ffa). Accepted beside the recorded hash until run_engine_ribbons.py reruns on a
-# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-# Bumped for the FL run 34 diagnostics (probe rows, far-jet counter split; telemetry only, 2026-11-03).
-SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
-    'src/renderer/fog_transmittance.h': '78f3bccd2d509f173641d7eea145a417f53307d69ed0039a2527073d45c861d6',
-    'src/renderer/engine_ribbons_pass.h': '9f3bba4d20ddc5802fe0a28f90b9713dc910e5fe520c37ff37508c26de3d76ed',
-    'src/renderer/engine_ribbons_pass.cpp': '6a5049681e1e3bb4d0b8c8d9afac6eb7458b499114200bedf1acf18a87ed661f',
-    'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
-    'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
-}
 sys.path.insert(0, str(ROOT / 'tools'))
 from source_text import source_text  # noqa: E402
 
@@ -659,8 +647,10 @@ class Wiring(unittest.TestCase):
 
 
 class EngineRibbonsFixtureRecord(unittest.TestCase):
-    """The tracked Wine record of run_engine_ribbons.py, bound to the production sources it exercised."""
-    PATH = ROOT / 'verification/results/bottle-X3/engine-ribbons/summary.json'
+    """The tracked native Windows record of run_engine_ribbons.py (--host native, 2026-11-05), bound to the production
+    sources it exercised; the Wine record (bottle-X3/engine-ribbons/summary.json, Run140, the head at the nozzle) stays as
+    provenance."""
+    PATH = ROOT / 'verification/results/native-windows/engine-ribbons/summary.json'
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -669,14 +659,21 @@ class EngineRibbonsFixtureRecord(unittest.TestCase):
         r = self.record
         self.assertTrue(r['passed'])
         self.assertFalse(r['game_launched'])
-        self.assertEqual(r['bottle']['name'], 'X3')
+        self.assertIsNone(r['bottle'])
+        self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
+        self.assertEqual(r['report']['check_count'], 44)
         self.assertEqual(r['build']['warnings'], 0)
         g = r['gates_met']
         self.assertGreaterEqual(g['near_survival_min'], 0.9)
         self.assertTrue(g['length_within'])
         self.assertTrue(g['cpu_100_within'])
         self.assertEqual(len(r['report']['timing']), 4)  # 2 sizes x 30 / 100 ribbons
+        # The head anchored inside the plume (4b4e2eafd): nothing at the nozzle, the visible end lit, no gap from the head.
+        rows = r['report']['ribbon_resolve']
+        self.assertEqual(len(rows), 8)  # 2 sizes x 2 skies x 4 / 8 px
+        self.assertTrue(all(x['anchor_px'] < x['visible_px'] and x['gaps'] == 0 and x['at_nozzle'] <= .018 and
+                            x['at_visible_end'] >= .45 for x in rows))
 
     def test_bound_to_its_production_sources(self):
         sys.path.insert(0, str(ROOT / 'verification/probe'))
@@ -686,8 +683,9 @@ class EngineRibbonsFixtureRecord(unittest.TestCase):
         self.assertRegex(source['commit'], r'^[0-9a-f]{40}(-dirty)?$')
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
         self.assertEqual(set(now), set(source['sha256']))
-        for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
-            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_engine_ribbons.py')
+        self.assertFalse(source['production_sources_dirty'])
+        for path, recorded in source['sha256'].items():
+            self.assertEqual(now[path], recorded, path + ': production sources changed since the record: rerun run_engine_ribbons.py --host native')
 
 
 if __name__ == '__main__':

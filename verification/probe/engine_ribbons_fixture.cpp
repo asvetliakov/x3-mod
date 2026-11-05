@@ -6,12 +6,14 @@
 // a 60 Hz clock (frame n at n / 60 s); value 30 px at the nozzle's depth (T 0.5 s).
 //   attach      programs, buffers, slots; the FP16 refusal (fault) -> D3DERR_NOTAVAILABLE, nothing held
 //   resolve     a nozzle moving 4 / 8 px per frame through the real resolve (the flown configuration) over the dark
-//               and the flickering sky, with and without ribbons: no gap at the nozzle, the near-nozzle survival
-//               (resolved / current share, u 0.05..0.3), the trailing length against T v s, its continuity
+//               and the flickering sky, with and without ribbons: the head at the anchor inside the plume (nothing at
+//               the nozzle, full at the plume's visible end, no gap from the head back), the near-head survival
+//               (resolved / current share, u 0.05..0.3 of the strip), the trail behind the plume against T v s
 //   floor       a distant nozzle: the strip's width held at 3 px
 //   stationary  a nozzle at rest for 40 frames: one sample, nothing drawn
-//   seta        4 px per frame, then 80 px per frame for 10 frames: the strip continuous over the stretched path
-//   cut         a 150 px step back (under the 8-value jump rule): with the cut no bridge, without it the bridge
+//   seta        4 px per frame, then 80 px per frame for 10 frames: the strip continuous from the head over the
+//               stretched path
+//   cut         a 150 px step forward (under the 8-value jump rule): with the cut no bridge, without it the bridge
 //   loss        the record gone: half the radiance after 0.15 s, evicted after 0.3 s
 //   cap         300 nozzles: 256 ribbons, 44 overflow
 //   fog         a fogged law: plume core and ribbon attenuated by the law's T at the nozzle's distance
@@ -253,6 +255,22 @@ float row_peak(const std::vector<float>& px, UINT w, UINT h, int x, int y0, int 
     for (int y = std::max(y0, 0); y <= std::min(y1, int(h) - 1); ++y) m = std::max(m, luma(px, w, x, y));
     return m;
 }
+// The ribbon's head on the plume (engine_ribbons_core.h "Origin", since 4b4e2eafd): the anchor A = anchor_fraction x
+// L_vis behind the nozzle along the axis, L_vis = u_vis x L_bar, L_bar = max(z, idle_length) x value (the default look,
+// no radii, no travel: what these frames pass), both x the builder's near-camera factor k for this view; the strip fades
+// in from 0 at A to 1 at L_vis and is cut at the fade-in plus L, so its tail lies k L_vis + L behind the nozzle. Pixels
+// along the row (axis -x, identity view, the nozzle's depth).
+struct Head {
+    float anchor_px = 0.f, visible_px = 0.f;
+};
+Head head_px(Targets& t, const ee::Record& r) {
+    float u_vis = 1.f, k = 1.f;
+    er::visible_fraction(ep::default_look, &u_vis);
+    const float l_bar = std::max(r.z, ep::default_look.idle_length) * r.size;
+    er::near_cap_factor(ep::default_look, frame_for(t, &r, 1).view, r.origin[2], r.axis[2], l_bar, r.size, &k);
+    const float px = k * l_bar * t.ppu(r.origin[2]);
+    return {er::anchor_fraction * u_vis * px, u_vis * px};
+}
 // The stage as run_engine_plumes runs it: the plumes, then the ribbons; S_OK when either drew, a failure fails it.
 struct StageContext {
     rr::EnginePlumesPass* plumes = nullptr;
@@ -422,24 +440,35 @@ void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
     const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
     float T = 0.f;
     er::trail_seconds(value, &T);
-    const float expected = T * speed * 60.f; // px: T x v x s, s = 1
+    const float expected = T * speed * 60.f; // px: T x v x s, s = 1 (the trail behind the plume)
     const float i0 = er::radiance_high;
-    // The ribbon's share of the current frame along the centre row: no gap from the nozzle back, the trailing length.
+    // The anchored head: A behind the nozzle, the fade-in to L_vis, the strip (fade-in + L) from A.
+    const Head h = head_px(t, record(t.world_x(x_end, Z), 0, Z, value, 1.f));
+    const float fade_in = h.visible_px - h.anchor_px, strip = fade_in + expected;
+    // The first column the fade-in lifts to the 0.02 i0 threshold, one pixel more for the jitter and the rounding of ix.
+    const int head = int(std::ceil(h.anchor_px + .02f * fade_in)) + 1;
+    // The ribbon's share of the current frame along the centre row: nothing at the nozzle, full at the plume's visible
+    // end, no gap from the head back over 0.9 of the strip, the trail's length behind the plume.
     auto share = [&](const std::vector<float>& on, const std::vector<float>& off, int x, int y) {
         return luma(on, t.w, x, y) - luma(off, t.w, x, y);
     };
-    float at_nozzle = 0.f;
-    for (int x = ix - 3; x <= ix - 1; ++x) at_nozzle = std::max(at_nozzle, row_peak(a.current, t.w, t.h, x, iy - 1, iy + 1) - row_peak(b.current, t.w, t.h, x, iy - 1, iy + 1));
+    auto peak_share = [&](int x) {
+        return row_peak(a.current, t.w, t.h, x, iy - 1, iy + 1) - row_peak(b.current, t.w, t.h, x, iy - 1, iy + 1);
+    };
+    float at_nozzle = 0.f, at_visible_end = 0.f;
+    for (int x = ix - 3; x <= ix - 1; ++x) at_nozzle = std::max(at_nozzle, peak_share(x));
+    const int iv = ix - int(std::floor(h.visible_px + .5f));
+    for (int x = iv - 1; x <= iv + 1; ++x) at_visible_end = std::max(at_visible_end, peak_share(x));
     int length = 0, gaps = 0;
-    for (int x = ix - 1; x >= 0 && x > ix - int(2.f * expected); --x) {
+    for (int x = ix - 1; x >= 0 && x > ix - int(2.f * (h.visible_px + expected)); --x) {
         const float v = std::max(share(a.current, b.current, x, iy), std::max(share(a.current, b.current, x, iy - 1), share(a.current, b.current, x, iy + 1)));
         if (v >= .02f * i0) length = ix - x;
-        else if (x > ix - int(.9f * expected)) ++gaps;
+        else if (x <= ix - head && x > ix - int(h.anchor_px + .9f * strip)) ++gaps;
     }
-    // Near-nozzle survival: resolved over current share, u 0.05..0.3, centre rows.
+    // Near-head survival: resolved over current share, u 0.05..0.3 of the strip from the head, centre rows.
     double num = 0, den = 0;
     for (int y = iy - 1; y <= iy + 1; ++y)
-        for (int x = ix - int(.3f * expected); x <= ix - int(.05f * expected); ++x) {
+        for (int x = ix - int(h.anchor_px + .3f * strip); x <= ix - int(h.anchor_px + .05f * strip); ++x) {
             const double c = share(a.current, b.current, x, y), r = share(a.resolved, b.resolved, x, y);
             if (c >= .25 * i0) {
                 num += r;
@@ -448,18 +477,21 @@ void resolve_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EnginePlume
         }
     const double survival = den > 0 ? num / den : 0;
     int resolved_length = 0;
-    for (int x = ix - 1; x >= 0 && x > ix - int(2.f * expected); --x)
+    for (int x = ix - 1; x >= 0 && x > ix - int(2.f * (h.visible_px + expected)); --x)
         if (share(a.resolved, b.resolved, x, iy) >= .02f * i0) resolved_length = ix - x;
-    std::printf("RIBBON_RESOLVE width=%u height=%u sky=%s speed_px=%.0f frames=%u expected_px=%.1f length_px=%d resolved_length_px=%d gaps=%d at_nozzle=%.4f survival=%.4f ribbons=%u samples=%u live=%u calls=%u\n",
-                t.w, t.h, flicker ? "flicker" : "dark", double(speed), frames, double(expected), length, resolved_length, gaps,
-                double(at_nozzle), survival, a.last.stats.ribbons, a.last.stats.samples, a.last.update.live, a.last.calls);
+    std::printf("RIBBON_RESOLVE width=%u height=%u sky=%s speed_px=%.0f frames=%u expected_px=%.1f anchor_px=%.1f visible_px=%.1f length_px=%d resolved_length_px=%d gaps=%d at_nozzle=%.4f at_visible_end=%.4f survival=%.4f ribbons=%u samples=%u live=%u calls=%u\n",
+                t.w, t.h, flicker ? "flicker" : "dark", double(speed), frames, double(expected), double(h.anchor_px),
+                double(h.visible_px), length, resolved_length, gaps, double(at_nozzle), double(at_visible_end), survival,
+                a.last.stats.ribbons, a.last.stats.samples, a.last.update.live, a.last.calls);
     char label[80];
+    // The label predates the anchor (the head at the nozzle until 809ad68e8 / 4b4e2eafd); it now names the seam between
+    // the plume and its ribbon: nothing ahead of the head, the strip full where the plume's visible body ends.
     std::snprintf(label, sizeof label, "ribbon_no_gap_at_nozzle_%s_%.0fpx_%u", flicker ? "flicker" : "dark", double(speed), t.w);
-    report(label, at_nozzle >= .5f * i0 && gaps == 0);
+    report(label, at_nozzle <= .02f * i0 && at_visible_end >= .5f * i0 && gaps == 0);
     std::snprintf(label, sizeof label, "ribbon_survival_%s_%.0fpx_%u", flicker ? "flicker" : "dark", double(speed), t.w);
     report(label, survival >= .9);
     std::snprintf(label, sizeof label, "ribbon_length_%s_%.0fpx_%u", flicker ? "flicker" : "dark", double(speed), t.w);
-    report(label, std::fabs(float(length) - expected) <= .1f * expected);
+    report(label, std::fabs(float(length) - h.visible_px - expected) <= .1f * expected); // the trail behind the plume keeps L
 }
 
 // A distant nozzle: value 4 px, the strip's half-width 1.2 px at the nozzle -> held at 1.5 px (3 px wide).
@@ -508,7 +540,8 @@ void stationary_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRi
     report(label, r && r->count == 1 && r->length == 0.f && a.last.stats.ribbons == 0 && pk == 0.f);
 }
 
-// 4 px per frame for 40 frames, then 80 px per frame for 10: the strip covers the stretched path without a gap.
+// 4 px per frame for 40 frames, then 80 px per frame for 10: the strip covers the stretched path from its head (the
+// anchor inside the plume) without a gap.
 void seta_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRibbonsPass& ribbons) {
     const float Z = 2000.f, value = 30.f / t.ppu(Z);
     const unsigned frames = 50;
@@ -523,26 +556,31 @@ void seta_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRibbonsP
     t.window(t.world_x(x_of(frames - 1), Z), 0, Z, a.jx, a.jy, cx, cy);
     const int ix = int(std::floor(cx + .5f)), iy = int(std::floor(cy + .5f));
     const int seta_px = 80 * 10;
+    const Head h = head_px(t, record(t.world_x(x_of(frames - 1), Z), 0, Z, value, 1.f));
+    const int head = int(std::ceil(h.anchor_px)); // the samples and the head lie at the anchor, not the nozzle
     int gaps = 0;
     float weakest = 1e9f;
-    for (int x = ix - 2; x > ix - int(.9f * float(seta_px)); --x) {
+    for (int x = ix - head - 2; x > ix - head - int(.9f * float(seta_px)); --x) {
         const float v = row_peak(a.current, t.w, t.h, x, iy - 2, iy + 2);
         weakest = std::min(weakest, v);
         gaps += v <= 1e-3f;
     }
-    std::printf("RIBBON_SETA width=%u path_px=%d gaps=%d weakest=%.4f samples=%u jumps=%llu live=%u\n", t.w, seta_px, gaps,
-                double(weakest), a.last.stats.samples, static_cast<unsigned long long>(ribbons.pool().jumps), a.last.update.live);
+    std::printf("RIBBON_SETA width=%u path_px=%d anchor_px=%.1f gaps=%d weakest=%.4f samples=%u jumps=%llu live=%u\n", t.w, seta_px,
+                double(h.anchor_px), gaps, double(weakest), a.last.stats.samples, static_cast<unsigned long long>(ribbons.pool().jumps), a.last.update.live);
     char label[64];
     std::snprintf(label, sizeof label, "ribbon_seta_continuous_%u", t.w);
     report(label, gaps == 0 && a.last.update.live == 1 && ribbons.pool().jumps == 0);
 }
 
-// A 150 px step back (under the 8-value jump rule) with and without the cut: the cut leaves no bridge.
+// A 150 px step forward (under the 8-value jump rule) with and without the cut: the cut leaves no bridge. Forward, against
+// the exhaust: since the anchor (4b4e2eafd) a step back along the exhaust puts the old samples ahead of the new anchor
+// and the fold rule drops them with or without the cut, so a step back no longer makes the bridge the cut must remove.
 void cut_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRibbonsPass& ribbons) {
     const float Z = 2000.f, value = 30.f / t.ppu(Z);
     const unsigned frames = 34; // 30 frames at 4 px, the step at frame 30, then 3 more
     const float start = float(t.w) * .5f;
-    auto x_of = [&](unsigned n) { return n < 30 ? start + 4.f * float(n) : start + 4.f * 29.f - 150.f + 4.f * float(n - 30); };
+    auto x_of = [&](unsigned n) { return n < 30 ? start + 4.f * float(n) : start + 4.f * 29.f + 150.f + 4.f * float(n - 30); };
+    const Head h = head_px(t, record(t.world_x(x_of(29), Z), 0, Z, value, 1.f));
     int bridge[2] = {0, 0};
     float old_x = 0.f, new_x = 0.f;
     unsigned long long cut_clears[2] = {0, 0};
@@ -555,14 +593,17 @@ void cut_case(IDirect3DDevice9* d, Targets& t, Scene& scene, rr::EngineRibbonsPa
             return s;
         });
         cut_clears[with_cut] = ribbons.pool().cut_clears - before;
-        float cx, cy, ox, oy;
+        float cx, cy, sx, sy, ox, oy;
         t.window(t.world_x(x_of(frames - 1), Z), 0, Z, a.jx, a.jy, cx, cy);
+        t.window(t.world_x(x_of(30), Z), 0, Z, a.jx, a.jy, sx, sy);
         t.window(t.world_x(x_of(29), Z), 0, Z, a.jx, a.jy, ox, oy);
         new_x = cx;
         old_x = ox;
         const int iy = int(std::floor(cy + .5f));
-        // Between the new nozzle (+3 px) and the old one: the bridge's pixels.
-        for (int x = int(cx) + 3; x <= int(ox); ++x) bridge[with_cut] += row_peak(a.current, t.w, t.h, x, iy - 2, iy + 2) > 1e-3f;
+        // Between the old head (+3 px) and the first sample after the step (-3 px), both at the anchor behind their
+        // nozzle: the bridge's pixels (with the cut the new strip ends at that sample, the old one is cleared).
+        for (int x = int(ox - h.anchor_px) + 3; x <= int(sx - h.anchor_px) - 3; ++x)
+            bridge[with_cut] += row_peak(a.current, t.w, t.h, x, iy - 2, iy + 2) > 1e-3f;
     }
     std::printf("RIBBON_CUT width=%u old_px=%.1f new_px=%.1f bridge_without_cut=%d bridge_with_cut=%d cut_clears=%llu,%llu\n", t.w,
                 double(old_x), double(new_x), bridge[0], bridge[1], cut_clears[0], cut_clears[1]);

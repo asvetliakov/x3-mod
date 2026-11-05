@@ -7,8 +7,8 @@ production TemporalPass (refusing stale embedded programs: each engine-{plume,ri
 source and header), runs it once in the selected bottle with builtin D3D9 and writes
 <results>/engine-ribbons/summary.json: bottle, the checkout's commit and the production sources' hashes, the build,
 every CHECK, and the numbers of each case (the moving nozzle at 4 / 8 px per frame over the dark and the flickering
-sky through the real resolve: no gap at the nozzle, the near-nozzle survival, the trailing length against T v s; the
-3 px floor; stationary; SETA; cut; identity loss; the 256 cap; fog; fault; Reset; the EVENT-fenced ribbon draw at 30 /
+sky through the real resolve: the head at the anchor inside the plume with no gap from it back, the near-head survival,
+the trail behind the plume's visible end against T v s; the 3 px floor; stationary; SETA; cut; identity loss; the 256 cap; fog; fault; Reset; the EVENT-fenced ribbon draw at 30 /
 100 ribbons and the CPU update + build). The fixture's stdout stays under verification/probe/build/engine-ribbons/.
 Two hosts, chosen explicitly (as run_engine_plumes.py): the default --host bottle runs it in the CrossOver bottle
 (X3M_FIXTURE_BOTTLE=X3, builtin d3d9) into <results>/bottle-X3/engine-ribbons/; --wine-env NAME=VALUE (repeatable, e.g.
@@ -100,9 +100,12 @@ def gates(r):
     rows = r['ribbon_resolve']
     out['near_survival_min'] = min((x['survival'] for x in rows), default=None)
     out['near_survival'] = bool(rows) and all(x['survival'] >= GATES['near_survival'] for x in rows)
-    out['length_ratio'] = {f"{x['width']}_{x['sky']}_{x['speed_px']:.0f}px": round(x['length_px'] / x['expected_px'], 4) for x in rows}
-    out['length_within'] = bool(rows) and all(abs(x['length_px'] - x['expected_px']) <= GATES['length_tolerance'] * x['expected_px']
-                                              for x in rows)
+    # The trail behind the plume: the strip's tail lies the plume's visible length (visible_px; the head anchored inside
+    # the plume since 2026-10-14) plus L behind the nozzle; L against T v s.
+    out['length_ratio'] = {f"{x['width']}_{x['sky']}_{x['speed_px']:.0f}px": round((x['length_px'] - x['visible_px']) / x['expected_px'], 4)
+                           for x in rows}
+    out['length_within'] = bool(rows) and all(abs(x['length_px'] - x['visible_px'] - x['expected_px']) <=
+                                              GATES['length_tolerance'] * x['expected_px'] for x in rows)
     out['stage_gpu_ms'] = {f"{x['width']}x{x['height']}_{x['ribbons']}": x['gpu_ms'] for x in r['timing']}
     out['stage_gpu_within_advisory'] = {k: v <= GATES['stage_gpu_ms_advisory'] for k, v in out['stage_gpu_ms'].items()}
     out['cpu_us'] = {str(x['ribbons']): x['median_us'] for x in r['cpu']}
