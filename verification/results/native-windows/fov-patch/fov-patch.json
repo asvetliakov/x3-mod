@@ -11,7 +11,7 @@
   "src/proxy/engine_memory.h"
  ],
  "source": {
-  "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694",
+  "commit": "ed601ebb6681b42033d95f006f2da6df143399e7",
   "production_sources_dirty": false,
   "dirty_paths": [],
   "sha256": {
@@ -41,8 +41,8 @@
   "d3dx9_37_dll": null
  },
  "exit_status": 0,
- "elapsed_s": 0.3,
- "executable_sha256": "0780e0885df69f6c572dc57843a62f532b522e8dd9990f48aad17823eb27ead8",
+ "elapsed_s": 0.2,
+ "executable_sha256": "324094056365cf52bd93ef4e2176ac293ac98e77822fbe18f14c0466146ffaa9",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16-posix",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -1317,8 +1317,8 @@
   }
  ],
  "timing_us": {
-  "install_us": 247.3,
-  "restore_us": 140.1
+  "install_us": 249.2,
+  "restore_us": 133.3
  },
  "install_sequence": {
   "step": "install",
@@ -2649,7 +2649,7 @@
    "load": "restored"
   },
   {
-   "site": "00a809dc",
+   "site": "007f09dc",
    "status": "restored",
    "found": "b45e0000",
    "registered": false,

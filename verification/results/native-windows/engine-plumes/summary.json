@@ -14,12 +14,9 @@
     "src/renderer/temporal_pass.cpp"
   ],
   "source": {
-    "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/effects/engine_plume_ps.hlsl",
-      "src/renderer/engine_plume_pixel_program_inc.h"
-    ],
+    "commit": "ed601ebb6681b42033d95f006f2da6df143399e7",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
       "src/proxy/engine_effects_core.h": "52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75",
@@ -86,7 +83,7 @@
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "d4cff04aaf524221dc5aab15a0078315565ba768b1753fc9f8cc5e9f46669e1e"
+    "executable_sha256": "94e52da7eef01d79d3518ece542fd44ea205407669d922ac994d71c017eeda90"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -1494,11 +1491,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 0.3477,
-        "fenced_off_ms": 0.2707,
-        "submit_ms": 0.0679,
-        "chain_ms": 0.077,
-        "gpu_ms": 0.0091,
+        "fenced_on_ms": 0.2063,
+        "fenced_off_ms": 0.1291,
+        "submit_ms": 0.0579,
+        "chain_ms": 0.0772,
+        "gpu_ms": 0.0193,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1510,11 +1507,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 0.3619,
-        "fenced_off_ms": 0.2686,
-        "submit_ms": 0.0801,
-        "chain_ms": 0.0933,
-        "gpu_ms": 0.0132,
+        "fenced_on_ms": 0.2169,
+        "fenced_off_ms": 0.1258,
+        "submit_ms": 0.0611,
+        "chain_ms": 0.0911,
+        "gpu_ms": 0.03,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1526,11 +1523,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 0.4111,
-        "fenced_off_ms": 0.2715,
-        "submit_ms": 0.1119,
-        "chain_ms": 0.1396,
-        "gpu_ms": 0.0277,
+        "fenced_on_ms": 0.2512,
+        "fenced_off_ms": 0.1286,
+        "submit_ms": 0.0791,
+        "chain_ms": 0.1226,
+        "gpu_ms": 0.0435,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1542,11 +1539,11 @@
         "far": 0,
         "drawn": 30,
         "far_drawn": 20,
-        "fenced_on_ms": 0.5296,
-        "fenced_off_ms": 0.4382,
-        "submit_ms": 0.065,
-        "chain_ms": 0.0914,
-        "gpu_ms": 0.0264,
+        "fenced_on_ms": 0.4667,
+        "fenced_off_ms": 0.3854,
+        "submit_ms": 0.0596,
+        "chain_ms": 0.0813,
+        "gpu_ms": 0.0217,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1558,11 +1555,11 @@
         "far": 0,
         "drawn": 100,
         "far_drawn": 68,
-        "fenced_on_ms": 0.5046,
-        "fenced_off_ms": 0.4087,
-        "submit_ms": 0.0713,
-        "chain_ms": 0.0959,
-        "gpu_ms": 0.0246,
+        "fenced_on_ms": 0.4827,
+        "fenced_off_ms": 0.3846,
+        "submit_ms": 0.0633,
+        "chain_ms": 0.0981,
+        "gpu_ms": 0.0348,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1574,11 +1571,11 @@
         "far": 250,
         "drawn": 300,
         "far_drawn": 250,
-        "fenced_on_ms": 0.5712,
-        "fenced_off_ms": 0.4395,
-        "submit_ms": 0.1057,
-        "chain_ms": 0.1317,
-        "gpu_ms": 0.026,
+        "fenced_on_ms": 0.5141,
+        "fenced_off_ms": 0.3864,
+        "submit_ms": 0.0836,
+        "chain_ms": 0.1277,
+        "gpu_ms": 0.0441,
         "samples": 60,
         "calls": 30,
         "method": "tail_event_fenced"
@@ -1589,29 +1586,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 3.88,
-        "min_us": 2.41,
+        "median_us": 2.86,
+        "min_us": 2.34,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 11.86,
-        "min_us": 7.93,
+        "median_us": 10.42,
+        "min_us": 7.6,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 43.6,
-        "min_us": 25.14,
+        "median_us": 34.62,
+        "min_us": 23.74,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 128.09,
-        "min_us": 99.61,
+        "median_us": 122.69,
+        "min_us": 100.49,
         "method": "qpc_50x41"
       }
     ],
@@ -1619,29 +1616,29 @@
       {
         "records": 30,
         "drawn": 30,
-        "median_us": 4.53,
-        "min_us": 2.82,
+        "median_us": 3.85,
+        "min_us": 2.73,
         "method": "qpc_50x41"
       },
       {
         "records": 100,
         "drawn": 100,
-        "median_us": 13.74,
-        "min_us": 9.22,
+        "median_us": 11.99,
+        "min_us": 8.93,
         "method": "qpc_50x41"
       },
       {
         "records": 300,
         "drawn": 300,
-        "median_us": 42.89,
-        "min_us": 30.12,
+        "median_us": 38.45,
+        "min_us": 27.9,
         "method": "qpc_50x41"
       },
       {
         "records": 1024,
         "drawn": 1024,
-        "median_us": 151.7,
-        "min_us": 120.48,
+        "median_us": 137.57,
+        "min_us": 112.01,
         "method": "qpc_50x41"
       }
     ],
@@ -1651,8 +1648,8 @@
         "group": 8,
         "drawn": 30,
         "unfloored": 0,
-        "median_us": 4.9,
-        "min_us": 3.84,
+        "median_us": 6.44,
+        "min_us": 3.73,
         "method": "qpc_50x41"
       },
       {
@@ -1660,8 +1657,8 @@
         "group": 8,
         "drawn": 100,
         "unfloored": 0,
-        "median_us": 19.94,
-        "min_us": 10.79,
+        "median_us": 12.89,
+        "min_us": 11.24,
         "method": "qpc_50x41"
       },
       {
@@ -1669,8 +1666,8 @@
         "group": 8,
         "drawn": 300,
         "unfloored": 0,
-        "median_us": 50.01,
-        "min_us": 31.68,
+        "median_us": 37.96,
+        "min_us": 30.76,
         "method": "qpc_50x41"
       },
       {
@@ -1678,8 +1675,8 @@
         "group": 300,
         "drawn": 300,
         "unfloored": 0,
-        "median_us": 161.99,
-        "min_us": 95.6,
+        "median_us": 127.89,
+        "min_us": 98.89,
         "method": "qpc_50x41"
       },
       {
@@ -1687,8 +1684,8 @@
         "group": 8,
         "drawn": 1024,
         "unfloored": 0,
-        "median_us": 154.32,
-        "min_us": 139.26,
+        "median_us": 136.29,
+        "min_us": 118.79,
         "method": "qpc_50x41"
       }
     ],
@@ -5272,12 +5269,12 @@
       "5120_flicker_8px": 1.001
     },
     "stage_gpu_ms": {
-      "1920x1080_30": 0.0091,
-      "1920x1080_100": 0.0132,
-      "1920x1080_300_far250": 0.0277,
-      "5120x1440_30": 0.0264,
-      "5120x1440_100": 0.0246,
-      "5120x1440_300_far250": 0.026
+      "1920x1080_30": 0.0193,
+      "1920x1080_100": 0.03,
+      "1920x1080_300_far250": 0.0435,
+      "5120x1440_30": 0.0217,
+      "5120x1440_100": 0.0348,
+      "5120x1440_300_far250": 0.0441
     },
     "distance_ratio_gpu": {
       "1920_2px": 0.15,
@@ -5369,25 +5366,25 @@
       "5120x1440_100": true,
       "5120x1440_300_far250": true
     },
-    "build_300_far250_us": 43.6,
+    "build_300_far250_us": 34.62,
     "build_us": {
-      "30": 3.88,
-      "100": 11.86,
-      "300": 43.6,
-      "1024": 128.09
+      "30": 2.86,
+      "100": 10.42,
+      "300": 34.62,
+      "1024": 122.69
     },
     "build_floor_us": {
-      "30": 4.53,
-      "100": 13.74,
-      "300": 42.89,
-      "1024": 151.7
+      "30": 3.85,
+      "100": 11.99,
+      "300": 38.45,
+      "1024": 137.57
     },
     "build_merge_us": {
-      "30_g8": 4.9,
-      "100_g8": 19.94,
-      "300_g8": 50.01,
-      "300_g300": 161.99,
-      "1024_g8": 154.32
+      "30_g8": 6.44,
+      "100_g8": 12.89,
+      "300_g8": 37.96,
+      "300_g300": 127.89,
+      "1024_g8": 136.29
     },
     "merge": {
       "1920_end_on": {
