@@ -1,0 +1,386 @@
+{
+  "fixture": "weapon_effects_hook",
+  "bottle": null,
+  "game_launched": false,
+  "sources": [
+    "verification/probe/weapon_effects_hook_fixture.cpp",
+    "verification/probe/weapon_effects_hook_fixture_shim.h",
+    "verification/probe/build_weapon_effects_hook.py",
+    "src/proxy/weapon_effects_patch.cpp",
+    "src/proxy/weapon_effects_patch.h",
+    "src/proxy/weapon_effects_hook.cpp",
+    "src/proxy/weapon_effects_core.h",
+    "src/proxy/weapon_effects_sites.h",
+    "src/proxy/weapon_effects_table.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h"
+  ],
+  "source": {
+    "commit": "f2ca8d60167b9113ec559ba1edc3e801d1180876-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h",
+      "src/proxy/weapon_effects_table.h",
+      "verification/probe/build_weapon_effects_hook.py",
+      "verification/probe/weapon_effects_hook_fixture.cpp"
+    ],
+    "sha256": {
+      "verification/probe/weapon_effects_hook_fixture.cpp": "5020aa72a9a8af2aff77370d33268161939c6e38b5b07d91036584d991905ff9",
+      "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
+      "verification/probe/build_weapon_effects_hook.py": "b93d5d3f8a17cbba5102d28fc6cf13da61c93a6d494cf10dc6f1e4c404986fb8",
+      "src/proxy/weapon_effects_patch.cpp": "0ab000c323eaea0c41a5542b67890dd8b75cad29c38f6e7bb12d84d166a9e3ec",
+      "src/proxy/weapon_effects_patch.h": "f554791f3c77ae1cc84f922b88e8e3eabbdd21d40727678fd84eeab7aef8b4c8",
+      "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
+      "src/proxy/weapon_effects_core.h": "e3c968996d54bb2de0b01a5ffc813c4197d4939ece68b5435fd83b9a7f5a08c0",
+      "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
+      "src/proxy/weapon_effects_table.h": "91b861b8d809c312ee1ed2f946310c855531402993ce1c1b0792764f139d42b4",
+      "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+      "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
+    }
+  },
+  "build": {
+    "binary": "build/verification/weapon-effects-hook/weapon_effects_hook_fixture.exe",
+    "toolchain": "i686-w64-mingw32-g++ (GCC) 16-posix",
+    "audit": {
+      "handler_undefined": [],
+      "handler_x87": [],
+      "handler_calls": {
+        "_x3m_weapon_event": [],
+        "_x3m_weapon_tap": []
+      },
+      "handler_instructions": {
+        "_x3m_weapon_event": 607,
+        "_x3m_weapon_tap": 58
+      },
+      "handler_frame_bytes": 140,
+      "stub_impact": [
+        "pushf",
+        "push",
+        "push",
+        "push",
+        "cld",
+        "lea",
+        "push",
+        "call",
+        "add",
+        "test",
+        "pop",
+        "pop",
+        "pop",
+        "jne",
+        "popf",
+        "jmp",
+        "popf",
+        "xor",
+        "ret"
+      ],
+      "stub_ok": true,
+      "module_imports_own_protect": [],
+      "engine_patch_lock_cmpxchg8b": 1
+    },
+    "executable_sha256": "f1c48076c9ae54682ba8b4f70ec260b7b9c5c6b7f13d2c4af55fd9b8237eecee"
+  },
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "description": null,
+      "driver": null
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": null,
+    "d3dx9_37_dll": null
+  },
+  "run": {
+    "exit_code": 0,
+    "result": {
+      "checks": 52,
+      "failures": 0,
+      "faults": 3,
+      "verdict": "PASS"
+    },
+    "log": "build/verification/weapon-effects-hook/fixture.log"
+  },
+  "checks": [
+    {
+      "name": "engine_pages_reserved",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rule_absorbed_bullet_shield",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rule_absorbed_bullet_flag20_hull",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rule_absorbed_missile_flag20_ignored",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rule_not_absorbed_hull",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "style_beam_bit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "style_wave_bit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "style_tracer_elongation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "style_slug_burst",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tint_saturation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "calibre_bands",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "overflow_counts",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "overflow_keeps_owned_shield",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "nested_death_retires_owner",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "age_law_game_time",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_window_is_header",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "observe_installed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_reaches_callee_args",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_callee_esi_edi",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_callee_eax_ecx_edx_ebx_ebp",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_callee_return_address",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_callee_esp",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_callee_eflags",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_frame_kept",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "forward_records_shield_hit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "handler_contact_point",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "classifier_tint_light",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no_bullet_extension_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "shields_installed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "skip_no_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "skip_frame_kept",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_forwards_in_shields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "no_projectile_class_forwards_unrecorded",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "nested_dying_projectile_skips_marked",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "nested_dying_victim_forwards_marked",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scope_first_key_and_unknown_keep",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scope_sector_change_clears_owned",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scope_loading_clears_owned",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "scope_load_epoch_clears_owned",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap_reaches_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap_callee_esi_ebx_edi_return",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "weapon_pos_check_zero_error",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "private_page",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "changed_byte_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "witness_mismatch_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "prologue_mismatch_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap_byte_mismatch_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "observe_rollback_three_sites",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "observe_rollback_second_site",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rollback_on_failed_readback",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "late_claim_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fixture_stack_margin",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "check_count": 52,
+  "failed_checks": [],
+  "forward_state": {
+    "eflags_entry": "00000cc5",
+    "eflags_callee": "00000ec7",
+    "esp_frame": "00854640",
+    "esp_callee": "00854634",
+    "return": "00e06d8a",
+    "site": "00e06d85"
+  },
+  "stack_depth": {
+    "bytes": 176,
+    "margin": 1536
+  },
+  "passed": true
+}

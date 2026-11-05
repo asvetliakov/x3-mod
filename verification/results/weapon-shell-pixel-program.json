@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_shell_ps.hlsl",
-  "source_sha256": "acc7335cf94d1e579e2504cd0e2fad404f75bdd3a14d0e8dcf99de5e95b0cde1",
+  "source_sha256": "54672fe7a5cc8c4d2ff5c4ba980edc2d454a5016d8ebd70d97011c1ecd70de32",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",

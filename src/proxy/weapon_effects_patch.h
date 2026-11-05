@@ -25,7 +25,9 @@
 //
 // Rows: `weapon_effects_patch site=impact|tap1|tap2 va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
 // write=none|atomic|plain` per site at initialize; `weapon_effects_table event= reason= rows= entries= textures=
-// overrides= dropped= bytes= path=` once; the frame rows of present() below.
+// overrides= dropped= bytes= path=` once; the frame rows of present() below and `weapon_effects_scope frame= cleared=
+// loading= sector_key= load_epoch= clears=` when a scope change clears stage-owned records. The FL edition writes one
+// `weapon_effects_patch site=impact ... state=edition_unsupported edition=fl` row at initialize (capture.cpp).
 namespace x3m::weapon_effects {
 struct Addresses {
     std::uintptr_t impact_window, impact_target, prologue;
@@ -49,10 +51,12 @@ struct StageFrame {
     float stage_us = 0.f;
     bool drew = false;
 };
-void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage);
-// The resolve's cut verdict, a Reset or a sector change: every stage-owned record leaves the ring.
+// `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
+// sector change or a new load epoch (note 3.1), before the frame's upkeep.
+void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope = {});
+// The resolve's cut verdict, a Reset, a load or a sector change: every stage-owned record leaves the ring.
 void clear_owned();
-std::uint32_t game_ms(); // cfg+0x718 through engine_memory (0 when unreadable)
+std::uint32_t game_ms(); // cfg+0x718 through engine_memory (0 when unreadable; hook_state().globals' slot)
 }
 extern "C" {
 void x3m_weapon_effects_stub_impact();

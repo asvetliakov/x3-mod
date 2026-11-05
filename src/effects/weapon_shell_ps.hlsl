@@ -1,6 +1,6 @@
 // Weapon effects, shield hit (docs/architecture/weapon-effects.md 5.1; the dropped shell of 9375a1e7,
-// effects-modernisation-opus.md 3.3): the shell pixel program. Front faces only (the view-space normal must face the
-// eye); a Fresnel rim pow(1 - |n.v|, rim_power) x rim_gain that fades with the newest hit's age, up to four rings
+// effects-modernisation-opus.md 3.3): the shell pixel program. Front faces only (the pass's winding cull, and the
+// view-space normal must face the eye); a Fresnel rim pow(1 - |n.v|, rim_power) x rim_gain that fades with the newest hit's age, up to four rings
 // expanding from their hit direction on the unit sphere (a Gaussian in the angle theta about ring_speed x age, fading
 // as 1 - age / T, each with its own amplitude from the hit's calibre), a hex lattice modulation of depth hex_gain, a
 // short flash at each hit point, the tint, and the soft fade against the lane where the shell cuts the hull. Ages are
@@ -23,7 +23,8 @@ float4 main(float4 raster : TEXCOORD0, float3 normal : TEXCOORD1, float3 local :
     float3 n = normalize(normal);
     float3 eye = normalize(-view);
     float facing = dot(n, eye);
-    // The back hemisphere (drawn with CULLMODE NONE: the icosphere's winding is not relied upon) leaves before the rings.
+    // The pass culls the inward winding per shell; a fragment whose interpolated normal faces away (the silhouette's
+    // last facets) still leaves before the rings.
     [branch] if (facing <= 0.0) return float4(0, 0, 0, 0);
     float rim = pow(1.0 - saturate(facing), look.z);
     float3 p = normalize(local);

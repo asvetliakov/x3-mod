@@ -8,14 +8,17 @@
 //
 // Ownership (note 2.6): armed = the route on, the HDR/TAA FP16 path, the scene camera latched, the completed lane at
 // the target's size and format, the attached pass, not within 64 frames of a failed stage frame (the third consecutive
-// failure refuses until Reset). Present latches weapon_effects_owned() for the next frame's hooks, so a frame whose
-// resolve never reaches the arming (a menu, TAA off, a lost device) makes the next frame's hits native again; records
+// failure refuses until Reset). Present latches weapon_effects_owned() for the next frame's hooks: armed, the resolve
+// completed and, when the callback was set, it ran and returned S_OK / S_FALSE (core::stage_owned, review F8), so a
+// frame whose resolve never reaches the arming (a menu, TAA off), fails before the callback, or whose stage returns
+// DEVICELOST or an error makes the next frame's hits native again; records
 // the hooks skipped stay in the ring with their own game-time timelines and are drawn when the stage returns, if still
 // within age. A cut verdict or a Reset clears the stage-owned records. One weapon_effects_state row per change of the
 // armed state or its reason; one weapon_effects_device row per attach; weapon_effects_failed per failed stage frame.
 void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     weapon_requested_ = requested;
     weapon_armed_ = false;
+    weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_failures_ = 0;
     weapon_failed_out_ = false;
     weapon_reason_ = requested ? "pending" : "off";
@@ -67,6 +70,7 @@ void MotionOutput::release_weapon_effects() noexcept {
     }
     weapon_lane_ = nullptr;
     weapon_armed_ = false;
+    weapon_owned_ = false;
 }
 bool MotionOutput::weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept {
     weapon_armed_ = false;
@@ -161,6 +165,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
     QueryPerformanceCounter(&end);
+    weapon_callback_ok_ = SUCCEEDED(hr); // S_OK drew, S_FALSE nothing to draw; DEVICELOST and errors leave it false
     // 32-bit operands only (an int64 -> double conversion is x87 fild on i686): a stage call never spans 2^31 ticks, and
     // a QPC frequency above 2^31 Hz reads as unavailable.
     const std::uint64_t frequency = engine_qpc_frequency();
@@ -201,4 +206,5 @@ void MotionOutput::weapon_effects_take_frame(unsigned* shells, unsigned* decals,
     weapon_drew_ = false;
     // Ownership is earned again by the next frame's resolve (the own sun's rule).
     weapon_armed_ = false;
+    weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
 }

@@ -79,8 +79,11 @@ void normalize3(float* p) noexcept {
         for (unsigned k = 0; k < 3; ++k) p[k] /= n;
 }
 // The unit icosphere: an icosahedron subdivided twice (12 -> 42 -> 162 vertices, 20 -> 80 -> 320 triangles), midpoints
-// shared through a linear edge search (attach time only). The winding is not relied upon: the shell draws with
-// CULLMODE NONE and its pixel program rejects back faces by the view-space normal.
+// shared through a linear edge search (attach time only). Winding: every triangle (a, b, c) has (b - a) x (c - a)
+// pointing outward (the base faces are counter-clockwise seen from outside in a right-handed frame and the 1:4 split
+// keeps each child's order), so a shell drawn through view axes A shows its outward faces clockwise on screen when
+// det A > 0 and counter-clockwise when det A < 0; run() culls the other winding per shell (review F4), and the pixel
+// program still rejects a fragment whose interpolated normal faces away.
 bool build_sphere(float (*v)[3], std::uint16_t* idx) noexcept {
     const float t = 1.6180339887f;
     const float base[12][3] = {{-1, t, 0}, {1, t, 0}, {-1, -t, 0}, {1, -t, 0}, {0, -1, t}, {0, 1, t},
@@ -210,7 +213,8 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
-    if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE)) return refuse("cull_none");
+    constexpr DWORD cull_caps = D3DPMISCCAPS_CULLNONE | D3DPMISCCAPS_CULLCW | D3DPMISCCAPS_CULLCCW;
+    if ((caps.PrimitiveMiscCaps & cull_caps) != cull_caps) return refuse("cull_caps");
     if (caps.MaxPrimitiveCount < sphere_triangles || caps.MaxVertexIndex < sphere_vertices || caps.MaxStreams < 1u)
         return refuse("limits");
     IDirect3D9* api = nullptr;
@@ -241,8 +245,8 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
     D d = device_;
-    HRESULT hr = S_OK;
-    if (!shell_vs_) hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(shell_vs_words), &shell_vs_);
+    HRESULT hr = (faults_ & 8u) ? E_FAIL : S_OK; // fixture fault bit 3: program creation refused
+    if (SUCCEEDED(hr) && !shell_vs_) hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(shell_vs_words), &shell_vs_);
     if (SUCCEEDED(hr) && !shell_ps_)
         hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(shell_ps_words), &shell_ps_);
     if (SUCCEEDED(hr) && !decal_vs_)
@@ -336,12 +340,22 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Shells, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, look, 1));
         step(WeaponEffectsStep::Shells, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 9, flash, 1));
         const unsigned slots = l.ring_count < 1 ? 1 : l.ring_count > 4 ? 4 : l.ring_count;
+        DWORD cull = D3DCULL_NONE; // the state list's value
         for (unsigned i = 0; i < f.shell_count && SUCCEEDED(hr); ++i) {
             const WeaponShell& s = f.shells[i];
             bool ok = s.hits >= 1 && finite(s.soft);
             for (unsigned k = 0; k < 3 && ok; ++k) ok = finite(s.centre[k]) && finite(s.tint[k]);
             for (unsigned k = 0; k < 9 && ok; ++k) ok = finite(s.axes[k]);
-            if (!ok) continue; // a degenerate shell is skipped, never drawn wrong
+            // The winding of the outward faces on screen (see build_sphere): det A0 . (A1 x A2).
+            const float* a = s.axes;
+            const float det = ok ? a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6]) +
+                                       a[2] * (a[3] * a[7] - a[4] * a[6])
+                                 : 0.f;
+            if (!ok || !finite(det) || det == 0.f) continue; // a degenerate shell is skipped, never drawn wrong
+            DWORD want = det > 0.f ? DWORD(D3DCULL_CCW) : DWORD(D3DCULL_CW); // keep the front (outward) faces
+            if (faults_ & 16u) want = D3DCULL_NONE; // fixture bit 4: the former CULLMODE NONE draw (the cull's A/B)
+            if (want != cull && step(WeaponEffectsStep::Shells, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, want)))
+                cull = want;
             const unsigned hits = s.hits < slots ? s.hits : slots;
             const float centre[4] = {s.centre[0], s.centre[1], s.centre[2], f.near_z};
             const float axes[12] = {s.axes[0], s.axes[1], s.axes[2], s.soft, s.axes[3], s.axes[4], s.axes[5], 0.f,
@@ -374,6 +388,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (SUCCEEDED(hr) && f.decal_count) {
         const float limits[4] = {f.near_z, l.soft, 0.f, 0.f};
         const float flash[4] = {l.flash_s, l.flash_gain, l.flash_sharpness, l.hex_gain};
+        if (f.shell_count) // the shells may have left a winding cull; the decal quads are not wound
+            step(WeaponEffectsStep::Decals, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Decals, call<SetDeclarationFn>(SetVertexDeclaration)(d, decal_declaration_));
         step(WeaponEffectsStep::Decals, call<SetVsFn>(SetVertexShader)(d, decal_vs_));
         step(WeaponEffectsStep::Decals, call<SetPsFn>(SetPixelShader)(d, decal_ps_));

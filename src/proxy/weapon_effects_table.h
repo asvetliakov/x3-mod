@@ -11,7 +11,8 @@
 //                   "calibre": k|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
-// skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty).
+// skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
+// besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
 namespace x3m::weapon_effects::table {
 namespace json = x3m::engine_effects::core::json;
 namespace core = x3m::weapon_effects::core;
@@ -84,6 +85,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
         return true;
     }
     const unsigned i = unsigned(row);
+    if (t->bits[i] & core::row_present) return c.ok = false; // a duplicate row: the file is not the generator's
     std::uint8_t bits = core::row_present;
     t->shape[i] = core::shape_from_elongation(e, e_present);
     if (style_present) {
@@ -192,6 +194,10 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                 break;
             }
         }
+    if (ok && c.ok) { // nothing but whitespace after the closing brace
+        c.skip_ws();
+        if (c.p != c.end) c.ok = false;
+    }
     ok = ok && c.ok && schema;
     if (!ok) {
         if (fault) *fault = std::size_t(c.p - text);

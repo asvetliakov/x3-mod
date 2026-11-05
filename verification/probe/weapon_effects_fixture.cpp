@@ -5,21 +5,34 @@
 // compiled through the game's d3dx9_37.dll (argv[1], run_weapon_effects.py's contract). It reads the FP16 target back
 // and reports the structural relations the note lists: the Fresnel rim rises with the view angle, the rings are
 // present on and absent off their widths, the shell's hull cut is 0 behind a near occluder, the decal draws on a hull
-// and 0 over sky, the shell core keeps its value, the game-time age law (young draws, past the ripple fades), a
-// retired owner draws nothing, Reset recovery, the fault cases, and the stage cost at 1080p and 5120x1440. Every draw
-// and readback runs inside BeginScene/EndScene (native D3D9 refuses a draw outside a scene). Never launches the game.
+// and 0 over sky, the shell core keeps >= 0.95 of its value through the production TemporalPass at 0 / 4 / 8 px per
+// frame (the engine plumes fixture's flown resolve configuration), the winding cull keeps a mirrored shell, the
+// game-time age law (young draws, past the ripple fades, and a 600 ms ripple at SETA 6 measured to end after 100 ms of
+// wall time through the production stage builder), a retired owner draws nothing (the builder retires a dying owner's
+// record), Reset recovery, the fault cases (a failed draw, the program-create refusal), and the stage cost at 1080p and
+// 5120x1440 (an empty fence, two shells and a full-screen shell, each with the winding cull and with CULLMODE NONE as
+// the same-run comparison). Every draw and readback runs inside BeginScene/EndScene (native D3D9 refuses a draw outside
+// a scene). Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
+#include "../../src/proxy/weapon_effects_stage.h"
+#include "../../src/renderer/temporal_pass.h"
+#include "../../src/renderer/temporal_resolve_program.h"
+#include "../../src/renderer/hdr_writeback_program.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
 #include <utility>
+#include <vector>
 
 namespace rr = x3m::renderer;
+namespace ws = x3m::weapon_effects::stage;
+namespace wc = x3m::weapon_effects::core;
 
 namespace {
 unsigned checks = 0, failures = 0;
@@ -58,6 +71,7 @@ CompileFn compile_shader = nullptr;
 IDirect3DPixelShader9* lane_ps = nullptr;
 IDirect3DVertexShader9* quad_vs = nullptr;
 IDirect3DVertexDeclaration9* quad_decl = nullptr;
+IDirect3DPixelShader9* motion_ps = nullptr;
 
 bool compile(const char* src, const char* profile, const DWORD** out, LPD3DXBUFFER* hold) {
     LPD3DXBUFFER code = nullptr, err = nullptr;
@@ -82,6 +96,12 @@ bool compile_helpers() {
     static Com<ID3DXBuffer> vh, ph;
     if (!compile(vs, "vs_3_0", &vw, &vh.p) || !compile(ps, "ps_3_0", &pw, &ph.p)) return false;
     if (FAILED(dev->CreateVertexShader(vw, &quad_vs)) || FAILED(dev->CreatePixelShader(pw, &lane_ps))) return false;
+    // The motion target of an all-unrouted frame (the route's fill sentinel, alpha -1): the resolve's camera-only path.
+    const DWORD* mw = nullptr;
+    static Com<ID3DXBuffer> mh;
+    if (!compile("float4 main(float2 p:VPOS):COLOR0{ return float4(0,0,0,-1); }", "ps_3_0", &mw, &mh.p) ||
+        FAILED(dev->CreatePixelShader(mw, &motion_ps)))
+        return false;
     const D3DVERTEXELEMENT9 elems[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
     return SUCCEEDED(dev->CreateVertexDeclaration(elems, &quad_decl));
 }
@@ -176,6 +196,213 @@ std::pair<HRESULT, rr::WeaponEffectsReport> draw(rr::WeaponEffectsPass& pass, co
     dev->EndScene();
     return {hr, r};
 }
+void fence(IDirect3DQuery9* q) {
+    if (!q) return;
+    q->Issue(D3DISSUE_END);
+    const DWORD start = GetTickCount();
+    while (q->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE && GetTickCount() - start < 5000) {
+    }
+}
+// The production stage builder's input: one owner in the fixture's own memory (object block and node block), read
+// through a reader bounded to those two blocks (engine_memory::read's contract: false outside readable memory).
+alignas(16) unsigned char fake_obj[0x100], fake_node[0x200];
+bool fake_read(std::uintptr_t a, void* out, std::size_t n) {
+    for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node)}) {
+        const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(base);
+        const std::size_t size = base == fake_obj ? sizeof fake_obj : sizeof fake_node;
+        if (a >= b && n <= size && a - b <= size - n) {
+            std::memcpy(out, reinterpret_cast<const void*>(a), n);
+            return true;
+        }
+    }
+    return false;
+}
+void put32(unsigned char* b, unsigned off, std::uint32_t v) {
+    std::memcpy(b + off, &v, 4);
+}
+std::uint32_t addr(const void* p) {
+    return std::uint32_t(reinterpret_cast<std::uintptr_t>(p));
+}
+// A live owner at view (0, 0, z) with radius r (view units; identity camera, identity rows), and the ring holding one
+// stage-owned shield hit on its front (t0 game ms, the header's ripple lifetime).
+wc::Ring stage_ring;
+void stage_owner(float z, float r, std::uint32_t t0) {
+    std::memset(fake_obj, 0, sizeof fake_obj);
+    std::memset(fake_node, 0, sizeof fake_node);
+    const auto engine = [](float v) { return std::uint32_t(std::int32_t(v / wc::world_scale)); };
+    put32(fake_obj, wc::layout::obj_node, addr(fake_node));
+    put32(fake_obj, wc::layout::obj_radius, engine(r));
+    put32(fake_node, wc::layout::node_handle, 0xd00du);
+    put32(fake_node, wc::layout::node_pos + 8, engine(z));
+    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_rot + 16 * k + 4 * k, 0x10000u);
+    wc::ring_clear(stage_ring);
+    wc::Event* e = wc::ring_acquire(stage_ring);
+    e->role = wc::role_shield_hit;
+    e->style = wc::shape_slug;
+    e->flags = 0;
+    e->t0_game_ms = t0;
+    e->lifetime_ms = std::uint16_t(wc::ripple_ms);
+    e->damage = 1200;
+    e->tint_rgb = 0xffffffu | wc::rgb_present;
+    e->owner = addr(fake_obj);
+    e->node = addr(fake_node);
+    e->handle = 0xd00du;
+    e->pos[2] = -std::int32_t(engine(r));
+    e->radius = std::int32_t(engine(r));
+}
+ws::Camera identity_camera() {
+    ws::Camera c;
+    c.r[0] = c.r[4] = c.r[8] = 1.f;
+    return c;
+}
+unsigned ring_live(const wc::Ring& r) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < wc::ring_capacity; ++i) n += r.slots[i].sequence != 0;
+    return n;
+}
+double halton(unsigned i, unsigned b) {
+    double f = 1, r = 0;
+    while (i) {
+        f /= b;
+        r += f * (i % b);
+        i /= b;
+    }
+    return r;
+}
+std::vector<float> read_luma(Target& t, IDirect3DSurface9* source) {
+    std::vector<float> out;
+    if (FAILED(dev->GetRenderTargetData(source, t.sysmem.p))) return out;
+    D3DLOCKED_RECT lr{};
+    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h);
+    for (UINT y = 0; y < t.h; ++y) {
+        const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+        for (UINT x = 0; x < t.w; ++x)
+            out[std::size_t(y) * t.w + x] =
+                std::max(half_to_float(row[x * 4]), std::max(half_to_float(row[x * 4 + 1]), half_to_float(row[x * 4 + 2])));
+    }
+    t.sysmem.p->UnlockRect();
+    return out;
+}
+struct StageContext {
+    rr::WeaponEffectsPass* pass;
+    rr::WeaponEffectsFrame frame;
+    HRESULT result;
+};
+HRESULT stage_callback(void* context, IDirect3DDevice9*) noexcept {
+    auto* c = static_cast<StageContext*>(context);
+    rr::WeaponEffectsReport r{};
+    c->result = c->pass->run(c->frame, &r);
+    return c->result;
+}
+// The shell's core through the production resolve (the engine plumes fixture's flown configuration: PerPixel with the
+// all-unrouted motion target, sentinel camera with strict sky, exit 0.25, far camera + camera gate): 16 frames of
+// Halton jitter with the shell moving +x at `speed_px` per frame, once with the stage and once without. The core is the
+// current frame's shell pixels at half its peak or more; the ratio is their resolved share (on - off) over their
+// current share. -1 when the resolve could not be driven.
+double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion, Com<IDirect3DSurface9>& motion_s,
+                    float speed_px, float* peak_out) {
+    constexpr unsigned frames = 16;
+    const float z = 400.f, m00 = base_frame(g).m00;
+    const float units_per_px = 2.f * z / (m00 * float(g.w));
+    std::vector<float> cur[2], res[2];
+    for (unsigned on = 0; on < 2; ++on) {
+        rr::TemporalPass taa;
+        HRESULT hr = taa.initialize(dev, nullptr, reinterpret_cast<const DWORD*>(rr::temporal_resolve_program()), nullptr,
+                                    nullptr, reinterpret_cast<const DWORD*>(rr::hdr_writeback_program()));
+        if (SUCCEEDED(hr)) hr = taa.configure_far();
+        if (FAILED(hr)) {
+            std::printf("RESOLVE_FAIL step=initialize result=%08lx\n", hr);
+            return -1;
+        }
+        rr::Output o{};
+        float pjx = 0, pjy = 0;
+        for (unsigned n = 0; n < frames; ++n) {
+            const float jx = float(halton(n % 8 + 1, 2) - .5), jy = float(halton(n % 8 + 1, 3) - .5);
+            draw_lane(g, 0.f, -1.f); // sky everywhere
+            const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+            dev->BeginScene();
+            dev->SetRenderTarget(0, motion_s.p);
+            dev->SetVertexDeclaration(quad_decl);
+            dev->SetVertexShader(quad_vs);
+            dev->SetPixelShader(motion_ps);
+            dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+            dev->SetRenderTarget(0, g.scene_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+            dev->EndScene();
+            rr::WeaponShell shell = front_shell(0.15f, 100.f, z);
+            shell.centre[0] = (float(n) - float(frames - 1)) * speed_px * units_per_px;
+            StageContext ctx{&pass, base_frame(g), S_FALSE};
+            ctx.frame.m20 = 2.f * jx / float(g.w);
+            ctx.frame.m21 = -2.f * jy / float(g.h);
+            ctx.frame.shells = &shell;
+            ctx.frame.shell_count = 1;
+            rr::FrameInputs in;
+            in.color = g.scene_tex.p;
+            in.current_depth = g.lane_tex.p;
+            in.width = g.w;
+            in.height = g.h;
+            in.epoch = 1;
+            const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+            std::copy(identity, identity + 16, in.clip_to_previous);
+            in.current_jitter[0] = jx;
+            in.current_jitter[1] = jy;
+            in.previous_jitter[0] = pjx;
+            in.previous_jitter[1] = pjy;
+            in.history_allowed = true;
+            in.caller_scene_open = true;
+            in.caller_queries_idle = true;
+            in.motion = motion.p;
+            in.motion_policy = rr::MotionPolicy::PerPixel;
+            in.reactive_policy = rr::ReactivePolicy::DerivedFromDepthSentinel;
+            in.sentinel_camera = true;
+            in.sentinel_strict_sky = true;
+            in.sky_history_exit_px = .25f;
+            in.far_weight = .985f;
+            in.far_d0 = .9995f;
+            in.far_inv = 1.f / (.9999f - .9995f);
+            in.far_speed_lo = x3::temporal::kFarSpeedLo;
+            in.far_speed_hi = x3::temporal::kFarSpeedHi;
+            in.thin_region_weight = .97f;
+            in.thin_region_relax = 1;
+            in.thin_region_camera_gate = true;
+            if (on) {
+                in.stage_callback = &stage_callback;
+                in.stage_context = &ctx;
+            }
+            dev->BeginScene();
+            hr = taa.run(in, &o);
+            dev->EndScene();
+            if (FAILED(hr) || (on && (!taa.diagnostics().stage_ran || FAILED(ctx.result)))) {
+                std::printf("RESOLVE_FAIL step=run frame=%u result=%08lx stage=%08lx ran=%u\n", n, hr, ctx.result,
+                            unsigned(taa.diagnostics().stage_ran));
+                return -1;
+            }
+            pjx = jx;
+            pjy = jy;
+            if (n + 1 == frames) {
+                cur[on] = read_luma(g, g.scene_s.p);
+                Com<IDirect3DSurface9> resolved;
+                if (!o.color || FAILED(o.color->GetSurfaceLevel(0, &resolved.p))) return -1;
+                res[on] = read_luma(g, resolved.p);
+            }
+        }
+        taa.shutdown();
+    }
+    if (cur[0].empty() || cur[1].empty() || res[0].empty() || res[1].empty()) return -1;
+    float peak = 0.f;
+    for (std::size_t i = 0; i < cur[1].size(); ++i) peak = std::max(peak, cur[1][i] - cur[0][i]);
+    double num = 0, den = 0;
+    for (std::size_t i = 0; i < cur[1].size(); ++i) {
+        const double c = double(cur[1][i]) - double(cur[0][i]);
+        if (c >= .5 * double(peak)) {
+            num += double(res[1][i]) - double(res[0][i]);
+            den += c;
+        }
+    }
+    *peak_out = peak;
+    return den > 0 ? num / den : 0;
+}
 }
 
 int main(int argc, char** argv) {
@@ -247,8 +474,14 @@ int main(int argc, char** argv) {
         f.shell_count = 1;
         auto res = draw(pass, f);
         const float luma = max_luma(g);
-        std::printf("SHELL sky_max_luma=%.4f\n", luma);
+        // The winding cull (the outward faces kept from det A's sign): a mirrored shell (det < 0) draws its front too.
+        s.axes[0] = -s.axes[0];
+        auto mirrored = draw(pass, f);
+        const float luma_mirrored = max_luma(g);
+        std::printf("SHELL sky_max_luma=%.4f mirrored_max_luma=%.4f\n", luma, luma_mirrored);
         report("shell_core_positive", SUCCEEDED(res.first) && res.second.shells == 1 && luma > 0.05f, "");
+        report("winding_mirrored_axes_draw", SUCCEEDED(mirrored.first) && mirrored.second.shells == 1 &&
+                                                 luma_mirrored > 0.5f * luma && luma_mirrored < 2.f * luma, "");
     }
     // Rim rises with angle: compare a near-silhouette annulus (70 deg) to an inner one (45 deg) with the ripple off.
     {
@@ -332,16 +565,104 @@ int main(int argc, char** argv) {
         f.shells = &old;
         draw(pass, f);
         const float a_old = max_luma(g);
-        std::printf("AGE young=%.4f expired=%.4f ripple_s=%.3f seta6_wall_ms=%.0f\n", a0, a_old, f.look.ripple_s,
-                    f.look.ripple_s * 1000.f / 6.f);
         report("age_law_young_brighter_than_expired", a0 > a_old, "");
+        // SETA 6, measured: the game clock advances six game ms per wall ms (QueryPerformanceCounter); every frame the
+        // production builder ages the ring's one hit in game time and the pass draws it, fenced like a frame, until the
+        // builder has nothing to draw. The ripple's 600 game ms end after 100 wall ms (within one frame).
+        stage_owner(400.f, 100.f, 0);
+        Com<IDirect3DQuery9> q;
+        dev->CreateQuery(D3DQUERYTYPE_EVENT, &q.p);
+        LARGE_INTEGER freq{}, start{}, now{};
+        QueryPerformanceFrequency(&freq);
+        QueryPerformanceCounter(&start);
+        rr::WeaponShell shells[wc::max_shells];
+        rr::WeaponDecal decals[wc::max_decals];
+        double wall_ms = 0, last_ms = 0, max_frame_ms = 0, last_drawn_ms = 0;
+        unsigned frames = 0;
+        for (;;) {
+            QueryPerformanceCounter(&now);
+            wall_ms = ticks_us(start, now, freq) * 1e-3;
+            const std::uint32_t game = std::uint32_t(wall_ms * 6.0);
+            const ws::Counts n = ws::build(stage_ring, game, &fake_read, identity_camera(), ws::Tuning{}, shells,
+                                           wc::max_shells, decals, wc::max_decals);
+            max_frame_ms = std::max(max_frame_ms, wall_ms - last_ms);
+            last_ms = wall_ms;
+            if (!n.shells || wall_ms > 2000.0) break;
+            rr::WeaponEffectsFrame sf = base_frame(g);
+            sf.shells = shells;
+            sf.shell_count = n.shells;
+            draw(pass, sf);
+            fence(q.p);
+            ++frames;
+            last_drawn_ms = wall_ms;
+        }
+        std::printf("AGE young=%.4f expired=%.4f ripple_s=%.3f seta6_wall_ms=%.2f last_drawn_ms=%.2f frames=%u max_frame_ms=%.3f\n",
+                    a0, a_old, f.look.ripple_s, wall_ms, last_drawn_ms, frames, max_frame_ms);
+        report("age_law_seta6_100ms_wall", frames > 0 && last_drawn_ms <= 100.2 && wall_ms >= 100.0 &&
+                                                wall_ms <= 100.2 + max_frame_ms + 0.5, "");
     }
-    // Retired owner: shell_count 0 draws nothing.
+    // Retired owner, through the production builder: the live owner's hit gives one shell that draws; once the owner
+    // carries the kill routine's dying bit the builder retires its record (the ring is empty) and nothing draws.
     {
+        rr::WeaponShell shells[wc::max_shells];
+        rr::WeaponDecal decals[wc::max_decals];
+        stage_owner(400.f, 100.f, 1000);
+        const ws::Counts live = ws::build(stage_ring, 1050, &fake_read, identity_camera(), ws::Tuning{}, shells,
+                                          wc::max_shells, decals, wc::max_decals);
         rr::WeaponEffectsFrame f = base_frame(g);
+        f.shells = shells;
+        f.shell_count = live.shells;
+        auto drawn = draw(pass, f);
+        const float live_max = max_luma(g);
+        put32(fake_obj, wc::layout::obj_flags, wc::layout::obj_dying);
+        const ws::Counts dead = ws::build(stage_ring, 1050, &fake_read, identity_camera(), ws::Tuning{}, shells,
+                                          wc::max_shells, decals, wc::max_decals);
+        f.shell_count = dead.shells;
+        f.decal_count = dead.decals;
         auto res = draw(pass, f);
-        std::printf("RETIRED result=%08lx drew=%u max=%.4f\n", res.first, unsigned(res.second.drew), max_luma(g));
-        report("retired_owner_draws_nothing", res.first == S_FALSE && !res.second.drew && max_luma(g) < 0.02f, "");
+        const float dead_max = max_luma(g);
+        std::printf("RETIRED live_shells=%u live_drew=%u live_max=%.4f shells=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u max=%.4f\n",
+                    live.shells, unsigned(drawn.second.drew), live_max, dead.shells, dead.decals, dead.retired,
+                    ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_max);
+        report("stage_build_live_owner_draws", live.shells == 1 && drawn.second.drew && live_max > 0.05f, "");
+        report("retired_owner_draws_nothing", dead.shells == 0 && dead.decals == 0 && dead.retired == 1 &&
+                                                  ring_live(stage_ring) == 0 && res.first == S_FALSE && !res.second.drew &&
+                                                  dead_max < 0.02f, "");
+    }
+    // The core through the production resolve at 0 / 4 / 8 px per frame.
+    {
+        Com<IDirect3DTexture9> motion;
+        Com<IDirect3DSurface9> motion_s;
+        const bool made = SUCCEEDED(dev->CreateTexture(g.w, g.h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F,
+                                                       D3DPOOL_DEFAULT, &motion.p, nullptr)) &&
+                          SUCCEEDED(motion.p->GetSurfaceLevel(0, &motion_s.p));
+        for (const float speed : {0.f, 4.f, 8.f}) {
+            float peak = 0.f;
+            const double ratio = made ? resolve_core(pass, motion, motion_s, speed, &peak) : -1.0;
+            std::printf("RESOLVE width=%u height=%u speed_px=%.0f frames=16 core=%.4f peak=%.3f\n", g.w, g.h, double(speed),
+                        ratio, double(peak));
+            char label[48];
+            std::snprintf(label, sizeof label, "resolve_core_%.0fpx_%u", double(speed), g.w);
+            report(label, ratio >= 0.95, "");
+        }
+        draw_lane(g, 0.f, -1.f);
+    }
+    // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.
+    {
+        rr::WeaponEffectsPass refused;
+        refused.set_faults(8);
+        const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
+        rr::WeaponEffectsFrame f = base_frame(g);
+        rr::WeaponShell s = front_shell(0.0f);
+        f.shells = &s;
+        f.shell_count = 1;
+        rr::WeaponEffectsReport rep{};
+        const HRESULT run = refused.run(f, &rep);
+        std::printf("REFUSED result=%08lx enabled=%u reason=%s references=%u run=%08lx calls=%u\n", hr,
+                    unsigned(refused.caps().enabled), refused.caps().reason, refused.references(), run, rep.calls);
+        report("program_create_refused", FAILED(hr) && !refused.caps().enabled &&
+                                             !std::strcmp(refused.caps().reason, "program_create") &&
+                                             refused.references() == 0 && run == E_INVALIDARG && rep.calls == 0, "");
     }
     // Fault once, then recover; then Reset.
     {
@@ -370,34 +691,50 @@ int main(int argc, char** argv) {
         report("reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready(), "");
         draw_lane(g, 0.f, -1.f);
     }
-    // Timing: two shells at 1080p and 5120x1440, EVENT-fenced.
+    // Timing, EVENT-fenced (best of 60): an empty fence (the fence's own round trip), two shells (204 / 544 px radius
+    // at 1080p) and a shell projecting past every screen edge, each with the winding cull and with CULLMODE NONE (fault
+    // bit 4, the former draw) in the same run, at 1080p and 5120x1440.
     for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
         Target tt;
         if (!make_target(tt, size.first, size.second)) { report("timing_target", false, ""); continue; }
-        rr::WeaponEffectsFrame f = base_frame(tt);
-        rr::WeaponShell shells[2] = {front_shell(0.1f, 150.f, 400.f), front_shell(0.2f, 400.f, 500.f)};
-        f.shells = shells;
-        f.shell_count = 2;
+        rr::WeaponShell two[2] = {front_shell(0.1f, 150.f, 400.f), front_shell(0.2f, 400.f, 500.f)};
+        rr::WeaponShell full = front_shell(0.1f, 100.f, 115.f);
+        struct Case {
+            const char* name;
+            const rr::WeaponShell* shells;
+            unsigned count, faults;
+        } cases[] = {{"fence", nullptr, 0, 0}, {"two", two, 2, 0}, {"two_cull_none", two, 2, 16},
+                     {"fullscreen", &full, 1, 0}, {"fullscreen_cull_none", &full, 1, 16}};
         Com<IDirect3DQuery9> ev;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
-        double best = 1e30;
-        for (int i = 0; i < 60; ++i) {
-            dev->BeginScene();
-            dev->SetRenderTarget(0, tt.scene_s.p);
-            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
-            if (ev.p) { ev.p->Issue(D3DISSUE_END); while (ev.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {} }
-            QueryPerformanceCounter(&a);
-            rr::WeaponEffectsReport r{};
-            pass.run(f, &r);
-            if (ev.p) { ev.p->Issue(D3DISSUE_END); while (ev.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {} }
-            QueryPerformanceCounter(&b);
-            dev->EndScene();
-            const double us = ticks_us(a, b, freq);
-            if (us < best) best = us;
+        for (const Case& c : cases) {
+            rr::WeaponEffectsFrame f = base_frame(tt);
+            f.shells = c.shells;
+            f.shell_count = c.count;
+            pass.set_faults(c.faults);
+            double best = 1e30;
+            unsigned drawn = 0;
+            for (int i = 0; i < 60; ++i) {
+                dev->BeginScene();
+                dev->SetRenderTarget(0, tt.scene_s.p);
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+                fence(ev.p);
+                QueryPerformanceCounter(&a);
+                rr::WeaponEffectsReport r{};
+                if (c.count) pass.run(f, &r);
+                fence(ev.p);
+                QueryPerformanceCounter(&b);
+                dev->EndScene();
+                drawn = r.shells;
+                const double us = ticks_us(a, b, freq);
+                if (us < best) best = us;
+            }
+            pass.set_faults(0);
+            std::printf("TIMING width=%u height=%u case=%s shells=%u drawn=%u cull=%s gpu_us=%.1f\n", size.first,
+                        size.second, c.name, c.count, drawn, !c.count ? "-" : c.faults ? "none" : "winding", best);
         }
-        std::printf("TIMING width=%u height=%u shells=2 gpu_us=%.1f\n", size.first, size.second, best);
         tt.release();
     }
 

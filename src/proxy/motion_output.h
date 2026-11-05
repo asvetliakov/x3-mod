@@ -1200,11 +1200,12 @@ public:
     void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
     // Weapon effects, step 1 (X3M_WEAPON_EFFECTS=shields, motion_output_weapon_effects_inc.h; AP only): requested once
-    // the impact hook is installed in shields mode. weapon_effects_owned(): this device's stage armed in its last resolve
-    // (Present latches it for the next frame's hooks); weapon_effects_take_frame(): the stage's figures since the last
+    // the impact hook is installed in shields mode. weapon_effects_owned(): this device's stage armed in its last resolve,
+    // the resolve completed and the stage's callback (when set) ran and drew or had nothing to draw
+    // (core::stage_owned; Present latches it for the next frame's hooks); weapon_effects_take_frame(): the stage's figures since the last
     // call, for weapon_effects::present.
     void configure_weapon_effects(bool requested) noexcept;
-    bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_armed_; }
+    bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* shells, unsigned* decals, unsigned* retired, float* stage_us, bool* drew) noexcept;
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
@@ -2238,6 +2239,9 @@ private:
     // (the plumes' or the own sun's), and the frame's figures for weapon_effects_frame.
     bool weapon_requested_ = false, weapon_attach_failed_ = false, weapon_failed_out_ = false, weapon_armed_ = false;
     bool weapon_state_logged_ = false, weapon_logged_armed_ = false;
+    // This frame's ownership inputs (core::stage_owned): the callback was set, it ran and returned S_OK / S_FALSE, and the
+    // latch they give after the resolve.
+    bool weapon_callback_set_ = false, weapon_callback_ok_ = false, weapon_owned_ = false;
     const char* weapon_reason_ = "off";
     const char* weapon_logged_reason_ = "";
     std::unique_ptr<renderer::WeaponEffectsPass> weapon_;

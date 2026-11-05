@@ -1239,6 +1239,21 @@ Windows host through WSL interop (measured 2026-11-02): the AP hook fixture 40 c
 cases removed, the probe counters unchanged), the FL hook fixture 739 / 0 (806 before; the lens call checked byte for
 byte vanilla in every install); no D3D call remains in either hook.
 
+## 2026-11-05: weapon effects, step 1 shield hit (`weapon_effects`, default native; AP edition)
+
+The impact redirect is an X3AP.exe byte window verified at install (the window, the damage routine's prologue and
+four frame witnesses; fail closed), written through `engine_patch` (`VirtualProtect`, `lock cmpxchg8b` or the
+install-window copy, `FlushInstructionCache`, read-back) with the DLL pinned by `GetModuleHandleExW`; documented Win32
+only. The stage is documented D3D9: vs_3_0 / ps_3_0 shell and decal pairs, `DrawIndexedPrimitiveUP` /
+`DrawPrimitiveUP` (no pool resource), FP16 post-pixel-shader blending checked at attach, the three cull modes
+(`D3DPMISCCAPS_CULLNONE | CULLCW | CULLCCW`: shells cull the inward winding per shell), `COLORWRITEENABLE`, the lane
+sampled point/clamp. **Native cost (measured 2026-11-05, RTX 5070 Ti, driver 32.0.16.2114, fenced best of 60;
+[ledger](../verification/weapon-effects.md)):** two shells 61.3 µs at 1080p and 201.8 µs at 5120x1440, a full-screen
+shell 43.7 / 151.9 µs, an empty fence 10.8 / 10.2 µs; the 0.2 ms flight target at 5120x1440 is not met by the fenced
+two-shell figure. These replace the Wine/wined3d figures of the dropped stage as the stage's only native costs; the
+hooks' own per-frame cost is unmeasured until the observe flight. FL: compiled out (one `edition_unsupported` row).
+Not flown on either platform.
+
 ## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
 
 The own sun stage ([own-sun-pass.md](own-sun-pass.md) sections 2-4 and 10) uses documented D3D9 only: one vs_3_0 /

@@ -13,9 +13,11 @@
 // at 0x00606f34 / 0x00606fb8 / 0x00607038. So the window's absolute operands and every rel32 reach the stand-ins
 // exactly as in X3AP.exe. we_enter builds the damage routine's frame (the two call arguments, the four saved
 // registers, the 0xc locals with the total at [esp_window+0x10] and the absorbed flag at +0x18, the planted return
-// address and the ret 0x10 arguments), loads a hostile MXCSR, x87 control word and DF and sentinels in EBX/EBP, sets
-// EDI = source and ESI = victim and jumps to the window; the window runs the hook and the epilogue and returns through
-// the planted address to we_exit_body, which records the registers and the FPU state.
+// address and the ret 0x10 arguments), loads a hostile MXCSR, x87 control word, sentinels in EAX/ECX/EDX/EBX/EBP and a
+// chosen EFLAGS (arithmetic flags and DF), sets EDI = source and ESI = victim and jumps to the window; the window runs
+// the hook and the epilogue and returns through the planted address to we_exit_body, which records the registers and
+// the FPU state. The callee stand-in records every register, EFLAGS, ESP and its return address, so the forward path is
+// checked against the state the call left (review F7).
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_sites.h"
 #include "../../src/proxy/weapon_effects_table.h"
@@ -107,10 +109,10 @@ bool fixture_restore_call(CallSite& site) {
 extern "C" {
 std::uint32_t we_in[12];
 std::uint32_t we_out[13];
-std::uint32_t we_ca[12];
+std::uint32_t we_ca[16];
 std::uint32_t we_tap_ca[12];
 std::uint32_t we_saved_esp, we_saved_mxcsr, we_saved_fcw, we_frame_esp, we_window_ptr, we_tap_window_ptr;
-unsigned char we_frame_buffer[0x200];
+unsigned char we_frame_buffer[0x800]; // the synthetic frame at +0x600; below it the stub's and handler's stack
 void __cdecl we_enter();
 void we_impact_callee_body();
 void we_follow_body();
@@ -134,7 +136,7 @@ _we_enter:
     stmxcsr dword ptr [_we_saved_mxcsr]
     fnstcw word ptr [_we_saved_fcw]
     lea edi, [_we_frame_buffer]
-    add edi, 0x80
+    add edi, 0x600
     mov dword ptr [_we_frame_esp], edi
     mov eax, dword ptr [_we_in+8]
     mov dword ptr [edi+0x10], eax                      # total at F+0x10
@@ -154,10 +156,11 @@ _we_enter:
     mov ebp, 0xeb9eb9eb
     mov edi, dword ptr [_we_in+4]                      # source
     mov esi, dword ptr [_we_in+0]                      # victim
-    cmp dword ptr [_we_in+24], 0
-    je .Lwe_df_clear
-    std
-.Lwe_df_clear:
+    mov eax, 0xa1a1a1a1                                # the caller-dead registers' sentinels
+    mov ecx, 0xc1c1c1c1
+    mov edx, 0xd1d1d1d1
+    push dword ptr [_we_in+28]                         # the entry EFLAGS (CF PF ZF SF OF, DF per case)
+    popfd
     mov esp, dword ptr [_we_frame_esp]
     jmp dword ptr [_we_window_ptr]
 
@@ -232,6 +235,7 @@ _we_impact_callee_body:                                 # 0x00413c40 stand-in: c
     mov eax, dword ptr [esp+8]
     mov dword ptr [_we_ca+40], eax
     inc dword ptr [_we_ca+44]
+    mov dword ptr [_we_ca+48], esp
     mov eax, 0x1
     ret
 
@@ -280,6 +284,9 @@ namespace {
 constexpr std::uintptr_t dmg_page = 0x00449000, eff_page = 0x00413000, data_page = 0x00606000;
 constexpr DWORD sentinel_error = 0x1234abcd;
 constexpr std::uint32_t hostile_mxcsr = 0x7f80, hostile_fcw = 0x0c7f;
+constexpr std::uint32_t entry_flags = 0x8c5;   // CF PF ZF SF OF (DF 0x400 added per case)
+constexpr std::uint32_t flag_mask = 0xcd5;     // CF PF AF ZF SF DF OF
+constexpr std::uint32_t tap_projectile_id = 0x0b1d0b1du;
 std::uint32_t u32(const void* p) {
     return std::uint32_t(reinterpret_cast<std::uintptr_t>(p));
 }
@@ -355,7 +362,9 @@ void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::ui
     w16(&source_obj, core::layout::obj_subtype, subtype);
     w32(&source_obj, core::layout::obj_node, u32(&source_node));
     w32(&source_obj, core::layout::obj_radius, 50);
-    w32(&source_obj, core::layout::obj_ext, u32(config_block));
+    // The bullet extension pointer is an unmapped address: the handler must not follow [source+0x50] (review F9); a read
+    // would fault the fixture.
+    w32(&source_obj, core::layout::obj_ext, 0x00000010u);
     for (Node* n : {&victim_node, &source_node}) {
         w32(n, core::layout::node_live, 1);
         w32(n, core::layout::node_handle, 0xd00d);
@@ -393,9 +402,13 @@ void expected_pos(std::int32_t out[3]) {
     for (unsigned i = 0; i < 3; ++i) d[i] = core::wrap_sub(p[i], vpos[i]);
     core::rotate_in(vrot, d, out);
 }
+constexpr unsigned frame_offset = 0x600; // we_enter's F inside we_frame_buffer
+constexpr unsigned char stack_fill = 0x5a;
+unsigned max_stack_depth = 0;            // bytes below F the stub and the handler wrote, over every run
 struct RunResult {
     DWORD error;
-    std::uint32_t out[13], ca[12];
+    std::uint32_t flags_in;
+    std::uint32_t out[13], ca[16];
 };
 RunResult run_window(std::uint32_t absorbed, std::uint32_t total, std::uint32_t df) {
     std::memset(we_out, 0, sizeof we_out);
@@ -407,10 +420,16 @@ RunResult run_window(std::uint32_t absorbed, std::uint32_t total, std::uint32_t 
     we_in[4] = hostile_mxcsr;
     we_in[5] = hostile_fcw;
     we_in[6] = df;
+    we_in[7] = entry_flags | (df ? 0x400u : 0u);
+    std::memset(we_frame_buffer, stack_fill, frame_offset); // the stack below F, to measure how deep the hook went
     SetLastError(sentinel_error);
     we_enter();
+    unsigned lowest = 0;
+    while (lowest < frame_offset && we_frame_buffer[lowest] == stack_fill) ++lowest;
+    if (frame_offset - lowest > max_stack_depth) max_stack_depth = frame_offset - lowest;
     RunResult r{};
     r.error = GetLastError();
+    r.flags_in = we_in[7];
     std::memcpy(r.out, we_out, sizeof r.out);
     std::memcpy(r.ca, we_ca, sizeof r.ca);
     return r;
@@ -420,7 +439,7 @@ bool frame_kept(const RunResult& r) {
     std::memcpy(&st0, r.out + 8, 8);
     std::memcpy(&st1, r.out + 10, 8);
     return r.out[1] == 0xeb1eb1ebu && r.out[2] == 0xeb0eb0ebu && r.out[3] == 0xe51e51e5u && r.out[4] == 0xed1ed1edu &&
-           (r.out[5] & 0x400u) && r.out[6] == hostile_mxcsr && (r.out[7] & 0xffff) == hostile_fcw && st0 == -3.5e10 &&
+           (r.out[5] & 0x400u) == (r.flags_in & 0x400u) && r.out[6] == hostile_mxcsr && (r.out[7] & 0xffff) == hostile_fcw && st0 == -3.5e10 &&
            st1 == 1.25 && r.error == sentinel_error && std::int32_t(r.out[12]) == 0x30;
 }
 bool read5(std::uintptr_t at, unsigned char out[5]) {
@@ -447,6 +466,34 @@ void set_setting(const wchar_t* value) {
 we::Addresses addresses() {
     return we::Addresses{at(sites::impact_window_va), at(sites::impact_target_va), at(sites::prologue_va),
                          {at(sites::tap_window_va[0]), at(sites::tap_window_va[1])}, at(sites::tap_target_va)};
+}
+unsigned ring_live(const core::Ring& r) {
+    unsigned n = 0;
+    for (unsigned i = 0; i < core::ring_capacity; ++i) n += r.slots[i].sequence != 0;
+    return n;
+}
+// The newest record of an owner (by sequence); false when none.
+bool newest_record(std::uint32_t owner, core::Event* out) {
+    const core::Ring& r = we::hook_state().ring;
+    std::uint32_t best = 0;
+    for (unsigned i = 0; i < core::ring_capacity; ++i)
+        if (r.slots[i].sequence > best && r.slots[i].owner == owner) {
+            best = r.slots[i].sequence;
+            *out = r.slots[i];
+        }
+    return best != 0;
+}
+bool window_is(std::uintptr_t va, const unsigned char* expected, unsigned length) {
+    unsigned char now[64]{};
+    return engine_patch::read_code(at(va), now, length) && !std::memcmp(now, expected, length);
+}
+bool all_windows_original() {
+    return window_is(sites::impact_window_va, sites::expected_impact_window, sites::impact_window_length) &&
+           window_is(sites::tap_window_va[0], sites::expected_tap_window[0], sites::tap_window_length) &&
+           window_is(sites::tap_window_va[1], sites::expected_tap_window[1], sites::tap_window_length);
+}
+void flip(std::uintptr_t va) {
+    *reinterpret_cast<unsigned char*>(at(va)) ^= 0xff;
 }
 void core_checks() {
     check(core::role_from(1, core::layout::class_bullet, 0) == core::role_shield_hit, "rule_absorbed_bullet_shield");
@@ -521,6 +568,18 @@ int main() {
     RunResult fwd = run_window(1, 1200, 1);
     check(fwd.ca[11] == 1 && fwd.ca[9] == u32(&victim_obj) && fwd.ca[10] == u32(&source_obj), "forward_reaches_callee_args");
     check(fwd.ca[5] == u32(&victim_obj) && fwd.ca[6] == u32(&source_obj), "forward_callee_esi_edi");
+    // The forward path reaches 0x00413c40 with the caller-dead registers, EBX/EBP, the flags, the return address and the
+    // stack exactly as the call left them (EAX/ECX/EDX are saved by the stub around the handler).
+    std::printf("FORWARD_STATE eflags_entry=%08lx eflags_callee=%08lx esp_frame=%08lx esp_callee=%08lx return=%08lx site=%08lx\n",
+                static_cast<unsigned long>(fwd.flags_in), static_cast<unsigned long>(fwd.ca[7]),
+                static_cast<unsigned long>(we_frame_esp), static_cast<unsigned long>(fwd.ca[12]),
+                static_cast<unsigned long>(fwd.ca[8]), static_cast<unsigned long>(impact_site()));
+    check(fwd.ca[0] == 0xa1a1a1a1u && fwd.ca[1] == 0xc1c1c1c1u && fwd.ca[2] == 0xd1d1d1d1u && fwd.ca[3] == 0x5b5b5b5bu &&
+              fwd.ca[4] == 0xeb9eb9ebu,
+          "forward_callee_eax_ecx_edx_ebx_ebp");
+    check(fwd.ca[8] == std::uint32_t(impact_site() + sites::call_length), "forward_callee_return_address");
+    check(fwd.ca[12] == we_frame_esp - 12u, "forward_callee_esp");
+    check((fwd.ca[7] & flag_mask) == (fwd.flags_in & flag_mask), "forward_callee_eflags");
     check(frame_kept(fwd), "forward_frame_kept");
     bool found = false;
     core::Event rec{};
@@ -536,6 +595,7 @@ int main() {
           "forward_records_shield_hit");
     check(found && rec.pos[0] == want[0] && rec.pos[1] == want[1] && rec.pos[2] == want[2], "handler_contact_point");
     check(found && rec.tint_source == core::tint_light && (rec.tint_rgb & 0xff) == 230, "classifier_tint_light");
+    check(found && rec.shooter == 0 && !(rec.flags & core::flag_nested), "no_bullet_extension_read");
 
     we::shutdown();
     set_setting(L"shields");
@@ -552,6 +612,62 @@ int main() {
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult hull = run_window(1, 1200, 0);
     check(hull.ca[11] == 1, "hull_forwards_in_shields");
+    // No projectile on either side (class 7 against class 7): no record, forwarded (the engine spawns nothing either).
+    build_world(7, 7, 4, 0x0, 123456);
+    hs2.owned_next = 1;
+    const unsigned live_before = ring_live(hs2.ring), no_projectile_before = hs2.counters.no_projectile;
+    std::memset(we_ca, 0, sizeof we_ca);
+    RunResult none = run_window(1, 1200, 1);
+    check(none.ca[11] == 1 && ring_live(hs2.ring) == live_before && hs2.counters.no_projectile == no_projectile_before + 1 &&
+              frame_kept(none),
+          "no_projectile_class_forwards_unrecorded");
+    // Inside a kill (note 2.7): a dying projectile (the blast's source) still skips for a live victim and is marked
+    // nested; a dying hit object is forwarded (the stage would retire it unseen) and marked nested.
+    build_world(7, 0, 4, 0x0, 123456);
+    w32(&source_obj, core::layout::obj_flags, core::layout::obj_dying);
+    hs2.owned_next = 1;
+    std::memset(we_ca, 0, sizeof we_ca);
+    RunResult blast = run_window(1, 1200, 1);
+    core::Event nested_rec{};
+    check(blast.ca[11] == 0 && newest_record(u32(&victim_obj), &nested_rec) && (nested_rec.flags & core::flag_nested) &&
+              !(nested_rec.flags & core::flag_forwarded) && frame_kept(blast),
+          "nested_dying_projectile_skips_marked");
+    build_world(7, 0, 4, 0x0, 123456);
+    w32(&victim_obj, core::layout::obj_flags, core::layout::obj_dying);
+    hs2.owned_next = 1;
+    std::memset(we_ca, 0, sizeof we_ca);
+    RunResult dying = run_window(1, 1200, 1);
+    check(dying.ca[11] == 1 && newest_record(u32(&victim_obj), &nested_rec) && (nested_rec.flags & core::flag_nested) &&
+              (nested_rec.flags & core::flag_forwarded) && frame_kept(dying),
+          "nested_dying_victim_forwards_marked");
+    // The ring's scope at Present (note 3.1): the first known sector key and an unknown read keep the stage-owned
+    // records; a different key, a load, a different load epoch clear them.
+    {
+        auto owned_hit = [&] {
+            build_world(7, 0, 4, 0x0, 123456);
+            hs2.owned_next = 1;
+            std::memset(we_ca, 0, sizeof we_ca);
+            run_window(1, 1200, 0);
+            return we_ca[11] == 0 && core::ring_owned_live(hs2.ring);
+        };
+        we::StageFrame idle{};
+        bool keep = owned_hit();
+        we::present(1, false, true, idle, core::Scope{0x111, 0, false});
+        keep = keep && core::ring_owned_live(hs2.ring);
+        we::present(2, false, true, idle, core::Scope{0, 0, false});
+        keep = keep && core::ring_owned_live(hs2.ring);
+        check(keep, "scope_first_key_and_unknown_keep");
+        we::present(3, false, true, idle, core::Scope{0x222, 0, false});
+        check(!core::ring_owned_live(hs2.ring), "scope_sector_change_clears_owned");
+        const bool hit2 = owned_hit();
+        we::present(4, false, true, idle, core::Scope{0x222, 0, true});
+        check(hit2 && !core::ring_owned_live(hs2.ring), "scope_loading_clears_owned");
+        const bool hit3 = owned_hit();
+        we::present(5, false, true, idle, core::Scope{0x222, 7, false});
+        const bool kept3 = core::ring_owned_live(hs2.ring);
+        we::present(6, false, true, idle, core::Scope{0x222, 8, false});
+        check(hit3 && kept3 && !core::ring_owned_live(hs2.ring), "scope_load_epoch_clears_owned");
+    }
 
     // Observe-mode inner tap: the engine's &pos equals the handler's.
     we::shutdown();
@@ -566,9 +682,13 @@ int main() {
     expected_pos(engine_pos);
     we_tap_window_ptr = std::uint32_t(at(sites::tap_window_va[0]));
     std::uint32_t tap_args[6] = {3, 0xeff, u32(&victim_obj), u32(engine_pos), 0, 0};
+    w32(&source_obj, 8, tap_projectile_id); // [ebx+8]: the projectile id the window loads into ESI before the call
     std::memset(we_tap_ca, 0, sizeof we_tap_ca);
     we_tap_enter(tap_args, u32(&source_obj));
     check(we_tap_ca[10] == 1 && we_tap_ca[8] == u32(&victim_obj) && we_tap_ca[9] == u32(engine_pos), "tap_reaches_callee");
+    check(we_tap_ca[5] == tap_projectile_id && we_tap_ca[3] == u32(&source_obj) && we_tap_ca[6] == u32(&victim_obj) &&
+              we_tap_ca[7] == std::uint32_t(at(sites::tap_site_va[0]) + sites::call_length),
+          "tap_callee_esi_ebx_edi_return");
     check(hs3.check.compared == 1 && hs3.check.max_error == 0, "weapon_pos_check_zero_error");
     we::shutdown();
 
@@ -589,6 +709,42 @@ int main() {
         VirtualFree(copy, 0, MEM_RELEASE);
     }
 
+    // A changed frame witness or prologue byte refuses before any write (fail closed), LastError kept.
+    flip(sites::witnesses[1].va);
+    SetLastError(sentinel_error);
+    bool refused_frame = !we::install_at(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
+    flip(sites::witnesses[1].va);
+    check(refused_frame && GetLastError() == sentinel_error && !we::installed() && all_windows_original(),
+          "witness_mismatch_refused", we::state());
+    flip(sites::prologue_va + 5);
+    refused_frame = !we::install_at(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
+    flip(sites::prologue_va + 5);
+    check(refused_frame && !we::installed() && all_windows_original(), "prologue_mismatch_refused", we::state());
+    // A changed tap byte refuses observe before any write.
+    flip(sites::tap_window_va[1] + 2);
+    SetLastError(sentinel_error);
+    const bool refused_tap = !we::install_at(addresses(), core::mode_observe) && !std::strcmp(we::state(), "bytes_mismatch_tap");
+    flip(sites::tap_window_va[1] + 2);
+    check(refused_tap && GetLastError() == sentinel_error && !we::installed() && all_windows_original() &&
+              !std::strcmp(we::site_state(2), "bytes_mismatch"),
+          "tap_byte_mismatch_refused", we::state());
+    // Observe claims three sites (tap1, tap2, then the impact): a failed read-back at the last restores the two before
+    // it; one at the second restores the first and never reaches the impact.
+    fault_read_at = impact_site();
+    SetLastError(sentinel_error);
+    bool multi = !we::install_at(addresses(), core::mode_observe);
+    check(multi && fault_read_at == 0 && !we::installed() && all_windows_original() && GetLastError() == sentinel_error &&
+              !std::strcmp(we::site_state(0), "readback_rolled_back") && !std::strcmp(we::site_state(1), "rolled_back") &&
+              !std::strcmp(we::site_state(2), "rolled_back") && !std::strcmp(we::state(), "readback_rolled_back"),
+          "observe_rollback_three_sites", we::site_state(0));
+    fault_read_at = at(sites::tap_site_va[1]);
+    multi = !we::install_at(addresses(), core::mode_observe);
+    check(multi && fault_read_at == 0 && !we::installed() && all_windows_original() &&
+              !std::strcmp(we::site_state(2), "readback_rolled_back") && !std::strcmp(we::site_state(1), "rolled_back") &&
+              !std::strcmp(we::site_state(0), "not_attempted"),
+          "observe_rollback_second_site", we::site_state(2));
+    fault_read_at = 0;
+
     // Rollback on a failed read-back (the seam flips a byte of the post-write read): the site restored.
     fault_read_at = impact_site();
     SetLastError(sentinel_error);
@@ -606,6 +762,10 @@ int main() {
     check(!late && !std::strcmp(we::state(), "late_claim") && GetLastError() == sentinel_error && !we::installed(),
           "late_claim_refused");
 
+    // The fixture's own stack margin: the stub and the handler stayed inside the 0x600 bytes below the frame (a deeper
+    // write would corrupt the fixture's .bss, not the engine's: production runs on the game thread's stack).
+    std::printf("STACK_DEPTH bytes=%u margin=%u\n", max_stack_depth, frame_offset);
+    check(max_stack_depth > 0 && max_stack_depth + 0x100 <= frame_offset, "fixture_stack_margin");
     std::printf("RESULT %s checks=%u failures=%u faults=%u\n", failures ? "FAIL" : "PASS", checks, failures, faults_taken);
     return failures ? 1 : 0;
 }

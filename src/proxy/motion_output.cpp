@@ -2522,12 +2522,14 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // callback set above (the plumes, or the own sun with the plumes). A cut clears the stage-owned records.
             if (weapon_requested_) {
                 if (in.cut) weapon_effects::clear_owned();
+                weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
                 if (weapon_effects_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
                     weapon_effects::core::ring_owned_live(weapon_effects::hook_state().ring)) {
                     weapon_prior_callback_ = in.stage_callback;
                     weapon_prior_context_ = in.stage_context;
                     in.stage_callback = &MotionOutput::weapon_effects_stage_callback;
                     in.stage_context = this;
+                    weapon_callback_set_ = true;
                 }
             }
 #endif
@@ -2553,6 +2555,13 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 taa_->invalidate();
             } else
                 hr = taa_->run(in, &out);
+#if !X3M_EDITION_FL
+            // The weapon stage's ownership for the next frame's hooks (note 2.6, review F8): armed, the resolve completed,
+            // and the callback (when set) ran and drew or had nothing to draw.
+            if (weapon_requested_)
+                weapon_owned_ = weapon_effects::core::stage_owned(weapon_armed_, SUCCEEDED(hr), weapon_callback_set_,
+                                                                  weapon_callback_ok_);
+#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             fixture_shimmer_after_resolve(hr, out.used_history, out.color);
 #endif
@@ -4289,6 +4298,7 @@ void MotionOutput::before_reset() noexcept {
     // next armed resolve after a successful Reset); the refusal, the disarm window and the failure count start over.
     if (weapon_) taa_call([&] { weapon_->before_reset(); });
     weapon_armed_ = false;
+    weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_lane_ = nullptr;
     weapon_attach_failed_ = weapon_failed_out_ = false;
     weapon_disarmed_until_ = 0;

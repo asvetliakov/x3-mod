@@ -129,6 +129,21 @@ class WeaponEffectsTableReader(unittest.TestCase):
         code, f = self.read({'schema': 1, 'tables': {'bullets': {'rows': 45, 'entries': 'not a list'}}})
         self.assertEqual(code, 1)
 
+    def read_text(self, text):
+        out = subprocess.run([str(self.exe)], input=text, capture_output=True, text=True)
+        return out.returncode, dict(kv.split('=') for kv in out.stdout.split())
+
+    def test_reader_rejects_trailing_bytes_and_duplicate_rows(self):
+        text = json.dumps(sample_table())
+        self.assertEqual(self.read_text(text + '\n  \t\r\n')[0], 0)    # trailing whitespace is fine
+        code, f = self.read_text(text + ' {}')                         # a second value after the object
+        self.assertEqual((code, f['ok'], f['rows'], f['missile_rows']), (1, '0', '0', '0'))  # the table cleared
+        self.assertEqual(self.read_text(text + 'x')[0], 1)
+        duplicate = sample_table()
+        duplicate['tables']['bullets']['entries'].append(dict(duplicate['tables']['bullets']['entries'][0]))
+        code, f = self.read_text(json.dumps(duplicate))
+        self.assertEqual((code, f['ok'], f['rows'], f['missile_rows']), (1, '0', '0', '0'))  # nothing kept
+
 
 if __name__ == '__main__':
     unittest.main()

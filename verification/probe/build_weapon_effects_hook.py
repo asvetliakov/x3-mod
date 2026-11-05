@@ -9,7 +9,9 @@ src/proxy/weapon_effects_hook.cpp (the stub and the handler, integer only) are c
 production CMake flags (-fno-exceptions -mno-sse -mno-mmx -mfpmath=387). The executable links at image base 0x00800000
 so its own sections sit clear of the engine pages the fixture reserves at run time (0x00413000, 0x00449000,
 0x00606000). The audit checks that weapon_effects_hook.o carries no x87/MMX opcode and no undefined symbol at all (no
-CRT, no Win32 import: the brief's link check), that the impact stub is exactly pushf, push, push, push, cld, lea, push,
+CRT, no Win32 import: the brief's link check), that the two handler entry points _x3m_weapon_event / _x3m_weapon_tap
+contain no call instruction (core::impact / core::tap and every helper inlined into this TU's own no-SSE code: no
+COMDAT instance of another TU can be bound, review F10), that the impact stub is exactly pushf, push, push, push, cld, lea, push,
 call, add, test, pop, pop, pop, jne, popf, jmp [continue], popf, xor, ret with `lea eax,[esp+0x10]`, that
 engine_patch.o carries `lock cmpxchg8b`, and that the module routes through the seam (no VirtualProtect import of its
 own).
@@ -42,6 +44,14 @@ def stub(listing, name):
     return [m for m, _ in rows[:end + 1]], [o.strip() for _, o in rows[:end + 1]]
 
 
+def body(listing, name):
+    """The instruction rows of one function of an objdump listing."""
+    if f'<{name}>:' not in listing:
+        return []
+    return [line for line in listing.split(f'<{name}>:', 1)[1].split('\n\n', 1)[0].splitlines()
+            if re.match(r'^\s*[0-9a-f]+:', line)]
+
+
 def audit(objects):
     handler = tool('nm', str(objects['handler']))
     undefined = [line.split()[-1] for line in handler.splitlines() if re.match(r'^\s+U ', line)]
@@ -49,13 +59,23 @@ def audit(objects):
     handler_x87 = [line.strip() for line in hlist.splitlines() if X87.search(line)]
     i_mn, i_ops = stub(hlist, '_x3m_weapon_effects_stub_impact')
     stub_ok = i_mn == STUB and i_ops[5] == 'eax,[esp+0x10]' and i_ops[15].startswith('DWORD PTR ds:')
+    handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)]
+                     for name in ('_x3m_weapon_event', '_x3m_weapon_tap')}
+    handler_rows = {name: len(body(hlist, name)) for name in handler_calls}
+    # The handler's own stack frame (its entry `sub esp,N`; the stub adds 0x20 and the return address): recorded, the
+    # fixture measures the depth it reaches below the synthetic frame.
+    entry = body(hlist, '_x3m_weapon_event')[:2]
+    frame = [int(m.group(1), 16) for m in (re.search(r'sub\s+esp,0x([0-9a-f]+)', line) for line in entry) if m]
     module = tool('nm', str(objects['module']))
     module_own_protect = [l.strip() for l in module.splitlines() if re.search(r'__imp__VirtualProtect@', l)]
     patch = tool('objdump', '-d', '--no-show-raw-insn', str(objects['patch']))
-    record = {'handler_undefined': undefined, 'handler_x87': handler_x87, 'stub_impact': i_mn, 'stub_ok': stub_ok,
+    record = {'handler_undefined': undefined, 'handler_x87': handler_x87, 'handler_calls': handler_calls,
+              'handler_instructions': handler_rows, 'handler_frame_bytes': frame[0] if frame else 0,
+              'stub_impact': i_mn, 'stub_ok': stub_ok,
               'module_imports_own_protect': module_own_protect,
               'engine_patch_lock_cmpxchg8b': len(re.findall(r'lock cmpxchg8b', patch))}
-    if (undefined or handler_x87 or not stub_ok or module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1):
+    if (undefined or handler_x87 or not stub_ok or module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1 or
+            any(handler_calls.values()) or not all(handler_rows.values())):
         raise RuntimeError('fixture build audit failed: ' + json.dumps(record))
     return record
 

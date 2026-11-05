@@ -9,10 +9,12 @@
 // run() draws the frame's shells and decals inside the temporal resolve's stage bracket (TemporalPass FrameInputs::
 // stage_callback, after the plumes and the own sun when they draw: RT0 the FP16 scene the resolve reads, RT1+ and the
 // depth surface unbound, the scene open; the resolve normalizes again afterwards), so it sets only what it draws with:
-// the programs, the declarations, the constants, the lane at s0 (point, clamp), CLIPPING, CULLMODE NONE, Z off,
+// the programs, the declarations, the constants, the lane at s0 (point, clamp), CLIPPING, CULLMODE (per shell the
+// winding that keeps the outward faces, from the sign of det A; NONE for the decals), Z off,
 // ONE/ONE additive, COLORWRITEENABLE 15 (alpha 0 is written by the programs: the destination alpha is kept under
 // ONE/ONE). Occlusion is the lane alone (the depth is unbound before the callback). Documented D3D9 only; capabilities
-// checked at attach (shader model 3, FP16 post-pixel-shader blending on the adapter format, the blend caps, CULLNONE).
+// checked at attach (shader model 3, FP16 post-pixel-shader blending on the adapter format, the blend caps, the three
+// cull modes).
 #include <d3d9.h>
 #include <cstdint>
 namespace x3m::renderer {
@@ -87,7 +89,9 @@ public:
     const float* sphere_positions() const noexcept { return &sphere_[0][0]; } // the fixture's winding / coverage checks
     const std::uint16_t* sphere_indices() const noexcept { return indices_; }
 #if defined(X3M_WEAPON_EFFECTS_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
-    // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw.
+    // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw,
+    // bit 3 refuses the program creation (attach: program_create, no object kept), bit 4 draws the shells with CULLMODE
+    // NONE (the winding cull's same-run timing comparison).
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif
 private:

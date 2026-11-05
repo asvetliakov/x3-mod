@@ -34,6 +34,8 @@ struct Period {
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
 core::Counters seen_{};
+core::ScopeLatch scope_{};
+std::uint32_t scope_clears_ = 0;
 std::uint32_t seen_overflow_ = 0, seen_retired_ = 0, seen_compared_ = 0;
 
 bool window_matches(std::uintptr_t window, const unsigned char* expected, unsigned length) {
@@ -339,19 +341,36 @@ const char* write_path(unsigned site) {
 }
 std::uint32_t game_ms() {
     std::uint32_t cfg = 0, now = 0;
-    const core::Globals g{};
+    const core::Globals& g = hook_state().globals; // the engine's slots (the fixture points them at its own pages)
     if (!engine_memory::read(g.cfg_slot, &cfg, 4) || !cfg) return 0;
     return engine_memory::read(cfg + core::layout::cfg_game_ms, &now, 4) ? now : 0;
 }
-void clear_owned() {
-    if (!installed_) return;
+static unsigned clear_owned_count() {
     core::Ring& r = hook_state().ring;
+    unsigned n = 0;
     for (unsigned i = 0; i < core::ring_capacity; ++i)
-        if (r.slots[i].sequence && !(r.slots[i].flags & core::flag_forwarded)) core::ring_release(r, i);
+        if (r.slots[i].sequence && !(r.slots[i].flags & core::flag_forwarded)) {
+            core::ring_release(r, i);
+            ++n;
+        }
+    return n;
 }
-void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage) {
+void clear_owned() {
+    if (installed_) clear_owned_count();
+}
+void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope) {
     if (!installed_) return;
     core::HookState& s = hook_state();
+    // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
+    if (scope_.changed(scope) && mode_ == core::mode_shields) {
+        const unsigned cleared = clear_owned_count();
+        if (cleared) {
+            ++scope_clears_;
+            log("weapon_effects_scope frame=%llu cleared=%u loading=%u sector_key=%016llx load_epoch=%llu clears=%lu", frame,
+                cleared, unsigned(scope.loading), static_cast<unsigned long long>(scope_.sector_key),
+                static_cast<unsigned long long>(scope_.load_epoch), static_cast<unsigned long>(scope_clears_));
+        }
+    }
     // The next frame's latch (shields only; observe never skips).
     s.owned_next = std::uint8_t(mode_ == core::mode_shields && owned);
     ++period_.frames;
@@ -406,7 +425,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     const core::Counters& c = s.counters;
     log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu shells=%u "
         "decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f calls=%lu "
-        "no_projectile=%lu no_node=%lu stale_table=%lu live=%u",
+        "no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu scope_clears=%lu live=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), period_.shells, period_.decals,
@@ -416,6 +435,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         double(period_.drew ? period_.stage_us_sum / float(period_.drew) : 0.f), double(period_.stage_us_max),
         static_cast<unsigned long>(c.calls - seen_.calls), static_cast<unsigned long>(c.no_projectile - seen_.no_projectile),
         static_cast<unsigned long>(c.no_node - seen_.no_node), static_cast<unsigned long>(c.stale_table - seen_.stale_table),
+        static_cast<unsigned long>(c.nested - seen_.nested), static_cast<unsigned long>(scope_clears_),
         core::ring_capacity - r.free_count);
     seen_ = c;
     seen_overflow_ = r.overflow;

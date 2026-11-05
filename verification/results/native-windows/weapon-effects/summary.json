@@ -4,6 +4,9 @@
     "src/renderer/weapon_effects_pass.h",
     "src/renderer/weapon_effects_pass.cpp",
     "src/proxy/weapon_effects_core.h",
+    "src/proxy/weapon_effects_stage.h",
+    "src/renderer/temporal_pass.h",
+    "src/renderer/temporal_pass.cpp",
     "src/effects/weapon_shell_vs.hlsl",
     "src/effects/weapon_shell_ps.hlsl",
     "src/effects/weapon_decal_vs.hlsl",
@@ -15,28 +18,23 @@
     "src/renderer/weapon_decal_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694-dirty",
+    "commit": "f2ca8d60167b9113ec559ba1edc3e801d1180876-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/effects/weapon_decal_ps.hlsl",
-      "src/effects/weapon_decal_vs.hlsl",
       "src/effects/weapon_shell_ps.hlsl",
-      "src/effects/weapon_shell_vs.hlsl",
-      "src/effects/weapon_soft_depth.hlsl",
       "src/proxy/weapon_effects_core.h",
-      "src/renderer/weapon_decal_pixel_program_inc.h",
-      "src/renderer/weapon_decal_vertex_program_inc.h",
       "src/renderer/weapon_effects_pass.cpp",
-      "src/renderer/weapon_effects_pass.h",
-      "src/renderer/weapon_shell_pixel_program_inc.h",
-      "src/renderer/weapon_shell_vertex_program_inc.h"
+      "src/renderer/weapon_effects_pass.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "04c8ff0b3ba51f943963646f5d19a027bd6dd70284bc1a3496b275635e25f11e",
-      "src/renderer/weapon_effects_pass.cpp": "5017adecf4caa0e378332f4da1d6c675ba9aeeb6c87076c4c924f1fbe162e5f4",
-      "src/proxy/weapon_effects_core.h": "734e68713a8a0e1f6aa63519e5377123d9b9a8e63a810aec015a2de29f09c0b4",
+      "src/renderer/weapon_effects_pass.h": "015cec36a3d6798463c922370655ddfc92baabb6694fe2e34053fad2939fb02f",
+      "src/renderer/weapon_effects_pass.cpp": "d858821784861cf3ad06d8e0d3e4c05603156ddabf164715f5bf24cd7c4ad99c",
+      "src/proxy/weapon_effects_core.h": "e3c968996d54bb2de0b01a5ffc813c4197d4939ece68b5435fd83b9a7f5a08c0",
+      "src/proxy/weapon_effects_stage.h": "7e473b50e720dc7f9c43beb73bd1e96a0c7970844fbff9646e5b069642ea426b",
+      "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
+      "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b",
       "src/effects/weapon_shell_vs.hlsl": "83c03eb047f6d0e6db571190da6c4fb07970dba0108eced6a0bca8dd08171192",
-      "src/effects/weapon_shell_ps.hlsl": "acc7335cf94d1e579e2504cd0e2fad404f75bdd3a14d0e8dcf99de5e95b0cde1",
+      "src/effects/weapon_shell_ps.hlsl": "54672fe7a5cc8c4d2ff5c4ba980edc2d454a5016d8ebd70d97011c1ecd70de32",
       "src/effects/weapon_decal_vs.hlsl": "f2536d7b49e5e77c6278f31df6cfb74f7e5f650277d0e2fcf8b8001bac0808ee",
       "src/effects/weapon_decal_ps.hlsl": "3a0692a21962c20b05c7a319f7922dd2a66b23939240857aebe2eee4113478bc",
       "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
@@ -77,9 +75,42 @@
     "rim_45": 0.24,
     "hull_cut": 0.0,
     "two_shells_1080_ms": 0.124,
-    "two_shells_5120_ms": 0.162
+    "two_shells_5120_ms": 0.162,
+    "fullscreen_1080_ms": 0.54,
+    "fullscreen_5120_ms": 0.77,
+    "resolve_core": 1.0
   },
   "game_launched": false,
+  "build": {
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Wno-cast-function-type",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "-DX3M_WEAPON_EFFECTS_FIXTURE",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-af0dc617fe6400f8c/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-af0dc617fe6400f8c/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-af0dc617fe6400f8c/src/renderer/temporal_pass.cpp",
+      "-o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-af0dc617fe6400f8c/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "-luser32",
+      "-ldxguid"
+    ],
+    "warnings": 0,
+    "executable_sha256": "00017c443f5c1e690fa6d8d706b34f451a0c5d5de06912faca613bab4abd6ad2"
+  },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
     "name": "native-windows",
@@ -111,7 +142,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 13,
+      "checks": 20,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -135,6 +166,10 @@
       true
     ],
     [
+      "winding_mirrored_axes_draw",
+      true
+    ],
+    [
       "rim_rises_with_angle",
       true
     ],
@@ -155,7 +190,31 @@
       true
     ],
     [
+      "age_law_seta6_100ms_wall",
+      true
+    ],
+    [
+      "stage_build_live_owner_draws",
+      true
+    ],
+    [
       "retired_owner_draws_nothing",
+      true
+    ],
+    [
+      "resolve_core_0px_1920",
+      true
+    ],
+    [
+      "resolve_core_4px_1920",
+      true
+    ],
+    [
+      "resolve_core_8px_1920",
+      true
+    ],
+    [
+      "program_create_refused",
       true
     ],
     [
@@ -186,7 +245,8 @@
     ],
     "shell": [
       {
-        "sky_max_luma": 35.9766
+        "sky_max_luma": 35.9766,
+        "mirrored_max_luma": 35.9766
       }
     ],
     "rim": [
@@ -217,29 +277,154 @@
         "young": 35.9766,
         "expired": 0.0,
         "ripple_s": 0.6,
-        "seta6_wall_ms": 100
+        "seta6_wall_ms": 100.18,
+        "last_drawn_ms": 100.15,
+        "frames": 3748,
+        "max_frame_ms": 1.109
       }
     ],
     "retired": [
       {
+        "live_shells": 1,
+        "live_drew": 1,
+        "live_max": 16.043,
+        "shells": 0,
+        "decals": 0,
+        "retired": 1,
+        "ring_live": 0,
         "result": 1,
         "drew": 0,
         "max": 0.0
+      }
+    ],
+    "resolve": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "speed_px": 0,
+        "frames": 16,
+        "core": 0.9974,
+        "peak": 3.012
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "speed_px": 4,
+        "frames": 16,
+        "core": 0.9997,
+        "peak": 3.012
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "speed_px": 8,
+        "frames": 16,
+        "core": 0.9958,
+        "peak": 3.012
+      }
+    ],
+    "refused": [
+      {
+        "result": 80004005,
+        "enabled": 0,
+        "reason": "program_create",
+        "references": 0,
+        "run": 80070057,
+        "calls": 0
       }
     ],
     "timing": [
       {
         "width": 1920,
         "height": 1080,
+        "case": "fence",
+        "shells": 0,
+        "drawn": 0,
+        "cull": "-",
+        "gpu_us": 10.8
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "two",
         "shells": 2,
-        "gpu_us": 80.9
+        "drawn": 2,
+        "cull": "winding",
+        "gpu_us": 61.3
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "two_cull_none",
+        "shells": 2,
+        "drawn": 2,
+        "cull": "none",
+        "gpu_us": 80.8
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "fullscreen",
+        "shells": 1,
+        "drawn": 1,
+        "cull": "winding",
+        "gpu_us": 43.7
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "fullscreen_cull_none",
+        "shells": 1,
+        "drawn": 1,
+        "cull": "none",
+        "gpu_us": 57.4
       },
       {
         "width": 5120,
         "height": 1440,
+        "case": "fence",
+        "shells": 0,
+        "drawn": 0,
+        "cull": "-",
+        "gpu_us": 10.2
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "two",
         "shells": 2,
-        "gpu_us": 271.6
+        "drawn": 2,
+        "cull": "winding",
+        "gpu_us": 201.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "two_cull_none",
+        "shells": 2,
+        "drawn": 2,
+        "cull": "none",
+        "gpu_us": 269.2
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "fullscreen",
+        "shells": 1,
+        "drawn": 1,
+        "cull": "winding",
+        "gpu_us": 151.9
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "fullscreen_cull_none",
+        "shells": 1,
+        "drawn": 1,
+        "cull": "none",
+        "gpu_us": 197.2
       }
     ]
-  }
+  },
+  "passed": true
 }

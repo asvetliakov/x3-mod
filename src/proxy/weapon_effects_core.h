@@ -66,7 +66,8 @@ struct Event {
     std::uint32_t tint_rgb, alt_rgb;         // the classifier's colour and the other candidate (light <-> texture)
     std::int32_t damage;                     // the damage routine's running total at the call ([esp+0x1c])
     std::uint32_t owner, node, handle;       // the hit object, its root node obj+0x70 and node+0x28
-    std::uint32_t shooter;                   // the bullet's owner ext+4 (0 for a missile)
+    std::uint32_t shooter;                   // 0 in step 1: [[source+0x50]+4] is not dereferenced by the engine on this
+                                             // path, so the handler does not read it (review F9; later steps bind it)
     std::int32_t pos[3];                     // the contact point in the owner's frame (engine units)
     std::int32_t radius;                     // obj+0xa4 of the owner (engine units)
     std::uint32_t sequence;                  // monotonic, 0 = free slot
@@ -77,9 +78,9 @@ static_assert(sizeof(Event) == 64, "the event record is 64 bytes (16 KB ring)");
 // Object: class word +0x48, subtype +0x4a, flags +0x40, extension +0x50, root node +0x70, radius +0xa4.
 // Node: handle +0x28, position +0x30 (3 x int32), rotation +0x40 (3 rows of 4 dwords, 16.16; row k = local axis k in
 // world), +0x180 (3 x int32, the callee's contact offset, unknown 1), +0x1c non-zero on a live node (the callee's test).
-// Bullet extension: owner +4. Type tables: TBullets *0x00606fb8 (count *0x00607038), TMissiles *0x00606fe0 (count
-// *0x00607060), stride 0xdb8. TBullets: shield damage +0x44, flags +0x58, light colour +0x5c/+0x60/+0x64, hull damage
-// +0x80. Engine config *0x00606f34: the game clock +0x718 (game ms, SETA-scaled).
+// Bullet extension: owner +4 (not read by the handler). Type tables: TBullets *0x00606fb8 (count *0x00607038),
+// TMissiles *0x00606fe0 (count *0x00607060), stride 0xdb8. TBullets: shield damage +0x44, flags +0x58, light colour
+// +0x5c/+0x60/+0x64, hull damage +0x80. Engine config *0x00606f34: the game clock +0x718 (game ms, SETA-scaled).
 namespace layout {
 constexpr unsigned obj_flags = 0x40, obj_class = 0x48, obj_subtype = 0x4a, obj_ext = 0x50, obj_node = 0x70,
                    obj_radius = 0xa4;
@@ -294,7 +295,7 @@ struct PosCheck {           // observe mode: the handler's pos against the inner
 };
 struct Counters {
     std::uint32_t calls = 0, recorded = 0, skipped = 0, forwarded = 0, no_projectile = 0, no_node = 0, stale_table = 0,
-                  taps = 0, shield_hits = 0, hull_hits = 0;
+                  taps = 0, shield_hits = 0, hull_hits = 0, nested = 0;
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -332,7 +333,16 @@ inline void read_rows(std::uintptr_t a, std::int32_t* out) noexcept {
 // The impact site 0x00449d85 -> 0x00413c40(victim, source). `esp` is the stack at stub entry: [1] victim, [2] source,
 // [7] the running damage total, [9] the absorbed flag. Integer only, plain loads, no call. Returns 1 to skip the
 // engine's spawn (stage-owned shield hit), 0 to forward. now_game is read here (cfg+0x718).
-inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
+// Internal linkage and always_inline (review F10): every translation unit that includes this header gets its own copy
+// compiled with its own flags, so the no-SSE handler TU (weapon_effects_hook.cpp) can never bind a COMDAT instance
+// emitted by an SSE2 TU; the hook fixture's audit proves its two entry points contain no call at all.
+// The object reads stay inside the routine's own two objects (their class, subtype, flags +0x40, node, radius) and
+// nodes, the type table and the engine config: [source+0x50] (the bullet extension) is not followed (review F9).
+// flag_nested (note 2.7): the projectile or the hit object already carries the kill routine's dying bit
+// (obj+0x40 & 0x8000000, set once by 0x0044abd0 before its area damage 0x0045eeb0 runs the damage routine on the
+// blast's objects [i, spawn note sections 4 and 6]): the impact arrives inside a kill. A dying hit object forwards
+// (the stage would retire it unseen); a dying projectile (the blast's source) still skips for a live victim.
+static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp, HookState& s) noexcept {
     ++s.counters.calls;
     if (s.mode == mode_native) return 0;
     const std::uintptr_t victim = esp[1], source = esp[2];
@@ -376,7 +386,9 @@ inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
     const std::uint16_t subtype = rd16(projectile + layout::obj_subtype);
     std::uint32_t flags = 0, light = 0;
     std::uint8_t style = shape_slug, table = table_none, tint_source = tint_white, eflags = 0, calibre_q = 0;
-    std::uint32_t tint = 0, alt = 0, shooter = 0;
+    std::uint32_t tint = 0, alt = 0;
+    const bool hit_dying = (rd32(hit + layout::obj_flags) & layout::obj_dying) != 0;
+    const bool nested = hit_dying || (rd32(projectile + layout::obj_flags) & layout::obj_dying) != 0;
     if (pclass == layout::class_bullet) {
         table = table_bullets;
         const std::uintptr_t base = rd32(s.globals.bullet_table_slot);
@@ -425,8 +437,6 @@ inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
                 eflags |= flag_calibre_override | flag_override_applied;
             }
         }
-        const std::uintptr_t ext = rd32(projectile + layout::obj_ext);
-        if (ext) shooter = rd32(ext + layout::ext_owner);
     } else {
         table = table_missiles;
         style = shape_missile_hit;
@@ -434,13 +444,16 @@ inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
         tint_source = tint_missile;
     }
     const std::uint8_t role = role_from(absorbed, pclass, flags);
-    const bool skip = s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit;
+    // A dying hit object is forwarded: the stage retires a dying owner's records unseen, so a skip would lose the hit.
+    const bool skip =
+        s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
     Event* e = ring_acquire(s.ring);
     if (!e) return 0;
     e->role = role;
     e->style = style;
     e->tier = tier_from(std::int32_t(total));
-    e->flags = std::uint8_t(eflags | (absorbed == 1 ? flag_absorbed : 0) | (skip ? 0 : flag_forwarded));
+    e->flags = std::uint8_t(eflags | (absorbed == 1 ? flag_absorbed : 0) | (skip ? 0 : flag_forwarded) |
+                            (nested ? flag_nested : 0));
     e->table = table;
     e->tint_source = tint_source;
     e->row = subtype;
@@ -455,10 +468,11 @@ inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
     e->owner = std::uint32_t(hit);
     e->node = std::uint32_t(hit_node);
     e->handle = rd32(hit_node + layout::node_handle);
-    e->shooter = shooter;
+    e->shooter = 0;
     for (unsigned i = 0; i < 3; ++i) e->pos[i] = pos[i];
     e->radius = std::int32_t(rd32(hit + layout::obj_radius));
     ++s.counters.recorded;
+    if (nested) ++s.counters.nested;
     if (role == role_shield_hit)
         ++s.counters.shield_hits;
     else
@@ -478,7 +492,7 @@ inline int impact(const std::uint32_t* esp, HookState& s) noexcept {
 }
 // The diagnostic inner tap 0x00413da8 / 0x00413e79 -> 0x00414a70(3, eff, hit, &pos, 0), observe mode only: the
 // engine's own pos for the impact just recorded, compared with the handler's (max component error). Always forwards.
-inline void tap(const std::uint32_t* esp, HookState& s) noexcept {
+static inline __attribute__((always_inline)) void tap(const std::uint32_t* esp, HookState& s) noexcept {
     ++s.counters.taps;
     if (!s.check.pending) return;
     s.check.pending = false;
@@ -496,6 +510,33 @@ inline void tap(const std::uint32_t* esp, HookState& s) noexcept {
     ++s.check.compared;
     if (worst > s.check.max_error) s.check.max_error = worst;
 }
+
+// ---------------------------------------------------------------------------------------------- Present's rules
+// The ownership latch (note 2.6, review F8): the next frame's hooks skip only when this frame's stage was armed, the
+// resolve completed and, when the stage's callback was set, the callback ran and succeeded (it drew, or had nothing to
+// draw: S_OK / S_FALSE). A resolve that failed before the callback, a callback that never ran or returned
+// DEVICELOST / an error makes the next frame's hits native.
+inline bool stage_owned(bool armed, bool resolve_ok, bool callback_set, bool callback_ok) noexcept {
+    return armed && resolve_ok && (!callback_set || callback_ok);
+}
+// The ring's scope (note 3.1): the cockpit's sector (sector_key::core::key_of, 0 unknown), the object_lifetime load
+// epoch (0 unknown) and the loading state, sampled once per frame at Present. A load, a known sector key that differs
+// from the held one, or a known load epoch that differs, clears the stage-owned records (their owners belong to the
+// scene that went); an unknown read never clears and never replaces a held value.
+struct Scope {
+    std::uint64_t sector_key = 0, load_epoch = 0;
+    bool loading = false;
+};
+struct ScopeLatch {
+    std::uint64_t sector_key = 0, load_epoch = 0;
+    bool changed(const Scope& now) noexcept {
+        const bool sector = now.sector_key && sector_key && now.sector_key != sector_key;
+        const bool epoch = now.load_epoch && load_epoch && now.load_epoch != load_epoch;
+        if (now.sector_key) sector_key = now.sector_key;
+        if (now.load_epoch) load_epoch = now.load_epoch;
+        return now.loading || sector || epoch;
+    }
+};
 
 // ---------------------------------------------------------------------------------------------- the stage (float)
 // Game-time age (ms) with the clock's wrap; a t0 after now (a load reset the clock) reads as expired.
