@@ -14,10 +14,10 @@
   },
   {
    "program": "sky_nebula_ps",
-   "words": 495,
+   "words": 546,
    "messages": [],
    "end": "00000000",
-   "slots": 109,
+   "slots": 120,
    "source_header": "src/renderer/sky_nebula_pixel_program_inc.h"
   }
  ]

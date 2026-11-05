@@ -1,7 +1,7 @@
 DEVICE kind=d3d9 plain=00000000 created=00000000
 DEVICE adapter="NVIDIA GeForce RTX 5070 Ti"
 PASS attach hr=00000000 reason=ok vs_slots=27 ps_slots=11 references=7
-PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=1.392 support_max=2.8750 peak_max=1.4988 twinkling=1556
+PASS prepare_once_per_seed stars=6240 rebuilt=1 build_ms=1.240 support_max=2.8750 peak_max=1.4988 twinkling=1556
 PASS prepare_rebuilds_on_look_change 
 PASS prepare_rebuilds_on_sector_key key=131076 twinkling=1571/1571 candidates=24995/24995
 PASS prepare_key0_is_the_mark_field 
@@ -18,13 +18,13 @@ PASS pan_target
 TEMPORAL speed=0.5 stars=426 resolved_peak_cv_median=0.0250 resolved_peak_cv_max=0.0524 current_peak_cv_median=0.0578 current_peak_cv_max=0.1020 (model, frames 20-59)
 TEMPORAL speed=10.0 stars=313 resolved_peak_cv_median=0.0141 resolved_peak_cv_max=0.0482 current_peak_cv_median=0.0665 current_peak_cv_max=0.1124 (model, frames 20-59)
 PASS target_5120x1440 
-COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0027 draw_cpu_us=1.21
-COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0065 draw_cpu_us=0.83
-COST rebuild stars=16384 vb_bytes=2097152 clustering=0.0 reject_rate=0.000 cluster_max_min=1.24 build_us_best_of_5=1187.0
-COST rebuild stars=16384 vb_bytes=2097152 clustering=1.2 reject_rate=0.823 cluster_max_min=6.36 build_us_best_of_5=3265.1
-COST rebuild stars=16384 vb_bytes=2097152 clustering=2.0 reject_rate=0.861 cluster_max_min=8.81 build_us_best_of_5=3839.2
+COST target=5120x1440 stars=6240 reps=200 batch_ms_upper_bound=0.0023 draw_cpu_us=0.76
+COST target=5120x1440 stars=16384 reps=200 batch_ms_upper_bound=0.0078 draw_cpu_us=0.75
+COST rebuild stars=16384 vb_bytes=2097152 clustering=0.0 reject_rate=0.000 cluster_max_min=1.24 build_us_best_of_5=1146.0
+COST rebuild stars=16384 vb_bytes=2097152 clustering=1.2 reject_rate=0.823 cluster_max_min=6.36 build_us_best_of_5=3209.5
+COST rebuild stars=16384 vb_bytes=2097152 clustering=2.0 reject_rate=0.861 cluster_max_min=8.81 build_us_best_of_5=3769.0
 PASS rebuild_full_buffer 
-COST sector_key reps=20000 walk_ns=2031 cached_frame_ns=426 cached_warm_ns=34
+COST sector_key reps=20000 walk_ns=2017 cached_frame_ns=423 cached_warm_ns=33
 PASS sector_key_cached_check 
 PASS dim_side dim=1 reason=ok copy_filter=2 dim_linear=1 dim_vs_slots=33 dim_ps_slots=23
 PASS dim_depth 
@@ -41,8 +41,8 @@ OCCLUDE star_pixels_inside_disc=0 outside=11237
 PASS deferred_occluded_by_z_disc star_pixels_inside_disc=0 outside=11237
 STRETCH update=00000000 copy=00000000 texels=8192 min=0.25000 max=0.25000 mean=0.25000 box_mean=0.01562
 PASS deferred_state_restored runs=3 mismatches=0 (clean, draw fault, restore fault)
-COST dim=640x180 prepared=1 copy_ms_upper_bound=0.0067 deferred_batch_ms_upper_bound=0.0027 draw_deferred_cpu_us=1.06 calls=70 stars=6240
-PASS dim_copy_le_0.2ms dim=640x180 prepared=1 copy_ms_upper_bound=0.0067 deferred_batch_ms_upper_bound=0.0027 draw_deferred_cpu_us=1.06 calls=70 stars=6240
+COST dim=640x180 prepared=1 copy_ms_upper_bound=0.0077 deferred_batch_ms_upper_bound=0.0041 draw_deferred_cpu_us=2.15 calls=72 stars=6240
+PASS dim_copy_le_0.2ms dim=640x180 prepared=1 copy_ms_upper_bound=0.0077 deferred_batch_ms_upper_bound=0.0041 draw_deferred_cpu_us=2.15 calls=72 stars=6240
 PASS before_reset_releases_dim_texture 
 PASS detach_releases 
 DEVICE_RELEASE refs=0

@@ -40,9 +40,21 @@ class SkyNebulaTests(unittest.TestCase):
         # The tracked native record (verification/results/sky-nebula/run_fixture.py): green, and the accepted
         # shortfalls of the default configuration are exactly the two recorded in the Decision C1 paragraph.
         out = (ROOT / 'verification/results/sky-nebula/fixture_out.txt').read_text()
-        self.assertRegex(out, r'\nRESULT PASS checks=20 warnings=2 failures=0\n$')
+        self.assertRegex(out, r'\nRESULT PASS checks=21 warnings=2 failures=0\n$')
         self.assertNotIn('\nFAIL ', out)
         self.assertEqual(re.findall(r'^WARN (\S+) ', out, re.M), ['edge_halo_beyond_1_texel', 'taa_sd_fast_pan'])
+        # Each warning carries its hard ceiling (above it the run fails): the halo 2.0/255, the fast pan 1.25 x the
+        # engine pair's figure.
+        halo = re.search(r'^WARN edge_halo_beyond_1_texel measured=([0-9.]+) bound=1\.0000 ceiling=2\.0000 ', out, re.M)
+        self.assertIsNotNone(halo)
+        pan = re.search(r'^WARN taa_sd_fast_pan measured=([0-9.]+) bound=([0-9.]+) ceiling=([0-9.]+) speed=10\.0 '
+                        r'engine_sd_max=([0-9.]+) ', out, re.M)
+        self.assertIsNotNone(pan)
+        engine = float(pan.group(4))
+        self.assertAlmostEqual(float(pan.group(3)), max(.1, 1.25 * engine), delta=1e-3)
+        self.assertLessEqual(float(pan.group(1)), float(pan.group(3)))
+        self.assertLessEqual(float(halo.group(1)), 2.0)
+        self.assertIn('PASS alpha_edge_no_colour_bleed ', out)
 
     def test_program_registers(self):
         vs = (ROOT / 'src/effects/sky_nebula_vs.hlsl').read_text()

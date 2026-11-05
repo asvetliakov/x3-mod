@@ -2183,6 +2183,7 @@ private:
     HRESULT sky_stars_copy_hr_ = S_FALSE;
     unsigned sky_stars_defer_rows_ = 0;
     const char* sky_stars_copy_mode_ = "none";
+    bool sky_stars_dim_latched_logged_ = false;
     // Sky nebula deband (motion_output_sky_nebula_inc.h): the settings, the pass, the stage-0 texture's cached level-0
     // size (pointer and identity), this frame's background-phase record and what the last sky_nebula row said.
     bool sky_nebula_requested_ = false, sky_nebula_jitter_ = true, sky_nebula_hash_ = false, sky_nebula_attach_failed_ = false;
@@ -3601,7 +3602,7 @@ private:
     bool attach_sky_stars() noexcept;
     void release_sky_stars() noexcept;
     void sky_stars_log_match(const MotionDrawCall&) noexcept;
-    void sky_stars_phase_end_draw(DWORD count, DWORD flags) noexcept;
+    void sky_stars_phase_end_draw() noexcept;
     void sky_stars_batch_done(const renderer::SkyStarsReport& report) noexcept;
     void sky_stars_log_defer(const char* why) noexcept;
     void sky_nebula_classify(const MotionDrawCall&, MotionRoute&) noexcept;

@@ -56,7 +56,7 @@ SOURCES_SHA256_2026_11_03 = {
     # the route's sky_nebula members and its four settings' read; no engine-effects path changed, 2026-11-05); both
     # again for the phase-end star batch (Decision C2: the deferral members, the two dim settings' read; no
     # engine-effects path changed, 2026-11-05).
-    'src/proxy/motion_output.h': '2008e4ae06678737b658776494f00d209a9ab33cc04b031c954c7c3104eefe6b',
+    'src/proxy/motion_output.h': '06c7e2d73236ad524fe83817245a16afb8917d76fb16b62c9f03bdb2bfead1bc',
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
     # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
     # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report

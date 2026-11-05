@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/sky_nebula_ps.hlsl",
-  "source_sha256": "89493b2f9f53b867edbd81d4e566eb5f9bdfff8f0f8ab47a19d79a21c77365c3",
+  "source_sha256": "334983a2fa1e6bc81ddeda9d579a66909833b4d7937ee38af24a9ead9d3566cf",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,9 +10,9 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 495,
-  "bytecode_sha256": "cbefdc3c6a206ea01ef20b7f515525bb4c13f04e1cbdbe2722dee9a4b5bd4110",
-  "header_sha256": "868fbbbb3f010c29d0017d6895da3e01a5771149fb50d2544edde5cc6b55be21",
+  "word_count": 546,
+  "bytecode_sha256": "59aa8bf0064affb48867f7056fd58368cf68724959d066040fcc37775c503eda",
+  "header_sha256": "ee2c614a72017f303e1a114ba3824041ddc75638257f58b26e39c8724c4687df",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

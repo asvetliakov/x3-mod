@@ -16,7 +16,8 @@
 // ONE/ONE blending and BLENDOP, CULLNONE, FP16 post-pixel-shader blending on the adapter format, MANAGED buffers).
 //
 // Decision C2 (sector-background-modern.md "Decision C"): draw_deferred() is the batch at the end of the background
-// phase, Z-tested (ZENABLE TRUE, ZFUNC LESSEQUAL, no Z write, z = 0.99999 w) against the phase's depth, with the dim
+// phase, Z-tested (ZENABLE TRUE, ZFUNC LESSEQUAL, DEPTHBIAS and SLOPESCALEDEPTHBIAS 0, no Z write, z = 0.99999 w)
+// against the phase's depth, with the dim
 // twins of the programs (src/effects/sky_stars_dim_{vs,ps}.hlsl), VS c250-c255 and the 1/8-size copy of the HDR target
 // on stage 0 (texture, ADDRESSU/V clamp, MIN/MAG linear or point, no mip, no sRGB; all six sampler states and the
 // texture saved and put back). The copy (copy_dim: StretchRect of the HDR target into the dim texture with
@@ -83,6 +84,9 @@ public:
     HRESULT draw_deferred(const float constants[16], const float twinkle[4], const float dim[4],
                           SkyStarsReport* report) noexcept;
     unsigned dim_width() const noexcept { return dim_width_; }
+    // A dim texture creation that failed without a device loss: latched until before_reset(); prepare_dim refuses at
+    // once meanwhile and the route keeps the in-place batch.
+    bool dim_unavailable() const noexcept { return dim_unavailable_; }
     unsigned dim_height() const noexcept { return dim_height_; }
 #if defined(X3M_SKY_STARS_FIXTURE)
     // Fixture faults: bit 0 fails the draw once, bit 1 fails the first restoring SetRenderState once.
@@ -118,6 +122,7 @@ private:
     IDirect3DTexture9* dim_texture_ = nullptr;
     IDirect3DSurface9* dim_surface_ = nullptr;
     unsigned dim_width_ = 0, dim_height_ = 0;
+    bool dim_unavailable_ = false;
     std::uint32_t built_seed_ = 0;
     std::uint64_t built_key_ = 0;
     sky_stars::core::Look built_look_{};

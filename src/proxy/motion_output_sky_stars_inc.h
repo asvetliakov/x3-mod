@@ -41,9 +41,10 @@
 //
 // Decision C2 (sector-background-modern.md "Decision C"), sky_stars_nebula_dim = k > 0 and the pass's dim side
 // available (caps().dim): the matched star body is masked as before but the batch is not drawn there (pending). In
-// before_clear (RT1/RT2 unbound), a Clear in the background phase with D3DCLEAR_ZBUFFER, without D3DCLEAR_TARGET and
-// without rectangles is predicted to be the phase end (the selector's rule 2: such a Clear ends the phase or rejects the
-// frame); on the phase's depth (main_depth_), the HDR latch, RT0 only and the matched viewport the route StretchRects
+// before_clear (RT1/RT2 unbound, the Clear's bindings read), a Clear the selector itself would take as the phase end
+// (SceneBoundarySelector::predicts_phase_end: flags ZBUFFER only, no rectangles, z 1, a full 0..1 viewport on the latched
+// pair, after a background draw) is the predicted phase end; on the HDR latch, RT0 only and the matched viewport the
+// route StretchRects
 // the FP16 target into the 1/8-size dim texture (SkyStarsPass::copy_dim) and draws the batch Z-tested at the far plane
 // with each star's energy times 1 - k saturate(L / L0) (draw_deferred, c250). A copy that fails draws with k = 0 (Z
 // still tested); a dim texture that cannot be created draws the in-place batch there. The Background -> Scene transition
@@ -136,6 +137,7 @@ void MotionOutput::sky_stars_before_reset() noexcept {
     sky_stars_attach_failed_ = false;
     sky_stars_failures_ = 0;
     sky_stars_frame_pending_ = sky_stars_frame_predicted_ = false; // the dim texture went with the pass's before_reset
+    sky_stars_dim_latched_logged_ = false;
 }
 // The latching Clear (AwaitInitialClear -> Background): the frame's record starts over.
 void MotionOutput::sky_stars_latch() noexcept {
@@ -437,7 +439,7 @@ void MotionOutput::finish_sky_stars(MotionRoute& route, HRESULT result) noexcept
         sky_stars_frame_reason_ = "source_draw";
         return;
     }
-    if (sky_stars_dim_ > 0.f && sky_stars_ && sky_stars_->caps().dim) {
+    if (sky_stars_dim_ > 0.f && sky_stars_ && sky_stars_->caps().dim && !sky_stars_->dim_unavailable()) {
         // Decision C2: the batch waits for the predicted phase end (sky_stars_phase_end_draw).
         if (!sky_stars_frame_pending_ && !sky_stars_defer_rows_) sky_stars_log_defer("first");
         sky_stars_frame_pending_ = true;
@@ -502,10 +504,8 @@ void MotionOutput::sky_stars_batch_done(const renderer::SkyStarsReport& report) 
     }
 }
 // Decision C2, before_clear: the predicted phase end draws the frame's pending batch (the header comment).
-void MotionOutput::sky_stars_phase_end_draw(DWORD count, DWORD flags) noexcept {
-    if (sky_stars_frame_drawn_ || selector_.state() != renderer::BoundaryState::Background ||
-        !(flags & D3DCLEAR_ZBUFFER) || (flags & D3DCLEAR_TARGET) || count)
-        return; // not the phase end: the batch keeps waiting
+void MotionOutput::sky_stars_phase_end_draw() noexcept {
+    if (sky_stars_frame_drawn_ || !selector_.predicts_phase_end(pending_)) return; // not the phase end: keep waiting
     sky_stars_frame_pending_ = false;
     sky_stars_frame_predicted_ = true;
     ++sky_stars_predicted_;
@@ -541,7 +541,7 @@ void MotionOutput::sky_stars_phase_end_draw(DWORD count, DWORD flags) noexcept {
         const unsigned dw = sky_stars_->dim_width(), dh = sky_stars_->dim_height();
         QueryPerformanceCounter(&copied);
         if (FAILED(prepared)) {
-            sky_stars_copy_mode_ = "no_texture";
+            sky_stars_copy_mode_ = sky_stars_->dim_unavailable() ? "dim_unavailable" : "no_texture";
             sky_stars_->draw(constants, twinkle, &report); // no dim texture: the in-place batch, here
         } else {
             const bool dimmed = SUCCEEDED(sky_stars_copy_hr_);
@@ -551,6 +551,10 @@ void MotionOutput::sky_stars_phase_end_draw(DWORD count, DWORD flags) noexcept {
         }
         QueryPerformanceCounter(&end);
     });
+    if (sky_stars_->dim_unavailable() && !sky_stars_dim_latched_logged_) { // one row per latch (until Reset)
+        sky_stars_dim_latched_logged_ = true;
+        sky_stars_log_defer("dim_unavailable");
+    }
     sky_stars_copy_ticks_ = std::uint64_t(copied.QuadPart - begin.QuadPart);
     sky_stars_draw_ticks_ = std::uint64_t(end.QuadPart - copied.QuadPart);
     if (report.drew) hdr_dirty_ = true;

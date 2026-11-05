@@ -10,7 +10,8 @@
 // with it, 0.78 without). Gradient-aware weight: diff = the largest channel difference between the midpoint of
 // an opposite tap pair and the centre sample c, over the four pairs (0 on any linear gradient, about half the height
 // across an edge); w = saturate(2 (on - diff / threshold)): full weight up to half the threshold, none at it. Output
-// lerp(c, m, w), m the mean of the centre and the eight taps. on = 0 (c200.x) is the identity: w = 0 exactly, the
+// lerp(c, m, w), m the alpha-weighted mean of the centre and the eight taps (the centre when every alpha is 0). on = 0
+// (c200.x) is the identity: w = 0 exactly, the
 // centre sample unchanged. Constants: c200 = (on, 1 / threshold, R, hash) with threshold in value units
 // (sky_nebula_deband_threshold / 255), c201 = (width, height, 1 / width, 1 / height) of the bound part's level 0
 // (src/proxy/sky_nebula_core.h pixel_constants). The stage-0 sampler state is the engine's. 9 taps. Compiled with
@@ -37,13 +38,16 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float2 d1 = d * (deband.z * 0.5) * size.zw, p1 = float2(-d.y, d.x) * (deband.z * 0.5) * size.zw;
     float2 e = float2(d.x - d.y, d.x + d.y) * 0.70710678; // d rotated by 45 degrees
     float2 d2 = e * deband.z * size.zw, p2 = float2(-e.y, e.x) * deband.z * size.zw;
-    float3 a0 = tex2D(part, uv + d1).rgb, a1 = tex2D(part, uv - d1).rgb;
-    float3 a2 = tex2D(part, uv + p1).rgb, a3 = tex2D(part, uv - p1).rgb;
-    float3 b0 = tex2D(part, uv + d2).rgb, b1 = tex2D(part, uv - d2).rgb;
-    float3 b2 = tex2D(part, uv + p2).rgb, b3 = tex2D(part, uv - p2).rgb;
-    float3 diff = max(max(abs((a0 + a1) * 0.5 - c), abs((a2 + a3) * 0.5 - c)),
-                      max(abs((b0 + b1) * 0.5 - c), abs((b2 + b3) * 0.5 - c)));
+    float4 a0 = tex2D(part, uv + d1), a1 = tex2D(part, uv - d1), a2 = tex2D(part, uv + p1), a3 = tex2D(part, uv - p1);
+    float4 b0 = tex2D(part, uv + d2), b1 = tex2D(part, uv - d2), b2 = tex2D(part, uv + p2), b3 = tex2D(part, uv - p2);
+    float3 diff = max(max(abs((a0.rgb + a1.rgb) * 0.5 - c), abs((a2.rgb + a3.rgb) * 0.5 - c)),
+                      max(abs((b0.rgb + b1.rgb) * 0.5 - c), abs((b2.rgb + b3.rgb) * 0.5 - c)));
     float w = saturate(2 * (deband.x - max(diff.r, max(diff.g, diff.b)) * deband.y));
-    float3 m = (c + a0 + a1 + a2 + a3 + b0 + b1 + b2 + b3) * (1.0 / 9.0);
+    // The mean weighted by each sample's alpha (AP's DXT5 and uncompressed parts: a transparent texel's colour never
+    // bleeds into the average); the centre when every weight is 0. DXT1 alpha is 1: the plain mean of nine samples.
+    float sa = centre.a + a0.a + a1.a + a2.a + a3.a + b0.a + b1.a + b2.a + b3.a;
+    float3 sc = c * centre.a + a0.rgb * a0.a + a1.rgb * a1.a + a2.rgb * a2.a + a3.rgb * a3.a + b0.rgb * b0.a +
+                b1.rgb * b1.a + b2.rgb * b2.a + b3.rgb * b3.a;
+    float3 m = sa > 0 ? sc / sa : c;
     return float4(lerp(c, m, w), centre.a * clamp(alpha.x, -1, 1));
 }

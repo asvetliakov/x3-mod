@@ -42,7 +42,7 @@ class MotionSkyStarsTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertRegex(run.stdout, r'^motion_sky_stars scenarios=17 checks=138 failures=0\n$')
+        self.assertRegex(run.stdout, r'^motion_sky_stars scenarios=17 checks=144 failures=0\n$')
 
     def test_production_order(self):
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
@@ -63,7 +63,10 @@ class MotionSkyStarsTests(unittest.TestCase):
         clear = function(source, 'void MotionOutput::before_clear(')
         self.assertLess(clear.index('restore_bindings();'), clear.index('bindings(pending_);'))
         self.assertLess(clear.index('bindings(pending_);'),
-                        clear.index('if (sky_stars_frame_pending_) sky_stars_phase_end_draw(count, flags);'))
+                        clear.index('if (sky_stars_frame_pending_) sky_stars_phase_end_draw();'))
+        # The prediction is the real selector's own phase-end rule (flags ZBUFFER only, z 1, full 0..1 viewport).
+        fragment = (ROOT / 'src/proxy/motion_output_sky_stars_inc.h').read_text()
+        self.assertIn('if (sky_stars_frame_drawn_ || !selector_.predicts_phase_end(pending_)) return;', fragment)
         # Every draw entry (the four draw hooks and their blocked paths) goes through before_draw.
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertEqual(capture.count('ctx.motion_output.before_draw('), 8)

@@ -6,7 +6,8 @@
 // 6109cf64 programs (background-temporal-coverage.md) and by the deband pair. Checks: (1) identity, threshold 0, a
 // perspective c0-c3, an affine c4/c5 and a non-black target: 0 differing pixels; (2) at 2.5x magnification the ramps'
 // ripple (max |second difference| along x) and error against the ideal ramp before and after, the edges unchanged,
-// the island's spread bounded by the radius, the band means preserved; (4) the programs, VS c255 and PS c200-c201 back
+// the island's spread bounded by the radius, the band means preserved, a DXT5 alpha edge without colour bleed from
+// the transparent texels; (4) the programs, VS c255 and PS c200-c201 back
 // after a clean bracket, a failed draw, an injected begin fault and an injected restore fault; (5) GPU cost of a
 // full-sky frame (four parts covering 5120x1440) with each pair and the CPU cost of one bracket; (9) a temporal model
 // (60 frames, Halton jitter through c255, 0.5 and 10 px/frame pans, history 0.9 reprojected exactly, 3x3 clip): the
@@ -32,15 +33,22 @@ using x3m::renderer::SkyNebulaSaved;
 
 static unsigned checks = 0, failures = 0;
 static unsigned warnings = 0;
-// An accepted shortfall (Decision C1 implementation paragraph): the measured value against the design bound.
-static void warn(double measured, double bound, const char* what, const char* detail) {
+// An accepted shortfall (Decision C1 implementation paragraph): the measured value against the design bound, and a
+// hard ceiling above which it is a failure (the shortfall accepted is bounded, not open-ended).
+static void warn(double measured, double bound, double ceiling, const char* what, const char* detail) {
     if (measured <= bound) {
         ++checks;
-        std::printf("PASS %s measured=%.4f bound=%.4f %s\n", what, measured, bound, detail);
+        std::printf("PASS %s measured=%.4f bound=%.4f ceiling=%.4f %s\n", what, measured, bound, ceiling, detail);
+        return;
+    }
+    if (measured > ceiling) {
+        ++checks;
+        ++failures;
+        std::printf("FAIL %s measured=%.4f bound=%.4f ceiling=%.4f %s\n", what, measured, bound, ceiling, detail);
         return;
     }
     ++warnings;
-    std::printf("WARN %s measured=%.4f bound=%.4f %s\n", what, measured, bound, detail);
+    std::printf("WARN %s measured=%.4f bound=%.4f ceiling=%.4f %s\n", what, measured, bound, ceiling, detail);
 }
 static void check(bool ok, const char* what, const char* detail = "") {
     ++checks;
@@ -235,6 +243,7 @@ struct Scene {
     IDirect3DVertexShader9* ref_vs = nullptr;
     IDirect3DPixelShader9* ref_ps = nullptr;
     IDirect3DTexture9* part = nullptr;
+    unsigned part_width = TW, part_height = TH; // level 0 of `part` (c201)
     SkyNebulaPass* pass = nullptr;
     // The engine's state for a part draw: SRCALPHA/ONE, Z off, mask 7, LIN/LIN no mip, wrap.
     void states() const {
@@ -270,7 +279,7 @@ struct Scene {
         if (deband) {
             float pixel[8];
             const float zero[4] = {0, 0, 0, 0};
-            core::pixel_constants(threshold, radius, TW, TH, pixel, g_hash);
+            core::pixel_constants(threshold, radius, part_width, part_height, pixel, g_hash);
             SkyNebulaReport rep{};
             if (FAILED(pass->begin(jitter ? jitter : zero, pixel, &saved, &rep))) return rep.operation;
         }
@@ -560,11 +569,84 @@ int main() {
                     err_after <= .5 ? "met" : "not_met");
         check(std::fabs(mean_after - mean_before) <= .5 && height_err <= 1. && std::fabs(edge_mean_diff) <= .5,
               "means_preserved_and_edge_height_kept", edges);
-        warn(change, 1., "edge_halo_beyond_1_texel", edges);
+        warn(change, 1., 2., "edge_halo_beyond_1_texel", edges);
         check(farthest <= radius + 1.5, "island_spread_le_radius_plus_bilinear", island);
     }
     big.release();
     g_hash = false; // the default for the sections below
+
+    // ---- Invariant 2, alpha: a 256x256 DXT5 part (AP's DXT5 / uncompressed parts) with a vertical alpha edge at texel
+    // 128: transparent texels (alpha 0) of colour 16/255 on the left, opaque 8/255 on the right, 2.5x, SRCALPHA/ONE on
+    // black. The alpha-weighted tap mean keeps the transparent colour out of the opaque side: no output change against
+    // the engine pair beyond 1/255 on the transparent side or on the opaque side beyond one texel of the edge.
+    {
+        constexpr UINT AW = 256, AH = 256;
+        std::vector<std::uint8_t> blocks(std::size_t(AW / 4) * (AH / 4) * 16);
+        for (UINT by = 0; by < AH / 4; ++by)
+            for (UINT bx = 0; bx < AW / 4; ++bx) {
+                std::uint8_t* b = &blocks[(std::size_t(by) * (AW / 4) + bx) * 16];
+                const bool opaque = bx * 4 >= 128;
+                b[0] = b[1] = opaque ? 255 : 0; // alpha endpoints, every index 0
+                const unsigned r5 = opaque ? 1 : 2, g6 = opaque ? 2 : 4; // 8/255 and 16/255 on the 565 ladder
+                const std::uint16_t c = std::uint16_t(r5 << 11 | g6 << 5 | r5);
+                std::memcpy(b + 8, &c, 2);
+                std::memcpy(b + 10, &c, 2);
+            }
+        IDirect3DTexture9 *staging = nullptr, *alpha_part = nullptr;
+        bool ok = SUCCEEDED(d->CreateTexture(AW, AH, 1, 0, D3DFMT_DXT5, D3DPOOL_SYSTEMMEM, &staging, nullptr)) &&
+                  SUCCEEDED(d->CreateTexture(AW, AH, 1, 0, D3DFMT_DXT5, D3DPOOL_DEFAULT, &alpha_part, nullptr));
+        D3DLOCKED_RECT lr{};
+        if (ok && SUCCEEDED(staging->LockRect(0, &lr, nullptr, 0))) {
+            for (UINT by = 0; by < AH / 4; ++by)
+                std::memcpy(static_cast<char*>(lr.pBits) + by * lr.Pitch, &blocks[std::size_t(by) * (AW / 4) * 16], AW / 4 * 16);
+            staging->UnlockRect(0);
+            ok = SUCCEEDED(d->UpdateTexture(staging, alpha_part));
+        } else
+            ok = false;
+        if (staging) staging->Release();
+        const UINT PW = UINT(AW * mag), PH = UINT(AH * mag);
+        Target t;
+        ok = ok && t.create(d, PW, PH);
+        std::vector<float> ref, deb;
+        IDirect3DTexture9* saved_part = s.part;
+        s.part = alpha_part;
+        s.part_width = AW;
+        s.part_height = AH;
+        float c[24];
+        identity_rows(c); // the quad's UV (0..1) spans the whole 256x256 part
+        for (unsigned k = 0; ok && k < 2; ++k) {
+            d->SetRenderTarget(0, t.surface);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            d->BeginScene();
+            s.draw(full_quad, c, 1.f, k == 1, core::threshold_default, core::radius_default);
+            d->EndScene();
+            t.read(d, nullptr, k ? &deb : &ref);
+        }
+        s.part = saved_part;
+        s.part_width = TW;
+        s.part_height = TH;
+        double transparent = 0, opaque = 0, opaque_level = 0;
+        for (UINT y = UINT(8 * mag); ok && y < PH - UINT(8 * mag); ++y)
+            for (UINT x = 0; x < PW; ++x) {
+                const double u = double(x) / mag - .5;
+                for (unsigned ch = 0; ch < 3; ++ch) {
+                    const std::size_t i = (std::size_t(y) * PW + x) * 3 + ch;
+                    const double delta = std::fabs(double(deb[i]) - double(ref[i])) * 255.;
+                    if (u > 8. && u < 127.) transparent = std::max(transparent, delta); // clear of the wrap seam at 0
+                    else if (u > 129. && u < AW - 8.) {
+                        opaque = std::max(opaque, delta);
+                        opaque_level = std::max(opaque_level, double(deb[i]) * 255.);
+                    }
+                }
+            }
+        std::snprintf(detail, sizeof detail,
+                      "dxt5 change_transparent_side=%.4f change_opaque_beyond_1_texel=%.4f opaque_max=%.3f (1/255)",
+                      transparent, opaque, opaque_level);
+        std::printf("ALPHA %s\n", detail);
+        check(ok && transparent <= 1. && opaque <= 1., "alpha_edge_no_colour_bleed", detail);
+        t.release();
+        if (alpha_part) alpha_part->Release();
+    }
 
     // ---- Invariant 4: state restore after a clean bracket, a failed draw, an injected begin fault, an injected restore
     // fault: VS, PS, VS c255, PS c200-c201 compared with the sentinel values set before.
@@ -815,7 +897,7 @@ int main() {
             if (speed < 1)
                 check(worst[1] <= std::max(.1, worst[0] * 1.05), "taa_sd_slow_pan", detail);
             else
-                warn(worst[1], std::max(.1, worst[0] * 1.05), "taa_sd_fast_pan", detail);
+                warn(worst[1], std::max(.1, worst[0] * 1.05), std::max(.1, worst[0] * 1.25), "taa_sd_fast_pan", detail);
         }
         t.release();
     }

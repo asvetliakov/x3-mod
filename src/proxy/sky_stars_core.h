@@ -54,7 +54,8 @@ constexpr float size_default = 1.f, size_min = 0.f, size_max = 3.f;             
 constexpr float min_size_default = 1.5f, min_size_min = 1.f, min_size_max = 3.f;      // sky_stars_min_size (px)
 constexpr float twinkle_default = .3f, twinkle_min = 0.f, twinkle_max = 1.f;          // sky_stars_twinkle (amplitude)
 constexpr float clustering_default = 1.2f, clustering_min = 0.f, clustering_max = 2.f; // sky_stars_clustering
-constexpr float nebula_dim_default = .5f, nebula_dim_min = 0.f, nebula_dim_max = 1.f; // sky_stars_nebula_dim (k)
+constexpr float nebula_dim_default = 0.f, nebula_dim_min = 0.f, nebula_dim_max = 1.f; // sky_stars_nebula_dim (k); 0
+                                                                                   // until flown (then 0.5)
 constexpr float nebula_dim_level_default = .5f, nebula_dim_level_min = .1f, nebula_dim_level_max = 2.f; // _level (L0)
 constexpr unsigned dim_scale = 8; // the dim copy is 1/8 of the target per axis (rounded up)
 constexpr unsigned vertex_stride = 32, vertices_per_star = 4, indices_per_star = 6;

@@ -109,7 +109,10 @@ constexpr Touched touched[] = {
     {D3DRS_FILLMODE, D3DFILL_SOLID},        {D3DRS_CLIPPLANEENABLE, 0},            {D3DRS_WRAP0, 0},
     {D3DRS_WRAP1, 0}};
 constexpr unsigned touched_count = unsigned(std::size(touched));
-static_assert(touched_count + 1 <= 32, "one bit per touched state (the deferred batch adds ZFUNC)");
+// The deferred batch appends ZFUNC LESSEQUAL and both depth biases at 0 (the far-plane Z test must not be shifted by
+// the application's bias).
+constexpr unsigned deferred_extra_states = 3;
+static_assert(touched_count + deferred_extra_states <= 32, "one bit per touched state");
 // Decision C2: the deferred batch's stage-0 sampler states (the dim copy: clamp, no mip, no sRGB decode; the filter is
 // the dim_linear capability's), saved and put back with the texture.
 constexpr D3DSAMPLERSTATETYPE dim_samplers[] = {D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_MAGFILTER, D3DSAMP_MINFILTER,
@@ -128,6 +131,7 @@ void SkyStarsPass::release_dim() noexcept {
 void SkyStarsPass::before_reset() noexcept {
     PreserveCpuState guard;
     lost_ = false;
+    dim_unavailable_ = false;
     release_dim(); // D3DPOOL_DEFAULT: released before Reset, created again at the next deferred batch
 }
 void SkyStarsPass::release_objects() noexcept {
@@ -250,7 +254,7 @@ HRESULT SkyStarsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3D
     return S_OK;
 }
 HRESULT SkyStarsPass::prepare_dim(unsigned width, unsigned height) noexcept {
-    if (!ready() || !caps_.dim) return E_FAIL;
+    if (!ready() || !caps_.dim || dim_unavailable_) return E_FAIL;
     const unsigned w = sky_stars::core::dim_size(width), h = sky_stars::core::dim_size(height);
     if (!w || !h) return E_INVALIDARG;
     if (dim_texture_ && dim_surface_ && dim_width_ == w && dim_height_ == h) return S_OK;
@@ -263,7 +267,10 @@ HRESULT SkyStarsPass::prepare_dim(unsigned width, unsigned height) noexcept {
     if (SUCCEEDED(hr) && !dim_surface_) hr = E_FAIL;
     if (FAILED(hr)) {
         release_dim();
-        if (lost(hr)) lost_ = true;
+        if (lost(hr))
+            lost_ = true;
+        else
+            dim_unavailable_ = true; // no retry per phase end: the in-place batch until the next Reset
         return hr;
     }
     dim_width_ = w;
@@ -378,13 +385,17 @@ HRESULT SkyStarsPass::draw_batch(const float constants[16], const float twinkle[
     D d = device_;
     const UINT first = deferred ? constants_first - 1u : constants_first;
     const UINT count = deferred ? constants_count + 1u : constants_count;
-    Touched states[touched_count + 1];
+    Touched states[touched_count + deferred_extra_states];
     unsigned state_count = touched_count;
     for (unsigned i = 0; i < touched_count; ++i) {
         states[i] = touched[i];
         if (deferred && states[i].state == D3DRS_ZENABLE) states[i].value = D3DZB_TRUE;
     }
-    if (deferred) states[state_count++] = {D3DRS_ZFUNC, D3DCMP_LESSEQUAL};
+    if (deferred) {
+        states[state_count++] = {D3DRS_ZFUNC, D3DCMP_LESSEQUAL};
+        states[state_count++] = {D3DRS_DEPTHBIAS, 0};           // float 0.0
+        states[state_count++] = {D3DRS_SLOPESCALEDEPTHBIAS, 0}; // float 0.0
+    }
     const DWORD dim_filter = caps_.dim_linear ? DWORD(D3DTEXF_LINEAR) : DWORD(D3DTEXF_POINT);
     const DWORD sampler_values[dim_sampler_count] = {D3DTADDRESS_CLAMP, D3DTADDRESS_CLAMP, dim_filter, dim_filter,
                                                      D3DTEXF_NONE, FALSE};
@@ -395,7 +406,7 @@ HRESULT SkyStarsPass::draw_batch(const float constants[16], const float twinkle[
     IDirect3DVertexBuffer9* saved_stream = nullptr;
     IDirect3DIndexBuffer9* saved_indices = nullptr;
     UINT saved_offset = 0, saved_stride = 0, saved_frequency = 1;
-    DWORD saved_fvf = 0, saved_states[touched_count + 1]{}, saved_samplers[dim_sampler_count]{};
+    DWORD saved_fvf = 0, saved_states[touched_count + deferred_extra_states]{}, saved_samplers[dim_sampler_count]{};
     IDirect3DBaseTexture9* saved_texture = nullptr;
     float saved_constants[(constants_count + 1) * 4]{}, batch_constants[(constants_count + 1) * 4];
     {
