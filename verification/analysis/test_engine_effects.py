@@ -57,8 +57,9 @@ SOURCES_SHA256_2026_11_03 = {
     'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
     # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
     # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report
-    # (2026-11-03); AP objects identical.
-    'src/proxy/capture.cpp': '1d774e787778a85b74cf40fcbcfe2f08224a85c05148e9004c601db3836c8bf1',
+    # (2026-11-03); AP objects identical. Bumped for collision_damage (one shared initialize line and one present call
+    # per edition branch; no engine-effects path changed, 2026-11-05).
+    'src/proxy/capture.cpp': '2760007e87202bbbaf9ec8545ef5896371f291476cf5dff8c7b92a641ac07525',
     'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
     'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
     'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',

@@ -410,3 +410,58 @@ python3 -I verification/results/collision-damage/verify_collision_damage.py     
 i686-w64-mingw32-objdump -d -M intel --start-address=0x45e130 --stop-address=0x45eea5 /mnt/c/X3/X3AP.exe     # local only
 i686-w64-mingw32-objdump -d -M intel --start-address=0x467f10 --stop-address=0x468dad /mnt/c/X3FL/X3FL.exe   # local only
 ```
+
+## Implementation (2026-11-05)
+
+Setting `collision_damage` under `[engine]` (`X3M_COLLISION_DAMAGE`, bool, builtin `1`, no launcher flag): `1` or unset
+patches nothing; `0` applies both sites of §4 on either edition; any other value logs `reason=invalid_value` and patches
+nothing.
+
+| File | Role |
+| --- | --- |
+| `src/proxy/collision_damage_core.h` | both editions' sites, the 13 windows of the verifier (AP 7, FL 6), the EXE and response-routine hashes as provenance constants, the window comparator, the contact patch bytes, the two-site install and restore over an Ops policy (`src/engine/fl/inline_patch_fl.h` per span), the row cadence |
+| `src/proxy/collision_damage_stubs.h` | the AP and the FL contact stub (both assembled into both DLLs), their record and the bound return/leaf words |
+| `src/proxy/collision_damage.cpp` | one module for both editions: AP binds `core::ap` at `0x400000` behind `object_trace::executable_verified()`, FL `core::fl` at `fl::module_base()` |
+| `verification/probe/collision_damage_fixture.cpp` | host and native fixture; `verification/analysis/test_collision_damage.py` runs it and compares the tables with `verify_collision_damage.py` |
+
+**Install** (backend-load path, `capture.cpp` initialize, shared by both editions): identity, the engine_patch install
+window (else `late_claim`), every window of the edition compared whole at base + RVA (else `window_mismatch` with the
+window's name and its first 8 expected/got bytes), the DLL pinned, the stub's return bound (AP `0x0045eafb` and the leaf
+`0x0043ff80`; FL base + `0x68a60`), then the contact span (`jmp rel32` + NOPs) and the planet byte (`85→31`), each
+protect / write / flush / read-back / re-protect. A planet failure takes the contact span back; a rollback that cannot be
+confirmed by a read-back keeps the site registered (`*_rollback_failed`) for `shutdown()`. Write paths: AP contact
+plain (the 7 bytes cross the qword at `0x0045eaf8`), FL contact one `lock cmpxchg8b` (`0x68a58` is 8-aligned), both
+planet bytes atomic. `shutdown()` (AP `FreeLibrary` only, unreachable while pinned) restores planet then contact, each
+only over this feature's bytes.
+
+**Stubs.** As §4.1, with three refinements: (1) the record for the flight row runs first, between `pushfd`/`push eax,
+ecx, edx` and their pops, so every register and EFLAGS leave it unchanged; (2) the damage values are zeroed with `mov`
+(AP `mov [esp+0x10],0; mov edi,0`; FL `mov ecx,0; mov edx,0; mov [esp+0x10],0`), not `xor`, so the incoming flags reach
+the displaced instructions unchanged; (3) AP's displaced `call 0x0043ff80` is replayed as `call [bound leaf]` and the
+return as `jmp [bound return]`; only the dead return-address word below ESP differs from vanilla. No call into C, no
+CRT, no x87, no SSE; both stubs are `check_no_x87.py` roots.
+
+**Attach row** (one per process): `collision_damage edition=<ap|fl> status=<applied|skipped> reason=<ok|vanilla|
+invalid_value|executable_mismatch|late_claim|window_mismatch|pin_failed|...> setting=<0|1|-|?> base= contact_site=
+contact_len= contact_write=<plain|atomic|none> planet_site= planet_byte=85->31 planet_write= stub= resume= windows=
+window= expected= got=`.
+
+**Flight row** (§5, contacts only): `collision_damage_suppressed edition= frame= events=<since last row> total=
+last_a= last_b= max_a= max_b= last=<classA>/<classB> c= v= player=`, at most one per second (wall clock) and only after
+new contacts; `max_*` reset per row. `c` and `v` are the law's stack slots and are stale on a planet contact (the
+planet rule does not write them). `player` is `([A+0x40] | [B+0x40]) & 2`; on FL that offset and bit are **[i]** (the
+FL contact block reads its manual-control flags at `+0x40`). The planet-atmosphere site has no row: the one-byte patch
+runs no code of ours, and §5's 6-byte counting detour was not built.
+
+**Verified 2026-11-05** (no game, no Wine): both DLLs build with 0 warnings; `check_no_x87.py` PASS for both
+(the two stubs among the roots); the fixture natively (WSL interop, i686 MinGW with the DLL's flags) runs 225 checks,
+0 failures, on images built from the verifier's bytes: per edition the comparator accepts its windows (AP 7, FL 6) and refuses a
+one-bit change of each of their 133 (AP) / 141 (FL) bytes naming that window; a fault at each of the 8 Ops calls rolls
+back to the original bytes, and a persistent fault keeps the site registered (7 of 8 cases) until a clean restore puts
+the original bytes back; on real `VirtualProtect` pages the engine path executed from the site with five fabricated
+register/EFLAGS/stack/object images reads both damage values 0 after the stub (FL also the `[esp+0x20]` store), every
+other register, EFLAGS (DF included, and through a flag-preserving leaf) and stack slot equal to the vanilla run, the
+leaf sees EAX = EBX, the record holds the values, classes, `c`, `v` and the piloted bit; the planet gate with damage
+> 0 takes vanilla's zero-damage branch with the state vanilla leaves at damage 0 (AF excluded, undefined after
+`test`/`xor`); after restore the bytes, protection and behaviour are vanilla again. A stub mutated to zero with `xor`
+fails 4 checks (AP, flag-preserving leaf). The native run is the user's flight (§5).

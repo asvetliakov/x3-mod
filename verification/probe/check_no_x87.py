@@ -80,7 +80,11 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 # the session log (src/proxy/session_log.cpp, docs/architecture/logging-tiers.md): the open/rotation path, the
                 # vectored exception witness (any thread, first fatal-class exception) and the process-exit session_end row are
                 # integer-only and format without the CRT; log()'s append runs under the existing roots behind call_preserved
-                '_x3m_session_log_open', '_x3m_exception_witness@4', '_x3m_session_end']
+                '_x3m_session_log_open', '_x3m_exception_witness@4', '_x3m_session_end',
+                # collision damage (src/proxy/collision_damage_stubs.h, X3M_COLLISION_DAMAGE=0): both editions' contact-join
+                # stubs in both DLLs, inside the engine's collision response with no boundary; integer only, the replayed
+                # leaf call (AP) is indirect and not walked
+                '_x3m_collision_damage_ap_stub', '_x3m_collision_damage_fl_stub']
 # AP-only roots (X3M_EDITION=ap). The point-light root-admission handler (src/proxy/point_light_admission.cpp)
 # runs on the engine's submission thread with no boundary: walked too. The
 # pass-phase stamp handler (src/proxy/pass_phases.cpp, X3M_PASS_PHASES=1) runs

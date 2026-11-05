@@ -5,6 +5,7 @@
 #include "voice_dmo_fallback.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
+#include "collision_damage.h"
 #include "pause_key_only.h"
 #include "window_trace.h"
 #include "terran_station_lod.h"
@@ -557,6 +558,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
             x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
         if (reserved == nullptr)
             x3m::pause_key_only::shutdown(); // same rule: the 12 pause-loop bytes back only on FreeLibrary
+        if (reserved == nullptr)
+            x3m::collision_damage::shutdown(); // same rule: the contact join and the planet byte back only on FreeLibrary
         if (reserved == nullptr)
             x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary
         if (reserved == nullptr)

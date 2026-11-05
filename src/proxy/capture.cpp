@@ -9,6 +9,7 @@
 #include "voice_dmo_fallback.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
+#include "collision_damage.h"
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
@@ -2066,6 +2067,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                          // counter the music lines carry
     seta_restore::present(ctx.frame); // X3M_SETA_RESTORE=1 only: stores the frame counter the restore counts in
     seta_manual_flight::present(ctx.frame); // part B under debug = 1 only: the frame counter of its scale row
+    collision_damage::present(ctx.frame); // X3M_COLLISION_DAMAGE=0 applied only: one collision_damage_suppressed row per
+                                          // second at most, after contacts
     cull_small_parts::present(ctx.id, ctx.frame, ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold
                                                                // and culled count on a captured frame
 #else
@@ -2074,6 +2077,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                          // counter, the KC patch, the queue's Present work
     seta_restore::present(ctx.frame);       // FL: X3M_SETA_RESTORE=1 only, the frame counter the restore counts in
     seta_manual_flight::present(ctx.frame); // FL: part B under debug = 1 only, the frame counter of its scale row
+    collision_damage::present(ctx.frame);   // FL: X3M_COLLISION_DAMAGE=0 applied only, the same row with edition=fl
     collide_box_cull::present(ctx.id, ctx.frame, ctx.capture); // FL provider (collide_box_cull_fl.cpp): the four pair
                                                                // counters, the collide_census rows with edition=fl
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // FL provider (collide_memo_fl.cpp): the memo's frame, one
@@ -5991,6 +5995,11 @@ void initialize_log(HMODULE module) {
                                      // that sets bit 0x4000 of [*0x00606f3c] once; same window, disjoint from every
                                      // other claim
 #endif
+    // Collision damage, both editions (docs/reverse-engineering/collision-damage.md, "Implementation";
+    // src/proxy/collision_damage.cpp): X3M_COLLISION_DAMAGE=0 only (1 or unset = vanilla). The contact join (AP 0x0045eaf4
+    // 7 B, FL base+0x68a58 8 B) jumps to the zeroing stub and the planet gate (AP 0x0045dbaf, FL base+0x678bb) turns
+    // test into xor; same window, disjoint from every other claim; one collision_damage row with the edition.
+    collision_damage::initialize();
 #if X3M_EDITION_FL
     // FL field of view (docs/reverse-engineering/fl/field-of-view.md, "Verified 2026-11-02"; src/engine/fl/fov_fl.cpp):
     // X3M_FOV=game|N as on AP. The constructor imm32 at base+0x01e08d (plain write), INS_SetFocus's MOV EAX at
