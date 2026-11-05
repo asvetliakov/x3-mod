@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Star-texture marks for the sky (docs/architecture/sector-background-modern.md, Decision A and answer 1).
 
-numpy only. The painted star textures dds/nebula_<family>_stars_<colour>_diff.pck (the engine's winning member) are
-copied byte for byte, texels and mips identical, with the X3ML header mark in dwReserved1[0..2] (file bytes 32-43,
-src/proxy/lod_texture_mark.h): version 1, descriptor slot = fnv1a32(family) & 0xff, lane = hue class of the colour
-token, K = bright-peak count // 8 (3x3 local maxima with luma > 96), payload 2 (sky stars). The runtime star pass
+numpy only. A star texture is a .dds/.pck under dds/ whose file stem contains both `nebula` and `stars` (any case,
+any position: the stock dds/nebula_<family>_stars_<colour>_diff, the Mayhem/Litcube nebula_litcube<N>_stars_diff.dds)
+and whose level-0 texels are a star body (at least 90 % below luma 16: black with sparse peaks); a name that matches but
+fails that check is skipped not_star_body and left alone. Name rule (classify): the stem nebula_<family>_stars_<colour>
+_diff and nebula_<family>_stars_diff keep the family and colour token exactly as before (any colour word, e.g. redfog,
+is the token; lane 7 when it is not a STAR_LANES name); any other matching stem has family = its _-tokens without
+nebula, stars, diff and the last STAR_LANES token (the colour), joined by one underscore (the whole stem when nothing
+is left). The engine's winning copy is copied byte for byte, texels and mips identical, with the X3ML header mark in
+dwReserved1[0..2] (file bytes 32-43, src/proxy/lod_texture_mark.h): version 1, descriptor slot = fnv1a32(family) &
+0xff, lane = STAR_LANES index of the colour token, else 7 (no token included; a white tint at run time), K =
+bright-peak count // 8 (3x3 local maxima with luma > 96), payload 2 (sky stars). The runtime star pass
 finds the star-body draw and seeds its procedural star field from that mark alone.
 
 The nebula background part re-authoring (Decision B) was removed on 2026-11-04 after the flight-level check found the
@@ -17,11 +24,12 @@ Used by lod_overlay.py --batch (the `sky` row group of the overlay, reuse keyed 
 
 lists every star texture with its descriptor; it writes nothing.
 
-Loose star textures (an AP mod ships addon/dds/nebula_*_stars_*_diff.dds) beat every catalogue, so no overlay member
+Loose star textures (an AP mod ships addon/dds/nebula_*_stars*_diff.dds) beat every catalogue, so no overlay member
 can carry their mark: x3m-regenerate's sky step (mark_loose) writes the same mark into the loose file's own header in
 place (bytes 32-43; texels untouched) and records the original header in <game>/x3m/sky-loose.json; when the overlay's
 sky group is off, or a file is no longer a star-texture winner, the recorded header goes back byte for byte
-(restore_loose; standalone: --restore-loose). A loose .pck is reported skipped (loose_pck), never rewritten.
+(restore_loose; standalone: --restore-loose). A loose .pck is reported skipped (loose_pck), never rewritten; a loose
+file that fails the star-body check is skipped not_star_body (its ledger row, if any, restored).
 """
 from __future__ import annotations
 
@@ -50,7 +58,9 @@ PAYLOAD_SKY_STARS = 2               # lod_texture_mark.h descriptor bits 24-31
 STAR_LANES = ('white', 'blue', 'red', 'orange', 'yellow', 'green', 'cyan')   # lane = index; anything else 7
 LANE_OTHER = 7
 BRIGHT_PEAK_LUMA = 96
-_STARS = re.compile(r'dds/nebula_(?P<family>[a-z0-9_]+?)_stars_(?P<colour>[a-z0-9]+)_diff\.(?P<ext>pck|dds)')
+STAR_BODY_DARK_LUMA = 16             # a star body: at least STAR_BODY_DARK_SHARE of level 0 below this luma
+STAR_BODY_DARK_SHARE = 0.9
+_STARS = re.compile(r'dds/nebula_(?P<family>[a-z0-9_]+?)_stars(?:_(?P<colour>[a-z0-9]+))?_diff\.(?P<ext>pck|dds)')
 
 progress = None   # optional callable(row, done, total): lod_overlay / x3m-regenerate per-texture console line
 
@@ -76,10 +86,20 @@ def tool_sha256():
 
 
 def classify(path):
-    """(family, colour) of a star-texture member path (any case, any separator, an addon/ or addon2/ prefix ignored),
-    else None."""
-    m = _STARS.fullmatch(re.sub(r'^addon2?/', '', path.replace('\\', '/').lower()))
-    return (m['family'], m['colour']) if m else None
+    """(family, colour) of a star-texture name (any case, any separator, an addon/ or addon2/ prefix ignored; colour
+    None when the name has no colour token), else None. The content check is star_body's."""
+    p = re.sub(r'^addon2?/', '', path.replace('\\', '/').lower())
+    m = _STARS.fullmatch(p)
+    if m:                                  # the stock shape: family and colour token as the sky-stars-1 recipe has them
+        return m['family'], m['colour']
+    name = p.rsplit('/', 1)[-1]
+    stem, dot, ext = name.rpartition('.')
+    if not p.startswith('dds/') or not dot or ext not in ('dds', 'pck') or 'nebula' not in stem or 'stars' not in stem:
+        return None
+    tokens = [t for t in stem.split('_') if t and t not in ('nebula', 'stars', 'diff')]
+    lanes = [i for i, t in enumerate(tokens) if t in STAR_LANES]
+    colour = tokens.pop(lanes[-1]) if lanes else None
+    return '_'.join(tokens) or stem, colour
 
 
 def options_of(overrides=None):
@@ -127,9 +147,22 @@ def star_descriptor(family, colour, rgba):
     return fnv1a32(family.encode('ascii', 'replace')) & 255, lane, min(peaks // 8, 255), peaks
 
 
+class NotStarBody(ValueError):
+    """The texels are not a painted star body (star_body)."""
+
+
+def star_body(rgba):
+    """True when at least STAR_BODY_DARK_SHARE of the level-0 texels are below luma STAR_BODY_DARK_LUMA."""
+    lum = 0.299 * rgba[..., 0] + 0.587 * rgba[..., 1] + 0.114 * rgba[..., 2]
+    return float((lum < STAR_BODY_DARK_LUMA).mean()) >= STAR_BODY_DARK_SHARE
+
+
 def bake_stars(source, family, colour):
-    """(dds, info): the source with the payload-2 mark; texels and mips byte-identical."""
+    """(dds, info): the source with the payload-2 mark; texels and mips byte-identical. NotStarBody when the texels
+    fail star_body."""
     rgba = lod_atlas.decode_dds(source).astype(np.float32)
+    if not star_body(rgba):
+        raise NotStarBody('not_star_body')
     slot, lane, k, peaks = star_descriptor(family, colour, rgba)
     return with_mark(source, mark_bytes(slot, lane, k, PAYLOAD_SKY_STARS)), dict(
         slot=slot, lane=lane, k=k, peaks=peaks, payload=PAYLOAD_SKY_STARS)
@@ -147,7 +180,7 @@ def _winners(assets, families=None):
     seen = set()
     for key in sorted(assets.entries):
         base = re.sub(r'^addon2?/', '', key)
-        if base in seen or not base.startswith('dds/nebula_'):
+        if base in seen or not base.startswith('dds/') or 'nebula' not in base:
             continue
         seen.add(base)
         cands = assets.candidates(base)
@@ -163,8 +196,8 @@ def _winners(assets, families=None):
 def scan(assets, families=None):
     """(rows, skipped): every star texture the engine would load from assets (sector_fog_census.Assets view, the
     caller's choice of layers; the expansion namespace wins), rows = dicts(member, source, family, colour, width,
-    height, inputs_sha256, data), skipped = [(member, reason)]. A loose winner is skipped loose_file here (no
-    catalogue member can beat it); mark_loose marks it in place."""
+    height, inputs_sha256, data), skipped = [(member, reason)]: loose_file (a loose winner: no catalogue member can
+    beat it; mark_loose marks it in place), not_dds, not_star_body (the name matches, the texels fail star_body)."""
     rows, skipped = [], []
     for e, family, colour in _winners(assets, families):
         if 'loose' in e:
@@ -173,8 +206,12 @@ def scan(assets, families=None):
         data = assets.read_entry(e)
         try:
             w, h, _, _ = lod_atlas.dds_format(data)
-        except lod_atlas.AtlasError:
+            body = star_body(lod_atlas.decode_dds(data).astype(np.float32))
+        except (lod_atlas.AtlasError, ValueError, IndexError):
             skipped.append((e['path'], 'not_dds'))
+            continue
+        if not body:
+            skipped.append((e['path'], 'not_star_body'))
             continue
         rows.append(dict(member=e['path'].replace('\\', '/'), source=e['source'], family=family, colour=colour,
                          width=w, height=h, inputs_sha256=inputs_sha256(data), data=data))
@@ -329,10 +366,11 @@ def restore_loose(game, keep=()):
 def mark_loose(game, assets, families=None):
     """Marks every loose star-texture winner of assets (game: the root its paths are relative to) in place and
     restores the ledger rows of files that are no longer one. dict(rows=[ledger rows with status built|reused],
-    refused=[(path, reason)], restored=[(path, status)]). Reasons: loose_pck, loose_unreadable, loose_not_dds (no
+    refused=[(path, reason)], skipped=[(path, 'not_star_body')], restored=[(path, status)]). Reasons: loose_pck, loose_unreadable, loose_not_dds (no
     parsable DDS header or texels), loose_read_only, loose_write_failed; a refusal never raises. The ledger records
     every original before the first header is written."""
     found, refused = scan_loose(assets, families)
+    skipped = []
     rows, same_tool = read_ledger(game)
     old = {r['loose'].lower(): r for r in rows}
     done, held, pending = [], [], []   # held: old rows kept untouched (read-only file still marked)
@@ -358,6 +396,9 @@ def mark_loose(game, assets, families=None):
         try:
             w, h, _, _ = lod_atlas.dds_format(source)
             marked, info = bake_stars(source, r['family'], r['colour'])
+        except NotStarBody:
+            skipped.append((r['loose'], 'not_star_body'))
+            continue
         except (lod_atlas.AtlasError, ValueError, IndexError):
             refused.append((r['loose'], 'loose_not_dds'))
             continue
@@ -382,7 +423,7 @@ def mark_loose(game, assets, families=None):
             done.append(dict(row, status='built'))
         except OSError:              # the row stays: restore_loose finds the file original, marked or changed
             refused.append((row['loose'], 'loose_write_failed'))
-    return dict(rows=done, refused=refused, restored=restored)
+    return dict(rows=done, refused=refused, skipped=skipped, restored=restored)
 
 
 def loose_families(rows):

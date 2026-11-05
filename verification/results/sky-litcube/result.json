@@ -1,0 +1,64 @@
+{
+ "synthetic": {
+  "count": 20,
+  "bytes_each": 2796344,
+  "built": 20,
+  "reused": 20,
+  "cold_s": 3.218,
+  "warm_s": 0.027,
+  "cold_per_texture_ms": 160.9,
+  "warm_per_texture_ms": 1.3
+ },
+ "real": {
+  "matched": 228,
+  "marked": 228,
+  "not_star_body": [],
+  "no_colour": 214,
+  "dark_min": 0.9953,
+  "dark_median": 0.9972,
+  "families": 228,
+  "slots_used": 145,
+  "slots_shared": 61,
+  "ms_median": 272.0,
+  "k_min": 50,
+  "k_max": 168,
+  "coloured": [
+   [
+    "blue",
+    1
+   ],
+   [
+    "cyan",
+    6
+   ],
+   [
+    "orange",
+    3
+   ],
+   [
+    "orangefog",
+    7
+   ],
+   [
+    "red",
+    2
+   ],
+   [
+    "redfog",
+    7
+   ],
+   [
+    "white",
+    0
+   ],
+   [
+    "yellow",
+    4
+   ],
+   [
+    "yellowfog",
+    7
+   ]
+  ]
+ }
+}
