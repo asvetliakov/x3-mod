@@ -1,0 +1,10 @@
+{
+ "schema": 1,
+ "comment": "Curated weapon-effect overrides (docs/architecture/weapon-effects.md 3.2), merged by tools/effects/weapon_effects_table.py into <game>/x3m/weapon_effects.json. by_id applies to any TBullets table carrying the SS_BULLET_* id; by_table[<decoded TBullets sha256 prefix>] applies to that exact table only and wins. Fields: style (tracer|slug|orb|wave|beam), tint ([r, g, b] linear 0..1), calibre (0..1). Users edit nothing; an unknown mod gets the classifier.",
+ "by_id": {},
+ "by_table": {
+  "be762076cdc38b03": {"name": "stock AP (addon/02.cat TBullets)"},
+  "7b4ab0a6cea2cb07": {"name": "Mayhem 3 (addon/12.cat TBullets)"},
+  "f0cb79fd63c46318": {"name": "Farnham's Legacy (addon2 TBullets)"}
+ }
+}

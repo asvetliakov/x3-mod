@@ -1,0 +1,245 @@
+{
+  "bottle": null,
+  "production_sources": [
+    "src/renderer/weapon_effects_pass.h",
+    "src/renderer/weapon_effects_pass.cpp",
+    "src/proxy/weapon_effects_core.h",
+    "src/effects/weapon_shell_vs.hlsl",
+    "src/effects/weapon_shell_ps.hlsl",
+    "src/effects/weapon_decal_vs.hlsl",
+    "src/effects/weapon_decal_ps.hlsl",
+    "src/effects/weapon_soft_depth.hlsl",
+    "src/renderer/weapon_shell_vertex_program_inc.h",
+    "src/renderer/weapon_shell_pixel_program_inc.h",
+    "src/renderer/weapon_decal_vertex_program_inc.h",
+    "src/renderer/weapon_decal_pixel_program_inc.h"
+  ],
+  "source": {
+    "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/effects/weapon_decal_ps.hlsl",
+      "src/effects/weapon_decal_vs.hlsl",
+      "src/effects/weapon_shell_ps.hlsl",
+      "src/effects/weapon_shell_vs.hlsl",
+      "src/effects/weapon_soft_depth.hlsl",
+      "src/proxy/weapon_effects_core.h",
+      "src/renderer/weapon_decal_pixel_program_inc.h",
+      "src/renderer/weapon_decal_vertex_program_inc.h",
+      "src/renderer/weapon_effects_pass.cpp",
+      "src/renderer/weapon_effects_pass.h",
+      "src/renderer/weapon_shell_pixel_program_inc.h",
+      "src/renderer/weapon_shell_vertex_program_inc.h"
+    ],
+    "sha256": {
+      "src/renderer/weapon_effects_pass.h": "04c8ff0b3ba51f943963646f5d19a027bd6dd70284bc1a3496b275635e25f11e",
+      "src/renderer/weapon_effects_pass.cpp": "5017adecf4caa0e378332f4da1d6c675ba9aeeb6c87076c4c924f1fbe162e5f4",
+      "src/proxy/weapon_effects_core.h": "734e68713a8a0e1f6aa63519e5377123d9b9a8e63a810aec015a2de29f09c0b4",
+      "src/effects/weapon_shell_vs.hlsl": "83c03eb047f6d0e6db571190da6c4fb07970dba0108eced6a0bca8dd08171192",
+      "src/effects/weapon_shell_ps.hlsl": "acc7335cf94d1e579e2504cd0e2fad404f75bdd3a14d0e8dcf99de5e95b0cde1",
+      "src/effects/weapon_decal_vs.hlsl": "f2536d7b49e5e77c6278f31df6cfb74f7e5f650277d0e2fcf8b8001bac0808ee",
+      "src/effects/weapon_decal_ps.hlsl": "3a0692a21962c20b05c7a319f7922dd2a66b23939240857aebe2eee4113478bc",
+      "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
+      "src/renderer/weapon_shell_vertex_program_inc.h": "fcd8551dd446000113ebdc1f5792193a0aa284ed794c687d8abe00cd5ab98e3b",
+      "src/renderer/weapon_shell_pixel_program_inc.h": "956b8b18e8106161b817658cf20e72e339478736a395876502de7d8e812579ba",
+      "src/renderer/weapon_decal_vertex_program_inc.h": "2c165469bb09b5074b40d92e44b29399d46eaa35c6d1d6a61b8e1a548a66e82b",
+      "src/renderer/weapon_decal_pixel_program_inc.h": "1786df9b3b453d6c4de7b5a8e50e8adb028c496099964c567bc922f99530ca4c"
+    }
+  },
+  "programs": {
+    "weapon_shell_vs": {
+      "source": "src/effects/weapon_shell_vs.hlsl",
+      "word_count": 230,
+      "bytecode_sha256": "454adce5460c6a8652f4a8b324fb13245266b26e13aa491792a2c3b23da252bc",
+      "target": "vs_3_0"
+    },
+    "weapon_shell_ps": {
+      "source": "src/effects/weapon_shell_ps.hlsl",
+      "word_count": 1003,
+      "bytecode_sha256": "fe097ca4bba9d88d860eec22f11bdb035afe114b8e3a7e3c79024423955757cf",
+      "target": "ps_3_0"
+    },
+    "weapon_decal_vs": {
+      "source": "src/effects/weapon_decal_vs.hlsl",
+      "word_count": 159,
+      "bytecode_sha256": "ac321f549164a1528630a5afd95deb658243f135ee05c9dbb164908d1521ebd9",
+      "target": "vs_3_0"
+    },
+    "weapon_decal_ps": {
+      "source": "src/effects/weapon_decal_ps.hlsl",
+      "word_count": 438,
+      "bytecode_sha256": "dcefc9d95279da1d8239c91f04b960bc48f27698dad1065c8e36e099ac59de69",
+      "target": "ps_3_0"
+    }
+  },
+  "wine_pins": {
+    "rim_70": 0.5,
+    "rim_45": 0.24,
+    "hull_cut": 0.0,
+    "two_shells_1080_ms": 0.124,
+    "two_shells_5120_ms": 0.162
+  },
+  "game_launched": false,
+  "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "vendor": "0x10de",
+      "device": "0x2c05",
+      "driver_version": "32.0.16.2114",
+      "description": "NVIDIA GeForce RTX 5070 Ti",
+      "driver": "nvldumd.dll"
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": {
+      "path": "C:\\WINDOWS\\SYSTEM32\\d3d9.dll",
+      "size": 1799736,
+      "sha256": "b5fe0ccd3249270437dc6310b7119d5b807b7d41c0b7a85795cfc46824ffaa2c",
+      "file_version": "10.0.26100.9818"
+    },
+    "d3dx9_37_dll": {
+      "path": "C:\\X3\\d3dx9_37.dll",
+      "size": 3786760,
+      "sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+      "file_version": "9.22.949.2248"
+    }
+  },
+  "run": {
+    "exit_code": 0,
+    "result": {
+      "checks": 13,
+      "failures": 0,
+      "verdict": "PASS"
+    },
+    "log": "verification/probe/build/weapon-effects/fixture.log"
+  },
+  "checks": [
+    [
+      "d3dx_lane_shader",
+      true
+    ],
+    [
+      "attach",
+      true
+    ],
+    [
+      "target_1080",
+      true
+    ],
+    [
+      "shell_core_positive",
+      true
+    ],
+    [
+      "rim_rises_with_angle",
+      true
+    ],
+    [
+      "rings_present_on_absent_off",
+      true
+    ],
+    [
+      "hull_cut_zero_behind_occluder",
+      true
+    ],
+    [
+      "decal_zero_over_sky",
+      true
+    ],
+    [
+      "age_law_young_brighter_than_expired",
+      true
+    ],
+    [
+      "retired_owner_draws_nothing",
+      true
+    ],
+    [
+      "fault_reported",
+      true
+    ],
+    [
+      "recovers_after_fault",
+      true
+    ],
+    [
+      "reset_recovers",
+      true
+    ]
+  ],
+  "failed_checks": [],
+  "metrics": {
+    "attach": [
+      {
+        "result": 0,
+        "shell_vs": 35,
+        "shell_ps": 217,
+        "decal_vs": 21,
+        "decal_ps": 86,
+        "fp16": 0,
+        "max_ps": 4096
+      }
+    ],
+    "shell": [
+      {
+        "sky_max_luma": 35.9766
+      }
+    ],
+    "rim": [
+      {
+        "at70": 0.68572,
+        "at45": 0.10082
+      }
+    ],
+    "rings": [
+      {
+        "on": 16.0547,
+        "off": 13.3945
+      }
+    ],
+    "hull": [
+      {
+        "cut_max": 0.0
+      }
+    ],
+    "decal": [
+      {
+        "over_sky": 0.0,
+        "on_hull": 19.9453
+      }
+    ],
+    "age": [
+      {
+        "young": 35.9766,
+        "expired": 0.0,
+        "ripple_s": 0.6,
+        "seta6_wall_ms": 100
+      }
+    ],
+    "retired": [
+      {
+        "result": 1,
+        "drew": 0,
+        "max": 0.0
+      }
+    ],
+    "timing": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "shells": 2,
+        "gpu_us": 80.9
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "shells": 2,
+        "gpu_us": 271.6
+      }
+    ]
+  }
+}

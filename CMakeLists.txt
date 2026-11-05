@@ -97,7 +97,8 @@ set(X3M_AP_SOURCES
   src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/occlusion_cull_pass.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
-  src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
+  src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/renderer/weapon_effects_pass.cpp
+  src/proxy/weapon_effects_patch.cpp src/proxy/weapon_effects_hook.cpp src/proxy/d3d9.def)
 # fl edition: the shared D3D/renderer sources and the mixed files.
 set(X3M_SHARED_SOURCES
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
@@ -118,7 +119,7 @@ set(X3M_SHARED_SOURCES
   src/renderer/rigid_position.cpp src/renderer/shader_population.cpp src/renderer/material_motion.cpp
   src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp
   src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
-  src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
+  src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/renderer/weapon_effects_pass.cpp src/proxy/d3d9.def)
 # AP engine modules both editions link: motion_output, its *_inc.h fragments and the capture.cpp draw/compositor
 # paths call into them. In the fl edition their initializers are fenced out (capture.cpp, loader.cpp) and
 # object_trace::executable_verified() is a constant false, so their hooks are never installed.
@@ -377,6 +378,13 @@ set_source_files_properties(src/engine/fl/resource_reader_fl.cpp PROPERTIES COMP
 # The FL texture import-slot stub (src/proxy/d3dx_texture_hook.cpp) forwards inside a CpuCallBoundary like AP's
 # loading-trace D3DX rows: default SSE2 flags, no exception bookends around the boundary.
 set_source_files_properties(src/proxy/d3dx_texture_hook.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
+# The weapon-effects impact handler (src/proxy/weapon_effects_hook.cpp) runs inside the engine's damage routine
+# behind a stub that saves only EFLAGS/EAX/ECX/EDX: integer only, no SSE/MMX, no floating point, no exception bookends,
+# no call (check_no_x87.py walks _x3m_weapon_event; the hook fixture checks the object has no undefined symbol). The
+# install and Present code (weapon_effects_patch.cpp) runs on the backend-load path and in the Present hook.
+set_source_files_properties(src/proxy/weapon_effects_hook.cpp
+  PROPERTIES COMPILE_OPTIONS "-fno-exceptions;-mno-sse;-mno-mmx;-mfpmath=387")
+set_source_files_properties(src/proxy/weapon_effects_patch.cpp PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The point-light root-admission handler is called from the engine's submission
 # routine between two of its own helper calls with no CPU-state boundary: no
 # SSE/MMX, no floating point, no exception bookends (check_no_x87.py walks it).

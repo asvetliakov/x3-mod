@@ -439,6 +439,12 @@ SETTINGS = [
           'plumes = the mod draws its own engine plumes instead (ships and missiles; needs the HDR and TAA defaults, otherwise '
           'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
+    entry('weapon_effects', 'enum', 'engine', 'Weapon hit effects drawn by the mod (step 1: shield hits). native = the '
+          'game\'s own effects, nothing changed; observe = the game\'s effects with every hit recorded in the log (the '
+          'first test flight); shields = the mod draws its own shield-hit shell with expanding rings instead of the '
+          'game\'s shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays). Default native. '
+          'Read when the game starts.', builtin='native', choices=('native', 'observe', 'shields'),
+          launcher='--weapon-effects', since='2026-11-05'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '
           'starts.', builtin='default', choices=('restrained', 'default', 'strong'),
@@ -695,6 +701,8 @@ SETTINGS = [
     dev('shadow_caster_retention_eps', 'float', 'shadows', 'Retention match tolerance.', launcher='--shadow-caster-retention-eps', range=(1e-4, 100)),
     # Fog, camera, audio, window, engine internals.
     dev('fog_families', 'path', 'fog', 'Fog family file override (0 or none = disabled; default <game>\\x3m\\fog-families.bin).'),
+    dev('weapon_effects_table', 'path', 'engine', 'Weapon effects table override (0 or none = disabled; default '
+        '<game>\\x3m\\weapon_effects.json).', since='2026-11-05'),
     dev('engine_bodies', 'path', 'engine', 'Engine body table override (0 or none = disabled; default <game>\\x3m\\engine_bodies.json).',
         since='2026-10-01'),
     dev('chase_combat_tightness', 'float', 'camera', 'Chase combat tightening (unverified in game).', '0.0',
