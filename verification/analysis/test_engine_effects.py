@@ -22,52 +22,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The record is Wine provenance (2026-10-09, commit cd479d025); since 2026-10-11 there is no Wine host and these
-# sources changed natively (cd479d025..2c3d32ffa). Accepted beside the recorded hash until run_engine_effects.py reruns on a
-# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-# engine_far_jets.* and motion_output_engine_plumes_inc.h: bumped at the FL far-jet un-fence merge (e9bff9301); capture.cpp:
-# bumped at the FL ui_scale merge (78bb9b6cd), again at the FL text_density merge (737a1a2ae) and for the FL
-# dust_leak_fix port (FL-fenced initialize, report() unfenced; AP disassembly identical) and the FL circle_fill_fix
-# port (one FL-fenced initialize line; AP objects identical) and the FL pause_key_only / run_in_background port (two
-# FL-fenced initialize lines; AP objects identical); plumes_inc.h again
-# for the engine_plume_emitters default flip (step 1 closed, run 35); all 2026-11-03,
-# native-only since the record.
-# engine_effects.cpp and engine_effects_option.h: bumped to the shared resolve_mode (the far-jet gate honours the
-# default plumes mode, both editions, 2026-11-03).
-# engine_nozzle_walk_core.h, motion_output.h, motion_output_engine_plumes_inc.h: bumped for plumes step 1, the hidden
-# fx_engine_emitter anchors (2026-11-03; parity in test_engine_nozzle_walk AnchorTests); bumped again for the FL node
-# walk (owned scale, hook-only append, 2026-11-03; test_fl_cull_chain node_walk, AP rows only gain fields).
-# Bumped for the FL run 34 diagnostics (probe rows, far-jet counter split; telemetry only, 2026-11-03).
-SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_effects.cpp': 'c1758e435321db074c875ab565ae031182c98148ae3a2f7255c71fdf8c9f95a8',
-    'src/proxy/engine_effects_option.h': 'eccb9f06f28c52a63f1e8ebf818f001d1775ca317cccf34608917fdb49835e28',
-    'src/proxy/engine_effects.h': '9bfc75be3b480a0a808c034577eeca5a2767155b89fdca2c645a9339c115e7ba',
-    'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
-    'src/proxy/motion_output_engine_effects_inc.h': '2b13d9eb003f451611bdbfdd3d439da091c2bcad65fe8ff5b0da10e3287843c6',
-    'src/proxy/motion_output_engine_plumes_inc.h': '9cf741d779a9a277235904a05754257b38b5a9af483b8186f33af8864af08466',
-    'src/proxy/motion_output_engine_ribbons_inc.h': '418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599',
-    'src/proxy/engine_ribbons_core.h': '79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7',
-    # motion_output.h, capture.cpp: bumped for the sky stars (sector-background-modern.md, Implementation A; default off,
-    # one bool test per draw; no engine-effects path changed, 2026-11-05); both again for the star look controls
-    # (density, brightness, size, min_size, twinkle settings; no engine-effects path changed, 2026-11-05); capture.cpp
-    # again for sky_stars_clustering (one setting read and its config-row fields; no engine-effects path, 2026-11-05);
-    # both again for the per-sector star seed (sector_key.h: the held key and phase-row members, the cockpit-sector
-    # sample's call; no engine-effects path changed, 2026-11-05); both again for the nebula part deband (Decision C1:
-    # the route's sky_nebula members and its four settings' read; no engine-effects path changed, 2026-11-05); both
-    # again for the phase-end star batch (Decision C2: the deferral members, the two dim settings' read; no
-    # engine-effects path changed, 2026-11-05).
-    'src/proxy/motion_output.h': '06c7e2d73236ad524fe83817245a16afb8917d76fb16b62c9f03bdb2bfead1bc',
-    'src/proxy/engine_nozzle_walk_core.h': 'aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf',
-    # capture.cpp: the FL base ship steering's initializer and frame boundary, then the FL collision trio's FL
-    # branches, then the FL loading quintet's init block and the FL resource reader / DAT pool initialize and report
-    # (2026-11-03); AP objects identical. Bumped for collision_damage (one shared initialize line and one present call
-    # per edition branch; no engine-effects path changed, 2026-11-05) and for Decision C (merge 2026-11-05).
-    'src/proxy/capture.cpp': '0f1d8d38535b9cc36094be762a433ff7e941cabeff812508ccd76dbae2ffe068',
-    'src/proxy/engine_far_jets.cpp': '93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68',
-    'src/proxy/engine_far_jets.h': 'c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8',
-    'src/proxy/motion_output_engine_shimmer_inc.h': 'a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4',
-    'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
-}
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 sys.path.insert(0, str(ROOT / 'tools/config'))
 import bob1  # noqa: E402
@@ -482,8 +436,9 @@ class EngineEffectsOption(unittest.TestCase):
 
 
 class EngineEffectsFixtureRecord(unittest.TestCase):
-    """The tracked Wine record of run_engine_effects.py, bound to the production sources it exercised."""
-    PATH = ROOT / 'verification/results/bottle-X3/engine-effects/summary.json'
+    """The tracked native Windows record of run_engine_effects.py (--host native, 2026-11-05), bound to the production
+    sources it exercised; the Wine record (bottle-X3/engine-effects/summary.json, cd479d025) stays as provenance."""
+    PATH = ROOT / 'verification/results/native-windows/engine-effects/summary.json'
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -492,8 +447,13 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
         r = self.record
         self.assertTrue(r['passed'])
         self.assertFalse(r['game_launched'])
-        self.assertEqual(r['bottle']['name'], 'X3')
+        self.assertIsNone(r['bottle'])
+        self.assertEqual(r['host']['name'], 'native-windows')
+        self.assertEqual(r['build']['warnings'], 0)
         self.assertEqual(r['problems'], [])
+        self.assertEqual({m: x['checks'] for m, x in r['runs'].items()},  # the Wine record's counts, mode for mode
+                         dict(main=174, native=11, unverified=6, unpatched=11, timing=20, plumes=35, armed=35, armed_refused=7))
+        self.assertTrue(all(x['exit'] == 0 and x['failed'] == [] for x in r['runs'].values()))
         self.assertEqual(r['runs']['main']['engine_frame_rows'], 13)  # frames 0..11 and the quiet row at 300
         # The plume stage's SETA read (gap 7): through the seam it engages at warp 6 and releases after the hold; without
         # it the site does not match and the read fails closed.
@@ -516,8 +476,9 @@ class EngineEffectsFixtureRecord(unittest.TestCase):
         self.assertRegex(source['commit'], r'^[0-9a-f]{40}(-dirty)?$')
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
         self.assertEqual(set(now), set(source['sha256']))
-        for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
-            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_engine_effects.py')
+        self.assertFalse(source['production_sources_dirty'])
+        for path, recorded in source['sha256'].items():
+            self.assertEqual(now[path], recorded, path + ': production sources changed since the record: rerun run_engine_effects.py')
 
 
 if __name__ == '__main__':

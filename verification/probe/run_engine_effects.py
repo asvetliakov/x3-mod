@@ -140,8 +140,13 @@ def build(cmake_build='build'):
          '-DX3M_EDITION=ap']]
     with log.open('w') as out:
         for command in (*configure, ['cmake', '--build', str(cmake_build), '-j8'], ['sh', 'verification/probe/build_motion_output.sh'],
+                        # --disable-dynamicbase: the fixture image stays at 0x00400000 on both hosts, as the game's
+                        # non-relocatable EXE does (Wine loads it there anyway; native ASLR would move a DYNAMIC_BASE
+                        # image), so armed_refused's unseamed SETA read finds the site 0x004d1ef0 mapped and refuses it
+                        # as site_mismatch, not as an unreadable page.
                         ['i686-w64-mingw32-g++', *FLAGS, '-static', '-static-libgcc', '-static-libstdc++',
-                         'verification/probe/engine_effects_fixture.cpp', '-o', str(EXE), '-ldxguid', '-luser32']):
+                         'verification/probe/engine_effects_fixture.cpp', '-o', str(EXE), '-ldxguid', '-luser32',
+                         '-Wl,--disable-dynamicbase']):
             subprocess.run(command, cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT,
                            env=dict(os.environ, X3M_CANDIDATE_BUILD=str((ROOT / cmake_build).resolve())))
     text = log.read_text(errors='replace')
@@ -157,9 +162,14 @@ def run(mode, timeout, wine_env=(), host='bottle'):
     if host == 'native':
         # The fixture variables reach the Windows process through WSLENV (os.environ's X3M_* are not forwarded); the
         # session log goes to the run directory's x3-modern-captures/ by its Windows path.
+        # X3M_OWNERSHIP=1 (the shipped default; X3M_CONFIG=bare would leave it off): Windows' d3d9.dll is a C++ object
+        # whose SetRenderTarget(0, surface) calls its own private virtual slot 156 through the object's vtable pointer,
+        # so the unwrapped route (capture.cpp Hooks: a 119-slot copy installed on the native device) faults there at the
+        # attach self-test. Behind the ownership wrapper the hooked object is the proxy's own and the native device
+        # keeps its table (verification/results/native-windows/engine-effects/vtable_copy_repro.cpp).
         log_env = fixture_log.session_log_env(directory)
         log_env['X3M_LOG_FILE'] = native_host.windows_path(Path(log_env['X3M_LOG_FILE'][2:]))
-        extra = dict(X3M_MOTION_OUTPUT='1', **MODES[mode], **log_env)
+        extra = dict(X3M_MOTION_OUTPUT='1', X3M_OWNERSHIP='1', **MODES[mode], **log_env)
         try:
             done, stdout = native_host.run_native(directory / EXE.name, [native_host.windows_path(PROGRAMS['vs']),
                                                                          native_host.windows_path(PROGRAMS['ps']), mode],

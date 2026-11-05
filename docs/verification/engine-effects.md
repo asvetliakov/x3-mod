@@ -948,3 +948,77 @@ Other `frac` idioms in `src/effects/` and `src/fog/` (checked in the compiled di
   index, not a hash.
 - `own_sun_ps.hlsl` hashes integer ray indices, and `sky_stars_vs.hlsl` and `fog_dust_motes_vs.hlsl` take `frac` of
   per-vertex data. None of them derives a lattice from `frac`.
+
+## Native fixture fault: the bare route's vtable copy on Windows' d3d9 (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+Every native mode of `run_engine_effects.py --host native` died with `c0000005` after the proxy's
+`linear_cutout_device` row (host-suite.md, "Native re-record, 2026-11-05"). The cause is in the bare configuration
+the fixture runs, not in the seam build: the seam compiles with the production flags (`-msse2 -mfpmath=sse
+-mstackrealign -mincoming-stack-boundary=2`, i686), and without `X3M_EDITION_FL` it is AP, as the CMake build is.
+
+Cause (measured). With `X3M_CONFIG=bare`, `X3M_OWNERSHIP` is off and no ownership wrapper exists. `hook_device`
+(`src/proxy/capture.cpp:3470`) then installs a 119-slot copy of the documented `IDirect3DDevice9` slots as the native
+device's vtable pointer (`Hooks::install`, `capture.cpp:519`). Windows' `d3d9.dll` is a C++ implementation. Its
+`SetRenderTarget` (SysWOW64 image 0x1011eaf0) resets the viewport for index 0 and a non-null surface through its own
+private virtual slot 156: `mov esi,[eax+0x270]; call esi` at 0x1011ecdc / 0x1011ecef, with eax = the object's vtable
+pointer. Through the short copy that read lands past the copy's end, in heap. The first `SetRenderTarget(0, …)` of the
+session is the attach self-test: `MotionOutput::attach` (`src/proxy/motion_output.cpp:3601`), then `self_test`
+(3956), then `draw_quad` (4101), all inside the fixture's `CreateDevice`. Whatever heap words follow the copy explain
+the mode-dependent garbage targets (`0x312e312e`, `0xb8ee20fc`, …). The first native run's read faults at
+`d3d9.dll+0x11ecdc` are the same load landing on an unmapped page.
+
+Evidence:
+
+- A temporary vectored-handler stack dump in the fixture, mapped through the unstripped seam with `addr2line`, gave
+  the chain `attach:3601 → self_test:3956 → draw_quad:4101`. The frame's `[ebp+4]` returns into `draw_quad`, and the
+  top of the stack returns to system `d3d9.dll+0x11ecf1`.
+- `verification/results/native-windows/engine-effects/vtable_copy_repro.cpp` is the minimal reproduction, with results
+  in `vtable_copy_repro.txt` beside it. With the backend table the call returns 0. With a 119-slot copy it faults,
+  `eip=0`. With the copy padded by sentinels, `eip=0x5e000094`, which is sentinel 37, so the backend read slot 156.
+- In the game, `x3m.log` of 2026-11-05 shows `motion_direct … enabled=1` on the same `d3d9.dll` (sha256
+  `da332f72…`). The shipped default `X3M_OWNERSHIP=1` hooks the proxy's wrapper, and the native device keeps its own
+  table, which is why the game runs.
+
+Fix (fixture side, `verification/probe/run_engine_effects.py`). The two changes:
+
+- Native runs set `X3M_OWNERSHIP=1`, the shipped default. The session log shows `ownership_factory mode=wrapped` and
+  `motion_direct enabled=1`.
+- The fixture links with `-Wl,--disable-dynamicbase`, so its image stays at 0x00400000 like the game's
+  non-relocatable EXE. Wine already loads it there. Natively, ASLR had moved the `DYNAMIC_BASE` image, and
+  armed_refused's unseamed SETA read then found the site 0x004d1ef0 unmapped. It refused the read as `read` instead of
+  the recorded `site_mismatch`. Both outcomes fail closed to 1.0.
+
+Outcome (measured; `native-windows/engine-effects/summary.json` replaced, 61 s under the lock including the seam and
+fixture build, warnings 0): PASS in all 8 modes. Every mode exits 0 with 0 failed checks.
+
+| Mode | main | native | unverified | unpatched | timing | plumes | armed | armed_refused |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Checks (Wine record) | 174 (174) | 11 (11) | 6 (6) | 11 (11) | 20 (20) | 35 (35) | 35 (35) | 7 (7) |
+
+Against the Wine record (cd479d025), every validated field is equal except three ungated ones:
+
+- armed's TAA reference count is 25 against 21, and armed_refused's 15 / 25 against 11 / 21. The fixture's
+  check that the count is unchanged across the cycle passes. The extra 4 are presumably the ownership wrapper's
+  references (inferred).
+- The armed red sums differ by 1–4 of 255.
+- The shimmer hashes differ, with all of the shimmer's equalities holding.
+
+The per-draw costs (µs) in timing, native against Wine, are fixture-inclusive and are not game FPS:
+
+| Path | Native | Wine |
+| --- | --- | --- |
+| suppressed | 0.139 | 0.623 |
+| not_jet | 0.145 | 0.812 |
+| not_candidate | 0.101 | 0.696 |
+| suppressed, two parents | 0.135 | 0.629 |
+
+`test_engine_effects` is bound to the native record with exact source hashes, and the per-mode counts above are
+asserted. `SOURCES_SHA256_2026_11_03` is removed for this module only, and the Wine record stays as provenance. The
+module passes 13 tests; one skips because the installed game tree is unavailable. `crash_rows.py` / `crash_rows.json`
+describe the replaced failing record and stay as its witness.
+
+Open: production with `X3M_OWNERSHIP=0` on native Windows. A user-settable configuration (`tools/manage.py`) leaves
+the same 119-slot copy on the native device. Its first `SetRenderTarget(0, surface)`, from the attach self-test or the
+game, then calls past the copy (inferred from the reproduction; not run in the game). It needs a documented-only
+decision, such as always wrapping, or refusing the unwrapped vtable route on a backend that is not known to be safe.
+That decision is not made here.
