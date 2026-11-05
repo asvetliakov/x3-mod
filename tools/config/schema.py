@@ -195,8 +195,8 @@ SETTINGS = [
           '0 to 1; 0.3 = a subtle flicker, 0 = all stars steady. The twinkle follows real time, so SETA does not speed it '
           'up.', builtin='0.3', range=(0.0, 1.0), requires=('sky_stars',), since='2026-11-05'),
     entry('sky_stars_clustering', 'float', 'graphics', 'How unevenly the procedural stars spread over the sky (sky_stars = 1), '
-          '0 to 2; 1 = the default, a few dense star clouds and some nearly empty patches, 2 = denser clouds and deeper '
-          'gaps, 0 = evenly spread. The pattern is the same for every value; only its strength changes.', builtin='1',
+          '0 to 2; 1.2 = the default, a few dense star clouds and some nearly empty patches, 2 = denser clouds and deeper '
+          'gaps, 0 = evenly spread. The pattern is the same for every value; only its strength changes.', builtin='1.2',
           range=(0.0, 2.0), requires=('sky_stars',), since='2026-11-05'),
     dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
         '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),

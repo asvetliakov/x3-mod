@@ -53,7 +53,7 @@ constexpr float brightness_default = 1.5f, brightness_min = .5f, brightness_max 
 constexpr float size_default = 1.f, size_min = 0.f, size_max = 3.f;                   // sky_stars_size
 constexpr float min_size_default = 1.5f, min_size_min = 1.f, min_size_max = 3.f;      // sky_stars_min_size (px)
 constexpr float twinkle_default = .3f, twinkle_min = 0.f, twinkle_max = 1.f;          // sky_stars_twinkle (amplitude)
-constexpr float clustering_default = 1.f, clustering_min = 0.f, clustering_max = 2.f; // sky_stars_clustering
+constexpr float clustering_default = 1.2f, clustering_min = 0.f, clustering_max = 2.f; // sky_stars_clustering
 constexpr unsigned vertex_stride = 32, vertices_per_star = 4, indices_per_star = 6;
 constexpr unsigned vertex_capacity = stars_max * vertices_per_star; // 65536: 16-bit indices suffice
 constexpr float flux_step = 2.5f, flux_steps = 4.f, x_max = 39.0625f; // 2.5^4

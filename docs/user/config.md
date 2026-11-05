@@ -101,7 +101,7 @@ it needs the star textures marked by x3m-regenerate. Six settings change how the
 0.5 to 8) sets how bright they are; `sky_stars_size` (default `1`, 0 to 3) makes the bright stars larger than the dim
 ones (`0` = all the same size); `sky_stars_min_size` (default `1.5`, 1 to 3) is the size of the dimmest stars in pixels
 from centre to edge (`1` = the sharp 2-pixel dots of the first version); `sky_stars_twinkle` (default `0.3`, 0 to 1) is
-how strongly about one star in four twinkles (`0` = all steady); `sky_stars_clustering` (default `1`, 0 to 2) gathers
+how strongly about one star in four twinkles (`0` = all steady); `sky_stars_clustering` (default `1.2`, 0 to 2) gathers
 the stars into a few dense clouds with some nearly empty patches between them (`2` = denser clouds and deeper gaps,
 `0` = evenly spread, as in the first version). The twinkle follows real time, so SETA does not speed it
 up. A value the mod cannot use keeps the default, and the `sky_stars_config` line in `x3m.log` then shows

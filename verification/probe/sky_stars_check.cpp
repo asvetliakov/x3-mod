@@ -180,7 +180,7 @@ int main() {
           "accept_brightness");
     setting = core::clustering_default;
     check(!core::accept_clustering(-.1f, &setting) && !core::accept_clustering(2.5f, &setting) &&
-              !core::accept_clustering(NAN, &setting) && setting == 1.f && core::accept_clustering(0.f, &setting) &&
+              !core::accept_clustering(NAN, &setting) && setting == core::clustering_default && core::accept_clustering(0.f, &setting) &&
               setting == 0.f && core::accept_clustering(2.f, &setting) && setting == 2.f,
           "accept_clustering");
     // The seed fold: sector key 0 is the mark seed itself; a key gives seed64 = mark ^ key x 0x9e3779b97f4a7c15 folded.

@@ -30,7 +30,7 @@
    2.466,
    2.388
   ],
-  "unit_err": 9.18e-08,
+  "unit_err": 9.39e-08,
   "support_min": 1.5,
   "support_max": 2.875,
   "hot_support_max": 2.3125,
@@ -54,7 +54,7 @@
   "chi2_max": 63.67,
   "reject_rate_mean": 0.0,
   "exhausted": 0,
-  "host_build_us_best": 940
+  "host_build_us_best": 1038
  },
  "clustering1": {
   "seeds": 16,
@@ -65,7 +65,7 @@
   "chi2_max": 9322.99,
   "reject_rate_mean": 0.7841,
   "exhausted": 0,
-  "host_build_us_best": 2320
+  "host_build_us_best": 2657
  },
  "clustering2": {
   "seeds": 16,
@@ -76,11 +76,11 @@
   "chi2_max": 21184.47,
   "reject_rate_mean": 0.85,
   "exhausted": 32,
-  "host_build_us_best": 2895
+  "host_build_us_best": 3170
  },
  "clustering_default_build": {
-  "cluster_max_min": 10.122,
-  "reject_rate": 0.7065,
+  "cluster_max_min": 10.548,
+  "reject_rate": 0.7308,
   "only_dirs_differ": 0
  },
  "twinkle": {
@@ -100,41 +100,41 @@
  "meter_k65_defaults": {
   "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": 4.0076,
-  "p99_max_log": -0.1336,
+  "ev_limit": 3.8483,
+  "p99_max_log": 0.0257,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
-  "visible_stars": 827,
-  "frame_max": 1.45877,
-  "star_peak": 1.45877
+  "visible_stars": 858,
+  "frame_max": 1.47564,
+  "star_peak": 1.47564
  },
  "meter_k143_d4": {
   "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": 2.9912,
-  "p99_max_log": 0.8829,
+  "ev_limit": 3.014,
+  "p99_max_log": 0.86,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
-  "visible_stars": 2338,
-  "frame_max": 1.45667,
-  "star_peak": 1.45667
+  "visible_stars": 2325,
+  "frame_max": 1.51787,
+  "star_peak": 1.47437
  },
  "meter_k143_max_look": {
   "ev_target": 0.0,
   "ev_key": 0.0,
-  "ev_limit": 0.5297,
-  "p99_max_log": 3.3444,
+  "ev_limit": 0.634,
+  "p99_max_log": 3.2401,
   "neutral": true,
   "lit": 0,
   "tiles": 1840,
   "tile_image": "80x23",
-  "visible_stars": 2338,
-  "frame_max": 3.94818,
-  "star_peak": 1.99999
+  "visible_stars": 2325,
+  "frame_max": 4.43323,
+  "star_peak": 1.9999
  },
  "meter_control_lum64": {
   "ev_target": -2.1259,
