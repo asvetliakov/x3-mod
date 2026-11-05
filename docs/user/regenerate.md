@@ -40,7 +40,15 @@ overlay, delete the `addon2\NN.cat`, `.dat` and `.x3m-lod.json` files it wrote.
 **Sky textures:** the same overlay write marks the game's painted star textures (AP and FL) for the star pass. Their
 pixels are copied unchanged and only a small header tag is added, so the sky looks exactly as before; the nebula
 backgrounds are left as the game has them. If run 49's tool put re-drawn nebula parts into the overlay, the next run
-removes them. An AP overlay written before 2.0.0 gets its star textures on the next run.
+removes them. An AP overlay written before 2.0.0 gets its star textures on the next run. A mod that ships star
+textures as loose files (for example `addon\dds\nebula_<family>_stars_<colour>_diff.dds`) overrides every
+catalogue, so those files get the same tag written into their own header in place; the pixels stay untouched and
+`x3m\sky-loose.json` keeps each file's original header. A rerun leaves an already tagged file alone, a file a mod
+update replaced is tagged again, and a file that is no longer one the game loads, or every file when the overlay's
+sky group is off, gets its recorded header back byte for byte (`python3 tools/analysis/sky_textures.py --game DIR
+--restore-loose` does that by hand). The log shows them as `loose=N` on the family rows and as
+`marked in-place N loose` in the sky summary; a loose file that is not a readable DDS, is read-only, or is a packed
+`.pck` is listed as `refused sky texture <path>: <reason>` and left as it is.
 
 **CrossOver Preview (macOS, arm64):** double-clicking the executable in a game directory as short
 as `C:\X3` makes it exit at once with no window and no log. That is a bug in the x64 emulator

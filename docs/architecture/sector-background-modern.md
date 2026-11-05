@@ -249,6 +249,19 @@ What remains of the sky group is the mark that the star pass (A) needs.
 - **Reuse.** `inputs_sha256` hashes the whole unpacked source DDS (header and every mip) together with the recipe
   id, because the output is those bytes plus the mark. The group's `tool_sha256` hashes `sky_textures.py` and then
   `lod_atlas.py`.
+- **Loose star textures (2026-11-05).** A loose file beats every catalogue (the engine resolver takes it first), so
+  the overlay cannot carry its mark; the batch still counts it `skipped loose_file` (the Mayhem AP install had 14).
+  The regenerate sky step (`sky_textures.mark_loose`, after the overlay install) runs the same analysis on each loose
+  `.dds` winner and writes the mark into bytes 32-43 of the file itself. The ledger `<game>/x3m/sky-loose.json`
+  records per file `loose: <path>`, the original 128-byte header (hex), `original_sha256` and `marked_sha256`, and it
+  is written before the first header write. A file whose sha256 equals `marked_sha256` under the same recipe and sky
+  tool is `reused` (nothing written). A changed file is re-marked: the recorded header is laid over it, and if that
+  gives `original_sha256` it is the same source; otherwise it is a mod update and its own header becomes the
+  original. When the batch record has no sky group (`--sky off`), and for rows that are no longer winners, the
+  recorded header is written back and checked against `original_sha256`; a file that matches neither hash is left
+  alone. Refused without failing the run: `loose_not_dds`, `loose_read_only`, `loose_unreadable`, `loose_write_failed`
+  and `loose_pck`. A loose `.pck` is compressed, so a mark there would mean re-encoding the whole file rather than
+  editing the header. None of this touches `lod_overlay.py`, so the LOD `TOOL_FILES` reuse hash is unchanged.
 - **Budget, packages and candidate check.** Marked textures are never dropped by `--budget-bytes`. A package star
   texture is marked into the derived copy. `lod_overlay_check.candidate_state` counts the members as intended sky
   overrides.
