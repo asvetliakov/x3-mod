@@ -3180,3 +3180,18 @@ ready row's `key=`, `sky_stars_phase_draw` rows (blend state of the nebula part 
 Pilot: clusters and voids visible, a different field in each sector, the same field on returning to a sector,
 brightness as before but a step lower. Kill: `status=unknown` or `disabled` in flight, or any hitch beyond the
 sector-entry rebuild.
+
+**Flown 2026-11-05 (log, measured):** `sky_stars_sector status=known edition=fl` on every entry, x/y (1,3) →
+(1,2) → (1,3) → (1,4), keys 131076 / 131075 / 131076 / 131077, `links=1`, one rebuild per entry (build_us 896-2341),
+the loading screen gives one `unknown reason=no_sector` frame (held key kept) per transit; the return to (1,3) drew
+the same key, i.e. the same field. `sky_stars_phase_draw` rows: the star body `blend=0` first, the four 2048x1024
+nebula parts `blend=1 src=5 dst=2` (SRCALPHA/ONE, additive), the fog cards `src=5 dst=6` or `src=3 dst=2`. So the
+engine's blend never covers the stars: dimming under nebula needs the phase-end target sample. Pilot: "very good";
+asked for about 20 % stronger clustering and raised the nebula edge banding (dark DXT1 gradients).
+
+## FL run 53 — clustering default 1.2 (installed 2026-11-05)
+
+Clean main `9bd4714db`: `C:\X3FL\d3d9.dll` = `d51af826…` (59,395,319 B), rollback `rollback-d3d9\d3d9.dll.run52` =
+`024aa48e…`; ini unchanged. Record `verification/results/fl-run53/candidate.json`. Only the `sky_stars_clustering`
+builtin moved 1.0 → 1.2 (cluster weights ×1.2, voids 20 % deeper); fixture 19 checks PASS, clustering 1.2 reject
+rate 0.823, max/min bin 6.36, rebuild 3.37 ms (measured). Flight: taste only.

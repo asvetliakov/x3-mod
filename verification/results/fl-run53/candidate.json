@@ -1,0 +1,26 @@
+{
+ "run": "fl-run53",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "9bd4714dbe0f27d3c3ffd9a2f3095fd98a67b62e",
+ "dirty": false,
+ "build": "build-fl RelWithDebInfo mingw-i686, 0 warnings, check_no_x87 --edition fl PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "d51af826cdcf4f4fd43e189544256deb5737dd6e70a1ac581d4bb9bfad5f3e1e",
+  "bytes": 59395319
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run52",
+  "sha256_prefix": "024aa48e6417e27d"
+ },
+ "ini": "unchanged from run 51/52 (sky_stars = 1, no explicit look values)",
+ "exe_sha256_prefix": "e7f3aad8",
+ "changes": [
+  "sky_stars_clustering default 1.0 -> 1.2"
+ ],
+ "evidence": [
+  "verification/results/sky-stars/fixture_out.txt (19 checks; clustering 1.2 reject_rate 0.823 cluster_max_min 6.36 rebuild 3.37 ms)",
+  "verification/results/sky-stars/host_check.json"
+ ]
+}
