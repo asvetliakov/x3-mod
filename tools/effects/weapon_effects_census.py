@@ -9,7 +9,8 @@ hashes are written; no body, texture or table bytes.
 Column meanings are those of docs/reverse-engineering/weapon-effect-spawn.md sections 1 and 4 (X3AP.exe).
 Per TBullets row: weapon id (col 48), body (col 0) with its materials (effect file, blend, zwrite, texture
 names, as verification/results/engine-effects/engine_effects_data.py reads them, via tools/analysis/bob1.py)
-and LOD 0 half-extents, lifetime ms (10), speed (11), flag word (12) decoded into named bits, light colour
+and LOD 0 half-extents, shield damage (7, +0x44, damage argument 3 of 0x00449a60), hull damage (22, +0x80,
+argument 4) and damage_per_shot = max of the two, lifetime ms (10), speed (11), flag word (12) decoded into named bits, light colour
 (13-15), quad size (16, 17), beam length (18), flight effect (19), impact effect (20; also the bullet's own death
 explosion with flag 0x100), muzzle effect (21), trail Particles3 id (23, resolved to its emitters' MatIDs and
 tex/true members) and col 24 (+0x88, not an Effects id; kept raw). An effect value <= 0 is read as no reference.
@@ -92,6 +93,7 @@ def parse_tbullets(text):
             raise ValueError(f'TBullets row {i}: {len(f)} fields, expected {BULLET_COLUMNS}')
         out.append(dict(
             index=i, weapon_id=f[48], body=f[0],
+            damage_shield=_num(f[7]), damage_hull=_num(f[22]), damage_per_shot=max(_num(f[7]), _num(f[22])),
             lifetime_ms=_num(f[10]), speed=_num(f[11]), flag_word=_num(f[12]), flag_bits=flag_bits(_num(f[12])),
             light_colour=[_num(x) for x in f[13:16]], size=[_num(x) for x in f[16:18]], beam_length=_num(f[18]),
             trail_particles=_num(f[TRAIL_COLUMN]), col24_not_effect=_num(f[24]),
@@ -423,7 +425,7 @@ def census(assets, read_body=None, hint=None):
     for r in death['rows']:
         effect(r)
     return dict(tables=tables, column_labels=dict(
-                    weapon_id=48, body=0, lifetime_ms=10, speed=11, flag_word=12, light_colour=[13, 14, 15],
+                    weapon_id=48, body=0, damage_shield=7, damage_hull=22, lifetime_ms=10, speed=11, flag_word=12, light_colour=[13, 14, 15],
                     size=[16, 17], beam_length=18, **EFFECT_COLUMNS, trail_particles=TRAIL_COLUMN, col24_not_effect=24,
                     source='docs/reverse-engineering/weapon-effect-spawn.md sections 1 and 4',
                     note='effect value <= 0 read as none; death_effect = impact_effect when flag 0x100'),

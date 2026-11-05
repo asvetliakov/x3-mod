@@ -16,7 +16,7 @@ _spec.loader.exec_module(wec)
 
 def bullet_row(body, flag, flight, impact, muzzle, wid, trail=0, col24=0):
     f = ['0'] * 50
-    f[0], f[10], f[11], f[12] = body, '750000', '2600', str(flag)
+    f[0], f[7], f[10], f[11], f[12], f[22] = body, '4500', '750000', '2600', str(flag), '18000'
     f[13:19] = ['255', '128', '0', '2.0', '3.0', '5.0']
     f[19], f[20], f[21], f[23], f[24] = str(flight), str(impact), str(muzzle), str(trail), str(col24)
     f[48], f[49] = wid, ''
@@ -116,6 +116,10 @@ class Parsers(unittest.TestCase):
         self.assertEqual((r['flight_effect'], r['impact_effect'], r['muzzle_effect'], r['trail_particles']),
                          (308, 202, 122, 2))
         self.assertEqual(rows[0]['col24_not_effect'], 122)
+        self.assertEqual((r['damage_shield'], r['damage_hull'], r['damage_per_shot']), (4500, 18000, 18000))
+        shield_heavy = wec.parse_tbullets('55;1;\n' + bullet_row('b', 0, 0, 0, 0, 'SS_BULLET_D').replace(
+            ';4500;', ';90000;', 1) + '\n')[0]
+        self.assertEqual((shield_heavy['damage_shield'], shield_heavy['damage_per_shot']), (90000, 90000))
         self.assertEqual(rows[2]['flag_bits'], ['unknown_0x1', 'area_flak'])
         with self.assertRaises(ValueError):
             wec.parse_tbullets('55;1;\nbody;1;2;\n')
