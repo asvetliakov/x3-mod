@@ -1,9 +1,8 @@
 // Native D3D9 state-block stream capture probe (2026-11-05; docs/verification/engine-effects.md, "Native stream offset").
 // Which stream-0 fields IDirect3DStateBlock9::Capture refreshes for a recorded block and a D3DSBT_ALL block, across a
 // plain overwrite and DrawPrimitiveUP; frequency and stream 1 too; the explicit Get/Set tuple as the control.
-// Build: i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2
-//        -static -static-libgcc -static-libstdc++ stateblock_offset_probe.cpp -o probe.exe -ld3d9 -luser32
-// Run:   X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py probe.exe > stateblock_offset_probe.txt
+// Prints ADAPTER / ADAPTER_DESC / ADAPTER_DRIVER / D3D9_MODULE rows for verification/probe/native_host.py identity().
+// Built and run on the native Windows host by stateblock_offset_probe.py beside it (see there).
 #include <windows.h>
 #include <d3d9.h>
 #include <cstdio>
@@ -35,6 +34,20 @@ int main() {
     pp.BackBufferHeight = 64; pp.BackBufferFormat = D3DFMT_X8R8G8B8; pp.hDeviceWindow = w;
     HRESULT hr = api->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, w, D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE, &pp, &d);
     std::printf("device hr=%08lx\n", hr); if (FAILED(hr)) return 1;
+    {
+        D3DADAPTER_IDENTIFIER9 id{};
+        if (SUCCEEDED(api->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id))) {
+            std::printf("ADAPTER vendor=0x%04lx device=0x%04lx subsys=0x%08lx revision=%lu whql=%lu driver_version=%u.%u.%u.%u\n",
+                        id.VendorId, id.DeviceId, id.SubSysId, id.Revision, id.WHQLLevel,
+                        unsigned(HIWORD(id.DriverVersion.HighPart)), unsigned(LOWORD(id.DriverVersion.HighPart)),
+                        unsigned(HIWORD(id.DriverVersion.LowPart)), unsigned(LOWORD(id.DriverVersion.LowPart)));
+            id.Description[sizeof id.Description - 1] = 0;
+            id.Driver[sizeof id.Driver - 1] = 0;
+            std::printf("ADAPTER_DESC %s\nADAPTER_DRIVER %s\n", id.Description, id.Driver);
+        }
+        char path[MAX_PATH] = {};
+        if (GetModuleFileNameA(GetModuleHandleA("d3d9.dll"), path, MAX_PATH)) std::printf("D3D9_MODULE %s\n", path);
+    }
     d->CreateVertexBuffer(96, D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &vb, nullptr);
     d->CreateVertexBuffer(96, D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &vb2, nullptr);
     caller(); show("A0 caller set");

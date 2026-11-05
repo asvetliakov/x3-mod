@@ -12,13 +12,9 @@
     "src/renderer/quad_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "df439ff3b24e5c0f451fa14476d4b6f171d28e2d-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/effects/engine_shimmer_ps.hlsl",
-      "src/renderer/engine_shimmer_pass.cpp",
-      "src/renderer/engine_shimmer_pixel_program_inc.h"
-    ],
+    "commit": "bd2ff2b7b8ee211a4f087661837d2afe2d064314-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/proxy/engine_shimmer_core.h": "263b5bb5a44e902b5e29cd960606a24a2efb47139f16193634165c423c6f8006",
       "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
@@ -66,7 +62,7 @@
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "de4fb5d97ac1fdbc3bfc867fc0aa8a02dde3058fb02760b29a33eb6882dd75ce"
+    "executable_sha256": "e0ffdc3937c2b25e5b8afe62b9f7d908687582610b8747b861feb0a7c24c8d1a"
   },
   "host": {
     "name": "native-windows",
@@ -302,11 +298,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 215602,
         "copy_px": 222880,
-        "fenced_on_ms": 0.041,
-        "fenced_off_ms": 0.0161,
-        "submit_ms": 0.004,
-        "chain_ms": 0.0249,
-        "gpu_ms": 0.0209,
+        "fenced_on_ms": 0.0384,
+        "fenced_off_ms": 0.0146,
+        "submit_ms": 0.0027,
+        "chain_ms": 0.0238,
+        "gpu_ms": 0.0211,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -318,11 +314,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 341388,
         "copy_px": 352128,
-        "fenced_on_ms": 0.096,
-        "fenced_off_ms": 0.0216,
-        "submit_ms": 0.0092,
-        "chain_ms": 0.0744,
-        "gpu_ms": 0.0652,
+        "fenced_on_ms": 0.0772,
+        "fenced_off_ms": 0.0147,
+        "submit_ms": 0.0026,
+        "chain_ms": 0.0625,
+        "gpu_ms": 0.0599,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -334,11 +330,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 1525284,
         "copy_px": 1540560,
-        "fenced_on_ms": 0.4912,
-        "fenced_off_ms": 0.1173,
-        "submit_ms": 0.0126,
-        "chain_ms": 0.3739,
-        "gpu_ms": 0.3613,
+        "fenced_on_ms": 0.2255,
+        "fenced_off_ms": 0.0179,
+        "submit_ms": 0.0029,
+        "chain_ms": 0.2076,
+        "gpu_ms": 0.2047,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -350,11 +346,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 753420,
         "copy_px": 770784,
-        "fenced_on_ms": 0.0841,
-        "fenced_off_ms": 0.0261,
-        "submit_ms": 0.0064,
-        "chain_ms": 0.058,
-        "gpu_ms": 0.0516,
+        "fenced_on_ms": 0.0656,
+        "fenced_off_ms": 0.0211,
+        "submit_ms": 0.0027,
+        "chain_ms": 0.0445,
+        "gpu_ms": 0.0418,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -367,10 +363,10 @@
         "scissor_px": 1198860,
         "copy_px": 1225440,
         "fenced_on_ms": 0.2019,
-        "fenced_off_ms": 0.0237,
-        "submit_ms": 0.0034,
-        "chain_ms": 0.1782,
-        "gpu_ms": 0.1748,
+        "fenced_off_ms": 0.0246,
+        "submit_ms": 0.0028,
+        "chain_ms": 0.1773,
+        "gpu_ms": 0.1745,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -382,11 +378,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 5365932,
         "copy_px": 5398560,
-        "fenced_on_ms": 1.772,
-        "fenced_off_ms": 0.3616,
-        "submit_ms": 0.0134,
-        "chain_ms": 1.4104,
-        "gpu_ms": 1.397,
+        "fenced_on_ms": 0.7619,
+        "fenced_off_ms": 0.0308,
+        "submit_ms": 0.0039,
+        "chain_ms": 0.7311,
+        "gpu_ms": 0.7272,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -576,20 +572,20 @@
   },
   "summary": {
     "timing_gpu_ms": {
-      "1920x1080_1": 0.0209,
-      "1920x1080_4": 0.0652,
-      "1920x1080_16": 0.3613,
-      "5120x1440_1": 0.0516,
-      "5120x1440_4": 0.1748,
-      "5120x1440_16": 1.397
+      "1920x1080_1": 0.0211,
+      "1920x1080_4": 0.0599,
+      "1920x1080_16": 0.2047,
+      "5120x1440_1": 0.0418,
+      "5120x1440_4": 0.1745,
+      "5120x1440_16": 0.7272
     },
     "timing_submit_ms": {
-      "1920x1080_1": 0.004,
-      "1920x1080_4": 0.0092,
-      "1920x1080_16": 0.0126,
-      "5120x1440_1": 0.0064,
-      "5120x1440_4": 0.0034,
-      "5120x1440_16": 0.0134
+      "1920x1080_1": 0.0027,
+      "1920x1080_4": 0.0026,
+      "1920x1080_16": 0.0029,
+      "5120x1440_1": 0.0027,
+      "5120x1440_4": 0.0028,
+      "5120x1440_16": 0.0039
     },
     "displace": {
       "1920x1080": {

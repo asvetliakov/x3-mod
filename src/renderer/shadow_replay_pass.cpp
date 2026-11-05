@@ -139,38 +139,46 @@ constexpr DWORD alpha_pixel_words[] = {
 // depth bindings, viewport and scissor (SetRenderTarget resets the latter two),
 // and the vertex input mode: a D3DSBT_ALL block does not put back "no
 // declaration" (a caller in FVF mode, or with nothing bound yet), so the FVF or
-// the declaration is re-set explicitly, as SunShadowApplyPass does. Stream 0
-// (each replayed draw binds its own): native D3D9's Capture takes a stream's
-// buffer and stride but keeps the offset of the block's creation (measured
-// 2026-11-05; docs/verification/engine-effects.md, "Native stream offset"), so
-// the tuple is read with GetStreamSource and set again after Apply.
+// the declaration is re-set explicitly, as SunShadowApplyPass does. Every
+// stream's source (each replayed draw binds its own stream 0): the block's
+// Capture takes a stream's buffer and stride but keeps the offset of the
+// block's creation, and Apply writes that offset to every stream (native D3D9,
+// measured 2026-11-05; docs/verification/engine-effects.md, "Native stream
+// offset"; the Preview backend likewise, TemporalPass), so each tuple is read
+// with GetStreamSource and set again after Apply, as SunShadowApplyPass does.
 struct ShadowReplayPass::SavedState {
     const ShadowReplayPass& pass;
     IDirect3DStateBlock9* block;
     IDirect3DSurface9* targets[4]{};
     IDirect3DSurface9* depth = nullptr;
     IDirect3DVertexDeclaration9* declaration = nullptr;
-    IDirect3DVertexBuffer9* stream = nullptr;
-    UINT offset = 0, stride = 0;
+    IDirect3DVertexBuffer9* buffers[16]{};
+    UINT offsets[16]{}, strides[16]{};
     DWORD fvf = 0;
     D3DVIEWPORT9 viewport{};
     RECT scissor{};
-    UINT count;
+    UINT count, streams;
     SavedState(const ShadowReplayPass& p, IDirect3DStateBlock9* b, UINT n)
         : pass(p)
         , block(b)
-        , count(n > 4 ? 4 : n) {}
+        , count(n > 4 ? 4 : n)
+        , streams(p.streams_ < 16 ? p.streams_ : 16) {}
     ~SavedState() {
         for (auto& t : targets) drop(t);
         drop(depth);
         drop(declaration);
-        drop(stream);
+        for (auto& v : buffers) drop(v);
     }
     HRESULT capture() noexcept {
         HRESULT hr = block->Capture();
         if (FAILED(hr)) return hr;
-        hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, 0, &stream, &offset, &stride);
-        if (FAILED(hr)) return hr;
+        for (UINT i = 0; i < streams; ++i) {
+            hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, i, &buffers[i], &offsets[i], &strides[i]);
+            if (FAILED(hr)) {
+                buffers[i] = nullptr; // no reference on failure: the destructor releases only what was returned
+                return hr;
+            }
+        }
         hr = pass.call<GetDeclarationFn>(GetVertexDeclaration)(pass.device_, &declaration);
         if (FAILED(hr)) return hr;
         hr = pass.call<GetFvfFn>(GetFVF)(pass.device_, &fvf);
@@ -199,7 +207,9 @@ struct ShadowReplayPass::SavedState {
             if (!attempt(pass.call<SetRtFn>(SetRenderTarget)(d, i, targets[i]))) return first;
         if (!attempt(pass.call<SetDepthFn>(SetDepthStencilSurface)(d, depth))) return first;
         if (!attempt(block->Apply())) return first;
-        if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, 0, stream, offset, stride))) return first;
+        for (UINT i = 0; i < streams; ++i)
+            if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, i, buffers[i], offsets[i], strides[i])))
+                return first;
         // The declaration object the caller had bound goes back as that object;
         // only a caller without one is restored through its FVF (or to none).
         if (declaration) {
@@ -245,7 +255,7 @@ void ShadowReplayPass::detach() noexcept {
     alpha_threshold_ = -1.f;
     device_ = nullptr;
     vtable_ = nullptr;
-    count_ = depth_size_ = render_targets_ = 0;
+    count_ = depth_size_ = render_targets_ = streams_ = 0;
     reset_pending_ = false;
     caps_ = {};
     for (unsigned& size : sizes_) size = 0;
@@ -273,6 +283,7 @@ HRESULT ShadowReplayPass::attach_cascades(IDirect3DDevice9* d, void* const* nati
     device_ = d;
     vtable_ = native;
     render_targets_ = caps.NumSimultaneousRTs ? caps.NumSimultaneousRTs : 1;
+    streams_ = caps.MaxStreams;
     auto refuse = [&](const char* reason, HRESULT hr) {
         caps_.reason = reason;
         device_ = nullptr;

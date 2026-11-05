@@ -249,8 +249,8 @@ outside and band byte-equal, revert exact. GPU cost for 16 rects is 0.200 ms at 
 and 0.713 ms at 5120x1440 (Wine 0.609 / 1.538).
 
 Fixed 2026-11-05: native `Capture` refreshes a stream's buffer and stride but never its
-offset, so the pass now sets stream 0's tuple again after `Apply`. The same fix went into
-`SunShadowApplyPass` and `ShadowReplayPass`. The native record passes 43/43 and
+offset, so the pass now sets stream 0's tuple again after `Apply`. `SunShadowApplyPass` and
+`ShadowReplayPass` keep a `D3DSBT_ALL` block, so they now restore every stream's tuple. The native record passes 43/43 and
 `test_engine_shimmer` is bound to it ([engine-effects.md](engine-effects.md), "Native stream offset").
 
 **Engine-effects: the seam crashes natively.** Every mode dies with `c0000005`

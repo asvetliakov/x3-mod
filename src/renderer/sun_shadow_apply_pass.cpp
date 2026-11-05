@@ -86,39 +86,47 @@ bool depth_share_format(D3DFORMAT format) noexcept {
 // bindings, viewport and scissor (SetRenderTarget resets the latter two), and
 // the vertex input mode: a D3DSBT_ALL block records the declaration but a
 // caller with no declaration bound (FVF mode, or nothing yet) is not restored
-// by Apply alone, so the FVF or the declaration is re-set explicitly. Stream 0
-// (DrawPrimitiveUP resets it): native D3D9's Capture takes a stream's buffer
-// and stride but keeps the offset of the block's creation (measured 2026-11-05;
-// docs/verification/engine-effects.md, "Native stream offset"), so the tuple is
-// read with GetStreamSource and set again after Apply.
+// by Apply alone, so the FVF or the declaration is re-set explicitly. Every
+// stream's source (DrawPrimitiveUP resets stream 0): the block's Capture takes a
+// stream's buffer and stride but keeps the offset of the block's creation, and
+// Apply writes that offset to every stream (native D3D9, measured 2026-11-05;
+// docs/verification/engine-effects.md, "Native stream offset"; the Preview
+// backend likewise, TemporalPass), so each tuple is read with GetStreamSource
+// and set again after Apply. Frequencies stay with the block (captured).
 struct SunShadowApplyPass::SavedState {
     const SunShadowApplyPass& pass;
     IDirect3DStateBlock9* block;
     IDirect3DSurface9* targets[4]{};
     IDirect3DSurface9* depth = nullptr;
     IDirect3DVertexDeclaration9* declaration = nullptr;
-    IDirect3DVertexBuffer9* stream = nullptr;
-    UINT offset = 0, stride = 0;
+    IDirect3DVertexBuffer9* buffers[16]{};
+    UINT offsets[16]{}, strides[16]{};
     DWORD fvf = 0;
     D3DVIEWPORT9 viewport{};
     RECT scissor{};
-    UINT count, samplers;
+    UINT count, samplers, streams;
     SavedState(const SunShadowApplyPass& p, IDirect3DStateBlock9* b, UINT n, UINT s = 2)
         : pass(p)
         , block(b)
         , count(n > 4 ? 4 : n)
-        , samplers(s) {}
+        , samplers(s)
+        , streams(p.streams_ < 16 ? p.streams_ : 16) {}
     ~SavedState() {
         for (auto& t : targets) drop(t);
         drop(depth);
         drop(declaration);
-        drop(stream);
+        for (auto& v : buffers) drop(v);
     }
     HRESULT capture() noexcept {
         HRESULT hr = block->Capture();
         if (FAILED(hr)) return hr;
-        hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, 0, &stream, &offset, &stride);
-        if (FAILED(hr)) return hr;
+        for (UINT i = 0; i < streams; ++i) {
+            hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, i, &buffers[i], &offsets[i], &strides[i]);
+            if (FAILED(hr)) {
+                buffers[i] = nullptr; // no reference on failure: the destructor releases only what was returned
+                return hr;
+            }
+        }
         hr = pass.call<GetDeclarationFn>(GetVertexDeclaration)(pass.device_, &declaration);
         if (FAILED(hr)) return hr;
         hr = pass.call<GetFvfFn>(GetFVF)(pass.device_, &fvf);
@@ -149,7 +157,9 @@ struct SunShadowApplyPass::SavedState {
             if (!attempt(pass.call<SetRtFn>(SetRenderTarget)(d, i, targets[i]))) return first;
         if (!attempt(pass.call<SetDepthFn>(SetDepthStencilSurface)(d, depth))) return first;
         if (!attempt(block->Apply())) return first;
-        if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, 0, stream, offset, stride))) return first;
+        for (UINT i = 0; i < streams; ++i)
+            if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, i, buffers[i], offsets[i], strides[i])))
+                return first;
         // The declaration object the caller had bound goes back as that object;
         // only a caller without one is restored through its FVF (or to none).
         if (declaration) {

@@ -959,7 +959,8 @@ stream 0. `ensure_scratch` records it from `set_states`' `SetStreamSource(0, nul
 and `DrawPrimitiveUP` then resets stream 0. On native D3D9, `IDirect3DStateBlock9::Capture` refreshes a stream's buffer and
 stride but not its offset. `Apply` puts back the offset the block was recorded with, or for `CreateStateBlock` the
 offset it was created with. Probe
-(`verification/results/native-windows/engine-shimmer/stateblock_offset_probe.cpp`, output `.txt` beside it):
+(`verification/results/native-windows/engine-shimmer/stateblock_offset_probe.cpp`, built and run natively by
+`stateblock_offset_probe.py`; output `.txt` beside it, headed by the host identity line):
 
 | Case | Caller tuple at Capture | After Apply |
 | --- | --- | --- |
@@ -973,14 +974,26 @@ offset it was created with. Probe
 
 The stream frequency is captured by both kinds of block (`D3DSTREAMSOURCE_INDEXEDDATA | 3` comes back). A block created
 at the moment of use is correct, because creation records the current offset. The documented `Capture` contract is
-broader than this, so the fix relies only on the explicit Get/Set pair. `TemporalPass` and `FogPass` already do this
-(filed for the Preview backend on 2026-09-25, docs/verification/temporal-resolve.md).
+broader than this, so the fix relies only on the explicit Get/Set pair. `TemporalPass` and `FogPass` already do this.
+
+Wine: the Wine shimmer record passed with the same recorded block, so wined3d keeps the caller's offset for a recorded
+block (measured, Run140). A `D3DSBT_ALL` block kept across runs loses it on the Preview backend too. The temporal pass's
+block gave streams 0/1 offsets 24 -> 0 and 48 -> 0 (docs/verification/temporal-resolve.md, filed and fixed 2026-09-25).
+The two shadow passes below were therefore probably wrong under Wine as well (inferred).
 
 Fix: `SavedState::capture` reads stream 0 with `GetStreamSource` after `Capture`. `restore` sets it again right after
 `Apply`, and the buffer reference is released in the destructor. This adds two device calls per run (the STATE row's
-`calls` goes from 97 to 99). The same defect, a block kept across runs and stream 0 restored only by `Apply`, was in
+`calls` goes from 97 to 99). Only stream 0 is needed here: a recorded block applies only its recorded states, and the
+shimmer's block records stream 0 alone.
+
 `SunShadowApplyPass` (its quad goes through `DrawPrimitiveUP`) and `ShadowReplayPass` (each replayed draw binds its own
-stream 0). Both got the same change. They have no native fixture run here, so that part is not verified natively.
+stream 0) had the same defect, and worse. Each keeps one `D3DSBT_ALL` block across runs, and its `Apply` writes every
+stream with the creation-time offset (probe row K: stream 1 captured at 20 comes back 0). Both now save and restore
+every stream's tuple, as `TemporalPass` and `FogPass` do: `min(MaxStreams, 16)` streams, read after `Capture` and set
+again after `Apply`. The references are released in the destructor on every path, and a failed `GetStreamSource`
+leaves no reference behind. `ShadowReplayPass` gained a `streams_` member taken from `MaxStreams` at attach. That is up
+to 32 more device calls per transaction, the cost `TemporalPass` already pays. Frequencies stay with the block, which
+captures them. The AP DLL builds and the host modules pass, but there is no fixture run of these two passes (see Open).
 
 Checked without the defect: `TemporalPass` and `FogPass` (explicit per-stream tuples after `Apply`); `BloomPass`,
 `HdrPass`, `SkyStarsPass`, `OcclusionCullPass`, `MotionOutput::save_state` / `restore_state` and the bolt route
@@ -1012,3 +1025,10 @@ row shows `offset=16 stride=24 vb_same=1`. Displacement max is 1.1075 / 1.4726 p
 band diffs are 0 and the revert is exact. `test_engine_shimmer` is bound to the native record with exact source hashes,
 and its `SOURCES_SHA256_2026_11_03` is removed. `test_engine_effects`, whose native record still crashes, gained one
 dated entry for `engine_shimmer_pass.cpp`. The AP DLL builds with CMake `-j4`, with no warning from the changed files.
+
+Open:
+
+- No fixture checks the stream tuple of `SunShadowApplyPass` or `ShadowReplayPass`. Their cases run through
+  `run_motion_output.py`, which has no `--host` option yet, so they cannot run natively.
+- Unchecked: whether X3 has stream 1 or higher bound with a non-zero offset when these passes run. Before the fix, that
+  is the only way the defect could reach the game beyond stream 0.

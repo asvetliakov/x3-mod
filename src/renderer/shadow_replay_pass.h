@@ -203,7 +203,8 @@ private:
     IDirect3DTexture9* maps_[shadow_replay_maps_max]{};
     IDirect3DSurface9* map_surfaces_[shadow_replay_maps_max]{};
     IDirect3DSurface9* depth_ = nullptr;
-    unsigned sizes_[shadow_replay_maps_max]{}, count_ = 0, depth_size_ = 0, render_targets_ = 0, allocations_ = 0;
+    unsigned sizes_[shadow_replay_maps_max]{}, count_ = 0, depth_size_ = 0, render_targets_ = 0, streams_ = 0,
+        allocations_ = 0;
     ShadowReplayRetained retained_[shadow_replay_maps_max]{};
     bool reset_pending_ = false;
 };
