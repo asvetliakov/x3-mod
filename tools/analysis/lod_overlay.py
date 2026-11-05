@@ -2108,7 +2108,7 @@ def build_parser():
     b.add_argument('--sky', choices=('auto', 'on', 'off'), default='auto',
                    help='batch: the sky row group (tools/analysis/sky_textures.py; sector-background-modern.md): the'
                         ' painted star textures with the X3ML payload-2 header mark, texels byte-identical, as members'
-                        ' of the overlay slot (auto: on for FL, off for AP; never dropped by --budget-bytes; a --sync'
+                        ' of the overlay slot (auto: on for AP and FL, off switches it off; never dropped by --budget-bytes; a --sync'
                         ' run drops the nebula part members an earlier version wrote)')
     b.add_argument('--sky-families', metavar='A,B',
                    help='batch, developers: restrict the sky group to these families')
@@ -2949,7 +2949,7 @@ SKY_WORKER_BYTES = 256 << 20   # a star-mark worker decodes one 1024x1024 level 
 def sky_summary(a, xp, info, pkg_info, package):
     """One summary line of the sky group."""
     if info is None:
-        return f'sky group off (--sky {a.sky}' + (', auto: off on AP' if a.sky == 'auto' else '') + ')'
+        return f'sky group off (--sky {a.sky})'
     fams = info['families']
     line = (f'sky group (sky_textures.py, recipe {getattr(sys.modules.get("sky_textures"), "RECIPE_ID", "?")}):'
             f' {info["stars"]} star textures marked in {len(fams)} families, built {info["built"]} + reused'
@@ -3329,7 +3329,7 @@ def batch(a, game, root, markers):
     pkg_plans += list(pkg_reused.values())
     pkg_plans.sort(key=lambda p: p['name'].lower())
     # sky row group: same slot(s), own reuse key; never dropped for budget (the bodies make room)
-    sky_on = a.sky == 'on' or (a.sky == 'auto' and xp == 'addon2')
+    sky_on = a.sky in ('on', 'auto')   # auto: on for both editions (the star pass ships for AP and FL)
     sky_plans, pkg_sky_plans, sky_info, pkg_sky_info, sky_group = [], [], None, None, None
     if sky_on:
         sky_set = sky_settings(a)

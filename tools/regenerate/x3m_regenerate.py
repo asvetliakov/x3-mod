@@ -11,11 +11,11 @@ double-click it. It starts at once, needs no answers, and runs, in order:
                       has is covered); <game>/x3m/fog-families.bin + .json, one .previous kept
   2. LOD overlay    = tools/analysis/lod_overlay.py --batch --sync --mod auto --install
                       (addon/NN.cat/.dat + marker, the derived addon/mods/<mod>-x3m-lod copy; bodies whose
-                      inputs and tool settings are unchanged are reused, every other one is rebaked); on FL the
+                      inputs and tool settings are unchanged are reused, every other one is rebaked); the
                       same write carries the sky row group (tools/analysis/sky_textures.py): the painted star
                       textures, texels unchanged, with their X3ML mark for the star pass
   3. sky textures   = reads the sky group of the batch record step 2 wrote: one log row per nebula family
-                      (star textures marked, built/reused); skipped with a line when the group is off (AP) or no
+                      (star textures marked, built/reused); skipped with a line when the group is off (--sky off) or no
                       star texture exists
   4. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
                       <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
@@ -383,7 +383,7 @@ def sky_step(log, game, xp='addon'):
         raise StepFailed(f'cannot read {xp}/x3m-lod-batch.json ({exc})') from None
     sky = record.get('sky')
     if not sky:
-        log.say('sky textures: skipped (the sky group is off for this edition; lod_overlay.py --sky on enables it)')
+        log.say('sky textures: skipped (the sky group is off; lod_overlay.py --sky auto or on enables it)')
         return
     groups = [('', sky)] + ([(' [mod]', sky['package'])] if sky.get('package') else [])
     if not any(g['eligible'] for _, g in groups):
