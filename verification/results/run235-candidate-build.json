@@ -1,0 +1,59 @@
+{
+  "recorded_utc": "2026-11-05T22:09:27.240865+00:00",
+  "run": 235,
+  "source": {
+    "commit": "1c8f3371f76f3d17947d165bece67a632c844131",
+    "head": "1c8f3371f76f3d17947d165bece67a632c844131",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (HEAD == commit)",
+    "marker": "X3M_SOURCE_COMMIT=1c8f3371f76f3d17947d165bece67a632c844131",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run235/d3d9.dll",
+    "stripped": false,
+    "sha256": "bcb3dd385ea5572fb9f6c6c5ef985cb8d035a47eca5200913e2cceab6f94a153",
+    "bytes": 63751323
+  },
+  "toolchain": {
+    "gcc_host": "15.2.0",
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "cmake": "4.2.3",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run235",
+    "command": "cmake --build build-run235 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run235.configure.log",
+      "build-run235.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "roots": 163,
+    "reachable_functions": 1161,
+    "violations": 0
+  },
+  "config_check": {
+    "generate_check": "PASS 311 settings, 151 in the template",
+    "template_weapon_effects": "assets/x3m.ini:573 ';weapon_effects = native'"
+  },
+  "dry_run": {
+    "observe": {
+      "exit": 2,
+      "line": "manage.py: error: Install the proxy before launch, or use --vanilla."
+    },
+    "shields": {
+      "exit": 2,
+      "line": "manage.py: error: Install the proxy before launch, or use --vanilla."
+    },
+    "note": "refused before printing X3M_WEAPON_EFFECTS/table path; /mnt/c/X3/d3d9.dll present but not recognised as installed proxy; install is the owner's step"
+  }
+}
