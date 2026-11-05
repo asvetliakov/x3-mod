@@ -1,0 +1,622 @@
+{
+  "bottle": null,
+  "production_sources": [
+    "src/proxy/engine_shimmer_core.h",
+    "src/proxy/engine_plumes_core.h",
+    "src/proxy/engine_effects_core.h",
+    "src/renderer/engine_shimmer_pass.h",
+    "src/renderer/engine_shimmer_pass.cpp",
+    "src/effects/engine_shimmer_ps.hlsl",
+    "src/renderer/engine_shimmer_pixel_program_inc.h",
+    "src/renderer/quad_vertex_program.h",
+    "src/renderer/quad_vertex_program_inc.h"
+  ],
+  "source": {
+    "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
+    "sha256": {
+      "src/proxy/engine_shimmer_core.h": "263b5bb5a44e902b5e29cd960606a24a2efb47139f16193634165c423c6f8006",
+      "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
+      "src/proxy/engine_effects_core.h": "52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75",
+      "src/renderer/engine_shimmer_pass.h": "17a568d94fa2d2849f070c6efbd28d48232af20caeca6ea105d87274fae8ca86",
+      "src/renderer/engine_shimmer_pass.cpp": "7756992c4a4453d89ce9a91874d9c575c8c6b25ee659d69149bf1b12768c3906",
+      "src/effects/engine_shimmer_ps.hlsl": "8d9b48e643c5b952d0308525b4c3e430ef41e3bac8a7a2b13e3583799294d363",
+      "src/renderer/engine_shimmer_pixel_program_inc.h": "f625329ef09d61432a45dcb368c38ccc311478bce8a8dd24de6e791250129700",
+      "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
+      "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415"
+    }
+  },
+  "program": {
+    "source": "src/effects/engine_shimmer_ps.hlsl",
+    "word_count": 6178,
+    "bytecode_sha256": "216acef91d2728b46d6588dc3fda2c47f8a94f01f2e2ed75ffa0e5769b0bfc84",
+    "target": "ps_3_0"
+  },
+  "game_launched": false,
+  "wine_env": [],
+  "build": {
+    "command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-Wno-cast-function-type",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-static",
+      "-static-libgcc",
+      "-static-libstdc++",
+      "-DWIN32_LEAN_AND_MEAN",
+      "-DNOMINMAX",
+      "-DX3M_ENGINE_SHIMMER_FIXTURE",
+      "verification/probe/engine_shimmer_fixture.cpp",
+      "src/renderer/engine_shimmer_pass.cpp",
+      "-o",
+      "/home/asvetl/x3-mod/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
+      "-luser32",
+      "-ldxguid"
+    ],
+    "warnings": 0,
+    "executable_sha256": "c930d140bae303fd1f7323fdac8cc37b964ebc71e835284ca891e7f3fbe8b706"
+  },
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "vendor": "0x10de",
+      "device": "0x2c05",
+      "subsys": "0x276219da",
+      "revision": "161",
+      "whql": "0",
+      "driver_version": "32.0.16.2114",
+      "description": "NVIDIA GeForce RTX 5070 Ti",
+      "driver": "nvldumd.dll"
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": {
+      "path": "C:\\WINDOWS\\SYSTEM32\\d3d9.dll",
+      "size": 1799736,
+      "sha256": "b5fe0ccd3249270437dc6310b7119d5b807b7d41c0b7a85795cfc46824ffaa2c",
+      "file_version": "10.0.26100.9818"
+    },
+    "d3dx9_37_dll": null
+  },
+  "run": {
+    "exit_code": 1,
+    "result": {
+      "checks": 43,
+      "failures": 1,
+      "verdict": "FAIL"
+    },
+    "log": "verification/probe/build/engine-shimmer/fixture.log"
+  },
+  "report": {
+    "attach": [
+      {
+        "refused": "8876086a",
+        "refused_reason": "fp16_filter",
+        "held": 0,
+        "result": 0,
+        "reason": "ok",
+        "ps_slots": 1623,
+        "max_ps_slots": 4096,
+        "fp16_filter": 0,
+        "references": 3
+      }
+    ],
+    "size": [
+      {
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "width": 5120,
+        "height": 1440
+      }
+    ],
+    "displace": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "nozzle_px": 60.0,
+        "length_px": 336.0,
+        "half_width_px": 60.0,
+        "back_px": 15.0,
+        "amplitude_px": 1.125,
+        "result": 0,
+        "scissor_px": 43542,
+        "copy_px": 46440,
+        "inside": 24196,
+        "strong": 10941,
+        "moved": 10929,
+        "mean_strong_px": 0.3445,
+        "max_px": 1.1075,
+        "max_over_mask_px": 0.0103,
+        "near_px": 0.407,
+        "mid_px": 0.2122,
+        "far_px": 0.0132,
+        "side_px": 0.03,
+        "outside": 2030058,
+        "outside_diff": 0,
+        "band": 0,
+        "band_diff": 0,
+        "revert": 0,
+        "restored": 1,
+        "pending_after": 0
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "nozzle_px": 60.0,
+        "length_px": 336.0,
+        "half_width_px": 60.0,
+        "back_px": 15.0,
+        "amplitude_px": 1.5,
+        "result": 0,
+        "scissor_px": 43542,
+        "copy_px": 46440,
+        "inside": 22794,
+        "strong": 11703,
+        "moved": 11645,
+        "mean_strong_px": 0.4206,
+        "max_px": 1.4726,
+        "max_over_mask_px": 0.0104,
+        "near_px": 0.3753,
+        "mid_px": 0.2986,
+        "far_px": 0.0174,
+        "side_px": 0.0309,
+        "outside": 7329258,
+        "outside_diff": 0,
+        "band": 0,
+        "band_diff": 0,
+        "revert": 0,
+        "restored": 1,
+        "pending_after": 0
+      }
+    ],
+    "gate": [
+      {
+        "width": 1920,
+        "kept_20": 0,
+        "kept_23_9": 0,
+        "kept_24_5": 1,
+        "kept_30": 1,
+        "empty": 1,
+        "empty_calls": 0,
+        "empty_skipped": "no_rects",
+        "unchanged": 1,
+        "crowd": 16,
+        "capped": 4,
+        "largest": 49.0,
+        "smallest": 34.0
+      }
+    ],
+    "occlusion": [
+      {
+        "width": 1920,
+        "result": 0,
+        "depth": 0.996793,
+        "hidden": 5075,
+        "hidden_diff": 0,
+        "front": 8957,
+        "front_moved": 8949
+      },
+      {
+        "width": 5120,
+        "result": 0,
+        "depth": 0.996848,
+        "hidden": 5075,
+        "hidden_diff": 0,
+        "front": 9178,
+        "front_moved": 9140
+      }
+    ],
+    "state": [
+      {
+        "width": 1920,
+        "result": 0,
+        "restore": 0,
+        "restored": 1,
+        "stream_indices_outside": 0,
+        "own_scene": 1,
+        "changed": 36789,
+        "reverted": 1,
+        "calls": 97,
+        "vb_same": 1,
+        "offset": 0,
+        "stride": 24,
+        "ib_same": 1,
+        "tex5_same": 1,
+        "c60_same": 1
+      }
+    ],
+    "scratch": [
+      {
+        "width": 1920,
+        "held": 6,
+        "pending_kept": 6,
+        "released": 4,
+        "scratch_width_after": 0,
+        "again": 6,
+        "drew": 1
+      }
+    ],
+    "refusal": [
+      {
+        "width": 1920,
+        "format": "00000001/format/0",
+        "recording": "00000001/recording/0",
+        "amplitude": "00000001/amplitude/0",
+        "unchanged": 1
+      }
+    ],
+    "fault": [
+      {
+        "width": 1920,
+        "draw": 80004005,
+        "step": 6,
+        "restore": 0,
+        "state_back": 1,
+        "pending": 1,
+        "revert": 0,
+        "reverted": 1,
+        "scratch": "8007000e",
+        "scratch_step": 2,
+        "none_pending": 1,
+        "next": 0,
+        "drew": 1
+      }
+    ],
+    "reset": [
+      {
+        "before": 6,
+        "pending": 1,
+        "released": 3,
+        "forgotten": 1,
+        "during": 1,
+        "reset": 0,
+        "after": 6,
+        "result": 0,
+        "drew": 1,
+        "changed": 36789,
+        "reverted": 1
+      }
+    ],
+    "timing": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 1,
+        "rect_area_share": 0.103,
+        "scissor_px": 215602,
+        "copy_px": 222880,
+        "fenced_on_ms": 0.0363,
+        "fenced_off_ms": 0.0144,
+        "submit_ms": 0.0027,
+        "chain_ms": 0.0219,
+        "gpu_ms": 0.0192,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 4,
+        "rect_area_share": 0.103,
+        "scissor_px": 341388,
+        "copy_px": 352128,
+        "fenced_on_ms": 0.0761,
+        "fenced_off_ms": 0.0146,
+        "submit_ms": 0.0027,
+        "chain_ms": 0.0615,
+        "gpu_ms": 0.0588,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "rects": 16,
+        "rect_area_share": 0.103,
+        "scissor_px": 1525284,
+        "copy_px": 1540560,
+        "fenced_on_ms": 0.2216,
+        "fenced_off_ms": 0.0184,
+        "submit_ms": 0.0031,
+        "chain_ms": 0.2032,
+        "gpu_ms": 0.2001,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 1,
+        "rect_area_share": 0.101,
+        "scissor_px": 753420,
+        "copy_px": 770784,
+        "fenced_on_ms": 0.062,
+        "fenced_off_ms": 0.0201,
+        "submit_ms": 0.0026,
+        "chain_ms": 0.0419,
+        "gpu_ms": 0.0393,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 4,
+        "rect_area_share": 0.101,
+        "scissor_px": 1198860,
+        "copy_px": 1225440,
+        "fenced_on_ms": 0.193,
+        "fenced_off_ms": 0.0242,
+        "submit_ms": 0.0026,
+        "chain_ms": 0.1688,
+        "gpu_ms": 0.1662,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "rects": 16,
+        "rect_area_share": 0.101,
+        "scissor_px": 5365932,
+        "copy_px": 5398560,
+        "fenced_on_ms": 0.746,
+        "fenced_off_ms": 0.029,
+        "submit_ms": 0.0039,
+        "chain_ms": 0.717,
+        "gpu_ms": 0.7131,
+        "samples": 60,
+        "calls": 95,
+        "method": "tail_event_fenced"
+      }
+    ],
+    "checks": [
+      [
+        "attach_fp16_filter_refusal",
+        true
+      ],
+      [
+        "attach",
+        true
+      ],
+      [
+        "displace_one_rect",
+        true
+      ],
+      [
+        "displace_drew",
+        true
+      ],
+      [
+        "displace_within_amplitude",
+        true
+      ],
+      [
+        "displace_within_mask",
+        true
+      ],
+      [
+        "displace_moves",
+        true
+      ],
+      [
+        "displace_outside_byte_equal",
+        true
+      ],
+      [
+        "displace_unmasked_byte_equal",
+        true
+      ],
+      [
+        "displace_fade_along",
+        true
+      ],
+      [
+        "displace_fade_side",
+        true
+      ],
+      [
+        "displace_revert_byte_equal",
+        true
+      ],
+      [
+        "occlusion_hidden_byte_equal",
+        true
+      ],
+      [
+        "occlusion_front_displaced",
+        true
+      ],
+      [
+        "gate_24px",
+        true
+      ],
+      [
+        "gate_empty_no_call",
+        true
+      ],
+      [
+        "gate_cap_16_ranked",
+        true
+      ],
+      [
+        "state_restored",
+        true
+      ],
+      [
+        "state_stream_indices_restored_outside_untouched",
+        false
+      ],
+      [
+        "state_own_scene_drew",
+        true
+      ],
+      [
+        "scratch_released_while_idle",
+        true
+      ],
+      [
+        "refusal_format",
+        true
+      ],
+      [
+        "refusal_recording",
+        true
+      ],
+      [
+        "refusal_zero_amplitude",
+        true
+      ],
+      [
+        "fault_draw_step",
+        true
+      ],
+      [
+        "fault_draw_revert",
+        true
+      ],
+      [
+        "fault_scratch",
+        true
+      ],
+      [
+        "fault_next_frame_draws",
+        true
+      ],
+      [
+        "reset_released",
+        true
+      ],
+      [
+        "reset_recreated",
+        true
+      ],
+      [
+        "displace_one_rect",
+        true
+      ],
+      [
+        "displace_drew",
+        true
+      ],
+      [
+        "displace_within_amplitude",
+        true
+      ],
+      [
+        "displace_within_mask",
+        true
+      ],
+      [
+        "displace_moves",
+        true
+      ],
+      [
+        "displace_outside_byte_equal",
+        true
+      ],
+      [
+        "displace_unmasked_byte_equal",
+        true
+      ],
+      [
+        "displace_fade_along",
+        true
+      ],
+      [
+        "displace_fade_side",
+        true
+      ],
+      [
+        "displace_revert_byte_equal",
+        true
+      ],
+      [
+        "occlusion_hidden_byte_equal",
+        true
+      ],
+      [
+        "occlusion_front_displaced",
+        true
+      ],
+      [
+        "detach_released",
+        true
+      ]
+    ],
+    "result": {
+      "checks": 43,
+      "failures": 1,
+      "verdict": "FAIL"
+    },
+    "check_count": 43,
+    "failed_checks": [
+      "state_stream_indices_restored_outside_untouched"
+    ]
+  },
+  "summary": {
+    "timing_gpu_ms": {
+      "1920x1080_1": 0.0192,
+      "1920x1080_4": 0.0588,
+      "1920x1080_16": 0.2001,
+      "5120x1440_1": 0.0393,
+      "5120x1440_4": 0.1662,
+      "5120x1440_16": 0.7131
+    },
+    "timing_submit_ms": {
+      "1920x1080_1": 0.0027,
+      "1920x1080_4": 0.0027,
+      "1920x1080_16": 0.0031,
+      "5120x1440_1": 0.0026,
+      "5120x1440_4": 0.0026,
+      "5120x1440_16": 0.0039
+    },
+    "displace": {
+      "1920x1080": {
+        "amplitude_px": 1.125,
+        "max_px": 1.1075,
+        "max_over_mask_px": 0.0103,
+        "mean_strong_px": 0.3445,
+        "near_px": 0.407,
+        "mid_px": 0.2122,
+        "far_px": 0.0132,
+        "side_px": 0.03,
+        "outside_diff": 0,
+        "band_diff": 0,
+        "restored": 1
+      },
+      "5120x1440": {
+        "amplitude_px": 1.5,
+        "max_px": 1.4726,
+        "max_over_mask_px": 0.0104,
+        "mean_strong_px": 0.4206,
+        "near_px": 0.3753,
+        "mid_px": 0.2986,
+        "far_px": 0.0174,
+        "side_px": 0.0309,
+        "outside_diff": 0,
+        "band_diff": 0,
+        "restored": 1
+      }
+    }
+  },
+  "passed": false
+}

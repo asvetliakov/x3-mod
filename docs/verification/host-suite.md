@@ -96,11 +96,11 @@ so the records cannot be re-recorded while the sources keep changing natively:
 
 | Module | Record (Wine run) | Sources drifted |
 | --- | --- | --- |
-| `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09) | 12 of 21 |
+| `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09); native record 2026-11-05 fails (every mode crashes in `CreateDevice`) | 12 of 21 |
 | `test_engine_plumes` | rebound 2026-11-05 to `native-windows/engine-plumes/summary.json` (exact hashes; Wine record kept as provenance) | none |
-| `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140) | 5 of 14 |
-| `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140) | 1 of 9 |
-| `test_fov_patch_result` | `fov-patch.json` (ecf0215ee, 2026-09-26) | 1 of 7 |
+| `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 22 of 44 (source drift) | 5 of 14 |
+| `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140); native record 2026-11-05 fails 1 of 43 (host) | 1 of 9 |
+| `test_fov_patch_result` | rebound 2026-11-05 to `native-windows/fov-patch/fov-patch.json` (268/268, exact hashes; Wine record kept as provenance) | none |
 | `test_engine_effects_sites` | `engine-effects-patch.json` (203c5e984, Run124) | 1 of 7 (`engine_effects_option.h`, 17ab85a84) |
 | `test_occlusion_cull` | occlusion records (2026-10-08) | accepted 2026-11-02 |
 
@@ -113,7 +113,10 @@ and needs a new dated entry with its commit range. The engine-effects entries fo
 those files were under concurrent change and move on the next merge. The next
 re-record (and removal of the constants) needs a Wine or native D3D9 fixture run
 of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
-`run_engine_shimmer.py` and `run_fov_patch.py`.
+`run_engine_shimmer.py` and `run_fov_patch.py`. All five now take `--host native`.
+The plume and FOV tests are bound to their native records. The ribbons, shimmer and
+engine-effects tests keep the Wine record and the constants until their native record
+passes (below, "Native re-record, 2026-11-05").
 
 ## Native Windows fixture host (2026-11-05)
 
@@ -184,6 +187,94 @@ and to `SOURCES_SHA256_2026_11_03`. The flow failure at high values is open: it
 is deterministic on this GPU and needs a diagnosis, not a looser gate.
 
 Fixed 2026-11-05: the flow failure was the plume value noise's lattice index under a fused `mad`; with the source fix the native record passes 322/322 and `test_engine_plumes` is bound to it ([engine-effects.md](engine-effects.md), "Native flow defect").
+
+### Native re-record, 2026-11-05
+
+`run_engine_ribbons.py`, `run_engine_shimmer.py`, `run_engine_effects.py` and
+`run_fov_patch.py` take `--host native` in the same shape as the pilot: bottle
+stays the default, there is no fallback, `--wine-env` is bottle-only, and each record has
+`bottle: null` plus `host`. Each fixture's D3D9 path prints the identity rows.
+Engine-effects also prints `SEAM_MODULE` and takes `D3D9_MODULE` from the system
+directory, because its `d3d9.dll` is the app-local seam. Each run went through
+`wine_lock.py` on the host above, at commit 7d7c29549 with this change uncommitted
+(measured). Comparison scripts sit beside the records (`native-windows/<fixture>/compare_wine.py`;
+for engine-effects, `crash_rows.py`). Two fixture defects were Wine-tolerated, and
+fixing them changed no gate:
+
+- `engine_ribbons_fixture.cpp`: `Scene::frame` drew outside `BeginScene` /
+  `EndScene` (`FATAL quad draw 8876086c`, as in the plume pilot); it now opens
+  its own scene, and no caller has one open.
+- `build_fov_patch.py`: the fixture image has virtual gaps between its sections
+  (`.reloc` ends at 0x35f000, `.x3mfvc` starts at 0x41c000, and so on). Wine maps
+  that image, but native `CreateProcess` refuses it (interop reported "Invalid argument" with no
+  output). The build now links twice and fills each gap with an uninitialised
+  `.x3mpNN` section. Its header's write bit is cleared, so the padding is read-only
+  and no VirtualQuery region merges with a fixture page. The engine pages, their
+  protections and the audit are unchanged.
+
+| Fixture | Native (wall, incl. build) | Checks | Against the Wine record | Binding |
+| --- | --- | --- | --- | --- |
+| engine-ribbons | 14 s | 44, 22 fail | 22 verdicts differ | Wine (constants kept) |
+| engine-shimmer | 5 s | 43, 1 fails | 1 differs | Wine (constants kept) |
+| engine-effects | 59 s (incremental) | 0 in all 8 modes | every mode crashes | Wine (constants kept) |
+| fov-patch | 0.3 s run (Wine 8.7 s) | 268, 0 fail | identical | **native** |
+
+**Ribbons: source drift, not the host.** All 22 failures are the moving-nozzle
+resolve checks (`no_gap_at_nozzle`, `length`, and `survival` at 4 px, at both widths and skies)
+plus `ribbon_seta_continuous_1920` and `ribbon_cut_no_bridge_1920`. Natively, the
+strip has 31 gaps (Wine 0), `at_nozzle` is 0 (Wine 0.88-0.89), the length is +51 px
+(168 / 285 against 117 / 234 px, expected 120 / 240), the SETA run has 29 gaps, and
+the cut case shows `bridge_without_cut` 0 (Wine 128). The fixture at the record's own commit 0cf873a6b,
+with only the scene bracket added and run natively, passes 44 of 44 with the Wine
+numbers to three or four digits (`native-windows/engine-ribbons/attribution_0cf873a6b.json`,
+produced by `record_commit_native.py`). The difference therefore comes from the ribbon changes since
+the record: the head starts at the plume end (809ad68e8), then is anchored inside the
+plume with a fade-in from 0 (4b4e2eafd); the own-ship exclusion is 22cd55d79. The fixture's
+nozzle-anchored expectations predate them. Either those expectations need to be
+re-derived for the anchored head, or this is a regression. That is open, not decided here.
+Fog, timing and CPU pass: stage GPU 0.017-0.034 ms (Wine 0.016-0.139), CPU at 100
+ribbons 23.9 µs (Wine 25.5).
+
+**Shimmer: native D3D9 state restore.** `state_stream_indices_restored_outside_untouched`
+fails because, after `EngineShimmerPass` restores state, stream 0 comes back with the
+caller's buffer and stride 24 but **offset 0 instead of 16**. The index buffer, the
+s5 texture and c60 are intact (the fixture's STATE row now prints `vb_same`, `offset`,
+`stride`, `ib_same`, `tex5_same`, `c60_same`). The record's commit fails the same way
+natively (`native-windows/engine-shimmer/attribution_0cf873a6b.json`), so this is the
+host. The pass's recorded state block contains `SetStreamSource(0, nullptr, 0, 0)`, and on this
+runtime Capture/Apply of that block does not give back the caller's offset. In the game,
+a caller whose stream 0 has a nonzero offset would draw from offset 0 after a shimmer frame.
+Every other check passes: displacement max 1.1075 / 1.4726 px (Wine 1.1033 / 1.4704),
+outside and band byte-equal, revert exact. GPU cost for 16 rects is 0.200 ms at 1920x1080
+and 0.713 ms at 5120x1440 (Wine 0.609 / 1.538).
+
+**Engine-effects: the seam crashes natively.** Every mode dies with `c0000005`
+inside the fixture's `create()`, after the proxy's `linear_cutout_device` row and
+before `CreateDevice` returns. No `STEP created` row is printed, so the CHECK count
+is 0 and the exit code 5. The faults are mostly execute faults at garbage addresses that
+vary by mode and partly between runs: `0x312e312e` ("..1.1" in ASCII), `0xb8ee20fc`,
+`0xfa855186`, `0x00000000`. In the first run, five modes faulted reading inside the
+system `d3d9.dll` at +0x11ecdc instead. That points to a
+corrupted return or call target in the seam's device-creation path. The fault is the
+same without the identity rows and from a Windows-local run directory (`C:\x3-fixtures`),
+so neither the new rows nor the UNC path causes it. The production DLL runs the game
+natively, so the seam build (`X3M_MOTION_OUTPUT_FIXTURE`) or the fixture's use of it
+is the first suspect. Host and source drift are not separated, because the record's
+commit cd479d025 does not build on this host (its fog bake needs NumPy 2.0.2). The
+program bytes come from `--programs /mnt/c/X3/x3-modern-captures` (same SHA-256 as the Wine
+record). The seam links a dedicated AP build, `--cmake-build verification/probe/build/engine-effects-cmake-ap`,
+which the runner configures when empty; `build/` holds no configured build on this host.
+
+**FOV: bound.** The 268 check names and verdicts, the constructor, INS_SetFocus and load
+results, the 65,537-input sweep, the install sequence and the confirm rows equal the
+Wine record. Two things differ, and neither is gated. One restore row's site is a heap
+test page (0x00a809dc against 0x00ac09dc). The protection seen during the write is
+`PAGE_EXECUTE_READWRITE` (0x40) natively and `PAGE_EXECUTE_WRITECOPY` (0x80) under Wine.
+Install costs 247 µs against 977, restore 140 against 332 (fixture-inclusive, one-off).
+`test_fov_patch_result` now reads `native-windows/fov-patch/fov-patch.json` and checks
+`bottle: null` plus the host block. It keeps the Wine record as provenance
+(`test_wine_provenance`: a clean X3 arm64 pass with the same check list) and binds the
+sources by exact hash.
 
 ## Tests that read production source
 

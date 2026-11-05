@@ -179,7 +179,9 @@ struct Scene {
         compile("float4 main(float2 p:VPOS):COLOR0{return float4(0,0,0,0);}", "ps_3_0", code);
         check("zero ps", d->CreatePixelShader(code.data(), &zero_ps.p));
     }
+    // Its own BeginScene / EndScene: the native runtime refuses a draw outside a scene (D3DERR_INVALIDCALL; Wine accepts it).
     void frame(bool flicker = false, unsigned n = 0) {
+        check("frame begin", d->BeginScene());
         check("blend off", d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE));
         check("z off", d->SetRenderState(D3DRS_ZENABLE, FALSE));
         check("cull", d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
@@ -199,6 +201,7 @@ struct Scene {
             quad.draw(d, t.w, t.h, sky_ps.p);
         } else
             check("clear scene", d->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0));
+        check("frame end", d->EndScene());
     }
 };
 // A synthetic main-jet record (identity view: origin and axis in view space), cluster white.
@@ -916,6 +919,26 @@ int main(int argc, char** argv) {
         if (!create) throw std::runtime_error("Direct3DCreate9");
         IDirect3D9* api = create(D3D_SDK_VERSION);
         if (!api) throw std::runtime_error("Create9");
+        {
+            // Host identity for the record (run_engine_ribbons.py --host native; the parser ignores these rows): the adapter
+            // as the runtime reports it and the modules actually loaded.
+            D3DADAPTER_IDENTIFIER9 id{};
+            const HRESULT hr = api->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id);
+            if (SUCCEEDED(hr)) {
+                std::printf("ADAPTER vendor=0x%04lx device=0x%04lx subsys=0x%08lx revision=%lu whql=%lu driver_version=%u.%u.%u.%u\n",
+                            id.VendorId, id.DeviceId, id.SubSysId, id.Revision, id.WHQLLevel,
+                            unsigned(HIWORD(id.DriverVersion.HighPart)), unsigned(LOWORD(id.DriverVersion.HighPart)),
+                            unsigned(HIWORD(id.DriverVersion.LowPart)), unsigned(LOWORD(id.DriverVersion.LowPart)));
+                id.Description[sizeof id.Description - 1] = 0;
+                id.Driver[sizeof id.Driver - 1] = 0;
+                std::printf("ADAPTER_DESC %s\nADAPTER_DRIVER %s\n", id.Description, id.Driver);
+            } else {
+                std::printf("ADAPTER result=%08lx\n", hr);
+            }
+            char path[MAX_PATH] = {};
+            if (GetModuleFileNameA(runtime, path, MAX_PATH)) std::printf("D3D9_MODULE %s\n", path);
+            if (GetModuleFileNameA(d3dx, path, MAX_PATH)) std::printf("D3DX_MODULE %s\n", path);
+        }
         D3DPRESENT_PARAMETERS pp{};
         pp.Windowed = TRUE;
         pp.SwapEffect = D3DSWAPEFFECT_DISCARD;

@@ -8,9 +8,13 @@ D3D9 and writes <results>/engine-shimmer/summary.json: bottle, the checkout's co
 hashes, the build, every CHECK and the numbers of each case (displacement against the amplitude and the replica's
 mask, byte-equality outside the rects and after the revert, the fade, the 24 px gate and the cap, occlusion, hostile
 state, refusals, faults, Reset, and the EVENT-fenced cost of run + revert for 1 / 4 / 16 rects of 10 % of the screen at
-1920x1080 and 5120x1440). The fixture's stdout stays under verification/probe/build/engine-shimmer/. Run through
-wine_lock.py with X3M_FIXTURE_BOTTLE=X3; --wine-env NAME=VALUE (repeatable, e.g. CX_GRAPHICS_BACKEND=wined3d) goes to
-the wine wrapper as --env and into the record as wine_env. Never launches the game.
+1920x1080 and 5120x1440). The fixture's stdout stays under verification/probe/build/engine-shimmer/. Two hosts, chosen
+explicitly (as run_engine_plumes.py): the default --host bottle runs it in the CrossOver bottle (X3M_FIXTURE_BOTTLE=X3,
+builtin d3d9) into <results>/bottle-X3/engine-shimmer/; --wine-env NAME=VALUE (repeatable, e.g.
+CX_GRAPHICS_BACKEND=wined3d) goes to the wine wrapper as --env and into the record as wine_env. --host native
+(native_host.py) runs the same binary on the Windows side through WSL interop with the system d3d9.dll, into
+verification/results/native-windows/engine-shimmer/ with the record's host block. Either way run through wine_lock.py
+(one fixture at a time); no fallback from one host to the other. Never launches the game.
 """
 import argparse
 import hashlib
@@ -22,6 +26,7 @@ import sys
 from pathlib import Path
 
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import native_host  # --host native: WSL interop, the native-windows results directory and the host block
 from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -109,6 +114,21 @@ def summary(r):
     }
 
 
+def run_fixture(args, extra, log):
+    """Runs the fixture once on the selected host with `extra` arguments; stdout goes to BUILD/<log>.log, stderr to
+    BUILD/<log>.stderr.txt. Returns (exit code, stdout text)."""
+    if args.host == 'native':
+        done, text = native_host.run_native(EXE, list(extra), BUILD, args.timeout, log=BUILD / log)
+        return done.returncode, text
+    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir',
+               str(BUILD), str(EXE), *extra]
+    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)
+    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
+    (BUILD / f'{log}.log').write_text(text)
+    (BUILD / f'{log}.stderr.txt').write_bytes(done.stderr)
+    return done.returncode, text
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
@@ -117,32 +137,41 @@ def main():
     parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
                         help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
                              'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 for one run')
+    parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
+                        help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
+                             'WSL2 host through interop (native_host.py), never a fallback')
     args = parser.parse_args()
+    if args.host == 'native' and args.wine_env:
+        parser.error('--wine-env applies to --host bottle only')
     for item in args.wine_env:
         if '=' not in item or not item.split('=', 1)[0]:
             parser.error(f'--wine-env expects NAME=VALUE: {item}')
-    if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
-        raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
-    if game_running():
-        raise SystemExit('the game is running')
-    results = bottle.results_dir(ROOT) / 'engine-shimmer'
-    results.mkdir(parents=True, exist_ok=True)
-    record = {'bottle': bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
+    native = args.host == 'native'
+    if native:
+        if native_host.missing():
+            raise SystemExit('--host native needs ' + '; '.join(native_host.missing()))
+        if game_running() or native_host.game_running_windows():
+            raise SystemExit('the game is running')
+        results = native_host.results_dir(ROOT, 'engine-shimmer')
+    else:
+        if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
+            raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
+        if game_running():
+            raise SystemExit('the game is running')
+        results = bottle.results_dir(ROOT) / 'engine-shimmer'
+        results.mkdir(parents=True, exist_ok=True)
+    record = {'bottle': None if native else bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(),
               'program': program_current(), 'game_launched': False, 'wine_env': list(args.wine_env)}
     if not args.no_build:
         record['build'] = build()
-    command = [bottle.WINE, *bottle.wine_args(), *[a for item in args.wine_env for a in ('--env', item)], '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE)]
-    if args.only:
-        command += ['--only', args.only]
-    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)
-    text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
-    (BUILD / 'fixture.log').write_text(text)
-    (BUILD / 'fixture.stderr.txt').write_bytes(done.stderr)
+    returncode, text = run_fixture(args, ['--only', args.only] if args.only else [], 'fixture')
     report = parse(text)
-    record['run'] = {'exit_code': done.returncode, 'result': report['result'], 'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
+    if native:
+        record['host'] = native_host.identity(text)
+    record['run'] = {'exit_code': returncode, 'result': report['result'], 'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['report'] = report
     record['summary'] = summary(report)
-    record['passed'] = (done.returncode == 0 and not report['failed_checks'] and report['result'] is not None and
+    record['passed'] = (returncode == 0 and not report['failed_checks'] and report['result'] is not None and
                         report['result']['verdict'] == 'PASS' and not args.only and len(report['timing']) == 6 and
                         len(report['displace']) == 2 and record.get('build', {}).get('warnings', 0) == 0)
     if not args.only:

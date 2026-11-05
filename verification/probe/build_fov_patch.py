@@ -22,9 +22,17 @@ its own and calls the seam), that engine_patch.o carries `lock cmpxchg8b`, that
 the six code sections are one
 executable read-only page each and the data section one writable page at their
 engine VAs, and that no other section overlaps any of them.
+
+The native Windows loader refuses an image whose sections leave virtual gaps (CreateProcess fails before the fixture
+runs; Wine maps it anyway), so the link runs twice: the first link places the sections, the second adds one
+uninitialised padding section (.x3mpNN, no file bytes) per gap between consecutive sections, so the image is
+contiguous; `as` marks a bss section writable, so the header's IMAGE_SCN_MEM_WRITE is cleared on the padding after the
+link (read-only, uninitialised). The padding takes no engine VA and differs in protection from both neighbours (no VirtualQuery region
+merges with a fixture page).
 """
 import json
 import re
+import struct
 import subprocess
 from pathlib import Path
 from run_chase_aim_trace import FLAGS
@@ -77,6 +85,42 @@ def audit(objects):
     return record
 
 
+def section_layout(exe):
+    """[(name, va, size)] of every section of the linked image, in address order."""
+    out = []
+    for line in tool('objdump', '-h', str(exe)).splitlines():
+        m = re.match(r'\s*\d+\s+(\S+)\s+([0-9a-f]+)\s+([0-9a-f]+)\s', line)
+        if m:
+            out.append((m.group(1), int(m.group(3), 16), int(m.group(2), 16)))
+    return sorted(out, key=lambda s: s[1])
+
+
+def gaps(layout, alignment=0x1000):
+    """[(va, size)] of the page-aligned holes between consecutive sections."""
+    out = []
+    for (_, va, size), (_, next_va, _) in zip(layout, layout[1:]):
+        end = (va + size + alignment - 1) & ~(alignment - 1)
+        if next_va > end:
+            out.append((end, next_va - end))
+    return out
+
+
+def readonly_padding(exe, prefix=b'.x3mp'):
+    """Clears IMAGE_SCN_MEM_WRITE on the padding sections' headers; returns how many it changed."""
+    data = bytearray(exe.read_bytes())
+    pe = struct.unpack_from('<I', data, 0x3c)[0]
+    count, optional = struct.unpack_from('<H', data, pe + 6)[0], struct.unpack_from('<H', data, pe + 20)[0]
+    changed = 0
+    for i in range(count):
+        header = pe + 24 + optional + 40 * i
+        if bytes(data[header:header + 8]).rstrip(b'\0').startswith(prefix):
+            flags = struct.unpack_from('<I', data, header + 36)[0]
+            struct.pack_into('<I', data, header + 36, flags & ~0x80000000)
+            changed += 1
+    exe.write_bytes(bytes(data))
+    return changed
+
+
 def build():
     BUILD.mkdir(parents=True, exist_ok=True)
     objects = {}
@@ -87,9 +131,23 @@ def build():
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects[stem] = out
-    subprocess.run(['i686-w64-mingw32-g++', *map(str, objects.values()), '-static', '-static-libgcc', '-static-libstdc++',
-                    '-Wl,--strip-debug', f'-Wl,--image-base,{IMAGE_BASE:#010x}', '-Wl,--disable-dynamicbase',
-                    *(f'-Wl,--section-start={name}={va:#010x}' for name, (va, _) in PAGES.items()), '-o', str(EXE)], check=True, cwd=ROOT)
+    def link(padding=()):
+        pad = []
+        if padding:
+            source = BUILD / 'padding.s'
+            source.write_text(''.join(f'.section .x3mp{i:02d},"b"\n.space {size:#x}\n' for i, (_, size) in enumerate(padding)))
+            subprocess.run(['i686-w64-mingw32-as', str(source), '-o', str(BUILD / 'padding.o')], check=True, cwd=ROOT)
+            pad = [str(BUILD / 'padding.o'), *(f'-Wl,--section-start=.x3mp{i:02d}={va:#010x}' for i, (va, _) in enumerate(padding))]
+        subprocess.run(['i686-w64-mingw32-g++', *map(str, objects.values()), *pad[:1], '-static', '-static-libgcc', '-static-libstdc++',
+                        '-Wl,--strip-debug', f'-Wl,--image-base,{IMAGE_BASE:#010x}', '-Wl,--disable-dynamicbase',
+                        *(f'-Wl,--section-start={name}={va:#010x}' for name, (va, _) in PAGES.items()), *pad[1:], '-o', str(EXE)],
+                       check=True, cwd=ROOT)
+    link()
+    padding = gaps(section_layout(EXE))
+    if padding:
+        link(padding)
+        if readonly_padding(EXE) != len(padding) or gaps(section_layout(EXE)):
+            raise RuntimeError(f'fixture image still has gaps after padding: {gaps(section_layout(EXE))}')
     return {'binary': str(EXE.relative_to(ROOT)), 'toolchain': tool('g++', '--version').splitlines()[0], 'audit': audit(objects)}
 
 
