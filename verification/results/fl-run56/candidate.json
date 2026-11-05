@@ -1,0 +1,32 @@
+{
+ "run": "fl-run56",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "28b25c08f",
+ "dirty": false,
+ "build": "release.py 2.0.0 stripped (RelWithDebInfo), 0 warnings, x87 --edition fl PASS, strip identity PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256_prefix": "a3ac5ad2a2086095",
+  "bytes": 41272686
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run55",
+  "sha256_prefix": "e58042c4cf9e948c"
+ },
+ "ini": "run 55 file with the header 1.9.1 -> 2.0.0 (copy x3m.ini.run55); explicit sky_stars = 1, sky_stars_nebula_dim = 0.5, sky_nebula_deband = 1, collision_damage = 0",
+ "x3m_regenerate_exe": {
+  "sha256_prefix": "20d8454e511a11e8",
+  "previous": "x3m-regenerate.exe.pre-2.0.0"
+ },
+ "zip": {
+  "path": "C:\\Users\\asvet\\Downloads\\x3m-2.0.0-fl.zip",
+  "sha256_prefix": "d696f297768c6c67",
+  "bytes": 60074795
+ },
+ "exe_sha256_prefix": "e7f3aad8",
+ "evidence": [
+  "verification/results/release-2.0.0-fl.json",
+  "same source as FL run 55 plus the version bump and the sky-marks default (no FL behaviour change)"
+ ]
+}
