@@ -107,6 +107,7 @@ void SkyStarsPass::release_objects() noexcept {
     drop(vb_);
     drop(ib_);
     built_seed_ = 0;
+    built_key_ = 0;
     built_look_ = {};
     built_stats_ = {};
     built_stars_ = 0;
@@ -202,12 +203,15 @@ HRESULT SkyStarsPass::create_objects() noexcept {
     if (FAILED(hr)) release_objects();
     return hr;
 }
-unsigned SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, bool* rebuilt) noexcept {
+unsigned SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, std::uint64_t sector_key,
+                               bool* rebuilt) noexcept {
     if (rebuilt) *rebuilt = false;
     if (!ready()) return 0;
-    if (seed == built_seed_ && sky_stars::core::same_look(look, built_look_) && built_stars_) return built_stars_;
+    if (sky_stars::core::same_build(seed, look, sector_key, built_seed_, built_look_, built_key_) && built_stars_)
+        return built_stars_;
     PreserveCpuState guard;
     built_seed_ = seed;
+    built_key_ = sector_key;
     built_look_ = look;
     built_stars_ = 0;
     built_stats_ = {};
@@ -222,7 +226,7 @@ unsigned SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& 
     }
     sky_stars::core::BuildStats stats;
     const unsigned built = sky_stars::core::build(seed, look, static_cast<sky_stars::core::Vertex*>(mapping),
-                                                  sky_stars::core::stars_max, &stats);
+                                                  sky_stars::core::stars_max, &stats, sector_key);
     hr = vb_->Unlock();
     if (FAILED(hr)) {
         if (lost(hr)) lost_ = true;

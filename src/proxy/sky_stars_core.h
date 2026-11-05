@@ -101,7 +101,8 @@ inline bool accept_min_size(float v, float* out) noexcept { return accept_range(
 inline bool accept_twinkle(float v, float* out) noexcept { return accept_range(v, twinkle_min, twinkle_max, out); }
 inline bool accept_clustering(float v, float* out) noexcept { return accept_range(v, clustering_min, clustering_max, out); }
 // The generator seed of a field: seed64 = mark_seed ^ (sector_key x 0x9e3779b97f4a7c15), folded to 32 bits (low ^ high).
-// sector_key 0 (every field today) returns mark_seed itself; a per-sector field only has to supply the key to build().
+// sector_key 0 (no sector known yet) returns mark_seed itself; a known sector supplies sector_key::core::key_of(x, y)
+// (src/proxy/sector_key_core.h), never 0.
 inline std::uint32_t generator_seed(std::uint32_t mark_seed, std::uint64_t sector_key) noexcept {
     const std::uint64_t seed64 = std::uint64_t(mark_seed) ^ (sector_key * 0x9e3779b97f4a7c15ull);
     return std::uint32_t(seed64) ^ std::uint32_t(seed64 >> 32);
@@ -114,6 +115,12 @@ struct Look {
 inline bool same_look(const Look& a, const Look& b) noexcept {
     return a.density == b.density && a.brightness == b.brightness && a.size == b.size && a.min_size == b.min_size &&
            a.clustering == b.clustering;
+}
+// The vertex buffer's identity (SkyStarsPass::prepare's cached-build check): the mark seed, the look and the sector key
+// of generator_seed; the field is rebuilt when any of them differs from the built one.
+inline bool same_build(std::uint32_t seed, const Look& look, std::uint64_t sector_key, std::uint32_t built_seed,
+                       const Look& built_look, std::uint64_t built_key) noexcept {
+    return seed == built_seed && sector_key == built_key && same_look(look, built_look);
 }
 // Out-of-range members back to their defaults (the builder's own guard; the settings path has refused them already).
 inline Look sanitized(const Look& v) noexcept {
@@ -381,7 +388,7 @@ inline std::uint32_t twinkle_lanes(Rng& stream) noexcept {
 // no seed or no room). Runs once per (seed, look) on the render thread. Directions, brightness and tint come from the
 // seed's stream as in the first law and the twinkle lanes from a second stream, so the field is the same in any look
 // except clustering, which moves only the directions of the rejected first candidates (the cap stream, a third).
-// sector_key: the per-sector part of the generator seed (generator_seed; 0 today, the field of the mark alone).
+// sector_key: the per-sector part of the generator seed (generator_seed; 0 before any sector is known: the mark's field).
 inline unsigned build(std::uint32_t seed, const Look& requested, Vertex* out, unsigned capacity_stars,
                       BuildStats* stats = nullptr, std::uint64_t sector_key = 0) noexcept {
     if (!(seed & seed_valid) || !out) return 0;

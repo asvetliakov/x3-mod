@@ -2,6 +2,9 @@
 // motion_output.h): the match, the mask, the batch, the refusals and the quarantine, with a scripted SetRenderState, a
 // scripted pass (the real renderer::SkyStarsPass is checked natively by sky_stars_fixture.cpp) and the call order of
 // before_draw/after_draw replayed by draw() below (test_motion_sky_stars.py checks that order in motion_output.cpp).
+// The per-sector seed: a scripted sector key reader (World::read, the real one is sector_key_check.cpp's) behind the
+// real sky_stars_sector_sample, and the scripted pass's cached-build check is the real core::same_build.
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <memory>
@@ -31,13 +34,17 @@ void check(bool ok, const char* name) {
     }
 }
 struct World {
-    std::vector<std::string> calls, rows;
+    std::vector<std::string> calls, rows, text; // rows: the row names; text: the formatted rows
     bool attach_ok = true;
     HRESULT draw_hr = S_OK, restore_hr = S_OK, mask_hr = S_OK;
     DWORD colour_mask = 7;
     unsigned attaches = 0;
     float twinkle[4] = {-1.f, -1.f, -1.f, -1.f}; // c251 of the last batch
     sky_stars::core::Look look{};                // the look of the last prepare
+    std::uint64_t key = ~0ull;                   // the sector key of the last prepare
+    unsigned builds = 0;                         // prepares that rebuilt the buffer
+    sector_key::core::Result read{};             // what the scripted reader returns
+    unsigned reads = 0, invalidations = 0;
 }* w = nullptr;
 HRESULT set_rs(IDirect3DDevice9*, D3DRENDERSTATETYPE state, DWORD value) {
     w->calls.push_back("rs" + std::to_string(unsigned(state)) + "=" + std::to_string(value));
@@ -62,7 +69,28 @@ void sky_stars_texture_desc(IDirect3DBaseTexture9*, unsigned* a, unsigned* b, un
 void log(const char* format, ...) {
     const char* space = std::strchr(format, ' ');
     w->rows.push_back(space ? std::string(format, space) : std::string(format));
+    char line[2048];
+    va_list args;
+    va_start(args, format);
+    std::vsnprintf(line, sizeof line, format, args);
+    va_end(args);
+    w->text.push_back(line);
 }
+const float* sky_stars_c0_rows(const float (&rows)[motion_matrix_windows_max][16],
+                               const bool (&known)[motion_matrix_windows_max]) noexcept {
+    return known[0] ? rows[0] : nullptr;
+}
+namespace sector_key {
+core::Result sample(std::uint32_t sector) noexcept {
+    ++w->reads;
+    core::Result r = w->read;
+    r.sector = sector;
+    return r;
+}
+void invalidate() noexcept { ++w->invalidations; }
+const char* edition() noexcept { return "ap"; }
+const char* status() noexcept { return "ready"; }
+} // namespace sector_key
 std::uint64_t resource_id(IDirect3DBaseTexture9*) { return 1; }
 MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() = default;
@@ -95,10 +123,18 @@ HRESULT renderer::SkyStarsPass::attach(IDirect3DDevice9* d, void* const*, const 
 }
 void renderer::SkyStarsPass::detach() noexcept { caps_ = {}; }
 unsigned renderer::SkyStarsPass::references() const noexcept { return 0; }
-unsigned renderer::SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, bool* rebuilt) noexcept {
-    if (rebuilt) *rebuilt = seed != built_seed_;
+unsigned renderer::SkyStarsPass::prepare(std::uint32_t seed, const sky_stars::core::Look& look, std::uint64_t sector_key,
+                                         bool* rebuilt) noexcept {
+    const bool same = sky_stars::core::same_build(seed, look, sector_key, built_seed_, built_look_, built_key_) &&
+                      built_stars_;
+    if (rebuilt) *rebuilt = !same;
+    if (same) return built_stars_;
+    ++w->builds;
     built_seed_ = seed;
+    built_key_ = sector_key;
+    built_look_ = look;
     w->look = look;
+    w->key = sector_key;
     built_stars_ = sky_stars::core::star_count(sky_stars::core::seed_k(seed), look.density);
     return built_stars_;
 }
@@ -163,6 +199,36 @@ std::vector<std::string> draw(MotionOutput& m, bool bind, std::uint64_t vs = 1, 
 using Calls = std::vector<std::string>;
 const Calls masked_batch{"rs168=0", "native", "rs168=7", "batch"}, masked_only{"rs168=0", "native", "rs168=7"},
     native_only{"native"};
+// The frame's cockpit-sector sample: `sector` with class 1 (0: no sector), the background table loaded or not.
+void sector(MotionOutput& m, std::uint32_t s, std::uint64_t now_ms, bool loading = false) {
+    sector_background::Sample v;
+    v.status = loading ? sector_background::Status::Loading
+               : s     ? sector_background::Status::Ready
+                       : sector_background::Status::NoSector;
+    v.sector = s;
+    v.class48 = s ? 1 : 0;
+    m.sky_stars_sector_sample(v, now_ms);
+}
+sector_key::core::Result known(std::int32_t x, std::int32_t y) {
+    sector_key::core::Result r;
+    r.known = true;
+    r.reason = sector_key::core::Reason::none;
+    r.x = x;
+    r.y = y;
+    r.key = sector_key::core::key_of(x, y);
+    return r;
+}
+sector_key::core::Result unknown(sector_key::core::Reason why) {
+    sector_key::core::Result r;
+    r.reason = why;
+    return r;
+}
+unsigned count(const std::vector<std::string>& rows, const char* name) {
+    unsigned n = 0;
+    for (const auto& r : rows) n += r == name;
+    return n;
+}
+bool has(const std::string& text, const char* part) { return text.find(part) != std::string::npos; }
 } // namespace
 
 int main() {
@@ -322,6 +388,107 @@ int main() {
         draw(m, true);
         m.sky_stars_phase_end();
         check(m.sky_stars_logged_full_ == 88, "I table_full=88 in the row");
+    }
+    {   // K: the per-sector seed. Before any sector the mark's field (key 0); a known sector rebuilds once with its key;
+        // the same key again is the cached build; an unknown read (menu, load, no sector) keeps the held field; a
+        // second sector rebuilds; the return to the first rebuilds its own field again. One row per change.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(world.builds == 1 && world.key == 0, "K before a sector: the mark's field, key 0");
+        world.read = known(1, 3);
+        sector(m, 0x10000000, 1000);
+        frame(m, BoundaryState::Background);
+        check(draw(m, true) == masked_batch && world.builds == 2 && world.key == 0x20004, "K known (1,3): rebuilt with its key");
+        sector(m, 0x10000000, 1016);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(world.builds == 2 && count(world.rows, "sky_stars_sector") == 1, "K same key: cached build, no second row");
+        world.read = unknown(sector_key::core::Reason::kc_missing);
+        sector(m, 0x10000000, 1032);
+        sector(m, 0, 1048);                    // no sector (the menu): the caller's no_sector, no read
+        sector(m, 0x10000000, 1064, true);     // a load: the background table empty
+        frame(m, BoundaryState::Background);
+        check(draw(m, true) == masked_batch && world.builds == 2 && world.key == 0x20004 && m.sky_stars_hold_.key == 0x20004,
+              "K unknown, no sector, loading: the held field is drawn, no rebuild");
+        check(world.invalidations == 1 && count(world.rows, "sky_stars_sector") == 4, "K loading drops the cache; four rows");
+        const unsigned reads = world.reads;
+        world.read = known(2, 3);
+        sector(m, 0x10000180, 1080);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(world.reads == reads + 1 && world.builds == 3 && world.key == (3ull << 16 | 4), "K second sector: rebuilt");
+        world.read = known(1, 3);
+        sector(m, 0x10000300, 2000);           // 920 ms after the last sample: a stall drops the cache first
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(world.builds == 4 && world.key == 0x20004 && world.invalidations == 2, "K return: its own field again");
+        m.sky_stars_phase_end();
+        check(!world.text.empty() && has(world.text.back(), " key=131076"), "K the ready row carries key=");
+        bool row = false;
+        for (const auto& r : world.text)
+            row |= has(r, "sky_stars_sector ") && has(r, "status=known reason=none edition=ap S=10000300") &&
+                   has(r, " x=1 y=3 key=131076 ");
+        check(row, "K sky_stars_sector row fields");
+        // Without the setting the sample is a no-op.
+        MotionOutput off;
+        const unsigned before = world.reads;
+        sector(off, 0x10000000, 3000);
+        check(world.reads == before && off.sky_stars_hold_.key == 0, "K setting off: no read");
+    }
+    {   // L: sky_stars_phase_draw: a field's first match arms the next background phase; every draw of that phase is
+        // logged (at most 16), the star body with its c0-c3 rows and the background rotation; one-shot per field.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.shadow_.rows_known[0] = true;
+        m.shadow_.rows[0][0] = 2.f;
+        frame(m, BoundaryState::Background);
+        draw(m, false, 7, 8);
+        draw(m, true);
+        check(count(world.rows, "sky_stars_phase_draw") == 0 && m.sky_stars_phase_log_ == 1, "L first match arms");
+        m.sky_stars_phase_end();
+        frame(m, BoundaryState::Background);
+        draw(m, false, 7, 8);
+        draw(m, true);
+        draw(m, false, 9, 9);
+        m.sky_stars_phase_end();
+        check(count(world.rows, "sky_stars_phase_draw") == 3 && m.sky_stars_phase_log_ == 0, "L next phase: three rows");
+        unsigned stars = 0, c0 = 0;
+        for (const auto& r : world.text)
+            if (has(r, "sky_stars_phase_draw ")) {
+                stars += has(r, " star=1 ");
+                c0 += has(r, " c0=2,0,0,0 ") && has(r, " background_valid=1 r=1,0,0,0,1,0,0,0,1");
+            }
+        check(stars == 1 && c0 == 1, "L the star body's row: c0-c3 and the rotation");
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        m.sky_stars_phase_end();
+        check(count(world.rows, "sky_stars_phase_draw") == 3, "L one-shot per field");
+        world.read = known(5, 6); // a new sector: a new field arms again, at most 16 rows
+        sector(m, 0x10000000, 100);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        m.sky_stars_phase_end();
+        frame(m, BoundaryState::Background);
+        for (unsigned i = 0; i < 20; ++i) draw(m, i == 3, 7 + i, 8);
+        m.sky_stars_phase_end();
+        check(count(world.rows, "sky_stars_phase_draw") == 3 + 16, "L a new field: 16 rows at most");
+        world.read = unknown(sector_key::core::Reason::no_sector);
+        sector(m, 0, 116);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        m.sky_stars_phase_end();
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        m.sky_stars_phase_end();
+        check(count(world.rows, "sky_stars_phase_draw") == 19, "L unknown keeps the field: nothing re-armed");
     }
     std::printf("motion_sky_stars scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);
     return failures ? 1 : 0;

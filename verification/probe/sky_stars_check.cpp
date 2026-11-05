@@ -2,7 +2,8 @@
 // (src/renderer/exposure.cpp) for verification/analysis/test_sky_stars.py. Prints one JSON object: the mark parse of a
 // payload-2 descriptor and the table round trip of K, the seed and N derivation, the settings' ranges, the vertex-buffer
 // builder (count, stride, magnitude law, peak cap, size law, the first law at min_size 1 / size 0 / gain 1 / clustering
-// 0, the clustering law in 48 equal-area bins, the sector-key seed fold, twinkle lanes and c251, determinism), the
+// 0, the clustering law in 48 equal-area bins, the sector-key seed fold and the cached-build check, twinkle lanes and
+// c251, determinism), the
 // kernel's energy at sub-pixel offsets, and the meter replay on star-only
 // frames (invariant 5 of docs/architecture/sector-background-modern.md). No D3D, no Windows.
 #include "../../src/proxy/sky_stars_core.h"
@@ -187,6 +188,20 @@ int main() {
               core::generator_seed(0xffffffffu, 0) == 0xffffffffu && core::generator_seed(0x014101a7u, 1) == 0xe03c040bu &&
               core::generator_seed(0x014101a7u, 0x123456789abcdef0ull) == 0x66a1f36eu,
           "generator_seed_fold");
+    {
+        // The pass's cached-build check: the field is the same only when mark seed, look and sector key all are.
+        const core::Look base{};
+        core::Look brighter = base;
+        brighter.brightness = 2.f;
+        check(core::same_build(0x014101a7u, base, 0, 0x014101a7u, base, 0) &&
+                  core::same_build(0x014101a7u, base, 0x20004, 0x014101a7u, base, 0x20004) &&
+                  !core::same_build(0x014101a7u, base, 0x20004, 0x014101a7u, base, 0) &&
+                  !core::same_build(0x014101a7u, base, 0, 0x014101a7u, base, 0x20004) &&
+                  !core::same_build(0x014101a7u, base, 0x20004, 0x014101a7u, base, 0x30004) &&
+                  !core::same_build(0x014101a8u, base, 0x20004, 0x014101a7u, base, 0x20004) &&
+                  !core::same_build(0x014101a7u, brighter, 0x20004, 0x014101a7u, base, 0x20004),
+              "same_build_includes_sector_key");
+    }
     setting = core::size_default;
     check(!core::accept_size(-.1f, &setting) && !core::accept_size(3.5f, &setting) && setting == 1.f &&
               core::accept_size(0.f, &setting) && setting == 0.f,

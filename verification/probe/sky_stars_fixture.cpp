@@ -8,9 +8,14 @@
 // (c251-c255) the pass touches is put back (with a draw fault and a
 // restore fault injected); a temporal proxy (60 frames, 0.5 and 10 px/frame pans: an exponential history of weight 0.9
 // with exact reprojection and a 3x3 min/max clip, a model of the resolve, not the resolve); and the GPU/CPU cost at
-// 5120x1440 and the rebuild of a full 16384-star buffer. Prints PASS/FAIL lines and one RESULT line. Build:
+// 5120x1440 and the rebuild of a full 16384-star buffer. The per-sector seed: prepare with a sector key rebuilds once,
+// the same key is the cached build, the drawn buffer is core::build's with that key, key 0 is the mark's field again;
+// and the per-frame cost of the sector key reader's cached check (src/proxy/sector_key_core.h through the production
+// engine_memory::read, on a fabricated sector in this process). Prints PASS/FAIL lines and one RESULT line. Build:
 // verification/results/sky-stars/run_fixture.py.
 #include "../../src/renderer/sky_stars_pass.h"
+#include "../../src/proxy/sector_key_core.h"
+#include "../../src/proxy/engine_memory.h"
 #include <windows.h>
 #include <d3d9.h>
 #include <algorithm>
@@ -234,34 +239,84 @@ int main() {
     LARGE_INTEGER f{}, t0{}, t1{};
     QueryPerformanceFrequency(&f);
     QueryPerformanceCounter(&t0);
-    const unsigned n = pass.prepare(seed, look, &rebuilt);
+    const unsigned n = pass.prepare(seed, look, 0, &rebuilt);
     QueryPerformanceCounter(&t1);
     const double build_ms = double(t1.QuadPart - t0.QuadPart) * 1e3 / double(f.QuadPart);
     std::snprintf(detail, sizeof detail, "stars=%u rebuilt=%u build_ms=%.3f support_max=%.4f peak_max=%.4f twinkling=%u", n,
                   unsigned(rebuilt), build_ms, pass.stats().support_max, pass.stats().peak_max, pass.stats().twinkling);
-    check(n == 6240 && rebuilt && pass.prepare(seed, look, &rebuilt) == n && !rebuilt, "prepare_once_per_seed", detail);
+    check(n == 6240 && rebuilt && pass.prepare(seed, look, 0, &rebuilt) == n && !rebuilt, "prepare_once_per_seed", detail);
     {
         core::Look other = look;
         other.brightness = 3.f;
         bool again = false;
-        pass.prepare(seed, other, &again);
+        pass.prepare(seed, other, 0, &again);
         bool back = false;
-        pass.prepare(seed, look, &back);
+        pass.prepare(seed, look, 0, &back);
         core::Look uniform = look;
         uniform.clustering = 0.f;
         bool flat = false, clustered = false;
-        pass.prepare(seed, uniform, &flat);
-        pass.prepare(seed, look, &clustered);
+        pass.prepare(seed, uniform, 0, &flat);
+        pass.prepare(seed, look, 0, &clustered);
         check(again && back && flat && clustered, "prepare_rebuilds_on_look_change");
     }
     std::vector<core::Vertex> vb(core::vertex_capacity);
     core::build(seed, look, vb.data(), core::stars_max);
+    const std::uint64_t sector_key = x3m::sector_key::core::key_of(1, 3);
+    {
+        // The cached-build check includes the sector key: a key rebuilds once, the same key does not, key 0 again
+        // rebuilds the mark's field; the stats are core::build's with that key.
+        bool keyed = false, same = true, back = false;
+        pass.prepare(seed, look, sector_key, &keyed);
+        core::BuildStats want;
+        std::vector<core::Vertex> other(core::vertex_capacity);
+        core::build(seed, look, other.data(), core::stars_max, &want, sector_key);
+        const bool stats = pass.sector_key() == sector_key && pass.stats().twinkling == want.twinkling &&
+                           pass.stats().candidates == want.candidates && pass.stats().peak_max == want.peak_max;
+        pass.prepare(seed, look, sector_key, &same);
+        std::snprintf(detail, sizeof detail, "key=%llu twinkling=%u/%u candidates=%u/%u", (unsigned long long)sector_key,
+                      pass.stats().twinkling, want.twinkling, pass.stats().candidates, want.candidates);
+        check(keyed && !same && stats && std::memcmp(vb.data(), other.data(), n * 4 * sizeof(core::Vertex)),
+              "prepare_rebuilds_on_sector_key", detail);
+        pass.prepare(seed, look, 0, &back);
+        check(back && pass.sector_key() == 0, "prepare_key0_is_the_mark_field");
+    }
 
     // ---- 1. Energy, offsets, rotations, peak, outside pixels.
     const UINT W = 1024, H = 512;
     Target target;
     check(target.create(d, W, H), "target");
     const double m11 = 1. / std::tan(30. * 3.14159265358979 / 180.), m00 = m11 * H / W;
+    {
+        // The actual writes of a keyed rebuild: the drawn image's isolated stars carry core::build(seed, look, key)'s
+        // energy (within 1 %); then the mark's field again for the sections below.
+        std::vector<core::Vertex> keyed(core::vertex_capacity);
+        core::build(seed, look, keyed.data(), core::stars_max, nullptr, sector_key);
+        pass.prepare(seed, look, sector_key);
+        float r[9], c[16];
+        rotation(0., 0., r);
+        core::vertex_constants(r, float(m00), float(m11), 0.f, 0.f, 0.f, 0.f, W, H, c);
+        d->SetRenderTarget(0, target.surface);
+        d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+        d->BeginScene();
+        SkyStarsReport rep{};
+        pass.draw(c, steady, &rep);
+        d->EndScene();
+        std::vector<float> rgb;
+        target.read(d, rgb);
+        const auto stars = project(keyed, n, c, W, H);
+        unsigned isolated_stars = 0, within = 0;
+        for (std::size_t i = 0; i < stars.size(); ++i) {
+            if (!isolated(stars, i, W, H)) continue;
+            ++isolated_stars;
+            double sum[3], peak = 0, e = 0;
+            window_sum(rgb, W, stars[i], sum, &peak);
+            for (unsigned c3 = 0; c3 < 3; ++c3) e = std::max(e, std::fabs(sum[c3] - stars[i].expect[c3]) / stars[i].expect[c3]);
+            within += e < .01;
+        }
+        std::snprintf(detail, sizeof detail, "isolated=%u within_1pct=%u drew=%u", isolated_stars, within, unsigned(rep.drew));
+        check(rep.drew && isolated_stars > 50 && within == isolated_stars, "keyed_field_drawn", detail);
+        pass.prepare(seed, look, 0);
+    }
     const double offsets[4][2] = {{0, 0}, {.25, .5}, {.5, .5}, {.75, .125}};
     double worst_energy = 0, worst_offset_spread = 0, worst_peak = 0, worst_star_peak = 0, worst_outside_dist = 0;
     unsigned outside_pixels = 0, measured_stars = 0;
@@ -602,7 +657,7 @@ int main() {
         for (std::uint32_t s : {seed, 0x11u | 0u << 8 | 143u << 16 | core::seed_valid}) {
             core::Look cost_look = look;
             cost_look.density = s == seed ? core::density_default : 4.f;
-            const unsigned stars = pass.prepare(s, cost_look);
+            const unsigned stars = pass.prepare(s, cost_look, 0);
             d->SetRenderTarget(0, big.surface);
             d->BeginScene();
             d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
@@ -636,7 +691,7 @@ int main() {
                 rebuild_look.brightness = 2.f + .25f * float(rep); // a new look each time: a real rebuild
                 QueryPerformanceCounter(&t0);
                 bool rb = false;
-                pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, rebuild_look, &rb);
+                pass.prepare(0x22u | 3u << 8 | 200u << 16 | core::seed_valid, rebuild_look, 0, &rb);
                 QueryPerformanceCounter(&t1);
                 best_us = std::min(best_us, double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart));
             }
@@ -649,6 +704,71 @@ int main() {
         check(full, "rebuild_full_buffer");
         q->Release();
         big.release();
+    }
+    {
+        // ---- The sector key reader's per-frame cost: one header span of a fabricated sector through the production
+        // engine_memory::read, cached on (S, id, kc). "frame" advances the validation epoch first (next_frame, the
+        // Present's: one VirtualQuery on the first touch); "warm" is a second read in the same frame (the region already
+        // validated, as after the cockpit sample's reads of the same sector). The walk: the cache cleared first.
+        namespace sk = x3m::sector_key::core;
+        struct Engine {
+            bool read(std::uint32_t at, void* out, unsigned n) { return x3m::engine_memory::read(at, out, n); }
+        } engine;
+        static std::uint32_t vm_global = 0;
+        std::vector<unsigned char> sector(0x180), vm(0x1300), cells(5 * 40);
+        std::uint32_t map[2], buckets[16] = {}, node[3], object[4], record[2] = {2001, 0};
+        const auto at = [](const void* p) { return std::uint32_t(reinterpret_cast<std::uintptr_t>(p)); };
+        const std::uint32_t id = 3221, kc = std::uint32_t(-1234), key = ~kc;
+        std::memcpy(&sector[8], &id, 4);
+        sector[0x48] = 1;
+        std::memcpy(&sector[0x94], &kc, 4);
+        sector[0x9c] = 0xfe;
+        sector[0x9d] = 0xca;
+        map[0] = at(buckets);
+        map[1] = 16;
+        node[0] = 0;
+        node[1] = key;
+        node[2] = at(object);
+        buckets[key & 15] = at(node);
+        object[0] = kc;
+        object[1] = 0;
+        object[2] = at(record);
+        object[3] = at(cells.data());
+        const std::uint32_t map_at = at(map);
+        std::memcpy(&vm[0x12d0], &map_at, 4);
+        vm_global = at(vm.data());
+        const std::uint32_t values[3][2] = {{0, 1}, {1, 3}, {34, id}};
+        for (const auto& v : values) {
+            cells[5 * v[0]] = 1;
+            std::memcpy(&cells[5 * v[0] + 1], &v[1], 4);
+        }
+        sk::Layout layout{at(&vm_global), 34};
+        sk::Cache cache;
+        x3m::engine_memory::next_frame();
+        const auto first = sk::read(engine, layout, at(sector.data()), cache);
+        const unsigned reps = 20000;
+        double walk = 0, frame = 0, warm = 0;
+        bool ok = first.known && first.key == sk::key_of(1, 3);
+        for (unsigned i = 0; i < reps; ++i) {
+            LARGE_INTEGER a{}, b{}, c{}, e{};
+            x3m::engine_memory::next_frame();
+            cache.clear();
+            QueryPerformanceCounter(&a);
+            ok = ok && sk::read(engine, layout, at(sector.data()), cache).known;
+            QueryPerformanceCounter(&b);
+            x3m::engine_memory::next_frame();
+            ok = ok && sk::read(engine, layout, at(sector.data()), cache).cached;
+            QueryPerformanceCounter(&c);
+            ok = ok && sk::read(engine, layout, at(sector.data()), cache).cached;
+            QueryPerformanceCounter(&e);
+            walk += double(b.QuadPart - a.QuadPart);
+            frame += double(c.QuadPart - b.QuadPart);
+            warm += double(e.QuadPart - c.QuadPart);
+        }
+        const double ns = 1e9 / double(f.QuadPart) / reps;
+        std::printf("COST sector_key reps=%u walk_ns=%.0f cached_frame_ns=%.0f cached_warm_ns=%.0f\n", reps, walk * ns,
+                    frame * ns, warm * ns);
+        check(ok, "sector_key_cached_check");
     }
     target.release();
     pass.detach();

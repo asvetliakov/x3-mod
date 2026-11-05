@@ -45,7 +45,10 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
             # branch of chase_transition_restore_core.h (#if X3M_EDITION_FL) and comments in chase_camera.cpp and
             # fov.h naming the FL slot base + 0x1a82e4. The FL build binds them to X3FL.exe, not to this gate.
             0x005a82e4: 'chase_transition_restore_core.h: FL cockpit registry root (X3FL.exe VA, FL branch only)',
-            0x006243cc: 'chase_transition_restore_core.h: FL game root (X3FL.exe VA, FL branch only)'}
+            0x006243cc: 'chase_transition_restore_core.h: FL game root (X3FL.exe VA, FL branch only)',
+            # The sector key's FL table (sector_key_core.h core::fl): X3FL.exe's VM global, rebased from the module base
+            # by the FL build only; the AP table's VM global 0x006085e4 is anchored.
+            0x005aa174: 'sector_key_core.h: FL VM global (X3FL.exe VA, the fl edition table only)'}
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
@@ -56,7 +59,9 @@ DELEGATED = {'occlusion_engine_cull.cpp': (('cull_small_parts::site_chainable(',
                                            'cull_small_parts.cpp')}  # check_site: window memcmp; patch_site: claim
 # engine_effects.cpp left this set on 2026-10-03: besides the anchored globals it reads the SETA dwords, whose offsets it
 # binds with a whole-instruction compare of the tick at 0x004d1ef0 (memcmp, seta_read).
-SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\(')
+# sector_key.cpp (2026-11-05): reads only; compares its whole-instruction windows through sector_key_core.h first_mismatch.
+SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\('
+                        r'|core::first_mismatch\(')
 
 
 def synthetic(laa=False, checksum=0, filler=0x90):

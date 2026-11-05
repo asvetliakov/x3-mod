@@ -35,19 +35,19 @@ class SectorBackgroundTests(unittest.TestCase):
         self.assertRegex(self.compile_run('sector_background_host.cpp'), r'checks=\d+ failures=0 sample_bytes=\d+ reads_ready=\d+')
 
     def test_actual_wrapper_error_cadence_gate_and_zero_work_off(self):
-        self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))  # 19 + the --fog-docked span (3)
+        self.assertIn('checks=25 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))  # 19 + the --fog-docked span (3) + the sky stars (3)
         # The same wrapper compiled as the FL edition: its FL branch through a double of the FL provider's contract.
-        self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True,
+        self.assertIn('checks=25 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True,
                                                                defines=('-DX3M_EDITION_FL=1',)))
 
     def test_scene_boundary_standalone_and_reset_wiring(self):
         source = source_text(ROOT / 'src/proxy/capture.cpp')
         self.assertIn('if(sector_background_requested)hooked.set(41,begin_scene);', source)
         begin = extract_function(source, 'HRESULT WINAPI begin_scene(')
-        self.assertIn('if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);', begin)
+        self.assertIn('if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested || sky_stars_requested))sector_background_context(ctx,true);', begin)
         self.assertIn('CpuCallBoundary cpu;', begin)
         present = extract_function(source, 'HRESULT WINAPI present(')
-        self.assertIn('if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx);', present)
+        self.assertIn('if(sector_background_requested || volumetric_fog_requested || sky_stars_requested)sector_background_context(ctx);', present)
         reset = extract_function(source, 'HRESULT reset_common(')
         self.assertLess(reset.index('ctx.sector_background_evidence.invalidate();'), reset.index('if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())'))
         # No draw hook or render path consumes the diagnostic.
