@@ -3195,3 +3195,22 @@ Clean main `9bd4714db`: `C:\X3FL\d3d9.dll` = `d51af826…` (59,395,319 B), rollb
 `024aa48e…`; ini unchanged. Record `verification/results/fl-run53/candidate.json`. Only the `sky_stars_clustering`
 builtin moved 1.0 → 1.2 (cluster weights ×1.2, voids 20 % deeper); fixture 19 checks PASS, clustering 1.2 reject
 rate 0.823, max/min bin 6.36, rebuild 3.37 ms (measured). Flight: taste only.
+
+## FL run 54 — collision_damage = 0 (installed 2026-11-05)
+
+Clean main `bdc4b1317` (merge `51aa71235` of `82b38cf82`): `C:\X3FL\d3d9.dll` = `7f5ed9f4…` (59,437,538 B), rollback
+`rollback-d3d9\d3d9.dll.run53` = `d51af826…`; `x3m.ini` = run 53 file + `collision_damage = 0` under `[engine]`
+(copy `x3m.ini.run53`). Record `verification/results/fl-run54/candidate.json`. Two instruction patches per edition
+from [collision-damage.md](../reverse-engineering/collision-damage.md): a stub at the contact-branch join (FL
+`0x00468a58`, 8 B) zeroing both final damage values and replaying the displaced instructions, and the planet
+atmosphere gate (FL `0x004678bb`, one byte) taking vanilla's zero-damage branch; windows validated at attach, a
+mismatch leaves vanilla. Bullets and missiles never enter the contact block (class gate, measured), so weapon damage
+is unchanged. Offline (measured): native fixture 225 checks (damage 0, every other register, EFLAGS, ESP and stack
+slot equal to vanilla; comparator refuses every one-bit change; 8/8 rollbacks), verifier PASS, review at high effort
+no blocking findings. Known: cockpit hit indicator fires at level 5; missiles in the atmosphere band take no
+atmosphere damage; ramming destroys nothing (drones, mines, satellites included).
+**Open flight check:** `collision_damage edition=fl status=applied` near the top of the log; bump a station or a
+ship at speed and confirm hull and shields unchanged while the bounce, sound and warning stay; let an AI ship bump
+you; fire a weapon at something and confirm normal damage; `collision_damage_suppressed` rows with `c=`, `v=`, the
+classes and the zeroed values; optional: skim a planet and report what the ship does at the surface. Kill: any
+instability at a collision, or `status=skipped`.

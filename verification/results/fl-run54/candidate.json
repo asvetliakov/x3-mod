@@ -1,0 +1,28 @@
+{
+ "run": "fl-run54",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "bdc4b1317c332603d25e0c77ea6157970a21751c",
+ "dirty": false,
+ "build": "build-fl RelWithDebInfo mingw-i686, 0 warnings, check_no_x87 --edition fl PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "7f5ed9f42ca00575a69bae7c36d68d45802f60dcefcbd8539b19ca2c56757774",
+  "bytes": 59437538
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run53",
+  "sha256_prefix": "d51af826cdcf4f4f"
+ },
+ "ini": "x3m.ini.run53 + 'collision_damage = 0' inserted after [engine]",
+ "exe_sha256_prefix": "e7f3aad8",
+ "changes": [
+  "51aa71235 collision_damage = 0 patch (AP and FL)",
+  "bdc4b1317 wording"
+ ],
+ "evidence": [
+  "verification/results/collision-damage/verify_collision_damage_output.json (PASS)",
+  "collision_damage_fixture native 225 checks / host 96 checks",
+  "review high effort: no blocking findings; two wording items fixed"
+ ]
+}
