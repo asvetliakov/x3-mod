@@ -16,6 +16,12 @@ Used by lod_overlay.py --batch (the `sky` row group of the overlay, reuse keyed 
   python3 tools/analysis/sky_textures.py --game DIR [--families a,b]
 
 lists every star texture with its descriptor; it writes nothing.
+
+Loose star textures (an AP mod ships addon/dds/nebula_*_stars_*_diff.dds) beat every catalogue, so no overlay member
+can carry their mark: x3m-regenerate's sky step (mark_loose) writes the same mark into the loose file's own header in
+place (bytes 32-43; texels untouched) and records the original header in <game>/x3m/sky-loose.json; when the overlay's
+sky group is off, or a file is no longer a star-texture winner, the recorded header goes back byte for byte
+(restore_loose; standalone: --restore-loose). A loose .pck is reported skipped (loose_pck), never rewritten.
 """
 from __future__ import annotations
 
@@ -25,6 +31,7 @@ import gzip
 import hashlib
 import json
 import multiprocessing
+import os
 import re
 import struct
 import sys
@@ -134,11 +141,10 @@ def _bake_worker(row_source):
     return dict(member=row['member'], stored=store(dds, row['member']), info=info)
 
 
-def scan(assets, families=None):
-    """(rows, skipped): every star texture the engine would load from assets (sector_fog_census.Assets view, the
-    caller's choice of layers; the expansion namespace wins), rows = dicts(member, source, family, colour, width,
-    height, inputs_sha256, data), skipped = [(member, reason)]."""
-    rows, skipped, seen = [], [], set()
+def _winners(assets, families=None):
+    """(entry, family, colour) of every star texture the engine would load from assets, the winner per resource (the
+    highest layer: a loose file beats every catalogue; the expansion namespace wins)."""
+    seen = set()
     for key in sorted(assets.entries):
         base = re.sub(r'^addon2?/', '', key)
         if base in seen or not base.startswith('dds/nebula_'):
@@ -151,6 +157,16 @@ def scan(assets, families=None):
         c = classify(e['path'])
         if c is None or (families is not None and c[0] not in families):
             continue
+        yield e, c[0], c[1]
+
+
+def scan(assets, families=None):
+    """(rows, skipped): every star texture the engine would load from assets (sector_fog_census.Assets view, the
+    caller's choice of layers; the expansion namespace wins), rows = dicts(member, source, family, colour, width,
+    height, inputs_sha256, data), skipped = [(member, reason)]. A loose winner is skipped loose_file here (no
+    catalogue member can beat it); mark_loose marks it in place."""
+    rows, skipped = [], []
+    for e, family, colour in _winners(assets, families):
         if 'loose' in e:
             skipped.append((e['path'], 'loose_file'))
             continue
@@ -160,8 +176,8 @@ def scan(assets, families=None):
         except lod_atlas.AtlasError:
             skipped.append((e['path'], 'not_dds'))
             continue
-        rows.append(dict(member=e['path'].replace('\\', '/'), source=e['source'], family=c[0], colour=c[1], width=w,
-                         height=h, inputs_sha256=inputs_sha256(data), data=data))
+        rows.append(dict(member=e['path'].replace('\\', '/'), source=e['source'], family=family, colour=colour,
+                         width=w, height=h, inputs_sha256=inputs_sha256(data), data=data))
     return rows, skipped
 
 
@@ -196,6 +212,189 @@ def manifest_row(row, res):
                              bytes=len(res['stored']), **res['info']))
 
 
+# --- loose star textures: the mark written into the file's own header, in place --------------------------------
+# A loose file beats every catalogue (the engine resolver takes it first), so no overlay member can carry its mark.
+# The mark is a 12-byte edit inside the 128-byte DDS header that the game ignores (dwReserved1[0..2], bytes 32-43);
+# the ledger <game>/x3m/sky-loose.json keeps, per file, the original header (hex), the original file's sha256 and the
+# file's sha256 after marking: a rerun recognises a marked file (reused) and a changed one (a mod update: re-marked,
+# its new header recorded as the original), and restore_loose puts the recorded header back byte for byte.
+
+LOOSE_LEDGER = 'sky-loose.json'
+DDS_HEADER_BYTES = 128
+
+
+def ledger_path(game):
+    return Path(game) / 'x3m' / LOOSE_LEDGER
+
+
+def read_ledger(game):
+    """(rows, same_tool): the ledger's rows ([] when absent or unreadable: nothing recorded, nothing restored) and
+    whether this recipe and sky tool wrote them."""
+    try:
+        g = json.loads(ledger_path(game).read_text())
+    except (OSError, ValueError):
+        return [], False
+    if not isinstance(g, dict):
+        return [], False
+    rows = [r for r in g.get('rows') or () if isinstance(r, dict) and isinstance(r.get('loose'), str)]
+    return rows, g.get('recipe_id') == RECIPE_ID and g.get('tool_sha256') == tool_sha256()
+
+
+def write_ledger(game, rows):
+    """Rows sorted by path, written to a .tmp and renamed; no rows removes the ledger."""
+    path = ledger_path(game)
+    if not rows:
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + '.tmp')
+    tmp.write_text(json.dumps(dict(tool=TOOL, recipe_id=RECIPE_ID, tool_sha256=tool_sha256(),
+                                   rows=sorted(rows, key=lambda r: r['loose'].lower())), indent=1) + '\n')
+    tmp.replace(path)
+
+
+def _sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _write_header(path, header, want_sha256):
+    """Writes the 128 header bytes at offset 0 in place, then checks the whole file's sha256."""
+    with open(path, 'r+b') as f:
+        f.write(header)
+        f.flush()
+        os.fsync(f.fileno())
+    if _sha(Path(path).read_bytes()) != want_sha256:
+        raise OSError(f'{path}: sha256 after the header write does not match')
+
+
+def scan_loose(assets, families=None):
+    """(rows, skipped) of the loose star-texture winners: rows = dicts(loose, file, family, colour); skipped =
+    [(path, 'loose_pck')]: a loose .pck is compressed, so its mark is not a header edit in place (the catalogue path
+    re-encodes members; no writer re-encodes a loose file)."""
+    rows, skipped = [], []
+    for e, family, colour in _winners(assets, families):
+        if 'loose' not in e:
+            continue
+        rel = e['path'].replace('\\', '/')
+        if rel.lower().endswith('.pck'):
+            skipped.append((rel, 'loose_pck'))
+            continue
+        rows.append(dict(loose=rel, file=Path(e['loose']), family=family, colour=colour))
+    return rows, skipped
+
+
+def _restore_one(game, row):
+    """'restored' | 'original' (already the recorded original) | 'gone' | 'changed' (neither marked nor original: a
+    mod replaced it; left alone) | 'read_only' (not written; the row is kept)."""
+    f = Path(game) / row['loose']
+    try:
+        data = f.read_bytes()
+    except FileNotFoundError:
+        return 'gone'
+    except OSError:
+        return 'read_only'
+    cur = _sha(data)
+    if cur == row.get('original_sha256'):
+        return 'original'
+    if cur != row.get('marked_sha256'):
+        return 'changed'
+    if not os.access(f, os.W_OK):
+        return 'read_only'
+    try:
+        _write_header(f, bytes.fromhex(row['original_header']), row['original_sha256'])
+    except (OSError, ValueError, KeyError):
+        return 'read_only'
+    return 'restored'
+
+
+def restore_loose(game, keep=()):
+    """Restores the header of every ledger row whose path (any case) is not in keep; [(path, status)] (_restore_one).
+    A restored row leaves the ledger; one whose file could not be written (read_only) stays."""
+    keep = {k.lower() for k in keep}
+    rows, _ = read_ledger(game)
+    results, kept = [], []
+    for r in rows:
+        if r['loose'].lower() in keep:
+            kept.append(r)
+            continue
+        status = _restore_one(game, r)
+        results.append((r['loose'], status))
+        if status == 'read_only':
+            kept.append(r)
+    if results:
+        write_ledger(game, kept)
+    return results
+
+
+def mark_loose(game, assets, families=None):
+    """Marks every loose star-texture winner of assets (game: the root its paths are relative to) in place and
+    restores the ledger rows of files that are no longer one. dict(rows=[ledger rows with status built|reused],
+    refused=[(path, reason)], restored=[(path, status)]). Reasons: loose_pck, loose_unreadable, loose_not_dds (no
+    parsable DDS header or texels), loose_read_only, loose_write_failed; a refusal never raises. The ledger records
+    every original before the first header is written."""
+    found, refused = scan_loose(assets, families)
+    rows, same_tool = read_ledger(game)
+    old = {r['loose'].lower(): r for r in rows}
+    done, held, pending = [], [], []   # held: old rows kept untouched (read-only file still marked)
+    for r in found:
+        o = old.get(r['loose'].lower())
+        try:
+            data = r['file'].read_bytes()
+        except OSError:
+            refused.append((r['loose'], 'loose_unreadable'))
+            continue
+        cur = _sha(data)
+        if o and same_tool and cur == o.get('marked_sha256'):
+            done.append(dict(o, status='reused'))
+            continue
+        source = data
+        if o and len(data) >= DDS_HEADER_BYTES:   # the recorded header over the current one: still that file?
+            try:
+                cand = bytes.fromhex(o['original_header']) + data[DDS_HEADER_BYTES:]
+            except (KeyError, TypeError, ValueError):
+                cand = None
+            if cand is not None and _sha(cand) == o.get('original_sha256'):
+                source = cand
+        try:
+            w, h, _, _ = lod_atlas.dds_format(source)
+            marked, info = bake_stars(source, r['family'], r['colour'])
+        except (lod_atlas.AtlasError, ValueError, IndexError):
+            refused.append((r['loose'], 'loose_not_dds'))
+            continue
+        row = dict(loose=r['loose'], family=r['family'], colour=r['colour'], width=w, height=h,
+                   original_header=source[:DDS_HEADER_BYTES].hex(), original_sha256=_sha(source),
+                   marked_sha256=_sha(marked), metrics=dict(kind='stars', **info))
+        if marked == data:
+            done.append(dict(row, status='reused'))
+        elif not os.access(r['file'], os.W_OK):
+            refused.append((r['loose'], 'loose_read_only'))
+            if o and cur == o.get('marked_sha256'):
+                held.append(o)
+        else:
+            pending.append((row, r['file'], marked[:DDS_HEADER_BYTES]))
+    keep = {r['loose'].lower() for r in done + held} | {row['loose'].lower() for row, _, _ in pending}
+    restored = restore_loose(game, keep)
+    plain = lambda r: {k: v for k, v in r.items() if k != 'status'}
+    write_ledger(game, [plain(r) for r in done] + held + [row for row, _, _ in pending])
+    for row, f, header in pending:
+        try:
+            _write_header(f, header, row['marked_sha256'])
+            done.append(dict(row, status='built'))
+        except OSError:              # the row stays: restore_loose finds the file original, marked or changed
+            refused.append((row['loose'], 'loose_write_failed'))
+    return dict(rows=done, refused=refused, restored=restored)
+
+
+def loose_families(rows):
+    """{family: dict(stars, built, reused)} of mark_loose rows."""
+    out = {}
+    for r in rows:
+        f = out.setdefault(r['family'], dict(stars=0, built=0, reused=0))
+        f['stars'] += 1
+        f[r['status']] += 1
+    return out
+
+
 def source_view(game, edition=None):
     """The game's catalogue view without our x3m-lod overlay slots (lod_overlay.original_assets)."""
     import lod_overlay
@@ -208,7 +407,15 @@ def main(argv=None):
     ap.add_argument('--game', type=Path, required=True)
     ap.add_argument('--families', help='comma-separated family names (default: every family)')
     ap.add_argument('--edition', choices=('auto', 'ap', 'fl'), default='auto')
+    ap.add_argument('--restore-loose', action='store_true',
+                    help='write: put the recorded original header back into every loose star texture marked in place')
     a = ap.parse_args(argv)
+    if a.restore_loose:
+        res = restore_loose(a.game.resolve())
+        for path, status in res:
+            print(f'{path} {status}')
+        print(f'{sum(1 for _, s in res if s == "restored")} loose star textures restored, {len(res)} ledger rows')
+        return 0
     fams = {f.strip().lower() for f in a.families.split(',') if f.strip()} if a.families else None
     rows, skipped = scan(source_view(a.game.resolve(), None if a.edition == 'auto' else a.edition), fams)
     for r, res in zip(rows, bake_rows(rows)):

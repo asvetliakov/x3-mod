@@ -2,10 +2,12 @@
 answer 1) on synthetic inputs: the X3ML payload-2 mark with texels byte-identical, its round trip through the proxy's
 own parser (src/proxy/lod_texture_mark.h), and the overlay batch's sky group (lod_overlay.py --batch --sky): members in
 the same slot, the marker's sky rows, reuse keyed on inputs_sha256 independently of the bodies, the selected package's
-derived copy, the FL addon2 layout, --budget-bytes, the candidate check, and the removal of the nebula part members an
-earlier version wrote. No game bytes."""
+derived copy, the FL addon2 layout, --budget-bytes, the candidate check, the removal of the nebula part members an
+earlier version wrote, and loose star textures marked in place by the regenerate sky step (reuse, re-mark on a
+mod update, restore with the group off, refusals). No game bytes."""
 import gzip
 import json
+import os
 import re
 import shutil
 import struct
@@ -273,6 +275,140 @@ class OverlayGroup(unittest.TestCase):
             marker = json.loads((out / 'addon/02.x3m-lod.json').read_text())
             self.assertEqual(marker['bodies'], [])
             self.assertEqual(len(marker['sky']['rows']), 1)
+
+
+LOOSE = 'addon/dds/nebula_loosefam_stars_red_diff.dds'
+
+
+def loose_stars(shift=0, n=64):
+    """A loose star texture (DXT1, 17 stars, full mips) unlike star_texture(); shift moves the stars (a mod update)."""
+    img = np.zeros((n, n, 4), np.uint8)
+    img[..., 3] = 255
+    for i in range(17):
+        y, x = 3 + (i * 7 + shift) % (n - 6), 3 + (i * 19 + 2 * shift) % (n - 6)
+        img[y:y + 2, x:x + 2, :3] = (255, 120, 90)
+    return lod_atlas.write_dds(lod_atlas.mip_chain(img.astype(np.float64)), 'DXT1')
+
+
+def sky_step(game):
+    sys.path.insert(0, str(ROOT / 'tools' / 'regenerate'))
+    import io
+    import x3m_regenerate as regen
+    console = io.StringIO()
+    log = regen.Log(Path(game) / 'sky.log', console)
+    try:
+        regen.sky_step(log, Path(game))
+    finally:
+        log.close()
+    return console.getvalue()
+
+
+@unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+class LooseStars(unittest.TestCase):
+    def test_marked_in_place_reused_remarked_restored(self, _running):
+        """One catalogue and one loose star texture: the overlay carries the catalogue one; the regenerate sky step
+        marks the loose file in its own header (payload 2, texels unchanged), records the original header; a rerun
+        writes nothing (reused); a mod update re-marks it with the new header as the original; --sky off restores
+        the recorded bytes exactly and removes the ledger."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = sky_game(folder)
+            f = game / LOOSE
+            f.parent.mkdir(parents=True)
+            original = loose_stars()
+            f.write_bytes(original)
+            code, text = run(BATCH + ['--sky', 'on', '--game', str(game), '--install'])
+            self.assertEqual(code, 0, text)
+            self.assertIn('skipped loose_file 1', text)                      # the overlay cannot carry it
+            out = sky_step(game)
+            self.assertIn('sky textures family=loosefam stars=1 marked built=1 reused=0 loose=1', out)
+            self.assertIn('sky textures family=testfam stars=1 marked built=1 reused=0\n', out)
+            self.assertIn('2 star textures marked, 2 new + 0 unchanged', out)
+            self.assertIn('marked in-place 1 loose; skipped none', out)
+            marked = f.read_bytes()
+            self.assertEqual((marked[:32], marked[44:]), (original[:32], original[44:]))   # texels and mips
+            mark = lod_atlas.read_dds_mark(marked)
+            _, want = st.bake_stars(original, 'loosefam', 'red')
+            self.assertEqual(mark, (1, want['slot'], want['lane'], want['k'], st.PAYLOAD_SKY_STARS))
+            self.assertEqual(mark[1:3], (st.fnv1a32(b'loosefam') & 255, st.STAR_LANES.index('red')))
+            ledger = json.loads(st.ledger_path(game).read_text())
+            row, = ledger['rows']
+            self.assertEqual((row['loose'], row['original_header']), (LOOSE, original[:128].hex()))
+            self.assertEqual((row['original_sha256'], row['marked_sha256']),
+                             (lod_overlay.hashlib.sha256(original).hexdigest(),
+                              lod_overlay.hashlib.sha256(marked).hexdigest()))
+            mtime = f.stat().st_mtime_ns
+            out = sky_step(game)                                             # rerun: nothing written
+            self.assertIn('family=loosefam stars=1 marked built=0 reused=1 loose=1', out)
+            self.assertEqual((f.read_bytes(), f.stat().st_mtime_ns), (marked, mtime))
+            update = loose_stars(shift=5)                                    # a mod update replaces the file
+            f.write_bytes(update)
+            out = sky_step(game)
+            self.assertIn('family=loosefam stars=1 marked built=1 reused=0 loose=1', out)
+            remarked = f.read_bytes()
+            self.assertEqual((remarked[:32], remarked[44:]), (update[:32], update[44:]))
+            self.assertEqual(lod_atlas.read_dds_mark(remarked)[4], st.PAYLOAD_SKY_STARS)
+            self.assertEqual(json.loads(st.ledger_path(game).read_text())['rows'][0]['original_header'],
+                             update[:128].hex())
+            code, text = run(BATCH + ['--sky', 'off', '--sync', '--game', str(game), '--install'])
+            self.assertEqual(code, 0, text)
+            out = sky_step(game)
+            self.assertIn(f'sky texture {LOOSE}: restored (loose file, the sky group is off)', out)
+            self.assertEqual(f.read_bytes(), update)                         # the original bytes exactly
+            self.assertFalse(st.ledger_path(game).exists())
+
+    def test_round_trip_through_the_proxy_parser(self, _running):
+        """The in-place mark parses with lod_texture_mark.h's own parser (the runtime's)."""
+        compiler = shutil.which('g++') or shutil.which('clang++') or shutil.which('c++')
+        if not compiler:
+            self.skipTest('host C++ compiler required for the parser round trip')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            f = root / LOOSE
+            f.parent.mkdir(parents=True)
+            f.write_bytes(loose_stars())
+            assets = unittest.mock.Mock(entries={'addon/dds/nebula_loosefam_stars_red_diff.dds': [
+                dict(path=LOOSE, source='loose:' + LOOSE, loose=f)]})
+            assets.candidates = lambda base: assets.entries.get('addon/' + base, [])
+            res = st.mark_loose(root, assets)
+            self.assertEqual([r['status'] for r in res['rows']], ['built'])
+            m = res['rows'][0]['metrics']
+            (root / 'check.cpp').write_text(Marks.CHECK)
+            build = subprocess.run([compiler, '-std=c++17', '-O1', '-Wall', '-Wextra', '-Werror', '-I',
+                                    str(ROOT / 'src/proxy'), str(root / 'check.cpp'), '-o', str(root / 'check')],
+                                   capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stderr)
+            got = subprocess.run([str(root / 'check'), str(f)], capture_output=True, text=True, check=True).stdout
+        self.assertEqual(tuple(int(v) for v in got.split()), (1, 1, m['slot'], m['lane'], m['k'], 2, 0))
+
+    def test_refusals_do_not_fail_the_run(self, _running):
+        """A loose file without a parsable DDS header, a read-only one and a loose .pck are reported and left
+        unchanged; the catalogue star texture is still marked."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = sky_game(folder)
+            d = game / 'addon/dds'
+            d.mkdir(parents=True)
+            bad, ro, pck = (d / 'nebula_badfam_stars_white_diff.dds', d / 'nebula_rofam_stars_blue_diff.dds',
+                            d / 'nebula_pckfam_stars_red_diff.pck')
+            bad.write_bytes(b'not a dds')
+            ro.write_bytes(loose_stars())
+            pck.write_bytes(gzip.compress(loose_stars(), mtime=0))
+            before = {p: p.read_bytes() for p in (bad, ro, pck)}
+            ro.chmod(0o444)
+            try:
+                code, text = run(BATCH + ['--sky', 'on', '--game', str(game), '--install'])
+                self.assertEqual(code, 0, text)
+                out = sky_step(game)
+                if os.access(ro, os.W_OK):
+                    self.skipTest('running as a user who can write read-only files')
+            finally:
+                ro.chmod(0o644)
+            self.assertIn('refused sky texture addon/dds/nebula_badfam_stars_white_diff.dds: loose_not_dds', out)
+            self.assertIn('refused sky texture addon/dds/nebula_rofam_stars_blue_diff.dds: loose_read_only', out)
+            self.assertIn('refused sky texture addon/dds/nebula_pckfam_stars_red_diff.pck: loose_pck', out)
+            self.assertIn('1 star textures marked, 1 new + 0 unchanged', out)
+            self.assertIn('marked in-place 0 loose; skipped loose_not_dds 1, loose_pck 1, loose_read_only 1', out)
+            self.assertEqual({p: p.read_bytes() for p in (bad, ro, pck)}, before)
+            self.assertFalse(st.ledger_path(game).exists())
 
 
 if __name__ == '__main__':

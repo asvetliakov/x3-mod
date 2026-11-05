@@ -15,8 +15,10 @@ double-click it. It starts at once, needs no answers, and runs, in order:
                       same write carries the sky row group (tools/analysis/sky_textures.py): the painted star
                       textures, texels unchanged, with their X3ML mark for the star pass
   3. sky textures   = reads the sky group of the batch record step 2 wrote: one log row per nebula family
-                      (star textures marked, built/reused); skipped with a line when the group is off (--sky off) or no
-                      star texture exists
+                      (star textures marked, built/reused); loose star textures, which no catalogue member can
+                      beat, get the same mark in their own header in place (x3m/sky-loose.json keeps the original
+                      headers; restored when the group is off); skipped with a line when the group is off (--sky off)
+                      or no star texture exists
   4. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
                       <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
                       one .previous kept
@@ -375,7 +377,9 @@ def lod_step(log, game, jobs, name, where, memory_budget=None, xp='addon'):
 def sky_step(log, game, xp='addon'):
     """The sky row group of the batch record the LOD step wrote (lod_overlay --sky; the marked star textures are
     members of the same overlay write): one row per family, or one skip line when the group is off or nothing is
-    eligible."""
+    eligible. Loose star textures (no catalogue member can beat them) are marked in place in their own header
+    (sky_textures.mark_loose, ledger x3m/sky-loose.json); with the group off their recorded headers are restored."""
+    import sky_textures
     path = game / xp / 'x3m-lod-batch.json'
     try:
         record = json.loads(path.read_text())
@@ -383,18 +387,42 @@ def sky_step(log, game, xp='addon'):
         raise StepFailed(f'cannot read {xp}/x3m-lod-batch.json ({exc})') from None
     sky = record.get('sky')
     if not sky:
+        restored = sky_textures.restore_loose(game)
+        for p, status in restored:
+            log.say(f'sky texture {p}: {status} (loose file, the sky group is off)')
+        if restored:
+            log.say(f"sky textures: {sum(1 for _, s in restored if s == 'restored')} loose star texture headers"
+                    ' restored')
         log.say('sky textures: skipped (the sky group is off; lod_overlay.py --sky auto or on enables it)')
         return
+    loose = sky_textures.mark_loose(game, sky_textures.source_view(game, 'fl' if xp == 'addon2' else 'ap'))
+    for p, status in loose['restored']:
+        log.say(f'sky texture {p}: {status} (loose file, no longer a star texture the game loads)')
+    for p, why in loose['refused']:
+        log.say(f'refused sky texture {p}: {why}')
     groups = [('', sky)] + ([(' [mod]', sky['package'])] if sky.get('package') else [])
-    if not any(g['eligible'] for _, g in groups):
+    if not any(g['eligible'] for _, g in groups) and not loose['rows']:
         log.say('sky textures: skipped (no star texture)')
         return
+    lf = sky_textures.loose_families(loose['rows'])
     for tag, g in groups:
-        for fam, f in sorted(g['families'].items()):
-            log.say(f"sky textures family={fam} stars={f['stars']} marked built={f['built']} reused={f['reused']}{tag}")
-    skipped = ', '.join(f'{k} {v}' for k, v in sorted(sky['skipped'].items())) or 'none'
-    log.say(f"sky summary: {sky['stars']} star textures marked, {sky['built']} new + {sky['reused']} unchanged,"
-            f" {sky['bytes']} B in the overlay; skipped {skipped}")
+        fams = dict(g['families'])
+        if not tag:
+            for fam in lf:
+                fams.setdefault(fam, dict(stars=0, built=0, reused=0))
+        for fam, f in sorted(fams.items()):
+            n = lf.get(fam, {}) if not tag else {}
+            log.say(f"sky textures family={fam} stars={f['stars'] + n.get('stars', 0)} marked"
+                    f" built={f['built'] + n.get('built', 0)} reused={f['reused'] + n.get('reused', 0)}"
+                    + (f" loose={n['stars']}" if n else '') + tag)
+    skipped = {k: v for k, v in sky['skipped'].items() if k != 'loose_file'}   # loose winners: marked in place
+    for _, why in loose['refused']:
+        skipped[why] = skipped.get(why, 0) + 1
+    skipped = ', '.join(f'{k} {v}' for k, v in sorted(skipped.items())) or 'none'
+    built = sum(1 for r in loose['rows'] if r['status'] == 'built')
+    log.say(f"sky summary: {sky['stars'] + len(loose['rows'])} star textures marked,"
+            f" {sky['built'] + built} new + {sky['reused'] + len(loose['rows']) - built} unchanged,"
+            f" {sky['bytes']} B in the overlay, marked in-place {len(loose['rows'])} loose; skipped {skipped}")
 
 ENGINE_BODIES_FILE = 'engine_bodies.json'   # tools/manage.py ENGINE_BODIES_GAME_FILE, read by the DLL
 ENGINE_BODIES_MARK = 'tools/effects/engine_bodies.py'  # tools/manage.py ENGINE_BODIES_MARK: the table's own tool field
