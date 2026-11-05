@@ -9,10 +9,12 @@
 // allocation, no Win32 or CRT; core::impact), which writes one 64-byte Event into the proxy ring and returns the
 // decision. The stub saves EFLAGS, EAX, ECX and EDX around it (CLD inside), so the forward path reaches 0x00413c40
 // with every register, the flags and the stack as the call left them; the skip path returns `xor eax,eax; ret` (the
-// caller pops its two arguments; EAX/ECX/EDX/EFLAGS are dead after the call). Skip only in shields mode, for a
-// shield_hit, while Present latched owned_next (the stage armed in the previous frame's resolve and the device holds
-// the pass): the native sprite, its light and its PROPAGATE children are then not created, and the stage draws the
-// shell from the record. Everything else forwards unchanged (the record is kept with flag_forwarded for the census).
+// caller pops its two arguments; EAX/ECX/EDX/EFLAGS are dead after the call). In shields mode a shield_hit while
+// Present latched owned_next (the stage armed in the previous frame's resolve and the device holds the pass) is the
+// stage's (flag_stage: it draws the hex patch from the record); its native spawn is still forwarded (user decision
+// 2026-11-06: the weapon's impact sprite plus the shield's patch, two intentional draws) unless core::
+// suppress_native_shield_hit (HookState::suppress_native) is set, which skips it: the native sprite, its light and its
+// PROPAGATE children are then not created (kept for step 2). Every other record forwards and is census-only.
 // observe additionally redirects the two inner instance calls 0x00413da8 / 0x00413e79 (-> 0x00414a70) to a tap that
 // compares the handler's contact point with the engine's own (weapon_pos_check) and forwards always.
 //
@@ -47,7 +49,7 @@ core::HookState& hook_state(); // the game thread's state (ring, latch, counters
 // leaving the ring once logged, expired records (game time) leaving it, weapon_pos_check (observe) and
 // weapon_effects_frame every 300 frames with the stage's period figures.
 struct StageFrame {
-    unsigned shells = 0, decals = 0, retired = 0;
+    unsigned patches = 0, decals = 0, retired = 0;
     float stage_us = 0.f;
     bool drew = false;
 };

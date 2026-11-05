@@ -44,8 +44,29 @@ inline const char* tint_source_name(unsigned t) noexcept {
     static const char* const names[] = {"white", "light", "texture", "override", "missile"};
     return t < 5 ? names[t] : "?";
 }
-enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nested = 4, flag_owner_retired = 8,
-                                flag_override_applied = 16, flag_calibre_override = 32, flag_logged = 64 };
+// flag_forwarded: the engine's own spawn ran (the hook returned 0); flag_stage: the stage draws the record (a shield hit
+// while the stage owned the previous frame). User decision 2026-11-06: on a shield hit the weapon's native impact stays
+// visible and the patch is drawn over it, so a stage record is normally forwarded too (suppress_native_shield_hit).
+// The former flag_owner_retired (set only on a record about to be released) gave its bit to flag_stage.
+enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nested = 4, flag_stage = 8,
+                                flag_override_applied = 16, flag_calibre_override = 32, flag_logged = 64,
+                                flag_shield_read = 128 };
+// Whether a stage-owned shield hit also skips the engine's spawn. false (user decision 2026-11-06): the native impact
+// sprite is the weapon's energy arriving and stays; the patch is the shield's response, drawn in addition. Step 2 sets
+// it once our own weapon impact exists (HookState::suppress_native carries it, the hook fixture drives both paths).
+constexpr bool suppress_native_shield_hit = false;
+// The hit object's size class for the patch (docs/architecture/weapon-effects.md 5.1.1): cell size and patch radius
+// are fixed in world units per class.
+enum PatchTier : std::uint8_t { patch_fighter = 0, patch_corvette = 1, patch_capital = 2, patch_tier_count = 3 };
+inline const char* patch_tier_name(unsigned t) noexcept {
+    return t == patch_fighter ? "fighter" : t == patch_corvette ? "corvette" : t == patch_capital ? "capital" : "?";
+}
+// How the tier was decided: the TShips class id (col 52), a dock or factory, or the radius bands (any other class, an
+// unknown id or an unreadable record).
+enum TierSource : std::uint8_t { tier_by_radius = 0, tier_by_ship_class = 1, tier_by_station = 2 };
+inline const char* tier_source_name(unsigned t) noexcept {
+    return t == tier_by_ship_class ? "ship_class" : t == tier_by_station ? "station" : "radius";
+}
 // colour words: r | g << 8 | b << 16, bit 24 = present.
 constexpr std::uint32_t rgb_present = 0x1000000u;
 constexpr std::uint32_t pack_rgb(std::uint32_t r, std::uint32_t g, std::uint32_t b) noexcept {
@@ -66,8 +87,11 @@ struct Event {
     std::uint32_t tint_rgb, alt_rgb;         // the classifier's colour and the other candidate (light <-> texture)
     std::int32_t damage;                     // the damage routine's running total at the call ([esp+0x1c])
     std::uint32_t owner, node, handle;       // the hit object, its root node obj+0x70 and node+0x28
-    std::uint32_t shooter;                   // 0 in step 1: [[source+0x50]+4] is not dereferenced by the engine on this
-                                             // path, so the handler does not read it (review F9; later steps bind it)
+    // The note's `shooter` is not carried ([[source+0x50]+4] is not dereferenced by the engine on this path, review F9);
+    // its four bytes hold the hit object's shield state and patch tier (5.1.1).
+    std::uint16_t shield_q;                  // current / maximum shield points x 65535 (the HUD bar's capacity-weighted
+                                             // fraction, spawn note 9), post-hit; valid only with flag_shield_read
+    std::uint8_t patch_tier, tier_source;    // PatchTier, TierSource of the hit object
     std::int32_t pos[3];                     // the contact point in the owner's frame (engine units)
     std::int32_t radius;                     // obj+0xa4 of the owner (engine units)
     std::uint32_t sequence;                  // monotonic, 0 = free slot
@@ -78,24 +102,38 @@ static_assert(sizeof(Event) == 64, "the event record is 64 bytes (16 KB ring)");
 // Object: class word +0x48, subtype +0x4a, flags +0x40, extension +0x50, root node +0x70, radius +0xa4.
 // Node: handle +0x28, position +0x30 (3 x int32), rotation +0x40 (3 rows of 4 dwords, 16.16; row k = local axis k in
 // world), +0x180 (3 x int32, the callee's contact offset, unknown 1), +0x1c non-zero on a live node (the callee's test).
-// Bullet extension: owner +4 (not read by the handler). Type tables: TBullets *0x00606fb8 (count *0x00607038),
-// TMissiles *0x00606fe0 (count *0x00607060), stride 0xdb8. TBullets: shield damage +0x44, flags +0x58, light colour
-// +0x5c/+0x60/+0x64, hull damage +0x80. Engine config *0x00606f34: the game clock +0x718 (game ms, SETA-scaled).
+// Bullet extension: owner +4 (not read by the handler). Type tables: class c at *(0x00606fb8 + 4c) (count
+// *(0x00607038 + 4c)), stride 0xdb8: TBullets c = 0, TShips 7, TShields 9, TMissiles 10. TBullets: shield damage +0x44,
+// flags +0x58, light colour +0x5c/+0x60/+0x64, hull damage +0x80. TShips: the OBJ_SHIP_* class id +0xc8 (col 52, spawn
+// note 8.1). TShields: capacity +0x48 (col 8, hull points). Engine config *0x00606f34: the game clock +0x718 (game ms,
+// SETA-scaled).
+// Shields (spawn note 9): an object has them when its class is 7, 1 or 0x12 or obj+0x40 & 0x100000; they are the
+// class-9 objects of the list [obj+0x50]+0x6c chained through node+0 (the node whose +0 is 0 is the end sentinel, not a
+// shield), with the TShields index node+0x4a (int16) and the energy [node+0x50]+4 (16.16 thousandths of the capacity:
+// full = 0x3e80000).
 namespace layout {
 constexpr unsigned obj_flags = 0x40, obj_class = 0x48, obj_subtype = 0x4a, obj_ext = 0x50, obj_node = 0x70,
                    obj_radius = 0xa4;
 constexpr unsigned node_live = 0x1c, node_handle = 0x28, node_pos = 0x30, node_rot = 0x40, node_contact = 0x180;
-constexpr unsigned ext_owner = 4;
+constexpr unsigned ext_owner = 4, ext_shield_list = 0x6c;
+constexpr unsigned shield_next = 0, shield_index = 0x4a, shield_ext = 0x50, shield_energy = 4, shield_capacity = 0x48;
+constexpr std::int32_t shield_full = 0x3e80000;
+constexpr unsigned shield_list_max = 64;
 constexpr unsigned type_stride = 0xdb8;
 constexpr unsigned bullet_shield_damage = 0x44, bullet_flags = 0x58, bullet_light = 0x5c, bullet_hull_damage = 0x80;
+constexpr unsigned ship_class_id = 0xc8;
 constexpr unsigned cfg_game_ms = 0x718;
-constexpr std::uint32_t obj_dying = 0x8000000u; // obj+0x40 bit set once by the kill routine 0x0044abd0
-constexpr std::uint16_t class_bullet = 0, class_missile = 10;
+constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
+constexpr std::uint32_t obj_shielded = 0x100000u;  // obj+0x40 bit 20: docks, factories, ships at creation
+constexpr std::uint16_t class_bullet = 0, class_shielded_a = 1, class_dock = 5, class_factory = 6, class_ship = 7,
+                        class_missile = 10, class_shielded_b = 0x12;
 }
 struct Globals {                     // the engine's slots (X3AP.exe VAs in production; the fixture maps the same pages)
     std::uintptr_t cfg_slot = 0x00606f34;
     std::uintptr_t bullet_table_slot = 0x00606fb8, bullet_count_slot = 0x00607038;
     std::uintptr_t missile_table_slot = 0x00606fe0, missile_count_slot = 0x00607060;
+    std::uintptr_t ship_table_slot = 0x00606fd4, ship_count_slot = 0x00607054;
+    std::uintptr_t shield_table_slot = 0x00606fdc, shield_count_slot = 0x0060705c;
 };
 
 // ---------------------------------------------------------------------------------------------- the classifier (4)
@@ -207,7 +245,7 @@ inline void ring_release(Ring& r, unsigned i) noexcept {
     r.slots[i].sequence = 0;
     r.free_list[r.free_count++] = std::uint16_t(i);
 }
-// Overflow order: the oldest forwarded, hull_hit or muzzle record first, else the oldest of all (only when full).
+// Overflow order: the oldest record the stage does not draw, hull_hit or muzzle record first, else the oldest of all (only when full).
 inline unsigned ring_victim(const Ring& r) noexcept {
     unsigned best = ring_capacity, any = ring_capacity;
     std::uint32_t best_seq = 0xffffffffu, any_seq = 0xffffffffu;
@@ -218,7 +256,7 @@ inline unsigned ring_victim(const Ring& r) noexcept {
             any_seq = e.sequence;
             any = i;
         }
-        const bool cheap = (e.flags & flag_forwarded) || e.role == role_hull_hit || e.role == role_muzzle;
+        const bool cheap = !(e.flags & flag_stage) || e.role == role_hull_hit || e.role == role_muzzle;
         if (cheap && e.sequence < best_seq) {
             best_seq = e.sequence;
             best = i;
@@ -241,11 +279,11 @@ inline Event* ring_acquire(Ring& r) noexcept {
     if (!r.next_sequence) r.next_sequence = 1;
     return e;
 }
-// Whether a stage-owned (not forwarded) record is live: the stage's callback is set only then.
+// Whether a stage-owned (flag_stage) record is live: the stage's callback is set only then.
 inline bool ring_owned_live(const Ring& r) noexcept {
     if (r.free_count >= ring_capacity) return false;
     for (unsigned i = 0; i < ring_capacity; ++i)
-        if (r.slots[i].sequence && !(r.slots[i].flags & flag_forwarded)) return true;
+        if (r.slots[i].sequence && (r.slots[i].flags & flag_stage)) return true;
     return false;
 }
 // Every live record of an owner (a death record, a failed validation) leaves the ring; returns how many.
@@ -296,15 +334,16 @@ struct PosCheck {           // observe mode: the handler's pos against the inner
 struct Counters {
     std::uint32_t calls = 0, recorded = 0, skipped = 0, forwarded = 0, no_projectile = 0, no_node = 0, stale_table = 0,
                   taps = 0, shield_hits = 0, hull_hits = 0, nested = 0;
+    std::uint32_t shield_read = 0, shield_unread = 0; // the hit object's shield list walked to its sentinel, or refused
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
     std::uint8_t armed = 0;            // families whose records the stage draws (bit 0: shields)
     volatile std::uint8_t owned_next = 0; // Present's latch: the stage owned the last frame
-    std::uint8_t pad = 0;
+    std::uint8_t suppress_native = suppress_native_shield_hit; // a stage-owned shield hit also skips the native spawn
     Globals globals{};
     const Table* table = nullptr;      // the loaded table (null: classifier without table lookups)
-    std::uint16_t ripple_lifetime_ms = 600;
+    std::uint16_t lifetime_ms = 0;     // the records' game-time life (install: patch_lifetime_ms)
     Ring ring{};
     PosCheck check{};
     Counters counters{};
@@ -328,6 +367,107 @@ inline void read3(std::uintptr_t a, std::int32_t* out) noexcept {
 }
 inline void read_rows(std::uintptr_t a, std::int32_t* out) noexcept {
     for (unsigned i = 0; i < 12; ++i) out[i] = std::int32_t(rd32(a + 4 * i));
+}
+
+// The hit object's shields at the stub (spawn note 9's recipe; the bounds are the stub's own): current / maximum shield
+// points as a fraction x 65535 in *q, capacity-weighted like the HUD bar (0x0044ecd0 / 0x0044ee10), post-hit. Integer
+// only, plain loads, no call and no 64-bit division (the i686 build would call __udivdi3): each shield's energy (16.16
+// thousandths, clamped to [0, full]) is reduced to 1/65536 steps of its capacity (energy / 1000, a 32-bit division by a
+// constant), the two sums are 64-bit, and the ratio is one 32-bit division after both are shifted below 2^16. The
+// per-shield truncation of 0x0044ecd0 is not replicated: the fraction is within 2^-15 of the HUD's ratio. Returns false
+// (no fraction: the colour falls back to full shields) for an unshielded class, a null extension or list head, a
+// TShields index outside the count, a null shield extension, a 65th node that is not the sentinel, or no capacity at
+// all; one bad node refuses the whole read rather than reporting a partial sum.
+static inline __attribute__((always_inline)) bool read_shields(std::uintptr_t obj, std::uint16_t cls, const Globals& g,
+                                                                std::uint16_t* q) noexcept {
+    const std::uint32_t flags = rd32(obj + layout::obj_flags);
+    if (!(cls == layout::class_ship || cls == layout::class_shielded_a || cls == layout::class_shielded_b ||
+          (flags & layout::obj_shielded)))
+        return false;
+    const std::uintptr_t ext = rd32(obj + layout::obj_ext);
+    if (!ext) return false;
+    const std::uintptr_t table = rd32(g.shield_table_slot);
+    const std::int32_t count = std::int32_t(rd32(g.shield_count_slot));
+    if (!table || count <= 0) return false;
+    std::uintptr_t node = rd32(ext + layout::ext_shield_list);
+    if (!node) return false;
+    std::uint64_t points = 0, capacity = 0; // sum cap_i x (energy_i / 1000) and sum cap_i
+    for (unsigned k = 0;; ++k) {
+        const std::uintptr_t next = rd32(node + layout::shield_next);
+        if (!next) break; // the sentinel: every shield before it is counted
+        if (k >= layout::shield_list_max) return false;
+        const std::int32_t index = std::int16_t(rd16(node + layout::shield_index));
+        if (index < 0 || index >= count) return false;
+        const std::uintptr_t shield = rd32(node + layout::shield_ext);
+        if (!shield) return false;
+        const std::int32_t cap =
+            std::int32_t(rd32(table + std::uintptr_t(index) * layout::type_stride + layout::shield_capacity));
+        std::int32_t energy = std::int32_t(rd32(shield + layout::shield_energy));
+        energy = energy < 0 ? 0 : energy > layout::shield_full ? layout::shield_full : energy;
+        if (cap > 0) {
+            points += std::uint64_t(std::uint32_t(cap)) * (std::uint32_t(energy) / 1000u);
+            capacity += std::uint32_t(cap);
+        }
+        node = next;
+    }
+    if (!capacity) return false;
+    const std::uint64_t whole = capacity << 16; // points <= whole (energy / 1000 <= 65536)
+    unsigned shift = 0;
+    while ((whole >> shift) > 0xffffu) ++shift;
+    const std::uint32_t d = std::uint32_t(whole >> shift), n = std::uint32_t(points >> shift);
+    *q = std::uint16_t(n >= d ? 0xffffu : n * 0xffffu / d);
+    return true;
+}
+// The patch tier from the TShips class id (col 52, spawn note 8.1); 0xff for an id outside the AP / FL tables. Fighters:
+// M3/M4/M5, drones, satellites, beacons, mines, the astronaut, UFO, spacefly, the Khaak cluster; corvettes: M6, M8,
+// TS, TP, TM, the pirate TS, the Goner ship; capitals: M0, M1, M2, M7, TL, the pirate TL, the orbital lasers and FL's
+// drone carrier and missile frigate.
+inline std::uint8_t patch_tier_of_ship(std::int32_t id) noexcept {
+    switch (id) {
+    case 2023: case 2024: case 2025: case 2060: case 2062: case 2064: case 2065: case 2066: case 2067: case 2068:
+    case 2070: case 2080: case 2092: case 2131: case 2143: case 2144: case 2145: case 2146: case 2147: case 2150:
+    case 2151:
+        return patch_fighter;
+    case 2026: case 2030: case 2031: case 2035: case 2039: case 2141: case 2142:
+        return patch_corvette;
+    case 2011: case 2020: case 2021: case 2022: case 2027: case 2032: case 2036: case 2149: case 2152: case 2153:
+        return patch_capital;
+    default:
+        return 0xff;
+    }
+}
+// The radius bands for any other object (obj+0xa4, engine units; [I] until the observe flight logs radius with the
+// class): below 30 m a fighter, below 150 m a corvette, else a capital.
+constexpr std::int32_t tier_corvette_min_u = 15000, tier_capital_min_u = 75000;
+inline std::uint8_t patch_tier_of_radius(std::int32_t r) noexcept {
+    return r >= tier_capital_min_u ? patch_capital : r >= tier_corvette_min_u ? patch_corvette : patch_fighter;
+}
+// The hit object's patch tier: a dock or factory is a capital; a ship takes its TShips class id (subtype bounded by
+// the table's count, a null table refused); anything else, or an unknown id, the radius bands.
+static inline __attribute__((always_inline)) void read_tier(std::uintptr_t obj, std::uint16_t cls, std::int32_t radius,
+                                                             const Globals& g, std::uint8_t* tier,
+                                                             std::uint8_t* source) noexcept {
+    if (cls == layout::class_dock || cls == layout::class_factory) {
+        *tier = patch_capital;
+        *source = tier_by_station;
+        return;
+    }
+    if (cls == layout::class_ship) {
+        const std::uintptr_t table = rd32(g.ship_table_slot);
+        const std::int32_t count = std::int32_t(rd32(g.ship_count_slot));
+        const std::int32_t sub = std::int16_t(rd16(obj + layout::obj_subtype));
+        if (table && sub >= 0 && sub < count) {
+            const std::uint8_t t = patch_tier_of_ship(
+                std::int32_t(rd32(table + std::uintptr_t(sub) * layout::type_stride + layout::ship_class_id)));
+            if (t != 0xff) {
+                *tier = t;
+                *source = tier_by_ship_class;
+                return;
+            }
+        }
+    }
+    *tier = patch_tier_of_radius(radius);
+    *source = tier_by_radius;
 }
 
 // The impact site 0x00449d85 -> 0x00413c40(victim, source). `esp` is the stack at stub entry: [1] victim, [2] source,
@@ -444,22 +584,33 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
         tint_source = tint_missile;
     }
     const std::uint8_t role = role_from(absorbed, pclass, flags);
-    // A dying hit object is forwarded: the stage retires a dying owner's records unseen, so a skip would lose the hit.
-    const bool skip =
+    // The stage draws a shield hit while it owned the previous frame. The engine's spawn still runs unless
+    // suppress_native is set (default off, user decision 2026-11-06: the native impact plus the patch). A dying hit
+    // object is never the stage's: the stage retires a dying owner's records unseen, so it stays native only.
+    const bool stage =
         s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
+    const bool skip = stage && s.suppress_native;
+    // The hit object's shield fraction and patch tier (5.1.1), for every recorded hit (the observe flight compares
+    // `absorbed` with the shield state).
+    const std::uint16_t hit_class = victim_is_projectile ? sc : vc;
+    const std::int32_t hit_radius = std::int32_t(rd32(hit + layout::obj_radius));
+    std::uint16_t shield_q = 0;
+    const bool shield_ok = read_shields(hit, hit_class, s.globals, &shield_q);
+    std::uint8_t patch_tier = patch_fighter, tier_source = tier_by_radius;
+    read_tier(hit, hit_class, hit_radius, s.globals, &patch_tier, &tier_source);
     Event* e = ring_acquire(s.ring);
     if (!e) return 0;
     e->role = role;
     e->style = style;
     e->tier = tier_from(std::int32_t(total));
     e->flags = std::uint8_t(eflags | (absorbed == 1 ? flag_absorbed : 0) | (skip ? 0 : flag_forwarded) |
-                            (nested ? flag_nested : 0));
+                            (nested ? flag_nested : 0) | (shield_ok ? flag_shield_read : 0) | (stage ? flag_stage : 0));
     e->table = table;
     e->tint_source = tint_source;
     e->row = subtype;
     const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
     e->t0_game_ms = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
-    e->lifetime_ms = s.ripple_lifetime_ms;
+    e->lifetime_ms = s.lifetime_ms;
     e->slot = 0;
     e->calibre_q = calibre_q;
     e->tint_rgb = tint;
@@ -468,10 +619,16 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     e->owner = std::uint32_t(hit);
     e->node = std::uint32_t(hit_node);
     e->handle = rd32(hit_node + layout::node_handle);
-    e->shooter = 0;
+    e->shield_q = shield_ok ? shield_q : 0;
+    e->patch_tier = patch_tier;
+    e->tier_source = tier_source;
     for (unsigned i = 0; i < 3; ++i) e->pos[i] = pos[i];
-    e->radius = std::int32_t(rd32(hit + layout::obj_radius));
+    e->radius = hit_radius;
     ++s.counters.recorded;
+    if (shield_ok)
+        ++s.counters.shield_read;
+    else
+        ++s.counters.shield_unread;
     if (nested) ++s.counters.nested;
     if (role == role_shield_hit)
         ++s.counters.shield_hits;
@@ -547,33 +704,46 @@ inline bool expired(std::uint32_t now, const Event& e) noexcept {
     const std::uint32_t a = age_ms(now, e.t0_game_ms);
     return a > e.lifetime_ms; // a wrapped (future) t0 is a huge age
 }
-// Shell look, the lab's controls (docs/architecture/weapon-effects.md 5.1 item 4); defaults from the dropped phase 1
-// (effects-modernisation-opus.md "Implementation (phase 1)").
-constexpr float ring_speed = 3.0f;      // radians per second of game time, on the unit sphere
-constexpr float ring_width = 0.15f;     // radians
-constexpr unsigned ring_count = 4;      // hit slots (rings) per shell, newest first, 1..4
-constexpr unsigned ripple_ms = 600;     // the ripple timeline, game ms (the record's lifetime)
-constexpr unsigned flash_ms = 100;      // the flash at the hit point, game ms
-constexpr float rim_power = 2.5f;       // Fresnel exponent pow(1 - |n.v|, rim_power)
-constexpr float rim_gain = 1.5f;        // rim radiance x the newest hit's envelope
-constexpr float ring_gain = 4.0f;       // ring radiance at calibre 0.5
-constexpr float hex_scale = 12.0f;      // hex lattice cells per unit of the sphere's projected coordinate
-constexpr float hex_gain = 0.45f;       // hex modulation depth: (1 - hex_gain) + hex_gain x lines
-constexpr float tint_mix = 0.0f;        // 0 = the classifier's colour, 1 = the other candidate (light <-> texture)
-constexpr float calibre_gain = 1.0f;    // ring amplitude x (1 + calibre_gain (calibre - 0.5)), floor 0
-constexpr float flash_gain = 8.0f;      // flash radiance
-constexpr float flash_sharpness = 60.0f; // exp(-sharpness theta^2)
-constexpr float soft = 0.5f;            // soft radius as a multiple of the shell's mean axis
-// Decal (an owner larger than shell_radius_max_u: stations and capitals get a ripple decal at the hit point).
-constexpr float shell_radius_scale = 1.0f;     // shell radius = obj+0xa4 x this
-constexpr float shell_radius_max_u = 125000.f; // 250 m in engine units
-constexpr float decal_radius_u = 15000.f;      // 30 m at calibre 0.5 (x (0.5 + calibre))
-constexpr float decal_ring_speed = 1.5f;       // decal radii per second
-constexpr float decal_ring_width = 0.12f;      // decal radii
-constexpr float decal_hex_scale = 6.0f;
+// The patch look (docs/architecture/weapon-effects.md 5.1.1), the lab's controls (tools/effects/
+// generate_weapon_effects_lab.py injects every value below by name). A local hex patch on the owner's ellipsoid, lit only
+// within radius_m of the hit point; hexagon cells of cell_m (centre to centre) fixed in world units per PatchTier, each
+// with a deterministic stagger of brightness and fade rate (a hash of the cell index); edges brighter than the fill; a
+// small core at the hit point for core_ms; one soft ring from the point to the rim in 1 / ripple_speed seconds that
+// lights each cell as it passes its centre; then the cell fades over fade_ms; every time is game time (SETA-scaled).
+// Repeated hits re-light cells (the per-cell maximum over the owner's four newest hits). The colour follows the hit
+// object's shield fraction: colour_full at or above colour_high, colour_half at colour_mid, colour_empty at or below
+// colour_low, smoothstep between; weapon_tint mixes the classifier's weapon colour in (an override, off).
+constexpr float engine_units_per_metre = 500.f;
+constexpr float cell_m[patch_tier_count] = {1.5f, 3.0f, 8.0f};     // fighter, corvette, capital/station (metres)
+constexpr float radius_m[patch_tier_count] = {9.0f, 25.0f, 80.0f}; // lit radius about the hit point (metres)
+constexpr float ripple_speed = 3.333f;  // the ring front, patch radii per game second (the rim in 0.3 s)
+constexpr float ring_width = 0.12f;     // the ring's Gaussian width, patch radii
+constexpr float ring_gain = 1.0f;       // ring radiance (x the patch colour), fading as the ring nears the rim
+constexpr unsigned core_ms = 100;       // the core's life, game ms (linear fade)
+constexpr float core_cells = 0.8f;      // the core's Gaussian radius, cells
+constexpr float core_gain = 6.0f;       // core radiance at the hit point
+constexpr unsigned fade_ms = 1200;      // a lit cell's fade, game ms (the mean; x (1 +- stagger / 2) per cell)
+constexpr float stagger = 0.4f;         // per-cell spread of brightness and fade rate (hash of the cell index)
+constexpr float edge_width = 0.1f;      // the edge band, cells (the hexagon's inradius is 0.5)
+constexpr float fill_ratio = 0.3f;      // fill radiance / edge radiance ("edge versus fill")
+constexpr float cell_gain = 2.0f;       // a fresh cell's edge radiance (x the patch colour)
+constexpr float feather_cells = 0.5f;   // the pixel cut at the patch radius, cells (zero at and beyond the radius)
+constexpr float colour_high = 0.75f, colour_mid = 0.5f, colour_low = 0.35f; // shield fraction bands
+constexpr float colour_full[3] = {0.45f, 0.72f, 1.0f};  // light blue, linear
+constexpr float colour_half[3] = {1.0f, 0.88f, 0.42f};  // light yellow
+constexpr float colour_empty[3] = {1.0f, 0.4f, 0.36f};  // light red
+constexpr float weapon_tint = 0.0f;     // 0 = the shield colour, 1 = the weapon's (classifier) colour; override, off
+constexpr float tint_mix = 0.0f;        // the weapon colour: 0 = the classifier's, 1 = the other candidate
+constexpr float soft = 0.5f;            // the soft fade against the lane, a multiple of the owner's mean axis
+// The records' game-time life: the ring reaches the rim, then the slowest cell fades out.
+constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fade_ms) * (1.f + 0.5f * stagger)) + 1;
+static_assert(patch_lifetime_ms > core_ms && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
 // Engine integers to render (view) units: the gameplay context scale (own_sun_core.h context_scale).
 constexpr float world_scale = 0.01f;
-constexpr unsigned max_shells = 16, max_decals = 32;
+constexpr unsigned max_owners = 16;   // owners drawn per frame (the four newest hits of each)
+constexpr unsigned max_patches = 32;  // patch draws per frame (one per owner and anchor region)
+constexpr unsigned max_decals = 16;   // flat decals per frame (hits on an owner without a usable ellipsoid)
+constexpr unsigned hit_slots = 4;     // hits per owner (newest first) and per draw
 constexpr unsigned disarm_frames = 64;
 
 // log10 without libm (SSE2 build: no x87): the float's exponent plus ln(m) = 2 atanh((m - 1) / (m + 1)).
@@ -597,10 +767,38 @@ inline float calibre_of(std::int32_t d) noexcept {
 inline float calibre_of(const Event& e) noexcept {
     return (e.flags & flag_calibre_override) ? float(e.calibre_q) * (1.f / 255.f) : calibre_of(e.damage);
 }
-// The ring's amplitude for one hit.
-inline float ring_amplitude(float calibre, float gain = ring_gain, float cgain = calibre_gain) noexcept {
-    const float a = gain * (1.f + cgain * (calibre - 0.5f));
-    return a > 0.f ? a : 0.f;
+// The shield fraction of a record: the hook's read, or full shields (light blue) when it was refused.
+inline float shield_fraction(const Event& e) noexcept {
+    return (e.flags & flag_shield_read) ? float(e.shield_q) * (1.f / 65535.f) : 1.f;
+}
+struct ShieldBands {
+    float high = colour_high, mid = colour_mid, low = colour_low;
+    float full[3] = {colour_full[0], colour_full[1], colour_full[2]};
+    float half[3] = {colour_half[0], colour_half[1], colour_half[2]};
+    float empty[3] = {colour_empty[0], colour_empty[1], colour_empty[2]};
+};
+// The patch colour of a shield fraction (5.1.1): full at or above `high`, half at `mid`, empty at or below `low`, a
+// smoothstep between (C1 at every band edge).
+inline void shield_colour(float f, const ShieldBands& b, float out[3]) noexcept {
+    if (!(f == f)) f = 1.f;
+    const float* from = b.half;
+    const float* to = b.full;
+    float t = 1.f;
+    if (f <= b.low) {
+        t = 0.f;
+        from = to = b.empty;
+    } else if (f < b.mid) {
+        const float span = b.mid - b.low;
+        t = span > 1e-6f ? (f - b.low) / span : 1.f;
+        from = b.empty;
+        to = b.half;
+    } else if (f < b.high) {
+        const float span = b.high - b.mid;
+        t = span > 1e-6f ? (f - b.mid) / span : 1.f;
+    }
+    t = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
+    t = t * t * (3.f - 2.f * t);
+    for (unsigned i = 0; i < 3; ++i) out[i] = from[i] + (to[i] - from[i]) * t;
 }
 // sRGB 8-bit colour word to linear, normalised so the largest channel is 1 (white for an absent or black word).
 inline float srgb8_to_linear(std::uint32_t c) noexcept {

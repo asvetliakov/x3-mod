@@ -29,8 +29,8 @@ unsigned logged_events_ = 0;
 constexpr unsigned event_row_budget = 64; // weapon_event rows outside capture frames per run
 constexpr unsigned long long frame_row_period = 300;
 struct Period {
-    std::uint32_t events = 0, hits = 0, skipped = 0, forwarded = 0, expired = 0, owned = 0, frames = 0, drew = 0;
-    unsigned shells = 0, decals = 0, retired = 0;
+    std::uint32_t events = 0, hits = 0, skipped = 0, forwarded = 0, staged = 0, expired = 0, owned = 0, frames = 0, drew = 0;
+    unsigned patches = 0, decals = 0, retired = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
 core::Counters seen_{};
@@ -225,7 +225,8 @@ bool install_at(const Addresses& a, core::Mode mode) {
     s.mode = std::uint8_t(mode);
     s.armed = mode == core::mode_shields ? core::family_shields : 0;
     s.owned_next = 0;
-    s.ripple_lifetime_ms = std::uint16_t(core::ripple_ms > core::flash_ms ? core::ripple_ms : core::flash_ms);
+    s.lifetime_ms = std::uint16_t(core::patch_lifetime_ms);
+    s.suppress_native = core::suppress_native_shield_hit; // false: the native impact stays under the patch (2026-11-06)
     x3m_weapon_effects_continue_impact = a.impact_target; // published before the redirects go live
     x3m_weapon_effects_continue_tap = a.tap_target;
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
@@ -349,7 +350,7 @@ static unsigned clear_owned_count() {
     core::Ring& r = hook_state().ring;
     unsigned n = 0;
     for (unsigned i = 0; i < core::ring_capacity; ++i)
-        if (r.slots[i].sequence && !(r.slots[i].flags & core::flag_forwarded)) {
+        if (r.slots[i].sequence && (r.slots[i].flags & core::flag_stage)) {
             core::ring_release(r, i);
             ++n;
         }
@@ -376,7 +377,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
-    period_.shells += stage.shells;
+    period_.patches += stage.patches;
     period_.decals += stage.decals;
     period_.retired += stage.retired;
     period_.stage_us_sum += stage.stage_us;
@@ -394,24 +395,29 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                 ++period_.forwarded;
             else
                 ++period_.skipped;
+            if (e.flags & core::flag_stage) ++period_.staged;
             if (capture || logged_events_ < event_row_budget) {
                 if (!capture) ++logged_events_;
                 log("weapon_event frame=%llu seq=%lu role=%s table=%s row=%u style=%s%s tier=%s calibre=%.3f absorbed=%u "
-                    "damage=%ld forwarded=%u nested=%u t0=%lu tint=%s:%06lx owner=%08lx radius=%ld pos=%ld,%ld,%ld",
+                    "damage=%ld forwarded=%u stage=%u nested=%u t0=%lu tint=%s:%06lx owner=%08lx radius=%ld "
+                    "pos=%ld,%ld,%ld shield=%.4f shield_read=%u patch_tier=%s tier_source=%s",
                     frame, static_cast<unsigned long>(e.sequence), core::role_name(e.role), core::table_name(e.table),
                     unsigned(e.row), core::shape_name(e.style & core::style_shape_mask),
                     (e.style & core::style_burst) ? "+burst" : "", core::tier_name(e.tier), double(core::calibre_of(e)),
                     unsigned((e.flags & core::flag_absorbed) != 0), static_cast<long>(e.damage),
-                    unsigned((e.flags & core::flag_forwarded) != 0), unsigned((e.flags & core::flag_nested) != 0),
+                    unsigned((e.flags & core::flag_forwarded) != 0), unsigned((e.flags & core::flag_stage) != 0),
+                    unsigned((e.flags & core::flag_nested) != 0),
                     static_cast<unsigned long>(e.t0_game_ms), core::tint_source_name(e.tint_source),
                     static_cast<unsigned long>(e.tint_rgb & 0xffffffu), static_cast<unsigned long>(e.owner),
                     static_cast<long>(e.radius), static_cast<long>(e.pos[0]), static_cast<long>(e.pos[1]),
-                    static_cast<long>(e.pos[2]));
+                    static_cast<long>(e.pos[2]), double(float(e.shield_q) * (1.f / 65535.f)),
+                    unsigned((e.flags & core::flag_shield_read) != 0), core::patch_tier_name(e.patch_tier),
+                    core::tier_source_name(e.tier_source));
             }
         }
-        // Census-only records leave once logged; drawn ones at the end of their game-time life.
-        if ((e.flags & core::flag_forwarded) || (now && core::expired(now, e))) {
-            if (!(e.flags & core::flag_forwarded)) ++period_.expired;
+        // Census-only records leave once logged; the stage's at the end of their game-time life.
+        if (!(e.flags & core::flag_stage) || (now && core::expired(now, e))) {
+            if (e.flags & core::flag_stage) ++period_.expired;
             core::ring_release(r, i);
         }
     }
@@ -423,19 +429,23 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     }
     if (frame % frame_row_period) return;
     const core::Counters& c = s.counters;
-    log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu shells=%u "
-        "decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f calls=%lu "
-        "no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu scope_clears=%lu live=%u",
+    log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu staged=%lu "
+        "patches=%u decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
+        "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
+        "scope_clears=%lu live=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
-        static_cast<unsigned long>(period_.forwarded), period_.shells, period_.decals,
+        static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
+        period_.decals,
         period_.retired + unsigned(r.retired - seen_retired_), static_cast<unsigned long>(period_.expired),
         static_cast<unsigned long>(r.overflow - seen_overflow_), static_cast<unsigned long>(period_.owned),
         static_cast<unsigned long>(period_.drew),
         double(period_.drew ? period_.stage_us_sum / float(period_.drew) : 0.f), double(period_.stage_us_max),
         static_cast<unsigned long>(c.calls - seen_.calls), static_cast<unsigned long>(c.no_projectile - seen_.no_projectile),
         static_cast<unsigned long>(c.no_node - seen_.no_node), static_cast<unsigned long>(c.stale_table - seen_.stale_table),
-        static_cast<unsigned long>(c.nested - seen_.nested), static_cast<unsigned long>(scope_clears_),
+        static_cast<unsigned long>(c.nested - seen_.nested),
+        static_cast<unsigned long>(c.shield_read - seen_.shield_read),
+        static_cast<unsigned long>(c.shield_unread - seen_.shield_unread), static_cast<unsigned long>(scope_clears_),
         core::ring_capacity - r.free_count);
     seen_ = c;
     seen_overflow_ = r.overflow;

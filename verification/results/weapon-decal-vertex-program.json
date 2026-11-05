@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_decal_vs.hlsl",
-  "source_sha256": "f2536d7b49e5e77c6278f31df6cfb74f7e5f650277d0e2fcf8b8001bac0808ee",
+  "source_sha256": "926541274fc3a98602d8262781204966607b4fabdf256edad30045894d66b9a9",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -11,8 +11,8 @@
   "defines": null,
   "includes": null,
   "word_count": 159,
-  "bytecode_sha256": "ac321f549164a1528630a5afd95deb658243f135ee05c9dbb164908d1521ebd9",
-  "header_sha256": "2c165469bb09b5074b40d92e44b29399d46eaa35c6d1d6a61b8e1a548a66e82b",
+  "bytecode_sha256": "bdbc9a80c933c77abd8d2453af9b9ad15c388151b0175f9febbb948d7ffaa63d",
+  "header_sha256": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

@@ -305,6 +305,15 @@ unsigned char* region = nullptr;        // one relocatable block; engine VA v ->
 unsigned char* bullet_table = nullptr;
 unsigned char* config_block = nullptr;
 std::uint32_t cfg_ptr_slot, bullet_ptr_slot, count_slot; // the fixture's own engine-config slots (heap)
+std::uint32_t ship_ptr_slot, ship_count_slot, shield_ptr_slot, shield_count_slot; // TShips / TShields (5.1.1)
+// The synthetic shield list of the victim (spawn note 9): extension block, chain nodes (next +0, TShields index +0x4a,
+// shield extension +0x50), the shields' extensions (energy +4) and a TShields table (capacity +0x48).
+constexpr unsigned shield_nodes_max = 70, shield_rows = 8;
+alignas(16) unsigned char shield_ext_block[0x100];
+alignas(16) unsigned char shield_node[shield_nodes_max][0x60];
+alignas(16) unsigned char shield_energy_block[shield_nodes_max][0x10];
+std::vector<unsigned char> shield_table(shield_rows * core::layout::type_stride);
+std::vector<unsigned char> ship_table(8 * core::layout::type_stride);
 std::uintptr_t at(std::uintptr_t va) { return reinterpret_cast<std::uintptr_t>(region) + (va - eff_page); }
 std::uintptr_t impact_site() { return at(sites::impact_site_va); }
 void w32(void* base, unsigned off, std::uint32_t v) {
@@ -346,6 +355,10 @@ bool build_pages() {
     hs.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(&cfg_ptr_slot);
     hs.globals.bullet_table_slot = reinterpret_cast<std::uintptr_t>(&bullet_ptr_slot);
     hs.globals.bullet_count_slot = reinterpret_cast<std::uintptr_t>(&count_slot);
+    hs.globals.ship_table_slot = reinterpret_cast<std::uintptr_t>(&ship_ptr_slot);
+    hs.globals.ship_count_slot = reinterpret_cast<std::uintptr_t>(&ship_count_slot);
+    hs.globals.shield_table_slot = reinterpret_cast<std::uintptr_t>(&shield_ptr_slot);
+    hs.globals.shield_count_slot = reinterpret_cast<std::uintptr_t>(&shield_count_slot);
     return true;
 }
 void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::uint16_t subtype, std::uint32_t flags,
@@ -389,6 +402,45 @@ void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::ui
     cfg_ptr_slot = u32(config_block);
     bullet_ptr_slot = u32(bullet_table);
     count_slot = 16;
+    // TShips: subtype 4 is an M3 (OBJ_SHIP_M3 2023); no TShields rows until set_shields.
+    std::fill(ship_table.begin(), ship_table.end(), 0);
+    w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2023);
+    ship_ptr_slot = u32(ship_table.data());
+    ship_count_slot = 8;
+    shield_ptr_slot = 0;
+    shield_count_slot = 0;
+}
+// The victim's shields: n chained nodes (row k of TShields with capacity caps[k], energy energies[k]) and the sentinel
+// node n, whose fields are poison (an index past the count, an unmapped extension): the read must stop at it.
+void set_shields(unsigned n, const std::int32_t* caps, const std::int32_t* energies) {
+    std::memset(shield_ext_block, 0, sizeof shield_ext_block);
+    std::memset(shield_node, 0, sizeof shield_node);
+    std::memset(shield_energy_block, 0, sizeof shield_energy_block);
+    std::fill(shield_table.begin(), shield_table.end(), 0);
+    for (unsigned k = 0; k < n && k < shield_nodes_max - 1; ++k) {
+        const unsigned row = k % shield_rows;
+        w32(shield_node[k], core::layout::shield_next, u32(shield_node[k + 1]));
+        w16(shield_node[k], core::layout::shield_index, std::uint16_t(row));
+        w32(shield_node[k], core::layout::shield_ext, u32(shield_energy_block[k]));
+        w32(shield_energy_block[k], core::layout::shield_energy, std::uint32_t(energies[k]));
+        w32(shield_table.data() + row * core::layout::type_stride, core::layout::shield_capacity, std::uint32_t(caps[k]));
+    }
+    w16(shield_node[n], core::layout::shield_index, 0x7fff);
+    w32(shield_node[n], core::layout::shield_ext, 0x00000010u);
+    w32(shield_ext_block, core::layout::ext_shield_list, u32(shield_node[0]));
+    w32(&victim_obj, core::layout::obj_ext, u32(shield_ext_block));
+    shield_ptr_slot = u32(shield_table.data());
+    shield_count_slot = shield_rows;
+}
+// The engine's own current / maximum (0x0044ecd0 / 0x0044ee10: per shield energy x capacity / 0x3e80000, truncated) as
+// a fraction, the reference the handler's 2^-15 approximation is compared with.
+double hud_fraction(unsigned n, const std::int32_t* caps, const std::int32_t* energies) {
+    long long cur = 0, max = 0;
+    for (unsigned k = 0; k < n; ++k) {
+        cur += (long long)energies[k] * caps[k] / 0x3e80000;
+        max += caps[k];
+    }
+    return max ? double(cur) / double(max) : 0.0;
 }
 void expected_pos(std::int32_t out[3]) {
     const auto* rot = reinterpret_cast<std::int32_t*>(source_node.bytes + core::layout::node_rot);
@@ -518,7 +570,7 @@ void core_checks() {
     for (unsigned i = 0; i < core::ring_capacity; ++i) {
         core::Event* e = core::ring_acquire(ring);
         e->role = (i == 5) ? core::role_shield_hit : core::role_hull_hit;
-        e->flags = (i == 5) ? 0 : core::flag_forwarded;
+        e->flags = (i == 5) ? std::uint8_t(core::flag_stage | core::flag_forwarded) : std::uint8_t(core::flag_forwarded);
         e->owner = 0x1000 + (i & 3);
     }
     const std::uint32_t oldest_shield = ring.slots[5].sequence;
@@ -595,18 +647,41 @@ int main() {
           "forward_records_shield_hit");
     check(found && rec.pos[0] == want[0] && rec.pos[1] == want[1] && rec.pos[2] == want[2], "handler_contact_point");
     check(found && rec.tint_source == core::tint_light && (rec.tint_rgb & 0xff) == 230, "classifier_tint_light");
-    check(found && rec.shooter == 0 && !(rec.flags & core::flag_nested), "no_bullet_extension_read");
+    check(found && !(rec.flags & core::flag_nested) && !(rec.flags & core::flag_stage), "no_bullet_extension_read");
+    // The default world: no shield extension (unread), an M3 by its TShips class id.
+    check(found && !(rec.flags & core::flag_shield_read) && rec.shield_q == 0 && rec.patch_tier == core::patch_fighter &&
+              rec.tier_source == core::tier_by_ship_class && rec.lifetime_ms == core::patch_lifetime_ms,
+          "record_shield_unread_tier_ship_class");
 
     we::shutdown();
     set_setting(L"shields");
     const bool shields_ok = we::install_at(addresses(), core::mode_shields);
     check(shields_ok && we::mode() == core::mode_shields, "shields_installed");
     core::HookState& hs2 = we::hook_state();
+    // User decision 2026-11-06: a stage-owned shield hit forwards the engine's spawn by default (the native impact plus
+    // the patch); the record is the stage's and forwarded.
+    check(!core::suppress_native_shield_hit && hs2.suppress_native == 0, "shields_default_forwards_native");
+    hs2.owned_next = 1;
+    std::memset(we_ca, 0, sizeof we_ca);
+    RunResult staged = run_window(1, 1200, 1);
+    core::Event staged_rec{};
+    check(staged.ca[11] == 1 && staged.ca[9] == u32(&victim_obj) && staged.ca[10] == u32(&source_obj) &&
+              newest_record(u32(&victim_obj), &staged_rec) && (staged_rec.flags & core::flag_stage) &&
+              (staged_rec.flags & core::flag_forwarded) && frame_kept(staged),
+          "shield_hit_stage_and_forward");
+    check((staged.ca[7] & flag_mask) == (staged.flags_in & flag_mask) && staged.ca[12] == we_frame_esp - 12u &&
+              staged.ca[8] == std::uint32_t(impact_site() + sites::call_length),
+          "shield_hit_forward_callee_state");
+    // The skip path, kept for step 2 (suppress_native): no callee, the frame as the caller expects.
+    hs2.suppress_native = 1;
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult skip = run_window(1, 1200, 1);
-    check(skip.ca[11] == 0, "skip_no_callee");
+    check(skip.ca[11] == 0 && newest_record(u32(&victim_obj), &staged_rec) && (staged_rec.flags & core::flag_stage) &&
+              !(staged_rec.flags & core::flag_forwarded),
+          "skip_no_callee");
     check(frame_kept(skip) && protection(at(dmg_page)) == PAGE_EXECUTE_READWRITE, "skip_frame_kept");
+    hs2.suppress_native = 0;
     hs2.owned_next = 1;
     build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
     std::memset(we_ca, 0, sizeof we_ca);
@@ -621,25 +696,190 @@ int main() {
     check(none.ca[11] == 1 && ring_live(hs2.ring) == live_before && hs2.counters.no_projectile == no_projectile_before + 1 &&
               frame_kept(none),
           "no_projectile_class_forwards_unrecorded");
-    // Inside a kill (note 2.7): a dying projectile (the blast's source) still skips for a live victim and is marked
-    // nested; a dying hit object is forwarded (the stage would retire it unseen) and marked nested.
+    // Inside a kill (note 2.7): a dying projectile (the blast's source) is still the stage's for a live victim (and
+    // skips under suppress_native) and is marked nested; a dying hit object is native only (the stage would retire it
+    // unseen) and marked nested.
     build_world(7, 0, 4, 0x0, 123456);
     w32(&source_obj, core::layout::obj_flags, core::layout::obj_dying);
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult blast = run_window(1, 1200, 1);
     core::Event nested_rec{};
-    check(blast.ca[11] == 0 && newest_record(u32(&victim_obj), &nested_rec) && (nested_rec.flags & core::flag_nested) &&
-              !(nested_rec.flags & core::flag_forwarded) && frame_kept(blast),
-          "nested_dying_projectile_skips_marked");
+    bool blast_ok = blast.ca[11] == 1 && newest_record(u32(&victim_obj), &nested_rec) &&
+                    (nested_rec.flags & core::flag_nested) && (nested_rec.flags & core::flag_stage) &&
+                    (nested_rec.flags & core::flag_forwarded) && frame_kept(blast);
+    hs2.suppress_native = 1;
+    hs2.owned_next = 1;
+    std::memset(we_ca, 0, sizeof we_ca);
+    blast = run_window(1, 1200, 1);
+    hs2.suppress_native = 0;
+    blast_ok = blast_ok && blast.ca[11] == 0 && newest_record(u32(&victim_obj), &nested_rec) &&
+               (nested_rec.flags & core::flag_nested) && !(nested_rec.flags & core::flag_forwarded) && frame_kept(blast);
+    check(blast_ok, "nested_dying_projectile_staged_marked");
     build_world(7, 0, 4, 0x0, 123456);
     w32(&victim_obj, core::layout::obj_flags, core::layout::obj_dying);
     hs2.owned_next = 1;
+    hs2.suppress_native = 1; // even with the skip selected, a dying victim stays native
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult dying = run_window(1, 1200, 1);
+    hs2.suppress_native = 0;
     check(dying.ca[11] == 1 && newest_record(u32(&victim_obj), &nested_rec) && (nested_rec.flags & core::flag_nested) &&
-              (nested_rec.flags & core::flag_forwarded) && frame_kept(dying),
+              (nested_rec.flags & core::flag_forwarded) && !(nested_rec.flags & core::flag_stage) && frame_kept(dying),
           "nested_dying_victim_forwards_marked");
+
+    // The shield read (spawn note 9) and the patch tier (5.1.1), on the stage path (forwarded, flag_stage).
+    {
+        auto hit = [&](core::Event* out) {
+            hs2.owned_next = 1;
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult r = run_window(1, 1200, 0);
+            return newest_record(u32(&victim_obj), out) && r.ca[11] == 1 && frame_kept(r);
+        };
+        core::Event e{};
+        char detail[160];
+        // Three shields: capacity-weighted (the HUD bar), not the mean of the fractions.
+        const std::int32_t caps[3] = {20000, 50000, 125000};
+        const std::int32_t energy[3] = {core::layout::shield_full, core::layout::shield_full / 2,
+                                        std::int32_t(0.1234 * double(core::layout::shield_full))};
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(3, caps, energy);
+        bool ok = hit(&e);
+        const double want = hud_fraction(3, caps, energy), got = double(e.shield_q) / 65535.0;
+        std::snprintf(detail, sizeof detail, "q=%u got=%.6f hud=%.6f", unsigned(e.shield_q), got, want);
+        std::printf("SHIELD case=weighted q=%u fraction=%.6f hud=%.6f error=%.2e mean_of_fractions=%.6f\n",
+                    unsigned(e.shield_q), got, want, got - want, (1.0 + 0.5 + 0.1234) / 3.0);
+        check(ok && (e.flags & core::flag_shield_read) && (e.flags & core::flag_stage) && got - want < 4e-5 &&
+                  want - got < 4e-5,
+              "shield_read_capacity_weighted", detail);
+        // Two shields of 2e9 points (no 32-bit overflow), one full, one at a quarter.
+        const std::int32_t big_caps[2] = {2000000000, 2000000000};
+        const std::int32_t big_energy[2] = {core::layout::shield_full, core::layout::shield_full / 4};
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(2, big_caps, big_energy);
+        ok = hit(&e);
+        const double big = double(e.shield_q) / 65535.0;
+        std::printf("SHIELD case=large q=%u fraction=%.6f hud=%.6f\n", unsigned(e.shield_q), big,
+                    hud_fraction(2, big_caps, big_energy));
+        check(ok && (e.flags & core::flag_shield_read) && big > 0.62495 && big < 0.62505, "shield_read_large_capacity");
+        // Energy above full (recharge clamps; a corrupt value) and below 0 are clamped.
+        const std::int32_t odd_caps[2] = {1000, 1000};
+        const std::int32_t odd_energy[2] = {0x7fffffff, -5};
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(2, odd_caps, odd_energy);
+        ok = hit(&e);
+        check(ok && (e.flags & core::flag_shield_read) && e.shield_q >= 32766 && e.shield_q <= 32768,
+              "shield_read_energy_clamped");
+        // The sentinel ends the list: its poison fields are not read; a head that is the sentinel has no capacity.
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(0, caps, energy);
+        ok = hit(&e);
+        check(ok && !(e.flags & core::flag_shield_read) && e.shield_q == 0, "shield_sentinel_only_unread");
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(1, caps, energy);
+        ok = hit(&e);
+        check(ok && (e.flags & core::flag_shield_read) && e.shield_q == 0xffff, "shield_sentinel_ends_list");
+        // A TShields index at the count, a negative index, a null shield extension: the whole read is refused.
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(3, caps, energy);
+        w16(shield_node[1], core::layout::shield_index, std::uint16_t(shield_rows));
+        ok = hit(&e);
+        bool refused = ok && !(e.flags & core::flag_shield_read) && e.shield_q == 0;
+        w16(shield_node[1], core::layout::shield_index, 0x8000);
+        ok = hit(&e);
+        refused = refused && ok && !(e.flags & core::flag_shield_read);
+        check(refused, "shield_index_out_of_range_refused");
+        w16(shield_node[1], core::layout::shield_index, 1);
+        w32(shield_node[1], core::layout::shield_ext, 0);
+        ok = hit(&e);
+        check(ok && !(e.flags & core::flag_shield_read), "shield_null_shield_extension_refused");
+        // A null object extension, a null list head, a null TShields table.
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(3, caps, energy);
+        w32(&victim_obj, core::layout::obj_ext, 0);
+        ok = hit(&e);
+        refused = ok && !(e.flags & core::flag_shield_read);
+        w32(&victim_obj, core::layout::obj_ext, u32(shield_ext_block));
+        w32(shield_ext_block, core::layout::ext_shield_list, 0);
+        ok = hit(&e);
+        refused = refused && ok && !(e.flags & core::flag_shield_read);
+        w32(shield_ext_block, core::layout::ext_shield_list, u32(shield_node[0]));
+        shield_ptr_slot = 0;
+        ok = hit(&e);
+        refused = refused && ok && !(e.flags & core::flag_shield_read);
+        check(refused, "shield_null_extension_refused");
+        // 64 shields and the sentinel are read; 65 nodes without a sentinel within 64 are refused.
+        std::int32_t many_caps[shield_nodes_max], many_energy[shield_nodes_max];
+        for (unsigned k = 0; k < shield_nodes_max; ++k) {
+            many_caps[k] = 1000;
+            many_energy[k] = core::layout::shield_full / 2;
+        }
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(64, many_caps, many_energy);
+        ok = hit(&e);
+        const bool at64 = ok && (e.flags & core::flag_shield_read) && e.shield_q >= 32766 && e.shield_q <= 32768;
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(65, many_caps, many_energy);
+        ok = hit(&e);
+        check(at64 && ok && !(e.flags & core::flag_shield_read), "shield_list_64_node_limit");
+        // An unshielded class (17, an asteroid, no bit 20) is not walked even with a list present; bit 20 on a dock is.
+        build_world(17, 0, 4, 0x0, 123456);
+        set_shields(3, caps, energy);
+        ok = hit(&e);
+        const bool unshielded = ok && !(e.flags & core::flag_shield_read) && e.patch_tier == core::patch_corvette &&
+                                e.tier_source == core::tier_by_radius; // radius 20000: the corvette band
+        build_world(5, 0, 4, 0x0, 123456);
+        set_shields(3, caps, energy);
+        w32(&victim_obj, core::layout::obj_flags, core::layout::obj_shielded);
+        ok = hit(&e);
+        check(unshielded && ok && (e.flags & core::flag_shield_read) && e.patch_tier == core::patch_capital &&
+                  e.tier_source == core::tier_by_station,
+              "shield_unshielded_class_skipped_bit20_read");
+        // Tier: an M6 by its class id; an unknown id and a subtype past the count fall back to the radius bands.
+        build_world(7, 0, 4, 0x0, 123456);
+        w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2026);
+        ok = hit(&e);
+        bool tier_ok = ok && e.patch_tier == core::patch_corvette && e.tier_source == core::tier_by_ship_class;
+        w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2022);
+        ok = hit(&e);
+        tier_ok = tier_ok && ok && e.patch_tier == core::patch_capital && e.tier_source == core::tier_by_ship_class;
+        w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 9999);
+        w32(&victim_obj, core::layout::obj_radius, 5000);
+        ok = hit(&e);
+        tier_ok = tier_ok && ok && e.patch_tier == core::patch_fighter && e.tier_source == core::tier_by_radius;
+        ship_count_slot = 4; // subtype 4 is now past the count
+        w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2026);
+        w32(&victim_obj, core::layout::obj_radius, 90000);
+        ok = hit(&e);
+        tier_ok = tier_ok && ok && e.patch_tier == core::patch_capital && e.tier_source == core::tier_by_radius;
+        check(tier_ok, "patch_tier_class_id_and_radius_fallback");
+        // The per-event cost: 50 stage-path shield hits on a six-shield ship through the whole window (the fixture's
+        // entry, the stub, the handler, the forward to the callee stand-in and the epilogue), best and median of 21.
+        const std::int32_t six_caps[6] = {25000, 25000, 25000, 25000, 25000, 25000};
+        const std::int32_t six_energy[6] = {core::layout::shield_full, core::layout::shield_full,
+                                            core::layout::shield_full / 2, core::layout::shield_full / 2,
+                                            core::layout::shield_full / 3, 0};
+        build_world(7, 0, 4, 0x0, 123456);
+        set_shields(6, six_caps, six_energy);
+        LARGE_INTEGER freq{}, a{}, b{};
+        QueryPerformanceFrequency(&freq);
+        double runs[21];
+        for (double& us : runs) {
+            core::ring_clear(hs2.ring);
+            QueryPerformanceCounter(&a);
+            for (unsigned i = 0; i < 50; ++i) {
+                hs2.owned_next = 1;
+                run_window(1, 1200, 0);
+            }
+            QueryPerformanceCounter(&b);
+            us = double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart);
+        }
+        std::sort(runs, runs + 21);
+        std::printf("EVENT_COST events=50 shields=6 best_us=%.2f median_us=%.2f worst_us=%.2f target_us=30\n", runs[0],
+                    runs[10], runs[20]);
+        check(runs[10] <= 30.0, "event_cost_50_within_30us");
+        core::ring_clear(hs2.ring);
+        build_world(7, 0, 4, 0x0, 123456);
+    }
     // The ring's scope at Present (note 3.1): the first known sector key and an unknown read keep the stage-owned
     // records; a different key, a load, a different load epoch clear them.
     {
@@ -648,7 +888,7 @@ int main() {
             hs2.owned_next = 1;
             std::memset(we_ca, 0, sizeof we_ca);
             run_window(1, 1200, 0);
-            return we_ca[11] == 0 && core::ring_owned_live(hs2.ring);
+            return we_ca[11] == 1 && core::ring_owned_live(hs2.ring); // the stage's record, the native spawn forwarded
         };
         we::StageFrame idle{};
         bool keep = owned_hit();

@@ -1,18 +1,19 @@
 // D3D fixture of the weapon-effects shield-hit stage (src/renderer/weapon_effects_pass.cpp, the production
-// WeaponEffectsPass and its shell / decal programs; docs/architecture/weapon-effects.md 5.1 acceptance (b)). It creates
-// a plain D3D9 HAL device, attaches the pass, and draws shells and decals onto an A16B16G16R16F scene target with a
-// controlled four-channel depth lane (.b = view depth, a sentinel .r < 0 = sky), built by a small FP lane shader
-// compiled through the game's d3dx9_37.dll (argv[1], run_weapon_effects.py's contract). It reads the FP16 target back
-// and reports the structural relations the note lists: the Fresnel rim rises with the view angle, the rings are
-// present on and absent off their widths, the shell's hull cut is 0 behind a near occluder, the decal draws on a hull
-// and 0 over sky, the shell core keeps >= 0.95 of its value through the production TemporalPass at 0 / 4 / 8 px per
-// frame (the engine plumes fixture's flown resolve configuration), the winding cull keeps a mirrored shell, the
-// game-time age law (young draws, past the ripple fades, and a 600 ms ripple at SETA 6 measured to end after 100 ms of
-// wall time through the production stage builder), a retired owner draws nothing (the builder retires a dying owner's
-// record), Reset recovery, the fault cases (a failed draw, the program-create refusal), and the stage cost at 1080p and
-// 5120x1440 (an empty fence, two shells and a full-screen shell, each with the winding cull and with CULLMODE NONE as
-// the same-run comparison). Every draw and readback runs inside BeginScene/EndScene (native D3D9 refuses a draw outside
-// a scene). Never launches the game.
+// WeaponEffectsPass and its patch / decal programs; docs/architecture/weapon-effects.md 5.1 acceptance (b) and 5.1.1).
+// It creates a plain D3D9 HAL device, attaches the pass, and draws hex patches and flat decals onto an A16B16G16R16F
+// scene target with a controlled four-channel depth lane (.b = view depth, a sentinel .r < 0 = sky), built by a small FP
+// lane shader compiled through the game's d3dx9_37.dll (argv[1], run_weapon_effects.py's contract). Patches are built
+// with the production ws::fill_patch on an owner whose anchor region faces the camera (the hit at the anchor sits at
+// the screen centre). It reads the FP16 target back and reports the structural relations of 5.1.1: per tier the lit
+// area is bounded by the patch radius and zero outside, the edge count across the patch orders fighter < corvette <
+// capital, the core is present at 0.05 s and gone by 0.2 s, the ring front sits at ripple_speed R age at two ages, the
+// patch fades monotonically to zero at the record's lifetime, the colour bands at shield 0.9 / 0.5 / 0.2, a repeated hit
+// re-lights (max, not sum) and four hits accumulate, the CPU cap culls nothing lit, the decal fallback (through the
+// production builder: an owner without an ellipsoid) draws on a hull and 0 over sky, the game-time law at SETA 6
+// measured, the core through the production TemporalPass at 0 / 4 / 8 px per frame, a retired owner draws nothing,
+// Reset recovery, the fault cases, and the stage cost at 1080p and 5120x1440 (two patches on a fighter, two on a
+// capital at close range, and the worst case one owner can submit). Every draw and readback runs inside
+// BeginScene/EndScene (native D3D9 refuses a draw outside a scene). Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
 #include <d3dx9shader.h>
@@ -135,42 +136,31 @@ void draw_lane(Target& t, float depth, float occluder_frac) {
     dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
     dev->EndScene();
 }
-bool read_pixel(Target& t, UINT x, UINT y, float out[4]) {
-    if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.sysmem.p))) return false;
+// The whole target read back as RGB floats (row-major, 3 per pixel); empty on failure.
+std::vector<float> read_rgb(Target& t, IDirect3DSurface9* source) {
+    std::vector<float> out;
+    if (FAILED(dev->GetRenderTargetData(source, t.sysmem.p))) return out;
     D3DLOCKED_RECT lr{};
-    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return false;
-    const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
-    for (unsigned k = 0; k < 4; ++k) out[k] = half_to_float(row[x * 4 + k]);
-    t.sysmem.p->UnlockRect();
-    return true;
-}
-float max_luma(Target& t) {
-    if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.sysmem.p))) return -1.f;
-    D3DLOCKED_RECT lr{};
-    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return -1.f;
-    float best = 0.f;
+    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h * 3);
     for (UINT y = 0; y < t.h; ++y) {
         const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
-        for (UINT x = 0; x < t.w; ++x) {
-            const float v = half_to_float(row[x * 4]) + half_to_float(row[x * 4 + 1]) + half_to_float(row[x * 4 + 2]);
-            if (v > best) best = v;
-        }
+        for (UINT x = 0; x < t.w; ++x)
+            for (unsigned k = 0; k < 3; ++k) out[(std::size_t(y) * t.w + x) * 3 + k] = half_to_float(row[x * 4 + k]);
     }
     t.sysmem.p->UnlockRect();
-    return best;
+    return out;
 }
-rr::WeaponShell front_shell(float age_s, float radius = 100.f, float centre_z = 400.f) {
-    rr::WeaponShell s{};
-    s.centre[2] = centre_z;
-    s.axes[0] = s.axes[4] = s.axes[8] = radius;
-    s.soft = 0.5f * radius;
-    s.tint[0] = s.tint[1] = s.tint[2] = 1.f;
-    s.hits = 1;
-    s.dir[0][2] = -1.f;
-    s.age_s[0] = age_s;
-    s.amp[0] = 4.f;
-    return s;
+std::vector<float> read_luma(Target& t, IDirect3DSurface9* source) {
+    const std::vector<float> rgb = read_rgb(t, source);
+    std::vector<float> out(rgb.size() / 3);
+    for (std::size_t i = 0; i < out.size(); ++i) out[i] = std::max(rgb[i * 3], std::max(rgb[i * 3 + 1], rgb[i * 3 + 2]));
+    return out;
 }
+double ticks_us(LARGE_INTEGER a, LARGE_INTEGER b, LARGE_INTEGER freq) {
+    return double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart);
+}
+Target g;
 rr::WeaponEffectsFrame base_frame(Target& t) {
     rr::WeaponEffectsFrame f{};
     f.width = t.w;
@@ -178,15 +168,11 @@ rr::WeaponEffectsFrame base_frame(Target& t) {
     f.lane = t.lane_tex.p;
     f.four_channel = true;
     f.m00 = 1.6f;
-    f.m11 = 2.84f;
+    f.m11 = 1.6f * float(t.w) / float(t.h);
     f.near_z = 6.f;
     f.look = rr::default_weapon_look();
     return f;
 }
-double ticks_us(LARGE_INTEGER a, LARGE_INTEGER b, LARGE_INTEGER freq) {
-    return double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart);
-}
-Target g;
 std::pair<HRESULT, rr::WeaponEffectsReport> draw(rr::WeaponEffectsPass& pass, const rr::WeaponEffectsFrame& f) {
     dev->BeginScene();
     dev->SetRenderTarget(0, g.scene_s.p);
@@ -202,6 +188,90 @@ void fence(IDirect3DQuery9* q) {
     const DWORD start = GetTickCount();
     while (q->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE && GetTickCount() - start < 5000) {
     }
+}
+// ------------------------------------------------------------------ patch geometry
+// Owners by tier (view units, 5 per metre): a mean axis S, the centre z that frames the patch at 1080p, and the
+// patch's planar radius / cell (the production Tuning through fill_patch).
+struct TierScene {
+    unsigned tier;
+    float surface, centre_z;
+};
+constexpr TierScene tier_scene[3] = {{wc::patch_fighter, 100.f, 244.f},     // 20 m owner, hit 28.8 m away
+                                     {wc::patch_corvette, 400.f, 800.f},    // 80 m owner, hit 80 m away
+                                     {wc::patch_capital, 2000.f, 3280.f}};  // 400 m owner, hit 256 m away
+constexpr unsigned anchor0 = 0;
+// The unit-sphere direction of the plane point q (view units) of the anchor0 lattice on a surface S (the inverse
+// stereographic projection), so a hit can be placed at a chosen lattice position.
+void plane_dir(float S, float qx, float qy, float out[3]) {
+    float a[3], u[3], v[3];
+    ws::anchor_frame(anchor0, a, u, v);
+    const float X = qx / (2.f * S), Y = qy / (2.f * S), r2 = X * X + Y * Y;
+    for (unsigned k = 0; k < 3; ++k) out[k] = (2.f * X * u[k] + 2.f * Y * v[k] + (1.f - r2) * a[k]) / (1.f + r2);
+}
+// The owner's view axes: anchor a -> -z (toward the eye), u -> +x, v -> -y (det +1), radius S.
+void facing_axes(float S, float axes[9]) {
+    float a[3], u[3], v[3];
+    ws::anchor_frame(anchor0, a, u, v);
+    for (unsigned k = 0; k < 3; ++k) {
+        axes[3 * k] = S * u[k];
+        axes[3 * k + 1] = -S * v[k];
+        axes[3 * k + 2] = -S * a[k];
+    }
+}
+struct Hit {
+    float qx, qy, age;
+};
+rr::WeaponPatch make_patch(const TierScene& s, std::initializer_list<Hit> hits, float shield = 1.f, float cx = 0.f,
+                           const ws::Tuning& t = ws::Tuning{}) {
+    rr::WeaponPatch p{};
+    float axes[9], centre[3] = {cx, 0.f, s.centre_z};
+    facing_axes(s.surface, axes);
+    float dirs[4][3], ages[4], colour[3];
+    unsigned n = 0;
+    for (const Hit& h : hits) {
+        if (n >= 4) break;
+        plane_dir(s.surface, h.qx, h.qy, dirs[n]);
+        ages[n++] = h.age;
+    }
+    wc::shield_colour(shield, t.bands, colour);
+    ws::fill_patch(p, centre, axes, t.soft * s.surface, s.tier, anchor0, dirs, ages, n, colour, t);
+    return p;
+}
+// Screen x (px) of the plane point (q, 0) on the scanline through the anchor (the surface point, perspective).
+double screen_x(const Target& t, const TierScene& s, double q) {
+    const double S = s.surface, X = q / (2.0 * S), r2 = X * X;
+    const double x = S * 2.0 * X / (1.0 + r2), z = s.centre_z - S * (1.0 - r2) / (1.0 + r2);
+    return double(t.w) * 0.5 * (1.0 + 1.6 * x / z);
+}
+float planar_radius(const TierScene& s) {
+    return std::min(ws::metres_to_view(wc::radius_m[s.tier]), 0.9f * s.surface);
+}
+float planar_cell(const TierScene& s) {
+    return ws::metres_to_view(wc::cell_m[s.tier]);
+}
+// Draw one frame of patches over sky and read the luma back.
+std::vector<float> render(rr::WeaponEffectsPass& pass, const rr::WeaponPatch* p, unsigned n,
+                          const rr::WeaponLook* look = nullptr, std::vector<float>* rgb = nullptr) {
+    rr::WeaponEffectsFrame f = base_frame(g);
+    f.patches = p;
+    f.patch_count = n;
+    if (look) f.look = *look;
+    draw(pass, f);
+    if (rgb) *rgb = read_rgb(g, g.scene_s.p);
+    return read_luma(g, g.scene_s.p);
+}
+double total(const std::vector<float>& l) {
+    double s = 0;
+    for (float v : l) s += double(v);
+    return s;
+}
+unsigned lit_count(const std::vector<float>& l, float threshold = 1e-3f) {
+    unsigned n = 0;
+    for (float v : l) n += v > threshold;
+    return n;
+}
+float centre_luma(const std::vector<float>& l) {
+    return l.empty() ? -1.f : l[std::size_t(g.h / 2) * g.w + g.w / 2];
 }
 // The production stage builder's input: one owner in the fixture's own memory (object block and node block), read
 // through a reader bounded to those two blocks (engine_memory::read's contract: false outside readable memory).
@@ -224,7 +294,7 @@ std::uint32_t addr(const void* p) {
     return std::uint32_t(reinterpret_cast<std::uintptr_t>(p));
 }
 // A live owner at view (0, 0, z) with radius r (view units; identity camera, identity rows), and the ring holding one
-// stage-owned shield hit on its front (t0 game ms, the header's ripple lifetime).
+// stage-owned shield hit on its front (t0 game ms, the header's patch lifetime, a fighter, full shields).
 wc::Ring stage_ring;
 void stage_owner(float z, float r, std::uint32_t t0) {
     std::memset(fake_obj, 0, sizeof fake_obj);
@@ -239,9 +309,11 @@ void stage_owner(float z, float r, std::uint32_t t0) {
     wc::Event* e = wc::ring_acquire(stage_ring);
     e->role = wc::role_shield_hit;
     e->style = wc::shape_slug;
-    e->flags = 0;
+    e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
+    e->shield_q = 0xffff;
+    e->patch_tier = wc::patch_fighter;
     e->t0_game_ms = t0;
-    e->lifetime_ms = std::uint16_t(wc::ripple_ms);
+    e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
     e->damage = 1200;
     e->tint_rgb = 0xffffffu | wc::rgb_present;
     e->owner = addr(fake_obj);
@@ -269,21 +341,6 @@ double halton(unsigned i, unsigned b) {
     }
     return r;
 }
-std::vector<float> read_luma(Target& t, IDirect3DSurface9* source) {
-    std::vector<float> out;
-    if (FAILED(dev->GetRenderTargetData(source, t.sysmem.p))) return out;
-    D3DLOCKED_RECT lr{};
-    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
-    out.resize(std::size_t(t.w) * t.h);
-    for (UINT y = 0; y < t.h; ++y) {
-        const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
-        for (UINT x = 0; x < t.w; ++x)
-            out[std::size_t(y) * t.w + x] =
-                std::max(half_to_float(row[x * 4]), std::max(half_to_float(row[x * 4 + 1]), half_to_float(row[x * 4 + 2])));
-    }
-    t.sysmem.p->UnlockRect();
-    return out;
-}
 struct StageContext {
     rr::WeaponEffectsPass* pass;
     rr::WeaponEffectsFrame frame;
@@ -295,16 +352,17 @@ HRESULT stage_callback(void* context, IDirect3DDevice9*) noexcept {
     c->result = c->pass->run(c->frame, &r);
     return c->result;
 }
-// The shell's core through the production resolve (the engine plumes fixture's flown configuration: PerPixel with the
+// The patch's core through the production resolve (the engine plumes fixture's flown configuration: PerPixel with the
 // all-unrouted motion target, sentinel camera with strict sky, exit 0.25, far camera + camera gate): 16 frames of
-// Halton jitter with the shell moving +x at `speed_px` per frame, once with the stage and once without. The core is the
-// current frame's shell pixels at half its peak or more; the ratio is their resolved share (on - off) over their
-// current share. -1 when the resolve could not be driven.
+// Halton jitter with a fighter patch at age 0.05 (the core lit) moving +x at `speed_px` per frame, once with the stage
+// and once without. The core is the current frame's patch pixels at half its peak or more; the ratio is their resolved
+// share (on - off) over their current share. -1 when the resolve could not be driven.
 double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion, Com<IDirect3DSurface9>& motion_s,
                     float speed_px, float* peak_out) {
     constexpr unsigned frames = 16;
-    const float z = 400.f, m00 = base_frame(g).m00;
-    const float units_per_px = 2.f * z / (m00 * float(g.w));
+    const TierScene& s = tier_scene[0];
+    const float z_hit = s.centre_z - s.surface, m00 = base_frame(g).m00;
+    const float units_per_px = 2.f * z_hit / (m00 * float(g.w));
     std::vector<float> cur[2], res[2];
     for (unsigned on = 0; on < 2; ++on) {
         rr::TemporalPass taa;
@@ -330,13 +388,13 @@ double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion,
             dev->SetRenderTarget(0, g.scene_s.p);
             dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
             dev->EndScene();
-            rr::WeaponShell shell = front_shell(0.15f, 100.f, z);
-            shell.centre[0] = (float(n) - float(frames - 1)) * speed_px * units_per_px;
+            const rr::WeaponPatch patch =
+                make_patch(s, {{0.f, 0.f, 0.05f}}, 1.f, (float(n) - float(frames - 1)) * speed_px * units_per_px);
             StageContext ctx{&pass, base_frame(g), S_FALSE};
             ctx.frame.m20 = 2.f * jx / float(g.w);
             ctx.frame.m21 = -2.f * jy / float(g.h);
-            ctx.frame.shells = &shell;
-            ctx.frame.shell_count = 1;
+            ctx.frame.patches = &patch;
+            ctx.frame.patch_count = 1;
             rr::FrameInputs in;
             in.color = g.scene_tex.p;
             in.current_depth = g.lane_tex.p;
@@ -403,6 +461,37 @@ double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion,
     *peak_out = peak;
     return den > 0 ? num / den : 0;
 }
+// The scanline through the screen centre, x from the centre to the right edge.
+std::vector<float> right_scanline(const std::vector<float>& l) {
+    std::vector<float> out;
+    if (l.empty()) return out;
+    const std::size_t row = std::size_t(g.h / 2) * g.w;
+    for (UINT x = g.w / 2; x < g.w; ++x) out.push_back(l[row + x]);
+    return out;
+}
+// Edge bands crossed by the full scanline through the centre: rising crossings of 1.25 x a one-cell moving average.
+unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
+    const std::size_t row = std::size_t(g.h / 2) * g.w;
+    std::vector<double> line(g.w);
+    for (UINT x = 0; x < g.w; ++x) line[x] = double(l[row + x]);
+    const int half = int(cell_px / 2 > 1 ? cell_px / 2 : 1);
+    unsigned n = 0;
+    bool above = false;
+    for (int x = 0; x < int(g.w); ++x) {
+        double sum = 0;
+        int cnt = 0;
+        for (int k = x - half; k <= x + half; ++k)
+            if (k >= 0 && k < int(g.w)) {
+                sum += line[std::size_t(k)];
+                ++cnt;
+            }
+        const double base = cnt ? sum / cnt : 0;
+        const bool now = line[std::size_t(x)] > 1e-3 && line[std::size_t(x)] > 1.25 * base;
+        if (now && !above) ++n;
+        above = now;
+    }
+    return n;
+}
 }
 
 int main(int argc, char** argv) {
@@ -456,126 +545,210 @@ int main(int argc, char** argv) {
     rr::WeaponEffectsPass pass;
     const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
     report("attach", SUCCEEDED(attached) && pass.caps().enabled, pass.caps().reason);
-    std::printf("ATTACH result=%08lx shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u fp16=%08lx max_ps=%lu\n", attached,
-                pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots, pass.caps().decal_ps_slots,
-                pass.caps().fp16_blending, static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots));
+    std::printf("ATTACH result=%08lx shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u fp16=%08lx max_ps=%lu cap_vertices=%u cap_triangles=%u\n",
+                attached, pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
+                pass.caps().decal_ps_slots, pass.caps().fp16_blending,
+                static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots), rr::WeaponEffectsPass::cap_vertices,
+                rr::WeaponEffectsPass::cap_triangles);
     if (!pass.caps().enabled || !lane_ps) {
         std::printf("RESULT FAIL checks=%u failures=%u\n", checks, failures + 1);
         return 1;
     }
+    report("pixel_program_low_hundreds", pass.caps().shell_ps_slots < 400 && pass.caps().decal_ps_slots < 400, "");
     report("target_1080", make_target(g, 1920, 1080));
-
-    // Shell over sky: the core and rings draw.
     draw_lane(g, 0.f, -1.f);
+    rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, no_core = cells_only;
+    cells_only.ring_gain = cells_only.core_gain = 0.f;
+    ring_only.cell_gain = ring_only.core_gain = 0.f;
+    no_core.core_gain = 0.f;
+
+    // Per tier at age 0.5 (every cell lit, core and ring gone): the lit area within the radius, zero outside, and the
+    // edge bands across the patch (2 R / cell expected).
     {
-        rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.0f);
-        f.shells = &s;
-        f.shell_count = 1;
-        auto res = draw(pass, f);
-        const float luma = max_luma(g);
-        // The winding cull (the outward faces kept from det A's sign): a mirrored shell (det < 0) draws its front too.
-        s.axes[0] = -s.axes[0];
-        auto mirrored = draw(pass, f);
-        const float luma_mirrored = max_luma(g);
-        std::printf("SHELL sky_max_luma=%.4f mirrored_max_luma=%.4f\n", luma, luma_mirrored);
-        report("shell_core_positive", SUCCEEDED(res.first) && res.second.shells == 1 && luma > 0.05f, "");
-        report("winding_mirrored_axes_draw", SUCCEEDED(mirrored.first) && mirrored.second.shells == 1 &&
-                                                 luma_mirrored > 0.5f * luma && luma_mirrored < 2.f * luma, "");
-    }
-    // Rim rises with angle: compare a near-silhouette annulus (70 deg) to an inner one (45 deg) with the ripple off.
-    {
-        rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.30f);
-        s.amp[0] = 0.f;
-        f.shells = &s;
-        f.shell_count = 1;
-        draw(pass, f);
-        float sum70 = 0, sum45 = 0;
-        int n70 = 0, n45 = 0;
-        const int cx = int(g.w / 2), cy = int(g.h / 2);
-        const float R = f.m11 * 100.f / 400.f * g.h * 0.5f;
-        for (int a = 0; a < 360; a += 4) {
-            const float rad = a * 3.14159265f / 180.f;
-            const int p70x = cx + int(std::sin(70 * 3.14159f / 180) * R * std::cos(rad)), p70y = cy + int(std::sin(70 * 3.14159f / 180) * R * std::sin(rad));
-            const int p45x = cx + int(std::sin(45 * 3.14159f / 180) * R * std::cos(rad)), p45y = cy + int(std::sin(45 * 3.14159f / 180) * R * std::sin(rad));
-            float rgba[4];
-            if (p70x >= 0 && p70y >= 0 && p70x < int(g.w) && p70y < int(g.h) && read_pixel(g, UINT(p70x), UINT(p70y), rgba)) { sum70 += rgba[0] + rgba[1] + rgba[2]; ++n70; }
-            if (p45x >= 0 && p45y >= 0 && p45x < int(g.w) && p45y < int(g.h) && read_pixel(g, UINT(p45x), UINT(p45y), rgba)) { sum45 += rgba[0] + rgba[1] + rgba[2]; ++n45; }
+        unsigned edges[3]{};
+        bool bounded = true, ordered = true;
+        for (unsigned t = 0; t < 3; ++t) {
+            const TierScene& s = tier_scene[t];
+            const rr::WeaponPatch p = make_patch(s, {{0.f, 0.f, 0.5f}});
+            const std::vector<float> l = render(pass, &p, 1);
+            const double cx = g.w * 0.5, cy = g.h * 0.5;
+            const double R = planar_radius(s), cell = planar_cell(s);
+            const double r_px = screen_x(g, s, R) - cx, cell_px = screen_x(g, s, cell) - cx;
+            double max_px = 0, outside = 0;
+            for (UINT y = 0; y < g.h; ++y)
+                for (UINT x = 0; x < g.w; ++x) {
+                    const float v = l[std::size_t(y) * g.w + x];
+                    const double d = std::sqrt((x + 0.5 - cx) * (x + 0.5 - cx) + (y + 0.5 - cy) * (y + 0.5 - cy));
+                    if (v > 1e-3f) max_px = std::max(max_px, d);
+                    if (d > r_px + 1.5) outside += double(v);
+                }
+            edges[t] = edge_crossings(l, unsigned(cell_px));
+            const double expected = 2.0 * R / cell;
+            std::printf("PATCH tier=%s radius_view=%.2f cell_view=%.2f radius_px=%.1f cell_px=%.1f lit_px=%.1f outside_sum=%.6f edges=%u expected_edges=%.1f lit_pixels=%u peak=%.4f\n",
+                        wc::patch_tier_name(s.tier), R, cell, r_px, cell_px, max_px, outside, edges[t], expected,
+                        lit_count(l), double(*std::max_element(l.begin(), l.end())));
+            bounded = bounded && max_px <= r_px + 1.5 && max_px >= 0.8 * r_px && outside == 0.0;
+            ordered = ordered && std::fabs(double(edges[t]) - expected) <= 3.0;
         }
-        const float rim70 = n70 ? sum70 / n70 : 0.f, rim45 = n45 ? sum45 / n45 : 0.f;
-        std::printf("RIM at70=%.5f at45=%.5f\n", rim70, rim45);
-        report("rim_rises_with_angle", rim70 > rim45, "");
+        report("lit_area_bounded_by_radius_per_tier", bounded, "");
+        report("edge_count_matches_radius_over_cell", ordered, "");
+        report("cell_count_order_by_tier", edges[0] < edges[1] && edges[1] < edges[2] && wc::cell_m[0] < wc::cell_m[1] &&
+                                               wc::cell_m[1] < wc::cell_m[2] && wc::radius_m[0] < wc::radius_m[1] &&
+                                               wc::radius_m[1] < wc::radius_m[2], "");
     }
-    // Rings present at the hit vs between.
+    const TierScene& fighter = tier_scene[0];
+    // The core: the hit point's pixel with and without the core term, at 0.05 s and at 0.2 s.
     {
-        rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.05f);
-        f.shells = &s;
-        f.shell_count = 1;
-        draw(pass, f);
-        float c[4], e[4];
-        read_pixel(g, g.w / 2, g.h / 2, c);
-        read_pixel(g, g.w / 2 + 80, g.h / 2, e);
-        std::printf("RINGS on=%.4f off=%.4f\n", c[0] + c[1] + c[2], e[0] + e[1] + e[2]);
-        report("rings_present_on_absent_off", (c[0] + c[1] + c[2]) > (e[0] + e[1] + e[2]), "");
+        const rr::WeaponPatch young = make_patch(fighter, {{0.f, 0.f, 0.05f}}), later = make_patch(fighter, {{0.f, 0.f, 0.2f}});
+        const float c05 = centre_luma(render(pass, &young, 1)), n05 = centre_luma(render(pass, &young, 1, &no_core));
+        const float c20 = centre_luma(render(pass, &later, 1)), n20 = centre_luma(render(pass, &later, 1, &no_core));
+        std::printf("CORE at05=%.4f at05_no_core=%.4f at20=%.4f at20_no_core=%.4f\n", c05, n05, c20, n20);
+        report("core_present_at_50ms", c05 - n05 > 1.0f, "");
+        report("core_gone_by_200ms", std::fabs(c20 - n20) < 1e-3f && c20 > 0.f, "");
     }
-    // Hull cut: a near hull in front of the shell cuts it to 0.
+    // The ring front: ring-only and cells-only scanlines at 0.1 s and 0.2 s against r = ripple_speed R age.
     {
-        draw_lane(g, 10.f, 1.0f); // hull at view depth 10 (in front of the shell at 400) everywhere
+        const double R = planar_radius(fighter), cell = planar_cell(fighter), cx = g.w * 0.5;
+        bool ring_ok = true, cells_ok = true;
+        double peaks[2]{}, fronts[2]{};
+        const float ages[2] = {0.1f, 0.2f};
+        for (unsigned k = 0; k < 2; ++k) {
+            const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, ages[k]}});
+            const std::vector<float> ring = right_scanline(render(pass, &p, 1, &ring_only));
+            const std::vector<float> cl = right_scanline(render(pass, &p, 1, &cells_only));
+            std::size_t peak = 0;
+            for (std::size_t i = 0; i < ring.size(); ++i)
+                if (ring[i] > ring[peak]) peak = i;
+            std::size_t front = 0;
+            for (std::size_t i = 0; i < cl.size(); ++i)
+                if (cl[i] > 1e-3f) front = i;
+            const double r = double(wc::ripple_speed) * R * double(ages[k]);
+            const double want = screen_x(g, fighter, r) - cx;
+            const double lo = screen_x(g, fighter, r - 0.6 * cell) - cx, hi = screen_x(g, fighter, r + 0.6 * cell) - cx;
+            peaks[k] = double(peak) + 0.5;
+            fronts[k] = double(front) + 0.5;
+            std::printf("RING age=%.2f r_view=%.2f expected_px=%.1f ring_peak_px=%.1f cell_front_px=%.1f cell_window_px=%.1f..%.1f\n",
+                        double(ages[k]), r, want, peaks[k], fronts[k], lo, hi);
+            ring_ok = ring_ok && std::fabs(peaks[k] - want) <= std::max(2.0, 0.03 * want);
+            cells_ok = cells_ok && fronts[k] >= lo - 1.0 && fronts[k] <= hi + 1.0;
+        }
+        report("ring_front_at_two_ages", ring_ok && peaks[1] > peaks[0], "");
+        report("cells_lit_as_the_ring_passes", cells_ok && fronts[1] > fronts[0], "");
+    }
+    // The fade: the whole patch's radiance at increasing ages after the ring, monotone down to zero at the lifetime.
+    {
+        const float ages[] = {0.35f, 0.5f, 0.7f, 0.9f, 1.1f, 1.3f, 1.5f, 1.7f, float(wc::patch_lifetime_ms) * 1e-3f};
+        double prev = 1e30;
+        bool monotone = true;
+        std::printf("FADE");
+        double last = 0;
+        for (float a : ages) {
+            const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, a}});
+            const double sum = total(render(pass, &p, 1));
+            std::printf(" t%.0f=%.3f", double(a) * 1000.0, sum);
+            if (!(sum < prev)) monotone = monotone && sum == 0.0 && prev == 0.0;
+            prev = sum;
+            last = sum;
+        }
+        std::printf(" lifetime_ms=%u\n", wc::patch_lifetime_ms);
+        report("fade_monotone_to_zero_at_lifetime", monotone && last == 0.0, "");
+    }
+    // Colour bands: the hit cell's colour at shield 0.9 / 0.5 / 0.2.
+    {
+        const float fractions[3] = {0.9f, 0.5f, 0.2f};
+        float rgb[3][3]{};
+        for (unsigned k = 0; k < 3; ++k) {
+            const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.5f}}, fractions[k]);
+            std::vector<float> c;
+            render(pass, &p, 1, nullptr, &c);
+            const std::size_t at = (std::size_t(g.h / 2) * g.w + g.w / 2) * 3;
+            for (unsigned i = 0; i < 3; ++i) rgb[k][i] = c.empty() ? 0.f : c[at + i];
+            std::printf("COLOUR shield=%.2f r=%.4f g=%.4f b=%.4f\n", double(fractions[k]), rgb[k][0], rgb[k][1], rgb[k][2]);
+        }
+        const bool blue = rgb[0][2] > rgb[0][1] && rgb[0][1] > rgb[0][0];
+        const bool yellow = std::min(rgb[1][0], rgb[1][1]) > 1.5f * rgb[1][2] && rgb[1][0] >= rgb[1][1];
+        const bool red = rgb[2][0] > 2.f * rgb[2][1] && rgb[2][0] > 2.f * rgb[2][2];
+        report("colour_bands_blue_yellow_red", blue && yellow && red, "");
+    }
+    // Repeated hits: the same point hit at 1.0 s and 0.4 s ago re-lights (the cell maximum, not the sum); four hits
+    // spread over the region accumulate (their union is lit, the fourth slot draws); the cap culls nothing lit.
+    {
+        const rr::WeaponPatch a = make_patch(fighter, {{0.f, 0.f, 0.7f}}), b = make_patch(fighter, {{0.f, 0.f, 0.3f}});
+        const rr::WeaponPatch ab = make_patch(fighter, {{0.f, 0.f, 0.3f}, {0.f, 0.f, 0.7f}});
+        const float la = centre_luma(render(pass, &a, 1, &cells_only)), lb = centre_luma(render(pass, &b, 1, &cells_only));
+        const float lab = centre_luma(render(pass, &ab, 1, &cells_only));
+        std::printf("RELIGHT old=%.4f new=%.4f both=%.4f\n", la, lb, lab);
+        report("repeated_hit_relights_max_not_sum", la > 0.f && lb > la && std::fabs(lab - std::max(la, lb)) < 1e-3f * lb &&
+                                                        lab < la + lb - 0.5f * la, "");
+        const float d = 0.6f * planar_radius(fighter);
+        const Hit spread[4] = {{d, 0.f, 0.4f}, {-d, 0.f, 0.6f}, {0.f, d, 0.8f}, {0.f, -d, 1.0f}};
+        unsigned single_max = 0;
+        for (const Hit& h : spread) {
+            const rr::WeaponPatch one = make_patch(fighter, {h});
+            single_max = std::max(single_max, lit_count(render(pass, &one, 1)));
+        }
+        const rr::WeaponPatch four = make_patch(fighter, {spread[0], spread[1], spread[2], spread[3]});
+        const std::vector<float> l4 = render(pass, &four, 1);
+        // The cap against a cap 0.25 rad wider (similar facets: 9 against 5.2 deg per ring): a cull of lit pixels would
+        // show as more lit pixels and radiance in the wider one. The whole sphere (pi, 22.5 deg per ring) is reported
+        // only: its coarse facets move the interpolated surface point by a fraction of a cell.
+        rr::WeaponPatch wider = four, whole = four;
+        wider.cap_angle = four.cap_angle + 0.25f;
+        whole.cap_angle = 3.14159265f;
+        const std::vector<float> lw = render(pass, &wider, 1);
+        const std::vector<float> lpi = render(pass, &whole, 1);
+        const double t4 = total(l4), tw = total(lw);
+        const double n4 = lit_count(l4), nw = lit_count(lw);
+        const float diff = float(std::max(std::fabs(t4 - tw) / std::max(tw, 1e-9), std::fabs(n4 - nw) / std::max(nw, 1.0)));
+        std::printf("CAPCHECK cap_lit=%u wider_lit=%u sphere_lit=%u cap_total=%.3f wider_total=%.3f sphere_total=%.3f\n",
+                    unsigned(n4), unsigned(nw), lit_count(lpi), t4, tw, total(lpi));
+        // The fourth (oldest) hit at (0, -d): plane v maps to view -y, so -d is view +y, up on screen (a smaller row).
+        const double cx = g.w * 0.5, off = screen_x(g, fighter, d) - cx;
+        const float fourth = l4[std::size_t(g.h / 2 - unsigned(off)) * g.w + g.w / 2];
+        std::printf("ACCUMULATE four_lit=%u single_max_lit=%u fourth_slot=%.4f cap_angle=%.4f cap_vs_wider_rel_diff=%.6f\n",
+                    lit_count(l4), single_max, fourth, double(four.cap_angle), double(diff));
+        report("four_hits_accumulate", lit_count(l4) > single_max * 3 / 2 && fourth > 1e-3f, "");
+        report("cpu_cap_culls_nothing_lit", diff < 0.01f && four.cap_angle < 1.5f, "");
+    }
+    // The decal fallback through the production builder: an owner without an ellipsoid (radius 0) gives one flat
+    // patch at the hit point and no patch; it draws on a hull at its depth and 0 over sky.
+    {
+        rr::WeaponPatch patches[wc::max_patches];
+        rr::WeaponDecal decals[wc::max_decals];
+        stage_owner(400.f, 100.f, 1000);
+        put32(fake_obj, wc::layout::obj_radius, 0);
+        stage_ring.slots[0].pos[2] = -10000; // the hit point 100 view units in front of the owner's centre
+        const ws::Counts n = ws::build(stage_ring, 1300, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                       wc::max_patches, decals, wc::max_decals);
         rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.0f);
-        f.shells = &s;
-        f.shell_count = 1;
+        f.decals = decals;
+        f.decal_count = n.decals;
+        draw_lane(g, 0.f, -1.f);
         draw(pass, f);
-        const float cut = max_luma(g);
-        std::printf("HULL cut_max=%.4f\n", cut);
-        report("hull_cut_zero_behind_occluder", cut < 0.05f, "");
+        const double over_sky = total(read_luma(g, g.scene_s.p));
+        draw_lane(g, n.decals ? decals[0].centre[2] : 300.f, 1.0f);
+        auto res = draw(pass, f);
+        const std::vector<float> l = read_luma(g, g.scene_s.p);
+        const double on_hull = total(l);
+        std::printf("DECAL patches=%u decals=%u centre_z=%.1f radius=%.2f cell=%.2f over_sky=%.4f on_hull=%.4f edges=%u\n",
+                    n.patches, n.decals, n.decals ? decals[0].centre[2] : 0.f, n.decals ? decals[0].radius : 0.f,
+                    n.decals ? decals[0].cell : 0.f, over_sky, on_hull,
+                    edge_crossings(l, n.decals ? unsigned(decals[0].cell * 1.6f * 960.f / decals[0].centre[2]) : 4));
+        report("decal_fallback_hex_flat", n.patches == 0 && n.decals == 1 && SUCCEEDED(res.first) && res.second.decals == 1 &&
+                                              over_sky == 0.0 && on_hull > 1.0, "");
         draw_lane(g, 0.f, -1.f);
     }
-    // Decal 0 over sky, draws on a hull at its depth.
+    // The age law at SETA 6, measured: the game clock advances six game ms per wall ms (QueryPerformanceCounter); every
+    // frame the production builder ages the ring's one hit in game time and the pass draws it, fenced like a frame,
+    // until the builder has nothing to draw. The record's patch_lifetime_ms end after a sixth of it in wall time.
     {
-        rr::WeaponDecal d{};
-        d.centre[2] = 400.f;
-        d.radius = 60.f;
-        d.age_s = 0.05f;
-        d.tint[0] = d.tint[1] = d.tint[2] = 1.f;
-        d.amp = 4.f;
-        rr::WeaponEffectsFrame f = base_frame(g);
-        f.decals = &d;
-        f.decal_count = 1;
-        draw_lane(g, 0.f, -1.f);
-        draw(pass, f);
-        const float over_sky = max_luma(g);
-        draw_lane(g, 400.f, 1.0f); // hull at the decal's view depth everywhere
-        draw(pass, f);
-        const float on_hull = max_luma(g);
-        std::printf("DECAL over_sky=%.4f on_hull=%.4f\n", over_sky, on_hull);
-        report("decal_zero_over_sky", over_sky < 0.05f && on_hull > over_sky, "");
-        draw_lane(g, 0.f, -1.f);
-    }
-    // Age law: a young shell draws brighter than one past its ripple life (both at the same hit).
-    {
-        rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell young = front_shell(0.0f), old = front_shell(f.look.ripple_s + 0.1f);
-        f.shells = &young;
-        f.shell_count = 1;
-        draw(pass, f);
-        const float a0 = max_luma(g);
-        f.shells = &old;
-        draw(pass, f);
-        const float a_old = max_luma(g);
-        report("age_law_young_brighter_than_expired", a0 > a_old, "");
-        // SETA 6, measured: the game clock advances six game ms per wall ms (QueryPerformanceCounter); every frame the
-        // production builder ages the ring's one hit in game time and the pass draws it, fenced like a frame, until the
-        // builder has nothing to draw. The ripple's 600 game ms end after 100 wall ms (within one frame).
         stage_owner(400.f, 100.f, 0);
         Com<IDirect3DQuery9> q;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &q.p);
         LARGE_INTEGER freq{}, start{}, now{};
         QueryPerformanceFrequency(&freq);
         QueryPerformanceCounter(&start);
-        rr::WeaponShell shells[wc::max_shells];
+        rr::WeaponPatch patches[wc::max_patches];
         rr::WeaponDecal decals[wc::max_decals];
         double wall_ms = 0, last_ms = 0, max_frame_ms = 0, last_drawn_ms = 0;
         unsigned frames = 0;
@@ -583,51 +756,52 @@ int main(int argc, char** argv) {
             QueryPerformanceCounter(&now);
             wall_ms = ticks_us(start, now, freq) * 1e-3;
             const std::uint32_t game = std::uint32_t(wall_ms * 6.0);
-            const ws::Counts n = ws::build(stage_ring, game, &fake_read, identity_camera(), ws::Tuning{}, shells,
-                                           wc::max_shells, decals, wc::max_decals);
+            const ws::Counts n = ws::build(stage_ring, game, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                           wc::max_patches, decals, wc::max_decals);
             max_frame_ms = std::max(max_frame_ms, wall_ms - last_ms);
             last_ms = wall_ms;
-            if (!n.shells || wall_ms > 2000.0) break;
+            if (!n.patches || wall_ms > 4000.0) break;
             rr::WeaponEffectsFrame sf = base_frame(g);
-            sf.shells = shells;
-            sf.shell_count = n.shells;
+            sf.patches = patches;
+            sf.patch_count = n.patches;
             draw(pass, sf);
             fence(q.p);
             ++frames;
             last_drawn_ms = wall_ms;
         }
-        std::printf("AGE young=%.4f expired=%.4f ripple_s=%.3f seta6_wall_ms=%.2f last_drawn_ms=%.2f frames=%u max_frame_ms=%.3f\n",
-                    a0, a_old, f.look.ripple_s, wall_ms, last_drawn_ms, frames, max_frame_ms);
-        report("age_law_seta6_100ms_wall", frames > 0 && last_drawn_ms <= 100.2 && wall_ms >= 100.0 &&
-                                                wall_ms <= 100.2 + max_frame_ms + 0.5, "");
+        const double expected = double(wc::patch_lifetime_ms) / 6.0;
+        std::printf("AGE lifetime_ms=%u seta6_expected_wall_ms=%.2f seta6_wall_ms=%.2f last_drawn_ms=%.2f frames=%u max_frame_ms=%.3f\n",
+                    wc::patch_lifetime_ms, expected, wall_ms, last_drawn_ms, frames, max_frame_ms);
+        report("age_law_seta6_measured", frames > 0 && last_drawn_ms <= expected + 0.2 && wall_ms >= expected &&
+                                             wall_ms <= expected + 0.2 + max_frame_ms + 0.5, "");
     }
-    // Retired owner, through the production builder: the live owner's hit gives one shell that draws; once the owner
+    // Retired owner, through the production builder: the live owner's hit gives one patch that draws; once the owner
     // carries the kill routine's dying bit the builder retires its record (the ring is empty) and nothing draws.
     {
-        rr::WeaponShell shells[wc::max_shells];
+        rr::WeaponPatch patches[wc::max_patches];
         rr::WeaponDecal decals[wc::max_decals];
         stage_owner(400.f, 100.f, 1000);
-        const ws::Counts live = ws::build(stage_ring, 1050, &fake_read, identity_camera(), ws::Tuning{}, shells,
-                                          wc::max_shells, decals, wc::max_decals);
+        const ws::Counts live = ws::build(stage_ring, 1300, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                          wc::max_patches, decals, wc::max_decals);
         rr::WeaponEffectsFrame f = base_frame(g);
-        f.shells = shells;
-        f.shell_count = live.shells;
+        f.patches = patches;
+        f.patch_count = live.patches;
         auto drawn = draw(pass, f);
-        const float live_max = max_luma(g);
+        const double live_sum = total(read_luma(g, g.scene_s.p));
         put32(fake_obj, wc::layout::obj_flags, wc::layout::obj_dying);
-        const ws::Counts dead = ws::build(stage_ring, 1050, &fake_read, identity_camera(), ws::Tuning{}, shells,
-                                          wc::max_shells, decals, wc::max_decals);
-        f.shell_count = dead.shells;
+        const ws::Counts dead = ws::build(stage_ring, 1300, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                          wc::max_patches, decals, wc::max_decals);
+        f.patch_count = dead.patches;
         f.decal_count = dead.decals;
         auto res = draw(pass, f);
-        const float dead_max = max_luma(g);
-        std::printf("RETIRED live_shells=%u live_drew=%u live_max=%.4f shells=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u max=%.4f\n",
-                    live.shells, unsigned(drawn.second.drew), live_max, dead.shells, dead.decals, dead.retired,
-                    ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_max);
-        report("stage_build_live_owner_draws", live.shells == 1 && drawn.second.drew && live_max > 0.05f, "");
-        report("retired_owner_draws_nothing", dead.shells == 0 && dead.decals == 0 && dead.retired == 1 &&
+        const double dead_sum = total(read_luma(g, g.scene_s.p));
+        std::printf("RETIRED live_patches=%u live_drew=%u live_sum=%.4f patches=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u sum=%.4f\n",
+                    live.patches, unsigned(drawn.second.drew), live_sum, dead.patches, dead.decals, dead.retired,
+                    ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_sum);
+        report("stage_build_live_owner_draws", live.patches == 1 && drawn.second.drew && live_sum > 1.0, "");
+        report("retired_owner_draws_nothing", dead.patches == 0 && dead.decals == 0 && dead.retired == 1 &&
                                                   ring_live(stage_ring) == 0 && res.first == S_FALSE && !res.second.drew &&
-                                                  dead_max < 0.02f, "");
+                                                  dead_sum == 0.0, "");
     }
     // The core through the production resolve at 0 / 4 / 8 px per frame.
     {
@@ -653,9 +827,9 @@ int main(int argc, char** argv) {
         refused.set_faults(8);
         const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
         rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.0f);
-        f.shells = &s;
-        f.shell_count = 1;
+        const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.f}});
+        f.patches = &p;
+        f.patch_count = 1;
         rr::WeaponEffectsReport rep{};
         const HRESULT run = refused.run(f, &rep);
         std::printf("REFUSED result=%08lx enabled=%u reason=%s references=%u run=%08lx calls=%u\n", hr,
@@ -667,9 +841,9 @@ int main(int argc, char** argv) {
     // Fault once, then recover; then Reset.
     {
         rr::WeaponEffectsFrame f = base_frame(g);
-        rr::WeaponShell s = front_shell(0.0f);
-        f.shells = &s;
-        f.shell_count = 1;
+        const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.f}});
+        f.patches = &p;
+        f.patch_count = 1;
         pass.set_faults(2);
         auto res = draw(pass, f);
         report("fault_reported", FAILED(res.first) && res.second.failed != rr::WeaponEffectsStep::None, "");
@@ -686,34 +860,55 @@ int main(int argc, char** argv) {
         std::printf("RESET make_target=%u\n", unsigned(mt));
         const HRESULT er = pass.ensure_resources();
         std::printf("RESET ensure=%08lx\n", er);
-        // Reset recreated the device, the targets and the pass's programs; resources_ready() is the production
-        // contract (the pass draws again from the next armed resolve). A post-reset readback is not re-run here.
-        report("reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready(), "");
+        bool drew_after = false;
+        if (mt && SUCCEEDED(er)) {
+            draw_lane(g, 0.f, -1.f);
+            rr::WeaponEffectsFrame f2 = base_frame(g);
+            f2.patches = &p;
+            f2.patch_count = 1;
+            auto after = draw(pass, f2);
+            drew_after = SUCCEEDED(after.first) && after.second.drew && total(read_luma(g, g.scene_s.p)) > 1.0;
+        }
+        report("reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready() && drew_after, "");
         draw_lane(g, 0.f, -1.f);
     }
-    // Timing, EVENT-fenced (best of 60): an empty fence (the fence's own round trip), two shells (204 / 544 px radius
-    // at 1080p) and a shell projecting past every screen edge, each with the winding cull and with CULLMODE NONE (fault
-    // bit 4, the former draw) in the same run, at 1080p and 5120x1440.
+    // Timing, EVENT-fenced (best of 60), over a sky lane: an empty fence (the fence's own round trip); two patches on a
+    // fighter (a 20 m owner at 100 m), once as the stage draws two hits of one anchor region (one draw, two hit slots)
+    // and once as two regions (two draws); the same on a capital at close range (a 400 m owner, the hits 100 m from the
+    // camera, each patch over most of the frame); and the worst one owner can submit (that capital with its four
+    // newest hits in four regions: four draws, each cap over the frame), at 1080p and 5120x1440.
     for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
         Target tt;
         if (!make_target(tt, size.first, size.second)) { report("timing_target", false, ""); continue; }
-        rr::WeaponShell two[2] = {front_shell(0.1f, 150.f, 400.f), front_shell(0.2f, 400.f, 500.f)};
-        rr::WeaponShell full = front_shell(0.1f, 100.f, 115.f);
+        draw_lane(tt, 0.f, -1.f);
+        const TierScene fighter_far{wc::patch_fighter, 100.f, 600.f};
+        const TierScene capital_close{wc::patch_capital, 2000.f, 2500.f};
+        const float rf = planar_radius(fighter_far), rc = planar_radius(capital_close);
+        const rr::WeaponPatch fighter_one[1] = {make_patch(fighter_far, {{-0.8f * rf, 0.f, 0.2f}, {0.8f * rf, 0.f, 0.5f}})};
+        const rr::WeaponPatch fighter_regions[2] = {make_patch(fighter_far, {{-0.8f * rf, 0.f, 0.2f}}),
+                                                    make_patch(fighter_far, {{0.8f * rf, 0.f, 0.5f}})};
+        const rr::WeaponPatch capital_one[1] = {make_patch(capital_close, {{-0.3f * rc, 0.f, 0.2f}, {0.3f * rc, 0.f, 0.5f}})};
+        const rr::WeaponPatch capital_regions[2] = {make_patch(capital_close, {{-0.3f * rc, 0.f, 0.2f}}),
+                                                    make_patch(capital_close, {{0.3f * rc, 0.f, 0.5f}})};
+        rr::WeaponPatch worst[4];
+        for (unsigned k = 0; k < 4; ++k)
+            worst[k] = make_patch(capital_close, {{(k & 1 ? 0.3f : -0.3f) * rc, (k & 2 ? 0.3f : -0.3f) * rc, 0.1f + 0.1f * k}});
         struct Case {
             const char* name;
-            const rr::WeaponShell* shells;
-            unsigned count, faults;
-        } cases[] = {{"fence", nullptr, 0, 0}, {"two", two, 2, 0}, {"two_cull_none", two, 2, 16},
-                     {"fullscreen", &full, 1, 0}, {"fullscreen_cull_none", &full, 1, 16}};
+            const rr::WeaponPatch* patches;
+            unsigned count;
+        } cases[] = {{"fence", nullptr, 0},
+                     {"fighter_two_hits_one_region", fighter_one, 1}, {"fighter_two_regions", fighter_regions, 2},
+                     {"capital_close_two_hits_one_region", capital_one, 1},
+                     {"capital_close_two_regions", capital_regions, 2}, {"worst_four_regions", worst, 4}};
         Com<IDirect3DQuery9> ev;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
         for (const Case& c : cases) {
             rr::WeaponEffectsFrame f = base_frame(tt);
-            f.shells = c.shells;
-            f.shell_count = c.count;
-            pass.set_faults(c.faults);
+            f.patches = c.patches;
+            f.patch_count = c.count;
             double best = 1e30;
             unsigned drawn = 0;
             for (int i = 0; i < 60; ++i) {
@@ -727,13 +922,23 @@ int main(int argc, char** argv) {
                 fence(ev.p);
                 QueryPerformanceCounter(&b);
                 dev->EndScene();
-                drawn = r.shells;
+                drawn = r.patches;
                 const double us = ticks_us(a, b, freq);
                 if (us < best) best = us;
             }
-            pass.set_faults(0);
-            std::printf("TIMING width=%u height=%u case=%s shells=%u drawn=%u cull=%s gpu_us=%.1f\n", size.first,
-                        size.second, c.name, c.count, drawn, !c.count ? "-" : c.faults ? "none" : "winding", best);
+            // Coverage: the share of the frame the patches lit (one readback after the timed runs).
+            dev->BeginScene();
+            dev->SetRenderTarget(0, tt.scene_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            if (c.count) {
+                rr::WeaponEffectsReport r{};
+                pass.run(f, &r);
+            }
+            dev->EndScene();
+            const std::vector<float> l = read_luma(tt, tt.scene_s.p);
+            std::printf("TIMING width=%u height=%u case=%s patches=%u drawn=%u lit_share=%.4f gpu_us=%.1f\n", size.first,
+                        size.second, c.name, c.count, drawn, l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
+                        best);
         }
         tt.release();
     }

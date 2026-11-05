@@ -30,8 +30,14 @@ class WeaponEffectsHookRecord(unittest.TestCase):
     REQUIRED = {'changed_byte_refused', 'witness_mismatch_refused', 'prologue_mismatch_refused', 'tap_byte_mismatch_refused',
                 'forward_callee_eax_ecx_edx_ebx_ebp', 'forward_callee_return_address', 'forward_callee_esp',
                 'forward_callee_eflags', 'forward_frame_kept', 'skip_frame_kept', 'skip_no_callee',
+                'shields_default_forwards_native', 'shield_hit_stage_and_forward', 'shield_hit_forward_callee_state',
                 'tap_callee_esi_ebx_edi_return', 'weapon_pos_check_zero_error', 'no_projectile_class_forwards_unrecorded',
-                'no_bullet_extension_read', 'nested_dying_projectile_skips_marked', 'nested_dying_victim_forwards_marked',
+                'no_bullet_extension_read', 'nested_dying_projectile_staged_marked', 'nested_dying_victim_forwards_marked',
+                'record_shield_unread_tier_ship_class', 'shield_read_capacity_weighted', 'shield_read_large_capacity',
+                'shield_read_energy_clamped', 'shield_sentinel_only_unread', 'shield_sentinel_ends_list',
+                'shield_index_out_of_range_refused', 'shield_null_shield_extension_refused',
+                'shield_null_extension_refused', 'shield_list_64_node_limit', 'shield_unshielded_class_skipped_bit20_read',
+                'patch_tier_class_id_and_radius_fallback', 'event_cost_50_within_30us',
                 'nested_death_retires_owner', 'overflow_keeps_owned_shield', 'observe_rollback_three_sites',
                 'observe_rollback_second_site', 'rollback_on_failed_readback', 'late_claim_refused',
                 'scope_sector_change_clears_owned', 'scope_loading_clears_owned', 'scope_load_epoch_clears_owned',
@@ -63,6 +69,14 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
         # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin
         self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x24)
+
+    def test_shield_read_and_event_cost(self):
+        weighted = next(s for s in self.record['shield'] if s['case'] == 'weighted')
+        self.assertLess(abs(weighted['fraction'] - weighted['hud']), 4e-5)   # the HUD's capacity-weighted ratio
+        self.assertGreater(abs(weighted['fraction'] - weighted['mean_of_fractions']), 0.1)  # not the mean
+        cost = self.record['event_cost']
+        self.assertEqual((cost['events'], cost['shields']), (50, 6))
+        self.assertLessEqual(cost['median_us'], 30.0)                          # the 30 us per 50 events target
 
     def test_forward_state(self):
         f = {k: int(v, 16) for k, v in self.record['forward_state'].items()}
@@ -96,14 +110,29 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         m = r['metrics']
         self.assertEqual(sorted(x['speed_px'] for x in m['resolve']), [0, 4, 8])
         self.assertTrue(all(x['core'] >= 0.95 for x in m['resolve']))
+        # 5.1.1 per tier: the lit area inside the radius (1.5 px of slack), nothing outside, the edges in tier order
+        tiers = {x['tier']: x for x in m['patch']}
+        self.assertEqual(sorted(tiers), ['capital', 'corvette', 'fighter'])
+        for x in tiers.values():
+            self.assertLessEqual(x['lit_px'], x['radius_px'] + 1.5)
+            self.assertEqual(x['outside_sum'], 0.0)
+        self.assertLess(tiers['fighter']['edges'], tiers['corvette']['edges'])
+        self.assertLess(tiers['corvette']['edges'], tiers['capital']['edges'])
+        core = m['core'][0]
+        self.assertGreater(core['at05'] - core['at05_no_core'], 1.0)
+        self.assertLess(abs(core['at20'] - core['at20_no_core']), 1e-3)
+        fade = m['fade']
+        self.assertEqual(fade['t%d' % fade['lifetime_ms']], 0.0)                 # nothing left at the record's lifetime
         age = m['age'][0]
-        self.assertGreaterEqual(age['seta6_wall_ms'], 100.0)                       # measured, not computed
-        self.assertLessEqual(age['seta6_wall_ms'], 100.2 + age['max_frame_ms'] + 0.5)
+        self.assertGreaterEqual(age['seta6_wall_ms'], age['seta6_expected_wall_ms'])  # measured, not computed
+        self.assertLessEqual(age['seta6_wall_ms'], age['seta6_expected_wall_ms'] + 0.2 + age['max_frame_ms'] + 0.5)
         self.assertEqual((m['retired'][0]['retired'], m['retired'][0]['ring_live'], m['retired'][0]['drew']), (1, 0, 0))
         self.assertEqual(m['refused'][0]['reason'], 'program_create')
+        self.assertLess(m['attach'][0]['shell_ps'], 400)                          # low hundreds of slots
         cases = {(x['width'], x['case']) for x in m['timing']}
         for width in (1920, 5120):
-            for case in ('fence', 'two', 'two_cull_none', 'fullscreen', 'fullscreen_cull_none'):
+            for case in ('fence', 'fighter_two_hits_one_region', 'fighter_two_regions',
+                         'capital_close_two_hits_one_region', 'capital_close_two_regions', 'worst_four_regions'):
                 self.assertIn((width, case), cases)
 
     def test_bound_to_its_production_sources(self):

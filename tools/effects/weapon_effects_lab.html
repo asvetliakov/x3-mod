@@ -66,21 +66,31 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label><input id="lights" type="checkbox"> light elements</label>
   <button id="reseed" title="new random rotations, sizes and propagation">reseed</button>
   <fieldset id="ourctl" style="margin-top:6px;border:1px solid #2a3342">
-  <legend>Shield-hit shell (ours): defaults from src/proxy/weapon_effects_core.h</legend>
-  <label>ring speed <input id="c_ring_speed" type="number" step="0.1" style="width:5em"></label>
-  <label>ring width <input id="c_ring_width" type="number" step="0.01" style="width:5em"></label>
-  <label>ring count <input id="c_ring_count" type="number" min="1" max="4" step="1" style="width:4em"></label>
-  <label>ripple ms <input id="c_ripple_ms" type="number" step="50" style="width:6em"></label>
-  <label>flash ms <input id="c_flash_ms" type="number" step="20" style="width:5em"></label>
-  <label>rim power <input id="c_rim_power" type="number" step="0.1" style="width:5em"></label>
-  <label>rim gain <input id="c_rim_gain" type="number" step="0.1" style="width:5em"></label>
-  <label>hex scale <input id="c_hex_scale" type="number" step="1" style="width:5em"></label>
-  <label>hex gain <input id="c_hex_gain" type="number" step="0.05" style="width:5em"></label>
-  <label>tint mix <input id="c_tint_mix" type="number" min="0" max="1" step="0.1" style="width:5em" title="0 = classifier colour, 1 = the other candidate"></label>
-  <label>calibre <input id="c_calibre" type="range" min="0" max="1" step="0.05" value="0.5"><span id="c_calibre_read">0.50</span></label>
-  <label>calibre gain <input id="c_calibre_gain" type="number" step="0.1" style="width:5em"></label>
+  <legend>Shield-hit hex patch (ours, impact slot): defaults from src/proxy/weapon_effects_core.h</legend>
+  <label>cell m: fighter <input id="c_cell_fighter" type="number" step="0.1" style="width:4.5em"></label>
+  <label>corvette <input id="c_cell_corvette" type="number" step="0.1" style="width:4.5em"></label>
+  <label>capital <input id="c_cell_capital" type="number" step="0.5" style="width:4.5em"></label>
+  <label>radius m: fighter <input id="c_radius_fighter" type="number" step="0.5" style="width:4.5em"></label>
+  <label>corvette <input id="c_radius_corvette" type="number" step="1" style="width:4.5em"></label>
+  <label>capital <input id="c_radius_capital" type="number" step="5" style="width:4.5em"></label>
+  <label>ripple speed <input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="patch radii per game second"></label>
+  <label>core ms <input id="c_core_ms" type="number" step="10" style="width:5em"></label>
+  <label>fade ms <input id="c_fade_ms" type="number" step="50" style="width:5em"></label>
+  <label>stagger <input id="c_stagger" type="number" min="0" max="1.5" step="0.05" style="width:4.5em" title="per-cell spread of brightness and fade rate"></label>
+  <label>edge vs fill <input id="c_fill_ratio" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="fill radiance / edge radiance"></label>
+  <label>bands: full &ge; <input id="c_colour_high" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
+  <label><input id="c_colour_full" type="color"></label>
+  <label>half <input id="c_colour_mid" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
+  <label><input id="c_colour_half" type="color"></label>
+  <label>empty &le; <input id="c_colour_low" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
+  <label><input id="c_colour_empty" type="color"></label>
+  <label>weapon tint <input id="c_weapon_tint" type="number" min="0" max="1" step="0.1" style="width:4em" title="0 = shield colour, 1 = the weapon's classifier colour (override, off)"></label>
   <label>SETA rate <select id="c_seta"><option>1</option><option>2</option><option>4</option><option selected>6</option><option>10</option></select></label>
   <label>hits/s <select id="c_hits"><option value="0">single</option><option value="1">1</option><option value="4">4</option><option value="12">12</option></select></label>
+  <label>preview: tier <select id="c_tier"><option value="0">fighter (15 m)</option><option value="1">corvette (60 m)</option><option value="2">capital (300 m)</option></select></label>
+  <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
+  <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
+  <label>frame <select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></label>
   <button id="c_reset" type="button">reset to header</button>
   </fieldset>
 </header>
@@ -136,6 +146,18 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         the origin), without the key rotation and without the later keys, so the parts do not fly apart; at most 3000
         triangles per scene, shared by its parts.</li>
       <li>A missing body is a dashed circle of the element size; a missing Effects row is named in the slot.</li>
+      <li>Ours, impact slot (docs/architecture/weapon-effects.md 5.1.1): the shield-hit hex patch on a preview owner (a
+        sphere of 15 / 60 / 300 m for the three tiers), drawn in addition to the vanilla impact on the left (the native
+        sprite stays in the game). The patch law, the cell hash, the stereographic lattice of the anchor regions, the
+        four newest hits, one draw per region and the cap are the HLSL's and the stage's
+        (<code>weapon_hex_patch.hlsl</code>, <code>weapon_effects_stage.h</code>) in double precision (the GPU's float
+        hash differs below 1e-3). <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for
+        the GPU's quad <code>fwidth</code>; the cap is a circle (the GPU's rim is a 32-gon) on a true sphere (the GPU's
+        cap is 8 rings of facets); the radiance is shown as 1 - e<sup>-x</sup> per channel added to the background in
+        linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the controls (the DLL
+        uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear colours as
+        8-bit sRGB. Hits are scattered over the front within 0.7 of the patch angle; "drain" lowers the shield fraction
+        per hit so a sequence walks the colour bands; the newest hit's shield colours the patch.</li>
     </ul>
     <div id="status"></div>
   </section>
@@ -147,20 +169,29 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
 /* @weapon_effects_header */
 // Generated by tools/effects/generate_weapon_effects_lab.py from src/proxy/weapon_effects_core.h; do not edit.
 const HEADER = {
-  ring_speed: 3.0,
-  ring_width: 0.15,
-  ring_count: 4,
-  ripple_ms: 600,
-  flash_ms: 100,
-  rim_power: 2.5,
-  rim_gain: 1.5,
-  hex_scale: 12.0,
-  hex_gain: 0.45,
+  engine_units_per_metre: 500.0,
+  cell_m: [1.5, 3.0, 8.0],
+  radius_m: [9.0, 25.0, 80.0],
+  ripple_speed: 3.333,
+  ring_width: 0.12,
+  ring_gain: 1.0,
+  core_ms: 100,
+  core_cells: 0.8,
+  core_gain: 6.0,
+  fade_ms: 1200,
+  stagger: 0.4,
+  edge_width: 0.1,
+  fill_ratio: 0.3,
+  cell_gain: 2.0,
+  feather_cells: 0.5,
+  colour_high: 0.75,
+  colour_mid: 0.5,
+  colour_low: 0.35,
+  colour_full: [0.45, 0.72, 1.0],
+  colour_half: [1.0, 0.88, 0.42],
+  colour_empty: [1.0, 0.4, 0.36],
+  weapon_tint: 0.0,
   tint_mix: 0.0,
-  calibre_gain: 1.0,
-  flash_gain: 8.0,
-  flash_sharpness: 60.0,
-  soft: 0.5,
   tracer_min_elongation: 4.0,
   slug_min_elongation: 1.5
 };
@@ -191,18 +222,38 @@ const assetBase = {};
 const images = {};
 const prepCache = {};
 
-// ---------------------------------------------------------------- our renderer hook (later step)
-/** Our replacement for one slot. record: {view, slot, weapon, row, effect, canvas, ctx, assets, base}; t in ms
- *  since spawn. Draws nothing yet: the right-hand canvas stays empty. */
+// ---------------------------------------------------------------- our renderer: the shield-hit hex patch (5.1.1)
+// The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius) with the same law as
+// src/effects/weapon_hex_patch.hlsl and the same grouping as src/proxy/weapon_effects_stage.h (the four newest hits,
+// one draw per anchor region, the CPU cap); every length is in metres (the GPU's view units are 5 per metre; the law
+// is scale-free). The other slots stay native in step 1.
+const PATCH_TIERS = ['fighter', 'corvette', 'capital'];
+const PREVIEW_OWNER_M = [15, 60, 300];
+function linearToSrgb(v) {
+  v = Math.max(0, Math.min(1, v));
+  return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+}
+function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+function linearToHex(c) {
+  return '#' + c.map(v => Math.round(linearToSrgb(v) * 255).toString(16).padStart(2, '0')).join('');
+}
+function hexToLinear(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => srgbToLinear(v / 255));
+}
 function ourControls() {
   const n = id => parseFloat($(id).value);
-  return {ring_speed: n('c_ring_speed'), ring_width: n('c_ring_width'), ring_count: Math.round(n('c_ring_count')),
-          ripple_ms: n('c_ripple_ms'), flash_ms: n('c_flash_ms'), rim_power: n('c_rim_power'), rim_gain: n('c_rim_gain'),
-          hex_scale: n('c_hex_scale'), hex_gain: n('c_hex_gain'), tint_mix: n('c_tint_mix'), calibre: n('c_calibre'),
-          calibre_gain: n('c_calibre_gain'), seta: +$('c_seta').value, hits: +$('c_hits').value};
+  return {cell_m: PATCH_TIERS.map(t => n('c_cell_' + t)), radius_m: PATCH_TIERS.map(t => n('c_radius_' + t)),
+          ripple_speed: n('c_ripple_speed'), core_s: n('c_core_ms') / 1000, fade_s: n('c_fade_ms') / 1000,
+          stagger: n('c_stagger'), fill_ratio: n('c_fill_ratio'),
+          bands: {high: n('c_colour_high'), mid: n('c_colour_mid'), low: n('c_colour_low'),
+                  full: hexToLinear($('c_colour_full').value), half: hexToLinear($('c_colour_half').value),
+                  empty: hexToLinear($('c_colour_empty').value)},
+          weapon_tint: n('c_weapon_tint'), seta: +$('c_seta').value, hits: +$('c_hits').value, tier: +$('c_tier').value,
+          shield: n('c_shield') / 100, drain: n('c_drain') / 100, frame: $('c_frame').value};
 }
 // The classifier's two tint candidates (weapon_effects_core.h 4.2): the light colour when saturated, else the body
-// texture mean, else white; tint_mix lerps toward the other candidate.
+// texture mean, else white; tint_mix lerps toward the other candidate. Normalized to the brightest channel, linear.
 function shellTint(w, mix) {
   const c = w.colour || [0, 0, 0];
   const hi = Math.max(...c), lo = Math.min(...c);
@@ -213,81 +264,199 @@ function shellTint(w, mix) {
   const primary = saturated ? c : tex, other = saturated ? tex : c;
   return primary.map((v, i) => Math.round(v + (other[i] - v) * Math.max(0, Math.min(1, mix))));
 }
-function hexAt(ang, scale) {
-  const u = Math.cos(ang) * scale, v = Math.sin(ang) * scale;
-  const f = x => Math.abs(((x % 1) + 1) % 1 - 0.5);
-  return 0.55 + 0.45 * Math.min(1, (f(u) + f(v * 0.8660254)) * 1.6);
+function weaponLinear(w) {
+  const lin = shellTint(w, HEADER.tint_mix).map(v => srgbToLinear(v / 255)), m = Math.max(...lin);
+  return m > 0 ? lin.map(v => v / m) : [1, 1, 1];
 }
-/** Our shield-hit shell for the impact slot: a Fresnel-rimmed ellipsoid silhouette with up to ring_count expanding
- *  rings from the hit point, a hex modulation, a flash, tinted by the classifier, aged in game time (SETA-scaled).
- *  Hull hits and the other slots draw nothing (step 1 is the shield hit only). t is wall ms since spawn. */
+// core::shield_colour: full at or above high, half at mid, empty at or below low, smoothstep between.
+function shieldColour(f, b) {
+  let from = b.half, to = b.full, t = 1;
+  if (f <= b.low) { t = 0; from = to = b.empty; }
+  else if (f < b.mid) { const s = b.mid - b.low; t = s > 1e-6 ? (f - b.low) / s : 1; from = b.empty; to = b.half; }
+  else if (f < b.high) { const s = b.high - b.mid; t = s > 1e-6 ? (f - b.mid) / s : 1; }
+  t = Math.max(0, Math.min(1, t)); t = t * t * (3 - 2 * t);
+  return from.map((v, i) => v + (to[i] - v) * t);
+}
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm3 = a => { const n = Math.hypot(a[0], a[1], a[2]); return n > 1e-12 ? a.map(v => v / n) : null; };
+const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+// stage::acos_approx, stage::anchor_frame, stage::nearest_anchor, stage::stereo.
+function acosApprox(x) {
+  x = Math.max(-1, Math.min(1, x));
+  const a = Math.abs(x), r = Math.sqrt(1 - a) * (1.5707288 + a * (-0.2121144 + a * (0.0742610 - 0.0187293 * a)));
+  return x < 0 ? 3.14159265 - r : r;
+}
+function anchorFrame(k) {
+  const t = 1.6180339887, n = 1 / 1.9021130326, s1 = (k & 1) ? -1 : 1, s2 = (k & 2) ? -1 : 1;
+  const a = [[0, s1 * n, s2 * t * n], [s1 * n, s2 * t * n, 0], [s2 * t * n, 0, s1 * n]][(k >> 2) % 3];
+  const u = norm3(cross3([0, 0, 1], a));
+  return {a, u, v: cross3(a, u), seed: k};
+}
+function nearestAnchor(d) {
+  let best = 0, bd = -2;
+  for (let k = 0; k < 12; k++) { const c = dot3(anchorFrame(k).a, d); if (c > bd) { bd = c; best = k; } }
+  return best;
+}
+function stereo(fr, S, p) {
+  const den = Math.max(1 + dot3(p, fr.a), 1e-3);
+  return [2 * S * dot3(p, fr.u) / den, 2 * S * dot3(p, fr.v) / den];
+}
+// weapon_hex_patch.hlsl hex_hash / hex_cell.
+const fract = x => x - Math.floor(x);
+function hexHash(kx, ky, seed) {
+  let x = fract(kx * 0.1031), y = fract(ky * 0.1030), z = fract((kx + ky + seed * 17) * 0.0973);
+  const d = x * (y + 33.33) + y * (z + 33.33) + z * (x + 33.33);
+  x += d; y += d; z += d;
+  return [fract((x + y) * z), fract((x + z) * y)];
+}
+function hexCell(gx, gy) {
+  const sy = 1.7320508;
+  const ax = gx - Math.floor(gx) - 0.5, ay = gy - sy * Math.floor(gy / sy) - sy * 0.5;
+  const hx = gx - 0.5, hy = gy - sy * 0.5;
+  const bx = hx - Math.floor(hx) - 0.5, by = hy - sy * Math.floor(hy / sy) - sy * 0.5;
+  const useA = ax * ax + ay * ay < bx * bx + by * by;
+  const lx = useA ? ax : bx, ly = useA ? ay : by;
+  const hd = Math.max(Math.abs(lx), Math.abs(0.5 * lx + 0.8660254 * ly), Math.abs(0.5 * lx - 0.8660254 * ly));
+  return {lx, ly, hd, kx: Math.floor((gx - lx) * 2 + 0.5), ky: Math.floor((gy - ly) * 1.1547005 + 0.5)};
+}
+// weapon_hex_patch.hlsl hex_patch for one draw: q the plane point, fw the pixel's fwidth of the hexagon distance.
+function hexLaw(q, cl, fw, d, c) {
+  const ew = HEADER.edge_width, h0 = 0.5 - ew, R = d.radius, cell = d.cell;
+  const h = hexHash(cl.kx, cl.ky, d.seed);
+  const f = Math.max(fw, 1e-5);
+  const edge = Math.max(0, Math.min(1, (cl.hd - h0) / f + 0.5));
+  const mask = edge + ((1 - 4 * h0 * h0) - edge) * Math.max(0, Math.min(1, f / ew - 1));
+  const bright = HEADER.cell_gain * (1 + c.stagger * (h[0] - 0.5)) * (c.fill_ratio + (1 - c.fill_ratio) * mask);
+  const invFade = (1 / c.fade_s) / (1 + c.stagger * (h[1] - 0.5));
+  const cx = (q[0] / cell - cl.lx) * cell, cy = (q[1] / cell - cl.ly) * cell;
+  const v = c.ripple_speed * R, feather = HEADER.feather_cells * cell, coreR = HEADER.core_cells * cell;
+  let cells = 0, glow = 0;
+  for (const hit of d.hits) {
+    const dc = Math.hypot(cx - hit.q[0], cy - hit.q[1]), dq2 = (q[0] - hit.q[0]) ** 2 + (q[1] - hit.q[1]) ** 2;
+    const dq = Math.sqrt(dq2), age = hit.age;
+    const gate = Math.max(0, Math.min(1, (R - dq) / feather));
+    const rel = dc / R, since = age - dc / v;
+    const env = since >= 0 ? Math.max(0, Math.min(1, 1 - since * invFade)) * Math.max(0, Math.min(1, 1 - rel * rel)) : 0;
+    cells = Math.max(cells, env * gate);
+    const r = v * age, x = (dq - r) / (HEADER.ring_width * R);
+    glow += HEADER.ring_gain * Math.exp(-x * x) * Math.max(0, Math.min(1, 1 - r / R)) * gate;
+    glow += HEADER.core_gain * Math.exp(-dq2 / (coreR * coreR)) * Math.max(0, Math.min(1, 1 - age / c.core_s)) * gate;
+  }
+  return bright * cells + glow;
+}
+// The hit sequence: single (one hit at t = 0 on the front) or n hits per second of wall time, each aged in game time
+// (x SETA), scattered deterministically over the front within 0.7 of the patch angle; the drain lowers the shield
+// fraction per hit. Returns the live hits, newest first (age <= the record lifetime).
+function hitSequence(t, c, S, R) {
+  const lifetime = 1000 / c.ripple_speed + c.fade_s * 1000 * (1 + 0.5 * c.stagger) + 1;
+  const period = c.hits > 0 ? 1000 / c.hits : 0, out = [];
+  const count = period ? Math.floor(t / period) + 1 : 1;
+  for (let k = count - 1; k >= 0; k--) {
+    const age = (t - k * period) * c.seta / 1000;
+    if (age * 1000 > lifetime) break;
+    const r = rng(1000 + k), th = k === 0 && !period ? 0 : 0.7 * (R / S) * Math.sqrt(r()), ph = 2 * Math.PI * r();
+    const dir = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), -Math.cos(th)];
+    out.push({dir, age, shield: Math.max(0, c.shield - c.drain * k)});
+  }
+  return out;
+}
+// stage::build for one owner: the four newest hits, one draw per anchor region, the cap.
+function patchDraws(hits, S, c) {
+  const R = Math.min(c.radius_m[c.tier], 0.9 * S), cell = c.cell_m[c.tier], draws = [], done = [];
+  const four = hits.slice(0, 4), anchors = four.map(h => nearestAnchor(h.dir));
+  for (let i = 0; i < four.length; i++) {
+    if (done[i]) continue;
+    const fr = anchorFrame(anchors[i]), group = [];
+    for (let j = i; j < four.length; j++) if (!done[j] && anchors[j] === anchors[i]) { done[j] = true; group.push(four[j]); }
+    let mean = norm3(group.reduce((m, h) => [m[0] + h.dir[0], m[1] + h.dir[1], m[2] + h.dir[2]], [0, 0, 0])) || group[0].dir;
+    const spread = Math.max(...group.map(h => acosApprox(dot3(mean, h.dir))));
+    const capAngle = Math.min(3.14159265, (spread + R / S + 1e-3) * 1.0049);
+    draws.push({fr, seed: fr.seed, radius: R, cell, capDir: mean, capCos: Math.cos(capAngle), capAngle,
+                hits: group.map(h => ({q: stereo(fr, S, h.dir), age: h.age}))});
+  }
+  return draws;
+}
+/** Our shield-hit patch for the impact slot (hull hits and the other slots stay native in step 1). t is wall ms
+ *  since spawn; ages are game time (x SETA). */
 function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const ctx = record.ctx;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   drawBackground(ctx);
   if (record.slot !== 'impact') { label(ctx, record.slot === 'death' ? 'explosions: a later step' : 'native (step 1 draws the shield hit only)'); return; }
-  const c = ourControls(), w = record.weapon;
-  const cx = W / 2, cy = H / 2, R = 0.36 * Math.min(W, H);
-  const tint = shellTint(w, c.tint_mix);
-  const amp = Math.max(0, c.rim_gain);
-  const ringA = Math.max(0, 4 * (1 + c.calibre_gain * (c.calibre - 0.5)));
-  const hits = [];
-  const period = c.hits > 0 ? 1000 / c.hits : 0;
-  for (let i = 0; i < Math.max(1, c.ring_count); i++) {
-    const wall = period ? t - i * period : (i === 0 ? t : -1);
-    if (wall < 0) continue;
-    const age = wall * c.seta / 1000;
-    if (age * 1000 > c.ripple_ms) continue;
-    hits.push({age, dir: period ? (i * 2.4) % (Math.PI * 2) : 0.6});
+  const c = ourControls();
+  const S = PREVIEW_OWNER_M[c.tier], R = Math.min(c.radius_m[c.tier], 0.9 * S);
+  const hits = hitSequence(t, c, S, R);
+  const draws = hits.length ? patchDraws(hits, S, c) : [];
+  let colour = shieldColour(hits.length ? hits[0].shield : 1, c.bands);
+  if (c.weapon_tint > 0) {
+    const w = weaponLinear(record.weapon), k = Math.min(1, c.weapon_tint);
+    colour = colour.map((v, i) => v + (w[i] - v) * k);
   }
-  ctx.globalCompositeOperation = 'lighter';
-  const newest = hits.length ? Math.min(...hits.map(h => h.age)) : c.ripple_ms / 1000;
-  const envelope = Math.max(0, 1 - newest / (c.ripple_ms / 1000));
-  for (let r = 0; r < 60; r++) {
-    const rr = R * (0.7 + 0.3 * r / 60);
-    const rim = Math.pow(r / 60, c.rim_power) * amp * envelope;
-    if (rim <= 0.002) continue;
-    ctx.strokeStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${Math.min(0.9, rim * 0.25)})`;
-    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke();
-  }
-  for (const h of hits) {
-    const life = Math.max(0, 1 - h.age / (c.ripple_ms / 1000));
-    const theta0 = c.ring_speed * h.age;
-    for (let a = 0; a < 96; a++) {
-      const ang = a / 96 * Math.PI * 2;
-      const theta = Math.abs(((ang - h.dir + Math.PI) % (Math.PI * 2)) - Math.PI);
-      const g = Math.exp(-Math.pow((theta - theta0) / c.ring_width, 2)) * life;
-      if (g < 0.02) continue;
-      const hx = (1 - c.hex_gain) + c.hex_gain * hexAt(ang, c.hex_scale);
-      const v = Math.min(1, ringA * g * hx * 0.25);
-      ctx.fillStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${v})`;
-      const rr = R * (0.72 + 0.28 * Math.cos(theta));
-      ctx.fillRect(cx + rr * Math.cos(ang) - 1.5, cy + rr * Math.sin(ang) - 1.5, 3, 3);
+  // The camera on -z looking at the owner: the whole owner, or close to the front so the patch radius is a third of
+  // the canvas height (vertical field of view 40 degrees).
+  const f = H / (2 * Math.tan(20 * Math.PI / 180));
+  const D = c.frame === 'ship' ? S * f / (0.42 * H) : S + R * f / (0.34 * H);
+  const img = ctx.getImageData(0, 0, W, H), px = img.data;
+  const hd = new Float32Array(W * H), cellOf = new Array(W * H), qOf = new Array(W * H), sum = new Float32Array(W * H);
+  const pOf = new Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const rd = norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]);
+      const b = -D * rd[2], disc = b * b - (D * D - S * S);
+      if (disc < 0) continue;
+      const s = b - Math.sqrt(disc);
+      pOf[y * W + x] = [rd[0] * s / S, rd[1] * s / S, (rd[2] * s - D) / S];
     }
-    if (h.age * 1000 < c.flash_ms) {
-      const fv = HEADER.flash_gain * (1 - h.age * 1000 / c.flash_ms);
-      const fx = cx + R * 0.72 * Math.cos(h.dir), fy = cy + R * 0.72 * Math.sin(h.dir);
-      const grad = ctx.createRadialGradient(fx, fy, 0, fx, fy, 28);
-      grad.addColorStop(0, `rgba(${tint[0]},${tint[1]},${tint[2]},${Math.min(1, fv * 0.15)})`);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(fx, fy, 28, 0, Math.PI * 2); ctx.fill();
+  for (const d of draws) {
+    for (let i = 0; i < W * H; i++) {
+      const p = pOf[i];
+      cellOf[i] = null;
+      if (!p || dot3(p, d.capDir) < d.capCos) continue; // the CPU cap: outside it nothing is rasterized
+      const q = stereo(d.fr, S, p), cl = hexCell(q[0] / d.cell, q[1] / d.cell);
+      cellOf[i] = cl; qOf[i] = q; hd[i] = cl.hd;
+    }
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x, cl = cellOf[i];
+        if (!cl) continue;
+        const dx = x + 1 < W && cellOf[i + 1] ? Math.abs(hd[i + 1] - hd[i]) : 0;
+        const dy = y + 1 < H && cellOf[i + W] ? Math.abs(hd[i + W] - hd[i]) : 0;
+        sum[i] += hexLaw(qOf[i], cl, dx + dy, d, c);
+      }
+  }
+  for (let i = 0; i < W * H; i++) {
+    if (!(sum[i] > 0)) continue;
+    for (let k = 0; k < 3; k++) {
+      const base = srgbToLinear(px[i * 4 + k] / 255), v = base + (1 - Math.exp(-colour[k] * sum[i]));
+      px[i * 4 + k] = Math.round(255 * linearToSrgb(Math.min(1, v)));
     }
   }
-  label(ctx, `shield shell | ${hits.length} ring(s) | SETA x${c.seta} | tint ${tint.join(',')} | rings fade in ${fmt(c.ripple_ms)} ms game`);
+  ctx.putImageData(img, 0, 0);
+  const f0 = hits.length ? hits[0].shield : 1;
+  label(ctx, `${PATCH_TIERS[c.tier]} owner ${S} m | ${hits.length} live hit(s), ${draws.length} draw(s) | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(c.cell_m[c.tier])} m, radius ${fmt(R)} m`);
 }
+const OUR_IDS = ['c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_radius_fighter', 'c_radius_corvette',
+                 'c_radius_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
+                 'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
+                 'c_weapon_tint'];
 function initOurControls() {
   const set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
-  set('c_ring_speed', HEADER.ring_speed); set('c_ring_width', HEADER.ring_width); set('c_ring_count', HEADER.ring_count);
-  set('c_ripple_ms', HEADER.ripple_ms); set('c_flash_ms', HEADER.flash_ms); set('c_rim_power', HEADER.rim_power);
-  set('c_rim_gain', HEADER.rim_gain); set('c_hex_scale', HEADER.hex_scale); set('c_hex_gain', HEADER.hex_gain);
-  set('c_tint_mix', HEADER.tint_mix); set('c_calibre_gain', HEADER.calibre_gain);
-  const ids = ['c_ring_speed', 'c_ring_width', 'c_ring_count', 'c_ripple_ms', 'c_flash_ms', 'c_rim_power', 'c_rim_gain',
-               'c_hex_scale', 'c_hex_gain', 'c_tint_mix', 'c_calibre', 'c_calibre_gain', 'c_seta', 'c_hits'];
+  PATCH_TIERS.forEach((t, i) => { set('c_cell_' + t, HEADER.cell_m[i]); set('c_radius_' + t, HEADER.radius_m[i]); });
+  set('c_ripple_speed', HEADER.ripple_speed); set('c_core_ms', HEADER.core_ms); set('c_fade_ms', HEADER.fade_ms);
+  set('c_stagger', HEADER.stagger); set('c_fill_ratio', HEADER.fill_ratio); set('c_weapon_tint', HEADER.weapon_tint);
+  set('c_colour_high', HEADER.colour_high); set('c_colour_mid', HEADER.colour_mid); set('c_colour_low', HEADER.colour_low);
+  // A colour input always holds a value: the header's colours are written once (and again on reset).
+  for (const [id, key] of [['c_colour_full', 'colour_full'], ['c_colour_half', 'colour_half'], ['c_colour_empty', 'colour_empty']])
+    if ($(id) && !$(id).dataset.init) { $(id).value = linearToHex(HEADER[key]); $(id).dataset.init = '1'; }
+  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame'];
   for (const id of ids) if ($(id)) $(id).oninput = $(id).onchange = () => {
-    if (id === 'c_calibre') $('c_calibre_read').textContent = (+$(id).value).toFixed(2);
+    if (id === 'c_shield') $('c_shield_read').textContent = $(id).value;
     state.dirty = true;
   };
-  if ($('c_reset')) $('c_reset').onclick = () => { for (const id of ids) if (!['c_calibre', 'c_seta', 'c_hits'].includes(id)) $(id).value = ''; initOurControls(); state.dirty = true; };
+  if ($('c_reset')) $('c_reset').onclick = () => {
+    for (const id of OUR_IDS) { $(id).value = ''; delete $(id).dataset.init; }
+    initOurControls(); state.dirty = true;
+  };
 }
 
 // ---------------------------------------------------------------- helpers

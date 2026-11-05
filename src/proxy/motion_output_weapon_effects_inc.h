@@ -1,7 +1,9 @@
 // Weapon effects, step 1: the shield hit (included by motion_output.cpp inside namespace x3m; AP only;
 // weapon_effects_patch.h, weapon_effects_stage.h, renderer/weapon_effects_pass.h; docs/architecture/weapon-effects.md
-// 2.6 and 5.1). X3M_WEAPON_EFFECTS=shields: the impact hook records every hit into the proxy ring and skips the engine's
-// shield-hit spawn while the stage owned the previous frame; this stage draws the shells and decals of the ring's
+// 2.6, 5.1 and 5.1.1). X3M_WEAPON_EFFECTS=shields: the impact hook records every hit into the proxy ring and marks a
+// shield hit stage-owned (flag_stage) while the stage owned the previous frame; the engine's own impact still spawns
+// (user decision 2026-11-06: the native sprite plus the patch; core::suppress_native_shield_hit would skip it). This
+// stage draws the hex patches and flat decals of the ring's
 // stage-owned records as an act of the temporal resolve's stage bracket, after the plumes and the own sun when they
 // draw (one callback slot: the stage chains the callback it found, own_sun_with_plumes_'s pattern), reading the lane the
 // resolve reads (occlusion by the lane alone; the depth surface is unbound before the callback).
@@ -11,8 +13,8 @@
 // failure refuses until Reset). Present latches weapon_effects_owned() for the next frame's hooks: armed, the resolve
 // completed and, when the callback was set, it ran and returned S_OK / S_FALSE (core::stage_owned, review F8), so a
 // frame whose resolve never reaches the arming (a menu, TAA off), fails before the callback, or whose stage returns
-// DEVICELOST or an error makes the next frame's hits native again; records
-// the hooks skipped stay in the ring with their own game-time timelines and are drawn when the stage returns, if still
+// DEVICELOST or an error makes the next frame's hits native only; stage-owned records
+// stay in the ring with their own game-time timelines and are drawn when the stage returns, if still
 // within age. A cut verdict or a Reset clears the stage-owned records. One weapon_effects_state row per change of the
 // armed state or its reason; one weapon_effects_device row per attach; weapon_effects_failed per failed stage frame.
 void MotionOutput::configure_weapon_effects(bool requested) noexcept {
@@ -112,7 +114,7 @@ bool MotionOutput::weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, 
     return true;
 }
 // The stage callback while the weapon stage draws this frame: the callback it replaced first (the plumes, or the own
-// sun with the plumes), then the shells. A lost device ends it; otherwise the first failure is the result.
+// sun with the plumes), then the patches. A lost device ends it; otherwise the first failure is the result.
 HRESULT MotionOutput::weapon_effects_stage_callback(void* context, IDirect3DDevice9* device) noexcept {
     MotionOutput& self = *static_cast<MotionOutput*>(context);
     HRESULT prior = S_FALSE;
@@ -151,14 +153,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     f.m32 = camera_scene_.m32 != 0.f ? camera_scene_.m32 : projection_default_m32;
     f.near_z = -f.m32 / f.m22;
     if (!(f.near_z > 0.f) || !(f.near_z < 1e30f)) f.near_z = -projection_default_m32 / projection_default_m22;
-    renderer::WeaponShell shells[wcore::max_shells];
+    renderer::WeaponPatch patches[wcore::max_patches];
     renderer::WeaponDecal decals[wcore::max_decals];
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
-                                     camera, weapon_effects::stage::Tuning{}, shells, wcore::max_shells, decals,
+                                     camera, weapon_effects::stage::Tuning{}, patches, wcore::max_patches, decals,
                                      wcore::max_decals);
-    f.shells = shells;
-    f.shell_count = n.shells;
+    f.patches = patches;
+    f.patch_count = n.patches;
     f.decals = decals;
     f.decal_count = n.decals;
     weapon_retired_ += n.retired;
@@ -173,14 +175,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_stage_us_ = frequency && frequency < 0x80000000ull && ticks < 0x80000000ull
                            ? float(double(std::int32_t(ticks)) * 1e6 / double(std::int32_t(frequency)))
                            : 0.f;
-    weapon_shells_ += report.shells;
+    weapon_patches_ += report.patches;
     weapon_decals_ += report.decals;
     if (report.drew) {
         weapon_drew_ = true;
         weapon_failures_ = 0;
     }
     if (FAILED(hr) && hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) {
-        // A failed stage frame: this frame's shells are lost (their records stay and draw again when the stage
+        // A failed stage frame: this frame's patches are lost (their records stay and draw again when the stage
         // returns, within age); the stage disarms for 64 frames, so the hooks forward from the next frame on.
         const bool final = ++weapon_failures_ >= weapon_failure_limit;
         if (final)
@@ -194,14 +196,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     }
     return hr;
 }
-void MotionOutput::weapon_effects_take_frame(unsigned* shells, unsigned* decals, unsigned* retired, float* stage_us,
+void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
                                              bool* drew) noexcept {
-    *shells = weapon_shells_;
+    *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    weapon_shells_ = weapon_decals_ = weapon_retired_ = 0;
+    weapon_patches_ = weapon_decals_ = weapon_retired_ = 0;
     weapon_stage_us_ = 0.f;
     weapon_drew_ = false;
     // Ownership is earned again by the next frame's resolve (the own sun's rule).

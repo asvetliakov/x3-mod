@@ -1269,7 +1269,13 @@ sampled point/clamp. **Native cost (measured 2026-11-05, RTX 5070 Ti, driver 32.
 shell 43.7 / 151.9 µs, an empty fence 10.8 / 10.2 µs; the 0.2 ms flight target at 5120x1440 is not met by the fenced
 two-shell figure. These replace the Wine/wined3d figures of the dropped stage as the stage's only native costs; the
 hooks' own per-frame cost is unmeasured until the observe flight. FL: compiled out (one `edition_unsupported` row).
-Not flown on either platform.
+Not flown on either platform. **2026-11-06, the hex patch of weapon-effects.md 5.1.1** replaces the shell (same
+documented D3D9 surface; the icosphere becomes an 8 x 32 polar cap mesh, still `DrawIndexedPrimitiveUP`, the pixel
+program uses `fwidth` and one uniform `[branch]` per hit slot, 291 ps_3_0 slots): two patches on a fighter 18.1–18.8 µs
+at 1080p and 26.9–33.0 µs at 5120x1440, a capital at close range (a full-frame patch per anchor region) 50.0 / 129.5 µs
+for one region and 68.7 / 196.1 µs for two, the worst one owner can submit (four regions) 116.4 / 374.2 µs, an empty
+fence 11.2 / 11.1 µs (measured, ledger). The hook's shield read is plain loads and 32/64-bit integer arithmetic (no
+call); 50 events cost 17.7 µs median in the native hook fixture.
 
 ## 2026-11-02: own sun, step 1 (`own_sun`, default off; AP edition)
 

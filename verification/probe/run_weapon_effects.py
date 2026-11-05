@@ -7,14 +7,15 @@ verification/results/native-windows/weapon-effects/hook-summary.json with the ch
 hashes, the build audit and the host identity (test_weapon_effects_hook binds to it).
 
 (b) The D3D fixture:
-Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponEffectsPass and its shell/decal programs
+Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponEffectsPass and its patch/decal programs
 (src/renderer/weapon_effects_pass.cpp; refusing stale embedded programs: each weapon-{shell,decal}-*-program.json must
 match its source and header), runs it once and writes the record: the build, the checkout's commit and the production
-sources' hashes, every CHECK, the structural metrics (rim at 70 vs 45 deg, rings on/off, hull cut, decal over sky vs
-hull, shell core and its mirrored twin, the core through the production TemporalPass at 0 / 4 / 8 px per frame, the
-age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset and the fault
-cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two shells, full-screen shell,
-winding cull against CULLMODE NONE) as the native re-pin of the dropped ledger's Wine numbers. Never launches the game.
+sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
+radius and edge count per tier, core at 0.05 / 0.2 s, ring front at two ages, the fade, the colour bands, re-light
+and four-hit accumulation, the CPU cap, the decal fallback, the core through the production TemporalPass at 0 / 4 / 8
+px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
+and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
+fighter, two on a capital at close range, the worst case of one owner). Never launches the game.
 
 Two hosts, chosen explicitly: --host native (native_host.py; the WSL2 host, no bottle) runs the binary on the Windows
 side through WSL interop with the system d3d9.dll and the game's C:\\X3\\d3dx9_37.dll, into
@@ -50,6 +51,7 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp',
                       'src/effects/weapon_shell_vs.hlsl', 'src/effects/weapon_shell_ps.hlsl',
                       'src/effects/weapon_decal_vs.hlsl', 'src/effects/weapon_decal_ps.hlsl', 'src/effects/weapon_soft_depth.hlsl',
+                      'src/effects/weapon_hex_patch.hlsl',
                       'src/renderer/weapon_shell_vertex_program_inc.h', 'src/renderer/weapon_shell_pixel_program_inc.h',
                       'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h')
 PROGRAMS = {
@@ -58,10 +60,10 @@ PROGRAMS = {
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
 }
-# The dropped effects-stage ledger's Wine/wined3d numbers (docs/verification/effects-stage.md, measured on the Mac),
-# re-pinned natively here; the fixture gates the structural relations, not these values.
-WINE_PINS = {'rim_70': 0.50, 'rim_45': 0.24, 'hull_cut': 0.0, 'two_shells_1080_ms': 0.124, 'two_shells_5120_ms': 0.162,
-             'fullscreen_1080_ms': 0.54, 'fullscreen_5120_ms': 0.77, 'resolve_core': 1.0}
+# The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
+# and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
+SHELL_PINS = {'two_shells_1080_us': 61.3, 'two_shells_5120_us': 201.8, 'fullscreen_1080_us': 43.7,
+              'fullscreen_5120_us': 151.9}
 # The hook fixture's inputs: the fixture and its seam, the build script (flags and audit) and every production source it
 # compiles; the record carries their hashes and test_weapon_effects_hook compares them with the tree.
 HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verification/probe/weapon_effects_hook_fixture_shim.h',
@@ -116,7 +118,8 @@ def fields(line):
 
 
 def parse(text):
-    tags = ('ATTACH', 'SHELL', 'RIM', 'RINGS', 'HULL', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE', 'REFUSED', 'TIMING')
+    tags = ('ATTACH', 'PATCH', 'CORE', 'RING', 'COLOUR', 'RELIGHT', 'ACCUMULATE', 'CAPCHECK', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -147,8 +150,10 @@ def parse_hook(text):
             forward = dict(re.findall(r'(\w+)=(\S+)', line))
         elif parts[:1] == ['STACK_DEPTH']:
             stack = fields(line)
-    return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack,
-            'failed_checks': [c['name'] for c in checks if not c['passed']]}
+    shields = [fields(line) for line in text.splitlines() if line.startswith('SHIELD ')]
+    cost = [fields(line) for line in text.splitlines() if line.startswith('EVENT_COST ')]
+    return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
+            'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
 def run_hook(args, results):
@@ -167,6 +172,8 @@ def run_hook(args, results):
     record['failed_checks'] = report['failed_checks']
     record['forward_state'] = report['forward_state']
     record['stack_depth'] = report['stack_depth']
+    record['shield'] = report['shield']
+    record['event_cost'] = report['event_cost']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
                         result.get('checks') == len(report['checks']) and result.get('failures') == 0)
@@ -215,7 +222,7 @@ def main():
         results.mkdir(parents=True, exist_ok=True)
     hook_passed = run_hook(args, results) if native else None  # (a): the native host only
     record = {'bottle': None if native else bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES),
-              'source': source_binding(), 'programs': programs_current(), 'wine_pins': WINE_PINS, 'game_launched': False}
+              'source': source_binding(), 'programs': programs_current(), 'shell_pins': SHELL_PINS, 'game_launched': False}
     if not args.no_build:
         record['build'] = build()
     d3dx = native_host.GAME_DIR / 'd3dx9_37.dll' if native else bottle.game_dir() / 'd3dx9_37.dll'
@@ -228,8 +235,10 @@ def main():
                      'log': str((BUILD / 'fixture.log').relative_to(ROOT))}
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
-    record['metrics'] = {k: report[k] for k in ('attach', 'shell', 'rim', 'rings', 'hull', 'decal', 'age', 'retired',
-                                                 'resolve', 'refused', 'timing')}
+    record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'core', 'ring', 'colour', 'relight', 'accumulate', 'capcheck',
+                                                 'decal', 'age', 'retired', 'resolve', 'refused', 'timing')}
+    fade = [line for line in text.splitlines() if line.startswith('FADE ')]
+    record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
     record['passed'] = passed
     out_path = results / 'summary.json'

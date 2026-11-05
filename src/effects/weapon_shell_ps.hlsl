@@ -1,48 +1,19 @@
-// Weapon effects, shield hit (docs/architecture/weapon-effects.md 5.1; the dropped shell of 9375a1e7,
-// effects-modernisation-opus.md 3.3): the shell pixel program. Front faces only (the pass's winding cull, and the
-// view-space normal must face the eye); a Fresnel rim pow(1 - |n.v|, rim_power) x rim_gain that fades with the newest hit's age, up to four rings
-// expanding from their hit direction on the unit sphere (a Gaussian in the angle theta about ring_speed x age, fading
-// as 1 - age / T, each with its own amplitude from the hit's calibre), a hex lattice modulation of depth hex_gain, a
-// short flash at each hit point, the tint, and the soft fade against the lane where the shell cuts the hull. Ages are
-// game seconds (SETA-scaled). Alpha 0 under ONE/ONE. Constants: weapon_effects_core.h / renderer/weapon_effects_pass.cpp.
+// Weapon effects, shield hit (docs/architecture/weapon-effects.md 5.1.1): the hex patch's pixel program. The lattice
+// plane is the stereographic projection of the unit sphere from the anchor's antipode: q = 2 S (p.u, p.v) / (1 + p.a)
+// (a the anchor region's direction, u, v its tangent frame, S the ellipsoid's mean axis in view units), conformal (the
+// hexagons keep their shape) and nowhere shrinking (scale 2 / (1 + cos theta) >= 1), so a planar distance below the
+// radius R is a surface distance below R and the lit area is bounded by R by construction. The hex law
+// (weapon_hex_patch.hlsl) gives the radiance; front faces only (the pass's winding cull and the interpolated normal
+// facing the eye); the soft fade against the lane where the patch cuts the hull. Alpha 0 under ONE/ONE. Constants:
+// renderer/weapon_effects_pass.cpp hex_block, defaults weapon_effects_core.h.
 #include "weapon_soft_depth.hlsl"
-float4 look : register(c2);      // rim gain, unused, rim power, hex scale
-float4 tint : register(c3);      // rgb tint, alpha
-float4 timing : register(c4);    // hit count, T (ripple seconds), ring speed (radians per second), ring width (radians)
-float4 hits[4] : register(c5);   // local hit direction (unit sphere), age in seconds
-float4 flash : register(c9);     // flash seconds, flash gain, flash sharpness, hex gain
-float4 amp : register(c10);      // the four hits' ring amplitudes
-float hex_lines(float2 q) {
-    float2 s = float2(1.0, 1.7320508);
-    float2 a = q - s * floor(q / s) - s * 0.5;
-    float2 b = q + s * 0.5; b = b - s * floor(b / s) - s * 0.5;
-    float d = sqrt(min(dot(a, a), dot(b, b)));
-    return smoothstep(0.30, 0.42, d);
-}
+#include "weapon_hex_patch.hlsl"
+float4 anchor[3] : register(c8);  // the anchor direction, its u, its v (owner frame)
 float4 main(float4 raster : TEXCOORD0, float3 normal : TEXCOORD1, float3 local : TEXCOORD2, float3 view : TEXCOORD3) : COLOR0 {
-    float3 n = normalize(normal);
-    float3 eye = normalize(-view);
-    float facing = dot(n, eye);
-    // The pass culls the inward winding per shell; a fragment whose interpolated normal faces away (the silhouette's
-    // last facets) still leaves before the rings.
-    [branch] if (facing <= 0.0) return float4(0, 0, 0, 0);
-    float rim = pow(1.0 - saturate(facing), look.z);
     float3 p = normalize(local);
-    float rings = 0.0, burst = 0.0, newest = timing.y;
-    [unroll] for (int i = 0; i < 4; ++i) {
-        float on = step(float(i) + 0.5, timing.x);
-        float theta = acos(clamp(dot(p, hits[i].xyz), -1.0, 1.0));
-        float age = hits[i].w;
-        float life = saturate(1.0 - age / timing.y);
-        float ring = exp(-pow((theta - timing.z * age) / timing.w, 2.0)) * life;
-        rings += on * ring * amp[i];
-        burst += on * exp(-theta * theta * flash.z) * saturate(1.0 - age / flash.x);
-        newest = min(newest, age + (1.0 - on) * timing.y);
-    }
-    float envelope = saturate(1.0 - newest / timing.y);
-    float hex = (1.0 - flash.w) + flash.w * hex_lines(float2(p.x + 0.5 * p.z, p.y + 0.5 * p.z) * look.w);
+    float facing = dot(normalize(normal), normalize(-view));
+    float2 q = lattice.w * float2(dot(p, anchor[1].xyz), dot(p, anchor[2].xyz)) / max(1.0 + dot(p, anchor[0].xyz), 1e-3);
+    float3 c = hex_patch(q, 4);
     float vis = soft_visibility(raster.xy, raster.z, raster.w);
-    float3 colour = tint.rgb * (look.x * rim * envelope + rings * hex) + flash.y * burst;
-    colour *= tint.a * vis;
-    return float4(max(colour, 0.0), 0.0);
+    return float4(max(c * (vis * step(0.0, facing)), 0.0), 0.0);
 }

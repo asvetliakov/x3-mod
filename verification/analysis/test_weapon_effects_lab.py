@@ -305,7 +305,7 @@ class GeneratorTest(unittest.TestCase):
         page = gen.render(shell, data, hv)
         self.assertEqual(gen.render(page, data, hv), page)              # idempotent
         self.assertIn('const HEADER = {', page)
-        self.assertIn('ring_speed:', page)
+        self.assertIn('ripple_speed:', page)
         self.assertTrue(page.endswith('\nrest();\n</script>'))
         dstart = page.index('const LAB_DATA = {') + len('const LAB_DATA = {')
         body = page[dstart:page.index('};\n' + gen.END, dstart)]
@@ -338,13 +338,18 @@ class PageTest(unittest.TestCase):
         self.assertEqual(self.html.count(gen.HEADER_BEGIN), 1)
         self.assertEqual(self.html.count(gen.END), 2)   # the header block and the data block both close with /* @end */
         self.assertIn('const HEADER = {', self.html)    # the injected header constants
-        self.assertRegex(self.html, r'ring_speed: [0-9.]+')
+        self.assertRegex(self.html, r'ripple_speed: [0-9.]+')
+        self.assertRegex(self.html, r'cell_m: \[[0-9., ]+\]')
         self.assertNotRegex(self.html, r'function renderOurs\(record, t\) \{ // eslint-disable-line no-unused-vars\n\}')
         self.assertIn('function ourControls()', self.html)
-        for cid in ('c_ring_speed', 'c_ring_width', 'c_ring_count', 'c_ripple_ms', 'c_flash_ms', 'c_rim_power',
-                    'c_rim_gain', 'c_hex_scale', 'c_hex_gain', 'c_tint_mix', 'c_calibre', 'c_calibre_gain', 'c_seta',
-                    'c_hits'):
+        # docs/architecture/weapon-effects.md 5.1.1's lab controls: cell size and radius per tier, ripple speed, core
+        # and fade durations, stagger, edge versus fill, the three colour bands, the SETA rate, the hit player.
+        for cid in ('c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_radius_fighter', 'c_radius_corvette',
+                    'c_radius_capital', 'c_ripple_speed', 'c_core_ms', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
+                    'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
+                    'c_weapon_tint', 'c_seta', 'c_hits'):
             self.assertIn(f'id="{cid}"', self.html)
+        self.assertRegex(self.html, r'<select id="c_hits">.*value="1".*value="4".*value="12"')
         self.assertNotRegex(self.html, r'<script[^>]+type="module"|fetch\(|https?://')
         for slot in ('muzzle', 'projectile', 'impact', 'death'):
             self.assertIn(f"key: '{slot}'", self.html)
@@ -362,6 +367,44 @@ class PageTest(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr[:500])
         finally:
             Path(f.name).unlink()
+
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_patch_law_matches_the_gpu(self):
+        """The lab's hexLaw at the hit point against the native D3D fixture's readbacks of the same cases (the fighter
+        patch, the hit on a cell centre, seed 0): the core at 0.05 s with and without the core term, 0.2 s, and the
+        cells-only hit point at 0.7 s and 0.3 s. Tolerance: the FP16 target's step (2^-10 relative)."""
+        record = json.loads((ROOT / 'verification/results/native-windows/weapon-effects/summary.json').read_text())
+        core, relight = record['metrics']['core'][0], record['metrics']['relight'][0]
+        script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
+        header = script[script.index(gen.HEADER_BEGIN):script.index(gen.END, script.index(gen.HEADER_BEGIN))]
+        ours = script[script.index('// ---------------------------------------------------------------- our renderer'):
+                      script.index('// ---------------------------------------------------------------- helpers')]
+        probe = header + ours + r'''
+const c = {stagger: HEADER.stagger, fill_ratio: HEADER.fill_ratio, fade_s: HEADER.fade_ms / 1000,
+           core_s: HEADER.core_ms / 1000, ripple_speed: HEADER.ripple_speed};
+const at = (age, over) => {
+  const saved = Object.assign({}, HEADER);
+  Object.assign(HEADER, over || {});
+  const v = hexLaw([0, 0], hexCell(0, 0), 1e-3, {radius: 45, cell: 7.5, seed: 0, hits: [{q: [0, 0], age}]}, c);
+  Object.assign(HEADER, saved);
+  return v;
+};
+console.log(JSON.stringify({at05: at(0.05), at05_no_core: at(0.05, {core_gain: 0}), at20: at(0.2),
+                            old: at(0.7, {core_gain: 0, ring_gain: 0}), new: at(0.3, {core_gain: 0, ring_gain: 0})}));
+'''
+        with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
+            f.write(probe.replace('const HEADER', 'var HEADER'))
+        try:
+            r = subprocess.run(['node', f.name], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr[:500])
+            js = json.loads(r.stdout)
+        finally:
+            Path(f.name).unlink()
+        gpu = {'at05': core['at05'], 'at05_no_core': core['at05_no_core'], 'at20': core['at20'],
+               'old': relight['old'], 'new': relight['new']}
+        for key, value in gpu.items():
+            self.assertAlmostEqual(js[key], value, delta=max(2e-3, 2 ** -10 * value), msg=key)
 
 
 if __name__ == '__main__':

@@ -35,18 +35,25 @@ VIEW_LABELS = {'stock_ap': 'Stock AP (pinned 01-13 + addon/01-04)', 'mayhem3': '
 BEGIN, END = '/* @weapon_effects_data */', '/* @end */'
 HEADER_BEGIN, HEADER_END = '/* @weapon_effects_header */', '/* @end */'
 HEADER = REPO / 'src/proxy/weapon_effects_core.h'
-# The shield-hit look constants the lab's renderOurs() and its controls default to (every control's default is the
-# header's value, docs/architecture/weapon-effects.md 5.1 item 4). ring_count/ripple_ms/flash_ms are unsigned.
-HEADER_NAMES = ('ring_speed', 'ring_width', 'ring_count', 'ripple_ms', 'flash_ms', 'rim_power', 'rim_gain', 'hex_scale',
-                'hex_gain', 'tint_mix', 'calibre_gain', 'flash_gain', 'flash_sharpness', 'soft',
-                'tracer_min_elongation', 'slug_min_elongation')
-HEADER_INTS = ('ring_count', 'ripple_ms', 'flash_ms')
+# The shield-hit patch constants the lab's renderOurs() and its controls default to (every control's default is the
+# header's value, docs/architecture/weapon-effects.md 5.1.1). core_ms/fade_ms are unsigned; cell_m, radius_m and the
+# three colours are arrays (`name[N] = {a, b, c}`).
+HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'radius_m', 'ripple_speed', 'ring_width', 'ring_gain', 'core_ms',
+                'core_cells', 'core_gain', 'fade_ms', 'stagger', 'edge_width', 'fill_ratio', 'cell_gain',
+                'feather_cells', 'colour_high', 'colour_mid', 'colour_low', 'colour_full', 'colour_half',
+                'colour_empty', 'weapon_tint', 'tint_mix', 'tracer_min_elongation', 'slug_min_elongation')
+HEADER_INTS = ('core_ms', 'fade_ms')
+NUMBER = r'-?[0-9.]+(?:e-?[0-9]+)?'
 
 
 def header_constants(text):
     values = {}
     for name in HEADER_NAMES:
-        m = re.search(r'\b%s = (-?[0-9.]+)f?\b' % name, text)
+        array = re.search(r'\b%s\[[^\]]*\] = \{([^}]*)\}' % name, text)
+        if array:
+            values[name] = [float(v.strip().rstrip('f')) for v in array.group(1).split(',')]
+            continue
+        m = re.search(r'\b%s = (%s)f?\b' % (name, NUMBER), text)
         if not m:
             raise SystemExit('weapon_effects_core.h: constant %s not found' % name)
         values[name] = int(float(m.group(1))) if name in HEADER_INTS else float(m.group(1))

@@ -20,7 +20,8 @@ Hook the engine's four weapon-effect spawn call sites (impact `0x00449d85`, muzz
 `0x0044ac64` / `0x0044acb2`) with the `claim_call` redirect pattern of `engine_effects_patch.cpp`; each stub hands a
 64-byte **event record** (role, victim or owner, projectile record index, contact point, absorbed flag, damage, game
 time) to the proxy and **skips the engine's spawn** when the stage owned the previous frame, else forwards the call
-unchanged. Style comes from a **classifier over the live TBullets record** (flag bits, damage per shot, light colour)
+unchanged (step 1's shield hit forwards it too and draws its patch over the native sprite, user decision 2026-11-06,
+2.2). Style comes from a **classifier over the live TBullets record** (flag bits, damage per shot, light colour)
 plus the vanilla body's elongation from a generated table, with a curated override file keyed by `SS_BULLET_*` id per
 edition and known mod; users configure nothing. Explosions tier by the victim's class at the death site (three ship
 tiers, stations, asteroids) with TShips col 47 as the cross-check. The stage of the dropped design draws everything.
@@ -102,9 +103,19 @@ Step 1 as built (review 2026-11-05): `shooter` is not read (`[[source+0x50]+4]` 
 this path, F9; the record carries 0 until a later step binds the owner), and the handler reads the two objects' flags
 `+0x40` for the nested rule of 2.7.
 
-Decision: skip when the stage **owns the frame** (2.6) *and* the family of the role is armed (step 1 arms
-`shield_hit` only; a hull hit is forwarded until step 2). Otherwise forward. The replicated contact point is the one
-unknown of this site (the meaning of `node+0x180`); it is settled by the observe flight of 2.6, not assumed.
+Decision: a record is the **stage's** (`flag_stage`, it draws the hex patch) when the stage owns the frame (2.6) *and*
+the family of the role is armed (step 1 arms `shield_hit` only; a hull hit is native until step 2). Step 1 still
+**forwards** the engine's spawn for the stage's shield hits (user decision 2026-11-06: the weapon's own impact is the
+weapon's energy arriving and stays visible; the patch is the shield's response, drawn over it); the skip path stays
+implemented behind `core::suppress_native_shield_hit` (default `false`, `HookState::suppress_native`) for step 2, once our
+own weapon impact exists. The replicated contact point is the one unknown of this site (the meaning of `node+0x180`);
+it is settled by the observe flight of 2.6, not assumed.
+
+The handler also reads the hit object's shield fraction (spawn note §9: the class-9 list `[obj+0x50]+0x6c` to its
+sentinel, at most 64 nodes, TShields index and capacity, energy `[node+0x50]+4`; capacity-weighted like the HUD bar,
+post-hit; any bad node refuses the read and the patch falls back to full shields) and the patch tier (the TShips class
+id `+0xc8` of 8.1 for class 7, docks and factories as capitals, else radius bands), integer only, every pointer and
+index bounded, into the four bytes the unread `shooter` held (3.1).
 
 Why the outer site and not the inner instance call (`0x00413da8`/`0x00413e79`, where `&pos` is on the stack and a
 null return is tolerated [M, §6]): `0x00414410` spawns the row's `EEDF_PROPAGATE` children *before* the inner call,
@@ -152,10 +163,12 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
   the 64-frame disarm window` (step 1: `core::stage_owned`: armed, the resolve completed, and the stage callback, when
   set, ran and returned `S_OK`/`S_FALSE`; review F8). The hooks read `owned_next` during the next frame's update (same thread, before the
   scene draws). A hook never consults device state itself.
-- **Skip only when owned and the family is armed; otherwise forward unchanged.** Forwarding is the vanilla effect: the
-  stage never draws a record it forwarded (the record is written with `forwarded = 1` for the census only). Nothing is
-  ever drawn both natively and by the stage.
-- **One-shot events and a failing stage.** If the stage fails at scene end after the hooks skipped, that frame's
+- **The stage draws only when owned and the family is armed; a skip additionally needs the family's suppression.**
+  A record the stage does not own is census-only (logged, then released); the stage never draws it. Step 1's shield
+  hit is the one intentional double draw: the native impact sprite (forwarded, `core::suppress_native_shield_hit` =
+  `false`, user decision 2026-11-06) plus the stage's hex patch over it. Any other family draws either natively or by
+  the stage, never both; with the suppression set a stage-owned shield hit skips the native spawn as designed above.
+- **One-shot events and a failing stage.** If the stage fails at scene end, that frame's stage-owned
   events are not lost: they live in the proxy ring with their own game-time timelines and are drawn when the stage
   returns, if still within age. The stage disarms for 64 frames (the dropped design's rule), during which the hooks
   forward. The loss is bounded to the fail frame's own draw, never the event. This is the airtight path the dropped
@@ -231,14 +244,14 @@ Shared by the DLL, the fixture (compiled in) and the lab (its JSON mirror, injec
 | `calibre` | f32 0..1 | `clamp(log10(d / 300) / 2, 0, 1)` with d = max(shield, hull) damage per shot; for impacts the running total replaces d |
 | `tint` | 3 × f32, linear | light colour when saturated, else the body's texture mean colour from the table, else white (4.2) |
 | `t0_game_ms` | u32 | `cfg+0x718` at the hook; **every age and bound is game time**: `age = now_game − t0`, so SETA shortens ripples, sparks and fireballs exactly as it does the engine's own effects |
-| `lifetime_ms` | u16 | the style's timeline (ripple 600, flash 100, sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
+| `lifetime_ms` | u16 | the style's timeline (shield patch `patch_lifetime_ms` = 1741, 5.1.1; sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
 | `owner` | object ptr, root node ptr, node handle u32, serial u64 (0 when `object_lifetime` is inactive) | the victim (impact), the ship (muzzle), the dying object (explosion, t0 only) |
-| `shooter`, `slot` | object ptr, u8 | muzzle and bolts |
+| `shooter`, `slot` | object ptr, u8 | muzzle and bolts. Step 1 does not carry `shooter` (unread, F9); its four bytes hold `shield_q` (u16, current / maximum shield points × 65535, valid with `shield_read`), `patch_tier` (u8, fighter / corvette / capital) and `tier_source` (u8: ship class id, station, radius); a later step that binds the shooter widens the record |
 | `table`, `row` | u8 (`bullets` / `missiles`), u16 | the live record's identity; the override and the table lookup key |
 | `pos` | 3 × f32 | local to the owner (impact, muzzle) or world (explosion) |
 | `axis` | 3 × f32 | projectile heading / muzzle orientation / dying object's velocity |
 | `radius` | f32 | `obj+0xa4` of the owner (shell ellipsoid, fireball size) |
-| `flags` | u8 | `absorbed`, `forwarded`, `nested`, `owner_retired`, `override_applied` |
+| `flags` | u8 | `absorbed`, `forwarded` (the native spawn ran), `stage` (the stage draws it; took the bit of `owner_retired`, which was set only on a record about to be released), `nested`, `override_applied`, `calibre_override`, `logged`, `shield_read` |
 
 Per frame the stage derives, not stores: the owner's current object → world rows (`node+0x30`, `node+0x40` through
 `engine_memory::read`, validated by `obj+0x70 == node && node+0x28 == handle` and, when active, the `object_lifetime`
@@ -382,93 +395,122 @@ run through `native_host.py` [S]) and one flight whose capture rows are named he
 
 ### 5.1 Step 1: shield hit (the brief for `implement-deep`)
 
-**Goal.** A shield hit shows the dropped design's Fresnel shell with up to four expanding rings and a flash (3.3 of
-the dropped note, unchanged), placed by the impact hook, suppressing the native sprite, tinted by the classifier,
-aged in game time. Nothing else changes: hull hits, bolts, muzzle and explosions stay native.
+**Goal.** A shield hit shows the hex patch of 5.1.1 (which supersedes the dropped design's Fresnel shell of 3.3),
+placed by the impact hook, coloured by the hit object's shield fraction, aged in game time, drawn over the native
+impact sprite (user decision 2026-11-06: the native sprite is forwarded, 2.2). Nothing else changes: hull hits,
+bolts, muzzle and explosions stay native.
 
 **Scope.**
 
 1. `weapon_effects_sites.h` (impact site window bytes and the diagnostic inner sites), `weapon_effects_patch.cpp`
    (one stub, the handler of 2.2, the ring, arming, modes `native | observe | shields`), `weapon_effects_core.h`
-   (`Event`, the classifier of section 4 with every threshold a named constant, the game-time age law).
+   (`Event`, the classifier of section 4 with every threshold a named constant, the shield read and the patch tier
+   of 2.2, the game-time age law, the patch look constants of 5.1.1).
 2. `tools/effects/weapon_effects_table.py` (the generated table, install / uninstall / regenerate wiring as
    `engine_bodies.json`), `tools/effects/weapon_overrides.json` (empty `by_id`, the three known tables listed).
-3. The stage: the dropped `EffectsStagePass` shell/decal programs and the icosphere, revived from `9375a1e7` as a
-   `WeaponEffectsPass` fed by `Event` records (owner rows read at scene end as 3.1 says) instead of texture-keyed
-   draws; riding the resolve's step-0 callback after the plumes callback (the `own_sun_with_plumes_` chaining
-   pattern of `motion_output.cpp:2493–2507` [S]). Occlusion by the lane alone (unknown 11 of the dropped note was
-   settled: the depth is unbound before the callback [M]).
+3. The stage: a `WeaponEffectsPass` fed by `Event` records (owner rows read at scene end as 3.1 says): per owner its
+   four newest stage-owned hits, one draw per anchor region (the nearest of the twelve icosahedron vertices in the
+   owner's frame, whose stereographic tangent plane carries the lattice), each rasterizing only the spherical cap that
+   bounds its hits' patches (a polar mesh of 8 rings x 32 segments bent onto the ellipsoid by the vertex program: the
+   CPU-side cull); a flat decal of the same law for an owner without a usable ellipsoid; riding the resolve's step-0
+   callback after the plumes callback (the `own_sun_with_plumes_` chaining pattern of `motion_output.cpp:2493–2507`
+   [S]). Occlusion by the lane alone (unknown 11 of the dropped note was settled: the depth is unbound before the
+   callback [M]).
 4. The lab: **no new page.** The step fills the `renderOurs(record, t)` stub of the existing
-   `generate_weapon_effects_lab.py` / `weapon_effects_lab.html` for the `shield_hit` role (a shell on an ellipsoid
-   beside the vanilla sprite the page already plays) and adds its controls: `ring_speed`, `ring_width`,
-   `ring_count`, `ripple_ms`, `flash_ms`, `rim_power`, `rim_gain`, `hex_scale`, `hex_gain`, `tint_mix` (light vs
-   texture), `calibre_gain`, the SETA rate (the age law under warp), a hit-sequence player at 1, 4 and 12 hits per
-   second; every control's default is the header's value, injected by the generator.
+   `generate_weapon_effects_lab.py` / `weapon_effects_lab.html` for the `shield_hit` role (the patch on a preview owner
+   per tier beside the vanilla sprite the page already plays, the same law as the HLSL and the same grouping and cap as
+   the stage) and adds the controls of 5.1.1: cell size and patch radius per tier, ripple speed, core and fade
+   durations, stagger, edge versus fill, the three colour bands (thresholds and colours), the weapon-tint override,
+   the SETA rate (the age law under warp), a hit-sequence player at 1, 4 and 12 hits per second (with a shield
+   preview and drain per hit); every control's default is the header's value, injected by the generator.
 5. Rows: `weapon_effects_patch site= va= state= write=` at install; `weapon_event role= table= row= style= tier=
-   calibre= absorbed= damage= forwarded= nested= t0=` on capture frames and the first 64 events of a run;
-   `weapon_effects_frame` per 300 frames (events, hits, shells, decals, retired, overflow, owned, stage_us);
+   calibre= absorbed= damage= forwarded= stage= nested= t0= … shield= shield_read= patch_tier= tier_source=` on
+   capture frames and the first 64 events of a run; `weapon_effects_frame` per 300 frames (events, hits, skipped,
+   forwarded, staged, patches, decals, retired, overflow, owned, stage_us, shield_read / shield_unread);
    `weapon_pos_check` in observe mode (the handler's `pos` against the inner tap's, max error).
 
 **Acceptance (host, before the flight).**
 
 - Hook fixture, run natively through WSL interop (the FL redirect fixture's harness): a synthetic image with copies of
-  the impact window and the two inner windows; checks: window compare and refusal on one changed byte; skip path
-  leaves EBX/ESI/EDI/EBP and the stack exactly, returns with the caller's `add esp`; forward path reaches the callee
-  with every register and the stack as the call left them; the absorbed slot and the damage slot read from the
-  synthetic frame; the shield rule (`absorbed`, flag `0x20`, class 0/10/other) on a table of cases; nested death
-  retires the owner's hits; the ring's overflow order; `late_claim`; rollback on a failed read-back; the handler
-  compiled with `-fno-exceptions`, no CRT import (a link check). Target: every check PASS, 0 failures.
+  the impact window and the two inner windows; checks: window compare and refusal on one changed byte; the shields
+  default forwards a stage-owned shield hit to the callee with every register and the stack as the call left them,
+  and the skip path (behind `suppress_native`) leaves EBX/ESI/EDI/EBP and the stack exactly, returning with the
+  caller's `add esp`; the absorbed slot and the damage slot read from the synthetic frame; the shield rule
+  (`absorbed`, flag `0x20`, class 0/10/other) on a table of cases; the shield read on a synthetic list
+  (capacity-weighted against the HUD's own formula, 2e9-point shields, clamped energy, the sentinel, an index out of
+  range, null extensions, the 64-node bound, an unshielded class, bit 20); the patch tier (class id, station, radius
+  fallback); nested death retires the owner's hits; the ring's overflow order; `late_claim`; rollback on a failed
+  read-back; the handler compiled with `-fno-exceptions`, no CRT import, no call and no x87 (the object audit); the
+  per-event cost (target ≤ 30 µs per 50 events). Target: every check PASS, 0 failures.
 - D3D fixture on the native host (`python3 verification/probe/wine_lock.py python3
   verification/probe/run_weapon_effects.py --host native`, through `native_host.py`; its record under
-  `verification/results/native-windows/weapon-effects/` carries the host identity block). **Prerequisite: the native
-  runner exists and `run_engine_plumes.py --host native` has passed once.** The checks re-pin the shell numbers
-  natively; the dropped ledger's values (rim 0.50 / 0.42 at 70° vs 0.24 / 0.20 at 45°; four rings on / off their
-  widths; hull cut 0.000 / 8.23; soft cut 2.80 of 8.60; decal 3.33 on hull / 0.000 over sky; core 1.000 through the
-  resolve at 0 / 4 / 8 px per frame; 2 shells at 204 / 544 px 0.124 / 0.162 ms; full-screen shell 0.54 / 0.77 ms)
-  were measured under Wine/wined3d on the Mac [M, the ledger] and are expected to differ on a real GPU: the fixture
-  gates on the structural relations (rim rises with the angle, rings present on and absent off their widths, the
-  hull cut 0, the decal 0 over sky, the core keeps ≥ 0.95 through the resolve), reports the native values as the new
-  pins and does not tune to the Wine numbers. Also: the age law (a 600 ms ripple at SETA 6 completes in 100 ms of
-  wall time); a retired owner draws nothing; the Reset and fault cases; timing at 1080p and 5120x1440 for 2 shells
-  and the full-screen shell (advisory 0.1 ms target, reported, not gated; the winding cull stays the lever).
-- `generate_weapon_effects_lab.py --check` clean; `classify_preview.py` against the header's thresholds gives the
-  table of 4.4 (a host test pins it).
+  `verification/results/native-windows/weapon-effects/` carries the host identity block), structural checks of the
+  patch: per tier the lit area bounded by the patch radius and zero outside, the edge count across the patch ≈ 2 R /
+  cell and ordered fighter < corvette < capital; the core present at 0.05 s and gone by 0.2 s; the ring front at
+  ripple_speed · R · age at two ages and the cells lit as it passes; the fade monotone and zero at the record's
+  lifetime; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the maximum, not the sum) and four
+  hits accumulate; the CPU cap culls nothing lit; the decal fallback (an owner without an ellipsoid) draws on a hull
+  and 0 over sky; the game-time law at SETA 6 measured (the 1741 ms record ends after 290 ms of wall time); the core
+  keeps ≥ 0.95 through the production TemporalPass at 0 / 4 / 8 px per frame; a retired owner draws nothing; Reset,
+  fault and program-create refusal; the pixel program in the low hundreds of slots. Timing at 1080p and 5120x1440
+  (reported, not gated): two patches on a fighter, two on a capital at close range (one and two anchor regions), and
+  the worst case one owner can submit (four regions, each cap over the frame); the flight target is `stage_us` ≤
+  0.2 ms at 5120x1440 in a fighter fight.
+- `generate_weapon_effects_lab.py --check` clean; the lab's law at the hit point equals the D3D record's readbacks
+  (`test_weapon_effects_lab`); `classify_preview.py` against the header's thresholds gives the table of 4.4 (a host
+  test pins it).
 - Dry run: `python3 tools/manage.py launch --dry-run --weapon-effects observe` and `… shields` forward
   `X3M_WEAPON_EFFECTS=` and the table path; `--vanilla` refuses the option.
 
 **Flights.** Flight A (`observe`): the hooks record and forward; the capture must show `weapon_pos_check` max error
 below 1 unit over ≥ 50 hits (settles the `+0x180` unknown), every `weapon_event` with `role=shield_hit` matching a
-visible native shield sprite, `absorbed` consistent with the HUD shield bar, the hooks' cost in `weapon_effects_frame`
-(target ≤ 30 µs per frame at 50 events [I]), and `weapon_death` rows with class id, col 47 and radius for the tier
-table. Flight B (`shields`): what the user must see — the native shield sprite gone on every shielded hit, a shell
-whose rings start at the hit point and fade in about half a second of game time (faster under SETA, never slower),
-tinted by the weapon (blue-violet IRE, green HEPT, yellow PRG on stock; Mayhem by texture), no shell on a hull hit
-(still native), no shell lingering after a kill or dock, no double image, and the frame time unchanged within noise
-(`stage_us` ≤ 0.2 ms at 5120x1440 in a fighter fight). The user reports with F8 captures at a hit and after a kill.
+visible native shield sprite, `absorbed` and `shield=` consistent with the HUD shield bar, `patch_tier` /
+`tier_source` against the ships hit, the hooks' cost in `weapon_effects_frame` (target ≤ 30 µs per frame at 50 events
+[I]), and `weapon_death` rows with class id, col 47 and radius for the tier table. Flight B (`shields`): what the user
+must see — on every shielded hit the native impact sprite **and** the hex patch over it (the one intentional double
+draw, 2.6), the patch wrapping the hull at the hit point with cells sized by the target's class, a short core and one
+ring from the hit point, the cells fading in about 1.5 s of game time (faster under SETA, never slower), its colour
+walking blue → yellow → red as the target's shield bar drops, no patch on a hull hit (still native), no patch
+lingering after a kill or dock, and the frame time unchanged within noise (`stage_us` ≤ 0.2 ms at 5120x1440 in a
+fighter fight). The user reports with F8 captures at a hit and after a kill.
 
-**Lab controls** (what the user tunes before Flight B, each a header constant the generator injects): ring speed and
-width, ring count, ripple and flash duration, rim power and gain, hex pattern scale and gain, tint mix, calibre gain,
-SETA preview. The agreed values go into the header, the fixture re-pins them, then the flight.
+**Lab controls** (what the user tunes before Flight B, each a header constant the generator injects): the list of
+5.1.1. The agreed values go into the header, the fixture re-pins them, then the flight.
 
 ### 5.1.1 Shield-hit look (user decision 2026-11-05, supersedes the full shell of 3.3)
 
 Agreed with the user after the step-1 build (`2fc8762ce`) and before its flight; this is the look the step flies.
+User decision 2026-11-06: the weapon's own native impact effect stays visible on a shield hit and the patch is drawn
+in addition (the impact is the weapon's energy arriving, the patch the shield's response); when the shield is down
+only the weapon impact shows, which becomes step 2's hull look.
 
 - **Geometry.** Not the whole-ship Fresnel shell. A **patch on the same ellipsoid** lit only within a radius of the
   hit point, so the pattern wraps the hull and covers the hit area and a margin around it. The radius and the hex
   cell size scale with the victim's **tier** (fighters: small dense cells, small radius; M6/TS: medium; capitals and
   stations: large cells, large radius). Cell size is fixed in world units per tier, never per screen.
+  As built: cell 1.5 / 3 / 8 m, radius 9 / 25 / 80 m (the radius capped at 0.9 of the owner's mean axis); the tier is
+  the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius bands below 30 /
+  150 m [I]. The lattice lives on the owner: twelve anchor regions, each a stereographic tangent plane (conformal, the
+  cell scale grows at most 11 % at a region's edge), so a repeated hit in a region re-lights the same cells and no
+  seam crosses one hit's patch; hits in two regions draw twice with their own lattices.
 - **Pattern.** Hexagons, cells lit individually: a small random stagger in brightness and fade rate per cell, edges
-  brighter than the fill. One pattern for every race and class in step 1.
+  brighter than the fill. One pattern for every race and class in step 1. As built: a sine-free hash of the cell key
+  and the region (stagger 0.4: × 0.8 to 1.2), edge band 0.1 cell, fill 0.3 of the edge, edges anti-aliased by
+  `fwidth`.
 - **Timing (game time, SETA-scaled).** No hard flash. A small bright core at the hit point for ~0.1 s, one soft ring
   expanding from the point over ~0.3 s that lights the cells as it passes, then the cells fade over 1.0-1.5 s.
-  Repeated hits re-light cells already lit (accumulation under sustained fire); the 4-hit slots of 3.3 stay.
-- **Colour.** Weapon tint **off by default** (kept as an override). The patch colour follows the victim's **shield
-  percentage**, interpolated smoothly: light blue at >= 75 %, through light yellow near 50 %, to light red below 35 %.
-  The hook reads the current shield energy the damage routine already reads; the maximum needs the shield slots
-  (one disassembly item, section 6). Until that lands the patch is light blue.
-- **Cost.** A patch is a fraction of the full shell (which measured 271.6 us for two shells at 5120x1440 before the
-  winding cull); the 0.2 ms flight target of 5.1 stands and should be met with margin [I].
+  Repeated hits re-light cells already lit (accumulation under sustained fire); the 4-hit slots of 3.3 stay. As built:
+  core 100 ms, ring 3.333 patch radii per second (the rim at 0.30 s), fade 1200 ms × (1 ± 0.2) per cell (0.96 to
+  1.44 s), the record's lifetime 1741 ms; cells combine as the maximum over the owner's four newest hits.
+- **Colour.** Weapon tint **off by default** (kept as an override, `weapon_tint`). The patch colour follows the
+  victim's **shield percentage**, interpolated smoothly: light blue at >= 75 %, through light yellow near 50 %, to light
+  red below 35 %. The hook reads the current and maximum shield (spawn note §9, 2.2: capacity-weighted like the HUD
+  bar, post-hit); a refused read colours light blue.
+- **Cost.** A patch is a fraction of the full shell (which measured 201.8 us for two shells at 5120x1440 with the
+  winding cull, the ledger). Measured natively: two patches on a fighter 26.9 to 33.0 us fenced at 5120x1440 (the
+  empty fence 11.1 us), so the 0.2 ms target of a fighter fight is met with margin [M]. A capital at close range is a
+  full-frame patch per draw: 129.5 us for one region, 196.1 us for two, 374.2 us for the worst case of one owner
+  (four regions) [M, ledger].
 - **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, patch radius per tier, ripple speed,
   core and fade durations, stagger, edge-versus-fill, the three colour bands, the SETA rate, the hit-sequence player.
 - **Later options, not now:** patterns per race or class; weapon tint.
