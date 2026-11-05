@@ -14,10 +14,10 @@ constexpr std::uint64_t part_ps = 0x6109cf64c03529ddull; // gui2d.fb ps_1_1, 304
 constexpr unsigned part_width_min = 1024;                 // FL 2048x1024 / 2048x2048, AP 1024x512 DXT5 parts
 constexpr float threshold_default = 6.f, threshold_min = 1.f, threshold_max = 16.f; // sky_nebula_deband_threshold, 1/255
 constexpr float radius_default = 12.f, radius_min = 2.f, radius_max = 32.f;          // sky_nebula_deband_radius, texels
-// The weight's slope: w = saturate(slope (on - diff / threshold)); 2 = full weight up to half the threshold, none at it.
+// The weight's slope in the program: w = saturate(2 (on - diff / threshold)), full weight up to half the threshold.
 constexpr float weight_slope = 2.f;
 constexpr unsigned vs_constant_jitter = 255;     // c255 = (2 jx / W, -2 jy / H, 0, 0), else 0
-constexpr unsigned ps_constant_first = 200, ps_constant_count = 2; // c200 = (on, 1 / threshold, R, slope), c201 = size
+constexpr unsigned ps_constant_first = 200, ps_constant_count = 2; // c200 = (on, 1 / threshold, R, hash), c201 = size
 inline bool accept_range(float v, float lo, float hi, float* out) noexcept {
     if (!(v >= lo && v <= hi)) return false;
     *out = v;
@@ -25,18 +25,20 @@ inline bool accept_range(float v, float lo, float hi, float* out) noexcept {
 }
 inline bool accept_threshold(float v, float* out) noexcept { return accept_range(v, threshold_min, threshold_max, out); }
 inline bool accept_radius(float v, float* out) noexcept { return accept_range(v, radius_min, radius_max, out); }
-// PS c200-c201 for a part of level-0 size width x height: (on, 255 / threshold, radius, weight_slope), (width, height,
+// PS c200-c201 for a part of level-0 size width x height: (on, 255 / threshold, radius, hash), (width, height,
 // 1 / width, 1 / height). threshold in 1/255 units; threshold 0 (no setting reaches it: the fixture's identity mode,
-// invariant 1) gives on = 0, so the program's weight is exactly 0 and it returns the centre sample. Returns false (out
-// untouched) for a zero size.
-inline bool pixel_constants(float threshold_255, float radius_texels, unsigned width, unsigned height,
-                            float out[8]) noexcept {
+// invariant 1) gives on = 0, so the program's weight is exactly 0 and it returns the centre sample. hash
+// (sky_nebula_deband_hash, default off): 1 rotates the tap star by the texel-indexed hash field, 0 keeps it fixed (the
+// same pattern for every texel: the output is then a continuous function of uv, no texel-scale grain). Returns false
+// (out untouched) for a zero size.
+inline bool pixel_constants(float threshold_255, float radius_texels, unsigned width, unsigned height, float out[8],
+                            bool hash = false) noexcept {
     if (!width || !height) return false;
     const bool on = threshold_255 > 0.f;
     out[0] = on ? 1.f : 0.f;
     out[1] = on ? 255.f / threshold_255 : 0.f;
     out[2] = radius_texels;
-    out[3] = weight_slope;
+    out[3] = hash ? 1.f : 0.f;
     out[4] = float(width);
     out[5] = float(height);
     out[6] = 1.f / float(width);

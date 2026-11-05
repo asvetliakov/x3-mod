@@ -774,7 +774,7 @@ bytecode").
 sets them and the pair, undoes a partial write at once; `end` restores in reverse order), `src/proxy/
 motion_output_sky_nebula_inc.h` (match, swap, rows), `src/effects/sky_nebula_{vs,ps}.hlsl` compiled by
 `tools/shaders/generate_sky_nebula_programs.py`. Settings `sky_nebula_deband`, `sky_nebula_deband_threshold`,
-`sky_nebula_deband_radius`, developer `sky_nebula_jitter`, read once at process start (a refused value keeps the
+`sky_nebula_deband_radius`, developer `sky_nebula_jitter` and `sky_nebula_deband_hash` (default 0), read once at process start (a refused value keeps the
 default, `<name>_setting=default` in `sky_nebula_config`).
 
 **Match (changed from the design).** As designed, plus two refusals the bytecode made necessary: `FOGENABLE` on (ps_3_0
@@ -792,29 +792,44 @@ opposite tap pair and the centre (0 on any linear gradient, half the height acro
 same eight taps (ring 1 at R/2 along d and its perpendicular, ring 2 at R along d rotated 45 degrees); `w =
 saturate(2 (1 - diff / threshold))`; output `lerp(c, mean of centre and eight taps, w)`. The angle of d is a quarter
 turn times the texel-indexed hash interpolated between the four nearest texel centres (static in texture space,
-continuous in uv). 108 ps_3_0 slots, 9 taps.
+continuous in uv) when `sky_nebula_deband_hash = 1`; by default (0, `c200.w = 0`) the star is fixed, d = (1, 0), for
+every texel (follow-up 2026-11-05: the hash's rotation is texel-scale grain, the pilot's visible residual). 109 ps_3_0
+slots, 9 taps.
 
 **Fixture (native D3D9, RTX 5070 Ti, plain D3D9, measured).** Synthetic 2048x1024 DXT1 part, 2.5x magnification:
 - Invariant 1: the reference vs_1_1/ps_1_1 pair has the engine's instruction tokens; threshold 0 against it with a
   perspective c0-c3, an affine c4/c5 with rotation and offset and a non-black SRCALPHA/ONE target: 0 of 921,600 pixels
   differ (285,615 written).
-- Invariant 2 at threshold 6, radius 12 (ramp interiors, three rows, every channel, 1/255 units): error against the
-  ideal ramp rms 1.03 -> 0.43, max 3.89 -> 2.36; ripple (max second difference) 1.81 -> 1.98; band mean -0.017.
-  The note's bounds (ripple <= 0.25, error <= 0.5) are **not met**: nine taps on the DXT1 ladder (G steps up to 3.6 at
-  block boundaries) leave a static texel-scale residual; with the hash removed (a fixed star) the ripple was 0.78
-  (measured once, not kept: the design asks for the hash). Edges 12/255 and 18/255: height at +-radius unchanged
-  (0.000), change beyond one texel of an edge 0.67, at the edge 1.26. A 3/255 island spreads at most 12.9 texels
-  (radius 12 plus the bilinear footprint); its sum changes by +0.96 %. Threshold 10/16 (reported): rms 0.40, but the
-  edges change by 4.0/6.9, so those thresholds smear 12-18/255 filaments.
+- Invariant 2, radius 12 (ramp interiors, three rows, every channel, 1/255 units; before = the engine pair: rms 1.03,
+  max 3.89, ripple 1.81):
+
+  | Configuration | rms error | max error | ripple | height at +-radius | change beyond 1 texel of an edge | island spread |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | threshold 6, hash off (default) | 0.456 | 2.49 | 1.09 | 0.000 | 1.26 | 9.3 texels, sum -0.03 % |
+  | threshold 6, hash on | 0.428 | 2.36 | 1.98 | 0.000 | 0.67 | 12.9 texels, sum +0.96 % |
+  | threshold 10, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 3.04 | 9.3 texels |
+  | threshold 16, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 5.13 | 9.3 texels |
+
+  Band means move by at most -0.025. The hash-off default fails two of the fixture's own bounds: the change beyond one
+  texel of a 12/255 edge is 1.26 (bound 1.0; the fixed star's diagonal ring keeps a pair whose far tap lands in the
+  edge's bilinear texel), and the fast-pan TAA figure below. The note's bounds (ripple <= 0.25, error <= 0.5) are not
+  met in any configuration, and the ripple bound is not reachable with this tap set: the output is the centre plus
+  eight bilinear taps, so every DXT1 step a tap crosses (up to 3.6/255 at a block boundary in G) moves the result by
+  step / 9 = 0.4/255 over one texel (2.5 px), a second difference of about 0.16 per crossing; on a ramp several taps
+  cross steps at neighbouring pixels and the measured floor at full weight is 0.78 (thresholds 10 and 16 agree).
+  Reaching 0.25 needs about three times as many independent taps or a box prefilter, i.e. a different filter, not a
+  setting. At threshold 6 the weight is partial on the staircase (diff up to about 3/255), which adds the switching
+  between filtered and unfiltered pixels (1.09); the hash adds texel-to-texel pattern jumps (1.98).
 - Invariant 4: programs, VS c255 and PS c200-c201 back after a clean bracket, an injected draw failure, an injected
   begin fault (undone inside `begin`) and an injected restore fault (reported, every restore still attempted): 0
   mismatches in each.
 - Invariant 5: full-sky frame at 5120x1440 (four parts, each a quarter of the screen), event-flushed over 100 frames:
   engine pair 0.060 ms, deband pair 0.089 ms, extra 0.029 ms (bound 0.5 ms).
 - Invariant 9 (model: history 0.9, exact bilinear reprojection, 3x3 clip, Halton jitter through c255, ramp interiors):
-  per-content-pixel temporal SD at 0.5 px/frame 0.041 max (engine pair 0.123); at 10 px/frame 0.639 (engine pair
-  0.618, the model's own reprojection error).
-- Invariant 10: `sky_nebula_vs` 118 words / 10 slots, `sky_nebula_ps` 491 words / 108 slots, native validator End()
+  per-content-pixel temporal SD, hash off, at 0.5 px/frame 0.056 max (engine pair 0.123); at 10 px/frame 0.662 (engine
+  pair 0.618, the model's own reprojection error; the fixture's bound 1.05 x the engine pair's, 0.649, is missed). With
+  the hash on: 0.041 and 0.639.
+- Invariant 10: `sky_nebula_vs` 118 words / 10 slots, `sky_nebula_ps` 495 words / 109 slots, native validator End()
   S_OK, 0 messages.
 
 **Rows.** `sky_nebula_config requested= enabled= reason= threshold= threshold_setting= radius= radius_setting= jitter=`

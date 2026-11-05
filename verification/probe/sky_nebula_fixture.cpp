@@ -214,6 +214,7 @@ static double halton(unsigned i, unsigned b) {
     }
     return r;
 }
+static bool g_hash = false; // sky_nebula_deband_hash for the deband draws (default off)
 static LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l) { return DefWindowProcA(h, m, w, l); }
 
 struct Scene {
@@ -256,7 +257,7 @@ struct Scene {
         if (deband) {
             float pixel[8];
             const float zero[4] = {0, 0, 0, 0};
-            core::pixel_constants(threshold, radius, TW, TH, pixel);
+            core::pixel_constants(threshold, radius, TW, TH, pixel, g_hash);
             SkyNebulaReport rep{};
             if (FAILED(pass->begin(jitter ? jitter : zero, pixel, &saved, &rep))) return rep.operation;
         }
@@ -405,8 +406,8 @@ int main() {
         t.release();
     }
 
-    // ---- Invariant 2: banding at 2.5x. Texel window (0, 0) 1024x512 onto 2560x1280; the default threshold is checked,
-    // 10 and 16 are reported (the flight's one adjustment).
+    // ---- Invariant 2: banding at 2.5x. Texel window (0, 0) 1024x512 onto 2560x1280; the defaults (threshold 6, hash
+    // off) are checked; the hash on at threshold 6 and thresholds 10 and 16 (hash off) are reported.
     const UINT W = 2560, H = 1280;
     const double mag = 2.5;
     Target big;
@@ -430,8 +431,14 @@ int main() {
     };
     std::vector<float> before, after;
     render(false, 0.f, &before);
-    for (float threshold : {core::threshold_default, 10.f, 16.f}) {
-        const bool checked = threshold == core::threshold_default;
+    const struct {
+        float threshold;
+        bool hash;
+    } configurations[] = {{core::threshold_default, false}, {core::threshold_default, true}, {10.f, false}, {16.f, false}};
+    for (const auto& configuration : configurations) {
+        const float threshold = configuration.threshold;
+        g_hash = configuration.hash;
+        const bool checked = threshold == core::threshold_default && !g_hash;
         render(true, threshold, &after);
         if (checked) {
             // One profile across the first ramp's staircase (texels 96..104, row 64): texel:ideal/before R,G/after R,G.
@@ -475,9 +482,9 @@ int main() {
         mean_before /= samples;
         mean_after /= samples;
         std::snprintf(detail, sizeof detail,
-                      "threshold=%.0f samples=%u ripple_before=%.3f ripple_after=%.3f err_before=%.3f err_after=%.3f"
-                      " rms_before=%.3f rms_after=%.3f mean_diff=%.4f (1/255 units)",
-                      double(threshold), samples, ripple_before, ripple_after, err_before, err_after,
+                      "threshold=%.0f hash=%u samples=%u ripple_before=%.3f ripple_after=%.3f err_before=%.3f"
+                      " err_after=%.3f rms_before=%.3f rms_after=%.3f mean_diff=%.4f (1/255 units)",
+                      double(threshold), unsigned(g_hash), samples, ripple_before, ripple_after, err_before, err_after,
                       std::sqrt(rms_before / samples), std::sqrt(rms_after / samples), mean_after - mean_before);
         std::printf("BANDING %s\n", detail);
         // Edges above the threshold (12/255 and 18/255): the change beyond one texel of each edge (no halo), each step's
@@ -508,8 +515,9 @@ int main() {
         const double edge_mean_diff = (edge_mean_after - edge_mean_before) / edge_samples;
         char edges[256];
         std::snprintf(edges, sizeof edges,
-                      "threshold=%.0f change_beyond_1_texel=%.4f change_at_edge=%.4f height_err=%.4f mean_diff=%.5f (1/255)",
-                      double(threshold), change, change_all, height_err, edge_mean_diff);
+                      "threshold=%.0f hash=%u change_beyond_1_texel=%.4f change_at_edge=%.4f height_err=%.4f"
+                      " mean_diff=%.5f (1/255)",
+                      double(threshold), unsigned(g_hash), change, change_all, height_err, edge_mean_diff);
         std::printf("EDGES %s\n", edges);
         // The faint island (texels 600..615 x 440..455, 3/255, below the threshold): its light spreads by averaging, at
         // most radius texels plus the bilinear footprint beyond the island; outside that the target stays 0.
@@ -528,8 +536,8 @@ int main() {
             }
         char island[256];
         std::snprintf(island, sizeof island,
-                      "threshold=%.0f farthest_nonzero_texels=%.2f radius=%.0f sum_ratio=%.4f", double(threshold),
-                      farthest, radius, sum_before > 0 ? sum_after / sum_before : 0.);
+                      "threshold=%.0f hash=%u farthest_nonzero_texels=%.2f radius=%.0f sum_ratio=%.4f",
+                      double(threshold), unsigned(g_hash), farthest, radius, sum_before > 0 ? sum_after / sum_before : 0.);
         std::printf("ISLAND %s\n", island);
         if (!checked) continue;
         // The banding measure: the error against the ideal ramp (rms and max) falls; the note's ripple <= 0.25 and error
@@ -542,6 +550,7 @@ int main() {
         check(farthest <= radius + 1.5, "island_spread_le_radius_plus_bilinear", island);
     }
     big.release();
+    g_hash = false; // the default for the sections below
 
     // ---- Invariant 4: state restore after a clean bracket, a failed draw, an injected begin fault, an injected restore
     // fault: VS, PS, VS c255, PS c200-c201 compared with the sentinel values set before.

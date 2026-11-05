@@ -246,7 +246,7 @@ float sky_stars_dim = x3m::sky_stars::core::nebula_dim_default; // X3M_SKY_STARS
 float sky_stars_dim_level = x3m::sky_stars::core::nebula_dim_level_default; // X3M_SKY_STARS_NEBULA_DIM_LEVEL (L0)
 // Sky nebula deband (X3M_SKY_NEBULA_DEBAND, default off; _THRESHOLD, _RADIUS, X3M_SKY_NEBULA_JITTER;
 // motion_output_sky_nebula_inc.h, sector-background-modern.md Decision C1): requested = the setting and the route.
-bool sky_nebula_requested = false, sky_nebula_jitter = true;
+bool sky_nebula_requested = false, sky_nebula_jitter = true, sky_nebula_hash = false; // _HASH: developer, default 0
 float sky_nebula_threshold = x3m::sky_nebula::core::threshold_default, sky_nebula_radius = x3m::sky_nebula::core::radius_default;
 bool lod_material_strength_requested = false; // X3M_LOD_MATERIAL_STRENGTH=1 (schema default; overlay-material-strength.md):
                                               // the merged-LOD overlay's per-material diffuse strength: the D3DX texture
@@ -3620,7 +3620,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_sky_stars(sky_stars_requested, sky_stars_look, sky_stars_twinkle, sky_stars_mask,
                                              sky_stars_dim, sky_stars_dim_level);
     hooked.motion_output.configure_sky_nebula(sky_nebula_requested, sky_nebula_threshold, sky_nebula_radius,
-                                              sky_nebula_jitter);
+                                              sky_nebula_jitter, sky_nebula_hash);
 #if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
@@ -5118,12 +5118,14 @@ void initialize_log(HMODULE module) {
             float_setting(L"X3M_SKY_NEBULA_DEBAND_RADIUS", x3m::sky_nebula::core::accept_radius, &sky_nebula_radius);
         const DWORD j = x3m::config::get(L"X3M_SKY_NEBULA_JITTER", value, 32);
         sky_nebula_jitter = !(j == 1 && value[0] == L'0');
+        const DWORD h = x3m::config::get(L"X3M_SKY_NEBULA_DEBAND_HASH", value, 32);
+        sky_nebula_hash = h == 1 && value[0] == L'1';
         sky_nebula_requested = on && motion_output_requested;
         log("sky_nebula_config requested=%s enabled=%u reason=%s threshold=%.2f threshold_setting=%s radius=%.2f"
-            " radius_setting=%s jitter=%u",
+            " radius_setting=%s jitter=%u hash=%u",
             n == 0 ? "unset" : valid ? "set" : "invalid_setting", unsigned(sky_nebula_requested),
             sky_nebula_requested ? "ok" : !on ? "setting" : "route_off", double(sky_nebula_threshold), threshold_tag,
-            double(sky_nebula_radius), radius_tag, unsigned(sky_nebula_jitter));
+            double(sky_nebula_radius), radius_tag, unsigned(sky_nebula_jitter), unsigned(sky_nebula_hash));
     }
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull

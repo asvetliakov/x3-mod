@@ -19,7 +19,7 @@
 // Action (prepare_sky_nebula, last of the submit branch's preparations, never on a composed, additive or masked draw):
 // renderer::SkyNebulaPass::begin reads the bound programs, VS c255 and PS c200-c201, sets its pair, c255 = the frame's
 // jitter (sky_nebula::core::jitter_constant; 0 with sky_nebula_jitter = 0 or the jitter inactive) and c200-c201 =
-// (on, 1 / threshold, radius, 0), (width, height, 1 / width, 1 / height) of the part (pixel_constants); the
+// (on, 1 / threshold, radius, hash), (width, height, 1 / width, 1 / height) of the part (pixel_constants); the
 // application's draw is forwarded; finish_sky_nebula (first in after_draw) puts everything back. A failed begin is undone
 // at once and leaves the native draw; a failed restoration quarantines the route (motion_state_lost_) and the pass until
 // Reset; three failed swaps in a row stop the swapping until Reset.
@@ -34,13 +34,14 @@
 // sky_nebula at the depth-only Clear when parts, swapped or the reason changed since the last row (at most 1024 per
 // device): status, parts, swapped, reason, draw/restore results, outside, frames, swapped_frames, refused and the
 // bracket's CPU cost (us = this frame's, us_max = the largest since the last row).
-void MotionOutput::configure_sky_nebula(bool requested, float threshold, float radius, bool jitter) noexcept {
+void MotionOutput::configure_sky_nebula(bool requested, float threshold, float radius, bool jitter, bool hash) noexcept {
     sky_nebula_requested_ = requested;
     sky_nebula_threshold_ = sky_nebula::core::threshold_default;
     sky_nebula_radius_ = sky_nebula::core::radius_default;
     sky_nebula::core::accept_threshold(threshold, &sky_nebula_threshold_);
     sky_nebula::core::accept_radius(radius, &sky_nebula_radius_);
     sky_nebula_jitter_ = jitter;
+    sky_nebula_hash_ = hash;
 }
 bool MotionOutput::attach_sky_nebula() noexcept {
     if (sky_nebula_attach_failed_) return false;
@@ -151,7 +152,7 @@ void MotionOutput::prepare_sky_nebula(MotionRoute& route) noexcept {
     sky_nebula::core::jitter_constant(jitter_active_ && sky_nebula_jitter_, jitter_[0], jitter_[1], pending_.rt.width,
                                       pending_.rt.height, jitter);
     if (!sky_nebula::core::pixel_constants(sky_nebula_threshold_, sky_nebula_radius_, sky_nebula_texture_width_,
-                                           sky_nebula_texture_height_, pixel)) {
+                                           sky_nebula_texture_height_, pixel, sky_nebula_hash_)) {
         route.sky_nebula = false;
         ++sky_nebula_refused_;
         sky_nebula_frame_reason_ = "size";
@@ -241,10 +242,11 @@ void MotionOutput::finish_sky_nebula(MotionRoute& route, HRESULT result) noexcep
                 std::snprintf(uv, sizeof uv, " c4=%.6g,%.6g,%.6g c5=%.6g,%.6g,%.6g", double(c4[0]), double(c4[1]),
                               double(c4[2]), double(c4[4]), double(c4[5]), double(c4[6]));
             log("sky_nebula_match device=%llu frame=%llu index=%u texture=%ux%u format=%u fog=%lu target=%ux%u"
-                " threshold=%.2f radius=%.2f jitter=%u result=%08lx%s",
+                " threshold=%.2f radius=%.2f jitter=%u hash=%u result=%08lx%s",
                 id_, frame_, sky_nebula_frame_parts_ - 1u, sky_nebula_texture_width_, sky_nebula_texture_height_,
                 sky_nebula_texture_format_, static_cast<unsigned long>(fog), pending_.rt.width, pending_.rt.height,
                 double(sky_nebula_threshold_), double(sky_nebula_radius_), unsigned(jitter_active_ && sky_nebula_jitter_),
+                unsigned(sky_nebula_hash_),
                 static_cast<unsigned long>(result), uv);
         });
     }

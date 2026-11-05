@@ -220,6 +220,9 @@ SETTINGS = [
     dev('sky_nebula_jitter', 'bool', 'graphics', 'Sky nebula deband: 1 = the smoothed nebula follows the TAA jitter like '
         'the stars (default), 0 = drawn unjittered as the game does.', builtin='1', requires=('sky_nebula_deband',),
         since='2026-11-05'),
+    dev('sky_nebula_deband_hash', 'bool', 'graphics', 'Sky nebula deband: 1 = rotate the smoothing taps per texel by a '
+        'static hash (more texel-scale grain), 0 = one fixed tap pattern (default).', builtin='0',
+        requires=('sky_nebula_deband',), since='2026-11-05'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),

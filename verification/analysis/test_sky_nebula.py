@@ -34,7 +34,7 @@ class SkyNebulaTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertRegex(run.stdout, r'sky_nebula_check checks=12 failures=0 ')
+        self.assertRegex(run.stdout, r'sky_nebula_check checks=13 failures=0 ')
 
     def test_program_registers(self):
         vs = (ROOT / 'src/effects/sky_nebula_vs.hlsl').read_text()
@@ -93,6 +93,16 @@ class SkyNebulaTests(unittest.TestCase):
         self.assertIn(';sky_nebula_deband = 0', ini)
         self.assertTrue(entries['sky_nebula_jitter']['developer'])
         self.assertIn('L"X3M_SKY_NEBULA_JITTER"', capture)
+        # The hash rotation: developer, default off (one fixed tap pattern), reaching c200.w through pixel_constants.
+        e = entries['sky_nebula_deband_hash']
+        self.assertTrue(e['developer'])
+        self.assertEqual((e['type'], e['builtin'], e['requires']), ('bool', '0', ('sky_nebula_deband',)))
+        self.assertIn('L"X3M_SKY_NEBULA_DEBAND_HASH"', capture)
+        self.assertIn('sky_nebula_hash = h == 1 && value[0] == L\'1\';', capture)
+        self.assertIn('bool hash = false) noexcept {', core)
+        fragment = (ROOT / 'src/proxy/motion_output_sky_nebula_inc.h').read_text()
+        self.assertIn('sky_nebula_texture_height_, pixel, sky_nebula_hash_)', fragment)
+        self.assertIn('sincos(1.57079633 * h * deband.w, d.y, d.x);', (ROOT / 'src/effects/sky_nebula_ps.hlsl').read_text())
         self.assertIn('L"X3M_SKY_NEBULA_DEBAND"', capture)
         for name in ('threshold', 'radius'):
             key = 'sky_nebula_deband_' + name

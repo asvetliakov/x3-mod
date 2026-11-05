@@ -20,10 +20,13 @@ int main() {
     float c[8];
     check(core::pixel_constants(0.f, 12.f, 2048, 1024, c) && c[0] == 0.f && c[1] == 0.f, "threshold 0 is the identity (on = 0)");
     check(core::pixel_constants(6.f, 12.f, 2048, 1024, c) && c[0] == 1.f && std::fabs(c[1] - 42.5f) < 1e-4f &&
-              c[2] == 12.f && c[3] == core::weight_slope && c[4] == 2048.f && c[5] == 1024.f && c[6] == 1.f / 2048.f &&
+              c[2] == 12.f && c[3] == 0.f && c[4] == 2048.f && c[5] == 1024.f && c[6] == 1.f / 2048.f &&
               c[7] == 1.f / 1024.f,
           "c200-c201 packing");
     check(!core::pixel_constants(6.f, 12.f, 0, 1024, c), "zero size refused");
+    check(core::pixel_constants(6.f, 12.f, 2048, 1024, c, true) && c[3] == 1.f && core::pixel_constants(6.f, 12.f, 2048, 1024, c) &&
+              c[3] == 0.f,
+          "c200.w = the hash switch, off by default");
     float j[4];
     core::jitter_constant(true, .25f, -.5f, 5120, 1440, j);
     check(j[0] == 2.f * .25f / 5120.f && j[1] == -2.f * -.5f / 1440.f && j[2] == 0.f && j[3] == 0.f, "c255 jitter sign");

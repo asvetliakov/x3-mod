@@ -1261,8 +1261,8 @@ public:
     void note_clear_colour(std::uint32_t colour) noexcept { clear_colour_pending_ = colour; }
     // Sky nebula deband (X3M_SKY_NEBULA_DEBAND, motion_output_sky_nebula_inc.h; sector-background-modern.md Decision C1):
     // process-start values (threshold in 1/255 units and radius in texels in their ranges, else the defaults of
-    // sky_nebula_core.h; jitter = sky_nebula_jitter).
-    void configure_sky_nebula(bool requested, float threshold, float radius, bool jitter) noexcept;
+    // sky_nebula_core.h; jitter = sky_nebula_jitter; hash = sky_nebula_deband_hash, default off).
+    void configure_sky_nebula(bool requested, float threshold, float radius, bool jitter, bool hash = false) noexcept;
     bool sky_nebula_requested() const noexcept { return sky_nebula_requested_; }
     // Process exit (capture.cpp abandon_devices_at_exit, DllMain with the other threads gone; the device is never
     // released, so ~MotionOutput never runs): the session rows the release would have written, once.
@@ -2185,7 +2185,7 @@ private:
     const char* sky_stars_copy_mode_ = "none";
     // Sky nebula deband (motion_output_sky_nebula_inc.h): the settings, the pass, the stage-0 texture's cached level-0
     // size (pointer and identity), this frame's background-phase record and what the last sky_nebula row said.
-    bool sky_nebula_requested_ = false, sky_nebula_jitter_ = true, sky_nebula_attach_failed_ = false;
+    bool sky_nebula_requested_ = false, sky_nebula_jitter_ = true, sky_nebula_hash_ = false, sky_nebula_attach_failed_ = false;
     float sky_nebula_threshold_ = sky_nebula::core::threshold_default, sky_nebula_radius_ = sky_nebula::core::radius_default;
     std::unique_ptr<renderer::SkyNebulaPass> sky_nebula_;
     const void* sky_nebula_texture_ = nullptr;
