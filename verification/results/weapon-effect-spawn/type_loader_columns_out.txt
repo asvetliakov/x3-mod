@@ -1,0 +1,175 @@
+== TBullets case 0x436518..0x436770, file version 55 (decimal; stock and installed), version register esi
+col   7 int     @0043651a -> +0x44
+col   8 int     @00436524 -> +0x48
+col   9 int     @0043652e -> +0x4c
+col  10 int     @00436538 -> +0x50
+col  11 int     @00436542 -> +0x54
+col  12 int     @0043654c -> +0x58
+col  13 int     @00436556 -> +0x5c
+col  14 int     @00436560 -> +0x60
+col  15 int     @0043656a -> +0x64
+col  16 fix16   @00436574 -> +0x68
+col  17 fix16   @0043657e -> +0x6c
+col  18 fix16   @00436588 -> +0x70
+col  19 int     @00436592 -> +0x74
+col  20 int     @0043659c -> +0x78
+col  21 int     @004365a6 -> +0x7c
+col  22 int     @004365b0 -> +0x80
+col  23 int     @004365bd -> +0x84
+col  24 int     @004365ca -> +0x88
+col  25 int     @004365d7 -> +0x8c
+col  26 int     @004365e4 -> +0x90
+        version test @004365f6: cmp esi,0x33; jge 0x43669e
+col  27 int     @004366a0 -> +0x94
+col  28 int     @004366ad -> +0x98
+col  29 int     @004366ba -> +0x9c
+col  30 int     @004366c7 -> +0xa0
+col  31 int     @004366d4 -> +0xa4
+col  32 int     @004366e1 -> +0xa8
+col  33 int     @004366ee -> +0xac
+col  34 int     @004366fb -> +0xb0
+        version test @00436709: cmp esi,0x35; jge 0x436718
+col  35 int     @0043671a -> +0xb4
+col  36 int     @00436727 -> +0xb8
+        version test @00436735: cmp esi,0x37; jge 0x436751
+col  37 int     @00436753 -> +0xbc
+col  38 int     @00436760 -> +0xc0
+== TShips case 0x4373e9..0x437a2c, file version 50 (decimal; stock and installed), version register edi
+col   7 int     @004373eb -> +0x44
+col   8 int     @004373f5 -> +0x48
+col   9 int     @004373ff -> +0x4c
+col  10 int     @00437409 -> +0x50
+col  11 int     @00437413 -> +0x54
+col  12 int     @0043741d -> +0x58
+col  13 int     @00437427 -> +0x5c
+col  14 int     @00437431 -> +0x60
+col  15 int     @0043743b -> +0x64
+col  16 string  @0043744c -> +0x68
+col  17 string  @004374c4 -> +0x6c
+col  18 int     @00437533 -> +0x70
+col  19 int     @0043753d -> +0x74
+        version test @0043754c: cmp edi,0x25; jl 0x437564
+col  20 int     @00437550 -> +0x78
+col  21 fix16   @0043755a -> +0x7c
+col  22 int     @00437574 -> +0x80
+col  23 int     @00437581 -> +0x84
+        version test @00437596: cmp edi,0x1f; jl 0x4375be
+col  24 int     @0043758e -> +0x8c
+col  25 int     @004375d9 -> +0x90
+col  26 int     @004375e6 -> +0x94
+col  27 int     @004375f3 -> +0x98
+col  28 int     @00437600 -> +0x9c
+col  29 int     @0043760d -> +0xa0
+        version test @0043761b: cmp edi,0x27; jl 0x43762c
+col  30 int     @0043761f -> +0xa4
+col  31 int     @00437642 -> (no ebp store) (loop x6, pass 1)
+col  32 int     @00437650 -> (no ebp store) (loop x6, pass 1)
+col  33 int     @00437642 -> (no ebp store) (loop x6, pass 2)
+col  34 int     @00437650 -> (no ebp store) (loop x6, pass 2)
+col  35 int     @00437642 -> (no ebp store) (loop x6, pass 3)
+col  36 int     @00437650 -> (no ebp store) (loop x6, pass 3)
+col  37 int     @00437642 -> (no ebp store) (loop x6, pass 4)
+col  38 int     @00437650 -> (no ebp store) (loop x6, pass 4)
+col  39 int     @00437642 -> (no ebp store) (loop x6, pass 5)
+col  40 int     @00437650 -> (no ebp store) (loop x6, pass 5)
+col  41 int     @00437642 -> (no ebp store) (loop x6, pass 6)
+col  42 int     @00437650 -> (no ebp store) (loop x6, pass 6)
+col  43 int     @00437666 -> +0xac
+col  44 int     @00437673 -> +0xb0
+col  45 int     @00437680 -> +0xb4
+col  46 int     @0043768d -> +0xb8
+col  47 int     @0043769a -> +0xbc
+col  48 int     @004376a7 -> +0xc0
+col  49 int     @004376b4 -> +0xc4
+        version test @004376c2: cmp edi,0x19; jl 0x4376d3
+col  50 int     @004376c6 -> +0xcc
+        version test @004376e0: cmp edi,0x1b; jl 0x4376f1
+col  51 int     @004376e4 -> +0xd0
+col  52 textid  @00437701 -> +0xc8
+col  53 int     @00437726 -> +0xd4
+col  54 int     @00437756 -> (no ebp store)
+col  55 int     @00437760 -> (no ebp store)
+col  56 string  @0043776f -> (no ebp store)
+col  57 nameid  @004377db -> (no ebp store)
+col  58 int     @004377e6 -> (no ebp store)
+col  59 int     @0043780c -> +0x180
+col  60 int     @00437837 -> (no ebp store)
+col  61 int     @00437845 -> (no ebp store)
+col  62 int     @0043784f -> (no ebp store)
+col  63 int     @00437858 -> (no ebp store)
+col  64 int     @00437886 -> (no ebp store)
+col  65 int     @00437890 -> (no ebp store)
+col  66 string  @0043789f -> (no ebp store)
+col  67 nameid  @0043790b -> (no ebp store)
+col  68 int     @00437918 -> (no ebp store)
+col  69 string  @00437927 -> (no ebp store)
+col  70 nameid  @00437993 -> (no ebp store)
+col  71 int     @0043799f -> +0xdb4
+== TDocks case 0x43717f..0x4372af, file version 47 (decimal; stock and installed), version register esi
+col   7 int     @00437181 -> +0x44
+col   8 fix16   @0043718b -> +0x48
+col   9 fix16   @00437195 -> +0x4c
+col  10 int     @0043719f -> +0x50
+col  11 string  @004371b0 -> +0x54
+col  12 int     @0043721f -> +0x58
+col  13 int     @00437229 -> +0x5c
+col  14 int     @00437233 -> +0x60
+col  15 int     @0043723d -> +0x64
+col  16 int     @00437247 -> +0x68
+col  17 textid  @0043725c -> +0x6c
+== TFactories case 0x4372af..0x4373e9, file version 47 (decimal; stock and installed), version register esi
+col   7 int     @004372b1 -> +0x44
+col   8 fix16   @004372bb -> +0x48
+col   9 fix16   @004372c5 -> +0x4c
+col  10 int     @004372cf -> +0x50
+col  11 string  @004372e0 -> +0x54
+col  12 int     @0043734f -> +0x58
+col  13 int     @00437359 -> +0x5c
+col  14 int     @00437363 -> +0x60
+col  15 int     @0043736d -> +0x64
+col  16 int     @00437377 -> +0x68
+col  17 fix16   @00437381 -> +0x6c
+col  18 textid  @00437396 -> +0x70
+== TMissiles case 0x437ab1..0x437c41, file version 50 (decimal; stock and installed), version register esi
+col   7 int     @00437ab3 -> +0x44
+col   8 int     @00437abd -> +0x48
+col   9 int     @00437ac7 -> +0x4c
+col  10 int     @00437ad1 -> +0x50
+col  11 int     @00437adb -> +0x54
+col  12 int     @00437ae5 -> +0x58
+col  13 int     @00437aef -> +0x5c
+col  14 int     @00437af9 -> +0x60
+col  15 int     @00437b03 -> +0x64
+        version test @00437b12: cmp esi,0x31; jge 0x437b1e
+skipped int     @00437b16 (inactive for version 0x32)
+col  16 int     @00437b20 -> +0x6c
+col  17 int     @00437b2a -> +0x70
+col  18 int     @00437b34 -> +0x74
+col  19 int     @00437b3e -> +0x78
+col  20 int     @00437b48 -> +0x68
+col  21 int     @00437b52 -> +0x7c
+col  22 int     @00437b5c -> +0x84
+        version test @00437b6a: cmp esi,0x1d; jl 0x437b7b
+col  23 int     @00437b6e -> +0x88
+        version test @00437b84: cmp esi,0x1f; jl 0x437b95
+col  24 int     @00437b88 -> +0x8c
+        version test @00437ba2: cmp esi,0x2b; jl 0x437bb7
+col  25 textid  @00437baa -> +0x90
+col  26 string  @00437bca -> +0x94
+== TAsteroids case 0x437d52..0x437e72, file version 47 (decimal; stock and installed), version register esi
+col   7 string  @00437d5b -> +0x44
+col   8 int     @00437dd5 -> +0x48
+col   9 int     @00437ddf -> +0x4c
+col  10 string  @00437df0 -> +0x50
+== TLaser case 0x437a2c..0x437a84, file version 50 (decimal; stock and installed), version register esi
+col   7 int     @00437a2e -> +0x44
+col   8 int     @00437a38 -> +0x48
+col   9 int     @00437a42 -> +0x4c
+col  10 int     @00437a4c -> +0x50
+col  11 fix16   @00437a56 -> +0x54
+col  12 textid  @00437a6b -> +0x58
+== TShields case 0x437a84..0x437ab1, file version 47 (decimal; stock and installed), version register esi
+col   7 int     @00437a86 -> +0x44
+col   8 int     @00437a90 -> +0x48
+col   9 int     @00437a9a -> +0x4c
+col  10 fix16   @00437aa4 -> +0x50

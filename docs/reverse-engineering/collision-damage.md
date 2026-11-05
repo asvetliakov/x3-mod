@@ -135,7 +135,8 @@ flag)` with `M = *0x0060850c`. The flag is 1 for a contact and 0 for the planet 
    `cockpit+0x204 = level`. **[i]** that this drives the shake or flash.
 4. **Effects**, unless the victim has no scene node, carries `[node+0x12c] & 0x100000`, or carries the invincible
    flag `0x40000000`:
-   * `0x00413c40(victim, source)`, the hit effect at the contact point **[i]**, with no damage argument. It is
+   * `0x00413c40(victim, source)`, the impact effect (role **[m]**, [weapon-effect-spawn.md](weapon-effect-spawn.md)
+     §3; whether its point is the true contact is **[u]**), with no damage argument. It is
      skipped only for a bullet hitting the piloted ship while `0x0043fd00` is false and the victim's cockpit has
      `+0x150 & 1` (`0x00449d58`–`0x00449d81`);
    * when `0x00450310(victim)` holds (the victim is in the player's sector), `0x00417250(ECX = victim,
@@ -392,7 +393,8 @@ To confirm, the pilot rams a station and an asteroid at speed, bumps an AI ship 
 * **Callee roles.**
   * whether `0x0042c7d0`'s level drives a shake whose strength the player would notice at 5 instead of the vanilla
     value;
-  * the exact roles of `0x00413c40` and `0x0049b1f0`;
+  * the exact role of `0x0049b1f0` (2026-11-05: positional sound player, still **[i]** from the decompiler;
+    `0x00413c40` is the impact effect **[m]**, [weapon-effect-spawn.md](weapon-effect-spawn.md) §3);
   * the roles of the FL callers `0x004593ed` and `0x0046d82b`.
 * **Shields with capacity 0.** A shield record with capacity 0 and energy > 0 would be set to 0 by a 0-damage call
   (AP `0x00449b1e`, FL `0x0045311f`). It is implausible but not excluded.

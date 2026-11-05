@@ -95,3 +95,6 @@ verification/results/fl-lod-overlay/green_station/rebake/bake.log
 
 # plumes-no-glow census: regenerate with census.py (153 KB per-ship detail)
 verification/results/plumes-no-glow/census_out.json
+
+# weapon effects art census: regenerated in ~2 s by tools/effects/weapon_effects_census.py
+verification/results/weapon-effects-census/*.json

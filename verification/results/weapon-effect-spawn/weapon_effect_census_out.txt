@@ -1,0 +1,140 @@
+== stock: TBullets addon/02.cat version 55 rows 45 (header 45); columns per row [(50, 45)]; Effects addon/01.cat rows 127
+  col 12 flags: distinct values [(0, 8), (1, 2), (2, 8), (8, 2), (64, 2), (96, 1), (162, 1), (256, 4), (320, 2), (532, 1), (768, 1), (1024, 1), (2048, 1), (2050, 1), (2056, 1), (4096, 1), (4608, 1), (8192, 1), (8448, 2), (9728, 1), (10240, 1), (12288, 2)]
+  col 12 bit counts: 0x1:2, 0x2:10, 0x4:1, 0x8:3, 0x10:1, 0x20:2, 0x40:5, 0x80:1, 0x100:9, 0x200:4, 0x400:2, 0x800:4, 0x1000:4, 0x2000:7
+  col 20 impact +0x78: rows 45, zero 0, distinct non-zero 26 (in Effects 26, missing []), ids [15, 16, 17, 18, 19, 23, 50, 53, 57, 58, 69, 70, 151, 155, 156, 178, 180, 182, 184, 186, 189, 192, 194, 196, 198, 199]
+  col 21 muzzle +0x7c: rows 45, zero 5, distinct non-zero 21 (in Effects 21, missing []), ids [22, 24, 25, 33, 34, 49, 52, 152, 157, 179, 180, 181, 183, 185, 190, 191, 193, 195, 197, 200, 202]
+  col 19 flight +0x74: rows 45, zero 42, distinct non-zero 2 (in Effects 2, missing []), ids [170, 172]
+  col 24 +0x88: rows 45, zero 19, distinct non-zero 4 (in Effects 0, missing [111, 112, 113, 1156]), ids [111, 112, 113, 1156]
+  col 23 trail +0x84 (Particles3 ids, not Effects): rows 45, zero 44, ids [1]
+  flag 0x100 rows (death explosion = col 20): 9 [('SS_BULLET_MAM', 196), ('SS_BULLET_FLAK_ALPHA', 155), ('SS_BULLET_PSP', 189), ('SS_BULLET_FBL_FRAG', 186), ('SS_BULLET_FLAK_CLUSTER_FRAG', 156), ('SS_BULLET_FLAK_CLUSTER_FRAG_FRAG', 156), ('SS_BULLET_FLAK_ALPHA_FRAG', 15), ('SS_BULLET_MAM_1', 196), ('SS_BULLET_IPG_FRAG', 178)]
+  beam-type rows (flags & 0x2006): 18 [('SS_BULLET_IOND', '0x214'), ('SS_BULLET_FLAK_ALPHA', '0x2100'), ('SS_BULLET_FLAK_CLUSTER', '0x3000'), ('SS_BULLET_PAL', '0x2'), ('SS_BULLET_PPC', '0x2000'), ('SS_BULLET_IONC', '0x2600'), ('SS_BULLET_IBL', '0x2800'), ('SS_BULLET_PSP', '0x2100'), ('SS_BULLET_PBC', '0x2'), ('SS_BULLET_TRIBEAM', '0x2'), ('SS_BULLET_FUSIONBEAM', '0x802'), ('SS_BULLET_TUG', '0x2'), ('SS_BULLET_DUMMY1', '0x3000'), ('SS_BULLET_DUMMY2', '0x2'), ('SS_BULLET_KH_ALPHA', '0x2'), ('SS_BULLET_KH_BETA', '0x2'), ('SS_BULLET_KH_GAMMA', '0x2'), ('SS_BULLET_REPAIR', '0xa2')]
+  rows with a light colour (col 13-15 not all 0): 45
+  TShips addon/03.cat v50 rows 404: col 47: zero 1, distinct 3 (missing []) ids [35, 37, 40]; col 48: zero 1, distinct 3 (missing []) ids [36, 38, 41]
+    (class col 52, death col 47, break-up col 48): 0 0/0 x1, 0 35/36 x5, OBJ_BEACON 35/36 x1, OBJ_FIGHTDRONE 35/36 x1, OBJ_FIGHTDRONE2 35/36 x1, OBJ_FIGHTDRONEUSC 35/36 x1, OBJ_FREIGHTDRONE 35/36 x1, OBJ_JUMPBEACON 35/36 x1, OBJ_MINE 35/36 x1, OBJ_MINE2 35/36 x1, OBJ_MINE3 35/36 x1, OBJ_MINETR 35/36 x1, OBJ_ORBITALLASER 40/41 x1, OBJ_ORBITALLASER2 40/41 x1, OBJ_RECONDRONE 35/36 x1, OBJ_SATELLITE 35/36 x1, OBJ_SATELLITE2 35/36 x1, OBJ_SHIP_ASTRONAUT 35/36 x3, OBJ_SHIP_GONER 35/36 x1, OBJ_SHIP_KHAAKCLUSTER 40/41 x4, OBJ_SHIP_M1 37/38 x24, OBJ_SHIP_M2 37/38 x17, OBJ_SHIP_M3 35/36 x64, OBJ_SHIP_M4 35/36 x53, OBJ_SHIP_M5 35/36 x46, OBJ_SHIP_M6 35/36 x2, OBJ_SHIP_M6 40/41 x27, OBJ_SHIP_M7 37/38 x31, OBJ_SHIP_M8 40/41 x7, OBJ_SHIP_TL 37/38 x23, OBJ_SHIP_TM 35/36 x10, OBJ_SHIP_TP 35/36 x14, OBJ_SHIP_TP 40/41 x4, OBJ_SHIP_TS 35/36 x46, OBJ_SHIP_TS_PIRATE 35/36 x1, OBJ_SHIP_UFO 35/36 x5, OBJ_SPACEFLY 35/36 x1
+      row 35: 2 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CAMERARELATIVE': 1, 'EEDF_CUT': 1, 'EEDF_GROW': 1, 'EEDF_NOSKIP': 1, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 1, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 2}
+      row 37: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 40: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 2, 'EEDF_GROW': 3, 'EEDF_NOSKIP': 3, 'EEDF_NOZTEST': 3, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 3, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 4, 'EEDF_WRECK': 1}
+      row 36: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 1, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 2, 'EEDF_NOZTEST': 1, 'EEDF_PROPAGATE': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 4, 'NOZTEST': 1}
+      row 38: 5 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 3, 'EEDF_FADEOUTBODY': 1, 'EEDF_NOSKIP': 5, 'EEDF_PROPAGATE': 1, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 5}
+      row 41: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 1, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 2, 'EEDF_NOZTEST': 1, 'EEDF_PROPAGATE': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 4, 'NOZTEST': 1}
+  TDocks addon/03.cat v47 rows 62: col 14: zero 0, distinct 2 (missing []) ids [37, 201]; col 15: zero 0, distinct 1 (missing []) ids [38]
+      row 37: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 201: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 38: 5 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 3, 'EEDF_FADEOUTBODY': 1, 'EEDF_NOSKIP': 5, 'EEDF_PROPAGATE': 1, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 5}
+  TFactories addon/03.cat v47 rows 455: col 14: zero 1, distinct 3 (missing []) ids [35, 37, 201]; col 15: zero 1, distinct 2 (missing []) ids [36, 38]
+      row 35: 2 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CAMERARELATIVE': 1, 'EEDF_CUT': 1, 'EEDF_GROW': 1, 'EEDF_NOSKIP': 1, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 1, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 2}
+      row 37: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 201: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 36: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 1, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 2, 'EEDF_NOZTEST': 1, 'EEDF_PROPAGATE': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 4, 'NOZTEST': 1}
+      row 38: 5 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 3, 'EEDF_FADEOUTBODY': 1, 'EEDF_NOSKIP': 5, 'EEDF_PROPAGATE': 1, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 5}
+  TAsteroids addon/01.cat v47 rows 10: col 8: zero 1, distinct 9 (missing []) ids [59, 60, 61, 62, 63, 64, 65, 66, 67]; col 9: zero 10, distinct 0 (missing []) ids []
+      row 59: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 60: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 61: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 62: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 63: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 64: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 65: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 66: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+      row 67: 3 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 2, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_DEBRIS': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 2, 'EEDF_GROW': 1, 'EEDF_GROWANDSHRINK': 1, 'EEDF_TIMEOUT': 3}
+  TMissiles addon/02.cat v50 rows 36: col 20: zero 0, distinct 4 (missing []) ids [158, 159, 160, 161]; col 21: zero 0, distinct 5 (missing []) ids [39, 158, 159, 160, 161]
+      row 158: 6 elements, row flags 0, element flags {'EEDF_FADEOUT': 1, 'EEDF_GROW': 5, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 6, 'EEDF_WRECK': 1}
+      row 159: 5 elements, row flags 0, element flags {'EEDF_GROW': 4, 'EEDF_NOSKIP': 3, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 3, 'EEDF_TIMEOUT': 5}
+      row 160: 3 elements, row flags 0, element flags {'EEDF_GROW': 2, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 3}
+      row 161: 6 elements, row flags 0, element flags {'EEDF_GROW': 5, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 4, 'EEDF_NOZTEST': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 6}
+      row 39: 1 elements, row flags 0, element flags {'EEDF_CUT': 1, 'EEDF_FADOUT': 1, 'EEDF_TIMEOUT': 1}
+      row 158: 6 elements, row flags 0, element flags {'EEDF_FADEOUT': 1, 'EEDF_GROW': 5, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 6, 'EEDF_WRECK': 1}
+      row 159: 5 elements, row flags 0, element flags {'EEDF_GROW': 4, 'EEDF_NOSKIP': 3, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 3, 'EEDF_TIMEOUT': 5}
+      row 160: 3 elements, row flags 0, element flags {'EEDF_GROW': 2, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 3}
+      row 161: 6 elements, row flags 0, element flags {'EEDF_GROW': 5, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 4, 'EEDF_NOZTEST': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 6}
+  death / break-up rows reachable (zero column -> EXE default; TMissiles +0x80 has no loader store -> 36 [i]):
+    death row 15: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 35: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TFactories col 14', 'TShips col 47']
+    death row 37: 11 elements, RELATIVESIZE 0, BREAKUP 0; from ['TDocks col 14', 'TFactories col 14', 'TShips col 47']
+    death row 39: 1 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21']
+    death row 40: 4 elements, RELATIVESIZE 0, BREAKUP 0; from ['TShips col 47']
+    death row 48: 4 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8', 'TFactories col 14', 'TShips col 47', 'default']
+    death row 59: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 60: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 61: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 62: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 63: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 64: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 65: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 66: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 67: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 155: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 156: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 158: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21']
+    death row 159: 5 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21']
+    death row 160: 3 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21']
+    death row 161: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21']
+    death row 178: 4 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 186: 1 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 189: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 196: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TBullets 0x100']
+    death row 201: 11 elements, RELATIVESIZE 0, BREAKUP 0; from ['TDocks col 14', 'TFactories col 14']
+    break-up row 36: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TAsteroids col 9', 'TFactories col 15', 'TMissiles +0x80', 'TShips col 48', 'default']
+    break-up row 38: 5 elements, RELATIVESIZE 3, BREAKUP 0; from ['TDocks col 15', 'TFactories col 15', 'TShips col 48']
+    break-up row 41: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
+== installed: TBullets addon/12.cat version 55 rows 38 (header 38); columns per row [(50, 38)]; Effects addon/10.cat rows 158
+  col 12 flags: distinct values [(0, 36), (2, 1), (162, 1)]
+  col 12 bit counts: 0x2:2, 0x20:1, 0x80:1
+  col 20 impact +0x78: rows 38, zero 0, distinct non-zero 15 (in Effects 14, missing [18]), ids [18, 200, 201, 202, 203, 206, 207, 210, 215, 224, 230, 233, 235, 236, 237]
+  col 21 muzzle +0x7c: rows 38, zero 1, distinct non-zero 22 (in Effects 21, missing [129]), ids [100, 101, 103, 104, 105, 106, 107, 108, 109, 110, 113, 114, 118, 126, 127, 129, 131, 133, 134, 135, 136, 137]
+  col 19 flight +0x74: rows 38, zero 33, distinct non-zero 3 (in Effects 3, missing []), ids [308, 309, 310]
+  col 24 +0x88: rows 38, zero 37, distinct non-zero 1 (in Effects 1, missing []), ids [122]
+  col 23 trail +0x84 (Particles3 ids, not Effects): rows 38, zero 38, ids []
+  flag 0x100 rows (death explosion = col 20): 0 []
+  beam-type rows (flags & 0x2006): 2 [('SS_BULLET_PBC', '0x2'), ('SS_BULLET_RL', '0xa2')]
+  rows with a light colour (col 13-15 not all 0): 38
+  TShips addon/12.cat v50 rows 521: col 47: zero 0, distinct 4 (missing [40]) ids [40, 600, 601, 602]; col 48: zero 0, distinct 5 (missing [34, 38, 41]) ids [34, 38, 41, 650, 651]
+    (class col 52, death col 47, break-up col 48): OBJ_BEACON 600/650 x1, OBJ_FIGHTDRONE 600/650 x1, OBJ_FIGHTDRONE2 600/650 x1, OBJ_FIGHTDRONEUSC 600/650 x1, OBJ_FREIGHTDRONE 600/650 x1, OBJ_JUMPBEACON 600/650 x1, OBJ_MINE 600/650 x1, OBJ_MINE2 600/650 x1, OBJ_MINE3 600/650 x1, OBJ_MINETR 600/650 x1, OBJ_ORBITALLASER 601/651 x1, OBJ_SATELLITE 600/650 x1, OBJ_SATELLITE2 600/650 x1, OBJ_SHIP_ASTRONAUT 600/650 x1, OBJ_SHIP_KHAAKCLUSTER 601/651 x4, OBJ_SHIP_M0 40/41 x1, OBJ_SHIP_M1 602/38 x27, OBJ_SHIP_M2 602/38 x45, OBJ_SHIP_M3 600/650 x84, OBJ_SHIP_M4 600/650 x57, OBJ_SHIP_M5 600/650 x44, OBJ_SHIP_M6 601/38 x1, OBJ_SHIP_M6 601/651 x61, OBJ_SHIP_M7 602/34 x1, OBJ_SHIP_M7 602/38 x45, OBJ_SHIP_M8 601/651 x13, OBJ_SHIP_TL 602/38 x13, OBJ_SHIP_TM 600/650 x18, OBJ_SHIP_TP 600/650 x15, OBJ_SHIP_TP 601/651 x7, OBJ_SHIP_TS 600/650 x69, OBJ_SHIP_UFO 600/650 x1, OBJ_SPACEFLY 600/650 x1
+      row 600: 2 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CAMERARELATIVE': 1, 'EEDF_CUT': 1, 'EEDF_GROW': 1, 'EEDF_NOSKIP': 1, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 1, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 2}
+      row 601: 4 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 2, 'EEDF_GROW': 3, 'EEDF_NOSKIP': 3, 'EEDF_NOZTEST': 3, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 3, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 4, 'EEDF_WRECK': 1}
+      row 602: 11 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+      row 650: 4 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 1, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 2, 'EEDF_NOZTEST': 1, 'EEDF_PROPAGATE': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 4}
+      row 651: 4 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CUT': 1, 'EEDF_FADEOUT': 1, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 2, 'EEDF_NOZTEST': 1, 'EEDF_PROPAGATE': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RELATIVESIZE': 3, 'EEDF_TIMEOUT': 4}
+  TDocks addon/12.cat v47 rows 76: col 14: zero 0, distinct 1 (missing []) ids [602]; col 15: zero 0, distinct 0 (missing []) ids []
+      row 602: 11 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+  TFactories addon/10.cat v47 rows 910: col 14: zero 0, distinct 1 (missing []) ids [602]; col 15: zero 1, distinct 2 (missing [36, 38]) ids [36, 38]
+      row 602: 11 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_PROPAGATE, element flags {'EEDF_CUT': 5, 'EEDF_CUTACTUALSIZE': 1, 'EEDF_CUTKEEPBODY': 1, 'EEDF_FADEOUT': 2, 'EEDF_FADEOUTBODY': 1, 'EEDF_GROW': 6, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 5, 'EEDF_NOZTEST': 6, 'EEDF_PROPAGATE': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 6, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 11, 'EEDF_WRECK': 1}
+  TAsteroids addon/07.cat v47 rows 10: col 8: zero 0, distinct 10 (missing []) ids [59, 60, 61, 62, 63, 64, 65, 66, 67, 68]; col 9: zero 10, distinct 0 (missing []) ids []
+      row 59: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 60: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 61: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 62: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 63: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 64: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 65: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 66: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 67: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+      row 68: 6 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_HIDEOBJECT, element flags {'EEDF_CUT': 6, 'EEDF_FADEOUT': 6, 'EEDF_FADEOUTBODY': 6, 'EEDF_GROW': 6, 'EEDF_RANDOMROT': 6, 'EEDF_TIMEOUT': 6}
+  TMissiles addon/12.cat v50 rows 36: col 20: zero 0, distinct 4 (missing []) ids [400, 401, 402, 403]; col 21: zero 36, distinct 0 (missing []) ids []
+      row 400: 3 elements, row flags 0, element flags {'EEDF_GROW': 2, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 1, 'EEDF_RANDOMROT': 2, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 3}
+      row 401: 5 elements, row flags 0, element flags {'EEDF_GROW': 4, 'EEDF_NOSKIP': 3, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 3, 'EEDF_TIMEOUT': 5}
+      row 402: 6 elements, row flags 0, element flags {'EEDF_FADEOUT': 1, 'EEDF_GROW': 5, 'EEDF_NOSKIP': 2, 'EEDF_NOZTEST': 2, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 2, 'EEDF_TIMEOUT': 6, 'EEDF_WRECK': 1}
+      row 403: 6 elements, row flags 0, element flags {'EEDF_GROW': 5, 'EEDF_GROWANDSHRINK': 1, 'EEDF_NOSKIP': 4, 'EEDF_NOZTEST': 1, 'EEDF_PUSH': 1, 'EEDF_RANDOMROT': 4, 'EEDF_RANDOMSIZE': 1, 'EEDF_TIMEOUT': 6}
+  death / break-up rows reachable (zero column -> EXE default; TMissiles +0x80 has no loader store -> 36 [i]):
+    death row 40: MISSING from Effects; from ['TShips col 47']
+    death row 48: 4 elements, RELATIVESIZE 0, BREAKUP 0; from ['TMissiles col 21', 'default']
+    death row 59: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 60: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 61: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 62: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 63: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 64: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 65: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 66: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 67: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 68: 6 elements, RELATIVESIZE 0, BREAKUP 0; from ['TAsteroids col 8']
+    death row 600: 2 elements, RELATIVESIZE 0, BREAKUP 0; from ['TShips col 47']
+    death row 601: 4 elements, RELATIVESIZE 0, BREAKUP 0; from ['TShips col 47']
+    death row 602: 11 elements, RELATIVESIZE 0, BREAKUP 0; from ['TDocks col 14', 'TFactories col 14', 'TShips col 47']
+    break-up row -1: MISSING from Effects; from ['TDocks col 15']
+    break-up row 34: MISSING from Effects; from ['TShips col 48']
+    break-up row 36: MISSING from Effects; from ['TAsteroids col 9', 'TFactories col 15', 'TMissiles +0x80', 'default']
+    break-up row 38: MISSING from Effects; from ['TFactories col 15', 'TShips col 48']
+    break-up row 41: MISSING from Effects; from ['TShips col 48']
+    break-up row 650: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
+    break-up row 651: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
