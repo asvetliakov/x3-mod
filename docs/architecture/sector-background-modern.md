@@ -827,3 +827,61 @@ threshold= radius=` at the depth-only Clear when parts, swapped or the reason ch
 
 **Flight-only.** Invariant 3 (`parts=4` in bluewell, `parts=0` in a fog-card family, AP's parts matched), the look
 (halos, smeared filaments, residual grain at 2.5x, seams), invariant 9 under SETA rotation, and native Windows.
+
+### Implementation C2 (2026-11-05): phase-end star batch with nebula dimming
+
+Built, not flown; `sky_stars_nebula_dim` default 0.5 (`sky_stars` itself stays default off). Evidence:
+`verification/results/sky-stars/` (`run_fixture.py` -> `fixture_out.txt`, section 5; `native/validate.py` ->
+`native/result.json`, now four programs); route fixture `verification/probe/motion_sky_stars_fixture.cpp` (17
+scenarios, 138 checks; `test_motion_sky_stars.py`).
+
+**Pieces.** `src/effects/sky_stars_dim_{vs,ps}.hlsl` are one-line includes of the in-place sources with `SKY_STARS_DIM`
+(the VS passes the centre's UV in the dim copy and the law; the PS takes four bilinear taps half a dim texel around it);
+without the define the in-place programs compile to the same words as before (sha256 `40a8cb78...` / `9ac5e7fe...`,
+unchanged). `SkyStarsPass` gains the dim side (`caps().dim`, checked at attach: `D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES`,
+`StretchRectFilterCaps` MINFLINEAR else MINFPOINT, `D3DUSAGE_QUERY_FILTER` on A16B16G16R16F for linear sampling; a refusal
+leaves the pass on and the route keeps the in-place batch), `prepare_dim` (a D3DPOOL_DEFAULT A16B16G16R16F render-target
+texture of ceil(W/8) x ceil(H/8), created at the first deferred batch and again after Reset or a size change, released by
+`before_reset` and `detach`), `copy_dim` (`StretchRect` of the HDR target) and `draw_deferred` (the batch with c250-c255,
+`ZENABLE TRUE`, `ZFUNC LESSEQUAL` appended to the touched states, stage-0 texture and six sampler states saved, set and
+put back). `draw()` keeps its call sequence (50 calls, measured). Settings `sky_stars_nebula_dim` (k, 0-1) and developer
+`sky_stars_nebula_dim_level` (L0, 0.1-2), both `requires=sky_stars`, tagged in `sky_stars_config`.
+
+**Route.** As designed: with k > 0 and the dim side the matched star body is masked and the batch pends; `before_clear`
+(after `restore_bindings()` and the Clear's bindings) predicts the phase end on a Background Clear with
+`D3DCLEAR_ZBUFFER`, no `D3DCLEAR_TARGET` and no rectangles, then requires the phase's depth (`main_depth_`), the latch,
+RT0 only and the matched viewport (else `reason=depth|latch|targets|queries|composition`, no batch). A failed copy draws
+with k = 0 (still Z-tested); a dim texture that cannot be created draws the in-place programs there. Confirmation is
+the Background -> Scene transition (`sky_stars_phase_end`); an open prediction at the next latching Clear is
+`unconfirmed`, a pending batch never drawn `missed`. **Changed from the design:** `c250 = (k, 1/L0, 0.5/dim width,
+0.5/dim height)` (the PS needs the tap offset and has no constant of its own); 70 device calls per deferred batch
+(measured; the design said 52).
+
+**Fixture (native D3D9, RTX 5070 Ti, plain D3D9, measured).**
+- Invariant 8: over a flat copy at L = 0.251 and L = 0.502 (= L0) with k = 0.5, every one of 464 isolated stars carries
+  `1 - k saturate(L / L0)` (0.749, 0.500) of its black-sky energy within 0.14 %. k = 0 in production is the in-place
+  `draw()` itself; the deferred twin at k = 0 over black equals it on all 48,431 lit channels (0 differing).
+- Invariant 6: the deferred batch after six overlapping additive quads against the in-place order: 3,011 channels
+  differ, at most 2 FP16 ulp (the note asked 1; each ONE/ONE blend rounds, so a reordered sum of three or more terms can
+  differ by one ulp per rounding). A disc written at depth 0.5: 0 star pixels inside, 11,237 outside.
+- The copy filter: `D3DTEXF_LINEAR` at the 8x downscale (1024x512 -> 128x64) is a bilinear sample at each 8x8 block's centre, not
+  an 8x8 average (one lit pixel per block at (3,3): every dim texel 0.250, the box mean is 0.0156). The dim factor so
+  sees the central 2x2 of each block; small bright features alias (a flight watch item: a brightness pulse of stars
+  over fine nebula structure under SETA rotation is the kill criterion).
+- Invariant 4: stage-0 texture, the six sampler states, ZENABLE/ZFUNC and c250-c255 back after a clean batch, a draw
+  fault and a restore fault: 0 mismatches.
+- Invariant 5 at 5120x1440: the copy 0.0067 ms, the deferred batch 0.0027 ms (event-flushed upper bounds over 100),
+  `draw_deferred` CPU 1.06 us; the dim texture 640x180 is created once; `before_reset` releases it (7 objects held, 9
+  with the texture).
+- Invariant 10: `sky_stars_dim_vs` 197 words / 33 slots, `sky_stars_dim_ps` 165 words / 23 slots, native validator
+  End() S_OK, 0 messages.
+
+**Rows.** `sky_stars_config` gains `nebula_dim= nebula_dim_setting= nebula_dim_level= nebula_dim_level_setting=`;
+`sky_stars_defer why=<first|status|periodic|unconfirmed> predicted= confirmed= ratio= missed= unconfirmed= k= level= dim=
+copy=<linear|point|failed|no_texture|none> copy_hr= dim_texture=WxH dim_linear= dim_reason= copy_us= draw_us=` at the
+first deferral, with each `sky_stars` row, on an unconfirmed prediction and every 4,096 phase ends (at most 1,024 per
+device); the `sky_stars` row's `reason=` names a phase-end refusal.
+
+**Flight-only.** Invariant 7 (`ratio >= 0.999` over a flight), no stars on a planet disc in flight (a planet whose depth
+lies beyond 0.99999 would let stars through), the look of the dimming and its stability under SETA rotation (the bilinear
+copy above), FL and AP phase ends, and native Windows.

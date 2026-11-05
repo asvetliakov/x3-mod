@@ -8,6 +8,9 @@ constexpr D3DRENDERSTATETYPE D3DRS_ZWRITEENABLE = D3DRENDERSTATETYPE(14), D3DRS_
                              D3DRS_COLORWRITEENABLE = D3DRENDERSTATETYPE(168), D3DRS_BLENDOP = D3DRENDERSTATETYPE(171),
                              D3DRS_SEPARATEALPHABLENDENABLE = D3DRENDERSTATETYPE(206),
                              D3DRS_SRCBLENDALPHA = D3DRENDERSTATETYPE(207), D3DRS_DESTBLENDALPHA = D3DRENDERSTATETYPE(208);
+// Decision C2 (the deferred batch): the Clear flags of the phase-end prediction and the copy filter's name.
+constexpr DWORD D3DCLEAR_TARGET = 1, D3DCLEAR_ZBUFFER = 2, D3DCLEAR_STENCIL = 4;
+constexpr unsigned D3DTEXF_LINEAR = 2;
 struct D3DDISPLAYMODE {
     UINT Width, Height, RefreshRate;
     D3DFORMAT Format;

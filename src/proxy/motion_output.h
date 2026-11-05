@@ -1232,7 +1232,10 @@ public:
     // defaults of sky_stars_core.h; mask = sky_stars_mask). The texture hook
     // stores a payload-2 mark's packed seed (sky_stars_core.h seed_of); the SetTexture hook asks sky_stars_lookup for
     // a stage-0 texture (inside its native section: an identity read on a hit) and passes the answer to sky_stars_bind.
-    void configure_sky_stars(bool requested, const sky_stars::core::Look& look, float twinkle, bool mask) noexcept;
+    // dim / dim_level (Decision C2, sky_stars_nebula_dim / _level): k > 0 draws the batch at the phase end, dimmed by
+    // the nebula; k = 0 keeps the in-place batch. Defaults: no dimming (the production read passes the settings).
+    void configure_sky_stars(bool requested, const sky_stars::core::Look& look, float twinkle, bool mask, float dim = 0.f,
+                             float dim_level = sky_stars::core::nebula_dim_level_default) noexcept;
     bool sky_stars_requested() const noexcept { return sky_stars_requested_; }
     bool sky_stars_mark_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, std::uint32_t seed) noexcept;
     bool sky_stars_mark_forget(const void* texture) noexcept;
@@ -2170,6 +2173,16 @@ private:
     unsigned sky_stars_phase_log_ = 0, sky_stars_phase_logged_ = 0, sky_stars_phase_fields_ = 0;
     std::uint32_t sky_stars_phase_field_ = 0, sky_stars_phase_last_field_ = 0;
     std::uint32_t sky_stars_phase_seen_[sky_stars_phase_fields_max] = {};
+    // Decision C2 (motion_output_sky_stars_inc.h): k and L0; this frame's deferred batch (pending: matched and masked,
+    // waiting for the phase end; predicted: drawn at the predicted phase end, confirmed by the Background -> Scene
+    // transition); the counts and costs of the sky_stars_defer row.
+    float sky_stars_dim_ = 0.f, sky_stars_dim_level_ = sky_stars::core::nebula_dim_level_default;
+    bool sky_stars_frame_pending_ = false, sky_stars_frame_predicted_ = false;
+    std::uint64_t sky_stars_predicted_ = 0, sky_stars_confirmed_ = 0, sky_stars_missed_ = 0, sky_stars_unconfirmed_ = 0;
+    std::uint64_t sky_stars_copy_ticks_ = 0, sky_stars_defer_frames_ = 0;
+    HRESULT sky_stars_copy_hr_ = S_FALSE;
+    unsigned sky_stars_defer_rows_ = 0;
+    const char* sky_stars_copy_mode_ = "none";
     // Sky nebula deband (motion_output_sky_nebula_inc.h): the settings, the pass, the stage-0 texture's cached level-0
     // size (pointer and identity), this frame's background-phase record and what the last sky_nebula row said.
     bool sky_nebula_requested_ = false, sky_nebula_jitter_ = true, sky_nebula_attach_failed_ = false;
@@ -3588,6 +3601,9 @@ private:
     bool attach_sky_stars() noexcept;
     void release_sky_stars() noexcept;
     void sky_stars_log_match(const MotionDrawCall&) noexcept;
+    void sky_stars_phase_end_draw(DWORD count, DWORD flags) noexcept;
+    void sky_stars_batch_done(const renderer::SkyStarsReport& report) noexcept;
+    void sky_stars_log_defer(const char* why) noexcept;
     void sky_nebula_classify(const MotionDrawCall&, MotionRoute&) noexcept;
     void prepare_sky_nebula(MotionRoute&) noexcept;
     void finish_sky_nebula(MotionRoute&, HRESULT) noexcept;

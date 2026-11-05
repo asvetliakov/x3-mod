@@ -4,6 +4,8 @@
 // before_draw/after_draw replayed by draw() below (test_motion_sky_stars.py checks that order in motion_output.cpp).
 // The per-sector seed: a scripted sector key reader (World::read, the real one is sector_key_check.cpp's) behind the
 // real sky_stars_sector_sample, and the scripted pass's cached-build check is the real core::same_build.
+// Decision C2 (the deferred batch): the scripted pass's dim side (prepare_dim, copy_dim, draw_deferred) behind the real
+// sky_stars_phase_end_draw, replayed by clear() below in before_clear's order (after the Clear's bindings).
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
@@ -45,6 +47,9 @@ struct World {
     unsigned builds = 0;                         // prepares that rebuilt the buffer
     sector_key::core::Result read{};             // what the scripted reader returns
     unsigned reads = 0, invalidations = 0;
+    bool dim_caps = true;                        // Decision C2: the pass's dim side at attach
+    HRESULT prepare_hr = S_OK, copy_hr = S_OK;   // the dim texture's creation and the StretchRect
+    float dim[4] = {-1.f, -1.f, -1.f, -1.f};     // c250 of the last deferred batch
 }* w = nullptr;
 HRESULT set_rs(IDirect3DDevice9*, D3DRENDERSTATETYPE state, DWORD value) {
     w->calls.push_back("rs" + std::to_string(unsigned(state)) + "=" + std::to_string(value));
@@ -120,7 +125,35 @@ HRESULT renderer::SkyStarsPass::attach(IDirect3DDevice9* d, void* const*, const 
     device_ = d;
     caps_.enabled = w->attach_ok;
     caps_.reason = w->attach_ok ? "ok" : "fixture";
+    caps_.dim = w->attach_ok && w->dim_caps;
+    caps_.copy_filter = D3DTEXF_LINEAR;
     return w->attach_ok ? S_OK : D3DERR_NOTAVAILABLE;
+}
+void renderer::SkyStarsPass::before_reset() noexcept {
+    lost_ = false;
+    dim_width_ = dim_height_ = 0;
+}
+HRESULT renderer::SkyStarsPass::prepare_dim(unsigned width, unsigned height) noexcept {
+    w->calls.push_back("prepare_dim");
+    if (SUCCEEDED(w->prepare_hr)) {
+        dim_width_ = sky_stars::core::dim_size(width);
+        dim_height_ = sky_stars::core::dim_size(height);
+    }
+    return w->prepare_hr;
+}
+HRESULT renderer::SkyStarsPass::copy_dim(IDirect3DSurface9*) noexcept {
+    w->calls.push_back("copy");
+    return w->copy_hr;
+}
+HRESULT renderer::SkyStarsPass::draw_deferred(const float*, const float* twinkle, const float* dim,
+                                              SkyStarsReport* report) noexcept {
+    w->calls.push_back("deferred_batch");
+    std::memcpy(w->twinkle, twinkle, sizeof w->twinkle);
+    std::memcpy(w->dim, dim, sizeof w->dim);
+    report->operation = w->draw_hr;
+    report->drew = SUCCEEDED(w->draw_hr);
+    report->restore = w->restore_hr;
+    return w->draw_hr;
 }
 void renderer::SkyStarsPass::detach() noexcept { caps_ = {}; }
 unsigned renderer::SkyStarsPass::references() const noexcept { return 0; }
@@ -172,6 +205,20 @@ void setup(MotionOutput& m) {
     m.pending_.rt.width = m.pending_.viewport.width = 64;
     m.pending_.rt.height = m.pending_.viewport.height = 32;
     m.pending_.viewport.known = true;
+    m.pending_.depth.known = true;
+    m.pending_.depth.identity = m.main_depth_.identity = 5;
+}
+// Decision C2: a Clear in production order. before_clear (after its bindings) offers the pending batch the Clear; the
+// selector's verdict follows (a depth-only Clear in the background phase ends it), then after_clear's phase end.
+std::vector<std::string> clear(MotionOutput& m, DWORD flags, DWORD count = 0, bool ends = true) {
+    w->calls.clear();
+    if (m.sky_stars_frame_pending_) m.sky_stars_phase_end_draw(count, flags);
+    if (ends && m.selector_.state_ == renderer::BoundaryState::Background && (flags & D3DCLEAR_ZBUFFER) &&
+        !(flags & D3DCLEAR_TARGET) && !count) {
+        m.selector_.state_ = renderer::BoundaryState::Scene;
+        m.sky_stars_phase_end();
+    }
+    return w->calls;
 }
 // A frame's latching Clear, then the phase the draws run in.
 void frame(MotionOutput& m, renderer::BoundaryState state) {
@@ -230,6 +277,13 @@ unsigned count(const std::vector<std::string>& rows, const char* name) {
     return n;
 }
 bool has(const std::string& text, const char* part) { return text.find(part) != std::string::npos; }
+// The last formatted row whose name is `name` ("" when none).
+std::string last_row(const char* name) {
+    const std::string prefix = std::string(name) + " ";
+    for (auto it = w->text.rbegin(); it != w->text.rend(); ++it)
+        if (it->compare(0, prefix.size(), prefix) == 0) return *it;
+    return "";
+}
 } // namespace
 
 int main() {
@@ -490,6 +544,121 @@ int main() {
         draw(m, true);
         m.sky_stars_phase_end();
         check(count(world.rows, "sky_stars_phase_draw") == 19, "L unknown keeps the field: nothing re-armed");
+    }
+    const Calls deferred_batch{"prepare_dim", "copy", "deferred_batch"};
+    {   // M (Decision C2): k = 0.5: the star body is masked, no batch there; a target Clear is not the phase end; the
+        // depth-only Clear draws the batch (prepare, copy, deferred batch) with c250 = (k, 1 / L0, half dim texels); the
+        // transition confirms it; the row says ready; one sky_stars_defer row at the first deferral, one with the row.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, .5f, .5f);
+        frame(m, BoundaryState::Background);
+        check(draw(m, true) == masked_only && m.sky_stars_frame_pending_, "M masked, the batch pending");
+        check(draw(m, true) == masked_only, "M a second call of the pair: masked, still pending");
+        check(clear(m, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER).empty() &&
+                  m.sky_stars_frame_pending_ && !m.sky_stars_predicted_,
+              "M a target Clear: not the phase end");
+        check(clear(m, D3DCLEAR_ZBUFFER, 1, false).empty() && m.sky_stars_frame_pending_, "M a Clear with rectangles: no");
+        check(clear(m, D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL) == deferred_batch, "M the depth-only Clear: the batch");
+        check(world.dim[0] == .5f && world.dim[1] == 2.f && world.dim[2] == .5f / 8.f && world.dim[3] == .5f / 4.f,
+              "M c250 = (k, 1 / L0, 0.5 / dim width, 0.5 / dim height)");
+        check(m.sky_stars_predicted_ == 1 && m.sky_stars_confirmed_ == 1 && !std::strcmp(m.sky_stars_logged_status_, "ready"),
+              "M predicted 1, confirmed 1, ready");
+        check(count(world.rows, "sky_stars_defer") == 2 && has(last_row("sky_stars_defer"), " predicted=1 confirmed=1 ratio=1.0000 ") &&
+                  has(last_row("sky_stars_defer"), " copy=linear copy_hr=00000000 dim_texture=8x4 "),
+              "M sky_stars_defer rows: first, then with the status row");
+        frame(m, BoundaryState::Background); // the next frame: nothing missed or unconfirmed
+        check(m.sky_stars_missed_ == 0 && m.sky_stars_unconfirmed_ == 0, "M nothing missed");
+    }
+    {   // N: k = 0 is the in-place batch of Implementation A (the same calls), the phase-end Clear adds nothing; a pass
+        // without the dim side keeps the in-place batch at k = 0.5.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, 0.f, .5f);
+        frame(m, BoundaryState::Background);
+        check(draw(m, true) == masked_batch && clear(m, D3DCLEAR_ZBUFFER).empty() && !m.sky_stars_predicted_,
+              "N k = 0: in place, nothing at the Clear");
+        World other;
+        other.dim_caps = false;
+        w = &other;
+        MotionOutput n;
+        setup(n);
+        n.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, .5f, .5f);
+        frame(n, BoundaryState::Background);
+        check(draw(n, true) == masked_batch && clear(n, D3DCLEAR_ZBUFFER).empty(), "N no dim side: in place");
+        float k = -1.f;
+        MotionOutput r;
+        r.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, 1.5f, 3.f);
+        k = r.sky_stars_dim_;
+        check(k == 0.f && r.sky_stars_dim_level_ == .5f, "N out-of-range k and L0: no dimming, the default level");
+    }
+    {   // O: the copy fails: the batch is still drawn at the phase end, Z-tested, with k = 0; no dim texture: the in-place
+        // batch there; the wrong depth surface refuses (no batch, reason depth), counted as predicted, not drawn.
+        ++scenarios;
+        World world;
+        world.copy_hr = E_FAIL;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, .5f, .5f);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(clear(m, D3DCLEAR_ZBUFFER) == deferred_batch && world.dim[0] == 0.f && world.dim[1] == 2.f,
+              "O copy failed: deferred batch with k = 0");
+        check(has(last_row("sky_stars_defer"), " copy=failed copy_hr=f"), "O the row names the failed copy");
+        world.copy_hr = S_OK;
+        world.prepare_hr = E_FAIL;
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        check(clear(m, D3DCLEAR_ZBUFFER) == Calls({"prepare_dim", "batch"}), "O no dim texture: the in-place batch there");
+        world.prepare_hr = S_OK;
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        m.pending_.depth.identity = 6;
+        check(clear(m, D3DCLEAR_ZBUFFER).empty() && !std::strcmp(m.sky_stars_frame_reason_, "depth") &&
+                  !std::strcmp(m.sky_stars_logged_status_, "refused"),
+              "O another depth surface: refused, reason depth");
+    }
+    {   // P: a failed restore of the deferred batch quarantines the route and the pass until Reset.
+        ++scenarios;
+        World world;
+        world.restore_hr = E_FAIL;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, .5f, .5f);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        const Calls quarantined{"prepare_dim", "copy", "deferred_batch", "invalidate_states", "invalidate_taa"};
+        check(clear(m, D3DCLEAR_ZBUFFER) == quarantined && m.motion_state_lost_ && m.sky_stars_attach_failed_,
+              "P restore failure: quarantine");
+    }
+    {   // Q: a pending batch without a phase end is missed at the next latch; a prediction without the transition (the
+        // frame rejected after the batch) is unconfirmed there, with one row.
+        ++scenarios;
+        World world;
+        w = &world;
+        MotionOutput m;
+        setup(m);
+        m.configure_sky_stars(true, sky_stars::core::Look{}, .3f, true, .5f, .5f);
+        frame(m, BoundaryState::Background);
+        draw(m, true);
+        frame(m, BoundaryState::Background);
+        check(m.sky_stars_missed_ == 1 && !m.sky_stars_frame_pending_, "Q missed at the next latch");
+        draw(m, true);
+        check(clear(m, D3DCLEAR_ZBUFFER, 0, false) == deferred_batch && m.sky_stars_predicted_ == 1, "Q drawn, predicted");
+        frame(m, BoundaryState::Background);
+        check(m.sky_stars_unconfirmed_ == 1 && m.sky_stars_confirmed_ == 0 && has(last_row("sky_stars_defer"), "why=unconfirmed"),
+              "Q unconfirmed at the next latch, one row");
+        draw(m, true);
+        m.sky_stars_before_reset();
+        check(!m.sky_stars_frame_pending_ && !m.sky_stars_frame_predicted_, "Q Reset forgets the frame's deferral");
     }
     std::printf("motion_sky_stars scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);
     return failures ? 1 : 0;

@@ -5599,6 +5599,8 @@ void MotionOutput::before_clear(DWORD count, DWORD flags, float z) noexcept {
     pending_.rect_count = count;
     pending_.clear_z = z;
     pending_valid_ = true;
+    // Decision C2: a deferred star batch is drawn before the predicted phase-end Clear (RT1/RT2 unbound above).
+    if (sky_stars_frame_pending_) sky_stars_phase_end_draw(count, flags);
     // The latching Clear redirects RT0 to the FP16 target before it runs, so
     // the application's own Clear clears the target; a later Clear with the
     // target flag while redirected clears it too (content pending).

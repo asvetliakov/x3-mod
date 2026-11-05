@@ -19,6 +19,22 @@
    "end": "00000000",
    "slots": 11,
    "source_header": "src/renderer/sky_stars_pixel_program_inc.h"
+  },
+  {
+   "program": "sky_stars_dim_vs",
+   "words": 197,
+   "messages": [],
+   "end": "00000000",
+   "slots": 33,
+   "source_header": "src/renderer/sky_stars_dim_vertex_program_inc.h"
+  },
+  {
+   "program": "sky_stars_dim_ps",
+   "words": 165,
+   "messages": [],
+   "end": "00000000",
+   "slots": 23,
+   "source_header": "src/renderer/sky_stars_dim_pixel_program_inc.h"
   }
  ]
 }

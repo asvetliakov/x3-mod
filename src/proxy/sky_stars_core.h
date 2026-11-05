@@ -54,6 +54,9 @@ constexpr float size_default = 1.f, size_min = 0.f, size_max = 3.f;             
 constexpr float min_size_default = 1.5f, min_size_min = 1.f, min_size_max = 3.f;      // sky_stars_min_size (px)
 constexpr float twinkle_default = .3f, twinkle_min = 0.f, twinkle_max = 1.f;          // sky_stars_twinkle (amplitude)
 constexpr float clustering_default = 1.2f, clustering_min = 0.f, clustering_max = 2.f; // sky_stars_clustering
+constexpr float nebula_dim_default = .5f, nebula_dim_min = 0.f, nebula_dim_max = 1.f; // sky_stars_nebula_dim (k)
+constexpr float nebula_dim_level_default = .5f, nebula_dim_level_min = .1f, nebula_dim_level_max = 2.f; // _level (L0)
+constexpr unsigned dim_scale = 8; // the dim copy is 1/8 of the target per axis (rounded up)
 constexpr unsigned vertex_stride = 32, vertices_per_star = 4, indices_per_star = 6;
 constexpr unsigned vertex_capacity = stars_max * vertices_per_star; // 65536: 16-bit indices suffice
 constexpr float flux_step = 2.5f, flux_steps = 4.f, x_max = 39.0625f; // 2.5^4
@@ -100,6 +103,32 @@ inline bool accept_size(float v, float* out) noexcept { return accept_range(v, s
 inline bool accept_min_size(float v, float* out) noexcept { return accept_range(v, min_size_min, min_size_max, out); }
 inline bool accept_twinkle(float v, float* out) noexcept { return accept_range(v, twinkle_min, twinkle_max, out); }
 inline bool accept_clustering(float v, float* out) noexcept { return accept_range(v, clustering_min, clustering_max, out); }
+inline bool accept_nebula_dim(float v, float* out) noexcept { return accept_range(v, nebula_dim_min, nebula_dim_max, out); }
+inline bool accept_nebula_dim_level(float v, float* out) noexcept {
+    return accept_range(v, nebula_dim_level_min, nebula_dim_level_max, out);
+}
+// Nebula dimming, Decision C2 (sector-background-modern.md "Decision C"): the deferred batch's vertex constant c250 =
+// (k, 1 / L0, 0.5 / dim width, 0.5 / dim height). The pixel program takes four bilinear taps of the 1/8-size copy of the
+// HDR target one dim texel apart around the star's centre, pre-decode luma L = dot(rgb, (0.299, 0.587, 0.114)), and
+// multiplies the star's energy by 1 - k saturate(L / L0). k = 0 is no dimming (the factor is exactly 1).
+inline unsigned dim_size(unsigned target) noexcept { return (target + dim_scale - 1) / dim_scale; }
+inline bool dim_constants(float k, float level, unsigned dim_width, unsigned dim_height, float out[4]) noexcept {
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    if (!(k >= nebula_dim_min && k <= nebula_dim_max) || !(level >= nebula_dim_level_min && level <= nebula_dim_level_max) ||
+        !dim_width || !dim_height)
+        return false;
+    out[0] = k;
+    out[1] = 1.f / level;
+    out[2] = .5f / float(dim_width);
+    out[3] = .5f / float(dim_height);
+    return true;
+}
+// The CPU law the fixture and the host test compare with: the energy factor at pre-decode luma l.
+inline float dim_factor(float k, float level, float l) noexcept {
+    float x = l / level;
+    x = x < 0.f ? 0.f : x > 1.f ? 1.f : x;
+    return 1.f - k * x;
+}
 // The generator seed of a field: seed64 = mark_seed ^ (sector_key x 0x9e3779b97f4a7c15), folded to 32 bits (low ^ high).
 // sector_key 0 (no sector known yet) returns mark_seed itself; a known sector supplies sector_key::core::key_of(x, y)
 // (src/proxy/sector_key_core.h), never 0.

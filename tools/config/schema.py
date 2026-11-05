@@ -200,6 +200,13 @@ SETTINGS = [
           range=(0.0, 2.0), requires=('sky_stars',), since='2026-11-05'),
     dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
         '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_stars_nebula_dim', 'float', 'graphics', 'How much the procedural stars fade behind bright nebula '
+          '(sky_stars = 1), 0 to 1; 0.5 = the default, stars over the brightest nebula at half strength, 0 = stars at full '
+          'strength everywhere (drawn where the painted stars were). Planets in front still hide the stars.',
+          builtin='0.5', range=(0.0, 1.0), requires=('sky_stars',), since='2026-11-05'),
+    dev('sky_stars_nebula_dim_level', 'float', 'graphics', 'Sky stars: the nebula brightness (pre-decode luma) at which '
+        'sky_stars_nebula_dim reaches its full strength, 0.1 to 2; 0.5 = the default.', builtin='0.5', range=(0.1, 2.0),
+        requires=('sky_stars',), since='2026-11-05'),
     entry('sky_nebula_deband', 'bool', 'graphics', 'Smooths the visible bands at the edge of the sector background\'s '
           'nebula, where it fades into black space. 1 = on, 0 = the game\'s nebula as painted (default). Stars, planets '
           'and suns are not touched.', builtin='0', requires=('taa', 'hdr'), since='2026-11-05'),
