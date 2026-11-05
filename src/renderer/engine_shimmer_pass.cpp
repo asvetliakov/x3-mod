@@ -26,8 +26,8 @@ enum Slot : unsigned {
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, BeginStateBlock = 60, EndStateBlock = 61, SetTexture = 65,
     SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
     CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
-    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSource = 100, SetStreamSourceFreq = 102, SetIndices = 104,
-    CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
+    CreateVertexShader = 91, SetVertexShader = 92, SetStreamSource = 100, GetStreamSource = 101, SetStreamSourceFreq = 102,
+    SetIndices = 104, CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 // clang-format on
 using D = IDirect3DDevice9*;
@@ -46,6 +46,7 @@ using SetRsFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD);
 using BeginBlockFn = HRESULT(WINAPI*)(D);
 using EndBlockFn = HRESULT(WINAPI*)(D, IDirect3DStateBlock9**);
 using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
+using GetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9**, UINT*, UINT*);
 using SetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9*);
 using SetStageFn = HRESULT(WINAPI*)(D, DWORD, D3DTEXTURESTAGESTATETYPE, DWORD);
 using SetSamplerFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
@@ -81,14 +82,19 @@ constexpr UINT samplers = 3; // s0 the copy (linear), s1 the copy (point), s2 th
 
 // Everything the draw touches beyond the recorded state block (set_states: exactly the states the draw sets, so its
 // Capture and Apply cost those states only): the render targets and depth, viewport and scissor rect (SetRenderTarget
-// resets both) and the vertex input mode (the declaration, or a caller in FVF mode restored through its FVF). The
-// sun-shadow apply pass's shape.
+// resets both), the vertex input mode (the declaration, or a caller in FVF mode restored through its FVF) and stream
+// 0's source: native D3D9's Capture takes a stream's buffer and stride but keeps the offset the block was recorded
+// with (measured 2026-11-05: recorded at 0, the caller's 16 came back as 0; docs/verification/engine-effects.md,
+// "Native stream offset"), so the tuple is read with GetStreamSource and set again after Apply. The sun-shadow apply
+// pass's shape.
 struct EngineShimmerPass::SavedState {
     const EngineShimmerPass& pass;
     IDirect3DStateBlock9* block;
     IDirect3DSurface9* targets[4]{};
     IDirect3DSurface9* depth = nullptr;
     IDirect3DVertexDeclaration9* declaration = nullptr;
+    IDirect3DVertexBuffer9* stream = nullptr;
+    UINT offset = 0, stride = 0;
     DWORD fvf = 0;
     D3DVIEWPORT9 viewport{};
     RECT scissor{};
@@ -101,9 +107,12 @@ struct EngineShimmerPass::SavedState {
         for (auto& t : targets) drop(t);
         drop(depth);
         drop(declaration);
+        drop(stream);
     }
     HRESULT capture() noexcept {
         HRESULT hr = block->Capture();
+        if (FAILED(hr)) return hr;
+        hr = pass.call<GetStreamFn>(GetStreamSource)(pass.device_, 0, &stream, &offset, &stride);
         if (FAILED(hr)) return hr;
         hr = pass.call<GetDeclarationFn>(GetVertexDeclaration)(pass.device_, &declaration);
         if (FAILED(hr)) return hr;
@@ -135,6 +144,7 @@ struct EngineShimmerPass::SavedState {
             if (!attempt(pass.call<SetRtFn>(SetRenderTarget)(d, i, targets[i]))) return first;
         if (!attempt(pass.call<SetDepthFn>(SetDepthStencilSurface)(d, depth))) return first;
         if (!attempt(block->Apply())) return first;
+        if (!attempt(pass.call<SetStreamFn>(SetStreamSource)(d, 0, stream, offset, stride))) return first;
         if (declaration) {
             if (!attempt(pass.call<SetDeclarationFn>(SetVertexDeclaration)(d, declaration))) return first;
         } else if (fvf) {
@@ -292,9 +302,9 @@ HRESULT EngineShimmerPass::ensure_scratch(UINT width, UINT height) noexcept {
 }
 // The draw's recordable states (the state block holds exactly these; ensure_scratch records them with null programs):
 // the program's three samplers unbound (the pixel program samples s0..s2 only; the draw's own bindings follow), the
-// quad program pair, no index buffer and stream 0 unbound (DrawPrimitiveUP resets stream 0: the block restores the
-// caller's), stream 0 at frequency 1 (the declaration reads stream 0 only), no blending, the scissor test, point samplers
-// on the lane and the copy's own pixel, linear on the copy's displaced sample.
+// quad program pair, no index buffer and stream 0 unbound (DrawPrimitiveUP resets stream 0: the block and SavedState's
+// explicit tuple restore the caller's), stream 0 at frequency 1 (the declaration reads stream 0 only), no blending,
+// the scissor test, point samplers on the lane and the copy's own pixel, linear on the copy's displaced sample.
 HRESULT EngineShimmerPass::set_states(IDirect3DVertexShader9* vs, IDirect3DPixelShader9* ps) noexcept {
     D d = device_;
 #define STEP(call)                                                                                                     \

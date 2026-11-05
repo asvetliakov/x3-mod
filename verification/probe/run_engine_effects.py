@@ -34,7 +34,15 @@ Each run's directory holds x3m/engine_bodies.json, written here by tools/effects
 synthetic body manager the fixture builds (default path: <EXE directory>\\x3m\\engine_bodies.json). The effects pair's
 program bytes are local inputs (/tmp/x3-shader-sweep/programs, never in the repository). The fixture's CHECK lines and
 the session log's engine_effects_* / engine_draw / engine_frame rows are validated here; the record goes to
-<results>/engine-effects/summary.json. Run through wine_lock.py with X3M_FIXTURE_BOTTLE=X3. Never launches the game.
+<results>/engine-effects/summary.json. Two hosts, chosen explicitly (as run_engine_plumes.py): the default --host bottle
+runs every mode in the CrossOver bottle (X3M_FIXTURE_BOTTLE=X3) into <results>/bottle-X3/engine-effects/; --host native
+(native_host.py) runs the same binaries on the Windows side through WSL interop (the seam DLL as the app-local d3d9.dll,
+forwarding to the system one; X3M_* variables through WSLENV, the session log and program paths as Windows paths) into
+verification/results/native-windows/engine-effects/ with the record's host block. --programs DIR names the directory
+holding the two program files (default /tmp/x3-shader-sweep/programs; their SHA-256 go into the record). --cmake-build
+DIR names the proxy's CMake build directory (default build/; configured here with cmake/mingw-i686.cmake, RelWithDebInfo,
+X3M_EDITION=ap when it holds no CMakeCache.txt) that the seam links. Either way run through wine_lock.py (one fixture at a
+time); no fallback from one host to the other. Never launches the game.
 """
 import argparse
 import collections
@@ -50,6 +58,7 @@ import sys
 from pathlib import Path
 
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+import native_host  # --host native: WSL interop, the native-windows results directory and the host block
 import fixture_log  # X3M_LOG_FILE and X3M_CONFIG=bare
 import fixture_process  # per-run timeout and cleanup
 from game_guard import game_running
@@ -59,8 +68,9 @@ PROBE = ROOT / 'verification/probe'
 BUILD = PROBE / 'build'
 EXE = BUILD / 'engine_effects_fixture.exe'
 SEAM = BUILD / 'motion-output-seam/d3d9.dll'
-PROGRAMS = {'vs': Path('/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin'),
-            'ps': Path('/tmp/x3-shader-sweep/programs/ps_8360f422de08b5bd.bin')}
+PROGRAM_DIR = Path('/tmp/x3-shader-sweep/programs')
+PROGRAM_FILES = {'vs': 'vs_d5e1c75351ed3f04.bin', 'ps': 'ps_8360f422de08b5bd.bin'}
+PROGRAMS = {k: PROGRAM_DIR / name for k, name in PROGRAM_FILES.items()}
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2']
 MODES = {'main': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'native': dict(X3M_ENGINE_EFFECTS='native', X3M_DEBUG='1'),
          'unverified': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'), 'unpatched': dict(X3M_ENGINE_EFFECTS='off', X3M_DEBUG='1'),
@@ -122,24 +132,56 @@ def table():
                          missing=[]))
 
 
-def build():
+def build(cmake_build='build'):
     log = BUILD / 'engine-effects-build.log'
     BUILD.mkdir(parents=True, exist_ok=True)
+    configure = [] if (ROOT / cmake_build / 'CMakeCache.txt').is_file() else [
+        ['cmake', '-S', '.', '-B', str(cmake_build), '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+         '-DX3M_EDITION=ap']]
     with log.open('w') as out:
-        for command in (['cmake', '--build', 'build', '-j8'], ['sh', 'verification/probe/build_motion_output.sh'],
+        for command in (*configure, ['cmake', '--build', str(cmake_build), '-j8'], ['sh', 'verification/probe/build_motion_output.sh'],
+                        # --disable-dynamicbase: the fixture image stays at 0x00400000 on both hosts, as the game's
+                        # non-relocatable EXE does (Wine loads it there anyway; native ASLR would move a DYNAMIC_BASE
+                        # image), so armed_refused's unseamed SETA read finds the site 0x004d1ef0 mapped and refuses it
+                        # as site_mismatch, not as an unreadable page.
                         ['i686-w64-mingw32-g++', *FLAGS, '-static', '-static-libgcc', '-static-libstdc++',
-                         'verification/probe/engine_effects_fixture.cpp', '-o', str(EXE), '-ldxguid', '-luser32']):
-            subprocess.run(command, cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
+                         'verification/probe/engine_effects_fixture.cpp', '-o', str(EXE), '-ldxguid', '-luser32',
+                         '-Wl,--disable-dynamicbase']):
+            subprocess.run(command, cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT,
+                           env=dict(os.environ, X3M_CANDIDATE_BUILD=str((ROOT / cmake_build).resolve())))
     text = log.read_text(errors='replace')
     return {'log': str(log.relative_to(ROOT)), 'warnings': len(re.findall(r'\bwarning:', text))}
 
 
-def run(mode, timeout, wine_env=()):
+def run(mode, timeout, wine_env=(), host='bottle'):
     directory = BUILD / ('engine-effects-' + mode + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
     (directory / 'x3m').mkdir(parents=True)
     shutil.copy(EXE, directory)
     shutil.copy(SEAM, directory / 'd3d9.dll')
     (directory / 'x3m/engine_bodies.json').write_text(table())
+    if host == 'native':
+        # The fixture variables reach the Windows process through WSLENV (os.environ's X3M_* are not forwarded); the
+        # session log goes to the run directory's x3-modern-captures/ by its Windows path.
+        # X3M_OWNERSHIP=1 (the shipped default; X3M_CONFIG=bare would leave it off): Windows' d3d9.dll is a C++ object
+        # whose SetRenderTarget(0, surface) calls its own private virtual slot 156 through the object's vtable pointer,
+        # so the unwrapped route (capture.cpp Hooks: a 119-slot copy installed on the native device) faults there at the
+        # attach self-test. Behind the ownership wrapper the hooked object is the proxy's own and the native device
+        # keeps its table (verification/results/native-windows/engine-effects/vtable_copy_repro.cpp).
+        log_env = fixture_log.session_log_env(directory)
+        log_env['X3M_LOG_FILE'] = native_host.windows_path(Path(log_env['X3M_LOG_FILE'][2:]))
+        extra = dict(X3M_MOTION_OUTPUT='1', X3M_OWNERSHIP='1', **MODES[mode], **log_env)
+        try:
+            done, stdout = native_host.run_native(directory / EXE.name, [native_host.windows_path(PROGRAMS['vs']),
+                                                                         native_host.windows_path(PROGRAMS['ps']), mode],
+                                                  directory, timeout, env=extra)
+        except subprocess.TimeoutExpired as error:
+            done = subprocess.CompletedProcess(error.cmd, 'timeout', error.stdout or b'', error.stderr or b'')
+            stdout = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
+        logs = sorted((directory / 'x3-modern-captures').glob('session-*.log'))
+        session = logs[-1].read_text(errors='replace') if logs else ''
+        (directory / 'stdout.txt').write_text(stdout)
+        (directory / 'stderr.txt').write_bytes(done.stderr)
+        return dict(directory=directory, exit=done.returncode, stdout=stdout, session=session)
     env = {k: v for k, v in os.environ.items() if not k.startswith('X3M_')}
     env.update(X3M_FIXTURE_BOTTLE=bottle.BOTTLE, X3M_MOTION_OUTPUT='1', **MODES[mode], **fixture_log.session_log_env(directory))
     command = [bottle.WINE, *bottle.wine_args(), *[a for item in wine_env for a in ('--env', item)], '--dll', 'd3d9=n,b', '--workdir', str(directory), str(directory / EXE.name),
@@ -418,29 +460,52 @@ def main():
     parser.add_argument('--wine-env', action='append', default=[], metavar='NAME=VALUE',
                         help="Pass a variable through CrossOver's `wine --env` (applied after the bottle's environment), e.g. "
                              'CX_GRAPHICS_BACKEND=wined3d or =dxvk to select the builtin d3d9 the proxy forwards to for one run')
+    parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
+                        help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
+                             'WSL2 host through interop (native_host.py), never a fallback')
+    parser.add_argument('--programs', type=Path, default=PROGRAM_DIR, metavar='DIR',
+                        help='directory holding ' + ' and '.join(PROGRAM_FILES.values()) + ' (local, never in the repository)')
+    parser.add_argument('--cmake-build', default='build', metavar='DIR',
+                        help='the proxy CMake build directory the seam links (relative to the checkout; configured when empty)')
     parser.add_argument('modes', nargs='*', default=list(MODES))
     args = parser.parse_args()
+    if args.host == 'native' and args.wine_env:
+        parser.error('--wine-env applies to --host bottle only')
     for item in args.wine_env:
         if '=' not in item or not item.split('=', 1)[0]:
             parser.error(f'--wine-env expects NAME=VALUE: {item}')
-    if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
-        raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
-    if game_running():
-        raise SystemExit('the game is running')
+    PROGRAMS.update({k: args.programs / name for k, name in PROGRAM_FILES.items()})
+    native = args.host == 'native'
+    if native:
+        if native_host.missing():
+            raise SystemExit('--host native needs ' + '; '.join(native_host.missing()))
+        if game_running() or native_host.game_running_windows():
+            raise SystemExit('the game is running')
+    else:
+        if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
+            raise SystemExit('fixture requires X3M_FIXTURE_BOTTLE=X3')
+        if game_running():
+            raise SystemExit('the game is running')
     for path in PROGRAMS.values():
         if not path.is_file():
             raise SystemExit(f'local program bytes missing: {path} (the shader sweep; skipping is not a pass)')
-    results = bottle.results_dir(ROOT) / 'engine-effects'
-    results.mkdir(parents=True, exist_ok=True)
-    record = {'bottle': bottle.describe(), 'programs': {k: {'path': str(p), 'sha256': sha(p)} for k, p in PROGRAMS.items()},
+    if native:
+        results = native_host.results_dir(ROOT, 'engine-effects')
+    else:
+        results = bottle.results_dir(ROOT) / 'engine-effects'
+        results.mkdir(parents=True, exist_ok=True)
+    record = {'bottle': None if native else bottle.describe(), 'programs': {k: {'path': str(p), 'sha256': sha(p)} for k, p in PROGRAMS.items()},
               'production_sources': list(PRODUCTION_SOURCES), 'source': source_binding(), 'game_launched': False,
               'wine_env': list(args.wine_env)}
     if not args.no_build:
-        record['build'] = build()
-    record['binaries'] = {'fixture_sha256': sha(EXE), 'seam_sha256': sha(SEAM), 'dll_sha256': sha(ROOT / 'build/d3d9.dll')}
+        record['build'] = build(args.cmake_build)
+    record['binaries'] = {'fixture_sha256': sha(EXE), 'seam_sha256': sha(SEAM), 'dll_sha256': sha(ROOT / args.cmake_build / 'd3d9.dll'),
+                          'cmake_build': args.cmake_build}
     problems, runs = [], {}
     for mode in args.modes:
-        r = run(mode, args.timeout, args.wine_env)
+        r = run(mode, args.timeout, args.wine_env, args.host)
+        if native and 'host' not in record:
+            record['host'] = native_host.identity(r['stdout'])
         p, summary = validate(mode, r)
         summary['directory'] = str(r['directory'].relative_to(ROOT))
         runs[mode] = summary

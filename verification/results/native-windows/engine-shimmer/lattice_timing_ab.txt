@@ -1,0 +1,7 @@
+lattice_timing_ab.py, 2026-11-05, 3 alternating rounds, RTX 5070 Ti driver 32.0.16.2114; gpu_ms medians
+  1920_1 old 0.0193 new 0.0206 ratio 1.067 old_runs [0.0193, 0.0198, 0.0191] new_runs [0.0223, 0.0206, 0.0201]
+  1920_4 old 0.0583 new 0.0605 ratio 1.038 old_runs [0.0583, 0.0564, 0.0585] new_runs [0.0631, 0.0605, 0.0583]
+ 1920_16 old 0.1992 new 0.2067 ratio 1.038 old_runs [0.198, 0.2007, 0.1992] new_runs [0.2067, 0.2058, 0.2074]
+  5120_1 old 0.0402 new 0.0444 ratio 1.104 old_runs [0.0402, 0.04, 0.0405] new_runs [0.0444, 0.0417, 0.0474]
+  5120_4 old 0.1682 new 0.1763 ratio 1.048 old_runs [0.1704, 0.1676, 0.1682] new_runs [0.1736, 0.1779, 0.1763]
+ 5120_16 old 0.7096 new 0.7279 ratio 1.026 old_runs [0.7137, 0.7096, 0.7067] new_runs [0.7279, 0.73, 0.7272]

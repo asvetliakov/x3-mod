@@ -124,6 +124,11 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   encodes a write into the arena (the triage's `verification/results/windows-crash-2026-10-11/scan_arena_writes.py`
   scans a captured arena for such forms); Wine does not fault such a write, so a fixture catches the class only by checking encoded write operands (the dust_leak_fix check), or by a VirtualQuery of each operand requiring a writable page (not implemented).
   The fix is cross-compiled and host-checked; native execution is not re-verified.
+- **Shader contraction (native-only defect, 2026-11-05).** The native D3D9 runner found the plume value noise's
+  lattice index off an integer in its last bit under NVIDIA's fused `mad`, where fxc had folded an integer offset out of
+  the `frc` operand. Wine does not fuse, so the record passed there. The source fix rounds the index exactly before the
+  hash. Generated programs that feed `p - frac(p)` into a large multiplier are exposed in the same way
+  ([engine-effects.md](../verification/engine-effects.md), "Native flow defect").
 - The WMA speech decoder (`<game>/x3m/voice-decoder`, installed by `manage.py voice-decoder --install`; not in the release zip) is a
   CrossOver-only file set; native Windows decodes the voice files itself and never reads the folder. Delivery is
   host-side only: GStreamer reads the Unix environment, so a proxy `SetEnvironmentVariableW` does not reach it

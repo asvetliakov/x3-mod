@@ -1,4 +1,5 @@
-"""Field-of-view patch Wine fixture record (run_fov_patch.py): strict JSON, bottle, pass counts, the immediate the
+"""Field-of-view patch fixture record (run_fov_patch.py; native Windows since 2026-11-05, the Wine record kept as
+provenance): strict JSON, host, pass counts, the immediate the
 executed constructor stored per step, the base each executed INS_SetFocus stored (remap, pass-through, registers kept),
 the value each executed load store stored (exact-match remap, pass-through, the 65,537-input sweep, registers kept),
 install/restore/confirm rows, the build audit and the source binding by content hash."""
@@ -11,13 +12,10 @@ from pathlib import Path
 import run_fov_patch as runner
 
 ROOT = Path(__file__).resolve().parents[2]
-# The record is Wine provenance (2026-09-26, commit ecf0215ee); since 2026-10-11 there is no Wine host and these
-# sources changed natively (ecf0215ee..2c3d32ffa). Accepted beside the recorded hash until run_fov_patch.py reruns on a
-# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/fov.h': 'fc3f3eab3ed9855abdd549268409dc03af4317355ae01f0a93066704d184d4a9',
-}
-RECORD = ROOT / 'verification/results/bottle-X3/fov-patch.json'
+# The current record is the native Windows run (run_fov_patch.py --host native, 2026-11-05; docs/verification/host-suite.md,
+# "Native Windows fixture host"). The Wine record (2026-09-26, commit ecf0215ee) stays as provenance: same 268 checks.
+RECORD = ROOT / 'verification/results/native-windows/fov-patch/fov-patch.json'
+WINE_RECORD = ROOT / 'verification/results/bottle-X3/fov-patch.json'
 CHECKS = 268
 
 
@@ -25,8 +23,30 @@ def strict(name):
     raise ValueError(f'non-standard JSON constant {name}')
 
 
-def record_problems(r):
-    """Why a record is not a clean X3 pass (empty when it is): verdict, counts, bottle and emulation lines."""
+def host_problems(r):
+    """Why the record's host is not the native Windows fixture host (bottle null, the host block's name and version)."""
+    h = r.get('host') or {}
+    problems = []
+    if r.get('bottle') is not None or h.get('name') != 'native-windows':
+        problems.append(f"host is not native-windows (bottle {r.get('bottle')}, host {h.get('name')})")
+    if not (h.get('windows') or {}).get('version'):
+        problems.append('host block without a Windows version')
+    return problems
+
+
+def bottle_problems(r):
+    """Why the record's bottle is not X3 arm64 with the two emulation lines (the Wine provenance record)."""
+    problems = []
+    b = r.get('bottle') or {}
+    if (b.get('name'), b.get('wine_arch')) != ('X3', 'arm64'):
+        problems.append('bottle is not X3 arm64')
+    if b.get('environment') != {'FEX_X87REDUCEDPRECISION': '1', 'WINEMSYNC': '1'}:
+        problems.append(f"emulation environment {b.get('environment')}")
+    return problems
+
+
+def record_problems(r, host=host_problems):
+    """Why a record is not a clean pass (empty when it is): verdict, counts and the host (`host`)."""
     problems = []
     if r.get('passed') is not True:
         problems.append('passed is not true')
@@ -38,12 +58,7 @@ def record_problems(r):
         problems.append(f"counts check_count={r.get('check_count')} pass_count={r.get('pass_count')} rows={len(checks)} passing={passed} expected={CHECKS}")
     if r.get('result') != {'checks': CHECKS, 'failures': 0}:
         problems.append(f"fixture RESULT {r.get('result')}")
-    b = r.get('bottle') or {}
-    if (b.get('name'), b.get('wine_arch')) != ('X3', 'arm64'):
-        problems.append('bottle is not X3 arm64')
-    if b.get('environment') != {'FEX_X87REDUCEDPRECISION': '1', 'WINEMSYNC': '1'}:
-        problems.append(f"emulation environment {b.get('environment')}")
-    return problems
+    return problems + host(r)
 
 
 class FovPatchRecordTests(unittest.TestCase):
@@ -57,7 +72,7 @@ class FovPatchRecordTests(unittest.TestCase):
         self.assertTrue(rows[0]['fields'], (memory, step))
         return rows[0]['focus']
 
-    def test_run_and_bottle(self):
+    def test_run_and_host(self):
         r = self.record
         self.assertEqual(record_problems(r), [])
         self.assertFalse(r['game_launched'])
@@ -77,8 +92,18 @@ class FovPatchRecordTests(unittest.TestCase):
         self.assertTrue(mutated(lambda r: r['checks'][0].update({'pass': False})))
         self.assertTrue(mutated(lambda r: r['checks'].pop()))
         self.assertTrue(mutated(lambda r: r.update(result={'checks': CHECKS, 'failures': 1})))
-        self.assertTrue(mutated(lambda r: r['bottle']['environment'].update(WINEMSYNC='0')))
-        self.assertTrue(mutated(lambda r: r['bottle'].update(name='Steam')))
+        self.assertTrue(mutated(lambda r: r['host'].update(name='bottle-X3')))
+        self.assertTrue(mutated(lambda r: r.update(bottle={'name': 'X3'})))
+        self.assertTrue(mutated(lambda r: r['host']['windows'].update(version=None)))
+
+    def test_wine_provenance(self):
+        """The retained Wine record: a clean X3 arm64 pass of the same check list."""
+        wine = json.loads(WINE_RECORD.read_text(), parse_constant=strict)
+        self.assertEqual(record_problems(wine, bottle_problems), [])
+        self.assertEqual([c['name'] for c in wine['checks']], [c['name'] for c in self.record['checks']])
+        copy = json.loads(json.dumps(wine))
+        copy['bottle']['environment'].update(WINEMSYNC='0')
+        self.assertTrue(record_problems(copy, bottle_problems))
 
     def test_bound_to_its_production_sources(self):
         source = self.record['source']
@@ -86,8 +111,8 @@ class FovPatchRecordTests(unittest.TestCase):
         self.assertEqual(self.record['production_sources'], list(runner.PRODUCTION_SOURCES))
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
         self.assertEqual(set(now), set(source['sha256']))
-        for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
-            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_fov_patch.py')
+        for path, recorded in source['sha256'].items():
+            self.assertEqual(now[path], recorded, path + ': production sources changed since the record: rerun run_fov_patch.py --host native')
 
     def test_pass_counts(self):
         r = self.record

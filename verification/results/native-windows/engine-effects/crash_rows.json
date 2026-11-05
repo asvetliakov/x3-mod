@@ -1,0 +1,58 @@
+{
+ "main": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=b8ee20fc eip=b8ee20fc esp=005fc884 thread=9248 frame=0 module=other base=7fff0000 offset=38ef20fc access_kind=8 access=b8ee20fc unhandled="
+ },
+ "native": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=dc1ea88c eip=dc1ea88c esp=007fc714 thread=17020 frame=0 module=other base=7fff0000 offset=5c1fa88c access_kind=8 access=dc1ea88c unhandled"
+ },
+ "unverified": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=fa855186 eip=fa855186 esp=00dfc5e4 thread=20520 frame=0 module=other base=7fff0000 offset=7a865186 access_kind=8 access=fa855186 unhandled"
+ },
+ "unpatched": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=fa855186 eip=fa855186 esp=015fc694 thread=34820 frame=0 module=other base=7fff0000 offset=7a865186 access_kind=8 access=fa855186 unhandled"
+ },
+ "timing": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=b8ee20fc eip=b8ee20fc esp=00c3c404 thread=29944 frame=0 module=other base=7fff0000 offset=38ef20fc access_kind=8 access=b8ee20fc unhandled"
+ },
+ "plumes": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=312e312e eip=312e312e esp=005ac8b4 thread=17348 frame=0 module=none base=00000000 offset=312e312e access_kind=8 access=312e312e unhandled="
+ },
+ "armed": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=4f7e454e eip=4f7e454e esp=011fc634 thread=35448 frame=0 module=none base=00000000 offset=4f7e454e access_kind=8 access=4f7e454e unhandled="
+ },
+ "armed_refused": {
+  "exit": 5,
+  "checks": 0,
+  "steps": [],
+  "identity_rows": 5,
+  "exception": "code=c0000005 address=01e7abd0 eip=01e7abd0 esp=011fc9f4 thread=6736 frame=0 module=other base=01e70000 offset=0000abd0 access_kind=8 access=01e7abd0 unhandled="
+ }
+}

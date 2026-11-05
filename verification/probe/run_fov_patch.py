@@ -2,7 +2,12 @@
 """Run the field-of-view patch fixture in the X3 bottle and write a compact record.
 
 Invoke only as:
-  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_fov_patch.py
+  X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_fov_patch.py [--host native]
+
+--host bottle (default) runs it in the X3 bottle into verification/results/bottle-X3/fov-patch.json; --host native
+(native_host.py) runs the same binary on the Windows side of the WSL2 host through interop into
+verification/results/native-windows/fov-patch/fov-patch.json with `bottle: null` and the record's host block (no
+D3D9 in this fixture: the adapter fields stay empty). No fallback from one host to the other.
 
 Builds the fixture first (build_fov_patch.py, host only, into the untracked
 build/verification/fov-patch/), runs it once, keeps its stdout beside the
@@ -16,6 +21,7 @@ verdict), the load sweep's counts, the protection seen around
 the write, and the install/restore/confirm log rows parsed with
 verify_fov_site's parsers. Never launches the game; the game EXE is not read.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -25,6 +31,7 @@ import sys
 import time
 from pathlib import Path
 import bottle
+import native_host  # --host native: WSL interop, the native-windows results directory and the host block
 import build_fov_patch as build
 import verify_fov_site as verifier
 ROOT = Path(__file__).resolve().parents[2]
@@ -100,23 +107,47 @@ def parse(stdout):
     return report
 
 
+def run_native():
+    """The fixture once on the Windows side (120 s, as the bottle path); exit 124 on a timeout."""
+    try:
+        done, text = native_host.run_native(build.EXE, [], build.BUILD, 120)
+        return subprocess.CompletedProcess(done.args, done.returncode, text, done.stderr.decode('utf-8', 'replace'))
+    except subprocess.TimeoutExpired as error:
+        out = (error.stdout or b'').decode('utf-8', 'replace').replace('\r\n', '\n')
+        return subprocess.CompletedProcess(error.cmd, 124, out, (error.stderr or b'').decode('utf-8', 'replace'))
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
+                        help='bottle (default): the X3 bottle; native: the Windows side of this WSL2 host through interop '
+                             '(native_host.py), never a fallback')
+    args = parser.parse_args()
+    native = args.host == 'native'
     name = os.environ.get('X3M_FIXTURE_BOTTLE')
-    if name != 'X3':
+    if native:
+        if native_host.missing():
+            sys.exit('--host native needs ' + '; '.join(native_host.missing()))
+        if native_host.game_running_windows():
+            sys.exit('the game is running')
+    elif name != 'X3':
         sys.exit('set X3M_FIXTURE_BOTTLE=X3 and run through verification/probe/wine_lock.py')
     binding = source_binding()  # taken before the build, so the binary is built from what it names
     built = build.build()
     started = time.time()
-    process = subprocess.Popen([bottle.WINE, *bottle.wine_args(name), str(build.EXE)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    timed_out = False
-    try:
-        stdout, stderr = process.communicate(timeout=120)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        process.kill()
-        subprocess.run(['pkill', '-f', build.EXE.name], check=False)
-        stdout, stderr = process.communicate()
-    run = subprocess.CompletedProcess(process.args, 124 if timed_out else process.returncode, stdout, stderr)
+    if native:
+        run = run_native()
+    else:
+        process = subprocess.Popen([bottle.WINE, *bottle.wine_args(name), str(build.EXE)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        timed_out = False
+        try:
+            stdout, stderr = process.communicate(timeout=120)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.kill()
+            subprocess.run(['pkill', '-f', build.EXE.name], check=False)
+            stdout, stderr = process.communicate()
+        run = subprocess.CompletedProcess(process.args, 124 if timed_out else process.returncode, stdout, stderr)
     elapsed = round(time.time() - started, 1)
     (build.BUILD / 'fov-patch.stdout').write_text(run.stdout)
     (build.BUILD / 'fov-patch.stderr').write_text(run.stderr)
@@ -127,11 +158,12 @@ def main():
     ok = (run.returncode == 0 and bool(checks) and passed == len(checks) and result.get('checks') == len(checks) and result.get('failures') == 0)
     record = {'fixture': 'verification/probe/fov_patch_fixture.cpp', 'runner': 'verification/probe/run_fov_patch.py',
               'production_sources': list(PRODUCTION_SOURCES), 'source': binding,
-              'game_launched': False, 'bottle': bottle.describe(name), 'exit_status': run.returncode, 'elapsed_s': elapsed,
+              'game_launched': False, 'bottle': None if native else bottle.describe(name),
+              **({'host': native_host.identity(run.stdout)} if native else {}), 'exit_status': run.returncode, 'elapsed_s': elapsed,
               'executable_sha256': hashlib.sha256(build.EXE.read_bytes()).hexdigest(), 'toolchain': built['toolchain'], 'build_audit': built['audit'],
               'check_count': len(checks), 'pass_count': passed, **report, 'passed': ok,
               'note': 'install/restore timings are fixture-inclusive one-off costs, not game FPS'}
-    out = bottle.results_dir(ROOT, name) / NAME
+    out = (native_host.results_dir(ROOT, 'fov-patch') if native else bottle.results_dir(ROOT, name)) / NAME
     out.write_text(json.dumps(record, indent=1) + '\n')
     print(json.dumps({'checks': len(checks), 'passed': passed, 'exit_status': run.returncode,
                       'failed': [c['name'] for c in checks if not c['pass']], 'record': str(out.relative_to(ROOT))}))

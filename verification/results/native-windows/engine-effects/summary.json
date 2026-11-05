@@ -1,0 +1,933 @@
+{
+  "bottle": null,
+  "programs": {
+    "vs": {
+      "path": "/mnt/c/X3/x3-modern-captures/vs_d5e1c75351ed3f04.bin",
+      "sha256": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114"
+    },
+    "ps": {
+      "path": "/mnt/c/X3/x3-modern-captures/ps_8360f422de08b5bd.bin",
+      "sha256": "ce26e0a8fca24b311324ca1c6d210cf6a7757af44c07525e51435dbaf4a36c7d"
+    }
+  },
+  "production_sources": [
+    "src/proxy/engine_effects.cpp",
+    "src/proxy/engine_effects.h",
+    "src/proxy/engine_effects_core.h",
+    "src/proxy/engine_effects_option.h",
+    "src/proxy/motion_output_engine_effects_inc.h",
+    "src/proxy/motion_output_engine_plumes_inc.h",
+    "src/proxy/engine_plumes_core.h",
+    "src/renderer/engine_plumes_pass.cpp",
+    "src/renderer/engine_plumes_pass.h",
+    "src/proxy/motion_output_engine_ribbons_inc.h",
+    "src/proxy/engine_ribbons_core.h",
+    "src/proxy/motion_output.h",
+    "src/proxy/capture.cpp",
+    "src/proxy/engine_far_jets.cpp",
+    "src/proxy/engine_far_jets.h",
+    "src/proxy/engine_far_jets_core.h",
+    "src/proxy/engine_nozzle_walk_core.h",
+    "src/proxy/motion_output_engine_shimmer_inc.h",
+    "src/proxy/engine_shimmer_core.h",
+    "src/renderer/engine_shimmer_pass.cpp",
+    "src/renderer/engine_shimmer_pass.h"
+  ],
+  "source": {
+    "commit": "10d7572d248a674210d3116bba27fca0e525d29f",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
+    "sha256": {
+      "src/proxy/engine_effects.cpp": "c1758e435321db074c875ab565ae031182c98148ae3a2f7255c71fdf8c9f95a8",
+      "src/proxy/engine_effects.h": "9bfc75be3b480a0a808c034577eeca5a2767155b89fdca2c645a9339c115e7ba",
+      "src/proxy/engine_effects_core.h": "52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75",
+      "src/proxy/engine_effects_option.h": "eccb9f06f28c52a63f1e8ebf818f001d1775ca317cccf34608917fdb49835e28",
+      "src/proxy/motion_output_engine_effects_inc.h": "2b13d9eb003f451611bdbfdd3d439da091c2bcad65fe8ff5b0da10e3287843c6",
+      "src/proxy/motion_output_engine_plumes_inc.h": "9cf741d779a9a277235904a05754257b38b5a9af483b8186f33af8864af08466",
+      "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
+      "src/renderer/engine_plumes_pass.cpp": "06b6153d894c389060bf0a4d62b0a1472bdb02041d9bc4fa6b9c7cfe1dfb9b97",
+      "src/renderer/engine_plumes_pass.h": "441fbcc8d2d6b6b9a17afd8e1a34998a7f7ad946187f258d489d9b3f761936d9",
+      "src/proxy/motion_output_engine_ribbons_inc.h": "418c5f8a3cf534447e0422eb29a8562973d8bc9b7f9ad9ac3f780f2d51474599",
+      "src/proxy/engine_ribbons_core.h": "79327209f71178c50bc550a2072830679e7644a3dddfcc65370d217d2a6e41b7",
+      "src/proxy/motion_output.h": "06c7e2d73236ad524fe83817245a16afb8917d76fb16b62c9f03bdb2bfead1bc",
+      "src/proxy/capture.cpp": "0f1d8d38535b9cc36094be762a433ff7e941cabeff812508ccd76dbae2ffe068",
+      "src/proxy/engine_far_jets.cpp": "93e9343afe20dd888b67b2337345cc051176b13d89453e0df079e3afd89baa68",
+      "src/proxy/engine_far_jets.h": "c95fd76f4b68772f5585d264cf1832aa261d5213bb935c5cd68a9ae6ec639da8",
+      "src/proxy/engine_far_jets_core.h": "7bf5a2a6901b645f8b91700b243608bc0362aa67de3718c2d1851d4dca72a4ac",
+      "src/proxy/engine_nozzle_walk_core.h": "aa5d0b2269df34f3815950e005380d260ea14949b020c8223c864cf78c7f9bdf",
+      "src/proxy/motion_output_engine_shimmer_inc.h": "a6148da405acb14cef3ce23818eeff78cdb5c01cb97fea775c60faa944f34ec4",
+      "src/proxy/engine_shimmer_core.h": "263b5bb5a44e902b5e29cd960606a24a2efb47139f16193634165c423c6f8006",
+      "src/renderer/engine_shimmer_pass.cpp": "04662b5041e0d80e98d0cdeded3afadde793c83646b9452e229886c233417ef2",
+      "src/renderer/engine_shimmer_pass.h": "17a568d94fa2d2849f070c6efbd28d48232af20caeca6ea105d87274fae8ca86"
+    }
+  },
+  "game_launched": false,
+  "wine_env": [],
+  "build": {
+    "log": "verification/probe/build/engine-effects-build.log",
+    "warnings": 0
+  },
+  "binaries": {
+    "fixture_sha256": "e410c99e30bb575be1c62a92ea9ef2165378f1b0fee3dc844ab3c84ad100535e",
+    "seam_sha256": "4790bcc3e56434b35caf02d70413c9f43c5fb8b8fd7e94ef62779e8182120948",
+    "dll_sha256": "215d1b6cc9bfd3d7a05e69279c7219ad727d38ea662963d736da004d4e2d99a7",
+    "cmake_build": "build"
+  },
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "vendor": "0x10de",
+      "device": "0x2c05",
+      "subsys": "0x276219da",
+      "revision": "161",
+      "whql": "0",
+      "driver_version": "32.0.16.2114",
+      "description": "NVIDIA GeForce RTX 5070 Ti",
+      "driver": "nvldumd.dll"
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": {
+      "path": "C:\\WINDOWS\\system32\\d3d9.dll",
+      "size": 1799736,
+      "sha256": "b5fe0ccd3249270437dc6310b7119d5b807b7d41c0b7a85795cfc46824ffaa2c",
+      "file_version": "10.0.26100.9818"
+    },
+    "d3dx9_37_dll": null
+  },
+  "runs": {
+    "main": {
+      "exit": 0,
+      "checks": 174,
+      "failed": [],
+      "result": "RESULT PASS checks=174 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 106,
+      "engine_draw_frames": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "engine_frame_rows": 13,
+      "frame1_rows": [
+        {
+          "model": "20000",
+          "name": "effects\\engines\\fx_engine_test_red",
+          "z": "1.50000",
+          "s": "0.71429",
+          "order": "invalid",
+          "cluster": "red",
+          "pair": "other",
+          "za_basis": "0.00000",
+          "zb_basis": "0.00000"
+        },
+        {
+          "model": "20000",
+          "name": "effects\\engines\\fx_engine_test_red",
+          "z": "0.25000",
+          "s": "0.00000",
+          "order": "a",
+          "cluster": "red",
+          "pair": "effect",
+          "za_basis": "1.00000",
+          "zb_basis": "-0.04904"
+        },
+        {
+          "model": "566",
+          "name": "v\\00566",
+          "z": "1.12500",
+          "s": "0.50000",
+          "order": "a",
+          "cluster": "grey",
+          "pair": "effect",
+          "za_basis": "1.00000",
+          "zb_basis": "-0.65681"
+        },
+        {
+          "model": "777",
+          "name": "-",
+          "z": "2.00000",
+          "s": "1.00000",
+          "order": "b",
+          "cluster": "white",
+          "pair": "effect",
+          "za_basis": "0.50253",
+          "zb_basis": "1.00000"
+        }
+      ],
+      "frame1_floor": [
+        [
+          "0",
+          "0"
+        ],
+        [
+          "5000",
+          "1000"
+        ],
+        [
+          "1300",
+          "260"
+        ],
+        [
+          "0",
+          "9366"
+        ]
+      ],
+      "records": [
+        "RECORD record_a frame=1 origin=100,200,300 axis=-0.5933638,-0.3894183,-0.7044663 size=999.9999 s=0.0000000 z=0.2500000 ratio=0.2500000 body=0 flags=2060 serial=501",
+        "RECORD record_b frame=1 origin=-5,6,-7 axis=0.9443512,0.1986693,-0.2621667 size=260 s=0.5000000 z=1.1250000 ratio=1.1250000 body=2 flags=c061 serial=502",
+        "RECORD record_c frame=1 origin=10000,-20000,30000 axis=-0.5365795,0.7833269,0.3138173 size=9366.001 s=1.0000000 z=2.0000000 ratio=2.0000000 body=-1 flags=804c serial=0"
+      ],
+      "directory": "verification/probe/build/engine-effects-main-20261105-230848-156755"
+    },
+    "native": {
+      "exit": 0,
+      "checks": 11,
+      "failed": [],
+      "result": "RESULT PASS checks=11 failures=0",
+      "mode_row": {
+        "setting": "native",
+        "mode": "native",
+        "status": "native",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "0",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 12,
+      "engine_draw_frames": [
+        1,
+        2
+      ],
+      "engine_frame_rows": 3,
+      "directory": "verification/probe/build/engine-effects-native-20261105-230849-588130"
+    },
+    "unverified": {
+      "exit": 0,
+      "checks": 6,
+      "failed": [],
+      "result": "RESULT PASS checks=6 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "executable_mismatch",
+        "identity": "0",
+        "hook": "0",
+        "suppress": "0",
+        "census": "0"
+      },
+      "directory": "verification/probe/build/engine-effects-unverified-20261105-230850-697476"
+    },
+    "unpatched": {
+      "exit": 0,
+      "checks": 11,
+      "failed": [],
+      "result": "RESULT PASS checks=11 failures=0",
+      "mode_row": {
+        "setting": "off",
+        "mode": "off",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "bodies": {
+        "event": "loaded",
+        "reason": "ok",
+        "bodies": "3",
+        "named": "2",
+        "smalljet": "1",
+        "refused": "0",
+        "bytes": "1328",
+        "fault": "0",
+        "frame": "1"
+      },
+      "resolve": {
+        "bodies": "3",
+        "resolved": "2",
+        "mapped": "2",
+        "scanned": "2",
+        "dynamic_mappings": "1",
+        "fixed": "11000",
+        "dynamic": "2",
+        "restarts": "0",
+        "frame": "1"
+      },
+      "engine_draw_rows": 12,
+      "engine_draw_frames": [
+        1,
+        2
+      ],
+      "engine_frame_rows": 3,
+      "directory": "verification/probe/build/engine-effects-unpatched-20261105-230851-283468"
+    },
+    "timing": {
+      "exit": 0,
+      "checks": 20,
+      "failed": [],
+      "result": "RESULT PASS checks=20 failures=0",
+      "mode_row": {
+        "setting": "-",
+        "mode": "plumes",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "0"
+      },
+      "timing": {
+        "suppressed": 0.137,
+        "not_jet": 0.142,
+        "not_candidate": 0.101,
+        "suppressed_new_parent": 0.146,
+        "suppressed_no_parent": 0.133,
+        "suppressed_two_parents": 0.137
+      },
+      "directory": "verification/probe/build/engine-effects-timing-20261105-230851-848570"
+    },
+    "plumes": {
+      "exit": 0,
+      "checks": 35,
+      "failed": [],
+      "result": "RESULT PASS checks=35 failures=0",
+      "mode_row": {
+        "setting": "plumes",
+        "mode": "plumes",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "plumes_row": {
+        "preset": "strong",
+        "setting": "strong",
+        "status": "ok",
+        "stage": "requested",
+        "cycle": "ctrl+alt+f6",
+        "nozzle": "0.500",
+        "nozzle_setting": "-",
+        "nozzle_status": "ok",
+        "floor": "0.500",
+        "floor_setting": "-",
+        "floor_status": "ok"
+      },
+      "state_rows": [
+        {
+          "device": "1",
+          "frame": "1",
+          "armed": "0",
+          "reason": "hdr_taa_path",
+          "glow": "suppressed",
+          "drawn": "none",
+          "preset": "strong"
+        }
+      ],
+      "stage_frames": [
+        0,
+        1,
+        2
+      ],
+      "directory": "verification/probe/build/engine-effects-plumes-20261105-230852-419186"
+    },
+    "armed": {
+      "exit": 0,
+      "checks": 35,
+      "failed": [],
+      "result": "RESULT PASS checks=35 failures=0",
+      "mode_row": {
+        "setting": "plumes",
+        "mode": "plumes",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "failed_rows": [
+        {
+          "frame": "43",
+          "result": "80004005",
+          "step": "5",
+          "consecutive": "1",
+          "until": "107",
+          "final": "0",
+          "retry": "frames"
+        },
+        {
+          "frame": "108",
+          "result": "80004005",
+          "step": "5",
+          "consecutive": "1",
+          "until": "172",
+          "final": "0",
+          "retry": "frames"
+        },
+        {
+          "frame": "172",
+          "result": "80004005",
+          "step": "5",
+          "consecutive": "2",
+          "until": "236",
+          "final": "0",
+          "retry": "frames"
+        },
+        {
+          "frame": "236",
+          "result": "80004005",
+          "step": "5",
+          "consecutive": "3",
+          "until": "0",
+          "final": "1",
+          "retry": "reset"
+        }
+      ],
+      "state_rows": [
+        [
+          "1",
+          "armed"
+        ],
+        [
+          "0",
+          "disarmed"
+        ],
+        [
+          "1",
+          "armed"
+        ],
+        [
+          "0",
+          "disarmed"
+        ],
+        [
+          "1",
+          "armed"
+        ],
+        [
+          "0",
+          "disarmed"
+        ],
+        [
+          "1",
+          "armed"
+        ],
+        [
+          "0",
+          "failed_until_reset"
+        ],
+        [
+          "1",
+          "armed"
+        ]
+      ],
+      "device_rows": 1,
+      "stage_rows": 312,
+      "stage_drawn": 42,
+      "armed_lines": [
+        {
+          "phase": "first",
+          "frame": "2",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff1313,ffffff,000000,000000",
+          "sums": "293,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "phase": "steady",
+          "frame": "5",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "f11313,ffffff,000000,000000",
+          "sums": "279,765,0,0",
+          "prev": "268,765"
+        },
+        {
+          "phase": "fault_once",
+          "frame": "44",
+          "armed": "1",
+          "ran": "1",
+          "result": "80004005",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "0",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "1",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "5c0606,ffffff,000000,000000",
+          "sums": "104,765,0,0",
+          "prev": "83,765"
+        },
+        {
+          "phase": "rearmed",
+          "frame": "108",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "200202,ffffff,000000,000000",
+          "sums": "36,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "cycle": "once",
+          "frames": "63",
+          "glow_native": "63"
+        },
+        {
+          "phase": "fault_persistent",
+          "frame": "109",
+          "armed": "1",
+          "ran": "1",
+          "result": "80004005",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "0",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "1",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "450505,ffffff,000000,000000",
+          "sums": "79,765,0,0",
+          "prev": "36,765"
+        },
+        {
+          "cycle": "persistent_1",
+          "frames": "63",
+          "glow_native": "63"
+        },
+        {
+          "phase": "fault_persistent",
+          "frame": "173",
+          "armed": "1",
+          "ran": "1",
+          "result": "80004005",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "0",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "2",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "2c0303,ffffff,000000,000000",
+          "sums": "50,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "cycle": "persistent_2",
+          "frames": "63",
+          "glow_native": "63"
+        },
+        {
+          "phase": "fault_persistent",
+          "frame": "237",
+          "armed": "1",
+          "ran": "1",
+          "result": "80004005",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "0",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "3",
+          "refused": "1",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "2d0303,ffffff,000000,000000",
+          "sums": "51,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "phase": "refused",
+          "frame": "307",
+          "armed": "0",
+          "ran": "0",
+          "result": "00000001",
+          "nozzles": "0",
+          "skipped_other_view": "0",
+          "drew": "0",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "3",
+          "refused": "1",
+          "records": "0",
+          "suppressed": "0",
+          "resolved": "1",
+          "forwarded_stage_off": "4",
+          "attach_refused": "0",
+          "jets_submitted": "4",
+          "px": "000000,000000,000000,000000",
+          "sums": "0,0,0,0",
+          "prev": "0,0"
+        },
+        {
+          "phase": "after_reset",
+          "frame": "308",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "d00f0f,ffffff,000000,000000",
+          "sums": "238,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "held": "5",
+          "released": "0",
+          "refused_after": "0",
+          "failures_after": "0",
+          "warm": "0",
+          "references": "5",
+          "taa_before": "25",
+          "taa_after": "25"
+        }
+      ],
+      "far_duplicate_rows": 1,
+      "node_engine_culled_rows": 2,
+      "node_walked_rows": [
+        [
+          "1",
+          "1",
+          "1",
+          "0"
+        ],
+        [
+          "1",
+          "1",
+          "1",
+          "0"
+        ]
+      ],
+      "nozzle_source_rows": [
+        [
+          "node",
+          "ok"
+        ]
+      ],
+      "stage_off_frames": 259,
+      "seta_rows": [
+        [
+          "read",
+          "off",
+          "read",
+          "0",
+          "1.000"
+        ],
+        [
+          "read",
+          "off",
+          "ok",
+          "1",
+          "1.000"
+        ],
+        [
+          "engage",
+          "on",
+          "ok",
+          "1",
+          "6.000"
+        ],
+        [
+          "release",
+          "off",
+          "ok",
+          "1",
+          "1.000"
+        ]
+      ],
+      "seta_reads_last": 52,
+      "seta_refused_last": "1",
+      "shimmer_history": {
+        "frame": "312",
+        "stage": "5",
+        "rects": "1",
+        "pre": "87d291b9",
+        "drawn": "e616bf69",
+        "reverted": "87d291b9",
+        "history": "87d291b9",
+        "pre_eq_reverted": "1",
+        "pre_ne_drawn": "1",
+        "reverted_eq_history": "1",
+        "hashes": "4",
+        "used_history": "1",
+        "other_texture": "1",
+        "frames_apart": "1",
+        "plume_frames": "2"
+      },
+      "shimmer_device_rows": [
+        [
+          "1",
+          "ok"
+        ]
+      ],
+      "shimmer_drawn_rows": 4,
+      "directory": "verification/probe/build/engine-effects-armed-20261105-230853-018348"
+    },
+    "armed_refused": {
+      "exit": 0,
+      "checks": 7,
+      "failed": [],
+      "result": "RESULT PASS checks=7 failures=0",
+      "mode_row": {
+        "setting": "plumes",
+        "mode": "plumes",
+        "status": "armed",
+        "identity": "1",
+        "hook": "1",
+        "suppress": "1",
+        "census": "1"
+      },
+      "device_rows": [
+        [
+          "0",
+          "fp16_blending"
+        ],
+        [
+          "1",
+          "ok"
+        ]
+      ],
+      "state_rows": [
+        [
+          "0",
+          "fp16_blending",
+          "native"
+        ],
+        [
+          "1",
+          "armed",
+          "suppressed"
+        ]
+      ],
+      "stage_off_frames": 40,
+      "armed_lines": [
+        {
+          "phase": "refusing",
+          "frame": "2",
+          "armed": "0",
+          "ran": "0",
+          "result": "00000001",
+          "nozzles": "0",
+          "skipped_other_view": "0",
+          "drew": "0",
+          "references": "0",
+          "taa_references": "15",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "1",
+          "jets_submitted": "0",
+          "px": "000000,000000,000000,000000",
+          "sums": "0,0,0,0",
+          "prev": "0,0"
+        },
+        {
+          "phase": "refused",
+          "frame": "42",
+          "armed": "0",
+          "ran": "0",
+          "result": "00000001",
+          "nozzles": "0",
+          "skipped_other_view": "0",
+          "drew": "0",
+          "references": "0",
+          "taa_references": "15",
+          "failures": "0",
+          "refused": "0",
+          "records": "0",
+          "suppressed": "0",
+          "resolved": "1",
+          "forwarded_stage_off": "4",
+          "attach_refused": "1",
+          "jets_submitted": "4",
+          "px": "000000,000000,000000,000000",
+          "sums": "0,0,0,0",
+          "prev": "0,0"
+        },
+        {
+          "frames": "40",
+          "glow_native": "40",
+          "forwarded_stage_off": "4"
+        },
+        {},
+        {
+          "phase": "after_reset",
+          "frame": "43",
+          "armed": "1",
+          "ran": "1",
+          "result": "00000000",
+          "nozzles": "2",
+          "skipped_other_view": "2",
+          "drew": "1",
+          "references": "5",
+          "taa_references": "25",
+          "failures": "0",
+          "refused": "0",
+          "records": "4",
+          "suppressed": "4",
+          "resolved": "1",
+          "forwarded_stage_off": "0",
+          "attach_refused": "0",
+          "jets_submitted": "0",
+          "px": "ff1414,ffffff,000000,000000",
+          "sums": "295,765,0,0",
+          "prev": "0,0"
+        },
+        {
+          "refused_after": "0",
+          "warm": "0",
+          "forwarded_during_warm": "0"
+        }
+      ],
+      "seta_rows": [
+        [
+          "read",
+          "off",
+          "site_mismatch"
+        ]
+      ],
+      "directory": "verification/probe/build/engine-effects-armed_refused-20261105-230855-354184"
+    }
+  },
+  "problems": [],
+  "passed": true
+}

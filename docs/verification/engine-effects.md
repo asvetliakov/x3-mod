@@ -897,3 +897,244 @@ unchanged: their records are byte-identical in the host fixture. On Mayhem the v
 `engine_stage` from the anchors-only probe walks. Host evidence, expected rows, the flight check and the kill
 criterion: [farnhams-legacy.md](farnhams-legacy.md), "Plumes step 1: hidden emitter anchors, host evidence
 (2026-11-03)".
+
+## Native flow defect: value-noise lattice index under a fused mad (2026-11-05, dirty tree on 47764d79a, not a candidate)
+
+Finding (measured, native host RTX 5070 Ti, driver 32.0.16.2114): the first native run of `run_engine_plumes.py`
+failed 5 of 322 checks, all in the flow case (`flow_world_law_value1500` at 1920 and 5120, `flow_world_law_value10000`
+at 1920, `flow_same_world_speed_600_1500` at both). In `engine_plume_ps.hlsl`'s `vnoise` the lattice index was
+`p - frac(p)`; for the streak field's first octave, `fbm(p * 2.2 + (5, 2, 1))`, fxc folded the integer offset out of
+the `frc` operand (`frc(mul 2.2 p)`) while the subtraction used `mad(p, 2.2, (5, 2, 1))`. NVIDIA fuses the `mad`, so
+the index was off an integer by the last bit wherever 2.2 p and 2.2 p + 5 fall in different binades, and the hash's
+`frac(83521 X Y ...)` turned that into dark columns 1-2 px wide every 4 px (19 % deep at the core). Wine (unfused)
+computed an exact integer. Patching that one instruction alone passed 21/21 flow checks. Diagnosis scripts:
+`verification/results/native-windows/engine-plumes/flow-fma/`.
+
+Fix: `vnoise` takes `i = floor(floor(p) + 0.5)` and `f = p - i`. A value within half a unit of an integer rounds to
+it exactly, because the compiled code takes `frc` and the subtraction from one register (`add 0.5; frc; add -frc`;
+checked in the D3DX disassembly). This holds whatever fxc folds or the driver fuses upstream. The program was
+regenerated on the native host with `tools/shaders/generate_rigid_motion_pixel_native.py --shader engine_plume_ps`,
+which runs the base tool's `compile_one` with compile.exe called directly through WSL interop. The header and record
+are byte for byte what the base tool writes: `--check` on the unchanged source reproduced the Wine-compiled bytecode
+`ceff5ae0…` first. The new program has 4,131 words (4,086 before), bytecode `1502fca7…`. D3DX reports 928 slots
+(916 before); the fixture's `ps_slots` is 936 (924 before).
+
+Outcome (measured; `native-windows/engine-plumes/summary.json` replaced, 2 min 16 s under the lock including the build;
+before/after by `native-windows/engine-plumes/flow-fma/fix_compare.py`, against Wine by `compare_wine.py`): PASS
+322/322 with the same labels as the Wine record, and no verdict differs.
+
+| Flow case | Native before: ratio / peak corr | Native after | Wine (Run140) |
+| --- | --- | --- | --- |
+| 1920, value 1,500 | 0.8533 / 0.9761 | 1.0001 / 0.9991 | 0.9999 / 0.9991 |
+| 1920, value 10,000 | 1.2561 / 0.9635 | 1.0081 / 0.9981 | 1.0003 / 0.9991 |
+| 5120, value 1,500 | 0.8617 / 0.9577 | 1.0001 / 0.9991 | 1.0000 / 0.9991 |
+| 5120, value 10,000 | 0.9569 / 0.9517 | 1.0080 / 0.9980 | 1.0003 / 0.9991 |
+
+Values 100 and 600 are unchanged at four digits. Structural numbers are unchanged: core survival min 0.9781 (Wine
+0.9783), dark trail 0 px, colour error 9e-05. `test_engine_plumes` is now bound to the native record with exact source
+hashes; `SOURCES_SHA256_2026_11_03` is removed for this module only, and the Wine record stays as provenance. Open:
+value 10,000 keeps a residual ratio of 1.008 against Wine's 1.0003, inside the 1 ± 0.05 gate. It is not diagnosed; the
+remaining contracted `mad`s in the hash are the likely cause (inferred).
+
+Other `frac` idioms in `src/effects/` and `src/fog/` (checked in the compiled disassembly, not changed):
+
+- `engine_shimmer_ps.hlsl` `vnoise_gradient` uses the same `p - frac(p)` and hash. Its caller passes no integer
+  offset, and `frc` and the subtraction read one register. It is not exposed today but would break the same way if a
+  caller added an integer offset. It was left alone because the shimmer runner and its records belong to a concurrent
+  native run.
+- `sky_nebula_ps.hlsl` uses `floor(p)` with a Hoskins hash; `frc` and `add` read one `mad` register, and the
+  multipliers are small (0.1031, 33.33).
+- `fog_composite_ps.hlsl` and `fog_density_composite_ps.hlsl` use `floor(pixel * 0.5)`, which is exact. It is a texel
+  index, not a hash.
+- `own_sun_ps.hlsl` hashes integer ray indices, and `sky_stars_vs.hlsl` and `fog_dust_motes_vs.hlsl` take `frac` of
+  per-vertex data. None of them derives a lattice from `frac`.
+
+## Ribbons fixture re-derived for the anchored head (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+The first native run of `run_engine_ribbons.py` failed 22 of 44 checks; the record's own commit 0cf873a6b passed 44/44
+natively, so the cause was the ribbon change since then, not the host ([host-suite.md](host-suite.md), "Native re-record").
+Each failure is an expectation of the head at the nozzle (before 809ad68e8 / 4b4e2eafd), not a broken promise of the
+anchored design that AP Run 171 ("better now") and Run 172 (accepted: "trails attached to the plume end") flew. No
+production source changed. Law (`engine_ribbons_core.h` "Origin"; the fixture's record: value 30 px, s 1, z 2, default
+look, no radii or travel, k 1): `L_bar` 60 px, `u_vis` 0.848, head `A` = 0.6 `L_vis` = 30.5 px behind the nozzle, fade-in
+from 0 at `A` to 1 at `L_vis` 50.9 px, strip `(L_vis - A) + L` from `A`, tail at `L_vis + L` (all measured, record rows).
+The fixture computes `A` and `L_vis` from the production functions (`visible_fraction`, `near_cap_factor`).
+
+| Check (labels kept) | Old expectation (nozzle head) | New expectation (anchored head) | Measured native |
+| --- | --- | --- | --- |
+| `ribbon_no_gap_at_nozzle_*` (8) | share at the nozzle >= 0.5 i0; 0 gaps from the nozzle over 0.9 L | share at the nozzle <= 0.02 i0; share at `L_vis` +- 1 px >= 0.5 i0; 0 gaps from the 0.02 i0 point of the fade-in (+1 px) over 0.9 of the strip | at_nozzle 0.0; at_visible_end 0.759-0.822; gaps 0 (was 31 against the old window) |
+| `ribbon_length_*` (8) | strip length within 0.1 L of L = T v s | trail behind the plume (length - `L_vis`) within 0.1 L of L (same absolute tolerance) | 117.1 / 234.1 px against 120 / 240 (Wine's whole length was 117 / 234) |
+| `ribbon_survival_*` (4 at 4 px failed) | resolved/current >= 0.9 on u 0.05..0.3 of L from the nozzle | the same on u 0.05..0.3 of the strip from the head (the builder's u) | 0.979-1.032 (was 0: the old window lay before the head) |
+| `ribbon_seta_continuous_1920` | 0 dark pixels from the nozzle - 2 px over 0.9 x 800 px | the same from the head - 2 px | gaps 0 (was 29), weakest 0.096 at the start of the fade-in |
+| `ribbon_cut_no_bridge_1920` | 150 px step back: bridge > 50 px without the cut, 0 with it, one more clear | 150 px step forward, bridge between the old head and the first new sample | without 145, with 0, clears 1 / 2 |
+
+The cut control's 0 (Wine 128) was the anchored design's fold rule, not the cut: after a step back along the exhaust
+every old sample lies closer to the nozzle than `A` and is dropped with or without the cut, so that scenario no longer
+produced the bridge the cut must remove; a forward step keeps the old samples and the check again distinguishes the two.
+`run_engine_ribbons.py`'s `length_within` gate takes `length_px - visible_px` against `expected_px` (the row now prints
+`anchor_px`, `visible_px`, `at_visible_end`). Native record (measured, `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_engine_ribbons.py --host native`, 15 s): 44/44, 0 warnings,
+production sources clean (commit df439ff3b-dirty: fixture and runner only), survival min 0.979, stage GPU 0.011-0.021
+ms, CPU 8.16 / 27.82 us at 30 / 100 ribbons. Per-check numbers:
+[rederive_anchor.py](../../verification/results/native-windows/engine-ribbons/rederive_anchor.py); against Wine:
+[compare_wine.py](../../verification/results/native-windows/engine-ribbons/compare_wine.py) (0 verdicts differ).
+`test_engine_ribbons` is bound to the native record with exact hashes (`SOURCES_SHA256_2026_11_03` removed for ribbons;
+the Wine record stays as provenance): 6 tests OK.
+
+## Native fixture fault: the bare route's vtable copy on Windows' d3d9 (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+Every native mode of `run_engine_effects.py --host native` died with `c0000005` after the proxy's
+`linear_cutout_device` row (host-suite.md, "Native re-record, 2026-11-05"). The cause is in the bare configuration
+the fixture runs, not in the seam build: the seam compiles with the production flags (`-msse2 -mfpmath=sse
+-mstackrealign -mincoming-stack-boundary=2`, i686), and without `X3M_EDITION_FL` it is AP, as the CMake build is.
+
+Cause (measured). With `X3M_CONFIG=bare`, `X3M_OWNERSHIP` is off and no ownership wrapper exists. `hook_device`
+(`src/proxy/capture.cpp:3470`) then installs a 119-slot copy of the documented `IDirect3DDevice9` slots as the native
+device's vtable pointer (`Hooks::install`, `capture.cpp:519`). Windows' `d3d9.dll` is a C++ implementation. Its
+`SetRenderTarget` (SysWOW64 image 0x1011eaf0) resets the viewport for index 0 and a non-null surface through its own
+private virtual slot 156: `mov esi,[eax+0x270]; call esi` at 0x1011ecdc / 0x1011ecef, with eax = the object's vtable
+pointer. Through the short copy that read lands past the copy's end, in heap. The first `SetRenderTarget(0, …)` of the
+session is the attach self-test: `MotionOutput::attach` (`src/proxy/motion_output.cpp:3601`), then `self_test`
+(3956), then `draw_quad` (4101), all inside the fixture's `CreateDevice`. Whatever heap words follow the copy explain
+the mode-dependent garbage targets (`0x312e312e`, `0xb8ee20fc`, …). The first native run's read faults at
+`d3d9.dll+0x11ecdc` are the same load landing on an unmapped page.
+
+Evidence:
+
+- A temporary vectored-handler stack dump in the fixture, mapped through the unstripped seam with `addr2line`, gave
+  the chain `attach:3601 → self_test:3956 → draw_quad:4101`. The frame's `[ebp+4]` returns into `draw_quad`, and the
+  top of the stack returns to system `d3d9.dll+0x11ecf1`.
+- `verification/results/native-windows/engine-effects/vtable_copy_repro.cpp` is the minimal reproduction, with results
+  in `vtable_copy_repro.txt` beside it. With the backend table the call returns 0. With a 119-slot copy it faults,
+  `eip=0`. With the copy padded by sentinels, `eip=0x5e000094`, which is sentinel 37, so the backend read slot 156.
+- In the game, `x3m.log` of 2026-11-05 shows `motion_direct … enabled=1` on the same `d3d9.dll` (sha256
+  `da332f72…`). The shipped default `X3M_OWNERSHIP=1` hooks the proxy's wrapper, and the native device keeps its own
+  table, which is why the game runs.
+
+Fix (fixture side, `verification/probe/run_engine_effects.py`). The two changes:
+
+- Native runs set `X3M_OWNERSHIP=1`, the shipped default. The session log shows `ownership_factory mode=wrapped` and
+  `motion_direct enabled=1`.
+- The fixture links with `-Wl,--disable-dynamicbase`, so its image stays at 0x00400000 like the game's
+  non-relocatable EXE. Wine already loads it there. Natively, ASLR had moved the `DYNAMIC_BASE` image, and
+  armed_refused's unseamed SETA read then found the site 0x004d1ef0 unmapped. It refused the read as `read` instead of
+  the recorded `site_mismatch`. Both outcomes fail closed to 1.0.
+
+Outcome (measured; `native-windows/engine-effects/summary.json` replaced, 61 s under the lock including the seam and
+fixture build, warnings 0): PASS in all 8 modes. Every mode exits 0 with 0 failed checks.
+
+| Mode | main | native | unverified | unpatched | timing | plumes | armed | armed_refused |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Checks (Wine record) | 174 (174) | 11 (11) | 6 (6) | 11 (11) | 20 (20) | 35 (35) | 35 (35) | 7 (7) |
+
+Against the Wine record (cd479d025), every validated field is equal except three ungated ones:
+
+- armed's TAA reference count is 25 against 21, and armed_refused's 15 / 25 against 11 / 21. The fixture's
+  check that the count is unchanged across the cycle passes. The extra 4 are presumably the ownership wrapper's
+  references (inferred).
+- The armed red sums differ by 1–4 of 255.
+- The shimmer hashes differ, with all of the shimmer's equalities holding.
+
+The per-draw costs (µs) in timing, native against Wine, are fixture-inclusive and are not game FPS:
+
+| Path | Native | Wine |
+| --- | --- | --- |
+| suppressed | 0.139 | 0.623 |
+| not_jet | 0.145 | 0.812 |
+| not_candidate | 0.101 | 0.696 |
+| suppressed, two parents | 0.135 | 0.629 |
+
+`test_engine_effects` is bound to the native record with exact source hashes, and the per-mode counts above are
+asserted. `SOURCES_SHA256_2026_11_03` is removed for this module only, and the Wine record stays as provenance. The
+module passes 13 tests; one skips because the installed game tree is unavailable. `crash_rows.py` / `crash_rows.json`
+describe the replaced failing record and stay as its witness.
+
+Open: production with `X3M_OWNERSHIP=0` on native Windows. A user-settable configuration (`tools/manage.py`) leaves
+the same 119-slot copy on the native device. Its first `SetRenderTarget(0, surface)`, from the attach self-test or the
+game, then calls past the copy (inferred from the reproduction; not run in the game). It needs a documented-only
+decision, such as always wrapping, or refusing the unwrapped vtable route on a backend that is not known to be safe.
+That decision is not made here.
+
+## Native stream offset: state-block Capture keeps the recorded offset (2026-11-05, dirty tree on df439ff3b, not a candidate)
+
+Finding (measured, native host RTX 5070 Ti, driver 32.0.16.2114, d3d9.dll 10.0.26100.9818): after `EngineShimmerPass`
+restored the caller's state, stream 0 came back with the caller's buffer and stride 24 but offset 0 instead of 16
+(`state_stream_indices_restored_outside_untouched`, 42/43; the record's own commit fails the same way). Cause:
+`SavedState` (`src/renderer/engine_shimmer_pass.cpp:86-150` before the fix) relied on the recorded block alone for
+stream 0. `ensure_scratch` records it from `set_states`' `SetStreamSource(0, nullptr, 0, 0)` (line 309 before the fix),
+and `DrawPrimitiveUP` then resets stream 0. On native D3D9, `IDirect3DStateBlock9::Capture` refreshes a stream's buffer and
+stride but not its offset. `Apply` puts back the offset the block was recorded with, or for `CreateStateBlock` the
+offset it was created with. Probe
+(`verification/results/native-windows/engine-shimmer/stateblock_offset_probe.cpp`, built and run natively by
+`stateblock_offset_probe.py`; output `.txt` beside it, headed by the host identity line):
+
+| Case | Caller tuple at Capture | After Apply |
+| --- | --- | --- |
+| block recorded with `(null, 0, 0)` | `(vb, 16, 24)` | `(vb, 0, 24)` |
+| block recorded with `(vb2, 8, 12)` | `(vb, 16, 24)` | `(vb, 8, 24)` |
+| same, `DrawPrimitiveUP` between | `(vb, 16, 24)` | `(vb, 0, 24)` |
+| `D3DSBT_ALL` created at `(vb, 16, 24)` | `(vb, 40, 24)` | `(vb, 16, 24)` |
+| `D3DSBT_ALL` created at `(vb, 16, 24)` | `(vb2, 0, 12)` | `(vb2, 16, 12)` |
+| `D3DSBT_ALL`, stream 1 created unset | `(vb2, 20, 12)` | `(vb2, 0, 12)` |
+| explicit `GetStreamSource` / `SetStreamSource` | `(vb, 16, 24)` | `(vb, 16, 24)` |
+
+The stream frequency is captured by both kinds of block (`D3DSTREAMSOURCE_INDEXEDDATA | 3` comes back). A block created
+at the moment of use is correct, because creation records the current offset. The documented `Capture` contract is
+broader than this, so the fix relies only on the explicit Get/Set pair. `TemporalPass` and `FogPass` already do this.
+
+Wine: the Wine shimmer record passed with the same recorded block, so wined3d keeps the caller's offset for a recorded
+block (measured, Run140). A `D3DSBT_ALL` block kept across runs loses it on the Preview backend too. The temporal pass's
+block gave streams 0/1 offsets 24 -> 0 and 48 -> 0 (docs/verification/temporal-resolve.md, filed and fixed 2026-09-25).
+The two shadow passes below were therefore probably wrong under Wine as well (inferred).
+
+Fix: `SavedState::capture` reads stream 0 with `GetStreamSource` after `Capture`. `restore` sets it again right after
+`Apply`, and the buffer reference is released in the destructor. This adds two device calls per run (the STATE row's
+`calls` goes from 97 to 99). Only stream 0 is needed here: a recorded block applies only its recorded states, and the
+shimmer's block records stream 0 alone.
+
+`SunShadowApplyPass` (its quad goes through `DrawPrimitiveUP`) and `ShadowReplayPass` (each replayed draw binds its own
+stream 0) had the same defect, and worse. Each keeps one `D3DSBT_ALL` block across runs, and its `Apply` writes every
+stream with the creation-time offset (probe row K: stream 1 captured at 20 comes back 0). Both now save and restore
+every stream's tuple, as `TemporalPass` and `FogPass` do: `min(MaxStreams, 16)` streams, read after `Capture` and set
+again after `Apply`. The references are released in the destructor on every path, and a failed `GetStreamSource`
+leaves no reference behind. `ShadowReplayPass` gained a `streams_` member taken from `MaxStreams` at attach. That is up
+to 32 more device calls per transaction, the cost `TemporalPass` already pays. Frequencies stay with the block, which
+captures them. The AP DLL builds and the host modules pass, but there is no fixture run of these two passes (see Open).
+
+Checked without the defect: `TemporalPass` and `FogPass` (explicit per-stream tuples after `Apply`); `BloomPass`,
+`HdrPass`, `SkyStarsPass`, `OcclusionCullPass`, `MotionOutput::save_state` / `restore_state` and the bolt route
+(explicit Get/Set, no block); `RigidMotion` and the sun-share lane (a `D3DSBT_ALL` block created per call, plus the
+explicit restore for the lane); `EnginePlumesPass`, `EngineRibbonsPass` and `OwnSunPass` (they run inside the temporal
+resolve's stage bracket and restore nothing themselves). `WeaponEffectsPass` belongs to another worktree and was not
+checked.
+
+Noise: `vnoise_gradient` in `engine_shimmer_ps.hlsl` now takes `i = floor(floor(p) + 0.5)` and `f = p - i`, as the plume
+fix above does. The program was regenerated through interop with
+`tools/shaders/generate_rigid_motion_pixel_native.py --engine-shimmer`, a new option that runs
+`generate_engine_shimmer_program.py`'s `compile_program` with compile.exe called directly. Before the edit, the
+unchanged source reproduced the committed bytecode `216acef9…` and header byte for byte. Only the record's hash for
+`generate_rigid_motion_pixel.py` was stale, from an earlier tool change. The new program has 6,418 words (6,178 before),
+bytecode `794618eb…`, and the fixture's `ps_slots` is 1,687 (1,623 before). The displacement numbers match the pre-fix
+native run at four digits, so the index was already exact for this caller, as predicted. GPU cost, from an alternating
+3-round A/B of `--only timing` (`native-windows/engine-shimmer/lattice_timing_ab.py`, output `.txt`):
+
+| Size, rects | Old ms | New ms | Ratio |
+| --- | --- | --- | --- |
+| 1920x1080, 1 / 4 / 16 | 0.0193 / 0.0583 / 0.1992 | 0.0206 / 0.0605 / 0.2067 | 1.07 / 1.04 / 1.04 |
+| 5120x1440, 1 / 4 / 16 | 0.0402 / 0.1682 / 0.7096 | 0.0444 / 0.1763 / 0.7279 | 1.10 / 1.05 / 1.03 |
+
+The record's own 16-rect figures (0.361 / 1.397 ms) were run noise: the A/B medians are 0.207 / 0.728 ms.
+
+Outcome (measured; `native-windows/engine-shimmer/summary.json` replaced, 5.2 s under the lock including the build;
+against Wine by `compare_wine.py`): PASS 43/43 with the same labels as the Wine record, and no verdict differs. The STATE
+row shows `offset=16 stride=24 vb_same=1`. Displacement max is 1.1075 / 1.4726 px (Wine 1.1033 / 1.4704); outside and
+band diffs are 0 and the revert is exact. `test_engine_shimmer` is bound to the native record with exact source hashes,
+and its `SOURCES_SHA256_2026_11_03` is removed. `test_engine_effects`, whose native record still crashes, gained one
+dated entry for `engine_shimmer_pass.cpp`. The AP DLL builds with CMake `-j4`, with no warning from the changed files.
+
+Open:
+
+- No fixture checks the stream tuple of `SunShadowApplyPass` or `ShadowReplayPass`. Their cases run through
+  `run_motion_output.py`, which has no `--host` option yet, so they cannot run natively.
+- Unchecked: whether X3 has stream 1 or higher bound with a non-zero offset when these passes run. Before the fix, that
+  is the only way the defect could reach the game beyond stream 0.

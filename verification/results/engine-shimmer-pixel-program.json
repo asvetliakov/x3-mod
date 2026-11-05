@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/engine_shimmer_ps.hlsl",
-  "source_sha256": "8d9b48e643c5b952d0308525b4c3e430ef41e3bac8a7a2b13e3583799294d363",
+  "source_sha256": "8ac0581b857e86e3e5c75c460423273589eb5f8c39e6fef8c00d36a52e1b1814",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,12 +10,12 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 6178,
-  "bytecode_sha256": "216acef91d2728b46d6588dc3fda2c47f8a94f01f2e2ed75ffa0e5769b0bfc84",
-  "header_sha256": "f625329ef09d61432a45dcb368c38ccc311478bce8a8dd24de6e791250129700",
+  "word_count": 6418,
+  "bytecode_sha256": "794618ebc5c0c38a9be2bb3a75572e8bf08015bd3d5dec79b7b6e7b9f2af02e4",
+  "header_sha256": "bb79b97da7d747f5a79d3919165fb126be04c7b3e87c45adf49d25029237e84d",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
-    "tools/shaders/generate_rigid_motion_pixel.py": "7a836e438d943936992a4d54cd11313ae55e876a109097008621caa21f7d8d64",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
     "tools/shaders/generate_engine_shimmer_program.py": "c48ff5e2a6a8e24280996d364890ec7e7e47222afa3f03d9516be6a83df9e8a3"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
