@@ -1,7 +1,7 @@
 # Collision damage: where it is computed and applied, and the patch that removes it (AP and FL)
 
 2026-11-05. Static study of `X3AP.exe` (SHA-256 `fdbf3418…f8ab`, `C:\X3`) and `X3FL.exe` (SHA-256
-`e7f3aad8…fdbb8`, `C:\X3FL`, preferred base `0x400000`, relocatable), and of the KC story objects the two installs
+`e7f3aad8…dfbb8`, `C:\X3FL`, preferred base `0x400000`, relocatable), and of the KC story objects the two installs
 load (AP: Mayhem `addon/07.cat`, build 1462141839, with stock `addon/04.cat` build 1510658513 compared; FL:
 `addon2/03.cat`, build 1636047691). Nothing was launched; no Wine. Instruction text from
 `i686-w64-mingw32-objdump -d -M intel` over the files in place; raw listings stayed in the session scratchpad.

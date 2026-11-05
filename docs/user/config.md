@@ -96,11 +96,12 @@ game's circle fill; smaller ones are untouched. `circle_fill_fix = off` leaves t
 carries one `circle_fill site=004ef620 status=...` line near its top (`patched`, `off` or `refused`).
 
 `collision_damage` (default `1`, since 2026-11-05) decides whether collisions damage ships. `collision_damage = 0` removes
-all hull and shield damage from collisions, for your ship and every other ship alike: bumping or ramming ships,
-stations and asteroids, and skimming a planet's atmosphere. Everything else about a collision stays: the ships still
+all hull and shield damage from collisions, for every body alike: your ship, other ships, stations, asteroids and
+anything else that is not a bullet or a missile, when bumping or ramming each other or skimming a planet's atmosphere.
+Ramming no longer destroys anything (drones, mines and satellites included). Everything else about a collision stays: the ships still
 bounce apart, the impact sound and hit effect still play, the collision warning still sounds, and a ship you bump
 is still told of it as in the game. Weapons, missiles and explosions damage as before. Flying into a planet no longer
-destroys the ship; it is held at the planet's surface instead. `x3m.log` carries one `collision_damage edition=...
+destroys the ship; what happens at the planet's surface instead has not been flown yet. `x3m.log` carries one `collision_damage edition=...
 status=applied` line near its top (`skipped reason=...` when it is off or the game file is not the expected one) and,
 while it is on, at most one `collision_damage_suppressed` line per second after contacts, with the damage the game
 would have done (`max_a=`, `max_b=`).
