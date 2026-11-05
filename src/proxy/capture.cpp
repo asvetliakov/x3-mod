@@ -16,6 +16,10 @@
 #include "lod_texture_mark.h"
 #include <atomic>
 #include "engine_effects_patch.h"
+#if !X3M_EDITION_FL
+#include "sector_key.h" // the weapon ring's scope: the cockpit's sector key (weapon_effects::present)
+#include "weapon_effects_patch.h"
+#endif
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
@@ -2067,6 +2071,31 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         ctx.motion_output.own_sun_frame(active);
     }
     own_sun_hook::present(ctx.frame + 1); // installed hook only: the probe answer's frame boundary
+    // Weapon effects (X3M_WEAPON_EFFECTS installed only): the next frame's ownership latch for the impact hook (this
+    // device's stage armed in its last resolve), the weapon_event / weapon_pos_check / weapon_effects_frame rows and the
+    // ring's game-time upkeep, on the thread that runs the hooks. Shields mode also samples the ring's scope (note 3.1):
+    // the cockpit's sector key (sector_background's registry walk and sector_key's cached reader, bounded engine_memory
+    // reads), the loading state and the object_lifetime load epoch when that observer is active; a change clears the
+    // stage-owned records. LastError restored (the reads' VirtualQuery).
+    if (weapon_effects::installed()) {
+        weapon_effects::StageFrame stage{};
+        const bool owned = ctx.motion_output.weapon_effects_owned();
+        ctx.motion_output.weapon_effects_take_frame(&stage.shells, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew);
+        weapon_effects::core::Scope scope{};
+        if (weapon_effects::mode() == weapon_effects::core::mode_shields) {
+            const DWORD saved_error = GetLastError();
+            auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
+            const sector_background::Sample where = sector_background::sample(read, 0u);
+            scope.loading = where.status == sector_background::Status::Loading;
+            if (!scope.loading && where.class48 == 1 && where.sector) {
+                const sector_key::core::Result key = sector_key::sample(where.sector);
+                if (key.known) scope.sector_key = key.key;
+            }
+            if (object_lifetime::active()) scope.load_epoch = object_lifetime::stats().load_epoch;
+            SetLastError(saved_error);
+        }
+        weapon_effects::present(ctx.frame, ctx.capture, owned, stage, scope);
+    }
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one
                                                            // collide_memo line per 300 frames
@@ -3535,6 +3564,9 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
                                            own_sun_rays); // X3M_OWN_SUN as installed
+#if !X3M_EDITION_FL
+    hooked.motion_output.configure_weapon_effects(weapon_effects::mode() == weapon_effects::core::mode_shields);
+#endif
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw
     hooked.motion_output.configure_engine_plumes(engine_effects::mode() == engine_effects::core::Mode::plumes &&
@@ -5975,6 +6007,22 @@ void initialize_log(HMODULE module) {
     terran_station_lod::initialize();
     lod_occlusion::initialize();
     cull_small_parts::initialize();
+    // Weapon effects (docs/architecture/weapon-effects.md 2.10): X3FL.exe's impact site and absorbed slot are not traced,
+    // so the families are compiled out of this edition; one row says so, whatever X3M_WEAPON_EFFECTS asks.
+    {
+        wchar_t text[16]{};
+        const DWORD length = x3m::config::get(L"X3M_WEAPON_EFFECTS", text, 16);
+        char setting[16] = "-";
+        if (length >= 16)
+            setting[0] = '?';
+        else if (length) {
+            for (DWORD i = 0; i < length; ++i) setting[i] = (text[i] >= 0x21 && text[i] <= 0x7e) ? char(text[i]) : '?';
+            setting[length] = 0;
+        }
+        log("weapon_effects_patch site=impact va=00000000 state=edition_unsupported reason=edition_unsupported edition=fl "
+            "mode=native setting=%s write=none",
+            setting);
+    }
 #endif
 #if !X3M_EDITION_FL
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at
@@ -5989,6 +6037,9 @@ void initialize_log(HMODULE module) {
                                         // per-ship engine effect routine's two calls (0x004147eb effect instance,
                                         // 0x0041482c trail generator) to class-7 skip stubs, both or none, same window,
                                         // disjoint from every other claim
+    weapon_effects::initialize(); // X3M_WEAPON_EFFECTS=native|observe|shields, unset = native: observe/shields redirect
+                                  // the impact call 0x00449d85 (observe also the two inner instance calls 0x00413da8 /
+                                  // 0x00413e79), all or none, same window, disjoint from every other claim
     fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry
                        // constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is
                        // claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the

@@ -69,6 +69,7 @@
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
+#include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (AP; docs/architecture/weapon-effects.md)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -1198,6 +1199,14 @@ public:
     void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
     void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
+    // Weapon effects, step 1 (X3M_WEAPON_EFFECTS=shields, motion_output_weapon_effects_inc.h; AP only): requested once
+    // the impact hook is installed in shields mode. weapon_effects_owned(): this device's stage armed in its last resolve,
+    // the resolve completed and the stage's callback (when set) ran and drew or had nothing to draw
+    // (core::stage_owned; Present latches it for the next frame's hooks); weapon_effects_take_frame(): the stage's figures since the last
+    // call, for weapon_effects::present.
+    void configure_weapon_effects(bool requested) noexcept;
+    bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
+    void weapon_effects_take_frame(unsigned* shells, unsigned* decals, unsigned* retired, float* stage_us, bool* drew) noexcept;
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2223,6 +2232,35 @@ private:
     static HRESULT own_sun_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_own_sun() noexcept;
     void own_sun_no_probe() noexcept;
+    // Weapon effects, step 1 (motion_output_weapon_effects_inc.h; AP only): requested when the impact hook is installed
+    // in shields mode; the pass (attached at the first armed resolve, refused until Reset with one weapon_effects_device
+    // row; a failed stage frame disarms 64 frames, the third consecutive one refuses until Reset); this frame's arming
+    // (the ownership Present latches for the hooks), the lane the callback borrows, the callback the stage chains after
+    // (the plumes' or the own sun's), and the frame's figures for weapon_effects_frame.
+    bool weapon_requested_ = false, weapon_attach_failed_ = false, weapon_failed_out_ = false, weapon_armed_ = false;
+    bool weapon_state_logged_ = false, weapon_logged_armed_ = false;
+    // This frame's ownership inputs (core::stage_owned): the callback was set, it ran and returned S_OK / S_FALSE, and the
+    // latch they give after the resolve.
+    bool weapon_callback_set_ = false, weapon_callback_ok_ = false, weapon_owned_ = false;
+    const char* weapon_reason_ = "off";
+    const char* weapon_logged_reason_ = "";
+    std::unique_ptr<renderer::WeaponEffectsPass> weapon_;
+    IDirect3DTexture9* weapon_lane_ = nullptr;
+    UINT weapon_width_ = 0, weapon_height_ = 0;
+    HRESULT (*weapon_prior_callback_)(void*, IDirect3DDevice9*) noexcept = nullptr;
+    void* weapon_prior_context_ = nullptr;
+    std::uint64_t weapon_disarmed_until_ = 0;
+    unsigned weapon_failures_ = 0;
+    unsigned weapon_shells_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
+    float weapon_stage_us_ = 0.f;
+    bool weapon_drew_ = false;
+    static constexpr unsigned weapon_failure_limit = 3;
+    bool weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
+    bool attach_weapon_effects() noexcept;
+    void release_weapon_effects() noexcept;
+    void note_weapon_state(bool armed, const char* reason) noexcept;
+    static HRESULT weapon_effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;
+    HRESULT run_weapon_effects() noexcept;
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.

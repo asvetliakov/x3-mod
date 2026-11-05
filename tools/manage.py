@@ -697,6 +697,113 @@ def remove_engine_bodies(game):
     return {'removed': removed, 'retained': retained}
 
 
+# Weapon effects table (docs/architecture/weapon-effects.md 3.2): the DLL reads <game>/x3m/weapon_effects.json for
+# --weapon-effects observe|shields (the classifier's per-row elongation, texture colour and curated overrides).
+# `manage.py install` and x3m-regenerate generate it with tools/effects/weapon_effects_table.py; ownership by its `tool`
+# field as for the engine body table.
+WEAPON_EFFECTS_GAME_FILE = Path('x3m/weapon_effects.json')
+WEAPON_EFFECTS_TOOL = ROOT / 'tools/effects/weapon_effects_table.py'
+WEAPON_EFFECTS_MARK = 'tools/effects/weapon_effects_table.py'
+WEAPON_EFFECTS_PREVIOUS = '.previous'
+
+
+def _read_weapon_effects(path):
+    """The parsed table when `path` holds one written by the generator, else None (absent, unreadable, foreign)."""
+    try:
+        table = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    if isinstance(table, dict) and table.get('tool') == WEAPON_EFFECTS_MARK and isinstance(table.get('tables'), dict):
+        return table
+    return None
+
+
+def game_windows_path(path):
+    """A game-tree path as the game process sees it: /mnt/<d>/... -> D:\\... (the native host), else Z:<path> (Wine)."""
+    text = os.path.abspath(str(path))
+    m = re.match(r'^/mnt/([a-zA-Z])(/.*)?$', text)
+    if m:
+        return m.group(1).upper() + ':' + (m.group(2) or '/').replace('/', '\\')
+    return 'Z:' + text
+
+
+def weapon_effects_line(game, mode):
+    """The `weapon effects table:` launch line for --weapon-effects observe|shields, None otherwise (informational)."""
+    if mode not in ('observe', 'shields'):
+        return None
+    path = game / WEAPON_EFFECTS_GAME_FILE
+    if not path.is_file():
+        return (f'weapon effects table: missing ({path}); the classifier runs without the table (elongation slug, tint '
+                'light colour or white); run `python3 tools/manage.py install` or x3m-regenerate')
+    table = _read_weapon_effects(path)
+    if table is None:
+        return f'weapon effects table: unreadable or not written by {WEAPON_EFFECTS_MARK} ({path})'
+    bullets = table['tables'].get('bullets') if isinstance(table['tables'].get('bullets'), dict) else {}
+    return (f"weapon effects table: ok ({bullets.get('rows', '?')} TBullets rows, table {bullets.get('sha256', '?')}, "
+            f"schema {table.get('schema')})")
+
+
+def install_weapon_effects(game, run=subprocess.run):
+    """Generates <game>/x3m/weapon_effects.json from the installed game tree (install_engine_bodies' contract: a
+    temporary directory, a rename; a file the generator did not write is left alone). Returns {'status':
+    installed|unchanged|retained|failed, 'path', 'sha256', 'rows', 'reason'}."""
+    import tempfile
+    game = Path(game)
+    destination = game / WEAPON_EFFECTS_GAME_FILE
+    result = {'status': 'failed', 'path': str(destination), 'sha256': None, 'rows': None, 'reason': None}
+    if destination.exists() and _read_weapon_effects(destination) is None:
+        result.update(status='retained', reason='a file the generator did not write is in place')
+        return result
+    with tempfile.TemporaryDirectory(prefix='x3m-weapon-effects-') as scratch:
+        generated = Path(scratch) / 'weapon_effects.json'
+        try:
+            done = run([sys.executable, str(WEAPON_EFFECTS_TOOL), '--game-root', str(game), '--out', str(generated)],
+                       capture_output=True, text=True, timeout=900)
+        except (OSError, subprocess.SubprocessError) as error:
+            result['reason'] = f'{type(error).__name__}: {error}'
+            return result
+        table = _read_weapon_effects(generated) if done.returncode == 0 else None
+        if table is None:
+            lines = (done.stderr or done.stdout or '').strip().splitlines()
+            result['reason'] = f'generator exit {done.returncode}' + (f': {lines[-1]}' if lines else '')
+            return result
+        data = generated.read_bytes()
+    bullets = table['tables'].get('bullets') if isinstance(table['tables'].get('bullets'), dict) else {}
+    result.update(sha256=hashlib.sha256(data).hexdigest(), rows=bullets.get('rows'))
+    if destination.is_file() and destination.read_bytes() == data:
+        result['status'] = 'unchanged'
+        return result
+    destination.parent.mkdir(exist_ok=True)
+    temporary = destination.with_name(destination.name + '.tmp')
+    temporary.write_bytes(data)
+    os.replace(temporary, destination)
+    result['status'] = 'installed'
+    return result
+
+
+def remove_weapon_effects(game):
+    """`uninstall` only: removes weapon_effects.json and its .previous when the generator wrote them, then x3m/ if
+    empty. Returns {'removed': [...], 'retained': [...]} relative to the game directory."""
+    game = Path(game)
+    removed, retained = [], []
+    current = game / WEAPON_EFFECTS_GAME_FILE
+    for path in (current, current.with_name(current.name + WEAPON_EFFECTS_PREVIOUS)):
+        if not path.is_file():
+            continue
+        name = path.relative_to(game).as_posix()
+        if _read_weapon_effects(path) is None:
+            retained.append(name)
+            continue
+        path.unlink()
+        removed.append(name)
+    if removed:
+        try:
+            current.parent.rmdir()
+        except OSError:
+            pass
+    return {'removed': removed, 'retained': retained}
+
+
 def fog_families_command(argv):
     """`manage.py fog-families`: the argv that runs tools/analysis/fog_families.py on the bottle's
     game directory. --bottle/--game-dir are consumed; everything else is forwarded verbatim;
@@ -1432,6 +1539,7 @@ def main():
     parser.add_argument('--terran-station-lod', choices=('size', 'distance'), default=None, help='How Terran stations pick their mesh LOD (X3M_TERRAN_STATION_LOD; default size on every modded launch, also the DLL default when the variable is unset; refused under --vanilla, where the proxy is not loaded). size = the reader of bit 31 of the station root\'s node+0x12c in the cull/LOD pass (0x0047d01c, je -> jmp to the same target, two bytes, verified before the write) is bypassed, so Terran TDocks/TFactories subtrees select by screen size like every other object and can reach the merged-LOD overlay records; distance = the engine\'s fixed-distance branch (7/15.5/21/28.5 km bands), nothing patched. Saves are unchanged either way')
     parser.add_argument('--lod-occlusion', choices=('off', 'record0', 'all'), default=None, help='Which mesh LOD records bind their material\'s occlusion map (t_OcclusionTexture) (X3M_LOD_OCCLUSION; default all on every modded launch since Run 81 (user decision 2026-09-24), marked X3M_LOD_OCCLUSION_DEFAULT=1; the DLL default when the variable is unset stays record0; refused under --vanilla, where the proxy is not loaded). off = record0 = the engine: only LOD record 0 binds the map, every lower record binds the NONE_OCCL_DECAL placeholder (no occlusion), nothing patched; all = the gate in the material submission (jne at 0x004c34f7, its rel32 set to 0 so both outcomes continue on the LOD-0 path, four bytes, verified before the write) is bypassed, so merged-LOD coarse records keep the station\'s occlusion. Side effect of all: vanilla lower records get occlusion too, through a second UV set about 1 %% off the occlusion unwrap and partly outside [0, 1], so they may show misplaced occlusion (docs/reverse-engineering/texture-lookup.md section 12). Saves are unchanged either way')
     parser.add_argument('--engine-effects', choices=('native', 'off', 'plumes'), default=None, help='Who draws the ship engine effects (X3M_ENGINE_EFFECTS; nothing is sent unless given, i.e. plumes, also the DLL default when the variable is unset (since Run 123 A); an invalid setting falls back to native; an inherited shell value is dropped; refused under --vanilla, where the proxy is not loaded). native = the game\'s engine glow jets, emitter sprites, engine lens flares and engine trails, nothing patched; off = all four suppressed on ships and nothing drawn instead (glow-jet draws recognised by the JET node flag and skipped, the sprite/flare and trail creation calls in 0x00414590 redirected for ships only); missile engine glow jets are suppressed too (the same JET draws), while missile emitter sprites and trails stay native until a later phase; weapon trails untouched; plumes = off plus the proxy\'s own engine plumes (phase 2: one batched draw in the TAA resolve, softly occluded by the depth lane; ships and missiles; needs the --motion-output --hdr --taa defaults and FP16 blending, otherwise it degrades to the off look with an engine_plumes_state row; trails/ribbons arrive in phase 3; strength by --engine-effects-preset). off and plumes (and the unset default) read <game>/x3m/engine_bodies.json (written by `manage.py install` and x3m-regenerate from the installed game tree) for size and tint; a JET-flagged draw whose body has no entry is still suppressed (counted unknown_body, default tint cluster), only bodies off the JET list and the legacy v\\00114 (refused by the loader) stay native. The launch line "engine bodies: missing|ok" reports the table (docs/architecture/engine-effects-modern.md)')
+    parser.add_argument('--weapon-effects', choices=('native', 'observe', 'shields'), default=None, help='Weapon hit effects, step 1: the shield hit (X3M_WEAPON_EFFECTS; nothing is sent unless given, i.e. native, also the DLL default; an inherited shell value is dropped; refused under --vanilla). native = the game\'s effects, nothing patched; observe = the impact call 0x00449d85 and the two inner instance calls are redirected to record every hit (weapon_event, weapon_pos_check, weapon_effects_frame rows) and forward it unchanged, the first flight of the family; shields = the impact call is redirected and a shield hit is drawn by the proxy (a Fresnel shell with expanding rings and a flash, aged in game time) instead of the game\'s shield sprite while the stage owned the previous frame (needs the --motion-output --hdr --taa defaults; hull hits, bolts, muzzle and explosions stay native). observe and shields also send X3M_WEAPON_EFFECTS_TABLE, the path of <game>/x3m/weapon_effects.json (written by `manage.py install` and x3m-regenerate); the launch line "weapon effects table: missing|ok" reports it (docs/architecture/weapon-effects.md)')
     parser.add_argument('--engine-effects-preset', choices=('restrained', 'default', 'strong'), default=None, help='Strength of the proxy\'s engine plumes with --engine-effects plumes (X3M_ENGINE_EFFECTS_PRESET, ini engine_effects_preset; nothing is sent unless given, i.e. default, also the DLL default; an inherited shell value is dropped; refused under --vanilla): restrained / default / strong scale the core and halo radiance and the halo width by 0.6 / 1 / 1.5. Load-time only, like the native/off/plumes mode (docs/architecture/engine-effects-modern.md, section 6)')
     parser.add_argument('--engine-plume-nozzle', type=float, default=None, metavar='W', help='Nozzle width of the proxy\'s engine plumes with --engine-effects plumes, as a share of the engine\'s size value, finite 0.1..1.0 (X3M_ENGINE_PLUME_NOZZLE, ini engine_plume_nozzle; nothing is sent unless given, i.e. 0.5, also the DLL default; an inherited shell value is dropped; refused under --vanilla). The plume\'s length stays the game\'s z x value, so a larger W draws a wider, stubbier plume with coarser turbulence (0.25 = the Engine Exhaust Lab\'s proportions, L = 8 nozzle widths at full throttle; 0.5 = 4). Read once at load (docs/architecture/engine-effects-modern.md, "Plume look redesign")')
     parser.add_argument('--engine-plume-floor', type=float, default=None, metavar='K', help='Scale of the plume floor with --engine-effects plumes: every main jet draws at least K x k(R) x the radius R of its ship\'s root node (the engine\'s cached subtree radius, node+0xa4), at most 4 x its own value, with k(R) = 0.35 at R <= 150 record units, 0.25 at 500, 0.10 at >= 5,000, log-linear between; RCS and brake-pushed jets keep theirs; 0 = the floor off; finite 0..3 (X3M_ENGINE_PLUME_FLOOR, ini engine_plume_floor; nothing is sent unless given, i.e. 0.5, also the DLL default since flight E; an inherited shell value is dropped; refused under --vanilla). Read once at load (docs/architecture/engine-effects-modern.md, "After flight D")')
@@ -2117,6 +2225,8 @@ def main():
         parser.error('--engine-shimmer-max cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so no shimmer is drawn')
     if args.engine_shimmer_max is not None and not 0 <= args.engine_shimmer_max <= 16:
         parser.error('--engine-shimmer-max must be in 0..16')
+    if args.vanilla and args.weapon_effects is not None:
+        parser.error('--weapon-effects cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that hooks the weapon effects never runs')
     if args.vanilla and args.engine_effects is not None:
         parser.error('--engine-effects cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that suppresses the engine effects never runs')
     if args.camera != 'chase' and args.chase_fov_compensate is not None:
@@ -2259,6 +2369,13 @@ def main():
                     print(f"warning: engine body table {bodies['status']} ({bodies['reason']}): {bodies['path']}; "
                           '--engine-effects off|plumes still suppresses JET-flagged draws, counted unknown_body with the '
                           'default tint cluster', file=sys.stderr)
+                weapons = install_weapon_effects(game)
+                if weapons['status'] in ('installed', 'unchanged'):
+                    print(f"Weapon effects table {weapons['status']}: {weapons['path']} ({weapons['rows']} TBullets rows, "
+                          f"sha256={weapons['sha256']}).")
+                else:
+                    print(f"warning: weapon effects table {weapons['status']} ({weapons['reason']}): {weapons['path']}; "
+                          '--weapon-effects observe|shields classify without it', file=sys.stderr)
             elif args.action == 'uninstall':
                 retained = media_package.uninstall(game)
                 print('Removed owned proxy and manifest; captures and originals retained.')
@@ -2272,9 +2389,13 @@ def main():
                 if bodies['removed'] or bodies['retained']:
                     print(f"Removed engine body table: {', '.join(bodies['removed']) or 'none'}"
                           + ('; left (not written by the generator): ' + ', '.join(bodies['retained']) if bodies['retained'] else '') + '.')
+                weapons = remove_weapon_effects(game)
+                if weapons['removed'] or weapons['retained']:
+                    print(f"Removed weapon effects table: {', '.join(weapons['removed']) or 'none'}"
+                          + ('; left (not written by the generator): ' + ', '.join(weapons['retained']) if weapons['retained'] else '') + '.')
             elif args.action == 'rollback':
                 media_package.rollback(game)
-                print('Restored previous owned proxy and selection; density fonts and the engine body table (if any) left in place.')
+                print('Restored previous owned proxy and selection; density fonts, the engine body table and the weapon effects table (if any) left in place.')
             else:
                 media_package.recover(game)
                 print('Recovered verified pre-transaction proxy and selection.')
@@ -2611,6 +2732,15 @@ def main():
             env.pop('X3M_ENGINE_EFFECTS', None)
         else:
             env['X3M_ENGINE_EFFECTS'] = args.engine_effects
+        # Weapon effects: sent only when given (the DLL default is native), with the table's path for observe and
+        # shields; an inherited shell value is dropped, and nothing under --vanilla (refused above).
+        env.pop('X3M_WEAPON_EFFECTS_TABLE', None)
+        if args.vanilla or args.weapon_effects is None:
+            env.pop('X3M_WEAPON_EFFECTS', None)
+        else:
+            env['X3M_WEAPON_EFFECTS'] = args.weapon_effects
+            if args.weapon_effects in ('observe', 'shields'):
+                env['X3M_WEAPON_EFFECTS_TABLE'] = game_windows_path(game / WEAPON_EFFECTS_GAME_FILE)
         # The plume preset: likewise sent only when given (the DLL default is "default"); dropped under --vanilla.
         if args.vanilla or args.engine_effects_preset is None:
             env.pop('X3M_ENGINE_EFFECTS_PRESET', None)
@@ -2876,6 +3006,9 @@ def main():
         engine_bodies = None if args.vanilla else engine_bodies_line(game, args.engine_effects)
         if engine_bodies is not None:
             print(engine_bodies, file=sys.stderr)
+        weapon_table = None if args.vanilla else weapon_effects_line(game, args.weapon_effects)
+        if weapon_table is not None:
+            print(weapon_table, file=sys.stderr)
         if voice_root is not None:
             plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
@@ -2926,6 +3059,7 @@ def main():
                                       'fog_families': fog_families,
                                       'lod_overlay': lod_overlay,
                                       'engine_bodies': engine_bodies,
+                                      'weapon_effects_table': weapon_table,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))
                     return

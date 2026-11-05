@@ -15,7 +15,7 @@ HASHED = [ANALYSIS / n for n in ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'l
 TOOLS = ['fog_families', 'fog_family_inputs', 'bake_fog_fields', 'fog_field_recipe', 'lod_overlay', 'lod_overlay_check',
          'lod_atlas', 'lod_batch_census', 'lod_recipes', 'thin_patches', 'bob1', 'body_materials', 'sector_fog_census', 'inspect_x3',
          'catalogue_mounts', 'sky_textures',
-         'game_guard', 'engine_bodies', 'PIL.Image', 'PIL.JpegImagePlugin', 'PIL.TgaImagePlugin', 'PIL.PngImagePlugin']
+         'game_guard', 'engine_bodies', 'weapon_effects_table', 'weapon_effects_census', 'PIL.Image', 'PIL.JpegImagePlugin', 'PIL.TgaImagePlugin', 'PIL.PngImagePlugin']
 
 a = Analysis(
     [str(ROOT / 'tools' / 'regenerate' / 'x3m_regenerate.py')],

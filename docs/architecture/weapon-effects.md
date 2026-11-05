@@ -98,6 +98,10 @@ and the death callee installs its own [M, §6]: a handler that never unwinds sat
 | victim: class, subtype, root node `obj+0x70`, node handle `node+0x28`, radius `obj+0xa4`, position `node+0x30`, rotation rows `node+0x40` [M, spawn note §4, engine-effects.md §7] | `owner` = {object, node, handle, serial when `object_lifetime` is active}, `radius` |
 | contact point: the smaller body (radius compare) gives `p = node+0x30 + R(node+0x40) · node+0x180`; `pos = Rᵀ(victim) · (p − victim pos)` [M, §3: the callee's own arithmetic, replicated] | `pos` in the victim's frame (3 floats), the projectile heading from the projectile's `node+0x40` z row |
 
+Step 1 as built (review 2026-11-05): `shooter` is not read (`[[source+0x50]+4]` is not dereferenced by the engine on
+this path, F9; the record carries 0 until a later step binds the owner), and the handler reads the two objects' flags
+`+0x40` for the nested rule of 2.7.
+
 Decision: skip when the stage **owns the frame** (2.6) *and* the family of the role is armed (step 1 arms
 `shield_hit` only; a hull hit is forwarded until step 2). Otherwise forward. The replicated contact point is the one
 unknown of this site (the meaning of `node+0x180`); it is settled by the observe flight of 2.6, not assumed.
@@ -145,7 +149,8 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
 ### 2.6 Suppression, arming and the fallback
 
 - **Ownership is latched per frame at Present**: `owned_next = stage drew this frame && device attached && not within
-  the 64-frame disarm window`. The hooks read `owned_next` during the next frame's update (same thread, before the
+  the 64-frame disarm window` (step 1: `core::stage_owned`: armed, the resolve completed, and the stage callback, when
+  set, ran and returned `S_OK`/`S_FALSE`; review F8). The hooks read `owned_next` during the next frame's update (same thread, before the
   scene draws). A hook never consults device state itself.
 - **Skip only when owned and the family is armed; otherwise forward unchanged.** Forwarding is the vanilla effect: the
   stage never draws a record it forwarded (the record is written with `forwarded = 1` for the census only). Nothing is
@@ -167,7 +172,10 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
 An area kill runs `0x0045eeb0`, which runs the damage routine (impact stubs) and nested kills (death stubs) **inside
 the outer kill**, after the outer death stub returned [M, §6]. The ring is append-only and per-event; no stub keeps
 state across another, and the retirement rule of 2.4 runs at each death record. A stub is never re-entered through its
-own site while running [M]. An impact whose row has an `EEDF_BREAKUP` element could remove the victim inside the
+own site while running [M]. Step 1 marks an impact inside a kill `nested` when the projectile or the hit object
+carries the kill's dying bit (`obj+0x40 & 0x8000000`, set by `0x0044abd0` before its area damage [i]); a dying hit
+object is forwarded (the stage would retire its record unseen), a dying projectile still skips for a live victim.
+An impact whose row has an `EEDF_BREAKUP` element could remove the victim inside the
 impact call; no reachable row has one [M], and the record is self-contained anyway. Missiles: an impact with a
 class-10 source records a fixed `missile_hit` style (owner, launcher untraced [U]); a missile's own death records
 `tier = missile` unless rule (b) of 2.4 applies.
@@ -236,7 +244,9 @@ Per frame the stage derives, not stores: the owner's current object → world ro
 `engine_memory::read`, validated by `obj+0x70 == node && node+0x28 == handle` and, when active, the `object_lifetime`
 serial; a failed validation retires the record), the view/projection of the resolve, and the age. The ring holds 256
 events (16 KB); overflow drops the oldest `hull_hit`/`muzzle` first and counts `overflow`. The ring clears on the
-resolve's cut verdict, a Reset, a sector change or load epoch (the plumes' rule [S]).
+resolve's cut verdict, a Reset, a sector change or load epoch (the plumes' rule [S]; step 1: Present samples the
+cockpit's sector key through `sector_key::sample`, the loading state and the `object_lifetime` load epoch, and
+`core::ScopeLatch` clears the stage-owned records on a load, a different known key or a different known epoch).
 
 ### 3.2 The generated table and the curated override
 

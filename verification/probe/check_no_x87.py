@@ -98,6 +98,9 @@ AP_EXTERN_ROOTS = ['_x3m_point_light_root_admits', '_x3m_pass_phase_enter', '_x3
                    '_x3m_media_cue_enter', '_x3m_media_cue_return',
                    # the oversized-disc port (src/proxy/circle_fill.cpp) behind the filled-ellipse entry's pushad thunk; integer only
                    '_x3m_circle_fill_wide',
+                   # the weapon-effects impact stub and its handler (src/proxy/weapon_effects_hook.cpp, X3M_WEAPON_EFFECTS=observe|
+                   # shields) inside the engine's damage routine, and the observe-mode tap; integer only, no call out
+                   '_x3m_weapon_effects_stub_impact', '_x3m_weapon_effects_stub_tap', '_x3m_weapon_event', '_x3m_weapon_tap',
                    # the narrow-census bracket handlers (src/proxy/collide_narrow_census.cpp, X3M_COLLIDE_NARROW_CENSUS=1) run around the
                    # engine's x87 narrow phase under LightCallBoundary only
                    '_x3m_collide_narrow_pre', '_x3m_collide_narrow_post',

@@ -289,16 +289,21 @@ class GeneratorTest(unittest.TestCase):
 
     def test_block_render_and_check(self):
         data = {'stock_ap': gen.view_record('stock_ap', census_fixture(), manifest_fixture())}
-        shell = f'<script>\n{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\nrest();\n</script>'
-        page = gen.render(shell, data)
-        self.assertEqual(gen.render(page, data), page)                  # idempotent
+        hv = gen.header_constants((gen.REPO / 'src/proxy/weapon_effects_core.h').read_text())
+        shell = (f'<script>\n{gen.HEADER_BEGIN}\nconst HEADER = {{}};\n{gen.HEADER_END}\n'
+                 f'{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\nrest();\n</script>')
+        page = gen.render(shell, data, hv)
+        self.assertEqual(gen.render(page, data, hv), page)              # idempotent
+        self.assertIn('const HEADER = {', page)
+        self.assertIn('ring_speed:', page)
         self.assertTrue(page.endswith('\nrest();\n</script>'))
-        body = page[page.index('const LAB_DATA = {') + len('const LAB_DATA = {'):page.index('};\n' + gen.END)]
+        dstart = page.index('const LAB_DATA = {') + len('const LAB_DATA = {')
+        body = page[dstart:page.index('};\n' + gen.END, dstart)]
         view, rec = body.strip().rstrip(',').split(': ', 1)
         self.assertEqual(json.loads(view), 'stock_ap')
         self.assertEqual(json.loads(rec), json.loads(json.dumps(data['stock_ap'])))
         with self.assertRaises(SystemExit):
-            gen.render('<script></script>', data)
+            gen.render('<script></script>', data, hv)
 
     def test_main_check_against_inputs(self):
         tmp = Path(tempfile.mkdtemp())
@@ -320,8 +325,16 @@ class PageTest(unittest.TestCase):
 
     def test_shell(self):
         self.assertEqual(self.html.count(gen.BEGIN), 1)
-        self.assertEqual(self.html.count(gen.END), 1)
-        self.assertRegex(self.html, r'function renderOurs\(record, t\) \{[^}]*\n\}')
+        self.assertEqual(self.html.count(gen.HEADER_BEGIN), 1)
+        self.assertEqual(self.html.count(gen.END), 2)   # the header block and the data block both close with /* @end */
+        self.assertIn('const HEADER = {', self.html)    # the injected header constants
+        self.assertRegex(self.html, r'ring_speed: [0-9.]+')
+        self.assertNotRegex(self.html, r'function renderOurs\(record, t\) \{ // eslint-disable-line no-unused-vars\n\}')
+        self.assertIn('function ourControls()', self.html)
+        for cid in ('c_ring_speed', 'c_ring_width', 'c_ring_count', 'c_ripple_ms', 'c_flash_ms', 'c_rim_power',
+                    'c_rim_gain', 'c_hex_scale', 'c_hex_gain', 'c_tint_mix', 'c_calibre', 'c_calibre_gain', 'c_seta',
+                    'c_hits'):
+            self.assertIn(f'id="{cid}"', self.html)
         self.assertNotRegex(self.html, r'<script[^>]+type="module"|fetch\(|https?://')
         for slot in ('muzzle', 'projectile', 'impact', 'death'):
             self.assertIn(f"key: '{slot}'", self.html)

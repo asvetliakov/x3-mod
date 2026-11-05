@@ -22,6 +22,8 @@ double-click it. It starts at once, needs no answers, and runs, in order:
   4. engine bodies  = tools/effects/engine_bodies.py on the installed view (the x3m LOD overlay slots excluded):
                       <game>/x3m/engine_bodies.json, the per-body jet table --engine-effects off|plumes reads,
                       one .previous kept
+  4b. weapon effects = tools/effects/weapon_effects_table.py on the installed view: <game>/x3m/weapon_effects.json,
+                      the per-TBullets-row table --weapon-effects observe|shields reads, one .previous kept
   5. fog check      = fog_families.py --check: step 2 changes the numbered catalogues, so the fog record's
                       launch fingerprint is refreshed (otherwise the launcher reports the fog file stale)
 
@@ -467,6 +469,43 @@ def engine_step(log, game):
             f" {c['missing']} listed but not loadable; wrote x3m/{ENGINE_BODIES_FILE}")
 
 
+WEAPON_EFFECTS_FILE = 'weapon_effects.json'   # tools/manage.py WEAPON_EFFECTS_GAME_FILE, read by the DLL
+WEAPON_EFFECTS_MARK = 'tools/effects/weapon_effects_table.py'  # the table's own tool field
+
+
+def weapon_effects_owned(path):
+    """True when path holds a table tools/effects/weapon_effects_table.py wrote (manage.py _read_weapon_effects)."""
+    try:
+        table = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(table, dict) and table.get('tool') == WEAPON_EFFECTS_MARK and isinstance(table.get('tables'), dict)
+
+
+def weapon_step(log, game):
+    """<game>/x3m/weapon_effects.json from weapon_effects_table.generate on the installed view (engine_step's
+    contract: .tmp and rename, one .previous kept, a foreign file left alone)."""
+    import weapon_effects_table as wt
+    target = game / 'x3m' / WEAPON_EFFECTS_FILE
+    if target.exists() and not weapon_effects_owned(target):
+        log.say(f'weapon effects: kept x3m/{WEAPON_EFFECTS_FILE} (a file the generator did not write is in place)')
+        return
+    log.say('weapon effects: reading types/TBullets and the bullet bodies')
+    try:
+        table = wt.generate(game)
+    except (wt.GenerateError, ValueError) as exc:
+        raise StepFailed(f'weapon_effects_table: {exc}') from None
+    target.parent.mkdir(exist_ok=True)
+    tmp = target.with_name(target.name + '.tmp')
+    tmp.write_text(wt.dumps(table))
+    if target.is_file():
+        os.replace(target, target.with_name(target.name + '.previous'))
+    os.replace(tmp, target)
+    c = table['counts']
+    log.say(f"weapon effects summary: {c['bullets']} TBullets rows (table {table['tables']['bullets']['sha256']}),"
+            f" {c['textures']} with a texture colour, {c['overrides']} overrides; wrote x3m/{WEAPON_EFFECTS_FILE}")
+
+
 def fog_check_step(log, game):
     import fog_families as ff
     try:
@@ -521,7 +560,8 @@ def run(game, jobs, log, memory_budget=None):
     steps = [('fog families', lambda: fog_step(log, game, jobs, package_cat)),
              ('LOD overlay', lambda: lod_step(log, game, jobs, name, where, memory_budget, xp)),
              ('sky textures', lambda: sky_step(log, game, xp)),
-              ('engine bodies', lambda: engine_step(log, game))]
+              ('engine bodies', lambda: engine_step(log, game)),
+             ('weapon effects', lambda: weapon_step(log, game))]
     for label, step in steps:
         log.say(f'== {label}')
         if label == 'sky textures' and 'LOD overlay' in failed:
