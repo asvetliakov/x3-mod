@@ -330,6 +330,116 @@ except PBC (flag-2 beam) and the repair laser. An impact or muzzle replacement k
 36 plain bolt records, one beam and one repair beam in the installed view; its impact rows are the Mayhem rows
 200–237 plus 18 (missing from the installed Effects table) for bullets, and 400–403 for missiles.
 
+## 8. Follow-up for the design note (docs/architecture/weapon-effects.md §6, 2026-11-05)
+
+Evidence: [`class_id_tables.py`](../../verification/results/weapon-effect-spawn/class_id_tables.py) →
+[`class_id_tables_out.txt`](../../verification/results/weapon-effect-spawn/class_id_tables_out.txt) (EXE tables
+read from the bytes, AP and FL; class columns per view), the `object` row of
+[`weapon_effect_sites_out.txt`](../../verification/results/weapon-effect-spawn/weapon_effect_sites_out.txt), and
+listings of `0x004ea440`, `0x0043cb60`, `0x004376fb..0x0043770c`, `0x00414590..0x0041489a`, `0x0045ac6d..0x0045ac9c`.
+
+### 8.1 Class ids for a death-site tier (item 1)
+
+**The text-id reader `0x004ea440`** (ECX = name table, one stack argument = the line parser, `ret 4`) **[m]**: text
+that starts with a digit or `%` is parsed as a number (`0x004ea4dc..0x004ea4ea` → `0x004eb930`), so `0`, `2061` and
+`2153` are taken literally. Otherwise it walks `{char *name, int id}` pairs (`[esi+ebp*8]`, `[esi+ebp*8+4]`) until
+a name matches and returns its id. An unknown name runs into the table's empty-string end (`0x00554ef0`), returns 0
+and sets the parser's byte `+0x24` (`0x004ea5d0`), after which this reader returns 0 at entry (`0x004ea45e`) **[m]**;
+whether the other readers honour that byte too is **[i]**.
+
+**TShips col 52 → `+0xc8`** uses the table `0x00552a28` (`mov ecx,0x552a28` at `0x004376fc`, store `0x0043770c`)
+**[m]**. The AP table (35 names; the FL EXE `e7f3aad8…` has the same ids plus four):
+
+| name | id | name | id | name | id |
+| --- | --- | --- | --- | --- | --- |
+| OBJ_SHIP_M0 | 2020 | OBJ_SHIP_TP | 2030 | OBJ_SATELLITE / 2 | 2065 / 2080 |
+| OBJ_SHIP_M1 | 2021 | OBJ_SHIP_TS | 2031 | OBJ_BEACON | 2060 |
+| OBJ_SHIP_M2 | 2022 | OBJ_SHIP_TL | 2032 | OBJ_JUMPBEACON | 2062 |
+| OBJ_SHIP_M3 | 2023 | OBJ_SHIP_TM | 2141 | OBJ_MINE / 2 / 3 / TR | 2066 / 2143 / 2144 / 2145 |
+| OBJ_SHIP_M4 | 2024 | OBJ_SHIP_TS_PIRATE | 2035 | OBJ_ORBITALLASER / 2 | 2011 / 2149 |
+| OBJ_SHIP_M5 | 2025 | OBJ_SHIP_TL_PIRATE | 2036 | OBJ_FIGHTDRONE / 2 / USC | 2067 / 2146 / 2147 |
+| OBJ_SHIP_M6 | 2026 | OBJ_SHIP_GONER | 2039 | OBJ_FREIGHTDRONE | 2092 |
+| OBJ_SHIP_M7 | 2027 | OBJ_SHIP_UFO | 2068 | OBJ_RECONDRONE | 2150 |
+| OBJ_SHIP_M8 | 2142 | OBJ_SHIP_ASTRONAUT | 2064 | OBJ_SPACEFLY | 2070 |
+| OBJ_SHIP_KHAAKCLUSTER | 2131 | (FL only) OBJ_RELAYBEACON | 2063 | (FL only) OBJ_SHIP_SPECIALDRONE / DRONECARRIER / MISSILE_FRIGATE | 2151 / 2152 / 2153 |
+
+There is no Khaak id other than the cluster (2131): the Khaak fighters' rows use the M-class names **[m table; the
+per-row race check i]**. Numeric col 52 values in the data **[m]**: stock `0` ×6 (col 5 `SG_SH_M3` ×3, `SG_SH_M5`
+×3; death row 35 ×5 and 0 → 48 ×1); installed none; FL `0` ×5, `2061` ×7 (all `SG_SH_M5`, death row 35), `2153` ×1
+(`SG_SH_M7`, row 37; FL's own table names it `OBJ_SHIP_MISSILE_FRIGATE`). **2061 is in neither table**; it lies
+between OBJ_BEACON 2060 and OBJ_JUMPBEACON 2062 and its name is **[u]**.
+
+**The common column 5 (`+0x14`)** is a per-class group read through the same reader with the table from `0x0043cb60`
+(ECX = class): 5 TDocks `0x00552840` (`SG_DOCK_TRADE 0, GONER 1, PIRATES 2, EQUIP 3, HQ 4, KHAAK 5, EXCHANGE 6`),
+6 TFactories `0x005527e8` (`SG_FAC_SHIP 0, TECH 1, BIO 2, FOOD 3, POWER 4, MINE 5, STORAGE 6, COMPLEX 7, CCKIT 8`),
+7 TShips `0x00552758` (`SG_SH_TL 0, TS 1, M0 2, M1 3, M2 4, M3 5, M4 6, M5 7, TL_P 8, TS_P 9, GO 10, M6 11, TP 12,
+M7 13, TM 14, M8 15`), 8 TLaser `0x00552888`, 10 TMissiles `0x00552998` (`SG_MISSILE_LIGHT 0 … COUNTER 15`); any
+other class gets ECX = 0, which the reader treats as numeric (`0x004ea4cf je`) **[m]**. TAsteroids col 5 is 0 in every
+view **[m data]**. The other text-id columns (TDocks col 17, TFactories col 18, TMissiles col 26, TLaser col 12) use
+`0x00550bc0`, the `ICON_*` picture table, not a class **[m]**.
+
+**The explosion row does not use either id**: `0x00413040` reads the per-type death column directly (§4) **[m]**.
+A tier at the death stubs (`0x0044ac64`, `0x0044acb2`; `[esp+4]` = EDI = the dying object) therefore comes from plain
+reads that the callee itself performs (`0x0041366f..0x00413676` read `+0x48`, `+0x40`, `+0x4a`) **[m]**:
+
+```
+class   = *(uint16_t *)(obj + 0x48)              // 0 bullet, 5 dock, 6 factory, 7 ship, 10 missile, 17 asteroid
+subtype = *(int16_t  *)(obj + 0x4a)
+rec     = *(uint8_t **)(0x00606fb8 + 4 * class) + subtype * 0xdb8   // check class < 32, rec base != 0,
+                                                                     // 0 <= subtype < *(int *)(0x00607038 + 4 * class)
+ship (7):      OBJ id *(int *)(rec + 0xc8)   SG_SH group *(int *)(rec + 0x14)   death row *(int *)(rec + 0xbc)
+dock (5) / factory (6): SG_DOCK / SG_FAC group *(int *)(rec + 0x14)             death row *(int *)(rec + 0x60)
+asteroid (17): subtype itself (TAsteroids col 5 is 0)                            death row *(int *)(rec + 0x48)
+missile (10):  SG_MISSILE group *(int *)(rec + 0x14)                             death row *(int *)(rec + 0x7c)
+```
+
+The death stub on `0x0044ac64` must still test the class first (§4: that site is taken for any object with
+`obj+0x40 & 0x40000000`). The engine does not bound-check `subtype` here; the check above is the stub's own **[i]**.
+
+### 8.2 The projectile branch of `0x00414590` (item 2)
+
+**Who calls it [m call site; i loop semantics].** `0x00414590` has one caller, `0x0045ac7d` in the sector update
+`0x004596e0`. That routine walks all 32 per-class object lists of the sector (`[sector+0x50] + class·0xc`,
+`local_148` 0..31) and reaches the call for every object that is not dead (`+0x40 & 0x8000000`) and not skipped by
+`+0x44 & 0x2000000` (`goto LAB_0045b3e9`), behind the gate `*(*0x0060850c) != 0` (`0x0045ac6d..0x0045ac76`). Class 0
+objects are in those lists, so **every live bullet** enters `0x00414590` once per update pass **[i]**. The pass is
+the per-frame object update ([engine-effects.md](engine-effects.md) §7) **[i]**.
+
+**What the class-0 branch does [m, listing `0x00414669..0x004146ff`].** It loads `eff = TBullets[obj+0x4a]+0x74`
+(col 19) and `trail = +0x84` (col 23). When both are ≤ 0 it jumps to `0x0041488f` and returns 1 without any call
+(`0x00414689..0x00414693`). Otherwise it zeroes the 16-byte local `[esp+0x20..0x2c]` and:
+
+* when `eff > 0`: `0x004148a0(0, 0, eff, bullet, 0, 0, 0, &zero, 0, NULL)` at **`0x004146c0`**. At stub entry
+  `[esp+4]` = 0 (kind), `+8` = 0 (k), `+0xc` = eff, `+0x10` = the bullet (also ESI), `+0x20` = `&zero`,
+  `+0x28` = NULL;
+* when `trail > 0`, `VideoD3DFlags` bit 30 and `VideoD3DFlags2 & 2`: `0x00412d70(0, trail, bullet, &zero)` at `0x004146fa`.
+
+So **a bullet whose col 19 is 0 never reaches `0x004146c0`**. Installed, 5 of 38 records have it (rows 308–310);
+stock, 3 of 45 (170, 172) **[m data, §7]**. For those, the call repeats on every pass for the bullet's whole life:
+the first call creates the instance (key bullet/0/0), later calls find it and re-arm it (`0x00414c60`, §5) **[m
+structure; i per frame]**. It passes no position or orientation of its own: `pos` is the zero vector (the instance
+sits at the bullet node's origin) and the orientation is NULL (identity at creation, unchanged on re-arm). A
+recorder reads the bullet's pose from its node: `[obj+0x70]+0x30` position and `+0x40` the 3×4 rotation **[i]**.
+
+**Bolt tap for step 4.** `0x004146c0` sees only bullets with a flight effect, so it is not a per-bolt tap. The tap
+that sees **every live bullet each pass** is the call site **`0x0045ac7d`** (`E8 0E 99 FB FF` → `0x00414590`,
+`cdecl`, one argument) **[m bytes]**:
+
+| item | value |
+| --- | --- |
+| arguments | `[esp+4]` = obj (pushed from EBX at `0x0045ac7c`); the stub filters `word [obj+0x48] == 0` and forwards every object |
+| register inputs | none (`0x00414590` reads only its stack argument) **[m]** |
+| return tested | no: EAX is overwritten at `0x0045ac86` (`movsx eax,si`) **[m]** |
+| dead after | EAX, ESI (reloaded at `0x0045ac82`), EFLAGS (`add esp` then `cmp`); ECX and EDX are caller-saved across the call **[m]** |
+| live, preserve | EBX = obj (`0x0045ac82`), EBP, EDI |
+| atomic claim | no: the five bytes `0x0045ac7d..0x0045ac81` cross the qword boundary `0x0045ac80` (plain write in the install window) |
+| other references | sole E8 caller of `0x00414590`; no branch or image dword lands in bytes 1..4 **[m]** |
+| composition | the engine-effects redirects at `0x004147eb`/`0x0041482c` sit inside the callee, so both can be installed together |
+
+The drawn-bullet alternative is the `INSTANCE_BULLETS` collection (`0x0046cef0` per visible object,
+[effects-engine-remaining-emission.md](effects-engine-remaining-emission.md)), which sees only bullets that are drawn
+this frame **[i]**.
+
 ## Unknown
 
 - The meaning of node `+0x180` in the contact point, and whether `0x00413c40` sees the true contact or the smaller
@@ -346,6 +456,9 @@ except PBC (flag-2 beam) and the repair laser. An impact or muzzle replacement k
   **[i]**. A −1 row would point 0x14 bytes before the table **[i]**; it is reachable only through a BREAKUP element.
 - The missile extension layout (owner, launcher) for the impact tap.
 - The fire routine's EH try state at the muzzle site.
+- The name of class id 2061 (FL data, 7 M5 rows), and whether the parser error byte `+0x24` set by an unknown
+  text id also stops the other column readers.
+- That `0x004596e0` runs every frame for every sector (only the call chain is known).
 
 ## Reproduce
 
@@ -361,6 +474,8 @@ for c in "TBullets 436518 436770 55 esi" "TShips 4373e9 437a2c 50 edi" "TDocks 4
 done > $R/type_loader_columns_out.txt      # loops expanded, version branches evaluated (decimal file versions)
 python3 $R/weapon_effect_sites.py /mnt/c/X3/X3AP.exe $L > $R/weapon_effect_sites_out.txt
 python3 $R/weapon_effect_census.py > $R/weapon_effect_census_out.txt
+python3 $R/class_id_tables.py /mnt/c/X3/X3AP.exe /mnt/c/X3/X3AP.exe /mnt/c/X3FL/X3FL.exe \
+  > $R/class_id_tables_out.txt                          # §8.1: EXE tables, FL anchor table, class columns per view
 # Ghidra (raw output untracked): analyzeHeadless ~/x3-ghidra-research X3Render -process X3AP.exe -noanalysis
 #   -readOnly -postScript X3DecContaining.java <out> 413c40 49b1f0 417250 449a60 414410 414a70 4148a0 413040
 #   413610 4132d0 413c00 44abd0 445170 43ffa0 449db0 449e20 449e70 444a70 452ad0 449ee0 460630

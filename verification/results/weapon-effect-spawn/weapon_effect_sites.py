@@ -24,6 +24,7 @@ SITES = {  # name: (call address, expected callee)
     'breakup  0x0041575c -> 0x004132d0': (0x0041575c, 0x004132d0),
     'flight   0x004146c0 -> 0x004148a0': (0x004146c0, 0x004148a0),
     'trail    0x004146fa -> 0x00412d70': (0x004146fa, 0x00412d70),
+    'object   0x0045ac7d -> 0x00414590': (0x0045ac7d, 0x00414590),
     'hit inst 0x00413da8 -> 0x00414a70': (0x00413da8, 0x00414a70),
     'hit inst 0x00413e79 -> 0x00414a70': (0x00413e79, 0x00414a70),
 }
