@@ -709,11 +709,11 @@ smoothly; no per-frame term.
 
 | Setting | Default | Range | Effect |
 | --- | --- | --- | --- |
-| `sky_nebula_deband` | 0 until flown, then 1 | 0/1 | C1 on; independent of `sky_stars` |
+| `sky_nebula_deband` | 1 (flown 2026-11-05, FL run 55) | 0/1 | C1 on; independent of `sky_stars` |
 | `sky_nebula_deband_threshold` | 6 | 1-16 (1/255 units) | soft threshold on the max channel difference of a tap set |
 | `sky_nebula_deband_radius` | 12 | 2-32 texels | outer radius; the inner iteration uses half |
 | `sky_nebula_jitter` (developer) | 1 | 0/1 | TAA jitter on the replaced part draws |
-| `sky_stars_nebula_dim` | 0 until flown, then 0.5 | 0-1 | `k`; 0 keeps today's draw position and takes no copy (`requires=sky_stars`) |
+| `sky_stars_nebula_dim` | 0 (flown 2026-11-05 at 0.5: not noticeable to the pilot; stays off) | 0-1 | `k`; 0 keeps today's draw position and takes no copy (`requires=sky_stars`) |
 | `sky_stars_nebula_dim_level` (developer) | 0.5 | 0.1-2 | `L0`, pre-decode luma of full dimming |
 
 ### Cost (inferred unless marked)

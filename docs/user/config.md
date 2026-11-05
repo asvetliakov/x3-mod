@@ -122,7 +122,7 @@ up. A value the mod cannot use keeps the default, and the `sky_stars_config` lin
 the stars hide them. `0` (the default) keeps the stars at full strength everywhere, drawn exactly as before. The `sky_stars_defer`
 lines in `x3m.log` show how often the stars were drawn this way (`predicted=` and `confirmed=`).
 
-`sky_nebula_deband` (default `off`) smooths the visible bands at the edge of the sector background's nebula, where it
+`sky_nebula_deband` (default `on` since FL run 55) smooths the visible bands at the edge of the sector background's nebula, where it
 fades into black space; stars, planets and suns are not touched. `sky_nebula_deband_threshold` (default `6`, 1 to 16,
 in 1/255 brightness steps) is the largest step still treated as a band: larger smooths more but softens faint
 filaments. `sky_nebula_deband_radius` (default `12`, 2 to 32 texels of the nebula texture) is how far the smoothing

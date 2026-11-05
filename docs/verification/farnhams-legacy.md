@@ -3239,3 +3239,10 @@ bands softer (compare by toggling `sky_nebula_deband` 0/1 between launches), sta
 nebula, no stars on top of planets, no pulsing of star brightness near nebula edges under SETA rotation, no
 relative wobble between nebula and the rest of the background, no grain in the nebula. Kill (C1): grain or halos
 worse than the bands; kill (C2): pulsing or stars over planets not fixed by `sky_stars_nebula_dim_level`.
+
+**Flown 2026-11-05 (log, measured):** `sky_nebula status=swapped parts=4 swapped=4 outside=0 refused=0 us=23.1`
+(one field logged), `sky_stars_defer predicted=24576 confirmed=24576 ratio=1.0000 missed=0 unconfirmed=0 dim=1
+copy=linear dim_texture=640x180 copy_us=1.5 draw_us=4.7`, ready row `status=ready draw=ok` (5760 stars, key 131077).
+Pilot: "debanding works, nebula is much better now"; the dimming at 0.5 was not noticeable, "fine as is".
+Accepted. Defaults: `sky_nebula_deband` builtin 0 → 1 (commit after this entry); `sky_stars_nebula_dim` stays 0
+(the pilot ini keeps 0.5 and 1 explicitly, so the installed run 55 DLL needs no reinstall).

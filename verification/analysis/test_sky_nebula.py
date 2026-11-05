@@ -108,7 +108,7 @@ class SkyNebulaTests(unittest.TestCase):
         core = (ROOT / 'src/proxy/sky_nebula_core.h').read_text()
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         ini = (ROOT / 'assets/x3m.ini').read_text()
-        self.assertEqual(entries['sky_nebula_deband']['builtin'], '0')
+        self.assertEqual(entries['sky_nebula_deband']['builtin'], '1')
         self.assertEqual(entries['sky_nebula_deband']['requires'], ('taa', 'hdr'))
         self.assertIn(';sky_nebula_deband = 0', ini)
         self.assertTrue(entries['sky_nebula_jitter']['developer'])

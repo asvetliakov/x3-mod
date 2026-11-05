@@ -208,8 +208,8 @@ SETTINGS = [
         'sky_stars_nebula_dim reaches its full strength, 0.1 to 2; 0.5 = the default.', builtin='0.5', range=(0.1, 2.0),
         requires=('sky_stars',), since='2026-11-05'),
     entry('sky_nebula_deband', 'bool', 'graphics', 'Smooths the visible bands at the edge of the sector background\'s '
-          'nebula, where it fades into black space. 1 = on, 0 = the game\'s nebula as painted (default). Stars, planets '
-          'and suns are not touched.', builtin='0', requires=('taa', 'hdr'), since='2026-11-05'),
+          'nebula, where it fades into black space. 1 = on (default), 0 = the game\'s nebula as painted. Stars, planets '
+          'and suns are not touched.', builtin='1', requires=('taa', 'hdr'), since='2026-11-05'),
     entry('sky_nebula_deband_threshold', 'float', 'graphics', 'How large a brightness step the nebula smoothing still '
           'treats as a band (sky_nebula_deband = 1), 1 to 16 in 1/255 steps; 6 = the default. Larger smooths more and may '
           'soften faint filaments; smaller keeps more detail and more bands.', builtin='6', range=(1.0, 16.0),
