@@ -9,8 +9,10 @@ views stock_ap, mayhem3 and fl. The page tools/effects/weapon_effects_lab.html i
 `/* @weapon_effects_data */ ... /* @end */`, which this script writes: per view the weapons (TBullets columns the
 page draws), only the Effects rows they reach (muzzle col 21, flight col 19, impact col 20, the flak death row, the
 death rows of the ship tiers, stations and asteroids, and every EEDF_PROPAGATE child, including the rows only the
-manifest's extra_effects carries), the death tiers with their rows and object counts, and the texture/body status
-counts. Body geometry and textures stay in the untracked <view>/assets.js and tex/*.png beside the manifest; the page
+manifest's extra_effects carries), the death tiers with their rows and object counts, the texture/body status
+counts, and per weapon its tools/effects/weapon_catalog/<view>.json entry (tools/effects/weapon_catalog.py: laser
+names, size, used-by classes, style, numbers, flags, effect summaries, description) for the page's description panel;
+a view without a catalogue file, or a weapon without an entry, gets none. Body geometry and textures stay in the untracked <view>/assets.js and tex/*.png beside the manifest; the page
 loads them by relative path. The generated page is also copied to verification/results/weapon-effects-lab/
 weapon_effects_lab.html so it opens from the results directory with file://.
 --check writes nothing and fails when either page differs from what the inputs give.
@@ -24,6 +26,7 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 HTML = REPO / 'tools/effects/weapon_effects_lab.html'
 CENSUS = REPO / 'verification/results/weapon-effects-census'
 LAB = REPO / 'verification/results/weapon-effects-lab'
+CATALOG = REPO / 'tools/effects/weapon_catalog'
 COPY = LAB / 'weapon_effects_lab.html'
 VIEWS = ('stock_ap', 'mayhem3', 'fl')
 VIEW_LABELS = {'stock_ap': 'Stock AP (pinned 01-13 + addon/01-04)', 'mayhem3': 'Mayhem 3 (installed AP layers)',
@@ -113,11 +116,26 @@ def reachable(weapons, tiers, effects):
     return sorted(seen, key=int)
 
 
-def view_record(view, census, manifest):
+CAT_DROP = ('textures', 'light_rgb')                 # the panel names the main texture and the hex colour
+LASER_DROP = ('used_by', 'size', 'name_id')          # per laser; the weapon's union is shown
+
+
+def cat_entry(e):
+    """The catalogue entry the description panel reads, without the per-laser used-by the weapon's union repeats."""
+    out = {k: v for k, v in e.items() if k not in CAT_DROP}
+    out['lasers'] = [{k: v for k, v in l.items() if k not in LASER_DROP} for l in e.get('lasers', [])]
+    return out
+
+
+def view_record(view, census, manifest, catalog=None):
     effects = {k: compact_effect(e) for k, e in census['effects'].items()}
     for k, e in manifest.get('extra_effects', {}).items():
         effects.setdefault(k, dict(compact_effect(e), propagated_only=True))
     weapons = [compact_weapon(w) for w in census['weapons']]
+    entries = {e['id']: e for e in (catalog or {}).get('weapons', [])}
+    for w in weapons:
+        if w['id'] in entries:
+            w['cat'] = cat_entry(entries[w['id']])
     tiers = tier_rows(census['death_rows'])
     ids = reachable(weapons, tiers, effects)
     tex = manifest['textures']
@@ -155,12 +173,14 @@ def render(html, data):
     return html[:start] + block(data) + html[stop + len(END):]
 
 
-def load(views=VIEWS, census_dir=CENSUS, lab_dir=LAB):
+def load(views=VIEWS, census_dir=CENSUS, lab_dir=LAB, catalog_dir=CATALOG):
     data = {}
     for view in views:
         census = json.loads((census_dir / f'{view}.json').read_text())
         manifest = json.loads((lab_dir / view / 'manifest.json').read_text())
-        data[view] = view_record(view, census, manifest)
+        cat_path = catalog_dir / f'{view}.json'
+        catalog = json.loads(cat_path.read_text()) if cat_path.exists() else None
+        data[view] = view_record(view, census, manifest, catalog)
     return data
 
 
@@ -171,7 +191,8 @@ def main(argv=None):
     data = load()
     html = HTML.read_text()
     fresh = render(html, data)
-    counts = ' '.join(f'{v}: weapons={len(r["weapons"])} effects={len(r["effects"])} '
+    counts = ' '.join(f'{v}: weapons={len(r["weapons"])} catalogued={sum(1 for w in r["weapons"] if "cat" in w)} '
+                      f'effects={len(r["effects"])} '
                       f'missing_rows={sum(1 for e in r["effects"].values() if e.get("missing"))} '
                       f'textures={r["status"]["texture_status"]} body_errors={len(r["status"]["body_errors"])};'
                       for v, r in data.items())
