@@ -1,0 +1,29 @@
+{
+ "run": "fl-run52",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "00a880872",
+ "dirty": false,
+ "build": "build-fl RelWithDebInfo mingw-i686, 0 warnings, check_no_x87 --edition fl PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "024aa48e6417e27dbe302c3934ecbb2743b9042e9b636081dfe3fa68bed56232",
+  "bytes": 59395319
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run51",
+  "sha256_prefix": "a3b366e6e7198d6e"
+ },
+ "ini": "x3m.ini unchanged from run 51 (sky_stars = 1; look controls at defaults, brightness default now 1.5, clustering 1); copy x3m.ini.run51",
+ "exe_sha256_prefix": "e7f3aad8",
+ "changes": [
+  "2366987ff clustered distribution + brightness 1.5",
+  "00a880872 per-sector seed from map x/y (sector_key)"
+ ],
+ "evidence": [
+  "verification/results/sky-stars/host_check.json",
+  "verification/results/sky-stars/fixture_out.txt (19 checks)",
+  "verification/results/sector-identity/summary.json",
+  "review high effort: no blocking findings"
+ ]
+}

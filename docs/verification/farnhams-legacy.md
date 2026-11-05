@@ -3155,3 +3155,28 @@ masked=1 draw=ok`. Pilot: denser and brighter field, bright stars visibly larger
 stars breathing slowly at the same rate with and without SETA, no shimmer under SETA rotation, exposure steady when
 turning to black sky. Tuning in the ini without a rebuild. Kill: twinkle reads as flicker under TAA, or exposure
 reacts to the star field.
+
+**Flown 2026-11-05:** accepted by the pilot ("better now"); asked for brightness 1.5, clustering, a per-sector
+field and (open) dimming under nebula. Run 52 follows.
+
+## FL run 52 — clustered, per-sector star field (installed 2026-11-05)
+
+Dev candidate from clean main `00a880872` (merges `2366987ff` clustering + brightness default 1.5 and `4cb13ca49`
+per-sector seed; `build-fl` RelWithDebInfo, mingw-i686, 0 warnings, `check_no_x87 --edition fl` PASS):
+`C:\X3FL\d3d9.dll` = `024aa48e…` (59,395,319 B), rollback `rollback-d3d9\d3d9.dll.run51` = `a3b366e6…`; ini
+unchanged (copy `x3m.ini.run51`). Record `verification/results/fl-run52/candidate.json`. Changes: directions drawn
+by rejection against a seeded density of 6-10 cluster caps and 2-4 voids (`sky_stars_clustering`, default 1, 0 =
+uniform byte-identical to run 51, 2 = stronger); the field seed is the texture mark mixed with a sector key
+`(x+1)*0x10000+(y+1)` from the sector's map x/y read hook-free through the cockpit sector's KC 2001 object
+([sector-identity.md](../reverse-engineering/sector-identity.md), both editions, byte windows validated at attach;
+a mismatch disables the key, never the pass; unknown keeps the last field). Offline evidence (measured): host check
+59, clustering 1 max/min bin 5.5-15.3 over 16 seeds, rebuild 3.2 ms at clustering 1 per sector change (was 1 ms),
+cached key check 36 ns warm / 2.2 µs on a sector change, native fixture 19 checks PASS, verifier PASS (13 AP / 11
+FL windows). Review at high effort: no blocking findings; notes: phase-draw rows use read-only device getters (≤ 16
+per field); a gate transit may switch mark and key on different frames (two rebuilds, one mixed frame).
+**Open flight check:** the sector identity chain is unconfirmed in a running game. Rows: `sky_stars_sector
+status=known edition=fl x= y= key=` on entering each sector (x/y must match the map position of the sector), the
+ready row's `key=`, `sky_stars_phase_draw` rows (blend state of the nebula part draws, for the dimming question).
+Pilot: clusters and voids visible, a different field in each sector, the same field on returning to a sector,
+brightness as before but a step lower. Kill: `status=unknown` or `disabled` in flight, or any hitch beyond the
+sector-entry rebuild.
