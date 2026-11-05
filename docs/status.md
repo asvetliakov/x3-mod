@@ -1,5 +1,7 @@
 # Project status
 
+**Weapon, impact and explosion effects restarted (2026-11-05):** the 2026-09-25 drop stands as history; the new shape hooks the engine's spawn sites for the role and reads the live TBullets/Effects records for parameters, with a data classifier plus curated overrides for the style and three ship tiers for explosions; users configure nothing. Step 1 done (`e656d8199`): [weapon-effect-spawn.md](reverse-engineering/weapon-effect-spawn.md) (hook sites, columns, death-row chooser, reviewed) and `tools/effects/weapon_effects_census.py`. Next: the design delta (`docs/architecture/weapon-effects.md`), the lab page and the host fixture, then shield hits as the first flown family.
+
 **Farnham's Legacy port restarted (2026-11-01):** the Codex attempt is archived on
 branch `fl-codex`; main carries only its 106 disassembly notes
 ([docs/reverse-engineering/fl/](reverse-engineering/fl/README.md), unverified in
