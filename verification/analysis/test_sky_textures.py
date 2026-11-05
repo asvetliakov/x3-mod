@@ -111,6 +111,29 @@ int main(int argc, char** argv) {
         self.assertEqual(st.classify('addon2/dds/nebula_bluewell_stars_blue_diff.pck'), ('bluewell', 'blue'))
         self.assertIsNone(st.classify(PART))                                 # nebula parts are not sky members
         self.assertIsNone(st.classify('dds/nebula_bluewell_dust_diff.pck'))
+        # no colour token (the Mayhem/Litcube nebula_litcube<N>_stars_diff): the family alone, lane 7
+        self.assertEqual(st.classify('dds/nebula_litcube7_stars_diff.dds'), ('litcube7', None))
+        self.assertEqual(st.classify('addon/dds/nebula_zz_stars_diff.pck'), ('zz', None))
+        self.assertEqual(st.classify('dds/nebula_a_stars_b_stars_c_diff.dds'), ('a_stars_b', 'c'))
+        self.assertEqual(st.classify('dds/nebula_brennanstriumph_stars_redfog_diff.dds'), ('brennanstriumph', 'redfog'))
+        # any stem with nebula and stars (any case, any position): family without nebula/stars/diff and the colour
+        self.assertEqual(st.classify('DDS/X_Nebula_Foo_Stars.dds'), ('x_foo', None))
+        self.assertEqual(st.classify('dds/x_nebula__red__stars_glow.pck'), ('x_glow', 'red'))
+        self.assertEqual(st.classify('dds/nebula_stars_diff.dds'), ('nebula_stars_diff', None))
+        self.assertEqual(st.classify('dds/nebula_x_stars__diff.dds'), ('x', None))
+        self.assertIsNone(st.classify('dds/nebula_x_stars_diff.tga'))
+        self.assertIsNone(st.classify('textures/nebula_x_stars_diff.dds'))
+        self.assertIsNone(st.classify('dds/nebula_x_dust_diff.dds'))
+
+    def test_colour_token_bytes_unchanged(self):
+        """The marked bytes of colour-token inputs are those of the sky-stars-1 recipe before the no-token rule."""
+        for src, family, colour, want in ((star_texture(), 'testfam', 'blue', '491b8740bf50fc64'),
+                                          (loose_stars(), 'loosefam', 'red', '0bf0ad616a436c05'),
+                                          (loose_stars(), 'red_reef', 'orange', 'c9fc2fcd39c10df5')):
+            dds, _ = st.bake_stars(src, family, colour)
+            self.assertEqual(lod_overlay.hashlib.sha256(dds).hexdigest()[:16], want)
+        self.assertEqual(st.bake_stars(star_texture(), 'x', None)[1]['lane'], st.LANE_OTHER)
+        self.assertRaises(st.NotStarBody, st.bake_stars, nebula_part(), 'x', None)   # 0 % below luma 16
 
 
 def sky_game(folder):
@@ -354,6 +377,60 @@ class LooseStars(unittest.TestCase):
             out = sky_step(game)
             self.assertIn(f'sky texture {LOOSE}: restored (loose file, the sky group is off)', out)
             self.assertEqual(f.read_bytes(), update)                         # the original bytes exactly
+            self.assertFalse(st.ledger_path(game).exists())
+
+    def test_no_colour_token_loose_and_catalogue(self, _running):
+        """A loose AP dds/nebula_litcube7_stars_diff.dds is marked in place and a catalogue member
+        dds/nebula_zz_stars_diff.pck rides in the overlay: lane 7, slot fnv1a32(family) & 0xff, distinct slots."""
+        zz, lit = 'dds/nebula_zz_stars_diff.pck', 'dds/nebula_litcube7_stars_diff.dds'
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            write_catalogue(game / '04.cat', [(STARS, gzip.compress(star_texture(), mtime=0)),
+                                              (zz, gzip.compress(star_texture(), mtime=0))])
+            f = game / lit
+            f.parent.mkdir(parents=True)
+            original = loose_stars()
+            f.write_bytes(original)
+            code, text = run(BATCH + ['--sky', 'on', '--game', str(game), '--install'])
+            self.assertEqual(code, 0, text)
+            self.assertIn('2 star textures marked in 2 families', text)
+            members = cat_members(game / 'addon/02.cat')
+            zmark = lod_atlas.read_dds_mark(unpack(members[zz]))
+            self.assertEqual(unpack(members[zz])[44:], star_texture()[44:])
+            out = sky_step(game)
+            self.assertIn('sky textures family=litcube7 stars=1 marked built=1 reused=0 loose=1', out)
+            self.assertIn('sky textures family=zz stars=1 marked built=1 reused=0\n', out)
+            marked = f.read_bytes()
+            self.assertEqual((marked[:32], marked[44:]), (original[:32], original[44:]))
+            lmark = lod_atlas.read_dds_mark(marked)
+            for mark, family in ((zmark, b'zz'), (lmark, b'litcube7')):
+                self.assertEqual(mark[1:3], (st.fnv1a32(family) & 255, st.LANE_OTHER))
+                self.assertEqual(mark[4], st.PAYLOAD_SKY_STARS)
+            self.assertEqual(lmark[3], st.bake_stars(original, 'litcube7', None)[1]['k'])
+            self.assertNotEqual(zmark[1], lmark[1])
+            self.assertIsNone(json.loads(st.ledger_path(game).read_text())['rows'][0]['colour'])
+            self.assertIn('family=litcube7 stars=1 marked built=0 reused=1 loose=1', sky_step(game))
+
+    def test_name_match_failing_the_star_body_check(self, _running):
+        """A nebula_*_stars_* name whose texels are not a star body (a lit nebula, 0 % below luma 16) is skipped
+        not_star_body, catalogue member and loose file alike; the loose file is left byte for byte."""
+        member, lit = 'dds/nebula_glow_stars_red_halo.pck', 'dds/nebula_lit_stars_halo_diff.dds'
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            write_catalogue(game / '04.cat', [(STARS, gzip.compress(star_texture(), mtime=0)),
+                                              (member, gzip.compress(nebula_part(), mtime=0))])
+            f = game / lit
+            f.parent.mkdir(parents=True)
+            f.write_bytes(nebula_part())
+            self.assertEqual((st.classify(member), st.classify(lit)), (('glow_halo', 'red'), ('lit', 'halo')))
+            code, text = run(BATCH + ['--sky', 'on', '--game', str(game), '--install'])
+            self.assertEqual(code, 0, text)
+            self.assertIn('1 star textures marked in 1 families', text)
+            self.assertNotIn(member, cat_members(game / 'addon/02.cat'))
+            out = sky_step(game)
+            self.assertIn(f'skipped sky texture {lit}: not_star_body (loose file left alone)', out)
+            self.assertIn('skipped not_star_body 2', out)
+            self.assertEqual(f.read_bytes(), nebula_part())
             self.assertFalse(st.ledger_path(game).exists())
 
     def test_round_trip_through_the_proxy_parser(self, _running):

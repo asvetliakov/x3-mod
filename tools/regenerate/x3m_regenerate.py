@@ -400,6 +400,8 @@ def sky_step(log, game, xp='addon'):
         log.say(f'sky texture {p}: {status} (loose file, no longer a star texture the game loads)')
     for p, why in loose['refused']:
         log.say(f'refused sky texture {p}: {why}')
+    for p, why in loose.get('skipped', []):
+        log.say(f'skipped sky texture {p}: {why} (loose file left alone)')
     groups = [('', sky)] + ([(' [mod]', sky['package'])] if sky.get('package') else [])
     if not any(g['eligible'] for _, g in groups) and not loose['rows']:
         log.say('sky textures: skipped (no star texture)')
@@ -416,7 +418,7 @@ def sky_step(log, game, xp='addon'):
                     f" built={f['built'] + n.get('built', 0)} reused={f['reused'] + n.get('reused', 0)}"
                     + (f" loose={n['stars']}" if n else '') + tag)
     skipped = {k: v for k, v in sky['skipped'].items() if k != 'loose_file'}   # loose winners: marked in place
-    for _, why in loose['refused']:
+    for _, why in loose['refused'] + loose.get('skipped', []):
         skipped[why] = skipped.get(why, 0) + 1
     skipped = ', '.join(f'{k} {v}' for k, v in sorted(skipped.items())) or 'none'
     built = sum(1 for r in loose['rows'] if r['status'] == 'built')

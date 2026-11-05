@@ -239,10 +239,20 @@ magnification.
 
 What remains of the sky group is the mark that the star pass (A) needs.
 
-- **Members and mark.** `tools/analysis/sky_textures.py` copies each winning
-  `dds/nebula_<family>_stars_<colour>_diff` member byte for byte, texels and every mip, and writes the X3ML mark
-  into `dwReserved1[0..2]`. The mark is version 1 with descriptor `slot = fnv1a32(family) & 0xff`,
-  `lane = colour class`, `K = bright peaks // 8` and `payload = 2`. A host test round-trips it through
+- **Members and mark.** `tools/analysis/sky_textures.py` copies each winning star texture byte for byte, texels
+  and every mip, and writes the X3ML mark into `dwReserved1[0..2]`. A star texture (2026-11-05, user rule) is a
+  `.dds`/`.pck` under `dds/` whose stem contains `nebula` and `stars` (any case, any position) and whose level 0 is
+  at least 90 % below luma 16; a name match that fails the check is `skipped not_star_body` (catalogue and loose).
+  The stock shapes `nebula_<family>_stars_<colour>_diff` and `nebula_<family>_stars_diff` keep the family and the
+  colour token as before (any word, e.g. `redfog`, is the token), so the marks of the earlier names are byte
+  identical and `RECIPE_ID` stays `sky-stars-1`; another matching stem has family = its tokens without
+  `nebula`/`stars`/`diff` and the last STAR_LANES token. The mark is version 1 with descriptor
+  `slot = fnv1a32(family) & 0xff`, `lane = STAR_LANES index of the colour token, else 7` (no token: lane 7, the
+  white tint), `K = bright peaks // 8` and `payload = 2`. On the user's AP install (read-only, measured with
+  `verification/results/sky-litcube/measure.py`, `result.json`): 228 loose star textures all classified and
+  passing the check (dark share 0.9953 minimum), 214 of them `nebula_litcube<N>_stars_diff` without a colour
+  token, 228 families in 145 slots (61 slots shared; the seed also carries lane and K), K 50-168. Marking a
+  synthetic 2048x2048 DXT1 loose texture costs 161 ms cold and 1.3 ms on reuse (measured, 20 files). A host test round-trips it through
   `lod_texture_mark.h`'s own parser; `lane_of` stays 0, so the strength lane is untouched.
 - **Switch and log.** `lod_overlay.py --batch --sky auto|on|off` (auto: on for AP and FL; off switches it off) carries the marks in
   the overlay slot, and the regenerate step logs one row per family.
